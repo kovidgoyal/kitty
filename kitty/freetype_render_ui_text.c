@@ -502,6 +502,14 @@ static void cleanup_resize(void *p) {
 }
 #define RESIZE_AFTER_FUNCTION __attribute__((cleanup(cleanup_resize)))
 
+static void*
+report_freetype_error_for_char(int error, char ch, const char *operation) {
+    char buf[128];
+    snprintf(buf, sizeof(buf), "Failed to %s glyph for character: %c, with error: ", operation, ch);
+    set_freetype_error(buf, error);
+    return NULL;
+}
+
 uint8_t*
 render_single_ascii_char_as_mask(FreeTypeRenderCtx ctx_, const char ch, size_t *result_width, size_t *result_height) {
     RenderCtx *ctx = (RenderCtx*)ctx_;
@@ -518,10 +526,10 @@ render_single_ascii_char_as_mask(FreeTypeRenderCtx ctx_, const char ch, size_t *
     face->pixel_size = (FT_UInt)(face->pixel_size / ratio);
     if (face->pixel_size != temp.orig_sz) FT_Set_Pixel_Sizes(face->freetype, avail_height, avail_height);
     int error = FT_Load_Glyph(face->freetype, glyph_index, get_load_flags(face->hinting, face->hintstyle, FT_LOAD_DEFAULT));
-    if (error) { PyErr_Format(PyExc_Exception, "failed to load glyph for character: %c", ch); return NULL;}
+    if (error) return report_freetype_error_for_char(error, ch, "load");
     if (face->freetype->glyph->format != FT_GLYPH_FORMAT_BITMAP) {
         error = FT_Render_Glyph(face->freetype->glyph, FT_RENDER_MODE_NORMAL);
-        if (error) { PyErr_Format(PyExc_Exception, "failed to render glyph for character: %c", ch); return NULL;}
+        if (error) return report_freetype_error_for_char(error, ch, "render");
     }
     uint8_t *rendered = NULL;
     switch(face->freetype->glyph->bitmap.pixel_mode) {

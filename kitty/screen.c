@@ -156,7 +156,7 @@ screen_reset(Screen *self) {
     if (self->overlay_line.is_active) deactivate_overlay_line(self);
     memset(self->main_key_encoding_flags, 0, sizeof(self->main_key_encoding_flags));
     memset(self->alt_key_encoding_flags, 0, sizeof(self->alt_key_encoding_flags));
-    self->display_window_number = 0;
+    self->display_window_char = 0;
     self->prompt_settings.val = 0;
     self->last_graphic_char = 0;
     self->main_savepoint.is_valid = false;
@@ -2762,10 +2762,10 @@ reset_dirty(Screen *self, PyObject *a UNUSED) {
 }
 
 static PyObject*
-set_window_number(Screen *self, PyObject *a) {
-    int num = -1;
-    if (!PyArg_ParseTuple(a, "|i", &num)) return NULL;
-    self->display_window_number = MAX(0, num + 1);
+set_window_char(Screen *self, PyObject *a) {
+    const char *text = "";
+    if (!PyArg_ParseTuple(a, "|s", &text)) return NULL;
+    self->display_window_char = text[0];
     self->is_dirty = true;
     Py_RETURN_NONE;
 }
@@ -3590,7 +3590,7 @@ static PyMethodDef methods[] = {
     MND(draw, METH_O)
     MND(apply_sgr, METH_O)
     MND(cursor_position, METH_VARARGS)
-    MND(set_window_number, METH_VARARGS)
+    MND(set_window_char, METH_VARARGS)
     MND(set_mode, METH_VARARGS)
     MND(reset_mode, METH_VARARGS)
     MND(reset, METH_NOARGS)

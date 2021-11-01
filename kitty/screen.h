@@ -137,7 +137,7 @@ typedef struct {
         };
         unsigned int val;
     } prompt_settings;
-    unsigned int display_window_number;
+    char display_window_char;
 } Screen;
 
 

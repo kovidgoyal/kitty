@@ -584,8 +584,10 @@ draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat 
     GLfloat left = os_window->viewport_width * (xstart + 1.f) / 2.f;
     GLfloat right = left + os_window->viewport_width * width / 2.f;
     GLfloat title_bar_height = 0;
-    if (window->title && PyUnicode_Check(window->title)) title_bar_height = render_window_title(
-            os_window, screen, xstart, ystart, width, window, left, right);
+    size_t height_px = (size_t)(os_window->viewport_height * height / 2.f), width_px = 0;
+    if (window->title && PyUnicode_Check(window->title) && (height_px > (os_window->fonts_data->cell_height + 1) * 2)) {
+        title_bar_height = render_window_title(os_window, screen, xstart, ystart, width, window, left, right);
+    }
     if (title_bar_height > 0) {
         ystart -= title_bar_height;
         height -= title_bar_height;
@@ -593,9 +595,9 @@ draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat 
     ystart -= dy / 2.f; height -= dy;  // top and bottom margins
     xstart += dx / 2.f; width -= dx;  // left and right margins
     GLfloat height_gl = MIN(MIN(12 * dy, height), width);
-    size_t height_px = (unsigned)(os_window->viewport_height * height_gl / 2.f), width_px = 0;
+    height_px = (size_t)(os_window->viewport_height * height_gl / 2.f);
     if (height_px < 4) return;
-    FREE_AFTER_FUNCTION uint8_t *canvas = draw_single_ascii_char('a', &width_px, &height_px);
+    FREE_AFTER_FUNCTION uint8_t *canvas = draw_single_ascii_char(screen->display_window_char, &width_px, &height_px);
     if (height_px < 4 || width_px < 4 || !canvas) return;
     GLfloat width_gl = 2.f * ((float)width_px) / os_window->viewport_width;
     left = xstart + (width - width_gl) / 2.f;
@@ -845,7 +847,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
         if (intensity > 0.0f) draw_visual_bell_flash(intensity, xstart, ystart, w, h, screen);
     }
 
-    if (window && screen->display_window_number) draw_window_number(os_window, screen, xstart, ystart, w, h, window, dx, dy);
+    if (window && screen->display_window_char) draw_window_number(os_window, screen, xstart, ystart, w, h, window, dx, dy);
 }
 // }}}
 

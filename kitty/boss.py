@@ -177,7 +177,7 @@ class VisualSelect:
         for wid in self.window_ids:
             w = boss.window_id_map.get(wid)
             if w is not None:
-                w.screen.set_window_number()
+                w.screen.set_window_char()
         return boss
 
 
@@ -867,6 +867,7 @@ class Boss:
         choose_msg: str,
         only_window_ids: Container[int] = ()
     ) -> None:
+        import string
         self.cancel_current_visual_select()
         tm = tab.tab_manager_ref()
         if tm is not None:
@@ -877,22 +878,24 @@ class Boss:
             return
         pending_sequences: SubSequenceMap = {}
         fmap = get_name_to_functional_number_map()
-        num = 0
+        alphabet = '0' + string.ascii_uppercase
         for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
             if only_window_ids and window.id not in only_window_ids:
                 continue
             ac = KeyAction('visual_window_select_action_trigger', (window.id,))
-            num = idx + 1
-            is_last = num == 10
-            if is_last:
-                num = 0
-            window.screen.set_window_number(num)
+            if idx >= 9:
+                num = idx - 9
+                if num >= len(alphabet):
+                    break
+                ch = alphabet[num]
+            else:
+                ch = str(idx + 1)
+            window.screen.set_window_char(ch)
             self.current_visual_select.window_ids.append(window.id)
             for mods in (0, GLFW_MOD_CONTROL, GLFW_MOD_CONTROL | GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_ALT, GLFW_MOD_SHIFT):
-                pending_sequences[(SingleKey(mods=mods, key=ord(str(num))),)] = ac
-                pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{num}']),)] = ac
-            if is_last:
-                break
+                pending_sequences[(SingleKey(mods=mods, key=ord(ch.lower())),)] = ac
+                if ch in string.digits:
+                    pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{ch}']),)] = ac
         if len(self.current_visual_select.window_ids) > 1:
             self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('visual_window_select_action_trigger', (0,)))
             redirect_mouse_handling(True)
