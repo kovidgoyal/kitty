@@ -6,7 +6,7 @@ import os
 import shutil
 import sys
 from contextlib import contextmanager, suppress
-from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Generator, List, MutableMapping, Optional, Sequence, Tuple
 
 from .borders import load_borders_program
 from .boss import Boss
@@ -27,6 +27,7 @@ from .fast_data_types import (
 from .fonts.box_drawing import set_scale
 from .fonts.render import set_font_family
 from .options.types import Options
+from .options.utils import DELETE_ENV_VAR
 from .os_window_size import initial_window_size_func
 from .session import get_os_window_sizing_data
 from .shell_integration import setup_shell_integration
@@ -267,6 +268,22 @@ def expand_listen_on(listen_on: str, from_config_file: bool) -> str:
     return listen_on
 
 
+def ensure_path(env: MutableMapping[str, str]) -> None:
+    # Ensure the correct kitty is in PATH
+    rpath = sys._xoptions.get('bundle_exe_dir')
+    if rpath:
+        modify_path = is_macos or getattr(sys, 'frozen', False) or sys._xoptions.get('kitty_from_source') == '1'
+        env_path = env.get('PATH', '')
+        existing = env_path != '' and shutil.which('kitty', path=env_path)
+        if modify_path or not existing:
+            def cpath(x: str) -> str:
+                return os.path.abspath(os.path.realpath(x))
+            if not existing or cpath(existing) != cpath(os.path.join(rpath, 'kitty')):
+                existing_paths = list(filter(None, env_path.split(os.pathsep)))
+                existing_paths.insert(0, rpath)
+                env['PATH'] = os.pathsep.join(existing_paths)
+
+
 def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
     from_config_file = False
     if not cli_opts.listen_on and opts.listen_on.startswith('unix:'):
@@ -277,7 +294,13 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
         os.environ['KITTY_LISTEN_ON'] = cli_opts.listen_on
     env = opts.env.copy()
     setup_shell_integration(opts, env)
-    set_default_env(env)
+    if env.get('PATH', None) not in (None, '', DELETE_ENV_VAR):
+        ensure_path(env)
+        set_default_env(env)
+        ensure_path(os.environ)
+    else:
+        ensure_path(os.environ)
+        set_default_env(env)
 
 
 def set_locale() -> None:
@@ -303,19 +326,6 @@ def _main() -> None:
         set_locale()
     except Exception:
         log_error('Failed to set locale, ignoring')
-
-    # Ensure the correct kitty is in PATH
-    rpath = sys._xoptions.get('bundle_exe_dir')
-    if rpath:
-        modify_path = is_macos or getattr(sys, 'frozen', False) or sys._xoptions.get('kitty_from_source') == '1'
-        existing = shutil.which('kitty')
-        if modify_path or not existing:
-            def cpath(x: str) -> str:
-                return os.path.abspath(os.path.realpath(x))
-            if not existing or cpath(existing) != cpath(os.path.join(rpath, 'kitty')):
-                existing_paths = list(filter(None, os.environ.get('PATH', '').split(os.pathsep)))
-                existing_paths.insert(0, rpath)
-                os.environ['PATH'] = os.pathsep.join(existing_paths)
 
     args = sys.argv[1:]
     if is_macos and os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1':
