@@ -454,10 +454,9 @@ draw_graphics(int program, ssize_t vao_idx, ssize_t gvao_idx, ImageRenderData *d
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
 #define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
 
-void
-draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas) {
+static ImageRenderData*
+load_alpha_mask_texture(size_t width, size_t height, uint8_t *canvas) {
     static ImageRenderData data = {.group_count=1};
-    gpu_data_for_centered_image(&data, screen_width, screen_height, width, height);
     if (!data.texture_id) { glGenTextures(1, &data.texture_id); }
     glBindTexture(GL_TEXTURE_2D, data.texture_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -466,13 +465,20 @@ draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, canvas);
+    return &data;
+}
+
+void
+draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas) {
+    ImageRenderData *data = load_alpha_mask_texture(width, height, canvas);
+    gpu_data_for_centered_image(data, screen_width, screen_height, width, height);
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
     glUniform1i(cell_uniform_data.amask_image_loc, GRAPHICS_UNIT);
 #define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
     glUniform3f(cell_uniform_data.amask_fg_loc, CV3(OPT(foreground)));
 #undef CV3
     glUniform1f(cell_uniform_data.amask_premult_loc, os_window->is_semi_transparent ? 1.f : 0.f);
-    send_graphics_data_to_gpu(1, os_window->gvao_idx, &data);
+    send_graphics_data_to_gpu(1, os_window->gvao_idx, data);
     glEnable(GL_BLEND);
     if (os_window->is_semi_transparent) {
         BLEND_PREMULT;
@@ -480,7 +486,7 @@ draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen
         BLEND_ONTO_OPAQUE;
     }
     glScissor(0, 0, screen_width, screen_height);
-    draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, os_window->gvao_idx, &data, 0, 1);
+    draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, os_window->gvao_idx, data, 0, 1);
     glDisable(GL_BLEND);
 }
 
