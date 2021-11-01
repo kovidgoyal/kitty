@@ -294,10 +294,10 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
         os.environ['KITTY_LISTEN_ON'] = cli_opts.listen_on
     env = opts.env.copy()
     setup_shell_integration(opts, env)
+    ensure_path(os.environ)
     if env.get('PATH') not in (None, '', DELETE_ENV_VAR):
         ensure_path(env)
     set_default_env(env)
-    ensure_path(os.environ)
 
 
 def set_locale() -> None:
