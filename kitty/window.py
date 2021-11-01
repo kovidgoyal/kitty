@@ -22,11 +22,11 @@ from .constants import appname, is_macos, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
     CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK,
-    CURSOR_UNDERLINE, DCS, DECORATION, DIM, GLFW_MOD_CONTROL, Color,
+    CURSOR_UNDERLINE, DCS, DECORATION, DIM, GLFW_MOD_CONTROL,
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
     MARK, MARK_MASK, NO_CURSOR_SHAPE, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE,
-    SCROLL_PAGE, SEVEN_SEGMENT_PROGRAM, STRIKETHROUGH, TINT_PROGRAM, KeyEvent,
-    Screen, add_timer, add_window, cell_size_for_window, click_mouse_url,
+    SCROLL_PAGE, STRIKETHROUGH, TINT_PROGRAM, Color, KeyEvent, Screen,
+    add_timer, add_window, cell_size_for_window, click_mouse_url,
     compile_program, encode_key_for_tty, get_boss, get_clipboard_string,
     get_options, init_cell_program, mark_os_window_dirty, mouse_selection,
     move_cursor_to_mouse_if_in_prompt, pt_to_px, set_clipboard_string,
@@ -254,8 +254,6 @@ class LoadShaderPrograms:
         compile_program(BGIMAGE_PROGRAM, v, f)
         v, f = load_shaders('tint')
         compile_program(TINT_PROGRAM, v, f)
-        v, f = load_shaders('seven_segment', vertex_name='tint')
-        compile_program(SEVEN_SEGMENT_PROGRAM, v, f)
         init_cell_program()
 
 

@@ -10,7 +10,7 @@
 #include "colors.h"
 #include <stddef.h>
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, SEVEN_SEGMENT_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT, BGIMAGE_UNIT };
 
 // Sprites {{{
@@ -173,10 +173,6 @@ typedef struct {
     GLint tint_color_location, edges_location;
 } TintProgramLayout;
 static TintProgramLayout tint_program_layout = {0};
-typedef struct {
-    GLint edges_location, area_bounds_location, digit_color_location, digit_location;
-} SevenSegmentProgramLayout;
-static SevenSegmentProgramLayout seven_segment_program_layout = {0};
 
 static void
 init_cell_program(void) {
@@ -203,10 +199,6 @@ init_cell_program(void) {
     bgimage_program_layout.premult_location = get_uniform_location(BGIMAGE_PROGRAM, "premult");
     tint_program_layout.tint_color_location = get_uniform_location(TINT_PROGRAM, "tint_color");
     tint_program_layout.edges_location = get_uniform_location(TINT_PROGRAM, "edges");
-    seven_segment_program_layout.edges_location = get_uniform_location(SEVEN_SEGMENT_PROGRAM, "edges");
-    seven_segment_program_layout.area_bounds_location = get_uniform_location(SEVEN_SEGMENT_PROGRAM, "area_bounds");
-    seven_segment_program_layout.digit_color_location = get_uniform_location(SEVEN_SEGMENT_PROGRAM, "digit_color");
-    seven_segment_program_layout.digit_location = get_uniform_location(SEVEN_SEGMENT_PROGRAM, "digit");
 }
 
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer };
@@ -1020,7 +1012,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(SEVEN_SEGMENT_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);
