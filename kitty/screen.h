@@ -138,6 +138,11 @@ typedef struct {
         unsigned int val;
     } prompt_settings;
     char display_window_char;
+    struct {
+        char ch;
+        uint8_t *canvas;
+        size_t requested_height, width_px, height_px;
+    } last_rendered_window_char;
 } Screen;
 
 

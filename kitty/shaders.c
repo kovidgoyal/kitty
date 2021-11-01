@@ -584,8 +584,8 @@ draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat 
     GLfloat left = os_window->viewport_width * (xstart + 1.f) / 2.f;
     GLfloat right = left + os_window->viewport_width * width / 2.f;
     GLfloat title_bar_height = 0;
-    size_t height_px = (size_t)(os_window->viewport_height * height / 2.f), width_px = 0;
-    if (window->title && PyUnicode_Check(window->title) && (height_px > (os_window->fonts_data->cell_height + 1) * 2)) {
+    size_t requested_height = (size_t)(os_window->viewport_height * height / 2.f);
+    if (window->title && PyUnicode_Check(window->title) && (requested_height > (os_window->fonts_data->cell_height + 1) * 2)) {
         title_bar_height = render_window_title(os_window, screen, xstart, ystart, width, window, left, right);
     }
     if (title_bar_height > 0) {
@@ -595,17 +595,25 @@ draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat 
     ystart -= dy / 2.f; height -= dy;  // top and bottom margins
     xstart += dx / 2.f; width -= dx;  // left and right margins
     GLfloat height_gl = MIN(MIN(12 * dy, height), width);
-    height_px = (size_t)(os_window->viewport_height * height_gl / 2.f);
-    if (height_px < 4) return;
-    FREE_AFTER_FUNCTION uint8_t *canvas = draw_single_ascii_char(screen->display_window_char, &width_px, &height_px);
-    if (height_px < 4 || width_px < 4 || !canvas) return;
-    GLfloat width_gl = 2.f * ((float)width_px) / os_window->viewport_width;
+    requested_height = (size_t)(os_window->viewport_height * height_gl / 2.f);
+    if (requested_height < 4) return;
+#define lr screen->last_rendered_window_char
+    if (!lr.canvas || lr.ch != screen->display_window_char || lr.requested_height != requested_height) {
+        free(lr.canvas); lr.canvas = NULL;
+        lr.requested_height = requested_height; lr.height_px = requested_height; lr.ch = 0;
+        lr.canvas = draw_single_ascii_char(screen->display_window_char, &lr.width_px, &lr.height_px);
+        if (lr.height_px < 4 || lr.width_px < 4 || !lr.canvas) return;
+        lr.ch = screen->display_window_char;
+    }
+
+    GLfloat width_gl = 2.f * ((float)lr.width_px) / os_window->viewport_width;
     left = xstart + (width - width_gl) / 2.f;
     right = left + width_gl;
     GLfloat top = ystart - (height - height_gl) / 2.f;
     GLfloat bottom = top - height_gl;
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
-    ImageRenderData *ird = load_alpha_mask_texture(width_px, height_px, canvas);
+    ImageRenderData *ird = load_alpha_mask_texture(lr.width_px, lr.height_px, lr.canvas);
+#undef lr
     gpu_data_for_image(ird, left, top, right, bottom);
     glEnable(GL_BLEND);
     BLEND_PREMULT;

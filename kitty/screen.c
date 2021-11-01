@@ -455,6 +455,7 @@ dealloc(Screen* self) {
     free(self->url_ranges.items);
     free_hyperlink_pool(self->hyperlink_pool);
     free(self->as_ansi_buf.buf);
+    free(self->last_rendered_window_char.canvas);
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
 
