@@ -302,10 +302,10 @@ class TestFileTransmission(BaseTest):
         self.ae(st.st_nlink, 1)
         self.ae(stat.S_IMODE(st.st_mode), 0o777)
         self.ae(st.st_mtime_ns, 13000)
-        send(dest + 's1', 'path:' + os.path.basename(dest), permissions=0o777, mtime=17, ftype='symlink')
+        send(dest + 's1', 'path:' + os.path.basename(dest), permissions=0o777, mtime=17000, ftype='symlink')
         st = os.stat(dest + 's1', follow_symlinks=False)
         self.ae(stat.S_IMODE(st.st_mode), 0o777)
-        self.ae(st.st_mtime_ns, 17)
+        self.ae(st.st_mtime_ns, 17000)
         self.ae(os.readlink(dest + 's1'), os.path.basename(dest))
         send(dest + 's2', 'fid:1', ftype='symlink')
         self.ae(os.readlink(dest + 's2'), os.path.basename(dest))
@@ -316,16 +316,16 @@ class TestFileTransmission(BaseTest):
         send(dest + 'l2', 'fid:1', ftype='link')
         self.ae(os.stat(dest).st_nlink, 3)
         send(dest + 'd1/1', 'in_dir')
-        send(dest + 'd1', '', ftype='directory', mtime=29)
-        send(dest + 'd2', '', ftype='directory', mtime=29)
+        send(dest + 'd1', '', ftype='directory', mtime=29000)
+        send(dest + 'd2', '', ftype='directory', mtime=29000)
         with open(dest + 'd1/1') as f:
             self.ae(f.read(), 'in_dir')
         self.assertTrue(os.path.isdir(dest + 'd1'))
         self.assertTrue(os.path.isdir(dest + 'd2'))
 
         ft.handle_serialized_command(serialized_cmd(action='finish'))
-        self.ae(os.stat(dest + 'd1').st_mtime_ns, 29)
-        self.ae(os.stat(dest + 'd2').st_mtime_ns, 29)
+        self.ae(os.stat(dest + 'd1').st_mtime_ns, 29000)
+        self.ae(os.stat(dest + 'd2').st_mtime_ns, 29000)
         self.assertFalse(ft.active_receives)
 
     def test_parse_ftc(self):
