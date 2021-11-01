@@ -274,7 +274,7 @@ def ensure_path(env: MutableMapping[str, str]) -> None:
     if rpath:
         modify_path = is_macos or getattr(sys, 'frozen', False) or sys._xoptions.get('kitty_from_source') == '1'
         env_path = env.get('PATH', '')
-        existing = env_path != '' and shutil.which('kitty', path=env_path)
+        existing = env_path and shutil.which('kitty', path=env_path)
         if modify_path or not existing:
             def cpath(x: str) -> str:
                 return os.path.abspath(os.path.realpath(x))
@@ -294,13 +294,10 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
         os.environ['KITTY_LISTEN_ON'] = cli_opts.listen_on
     env = opts.env.copy()
     setup_shell_integration(opts, env)
-    if env.get('PATH', None) not in (None, '', DELETE_ENV_VAR):
+    if env.get('PATH') not in (None, '', DELETE_ENV_VAR):
         ensure_path(env)
-        set_default_env(env)
-        ensure_path(os.environ)
-    else:
-        ensure_path(os.environ)
-        set_default_env(env)
+    set_default_env(env)
+    ensure_path(os.environ)
 
 
 def set_locale() -> None:
