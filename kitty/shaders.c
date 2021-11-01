@@ -584,34 +584,48 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
     if (os_window->is_semi_transparent) { BLEND_PREMULT; } else { BLEND_ONTO_OPAQUE; }
     draw_graphics(GRAPHICS_PROGRAM, 0, os_window->gvao_idx, &data, 0, 1);
     glDisable(GL_BLEND);
-    return (GLfloat)bar_height / (GLfloat)os_window->viewport_height;
+    return 2.f * (GLfloat)bar_height / (GLfloat)os_window->viewport_height;
 }
 
 static void
-draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height, Window *window) {
+draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height, Window *window, GLfloat dx, GLfloat dy) {
     GLfloat left = os_window->viewport_width * (xstart + 1.f) / 2.f;
     GLfloat right = left + os_window->viewport_width * width / 2.f;
-    GLfloat top = os_window->viewport_height * (1.f - ystart) / 2.f;
-    GLfloat bottom = os_window->viewport_height * (1.f + height - ystart) / 2.f;
     GLfloat title_bar_height = 0;
     if (window->title && PyUnicode_Check(window->title)) title_bar_height = render_window_title(
             os_window, screen, xstart, ystart, width, window, left, right);
     if (title_bar_height > 0) {
         ystart -= title_bar_height;
-        top = os_window->viewport_height * (1.f - ystart) / 2.f;
-        bottom = os_window->viewport_height * (1.f + height - ystart) / 2.f;
+        height -= title_bar_height;
     }
+    ystart -= dy / 2.f; height -= dy;  // top and bottom margins
+    xstart += dx / 2.f; width -= dx;  // left and right margins
+    GLfloat height_gl = MIN(MIN(12 * dy, height), width);
+    unsigned height_px = (unsigned)(os_window->viewport_height * height_gl / 2.f);
+    if (height_px < 4) return;
+    unsigned width_px = height_px;
+    if (height_px < 4 || width_px < 4) return;
+    FREE_AFTER_FUNCTION uint8_t *canvas = malloc(height_px * width_px);
+    if (!canvas) return;
+    memset(canvas, 255, height_px * width_px);
+    GLfloat width_gl = 2.f * ((float)width_px) / os_window->viewport_width;
+    left = xstart + (width - width_gl) / 2.f;
+    right = left + width_gl;
+    GLfloat top = ystart - (height - height_gl) / 2.f;
+    GLfloat bottom = top - height_gl;
+    bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
+    ImageRenderData *ird = load_alpha_mask_texture(width_px, height_px, canvas);
+    gpu_data_for_image(ird, left, top, right, bottom);
     glEnable(GL_BLEND);
-    glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // BLEND_PREMULT
-    bind_program(SEVEN_SEGMENT_PROGRAM);
-    glUniform4f(seven_segment_program_layout.edges_location, xstart, ystart - height, xstart + width, ystart);
-    glUniform4f(seven_segment_program_layout.area_bounds_location, left, top, right - left, bottom - top);
+    BLEND_PREMULT;
+    glUniform1i(cell_uniform_data.amask_image_loc, GRAPHICS_UNIT);
     color_type digit_color = colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg);
-#define C(shift) ((((GLfloat)((digit_color >> shift) & 0xFF)) / 255.0f))
-    glUniform4f(seven_segment_program_layout.digit_color_location, C(16), C(8), C(0), 1.);
-#undef C
-    glUniform1i(seven_segment_program_layout.digit_location, screen->display_window_number - 1);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+#define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
+    glUniform3f(cell_uniform_data.amask_fg_loc, CV3(digit_color));
+#undef CV3
+    glUniform1f(cell_uniform_data.amask_premult_loc, 1.f);
+    send_graphics_data_to_gpu(1, os_window->gvao_idx, ird);
+    draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, os_window->gvao_idx, ird, 0, 1);
     glDisable(GL_BLEND);
 }
 
@@ -842,7 +856,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
         if (intensity > 0.0f) draw_visual_bell_flash(intensity, xstart, ystart, w, h, screen);
     }
 
-    if (window && screen->display_window_number) draw_window_number(os_window, screen, xstart, ystart, w, h, window);
+    if (window && screen->display_window_number) draw_window_number(os_window, screen, xstart, ystart, w, h, window, dx, dy);
 }
 // }}}
 
