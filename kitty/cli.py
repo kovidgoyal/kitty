@@ -769,8 +769,9 @@ SYSTEM_CONF = '/etc/xdg/kitty/kitty.conf'
 def create_opts(args: CLIOptions, accumulate_bad_lines: Optional[List[BadLineType]] = None) -> KittyOpts:
     from .config import load_config
     config = tuple(resolve_config(SYSTEM_CONF, defconf, args.config))
-    pat = re.compile(r'^([a-zA-Z0-9_ ]+)=')
-    overrides = (pat.sub(r'\1 ', a) for a in args.override or ())
+    # Does not cover the case where `name =` when `=` is the value.
+    pat = re.compile(r'^([a-zA-Z0-9_]+)[ \t]*=')
+    overrides = (pat.sub(r'\1 ', a.lstrip()) for a in args.override or ())
     opts = load_config(*config, overrides=overrides, accumulate_bad_lines=accumulate_bad_lines)
     return opts
 
