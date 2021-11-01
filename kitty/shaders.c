@@ -244,8 +244,7 @@ create_graphics_vao() {
 
 struct CellUniformData {
     bool constants_set;
-    bool alpha_mask_fg_set;
-    GLint gploc, gpploc, cploc, cfploc, fg_loc, amask_premult_loc;
+    GLint gploc, gpploc, cploc, cfploc, fg_loc, amask_premult_loc, amask_fg_loc, amask_image_loc;
     GLfloat prev_inactive_text_alpha;
 };
 
@@ -468,11 +467,10 @@ draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, canvas);
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
-    if (!cell_uniform_data.alpha_mask_fg_set) {
-        cell_uniform_data.alpha_mask_fg_set = true;
-        glUniform1i(glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "image"), GRAPHICS_UNIT);
-        glUniform1ui(glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "fg"), OPT(foreground));
-    }
+    glUniform1i(cell_uniform_data.amask_image_loc, GRAPHICS_UNIT);
+#define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
+    glUniform3f(cell_uniform_data.amask_fg_loc, CV3(OPT(foreground)));
+#undef CV3
     glUniform1f(cell_uniform_data.amask_premult_loc, os_window->is_semi_transparent ? 1.f : 0.f);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, &data);
     glEnable(GL_BLEND);
@@ -524,6 +522,8 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         cell_uniform_data.cploc = glGetUniformLocation(program_id(CELL_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.cfploc = glGetUniformLocation(program_id(CELL_FG_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.amask_premult_loc = glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "alpha_mask_premult");
+        cell_uniform_data.amask_fg_loc = glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "amask_fg");
+        cell_uniform_data.amask_image_loc = glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "image");
 #define S(prog, name, val, type) { bind_program(prog); glUniform##type(glGetUniformLocation(program_id(prog), #name), val); }
         S(GRAPHICS_PROGRAM, image, GRAPHICS_UNIT, 1i);
         S(GRAPHICS_PREMULT_PROGRAM, image, GRAPHICS_UNIT, 1i);
