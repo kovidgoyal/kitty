@@ -317,6 +317,7 @@ def patch_conf(raw: str, theme_name: str) -> str:
         'tab_bar_background',
         'tab_bar_margin_color',
         'url_color',
+        'visual_bell_color',
         'wayland_titlebar_color',
         # ALL_COLORS_END
     )  # }}}

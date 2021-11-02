@@ -1248,6 +1248,9 @@ class Parser:
     def url_style(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['url_style'] = url_style(val)
 
+    def visual_bell_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['visual_bell_color'] = to_color_or_none(val)
+
     def visual_bell_duration(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['visual_bell_duration'] = positive_float(val)
 

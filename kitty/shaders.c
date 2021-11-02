@@ -636,7 +636,7 @@ draw_visual_bell_flash(GLfloat intensity, GLfloat xstart, GLfloat ystart, GLfloa
     bind_program(TINT_PROGRAM);
     GLfloat attenuation = 0.4f;
     const color_type flash = colorprofile_to_color_with_fallback(
-        screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg);
+        screen->color_profile, screen->color_profile->overridden.visual_bell_color, screen->color_profile->configured.visual_bell_color, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg);
 #define C(shift) ((((GLfloat)((flash >> shift) & 0xFF)) / 255.0f) )
     const GLfloat r = C(16), g = C(8), b = C(0);
     const GLfloat max_channel = r > g ? (r > b ? r : b) : (g > b ? g : b);

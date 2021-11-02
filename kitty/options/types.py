@@ -431,6 +431,7 @@ option_names = (  # {{{
  'url_excluded_characters',
  'url_prefixes',
  'url_style',
+ 'visual_bell_color',
  'visual_bell_duration',
  'watcher',
  'wayland_titlebar_color',
@@ -570,6 +571,7 @@ class Options:
     url_excluded_characters: str = ''
     url_prefixes: typing.Tuple[str, ...] = ('http', 'https', 'file', 'ftp', 'gemini', 'irc', 'gopher', 'mailto', 'news', 'git')
     url_style: int = 3
+    visual_bell_color: typing.Optional[kitty.fast_data_types.Color] = None
     visual_bell_duration: float = 0
     wayland_titlebar_color: int = 0
     wheel_scroll_multiplier: float = 5.0

@@ -258,7 +258,7 @@ typedef union DynamicColor {
 } DynamicColor;
 
 typedef struct {
-    DynamicColor default_fg, default_bg, cursor_color, cursor_text_color, highlight_fg, highlight_bg;
+    DynamicColor default_fg, default_bg, cursor_color, cursor_text_color, highlight_fg, highlight_bg, visual_bell_color;
 } DynamicColors;
 
 
