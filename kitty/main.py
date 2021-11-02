@@ -6,14 +6,14 @@ import os
 import shutil
 import sys
 from contextlib import contextmanager, suppress
-from typing import Any, Dict, Generator, List, MutableMapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple
 
 from .borders import load_borders_program
 from .boss import Boss
 from .child import set_default_env
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
-from .conf.utils import BadLine
+from .conf.utils import BadLine, uniq
 from .config import cached_values_for
 from .constants import (
     appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
@@ -268,20 +268,25 @@ def expand_listen_on(listen_on: str, from_config_file: bool) -> str:
     return listen_on
 
 
-def ensure_path(env: MutableMapping[str, str]) -> None:
+def ensure_kitty_in_path() -> None:
     # Ensure the correct kitty is in PATH
     rpath = sys._xoptions.get('bundle_exe_dir')
+    if not rpath:
+        return
     if rpath:
         modify_path = is_macos or getattr(sys, 'frozen', False) or sys._xoptions.get('kitty_from_source') == '1'
-        env_path = env.get('PATH', '')
-        existing = env_path and shutil.which('kitty', path=env_path)
+        existing = shutil.which('kitty')
         if modify_path or not existing:
+            env_path = os.environ.get('PATH', '')
+            correct_kitty = os.path.join(rpath, 'kitty')
+
             def cpath(x: str) -> str:
                 return os.path.abspath(os.path.realpath(x))
-            if not existing or cpath(existing) != cpath(os.path.join(rpath, 'kitty')):
+
+            if not existing or cpath(existing) != cpath(correct_kitty):
                 existing_paths = list(filter(None, env_path.split(os.pathsep)))
                 existing_paths.insert(0, rpath)
-                env['PATH'] = os.pathsep.join(existing_paths)
+                os.environ['PATH'] = os.pathsep.join(existing_paths)
 
 
 def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
@@ -293,10 +298,16 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
         cli_opts.listen_on = expand_listen_on(cli_opts.listen_on, from_config_file)
         os.environ['KITTY_LISTEN_ON'] = cli_opts.listen_on
     env = opts.env.copy()
+    ensure_kitty_in_path()
     setup_shell_integration(opts, env)
-    ensure_path(os.environ)
-    if env.get('PATH') not in (None, '', DELETE_ENV_VAR):
-        ensure_path(env)
+    kitty_path = shutil.which('kitty')
+    if kitty_path:
+        child_path = env.get('PATH')
+        # if child_path is None it will be inherited from os.environ,
+        # the other values mean the user doesn't want a PATH
+        if child_path not in ('', DELETE_ENV_VAR) and child_path is not None:
+            paths = uniq([os.path.dirname(kitty_path)] + child_path.split(os.pathsep))
+            env['PATH'] = os.pathsep.join(paths)
     set_default_env(env)
 
 
