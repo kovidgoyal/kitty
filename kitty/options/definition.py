@@ -240,7 +240,7 @@ opt('cursor_shape', 'block',
     ' cursor shape has not been set by the program running in the terminal.'
     ' This sets the default cursor shape. Applications running in the terminal'
     ' can override it. In particular, :ref:`shell_integration` in kitty'
-    ' sets the cursor shape to bar at shell prompts. You can avoid this'
+    ' sets the cursor shape to :code:`beam` at shell prompts. You can avoid this'
     ' by setting :opt:`shell_integration` to :code:`no-cursor`.'
     )
 
