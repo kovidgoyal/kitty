@@ -274,10 +274,12 @@ def safe_samefile(a: str, b: str) -> bool:
     return os.path.abspath(os.path.realpath(a)) == os.path.abspath(os.path.realpath(b))
 
 
-def prepend_if_not_symlinked(path: str, paths_serialized: str) -> str:
-    # prepend a path only if it is not already present, even as a symlink
-    for q in paths_serialized.split(os.pathsep):
-        if safe_samefile(q, path):
+def prepend_if_not_present(path: str, paths_serialized: str) -> str:
+    # prepend a path only if path/kitty is not already present, even as a symlink
+    pq = os.path.join(path, 'kitty')
+    for candidate in paths_serialized.split(os.pathsep):
+        q = os.path.join(candidate, 'kitty')
+        if safe_samefile(q, pq):
             return paths_serialized
     return path + os.pathsep + paths_serialized
 
@@ -294,7 +296,7 @@ def ensure_kitty_in_path() -> None:
             env_path = os.environ.get('PATH', '')
             correct_kitty = os.path.join(rpath, 'kitty')
             if not existing or not safe_samefile(existing, correct_kitty):
-                os.environ['PATH'] = prepend_if_not_symlinked(rpath, env_path)
+                os.environ['PATH'] = prepend_if_not_present(rpath, env_path)
 
 
 def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
@@ -314,7 +316,7 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
         # if child_path is None it will be inherited from os.environ,
         # the other values mean the user doesn't want a PATH
         if child_path not in ('', DELETE_ENV_VAR) and child_path is not None:
-            env['PATH'] = prepend_if_not_symlinked(os.path.dirname(kitty_path), env['PATH'])
+            env['PATH'] = prepend_if_not_present(os.path.dirname(kitty_path), env['PATH'])
     set_default_env(env)
 
 
