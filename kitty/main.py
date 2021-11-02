@@ -13,7 +13,7 @@ from .boss import Boss
 from .child import set_default_env
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
-from .conf.utils import BadLine, uniq
+from .conf.utils import BadLine
 from .config import cached_values_for
 from .constants import (
     appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
@@ -268,6 +268,20 @@ def expand_listen_on(listen_on: str, from_config_file: bool) -> str:
     return listen_on
 
 
+def safe_samefile(a: str, b: str) -> bool:
+    with suppress(OSError):
+        return os.path.samefile(a, b)
+    return os.path.abspath(os.path.realpath(a)) == os.path.abspath(os.path.realpath(b))
+
+
+def prepend_if_not_symlinked(path: str, paths_serialized: str) -> str:
+    # prepend a path only if it is not already present, even as a symlink
+    for q in paths_serialized.split(os.pathsep):
+        if safe_samefile(q, path):
+            return paths_serialized
+    return path + os.pathsep + paths_serialized
+
+
 def ensure_kitty_in_path() -> None:
     # Ensure the correct kitty is in PATH
     rpath = sys._xoptions.get('bundle_exe_dir')
@@ -279,14 +293,8 @@ def ensure_kitty_in_path() -> None:
         if modify_path or not existing:
             env_path = os.environ.get('PATH', '')
             correct_kitty = os.path.join(rpath, 'kitty')
-
-            def cpath(x: str) -> str:
-                return os.path.abspath(os.path.realpath(x))
-
-            if not existing or cpath(existing) != cpath(correct_kitty):
-                existing_paths = list(filter(None, env_path.split(os.pathsep)))
-                existing_paths.insert(0, rpath)
-                os.environ['PATH'] = os.pathsep.join(existing_paths)
+            if not existing or not safe_samefile(existing, correct_kitty):
+                os.environ['PATH'] = prepend_if_not_symlinked(rpath, env_path)
 
 
 def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
@@ -306,8 +314,7 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
         # if child_path is None it will be inherited from os.environ,
         # the other values mean the user doesn't want a PATH
         if child_path not in ('', DELETE_ENV_VAR) and child_path is not None:
-            paths = uniq([os.path.dirname(kitty_path)] + child_path.split(os.pathsep))
-            env['PATH'] = os.pathsep.join(paths)
+            env['PATH'] = prepend_if_not_symlinked(os.path.dirname(kitty_path), env['PATH'])
     set_default_env(env)
 
 
