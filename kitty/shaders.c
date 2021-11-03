@@ -250,6 +250,8 @@ send_graphics_data_to_gpu(size_t image_count, ssize_t gvao_idx, const ImageRende
     unmap_vao_buffer(gvao_idx, 0); a = NULL;
 }
 
+#define IS_SPECIAL_COLOR(name) (screen->color_profile->overridden.name.type == COLOR_IS_SPECIAL || (screen->color_profile->overridden.name.type == COLOR_NOT_SET && screen->color_profile->configured.name.type == COLOR_IS_SPECIAL))
+
 static void
 pick_cursor_color(Line *line, ColorProfile *color_profile, color_type cell_fg, color_type cell_bg, index_type cell_color_x, color_type *cursor_fg, color_type *cursor_bg, color_type default_fg, color_type default_bg) {
     ARGB32 fg, bg, dfg, dbg;
@@ -283,7 +285,6 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
         copy_color_table_to_buffer(screen->color_profile, (GLuint*)rd, cell_program_layouts[CELL_PROGRAM].color_table.offset / sizeof(GLuint), cell_program_layouts[CELL_PROGRAM].color_table.stride / sizeof(GLuint));
     }
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name).rgb
-#define IS_SPECIAL_COLOR(name) (screen->color_profile->overridden.name.type == COLOR_IS_SPECIAL || (screen->color_profile->overridden.name.type == COLOR_NOT_SET && screen->color_profile->configured.name.type == COLOR_IS_SPECIAL))
     rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg);
     rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
     // selection
@@ -342,7 +343,6 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     rd->background_opacity = os_window->is_semi_transparent ? os_window->background_opacity : 1.0f;
 
 #undef COLOR
-#undef IS_SPECIAL_COLOR
     rd->url_color = OPT(url_color); rd->url_style = OPT(url_style);
 
     unmap_vao_buffer(vao_idx, uniform_buffer); rd = NULL;
@@ -635,10 +635,8 @@ draw_visual_bell_flash(GLfloat intensity, GLfloat xstart, GLfloat ystart, GLfloa
     glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
     bind_program(TINT_PROGRAM);
     GLfloat attenuation = 0.4f;
-#define IS_SPECIAL_COLOR(name) (screen->color_profile->overridden.name.type == COLOR_IS_SPECIAL || (screen->color_profile->overridden.name.type == COLOR_NOT_SET && screen->color_profile->configured.name.type == COLOR_IS_SPECIAL))
 #define COLOR(name, fallback) colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback)
     const color_type flash = !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
-#undef IS_SPECIAL_COLOR
 #undef COLOR
 #define C(shift) ((((GLfloat)((flash >> shift) & 0xFF)) / 255.0f) )
     const GLfloat r = C(16), g = C(8), b = C(0);
