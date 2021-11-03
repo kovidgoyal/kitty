@@ -670,6 +670,14 @@ number of seconds. Set to zero to disable.
 '''
     )
 
+opt('visual_bell_color', 'none',
+    option_type='to_color_or_none',
+    long_text='''
+The color used by visual bell. Set to :code:`none` will fall back to selection
+background color. If you feel that the visual bell is too bright, you can
+set it to a darker color.
+''')
+
 opt('window_alert_on_bell', 'yes',
     option_type='to_bool', ctype='bool',
     long_text='''

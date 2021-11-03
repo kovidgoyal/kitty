@@ -635,8 +635,11 @@ draw_visual_bell_flash(GLfloat intensity, GLfloat xstart, GLfloat ystart, GLfloa
     glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
     bind_program(TINT_PROGRAM);
     GLfloat attenuation = 0.4f;
-    const color_type flash = colorprofile_to_color_with_fallback(
-        screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg);
+#define IS_SPECIAL_COLOR(name) (screen->color_profile->overridden.name.type == COLOR_IS_SPECIAL || (screen->color_profile->overridden.name.type == COLOR_NOT_SET && screen->color_profile->configured.name.type == COLOR_IS_SPECIAL))
+#define COLOR(name, fallback) colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback)
+    const color_type flash = !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
+#undef IS_SPECIAL_COLOR
+#undef COLOR
 #define C(shift) ((((GLfloat)((flash >> shift) & 0xFF)) / 255.0f) )
     const GLfloat r = C(16), g = C(8), b = C(0);
     const GLfloat max_channel = r > g ? (r > b ? r : b) : (g > b ? g : b);

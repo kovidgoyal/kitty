@@ -268,7 +268,8 @@ def setup_colors(screen: Screen, opts: Options) -> None:
     screen.color_profile.set_configured_colors(
         s(opts.foreground), s(opts.background),
         s(opts.cursor), s(opts.cursor_text_color),
-        s(opts.selection_foreground), s(opts.selection_background)
+        s(opts.selection_foreground), s(opts.selection_background),
+        s(opts.visual_bell_color)
     )
 
 

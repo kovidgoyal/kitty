@@ -125,6 +125,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new option :opt:`tab_bar_margin_color` to control the color of the tab bar
   margins
 
+- A new option :opt:`visual_bell_color` to customize the color of the visual bell
+  (:pull:`4181`)
+
 - Add support for OSC 777 based desktop notifications
 
 - Wayland: Fix pasting from applications that use a MIME type of "text/plain"
