@@ -5,6 +5,7 @@
 import os
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
+from kitty.cli import emph
 from kitty.config import parse_config
 from kitty.fast_data_types import patch_color_profiles, Color
 
@@ -95,6 +96,8 @@ this option, any color arguments are ignored and --configured and --all are impl
         if not opts.reset:
             try:
                 final_colors = parse_colors(args)
+            except FileNotFoundError as err:
+                raise ParsingOfArgsFailed(f'The colors configuration file {emph(err.filename)} was not found.') from err
             except Exception as err:
                 raise ParsingOfArgsFailed(str(err)) from err
         ans = {

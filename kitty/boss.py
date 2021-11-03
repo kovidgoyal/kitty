@@ -1875,7 +1875,11 @@ class Boss:
         except (Exception, SystemExit) as err:
             self.show_error('Invalid set_colors mapping', str(err))
             return
-        payload = c.message_to_kitty(parse_rc_args([])[0], opts, items)
+        try:
+            payload = c.message_to_kitty(parse_rc_args([])[0], opts, items)
+        except (Exception, SystemExit) as err:
+            self.show_error('Failed to set colors', str(err))
+            return
         c.response_from_kitty(self, self.active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
 
     def _move_window_to(
