@@ -619,7 +619,7 @@ render_single_ascii_char_as_mask(const char ch, size_t *result_width, size_t *re
     if (render_ctx == NULL) { PyErr_NoMemory(); free(canvas); return NULL; }
     setup_ctx_for_alpha_mask(render_ctx);
     /* printf("origin.y: %f descent: %f ascent: %f height: %zu size.height: %f\n", bounding_box.origin.y, CTFontGetDescent(window_title_font), CTFontGetAscent(window_title_font), height, bounding_box.size.height); */
-    CGContextSetTextPosition(render_ctx, 0, -bounding_box.origin.y);
+    CGContextSetTextPosition(render_ctx, -bounding_box.origin.x, -bounding_box.origin.y);
     CTFontDrawGlyphs(window_title_font, buffers.glyphs, buffers.positions, 1, render_ctx);
     CGContextRelease(render_ctx);
     *result_width = width; *result_height = height;
