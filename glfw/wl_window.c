@@ -1563,7 +1563,7 @@ static void
 set_offer_mimetype(_GLFWWaylandDataOffer* offer, const char* mime) {
     if (strcmp(mime, "text/plain;charset=utf-8") == 0) {
         offer->plain_text_mime = "text/plain;charset=utf-8";
-    } else if (!offer->plain_text_mime && strcmp(mime, "text/plain")) {
+    } else if (!offer->plain_text_mime && strcmp(mime, "text/plain") == 0) {
         offer->plain_text_mime = "text/plain";
     }
     if (strcmp(mime, clipboard_mime()) == 0) {

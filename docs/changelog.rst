@@ -127,6 +127,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Add support for OSC 777 based desktop notifications
 
+- Wayland: Fix pasting from applications that use a MIME type of "text/plain"
+  rather than "text/plain;charset=utf-8" not working (:iss:`4183`)
+
 
 0.23.1 [2021-08-17]
 ----------------------
