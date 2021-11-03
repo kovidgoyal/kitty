@@ -1561,11 +1561,6 @@ static void mark_primary_selection_offer(void *data UNUSED, struct zwp_primary_s
 
 static void
 set_offer_mimetype(_GLFWWaylandDataOffer* offer, const char* mime) {
-    if (strcmp(mime, "text/plain;charset=utf-8") == 0) {
-        offer->plain_text_mime = "text/plain;charset=utf-8";
-    } else if (!offer->plain_text_mime && strcmp(mime, "text/plain") == 0) {
-        offer->plain_text_mime = "text/plain";
-    }
     if (strcmp(mime, clipboard_mime()) == 0) {
         offer->is_self_offer = true;
     }
@@ -1814,16 +1809,38 @@ void _glfwPlatformSetClipboardString(const char* string)
     wl_callback_add_listener(callback, &clipboard_copy_callback_listener, _glfw.wl.dataSourceForClipboard);
 }
 
+static bool
+offer_has_mime(const _GLFWWaylandDataOffer *d, const char *mime) {
+    for (unsigned i = 0; i < d->mimes_count; i++) {
+        if (strcmp(d->mimes[i], mime) == 0) return true;
+    }
+    return false;
+}
+
+static const char*
+plain_text_mime_for_offer(const _GLFWWaylandDataOffer *d) {
+#define A(x) if (offer_has_mime(d, x)) return x;
+    A("text/plain;charset=utf-8");
+    A("text/plain");
+    A("UTF8_STRING");
+    A("STRING");
+#undef A
+    return NULL;
+}
+
 const char* _glfwPlatformGetClipboardString(void)
 {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         _GLFWWaylandDataOffer *d = _glfw.wl.dataOffers + i;
-        if (d->id && d->offer_type == CLIPBOARD && d->plain_text_mime) {
+        if (d->id && d->offer_type == CLIPBOARD) {
             if (d->is_self_offer) return _glfw.wl.clipboardString;
-            free(_glfw.wl.pasteString);
-            size_t sz = 0;
-            _glfw.wl.pasteString = read_data_offer(d->id, d->plain_text_mime, &sz);
-            return _glfw.wl.pasteString;
+            const char *mime = plain_text_mime_for_offer(d);
+            if (mime) {
+                free(_glfw.wl.pasteString);
+                size_t sz = 0;
+                _glfw.wl.pasteString = read_data_offer(d->id, mime, &sz);
+                return _glfw.wl.pasteString;
+            }
         }
     }
     return NULL;
@@ -1871,13 +1888,14 @@ const char* _glfwPlatformGetPrimarySelectionString(void)
 
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         _GLFWWaylandDataOffer *d = _glfw.wl.dataOffers + i;
-        if (d->id && d->is_primary && d->offer_type == PRIMARY_SELECTION && d->plain_text_mime) {
-            if (d->is_self_offer) {
-                return _glfw.wl.primarySelectionString;
+        if (d->id && d->is_primary && d->offer_type == PRIMARY_SELECTION) {
+            if (d->is_self_offer) return _glfw.wl.primarySelectionString;
+            const char *mime = plain_text_mime_for_offer(d);
+            if (mime) {
+                free(_glfw.wl.pasteString);
+                _glfw.wl.pasteString = read_primary_selection_offer(d->id, mime);
+                return _glfw.wl.pasteString;
             }
-            free(_glfw.wl.pasteString);
-            _glfw.wl.pasteString = read_primary_selection_offer(d->id, d->plain_text_mime);
-            return _glfw.wl.pasteString;
         }
     }
     return NULL;

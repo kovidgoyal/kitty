@@ -230,7 +230,7 @@ typedef struct _GLFWWaylandDataOffer
     size_t idx;
     bool is_self_offer;
     bool is_primary;
-    const char *plain_text_mime, *mime_for_drop;
+    const char *mime_for_drop;
     uint32_t source_actions;
     uint32_t dnd_action;
     struct wl_surface *surface;
