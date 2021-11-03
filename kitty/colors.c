@@ -195,11 +195,11 @@ colorprofile_to_color(ColorProfile *self, DynamicColor entry, DynamicColor defva
 }
 
 color_type
-colorprofile_to_color_with_fallback(ColorProfile *self, DynamicColor entry, DynamicColor defval, DynamicColor fallback, DynamicColor falback_defval) {
+colorprofile_to_color_with_fallback(ColorProfile *self, DynamicColor entry, DynamicColor defval, DynamicColor fallback, DynamicColor fallback_defval) {
     switch(entry.type) {
         case COLOR_NOT_SET:
         case COLOR_IS_SPECIAL:
-            if (defval.type == COLOR_IS_SPECIAL) return colorprofile_to_color(self, fallback, falback_defval).rgb;
+            if (defval.type == COLOR_IS_SPECIAL) return colorprofile_to_color(self, fallback, fallback_defval).rgb;
             return defval.rgb;
         case COLOR_IS_RGB:
             return entry.rgb;
@@ -297,7 +297,7 @@ set_configured_colors(ColorProfile *self, PyObject *args) {
 #define set_configured_colors_doc "Set the configured colors"
     unsigned int default_fg, default_bg, cursor_color, cursor_text_color, highlight_fg, highlight_bg, visual_bell_color;
     if (!PyArg_ParseTuple(args, "II|IIIII", &default_fg, &default_bg,
-        &cursor_color, &cursor_text_color, &highlight_fg, &highlight_bg,  &visual_bell_color)) return NULL;
+        &cursor_color, &cursor_text_color, &highlight_fg, &highlight_bg, &visual_bell_color)) return NULL;
 #define S(which) \
     self->configured.which.rgb = which & 0xffffff; \
     self->configured.which.type = (which & 0xff000000) ? COLOR_IS_RGB : COLOR_IS_SPECIAL;
