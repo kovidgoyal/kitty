@@ -494,7 +494,7 @@ class Window:
         }
 
     @property
-    def current_colors(self) -> Dict[str, int]:
+    def current_colors(self) -> Dict[str, Optional[int]]:
         return self.screen.color_profile.as_dict()
 
     @property
