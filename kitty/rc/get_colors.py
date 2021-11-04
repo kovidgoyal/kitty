@@ -45,7 +45,11 @@ configured colors.
         ans = {k: getattr(opts, k) for k in opts if isinstance(getattr(opts, k), Color)}
         if not payload_get('configured'):
             windows = self.windows_for_match_payload(boss, window, payload_get)
-            ans.update({k: color_from_int(v) for k, v in windows[0].current_colors.items()})
+            for k, v in windows[0].current_colors.items():
+                if v is None:
+                    ans.pop(k, None)
+                else:
+                    ans[k] = color_from_int(v)
         all_keys = natsort_ints(ans)
         maxlen = max(map(len, all_keys))
         return '\n'.join(('{:%ds} {}' % maxlen).format(key, color_as_sharp(ans[key])) for key in all_keys)

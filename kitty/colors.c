@@ -211,7 +211,7 @@ colorprofile_to_color_with_fallback(ColorProfile *self, DynamicColor entry, Dyna
 
 static PyObject*
 as_dict(ColorProfile *self, PyObject *args UNUSED) {
-#define as_dict_doc "Return all colors as a dictionary of color_name to integer (names are the same as used in kitty.conf)"
+#define as_dict_doc "Return all colors as a dictionary of color_name to integer or None (names are the same as used in kitty.conf)"
     PyObject *ans = PyDict_New();
     if (ans == NULL) return PyErr_NoMemory();
     for (unsigned i = 0; i < arraysz(self->color_table); i++) {
@@ -225,11 +225,16 @@ as_dict(ColorProfile *self, PyObject *args UNUSED) {
     }
 #define D(attr, name) { \
     if (self->overridden.attr.type != COLOR_NOT_SET) { \
-        color_type c = colorprofile_to_color(self, self->overridden.attr, self->configured.attr).rgb; \
-        PyObject *val = PyLong_FromUnsignedLong(c); \
-        if (!val) { Py_CLEAR(ans); return PyErr_NoMemory(); } \
-        int ret = PyDict_SetItemString(ans, #name, val); \
-        Py_CLEAR(val); \
+        int ret; \
+        if (self->overridden.attr.type == COLOR_IS_SPECIAL) { \
+            ret = PyDict_SetItemString(ans, #name, Py_None); \
+        } else { \
+            color_type c = colorprofile_to_color(self, self->overridden.attr, self->configured.attr).rgb; \
+            PyObject *val = PyLong_FromUnsignedLong(c); \
+            if (!val) { Py_CLEAR(ans); return PyErr_NoMemory(); } \
+            ret = PyDict_SetItemString(ans, #name, val); \
+            Py_CLEAR(val); \
+        } \
         if (ret != 0) { Py_CLEAR(ans); return NULL; } \
     }}
     D(default_fg, foreground); D(default_bg, background);
