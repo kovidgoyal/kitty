@@ -10,14 +10,14 @@ from contextlib import suppress
 from functools import lru_cache
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
 
-from kittens.tui.operations import set_window_title, set_cursor_shape
+from kittens.tui.operations import set_cursor_shape, set_window_title
 
 from .cli import (
     OptionDict, emph, green, italic, parse_option_spec, print_help_for_seq,
     title
 )
 from .cli_stub import RCOptions
-from .constants import cache_dir, kitty_face, version
+from .constants import cache_dir, kitty_face
 from .rc.base import (
     ParsingOfArgsFailed, RemoteCommand, all_command_names, command_for_name,
     display_subcommand_help, parse_subcommand_cli
@@ -142,16 +142,10 @@ def print_help(which: Optional[str] = None) -> None:
 
 
 def run_cmd(global_opts: RCOptions, cmd: str, func: RemoteCommand, opts: Any, items: List[str]) -> None:
-    from .remote_control import do_io
+    from .remote_control import create_basic_command, do_io
     print(end=set_window_title(cmd) + output_prefix, flush=True)
     payload = func.message_to_kitty(global_opts, opts, items)
-    send = {
-        'cmd': cmd,
-        'version': version,
-        'no_response': False,
-    }
-    if payload is not None:
-        send['payload'] = payload
+    send = create_basic_command(cmd, payload=payload, is_asynchronous=func.is_asynchronous)
     response_timeout = func.response_timeout
     if hasattr(opts, 'response_timeout'):
         response_timeout = opts.response_timeout
