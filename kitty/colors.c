@@ -225,16 +225,16 @@ as_dict(ColorProfile *self, PyObject *args UNUSED) {
     }
 #define D(attr, name) { \
     if (self->overridden.attr.type != COLOR_NOT_SET) { \
-        int ret; \
+        int ret; PyObject *val; \
         if (self->overridden.attr.type == COLOR_IS_SPECIAL) { \
-            ret = PyDict_SetItemString(ans, #name, Py_None); \
+            val = Py_None; Py_INCREF(val); \
         } else { \
             color_type c = colorprofile_to_color(self, self->overridden.attr, self->configured.attr).rgb; \
-            PyObject *val = PyLong_FromUnsignedLong(c); \
-            if (!val) { Py_CLEAR(ans); return PyErr_NoMemory(); } \
-            ret = PyDict_SetItemString(ans, #name, val); \
-            Py_CLEAR(val); \
+            val = PyLong_FromUnsignedLong(c); \
         } \
+        if (!val) { Py_CLEAR(ans); return NULL; } \
+        ret = PyDict_SetItemString(ans, #name, val); \
+        Py_CLEAR(val); \
         if (ret != 0) { Py_CLEAR(ans); return NULL; } \
     }}
     D(default_fg, foreground); D(default_bg, background);
