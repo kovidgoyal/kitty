@@ -145,11 +145,14 @@ def run_cmd(global_opts: RCOptions, cmd: str, func: RemoteCommand, opts: Any, it
     from .remote_control import create_basic_command, do_io
     print(end=set_window_title(cmd) + output_prefix, flush=True)
     payload = func.message_to_kitty(global_opts, opts, items)
-    send = create_basic_command(cmd, payload=payload, is_asynchronous=func.is_asynchronous)
+    no_response = func.no_response
+    if hasattr(opts, 'no_response'):
+        no_response = opts.no_response
+    send = create_basic_command(cmd, payload=payload, is_asynchronous=func.is_asynchronous, no_response=no_response)
     response_timeout = func.response_timeout
     if hasattr(opts, 'response_timeout'):
         response_timeout = opts.response_timeout
-    response = do_io(global_opts.to, send, func.no_response, response_timeout)
+    response = do_io(global_opts.to, send, no_response, response_timeout)
     if not response.get('ok'):
         if response.get('tb'):
             print_err(response['tb'])
