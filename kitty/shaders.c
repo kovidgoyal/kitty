@@ -607,6 +607,7 @@ draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat 
     }
 
     GLfloat width_gl = 2.f * ((float)lr.width_px) / os_window->viewport_width;
+    height_gl = 2.f * ((float)lr.height_px) / os_window->viewport_height;
     left = xstart + (width - width_gl) / 2.f;
     right = left + width_gl;
     GLfloat top = ystart - (height - height_gl) / 2.f;
