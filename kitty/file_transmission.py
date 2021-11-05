@@ -429,13 +429,7 @@ class DestFile:
                 if lt.startswith('fid:'):
                     lt = all_files[lt[4:]].name
                     if self.ftype is FileType.symlink:
-                        try:
-                            cp = os.path.commonpath((self.name, lt))
-                        except ValueError:
-                            pass
-                        else:
-                            if cp:
-                                lt = os.path.relpath(lt, cp)
+                        lt = os.path.relpath(lt, os.path.dirname(self.name))
                 elif lt.startswith('fid_abs:'):
                     lt = all_files[lt[8:]].name
                 elif lt.startswith('path:'):

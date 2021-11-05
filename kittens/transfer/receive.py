@@ -201,17 +201,9 @@ class Manager:
                     target = rid_map.get(f.remote_target)
                     if target is None:
                         return f'Symbolic link with remote id: {f.remote_target} not found'
-                    if f.remote_symlink_value.startswith(b'/'):
-                        lt = target.expanded_local_path
-                    else:
-                        lt = target.expanded_local_path
-                        try:
-                            cp = os.path.commonpath((f.expanded_local_path, lt))
-                        except ValueError:
-                            pass
-                        else:
-                            if cp:
-                                lt = os.path.relpath(lt, cp)
+                    lt = target.expanded_local_path
+                    if not f.remote_symlink_value.startswith(b'/'):
+                        lt = os.path.relpath(lt, os.path.dirname(f.expanded_local_path))
                 else:
                     lt = f.remote_symlink_value.decode('utf-8')
                 os.symlink(lt, f.expanded_local_path)
