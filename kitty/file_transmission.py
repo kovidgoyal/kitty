@@ -539,7 +539,7 @@ class SourceFile:
         self.ttype = ftc.ttype
         self.waiting_for_signature = True if self.ttype is TransmissionType.rsync else False
         self.transmitted = False
-        self.stat = os.stat(self.path)
+        self.stat = os.stat(self.path, follow_symlinks=False)
         if stat.S_ISDIR(self.stat.st_mode):
             raise TransmissionError(ErrorCode.EINVAL, msg='Cannot send a directory', file_id=self.file_id)
         self.compressor: Union[ZlibCompressor, IdentityCompressor] = IdentityCompressor()

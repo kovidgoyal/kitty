@@ -190,6 +190,8 @@ class TestFileTransmission(BaseTest):
         data = os.urandom(16 * 1024)
         with open(src, 'wb') as f:
             f.write(data)
+        sl = os.path.join(base, 'src.link')
+        os.symlink(src, sl)
         for compress in ('none', 'zlib'):
             ft = FileTransmission()
             self.responses = []
@@ -203,6 +205,10 @@ class TestFileTransmission(BaseTest):
             if compress == 'zlib':
                 received = ZlibDecompressor()(received, True)
             self.ae(data, received)
+            ft.test_responses = []
+            ft.handle_serialized_command(serialized_cmd(action='file', file_id='sl', name=sl, compression=compress))
+            received = b''.join(x['data'] for x in ft.test_responses)
+            self.ae(received.decode('utf-8'), src)
 
     def test_file_put(self):
         # send refusal
