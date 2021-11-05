@@ -380,7 +380,16 @@ cocoa_create_global_menu(void) {
                 keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
     MENU_ITEM(appMenu, @"Preferences…", edit_config_file);
-    MENU_ITEM(appMenu, @"Reload preferences", reload_config);
+    MENU_ITEM(appMenu, @"Reload Preferences", reload_config);
+    [appMenu addItem:[NSMenuItem separatorItem]];
+
+    NSMenu* servicesMenu = [[NSMenu alloc] init];
+    [NSApp setServicesMenu:servicesMenu];
+    [[appMenu addItemWithTitle:@"Services"
+                        action:NULL
+                 keyEquivalent:@""] setSubmenu:servicesMenu];
+    [servicesMenu release];
+    [appMenu addItem:[NSMenuItem separatorItem]];
 
     [appMenu addItemWithTitle:[NSString stringWithFormat:@"Hide %@", app_name]
                        action:@selector(hide:)
@@ -392,15 +401,6 @@ cocoa_create_global_menu(void) {
     [appMenu addItemWithTitle:@"Show All"
                        action:@selector(unhideAllApplications:)
                 keyEquivalent:@""];
-    [appMenu addItem:[NSMenuItem separatorItem]];
-
-    NSMenu* servicesMenu = [[NSMenu alloc] init];
-    [NSApp setServicesMenu:servicesMenu];
-    [[appMenu addItemWithTitle:@"Services"
-                        action:NULL
-                 keyEquivalent:@""] setSubmenu:servicesMenu];
-    [servicesMenu release];
-
     [appMenu addItem:[NSMenuItem separatorItem]];
 
     [[appMenu addItemWithTitle:@"Secure Keyboard Entry"
@@ -470,7 +470,7 @@ cocoa_create_global_menu(void) {
                 keyEquivalent:@""];
     NSMenu* helpMenu = [[NSMenu alloc] initWithTitle:@"Help"];
     [helpMenuItem setSubmenu:helpMenu];
-    [[helpMenu addItemWithTitle:[NSString stringWithFormat:@"Visit %@ website", app_name]
+    [[helpMenu addItemWithTitle:[NSString stringWithFormat:@"Visit %@ Website", app_name]
                          action:@selector(open_kitty_website_url:)
                   keyEquivalent:@"?"]
                       setTarget:global_menu_target];
