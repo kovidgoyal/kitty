@@ -3,6 +3,7 @@
 
 import os
 import posixpath
+from contextlib import suppress
 from enum import auto
 from itertools import count
 from typing import Dict, Iterator, List, Optional
@@ -49,9 +50,33 @@ class File:
         self.expanded_local_path = ''
         self.file_id = str(next(file_counter))
         self.compression_capable = self.ftype is FileType.regular and self.expected_size > 4096 and should_be_compressed(self.expanded_local_path)
+        self.remote_symlink_value = b''
+        self.local_write_started = False
 
     def __repr__(self) -> str:
         return f'File(rpath={self.remote_path!r}, lpath={self.expanded_local_path!r})'
+
+    def write_data(self, data: bytes, is_last: bool) -> None:
+        if self.ftype is FileType.symlink:
+            self.remote_symlink_value += data
+            return
+        if self.ftype is FileType.regular:
+            if not self.local_write_started:
+                parent = os.path.dirname(self.expanded_local_path)
+                if parent:
+                    os.makedirs(parent, exist_ok=True)
+                self.local_write_started = True
+            with open(self.expanded_local_path, 'ab') as f:
+                f.write(data)
+
+    def apply_metadata(self) -> None:
+        if self.ftype is FileType.symlink:
+            with suppress(NotImplementedError):
+                os.chmod(self.expanded_local_path, self.permissions, follow_symlinks=False)
+                os.utime(self.expanded_local_path, ns=(self.mtime, self.mtime), follow_symlinks=False)
+        else:
+            os.chmod(self.expanded_local_path, self.permissions)
+            os.utime(self.expanded_local_path, ns=(self.mtime, self.mtime))
 
 
 class TreeNode:
@@ -145,11 +170,54 @@ class Manager:
         self.state = State.waiting_for_permission
         self.files: List[File] = []
         self.total_transfer_size = 0
+        self.transfer_done = False
 
     def start_transfer(self) -> Iterator[str]:
+        self.fid_map = {f.file_id: f for f in self.files}
         yield FileTransmissionCommand(action=Action.receive, bypass=self.bypass, size=len(self.spec)).serialize()
         for i, x in enumerate(self.spec):
             yield FileTransmissionCommand(action=Action.file, file_id=str(i), name=x).serialize()
+
+    def finalize_transfer(self) -> str:
+        self.transfer_done = True
+        rid_map = {f.remote_id: f for f in self.files}
+        for f in self.files:
+            if f.ftype is FileType.directory:
+                try:
+                    os.makedirs(f.expanded_local_path, exist_ok=True)
+                except OSError as err:
+                    return str(err)
+            elif f.ftype is FileType.link:
+                target = rid_map.get(f.remote_target)
+                if target is None:
+                    return f'Hard link with remote id: {f.remote_target} not found'
+                try:
+                    os.makedirs(os.path.dirname(f.expanded_local_path), exist_ok=True)
+                    os.link(target.expanded_local_path, f.expanded_local_path)
+                except OSError as err:
+                    return str(err)
+            elif f.ftype is FileType.symlink:
+                if f.remote_target:
+                    target = rid_map.get(f.remote_target)
+                    if target is None:
+                        return f'Symbolic link with remote id: {f.remote_target} not found'
+                    if f.remote_symlink_value.startswith(b'/'):
+                        lt = target.expanded_local_path
+                    else:
+                        lt = target.expanded_local_path
+                        try:
+                            cp = os.path.commonpath((f.expanded_local_path, lt))
+                        except ValueError:
+                            pass
+                        else:
+                            if cp:
+                                lt = os.path.relpath(lt, cp)
+                else:
+                    lt = f.remote_symlink_value.decode('utf-8')
+                os.symlink(lt, f.expanded_local_path)
+            with suppress(OSError):
+                f.apply_metadata()
+        return ''
 
     def request_files(self) -> Iterator[str]:
         for f in self.files:
@@ -201,6 +269,19 @@ class Manager:
                 self.files.append(File(ftc))
             else:
                 return f'Unexpected response from terminal: {ftc}'
+        elif self.state is State.transferring:
+            if ftc.action in (Action.data, Action.end_data):
+                f = self.fid_map.get(ftc.file_id)
+                if f is None:
+                    return f'Got data for unknown file id: {ftc.file_id}'
+                try:
+                    f.write_data(ftc.data, ftc.action is Action.end_data)
+                except OSError as err:
+                    return str(err)
+                if ftc.action is Action.end_data:
+                    del self.fid_map[ftc.file_id]
+                    if not self.fid_map:
+                        return self.finalize_transfer()
         return ''
 
 
