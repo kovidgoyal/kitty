@@ -4,12 +4,14 @@
 import os
 import posixpath
 from enum import auto
+from itertools import count
 from typing import Dict, Iterator, List, Optional
 
 from kitty.cli_stub import TransferCLIOptions
 from kitty.fast_data_types import FILE_TRANSFER_CODE
 from kitty.file_transmission import (
-    Action, FileTransmissionCommand, FileType, NameReprEnum, encode_bypass
+    Action, Compression, FileTransmissionCommand, FileType, NameReprEnum,
+    encode_bypass
 )
 from kitty.typing import KeyEventType
 from kitty.utils import sanitize_control_codes
@@ -18,9 +20,10 @@ from ..tui.handler import Handler
 from ..tui.loop import Loop, debug
 from ..tui.operations import styled, without_line_wrap
 from ..tui.utils import human_size
-from .utils import expand_home, random_id
+from .utils import expand_home, random_id, should_be_compressed
 
 debug
+file_counter = count(1)
 
 
 class State(NameReprEnum):
@@ -44,6 +47,8 @@ class File:
         self.remote_target = ftc.data.decode('utf-8')
         self.parent = ftc.parent
         self.expanded_local_path = ''
+        self.file_id = str(next(file_counter))
+        self.compression_capable = self.ftype is FileType.regular and self.expected_size > 4096 and should_be_compressed(self.expanded_local_path)
 
     def __repr__(self) -> str:
         return f'File(rpath={self.remote_path!r}, lpath={self.expanded_local_path!r})'
@@ -148,9 +153,12 @@ class Manager:
 
     def request_files(self) -> Iterator[str]:
         for f in self.files:
-            if f.ftype is FileType.directory:
+            if f.ftype is FileType.directory or (f.ftype is FileType.link and f.remote_target):
                 continue
-            yield FileTransmissionCommand(action=Action.file, name=f.remote_path).serialize()
+            yield FileTransmissionCommand(
+                action=Action.file, name=f.remote_path, file_id=f.file_id,
+                compression=Compression.zlib if f.compression_capable else Compression.none
+            ).serialize()
 
     def collect_files(self, cli_opts: TransferCLIOptions) -> None:
         self.files = list(files_for_receive(cli_opts, self.dest, self.files, self.remote_home, self.spec))

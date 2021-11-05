@@ -16,11 +16,11 @@ from kittens.transfer.main import parse_transfer_args
 from kittens.transfer.receive import File, files_for_receive
 from kittens.transfer.rsync import decode_utf8_buffer, parse_ftc
 from kittens.transfer.send import files_for_send
-from kittens.transfer.utils import expand_home, home_path, set_paths, cwd_path
+from kittens.transfer.utils import cwd_path, expand_home, home_path, set_paths
 from kitty.file_transmission import (
     Action, Compression, FileTransmissionCommand, FileType,
     TestFileTransmission as FileTransmission, TransmissionType,
-    iter_file_metadata
+    ZlibDecompressor, iter_file_metadata
 )
 
 from . import BaseTest
@@ -184,6 +184,25 @@ class TestFileTransmission(BaseTest):
             q = files[f.name + 'd/q']
             self.ae(q['ftype'], 'symlink')
             self.assertNotIn('data', q)
+        base = os.path.join(self.tdir, 'base')
+        os.mkdir(base)
+        src = os.path.join(base, 'src.bin')
+        data = os.urandom(16 * 1024)
+        with open(src, 'wb') as f:
+            f.write(data)
+        for compress in ('none', 'zlib'):
+            ft = FileTransmission()
+            self.responses = []
+            ft.handle_serialized_command(serialized_cmd(action='receive', size=1))
+            self.assertResponses(ft, status='OK')
+            ft.handle_serialized_command(serialized_cmd(action='file', file_id='src', name=src))
+            ft.active_sends['test'].metadata_sent = True
+            ft.test_responses = []
+            ft.handle_serialized_command(serialized_cmd(action='file', file_id='src', name=src, compression=compress))
+            received = b''.join(x['data'] for x in ft.test_responses)
+            if compress == 'zlib':
+                received = ZlibDecompressor()(received, True)
+            self.ae(data, received)
 
     def test_file_put(self):
         # send refusal
