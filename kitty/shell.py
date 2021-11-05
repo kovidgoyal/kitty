@@ -152,7 +152,14 @@ def run_cmd(global_opts: RCOptions, cmd: str, func: RemoteCommand, opts: Any, it
     response_timeout = func.response_timeout
     if hasattr(opts, 'response_timeout'):
         response_timeout = opts.response_timeout
-    response = do_io(global_opts.to, send, no_response, response_timeout)
+    try:
+        response = do_io(global_opts.to, send, no_response, response_timeout)
+    except TimeoutError:
+        send.pop('payload', None)
+        send['cancel_async'] = True
+        do_io(global_opts.to, send, True, 10)
+        print_err(f'Timed out after {response_timeout} seconds waiting for response from kitty')
+        return
     if not response.get('ok'):
         if response.get('tb'):
             print_err(response['tb'])
