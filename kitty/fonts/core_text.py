@@ -65,7 +65,7 @@ def find_best_match(family: str, bold: bool = False, italic: bool = False, ignor
         ] == italic else 0
         monospace_match = 1 if candidate['monospace'] else 0
         is_regular_width = not candidate['expanded'] and not candidate['condensed']
-        # prefer demi-bold to bold to heavy, less bold means less chance of
+        # prefer semi-bold to bold to heavy, less bold means less chance of
         # overflow
         weight_distance_from_medium = abs(candidate['weight'])
         return style_match, monospace_match, 1 if is_regular_width else 0, 1 - weight_distance_from_medium

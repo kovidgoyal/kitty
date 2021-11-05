@@ -33,9 +33,11 @@ opt('font_family', 'monospace',
     long_text='''
 You can specify different fonts for the bold/italic/bold-italic variants.
 To get a full list of supported fonts use the `kitty list-fonts` command.
-By default they are derived automatically, by the OSes font system. Setting
-them manually is useful for font families that have many weight variants like
-Book, Medium, Thick, etc. For example::
+By default they are derived automatically, by the OSes font system. When
+bold_font or bold_italic_font is set to :code:`auto`, the priority of bold
+fonts is semi-bold, bold, heavy. Setting them manually is useful for font
+families that have many weight variants like Book, Medium, Thick, etc.
+For example::
 
     font_family      Operator Mono Book
     bold_font        Operator Mono Medium
