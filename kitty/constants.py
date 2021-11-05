@@ -63,7 +63,7 @@ def _get_config_dir() -> str:
         locations.append(os.path.abspath(os.path.expanduser(os.environ['XDG_CONFIG_HOME'])))
     locations.append(os.path.expanduser('~/.config'))
     if is_macos:
-        locations.append(os.path.expanduser('~/Library/Preferences'))
+        locations.append(os.path.expanduser('~/Library/Application Support'))
     for loc in filter(None, os.environ.get('XDG_CONFIG_DIRS', '').split(os.pathsep)):
         locations.append(os.path.abspath(os.path.expanduser(loc)))
     for loc in locations:

@@ -46,7 +46,7 @@ priority) than any user config files. It can be used to specify system-wide
 defaults for all users.
 '''.replace(
     '{macos_confpath}',
-    (':file:`~/Library/Preferences/{appname}/{conf_name}.conf`,' if is_macos else ''), 1
+    (':file:`~/Library/Application Support/{appname}/{conf_name}.conf`,' if is_macos else ''), 1
 )
 
 
