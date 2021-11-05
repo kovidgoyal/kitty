@@ -146,19 +146,33 @@ class DumpCommands:  # {{{
 
 class VisualSelect:
 
-    def __init__(self, tab_id: int, os_window_id: int, title: str, callback: Callable[[Optional[Tab], Optional[Window]], None]):
+    def __init__(
+        self,
+        tab_id: int,
+        os_window_id: int,
+        prev_tab_id: Optional[int],
+        prev_os_window_id: Optional[int],
+        title: str,
+        callback: Callable[[Optional[Tab], Optional[Window]], None],
+        reactivate_prev_tab: bool
+    ) -> None:
         self.tab_id = tab_id
         self.os_window_id = os_window_id
+        self.prev_tab_id = prev_tab_id
+        self.prev_os_window_id = prev_os_window_id
         self.callback = callback
         self.window_ids: List[int] = []
+        self.reactivate_prev_tab = reactivate_prev_tab
         set_os_window_title(self.os_window_id, title)
 
     def cancel(self) -> None:
         self.clear_global_state()
+        self.activate_prev_tab()
         self.callback(None, None)
 
     def trigger(self, window_id: int) -> None:
         boss = self.clear_global_state()
+        self.activate_prev_tab()
         w = boss.window_id_map.get(window_id)
         if w is None:
             self.callback(None, None)
@@ -179,6 +193,18 @@ class VisualSelect:
             if w is not None:
                 w.screen.set_window_char()
         return boss
+
+    def activate_prev_tab(self) -> None:
+        if not self.reactivate_prev_tab or self.prev_tab_id is None:
+            return None
+        boss = get_boss()
+        tm = boss.os_window_map.get(self.os_window_id)
+        if tm is not None:
+            t = tm.tab_for_id(self.prev_tab_id)
+            if t is not tm.active_tab and t is not None:
+                tm.set_active_tab(t)
+        if current_os_window() != self.prev_os_window_id and self.prev_os_window_id is not None:
+            focus_os_window(self.prev_os_window_id, True)
 
 
 class Boss:
@@ -865,14 +891,21 @@ class Boss:
         self, tab: Tab,
         callback: Callable[[Optional[Tab], Optional[Window]], None],
         choose_msg: str,
-        only_window_ids: Container[int] = ()
+        only_window_ids: Container[int] = (),
+        reactivate_prev_tab: bool = False
     ) -> None:
         import string
         self.cancel_current_visual_select()
+        initial_tab_id: Optional[int] = None
+        initial_os_window_id = current_os_window()
         tm = tab.tab_manager_ref()
         if tm is not None:
+            if tm.active_tab is not None:
+                initial_tab_id = tm.active_tab.id
             tm.set_active_tab(tab)
-        self.current_visual_select = VisualSelect(tab.id, tab.os_window_id, choose_msg, callback)
+        if initial_os_window_id != tab.os_window_id:
+            focus_os_window(tab.os_window_id, True)
+        self.current_visual_select = VisualSelect(tab.id, tab.os_window_id, initial_tab_id, initial_os_window_id, choose_msg, callback, reactivate_prev_tab)
         if tab.current_layout.only_active_window_visible:
             self.select_window_in_tab_using_overlay(tab, choose_msg, only_window_ids)
             return
