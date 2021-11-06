@@ -169,11 +169,13 @@ typedef struct {
 } CPUCell;
 
 typedef enum { UNKNOWN_PROMPT_KIND = 0, PROMPT_START = 1, SECONDARY_PROMPT = 2, OUTPUT_START = 3 } PromptKind;
+typedef enum { PROMPT_BIT_EVEN = 0, PROMPT_BIT_ODD = 1 } PromptBit;
 typedef union LineAttrs {
     struct {
         uint8_t continued : 1;
         uint8_t has_dirty_text : 1;
         PromptKind prompt_kind : 2;
+        PromptBit prompt_bit : 1;
     };
     uint8_t val;
 } LineAttrs ;

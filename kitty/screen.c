@@ -1927,11 +1927,13 @@ file_transmission(Screen *self, PyObject *data) {
 }
 
 static void
-parse_prompt_mark(Screen *self, PyObject *parts, PromptKind *pk) {
+parse_prompt_mark(Screen *self, PyObject *parts, PromptKind *pk, PromptBit *pb) {
+    *pb = PROMPT_BIT_EVEN;
     for (Py_ssize_t i = 0; i < PyList_GET_SIZE(parts); i++) {
         PyObject *token = PyList_GET_ITEM(parts, i);
         if (PyUnicode_CompareWithASCIIString(token, "k=s") == 0) *pk = SECONDARY_PROMPT;
         else if (PyUnicode_CompareWithASCIIString(token, "redraw=0") == 0) self->prompt_settings.redraws_prompts_at_all = 0;
+        else if (PyUnicode_CompareWithASCIIString(token, "b=1") == 0) *pb = PROMPT_BIT_ODD;
     }
 }
 
@@ -1943,16 +1945,18 @@ shell_prompt_marking(Screen *self, PyObject *data) {
         switch (ch) {
             case 'A': {
                 PromptKind pk = PROMPT_START;
+                PromptBit pb = PROMPT_BIT_EVEN;
                 self->prompt_settings.redraws_prompts_at_all = 1;
                 if (PyUnicode_FindChar(data, ';', 0, PyUnicode_GET_LENGTH(data), 1)) {
                     DECREF_AFTER_FUNCTION PyObject *sep = PyUnicode_FromString(";");
                     if (sep) {
                         DECREF_AFTER_FUNCTION PyObject *parts = PyUnicode_Split(data, sep, -1);
-                        if (parts) parse_prompt_mark(self, parts, &pk);
+                        if (parts) parse_prompt_mark(self, parts, &pk, &pb);
                     }
                 }
                 if (PyErr_Occurred()) PyErr_Print();
                 self->linebuf->line_attrs[self->cursor->y].prompt_kind = pk;
+                self->linebuf->line_attrs[self->cursor->y].prompt_bit = pb;
             } break;
             case 'C':
                 self->linebuf->line_attrs[self->cursor->y].prompt_kind = OUTPUT_START;
@@ -1972,23 +1976,30 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
     int delta = num_of_prompts_to_jump < 0 ? -1 : 1;
     num_of_prompts_to_jump = num_of_prompts_to_jump < 0 ? -num_of_prompts_to_jump : num_of_prompts_to_jump;
     int y = -self->scrolled_by;
+    Line *line;
+    PromptBit pb;
 #define ensure_y_ok if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
-#define move_y_to_start_of_prompt while (-y + 1 <= (int)self->historybuf->count && range_line_(self, y - 1)->attrs.prompt_kind == PROMPT_START) y--;
-#define move_y_to_end_of_prompt while (y + 1 < (int)self->lines && range_line_(self, y + 1)->attrs.prompt_kind == PROMPT_START) y++;
+#define set_prompt_bit if (line->attrs.prompt_kind == PROMPT_START) pb = line->attrs.prompt_bit;
+#define move_y_to_start_of_prompt set_prompt_bit; while (-y + 1 <= (int)self->historybuf->count) { line = range_line_(self, y - 1); if (line->attrs.prompt_kind != PROMPT_START || line->attrs.prompt_bit != pb) break; y--; }
+#define move_y_to_end_of_prompt set_prompt_bit; while (y + 1 < (int)self->lines) { line = range_line_(self, y + 1); if (line->attrs.prompt_kind != PROMPT_START || line->attrs.prompt_bit != pb) break; y++; }
     ensure_y_ok;
-    if (range_line_(self, y)->attrs.prompt_kind == PROMPT_START) {
+    line = range_line_(self, y);
+    if (line->attrs.prompt_kind == PROMPT_START) {
         if (delta < 0) { move_y_to_start_of_prompt; } else { move_y_to_end_of_prompt; }
     }
     while (num_of_prompts_to_jump) {
         y += delta;
         ensure_y_ok;
-        if (range_line_(self, y)->attrs.prompt_kind == PROMPT_START) {
+        line = range_line_(self, y);
+        if (line->attrs.prompt_kind == PROMPT_START) {
             num_of_prompts_to_jump--;
             if (delta < 0) { move_y_to_start_of_prompt; } else { move_y_to_end_of_prompt; }
         }
     }
+    line = range_line_(self, y);
     move_y_to_start_of_prompt;
 #undef ensure_y_ok
+#undef set_prompt_bit
 #undef move_y_to_start_of_prompt
 #undef move_y_to_end_of_prompt
     unsigned int old = self->scrolled_by;

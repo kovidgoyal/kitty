@@ -39,6 +39,7 @@ function _ksi_main
 
     if not contains "no-prompt-mark" $_ksi
         set --global _ksi_prompt_state "first-run"
+        set --global _ksi_prompt_bit 0
 
         function _ksi_function_is_not_empty -d "Check if the specified function exists and is not empty"
             functions $argv[1] | string match -qnvr '^ *(#|function |end$|$)'
@@ -54,7 +55,13 @@ function _ksi_main
                 _ksi_mark "D"
             end
             set --global _ksi_prompt_state "prompt_start"
-            _ksi_mark "A"
+            # prompt start binary mark
+            if test $_ksi_prompt_bit -eq 0
+                set --global _ksi_prompt_bit 1
+            else
+                set --global _ksi_prompt_bit 0
+            end
+            _ksi_mark "A;b=$_ksi_prompt_bit"
             return "$cmd_status" # preserve the value of $status
         end
 

@@ -23,12 +23,12 @@ _ksi_main() {
         # "
     }
 
-    if [[ "${_ksi_prompt[cursor]}" == "y" ]]; then 
+    if [[ "${_ksi_prompt[cursor]}" == "y" ]]; then
         PS1="\[\e[5 q\]$PS1"  # blinking bar cursor
         PS0="\[\e[1 q\]$PS0"  # blinking block cursor
     fi
 
-    if [[ "${_ksi_prompt[title]}" == "y" ]]; then 
+    if [[ "${_ksi_prompt[title]}" == "y" ]]; then
         # see https://www.gnu.org/software/bash/manual/html_node/Controlling-the-Prompt.html#Controlling-the-Prompt
         PS1="\[\e]2;\w\a\]$PS1"
         if [[ "$HISTCONTROL" == *"ignoreboth"* ]] || [[ "$HISTCONTROL" == *"ignorespace"* ]]; then
@@ -39,17 +39,19 @@ _ksi_main() {
         PS0+="$orig_ps0"
     fi
 
-    if [[ "${_ksi_prompt[mark]}" == "y" ]]; then 
+    if [[ "${_ksi_prompt[mark]}" == "y" ]]; then
+        # prompt start binary mark
+        _ksi_pb=0
         # bash does not redraw the leading lines in a multiline prompt so
         # mark them as secondary prompts
         local secondary_prompt="\n\[\e]133;A;k=s\a\]"
         PS1=${PS1//"\n"/"$secondary_prompt"}
-        PS1="\[\e]133;A\a\]$PS1"
+        PS1="\[\e]133;A;b=\$((_ksi_pb^=1))\a\]$PS1"
         PS2="\[\e]133;A;k=s\a\]$PS2"
         PS0="\[\e]133;C\a\]$PS0"
     fi
 
-    if [[ "${_ksi_prompt[complete]}" == "y" ]]; then 
+    if [[ "${_ksi_prompt[complete]}" == "y" ]]; then
         _ksi_completions() {
             local src
             local limit
