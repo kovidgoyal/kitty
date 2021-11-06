@@ -133,6 +133,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Wayland: Fix pasting from applications that use a MIME type of "text/plain"
   rather than "text/plain;charset=utf-8" not working (:iss:`4183`)
 
+- A new mappable action to close windows with a confirmation (:iss:`4195`)
+
 
 0.23.1 [2021-08-17]
 ----------------------

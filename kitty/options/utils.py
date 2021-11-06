@@ -108,6 +108,12 @@ def detach_window_parse(func: str, rest: str) -> FuncArgsType:
     return func, (rest,)
 
 
+@func_with_args('close_window_with_confirmation')
+def close_window_with_confirmation(func: str, rest: str) -> FuncArgsType:
+    ignore_shell = rest == 'ignore-shell'
+    return func, (ignore_shell,)
+
+
 @func_with_args('detach_tab')
 def detach_tab_parse(func: str, rest: str) -> FuncArgsType:
     if rest not in ('new', 'ask'):

@@ -48,6 +48,7 @@ def remove_markup(text: str) -> str:
         'sessions': f'{website_url("overview")}#startup-sessions',
         'functional': f'{website_url("keyboard-protocol")}#functional-key-definitions',
         'action-select_tab': f'{website_url("actions")}#select-tab',
+        'action-close_window_with_confirmation': f'{website_url("actions")}#close-window-with-confirmation',
         'shell_integration': website_url("shell-integration"),
     }
 

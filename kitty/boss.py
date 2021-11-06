@@ -585,14 +585,49 @@ class Boss:
             if window is not None:
                 window.focus_changed(True)
 
-    def mark_window_for_close(self, window: Optional[Window] = None) -> None:
-        window = window or self.active_window
+    def mark_window_for_close(self, q: Union[Window, None, int] = None) -> None:
+        if isinstance(q, int):
+            window = self.window_id_map.get(q)
+            if window is None:
+                return
+        else:
+            window = q or self.active_window
         if window:
             self.child_monitor.mark_for_close(window.id)
 
     @ac('win', 'Close the currently active window')
     def close_window(self) -> None:
         self.mark_window_for_close()
+
+    @ac('win', '''
+    Close window with confirmation
+
+    Asks for confirmation before closing the window. If you don't want the
+    confirmation when the window is sitting at a shell prompt
+    (requires :ref:`shell_integration`), use::
+
+        map f1 close_window_with_confirmation ignore-shell
+    ''')
+    def close_window_with_confirmation(self, ignore_shell: bool = False) -> None:
+        window = self.active_window
+        if window is None:
+            return
+        if not ignore_shell or window.has_running_program:
+            msg = _('Are you sure you want to close this window?')
+            if window.has_running_program:
+                msg += ' ' + _('It is running a program.')
+            self._run_kitten(
+                'ask', ['--type=yesno', '--message', msg],
+                window=window,
+                custom_callback=partial(self.handle_close_window_confirmation, window.id)
+            )
+        else:
+            self.mark_window_for_close(window)
+
+    def handle_close_window_confirmation(self, window_id: int, data: Dict[str, Any], *a: Any) -> None:
+        if data['response'] != 'y':
+            return
+        self.mark_window_for_close(window_id)
 
     @ac('tab', 'Close the current tab')
     def close_tab(self, tab: Optional[Tab] = None) -> None:
