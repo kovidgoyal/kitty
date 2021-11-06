@@ -22,11 +22,12 @@ class SelectWindow(RemoteCommand):
     self: Boolean, if True use tab the command was run in
     title: A title for this selection
     exclude_active: Exclude the currently active window from the list to pick
+    reactivate_prev_tab: Reactivate the previously activated tab when finished
     '''
 
     short_desc = 'Visually select a window in the specified tab'
     desc = (
-        'Prints out the id of the selected window. Other commands '
+        'Prints out the id of the selected window. Other commands'
         ' can then be chained to make use of it.'
     )
     options_spec = MATCH_TAB_OPTION + '\n\n' + '''\
@@ -49,11 +50,19 @@ A title that will be displayed to the user to describe what this selection is fo
 --exclude-active
 type=bool-set
 Exclude the currently active window from the list of windows to pick
+
+
+--reactivate-prev-tab
+type=bool-set
+When the selection is finished, the tab in the same os window that was activated
+before the selection will be reactivated. The last activated os window will also
+be refocused.
 '''
     is_asynchronous = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        ans = {'self': opts.self, 'match': opts.match, 'title': opts.title, 'exclude_active': opts.exclude_active}
+        ans = {'self': opts.self, 'match': opts.match, 'title': opts.title, 'exclude_active': opts.exclude_active,
+               'reactivate_prev_tab': opts.reactivate_prev_tab}
         return ans
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
@@ -70,7 +79,10 @@ Exclude the currently active window from the list of windows to pick
                     wids = tab.all_window_ids_except_active_window
                 else:
                     wids = set()
-                boss.visual_window_select_action(tab, callback, payload_get('title') or 'Choose window', only_window_ids=wids)
+                boss.visual_window_select_action(
+                    tab, callback, payload_get('title') or 'Choose window', only_window_ids=wids,
+                    reactivate_prev_tab=payload_get('reactivate_prev_tab')
+                )
                 break
         return AsyncResponse()
 
