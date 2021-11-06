@@ -1977,7 +1977,7 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
     num_of_prompts_to_jump = num_of_prompts_to_jump < 0 ? -num_of_prompts_to_jump : num_of_prompts_to_jump;
     int y = -self->scrolled_by;
     Line *line;
-    PromptBit pb;
+    PromptBit pb = PROMPT_BIT_EVEN;
 #define ensure_y_ok if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
 #define set_prompt_bit if (line->attrs.prompt_kind == PROMPT_START) pb = line->attrs.prompt_bit;
 #define move_y_to_start_of_prompt set_prompt_bit; while (-y + 1 <= (int)self->historybuf->count) { line = range_line_(self, y - 1); if (line->attrs.prompt_kind != PROMPT_START || line->attrs.prompt_bit != pb) break; y--; }
