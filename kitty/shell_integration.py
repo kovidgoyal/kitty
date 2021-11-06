@@ -8,7 +8,7 @@ from typing import Optional, Union, Dict
 
 from .options.types import Options
 from .config import atomic_save
-from .constants import shell_integration_dir
+from .constants import is_macos, shell_integration_dir
 from .utils import log_error, resolved_shell
 
 posix_template = '''
@@ -66,6 +66,8 @@ def setup_fish_integration(env: Dict[str, str]) -> None:
     else:
         val = os.environ.get('XDG_DATA_DIRS', '')
         dirs = list(filter(None, val.split(os.pathsep)))
+    if not dirs and not is_macos:
+        dirs = ['/usr/local/share', '/usr/share']
     if shell_integration_dir not in dirs:
         dirs.insert(0, shell_integration_dir)
     env['XDG_DATA_DIRS'] = os.pathsep.join(dirs)
