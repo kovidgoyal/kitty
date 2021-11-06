@@ -313,7 +313,8 @@ class Receive(Handler):
         err = self.manager.on_file_transfer_response(ftc)
         if err:
             self.print_err(err)
-            self.quit_loop(1)
+            self.print('Waiting to ensure terminal cancels transfer, will quit in a few seconds')
+            self.abort_transfer()
             return
         if not transfer_started and self.manager.state is State.transferring:
             if self.manager.failed_specs:
