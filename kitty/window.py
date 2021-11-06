@@ -577,7 +577,7 @@ class Window:
         return g.left <= x <= g.right and g.top <= y <= g.bottom
 
     def close(self) -> None:
-        get_boss().close_window(self)
+        get_boss().mark_window_for_close(self)
 
     @ac('misc', '''
         Send the specified text to the active window

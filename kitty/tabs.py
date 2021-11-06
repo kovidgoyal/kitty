@@ -456,12 +456,6 @@ class Tab:  # {{{
             allow_remote_control=allow_remote_control, watchers=special_window.watchers
         )
 
-    @ac('win', 'Close the currently active window')
-    def close_window(self) -> None:
-        w = self.active_window
-        if w is not None:
-            self.remove_window(w)
-
     @ac('win', 'Close all windows in the tab other than the currently active window')
     def close_other_windows_in_tab(self) -> None:
         if len(self.windows) > 1:

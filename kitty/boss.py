@@ -182,7 +182,7 @@ class VisualSelect:
         if self.window_used_for_selection_id:
             w = boss.window_id_map.get(self.window_used_for_selection_id)
             if w is not None:
-                boss.close_window(w)
+                boss.mark_window_for_close(w)
         return boss
 
 
@@ -585,10 +585,14 @@ class Boss:
             if window is not None:
                 window.focus_changed(True)
 
-    def close_window(self, window: Optional[Window] = None) -> None:
+    def mark_window_for_close(self, window: Optional[Window] = None) -> None:
         window = window or self.active_window
         if window:
             self.child_monitor.mark_for_close(window.id)
+
+    @ac('win', 'Close the currently active window')
+    def close_window(self) -> None:
+        self.mark_window_for_close()
 
     @ac('tab', 'Close the current tab')
     def close_tab(self, tab: Optional[Tab] = None) -> None:
@@ -626,7 +630,7 @@ class Boss:
 
     def close_tab_no_confirm(self, tab: Tab) -> None:
         for window in tab:
-            self.close_window(window)
+            self.mark_window_for_close(window)
 
     @ac('win', 'Toggle the fullscreen status of the active OS Window')
     def toggle_fullscreen(self, os_window_id: int = 0) -> None:
