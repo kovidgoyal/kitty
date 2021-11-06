@@ -947,8 +947,8 @@ class Boss:
         def chosen(ans: Union[None, int, str]) -> None:
             q = self.current_visual_select
             self.current_visual_select = None
-            if cvs and q is cvs and isinstance(ans, int):
-                q.trigger(ans)
+            if cvs and q is cvs:
+                q.trigger(ans if isinstance(ans, int) else 0)
         return self.choose_entry(msg, windows, chosen)
 
     @ac('win', '''
