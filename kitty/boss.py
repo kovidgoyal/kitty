@@ -151,6 +151,7 @@ class VisualSelect:
         self.os_window_id = os_window_id
         self.callback = callback
         self.window_ids: List[int] = []
+        self.window_used_for_selection_id = 0
         set_os_window_title(self.os_window_id, title)
 
     def cancel(self) -> None:
@@ -178,6 +179,10 @@ class VisualSelect:
             w = boss.window_id_map.get(wid)
             if w is not None:
                 w.screen.set_window_char()
+        if self.window_used_for_selection_id:
+            w = boss.window_id_map.get(self.window_used_for_selection_id)
+            if w is not None:
+                boss.close_window(w)
         return boss
 
 
@@ -874,7 +879,8 @@ class Boss:
             tm.set_active_tab(tab)
         self.current_visual_select = VisualSelect(tab.id, tab.os_window_id, choose_msg, callback)
         if tab.current_layout.only_active_window_visible:
-            self.select_window_in_tab_using_overlay(tab, choose_msg, only_window_ids)
+            w = self.select_window_in_tab_using_overlay(tab, choose_msg, only_window_ids)
+            self.current_visual_select.window_used_for_selection_id = 0 if w is None else w.id
             return
         pending_sequences: SubSequenceMap = {}
         fmap = get_name_to_functional_number_map()
@@ -928,14 +934,14 @@ class Boss:
             ev = WindowSystemMouseEvent(in_tab_bar, window_id, action, modifiers, button, currently_pressed_button, x, y)
             self.mouse_handler(ev)
 
-    def select_window_in_tab_using_overlay(self, tab: Tab, msg: str, only_window_ids: Container[int] = ()) -> None:
+    def select_window_in_tab_using_overlay(self, tab: Tab, msg: str, only_window_ids: Container[int] = ()) -> Optional[Window]:
         windows = tuple((w.id, w.title) for i, w in tab.windows.iter_windows_with_number(only_visible=False)
                         if not only_window_ids or w.id in only_window_ids)
         if len(windows) < 1:
             self.visual_window_select_action_trigger(windows[0][0] if windows else 0)
             if get_options().enable_audio_bell:
                 ring_bell()
-            return
+            return None
         cvs = self.current_visual_select
 
         def chosen(ans: Union[None, int, str]) -> None:
@@ -943,7 +949,7 @@ class Boss:
             self.current_visual_select = None
             if cvs and q is cvs and isinstance(ans, int):
                 q.trigger(ans)
-        self.choose_entry(msg, windows, chosen)
+        return self.choose_entry(msg, windows, chosen)
 
     @ac('win', '''
         Resize the active window interactively
@@ -1937,7 +1943,10 @@ class Boss:
         self._cleanup_tab_after_window_removal(tab)
         target_tab.make_active()
 
-    def choose_entry(self, title: str, entries: Iterable[Tuple[Union[_T, str, None], str]], callback: Callable[[Union[_T, str, None]], None]) -> None:
+    def choose_entry(
+        self, title: str, entries: Iterable[Tuple[Union[_T, str, None], str]],
+        callback: Callable[[Union[_T, str, None]], None]
+    ) -> Optional[Window]:
         lines = [title, '']
         idx_map: List[Union[_T, str]] = []
         ans: Union[str, _T, None] = None
@@ -1957,12 +1966,13 @@ class Boss:
         def done2(target_window_id: int, self: Boss) -> None:
             callback(ans)
 
-        self._run_kitten(
+        q = self._run_kitten(
             'hints', args=(
                 '--ascending', '--customize-processing=::import::kitty.choose_entry',
                 r'--regex=(?m)^:\s+.+$', '--window-title', title,
             ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
         )
+        return q if isinstance(q, Window) else None
 
     @ac('tab', 'Interactively select a tab to switch to')
     def select_tab(self) -> None:
