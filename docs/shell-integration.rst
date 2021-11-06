@@ -154,6 +154,11 @@ Just before starting to draw the PS1 prompt send the escape code::
 
     <OSC>133;A<ST>
 
+Binary marks can be used to distinguish the prompt from each other::
+
+    <OSC>133;A;b=0<ST>
+    <OSC>133;A;b=1<ST>
+
 Just before starting to draw the PS2 prompt send the escape code::
 
     <OSC>133;A;k=s<ST>
