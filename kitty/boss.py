@@ -944,7 +944,7 @@ class Boss:
         if len(self.current_visual_select.window_ids) > 1:
             self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('visual_window_select_action_trigger', (0,)))
             redirect_mouse_handling(True)
-            self.mouse_handler = self.focus_visible_window_mouse_handler
+            self.mouse_handler = self.visual_select_mouse_handler
         else:
             self.visual_window_select_action_trigger(self.current_visual_select.window_ids[0] if self.current_visual_select.window_ids else 0)
             if get_options().enable_audio_bell:
@@ -955,12 +955,15 @@ class Boss:
             self.current_visual_select.trigger(window_id)
         self.current_visual_select = None
 
-    def focus_visible_window_mouse_handler(self, ev: WindowSystemMouseEvent) -> None:
+    def visual_select_mouse_handler(self, ev: WindowSystemMouseEvent) -> None:
         tab = self.active_tab
         if ev.button == GLFW_MOUSE_BUTTON_LEFT and ev.action == GLFW_PRESS and ev.window_id:
             w = self.window_id_map.get(ev.window_id)
             if w is not None and tab is not None and w in tab:
-                self.visual_window_select_action_trigger(w.id)
+                if self.current_visual_select and self.current_visual_select.tab_id == tab.id:
+                    self.visual_window_select_action_trigger(w.id)
+                else:
+                    self.visual_window_select_action_trigger()
                 return
         if ev.button > -1 and tab is not None:
             self.visual_window_select_action_trigger()
