@@ -38,8 +38,8 @@ from .fast_data_types import (
     redirect_mouse_handling, ring_bell, safe_pipe,
     set_application_quit_request, set_background_image, set_boss,
     set_clipboard_string, set_in_sequence_mode, set_options,
-    set_os_window_size, set_os_window_title, sync_os_window_title,
-    thread_write, toggle_fullscreen, toggle_maximized
+    set_os_window_size, set_os_window_title, thread_write, toggle_fullscreen,
+    toggle_maximized
 )
 from .key_encoding import get_name_to_functional_number_map
 from .keys import get_shortcut, shortcut_matches
@@ -171,7 +171,7 @@ class VisualSelect:
                 self.callback(tab, w)
 
     def clear_global_state(self) -> 'Boss':
-        sync_os_window_title(self.os_window_id)
+        set_os_window_title(self.os_window_id, '')
         boss = get_boss()
         redirect_mouse_handling(False)
         boss.clear_pending_sequences()

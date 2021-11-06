@@ -265,7 +265,7 @@ update_window_title(id_type os_window_id, id_type tab_id, id_type window_id, PyO
 
 void
 set_os_window_title_from_window(Window *w, OSWindow *os_window) {
-    if (os_window->disallow_title_changes) return;
+    if (os_window->disallow_title_changes || os_window->title_is_overriden) return;
     if (w->title && w->title != os_window->window_title) {
         Py_XDECREF(os_window->window_title);
         os_window->window_title = w->title;
@@ -844,14 +844,17 @@ PYWRAP1(set_os_window_title) {
     id_type os_window_id;
     const char *title;
     PA("Ks", &os_window_id, &title);
-    PyObject *old_title = NULL;
     WITH_OS_WINDOW(os_window_id)
-        old_title = os_window->window_title;
-        Py_XINCREF(old_title);
-        set_os_window_title(os_window, title);
+        if (strlen(title)) {
+            os_window->title_is_overriden = true;
+            set_os_window_title(os_window, title);
+        } else {
+            os_window->title_is_overriden = false;
+            if (os_window->window_title) set_os_window_title(os_window, PyUnicode_AsUTF8(os_window->window_title));
+            update_os_window_title(os_window);
+        }
     END_WITH_OS_WINDOW
-    if (!old_title) Py_RETURN_NONE;
-    return old_title;
+    Py_RETURN_NONE;
 }
 
 
