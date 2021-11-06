@@ -891,13 +891,15 @@ does not currently work on Wayland.
 opt('confirm_os_window_close', '0',
     option_type='int',
     long_text='''
-Ask for confirmation when closing an OS window or a tab that has at least this
-number of kitty windows in it. A value of zero disables confirmation. This
-confirmation also applies to requests to quit the entire application (all OS
-windows, via the quit action). Negative values are converted to positive ones,
-however, with :ref:`shell_integration` enabled, using negative values means
-windows sitting at a shell prompt are not counted, only windows where some command is
-currently running.
+Ask for confirmation when closing an OS window or a Tab with at least this
+number of kitty windows in it by window manager (e.g. clicking the window
+close button or pressing the shortcut alt+f4, shift+cmd+w) or by the
+:sc:`close_tab` action. A value of zero disables confirmation. This confirmation
+also applies to requests to quit the entire application (all OS windows, via the
+quit action). Negative values are converted to positive ones, however, with
+:ref:`shell_integration` enabled, using negative values means windows sitting at
+a shell prompt are not counted, only windows where some command is currently
+running.
 '''
     )
 egr()  # }}}
