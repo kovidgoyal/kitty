@@ -61,10 +61,10 @@ def setup_bash_integration(env: Dict[str, str]) -> None:
 
 def setup_fish_integration(env: Dict[str, str]) -> None:
     if 'XDG_DATA_DIRS' in env:
-        val = env.get('XDG_DATA_DIRS', '')
+        val = env.get('XDG_DATA_DIRS', '/usr/local/share:/usr/share')
         dirs = list(filter(None, val.split(os.pathsep)))
     else:
-        val = os.environ.get('XDG_DATA_DIRS', '')
+        val = os.environ.get('XDG_DATA_DIRS', '/usr/local/share:/usr/share')
         dirs = list(filter(None, val.split(os.pathsep)))
     if shell_integration_dir not in dirs:
         dirs.insert(0, shell_integration_dir)
