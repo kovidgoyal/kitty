@@ -447,8 +447,8 @@ class LineParser:
 def parse_theme(fname: str, raw: str, exc_class: Type[BaseException] = SystemExit) -> Dict[str, Any]:
     lines = raw.splitlines()
     conf = parse_config(lines)
-    bg = conf.get('background', Color())
-    is_dark = max(bg) < 115
+    bg: Color = conf.get('background', Color())
+    is_dark = max((bg.red, bg.green, bg.blue)) < 115
     ans: Dict[str, Any] = {'name': theme_name_from_file_name(fname)}
     parser = LineParser()
     for i, line in enumerate(raw.splitlines()):
