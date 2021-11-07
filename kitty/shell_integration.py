@@ -60,21 +60,30 @@ def setup_bash_integration(env: Dict[str, str]) -> None:
 
 
 def setup_fish_integration(env: Dict[str, str]) -> None:
-    if 'XDG_DATA_DIRS' in env:
-        val = env.get('XDG_DATA_DIRS', '')
-        dirs = list(filter(None, val.split(os.pathsep)))
+    pass  # this is handled in the fish env modifier
+
+
+def setup_fish_env(env: Dict[str, str]) -> None:
+    val = env.get('XDG_DATA_DIRS')
+    if val is None:
+        env['XDG_DATA_DIRS'] = shell_integration_dir
+    elif not val:
+        env['XDG_DATA_DIRS'] = shell_integration_dir
+        env['KITTY_FISH_XDG_DATA_DIRS'] = ''
     else:
-        val = os.environ.get('XDG_DATA_DIRS', '')
         dirs = list(filter(None, val.split(os.pathsep)))
-    if shell_integration_dir not in dirs:
         dirs.insert(0, shell_integration_dir)
-    env['XDG_DATA_DIRS'] = os.pathsep.join(dirs)
+        env['KITTY_FISH_XDG_DATA_DIRS'] = val
+        env['XDG_DATA_DIRS'] = os.pathsep.join(dirs)
 
 
 SUPPORTED_SHELLS = {
     'zsh': setup_zsh_integration,
     'bash': setup_bash_integration,
     'fish': setup_fish_integration,
+}
+ENV_MODIFIERS = {
+    'fish': setup_fish_env
 }
 
 
@@ -85,9 +94,15 @@ def get_supported_shell_name(path: str) -> Optional[str]:
     return None
 
 
-def setup_shell_integration(opts: Options, env: Dict[str, str]) -> bool:
+def shell_integration_allows_rc_modification(opts: Options) -> bool:
     q = set(opts.shell_integration.split())
     if q & {'disabled', 'no-rc'}:
+        return False
+    return True
+
+
+def setup_shell_integration(opts: Options, env: Dict[str, str]) -> bool:
+    if not shell_integration_allows_rc_modification(opts):
         return False
     shell = get_supported_shell_name(resolved_shell(opts)[0])
     if shell is None:
@@ -100,4 +115,17 @@ def setup_shell_integration(opts: Options, env: Dict[str, str]) -> bool:
         traceback.print_exc()
         log_error(f'Failed to setup shell integration for: {shell}')
         return False
+    return True
+
+
+def modify_shell_environ(argv0: str, opts: Options, env: Dict[str, str]) -> bool:
+    if not shell_integration_allows_rc_modification(opts):
+        return False
+    shell = get_supported_shell_name(argv0)
+    if shell is None:
+        return False
+    f = ENV_MODIFIERS.get(shell)
+    if f is not None:
+        f(env)
+    env['KITTY_SHELL_INTEGRATION'] = opts.shell_integration
     return True

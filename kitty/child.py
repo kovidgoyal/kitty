@@ -229,9 +229,8 @@ class Child:
                 env['TERMINFO'] = tdir
             opts = fast_data_types.get_options()
             if opts.shell_integration != 'disabled':
-                from .shell_integration import get_supported_shell_name
-                if get_supported_shell_name(self.argv[0]):
-                    env['KITTY_SHELL_INTEGRATION'] = opts.shell_integration
+                from .shell_integration import modify_shell_environ
+                modify_shell_environ(self.argv[0], opts, env)
             env = {k: v for k, v in env.items() if v is not DELETE_ENV_VAR}
         return env
 
