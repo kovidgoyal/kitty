@@ -118,14 +118,16 @@ def setup_shell_integration(opts: Options, env: Dict[str, str]) -> bool:
     return True
 
 
-def modify_shell_environ(argv0: str, opts: Options, env: Dict[str, str]) -> bool:
+def modify_shell_environ(argv0: str, opts: Options, env: Dict[str, str]) -> None:
+    if 'disabled' in set(opts.shell_integration.split()):
+        return
+    env['KITTY_SHELL_INTEGRATION'] = opts.shell_integration
     if not shell_integration_allows_rc_modification(opts):
-        return False
+        return
     shell = get_supported_shell_name(argv0)
     if shell is None:
-        return False
+        return
     f = ENV_MODIFIERS.get(shell)
     if f is not None:
         f(env)
-    env['KITTY_SHELL_INTEGRATION'] = opts.shell_integration
-    return True
+    return
