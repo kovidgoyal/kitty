@@ -129,5 +129,10 @@ def modify_shell_environ(argv0: str, opts: Options, env: Dict[str, str]) -> None
         return
     f = ENV_MODIFIERS.get(shell)
     if f is not None:
-        f(env)
+        try:
+            f(env)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            log_error(f'Failed to setup shell integration for: {shell}')
     return
