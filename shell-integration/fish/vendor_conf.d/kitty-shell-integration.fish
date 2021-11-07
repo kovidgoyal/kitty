@@ -2,13 +2,11 @@
 
 function _ksi_main
     test -z "$KITTY_SHELL_INTEGRATION" && return
-    if set -q XDG_DATA_DIRS
+    if set -q XDG_DATA_DIRS KITTY_FISH_XDG_DATA_DIR
         set --global --export --path XDG_DATA_DIRS "$XDG_DATA_DIRS"
-        if set -q KITTY_FISH_XDG_DATA_DIR
-            if set -l index (contains -i "$KITTY_FISH_XDG_DATA_DIR" $XDG_DATA_DIRS)
-                set --erase --global XDG_DATA_DIRS[$index]
-                test -z "$XDG_DATA_DIRS" && set --erase --global XDG_DATA_DIRS
-            end
+        if set -l index (contains -i "$KITTY_FISH_XDG_DATA_DIR" $XDG_DATA_DIRS)
+            set --erase --global XDG_DATA_DIRS[$index]
+            test -z "$XDG_DATA_DIRS" && set --erase --global XDG_DATA_DIRS
         end
         if set -q XDG_DATA_DIRS
             set --global --export --unpath XDG_DATA_DIRS "$XDG_DATA_DIRS"
