@@ -564,6 +564,11 @@ class Boss:
         if response is not None and not isinstance(response, AsyncResponse) and window is not None:
             window.send_cmd_response(response)
 
+    def mark_os_window_for_close(self, os_window_id: int, request_type: int = IMPERATIVE_CLOSE_REQUESTED) -> None:
+        if self.current_visual_select is not None and self.current_visual_select.os_window_id == os_window_id and request_type == IMPERATIVE_CLOSE_REQUESTED:
+            self.cancel_current_visual_select()
+        mark_os_window_for_close(os_window_id, request_type)
+
     def _cleanup_tab_after_window_removal(self, src_tab: Tab) -> None:
         if len(src_tab) < 1:
             tm = src_tab.tab_manager_ref()
@@ -572,7 +577,7 @@ class Boss:
                 src_tab.destroy()
                 if len(tm) == 0:
                     if not self.shutting_down:
-                        mark_os_window_for_close(src_tab.os_window_id)
+                        self.mark_os_window_for_close(src_tab.os_window_id)
 
     def on_child_death(self, window_id: int) -> None:
         prev_active_window = self.active_window
@@ -690,6 +695,8 @@ class Boss:
         self.close_tab_no_confirm(tab)
 
     def close_tab_no_confirm(self, tab: Tab) -> None:
+        if self.current_visual_select is not None and self.current_visual_select.tab_id == tab.id:
+            self.cancel_current_visual_select()
         for window in tab:
             self.mark_window_for_close(window)
 
@@ -1166,7 +1173,7 @@ class Boss:
         num = 0 if tm is None else (tm.number_of_windows_with_running_programs if q < 0 else tm.number_of_windows)
         needs_confirmation = tm is not None and q != 0 and num >= abs(q)
         if not needs_confirmation:
-            mark_os_window_for_close(os_window_id)
+            self.mark_os_window_for_close(os_window_id)
             return
         if tm is not None:
             w = tm.active_window
@@ -1179,9 +1186,9 @@ class Boss:
 
     def handle_close_os_window_confirmation(self, os_window_id: int, data: Dict[str, Any], *a: Any) -> None:
         if data['response'] == 'y':
-            mark_os_window_for_close(os_window_id)
+            self.mark_os_window_for_close(os_window_id)
         else:
-            mark_os_window_for_close(os_window_id, NO_CLOSE_REQUESTED)
+            self.mark_os_window_for_close(os_window_id, NO_CLOSE_REQUESTED)
 
     def on_os_window_closed(self, os_window_id: int, viewport_width: int, viewport_height: int) -> None:
         self.cached_values['window-size'] = viewport_width, viewport_height
