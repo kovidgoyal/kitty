@@ -2,14 +2,21 @@
 
 function _ksi_main
     test -z "$KITTY_SHELL_INTEGRATION" && return
-    if set -q KITTY_FISH_XDG_DATA_DIRS
-        set --global --export XDG_DATA_DIRS "$KITTY_FISH_XDG_DATA_DIRS"
-    else
-        set --erase XDG_DATA_DIRS
+    if set -q XDG_DATA_DIRS
+        set --global --export --path XDG_DATA_DIRS "$XDG_DATA_DIRS"
+        if set -q KITTY_FISH_XDG_DATA_DIR
+            if set -l index (contains -i "$KITTY_FISH_XDG_DATA_DIR" $XDG_DATA_DIRS)
+                set --erase --global XDG_DATA_DIRS[$index]
+                test -z "$XDG_DATA_DIRS" && set --erase --global XDG_DATA_DIRS
+            end
+        end
+        if set -q XDG_DATA_DIRS
+            set --global --export --unpath XDG_DATA_DIRS "$XDG_DATA_DIRS"
+        end
     end
     set --local _ksi (string split " " -- "$KITTY_SHELL_INTEGRATION")
     set --erase KITTY_SHELL_INTEGRATION
-    set --erase KITTY_FISH_XDG_DATA_DIRS
+    set --erase KITTY_FISH_XDG_DATA_DIR
 
     function _ksi_osc
         printf "\e]%s\a" "$argv[1]"

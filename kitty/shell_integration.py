@@ -65,15 +65,12 @@ def setup_fish_integration(env: Dict[str, str]) -> None:
 
 def setup_fish_env(env: Dict[str, str]) -> None:
     val = env.get('XDG_DATA_DIRS')
-    if val is None:
+    env['KITTY_FISH_XDG_DATA_DIR'] = shell_integration_dir
+    if not val:
         env['XDG_DATA_DIRS'] = shell_integration_dir
-    elif not val:
-        env['XDG_DATA_DIRS'] = shell_integration_dir
-        env['KITTY_FISH_XDG_DATA_DIRS'] = ''
     else:
         dirs = list(filter(None, val.split(os.pathsep)))
         dirs.insert(0, shell_integration_dir)
-        env['KITTY_FISH_XDG_DATA_DIRS'] = val
         env['XDG_DATA_DIRS'] = os.pathsep.join(dirs)
 
 
