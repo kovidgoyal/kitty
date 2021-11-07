@@ -3,7 +3,7 @@
 function _ksi_main
     test -z "$KITTY_SHELL_INTEGRATION" && return
     if set -q KITTY_FISH_XDG_DATA_DIRS
-        set --export XDG_DATA_DIRS "$KITTY_FISH_XDG_DATA_DIRS"
+        set --global --export XDG_DATA_DIRS "$KITTY_FISH_XDG_DATA_DIRS"
     else
         set --erase XDG_DATA_DIRS
     end
