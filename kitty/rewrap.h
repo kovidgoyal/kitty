@@ -15,7 +15,7 @@
 #define init_src_line(src_y) linebuf_init_line(src, src_y);
 #endif
 
-#define set_dest_line_attrs(dest_y, continued_) dest->line_attrs[dest_y] = src->line->attrs; if (continued_) dest->line_attrs[dest_y].continued = true;
+#define set_dest_line_attrs(dest_y, continued_) dest->line_attrs[dest_y] = src->line->attrs; if (continued_) dest->line_attrs[dest_y].continued = true; src->line->attrs.prompt_kind = UNKNOWN_PROMPT_KIND;
 
 #ifndef first_dest_line
 #define first_dest_line linebuf_init_line(dest, 0); set_dest_line_attrs(0, false)

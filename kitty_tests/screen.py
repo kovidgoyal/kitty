@@ -955,7 +955,7 @@ class TestScreen(BaseTest):
             s.carriage_return(), s.index()
             s.draw(str(i))
         self.assertTrue(s.scroll_to_prompt())
-        self.ae(str(s.visual_line(0)), '$ 0')
+        self.ae(str(s.visual_line(0)), '$ 1')
 
         def lco():
             a = []
