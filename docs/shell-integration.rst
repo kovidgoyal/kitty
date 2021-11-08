@@ -138,7 +138,7 @@ Then in your shell's rc file, add the lines:
 
 For fish, add the lines:
 
-.. code-block:: sh
+.. code-block:: fish
 
     set --global KITTY_SHELL_INTEGRATION enabled
     source /path/to/integration/script
