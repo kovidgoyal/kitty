@@ -152,8 +152,10 @@ Then in your shell's rc file, add the lines:
     .. code-block:: fish
 
         set --global KITTY_SHELL_INTEGRATION enabled
-        source (kitty +runpy "from kitty.shell_integration import script_path; print(script_path('fish'))")
-        set --prepend fish_complete_path (kitty +runpy "from kitty.shell_integration import fish_completions_dir; print(fish_completions_dir)")
+        set --path --local kitty_paths (kitty +runpy 'from kitty.shell_integration import print_fish_paths; print_fish_paths()')
+        source kitty_paths[2]
+        set --prepend fish_complete_path kitty_paths[1]
+        set --erase kitty_paths
 
 
 You can get the path to the directory containing the various shell integration

@@ -149,3 +149,7 @@ def script_path(shell: str = '') -> str:
     else:
         f = f'kitty.{shell}'
     return os.path.join(shell_integration_dir, f)
+
+
+def print_fish_paths() -> None:
+    print(fish_completions_dir, script_path('fish'), sep=os.pathsep)
