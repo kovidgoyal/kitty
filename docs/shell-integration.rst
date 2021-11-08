@@ -144,29 +144,40 @@ Then in your shell's rc file, add the lines:
 
     .. code-block:: sh
 
-        export KITTY_SHELL_INTEGRATION="enabled"
-        source "$KITTY_INSTALLATION_DIR/shell-integration/kitty.bash"
+        if [[ ! -z "$KITTY_INSTALLATION_DIR" ]]; then
+            export KITTY_SHELL_INTEGRATION="enabled"
+            source "$KITTY_INSTALLATION_DIR/shell-integration/kitty.bash"
+        fi
 
 .. tab:: zsh
 
     .. code-block:: sh
 
-        export KITTY_SHELL_INTEGRATION="enabled"
-        source "$KITTY_INSTALLATION_DIR/shell-integration/kitty.zsh"
+        if [[ ! -z "$KITTY_INSTALLATION_DIR" ]]; then
+            export KITTY_SHELL_INTEGRATION="enabled"
+            source "$KITTY_INSTALLATION_DIR/shell-integration/kitty.zsh"
+        fi
 
 .. tab:: fish
 
     .. code-block:: fish
 
-        set --global KITTY_SHELL_INTEGRATION enabled
-        source "$KITTY_INSTALLATION_DIR/shell-integration/fish/vendor_conf.d/kitty-shell-integration.fish"
-        set --prepend fish_complete_path "$KITTY_INSTALLATION_DIR/shell-integration/fish/vendor_completions.d"
+        if set -q KITTY_INSTALLATION_DIR
+            set --global KITTY_SHELL_INTEGRATION enabled
+            source "$KITTY_INSTALLATION_DIR/shell-integration/fish/vendor_conf.d/kitty-shell-integration.fish"
+            set --prepend fish_complete_path "$KITTY_INSTALLATION_DIR/shell-integration/fish/vendor_completions.d"
+        end
 
 
 The value of :envvar:`KITTY_SHELL_INTEGRATION` is the same as that for
 :opt:`shell_integration`, except if you want to disable shell integration
 completely, in which case simply do not set the
 :envvar:`KITTY_SHELL_INTEGRATION` variable at all.
+
+If you want this to work while SSHing into a remote system, then you will
+need to add some code to the snippets above to check if :code:`KITTY_INSTALLATION_DIR`
+is empty and if so to set it to some hard coded location with the shell
+integration scripts that need to be copied onto the remote system.
 
 
 Notes for shell developers
