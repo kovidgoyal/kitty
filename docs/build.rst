@@ -135,10 +135,21 @@ with :file:`linux-package/bin/kitty`.  All the files needed to run kitty will be
 installed. You can choose a different staging area, by passing the ``--prefix``
 argument to :file:`setup.py`.
 
-You should probably split |kitty| into two packages, :file:`kitty-terminfo` that
-installs the terminfo file and :file:`kitty` that installs the main program.
-This allows users to install the terminfo file on servers into which they ssh,
-without needing to install all of |kitty|.
+You should probably split |kitty| into three packages:
+
+:code:`kitty-terminfo`
+    installs the terminfo file
+
+:code:`kitty-shell-integration`
+    installs the shell integration scripts (the contents of the
+    shell-integration directory in the kitty source code, probably to
+    :file:`/usr/share/kitty/shell-integration`
+
+:code:`kitty`
+    installs the main program
+
+This allows users to install the terminfo and shell integration files on
+servers into which they ssh, without needing to install all of |kitty|.
 
 .. note::
    You need a couple of extra dependencies to build linux-package.
