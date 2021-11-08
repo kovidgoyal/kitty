@@ -116,6 +116,11 @@ Variables that kitty sets when running child programs
    Path to a directory containing the kitty terminfo database.
 
 
+.. envvar:: KITTY_INSTALLATION_DIR
+
+   Path to the kitty installation directory.
+
+
 .. envvar:: COLORTERM
 
    Set to the value ``truecolor`` to indicate that kitty supports 16 million
@@ -152,4 +157,5 @@ Variables that kitty sets when running child programs
 
 .. envvar:: KITTY_SHELL_INTEGRATION
 
-   Set when enabling :ref:`shell_integration`.
+   Set when enabling :ref:`shell_integration`. It is automatically removed by
+   the shell integration scripts.

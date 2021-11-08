@@ -12,7 +12,7 @@ from typing import (
 
 import kitty.fast_data_types as fast_data_types
 
-from .constants import is_macos, shell_path, terminfo_dir
+from .constants import is_macos, kitty_base_dir, shell_path, terminfo_dir
 from .types import run_once
 
 try:
@@ -229,6 +229,7 @@ class Child:
             tdir = checked_terminfo_dir()
             if tdir:
                 env['TERMINFO'] = tdir
+            env['KITTY_INSTALLATION_DIR'] = kitty_base_dir
             opts = fast_data_types.get_options()
             if opts.shell_integration != 'disabled':
                 from .shell_integration import modify_shell_environ

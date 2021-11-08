@@ -140,30 +140,28 @@ want to setup shell integration for a remote system over SSH, in
 
 Then in your shell's rc file, add the lines:
 
-.. tab:: bash/zsh
+.. tab:: bash
 
     .. code-block:: sh
 
         export KITTY_SHELL_INTEGRATION="enabled"
-        source $(kitty +runpy "from kitty.shell_integration import script_path; print(script_path())")
+        source "$KITTY_INSTALLATION_DIR/shell-integration/kitty.bash"
+
+.. tab:: zsh
+
+    .. code-block:: sh
+
+        export KITTY_SHELL_INTEGRATION="enabled"
+        source "$KITTY_INSTALLATION_DIR/shell-integration/kitty.zsh"
 
 .. tab:: fish
 
     .. code-block:: fish
 
         set --global KITTY_SHELL_INTEGRATION enabled
-        set --path --local kitty_paths (kitty +runpy 'from kitty.shell_integration import print_fish_paths; print_fish_paths()')
-        source kitty_paths[2]
-        set --prepend fish_complete_path kitty_paths[1]
-        set --erase kitty_paths
+        source "$KITTY_INSTALLATION_DIR/shell-integration/fish/vendor_conf.d/kitty-shell-integration.fish"
+        set --prepend fish_complete_path "$KITTY_INSTALLATION_DIR/shell-integration/fish/vendor_completions.d"
 
-
-You can get the path to the directory containing the various shell integration
-scripts by looking at the directory displayed by:
-
-.. code-block:: sh
-
-    kitty +runpy "from kitty.constants import *; print(shell_integration_dir)"
 
 The value of :envvar:`KITTY_SHELL_INTEGRATION` is the same as that for
 :opt:`shell_integration`, except if you want to disable shell integration
