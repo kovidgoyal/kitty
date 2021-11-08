@@ -644,7 +644,7 @@ class Window:
 
     def open_url(self, url: str, hyperlink_id: int, cwd: Optional[str] = None) -> None:
         opts = get_options()
-        if hyperlink_id:
+        if isinstance(hyperlink_id, int):
             if not opts.allow_hyperlinks:
                 return
             from urllib.parse import unquote, urlparse, urlunparse
