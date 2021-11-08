@@ -23,7 +23,7 @@ except ImportError:
 
 if is_macos:
     from kitty.fast_data_types import (
-        cmdline_of_process, cwd_of_process as _cwd,
+        cmdline_of_process as cmdline_, cwd_of_process as _cwd,
         environ_of_process as _environ_of_process,
         process_group_map as _process_group_map
     )
@@ -37,6 +37,8 @@ if is_macos:
             ans[pgid].append(pid)
         return ans
 
+    def cmdline_of_process(pid: int) -> List[str]:
+        return cmdline_(pid)
 else:
 
     def cmdline_of_process(pid: int) -> List[str]:
