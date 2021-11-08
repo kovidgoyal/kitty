@@ -73,6 +73,12 @@ or in kitty.conf) is a supported shell. If so, kitty adds a couple of lines to
 the bottom of the shell's rc files (in an atomic manner) to load the shell
 integration code.
 
+For fish, to make it automatically load the configuration file provided by
+kitty, the integration script directory path is prepended to the
+:code:`XDG_DATA_DIRS` environment variable. This is only applied to the fish
+process and will be cleaned up by the integration script after startup. No files
+are added or modified.
+
 Then, when launching the shell, kitty sets the environment variable
 :envvar:`KITTY_SHELL_INTEGRATION` to the value of the :opt:`shell_integration`
 option. The shell integration code reads the environment variable, turns on the
@@ -127,8 +133,20 @@ Then in your shell's rc file, add the lines:
 
 .. code-block:: sh
 
-   export KITTY_SHELL_INTEGRATION="enabled"
-   source /path/to/integration/script
+    export KITTY_SHELL_INTEGRATION="enabled"
+    source /path/to/integration/script
+
+For fish, add the lines:
+
+.. code-block:: sh
+
+    set --global KITTY_SHELL_INTEGRATION enabled
+    source /path/to/integration/script
+
+Or create symbolic links for each of the two files in the fish integration
+script directory and place them in :code:`~/.config/fish/completions/` and
+:code:`~/.config/fish/conf.d/` respectively. You still need to configure
+:envvar:`KITTY_SHELL_INTEGRATION` and set it to :code:`enabled` explicitly.
 
 You can get the path to the directory containing the various shell integration
 scripts by looking at the directory displayed by:
@@ -141,6 +159,53 @@ The value of :envvar:`KITTY_SHELL_INTEGRATION` is the same as that for
 :opt:`shell_integration`, except if you want to disable shell integration
 completely, in which case simply do not set the
 :envvar:`KITTY_SHELL_INTEGRATION` variable at all.
+
+If you use the fish shell automatic integration, the script directory will be
+removed from the :code:`XDG_DATA_DIRS` environment variable after startup. This
+is to ensure that when this environment variable is empty, the software that
+relies on it will correctly use the system default fallback path, such as
+:code:`/usr/local/share:/usr/share` defined in the specification. Otherwise,
+software may not work properly, for example, :code:`xdg-open` will not be able
+to open your files.
+
+If you want to run fish in fish and enable automatic shell integration (e.g.
+run :code:`fish --private`), you need to configure it manually and make sure
+that :code:`XDG_DATA_DIRS` contains all the system data directory paths.
+
+In your :file:`kitty.conf` set:
+
+.. code-block:: conf
+
+    shell_integration enabled
+
+For systems that already have the correct :code:`XDG_DATA_DIRS`, add the
+following lines:
+
+.. code-block:: fish
+
+    set --global KITTY_SHELL_INTEGRATION enabled
+    if set -q KITTY_FISH_XDG_DATA_DIR
+        set --erase KITTY_FISH_XDG_DATA_DIR
+    end
+
+For cases where :code:`XDG_DATA_DIRS` is not set or empty (e.g. not set by
+default on macOS), you can set it in :file:`kitty.conf` via :opt:`env`.
+Otherwise, you need to add all the data directory paths defined by your system
+and package manager in your fish configuration. For example:
+
+.. code-block:: fish
+
+    set --global KITTY_SHELL_INTEGRATION enabled
+    if set -q KITTY_FISH_XDG_DATA_DIR
+        set --global --export XDG_DATA_DIRS $KITTY_FISH_XDG_DATA_DIR:/opt/path/to/data/dirs:/usr/local/share:/usr/share
+        set --erase KITTY_FISH_XDG_DATA_DIR
+    end
+
+The benefit of using fish shell automatic integration is that the integration
+script included with the current version of kitty will always be loaded
+correctly. The installation path for kitty can be anywhere, not a hard-coded
+location in your fish configuration. Your fish configuration files (a.k.a.
+dotfiles) can also be shared between different system environments.
 
 
 Notes for shell developers
