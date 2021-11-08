@@ -16,7 +16,6 @@ posix_template = '''
 if test -e {path}; then source {path}; fi
 # END_KITTY_SHELL_INTEGRATION
 '''
-fish_completions_dir = os.path.join(shell_integration_dir, 'fish', 'vendor_completions.d')
 
 
 def atomic_write(path: str, data: Union[str, bytes]) -> None:
@@ -133,23 +132,3 @@ def modify_shell_environ(argv0: str, opts: Options, env: Dict[str, str]) -> None
             traceback.print_exc()
             log_error(f'Failed to setup shell integration for: {shell}')
     return
-
-
-def script_path(shell: str = '') -> str:
-    if not shell:
-        from .child import cmdline_of_process
-        cmd = cmdline_of_process(os.getppid())
-        if not cmd:
-            return ''
-        shell = get_supported_shell_name(cmd[0]) or ''
-    if not shell:
-        return ''
-    if shell == 'fish':
-        f = 'fish/vendor_conf.d/kitty-shell-integration.fish'
-    else:
-        f = f'kitty.{shell}'
-    return os.path.join(shell_integration_dir, f)
-
-
-def print_fish_paths() -> None:
-    print(fish_completions_dir, script_path('fish'), sep=os.pathsep)
