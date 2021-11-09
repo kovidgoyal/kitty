@@ -594,10 +594,11 @@ def visual_window_select_characters(x: str) -> str:
     import string
     valid_characters = string.digits + string.ascii_uppercase
     ans = x.upper()
-    if not all(ch in valid_characters for ch in ans):
-        raise ValueError(f'Invalid characters: {x} Only numbers (0-9) and alphabets (a-z,A-Z) are allowed. Ignoring.')
-    if len(set(ans)) < len(x):
-        raise ValueError(f'Invalid characters: {x} Contains identical numbers or alphabets, case insensitive. Ignoring.')
+    ans_chars = set(ans)
+    if not ans_chars.issubset(set(valid_characters)):
+        raise ValueError(f'Invalid characters in visual_window_select_characters: {x} Only numbers (0-9) and alphabets (a-z,A-Z) are allowed. Ignoring.')
+    if len(ans_chars) < len(x):
+        raise ValueError(f'Invalid characters in visual_window_select_characters: {x} Contains identical numbers or alphabets, case insensitive. Ignoring.')
     return ans
 
 

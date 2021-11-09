@@ -574,7 +574,7 @@ class Options:
     url_style: int = 3
     visual_bell_color: typing.Optional[kitty.fast_data_types.Color] = None
     visual_bell_duration: float = 0
-    visual_window_select_characters: str = ''
+    visual_window_select_characters: str = '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     wayland_titlebar_color: int = 0
     wheel_scroll_multiplier: float = 5.0
     window_alert_on_bell: bool = True

@@ -3,6 +3,7 @@
 
 # After editing this file run ./gen-config.py to apply the changes
 
+import string
 from kitty.conf.types import Action, Definition
 
 
@@ -888,13 +889,13 @@ does not currently work on Wayland.
 '''
     )
 
-opt('visual_window_select_characters', '',
+opt('visual_window_select_characters', defval=string.digits[1:] + '0' + string.ascii_uppercase,
     option_type='visual_window_select_characters',
     long_text='''
-The list of characters to use for visual window select. The value should be a
-series of unique numbers or alphabets, case insensitive. The default is the
-numbers 1 to 9, 0, and the alphabets A to Z. Specify your preference as a string
-of characters.
+The list of characters to use for visual window selection (for example for
+selecting a window to focus with :sc:`focus_visible_window`). The value should
+be a series of unique numbers or alphabets, case insensitive, from the set
+:code:`[0-9A-Z]`. Specify your preference as a string of characters.
 '''
     )
 

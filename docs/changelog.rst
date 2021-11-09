@@ -34,9 +34,6 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new remote control command to :program:`visually select a window <kitty @
   select-window>` (:iss:`4165`)
 
-- A new :opt:`visual_window_select_characters` option to specify the preferred
-  alphanumeric characters for visual window select (:pull:`4215`)
-
 - A new option :opt:`background_image_anchor` to *anchor* the background image
   to a position in the OS Window, useful for displaying images with logos or
   similar (:pull:`4167`)

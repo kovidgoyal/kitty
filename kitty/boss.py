@@ -964,8 +964,6 @@ class Boss:
         pending_sequences: SubSequenceMap = {}
         fmap = get_name_to_functional_number_map()
         alphanumerics = get_options().visual_window_select_characters
-        if not alphanumerics:
-            alphanumerics = string.digits[1:] + string.digits[0] + string.ascii_uppercase
         for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
             if only_window_ids and window.id not in only_window_ids:
                 continue

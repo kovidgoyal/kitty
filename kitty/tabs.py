@@ -600,7 +600,7 @@ class Tab:  # {{{
 
     @ac('win', '''
         Focus a visible window by pressing the number of the window. Window numbers are displayed
-        over the windows for easy selection in this mode.
+        over the windows for easy selection in this mode. See :opt:`visual_window_select_characters`.
         ''')
     def focus_visible_window(self) -> None:
         def callback(tab: Optional[Tab], window: Optional[Window]) -> None:
@@ -609,7 +609,7 @@ class Tab:  # {{{
 
         get_boss().visual_window_select_action(self, callback, 'Choose window to switch to', only_window_ids=self.all_window_ids_except_active_window)
 
-    @ac('win', 'Swap the current window with another window in the current tab, selected visually')
+    @ac('win', 'Swap the current window with another window in the current tab, selected visually. See :opt:`visual_window_select_characters`')
     def swap_with_window(self) -> None:
         def callback(tab: Optional[Tab], window: Optional[Window]) -> None:
             if tab and window:
