@@ -888,6 +888,16 @@ does not currently work on Wayland.
 '''
     )
 
+opt('visual_window_select_characters', '',
+    option_type='visual_window_select_characters',
+    long_text='''
+The list of characters to use for visual window select. The value should be a
+series of unique numbers or alphabets, case insensitive. The default is the
+numbers 1 to 9, 0, and the alphabets A to Z. Specify your preference as a string
+of characters.
+'''
+    )
+
 opt('confirm_os_window_close', '0',
     option_type='int',
     long_text='''

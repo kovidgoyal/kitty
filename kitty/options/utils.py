@@ -590,6 +590,17 @@ def resize_draw_strategy(x: str) -> int:
     return cmap.get(x.lower(), 0)
 
 
+def visual_window_select_characters(x: str) -> str:
+    import string
+    valid_characters = string.digits + string.ascii_uppercase
+    ans = x.upper()
+    if not all(ch in valid_characters for ch in ans):
+        raise ValueError(f'Invalid characters: {x} Only numbers (0-9) and alphabets (a-z,A-Z) are allowed. Ignoring.')
+    if len(set(ans)) < len(x):
+        raise ValueError(f'Invalid characters: {x} Contains identical numbers or alphabets, case insensitive. Ignoring.')
+    return ans
+
+
 def tab_separator(x: str) -> str:
     for q in '\'"':
         if x.startswith(q) and x.endswith(q):
