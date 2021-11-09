@@ -63,13 +63,16 @@ attrptr(HistoryBuf *self, index_type y) {
     seg_ptr(line_attrs, 1);
 }
 
+static size_t
+initial_pagerhist_ringbuf_sz(size_t pagerhist_sz) { return MIN(1024u * 1024u, pagerhist_sz); }
+
 static PagerHistoryBuf*
 alloc_pagerhist(size_t pagerhist_sz) {
     PagerHistoryBuf *ph;
     if (!pagerhist_sz) return NULL;
     ph = calloc(1, sizeof(PagerHistoryBuf));
     if (!ph) return NULL;
-    size_t sz = MIN(1024u * 1024u, pagerhist_sz);
+    size_t sz = initial_pagerhist_ringbuf_sz(pagerhist_sz);
     ph->ringbuf = ringbuf_new(sz);
     if (!ph->ringbuf) { free(ph); return NULL; }
     ph->maximum_size = pagerhist_sz;
@@ -99,7 +102,15 @@ pagerhist_extend(PagerHistoryBuf *ph, size_t minsz) {
 
 static void
 pagerhist_clear(HistoryBuf *self) {
-    if (self->pagerhist && self->pagerhist->ringbuf) ringbuf_reset(self->pagerhist->ringbuf);
+    if (self->pagerhist && self->pagerhist->ringbuf) {
+        ringbuf_reset(self->pagerhist->ringbuf);
+        size_t rsz = initial_pagerhist_ringbuf_sz(self->pagerhist->maximum_size);
+        void *rbuf = ringbuf_new(rsz);
+        if (rbuf) {
+            ringbuf_free((ringbuf_t*)&self->pagerhist->ringbuf);
+            self->pagerhist->ringbuf = rbuf;
+        }
+    }
 }
 
 static HistoryBuf*
