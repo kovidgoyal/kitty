@@ -28,6 +28,11 @@ add_segment(HistoryBuf *self) {
     s->line_attrs = (LineAttrs*)(((uint8_t*)s->gpu_cells) + gpu_cells_size);
 }
 
+static void
+free_segment(HistoryBufSegment *s) {
+    free(s->cpu_cells); memset(s, 0, sizeof(HistoryBufSegment));
+}
+
 static index_type
 segment_for(HistoryBuf *self, index_type y) {
     index_type seg_num = y / SEGMENT_SIZE;
@@ -127,7 +132,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 static void
 dealloc(HistoryBuf* self) {
     Py_CLEAR(self->line);
-    for (size_t i = 0; i < self->num_segments; i++) free(self->segments[i].cpu_cells);
+    for (size_t i = 0; i < self->num_segments; i++) free_segment(self->segments + i);
     free(self->segments);
     free_pagerhist(self);
     Py_TYPE(self)->tp_free((PyObject*)self);
