@@ -180,6 +180,8 @@ historybuf_clear(HistoryBuf *self) {
     pagerhist_clear(self);
     self->count = 0;
     self->start_of_data = 0;
+    for (size_t i = 1; i < self->num_segments; i++) free_segment(self->segments + i);
+    self->num_segments = 1;
 }
 
 static bool
