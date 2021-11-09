@@ -150,6 +150,9 @@ and you can move focus to neighboring windows using :kbd:`ctrl+arrow keys`.
 You can switch an existing split from horizontal to vertical and vice versa
 using :kbd:`F7`. Finally, windows can be resized using :ref:`window_resizing`.
 
+Note that you can swap the windows in a split using the ``rotate`` action with
+an argument of ``180`` and rotate and swap with an argument of ``270``.
+
 This layout takes one option, ``split_axis`` that controls whether new windows
 are placed into vertical or horizontal splits, by default::
 
