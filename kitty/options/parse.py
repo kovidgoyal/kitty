@@ -15,7 +15,8 @@ from kitty.options.utils import (
     parse_mouse_map, resize_draw_strategy, scrollback_lines, scrollback_pager_history_size, symbol_map,
     tab_activity_symbol, tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade,
     tab_font_style, tab_separator, tab_title_template, to_cursor_shape, to_font_size, to_layout_names,
-    to_modifiers, url_prefixes, url_style, watcher, window_border_width, window_size
+    to_modifiers, url_prefixes, url_style, visual_window_select_characters, watcher,
+    window_border_width, window_size
 )
 
 
@@ -1253,6 +1254,9 @@ class Parser:
 
     def visual_bell_duration(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['visual_bell_duration'] = positive_float(val)
+
+    def visual_window_select_characters(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['visual_window_select_characters'] = visual_window_select_characters(val)
 
     def watcher(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         for k, v in watcher(val, ans["watcher"]):

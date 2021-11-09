@@ -433,6 +433,7 @@ option_names = (  # {{{
  'url_style',
  'visual_bell_color',
  'visual_bell_duration',
+ 'visual_window_select_characters',
  'watcher',
  'wayland_titlebar_color',
  'wheel_scroll_multiplier',
@@ -573,6 +574,7 @@ class Options:
     url_style: int = 3
     visual_bell_color: typing.Optional[kitty.fast_data_types.Color] = None
     visual_bell_duration: float = 0
+    visual_window_select_characters: str = ''
     wayland_titlebar_color: int = 0
     wheel_scroll_multiplier: float = 5.0
     window_alert_on_bell: bool = True

@@ -963,18 +963,16 @@ class Boss:
             return
         pending_sequences: SubSequenceMap = {}
         fmap = get_name_to_functional_number_map()
-        alphabet = '0' + string.ascii_uppercase
+        alphanumerics = get_options().visual_window_select_characters
+        if not alphanumerics:
+            alphanumerics = string.digits[1:] + string.digits[0] + string.ascii_uppercase
         for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
             if only_window_ids and window.id not in only_window_ids:
                 continue
             ac = KeyAction('visual_window_select_action_trigger', (window.id,))
-            if idx >= 9:
-                num = idx - 9
-                if num >= len(alphabet):
-                    break
-                ch = alphabet[num]
-            else:
-                ch = str(idx + 1)
+            if idx >= len(alphanumerics):
+                break
+            ch = alphanumerics[idx]
             window.screen.set_window_char(ch)
             self.current_visual_select.window_ids.append(window.id)
             for mods in (0, GLFW_MOD_CONTROL, GLFW_MOD_CONTROL | GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_ALT, GLFW_MOD_SHIFT):
