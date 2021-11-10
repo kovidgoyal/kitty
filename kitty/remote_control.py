@@ -226,8 +226,18 @@ def main(args: List[str]) -> None:
     if hasattr(opts, 'response_timeout'):
         response_timeout = opts.response_timeout
     send = create_basic_command(cmd, payload=payload, no_response=no_response, is_asynchronous=c.is_asynchronous)
+    listen_on_from_env = False
     if not global_opts.to and 'KITTY_LISTEN_ON' in os.environ:
         global_opts.to = os.environ['KITTY_LISTEN_ON']
+        listen_on_from_env = False
+    if global_opts.to:
+        try:
+            parse_address_spec(global_opts.to)
+        except Exception:
+            msg = f'Invalid listen on address: {global_opts.to}'
+            if listen_on_from_env:
+                msg += '. The KITTY_LISTEN_ON environment variable is set incorrectly'
+            exit(msg)
     import socket
     try:
         response = do_io(global_opts.to, send, no_response, response_timeout)
