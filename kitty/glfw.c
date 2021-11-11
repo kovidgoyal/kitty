@@ -572,16 +572,16 @@ set_os_window_dpi(OSWindow *w) {
 }
 
 static bool
-do_toggle_fullscreen(OSWindow *w) {
+do_toggle_fullscreen(OSWindow *w, unsigned int flags, bool restore_sizes) {
     int width, height, x, y;
     glfwGetWindowSize(w->handle, &width, &height);
     glfwGetWindowPos(w->handle, &x, &y);
-    if (glfwToggleFullscreen(w->handle, 0)) {
+    if (glfwToggleFullscreen(w->handle, flags)) {
         w->before_fullscreen.is_set = true;
         w->before_fullscreen.w = width; w->before_fullscreen.h = height; w->before_fullscreen.x = x; w->before_fullscreen.y = y;
         return true;
     }
-    if (w->before_fullscreen.is_set) {
+    if (w->before_fullscreen.is_set && restore_sizes) {
         glfwSetWindowSize(w->handle, w->before_fullscreen.w, w->before_fullscreen.h);
         glfwSetWindowPos(w->handle, w->before_fullscreen.x, w->before_fullscreen.y);
     }
@@ -592,11 +592,9 @@ static bool
 toggle_fullscreen_for_os_window(OSWindow *w) {
     if (w && w->handle) {
 #ifdef __APPLE__
-        if (!OPT(macos_traditional_fullscreen)) {
-            return glfwToggleFullscreen(w->handle, 1);
-        }
+        if (!OPT(macos_traditional_fullscreen)) do_toggle_fullscreen(w, 1, false);
 #endif
-        return do_toggle_fullscreen(w);
+        return do_toggle_fullscreen(w, 0, true);
     }
     return false;
 }
