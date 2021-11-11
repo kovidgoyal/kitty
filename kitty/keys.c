@@ -80,8 +80,8 @@ active_window(void) {
 }
 
 static void
-update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
-    unsigned int cell_width = os_window->fonts_data->cell_width, cell_height = os_window->fonts_data->cell_height;
+update_ime_position(Window* w, Screen *screen) {
+    unsigned int cell_width = global_state.callback_os_window->fonts_data->cell_width, cell_height = global_state.callback_os_window->fonts_data->cell_height;
     unsigned int left = w->geometry.left, top = w->geometry.top;
     left += screen->cursor->x * cell_width;
     top += screen->cursor->y * cell_height;
@@ -130,7 +130,7 @@ on_key_input(GLFWkeyevent *ev) {
 
     switch(ev->ime_state) {
         case GLFW_IME_PREEDIT_CHANGED:
-            update_ime_position(global_state.callback_os_window, w, screen);
+            update_ime_position(w, screen);
             screen_draw_overlay_text(screen, text);
             debug("updated pre-edit text: '%s'\n", text);
             return;
@@ -145,7 +145,7 @@ on_key_input(GLFWkeyevent *ev) {
             // for macOS, update ime position on every key input
             // because the position is required before next input
 #if defined(__APPLE__)
-            update_ime_position(global_state.callback_os_window, w, screen);
+            update_ime_position(w, screen);
 #endif
             break;
         default:
