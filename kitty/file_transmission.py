@@ -12,7 +12,7 @@ from dataclasses import Field, dataclass, field, fields
 from enum import Enum, auto
 from functools import partial
 from gettext import gettext as _
-from itertools import chain
+from itertools import chain, count
 from time import monotonic
 from typing import (
     IO, Any, Callable, DefaultDict, Deque, Dict, Iterable, Iterator, List,
@@ -67,7 +67,11 @@ def split_for_transfer(
 
 
 def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union['FileTransmissionCommand', 'TransmissionError']]:
-    file_map: DefaultDict[str, List[FileTransmissionCommand]] = defaultdict(list)
+    file_map: DefaultDict[Tuple[int, int], List[FileTransmissionCommand]] = defaultdict(list)
+    counter = count()
+
+    def skey(sr: os.stat_result) -> Tuple[int, int]:
+        return sr.st_dev, sr.st_ino
 
     def make_ftc(path: str, spec_id: str, sr: Optional[os.stat_result] = None, parent: str = '') -> FileTransmissionCommand:
         if sr is None:
@@ -80,10 +84,12 @@ def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union[
             ftype = FileType.regular
         else:
             raise ValueError('Not an appropriate file type')
-        return FileTransmissionCommand(
+        ans = FileTransmissionCommand(
             action=Action.file, file_id=spec_id, mtime=sr.st_mtime_ns, permissions=stat.S_IMODE(sr.st_mode),
-            name=path, status=f'{sr.st_dev}:{sr.st_ino}', size=sr.st_size, ftype=ftype, parent=parent
+            name=path, status=str(next(counter)), size=sr.st_size, ftype=ftype, parent=parent
         )
+        file_map[skey(sr)].append(ans)
+        return ans
 
     for spec_id, spec in file_specs:
         path = spec
@@ -106,7 +112,6 @@ def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union[
         except ValueError:
             yield TransmissionError(file_id=spec_id, code='EINVAL', msg='Not a valid filetype')
             continue
-        file_map[ftc.status].append(ftc)
         if ftc.ftype is FileType.directory:
             try:
                 x_ok = os.access(path, os.X_OK)
@@ -117,15 +122,14 @@ def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union[
                 for dirpath, dirnames, filenames in di:
                     for dname in chain(dirnames, filenames):
                         try:
-                            dftc = make_ftc(os.path.join(dirpath, dname), spec_id, parent=ftc.status)
+                            make_ftc(os.path.join(dirpath, dname), spec_id, parent=ftc.status)
                         except (ValueError, OSError):
                             continue
-                        file_map[dftc.status].append(dftc)
-    for fkey, cmds in file_map.items():
-        base = cmds[0]
-        if base.ftype is FileType.symlink:
+
+    def resolve_symlink(ftc: FileTransmissionCommand) -> FileTransmissionCommand:
+        if ftc.ftype is FileType.symlink:
             try:
-                dest = os.path.realpath(base.name)
+                dest = os.path.realpath(ftc.name)
             except OSError:
                 pass
             else:
@@ -134,13 +138,17 @@ def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union[
                 except OSError:
                     pass
                 else:
-                    fkey = f'{s.st_dev}:{s.st_ino}'
-                    if fkey in file_map:
-                        base.data = fkey.encode('utf-8', 'replace')
-        yield base
+                    tgt = file_map.get(skey(s))
+                    if tgt is not None:
+                        ftc.data = tgt[0].status.encode('utf-8')
+        return ftc
+
+    for fkey, cmds in file_map.items():
+        base = cmds[0]
+        yield resolve_symlink(base)
         if len(cmds) > 1 and base.ftype is FileType.regular:
-            for q in cmds[1:]:
-                if q.ftype is FileType.regular:
+            for q in cmds:
+                if q is not base and q.ftype is FileType.regular:
                     q.ftype = FileType.link
                     q.data = base.status.encode('utf-8', 'replace')
                     yield q

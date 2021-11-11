@@ -238,16 +238,18 @@ class Manager:
                 try:
                     os.makedirs(f.expanded_local_path, exist_ok=True)
                 except OSError as err:
-                    return str(err)
+                    return f'Failed to create directory with error: {err}'
             elif f.ftype is FileType.link:
                 target = rid_map.get(f.remote_target)
                 if target is None:
                     return f'Hard link with remote id: {f.remote_target} not found'
                 try:
                     os.makedirs(os.path.dirname(f.expanded_local_path), exist_ok=True)
+                    with suppress(FileNotFoundError):
+                        os.remove(f.expanded_local_path)
                     os.link(target.expanded_local_path, f.expanded_local_path)
                 except OSError as err:
-                    return str(err)
+                    return f'Failed to create hardlink with error: {err}'
             elif f.ftype is FileType.symlink:
                 if f.remote_target:
                     target = rid_map.get(f.remote_target)
@@ -258,7 +260,12 @@ class Manager:
                         lt = os.path.relpath(lt, os.path.dirname(f.expanded_local_path))
                 else:
                     lt = f.remote_symlink_value.decode('utf-8')
-                os.symlink(lt, f.expanded_local_path)
+                with suppress(FileNotFoundError):
+                    os.remove(f.expanded_local_path)
+                try:
+                    os.symlink(lt, f.expanded_local_path)
+                except OSError as err:
+                    return f'Failed to create symlink with error: {err}'
             with suppress(OSError):
                 f.apply_metadata()
         return ''
@@ -274,9 +281,9 @@ class Manager:
 
     def collect_files(self, cli_opts: TransferCLIOptions) -> None:
         self.files = list(files_for_receive(cli_opts, self.dest, self.files, self.remote_home, self.spec))
-        self.progress_tracker.total_size_of_all_files = sum(max(0, f.expected_size) for f in self.files)
+        self.files_to_be_transferred = {f.file_id: f for f in self.files if f.ftype not in (FileType.directory, FileType.link)}
+        self.progress_tracker.total_size_of_all_files = sum(max(0, f.expected_size) for f in self.files_to_be_transferred.values())
         self.progress_tracker.total_bytes_to_transfer = self.progress_tracker.total_size_of_all_files
-        self.fid_map = {f.file_id: f for f in self.files}
 
     def on_file_transfer_response(self, ftc: FileTransmissionCommand) -> str:
         if self.state is State.waiting_for_permission:
@@ -317,7 +324,7 @@ class Manager:
                 return f'Unexpected response from terminal: {ftc}'
         elif self.state is State.transferring:
             if ftc.action in (Action.data, Action.end_data):
-                f = self.fid_map.get(ftc.file_id)
+                f = self.files_to_be_transferred.get(ftc.file_id)
                 if f is None:
                     return f'Got data for unknown file id: {ftc.file_id}'
                 is_last = ftc.action is Action.end_data
@@ -327,8 +334,8 @@ class Manager:
                     return str(err)
                 self.progress_tracker.file_written(f, amt_written, is_last)
                 if is_last:
-                    del self.fid_map[ftc.file_id]
-                    if not self.fid_map:
+                    del self.files_to_be_transferred[ftc.file_id]
+                    if not self.files_to_be_transferred:
                         return self.finalize_transfer()
         return ''
 
