@@ -1533,7 +1533,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 - (void)doCommandBySelector:(SEL)selector
 {
-    if (_glfw.hints.init.debugKeyboard) NSLog(@"\n\tdoCommandBySelector: (%@)\n", NSStringFromSelector(selector));
+    debug_key("\n\tdoCommandBySelector: (%s)\n", [NSStringFromSelector(selector) UTF8String]);
 }
 
 @end
