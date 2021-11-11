@@ -592,7 +592,9 @@ static bool
 toggle_fullscreen_for_os_window(OSWindow *w) {
     if (w && w->handle) {
 #ifdef __APPLE__
-        if (!OPT(macos_traditional_fullscreen)) return glfwToggleFullscreen(w->handle, 1);
+        if (!OPT(macos_traditional_fullscreen)) {
+            return glfwToggleFullscreen(w->handle, 1);
+        }
 #endif
         return do_toggle_fullscreen(w);
     }

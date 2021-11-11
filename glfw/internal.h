@@ -717,6 +717,7 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window, _GLFWmonitor* monitor,
                                    int xpos, int ypos, int width, int height,
                                    int refreshRate);
 bool _glfwPlatformToggleFullscreen(_GLFWwindow *w, unsigned int flags);
+bool _glfwPlatformIsFullscreen(_GLFWwindow *w, unsigned int flags);
 int _glfwPlatformWindowFocused(_GLFWwindow* window);
 int _glfwPlatformWindowOccluded(_GLFWwindow* window);
 int _glfwPlatformWindowIconified(_GLFWwindow* window);

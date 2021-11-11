@@ -1058,6 +1058,10 @@ GLFWAPI bool glfwToggleFullscreen(GLFWwindow* wh, unsigned int flags) {
     return false;
 }
 
+GLFWAPI bool glfwIsFullscreen(GLFWwindow* wh, unsigned int flags) {
+    return _glfwPlatformIsFullscreen((_GLFWwindow*)wh, flags);
+}
+
 GLFWAPI void glfwSetWindowUserPointer(GLFWwindow* handle, void* pointer)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;

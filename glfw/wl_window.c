@@ -413,9 +413,15 @@ static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on)
     setIdleInhibitor(window, on);
 }
 
+
+bool
+_glfwPlatformIsFullscreen(_GLFWwindow *window, unsigned int flags UNUSED) {
+    return window->wl.toplevel_states & TOPLEVEL_STATE_FULLSCREEN;
+}
+
 bool
 _glfwPlatformToggleFullscreen(_GLFWwindow *window, unsigned int flags UNUSED) {
-    bool already_fullscreen = window->wl.toplevel_states & TOPLEVEL_STATE_FULLSCREEN;
+    bool already_fullscreen = _glfwPlatformIsFullscreen(window, flags);
     setFullscreen(window, NULL, !already_fullscreen);
     return !already_fullscreen;
 }

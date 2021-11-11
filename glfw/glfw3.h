@@ -2752,6 +2752,7 @@ GLFWAPI void glfwWindowHintString(int hint, const char* value);
  */
 GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height, const char* title, GLFWmonitor* monitor, GLFWwindow* share);
 GLFWAPI bool glfwToggleFullscreen(GLFWwindow *window, unsigned int flags);
+GLFWAPI bool glfwIsFullscreen(GLFWwindow *window, unsigned int flags);
 
 /*! @brief Destroys the specified window and its context.
  *

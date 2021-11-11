@@ -344,6 +344,11 @@ set_fullscreen(_GLFWwindow *window, bool on) {
 }
 
 bool
+_glfwPlatformIsFullscreen(_GLFWwindow *window, unsigned int flags UNUSED) {
+    return is_window_fullscreen(window);
+}
+
+bool
 _glfwPlatformToggleFullscreen(_GLFWwindow *window, unsigned int flags UNUSED) {
     bool already_fullscreen = is_window_fullscreen(window);
     set_fullscreen(window, !already_fullscreen);
