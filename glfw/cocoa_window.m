@@ -1222,7 +1222,7 @@ is_ascii_control_char(char x) {
     const int mods = translateFlags(flags);
     const uint32_t key = translateKey(keycode, true);
     const bool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, keycode, flags) != 1;
-    [self unmarkText];
+    [[markedText mutableString] setString:@""];
     _glfw.ns.text[0] = 0;
     GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .action = GLFW_PRESS, .mods = mods};
     if (!_glfw.ns.unicodeData) {
@@ -1278,7 +1278,7 @@ is_ascii_control_char(char x) {
         }
     }
     if (is_ascii_control_char(_glfw.ns.text[0])) _glfw.ns.text[0] = 0;  // don't send text for ascii control codes
-    debug_key("text: %s glfw_key: %s marked_text: %s\n",
+    debug_key("text: %s glfw_key: %s marked_text: (%s)\n",
             format_text(_glfw.ns.text), _glfwGetKeyName(key), [[markedText string] UTF8String]);
     if (!window->ns.deadKeyState) {
         if ([self hasMarkedText]) {
@@ -1442,10 +1442,14 @@ is_ascii_control_char(char x) {
 {
     (void)selectedRange; (void)replacementRange;
     [markedText release];
-    if ([string isKindOfClass:[NSAttributedString class]])
+    if (string == nil) { [self unmarkText]; return; }
+    if ([string isKindOfClass:[NSAttributedString class]]) {
+        if (((NSMutableAttributedString*)string).length == 0) { [self unmarkText]; return; }
         markedText = [[NSMutableAttributedString alloc] initWithAttributedString:string];
-    else
+    } else {
+        if (((NSString*)string).length == 0) { [self unmarkText]; return; }
         markedText = [[NSMutableAttributedString alloc] initWithString:string];
+    }
 }
 
 - (void)unmarkText
