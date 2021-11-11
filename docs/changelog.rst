@@ -135,6 +135,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - A new mappable action to close windows with a confirmation (:iss:`4195`)
 
+- When remembering OS window sizes for full screen windows use the size before
+  the window became fullscreen (:iss:`4221`)
+
 
 0.23.1 [2021-08-17]
 ----------------------

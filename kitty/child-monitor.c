@@ -929,8 +929,13 @@ process_pending_resizes(monotonic_t now) {
 
 static void
 close_os_window(ChildMonitor *self, OSWindow *os_window) {
+    int w = os_window->window_width, h = os_window->window_height;
+    if (os_window->before_fullscreen.is_set && is_os_window_fullscreen(os_window)) {
+        printf("11111111111111 w=%d h=%d bw: %d bh: %d\n", w, h, os_window->before_fullscreen.w, os_window->before_fullscreen.h);
+        w = os_window->before_fullscreen.w; h = os_window->before_fullscreen.h;
+    }
     destroy_os_window(os_window);
-    call_boss(on_os_window_closed, "Kii", os_window->id, os_window->window_width, os_window->window_height);
+    call_boss(on_os_window_closed, "Kii", os_window->id, w, h);
     for (size_t t=0; t < os_window->num_tabs; t++) {
         Tab *tab = os_window->tabs + t;
         for (size_t w = 0; w < tab->num_windows; w++) mark_child_for_close(self, tab->windows[w].id);
