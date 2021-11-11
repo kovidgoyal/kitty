@@ -38,6 +38,16 @@
 #define NSControlStateValueMixed NSMixedState
 #endif
 
+static const char*
+polymorphic_string_as_utf8(id string) {
+    if (string == nil) return "(nil)";
+    NSString* characters;
+    if ([string isKindOfClass:[NSAttributedString class]])
+        characters = [string string];
+    else
+        characters = (NSString*) string;
+    return [characters UTF8String];
+}
 
 static uint32_t
 vk_code_to_functional_key_code(uint8_t key_code) {  // {{{
@@ -1443,7 +1453,7 @@ is_ascii_control_char(char x) {
         selectedRange:(NSRange)selectedRange
      replacementRange:(NSRange)replacementRange
 {
-    (void)selectedRange; (void)replacementRange;
+    debug_key("\n\tsetMarkedText: %s selectedRange: (%lu, %lu) replacementRange: (%lu, %lu)\n", polymorphic_string_as_utf8(string), selectedRange.location, selectedRange.length, replacementRange.location, replacementRange.length);
     if (string == nil) { [self unmarkText]; return; }
     if ([string isKindOfClass:[NSAttributedString class]]) {
         if (((NSMutableAttributedString*)string).length == 0) { [self unmarkText]; return; }
@@ -1512,21 +1522,17 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 - (void)insertText:(id)string replacementRange:(NSRange)replacementRange
 {
-    (void)replacementRange;
-    NSString* characters;
-    if ([string isKindOfClass:[NSAttributedString class]])
-        characters = [string string];
-    else
-        characters = (NSString*) string;
+    const char *utf8 = polymorphic_string_as_utf8(string);
+    debug_key("\n\tinsertText: %s replacementRange: (%lu, %lu)\n", utf8, replacementRange.location, replacementRange.length);
     // insertText can be called multiple times for a single key event
     char *s = _glfw.ns.text + strnlen(_glfw.ns.text, sizeof(_glfw.ns.text));
-    snprintf(s, sizeof(_glfw.ns.text) - (s - _glfw.ns.text), "%s", [characters UTF8String]);
+    snprintf(s, sizeof(_glfw.ns.text) - (s - _glfw.ns.text), "%s", utf8);
     _glfw.ns.text[sizeof(_glfw.ns.text) - 1] = 0;
 }
 
 - (void)doCommandBySelector:(SEL)selector
 {
-    (void)selector;
+    if (_glfw.hints.init.debugKeyboard) NSLog(@"\n\tdoCommandBySelector: (%@)\n", NSStringFromSelector(selector));
 }
 
 @end
