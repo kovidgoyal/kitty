@@ -1441,13 +1441,14 @@ is_ascii_control_char(char x) {
      replacementRange:(NSRange)replacementRange
 {
     (void)selectedRange; (void)replacementRange;
-    [markedText release];
     if (string == nil) { [self unmarkText]; return; }
     if ([string isKindOfClass:[NSAttributedString class]]) {
         if (((NSMutableAttributedString*)string).length == 0) { [self unmarkText]; return; }
+        [markedText release];
         markedText = [[NSMutableAttributedString alloc] initWithAttributedString:string];
     } else {
         if (((NSString*)string).length == 0) { [self unmarkText]; return; }
+        [markedText release];
         markedText = [[NSMutableAttributedString alloc] initWithString:string];
     }
 }
