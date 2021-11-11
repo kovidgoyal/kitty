@@ -2410,7 +2410,7 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor UNUSED)
 bool _glfwPlatformIsFullscreen(_GLFWwindow* w, unsigned int flags) {
     NSWindow *window = w->ns.object;
     bool traditional = !(flags & 1);
-    if (traditional && @available(macOS 10.16, *)) return w->ns.in_traditional_fullscreen;
+    if (traditional) { if(@available(macOS 10.16, *)) return w->ns.in_traditional_fullscreen; }
     NSWindowStyleMask sm = [window styleMask];
     return sm & NSWindowStyleMaskFullScreen;
 }
