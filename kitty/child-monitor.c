@@ -931,7 +931,6 @@ static void
 close_os_window(ChildMonitor *self, OSWindow *os_window) {
     int w = os_window->window_width, h = os_window->window_height;
     if (os_window->before_fullscreen.is_set && is_os_window_fullscreen(os_window)) {
-        printf("11111111111111 w=%d h=%d bw: %d bh: %d\n", w, h, os_window->before_fullscreen.w, os_window->before_fullscreen.h);
         w = os_window->before_fullscreen.w; h = os_window->before_fullscreen.h;
     }
     destroy_os_window(os_window);
