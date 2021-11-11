@@ -3,6 +3,7 @@
 
 import os
 import posixpath
+from asyncio import TimerHandle
 from collections import deque
 from contextlib import suppress
 from enum import auto
@@ -11,7 +12,7 @@ from time import monotonic
 from typing import Deque, Dict, Iterator, List, Optional
 
 from kitty.cli_stub import TransferCLIOptions
-from kitty.fast_data_types import FILE_TRANSFER_CODE
+from kitty.fast_data_types import FILE_TRANSFER_CODE, wcswidth
 from kitty.file_transmission import (
     Action, Compression, FileTransmissionCommand, FileType, NameReprEnum,
     encode_bypass
@@ -22,9 +23,13 @@ from kitty.utils import sanitize_control_codes
 from ..tui.handler import Handler
 from ..tui.loop import Loop, debug
 from ..tui.operations import styled, without_line_wrap
+from ..tui.spinners import Spinner
 from ..tui.utils import human_size
 from .send import Transfer
-from .utils import expand_home, random_id, should_be_compressed
+from .utils import (
+    expand_home, random_id, render_progress_in_width, safe_divide,
+    should_be_compressed
+)
 
 debug
 file_counter = count(1)
@@ -172,6 +177,7 @@ class ProgressTracker:
         self.transfered_stats_interval = 0.
         self.started_at = 0.
         self.signature_bytes = 0
+        self.done_files: List[File] = []
 
     def change_active_file(self, nf: File) -> None:
         now = monotonic()
@@ -183,7 +189,8 @@ class ProgressTracker:
         self.started_at = monotonic()
 
     def file_written(self, af: File, amt: int, is_done: bool) -> None:
-        self.active_file = af
+        if self.active_file is not af:
+            self.change_active_file(af)
         af.transmitted_bytes += amt
         self.total_transferred += amt
         self.transfers.append(Transfer(amt))
@@ -194,6 +201,7 @@ class ProgressTracker:
         self.transfered_stats_amt = sum(t.amt for t in self.transfers)
         if is_done:
             af.done_at = monotonic()
+            self.done_files.append(af)
 
 
 class Manager:
@@ -334,6 +342,10 @@ class Receive(Handler):
         self.quit_after_write_code: Optional[int] = None
         self.check_paths_printed = False
         self.transmit_started = False
+        self.max_name_length = 0
+        self.spinner = Spinner()
+        self.progress_update_call: Optional[TimerHandle] = None
+        self.progress_drawn = False
 
     def send_payload(self, payload: str) -> None:
         self.write(self.manager.prefix)
@@ -382,10 +394,10 @@ class Receive(Handler):
             else:
                 self.start_transfer()
         if self.manager.transfer_done:
-            self.exit_after_completion()
-
-    def exit_after_completion(self) -> None:
-        self.quit_loop(0)
+            self.quit_after_write_code = 0
+            self.refresh_progress()
+        elif self.transmit_started:
+            self.refresh_progress()
 
     def confirm_paths(self) -> None:
         self.print_check_paths()
@@ -438,6 +450,8 @@ class Receive(Handler):
         self.print(f'Queueing transfer of {len(self.manager.files)} files(s)')
         for x in self.manager.request_files():
             self.send_payload(x)
+        names = (f.display_name for f in self.manager.files)
+        self.max_name_length = max(6, max(map(wcswidth, names)))
 
     def print_err(self, msg: str) -> None:
         self.cmd.styled(msg, fg='red')
@@ -463,12 +477,89 @@ class Receive(Handler):
         self.manager.state = State.canceled
         self.asyncio_loop.call_later(delay, self.quit_loop, 1)
 
+    def render_progress(
+        self, name: str, spinner_char: str = ' ', bytes_so_far: int = 0, total_bytes: int = 0,
+        secs_so_far: float = 0., bytes_per_sec: float = 0., is_complete: bool = False
+    ) -> None:
+        if is_complete:
+            bytes_so_far = total_bytes
+        self.write(render_progress_in_width(
+            name, width=self.screen_size.cols, max_path_length=self.max_name_length, spinner_char=spinner_char,
+            bytes_so_far=bytes_so_far, total_bytes=total_bytes, secs_so_far=secs_so_far,
+            bytes_per_sec=bytes_per_sec, is_complete=is_complete
+        ))
+
+    def draw_progress_for_current_file(self, af: File, spinner_char: str = ' ', is_complete: bool = False) -> None:
+        p = self.manager.progress_tracker
+        now = monotonic()
+        self.render_progress(
+            af.display_name, spinner_char=spinner_char, is_complete=is_complete,
+            bytes_so_far=af.transmitted_bytes, total_bytes=af.expected_size,
+            secs_so_far=(af.done_at or now) - af.transmit_started_at,
+            bytes_per_sec=safe_divide(p.transfered_stats_amt, p.transfered_stats_interval)
+        )
+
+    def erase_progress(self) -> None:
+        if self.progress_drawn:
+            self.cmd.move_cursor_by(2, 'up')
+            self.write('\r')
+            self.cmd.clear_to_end_of_screen()
+            self.progress_drawn = False
+
+    def refresh_progress(self) -> None:
+        self.erase_progress()
+        self.draw_progress()
+
+    def schedule_progress_update(self, delay: float = 0.1) -> None:
+        if self.progress_update_call is None:
+            self.progress_update_call = self.asyncio_loop.call_later(delay, self.refresh_progress)
+        elif self.asyncio_loop.time() + delay < self.progress_update_call.when():
+            self.progress_update_call.cancel()
+            self.progress_update_call = self.asyncio_loop.call_later(delay, self.refresh_progress)
+
     @Handler.atomic_update
     def draw_progress(self) -> None:
         if self.manager.state is State.canceled:
             return
         with without_line_wrap(self.write):
-            pass
+            for df in self.manager.progress_tracker.done_files:
+                sc = styled('✔', fg='green')
+                if df.ftype is FileType.regular:
+                    self.draw_progress_for_current_file(df, spinner_char=sc, is_complete=True)
+                else:
+                    self.write(f'{sc} {df.display_name} {styled(df.ftype.name, dim=True, italic=True)}')
+                self.print()
+            del self.manager.progress_tracker.done_files[:]
+            is_complete = self.quit_after_write_code is not None
+            if is_complete:
+                sc = styled('✔', fg='green') if self.quit_after_write_code == 0 else styled('✘', fg='red')
+            else:
+                sc = self.spinner()
+            p = self.manager.progress_tracker
+            now = monotonic()
+            if is_complete:
+                self.cmd.repeat('─', self.screen_size.width)
+            else:
+                af = p.active_file
+                if af is not None:
+                    self.draw_progress_for_current_file(af, spinner_char=sc)
+            self.print()
+            if p.total_transferred > 0:
+                self.render_progress(
+                    'Total', spinner_char=sc,
+                    bytes_so_far=p.total_transferred, total_bytes=p.total_bytes_to_transfer,
+                    secs_so_far=now - p.started_at, is_complete=is_complete,
+                    bytes_per_sec=safe_divide(p.transfered_stats_amt, p.transfered_stats_interval)
+                )
+            else:
+                self.print('File data transfer has not yet started', end='')
+            self.print()
+        self.schedule_progress_update(self.spinner.interval)
+        self.progress_drawn = True
+
+    def on_writing_finished(self) -> None:
+        if self.quit_after_write_code is not None:
+            self.quit_loop(self.quit_after_write_code)
 
 
 def receive_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
