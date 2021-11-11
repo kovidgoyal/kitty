@@ -1732,6 +1732,10 @@ typedef bool (*glfwToggleFullscreen_func)(GLFWwindow*, unsigned int);
 GFW_EXTERN glfwToggleFullscreen_func glfwToggleFullscreen_impl;
 #define glfwToggleFullscreen glfwToggleFullscreen_impl
 
+typedef bool (*glfwIsFullscreen_func)(GLFWwindow*, unsigned int);
+GFW_EXTERN glfwIsFullscreen_func glfwIsFullscreen_impl;
+#define glfwIsFullscreen glfwIsFullscreen_impl
+
 typedef void (*glfwDestroyWindow_func)(GLFWwindow*);
 GFW_EXTERN glfwDestroyWindow_func glfwDestroyWindow_impl;
 #define glfwDestroyWindow glfwDestroyWindow_impl

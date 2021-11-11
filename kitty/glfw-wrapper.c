@@ -114,6 +114,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwToggleFullscreen_impl) = dlsym(handle, "glfwToggleFullscreen");
     if (glfwToggleFullscreen_impl == NULL) fail("Failed to load glfw function glfwToggleFullscreen with error: %s", dlerror());
 
+    *(void **) (&glfwIsFullscreen_impl) = dlsym(handle, "glfwIsFullscreen");
+    if (glfwIsFullscreen_impl == NULL) fail("Failed to load glfw function glfwIsFullscreen with error: %s", dlerror());
+
     *(void **) (&glfwDestroyWindow_impl) = dlsym(handle, "glfwDestroyWindow");
     if (glfwDestroyWindow_impl == NULL) fail("Failed to load glfw function glfwDestroyWindow with error: %s", dlerror());
 
