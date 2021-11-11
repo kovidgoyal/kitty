@@ -32,3 +32,7 @@ See `discussion here
 <https://gitlab.freedesktop.org/terminal-wg/specifications/-/issues/30>`_.
 
 .. versionadded:: 0.20.2
+
+Also supported by the terminals:
+
+    * `mintty <https://github.com/mintty/mintty/releases/tag/3.5.2>`_
