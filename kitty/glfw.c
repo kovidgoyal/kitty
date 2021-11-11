@@ -599,6 +599,16 @@ toggle_fullscreen_for_os_window(OSWindow *w) {
     return false;
 }
 
+bool
+is_os_window_fullscreen(OSWindow *w) {
+    unsigned int flags = 0;
+#ifdef __APPLE__
+    if (!OPT(macos_traditional_fullscreen)) flags = 1;
+#endif
+    if (w && w->handle) return glfwIsFullscreen(w->handle, flags);
+    return false;
+}
+
 static bool
 toggle_maximized_for_os_window(OSWindow *w) {
     bool maximized = false;
