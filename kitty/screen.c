@@ -1195,10 +1195,13 @@ screen_set_tab_stop(Screen *self) {
 
 void
 screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
+    PyObject *overlay_text = NULL;
+    if (self->overlay_line.is_active) { overlay_text = get_overlay_text(self); deactivate_overlay_line(self); }
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->x) self->cursor->x = 0;
     else self->cursor->x += move_direction * count;
     screen_ensure_bounds(self, false, cursor_within_margins(self));
+    if (overlay_text) { screen_draw_overlay_text(self, PyUnicode_AsUTF8(overlay_text)); Py_DECREF(overlay_text); }
 }
 
 void
