@@ -584,9 +584,9 @@ class Boss:
         window = self.window_id_map.pop(window_id, None)
         if window is None:
             return
-        if window.action_on_close:
+        for close_action in window.actions_on_close:
             try:
-                window.action_on_close(window)
+                close_action(window)
             except Exception:
                 import traceback
                 traceback.print_exc()
@@ -602,13 +602,13 @@ class Boss:
         if tab is not None:
             tab.remove_window(window)
             self._cleanup_tab_after_window_removal(tab)
-        if window.action_on_removal:
+        for removal_action in window.actions_on_removal:
             try:
-                window.action_on_removal(window)
+                removal_action(window)
             except Exception:
                 import traceback
                 traceback.print_exc()
-        window.action_on_close = window.action_on_removal = None
+        del window.actions_on_close[:], window.actions_on_removal[:]
         window = self.active_window
         if window is not prev_active_window:
             if prev_active_window is not None:
@@ -1346,13 +1346,13 @@ class Boss:
                 copy_colors_from=w
             )
             wid = w.id
-            overlay_window.action_on_close = partial(self.on_kitten_finish, wid, custom_callback or end_kitten)
+            overlay_window.actions_on_close.append(partial(self.on_kitten_finish, wid, custom_callback or end_kitten))
             if action_on_removal is not None:
 
                 def callback_wrapper(*a: Any) -> None:
                     if action_on_removal is not None:
                         action_on_removal(wid, self)
-                overlay_window.action_on_removal = callback_wrapper
+                overlay_window.actions_on_removal.append(callback_wrapper)
             return overlay_window
 
     @ac('misc', 'Run the specified kitten. See :doc:`/kittens/custom` for details')
