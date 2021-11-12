@@ -794,6 +794,7 @@ screen_alignment_display(Screen *self) {
 
 void
 select_graphic_rendition(Screen *self, int *params, unsigned int count, Region *region_) {
+    MOVE_OVERLAY_LINE_WITH_CURSOR;  // needed in case colors have changed
     if (region_) {
         Region region = *region_;
         if (!region.top) region.top = 1;
