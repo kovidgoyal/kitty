@@ -745,6 +745,7 @@ screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
     }
     draw_impl(self, och, from_input_stream);
     if (overlay_text) {
+        debug("Received char (0x%x) from child while overlay active. Overlay contents: %s\n", och, PyUnicode_AsUTF8(overlay_text));
         screen_draw_overlay_text(self, PyUnicode_AsUTF8(overlay_text));
         Py_DECREF(overlay_text);
         update_ime_position_for_window(self->window_id);
