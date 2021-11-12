@@ -569,7 +569,7 @@ send_pending_click_to_window_id(id_type timer_id UNUSED, void *data) {
     }
 }
 
-static bool
+bool
 update_ime_position_for_window(id_type window_id) {
     for (size_t o = 0; o < global_state.num_os_windows; o++) {
         OSWindow *osw = global_state.os_windows + o;
@@ -578,7 +578,7 @@ update_ime_position_for_window(id_type window_id) {
             for (size_t w = 0; w < qtab->num_windows; w++) {
                 Window *window = qtab->windows + w;
                 if (window->id == window_id) {
-                    if (window->render_data.screen) {
+                    if (window->render_data.screen && osw->is_focused) {
                         OSWindow *orig = global_state.callback_os_window;
                         global_state.callback_os_window = osw;
                         update_ime_position(window, window->render_data.screen);
