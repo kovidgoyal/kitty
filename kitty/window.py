@@ -704,6 +704,7 @@ class Window:
         call_watchers(weakref.ref(self), 'on_focus_change', {'focused': focused})
         self.screen.focus_changed(focused)
         if focused:
+            update_ime_position_for_window(self.id)
             changed = self.needs_attention
             self.needs_attention = False
             if changed:
