@@ -882,6 +882,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     NSTrackingArea* trackingArea;
     NSMutableAttributedString* markedText;
     NSRect markedRect;
+    bool marked_text_cleared_by_insert;
     NSString *input_source_at_last_key_event;
 }
 
@@ -1215,6 +1216,9 @@ is_ascii_control_char(char x) {
 
 - (void)keyDown:(NSEvent *)event
 {
+#define CLEAR_PRE_EDIT_TEXT glfw_keyevent.text = NULL; glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED; _glfwInputKeyboard(window, &glfw_keyevent);
+#define UPDATE_PRE_EDIT_TEXT glfw_keyevent.text = [[markedText string] UTF8String]; glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED; _glfwInputKeyboard(window, &glfw_keyevent);
+
     const bool previous_has_marked_text = [self hasMarkedText];
     NSTextInputContext *inpctx = [NSTextInputContext currentInputContext];
     if (inpctx && (!input_source_at_last_key_event || ![input_source_at_last_key_event isEqualToString:inpctx.selectedKeyboardInputSource])) {
@@ -1267,6 +1271,7 @@ is_ascii_control_char(char x) {
         }
         debug_key("\x1b[31mPress:\x1b[m native_key: 0x%x (%s) glfw_key: 0x%x %schar_count: %lu deadKeyState: %u repeat: %d ",
                 keycode, safe_name_for_keycode(keycode), key, format_mods(mods), char_count, window->ns.deadKeyState, event.ARepeat);
+        marked_text_cleared_by_insert = false;
         if (process_text) {
             // this will call insertText which will fill up _glfw.ns.text
             [self interpretKeyEvents:[NSArray arrayWithObject:event]];
@@ -1275,41 +1280,46 @@ is_ascii_control_char(char x) {
         }
         if (window->ns.deadKeyState && (char_count == 0 || keycode == 0x75)) {
             // 0x75 is the delete key which needs to be ignored during a compose sequence
-            glfw_keyevent.text = [[markedText string] UTF8String];
             debug_key("Sending pre-edit text for dead key (text: %s markedText: %s).\n", format_text(_glfw.ns.text), glfw_keyevent.text);
-            glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;
-            _glfwInputKeyboard(window, &glfw_keyevent); // update pre-edit text
+            UPDATE_PRE_EDIT_TEXT;
             return;
         }
         if (in_compose_sequence) {
             debug_key("Clearing pre-edit text at end of compose sequence\n");
-            glfw_keyevent.text = NULL;
-            glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;
-            _glfwInputKeyboard(window, &glfw_keyevent); // clear pre-edit text
+            CLEAR_PRE_EDIT_TEXT;
         }
     }
     if (is_ascii_control_char(_glfw.ns.text[0])) _glfw.ns.text[0] = 0;  // don't send text for ascii control codes
     debug_key("text: %s glfw_key: %s marked_text: (%s)\n",
             format_text(_glfw.ns.text), _glfwGetKeyName(key), [[markedText string] UTF8String]);
+    bool bracketed_ime = false;
     if (!window->ns.deadKeyState) {
         if ([self hasMarkedText]) {
-            glfw_keyevent.text = [[markedText string] UTF8String];
-            glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;
-            _glfwInputKeyboard(window, &glfw_keyevent); // update pre-edit text
+            if (!marked_text_cleared_by_insert) {
+                UPDATE_PRE_EDIT_TEXT;
+            } else bracketed_ime = true;
         } else if (previous_has_marked_text) {
-            glfw_keyevent.text = NULL;
-            glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;
-            _glfwInputKeyboard(window, &glfw_keyevent); // clear pre-edit text
+            CLEAR_PRE_EDIT_TEXT;
         }
         if (([self hasMarkedText] || previous_has_marked_text) && !_glfw.ns.text[0]) {
             // do not pass keys like BACKSPACE while there's pre-edit text, let IME handle it
             return;
         }
     }
+    if (bracketed_ime) {
+        // insertText followed by setMarkedText
+        CLEAR_PRE_EDIT_TEXT;
+    }
     glfw_keyevent.text = _glfw.ns.text;
     glfw_keyevent.ime_state = GLFW_IME_NONE;
     add_alternate_keys(&glfw_keyevent, event);
     _glfwInputKeyboard(window, &glfw_keyevent);
+    if (bracketed_ime) {
+        // insertText followed by setMarkedText
+        UPDATE_PRE_EDIT_TEXT;
+    }
+#undef CLEAR_PRE_EDIT_TEXT
+#undef UPDATE_PRE_EDIT_TEXT
 }
 
 - (void)flagsChanged:(NSEvent *)event
@@ -1521,7 +1531,10 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 {
     const char *utf8 = polymorphic_string_as_utf8(string);
     debug_key("\n\tinsertText: %s replacementRange: (%lu, %lu)\n", utf8, replacementRange.location, replacementRange.length);
-    if ([self hasMarkedText]) [self unmarkText];
+    if ([self hasMarkedText]) {
+        [self unmarkText];
+        marked_text_cleared_by_insert = true;
+    }
     // insertText can be called multiple times for a single key event
     char *s = _glfw.ns.text + strnlen(_glfw.ns.text, sizeof(_glfw.ns.text));
     snprintf(s, sizeof(_glfw.ns.text) - (s - _glfw.ns.text), "%s", utf8);
