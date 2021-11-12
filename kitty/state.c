@@ -569,6 +569,29 @@ send_pending_click_to_window_id(id_type timer_id UNUSED, void *data) {
     }
 }
 
+static bool
+update_ime_position_for_window(id_type window_id) {
+    for (size_t o = 0; o < global_state.num_os_windows; o++) {
+        OSWindow *osw = global_state.os_windows + o;
+        for (size_t t = 0; t < osw->num_tabs; t++) {
+            Tab *qtab = osw->tabs + t;
+            for (size_t w = 0; w < qtab->num_windows; w++) {
+                Window *window = qtab->windows + w;
+                if (window->id == window_id) {
+                    if (window->render_data.screen) {
+                        OSWindow *orig = global_state.callback_os_window;
+                        global_state.callback_os_window = osw;
+                        update_ime_position(window, window->render_data.screen);
+                        global_state.callback_os_window = orig;
+                    }
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 
 // Python API {{{
 #define PYWRAP0(name) static PyObject* py##name(PYNOARG)
@@ -592,6 +615,13 @@ send_pending_click_to_window_id(id_type timer_id UNUSED, void *data) {
 #define dict_iter(d) { \
     PyObject *key, *value; Py_ssize_t pos = 0; \
     while (PyDict_Next(d, &pos, &key, &value))
+
+PYWRAP1(update_ime_position_for_window) {
+    id_type window_id;
+    PA("K", &window_id);
+    if (update_ime_position_for_window(window_id)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
 
 PYWRAP0(next_window_id) {
     return PyLong_FromUnsignedLongLong(global_state.window_id_counter + 1);
@@ -1128,6 +1158,7 @@ static PyMethodDef module_methods[] = {
     MW(set_in_sequence_mode, METH_O),
     MW(resolve_key_mods, METH_VARARGS),
     MW(handle_for_window_id, METH_VARARGS),
+    MW(update_ime_position_for_window, METH_VARARGS),
     MW(pt_to_px, METH_VARARGS),
     MW(add_tab, METH_O),
     MW(add_window, METH_VARARGS),

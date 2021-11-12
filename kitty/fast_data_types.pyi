@@ -1325,3 +1325,7 @@ def send_data_to_peer(peer_id: int, data: Union[str, bytes]) -> None:
 
 def set_os_window_title(os_window_id: int, title: str) -> None:
     pass
+
+
+def update_ime_position_for_window(window_id: int) -> bool:
+    pass

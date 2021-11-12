@@ -1482,12 +1482,12 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
                 cellWidth:(CGFloat)cellWidth
                cellHeight:(CGFloat)cellHeight
 {
-    (void) which;
+    if (which != GLFW_IME_UPDATE_CURSOR_POSITION) return;
     left /= window->ns.xscale;
     top /= window->ns.yscale;
     cellWidth /= window->ns.xscale;
     cellHeight /= window->ns.yscale;
-    debug_key("updateIMEState: %f, %f, %f, %f\n", left, top, cellWidth, cellHeight);
+    debug_key("updateIMEState: left=%f, top=%f, width=%f, height=%f\n", left, top, cellWidth, cellHeight);
     const NSRect frame = [window->ns.view frame];
     const NSRect rectInView = NSMakeRect(left,
                                          frame.size.height - top - cellHeight,

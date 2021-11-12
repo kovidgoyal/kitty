@@ -382,6 +382,11 @@ window_focus_callback(GLFWwindow *w, int focused) {
         WINDOW_CALLBACK(on_focus, "O", focused ? Py_True : Py_False);
         GLFWIMEUpdateEvent ev = { .type = GLFW_IME_UPDATE_FOCUS, .focused = focused };
         glfwUpdateIMEState(global_state.callback_os_window->handle, &ev);
+        if (focused) {
+            Tab *tab = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+            Window *window = tab->windows + tab->active_window;
+            if (window->render_data.screen) update_ime_position(window, window->render_data.screen);
+        }
     }
     request_tick_callback();
     global_state.callback_os_window = NULL;
