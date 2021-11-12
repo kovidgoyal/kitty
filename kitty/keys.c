@@ -79,7 +79,7 @@ active_window(void) {
     return NULL;
 }
 
-static void
+void
 update_ime_position(Window* w, Screen *screen) {
     unsigned int cell_width = global_state.callback_os_window->fonts_data->cell_width, cell_height = global_state.callback_os_window->fonts_data->cell_height;
     unsigned int left = w->geometry.left, top = w->geometry.top;

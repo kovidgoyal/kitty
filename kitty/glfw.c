@@ -170,6 +170,21 @@ blank_os_window(OSWindow *w) {
 }
 
 static void
+window_pos_callback(GLFWwindow* window, int x UNUSED, int y UNUSED) {
+    if (!set_callback_window(window)) return;
+#ifdef __APPLE__
+    // Apple needs IME position to be accurate before the next key event
+    OSWindow *osw = global_state.callback_os_window;
+    if (osw->is_focused && is_window_ready_for_callbacks()) {
+        Tab *tab = osw->tabs + osw->active_tab;
+        Window *w = tab->windows + tab->active_window;
+        if (w->render_data.screen) update_ime_position(w, w->render_data.screen);
+    }
+#endif
+    global_state.callback_os_window = NULL;
+}
+
+static void
 window_close_callback(GLFWwindow* window) {
     if (!set_callback_window(window)) return;
     if (global_state.callback_os_window->close_request == NO_CLOSE_REQUESTED) {
@@ -815,7 +830,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
     glfwSetCursor(glfw_window, standard_cursor);
     update_os_window_viewport(w, false);
-    // missing pos callback
+    glfwSetWindowPosCallback(glfw_window, window_pos_callback);
     // missing size callback
     glfwSetWindowCloseCallback(glfw_window, window_close_callback);
     glfwSetWindowRefreshCallback(glfw_window, refresh_callback);
