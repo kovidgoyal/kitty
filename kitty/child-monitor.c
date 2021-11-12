@@ -641,7 +641,14 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                 if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
                 set_os_window_title_from_window(w, os_window);
                 *active_window_bg = window_bg;
-            } else WD.screen->cursor_render_info.is_visible = false;
+            } else {
+                if (WD.screen->render_unfocused_cursor) {
+                    if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
+                    WD.screen->cursor_render_info.is_focused = false;
+                } else {
+                    WD.screen->cursor_render_info.is_visible = false;
+                }
+            }
             if (scan_for_animated_images) {
                 monotonic_t min_gap;
                 if (scan_active_animations(WD.screen->grman, now, &min_gap, true)) needs_render = true;

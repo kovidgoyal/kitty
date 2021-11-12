@@ -112,6 +112,7 @@ typedef struct {
     pthread_mutex_t read_buf_lock, write_buf_lock;
 
     CursorRenderInfo cursor_render_info;
+    unsigned int render_unfocused_cursor;
 
     struct {
         size_t capacity, used;
