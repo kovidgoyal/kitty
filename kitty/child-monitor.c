@@ -555,13 +555,18 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 
 extern void cocoa_update_menu_bar_title(PyObject*);
 
-static void
+static bool
+cursor_needs_render(Window *w) {
+    return w->cursor_visible_at_last_render != w->render_data.screen->cursor_render_info.is_visible || w->last_cursor_x != w->render_data.screen->cursor_render_info.x || w->last_cursor_y != w->render_data.screen->cursor_render_info.y || w->last_cursor_shape != w->render_data.screen->cursor_render_info.shape;
+}
+
+static bool
 collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow *os_window) {
     ScreenRenderData *rd = &w->render_data;
     Cursor *cursor = rd->screen->cursor;
     ans->x = cursor->x; ans->y = cursor->y;
     ans->is_visible = false;
-    if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) return;
+    if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) return cursor_needs_render(w);
     monotonic_t time_since_start_blink = now - os_window->cursor_blink_zero_time;
     bool cursor_blinking = OPT(cursor_blink_interval) > 0 && !cursor->non_blinking && os_window->is_focused && (OPT(cursor_stop_blinking_after) == 0 || time_since_start_blink <= OPT(cursor_stop_blinking_after));
     bool do_draw_cursor = true;
@@ -574,10 +579,11 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
         monotonic_t delay = bucket - time_since_start_blink;
         set_maximum_wait(delay);
     }
-    if (!do_draw_cursor) { ans->is_visible = false; return; }
+    if (!do_draw_cursor) { ans->is_visible = false; return cursor_needs_render(w); }
     ans->is_visible = true;
     ans->shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
     ans->is_focused = os_window->is_focused;
+    return cursor_needs_render(w);
 }
 
 static void
@@ -632,8 +638,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
             bool is_active_window = i == tab->active_window;
             if (is_active_window) {
                 *active_window_id = w->id;
-                collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window);
-                if (w->cursor_visible_at_last_render != WD.screen->cursor_render_info.is_visible || w->last_cursor_x != WD.screen->cursor_render_info.x || w->last_cursor_y != WD.screen->cursor_render_info.y || w->last_cursor_shape != WD.screen->cursor_render_info.shape) needs_render = true;
+                if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
                 set_os_window_title_from_window(w, os_window);
                 *active_window_bg = window_bg;
             } else WD.screen->cursor_render_info.is_visible = false;
