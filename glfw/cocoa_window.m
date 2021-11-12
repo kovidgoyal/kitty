@@ -881,7 +881,6 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     _GLFWwindow* window;
     NSTrackingArea* trackingArea;
     NSMutableAttributedString* markedText;
-    bool unmark_text_called;
     NSRect markedRect;
     NSString *input_source_at_last_key_event;
 }
@@ -1268,7 +1267,6 @@ is_ascii_control_char(char x) {
         }
         debug_key("\x1b[31mPress:\x1b[m native_key: 0x%x (%s) glfw_key: 0x%x %schar_count: %lu deadKeyState: %u repeat: %d ",
                 keycode, safe_name_for_keycode(keycode), key, format_mods(mods), char_count, window->ns.deadKeyState, event.ARepeat);
-        unmark_text_called = false;
         if (process_text) {
             // this will call insertText which will fill up _glfw.ns.text
             [self interpretKeyEvents:[NSArray arrayWithObject:event]];
@@ -1291,8 +1289,8 @@ is_ascii_control_char(char x) {
         }
     }
     if (is_ascii_control_char(_glfw.ns.text[0])) _glfw.ns.text[0] = 0;  // don't send text for ascii control codes
-    debug_key("text: %s glfw_key: %s unmark_called: %d marked_text: (%s)\n",
-            format_text(_glfw.ns.text), _glfwGetKeyName(key), unmark_text_called, [[markedText string] UTF8String]);
+    debug_key("text: %s glfw_key: %s marked_text: (%s)\n",
+            format_text(_glfw.ns.text), _glfwGetKeyName(key), [[markedText string] UTF8String]);
     if (!window->ns.deadKeyState) {
         if ([self hasMarkedText]) {
             glfw_keyevent.text = [[markedText string] UTF8String];
@@ -1469,7 +1467,6 @@ is_ascii_control_char(char x) {
 - (void)unmarkText
 {
     [[markedText mutableString] setString:@""];
-    unmark_text_called = true;
 }
 
 void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
