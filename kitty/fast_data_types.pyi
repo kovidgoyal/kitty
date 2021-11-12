@@ -430,6 +430,10 @@ def add_timer(
     pass
 
 
+def remove_timer(timer_id: int) -> None:
+    pass
+
+
 def monitor_pid(pid: int) -> None:
     pass
 

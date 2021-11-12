@@ -53,6 +53,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new option :opt:`bell_path` to specify the path to a sound file
   to use as the bell sound
 
+- broadcast kitten: Show a "fake" cursor in all windows being broadcast too
+  (:iss:`4225`)
+
 - Fix a regression that caused :option:`kitty --title` to not work when
   opening new OS windows using :option:`kitty --single-instance` (:iss:`3893`)
 

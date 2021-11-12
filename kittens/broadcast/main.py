@@ -11,6 +11,7 @@ from kitty.cli_stub import BroadcastCLIOptions
 from kitty.key_encoding import encode_key_event
 from kitty.rc.base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION
 from kitty.remote_control import create_basic_command, encode_send
+from kitty.short_uuid import uuid4
 from kitty.typing import KeyEventType, ScreenSize
 
 from ..tui.handler import Handler
@@ -19,17 +20,26 @@ from ..tui.loop import Loop
 from ..tui.operations import RESTORE_CURSOR, SAVE_CURSOR, styled
 
 
+def session_command(payload: Dict[str, Any], start: bool = True) -> bytes:
+    payload = payload.copy()
+    payload['data'] = 'session:' + ('start' if start else 'end')
+    send = create_basic_command('send-text', payload, no_response=True)
+    return encode_send(send)
+
+
 class Broadcast(Handler):
 
     def __init__(self, opts: BroadcastCLIOptions, initial_strings: List[str]) -> None:
         self.opts = opts
         self.initial_strings = initial_strings
-        self.payload = {'exclude_active': True, 'data': '', 'match': opts.match, 'match_tab': opts.match_tab}
+        self.payload = {'exclude_active': True, 'data': '', 'match': opts.match, 'match_tab': opts.match_tab, 'session_id': uuid4()}
         self.line_edit = LineEdit()
+        self.session_started = False
         if not opts.match and not opts.match_tab:
             self.payload['all'] = True
 
     def initialize(self) -> None:
+        self.write_broadcast_session()
         self.print('Type the text to broadcast below, press', styled('Ctrl+Esc', fg='yellow'), 'to quit:')
         for x in self.initial_strings:
             self.write_broadcast_text(x)
@@ -83,6 +93,10 @@ class Broadcast(Handler):
         send = create_basic_command('send-text', payload, no_response=True)
         self.write(encode_send(send))
 
+    def write_broadcast_session(self, start: bool = True) -> None:
+        self.session_started = start
+        self.write(session_command(self.payload, start))
+
 
 OPTIONS = (MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')).format
 help_text = 'Broadcast typed text to all kitty windows. By default text is sent to all windows, unless one of the matching options is specified'
@@ -105,7 +119,12 @@ def main(args: List[str]) -> Optional[Dict[str, Any]]:
     sys.stdout.flush()
     loop = Loop()
     handler = Broadcast(opts, items)
-    loop.loop(handler)
+    try:
+        loop.loop(handler)
+    finally:
+        if handler.session_started:
+            sys.stdout.buffer.write(session_command(handler.payload, False))
+            sys.stdout.buffer.flush()
     return None
 
 

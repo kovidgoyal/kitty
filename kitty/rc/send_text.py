@@ -3,9 +3,12 @@
 
 import base64
 import sys
-from typing import TYPE_CHECKING, List, Optional, Union
+from functools import partial
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 
-from kitty.fast_data_types import KeyEvent as WindowSystemKeyEvent
+from kitty.fast_data_types import (
+    KeyEvent as WindowSystemKeyEvent, add_timer, get_boss, remove_timer
+)
 from kitty.key_encoding import decode_key_event_as_window_system_key
 from kitty.options.utils import parse_send_text_bytes
 
@@ -19,6 +22,30 @@ if TYPE_CHECKING:
     from kitty.cli_stub import SendTextRCOptions as CLIOptions
 
 
+class Session:
+    id: str
+    window_ids: Set[int]
+    timer_id: int = 0
+
+    def __init__(self, id: str):
+        self.id = id
+        self.window_ids = set()
+
+
+sessions_map: Dict[str, Session] = {}
+TIMEOUT_FOR_SESSION = 3.0
+
+
+def clear_unfocused_cursors(sid: str, *a: Any) -> None:
+    s = sessions_map.pop(sid, None)
+    if s is not None:
+        boss = get_boss()
+        for wid in s.window_ids:
+            qw = boss.window_id_map.get(wid)
+            if qw is not None:
+                qw.screen.render_unfocused_cursor = 0
+
+
 class SendText(RemoteCommand):
     '''
     data+: The data being sent. Can be either: text: followed by text or base64: followed by standard base64 encoded bytes
@@ -26,6 +53,7 @@ class SendText(RemoteCommand):
     match_tab: A string indicating the tab to send text to
     all: A boolean indicating all windows should be matched.
     exclude_active: A boolean that prevents sending text to the active window
+    session_id: A string that identifies a "broadcast session"
     '''
     short_desc = 'Send arbitrary text to specified windows'
     desc = (
@@ -138,6 +166,7 @@ Do not send text to the active window, even if it is one of the matched windows.
                     windows += tuple(tab)
         pdata: str = payload_get('data')
         encoding, _, q = pdata.partition(':')
+        session = ''
         if encoding == 'text':
             data: Union[bytes, WindowSystemKeyEvent] = q.encode('utf-8')
         elif encoding == 'base64':
@@ -148,18 +177,49 @@ Do not send text to the active window, even if it is one of the matched windows.
             if candidate is None:
                 raise ValueError(f'Could not decode window system key: {q}')
             data = candidate
+        elif encoding == 'session':
+            session = q
         else:
             raise TypeError(f'Invalid encoding for send-text data: {encoding}')
         exclude_active = payload_get('exclude_active')
-        for window in windows:
+        actual_windows = (w for w in windows if w is not None and (not exclude_active or w is not boss.active_window))
+        sid = payload_get('session_id', '')
+
+        def create_or_update_session() -> Session:
+            s = sessions_map.setdefault(sid, Session(sid))
+            if s.timer_id:
+                remove_timer(s.timer_id)
+                s.timer_id = 0
+            return s
+
+        if session == 'end':
+            s = create_or_update_session()
+            for w in actual_windows:
+                w.screen.render_unfocused_cursor = 0
+                s.window_ids.discard(w.id)
+            clear_unfocused_cursors(sid)
+        elif session == 'start':
+            s = create_or_update_session()
             if window is not None:
-                if not exclude_active or window is not boss.active_window:
-                    if isinstance(data, WindowSystemKeyEvent):
-                        kdata = window.encoded_key(data)
-                        if kdata:
-                            window.write_to_child(kdata)
-                    else:
-                        window.write_to_child(data)
+                window.actions_on_close.append(partial(clear_unfocused_cursors, sid))
+            s.timer_id = add_timer(partial(clear_unfocused_cursors, sid), TIMEOUT_FOR_SESSION, False)
+            for w in actual_windows:
+                w.screen.render_unfocused_cursor = 1
+                s.window_ids.add(w.id)
+        else:
+            if sid:
+                s = create_or_update_session()
+                s.timer_id = add_timer(partial(clear_unfocused_cursors, sid), TIMEOUT_FOR_SESSION, False)
+            for w in actual_windows:
+                if sid:
+                    w.screen.render_unfocused_cursor = 1
+                    s.window_ids.add(w.id)
+                if isinstance(data, WindowSystemKeyEvent):
+                    kdata = w.encoded_key(data)
+                    if kdata:
+                        w.write_to_child(kdata)
+                else:
+                    w.write_to_child(data)
         return None
 
 
