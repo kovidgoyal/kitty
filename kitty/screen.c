@@ -760,11 +760,11 @@ restore_overlay_line(struct SaveOverlayLine *sol) {
     }
 }
 
-#define SAVE_OVERLAY_LINE(func) struct SaveOverlayLine __attribute__ ((__cleanup__(restore_overlay_line))) _sol_ = {.screen=self,.func_name=#func}; save_overlay_line(&_sol_);
+#define SAVE_OVERLAY_LINE struct SaveOverlayLine __attribute__ ((__cleanup__(restore_overlay_line))) _sol_ = {.screen=self,.func_name=__func__}; save_overlay_line(&_sol_);
 
 void
 screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
-    SAVE_OVERLAY_LINE(screen_draw);
+    SAVE_OVERLAY_LINE;
     draw_codepoint(self, och, from_input_stream);
 }
 
@@ -1211,7 +1211,7 @@ screen_set_tab_stop(Screen *self) {
 
 void
 screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
-    SAVE_OVERLAY_LINE(screen_cursor_back);
+    SAVE_OVERLAY_LINE;
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->x) self->cursor->x = 0;
     else self->cursor->x += move_direction * count;
