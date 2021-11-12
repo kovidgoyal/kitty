@@ -736,20 +736,36 @@ get_overlay_text(Screen *self) {
 #undef ol
 }
 
+struct SaveOverlayLine {
+    PyObject *overlay_text;
+    Screen *screen;
+    const char *func_name;
+};
+
+static void
+save_overlay_line(struct SaveOverlayLine *sol) {
+    if (sol->screen->overlay_line.is_active) {
+        sol->overlay_text = get_overlay_text(sol->screen);
+        deactivate_overlay_line(sol->screen);
+    }
+}
+
+static void
+restore_overlay_line(struct SaveOverlayLine *sol) {
+    if (sol->overlay_text) {
+        debug("Received input from child (%s) while overlay active. Overlay contents: %s\n", sol->func_name, PyUnicode_AsUTF8(sol->overlay_text));
+        screen_draw_overlay_text(sol->screen, PyUnicode_AsUTF8(sol->overlay_text));
+        Py_DECREF(sol->overlay_text);
+        update_ime_position_for_window(sol->screen->window_id);
+    }
+}
+
+#define SAVE_OVERLAY_LINE(func) struct SaveOverlayLine __attribute__ ((__cleanup__(restore_overlay_line))) _sol_ = {.screen=self,.func_name=#func}; save_overlay_line(&_sol_);
+
 void
 screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
-    PyObject *overlay_text = NULL;
-    if (self->overlay_line.is_active) {
-        overlay_text = get_overlay_text(self);
-        deactivate_overlay_line(self);
-    }
+    SAVE_OVERLAY_LINE(screen_draw);
     draw_codepoint(self, och, from_input_stream);
-    if (overlay_text) {
-        debug("Received char (0x%x) from child while overlay active. Overlay contents: %s\n", och, PyUnicode_AsUTF8(overlay_text));
-        screen_draw_overlay_text(self, PyUnicode_AsUTF8(overlay_text));
-        Py_DECREF(overlay_text);
-        update_ime_position_for_window(self->window_id);
-    }
 }
 
 
@@ -1195,13 +1211,11 @@ screen_set_tab_stop(Screen *self) {
 
 void
 screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
-    PyObject *overlay_text = NULL;
-    if (self->overlay_line.is_active) { overlay_text = get_overlay_text(self); deactivate_overlay_line(self); }
+    SAVE_OVERLAY_LINE(screen_cursor_back);
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->x) self->cursor->x = 0;
     else self->cursor->x += move_direction * count;
     screen_ensure_bounds(self, false, cursor_within_margins(self));
-    if (overlay_text) { screen_draw_overlay_text(self, PyUnicode_AsUTF8(overlay_text)); Py_DECREF(overlay_text); }
 }
 
 void
