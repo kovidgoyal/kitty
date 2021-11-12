@@ -760,11 +760,11 @@ restore_overlay_line(struct SaveOverlayLine *sol) {
     }
 }
 
-#define SAVE_OVERLAY_LINE struct SaveOverlayLine __attribute__ ((__cleanup__(restore_overlay_line))) _sol_ = {.screen=self,.func_name=__func__}; save_overlay_line(&_sol_);
+#define MOVE_OVERLAY_LINE_WITH_CURSOR struct SaveOverlayLine __attribute__ ((__cleanup__(restore_overlay_line))) _sol_ = {.screen=self,.func_name=__func__}; save_overlay_line(&_sol_);
 
 void
 screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
-    SAVE_OVERLAY_LINE;
+    MOVE_OVERLAY_LINE_WITH_CURSOR;
     draw_codepoint(self, och, from_input_stream);
 }
 
@@ -1211,7 +1211,7 @@ screen_set_tab_stop(Screen *self) {
 
 void
 screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
-    SAVE_OVERLAY_LINE;
+    MOVE_OVERLAY_LINE_WITH_CURSOR;
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->x) self->cursor->x = 0;
     else self->cursor->x += move_direction * count;
@@ -1330,7 +1330,7 @@ screen_reverse_scroll_and_fill_from_scrollback(Screen *self, unsigned int count)
 void
 screen_carriage_return(Screen *self) {
     if (self->cursor->x != 0) {
-        SAVE_OVERLAY_LINE;
+        MOVE_OVERLAY_LINE_WITH_CURSOR;
         self->cursor->x = 0;
     }
 }
@@ -1482,7 +1482,7 @@ screen_ensure_bounds(Screen *self, bool force_use_margins/*=false*/, bool in_mar
 
 void
 screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
-    SAVE_OVERLAY_LINE;
+    MOVE_OVERLAY_LINE_WITH_CURSOR;
     bool in_margins = cursor_within_margins(self);
     line = (line == 0 ? 1 : line) - 1;
     column = (column == 0 ? 1: column) - 1;
