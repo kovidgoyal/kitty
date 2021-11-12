@@ -1330,6 +1330,7 @@ screen_reverse_scroll_and_fill_from_scrollback(Screen *self, unsigned int count)
 void
 screen_carriage_return(Screen *self) {
     if (self->cursor->x != 0) {
+        SAVE_OVERLAY_LINE;
         self->cursor->x = 0;
     }
 }
@@ -1481,6 +1482,7 @@ screen_ensure_bounds(Screen *self, bool force_use_margins/*=false*/, bool in_mar
 
 void
 screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
+    SAVE_OVERLAY_LINE;
     bool in_margins = cursor_within_margins(self);
     line = (line == 0 ? 1 : line) - 1;
     column = (column == 0 ? 1: column) - 1;
