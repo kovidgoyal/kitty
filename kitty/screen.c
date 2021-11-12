@@ -646,8 +646,9 @@ draw_combining_char(Screen *self, char_type ch) {
     }
 }
 
-void
-screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
+
+static void
+draw_impl(Screen *self, char_type och, bool from_input_stream) {
     if (is_ignored_char(och)) return;
     if (!self->has_activity_since_last_focus && !self->has_focus) {
         self->has_activity_since_last_focus = true;
@@ -724,6 +725,31 @@ screen_draw_overlay_text(Screen *self, const char *utf8_text) {
     self->cursor->reverse ^= true;
     self->modes.mDECAWM = orig_line_wrap_mode;
 }
+
+static PyObject*
+get_overlay_text(Screen *self) {
+#define ol self->overlay_line
+    if (ol.ynum >= self->lines || ol.xnum >= self->columns || !ol.xnum) return NULL;
+    Line *line = range_line_(self, ol.ynum);
+    if (!line) return NULL;
+    return unicode_in_range(line, ol.xstart, ol.xstart + ol.xnum, true, 0, true);
+#undef ol
+}
+
+void
+screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
+    PyObject *overlay_text = NULL;
+    if (from_input_stream && self->overlay_line.is_active) {
+        overlay_text = get_overlay_text(self);
+        deactivate_overlay_line(self);
+    }
+    draw_impl(self, och, from_input_stream);
+    if (overlay_text) {
+        screen_draw_overlay_text(self, PyUnicode_AsUTF8(overlay_text));
+        Py_DECREF(overlay_text);
+    }
+}
+
 
 void
 screen_align(Screen *self) {
