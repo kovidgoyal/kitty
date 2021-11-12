@@ -648,7 +648,7 @@ draw_combining_char(Screen *self, char_type ch) {
 
 
 static void
-draw_impl(Screen *self, char_type och, bool from_input_stream) {
+draw_codepoint(Screen *self, char_type och, bool from_input_stream) {
     if (is_ignored_char(och)) return;
     if (!self->has_activity_since_last_focus && !self->has_focus) {
         self->has_activity_since_last_focus = true;
@@ -715,7 +715,7 @@ screen_draw_overlay_text(Screen *self, const char *utf8_text) {
         switch(decode_utf8(&state, &codepoint, *(utf8_text++))) {
             case UTF8_ACCEPT:
                 before = self->cursor->x;
-                screen_draw(self, codepoint, false);
+                draw_codepoint(self, codepoint, false);
                 self->overlay_line.xnum += self->cursor->x - before;
                 break;
             case UTF8_REJECT:
@@ -739,11 +739,11 @@ get_overlay_text(Screen *self) {
 void
 screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
     PyObject *overlay_text = NULL;
-    if (from_input_stream && self->overlay_line.is_active) {
+    if (self->overlay_line.is_active) {
         overlay_text = get_overlay_text(self);
         deactivate_overlay_line(self);
     }
-    draw_impl(self, och, from_input_stream);
+    draw_codepoint(self, och, from_input_stream);
     if (overlay_text) {
         debug("Received char (0x%x) from child while overlay active. Overlay contents: %s\n", och, PyUnicode_AsUTF8(overlay_text));
         screen_draw_overlay_text(self, PyUnicode_AsUTF8(overlay_text));
