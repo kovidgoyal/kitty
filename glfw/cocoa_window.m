@@ -1235,7 +1235,7 @@ is_ascii_control_char(char x) {
     const uint32_t key = translateKey(keycode, true);
     const bool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, keycode, flags) != 1;
     _glfw.ns.text[0] = 0;
-    if (keycode == 0x33 /* backspace */) [self unmarkText];
+    if (keycode == 0x33 /* backspace */ || keycode == 0x35 /* escape */) [self unmarkText];
     GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .action = GLFW_PRESS, .mods = mods};
     if (!_glfw.ns.unicodeData) {
         // Using the cocoa API for key handling is disabled, as there is no
