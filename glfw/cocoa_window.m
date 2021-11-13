@@ -2461,9 +2461,9 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
                 [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
                 w->ns.in_traditional_fullscreen = false;
             }
-            // for some reason despite calling this selector, the window doesnt actually get keyboard focus till you click on it.
-            // presumably a bug with NSWindowStyleMaskBorderless windows
-            [window performSelector:@selector(makeKeyAndOrderFront:) withObject:nil afterDelay:0];
+            // At this point keyboard input does not work even though isKeyWindow returns true
+            // Calling makeKeyAndOrderFront also has no effect. Neither does calling becomeKeyWindow
+            // Calling them after an interval with performSelector also has no effect
         } else {
             bool in_fullscreen = sm & NSWindowStyleMaskFullScreen;
             if (!(in_fullscreen)) {
