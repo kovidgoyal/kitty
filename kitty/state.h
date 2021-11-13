@@ -167,7 +167,7 @@ typedef struct {
     uint32_t offscreen_framebuffer;
     struct {
         int x, y, w, h;
-        bool is_set;
+        bool is_set, was_maximized;
     } before_fullscreen;
     int viewport_width, viewport_height, window_width, window_height;
     double viewport_x_ratio, viewport_y_ratio;
