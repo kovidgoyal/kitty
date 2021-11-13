@@ -2476,6 +2476,9 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
             }
             [window setStyleMask: sm];
         }
+        // macOS forgets to trigger windowDidResize when switching from maximized window to fullscreen, so we need to do it manually.
+        // The window size is actually the same, but the dis-/appearance of the title bar causes the height of the usable area to change.
+        [[NSNotificationCenter defaultCenter] postNotificationName:NSWindowDidResizeNotification object:window];
     } else {
         bool in_fullscreen = sm & NSWindowStyleMaskFullScreen;
         if (in_fullscreen) made_fullscreen = false;
