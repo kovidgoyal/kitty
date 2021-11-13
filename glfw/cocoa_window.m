@@ -571,6 +571,11 @@ translateKey(uint16_t vk_key, bool apply_keymap)
     return ans;
 }
 
+static NSRect
+get_window_size_without_border_in_logical_pixels(_GLFWwindow *window) {
+    return [window->ns.object contentRectForFrameRect:[window->ns.object frame]];
+}
+
 // Translate a GLFW keycode to a Cocoa modifier flag
 //
 static NSUInteger
@@ -776,7 +781,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         _glfwInputWindowMaximize(window, maximized);
     }
 
-    const NSRect contentRect = [window->ns.view frame];
+    const NSRect contentRect = get_window_size_without_border_in_logical_pixels(window);
     const NSRect fbRect = [window->ns.view convertRectToBacking:contentRect];
 
     if (fbRect.size.width != window->ns.fbWidth ||
@@ -1099,7 +1104,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (void)viewDidChangeBackingProperties
 {
     if (!window) return;
-    const NSRect contentRect = [window->ns.view frame];
+    const NSRect contentRect = get_window_size_without_border_in_logical_pixels(window);
     const NSRect fbRect = [window->ns.view convertRectToBacking:contentRect];
 
     if (fbRect.size.width != window->ns.fbWidth ||
@@ -1835,8 +1840,7 @@ void _glfwPlatformSetWindowIcon(_GLFWwindow* window UNUSED,
 
 void _glfwPlatformGetWindowPos(_GLFWwindow* window, int* xpos, int* ypos)
 {
-    const NSRect contentRect =
-        [window->ns.object contentRectForFrameRect:[window->ns.object frame]];
+    const NSRect contentRect = get_window_size_without_border_in_logical_pixels(window);
 
     if (xpos)
         *xpos = (int)contentRect.origin.x;
@@ -1846,7 +1850,7 @@ void _glfwPlatformGetWindowPos(_GLFWwindow* window, int* xpos, int* ypos)
 
 void _glfwPlatformSetWindowPos(_GLFWwindow* window, int x, int y)
 {
-    const NSRect contentRect = [window->ns.view frame];
+    const NSRect contentRect = get_window_size_without_border_in_logical_pixels(window);
     const NSRect dummyRect = NSMakeRect(x, _glfwTransformYNS(y + contentRect.size.height - 1), 0, 0);
     const NSRect frameRect = [window->ns.object frameRectForContentRect:dummyRect];
     [window->ns.object setFrameOrigin:frameRect.origin];
@@ -1854,7 +1858,7 @@ void _glfwPlatformSetWindowPos(_GLFWwindow* window, int x, int y)
 
 void _glfwPlatformGetWindowSize(_GLFWwindow* window, int* width, int* height)
 {
-    const NSRect contentRect = [window->ns.view frame];
+    const NSRect contentRect = get_window_size_without_border_in_logical_pixels(window);
 
     if (width)
         *width = (int)contentRect.size.width;
@@ -1873,8 +1877,7 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
     {
         // Disable window resizing in fullscreen.
         if ([window->ns.object styleMask] & NSWindowStyleMaskFullScreen || window->ns.in_traditional_fullscreen) return;
-        NSRect contentRect =
-            [window->ns.object contentRectForFrameRect:[window->ns.object frame]];
+        NSRect contentRect = get_window_size_without_border_in_logical_pixels(window);
         contentRect.origin.y += contentRect.size.height - height;
         contentRect.size = NSMakeSize(width, height);
         [window->ns.object setFrame:[window->ns.object frameRectForContentRect:contentRect]
@@ -1918,7 +1921,7 @@ void _glfwPlatformSetWindowSizeIncrements(_GLFWwindow* window, int widthincr, in
 
 void _glfwPlatformGetFramebufferSize(_GLFWwindow* window, int* width, int* height)
 {
-    const NSRect contentRect = [window->ns.view frame];
+    const NSRect contentRect = get_window_size_without_border_in_logical_pixels(window);
     const NSRect fbRect = [window->ns.view convertRectToBacking:contentRect];
 
     if (width)
@@ -1931,7 +1934,7 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
                                      int* left, int* top,
                                      int* right, int* bottom)
 {
-    const NSRect contentRect = [window->ns.view frame];
+    const NSRect contentRect = get_window_size_without_border_in_logical_pixels(window);
     const NSRect frameRect = [window->ns.object frameRectForContentRect:contentRect];
 
     if (left)
@@ -1949,7 +1952,7 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
 void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
                                         float* xscale, float* yscale)
 {
-    const NSRect points = [window->ns.view frame];
+    const NSRect points = get_window_size_without_border_in_logical_pixels(window);
     const NSRect pixels = [window->ns.view convertRectToBacking:points];
 
     if (xscale)
