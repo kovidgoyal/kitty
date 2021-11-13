@@ -2476,6 +2476,10 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
             }
             [window setStyleMask: sm];
         }
+        // If the dock and menubar are hidden going from maximized to fullscreen doesnt change the window size
+        // and macOS forgets to trigger windowDidResize, so call it ourselves
+        NSNotification *notification = [NSNotification notificationWithName:NSWindowDidResizeNotification object:window];
+        [w->ns.delegate performSelector:@selector(windowDidResize:) withObject:notification afterDelay:0];
     } else {
         bool in_fullscreen = sm & NSWindowStyleMaskFullScreen;
         if (in_fullscreen) made_fullscreen = false;
