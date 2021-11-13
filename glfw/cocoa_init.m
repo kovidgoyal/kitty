@@ -470,7 +470,7 @@ is_modified_tab(NSEvent *event, NSEventModifierFlags modifierFlags) {
     // ctrl+whatever+tab, option+cmd+tab
     if (
             (
-                (modifierFlags & NSEventModifierFlagControl) || 
+                (modifierFlags & NSEventModifierFlagControl) ||
                     modifierFlags == (NSEventModifierFlagOption | NSEventModifierFlagCommand)
             ) && [event.charactersIgnoringModifiers isEqualToString:@"\t"]
        ) return true;

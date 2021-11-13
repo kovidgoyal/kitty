@@ -2464,9 +2464,6 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
                 [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
                 w->ns.in_traditional_fullscreen = false;
             }
-            // At this point keyboard input does not work even though isKeyWindow returns true
-            // Calling makeKeyAndOrderFront also has no effect. Neither does calling becomeKeyWindow
-            // Calling them after an interval with performSelector also has no effect
         } else {
             bool in_fullscreen = sm & NSWindowStyleMaskFullScreen;
             if (!(in_fullscreen)) {
@@ -2479,6 +2476,8 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
             }
             [window setStyleMask: sm];
         }
+        // Changing the style mask causes the first responder to be cleared
+        [window makeFirstResponder:w->ns.view];
         // If the dock and menubar are hidden going from maximized to fullscreen doesnt change the window size
         // and macOS forgets to trigger windowDidResize, so call it ourselves
         NSNotification *notification = [NSNotification notificationWithName:NSWindowDidResizeNotification object:window];
