@@ -149,11 +149,6 @@ typedef struct {
     BorderRects border_rects;
 } Tab;
 
-typedef struct {
-    int x, y, w, h;
-    bool is_set;
-} OSWindowGeometry;
-
 enum RENDER_STATE { RENDER_FRAME_NOT_REQUESTED, RENDER_FRAME_REQUESTED, RENDER_FRAME_READY };
 typedef enum { NO_CLOSE_REQUESTED, CONFIRMABLE_CLOSE_REQUESTED, CLOSE_BEING_CONFIRMED, IMPERATIVE_CLOSE_REQUESTED } CloseRequest;
 
@@ -170,7 +165,10 @@ typedef struct {
     void *handle;
     id_type id;
     uint32_t offscreen_framebuffer;
-    OSWindowGeometry before_fullscreen;
+    struct {
+        int x, y, w, h;
+        bool is_set;
+    } before_fullscreen;
     int viewport_width, viewport_height, window_width, window_height;
     double viewport_x_ratio, viewport_y_ratio;
     Tab *tabs;
