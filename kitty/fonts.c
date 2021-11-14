@@ -1072,14 +1072,15 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
 }
 
 static void
-merge_groups_for_pua_space_ligature(void) {
-    while (G(group_idx) > 0) {
-        Group *g = G(groups), *g1 = G(groups) + 1;
-        g->num_cells += g1->num_cells;
-        g->num_glyphs += g1->num_glyphs;
-        G(group_idx)--;
+merge_groups_for_pua_space_ligature(index_type num_cells) {
+    Group *g = G(groups);
+    for (index_type i = 1; i <= G(group_idx); i++) {
+        g->num_cells += G(groups)[i].num_cells;
+        g->num_glyphs += G(groups)[i].num_glyphs;
     }
-    G(groups)->is_space_ligature = true;
+    G(group_idx) = 0;
+    g->is_space_ligature = true;
+    g->num_cells = MIN(num_cells, g->num_cells);
 }
 
 #undef MOVE_GLYPH_TO_NEXT_GROUP
@@ -1179,7 +1180,7 @@ render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, inde
     switch(font_idx) {
         default:
             shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[font_idx], disable_ligature_strategy == DISABLE_LIGATURES_ALWAYS);
-            if (pua_space_ligature) merge_groups_for_pua_space_ligature();
+            if (pua_space_ligature) merge_groups_for_pua_space_ligature(num_cells);
             else if (cursor_offset > -1) { // false if DISABLE_LIGATURES_NEVER
                 index_type left, right;
                 split_run_at_offset(cursor_offset, &left, &right);
