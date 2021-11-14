@@ -406,6 +406,14 @@ def complete_alias_map(
     last_word = words[-1] if words else ''
     for i, w in enumerate(words):
         if expecting_arg:
+            prev_word = '' if i == 0 else words[i-1]
+            if w == '=' and i > 0 and prev_word.startswith('--') and prev_word != '--':
+                if w is not last_word:
+                    continue
+                long_opt = option_map.get(prev_word)
+                if long_opt is not None and complete_args is not None:
+                    complete_args(ans, long_opt, '', Delegate())
+                    return
             if w is last_word and not new_word:
                 if opt is not None and complete_args is not None:
                     complete_args(ans, opt, w, Delegate())
