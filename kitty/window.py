@@ -1180,10 +1180,12 @@ class Window:
         Allows easy jumping from one command to the next. Requires working
         :ref:`shell_integration`. Takes a single, optional, number as argument which is
         the number of prompts to jump, negative values jump up and positive values jump down.
+        A value of zero will jump to the last prompt visited by this action.
         For example::
 
             map ctrl+p scroll_to_prompt -1  # jump to previous
             map ctrl+n scroll_to_prompt 1   # jump to next
+            map ctrl+o scroll_to_prompt 0   # jump to last visited
         ''')
     def scroll_to_prompt(self, num_of_prompts: int = -1) -> None:
         if self.screen.is_main_linebuf():

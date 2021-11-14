@@ -144,6 +144,7 @@ typedef struct {
         uint8_t *canvas;
         size_t requested_height, width_px, height_px;
     } last_rendered_window_char;
+    unsigned int last_visited_prompt_scrolled_by;
 } Screen;
 
 
