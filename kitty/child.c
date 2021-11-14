@@ -24,10 +24,19 @@ serialize_string_tuple(PyObject *src) {
     if (!ans) fatal("Out of memory");
     for (Py_ssize_t i = 0; i < sz; i++) {
         const char *pysrc = PyUnicode_AsUTF8(PyTuple_GET_ITEM(src, i));
-        size_t len = strlen(pysrc);
-        ans[i] = calloc(len + 1, sizeof(char));
-        if (ans[i] == NULL) fatal("Out of memory");
-        memcpy(ans[i], pysrc, len);
+        if (!pysrc) {
+            PyErr_Clear();
+            DECREF_AFTER_FUNCTION PyObject *u8 = PyUnicode_AsEncodedString(PyTuple_GET_ITEM(src, i), "UTF-8", "ignore");
+            if (!u8) { PyErr_Print(); fatal("couldnt parse command line"); }
+            ans[i] = calloc(PyBytes_GET_SIZE(u8) + 1, sizeof(char));
+            if (ans[i] == NULL) fatal("Out of memory");
+            memcpy(ans[i], PyBytes_AS_STRING(u8), PyBytes_GET_SIZE(u8));
+        } else {
+            size_t len = strlen(pysrc);
+            ans[i] = calloc(len + 1, sizeof(char));
+            if (ans[i] == NULL) fatal("Out of memory");
+            memcpy(ans[i], pysrc, len);
+        }
     }
     return ans;
 }
