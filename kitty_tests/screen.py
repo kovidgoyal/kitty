@@ -957,6 +957,11 @@ class TestScreen(BaseTest):
         self.assertTrue(s.scroll_to_prompt())
         self.ae(str(s.visual_line(0)), '$ 1')
 
+        def fco():
+            a = []
+            s.first_cmd_output_on_screen(a.append)
+            return ''.join(a)
+
         def lco():
             a = []
             s.last_cmd_output(a.append)
@@ -965,6 +970,7 @@ class TestScreen(BaseTest):
         s = self.create_screen()
         s.draw('abcd'), s.index(), s.carriage_return()
         s.draw('12'), s.index(), s.carriage_return()
+        self.ae(fco(), '')
         self.ae(lco(), 'abcd\n12')
         s = self.create_screen()
         mark_prompt(), s.draw('$ 0')
@@ -973,4 +979,5 @@ class TestScreen(BaseTest):
         s.draw('abcd'), s.index(), s.carriage_return()
         s.draw('12'), s.index(), s.carriage_return()
         mark_prompt(), s.draw('$ 1')
+        self.ae(fco(), 'abcd\n12')
         self.ae(lco(), 'abcd\n12')

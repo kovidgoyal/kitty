@@ -123,15 +123,17 @@ computers (for example, over ssh) or as other users.
 --stdin-source
 type=choices
 default=none
-choices=none,@selection,@screen,@screen_scrollback,@alternate,@alternate_scrollback,@last_cmd_output
+choices=none,@selection,@screen,@screen_scrollback,@alternate,@alternate_scrollback,@first_cmd_output_on_screen,@last_cmd_output,@last_visited_cmd_output
 Pass the screen contents as :code:`STDIN` to the child process. :code:`@selection` is
 the currently selected text. :code:`@screen` is the contents of the currently active
 window. :code:`@screen_scrollback` is the same as :code:`@screen`, but includes the
 scrollback buffer as well. :code:`@alternate` is the secondary screen of the current
 active window. For example if you run a full screen terminal application, the
-secondary screen will be the screen you return to when quitting the
-application. :code:`@last_cmd_output` is the output from the last command run in the shell,
-this needs :ref:`shell_integration` to work.
+secondary screen will be the screen you return to when quitting the application.
+:code:`@first_cmd_output_on_screen` is the output from the first command run in the shell on screen,
+:code:`@last_cmd_output` is the output from the last command run in the shell,
+:code:`@last_visited_cmd_output` is the first output below the last scrolled position via
+scroll_to_prompt, this three needs :ref:`shell_integration` to work.
 
 
 --stdin-add-formatting
@@ -322,7 +324,8 @@ def launch(
     if opts.stdin_source != 'none':
         q = str(opts.stdin_source)
         if opts.stdin_add_formatting:
-            if q in ('@screen', '@screen_scrollback', '@alternate', '@alternate_scrollback'):
+            if q in ('@screen', '@screen_scrollback', '@alternate', '@alternate_scrollback',
+                     '@first_cmd_output_on_screen', '@last_cmd_output', '@last_visited_cmd_output'):
                 q = '@ansi_' + q[1:]
         if opts.stdin_add_line_wrap_markers:
             q += '_wrap'
