@@ -1257,10 +1257,12 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
             }
 
             unsigned int num_spaces = 0;
-            while ((line->cpu_cells[i+num_spaces+1].ch == ' ')
+            while (
+                    i + num_spaces + 1 < line->xnum
+                    && line->cpu_cells[i+num_spaces+1].ch == ' '
                     && num_spaces < MAX_NUM_EXTRA_GLYPHS_PUA
                     && num_spaces + 1 < desired_cells
-                    && i + num_spaces + 1 < line->xnum) {
+                    ) {
                 num_spaces++;
                 // We have a private use char followed by space(s), render it as a multi-cell ligature.
                 GPUCell *space_cell = line->gpu_cells + i + num_spaces;
