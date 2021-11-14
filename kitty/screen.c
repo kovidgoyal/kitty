@@ -64,6 +64,11 @@ init_overlay_line(Screen *self, index_type columns) {
     return true;
 }
 
+static void
+clear_last_visited_prompt(Screen *self) {
+    self->last_visited_prompt_scrolled_by = self->historybuf->count + 1;
+}
+
 #define RESET_CHARSETS \
         self->g0_charset = translation_table(0); \
         self->g1_charset = self->g0_charset; \
@@ -143,6 +148,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->hyperlink_pool = alloc_hyperlink_pool();
         if (!self->hyperlink_pool) { Py_CLEAR(self); return PyErr_NoMemory(); }
         self->as_ansi_buf.hyperlink_pool = self->hyperlink_pool;
+        clear_last_visited_prompt(self);
     }
     return (PyObject*) self;
 }
@@ -389,6 +395,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     self->is_dirty = true;
     clear_selection(&self->selections);
     clear_selection(&self->url_ranges);
+    clear_last_visited_prompt(self);
     /* printf("old_cursor: (%u, %u) new_cursor: (%u, %u) beyond_content: %d\n", self->cursor->x, self->cursor->y, cursor_x, cursor_y, cursor_is_beyond_content); */
 #define S(c, w) c->x = MIN(w.after.x, self->columns - 1); c->y = MIN(w.after.y, self->lines - 1);
     S(self->cursor, cursor);
@@ -1268,6 +1275,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
         linebuf_init_line(self->linebuf, bottom); \
         historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf); \
         self->history_line_added_count++; \
+        if (self->last_visited_prompt_scrolled_by <= self->historybuf->count) self->last_visited_prompt_scrolled_by++; \
     } \
     linebuf_clear_line(self->linebuf, bottom, true); \
     self->is_dirty = true; \
@@ -2017,22 +2025,28 @@ shell_prompt_marking(Screen *self, PyObject *data) {
 
 static bool
 screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
-    if (self->linebuf != self->main_linebuf || !num_of_prompts_to_jump) return false;
-    int delta = num_of_prompts_to_jump < 0 ? -1 : 1;
-    num_of_prompts_to_jump = num_of_prompts_to_jump < 0 ? -num_of_prompts_to_jump : num_of_prompts_to_jump;
-    int y = -self->scrolled_by;
-#define ensure_y_ok if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
-    ensure_y_ok;
-    while (num_of_prompts_to_jump) {
-        y += delta;
-        ensure_y_ok;
-        if (range_line_(self, y)->attrs.prompt_kind == PROMPT_START) {
-            num_of_prompts_to_jump--;
-        }
-    }
-#undef ensure_y_ok
+    if (self->linebuf != self->main_linebuf) return false;
     unsigned int old = self->scrolled_by;
-    self->scrolled_by = y >= 0 ? 0 : -y;
+    if (num_of_prompts_to_jump == 0) {
+        if (self->last_visited_prompt_scrolled_by > self->historybuf->count) return false;
+        self->scrolled_by = self->last_visited_prompt_scrolled_by;
+    } else {
+        int delta = num_of_prompts_to_jump < 0 ? -1 : 1;
+        num_of_prompts_to_jump = num_of_prompts_to_jump < 0 ? -num_of_prompts_to_jump : num_of_prompts_to_jump;
+        int y = -self->scrolled_by;
+#define ensure_y_ok if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
+        ensure_y_ok;
+        while (num_of_prompts_to_jump) {
+            y += delta;
+            ensure_y_ok;
+            if (range_line_(self, y)->attrs.prompt_kind == PROMPT_START) {
+                num_of_prompts_to_jump--;
+            }
+        }
+#undef ensure_y_ok
+        self->scrolled_by = y >= 0 ? 0 : -y;
+        self->last_visited_prompt_scrolled_by = self->scrolled_by;
+    }
     if (old != self->scrolled_by) self->scroll_changed = true;
     return old != self->scrolled_by;
 }
