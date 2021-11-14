@@ -2646,6 +2646,7 @@ as_text_alternate(Screen *self, PyObject *args) {
 typedef struct OutputOffset {
     Screen *screen;
     int start;
+    unsigned num_lines;
 } OutputOffset;
 
 static Line*
@@ -2654,37 +2655,122 @@ get_line_from_offset(void *x, int y) {
     return range_line_(r->screen, r->start + y);
 }
 
+static bool
+find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int scrolled_by, int direction, bool on_screen_only) {
+    bool found_prompt = false, found_output = false, found_next_prompt = false;
+    int start = 0, end = 0;
+    int y1 = start_y - scrolled_by, y2 = y1;
+    const int upward_limit = -self->historybuf->count;
+    const int downward_limit = self->lines - 1;
+    const int screen_limit = -scrolled_by + downward_limit;
+
+    // find around
+    if (direction == 0) {
+        Line *line = range_line_(self, y1);
+        if (line->attrs.prompt_kind == PROMPT_START) {
+            found_prompt = true;
+            // change direction to downwards to find command output
+            direction = 1;
+        } else if (line->attrs.prompt_kind == OUTPUT_START) {
+            found_output = true; start = y1;
+            found_prompt = true;
+            // keep finding the first output start upwards
+        }
+        y1--; y2++;
+    }
+
+    // find upwards
+    if (direction <= 0) {
+        // find around: only needs to find the first output start
+        // find upwards: find prompt after the output, and the first output
+        while (y1 >= upward_limit) {
+            Line *line = range_line_(self, y1);
+            if (line->attrs.prompt_kind == PROMPT_START) {
+                if (direction == 0) {
+                    // find around: stop at prompt start
+                    start = y1 + 1;
+                    break;
+                }
+                found_next_prompt = true; end = y1;
+            } else if (line->attrs.prompt_kind == OUTPUT_START) {
+                start = y1;
+                break;
+            }
+            y1--;
+        }
+        if (y1 < upward_limit) {
+            start = upward_limit;
+        } else {
+            // resizing screen can cause multiple consecutive output start lines,
+            // so find the first one
+            while (start > upward_limit) {
+                Line *line = range_line_(self, start - 1);
+                if (line->attrs.prompt_kind != OUTPUT_START) break;
+                start--;
+            }
+        }
+        found_output = true;
+        found_prompt = true;
+    }
+
+    // find downwards
+    if (direction >= 0) {
+        while (y2 <= downward_limit) {
+            if (on_screen_only && !found_output && y2 > screen_limit) break;
+            Line *line = range_line_(self, y2);
+            if (line->attrs.prompt_kind == PROMPT_START) {
+                if (!found_prompt) found_prompt = true;
+                else if (found_output && !found_next_prompt) {
+                    found_next_prompt = true; end = y2;
+                    break;
+                }
+            } else if (line->attrs.prompt_kind == OUTPUT_START && found_prompt && !found_output) {
+                found_output = true; start = y2;
+            }
+            y2++;
+        }
+    }
+
+    if (found_next_prompt) {
+        oo->num_lines = end - start;
+    } else if (found_output) {
+        oo->num_lines = (direction < 0 ? start_y : downward_limit) - start;
+    } else return false;
+    oo->start = start;
+    return true;
+}
+
+static PyObject*
+first_cmd_output_on_screen(Screen *self, PyObject *args) {
+    if (self->linebuf != self->main_linebuf) return PyUnicode_FromString("");
+
+    OutputOffset oo = {.screen=self};
+    if (find_cmd_output(self, &oo, 0, self->scrolled_by, 1, true)) {
+        return as_text_generic(args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf);
+    }
+    return PyUnicode_FromString("");
+}
+
 static PyObject*
 last_cmd_output(Screen *self, PyObject *args) {
     if (self->linebuf != self->main_linebuf) return PyUnicode_FromString("");
 
     OutputOffset oo = {.screen=self};
-    unsigned num_lines = 0;
-    int prompt_pos = self->cursor->y, y = self->cursor->y;
-    const int limit = -self->historybuf->count;
-    while (y >= limit) {
-        Line *line = range_line_(self, y);
-        if (line->attrs.prompt_kind == PROMPT_START) prompt_pos = y;
-        if (line->attrs.prompt_kind == OUTPUT_START) {
-            oo.start = y;
-            num_lines = prompt_pos - y;
-            break;
-        }
-        y--;
+    if (find_cmd_output(self, &oo, self->cursor->y, self->scrolled_by, -1, false)) {
+        return as_text_generic(args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf);
     }
-    if (y < limit) {
-        oo.start = limit;
-        num_lines = prompt_pos - limit;
-    } else {
-        // resizing screen can cause multiple consecutive output start lines,
-        // so find the first one
-        while (oo.start > limit) {
-            Line *line = range_line_(self, oo.start - 1);
-            if (line->attrs.prompt_kind != OUTPUT_START) break;
-            oo.start--; num_lines++;
-        }
+    return PyUnicode_FromString("");
+}
+
+static PyObject*
+last_visited_cmd_output(Screen *self, PyObject *args) {
+    if (self->linebuf != self->main_linebuf || self->last_visited_prompt_scrolled_by > self->historybuf->count) return PyUnicode_FromString("");
+
+    OutputOffset oo = {.screen=self};
+    if (find_cmd_output(self, &oo, 0, self->last_visited_prompt_scrolled_by, 0, false)) {
+        return as_text_generic(args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf);
     }
-    return as_text_generic(args, &oo, get_line_from_offset, num_lines, &self->as_ansi_buf);
+    return PyUnicode_FromString("");
 }
 
 
@@ -3677,7 +3763,9 @@ static PyMethodDef methods[] = {
     MND(as_text, METH_VARARGS)
     MND(as_text_non_visual, METH_VARARGS)
     MND(as_text_alternate, METH_VARARGS)
+    MND(first_cmd_output_on_screen, METH_VARARGS)
     MND(last_cmd_output, METH_VARARGS)
+    MND(last_visited_cmd_output, METH_VARARGS)
     MND(tab, METH_NOARGS)
     MND(backspace, METH_NOARGS)
     MND(linefeed, METH_NOARGS)

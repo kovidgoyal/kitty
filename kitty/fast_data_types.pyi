@@ -1120,7 +1120,9 @@ class Screen:
         pass
     as_text_non_visual = as_text
     as_text_alternate = as_text
+    first_cmd_output_on_screen = as_text
     last_cmd_output = as_text
+    last_visited_cmd_output = as_text
 
     def scroll_until_cursor(self) -> None:
         pass

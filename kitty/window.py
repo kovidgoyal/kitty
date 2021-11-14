@@ -1041,9 +1041,19 @@ class Window:
     ) -> str:
         return as_text(self.screen, as_ansi, add_history, add_wrap_markers, alternate_screen, add_cursor)
 
+    def first_cmd_output_on_screen(self, as_ansi: bool = False, add_wrap_markers: bool = False) -> str:
+        lines: List[str] = []
+        self.screen.first_cmd_output_on_screen(lines.append, as_ansi, add_wrap_markers)
+        return ''.join(lines)
+
     def last_cmd_output(self, as_ansi: bool = False, add_wrap_markers: bool = False) -> str:
         lines: List[str] = []
         self.screen.last_cmd_output(lines.append, as_ansi, add_wrap_markers)
+        return ''.join(lines)
+
+    def last_visited_cmd_output(self, as_ansi: bool = False, add_wrap_markers: bool = False) -> str:
+        lines: List[str] = []
+        self.screen.last_visited_cmd_output(lines.append, as_ansi, add_wrap_markers)
         return ''.join(lines)
 
     @property
@@ -1076,6 +1086,16 @@ class Window:
         get_boss().display_scrollback(self, data['text'], data['input_line_number'], report_cursor=cursor_on_screen)
 
     @ac('cp', '''
+        Show output from the first shell command on screen in a pager like less
+
+        Requires :ref:`shell_integration` to work
+        ''')
+    def show_first_command_output_on_screen(self) -> None:
+        text = self.first_cmd_output_on_screen(as_ansi=True, add_wrap_markers=True)
+        text = text.replace('\r\n', '\n').replace('\r', '\n')
+        get_boss().display_scrollback(self, text, title='First command output on screen', report_cursor=False)
+
+    @ac('cp', '''
         Show output from the last shell command in a pager like less
 
         Requires :ref:`shell_integration` to work
@@ -1084,6 +1104,16 @@ class Window:
         text = self.last_cmd_output(as_ansi=True, add_wrap_markers=True)
         text = text.replace('\r\n', '\n').replace('\r', '\n')
         get_boss().display_scrollback(self, text, title='Last command output', report_cursor=False)
+
+    @ac('cp', '''
+        Show the first output below the last scrolled position via scroll_to_prompt in a pager like less
+
+        Requires :ref:`shell_integration` to work
+        ''')
+    def show_last_visited_command_output(self) -> None:
+        text = self.last_visited_cmd_output(as_ansi=True, add_wrap_markers=True)
+        text = text.replace('\r\n', '\n').replace('\r', '\n')
+        get_boss().display_scrollback(self, text, title='Last visited command output', report_cursor=False)
 
     def paste_bytes(self, text: Union[str, bytes]) -> None:
         # paste raw bytes without any processing

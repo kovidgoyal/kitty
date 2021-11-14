@@ -110,10 +110,18 @@ def data_for_at(w: Optional[Window], arg: str, add_wrap_markers: bool = False) -
         return as_text(as_ansi=True, alternate_screen=True)
     if arg == '@ansi_alternate_scrollback':
         return as_text(as_ansi=True, alternate_screen=True, add_history=True)
+    if arg == '@first_cmd_output_on_screen':
+        return w.first_cmd_output_on_screen(add_wrap_markers=add_wrap_markers)
+    if arg == '@ansi_first_cmd_output_on_screen':
+        return w.first_cmd_output_on_screen(as_ansi=True, add_wrap_markers=add_wrap_markers)
     if arg == '@last_cmd_output':
         return w.last_cmd_output(add_wrap_markers=add_wrap_markers)
     if arg == '@ansi_last_cmd_output':
         return w.last_cmd_output(as_ansi=True, add_wrap_markers=add_wrap_markers)
+    if arg == '@last_visited_cmd_output':
+        return w.last_visited_cmd_output(add_wrap_markers=add_wrap_markers)
+    if arg == '@ansi_last_visited_cmd_output':
+        return w.last_visited_cmd_output(as_ansi=True, add_wrap_markers=add_wrap_markers)
     return None
 
 
@@ -1314,9 +1322,15 @@ class Boss:
                     data = sel.encode('utf-8') if sel else None
                 elif type_of_input is None:
                     data = None
+                elif type_of_input in ('first-output', 'first-output-screen', 'first-output-screen-ansi', 'first-output-ansi'):
+                    q = type_of_input.split('-')
+                    data = w.first_cmd_output_on_screen(as_ansi='ansi' in q, add_wrap_markers='screen' in q).encode('utf-8')
                 elif type_of_input in ('output', 'output-screen', 'output-screen-ansi', 'output-ansi'):
                     q = type_of_input.split('-')
                     data = w.last_cmd_output(as_ansi='ansi' in q, add_wrap_markers='screen' in q).encode('utf-8')
+                elif type_of_input in ('last-visited-output', 'last-visited-output-screen', 'last-visited-output-screen-ansi', 'last-visited-output-ansi'):
+                    q = type_of_input.split('-')
+                    data = w.last_visited_cmd_output(as_ansi='ansi' in q, add_wrap_markers='screen' in q).encode('utf-8')
                 else:
                     raise ValueError(f'Unknown type_of_input: {type_of_input}')
             else:

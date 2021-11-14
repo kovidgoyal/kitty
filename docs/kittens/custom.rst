@@ -93,8 +93,13 @@ instead. If you want line wrap markers as well, use ``screen-ansi``
 or just ``screen``. For the scrollback buffer as well, use
 ``history``, ``ansi-history`` or ``screen-history``. To get
 the currently selected text, use ``selection``. To get the output
+of the first command run in the shell on screen, use ``first-output``
+or ``first-output-ansi`` or ``first-output-screen-ansi``. To get the output
 of the last command run in the shell, use ``output`` or ``output-ansi``
-or ``output-screen-ansi``. Note that using ``output`` requires
+or ``output-screen-ansi``. To get the first command output below the last
+scrolled position via scroll_to_prompt, use ``last-visited-output`` or
+``last-visited-output-ansi`` or ``last-visited-output-screen-ansi``. Note that
+using ``first-output`` or ``output`` or ``last-visited-output`` requires
 :ref:`shell_integration`.
 
 
