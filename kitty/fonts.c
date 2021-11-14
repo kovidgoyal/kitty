@@ -685,7 +685,7 @@ typedef struct {
 
 typedef struct {
     unsigned int first_glyph_idx, first_cell_idx, num_glyphs, num_cells;
-    bool has_special_glyph, is_space_ligature, started_with_infinite_ligature;
+    bool has_special_glyph, started_with_infinite_ligature;
 } Group;
 
 typedef struct {
@@ -1072,15 +1072,14 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
 }
 
 static void
-merge_groups_for_pua_space_ligature(index_type num_cells) {
+collapse_pua_space_ligature(index_type num_cells) {
     Group *g = G(groups);
-    for (index_type i = 1; i <= G(group_idx); i++) {
-        g->num_cells += G(groups)[i].num_cells;
-        g->num_glyphs += G(groups)[i].num_glyphs;
-    }
     G(group_idx) = 0;
-    g->is_space_ligature = true;
-    g->num_cells = MIN(num_cells, g->num_cells);
+    g->num_cells = num_cells;
+    // We dont want to render the spaces in a space ligature because
+    // there exist stupid fonts like Powerline that have no space glyph,
+    // so special case it: https://github.com/kovidgoyal/kitty/issues/1225
+    g->num_glyphs = 1;
 }
 
 #undef MOVE_GLYPH_TO_NEXT_GROUP
@@ -1125,11 +1124,7 @@ render_groups(FontGroup *fg, Font *font, bool center_glyph) {
                 global_glyph_render_scratch.sz = sz;
             }
             for (unsigned i = 0; i < group->num_glyphs; i++) global_glyph_render_scratch.glyphs[i] = G(info)[group->first_glyph_idx + i].codepoint;
-            // We dont want to render the spaces in a space ligature because
-            // there exist stupid fonts like Powerline that have no space glyph,
-            // so special case it: https://github.com/kovidgoyal/kitty/issues/1225
-            unsigned int num_glyphs = group->is_space_ligature ? 1 : group->num_glyphs;
-            render_group(fg, group->num_cells, num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, global_glyph_render_scratch.glyphs, num_glyphs, center_glyph);
+            render_group(fg, group->num_cells, group->num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, global_glyph_render_scratch.glyphs, group->num_glyphs, center_glyph);
         }
         idx++;
     }
@@ -1180,7 +1175,7 @@ render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, inde
     switch(font_idx) {
         default:
             shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[font_idx], disable_ligature_strategy == DISABLE_LIGATURES_ALWAYS);
-            if (pua_space_ligature) merge_groups_for_pua_space_ligature(num_cells);
+            if (pua_space_ligature) collapse_pua_space_ligature(num_cells);
             else if (cursor_offset > -1) { // false if DISABLE_LIGATURES_NEVER
                 index_type left, right;
                 split_run_at_offset(cursor_offset, &left, &right);
