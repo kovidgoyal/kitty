@@ -80,6 +80,12 @@ class MatchGroup:
     def values(self) -> Iterator[str]:
         return iter(self.mdict.values())
 
+    def add_prefix(self, prefix: str) -> None:
+        nmap = {k: prefix + k for k in self.mdict}
+        for k, nk in nmap.items():
+            self.word_transforms[nk] = self.word_transforms.pop(k, k)
+        self.mdict = {prefix + k: v for k, v in self.mdict.items()}
+
 
 def debug(*a: Any, **kw: Any) -> None:
     from kittens.tui.loop import debug_write
@@ -119,6 +125,10 @@ class Completions:
     ) -> MatchGroup:
         self.match_groups[name] = m = MatchGroup(x, trailing_space, is_files, word_transforms)
         return m
+
+    def add_prefix(self, prefix: str) -> None:
+        for mg in self.match_groups.values():
+            mg.add_prefix(prefix)
 
 
 @run_once
@@ -402,6 +412,14 @@ def complete_alias_map(
                 return
             expecting_arg = False
             continue
+        if w is last_word and not new_word and w.startswith('--') and w != '--':
+            parts = w.split('=', 1)
+            if len(parts) == 2:
+                long_opt = option_map.get(parts[0])
+                if long_opt is not None and complete_args is not None:
+                    complete_args(ans, long_opt, parts[1], Delegate())
+                    ans.add_prefix(parts[0] + '=')
+                return
         opt = option_map.get(w)
         if w is last_word and not new_word:
             if w.startswith('-'):
@@ -413,6 +431,8 @@ def complete_alias_map(
         if opt is None:
             if complete_args is not None:
                 complete_args(ans, None, '' if new_word else last_word, Delegate(words, i, new_word))
+            if w.startswith('--') and '=' in w:
+                continue
             return  # some non-option word encountered
         expecting_arg = not opt.get('type', '').startswith('bool-')
     if expecting_arg:
@@ -620,6 +640,9 @@ def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterabl
         return ans
     words = words[1:]
     if not words or (len(words) == 1 and not new_word):
+        if words[0].startswith('--') and '=' in words[0]:
+            complete_cli(ans, words, new_word, options_for_completion(), complete_kitty_cli_arg)
+            return ans
         prefix = words[0] if words else ''
         completions_for_first_word(ans, prefix, entry_points, namespaced_entry_points)
         kitty_cli_opts(ans, prefix)
