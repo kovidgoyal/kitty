@@ -353,6 +353,7 @@ def mouse_selection(func: str, rest: str) -> FuncArgsType:
             'word': defines.MOUSE_SELECTION_WORD,
             'line': defines.MOUSE_SELECTION_LINE,
             'line_from_point': defines.MOUSE_SELECTION_LINE_FROM_POINT,
+            'cmd_output': defines.MOUSE_SELECTION_CMD_OUTPUT,
         }
         setattr(mouse_selection, 'code_map', cmap)
     return func, [cmap[rest]]

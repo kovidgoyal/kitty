@@ -25,7 +25,7 @@ typedef struct {
     bool in_left_half_of_cell;
 } SelectionBoundary;
 
-typedef enum SelectionExtendModes { EXTEND_CELL, EXTEND_WORD, EXTEND_LINE, EXTEND_LINE_FROM_POINT } SelectionExtendMode;
+typedef enum SelectionExtendModes { EXTEND_CELL, EXTEND_WORD, EXTEND_LINE, EXTEND_LINE_FROM_POINT, EXTEND_CMD_OUTPUT } SelectionExtendMode;
 
 typedef struct {
     index_type x, x_limit;
@@ -230,6 +230,7 @@ void screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE, boo
 bool screen_is_cursor_visible(const Screen *self);
 bool screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end);
 bool screen_selection_range_for_word(Screen *self, const index_type x, const index_type y, index_type *, index_type *, index_type *start, index_type *end, bool);
+bool screen_selection_range_for_cmd_output(Screen *self, index_type y, index_type *start, index_type *end);
 void screen_start_selection(Screen *self, index_type x, index_type y, bool, bool, SelectionExtendMode);
 typedef struct SelectionUpdate {
     bool ended, start_extended_selection, set_as_nearest_extend;

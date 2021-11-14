@@ -3139,6 +3139,18 @@ screen_selection_range_for_word(Screen *self, const index_type x, const index_ty
 }
 
 bool
+screen_selection_range_for_cmd_output(Screen *self, index_type y, index_type *start, index_type *end) {
+    if (y >= self->lines) { return false; }
+    OutputOffset oo = {.screen=self};
+    if (find_cmd_output(self, &oo, y, self->scrolled_by, 0, false)) {
+        *start = self->historybuf->count + oo.start;
+        *end = *start + oo.num_lines - 1;
+        return true;
+    }
+    return false;
+}
+
+bool
 screen_history_scroll(Screen *self, int amt, bool upwards) {
     switch(amt) {
         case SCROLL_LINE:
@@ -3445,6 +3457,23 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
             if (s->adjusting_start) b = &s->start;
             b->x = x; b->y = y; b->in_left_half_of_cell = in_left_half_of_cell;
             if (s->adjusting_start) s->start_scrolled_by = self->scrolled_by; else s->end_scrolled_by = self->scrolled_by;
+            break;
+        case EXTEND_CMD_OUTPUT:
+            if (screen_selection_range_for_cmd_output(self, s->input_current.y, &abs_start.y, &abs_end.y)) {
+#define S(which, abs_line, scrolled_by) \
+    if (abs_line.y < self->historybuf->count) { \
+        s->scrolled_by = self->historybuf->count - abs_line.y; \
+        s->which.y = 0; \
+    } else { \
+        s->scrolled_by = 0; \
+        s->which.y = abs_line.y - self->historybuf->count; \
+    }
+                S(start, abs_start, start_scrolled_by);
+                S(end, abs_end, end_scrolled_by);
+#undef S
+                s->start.x=0; s->end.x=self->columns;
+                s->start.in_left_half_of_cell = true; s->end.in_left_half_of_cell = false;
+            }
             break;
     }
     if (!self->selections.in_progress) {
