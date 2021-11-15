@@ -7,6 +7,11 @@ of almost two hundred pre-built themes available at `kitty-themes
 
     kitty +kitten themes
 
+
+.. image:: ../screenshots/themes.png
+   :alt: The themes kitten in action
+   :width: 600
+
 The kitten allows you to pick a theme, with live previews of the colors. You
 can choose between light and dark themes and search by theme name by just
 typing a few characters from the name.
