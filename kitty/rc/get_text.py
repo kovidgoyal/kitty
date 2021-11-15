@@ -74,21 +74,25 @@ If specified get text from the window this command is run in, rather than the ac
         }
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+        from kitty.window import CommandOutput
         window = self.windows_for_match_payload(boss, window, payload_get)[0]
         if payload_get('extent') == 'selection':
             ans = window.text_for_selection()
         elif payload_get('extent') == 'first_cmd_output_on_screen':
-            ans = window.first_cmd_output_on_screen(
+            ans = window.cmd_output(
+                CommandOutput.first_on_screen,
                 as_ansi=bool(payload_get('ansi')),
                 add_wrap_markers=bool(payload_get('wrap_markers')),
             )
         elif payload_get('extent') == 'last_cmd_output':
-            ans = window.last_cmd_output(
+            ans = window.cmd_output(
+                CommandOutput.last_run,
                 as_ansi=bool(payload_get('ansi')),
                 add_wrap_markers=bool(payload_get('wrap_markers')),
             )
         elif payload_get('extent') == 'last_visited_cmd_output':
-            ans = window.last_visited_cmd_output(
+            ans = window.cmd_output(
+                CommandOutput.last_visited,
                 as_ansi=bool(payload_get('ansi')),
                 add_wrap_markers=bool(payload_get('wrap_markers')),
             )

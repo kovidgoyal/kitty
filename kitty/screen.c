@@ -2736,38 +2736,34 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int
 }
 
 static PyObject*
-first_cmd_output_on_screen(Screen *self, PyObject *args) {
-    if (self->linebuf != self->main_linebuf) return PyUnicode_FromString("");
-
+cmd_output(Screen *self, PyObject *args) {
+    unsigned int which = 0;
+    DECREF_AFTER_FUNCTION PyObject *which_args = PyTuple_GetSlice(args, 0, 1);
+    DECREF_AFTER_FUNCTION PyObject *as_text_args = PyTuple_GetSlice(args, 1, PyTuple_GET_SIZE(args));
+    if (!which_args || !as_text_args) return NULL;
+    if (!PyArg_ParseTuple(which_args, "I", &which)) return NULL;
+    if (self->linebuf != self->main_linebuf) Py_RETURN_NONE;
     OutputOffset oo = {.screen=self};
-    if (find_cmd_output(self, &oo, 0, self->scrolled_by, 1, true)) {
-        return as_text_generic(args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf);
+    bool found = false;
+
+    switch (which) {
+        case 0: // last run cmd
+            found = find_cmd_output(self, &oo, self->cursor->y, self->scrolled_by, -1, false);
+            break;
+        case 1: // first on screen
+            found = find_cmd_output(self, &oo, 0, self->scrolled_by, 1, true);
+            break;
+        case 2:  // last visited cmd
+            if (self->last_visited_prompt.scrolled_by <= self->historybuf->count && self->last_visited_prompt.is_set) {
+                found = find_cmd_output(self, &oo, 0, self->last_visited_prompt.scrolled_by, 0, false);
+            } break;
+        default:
+            PyErr_Format(PyExc_KeyError, "%u is not a valid type of command", which);
+            return NULL;
     }
-    return PyUnicode_FromString("");
+    if (found) return as_text_generic(as_text_args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf);
+    Py_RETURN_NONE;
 }
-
-static PyObject*
-last_cmd_output(Screen *self, PyObject *args) {
-    if (self->linebuf != self->main_linebuf) return PyUnicode_FromString("");
-
-    OutputOffset oo = {.screen=self};
-    if (find_cmd_output(self, &oo, self->cursor->y, self->scrolled_by, -1, false)) {
-        return as_text_generic(args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf);
-    }
-    return PyUnicode_FromString("");
-}
-
-static PyObject*
-last_visited_cmd_output(Screen *self, PyObject *args) {
-    if (self->linebuf != self->main_linebuf || self->last_visited_prompt.scrolled_by > self->historybuf->count || !self->last_visited_prompt.is_set) return PyUnicode_FromString("");
-
-    OutputOffset oo = {.screen=self};
-    if (find_cmd_output(self, &oo, 0, self->last_visited_prompt.scrolled_by, 0, false)) {
-        return as_text_generic(args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf);
-    }
-    return PyUnicode_FromString("");
-}
-
 
 static PyObject*
 screen_truncate_point_for_length(PyObject UNUSED *self, PyObject *args) {
@@ -3758,9 +3754,7 @@ static PyMethodDef methods[] = {
     MND(as_text, METH_VARARGS)
     MND(as_text_non_visual, METH_VARARGS)
     MND(as_text_alternate, METH_VARARGS)
-    MND(first_cmd_output_on_screen, METH_VARARGS)
-    MND(last_cmd_output, METH_VARARGS)
-    MND(last_visited_cmd_output, METH_VARARGS)
+    MND(cmd_output, METH_VARARGS)
     MND(tab, METH_NOARGS)
     MND(backspace, METH_NOARGS)
     MND(linefeed, METH_NOARGS)

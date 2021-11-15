@@ -959,12 +959,12 @@ class TestScreen(BaseTest):
 
         def fco():
             a = []
-            s.first_cmd_output_on_screen(a.append)
+            s.cmd_output(1, a.append)
             return ''.join(a)
 
         def lco():
             a = []
-            s.last_cmd_output(a.append)
+            s.cmd_output(0, a.append)
             return ''.join(a)
 
         s = self.create_screen()

@@ -3033,9 +3033,8 @@ For example, the following opens the output in less in an overlay window::
 
     map f1 launch --stdin-source=@last_cmd_output --stdin-add-formatting --type=overlay less +G -R
 
-To get the first command output on the screen, use :code:`@first_cmd_output_on_screen`.
-To get the first command output below the last scrolled position via scroll_to_prompt, use
-:code:`@last_visited_cmd_output`.
+To get the output of the first command on the screen, use :code:`@first_cmd_output_on_screen`.
+To get the output of the last jumped to command, use :code:`@last_visited_cmd_output`.
 ''')
 egr()  # }}}
 

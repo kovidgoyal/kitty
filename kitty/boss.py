@@ -62,7 +62,7 @@ from .utils import (
     remove_socket_file, safe_print, set_primary_selection, single_instance,
     startup_notification_handler
 )
-from .window import MatchPatternType, Window
+from .window import MatchPatternType, Window, CommandOutput
 
 
 class OSWindowDict(TypedDict):
@@ -111,17 +111,17 @@ def data_for_at(w: Optional[Window], arg: str, add_wrap_markers: bool = False) -
     if arg == '@ansi_alternate_scrollback':
         return as_text(as_ansi=True, alternate_screen=True, add_history=True)
     if arg == '@first_cmd_output_on_screen':
-        return w.first_cmd_output_on_screen(add_wrap_markers=add_wrap_markers)
+        return w.cmd_output(CommandOutput.first_on_screen, add_wrap_markers=add_wrap_markers)
     if arg == '@ansi_first_cmd_output_on_screen':
-        return w.first_cmd_output_on_screen(as_ansi=True, add_wrap_markers=add_wrap_markers)
+        return w.cmd_output(CommandOutput.first_on_screen, as_ansi=True, add_wrap_markers=add_wrap_markers)
     if arg == '@last_cmd_output':
-        return w.last_cmd_output(add_wrap_markers=add_wrap_markers)
+        return w.cmd_output(CommandOutput.last_run, add_wrap_markers=add_wrap_markers)
     if arg == '@ansi_last_cmd_output':
-        return w.last_cmd_output(as_ansi=True, add_wrap_markers=add_wrap_markers)
+        return w.cmd_output(CommandOutput.last_run, as_ansi=True, add_wrap_markers=add_wrap_markers)
     if arg == '@last_visited_cmd_output':
-        return w.last_visited_cmd_output(add_wrap_markers=add_wrap_markers)
+        return w.cmd_output(CommandOutput.last_visited, add_wrap_markers=add_wrap_markers)
     if arg == '@ansi_last_visited_cmd_output':
-        return w.last_visited_cmd_output(as_ansi=True, add_wrap_markers=add_wrap_markers)
+        return w.cmd_output(CommandOutput.last_visited, as_ansi=True, add_wrap_markers=add_wrap_markers)
     return None
 
 
@@ -1320,8 +1320,10 @@ class Boss:
                     sel = self.data_for_at(which='@selection', window=w)
                     data = sel.encode('utf-8') if sel else None
                 elif q[0] in ('output', 'first_output', 'last_visited_output'):
-                    func = {'output': w.last_cmd_output, 'first_output': w.first_cmd_output_on_screen, 'last_visited_output': w.last_visited_cmd_output}[q[0]]
-                    data = func(as_ansi='ansi' in q, add_wrap_markers='screen' in q).encode('utf-8')
+                    which = {
+                        'output': CommandOutput.last_run, 'first_output': CommandOutput.first_on_screen,
+                        'last_visited_output': CommandOutput.last_visited}[q[0]]
+                    data = w.cmd_output(which, as_ansi='ansi' in q, add_wrap_markers='screen' in q).encode('utf-8')
                 else:
                     raise ValueError(f'Unknown type_of_input: {type_of_input}')
             else:

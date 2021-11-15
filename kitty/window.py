@@ -87,6 +87,10 @@ class DynamicColor(IntEnum):
     default_fg, default_bg, cursor_color, highlight_fg, highlight_bg = range(1, 6)
 
 
+class CommandOutput(IntEnum):
+    last_run, first_on_screen, last_visited = 0, 1, 2
+
+
 DYNAMIC_COLOR_CODES = {
     10: DynamicColor.default_fg,
     11: DynamicColor.default_bg,
@@ -1041,19 +1045,9 @@ class Window:
     ) -> str:
         return as_text(self.screen, as_ansi, add_history, add_wrap_markers, alternate_screen, add_cursor)
 
-    def first_cmd_output_on_screen(self, as_ansi: bool = False, add_wrap_markers: bool = False) -> str:
+    def cmd_output(self, which: CommandOutput = CommandOutput.last_run, as_ansi: bool = False, add_wrap_markers: bool = False) -> str:
         lines: List[str] = []
-        self.screen.first_cmd_output_on_screen(lines.append, as_ansi, add_wrap_markers)
-        return ''.join(lines)
-
-    def last_cmd_output(self, as_ansi: bool = False, add_wrap_markers: bool = False) -> str:
-        lines: List[str] = []
-        self.screen.last_cmd_output(lines.append, as_ansi, add_wrap_markers)
-        return ''.join(lines)
-
-    def last_visited_cmd_output(self, as_ansi: bool = False, add_wrap_markers: bool = False) -> str:
-        lines: List[str] = []
-        self.screen.last_visited_cmd_output(lines.append, as_ansi, add_wrap_markers)
+        self.screen.cmd_output(which, lines.append, as_ansi, add_wrap_markers)
         return ''.join(lines)
 
     @property
@@ -1091,7 +1085,7 @@ class Window:
         Requires :ref:`shell_integration` to work
         ''')
     def show_first_command_output_on_screen(self) -> None:
-        text = self.first_cmd_output_on_screen(as_ansi=True, add_wrap_markers=True)
+        text = self.cmd_output(CommandOutput.first_on_screen, as_ansi=True, add_wrap_markers=True)
         text = text.replace('\r\n', '\n').replace('\r', '\n')
         get_boss().display_scrollback(self, text, title='First command output on screen', report_cursor=False)
 
@@ -1101,7 +1095,7 @@ class Window:
         Requires :ref:`shell_integration` to work
         ''')
     def show_last_command_output(self) -> None:
-        text = self.last_cmd_output(as_ansi=True, add_wrap_markers=True)
+        text = self.cmd_output(CommandOutput.last_run, as_ansi=True, add_wrap_markers=True)
         text = text.replace('\r\n', '\n').replace('\r', '\n')
         get_boss().display_scrollback(self, text, title='Last command output', report_cursor=False)
 
@@ -1111,7 +1105,7 @@ class Window:
         Requires :ref:`shell_integration` to work
         ''')
     def show_last_visited_command_output(self) -> None:
-        text = self.last_visited_cmd_output(as_ansi=True, add_wrap_markers=True)
+        text = self.cmd_output(CommandOutput.last_visited, as_ansi=True, add_wrap_markers=True)
         text = text.replace('\r\n', '\n').replace('\r', '\n')
         get_boss().display_scrollback(self, text, title='Last visited command output', report_cursor=False)
 
