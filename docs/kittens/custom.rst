@@ -88,19 +88,41 @@ function, telling kitty what kind of input your kitten would like. For example:
 
 
 This will send the plain text of the active window to the kitten's
-:file:`STDIN`. For text with formatting escape codes, use ``ansi``
-instead. If you want line wrap markers as well, use ``screen-ansi``
-or just ``screen``. For the scrollback buffer as well, use
-``history``, ``ansi-history`` or ``screen-history``. To get
-the currently selected text, use ``selection``. To get the output
-of the first command run in the shell on screen, use ``first-output``
-or ``first-output-ansi`` or ``first-output-screen-ansi``. To get the output
-of the last command run in the shell, use ``output`` or ``output-ansi``
-or ``output-screen-ansi``. To get the first command output below the last
-scrolled position via scroll_to_prompt, use ``last-visited-output`` or
-``last-visited-output-ansi`` or ``last-visited-output-screen-ansi``. Note that
-using ``first-output`` or ``output`` or ``last-visited-output`` requires
-:ref:`shell_integration`.
+:file:`STDIN`. There are many other types of input you can ask for,
+described in the table below:
+
+.. table:: Types of input to kittens
+    :align: left
+
+    =========================== =======================================================================================================
+    Keyword                     Type of :file:`STDIN` input
+    =========================== =======================================================================================================
+    ``text``                    Plain text of active window
+    ``ansi``                    Formatted text of active window
+    ``screen``                  Plain text of active window with line wrap markers
+    ``screen-ansi``             Formatted text of active window with line wrap markers
+
+    ``history``                 Plain text of active window and its scrollback
+    ``ansi-history``            Formatted text of active window and its scrollback
+    ``screen-history``          Plain text of active window and its scrollback with line wrap markers
+    ``screen-ansi-history``     Formatted text of active window and its scrollback with line wrap markers
+
+    ``output``                  Plain text of the output from the last run command
+    ``output-screen``           Plain text of the output from the last run command with wrap markers
+    ``output-ansi``             Formatted text of the output from the last run command
+    ``output-screen-ansi``      Formatted text of the output from the last run command with wrap markers
+
+    ``selection``               The text currently selected with the mouse
+    =========================== =======================================================================================================
+
+In addition to ``output``, that gets the output of the last run command,
+``last_visited_output`` gives the output of the command last jumped to
+and ``first_output`` gives the output of the first command currently on screen.
+These can also be combined with ``screen`` and ``ansi`` for formatting.
+
+.. note::
+   For the types based on the output of a command,
+   :ref:`shell_integration` is required.
 
 
 Using kittens to script kitty, without any terminal UI

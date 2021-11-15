@@ -1311,26 +1311,17 @@ class Boss:
             args[0:0] = [config_dir, kitten]
             if input_data is None:
                 type_of_input = end_kitten.type_of_input
-                if type_of_input in ('text', 'history', 'ansi', 'ansi-history', 'screen', 'screen-history', 'screen-ansi', 'screen-ansi-history'):
-                    data: Optional[bytes] = w.as_text(
-                            as_ansi='ansi' in type_of_input,
-                            add_history='history' in type_of_input,
-                            add_wrap_markers='screen' in type_of_input
-                    ).encode('utf-8')
+                q = type_of_input.split('-') if type_of_input else []
+                if not q:
+                    data: Optional[bytes] = None
+                elif q[0] in ('text', 'history', 'ansi', 'screen'):
+                    data = w.as_text(as_ansi='ansi' in q, add_history='history' in q, add_wrap_markers='screen' in q).encode('utf-8')
                 elif type_of_input == 'selection':
                     sel = self.data_for_at(which='@selection', window=w)
                     data = sel.encode('utf-8') if sel else None
-                elif type_of_input is None:
-                    data = None
-                elif type_of_input in ('first-output', 'first-output-screen', 'first-output-screen-ansi', 'first-output-ansi'):
-                    q = type_of_input.split('-')
-                    data = w.first_cmd_output_on_screen(as_ansi='ansi' in q, add_wrap_markers='screen' in q).encode('utf-8')
-                elif type_of_input in ('output', 'output-screen', 'output-screen-ansi', 'output-ansi'):
-                    q = type_of_input.split('-')
-                    data = w.last_cmd_output(as_ansi='ansi' in q, add_wrap_markers='screen' in q).encode('utf-8')
-                elif type_of_input in ('last-visited-output', 'last-visited-output-screen', 'last-visited-output-screen-ansi', 'last-visited-output-ansi'):
-                    q = type_of_input.split('-')
-                    data = w.last_visited_cmd_output(as_ansi='ansi' in q, add_wrap_markers='screen' in q).encode('utf-8')
+                elif q[0] in ('output', 'first_output', 'last_visited_output'):
+                    func = {'output': w.last_cmd_output, 'first_output': w.first_cmd_output_on_screen, 'last_visited_output': w.last_visited_cmd_output}[q[0]]
+                    data = func(as_ansi='ansi' in q, add_wrap_markers='screen' in q).encode('utf-8')
                 else:
                     raise ValueError(f'Unknown type_of_input: {type_of_input}')
             else:
