@@ -2240,6 +2240,14 @@ range_line_(Screen *self, int y) {
     return self->linebuf->line;
 }
 
+static Line*
+checked_range_line(Screen *self, int y) {
+    if (
+        (y < 0 && -(y + 1) >= (int)self->historybuf->count) || y >= (int)self->lines
+    ) return NULL;
+    return range_line_(self, y);
+}
+
 static bool
 selection_is_left_to_right(const Selection *self) {
     return self->input_start.x < self->input_current.x || (self->input_start.x == self->input_current.x && self->input_start.in_left_half_of_cell);
@@ -2658,15 +2666,16 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int
     const int upward_limit = -self->historybuf->count;
     const int downward_limit = self->lines - 1;
     const int screen_limit = -scrolled_by + downward_limit;
+    Line *line = NULL;
 
     // find around
     if (direction == 0) {
-        Line *line = range_line_(self, y1);
-        if (line->attrs.prompt_kind == PROMPT_START) {
+        line = checked_range_line(self, y1);
+        if (line && line->attrs.prompt_kind == PROMPT_START) {
             found_prompt = true;
             // change direction to downwards to find command output
             direction = 1;
-        } else if (line->attrs.prompt_kind == OUTPUT_START) {
+        } else if (line && line->attrs.prompt_kind == OUTPUT_START) {
             found_output = true; start = y1;
             found_prompt = true;
             // keep finding the first output start upwards
@@ -2679,15 +2688,15 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int
         // find around: only needs to find the first output start
         // find upwards: find prompt after the output, and the first output
         while (y1 >= upward_limit) {
-            Line *line = range_line_(self, y1);
-            if (line->attrs.prompt_kind == PROMPT_START) {
+            line = checked_range_line(self, y1);
+            if (line && line->attrs.prompt_kind == PROMPT_START) {
                 if (direction == 0) {
                     // find around: stop at prompt start
                     start = y1 + 1;
                     break;
                 }
                 found_next_prompt = true; end = y1;
-            } else if (line->attrs.prompt_kind == OUTPUT_START) {
+            } else if (line && line->attrs.prompt_kind == OUTPUT_START) {
                 start = y1;
                 break;
             }
@@ -2699,8 +2708,8 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int
             // resizing screen can cause multiple consecutive output start lines,
             // so find the first one
             while (start > upward_limit) {
-                Line *line = range_line_(self, start - 1);
-                if (line->attrs.prompt_kind != OUTPUT_START) break;
+                line = checked_range_line(self, start - 1);
+                if (line && line->attrs.prompt_kind != OUTPUT_START) break;
                 start--;
             }
         }
@@ -2712,14 +2721,14 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int
     if (direction >= 0) {
         while (y2 <= downward_limit) {
             if (on_screen_only && !found_output && y2 > screen_limit) break;
-            Line *line = range_line_(self, y2);
-            if (line->attrs.prompt_kind == PROMPT_START) {
+            line = checked_range_line(self, y2);
+            if (line && line->attrs.prompt_kind == PROMPT_START) {
                 if (!found_prompt) found_prompt = true;
                 else if (found_output && !found_next_prompt) {
                     found_next_prompt = true; end = y2;
                     break;
                 }
-            } else if (line->attrs.prompt_kind == OUTPUT_START && found_prompt && !found_output) {
+            } else if (line && line->attrs.prompt_kind == OUTPUT_START && found_prompt && !found_output) {
                 found_output = true; start = y2;
             }
             y2++;
