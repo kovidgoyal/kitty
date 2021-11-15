@@ -2702,19 +2702,8 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int
             }
             y1--;
         }
-        if (y1 < upward_limit) {
-            start = upward_limit;
-        } else {
-            // resizing screen can cause multiple consecutive output start lines,
-            // so find the first one
-            while (start > upward_limit) {
-                line = checked_range_line(self, start - 1);
-                if (line && line->attrs.prompt_kind != OUTPUT_START) break;
-                start--;
-            }
-        }
-        found_output = true;
-        found_prompt = true;
+        if (y1 < upward_limit) start = upward_limit;
+        found_output = true; found_prompt = true;
     }
 
     // find downwards
@@ -2736,12 +2725,13 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int
     }
 
     if (found_next_prompt) {
-        oo->num_lines = end - start;
+        oo->num_lines = end >= start ? end - start : 0;
     } else if (found_output) {
-        oo->num_lines = (direction < 0 ? start_y : (unsigned int)downward_limit) - start;
+        end = direction < 0 ? start_y : (unsigned int)downward_limit;
+        oo->num_lines = end >= start ? end - start : 0;
     } else return false;
     oo->start = start;
-    return true;
+    return oo->num_lines > 0;
 }
 
 static PyObject*
