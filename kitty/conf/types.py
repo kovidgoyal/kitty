@@ -286,14 +286,14 @@ class Mapping:
     def key_text(self) -> str:
         return ''
 
-    def as_conf(self, commented: bool = False, level: int = 0) -> List[str]:
+    def as_conf(self, commented: bool = False, level: int = 0, action_group: List['Mapping'] = []) -> List[str]:
         ans: List[str] = []
-        if self.documented:
-            a = ans.append
-            if self.add_to_default:
-                a(self.setting_name + ' ' + self.parseable_text)
-            if self.long_text:
-                a(''), a(render_block(self.long_text.strip())), a('')
+        a = ans.append
+        for sc in [self] + action_group:
+            if sc.documented and sc.add_to_default:
+                a(sc.setting_name + ' ' + sc.parseable_text)
+        if self.documented and self.long_text:
+            a(''), a(render_block(self.long_text.strip())), a('')
         return ans
 
     def as_rst(
@@ -474,6 +474,8 @@ class Group:
         for item in self.iter_with_coalesced_options():
             if isinstance(item, Option):
                 lines = item.as_conf(option_group=self.coalesced_iterator_data.option_group_for_option(item))
+            elif isinstance(item, Mapping):
+                lines = item.as_conf(commented, level + 1, action_group=self.coalesced_iterator_data.action_group_for_action(item))
             else:
                 lines = item.as_conf(commented, level + 1)
             ans.extend(lines)
