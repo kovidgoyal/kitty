@@ -411,7 +411,7 @@ copy to a private kitty buffer instead. Map a shortcut with the
 :code:`paste_from_buffer` action to paste from this private buffer.
 For example::
 
-    map cmd+shift+v paste_from_buffer a1
+    map shift+cmd+v paste_from_buffer a1
 
 Note that copying to the clipboard is a security risk, as all programs,
 including websites open in your browser can read the contents of the
@@ -596,7 +596,7 @@ mma('Start selecting text even when grabbed',
     )
 
 mma('Start selecting text in a rectangle even when grabbed',
-    'start_rectangle_selection_grabbed shift+ctrl+alt+left press ungrabbed,grabbed mouse_selection rectangle',
+    'start_rectangle_selection_grabbed ctrl+shift+alt+left press ungrabbed,grabbed mouse_selection rectangle',
     )
 
 mma('Select a word even when grabbed',
@@ -609,7 +609,7 @@ mma('Select a line even when grabbed',
     )
 
 mma('Select line from point even when grabbed',
-    'select_line_from_point_grabbed shift+ctrl+alt+left triplepress ungrabbed,grabbed mouse_selection line_from_point',
+    'select_line_from_point_grabbed ctrl+shift+alt+left triplepress ungrabbed,grabbed mouse_selection line_from_point',
     long_text='Select from the clicked point to the end of the line'
     )
 
@@ -2941,7 +2941,7 @@ map('Scroll line up',
     'scroll_line_up kitty_mod+k scroll_line_up',
     )
 map('Scroll line up',
-    'scroll_line_up alt+cmd+page_up scroll_line_up',
+    'scroll_line_up opt+cmd+page_up scroll_line_up',
     only="macos",
     )
 map('Scroll line up',
@@ -2956,7 +2956,7 @@ map('Scroll line down',
     'scroll_line_down kitty_mod+j scroll_line_down',
     )
 map('Scroll line down',
-    'scroll_line_down alt+cmd+page_down scroll_line_down',
+    'scroll_line_down opt+cmd+page_down scroll_line_down',
     only="macos",
     )
 map('Scroll line down',
@@ -3227,7 +3227,7 @@ map('Previous tab',
     only="macos",
     )
 map('Previous tab',
-    'previous_tab shift+ctrl+tab previous_tab',
+    'previous_tab ctrl+shift+tab previous_tab',
     )
 
 map('New tab',
@@ -3332,7 +3332,7 @@ map('Increase font size',
     only="macos",
     )
 map('Increase font size',
-    'increase_font_size cmd+shift+equal change_font_size all +2.0',
+    'increase_font_size shift+cmd+equal change_font_size all +2.0',
     only="macos",
     )
 
@@ -3347,7 +3347,7 @@ map('Decrease font size',
     only="macos",
     )
 map('Decrease font size',
-    'decrease_font_size cmd+shift+minus change_font_size all -2.0',
+    'decrease_font_size shift+cmd+minus change_font_size all -2.0',
     only="macos",
     )
 
@@ -3453,7 +3453,7 @@ map('Unicode input',
     'input_unicode_character kitty_mod+u kitten unicode_input',
     )
 map('Unicode input',
-    'input_unicode_character cmd+ctrl+space kitten unicode_input',
+    'input_unicode_character ctrl+cmd+space kitten unicode_input',
     only="macos",
     )
 
@@ -3523,7 +3523,7 @@ screen, for example, for ZSH add the following to :file:`~/.zshrc`:
     )
 
 map('Reset the terminal',
-    'reset_terminal cmd+option+r clear_terminal reset active',
+    'reset_terminal opt+cmd+r clear_terminal reset active',
     only="macos",
     )
 
@@ -3543,7 +3543,7 @@ the new conf settings *replace* the old ones.
     )
 
 map('Reload kitty.conf',
-    'reload_config_file cmd+control+, load_config_file',
+    'reload_config_file ctrl+cmd+, load_config_file',
     only='macos'
     )
 
@@ -3556,7 +3556,7 @@ its host environment. Useful for debugging issues.
     )
 
 map('Debug kitty configuration',
-    'debug_config cmd+option+, debug_config',
+    'debug_config opt+cmd+, debug_config',
     only='macos'
     )
 
