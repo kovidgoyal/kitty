@@ -64,11 +64,6 @@ init_overlay_line(Screen *self, index_type columns) {
     return true;
 }
 
-static void
-clear_last_visited_prompt(Screen *self) {
-    self->last_visited_prompt_scrolled_by = self->historybuf->count + 1;
-}
-
 #define RESET_CHARSETS \
         self->g0_charset = translation_table(0); \
         self->g1_charset = self->g0_charset; \
@@ -148,7 +143,6 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->hyperlink_pool = alloc_hyperlink_pool();
         if (!self->hyperlink_pool) { Py_CLEAR(self); return PyErr_NoMemory(); }
         self->as_ansi_buf.hyperlink_pool = self->hyperlink_pool;
-        clear_last_visited_prompt(self);
     }
     return (PyObject*) self;
 }
@@ -395,7 +389,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     self->is_dirty = true;
     clear_selection(&self->selections);
     clear_selection(&self->url_ranges);
-    clear_last_visited_prompt(self);
+    self->last_visited_prompt.is_set = false;
     /* printf("old_cursor: (%u, %u) new_cursor: (%u, %u) beyond_content: %d\n", self->cursor->x, self->cursor->y, cursor_x, cursor_y, cursor_is_beyond_content); */
 #define S(c, w) c->x = MIN(w.after.x, self->columns - 1); c->y = MIN(w.after.y, self->lines - 1);
     S(self->cursor, cursor);
@@ -1275,7 +1269,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
         linebuf_init_line(self->linebuf, bottom); \
         historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf); \
         self->history_line_added_count++; \
-        if (self->last_visited_prompt_scrolled_by <= self->historybuf->count) self->last_visited_prompt_scrolled_by++; \
+        if (self->last_visited_prompt.is_set && self->last_visited_prompt.scrolled_by < self->historybuf->count) self->last_visited_prompt.scrolled_by++; \
     } \
     linebuf_clear_line(self->linebuf, bottom, true); \
     self->is_dirty = true; \
@@ -2028,8 +2022,8 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
     if (self->linebuf != self->main_linebuf) return false;
     unsigned int old = self->scrolled_by;
     if (num_of_prompts_to_jump == 0) {
-        if (self->last_visited_prompt_scrolled_by > self->historybuf->count) return false;
-        self->scrolled_by = self->last_visited_prompt_scrolled_by;
+        if (!self->last_visited_prompt.is_set || self->last_visited_prompt.scrolled_by > self->historybuf->count) return false;
+        self->scrolled_by = self->last_visited_prompt.scrolled_by;
     } else {
         int delta = num_of_prompts_to_jump < 0 ? -1 : 1;
         num_of_prompts_to_jump = num_of_prompts_to_jump < 0 ? -num_of_prompts_to_jump : num_of_prompts_to_jump;
@@ -2045,7 +2039,8 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
         }
 #undef ensure_y_ok
         self->scrolled_by = y >= 0 ? 0 : -y;
-        self->last_visited_prompt_scrolled_by = self->scrolled_by;
+        self->last_visited_prompt.scrolled_by = self->scrolled_by;
+        self->last_visited_prompt.is_set = true;
     }
     if (old != self->scrolled_by) self->scroll_changed = true;
     return old != self->scrolled_by;
@@ -2764,10 +2759,10 @@ last_cmd_output(Screen *self, PyObject *args) {
 
 static PyObject*
 last_visited_cmd_output(Screen *self, PyObject *args) {
-    if (self->linebuf != self->main_linebuf || self->last_visited_prompt_scrolled_by > self->historybuf->count) return PyUnicode_FromString("");
+    if (self->linebuf != self->main_linebuf || self->last_visited_prompt.scrolled_by > self->historybuf->count || !self->last_visited_prompt.is_set) return PyUnicode_FromString("");
 
     OutputOffset oo = {.screen=self};
-    if (find_cmd_output(self, &oo, 0, self->last_visited_prompt_scrolled_by, 0, false)) {
+    if (find_cmd_output(self, &oo, 0, self->last_visited_prompt.scrolled_by, 0, false)) {
         return as_text_generic(args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf);
     }
     return PyUnicode_FromString("");
