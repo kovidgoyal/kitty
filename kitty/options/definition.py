@@ -2941,7 +2941,7 @@ map('Scroll line up',
     'scroll_line_up kitty_mod+k scroll_line_up',
     )
 map('Scroll line up',
-    'scroll_line_up alt+cmd+page_up scroll_line_up',
+    'scroll_line_up opt+cmd+page_up scroll_line_up',
     only="macos",
     )
 map('Scroll line up',
@@ -2956,7 +2956,7 @@ map('Scroll line down',
     'scroll_line_down kitty_mod+j scroll_line_down',
     )
 map('Scroll line down',
-    'scroll_line_down alt+cmd+page_down scroll_line_down',
+    'scroll_line_down opt+cmd+page_down scroll_line_down',
     only="macos",
     )
 map('Scroll line down',
@@ -3520,7 +3520,7 @@ screen, for example, for ZSH add the following to :file:`~/.zshrc`:
     )
 
 map('Reset the terminal',
-    'reset_terminal cmd+option+r clear_terminal reset active',
+    'reset_terminal opt+cmd+r clear_terminal reset active',
     only="macos",
     )
 
@@ -3553,7 +3553,7 @@ its host environment. Useful for debugging issues.
     )
 
 map('Debug kitty configuration',
-    'debug_config cmd+option+, debug_config',
+    'debug_config opt+cmd+, debug_config',
     only='macos'
     )
 
