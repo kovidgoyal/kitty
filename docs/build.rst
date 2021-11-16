@@ -46,10 +46,20 @@ Build-time dependencies:
 
 * ``gcc`` or ``clang``
 * ``pkg-config``
-* For building on Linux in addition to the above dependencies you might also need to install the ``-dev`` packages for:
-  ``libdbus-1-dev``, ``libxcursor-dev``, ``libxrandr-dev``, ``libxi-dev``, ``libxinerama-dev``,
-  ``libgl1-mesa-dev``, ``libxkbcommon-x11-dev``, ``libfontconfig-dev``, ``libx11-xcb-dev``,
-  ``liblcms2-dev``, and ``libpython3-dev``, if they are not already installed by your distro.
+* For building on Linux in addition to the above dependencies you might also need to install the following packages, if they are not already installed by your distro:
+
+  - ``libdbus-1-dev``
+  - ``libxcursor-dev``
+  - ``libxrandr-dev``
+  - ``libxi-dev``
+  - ``libxinerama-dev``
+  - ``libgl1-mesa-dev``
+  - ``libxkbcommon-x11-dev``
+  - ``libfontconfig-dev``
+  - ``libx11-xcb-dev``
+  - ``liblcms2-dev``
+  - ``libpython3-dev``
+  - ``librsync-dev``
 
 
 Install and run from source
