@@ -70,7 +70,7 @@ More ways to browse command output
 
 You can add further key and mouse bindings to browse the output of commands
 easily. For example to select the output of a command by right clicking the mouse
-on the output, define the following in file:`kitty.conf`:
+on the output, define the following in :file:`kitty.conf`:
 
 .. code:: conf
 
@@ -88,7 +88,7 @@ following mapping in :file:`kitty.conf`:
 
    map f1 show_last_visited_command_output
 
-Now, pressing :key:`F1` will cause the output of the last jumped to command to
+Now, pressing :kbd:`F1` will cause the output of the last jumped to command to
 be opened in a pager for easy browsing.
 
 
