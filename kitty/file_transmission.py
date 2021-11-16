@@ -547,8 +547,10 @@ class SourceFile:
         if stat.S_ISDIR(self.stat.st_mode):
             raise TransmissionError(ErrorCode.EINVAL, msg='Cannot send a directory', file_id=self.file_id)
         self.compressor: Union[ZlibCompressor, IdentityCompressor] = IdentityCompressor()
+        self.target = b''
+        self.open_file: Optional[IO[bytes]] = None
         if stat.S_ISLNK(self.stat.st_mode):
-            self.target = os.readlink(self.path)
+            self.target = os.readlink(self.path).encode('utf-8')
         else:
             self.open_file = open(self.path, 'rb')
             if ftc.compression is Compression.zlib:
@@ -561,26 +563,31 @@ class SourceFile:
         return not self.transmitted and not self.waiting_for_signature
 
     def close(self) -> None:
-        if hasattr(self, 'open_file'):
+        if self.open_file is not None:
             self.open_file.close()
-            del self.open_file
+            self.open_file = None
         self.signature_loader = None
         self.delta_loader = None
 
     def next_chunk(self, sz: int = 1024 * 1024) -> Tuple[bytes, int]:
-        if hasattr(self, 'target'):
+        if self.target:
             self.transmitted = True
-            return self.target.encode('utf-8'), len(self.target)
-        if self.delta_loader is None:
-            data = self.open_file.read(sz)
-            if not data or self.open_file.tell() >= self.stat.st_size:
-                self.transmitted = True
+            data = self.target
         else:
-            try:
-                data = next(self.delta_loader)
-            except StopIteration:
+            if self.open_file is None:
                 self.transmitted = True
                 data = b''
+            else:
+                if self.delta_loader is None:
+                    data = self.open_file.read(sz)
+                    if not data or self.open_file.tell() >= self.stat.st_size:
+                        self.transmitted = True
+                else:
+                    try:
+                        data = next(self.delta_loader)
+                    except StopIteration:
+                        self.transmitted = True
+                        data = b''
         uncompressed_sz = len(data)
         cchunk = self.compressor.compress(data)
         if self.transmitted and not isinstance(self.compressor, IdentityCompressor):
