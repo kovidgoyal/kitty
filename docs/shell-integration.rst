@@ -91,6 +91,13 @@ following mapping in :file:`kitty.conf`:
 Now, pressing :kbd:`F1` will cause the output of the last jumped to command to
 be opened in a pager for easy browsing.
 
+You can also add shortcut to scroll to the last jumped position. For example,
+define the following in :file:`kitty.conf`:
+
+.. code:: conf
+
+   map f1 scroll_to_prompt 0
+
 
 How it works
 -----------------
