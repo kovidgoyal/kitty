@@ -50,11 +50,14 @@ choose that theme once for your changes to be applied.
 Contributing new themes
 -------------------------
 
-If you wish to contribute a new theme to the kitty theme repository, simply
-go to `kitty-themes <https://github.com/kovidgoyal/kitty-themes>`_ and open a pull request
-asking to add your contributions to the repository. Use the file
+If you wish to contribute a new theme to the kitty theme repository, start by
+going to the `kitty-themes <https://github.com/kovidgoyal/kitty-themes>`_. Fork it, and
+use the file
 :download:`template.conf <https://github.com/kovidgoyal/kitty-themes/raw/master/template.conf>` as
-a template when creating your theme.
+a template when creating your theme. Once you are satisfied with how it looks, modify the
+`metadata file <https://github.com/kovidgoyal/kitty-themes/blob/master/themes.json>`_
+to reference it, and
+`submit a pull request <https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request>`_.
 
 
 Changing the theme non-interactively
