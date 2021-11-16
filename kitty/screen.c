@@ -1722,6 +1722,7 @@ screen_repeat_character(Screen *self, unsigned int count) {
 
 void
 screen_delete_characters(Screen *self, unsigned int count) {
+    MOVE_OVERLAY_LINE_WITH_CURSOR;
     // Delete characters, later characters are moved left
     const unsigned int top = 0, bottom = self->lines ? self->lines - 1 : 0;
     if (count == 0) count = 1;
@@ -1739,6 +1740,7 @@ screen_delete_characters(Screen *self, unsigned int count) {
 
 void
 screen_erase_characters(Screen *self, unsigned int count) {
+    MOVE_OVERLAY_LINE_WITH_CURSOR;
     // Delete characters replacing them by spaces
     if (count == 0) count = 1;
     unsigned int x = self->cursor->x;
