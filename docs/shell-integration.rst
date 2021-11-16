@@ -65,6 +65,33 @@ no-complete
     turn off completion for the kitty command.
 
 
+More ways to browse command output
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can add further key and mouse bindings to browse the output of commands
+easily. For example to select the output of a command by right clicking the mouse
+on the output, define the following in file:`kitty.conf`:
+
+.. code:: conf
+
+   mouse_map right press ungrabbed mouse_select_command_output
+
+Now, when you right click on the output, the entire output is selected, ready
+to be copied.
+
+The feature to jump to previous prompts (
+:sc:`scroll_to_previous_prompt` and :sc:`scroll_to_next_prompt`) can be
+integrated with browsing command output as well. For example, define the
+following mapping in :file:`kitty.conf`:
+
+.. code:: conf
+
+   map f1 show_last_visited_command_output
+
+Now, pressing :key:`F1` will cause the output of the last jumped to command to
+be opened in a pager for easy browsing.
+
+
 How it works
 -----------------
 
