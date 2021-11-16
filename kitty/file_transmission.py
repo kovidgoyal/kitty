@@ -12,7 +12,7 @@ from dataclasses import Field, dataclass, field, fields
 from enum import Enum, auto
 from functools import partial
 from gettext import gettext as _
-from itertools import chain, count
+from itertools import count
 from time import monotonic
 from typing import (
     IO, Any, Callable, DefaultDict, Deque, Dict, Iterable, Iterator, List,
@@ -93,6 +93,19 @@ def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union[
         file_map[skey(sr)].append(ans)
         return ans
 
+    def add_dir(ftc: FileTransmissionCommand) -> None:
+        try:
+            lr = os.listdir(ftc.name)
+        except OSError:
+            return
+        for entry in lr:
+            try:
+                child_ftc = make_ftc(os.path.join(ftc.name, entry), spec_id, parent=ftc.status)
+            except (ValueError, OSError):
+                continue
+            if child_ftc.ftype is FileType.directory:
+                add_dir(child_ftc)
+
     for spec_id, spec in file_specs:
         path = spec
         if not os.path.isabs(path):
@@ -115,18 +128,7 @@ def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union[
             yield TransmissionError(file_id=spec_id, code='EINVAL', msg='Not a valid filetype')
             continue
         if ftc.ftype is FileType.directory:
-            try:
-                x_ok = os.access(path, os.X_OK)
-                di = os.walk(path)
-            except OSError:
-                x_ok = False
-            if x_ok:
-                for dirpath, dirnames, filenames in di:
-                    for dname in chain(dirnames, filenames):
-                        try:
-                            make_ftc(os.path.join(dirpath, dname), spec_id, parent=ftc.status)
-                        except (ValueError, OSError):
-                            continue
+            add_dir(ftc)
 
     def resolve_symlink(ftc: FileTransmissionCommand) -> FileTransmissionCommand:
         if ftc.ftype is FileType.symlink:
