@@ -26,12 +26,12 @@ from .fast_data_types import (
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
     MARK, MARK_MASK, NO_CURSOR_SHAPE, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE,
     SCROLL_PAGE, STRIKETHROUGH, TINT_PROGRAM, Color, KeyEvent, Screen,
-    add_timer, add_window, cell_size_for_window, click_mouse_url,
-    compile_program, encode_key_for_tty, get_boss, get_clipboard_string,
-    get_options, init_cell_program, mark_os_window_dirty, mouse_selection,
-    move_cursor_to_mouse_if_in_prompt, pt_to_px, set_clipboard_string,
-    set_titlebar_color, set_window_padding, set_window_render_data,
-    update_ime_position_for_window, update_window_title,
+    add_timer, add_window, cell_size_for_window, click_mouse_cmd_output,
+    click_mouse_url, compile_program, encode_key_for_tty, get_boss,
+    get_clipboard_string, get_options, init_cell_program, mark_os_window_dirty,
+    mouse_selection, move_cursor_to_mouse_if_in_prompt, pt_to_px,
+    set_clipboard_string, set_titlebar_color, set_window_padding,
+    set_window_render_data, update_ime_position_for_window, update_window_title,
     update_window_visibility, viewport_for_window
 )
 from .keys import keyboard_mode_name, mod_mask
@@ -1008,6 +1008,14 @@ class Window:
         txt = get_boss().current_primary_selection_or_clipboard()
         if txt:
             self.paste(txt)
+
+    @ac('mouse', '''
+        Select clicked command output
+
+        Requires :ref:`shell_integration` to work
+        ''')
+    def mouse_select_cmd_output(self) -> None:
+        click_mouse_cmd_output(self.os_window_id, self.tab_id, self.id)
     # }}}
 
     def text_for_selection(self) -> str:

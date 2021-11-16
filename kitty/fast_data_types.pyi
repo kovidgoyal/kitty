@@ -1272,6 +1272,8 @@ def set_window_padding(os_window_id: int, tab_id: int, window_id: int, left: int
 def click_mouse_url(os_window_id: int, tab_id: int, window_id: int) -> bool:
     pass
 
+def click_mouse_cmd_output(os_window_id: int, tab_id: int, window_id: int) -> bool:
+    pass
 
 def move_cursor_to_mouse_if_in_prompt(os_window_id: int, tab_id: int, window_id: int) -> bool:
     pass
