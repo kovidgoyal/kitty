@@ -1091,6 +1091,15 @@ click_mouse_url(id_type os_window_id, id_type tab_id, id_type window_id) {
 }
 
 static bool
+click_mouse_cmd_output(id_type os_window_id, id_type tab_id, id_type window_id) {
+    bool selected = false;
+    WITH_WINDOW(os_window_id, tab_id, window_id);
+    selected = mouse_select_cmd_output(window);
+    END_WITH_WINDOW;
+    return selected;
+}
+
+static bool
 move_cursor_to_mouse_if_in_prompt(id_type os_window_id, id_type tab_id, id_type window_id) {
     bool moved = false;
     WITH_WINDOW(os_window_id, tab_id, window_id);
@@ -1114,6 +1123,12 @@ pymouse_selection(PyObject *self UNUSED, PyObject *args) {
 PYWRAP1(click_mouse_url) {
     id_type a, b, c; PA("KKK", &a, &b, &c);
     if (click_mouse_url(a, b, c)) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
+}
+
+PYWRAP1(click_mouse_cmd_output) {
+    id_type a, b, c; PA("KKK", &a, &b, &c);
+    if (click_mouse_cmd_output(a, b, c)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 
@@ -1152,6 +1167,7 @@ static PyMethodDef module_methods[] = {
     MW(set_options, METH_VARARGS),
     MW(get_options, METH_NOARGS),
     MW(click_mouse_url, METH_VARARGS),
+    MW(click_mouse_cmd_output, METH_VARARGS),
     MW(move_cursor_to_mouse_if_in_prompt, METH_VARARGS),
     MW(redirect_mouse_handling, METH_O),
     MW(mouse_selection, METH_VARARGS),

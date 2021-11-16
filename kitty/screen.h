@@ -246,6 +246,7 @@ void set_active_hyperlink(Screen*, char*, char*);
 hyperlink_id_type screen_mark_hyperlink(Screen*, index_type, index_type);
 void screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload);
 bool screen_open_url(Screen*);
+bool screen_select_cmd_output(Screen*, index_type);
 void screen_dirty_sprite_positions(Screen *self);
 void screen_rescale_images(Screen *self);
 void screen_report_size(Screen *, unsigned int which);

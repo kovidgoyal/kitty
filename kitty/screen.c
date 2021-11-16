@@ -2764,6 +2764,31 @@ cmd_output(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+bool
+screen_select_cmd_output(Screen *self, index_type y) {
+    if (y >= self->lines) return false;
+    OutputOffset oo = {.screen=self};
+    if (!find_cmd_output(self, &oo, y, self->scrolled_by, 0, true)) return false;
+
+    screen_start_selection(self, 0, y, true, false, EXTEND_LINE);
+    Selection *s = self->selections.items;
+#define S(which, offset_y, scrolled_by) \
+    if (offset_y < 0) { \
+        s->scrolled_by = -offset_y; s->which.y = 0; \
+    } else { \
+        s->scrolled_by = 0; s->which.y = offset_y; \
+    }
+    S(start, oo.start, start_scrolled_by);
+    S(end, oo.start + (int)oo.num_lines - 1, end_scrolled_by);
+#undef S
+    s->start.x = 0; s->start.in_left_half_of_cell = true;
+    s->end.x = self->columns; s->end.in_left_half_of_cell = false;
+    self->selections.in_progress = false;
+
+    call_boss(set_primary_selection, NULL);
+    return true;
+}
+
 static PyObject*
 screen_truncate_point_for_length(PyObject UNUSED *self, PyObject *args) {
     PyObject *str; unsigned int num_cells, start_pos = 0;
