@@ -2774,7 +2774,7 @@ screen_select_cmd_output(Screen *self, index_type y) {
     Selection *s = self->selections.items;
 #define S(which, offset_y, scrolled_by) \
     if (offset_y < 0) { \
-        s->scrolled_by = -offset_y; s->which.y = 0; \
+        s->scrolled_by = -(offset_y); s->which.y = 0; \
     } else { \
         s->scrolled_by = 0; s->which.y = offset_y; \
     }
