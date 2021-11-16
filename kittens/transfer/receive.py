@@ -9,13 +9,14 @@ from contextlib import suppress
 from enum import auto
 from itertools import count
 from time import monotonic
-from typing import Deque, Dict, Iterator, List, Optional
+from typing import IO, Deque, Dict, Iterator, List, Optional, Union
 
 from kitty.cli_stub import TransferCLIOptions
 from kitty.fast_data_types import FILE_TRANSFER_CODE, wcswidth
 from kitty.file_transmission import (
-    Action, Compression, FileTransmissionCommand, FileType, NameReprEnum,
-    TransmissionType, encode_bypass, split_for_transfer
+    Action, Compression, FileTransmissionCommand, FileType,
+    IdentityDecompressor, NameReprEnum, TransmissionType, ZlibDecompressor,
+    encode_bypass, split_for_transfer
 )
 from kitty.typing import KeyEventType
 from kitty.utils import sanitize_control_codes
@@ -25,7 +26,7 @@ from ..tui.loop import Loop, debug
 from ..tui.operations import styled, without_line_wrap
 from ..tui.spinners import Spinner
 from ..tui.utils import human_size
-from .librsync import signature_of_file
+from .librsync import PatchFile, signature_of_file
 from .send import Transfer
 from .utils import (
     expand_home, random_id, render_progress_in_width, safe_divide,
@@ -47,6 +48,7 @@ class File:
 
     def __init__(self, ftc: FileTransmissionCommand):
         self.expected_size = ftc.size
+        self.expect_diff = False
         self.transmit_started_at = self.done_at = 0.
         self.transmitted_bytes = 0
         self.ftype = ftc.ftype
@@ -61,26 +63,31 @@ class File:
         self.expanded_local_path = ''
         self.file_id = str(next(file_counter))
         self.compression_capable = self.ftype is FileType.regular and self.expected_size > 4096 and should_be_compressed(self.expanded_local_path)
+        self.decompressor: Union[ZlibDecompressor, IdentityDecompressor] = ZlibDecompressor() if self.compression_capable else IdentityDecompressor()
         self.remote_symlink_value = b''
-        self.local_write_started = False
+        self.actual_file: Union[None, PatchFile, IO[bytes]] = None
 
     def __repr__(self) -> str:
         return f'File(rpath={self.remote_path!r}, lpath={self.expanded_local_path!r})'
 
     def write_data(self, data: bytes, is_last: bool) -> int:
+        data = self.decompressor(data, is_last)
         if self.ftype is FileType.symlink:
             self.remote_symlink_value += data
             return 0
         if self.ftype is FileType.regular:
-            if not self.local_write_started:
+            if self.actual_file is None:
                 parent = os.path.dirname(self.expanded_local_path)
                 if parent:
                     os.makedirs(parent, exist_ok=True)
-                self.local_write_started = True
-            with open(self.expanded_local_path, 'ab') as f:
-                base = f.tell()
-                f.write(data)
-                return f.tell() - base
+                self.actual_file = PatchFile(self.expanded_local_path) if self.expect_diff else open(self.expanded_local_path, 'wb')
+            base = self.actual_file.tell()
+            self.actual_file.write(data)
+            ans = self.actual_file.tell() - base
+            if is_last:
+                self.actual_file.close()
+                self.actual_file = None
+            return ans
         return 0
 
     def apply_metadata(self) -> None:
@@ -289,6 +296,7 @@ class Manager:
                 compression=Compression.zlib if f.compression_capable else Compression.none
             ).serialize()
             if read_signature:
+                f.expect_diff = True
                 fs = signature_of_file(f.expanded_local_path)
                 for chunk in fs:
                     for data in split_for_transfer(chunk, file_id=f.file_id):
