@@ -29,8 +29,8 @@ from ..tui.utils import human_size
 from .librsync import PatchFile, signature_of_file
 from .send import Transfer
 from .utils import (
-    expand_home, random_id, render_progress_in_width, safe_divide,
-    should_be_compressed
+    expand_home, print_rsync_stats, random_id, render_progress_in_width,
+    safe_divide, should_be_compressed
 )
 
 debug
@@ -50,7 +50,9 @@ class File:
         self.expected_size = ftc.size
         self.expect_diff = False
         self.transmit_started_at = self.done_at = 0.
-        self.transmitted_bytes = 0
+        self.written_bytes = 0
+        self.received_bytes = 0
+        self.sent_bytes = 0
         self.ftype = ftc.ftype
         self.mtime = ftc.mtime
         self.spec_id = int(ftc.file_id)
@@ -71,6 +73,7 @@ class File:
         return f'File(rpath={self.remote_path!r}, lpath={self.expanded_local_path!r})'
 
     def write_data(self, data: bytes, is_last: bool) -> int:
+        self.received_bytes += len(data)
         data = self.decompressor(data, is_last)
         if self.ftype is FileType.symlink:
             self.remote_symlink_value += data
@@ -185,7 +188,6 @@ class ProgressTracker:
         self.transfered_stats_amt = 0
         self.transfered_stats_interval = 0.
         self.started_at = 0.
-        self.signature_bytes = 0
         self.done_files: List[File] = []
 
     def change_active_file(self, nf: File) -> None:
@@ -200,7 +202,7 @@ class ProgressTracker:
     def file_written(self, af: File, amt: int, is_done: bool) -> None:
         if self.active_file is not af:
             self.change_active_file(af)
-        af.transmitted_bytes += amt
+        af.written_bytes += amt
         self.total_transferred += amt
         self.transfers.append(Transfer(amt))
         now = self.transfers[-1].at
@@ -300,6 +302,7 @@ class Manager:
                 f.expect_diff = True
                 fs = signature_of_file(f.expanded_local_path)
                 for chunk in fs:
+                    f.sent_bytes += len(chunk)
                     for data in split_for_transfer(chunk, file_id=f.file_id):
                         yield data.serialize()
                 yield FileTransmissionCommand(file_id=f.file_id, action=Action.end_data).serialize()
@@ -544,7 +547,7 @@ class Receive(Handler):
         now = monotonic()
         self.render_progress(
             af.display_name, spinner_char=spinner_char, is_complete=is_complete,
-            bytes_so_far=af.transmitted_bytes, total_bytes=af.expected_size,
+            bytes_so_far=af.written_bytes, total_bytes=af.expected_size,
             secs_so_far=(af.done_at or now) - af.transmit_started_at,
             bytes_per_sec=safe_divide(p.transfered_stats_amt, p.transfered_stats_interval)
         )
@@ -628,3 +631,11 @@ def receive_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
     loop = Loop()
     handler = Receive(cli_opts, spec, dest)
     loop.loop(handler)
+    tsf = dsz = ssz = 0
+    for f in handler.manager.files:
+        if f.expect_diff:
+            tsf += f.expected_size
+            dsz += f.received_bytes
+            ssz += f.sent_bytes
+    if tsf:
+        print_rsync_stats(tsf, dsz, ssz)

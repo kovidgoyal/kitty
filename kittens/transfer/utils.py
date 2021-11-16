@@ -192,3 +192,10 @@ class ZlibCompressor:
 
     def flush(self) -> bytes:
         return self.c.flush()
+
+
+def print_rsync_stats(total_bytes: int, delta_bytes: int, signature_bytes: int) -> None:
+    print('Rsync stats:')
+    print(f'  Delta size: {human_size(delta_bytes)} Signature size: {human_size(signature_bytes)}')
+    frac = (delta_bytes + signature_bytes) / max(1, total_bytes)
+    print(f'  Transmitted: {human_size(delta_bytes + signature_bytes)} of a total of {human_size(total_bytes)} ({frac:.1%})')

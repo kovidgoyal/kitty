@@ -669,11 +669,19 @@ class ActiveSend:
             if af is None:
                 return None
             self.queued_files_map.pop(af.file_id, None)
-        chunk, uncompressed_sz = af.next_chunk()
-        if af.transmitted:
-            self.active_file = None
-        self.pending_chunks.extend(split_for_transfer(chunk, file_id=af.file_id, mark_last=af.transmitted))
-        return self.pending_chunks.popleft() if self.pending_chunks else None
+        while True:
+            chunk, uncompressed_sz = af.next_chunk()
+            if af.transmitted:
+                self.active_file = None
+                break
+            if chunk:
+                break
+        if chunk:
+            self.pending_chunks.extend(split_for_transfer(chunk, file_id=af.file_id, mark_last=af.transmitted))
+            return self.pending_chunks.popleft()
+        elif af.transmitted:
+            return FileTransmissionCommand(action=Action.end_data, file_id=af.file_id)
+        return None
 
     def return_chunk(self, ftc: FileTransmissionCommand) -> None:
         self.pending_chunks.insert(0, ftc)

@@ -31,7 +31,8 @@ from ..tui.utils import human_size
 from .librsync import LoadSignature, delta_for_file
 from .utils import (
     IdentityCompressor, ZlibCompressor, abspath, expand_home, home_path,
-    random_id, render_progress_in_width, safe_divide, should_be_compressed
+    print_rsync_stats, random_id, render_progress_in_width, safe_divide,
+    should_be_compressed
 )
 
 debug
@@ -725,10 +726,8 @@ def send_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
         for f in files:
             if f.ttype is TransmissionType.rsync:
                 tsf += f.file_size
-        print(
-            f'Rsync stats: Delta size: {human_size(p.total_transferred)} Signature size: {human_size(p.signature_bytes)}',
-            f'Total rsynced files size: {human_size(tsf)}'
-        )
+        if tsf:
+            print_rsync_stats(tsf, p.total_transferred, p.signature_bytes)
     if handler.failed_files:
         print(f'Transfer of {len(handler.failed_files)} out of {len(handler.manager.files)} files failed')
         for ff in handler.failed_files:
