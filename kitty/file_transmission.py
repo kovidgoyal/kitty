@@ -666,7 +666,7 @@ class ActiveSend:
         if af.transmitted:
             self.active_file = None
         self.pending_chunks.extend(split_for_transfer(chunk, file_id=af.file_id, mark_last=af.transmitted))
-        return self.pending_chunks.popleft()
+        return self.pending_chunks.popleft() if self.pending_chunks else None
 
     def return_chunk(self, ftc: FileTransmissionCommand) -> None:
         self.pending_chunks.insert(0, ftc)

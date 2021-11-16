@@ -62,8 +62,8 @@ class File:
         self.parent = ftc.parent
         self.expanded_local_path = ''
         self.file_id = str(next(file_counter))
-        self.compression_capable = self.ftype is FileType.regular and self.expected_size > 4096 and should_be_compressed(self.expanded_local_path)
-        self.decompressor: Union[ZlibDecompressor, IdentityDecompressor] = ZlibDecompressor() if self.compression_capable else IdentityDecompressor()
+        compression_capable = self.ftype is FileType.regular and self.expected_size > 4096 and should_be_compressed(self.remote_path)
+        self.decompressor: Union[ZlibDecompressor, IdentityDecompressor] = ZlibDecompressor() if compression_capable else IdentityDecompressor()
         self.remote_symlink_value = b''
         self.actual_file: Union[None, PatchFile, IO[bytes]] = None
 
@@ -82,7 +82,8 @@ class File:
                     os.makedirs(parent, exist_ok=True)
                 self.actual_file = PatchFile(self.expanded_local_path) if self.expect_diff else open(self.expanded_local_path, 'wb')
             base = self.actual_file.tell()
-            self.actual_file.write(data)
+            if data:
+                self.actual_file.write(data)
             ans = self.actual_file.tell() - base
             if is_last:
                 self.actual_file.close()
@@ -293,7 +294,7 @@ class Manager:
                     read_signature = sr.st_size > 4096
             yield FileTransmissionCommand(
                 action=Action.file, name=f.remote_path, file_id=f.file_id, ttype=TransmissionType.rsync if read_signature else TransmissionType.simple,
-                compression=Compression.zlib if f.compression_capable else Compression.none
+                compression=Compression.zlib if isinstance(f.decompressor, ZlibDecompressor) else Compression.none
             ).serialize()
             if read_signature:
                 f.expect_diff = True
@@ -354,7 +355,7 @@ class Manager:
                 is_last = ftc.action is Action.end_data
                 try:
                     amt_written = f.write_data(ftc.data, is_last)
-                except OSError as err:
+                except Exception as err:
                     return str(err)
                 self.progress_tracker.file_written(f, amt_written, is_last)
                 if is_last:
