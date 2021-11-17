@@ -117,7 +117,9 @@ def without_line_wrap(write: Callable[[str], None]) -> Generator[None, None, Non
 
 @cmd
 def repeat(char: str, count: int) -> str:
-    return f'{char}\x1b[{abs(count)}b'
+    if count > 1:
+        return f'{char}\x1b[{count-1}b'
+    return char * count
 
 
 @cmd
