@@ -20,7 +20,7 @@ from kitty.file_transmission import (
     Action, Compression, FileTransmissionCommand, FileType, NameReprEnum,
     TransmissionType, encode_bypass, split_for_transfer
 )
-from kitty.typing import KeyEventType
+from kitty.typing import KeyEventType, ScreenSize
 from kitty.utils import sanitize_control_codes
 
 from ..tui.handler import Handler
@@ -702,6 +702,11 @@ class Send(Handler):
             self.print()
         self.schedule_progress_update(self.spinner.interval)
         self.progress_drawn = True
+
+    def on_resize(self, screen_size: ScreenSize) -> None:
+        super().on_resize(screen_size)
+        if self.progress_drawn:
+            self.refresh_progress()
 
     def refresh_progress(self) -> None:
         if not self.transmit_started:

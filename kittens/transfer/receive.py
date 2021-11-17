@@ -18,7 +18,7 @@ from kitty.file_transmission import (
     IdentityDecompressor, NameReprEnum, TransmissionType, ZlibDecompressor,
     encode_bypass, split_for_transfer
 )
-from kitty.typing import KeyEventType
+from kitty.typing import KeyEventType, ScreenSize
 from kitty.utils import sanitize_control_codes
 
 from ..tui.handler import Handler
@@ -618,6 +618,11 @@ class Receive(Handler):
             self.quit_loop(self.quit_after_write_code)
         elif self.transmit_iterator is not None:
             self.transmit_one()
+
+    def on_resize(self, screen_size: ScreenSize) -> None:
+        super().on_resize(screen_size)
+        if self.progress_drawn:
+            self.refresh_progress()
 
 
 def receive_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
