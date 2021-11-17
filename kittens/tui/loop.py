@@ -196,18 +196,21 @@ class SignalManager:
         on_winch: Callable[[], None],
         on_interrupt: Callable[[], None],
         on_term: Callable[[], None],
+        on_hup: Callable[[], None],
     ) -> None:
         self.asyncio_loop = loop
         self.on_winch, self.on_interrupt, self.on_term = on_winch, on_interrupt, on_term
+        self.on_hup = on_hup
 
     def __enter__(self) -> None:
         self.asyncio_loop.add_signal_handler(signal.SIGWINCH, self.on_winch)
         self.asyncio_loop.add_signal_handler(signal.SIGINT, self.on_interrupt)
         self.asyncio_loop.add_signal_handler(signal.SIGTERM, self.on_term)
+        self.asyncio_loop.add_signal_handler(signal.SIGHUP, self.on_hup)
 
     def __exit__(self, *a: Any) -> None:
         tuple(map(self.asyncio_loop.remove_signal_handler, (
-            signal.SIGWINCH, signal.SIGINT, signal.SIGTERM)))
+            signal.SIGWINCH, signal.SIGINT, signal.SIGTERM, signal.SIGHUP)))
 
 
 sanitize_bracketed_paste: str = '[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]'
@@ -248,7 +251,9 @@ class Loop:
         except BlockingIOError:
             return
         if not bdata:
-            raise EOFError('The input stream is closed')
+            handler.terminal_io_ended = True
+            self.quit(1)
+            return
         data = self.decoder.decode(bdata)
         if self.read_buf:
             data = self.read_buf + data
@@ -373,7 +378,9 @@ class Loop:
             except BlockingIOError:
                 return
             if not written:
-                raise EOFError('The output stream is closed')
+                handler.terminal_io_ended = True
+                self.quit(1)
+                return
         else:
             written = 0
         if written >= total_size:
@@ -441,7 +448,7 @@ class Loop:
             handler.screen_size = self._get_screen_size()
             handler.on_resize(handler.screen_size)
 
-        signal_manager = SignalManager(self.asyncio_loop, _on_sigwinch, handler.on_interrupt, handler.on_term)
+        signal_manager = SignalManager(self.asyncio_loop, _on_sigwinch, handler.on_interrupt, handler.on_term, handler.on_hup)
         with TermManager(self.optional_actions, handler.use_alternate_screen, handler.mouse_tracking) as term_manager, signal_manager:
             self._get_screen_size: ScreenSizeGetter = screen_size_function(term_manager.tty_fd)
             image_manager = None

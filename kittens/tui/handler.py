@@ -42,6 +42,7 @@ class Handler:
     image_manager_class: Optional[Type[ImageManagerType]] = None
     use_alternate_screen = True
     mouse_tracking = MouseTracking.none
+    terminal_io_ended = False
 
     def _initialize(
         self,
@@ -110,6 +111,10 @@ class Handler:
         self._tui_loop.quit(return_code)
 
     def on_term(self) -> None:
+        self._tui_loop.quit(1)
+
+    def on_hup(self) -> None:
+        self.terminal_io_ended = True
         self._tui_loop.quit(1)
 
     def on_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
