@@ -13,6 +13,10 @@ from .receive import receive_main
 from .send import send_main
 
 
+usage = 'source_files_or_directories destination_path'
+help_text = 'Transfer files over the TTY device'
+
+
 def option_text() -> str:
     return '''\
 --direction -d
@@ -23,7 +27,7 @@ Whether to send or receive files.
 
 --mode -m
 default=normal
-choices=mirror
+choices=normal,mirror
 How to interpret command line arguments. In :code:`mirror` mode all arguments
 are assumed to be files on the sending computer and they are mirrored onto the
 receiving computer. In :code:`normal` mode the last argument is assumed to be a
@@ -49,15 +53,15 @@ and ask for confirmation.
 type=bool-set
 If a file on the receiving side already exists, use the rsync algorithm to update it to match
 the file on the sending side, potentially saving lots of bandwidth and also automatically resuming
-partial transfers. Note that this will actually degrade performance on fast links with not too
-large files, so use with care.
+partial transfers. Note that this will actually degrade performance on fast links with small
+files, so use with care.
 '''
 
 
 def parse_transfer_args(args: List[str]) -> Tuple[TransferCLIOptions, List[str]]:
     return parse_args(
-        args[1:], option_text, '', 'Transfer files over the TTY device',
-        'kitty transfer', result_class=TransferCLIOptions
+        args[1:], option_text, usage, help_text,
+        'kitty +kitten transfer', result_class=TransferCLIOptions
     )
 
 
@@ -92,3 +96,8 @@ def main(args: List[str]) -> None:
 
 if __name__ == '__main__':
     main(sys.argv)
+elif __name__ == '__doc__':
+    cd = sys.cli_docs  # type: ignore
+    cd['usage'] = usage
+    cd['options'] = option_text
+    cd['help_text'] = help_text

@@ -14,6 +14,7 @@ Extend with kittens
    kittens/hints
    kittens/remote_file
    kittens/hyperlinked_grep
+   kittens/transfer
    kittens/custom
    kittens/*
 
@@ -43,6 +44,11 @@ Some prominent kittens:
 :doc:`Remote file <kittens/remote_file>`
     Edit, open, or download remote files over SSH easily, by simply clicking on
     the filename.
+
+
+:doc:`Transfer files <kittens/transfer>`
+    Transfer files and directories seamlessly and easily from remote machines over your existing
+    SSH sessions with a simple command.
 
 
 :doc:`Hyperlinked grep <kittens/hyperlinked_grep>`
