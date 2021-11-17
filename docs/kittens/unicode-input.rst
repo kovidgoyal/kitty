@@ -23,9 +23,9 @@ the arrow keys/tab to select the character from the displayed matches. You can
 also type a space followed by a period and the index for the match if you don't
 like to use arrow keys.
 
-You can switch between modes using either the function keys or by pressing
-:kbd:`Ctrl+[` and :kbd:`Ctrl+]` or by pressing :kbd:`Ctrl+Tab` and
-:kbd:`Ctrl+Shift+Tab`.
+You can switch between modes using either the keys :kbd:`F1` ... :kbd:`F4` or
+:kbd:`Ctrl+1` ... :kbd:`Ctrl+4` or by pressing :kbd:`Ctrl+[` and :kbd:`Ctrl+]`
+or by pressing :kbd:`Ctrl+Tab` and :kbd:`Ctrl+Shift+Tab`.
 
 
 .. include:: ../generated/cli-kitten-unicode_input.rst

@@ -227,6 +227,13 @@ class KeyEvent(NamedTuple):
             return True
         return False
 
+    def matches_without_mods(self, spec: Union[str, ParsedShortcut], types: int = EventType.PRESS | EventType.REPEAT) -> bool:
+        if not self.type & types:
+            return False
+        if isinstance(spec, str):
+            spec = parse_shortcut(spec)
+        return self.key == spec[1]
+
     def matches_text(self, text: str, case_sensitive: bool = False) -> bool:
         if case_sensitive:
             return self.text == text

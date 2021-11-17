@@ -485,19 +485,19 @@ class UnicodeInput(Handler):
         if key_event.matches('esc'):
             self.quit_loop(1)
             return
-        if key_event.matches('f1'):
+        if key_event.matches_without_mods('f1') or key_event.matches('ctrl+1'):
             self.switch_mode(HEX)
             return
-        if key_event.matches('f2'):
+        if key_event.matches_without_mods('f2') or key_event.matches('ctrl+2'):
             self.switch_mode(NAME)
             return
-        if key_event.matches('f3'):
+        if key_event.matches_without_mods('f3') or key_event.matches('ctrl+3'):
             self.switch_mode(EMOTICONS)
             return
-        if key_event.matches('f4'):
+        if key_event.matches_without_mods('f4') or key_event.matches('ctrl+4'):
             self.switch_mode(FAVORITES)
             return
-        if key_event.matches('f12') and self.mode is FAVORITES:
+        if key_event.matches_without_mods('f12') and self.mode is FAVORITES:
             self.edit_favorites()
             return
         if key_event.matches('ctrl+shift+tab'):
