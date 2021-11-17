@@ -72,6 +72,11 @@ class File:
     def __repr__(self) -> str:
         return f'File(rpath={self.remote_path!r}, lpath={self.expanded_local_path!r})'
 
+    def close(self) -> None:
+        if self.actual_file is not None:
+            self.actual_file.close()
+            self.actual_file = None
+
     def write_data(self, data: bytes, is_last: bool) -> int:
         self.received_bytes += len(data)
         data = self.decompressor(data, is_last)
@@ -639,6 +644,8 @@ def receive_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
     loop = Loop()
     handler = Receive(cli_opts, spec, dest)
     loop.loop(handler)
+    for f in handler.manager.files:
+        f.close()
     tsf = dsz = ssz = 0
     for f in handler.manager.files:
         if f.expect_diff:
