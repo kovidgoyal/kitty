@@ -486,10 +486,10 @@ class Receive(Handler):
 
     def start_transfer(self) -> None:
         self.transmit_started = True
-        if self.manager.use_rsync:
-            self.print(f'Transmitting signatures of {len(self.manager.files)} files(s)')
-        else:
-            self.print(f'Queueing transfer of {len(self.manager.files)} files(s)')
+        n = len(self.manager.files)
+        msg = 'Transmitting signature of' if self.manager.use_rsync else 'Queueing transfer of'
+        msg += ' one file' if n == 1 else f'{n} files'
+        self.print(msg)
         names = (f.display_name for f in self.manager.files)
         self.max_name_length = max(6, max(map(wcswidth, names)))
         self.transmit_iterator = self.manager.request_files()
