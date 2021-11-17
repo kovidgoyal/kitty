@@ -69,7 +69,7 @@ class Handler:
 
     @property
     def asyncio_loop(self) -> AbstractEventLoop:
-        return self._tui_loop.asycio_loop
+        return self._tui_loop.asyncio_loop
 
     def add_shortcut(self, action: KeyActionType, spec: Union[str, ParsedShortcut]) -> None:
         if not hasattr(self, '_key_shortcuts'):

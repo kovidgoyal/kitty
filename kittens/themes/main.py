@@ -582,7 +582,7 @@ def main(args: List[str]) -> None:
             print(handler.report_traceback_on_exit, file=sys.stderr)
             input('Press Enter to quit.')
     if handler.state is State.fetching:
-        # asycio uses non-daemonic threads in its ThreadPoolExecutor
+        # asyncio uses non-daemonic threads in its ThreadPoolExecutor
         # so we will hang here till the download completes without
         # os._exit
         os._exit(loop.return_code)

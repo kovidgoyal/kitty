@@ -197,16 +197,16 @@ class SignalManager:
         on_interrupt: Callable[[], None],
         on_term: Callable[[], None],
     ) -> None:
-        self.asycio_loop = loop
+        self.asyncio_loop = loop
         self.on_winch, self.on_interrupt, self.on_term = on_winch, on_interrupt, on_term
 
     def __enter__(self) -> None:
-        self.asycio_loop.add_signal_handler(signal.SIGWINCH, self.on_winch)
-        self.asycio_loop.add_signal_handler(signal.SIGINT, self.on_interrupt)
-        self.asycio_loop.add_signal_handler(signal.SIGTERM, self.on_term)
+        self.asyncio_loop.add_signal_handler(signal.SIGWINCH, self.on_winch)
+        self.asyncio_loop.add_signal_handler(signal.SIGINT, self.on_interrupt)
+        self.asyncio_loop.add_signal_handler(signal.SIGTERM, self.on_term)
 
     def __exit__(self, *a: Any) -> None:
-        tuple(map(self.asycio_loop.remove_signal_handler, (
+        tuple(map(self.asyncio_loop.remove_signal_handler, (
             signal.SIGWINCH, signal.SIGINT, signal.SIGTERM)))
 
 
@@ -223,10 +223,10 @@ class Loop:
         if is_macos:
             # On macOS PTY devices are not supported by the KqueueSelector and
             # the PollSelector is broken, causes 100% CPU usage
-            self.asycio_loop: asyncio.AbstractEventLoop = asyncio.SelectorEventLoop(selectors.SelectSelector())
-            asyncio.set_event_loop(self.asycio_loop)
+            self.asyncio_loop: asyncio.AbstractEventLoop = asyncio.SelectorEventLoop(selectors.SelectSelector())
+            asyncio.set_event_loop(self.asyncio_loop)
         else:
-            self.asycio_loop = asyncio.get_event_loop()
+            self.asyncio_loop = asyncio.get_event_loop()
         self.return_code = 0
         self.optional_actions = optional_actions
         self.read_buf = ''
@@ -378,7 +378,7 @@ class Loop:
             written = 0
         if written >= total_size:
             self.write_buf: List[bytes] = []
-            self.asycio_loop.remove_writer(fd)
+            self.asyncio_loop.remove_writer(fd)
             self.waiting_for_writes = False
             handler.on_writing_finished()
         else:
@@ -397,7 +397,7 @@ class Loop:
     def quit(self, return_code: Optional[int] = None) -> None:
         if return_code is not None:
             self.return_code = return_code
-        self.asycio_loop.stop()
+        self.asyncio_loop.stop()
 
     def loop_impl(self, handler: Handler, term_manager: TermManager, image_manager: Optional[ImageManagerType] = None) -> Optional[str]:
         self.write_buf = []
@@ -408,7 +408,7 @@ class Loop:
         def schedule_write(data: bytes) -> None:
             self.write_buf.append(data)
             if not self.waiting_for_writes:
-                self.asycio_loop.add_writer(tty_fd, self._write_ready, handler, tty_fd)
+                self.asyncio_loop.add_writer(tty_fd, self._write_ready, handler, tty_fd)
                 self.waiting_for_writes = True
 
         def handle_exception(loop: asyncio.AbstractEventLoop, context: Dict[str, Any]) -> None:
@@ -420,17 +420,17 @@ class Loop:
                 import traceback
                 tb += '\n' + ''.join(traceback.format_exception(exc.__class__, exc, exc.__traceback__))
 
-        self.asycio_loop.set_exception_handler(handle_exception)
+        self.asyncio_loop.set_exception_handler(handle_exception)
         handler._initialize(self._get_screen_size(), term_manager, schedule_write, self, debug, image_manager)
         with handler:
-            self.asycio_loop.add_reader(
+            self.asyncio_loop.add_reader(
                     tty_fd, self._read_ready, handler, tty_fd)
-            self.asycio_loop.add_writer(
+            self.asyncio_loop.add_writer(
                     tty_fd, self._write_ready, handler, tty_fd)
-            self.asycio_loop.run_forever()
-            self.asycio_loop.remove_reader(tty_fd)
+            self.asyncio_loop.run_forever()
+            self.asyncio_loop.remove_reader(tty_fd)
             if self.waiting_for_writes:
-                self.asycio_loop.remove_writer(tty_fd)
+                self.asyncio_loop.remove_writer(tty_fd)
         return tb
 
     def loop(self, handler: Handler) -> None:
@@ -441,7 +441,7 @@ class Loop:
             handler.screen_size = self._get_screen_size()
             handler.on_resize(handler.screen_size)
 
-        signal_manager = SignalManager(self.asycio_loop, _on_sigwinch, handler.on_interrupt, handler.on_term)
+        signal_manager = SignalManager(self.asyncio_loop, _on_sigwinch, handler.on_interrupt, handler.on_term)
         with TermManager(self.optional_actions, handler.use_alternate_screen, handler.mouse_tracking) as term_manager, signal_manager:
             self._get_screen_size: ScreenSizeGetter = screen_size_function(term_manager.tty_fd)
             image_manager = None
