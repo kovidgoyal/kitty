@@ -166,15 +166,18 @@ def files_for_receive(cli_opts: TransferCLIOptions, dest: str, files: List[File]
             for x in tree:
                 yield x.entry
     else:
-        dest_is_dir = dest[-1] in (os.sep, os.altsep) or len(specs) > 1
+        number_of_source_files = sum(map(len, spec_map.values()))
+        dest_is_dir = dest[-1] in (os.sep, os.altsep) or number_of_source_files > 1 or os.path.isdir(dest)
         for spec_id, files_for_spec in spec_map.items():
             if dest_is_dir:
                 dest_path = os.path.join(dest, posixpath.basename(files_for_spec[0].remote_path))
+                tree = make_tree(files_for_spec, os.path.dirname(expand_home(dest_path)))
+                for x in tree:
+                    yield x.entry
             else:
-                dest_path = dest
-            tree = make_tree(files_for_spec, os.path.dirname(expand_home(dest_path)))
-            for x in tree:
-                yield x.entry
+                f = files_for_spec[0]
+                f.expanded_local_path = dest
+                yield f
 
 
 class ProgressTracker:
