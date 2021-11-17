@@ -8,6 +8,9 @@ Transfer files to and from remote computers over the ``TTY`` device itself.
 This means that file transfer works over nested SSH sessions, serial links,
 etc. Anywhere you have a terminal device, you can transfer files.
 
+.. image:: ../screenshots/transfer.png
+   :alt: The transfer kitten at work
+
 This kitten supports transferring entire directory trees, preserving soft and
 hard links, file permissions, times, etc. It even supports the `rsync
 <https://en.wikipedia.org/wiki/Rsync>`_ protocol to transfer only changes to
