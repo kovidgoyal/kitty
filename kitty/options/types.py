@@ -951,4 +951,6 @@ defaults.mouse_map = [
     MouseMapping(1, 1, 1, True, KeyAction('mouse_selection', (1,))),
     # extend_selection_grabbed
     MouseMapping(1, 1, 1, False, KeyAction('mouse_selection', (1,))),
+    # show_clicked_cmd_output_ungrabbed
+    MouseMapping(1, 5, 1, False, KeyAction('mouse_show_command_output')),
 ]

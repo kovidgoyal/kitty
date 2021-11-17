@@ -146,6 +146,7 @@ typedef struct {
     } last_rendered_window_char;
     struct {
         unsigned int scrolled_by;
+        index_type y;
         bool is_set;
     } last_visited_prompt;
 } Screen;
@@ -246,6 +247,7 @@ void set_active_hyperlink(Screen*, char*, char*);
 hyperlink_id_type screen_mark_hyperlink(Screen*, index_type, index_type);
 void screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload);
 bool screen_open_url(Screen*);
+bool screen_set_last_visited_prompt(Screen*, index_type);
 bool screen_select_cmd_output(Screen*, index_type);
 void screen_dirty_sprite_positions(Screen *self);
 void screen_rescale_images(Screen *self);

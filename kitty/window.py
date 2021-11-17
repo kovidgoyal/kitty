@@ -1014,8 +1014,17 @@ class Window:
 
         Requires :ref:`shell_integration` to work
         ''')
-    def mouse_select_cmd_output(self) -> None:
-        click_mouse_cmd_output(self.os_window_id, self.tab_id, self.id)
+    def mouse_select_command_output(self) -> None:
+        click_mouse_cmd_output(self.os_window_id, self.tab_id, self.id, True)
+
+    @ac('mouse', '''
+        Show clicked command output in a pager like less
+
+        Requires :ref:`shell_integration` to work
+        ''')
+    def mouse_show_command_output(self) -> None:
+        if click_mouse_cmd_output(self.os_window_id, self.tab_id, self.id, False):
+            self.show_cmd_output(CommandOutput.last_visited, 'Clicked command output')
     # }}}
 
     def text_for_selection(self) -> str:
@@ -1087,15 +1096,18 @@ class Window:
         cursor_on_screen = self.screen.scrolled_by < self.screen.lines - self.screen.cursor.y
         get_boss().display_scrollback(self, data['text'], data['input_line_number'], report_cursor=cursor_on_screen)
 
+    def show_cmd_output(self, which: CommandOutput, title: str = 'Command ouptut', as_ansi: bool = True, add_wrap_markers: bool = True) -> None:
+        text = self.cmd_output(which, as_ansi=as_ansi, add_wrap_markers=add_wrap_markers)
+        text = text.replace('\r\n', '\n').replace('\r', '\n')
+        get_boss().display_scrollback(self, text, title=title, report_cursor=False)
+
     @ac('cp', '''
         Show output from the first shell command on screen in a pager like less
 
         Requires :ref:`shell_integration` to work
         ''')
     def show_first_command_output_on_screen(self) -> None:
-        text = self.cmd_output(CommandOutput.first_on_screen, as_ansi=True, add_wrap_markers=True)
-        text = text.replace('\r\n', '\n').replace('\r', '\n')
-        get_boss().display_scrollback(self, text, title='First command output on screen', report_cursor=False)
+        self.show_cmd_output(CommandOutput.first_on_screen, 'First command output on screen')
 
     @ac('cp', '''
         Show output from the last shell command in a pager like less
@@ -1103,19 +1115,16 @@ class Window:
         Requires :ref:`shell_integration` to work
         ''')
     def show_last_command_output(self) -> None:
-        text = self.cmd_output(CommandOutput.last_run, as_ansi=True, add_wrap_markers=True)
-        text = text.replace('\r\n', '\n').replace('\r', '\n')
-        get_boss().display_scrollback(self, text, title='Last command output', report_cursor=False)
+        self.show_cmd_output(CommandOutput.last_run, 'Last command output')
 
     @ac('cp', '''
-        Show the first output below the last scrolled position via scroll_to_prompt in a pager like less
+        Show the first command output below the last scrolled position via scroll_to_prompt
+        or the last mouse clicked command output in a pager like less
 
         Requires :ref:`shell_integration` to work
         ''')
     def show_last_visited_command_output(self) -> None:
-        text = self.cmd_output(CommandOutput.last_visited, as_ansi=True, add_wrap_markers=True)
-        text = text.replace('\r\n', '\n').replace('\r', '\n')
-        get_boss().display_scrollback(self, text, title='Last visited command output', report_cursor=False)
+        self.show_cmd_output(CommandOutput.last_visited, 'Last visited command output')
 
     def paste_bytes(self, text: Union[str, bytes]) -> None:
         # paste raw bytes without any processing

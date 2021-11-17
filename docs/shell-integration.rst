@@ -74,29 +74,40 @@ on the output, define the following in :file:`kitty.conf`:
 
 .. code:: conf
 
-   mouse_map right press ungrabbed mouse_select_command_output
+    mouse_map right press ungrabbed mouse_select_command_output
 
 Now, when you right click on the output, the entire output is selected, ready
 to be copied.
 
 The feature to jump to previous prompts (
-:sc:`scroll_to_previous_prompt` and :sc:`scroll_to_next_prompt`) can be
-integrated with browsing command output as well. For example, define the
+:sc:`scroll_to_previous_prompt` and :sc:`scroll_to_next_prompt`) and mouse
+actions (``mouse_select_command_output`` and ``mouse_show_command_output``) can
+be integrated with browsing command output as well. For example, define the
 following mapping in :file:`kitty.conf`:
 
 .. code:: conf
 
-   map f1 show_last_visited_command_output
+    map f1 show_last_visited_command_output
 
-Now, pressing :kbd:`F1` will cause the output of the last jumped to command to
-be opened in a pager for easy browsing.
+Now, pressing :kbd:`F1` will cause the output of the last jumped to command or
+the last mouse clicked command output to be opened in a pager for easy browsing.
+
+In addition, You can define shortcut to get the first command output on screen.
+For example, define the following in :file:`kitty.conf`:
+
+.. code:: conf
+
+    map f1 show_first_command_output_on_screen
+
+Now, pressing :kbd:`F1` will cause the output of the first command output on
+screen to be opened in a pager.
 
 You can also add shortcut to scroll to the last jumped position. For example,
 define the following in :file:`kitty.conf`:
 
 .. code:: conf
 
-   map f1 scroll_to_prompt 0
+    map f1 scroll_to_prompt 0
 
 
 How it works
@@ -110,9 +121,9 @@ different shells.
 
 .. tab:: bash/zsh
 
-   For these shells, kitty adds a couple of lines to
-   the bottom of the shell's rc files (in an atomic manner) to load the shell
-   integration code.
+    For these shells, kitty adds a couple of lines to
+    the bottom of the shell's rc files (in an atomic manner) to load the shell
+    integration code.
 
 .. tab:: fish
 

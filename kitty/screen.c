@@ -1269,7 +1269,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
         linebuf_init_line(self->linebuf, bottom); \
         historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf); \
         self->history_line_added_count++; \
-        if (self->last_visited_prompt.is_set && self->last_visited_prompt.scrolled_by < self->historybuf->count) self->last_visited_prompt.scrolled_by++; \
+        if (self->last_visited_prompt.is_set && self->last_visited_prompt.scrolled_by <= self->historybuf->count) self->last_visited_prompt.scrolled_by++; \
     } \
     linebuf_clear_line(self->linebuf, bottom, true); \
     self->is_dirty = true; \
@@ -2024,7 +2024,7 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
     if (self->linebuf != self->main_linebuf) return false;
     unsigned int old = self->scrolled_by;
     if (num_of_prompts_to_jump == 0) {
-        if (!self->last_visited_prompt.is_set || self->last_visited_prompt.scrolled_by > self->historybuf->count) return false;
+        if (!self->last_visited_prompt.is_set || self->last_visited_prompt.scrolled_by > self->historybuf->count || self->last_visited_prompt.y >= self->lines) return false;
         self->scrolled_by = self->last_visited_prompt.scrolled_by;
     } else {
         int delta = num_of_prompts_to_jump < 0 ? -1 : 1;
@@ -2041,8 +2041,7 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
         }
 #undef ensure_y_ok
         self->scrolled_by = y >= 0 ? 0 : -y;
-        self->last_visited_prompt.scrolled_by = self->scrolled_by;
-        self->last_visited_prompt.is_set = true;
+        screen_set_last_visited_prompt(self, 0);
     }
     if (old != self->scrolled_by) self->scroll_changed = true;
     return old != self->scrolled_by;
@@ -2756,7 +2755,7 @@ cmd_output(Screen *self, PyObject *args) {
             break;
         case 2:  // last visited cmd
             if (self->last_visited_prompt.scrolled_by <= self->historybuf->count && self->last_visited_prompt.is_set) {
-                found = find_cmd_output(self, &oo, 0, self->last_visited_prompt.scrolled_by, 0, false);
+                found = find_cmd_output(self, &oo, self->last_visited_prompt.y, self->last_visited_prompt.scrolled_by, 0, false);
             } break;
         default:
             PyErr_Format(PyExc_KeyError, "%u is not a valid type of command", which);
@@ -2764,6 +2763,15 @@ cmd_output(Screen *self, PyObject *args) {
     }
     if (found) return as_text_generic(as_text_args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf);
     Py_RETURN_NONE;
+}
+
+bool
+screen_set_last_visited_prompt(Screen *self, index_type y) {
+    if (y >= self->lines) return false;
+    self->last_visited_prompt.scrolled_by = self->scrolled_by;
+    self->last_visited_prompt.y = y;
+    self->last_visited_prompt.is_set = true;
+    return true;
 }
 
 bool
