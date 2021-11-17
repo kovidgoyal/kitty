@@ -1269,7 +1269,10 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
         linebuf_init_line(self->linebuf, bottom); \
         historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf); \
         self->history_line_added_count++; \
-        if (self->last_visited_prompt.is_set && self->last_visited_prompt.scrolled_by <= self->historybuf->count) self->last_visited_prompt.scrolled_by++; \
+        if (self->last_visited_prompt.is_set) { \
+            if (self->last_visited_prompt.scrolled_by < self->historybuf->count) self->last_visited_prompt.scrolled_by++; \
+            else self->last_visited_prompt.is_set = false; \
+        } \
     } \
     linebuf_clear_line(self->linebuf, bottom, true); \
     self->is_dirty = true; \
