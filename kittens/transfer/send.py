@@ -518,8 +518,12 @@ class Send(Handler):
         if self.check_paths_printed and not self.transmit_started:
             if text.lower() == 'y':
                 self.start_transfer()
+                if self.manager.all_acknowledged:
+                    self.refresh_progress()
+                    self.transfer_finished()
                 return
             if text.lower() == 'n':
+                del self.failed_files[:]
                 self.abort_transfer()
                 self.print('Sending cancel request to terminal')
                 return
@@ -530,6 +534,7 @@ class Send(Handler):
             return
         if key_event.matches('esc'):
             if self.check_paths_printed and not self.transmit_started:
+                del self.failed_files[:]
                 self.abort_transfer()
                 self.print('Sending cancel request to terminal')
             else:
