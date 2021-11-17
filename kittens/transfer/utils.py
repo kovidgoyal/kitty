@@ -2,13 +2,13 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import secrets
 from contextlib import contextmanager
 from datetime import timedelta
 from mimetypes import guess_type
-from typing import Callable, Generator, Union
+from typing import Generator, Union
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
-from kitty.types import run_once
 
 from ..tui.operations import styled
 from ..tui.progress import render_progress_bar
@@ -151,14 +151,10 @@ def expand_home(path: str) -> str:
     return path
 
 
-@run_once
-def short_uuid_func() -> Callable[[], str]:
-    from kitty.short_uuid import ShortUUID, escape_code_safe_alphabet
-    return ShortUUID(alphabet=''.join(set(escape_code_safe_alphabet) - {';'})).uuid4
-
-
 def random_id() -> str:
-    return short_uuid_func()()
+    ans = hex(os.getpid())[2:]
+    x = secrets.token_hex(2)
+    return ans + x
 
 
 @contextmanager
