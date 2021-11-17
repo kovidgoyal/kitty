@@ -133,11 +133,9 @@ class PatchFile(StreamingJob):
             self.get_remaining_output()
             self.src_file.close()
             count = 100
-            while not self.finished:
+            while not self.finished and count > 0:
                 self()
                 count -= 1
-                if count == 0:
-                    raise Exception('Patching file did not receive enough input')
             self.dest_file.close()
             if self.overwrite_src:
                 os.replace(self.dest_file.name, self.src_file.name)
