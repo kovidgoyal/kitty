@@ -1096,7 +1096,7 @@ class Window:
         cursor_on_screen = self.screen.scrolled_by < self.screen.lines - self.screen.cursor.y
         get_boss().display_scrollback(self, data['text'], data['input_line_number'], report_cursor=cursor_on_screen)
 
-    def show_cmd_output(self, which: CommandOutput, title: str = 'Command ouptut', as_ansi: bool = True, add_wrap_markers: bool = True) -> None:
+    def show_cmd_output(self, which: CommandOutput, title: str = 'Command output', as_ansi: bool = True, add_wrap_markers: bool = True) -> None:
         text = self.cmd_output(which, as_ansi=as_ansi, add_wrap_markers=add_wrap_markers)
         text = text.replace('\r\n', '\n').replace('\r', '\n')
         get_boss().display_scrollback(self, text, title=title, report_cursor=False)
