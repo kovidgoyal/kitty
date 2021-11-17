@@ -3,6 +3,7 @@
 
 
 from collections import deque
+from contextlib import suppress
 from time import monotonic
 from types import TracebackType
 from typing import (
@@ -94,9 +95,10 @@ class Handler:
 
     def __exit__(self, etype: type, value: Exception, tb: TracebackType) -> None:
         del self.debug.fobj
-        self.finalize()
-        if self._image_manager is not None:
-            self._image_manager.__exit__(etype, value, tb)
+        with suppress(Exception):
+            self.finalize()
+            if self._image_manager is not None:
+                self._image_manager.__exit__(etype, value, tb)
 
     def initialize(self) -> None:
         pass

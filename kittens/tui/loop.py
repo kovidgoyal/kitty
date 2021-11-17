@@ -10,7 +10,7 @@ import selectors
 import signal
 import sys
 import termios
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from enum import Enum, IntFlag, auto
 from functools import partial
 from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional
@@ -102,9 +102,10 @@ class TermManager:
         return self
 
     def __exit__(self, *a: object) -> None:
-        self.reset_state_to_original()
-        close_tty(self.tty_fd, self.original_termios)
-        del self.tty_fd, self.original_termios
+        with suppress(Exception):
+            self.reset_state_to_original()
+            close_tty(self.tty_fd, self.original_termios)
+            del self.tty_fd, self.original_termios
 
 
 class MouseButton(IntFlag):
@@ -463,7 +464,8 @@ class Loop:
             term_manager.extra_finalize = b''.join(self.write_buf).decode('utf-8')
             if tb is not None:
                 self.return_code = 1
-                self._report_error_loop(tb, term_manager)
+                if not handler.terminal_io_ended:
+                    self._report_error_loop(tb, term_manager)
 
     def _report_error_loop(self, tb: str, term_manager: TermManager) -> None:
         self.loop_impl(UnhandledException(tb), term_manager)
