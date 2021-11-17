@@ -30,10 +30,7 @@ def render_progress_bar(frac: float, width: int = 80) -> str:
             fl += 1
             needs_break = False
     ans = styled(filled, fg='blue')
-    unfilled = ''
-    if width > fl:
-        if needs_break:
-            unfilled += '🬇'
+    unfilled = '🬇' if width > fl and needs_break else ''
     filler = width - fl - len(unfilled)
     if filler > 0:
         unfilled += repeat('🬋', filler)
