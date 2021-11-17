@@ -640,5 +640,5 @@ def receive_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
             tsf += f.expected_size
             dsz += f.received_bytes
             ssz += f.sent_bytes
-    if tsf:
+    if tsf and dsz + ssz:
         print_rsync_stats(tsf, dsz, ssz)

@@ -699,6 +699,8 @@ class Send(Handler):
         self.progress_drawn = True
 
     def refresh_progress(self) -> None:
+        if not self.transmit_started:
+            return
         self.erase_progress()
         self.draw_progress()
 
@@ -720,9 +722,9 @@ def send_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
     loop = Loop()
     handler = Send(cli_opts, files)
     loop.loop(handler)
-    if handler.manager.has_rsync:
+    p = handler.manager.progress
+    if handler.manager.has_rsync and p.total_transferred + p.signature_bytes:
         tsf = 0
-        p = handler.manager.progress
         for f in files:
             if f.ttype is TransmissionType.rsync:
                 tsf += f.file_size
