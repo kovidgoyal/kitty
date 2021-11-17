@@ -430,11 +430,16 @@ def parse_address_spec(spec: str) -> Tuple[AddressFamily, Union[Tuple[str, int],
     return family, address, socket_path
 
 
-def write_all(fd: int, data: Union[str, bytes]) -> None:
+def write_all(fd: int, data: Union[str, bytes], block_until_written: bool = True) -> None:
     if isinstance(data, str):
         data = data.encode('utf-8')
     while data:
-        n = os.write(fd, data)
+        try:
+            n = os.write(fd, data)
+        except BlockingIOError:
+            if not block_until_written:
+                raise
+            continue
         if not n:
             break
         data = data[n:]
