@@ -243,8 +243,8 @@ def name_to_serialized_map() -> Dict[str, str]:
 
 
 @run_once
-def serialized_to_field_map() -> Dict[bytes, Field[Any]]:
-    ans: Dict[bytes, Field[Any]] = {}
+def serialized_to_field_map() -> Dict[bytes, 'Field[Any]']:
+    ans: Dict[bytes, 'Field[Any]'] = {}
     for k in fields(FileTransmissionCommand):
         ans[k.metadata.get('sname', k.name).encode('ascii')] = k
     return ans
