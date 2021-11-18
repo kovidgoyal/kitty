@@ -20,15 +20,15 @@ jobs:
                 cc: [gcc, clang]
                 include:
                     - python: a
-                      pyver: 3.6
+                      pyver: 3.7
                       sanitize: 0
 
                     - python: b
-                      pyver: 3.7
+                      pyver: 3.8
                       sanitize: 1
 
                     - python: c
-                      pyver: 3.8
+                      pyver: 3.9
                       sanitize: 1
 
 

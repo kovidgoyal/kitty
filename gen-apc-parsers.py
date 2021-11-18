@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import subprocess

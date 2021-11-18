@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
@@ -27,8 +26,8 @@ from typing import (
 from glfw import glfw
 from glfw.glfw import Command, CompileKey
 
-if sys.version_info[:2] < (3, 6):
-    raise SystemExit('kitty requires python >= 3.6')
+if sys.version_info[:2] < (3, 7):
+    raise SystemExit('kitty requires python >= 3.7')
 base = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, base)
 del sys.path[0]
@@ -104,7 +103,7 @@ def pkg_config(pkg: str, *args: str) -> List[str]:
             )
         )
     except subprocess.CalledProcessError:
-        raise SystemExit('The package {} was not found on your system'.format(error(pkg)))
+        raise SystemExit(f'The package {error(pkg)} was not found on your system')
 
 
 def pkg_version(package: str) -> Tuple[int, int]:
@@ -118,7 +117,7 @@ def pkg_version(package: str) -> Tuple[int, int]:
 
 
 def at_least_version(package: str, major: int, minor: int = 0) -> None:
-    q = '{}.{}'.format(major, minor)
+    q = f'{major}.{minor}'
     if subprocess.run([PKGCONFIG, package, '--atleast-version=' + q]
                       ).returncode != 0:
         qmajor = qminor = 0
@@ -185,10 +184,10 @@ def get_python_flags(cflags: List[str]) -> List[str]:
     if fw:
         for var in 'data include stdlib'.split():
             val = sysconfig.get_path(var)
-            if val and '/{}.framework'.format(fw) in val:
-                fdir = val[:val.index('/{}.framework'.format(fw))]
+            if val and f'/{fw}.framework' in val:
+                fdir = val[:val.index(f'/{fw}.framework')]
                 if os.path.isdir(
-                    os.path.join(fdir, '{}.framework'.format(fw))
+                    os.path.join(fdir, f'{fw}.framework')
                 ):
                     framework_dir = fdir
                     break
@@ -406,8 +405,8 @@ def kitty_env() -> Env:
     # We add 4000 to the primary version because vim turns on SGR mouse mode
     # automatically if this version is high enough
     cppflags = ans.cppflags
-    cppflags.append('-DPRIMARY_VERSION={}'.format(version[0] + 4000))
-    cppflags.append('-DSECONDARY_VERSION={}'.format(version[1]))
+    cppflags.append(f'-DPRIMARY_VERSION={version[0] + 4000}')
+    cppflags.append(f'-DSECONDARY_VERSION={version[1]}')
     cppflags.append('-DXT_VERSION="{}"'.format('.'.join(map(str, version))))
     at_least_version('harfbuzz', 1, 5)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
@@ -484,7 +483,7 @@ def get_vcs_rev_defines(env: Env, src: str) -> List[str]:
                 with open(os.path.join(gitloc, 'refs/heads/master')) as f:
                     rev = f.read()
 
-        ans.append('KITTY_VCS_REV="{}"'.format(rev.strip()))
+        ans.append(f'KITTY_VCS_REV="{rev.strip()}"')
     return ans
 
 
@@ -573,9 +572,9 @@ def parallel_run(items: List[Command]) -> None:
             if verbose:
                 print(' '.join(compile_cmd.cmd))
             elif isatty:
-                print('\r\x1b[K[{}/{}] {}'.format(num, total, compile_cmd.desc), end='')
+                print(f'\r\x1b[K[{num}/{total}] {compile_cmd.desc}', end='')
             else:
-                print('[{}/{}] {}'.format(num, total, compile_cmd.desc), flush=True)
+                print(f'[{num}/{total}] {compile_cmd.desc}', flush=True)
             printed = True
             w = subprocess.Popen(compile_cmd.cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             workers[w.pid] = compile_cmd, w
@@ -696,12 +695,12 @@ def compile_c_extension(
         cmd = kenv.cc + ['-MMD'] + cppflags + kenv.cflags
         cmd += ['-c', src] + ['-o', dest]
         key = CompileKey(original_src, os.path.basename(dest))
-        desc = 'Compiling {} ...'.format(emphasis(desc_prefix + src))
+        desc = f'Compiling {emphasis(desc_prefix + src)} ...'
         compilation_database.add_command(desc, cmd, partial(newer, dest, *dependecies_for(src, dest, headers)), key=key, keyfile=src)
     dest = os.path.join(build_dir, module + '.so')
     real_dest = module + '.so'
     os.makedirs(os.path.dirname(dest), exist_ok=True)
-    desc = 'Linking {} ...'.format(emphasis(desc_prefix + module))
+    desc = f'Linking {emphasis(desc_prefix + module)} ...'
     # Old versions of clang don't like -pthread being passed to the linker
     # Don't treat linker warnings as errors (linker generates spurious
     # warnings on some old systems)
@@ -755,7 +754,7 @@ def compile_glfw(compilation_database: CompilationDatabase) -> None:
                 continue
         compile_c_extension(
             genv, 'kitty/glfw-' + module, compilation_database,
-            sources, all_headers, desc_prefix='[{}] '.format(module))
+            sources, all_headers, desc_prefix=f'[{module}] ')
 
 
 def kittens_env() -> Env:
@@ -784,7 +783,7 @@ def compile_kittens(compilation_database: CompilationDatabase) -> None:
     ) -> Tuple[str, List[str], List[str], str, Sequence[str], Sequence[str]]:
         sources = list(filter(filter_sources, list(extra_sources) + list_files(os.path.join('kittens', kitten, '*.c'))))
         headers = list_files(os.path.join('kittens', kitten, '*.h')) + list(extra_headers)
-        return kitten, sources, headers, 'kittens/{}/{}'.format(kitten, output), includes, libraries
+        return kitten, sources, headers, f'kittens/{kitten}/{output}', includes, libraries
 
     for kitten, sources, all_headers, dest, includes, libraries in (
         files('unicode_input', 'unicode_names'),
@@ -848,8 +847,8 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         cflags.append('-O3')
     if bundle_type.endswith('-freeze'):
         cppflags.append('-DFOR_BUNDLE')
-        cppflags.append('-DPYVER="{}"'.format(sysconfig.get_python_version()))
-        cppflags.append('-DKITTY_LIB_DIR_NAME="{}"'.format(args.libdir_name))
+        cppflags.append(f'-DPYVER="{sysconfig.get_python_version()}"')
+        cppflags.append(f'-DKITTY_LIB_DIR_NAME="{args.libdir_name}"')
     elif bundle_type == 'source':
         cppflags.append('-DFROM_SOURCE')
     if bundle_type.startswith('macos-'):
@@ -859,8 +858,8 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     elif bundle_type == 'source':
         klp = os.path.relpath('.', launcher_dir)
     else:
-        raise SystemExit('Unknown bundle type: {}'.format(bundle_type))
-    cppflags.append('-DKITTY_LIB_PATH="{}"'.format(klp))
+        raise SystemExit(f'Unknown bundle type: {bundle_type}')
+    cppflags.append(f'-DKITTY_LIB_PATH="{klp}"')
     pylib = get_python_flags(cflags)
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
@@ -28,7 +27,7 @@ with open('kitty/constants.py') as f:
     raw = f.read()
 nv = re.search(r'^version: Version\s+=\s+Version\((\d+), (\d+), (\d+)\)', raw, flags=re.MULTILINE)
 if nv is not None:
-    version = '%s.%s.%s' % (nv.group(1), nv.group(2), nv.group(3))
+    version = f'{nv.group(1)}.{nv.group(2)}.{nv.group(3)}'
 ap = re.search(r"^appname: str\s+=\s+'([^']+)'", raw, flags=re.MULTILINE)
 if ap is not None:
     appname = ap.group(1)
@@ -68,7 +67,7 @@ def run_build(args: Any) -> None:
 def run_tag(args: Any) -> None:
     call('git push')
     call('git tag -s v{0} -m version-{0}'.format(version))
-    call('git push origin v{0}'.format(version))
+    call(f'git push origin v{version}')
 
 
 def run_man(args: Any) -> None:
@@ -197,7 +196,7 @@ class ReadFileWithProgressReporting(io.FileIO):  # {{{
 # }}}
 
 
-class Base(object):  # {{{
+class Base:  # {{{
 
     def info(self, *args: Any, **kwargs: Any) -> None:
         print(*args, **kwargs)
@@ -293,7 +292,7 @@ class GitHub(Base):  # {{{
                           release['tag_name'])
                 for asset in release['assets']:
                     r = self.requests.delete(
-                        self.API + 'repos/%s/%s/releases/assets/%s' % (
+                        self.API + 'repos/{}/{}/releases/assets/{}'.format(
                             self.username, self.reponame, asset['id']))
                     if r.status_code != 204:
                         self.fail(
@@ -303,7 +302,7 @@ class GitHub(Base):  # {{{
 
     def do_upload(self, url: str, path: str, desc: str, fname: str) -> requests.Response:
         mime_type = mimetypes.guess_type(fname)[0] or 'application/octet-stream'
-        self.info('Uploading to GitHub: %s (%s)' % (fname, mime_type))
+        self.info(f'Uploading to GitHub: {fname} ({mime_type})')
         with ReadFileWithProgressReporting(path) as f:
             return self.requests.post(
                 url,
@@ -325,7 +324,7 @@ class GitHub(Base):  # {{{
         return bool(error_code == 'already_exists')
 
     def existing_assets(self, release_id: str) -> Dict[str, str]:
-        url = self.API + 'repos/%s/%s/releases/%s/assets' % (
+        url = self.API + 'repos/{}/{}/releases/{}/assets'.format(
             self.username, self.reponame, release_id)
         r = self.requests.get(url)
         if r.status_code != 200:
@@ -341,7 +340,7 @@ class GitHub(Base):  # {{{
             return dict(r.json())
         if self.is_nightly:
             raise SystemExit('No existing nightly release found on GitHub')
-        url = self.API + 'repos/%s/%s/releases' % (self.username, self.reponame)
+        url = self.API + f'repos/{self.username}/{self.reponame}/releases'
         r = self.requests.post(
             url,
             data=json.dumps({
@@ -413,7 +412,7 @@ def current_branch() -> str:
 
 def require_git_master(branch: str = 'master') -> None:
     if current_branch() != branch:
-        raise SystemExit('You must be in the {} git branch'.format(branch))
+        raise SystemExit(f'You must be in the {branch} git branch')
 
 
 def safe_read(path: str) -> str:
@@ -490,7 +489,7 @@ def main() -> None:
         del actions[1:]
     else:
         try:
-            ans = input('Publish version \033[91m{}\033[m (y/n): '.format(version))
+            ans = input(f'Publish version \033[91m{version}\033[m (y/n): ')
         except KeyboardInterrupt:
             ans = 'n'
         if ans.lower() != 'y':

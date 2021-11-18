@@ -181,24 +181,12 @@ def resolve_custom_file(path: str) -> str:
 
 
 def list_kitty_resources(package: str = 'kitty') -> Iterable[str]:
-    if sys.version_info < (3, 7):
-        from importlib_resources import files
-
-        def contents(package: str) -> Iterable[str]:
-            return (path.name for path in files(package).iterdir())
-    else:
-        from importlib.resources import contents
+    from importlib.resources import contents
     return contents(package)
 
 
 def read_kitty_resource(name: str, package_name: str = 'kitty') -> bytes:
-    if sys.version_info < (3, 7):
-        from importlib_resources import files
-
-        def read_binary(package: str, resource: str) -> bytes:
-            return (files(package) / resource).read_bytes()
-    else:
-        from importlib.resources import read_binary
+    from importlib.resources import read_binary
 
     return read_binary(package_name, name)
 

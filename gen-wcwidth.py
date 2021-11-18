@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -255,7 +254,7 @@ def write_case(spec: Union[Tuple[int, ...], int], p: Callable[..., None]) -> Non
     if isinstance(spec, tuple):
         p('\t\tcase 0x{:x} ... 0x{:x}:'.format(*spec))
     else:
-        p('\t\tcase 0x{:x}:'.format(spec))
+        p(f'\t\tcase 0x{spec:x}:')
 
 
 @contextmanager
@@ -353,10 +352,10 @@ def classes_to_regex(classes: Iterable[str], exclude: str = '') -> Iterable[str]
 
     def as_string(codepoint: int) -> str:
         if codepoint < 256:
-            return r'\x{:02x}'.format(codepoint)
+            return fr'\x{codepoint:02x}'
         if codepoint <= 0xffff:
-            return r'\u{:04x}'.format(codepoint)
-        return r'\U{:08x}'.format(codepoint)
+            return fr'\u{codepoint:04x}'
+        return fr'\U{codepoint:08x}'
 
     for spec in get_ranges(list(chars)):
         if isinstance(spec, tuple):
