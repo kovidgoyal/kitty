@@ -28,6 +28,7 @@ from kittens.transfer.utils import (
 from kitty.fast_data_types import (
     FILE_TRANSFER_CODE, OSC, add_timer, get_boss, get_options
 )
+from kitty.types import run_once
 
 from .utils import log_error, sanitize_control_codes
 
@@ -233,24 +234,40 @@ class TransmissionError(Exception):
         )
 
 
+@run_once
+def name_to_serialized_map() -> Dict[str, str]:
+    ans: Dict[str, str] = {}
+    for k in fields(FileTransmissionCommand):
+        ans[k.name] = k.metadata.get('sname', k.name)
+    return ans
+
+
+@run_once
+def serialized_to_field_map() -> Dict[bytes, Field[Any]]:
+    ans: Dict[bytes, Field[Any]] = {}
+    for k in fields(FileTransmissionCommand):
+        ans[k.metadata.get('sname', k.name).encode('ascii')] = k
+    return ans
+
+
 @dataclass
 class FileTransmissionCommand:
 
-    action: Action = Action.invalid
-    compression: Compression = Compression.none
-    ftype: FileType = FileType.regular
-    ttype: TransmissionType = TransmissionType.simple
+    action: Action = field(default=Action.invalid, metadata={'sname': 'ac'})
+    compression: Compression = field(default=Compression.none, metadata={'sname': 'zip'})
+    ftype: FileType = field(default=FileType.regular, metadata={'sname': 'ft'})
+    ttype: TransmissionType = field(default=TransmissionType.simple, metadata={'sname': 'tt'})
     id: str = ''
-    file_id: str = ''
-    bypass: str = field(default='', metadata={'base64': True})
-    quiet: int = 0
-    mtime: int = -1
-    permissions: int = -1
-    size: int = -1
-    name: str = field(default='', metadata={'base64': True})
-    status: str = field(default='', metadata={'base64': True})
-    parent: str = field(default='', metadata={'base64': True})
-    data: bytes = field(default=b'', repr=False)
+    file_id: str = field(default='', metadata={'sname': 'fid'})
+    bypass: str = field(default='', metadata={'base64': True, 'sname': 'pw'})
+    quiet: int = field(default=0, metadata={'sname': 'q'})
+    mtime: int = field(default=-1, metadata={'sname': 'mod'})
+    permissions: int = field(default=-1, metadata={'sname': 'prm'})
+    size: int = field(default=-1, metadata={'sname': 'sz'})
+    name: str = field(default='', metadata={'base64': True, 'sname': 'n'})
+    status: str = field(default='', metadata={'base64': True, 'sname': 'st'})
+    parent: str = field(default='', metadata={'base64': True, 'sname': 'pr'})
+    data: bytes = field(default=b'', repr=False, metadata={'sname': 'd'})
 
     def __repr__(self) -> str:
         ans = []
@@ -274,6 +291,7 @@ class FileTransmissionCommand:
         return ans
 
     def get_serialized_fields(self, prefix_with_osc_code: bool = False) -> Iterator[Union[str, bytes]]:
+        nts = name_to_serialized_map()
         found = False
         if prefix_with_osc_code:
             yield ftc_prefix
@@ -288,7 +306,7 @@ class FileTransmissionCommand:
                 yield ';'
             else:
                 found = True
-            yield name
+            yield nts[name]
             yield '='
             if issubclass(k.type, Enum):
                 yield val.name
@@ -310,10 +328,7 @@ class FileTransmissionCommand:
     @classmethod
     def deserialize(cls, data: Union[str, bytes, memoryview]) -> 'FileTransmissionCommand':
         ans = FileTransmissionCommand()
-        fmap: Dict[bytes, 'Field[Union[str, int, bytes, Enum]]'] = getattr(cls, 'fmap', None)
-        if not fmap:
-            fmap = {k.name.encode('ascii'): k for k in fields(cls)}
-            setattr(cls, 'fmap', fmap)
+        fmap = serialized_to_field_map()
         from kittens.transfer.rsync import decode_utf8_buffer, parse_ftc
 
         def handle_item(key: memoryview, val: memoryview, has_semicolons: bool) -> None:
