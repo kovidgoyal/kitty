@@ -26,6 +26,7 @@ please do so by opening issues in the `GitHub
    underlines
    graphics-protocol
    keyboard-protocol
+   file-transfer-protocol
    desktop-notifications
    unscroll
    color-stack

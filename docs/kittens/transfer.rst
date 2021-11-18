@@ -22,8 +22,8 @@ protocol to transfer only changes to large files.
 .. note::
    This kitten (which practically means kitty) must be installed on the other
    machine as well. If that is not possible you can use the :doc:`remote_file`
-   kitten instead. Or write your own script to use the underlying file transfer
-   protocol.
+   kitten instead. Or write your own script to use the underlying :doc:`file transfer
+   protocol </file-transfer-protocol>`.
 
 .. versionadded:: 0.24.0
 
