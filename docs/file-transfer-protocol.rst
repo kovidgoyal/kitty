@@ -282,3 +282,16 @@ base64_string
 
 base64_bytes
     Binary data encoded using the standard base64 encoding
+
+
+An example of serializing an escape code is shown below::
+
+    action=send id=test name=somefile size=3 data=01 02 03
+
+becomes::
+
+    <OSC> 5113 ; ac=send ; id=test ; n=c29tZWZpbGU= ; sz=3 ; d=AQID <ST>
+
+Here ``c29tZWZpbGU`` is the base64 encoded form of somefile and ``AQID`` is the
+base64 encoded form of the bytes ``0x01 0x02 0x03``. The spaces in the encoded
+form are present for clarity and should be ignored.
