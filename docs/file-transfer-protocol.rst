@@ -199,6 +199,11 @@ File metadata
 
 TODO:
 
+Symbolic and hard links
+---------------------------
+
+TODO:
+
 Transmitting binary deltas
 -----------------------------
 
