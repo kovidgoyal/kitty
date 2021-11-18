@@ -191,8 +191,10 @@ Mouse features
   platforms with a primary clipboard).
 * You can middle click to paste from the primary clipboard (on platforms
   with a primary clipboard).
+* You can right click while holding :kbd:`ctrl+shift` to open the output
+  of the clicked on command in a pager (requires :ref:`shell_integration`)
 * You can select text with kitty even when a terminal program has grabbed
-  the mouse by holding down the :kbd:`shift` key.
+  the mouse by holding down the :kbd:`shift` key
 
 All these actions can be customized in :file:`kitty.conf` as described
 :ref:`here <conf-kitty-mouse.mousemap>`.
