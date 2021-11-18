@@ -37,7 +37,7 @@ Let's look at some simple examples of sessions to get a feel for the protocol.
 Sending files to the terminal emulator
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The client starts by sending a start command command::
+The client starts by sending a start send command::
 
     → action=send id=someid
 
@@ -110,10 +110,115 @@ such as::
     ← action=status id=someid status=Some error occurred
 
 
+Receiving files to the terminal emulator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The client starts by sending a start receive command::
+
+    → action=receive id=someid size=num_of_paths
+
+It then sends a list of ``num_of_paths`` paths it is interested in
+receiving::
+
+    → action=file id=someid file_id=f1 name=/some/path
+    → action=file id=someid file_id=f2 name=/some/path2
+    ...
+
+The client must then wait for responses from the terminal emulator. It
+is an error to send anymore commands to to the terminal until an ``OK``
+response is received from the terminal. The terminal wait for the user to accept
+the request. If accepted, it sends::
+
+    ← action=status id=someid status=OK
+
+If permission is denied it sends::
+
+    ← action=status id=someid status=EPERM:User refused the transfer
+
+The terminal then sends the metadata for all requested files. If any of them
+are directories, it traverses the directories recursively, listing all files.
+Note that symlinks must not be followed, but sent as symlinks::
+
+    ← action=file id=someid file_id=f1 mtime=XXX permissions=XXX name=/absolute/path status=file_id1 size=size_in_bytes file_type=type parent=file_id of parent
+    ← action=file id=someid file_id=f1 mtime=XXX permissions=XXX name=/absolute/path2 status=file_id2 size=size_in_bytes file_type=type parent=file_id of parent
+    ...
+
+Here the ``file_id`` field is set to the ``file_id`` value sent from the client
+and the ``status`` field is set to the actual file id for each file. This is
+because a file query sent from the client can result in multiple actual files if
+it is a directory. The ``parent`` field is the actual ``file_id`` of the directory
+containing this file and is set for entries that are generated from client
+requests that match directories. This allows the client to build an unambiguous picture
+of the file tree.
+
+Once all the files are listed, the terminal sends an ``OK`` response that also
+specifies the absolute path to the home directory for the user account running
+the terminal::
+
+    ← action=status id=someid status=OK name=/path/to/home
+
+If an error occurs while listing any of the files asked for by the client,
+the terminal will send an error response like::
+
+    ← action=status id=someid file_id=f1 status=ENOENT: Does not exist
+
+Here, ``file_id`` is the same as was sent by the client in its initial query.
+
+Now, the client can send requests for file data using the paths sent by the
+terminal emulator::
+
+    → action=file id=someid file_id=f1 name=/some/path
+    ...
+
+The terminal emulator replies with the data for the files, as a sequence of
+``data`` commands for each file (the terminal emulator should send the data for
+one file at a time)::
+
+
+    ← action=data id=someid file_id=f1 data=chunk of bytes
+    ...
+    ← action=end_data id=someid file_id=f1 data=chunk of bytes
+
+If any errors occur reading file data, the terminal emulator sends an error
+message for the file, for example::
+
+    ← action=status id=someid file_id=f1 status=EIO:Could not read
+
+Once the client is done reading data for all the files it expects, it
+terminates the session with::
+
+    → action=finished id=someid
+
+Quieting response from the terminal
+-------------------------------------
+
+TODO:
+
+File metadata
+-----------------
+
+TODO:
+
+Transmitting binary deltas
+-----------------------------
+
+TODO:
+
+Compression
+--------------
+
+TODO:
+
+
+Bypassing explicit user authorization
+------------------------------------------
+
+TODO:
+
 Encoding of transfer commands as escape codes
 ------------------------------------------------
 
-Transfer commands are encoded as OSC escape codes of the form::
+Transfer commands are encoded as ``OSC`` escape codes of the form::
 
     <OSC> 5113 ; key=value ; key=value ... <ST>
 
