@@ -1344,6 +1344,7 @@ screen_carriage_return(Screen *self) {
 
 void
 screen_linefeed(Screen *self) {
+    MOVE_OVERLAY_LINE_WITH_CURSOR;
     bool in_margins = cursor_within_margins(self);
     screen_index(self);
     if (self->modes.mLNM) screen_carriage_return(self);
