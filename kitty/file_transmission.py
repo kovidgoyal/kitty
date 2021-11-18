@@ -266,7 +266,7 @@ class FileTransmissionCommand:
     size: int = field(default=-1, metadata={'sname': 'sz'})
     name: str = field(default='', metadata={'base64': True, 'sname': 'n'})
     status: str = field(default='', metadata={'base64': True, 'sname': 'st'})
-    parent: str = field(default='', metadata={'base64': True, 'sname': 'pr'})
+    parent: str = field(default='', metadata={'sname': 'pr'})
     data: bytes = field(default=b'', repr=False, metadata={'sname': 'd'})
 
     def __repr__(self) -> str:

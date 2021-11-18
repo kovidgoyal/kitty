@@ -108,3 +108,62 @@ creating links, etc. If any errors occur it responds with an error message,
 such as::
 
     ← action=status id=someid status=Some error occurred
+
+
+Encoding of transfer commands as escape codes
+------------------------------------------------
+
+Transfer commands are encoded as OSC escape codes of the form::
+
+    <OSC> 5113 ; key=value ; key=value ... <ST>
+
+Here ``OSC`` is the bytes ``0x1b 0x5d`` and ``ST`` is the bytes
+``0x1b 0x5c``. Keys are words containing only the characters ``[a-zA-Z0-9_]``
+and ``value`` is arbitrary data, whose encoding is dependent on the value of
+``key``. Unknown keys **must** be ignored when decoding a command.
+The number ``5113`` is a constant and is unused by any known OSC codes. It is
+the numeralization of the word ``file``.
+
+
+.. table:: The keys and value types for this protocol
+    :align: left
+
+    ================= ======== ============== =======================================================================
+    Key               Key name Value type     Notes
+    ================= ======== ============== =======================================================================
+    action            ac       Enum           send, file, data, end_data, receive, cancel, status, finish
+    compression       zip      Enum           none, zlib
+    file_type         ft       Enum           regular, directory, symlink, link
+    transmission_type tt       Enum           simple, rsync
+    id                id       safe_string    A unique-ish value, to avoid collisions
+    file_id           fid      safe_string    Must be unique per file in a session
+    bypass            pw       safe_string    hash of the bypass password and the session id
+    quiet             q        integer        0 - verbose, 1 - only errors, 2 - totally silent
+    mtime             mod      integer        the modification time of file in nanoseconds since the UNIX epoch
+    permissions       prm      integer        the UNIX file permissions bits
+    size              sz       integer        size in bytes
+    name              n        base64_string  The path to a file
+    status            st       base64_string  Status messages
+    parent            pr       safe_string    The file id of the parent directory
+    data              d        base64_bytes   Binary data
+    ================= ======== ============== =======================================================================
+
+Here:
+
+Enum
+    One from a permitted set of values, for example::
+
+        ac=file
+
+safe_string
+    A string consisting only of characters from the set ``[0-9a-zA-Z_:.,/!@#$%^&*()[]{}~`?"'\\|=+-]``
+
+integer
+    A base-10 number composed of the characters ``[0-9]`` with a possible
+    leading ``-`` sign
+
+base64_string
+    A base64 encoded UTF-8 string using the standard base64 encoding
+
+base64_bytes
+    Binary data encoded using the standard base64 encoding
