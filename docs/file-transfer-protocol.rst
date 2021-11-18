@@ -258,7 +258,7 @@ the numeralization of the word ``file``.
     data              d        base64_bytes   Binary data
     ================= ======== ============== =======================================================================
 
-The ``Key name`` is the actual serialized name fo the key sent in the escape
+The ``Key name`` is the actual serialized name of the key sent in the escape
 code. So for example, ``permissions=123`` is serialized as ``prm=123``. This
 is done to reduce overhead.
 
