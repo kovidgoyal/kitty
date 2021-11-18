@@ -3,7 +3,9 @@
 
 import builtins
 import re
+import textwrap
 import typing
+from functools import lru_cache
 from importlib import import_module
 from typing import (
     Any, Callable, Dict, Iterable, Iterator, List, Match, Optional, Set, Tuple,
@@ -78,30 +80,31 @@ def iter_blocks(lines: Iterable[str]) -> Iterator[Tuple[List[str], int]]:
         yield current_block, indent_size
 
 
-def wrapped_block(lines: Iterable[str]) -> Iterator[str]:
-    wrapper = getattr(wrapped_block, 'wrapper', None)
-    if wrapper is None:
-        import textwrap
-        wrapper = textwrap.TextWrapper(
-            initial_indent='#: ', subsequent_indent='#: ', width=70, break_long_words=False
+@lru_cache(maxsize=8)
+def block_wrapper(comment_symbol: str) -> textwrap.TextWrapper:
+    return textwrap.TextWrapper(
+            initial_indent=comment_symbol, subsequent_indent=comment_symbol, width=70, break_long_words=False
         )
-        setattr(wrapped_block, 'wrapper', wrapper)
+
+
+def wrapped_block(lines: Iterable[str], comment_symbol: str = '#: ') -> Iterator[str]:
+    wrapper = block_wrapper(comment_symbol)
     for block, indent_size in iter_blocks(lines):
         if indent_size > 0:
             for line in block:
                 if not line:
                     yield line
                 else:
-                    yield '#: ' + line
+                    yield comment_symbol + line
         else:
             for line in wrapper.wrap('\n'.join(block)):
                 yield line
 
 
-def render_block(text: str) -> str:
+def render_block(text: str, comment_symbol: str = '#: ') -> str:
     text = remove_markup(text)
     lines = text.splitlines()
-    return '\n'.join(wrapped_block(lines))
+    return '\n'.join(wrapped_block(lines, comment_symbol))
 
 
 class CoalescedIteratorData:
@@ -288,12 +291,17 @@ class Mapping:
 
     def as_conf(self, commented: bool = False, level: int = 0, action_group: List['Mapping'] = []) -> List[str]:
         ans: List[str] = []
+        if not self.documented:
+            return ans
         a = ans.append
+        if self.short_text:
+            a(render_block(self.short_text.strip())), a('')
         for sc in [self] + action_group:
             if sc.documented and sc.add_to_default:
                 a(sc.setting_name + ' ' + sc.parseable_text)
-        if self.documented and self.long_text:
-            a(''), a(render_block(self.long_text.strip())), a('')
+        if self.long_text:
+            a(''), a(render_block(self.long_text.strip(), '#::  '))
+        a('')
         return ans
 
     def as_rst(

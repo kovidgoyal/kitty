@@ -619,9 +619,7 @@ mma('Extend the current selection even when grabbed',
 
 mma('Show clicked command output in pager',
     'show_clicked_cmd_output_ungrabbed ctrl+shift+right press ungrabbed mouse_show_command_output',
-    long_text='''
-Requires :ref:`shell_integration` to work.
-'''
+    long_text='Requires :ref:`shell_integration` to work'
     )
 egr()  # }}}
 egr()  # }}}
