@@ -616,6 +616,13 @@ mma('Select line from point even when grabbed',
 mma('Extend the current selection even when grabbed',
     'extend_selection_grabbed shift+right press ungrabbed,grabbed mouse_selection extend',
     )
+
+mma('Show clicked command output in pager',
+    'show_clicked_cmd_output_ungrabbed ctrl+shift+right press ungrabbed mouse_show_command_output',
+    long_text='''
+Requires :ref:`shell_integration` to work.
+'''
+    )
 egr()  # }}}
 egr()  # }}}
 
@@ -3006,11 +3013,14 @@ Requires :ref:`shell_integration` to work.
 map('Scroll to next shell prompt',
     'scroll_to_next_prompt kitty_mod+x scroll_to_prompt 1',
     long_text='''
+When the parameter is zero, scroll to the last jumped position, or the last clicked position by
+command output related mouse actions.
+
 Requires :ref:`shell_integration` to work.
 '''
     )
 
-map('Browse scrollback buffer in less',
+map('Browse scrollback buffer in pager',
     'show_scrollback kitty_mod+h show_scrollback',
     long_text='''
 You can pipe the contents of the current screen + history buffer as
@@ -3024,17 +3034,27 @@ see :doc:`launch`.
 '''
     )
 
-map('Browse output of the last shell command in less',
+map('Browse output of the last shell command in pager',
     'show_last_command_output kitty_mod+g show_last_command_output',
     long_text='''
-Requires :ref:`shell_integration` to work. You can pipe the output
-of the last command run in the shell using the :doc:`launch` function.
+You can also define additional shortcuts to get the command output.
+For example, to get the first command output on screen::
+
+    map f1 show_first_command_output_on_screen
+
+To get the command output that was last accessed by a keyboard action or mouse action::
+
+    map f1 show_last_visited_command_output
+
+You can pipe the output of the last command run in the shell using the :doc:`launch` function.
 For example, the following opens the output in less in an overlay window::
 
     map f1 launch --stdin-source=@last_cmd_output --stdin-add-formatting --type=overlay less +G -R
 
 To get the output of the first command on the screen, use :code:`@first_cmd_output_on_screen`.
 To get the output of the last jumped to command, use :code:`@last_visited_cmd_output`.
+
+Requires :ref:`shell_integration` to work.
 ''')
 egr()  # }}}
 

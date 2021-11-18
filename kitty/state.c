@@ -1091,12 +1091,13 @@ click_mouse_url(id_type os_window_id, id_type tab_id, id_type window_id) {
 }
 
 static bool
-click_mouse_cmd_output(id_type os_window_id, id_type tab_id, id_type window_id) {
-    bool selected = false;
+click_mouse_cmd_output(id_type os_window_id, id_type tab_id, id_type window_id, int select_cmd_output) {
+    bool handled = false;
     WITH_WINDOW(os_window_id, tab_id, window_id);
-    selected = mouse_select_cmd_output(window);
+    handled = mouse_set_last_visited_cmd_output(window);
+    if (select_cmd_output && handled) handled = mouse_select_cmd_output(window);
     END_WITH_WINDOW;
-    return selected;
+    return handled;
 }
 
 static bool
@@ -1127,8 +1128,8 @@ PYWRAP1(click_mouse_url) {
 }
 
 PYWRAP1(click_mouse_cmd_output) {
-    id_type a, b, c; PA("KKK", &a, &b, &c);
-    if (click_mouse_cmd_output(a, b, c)) { Py_RETURN_TRUE; }
+    id_type a, b, c; int d; PA("KKKp", &a, &b, &c, &d);
+    if (click_mouse_cmd_output(a, b, c, d)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 

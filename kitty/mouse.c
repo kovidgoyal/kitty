@@ -425,6 +425,12 @@ mouse_open_url(Window *w) {
 }
 
 bool
+mouse_set_last_visited_cmd_output(Window *w) {
+    Screen *screen = w->render_data.screen;
+    return screen_set_last_visited_prompt(screen, w->mouse_pos.cell_y);
+}
+
+bool
 mouse_select_cmd_output(Window *w) {
     Screen *screen = w->render_data.screen;
     return screen_select_cmd_output(screen, w->mouse_pos.cell_y);
