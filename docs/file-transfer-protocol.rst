@@ -258,7 +258,11 @@ the numeralization of the word ``file``.
     data              d        base64_bytes   Binary data
     ================= ======== ============== =======================================================================
 
-Here:
+The ``Key name`` is the actual serialized name fo the key sent in the escape
+code. So for example, ``permissions=123`` is serialized as ``prm=123``. This
+is done to reduce overhead.
+
+The value types are:
 
 enum
     One from a permitted set of values, for example::
