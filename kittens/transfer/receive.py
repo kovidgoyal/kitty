@@ -244,6 +244,10 @@ class Manager:
         self.transfer_done = False
         self.use_rsync = use_rsync
 
+    @property
+    def finish_code(self) -> str:
+        return FileTransmissionCommand(action=Action.finish).serialize()
+
     def start_transfer(self) -> Iterator[str]:
         yield FileTransmissionCommand(action=Action.receive, bypass=self.bypass, size=len(self.spec)).serialize()
         for i, x in enumerate(self.spec):
@@ -438,6 +442,7 @@ class Receive(Handler):
             else:
                 self.start_transfer()
         if self.manager.transfer_done:
+            self.send_payload(self.manager.finish_code)
             self.quit_after_write_code = 0
             self.refresh_progress()
         elif self.transmit_started:

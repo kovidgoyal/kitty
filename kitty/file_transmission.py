@@ -815,7 +815,7 @@ class FileTransmission:
                         self.send_transmission_error(asd.id, err)
                 else:
                     self.pump_send_chunks(asd)
-            elif cmd.action is Action.status:
+            elif cmd.action in (Action.status, Action.finish):
                 self.drop_send(asd.id)
                 return
             if not asd.accepted:
