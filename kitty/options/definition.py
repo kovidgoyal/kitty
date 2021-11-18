@@ -3006,19 +3006,12 @@ map('Scroll to bottom',
 map('Scroll to previous shell prompt',
     'scroll_to_previous_prompt kitty_mod+z scroll_to_prompt -1',
     long_text='''
-Requires :ref:`shell_integration` to work.
+Use a parameter of zero for :code:`scroll_to_prompt` to scroll to the last jumped
+to or the last clicked position. Requires :ref:`shell_integration` to work.
 '''
     )
 
-map('Scroll to next shell prompt',
-    'scroll_to_next_prompt kitty_mod+x scroll_to_prompt 1',
-    long_text='''
-When the parameter is zero, scroll to the last jumped position, or the last clicked position by
-command output related mouse actions.
-
-Requires :ref:`shell_integration` to work.
-'''
-    )
+map('Scroll to next shell prompt', 'scroll_to_next_prompt kitty_mod+x scroll_to_prompt 1')
 
 map('Browse scrollback buffer in pager',
     'show_scrollback kitty_mod+h show_scrollback',
