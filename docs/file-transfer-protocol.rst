@@ -171,7 +171,8 @@ terminal emulator::
     ...
 
 The terminal emulator replies with the data for the files, as a sequence of
-``data`` commands for each file (the terminal emulator should send the data for
+``data`` commands each with a chunk of data no larger than ``4096`` bytes,
+for each file (the terminal emulator should send the data for
 one file at a time)::
 
 
