@@ -131,10 +131,10 @@ the numeralization of the word ``file``.
     ================= ======== ============== =======================================================================
     Key               Key name Value type     Notes
     ================= ======== ============== =======================================================================
-    action            ac       Enum           send, file, data, end_data, receive, cancel, status, finish
-    compression       zip      Enum           none, zlib
-    file_type         ft       Enum           regular, directory, symlink, link
-    transmission_type tt       Enum           simple, rsync
+    action            ac       enum           send, file, data, end_data, receive, cancel, status, finish
+    compression       zip      enum           none, zlib
+    file_type         ft       enum           regular, directory, symlink, link
+    transmission_type tt       enum           simple, rsync
     id                id       safe_string    A unique-ish value, to avoid collisions
     file_id           fid      safe_string    Must be unique per file in a session
     bypass            pw       safe_string    hash of the bypass password and the session id
@@ -150,13 +150,14 @@ the numeralization of the word ``file``.
 
 Here:
 
-Enum
+enum
     One from a permitted set of values, for example::
 
         ac=file
 
 safe_string
     A string consisting only of characters from the set ``[0-9a-zA-Z_:.,/!@#$%^&*()[]{}~`?"'\\|=+-]``
+    Note that the semi-colon is missing from this set.
 
 integer
     A base-10 number composed of the characters ``[0-9]`` with a possible
