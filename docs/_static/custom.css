@@ -5,6 +5,10 @@
  * Distributed under terms of the MIT license.
  */
 
+.italic {
+    font-style: italic;
+}
+
 .sidebar-logo {
     max-height: 128px;
 }

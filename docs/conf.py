@@ -98,11 +98,7 @@ rst_prolog = '''
 .. |kitty| replace:: *kitty*
 .. |version| replace:: VERSION
 .. _tarball: https://github.com/kovidgoyal/kitty/releases/download/vVERSION/kitty-VERSION.tar.xz
-.. role:: green
 .. role:: italic
-.. role:: bold
-.. role:: cyan
-.. role:: title
 
 '''.replace('VERSION', str_version)
 
