@@ -42,10 +42,10 @@ Features
 Configuration
 ---------------
 
-Shell integration is controlled by :opt:`shell_integration`. By default, all
-shell integration is enabled. Individual features can be turned off or it can
-be disabled entirely as well. The :opt:`shell_integration` option takes a space
-separated list of keywords:
+Shell integration is controlled by the :opt:`shell_integration` option. By
+default, all shell integration is enabled. Individual features can be turned
+off or it can be disabled entirely as well. The :opt:`shell_integration` option
+takes a space separated list of keywords:
 
 disabled
     turn off all shell integration
