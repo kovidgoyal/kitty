@@ -223,6 +223,18 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
 
 @implementation NotificationDelegate
     - (void)userNotificationCenter:(UNUserNotificationCenter *)center
+            willPresentNotification:(UNNotification *)notification
+            withCompletionHandler:(void (^)(UNNotificationPresentationOptions))completionHandler {
+        UNNotificationPresentationOptions options = UNNotificationPresentationOptionSound;
+#if MAC_OS_X_VERSION_MAX_ALLOWED < 110000
+        options |= UNNotificationPresentationOptionAlert;
+#else
+        options |= UNNotificationPresentationOptionList | UNNotificationPresentationOptionBanner;
+#endif
+        completionHandler(options);
+    }
+
+    - (void)userNotificationCenter:(UNUserNotificationCenter *)center
             didReceiveNotificationResponse:(UNNotificationResponse *)response
             withCompletionHandler:(void (^)(void))completionHandler {
         (void)(center);
@@ -247,6 +259,7 @@ schedule_notification(const char *identifier, const char *title, const char *bod
     if (title) content.title = @(title);
     if (body) content.body = @(body);
     if (subtitle) content.subtitle = @(subtitle);
+    content.sound = [UNNotificationSound defaultSound];
     // Deliver the notification
     static unsigned long counter = 1;
     UNNotificationRequest* request = [
@@ -306,7 +319,9 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
     queue_notification(identifier, title, body, subtitle);
 
-    [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert)
+    // The badge permission needs to be requested as well, even though it is not used,
+    // otherwise macOS refuses to show the preference checkbox for enable/disable notification sound.
+    [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge)
         completionHandler:^(BOOL granted, NSError * _Nullable error) {
             if (error != nil) {
                 log_error("Failed to request permission for showing notification: %s", [[error localizedDescription] UTF8String]);
