@@ -226,11 +226,8 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
             willPresentNotification:(UNNotification *)notification
             withCompletionHandler:(void (^)(UNNotificationPresentationOptions))completionHandler {
         UNNotificationPresentationOptions options = UNNotificationPresentationOptionSound;
-#if MAC_OS_X_VERSION_MAX_ALLOWED < 110000
-        options |= UNNotificationPresentationOptionAlert;
-#else
-        options |= UNNotificationPresentationOptionList | UNNotificationPresentationOptionBanner;
-#endif
+        if(@available(macOS 11.0, *)) options |= UNNotificationPresentationOptionList | UNNotificationPresentationOptionBanner;
+        else options |= UNNotificationPresentationOptionAlert;
         completionHandler(options);
     }
 
