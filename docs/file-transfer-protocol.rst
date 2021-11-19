@@ -19,7 +19,8 @@ Overall design
 The basic design of this protocol is around transfer "sessions". Since
 untrusted software should not be able to read/write to another machines
 filesystem, a session must be approved by the user in the terminal emulator
-before any actual data is transmitted.
+before any actual data is transmitted, unless a :ref:`pre-shared password is
+provided <bypass_auth>`.
 
 There can be either send or receive sessions. In send sessions files are sent
 from from remote client to the terminal emulator and vice versa for receive
@@ -190,10 +191,39 @@ terminates the session with::
 
     → action=finished id=someid
 
-Quieting response from the terminal
+Canceling a session
+----------------------
+
+A client can decide to cancel a session at any time (for example if the user
+presses :kbd:`ctrl+c`). To cancel a session it sends a ``cancel`` action to the
+terminal emulator::
+
+    → action=cancel id=someid
+
+The terminal emulator drops the session and sends a cancel acknowledgement::
+
+    ← action=status id=someid status=CANCELED
+
+The client **must** wait for the canceled response from the emulator discarding
+any other responses till the cancel is received. If it does not wait, after
+it quits the responses might end up being printed to screen.
+
+Quieting responses from the terminal
 -------------------------------------
 
-TODO:
+The above protocol includes lots of messages from the terminal acknowledging
+receipt of data, granting permission etc., acknowledging cancel requests, etc.
+For extremely simple clients like shell scripts, it might be useful to suppress
+these responses, which can be done by adding the ``quiet`` key to the start
+session command::
+
+    → action=send id=someid quiet=1
+
+The key can take the values ``1`` - meaning suppress acknowledgement responses
+or ``2`` - meaning suppress all responses including errors. Only actual data
+responses are sent. Note that in particular this means acknowledgement of
+permission for the transfer to go ahead is suppressed, so this is typically
+useful only with :ref:`bypass_auth`.
 
 File metadata
 -----------------
@@ -215,11 +245,35 @@ Compression
 
 TODO:
 
+.. _bypass_auth:
 
 Bypassing explicit user authorization
 ------------------------------------------
 
-TODO:
+In order to bypass the requirement of interactive user authentication,
+this protocol has the ability to use a pre-shared secret (password).
+When initiating a transfer session the client sends a hash of the password and
+the session id::
+
+    → action=send id=someid bypass=sha256:hash_value
+
+For example, suppose that the session id is ``mysession`` and the
+shared secret is ``mypassword``. Then the value of the ``bypass``
+key above is ``sha256:SHA256("mysession" + ";" + "mypassword")``, which
+is::
+
+    → action=send id=mysession bypass=sha256:192bd215915eeaa8c2b2a4c0f8f851826497d12b30036d8b5b1b4fc4411caf2c
+
+The value of ``bypass`` is of the form ``hash_function_name : hash_value``
+(without spaces). Currently, only the SHA256 hash function is supported.
+
+.. warning::
+   Hashing does not hide the value of the password. So this functionality
+   should only be used in secure/trusted contexts. While there exist hash
+   functions harder to compute than SHA256, they are unsuitable as they will
+   introduce a lot of latency to starting a session and in any case there is
+   no mathematical proof that **any** hash function is actually not
+   brute-forceable.
 
 Encoding of transfer commands as escape codes
 ------------------------------------------------
