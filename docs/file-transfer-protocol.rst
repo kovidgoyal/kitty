@@ -262,9 +262,10 @@ File permissions
     metadata all the ``WRITE`` bits should be set if the read only bit is clear
     and cleared if it is set. When writing files, the read-only bit should be
     set if the bit indicating write permission for the user is clear. The other
-    UNIX bits must be ignored when writing. When reading, all the READ bits
-    should always be set and all the EXECUTE bits should be set if the file is
-    directly executable by the Windows Operating system.
+    UNIX bits must be ignored when writing. When reading, all the ``READ`` bits
+    should always be set and all the ``EXECUTE`` bits should be set if the file is
+    directly executable by the Windows Operating system. There is no attempt to
+    map Window's ACLs to permission bits.
 
 
 Symbolic and hard links
