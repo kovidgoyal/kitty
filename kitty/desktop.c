@@ -145,7 +145,7 @@ load_libcanberra(void) {
 }
 
 void
-play_canberra_sound(const char *which_sound, const char *event_id, bool is_path) {
+play_canberra_sound(const char *which_sound, const char *event_id, bool is_path, const char *media_role) {
     load_libcanberra();
     if (libcanberra_handle == NULL || canberra_ctx == NULL) return;
     const char *which_type = is_path ? "media.filename" : "event.id";
@@ -153,6 +153,7 @@ play_canberra_sound(const char *which_sound, const char *event_id, bool is_path)
         canberra_ctx, 0,
         which_type, which_sound,
         "event.description", event_id,
+        "media.role", media_role,
         NULL
     );
 }
@@ -162,7 +163,7 @@ play_desktop_sound(PyObject *self UNUSED, PyObject *args) {
     const char *which, *event_id = "test sound";
     int is_path = 0;
     if (!PyArg_ParseTuple(args, "s|sp", &which, &event_id, &is_path)) return NULL;
-    play_canberra_sound(which, event_id, is_path);
+    play_canberra_sound(which, event_id, is_path, "event");
     Py_RETURN_NONE;
 }
 

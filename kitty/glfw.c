@@ -1193,8 +1193,8 @@ ring_audio_bell(void) {
 #ifdef __APPLE__
     cocoa_system_beep(OPT(bell_path));
 #else
-    if (OPT(bell_path)) play_canberra_sound(OPT(bell_path), "kitty bell", true);
-    else play_canberra_sound("bell", "kitty bell", false);
+    if (OPT(bell_path)) play_canberra_sound(OPT(bell_path), "kitty bell", true, "event");
+    else play_canberra_sound("bell", "kitty bell", false, "event");
 #endif
 }
 

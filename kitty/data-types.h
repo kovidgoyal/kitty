@@ -363,7 +363,7 @@ void scroll_event(double, double, int, int);
 void on_key_input(GLFWkeyevent *ev);
 void request_window_attention(id_type, bool);
 #ifndef __APPLE__
-void play_canberra_sound(const char *which_sound, const char *event_id, bool is_path);
+void play_canberra_sound(const char *which_sound, const char *event_id, bool is_path, const char *role);
 #endif
 SPRITE_MAP_HANDLE alloc_sprite_map(unsigned int, unsigned int);
 SPRITE_MAP_HANDLE free_sprite_map(SPRITE_MAP_HANDLE);
