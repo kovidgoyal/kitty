@@ -25,6 +25,10 @@
 #define NSEventModifierFlagCommand NSCommandKeyMask
 #define NSEventModifierFlagControl NSControlKeyMask
 #endif
+#if (MAC_OS_X_VERSION_MAX_ALLOWED < 110000)
+#define UNNotificationPresentationOptionList (1 << 3)
+#define UNNotificationPresentationOptionBanner (1 << 4)
+#endif
 
 typedef int CGSConnectionID;
 typedef int CGSWindowID;
