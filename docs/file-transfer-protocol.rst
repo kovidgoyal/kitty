@@ -228,7 +228,44 @@ useful only with :ref:`bypass_auth`.
 File metadata
 -----------------
 
-TODO:
+File metadata includes file paths, permissions and modification times. They are
+somewhat tricky as different operating systems support different kinds of
+metadata. This specification defines a common minimum set which should work
+across most operating systems.
+
+File paths
+    File paths must be valid UTF-8 encoded POSIX paths (i.e. using the forward slash
+    ``/`` as a separator). Linux systems allow non UTF-8 file paths, these
+    are not supported. A leading ``~/`` means a path is relative to the
+    ``HOME`` directory. All path must be either absolute (i.e. with a leading
+    ``/``) or relative to the HOME directory. Individual components of the
+    path must be no longer than 255 UTF-8 bytes. Total path length must be no
+    more than 4096 bytes. Paths from Windows systems must use the forward slash
+    as the separator, the first path component must be the drive letter with a
+    colon. For example: :file:`C:\some\file.txt` is represented as
+    :file:`/C:/some/file.txt`. For maximum portability, the following
+    characters *should* be omitted from paths (however implementations are free
+    to try to support them returning errors for non-representable paths)::
+
+        \ * : < > ? | /
+
+File modification times
+    Must be represented as the number of nanoseconds since the UNIX epoch. An
+    individual file system may not store file metadata with this level of
+    accuracy in which case it should use the closest possible approximation.
+
+File permissions
+    Represented as a number with the usual UNIX read, write and execute bits.
+    In addition, the sticky, set-group-id and set-user-id bits may be present.
+    Implementations should make a best effort to preserve as many bits as
+    possible. On Windows, there is only a read-only bit. When reading file
+    metadata all the ``WRITE`` bits should be set if the read only bit is clear
+    and cleared if it is set. When writing files, the read-only bit should be
+    set if the bit indicating write permission for the user is clear. The other
+    UNIX bits must be ignored when writing. When reading, all the READ bits
+    should always be set and all the EXECUTE bits should be set if the file is
+    directly executable by the Windows Operating system.
+
 
 Symbolic and hard links
 ---------------------------
