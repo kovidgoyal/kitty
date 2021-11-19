@@ -152,6 +152,7 @@ play_canberra_sound(const char *which_sound, const char *event_id, bool is_path)
     ca_context_play(
         canberra_ctx, 0,
         which_type, which_sound,
+        "media.role", "event",
         "event.description", event_id,
         NULL
     );
