@@ -22,6 +22,9 @@ Features
 
 * Click with the mouse anywhere in the current command to move the cursor there
 
+* Hold :kbd:`ctrl+shift` and right-click on any command output in the scrollback
+  to view it in a pager
+
 * The current working directory or the command being executed are automatically
   displayed in the kitty window titlebar/tab title.
 
@@ -33,7 +36,7 @@ Features
 * Sophisticated completion for the :program:`kitty` command in the shell.
 
 * When confirming a quit command if a window is sitting at a shell prompt,
-  it is not counted.
+  it is optionally, not counted (see :opt:`confirm_os_window_close`)
 
 
 Configuration
