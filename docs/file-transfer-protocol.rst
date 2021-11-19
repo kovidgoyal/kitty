@@ -243,7 +243,20 @@ TODO:
 Compression
 --------------
 
-TODO:
+Individual files can be transmitted compressed if needed.
+Currently, only :rfc:`1950` ZLIB based deflate compression is
+supported, which is specified using the ``compression=zlib`` key when
+requesting a file. For example when sending files to the terminal emulator,
+when sending the file metadata the ``compression`` key can also be
+specified::
+
+    → action=file id=someid file_id=f1 name=/path/to/destination compression=zlib
+
+Similarly when receiving files from the terminal emulator, the final file
+command that the client sends to the terminal requesting the start of the
+transfer of data for the file can include the ``compression`` key::
+
+    → action=file id=someid file_id=f1 name=/some/path
 
 .. _bypass_auth:
 
