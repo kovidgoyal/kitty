@@ -230,8 +230,8 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
             willPresentNotification:(UNNotification *)notification
             withCompletionHandler:(void (^)(UNNotificationPresentationOptions))completionHandler {
         UNNotificationPresentationOptions options = UNNotificationPresentationOptionSound;
-        if(@available(macOS 11.0, *)) options |= UNNotificationPresentationOptionList | UNNotificationPresentationOptionBanner;
-        else options |= UNNotificationPresentationOptionAlert;
+        if (@available(macOS 11.0, *)) options |= UNNotificationPresentationOptionList | UNNotificationPresentationOptionBanner;
+        else options |= (1 << 2); // UNNotificationPresentationOptionAlert avoid deprecated warning
         completionHandler(options);
     }
 
