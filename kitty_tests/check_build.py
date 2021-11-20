@@ -39,8 +39,8 @@ class TestBuild(BaseTest):
         modules = ['cocoa'] if is_macos else linux_backends
         for name in modules:
             path = glfw_path(name)
-            self.assertTrue(os.path.isfile(path))
-            self.assertTrue(os.access(path, os.X_OK))
+            self.assertTrue(os.path.isfile(path), f'{path} is not a file')
+            self.assertTrue(os.access(path, os.X_OK), f'{path} is not executable')
 
     def test_all_kitten_names(self) -> None:
         from kittens.runner import all_kitten_names
