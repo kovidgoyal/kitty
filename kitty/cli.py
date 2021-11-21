@@ -122,7 +122,7 @@ def option(x: str) -> str:
 
 @role
 def code(x: str) -> str:
-    return x
+    return cyan(x)
 
 
 @role
