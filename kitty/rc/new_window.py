@@ -35,7 +35,7 @@ class NewWindow(RemoteCommand):
         ' (unless :option:`--no-response` is used). Any command line arguments'
         ' are assumed to be the command line used to run in the new window, if none'
         ' are provided, the default shell is run. For example:\n'
-        ':italic:`kitty @ new-window --title Email mutt`'
+        ':code:`kitty @ new-window --title Email mutt`'
     )
     options_spec = MATCH_TAB_OPTION + '''\n
 --title
@@ -65,7 +65,7 @@ Open a new tab
 
 
 --tab-title
-When using --new-tab set the title of the tab.
+When using :option:`kitty @ new-window --new-tab` set the title of the tab.
 
 
 --no-response

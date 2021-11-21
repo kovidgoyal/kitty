@@ -109,7 +109,7 @@ Do not print out anything to STDOUT during operation.
 default=0
 Z-index of the image. When negative, text will be displayed on top of the image. Use
 a double minus for values under the threshold for drawing images under cell background
-colors. For example, --1 evaluates as -1,073,741,825.
+colors. For example, :code:`--1` evaluates as -1,073,741,825.
 
 
 --loop -l

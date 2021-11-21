@@ -3440,7 +3440,7 @@ map('Open the selected hyperlink',
     'open_selected_hyperlink kitty_mod+p>y kitten hints --type hyperlink',
     long_text='''
 Select a hyperlink (i.e. a URL that has been marked as such by the terminal
-program, for example, by ls --hyperlink=auto).
+program, for example, by :code:`ls --hyperlink=auto`).
 '''
     )
 egr('''

@@ -48,7 +48,7 @@ class Launch(RemoteCommand):
         ' Prints out the id of the newly opened window. Any command line arguments'
         ' are assumed to be the command line used to run in the new window, if none'
         ' are provided, the default shell is run. For example:'
-        ' :italic:`kitty @ launch --title Email mutt`.'
+        ' :code:`kitty @ launch --title Email mutt`.'
     )
     options_spec = MATCH_TAB_OPTION + '\n\n' + '''\
 --no-response
