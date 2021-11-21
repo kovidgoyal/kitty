@@ -635,7 +635,8 @@ def load_themes(cache_age: float = 1., ignore_no_cache: bool = False) -> Themes:
     except NoCacheFound:
         if not ignore_no_cache:
             raise
-    ans.load_from_zip(fetched)
+    else:
+        ans.load_from_zip(fetched)
     ans.load_from_dir(os.path.join(config_dir, 'themes'))
     ans.index_map = tuple(ans.themes)
     return ans
