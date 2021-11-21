@@ -101,6 +101,7 @@ rst_prolog = '''
 .. role:: italic
 
 '''.replace('VERSION', str_version)
+smartquotes_action = 'qe'  # educate quotes and ellipses but not dashes
 
 
 # -- Options for HTML output -------------------------------------------------
