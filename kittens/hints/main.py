@@ -599,7 +599,7 @@ indices into the list of selections. You can use 0 for the first selection and
 default=auto
 choices=auto,always,never
 Add trailing space after matched text. Defaults to auto, which adds the space
-when used together with :code:`--multiple`.
+when used together with :option:`--multiple`.
 
 
 --hints-offset

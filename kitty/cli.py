@@ -657,7 +657,7 @@ respect to the temporary directory. To control kitty, you can send
 it commands with :italic:`kitty @` using the :option:`kitty @ --to` option to
 specify this address. This option will be ignored, unless you set
 :opt:`allow_remote_control` to yes in :file:`kitty.conf`. Note that if you run
-:italic:`kitty @` within a kitty window, there is no need to specify the :code:`--to`
+:italic:`kitty @` within a kitty window, there is no need to specify the :option:`kitty @ --to`
 option as it is read automatically from the environment. For UNIX sockets, this
 can also be specified in :file:`kitty.conf`.
 
