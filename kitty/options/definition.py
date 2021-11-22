@@ -2882,6 +2882,10 @@ duplication::
 
     map f1 launch_tab vim
     map f2 launch_tab emacs
+
+Similarly, to alias kitten invocation::
+
+    action_alias hints kitten hints --hints-offset=0
 ''')
 
 opt('+kitten_alias', 'hints hints --hints-offset=0',
