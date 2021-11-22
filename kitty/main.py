@@ -112,8 +112,10 @@ def get_macos_shortcut_for(opts: Options, function: str = 'new_os_window', args:
     ans = None
     candidates = []
     for k, v in opts.keymap.items():
-        if v.func == function and v.args == args:
-            candidates.append(k)
+        if len(v) == 1:
+            q = v[0]
+            if q.func == function and q.args == args:
+                candidates.append(k)
     if candidates:
         from .fast_data_types import cocoa_set_global_shortcut
         alt_mods = GLFW_MOD_ALT, GLFW_MOD_ALT | GLFW_MOD_SHIFT

@@ -210,6 +210,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   --program` option work when using the ``self``
   :option:`kitty +kitten hints --linenum-action` (:iss:`3931`)
 
+- Allow defining aliases for more general actions, not just kittens
+  (:pull:`4260`)
+
 
 0.22.2 [2021-08-02]
 ----------------------

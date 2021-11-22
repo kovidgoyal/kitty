@@ -646,7 +646,7 @@ class Window:
         action = get_options().mousemap.get(ev)
         if action is None:
             return False
-        return get_boss().dispatch_action(action, window_for_dispatch=self, dispatch_type='MouseEvent')
+        return get_boss().combine(action, window_for_dispatch=self, dispatch_type='MouseEvent')
 
     def open_url(self, url: str, hyperlink_id: int, cwd: Optional[str] = None) -> None:
         opts = get_options()

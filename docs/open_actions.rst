@@ -58,6 +58,12 @@ some special variables, documented below:
 ``FRAGMENT``
     The fragment (unquoted), if any of the URL or the empty string.
 
+
+.. note::
+   You can use the :opt:`action_alias` option just as in kitty.conf to
+   define aliases for frequently used actions.
+
+
 .. _matching_criteria:
 
 Matching criteria

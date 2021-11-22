@@ -2870,15 +2870,23 @@ for instance, to remove the default shortcuts.
 '''
     )
 
+opt('+action_alias', 'launch_tab launch --type=tab --cwd=current',
+    option_type='action_alias',
+    add_to_default=False,
+    long_text='''
+Define aliases to avoid repeating the same options in multiple mappings. Aliases
+can be defined for the :ref:`launch <action-launch>`, :ref:`kitten <action-kitten>`
+and :ref:`action-remote_control` actions. For example, the above alias allows you
+to create mappings to launch a new tab without duplication::
+
+    map f1 launch_tab vim
+    map f2 launch_tab emacs
+''')
+
 opt('+kitten_alias', 'hints hints --hints-offset=0',
     option_type='kitten_alias',
     add_to_default=False,
-    long_text='''
-You can create aliases for kitten names, this allows overriding the defaults for
-kitten options and can also be used to shorten repeated mappings of the same
-kitten with a specific group of options. For example, the above alias changes
-the default value of :option:`kitty +kitten hints --hints-offset` to zero for
-all mappings, including the builtin ones.
+    long_text='''Deprecated, use :opt:`action_alias` instead.
 '''
     )
 

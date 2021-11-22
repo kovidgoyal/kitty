@@ -38,6 +38,18 @@ To pass the contents of the current screen and scrollback to the started process
 
 There are many more powerful options, refer to the complete list below.
 
+.. note::
+    To avoid duplicating launch actions with frequently used parameters, you can
+    use :opt:`action_alias` to define launch action aliases. For example::
+
+        action_alias launch_tab launch --cwd=current --type=tab
+        map f1 launch_tab vim
+        map f2 launch_tab emacs
+
+    The :kbd:`F1` key will now open vim in a new tab with the current windows
+    working directory
+
+
 The piping environment
 --------------------------
 

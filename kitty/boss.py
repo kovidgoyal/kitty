@@ -46,7 +46,7 @@ from .keys import get_shortcut, shortcut_matches
 from .layout.base import set_layout_options
 from .notify import notification_activated
 from .options.types import Options
-from .options.utils import MINIMUM_FONT_SIZE, SubSequenceMap
+from .options.utils import MINIMUM_FONT_SIZE, KeyMap, SubSequenceMap
 from .os_window_size import initial_window_size_func
 from .rgb import color_from_int
 from .session import Session, create_sessions, get_os_window_sizing_data
@@ -62,7 +62,7 @@ from .utils import (
     remove_socket_file, safe_print, set_primary_selection, single_instance,
     startup_notification_handler
 )
-from .window import MatchPatternType, Window, CommandOutput
+from .window import CommandOutput, MatchPatternType, Window
 
 
 class OSWindowDict(TypedDict):
@@ -238,7 +238,7 @@ class Boss:
         self.current_visual_select: Optional[VisualSelect] = None
         self.startup_cursor_text_color = opts.cursor_text_color
         self.pending_sequences: Optional[SubSequenceMap] = None
-        self.default_pending_action: Optional[KeyAction] = None
+        self.default_pending_action: Tuple[KeyAction, ...] = ()
         self.cached_values = cached_values
         self.os_window_map: Dict[int, TabManager] = {}
         self.os_window_death_actions: Dict[int, Callable[[], None]] = {}
@@ -259,7 +259,7 @@ class Boss:
         )
         set_boss(self)
         self.args = args
-        self.global_shortcuts_map = {v: KeyAction(k) for k, v in global_shortcuts.items()}
+        self.global_shortcuts_map: KeyMap = {v: (KeyAction(k),) for k, v in global_shortcuts.items()}
         self.global_shortcuts = global_shortcuts
         self.mouse_handler: Optional[Callable[[WindowSystemMouseEvent], None]] = None
         self.update_keymap()
@@ -895,7 +895,7 @@ class Boss:
         t = self.active_tab
         return None if t is None else t.active_window
 
-    def set_pending_sequences(self, sequences: SubSequenceMap, default_pending_action: Optional[KeyAction] = None) -> None:
+    def set_pending_sequences(self, sequences: SubSequenceMap, default_pending_action: Tuple[KeyAction, ...] = ()) -> None:
         self.pending_sequences = sequences
         self.default_pending_action = default_pending_action
         set_in_sequence_mode(True)
@@ -905,17 +905,18 @@ class Boss:
         key_action = get_shortcut(self.keymap, ev)
         if key_action is None:
             sequences = get_shortcut(get_options().sequence_map, ev)
-            if sequences and not isinstance(sequences, KeyAction):
+            if sequences and not isinstance(sequences, tuple):
                 self.set_pending_sequences(sequences)
                 return True
             if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
-        elif isinstance(key_action, KeyAction):
-            return self.dispatch_action(key_action)
+        elif isinstance(key_action, tuple):
+            return self.combine(key_action)
         return False
 
     def clear_pending_sequences(self) -> None:
-        self.pending_sequences = self.default_pending_action = None
+        self.pending_sequences = None
+        self.default_pending_action = ()
         set_in_sequence_mode(False)
 
     def process_sequence(self, ev: KeyEvent) -> None:
@@ -939,7 +940,7 @@ class Boss:
             matched_action = matched_action or self.default_pending_action
             self.clear_pending_sequences()
             if matched_action is not None:
-                self.dispatch_action(matched_action)
+                self.combine(matched_action)
 
     def cancel_current_visual_select(self) -> None:
         if self.current_visual_select:
@@ -982,11 +983,11 @@ class Boss:
             window.screen.set_window_char(ch)
             self.current_visual_select.window_ids.append(window.id)
             for mods in (0, GLFW_MOD_CONTROL, GLFW_MOD_CONTROL | GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_ALT, GLFW_MOD_SHIFT):
-                pending_sequences[(SingleKey(mods=mods, key=ord(ch.lower())),)] = ac
+                pending_sequences[(SingleKey(mods=mods, key=ord(ch.lower())),)] = (ac,)
                 if ch in string.digits:
-                    pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{ch}']),)] = ac
+                    pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{ch}']),)] = (ac,)
         if len(self.current_visual_select.window_ids) > 1:
-            self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('visual_window_select_action_trigger', (0,)))
+            self.set_pending_sequences(pending_sequences, default_pending_action=(KeyAction('visual_window_select_action_trigger', (0,)),))
             redirect_mouse_handling(True)
             self.mouse_handler = self.visual_window_select_mouse_handler
         else:
@@ -1130,9 +1131,12 @@ class Boss:
 
             map kitty_mod+e combine : new_window : next_layout
         ''')
-    def combine(self, *actions: KeyAction) -> None:
+    def combine(self, actions: Tuple[KeyAction, ...], window_for_dispatch: Optional[Window] = None, dispatch_type: str = 'KeyPress') -> bool:
+        consumed = False
         for key_action in actions:
-            self.dispatch_action(key_action)
+            if self.dispatch_action(key_action, window_for_dispatch, dispatch_type):
+                consumed = True
+        return consumed
 
     def on_focus(self, os_window_id: int, focused: bool) -> None:
         tm = self.os_window_map.get(os_window_id)
@@ -1363,10 +1367,7 @@ class Boss:
             return overlay_window
 
     @ac('misc', 'Run the specified kitten. See :doc:`/kittens/custom` for details')
-    def kitten(self, kitten: str, *args: str) -> None:
-        import shlex
-        cmdline = args[0] if args else ''
-        kargs = shlex.split(cmdline) if cmdline else []
+    def kitten(self, kitten: str, *kargs: str) -> None:
         self._run_kitten(kitten, kargs)
 
     def run_kitten(self, kitten: str, *args: str) -> None:

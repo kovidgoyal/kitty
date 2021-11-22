@@ -31,9 +31,10 @@ class TestConfParsing(BaseTest):
             return ans
 
         def keys_for_func(opts, name):
-            for key, action in opts.keymap.items():
-                if action.func == name:
-                    yield key
+            for key, actions in opts.keymap.items():
+                for action in actions:
+                    if action.func == name:
+                        yield key
 
         opts = p('font_size 11.37', 'clear_all_shortcuts y', 'color23 red')
         self.ae(opts.font_size, 11.37)
@@ -51,8 +52,16 @@ class TestConfParsing(BaseTest):
         self.ae(opts.pointer_shape_when_grabbed, defaults.pointer_shape_when_grabbed)
         opts = p('env A=1', 'env B=x$A', 'env C=', 'env D', 'clear_all_shortcuts y', 'kitten_alias a b --moo', 'map f1 kitten a')
         self.ae(opts.env, {'A': '1', 'B': 'x1', 'C': '', 'D': DELETE_ENV_VAR})
-        ka = tuple(opts.keymap.values())[0]
+        ka = tuple(opts.keymap.values())[0][0]
+        self.ae(ka.func, 'kitten')
         self.ae(ka.args, ('b', '--moo'))
+        opts = p('clear_all_shortcuts y', 'action_alias la launch --moo', 'map f1 la')
+        ka = tuple(opts.keymap.values())[0][0]
+        self.ae(ka.func, 'launch')
+        self.ae(ka.args, ('--moo',))
+        opts = p('clear_all_shortcuts y', 'action_alias la launch --moo', 'map f1 combine : new_window : la ')
+        ka = tuple(opts.keymap.values())[0]
+        self.ae((ka[0].func, ka[1].func), ('new_window', 'launch'))
         opts = p('kitty_mod alt')
         self.ae(opts.kitty_mod, to_modifiers('alt'))
         self.ae(next(keys_for_func(opts, 'next_layout')).mods, opts.kitty_mod)

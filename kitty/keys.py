@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 from .conf.utils import KeyAction
 from .fast_data_types import (
@@ -22,7 +22,7 @@ def keyboard_mode_name(screen: ScreenType) -> str:
     return 'application' if screen.cursor_key_mode else 'normal'
 
 
-def get_shortcut(keymap: Union[KeyMap, SequenceMap], ev: KeyEvent) -> Optional[Union[KeyAction, SubSequenceMap]]:
+def get_shortcut(keymap: Union[KeyMap, SequenceMap], ev: KeyEvent) -> Optional[Union[Tuple[KeyAction, ...], SubSequenceMap]]:
     mods = ev.mods & mod_mask
     ans = keymap.get(SingleKey(mods, False, ev.key))
     if ans is None and ev.shifted_key and mods & GLFW_MOD_SHIFT:

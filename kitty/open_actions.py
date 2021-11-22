@@ -6,14 +6,16 @@ import os
 import posixpath
 from contextlib import suppress
 from typing import (
-    Any, Generator, Iterable, List, NamedTuple, Optional, Tuple, cast
+    Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, cast
 )
 from urllib.parse import ParseResult, unquote, urlparse
 
 from .conf.utils import KeyAction, to_cmdline_implementation
 from .constants import config_dir
 from .guess_mime_type import guess_type
-from .options.utils import parse_key_action
+from .options.utils import (
+    ActionAlias, action_alias, parse_key_actions, resolve_aliases_in_action
+)
 from .types import run_once
 from .typing import MatchType
 from .utils import expandvars, log_error
@@ -29,9 +31,11 @@ class OpenAction(NamedTuple):
     actions: Tuple[KeyAction, ...]
 
 
-def parse(lines: Iterable[str]) -> Generator[OpenAction, None, None]:
+def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
     match_criteria: List[MatchCriteria] = []
     actions: List[KeyAction] = []
+    alias_map: Dict[str, ActionAlias] = {}
+    entries = []
 
     for line in lines:
         line = line.strip()
@@ -39,7 +43,7 @@ def parse(lines: Iterable[str]) -> Generator[OpenAction, None, None]:
             continue
         if not line:
             if match_criteria and actions:
-                yield OpenAction(tuple(match_criteria), tuple(actions))
+                entries.append((tuple(match_criteria), tuple(actions)))
             match_criteria = []
             actions = []
             continue
@@ -50,18 +54,22 @@ def parse(lines: Iterable[str]) -> Generator[OpenAction, None, None]:
         key = key.lower()
         if key == 'action':
             with to_cmdline_implementation.filter_env_vars('URL', 'FILE_PATH', 'FILE', 'FRAGMENT'):
-                x = parse_key_action(rest)
-            if x is not None:
-                actions.append(x)
+                for x in parse_key_actions(rest):
+                    actions.append(x)
         elif key in ('mime', 'ext', 'protocol', 'file', 'path', 'url', 'fragment_matches'):
             if key != 'url':
                 rest = rest.lower()
             match_criteria.append(MatchCriteria(cast(MatchType, key), rest))
+        elif key == 'action_alias':
+            for (alias_name, args) in action_alias(rest):
+                alias_map[alias_name] = ActionAlias(args[0], args=tuple(args[1:]))
         else:
             log_error(f'Ignoring malformed open actions line: {line}')
 
+    for (mc, ac) in entries:
+        yield OpenAction(mc, tuple(resolve_aliases_in_action(a, alias_map) for a in ac))
     if match_criteria and actions:
-        yield OpenAction(tuple(match_criteria), tuple(actions))
+        yield OpenAction(tuple(match_criteria), tuple(resolve_aliases_in_action(a, alias_map) for a in actions))
 
 
 def url_matches_criterion(purl: 'ParseResult', url: str, unquoted_path: str, mc: MatchCriteria) -> bool:
@@ -142,7 +150,7 @@ def url_matches_criteria(purl: 'ParseResult', url: str, unquoted_path: str, crit
     return True
 
 
-def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Generator[KeyAction, None, None]:
+def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Iterator[KeyAction]:
     try:
         purl = urlparse(url)
     except Exception:
@@ -184,7 +192,7 @@ def load_open_actions() -> Tuple[OpenAction, ...]:
         return tuple(parse(f))
 
 
-def actions_for_url(url: str, actions_spec: Optional[str] = None) -> Generator[KeyAction, None, None]:
+def actions_for_url(url: str, actions_spec: Optional[str] = None) -> Iterator[KeyAction]:
     if actions_spec is None:
         actions = load_open_actions()
     else:

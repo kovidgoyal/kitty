@@ -69,11 +69,12 @@ class Callbacks:
 
     def on_mouse_event(self, event):
         ev = MouseEvent(**event)
-        action = self.opts.mousemap.get(ev)
-        if action is None:
+        actions = self.opts.mousemap.get(ev)
+        if not actions:
             return False
         self.current_mouse_button = ev.button
-        getattr(self, action.func)(*action.args)
+        for action in actions:
+            getattr(self, action.func)(*action.args)
         self.current_mouse_button = 0
         return True
 
@@ -115,8 +116,8 @@ class BaseTest(TestCase):
         if options:
             final_options.update(options)
         options = Options(merge_result_dicts(defaults._asdict(), final_options))
-        finalize_keys(options)
-        finalize_mouse_mappings(options)
+        finalize_keys(options, {})
+        finalize_mouse_mappings(options, {})
         set_options(options)
         return options
 

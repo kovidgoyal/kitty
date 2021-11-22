@@ -6,13 +6,13 @@ from kitty.conf.utils import (
     unit_float
 )
 from kitty.options.utils import (
-    active_tab_title_template, adjust_baseline, adjust_line_height, allow_hyperlinks,
+    action_alias, active_tab_title_template, adjust_baseline, adjust_line_height, allow_hyperlinks,
     allow_remote_control, box_drawing_scale, clear_all_mouse_actions, clear_all_shortcuts,
     clipboard_control, config_or_absolute_path, copy_on_select, cursor_text_color,
     deprecated_hide_window_decorations_aliases, deprecated_macos_show_window_title_in_menubar_alias,
     deprecated_send_text, disable_ligatures, edge_width, env, font_features, hide_window_decorations,
-    kitten_alias, macos_option_as_alt, macos_titlebar_color, optional_edge_width, parse_map,
-    parse_mouse_map, resize_draw_strategy, scrollback_lines, scrollback_pager_history_size, symbol_map,
+    macos_option_as_alt, macos_titlebar_color, optional_edge_width, parse_map, parse_mouse_map,
+    resize_draw_strategy, scrollback_lines, scrollback_pager_history_size, symbol_map,
     tab_activity_symbol, tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade,
     tab_font_style, tab_separator, tab_title_template, to_cursor_shape, to_font_size, to_layout_names,
     to_modifiers, url_prefixes, url_style, visual_window_select_characters, watcher,
@@ -21,6 +21,10 @@ from kitty.options.utils import (
 
 
 class Parser:
+
+    def action_alias(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        for k, v in action_alias(val):
+            ans["action_alias"][k] = v
 
     def active_border_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['active_border_color'] = to_color_or_none(val)
@@ -1006,7 +1010,7 @@ class Parser:
         ans['italic_font'] = str(val)
 
     def kitten_alias(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        for k, v in kitten_alias(val):
+        for k, v in action_alias(val):
             ans["kitten_alias"][k] = v
 
     def kitty_mod(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
@@ -1309,6 +1313,7 @@ class Parser:
 
 def create_result_dict() -> typing.Dict[str, typing.Any]:
     return {
+        'action_alias': {},
         'env': {},
         'font_features': {},
         'kitten_alias': {},

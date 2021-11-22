@@ -11,7 +11,8 @@ from .conf.utils import BadLine, load_config as _load_config, parse_config_base
 from .constants import cache_dir, defconf
 from .options.types import Options, defaults, option_names
 from .options.utils import (
-    KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap
+    ActionAlias, KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap,
+    build_action_aliases
 )
 from .typing import TypedDict
 from .utils import log_error
@@ -19,9 +20,6 @@ from .utils import log_error
 
 def option_names_for_completion() -> Tuple[str, ...]:
     return option_names
-
-
-no_op_actions = frozenset({'noop', 'no-op', 'no_op'})
 
 
 def build_ansi_color_table(opts: Optional[Options] = None) -> int:
@@ -93,18 +91,18 @@ def prepare_config_file_for_editing() -> str:
     return defconf
 
 
-def finalize_keys(opts: Options) -> None:
+def finalize_keys(opts: Options, alias_map: Dict[str, ActionAlias]) -> None:
     defns: List[KeyDefinition] = []
     for d in opts.map:
         if d is None:  # clear_all_shortcuts
             defns = []  # type: ignore
         else:
-            defns.append(d.resolve_and_copy(opts.kitty_mod, opts.kitten_alias))
+            defns.append(d.resolve_and_copy(opts.kitty_mod, alias_map))
     keymap: KeyMap = {}
     sequence_map: SequenceMap = {}
 
     for defn in defns:
-        is_no_op = defn.action.func in no_op_actions
+        is_no_op = defn.is_no_op
         if defn.is_sequence:
             keymap.pop(defn.trigger, None)
             s = sequence_map.setdefault(defn.trigger, {})
@@ -113,32 +111,32 @@ def finalize_keys(opts: Options) -> None:
                 if not s:
                     del sequence_map[defn.trigger]
             else:
-                s[defn.rest] = defn.action
+                s[defn.rest] = defn.actions
         else:
             sequence_map.pop(defn.trigger, None)
             if is_no_op:
                 keymap.pop(defn.trigger, None)
             else:
-                keymap[defn.trigger] = defn.action
+                keymap[defn.trigger] = defn.actions
     opts.keymap = keymap
     opts.sequence_map = sequence_map
 
 
-def finalize_mouse_mappings(opts: Options) -> None:
+def finalize_mouse_mappings(opts: Options, alias_map: Dict[str, ActionAlias]) -> None:
     defns: List[MouseMapping] = []
     for d in opts.mouse_map:
         if d is None:  # clear_all_mouse_actions
             defns = []  # type: ignore
         else:
-            defns.append(d.resolve_and_copy(opts.kitty_mod, opts.kitten_alias))
+            defns.append(d.resolve_and_copy(opts.kitty_mod, alias_map))
     mousemap: MouseMap = {}
 
     for defn in defns:
-        is_no_op = defn.action.func in no_op_actions
+        is_no_op = defn.is_no_op
         if is_no_op:
             mousemap.pop(defn.trigger, None)
         else:
-            mousemap[defn.trigger] = defn.action
+            mousemap[defn.trigger] = defn.actions
     opts.mousemap = mousemap
 
 
@@ -161,10 +159,13 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumula
     opts_dict, paths = _load_config(defaults, partial(parse_config, accumulate_bad_lines=accumulate_bad_lines), merge_result_dicts, *paths, overrides=overrides)
     opts = Options(opts_dict)
 
-    finalize_keys(opts)
-    finalize_mouse_mappings(opts)
+    alias_map = build_action_aliases(opts.kitten_alias, 'kitten')
+    alias_map.update(build_action_aliases(opts.action_alias))
+    finalize_keys(opts, alias_map)
+    finalize_mouse_mappings(opts, alias_map)
     # delete no longer needed definitions, replacing with empty placeholders
     opts.kitten_alias = {}
+    opts.action_alias = {}
     opts.mouse_map = []
     opts.map = []
     if opts.background_opacity < 1.0 and opts.macos_titlebar_color:

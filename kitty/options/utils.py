@@ -6,17 +6,19 @@ import os
 import re
 import sys
 from typing import (
-    Any, Callable, Container, Dict, Iterable, List, NamedTuple, Optional,
-    Sequence, Tuple, Union
+    Any, Callable, Container, Dict, Iterable, Iterator, List, NamedTuple,
+    Optional, Sequence, Tuple, Union
 )
 
 import kitty.fast_data_types as defines
 from kitty.conf.utils import (
-    KeyAction, KeyFuncWrapper, positive_float, positive_int,
-    python_string, to_bool, to_cmdline, to_color, uniq, unit_float
+    KeyAction, KeyFuncWrapper, positive_float, positive_int, python_string,
+    to_bool, to_cmdline, to_color, uniq, unit_float
 )
 from kitty.constants import config_dir, is_macos
-from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, Color
+from kitty.fast_data_types import (
+    CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, Color
+)
 from kitty.fonts import FontFeature
 from kitty.key_names import (
     character_key_name_aliases, functional_key_name_aliases,
@@ -26,10 +28,10 @@ from kitty.rgb import color_as_int
 from kitty.types import FloatEdges, MouseEvent, SingleKey
 from kitty.utils import expandvars, log_error
 
-KeyMap = Dict[SingleKey, KeyAction]
-MouseMap = Dict[MouseEvent, KeyAction]
+KeyMap = Dict[SingleKey, Tuple[KeyAction, ...]]
+MouseMap = Dict[MouseEvent, Tuple[KeyAction, ...]]
 KeySequence = Tuple[SingleKey, ...]
-SubSequenceMap = Dict[KeySequence, KeyAction]
+SubSequenceMap = Dict[KeySequence, Tuple[KeyAction, ...]]
 SequenceMap = Dict[SingleKey, SubSequenceMap]
 MINIMUM_FONT_SIZE = 4
 default_tab_separator = ' ┇'
@@ -58,14 +60,6 @@ def shlex_parse(func: str, rest: str) -> FuncArgsType:
     return func, to_cmdline(rest)
 
 
-@func_with_args('combine')
-def combine_parse(func: str, rest: str) -> FuncArgsType:
-    sep, rest = rest.split(maxsplit=1)
-    parts = re.split(r'\s*' + re.escape(sep) + r'\s*', rest)
-    args = tuple(map(parse_key_action, filter(None, parts)))
-    return func, args
-
-
 def parse_send_text_bytes(text: str) -> bytes:
     return python_string(text).encode('utf-8')
 
@@ -91,7 +85,7 @@ def kitten_parse(func: str, rest: str) -> FuncArgsType:
     else:
         args = rest.split(maxsplit=2)[1:]
         func = 'kitten'
-    return func, args
+    return func, [args[0]] + (to_cmdline(args[1]) if len(args) > 1 else [])
 
 
 @func_with_args('goto_tab')
@@ -772,11 +766,14 @@ def watcher(val: str, current_val: Container[str]) -> Iterable[Tuple[str, str]]:
         yield val, val
 
 
-def kitten_alias(val: str) -> Iterable[Tuple[str, List[str]]]:
-    parts = val.split(maxsplit=2)
-    if len(parts) >= 2:
-        name = parts.pop(0)
-        yield name, parts
+def action_alias(val: str) -> Iterable[Tuple[str, List[str]]]:
+    parts = val.split(maxsplit=1)
+    if len(parts) > 1:
+        alias_name, rest = parts
+        yield alias_name, to_cmdline(rest)
+
+
+kitten_alias = action_alias
 
 
 def symbol_map(val: str) -> Iterable[Tuple[Tuple[int, int], str]]:
@@ -806,57 +803,89 @@ def symbol_map(val: str) -> Iterable[Tuple[Tuple[int, int], str]]:
         yield (a, b), family
 
 
-def parse_key_action(action: str, action_type: str = 'map') -> Optional[KeyAction]:
+def parse_combine(rest: str, action_type: str = 'map') -> Iterator[KeyAction]:
+    sep, rest = rest.split(maxsplit=1)
+    parts = re.split(r'\s*' + re.escape(sep) + r'\s*', rest)
+    for x in parts:
+        if x:
+            yield from parse_key_actions(x, action_type)
+
+
+def parse_key_actions(action: str, action_type: str = 'map') -> Iterator[KeyAction]:
     parts = action.strip().split(maxsplit=1)
     func = parts[0]
     if len(parts) == 1:
-        return KeyAction(func, ())
+        yield KeyAction(func, ())
+        return
     rest = parts[1]
-    parser = func_with_args.get(func)
-    if parser is not None:
-        try:
-            func, args = parser(func, rest)
-        except Exception as err:
-            log_error(f'Ignoring invalid {action_type} action: {action} with err: {err}')
-        else:
-            return KeyAction(func, tuple(args))
+    if func == 'combine':
+        yield from parse_combine(rest, action_type)
     else:
-        log_error(f'Ignoring unknown {action_type} action: {action}')
-    return None
+        parser = func_with_args.get(func)
+        if parser is not None:
+            try:
+                func, args = parser(func, rest)
+            except Exception as err:
+                log_error(f'Ignoring invalid {action_type} action: {action} with err: {err}')
+            else:
+                yield KeyAction(func, tuple(args))
+        else:
+            log_error(f'Ignoring unknown {action_type} action: {action}')
+
+
+class ActionAlias(NamedTuple):
+    func_name: str
+    args: Tuple[str, ...]
+    second_arg_test: Optional[Callable[[Any], bool]] = None
+
+
+def build_action_aliases(raw: Dict[str, List[str]], first_arg_replacement: str = '') -> Dict[str, List[ActionAlias]]:
+    ans: Dict[str, List[ActionAlias]] = {}
+    if first_arg_replacement:
+        for alias_name, args in raw.items():
+            ans.setdefault('kitten', []).append(ActionAlias('kitten', tuple(args), alias_name.__eq__))
+    else:
+        for alias_name, args in raw.items():
+            ans[alias_name] = [ActionAlias(args[0], tuple(args[1:]))]
+    return ans
+
+
+def resolve_aliases_in_action(action: KeyAction, aliases: Dict[str, List[ActionAlias]]) -> KeyAction:
+    for alias in aliases.get(action.func, ()):
+        if alias.second_arg_test is None:
+            return action._replace(func=alias.func_name, args=alias.args)
+        if action.args and alias.second_arg_test(action.args[0]):
+            return action._replace(func=alias.func_name, args=alias.args)
+    return action
 
 
 class BaseDefinition:
-    action: KeyAction
+    actions: Tuple[KeyAction, ...]
+    no_op_actions = frozenset(('noop', 'no-op', 'no_op'))
 
-    def resolve_kitten_aliases(self, aliases: Dict[str, List[str]]) -> KeyAction:
-        if not self.action.args or not aliases:
-            return self.action
-        kitten = self.action.args[0]
-        rest = str(self.action.args[1] if len(self.action.args) > 1 else '')
-        changed = False
-        for key, expanded in aliases.items():
-            if key == kitten:
-                changed = True
-                kitten = expanded[0]
-                if len(expanded) > 1:
-                    rest = expanded[1] + ' ' + rest
-        return self.action._replace(args=(kitten, rest.rstrip())) if changed else self.action
+    @property
+    def is_no_op(self) -> bool:
+        return len(self.actions) == 1 and self.actions[0].func in self.no_op_actions
+
+    def resolve_aliases(self, aliases: Dict[str, List[ActionAlias]]) -> Tuple[KeyAction, ...]:
+        self.actions = tuple(resolve_aliases_in_action(a, aliases) for a in self.actions)
+        return self.actions
 
 
 class MouseMapping(BaseDefinition):
 
-    def __init__(self, button: int, mods: int, repeat_count: int, grabbed: bool, action: KeyAction):
+    def __init__(self, button: int, mods: int, repeat_count: int, grabbed: bool, actions: Tuple[KeyAction, ...]):
         self.button = button
         self.mods = mods
         self.repeat_count = repeat_count
         self.grabbed = grabbed
-        self.action = action
+        self.actions = actions
 
     def __repr__(self) -> str:
-        return f'MouseMapping({self.button}, {self.mods}, {self.repeat_count}, {self.grabbed}, {self.action})'
+        return f'MouseMapping({self.button}, {self.mods}, {self.repeat_count}, {self.grabbed}, {self.actions})'
 
-    def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, List[str]]) -> 'MouseMapping':
-        return MouseMapping(self.button, defines.resolve_key_mods(kitty_mod, self.mods), self.repeat_count, self.grabbed, self.resolve_kitten_aliases(aliases))
+    def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, List[ActionAlias]]) -> 'MouseMapping':
+        return MouseMapping(self.button, defines.resolve_key_mods(kitty_mod, self.mods), self.repeat_count, self.grabbed, self.resolve_aliases(aliases))
 
     @property
     def trigger(self) -> MouseEvent:
@@ -865,21 +894,21 @@ class MouseMapping(BaseDefinition):
 
 class KeyDefinition(BaseDefinition):
 
-    def __init__(self, is_sequence: bool, action: KeyAction, mods: int, is_native: bool, key: int, rest: Tuple[SingleKey, ...] = ()):
+    def __init__(self, is_sequence: bool, actions: Tuple[KeyAction, ...], mods: int, is_native: bool, key: int, rest: Tuple[SingleKey, ...] = ()):
         self.is_sequence = is_sequence
-        self.action = action
+        self.actions = actions
         self.trigger = SingleKey(mods, is_native, key)
         self.rest = rest
 
     def __repr__(self) -> str:
-        return f'KeyDefinition({self.is_sequence}, {self.action}, {self.trigger.mods}, {self.trigger.is_native}, {self.trigger.key}, {self.rest})'
+        return f'KeyDefinition({self.is_sequence}, {self.actions}, {self.trigger.mods}, {self.trigger.is_native}, {self.trigger.key}, {self.rest})'
 
-    def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, List[str]]) -> 'KeyDefinition':
+    def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, List[ActionAlias]]) -> 'KeyDefinition':
         def r(k: SingleKey) -> SingleKey:
             mods = defines.resolve_key_mods(kitty_mod, k.mods)
             return k._replace(mods=mods)
         return KeyDefinition(
-            self.is_sequence, self.resolve_kitten_aliases(aliases),
+            self.is_sequence, self.resolve_aliases(aliases),
             defines.resolve_key_mods(kitty_mod, self.trigger.mods),
             self.trigger.is_native, self.trigger.key, tuple(map(r, self.rest)))
 
@@ -920,12 +949,11 @@ def parse_map(val: str) -> Iterable[KeyDefinition]:
                 log_error(f'Shortcut: {sc} has unknown key, ignoring')
             return
     try:
-        paction = parse_key_action(action)
+        paction = tuple(parse_key_actions(action))
     except Exception:
-        log_error('Invalid shortcut action: {}. Ignoring.'.format(
-            action))
+        log_error(f'Invalid shortcut action: {action}. Ignoring.')
     else:
-        if paction is not None:
+        if paction:
             if is_sequence:
                 if trigger is not None:
                     yield KeyDefinition(True, paction, trigger[0], trigger[1], trigger[2], rest)
@@ -965,11 +993,11 @@ def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
         log_error(f'Mouse modes: {modes} not recognized, ignoring')
         return
     try:
-        paction = parse_key_action(action, 'mouse_map')
+        paction = tuple(parse_key_actions(action, 'mouse_map'))
     except Exception:
         log_error(f'Invalid mouse action: {action}. Ignoring.')
         return
-    if paction is None:
+    if not paction:
         return
     for mode in sorted(specified_modes):
         yield MouseMapping(button, mods, count, mode == 'grabbed', paction)
