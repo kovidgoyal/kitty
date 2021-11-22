@@ -52,6 +52,14 @@ class SingleKey(NamedTuple):
     is_native: bool = False
     key: int = -1
 
+    def __repr__(self) -> str:
+        kwds = []
+        for i, f in enumerate(self._fields):
+            val = self[i]
+            if val != self._field_defaults[f]:
+                kwds.append(f'{f}={val!r}')
+        return 'SingleKey(' + ', '.join(kwds) + ')'
+
 
 class MouseEvent(NamedTuple):
     button: int = 0

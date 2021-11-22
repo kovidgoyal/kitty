@@ -818,19 +818,19 @@ defaults.map = [
     # open_url
     KeyDefinition(False, (KeyAction('open_url_with_hints'),), 1024, False, 101, ()),
     # insert_selected_path
-    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'path', '--program', '-')),), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=102),)),
+    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'path', '--program', '-')),), 1024, False, 112, (SingleKey(key=102),)),
     # open_selected_path
-    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'path')),), 1024, False, 112, (SingleKey(mods=1, is_native=False, key=102),)),
+    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'path')),), 1024, False, 112, (SingleKey(mods=1, key=102),)),
     # insert_selected_line
-    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'line', '--program', '-')),), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=108),)),
+    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'line', '--program', '-')),), 1024, False, 112, (SingleKey(key=108),)),
     # insert_selected_word
-    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'word', '--program', '-')),), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=119),)),
+    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'word', '--program', '-')),), 1024, False, 112, (SingleKey(key=119),)),
     # insert_selected_hash
-    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'hash', '--program', '-')),), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=104),)),
+    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'hash', '--program', '-')),), 1024, False, 112, (SingleKey(key=104),)),
     # goto_file_line
-    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'linenum')),), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=110),)),
+    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'linenum')),), 1024, False, 112, (SingleKey(key=110),)),
     # open_selected_hyperlink
-    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'hyperlink')),), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=121),)),
+    KeyDefinition(True, (KeyAction('kitten', ('hints', '--type', 'hyperlink')),), 1024, False, 112, (SingleKey(key=121),)),
     # toggle_fullscreen
     KeyDefinition(False, (KeyAction('toggle_fullscreen'),), 1024, False, 57374, ()),
     # toggle_maximized
@@ -842,13 +842,13 @@ defaults.map = [
     # kitty_shell
     KeyDefinition(False, (KeyAction('kitty_shell', ('window',)),), 1024, False, 57344, ()),
     # increase_background_opacity
-    KeyDefinition(True, (KeyAction('set_background_opacity', ('+0.1',)),), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=109),)),
+    KeyDefinition(True, (KeyAction('set_background_opacity', ('+0.1',)),), 1024, False, 97, (SingleKey(key=109),)),
     # decrease_background_opacity
-    KeyDefinition(True, (KeyAction('set_background_opacity', ('-0.1',)),), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=108),)),
+    KeyDefinition(True, (KeyAction('set_background_opacity', ('-0.1',)),), 1024, False, 97, (SingleKey(key=108),)),
     # full_background_opacity
-    KeyDefinition(True, (KeyAction('set_background_opacity', ('1',)),), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=49),)),
+    KeyDefinition(True, (KeyAction('set_background_opacity', ('1',)),), 1024, False, 97, (SingleKey(key=49),)),
     # reset_background_opacity
-    KeyDefinition(True, (KeyAction('set_background_opacity', ('default',)),), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=100),)),
+    KeyDefinition(True, (KeyAction('set_background_opacity', ('default',)),), 1024, False, 97, (SingleKey(key=100),)),
     # reset_terminal
     KeyDefinition(False, (KeyAction('clear_terminal', ('reset', True)),), 1024, False, 57349, ()),
     # reload_config_file
