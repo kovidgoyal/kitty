@@ -849,6 +849,10 @@ def build_action_aliases(raw: Dict[str, List[str]], first_arg_replacement: str =
 def resolve_aliases_in_action(action: KeyAction, aliases: Dict[str, List[ActionAlias]]) -> KeyAction:
     for alias in aliases.get(action.func, ()):
         if alias.second_arg_test is None:
+            recursive = alias.func_name == action.func
+            action = action._replace(func=alias.func_name, args=alias.args + action.args)
+            if recursive:
+                return action
             return resolve_aliases_in_action(action._replace(func=alias.func_name, args=alias.args + action.args), aliases)
         if action.args and alias.second_arg_test(action.args[0]):
             return resolve_aliases_in_action(action._replace(func=alias.func_name, args=alias.args + action.args[1:]), aliases)
