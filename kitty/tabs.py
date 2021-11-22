@@ -6,7 +6,6 @@ import stat
 import weakref
 from collections import deque
 from contextlib import suppress
-from functools import partial
 from operator import attrgetter
 from time import monotonic
 from typing import (
@@ -112,8 +111,6 @@ class Tab:  # {{{
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or get_options().enabled_layouts]
         self.borders = Borders(self.os_window_id, self.id)
         self.windows = WindowList(self)
-        for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
-            setattr(self, which + '_window', partial(self.nth_window, num=i))
         self._last_used_layout: Optional[str] = None
         self._current_layout_name: Optional[str] = None
         self.cwd = self.args.directory
@@ -497,19 +494,61 @@ class Tab:  # {{{
         return None
 
     @ac('win', '''
-        Focus the nth window if positive or the previously active windows if negative
+        Focus the nth window if positive or the previously active windows if negative. When the number is larger
+        than the number of windows focus the last window. For example::
 
-        For example, to ficus the previously active window::
-
+            # focus the previously active window
             map ctrl+p nth_window -1
+            # focus the first window
+            map ctrl+1 nth_window 0
         ''')
     def nth_window(self, num: int = 0) -> None:
         if self.windows:
             if num < 0:
                 self.windows.make_previous_group_active(-num)
-            else:
-                self.current_layout.activate_nth_window(self.windows, num)
+            elif self.windows.num_groups:
+                self.current_layout.activate_nth_window(self.windows, min(num, self.windows.num_groups - 1))
             self.relayout_borders()
+
+    @ac('win', 'Focus the first window')
+    def first_window(self) -> None:
+        self.nth_window(0)
+
+    @ac('win', 'Focus the second window')
+    def second_window(self) -> None:
+        self.nth_window(1)
+
+    @ac('win', 'Focus the third window')
+    def third_window(self) -> None:
+        self.nth_window(2)
+
+    @ac('win', 'Focus the fourth window')
+    def fourth_window(self) -> None:
+        self.nth_window(3)
+
+    @ac('win', 'Focus the fifth window')
+    def fifth_window(self) -> None:
+        self.nth_window(4)
+
+    @ac('win', 'Focus the sixth window')
+    def sixth_window(self) -> None:
+        self.nth_window(5)
+
+    @ac('win', 'Focus the seventh window')
+    def seventh_window(self) -> None:
+        self.nth_window(6)
+
+    @ac('win', 'Focus the eighth window')
+    def eighth_window(self) -> None:
+        self.nth_window(7)
+
+    @ac('win', 'Focus the ninth window')
+    def ninth_window(self) -> None:
+        self.nth_window(8)
+
+    @ac('win', 'Focus the tenth window')
+    def tenth_window(self) -> None:
+        self.nth_window(9)
 
     def _next_window(self, delta: int = 1) -> None:
         if len(self.windows) > 1:
