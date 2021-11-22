@@ -185,11 +185,11 @@ class Option:
             return ans
         if option_group:
             sz = max(len(self.name), max(len(o.name) for o in option_group))
-            a(f'{self.name.ljust(sz)} {self.defval_as_string}')
+            a(f'{self.name.ljust(sz)} {self.defval_as_string}'.rstrip())
             for o in option_group:
-                a(f'{o.name.ljust(sz)} {o.defval_as_string}')
+                a(f'{o.name.ljust(sz)} {o.defval_as_string}'.rstrip())
         else:
-            a(f'{self.name} {self.defval_as_string}')
+            a(f'{self.name} {self.defval_as_string}'.rstrip())
         if self.long_text:
             a('')
             a(render_block(self.long_text))
@@ -248,8 +248,10 @@ class MultiOption:
         a = ans.append
         for k in self.items:
             if k.documented:
-                prefix = '' if k.add_to_default else '# '
-                a(f'{prefix}{self.name} {k.defval_as_str}')
+                a(f'{self.name} {k.defval_as_str if k.add_to_default else ""}'.rstrip())
+                if not k.add_to_default and k.defval_as_str:
+                    a('')
+                    a(f'#: E.g. {self.name} {k.defval_as_str}'.rstrip())
         if self.long_text:
             a('')
             a(render_block(self.long_text))
@@ -264,7 +266,7 @@ class MultiOption:
         a('')
         for k in self.items:
             if k.documented:
-                a(f'    {self.name:s} {k.defval_as_str}')
+                a(f'    {self.name:s} {k.defval_as_str}'.rstrip())
         a('')
         if self.long_text:
             a(expand_opt_references(conf_name, self.long_text))
@@ -297,8 +299,9 @@ class Mapping:
         if self.short_text:
             a(render_block(self.short_text.strip())), a('')
         for sc in [self] + action_group:
-            if sc.documented and sc.add_to_default:
-                a(sc.setting_name + ' ' + sc.parseable_text)
+            if sc.documented:
+                prefix = '' if sc.add_to_default else '#::  E.g. '
+                a(f'{prefix}{sc.setting_name} {sc.parseable_text}')
         if self.long_text:
             a(''), a(render_block(self.long_text.strip(), '#::  '))
         a('')
