@@ -260,6 +260,12 @@ class KeyAction(NamedTuple):
             return f'KeyAction({self.func!r}, {self.args!r})'
         return f'KeyAction({self.func!r})'
 
+    def pretty(self) -> str:
+        ans = self.func
+        for x in self.args:
+            ans += f' {x}'
+        return ans
+
 
 def parse_kittens_func_args(action: str, args_funcs: Dict[str, KeyFunc[Tuple[str, Any]]]) -> KeyAction:
     parts = action.strip().split(' ', 1)
