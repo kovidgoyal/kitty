@@ -2890,9 +2890,8 @@ Similarly, to alias kitten invocation::
 
 opt('+kitten_alias', 'hints hints --hints-offset=0',
     option_type='kitten_alias',
-    add_to_default=False,
-    long_text='''Deprecated, use :opt:`action_alias` instead.
-'''
+    add_to_default=False, documented=False,
+    long_text='Deprecated, use :opt:`action_alias` instead.'
     )
 
 
