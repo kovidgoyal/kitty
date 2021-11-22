@@ -49,14 +49,15 @@ def remove_markup(text: str) -> str:
         'watchers': f'{website_url("launch")}#watchers',
         'sessions': f'{website_url("overview")}#startup-sessions',
         'functional': f'{website_url("keyboard-protocol")}#functional-key-definitions',
-        'action-select_tab': f'{website_url("actions")}#select-tab',
-        'action-close_window_with_confirmation': f'{website_url("actions")}#close-window-with-confirmation',
         'shell_integration': website_url("shell-integration"),
     }
+    for ac in ('launch', 'select_tab', 'shell_integration', 'close_window_with_confirmation', 'kitten', 'remote_control'):
+        ref_map[f'action-{ac}'] = f'{website_url("actions")}#' + ac.replace('_', '-')
 
     def sub(m: 'Match[str]') -> str:
         if m.group(1) == 'ref':
-            return ref_map[m.group(2)]
+            q = m.group(2).split('<')[-1].rstrip('>')
+            return ref_map[q]
         return str(m.group(2))
 
     return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)
