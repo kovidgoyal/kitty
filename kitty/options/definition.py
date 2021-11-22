@@ -3222,7 +3222,15 @@ last two active windows, use the value -1.
 '''
     )
 
-map('Visually select focus window', 'focus_visible_window kitty_mod+f7 focus_visible_window')
+map('Visually select and focus window',
+    'focus_visible_window kitty_mod+f7 focus_visible_window',
+    long_text='''
+Display overlay numbers and alphabets on the window, and switch the focus to
+the window when you press the key. When there are only two windows the focus
+will be switched directly. You can change the overlay characters and their order
+with option :opt:`visual_window_select_characters`.
+'''
+    )
 map('Visually swap window with another', 'swap_with_window kitty_mod+f8 swap_with_window')
 egr()  # }}}
 
