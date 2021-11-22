@@ -59,6 +59,10 @@ class TestConfParsing(BaseTest):
         ka = tuple(opts.keymap.values())[0][0]
         self.ae(ka.func, 'launch')
         self.ae(ka.args, ('--moo', 'XXX'))
+        opts = p('clear_all_shortcuts y', 'action_alias one launch --moo', 'action_alias two one recursive', 'map f1 two XXX')
+        ka = tuple(opts.keymap.values())[0][0]
+        self.ae(ka.func, 'launch')
+        self.ae(ka.args, ('--moo', 'recursive', 'XXX'))
         opts = p('clear_all_shortcuts y', 'action_alias la launch --moo', 'map f1 combine : new_window : la ')
         ka = tuple(opts.keymap.values())[0]
         self.ae((ka[0].func, ka[1].func), ('new_window', 'launch'))
