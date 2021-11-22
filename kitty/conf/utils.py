@@ -118,7 +118,7 @@ def choices(*choices: str) -> Choice:
     return Choice(choices)
 
 
-def resolve_action_alias(key: str, val: str, aliases: Dict[str, Any]) -> Optional[str]:
+def resolve_action_alias(key: str, val: str, aliases: Dict[str, Any]) -> str:
     if key == 'map':
         # map: key <action> [args]
         idx = 1
@@ -129,7 +129,7 @@ def resolve_action_alias(key: str, val: str, aliases: Dict[str, Any]) -> Optiona
         # open_actions: <action> [args]
         idx = 0
     else:
-        return None
+        return val
     parts = val.split(maxsplit=idx+1)
     if len(parts) > idx and parts[idx] in aliases:
         action = aliases.get(parts[idx])
@@ -138,7 +138,7 @@ def resolve_action_alias(key: str, val: str, aliases: Dict[str, Any]) -> Optiona
             if len(action) > 1 and action[1]:
                 parts.insert(idx + 1, action[1])
             return ' '.join(parts)
-    return None
+    return val
 
 
 def parse_line(
@@ -176,9 +176,7 @@ def parse_line(
         return
     aliases = ans.get('action_alias')
     if key in ('map', 'mouse_map') and aliases:
-        resolved_val = resolve_action_alias(key, val, aliases)
-        if resolved_val is not None:
-            val = resolved_val
+        val = resolve_action_alias(key, val, aliases)
     if not parse_conf_item(key, val, ans):
         log_error(f'Ignoring unknown config key: {key}')
 

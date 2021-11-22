@@ -50,9 +50,8 @@ def parse(lines: Iterable[str]) -> Generator[OpenAction, None, None]:
         key, rest = parts
         key = key.lower()
         if key == 'action':
-            alias_val = resolve_action_alias('open_actions', rest, action_aliases)
             with to_cmdline_implementation.filter_env_vars('URL', 'FILE_PATH', 'FILE', 'FRAGMENT'):
-                x = parse_key_action(alias_val if alias_val is not None else rest)
+                x = parse_key_action(resolve_action_alias('open_actions', rest, action_aliases))
             if x is not None:
                 actions.append(x)
         elif key == 'action_alias':
