@@ -56,6 +56,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - broadcast kitten: Show a "fake" cursor in all windows being broadcast too
   (:iss:`4225`)
 
+- Allow defining aliases for more general actions, not just kittens
+  (:pull:`4260`)
+
 - Fix a regression that caused :option:`kitty --title` to not work when
   opening new OS windows using :option:`kitty --single-instance` (:iss:`3893`)
 
@@ -209,9 +212,6 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - hints kitten: Make copy/paste with the :option:`kitty +kitten hints
   --program` option work when using the ``self``
   :option:`kitty +kitten hints --linenum-action` (:iss:`3931`)
-
-- Allow defining aliases for more general actions, not just kittens
-  (:pull:`4260`)
 
 
 0.22.2 [2021-08-02]
