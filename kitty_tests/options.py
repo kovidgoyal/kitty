@@ -50,15 +50,15 @@ class TestConfParsing(BaseTest):
         self.assertFalse(bad_lines)
         opts = p('pointer_shape_when_grabbed XXX', bad_line_num=1)
         self.ae(opts.pointer_shape_when_grabbed, defaults.pointer_shape_when_grabbed)
-        opts = p('env A=1', 'env B=x$A', 'env C=', 'env D', 'clear_all_shortcuts y', 'kitten_alias a b --moo', 'map f1 kitten a')
+        opts = p('env A=1', 'env B=x$A', 'env C=', 'env D', 'clear_all_shortcuts y', 'kitten_alias a b --moo', 'map f1 kitten a arg')
         self.ae(opts.env, {'A': '1', 'B': 'x1', 'C': '', 'D': DELETE_ENV_VAR})
         ka = tuple(opts.keymap.values())[0][0]
         self.ae(ka.func, 'kitten')
-        self.ae(ka.args, ('b', '--moo'))
-        opts = p('clear_all_shortcuts y', 'action_alias la launch --moo', 'map f1 la')
+        self.ae(ka.args, ('b', '--moo', 'arg'))
+        opts = p('clear_all_shortcuts y', 'action_alias la launch --moo', 'map f1 la XXX')
         ka = tuple(opts.keymap.values())[0][0]
         self.ae(ka.func, 'launch')
-        self.ae(ka.args, ('--moo',))
+        self.ae(ka.args, ('--moo', 'XXX'))
         opts = p('clear_all_shortcuts y', 'action_alias la launch --moo', 'map f1 combine : new_window : la ')
         ka = tuple(opts.keymap.values())[0]
         self.ae((ka[0].func, ka[1].func), ('new_window', 'launch'))

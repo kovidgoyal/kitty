@@ -242,11 +242,10 @@ def set_colors(func: str, rest: str) -> FuncArgsType:
 
 @func_with_args('remote_control')
 def remote_control(func: str, rest: str) -> FuncArgsType:
-    import shlex
-    r = shlex.split(rest)
-    if len(r) < 1:
+    func, args = shlex_parse(func, rest)
+    if len(args) < 1:
         log_error('Too few arguments to remote_control function')
-    return func, r
+    return func, args
 
 
 @func_with_args('nth_window', 'scroll_to_prompt')
@@ -821,16 +820,13 @@ def parse_key_actions(action: str, action_type: str = 'map') -> Iterator[KeyActi
     if func == 'combine':
         yield from parse_combine(rest, action_type)
     else:
-        parser = func_with_args.get(func)
-        if parser is not None:
-            try:
-                func, args = parser(func, rest)
-            except Exception as err:
-                log_error(f'Ignoring invalid {action_type} action: {action} with err: {err}')
-            else:
-                yield KeyAction(func, tuple(args))
+        parser = func_with_args.get(func) or shlex_parse
+        try:
+            func, args = parser(func, rest)
+        except Exception as err:
+            log_error(f'Ignoring invalid {action_type} action: {action} with err: {err}')
         else:
-            log_error(f'Ignoring unknown {action_type} action: {action}')
+            yield KeyAction(func, tuple(args))
 
 
 class ActionAlias(NamedTuple):
@@ -843,7 +839,7 @@ def build_action_aliases(raw: Dict[str, List[str]], first_arg_replacement: str =
     ans: Dict[str, List[ActionAlias]] = {}
     if first_arg_replacement:
         for alias_name, args in raw.items():
-            ans.setdefault('kitten', []).append(ActionAlias('kitten', tuple(args), alias_name.__eq__))
+            ans.setdefault(first_arg_replacement, []).append(ActionAlias(first_arg_replacement, tuple(args), alias_name.__eq__))
     else:
         for alias_name, args in raw.items():
             ans[alias_name] = [ActionAlias(args[0], tuple(args[1:]))]
@@ -853,9 +849,9 @@ def build_action_aliases(raw: Dict[str, List[str]], first_arg_replacement: str =
 def resolve_aliases_in_action(action: KeyAction, aliases: Dict[str, List[ActionAlias]]) -> KeyAction:
     for alias in aliases.get(action.func, ()):
         if alias.second_arg_test is None:
-            return action._replace(func=alias.func_name, args=alias.args)
+            return action._replace(func=alias.func_name, args=alias.args + action.args)
         if action.args and alias.second_arg_test(action.args[0]):
-            return action._replace(func=alias.func_name, args=alias.args)
+            return action._replace(func=alias.func_name, args=alias.args + action.args[1:])
     return action
 
 
