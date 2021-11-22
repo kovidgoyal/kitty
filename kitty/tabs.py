@@ -499,7 +499,7 @@ class Tab:  # {{{
     @ac('win', '''
         Focus the nth window if positive or the previously active windows if negative
 
-        For example, to ficus the previously active window::
+        For example, to focus the previously active window::
 
             map ctrl+p nth_window -1
         ''')
@@ -508,6 +508,8 @@ class Tab:  # {{{
             if num < 0:
                 self.windows.make_previous_group_active(-num)
             else:
+                if num >= len(self.windows):
+                    num = max(0, len(self.windows) - 1)
                 self.current_layout.activate_nth_window(self.windows, num)
             self.relayout_borders()
 

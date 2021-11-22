@@ -3211,6 +3211,17 @@ map('Tenth window',
     'tenth_window kitty_mod+0 tenth_window',
     )
 
+map('Focus a specific window',
+    'nth_window ctrl+alt+p nth_window -1',
+    add_to_default=False,
+    long_text='''
+Focus to the window of the specified number. When the specified number is larger
+than the last window, focus to the last one. When the number is negative, switch
+to the nth previously active window. For example, to switch focus between the
+last two active windows, use the value -1.
+'''
+    )
+
 map('Visually select focus window', 'focus_visible_window kitty_mod+f7 focus_visible_window')
 map('Visually swap window with another', 'swap_with_window kitty_mod+f8 swap_with_window')
 egr()  # }}}
