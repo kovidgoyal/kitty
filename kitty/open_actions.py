@@ -6,14 +6,14 @@ import os
 import posixpath
 from contextlib import suppress
 from typing import (
-    Any, Generator, Iterable, List, NamedTuple, Optional, Tuple, cast
+    Any, Dict, Generator, Iterable, List, NamedTuple, Optional, Tuple, cast
 )
 from urllib.parse import ParseResult, unquote, urlparse
 
-from .conf.utils import KeyAction, to_cmdline_implementation
+from .conf.utils import KeyAction, resolve_action_alias, to_cmdline_implementation
 from .constants import config_dir
 from .guess_mime_type import guess_type
-from .options.utils import parse_key_action
+from .options.utils import action_alias as parse_action_alias, parse_key_action
 from .types import run_once
 from .typing import MatchType
 from .utils import expandvars, log_error
@@ -32,6 +32,7 @@ class OpenAction(NamedTuple):
 def parse(lines: Iterable[str]) -> Generator[OpenAction, None, None]:
     match_criteria: List[MatchCriteria] = []
     actions: List[KeyAction] = []
+    action_aliases: Dict[str, List[str]] = {}
 
     for line in lines:
         line = line.strip()
@@ -49,10 +50,17 @@ def parse(lines: Iterable[str]) -> Generator[OpenAction, None, None]:
         key, rest = parts
         key = key.lower()
         if key == 'action':
+            alias_val = resolve_action_alias('open_actions', rest, action_aliases)
             with to_cmdline_implementation.filter_env_vars('URL', 'FILE_PATH', 'FILE', 'FRAGMENT'):
-                x = parse_key_action(rest)
+                x = parse_key_action(alias_val if alias_val is not None else rest)
             if x is not None:
                 actions.append(x)
+        elif key == 'action_alias':
+            for ac, ac_parts in parse_action_alias(rest):
+                if ac_parts:
+                    action_aliases[ac] = ac_parts
+                else:
+                    del action_aliases[ac]
         elif key in ('mime', 'ext', 'protocol', 'file', 'path', 'url', 'fragment_matches'):
             if key != 'url':
                 rest = rest.lower()

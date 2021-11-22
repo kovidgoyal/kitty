@@ -6,7 +6,7 @@ from kitty.conf.utils import (
     unit_float
 )
 from kitty.options.utils import (
-    active_tab_title_template, adjust_baseline, adjust_line_height, allow_hyperlinks,
+    action_alias, active_tab_title_template, adjust_baseline, adjust_line_height, allow_hyperlinks,
     allow_remote_control, box_drawing_scale, clear_all_mouse_actions, clear_all_shortcuts,
     clipboard_control, config_or_absolute_path, copy_on_select, cursor_text_color,
     deprecated_hide_window_decorations_aliases, deprecated_macos_show_window_title_in_menubar_alias,
@@ -21,6 +21,10 @@ from kitty.options.utils import (
 
 
 class Parser:
+
+    def action_alias(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        for k, v in action_alias(val):
+            ans["action_alias"][k] = v
 
     def active_border_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['active_border_color'] = to_color_or_none(val)
@@ -1309,6 +1313,7 @@ class Parser:
 
 def create_result_dict() -> typing.Dict[str, typing.Any]:
     return {
+        'action_alias': {},
         'env': {},
         'font_features': {},
         'kitten_alias': {},

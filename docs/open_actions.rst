@@ -29,16 +29,20 @@ action which can be used to run external programs. Entries are separated by
 blank lines.
 
 Actions are very powerful, anything that you can map to a key combination in
-`kitty.conf` can be used as an action. You can specify more than one action per
-entry if you like, for example:
+`kitty.conf` can be used as an action. You can use ``action_alias`` to define
+action aliases that can be reused in each entries. You can specify more than one
+action per entry if you like. For example:
 
 
 .. code:: conf
 
+    # Action aliases for open actions
+    action_alias launch_os_window launch --title ${FILE} --type=os-window
+
     # Tail a log file (*.log) in a new OS Window and reduce its font size
     protocol file
     ext log
-    action launch --title ${FILE} --type=os-window tail -f ${FILE_PATH}
+    action launch_os_window tail -f ${FILE_PATH}
     action change_font_size current -2
 
 

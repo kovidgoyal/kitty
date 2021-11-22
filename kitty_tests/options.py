@@ -53,6 +53,16 @@ class TestConfParsing(BaseTest):
         self.ae(opts.env, {'A': '1', 'B': 'x1', 'C': '', 'D': DELETE_ENV_VAR})
         ka = tuple(opts.keymap.values())[0]
         self.ae(ka.args, ('b', '--moo'))
+        opts = p('clear_all_shortcuts y', 'action_alias launch launch --default', 'action_alias a launch --foo --moo', 'action_alias b launch',
+                 'map f1 a --bar', 'map f2 launch', 'map f3 launch --foo', 'map f4 b', 'action_alias launch', 'map f5 launch')
+        self.ae(len(opts.keymap), 5)
+        ka = tuple(opts.keymap.values())
+        self.ae(ka[0].func, 'launch')
+        self.ae(ka[0].args, ('--foo', '--moo', '--bar'))
+        self.ae(ka[1].args, ('--default',))
+        self.ae(ka[2].args, ('--default', '--foo',))
+        self.ae(ka[3].args, ())
+        self.ae(ka[4].args, ())
         opts = p('kitty_mod alt')
         self.ae(opts.kitty_mod, to_modifiers('alt'))
         self.ae(next(keys_for_func(opts, 'next_layout')).mods, opts.kitty_mod)

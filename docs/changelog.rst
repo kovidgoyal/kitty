@@ -146,6 +146,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix keyboard input not working after toggling traditional fullscreen
   till the window is clicked in
 
+- A new option :opt:`action_alias` to create action alias with common options
+  for keyboard shortcuts and mouse actions. Can also be defined in
+  :file:`open-actions.conf`. (:pull:`4260`)
+
 
 0.23.1 [2021-08-17]
 ----------------------

@@ -772,6 +772,13 @@ def watcher(val: str, current_val: Container[str]) -> Iterable[Tuple[str, str]]:
         yield val, val
 
 
+def action_alias(val: str) -> Iterable[Tuple[str, List[str]]]:
+    parts = val.split(maxsplit=2)
+    if len(parts) >= 1:
+        name = parts.pop(0)
+        yield name, parts
+
+
 def kitten_alias(val: str) -> Iterable[Tuple[str, List[str]]]:
     parts = val.split(maxsplit=2)
     if len(parts) >= 2:

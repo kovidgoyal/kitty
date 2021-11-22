@@ -38,6 +38,14 @@ To pass the contents of the current screen and scrollback to the started process
 
 There are many more powerful options, refer to the complete list below.
 
+.. note::
+
+    To avoid duplicating launch actions with frequently used parameters, you can
+    use :opt:`action_alias` to define launch action aliases. For example::
+
+        action_alias launch_cwd launch --cwd=current
+
+
 The piping environment
 --------------------------
 

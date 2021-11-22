@@ -118,6 +118,29 @@ def choices(*choices: str) -> Choice:
     return Choice(choices)
 
 
+def resolve_action_alias(key: str, val: str, aliases: Dict[str, Any]) -> Optional[str]:
+    if key == 'map':
+        # map: key <action> [args]
+        idx = 1
+    elif key == 'mouse_map':
+        # mouse_map: btn event modes <action> [args]
+        idx = 3
+    elif key == 'open_actions':
+        # open_actions: <action> [args]
+        idx = 0
+    else:
+        return None
+    parts = val.split(maxsplit=idx+1)
+    if len(parts) > idx and parts[idx] in aliases:
+        action = aliases.get(parts[idx])
+        if action:
+            parts[idx] = action[0]
+            if len(action) > 1 and action[1]:
+                parts.insert(idx + 1, action[1])
+            return ' '.join(parts)
+    return None
+
+
 def parse_line(
     line: str,
     parse_conf_item: ItemParser,
@@ -151,6 +174,11 @@ def parse_line(
                 format(val)
             )
         return
+    aliases = ans.get('action_alias')
+    if key in ('map', 'mouse_map') and aliases:
+        resolved_val = resolve_action_alias(key, val, aliases)
+        if resolved_val is not None:
+            val = resolved_val
     if not parse_conf_item(key, val, ans):
         log_error(f'Ignoring unknown config key: {key}')
 

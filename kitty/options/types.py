@@ -43,6 +43,7 @@ else:
     choices_for_tab_switch_strategy = str
 
 option_names = (  # {{{
+ 'action_alias',
  'active_border_color',
  'active_tab_background',
  'active_tab_font_style',
@@ -583,6 +584,7 @@ class Options:
     window_padding_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)
     window_resize_step_cells: int = 2
     window_resize_step_lines: int = 2
+    action_alias: typing.Dict[str, typing.List[str]] = {}
     env: typing.Dict[str, str] = {}
     font_features: typing.Dict[str, typing.Tuple[kitty.fonts.FontFeature, ...]] = {}
     kitten_alias: typing.Dict[str, typing.List[str]] = {}
@@ -698,6 +700,7 @@ class Options:
 
 
 defaults = Options()
+defaults.action_alias = {}
 defaults.env = {}
 defaults.font_features = {}
 defaults.kitten_alias = {}

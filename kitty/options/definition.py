@@ -2870,6 +2870,17 @@ for instance, to remove the default shortcuts.
 '''
     )
 
+opt('+action_alias', 'launch_cwd launch --cwd=current',
+    option_type='action_alias',
+    add_to_default=False,
+    long_text='''
+You can create action aliases with common options. This can be used with
+keyboard shortcuts or mouse actions. Action aliases can override existing
+actions and only take effect for later bindings. Action aliases cannot be
+nested.
+'''
+    )
+
 opt('+kitten_alias', 'hints hints --hints-offset=0',
     option_type='kitten_alias',
     add_to_default=False,
