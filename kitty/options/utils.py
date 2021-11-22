@@ -836,7 +836,7 @@ class BaseDefinition:
     action: KeyAction
 
     def resolve_kitten_aliases(self, aliases: Dict[str, List[str]]) -> KeyAction:
-        if not self.action.args or not aliases:
+        if self.action.func != 'kitten' or not self.action.args or not aliases:
             return self.action
         kitten = self.action.args[0]
         rest = str(self.action.args[1] if len(self.action.args) > 1 else '')
