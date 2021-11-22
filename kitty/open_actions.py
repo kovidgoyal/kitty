@@ -34,7 +34,7 @@ class OpenAction(NamedTuple):
 def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
     match_criteria: List[MatchCriteria] = []
     actions: List[KeyAction] = []
-    alias_map: Dict[str, ActionAlias] = {}
+    alias_map: Dict[str, List[ActionAlias]] = {}
     entries = []
 
     for line in lines:
@@ -62,7 +62,7 @@ def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
             match_criteria.append(MatchCriteria(cast(MatchType, key), rest))
         elif key == 'action_alias':
             for (alias_name, args) in action_alias(rest):
-                alias_map[alias_name] = ActionAlias(args[0], args=tuple(args[1:]))
+                alias_map[alias_name] = [ActionAlias(args[0], args=tuple(args[1:]))]
         else:
             log_error(f'Ignoring malformed open actions line: {line}')
 

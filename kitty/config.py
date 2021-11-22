@@ -91,7 +91,7 @@ def prepare_config_file_for_editing() -> str:
     return defconf
 
 
-def finalize_keys(opts: Options, alias_map: Dict[str, ActionAlias]) -> None:
+def finalize_keys(opts: Options, alias_map: Dict[str, List[ActionAlias]]) -> None:
     defns: List[KeyDefinition] = []
     for d in opts.map:
         if d is None:  # clear_all_shortcuts
@@ -122,7 +122,7 @@ def finalize_keys(opts: Options, alias_map: Dict[str, ActionAlias]) -> None:
     opts.sequence_map = sequence_map
 
 
-def finalize_mouse_mappings(opts: Options, alias_map: Dict[str, ActionAlias]) -> None:
+def finalize_mouse_mappings(opts: Options, alias_map: Dict[str, List[ActionAlias]]) -> None:
     defns: List[MouseMapping] = []
     for d in opts.mouse_map:
         if d is None:  # clear_all_mouse_actions
