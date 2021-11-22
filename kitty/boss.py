@@ -1133,9 +1133,10 @@ class Boss:
         ''')
     def combine(self, actions: Tuple[KeyAction, ...], window_for_dispatch: Optional[Window] = None, dispatch_type: str = 'KeyPress') -> bool:
         consumed = False
-        for key_action in actions:
-            if self.dispatch_action(key_action, window_for_dispatch, dispatch_type):
-                consumed = True
+        if self.dispatch_action(actions[0], window_for_dispatch, dispatch_type):
+            consumed = True
+            if len(actions) > 1:
+                self.drain_actions(list(actions[1:]), window_for_dispatch, dispatch_type)
         return consumed
 
     def on_focus(self, os_window_id: int, focused: bool) -> None:
@@ -1480,10 +1481,10 @@ class Boss:
     def open_url_with_hints(self) -> None:
         self._run_kitten('hints')
 
-    def drain_actions(self, actions: List[KeyAction]) -> None:
+    def drain_actions(self, actions: List[KeyAction], window_for_dispatch: Optional[Window] = None, dispatch_type: str = 'KeyPress') -> None:
 
         def callback(timer_id: Optional[int]) -> None:
-            self.dispatch_action(actions.pop(0))
+            self.dispatch_action(actions.pop(0), window_for_dispatch, dispatch_type)
             if actions:
                 self.drain_actions(actions)
         add_timer(callback, 0, False)
