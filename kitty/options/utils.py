@@ -852,7 +852,8 @@ def resolve_aliases_in_action(action: KeyAction, aliases: Dict[str, List[ActionA
             recursive = alias.func_name == action.func
             action = action._replace(func=alias.func_name, args=alias.args + action.args)
             if recursive:
-                return action
+                aliases = aliases.copy()
+                aliases.pop(alias.func_name)
             return resolve_aliases_in_action(action._replace(func=alias.func_name, args=alias.args + action.args), aliases)
         if action.args and alias.second_arg_test(action.args[0]):
             return resolve_aliases_in_action(action._replace(func=alias.func_name, args=alias.args + action.args[1:]), aliases)
