@@ -14,6 +14,7 @@ from typing import (
 
 import kitty.conf.utils as generic_parsers
 from kitty.constants import website_url
+from kitty.types import run_once
 
 if typing.TYPE_CHECKING:
     Only = typing.Literal['macos', 'linux', '']
@@ -43,7 +44,9 @@ def expand_opt_references(conf_name: str, text: str) -> str:
     return re.sub(r':opt:`(.+?)`', expand, text)
 
 
-def remove_markup(text: str) -> str:
+@run_once
+def ref_map() -> Dict[str, str]:
+    from kitty.actions import get_all_actions
     ref_map = {
         'layouts': f'{website_url("overview")}#layouts',
         'watchers': f'{website_url("launch")}#watchers',
@@ -51,13 +54,18 @@ def remove_markup(text: str) -> str:
         'functional': f'{website_url("keyboard-protocol")}#functional-key-definitions',
         'shell_integration': website_url("shell-integration"),
     }
-    for ac in ('launch', 'select_tab', 'shell_integration', 'close_window_with_confirmation', 'kitten', 'remote_control'):
-        ref_map[f'action-{ac}'] = f'{website_url("actions")}#' + ac.replace('_', '-')
+    for actions in get_all_actions().values():
+        for ac in actions:
+            ref_map[f'action-{ac.name}'] = f'{website_url("actions")}#' + ac.name.replace('_', '-')
+    return ref_map
+
+
+def remove_markup(text: str) -> str:
 
     def sub(m: 'Match[str]') -> str:
         if m.group(1) == 'ref':
             q = m.group(2).split('<')[-1].rstrip('>')
-            return ref_map[q]
+            return ref_map()[q]
         return str(m.group(2))
 
     return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)
