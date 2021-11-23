@@ -255,13 +255,15 @@ class MultiOption:
     def as_conf(self, commented: bool = False, level: int = 0) -> List[str]:
         ans: List[str] = []
         a = ans.append
+        documented = False
         for k in self.items:
             if k.documented:
+                documented = True
                 a(f'{self.name} {k.defval_as_str if k.add_to_default else ""}'.rstrip())
                 if not k.add_to_default and k.defval_as_str:
                     a('')
                     a(f'#: E.g. {self.name} {k.defval_as_str}'.rstrip())
-        if self.long_text:
+        if self.long_text and documented:
             a('')
             a(render_block(self.long_text))
             a('')
