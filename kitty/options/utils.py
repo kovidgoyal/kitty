@@ -879,12 +879,12 @@ class BaseDefinition:
     definition_location: CurrentlyParsing
 
     def __init__(self, unresolved_action: str = '') -> None:
-        self.unresolved_action = unresolved_action
+        self.unresolved_action = self.original_definition = unresolved_action
         self.definition_location = currently_parsing.__copy__()
 
     @property
     def is_no_op(self) -> bool:
-        return len(self.actions) == 1 and self.actions[0].func in self.no_op_actions
+        return self.original_definition in self.no_op_actions
 
     def resolve_aliases_and_parse(self, aliases: Dict[str, List[ActionAlias]]) -> None:
         if self.unresolved_action:
