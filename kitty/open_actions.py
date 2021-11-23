@@ -57,7 +57,10 @@ def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
                 rest = rest.lower()
             match_criteria.append(MatchCriteria(cast(MatchType, key), rest))
         elif key == 'action_alias':
-            alias_name, alias_val = rest.split(maxsplit=1)
+            try:
+                alias_name, alias_val = rest.split(maxsplit=1)
+            except Exception:
+                continue
             is_recursive = alias_name == alias_val.split(maxsplit=1)[0]
             alias_map[alias_name] = [ActionAlias(alias_name, alias_val, is_recursive)]
         else:
