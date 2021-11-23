@@ -13,9 +13,7 @@ from urllib.parse import ParseResult, unquote, urlparse
 from .conf.utils import KeyAction, to_cmdline_implementation
 from .constants import config_dir
 from .guess_mime_type import guess_type
-from .options.utils import (
-    ActionAlias, action_alias, parse_key_actions, resolve_aliases_in_action
-)
+from .options.utils import ActionAlias, resolve_aliases_and_parse_actions
 from .types import run_once
 from .typing import MatchType
 from .utils import expandvars, log_error
@@ -33,7 +31,7 @@ class OpenAction(NamedTuple):
 
 def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
     match_criteria: List[MatchCriteria] = []
-    actions: List[KeyAction] = []
+    raw_actions: List[str] = []
     alias_map: Dict[str, List[ActionAlias]] = {}
     entries = []
 
@@ -42,10 +40,10 @@ def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
         if line.startswith('#'):
             continue
         if not line:
-            if match_criteria and actions:
-                entries.append((tuple(match_criteria), tuple(actions)))
+            if match_criteria and raw_actions:
+                entries.append((tuple(match_criteria), tuple(raw_actions)))
             match_criteria = []
-            actions = []
+            raw_actions = []
             continue
         parts = line.split(maxsplit=1)
         if len(parts) != 2:
@@ -53,23 +51,30 @@ def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
         key, rest = parts
         key = key.lower()
         if key == 'action':
-            with to_cmdline_implementation.filter_env_vars('URL', 'FILE_PATH', 'FILE', 'FRAGMENT'):
-                for x in parse_key_actions(rest):
-                    actions.append(x)
+            raw_actions.append(rest)
+            # with to_cmdline_implementation.filter_env_vars('URL', 'FILE_PATH', 'FILE', 'FRAGMENT'):
+            #     for x in parse_key_actions(rest):
+            #         actions.append(x)
         elif key in ('mime', 'ext', 'protocol', 'file', 'path', 'url', 'fragment_matches'):
             if key != 'url':
                 rest = rest.lower()
             match_criteria.append(MatchCriteria(cast(MatchType, key), rest))
         elif key == 'action_alias':
-            for (alias_name, args) in action_alias(rest):
-                alias_map[alias_name] = [ActionAlias(args[0], args=tuple(args[1:]))]
+            alias_name, alias_val = rest.split(maxsplit=1)
+            is_recursive = alias_name == alias_val.split(maxsplit=1)[0]
+            alias_map[alias_name] = [ActionAlias(alias_name, alias_val, is_recursive)]
         else:
             log_error(f'Ignoring malformed open actions line: {line}')
 
-    for (mc, ac) in entries:
-        yield OpenAction(mc, tuple(resolve_aliases_in_action(a, alias_map) for a in ac))
-    if match_criteria and actions:
-        yield OpenAction(tuple(match_criteria), tuple(resolve_aliases_in_action(a, alias_map) for a in actions))
+    if match_criteria and raw_actions:
+        entries.append((tuple(match_criteria), tuple(raw_actions)))
+
+    for (mc, action_defns) in entries:
+        actions: List[KeyAction] = []
+        with to_cmdline_implementation.filter_env_vars('URL', 'FILE_PATH', 'FILE', 'FRAGMENT'):
+            for defn in action_defns:
+                actions.extend(resolve_aliases_and_parse_actions(defn, alias_map, 'open_action'))
+        yield OpenAction(mc, tuple(actions))
 
 
 def url_matches_criterion(purl: 'ParseResult', url: str, unquoted_path: str, mc: MatchCriteria) -> bool:
