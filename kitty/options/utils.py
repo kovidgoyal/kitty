@@ -878,8 +878,8 @@ class BaseDefinition:
     map_type: str = 'map'
     definition_location: CurrentlyParsing
 
-    def __init__(self, unresolved_action: str = '') -> None:
-        self.unresolved_action = self.original_definition = unresolved_action
+    def __init__(self, original_definition: str = '') -> None:
+        self.original_definition = original_definition
         self.definition_location = currently_parsing.__copy__()
 
     @property
@@ -887,10 +887,9 @@ class BaseDefinition:
         return self.original_definition in self.no_op_actions
 
     def resolve_aliases_and_parse(self, aliases: Dict[str, List[ActionAlias]]) -> None:
-        if self.unresolved_action:
+        if self.original_definition and (aliases or not self.actions):
             self.actions = tuple(resolve_aliases_and_parse_actions(
-                self.unresolved_action, aliases, self.map_type))
-            self.unresolved_action = ''
+                self.original_definition, aliases, self.map_type))
 
     def pretty_repr(self, *fields: str) -> str:
         kwds = []
@@ -899,6 +898,8 @@ class BaseDefinition:
             val = getattr(self, f)
             if val != getattr(defaults, f):
                 kwds.append(f'{f}={val!r}')
+        if self.original_definition:
+            kwds.append(f'original_definition={self.original_definition!r}')
         return f'{self.__class__.__name__}({", ".join(kwds)})'
 
 
@@ -906,9 +907,10 @@ class MouseMapping(BaseDefinition):
     map_type: str = 'mouse_map'
 
     def __init__(
-            self, button: int = 0, mods: int = 0, repeat_count: int = 1, grabbed: bool = False, actions: Tuple[KeyAction, ...] = (), unresolved_action: str = ''
+        self, button: int = 0, mods: int = 0, repeat_count: int = 1, grabbed: bool = False,
+        actions: Tuple[KeyAction, ...] = (), original_definition: str = ''
     ):
-        super().__init__(unresolved_action)
+        super().__init__(original_definition)
         self.button = button
         self.mods = mods
         self.actions = actions
@@ -920,7 +922,9 @@ class MouseMapping(BaseDefinition):
 
     def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, List[ActionAlias]]) -> 'MouseMapping':
         ans = MouseMapping(
-            self.button, defines.resolve_key_mods(kitty_mod, self.mods), self.repeat_count, self.grabbed, self.actions, self.unresolved_action)
+            self.button, defines.resolve_key_mods(kitty_mod, self.mods), self.repeat_count, self.grabbed,
+            self.actions, self.original_definition)
+        ans.original_definition = self.original_definition
         ans.resolve_aliases_and_parse(aliases)
         return ans
 
@@ -933,9 +937,9 @@ class KeyDefinition(BaseDefinition):
 
     def __init__(
         self, is_sequence: bool = False, actions: Tuple[KeyAction, ...] = (), trigger: SingleKey = SingleKey(),
-            rest: Tuple[SingleKey, ...] = (), unresolved_action: str = ''
+            rest: Tuple[SingleKey, ...] = (), original_definition: str = ''
     ):
-        super().__init__(unresolved_action)
+        super().__init__(original_definition)
         self.is_sequence = is_sequence
         self.actions = actions
         self.trigger = trigger
@@ -949,8 +953,10 @@ class KeyDefinition(BaseDefinition):
             mods = defines.resolve_key_mods(kitty_mod, k.mods)
             return k._replace(mods=mods)
         ans = KeyDefinition(
-            self.is_sequence, self.actions, r(self.trigger), tuple(map(r, self.rest)), self.unresolved_action
+            self.is_sequence, self.actions, r(self.trigger), tuple(map(r, self.rest)),
+            self.original_definition
         )
+        ans.original_definition = self.original_definition
         ans.resolve_aliases_and_parse(aliases)
         return ans
 
@@ -992,10 +998,10 @@ def parse_map(val: str) -> Iterable[KeyDefinition]:
             return
     if is_sequence:
         if trigger is not None:
-            yield KeyDefinition(True, (), trigger, rest, unresolved_action=action)
+            yield KeyDefinition(True, (), trigger, rest, original_definition=action)
     else:
         assert key is not None
-        yield KeyDefinition(False, (), SingleKey(mods, is_native, key), unresolved_action=action)
+        yield KeyDefinition(False, (), SingleKey(mods, is_native, key), original_definition=action)
 
 
 def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
@@ -1029,7 +1035,7 @@ def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
         log_error(f'Mouse modes: {modes} not recognized, ignoring')
         return
     for mode in sorted(specified_modes):
-        yield MouseMapping(button, mods, count, mode == 'grabbed', unresolved_action=action)
+        yield MouseMapping(button, mods, count, mode == 'grabbed', original_definition=action)
 
 
 def deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:

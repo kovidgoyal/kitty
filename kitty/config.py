@@ -101,7 +101,7 @@ def finalize_keys(opts: Options, alias_map: Dict[str, List[ActionAlias]], accumu
                 defns.append(d.resolve_and_copy(opts.kitty_mod, alias_map))
             except Exception as err:
                 if accumulate_bad_lines is None:
-                    log_error(f'Ignoring map with invalid action: {d.unresolved_action}. Error: {err}')
+                    log_error(f'Ignoring map with invalid action: {d.original_definition}. Error: {err}')
                 else:
                     accumulate_bad_lines.append(BadLine(d.definition_location.number, d.definition_location.line, err, d.definition_location.file))
 
@@ -139,7 +139,7 @@ def finalize_mouse_mappings(opts: Options, alias_map: Dict[str, List[ActionAlias
                 defns.append(d.resolve_and_copy(opts.kitty_mod, alias_map))
             except Exception as err:
                 if accumulate_bad_lines is None:
-                    log_error(f'Ignoring mouse_map with invalid action: {d.unresolved_action}. Error: {err}')
+                    log_error(f'Ignoring mouse_map with invalid action: {d.original_definition}. Error: {err}')
                 else:
                     accumulate_bad_lines.append(BadLine(d.definition_location.number, d.definition_location.line, err, d.definition_location.file))
     mousemap: MouseMap = {}
