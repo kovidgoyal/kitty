@@ -294,7 +294,7 @@ Similarly when receiving files from the terminal emulator, the final file
 command that the client sends to the terminal requesting the start of the
 transfer of data for the file can include the ``compression`` key::
 
-    → action=file id=someid file_id=f1 name=/some/path
+    → action=file id=someid file_id=f1 name=/some/path compression=zlib
 
 .. _bypass_auth:
 
@@ -319,12 +319,11 @@ The value of ``bypass`` is of the form ``hash_function_name : hash_value``
 (without spaces). Currently, only the SHA256 hash function is supported.
 
 .. warning::
-   Hashing does not hide the value of the password. So this functionality
-   should only be used in secure/trusted contexts. While there exist hash
-   functions harder to compute than SHA256, they are unsuitable as they will
-   introduce a lot of latency to starting a session and in any case there is
-   no mathematical proof that **any** hash function is actually not
-   brute-forceable.
+   Hashing does not effectively hide the value of the password. So this
+   functionality should only be used in secure/trusted contexts. While there
+   exist hash functions harder to compute than SHA256, they are unsuitable as
+   they will introduce a lot of latency to starting a session and in any case
+   there is no mathematical proof that **any** hash function is not brute-forceable.
 
 Encoding of transfer commands as escape codes
 ------------------------------------------------
