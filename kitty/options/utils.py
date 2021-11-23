@@ -849,14 +849,21 @@ def build_action_aliases(raw: Dict[str, List[str]], first_arg_replacement: str =
 def resolve_aliases_in_action(action: KeyAction, aliases: Dict[str, List[ActionAlias]]) -> KeyAction:
     for alias in aliases.get(action.func, ()):
         if alias.second_arg_test is None:
-            recursive = alias.func_name == action.func
-            action = action._replace(func=alias.func_name, args=alias.args + action.args)
-            if recursive:
-                aliases = aliases.copy()
-                aliases.pop(alias.func_name)
-            return resolve_aliases_in_action(action, aliases)
+            new_action = action._replace(func=alias.func_name, args=alias.args + action.args)
+            if new_action.func == action.func:
+                new_aliases = aliases.copy()
+                new_aliases.pop(alias.func_name)
+            else:
+                new_aliases = aliases
+            return resolve_aliases_in_action(new_action, new_aliases)
         if action.args and alias.second_arg_test(action.args[0]):
-            return resolve_aliases_in_action(action._replace(func=alias.func_name, args=alias.args + action.args[1:]), aliases)
+            new_action = action._replace(func=alias.func_name, args=alias.args + action.args[1:])
+            if new_action.func == action.func and new_action.args and alias.second_arg_test(new_action.args[0]):
+                new_aliases = aliases.copy()
+                new_aliases[action.func] = [x for x in aliases[action.func] if x is not alias]
+            else:
+                new_aliases = aliases
+            return resolve_aliases_in_action(new_action, new_aliases)
     return action
 
 
