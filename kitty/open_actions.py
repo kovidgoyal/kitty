@@ -52,9 +52,6 @@ def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
         key = key.lower()
         if key == 'action':
             raw_actions.append(rest)
-            # with to_cmdline_implementation.filter_env_vars('URL', 'FILE_PATH', 'FILE', 'FRAGMENT'):
-            #     for x in parse_key_actions(rest):
-            #         actions.append(x)
         elif key in ('mime', 'ext', 'protocol', 'file', 'path', 'url', 'fragment_matches'):
             if key != 'url':
                 rest = rest.lower()
