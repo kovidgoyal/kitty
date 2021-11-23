@@ -286,7 +286,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
             else:
                 for val in func(text):
                     a(f'    # {sc.name}')
-                    a(f'    {resolve_action(val)!r},')
+                    a(f'    {resolve_action(val)!r},  # noqa')
         a(']')
         if only:
             imports.add(('kitty.constants', 'is_macos'))
@@ -295,7 +295,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
                 a(f'if {cond}:')
                 for (text, func) in items:
                     for val in func(text):
-                        a(f'    defaults.{aname}.append({resolve_action(val)!r})')
+                        a(f'    defaults.{aname}.append({resolve_action(val)!r})  # noqa')
 
     t('')
     t('')

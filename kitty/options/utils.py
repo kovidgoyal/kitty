@@ -878,7 +878,7 @@ class BaseDefinition:
     map_type: str = 'map'
     definition_location: CurrentlyParsing
 
-    def __init__(self, unresolved_action: str) -> None:
+    def __init__(self, unresolved_action: str = '') -> None:
         self.unresolved_action = unresolved_action
         self.definition_location = currently_parsing.__copy__()
 
@@ -892,11 +892,22 @@ class BaseDefinition:
                 self.unresolved_action, aliases, self.map_type))
             self.unresolved_action = ''
 
+    def pretty_repr(self, *fields: str) -> str:
+        kwds = []
+        defaults = self.__class__()
+        for f in fields:
+            val = getattr(self, f)
+            if val != getattr(defaults, f):
+                kwds.append(f'{f}={val!r}')
+        return f'{self.__class__.__name__}({", ".join(kwds)})'
+
 
 class MouseMapping(BaseDefinition):
     map_type: str = 'mouse_map'
 
-    def __init__(self, button: int, mods: int, repeat_count: int, grabbed: bool, actions: Tuple[KeyAction, ...] = (), unresolved_action: str = ''):
+    def __init__(
+            self, button: int = 0, mods: int = 0, repeat_count: int = 1, grabbed: bool = False, actions: Tuple[KeyAction, ...] = (), unresolved_action: str = ''
+    ):
         super().__init__(unresolved_action)
         self.button = button
         self.mods = mods
@@ -905,7 +916,7 @@ class MouseMapping(BaseDefinition):
         self.grabbed = grabbed
 
     def __repr__(self) -> str:
-        return f'MouseMapping({self.button}, {self.mods}, {self.repeat_count}, {self.grabbed}, {self.actions})'
+        return self.pretty_repr('button', 'mods', 'repeat_count', 'grabbed', 'actions')
 
     def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, List[ActionAlias]]) -> 'MouseMapping':
         ans = MouseMapping(
@@ -921,25 +932,24 @@ class MouseMapping(BaseDefinition):
 class KeyDefinition(BaseDefinition):
 
     def __init__(
-            self, is_sequence: bool, actions: Tuple[KeyAction, ...], mods: int, is_native: bool, key: int,
+        self, is_sequence: bool = False, actions: Tuple[KeyAction, ...] = (), trigger: SingleKey = SingleKey(),
             rest: Tuple[SingleKey, ...] = (), unresolved_action: str = ''
     ):
         super().__init__(unresolved_action)
         self.is_sequence = is_sequence
         self.actions = actions
-        self.trigger = SingleKey(mods, is_native, key)
+        self.trigger = trigger
         self.rest = rest
 
     def __repr__(self) -> str:
-        return f'KeyDefinition({self.is_sequence}, {self.actions}, {self.trigger.mods}, {self.trigger.is_native}, {self.trigger.key}, {self.rest})'
+        return self.pretty_repr('is_sequence', 'actions', 'trigger', 'rest')
 
     def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, List[ActionAlias]]) -> 'KeyDefinition':
         def r(k: SingleKey) -> SingleKey:
             mods = defines.resolve_key_mods(kitty_mod, k.mods)
             return k._replace(mods=mods)
         ans = KeyDefinition(
-            self.is_sequence, self.actions, defines.resolve_key_mods(kitty_mod, self.trigger.mods),
-            self.trigger.is_native, self.trigger.key, tuple(map(r, self.rest)), self.unresolved_action
+            self.is_sequence, self.actions, r(self.trigger), tuple(map(r, self.rest)), self.unresolved_action
         )
         ans.resolve_aliases_and_parse(aliases)
         return ans
@@ -982,10 +992,10 @@ def parse_map(val: str) -> Iterable[KeyDefinition]:
             return
     if is_sequence:
         if trigger is not None:
-            yield KeyDefinition(True, (), trigger[0], trigger[1], trigger[2], rest, unresolved_action=action)
+            yield KeyDefinition(True, (), trigger, rest, unresolved_action=action)
     else:
         assert key is not None
-        yield KeyDefinition(False, (), mods, is_native, key, unresolved_action=action)
+        yield KeyDefinition(False, (), SingleKey(mods, is_native, key), unresolved_action=action)
 
 
 def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
