@@ -2889,8 +2889,15 @@ Similarly, to alias kitten invocation::
 
 opt('+kitten_alias', 'hints hints --hints-offset=0',
     option_type='kitten_alias',
-    add_to_default=False, documented=False,
-    long_text='Deprecated, use :opt:`action_alias` instead.'
+    add_to_default=False,
+    long_text='''
+Like :opt:`action_alias` above but, specifically for kittens. Generally,
+prefer to use :opt:`action_alias`. This option is a legacy
+version, present for backwards compatibility. It causes all invocations
+of the aliased kitten to be substituted. So the example above will cause
+all invocations of the hints kitten to have the :code:`--hints-offset=0`
+option applied.
+'''
     )
 
 
