@@ -269,6 +269,11 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
             a('if not is_macos:')
             a(f'    defaults.{option_name}.update({mval["linux"]!r}')
 
+    def resolve_action(a: Any) -> Any:
+        if hasattr(a, 'resolve_aliases_and_parse'):
+            a.resolve_aliases_and_parse({})
+        return a
+
     for aname, func in action_parsers.items():
         a(f'defaults.{aname} = [')
         only: Dict[str, List[Tuple[str, Callable[..., Any]]]] = {}
@@ -281,7 +286,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
             else:
                 for val in func(text):
                     a(f'    # {sc.name}')
-                    a(f'    {val!r},')
+                    a(f'    {resolve_action(val)!r},')
         a(']')
         if only:
             imports.add(('kitty.constants', 'is_macos'))
@@ -290,7 +295,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
                 a(f'if {cond}:')
                 for (text, func) in items:
                     for val in func(text):
-                        a(f'    defaults.{aname}.append({val!r})')
+                        a(f'    defaults.{aname}.append({resolve_action(val)!r})')
 
     t('')
     t('')

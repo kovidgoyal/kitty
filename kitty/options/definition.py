@@ -2875,10 +2875,9 @@ opt('+action_alias', 'launch_tab launch --type=tab --cwd=current',
     add_to_default=False,
     long_text='''
 Define aliases to avoid repeating the same options in multiple mappings. Aliases
-can be defined for the :ref:`launch <action-launch>`, :ref:`kitten <action-kitten>`
-and :ref:`action-remote_control` actions. Aliases are expanded recursively.
-For example, the above alias allows you to create mappings to launch a new tab without
-duplication::
+can be defined for any action. Aliases are expanded recursively.
+For example, the above alias allows you to create mappings to launch a new tab
+in the current working directory without duplication::
 
     map f1 launch_tab vim
     map f2 launch_tab emacs

@@ -584,10 +584,10 @@ class Options:
     window_padding_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)
     window_resize_step_cells: int = 2
     window_resize_step_lines: int = 2
-    action_alias: typing.Dict[str, typing.List[str]] = {}
+    action_alias: typing.Dict[str, str] = {}
     env: typing.Dict[str, str] = {}
     font_features: typing.Dict[str, typing.Tuple[kitty.fonts.FontFeature, ...]] = {}
-    kitten_alias: typing.Dict[str, typing.List[str]] = {}
+    kitten_alias: typing.Dict[str, str] = {}
     symbol_map: typing.Dict[typing.Tuple[int, int], str] = {}
     watcher: typing.Dict[str, str] = {}
     map: typing.List[kitty.options.utils.KeyDefinition] = []

@@ -1951,8 +1951,18 @@ class Boss:
         def format_bad_line(bad_line: BadLine) -> str:
             return f'{bad_line.number}:{bad_line.exception} in line: {bad_line.line}\n'
 
-        msg = '\n'.join(map(format_bad_line, bad_lines)).rstrip()
-        self.show_error(_('Errors in kitty.conf'), msg)
+        groups: Dict[str, List[BadLine]] = {}
+        for bl in bad_lines:
+            groups.setdefault(bl.file, []).append(bl)
+        ans: List[str] = []
+        a = ans.append
+        for file in sorted(groups):
+            if file:
+                a(f'In file {file}:')
+            [a(format_bad_line(x)) for x in groups[file]]
+
+        msg = '\n'.join(ans).rstrip()
+        self.show_error(_('Errors parsing configuration'), msg)
 
     @ac('misc', '''
         Change colors in the specified windows

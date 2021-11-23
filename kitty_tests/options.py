@@ -27,7 +27,10 @@ class TestConfParsing(BaseTest):
             del bad_lines[:]
             del self.error_messages[:]
             ans = load_config(overrides=lines, accumulate_bad_lines=bad_lines)
-            self.ae(len(bad_lines), bad_line_num)
+            if bad_line_num:
+                self.ae(len(bad_lines), bad_line_num)
+            else:
+                self.assertFalse(bad_lines)
             return ans
 
         def keys_for_func(opts, name):
@@ -51,6 +54,7 @@ class TestConfParsing(BaseTest):
         opts = p('pointer_shape_when_grabbed XXX', bad_line_num=1)
         self.ae(opts.pointer_shape_when_grabbed, defaults.pointer_shape_when_grabbed)
 
+        # test the aliasing options
         opts = p('env A=1', 'env B=x$A', 'env C=', 'env D', 'clear_all_shortcuts y', 'kitten_alias a b --moo', 'map f1 kitten a arg')
         self.ae(opts.env, {'A': '1', 'B': 'x1', 'C': '', 'D': DELETE_ENV_VAR})
         ka = tuple(opts.keymap.values())[0][0]
@@ -77,9 +81,19 @@ class TestConfParsing(BaseTest):
         self.ae(ka.func, 'launch')
         self.ae(ka.args, ('--moo', 'XXX'))
 
+        opts = p('clear_all_shortcuts y', 'action_alias cfs change_font_size current', 'map f1 cfs +2')
+        ka = tuple(opts.keymap.values())[0][0]
+        self.ae(ka.func, 'change_font_size')
+        self.ae(ka.args, (False, '+', 2.0))
+
         opts = p('clear_all_shortcuts y', 'action_alias la launch --moo', 'map f1 combine : new_window : la ')
         ka = tuple(opts.keymap.values())[0]
         self.ae((ka[0].func, ka[1].func), ('new_window', 'launch'))
+
+        opts = p('clear_all_shortcuts y', 'action_alias cc combine : new_window : launch --moo', 'map f1 cc XXX')
+        ka = tuple(opts.keymap.values())[0]
+        self.ae((ka[0].func, ka[1].func), ('new_window', 'launch'))
+        self.ae(ka[1].args, ('--moo', 'XXX'))
 
         opts = p('kitty_mod alt')
         self.ae(opts.kitty_mod, to_modifiers('alt'))

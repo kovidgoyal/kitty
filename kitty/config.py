@@ -91,13 +91,20 @@ def prepare_config_file_for_editing() -> str:
     return defconf
 
 
-def finalize_keys(opts: Options, alias_map: Dict[str, List[ActionAlias]]) -> None:
+def finalize_keys(opts: Options, alias_map: Dict[str, List[ActionAlias]], accumulate_bad_lines: Optional[List[BadLine]] = None) -> None:
     defns: List[KeyDefinition] = []
     for d in opts.map:
         if d is None:  # clear_all_shortcuts
             defns = []  # type: ignore
         else:
-            defns.append(d.resolve_and_copy(opts.kitty_mod, alias_map))
+            try:
+                defns.append(d.resolve_and_copy(opts.kitty_mod, alias_map))
+            except Exception as err:
+                if accumulate_bad_lines is None:
+                    log_error(f'Ignoring map with invalid action: {d.unresolved_action}. Error: {err}')
+                else:
+                    accumulate_bad_lines.append(BadLine(d.definition_location.number, d.definition_location.line, err, d.definition_location.file))
+
     keymap: KeyMap = {}
     sequence_map: SequenceMap = {}
 
@@ -122,13 +129,19 @@ def finalize_keys(opts: Options, alias_map: Dict[str, List[ActionAlias]]) -> Non
     opts.sequence_map = sequence_map
 
 
-def finalize_mouse_mappings(opts: Options, alias_map: Dict[str, List[ActionAlias]]) -> None:
+def finalize_mouse_mappings(opts: Options, alias_map: Dict[str, List[ActionAlias]], accumulate_bad_lines: Optional[List[BadLine]] = None) -> None:
     defns: List[MouseMapping] = []
     for d in opts.mouse_map:
         if d is None:  # clear_all_mouse_actions
             defns = []  # type: ignore
         else:
-            defns.append(d.resolve_and_copy(opts.kitty_mod, alias_map))
+            try:
+                defns.append(d.resolve_and_copy(opts.kitty_mod, alias_map))
+            except Exception as err:
+                if accumulate_bad_lines is None:
+                    log_error(f'Ignoring mouse_map with invalid action: {d.unresolved_action}. Error: {err}')
+                else:
+                    accumulate_bad_lines.append(BadLine(d.definition_location.number, d.definition_location.line, err, d.definition_location.file))
     mousemap: MouseMap = {}
 
     for defn in defns:
@@ -161,8 +174,8 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumula
 
     alias_map = build_action_aliases(opts.kitten_alias, 'kitten')
     alias_map.update(build_action_aliases(opts.action_alias))
-    finalize_keys(opts, alias_map)
-    finalize_mouse_mappings(opts, alias_map)
+    finalize_keys(opts, alias_map, accumulate_bad_lines)
+    finalize_mouse_mappings(opts, alias_map, accumulate_bad_lines)
     # delete no longer needed definitions, replacing with empty placeholders
     opts.kitten_alias = {}
     opts.action_alias = {}

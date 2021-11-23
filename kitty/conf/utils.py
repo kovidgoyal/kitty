@@ -4,13 +4,14 @@
 import os
 import re
 import shlex
+from contextlib import contextmanager
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, NamedTuple, Optional,
-    Sequence, Set, Tuple, TypeVar, Union, Generic
+    Any, Callable, Dict, Generator, Generic, Iterable, Iterator, List,
+    NamedTuple, Optional, Sequence, Set, Tuple, TypeVar, Union
 )
 
-from ..rgb import to_color as as_color
 from ..fast_data_types import Color
+from ..rgb import to_color as as_color
 from ..types import ConvertibleToNumbers, ParsedShortcut
 from ..typing import Protocol
 from ..utils import expandvars, log_error
@@ -30,6 +31,7 @@ class BadLine(NamedTuple):
     number: int
     line: str
     exception: Exception
+    file: str
 
 
 def positive_int(x: ConvertibleToNumbers) -> int:
@@ -118,6 +120,40 @@ def choices(*choices: str) -> Choice:
     return Choice(choices)
 
 
+class CurrentlyParsing:
+    __slots__ = 'line', 'number', 'file'
+
+    def __init__(self, line: str = '', number: int = -1, file: str = ''):
+        self.line = line
+        self.number = number
+        self.file = file
+
+    def __copy__(self) -> 'CurrentlyParsing':
+        return CurrentlyParsing(self.line, self.number, self.file)
+
+    @contextmanager
+    def set_line(self, line: str, number: int) -> Iterator['CurrentlyParsing']:
+        orig = self.line, self.number
+        self.line = line
+        self.number = number
+        try:
+            yield self
+        finally:
+            self.line, self.number = orig
+
+    @contextmanager
+    def set_file(self, file: str) -> Iterator['CurrentlyParsing']:
+        orig = self.file
+        self.file = file
+        try:
+            yield self
+        finally:
+            self.file = orig
+
+
+currently_parsing = CurrentlyParsing()
+
+
 def parse_line(
     line: str,
     parse_conf_item: ItemParser,
@@ -139,7 +175,8 @@ def parse_line(
             val = os.path.join(base_path_for_includes, val)
         try:
             with open(val, encoding='utf-8', errors='replace') as include:
-                _parse(include, parse_conf_item, ans, accumulate_bad_lines)
+                with currently_parsing.set_file(val):
+                    _parse(include, parse_conf_item, ans, accumulate_bad_lines)
         except FileNotFoundError:
             log_error(
                 'Could not find included config file: {}, ignoring'.
@@ -169,13 +206,12 @@ def _parse(
         base_path_for_includes = config_dir
     for i, line in enumerate(lines):
         try:
-            parse_line(
-                line, parse_conf_item, ans, base_path_for_includes, accumulate_bad_lines
-            )
+            with currently_parsing.set_line(line, i + 1):
+                parse_line(line, parse_conf_item, ans, base_path_for_includes, accumulate_bad_lines)
         except Exception as e:
             if accumulate_bad_lines is None:
                 raise
-            accumulate_bad_lines.append(BadLine(i + 1, line.rstrip(), e))
+            accumulate_bad_lines.append(BadLine(i + 1, line.rstrip(), e, currently_parsing.file))
 
 
 def parse_config_base(
@@ -219,13 +255,15 @@ def load_config(
             continue
         try:
             with open(path, encoding='utf-8', errors='replace') as f:
-                vals = parse_config(f)
+                with currently_parsing.set_file(path):
+                    vals = parse_config(f)
         except (FileNotFoundError, PermissionError):
             continue
         found_paths.append(path)
         ans = merge_configs(ans, vals)
     if overrides is not None:
-        vals = parse_config(overrides)
+        with currently_parsing.set_file('<override>'):
+            vals = parse_config(overrides)
         ans = merge_configs(ans, vals)
     return ans, tuple(found_paths)
 
