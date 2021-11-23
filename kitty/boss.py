@@ -1133,14 +1133,15 @@ class Boss:
         ''')
     def combine(self, actions: Tuple[KeyAction, ...], window_for_dispatch: Optional[Window] = None, dispatch_type: str = 'KeyPress') -> bool:
         consumed = False
-        try:
-            if self.dispatch_action(actions[0], window_for_dispatch, dispatch_type):
+        if actions:
+            try:
+                if self.dispatch_action(actions[0], window_for_dispatch, dispatch_type):
+                    consumed = True
+                    if len(actions) > 1:
+                        self.drain_actions(list(actions[1:]), window_for_dispatch, dispatch_type)
+            except Exception as e:
+                self.show_error('Key action failed', f'{actions[0].pretty()}\n{e}')
                 consumed = True
-                if len(actions) > 1:
-                    self.drain_actions(list(actions[1:]), window_for_dispatch, dispatch_type)
-        except Exception as e:
-            self.show_error('Key action failed', f'{actions[0].pretty()}\n{e}')
-            consumed = True
         return consumed
 
     def on_focus(self, os_window_id: int, focused: bool) -> None:
