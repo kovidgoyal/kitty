@@ -819,7 +819,6 @@ def parse_key_action(action: str, action_type: str = 'map') -> KeyAction:
 class ActionAlias(NamedTuple):
     name: str
     value: str
-    is_recursive: bool
     replace_second_arg: bool = False
 
 
@@ -827,12 +826,10 @@ def build_action_aliases(raw: Dict[str, str], first_arg_replacement: str = '') -
     ans: Dict[str, List[ActionAlias]] = {}
     if first_arg_replacement:
         for alias_name, rest in raw.items():
-            is_recursive = alias_name == rest.split(maxsplit=1)[0]
-            ans.setdefault(first_arg_replacement, []).append(ActionAlias(alias_name, rest, is_recursive, True))
+            ans.setdefault(first_arg_replacement, []).append(ActionAlias(alias_name, rest, True))
     else:
         for alias_name, rest in raw.items():
-            is_recursive = alias_name == rest.split(maxsplit=1)[0]
-            ans[alias_name] = [ActionAlias(alias_name, rest, is_recursive)]
+            ans[alias_name] = [ActionAlias(alias_name, rest)]
     return ans
 
 
@@ -854,18 +851,14 @@ def resolve_aliases_and_parse_actions(
             if parts[0] != alias.name:
                 continue
             new_defn = possible_alias + ' ' + alias.value + ((' ' + parts[1]) if len(parts) > 1 else '')
-            new_aliases = aliases
-            if alias.is_recursive:
-                new_aliases = aliases.copy()
-                new_aliases[possible_alias] = [a for a in aliases[possible_alias] if a is not alias]
+            new_aliases = aliases.copy()
+            new_aliases[possible_alias] = [a for a in aliases[possible_alias] if a is not alias]
             yield from resolve_aliases_and_parse_actions(new_defn, new_aliases, map_type)
             return
         else:  # action_alias
             new_defn = alias.value + ((' ' + rest) if rest else '')
-            new_aliases = aliases
-            if alias.is_recursive:
-                new_aliases = aliases.copy()
-                new_aliases.pop(possible_alias)
+            new_aliases = aliases.copy()
+            new_aliases.pop(possible_alias)
             yield from resolve_aliases_and_parse_actions(new_defn, new_aliases, map_type)
             return
 
