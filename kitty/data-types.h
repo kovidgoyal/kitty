@@ -368,5 +368,4 @@ void play_canberra_sound(const char *which_sound, const char *event_id, bool is_
 SPRITE_MAP_HANDLE alloc_sprite_map(unsigned int, unsigned int);
 SPRITE_MAP_HANDLE free_sprite_map(SPRITE_MAP_HANDLE);
 const char* get_hyperlink_for_id(const HYPERLINK_POOL_HANDLE, hyperlink_id_type id, bool only_url);
-bool copy_between_files(int infd, int outfd, off_t in_pos, size_t len, uint8_t *buf, size_t bufsz);
 void log_event(const char *format, ...) __attribute__((format(printf, 1, 2)));

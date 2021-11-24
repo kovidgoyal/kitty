@@ -11,6 +11,7 @@
 #include "safe-wrappers.h"
 #include "kitty-uthash.h"
 #include "loop-utils.h"
+#include "fast-file-copy.h"
 #include "threading.h"
 #include "cross-platform-random.h"
 #include <structmember.h>
@@ -132,8 +133,7 @@ static void
 defrag(DiskCache *self) {
     int new_cache_file = -1;
     FREE_AFTER_FUNCTION DefragEntry *defrag_entries = NULL;
-    FREE_AFTER_FUNCTION uint8_t *buf = NULL;
-    const size_t bufsz = 1024 * 1024;
+    AutoFreeFastFileCopyBuffer fcb = {0};
     bool lock_released = false, ok = false;
 
     off_t size_on_disk = size_of_cache_file(self);
@@ -164,17 +164,13 @@ defrag(DiskCache *self) {
         goto cleanup;
     }
     lseek(new_cache_file, 0, SEEK_SET);
-#ifndef HAS_SENDFILE
-    buf = malloc(bufsz);
-    if (!buf) goto cleanup;
-#endif
 
     mutex(unlock); lock_released = true;
 
     off_t current_pos = 0;
     for (size_t i = 0; i < num_entries_to_defrag; i++) {
         DefragEntry *e = defrag_entries + i;
-        if (!copy_between_files(self->cache_file_fd, new_cache_file, e->old_offset, e->data_sz, buf, bufsz)) {
+        if (!copy_between_files(self->cache_file_fd, new_cache_file, e->old_offset, e->data_sz, &fcb)) {
             perror("Failed to copy data to new disk cache file during defrag");
             goto cleanup;
         }
