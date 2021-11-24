@@ -5,39 +5,20 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#if __linux__
+#define _GNU_SOURCE 1
+#endif
 #include "fast-file-copy.h"
 #if __linux__
 #define HAS_SENDFILE
 #include <sys/sendfile.h>
+#include <unistd.h>
 #endif
 
-#ifdef HAS_SENDFILE
 static bool
-copy_with_sendfile(int infd, int outfd, off_t in_pos, size_t len) {
-    unsigned num_of_consecutive_zero_returns = 128;
-    while (len) {
-        off_t r = in_pos;
-        ssize_t n = sendfile(outfd, infd, &r, len);
-        if (n < 0) {
-            if (errno != EAGAIN) return false;
-            continue;
-        }
-        if (n == 0) {
-            // happens if input file is truncated
-            if (!--num_of_consecutive_zero_returns) return false;
-            continue;
-        };
-        num_of_consecutive_zero_returns = 128;
-        in_pos += n; len -= n;
-    }
-    return true;
-}
-#endif
-
-static inline bool
 copy_with_buffer(int infd, int outfd, off_t in_pos, size_t len, FastFileCopyBuffer *fcb) {
     if (!fcb->buf) {
-        fcb->sz = 16 * 1024;
+        fcb->sz = 32 * 1024;
         fcb->buf = malloc(fcb->sz);
         if (!fcb->buf) return false;
     }
@@ -69,14 +50,64 @@ copy_with_buffer(int infd, int outfd, off_t in_pos, size_t len, FastFileCopyBuff
         }
     }
     return true;
-#undef bufsz
 }
+
+#ifdef HAS_SENDFILE
+static bool
+copy_with_sendfile(int infd, int outfd, off_t in_pos, size_t len, FastFileCopyBuffer *fcb) {
+    unsigned num_of_consecutive_zero_returns = 128;
+    while (len) {
+        off_t r = in_pos;
+        ssize_t n = sendfile(outfd, infd, &r, len);
+        if (n < 0) {
+            if (errno != EAGAIN) return false;
+            if (errno == ENOSYS || errno == EPERM) return copy_with_buffer(infd, outfd, in_pos, len, fcb);
+            continue;
+        }
+        if (n == 0) {
+            // happens if input file is truncated
+            if (!--num_of_consecutive_zero_returns) return false;
+            continue;
+        };
+        num_of_consecutive_zero_returns = 128;
+        in_pos += n; len -= n;
+    }
+    return true;
+}
+
+static bool
+copy_with_file_range(int infd, int outfd, off_t in_pos, size_t len, FastFileCopyBuffer *fcb) {
+#ifdef HAS_COPY_FILE_RANGE
+    unsigned num_of_consecutive_zero_returns = 128;
+    while (len) {
+        off64_t r = in_pos;
+        ssize_t n = copy_file_range(infd, &r, outfd, NULL, len, 0);
+        if (n < 0) {
+            if (errno != EAGAIN) return false;
+            if (errno == ENOSYS || errno == EPERM) return copy_with_sendfile(infd, outfd, in_pos, len, fcb);
+            continue;
+        }
+        if (n == 0) {
+            // happens if input file is truncated
+            if (!--num_of_consecutive_zero_returns) return false;
+            continue;
+        };
+        num_of_consecutive_zero_returns = 128;
+        in_pos += n; len -= n;
+    }
+    return true;
+#else
+    return copy_with_sendfile(infd, outfd, in_pos, len, fcb);
+#endif
+}
+
+
+#endif
 
 bool
 copy_between_files(int infd, int outfd, off_t in_pos, size_t len, FastFileCopyBuffer *fcb) {
 #ifdef HAS_SENDFILE
-    (void)fcb;
-    return copy_with_sendfile(infd, outfd, in_pos, len);
+    return copy_with_file_range(infd, outfd, in_pos, len, fcb);
 #else
     return copy_with_buffer(infd, outfd, in_pos, len, fcb);
 #endif

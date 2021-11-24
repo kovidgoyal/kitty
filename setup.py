@@ -326,6 +326,9 @@ def init_env(
     cppflags = shlex.split(cppflags_)
     for el in extra_logging:
         cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
+    has_copy_file_range = test_compile(cc, src='#define _GNU_SOURCE 1\n#include <unistd.h>\nint main() { copy_file_range(1, NULL, 2, NULL, 0, 0); return 0; }')
+    if has_copy_file_range:
+        cppflags.append('-DHAS_COPY_FILE_RANGE')
     werror = '' if ignore_compiler_warnings else '-pedantic-errors -Werror'
     std = '' if is_openbsd else '-std=c11'
     sanitize_flag = ' '.join(sanitize_args)
