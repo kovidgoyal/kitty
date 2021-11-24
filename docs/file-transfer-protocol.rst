@@ -225,6 +225,8 @@ responses are sent. Note that in particular this means acknowledgement of
 permission for the transfer to go ahead is suppressed, so this is typically
 useful only with :ref:`bypass_auth`.
 
+.. _file_metadata:
+
 File metadata
 -----------------
 
@@ -271,7 +273,66 @@ File permissions
 Symbolic and hard links
 ---------------------------
 
-TODO:
+Symbolic and hard links can be preserved by this protocol.
+
+.. note::
+   In the following when target paths of symlinks are sent as actual paths, they must be
+   encoded in the same way as discussed in :ref:`file_metadata`. It is up to
+   the receiving side to translate them into appropriate paths for the local
+   operating system. This may not always be possible, in which case either the
+   symlink should not be created or a broken symlink should be created.
+
+
+Sending links to the terminal emulator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When sending files to the terminal emulator, the file command has the form::
+
+    → action=file id=someid file_id=f1 name=/path/to/link file_type=link
+    → action=file id=someid file_id=f2 name=/path/to/symlink file_type=symlink
+
+Then, when the client is sending data for the files, for hardlinks, the data
+will be the ``file_id`` of the target file (assuming the target file is also
+being transmitted, otherwise the hard link should be transmitted as a plain
+file)::
+
+    → action=end_data id=someid file_id=f1 data=target_file_id_encoded_as_utf8
+
+For symbolic links, the data is a little more complex. If the symbolic link is
+to a destination being transmitted, the data has the form::
+
+    → action=end_data id=someid file_id=f1 data=fid:target_file_id_encoded_as_utf8
+    → action=end_data id=someid file_id=f1 data=fid_abs:target_file_id_encoded_as_utf8
+
+The ``fid_abs`` form is used if the symlink uses an absolute path, ``fid`` if
+it uses a relative path. If the symlink is to a destination that is not being
+transmitted, then the prefix ``path:`` and the actual path in the symlink is
+transmitted.
+
+Receiving links from the terminal emulator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When receiving files from the terminal emulator, link data is transmitted in
+two parts. First when the emulator sends the initial file listing to the
+client, the ``file_type`` is set to the link type and the ``data`` field is set
+to file_id of the target file if the target file is included in the listing.
+For example::
+
+    ← action=file id=someid file_id=f1 status=file_id1 ...
+    ← action=file id=someid file_id=f1 status=file_id2 file_type=symlink data=file_id1 ...
+
+Here the rest of the metadata has been left out for clarity. Notice that the
+second file is symlink whose ``data`` field is set to the file id of the first
+file (the value of the ``status`` field of the first file). The same technique
+is used for hard links.
+
+The client should not request data for hard links, instead creating them
+directly after transmission is complete. For symbolic links the terminal
+must send the actual symbolic link target as a UTF-8 encoded path in the
+data field. The client can use this path either as-is (when the target is not
+a transmitted file) or to decide whether to create the symlink with a relative
+or absolute path when the target is a transmitted file.
+
 
 Transmitting binary deltas
 -----------------------------
