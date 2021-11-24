@@ -1647,15 +1647,14 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             } else {
                 line_apply_cursor(self->linebuf->line, self->cursor, 0, self->columns, true);
             }
-            linebuf_mark_line_dirty(self->linebuf, i);
-            linebuf_mark_line_as_not_continued(self->linebuf, i);
+            linebuf_clear_attrs_and_dirty(self->linebuf, i);
         }
         self->is_dirty = true;
         clear_selection(&self->selections);
     }
     if (how != 2) {
         screen_erase_in_line(self, how, private);
-        if (how == 1) linebuf_mark_line_as_not_continued(self->linebuf, self->cursor->y);
+        if (how == 1) linebuf_clear_attrs_and_dirty(self->linebuf, self->cursor->y);
     }
     if (how == 3 && self->linebuf == self->main_linebuf) {
         historybuf_clear(self->historybuf);

@@ -10,7 +10,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Integrate kitty closely with common shells such as zsh, fish and bash.
   This allows lots of niceties such as jumping to previous prompts, opening the
   output of the last command in a new window, etc. See :ref:`shell_integration`
-  for details.
+  for details. Packagers please read :ref:`packagers`.
 
 - A new shortcut :sc:`focus_visible_window` to visually focus a window using
   the keyboard. Pressing it causes numbers to appear over each visible window
