@@ -125,6 +125,8 @@ make them available in the newly spawned shell.
 Then proceed with ``make`` or ``make app`` according to the platform specific instructions above.
 
 
+.. _packagers:
+
 Notes for Linux/macOS packagers
 ----------------------------------
 
