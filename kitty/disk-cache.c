@@ -7,10 +7,6 @@
 
 #define EXTRA_INIT if (PyModule_AddFunctions(module, module_methods) != 0) return false;
 #define MAX_KEY_SIZE 256u
-#if __linux__
-#define HAS_SENDFILE
-#endif
-
 #include "disk-cache.h"
 #include "safe-wrappers.h"
 #include "kitty-uthash.h"
@@ -22,9 +18,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
-#ifdef HAS_SENDFILE
-#include <sys/sendfile.h>
-#endif
 
 
 typedef struct {
@@ -113,57 +106,6 @@ open_cache_file(const char *cache_path) {
 }
 
 // Write loop {{{
-static bool
-copy_between_files(int infd, int outfd, off_t in_pos, size_t len, uint8_t *buf, size_t bufsz) {
-#ifdef HAS_SENDFILE
-    (void)buf; (void)bufsz;
-    unsigned num_of_consecutive_zero_returns = 128;
-    while (len) {
-        off_t r = in_pos;
-        ssize_t n = sendfile(outfd, infd, &r, len);
-        if (n < 0) {
-            if (errno != EAGAIN) return false;
-            continue;
-        }
-        if (n == 0) {
-            // happens if input file is truncated
-            if (!--num_of_consecutive_zero_returns) return false;
-            continue;
-        };
-        num_of_consecutive_zero_returns = 128;
-        in_pos += n; len -= n;
-    }
-#else
-    while (len) {
-        ssize_t amt_read = pread(infd, buf, MIN(len, bufsz), in_pos);
-        if (amt_read < 0) {
-            if (errno == EINTR || errno == EAGAIN) continue;
-            return false;
-        }
-        if (amt_read == 0) {
-            errno = EIO;
-            return false;
-        }
-        len -= amt_read;
-        in_pos += amt_read;
-        uint8_t *p = buf;
-        while(amt_read) {
-            ssize_t amt_written = write(outfd, p, amt_read);
-            if (amt_written < 0) {
-                if (errno == EINTR || errno == EAGAIN) continue;
-                return false;
-            }
-            if (amt_written == 0) {
-                errno = EIO;
-                return false;
-            }
-            amt_read -= amt_written;
-            p += amt_written;
-        }
-    }
-#endif
-    return true;
-}
 
 static off_t
 size_of_cache_file(DiskCache *self) {
