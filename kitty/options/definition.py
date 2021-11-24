@@ -2896,7 +2896,7 @@ prefer to use :opt:`action_alias`. This option is a legacy
 version, present for backwards compatibility. It causes all invocations
 of the aliased kitten to be substituted. So the example above will cause
 all invocations of the hints kitten to have the :code:`--hints-offset=0`
-option appliedLeave kitten_alias documented.
+option applied.
 '''
     )
 
