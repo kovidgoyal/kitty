@@ -117,6 +117,7 @@ static bool
 copy_between_files(int infd, int outfd, off_t in_pos, size_t len, uint8_t *buf, size_t bufsz) {
 #ifdef HAS_SENDFILE
     (void)buf; (void)bufsz;
+    unsigned num_of_consecutive_zero_returns = 128;
     while (len) {
         off_t r = in_pos;
         ssize_t n = sendfile(outfd, infd, &r, len);
@@ -124,6 +125,12 @@ copy_between_files(int infd, int outfd, off_t in_pos, size_t len, uint8_t *buf, 
             if (errno != EAGAIN) return false;
             continue;
         }
+        if (n == 0) {
+            // happens if input file is truncated
+            if (!--num_of_consecutive_zero_returns) return false;
+            continue;
+        };
+        num_of_consecutive_zero_returns = 128;
         in_pos += n; len -= n;
     }
 #else
