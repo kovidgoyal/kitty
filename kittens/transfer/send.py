@@ -209,7 +209,8 @@ def files_for_send(cli_opts: TransferCLIOptions, args: List[str]) -> Tuple[File,
                 files.remove(f)
                 continue
             f.symbolic_link_target = f'path:{link_dest}'
-            q = link_dest if os.path.isabs(link_dest) else os.path.join(os.path.dirname(f.local_path), link_dest)
+            is_abs = os.path.isabs(link_dest)
+            q = link_dest if is_abs else os.path.join(os.path.dirname(f.local_path), link_dest)
             try:
                 st = os.stat(q)
             except OSError:
@@ -220,7 +221,8 @@ def files_for_send(cli_opts: TransferCLIOptions, args: List[str]) -> Tuple[File,
                     g = tuple(x for x in groups[fh] if os.path.samestat(st, x.stat_result))
                     if g:
                         t = g[0]
-                        f.symbolic_link_target = f'fid:{t.file_id}'
+                        prefix = 'fid_abs' if is_abs else 'fid'
+                        f.symbolic_link_target = f'{prefix}:{t.file_id}'
     return tuple(files)
 
 
