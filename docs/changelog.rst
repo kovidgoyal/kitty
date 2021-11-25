@@ -112,7 +112,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix soft hyphens not being preserved when round tripping text through the
   terminal
 
-- macOS: Fix :kbd:`ctrl+shift` with :kbd:`Esc or Function keys` not working
+- macOS: Fix :kbd:`ctrl+shift` with :kbd:`Esc` or :kbd:`F1` - :kbd:`F12` not working
   (:iss:`4109`)
 
 - macOS: Fix :opt:`resize_in_steps` not working correctly on high DPI screens

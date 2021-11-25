@@ -66,10 +66,11 @@ key, such as ``97`` for the :kbd:`a` key, or one of the numbers from the
 modifiers pressed for the key event. The encoding is described in the
 :ref:`modifiers` section.
 
-The second form is used for a few functional keys, such as the :kbd:`Home, End,
-Arrow keys and F1-F4`, they are enumerated in the :ref:`functional` table below.
-Note that if no modifiers are present the parameters are omitted entirely
-giving an escape code of the form ``CSI [ABCDEFHPQRS]``.
+The second form is used for a few functional keys, such as the :kbd:`Home`,
+:kbd:`End`, :kbd:`Arrow` keys and :kbd:`F1`...:kbd:`F4`, they are enumerated in
+the :ref:`functional` table below.  Note that if no modifiers are present the
+parameters are omitted entirely giving an escape code of the form ``CSI
+[ABCDEFHPQRS]``.
 
 If you want support for more advanced features such as repeat and release
 events, alternate keys for shortcut matching et cetera, these can be turned on
@@ -142,12 +143,13 @@ sub-field for the shifted key, like this::
 Modifiers
 ~~~~~~~~~~~~~~
 
-This protocol supports six modifier keys, :kbd:`shift, alt, ctrl, super, hyper
-and meta` as well as :kbd:`num_lock and caps_lock`. Here :kbd:`super` is either
-the *Windows/Linux* key or the :kbd:`command` key on mac keyboards. The
-:kbd:`alt` key is the :kbd:`option` key on mac keyboards. :kbd:`hyper` and
-:kbd:`meta` are typically present only on X11/Wayland based systems with
-special XKB rules. Modifiers are encoded as a bit field with::
+This protocol supports six modifier keys, :kbd:`shift`, :kbd:`alt`,
+:kbd:`ctrl`, :kbd:`super`, :kbd:`hyper`, :kbd:`meta`, :kbd:`num_lock` and
+:kbd:`caps_lock`. Here :kbd:`super` is either the *Windows/Linux* key or the
+:kbd:`command` key on mac keyboards. The :kbd:`alt` key is the :kbd:`option`
+key on mac keyboards. :kbd:`hyper` and :kbd:`meta` are typically present only
+on X11/Wayland based systems with special XKB rules. Modifiers are encoded as a
+bit field with::
 
     shift     0b1         (1)
     alt       0b10        (2)
@@ -210,9 +212,9 @@ Non-Unicode keys
 
 There are many keys that don't correspond to letters from human languages, and
 thus aren't represented in Unicode. Think of functional keys, such as
-:kbd:`Escape, Play, Pause, F1, Home, etc`. These are encoded using Unicode code
-points from the Private Use Area (``57344 - 63743``). The mapping of key
-names to code points for these keys is in the
+:kbd:`Escape`, :kbd:`Play`, :kbd:`Pause`, :kbd:`F1`, :kbd:`Home`, etc. These
+are encoded using Unicode code points from the Private Use Area (``57344 -
+63743``). The mapping of key names to code points for these keys is in the
 :ref:`Functional key definition table below <functional>`.
 
 
@@ -289,8 +291,8 @@ encodings overlapping with other control codes. For instance, pressing the
 start of an escape code. Similarly pressing the key :kbd:`alt+[` will generate
 the bytes used for CSI control codes.
 
-Turning on this flag will cause the terminal to report the :kbd:`Esc, alt+key,
-ctrl+key, ctrl+alt+key, shift+alt+key` keys using ``CSI u`` sequences instead
+Turning on this flag will cause the terminal to report the :kbd:`Esc`, :kbd:`alt+key`,
+:kbd:`ctrl+key`, :kbd:`ctrl+alt+key`, :kbd:`shift+alt+key` keys using ``CSI u`` sequences instead
 of legacy ones. Here key is any ASCII key as described in :ref:`legacy_text`.
 Additionally, all keypad keys will be reported as separate keys with ``CSI u``
 encoding, using dedicated numbers from the :ref:`table below <functional>`.
@@ -305,7 +307,7 @@ This makes it very easy to parse key events in an application. In particular,
 :kbd:`ctrl+c` will no longer generate the ``SIGINT`` signal, but instead be
 delivered as a ``CSI u`` escape code. This has the nice side effect of making it
 much easier to integrate into the application event loop. The only exceptions
-are the :kbd:`Enter, Tab and Backspace` keys which still generate the same
+are the :kbd:`Enter`, :kbd:`Tab` and :kbd:`Backspace` keys which still generate the same
 bytes as in legacy mode this is to allow the user to type and execute commands
 in the shell such as ``reset`` after a program that sets this mode crashes
 without clearing it.
@@ -345,8 +347,8 @@ only key events are sent. If the text is needed as well, combine with the
 Report associated text enhancement below.
 
 Additionally, with this mode, events for pressing modifier keys are reported.
-Note that *all* keys are reported as escape codes, including :kbd:`Enter, Tab,
-Backspace` etc.
+Note that *all* keys are reported as escape codes, including :kbd:`Enter`,
+:kbd:`Tab`, :kbd:`Backspace` etc.
 
 .. _report_text:
 
@@ -459,8 +461,8 @@ Legacy text keys
 ~~~~~~~~~~~~~~~~~~~
 
 For legacy compatibility, the keys
-:kbd:`a-z 0-9 \` - = [ ] \ ; ' , . /` with the modifiers
-:kbd:`shift, alt, ctrl, shift+alt, ctrl+alt` are output using the
+:kbd:`a`-:kbd:`z` :kbd:`0`-:kbd:`9` :kbd:`\`` :kbd:`-` :kbd:`=` :kbd:`[` :kbd:`]` :kbd:`\\` :kbd:`;` :kbd:`'` :kbd:`,` :kbd:`.` :kbd:`/` with the modifiers
+:kbd:`shift`, :kbd:`alt`, :kbd:`ctrl`, :kbd:`shift+alt`, :kbd:`ctrl+alt` are output using the
 following algorithm:
 
 #. If the :kbd:`alt` key is pressed output the byte for ``ESC (0x1b)``

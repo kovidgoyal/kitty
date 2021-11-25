@@ -263,7 +263,7 @@ homepage:
 
 On macOS you can change the icon by following the steps:
 
-#. Find :file:`kitty.app` in the Applications folder, select it and press :kbd:`⌘ + i`
+#. Find :file:`kitty.app` in the Applications folder, select it and press :kbd:`⌘+i`
 #. Drag :file:`kitty.icns` onto the application icon in the kitty info pane
 #. Delete the icon cache and restart Dock::
 
