@@ -34,8 +34,8 @@ Action                      Shortcut
 ========================    =======================
 New tab                     :sc:`new_tab` (also :kbd:`⌘+t` on macOS)
 Close tab                   :sc:`close_tab` (also :kbd:`⌘+w` on macOS)
-Next tab                    :sc:`next_tab` (also :kbd:`^+⇥` and :kbd:`⇧+⌘+]` on macOS)
-Previous tab                :sc:`previous_tab` (also :kbd:`⇧+^+⇥` and :kbd:`⇧+⌘+[` on macOS)
+Next tab                    :sc:`next_tab` (also :kbd:`⌃+⇥` and :kbd:`⇧+⌘+]` on macOS)
+Previous tab                :sc:`previous_tab` (also :kbd:`⇧+⌃+⇥` and :kbd:`⇧+⌘+[` on macOS)
 Next layout                 :sc:`next_layout`
 Move tab forward            :sc:`move_tab_forward`
 Move tab backward           :sc:`move_tab_backward`
@@ -124,13 +124,13 @@ Paste from selection                :sc:`paste_from_selection`
 Increase font size                  :sc:`increase_font_size` (also :kbd:`⌘++` on macOS)
 Decrease font size                  :sc:`decrease_font_size` (also :kbd:`⌘+-` on macOS)
 Restore font size                   :sc:`reset_font_size` (also :kbd:`⌘+0` on macOS)
-Toggle fullscreen                   :sc:`toggle_fullscreen` (also :kbd:`^+⌘+f` on macOS)
+Toggle fullscreen                   :sc:`toggle_fullscreen` (also :kbd:`⌃+⌘+f` on macOS)
 Toggle maximized                    :sc:`toggle_maximized`
-Input unicode character             :sc:`input_unicode_character` (also :kbd:`^+⌘+space` on macOS)
+Input unicode character             :sc:`input_unicode_character` (also :kbd:`⌃+⌘+space` on macOS)
 Click URL using the keyboard        :sc:`open_url`
 Reset the terminal                  :sc:`reset_terminal`
-Reload :file:`kitty.conf`           :sc:`reload_config_file` (also :kbd:`^+⌘+,` on macOS)
-Debug :file:`kitty.conf`            :sc:`debug_config` (also :kbd:`⌘+option+f6` on macOS)
+Reload :file:`kitty.conf`           :sc:`reload_config_file` (also :kbd:`⌃+⌘+,` on macOS)
+Debug :file:`kitty.conf`            :sc:`debug_config` (also :kbd:`⌘+⌥+f6` on macOS)
 Pass current selection to program   :sc:`pass_selection_to_program`
 Edit |kitty| config file            :sc:`edit_config_file`
 Open a |kitty| shell                :sc:`kitty_shell`
