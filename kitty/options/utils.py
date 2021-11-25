@@ -792,7 +792,7 @@ def symbol_map(val: str) -> Iterable[Tuple[Tuple[int, int], str]]:
         return int(x[2:], 16)
 
     for x in parts[0].split(','):
-        a_, b_ = x.partition('-')[::2]
+        a_, b_ = x.replace('–', '-').partition('-')[::2]
         b_ = b_ or a_
         try:
             a, b = map(to_chr, (a_, b_))
