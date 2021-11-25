@@ -407,7 +407,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Unicode input kitten: Fix a regression in 0.20.0 that broke keyboard handling
   when the NumLock or CapsLock modifiers were engaged. (:iss:`3587`)
 
-- Fix a regression in 0.20.0 that sent incorrect bytes for the :kbd:`F1-F4` keys
+- Fix a regression in 0.20.0 that sent incorrect bytes for the :kbd:`F1`-:kbd:`F4` keys
   in rmkx mode (:iss:`3586`)
 
 - macOS: When the Apple Color Emoji font lacks an emoji glyph search for it in other

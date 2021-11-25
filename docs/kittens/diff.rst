@@ -68,13 +68,13 @@ Keyboard controls
 Action                      Shortcut
 =========================   ===========================
 Quit                        :kbd:`q`, :kbd:`ctrl+c`, :kbd:`Esc`
-Scroll line up              :kbd:`k`, :kbd:`up`
-Scroll line down            :kbd:`j`, :kbd:`down`
+Scroll line up              :kbd:`k`, :kbd:`Up`
+Scroll line down            :kbd:`j`, :kbd:`Down`
 Scroll page up              :kbd:`PgUp`
 Scroll page down            :kbd:`PgDn`
 Scroll to top               :kbd:`Home`
 Scroll to bottom            :kbd:`End`
-Scroll to next page         :kbd:`Space, PgDn`
+Scroll to next page         :kbd:`Space`, :kbd:`PgDn`
 Scroll to previous page     :kbd:`PgUp`
 Scroll to next change       :kbd:`n`
 Scroll to previous change   :kbd:`p`

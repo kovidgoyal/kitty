@@ -635,8 +635,8 @@ specification.
 * Incorrectly encoding shifted keys when shift modifier is used, for instance,
   for :kbd:`ctrl+shift+i` is encoded as :kbd:`ctrl+I`.
 
-* No way to have non-conflicting escape codes for :kbd:`alt+letter,
-  ctrl+letter, ctrl+alt+letter` key presses
+* No way to have non-conflicting escape codes for :kbd:`alt+letter`,
+  :kbd:`ctrl+letter`, :kbd:`ctrl+alt+letter` key presses
 
 * No way to specify both shifted and unshifted keys for robust shortcut
   matching (think matching :kbd:`ctrl+shift+equal` and :kbd:`ctrl+plus`)
