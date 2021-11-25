@@ -460,10 +460,11 @@ distinguish these, use the :ref:`disambiguate <disambiguate>` flag.
 Legacy text keys
 ~~~~~~~~~~~~~~~~~~~
 
-For legacy compatibility, the keys
-:kbd:`a`-:kbd:`z` :kbd:`0`-:kbd:`9` :kbd:`\`` :kbd:`-` :kbd:`=` :kbd:`[` :kbd:`]` :kbd:`\\` :kbd:`;` :kbd:`'` :kbd:`,` :kbd:`.` :kbd:`/` with the modifiers
-:kbd:`shift`, :kbd:`alt`, :kbd:`ctrl`, :kbd:`shift+alt`, :kbd:`ctrl+alt` are output using the
-following algorithm:
+For legacy compatibility, the keys :kbd:`a`-:kbd:`z` :kbd:`0`-:kbd:`9`
+:kbd:`\`` :kbd:`-` :kbd:`=` :kbd:`[` :kbd:`]` :kbd:`\\` :kbd:`;` :kbd:`'`
+:kbd:`,` :kbd:`.` :kbd:`/` with the modifiers :kbd:`shift`, :kbd:`alt`,
+:kbd:`ctrl`, :kbd:`shift+alt`, :kbd:`ctrl+alt` are output using the following
+algorithm:
 
 #. If the :kbd:`alt` key is pressed output the byte for ``ESC (0x1b)``
 #. If the :kbd:`ctrl` modifier is pressed map the key using the table
