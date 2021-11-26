@@ -23,14 +23,14 @@ before any actual data is transmitted, unless a :ref:`pre-shared password is
 provided <bypass_auth>`.
 
 There can be either send or receive sessions. In send sessions files are sent
-from from remote client to the terminal emulator and vice versa for receive
-sessions. Every session basically consists of sending metadata for the files
-first and then sending the actual data. The session is a series of commands,
-every command carrying the session id (which should be a random unique-ish
-identifier, to avoid conflicts). The session is bi-directional with commands
-going both to and from the terminal emulator. Every command in a session
-also carries an ``action`` field that specifies what the command does. The
-remaining fields in the command are dependent on the nature of the command.
+from remote client to the terminal emulator and vice versa for receive sessions.
+Every session basically consists of sending metadata for the files first and
+then sending the actual data. The session is a series of commands, every command
+carrying the session id (which should be a random unique-ish identifier, to
+avoid conflicts). The session is bi-directional with commands going both to and
+from the terminal emulator. Every command in a session also carries an
+``action`` field that specifies what the command does. The remaining fields in
+the command are dependent on the nature of the command.
 
 Let's look at some simple examples of sessions to get a feel for the protocol.
 
