@@ -35,8 +35,8 @@ the command are dependent on the nature of the command.
 Let's look at some simple examples of sessions to get a feel for the protocol.
 
 
-Sending files to the terminal emulator
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Sending files to the computer running the terminal emulator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The client starts by sending a start send command::
 
@@ -111,8 +111,8 @@ such as::
     ← action=status id=someid status=Some error occurred
 
 
-Receiving files to the terminal emulator
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Receiving files from the computer running terminal emulator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The client starts by sending a start receive command::
 
@@ -337,7 +337,79 @@ or absolute path when the target is a transmitted file.
 Transmitting binary deltas
 -----------------------------
 
-TODO:
+Repeated transfer of large files that have only changed a little between
+the receiving and sending side can be sped up significantly by transmitting
+binary deltas of only the changed portions. This protocol has built-in support
+for doing that. This support uses the `rsync algorithm
+<https://github.com/librsync/librsync>`__. In this algorithm first the
+receiving side sends a file signature that contains hashes of blocks
+in the file. Then the sending side sends only those blocks that have changed.
+The receiving side applies these deltas to the file to update it till it matches
+the file on the sending side.
+
+The modification to the basic protocol consists of setting the
+``transmission_type`` key to ``rsync`` when requesting a file. This triggers
+transmission of signatures and deltas instead of file data. The details are
+different for sending and receiving.
+
+Sending to the terminal emulator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When sending the metadata of the file it wants to transfer, the client adds the
+``transmission_type`` key::
+
+    → action=file id=someid file_id=f1 name=/path/to/destination transmission_type=rsync
+
+The ``STARTED`` response from the terminal will have ``transmission_type`` set
+to ``rsync`` if the file exists and the terminal is able to send signature data::
+
+    ← action=status id=someid file_id=f1 status=STARTED transmission_type=rsync
+
+The terminal then transmits the signature using ``data`` commands::
+
+    ← action=data id=someid file_id=f1 data=...
+    ...
+    ← action=end_data id=someid file_id=f1 data=...
+
+Once the client receives and processes the full signature, it transmits the
+file delta to the terminal as ``data`` commands::
+
+    → action=data id=someid file_id=f1 data=...
+    → action=data id=someid file_id=f1 data=...
+    ...
+    → action=end_data id=someid file_id=f1 data=...
+
+The terminal then uses this delta to update the file.
+
+Receiving from the terminal emulator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When the client requests file data from the terminal emulator, it can
+add the ``transmission_type=rsync`` key to indicate it will be sending
+a signature for that file::
+
+    → action=file id=someid file_id=f1 name=/some/path transmission_type=rsync
+
+The client then sends the signature using ``data`` commands::
+
+    → action=data id=someid file_id=f1 data=...
+    ...
+    → action=end_data id=someid file_id=f1 data=...
+
+After receiving the signature the terminal replies with the delta as a series
+of ``data`` commands::
+
+    ← action=data id=someid file_id=f1 data=...
+    ...
+    ← action=end_data id=someid file_id=f1 data=...
+
+The client then uses this delta to update the file.
+
+The format of signatures and deltas
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These come from `librsync <https://github.com/librsync/librsync>`__. If this
+specification gains wider adoption, these formats should be documented here.
 
 Compression
 --------------
