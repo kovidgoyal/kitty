@@ -67,7 +67,7 @@ modifiers pressed for the key event. The encoding is described in the
 :ref:`modifiers` section.
 
 The second form is used for a few functional keys, such as the :kbd:`Home`,
-:kbd:`End`, :kbd:`Arrow` keys and :kbd:`F1`...:kbd:`F4`, they are enumerated in
+:kbd:`End`, :kbd:`Arrow` keys and :kbd:`F1` ... :kbd:`F4`, they are enumerated in
 the :ref:`functional` table below.  Note that if no modifiers are present the
 parameters are omitted entirely giving an escape code of the form ``CSI
 [ABCDEFHPQRS]``.
