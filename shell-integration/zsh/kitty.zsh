@@ -3,8 +3,9 @@
 () {
     if [[ ! -o interactive ]]; then return; fi
     if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then return; fi
+    if [[ ! -z "$_ksi_prompt" ]]; then return; fi
     typeset -g -A _ksi_prompt
-    _ksi_prompt=(state first-run cursor y title y mark y complete y)
+    _ksi_prompt=(state first-run is_last_precmd y cursor y title y mark y complete y)
     for i in ${=KITTY_SHELL_INTEGRATION}; do
         if [[ "$i" == "no-cursor" ]]; then _ksi_prompt[cursor]='n'; fi
         if [[ "$i" == "no-title" ]]; then _ksi_prompt[title]='n'; fi
@@ -71,9 +72,6 @@
 
     function _ksi_precmd() { 
         local cmd_status=$?
-        if [[ "$_ksi_prompt[state]" == "first-run" ]]; then
-            _ksi_install_completion
-        fi
         # Set kitty window title to the cwd, appropriately shortened, see
         # https://unix.stackexchange.com/questions/273529/shorten-path-in-zsh-prompt
         _ksi_set_title $(print -P '%(4~|…/%3~|%~)')
@@ -87,8 +85,15 @@
             fi
             # we must use PS1 to set the prompt start mark as precmd functions are 
             # not called when the prompt is redrawn after a window resize or when a background
-            # job finishes
-            if [[ "$PS1" != *"$_ksi_prompt[start_mark]"* ]]; then PS1="$_ksi_prompt[start_mark]$PS1" fi
+            # job finishes. However, if we are not the last function in precmd_functions which
+            # can be the case on first run, PS1 might be broken by a following function, so
+            # output the mark directly in that case
+            if [[ "$_ksi_prompt[is_last_precmd]" != "y" ]]; then
+                _ksi_mark "A";
+                _ksi_prompt[is_last_precmd]="y";
+            else
+                if [[ "$PS1" != *"$_ksi_prompt[start_mark]"* ]]; then PS1="$_ksi_prompt[start_mark]$PS1" fi
+            fi
             # PS2 is used for prompt continuation. On resize with a continued prompt only the last
             # prompt is redrawn so we need to mark it
             if [[ "$PS2" != *"$_ksi_prompt[secondary_mark]"* ]]; then PS2="$_ksi_prompt[secondary_mark]$PS2" fi
@@ -133,10 +138,23 @@
         _ksi_prompt[state]="preexec"
     }
 
+    function _ksi_first_run() {
+        _ksi_install_completion
+        typeset -a -g precmd_functions
+        local idx=$precmd_functions[(ie)_ksi_first_run] 
+        if [[ $idx -gt 0 ]]; then
+            if [[ $idx -lt ${#precmd_functions[@]} ]]; then 
+                _ksi_prompt[is_last_precmd]="n"
+            fi
+            precmd_functions[$idx]=()
+            precmd_functions=($precmd_functions _ksi_precmd)
+            typeset -a -g preexec_functions
+            preexec_functions=($preexec_functions _ksi_preexec)
+            _ksi_precmd
+        fi
+    }
     typeset -a -g precmd_functions
-    precmd_functions=($precmd_functions _ksi_precmd)
-    typeset -a -g preexec_functions
-    preexec_functions=($preexec_functions _ksi_preexec)
+    precmd_functions=($precmd_functions _ksi_first_run)
 
     # Completion for kitty
     _ksi_complete() {
