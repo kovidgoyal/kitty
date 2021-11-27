@@ -160,7 +160,7 @@ code used for each shell below:
 
 .. tab:: zsh
 
-    .. literalinclude:: ../shell-integration/kitty.zsh
+    .. literalinclude:: ../shell-integration/zsh/kitty.zsh
         :language: zsh
 
 
