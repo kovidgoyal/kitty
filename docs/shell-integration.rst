@@ -51,7 +51,7 @@ disabled
     turn off all shell integration
 
 no-rc
-    dont modify the shell's rc files to enable integration. Useful if you prefer
+    dont modify the shell's launch environment to enable integration. Useful if you prefer
     to :ref:`manually enable integration <manual_shell_integration>`.
 
 no-cursor
@@ -116,17 +116,23 @@ define the following in :file:`kitty.conf`:
 How it works
 -----------------
 
-At startup kitty detects if the shell you have configured (either system wide
+At startup, kitty detects if the shell you have configured (either system wide
 or in kitty.conf) is a supported shell. If so, kitty injects some shell specific
 code into the shell, to enable shell integration. How it does so varies for
 different shells.
 
 
-.. tab:: bash/zsh
+.. tab:: zsh
 
-    For these shells, kitty adds a couple of lines to
-    the bottom of the shell's rc files (in an atomic manner) to load the shell
-    integration code.
+   For zsh, kitty sets the ``ZDOTDIR`` environment variable to make zsh load
+   kitty's :file:`.zshenv` which in turn loads the shell integration code then
+   restores the original value of ``ZDOTDIR`` and finally sources the original
+   :file:`.zshenv`. The remainder of zsh's startup process proceeds as normal.
+
+.. tab:: bash
+
+    For bash, kitty adds a couple of lines to the bottom of :file:`~/.bashrc`
+    (in an atomic manner) to load the shell integration code.
 
 .. tab:: fish
 
@@ -178,9 +184,12 @@ code used for each shell below:
 Manual shell integration
 ----------------------------
 
-If you do not want to rely on kitty's automatic shell integration or if you
-want to setup shell integration for a remote system over SSH, in
-:file:`kitty.conf` set:
+The automatic shell integration is designed to be minimally intrusive, as such
+it wont work for sub-shells, terminal multiplexers, containers, remote systems, etc.
+For such systems, you should setup manual shell integration by adding some code
+to your shells startup files to load the shell integration script.
+
+First, in :file:`kitty.conf` set:
 
 .. code-block:: conf
 
@@ -203,7 +212,7 @@ Then in your shell's rc file, add the lines:
 
         if [[ ! -z "$KITTY_INSTALLATION_DIR" ]]; then
             export KITTY_SHELL_INTEGRATION="enabled"
-            source "$KITTY_INSTALLATION_DIR/shell-integration/kitty.zsh"
+            source "$KITTY_INSTALLATION_DIR/shell-integration/zsh/kitty.zsh"
         fi
 
 .. tab:: fish

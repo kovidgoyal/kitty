@@ -49,10 +49,7 @@ def setup_integration(shell_name: str, rc_path: str, template: str = posix_templ
 
 
 def setup_zsh_integration(env: Dict[str, str]) -> None:
-    base = os.environ.get('ZDOTDIR', os.path.expanduser('~'))
-    rc = os.path.join(base, '.zshrc')
-    if os.path.exists(rc):  # dont prevent zsh-newuser-install from running
-        setup_integration('zsh', rc)
+    pass  # this is handled in the zsh env modifier
 
 
 def setup_bash_integration(env: Dict[str, str]) -> None:
@@ -74,13 +71,23 @@ def setup_fish_env(env: Dict[str, str]) -> None:
         env['XDG_DATA_DIRS'] = os.pathsep.join(dirs)
 
 
+def setup_zsh_env(env: Dict[str, str]) -> None:
+    zdotdir = os.environ.get('ZDOTDIR')
+    base = zdotdir or os.path.expanduser('~')
+    if zdotdir is not None:
+        env['KITTY_ORIG_ZDOTDIR'] = zdotdir
+    env['KITTY_ZSH_BASE'] = base
+    env['ZDOTDIR'] = os.path.join(shell_integration_dir, 'zsh')
+
+
 SUPPORTED_SHELLS = {
     'zsh': setup_zsh_integration,
     'bash': setup_bash_integration,
     'fish': setup_fish_integration,
 }
 ENV_MODIFIERS = {
-    'fish': setup_fish_env
+    'fish': setup_fish_env,
+    'zsh': setup_zsh_env,
 }
 
 
