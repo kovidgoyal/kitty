@@ -74,7 +74,7 @@ def setup_fish_env(env: Dict[str, str]) -> None:
 def setup_zsh_env(env: Dict[str, str]) -> None:
     zdotdir = os.environ.get('ZDOTDIR')
     base = zdotdir or os.path.expanduser('~')
-    for q in ('.zshenv', '.zprofile', '.zshrc', '.zlogin'):
+    for q in ('.zshrc', '.zshenv', '.zprofile', '.zlogin'):
         if os.path.exists(os.path.join(base, q)):
             break
     else:
