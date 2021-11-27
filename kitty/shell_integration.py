@@ -71,14 +71,20 @@ def setup_fish_env(env: Dict[str, str]) -> None:
         env['XDG_DATA_DIRS'] = os.pathsep.join(dirs)
 
 
-def setup_zsh_env(env: Dict[str, str]) -> None:
+def is_new_zsh_install() -> bool:
     zdotdir = os.environ.get('ZDOTDIR')
     base = zdotdir or os.path.expanduser('~')
     for q in ('.zshrc', '.zshenv', '.zprofile', '.zlogin'):
         if os.path.exists(os.path.join(base, q)):
-            break
-    else:
-        # a new zsh install dont prevent zsh-newuser-install from running
+            return False
+    return True
+
+
+def setup_zsh_env(env: Dict[str, str]) -> None:
+    zdotdir = os.environ.get('ZDOTDIR')
+    base = zdotdir or os.path.expanduser('~')
+    if is_new_zsh_install():
+        # dont prevent zsh-newuser-install from running
         return
     if zdotdir is not None:
         env['KITTY_ORIG_ZDOTDIR'] = zdotdir
