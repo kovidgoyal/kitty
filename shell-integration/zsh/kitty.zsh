@@ -35,17 +35,6 @@
         fi
     }
 
-    function _ksi_zle_keymap_select() { 
-        _ksi_change_cursor_shape
-    }
-    function _ksi_zle_keymap_select_with_original() { zle kitty-zle-keymap-select-original; _ksi_zle_keymap_select }
-    zle -A zle-keymap-select kitty-zle-keymap-select-original 2>/dev/null
-    if [[ $? == 0 ]]; then 
-        zle -N zle-keymap-select _ksi_zle_keymap_select_with_original
-    else
-        zle -N zle-keymap-select _ksi_zle_keymap_select
-    fi
-
     function _ksi_osc() {
         printf "\e]%s\a" "$1"
     }
@@ -106,25 +95,11 @@
         _ksi_change_cursor_shape
         _ksi_prompt[state]="line-init"
     }
-    function _ksi_zle_line_init_with_orginal() { zle kitty-zle-line-init-original; _ksi_zle_line_init }
-    zle -A zle-line-init kitty-zle-line-init-original 2>/dev/null
-    if [[ $? == 0 ]]; then 
-        zle -N zle-line-init _ksi_zle_line_init_with_orginal
-    else
-        zle -N zle-line-init _ksi_zle_line_init
-    fi
 
     function _ksi_zle_line_finish() { 
         _ksi_change_cursor_shape
         _ksi_prompt[state]="line-finish"
     }
-    function _ksi_zle_line_finish_with_orginal() { zle kitty-zle-line-finish-original; _ksi_zle_line_finish }
-    zle -A zle-line-finish kitty-zle-line-finish-original 2>/dev/null
-    if [[ $? == 0 ]]; then 
-        zle -N zle-line-finish _ksi_zle_line_finish_with_orginal
-    else
-        zle -N zle-line-finish _ksi_zle_line_finish
-    fi
 
     function _ksi_preexec() { 
         if [[ "$_ksi_prompt[mark]" == "y" ]]; then 
@@ -150,15 +125,15 @@
             if [[ $idx -lt ${#precmd_functions[@]} ]]; then 
                 _ksi_prompt[is_last_precmd]="n"
             fi
-            precmd_functions[$idx]=()
-            precmd_functions=($precmd_functions _ksi_precmd)
-            typeset -a -g preexec_functions
-            preexec_functions=($preexec_functions _ksi_preexec)
+            add-zsh-hook -d precmd _ksi_first_run
+            add-zsh-hook precmd _ksi_precmd
+            add-zsh-hook preexec _ksi_preexec
+            add-zle-hook-widget keymap-select _ksi_change_cursor_shape
+            add-zle-hook-widget line-init _ksi_zle_line_init
+            add-zle-hook-widget line-finish _ksi_zle_line_finish
             _ksi_precmd
         fi
     }
-    typeset -a -g precmd_functions
-    precmd_functions=($precmd_functions _ksi_first_run)
 
     # Completion for kitty
     _ksi_complete() {
@@ -169,4 +144,8 @@
             eval ${src}
         fi
     }
+
+    autoload -Uz add-zsh-hook
+    autoload -Uz add-zle-hook-widget
+    add-zsh-hook precmd _ksi_first_run
 }
