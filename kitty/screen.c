@@ -278,6 +278,11 @@ index_selection(const Screen *self, Selections *selections, bool up) {
     if (self->overlay_line.is_active) deactivate_overlay_line(self); \
     linebuf_reverse_index(self->linebuf, top, bottom); \
     linebuf_clear_line(self->linebuf, top, true); \
+    if (self->linebuf == self->main_linebuf && self->last_visited_prompt.is_set) { \
+        if (self->last_visited_prompt.scrolled_by > 0) self->last_visited_prompt.scrolled_by--; \
+        else if(self->last_visited_prompt.y < self->lines - 1) self->last_visited_prompt.y++; \
+        else self->last_visited_prompt.is_set = false; \
+    } \
     INDEX_GRAPHICS(1) \
     self->is_dirty = true; \
     index_selection(self, &self->selections, false);
