@@ -45,6 +45,7 @@ them into something your shell will understand.
 
 parsers: Dict[str, 'ParserFunc'] = {}
 serializers: Dict[str, 'SerializerFunc'] = {}
+shell_state: Dict[str, str] = {}
 
 
 class MatchGroup:
@@ -201,6 +202,18 @@ def output_serializer(func: SerializerFunc) -> SerializerFunc:
 
 @input_parser
 def zsh_input_parser(data: str) -> ParseResult:
+    matcher = shell_state.get('_matcher', '')
+    q = matcher.lower().split(':', maxsplit=1)[0]
+    if q in ('l', 'r', 'b', 'e'):
+        # this is zsh anchor based matching
+        # https://zsh.sourceforge.io/Doc/Release/Completion-Widgets.html#Completion-Matching-Control
+        # can be specified with matcher-list and some systems do it by default,
+        # for example, Debian, which adds the following to zshrc
+        # zstyle ':completion:*' matcher-list '' 'm:{a-z}={A-Z}' 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=* l:|=*'
+        # For some reason that I dont have the
+        # time/interest to figure out, returning completion candidates for
+        # these matcher types break completion, so just abort in this case.
+        raise SystemExit(1)
     new_word = data.endswith('\n\n')
     words = data.rstrip().splitlines()
     return words, new_word
@@ -714,6 +727,11 @@ def main(args: Sequence[str], entry_points: Iterable[str], namespaced_entry_poin
     if cstyle == 'setup':
         return setup(args[1])
     data = sys.stdin.read()
+    shell_state.clear()
+    for x in args[1:]:
+        parts = x.split('=', maxsplit=1)
+        if len(parts) == 2:
+            shell_state[parts[0]] = parts[1]
     try:
         parser = parsers[cstyle]
         serializer = serializers[cstyle]

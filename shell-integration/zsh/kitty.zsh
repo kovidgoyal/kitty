@@ -139,7 +139,7 @@
     _ksi_complete() {
         local src
         # Send all words up to the word the cursor is currently on
-        src=$(printf "%s\n" "${(@)words[1,$CURRENT]}" | kitty +complete zsh)
+        src=$(printf "%s\n" "${(@)words[1,$CURRENT]}" | kitty +complete zsh "_matcher=$_matcher")
         if [[ $? == 0 ]]; then
             eval ${src}
         fi
