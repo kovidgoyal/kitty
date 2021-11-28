@@ -387,20 +387,24 @@ to the OS immediately.
 Why does kitty sometimes start slowly on my Linux system?
 -------------------------------------------------------------------------------------------
 
-|kitty| takes no longer (within a 100ms) to start than other similar GPU terminal emulators,
-(and may be faster than some). If |kitty| occasionally takes a long time to
-start, it could be a power management issue of the graphics card. On a
-multi-GPU system (which many modern laptops are, having a power efficient GPU
+|kitty| takes no longer (within 100ms) to start than other similar GPU terminal
+emulators, (and may be faster than some). If |kitty| occasionally takes a long
+time to start, it could be a power management issue with the graphics card. On
+a multi-GPU system (which many modern laptops are, having a power efficient GPU
 that's built into the processor and a power hungry dedicated one that's usually
-off), even if the answer of the GPU will only be "don't use me", the GPU still
-needs to be woken up to ask it. You can keep your GPU always on by looking for
-it in ``lspci``::
+off), even if the answer of the GPU will only be "don't use me".
 
-    # lspci | grep NVIDIA
-    01:00.0 VGA compatible controller: NVIDIA Corporation GA106M [GeForce RTX 3060 Mobile / Max-Q] (rev a1)
+For example, if you have a system with an AMD CPU and an NVIDIA GPU, and you
+know that you want to use the lower powered card to save battery life and
+because kitty does not require a powerful GPU to function, you can choose not
+to wake up the dedicated card, which has been reported on at least one system
+(:iss:`4292`) to take ≈2 seconds, by running |kitty| as::
 
-Then telling it to always be on::
+    MESA_LOADER_DRIVER_OVERRIDE=radeonsi __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json kitty
 
-    # echo on > /sys/bus/pci/devices/0000':01:00.0'/power/control
-
-On at least one system :iss:`4292`, this saved ≈2 seconds of |kitty| start up time.
+The correct command will depend on your situation and hardware.
+|__EGL_VENDOR_LIBRARY_FILENAMES| instructs the GL dispatch library to use
+`libEGL_mesa.so` and ignore the `libEGL_nvidia.so` also available on the
+system, which will wake the NVIDIA card during device enumeration.
+|MESA_LOADER_DRIVER_OVERRIDE| also assures that Mesa won't offer any NVIDIA
+card during enumeration, and will instead just use `/lib/dri/radeonsi_dri.so`.
