@@ -227,8 +227,12 @@ def fish2_input_parser(data: str) -> ParseResult:
 def zsh_output_serializer(ans: Completions) -> str:
     lines = []
 
-    screen = screen_size_function(sys.stderr.fileno())()
-    width = screen.cols
+    try:
+        screen = screen_size_function(sys.stderr.fileno())()
+    except OSError:
+        width = 80
+    else:
+        width = screen.cols
 
     def fmt_desc(word: str, desc: str, max_word_len: int) -> Iterator[str]:
         if not desc:
