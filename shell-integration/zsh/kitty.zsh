@@ -139,6 +139,10 @@
     }
 
     function _ksi_first_run() {
+        # We install the real precmd and preexec functions here and remove this function 
+        # from precmd_functions. This ensures that our functions are last. This is needed
+        # because the zsh prompt_init package actually sets PS1 in a precmd function and the user
+        # could have setup their own precmd function to set the prompt as well.
         _ksi_install_completion
         typeset -a -g precmd_functions
         local idx=$precmd_functions[(ie)_ksi_first_run] 
