@@ -147,6 +147,7 @@ class ThemesHandler(Handler):
         self.colors_set_once = False
         self.line_edit = LineEdit()
         self.tabs = tuple('all dark light recent'.split())
+        self.quit_on_next_key_release = -1
 
     def update_recent(self) -> None:
         r = list(self.cached_values.get('recent', ()))
@@ -237,7 +238,8 @@ class ThemesHandler(Handler):
 
     def on_fetching_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
         if key_event.matches('esc'):
-            self.quit_loop(0)
+            self.quit_on_next_key_release = 0
+            return
 
     # }}}
 
@@ -383,7 +385,8 @@ class ThemesHandler(Handler):
 
     def on_browsing_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
         if key_event.matches('esc') or key_event.matches_text('q'):
-            return self.quit_loop(0)
+            self.quit_on_next_key_release = 0
+            return
         for cat in 'all dark light recent'.split():
             if key_event.matches_text(cat[0]) or key_event.matches(f'alt+{cat[0]}'):
                 if cat != self.current_category:
@@ -454,7 +457,7 @@ class ThemesHandler(Handler):
 
     def on_accepting_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
         if key_event.matches_text('q') or key_event.matches('esc'):
-            self.quit_loop(0)
+            self.quit_on_next_key_release = 0
             return
         if key_event.matches_text('a'):
             self.state = State.browsing
@@ -463,16 +466,19 @@ class ThemesHandler(Handler):
         if key_event.matches_text('p'):
             self.themes_list.current_theme.save_in_dir(config_dir)
             self.update_recent()
-            self.quit_loop(0)
+            self.quit_on_next_key_release = 0
             return
         if key_event.matches_text('m'):
             self.themes_list.current_theme.save_in_conf(config_dir, self.cli_opts.reload_in)
             self.update_recent()
-            self.quit_loop(0)
+            self.quit_on_next_key_release = 0
             return
     # }}}
 
     def on_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
+        if self.quit_on_next_key_release > -1 and key_event.is_release:
+            self.quit_loop(self.quit_on_next_key_release)
+            return
         if self.state is State.fetching:
             self.on_fetching_key_event(key_event, in_bracketed_paste)
         elif self.state is State.browsing:
