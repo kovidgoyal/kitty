@@ -564,12 +564,13 @@ class Window:
         current_pty_size = (
             self.screen.lines, self.screen.columns,
             max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
+        update_ime_position = False
         if current_pty_size != self.last_reported_pty_size:
             get_boss().child_monitor.resize_pty(self.id, *current_pty_size)
             if not self.pty_resized_once:
                 self.pty_resized_once = True
                 self.child.mark_terminal_ready()
-                update_ime_position_for_window(self.id)
+                update_ime_position = True
             self.last_reported_pty_size = current_pty_size
         else:
             mark_os_window_dirty(self.os_window_id)
@@ -577,6 +578,8 @@ class Window:
         self.geometry = g = new_geometry
         set_window_render_data(self.os_window_id, self.tab_id, self.id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
         self.update_effective_padding()
+        if update_ime_position:
+            update_ime_position_for_window(self.id, True)
 
     def contains(self, x: int, y: int) -> bool:
         g = self.geometry
