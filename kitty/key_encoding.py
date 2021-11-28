@@ -240,6 +240,10 @@ class KeyEvent(NamedTuple):
         return self.text.lower() == text.lower()
 
     @property
+    def is_release(self) -> bool:
+        return self.type is EventType.RELEASE
+
+    @property
     def mods_without_locks(self) -> int:
         return self.mods & ~(NUM_LOCK | CAPS_LOCK)
 
