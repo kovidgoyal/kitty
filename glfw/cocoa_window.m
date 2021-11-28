@@ -1505,12 +1505,13 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     top /= window->ns.yscale;
     cellWidth /= window->ns.xscale;
     cellHeight /= window->ns.yscale;
-    debug_key("updateIMEState: left=%f, top=%f, width=%f, height=%f\n", left, top, cellWidth, cellHeight);
+    debug_key("updateIMEPosition: left=%f, top=%f, width=%f, height=%f\n", left, top, cellWidth, cellHeight);
     const NSRect frame = [window->ns.view frame];
     const NSRect rectInView = NSMakeRect(left,
                                          frame.size.height - top - cellHeight,
                                          cellWidth, cellHeight);
     markedRect = [window->ns.object convertRectToScreen: rectInView];
+    if (_glfwPlatformWindowFocused(window)) [[window->ns.view inputContext] invalidateCharacterCoordinates];
 }
 
 - (NSArray*)validAttributesForMarkedText
