@@ -384,24 +384,23 @@ come from arenas in the GPU drivers and the per thread arenas glibc's malloc
 maintains. These too allocate memory in large blocks and dont release it back
 to the OS immediately.
 
-Why is kitty slow to start?
-___________________________
+Why does kitty sometimes start slowly on my Linux system?
+-------------------------------------------------------------------------------------------
 
-|kitty| takes no longer to start than other similar GPU terminal emulators, (and
-may be faster than some). If |kitty| takes a long time to start, it could be a
-power managment issue of your graphics card. On a multi-GPU system (which many
-modern laptops are, having a power efficient GPU that's built into the
-processor and a power hungry dedicated one that's usually off), even if the
-answer of the GPU will only be "don't use me", the GPU still needs to be woken
-up to ask it. You can keep your GPU always on by looking for it in lspci::
+|kitty| takes no longer (within a 100ms) to start than other similar GPU terminal emulators,
+(and may be faster than some). If |kitty| occasionally takes a long time to
+start, it could be a power management issue of the graphics card. On a
+multi-GPU system (which many modern laptops are, having a power efficient GPU
+that's built into the processor and a power hungry dedicated one that's usually
+off), even if the answer of the GPU will only be "don't use me", the GPU still
+needs to be woken up to ask it. You can keep your GPU always on by looking for
+it in ``lspci``::
 
     # lspci | grep NVIDIA
     01:00.0 VGA compatible controller: NVIDIA Corporation GA106M [GeForce RTX 3060 Mobile / Max-Q] (rev a1)
-    01:00.1 Audio device: NVIDIA Corporation Device 228e (rev a1)
 
 Then telling it to always be on::
 
     # echo on > /sys/bus/pci/devices/0000':01:00.0'/power/control
 
-On `at least one system<https://github.com/kovidgoyal/kitty/issues/4292>`_,
-this saved ≈2 seconds of |kitty| instance start time.
+On at least one system :iss:`4292`, this saved ≈2 seconds of |kitty| start up time.
