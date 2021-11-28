@@ -763,7 +763,7 @@ restore_overlay_line(struct SaveOverlayLine *sol) {
         debug("Received input from child (%s) while overlay active. Overlay contents: %s\n", sol->func_name, PyUnicode_AsUTF8(sol->overlay_text));
         screen_draw_overlay_text(sol->screen, PyUnicode_AsUTF8(sol->overlay_text));
         Py_DECREF(sol->overlay_text);
-        update_ime_position_for_window(sol->screen->window_id);
+        update_ime_position_for_window(sol->screen->window_id, false);
     }
 }
 

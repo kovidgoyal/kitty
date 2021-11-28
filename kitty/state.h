@@ -323,4 +323,4 @@ bool draw_window_title(OSWindow *window, const char *text, color_type fg, color_
 uint8_t* draw_single_ascii_char(const char ch, size_t *result_width, size_t *result_height);
 bool is_os_window_fullscreen(OSWindow *);
 void update_ime_position(Window* w, Screen *screen);
-bool update_ime_position_for_window(id_type window_id);
+bool update_ime_position_for_window(id_type window_id, bool force);
