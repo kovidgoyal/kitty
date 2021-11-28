@@ -648,7 +648,7 @@ def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterabl
         return ans
     words = words[1:]
     if not words or (len(words) == 1 and not new_word):
-        if words[0].startswith('--') and '=' in words[0]:
+        if words and words[0].startswith('--') and '=' in words[0]:
             complete_cli(ans, words, new_word, options_for_completion(), complete_kitty_cli_arg)
             return ans
         prefix = words[0] if words else ''
