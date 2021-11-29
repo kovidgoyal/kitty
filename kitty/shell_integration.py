@@ -4,7 +4,7 @@
 
 import os
 from contextlib import suppress
-from typing import Optional, Union, Dict
+from typing import Dict, Optional, Set, Union
 
 from .options.types import Options
 from .config import atomic_save
@@ -111,18 +111,19 @@ def get_supported_shell_name(path: str) -> Optional[str]:
     return None
 
 
-def shell_integration_allows_rc_modification(opts: Options) -> bool:
-    q = set(opts.shell_integration.split())
-    if q & {'disabled', 'no-rc'}:
+def is_shell_integration_allowed(shell: str, opts_set: Set[str]) -> bool:
+    if shell is None or 'disabled' in opts_set:
+        return False
+    elif shell in ENV_MODIFIERS:
+        return 'no-env' not in opts_set
+    elif 'no-rc' in opts_set:
         return False
     return True
 
 
 def setup_shell_integration(opts: Options, env: Dict[str, str]) -> bool:
-    if not shell_integration_allows_rc_modification(opts):
-        return False
     shell = get_supported_shell_name(resolved_shell(opts)[0])
-    if shell is None:
+    if not is_shell_integration_allowed(shell, set(opts.shell_integration.split())):
         return False
     func = SUPPORTED_SHELLS[shell]
     try:
@@ -137,10 +138,13 @@ def setup_shell_integration(opts: Options, env: Dict[str, str]) -> bool:
 
 def modify_shell_environ(argv0: str, opts: Options, env: Dict[str, str]) -> None:
     shell = get_supported_shell_name(argv0)
-    if shell is None or 'disabled' in set(opts.shell_integration.split()):
+    if shell is None:
+        return
+    q = set(opts.shell_integration.split())
+    if 'disabled' in q:
         return
     env['KITTY_SHELL_INTEGRATION'] = opts.shell_integration
-    if not shell_integration_allows_rc_modification(opts):
+    if not is_shell_integration_allowed(shell, q):
         return
     f = ENV_MODIFIERS.get(shell)
     if f is not None:

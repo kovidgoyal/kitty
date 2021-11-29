@@ -2657,11 +2657,13 @@ with the mouse or the :doc:`hints kitten </kittens/hints>`. The special value of
     )
 
 opt('shell_integration', 'enabled',
+    option_type='shell_integration',
     long_text='''
 Enable shell integration on supported shells. This enables features such as
 jumping to previous prompts, browsing the output of the previous command in a
 pager, etc. on supported shells.  Set to ``disabled`` to turn off shell
-integration, completely. See :ref:`shell_integration` for details.
+integration, completely. Features can also be turned off individually. See
+:ref:`shell_integration` for details.
 ''')
 
 opt('term', 'xterm-kitty',

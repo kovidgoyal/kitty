@@ -674,6 +674,15 @@ def allow_hyperlinks(x: str) -> int:
     return 1 if to_bool(x) else 0
 
 
+def shell_integration(x: str) -> str:
+    s = {'enabled', 'disabled', 'no-rc', 'no-env', 'no-cursor', 'no-title', 'no-prompt-mark', 'no-complete'}
+    q = set(x.split())
+    if not q.issubset(s):
+        log_error(f'Invalid shell integration options: {q - s}, ignoring')
+        return ' '.join(q & s)
+    return x
+
+
 def macos_titlebar_color(x: str) -> int:
     x = x.strip('"')
     if x == 'system':
