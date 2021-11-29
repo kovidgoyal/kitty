@@ -2656,7 +2656,7 @@ with the mouse or the :doc:`hints kitten </kittens/hints>`. The special value of
 '''
     )
 
-opt('shell_integration', 'enabled',
+opt('shell_integration', 'enabled', option_type='shell_integration',
     long_text='''
 Enable shell integration on supported shells. This enables features such as
 jumping to previous prompts, browsing the output of the previous command in a

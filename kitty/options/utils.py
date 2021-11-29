@@ -766,6 +766,15 @@ def watcher(val: str, current_val: Container[str]) -> Iterable[Tuple[str, str]]:
         yield val, val
 
 
+def shell_integration(x: str) -> str:
+    s = {'enabled', 'disabled', 'no-rc', 'no-cursor', 'no-title', 'no-prompt-mark', 'no-complete'}
+    q = set(x.split())
+    if not q.issubset(s):
+        log_error(f'Invalid shell integration options: {q - s}, ignoring')
+        return ' '.join(q & s)
+    return x
+
+
 def action_alias(val: str) -> Iterable[Tuple[str, str]]:
     parts = val.split(maxsplit=1)
     if len(parts) > 1:
