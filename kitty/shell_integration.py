@@ -108,7 +108,7 @@ def get_supported_shell_name(path: str) -> Optional[str]:
 
 
 def shell_integration_allows_rc_modification(opts: Options) -> bool:
-    return not bool(opts.shell_integration & {'disabled', 'no-rc'})
+    return not (opts.shell_integration & {'disabled', 'no-rc'})
 
 
 def setup_shell_integration(opts: Options, env: Dict[str, str]) -> bool:
