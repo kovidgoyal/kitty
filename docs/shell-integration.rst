@@ -171,7 +171,7 @@ code used for each shell below:
 
 .. tab:: bash
 
-    .. literalinclude:: ../shell-integration/kitty.bash
+    .. literalinclude:: ../shell-integration/bash/kitty.bash
         :language: bash
 
 .. raw:: html
@@ -201,16 +201,16 @@ Then in your shell's rc file, add the lines:
 
     .. code-block:: sh
 
-        if [[ ! -z "$KITTY_INSTALLATION_DIR" ]]; then
+        if test -n "$KITTY_INSTALLATION_DIR"; then
             export KITTY_SHELL_INTEGRATION="enabled"
-            source "$KITTY_INSTALLATION_DIR/shell-integration/kitty.bash"
+            source "$KITTY_INSTALLATION_DIR/shell-integration/bash/kitty.bash"
         fi
 
 .. tab:: zsh
 
     .. code-block:: sh
 
-        if [[ ! -z "$KITTY_INSTALLATION_DIR" ]]; then
+        if test -n "$KITTY_INSTALLATION_DIR"; then
             export KITTY_SHELL_INTEGRATION="enabled"
             source "$KITTY_INSTALLATION_DIR/shell-integration/zsh/kitty.zsh"
         fi

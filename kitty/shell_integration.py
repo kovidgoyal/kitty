@@ -13,7 +13,7 @@ from .utils import log_error, resolved_shell
 
 posix_template = '''
 # BEGIN_KITTY_SHELL_INTEGRATION
-if test -e {path}; then source {path}; fi
+if test -n "$KITTY_INSTALLATION_DIR" -a -e "$KITTY_INSTALLATION_DIR/{path}"; then source "$KITTY_INSTALLATION_DIR/{path}"; fi
 # END_KITTY_SHELL_INTEGRATION
 '''
 
@@ -35,11 +35,7 @@ def setup_integration(shell_name: str, rc_path: str, template: str = posix_templ
     import re
     rc_path = os.path.realpath(rc_path)
     rc = safe_read(rc_path)
-    home = os.path.expanduser('~') + '/'
-    path = os.path.join(shell_integration_dir, f'kitty.{shell_name}')
-    if path.startswith(home):
-        path = '$HOME/' + path[len(home):]
-    integration = template.format(path=f'"{path}"')
+    integration = template.format(path=f"shell-integration/{shell_name}/kitty.{shell_name}")
     newrc = re.sub(
         r'^# BEGIN_KITTY_SHELL_INTEGRATION.+?^# END_KITTY_SHELL_INTEGRATION',
         '', rc, flags=re.DOTALL | re.MULTILINE)
