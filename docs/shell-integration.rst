@@ -48,24 +48,24 @@ off or it can be disabled entirely as well. The :opt:`shell_integration` option
 takes a space separated list of keywords:
 
 disabled
-    turn off all shell integration
+    Turn off all shell integration
 
 no-rc
-    dont modify the shell's launch environment to enable integration. Useful if you prefer
+    Do not modify the shell's launch environment to enable integration. Useful if you prefer
     to :ref:`manually enable integration <manual_shell_integration>`.
 
 no-cursor
-    turn off changing of the text cursor to a bar when editing text
+    Turn off changing of the text cursor to a bar when editing text
 
 no-title
-    turn off setting the kitty window/tab title based on shell state
+    Turn off setting the kitty window/tab title based on shell state
 
 no-prompt-mark
-    turn off marking of prompts. This disables jumping to prompt, browsing
+    Turn off marking of prompts. This disables jumping to prompt, browsing
     output of last command and click to move cursor functionality.
 
 no-complete
-    turn off completion for the kitty command.
+    Turn off completion for the kitty command.
 
 
 More ways to browse command output
