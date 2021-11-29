@@ -933,7 +933,7 @@ class MouseMapping(BaseDefinition):
         ans = MouseMapping(
             self.button, defines.resolve_key_mods(kitty_mod, self.mods), self.repeat_count, self.grabbed,
             self.actions, self.original_definition)
-        ans.original_definition = self.original_definition
+        ans.definition_location = self.definition_location
         ans.resolve_aliases_and_parse(aliases)
         return ans
 
@@ -965,7 +965,7 @@ class KeyDefinition(BaseDefinition):
             self.is_sequence, self.actions, r(self.trigger), tuple(map(r, self.rest)),
             self.original_definition
         )
-        ans.original_definition = self.original_definition
+        ans.definition_location = self.definition_location
         ans.resolve_aliases_and_parse(aliases)
         return ans
 
