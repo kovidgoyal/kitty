@@ -1250,7 +1250,7 @@ is_ascii_control_char(char x) {
     const bool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, keycode, flags) != 1;
     _glfw.ns.text[0] = 0;
     if (keycode == 0x33 /* backspace */ || keycode == 0x35 /* escape */) [self unmarkText];
-    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .action = GLFW_PRESS, .mods = mods};
+    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .native_key_id = keycode, .action = GLFW_PRESS, .mods = mods};
     if (!_glfw.ns.unicodeData) {
         // Using the cocoa API for key handling is disabled, as there is no
         // reliable way to handle dead keys using it. Only use it if the
@@ -1357,7 +1357,7 @@ is_ascii_control_char(char x) {
             action = GLFW_PRESS;
     }
 
-    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = [event keyCode], .action = action, .mods = mods};
+    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = [event keyCode], .native_key_id = [event keyCode], .action = action, .mods = mods};
     _glfwInputKeyboard(window, &glfw_keyevent);
 }
 
@@ -1367,7 +1367,7 @@ is_ascii_control_char(char x) {
     const uint32_t key = translateKey(keycode, true);
     const int mods = translateFlags([event modifierFlags]);
 
-    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .action = GLFW_RELEASE, .mods = mods};
+    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .native_key_id = keycode, .action = GLFW_RELEASE, .mods = mods};
     add_alternate_keys(&glfw_keyevent, event);
     debug_key("\x1b[32mRelease:\x1b[m native_key: 0x%x (%s) glfw_key: 0x%x %s\n",
             keycode, safe_name_for_keycode(keycode), key, format_mods(mods));

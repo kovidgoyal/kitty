@@ -983,6 +983,10 @@ typedef struct GLFWkeyevent
     //   A value of GLFW_IME_PREEDIT_CHANGED means the pre-edit text for the input event has been changed.
     //   A value of GLFW_IME_COMMIT_TEXT means the text should be committed.
     GLFWIMEState ime_state;
+
+    // For internal use only. On Linux it is the actual keycode reported by the windowing system, in contrast
+    // to native_key which can be the result of a compose operation. On macOS it is the same as native_key.
+    uint32_t native_key_id;
 } GLFWkeyevent;
 
 /*! @brief The function pointer type for error callbacks.
