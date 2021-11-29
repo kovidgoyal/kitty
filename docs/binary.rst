@@ -22,6 +22,11 @@ The binaries will be installed in the standard location for your OS,
 Linux. The installer only touches files in that directory. To update kitty,
 simply re-run the command.
 
+.. warning::
+   **Do not** copy the kitty binary out of the installation folder. If you want
+   to add it to your ``PATH`` create a symlink in :file:`~/.local/bin` or
+   :file:`/usr/bin` or wherever.
+
 
 Manually installing
 ---------------------
