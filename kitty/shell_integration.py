@@ -71,8 +71,8 @@ def setup_fish_env(env: Dict[str, str]) -> None:
         env['XDG_DATA_DIRS'] = os.pathsep.join(dirs)
 
 
-def is_new_zsh_install() -> bool:
-    zdotdir = os.environ.get('ZDOTDIR')
+def is_new_zsh_install(env: Dict[str, str]) -> bool:
+    zdotdir = env.get('ZDOTDIR')
     base = zdotdir or os.path.expanduser('~')
     for q in ('.zshrc', '.zshenv', '.zprofile', '.zlogin'):
         if os.path.exists(os.path.join(base, q)):
@@ -81,9 +81,9 @@ def is_new_zsh_install() -> bool:
 
 
 def setup_zsh_env(env: Dict[str, str]) -> None:
-    zdotdir = os.environ.get('ZDOTDIR')
+    zdotdir = env.get('ZDOTDIR')
     base = zdotdir or os.path.expanduser('~')
-    if is_new_zsh_install():
+    if is_new_zsh_install(env):
         # dont prevent zsh-newuser-install from running
         return
     if zdotdir is not None:
