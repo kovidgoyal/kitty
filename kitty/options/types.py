@@ -547,7 +547,7 @@ class Options:
     selection_background: typing.Optional[kitty.fast_data_types.Color] = Color(255, 250, 205)
     selection_foreground: typing.Optional[kitty.fast_data_types.Color] = Color(0, 0, 0)
     shell: str = '.'
-    shell_integration: str = 'enabled'
+    shell_integration: typing.FrozenSet[str] = frozenset({'enabled'})
     single_window_margin_width: FloatEdges = FloatEdges(left=-1.0, top=-1.0, right=-1.0, bottom=-1.0)
     startup_session: typing.Optional[str] = None
     strip_trailing_spaces: choices_for_strip_trailing_spaces = 'never'

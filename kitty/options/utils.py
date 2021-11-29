@@ -6,8 +6,8 @@ import os
 import re
 import sys
 from typing import (
-    Any, Callable, Container, Dict, Iterable, Iterator, List, NamedTuple,
-    Optional, Sequence, Tuple, Union
+    Any, Callable, Container, Dict, FrozenSet, Iterable, Iterator, List,
+    NamedTuple, Optional, Sequence, Tuple, Union
 )
 
 import kitty.fast_data_types as defines
@@ -766,13 +766,13 @@ def watcher(val: str, current_val: Container[str]) -> Iterable[Tuple[str, str]]:
         yield val, val
 
 
-def shell_integration(x: str) -> str:
-    s = {'enabled', 'disabled', 'no-rc', 'no-cursor', 'no-title', 'no-prompt-mark', 'no-complete'}
-    q = set(x.split())
+def shell_integration(x: str) -> FrozenSet[str]:
+    s = frozenset({'enabled', 'disabled', 'no-rc', 'no-cursor', 'no-title', 'no-prompt-mark', 'no-complete'})
+    q = frozenset(x.lower().split())
     if not q.issubset(s):
         log_error(f'Invalid shell integration options: {q - s}, ignoring')
-        return ' '.join(q & s)
-    return x
+        return q & s
+    return q
 
 
 def action_alias(val: str) -> Iterable[Tuple[str, str]]:
