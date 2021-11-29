@@ -238,7 +238,7 @@ class Boss:
         self.current_visual_select: Optional[VisualSelect] = None
         self.startup_cursor_text_color = opts.cursor_text_color
         self.pending_sequences: Optional[SubSequenceMap] = None
-        self.default_pending_action: Tuple[KeyAction, ...] = ()
+        self.default_pending_action: str = ''
         self.cached_values = cached_values
         self.os_window_map: Dict[int, TabManager] = {}
         self.os_window_death_actions: Dict[int, Callable[[], None]] = {}
@@ -259,7 +259,7 @@ class Boss:
         )
         set_boss(self)
         self.args = args
-        self.global_shortcuts_map: KeyMap = {v: (KeyAction(k),) for k, v in global_shortcuts.items()}
+        self.global_shortcuts_map: KeyMap = {v: k for k, v in global_shortcuts.items()}
         self.global_shortcuts = global_shortcuts
         self.mouse_handler: Optional[Callable[[WindowSystemMouseEvent], None]] = None
         self.update_keymap()
@@ -895,7 +895,7 @@ class Boss:
         t = self.active_tab
         return None if t is None else t.active_window
 
-    def set_pending_sequences(self, sequences: SubSequenceMap, default_pending_action: Tuple[KeyAction, ...] = ()) -> None:
+    def set_pending_sequences(self, sequences: SubSequenceMap, default_pending_action: str = '') -> None:
         self.pending_sequences = sequences
         self.default_pending_action = default_pending_action
         set_in_sequence_mode(True)
@@ -905,18 +905,18 @@ class Boss:
         key_action = get_shortcut(self.keymap, ev)
         if key_action is None:
             sequences = get_shortcut(get_options().sequence_map, ev)
-            if sequences and not isinstance(sequences, tuple):
+            if sequences and not isinstance(sequences, str):
                 self.set_pending_sequences(sequences)
                 return True
             if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
-        elif isinstance(key_action, tuple):
+        elif isinstance(key_action, str):
             return self.combine(key_action)
         return False
 
     def clear_pending_sequences(self) -> None:
         self.pending_sequences = None
-        self.default_pending_action = ()
+        self.default_pending_action = ''
         set_in_sequence_mode(False)
 
     def process_sequence(self, ev: KeyEvent) -> None:
@@ -976,18 +976,18 @@ class Boss:
         for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
             if only_window_ids and window.id not in only_window_ids:
                 continue
-            ac = KeyAction('visual_window_select_action_trigger', (window.id,))
+            ac = f'visual_window_select_action_trigger {window.id}'
             if idx >= len(alphanumerics):
                 break
             ch = alphanumerics[idx]
             window.screen.set_window_char(ch)
             self.current_visual_select.window_ids.append(window.id)
             for mods in (0, GLFW_MOD_CONTROL, GLFW_MOD_CONTROL | GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_ALT, GLFW_MOD_SHIFT):
-                pending_sequences[(SingleKey(mods=mods, key=ord(ch.lower())),)] = (ac,)
+                pending_sequences[(SingleKey(mods=mods, key=ord(ch.lower())),)] = ac
                 if ch in string.digits:
-                    pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{ch}']),)] = (ac,)
+                    pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{ch}']),)] = ac
         if len(self.current_visual_select.window_ids) > 1:
-            self.set_pending_sequences(pending_sequences, default_pending_action=(KeyAction('visual_window_select_action_trigger', (0,)),))
+            self.set_pending_sequences(pending_sequences, default_pending_action='visual_window_select_action_trigger 0')
             redirect_mouse_handling(True)
             self.mouse_handler = self.visual_window_select_mouse_handler
         else:
@@ -997,7 +997,7 @@ class Boss:
 
     def visual_window_select_action_trigger(self, window_id: int = 0) -> None:
         if self.current_visual_select:
-            self.current_visual_select.trigger(window_id)
+            self.current_visual_select.trigger(int(window_id))
         self.current_visual_select = None
 
     def visual_window_select_mouse_handler(self, ev: WindowSystemMouseEvent) -> None:
@@ -1131,17 +1131,25 @@ class Boss:
 
             map kitty_mod+e combine : new_window : next_layout
         ''')
-    def combine(self, actions: Tuple[KeyAction, ...], window_for_dispatch: Optional[Window] = None, dispatch_type: str = 'KeyPress') -> bool:
+    def combine(self, action_definition: str, window_for_dispatch: Optional[Window] = None, dispatch_type: str = 'KeyPress') -> bool:
         consumed = False
-        if actions:
+        if action_definition:
             try:
-                if self.dispatch_action(actions[0], window_for_dispatch, dispatch_type):
-                    consumed = True
-                    if len(actions) > 1:
-                        self.drain_actions(list(actions[1:]), window_for_dispatch, dispatch_type)
+                actions = get_options().alias_map.resolve_aliases(action_definition, 'map' if dispatch_type == 'KeyPress' else 'mouse_map')
             except Exception as e:
-                self.show_error('Key action failed', f'{actions[0].pretty()}\n{e}')
-                consumed = True
+                import traceback
+                traceback.print_exc()
+                self.show_error('Failed to parse action', f'{action_definition}\n{e}')
+                return True
+            for action in actions:
+                try:
+                    if self.dispatch_action(actions[0], window_for_dispatch, dispatch_type):
+                        consumed = True
+                        if len(actions) > 1:
+                            self.drain_actions(list(actions[1:]), window_for_dispatch, dispatch_type)
+                except Exception as e:
+                    self.show_error('Key action failed', f'{actions[0].pretty()}\n{e}')
+                    consumed = True
         return consumed
 
     def on_focus(self, os_window_id: int, focused: bool) -> None:

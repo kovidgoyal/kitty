@@ -5,6 +5,7 @@
 import os
 import re
 import sys
+from functools import lru_cache
 from typing import (
     Any, Callable, Container, Dict, FrozenSet, Iterable, Iterator, List,
     NamedTuple, Optional, Sequence, Tuple, Union
@@ -29,10 +30,10 @@ from kitty.rgb import color_as_int
 from kitty.types import FloatEdges, MouseEvent, SingleKey
 from kitty.utils import expandvars, log_error
 
-KeyMap = Dict[SingleKey, Tuple[KeyAction, ...]]
-MouseMap = Dict[MouseEvent, Tuple[KeyAction, ...]]
+KeyMap = Dict[SingleKey, str]
+MouseMap = Dict[MouseEvent, str]
 KeySequence = Tuple[SingleKey, ...]
-SubSequenceMap = Dict[KeySequence, Tuple[KeyAction, ...]]
+SubSequenceMap = Dict[KeySequence, str]
 SequenceMap = Dict[SingleKey, SubSequenceMap]
 MINIMUM_FONT_SIZE = 4
 default_tab_separator = ' ┇'
@@ -249,7 +250,7 @@ def remote_control(func: str, rest: str) -> FuncArgsType:
     return func, args
 
 
-@func_with_args('nth_window', 'scroll_to_prompt')
+@func_with_args('nth_window', 'scroll_to_prompt', 'visual_window_select_action_trigger')
 def single_integer_arg(func: str, rest: str) -> FuncArgsType:
     try:
         num = int(rest)
@@ -831,14 +832,30 @@ class ActionAlias(NamedTuple):
     replace_second_arg: bool = False
 
 
-def build_action_aliases(raw: Dict[str, str], first_arg_replacement: str = '') -> Dict[str, List[ActionAlias]]:
-    ans: Dict[str, List[ActionAlias]] = {}
+class AliasMap:
+
+    def __init__(self) -> None:
+        self.aliases: Dict[str, List[ActionAlias]] = {}
+
+    def append(self, name: str, aa: ActionAlias) -> None:
+        self.aliases.setdefault(name, []).append(aa)
+
+    def update(self, aa: 'AliasMap') -> None:
+        self.aliases.update(aa.aliases)
+
+    @lru_cache(maxsize=256)
+    def resolve_aliases(self, definition: str, map_type: str = 'map') -> Tuple[KeyAction, ...]:
+        return tuple(resolve_aliases_and_parse_actions(definition, self.aliases, map_type))
+
+
+def build_action_aliases(raw: Dict[str, str], first_arg_replacement: str = '') -> AliasMap:
+    ans = AliasMap()
     if first_arg_replacement:
         for alias_name, rest in raw.items():
-            ans.setdefault(first_arg_replacement, []).append(ActionAlias(alias_name, rest, True))
+            ans.append(first_arg_replacement, ActionAlias(alias_name, rest, True))
     else:
         for alias_name, rest in raw.items():
-            ans[alias_name] = [ActionAlias(alias_name, rest)]
+            ans.append(alias_name, ActionAlias(alias_name, rest))
     return ans
 
 
@@ -882,23 +899,17 @@ def resolve_aliases_and_parse_actions(
 
 
 class BaseDefinition:
-    actions: Tuple[KeyAction, ...] = ()
     no_op_actions = frozenset(('noop', 'no-op', 'no_op'))
     map_type: str = 'map'
     definition_location: CurrentlyParsing
 
-    def __init__(self, original_definition: str = '') -> None:
-        self.original_definition = original_definition
+    def __init__(self, definition: str = '') -> None:
+        self.definition = definition
         self.definition_location = currently_parsing.__copy__()
 
     @property
     def is_no_op(self) -> bool:
-        return self.original_definition in self.no_op_actions
-
-    def resolve_aliases_and_parse(self, aliases: Dict[str, List[ActionAlias]]) -> None:
-        if self.original_definition and (aliases or not self.actions):
-            self.actions = tuple(resolve_aliases_and_parse_actions(
-                self.original_definition, aliases, self.map_type))
+        return self.definition in self.no_op_actions
 
     def pretty_repr(self, *fields: str) -> str:
         kwds = []
@@ -907,8 +918,8 @@ class BaseDefinition:
             val = getattr(self, f)
             if val != getattr(defaults, f):
                 kwds.append(f'{f}={val!r}')
-        if self.original_definition:
-            kwds.append(f'original_definition={self.original_definition!r}')
+        if self.definition:
+            kwds.append(f'definition={self.definition!r}')
         return f'{self.__class__.__name__}({", ".join(kwds)})'
 
 
@@ -917,24 +928,22 @@ class MouseMapping(BaseDefinition):
 
     def __init__(
         self, button: int = 0, mods: int = 0, repeat_count: int = 1, grabbed: bool = False,
-        actions: Tuple[KeyAction, ...] = (), original_definition: str = ''
+        definition: str = ''
     ):
-        super().__init__(original_definition)
+        super().__init__(definition)
         self.button = button
         self.mods = mods
-        self.actions = actions
         self.repeat_count = repeat_count
         self.grabbed = grabbed
 
     def __repr__(self) -> str:
-        return self.pretty_repr('button', 'mods', 'repeat_count', 'grabbed', 'actions')
+        return self.pretty_repr('button', 'mods', 'repeat_count', 'grabbed')
 
-    def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, List[ActionAlias]]) -> 'MouseMapping':
+    def resolve_and_copy(self, kitty_mod: int) -> 'MouseMapping':
         ans = MouseMapping(
             self.button, defines.resolve_key_mods(kitty_mod, self.mods), self.repeat_count, self.grabbed,
-            self.actions, self.original_definition)
+            self.definition)
         ans.definition_location = self.definition_location
-        ans.resolve_aliases_and_parse(aliases)
         return ans
 
     @property
@@ -945,28 +954,26 @@ class MouseMapping(BaseDefinition):
 class KeyDefinition(BaseDefinition):
 
     def __init__(
-        self, is_sequence: bool = False, actions: Tuple[KeyAction, ...] = (), trigger: SingleKey = SingleKey(),
-            rest: Tuple[SingleKey, ...] = (), original_definition: str = ''
+        self, is_sequence: bool = False, trigger: SingleKey = SingleKey(),
+            rest: Tuple[SingleKey, ...] = (), definition: str = ''
     ):
-        super().__init__(original_definition)
+        super().__init__(definition)
         self.is_sequence = is_sequence
-        self.actions = actions
         self.trigger = trigger
         self.rest = rest
 
     def __repr__(self) -> str:
-        return self.pretty_repr('is_sequence', 'actions', 'trigger', 'rest')
+        return self.pretty_repr('is_sequence', 'trigger', 'rest')
 
-    def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, List[ActionAlias]]) -> 'KeyDefinition':
+    def resolve_and_copy(self, kitty_mod: int) -> 'KeyDefinition':
         def r(k: SingleKey) -> SingleKey:
             mods = defines.resolve_key_mods(kitty_mod, k.mods)
             return k._replace(mods=mods)
         ans = KeyDefinition(
-            self.is_sequence, self.actions, r(self.trigger), tuple(map(r, self.rest)),
-            self.original_definition
+            self.is_sequence, r(self.trigger), tuple(map(r, self.rest)),
+            self.definition
         )
         ans.definition_location = self.definition_location
-        ans.resolve_aliases_and_parse(aliases)
         return ans
 
 
@@ -1007,10 +1014,10 @@ def parse_map(val: str) -> Iterable[KeyDefinition]:
             return
     if is_sequence:
         if trigger is not None:
-            yield KeyDefinition(True, (), trigger, rest, original_definition=action)
+            yield KeyDefinition(True, trigger, rest, definition=action)
     else:
         assert key is not None
-        yield KeyDefinition(False, (), SingleKey(mods, is_native, key), original_definition=action)
+        yield KeyDefinition(False, SingleKey(mods, is_native, key), definition=action)
 
 
 def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
@@ -1044,7 +1051,7 @@ def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
         log_error(f'Mouse modes: {modes} not recognized, ignoring')
         return
     for mode in sorted(specified_modes):
-        yield MouseMapping(button, mods, count, mode == 'grabbed', original_definition=action)
+        yield MouseMapping(button, mods, count, mode == 'grabbed', definition=action)
 
 
 def deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:

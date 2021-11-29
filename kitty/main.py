@@ -6,7 +6,7 @@ import os
 import shutil
 import sys
 from contextlib import contextmanager, suppress
-from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple
+from typing import Dict, Generator, List, Optional, Sequence, Tuple
 
 from .borders import load_borders_program
 from .boss import Boss
@@ -108,14 +108,17 @@ def init_glfw(opts: Options, debug_keyboard: bool = False, debug_rendering: bool
     return glfw_module
 
 
-def get_macos_shortcut_for(opts: Options, function: str = 'new_os_window', args: Tuple[Any, ...] = (), lookup_name: str = '') -> Optional[SingleKey]:
+def get_macos_shortcut_for(
+    func_map: Dict[Tuple[str, ...], List[SingleKey]], defn: str = 'new_os_window', lookup_name: str = ''
+) -> Optional[SingleKey]:
+    # for maximum robustness we should use opts.alias_map to resolve
+    # aliases however this requires parsing everything on startup which could
+    # be potentially slow. Lets just hope the user doesnt alias these
+    # fucntions.
     ans = None
     candidates = []
-    for k, v in opts.keymap.items():
-        if len(v) == 1:
-            q = v[0]
-            if q.func == function and q.args == args:
-                candidates.append(k)
+    qkey = tuple(defn.split())
+    candidates = func_map[qkey]
     if candidates:
         from .fast_data_types import cocoa_set_global_shortcut
         alt_mods = GLFW_MOD_ALT, GLFW_MOD_ALT | GLFW_MOD_SHIFT
@@ -126,7 +129,7 @@ def get_macos_shortcut_for(opts: Options, function: str = 'new_os_window', args:
                 # presumably because Apple reserves them for IME, see
                 # https://github.com/kovidgoyal/kitty/issues/3515
                 continue
-            if cocoa_set_global_shortcut(lookup_name or function, candidate[0], candidate[2]):
+            if cocoa_set_global_shortcut(lookup_name or qkey[0], candidate[0], candidate[2]):
                 ans = candidate
                 break
     return ans
@@ -141,15 +144,21 @@ def set_x11_window_icon() -> None:
 def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
     global_shortcuts: Dict[str, SingleKey] = {}
     if is_macos:
+        from collections import defaultdict
+        func_map = defaultdict(list)
+        for k, v in opts.keymap.items():
+            parts = tuple(v.split())
+            func_map[parts].append(k)
+
         for ac in ('new_os_window', 'close_os_window', 'close_tab', 'edit_config_file', 'previous_tab',
                    'next_tab', 'new_tab', 'new_window', 'close_window'):
-            val = get_macos_shortcut_for(opts, ac)
+            val = get_macos_shortcut_for(func_map, ac)
             if val is not None:
                 global_shortcuts[ac] = val
-        val = get_macos_shortcut_for(opts, 'clear_terminal', args=('reset', True), lookup_name='reset_terminal')
+        val = get_macos_shortcut_for(func_map, 'clear_terminal reset active', lookup_name='reset_terminal')
         if val is not None:
             global_shortcuts['reset_terminal'] = val
-        val = get_macos_shortcut_for(opts, 'load_config_file', args=(), lookup_name='reload_config')
+        val = get_macos_shortcut_for(func_map, 'load_config_file', lookup_name='reload_config')
         if val is not None:
             global_shortcuts['reload_config'] = val
     if is_macos and opts.macos_custom_beam_cursor:

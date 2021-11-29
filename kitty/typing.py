@@ -5,7 +5,7 @@ from typing import Tuple
 
 
 BossType = ChildType = TabType = WindowType = ScreenType = None
-BadLineType = SequenceMap = KeyActionType = None
+BadLineType = SequenceMap = KeyActionType = AliasMap = None
 AddressFamily = PopenType = Socket = StartupCtx = None
 SessionTab = SessionType = LayoutType = SpecialWindowInstance = None
 MarkType = RemoteCommandType = CoreTextFont = FontConfigPattern = None

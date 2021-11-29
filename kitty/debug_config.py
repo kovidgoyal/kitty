@@ -16,7 +16,6 @@ from typing import (
 from kittens.tui.operations import colored, styled
 
 from .cli import version
-from .conf.utils import KeyAction
 from .constants import (
     extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
 )
@@ -27,7 +26,7 @@ from .rgb import color_as_sharp
 from .types import MouseEvent, SingleKey
 from .typing import SequenceMap
 
-ShortcutMap = Dict[Tuple[SingleKey, ...], Tuple[KeyAction, ...]]
+ShortcutMap = Dict[Tuple[SingleKey, ...], str]
 
 
 def green(x: str) -> str:
@@ -54,7 +53,7 @@ def mod_to_names(mods: int) -> Generator[str, None, None]:
             yield name
 
 
-def print_shortcut(key_sequence: Iterable[SingleKey], actions: Iterable[KeyAction], print: Callable[..., None]) -> None:
+def print_shortcut(key_sequence: Iterable[SingleKey], defn: str, print: Callable[..., None]) -> None:
     from .fast_data_types import glfw_get_key_name
     keys = []
     for key_spec in key_sequence:
@@ -66,8 +65,7 @@ def print_shortcut(key_sequence: Iterable[SingleKey], actions: Iterable[KeyActio
             names.append(kname or f'{key}')
         keys.append('+'.join(names))
 
-    for action in actions:
-        print('\t' + ' > '.join(keys), action)
+    print('\t' + ' > '.join(keys), defn)
 
 
 def print_shortcut_changes(defns: ShortcutMap, text: str, changes: Set[Tuple[SingleKey, ...]], print: Callable[..., None]) -> None:
@@ -100,12 +98,11 @@ def compare_mousemaps(final: MouseMap, initial: MouseMap, print: Callable[..., N
     removed = set(initial) - set(final)
     changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
 
-    def print_mouse_action(trigger: MouseEvent, actions: Tuple[KeyAction, ...]) -> None:
+    def print_mouse_action(trigger: MouseEvent, defn: str) -> None:
         names = list(mod_to_names(trigger.mods)) + [f'b{trigger.button+1}']
         when = {-1: 'repeat', 1: 'press', 2: 'doublepress', 3: 'triplepress'}.get(trigger.repeat_count, trigger.repeat_count)
         grabbed = 'grabbed' if trigger.grabbed else 'ungrabbed'
-        for action in actions:
-            print('\t', '+'.join(names), when, grabbed, action)
+        print('\t', '+'.join(names), when, grabbed, defn)
 
     def print_changes(defns: MouseMap, changes: Set[MouseEvent], text: str) -> None:
         if changes:

@@ -9,9 +9,9 @@ from kitty.conf.types import Action, Definition
 
 definition = Definition(
     'kitty',
-    Action('map', 'parse_map', {'keymap': 'KeyMap', 'sequence_map': 'SequenceMap'},
-           ['KeyDefinition', 'kitty.conf.utils.KeyAction', 'kitty.types.SingleKey']),
-    Action('mouse_map', 'parse_mouse_map', {'mousemap': 'MouseMap'}, ['MouseMapping', 'kitty.conf.utils.KeyAction']),
+    Action('map', 'parse_map', {'keymap': 'KeyMap', 'sequence_map': 'SequenceMap', 'alias_map': 'AliasMap'},
+           ['KeyDefinition', 'kitty.types.SingleKey']),
+    Action('mouse_map', 'parse_mouse_map', {'mousemap': 'MouseMap'}, ['MouseMapping']),
     has_color_table=True,
 )
 definition.add_deprecation('deprecated_hide_window_decorations_aliases', 'x11_hide_window_decorations', 'macos_hide_titlebar')

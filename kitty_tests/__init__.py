@@ -69,11 +69,11 @@ class Callbacks:
 
     def on_mouse_event(self, event):
         ev = MouseEvent(**event)
-        actions = self.opts.mousemap.get(ev)
-        if not actions:
+        action_def = self.opts.mousemap.get(ev)
+        if not action_def:
             return False
         self.current_mouse_button = ev.button
-        for action in actions:
+        for action in self.opts.alias_map.resolve_aliases(action_def, 'mouse_map'):
             getattr(self, action.func)(*action.args)
         self.current_mouse_button = 0
         return True

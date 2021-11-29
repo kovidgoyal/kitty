@@ -23,7 +23,7 @@ from .fast_data_types import (
 )
 from .key_encoding import KeyEvent as KeyEventType
 from .layout.base import Layout as LayoutType
-from .options.utils import KeyMap as KeyMap, SequenceMap as SequenceMap
+from .options.utils import KeyMap as KeyMap, SequenceMap as SequenceMap, AliasMap as AliasMap
 from .rc.base import RemoteCommand as RemoteCommandType
 from .session import Session as SessionType, Tab as SessionTab
 from .tabs import (

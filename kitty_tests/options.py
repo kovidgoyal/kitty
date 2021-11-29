@@ -34,8 +34,8 @@ class TestConfParsing(BaseTest):
             return ans
 
         def keys_for_func(opts, name):
-            for key, actions in opts.keymap.items():
-                for action in actions:
+            for key, defn in opts.keymap.items():
+                for action in opts.alias_map.resolve_aliases(defn):
                     if action.func == name:
                         yield key
 
@@ -57,48 +57,52 @@ class TestConfParsing(BaseTest):
         # test the aliasing options
         opts = p('env A=1', 'env B=x$A', 'env C=', 'env D', 'clear_all_shortcuts y', 'kitten_alias a b --moo', 'map f1 kitten a arg')
         self.ae(opts.env, {'A': '1', 'B': 'x1', 'C': '', 'D': DELETE_ENV_VAR})
-        ka = tuple(opts.keymap.values())[0][0]
+
+        def ac(which=0):
+            ka = tuple(opts.keymap.values())[0]
+            acs = opts.alias_map.resolve_aliases(ka)
+            return acs[which]
+
+        ka = ac()
         self.ae(ka.func, 'kitten')
         self.ae(ka.args, ('b', '--moo', 'arg'))
 
         opts = p('clear_all_shortcuts y', 'kitten_alias hints hints --hi', 'map f1 kitten hints XXX')
-        ka = tuple(opts.keymap.values())[0][0]
+        ka = ac()
         self.ae(ka.func, 'kitten')
         self.ae(ka.args, ('hints', '--hi', 'XXX'))
 
         opts = p('clear_all_shortcuts y', 'action_alias la launch --moo', 'map f1 la XXX')
-        ka = tuple(opts.keymap.values())[0][0]
+        ka = ac()
         self.ae(ka.func, 'launch')
         self.ae(ka.args, ('--moo', 'XXX'))
 
         opts = p('clear_all_shortcuts y', 'action_alias one launch --moo', 'action_alias two one recursive', 'map f1 two XXX')
-        ka = tuple(opts.keymap.values())[0][0]
+        ka = ac()
         self.ae(ka.func, 'launch')
         self.ae(ka.args, ('--moo', 'recursive', 'XXX'))
 
         opts = p('clear_all_shortcuts y', 'action_alias launch two 1', 'action_alias two launch 2', 'map f1 launch 3')
-        ka = tuple(opts.keymap.values())[0][0]
+        ka = ac()
         self.ae(ka.func, 'launch')
         self.ae(ka.args, ('2', '1', '3'))
 
         opts = p('clear_all_shortcuts y', 'action_alias launch launch --moo', 'map f1 launch XXX')
-        ka = tuple(opts.keymap.values())[0][0]
+        ka = ac()
         self.ae(ka.func, 'launch')
         self.ae(ka.args, ('--moo', 'XXX'))
 
         opts = p('clear_all_shortcuts y', 'action_alias cfs change_font_size current', 'map f1 cfs +2')
-        ka = tuple(opts.keymap.values())[0][0]
+        ka = ac()
         self.ae(ka.func, 'change_font_size')
         self.ae(ka.args, (False, '+', 2.0))
 
         opts = p('clear_all_shortcuts y', 'action_alias la launch --moo', 'map f1 combine : new_window : la ')
-        ka = tuple(opts.keymap.values())[0]
-        self.ae((ka[0].func, ka[1].func), ('new_window', 'launch'))
+        self.ae((ac().func, ac(1).func), ('new_window', 'launch'))
 
         opts = p('clear_all_shortcuts y', 'action_alias cc combine : new_window : launch --moo', 'map f1 cc XXX')
-        ka = tuple(opts.keymap.values())[0]
-        self.ae((ka[0].func, ka[1].func), ('new_window', 'launch'))
-        self.ae(ka[1].args, ('--moo', 'XXX'))
+        self.ae((ac().func, ac(1).func), ('new_window', 'launch'))
+        self.ae(ac(1).args, ('--moo', 'XXX'))
 
         opts = p('kitty_mod alt')
         self.ae(opts.kitty_mod, to_modifiers('alt'))

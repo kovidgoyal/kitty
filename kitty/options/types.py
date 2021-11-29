@@ -2,13 +2,11 @@
 
 import typing
 from array import array
-from kitty.conf.utils import KeyAction
-import kitty.conf.utils
 from kitty.constants import is_macos
 import kitty.constants
 from kitty.fast_data_types import Color
 import kitty.fast_data_types
-from kitty.options.utils import KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap, TabBarMarginHeight
+from kitty.options.utils import AliasMap, KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap, TabBarMarginHeight
 import kitty.options.utils
 from kitty.types import FloatEdges, SingleKey
 import kitty.types
@@ -593,6 +591,7 @@ class Options:
     map: typing.List[kitty.options.utils.KeyDefinition] = []
     keymap: KeyMap = {}
     sequence_map: SequenceMap = {}
+    alias_map: AliasMap = AliasMap()
     mouse_map: typing.List[kitty.options.utils.MouseMapping] = []
     mousemap: MouseMap = {}
     color_table: "array[int]" = array("L", (
@@ -708,252 +707,252 @@ defaults.symbol_map = {}
 defaults.watcher = {}
 defaults.map = [
     # copy_to_clipboard
-    KeyDefinition(actions=(KeyAction('copy_to_clipboard'),), trigger=SingleKey(mods=1024, key=99), original_definition='copy_to_clipboard'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=99), definition='copy_to_clipboard'),  # noqa
     # paste_from_clipboard
-    KeyDefinition(actions=(KeyAction('paste_from_clipboard'),), trigger=SingleKey(mods=1024, key=118), original_definition='paste_from_clipboard'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=118), definition='paste_from_clipboard'),  # noqa
     # paste_from_selection
-    KeyDefinition(actions=(KeyAction('paste_from_selection'),), trigger=SingleKey(mods=1024, key=115), original_definition='paste_from_selection'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=115), definition='paste_from_selection'),  # noqa
     # paste_from_selection
-    KeyDefinition(actions=(KeyAction('paste_from_selection'),), trigger=SingleKey(mods=1, key=57348), original_definition='paste_from_selection'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1, key=57348), definition='paste_from_selection'),  # noqa
     # pass_selection_to_program
-    KeyDefinition(actions=(KeyAction('pass_selection_to_program'),), trigger=SingleKey(mods=1024, key=111), original_definition='pass_selection_to_program'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=111), definition='pass_selection_to_program'),  # noqa
     # scroll_line_up
-    KeyDefinition(actions=(KeyAction('scroll_line_up'),), trigger=SingleKey(mods=1024, key=57352), original_definition='scroll_line_up'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57352), definition='scroll_line_up'),  # noqa
     # scroll_line_up
-    KeyDefinition(actions=(KeyAction('scroll_line_up'),), trigger=SingleKey(mods=1024, key=107), original_definition='scroll_line_up'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=107), definition='scroll_line_up'),  # noqa
     # scroll_line_down
-    KeyDefinition(actions=(KeyAction('scroll_line_down'),), trigger=SingleKey(mods=1024, key=57353), original_definition='scroll_line_down'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57353), definition='scroll_line_down'),  # noqa
     # scroll_line_down
-    KeyDefinition(actions=(KeyAction('scroll_line_down'),), trigger=SingleKey(mods=1024, key=106), original_definition='scroll_line_down'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=106), definition='scroll_line_down'),  # noqa
     # scroll_page_up
-    KeyDefinition(actions=(KeyAction('scroll_page_up'),), trigger=SingleKey(mods=1024, key=57354), original_definition='scroll_page_up'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57354), definition='scroll_page_up'),  # noqa
     # scroll_page_down
-    KeyDefinition(actions=(KeyAction('scroll_page_down'),), trigger=SingleKey(mods=1024, key=57355), original_definition='scroll_page_down'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57355), definition='scroll_page_down'),  # noqa
     # scroll_home
-    KeyDefinition(actions=(KeyAction('scroll_home'),), trigger=SingleKey(mods=1024, key=57356), original_definition='scroll_home'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57356), definition='scroll_home'),  # noqa
     # scroll_end
-    KeyDefinition(actions=(KeyAction('scroll_end'),), trigger=SingleKey(mods=1024, key=57357), original_definition='scroll_end'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57357), definition='scroll_end'),  # noqa
     # scroll_to_previous_prompt
-    KeyDefinition(actions=(KeyAction('scroll_to_prompt', (-1,)),), trigger=SingleKey(mods=1024, key=122), original_definition='scroll_to_prompt -1'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=122), definition='scroll_to_prompt -1'),  # noqa
     # scroll_to_next_prompt
-    KeyDefinition(actions=(KeyAction('scroll_to_prompt', (1,)),), trigger=SingleKey(mods=1024, key=120), original_definition='scroll_to_prompt 1'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=120), definition='scroll_to_prompt 1'),  # noqa
     # show_scrollback
-    KeyDefinition(actions=(KeyAction('show_scrollback'),), trigger=SingleKey(mods=1024, key=104), original_definition='show_scrollback'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=104), definition='show_scrollback'),  # noqa
     # show_last_command_output
-    KeyDefinition(actions=(KeyAction('show_last_command_output'),), trigger=SingleKey(mods=1024, key=103), original_definition='show_last_command_output'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=103), definition='show_last_command_output'),  # noqa
     # new_window
-    KeyDefinition(actions=(KeyAction('new_window'),), trigger=SingleKey(mods=1024, key=57345), original_definition='new_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57345), definition='new_window'),  # noqa
     # new_os_window
-    KeyDefinition(actions=(KeyAction('new_os_window'),), trigger=SingleKey(mods=1024, key=110), original_definition='new_os_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=110), definition='new_os_window'),  # noqa
     # close_window
-    KeyDefinition(actions=(KeyAction('close_window'),), trigger=SingleKey(mods=1024, key=119), original_definition='close_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=119), definition='close_window'),  # noqa
     # next_window
-    KeyDefinition(actions=(KeyAction('next_window'),), trigger=SingleKey(mods=1024, key=93), original_definition='next_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=93), definition='next_window'),  # noqa
     # previous_window
-    KeyDefinition(actions=(KeyAction('previous_window'),), trigger=SingleKey(mods=1024, key=91), original_definition='previous_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=91), definition='previous_window'),  # noqa
     # move_window_forward
-    KeyDefinition(actions=(KeyAction('move_window_forward'),), trigger=SingleKey(mods=1024, key=102), original_definition='move_window_forward'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=102), definition='move_window_forward'),  # noqa
     # move_window_backward
-    KeyDefinition(actions=(KeyAction('move_window_backward'),), trigger=SingleKey(mods=1024, key=98), original_definition='move_window_backward'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=98), definition='move_window_backward'),  # noqa
     # move_window_to_top
-    KeyDefinition(actions=(KeyAction('move_window_to_top'),), trigger=SingleKey(mods=1024, key=96), original_definition='move_window_to_top'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=96), definition='move_window_to_top'),  # noqa
     # start_resizing_window
-    KeyDefinition(actions=(KeyAction('start_resizing_window'),), trigger=SingleKey(mods=1024, key=114), original_definition='start_resizing_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=114), definition='start_resizing_window'),  # noqa
     # first_window
-    KeyDefinition(actions=(KeyAction('first_window'),), trigger=SingleKey(mods=1024, key=49), original_definition='first_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=49), definition='first_window'),  # noqa
     # second_window
-    KeyDefinition(actions=(KeyAction('second_window'),), trigger=SingleKey(mods=1024, key=50), original_definition='second_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=50), definition='second_window'),  # noqa
     # third_window
-    KeyDefinition(actions=(KeyAction('third_window'),), trigger=SingleKey(mods=1024, key=51), original_definition='third_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=51), definition='third_window'),  # noqa
     # fourth_window
-    KeyDefinition(actions=(KeyAction('fourth_window'),), trigger=SingleKey(mods=1024, key=52), original_definition='fourth_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=52), definition='fourth_window'),  # noqa
     # fifth_window
-    KeyDefinition(actions=(KeyAction('fifth_window'),), trigger=SingleKey(mods=1024, key=53), original_definition='fifth_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=53), definition='fifth_window'),  # noqa
     # sixth_window
-    KeyDefinition(actions=(KeyAction('sixth_window'),), trigger=SingleKey(mods=1024, key=54), original_definition='sixth_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=54), definition='sixth_window'),  # noqa
     # seventh_window
-    KeyDefinition(actions=(KeyAction('seventh_window'),), trigger=SingleKey(mods=1024, key=55), original_definition='seventh_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=55), definition='seventh_window'),  # noqa
     # eighth_window
-    KeyDefinition(actions=(KeyAction('eighth_window'),), trigger=SingleKey(mods=1024, key=56), original_definition='eighth_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=56), definition='eighth_window'),  # noqa
     # ninth_window
-    KeyDefinition(actions=(KeyAction('ninth_window'),), trigger=SingleKey(mods=1024, key=57), original_definition='ninth_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57), definition='ninth_window'),  # noqa
     # tenth_window
-    KeyDefinition(actions=(KeyAction('tenth_window'),), trigger=SingleKey(mods=1024, key=48), original_definition='tenth_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=48), definition='tenth_window'),  # noqa
     # focus_visible_window
-    KeyDefinition(actions=(KeyAction('focus_visible_window'),), trigger=SingleKey(mods=1024, key=57370), original_definition='focus_visible_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57370), definition='focus_visible_window'),  # noqa
     # swap_with_window
-    KeyDefinition(actions=(KeyAction('swap_with_window'),), trigger=SingleKey(mods=1024, key=57371), original_definition='swap_with_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57371), definition='swap_with_window'),  # noqa
     # next_tab
-    KeyDefinition(actions=(KeyAction('next_tab'),), trigger=SingleKey(mods=1024, key=57351), original_definition='next_tab'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57351), definition='next_tab'),  # noqa
     # next_tab
-    KeyDefinition(actions=(KeyAction('next_tab'),), trigger=SingleKey(mods=4, key=57346), original_definition='next_tab'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=4, key=57346), definition='next_tab'),  # noqa
     # previous_tab
-    KeyDefinition(actions=(KeyAction('previous_tab'),), trigger=SingleKey(mods=1024, key=57350), original_definition='previous_tab'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57350), definition='previous_tab'),  # noqa
     # previous_tab
-    KeyDefinition(actions=(KeyAction('previous_tab'),), trigger=SingleKey(mods=5, key=57346), original_definition='previous_tab'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=5, key=57346), definition='previous_tab'),  # noqa
     # new_tab
-    KeyDefinition(actions=(KeyAction('new_tab'),), trigger=SingleKey(mods=1024, key=116), original_definition='new_tab'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=116), definition='new_tab'),  # noqa
     # close_tab
-    KeyDefinition(actions=(KeyAction('close_tab'),), trigger=SingleKey(mods=1024, key=113), original_definition='close_tab'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=113), definition='close_tab'),  # noqa
     # move_tab_forward
-    KeyDefinition(actions=(KeyAction('move_tab_forward'),), trigger=SingleKey(mods=1024, key=46), original_definition='move_tab_forward'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=46), definition='move_tab_forward'),  # noqa
     # move_tab_backward
-    KeyDefinition(actions=(KeyAction('move_tab_backward'),), trigger=SingleKey(mods=1024, key=44), original_definition='move_tab_backward'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=44), definition='move_tab_backward'),  # noqa
     # set_tab_title
-    KeyDefinition(actions=(KeyAction('set_tab_title'),), trigger=SingleKey(mods=1026, key=116), original_definition='set_tab_title'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1026, key=116), definition='set_tab_title'),  # noqa
     # next_layout
-    KeyDefinition(actions=(KeyAction('next_layout'),), trigger=SingleKey(mods=1024, key=108), original_definition='next_layout'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=108), definition='next_layout'),  # noqa
     # increase_font_size
-    KeyDefinition(actions=(KeyAction('change_font_size', (True, '+', 2.0)),), trigger=SingleKey(mods=1024, key=61), original_definition='change_font_size all +2.0'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=61), definition='change_font_size all +2.0'),  # noqa
     # increase_font_size
-    KeyDefinition(actions=(KeyAction('change_font_size', (True, '+', 2.0)),), trigger=SingleKey(mods=1024, key=43), original_definition='change_font_size all +2.0'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=43), definition='change_font_size all +2.0'),  # noqa
     # increase_font_size
-    KeyDefinition(actions=(KeyAction('change_font_size', (True, '+', 2.0)),), trigger=SingleKey(mods=1024, key=57413), original_definition='change_font_size all +2.0'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57413), definition='change_font_size all +2.0'),  # noqa
     # decrease_font_size
-    KeyDefinition(actions=(KeyAction('change_font_size', (True, '-', 2.0)),), trigger=SingleKey(mods=1024, key=45), original_definition='change_font_size all -2.0'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=45), definition='change_font_size all -2.0'),  # noqa
     # decrease_font_size
-    KeyDefinition(actions=(KeyAction('change_font_size', (True, '-', 2.0)),), trigger=SingleKey(mods=1024, key=57412), original_definition='change_font_size all -2.0'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57412), definition='change_font_size all -2.0'),  # noqa
     # reset_font_size
-    KeyDefinition(actions=(KeyAction('change_font_size', (True, None, 0.0)),), trigger=SingleKey(mods=1024, key=57347), original_definition='change_font_size all 0'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57347), definition='change_font_size all 0'),  # noqa
     # open_url
-    KeyDefinition(actions=(KeyAction('open_url_with_hints'),), trigger=SingleKey(mods=1024, key=101), original_definition='open_url_with_hints'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=101), definition='open_url_with_hints'),  # noqa
     # insert_selected_path
-    KeyDefinition(is_sequence=True, actions=(KeyAction('kitten', ('hints', '--type', 'path', '--program', '-')),), trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=102),), original_definition='kitten hints --type path --program -'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=102),), definition='kitten hints --type path --program -'),  # noqa
     # open_selected_path
-    KeyDefinition(is_sequence=True, actions=(KeyAction('kitten', ('hints', '--type', 'path')),), trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(mods=1, key=102),), original_definition='kitten hints --type path'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(mods=1, key=102),), definition='kitten hints --type path'),  # noqa
     # insert_selected_line
-    KeyDefinition(is_sequence=True, actions=(KeyAction('kitten', ('hints', '--type', 'line', '--program', '-')),), trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=108),), original_definition='kitten hints --type line --program -'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=108),), definition='kitten hints --type line --program -'),  # noqa
     # insert_selected_word
-    KeyDefinition(is_sequence=True, actions=(KeyAction('kitten', ('hints', '--type', 'word', '--program', '-')),), trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=119),), original_definition='kitten hints --type word --program -'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=119),), definition='kitten hints --type word --program -'),  # noqa
     # insert_selected_hash
-    KeyDefinition(is_sequence=True, actions=(KeyAction('kitten', ('hints', '--type', 'hash', '--program', '-')),), trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=104),), original_definition='kitten hints --type hash --program -'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=104),), definition='kitten hints --type hash --program -'),  # noqa
     # goto_file_line
-    KeyDefinition(is_sequence=True, actions=(KeyAction('kitten', ('hints', '--type', 'linenum')),), trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=110),), original_definition='kitten hints --type linenum'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=110),), definition='kitten hints --type linenum'),  # noqa
     # open_selected_hyperlink
-    KeyDefinition(is_sequence=True, actions=(KeyAction('kitten', ('hints', '--type', 'hyperlink')),), trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=121),), original_definition='kitten hints --type hyperlink'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=121),), definition='kitten hints --type hyperlink'),  # noqa
     # toggle_fullscreen
-    KeyDefinition(actions=(KeyAction('toggle_fullscreen'),), trigger=SingleKey(mods=1024, key=57374), original_definition='toggle_fullscreen'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57374), definition='toggle_fullscreen'),  # noqa
     # toggle_maximized
-    KeyDefinition(actions=(KeyAction('toggle_maximized'),), trigger=SingleKey(mods=1024, key=57373), original_definition='toggle_maximized'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57373), definition='toggle_maximized'),  # noqa
     # input_unicode_character
-    KeyDefinition(actions=(KeyAction('kitten', ('unicode_input',)),), trigger=SingleKey(mods=1024, key=117), original_definition='kitten unicode_input'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=117), definition='kitten unicode_input'),  # noqa
     # edit_config_file
-    KeyDefinition(actions=(KeyAction('edit_config_file'),), trigger=SingleKey(mods=1024, key=57365), original_definition='edit_config_file'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57365), definition='edit_config_file'),  # noqa
     # kitty_shell
-    KeyDefinition(actions=(KeyAction('kitty_shell', ('window',)),), trigger=SingleKey(mods=1024, key=57344), original_definition='kitty_shell window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57344), definition='kitty_shell window'),  # noqa
     # increase_background_opacity
-    KeyDefinition(is_sequence=True, actions=(KeyAction('set_background_opacity', ('+0.1',)),), trigger=SingleKey(mods=1024, key=97), rest=(SingleKey(key=109),), original_definition='set_background_opacity +0.1'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=97), rest=(SingleKey(key=109),), definition='set_background_opacity +0.1'),  # noqa
     # decrease_background_opacity
-    KeyDefinition(is_sequence=True, actions=(KeyAction('set_background_opacity', ('-0.1',)),), trigger=SingleKey(mods=1024, key=97), rest=(SingleKey(key=108),), original_definition='set_background_opacity -0.1'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=97), rest=(SingleKey(key=108),), definition='set_background_opacity -0.1'),  # noqa
     # full_background_opacity
-    KeyDefinition(is_sequence=True, actions=(KeyAction('set_background_opacity', ('1',)),), trigger=SingleKey(mods=1024, key=97), rest=(SingleKey(key=49),), original_definition='set_background_opacity 1'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=97), rest=(SingleKey(key=49),), definition='set_background_opacity 1'),  # noqa
     # reset_background_opacity
-    KeyDefinition(is_sequence=True, actions=(KeyAction('set_background_opacity', ('default',)),), trigger=SingleKey(mods=1024, key=97), rest=(SingleKey(key=100),), original_definition='set_background_opacity default'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=97), rest=(SingleKey(key=100),), definition='set_background_opacity default'),  # noqa
     # reset_terminal
-    KeyDefinition(actions=(KeyAction('clear_terminal', ('reset', True)),), trigger=SingleKey(mods=1024, key=57349), original_definition='clear_terminal reset active'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57349), definition='clear_terminal reset active'),  # noqa
     # reload_config_file
-    KeyDefinition(actions=(KeyAction('load_config_file'),), trigger=SingleKey(mods=1024, key=57368), original_definition='load_config_file'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57368), definition='load_config_file'),  # noqa
     # debug_config
-    KeyDefinition(actions=(KeyAction('debug_config'),), trigger=SingleKey(mods=1024, key=57369), original_definition='debug_config'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=1024, key=57369), definition='debug_config'),  # noqa
 ]
 if is_macos:
-    defaults.map.append(KeyDefinition(actions=(KeyAction('copy_to_clipboard'),), trigger=SingleKey(mods=8, key=99), original_definition='copy_to_clipboard'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('paste_from_clipboard'),), trigger=SingleKey(mods=8, key=118), original_definition='paste_from_clipboard'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('scroll_line_up'),), trigger=SingleKey(mods=10, key=57354), original_definition='scroll_line_up'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('scroll_line_up'),), trigger=SingleKey(mods=8, key=57352), original_definition='scroll_line_up'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('scroll_line_down'),), trigger=SingleKey(mods=10, key=57355), original_definition='scroll_line_down'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('scroll_line_down'),), trigger=SingleKey(mods=8, key=57353), original_definition='scroll_line_down'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('scroll_page_up'),), trigger=SingleKey(mods=8, key=57354), original_definition='scroll_page_up'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('scroll_page_down'),), trigger=SingleKey(mods=8, key=57355), original_definition='scroll_page_down'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('scroll_home'),), trigger=SingleKey(mods=8, key=57356), original_definition='scroll_home'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('scroll_end'),), trigger=SingleKey(mods=8, key=57357), original_definition='scroll_end'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('new_window'),), trigger=SingleKey(mods=8, key=57345), original_definition='new_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('new_os_window'),), trigger=SingleKey(mods=8, key=110), original_definition='new_os_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('close_window'),), trigger=SingleKey(mods=9, key=100), original_definition='close_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('start_resizing_window'),), trigger=SingleKey(mods=8, key=114), original_definition='start_resizing_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('first_window'),), trigger=SingleKey(mods=8, key=49), original_definition='first_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('second_window'),), trigger=SingleKey(mods=8, key=50), original_definition='second_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('third_window'),), trigger=SingleKey(mods=8, key=51), original_definition='third_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('fourth_window'),), trigger=SingleKey(mods=8, key=52), original_definition='fourth_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('fifth_window'),), trigger=SingleKey(mods=8, key=53), original_definition='fifth_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('sixth_window'),), trigger=SingleKey(mods=8, key=54), original_definition='sixth_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('seventh_window'),), trigger=SingleKey(mods=8, key=55), original_definition='seventh_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('eighth_window'),), trigger=SingleKey(mods=8, key=56), original_definition='eighth_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('ninth_window'),), trigger=SingleKey(mods=8, key=57), original_definition='ninth_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('next_tab'),), trigger=SingleKey(mods=9, key=93), original_definition='next_tab'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('previous_tab'),), trigger=SingleKey(mods=9, key=91), original_definition='previous_tab'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('new_tab'),), trigger=SingleKey(mods=8, key=116), original_definition='new_tab'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('close_tab'),), trigger=SingleKey(mods=8, key=119), original_definition='close_tab'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('close_os_window'),), trigger=SingleKey(mods=9, key=119), original_definition='close_os_window'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('set_tab_title'),), trigger=SingleKey(mods=9, key=105), original_definition='set_tab_title'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('change_font_size', (True, '+', 2.0)),), trigger=SingleKey(mods=8, key=43), original_definition='change_font_size all +2.0'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('change_font_size', (True, '+', 2.0)),), trigger=SingleKey(mods=8, key=61), original_definition='change_font_size all +2.0'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('change_font_size', (True, '+', 2.0)),), trigger=SingleKey(mods=9, key=61), original_definition='change_font_size all +2.0'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('change_font_size', (True, '-', 2.0)),), trigger=SingleKey(mods=8, key=45), original_definition='change_font_size all -2.0'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('change_font_size', (True, '-', 2.0)),), trigger=SingleKey(mods=9, key=45), original_definition='change_font_size all -2.0'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('change_font_size', (True, None, 0.0)),), trigger=SingleKey(mods=8, key=48), original_definition='change_font_size all 0'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('kitten', ('unicode_input',)),), trigger=SingleKey(mods=12, key=32), original_definition='kitten unicode_input'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('edit_config_file'),), trigger=SingleKey(mods=8, key=44), original_definition='edit_config_file'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('clear_terminal', ('reset', True)),), trigger=SingleKey(mods=10, key=114), original_definition='clear_terminal reset active'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('load_config_file'),), trigger=SingleKey(mods=12, key=44), original_definition='load_config_file'))  # noqa
-    defaults.map.append(KeyDefinition(actions=(KeyAction('debug_config'),), trigger=SingleKey(mods=10, key=44), original_definition='debug_config'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=99), definition='copy_to_clipboard'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=118), definition='paste_from_clipboard'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=57354), definition='scroll_line_up'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57352), definition='scroll_line_up'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=57355), definition='scroll_line_down'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57353), definition='scroll_line_down'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57354), definition='scroll_page_up'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57355), definition='scroll_page_down'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57356), definition='scroll_home'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57357), definition='scroll_end'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57345), definition='new_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=110), definition='new_os_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=100), definition='close_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=114), definition='start_resizing_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=49), definition='first_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=50), definition='second_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=51), definition='third_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=52), definition='fourth_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=53), definition='fifth_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=54), definition='sixth_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=55), definition='seventh_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=56), definition='eighth_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57), definition='ninth_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=93), definition='next_tab'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=91), definition='previous_tab'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=116), definition='new_tab'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=119), definition='close_tab'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=119), definition='close_os_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=105), definition='set_tab_title'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=43), definition='change_font_size all +2.0'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=61), definition='change_font_size all +2.0'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=61), definition='change_font_size all +2.0'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=45), definition='change_font_size all -2.0'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=45), definition='change_font_size all -2.0'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=48), definition='change_font_size all 0'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=12, key=32), definition='kitten unicode_input'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=44), definition='edit_config_file'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=114), definition='clear_terminal reset active'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=12, key=44), definition='load_config_file'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=44), definition='debug_config'))  # noqa
 defaults.mouse_map = [
     # click_url_or_select
-    MouseMapping(repeat_count=-2, actions=(KeyAction('mouse_handle_click', ('selection', 'link', 'prompt')),), original_definition='mouse_handle_click selection link prompt'),  # noqa
+    MouseMapping(repeat_count=-2, definition='mouse_handle_click selection link prompt'),  # noqa
     # click_url_or_select_grabbed
-    MouseMapping(mods=1, repeat_count=-2, grabbed=True, actions=(KeyAction('mouse_handle_click', ('selection', 'link', 'prompt')),), original_definition='mouse_handle_click selection link prompt'),  # noqa
+    MouseMapping(mods=1, repeat_count=-2, grabbed=True, definition='mouse_handle_click selection link prompt'),  # noqa
     # click_url_or_select_grabbed
-    MouseMapping(mods=1, repeat_count=-2, actions=(KeyAction('mouse_handle_click', ('selection', 'link', 'prompt')),), original_definition='mouse_handle_click selection link prompt'),  # noqa
+    MouseMapping(mods=1, repeat_count=-2, definition='mouse_handle_click selection link prompt'),  # noqa
     # click_url
-    MouseMapping(mods=5, repeat_count=-1, grabbed=True, actions=(KeyAction('mouse_handle_click', ('link',)),), original_definition='mouse_handle_click link'),  # noqa
+    MouseMapping(mods=5, repeat_count=-1, grabbed=True, definition='mouse_handle_click link'),  # noqa
     # click_url
-    MouseMapping(mods=5, repeat_count=-1, actions=(KeyAction('mouse_handle_click', ('link',)),), original_definition='mouse_handle_click link'),  # noqa
+    MouseMapping(mods=5, repeat_count=-1, definition='mouse_handle_click link'),  # noqa
     # click_url_discard
-    MouseMapping(mods=5, grabbed=True, actions=(KeyAction('discard_event'),), original_definition='discard_event'),  # noqa
+    MouseMapping(mods=5, grabbed=True, definition='discard_event'),  # noqa
     # paste_selection
-    MouseMapping(button=2, repeat_count=-1, actions=(KeyAction('paste_from_selection'),), original_definition='paste_from_selection'),  # noqa
+    MouseMapping(button=2, repeat_count=-1, definition='paste_from_selection'),  # noqa
     # start_simple_selection
-    MouseMapping(actions=(KeyAction('mouse_selection', (0,)),), original_definition='mouse_selection normal'),  # noqa
+    MouseMapping(definition='mouse_selection normal'),  # noqa
     # start_rectangle_selection
-    MouseMapping(mods=6, actions=(KeyAction('mouse_selection', (2,)),), original_definition='mouse_selection rectangle'),  # noqa
+    MouseMapping(mods=6, definition='mouse_selection rectangle'),  # noqa
     # select_word
-    MouseMapping(repeat_count=2, actions=(KeyAction('mouse_selection', (3,)),), original_definition='mouse_selection word'),  # noqa
+    MouseMapping(repeat_count=2, definition='mouse_selection word'),  # noqa
     # select_line
-    MouseMapping(repeat_count=3, actions=(KeyAction('mouse_selection', (4,)),), original_definition='mouse_selection line'),  # noqa
+    MouseMapping(repeat_count=3, definition='mouse_selection line'),  # noqa
     # select_line_from_point
-    MouseMapping(mods=6, repeat_count=3, actions=(KeyAction('mouse_selection', (5,)),), original_definition='mouse_selection line_from_point'),  # noqa
+    MouseMapping(mods=6, repeat_count=3, definition='mouse_selection line_from_point'),  # noqa
     # extend_selection
-    MouseMapping(button=1, actions=(KeyAction('mouse_selection', (1,)),), original_definition='mouse_selection extend'),  # noqa
+    MouseMapping(button=1, definition='mouse_selection extend'),  # noqa
     # paste_selection_grabbed
-    MouseMapping(button=2, mods=1, repeat_count=-1, grabbed=True, actions=(KeyAction('paste_selection'),), original_definition='paste_selection'),  # noqa
+    MouseMapping(button=2, mods=1, repeat_count=-1, grabbed=True, definition='paste_selection'),  # noqa
     # paste_selection_grabbed
-    MouseMapping(button=2, mods=1, repeat_count=-1, actions=(KeyAction('paste_selection'),), original_definition='paste_selection'),  # noqa
+    MouseMapping(button=2, mods=1, repeat_count=-1, definition='paste_selection'),  # noqa
     # paste_selection_grabbed
-    MouseMapping(button=2, mods=1, grabbed=True, actions=(KeyAction('discard_event'),), original_definition='discard_event'),  # noqa
+    MouseMapping(button=2, mods=1, grabbed=True, definition='discard_event'),  # noqa
     # start_simple_selection_grabbed
-    MouseMapping(mods=1, grabbed=True, actions=(KeyAction('mouse_selection', (0,)),), original_definition='mouse_selection normal'),  # noqa
+    MouseMapping(mods=1, grabbed=True, definition='mouse_selection normal'),  # noqa
     # start_simple_selection_grabbed
-    MouseMapping(mods=1, actions=(KeyAction('mouse_selection', (0,)),), original_definition='mouse_selection normal'),  # noqa
+    MouseMapping(mods=1, definition='mouse_selection normal'),  # noqa
     # start_rectangle_selection_grabbed
-    MouseMapping(mods=7, grabbed=True, actions=(KeyAction('mouse_selection', (2,)),), original_definition='mouse_selection rectangle'),  # noqa
+    MouseMapping(mods=7, grabbed=True, definition='mouse_selection rectangle'),  # noqa
     # start_rectangle_selection_grabbed
-    MouseMapping(mods=7, actions=(KeyAction('mouse_selection', (2,)),), original_definition='mouse_selection rectangle'),  # noqa
+    MouseMapping(mods=7, definition='mouse_selection rectangle'),  # noqa
     # select_word_grabbed
-    MouseMapping(mods=1, repeat_count=2, grabbed=True, actions=(KeyAction('mouse_selection', (3,)),), original_definition='mouse_selection word'),  # noqa
+    MouseMapping(mods=1, repeat_count=2, grabbed=True, definition='mouse_selection word'),  # noqa
     # select_word_grabbed
-    MouseMapping(mods=1, repeat_count=2, actions=(KeyAction('mouse_selection', (3,)),), original_definition='mouse_selection word'),  # noqa
+    MouseMapping(mods=1, repeat_count=2, definition='mouse_selection word'),  # noqa
     # select_line_grabbed
-    MouseMapping(mods=1, repeat_count=3, grabbed=True, actions=(KeyAction('mouse_selection', (4,)),), original_definition='mouse_selection line'),  # noqa
+    MouseMapping(mods=1, repeat_count=3, grabbed=True, definition='mouse_selection line'),  # noqa
     # select_line_grabbed
-    MouseMapping(mods=1, repeat_count=3, actions=(KeyAction('mouse_selection', (4,)),), original_definition='mouse_selection line'),  # noqa
+    MouseMapping(mods=1, repeat_count=3, definition='mouse_selection line'),  # noqa
     # select_line_from_point_grabbed
-    MouseMapping(mods=7, repeat_count=3, grabbed=True, actions=(KeyAction('mouse_selection', (5,)),), original_definition='mouse_selection line_from_point'),  # noqa
+    MouseMapping(mods=7, repeat_count=3, grabbed=True, definition='mouse_selection line_from_point'),  # noqa
     # select_line_from_point_grabbed
-    MouseMapping(mods=7, repeat_count=3, actions=(KeyAction('mouse_selection', (5,)),), original_definition='mouse_selection line_from_point'),  # noqa
+    MouseMapping(mods=7, repeat_count=3, definition='mouse_selection line_from_point'),  # noqa
     # extend_selection_grabbed
-    MouseMapping(button=1, mods=1, grabbed=True, actions=(KeyAction('mouse_selection', (1,)),), original_definition='mouse_selection extend'),  # noqa
+    MouseMapping(button=1, mods=1, grabbed=True, definition='mouse_selection extend'),  # noqa
     # extend_selection_grabbed
-    MouseMapping(button=1, mods=1, actions=(KeyAction('mouse_selection', (1,)),), original_definition='mouse_selection extend'),  # noqa
+    MouseMapping(button=1, mods=1, definition='mouse_selection extend'),  # noqa
     # show_clicked_cmd_output_ungrabbed
-    MouseMapping(button=1, mods=5, actions=(KeyAction('mouse_show_command_output'),), original_definition='mouse_show_command_output'),  # noqa
+    MouseMapping(button=1, mods=5, definition='mouse_show_command_output'),  # noqa
 ]
