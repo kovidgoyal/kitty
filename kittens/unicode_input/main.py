@@ -450,7 +450,7 @@ class UnicodeInput(Handler):
                     self.line_edit.current_input = hex(val - 1)[2:]
                     self.refresh()
                     return
-        if self.mode is NAME and key_event.type is not EventType.RELEASE and not key_event.has_mods:
+        if self.mode is NAME:
             if key_event.matches('shift+tab'):
                 self.table.move_current(cols=-1)
                 self.refresh()
