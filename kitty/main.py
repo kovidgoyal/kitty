@@ -114,7 +114,7 @@ def get_macos_shortcut_for(
     # for maximum robustness we should use opts.alias_map to resolve
     # aliases however this requires parsing everything on startup which could
     # be potentially slow. Lets just hope the user doesnt alias these
-    # fucntions.
+    # functions.
     ans = None
     candidates = []
     qkey = tuple(defn.split())
