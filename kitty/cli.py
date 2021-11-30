@@ -413,7 +413,7 @@ def seq_as_rst(
             if defval is not None:
                 a(textwrap.indent(f'Default: :code:`{defval}`', ' ' * 4))
             if opt.get('choices'):
-                a(textwrap.indent('Choices: :code:`{}`'.format(', '.join(sorted(opt['choices']))), ' ' * 4))
+                a(textwrap.indent('Choices: {}'.format(', '.join(f':code:`{c}`' for c in sorted(opt['choices']))), ' ' * 4))
             a('')
 
     text = '\n'.join(blocks)
