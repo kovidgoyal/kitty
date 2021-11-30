@@ -155,6 +155,7 @@ class Tab:  # {{{
         for window in self.windows:
             window.change_tab(self)
             attach_window(self.os_window_id, self.id, window.id)
+        self.active_window_changed()
         self.relayout()
 
     def _set_current_layout(self, layout_name: str) -> None:
