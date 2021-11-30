@@ -403,8 +403,8 @@ to wake up the dedicated card, which has been reported on at least one system
     MESA_LOADER_DRIVER_OVERRIDE=radeonsi __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json kitty
 
 The correct command will depend on your situation and hardware.
-|__EGL_VENDOR_LIBRARY_FILENAMES| instructs the GL dispatch library to use
-`libEGL_mesa.so` and ignore the `libEGL_nvidia.so` also available on the
+``__EGL_VENDOR_LIBRARY_FILENAMES`` instructs the GL dispatch library to use
+:file:`libEGL_mesa.so` and ignore :file:`libEGL_nvidia.so` also available on the
 system, which will wake the NVIDIA card during device enumeration.
-|MESA_LOADER_DRIVER_OVERRIDE| also assures that Mesa won't offer any NVIDIA
+``MESA_LOADER_DRIVER_OVERRIDE`` also assures that Mesa won't offer any NVIDIA
 card during enumeration, and will instead just use `/lib/dri/radeonsi_dri.so`.
