@@ -450,29 +450,30 @@ class UnicodeInput(Handler):
                     self.line_edit.current_input = hex(val - 1)[2:]
                     self.refresh()
                     return
-        if self.mode is NAME and key_event.type is not EventType.RELEASE and not key_event.has_mods:
-            if key_event.matches('shift+tab'):
+        if self.mode is NAME and key_event.type is not EventType.RELEASE:
+            if not key_event.has_mods:
+                if key_event.matches('tab'):
+                    self.table.move_current(cols=1)
+                    self.refresh()
+                    return
+                if key_event.matches('left'):
+                    self.table.move_current(cols=-1)
+                    self.refresh()
+                    return
+                if key_event.matches('right'):
+                    self.table.move_current(cols=1)
+                    self.refresh()
+                    return
+                if key_event.matches('up'):
+                    self.table.move_current(rows=-1)
+                    self.refresh()
+                    return
+                if key_event.matches('down'):
+                    self.table.move_current(rows=1)
+                    self.refresh()
+                    return
+            elif key_event.matches('shift+tab'):
                 self.table.move_current(cols=-1)
-                self.refresh()
-                return
-            if key_event.matches('tab'):
-                self.table.move_current(cols=1)
-                self.refresh()
-                return
-            if key_event.matches('left'):
-                self.table.move_current(cols=-1)
-                self.refresh()
-                return
-            if key_event.matches('right'):
-                self.table.move_current(cols=1)
-                self.refresh()
-                return
-            if key_event.matches('up'):
-                self.table.move_current(rows=-1)
-                self.refresh()
-                return
-            if key_event.matches('down'):
-                self.table.move_current(rows=1)
                 self.refresh()
                 return
 
