@@ -574,7 +574,7 @@ int _glfwPlatformInit(void)
     {
         NSEventModifierFlags modifierFlags = [event modifierFlags] & (NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagControl);
         if (modifierFlags & NSEventModifierFlagCommand) {
-            // From http://cocoadev.com/index.pl?GameKeyboardHandlingAlmost
+            // From https://cocoadev.github.io/GameKeyboardHandlingAlmost/
             // This works around an AppKit bug, where key up events while holding
             // down the command key don't get sent to the key window.
             [[NSApp keyWindow] sendEvent:event];

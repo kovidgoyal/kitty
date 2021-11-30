@@ -64,7 +64,7 @@ extern PyTypeObject Color_Type;
 
 static inline double
 rgb_luminance(ARGB32 c) {
-    // From ITU BT 601 http://www.itu.int/rec/R-REC-BT.601
+    // From ITU BT 601 https://www.itu.int/rec/R-REC-BT.601
     return 0.299 * c.red + 0.587 * c.green + 0.114 * c.blue;
 }
 

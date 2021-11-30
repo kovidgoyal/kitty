@@ -75,7 +75,7 @@
         "unix": {
             "filename": "libxkbcommon-1.0.3.tar.xz",
             "hash": "sha256:a2202f851e072b84e64a395212cbd976ee18a8ee602008b0bad02a13247dbc52",
-            "urls": ["http://xkbcommon.org/download/{filename}"]
+            "urls": ["https://xkbcommon.org/download/{filename}"]
         }
     },
 
@@ -115,7 +115,7 @@
         "unix": {
             "filename": "readline-8.1.tar.gz",
             "hash": "sha256:f8ceb4ee131e3232226a17f51b164afc46cd0b9e6cef344be87c65962cb82b02",
-            "urls": ["http://ftp.gnu.org/gnu/readline/{filename}"]
+            "urls": ["https://ftp.gnu.org/gnu/readline/{filename}"]
         }
     },
 
@@ -180,7 +180,7 @@
         "unix": {
             "filename": "libpng-1.6.37.tar.xz",
             "hash": "sha256:505e70834d35383537b6491e7ae8641f1a4bed1876dbfe361201fc80868d88ca",
-            "urls": ["http://downloads.sourceforge.net/sourceforge/libpng/{filename}"]
+            "urls": ["https://downloads.sourceforge.net/sourceforge/libpng/{filename}"]
         }
     },
 
@@ -199,7 +199,7 @@
         "unix": {
             "filename": "graphite2-1.3.14.tgz",
             "hash": "sha256:f99d1c13aa5fa296898a181dff9b82fb25f6cc0933dbaa7a475d8109bd54209d",
-            "urls": ["http://downloads.sourceforge.net/silgraphite/{filename}"]
+            "urls": ["https://downloads.sourceforge.net/silgraphite/{filename}"]
         }
     },
 
@@ -259,7 +259,7 @@
         "unix": {
             "filename": "fontconfig-2.13.1.tar.bz2",
             "hash": "sha256:f655dd2a986d7aa97e052261b36aa67b0a64989496361eca8d604e6414006741",
-            "urls": ["http://www.fontconfig.org/release/{filename}"]
+            "urls": ["https://www.fontconfig.org/release/{filename}"]
         }
     },
 

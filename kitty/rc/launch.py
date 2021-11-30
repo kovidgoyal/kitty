@@ -45,7 +45,7 @@ class Launch(RemoteCommand):
 
     short_desc = 'Run an arbitrary process in a new window/tab'
     desc = (
-        ' Prints out the id of the newly opened window. Any command line arguments'
+        'Prints out the id of the newly opened window. Any command line arguments'
         ' are assumed to be the command line used to run in the new window, if none'
         ' are provided, the default shell is run. For example:'
         ' :code:`kitty @ launch --title Email mutt`.'
