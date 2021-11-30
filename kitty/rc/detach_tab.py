@@ -16,7 +16,7 @@ class DetachTab(RemoteCommand):
 
     '''
     match: Which tab to detach
-    target: Which OS Window to move the detached tab to
+    target_tab: Which OS Window that containing the target tab to move the detached tab to
     self: Boolean indicating whether to detach the tab the command is run in
     '''
 
@@ -33,7 +33,7 @@ If specified detach the tab this command is run in, rather than the active tab.
     argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'match': opts.match, 'target': opts.target_tab, 'self': opts.self}
+        return {'match': opts.match, 'target_tab': opts.target_tab, 'self': opts.self}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         match = payload_get('match')
