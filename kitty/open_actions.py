@@ -133,7 +133,6 @@ def url_matches_criterion(purl: 'ParseResult', url: str, unquoted_path: str, mc:
 
     if mc.type == 'file':
         import fnmatch
-        import posixpath
         try:
             fname = posixpath.basename(unquoted_path)
         except Exception:

@@ -29,7 +29,6 @@ active_async_requests: Dict[str, float] = {}
 
 
 def encode_response_for_peer(response: Any) -> bytes:
-    import json
     return b'\x1bP@kitty-cmd' + json.dumps(response).encode('utf-8') + b'\x1b\\'
 
 
