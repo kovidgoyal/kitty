@@ -957,15 +957,18 @@ The tab bar style, can be one of:
 :code:`separator`
     Tabs are separated by a configurable separator (see :opt:`tab_separator`)
 :code:`powerline`
-    Tabs are shown as a continuous line with "fancy" separators (see :opt:`tab_powerline_style`)
+    Tabs are shown as a continuous line with "fancy" separators
+    (see :opt:`tab_powerline_style`)
 :code:`custom`
-    A user-supplied Python function called draw_tab is loaded from the file :file:`tab_bar.py`
-    in the kitty config directory. For examples of how to write such a function see the functions
-    named :code:`draw_tab_with_*` in tab_bar.py in the kitty source code.
+    A user-supplied Python function called draw_tab is loaded from the file
+    :file:`tab_bar.py` in the kitty config directory. For examples of how to
+    write such a function, see the functions named :code:`draw_tab_with_*` in
+    kitty‘s source code: :file:`kitty/tab_bar.py`.
 :code:`hidden`
-    The tab bar is hidden. If you use this, you might want to create a mapping
-    for the :ref:`action-select_tab` action which presents you with a list
-    of tabs and allows for easy switching to a tab.
+    The tab bar is hidden. If you use this, you might want to create a
+    mapping for the :ref:`action-select_tab`
+    action which presents you with a list of tabs and allows for easy
+    switching to a tab.
 '''
     )
 
