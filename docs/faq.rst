@@ -337,6 +337,9 @@ If you still want to use tmux, read on.
 Image display will not work, see `tmux issue
 <https://github.com/tmux/tmux/issues/1391>`_.
 
+Using ancient versions of tmux such as 1.8 will
+cause gibberish on screen when pressing keys (:iss:`3541`).
+
 If you are using tmux with multiple terminals or you start it under one
 terminal and then switch to another and these terminals have different TERM
 variables, tmux will break. You will need to restart it as tmux does not
