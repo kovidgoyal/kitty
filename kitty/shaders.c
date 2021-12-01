@@ -400,18 +400,14 @@ draw_bg(OSWindow *w) {
     bind_vertex_array(blit_vertex_array);
 
     const bool adjust_scale = OPT(background_image_layout) == TILING || OPT(background_image_layout) == MIRRORED || OPT(background_image_layout) == CLAMPED;
-    static bool bgimage_constants_set = false;
-    if (!bgimage_constants_set) {
-        glUniform1i(bgimage_program_layout.image_location, BGIMAGE_UNIT);
-        glUniform1f(bgimage_program_layout.opacity_location, OPT(background_opacity));
-        glUniform1f(bgimage_program_layout.adjust_scale_location, (GLfloat)adjust_scale);
-        bgimage_constants_set = true;
-    }
     float pos_left_relative = 0.0f, pos_top_relative = 0.0f;
     if (adjust_scale) {
         pos_left_relative = OPT(background_image_anchor).x;
         pos_top_relative = OPT(background_image_anchor).y;
     }
+    glUniform1i(bgimage_program_layout.image_location, BGIMAGE_UNIT);
+    glUniform1f(bgimage_program_layout.opacity_location, OPT(background_opacity));
+    glUniform1f(bgimage_program_layout.adjust_scale_location, adjust_scale ? 1.f : 0.f);
     glUniform2f(bgimage_program_layout.transform_location, (GLfloat)pos_left_relative, (GLfloat)pos_top_relative);
     glUniform4f(bgimage_program_layout.sizes_location,
         (GLfloat)w->window_width, (GLfloat)w->window_height, (GLfloat)w->bgimage->width, (GLfloat)w->bgimage->height);
