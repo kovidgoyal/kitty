@@ -1141,7 +1141,7 @@ class Boss:
                 traceback.print_exc()
                 self.show_error('Failed to parse action', f'{action_definition}\n{e}')
                 return True
-            for action in actions:
+            if actions:
                 try:
                     if self.dispatch_action(actions[0], window_for_dispatch, dispatch_type):
                         consumed = True
