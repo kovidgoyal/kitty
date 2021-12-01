@@ -143,8 +143,12 @@ send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei heigh
     switch (repeat) {
         case REPEAT_MIRROR:
             r = GL_MIRRORED_REPEAT; break;
-        case REPEAT_CLAMP:
-            r = GL_CLAMP_TO_EDGE; break;
+        case REPEAT_CLAMP: {
+            static const GLfloat border_color[4] = {0};
+            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border_color);
+            r = GL_CLAMP_TO_BORDER;
+            break;
+        }
         default:
             r = GL_REPEAT;
     }
