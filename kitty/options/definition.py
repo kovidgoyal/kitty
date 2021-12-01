@@ -957,19 +957,27 @@ The tab bar style, can be one of:
 :code:`separator`
     Tabs are separated by a configurable separator (see :opt:`tab_separator`)
 :code:`powerline`
-    Tabs are shown as a continuous line with "fancy" separators (see :opt:`tab_powerline_style`)
+    Tabs are shown as a continuous line with "fancy" separators
+    (see :opt:`tab_powerline_style`)
 :code:`custom`
-    A user-supplied Python function called draw_tab is loaded from the file :file:`tab_bar.py`
-    in the kitty config directory. For examples of how to write such a function see the functions
-    named :code:`draw_tab_with_*` in tab_bar.py in the kitty source code.
+    A user-supplied Python function called draw_tab is loaded from the file
+    :file:`tab_bar.py` in the kitty config directory. For examples of how to
+    write such a function, see the functions named :code:`draw_tab_with_*` in
+    kitty‘s source code: :file:`kitty/tab_bar.py`.
 :code:`hidden`
-    The tab bar is hidden. If you use this, you might want to create a mapping
-    for the :ref:`action-select_tab` action which presents you with a list
-    of tabs and allows for easy switching to a tab.
+    The tab bar is hidden. If you use this, you might want to create a
+    mapping for the :ref:`action-select_tab`
+    action which presents you with a list of tabs and allows for easy
+    switching to a tab.
 '''
     )
 
-opt('tab_bar_align', 'left', choices=('left', 'center', 'right'), long_text='The horizontal alignment of the tab bar')
+opt('tab_bar_align', 'left', choices=('left', 'center', 'right'),
+    long_text='''
+The horizontal alignment of the tab bar, can be one of: :code:`left`,
+:code:`center`, or :code:`right`.
+'''
+    )
 
 opt('tab_bar_min_tabs', '2',
     option_type='tab_bar_min_tabs', ctype='uint',
@@ -1136,12 +1144,19 @@ opt('background_image', 'none',
 
 opt('background_image_layout', 'tiled',
     choices=('mirror-tiled', 'scaled', 'tiled', 'clamped'), ctype='bglayout',
-    long_text='Whether to tile, scale or clamp the background image.'
+    long_text='''
+Whether to tile, scale or clamp the background image. The value can be one of
+:code:`tiled`, :code:`mirror-tiled`, :code:`scaled`, :code:`clamped`.
+'''
     )
 
 opt('background_image_anchor', 'top-left',
     choices=('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'), ctype='bganchor',
-    long_text='Where to position the background image in the window.'
+    long_text='''
+Where to position the background image in the window. The value can be one of:
+:code:`top-left`, :code:`top`, :code:`top-right`, :code:`left`, :code:`center`,
+:code:`right`, :code:`bottom-left`, :code:`bottom`, :code:`bottom-right`.
+'''
     )
 
 opt('background_image_linear', 'no',
