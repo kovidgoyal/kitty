@@ -110,6 +110,9 @@ background_image(PyObject *src, Options *opts) { STR_SETTER(background_image); }
 static void
 bell_path(PyObject *src, Options *opts) { STR_SETTER(bell_path); }
 
+static void
+window_logo_path(PyObject *src, Options *opts) { STR_SETTER(default_window_logo); }
+
 #undef STR_SETTER
 
 static MouseShape

@@ -45,9 +45,9 @@ typedef struct {
     float adjust_line_height_frac, adjust_column_width_frac, adjust_baseline_frac;
     float background_opacity, dim_opacity;
 
-    char* background_image;
+    char *background_image, *default_window_logo;
     BackgroundImageLayout background_image_layout;
-    BackgroundImageAnchor background_image_anchor;
+    BackgroundImageAnchor window_logo_position;
     bool background_image_linear;
     float background_tint;
 

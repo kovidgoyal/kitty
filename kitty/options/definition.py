@@ -863,6 +863,25 @@ are undefined.
 '''
     )
 
+opt('window_logo_path', 'none',
+    option_type='config_or_absolute_path', ctype='!window_logo_path',
+    long_text='''
+Path to a logo image. Must be in PNG format. The logo is displayed in a corner
+of every kitty window. The position is controlled by :opt:`window_logo_position`.
+Individual windows can be configured to have different logos either using
+the :doc:`launch` function or the :doc:`remote-control` facility.
+''')
+
+opt('window_logo_position', 'bottom-right',
+    choices=('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'), ctype='bganchor',
+    long_text='''
+Where to position the window logo in the window. The value can be one of:
+:code:`top-left`, :code:`top`, :code:`top-right`, :code:`left`, :code:`center`,
+:code:`right`, :code:`bottom-left`, :code:`bottom`, :code:`bottom-right`.
+'''
+    )
+
+
 opt('resize_debounce_time', '0.1',
     option_type='positive_float', ctype='time',
     long_text='''
@@ -1147,15 +1166,6 @@ opt('background_image_layout', 'tiled',
     long_text='''
 Whether to tile, scale or clamp the background image. The value can be one of
 :code:`tiled`, :code:`mirror-tiled`, :code:`scaled`, :code:`clamped`.
-'''
-    )
-
-opt('background_image_anchor', 'top-left',
-    choices=('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'), ctype='bganchor',
-    long_text='''
-Where to position the background image in the window. The value can be one of:
-:code:`top-left`, :code:`top`, :code:`top-right`, :code:`left`, :code:`center`,
-:code:`right`, :code:`bottom-left`, :code:`bottom`, :code:`bottom-right`.
 '''
     )
 

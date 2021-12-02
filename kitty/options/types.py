@@ -12,7 +12,6 @@ from kitty.types import FloatEdges, SingleKey
 import kitty.types
 
 if typing.TYPE_CHECKING:
-    choices_for_background_image_anchor = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
     choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled', 'clamped']
     choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'hand']
     choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
@@ -25,8 +24,8 @@ if typing.TYPE_CHECKING:
     choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separator', 'slant', 'custom']
     choices_for_tab_powerline_style = typing.Literal['angled', 'round', 'slanted']
     choices_for_tab_switch_strategy = typing.Literal['last', 'left', 'previous', 'right']
+    choices_for_window_logo_position = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
 else:
-    choices_for_background_image_anchor = str
     choices_for_background_image_layout = str
     choices_for_default_pointer_shape = str
     choices_for_linux_display_server = str
@@ -39,6 +38,7 @@ else:
     choices_for_tab_bar_style = str
     choices_for_tab_powerline_style = str
     choices_for_tab_switch_strategy = str
+    choices_for_window_logo_position = str
 
 option_names = (  # {{{
  'action_alias',
@@ -54,7 +54,6 @@ option_names = (  # {{{
  'allow_remote_control',
  'background',
  'background_image',
- 'background_image_anchor',
  'background_image_layout',
  'background_image_linear',
  'background_opacity',
@@ -438,6 +437,8 @@ option_names = (  # {{{
  'wheel_scroll_multiplier',
  'window_alert_on_bell',
  'window_border_width',
+ 'window_logo_path',
+ 'window_logo_position',
  'window_margin_width',
  'window_padding_width',
  'window_resize_step_cells',
@@ -457,7 +458,6 @@ class Options:
     allow_remote_control: str = 'n'
     background: Color = Color(0, 0, 0)
     background_image: typing.Optional[str] = None
-    background_image_anchor: choices_for_background_image_anchor = 'top-left'
     background_image_layout: choices_for_background_image_layout = 'tiled'
     background_image_linear: bool = False
     background_opacity: float = 1.0
@@ -578,6 +578,8 @@ class Options:
     wheel_scroll_multiplier: float = 5.0
     window_alert_on_bell: bool = True
     window_border_width: typing.Tuple[float, str] = (0.5, 'pt')
+    window_logo_path: typing.Optional[str] = None
+    window_logo_position: choices_for_window_logo_position = 'bottom-right'
     window_margin_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)
     window_padding_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)
     window_resize_step_cells: int = 2

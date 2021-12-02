@@ -1012,13 +1012,11 @@ static PyObject*
 pyset_background_image(PyObject *self UNUSED, PyObject *args) {
     const char *path;
     PyObject *layout_name = NULL;
-    PyObject *anchor_name = NULL;
     PyObject *os_window_ids;
     int configured = 0;
-    PA("zO!|pOO", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name, &anchor_name);
+    PA("zO!|pO", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name);
     size_t size;
     BackgroundImageLayout layout = PyUnicode_Check(layout_name) ? bglayout(layout_name) : OPT(background_image_layout);
-    BackgroundImageAnchor anchor = PyUnicode_Check(anchor_name) ? bganchor(anchor_name) : OPT(background_image_anchor);
     BackgroundImage *bgimage = NULL;
     if (path) {
         bgimage = calloc(1, sizeof(BackgroundImage));
@@ -1036,7 +1034,6 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
         global_state.bgimage = bgimage;
         if (bgimage) bgimage->refcnt++;
         OPT(background_image_layout) = layout;
-        OPT(background_image_anchor) = anchor;
     }
     for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(os_window_ids); i++) {
         id_type os_window_id = PyLong_AsUnsignedLongLong(PyTuple_GET_ITEM(os_window_ids, i));
@@ -1231,7 +1228,7 @@ finalize(void) {
     if (detached_windows.windows) free(detached_windows.windows);
     detached_windows.capacity = 0;
 #define F(x) free(OPT(x)); OPT(x) = NULL;
-    F(background_image); F(bell_path);
+    F(background_image); F(bell_path); F(default_window_logo);
 #undef F
     // we leak the texture here since it is not guaranteed
     // that freeing the texture will work during shutdown and
