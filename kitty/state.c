@@ -224,21 +224,22 @@ release_gpu_resources_for_window(Window *w) {
     w->render_data.gvao_idx = -1;
 }
 
-static void
-set_default_window_logo(Window *w) {
-    if (OPT(default_window_logo)) {
-        WindowLogo *wl = find_or_create_window_logo(&global_state.all_window_logos, OPT(default_window_logo));
+static bool
+set_window_logo(Window *w, const char *path, const ImageAnchorPosition pos, bool is_default) {
+    bool ok = false;
+    if (path && path[0]) {
+        WindowLogo *wl = find_or_create_window_logo(&global_state.all_window_logos, path);
         if (wl) {
             w->window_logo.instance = wl;
-            w->window_logo.position = OPT(window_logo_position);
-        } else if (PyErr_Occurred()) {
-            log_error("Failed to load default window logo: %s", OPT(default_window_logo));
-            PyErr_Print();
+            w->window_logo.position = pos;
+            ok = true;
         }
     } else {
         decref_window_logo(&global_state.all_window_logos, &w->window_logo.instance);
+        ok = true;
     }
-    w->window_logo.using_default = true;
+    w->window_logo.using_default = is_default;
+    return ok;
 }
 
 static void
@@ -247,7 +248,10 @@ initialize_window(Window *w, PyObject *title, bool init_gpu_resources) {
     w->visible = true;
     w->title = title;
     Py_XINCREF(title);
-    set_default_window_logo(w);
+    if (!set_window_logo(w, OPT(default_window_logo), OPT(window_logo_position), true)) {
+        log_error("Failed to load default window logo: %s", OPT(default_window_logo));
+        if (PyErr_Occurred()) PyErr_Print();
+    }
     if (init_gpu_resources) create_gpu_resources_for_window(w);
     else {
         w->render_data.vao_idx = -1;
@@ -1139,6 +1143,19 @@ pymouse_selection(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(set_window_logo) {
+    id_type os_window_id, tab_id, window_id;
+    const char *path; PyObject *position;
+    PA("KKKsU", &os_window_id, &tab_id, &window_id, &path, &position);
+    bool ok = false;
+    WITH_WINDOW(os_window_id, tab_id, window_id);
+    ok = set_window_logo(window, path, bganchor(position), false);
+    END_WITH_WINDOW;
+    if (ok) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+
 PYWRAP1(click_mouse_url) {
     id_type a, b, c; PA("KKK", &a, &b, &c);
     if (click_mouse_url(a, b, c)) { Py_RETURN_TRUE; }
@@ -1190,6 +1207,7 @@ static PyMethodDef module_methods[] = {
     MW(move_cursor_to_mouse_if_in_prompt, METH_VARARGS),
     MW(redirect_mouse_handling, METH_O),
     MW(mouse_selection, METH_VARARGS),
+    MW(set_window_logo, METH_VARARGS),
     MW(set_in_sequence_mode, METH_O),
     MW(resolve_key_mods, METH_VARARGS),
     MW(handle_for_window_id, METH_VARARGS),
