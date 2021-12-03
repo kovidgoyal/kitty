@@ -16,6 +16,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   the keyboard. Pressing it causes numbers to appear over each visible window
   and you can press the number to focus the corresponding window (:iss:`4110`)
 
+- A new facility :opt:`window_logo_path` to draw an arbitrary PNG image as
+  logo in the corner of a kitty window (:pull:`4167`)
+
 - Allow rendering the cursor with a *reverse video* effect. See :opt:`cursor`
   for details (:iss:`126`)
 
@@ -33,10 +36,6 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - A new remote control command to :program:`visually select a window <kitty @
   select-window>` (:iss:`4165`)
-
-- A new option :opt:`background_image_anchor` to *anchor* the background image
-  to a position in the OS Window, useful for displaying images with logos or
-  similar (:pull:`4167`)
 
 - Add support for reporting mouse events with pixel co-ordinates using the
   ``SGR_PIXEL_PROTOCOL`` introduced in xterm 359
