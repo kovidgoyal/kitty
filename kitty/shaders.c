@@ -581,6 +581,7 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
 
 static void
 draw_window_logo(int program, OSWindow *os_window, const WindowLogoRenderData *wl, GLfloat window_left_gl, GLfloat window_top_gl, GLfloat window_width_gl, GLfloat window_height_gl) {
+    if (os_window->live_resize.in_progress) return;
     GLfloat logo_width_gl = 2.f * ((float)wl->instance->width) / os_window->viewport_width;
     GLfloat logo_height_gl = 2.f * ((float)wl->instance->height) / os_window->viewport_height;
     GLfloat logo_left_gl = window_left_gl + window_width_gl * wl->position.canvas_x - logo_width_gl * wl->position.image_x;
