@@ -23,7 +23,7 @@ from .conf.utils import BadLine, KeyAction, to_cmdline
 from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
     appname, config_dir, is_macos, is_wayland, kitty_exe,
-    supports_primary_selection, website_url
+    supports_primary_selection, website_url, logo_png_file
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
@@ -1453,20 +1453,25 @@ class Boss:
             if tab is not None:
                 for w in tab:
                     w.allow_remote_control = True
+                    window = w
         elif window_type == 'os_window':
             os_window_id = self._new_os_window(SpecialWindow(cmd, **kw))
             for tab in self.os_window_map[os_window_id]:
                 for w in tab:
                     w.allow_remote_control = True
+                    window = w
         elif window_type == 'overlay':
             tab = self.active_tab
             if aw is not None and tab is not None:
                 kw['overlay_for'] = aw.id
-                tab.new_special_window(SpecialWindow(cmd, **kw), allow_remote_control=True)
+                window = tab.new_special_window(SpecialWindow(cmd, **kw), allow_remote_control=True)
         else:
             tab = self.active_tab
             if tab is not None:
-                tab.new_special_window(SpecialWindow(cmd, **kw), allow_remote_control=True)
+                window = tab.new_special_window(SpecialWindow(cmd, **kw), allow_remote_control=True)
+
+        path, ext = os.path.splitext(logo_png_file)
+        window.set_logo(f'{path}-128{ext}', position='bottom-right', alpha=0.25)
 
     def switch_focus_to(self, window_id: int) -> None:
         tab = self.active_tab

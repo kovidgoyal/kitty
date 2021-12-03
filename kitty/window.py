@@ -30,9 +30,9 @@ from .fast_data_types import (
     click_mouse_url, compile_program, encode_key_for_tty, get_boss,
     get_clipboard_string, get_options, init_cell_program, mark_os_window_dirty,
     mouse_selection, move_cursor_to_mouse_if_in_prompt, pt_to_px,
-    set_clipboard_string, set_titlebar_color, set_window_padding,
-    set_window_render_data, update_ime_position_for_window, update_window_title,
-    update_window_visibility, viewport_for_window
+    set_clipboard_string, set_titlebar_color, set_window_logo,
+    set_window_padding, set_window_render_data, update_ime_position_for_window,
+    update_window_title, update_window_visibility, viewport_for_window
 )
 from .keys import keyboard_mode_name, mod_mask
 from .notify import NotificationCommand, handle_notification_cmd
@@ -1089,6 +1089,9 @@ class Window:
             'columns': self.screen.columns,
             'text': text
         }
+
+    def set_logo(self, path: str, position: str = 'bottom-right', alpha: float = 0.5) -> None:
+        set_window_logo(self.os_window_id, self.tab_id, self.id, path, position, alpha)
 
     # actions {{{
 
