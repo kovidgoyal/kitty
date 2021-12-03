@@ -881,6 +881,10 @@ Where to position the window logo in the window. The value can be one of:
 '''
     )
 
+opt('window_logo_alpha', 0.5, option_type='unit_float', ctype='float', long_text='''
+The amount the logo should be faded into the background. With zero being fully faded
+and one being fully opaque.''')
+
 
 opt('resize_debounce_time', '0.1',
     option_type='positive_float', ctype='time',

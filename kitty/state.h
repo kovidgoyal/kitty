@@ -50,7 +50,7 @@ typedef struct {
     BackgroundImageLayout background_image_layout;
     ImageAnchorPosition window_logo_position;
     bool background_image_linear;
-    float background_tint;
+    float background_tint, window_logo_alpha;
 
     bool dynamic_background_opacity;
     float inactive_text_alpha;
@@ -86,6 +86,7 @@ typedef struct WindowLogoRenderData {
     window_logo_id_t id;
     WindowLogo *instance;
     ImageAnchorPosition position;
+    float alpha;
     bool using_default;
 } WindowLogoRenderData;
 

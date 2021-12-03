@@ -1284,7 +1284,7 @@ def mouse_selection(os_window_id: int, tab_id: int, window_id: int, code: int, b
     pass
 
 
-def set_window_logo(os_window_id: int, tab_id: int, window_id: int, path: str, position: str) -> None:
+def set_window_logo(os_window_id: int, tab_id: int, window_id: int, path: str, position: str, alpha: float) -> None:
     pass
 
 

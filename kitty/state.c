@@ -225,13 +225,14 @@ release_gpu_resources_for_window(Window *w) {
 }
 
 static bool
-set_window_logo(Window *w, const char *path, const ImageAnchorPosition pos, bool is_default) {
+set_window_logo(Window *w, const char *path, const ImageAnchorPosition pos, float alpha, bool is_default) {
     bool ok = false;
     if (path && path[0]) {
         window_logo_id_t wl = find_or_create_window_logo(global_state.all_window_logos, path);
         if (wl) {
             w->window_logo.id = wl;
             w->window_logo.position = pos;
+            w->window_logo.alpha = alpha;
             ok = true;
         }
     } else {
@@ -252,7 +253,7 @@ initialize_window(Window *w, PyObject *title, bool init_gpu_resources) {
     w->visible = true;
     w->title = title;
     Py_XINCREF(title);
-    if (!set_window_logo(w, OPT(default_window_logo), OPT(window_logo_position), true)) {
+    if (!set_window_logo(w, OPT(default_window_logo), OPT(window_logo_position), OPT(window_logo_alpha), true)) {
         log_error("Failed to load default window logo: %s", OPT(default_window_logo));
         if (PyErr_Occurred()) PyErr_Print();
     }
@@ -1017,7 +1018,7 @@ PYWRAP0(apply_options_update) {
             for (size_t w = 0; w < tab->num_windows; w++) {
                 Window *window = tab->windows + w;
                 if (window->window_logo.using_default) {
-                    set_window_logo(window, OPT(default_window_logo), OPT(window_logo_position), true);
+                    set_window_logo(window, OPT(default_window_logo), OPT(window_logo_position), OPT(window_logo_alpha), true);
                 }
             }
         }
@@ -1161,10 +1162,11 @@ pymouse_selection(PyObject *self UNUSED, PyObject *args) {
 PYWRAP1(set_window_logo) {
     id_type os_window_id, tab_id, window_id;
     const char *path; PyObject *position;
-    PA("KKKsU", &os_window_id, &tab_id, &window_id, &path, &position);
+    float alpha = 0.5;
+    PA("KKKsUf", &os_window_id, &tab_id, &window_id, &path, &position, &alpha);
     bool ok = false;
     WITH_WINDOW(os_window_id, tab_id, window_id);
-    ok = set_window_logo(window, path, bganchor(position), false);
+    ok = set_window_logo(window, path, bganchor(position), alpha, false);
     END_WITH_WINDOW;
     if (ok) Py_RETURN_TRUE;
     Py_RETURN_FALSE;

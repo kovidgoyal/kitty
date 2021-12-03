@@ -1270,6 +1270,9 @@ class Parser:
     def window_border_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['window_border_width'] = window_border_width(val)
 
+    def window_logo_alpha(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['window_logo_alpha'] = unit_float(val)
+
     def window_logo_path(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['window_logo_path'] = config_or_absolute_path(val)
 

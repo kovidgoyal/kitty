@@ -437,6 +437,7 @@ option_names = (  # {{{
  'wheel_scroll_multiplier',
  'window_alert_on_bell',
  'window_border_width',
+ 'window_logo_alpha',
  'window_logo_path',
  'window_logo_position',
  'window_margin_width',
@@ -578,6 +579,7 @@ class Options:
     wheel_scroll_multiplier: float = 5.0
     window_alert_on_bell: bool = True
     window_border_width: typing.Tuple[float, str] = (0.5, 'pt')
+    window_logo_alpha: float = 0.5
     window_logo_path: typing.Optional[str] = None
     window_logo_position: choices_for_window_logo_position = 'bottom-right'
     window_margin_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)

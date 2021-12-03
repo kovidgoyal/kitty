@@ -535,6 +535,7 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         cell_uniform_data.prev_inactive_text_alpha = current_inactive_text_alpha;
 #define S(prog, loc) { bind_program(prog); glUniform1f(cell_uniform_data.loc, current_inactive_text_alpha); }
         S(CELL_PROGRAM, cploc); S(CELL_FG_PROGRAM, cfploc); S(GRAPHICS_PROGRAM, gploc); S(GRAPHICS_PREMULT_PROGRAM, gpploc);
+#undef S
     }
 }
 
@@ -590,7 +591,11 @@ draw_window_logo(int program, ssize_t vao_idx, OSWindow *os_window, const Window
     ird.texture_id = wl->instance->texture_id;
     gpu_data_for_image(&ird, logo_left_gl, logo_top_gl, logo_left_gl + logo_width_gl, logo_top_gl - logo_height_gl);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, &ird);
+    bind_program(program);
+    const int alpha_loc = program == GRAPHICS_PROGRAM ? cell_uniform_data.gploc : cell_uniform_data.gpploc;
+    glUniform1f(alpha_loc, cell_uniform_data.prev_inactive_text_alpha * wl->alpha);
     draw_graphics(program, vao_idx, os_window->gvao_idx, &ird, 0, 1);
+    glUniform1f(alpha_loc, cell_uniform_data.prev_inactive_text_alpha);
 }
 
 static void

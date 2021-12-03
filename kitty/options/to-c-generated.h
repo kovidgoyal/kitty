@@ -539,6 +539,19 @@ convert_from_opts_window_logo_position(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_window_logo_alpha(PyObject *val, Options *opts) {
+    opts->window_logo_alpha = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_window_logo_alpha(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "window_logo_alpha");
+    if (ret == NULL) return;
+    convert_from_python_window_logo_alpha(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_resize_debounce_time(PyObject *val, Options *opts) {
     opts->resize_debounce_time = parse_s_double_to_monotonic_t(val);
 }
@@ -1050,6 +1063,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_window_logo_path(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_window_logo_position(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_window_logo_alpha(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_resize_debounce_time(py_opts, opts);
     if (PyErr_Occurred()) return false;
