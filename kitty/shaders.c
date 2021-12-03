@@ -9,6 +9,7 @@
 #include "gl.h"
 #include "colors.h"
 #include <stddef.h>
+#include "window_logo.h"
 
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
 #define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
@@ -579,6 +580,19 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
 }
 
 static void
+draw_window_logo(int program, OSWindow *os_window, const WindowLogoRenderData *wl, GLfloat window_left_gl, GLfloat window_top_gl, GLfloat window_width_gl, GLfloat window_height_gl) {
+    GLfloat logo_width_gl = 2.f * ((float)wl->instance->width) / os_window->viewport_width;
+    GLfloat logo_height_gl = 2.f * ((float)wl->instance->height) / os_window->viewport_height;
+    GLfloat logo_left_gl = window_left_gl + window_width_gl * wl->position.canvas_x - logo_width_gl * wl->position.image_x;
+    GLfloat logo_top_gl = window_top_gl - window_height_gl * wl->position.canvas_y + logo_height_gl * wl->position.image_y;
+    static ImageRenderData ird = {.group_count=1};
+    ird.texture_id = wl->instance->texture_id;
+    gpu_data_for_image(&ird, logo_left_gl, logo_top_gl, logo_left_gl + logo_width_gl, logo_top_gl - logo_height_gl);
+    send_graphics_data_to_gpu(1, os_window->gvao_idx, &ird);
+    draw_graphics(program, 0, os_window->gvao_idx, &ird, 0, 1);
+}
+
+static void
 draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height, Window *window, GLfloat dx, GLfloat dy) {
     GLfloat left = os_window->viewport_width * (xstart + 1.f) / 2.f;
     GLfloat right = left + os_window->viewport_width * width / 2.f;
@@ -652,7 +666,7 @@ draw_visual_bell_flash(GLfloat intensity, GLfloat xstart, GLfloat ystart, GLfloa
 }
 
 static void
-draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *w, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height) {
+draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *w, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height, const WindowLogoRenderData *wl) {
     glEnable(GL_BLEND);
     BLEND_ONTO_OPAQUE;
 
@@ -667,10 +681,11 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
         BLEND_ONTO_OPAQUE;
     }
 
-    if (screen->grman->num_of_below_refs || has_bgimage(w)) {
+    if (screen->grman->num_of_below_refs || has_bgimage(w) || wl) {
+        if (wl) draw_window_logo(GRAPHICS_PROGRAM, w, wl, xstart, ystart, width, height);
+        bind_program(CELL_BG_PROGRAM);
         if (screen->grman->num_of_below_refs) draw_graphics(
                 GRAPHICS_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_below_refs);
-        bind_program(CELL_BG_PROGRAM);
         // draw background for non-default bg cells
         glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 2);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
@@ -692,7 +707,7 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
 }
 
 static void
-draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *os_window, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height) {
+draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *os_window, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height, const WindowLogoRenderData *wl) {
     if (OPT(background_tint) > 0.f) {
         glEnable(GL_BLEND);
         BLEND_PREMULT;
@@ -722,7 +737,8 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
     glEnable(GL_BLEND);
     BLEND_PREMULT;
 
-    if (screen->grman->num_of_below_refs || has_bgimage(os_window)) {
+    if (screen->grman->num_of_below_refs || has_bgimage(os_window) || wl) {
+        if (wl) draw_window_logo(GRAPHICS_PREMULT_PROGRAM, os_window, wl, xstart, ystart, width, height);
         if (screen->grman->num_of_below_refs) draw_graphics(
             GRAPHICS_PREMULT_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_below_refs);
         bind_program(CELL_BG_PROGRAM);
@@ -841,13 +857,19 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
         (GLsizei)roundf(SCALE(height, h / 2.f)) // height
     );
 #undef SCALE
+    bool has_underlying_image = has_bgimage(os_window);
+    WindowLogoRenderData *wl = &window->window_logo;
+    if (wl->instance && wl->instance->load_from_disk_ok) {
+        has_underlying_image = true;
+        set_on_gpu_state(window->window_logo.instance, true);
+    } else wl = NULL;
     if (os_window->is_semi_transparent) {
-        if (screen->grman->count || has_bgimage(os_window)) draw_cells_interleaved_premult(
-                vao_idx, gvao_idx, screen, os_window, xstart, ystart, w, h);
+        if (screen->grman->count || has_underlying_image) draw_cells_interleaved_premult(
+                vao_idx, gvao_idx, screen, os_window, xstart, ystart, w, h, wl);
         else draw_cells_simple(vao_idx, gvao_idx, screen);
     } else {
-        if (screen->grman->num_of_negative_refs || screen->grman->num_of_below_refs || has_bgimage(os_window)) draw_cells_interleaved(
-                vao_idx, gvao_idx, screen, os_window, xstart, ystart, w, h);
+        if (screen->grman->num_of_negative_refs || screen->grman->num_of_below_refs || has_underlying_image) draw_cells_interleaved(
+                vao_idx, gvao_idx, screen, os_window, xstart, ystart, w, h, wl);
         else draw_cells_simple(vao_idx, gvao_idx, screen);
     }
 

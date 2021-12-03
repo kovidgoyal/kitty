@@ -225,11 +225,29 @@ release_gpu_resources_for_window(Window *w) {
 }
 
 static void
+set_default_window_logo(Window *w) {
+    if (OPT(default_window_logo)) {
+        WindowLogo *wl = find_or_create_window_logo(&global_state.all_window_logos, OPT(default_window_logo));
+        if (wl) {
+            w->window_logo.instance = wl;
+            w->window_logo.position = OPT(window_logo_position);
+        } else if (PyErr_Occurred()) {
+            log_error("Failed to load default window logo: %s", OPT(default_window_logo));
+            PyErr_Print();
+        }
+    } else {
+        decref_window_logo(&global_state.all_window_logos, &w->window_logo.instance);
+    }
+    w->window_logo.using_default = true;
+}
+
+static void
 initialize_window(Window *w, PyObject *title, bool init_gpu_resources) {
     w->id = ++global_state.window_id_counter;
     w->visible = true;
     w->title = title;
     Py_XINCREF(title);
+    set_default_window_logo(w);
     if (init_gpu_resources) create_gpu_resources_for_window(w);
     else {
         w->render_data.vao_idx = -1;
@@ -290,6 +308,7 @@ destroy_window(Window *w) {
     Py_CLEAR(w->render_data.screen); Py_CLEAR(w->title);
     free(w->title_bar_data.buf); w->title_bar_data.buf = NULL;
     release_gpu_resources_for_window(w);
+    decref_window_logo(&global_state.all_window_logos, &w->window_logo.instance);
 }
 
 static void

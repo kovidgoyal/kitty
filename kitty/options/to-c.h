@@ -78,19 +78,19 @@ bglayout(PyObject *layout_name) {
     return TILING;
 }
 
-static BackgroundImageAnchor
+static ImageAnchorPosition
 bganchor(PyObject *anchor_name) {
     const char *name = PyUnicode_AsUTF8(anchor_name);
-    BackgroundImageAnchor anchor = { .x = 0.5f, .y = 0.5f };
+    ImageAnchorPosition anchor = {0.5f, 0.5f, 0.5f, 0.5f};
     if (strstr(name, "top") != NULL) {
-        anchor.y = 0.0f;
+        anchor.canvas_y = 0.f; anchor.image_y = 0.f;
     } else if (strstr(name, "bottom") != NULL) {
-        anchor.y = 1.0f;
+        anchor.canvas_y = 1.f; anchor.image_y = 1.f;
     }
     if (strstr(name, "left") != NULL) {
-        anchor.x = 0.0f;
+        anchor.canvas_x = 0.f; anchor.image_x = 0.f;
     } else if (strstr(name, "right") != NULL) {
-        anchor.x = 1.0f;
+        anchor.canvas_x = 1.f; anchor.image_x = 1.f;
     }
     return anchor;
 }

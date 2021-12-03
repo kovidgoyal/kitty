@@ -541,6 +541,7 @@ make_os_window_context_current(OSWindow *w) {
     GLFWwindow *current_context = glfwGetCurrentContext();
     if (w->handle != current_context) {
         glfwMakeContextCurrent(w->handle);
+        global_state.current_opengl_context_id = w->id;
     }
 }
 
@@ -870,6 +871,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     w->cursor_blink_zero_time = now;
     w->last_mouse_activity_at = now;
     w->is_semi_transparent = is_semi_transparent;
+    global_state.current_opengl_context_id = w->id;
     if (want_semi_transparent && !w->is_semi_transparent) {
         static bool warned = false;
         if (!warned) {

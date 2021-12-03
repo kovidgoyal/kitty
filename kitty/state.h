@@ -8,6 +8,7 @@
 #include "data-types.h"
 #include "screen.h"
 #include "monotonic.h"
+#include "window_logo.h"
 
 #define OPT(name) global_state.opts.name
 
@@ -47,7 +48,7 @@ typedef struct {
 
     char *background_image, *default_window_logo;
     BackgroundImageLayout background_image_layout;
-    BackgroundImageAnchor window_logo_position;
+    ImageAnchorPosition window_logo_position;
     bool background_image_linear;
     float background_tint;
 
@@ -80,6 +81,12 @@ typedef struct {
         double outer, inner;
     } tab_bar_margin_height;
 } Options;
+
+typedef struct WindowLogoRenderData {
+    WindowLogo *instance;
+    ImageAnchorPosition position;
+    bool using_default;
+} WindowLogoRenderData;
 
 typedef struct {
     ssize_t vao_idx, gvao_idx;
@@ -116,6 +123,7 @@ typedef struct {
     CursorShape last_cursor_shape;
     PyObject *title;
     ScreenRenderData render_data;
+    WindowLogoRenderData window_logo;
     MousePosition mouse_pos;
     struct {
         unsigned int left, top, right, bottom;
@@ -205,7 +213,7 @@ typedef struct {
 typedef struct {
     Options opts;
 
-    id_type os_window_id_counter, tab_id_counter, window_id_counter;
+    id_type os_window_id_counter, tab_id_counter, window_id_counter, current_opengl_context_id;
     PyObject *boss;
     BackgroundImage *bgimage;
     OSWindow *os_windows;
@@ -222,6 +230,7 @@ typedef struct {
     int active_drag_button;
     CloseRequest quit_request;
     bool redirect_mouse_handling;
+    WindowLogo *all_window_logos;
 } GlobalState;
 
 extern GlobalState global_state;
