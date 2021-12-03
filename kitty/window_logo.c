@@ -10,58 +10,93 @@
 
 
 typedef struct WindowLogoItem {
-    WindowLogoHead
+    WindowLogo wl;
     unsigned int refcnt;
     char *path;
-    UT_hash_handle hh;
+    window_logo_id_t id;
+    UT_hash_handle hh_id;
+    UT_hash_handle hh_path;
 } WindowLogoItem;
 
+struct WindowLogoTable {
+    WindowLogoItem *by_id, *by_path;
+};
 
 static void
-free_window_logo(WindowLogoItem **head, WindowLogoItem **itemref) {
+free_window_logo(WindowLogoTable *table, WindowLogoItem **itemref) {
     WindowLogoItem *item = *itemref;
     free(item->path);
-    free(item->bitmap);
-    if (item->texture_id) free_texture(&item->texture_id);
-    HASH_DEL(*head, item);
+    free(item->wl.bitmap);
+    if (item->wl.texture_id) free_texture(&item->wl.texture_id);
+    HASH_DELETE(hh_id, table->by_id, item);
+    HASH_DELETE(hh_path, table->by_path, item);
     free(item); itemref = NULL;
 }
 
 static void
-send_logo_to_gpu(WindowLogoItem *s) {
+send_logo_to_gpu(WindowLogo *s) {
     send_image_to_gpu(&s->texture_id, s->bitmap, s->width, s->height, false, true, true, REPEAT_CLAMP);
+    free(s->bitmap); s->bitmap = NULL;
 }
 
 
 void
-set_on_gpu_state(WindowLogo *x, bool on_gpu) {
-    WindowLogoItem *s = (WindowLogoItem*)x;
+set_on_gpu_state(WindowLogo *s, bool on_gpu) {
     if (s->load_from_disk_ok) {
         if (on_gpu) { if (!s->texture_id) send_logo_to_gpu(s); }
         else if (s->texture_id) free_texture(&s->texture_id);
     }
 }
 
-WindowLogo*
-find_or_create_window_logo(WindowLogo **head_, const char *path) {
-    WindowLogoItem **head = (WindowLogoItem**)head_;
+window_logo_id_t
+find_or_create_window_logo(WindowLogoTable *head, const char *path) {
     WindowLogoItem *s = NULL;
-    HASH_FIND_STR(*head, path, s);
-    if (s) return (WindowLogo*)s;
+    unsigned _uthash_hfstr_keylen = (unsigned)uthash_strlen(path);
+    HASH_FIND(hh_path, head->by_path, path, _uthash_hfstr_keylen, s);
+    if (s) return s->id;
     s = calloc(1, sizeof *s);
     size_t size;
-    if (!s) { PyErr_NoMemory(); return NULL; }
+    if (!s) { PyErr_NoMemory(); return 0; }
     s->path = strdup(path);
-    if (!s->path) { free(s->bitmap); free(s); PyErr_NoMemory(); return NULL; }
-    if (png_path_to_bitmap(path, &s->bitmap, &s->width, &s->height, &size)) s->load_from_disk_ok = true;
+    if (!s->path) { free(s); PyErr_NoMemory(); return 0; }
+    if (png_path_to_bitmap(path, &s->wl.bitmap, &s->wl.width, &s->wl.height, &size)) s->wl.load_from_disk_ok = true;
     s->refcnt++;
-    HASH_ADD_KEYPTR(hh, *head, s->path, strlen(s->path), s);
-    return (WindowLogo*)s;
+    static window_logo_id_t idc = 0;
+    s->id = ++idc;
+    HASH_ADD(hh_id, head->by_id, id, sizeof(window_logo_id_t), s);
+    HASH_ADD_KEYPTR(hh_path, head->by_path, s->path, strlen(s->path), s);
+    return s->id;
+}
+
+WindowLogo*
+find_window_logo(WindowLogoTable *table, window_logo_id_t id) {
+    WindowLogoItem *s = NULL;
+    HASH_FIND(hh_id, table->by_id, &id, sizeof(window_logo_id_t), s);
+    return s ? &s->wl : NULL;
 }
 
 void
-decref_window_logo(WindowLogo **head_, WindowLogo** logo) {
-    WindowLogoItem **head = (WindowLogoItem**)head_;
-    WindowLogoItem **s = (WindowLogoItem**)logo;
-    if (*s) { if ((*s)->refcnt < 2) free_window_logo(head, s); else (*s)->refcnt--; }
+decref_window_logo(WindowLogoTable *table, window_logo_id_t id) {
+    WindowLogoItem *s = NULL;
+    HASH_FIND(hh_id, table->by_id, &id, sizeof(window_logo_id_t), s);
+    if (s) {
+        if (s->refcnt < 2) free_window_logo(table, &s);
+        else s->refcnt--;
+    }
+}
+
+WindowLogoTable*
+alloc_window_logo_table(void) {
+    return calloc(1, sizeof(WindowLogoTable));
+}
+
+void
+free_window_logo_table(WindowLogoTable **table) {
+    WindowLogoItem *current, *tmp;
+    HASH_ITER(hh_id, (*table)->by_id, current, tmp) {
+        HASH_DELETE(hh_id, (*table)->by_id, current);
+        free_window_logo(*table, &current);
+    }
+    HASH_CLEAR(hh_path, (*table)->by_path);
+    free(*table); *table = NULL;
 }

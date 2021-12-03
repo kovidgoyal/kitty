@@ -83,6 +83,7 @@ typedef struct {
 } Options;
 
 typedef struct WindowLogoRenderData {
+    window_logo_id_t id;
     WindowLogo *instance;
     ImageAnchorPosition position;
     bool using_default;
@@ -230,7 +231,7 @@ typedef struct {
     int active_drag_button;
     CloseRequest quit_request;
     bool redirect_mouse_handling;
-    WindowLogo *all_window_logos;
+    WindowLogoTable *all_window_logos;
 } GlobalState;
 
 extern GlobalState global_state;

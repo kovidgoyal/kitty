@@ -228,14 +228,17 @@ static bool
 set_window_logo(Window *w, const char *path, const ImageAnchorPosition pos, bool is_default) {
     bool ok = false;
     if (path && path[0]) {
-        WindowLogo *wl = find_or_create_window_logo(&global_state.all_window_logos, path);
+        window_logo_id_t wl = find_or_create_window_logo(global_state.all_window_logos, path);
         if (wl) {
-            w->window_logo.instance = wl;
+            w->window_logo.id = wl;
             w->window_logo.position = pos;
             ok = true;
         }
     } else {
-        decref_window_logo(&global_state.all_window_logos, &w->window_logo.instance);
+        if (w->window_logo.id) {
+            decref_window_logo(global_state.all_window_logos, w->window_logo.id);
+            w->window_logo.id = 0;
+        }
         ok = true;
     }
     w->window_logo.using_default = is_default;
@@ -313,7 +316,10 @@ destroy_window(Window *w) {
     Py_CLEAR(w->render_data.screen); Py_CLEAR(w->title);
     free(w->title_bar_data.buf); w->title_bar_data.buf = NULL;
     release_gpu_resources_for_window(w);
-    decref_window_logo(&global_state.all_window_logos, &w->window_logo.instance);
+    if (w->window_logo.id) {
+        decref_window_logo(global_state.all_window_logos, w->window_logo.id);
+        w->window_logo.id = 0;
+    }
 }
 
 static void
@@ -1281,6 +1287,7 @@ finalize(void) {
     // the GPU driver should take care of it when the OpenGL context is
     // destroyed.
     free_bgimage(&global_state.bgimage, false);
+    free_window_logo_table(&global_state.all_window_logos);
     global_state.bgimage = NULL;
     free_url_prefixes();
     free(OPT(select_by_word_characters)); OPT(select_by_word_characters) = NULL;
@@ -1296,6 +1303,8 @@ init_state(PyObject *module) {
 #define DPI 96.0
 #endif
     global_state.default_dpi.x = DPI; global_state.default_dpi.y = DPI;
+    global_state.all_window_logos = alloc_window_logo_table();
+    if (!global_state.all_window_logos) { PyErr_NoMemory(); return false; }
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     if (PyStructSequence_InitType2(&RegionType, &region_desc) != 0) return false;
     Py_INCREF((PyObject *) &RegionType);
