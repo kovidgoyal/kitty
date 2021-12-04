@@ -94,9 +94,9 @@ void
 free_window_logo_table(WindowLogoTable **table) {
     WindowLogoItem *current, *tmp;
     HASH_ITER(hh_id, (*table)->by_id, current, tmp) {
-        HASH_DELETE(hh_id, (*table)->by_id, current);
         free_window_logo(*table, &current);
     }
     HASH_CLEAR(hh_path, (*table)->by_path);
+    HASH_CLEAR(hh_id, (*table)->by_id);
     free(*table); *table = NULL;
 }
