@@ -53,7 +53,10 @@ find_or_create_window_logo(WindowLogoTable *head, const char *path) {
     WindowLogoItem *s = NULL;
     unsigned _uthash_hfstr_keylen = (unsigned)uthash_strlen(path);
     HASH_FIND(hh_path, head->by_path, path, _uthash_hfstr_keylen, s);
-    if (s) return s->id;
+    if (s) {
+        s->refcnt++;
+        return s->id;
+    }
     s = calloc(1, sizeof *s);
     size_t size;
     if (!s) { PyErr_NoMemory(); return 0; }

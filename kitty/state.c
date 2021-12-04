@@ -230,6 +230,7 @@ set_window_logo(Window *w, const char *path, const ImageAnchorPosition pos, floa
     if (path && path[0]) {
         window_logo_id_t wl = find_or_create_window_logo(global_state.all_window_logos, path);
         if (wl) {
+            if (w->window_logo.id) decref_window_logo(global_state.all_window_logos, w->window_logo.id);
             w->window_logo.id = wl;
             w->window_logo.position = pos;
             w->window_logo.alpha = alpha;
