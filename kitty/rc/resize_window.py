@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class ResizeWindow(RemoteCommand):
     '''
     match: Which window to resize
-    self: Boolean indicating whether to close the window the command is run in
+    self: Boolean indicating whether to resize the window the command is run in
     increment: Integer specifying the resize increment
     axis: One of :code:`horizontal, vertical` or :code:`reset`
     '''
