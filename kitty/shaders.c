@@ -581,8 +581,9 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
 }
 
 static void
-draw_window_logo(int program, ssize_t vao_idx, OSWindow *os_window, const WindowLogoRenderData *wl, GLfloat window_left_gl, GLfloat window_top_gl, GLfloat window_width_gl, GLfloat window_height_gl) {
+draw_window_logo(ssize_t vao_idx, OSWindow *os_window, const WindowLogoRenderData *wl, GLfloat window_left_gl, GLfloat window_top_gl, GLfloat window_width_gl, GLfloat window_height_gl) {
     if (os_window->live_resize.in_progress) return;
+    BLEND_PREMULT;
     GLfloat logo_width_gl = 2.f * ((float)wl->instance->width) / os_window->viewport_width;
     GLfloat logo_height_gl = 2.f * ((float)wl->instance->height) / os_window->viewport_height;
     GLfloat logo_left_gl = window_left_gl + window_width_gl * wl->position.canvas_x - logo_width_gl * wl->position.image_x;
@@ -591,11 +592,10 @@ draw_window_logo(int program, ssize_t vao_idx, OSWindow *os_window, const Window
     ird.texture_id = wl->instance->texture_id;
     gpu_data_for_image(&ird, logo_left_gl, logo_top_gl, logo_left_gl + logo_width_gl, logo_top_gl - logo_height_gl);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, &ird);
-    bind_program(program);
-    const int alpha_loc = program == GRAPHICS_PROGRAM ? cell_uniform_data.gploc : cell_uniform_data.gpploc;
-    glUniform1f(alpha_loc, cell_uniform_data.prev_inactive_text_alpha * wl->alpha);
-    draw_graphics(program, vao_idx, os_window->gvao_idx, &ird, 0, 1);
-    glUniform1f(alpha_loc, cell_uniform_data.prev_inactive_text_alpha);
+    bind_program(GRAPHICS_PREMULT_PROGRAM);
+    glUniform1f(cell_uniform_data.gpploc, cell_uniform_data.prev_inactive_text_alpha * wl->alpha);
+    draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, os_window->gvao_idx, &ird, 0, 1);
+    glUniform1f(cell_uniform_data.gpploc, cell_uniform_data.prev_inactive_text_alpha);
 }
 
 static void
@@ -688,7 +688,10 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
     }
 
     if (screen->grman->num_of_below_refs || has_bgimage(w) || wl) {
-        if (wl) draw_window_logo(GRAPHICS_PROGRAM, vao_idx, w, wl, xstart, ystart, width, height);
+        if (wl) {
+            draw_window_logo(vao_idx, w, wl, xstart, ystart, width, height);
+            BLEND_ONTO_OPAQUE;
+        }
         bind_program(CELL_BG_PROGRAM);
         if (screen->grman->num_of_below_refs) draw_graphics(
                 GRAPHICS_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_below_refs);
@@ -744,7 +747,10 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
     BLEND_PREMULT;
 
     if (screen->grman->num_of_below_refs || has_bgimage(os_window) || wl) {
-        if (wl) draw_window_logo(GRAPHICS_PREMULT_PROGRAM, vao_idx, os_window, wl, xstart, ystart, width, height);
+        if (wl) {
+            draw_window_logo(vao_idx, os_window, wl, xstart, ystart, width, height);
+            BLEND_PREMULT;
+        }
         if (screen->grman->num_of_below_refs) draw_graphics(
             GRAPHICS_PREMULT_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_below_refs);
         bind_program(CELL_BG_PROGRAM);
