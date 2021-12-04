@@ -172,6 +172,21 @@ Set the title for the newly created OS window. This title will override any
 titles set by programs running in kitty.
 
 
+--logo
+Path to a PNG image to use as the logo for the newly created window. See :opt:`window_logo_path`.
+
+
+--logo-position
+The position for the window logo. Only takes effect if :option:`--logo` is specified. See :opt:`window_logo_position`.
+
+
+--logo-alpha
+type=float
+default=-1
+The amount the window logo should be faded into the background.
+Only takes effect if :option:`--logo` is specified. See :opt:`window_logo_position`.
+
+
 --color
 type=list
 Change colors in the newly launched window. You can either specify a path to a .conf
@@ -399,5 +414,7 @@ def launch(
                 apply_colors(new_window, opts.color)
             if opts.keep_focus and active:
                 boss.set_active_window(active, switch_os_window_if_needed=True)
+            if opts.logo:
+                new_window.set_logo(opts.logo, opts.logo_position or '', opts.logo_alpha)
             return new_window
     return None

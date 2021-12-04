@@ -649,11 +649,11 @@ def active_tab_title_template(x: str) -> Optional[str]:
     return None if x == 'none' else x
 
 
-def config_or_absolute_path(x: str) -> Optional[str]:
+def config_or_absolute_path(x: str, env: Optional[Dict[str, str]] = None) -> Optional[str]:
     if x.lower() == 'none':
         return None
     x = os.path.expanduser(x)
-    x = os.path.expandvars(x)
+    x = expandvars(x, env or {})
     if not os.path.isabs(x):
         x = os.path.join(config_dir, x)
     return x

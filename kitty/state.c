@@ -1166,7 +1166,7 @@ PYWRAP1(set_window_logo) {
     PA("KKKsUf", &os_window_id, &tab_id, &window_id, &path, &position, &alpha);
     bool ok = false;
     WITH_WINDOW(os_window_id, tab_id, window_id);
-    ok = set_window_logo(window, path, bganchor(position), alpha, false);
+    ok = set_window_logo(window, path, PyObject_IsTrue(position) ? bganchor(position) : OPT(window_logo_position), (0 <= alpha && alpha <= 1) ? alpha : OPT(window_logo_alpha), false);
     END_WITH_WINDOW;
     if (ok) Py_RETURN_TRUE;
     Py_RETURN_FALSE;
