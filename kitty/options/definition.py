@@ -866,10 +866,11 @@ are undefined.
 opt('window_logo_path', 'none',
     option_type='config_or_absolute_path', ctype='!window_logo_path',
     long_text='''
-Path to a logo image. Must be in PNG format. The logo is displayed in a corner
-of every kitty window. The position is controlled by :opt:`window_logo_position`.
-Individual windows can be configured to have different logos either using
-the :doc:`launch` function or the :doc:`remote-control` facility.
+Path to a logo image. Must be in PNG format. Relative paths are interpreted
+relative to the kitty config directory.  The logo is displayed in a corner of every
+kitty window. The position is controlled by :opt:`window_logo_position`.
+Individual windows can be configured to have different logos either using the
+:doc:`launch` function or the :doc:`remote-control` facility.
 ''')
 
 opt('window_logo_position', 'bottom-right',

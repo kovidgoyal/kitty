@@ -1091,6 +1091,8 @@ class Window:
         }
 
     def set_logo(self, path: str, position: str = 'bottom-right', alpha: float = 0.5) -> None:
+        from .options.utils import config_or_absolute_path
+        path = config_or_absolute_path(path) or path
         set_window_logo(self.os_window_id, self.tab_id, self.id, path, position, alpha)
 
     # actions {{{
