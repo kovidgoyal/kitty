@@ -680,12 +680,12 @@ render_os_window(OSWindow *os_window, unsigned int active_window_id, color_type 
         draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
         br->is_dirty = false;
     }
-    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx * x_ratio, TD.dy * y_ratio, TD.screen, os_window, true, false, NULL);
+    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, 0, &TD, x_ratio, y_ratio, os_window, true, false, NULL);
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
         if (w->visible && WD.screen) {
             bool is_active_window = i == tab->active_window;
-            draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx * x_ratio, WD.dy * y_ratio, WD.screen, os_window, is_active_window, true, w);
+            draw_cells(WD.vao_idx, WD.gvao_idx, &WD, x_ratio, y_ratio, os_window, is_active_window, true, w);
             if (WD.screen->start_visual_bell_at != 0) {
                 set_maximum_wait(OPT(repaint_delay));
             }

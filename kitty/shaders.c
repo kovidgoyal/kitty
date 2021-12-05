@@ -165,6 +165,12 @@ send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei heigh
 
 // Cell {{{
 
+typedef struct CellRenderData {
+    struct {
+        GLfloat xstart, ystart, dx, dy, width, height;
+    } gl;
+} CellRenderData;
+
 typedef struct {
     UniformBlock render_data;
     ArrayInformation color_table;
@@ -275,8 +281,8 @@ pick_cursor_color(Line *line, ColorProfile *color_profile, color_type cell_fg, c
 }
 
 static void
-cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor, bool inverted, OSWindow *os_window) {
-    struct CellRenderData {
+cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, const CellRenderData *crd, CursorRenderInfo *cursor, bool inverted, OSWindow *os_window) {
+    struct GPUCellRenderData {
         GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, use_cell_for_selection_fg, use_cell_for_selection_bg;
 
         GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
@@ -284,10 +290,8 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
         GLuint xnum, ynum, cursor_fg_sprite_idx;
         GLfloat cursor_x, cursor_y, cursor_w;
     };
-    static struct CellRenderData *rd;
-
     // Send the uniform data
-    rd = (struct CellRenderData*)map_vao_buffer(vao_idx, uniform_buffer, GL_WRITE_ONLY);
+    struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer(vao_idx, uniform_buffer, GL_WRITE_ONLY);
     if (UNLIKELY(screen->color_profile->dirty || screen->reload_all_gpu_data)) {
         copy_color_table_to_buffer(screen->color_profile, (GLuint*)rd, cell_program_layouts[CELL_PROGRAM].color_table.offset / sizeof(GLuint), cell_program_layouts[CELL_PROGRAM].color_table.stride / sizeof(GLuint));
     }
@@ -342,7 +346,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
 
     rd->xnum = screen->columns; rd->ynum = screen->lines;
 
-    rd->xstart = xstart; rd->ystart = ystart; rd->dx = dx; rd->dy = dy;
+    rd->xstart = crd->gl.xstart; rd->ystart = crd->gl.ystart; rd->dx = crd->gl.dx; rd->dy = crd->gl.dy;
     unsigned int x, y, z;
     sprite_tracker_current_layout(os_window->fonts_data, &x, &y, &z);
     rd->sprite_dx = 1.0f / (float)x; rd->sprite_dy = 1.0f / (float)y;
@@ -500,7 +504,7 @@ has_bgimage(OSWindow *w) {
 }
 
 static void
-draw_tint(bool premult, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height) {
+draw_tint(bool premult, Screen *screen, const CellRenderData *crd) {
     bind_program(TINT_PROGRAM);
     color_type window_bg = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_bg, screen->color_profile->configured.default_bg).rgb;
 #define C(shift) ((((GLfloat)((window_bg >> shift) & 0xFF)) / 255.0f))
@@ -508,7 +512,7 @@ draw_tint(bool premult, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat 
     if (premult) glUniform4f(tint_program_layout.tint_color_location, C(16) * alpha, C(8) * alpha, C(0) * alpha, alpha);
     else glUniform4f(tint_program_layout.tint_color_location, C(16), C(8), C(0), alpha);
 #undef C
-    glUniform4f(tint_program_layout.edges_location, xstart, ystart - height, xstart + width, ystart);
+    glUniform4f(tint_program_layout.edges_location, crd->gl.xstart, crd->gl.ystart - crd->gl.height, crd->gl.xstart + crd->gl.width, crd->gl.ystart);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
@@ -581,13 +585,13 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
 }
 
 static void
-draw_window_logo(ssize_t vao_idx, OSWindow *os_window, const WindowLogoRenderData *wl, GLfloat window_left_gl, GLfloat window_top_gl, GLfloat window_width_gl, GLfloat window_height_gl) {
+draw_window_logo(ssize_t vao_idx, OSWindow *os_window, const WindowLogoRenderData *wl, const CellRenderData *crd) {
     if (os_window->live_resize.in_progress) return;
     BLEND_PREMULT;
     GLfloat logo_width_gl = 2.f * ((float)wl->instance->width) / os_window->viewport_width;
     GLfloat logo_height_gl = 2.f * ((float)wl->instance->height) / os_window->viewport_height;
-    GLfloat logo_left_gl = window_left_gl + window_width_gl * wl->position.canvas_x - logo_width_gl * wl->position.image_x;
-    GLfloat logo_top_gl = window_top_gl - window_height_gl * wl->position.canvas_y + logo_height_gl * wl->position.image_y;
+    GLfloat logo_left_gl = crd->gl.xstart + crd->gl.width * wl->position.canvas_x - logo_width_gl * wl->position.image_x;
+    GLfloat logo_top_gl = crd->gl.ystart - crd->gl.height * wl->position.canvas_y + logo_height_gl * wl->position.image_y;
     static ImageRenderData ird = {.group_count=1};
     ird.texture_id = wl->instance->texture_id;
     gpu_data_for_image(&ird, logo_left_gl, logo_top_gl, logo_left_gl + logo_width_gl, logo_top_gl - logo_height_gl);
@@ -599,21 +603,22 @@ draw_window_logo(ssize_t vao_idx, OSWindow *os_window, const WindowLogoRenderDat
 }
 
 static void
-draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height, Window *window, GLfloat dx, GLfloat dy) {
-    GLfloat left = os_window->viewport_width * (xstart + 1.f) / 2.f;
-    GLfloat right = left + os_window->viewport_width * width / 2.f;
+draw_window_number(OSWindow *os_window, Screen *screen, const CellRenderData *crd, Window *window) {
+    GLfloat left = os_window->viewport_width * (crd->gl.xstart + 1.f) / 2.f;
+    GLfloat right = left + os_window->viewport_width * crd->gl.width / 2.f;
     GLfloat title_bar_height = 0;
-    size_t requested_height = (size_t)(os_window->viewport_height * height / 2.f);
+    size_t requested_height = (size_t)(os_window->viewport_height * crd->gl.height / 2.f);
     if (window->title && PyUnicode_Check(window->title) && (requested_height > (os_window->fonts_data->cell_height + 1) * 2)) {
-        title_bar_height = render_window_title(os_window, screen, xstart, ystart, width, window, left, right);
+        title_bar_height = render_window_title(os_window, screen, crd->gl.xstart, crd->gl.ystart, crd->gl.width, window, left, right);
     }
+    GLfloat ystart = crd->gl.ystart, height = crd->gl.height, xstart = crd->gl.xstart, width = crd->gl.width;
     if (title_bar_height > 0) {
         ystart -= title_bar_height;
         height -= title_bar_height;
     }
-    ystart -= dy / 2.f; height -= dy;  // top and bottom margins
-    xstart += dx / 2.f; width -= dx;  // left and right margins
-    GLfloat height_gl = MIN(MIN(12 * dy, height), width);
+    ystart -= crd->gl.dy / 2.f; height -= crd->gl.dy;  // top and bottom margins
+    xstart += crd->gl.dx / 2.f; width -= crd->gl.dx;  // left and right margins
+    GLfloat height_gl = MIN(MIN(12 * crd->gl.dy, height), width);
     requested_height = (size_t)(os_window->viewport_height * height_gl / 2.f);
     if (requested_height < 4) return;
 #define lr screen->last_rendered_window_char
@@ -649,7 +654,7 @@ draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat 
 }
 
 static void
-draw_visual_bell_flash(GLfloat intensity, GLfloat xstart, GLfloat ystart, GLfloat w, GLfloat h, Screen *screen) {
+draw_visual_bell_flash(GLfloat intensity, const CellRenderData *crd, Screen *screen) {
     glEnable(GL_BLEND);
     // BLEND_PREMULT
     glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
@@ -666,13 +671,13 @@ draw_visual_bell_flash(GLfloat intensity, GLfloat xstart, GLfloat ystart, GLfloa
     if (max_channel > 0.45) attenuation = 0.6f;  // light color
     glUniform4f(tint_program_layout.tint_color_location, C(r), C(g), C(b), C(1));
 #undef C
-    glUniform4f(tint_program_layout.edges_location, xstart, ystart - h, xstart + w, ystart);
+    glUniform4f(tint_program_layout.edges_location, crd->gl.xstart, crd->gl.ystart - crd->gl.height, crd->gl.xstart + crd->gl.width, crd->gl.ystart);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     glDisable(GL_BLEND);
 }
 
 static void
-draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *w, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height, const WindowLogoRenderData *wl) {
+draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *w, const CellRenderData *crd, const WindowLogoRenderData *wl) {
     glEnable(GL_BLEND);
     BLEND_ONTO_OPAQUE;
 
@@ -683,13 +688,13 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
     } else if (OPT(background_tint) > 0) {
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
-        draw_tint(false, screen, xstart, ystart, width, height);
+        draw_tint(false, screen, crd);
         BLEND_ONTO_OPAQUE;
     }
 
     if (screen->grman->num_of_below_refs || has_bgimage(w) || wl) {
         if (wl) {
-            draw_window_logo(vao_idx, w, wl, xstart, ystart, width, height);
+            draw_window_logo(vao_idx, w, wl, crd);
             BLEND_ONTO_OPAQUE;
         }
         bind_program(CELL_BG_PROGRAM);
@@ -716,11 +721,11 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
 }
 
 static void
-draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *os_window, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height, const WindowLogoRenderData *wl) {
+draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *os_window, const CellRenderData *crd, const WindowLogoRenderData *wl) {
     if (OPT(background_tint) > 0.f) {
         glEnable(GL_BLEND);
         BLEND_PREMULT;
-        draw_tint(true, screen, xstart, ystart, width, height);
+        draw_tint(true, screen, crd);
         glDisable(GL_BLEND);
     }
     if (!os_window->offscreen_texture_id) {
@@ -748,7 +753,7 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
 
     if (screen->grman->num_of_below_refs || has_bgimage(os_window) || wl) {
         if (wl) {
-            draw_window_logo(vao_idx, os_window, wl, xstart, ystart, width, height);
+            draw_window_logo(vao_idx, os_window, wl, crd);
             BLEND_PREMULT;
         }
         if (screen->grman->num_of_below_refs) draw_graphics(
@@ -842,11 +847,14 @@ get_visual_bell_intensity(Screen *screen) {
 }
 
 void
-draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, OSWindow *os_window, bool is_active_window, bool can_be_focused, Window *window) {
+draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float x_ratio, float y_ratio, OSWindow *os_window, bool is_active_window, bool can_be_focused, Window *window) {
+    Screen *screen = srd->screen;
     CELL_BUFFERS;
     bool inverted = screen_invert_colors(screen);
+    CellRenderData crd = {.gl={.xstart = srd->xstart, .ystart = srd->ystart, .dx = srd->dx * x_ratio, .dy = srd->dy * y_ratio} };
+    crd.gl.width = crd.gl.dx * screen->columns; crd.gl.height = crd.gl.dy * screen->lines;
 
-    cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, &screen->cursor_render_info, inverted, os_window);
+    cell_update_uniform_block(vao_idx, screen, uniform_buffer, &crd, &screen->cursor_render_info, inverted, os_window);
 
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
     bind_vertex_array(vao_idx);
@@ -854,7 +862,6 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     float current_inactive_text_alpha = (!can_be_focused || screen->cursor_render_info.is_focused) && is_active_window ? 1.0f : (float)OPT(inactive_text_alpha);
     set_cell_uniforms(current_inactive_text_alpha, screen->reload_all_gpu_data);
     screen->reload_all_gpu_data = false;
-    GLfloat w = (GLfloat)screen->columns * dx, h = (GLfloat)screen->lines * dy;
     // The scissor limits below are calculated to ensure that they do not
     // overlap with the pixels outside the draw area,
     // for a test case (scissor is also used to blit framebuffer in draw_cells_interleaved_premult) run:
@@ -863,10 +870,10 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     /* printf("columns=%d dx=%f w=%f vw=%d vh=%d left=%f width=%f\n", screen->columns, dx, w, os_window->viewport_width, os_window->viewport_height, SCALE(width, (xstart + 1.f)/2.f), SCALE(width, w / 2.f)); */
 
     glScissor(
-        (GLint)roundf(SCALE(width, (xstart + 1.f)/2.f)),  // x
-        (GLint)roundf(SCALE(height, (ystart - h + 1.f)/2.f)),  // y
-        (GLsizei)roundf(SCALE(width, w / 2.f)),  // width
-        (GLsizei)roundf(SCALE(height, h / 2.f)) // height
+        (GLint)roundf(SCALE(width, (crd.gl.xstart + 1.f)/2.f)),  // x
+        (GLint)roundf(SCALE(height, (crd.gl.ystart - crd.gl.height + 1.f)/2.f)),  // y
+        (GLsizei)roundf(SCALE(width, crd.gl.width / 2.f)),  // width
+        (GLsizei)roundf(SCALE(height, crd.gl.height / 2.f)) // height
     );
 #undef SCALE
     bool has_underlying_image = has_bgimage(os_window);
@@ -877,20 +884,20 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     } else wl = NULL;
     if (os_window->is_semi_transparent) {
         if (screen->grman->count || has_underlying_image) draw_cells_interleaved_premult(
-                vao_idx, gvao_idx, screen, os_window, xstart, ystart, w, h, wl);
+                vao_idx, gvao_idx, screen, os_window, &crd, wl);
         else draw_cells_simple(vao_idx, gvao_idx, screen);
     } else {
         if (screen->grman->num_of_negative_refs || screen->grman->num_of_below_refs || has_underlying_image) draw_cells_interleaved(
-                vao_idx, gvao_idx, screen, os_window, xstart, ystart, w, h, wl);
+                vao_idx, gvao_idx, screen, os_window, &crd, wl);
         else draw_cells_simple(vao_idx, gvao_idx, screen);
     }
 
     if (screen->start_visual_bell_at) {
         GLfloat intensity = get_visual_bell_intensity(screen);
-        if (intensity > 0.0f) draw_visual_bell_flash(intensity, xstart, ystart, w, h, screen);
+        if (intensity > 0.0f) draw_visual_bell_flash(intensity, &crd, screen);
     }
 
-    if (window && screen->display_window_char) draw_window_number(os_window, screen, xstart, ystart, w, h, window, dx, dy);
+    if (window && screen->display_window_char) draw_window_number(os_window, screen, &crd, window);
 }
 // }}}
 
