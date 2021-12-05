@@ -5,8 +5,10 @@ import imghdr
 import os
 import tempfile
 from base64 import standard_b64decode, standard_b64encode
-from typing import IO, TYPE_CHECKING, Optional
+from typing import IO, TYPE_CHECKING, Dict, Optional
 from uuid import uuid4
+
+from kitty.types import AsyncResponse
 
 from .base import (
     MATCH_WINDOW_OPTION, ArgsType, Boss, CmdGenerator, PayloadGetType,
@@ -22,7 +24,6 @@ class SetBackgroundImage(RemoteCommand):
     '''
     data+: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image. \
     Or the special value - to indicate image must be removed.
-    img_id+: Unique uuid (as string) used for chunking
     match: Window to change opacity in
     layout: The image layout
     all: Boolean indicating operate on all windows
@@ -62,8 +63,8 @@ failed, the command will exit with a success code.
     argspec = 'PATH_TO_PNG_IMAGE'
     args_count = 1
     args_completion = {'files': ('PNG Images', ('*.png',))}
-    current_img_id: Optional[str] = None
-    current_file_obj: Optional[IO[bytes]] = None
+    images_in_flight: Dict[str, IO[bytes]] = {}
+    is_asynchronous = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) != 1:
@@ -96,15 +97,13 @@ failed, the command will exit with a success code.
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         data = payload_get('data')
+        img_id = payload_get('async_id')
         if data != '-':
-            img_id = payload_get('img_id')
-            if img_id != set_background_image.current_img_id:
-                set_background_image.current_img_id = img_id
-                set_background_image.current_file_obj = tempfile.NamedTemporaryFile()
+            if img_id not in self.images_in_flight:
+                self.images_in_flight[img_id] = tempfile.NamedTemporaryFile()
             if data:
-                assert set_background_image.current_file_obj is not None
-                set_background_image.current_file_obj.write(standard_b64decode(data))
-                return None
+                self.images_in_flight[img_id].write(standard_b64decode(data))
+                return AsyncResponse()
 
         windows = self.windows_for_payload(boss, window, payload_get)
         os_windows = tuple({w.os_window_id for w in windows})
@@ -112,10 +111,8 @@ failed, the command will exit with a success code.
         if data == '-':
             path = None
         else:
-            assert set_background_image.current_file_obj is not None
-            f = set_background_image.current_file_obj
+            f = self.images_in_flight.pop(img_id)
             path = f.name
-            set_background_image.current_file_obj = None
             f.flush()
 
         try:
@@ -124,6 +121,10 @@ failed, the command will exit with a success code.
             err.hide_traceback = True  # type: ignore
             raise
         return None
+
+    def cancel_async_request(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> None:
+        async_id = payload_get('async_id')
+        self.images_in_flight.pop(async_id, None)
 
 
 set_background_image = SetBackgroundImage()

@@ -45,12 +45,12 @@ def handle_cmd(boss: BossType, window: Optional[WindowType], serialized_cmd: str
     payload['peer_id'] = peer_id
     async_id = str(cmd.get('async', ''))
     if async_id:
+        payload['async_id'] = async_id
         if 'cancel_async' in cmd:
             active_async_requests.pop(async_id, None)
             c.cancel_async_request(boss, window, PayloadGetter(c, payload))
             return None
         active_async_requests[async_id] = monotonic()
-        payload['async_id'] = async_id
         if len(active_async_requests) > 32:
             oldest = next(iter(active_async_requests))
             del active_async_requests[oldest]
