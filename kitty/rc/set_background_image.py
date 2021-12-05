@@ -6,7 +6,6 @@ import os
 import tempfile
 from base64 import standard_b64decode, standard_b64encode
 from typing import IO, TYPE_CHECKING, Dict, Optional
-from uuid import uuid4
 
 from kitty.types import AsyncResponse
 
@@ -75,7 +74,6 @@ failed, the command will exit with a success code.
             'configured': opts.configured,
             'layout': opts.layout,
             'all': opts.all,
-            'img_id': str(uuid4())
         }
         if path.lower() == 'none':
             ret['data'] = '-'
@@ -100,7 +98,7 @@ failed, the command will exit with a success code.
         img_id = payload_get('async_id')
         if data != '-':
             if img_id not in self.images_in_flight:
-                self.images_in_flight[img_id] = tempfile.NamedTemporaryFile()
+                self.images_in_flight[img_id] = tempfile.NamedTemporaryFile(suffix='.png')
             if data:
                 self.images_in_flight[img_id].write(standard_b64decode(data))
                 return AsyncResponse()

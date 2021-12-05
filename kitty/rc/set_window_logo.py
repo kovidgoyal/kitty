@@ -7,7 +7,6 @@ import os
 import tempfile
 from base64 import standard_b64decode, standard_b64encode
 from typing import IO, TYPE_CHECKING, Dict, Optional
-from uuid import uuid4
 
 from kitty.types import AsyncResponse
 
@@ -24,7 +23,6 @@ class SetWindowLogo(RemoteCommand):
     '''
     data+: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image. \
     Or the special value - to indicate image must be removed.
-    img_id+: Unique uuid (as string) used for chunking
     position: The logo position as a string, empty string means default
     alpha: The logo alpha between 0 and 1. -1 means use default
     match: Which window to change the logo in
@@ -74,7 +72,6 @@ failed, the command will exit with a success code.
         ret = {
             'match': opts.match,
             'self': opts.self,
-            'img_id': str(uuid4()),
             'alpha': opts.alpha,
             'position': opts.position,
         }
@@ -101,7 +98,7 @@ failed, the command will exit with a success code.
         img_id = payload_get('async_id')
         if data != '-':
             if img_id not in self.images_in_flight:
-                self.images_in_flight[img_id] = tempfile.NamedTemporaryFile()
+                self.images_in_flight[img_id] = tempfile.NamedTemporaryFile(suffix='.png')
             if data:
                 self.images_in_flight[img_id].write(standard_b64decode(data))
                 return AsyncResponse()
