@@ -10,7 +10,7 @@ from contextlib import suppress
 from functools import partial
 from time import monotonic
 from typing import (
-    Any, Dict, Generator, Iterable, List, Optional, Tuple, Union, cast
+    Any, Dict, Iterator, Iterable, List, Optional, Tuple, Union, cast
 )
 
 from .cli import emph, parse_args
@@ -138,9 +138,9 @@ class RCIO(TTYIO):
 def do_io(to: Optional[str], send: Dict[str, Any], no_response: bool, response_timeout: float) -> Dict[str, Any]:
     payload = send.get('payload')
     if not isinstance(payload, types.GeneratorType):
-        send_data: Union[bytes, Iterable[bytes]] = encode_send(send)
+        send_data: Union[bytes, Iterator[bytes]] = encode_send(send)
     else:
-        def send_generator() -> Generator[bytes, None, None]:
+        def send_generator() -> Iterator[bytes]:
             assert payload is not None
             for chunk in payload:
                 send['payload'] = chunk
