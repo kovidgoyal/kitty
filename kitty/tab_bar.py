@@ -18,7 +18,6 @@ from .rgb import alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
 from .typing import EdgeLiteral, PowerlineStyle
 from .utils import color_as_int, log_error
-from .window import calculate_gl_geometry
 
 
 class TabBarData(NamedTuple):
@@ -523,9 +522,8 @@ class TabBar:
         margin = (viewport_width - ncells * cell_width) // 2 + self.margin_width
         self.window_geometry = g = WindowGeometry(
             margin, tab_bar.top, viewport_width - margin, tab_bar.bottom, s.columns, s.lines)
-        self.screen_geometry = sg = calculate_gl_geometry(g, vw, vh, cell_width, cell_height)
         self.update_blank_rects(central, tab_bar, vw, vh)
-        set_tab_bar_render_data(self.os_window_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)
+        set_tab_bar_render_data(self.os_window_id, self.screen, *g[:4])
 
     def update(self, data: Sequence[TabBarData]) -> None:
         if not self.laid_out_once:
@@ -533,7 +531,7 @@ class TabBar:
         s = self.screen
         s.cursor.x = 0
         s.erase_in_line(2, False)
-        max_title_length = max(1, (self.screen_geometry.xnum // max(1, len(data))) - 1)
+        max_title_length = max(1, (self.screen.columns // max(1, len(data))) - 1)
         cr = []
         last_tab = data[-1] if data else None
         ed = ExtraData()

@@ -705,13 +705,25 @@ PYWRAP1(set_options) {
 
 BOOL_SET(in_sequence_mode)
 
+static void
+init_screen_render_data(OSWindow *osw, const WindowGeometry *g, ScreenRenderData *d) {
+    d->dx = (2.f * osw->fonts_data->cell_width) / (float)osw->viewport_width;
+    d->dy = (2.f * osw->fonts_data->cell_height) / (float)osw->viewport_height;
+    float xmargin = g->left / (float)osw->viewport_width, ymargin = g->top / (float)osw->viewport_height;
+    d->xstart = -1.f + 2.f * xmargin;
+    d->ystart = 1.f - 2.f * ymargin;
+
+}
+
 PYWRAP1(set_tab_bar_render_data) {
     ScreenRenderData d = {0};
+    WindowGeometry g = {0};
     id_type os_window_id;
-    PA("KffffO", &os_window_id, &d.xstart, &d.ystart, &d.dx, &d.dy, &d.screen);
+    PA("KOIIII", &os_window_id, &d.screen, &g.left, &g.top, &g.right, &g.bottom);
     WITH_OS_WINDOW(os_window_id)
         Py_CLEAR(os_window->tab_bar_render_data.screen);
         d.vao_idx = os_window->tab_bar_render_data.vao_idx;
+        init_screen_render_data(os_window, &g, &d);
         os_window->tab_bar_render_data = d;
         Py_INCREF(os_window->tab_bar_render_data.screen);
     END_WITH_OS_WINDOW
@@ -867,12 +879,13 @@ PYWRAP1(set_window_render_data) {
     id_type os_window_id, tab_id, window_id;
     ScreenRenderData d = {0};
     WindowGeometry g = {0};
-    PA("KKKffffOIIII", &os_window_id, &tab_id, &window_id, A(xstart), A(ystart), A(dx), A(dy), A(screen), B(left), B(top), B(right), B(bottom));
+    PA("KKKOIIII", &os_window_id, &tab_id, &window_id, A(screen), B(left), B(top), B(right), B(bottom));
 
     WITH_WINDOW(os_window_id, tab_id, window_id);
         Py_CLEAR(window->render_data.screen);
         d.vao_idx = window->render_data.vao_idx;
         d.gvao_idx = window->render_data.gvao_idx;
+        init_screen_render_data(osw, &g, &d);
         window->render_data = d;
         window->geometry = g;
         Py_INCREF(window->render_data.screen);

@@ -32,14 +32,14 @@ from .fast_data_types import (
     mouse_selection, move_cursor_to_mouse_if_in_prompt, pt_to_px,
     set_clipboard_string, set_titlebar_color, set_window_logo,
     set_window_padding, set_window_render_data, update_ime_position_for_window,
-    update_window_title, update_window_visibility, viewport_for_window
+    update_window_title, update_window_visibility
 )
 from .keys import keyboard_mode_name, mod_mask
 from .notify import NotificationCommand, handle_notification_cmd
 from .options.types import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .types import MouseEvent, ScreenGeometry, WindowGeometry, ac
+from .types import MouseEvent, WindowGeometry, ac
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     get_primary_selection, load_shaders, log_error, open_cmd, open_url,
@@ -151,15 +151,6 @@ def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data:
             w.call_watchers(watchers, data)
 
     add_timer(callback, 0, False)
-
-
-def calculate_gl_geometry(window_geometry: WindowGeometry, viewport_width: int, viewport_height: int, cell_width: int, cell_height: int) -> ScreenGeometry:
-    dx, dy = 2 * cell_width / viewport_width, 2 * cell_height / viewport_height
-    xmargin = window_geometry.left / viewport_width
-    ymargin = window_geometry.top / viewport_height
-    xstart = -1 + 2 * xmargin
-    ystart = 1 - 2 * ymargin
-    return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
 def as_text(
@@ -546,21 +537,13 @@ class Window:
         self.screen.mark_as_dirty()
         wakeup()
 
-    def update_position(self, window_geometry: WindowGeometry) -> ScreenGeometry:
-        central, tab_bar, vw, vh, cw, ch = viewport_for_window(self.os_window_id)
-        self.screen_geometry = sg = calculate_gl_geometry(window_geometry, vw, vh, cw, ch)
-        return sg
-
     def set_geometry(self, new_geometry: WindowGeometry) -> None:
         if self.destroyed:
             return
         if self.needs_layout or new_geometry.xnum != self.screen.columns or new_geometry.ynum != self.screen.lines:
             self.screen.resize(new_geometry.ynum, new_geometry.xnum)
-            sg = self.update_position(new_geometry)
             self.needs_layout = False
             call_watchers(weakref.ref(self), 'on_resize', {'old_geometry': self.geometry, 'new_geometry': new_geometry})
-        else:
-            sg = self.update_position(new_geometry)
         current_pty_size = (
             self.screen.lines, self.screen.columns,
             max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
@@ -576,7 +559,7 @@ class Window:
             mark_os_window_dirty(self.os_window_id)
 
         self.geometry = g = new_geometry
-        set_window_render_data(self.os_window_id, self.tab_id, self.id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
+        set_window_render_data(self.os_window_id, self.tab_id, self.id, self.screen, *g[:4])
         self.update_effective_padding()
         if update_ime_position:
             update_ime_position_for_window(self.id, True)

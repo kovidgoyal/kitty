@@ -28,15 +28,6 @@ class FloatEdges(NamedTuple):
     bottom: float = 0
 
 
-class ScreenGeometry(NamedTuple):
-    xstart: float
-    ystart: float
-    xnum: int
-    ynum: int
-    dx: float
-    dy: float
-
-
 class WindowGeometry(NamedTuple):
     left: int
     top: int
