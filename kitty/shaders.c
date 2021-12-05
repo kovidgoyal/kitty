@@ -598,14 +598,24 @@ gl_size(const unsigned int sz, const unsigned int viewport_size) {
     return ans + px * (sz - mapped_val);
 }
 
+static GLfloat
+clamp_position_to_nearest_pixel(GLfloat pos, const unsigned int viewport_size) {
+    const GLfloat px = 2.f / viewport_size;
+    const GLfloat distance =  pos + 1.f;
+    const GLfloat num_of_pixels = roundf(distance / px);
+    return -1.f + num_of_pixels * px;
+}
+
 static void
 draw_window_logo(ssize_t vao_idx, OSWindow *os_window, const WindowLogoRenderData *wl, const CellRenderData *crd) {
     if (os_window->live_resize.in_progress) return;
     BLEND_PREMULT;
     GLfloat logo_width_gl = gl_size(wl->instance->width, os_window->viewport_width);
     GLfloat logo_height_gl = gl_size(wl->instance->height, os_window->viewport_height);
-    GLfloat logo_left_gl = crd->gl.xstart + crd->gl.width * wl->position.canvas_x - logo_width_gl * wl->position.image_x;
-    GLfloat logo_top_gl = crd->gl.ystart - crd->gl.height * wl->position.canvas_y + logo_height_gl * wl->position.image_y;
+    GLfloat logo_left_gl = clamp_position_to_nearest_pixel(
+            crd->gl.xstart + crd->gl.width * wl->position.canvas_x - logo_width_gl * wl->position.image_x, os_window->viewport_width);
+    GLfloat logo_top_gl = clamp_position_to_nearest_pixel(
+            crd->gl.ystart - crd->gl.height * wl->position.canvas_y + logo_height_gl * wl->position.image_y, os_window->viewport_height);
     static ImageRenderData ird = {.group_count=1};
     ird.texture_id = wl->instance->texture_id;
     gpu_data_for_image(&ird, logo_left_gl, logo_top_gl, logo_left_gl + logo_width_gl, logo_top_gl - logo_height_gl);
