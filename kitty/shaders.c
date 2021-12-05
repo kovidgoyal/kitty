@@ -287,7 +287,7 @@ pick_cursor_color(Line *line, ColorProfile *color_profile, color_type cell_fg, c
 static void
 cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, const CellRenderData *crd, CursorRenderInfo *cursor, bool inverted, OSWindow *os_window) {
     struct GPUCellRenderData {
-        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, use_cell_for_selection_fg, use_cell_for_selection_bg;
+        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
 
         GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
@@ -303,7 +303,15 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg);
     rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
     // selection
-    rd->use_cell_for_selection_fg = IS_SPECIAL_COLOR(highlight_fg) ? 1. : 0.;
+    if (IS_SPECIAL_COLOR(highlight_fg)) {
+        if (IS_SPECIAL_COLOR(highlight_bg)) {
+            rd->use_cell_bg_for_selection_fg = 1.f; rd->use_cell_fg_for_selection_color = 0.f;
+        } else {
+            rd->use_cell_bg_for_selection_fg = 0.f; rd->use_cell_fg_for_selection_color = 1.f;
+        }
+    } else {
+        rd->use_cell_bg_for_selection_fg = 0.f; rd->use_cell_fg_for_selection_color = 0.f;
+    }
     rd->use_cell_for_selection_bg = IS_SPECIAL_COLOR(highlight_bg) ? 1. : 0.;
     // Cursor position
     enum { BLOCK_IDX = 0, BEAM_IDX = 6, UNDERLINE_IDX = 7, UNFOCUSED_IDX = 8 };
