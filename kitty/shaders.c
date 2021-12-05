@@ -169,6 +169,9 @@ typedef struct CellRenderData {
     struct {
         GLfloat xstart, ystart, dx, dy, width, height;
     } gl;
+    struct {
+        GLuint xstart, ystart, width, height;
+    } px;
 } CellRenderData;
 
 typedef struct {
@@ -853,6 +856,13 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float
     bool inverted = screen_invert_colors(screen);
     CellRenderData crd = {.gl={.xstart = srd->xstart, .ystart = srd->ystart, .dx = srd->dx * x_ratio, .dy = srd->dy * y_ratio} };
     crd.gl.width = crd.gl.dx * screen->columns; crd.gl.height = crd.gl.dy * screen->lines;
+    if (window) {
+        crd.px.xstart = window->geometry.left; crd.px.ystart = window->geometry.top;
+        crd.px.width = window->geometry.right > window->geometry.left ? window->geometry.right - window->geometry.left : 0;
+        crd.px.height = window->geometry.bottom > window->geometry.top ? window->geometry.bottom - window->geometry.top : 0;
+    } else {
+        crd.px.width = os_window->viewport_width; crd.px.height = os_window->viewport_height;
+    }
 
     cell_update_uniform_block(vao_idx, screen, uniform_buffer, &crd, &screen->cursor_render_info, inverted, os_window);
 
