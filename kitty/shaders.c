@@ -170,7 +170,8 @@ typedef struct CellRenderData {
         GLfloat xstart, ystart, dx, dy, width, height;
     } gl;
     struct {
-        GLuint xstart, ystart, width, height;
+        GLint xstart, ystart;
+        GLsizei width, height;
     } px;
 } CellRenderData;
 
@@ -856,13 +857,22 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float
     bool inverted = screen_invert_colors(screen);
     CellRenderData crd = {.gl={.xstart = srd->xstart, .ystart = srd->ystart, .dx = srd->dx * x_ratio, .dy = srd->dy * y_ratio} };
     crd.gl.width = crd.gl.dx * screen->columns; crd.gl.height = crd.gl.dy * screen->lines;
-    if (window) {
-        crd.px.xstart = window->geometry.left; crd.px.ystart = window->geometry.top;
-        crd.px.width = window->geometry.right > window->geometry.left ? window->geometry.right - window->geometry.left : 0;
-        crd.px.height = window->geometry.bottom > window->geometry.top ? window->geometry.bottom - window->geometry.top : 0;
-    } else {
-        crd.px.width = os_window->viewport_width; crd.px.height = os_window->viewport_height;
-    }
+    // The scissor limits below are calculated to ensure that they do not
+    // overlap with the pixels outside the draw area. We cant use the actual pixel window dimensions
+    // because of the mapping of opengl's float based co-ord system to pixels.
+    // for a test case (scissor is also used to blit framebuffer in draw_cells_interleaved_premult) run:
+    // kitty -o background=cyan -o background_opacity=0.7 -o cursor_blink_interval=0 -o window_margin_width=40 -o remember_initial_window_size=n -o initial_window_width=401 kitty +kitten icat --hold logo/kitty.png
+    // Repeat incrementing window width by 1px each time over cursor_width number of pixels and see if any lines
+    // appear at the borders of the content area
+#define SCALE(w, x) ((GLfloat)(os_window->viewport_##w) * (GLfloat)(x))
+    /* printf("columns=%d dx=%f w=%f vw=%d vh=%d left=%f width=%f\n", screen->columns, dx, w, os_window->viewport_width, os_window->viewport_height, SCALE(width, (xstart + 1.f)/2.f), SCALE(width, w / 2.f)); */
+
+        crd.px.xstart = (GLint)roundf(SCALE(width, (crd.gl.xstart + 1.f)/2.f));
+        crd.px.ystart = (GLint)roundf(SCALE(height, (crd.gl.ystart - crd.gl.height + 1.f)/2.f));
+        crd.px.width  = (GLsizei)roundf(SCALE(width, crd.gl.width / 2.f));
+        crd.px.height = (GLsizei)roundf(SCALE(height, crd.gl.height / 2.f));
+#undef SCALE
+    glScissor(crd.px.xstart, crd.px.ystart, crd.px.width, crd.px.height);
 
     cell_update_uniform_block(vao_idx, screen, uniform_buffer, &crd, &screen->cursor_render_info, inverted, os_window);
 
@@ -872,20 +882,6 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float
     float current_inactive_text_alpha = (!can_be_focused || screen->cursor_render_info.is_focused) && is_active_window ? 1.0f : (float)OPT(inactive_text_alpha);
     set_cell_uniforms(current_inactive_text_alpha, screen->reload_all_gpu_data);
     screen->reload_all_gpu_data = false;
-    // The scissor limits below are calculated to ensure that they do not
-    // overlap with the pixels outside the draw area,
-    // for a test case (scissor is also used to blit framebuffer in draw_cells_interleaved_premult) run:
-    // kitty -o background=cyan -o background_opacity=0.7 -o cursor_blink_interval=0 -o window_margin_width=40 sh -c "kitty +kitten icat logo/kitty.png; read"
-#define SCALE(w, x) ((GLfloat)(os_window->viewport_##w) * (GLfloat)(x))
-    /* printf("columns=%d dx=%f w=%f vw=%d vh=%d left=%f width=%f\n", screen->columns, dx, w, os_window->viewport_width, os_window->viewport_height, SCALE(width, (xstart + 1.f)/2.f), SCALE(width, w / 2.f)); */
-
-    glScissor(
-        (GLint)roundf(SCALE(width, (crd.gl.xstart + 1.f)/2.f)),  // x
-        (GLint)roundf(SCALE(height, (crd.gl.ystart - crd.gl.height + 1.f)/2.f)),  // y
-        (GLsizei)roundf(SCALE(width, crd.gl.width / 2.f)),  // width
-        (GLsizei)roundf(SCALE(height, crd.gl.height / 2.f)) // height
-    );
-#undef SCALE
     bool has_underlying_image = has_bgimage(os_window);
     WindowLogoRenderData *wl;
     if (window && (wl = &window->window_logo) && wl->id && (wl->instance = find_window_logo(global_state.all_window_logos, wl->id)) && wl->instance && wl->instance->load_from_disk_ok) {
