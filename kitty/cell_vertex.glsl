@@ -187,12 +187,10 @@ void main() {
     effective_text_alpha = inactive_text_alpha * mix(1.0, dim_opacity, has_dim);
     float in_url = float((is_selected & TWO) >> 1);
     decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], fg_as_uint));
-#ifdef USE_SELECTION_FG
     // Selection
     vec3 selection_color = choose_color(use_cell_for_selection_fg, bg, color_to_vec(highlight_fg));
     foreground = choose_color(float(is_selected & ONE), selection_color, foreground);
     decoration_fg = choose_color(float(is_selected & ONE), selection_color, decoration_fg);
-#endif
     // Underline and strike through (rendered via sprites)
     underline_pos = choose_color(in_url, to_sprite_pos(pos, url_style, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> DECORATION_SHIFT) & THREE, ZERO, ZERO));
     strike_pos = to_sprite_pos(pos, ((text_attrs >> STRIKE_SHIFT) & ONE) * FOUR, ZERO, ZERO);

@@ -207,8 +207,6 @@ def as_text(
 
 class LoadShaderPrograms:
 
-    use_selection_fg = True
-
     def __call__(self, semi_transparent: bool = False) -> None:
         compile_program(BLIT_PROGRAM, *load_shaders('blit'))
         v, f = load_shaders('cell')
@@ -232,9 +230,6 @@ class LoadShaderPrograms:
             if semi_transparent:
                 vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
                 ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
-            if not load_shader_programs.use_selection_fg:
-                vv = vv.replace('#define USE_SELECTION_FG', '#define DONT_USE_SELECTION_FG')
-                ff = ff.replace('#define USE_SELECTION_FG', '#define DONT_USE_SELECTION_FG')
             compile_program(p, vv, ff)
 
         v, f = load_shaders('graphics')

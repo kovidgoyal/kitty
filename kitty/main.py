@@ -165,7 +165,6 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ())
         set_custom_ibeam_cursor()
     if not is_wayland() and not is_macos:  # no window icons on wayland
         set_x11_window_icon()
-    load_shader_programs.use_selection_fg = opts.selection_foreground is not None
     with cached_values_for(run_app.cached_values_name) as cached_values:
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(
