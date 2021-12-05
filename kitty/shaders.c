@@ -588,12 +588,22 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
     return 2.f * (GLfloat)bar_height / (GLfloat)os_window->viewport_height;
 }
 
+static GLfloat
+gl_size(const unsigned int sz, const unsigned int viewport_size) {
+    // convert sz to OpenGL co-oridinate system. Checks that mapping back via roundf()
+    // yields the same value.
+    const GLfloat px = 2.f / viewport_size;
+    GLfloat ans = px * sz;
+    const unsigned int mapped_val = (unsigned int)roundf((ans * viewport_size) / 2.f);
+    return ans + px * (sz - mapped_val);
+}
+
 static void
 draw_window_logo(ssize_t vao_idx, OSWindow *os_window, const WindowLogoRenderData *wl, const CellRenderData *crd) {
     if (os_window->live_resize.in_progress) return;
     BLEND_PREMULT;
-    GLfloat logo_width_gl = 2.f * ((float)wl->instance->width) / os_window->viewport_width;
-    GLfloat logo_height_gl = 2.f * ((float)wl->instance->height) / os_window->viewport_height;
+    GLfloat logo_width_gl = gl_size(wl->instance->width, os_window->viewport_width);
+    GLfloat logo_height_gl = gl_size(wl->instance->height, os_window->viewport_height);
     GLfloat logo_left_gl = crd->gl.xstart + crd->gl.width * wl->position.canvas_x - logo_width_gl * wl->position.image_x;
     GLfloat logo_top_gl = crd->gl.ystart - crd->gl.height * wl->position.canvas_y + logo_height_gl * wl->position.image_y;
     static ImageRenderData ird = {.group_count=1};
