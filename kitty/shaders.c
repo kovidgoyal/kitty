@@ -870,8 +870,8 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     );
 #undef SCALE
     bool has_underlying_image = has_bgimage(os_window);
-    WindowLogoRenderData *wl = &window->window_logo;
-    if (wl->id && (wl->instance = find_window_logo(global_state.all_window_logos, wl->id)) && wl->instance && wl->instance->load_from_disk_ok) {
+    WindowLogoRenderData *wl;
+    if (window && (wl = &window->window_logo) && wl->id && (wl->instance = find_window_logo(global_state.all_window_logos, wl->id)) && wl->instance && wl->instance->load_from_disk_ok) {
         has_underlying_image = true;
         set_on_gpu_state(window->window_logo.instance, true);
     } else wl = NULL;
