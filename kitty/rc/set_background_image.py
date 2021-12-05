@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import imghdr
+import os
 import tempfile
 from base64 import standard_b64decode, standard_b64encode
 from typing import IO, TYPE_CHECKING, Optional
@@ -67,7 +68,7 @@ failed, the command will exit with a success code.
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) != 1:
             self.fatal('Must specify path to exactly one PNG image')
-        path = args[0]
+        path = os.path.expanduser(args[0])
         ret = {
             'match': opts.match,
             'configured': opts.configured,
