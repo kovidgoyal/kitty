@@ -121,6 +121,24 @@ typedef struct {
     bool has_margins;
 } ScrollData;
 
+
+static inline float
+gl_size(const unsigned int sz, const unsigned int viewport_size) {
+    // convert pixel sz to OpenGL co-ordinate system.
+    const float px = 2.f / viewport_size;
+    return px * sz;
+}
+
+static inline float
+clamp_position_to_nearest_pixel(float pos, const unsigned int viewport_size) {
+    // clamp the specified opengl position to the nearest pixel
+    const float px = 2.f / viewport_size;
+    const float distance =  pos + 1.f;
+    const float num_of_pixels = roundf(distance / px);
+    return -1.f + num_of_pixels * px;
+}
+
+
 GraphicsManager* grman_alloc(void);
 void grman_clear(GraphicsManager*, bool, CellPixelSize fg);
 const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty, CellPixelSize fg);
