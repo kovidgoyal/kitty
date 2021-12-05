@@ -709,8 +709,8 @@ static void
 init_screen_render_data(OSWindow *osw, const WindowGeometry *g, ScreenRenderData *d) {
     d->dx = gl_size(osw->fonts_data->cell_width, osw->viewport_width);
     d->dy = gl_size(osw->fonts_data->cell_height, osw->viewport_height);
-    d->xstart = -1.f + gl_size(g->left, osw->viewport_width);
-    d->ystart = 1.f - gl_size(g->top, osw->viewport_height);
+    d->xstart = gl_pos_x(g->left, osw->viewport_width);
+    d->ystart = gl_pos_y(g->top, osw->viewport_height);
 }
 
 PYWRAP1(set_tab_bar_render_data) {

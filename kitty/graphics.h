@@ -138,6 +138,18 @@ clamp_position_to_nearest_pixel(float pos, const unsigned int viewport_size) {
     return -1.f + num_of_pixels * px;
 }
 
+static inline float
+gl_pos_x(const unsigned int px_from_left_margin, const unsigned int viewport_size) {
+    const float px = 2.f / viewport_size;
+    return -1.f + px_from_left_margin * px;
+}
+
+static inline float
+gl_pos_y(const unsigned int px_from_top_margin, const unsigned int viewport_size) {
+    const float px = 2.f / viewport_size;
+    return 1.f - px_from_top_margin * px;
+}
+
 
 GraphicsManager* grman_alloc(void);
 void grman_clear(GraphicsManager*, bool, CellPixelSize fg);
