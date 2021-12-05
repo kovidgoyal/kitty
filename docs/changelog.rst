@@ -148,6 +148,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix keyboard input not working after toggling traditional fullscreen
   till the window is clicked in
 
+- A new mappable action ``nth_os_window`` to to focus the specified nth OS
+  window. (:pull:`4316`)
+
 
 0.23.1 [2021-08-17]
 ----------------------

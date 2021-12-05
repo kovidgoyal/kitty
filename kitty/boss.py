@@ -1183,6 +1183,13 @@ class Boss:
                     text = '\n'.join(parse_uri_list(text))
                 w.paste(text)
 
+    @ac('win', 'Focus the nth OS window')
+    def nth_os_window(self, num: int = 1) -> None:
+        if self.os_window_map and num > 0:
+            ids = list(self.os_window_map.keys())
+            os_window_id = ids[min(num, len(ids)) - 1]
+            focus_os_window(os_window_id, True)
+
     @ac('win', 'Close the currently active OS Window')
     def close_os_window(self) -> None:
         tm = self.active_tab_manager
