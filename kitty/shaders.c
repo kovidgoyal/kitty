@@ -590,7 +590,7 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
 
 static GLfloat
 gl_size(const unsigned int sz, const unsigned int viewport_size) {
-    // convert sz to OpenGL co-oridinate system. Checks that mapping back via roundf()
+    // convert sz to OpenGL co-ordinate system. Checks that mapping back via roundf()
     // yields the same value.
     const GLfloat px = 2.f / viewport_size;
     GLfloat ans = px * sz;
