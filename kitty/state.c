@@ -707,12 +707,10 @@ BOOL_SET(in_sequence_mode)
 
 static void
 init_screen_render_data(OSWindow *osw, const WindowGeometry *g, ScreenRenderData *d) {
-    d->dx = (2.f * osw->fonts_data->cell_width) / (float)osw->viewport_width;
-    d->dy = (2.f * osw->fonts_data->cell_height) / (float)osw->viewport_height;
-    float xmargin = g->left / (float)osw->viewport_width, ymargin = g->top / (float)osw->viewport_height;
-    d->xstart = -1.f + 2.f * xmargin;
-    d->ystart = 1.f - 2.f * ymargin;
-
+    d->dx = gl_size(osw->fonts_data->cell_width, osw->viewport_width);
+    d->dy = gl_size(osw->fonts_data->cell_height, osw->viewport_height);
+    d->xstart = -1.f + gl_size(g->left, osw->viewport_width);
+    d->ystart = 1.f - gl_size(g->top, osw->viewport_height);
 }
 
 PYWRAP1(set_tab_bar_render_data) {
