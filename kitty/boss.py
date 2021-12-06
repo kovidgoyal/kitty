@@ -689,11 +689,12 @@ class Boss:
             'Are you sure you want to close this tab, it has {}'
             ' windows running?').format(num)],
             window=tab.active_window,
-            custom_callback=partial(self.handle_close_tab_confirmation, tab.id)
+            custom_callback=partial(self.handle_close_tab_confirmation, tab.id),
+            default_data={'response': 'n'}
         )
 
     def handle_close_tab_confirmation(self, tab_id: int, data: Dict[str, Any], *a: Any) -> None:
-        if data['response'] != 'y':
+        if data.get('response') != 'y':
             return
         for tab in self.all_tabs:
             if tab.id == tab_id:
@@ -1210,11 +1211,12 @@ class Boss:
                 'Are you sure you want to close this OS window, it has {}'
                 ' windows running?').format(num)],
                 window=w,
-                custom_callback=partial(self.handle_close_os_window_confirmation, os_window_id)
+                custom_callback=partial(self.handle_close_os_window_confirmation, os_window_id),
+                default_data={'response': 'n'}
             )
 
     def handle_close_os_window_confirmation(self, os_window_id: int, data: Dict[str, Any], *a: Any) -> None:
-        if data['response'] == 'y':
+        if data.get('response') == 'y':
             self.mark_os_window_for_close(os_window_id)
         else:
             self.mark_os_window_for_close(os_window_id, NO_CLOSE_REQUESTED)
@@ -1249,12 +1251,13 @@ class Boss:
         self._run_kitten('ask', ['--type=yesno', '--message', _(
             'Are you sure you want to quit kitty, it has {} windows running?').format(num)],
             window=tm.active_window,
-            custom_callback=self.handle_quit_confirmation
+            custom_callback=self.handle_quit_confirmation,
+            default_data={'response': 'n'}
         )
         set_application_quit_request(CLOSE_BEING_CONFIRMED)
 
     def handle_quit_confirmation(self, data: Dict[str, Any], *a: Any) -> None:
-        set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if data['response'] == 'y' else NO_CLOSE_REQUESTED)
+        set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if data.get('response') == 'y' else NO_CLOSE_REQUESTED)
 
     def notify_on_os_window_death(self, address: str) -> None:
         import socket
@@ -1318,7 +1321,8 @@ class Boss:
         input_data: Optional[Union[bytes, str]] = None,
         window: Optional[Window] = None,
         custom_callback: Optional[Callable[[Dict[str, Any], int, 'Boss'], None]] = None,
-        action_on_removal: Optional[Callable[[int, 'Boss'], None]] = None
+        action_on_removal: Optional[Callable[[int, 'Boss'], None]] = None,
+        default_data: Optional[Dict[str, Any]] = None
     ) -> Any:
         orig_args, args = list(args), list(args)
         from kittens.runner import create_kitten_handler
@@ -1378,7 +1382,7 @@ class Boss:
                 copy_colors_from=w
             )
             wid = w.id
-            overlay_window.actions_on_close.append(partial(self.on_kitten_finish, wid, custom_callback or end_kitten))
+            overlay_window.actions_on_close.append(partial(self.on_kitten_finish, wid, custom_callback or end_kitten, default_data=default_data))
             if action_on_removal is not None:
 
                 def callback_wrapper(*a: Any) -> None:
@@ -1394,10 +1398,16 @@ class Boss:
     def run_kitten(self, kitten: str, *args: str) -> None:
         self._run_kitten(kitten, args)
 
-    def on_kitten_finish(self, target_window_id: int, end_kitten: Callable[[Dict[str, Any], int, 'Boss'], None], source_window: Window) -> None:
+    def on_kitten_finish(
+        self, target_window_id: int, end_kitten: Callable[[Dict[str, Any], int, 'Boss'], None],
+        source_window: Window,
+        default_data: Optional[Dict[str, Any]] = None
+    ) -> None:
         output = self.get_output(source_window, num_lines=None)
         from kittens.runner import deserialize
         data = deserialize(output)
+        if data is None:
+            data = default_data
         if data is not None:
             end_kitten(data, target_window_id, self)
 
