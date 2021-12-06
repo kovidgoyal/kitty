@@ -659,13 +659,14 @@ class Window:
                     '--choice=o:Open', '--choice=c:Copy to clipboard', '--choice=n;red:Nothing'
                     ],
                     window=self,
-                    custom_callback=partial(self.hyperlink_open_confirmed, url, cwd)
+                    custom_callback=partial(self.hyperlink_open_confirmed, url, cwd),
+                    default_data={'response': ''}
                 )
                 return
         get_boss().open_url(url, cwd=cwd)
 
     def hyperlink_open_confirmed(self, url: str, cwd: Optional[str], data: Dict[str, Any], *a: Any) -> None:
-        q = data['response']
+        q = data.get('response', '')
         if q == 'o':
             get_boss().open_url(url, cwd=cwd)
         elif q == 'c':
@@ -912,14 +913,15 @@ class Window:
             'A program running in this window wants to read from the system clipboard.'
             ' Allow it do so, once?')],
             window=self,
-            custom_callback=self.handle_clipboard_confirmation
+            custom_callback=self.handle_clipboard_confirmation,
+            default_data={'response': 'n'}
         )
 
     def handle_clipboard_confirmation(self, data: Dict[str, Any], *a: Any) -> None:
         try:
             loc = 'p' if self.current_clipboard_read_ask else 'c'
             response = ''
-            if data['response'] == 'y':
+            if data.get('response') == 'y':
                 response = get_primary_selection() if self.current_clipboard_read_ask else get_clipboard_string()
             self.send_osc52(loc, response)
         finally:

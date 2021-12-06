@@ -1058,13 +1058,14 @@ class FileTransmission:
                 'The remote machine wants to read some files from this computer. Do you want to allow the transfer?'
                 )],
                 window=window, custom_callback=partial(self.handle_receive_confirmation, asd_id),
+                default_data={'response': 'n'}
             )
 
     def handle_receive_confirmation(self, cmd_id: str, data: Dict[str, str], *a: Any) -> None:
         asd = self.active_sends.get(cmd_id)
         if asd is None:
             return
-        if data['response'] == 'y':
+        if data.get('response') == 'y':
             asd.accepted = True
         else:
             self.drop_send(asd.id)
@@ -1089,13 +1090,14 @@ class FileTransmission:
                 'The remote machine wants to send some files to this computer. Do you want to allow the transfer?'
                 )],
                 window=window, custom_callback=partial(self.handle_send_confirmation, ar_id),
+                default_data={'response': 'n'}
             )
 
     def handle_send_confirmation(self, cmd_id: str, data: Dict[str, str], *a: Any) -> None:
         ar = self.active_receives.get(cmd_id)
         if ar is None:
             return
-        if data['response'] == 'y':
+        if data.get('response') == 'y':
             ar.accepted = True
         else:
             self.drop_receive(ar.id)
