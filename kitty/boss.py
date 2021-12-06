@@ -1249,12 +1249,15 @@ class Boss:
         self._run_kitten('ask', ['--type=yesno', '--message', _(
             'Are you sure you want to quit kitty, it has {} windows running?').format(num)],
             window=tm.active_window,
-            custom_callback=self.handle_quit_confirmation
+            custom_callback=self.handle_quit_confirmation,
+            action_on_removal=partial(self.handle_quit_confirmation, {})
         )
         set_application_quit_request(CLOSE_BEING_CONFIRMED)
 
     def handle_quit_confirmation(self, data: Dict[str, Any], *a: Any) -> None:
-        set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if data['response'] == 'y' else NO_CLOSE_REQUESTED)
+        if current_application_quit_request() == IMPERATIVE_CLOSE_REQUESTED:
+            return
+        set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if data.get('response') == 'y' else NO_CLOSE_REQUESTED)
 
     def notify_on_os_window_death(self, address: str) -> None:
         import socket
