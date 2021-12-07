@@ -1049,23 +1049,21 @@ class FileTransmission:
     def start_send(self, asd_id: str) -> None:
         asd = self.active_sends[asd_id]
         if asd.bypass_ok is not None:
-            self.handle_receive_confirmation(asd_id, {'response': 'y' if asd.bypass_ok else 'n'})
+            self.handle_receive_confirmation(asd.bypass_ok, asd_id)
             return
         boss = get_boss()
         window = boss.window_id_map.get(self.window_id)
         if window is not None:
-            boss._run_kitten('ask', ['--type=yesno', '--message', _(
-                'The remote machine wants to read some files from this computer. Do you want to allow the transfer?'
-                )],
-                window=window, custom_callback=partial(self.handle_receive_confirmation, asd_id),
-                default_data={'response': 'n'}
+            boss.confirm(_(
+                'The remote machine wants to read some files from this computer. Do you want to allow the transfer?'),
+                self.handle_receive_confirmation, asd_id, window=window,
             )
 
-    def handle_receive_confirmation(self, cmd_id: str, data: Dict[str, str], *a: Any) -> None:
+    def handle_receive_confirmation(self, confirmed: bool, cmd_id: str) -> None:
         asd = self.active_sends.get(cmd_id)
         if asd is None:
             return
-        if data.get('response') == 'y':
+        if confirmed:
             asd.accepted = True
         else:
             self.drop_send(asd.id)
@@ -1081,23 +1079,21 @@ class FileTransmission:
     def start_receive(self, ar_id: str) -> None:
         ar = self.active_receives[ar_id]
         if ar.bypass_ok is not None:
-            self.handle_send_confirmation(ar_id, {'response': 'y' if ar.bypass_ok else 'n'})
+            self.handle_send_confirmation(ar.bypass_ok, ar_id)
             return
         boss = get_boss()
         window = boss.window_id_map.get(self.window_id)
         if window is not None:
-            boss._run_kitten('ask', ['--type=yesno', '--message', _(
-                'The remote machine wants to send some files to this computer. Do you want to allow the transfer?'
-                )],
-                window=window, custom_callback=partial(self.handle_send_confirmation, ar_id),
-                default_data={'response': 'n'}
+            boss.confirm(_(
+                'The remote machine wants to send some files to this computer. Do you want to allow the transfer?'),
+                self.handle_send_confirmation, ar_id, window=window,
             )
 
-    def handle_send_confirmation(self, cmd_id: str, data: Dict[str, str], *a: Any) -> None:
+    def handle_send_confirmation(self, confirmed: bool, cmd_id: str) -> None:
         ar = self.active_receives.get(cmd_id)
         if ar is None:
             return
-        if data.get('response') == 'y':
+        if confirmed:
             ar.accepted = True
         else:
             self.drop_receive(ar.id)
@@ -1130,10 +1126,10 @@ class TestFileTransmission(FileTransmission):
         return True
 
     def start_receive(self, aid: str) -> None:
-        self.handle_send_confirmation(aid, {'response': 'y' if self.allow else 'n'})
+        self.handle_send_confirmation(self.allow, aid)
 
     def start_send(self, aid: str) -> None:
-        self.handle_receive_confirmation(aid, {'response': 'y' if self.allow else 'n'})
+        self.handle_receive_confirmation(self.allow, aid)
 
     def callback_after(self, callback: Callable[[Optional[int]], None], timeout: float = 0) -> Optional[int]:
         callback(None)

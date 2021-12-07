@@ -909,19 +909,17 @@ class Window:
             self.current_clipboard_read_ask = primary
             return
         self.current_clipboard_read_ask = primary
-        get_boss()._run_kitten('ask', ['--type=yesno', '--message', _(
+        get_boss().confirm(_(
             'A program running in this window wants to read from the system clipboard.'
-            ' Allow it do so, once?')],
-            window=self,
-            custom_callback=self.handle_clipboard_confirmation,
-            default_data={'response': 'n'}
+            ' Allow it do so, once?'),
+            self.handle_clipboard_confirmation, window=self,
         )
 
-    def handle_clipboard_confirmation(self, data: Dict[str, Any], *a: Any) -> None:
+    def handle_clipboard_confirmation(self, confirmed: bool) -> None:
         try:
             loc = 'p' if self.current_clipboard_read_ask else 'c'
             response = ''
-            if data.get('response') == 'y':
+            if confirmed:
                 response = get_primary_selection() if self.current_clipboard_read_ask else get_clipboard_string()
             self.send_osc52(loc, response)
         finally:

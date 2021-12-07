@@ -674,6 +674,13 @@ class Boss:
         if tab:
             self.confirm_tab_close(tab)
 
+    def confirm(self, msg: str, callback: Callable[..., None], *args: Any,
+                window: Optional[Window] = None, confirm_on_cancel: bool = False) -> None:
+        def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
+            callback(res.get('response') == 'y', *args)
+        self._run_kitten('ask', ['--type=yesno', '--message', msg],
+                         window=window, custom_callback=callback_, default_data={'response': 'y' if confirm_on_cancel else 'n'})
+
     def confirm_tab_close(self, tab: Tab) -> None:
         x = get_options().confirm_os_window_close
         num = tab.number_of_windows_with_running_programs if x < 0 else len(tab)
@@ -685,16 +692,15 @@ class Boss:
             tm = tab.tab_manager_ref()
             if tm is not None:
                 tm.set_active_tab(tab)
-        self._run_kitten('ask', ['--type=yesno', '--message', _(
+        self.confirm(_(
             'Are you sure you want to close this tab, it has {}'
-            ' windows running?').format(num)],
+            ' windows running?').format(num),
+            self.handle_close_tab_confirmation, tab.id,
             window=tab.active_window,
-            custom_callback=partial(self.handle_close_tab_confirmation, tab.id),
-            default_data={'response': 'n'}
         )
 
-    def handle_close_tab_confirmation(self, tab_id: int, data: Dict[str, Any], *a: Any) -> None:
-        if data.get('response') != 'y':
+    def handle_close_tab_confirmation(self, confirmed: bool, tab_id: int) -> None:
+        if not confirmed:
             return
         for tab in self.all_tabs:
             if tab.id == tab_id:
@@ -1207,16 +1213,15 @@ class Boss:
             return
         if tm is not None:
             w = tm.active_window
-            self._run_kitten('ask', ['--type=yesno', '--message', _(
-                'Are you sure you want to close this OS window, it has {}'
-                ' windows running?').format(num)],
+            self.confirm(
+                _('Are you sure you want to close this OS window, it has {}'
+                  ' windows running?').format(num),
+                self.handle_close_os_window_confirmation, os_window_id,
                 window=w,
-                custom_callback=partial(self.handle_close_os_window_confirmation, os_window_id),
-                default_data={'response': 'n'}
             )
 
-    def handle_close_os_window_confirmation(self, os_window_id: int, data: Dict[str, Any], *a: Any) -> None:
-        if data.get('response') == 'y':
+    def handle_close_os_window_confirmation(self, confirmed: bool, os_window_id: int) -> None:
+        if confirmed:
             self.mark_os_window_for_close(os_window_id)
         else:
             self.mark_os_window_for_close(os_window_id, NO_CLOSE_REQUESTED)
@@ -1248,16 +1253,15 @@ class Boss:
         if current_application_quit_request() == CLOSE_BEING_CONFIRMED:
             return
         assert tm is not None
-        self._run_kitten('ask', ['--type=yesno', '--message', _(
-            'Are you sure you want to quit kitty, it has {} windows running?').format(num)],
+        self.confirm(
+            _('Are you sure you want to quit kitty, it has {} windows running?').format(num),
+            self.handle_quit_confirmation,
             window=tm.active_window,
-            custom_callback=self.handle_quit_confirmation,
-            default_data={'response': 'n'}
         )
         set_application_quit_request(CLOSE_BEING_CONFIRMED)
 
-    def handle_quit_confirmation(self, data: Dict[str, Any], *a: Any) -> None:
-        set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if data.get('response') == 'y' else NO_CLOSE_REQUESTED)
+    def handle_quit_confirmation(self, confirmed: bool) -> None:
+        set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if confirmed else NO_CLOSE_REQUESTED)
 
     def notify_on_os_window_death(self, address: str) -> None:
         import socket
