@@ -54,7 +54,7 @@ agr('colors', 'Colors')
 opt('pygments_style', 'default',
     long_text='''
 The pygments color scheme to use for syntax highlighting. See :link:`pygments
-colors schemes <https://help.farbox.com/pygments.html>` for a list of schemes.
+builtin styles <https://pygments.org/styles/>` for a list of schemes.
 '''
     )
 
