@@ -7,7 +7,7 @@ import tempfile
 from kitty.config import build_ansi_color_table, defaults
 from kitty.fast_data_types import (
     ColorProfile, Cursor as C, HistoryBuf, LineBuf, Color,
-    parse_input_from_terminal, truncate_point_for_length, wcswidth, wcwidth
+    parse_input_from_terminal, truncate_point_for_length, wcswidth, wcwidth, strip_csi
 )
 from kitty.rgb import to_color
 from kitty.utils import is_path_in_temp_dir, sanitize_title
@@ -520,3 +520,11 @@ class TestDataTypes(BaseTest):
         a = []
         hb.as_ansi(a.append)
         self.ae(a, [str(hb.line(i)) + '\n' for i in range(hb.count - 1, -1, -1)])
+
+    def test_strip_csi(self):
+        def q(x, y=''):
+            self.ae(y or x, strip_csi(x))
+        q('test')
+        q('a\x1bbc', 'ac')
+        q('a\x1b[bc', 'ac')
+        q('a\x1b[12;34:43mbc', 'abc')

@@ -1275,9 +1275,36 @@ request_window_attention(id_type kitty_window_id, bool audio_bell) {
     }
 }
 
+static void
+strip_csi_(const char *title, char *buf, size_t bufsz) {
+    enum { NORMAL, IN_ESC, IN_CSI} state = NORMAL;
+    char *dest = buf, *last = &buf[bufsz-1];
+    *dest = 0; *last = 0;
+
+    for (; *title && dest < last; title++) {
+        const char ch = *title;
+        switch (state) {
+            case NORMAL: {
+                if (ch == 0x1b) { state = IN_ESC; }
+                else *(dest++) = ch;
+            } break;
+            case IN_ESC: {
+                if (ch == '[') { state = IN_CSI; }
+                else { state = NORMAL; }
+            } break;
+            case IN_CSI: {
+                if (!(('0' <= ch && ch <= '9') || ch == ';' || ch == ':')) state = NORMAL;
+            } break;
+        }
+    }
+    *dest = 0;
+}
+
 void
 set_os_window_title(OSWindow *w, const char *title) {
-    glfwSetWindowTitle(w->handle, title);
+    static char buf[2048];
+    strip_csi_(title, buf, arraysz(buf));
+    glfwSetWindowTitle(w->handle, buf);
 }
 
 void
@@ -1514,6 +1541,17 @@ stop_main_loop(void) {
     glfwStopMainLoop();
 }
 
+static PyObject*
+strip_csi(PyObject *self UNUSED, PyObject *src) {
+    if (!PyUnicode_Check(src)) { PyErr_SetString(PyExc_TypeError, "Unicode string expected"); return NULL; }
+    Py_ssize_t sz;
+    const char *title = PyUnicode_AsUTF8AndSize(src, &sz);
+    if (!title) return NULL;
+    FREE_AFTER_FUNCTION char *buf = malloc(sz + 1);
+    if (!buf) { return PyErr_NoMemory(); }
+    strip_csi_(title, buf, sz + 1);
+    return PyUnicode_FromString(buf);
+}
 
 // Boilerplate {{{
 
@@ -1534,6 +1572,7 @@ static PyMethodDef module_methods[] = {
     METHODB(get_click_interval, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
     METHODB(set_primary_selection, METH_VARARGS),
+    METHODB(strip_csi, METH_O),
 #ifndef __APPLE__
     METHODB(dbus_send_notification, METH_VARARGS),
 #endif
