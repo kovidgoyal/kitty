@@ -512,7 +512,7 @@ def resolve_editor_cmd(editor: str, shell_env: Mapping[str, str]) -> Optional[st
         return ' '.join(map(shlex.quote, editor_cmd))
 
     if shell_env is os.environ:
-        q = find_exe(editor_exe)
+        q = which(editor_exe, only_system=True)
         if q:
             return patched(q)
     elif 'PATH' in shell_env:
@@ -602,7 +602,7 @@ def resolved_shell(opts: Optional[Options] = None) -> List[str]:
 
 
 @run_once
-def system_paths_on_macos() -> List[str]:
+def system_paths_on_macos() -> Tuple[str, ...]:
     entries, seen = [], set()
 
     def add_from_file(x: str) -> None:
@@ -624,23 +624,51 @@ def system_paths_on_macos() -> List[str]:
     for name in sorted(files):
         add_from_file(os.path.join('/etc/paths.d', name))
     add_from_file('/etc/paths')
-    return entries
+    return tuple(entries)
 
 
-@lru_cache(maxsize=32)
-def find_exe(name: str) -> Optional[str]:
+def which(name: str, only_system: bool = False) -> Optional[str]:
     import shutil
-    ans = shutil.which(name)
-    if ans is None:
-        # In case PATH is messed up
-        if is_macos:
-            paths = system_paths_on_macos()
-        else:
-            paths = ['/usr/local/bin', '/opt/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']
-        paths.insert(0, os.path.expanduser('~/.local/bin'))
-        path = os.pathsep.join(paths) + os.pathsep + os.defpath
-        ans = shutil.which(name, path=path)
-    return ans
+    if os.sep in name:
+        return name
+    paths = []
+    ep = os.environ.get('PATH')
+    if ep:
+        paths = os.pathsep.split(ep)
+    paths.append(os.path.expanduser('~/.local/bin'))
+    paths.append(os.path.expanduser('~/bin'))
+    ans = shutil.which(name, path=os.pathsep.join(paths))
+    if ans:
+        return ans
+    # In case PATH is messed up try a default set of paths
+    if is_macos:
+        system_paths = system_paths_on_macos()
+    else:
+        system_paths = ('/usr/local/bin', '/opt/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin')
+    tried_paths = set(paths)
+    system_paths = tuple(x for x in system_paths if x not in tried_paths)
+    if system_paths:
+        ans = shutil.which(name, path=os.pathsep.join(system_paths))
+        if ans:
+            return ans
+        tried_paths |= set(system_paths)
+    if only_system:
+        return None
+    from .fast_data_types import get_options
+    try:
+        opts = get_options()
+    except RuntimeError:
+        return None
+    shell_env = read_shell_environment(opts)
+    for xenv in (shell_env, opts.env):
+        q = xenv.get('PATH')
+        if q:
+            paths = [x for x in xenv['PATH'].split(os.pathsep) if x not in tried_paths]
+            ans = shutil.which(name, path=os.pathsep.join(paths))
+            if ans:
+                return ans
+            tried_paths |= set(paths)
+    return None
 
 
 def read_shell_environment(opts: Optional[Options] = None) -> Dict[str, str]:

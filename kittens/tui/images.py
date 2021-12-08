@@ -20,7 +20,7 @@ from kitty.typing import (
     GRT_C, CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t,
     HandlerType
 )
-from kitty.utils import ScreenSize, find_exe, fit_image
+from kitty.utils import ScreenSize, fit_image, which
 
 from .operations import cursor
 
@@ -148,7 +148,7 @@ def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> 
 def identify(path: str) -> ImageData:
     import json
     q = '{"fmt":"%m","canvas":"%g","transparency":"%A","gap":"%T","index":"%p","size":"%wx%h","dpi":"%xx%y","dispose":"%D","orientation":"%[EXIF:Orientation]"}'
-    exe = find_exe('magick')
+    exe = which('magick')
     if exe:
         cmd = [exe, 'identify']
     else:
@@ -190,11 +190,11 @@ def render_image(
     import tempfile
     has_multiple_frames = len(m) > 1
     get_multiple_frames = has_multiple_frames and not only_first_frame
-    exe = find_exe('magick')
+    exe = which('magick')
     if exe:
         cmd = [exe, 'convert']
     else:
-        exe = find_exe('convert')
+        exe = which('convert')
         if exe is None:
             raise OSError('Failed to find the ImageMagick convert executable, make sure it is present in PATH')
         cmd = [exe]

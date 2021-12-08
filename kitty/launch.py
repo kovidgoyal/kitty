@@ -9,13 +9,11 @@ from .child import Child
 from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .constants import resolve_custom_file
-from .fast_data_types import (
-    get_options, patch_color_profiles, set_clipboard_string
-)
+from .fast_data_types import patch_color_profiles, set_clipboard_string
 from .options.utils import env as parse_env
 from .tabs import Tab
 from .types import run_once
-from .utils import find_exe, read_shell_environment, set_primary_selection, log_error
+from .utils import log_error, set_primary_selection, which
 from .window import Watchers, Window
 
 try:
@@ -379,12 +377,7 @@ def launch(
                         elif x == '@cursor-y':
                             x = str(screen.cursor.y + 1)
             final_cmd.append(x)
-        exe = find_exe(final_cmd[0])
-        if not exe:
-            xenv = read_shell_environment(get_options())
-            if 'PATH' in xenv:
-                import shutil
-                exe = shutil.which(final_cmd[0], path=xenv['PATH'])
+        exe = which(final_cmd[0])
         if exe:
             final_cmd[0] = exe
         kw['cmd'] = final_cmd

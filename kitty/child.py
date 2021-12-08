@@ -12,6 +12,7 @@ from typing import (
 
 import kitty.fast_data_types as fast_data_types
 
+from .utils import which
 from .constants import is_macos, kitty_base_dir, shell_path, terminfo_dir
 from .types import run_once
 
@@ -269,6 +270,7 @@ class Child:
             # xterm, urxvt, konsole and gnome-terminal do not do it in my
             # testing.
             argv[0] = ('-' + exe.split('/')[-1])
+        exe = which(exe) or exe
         pid = fast_data_types.spawn(exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd)
         os.close(slave)
         self.pid = pid
