@@ -25,8 +25,8 @@ class GetColors(RemoteCommand):
 
     short_desc = 'Get terminal colors'
     desc = (
-        'Get the terminal colors for the specified window (defaults to active window). '
-        'Colors will be output to stdout in the same syntax as used for kitty.conf'
+        'Get the terminal colors for the specified window (defaults to active window).'
+        ' Colors will be output to stdout in the same syntax as used for kitty.conf'
     )
     options_spec = '''\
 --configured -c
