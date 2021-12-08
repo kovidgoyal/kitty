@@ -634,7 +634,7 @@ def which(name: str, only_system: bool = False) -> Optional[str]:
     paths = []
     ep = os.environ.get('PATH')
     if ep:
-        paths = os.pathsep.split(ep)
+        paths = ep.split(os.pathsep)
     paths.append(os.path.expanduser('~/.local/bin'))
     paths.append(os.path.expanduser('~/bin'))
     ans = shutil.which(name, path=os.pathsep.join(paths))
