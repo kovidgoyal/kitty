@@ -32,6 +32,13 @@ You can see this protocol with all enhancements in action by running::
 
 inside the kitty terminal to report key events.
 
+In addition to kitty, this protocol is also implemented in:
+
+* The `foot terminal <https://codeberg.org/dnkl/foot/issues/319>`__
+* The `notcurses library
+  <https://github.com/dankamongmen/notcurses/issues/2131>`__
+* The `kakoune text editor <https://github.com/mawww/kakoune/issues/4103>`__
+
 .. versionadded:: 0.20.0
 
 Quickstart
