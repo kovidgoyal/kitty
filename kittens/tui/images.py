@@ -294,10 +294,9 @@ def render_as_single_image(
 
 
 def can_display_images() -> bool:
-    import shutil
     ans: Optional[bool] = getattr(can_display_images, 'ans', None)
     if ans is None:
-        ans = shutil.which('convert') is not None
+        ans = which('convert') is not None
         setattr(can_display_images, 'ans', ans)
     return ans
 

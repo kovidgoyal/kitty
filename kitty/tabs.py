@@ -364,8 +364,8 @@ class Tab:  # {{{
         if check_for_suitability:
             old_exe = cmd[0]
             if not os.path.isabs(old_exe):
-                import shutil
-                actual_exe = shutil.which(old_exe)
+                from .utils import which
+                actual_exe = which(old_exe)
                 old_exe = actual_exe if actual_exe else os.path.abspath(old_exe)
             try:
                 is_executable = os.access(old_exe, os.X_OK)
