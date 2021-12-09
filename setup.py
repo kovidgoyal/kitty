@@ -870,7 +870,10 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     for path in args.extra_include_dirs:
         cflags.append(f'-I{path}')
     if bundle_type == 'linux-freeze':
-        ldflags += ['-Wl,-rpath,$ORIGIN/../lib']
+        # --disable-new-dtags prevents -rpath from generating RUNPATH instead of
+        # RPATH entries in the launcher. The ld dynamic linker does not search
+        # RUNPATH locations for transitive dependencies, unlike RPATH.
+        ldflags += ['-Wl,--disable-new-dtags', '-Wl,-rpath,$ORIGIN/../lib']
     os.makedirs(launcher_dir, exist_ok=True)
     dest = os.path.join(launcher_dir, 'kitty')
     src = 'launcher.c'
