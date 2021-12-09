@@ -627,9 +627,14 @@ def system_paths_on_macos() -> Tuple[str, ...]:
 
 
 def which(name: str, only_system: bool = False) -> Optional[str]:
-    import shutil
     if os.sep in name:
         return name
+    import shutil
+    from .fast_data_types import get_options
+    opts: Optional[Options] = None
+    with suppress(RuntimeError):
+        opts = get_options()
+
     paths = []
     ep = os.environ.get('PATH')
     if ep:
@@ -651,12 +656,7 @@ def which(name: str, only_system: bool = False) -> Optional[str]:
         if ans:
             return ans
         tried_paths |= set(system_paths)
-    if only_system:
-        return None
-    from .fast_data_types import get_options
-    try:
-        opts = get_options()
-    except RuntimeError:
+    if only_system or opts is None:
         return None
     shell_env = read_shell_environment(opts)
     for xenv in (shell_env, opts.env):
