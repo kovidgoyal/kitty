@@ -187,7 +187,7 @@ def main(dest=None, launch=True, installer=None):
         else:
             dest = os.path.expanduser('~/.local')
     machine = os.uname()[4]
-    if machine and machine.lower().startswith('arm'):
+    if not is_macos and machine and machine.lower().startswith('arm'):
         raise SystemExit(
             'You are running on an ARM system. The kitty binaries are only'
             ' available for x86 systems. You will have to build from'
