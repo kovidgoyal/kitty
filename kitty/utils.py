@@ -535,7 +535,6 @@ def get_editor_from_env(env: Mapping[str, str]) -> Optional[str]:
 
 def get_editor_from_env_vars(opts: Optional[Options] = None) -> List[str]:
     import shlex
-    import shutil
 
     editor = get_editor_from_env(os.environ)
     if not editor:
@@ -543,7 +542,7 @@ def get_editor_from_env_vars(opts: Optional[Options] = None) -> List[str]:
         editor = get_editor_from_env(shell_env)
 
     for ans in (editor, 'vim', 'nvim', 'vi', 'emacs', 'kak', 'micro', 'nano', 'vis'):
-        if ans and shutil.which(shlex.split(ans)[0]):
+        if ans and which(shlex.split(ans)[0], only_system=True):
             break
     else:
         ans = 'vim'

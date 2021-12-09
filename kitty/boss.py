@@ -58,9 +58,8 @@ from .typing import PopenType, TypedDict
 from .utils import (
     func_name, get_editor, get_new_os_window_size, get_primary_selection,
     is_path_in_temp_dir, log_error, open_url, parse_address_spec,
-    parse_uri_list, platform_window_id, read_shell_environment,
-    remove_socket_file, safe_print, set_primary_selection, single_instance,
-    startup_notification_handler
+    parse_uri_list, platform_window_id, remove_socket_file, safe_print,
+    set_primary_selection, single_instance, startup_notification_handler
 )
 from .window import CommandOutput, MatchPatternType, Window
 
@@ -1282,14 +1281,8 @@ class Boss:
 
         cmd = list(map(prepare_arg, get_options().scrollback_pager))
         if not os.path.isabs(cmd[0]):
-            import shutil
-            exe = shutil.which(cmd[0])
-            if not exe:
-                env = read_shell_environment(get_options())
-                if env and 'PATH' in env:
-                    exe = shutil.which(cmd[0], path=env['PATH'])
-                    if exe:
-                        cmd[0] = exe
+            from .utils import which
+            cmd[0] = which(cmd[0]) or cmd[0]
 
         if os.path.basename(cmd[0]) == 'less':
             cmd.append('-+F')  # reset --quit-if-one-screen
