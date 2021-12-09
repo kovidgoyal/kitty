@@ -19,3 +19,4 @@ __pycache__/
 /.mypy_cache
 .DS_Store
 bypy/b
+bypy/virtual-machines.conf
