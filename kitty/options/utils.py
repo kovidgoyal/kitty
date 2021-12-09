@@ -761,7 +761,7 @@ def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:
             yield val, DELETE_ENV_VAR
 
 
-def watcher(val: str, current_val: Container[str]) -> Iterable[Tuple[str, str]]:
+def store_multiple(val: str, current_val: Container[str]) -> Iterable[Tuple[str, str]]:
     val = val.strip()
     if val not in current_val:
         yield val, val

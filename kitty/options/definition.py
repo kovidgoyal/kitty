@@ -2616,7 +2616,7 @@ will delete the variable from the child process' environment.
     )
 
 opt('+watcher', '',
-    option_type='watcher',
+    option_type='store_multiple',
     add_to_default=False,
     long_text='''
 Path to python file which will be loaded for :ref:`watchers`.
@@ -2625,6 +2625,28 @@ The watchers will be added to every kitty window. Relative
 paths are resolved relative to the kitty config directory.
 Note that reloading the config will only affect windows
 created after the reload.
+''')
+
+opt('+exe_search_path', '',
+    option_type='store_multiple',
+    add_to_default=False,
+    long_text='''
+Control where kitty looks to find programs to run. The default search order is:
+First search the system wide :code:`PATH`, then :file:`~/.local/bin` and :file:`~/bin`.
+If not still not found, the :code:`PATH` defined in the login shell after sourcing
+all its startup files is tried. Finally, if present, the :code:`PATH` in the :opt:`env`
+option is tried.
+
+This option allows you to prepend, append, or remove paths from this search order.
+It can be specified multiple times for multiple paths. A simple path will be prepended
+to the search order. A path that starts with the :code:`+` sign will be append to the search
+order, after :file:`~/bin` above. A path that starts with the :code:`-` sign will be removed
+from the entire search order. For example::
+
+    exe_search_path /some/prepended/path
+    exe_search_path +/some/appended/path
+    exe_search_path -/some/excluded/path
+
 ''')
 
 opt('update_check_interval', '24',

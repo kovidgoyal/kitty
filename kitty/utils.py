@@ -635,13 +635,26 @@ def which(name: str, only_system: bool = False) -> Optional[str]:
     with suppress(RuntimeError):
         opts = get_options()
 
+    tried_paths = set()
     paths = []
+    append_paths = []
+    if opts and opts.exe_search_path:
+        for x in opts.exe_search_path:
+            x = x.strip()
+            if x:
+                if x[0] == '-':
+                    tried_paths.add(x[1:])
+                elif x[0] == '+':
+                    append_paths.append(x[1:])
+                else:
+                    paths.append(x)
     ep = os.environ.get('PATH')
     if ep:
-        paths = ep.split(os.pathsep)
+        paths.extend(ep.split(os.pathsep))
     paths.append(os.path.expanduser('~/.local/bin'))
     paths.append(os.path.expanduser('~/bin'))
-    ans = shutil.which(name, path=os.pathsep.join(paths))
+    paths.extend(append_paths)
+    ans = shutil.which(name, path=os.pathsep.join(x for x in paths if x not in tried_paths))
     if ans:
         return ans
     # In case PATH is messed up try a default set of paths
@@ -649,7 +662,7 @@ def which(name: str, only_system: bool = False) -> Optional[str]:
         system_paths = system_paths_on_macos()
     else:
         system_paths = ('/usr/local/bin', '/opt/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin')
-    tried_paths = set(paths)
+    tried_paths |= set(paths)
     system_paths = tuple(x for x in system_paths if x not in tried_paths)
     if system_paths:
         ans = shutil.which(name, path=os.pathsep.join(system_paths))

@@ -346,6 +346,7 @@ option_names = (  # {{{
  'enable_audio_bell',
  'enabled_layouts',
  'env',
+ 'exe_search_path',
  'file_transfer_confirmation_bypass',
  'focus_follows_mouse',
  'font_family',
@@ -588,6 +589,7 @@ class Options:
     window_resize_step_lines: int = 2
     action_alias: typing.Dict[str, str] = {}
     env: typing.Dict[str, str] = {}
+    exe_search_path: typing.Dict[str, str] = {}
     font_features: typing.Dict[str, typing.Tuple[kitty.fonts.FontFeature, ...]] = {}
     kitten_alias: typing.Dict[str, str] = {}
     symbol_map: typing.Dict[typing.Tuple[int, int], str] = {}
@@ -705,6 +707,7 @@ class Options:
 defaults = Options()
 defaults.action_alias = {}
 defaults.env = {}
+defaults.exe_search_path = {}
 defaults.font_features = {}
 defaults.kitten_alias = {}
 defaults.symbol_map = {}

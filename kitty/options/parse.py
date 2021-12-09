@@ -13,10 +13,10 @@ from kitty.options.utils import (
     deprecated_send_text, disable_ligatures, edge_width, env, font_features, hide_window_decorations,
     macos_option_as_alt, macos_titlebar_color, optional_edge_width, parse_map, parse_mouse_map,
     resize_draw_strategy, scrollback_lines, scrollback_pager_history_size, shell_integration,
-    symbol_map, tab_activity_symbol, tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade,
-    tab_font_style, tab_separator, tab_title_template, to_cursor_shape, to_font_size, to_layout_names,
-    to_modifiers, url_prefixes, url_style, visual_window_select_characters, watcher,
-    window_border_width, window_size
+    store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge, tab_bar_margin_height,
+    tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator, tab_title_template, to_cursor_shape,
+    to_font_size, to_layout_names, to_modifiers, url_prefixes, url_style,
+    visual_window_select_characters, window_border_width, window_size
 )
 
 
@@ -949,6 +949,10 @@ class Parser:
         for k, v in env(val, ans["env"]):
             ans["env"][k] = v
 
+    def exe_search_path(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        for k, v in store_multiple(val, ans["exe_search_path"]):
+            ans["exe_search_path"][k] = v
+
     def file_transfer_confirmation_bypass(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['file_transfer_confirmation_bypass'] = str(val)
 
@@ -1255,7 +1259,7 @@ class Parser:
         ans['visual_window_select_characters'] = visual_window_select_characters(val)
 
     def watcher(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        for k, v in watcher(val, ans["watcher"]):
+        for k, v in store_multiple(val, ans["watcher"]):
             ans["watcher"][k] = v
 
     def wayland_titlebar_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
@@ -1321,6 +1325,7 @@ def create_result_dict() -> typing.Dict[str, typing.Any]:
     return {
         'action_alias': {},
         'env': {},
+        'exe_search_path': {},
         'font_features': {},
         'kitten_alias': {},
         'symbol_map': {},
