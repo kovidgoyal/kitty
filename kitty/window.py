@@ -43,7 +43,7 @@ from .types import MouseEvent, WindowGeometry, ac
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     get_primary_selection, load_shaders, log_error, open_cmd, open_url,
-    parse_color_set, sanitize_title, set_primary_selection
+    parse_color_set, resolve_custom_file, sanitize_title, set_primary_selection
 )
 
 MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]]]]
@@ -1069,8 +1069,7 @@ class Window:
         }
 
     def set_logo(self, path: str, position: str = '', alpha: float = -1) -> None:
-        from .options.utils import config_or_absolute_path
-        path = (config_or_absolute_path(path, get_options().env) or path) if path else ''
+        path = resolve_custom_file(path) if path else ''
         set_window_logo(self.os_window_id, self.tab_id, self.id, path, position or '', alpha)
 
     # actions {{{

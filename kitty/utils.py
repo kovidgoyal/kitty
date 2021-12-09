@@ -18,7 +18,7 @@ from typing import (
 )
 
 from .constants import (
-    appname, is_macos, is_wayland, read_kitty_resource, shell_path,
+    appname, config_dir, is_macos, is_wayland, read_kitty_resource, shell_path,
     supports_primary_selection
 )
 from .rgb import to_color
@@ -580,6 +580,22 @@ def is_path_in_temp_dir(path: str) -> bool:
         if q and path.startswith(q):
             return True
     return False
+
+
+def resolve_abs_or_config_path(path: str, env: Optional[Mapping[str, str]] = None, conf_dir: Optional[str] = None) -> str:
+    path = os.path.expanduser(path)
+    path = expandvars(path, env or {})
+    if not os.path.isabs(path):
+        path = os.path.join(conf_dir or config_dir, path)
+    return path
+
+
+def resolve_custom_file(path: str) -> str:
+    from .fast_data_types import get_options
+    opts: Optional[Options] = None
+    with suppress(RuntimeError):
+        opts = get_options()
+    return resolve_abs_or_config_path(path, opts.env if opts else {})
 
 
 def func_name(f: Any) -> str:

@@ -19,7 +19,9 @@ from kitty.constants import website_url
 from kitty.fast_data_types import get_options, set_clipboard_string
 from kitty.key_encoding import KeyEvent
 from kitty.typing import BossType, KittyCommonOpts
-from kitty.utils import ScreenSize, screen_size_function, set_primary_selection
+from kitty.utils import (
+    ScreenSize, resolve_custom_file, screen_size_function, set_primary_selection
+)
 
 from ..tui.handler import Handler, result_handler
 from ..tui.loop import Loop
@@ -414,7 +416,6 @@ def load_custom_processor(customize_processing: str) -> Any:
         return {k: getattr(m, k) for k in dir(m)}
     if customize_processing == '::linenum::':
         return {'mark': linenum_marks, 'handle_result': linenum_handle_result}
-    from kitty.constants import resolve_custom_file
     custom_path = resolve_custom_file(customize_processing)
     import runpy
     return runpy.run_path(custom_path, run_name='__main__')

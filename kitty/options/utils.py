@@ -2,7 +2,6 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-import os
 import re
 import sys
 from functools import lru_cache
@@ -17,7 +16,7 @@ from kitty.conf.utils import (
     positive_float, positive_int, python_string, to_bool, to_cmdline, to_color,
     uniq, unit_float
 )
-from kitty.constants import config_dir, is_macos
+from kitty.constants import is_macos
 from kitty.fast_data_types import (
     CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, Color
 )
@@ -28,7 +27,7 @@ from kitty.key_names import (
 )
 from kitty.rgb import color_as_int
 from kitty.types import FloatEdges, MouseEvent, SingleKey
-from kitty.utils import expandvars, log_error
+from kitty.utils import expandvars, log_error, resolve_abs_or_config_path
 
 KeyMap = Dict[SingleKey, str]
 MouseMap = Dict[MouseEvent, str]
@@ -660,13 +659,9 @@ def active_tab_title_template(x: str) -> Optional[str]:
 
 
 def config_or_absolute_path(x: str, env: Optional[Dict[str, str]] = None) -> Optional[str]:
-    if x.lower() == 'none':
+    if not x or x.lower() == 'none':
         return None
-    x = os.path.expanduser(x)
-    x = expandvars(x, env or {})
-    if not os.path.isabs(x):
-        x = os.path.join(config_dir, x)
-    return x
+    return resolve_abs_or_config_path(x, env)
 
 
 def allow_remote_control(x: str) -> str:

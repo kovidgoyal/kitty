@@ -8,12 +8,11 @@ from .boss import Boss
 from .child import Child
 from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
-from .constants import resolve_custom_file
 from .fast_data_types import patch_color_profiles, set_clipboard_string
 from .options.utils import env as parse_env
 from .tabs import Tab
 from .types import run_once
-from .utils import log_error, set_primary_selection, which
+from .utils import log_error, resolve_custom_file, set_primary_selection, which
 from .window import Watchers, Window
 
 try:
