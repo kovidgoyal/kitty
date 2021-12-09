@@ -53,7 +53,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   to use as the bell sound
 
 - A new option :opt:`exe_search_path` to modify the locations kitty searches
-  for executables to run
+  for executables to run (:iss:`4324`)
 
 - broadcast kitten: Show a "fake" cursor in all windows being broadcast too
   (:iss:`4225`)
