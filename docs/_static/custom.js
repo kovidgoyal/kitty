@@ -22,7 +22,7 @@ function scroll_sidebar_node_into_view(a) {
         a = a.offsetParent;
         if (!a || a == ss) break;
     }
-    ss.scrollTop = pos;
+    ss.scrollTo({top: pos, behavior: 'instant'});
 }
 
 function mark_current_link(sidebar_tree, a, onload) {
