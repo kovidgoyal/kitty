@@ -535,7 +535,6 @@ def get_editor_from_env(env: Mapping[str, str]) -> Optional[str]:
 
 def get_editor_from_env_vars(opts: Optional[Options] = None) -> List[str]:
     import shlex
-    import shutil
 
     editor = get_editor_from_env(os.environ)
     if not editor:
