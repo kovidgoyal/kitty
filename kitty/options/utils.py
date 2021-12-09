@@ -178,6 +178,16 @@ def paste_from_buffer(func: str, rest: str) -> FuncArgsType:
     return func, [rest]
 
 
+@func_with_args('paste')
+def paste_parse(func: str, rest: str) -> FuncArgsType:
+    text = ''
+    try:
+        text = python_string(rest)
+    except Exception:
+        log_error('Ignoring invalid paste string: ' + rest)
+    return func, [text]
+
+
 @func_with_args('neighboring_window')
 def neighboring_window(func: str, rest: str) -> FuncArgsType:
     rest = rest.lower()
