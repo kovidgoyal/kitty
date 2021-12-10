@@ -86,7 +86,7 @@ def as_rst() -> str:
 
     def kitten_link(text: str) -> str:
         x = text.split()
-        return f':doc:`kittens/{x[2]}`'.replace('_', '-') if len(x) > 2 else ''
+        return f':doc:`kittens/{x[2]}`' if len(x) > 2 else ''
 
     for group in sorted(allg, key=key):
         title = group_title(group)

@@ -7,15 +7,15 @@ Extend with kittens
    :hidden:
    :glob:
 
+   kittens/custom
    kittens/icat
    kittens/diff
-   kittens/unicode-input
+   kittens/unicode_input
    kittens/themes
    kittens/hints
    kittens/remote_file
    kittens/hyperlinked_grep
    kittens/transfer
-   kittens/custom
    kittens/*
 
 |kitty| has a framework for easily creating terminal programs that make use of
@@ -32,7 +32,7 @@ Some prominent kittens:
     images
 
 
-:doc:`Unicode Input <kittens/unicode-input>`
+:doc:`Unicode Input <kittens/unicode_input>`
     Easily input arbitrary unicode characters in |kitty| by name or hex code.
 
 
