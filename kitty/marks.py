@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-import os
 import re
 from ctypes import POINTER, c_uint, c_void_p, cast
 from typing import Callable, Generator, Iterable, Pattern, Tuple, Union, Sequence
 
-from .constants import config_dir
+from .utils import resolve_custom_file
 
 pointer_to_uint = POINTER(c_uint)
 
@@ -87,8 +86,6 @@ def marker_from_spec(ftype: str, spec: Union[str, Sequence[Tuple[int, str]]], fl
     if ftype == 'function':
         import runpy
         assert isinstance(spec, str)
-        path = spec
-        if not os.path.isabs(path):
-            path = os.path.join(config_dir, path)
+        path = resolve_custom_file(spec)
         return marker_from_function(runpy.run_path(path, run_name='__marker__')["marker"])
     raise ValueError(f'Unknown marker type: {ftype}')

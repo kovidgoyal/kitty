@@ -173,13 +173,6 @@ def running_in_kitty(set_val: Optional[bool] = None) -> bool:
     return bool(getattr(running_in_kitty, 'ans', False))
 
 
-def resolve_custom_file(path: str) -> str:
-    path = os.path.expandvars(os.path.expanduser(path))
-    if not os.path.isabs(path):
-        path = os.path.join(config_dir, path)
-    return path
-
-
 def list_kitty_resources(package: str = 'kitty') -> Iterable[str]:
     from importlib.resources import contents
     return contents(package)

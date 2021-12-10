@@ -10,6 +10,7 @@ from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, FrozenSet, Generator, List, cast
 
 from kitty.types import run_once
+from kitty.utils import resolve_abs_or_config_path
 
 
 aliases = {'url_hints': 'hints'}
@@ -27,11 +28,8 @@ def resolved_kitten(k: str) -> str:
 
 
 def path_to_custom_kitten(config_dir: str, kitten: str) -> str:
-    path = os.path.expanduser(kitten)
-    if not os.path.isabs(path):
-        path = os.path.join(config_dir, path)
-    path = os.path.abspath(path)
-    return path
+    path = resolve_abs_or_config_path(kitten, None, config_dir)
+    return os.path.abspath(path)
 
 
 @contextmanager
