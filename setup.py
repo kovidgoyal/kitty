@@ -1438,6 +1438,7 @@ def main() -> None:
             subprocess.check_call(cmd + ['linux'] + dest)
             subprocess.check_call(cmd + ['macos'] + dest)
             subprocess.check_call(cmd + ['linux', '32'] + dest)
+            subprocess.check_call(cmd + ['linux', 'arm64'] + dest)
 
 
 if __name__ == '__main__':

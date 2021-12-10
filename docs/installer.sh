@@ -47,10 +47,16 @@ import tempfile
 py3 = sys.version_info[0] > 2
 is64bit = platform.architecture()[0] == '64bit'
 is_macos = 'darwin' in sys.platform.lower()
+is_linux_arm = is_linux_arm64 = False
 if is_macos:
     mac_ver = tuple(map(int, platform.mac_ver()[0].split('.')))
     if mac_ver[:2] < (10, 12):
         raise SystemExit('Your version of macOS is too old, at least 10.12 is required')
+else:
+    machine = (os.uname()[4] or '').lower()
+    if machine.startswith('arm') or machine.startswith('aarch64'):
+        is_linux_arm = True
+        is_linux_arm64 = machine.startswith('arm64') or machine.startswith('aarch64')
 
 try:
     __file__
@@ -119,7 +125,8 @@ def get_release_data(relname='latest'):
         else:
             if name.endswith('.txz'):
                 if is64bit:
-                    if name.endswith('-x86_64.txz'):
+                    q = '-arm64.txz' if is_linux_arm64 else '-x86_64.txz'
+                    if name.endswith(q):
                         return html_url + '/' + name, asset['size']
                 else:
                     if name.endswith('-i686.txz'):
@@ -213,11 +220,10 @@ def main(dest=None, launch=True, installer=None):
             dest = '/Applications'
         else:
             dest = os.path.expanduser('~/.local')
-    machine = os.uname()[4]
-    if not is_macos and machine and machine.lower().startswith('arm'):
+    if is_linux_arm and not is_linux_arm64:
         raise SystemExit(
-            'You are running on an ARM system. The kitty binaries are only'
-            ' available for x86 systems. You will have to build from'
+            'You are running on a 32-bit ARM system. The kitty binaries are only'
+            ' available for 64 bit ARM systems. You will have to build from'
             ' source.')
     if not installer:
         url, size = get_release_data()

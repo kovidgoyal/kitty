@@ -19,7 +19,11 @@ from bypy.freeze import (
 from bypy.utils import get_dll_path, mkdtemp, py_compile, walk
 
 j = os.path.join
-arch = 'x86_64' if is64bit else 'i686'
+machine = (os.uname()[4] or '').lower()
+if machine.startswith('arm64') or machine.startswith('aarch64'):
+    arch = 'arm64'
+else:
+    arch = 'x86_64' if is64bit else 'i686'
 self_dir = os.path.dirname(os.path.abspath(__file__))
 py_ver = '.'.join(map(str, python_major_minor_version()))
 iv = globals()['init_env']
