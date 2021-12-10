@@ -749,7 +749,7 @@ class Boss:
     @ac('misc', '''
         Clear the terminal
 
-        See :sc:`reset_terminal` for details. For example::
+        See :sc:`reset_terminal <reset_terminal>` for details. For example::
 
             # Reset the terminal
             map kitty_mod+f9 clear_terminal reset active
