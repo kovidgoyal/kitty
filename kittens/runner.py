@@ -28,7 +28,7 @@ def resolved_kitten(k: str) -> str:
 
 
 def path_to_custom_kitten(config_dir: str, kitten: str) -> str:
-    path = resolve_abs_or_config_path(kitten, None, config_dir)
+    path = resolve_abs_or_config_path(kitten, conf_dir=config_dir)
     return os.path.abspath(path)
 
 
