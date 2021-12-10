@@ -3716,7 +3716,7 @@ dump_lines_with_attrs(Screen *self, PyObject *accum) {
         Line *line = range_line_(self, y);
         t = PyUnicode_FromFormat("\x1b[31m%d: \x1b[39m", y++);
         if (t) {
-            PyObject_CallFunctionObjArgs(accum, t);
+            PyObject_CallFunctionObjArgs(accum, t, NULL);
             Py_DECREF(t);
         }
         switch (line->attrs.prompt_kind) {
