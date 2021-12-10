@@ -7,7 +7,6 @@ Extend with kittens
    :hidden:
    :glob:
 
-   kittens/custom
    kittens/icat
    kittens/diff
    kittens/unicode_input
@@ -16,6 +15,7 @@ Extend with kittens
    kittens/remote_file
    kittens/hyperlinked_grep
    kittens/transfer
+   kittens/custom
    kittens/*
 
 |kitty| has a framework for easily creating terminal programs that make use of
