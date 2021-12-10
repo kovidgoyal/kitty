@@ -84,6 +84,10 @@ def as_rst() -> str:
     def key(x: ActionGroup) -> str:
         return group_title(x).lower()
 
+    def kitten_link(text: str) -> str:
+        x = text.split()
+        return f':doc:`kittens/{x[2]}`'.replace('_', '-') if len(x) > 2 else ''
+
     for group in sorted(allg, key=key):
         title = group_title(group)
         a('')
@@ -107,6 +111,12 @@ def as_rst() -> str:
             if action.name in maps:
                 a('')
                 a('Default shortcuts using this action:')
-                scs = {f':sc:`kitty.{m.name}`' for m in maps[action.name]}
-                a(', '.join(sorted(scs)))
+                if action.name == 'kitten':
+                    scs = {(kitten_link(m.parseable_text), m.short_text, f':sc:`kitty.{m.name}`') for m in maps[action.name]}
+                    for s in sorted(scs):
+                        a('')
+                        a(f'- {s[0]} - {s[2]} {s[1]}')
+                else:
+                    scs = {f':sc:`kitty.{m.name}`' for m in maps[action.name]}
+                    a(', '.join(sorted(scs)))
     return '\n'.join(lines)
