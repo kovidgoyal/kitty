@@ -112,11 +112,11 @@ def as_rst() -> str:
                 a('')
                 a('Default shortcuts using this action:')
                 if action.name == 'kitten':
+                    a('')
                     scs = {(kitten_link(m.parseable_text), m.short_text, f':sc:`kitty.{m.name}`') for m in maps[action.name]}
                     for s in sorted(scs):
-                        a('')
                         a(f'- {s[0]} - {s[2]} {s[1]}')
                 else:
-                    scs = {f':sc:`kitty.{m.name}`' for m in maps[action.name]}
-                    a(', '.join(sorted(scs)))
+                    sscs = {f':sc:`kitty.{m.name}`' for m in maps[action.name]}
+                    a(', '.join(sorted(sscs)))
     return '\n'.join(lines)
