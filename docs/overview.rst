@@ -79,7 +79,7 @@ Extending kitty
 kitty has a powerful framework for scripting. You can create small terminal
 programs called :doc:`kittens <kittens_intro>`. These can used to add features
 to kitty, for example, :doc:`editing remote files <kittens/remote_file>` or
-:doc:`inputting unicode characters <kittens/unicode-input>`. They can also be
+:doc:`inputting unicode characters <kittens/unicode_input>`. They can also be
 used to create programs that leverage kitty's powerful features, for example,
 :doc:`viewing images <kittens/icat>` or :doc:`diffing files with images
 <kittens/diff>`.

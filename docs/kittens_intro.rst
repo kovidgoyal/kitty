@@ -9,7 +9,7 @@ Extend with kittens
 
    kittens/icat
    kittens/diff
-   kittens/unicode-input
+   kittens/unicode_input
    kittens/themes
    kittens/hints
    kittens/remote_file
@@ -32,7 +32,7 @@ Some prominent kittens:
     images
 
 
-:doc:`Unicode Input <kittens/unicode-input>`
+:doc:`Unicode Input <kittens/unicode_input>`
     Easily input arbitrary unicode characters in |kitty| by name or hex code.
 
 

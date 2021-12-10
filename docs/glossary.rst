@@ -32,7 +32,7 @@ Glossary
       top of an existing kitty window, entirely covering it. Overlays are used
       throught kitty, for example, to display the :ref:`the scrollback buffer <scrollback>`,
       to display :doc:`hints </kittens/hints>`, for :doc:`unicode input
-      </kittens/unicode-input>` etc.
+      </kittens/unicode_input>` etc.
 
    hyperlinks
       Terminals can have hyperlinks, just like the internet. In kitty you can

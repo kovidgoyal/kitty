@@ -1407,7 +1407,7 @@ class Boss:
         if data is not None:
             end_kitten(data, target_window_id, self)
 
-    @ac('misc', 'Input an arbitrary unicode character. See :doc:`/kittens/unicode-input` for details.')
+    @ac('misc', 'Input an arbitrary unicode character. See :doc:`/kittens/unicode_input` for details.')
     def input_unicode_character(self) -> None:
         self._run_kitten('unicode_input')
 

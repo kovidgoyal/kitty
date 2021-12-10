@@ -7,7 +7,7 @@ end kitty has many foundational features, such as: :doc:`image support
 :doc:`various enhancements to the terminal protocol <protocol-extensions>`,
 etc. These features allow the development of rich terminal applications, such
 as :doc:`Side-by-side diff <kittens/diff>` and :doc:`Unicode input
-<kittens/unicode-input>`.
+<kittens/unicode_input>`.
 
 If you wish to support this mission and see the terminal ecosystem evolve,
 consider donating so that I can devote more time to |kitty| development.
