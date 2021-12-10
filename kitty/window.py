@@ -569,7 +569,7 @@ class Window:
     @ac('misc', '''
         Send the specified text to the active window
 
-        For details, see :sc:`send_text`.
+        See :sc:`send_text <send_text>` for details.
         ''')
     def send_text(self, *args: str) -> bool:
         mode = keyboard_mode_name(self.screen)
