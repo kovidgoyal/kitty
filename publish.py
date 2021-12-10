@@ -79,16 +79,9 @@ def run_html(args: Any) -> None:
     add_old_redirects('docs/_build/dirhtml')
 
 
-def add_old_redirects(loc: str) -> None:
-    for dirpath, dirnames, filenames in os.walk(loc):
-        if dirpath != loc:
-            for fname in filenames:
-                if fname == 'index.html':
-                    bname = os.path.basename(dirpath)
-                    base = os.path.dirname(dirpath)
-                    link_name = os.path.join(base, f'{bname}.html') if base else f'{bname}.html'
-                    with open(link_name, 'w') as f:
-                        f.write(f'''
+def generate_redirect_html(link_name: str, bname: str) -> None:
+    with open(link_name, 'w') as f:
+        f.write(f'''
 <html>
 <head>
 <title>Redirecting...</title>
@@ -105,6 +98,19 @@ window.location.replace('./{bname}/' + window.location.hash);
 </body>
 </html>
 ''')
+
+
+def add_old_redirects(loc: str) -> None:
+    for dirpath, dirnames, filenames in os.walk(loc):
+        if dirpath != loc:
+            for fname in filenames:
+                if fname == 'index.html':
+                    bname = os.path.basename(dirpath)
+                    base = os.path.dirname(dirpath)
+                    link_name = os.path.join(base, f'{bname}.html') if base else f'{bname}.html'
+                    generate_redirect_html(link_name, bname)
+
+    generate_redirect_html(os.path.join(loc, 'kittens', 'unicode-input.html'), 'unicode_input')
 
 
 def run_docs(args: Any) -> None:
