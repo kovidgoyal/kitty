@@ -1644,6 +1644,9 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     [self setResizeIncrements:NSMakeSize(1.0, 1.0)];
     [super toggleFullScreen:sender];
     [self setResizeIncrements:original];
+    // When the window decoration is hidden, toggling fullscreen causes the style mask to be changed,
+    // and causes the first responder to be cleared.
+    if (glfw_window && !glfw_window->decorated && glfw_window->ns.view) [self makeFirstResponder:glfw_window->ns.view];
 }
 
 @end
