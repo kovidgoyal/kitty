@@ -22,7 +22,10 @@ from pygments.token import (  # type: ignore
     Comment, Keyword, Literal, Name, Number, String, Whitespace
 )
 from sphinx import addnodes, version_info  # type: ignore
+from sphinx.builders.html.transforms import KeyboardTransform  # type: ignore
 from sphinx.util.logging import getLogger  # type: ignore
+
+KeyboardTransform.builders = ('html', 'dirhtml')  # type: ignore
 
 kitty_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if kitty_src not in sys.path:
