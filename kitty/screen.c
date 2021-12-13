@@ -2075,12 +2075,12 @@ screen_handle_cmd(Screen *self, PyObject *cmd) {
 
 void
 screen_push_colors(Screen *self, unsigned int idx) {
-    colorprofile_push_colors(self->color_profile, idx);
+    if (colorprofile_push_colors(self->color_profile, idx)) self->color_profile->dirty = true;
 }
 
 void
 screen_pop_colors(Screen *self, unsigned int idx) {
-    colorprofile_pop_colors(self->color_profile, idx);
+    if (colorprofile_pop_colors(self->color_profile, idx)) self->color_profile->dirty = true;
 }
 
 void
