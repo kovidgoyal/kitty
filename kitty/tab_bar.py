@@ -91,7 +91,7 @@ def compile_template(template: str) -> Any:
 class ColorFormatter:
 
     draw_data: DrawData
-    tab: TabBarData
+    tab_data: TabBarData
 
     def __init__(self, which: str):
         self.which = which
@@ -101,7 +101,7 @@ class ColorFormatter:
         if q == 'default':
             ans = '9'
         elif q == 'tab':
-            col = color_from_int((self.draw_data.tab_bg if self.which == '4' else self.draw_data.tab_fg)(self.tab))
+            col = color_from_int((self.draw_data.tab_bg if self.which == '4' else self.draw_data.tab_fg)(self.tab_data))
             ans = '8' + color_as_sgr(col)
         else:
             if name.startswith('_'):
@@ -176,7 +176,7 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
             'title': tab.title,
         }
         ColorFormatter.draw_data = draw_data
-        ColorFormatter.tab = tab
+        ColorFormatter.tab_data = tab
         eval_locals = {
             'index': index,
             'layout_name': tab.layout_name,
