@@ -61,7 +61,7 @@ getDisplayName(CGDirectDisplayID displayID, NSScreen* screen)
     io_service_t service;
     CFDictionaryRef info;
 
-    if (IOServiceGetMatchingServices(NULL,
+    if (IOServiceGetMatchingServices(0,
                                      IOServiceMatching("IODisplayConnect"),
                                      &it) != 0)
     {
@@ -259,7 +259,7 @@ static double getFallbackRefreshRate(CGDirectDisplayID displayID)
     io_iterator_t it;
     io_service_t service;
 
-    if (IOServiceGetMatchingServices(NULL,
+    if (IOServiceGetMatchingServices(0,
                                      IOServiceMatching("IOFramebuffer"),
                                      &it) != 0)
     {
