@@ -90,6 +90,9 @@ def compile_template(template: str) -> Any:
 
 class ColorFormatter:
 
+    draw_data: DrawData
+    tab: TabBarData
+
     def __init__(self, which: str):
         self.which = which
 
@@ -97,6 +100,9 @@ class ColorFormatter:
         q = name
         if q == 'default':
             ans = '9'
+        elif q == 'tab':
+            col = color_from_int((self.draw_data.tab_bg if self.which == '4' else self.draw_data.tab_fg)(self.tab))
+            ans = '8' + color_as_sgr(col)
         else:
             if name.startswith('_'):
                 q = '#' + name[1:]
@@ -169,6 +175,8 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
             'num_window_groups': tab.num_window_groups,
             'title': tab.title,
         }
+        ColorFormatter.draw_data = draw_data
+        ColorFormatter.tab = tab
         eval_locals = {
             'index': index,
             'layout_name': tab.layout_name,

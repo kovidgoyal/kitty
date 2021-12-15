@@ -1072,7 +1072,7 @@ is done by Python's string formatting machinery, so you can use, for instance,
 layout name, upper-cased. If you want to style the text, you can use styling
 directives, for example:
 :code:`{fmt.fg.red}red{fmt.fg.default}normal{fmt.bg._00FF00}green
-bg{fmt.bg.default}`. Similarly, for bold and italic:
+bg{fmt.bg.tab}`. Similarly, for bold and italic:
 :code:`{fmt.bold}bold{fmt.nobold}normal{fmt.italic}italic{fmt.noitalic}`.
 '''
     )
