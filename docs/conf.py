@@ -524,3 +524,7 @@ def setup(app: Any) -> None:
     app.add_role('pull', partial(num_role, 'pull'))
     app.add_role('disc', partial(num_role, 'discussions'))
     app.add_role('commit', commit_role)
+    # monkey patch sphinx_inline_tabs to avoid a warning about parallel reads
+    # see https://github.com/pradyunsg/sphinx-inline-tabs/issues/26
+    inline_tabs = app.extensions['sphinx_inline_tabs']
+    inline_tabs.parallel_read_safe = inline_tabs.parallel_write_safe = True
