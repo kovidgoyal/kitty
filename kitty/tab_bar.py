@@ -179,6 +179,8 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
             'sup': SupSub(data),
             'sub': SupSub(data, True),
         }
+        normal_bg = draw_data.active_bg if tab.is_active else draw_data.inactive_bg
+        eval_locals['fmt'].bg.normal = f'\x1b[4{"8" + color_as_sgr(normal_bg)}m'
         title = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
     except Exception as e:
         report_template_failure(template, str(e))
