@@ -59,8 +59,8 @@ def call(*cmd: str, cwd: Optional[str] = None, echo: bool = False) -> None:
 
 def run_build(args: Any) -> None:
     for x in ('64', '32', 'arm64'):
-        call(f'python ../bypy linux {x} program', echo=True)
-        call(f'python ../bypy linux {x} shutdown', echo=True)
+        call(f'python ../bypy linux --arch {x} program', echo=True)
+        call(f'python ../bypy linux --arch {x} shutdown', echo=True)
     call('python ../bypy macos program --sign-installers --notarize', echo=True)
     call('python ../bypy macos shutdown')
 
