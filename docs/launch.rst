@@ -144,6 +144,7 @@ this **may not** be the value of ``PATH`` inside a shell, as shell startup scrip
 often change the value of this variable. If it is not found there, then a
 system specific list of default paths is searched. If it is still not found,
 then your shell is run and the value of ``PATH`` inside the shell is used.
+See :opt:`exe_search_path` for details and how to control this.
 
 Syntax reference
 ------------------
