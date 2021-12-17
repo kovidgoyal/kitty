@@ -372,7 +372,7 @@ def prerender_function(
     cursor_underline_thickness: float,
     dpi_x: float,
     dpi_y: float
-) -> Tuple[Union[int, CBufType], ...]:
+) -> Tuple[Tuple[int, ...], Tuple[CBufType, ...]]:
     # Pre-render the special underline, strikethrough and missing and cursor cells
     f = partial(
         render_special, cell_width=cell_width, cell_height=cell_height, baseline=baseline,
@@ -385,7 +385,7 @@ def prerender_function(
         cursor_underline_thickness=cursor_underline_thickness, cell_width=cell_width,
         cell_height=cell_height, dpi_x=dpi_x, dpi_y=dpi_y)
     cells = f(1), f(2), f(3), f(0, True), f(missing=True), c(1), c(2), c(3)
-    return tuple(map(ctypes.addressof, cells)) + (cells,)
+    return tuple(map(ctypes.addressof, cells)), cells
 
 
 def render_box_drawing(codepoint: int, cell_width: int, cell_height: int, dpi: float) -> Tuple[int, CBufType]:

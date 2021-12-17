@@ -953,7 +953,7 @@ def set_font_data(
                                Tuple[int, Union[bytearray, bytes, Array[c_ubyte]]]],
     prerender_func: Callable[
         [int, int, int, int, int, int, int, float, float, float, float],
-        Tuple[Union[Array[c_ubyte], int], ...]],
+        Tuple[Tuple[int, ...], Tuple[Array[c_ubyte], ...]]],
     descriptor_for_idx: Callable[[int], Tuple[FontObject, bool, bool]],
     bold: int, italic: int, bold_italic: int, num_symbol_fonts: int,
     symbol_maps: Tuple[Tuple[int, int, int], ...], font_sz_in_pts: float,

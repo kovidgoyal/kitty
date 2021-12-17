@@ -1345,12 +1345,13 @@ send_prerendered_sprites(FontGroup *fg) {
     if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
     PyObject *args = PyObject_CallFunction(prerender_function, "IIIIIIIffdd", fg->cell_width, fg->cell_height, fg->baseline, fg->underline_position, fg->underline_thickness, fg->strikethrough_position, fg->strikethrough_thickness, OPT(cursor_beam_thickness), OPT(cursor_underline_thickness), fg->logical_dpi_x, fg->logical_dpi_y);
     if (args == NULL) { PyErr_Print(); fatal("Failed to pre-render cells"); }
-    for (ssize_t i = 0; i < PyTuple_GET_SIZE(args) - 1; i++) {
+    PyObject *cell_addresses = PyTuple_GET_ITEM(args, 0);
+    for (ssize_t i = 0; i < PyTuple_GET_SIZE(cell_addresses); i++) {
         x = fg->sprite_tracker.x; y = fg->sprite_tracker.y; z = fg->sprite_tracker.z;
         if (y > 0) { fatal("Too many pre-rendered sprites for your GPU or the font size is too large"); }
         do_increment(fg, &error);
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
-        uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(args, i));
+        uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(cell_addresses, i));
         ensure_canvas_can_fit(fg, 1);  // clear canvas
         Region r = { .right = fg->cell_width, .bottom = fg->cell_height };
         render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->cell_width, fg->cell_width);
