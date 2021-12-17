@@ -555,8 +555,16 @@ static Window*
 window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
     Region central, tab_bar;
     os_window_regions(global_state.callback_os_window, &central, &tab_bar);
-    *in_tab_bar = !mouse_in_region(&central);
-    if (!*in_tab_bar && global_state.callback_os_window->num_tabs > 0) {
+    const bool in_central = mouse_in_region(&central);
+    *in_tab_bar = false;
+    const OSWindow* w = global_state.callback_os_window;
+    if (!in_central) {
+        if (
+                (tab_bar.top < central.top && w->mouse_y <= central.top) ||
+                (tab_bar.bottom > central.bottom && w->mouse_y >= central.bottom)
+           ) *in_tab_bar = true;
+    }
+    if (in_central && global_state.callback_os_window->num_tabs > 0) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         for (unsigned int i = 0; i < t->num_windows; i++) {
             if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
