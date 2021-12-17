@@ -39,7 +39,7 @@ from .notify import NotificationCommand, handle_notification_cmd
 from .options.types import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .types import MouseEvent, WindowGeometry, ac
+from .types import MouseEvent, WindowGeometry, ac, run_once
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     get_primary_selection, load_shaders, log_error, open_cmd, open_url,
@@ -50,6 +50,8 @@ MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]
 
 
 if TYPE_CHECKING:
+    import re
+
     from .file_transmission import FileTransmission
 
 
@@ -264,13 +266,14 @@ def setup_colors(screen: Screen, opts: Options) -> None:
     )
 
 
-def text_sanitizer(as_ansi: bool, add_wrap_markers: bool) -> Callable[[str], str]:
-    pat = getattr(text_sanitizer, 'pat', None)
-    if pat is None:
-        import re
-        pat = re.compile('\033\\[.*?m')
-        setattr(text_sanitizer, 'pat', pat)
+@run_once
+def text_sanitizer_pat() -> 're.Pattern[str]':
+    import re
+    return re.compile('\033\\[.*?m')
 
+
+def text_sanitizer(as_ansi: bool, add_wrap_markers: bool) -> Callable[[str], str]:
+    pat = text_sanitizer_pat()
     ansi, wrap_markers = not as_ansi, not add_wrap_markers
 
     def remove_wrap_markers(line: str) -> str:

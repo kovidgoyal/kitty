@@ -113,7 +113,7 @@ class PatchFile(StreamingJob):
         self.overwrite_src = not output_path
         self.src_file = open(src_path, 'rb')
         if self.overwrite_src:
-            self.dest_file = tempfile.NamedTemporaryFile(mode='wb', dir=os.path.dirname(os.path.abspath(os.path.realpath(src_path))), delete=False)
+            self.dest_file: IO[bytes] = tempfile.NamedTemporaryFile(mode='wb', dir=os.path.dirname(os.path.abspath(os.path.realpath(src_path))), delete=False)
         else:
             self.dest_file = open(output_path, 'wb')
         job = begin_patch(self.read_from_src)

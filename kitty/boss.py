@@ -10,7 +10,7 @@ from functools import partial
 from gettext import gettext as _
 from typing import (
     Any, Callable, Container, Dict, Iterable, Iterator, List, Optional, Tuple,
-    Union, cast
+    Union
 )
 from weakref import WeakValueDictionary
 
@@ -518,9 +518,8 @@ class Boss:
             opts, items = parse_subcommand_cli(c, items)
             payload = c.message_to_kitty(global_opts, opts, items)
             import types
-            if isinstance(cast(types.GeneratorType, payload), types.GeneratorType):
-                payloads = cast(types.GeneratorType, payload)
-                for x in payloads:
+            if isinstance(payload, types.GeneratorType):
+                for x in payload:
                     c.response_from_kitty(self, self.active_window, PayloadGetter(c, x if isinstance(x, dict) else {}))
             else:
                 c.response_from_kitty(self, self.active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))

@@ -389,7 +389,8 @@ def detect_support(wait_for: float = 10, silent: bool = False) -> bool:
             return 1 not in responses or 2 not in responses
 
         with NamedTemporaryFile() as f:
-            f.write(b'abcd'), f.flush()
+            f.write(b'abcd')
+            f.flush()
             gc = GraphicsCommand()
             gc.a = 'q'
             gc.s = gc.v = gc.i = 1
@@ -455,7 +456,8 @@ def process_single_item(
     try:
         if isinstance(item, bytes):
             tf = NamedTemporaryFile(prefix='stdin-image-data-', delete=False)
-            tf.write(item), tf.close()
+            tf.write(item)
+            tf.close()
             item = tf.name
             is_tempfile = True
         if url_pat is not None and url_pat.match(item) is not None:

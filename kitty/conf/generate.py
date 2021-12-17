@@ -110,7 +110,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
         else:
             func, typ = option_type_data(option)
             try:
-                params = inspect.signature(func).parameters
+                params = dict(inspect.signature(func).parameters)
             except Exception:
                 params = {}
             if 'dict_with_parse_results' in params:

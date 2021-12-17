@@ -210,7 +210,7 @@ def parse_launch_args(args: Optional[Sequence[str]] = None) -> LaunchSpec:
     return LaunchSpec(opts, args)
 
 
-def get_env(opts: LaunchCLIOptions, active_child: Child) -> Dict[str, str]:
+def get_env(opts: LaunchCLIOptions, active_child: Optional[Child]) -> Dict[str, str]:
     env: Dict[str, str] = {}
     if opts.copy_env and active_child:
         env.update(active_child.foreground_environ)
@@ -308,7 +308,10 @@ def launch(
     force_target_tab: bool = False
 ) -> Optional[Window]:
     active = boss.active_window_for_cwd
-    active_child = getattr(active, 'child', None)
+    if active:
+        active_child = active.child
+    else:
+        active_child = None
     env = get_env(opts, active_child)
     kw: LaunchKwds = {
         'allow_remote_control': opts.allow_remote_control,
