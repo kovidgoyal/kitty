@@ -778,12 +778,20 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
     static id_type window_for_momentum_scroll = 0;
     static bool main_screen_for_momentum_scroll = false;
     unsigned int window_idx = 0;
+    // allow scroll events even if window is not currently focused (in
+    // which case on some platforms such as macOS the mouse location is zeroed so
+    // window_for_event() does not work).
+    OSWindow *osw = global_state.callback_os_window;
+    if (!osw->is_focused && osw->handle) {
+        double mouse_x, mouse_y;
+        glfwGetCursorPos((GLFWwindow*)osw->handle, &mouse_x, &mouse_y);
+        osw->mouse_x = mouse_x * osw->viewport_x_ratio;
+        osw->mouse_y = mouse_y * osw->viewport_y_ratio;
+    }
     Window *w = window_for_event(&window_idx, &in_tab_bar);
     if (!w && !in_tab_bar) {
-        // allow scroll events even if window is not currently focused (in
-        // which case on some platforms such as macOS the mouse location is zeroed so
-        // window_for_event() does not work).
-        Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+        // fallback to last active window
+        Tab *t = osw->tabs + osw->active_tab;
         if (t) w = t->windows + t->active_window;
     }
     if (!w) return;
