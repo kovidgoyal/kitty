@@ -1433,12 +1433,9 @@ def main() -> None:
             package(args, bundle_type='macos-package')
             print('kitty.app successfully built!')
         elif args.action == 'export-ci-bundles':
-            cmd = [sys.executable, '../bypy', 'export']
-            dest = ['download.calibre-ebook.com:/srv/download/ci/kitty']
-            subprocess.check_call(cmd + ['linux'] + dest)
-            subprocess.check_call(cmd + ['macos'] + dest)
-            subprocess.check_call(cmd + ['linux', '32'] + dest)
-            subprocess.check_call(cmd + ['linux', 'arm64'] + dest)
+            cmd = [sys.executable, '../bypy', 'export', 'download.calibre-ebook.com:/srv/download/ci/kitty']
+            subprocess.check_call(cmd + ['linux'])
+            subprocess.check_call(cmd + ['macos'])
 
 
 if __name__ == '__main__':
