@@ -147,14 +147,18 @@ def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> 
 
 def identify(path: str) -> ImageData:
     import json
-    q = '{"fmt":"%m","canvas":"%g","transparency":"%A","gap":"%T","index":"%p","size":"%wx%h","dpi":"%xx%y","dispose":"%D","orientation":"%[EXIF:Orientation]"}'
+    q = (
+        '{"fmt":"%m","canvas":"%g","transparency":"%A","gap":"%T","index":"%p","size":"%wx%h",'
+        '"dpi":"%xx%y","dispose":"%D","orientation":"%[EXIF:Orientation]"},'
+    )
     exe = which('magick')
     if exe:
         cmd = [exe, 'identify']
     else:
         cmd = ['identify']
     p = run_imagemagick(path, cmd + ['-format', q, '--', path])
-    data = json.loads(b'[' + p.stdout.rstrip(b',') + b']')
+    raw = p.stdout.rstrip(b',')
+    data = json.loads(b'[' + raw + b']')
     first = data[0]
     frames = list(map(Frame, data))
     image_fmt = first['fmt'].lower()
