@@ -68,23 +68,32 @@ def setup_fish_env(env: Dict[str, str]) -> None:
 
 
 def is_new_zsh_install(env: Dict[str, str]) -> bool:
+    # if ZDOTDIR is empty, zsh will read user rc files from /
+    # if there aren't any, it'll run zsh-newuser-install
+    # the latter will bail if there are rc files in $HOME
     zdotdir = env.get('ZDOTDIR')
-    base = zdotdir or os.path.expanduser('~')
+    if not zdotdir:
+        zdotdir = os.path.expanduser('~')
+        if zdotdir == '~':
+            return True
     for q in ('.zshrc', '.zshenv', '.zprofile', '.zlogin'):
-        if os.path.exists(os.path.join(base, q)):
+        if os.path.exists(os.path.join(zdotdir, q)):
             return False
     return True
 
 
 def setup_zsh_env(env: Dict[str, str]) -> None:
-    zdotdir = env.get('ZDOTDIR')
-    base = zdotdir or os.path.expanduser('~')
     if is_new_zsh_install(env):
         # dont prevent zsh-newuser-install from running
+        # zsh-newuser-install never runs as root but we assume that it does
         return
+    zdotdir = env.get('ZDOTDIR')
     if zdotdir is not None:
         env['KITTY_ORIG_ZDOTDIR'] = zdotdir
-    env['KITTY_ZSH_BASE'] = base
+    else:
+        # KITTY_ORIG_ZDOTDIR can be set at this point if, for example, the global
+        # zshenv overrides ZDOTDIR; we try to limit the damage in this case
+        env.pop('KITTY_ORIG_ZDOTDIR', None)
     env['ZDOTDIR'] = os.path.join(shell_integration_dir, 'zsh')
 
 
