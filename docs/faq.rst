@@ -193,11 +193,20 @@ kitty is not able to use my favorite font?
 ---------------------------------------------
 
 |kitty| achieves its stellar performance by caching alpha masks of each
-rendered character on the GPU, and rendering them all in parallel.  This means
+rendered character on the GPU, and rendering them all in parallel. This means
 it is a strictly character cell based display. As such it can use only
 monospace fonts, since every cell in the grid has to be the same size.
 Furthermore, it needs fonts to be freely resizable, so it does not support
 bitmapped fonts.
+
+.. note::
+   If you are trying to use a font patched with NERD font symbols, dont do that
+   as patching destroys fonts. There is no need, simply install the standalone
+   NERD font, kitty should pick up symbols from it automatically, and you can
+   tell it to do so explicitly in case it doesnt with the :opt:`symbol_map`
+   directive::
+
+        symbol_map U+23FB-U+23FE,U+2B58,U+E200-U+E2A9,U+E0A0-U+E0A3,U+E0B0-U+E0BF,U+E0C0-U+E0C8,U+E0CC-U+E0CF,U+E0D0-U+E0D2,U+E0D4,U+E700-U+E7C5,U+F000-U+F2E0,U+2665,U+26A1,U+F400-U+F4A8,U+F67C,U+E000-U+E00A,U+F300-U+F313,U+E5FA-U+E62B Symbols Nerd Font
 
 If your font is not listed in ``kitty list-fonts`` it means that it is not
 monospace or is a bitmapped font. On Linux you can list all monospace fonts with::
