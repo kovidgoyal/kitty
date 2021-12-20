@@ -300,7 +300,7 @@ How do I open a new window or tab with the same working directory as the current
 In :file:`kitty.conf` add the following::
 
     map f1 launch --cwd=current
-    map f2  launch --cwd=current --type=tab
+    map f2 launch --cwd=current --type=tab
 
 Pressing :kbd:`F1` will open a new kitty window with the same working directory
 as the current window. The :doc:`launch command <launch>` is very powerful,
