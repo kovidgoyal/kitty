@@ -2735,7 +2735,7 @@ egr()  # }}}
 agr('os', 'OS specific tweaks')
 
 opt('wayland_titlebar_color', 'system',
-    option_type='macos_titlebar_color',
+    option_type='titlebar_color',
     long_text='''
 Change the color of the kitty window's titlebar on Wayland systems with client
 side window decorations such as GNOME. A value of :code:`system` means to use
@@ -2749,7 +2749,8 @@ opt('macos_titlebar_color', 'system',
     option_type='macos_titlebar_color',
     long_text='''
 Change the color of the kitty window's titlebar on macOS. A value of
-:code:`system` means to use the default system color, a value of
+:code:`system` means to use the default system color, :code:`light` or
+:code:`dark` can also be used to set it explicitly. A value of
 :code:`background` means to use the background color of the currently active
 window and finally you can use an arbitrary color, such as :code:`#12af59` or
 :code:`red`. WARNING: This option works by using a hack, as there is no proper

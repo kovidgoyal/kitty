@@ -181,7 +181,7 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumula
     opts.action_alias = {}
     opts.mouse_map = []
     opts.map = []
-    if opts.background_opacity < 1.0 and opts.macos_titlebar_color:
+    if opts.background_opacity < 1.0 and opts.macos_titlebar_color > 0:
         log_error('Cannot use both macos_titlebar_color and background_opacity')
         opts.macos_titlebar_color = 0
     opts.config_paths = paths

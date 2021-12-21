@@ -14,8 +14,8 @@ from kitty.options.utils import (
     macos_option_as_alt, macos_titlebar_color, optional_edge_width, parse_map, parse_mouse_map,
     resize_draw_strategy, scrollback_lines, scrollback_pager_history_size, shell_integration,
     store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge, tab_bar_margin_height,
-    tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator, tab_title_template, to_cursor_shape,
-    to_font_size, to_layout_names, to_modifiers, url_prefixes, url_style,
+    tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator, tab_title_template, titlebar_color,
+    to_cursor_shape, to_font_size, to_layout_names, to_modifiers, url_prefixes, url_style,
     visual_window_select_characters, window_border_width, window_size
 )
 
@@ -1263,7 +1263,7 @@ class Parser:
             ans["watcher"][k] = v
 
     def wayland_titlebar_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['wayland_titlebar_color'] = macos_titlebar_color(val)
+        ans['wayland_titlebar_color'] = titlebar_color(val)
 
     def wheel_scroll_multiplier(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['wheel_scroll_multiplier'] = float(val)

@@ -680,13 +680,22 @@ def allow_hyperlinks(x: str) -> int:
     return 1 if to_bool(x) else 0
 
 
-def macos_titlebar_color(x: str) -> int:
+def titlebar_color(x: str) -> int:
     x = x.strip('"')
     if x == 'system':
         return 0
     if x == 'background':
         return 1
     return (color_as_int(to_color(x)) << 8) | 2
+
+
+def macos_titlebar_color(x: str) -> int:
+    x = x.strip('"')
+    if x == 'light':
+        return -1
+    if x == 'dark':
+        return -2
+    return titlebar_color(x)
 
 
 def macos_option_as_alt(x: str) -> int:

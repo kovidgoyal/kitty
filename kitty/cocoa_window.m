@@ -620,6 +620,16 @@ cocoa_set_activation_policy(bool hide_from_tasks) {
 }
 
 void
+cocoa_set_titlebar_appearance(void *w, unsigned int theme)
+{
+    if (!theme) return;
+    @autoreleasepool {
+        NSWindow *window = (NSWindow*)w;
+        [window setAppearance:[NSAppearance appearanceNamed:((theme == 2) ? NSAppearanceNameVibrantDark : NSAppearanceNameVibrantLight)]];
+    } // autoreleasepool
+}
+
+void
 cocoa_set_titlebar_color(void *w, color_type titlebar_color)
 {
     @autoreleasepool {

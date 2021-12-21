@@ -825,9 +825,10 @@ PYWRAP1(set_titlebar_color) {
     id_type os_window_id;
     unsigned int color;
     int use_system_color = 0;
-    PA("KI|p", &os_window_id, &color, &use_system_color);
+    unsigned int system_color = 0;
+    PA("KI|pI", &os_window_id, &color, &use_system_color, &system_color);
     WITH_OS_WINDOW(os_window_id)
-        set_titlebar_color(os_window, color, use_system_color);
+        set_titlebar_color(os_window, color, use_system_color, system_color);
         Py_RETURN_TRUE;
     END_WITH_OS_WINDOW
     Py_RETURN_FALSE;

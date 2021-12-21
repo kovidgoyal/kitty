@@ -741,14 +741,14 @@ class Window:
     def change_titlebar_color(self) -> None:
         opts = get_options()
         val = opts.macos_titlebar_color if is_macos else opts.wayland_titlebar_color
-        if val:
+        if val > 0:
             if (val & 0xff) == 1:
                 val = self.screen.color_profile.default_bg
             else:
                 val = val >> 8
             set_titlebar_color(self.os_window_id, val)
         else:
-            set_titlebar_color(self.os_window_id, 0, True)
+            set_titlebar_color(self.os_window_id, 0, True, -val)
 
     def change_colors(self, changes: Dict[DynamicColor, Optional[str]]) -> None:
         dirtied = default_bg_changed = False

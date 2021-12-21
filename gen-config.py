@@ -31,7 +31,7 @@ def main() -> None:
             if opt.parser_func.__name__ in ('to_color_or_none', 'cursor_text_color'):
                 nullable_colors.append(opt.name)
                 all_colors.append(opt.name)
-            elif opt.parser_func.__name__ in ('to_color', 'macos_titlebar_color'):
+            elif opt.parser_func.__name__ in ('to_color', 'titlebar_color', 'macos_titlebar_color'):
                 all_colors.append(opt.name)
     patch_color_list('kitty/rc/set_colors.py', nullable_colors, 'NULLABLE')
     patch_color_list('kittens/themes/collection.py', all_colors, 'ALL', ' ' * 8)
