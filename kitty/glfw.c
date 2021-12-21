@@ -21,6 +21,7 @@ extern void cocoa_create_global_menu(void);
 extern void cocoa_hide_window_title(void *w);
 extern void cocoa_system_beep(const char*);
 extern void cocoa_set_activation_policy(bool);
+extern void cocoa_set_titlebar_appearance(void *w, unsigned int theme);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
 extern size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz);
@@ -677,11 +678,12 @@ intercept_cocoa_fullscreen(GLFWwindow *w) {
 #endif
 
 void
-set_titlebar_color(OSWindow *w, color_type color, bool use_system_color) {
+set_titlebar_color(OSWindow *w, color_type color, bool use_system_color, unsigned int system_color UNUSED) {
     if (w->handle && (!w->last_titlebar_color || (w->last_titlebar_color & 0xffffff) != (color & 0xffffff))) {
         w->last_titlebar_color = (1 << 24) | (color & 0xffffff);
 #ifdef __APPLE__
         if (!use_system_color) cocoa_set_titlebar_color(glfwGetCocoaWindow(w->handle), color);
+        else cocoa_set_titlebar_appearance(glfwGetCocoaWindow(w->handle), system_color);
 #else
         if (global_state.is_wayland && glfwWaylandSetTitlebarColor) glfwWaylandSetTitlebarColor(w->handle, color, use_system_color);
 #endif
