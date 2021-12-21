@@ -686,7 +686,11 @@ def titlebar_color(x: str) -> int:
         return 0
     if x == 'background':
         return 1
-    return (color_as_int(to_color(x)) << 8) | 2
+    try:
+        return (color_as_int(to_color(x)) << 8) | 2
+    except ValueError:
+        log_error(f'Ignoring invalid title bar color: {x}')
+    return 0
 
 
 def macos_titlebar_color(x: str) -> int:
