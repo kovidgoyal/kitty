@@ -523,6 +523,7 @@ class Theme:
         atomic_save(self.raw.encode('utf-8'), os.path.join(dirpath, f'{self.name}.conf'))
 
     def save_in_conf(self, confdir: str, reload_in: str) -> None:
+        os.makedirs(confdir, exist_ok=True)
         atomic_save(self.raw.encode('utf-8'), os.path.join(confdir, 'current-theme.conf'))
         confpath = os.path.realpath(os.path.join(confdir, 'kitty.conf'))
         try:
