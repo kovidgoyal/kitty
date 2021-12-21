@@ -960,6 +960,7 @@ screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_scree
     screen_history_scroll(self, SCROLL_FULL, false);
     self->is_dirty = true;
     clear_selection(&self->selections);
+    global_state.check_for_active_animated_images = true;
 }
 
 void screen_normal_keypad_mode(Screen UNUSED *self) {} // Not implemented as this is handled by the GUI
