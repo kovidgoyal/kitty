@@ -125,9 +125,9 @@ different shells.
 .. tab:: zsh
 
    For zsh, kitty sets the ``ZDOTDIR`` environment variable to make zsh load
-   kitty's :file:`.zshenv` which in turn loads the shell integration code then
-   restores the original value of ``ZDOTDIR`` and finally sources the original
-   :file:`.zshenv`. The remainder of zsh's startup process proceeds as normal.
+   kitty's :file:`.zshenv` which restores the original value of ``ZDOTDIR``
+   and sources the original :file:`.zshenv`. It then loads the shell integration code.
+   The remainder of zsh's startup process proceeds as normal.
 
 .. tab:: bash
 
