@@ -100,6 +100,9 @@ fi
 
 # Enable cursor shape changes depending on the current keymap.
 if (( ! opt[(Ie)no-cursor] )); then
+    # This implementation leaks blinking block cursor into external commands
+    # executed from zle. For example, users of fzf-based widgets may find
+    # themselves with a blinking block cursor within fzf.
     _ksi_zle_line_init _ksi_zle_line_finish _ksi_zle_keymap_select() {
         case ${KEYMAP-} in
             vicmd|visual) builtin print -n '\e[1 q';;  # blinking block cursor
