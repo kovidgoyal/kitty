@@ -264,6 +264,7 @@ int main(int argc, char *argv[]) {
     FREE_AFTER_FUNCTION const char *lc_ctype = NULL;
 #ifdef __APPLE__
     lc_ctype = getenv("LC_CTYPE");
+    if (lc_ctype) lc_ctype = strdup(lc_ctype);
 #endif
     if (!read_exe_path(exe, sizeof(exe))) return 1;
     strncpy(exe_dir_buf, exe, sizeof(exe_dir_buf));
@@ -277,7 +278,6 @@ int main(int argc, char *argv[]) {
     // Always use UTF-8 mode, see https://github.com/kovidgoyal/kitty/issues/924
     Py_UTF8Mode = 1;
 #endif
-    if (lc_ctype) lc_ctype = strdup(lc_ctype);
     RunData run_data = {.exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .argc = argc, .argv = argv, .lc_ctype = lc_ctype};
     ret = run_embedded(run_data);
     return ret;
