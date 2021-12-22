@@ -12,9 +12,9 @@ from typing import (
 
 import kitty.fast_data_types as fast_data_types
 
-from .utils import which
 from .constants import is_macos, kitty_base_dir, shell_path, terminfo_dir
 from .types import run_once
+from .utils import log_error, which
 
 try:
     from typing import TypedDict
@@ -200,9 +200,8 @@ class Child:
         if cwd_from is not None:
             try:
                 cwd = cwd_of_process(cwd_from)
-            except Exception:
-                import traceback
-                traceback.print_exc()
+            except Exception as err:
+                log_error(f'Failed to read cwd of {cwd_from} with error: {err}')
         else:
             cwd = os.path.expandvars(os.path.expanduser(cwd or os.getcwd()))
         self.cwd = os.path.abspath(cwd)
