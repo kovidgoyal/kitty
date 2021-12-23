@@ -61,11 +61,11 @@ def run_build(args: Any) -> None:
     for x in ('64', '32', 'arm64'):
         try:
             call(f'python ../bypy linux --arch {x} program', echo=True)
-        except Exception:
+        except (SystemExit, Exception):
             if x != 'arm64':
                 raise
             print('Linux ARM build failed, retrying in a few seconds...', file=sys.stderr)
-            time.sleep(5)
+            time.sleep(15)
             call(f'python ../bypy linux --arch {x} program', echo=True)
         call(f'python ../bypy linux --arch {x} shutdown', echo=True)
     call('python ../bypy macos program --sign-installers --notarize', echo=True)
