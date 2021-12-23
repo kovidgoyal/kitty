@@ -1,0 +1,266 @@
+#!/bin/zsh
+#
+# Enables integration between zsh and Kitty based on KITTY_SHELL_INTEGRATION.
+# The latter is set by Kitty based on kitty.conf.
+#
+# This is an autoloadable function. It's invoked automatically in shells
+# directly spawned by Kitty but not in any other shells. For example, running
+# `exec zsh`, `sudo -E zsh`, `tmux`, or plain `zsh` will create a shell where
+# kitty-integration won't automatically run. Zsh users who want integration with
+# Kitty in all shells should add the following lines to their .zshrc:
+#
+#   if [[ -n $KITTY_INSTALLATION_DIR ]]; then
+#     autoload -Uz -- "$KITTY_INSTALLATION_DIR"/shell-integration/zsh/kitty-integration
+#     kitty-integration
+#   fi
+#
+# Implementation note: We can assume that alias expansion is disabled in this
+# file, so no need to quote defensively. We still have to defensively prefix all
+# builtins with `builtin` to avoid accidentally invoking user-defined functions.
+# We avoid `function` reserved word as an additional defensive measure.
+
+builtin emulate -L zsh -o no_warn_create_global
+
+[[ -o interactive ]]              || builtin return 0  # non-interactive shell
+[[ -n $KITTY_SHELL_INTEGRATION ]] || builtin return 0  # integration disabled
+(( ! _ksi_state ))                || builtin return 0  # already initialized
+
+if (( ! $+_ksi_state )); then
+    # 0: not initialized; deferred initialization can start now.
+    # 1: not initialized; waiting for deferred initialization.
+    # 2: initialized; no OSC 133 [AC] marks have been written yet.
+    # 3: initialized; the last written OSC 133 C has not been closed with D yet.
+    # 4: initialized; none of the above.
+    builtin typeset -gi _ksi_state=1
+
+    # Asks Kitty to print $@ to its stdout. This is for debugging.
+    _ksi_debug_print() {
+        builtin local data
+        data=$(command base64 <<<"${(j: :}@}") || builtin return
+        builtin printf '\eP@kitty-print|%s\e\\' "${data//$'\n'}"
+    }
+
+    _ksi_deferred_init() {
+        (( _ksi_state = 0, 1 ))  # `, 1` in case err_return is set
+        kitty-integration
+    }
+
+    # We defer initialization until precmd for several reasons:
+    #
+    # - Oh My Zsh and many other configs remove zle-line-init and
+    #   zle-line-finish hooks when they initialize.
+    # - By deferring initialization we allow user rc files to opt out from some
+    #   parts of integration. For example, if a zshrc theme prints OSC 133
+    #   marks, it can append " no-prompt-mark" to KITTY_SHELL_INTEGRATION during
+    #   intialization to avoid redundant marks from our code.
+    builtin typeset -ag precmd_functions
+    precmd_functions+=(_ksi_deferred_init)
+    builtin return
+fi
+
+# The rest of kitty-integration performs deferred initialization. We are being
+# run from _ksi_deferred_init here.
+
+(( _ksi_state = 2 ))
+
+# Recognized options: no-cursor, no-title, no-prompt-mark, no-complete.
+builtin local -a opt
+opt=(${(s: :)KITTY_SHELL_INTEGRATION})
+unset KITTY_SHELL_INTEGRATION
+
+# The directory where kitty-integration is located: /.../shell-integration/zsh.
+builtin local self_dir=${functions_source[kitty-integration]:A:h}
+# The directory with _kitty. We store it in a directory of its own rather than
+# in $self_dir because we are adding it to fpath and we don't want any other
+# files to be accidentally autoloadable.
+builtin local comp_dir=$self_dir/completions
+
+# Enable completions for `kitty` command.
+if (( ! opt[(Ie)no-complete] )) && [[ -r $comp_dir/_kitty ]]; then
+    if (( $+functions[compdef] )); then
+        # If compdef is defined, then either compinit has already run or it's
+        # a shim that records all calls for the purpose of replaying them after
+        # compinit. Either way we clobber the existing completion for kitty and
+        # install our own.
+        builtin unset "functions[_kitty]"
+        builtin autoload -Uz -- $comp_dir/_kitty
+        compdef _kitty kitty
+    fi
+
+    # If compdef is not set, compinit has not run yet. In this case we must
+    # add our completions directory to fpath so that _kitty gets picked up by
+    # compinit.
+    #
+    # We extend fpath even if compinit has run because it might run again.
+    # Without our completions directory in fpath compinit would our _comp
+    # mapping.
+    builtin typeset -ga fpath
+    fpath=($comp_dir ${fpath:#$comp_dir})
+fi
+
+# Enable cursor shape changes depending on the current keymap.
+if (( ! opt[(Ie)no-cursor] )); then
+    # This implementation leaks blinking block cursor into external commands
+    # executed from zle. For example, users of fzf-based widgets may find
+    # themselves with a blinking block cursor within fzf.
+    _ksi_zle_line_init _ksi_zle_line_finish _ksi_zle_keymap_select() {
+        case ${KEYMAP-} in
+            vicmd|visual) builtin print -n '\e[1 q';;  # blinking block cursor
+            *)            builtin print -n '\e[5 q';;  # blinking bar cursor
+        esac
+    }
+fi
+
+# Enable semantic markup with OSC 133.
+if (( ! opt[(Ie)no-prompt-mark] )); then
+    _ksi_precmd() {
+        builtin local -i cmd_status=$?
+        builtin emulate -L zsh -o no_warn_create_global
+
+        # Don't write OSC 133 D when our precmd handler is invoked from zle.
+        # Some plugins do that to update prompt on cd.
+        if ! builtin zle; then
+            # This code works incorrectly in the presence of a precmd or chpwd
+            # hook that prints. For example, sindresorhus/pure prints an empty
+            # line on precmd and marlonrichert/zsh-snap prints $PWD on chpwd.
+            # We'll end up writing our OSC 133 D mark too late.
+            #
+            # Another failure mode is when the output of a command doesn't end
+            # with LF and prompst_sp is set (it is by default). In this case
+            # we'll incorrectly state that '%' from prompt_sp is a part of the
+            # command's output.
+            if (( _ksi_state == 3 )); then
+                # The last written OSC 133 C has not been closed with D yet.
+                # Close it and supply status.
+                builtin printf '\e]133;D;%s\a' $cmd_status
+                (( _ksi_state = 4 ))
+            elif (( _ksi_state == 4 )); then
+                # There might be an unclosed OSC 133 C. Close that.
+                builtin print -n '\e]133;D\a'
+            fi
+        fi
+
+        builtin local mark1=$'%{\e]133;A\a%}'
+        if [[ -o prompt_percent ]]; then
+            builtin typeset -g precmd_functions
+            if [[ ${precmd_functions[-1]} == _ksi_precmd ]]; then
+                # This is the best case for us: we can add our marks to PS1 and
+                # PS2. This way our marks will be printed whenever zsh
+                # redisplays prompt: on reset-prompt, on SIGWINCH, and on
+                # SIGCHLD if notify is set. Themes that update prompt
+                # asynchronously from a `zle -F` handler might still remove our
+                # marks. Oh well.
+                builtin local mark2=$'%{\e]133;A;k=s\a%}'
+                # Add marks conditionally to avoid a situation where we have
+                # several marks in place. These conditions can have false
+                # positives and false negatives though.
+                #
+                # - False positive (with prompt_percent): PS1="%(?.$mark1.)"
+                # - False negative (with prompt_subst):   PS1='$mark1'
+                [[ $PS1 == *$mark1* ]] || PS1=${mark1}${PS1}
+                [[ $PS2 == *$mark2* ]] || PS2=${mark2}${PS2}
+                (( _ksi_state = 4 ))
+            else
+                # If our precmd hook is not the last, we cannot rely on prompt
+                # changes to stick, so we don't even try. At least we can move
+                # our hook to the end to have better luck next time. If there is
+                # another piece of code that wants to take this privileged
+                # position, this won't work well. We'll break them as much as
+                # they are breaking us.
+                precmd_functions=(${precmd_functions:#_ksi_precmd} _ksi_precmd)
+                # Plugins that invoke precmd hooks from zle do that before zle
+                # is trashed. This means that the cursor is in the middle of
+                # BUFFER and we cannot print our mark there. Prompt might
+                # already have a mark, so the following reset-prompt will write
+                # it. If it doesn't, there is nothing we can do.
+                if ! builtin zle; then
+                    builtin print -rn -- $mark1[3,-3]
+                    (( _ksi_state = 4 ))
+                fi
+            fi
+        elif ! builtin zle; then
+            # Without prompt_percent we cannot patch prompt. Just print the
+            # mark, except when we are invoked from zle. In the latter case we
+            # cannot do anything.
+            builtin print -rn -- $mark1[3,-3]
+            (( _ksi_state = 4 ))
+        fi
+    }
+
+    _ksi_preexec() {
+        builtin emulate -L zsh -o no_warn_create_global
+
+        # This can potentially break user prompt. Oh well. The robustness of
+        # this code can be improved in the case prompt_subst is set because
+        # it'll allow us distinguish (not perfectly but close enough) between
+        # our own prompt, user prompt, and our own prompt with user additions on
+        # top. We cannot force prompt_subst on the user though, so we would
+        # still need this code for the no_prompt_subst case.
+        PS1=${PS1//$'%{\e]133;A\a%}'}
+        PS2=${PS2//$'%{\e]133;A;k=s\a%}'}
+
+        # This will work incorrectly in the presence of a preexec hook that
+        # prints. For example, if MichaelAquilina/zsh-you-should-use installs
+        # its preexec hook before us, we'll incorrectly mark its output as
+        # belonging to the command (as if the user typed it into zle) rather
+        # than command output.
+        builtin print -n '\e]133;C\a'
+        (( _ksi_state = 3 ))
+    }
+
+    functions[_ksi_zle_line_init]+='
+        builtin print -n "\\e]133;B\\a"'
+fi
+
+# Enable terminal title changes.
+if (( ! opt[(Ie)no-title] )); then
+    # We don't use `print -P` because it depends on prompt options, which
+    # we don't control and cannot change.
+    #
+    # We use (V) in preexec to convert control characters to something visible
+    # (LF becomes \n, etc.). This isn't necessary in precmd because (%) does it
+    # for us.
+    functions[_ksi_precmd]+='
+        builtin printf "\\e]2;%s\\a" "${(%):-%(4~|…/%3~|%~)}"'
+    functions[_ksi_preexec]+='
+        builtin printf "\\e]2;%s\\a" "${(V)1}"'
+fi
+
+# Some zsh users manually run `source ~/.zshrc` in order to apply rc file
+# changes to the current shell. This is a terrible practice that breaks many
+# things, including our shell integration. For example, Oh My Zsh and Prezto
+# (both very popular among zsh users) will remove zle-line-init and
+# zle-line-finish hooks if .zshrc is manually sourced. Prezto will also remove
+# zle-keymap-select.
+#
+# Another common (and much more robust) way to apply rc file changes to the
+# current shell is `exec zsh`. This will remove our integration from the shell
+# unless it's explicitly invoked from .zshrc. This is not an issue with
+# `exec zsh` but rather with our implementation of automatic shell integration.
+builtin autoload -Uz add-zle-hook-widget
+if (( $+functions[_ksi_zle_line_init] )); then
+    add-zle-hook-widget line-init _ksi_zle_line_init
+fi
+if (( $+functions[_ksi_zle_line_finish] )); then
+    add-zle-hook-widget line-finish _ksi_zle_line_finish
+fi
+if (( $+functions[_ksi_zle_keymap_select] )); then
+    add-zle-hook-widget keymap-select _ksi_zle_keymap_select
+fi
+
+if (( $+functions[_ksi_preexec] )); then
+    builtin typeset -ag preexec_functions
+    preexec_functions+=(_ksi_preexec)
+fi
+
+builtin typeset -ag precmd_functions
+if (( $+functions[_ksi_precmd] )); then
+    precmd_functions=(${precmd_functions:/_ksi_deferred_init/_ksi_precmd})
+    _ksi_precmd
+else
+    precmd_functions=(${precmd_functions:#_ksi_deferred_init})
+fi
+
+# Unfunction what we don't need to save memory.
+builtin unfunction _ksi_deferred_init kitty-integration
+builtin autoload -Uz -- $self_dir/kitty-integration

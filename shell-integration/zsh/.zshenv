@@ -1,11 +1,15 @@
+# This file can get sourced with aliases enabled. To avoid alias expansion
+# we quote everything that can be quoted. Some aliases will still break us
+# though.
+
 # Don't use [[ -v ... ]] because it doesn't work in zsh < 5.4.
-if (( ${+KITTY_ORIG_ZDOTDIR} )); then
+if [[ -n "${KITTY_ORIG_ZDOTDIR+X}" ]]; then
     # Normally ZDOTDIR shouldn't be exported but it was in the environment
     # of Kitty, so we export it.
-    export ZDOTDIR=$KITTY_ORIG_ZDOTDIR
-    unset KITTY_ORIG_ZDOTDIR
+    'builtin' 'export' ZDOTDIR="$KITTY_ORIG_ZDOTDIR"
+    'builtin' 'unset' 'KITTY_ORIG_ZDOTDIR'
 else
-    unset ZDOTDIR
+    'builtin' 'unset' 'ZDOTDIR'
 fi
 
 # Use try-always to have the right error code.
@@ -17,16 +21,19 @@ fi
     #
     # Use typeset in case we are in a function with warn_create_global in
     # effect. Unlikely but better safe than sorry.
-    typeset _ksi_source=${ZDOTDIR-~}/.zshenv
+    'builtin' 'typeset' _ksi_file=${ZDOTDIR-~}"/.zshenv"
     # Zsh ignores unreadable rc files. We do the same.
     # Zsh ignores rc files that are directories, and so does source.
-    [[ ! -r $_ksi_source ]] || source -- "$_ksi_source"
+    [[ ! -r "$_ksi_file" ]] || 'builtin' 'source' '--' "$_ksi_file"
 } always {
-    if [[ -o interactive ]]; then
+    if [[ -o 'interactive' && -n "${KITTY_SHELL_INTEGRATION-}" ]]; then
         # ${(%):-%x} is the path to the current file.
-        # On top of it we add :a:h to get the directory.
-        typeset _ksi_source=${${(%):-%x}:A:h}/kitty.zsh
-        [[ ! -r $_ksi_source ]] || source -- "$_ksi_source"
+        # On top of it we add :A:h to get the directory.
+        'builtin' 'typeset' _ksi_file="${${(%):-%x}:A:h}"/kitty-integration
+        if [[ -r "$_ksi_file" ]]; then
+            'builtin' 'autoload' '-Uz' '--' "$_ksi_file"
+            "${_ksi_file:t}"
+        fi
     fi
-    unset _ksi_source
+    'builtin' 'unset' '_ksi_file'
 }
