@@ -41,7 +41,7 @@ def main() -> None:
     ):
         init_env()
         m = importlib.import_module('kitty_tests.main')
-        m.run_tests()  # type: ignore
+        getattr(m, 'run_tests')()
 
 
 if __name__ == '__main__':
