@@ -16,5 +16,6 @@
 if [[ -r "$_ksi_file" ]]; then
     'builtin' 'autoload' '-Uz' '--' "$_ksi_file"
     "${_ksi_file:t}"
+    'builtin' 'unfunction' '--' "${_ksi_file:t}"
 fi
 'builtin' 'unset' '_ksi_file'
