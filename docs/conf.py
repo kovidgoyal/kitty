@@ -21,9 +21,9 @@ from pygments.lexer import RegexLexer, bygroups  # type: ignore
 from pygments.token import (  # type: ignore
     Comment, Keyword, Literal, Name, Number, String, Whitespace
 )
-from sphinx import addnodes, version_info  # type: ignore
-from sphinx.builders.html.transforms import KeyboardTransform  # type: ignore
-from sphinx.util.logging import getLogger  # type: ignore
+from sphinx import addnodes, version_info
+from sphinx.builders.html.transforms import KeyboardTransform
+from sphinx.util.logging import getLogger
 
 KeyboardTransform.builders = ('html', 'dirhtml')  # type: ignore
 
