@@ -160,7 +160,7 @@ code used for each shell below:
 
 .. tab:: zsh
 
-    .. literalinclude:: ../shell-integration/zsh/kitty.zsh
+    .. literalinclude:: ../shell-integration/zsh/kitty-integration
         :language: zsh
 
 
@@ -212,7 +212,8 @@ Then in your shell's rc file, add the lines:
 
         if test -n "$KITTY_INSTALLATION_DIR"; then
             export KITTY_SHELL_INTEGRATION="enabled"
-            source "$KITTY_INSTALLATION_DIR/shell-integration/zsh/kitty.zsh"
+            autoload -Uz -- "$KITTY_INSTALLATION_DIR"/shell-integration/zsh/kitty-integration
+            kitty-integration
         fi
 
 .. tab:: fish
