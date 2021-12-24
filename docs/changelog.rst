@@ -154,6 +154,12 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new mappable action ``nth_os_window`` to to focus the specified nth OS
   window. (:pull:`4316`)
 
+- macOS: The kitty window can be scrolled by the mouse wheel when OS window not
+  in focus. (:pull:`4371`)
+
+- macOS: Light or dark system appearance can be specified in
+  :opt:`macos_titlebar_color` and used in kitty themes. (:pull:`4378`)
+
 
 0.23.1 [2021-08-17]
 ----------------------
