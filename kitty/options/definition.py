@@ -987,7 +987,7 @@ The tab bar style, can be one of:
     A user-supplied Python function called draw_tab is loaded from the file
     :file:`tab_bar.py` in the kitty config directory. For examples of how to
     write such a function, see the functions named :code:`draw_tab_with_*` in
-    kitty‘s source code: :file:`kitty/tab_bar.py`.
+    kitty's source code: :file:`kitty/tab_bar.py`.
 :code:`hidden`
     The tab bar is hidden. If you use this, you might want to create a
     mapping for the :ref:`action-select_tab`
