@@ -148,8 +148,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When remembering OS window sizes for full screen windows use the size before
   the window became fullscreen (:iss:`4221`)
 
-- macOS: Fix keyboard input not working after toggling traditional fullscreen
-  till the window is clicked in
+- macOS: Fix keyboard input not working after toggling fullscreen till the
+  window is clicked in
 
 - A new mappable action ``nth_os_window`` to to focus the specified nth OS
   window. (:pull:`4316`)
