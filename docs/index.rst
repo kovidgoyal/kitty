@@ -57,12 +57,18 @@ kitty
    * Lots more in :doc:`protocol-extensions`
 
 
-.. figure:: screenshots/screenshot.png
-    :alt: Screenshot, showing three programs in the 'Tall' layout
-    :align: center
-    :width: 100%
+.. only:: dirhtml
 
-    Screenshot, showing vim, tig and git running in |kitty| with the 'Tall' layout
+    .. raw:: html
+
+        <video controls width="640" height="360">
+            <source src="https://download.calibre-ebook.com/videos/kitty.mp4" type="video/mp4">
+            <source src="https://download.calibre-ebook.com/videos/kitty.webm" type="video/webm">
+        </video>
+
+    .. rst-class:: caption caption-text
+
+        Watch kitty in action!
 
 
 To get started see :doc:`quickstart`.
