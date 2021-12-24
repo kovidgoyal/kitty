@@ -91,7 +91,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Linux: Fix IME with fcitx5 not working after fcitx5 is restarted
   (:pull:`4059`)
 
-- macOS: Various improvements to IME integration (:iss:`4219`)
+- Various improvements to IME integration (:iss:`4219`)
 
 - Remote file transfer: Fix transfer not working if custom ssh port or identity
   is specified on the command line (:iss:`4067`)
@@ -148,11 +148,17 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When remembering OS window sizes for full screen windows use the size before
   the window became fullscreen (:iss:`4221`)
 
-- macOS: Fix keyboard input not working after toggling traditional fullscreen
-  till the window is clicked in
+- macOS: Fix keyboard input not working after toggling fullscreen till the
+  window is clicked in
 
 - A new mappable action ``nth_os_window`` to to focus the specified nth OS
   window. (:pull:`4316`)
+
+- macOS: The kitty window can be scrolled by the mouse wheel when OS window not
+  in focus. (:pull:`4371`)
+
+- macOS: Light or dark system appearance can be specified in
+  :opt:`macos_titlebar_color` and used in kitty themes. (:pull:`4378`)
 
 
 0.23.1 [2021-08-17]

@@ -35,8 +35,8 @@ opt('font_family', 'monospace',
 You can specify different fonts for the bold/italic/bold-italic variants.
 To get a full list of supported fonts use the `kitty list-fonts` command.
 By default they are derived automatically, by the OSes font system. When
-bold_font or bold_italic_font is set to :code:`auto`, the priority of bold
-fonts is semi-bold, bold, heavy. Setting them manually is useful for font
+bold_font or bold_italic_font is set to :code:`auto` on macOS, the priority of
+bold fonts is semi-bold, bold, heavy. Setting them manually is useful for font
 families that have many weight variants like Book, Medium, Thick, etc.
 For example::
 
@@ -987,7 +987,7 @@ The tab bar style, can be one of:
     A user-supplied Python function called draw_tab is loaded from the file
     :file:`tab_bar.py` in the kitty config directory. For examples of how to
     write such a function, see the functions named :code:`draw_tab_with_*` in
-    kitty‘s source code: :file:`kitty/tab_bar.py`.
+    kitty's source code: :file:`kitty/tab_bar.py`.
 :code:`hidden`
     The tab bar is hidden. If you use this, you might want to create a
     mapping for the :ref:`action-select_tab`

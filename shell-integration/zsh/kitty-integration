@@ -1,15 +1,16 @@
 #!/bin/zsh
 #
-# Enables integration between zsh and Kitty based on KITTY_SHELL_INTEGRATION.
-# The latter is set by Kitty based on kitty.conf.
+# Enables integration between zsh and kitty based on KITTY_SHELL_INTEGRATION.
+# The latter is set by kitty based on kitty.conf.
 #
 # This is an autoloadable function. It's invoked automatically in shells
-# directly spawned by Kitty but not in any other shells. For example, running
+# directly spawned by kitty but not in any other shells. For example, running
 # `exec zsh`, `sudo -E zsh`, `tmux`, or plain `zsh` will create a shell where
 # kitty-integration won't automatically run. Zsh users who want integration with
-# Kitty in all shells should add the following lines to their .zshrc:
+# kitty in all shells should add the following lines to their .zshrc:
 #
 #   if [[ -n $KITTY_INSTALLATION_DIR ]]; then
+#     export KITTY_SHELL_INTEGRATION="enabled"
 #     autoload -Uz -- "$KITTY_INSTALLATION_DIR"/shell-integration/zsh/kitty-integration
 #     kitty-integration
 #     unfunction kitty-integration
@@ -31,7 +32,7 @@ builtin emulate -L zsh -o no_warn_create_global
 # 2: none of the above.
 builtin typeset -gi _ksi_state
 
-# Asks Kitty to print $@ to its stdout. This is for debugging.
+# Asks kitty to print $@ to its stdout. This is for debugging.
 _ksi_debug_print() {
     builtin local data
     data=$(command base64 <<<"${(j: :}@}") || builtin return
