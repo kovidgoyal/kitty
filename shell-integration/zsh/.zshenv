@@ -5,7 +5,7 @@
 # Don't use [[ -v ... ]] because it doesn't work in zsh < 5.4.
 if [[ -n "${KITTY_ORIG_ZDOTDIR+X}" ]]; then
     # Normally ZDOTDIR shouldn't be exported but it was in the environment
-    # of Kitty, so we export it.
+    # of kitty, so we export it.
     'builtin' 'export' ZDOTDIR="$KITTY_ORIG_ZDOTDIR"
     'builtin' 'unset' 'KITTY_ORIG_ZDOTDIR'
 else
