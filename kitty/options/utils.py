@@ -908,7 +908,7 @@ def resolve_aliases_and_parse_actions(
 
     if possible_alias == 'combine':
         sep, rest = rest.split(maxsplit=1)
-        parts = re.split(r'\s*' + re.escape(sep) + r'\s*', rest)
+        parts = re.split(re.escape(sep) + r'''(?=(?:[^'"]|'[^']*'|"[^"]*")*$)''', rest)
         for x in parts:
             if x:
                 yield from resolve_aliases_and_parse_actions(x, aliases, map_type)
