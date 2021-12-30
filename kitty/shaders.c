@@ -577,9 +577,9 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
         window->title_bar_data.last_drawn_title_object_id = window->title;
     }
     static ImageRenderData data = {.group_count=1};
-    gpu_data_for_image(&data,
-            clamp_position_to_nearest_pixel(xstart, os_window->viewport_width),
-            clamp_position_to_nearest_pixel(ystart, os_window->viewport_height),
+    xstart = clamp_position_to_nearest_pixel(xstart, os_window->viewport_width);
+    ystart = clamp_position_to_nearest_pixel(ystart, os_window->viewport_height);
+    gpu_data_for_image(&data, xstart, ystart,
             xstart + width, ystart - 2.f * (bar_height / (float)os_window->viewport_height));
     if (!data.texture_id) { glGenTextures(1, &data.texture_id); }
     glBindTexture(GL_TEXTURE_2D, data.texture_id);
@@ -650,17 +650,15 @@ draw_window_number(OSWindow *os_window, Screen *screen, const CellRenderData *cr
     GLfloat width_gl = 2.f * ((float)lr.width_px) / os_window->viewport_width;
     height_gl = 2.f * ((float)lr.height_px) / os_window->viewport_height;
     left = xstart + (width - width_gl) / 2.f;
+    left = clamp_position_to_nearest_pixel(left, os_window->viewport_width);
     right = left + width_gl;
     GLfloat top = ystart - (height - height_gl) / 2.f;
+    top = clamp_position_to_nearest_pixel(top, os_window->viewport_height);
     GLfloat bottom = top - height_gl;
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
     ImageRenderData *ird = load_alpha_mask_texture(lr.width_px, lr.height_px, lr.canvas);
 #undef lr
-    gpu_data_for_image(ird,
-        clamp_position_to_nearest_pixel(left, os_window->viewport_width),
-        clamp_position_to_nearest_pixel(top, os_window->viewport_height),
-        right, bottom
-    );
+    gpu_data_for_image(ird, left, top, right, bottom);
     glEnable(GL_BLEND);
     BLEND_PREMULT;
     glUniform1i(cell_uniform_data.amask_image_loc, GRAPHICS_UNIT);
