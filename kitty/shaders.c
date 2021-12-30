@@ -579,8 +579,9 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
     static ImageRenderData data = {.group_count=1};
     xstart = clamp_position_to_nearest_pixel(xstart, os_window->viewport_width);
     ystart = clamp_position_to_nearest_pixel(ystart, os_window->viewport_height);
+    GLfloat height_gl = 2.f * (bar_height / (float)os_window->viewport_height);
     gpu_data_for_image(&data, xstart, ystart,
-            xstart + width, ystart - 2.f * (bar_height / (float)os_window->viewport_height));
+            xstart + width, ystart - height_gl);
     if (!data.texture_id) { glGenTextures(1, &data.texture_id); }
     glBindTexture(GL_TEXTURE_2D, data.texture_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -596,7 +597,7 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
     if (os_window->is_semi_transparent) { BLEND_PREMULT; } else { BLEND_ONTO_OPAQUE; }
     draw_graphics(GRAPHICS_PROGRAM, 0, os_window->gvao_idx, &data, 0, 1);
     glDisable(GL_BLEND);
-    return 2.f * (GLfloat)bar_height / (GLfloat)os_window->viewport_height;
+    return height_gl;
 }
 
 static void
