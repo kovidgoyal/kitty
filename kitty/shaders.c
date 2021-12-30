@@ -580,8 +580,7 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
     xstart = clamp_position_to_nearest_pixel(xstart, os_window->viewport_width);
     ystart = clamp_position_to_nearest_pixel(ystart, os_window->viewport_height);
     GLfloat height_gl = 2.f * (bar_height / (float)os_window->viewport_height);
-    gpu_data_for_image(&data, xstart, ystart,
-            xstart + width, ystart - height_gl);
+    gpu_data_for_image(&data, xstart, ystart, xstart + width, ystart - height_gl);
     if (!data.texture_id) { glGenTextures(1, &data.texture_id); }
     glBindTexture(GL_TEXTURE_2D, data.texture_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
