@@ -946,9 +946,9 @@ create_border_vao(void) {
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
     add_attribute_to_vao(BORDERS_PROGRAM, vao_idx, "rect",
-            /*size=*/4, /*dtype=*/GL_UNSIGNED_INT, /*stride=*/sizeof(GLuint)*5, /*offset=*/0, /*divisor=*/1);
+            /*size=*/4, /*dtype=*/GL_FLOAT, /*stride=*/sizeof(BorderRect), /*offset=*/(void*)offsetof(BorderRect, left), /*divisor=*/1);
     add_attribute_to_vao(BORDERS_PROGRAM, vao_idx, "rect_color",
-            /*size=*/1, /*dtype=*/GL_UNSIGNED_INT, /*stride=*/sizeof(GLuint)*5, /*offset=*/(void*)(sizeof(GLuint)*4), /*divisor=*/1);
+            /*size=*/1, /*dtype=*/GL_UNSIGNED_INT, /*stride=*/sizeof(BorderRect), /*offset=*/(void*)(offsetof(BorderRect, color)), /*divisor=*/1);
 
     return vao_idx;
 }
@@ -967,7 +967,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         bind_vertex_array(vao_idx);
         bind_program(BORDERS_PROGRAM);
         if (rect_data_is_dirty) {
-            size_t sz = sizeof(GLuint) * 5 * num_border_rects;
+            const size_t sz = sizeof(BorderRect) * num_border_rects;
             void *borders_buf_address = alloc_and_map_vao_buffer(vao_idx, sz, 0, GL_STATIC_DRAW, GL_WRITE_ONLY);
             if (borders_buf_address) memcpy(borders_buf_address, rect_buf, sz);
             unmap_vao_buffer(vao_idx, 0);

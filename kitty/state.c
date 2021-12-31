@@ -514,7 +514,11 @@ add_borders_rect(id_type os_window_id, id_type tab_id, uint32_t left, uint32_t t
         if (!left && !top && !right && !bottom) { br->num_border_rects = 0; return; }
         ensure_space_for(br, rect_buf, BorderRect, br->num_border_rects + 1, capacity, 32, false);
         BorderRect *r = br->rect_buf + br->num_border_rects++;
-        r->left = left; r->right = right; r->top = top; r->bottom = bottom; r->color = color;
+        r->left = gl_pos_x(left, osw->viewport_width);
+        r->top = gl_pos_y(top, osw->viewport_height);
+        r->right = r->left + gl_size(right - left, osw->viewport_width);
+        r->bottom = r->top - gl_size(bottom - top, osw->viewport_height);
+        r->color = color;
     END_WITH_TAB
 }
 

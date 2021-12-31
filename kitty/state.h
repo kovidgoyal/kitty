@@ -142,7 +142,8 @@ typedef struct {
 } Window;
 
 typedef struct {
-    uint32_t left, top, right, bottom, color;
+    float left, top, right, bottom;
+    uint32_t color;
 } BorderRect;
 
 typedef struct {

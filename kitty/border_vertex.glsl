@@ -6,7 +6,7 @@ uniform vec3 inactive_border_color;
 uniform vec3 bell_border_color;
 uniform vec3 tab_bar_bg;
 uniform vec3 tab_bar_margin_color;
-in uvec4 rect;  // left, top, right, bottom
+in vec4 rect;  // left, top, right, bottom
 in uint rect_color;
 out vec3 color;
 
@@ -24,13 +24,6 @@ const uvec2 pos_map[] = uvec2[4](
     uvec2(LEFT, TOP)
 );
 
-vec2 to_opengl(uint x, uint y) {
-    return vec2(
-        -1.0 + 2.0 * (float(x) / float(viewport.x)),
-        1.0 - 2.0 * (float(y) / float(viewport.y))
-    );
-}
-
 float to_color(uint c) {
     return float(c & FF) / 255.0;
 }
@@ -39,7 +32,7 @@ float to_color(uint c) {
 
 void main() {
     uvec2 pos = pos_map[gl_VertexID];
-    gl_Position = vec4(to_opengl(rect[pos.x], rect[pos.y]), 0, 1);
+    gl_Position = vec4(rect[pos.x], rect[pos.y], 0, 1);
     int rc = int(rect_color);
     vec3 window_bg = vec3(to_color(rect_color >> 24), to_color(rect_color >> 16), to_color(rect_color >> 8));
     color = W(0, default_bg) + W(1, active_border_color) + W(2, inactive_border_color) + W(3, window_bg) + W(4, bell_border_color) + W(5, tab_bar_bg) + W(6, tab_bar_margin_color);
