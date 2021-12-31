@@ -664,12 +664,13 @@ draw_codepoint(Screen *self, char_type och, bool from_input_stream) {
     uint32_t ch = och < 256 ? self->g_charset[och] : och;
     bool is_cc = is_combining_char(ch);
     if (UNLIKELY(is_cc)) {
-        draw_combining_char(self, ch);
-        return;
-    }
-    bool is_flag = is_flag_codepoint(ch);
-    if (UNLIKELY(is_flag)) {
-        if (draw_second_flag_codepoint(self, ch)) return;
+        bool is_flag = is_flag_codepoint(ch);
+        if (UNLIKELY(is_flag)) {
+            if (draw_second_flag_codepoint(self, ch)) return;
+        } else {
+            draw_combining_char(self, ch);
+            return;
+        }
     }
     int char_width = wcwidth_std(ch);
     if (UNLIKELY(char_width < 1)) {

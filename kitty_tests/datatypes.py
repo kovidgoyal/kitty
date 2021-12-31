@@ -383,8 +383,10 @@ class TestDataTypes(BaseTest):
         self.ae(wcswidth('\U0001F1E6\U0001F1E8\U0001F1E6'), 4)
         self.ae(wcswidth('a\u00adb'), 2)
         # Regional indicator symbols (unicode flags) are defined as having
-        # Emoji_Presentation so must have width 2
+        # Emoji_Presentation so must have width 2 but combined must have
+        # width 2 not 4
         self.ae(tuple(map(w, '\U0001f1ee\U0001f1f3')), (2, 2))
+        self.ae(wcswidth('\U0001f1ee\U0001f1f3'), 2)
         tpl = truncate_point_for_length
         self.ae(tpl('abc', 4), 3)
         self.ae(tpl('abc', 2), 2)

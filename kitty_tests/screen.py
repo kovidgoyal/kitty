@@ -110,6 +110,17 @@ class TestScreen(BaseTest):
         self.ae(str(s.line(0)), q)
         self.ae(s.cursor.x, 2)
 
+    def test_regional_indicators(self):
+        s = self.create_screen()
+        flag = '\U0001f1ee\U0001f1f3'
+        s.draw(flag)
+        self.ae(str(s.line(0)), flag)
+        self.ae(s.cursor.x, 2)
+        s = self.create_screen()
+        s.draw('a'), s.draw(flag[0]), s.draw('b')
+        self.ae(str(s.line(0)), 'a' + flag[0] + 'b')
+        self.ae(s.cursor.x, 4)
+
     def test_zwj(self):
         s = self.create_screen(cols=20)
         q = '\U0001f468\u200d\U0001f469\u200d\U0001f467\u200d\U0001f466'
