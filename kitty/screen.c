@@ -662,10 +662,8 @@ draw_codepoint(Screen *self, char_type och, bool from_input_stream) {
         CALLBACK("on_activity_since_last_focus", NULL);
     }
     uint32_t ch = och < 256 ? self->g_charset[och] : och;
-    bool is_cc = is_combining_char(ch);
-    if (UNLIKELY(is_cc)) {
-        bool is_flag = is_flag_codepoint(ch);
-        if (UNLIKELY(is_flag)) {
+    if (UNLIKELY(is_combining_char(ch))) {
+        if (UNLIKELY(is_flag_codepoint(ch))) {
             if (draw_second_flag_codepoint(self, ch)) return;
         } else {
             draw_combining_char(self, ch);
