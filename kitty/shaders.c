@@ -579,7 +579,7 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
     static ImageRenderData data = {.group_count=1};
     xstart = clamp_position_to_nearest_pixel(xstart, os_window->viewport_width);
     ystart = clamp_position_to_nearest_pixel(ystart, os_window->viewport_height);
-    GLfloat height_gl = 2.f * (bar_height / (float)os_window->viewport_height);
+    GLfloat height_gl = gl_size(bar_height, os_window->viewport_height);
     gpu_data_for_image(&data, xstart, ystart, xstart + width, ystart - height_gl);
     if (!data.texture_id) { glGenTextures(1, &data.texture_id); }
     glBindTexture(GL_TEXTURE_2D, data.texture_id);
@@ -647,8 +647,8 @@ draw_window_number(OSWindow *os_window, Screen *screen, const CellRenderData *cr
         lr.ch = screen->display_window_char;
     }
 
-    GLfloat width_gl = 2.f * ((float)lr.width_px) / os_window->viewport_width;
-    height_gl = 2.f * ((float)lr.height_px) / os_window->viewport_height;
+    GLfloat width_gl = gl_size(lr.width_px, os_window->viewport_width);
+    height_gl = gl_size(lr.height_px, os_window->viewport_height);
     left = xstart + (width - width_gl) / 2.f;
     left = clamp_position_to_nearest_pixel(left, os_window->viewport_width);
     right = left + width_gl;
