@@ -62,13 +62,14 @@ _ksi_deferred_init() {
     unset KITTY_SHELL_INTEGRATION
 
     # The directory where kitty-integration is located: /.../shell-integration/zsh.
-    builtin local self_dir=${functions_source[kitty-integration]:A:h}
+    builtin local self_dir=${functions_source[_ksi_deferred_init]:A:h}
     # The directory with _kitty. We store it in a directory of its own rather than
     # in $self_dir because we are adding it to fpath and we don't want any other
     # files to be accidentally autoloadable.
     builtin local comp_dir=$self_dir/completions
 
     # Enable completions for `kitty` command.
+    _ksi_debug_print "$self_dir" 
     if (( ! opt[(Ie)no-complete] )) && [[ -r $comp_dir/_kitty ]]; then
         if (( $+functions[compdef] )); then
             # If compdef is defined, then either compinit has already run or it's
