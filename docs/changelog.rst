@@ -4,8 +4,77 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+Recent major new features
+---------------------------
+
+.. only:: dirhtml
+
+   A demo video
+   ~~~~~~~~~~~~~~~~
+
+   A new video showcasing some of kitty's many productivity enhancing features.
+
+   .. raw:: html
+
+        <video controls width="640" height="360">
+            <source src="https://download.calibre-ebook.com/videos/kitty.mp4" type="video/mp4">
+            <source src="https://download.calibre-ebook.com/videos/kitty.webm" type="video/webm">
+        </video>
+
+   .. rst-class:: caption caption-text
+
+       Watch kitty in action!
+
+
+Shell integration
+~~~~~~~~~~~~~~~~~~~~~
+
+kitty automatically integrates with common shells to allow browsing the
+output of the previous command in a pager by pressing
+:sc:`show_last_command_output`, jumping to previous prompt locations in the
+scrollback by pressing :sc:`scroll_to_previous_prompt` and clicking with the
+mouse anywhere in the current command to move the cursor there. See
+:doc:`shell-integration` for details.
+
+Logos for windows
+~~~~~~~~~~~~~~~~~~~~
+
+kitty has the ability to display arbitrary ``PNG`` images at the corner
+of any kitty window to serve as a *logo* for quick window identification.
+Can be controlled via :opt:`window_logo_path` and also and changed via
+the :ref:`at_set-window-logo` remote control command.
+Useful to quickly identify special windows or just for some *bling*.
+
+.. figure:: screenshots/window-logo.png
+    :alt: A screenshot of the kitty shell window showing the kitty logo
+    :align: center
+    :width: 100%
+
+    A screenshot of the kitty shell window showing the kitty logo
+
+
+Visual keyboard based window select
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Select a kitty window visually using the keyboard, like the
+:doc:`kittens/hints`, but for kitty windows. Can also be used from shell
+scripts/third party integrations via the :ref:`at_select-window` remote control
+command.
+
+.. figure:: screenshots/select-window.png
+    :alt: A screenshot of the kitty select window function
+    :align: center
+    :width: 100%
+
+    Hints for selecting kitty windows visually
+
+
+
+Detailed list of changes
+-------------------------------------
+
 0.24.0 [future]
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Integrate kitty closely with common shells such as zsh, fish and bash.
   This allows lots of niceties such as jumping to previous prompts, opening the
@@ -162,7 +231,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.23.1 [2021-08-17]
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: Fix themes kitten failing to download themes because of missing SSL
   root certificates (:iss:`3936`)
@@ -180,7 +249,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.23.0 [2021-08-16]
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new :doc:`themes kitten </kittens/themes>` to easily change kitty themes.
   Choose from almost two hundred themes in the `kitty themes repository
@@ -226,7 +295,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.22.2 [2021-08-02]
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: Fix a long standing bug that could cause kitty windows to stop
   updating, that got worse in the previous release (:iss:`3890` and
@@ -237,7 +306,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.22.1 [2021-07-31]
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fix a regression in the previous release that broke ``kitty --help`` (:iss:`3869`)
 
@@ -260,7 +329,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.22.0 [2021-07-26]
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add a new :ref:`action-toggle_layout` action to easily zoom/unzoom a window
 
@@ -330,7 +399,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.21.2 [2021-06-28]
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new :opt:`adjust_baseline` option to adjust the vertical alignment of text
   inside a line (:pull:`3734`)
@@ -373,7 +442,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.21.1 [2021-06-14]
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: Fix a regression in the previous release that broke rendering of
   strikeout (:iss:`3717`)
@@ -386,7 +455,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.21.0 [2021-06-12]
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow reloading the :file:`kitty.conf` config file by pressing
   :sc:`reload_config_file`. (:iss:`1292`)
@@ -479,7 +548,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.20.3 [2021-05-06]
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: Distribute universal binaries with both ARM and Intel architectures
 
@@ -500,7 +569,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.20.2 [2021-04-28]
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new protocol extension to :ref:`unscroll <unscroll>` text from the
   scrollback buffer onto the screen. Useful, for example, to restore
@@ -540,7 +609,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.20.1 [2021-04-19]
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - icat: Fix some broken GIF images with no frame delays not being animated
   (:iss:`3498`)
@@ -553,7 +622,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.20.0 [2021-04-19]
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Support display of animated images ``kitty +kitten icat animation.gif``. See
   :ref:`animation_protocol` for details on animation support in the kitty
@@ -677,7 +746,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.19.3 [2020-12-19]
--------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Happy holidays to all kitty users!
 
@@ -739,7 +808,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.19.2 [2020-11-13]
--------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new :doc:`kittens/query_terminal` kitten to easily query the running kitty
   via escape codes to detect its version, and the values of
@@ -782,7 +851,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.19.1 [2020-10-06]
--------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - hints kitten: Add an ``ip`` type for easy selection of IP addresses
   (:pull:`3009`)
@@ -794,7 +863,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.19.0 [2020-10-04]
--------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add support for `hyperlinks from terminal programs
   <https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda>`_.
@@ -866,7 +935,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.18.3 [2020-08-11]
--------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - hints kitten: Allow customizing hint colors (:pull:`2894`)
 
@@ -887,7 +956,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.18.2 [2020-07-28]
---------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - X11: Improve handling of multiple keyboards. Now pressing a modifier key in
   one keyboard and a normal key in another works (:iss:`2362`). Don't rebuild
@@ -952,13 +1021,13 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.18.1 [2020-06-23]
---------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: Fix for diff kitten not working with python 3.8 (:iss:`2780`)
 
 
 0.18.0 [2020-06-20]
---------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow multiple overlay windows per normal window
 
@@ -1009,7 +1078,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.17.4 [2020-05-09]
---------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow showing the name of the current layout and the number of windows
   in tab titles (:iss:`2634`)
@@ -1036,7 +1105,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.17.3 [2020-04-23]
---------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow individually setting margins and padding for each edge (left, right,
   top, bottom). Margins can also be controlled per window via remote control
@@ -1090,7 +1159,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix :option:`--title` not being applied at window creation time (:iss:`2570`)
 
 0.17.2 [2020-03-29]
---------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add a :option:`launch --watcher` option that allows defining callbacks
   that are called for various events in the window's life-cycle (:iss:`2440`)
@@ -1121,7 +1190,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.17.1 [2020-03-24]
---------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fix :opt:`cursor_underline_thickness` not working (:iss:`2465`)
 
@@ -1136,7 +1205,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.17.0 [2020-03-24]
---------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - :ref:`splits_layout` to arrange windows in arbitrary splits
   (:iss:`2308`)
@@ -1227,7 +1296,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.16.0 [2020-01-28]
---------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new :doc:`marks` feature that allows highlighting and scrolling to arbitrary
   text in the terminal window.
@@ -1274,7 +1343,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   them. (:iss:`2310`)
 
 0.15.1 [2019-12-21]
---------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fix a crash/incorrect rendering when detaching a window in some circumstances
   (:iss:`2173`)
@@ -1299,7 +1368,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.15.0 [2019-11-27]
---------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add a new action :ref:`detach_window <detach_window>` that can be used to move the current
   window into a different tab (:iss:`1310`)
@@ -1349,7 +1418,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.14.6 [2019-09-25]
----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: Fix a regression in the previous release that caused a crash when
   pressing a unprintable key, such as the POWER key (:iss:`1997`)
@@ -1359,7 +1428,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.14.5 [2019-09-23]
----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Implement a hack to (mostly) preserve tabs when cat-ting a file with them and then
   copying the text or passing screen contents to another program (:iss:`1829`)
@@ -1382,7 +1451,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Use selection foreground color for underlines as well (:iss:`1982`)
 
 0.14.4 [2019-08-31]
----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - hints kitten: Add a :option:`kitty +kitten hints --alphabet` option to
   control what alphabets are used for hints (:iss:`1879`)
@@ -1421,7 +1490,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.14.3 [2019-07-29]
----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Remote control: Add a command `kitty @ scroll-window` to scroll windows
 
@@ -1476,7 +1545,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.14.2 [2019-06-09]
----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add an option :opt:`placement_strategy` to control how the cell area is
   aligned inside the window when the window size is not an exact multiple
@@ -1518,7 +1587,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.14.1 [2019-05-29]
----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add an option :opt:`command_on_bell` to run an arbitrary command when
   a bell occurs (:iss:`1660`)
@@ -1553,7 +1622,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.14.0 [2019-05-24]
----------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: The default behavior of the Option key has changed. It now generates
   unicode characters rather than acting as the :kbd:`Alt` modifier. See
@@ -1688,7 +1757,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   characters not working well (:iss:`1616`)
 
 0.13.3 [2019-01-19]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - icat kitten: Add a ``--stdin`` option to control if image data is read from
   STDIN (:iss:`1308`)
@@ -1726,7 +1795,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.13.2 [2019-01-04]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add a new option :opt:`tab_title_template` to control how tab titles
   are formatted. In particular the template can be used to display
@@ -1768,7 +1837,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.13.1 [2018-12-06]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fix passing input via the pipe action to a program without a window not
   working.
@@ -1781,7 +1850,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   be properly unwrapped (:iss:`1206`)
 
 0.13.0 [2018-12-05]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add an option :opt:`scrollback_pager_history_size` to tell kitty to store
   extended scrollback to use when viewing the scrollback buffer in a pager
@@ -1878,7 +1947,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   and slash characters in short URLs (:iss:`1201`)
 
 0.12.3 [2018-09-29]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: Fix kitty window not being rendered on macOS Mojave until the window is
   moved or resized at least once (:iss:`887`)
@@ -1887,7 +1956,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.12.2 [2018-09-24]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new ``last_used_layout`` function that can be mapped to a shortcut to
   switch to the previously used window layout (:iss:`870`)
@@ -1954,7 +2023,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   mouse to malfunction when using multiple kitty windows (:iss:`1002`)
 
 0.12.1 [2018-09-08]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add a new ``--start-in-fullscreen`` command line flag to start
   kitty in full screen mode (:iss:`856`)
@@ -1997,7 +2066,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   a bug in the 0.12.0 macOS package
 
 0.12.0 [2018-09-01]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Preserve the mouse selection even when the contents of the screen are
   scrolled or overwritten provided the new text does not intersect the
@@ -2072,7 +2141,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.11.3 [2018-07-10]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Draw only the minimum borders needed for inactive windows. That is only the borders
   that separate the inactive window from a neighbor. Note that setting
@@ -2106,7 +2175,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.11.2 [2018-07-01]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Linux: Allow using XKB key names to bind shortcuts to keys not supported by GLFW (:pull:`665`)
 
@@ -2143,7 +2212,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.11.1 [2018-06-17]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - diff kitten: Implement searching for text in the diff (:iss:`574`)
 
@@ -2171,7 +2240,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.11.0 [2018-06-12]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new tab bar style "fade" in which each tab's edges fade into the background.
   See :opt:`tab_bar_style` and :opt:`tab_fade` for details. The old look can be
@@ -2262,7 +2331,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.10.1 [2018-05-24]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add a kitten to easily ssh into servers that automatically copies the
   terminfo files over. ``kitty +kitten ssh myserver``.
@@ -2287,7 +2356,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.10.0 [2018-05-21]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A diff kitten to show side-by-side diffs with syntax highlighting and support
   for images. See :doc:`diff kitten <kittens/diff>`.
@@ -2337,7 +2406,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.9.1 [2018-05-05]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Show a bell symbol on the tab if a bell occurs in one of the windows in the tab and
   the window is not the currently focused window
@@ -2405,7 +2474,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.9.0 [2018-04-15]
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new kitty command shell to allow controlling kitty via commands. Press
   `ctrl+shift+escape` to run the shell.
@@ -2449,7 +2518,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.8.4 [2018-03-31]
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fix presence of XDG_CONFIG_DIRS and absence of XDG_CONFIG_HOME preventing
   kitty from starting
@@ -2459,7 +2528,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.8.3 [2018-03-29]
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fix a regression that broke the visual bell and invert screen colors escape
   code
@@ -2484,7 +2553,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.8.2 [2018-03-17]
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow extending existing selections by right clicking
 
@@ -2507,7 +2576,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a crash when getting the contents of the scrollback buffer as text
 
 0.8.1 [2018-03-09]
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Extend kitty's remote control feature to work over both UNIX and TCP sockets,
   so now you can control kitty from across the internet, if you want to.
@@ -2539,7 +2608,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.8.0 [2018-02-24]
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A framework for kittens, that is, small terminal programs designed to run
   inside kitty and extend its capabilities. Examples include unicode input and
@@ -2584,7 +2653,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   new window/tab.
 
 0.7.1 [2018-01-31]
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add an option to adjust the width of character cells
 
@@ -2596,7 +2665,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.7.0 [2018-01-24]
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow controlling kitty from the shell prompt/scripts. You can
   open/close/rename windows and tabs and even send input to specific windows.
@@ -2641,7 +2710,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.6.1 [2017-12-28]
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add an option to fade the text in inactive windows
 
@@ -2669,7 +2738,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.6.0 [2017-12-18]
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Support background transparency via the background_opacity option. Provided
   that your OS/window manager supports transparency, you can now have kitty
@@ -2720,7 +2789,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.5.1 [2017-12-01]
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add an option to control the thickness of lines in box drawing characters
 
@@ -2737,7 +2806,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.5.0 [2017-11-19]
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add support for ligature fonts such as Fira Code, Hasklig, etc. kitty now
   uses harfbuzz for text shaping which allow it to support advanced OpenType
@@ -2771,7 +2840,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.4.2 [2017-10-23]
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fix a regression in 0.4.0 that broke custom key mappings
 
@@ -2782,7 +2851,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
 0.4.0 [2017-10-22]
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Support for drawing arbitrary raster graphics (images) in the terminal via a
   new graphics protocol. kitty can draw images with full 32-bit color using both
