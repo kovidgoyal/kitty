@@ -257,6 +257,6 @@ _ksi_deferred_init() {
 
     # Unfunction _ksi_deferred_init to save memory. Don't unfunction
     # kitty-integration though because decent public functions aren't supposed to
-    # to unfunction themselves when invoked.
+    # to unfunction themselves when invoked. Unfunctioning is done by calling code.
     builtin unfunction _ksi_deferred_init
 }
