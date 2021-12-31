@@ -279,16 +279,11 @@ add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
 
 static void
 update_window_title(id_type os_window_id, id_type tab_id, id_type window_id, PyObject *title) {
-    WITH_TAB(os_window_id, tab_id);
-    for (size_t i = 0; i < tab->num_windows; i++) {
-        if (tab->windows[i].id == window_id) {
-            Py_CLEAR(tab->windows[i].title);
-            tab->windows[i].title = title;
-            Py_INCREF(tab->windows[i].title);
-            break;
-        }
-    }
-    END_WITH_TAB;
+    WITH_WINDOW(os_window_id, tab_id, window_id)
+        Py_CLEAR(window->title);
+        window->title = title;
+        Py_XINCREF(window->title);
+    END_WITH_WINDOW;
 }
 
 void
