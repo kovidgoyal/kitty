@@ -1531,8 +1531,8 @@ screen_cursor_at_a_shell_prompt(const Screen *self) {
 }
 
 bool
-screen_fake_move_cursor_to_position(Screen *self, index_type x, index_type y) {
-    SelectionBoundary a = {.x=x, .y=y}, b = {.x=self->cursor->x, .y=self->cursor->y};
+screen_fake_move_cursor_to_position(Screen *self, index_type start_x, index_type start_y) {
+    SelectionBoundary a = {.x=start_x, .y=start_y}, b = {.x=self->cursor->x, .y=self->cursor->y};
     SelectionBoundary *start, *end; int key;
     if (a.y < b.y || (a.y == b.y && a.x < b.x)) { start = &a; end = &b; key = GLFW_FKEY_LEFT; }
     else { start = &b; end = &a; key = GLFW_FKEY_RIGHT; }

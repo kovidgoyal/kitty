@@ -896,9 +896,9 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
     if (width != window->wl.width || height != window->wl.height) {
         window->wl.user_requested_content_size.width = width;
         window->wl.user_requested_content_size.height = height;
-        int32_t width = 0, height = 0;
-        set_csd_window_geometry(window, &width, &height);
-        window->wl.width = width; window->wl.height = height;
+        int32_t w = 0, h = 0;
+        set_csd_window_geometry(window, &w, &h);
+        window->wl.width = w; window->wl.height = h;
         resizeFramebuffer(window);
         ensure_csd_resources(window);
         wl_surface_commit(window->wl.surface);
@@ -1667,9 +1667,9 @@ static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device 
             while (window)
             {
                 if (window->wl.surface == surface) {
-                    for (size_t x = 0; x < d->mimes_count; x++) {
-                        int prio = _glfwInputDrop(window, d->mimes[x], NULL, 0);
-                        if (prio > format_priority) d->mime_for_drop = d->mimes[x];
+                    for (size_t j = 0; j < d->mimes_count; j++) {
+                        int prio = _glfwInputDrop(window, d->mimes[j], NULL, 0);
+                        if (prio > format_priority) d->mime_for_drop = d->mimes[j];
                     }
                     break;
                 }
@@ -1695,8 +1695,8 @@ static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP && _glfw.wl.dataOffers[i].mime_for_drop) {
             size_t sz = 0;
-            char *data = read_data_offer(_glfw.wl.dataOffers[i].id, _glfw.wl.dataOffers[i].mime_for_drop, &sz);
-            if (data) {
+            char *d = read_data_offer(_glfw.wl.dataOffers[i].id, _glfw.wl.dataOffers[i].mime_for_drop, &sz);
+            if (d) {
                 // We dont do finish as this requires version 3 for wl_data_device_manager
                 // which then requires more work with calling set_actions for drag and drop to function
                 // wl_data_offer_finish(_glfw.wl.dataOffers[i].id);
@@ -1705,13 +1705,13 @@ static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED
                 while (window)
                 {
                     if (window->wl.surface == _glfw.wl.dataOffers[i].surface) {
-                        _glfwInputDrop(window, _glfw.wl.dataOffers[i].mime_for_drop, data, sz);
+                        _glfwInputDrop(window, _glfw.wl.dataOffers[i].mime_for_drop, d, sz);
                         break;
                     }
                     window = window->next;
                 }
 
-                free(data);
+                free(d);
             }
             destroy_data_offer(&_glfw.wl.dataOffers[i]);
             break;

@@ -219,16 +219,16 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
     expecting_option_val = False
     passthrough = False
     stop_option_processing = False
-    for arg in args:
+    for argument in args:
         if len(server_args) > 1 or stop_option_processing:
-            server_args.append(arg)
+            server_args.append(argument)
             continue
-        if arg.startswith('-') and not expecting_option_val:
-            if arg == '--':
+        if argument.startswith('-') and not expecting_option_val:
+            if argument == '--':
                 stop_option_processing = True
                 continue
             # could be a multi-character option
-            all_args = arg[1:]
+            all_args = argument[1:]
             for i, arg in enumerate(all_args):
                 arg = '-' + arg
                 if arg in passthrough_args:
@@ -247,10 +247,10 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
                 raise InvalidSSHArgs(f'unknown option -- {arg[1:]}')
             continue
         if expecting_option_val:
-            ssh_args.append(arg)
+            ssh_args.append(argument)
             expecting_option_val = False
             continue
-        server_args.append(arg)
+        server_args.append(argument)
     if not server_args:
         raise InvalidSSHArgs()
     return ssh_args, server_args, passthrough
