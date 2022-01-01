@@ -624,7 +624,6 @@ def shade(buf: BufType, width: int, height: int, light: bool = False, invert: bo
     dest = bytearray(width * height) if invert else buf
 
     for r in range(number_of_rows):
-        y = r * square_sz
         is_odd = r % 2 != 0
         if is_odd:
             continue
