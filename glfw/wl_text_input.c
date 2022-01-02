@@ -25,7 +25,7 @@ static void commit(void) {
 }
 
 static void
-text_input_enter(void *data UNUSED, struct zwp_text_input_v3 *text_input UNUSED, struct wl_surface *surface UNUSED) {
+text_input_enter(void *data UNUSED, struct zwp_text_input_v3 *text_input, struct wl_surface *surface UNUSED) {
     debug("text-input: enter event\n");
     if (text_input) {
         zwp_text_input_v3_enable(text_input);
@@ -35,7 +35,7 @@ text_input_enter(void *data UNUSED, struct zwp_text_input_v3 *text_input UNUSED,
 }
 
 static void
-text_input_leave(void *data UNUSED, struct zwp_text_input_v3 *text_input UNUSED, struct wl_surface *surface UNUSED) {
+text_input_leave(void *data UNUSED, struct zwp_text_input_v3 *text_input, struct wl_surface *surface UNUSED) {
     debug("text-input: leave event\n");
     if (text_input) {
         zwp_text_input_v3_disable(text_input);
