@@ -80,7 +80,7 @@ static Child children[MAX_CHILDREN] = {{0}};
 static Child scratch[MAX_CHILDREN] = {{0}};
 static Child add_queue[MAX_CHILDREN] = {{0}}, remove_queue[MAX_CHILDREN] = {{0}}, remove_notify[MAX_CHILDREN] = {{0}};
 static size_t add_queue_count = 0, remove_queue_count = 0;
-static struct pollfd fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
+static struct pollfd children_fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
 static pthread_mutex_t children_lock, talk_lock;
 static bool kill_signal_received = false, reload_config_signal_received = false;
 static ChildMonitor *the_monitor = NULL;
@@ -144,8 +144,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         parse_func = parse_worker_dump;
     } else parse_func = parse_worker;
     self->count = 0;
-    fds[0].fd = self->io_loop_data.wakeup_read_fd; fds[1].fd = self->io_loop_data.signal_read_fd;
-    fds[0].events = POLLIN; fds[1].events = POLLIN;
+    children_fds[0].fd = self->io_loop_data.wakeup_read_fd; children_fds[1].fd = self->io_loop_data.signal_read_fd;
+    children_fds[0].events = POLLIN; children_fds[1].events = POLLIN;
     the_monitor = self;
 
     return (PyObject*) self;
@@ -539,7 +539,7 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
     for (size_t i = 0; i < self->count; i++) {
         if (children[i].id == window_id) {
             found = Py_True;
-            if (!set_iutf8(fds[EXTRA_FDS + i].fd, on & 1)) PyErr_SetFromErrno(PyExc_OSError);
+            if (!set_iutf8(children_fds[EXTRA_FDS + i].fd, on & 1)) PyErr_SetFromErrno(PyExc_OSError);
             break;
         }
     }
@@ -1134,8 +1134,8 @@ add_children(ChildMonitor *self) {
         add_queue_count--;
         children[self->count] = add_queue[add_queue_count];
         add_queue[add_queue_count] = EMPTY_CHILD;
-        fds[EXTRA_FDS + self->count].fd = children[self->count].fd;
-        fds[EXTRA_FDS + self->count].events = POLLIN;
+        children_fds[EXTRA_FDS + self->count].fd = children[self->count].fd;
+        children_fds[EXTRA_FDS + self->count].events = POLLIN;
         self->count++;
     }
 }
@@ -1171,11 +1171,11 @@ remove_children(ChildMonitor *self) {
                 remove_queue[remove_queue_count] = children[i];
                 remove_queue_count++;
                 children[i] = EMPTY_CHILD;
-                fds[EXTRA_FDS + i].fd = -1;
+                children_fds[EXTRA_FDS + i].fd = -1;
                 size_t num_to_right = self->count - 1 - i;
                 if (num_to_right > 0) {
                     memmove(children + i, children + i + 1, num_to_right * sizeof(Child));
-                    memmove(fds + EXTRA_FDS + i, fds + EXTRA_FDS + i + 1, num_to_right * sizeof(struct pollfd));
+                    memmove(children_fds + EXTRA_FDS + i, children_fds + EXTRA_FDS + i + 1, num_to_right * sizeof(struct pollfd));
                 }
             }
         }
@@ -1326,28 +1326,28 @@ io_loop(void *data) {
         add_children(self);
         children_mutex(unlock);
         data_received = false;
-        for (i = 0; i < self->count + EXTRA_FDS; i++) fds[i].revents = 0;
+        for (i = 0; i < self->count + EXTRA_FDS; i++) children_fds[i].revents = 0;
         for (i = 0; i < self->count; i++) {
             screen = children[i].screen;
             /* printf("i:%lu id:%lu fd: %d read_buf_sz: %lu write_buf_used: %lu\n", i, children[i].id, children[i].fd, screen->read_buf_sz, screen->write_buf_used); */
             screen_mutex(lock, read); screen_mutex(lock, write);
-            fds[EXTRA_FDS + i].events = (screen->read_buf_sz < READ_BUF_SZ ? POLLIN : 0) | (screen->write_buf_used ? POLLOUT  : 0);
+            children_fds[EXTRA_FDS + i].events = (screen->read_buf_sz < READ_BUF_SZ ? POLLIN : 0) | (screen->write_buf_used ? POLLOUT  : 0);
             screen_mutex(unlock, read); screen_mutex(unlock, write);
         }
         if (has_pending_wakeups) {
             now = monotonic();
             monotonic_t time_delta = OPT(input_delay) - (now - last_main_loop_wakeup_at);
-            if (time_delta >= 0) ret = poll(fds, self->count + EXTRA_FDS, monotonic_t_to_ms(time_delta));
+            if (time_delta >= 0) ret = poll(children_fds, self->count + EXTRA_FDS, monotonic_t_to_ms(time_delta));
             else ret = 0;
         } else {
-            ret = poll(fds, self->count + EXTRA_FDS, -1);
+            ret = poll(children_fds, self->count + EXTRA_FDS, -1);
         }
         if (ret > 0) {
-            if (fds[0].revents && POLLIN) drain_fd(fds[0].fd); // wakeup
-            if (fds[1].revents && POLLIN) {
+            if (children_fds[0].revents && POLLIN) drain_fd(children_fds[0].fd); // wakeup
+            if (children_fds[1].revents && POLLIN) {
                 SignalSet ss = {0};
                 data_received = true;
-                read_signals(fds[1].fd, handle_signal, &ss);
+                read_signals(children_fds[1].fd, handle_signal, &ss);
                 if (ss.kill_signal || ss.reload_config) {
                     children_mutex(lock);
                     if (ss.kill_signal) kill_signal_received = true;
@@ -1357,9 +1357,9 @@ io_loop(void *data) {
                 if (ss.child_died) reap_children(self, OPT(close_on_child_death));
             }
             for (i = 0; i < self->count; i++) {
-                if (fds[EXTRA_FDS + i].revents & (POLLIN | POLLHUP)) {
+                if (children_fds[EXTRA_FDS + i].revents & (POLLIN | POLLHUP)) {
                     data_received = true;
-                    has_more = read_bytes(fds[EXTRA_FDS + i].fd, children[i].screen);
+                    has_more = read_bytes(children_fds[EXTRA_FDS + i].fd, children[i].screen);
                     if (!has_more) {
                         // child is dead
                         children_mutex(lock);
@@ -1367,10 +1367,10 @@ io_loop(void *data) {
                         children_mutex(unlock);
                     }
                 }
-                if (fds[EXTRA_FDS + i].revents & POLLOUT) {
+                if (children_fds[EXTRA_FDS + i].revents & POLLOUT) {
                     write_to_child(children[i].fd, children[i].screen);
                 }
-                if (fds[EXTRA_FDS + i].revents & POLLNVAL) {
+                if (children_fds[EXTRA_FDS + i].revents & POLLNVAL) {
                     // fd was closed
                     children_mutex(lock);
                     children[i].needs_removal = true;
@@ -1380,7 +1380,7 @@ io_loop(void *data) {
             }
 #ifdef DEBUG_POLL_EVENTS
             for (i = 0; i < self->count + EXTRA_FDS; i++) {
-#define P(w) if (fds[i].revents & w) printf("i:%lu %s\n", i, #w);
+#define P(w) if (children_fds[i].revents & w) printf("i:%lu %s\n", i, #w);
                 P(POLLIN); P(POLLPRI); P(POLLOUT); P(POLLERR); P(POLLHUP); P(POLLNVAL);
 #undef P
             }
