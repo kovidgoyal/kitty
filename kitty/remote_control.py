@@ -5,12 +5,12 @@ import json
 import os
 import re
 import sys
-import types
 from contextlib import suppress
 from functools import partial
 from time import monotonic
+from types import GeneratorType
 from typing import (
-    Any, Dict, Iterator, Iterable, List, Optional, Tuple, Union, cast
+    Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 )
 
 from .cli import emph, parse_args
@@ -137,7 +137,7 @@ class RCIO(TTYIO):
 
 def do_io(to: Optional[str], send: Dict[str, Any], no_response: bool, response_timeout: float) -> Dict[str, Any]:
     payload = send.get('payload')
-    if not isinstance(payload, types.GeneratorType):
+    if not isinstance(payload, GeneratorType):
         send_data: Union[bytes, Iterator[bytes]] = encode_send(send)
     else:
         def send_generator() -> Iterator[bytes]:
