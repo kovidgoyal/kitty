@@ -78,36 +78,36 @@ typedef struct LineBuffer {
 
 
 static bool
-ensure_space(LineBuffer *b, size_t num) {
-    if (b->pos + num >= b->capacity) {
-        size_t new_cap = MAX(b->capacity * 2, 4096u);
-        new_cap = MAX(b->pos + num + 1024u, new_cap);
-        b->buf = realloc(b->buf, new_cap * sizeof(b->buf[0]));
-        if (!b->buf) { PyErr_NoMemory(); return false; }
-        b->capacity = new_cap;
+ensure_space(LineBuffer *lb, size_t num) {
+    if (lb->pos + num >= lb->capacity) {
+        size_t new_cap = MAX(lb->capacity * 2, 4096u);
+        new_cap = MAX(lb->pos + num + 1024u, new_cap);
+        lb->buf = realloc(lb->buf, new_cap * sizeof(lb->buf[0]));
+        if (!lb->buf) { PyErr_NoMemory(); return false; }
+        lb->capacity = new_cap;
     }
     return true;
 }
 
 static bool
-insert_code(PyObject *code, LineBuffer *b) {
+insert_code(PyObject *code, LineBuffer *lb) {
     unsigned int csz = PyUnicode_GET_LENGTH(code);
-    if (!ensure_space(b, csz)) return false;
-    for (unsigned int s = 0; s < csz; s++) b->buf[b->pos++] = PyUnicode_READ(PyUnicode_KIND(code), PyUnicode_DATA(code), s);
+    if (!ensure_space(lb, csz)) return false;
+    for (unsigned int s = 0; s < csz; s++) lb->buf[lb->pos++] = PyUnicode_READ(PyUnicode_KIND(code), PyUnicode_DATA(code), s);
     return true;
 }
 
 static bool
-add_line(Segment *bg_segment, Segment *fg_segment, LineBuffer *b, PyObject *ans) {
+add_line(Segment *bg_segment, Segment *fg_segment, LineBuffer *lb, PyObject *ans) {
     bool bg_is_active = bg_segment->current_pos == bg_segment->end_pos, fg_is_active = fg_segment->current_pos == fg_segment->end_pos;
-    if (bg_is_active) { if(!insert_code(bg_segment->end_code, b)) return false; }
-    if (fg_is_active) { if(!insert_code(fg_segment->end_code, b)) return false; }
-    PyObject *wl = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, b->buf, b->pos);
+    if (bg_is_active) { if(!insert_code(bg_segment->end_code, lb)) return false; }
+    if (fg_is_active) { if(!insert_code(fg_segment->end_code, lb)) return false; }
+    PyObject *wl = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, lb->buf, lb->pos);
     if (!wl) return false;
     int ret = PyList_Append(ans, wl); Py_DECREF(wl); if (ret != 0) return false;
-    b->pos = 0;
-    if (bg_is_active) { if(!insert_code(bg_segment->start_code, b)) return false; }
-    if (fg_is_active) { if(!insert_code(fg_segment->start_code, b)) return false; }
+    lb->pos = 0;
+    if (bg_is_active) { if(!insert_code(bg_segment->start_code, lb)) return false; }
+    if (fg_is_active) { if(!insert_code(fg_segment->start_code, lb)) return false; }
     return true;
 }
 
