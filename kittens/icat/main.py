@@ -22,7 +22,7 @@ from kitty.guess_mime_type import guess_type
 from kitty.types import run_once
 from kitty.typing import GRT_f, GRT_t
 from kitty.utils import (
-    TTYIO, ScreenSize, ScreenSizeGetter, fit_image, screen_size_function
+    TTYIO, ScreenSize, ScreenSizeGetter, screen_size_function
 )
 
 from ..tui.images import (
@@ -167,20 +167,14 @@ def set_cursor(cmd: GraphicsCommand, width: int, height: int, align: str) -> Non
     ss = get_screen_size()
     cw = int(ss.width / ss.cols)
     num_of_cells_needed = int(ceil(width / cw))
-    if num_of_cells_needed > ss.cols:
-        w, h = fit_image(width, height, ss.width, height)
-        ch = int(ss.height / ss.rows)
-        num_of_rows_needed = int(ceil(height / ch))
-        cmd.c, cmd.r = ss.cols, num_of_rows_needed
-    else:
-        cmd.X = calculate_in_cell_x_offset(width, cw, align)
-        extra_cells = 0
-        if align == 'center':
-            extra_cells = (ss.cols - num_of_cells_needed) // 2
-        elif align == 'right':
-            extra_cells = (ss.cols - num_of_cells_needed)
-        if extra_cells:
-            sys.stdout.buffer.write(b' ' * extra_cells)
+    cmd.X = calculate_in_cell_x_offset(width, cw, align)
+    extra_cells = 0
+    if align == 'center':
+        extra_cells = (ss.cols - num_of_cells_needed) // 2
+    elif align == 'right':
+        extra_cells = (ss.cols - num_of_cells_needed)
+    if extra_cells:
+        sys.stdout.buffer.write(b' ' * extra_cells)
 
 
 def set_cursor_for_place(place: 'Place', cmd: GraphicsCommand, width: int, height: int, align: str) -> None:
