@@ -25,20 +25,20 @@ static void commit(void) {
 }
 
 static void
-text_input_enter(void *data UNUSED, struct zwp_text_input_v3 *text_input, struct wl_surface *surface UNUSED) {
+text_input_enter(void *data UNUSED, struct zwp_text_input_v3 *txt_input, struct wl_surface *surface UNUSED) {
     debug("text-input: enter event\n");
-    if (text_input) {
-        zwp_text_input_v3_enable(text_input);
-        zwp_text_input_v3_set_content_type(text_input, ZWP_TEXT_INPUT_V3_CONTENT_HINT_NONE, ZWP_TEXT_INPUT_V3_CONTENT_PURPOSE_TERMINAL);
+    if (txt_input) {
+        zwp_text_input_v3_enable(txt_input);
+        zwp_text_input_v3_set_content_type(txt_input, ZWP_TEXT_INPUT_V3_CONTENT_HINT_NONE, ZWP_TEXT_INPUT_V3_CONTENT_PURPOSE_TERMINAL);
         commit();
     }
 }
 
 static void
-text_input_leave(void *data UNUSED, struct zwp_text_input_v3 *text_input, struct wl_surface *surface UNUSED) {
+text_input_leave(void *data UNUSED, struct zwp_text_input_v3 *txt_input, struct wl_surface *surface UNUSED) {
     debug("text-input: leave event\n");
-    if (text_input) {
-        zwp_text_input_v3_disable(text_input);
+    if (txt_input) {
+        zwp_text_input_v3_disable(txt_input);
         commit();
     }
 }
@@ -57,7 +57,7 @@ send_text(const char *text, GLFWIMEState ime_state) {
 static void
 text_input_preedit_string(
         void                     *data UNUSED,
-        struct zwp_text_input_v3 *text_input UNUSED,
+        struct zwp_text_input_v3 *txt_input UNUSED,
         const char               *text,
         int32_t                  cursor_begin,
         int32_t                  cursor_end
@@ -68,7 +68,7 @@ text_input_preedit_string(
 }
 
 static void
-text_input_commit_string(void *data UNUSED, struct zwp_text_input_v3 *text_input UNUSED, const char *text) {
+text_input_commit_string(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, const char *text) {
     debug("text-input: commit_string event: text: %s\n", text);
     free(pending_commit);
     pending_commit = text ? _glfw_strdup(text) : NULL;
@@ -77,14 +77,14 @@ text_input_commit_string(void *data UNUSED, struct zwp_text_input_v3 *text_input
 static void
 text_input_delete_surrounding_text(
         void *data UNUSED,
-        struct zwp_text_input_v3 *zwp_text_input_v3 UNUSED,
+        struct zwp_text_input_v3 *txt_input UNUSED,
         uint32_t before_length,
         uint32_t after_length) {
     debug("text-input: delete_surrounding_text event: before_length: %u after_length: %u\n", before_length, after_length);
 }
 
 static void
-text_input_done(void *data UNUSED, struct zwp_text_input_v3 *zwp_text_input_v3 UNUSED, uint32_t serial UNUSED) {
+text_input_done(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, uint32_t serial UNUSED) {
     debug("text-input: done event: serial: %u current_commit_serial: %u\n", serial, commit_serial);
     if (serial != commit_serial) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: text_input_done serial mismatch, expected=%u got=%u\n", commit_serial, serial);

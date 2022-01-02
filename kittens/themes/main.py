@@ -309,10 +309,6 @@ class ThemesHandler(Handler):
                 next_line()
             next_line()
 
-        def write_line(text: str) -> None:
-            self.write(text)
-            next_line()
-
         self.cmd.set_cursor_position()
         next_line()
         self.cmd.styled(theme.name.center(sz), bold=True, fg='green')

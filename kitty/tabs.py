@@ -360,7 +360,6 @@ class Tab:  # {{{
                 else:
                     cmd = resolved_shell(get_options())
                     check_for_suitability = False
-                cmd = self.args.args or resolved_shell(get_options())
         if check_for_suitability:
             old_exe = cmd[0]
             if not os.path.isabs(old_exe):

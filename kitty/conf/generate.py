@@ -289,8 +289,8 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
             for cond, items in only.items():
                 cond = 'is_macos' if cond == 'macos' else 'not is_macos'
                 a(f'if {cond}:')
-                for (text, func) in items:
-                    for val in func(text):
+                for (text, parser_func) in items:
+                    for val in parser_func(text):
                         a(f'    defaults.{aname}.append({val!r})  # noqa')
 
     t('')

@@ -155,10 +155,10 @@ show_mouse_cursor(GLFWwindow *w) {
 }
 
 void
-blank_os_window(OSWindow *w) {
+blank_os_window(OSWindow *osw) {
     color_type color = OPT(background);
-    if (w->num_tabs > 0) {
-        Tab *t = w->tabs + w->active_tab;
+    if (osw->num_tabs > 0) {
+        Tab *t = osw->tabs + osw->active_tab;
         if (t->num_windows == 1) {
             Window *w = t->windows + t->active_window;
             Screen *s = w->render_data.screen;
@@ -167,7 +167,7 @@ blank_os_window(OSWindow *w) {
             }
         }
     }
-    blank_canvas(w->is_semi_transparent ? w->background_opacity : 1.0f, color);
+    blank_canvas(osw->is_semi_transparent ? osw->background_opacity : 1.0f, color);
 }
 
 static void

@@ -64,7 +64,6 @@ class Grid(Layout):
         return layout_func(num_windows, bias=variable_bias(num_windows, biased_map) if num_windows > 1 else None)
 
     def apply_bias(self, idx: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
-        b = self.biased_cols if is_horizontal else self.biased_rows
         num_windows = all_windows.num_groups
         ncols, nrows, special_rows, special_col = calc_grid_size(num_windows)
 

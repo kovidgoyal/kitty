@@ -1531,8 +1531,8 @@ screen_cursor_at_a_shell_prompt(const Screen *self) {
 }
 
 bool
-screen_fake_move_cursor_to_position(Screen *self, index_type x, index_type y) {
-    SelectionBoundary a = {.x=x, .y=y}, b = {.x=self->cursor->x, .y=self->cursor->y};
+screen_fake_move_cursor_to_position(Screen *self, index_type start_x, index_type start_y) {
+    SelectionBoundary a = {.x=start_x, .y=start_y}, b = {.x=self->cursor->x, .y=self->cursor->y};
     SelectionBoundary *start, *end; int key;
     if (a.y < b.y || (a.y == b.y && a.x < b.x)) { start = &a; end = &b; key = GLFW_FKEY_LEFT; }
     else { start = &b; end = &a; key = GLFW_FKEY_RIGHT; }
@@ -1705,9 +1705,9 @@ screen_delete_lines(Screen *self, unsigned int count) {
 
 void
 screen_insert_characters(Screen *self, unsigned int count) {
-    const unsigned int top = 0, bottom = self->lines ? self->lines - 1 : 0;
+    const unsigned int bottom = self->lines ? self->lines - 1 : 0;
     if (count == 0) count = 1;
-    if (top <= self->cursor->y && self->cursor->y <= bottom) {
+    if (self->cursor->y <= bottom) {
         unsigned int x = self->cursor->x;
         unsigned int num = MIN(self->columns - x, count);
         linebuf_init_line(self->linebuf, self->cursor->y);
@@ -1732,9 +1732,9 @@ void
 screen_delete_characters(Screen *self, unsigned int count) {
     MOVE_OVERLAY_LINE_WITH_CURSOR;
     // Delete characters, later characters are moved left
-    const unsigned int top = 0, bottom = self->lines ? self->lines - 1 : 0;
+    const unsigned int bottom = self->lines ? self->lines - 1 : 0;
     if (count == 0) count = 1;
-    if (top <= self->cursor->y && self->cursor->y <= bottom) {
+    if (self->cursor->y <= bottom) {
         unsigned int x = self->cursor->x;
         unsigned int num = MIN(self->columns - x, count);
         linebuf_init_line(self->linebuf, self->cursor->y);

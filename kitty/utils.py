@@ -720,13 +720,12 @@ def read_shell_environment(opts: Optional[Options] = None) -> Dict[str, str]:
             return ans
         with os.fdopen(master, 'rb') as stdout, os.fdopen(slave, 'wb'):
             raw = b''
-            from subprocess import TimeoutExpired
             from time import monotonic
             start_time = monotonic()
             while monotonic() - start_time < 1.5:
                 try:
                     ret: Optional[int] = p.wait(0.01)
-                except TimeoutExpired:
+                except subprocess.TimeoutExpired:
                     ret = None
                 with suppress(Exception):
                     raw += stdout.read()

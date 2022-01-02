@@ -35,10 +35,10 @@ notification_created(DBusMessage *msg, const char* errmsg, void *data) {
         if (data) free(data);
         return;
     }
-    uint32_t notification_id;
-    if (!glfw_dbus_get_args(msg, "Failed to get Notification uid", DBUS_TYPE_UINT32, &notification_id, DBUS_TYPE_INVALID)) return;
+    uint32_t id;
+    if (!glfw_dbus_get_args(msg, "Failed to get Notification uid", DBUS_TYPE_UINT32, &id, DBUS_TYPE_INVALID)) return;
     NotificationCreatedData *ncd = (NotificationCreatedData*)data;
-    if (ncd->callback) ncd->callback(ncd->next_id, notification_id, ncd->data);
+    if (ncd->callback) ncd->callback(ncd->next_id, id, ncd->data);
     if (data) free(data);
 }
 
@@ -46,12 +46,12 @@ static DBusHandlerResult
 message_handler(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data UNUSED) {
     /* printf("session_bus message_handler invoked interface: %s member: %s\n", dbus_message_get_interface(msg), dbus_message_get_member(msg)); */
     if (dbus_message_is_signal(msg, NOTIFICATIONS_IFACE, "ActionInvoked")) {
-        uint32_t notification_id;
+        uint32_t id;
         const char *action;
         if (glfw_dbus_get_args(msg, "Failed to get args from ActionInvoked notification signal",
-                    DBUS_TYPE_UINT32, &notification_id, DBUS_TYPE_STRING, &action, DBUS_TYPE_INVALID)) {
+                    DBUS_TYPE_UINT32, &id, DBUS_TYPE_STRING, &action, DBUS_TYPE_INVALID)) {
             if (activated_handler) {
-                activated_handler(notification_id, action);
+                activated_handler(id, action);
                 return DBUS_HANDLER_RESULT_HANDLED;
             }
         }
