@@ -54,7 +54,7 @@ def expandvars(val: str, env: Mapping[str, str] = {}, fallback_to_os_env: bool =
 
 
 @run_once
-def sgr_sanitizer_pat() -> re.Pattern[str]:
+def sgr_sanitizer_pat() -> 're.Pattern[str]':
     return re.compile('\033\\[.*?m')
 
 
