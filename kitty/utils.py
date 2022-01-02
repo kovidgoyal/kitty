@@ -53,6 +53,11 @@ def expandvars(val: str, env: Mapping[str, str] = {}, fallback_to_os_env: bool =
     return re.sub(r'\$(?:(\w+)|\{([^}]+)\})', sub, val.replace('$$', '\0')).replace('\0', '$')
 
 
+@run_once
+def sgr_sanitizer_pat() -> re.Pattern[str]:
+    return re.compile('\033\\[.*?m')
+
+
 def platform_window_id(os_window_id: int) -> Optional[int]:
     if is_macos:
         from .fast_data_types import cocoa_window_id
