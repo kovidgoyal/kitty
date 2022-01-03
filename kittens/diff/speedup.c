@@ -111,7 +111,7 @@ add_line(Segment *bg_segment, Segment *fg_segment, LineBuffer *lb, PyObject *ans
     return true;
 }
 
-static LineBuffer b;
+static LineBuffer line_buffer;
 
 static PyObject*
 split_with_highlights(PyObject *self UNUSED, PyObject *args) {
@@ -132,13 +132,13 @@ split_with_highlights(PyObject *self UNUSED, PyObject *args) {
 #define NEXT_TRUNCATE_POINT truncate_point = (truncate_pos < num_truncate_pts) ? truncate_points[truncate_pos++] : UINT_MAX
     NEXT_TRUNCATE_POINT;
 
-#define INSERT_CODE(x) { CHECK_CALL(insert_code, x, &b); }
+#define INSERT_CODE(x) { CHECK_CALL(insert_code, x, &line_buffer); }
 
-#define ADD_LINE CHECK_CALL(add_line, &bg_segment.sg, &fg_segment.sg, &b, ans);
+#define ADD_LINE CHECK_CALL(add_line, &bg_segment.sg, &fg_segment.sg, &line_buffer, ans);
 
 #define ADD_CHAR(x) { \
-    if (!ensure_space(&b, 1)) { Py_CLEAR(ans); return NULL; } \
-    b.buf[b.pos++] = x; \
+    if (!ensure_space(&line_buffer, 1)) { Py_CLEAR(ans); return NULL; } \
+    line_buffer.buf[line_buffer.pos++] = x; \
 }
 #define CHECK_SEGMENT(sgp, is_fg) { \
     if (i == sgp.sg.current_pos) { \
@@ -157,7 +157,7 @@ split_with_highlights(PyObject *self UNUSED, PyObject *args) {
 }
 
     const unsigned int line_sz = PyUnicode_GET_LENGTH(line);
-    b.pos = 0;
+    line_buffer.pos = 0;
     unsigned int i = 0;
     for (; i < line_sz; i++) {
         if (i == truncate_point) { ADD_LINE; NEXT_TRUNCATE_POINT; }
@@ -165,7 +165,7 @@ split_with_highlights(PyObject *self UNUSED, PyObject *args) {
         CHECK_SEGMENT(fg_segment, true)
         ADD_CHAR(PyUnicode_READ(PyUnicode_KIND(line), PyUnicode_DATA(line), i));
     }
-    if (b.pos) ADD_LINE;
+    if (line_buffer.pos) ADD_LINE;
     return ans;
 #undef INSERT_CODE
 #undef CHECK_SEGMENT
@@ -177,7 +177,7 @@ split_with_highlights(PyObject *self UNUSED, PyObject *args) {
 
 static void
 free_resources(void) {
-    free(b.buf); b.buf = NULL; b.capacity = 0; b.pos = 0;
+    free(line_buffer.buf); line_buffer.buf = NULL; line_buffer.capacity = 0; line_buffer.pos = 0;
 }
 
 static PyMethodDef module_methods[] = {
