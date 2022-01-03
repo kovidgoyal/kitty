@@ -85,8 +85,8 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     window->viewport_updated_at_least_once = true;
     window->viewport_width = fw; window->viewport_height = fh;
     double xr = window->viewport_x_ratio, yr = window->viewport_y_ratio;
-    window->viewport_x_ratio = w > 0 ? (double)window->viewport_width / (double)w : xr;
-    window->viewport_y_ratio = h > 0 ? (double)window->viewport_height / (double)h : yr;
+    window->viewport_x_ratio = (double)window->viewport_width / (double)w;
+    window->viewport_y_ratio = (double)window->viewport_height / (double)h;
     bool dpi_changed = (xr != 0.0 && xr != window->viewport_x_ratio) || (yr != 0.0 && yr != window->viewport_y_ratio) || (xdpi != window->logical_dpi_x) || (ydpi != window->logical_dpi_y);
 
     window->viewport_size_dirty = true;
