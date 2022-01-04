@@ -69,7 +69,6 @@ _ksi_deferred_init() {
     builtin local comp_dir=$self_dir/completions
 
     # Enable completions for `kitty` command.
-    _ksi_debug_print "$self_dir" 
     if (( ! opt[(Ie)no-complete] )) && [[ -r $comp_dir/_kitty ]]; then
         if (( $+functions[compdef] )); then
             # If compdef is defined, then either compinit has already run or it's
