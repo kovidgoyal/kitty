@@ -162,7 +162,10 @@ class IssueData:
     def __init__(self) -> None:
         self.uname = os.uname()
         self.s, self.n, self.r, self.v, self.m = self.uname
-        self.hostname = self.o = socket.gethostname()
+        try:
+            self.hostname = self.o = socket.gethostname()
+        except Exception:
+            self.hostname = self.o = 'localhost'
         _time = time.localtime()
         self.formatted_time = self.d = time.strftime('%a %b %d %Y', _time)
         self.formatted_date = self.t = time.strftime('%H:%M:%S', _time)
@@ -171,7 +174,10 @@ class IssueData:
         except OSError:
             self.tty_name = '(none)'
         self.l = self.tty_name  # noqa
-        self.baud_rate = termios.tcgetattr(sys.stdin.fileno())[5]
+        if sys.stdin.isatty():
+            self.baud_rate = termios.tcgetattr(sys.stdin.fileno())[5]
+        else:
+            self.baud_rate = 0
         self.b = str(self.baud_rate)
         try:
             self.num_users = num_users()
