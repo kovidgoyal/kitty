@@ -19,8 +19,8 @@ from contextlib import suppress
 from functools import lru_cache, partial
 from pathlib import Path
 from typing import (
-    Callable, Dict, Iterable, Iterator, List, Optional, Sequence, Set, Tuple,
-    Union
+    Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Sequence,
+    Set, Tuple, Union
 )
 
 from glfw import glfw
@@ -1161,10 +1161,13 @@ def package(args: Options, bundle_type: str) -> None:
     if for_freeze:
         shutil.copytree('kitty_tests', os.path.join(libdir, 'kitty_tests'))
 
-    def repl(name: str, raw: str, defval: Union[str, float], val: Union[str, float]) -> str:
+    def repl(name: str, raw: str, defval: Union[str, float, FrozenSet[str]], val: Union[str, float, FrozenSet[str]]) -> str:
         if defval == val:
             return raw
-        prefix = f'{name}: {type(defval).__name__} ='
+        tname = type(defval).__name__
+        if tname == 'frozenset':
+            tname = 'typing.FrozenSet[str]'
+        prefix = f'{name}: {tname} ='
         nraw = raw.replace(f'{prefix} {defval!r}', f'{prefix} {val!r}', 1)
         if nraw == raw:
             raise SystemExit(f'Failed to change the value of {name}')
@@ -1173,7 +1176,7 @@ def package(args: Options, bundle_type: str) -> None:
     with open(os.path.join(libdir, 'kitty/options/types.py'), 'r+', encoding='utf-8') as f:
         oraw = raw = f.read()
         raw = repl('update_check_interval', raw, Options.update_check_interval, args.update_check_interval)
-        raw = repl('shell_integration', raw, Options.shell_integration, args.shell_integration)
+        raw = repl('shell_integration', raw, frozenset(Options.shell_integration.split()), frozenset(args.shell_integration.split()))
         if raw != oraw:
             f.seek(0), f.truncate(), f.write(raw)
 
