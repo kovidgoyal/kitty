@@ -28,3 +28,7 @@ details > summary {
     text-decoration-color: var(--color-link-underline);
     text-decoration-line: underline;
 }
+
+.highlight-conf .w {
+    text-decoration: none;
+}
