@@ -7,6 +7,7 @@ import socket
 import sys
 import termios
 import time
+from contextlib import suppress
 from functools import partial
 from pprint import pformat
 from typing import (
@@ -19,7 +20,7 @@ from .cli import version
 from .constants import (
     extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
 )
-from .fast_data_types import num_users, Color
+from .fast_data_types import Color, num_users
 from .options.types import Options as KittyOpts, defaults
 from .options.utils import MouseMap
 from .rgb import color_as_sharp
@@ -170,14 +171,14 @@ class IssueData:
         self.formatted_time = self.d = time.strftime('%a %b %d %Y', _time)
         self.formatted_date = self.t = time.strftime('%H:%M:%S', _time)
         try:
-            self.tty_name = format_tty_name(os.ttyname(sys.stdin.fileno()))
+            self.tty_name = format_tty_name(os.ctermid())
         except OSError:
             self.tty_name = '(none)'
         self.l = self.tty_name  # noqa
+        self.baud_rate = 0
         if sys.stdin.isatty():
-            self.baud_rate = termios.tcgetattr(sys.stdin.fileno())[5]
-        else:
-            self.baud_rate = 0
+            with suppress(OSError):
+                self.baud_rate = termios.tcgetattr(sys.stdin.fileno())[5]
         self.b = str(self.baud_rate)
         try:
             self.num_users = num_users()
