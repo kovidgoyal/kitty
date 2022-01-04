@@ -129,11 +129,6 @@ different shells.
    and sources the original :file:`.zshenv`. It then loads the shell integration code.
    The remainder of zsh's startup process proceeds as normal.
 
-.. tab:: bash
-
-    For bash, kitty adds a couple of lines to the bottom of :file:`~/.bashrc`
-    (in an atomic manner) to load the shell integration code.
-
 .. tab:: fish
 
     For fish, to make it automatically load the integration code provided by
@@ -141,6 +136,12 @@ different shells.
     :code:`XDG_DATA_DIRS` environment variable. This is only applied to the fish
     process and will be cleaned up by the integration script after startup. No files
     are added or modified.
+
+.. tab:: bash
+
+    For bash, kitty adds a couple of lines to the bottom of :file:`~/.bashrc`
+    (in an atomic manner) to load the shell integration code.
+
 
 Then, when launching the shell, kitty sets the environment variable
 :envvar:`KITTY_SHELL_INTEGRATION` to the value of the :opt:`shell_integration`
@@ -206,17 +207,6 @@ Then in your shell's rc file, add the lines:
             source "$KITTY_INSTALLATION_DIR/shell-integration/bash/kitty.bash"
         fi
 
-.. tab:: zsh
-
-    .. code-block:: sh
-
-        if test -n "$KITTY_INSTALLATION_DIR"; then
-            export KITTY_SHELL_INTEGRATION="enabled"
-            autoload -Uz -- "$KITTY_INSTALLATION_DIR"/shell-integration/zsh/kitty-integration
-            kitty-integration
-            unfunction kitty-integration
-        fi
-
 .. tab:: fish
 
     .. code-block:: fish
@@ -227,6 +217,16 @@ Then in your shell's rc file, add the lines:
             set --prepend fish_complete_path "$KITTY_INSTALLATION_DIR/shell-integration/fish/vendor_completions.d"
         end
 
+.. tab:: zsh
+
+    .. code-block:: sh
+
+        if test -n "$KITTY_INSTALLATION_DIR"; then
+            export KITTY_SHELL_INTEGRATION="enabled"
+            autoload -Uz -- "$KITTY_INSTALLATION_DIR"/shell-integration/zsh/kitty-integration
+            kitty-integration
+            unfunction kitty-integration
+        fi
 
 The value of :envvar:`KITTY_SHELL_INTEGRATION` is the same as that for
 :opt:`shell_integration`, except if you want to disable shell integration
