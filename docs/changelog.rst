@@ -73,7 +73,7 @@ command.
 Detailed list of changes
 -------------------------------------
 
-0.24.0 [future]
+0.24.0 [2022-01-04]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Integrate kitty closely with common shells such as zsh, fish and bash.
@@ -109,8 +109,8 @@ Detailed list of changes
 - Add support for reporting mouse events with pixel co-ordinates using the
   ``SGR_PIXEL_PROTOCOL`` introduced in xterm 359
 
-- When programs ask to read from the clipboard prompt the user to allow
-  the request by default instead of denying by default. See
+- When programs ask to read from the clipboard prompt, ask the user to allow
+  the request by default instead of denying it by default. See
   :opt:`clipboard_control` for details (:iss:`4022`)
 
 - A new mappable action ``swap_with_window`` to swap the current window with another window in the tab, visually
