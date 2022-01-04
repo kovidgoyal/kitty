@@ -28,3 +28,9 @@ details > summary {
     text-decoration-color: var(--color-link-underline);
     text-decoration-line: underline;
 }
+
+/* pygments adds an underline to some white-space, this is particularly visible in
+ * dark mode. Remove it. */
+.highlight .w {
+    text-decoration: none
+}
