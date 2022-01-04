@@ -198,13 +198,15 @@ First, in :file:`kitty.conf` set:
 
 Then in your shell's rc file, add the lines:
 
-.. tab:: bash
+.. tab:: zsh
 
     .. code-block:: sh
 
         if test -n "$KITTY_INSTALLATION_DIR"; then
             export KITTY_SHELL_INTEGRATION="enabled"
-            source "$KITTY_INSTALLATION_DIR/shell-integration/bash/kitty.bash"
+            autoload -Uz -- "$KITTY_INSTALLATION_DIR"/shell-integration/zsh/kitty-integration
+            kitty-integration
+            unfunction kitty-integration
         fi
 
 .. tab:: fish
@@ -217,15 +219,14 @@ Then in your shell's rc file, add the lines:
             set --prepend fish_complete_path "$KITTY_INSTALLATION_DIR/shell-integration/fish/vendor_completions.d"
         end
 
-.. tab:: zsh
+
+.. tab:: bash
 
     .. code-block:: sh
 
         if test -n "$KITTY_INSTALLATION_DIR"; then
             export KITTY_SHELL_INTEGRATION="enabled"
-            autoload -Uz -- "$KITTY_INSTALLATION_DIR"/shell-integration/zsh/kitty-integration
-            kitty-integration
-            unfunction kitty-integration
+            source "$KITTY_INSTALLATION_DIR/shell-integration/bash/kitty.bash"
         fi
 
 The value of :envvar:`KITTY_SHELL_INTEGRATION` is the same as that for
