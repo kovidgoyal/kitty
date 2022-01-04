@@ -10,9 +10,7 @@ import time
 from contextlib import suppress
 from functools import partial
 from pprint import pformat
-from typing import (
-    IO, Callable, Dict, Generator, Iterable, Iterator, Optional, Set, Tuple
-)
+from typing import IO, Callable, Dict, Iterable, Iterator, Optional, Set, Tuple
 
 from kittens.tui.operations import colored, styled
 
@@ -42,7 +40,7 @@ def title(x: str) -> str:
     return colored(x, 'blue', intense=True)
 
 
-def mod_to_names(mods: int) -> Generator[str, None, None]:
+def mod_to_names(mods: int) -> Iterator[str]:
     from .fast_data_types import (
         GLFW_MOD_ALT, GLFW_MOD_CAPS_LOCK, GLFW_MOD_CONTROL, GLFW_MOD_HYPER,
         GLFW_MOD_META, GLFW_MOD_NUM_LOCK, GLFW_MOD_SHIFT, GLFW_MOD_SUPER
