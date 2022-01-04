@@ -795,6 +795,16 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
         if (t) w = t->windows + t->active_window;
     }
     if (!w) return;
+    // Also update mouse cursor position while kitty OS window is not focused.
+    // Allow scrolling of the mouse pointing part of a multi-panel program when not focused under macOS.
+    if (!osw->is_focused) {
+        unsigned int x = 0, y = 0;
+        bool in_left_half_of_cell;
+        if (cell_for_pos(w, &x, &y, &in_left_half_of_cell, osw)) {
+            w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
+            w->mouse_pos.in_left_half_of_cell = in_left_half_of_cell;
+        }
+    }
     Screen *screen = w->render_data.screen;
 
     enum MomentumData { NoMomentumData, MomentumPhaseBegan, MomentumPhaseStationary, MomentumPhaseActive, MomentumPhaseEnded, MomentumPhaseCancelled, MomentumPhaseMayBegin };
