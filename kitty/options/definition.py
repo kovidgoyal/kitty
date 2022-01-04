@@ -232,7 +232,7 @@ opt('cursor_text_color', '#111111',
 Choose the color of text under the cursor. If you want it rendered with the
 background color of the cell underneath instead, use the special keyword:
 background. Note that if :opt:`cursor` is set to :code:`none` then this setting
-if ignored.
+is ignored.
 '''
     )
 
