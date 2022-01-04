@@ -271,9 +271,13 @@ def brackets(text: str, s: int, e: int) -> Tuple[int, int]:
     # Remove matching brackets
     if s < e <= len(text):
         before = text[s]
-        if before in '({[<' and text[e-1] == closing_bracket_map[before]:
-            s += 1
-            e -= 1
+        if before in '({[<':
+            q = closing_bracket_map[before]
+            if text[e-1] == q:
+                s += 1
+                e -= 1
+            elif text[e:e+1] == q:
+                s += 1
     return s, e
 
 
@@ -282,9 +286,12 @@ def quotes(text: str, s: int, e: int) -> Tuple[int, int]:
     # Remove matching quotes
     if s < e <= len(text):
         before = text[s]
-        if before in '\'"' and text[e-1] == before:
-            s += 1
-            e -= 1
+        if before in '\'"':
+            if text[e-1] == before:
+                s += 1
+                e -= 1
+            elif text[e:e+1] == before:
+                s += 1
     return s, e
 
 
