@@ -49,7 +49,7 @@ _ksi_debug_print() {
 # - By deferring initialization we allow user rc files to opt out from some
 #   parts of integration. For example, if a zshrc theme prints OSC 133
 #   marks, it can append " no-prompt-mark" to KITTY_SHELL_INTEGRATION during
-#   intialization to avoid redundant marks from our code.
+#   initialization to avoid redundant marks from our code.
 builtin typeset -ag precmd_functions
 precmd_functions+=(_ksi_deferred_init)
 
