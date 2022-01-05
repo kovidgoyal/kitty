@@ -32,14 +32,42 @@ builtin emulate -L zsh -o no_warn_create_global -o no_aliases
 # 2: none of the above.
 builtin typeset -gi _ksi_state
 
+# Attempt to create a writable file descriptor to the TTY so that we can print
+# to the TTY later even when STDOUT is redirected. This code is fairly subtle.
+#
+# - It's tempting to do `[[ -t 1 ]] && exec {_ksi_state}>&1` but we cannot do this
+#   because it'll create a file descriptor >= 10 without O_CLOEXEC. This file
+#   descriptor will leak to child processes.
+# - If we do `exec {3}>&1`, the file descriptor won't leak to the child processes
+#   but it'll still leak if the current process is replaced with another. In
+#   addition, it'll break user code that relies on fd 3 being available.
+# - Zsh doesn't expose dup3, which would have allowed us to copy STDOUT with
+#   O_CLOEXEC. The only way to create a file descriptor with O_CLOEXEC is via
+#   sysopen.
+# - `zmodload zsh/system` and `sysopen -o cloexec -wu _ksi_fd -- /dev/tty` can
+#   fail with an error message to STDERR (the latter can happen even if /dev/tty
+#   is writable), hence the redirection of STDERR. We do it for the whole block
+#   for performance reasons (redirections are slow).
+# - We must open the file descriptor right here rather than in _ksi_deferred_init
+#   because there are broken zsh plugins out there that run `exec {fd}< <(cmd)`
+#   and then close the file descriptor more than once while suppressing errors.
+#   This could end up closing our file descriptor if we opened it in
+#   _ksi_deferred_init.
+typeset -gi _ksi_fd
+{
+    zmodload zsh/system && (( $+builtins[sysopen] )) && {
+        { [[ -w     $TTY ]] && sysopen -o cloexec -wu _ksi_fd --     $TTY } ||
+        { [[ -w /dev/tty ]] && sysopen -o cloexec -wu _ksi_fd -- /dev/tty }
+    }
+} 2>/dev/null || (( _ksi_fd = 1 ))
+
 # Asks kitty to print $@ to its STDOUT. This is for debugging.
 _ksi_debug_print() {
-    builtin local data saved
-    saved="$IFS"
-    IFS=" "
-    data=$(command base64 <<< "$*") 
-    IFS="$saved"
-    builtin printf '\eP@kitty-print|%s\e\\' "${data//$'\n'}"
+    builtin local data
+    data=$(command base64 <<<"${(j: :)@}") || builtin return
+    # Removing all spaces rather than just \n allows this code to
+    # work on broken systems where base64 outputs \r\n.
+    builtin print -nu "$_ksi_fd" '\eP@kitty-print|'"${data//[[:space:]]}"'\e\\'
 }
 
 # We defer initialization until precmd for several reasons:
@@ -98,8 +126,10 @@ _ksi_deferred_init() {
         # themselves with a blinking block cursor within fzf.
         _ksi_zle_line_init _ksi_zle_line_finish _ksi_zle_keymap_select() {
             case ${KEYMAP-} in
-                vicmd|visual) builtin print -n '\e[1 q';;  # blinking block cursor
-                *)            builtin print -n '\e[5 q';;  # blinking bar cursor
+                # Blinking block cursor.
+                vicmd|visual) builtin print -nu "$_ksi_fd" '\e[1 q';;
+                # Blinking bar cursor.
+                *)            builtin print -nu "$_ksi_fd" '\e[5 q';;
             esac
         }
     fi
@@ -125,11 +155,11 @@ _ksi_deferred_init() {
                 if (( _ksi_state == 1 )); then
                     # The last written OSC 133 C has not been closed with D yet.
                     # Close it and supply status.
-                    builtin printf '\e]133;D;%s\a' $cmd_status
+                    builtin print -nu $_ksi_fd '\e]133;D;'$cmd_status'\a'
                     (( _ksi_state = 2 ))
                 elif (( _ksi_state == 2 )); then
                     # There might be an unclosed OSC 133 C. Close that.
-                    builtin print -n '\e]133;D\a'
+                    builtin print -nu $_ksi_fd '\e]133;D\a'
                 fi
             fi
 
@@ -167,7 +197,7 @@ _ksi_deferred_init() {
                     # already have a mark, so the following reset-prompt will write
                     # it. If it doesn't, there is nothing we can do.
                     if ! builtin zle; then
-                        builtin print -rn -- $mark1[3,-3]
+                        builtin print -rnu $_ksi_fd -- $mark1[3,-3]
                         (( _ksi_state = 2 ))
                     fi
                 fi
@@ -175,7 +205,7 @@ _ksi_deferred_init() {
                 # Without prompt_percent we cannot patch prompt. Just print the
                 # mark, except when we are invoked from zle. In the latter case we
                 # cannot do anything.
-                builtin print -rn -- $mark1[3,-3]
+                builtin print -rnu $_ksi_fd -- $mark1[3,-3]
                 (( _ksi_state = 2 ))
             fi
         }
@@ -197,7 +227,7 @@ _ksi_deferred_init() {
             # its preexec hook before us, we'll incorrectly mark its output as
             # belonging to the command (as if the user typed it into zle) rather
             # than command output.
-            builtin print -n '\e]133;C\a'
+            builtin print -nu $_ksi_fd '\e]133;C\a'
             (( _ksi_state = 1 ))
         }
 
@@ -205,7 +235,7 @@ _ksi_deferred_init() {
         # and hooking zle widgets in ZSH is a total minefield, see https://github.com/kovidgoyal/kitty/issues/4428
         # so we can at least tell users to use no-cursor and with that avoid hooking ZLE widgets at all
         # functions[_ksi_zle_line_init]+='
-        #     builtin print -n "\\e]133;B\\a"'
+        #     builtin print -nu "$_ksi_fd" "\\e]133;B\\a"'
     fi
 
     # Enable terminal title changes.
@@ -216,10 +246,10 @@ _ksi_deferred_init() {
         # We use (V) in preexec to convert control characters to something visible
         # (LF becomes \n, etc.). This isn't necessary in precmd because (%) does it
         # for us.
-        functions[_ksi_precmd]+='
-            builtin printf "\\e]2;%s\\a" "${(%):-%(4~|…/%3~|%~)}"'
-        functions[_ksi_preexec]+='
-            builtin printf "\\e]2;%s\\a" "${(V)1}"'
+        functions[_ksi_precmd]+="
+            builtin print -rnu $_ksi_fd \$'\\e]2;'\"\${(%):-%(4~|…/%3~|%~)}\"\$'\\a'"
+        functions[_ksi_preexec]+="
+            builtin print -rnu $_ksi_fd \$'\\e]2;'\"\${(V)1}\"\$'\\a'"
     fi
 
     # Some zsh users manually run `source ~/.zshrc` in order to apply rc file
