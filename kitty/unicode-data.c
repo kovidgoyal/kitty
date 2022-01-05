@@ -699,7 +699,7 @@ is_ignored_char(char_type code) {
 
 bool
 is_non_rendered_char(char_type code) {
-	// Other_Default_Ignorable_Code_Point and soft hyphen (6052 codepoints) {{{
+	// Other_Default_Ignorable_Code_Point and soft hyphen (6068 codepoints) {{{
 	if (LIKELY(0x20 <= code && code <= 0x7e)) return false;
 	switch(code) {
 		case 0x0 ... 0x1f:
@@ -737,6 +737,8 @@ is_non_rendered_char(char_type code) {
 		case 0x3164:
 			return true;
 		case 0xd800 ... 0xdfff:
+			return true;
+		case 0xfe00 ... 0xfe0f:
 			return true;
 		case 0xfeff:
 			return true;

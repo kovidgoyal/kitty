@@ -388,7 +388,7 @@ def gen_ucd() -> None:
         category_test(
             'is_non_rendered_char', p, 'Cc Cs Cf'.split(),
             'Other_Default_Ignorable_Code_Point and soft hyphen',
-            extra_chars=property_maps['Other_Default_Ignorable_Code_Point'],
+            extra_chars=property_maps['Other_Default_Ignorable_Code_Point'] | set(range(0xfe00, 0xfe0f + 1)),
             ascii_range='false'
         )
         category_test('is_word_char', p, {c for c in class_maps if c[0] in 'LN'}, 'L and N categories')

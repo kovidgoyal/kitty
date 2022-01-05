@@ -86,6 +86,9 @@ Detailed list of changes
 - Fix showing debug information not working if kitty's :file:`STDIN` is not a tty
   (:iss:`4424`)
 
+- Linux: Fix a regression that broke rendering of emoji with variation selectors
+  (:iss:`4444`)
+
 
 0.24.0 [2022-01-04]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
