@@ -201,8 +201,11 @@ _ksi_deferred_init() {
             (( _ksi_state = 1 ))
         }
 
-        functions[_ksi_zle_line_init]+='
-            builtin print -n "\\e]133;B\\a"'
+        # the following two lines are commented out as currently kitty doesn't use B prompt marking
+        # and hooking zle widgets in ZSH is a total minefield, see https://github.com/kovidgoyal/kitty/issues/4428
+        # so we can at least tell users to use no-cursor and with that avoid hooking ZLE widgets at all
+        # functions[_ksi_zle_line_init]+='
+        #     builtin print -n "\\e]133;B\\a"'
     fi
 
     # Enable terminal title changes.
