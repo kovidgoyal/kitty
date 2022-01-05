@@ -291,7 +291,7 @@ class MouseTracking(Enum):
     full = auto()
 
 
-def init_state(alternate_screen: bool = True, mouse_tracking: MouseTracking = MouseTracking.none) -> str:
+def init_state(alternate_screen: bool = True, mouse_tracking: MouseTracking = MouseTracking.none, kitty_keyboard_mode: bool = True) -> str:
     sc = SAVE_CURSOR if alternate_screen else ''
     ans = (
         S7C1T + sc + SAVE_PRIVATE_MODE_VALUES + reset_mode(Mode.LNM) +
@@ -314,7 +314,10 @@ def init_state(alternate_screen: bool = True, mouse_tracking: MouseTracking = Mo
             ans += set_mode(Mode.MOUSE_MOTION_TRACKING)
         elif mouse_tracking is MouseTracking.full:
             ans += set_mode(Mode.MOUSE_MOVE_TRACKING)
-    ans += '\033[>31u'  # extended keyboard mode
+    if kitty_keyboard_mode:
+        ans += '\033[>31u'  # extended keyboard mode
+    else:
+        ans += '\033[>u'  # legacy keyboard mode
     return ans
 
 

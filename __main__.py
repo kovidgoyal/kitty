@@ -31,14 +31,26 @@ def runpy(args: List[str]) -> None:
 
 def hold(args: List[str]) -> None:
     import subprocess
-    import tty
+    import termios
     from contextlib import suppress
+    from kittens.tui.operations import init_state, set_cursor_visible
     ret = subprocess.Popen(args[1:]).wait()
     with suppress(BaseException):
-        print('\n\x1b[1;32mPress any key to exit', end='', flush=True)
+        print(
+            '\n\x1b[1;32mPress Enter to exit',
+            end=init_state(alternate_screen=False, kitty_keyboard_mode=False) + set_cursor_visible(False),
+            flush=True)
     with suppress(BaseException):
-        tty.setraw(sys.stdin.fileno())
-        sys.stdin.buffer.read(1)
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        new = old[:]
+        new[3] &= ~termios.ECHO  # 3 == 'lflags'
+        tcsetattr_flags = termios.TCSAFLUSH
+        if hasattr(termios, 'TCSASOFT'):
+            tcsetattr_flags |= getattr(termios, 'TCSASOFT')
+        termios.tcsetattr(fd, tcsetattr_flags, new)
+        with suppress(KeyboardInterrupt):
+            input()
     raise SystemExit(ret)
 
 
