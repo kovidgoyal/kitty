@@ -112,6 +112,10 @@ def parse_ucd() -> None:
             elif category.startswith('S'):
                 all_symbols.add(codepoint)
             elif category == 'Cf':
+                # we add Cf to marks as it contains things like tags and zero
+                # width chars. Not sure if *all* of Cf should be treated as
+                # combining chars, might need to add individual exceptions in
+                # the future.
                 marks.add(codepoint)
 
     with open('nerd-fonts-glyphs.txt') as f:

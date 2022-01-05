@@ -127,6 +127,12 @@ class TestScreen(BaseTest):
         s.draw(q)
         self.ae(q, str(s.line(0)))
         self.ae(s.cursor.x, 8)
+        for x in '\u200b\u200c\u200d':
+            s = self.create_screen()
+            q = f'X{x}Y'
+            s.draw(q)
+            self.ae(q, str(s.line(0)))
+            self.ae(s.cursor.x, 2)
 
     def test_char_manipulation(self):
         s = self.create_screen()
