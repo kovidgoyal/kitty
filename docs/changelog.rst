@@ -73,6 +73,20 @@ command.
 Detailed list of changes
 -------------------------------------
 
+0.24.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Shell integration: Work around conflicts with some zsh plugins (:iss:`4428`)
+
+- Have the zero width space and various other characters from the *Other,
+  formatting* Unicode category be treated as combining characters (:iss:`4439`)
+
+- Fix using ``--shell-integration`` with :file:`setup.py` broken (:iss:`4434`)
+
+- Fix showing debug information not working if kitty's :file:`STDIN` is not a tty
+  (:iss:`4424`)
+
+
 0.24.0 [2022-01-04]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
