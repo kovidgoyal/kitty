@@ -21,7 +21,7 @@
 # builtins with `builtin` to avoid accidentally invoking user-defined functions.
 # We avoid `function` reserved word as an additional defensive measure.
 
-builtin emulate -L zsh -o no_warn_create_global
+builtin emulate -L zsh -o no_warn_create_global -o no_aliases
 
 [[ -o interactive ]]              || builtin return 0  # non-interactive shell
 [[ -n $KITTY_SHELL_INTEGRATION ]] || builtin return 0  # integration disabled
@@ -108,7 +108,7 @@ _ksi_deferred_init() {
     if (( ! opt[(Ie)no-prompt-mark] )); then
         _ksi_precmd() {
             builtin local -i cmd_status=$?
-            builtin emulate -L zsh -o no_warn_create_global
+            builtin emulate -L zsh -o no_warn_create_global -o no_aliases
 
             # Don't write OSC 133 D when our precmd handler is invoked from zle.
             # Some plugins do that to update prompt on cd.
@@ -181,7 +181,7 @@ _ksi_deferred_init() {
         }
 
         _ksi_preexec() {
-            builtin emulate -L zsh -o no_warn_create_global
+            builtin emulate -L zsh -o no_warn_create_global -o no_aliases
 
             # This can potentially break user prompt. Oh well. The robustness of
             # this code can be improved in the case prompt_subst is set because
