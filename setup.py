@@ -231,7 +231,7 @@ def test_compile(
         with open(os.path.join(tdir, f'source.{source_ext}'), 'w', encoding='utf-8') as srcf:
             print(src, file=srcf)
         return subprocess.Popen(
-            cc + list(cflags) + ([] if link_also else ['-c']) +
+            cc + ['-Werror=implicit-function-declaration'] + list(cflags) + ([] if link_also else ['-c']) +
             ['-o', os.path.join(tdir, 'source.output'), srcf.name] +
             [f'-l{x}' for x in libraries] + list(ldflags),
             stdout=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
