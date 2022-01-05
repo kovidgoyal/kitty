@@ -230,16 +230,44 @@ _ksi_deferred_init() {
     # current shell is `exec zsh`. This will remove our integration from the shell
     # unless it's explicitly invoked from .zshrc. This is not an issue with
     # `exec zsh` but rather with our implementation of automatic shell integration.
-    builtin autoload -Uz add-zle-hook-widget
-    if (( $+functions[_ksi_zle_line_init] )); then
-        add-zle-hook-widget line-init _ksi_zle_line_init
-    fi
-    if (( $+functions[_ksi_zle_line_finish] )); then
-        add-zle-hook-widget line-finish _ksi_zle_line_finish
-    fi
-    if (( $+functions[_ksi_zle_keymap_select] )); then
-        add-zle-hook-widget keymap-select _ksi_zle_keymap_select
-    fi
+
+    # In the ideal world we would use add-zle-hook-widget to hook zle-line-init
+    # and similar widget. This breaks user configs though, so we have do this
+    # horrible thing instead.
+    builtin local hook func widget orig_widget flag
+    for hook in line-init line-finish keymap-select; do
+        func=_ksi_zle_${hook/-/_}
+        (( $+functions[$func] )) || builtin continue
+        widget=zle-$hook
+        if [[ $widgets[$widget] == user:azhw:* &&
+              $+functions[add-zle-hook-widget] -eq 1 ]]; then
+            # If the widget is already hooked by add-zle-hook-widget at the top
+            # level, add our hook at the end. We MUST do it this way. We cannot
+            # just wrap the widget ourselves in this case because it would
+            # trigger bugs in add-zle-hook-widget.
+            add-zle-hook-widget $hook $func
+        else
+            if (( $+widgets[$widget] )); then
+                # There is a widget but it's not from add-zle-hook-widget. We
+                # can rename the original widget, install our own and invoke
+                # the original when we are called.
+                #
+                # Note: The leading dot is to work around bugs in
+                # zsh-syntax-highlighting.
+                orig_widget=._ksi_orig_$widget
+                builtin zle -A $widget $orig_widget
+                if [[ $widgets[$widget] == user:* ]]; then
+                    # No -w here to preserve $WIDGET within the original widget.
+                    flag=
+                else
+                    flag=w
+                fi
+                functions[$func]+="
+                    builtin zle $orig_widget -N$flag -- \"$@\""
+            fi
+            builtin zle -N $widget $func
+        fi
+    done
 
     if (( $+functions[_ksi_preexec] )); then
         builtin typeset -ag preexec_functions
