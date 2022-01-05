@@ -35,7 +35,7 @@ builtin typeset -gi _ksi_state
 # Asks kitty to print $@ to its stdout. This is for debugging.
 _ksi_debug_print() {
     builtin local data
-    data=$(command base64 <<<"${(j: :}@}") || builtin return
+    data=$(command base64 <<<"${(j: :)@}") || builtin return
     builtin printf '\eP@kitty-print|%s\e\\' "${data//$'\n'}"
 }
 
