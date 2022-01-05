@@ -223,8 +223,18 @@ def debug_config(opts: KittyOpts) -> str:
         import subprocess
         p(' '.join(subprocess.check_output(['sw_vers']).decode('utf-8').splitlines()).strip())
     if os.path.exists('/etc/issue'):
-        with open('/etc/issue', encoding='utf-8', errors='replace') as f:
-            p(end=''.join(IssueData().parse_issue_file(f)))
+        try:
+            idata = IssueData()
+        except Exception:
+            pass
+        else:
+            with open('/etc/issue', encoding='utf-8', errors='replace') as f:
+                try:
+                    datums = idata.parse_issue_file(f)
+                except Exception:
+                    pass
+                else:
+                    p(end=''.join(datums))
     if os.path.exists('/etc/lsb-release'):
         with open('/etc/lsb-release', encoding='utf-8', errors='replace') as f:
             p(f.read().strip())
