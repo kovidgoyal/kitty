@@ -1,4 +1,4 @@
-// unicode data, built from the unicode standard on: 2021-10-07
+// unicode data, built from the unicode standard on: 2022-01-05
 // see gen-wcwidth.py
 #pragma once
 #include "data-types.h"
@@ -276,7 +276,7 @@ is_emoji(char_type code) {
 			return true;
 		case 0x1f6d5 ... 0x1f6d7:
 			return true;
-		case 0x1f6e0 ... 0x1f6e5:
+		case 0x1f6dd ... 0x1f6e5:
 			return true;
 		case 0x1f6e9:
 			return true;
@@ -288,29 +288,31 @@ is_emoji(char_type code) {
 			return true;
 		case 0x1f7e0 ... 0x1f7eb:
 			return true;
+		case 0x1f7f0:
+			return true;
 		case 0x1f90c ... 0x1f93a:
 			return true;
 		case 0x1f93c ... 0x1f945:
 			return true;
-		case 0x1f947 ... 0x1f978:
-			return true;
-		case 0x1f97a ... 0x1f9cb:
-			return true;
-		case 0x1f9cd ... 0x1f9ff:
+		case 0x1f947 ... 0x1f9ff:
 			return true;
 		case 0x1fa70 ... 0x1fa74:
 			return true;
-		case 0x1fa78 ... 0x1fa7a:
+		case 0x1fa78 ... 0x1fa7c:
 			return true;
 		case 0x1fa80 ... 0x1fa86:
 			return true;
-		case 0x1fa90 ... 0x1faa8:
+		case 0x1fa90 ... 0x1faac:
 			return true;
-		case 0x1fab0 ... 0x1fab6:
+		case 0x1fab0 ... 0x1faba:
 			return true;
-		case 0x1fac0 ... 0x1fac2:
+		case 0x1fac0 ... 0x1fac5:
 			return true;
-		case 0x1fad0 ... 0x1fad6:
+		case 0x1fad0 ... 0x1fad9:
+			return true;
+		case 0x1fae0 ... 0x1fae7:
+			return true;
+		case 0x1faf0 ... 0x1faf6:
 			return true;
 		default: return false;
 	}

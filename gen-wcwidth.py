@@ -49,11 +49,10 @@ class_maps: Dict[str, Set[int]] = {}
 all_symbols: Set[int] = set()
 name_map: Dict[int, str] = {}
 word_search_map: DefaultDict[str, Set[int]] = defaultdict(set)
-zwj = 0x200d
 soft_hyphen = 0xad
 flag_codepoints = frozenset(range(0x1F1E6, 0x1F1E6 + 26))
 # See https://github.com/harfbuzz/harfbuzz/issues/169
-marks = set(emoji_skin_tone_modifiers) | {zwj} | flag_codepoints
+marks = set(emoji_skin_tone_modifiers) | flag_codepoints
 not_assigned = set(range(0, sys.maxunicode))
 property_maps: Dict[str, Set[int]] = defaultdict(set)
 
@@ -69,7 +68,6 @@ def parse_prop_list() -> None:
         property_maps[name] |= chars
     # see https://www.unicode.org/faq/unsup_char.html#3
     marks |= property_maps['Other_Default_Ignorable_Code_Point']
-    marks.add(soft_hyphen)
 
 
 def parse_ucd() -> None:
@@ -113,6 +111,8 @@ def parse_ucd() -> None:
                 marks.add(codepoint)
             elif category.startswith('S'):
                 all_symbols.add(codepoint)
+            elif category == 'Cf':
+                marks.add(codepoint)
 
     with open('nerd-fonts-glyphs.txt') as f:
         for line in f:
@@ -382,9 +382,9 @@ def gen_ucd() -> None:
             ascii_range='false'
         )
         category_test(
-            'is_non_rendered_char', p, 'Cc Cs'.split(),
+            'is_non_rendered_char', p, 'Cc Cs Cf'.split(),
             'Other_Default_Ignorable_Code_Point and soft hyphen',
-            extra_chars=property_maps['Other_Default_Ignorable_Code_Point'] | {soft_hyphen},
+            extra_chars=property_maps['Other_Default_Ignorable_Code_Point'],
             ascii_range='false'
         )
         category_test('is_word_char', p, {c for c in class_maps if c[0] in 'LN'}, 'L and N categories')

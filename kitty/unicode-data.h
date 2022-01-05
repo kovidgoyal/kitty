@@ -2,7 +2,7 @@
 #include "data-types.h"
 #include "state.h"
 // START_KNOWN_MARKS
-static const combining_type VS15 = 1325, VS16 = 1326;
+static const combining_type VS15 = 1362, VS16 = 1363;
 // END_KNOWN_MARKS
 
 bool is_combining_char(char_type ch);
