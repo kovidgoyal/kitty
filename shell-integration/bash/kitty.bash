@@ -5,7 +5,7 @@ _ksi_main() {
     if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then return; fi
     declare -A _ksi_prompt=( [cursor]='y' [title]='y' [mark]='y' [complete]='y' )
     set -f
-    for i in ${KITTY_SHELL_INTEGRATION}; do
+    for i in ${KITTY_SHELL_INTEGRATION[@]}; do
         set +f
         if [[ "$i" == "no-cursor" ]]; then _ksi_prompt[cursor]='n'; fi
         if [[ "$i" == "no-title" ]]; then _ksi_prompt[title]='n'; fi
