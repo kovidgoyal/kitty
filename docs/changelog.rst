@@ -73,7 +73,7 @@ command.
 Detailed list of changes
 -------------------------------------
 
-0.24.1 [future]
+0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Shell integration: Work around conflicts with some zsh plugins (:iss:`4428`)
