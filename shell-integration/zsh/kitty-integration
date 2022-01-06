@@ -181,6 +181,7 @@ _ksi_deferred_init() {
                     # - False positive (with prompt_percent): PS1="%(?.$mark1.)"
                     # - False negative (with prompt_subst):   PS1='$mark1'
                     [[ $PS1 == *$mark1* ]] || PS1=${mark1}${PS1}
+                    # PS2 mark is needed when clearing the prompt on resize
                     [[ $PS2 == *$mark2* ]] || PS2=${mark2}${PS2}
                     (( _ksi_state = 2 ))
                 else
