@@ -4,11 +4,12 @@
 
 import os
 import posixpath
+import shlex
 from contextlib import suppress
 from typing import (
     Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, cast
 )
-from urllib.parse import ParseResult, unquote, urlparse
+from urllib.parse import ParseResult, quote, unquote, urlparse
 
 from .conf.utils import KeyAction, to_cmdline_implementation
 from .constants import config_dir
@@ -16,7 +17,8 @@ from .guess_mime_type import guess_type
 from .options.utils import ActionAlias, resolve_aliases_and_parse_actions
 from .types import run_once
 from .typing import MatchType
-from .utils import expandvars, log_error
+from .utils import expandvars, get_editor, log_error, resolved_shell
+from .fast_data_types import get_options
 
 
 class MatchCriteria(NamedTuple):
@@ -68,12 +70,16 @@ def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
     if match_criteria and raw_actions:
         entries.append((tuple(match_criteria), tuple(raw_actions)))
 
-    for (mc, action_defns) in entries:
-        actions: List[KeyAction] = []
-        with to_cmdline_implementation.filter_env_vars('URL', 'FILE_PATH', 'FILE', 'FRAGMENT'):
+    with to_cmdline_implementation.filter_env_vars(
+        'URL', 'FILE_PATH', 'FILE', 'FRAGMENT',
+        EDITOR=shlex.join(get_editor()),
+        SHELL=shlex.join(resolved_shell(get_options()))
+    ):
+        for (mc, action_defns) in entries:
+            actions: List[KeyAction] = []
             for defn in action_defns:
                 actions.extend(resolve_aliases_and_parse_actions(defn, alias_map, 'open_action'))
-        yield OpenAction(mc, tuple(actions))
+            yield OpenAction(mc, tuple(actions))
 
 
 def url_matches_criterion(purl: 'ParseResult', url: str, unquoted_path: str, mc: MatchCriteria) -> bool:
@@ -195,9 +201,60 @@ def load_open_actions() -> Tuple[OpenAction, ...]:
         return tuple(parse(f))
 
 
+@run_once
+def load_launch_actions() -> Tuple[OpenAction, ...]:
+    try:
+        f = open(os.path.join(config_dir, 'launch-actions.conf'))
+    except FileNotFoundError:
+        return ()
+    with f:
+        return tuple(parse(f))
+
+
+@run_once
+def default_launch_actions() -> Tuple[OpenAction, ...]:
+    SHELL = resolved_shell(get_options())
+    return tuple(parse(f'''\
+# Open script files
+protocol file
+ext sh,command,tool
+action launch --hold --type=os-window kitty +shebang $FILE_PATH {SHELL}
+
+# Open shell specific script files
+protocol file
+ext fish,bash,zsh
+action launch --hold --type=os-window kitty +shebang $FILE_PATH __ext__
+
+# Open directories
+protocol file
+mime inode/directory
+action launch --type=os-window --cwd $FILE_PATH
+
+# Open text files without fragments in the editor
+protocol file
+mime text/*
+action launch --type=os-window $EDITOR $FILE_PATH
+
+# Open image files with icat
+protocol file
+mime image/*
+action launch --type=os-window kitty +kitten icat --hold $FILE_PATH
+'''.splitlines()))
+
+
 def actions_for_url(url: str, actions_spec: Optional[str] = None) -> Iterator[KeyAction]:
     if actions_spec is None:
         actions = load_open_actions()
     else:
         actions = tuple(parse(actions_spec.splitlines()))
     yield from actions_for_url_from_list(url, actions)
+
+
+def actions_for_launch(path: str) -> Iterator[KeyAction]:
+    url = f'file://{quote(path)}'
+    found = False
+    for action in actions_for_url_from_list(url, load_launch_actions()):
+        found = True
+        yield action
+    if not found:
+        yield from actions_for_url_from_list(url, default_launch_actions())

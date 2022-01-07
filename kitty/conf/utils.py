@@ -72,9 +72,10 @@ class ToCmdline:
     def __exit__(self, *a: Any) -> None:
         self.override_env = None
 
-    def filter_env_vars(self, *a: str) -> 'ToCmdline':
+    def filter_env_vars(self, *a: str, **override: str) -> 'ToCmdline':
         remove = frozenset(a)
         self.override_env = {k: v for k, v in os.environ.items() if k not in remove}
+        self.override_env.update(override)
         return self
 
     def __call__(self, x: str) -> List[str]:

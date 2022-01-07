@@ -6,6 +6,7 @@ import os
 from contextlib import contextmanager
 
 from . import BaseTest
+from kitty.utils import get_editor
 
 
 @contextmanager
@@ -42,7 +43,7 @@ action two
 '''
 
         def actions(url):
-            with patch_env(EDITOR='editor', FILE_PATH='notgood'):
+            with patch_env(FILE_PATH='notgood'):
                 return tuple(actions_for_url(url, spec))
 
         def single(url, func, *args):
@@ -51,6 +52,6 @@ action two
             self.ae(acts[0].func, func)
             self.ae(acts[0].args, args)
 
-        single('file://hostname/tmp/moo.txt#23', 'launch', 'editor', '/tmp/moo.txt', '23')
+        single('file://hostname/tmp/moo.txt#23', 'launch', *get_editor(), '/tmp/moo.txt', '23')
         single('some thing.txt', 'ignored')
         self.ae(actions('x:///a.txt'), (KeyAction('one', ()), KeyAction('two', ())))

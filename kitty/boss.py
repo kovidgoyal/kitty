@@ -23,7 +23,7 @@ from .conf.utils import BadLine, KeyAction, to_cmdline
 from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
     appname, config_dir, is_macos, is_wayland, kitty_exe, logo_png_file,
-    shell_path, supports_primary_selection, website_url
+    supports_primary_selection, website_url
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
@@ -2200,56 +2200,31 @@ class Boss:
         if path == ":cocoa::application launched::":
             self.cocoa_application_launched = True
             return
-        is_executable = is_dir = False
-        with suppress(OSError):
-            is_executable = os.access(path, os.X_OK)
-        with suppress(OSError):
-            is_dir = os.path.isdir(path)
-
-        def parse_macos_shebang(path: str) -> List[str]:
-            # The macos kernel splits the shebang line on spaces
-            try:
-                f = open(path)
-            except OSError:
-                return []
-            with f:
-                if f.read(2) != '#!':
-                    return []
-                line = f.readline().strip()
-                return line.split(' ')
-
-        needs_new_os_window = self.cocoa_application_launched or not self.os_window_map or self.active_tab is None
-        launch_cmd = []
-        if needs_new_os_window:
-            launch_cmd += ['--type', 'os-window']
-        if is_dir:
-            launch_cmd += ['--cwd', path]
-        elif is_executable:
-            launch_cmd += [path]
-        else:
-            from .guess_mime_type import guess_type
-            mt = guess_type(path) or ''
-            ext = os.path.splitext(path)[1].lower()
-            if ext in ('.sh', '.command', '.tool'):
-                launch_cmd += ['--hold'] + (parse_macos_shebang(path) or [shell_path]) + [path]
-            elif ext in ('.zsh', '.bash', '.fish'):
-                launch_cmd += ['--hold'] + (parse_macos_shebang(path) or [ext[1:]]) + [path]
-            elif mt.startswith('text/'):
-                launch_cmd += get_editor() + [path]
-            elif mt.startswith('image/'):
-                launch_cmd += [kitty_exe(), '+kitten', 'icat', '--hold', path]
-            else:
-                launch_cmd += [kitty_exe(), '+runpy', f'print("The file:", {path!r}, "is of unknown type, cannot open it.");'
-                               'from kitty.utils import hold_till_enter; hold_till_enter(); raise SystemExit(1)']
-
+        from .open_actions import actions_for_launch
+        from .launch import force_window_launch
+        actions = list(actions_for_launch(path))
         tab = self.active_tab
         if tab is not None:
             w = tab.active_window
         else:
             w = None
-        self.launch(*launch_cmd)
-        if not needs_new_os_window and tab is not None and w is not None:
-            tab.remove_window(w)
+        needs_window_replaced = not self.cocoa_application_launched or not self.os_window_map and w is not None and w.id == 1
+
+        def clear_initial_window() -> None:
+            if needs_window_replaced and tab is not None and w is not None:
+                tab.remove_window(w)
+
+        if not actions:
+            with force_window_launch(needs_window_replaced):
+                self.launch(kitty_exe(), '+runpy', f'print("The file:", {path!r}, "is of unknown type, cannot open it.");'
+                            'from kitty.utils import hold_till_enter; hold_till_enter(); raise SystemExit(1)')
+            clear_initial_window()
+        else:
+            with force_window_launch(needs_window_replaced):
+                self.dispatch_action(actions.pop(0))
+            clear_initial_window()
+            if actions:
+                self.drain_actions(actions)
 
     @ac('debug', 'Show the effective configuration kitty is running with')
     def debug_config(self) -> None:

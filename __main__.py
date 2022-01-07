@@ -64,6 +64,27 @@ def launch(args: List[str]) -> None:
     runpy.run_path(exe, run_name='__main__')
 
 
+def shebang(args: List[str]) -> None:
+    script_path = args[1]
+    cmd = args[2:]
+    if cmd == ['__ext__']:
+        cmd = [os.path.splitext(script_path)[1][1:].lower()]
+    try:
+        f = open(script_path)
+    except FileNotFoundError:
+        raise SystemExit(f'The file {script_path} does not exist')
+    with f:
+        if f.read(2) == '#!':
+            line = f.readline().strip()
+            _plat = sys.platform.lower()
+            is_macos: bool = 'darwin' in _plat
+            if is_macos:
+                cmd = line.split(' ')
+            else:
+                cmd = line.split(' ', maxsplit=1)
+    os.execvp(cmd[0], cmd + [script_path])
+
+
 def run_kitten(args: List[str]) -> None:
     try:
         kitten = args[1]
@@ -110,6 +131,7 @@ namespaced_entry_points['runpy'] = runpy
 namespaced_entry_points['launch'] = launch
 namespaced_entry_points['kitten'] = run_kitten
 namespaced_entry_points['edit-config'] = edit_config_file
+namespaced_entry_points['shebang'] = shebang
 
 
 def setup_openssl_environment() -> None:

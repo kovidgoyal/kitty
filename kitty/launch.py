@@ -306,6 +306,28 @@ def apply_colors(window: Window, spec: Sequence[str]) -> None:
     patch_color_profiles(colors, profiles, True)
 
 
+class ForceWindowLaunch:
+
+    def __init__(self) -> None:
+        self.force = False
+
+    def __bool__(self) -> bool:
+        return self.force
+
+    def __call__(self, force: bool) -> 'ForceWindowLaunch':
+        self.force = force
+        return self
+
+    def __enter__(self) -> None:
+        pass
+
+    def __exit__(self, *a: object) -> None:
+        self.force = False
+
+
+force_window_launch = ForceWindowLaunch()
+
+
 def launch(
     boss: Boss,
     opts: LaunchCLIOptions,
@@ -389,6 +411,8 @@ def launch(
         if exe:
             final_cmd[0] = exe
         kw['cmd'] = final_cmd
+    if force_window_launch and opts.type not in ('background', 'clipboard', 'primary'):
+        opts.type = 'window'
     if opts.type == 'overlay' and active:
         kw['overlay_for'] = active.id
     if opts.type == 'background':
