@@ -23,7 +23,7 @@ from .conf.utils import BadLine, KeyAction, to_cmdline
 from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
     appname, config_dir, is_macos, is_wayland, kitty_exe, logo_png_file,
-    supports_primary_selection, website_url
+    shell_path, supports_primary_selection, website_url
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
@@ -2217,7 +2217,9 @@ class Boss:
         else:
             from .guess_mime_type import guess_type
             mt = guess_type(path) or ''
-            if mt.startswith('text/'):
+            if os.path.splitext(path)[1].lower() in ('.sh', '.command'):
+                launch_cmd += [shell_path, path]
+            elif mt.startswith('text/'):
                 launch_cmd += get_editor() + [path]
             elif mt.startswith('image/'):
                 launch_cmd += [kitty_exe(), '+kitten', 'icat', '--hold', path]
