@@ -73,6 +73,12 @@ command.
 Detailed list of changes
 -------------------------------------
 
+0.24.2 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- macOS: Allow opening text files, images and directories with kitty when
+  launched using "Open with" in Finder (:iss:`4460`)
+
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

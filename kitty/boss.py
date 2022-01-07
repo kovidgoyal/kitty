@@ -2200,18 +2200,38 @@ class Boss:
         if path == ":cocoa::application launched::":
             self.cocoa_application_launched = True
             return
+        is_executable = is_dir = False
+        with suppress(OSError):
+            is_executable = os.access(path, os.X_OK)
+        with suppress(OSError):
+            is_dir = os.path.isdir(path)
 
-        def new_os_window() -> None:
-            self.new_os_window(path)
+        needs_new_os_window = self.cocoa_application_launched or not self.os_window_map or self.active_tab is None
+        launch_cmd = []
+        if needs_new_os_window:
+            launch_cmd += ['--type', 'os-window']
+        if is_dir:
+            launch_cmd += ['--cwd', path]
+        elif is_executable:
+            launch_cmd += [path]
+        else:
+            from .guess_mime_type import guess_type
+            mt = guess_type(path) or ''
+            if mt.startswith('text/'):
+                launch_cmd += get_editor() + [path]
+            elif mt.startswith('image/'):
+                launch_cmd = [kitty_exe(), '+kitten', 'icat', '--hold', path]
+            else:
+                launch_cmd = [kitty_exe(), '+runpy', f'print("The file:", {path!r}, "is of unknown type, cannot open it.");'
+                              'from kitty.utils import hold_till_enter; hold_till_enter(); raise SystemExit(1)']
 
-        if self.cocoa_application_launched or not self.os_window_map:
-            return new_os_window()
         tab = self.active_tab
-        if tab is None:
-            return new_os_window()
-        w = tab.active_window
-        self.new_window(path)
-        if w is not None:
+        if tab is not None:
+            w = tab.active_window
+        else:
+            w = None
+        self.launch(*launch_cmd)
+        if not needs_new_os_window and tab is not None and w is not None:
             tab.remove_window(w)
 
     @ac('debug', 'Show the effective configuration kitty is running with')
