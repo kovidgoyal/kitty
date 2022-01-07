@@ -999,12 +999,34 @@ def macos_info_plist() -> bytes:
         },
         {
             'CFBundleTypeName': 'Folders',
-            'CFBundleTypeOSTypes': ['fold'],
+            'LSItemContentTypes': ['public.directory'],
             'CFBundleTypeRole': 'Editor',
+            'LSHandlerRank': 'Alternate',
         },
         {
             'LSItemContentTypes': ['public.unix-executable'],
             'CFBundleTypeRole': 'Shell',
+        },
+        {
+            'CFBundleTypeName': 'Text files',
+            'LSItemContentTypes': ['public.text'],
+            'LSTypeIsPackage': False,
+            'CFBundleTypeRole': 'Editor',
+            'LSHandlerRank': 'Alternate',
+        },
+        {
+            'CFBundleTypeName': 'Image files',
+            'LSItemContentTypes': ['public.image'],
+            'LSTypeIsPackage': False,
+            'CFBundleTypeRole': 'Viewer',
+            'LSHandlerRank': 'Alternate',
+        },
+        # Allows dragging arbitrary files to kitty, but does not include kitty in the open with list.
+        {
+            'CFBundleTypeName': 'All files',
+            'LSItemContentTypes': ['public.content', 'public.data'],
+            'CFBundleTypeRole': 'None',
+            'LSHandlerRank': 'None',
         },
     ]
 
