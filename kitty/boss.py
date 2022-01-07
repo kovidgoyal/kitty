@@ -2217,8 +2217,11 @@ class Boss:
         else:
             from .guess_mime_type import guess_type
             mt = guess_type(path) or ''
-            if os.path.splitext(path)[1].lower() in ('.sh', '.command'):
+            ext = os.path.splitext(path)[1].lower()
+            if ext in ('.sh', '.command', '.tool'):
                 launch_cmd += [shell_path, path]
+            elif ext in ('.zsh', '.bash', '.fish'):
+                launch_cmd += [ext[1:], path]
             elif mt.startswith('text/'):
                 launch_cmd += get_editor() + [path]
             elif mt.startswith('image/'):
