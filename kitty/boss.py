@@ -2206,6 +2206,18 @@ class Boss:
         with suppress(OSError):
             is_dir = os.path.isdir(path)
 
+        def parse_macos_shebang(path: str) -> List[str]:
+            # The macos kernel splits the shebang line on spaces
+            try:
+                f = open(path)
+            except OSError:
+                return []
+            with f:
+                if f.read(2) != '#!':
+                    return []
+                line = f.readline().strip()
+                return line.split(' ')
+
         needs_new_os_window = self.cocoa_application_launched or not self.os_window_map or self.active_tab is None
         launch_cmd = []
         if needs_new_os_window:
@@ -2219,9 +2231,9 @@ class Boss:
             mt = guess_type(path) or ''
             ext = os.path.splitext(path)[1].lower()
             if ext in ('.sh', '.command', '.tool'):
-                launch_cmd += ['--hold', shell_path, path]
+                launch_cmd += ['--hold'] + (parse_macos_shebang(path) or [shell_path]) + [path]
             elif ext in ('.zsh', '.bash', '.fish'):
-                launch_cmd += ['--hold', ext[1:], path]
+                launch_cmd += ['--hold'] + (parse_macos_shebang(path) or [ext[1:]]) + [path]
             elif mt.startswith('text/'):
                 launch_cmd += get_editor() + [path]
             elif mt.startswith('image/'):
