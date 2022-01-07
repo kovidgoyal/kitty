@@ -110,7 +110,7 @@ onto the kitty dock icon to open them with kitty. The default action
 is to open text files in your editor and images using the icat kitten.
 Shell scripts are run in a shell. You can customize these actions by creating
 a :file:`launch-actions.conf` file in the kitty config directory, just like
-the :file:`open-actions.conf` file above. For example::
+the :file:`open-actions.conf` file above. For example:
 
 .. code:: conf
 
