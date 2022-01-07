@@ -2219,9 +2219,9 @@ class Boss:
             mt = guess_type(path) or ''
             ext = os.path.splitext(path)[1].lower()
             if ext in ('.sh', '.command', '.tool'):
-                launch_cmd += [shell_path, path]
+                launch_cmd += ['--hold', shell_path, path]
             elif ext in ('.zsh', '.bash', '.fish'):
-                launch_cmd += [ext[1:], path]
+                launch_cmd += ['--hold', ext[1:], path]
             elif mt.startswith('text/'):
                 launch_cmd += get_editor() + [path]
             elif mt.startswith('image/'):
