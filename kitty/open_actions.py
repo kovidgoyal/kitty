@@ -21,6 +21,10 @@ from .utils import expandvars, get_editor, log_error, resolved_shell
 from .fast_data_types import get_options
 
 
+if not hasattr(shlex, 'join'):
+    shlex.join = lambda a: ' '.join(map(shlex.quote, a))
+
+
 class MatchCriteria(NamedTuple):
     type: MatchType
     value: str
