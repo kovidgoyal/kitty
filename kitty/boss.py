@@ -2220,10 +2220,10 @@ class Boss:
             if mt.startswith('text/'):
                 launch_cmd += get_editor() + [path]
             elif mt.startswith('image/'):
-                launch_cmd = [kitty_exe(), '+kitten', 'icat', '--hold', path]
+                launch_cmd += [kitty_exe(), '+kitten', 'icat', '--hold', path]
             else:
-                launch_cmd = [kitty_exe(), '+runpy', f'print("The file:", {path!r}, "is of unknown type, cannot open it.");'
-                              'from kitty.utils import hold_till_enter; hold_till_enter(); raise SystemExit(1)']
+                launch_cmd += [kitty_exe(), '+runpy', f'print("The file:", {path!r}, "is of unknown type, cannot open it.");'
+                               'from kitty.utils import hold_till_enter; hold_till_enter(); raise SystemExit(1)']
 
         tab = self.active_tab
         if tab is not None:
