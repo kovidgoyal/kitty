@@ -99,10 +99,6 @@ entry_points = {
     # These two are here for backwards compat
     'icat': icat,
     'list-fonts': list_fonts,
-    'runpy': runpy,
-    'launch': launch,
-    'kitten': run_kitten,
-    'edit-config': edit_config_file,
 
     '@': remote_control,
     '+': namespaced,
@@ -110,6 +106,10 @@ entry_points = {
 namespaced_entry_points = {k: v for k, v in entry_points.items() if k[0] not in '+@'}
 namespaced_entry_points['hold'] = hold
 namespaced_entry_points['complete'] = complete
+namespaced_entry_points['runpy'] = runpy
+namespaced_entry_points['launch'] = launch
+namespaced_entry_points['kitten'] = run_kitten
+namespaced_entry_points['edit-config'] = edit_config_file
 
 
 def setup_openssl_environment() -> None:
