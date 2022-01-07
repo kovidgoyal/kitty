@@ -33,6 +33,7 @@ class Launch(RemoteCommand):
     copy_colors: Boolean indicating whether to copy the colors from the current window
     copy_cmdline: Boolean indicating whether to copy the cmdline from the current window
     copy_env: Boolean indicating whether to copy the environ from the current window
+    hold: Boolean indicating whether to keep window open after cmd exits
     location: Where in the tab to open the new window
     allow_remote_control: Boolean indicating whether to allow remote control from the new window
     stdin_source: Where to get stdin for thew process from

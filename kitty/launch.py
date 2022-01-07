@@ -8,6 +8,7 @@ from .boss import Boss
 from .child import Child
 from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
+from .constants import kitty_exe, shell_path
 from .fast_data_types import patch_color_profiles, set_clipboard_string
 from .options.utils import env as parse_env
 from .tabs import Tab
@@ -69,6 +70,11 @@ Environment variables to set in the child process. Can be specified multiple
 times to set different environment variables.  Syntax: :code:`name=value`.
 Using :code:`name=` will set to empty string and just :code:`name` will
 remove the environment variable.
+
+
+--hold
+type=bool-set
+Keep the window open even after the command being executed exits.
 
 
 --copy-colors
@@ -398,6 +404,9 @@ def launch(
             else:
                 set_primary_selection(stdin)
     else:
+        if opts.hold:
+            cmd = kw['cmd'] or [shell_path]
+            kw['cmd'] = [kitty_exe(), '+hold'] + cmd
         if force_target_tab:
             tab = target_tab
         else:
