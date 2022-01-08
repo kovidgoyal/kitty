@@ -1598,16 +1598,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 - (BOOL)validateMenuItem:(NSMenuItem *)item {
     if (item.action == @selector(performMiniaturize:)) return YES;
     if (item.action == @selector(toggleSecureInput:)) {
-      SecureKeyboardEntryController *controller = [SecureKeyboardEntryController sharedInstance];
-      if (controller.isEnabled) {
-          if (controller.isDesired) {
-              item.state = NSControlStateValueOn;
-          } else {
-              item.state = NSControlStateValueMixed;
-          }
-      } else {
-          item.state = controller.isDesired ? NSControlStateValueOn : NSControlStateValueOff;
-      }
+      item.state = [SecureKeyboardEntryController sharedInstance].isDesired ? NSControlStateValueOn : NSControlStateValueOff;
       return YES;
     }
     return [super validateMenuItem:item];
