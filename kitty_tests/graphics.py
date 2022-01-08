@@ -8,9 +8,9 @@ import time
 import unittest
 import zlib
 from base64 import standard_b64decode, standard_b64encode
+from dataclasses import dataclass
 from io import BytesIO
 from itertools import cycle
-from typing import NamedTuple
 
 from kitty.fast_data_types import (
     load_png_data, parse_bytes, shm_unlink, shm_write, xor_data
@@ -53,7 +53,8 @@ def parse_response_with_ids(res):
     return code, a
 
 
-class Response(NamedTuple):
+@dataclass(frozen=True)
+class Response:
     code: str = 'OK'
     msg: str = ''
     image_id: int = 0
