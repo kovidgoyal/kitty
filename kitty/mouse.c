@@ -401,7 +401,7 @@ multi_click_count(Window *w, int button) {
 
 static void
 add_press(Window *w, int button, int modifiers) {
-    if (button < 0 || button > (ssize_t)arraysz(w->click_queues)) return;
+    if (button < 0 || button >= (ssize_t)arraysz(w->click_queues)) return;
     modifiers &= ~GLFW_LOCK_MASK;
     ClickQueue *q = &w->click_queues[button];
     if (q->length == CLICK_QUEUE_SZ) { memmove(q->clicks, q->clicks + 1, sizeof(Click) * (CLICK_QUEUE_SZ - 1)); q->length--; }
