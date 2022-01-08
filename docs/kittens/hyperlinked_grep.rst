@@ -57,6 +57,11 @@ Then, for example, for ZSH, add the following to :file:`.zshrc`::
 
     compdef _rg hg
 
+Note to fish users: you can combine both the aliasing/wrapping and pointing fish
+to rg's autocompletion with a fish "wrapper" function in your :file:`config.fish`::
+
+    function hg --wraps rg; kitty +kitten hyperlinked_grep $argv; end
+
 To learn more about kitty's powerful framework for customizing URL click
 actions, :doc:`see here </open_actions>`.
 
