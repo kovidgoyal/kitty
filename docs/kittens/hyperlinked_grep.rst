@@ -45,22 +45,31 @@ You can now run searches with::
     hg some-search-term
 
 If you want to enable completion, for the kitten, you can delegate completion
-to rg. For that, instead of using an alias create a simple wrapper script named
-:file:`hg` somewhere in your ``PATH``:
+to rg. How to do that varies based on the shell:
 
-.. code-block:: sh
 
-    #!/bin/sh
-    exec kitty +kitten hyperlinked_grep "$@"
+.. tab:: zsh
 
-Then, for example, for ZSH, add the following to :file:`.zshrc`::
+    Instead of using an alias create a simple wrapper script named
+    :file:`hg` somewhere in your ``PATH``:
 
-    compdef _rg hg
+    .. code-block:: sh
 
-Note to fish users: you can combine both the aliasing/wrapping and pointing fish
-to rg's autocompletion with a fish "wrapper" function in your :file:`config.fish`::
+        #!/bin/sh
+        exec kitty +kitten hyperlinked_grep "$@"
 
-    function hg --wraps rg; kitty +kitten hyperlinked_grep $argv; end
+    Then, add the following to :file:`.zshrc`::
+
+        compdef _rg hg
+
+.. tab:: fish
+
+    You can combine both the aliasing/wrapping and pointing fish
+    to rg's autocompletion with a fish "wrapper" function in your :file:`config.fish`:
+
+    .. code-block:: sh
+
+        function hg --wraps rg; kitty +kitten hyperlinked_grep $argv; end
 
 To learn more about kitty's powerful framework for customizing URL click
 actions, :doc:`see here </open_actions>`.
