@@ -1586,6 +1586,8 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     if (self != nil) {
         glfw_window = initWindow;
         self.tabbingMode = NSWindowTabbingModeDisallowed;
+        SecureKeyboardEntryController *k = [SecureKeyboardEntryController sharedInstance];
+        if (!k.isDesired && [[NSUserDefaults standardUserDefaults] boolForKey:@"SecureKeyboardEntry"]) [k toggle];
     }
     return self;
 }
@@ -1612,7 +1614,9 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 - (void)toggleSecureInput:(id)sender {
     (void)sender;
-    [[SecureKeyboardEntryController sharedInstance] toggle];
+    SecureKeyboardEntryController *k = [SecureKeyboardEntryController sharedInstance];
+    [k toggle];
+    [[NSUserDefaults standardUserDefaults] setBool:k.isDesired forKey:@"SecureKeyboardEntry"];
 }
 
 - (BOOL)canBecomeKeyWindow

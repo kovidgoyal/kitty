@@ -79,6 +79,10 @@ Detailed list of changes
 - macOS: Allow opening text files, images and directories with kitty when
   launched using "Open with" in Finder (:iss:`4460`)
 
+- macOS: Persist "Secure Keyboard Entry" across restarts to match the behavior
+  of Terminal.app (:iss:`4471`)
+
+
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
