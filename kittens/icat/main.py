@@ -550,16 +550,26 @@ def main(args: List[str] = sys.argv) -> None:
             raise SystemExit(f'The --place option can only be used with a single image, not {items}')
         sys.stdout.buffer.write(b'\0337')  # save cursor
     url_pat = re.compile(r'(?:https?|ftp)://', flags=re.I)
+
+    def hold_if_needed(exit_code_or_msg: Union[int, str]) -> None:
+        if cli_opts.hold:
+            if isinstance(exit_code_or_msg, str):
+                print(exit_code_or_msg, file=sys.stderr, flush=True)
+                exit_code_or_msg = 1
+            with open(os.ctermid()) as tty, raw_mode(tty.fileno()):
+                tty.buffer.read(1)
+        raise SystemExit(exit_code_or_msg)
+
     for item in items:
         try:
             process_single_item(item, cli_opts, parsed_opts, url_pat)
         except NoImageMagick as e:
-            raise SystemExit(str(e))
+            hold_if_needed(str(e))
         except OutdatedImageMagick as e:
             print(e.detailed_error, file=sys.stderr)
-            raise SystemExit(str(e))
+            hold_if_needed(str(e))
         except ConvertFailed as e:
-            raise SystemExit(str(e))
+            hold_if_needed(str(e))
         except OpenFailed as e:
             errors.append(e)
     if parsed_opts.place:
@@ -567,11 +577,8 @@ def main(args: List[str] = sys.argv) -> None:
     if errors:
         for err in errors:
             print(err, file=sys.stderr)
-    if cli_opts.hold:
-        with open(os.ctermid()) as tty:
-            with raw_mode(tty.fileno()):
-                tty.buffer.read(1)
-    raise SystemExit(1 if errors else 0)
+    hold_if_needed(1 if errors else 0)
+    raise SystemExit()
 
 
 if __name__ == '__main__':
