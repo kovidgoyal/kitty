@@ -497,14 +497,20 @@ HANDLER(handle_button_event) {
     }
     Screen *screen = w->render_data.screen;
     if (!screen) return;
+    id_type wid = w->id;
     if (!dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, screen->modes.mouse_tracking_mode != 0)) {
         if (screen->modes.mouse_tracking_mode != 0) {
             int sz = encode_mouse_button(w, button, is_release ? RELEASE : PRESS, modifiers);
             if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
         }
     }
-    if (is_release) dispatch_possible_click(w, button, modifiers);
-    else add_press(w, button, modifiers);
+    // the windows array might have been re-alloced in dispatch_mouse_event
+    w = NULL;
+    for (size_t i = 0; i < t->num_windows && !w; i++) if (t->windows[i].id == wid) w = t->windows + i;
+    if (w) {
+        if (is_release) dispatch_possible_click(w, button, modifiers);
+        else add_press(w, button, modifiers);
+    }
 }
 
 static int
