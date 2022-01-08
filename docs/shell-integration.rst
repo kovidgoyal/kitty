@@ -240,6 +240,15 @@ is empty and if so to set it to some hard coded location with the shell
 integration scripts that need to be copied onto the remote system.
 
 
+Integration with other shells
+-------------------------------
+
+There exist third-party integrations to use these features for various other shells:
+
+* Jupyter console via a patch (:iss:`4475`)
+* `xonsh <https://github.com/xonsh/xonsh/issues/4623>`__
+
+
 Notes for shell developers
 -----------------------------
 
