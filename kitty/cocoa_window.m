@@ -76,7 +76,7 @@ find_app_name(void) {
     return @"kitty";
 }
 
-#define debug_key(...) if (global_state.debug_keyboard) { fprintf(stderr, __VA_ARGS__); fflush(stderr); }
+#define debug_key(...) if (OPT(debug_keyboard)) { fprintf(stderr, __VA_ARGS__); fflush(stderr); }
 
 // SecureKeyboardEntryController {{{
 @interface SecureKeyboardEntryController : NSObject

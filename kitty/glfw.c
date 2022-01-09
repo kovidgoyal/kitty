@@ -966,13 +966,6 @@ focus_os_window(OSWindow *w, bool also_raise) {
     }
 }
 
-void
-toggle_secure_input(void) {
-#ifdef __APPLE__
-    cocoa_toggle_secure_keyboard_entry();
-#endif
-}
-
 // Global functions {{{
 static void
 error_callback(int error, const char* description) {
@@ -1188,6 +1181,14 @@ glfw_window_hint(PyObject UNUSED *self, PyObject *args) {
 
 
 // }}}
+
+static PyObject*
+toggle_secure_input(PYNOARG) {
+#ifdef __APPLE__
+    cocoa_toggle_secure_keyboard_entry();
+#endif
+    Py_RETURN_NONE;
+}
 
 static PyObject*
 get_clipboard_string(PYNOARG) {
@@ -1570,6 +1571,7 @@ static PyMethodDef module_methods[] = {
     {"create_os_window", (PyCFunction)(void (*) (void))(create_os_window), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(set_default_window_icon, METH_VARARGS),
     METHODB(get_clipboard_string, METH_NOARGS),
+    METHODB(toggle_secure_input, METH_NOARGS),
     METHODB(get_content_scale_for_window, METH_NOARGS),
     METHODB(ring_bell, METH_NOARGS),
     METHODB(set_clipboard_string, METH_VARARGS),

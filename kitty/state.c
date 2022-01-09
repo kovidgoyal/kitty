@@ -684,8 +684,8 @@ PYWRAP0(get_options) {
 
 PYWRAP1(set_options) {
     PyObject *opts;
-    int is_wayland = 0, debug_keyboard = 0, debug_rendering = 0, debug_font_fallback = 0;
-    PA("O|pppp", &opts, &is_wayland, &debug_keyboard, &debug_rendering, &debug_font_fallback);
+    int is_wayland = 0, debug_rendering = 0, debug_font_fallback = 0;
+    PA("O|pppp", &opts, &is_wayland, &debug_rendering, &debug_font_fallback);
     if (opts == Py_None) {
         Py_CLEAR(options_object);
         Py_RETURN_NONE;
@@ -695,7 +695,6 @@ PYWRAP1(set_options) {
     global_state.has_render_frames = true;
 #endif
     if (global_state.is_wayland) global_state.has_render_frames = true;
-    global_state.debug_keyboard = debug_keyboard ? true : false;
     global_state.debug_rendering = debug_rendering ? true : false;
     global_state.debug_font_fallback = debug_font_fallback ? true : false;
     if (!convert_opts_from_python_opts(opts, &global_state.opts)) return NULL;
@@ -820,11 +819,6 @@ PYWRAP1(focus_os_window) {
         Py_RETURN_TRUE;
     END_WITH_OS_WINDOW
     Py_RETURN_FALSE;
-}
-
-PYWRAP0(toggle_secure_input) {
-    toggle_secure_input();
-    Py_RETURN_NONE;
 }
 
 PYWRAP1(set_titlebar_color) {
@@ -1272,7 +1266,6 @@ static PyMethodDef module_methods[] = {
     MW(current_application_quit_request, METH_NOARGS),
     MW(set_titlebar_color, METH_VARARGS),
     MW(focus_os_window, METH_VARARGS),
-    MW(toggle_secure_input, METH_NOARGS),
     MW(mark_tab_bar_dirty, METH_O),
     MW(change_background_opacity, METH_VARARGS),
     MW(background_opacity_of, METH_O),

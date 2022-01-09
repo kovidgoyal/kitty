@@ -1894,7 +1894,7 @@ class Boss:
         from .fonts.box_drawing import set_scale
 
         # Update options storage
-        set_options(opts, is_wayland(), self.args.debug_keyboard, self.args.debug_rendering, self.args.debug_font_fallback)
+        set_options(opts, is_wayland(), self.args.debug_rendering, self.args.debug_font_fallback)
         apply_options_update()
         set_layout_options(opts)
         set_default_env(opts.env.copy())
