@@ -416,7 +416,7 @@ def kitty_env() -> Env:
     cflags.extend(pkg_config('lcms2', '--cflags-only-I'))
     if is_macos:
         platform_libs = [
-            '-framework', 'CoreText', '-framework', 'CoreGraphics',
+            '-framework', 'Carbon', '-framework', 'CoreText', '-framework', 'CoreGraphics',
         ]
         test_program_src = '''#include <UserNotifications/UserNotifications.h>
         int main(void) { return 0; }\n'''

@@ -39,7 +39,7 @@ from .fast_data_types import (
     set_application_quit_request, set_background_image, set_boss,
     set_clipboard_string, set_in_sequence_mode, set_options,
     set_os_window_size, set_os_window_title, thread_write, toggle_fullscreen,
-    toggle_maximized
+    toggle_maximized, toggle_secure_input
 )
 from .key_encoding import get_name_to_functional_number_map
 from .keys import get_shortcut, shortcut_matches
@@ -720,6 +720,10 @@ class Boss:
     @ac('win', 'Toggle the maximized status of the active OS Window')
     def toggle_maximized(self, os_window_id: int = 0) -> None:
         toggle_maximized(os_window_id)
+
+    @ac('misc', 'Toggle macOS secure keyboard entry')
+    def toggle_macos_secure_keyboard_entry(self) -> None:
+        toggle_secure_input()
 
     def start(self, first_os_window_id: int) -> None:
         if not getattr(self, 'io_thread_started', False):
@@ -1890,7 +1894,7 @@ class Boss:
         from .fonts.box_drawing import set_scale
 
         # Update options storage
-        set_options(opts, is_wayland(), self.args.debug_rendering, self.args.debug_font_fallback)
+        set_options(opts, is_wayland(), self.args.debug_keyboard, self.args.debug_rendering, self.args.debug_font_fallback)
         apply_options_update()
         set_layout_options(opts)
         set_default_env(opts.env.copy())

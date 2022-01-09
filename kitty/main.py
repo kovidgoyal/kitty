@@ -151,7 +151,7 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ())
             func_map[parts].append(k)
 
         for ac in ('new_os_window', 'close_os_window', 'close_tab', 'edit_config_file', 'previous_tab',
-                   'next_tab', 'new_tab', 'new_window', 'close_window'):
+                   'next_tab', 'new_tab', 'new_window', 'close_window', 'toggle_macos_secure_keyboard_entry'):
             val = get_macos_shortcut_for(func_map, ac)
             if val is not None:
                 global_shortcuts[ac] = val
@@ -191,7 +191,7 @@ class AppRunner:
 
     def __call__(self, opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
         set_scale(opts.box_drawing_scale)
-        set_options(opts, is_wayland(), args.debug_rendering, args.debug_font_fallback)
+        set_options(opts, is_wayland(), args.debug_keyboard, args.debug_rendering, args.debug_font_fallback)
         try:
             set_font_family(opts, debug_font_matching=args.debug_font_fallback)
             _run_app(opts, args, bad_lines)

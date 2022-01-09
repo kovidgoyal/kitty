@@ -3534,6 +3534,11 @@ map('Toggle maximized',
     'toggle_maximized kitty_mod+f10 toggle_maximized',
     )
 
+map('Toggle macOS secure keyboard entry',
+    'toggle_macos_secure_keyboard_entry opt+cmd+s toggle_macos_secure_keyboard_entry',
+    only="macos",
+    )
+
 map('Unicode input',
     'input_unicode_character kitty_mod+u kitten unicode_input',
     )

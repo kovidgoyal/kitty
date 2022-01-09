@@ -24,6 +24,7 @@ extern void cocoa_set_activation_policy(bool);
 extern void cocoa_set_titlebar_appearance(void *w, unsigned int theme);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
+extern void cocoa_toggle_secure_keyboard_entry(void);
 extern size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz);
 extern monotonic_t cocoa_cursor_blink_interval(void);
 
@@ -963,6 +964,13 @@ focus_os_window(OSWindow *w, bool also_raise) {
         glfwFocusWindow(w->handle);
 #endif
     }
+}
+
+void
+toggle_secure_input(void) {
+#ifdef __APPLE__
+    cocoa_toggle_secure_keyboard_entry();
+#endif
 }
 
 // Global functions {{{
