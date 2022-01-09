@@ -1039,6 +1039,7 @@ process_cocoa_pending_actions(void) {
     if (cocoa_pending_actions[CLOSE_WINDOW]) { call_boss(close_window, NULL); }
     if (cocoa_pending_actions[RESET_TERMINAL]) { call_boss(clear_terminal, "sO", "reset", Py_True ); }
     if (cocoa_pending_actions[RELOAD_CONFIG]) { call_boss(load_config_file, NULL); }
+    if (cocoa_pending_actions[TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY]) { call_boss(toggle_macos_secure_keyboard_entry, NULL); }
     if (cocoa_pending_actions_data.wd) {
         if (cocoa_pending_actions[NEW_OS_WINDOW_WITH_WD]) { call_boss(new_os_window_with_wd, "s", cocoa_pending_actions_data.wd); }
         if (cocoa_pending_actions[NEW_TAB_WITH_WD]) { call_boss(new_tab_with_wd, "s", cocoa_pending_actions_data.wd); }

@@ -9,6 +9,7 @@
 #include "state.h"
 #include "cleanup.h"
 #include "monotonic.h"
+#include <Carbon/Carbon.h>
 #include <Cocoa/Cocoa.h>
 #ifndef KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API
 #include <UserNotifications/UserNotifications.h>
@@ -75,6 +76,137 @@ find_app_name(void) {
     return @"kitty";
 }
 
+#define debug_key(...) if (global_state.debug_keyboard) { fprintf(stderr, __VA_ARGS__); fflush(stderr); }
+
+// SecureKeyboardEntryController {{{
+@interface SecureKeyboardEntryController : NSObject
+
+@property (nonatomic, readonly) BOOL isDesired;
+@property (nonatomic, readonly, getter=isEnabled) BOOL enabled;
+
++ (instancetype)sharedInstance;
+
+- (void)toggle;
+- (void)update;
+
+@end
+
+@implementation SecureKeyboardEntryController {
+    int _count;
+    BOOL _desired;
+}
+
++ (instancetype)sharedInstance {
+    static id instance;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        instance = [[self alloc] init];
+    });
+    return instance;
+}
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _desired = false;
+
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(applicationDidResignActive:)
+                                                     name:NSApplicationDidResignActiveNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(applicationDidBecomeActive:)
+                                                     name:NSApplicationDidBecomeActiveNotification
+                                                   object:nil];
+        if ([NSApp isActive]) {
+            [self update];
+        }
+    }
+    return self;
+}
+
+#pragma mark - API
+
+- (void)toggle {
+    // Set _desired to the opposite of the current state.
+    _desired = !_desired;
+    debug_key("SecureKeyboardEntry: toggle called. Setting desired to %d ", _desired);
+
+    // Try to set the system's state of secure input to the desired state.
+    [self update];
+}
+
+- (BOOL)isEnabled {
+    return !!IsSecureEventInputEnabled();
+}
+
+- (BOOL)isDesired {
+    return _desired;
+}
+
+#pragma mark - Notifications
+
+- (void)applicationDidResignActive:(NSNotification *)notification {
+    (void)notification;
+    if (_count > 0) {
+        debug_key("SecureKeyboardEntry: Application resigning active.");
+        [self update];
+    }
+}
+
+- (void)applicationDidBecomeActive:(NSNotification *)notification {
+    (void)notification;
+    if (self.isDesired) {
+        debug_key("SecureKeyboardEntry: Application became active.");
+        [self update];
+    }
+}
+
+#pragma mark - Private
+
+- (BOOL)allowed {
+    return [NSApp isActive];
+}
+
+- (void)update {
+    debug_key("Update secure keyboard entry. desired=%d active=%d\n",
+         (int)self.isDesired, (int)[NSApp isActive]);
+    const BOOL secure = self.isDesired && [self allowed];
+
+    if (secure && _count > 0) {
+        debug_key("Want to turn on secure input but it's already on\n");
+        return;
+    }
+
+    if (!secure && _count == 0) {
+        debug_key("Want to turn off secure input but it's already off\n");
+        return;
+    }
+
+    debug_key("Before: IsSecureEventInputEnabled returns %d ", (int)self.isEnabled);
+    if (secure) {
+        OSErr err = EnableSecureEventInput();
+        debug_key("EnableSecureEventInput err=%d ", (int)err);
+        if (err) {
+            debug_key("EnableSecureEventInput failed with error %d ", (int)err);
+        } else {
+            _count += 1;
+        }
+    } else {
+        OSErr err = DisableSecureEventInput();
+        debug_key("DisableSecureEventInput err=%d ", (int)err);
+        if (err) {
+            debug_key("DisableSecureEventInput failed with error %d ", (int)err);
+        } else {
+            _count -= 1;
+        }
+    }
+    debug_key("After: IsSecureEventInputEnabled returns %d\n", (int)self.isEnabled);
+}
+
+@end
+// }}}
+
 @interface GlobalMenuTarget : NSObject
 + (GlobalMenuTarget *) shared_instance;
 @end
@@ -95,10 +227,18 @@ PENDING(new_window, NEW_WINDOW)
 PENDING(close_window, CLOSE_WINDOW)
 PENDING(reset_terminal, RESET_TERMINAL)
 PENDING(reload_config, RELOAD_CONFIG)
+PENDING(toggle_macos_secure_keyboard_entry, TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY)
 
 - (void)open_kitty_website_url:(id)sender {
     (void)sender;
     [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://sw.kovidgoyal.net/kitty/"]];
+}
+
+- (BOOL)validateMenuItem:(NSMenuItem *)item {
+    if (item.action == @selector(toggle_macos_secure_keyboard_entry:)) {
+        item.state = [SecureKeyboardEntryController sharedInstance].isDesired ? NSControlStateValueOn : NSControlStateValueOff;
+    }
+    return YES;
 }
 
 #undef PENDING
@@ -108,8 +248,11 @@ PENDING(reload_config, RELOAD_CONFIG)
     static GlobalMenuTarget *sharedGlobalMenuTarget = nil;
     @synchronized(self)
     {
-        if (!sharedGlobalMenuTarget)
+        if (!sharedGlobalMenuTarget) {
             sharedGlobalMenuTarget = [[GlobalMenuTarget alloc] init];
+            SecureKeyboardEntryController *k = [SecureKeyboardEntryController sharedInstance];
+            if (!k.isDesired && [[NSUserDefaults standardUserDefaults] boolForKey:@"SecureKeyboardEntry"]) [k toggle];
+        }
         return sharedGlobalMenuTarget;
     }
 }
@@ -123,6 +266,7 @@ typedef struct {
 typedef struct {
     GlobalShortcut new_os_window, close_os_window, close_tab, edit_config_file, reload_config;
     GlobalShortcut previous_tab, next_tab, new_tab, new_window, close_window, reset_terminal;
+    GlobalShortcut toggle_macos_secure_keyboard_entry;
 } GlobalShortcuts;
 static GlobalShortcuts global_shortcuts;
 
@@ -137,6 +281,7 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
     Q(new_os_window); else Q(close_os_window); else Q(close_tab); else Q(edit_config_file);
     else Q(new_tab); else Q(next_tab); else Q(previous_tab);
     else Q(new_window); else Q(close_window); else Q(reset_terminal); else Q(reload_config);
+    else Q(toggle_macos_secure_keyboard_entry);
 #undef Q
     if (gs == NULL) { PyErr_SetString(PyExc_KeyError, "Unknown shortcut name"); return NULL; }
     int cocoa_mods;
@@ -419,10 +564,7 @@ cocoa_create_global_menu(void) {
                 keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
 
-    [[appMenu addItemWithTitle:@"Secure Keyboard Entry"
-                        action:@selector(toggleSecureInput:)
-                 keyEquivalent:@"s"]
-        setKeyEquivalentModifierMask:NSEventModifierFlagOption | NSEventModifierFlagCommand];
+    MENU_ITEM(appMenu, @"Secure Keyboard Entry", toggle_macos_secure_keyboard_entry);
     [appMenu addItem:[NSMenuItem separatorItem]];
 
     [appMenu addItemWithTitle:[NSString stringWithFormat:@"Quit %@", app_name]
@@ -545,6 +687,13 @@ bool
 cocoa_alt_option_key_pressed(NSUInteger flags) {
     NSUInteger q = (OPT(macos_option_as_alt) == 1) ? NSRightAlternateKeyMask : NSLeftAlternateKeyMask;
     return (q & flags) == q;
+}
+
+void
+cocoa_toggle_secure_keyboard_entry(void) {
+    SecureKeyboardEntryController *k = [SecureKeyboardEntryController sharedInstance];
+    [k toggle];
+    [[NSUserDefaults standardUserDefaults] setBool:k.isDesired forKey:@"SecureKeyboardEntry"];
 }
 
 void

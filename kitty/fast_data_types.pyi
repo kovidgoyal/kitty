@@ -526,6 +526,7 @@ def sync_os_window_title(os_window_id: int) -> None:
 def set_options(
     opts: Optional[Options],
     is_wayland: bool = False,
+    debug_keyboard: bool = False,
     debug_rendering: bool = False,
     debug_font_fallback: bool = False
 ) -> None:
@@ -763,6 +764,8 @@ def get_clipboard_string() -> str:
 def focus_os_window(os_window_id: int, also_raise: bool = True) -> bool:
     pass
 
+def toggle_secure_input() -> None:
+    pass
 
 def start_profiler(path: str) -> None:
     pass

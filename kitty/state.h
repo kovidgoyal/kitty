@@ -224,7 +224,7 @@ typedef struct {
     OSWindow *callback_os_window;
     bool is_wayland;
     bool has_render_frames;
-    bool debug_rendering, debug_font_fallback;
+    bool debug_keyboard, debug_rendering, debug_font_fallback;
     bool has_pending_resizes, has_pending_closes;
     bool in_sequence_mode;
     bool check_for_active_animated_images;
@@ -262,6 +262,7 @@ void hide_mouse(OSWindow *w);
 bool is_mouse_hidden(OSWindow *w);
 void destroy_os_window(OSWindow *w);
 void focus_os_window(OSWindow *w, bool also_raise);
+void toggle_secure_input(void);
 void set_os_window_title(OSWindow *w, const char *title);
 OSWindow* os_window_for_kitty_window(id_type);
 OSWindow* add_os_window(void);
@@ -303,6 +304,7 @@ typedef enum {
     CLOSE_WINDOW,
     RESET_TERMINAL,
     RELOAD_CONFIG,
+    TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY,
 
     NUM_COCOA_PENDING_ACTIONS
 } CocoaPendingAction;
