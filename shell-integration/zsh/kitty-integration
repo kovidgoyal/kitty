@@ -297,7 +297,7 @@ _ksi_deferred_init() {
                     flag=w
                 fi
                 functions[$func]+="
-                    builtin zle $orig_widget -N$flag -- \"$@\""
+                    builtin zle $orig_widget -N$flag -- \"\$@\""
             fi
             builtin zle -N $widget $func
         fi
