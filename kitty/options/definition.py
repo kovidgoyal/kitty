@@ -345,7 +345,7 @@ egr()  # }}}
 agr('mouse', 'Mouse')
 
 opt('mouse_hide_wait', '3.0',
-    macos_default="0.0",
+    macos_default='0.0',
     option_type='float', ctype='time',
     long_text='''
 Hide mouse cursor after the specified number of seconds of the mouse not being
@@ -2971,7 +2971,7 @@ and clear the selection or send an interrupt if there is no selection.
     )
 map('Copy to clipboard',
     'copy_to_clipboard cmd+c copy_to_clipboard',
-    only="macos",
+    only='macos',
     documented=False,
     )
 
@@ -2980,7 +2980,7 @@ map('Paste from clipboard',
     )
 map('Paste from clipboard',
     'paste_from_clipboard cmd+v paste_from_clipboard',
-    only="macos",
+    only='macos',
     documented=False,
     )
 
@@ -3021,11 +3021,11 @@ map('Scroll line up',
     )
 map('Scroll line up',
     'scroll_line_up opt+cmd+page_up scroll_line_up',
-    only="macos",
+    only='macos',
     )
 map('Scroll line up',
     'scroll_line_up cmd+up scroll_line_up',
-    only="macos",
+    only='macos',
     )
 
 map('Scroll line down',
@@ -3036,11 +3036,11 @@ map('Scroll line down',
     )
 map('Scroll line down',
     'scroll_line_down opt+cmd+page_down scroll_line_down',
-    only="macos",
+    only='macos',
     )
 map('Scroll line down',
     'scroll_line_down cmd+down scroll_line_down',
-    only="macos",
+    only='macos',
     )
 
 map('Scroll page up',
@@ -3048,7 +3048,7 @@ map('Scroll page up',
     )
 map('Scroll page up',
     'scroll_page_up cmd+page_up scroll_page_up',
-    only="macos",
+    only='macos',
     )
 
 map('Scroll page down',
@@ -3056,7 +3056,7 @@ map('Scroll page down',
     )
 map('Scroll page down',
     'scroll_page_down cmd+page_down scroll_page_down',
-    only="macos",
+    only='macos',
     )
 
 map('Scroll to top',
@@ -3064,7 +3064,7 @@ map('Scroll to top',
     )
 map('Scroll to top',
     'scroll_home cmd+home scroll_home',
-    only="macos",
+    only='macos',
     )
 
 map('Scroll to bottom',
@@ -3072,7 +3072,7 @@ map('Scroll to bottom',
     )
 map('Scroll to bottom',
     'scroll_end cmd+end scroll_end',
-    only="macos",
+    only='macos',
     )
 
 map('Scroll to previous shell prompt',
@@ -3157,7 +3157,7 @@ For more details, see :doc:`launch`.
     )
 map('New window',
     'new_window cmd+enter new_window',
-    only="macos",
+    only='macos',
     )
 
 map('New OS window',
@@ -3170,7 +3170,7 @@ current working directory.
     )
 map('New OS window',
     'new_os_window cmd+n new_os_window',
-    only="macos",
+    only='macos',
     )
 
 map('Close window',
@@ -3178,7 +3178,7 @@ map('Close window',
     )
 map('Close window',
     'close_window shift+cmd+d close_window',
-    only="macos",
+    only='macos',
     )
 
 map('Next window',
@@ -3206,7 +3206,7 @@ map('Start resizing window',
     )
 map('Start resizing window',
     'start_resizing_window cmd+r start_resizing_window',
-    only="macos",
+    only='macos',
     )
 
 map('First window',
@@ -3214,7 +3214,7 @@ map('First window',
     )
 map('First window',
     'first_window cmd+1 first_window',
-    only="macos",
+    only='macos',
     )
 
 map('Second window',
@@ -3222,7 +3222,7 @@ map('Second window',
     )
 map('Second window',
     'second_window cmd+2 second_window',
-    only="macos",
+    only='macos',
     )
 
 map('Third window',
@@ -3230,7 +3230,7 @@ map('Third window',
     )
 map('Third window',
     'third_window cmd+3 third_window',
-    only="macos",
+    only='macos',
     )
 
 map('Fourth window',
@@ -3238,7 +3238,7 @@ map('Fourth window',
     )
 map('Fourth window',
     'fourth_window cmd+4 fourth_window',
-    only="macos",
+    only='macos',
     )
 
 map('Fifth window',
@@ -3246,7 +3246,7 @@ map('Fifth window',
     )
 map('Fifth window',
     'fifth_window cmd+5 fifth_window',
-    only="macos",
+    only='macos',
     )
 
 map('Sixth window',
@@ -3254,7 +3254,7 @@ map('Sixth window',
     )
 map('Sixth window',
     'sixth_window cmd+6 sixth_window',
-    only="macos",
+    only='macos',
     )
 
 map('Seventh window',
@@ -3262,7 +3262,7 @@ map('Seventh window',
     )
 map('Seventh window',
     'seventh_window cmd+7 seventh_window',
-    only="macos",
+    only='macos',
     )
 
 map('Eight window',
@@ -3270,7 +3270,7 @@ map('Eight window',
     )
 map('Eight window',
     'eighth_window cmd+8 eighth_window',
-    only="macos",
+    only='macos',
     )
 
 map('Ninth window',
@@ -3278,7 +3278,7 @@ map('Ninth window',
     )
 map('Ninth window',
     'ninth_window cmd+9 ninth_window',
-    only="macos",
+    only='macos',
     )
 
 map('Tenth window',
@@ -3298,7 +3298,7 @@ map('Next tab',
     )
 map('Next tab',
     'next_tab shift+cmd+] next_tab',
-    only="macos",
+    only='macos',
     )
 map('Next tab',
     'next_tab ctrl+tab next_tab',
@@ -3309,7 +3309,7 @@ map('Previous tab',
     )
 map('Previous tab',
     'previous_tab shift+cmd+[ previous_tab',
-    only="macos",
+    only='macos',
     )
 map('Previous tab',
     'previous_tab ctrl+shift+tab previous_tab',
@@ -3320,7 +3320,7 @@ map('New tab',
     )
 map('New tab',
     'new_tab cmd+t new_tab',
-    only="macos",
+    only='macos',
     )
 
 map('Close tab',
@@ -3328,12 +3328,12 @@ map('Close tab',
     )
 map('Close tab',
     'close_tab cmd+w close_tab',
-    only="macos",
+    only='macos',
     )
 
 map('Close OS window',
     'close_os_window shift+cmd+w close_os_window',
-    only="macos",
+    only='macos',
     )
 
 map('Move tab forward',
@@ -3349,7 +3349,7 @@ map('Set tab title',
     )
 map('Set tab title',
     'set_tab_title shift+cmd+i set_tab_title',
-    only="macos",
+    only='macos',
     )
 egr('''
 You can also create shortcuts to go to specific tabs, with 1 being the first
@@ -3410,15 +3410,15 @@ map('Increase font size',
     )
 map('Increase font size',
     'increase_font_size cmd+plus change_font_size all +2.0',
-    only="macos",
+    only='macos',
     )
 map('Increase font size',
     'increase_font_size cmd+equal change_font_size all +2.0',
-    only="macos",
+    only='macos',
     )
 map('Increase font size',
     'increase_font_size shift+cmd+equal change_font_size all +2.0',
-    only="macos",
+    only='macos',
     )
 
 map('Decrease font size',
@@ -3429,11 +3429,11 @@ map('Decrease font size',
     )
 map('Decrease font size',
     'decrease_font_size cmd+minus change_font_size all -2.0',
-    only="macos",
+    only='macos',
     )
 map('Decrease font size',
     'decrease_font_size shift+cmd+minus change_font_size all -2.0',
-    only="macos",
+    only='macos',
     )
 
 map('Reset font size',
@@ -3441,7 +3441,7 @@ map('Reset font size',
     )
 map('Reset font size',
     'reset_font_size cmd+0 change_font_size all 0',
-    only="macos",
+    only='macos',
     )
 egr('''
 To setup shortcuts for specific font sizes::
@@ -3536,7 +3536,7 @@ map('Toggle maximized',
 
 map('Toggle macOS secure keyboard entry',
     'toggle_macos_secure_keyboard_entry opt+cmd+s toggle_macos_secure_keyboard_entry',
-    only="macos",
+    only='macos',
     )
 
 map('Unicode input',
@@ -3544,7 +3544,7 @@ map('Unicode input',
     )
 map('Unicode input',
     'input_unicode_character ctrl+cmd+space kitten unicode_input',
-    only="macos",
+    only='macos',
     )
 
 map('Edit config file',
@@ -3552,7 +3552,7 @@ map('Edit config file',
     )
 map('Edit config file',
     'edit_config_file cmd+, edit_config_file',
-    only="macos",
+    only='macos',
     )
 
 map('Open the kitty command shell',
@@ -3614,7 +3614,7 @@ screen, for example, for ZSH add the following to :file:`~/.zshrc`:
 
 map('Reset the terminal',
     'reset_terminal opt+cmd+r clear_terminal reset active',
-    only="macos",
+    only='macos',
     )
 
 map('Reload kitty.conf',
