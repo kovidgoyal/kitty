@@ -355,7 +355,7 @@ def functions_for(args: HintsCLIOptions) -> Tuple[str, List[PostprocessorFunc]]:
         )
         post_processors.append(url)
     elif args.type == 'path':
-        pattern = r'(?:\S*?/[\r\S]+)|(?:\S[\r\S]*\.[a-zA-Z0-9\r]{2,7})'
+        pattern = r'(?:\S*?/[\r\S]+)|(?:\S[\r\S]*\.[a-zA-Z0-9\r]{2,7})|(?:\S[\r\S]*\.[hcm])'
         post_processors.extend((brackets, quotes))
     elif args.type == 'line':
         pattern = '(?m)^\\s*(.+)[\\s\0]*$'
@@ -412,7 +412,7 @@ def parse_input(text: str) -> str:
 def linenum_marks(text: str, args: HintsCLIOptions, Mark: Type[Mark], extra_cli_args: Sequence[str], *a: Any) -> Generator[Mark, None, None]:
     regex = args.regex
     if regex == DEFAULT_REGEX:
-        regex = r'(?P<path>(?:\S*/\S+?)|(?:\S+[.][a-zA-Z0-9]{2,7})):(?P<line>\d+)'
+        regex = r'(?P<path>(?:\S*/\S+?)|(?:\S+[.][a-zA-Z0-9]{2,7})|(?:\S+[.][hcm])):(?P<line>\d+)'
     yield from mark(regex, [brackets, quotes], text, args)
 
 
