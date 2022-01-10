@@ -40,6 +40,8 @@ def kitty_common_opts() -> KittyCommonOpts:
 
 DEFAULT_HINT_ALPHABET = string.digits + string.ascii_lowercase
 DEFAULT_REGEX = r'(?m)^\s*(.+)\s*$'
+FILE_EXTENSION = r'\.(?:[a-zA-Z0-9]{2,7}|[ahcmo])(?!\.)'
+PATH_REGEX = fr'(?:\S*?/[\r\S]+)|(?:\S[\r\S]*{FILE_EXTENSION})\b'
 
 
 class Mark:
@@ -355,7 +357,7 @@ def functions_for(args: HintsCLIOptions) -> Tuple[str, List[PostprocessorFunc]]:
         )
         post_processors.append(url)
     elif args.type == 'path':
-        pattern = r'(?:\S*?/[\r\S]+)|(?:\S[\r\S]*\.[a-zA-Z0-9\r]{2,7})'
+        pattern = PATH_REGEX
         post_processors.extend((brackets, quotes))
     elif args.type == 'line':
         pattern = '(?m)^\\s*(.+)[\\s\0]*$'
@@ -412,7 +414,7 @@ def parse_input(text: str) -> str:
 def linenum_marks(text: str, args: HintsCLIOptions, Mark: Type[Mark], extra_cli_args: Sequence[str], *a: Any) -> Generator[Mark, None, None]:
     regex = args.regex
     if regex == DEFAULT_REGEX:
-        regex = r'(?P<path>(?:\S*/\S+?)|(?:\S+[.][a-zA-Z0-9]{2,7})):(?P<line>\d+)'
+        regex = fr'(?P<path>{PATH_REGEX}):(?P<line>\d+)'
     yield from mark(regex, [brackets, quotes], text, args)
 
 

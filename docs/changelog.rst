@@ -82,6 +82,9 @@ Detailed list of changes
 - macOS: Persist "Secure Keyboard Entry" across restarts to match the behavior
   of Terminal.app (:iss:`4471`)
 
+- hints kitten: Fix common single letter extension files not being detected
+  (:iss:`4491`)
+
 
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
