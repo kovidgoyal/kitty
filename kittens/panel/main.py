@@ -85,9 +85,9 @@ def create_strut(
             '-id',
             str(int(win_id)), '-format', '_NET_WM_STRUT_PARTIAL', '32cccccccccccc',
             '-set', '_NET_WM_STRUT_PARTIAL',
-            '{left},{right},{top},{bottom},'
-            '{left_start_y},{left_end_y},{right_start_y},{right_end_y},'
-            '{top_start_x},{top_end_x},{bottom_start_x},{bottom_end_x}'.format(**locals())
+            f'{left},{right},{top},{bottom},'
+            f'{left_start_y},{left_end_y},{right_start_y},{right_end_y},'
+            f'{top_start_x},{top_end_x},{bottom_start_x},{bottom_end_x}'
     )
 
 
