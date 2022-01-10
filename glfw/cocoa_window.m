@@ -1128,7 +1128,7 @@ is_ascii_control_char(char x) {
         // keyboard unicode data is not available.
         if (process_text) {
             // this will call insertText with the text for this event, if any
-            [self interpretKeyEvents:[NSArray arrayWithObject:event]];
+            [self interpretKeyEvents:@[event]];
         }
     } else {
         static UniChar text[256];
@@ -1156,7 +1156,7 @@ is_ascii_control_char(char x) {
         marked_text_cleared_by_insert = false;
         if (process_text) {
             // this will call insertText which will fill up _glfw.ns.text
-            [self interpretKeyEvents:[NSArray arrayWithObject:event]];
+            [self interpretKeyEvents:@[event]];
         } else {
             window->ns.deadKeyState = 0;
         }
