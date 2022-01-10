@@ -111,7 +111,7 @@ def init_env(
 
     elif module == 'cocoa':
         ans.cppflags.append('-DGL_SILENCE_DEPRECATION')
-        for f_ in 'Cocoa Carbon IOKit CoreFoundation CoreVideo'.split():
+        for f_ in 'Cocoa IOKit CoreFoundation CoreVideo'.split():
             ans.ldpaths.extend(('-framework', f_))
 
     elif module == 'wayland':
