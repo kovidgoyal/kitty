@@ -685,7 +685,7 @@ PYWRAP0(get_options) {
 PYWRAP1(set_options) {
     PyObject *opts;
     int is_wayland = 0, debug_rendering = 0, debug_font_fallback = 0;
-    PA("O|pppp", &opts, &is_wayland, &debug_rendering, &debug_font_fallback);
+    PA("O|ppp", &opts, &is_wayland, &debug_rendering, &debug_font_fallback);
     if (opts == Py_None) {
         Py_CLEAR(options_object);
         Py_RETURN_NONE;
