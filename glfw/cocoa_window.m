@@ -2302,7 +2302,7 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor UNUSED)
 bool _glfwPlatformIsFullscreen(_GLFWwindow* w, unsigned int flags) {
     NSWindow *window = w->ns.object;
     bool traditional = !(flags & 1);
-    if (traditional) { if(@available(macOS 10.15, *)) return w->ns.in_traditional_fullscreen; }
+    if (traditional) { if(@available(macOS 10.15.7, *)) return w->ns.in_traditional_fullscreen; }
     NSWindowStyleMask sm = [window styleMask];
     return sm & NSWindowStyleMaskFullScreen;
 }
@@ -2313,9 +2313,9 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
     bool traditional = !(flags & 1);
     NSWindowStyleMask sm = [window styleMask];
     if (traditional) {
-        if (@available(macOS 10.15, *)) {
+        if (@available(macOS 10.15.7, *)) {
             // As of Big Turd NSWindowStyleMaskFullScreen is no longer useable
-            // Also no longer compatible after a minor release of macOS 10.15
+            // Also no longer compatible after a minor release of macOS 10.15.7
             if (!w->ns.in_traditional_fullscreen) {
                 w->ns.pre_full_screen_style_mask = sm;
                 [window setStyleMask: NSWindowStyleMaskBorderless];
