@@ -123,8 +123,12 @@ class Vertical(Layout):
         assert wg is not None
         groups = tuple(all_windows.iter_all_layoutable_groups())
         idx = groups.index(wg)
-        before = [] if wg is groups[0] else [groups[idx-1].id]
-        after = [] if wg is groups[-1] else [groups[idx+1].id]
+        lg = len(groups)
+        if lg > 1:
+            before = [groups[(idx - 1 + lg) % lg].id]
+            after = [groups[(idx + 1) % lg].id]
+        else:
+            before, after = [], []
         if self.main_is_horizontal:
             return {'left': before, 'right': after, 'top': [], 'bottom': []}
         return {'top': before, 'bottom': after, 'left': [], 'right': []}

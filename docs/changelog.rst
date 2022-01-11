@@ -85,6 +85,10 @@ Detailed list of changes
 - hints kitten: Fix common single letter extension files not being detected
   (:iss:`4491`)
 
+- For the vertical and horizontal layouts have the windows arranged on a ring
+  rather than a plane. This means the first and last window are considered
+  neighbors (:iss:`4494`)
+
 
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
