@@ -89,6 +89,8 @@ Detailed list of changes
   rather than a plane. This means the first and last window are considered
   neighbors (:iss:`4494`)
 
+- macOS: Fix hiding via :kbd:`cmd+h` not working on macOS 10.15.7 (:iss:`4472`)
+
 
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
