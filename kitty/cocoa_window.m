@@ -374,6 +374,7 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     - (void)userNotificationCenter:(UNUserNotificationCenter *)center
             willPresentNotification:(UNNotification *)notification
             withCompletionHandler:(void (^)(UNNotificationPresentationOptions))completionHandler {
+        (void)(center); (void)notification;
         UNNotificationPresentationOptions options = UNNotificationPresentationOptionSound;
         if (@available(macOS 11.0, *)) options |= UNNotificationPresentationOptionList | UNNotificationPresentationOptionBanner;
         else options |= (1 << 2); // UNNotificationPresentationOptionAlert avoid deprecated warning
