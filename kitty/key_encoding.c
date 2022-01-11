@@ -233,11 +233,11 @@ encode_function_key(const KeyEvent *ev, char *output) {
         case GLFW_FKEY_F10: S(21, '~');
         case GLFW_FKEY_F11: S(23, '~');
         case GLFW_FKEY_F12: S(24, '~');
+/* end special numbers */
         case GLFW_FKEY_MENU:
             // use the same encoding as xterm for this key in legacy mode (F16)
             if (legacy_mode) { S(29, '~'); }
             break;
-/* end special numbers */
         default: break;
     }
 #undef S
