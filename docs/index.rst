@@ -61,7 +61,7 @@ kitty
 
     .. raw:: html
 
-        <video controls width="640" height="360">
+        <video controls width="640" height="360" poster="_static/poster.png">
             <source src="https://download.calibre-ebook.com/videos/kitty.mp4" type="video/mp4">
             <source src="https://download.calibre-ebook.com/videos/kitty.webm" type="video/webm">
         </video>
