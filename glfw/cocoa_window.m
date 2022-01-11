@@ -2314,6 +2314,7 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
     NSWindowStyleMask sm = [window styleMask];
     if (traditional) {
         if (@available(macOS 10.15, *)) {
+            // As of Big Turd NSWindowStyleMaskFullScreen is no longer useable
             // Also no longer compatible after a minor release of macOS 10.15
             if (!w->ns.in_traditional_fullscreen) {
                 w->ns.pre_full_screen_style_mask = sm;
