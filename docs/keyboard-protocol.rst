@@ -441,6 +441,7 @@ mode* (the ``smkx/rmkx`` terminfo capabilities). This form is used only in
     "F10",       "kf10",       "CSI 21 ~"
     "F11",       "kf11",       "CSI 23 ~"
     "F12",       "kf12",       "CSI 24 ~"
+    "MENU",      "kf16",       "CSI 29 ~"
 
 There are a few more functional keys that have special cased legacy encodings.
 These are present because they are commonly used and for the sake of legacy
