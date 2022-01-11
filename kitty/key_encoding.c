@@ -233,6 +233,9 @@ encode_function_key(const KeyEvent *ev, char *output) {
         case GLFW_FKEY_F10: S(21, '~');
         case GLFW_FKEY_F11: S(23, '~');
         case GLFW_FKEY_F12: S(24, '~');
+        case GLFW_FKEY_MENU:
+            if (legacy_mode) { S(29, '~'); }
+            break;
 /* end special numbers */
         default: break;
     }
