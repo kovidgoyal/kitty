@@ -7,7 +7,7 @@
 #
 
 import math
-from functools import partial as p, wraps
+from functools import partial as p, wraps, lru_cache
 from itertools import repeat
 from typing import (
     Any, Callable, Dict, Iterable, Iterator, List, MutableSequence, Optional,
@@ -754,7 +754,8 @@ def eight_block(buf: BufType, width: int, height: int, level: int = 1, which: Tu
         eight_bar(buf, width, height, level, x, horizontal)
 
 
-def distribute_dots(available_space: int, num_of_dots: int, i: int) -> Tuple[int, int]:
+@lru_cache(maxsize=32)
+def distribute_dots(available_space: int, num_of_dots: int) -> Tuple[Tuple[int, ...], int]:
     dot_size = max(1, available_space // (2 * num_of_dots))
     extra = available_space - 2 * num_of_dots * dot_size
     gaps = list(repeat(dot_size, num_of_dots))
@@ -765,14 +766,15 @@ def distribute_dots(available_space: int, num_of_dots: int, i: int) -> Tuple[int
             idx = (idx + 1) % len(gaps)
             extra -= 1
     gaps[0] //= 2
-    margin = sum(gaps[:i + 1])
-    start = margin + (i * dot_size)
-    return start, dot_size
+    summed_gaps = tuple(sum(gaps[:i + 1]) for i in range(len(gaps)))
+    return summed_gaps, dot_size
 
 
 def braille_dot(buf: BufType, width: int, height: int, col: int, row: int) -> None:
-    x_start, dot_width = distribute_dots(width, 2, col)
-    y_start, dot_height = distribute_dots(height, 4, row)
+    x_gaps, dot_width = distribute_dots(width, 2)
+    y_gaps, dot_height = distribute_dots(height, 4)
+    x_start = x_gaps[col] + col * dot_width
+    y_start = y_gaps[row] + row * dot_height
     if y_start < height and x_start < width:
         for y in range(y_start, min(height, y_start + dot_height)):
             offset = y * width
