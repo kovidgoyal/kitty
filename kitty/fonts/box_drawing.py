@@ -761,12 +761,11 @@ def braille_dot(buf: BufType, width: int, height: int, col: int, row: int) -> No
     left_margin = (width - 3 * dot_width) // 2
     x_start = left_margin + (col * 2 * dot_width)
     y_start = top_margin + (row * 2 * dot_height)
-    if y_start < height:
+    if y_start < height and x_start < width:
         for y in range(y_start, min(height, y_start + dot_height)):
-            if x_start < width:
-                offset = y * width
-                for x in range(x_start, min(width, x_start + dot_width)):
-                    buf[offset + x] = 255
+            offset = y * width
+            for x in range(x_start, min(width, x_start + dot_width)):
+                buf[offset + x] = 255
 
 
 def braille(buf: BufType, width: int, height: int, which: int = 0) -> None:
