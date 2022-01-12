@@ -91,6 +91,8 @@ Detailed list of changes
 
 - macOS: Fix hiding via :kbd:`cmd+h` not working on macOS 10.15.7 (:iss:`4472`)
 
+- Draw the dots for braille characters more evenly spaced at all font sizes (:iss:`4499`)
+
 
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

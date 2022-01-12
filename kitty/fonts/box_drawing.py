@@ -754,13 +754,25 @@ def eight_block(buf: BufType, width: int, height: int, level: int = 1, which: Tu
         eight_bar(buf, width, height, level, x, horizontal)
 
 
+def distribute_dots(available_space: int, num_of_dots: int, i: int) -> Tuple[int, int]:
+    dot_size = max(1, available_space // (2 * num_of_dots))
+    extra = available_space - 2 * num_of_dots * dot_size
+    gaps = list(repeat(dot_size, num_of_dots))
+    if extra > 0:
+        idx = 0
+        while extra > 0:
+            gaps[idx] += 1
+            idx = (idx + 1) % len(gaps)
+            extra -= 1
+    gaps[0] //= 2
+    margin = sum(gaps[:i + 1])
+    start = margin + (i * dot_size)
+    return start, dot_size
+
+
 def braille_dot(buf: BufType, width: int, height: int, col: int, row: int) -> None:
-    dot_height = max(1, height // 8)
-    dot_width = max(1, width // 4)
-    top_margin = (height - 7 * dot_height) // 2
-    left_margin = (width - 3 * dot_width) // 2
-    x_start = left_margin + (col * 2 * dot_width)
-    y_start = top_margin + (row * 2 * dot_height)
+    x_start, dot_width = distribute_dots(width, 2, col)
+    y_start, dot_height = distribute_dots(height, 4, row)
     if y_start < height and x_start < width:
         for y in range(y_start, min(height, y_start + dot_height)):
             offset = y * width
