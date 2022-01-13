@@ -520,10 +520,10 @@ build_global_shortcuts_lookup(void) {
     NSMutableDictionary *temp = [NSMutableDictionary dictionaryWithCapacity:128];  // will be autoreleased
     NSDictionary *apple_settings = [[NSUserDefaults standardUserDefaults] persistentDomainForName:@"com.apple.symbolichotkeys"];
     if (apple_settings) {
-        NSDictionary *symbolic_hotkeys = [apple_settings objectForKey:@"AppleSymbolicHotKeys"];
+        NSDictionary<NSString*, id> *symbolic_hotkeys = [apple_settings objectForKey:@"AppleSymbolicHotKeys"];
         if (symbolic_hotkeys) {
-            [symbolic_hotkeys enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
-                (void)stop;
+            for (NSString *key in symbolic_hotkeys) {
+                id obj = symbolic_hotkeys[key];
                 if ([key isKindOfClass:[NSString class]] && [obj isKindOfClass:[NSDictionary class]]) {
                     NSInteger sc = [(NSString*)key integerValue];
                     NSDictionary *sc_value = obj;
@@ -545,7 +545,7 @@ build_global_shortcuts_lookup(void) {
                     } else snprintf(buf, sizeof(buf) - 1, "c:%lx:%ld", (unsigned long)mods, (long)ch);
                     temp[@(buf)] = @(sc);
                 }
-            }];
+            };
         }
     }
     global_shortcuts = [[NSDictionary dictionaryWithDictionary:temp] retain];
