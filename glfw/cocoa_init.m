@@ -704,7 +704,7 @@ int _glfwPlatformInit(void)
             return nil;
         }
         NSWindow *kw = [NSApp keyWindow];
-        if (kw && kw.contentView) [kw.contentView keyDown:event];
+        if (kw && kw.contentView) [kw.contentView keyUp:event];
         return nil;
     };
 
