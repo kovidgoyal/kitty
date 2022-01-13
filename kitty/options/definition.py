@@ -1058,6 +1058,10 @@ surround the text with quotes.
 '''
     )
 
+opt('activity_symbol_color', '#f00',
+    option_type='to_color',
+    )
+
 opt('tab_title_template', '"{title}"',
     option_type='tab_title_template',
     long_text='''

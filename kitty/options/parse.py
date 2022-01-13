@@ -41,6 +41,9 @@ class Parser:
     def active_tab_title_template(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['active_tab_title_template'] = active_tab_title_template(val)
 
+    def activity_symbol_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['activity_symbol_color'] = to_color_or_none(val)
+
     def adjust_baseline(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['adjust_baseline'] = adjust_baseline(val)
 

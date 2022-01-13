@@ -435,7 +435,7 @@ class TabBar:
 
         self.active_bg = as_rgb(color_as_int(opts.active_tab_background))
         self.active_fg = as_rgb(color_as_int(opts.active_tab_foreground))
-        self.bell_fg = as_rgb(0xff0000)
+        self.bell_fg = as_rgb(color_as_int(opts.activity_symbol_color))
         self.draw_data = DrawData(
             self.leading_spaces, self.sep, self.trailing_spaces, opts.bell_on_tab, self.bell_fg,
             opts.tab_fade, opts.active_tab_foreground, opts.active_tab_background,

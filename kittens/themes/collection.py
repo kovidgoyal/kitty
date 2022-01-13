@@ -41,6 +41,7 @@ def patch_conf(raw: str, theme_name: str) -> str:
         'active_border_color',
         'active_tab_background',
         'active_tab_foreground',
+        'activity_symbol_color',
         'background',
         'bell_border_color',
         'color0',
