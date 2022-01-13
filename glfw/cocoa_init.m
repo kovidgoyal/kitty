@@ -525,7 +525,7 @@ build_global_shortcuts_lookup(void) {
             for (NSString *key in symbolic_hotkeys) {
                 id obj = symbolic_hotkeys[key];
                 if (![key isKindOfClass:[NSString class]] || ![obj isKindOfClass:[NSDictionary class]]) continue;
-                NSInteger sc = [(NSString*)key integerValue];
+                NSInteger sc = [key integerValue];
                 NSDictionary *sc_value = obj;
                 id enabled = [sc_value objectForKey:@"enabled"];
                 if (!enabled || ![enabled isKindOfClass:[NSNumber class]] || ![(NSNumber*)enabled boolValue]) continue;
