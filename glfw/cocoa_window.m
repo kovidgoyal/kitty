@@ -727,6 +727,20 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
 @end // }}}
 
+// Text input context class for the GLFW content view {{{
+
+@interface GLFWTextInputContext : NSTextInputContext
+@end
+
+@implementation GLFWTextInputContext
+- (void)doCommandBySelector:(SEL)selector
+{
+    // interpretKeyEvents: May call insertText: or doCommandBySelector:.
+    // With the default macOS keybindings, pressing certain key combinations 
+    // (e.g. Ctrl+/, Ctrl+Cmd+Down/Left/Right) will produce a beep sound.
+    debug_key("\n\tTextInputCtx: doCommandBySelector: (%s)\n", [NSStringFromSelector(selector) UTF8String]);
+}
+@end // }}}
 
 // Content view class for the GLFW window {{{
 
@@ -734,6 +748,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 {
     _GLFWwindow* window;
     NSTrackingArea* trackingArea;
+    GLFWTextInputContext* input_context;
     NSMutableAttributedString* markedText;
     NSRect markedRect;
     bool marked_text_cleared_by_insert;
@@ -754,6 +769,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     {
         window = initWindow;
         trackingArea = nil;
+        input_context = [[GLFWTextInputContext alloc] initWithClient:self];
         markedText = [[NSMutableAttributedString alloc] init];
         markedRect = NSMakeRect(0.0, 0.0, 0.0, 0.0);
         input_source_at_last_key_event = nil;
@@ -1007,6 +1023,11 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
     [self addTrackingArea:trackingArea];
     [super updateTrackingAreas];
+}
+
+- (NSTextInputContext *)inputContext
+{
+    return input_context;
 }
 
 static UInt32
