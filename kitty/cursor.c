@@ -90,7 +90,7 @@ START_ALLOW_CASE_RANGE
             case 3:
                 self->italic = true;  break;
             case 4:
-                if (i < count) { self->decoration = MIN(3, params[i]); i++; }
+                if (i < count) { self->decoration = MIN(5, params[i]); i++; }
                 else self->decoration = 1;
                 break;
             case 7:
@@ -161,7 +161,7 @@ apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, un
                 S(italic, true);
             case 4: {
                 uint8_t val = 1;
-                if (i < count) { val = MIN(3, params[i]); i++; }
+                if (i < count) { val = MIN(5, params[i]); i++; }
                 S(decoration, val);
             }
             case 7:
