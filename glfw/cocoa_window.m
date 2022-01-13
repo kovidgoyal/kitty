@@ -574,32 +574,6 @@ get_window_size_without_border_in_logical_pixels(_GLFWwindow *window) {
     return [window->ns.object contentRectForFrameRect:[window->ns.object frame]];
 }
 
-// Translate a GLFW keycode to a Cocoa modifier flag
-//
-static NSUInteger
-translateKeyToModifierFlag(uint32_t key)
-{
-    switch (key)
-    {
-        case GLFW_FKEY_LEFT_SHIFT:
-        case GLFW_FKEY_RIGHT_SHIFT:
-            return NSEventModifierFlagShift;
-        case GLFW_FKEY_LEFT_CONTROL:
-        case GLFW_FKEY_RIGHT_CONTROL:
-            return NSEventModifierFlagControl;
-        case GLFW_FKEY_LEFT_ALT:
-        case GLFW_FKEY_RIGHT_ALT:
-            return NSEventModifierFlagOption;
-        case GLFW_FKEY_LEFT_SUPER:
-        case GLFW_FKEY_RIGHT_SUPER:
-            return NSEventModifierFlagCommand;
-        case GLFW_FKEY_CAPS_LOCK:
-            return NSEventModifierFlagCapsLock;
-    }
-
-    return 0;
-}
-
 // Defines a constant for empty ranges in NSTextInputClient
 //
 static const NSRange kEmptyRange = { NSNotFound, 0 };
@@ -1207,26 +1181,26 @@ is_ascii_control_char(char x) {
     int action = GLFW_RELEASE;
     const unsigned int modifierFlags =
         [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
-    const uint32_t key = translateKey([event keyCode], false);
-    const int mods = translateFlags(modifierFlags);
-    const NSUInteger keyFlag = translateKeyToModifierFlag(key);
-
-    if (keyFlag & modifierFlags)
-    {
-        int current_action = GLFW_RELEASE;
-        for (unsigned i = 0; i < arraysz(window->activated_keys); i++) {
-            if (window->activated_keys[i].key == key) {
-                current_action = window->activated_keys[i].action;
-                break;
-            }
-        }
-        if (current_action == GLFW_PRESS)
-            action = GLFW_RELEASE;
-        else
-            action = GLFW_PRESS;
+    const uint32_t key = vk_code_to_functional_key_code([event keyCode]);
+    switch(key) {
+        case GLFW_FKEY_CAPS_LOCK:
+            action = modifierFlags & NSEventModifierFlagCapsLock ? GLFW_PRESS : GLFW_RELEASE; break;
+        case GLFW_FKEY_LEFT_SUPER:
+        case GLFW_FKEY_RIGHT_SUPER:
+            action = modifierFlags & NSEventModifierFlagCommand ? GLFW_PRESS : GLFW_RELEASE; break;
+        case GLFW_FKEY_LEFT_CONTROL:
+        case GLFW_FKEY_RIGHT_CONTROL:
+            action = modifierFlags & NSEventModifierFlagControl ? GLFW_PRESS : GLFW_RELEASE; break;
+        case GLFW_FKEY_LEFT_ALT:
+        case GLFW_FKEY_RIGHT_ALT:
+            action = modifierFlags & NSEventModifierFlagOption ? GLFW_PRESS : GLFW_RELEASE; break;
+        case GLFW_FKEY_LEFT_SHIFT:
+        case GLFW_FKEY_RIGHT_SHIFT:
+            action = modifierFlags & NSEventModifierFlagShift ? GLFW_PRESS : GLFW_RELEASE; break;
+        default:
+            return;
     }
-
-    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = [event keyCode], .native_key_id = [event keyCode], .action = action, .mods = mods};
+    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = [event keyCode], .native_key_id = [event keyCode], .action = action, .mods = translateFlags(modifierFlags)};
     _glfwInputKeyboard(window, &glfw_keyevent);
 }
 
