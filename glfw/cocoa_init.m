@@ -524,28 +524,27 @@ build_global_shortcuts_lookup(void) {
         if (symbolic_hotkeys) {
             for (NSString *key in symbolic_hotkeys) {
                 id obj = symbolic_hotkeys[key];
-                if ([key isKindOfClass:[NSString class]] && [obj isKindOfClass:[NSDictionary class]]) {
-                    NSInteger sc = [(NSString*)key integerValue];
-                    NSDictionary *sc_value = obj;
-                    id enabled = [sc_value objectForKey:@"enabled"];
-                    if (!enabled || ![enabled isKindOfClass:[NSNumber class]] || ![(NSNumber*)enabled boolValue]) return;
-                    id v = [sc_value objectForKey:@"value"];
-                    if (!v || ![v isKindOfClass:[NSDictionary class]]) return;
-                    NSDictionary *value = v;
-                    id p = [value objectForKey:@"parameters"];
-                    if (!p || ![p isKindOfClass:[NSArray class]]) return;
-                    NSArray<NSNumber*> *parameters = p;
-                    NSInteger ch = [parameters[0] integerValue];
-                    NSInteger vk = [parameters[1] integerValue];
-                    NSEventModifierFlags mods = [parameters[2] unsignedIntegerValue];
-                    static char buf[64];
-                    if (ch == 0xffff) {
-                        if (vk == 0xffff) return;
-                        snprintf(buf, sizeof(buf) - 1, "v:%lx:%ld", (unsigned long)mods, (long)vk);
-                    } else snprintf(buf, sizeof(buf) - 1, "c:%lx:%ld", (unsigned long)mods, (long)ch);
-                    temp[@(buf)] = @(sc);
-                }
-            };
+                if (![key isKindOfClass:[NSString class]] || ![obj isKindOfClass:[NSDictionary class]]) continue;
+                NSInteger sc = [(NSString*)key integerValue];
+                NSDictionary *sc_value = obj;
+                id enabled = [sc_value objectForKey:@"enabled"];
+                if (!enabled || ![enabled isKindOfClass:[NSNumber class]] || ![(NSNumber*)enabled boolValue]) continue;
+                id v = [sc_value objectForKey:@"value"];
+                if (!v || ![v isKindOfClass:[NSDictionary class]]) continue;
+                NSDictionary *value = v;
+                id p = [value objectForKey:@"parameters"];
+                if (!p || ![p isKindOfClass:[NSArray class]]) continue;
+                NSArray<NSNumber*> *parameters = p;
+                NSInteger ch = [parameters[0] integerValue];
+                NSInteger vk = [parameters[1] integerValue];
+                NSEventModifierFlags mods = [parameters[2] unsignedIntegerValue];
+                static char buf[64];
+                if (ch == 0xffff) {
+                    if (vk == 0xffff) continue;
+                    snprintf(buf, sizeof(buf) - 1, "v:%lx:%ld", (unsigned long)mods, (long)vk);
+                } else snprintf(buf, sizeof(buf) - 1, "c:%lx:%ld", (unsigned long)mods, (long)ch);
+                temp[@(buf)] = @(sc);
+            }
         }
     }
     global_shortcuts = [[NSDictionary dictionaryWithDictionary:temp] retain];
