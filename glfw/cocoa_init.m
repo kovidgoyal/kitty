@@ -670,6 +670,7 @@ int _glfwPlatformInit(void)
 
     NSEvent* (^keydown_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
     {
+        debug_key("---------------- key down -------------------\n");
         debug_key("%s\n", [[event description] UTF8String]);
         // first check if there is global menu bar shortcut
         if ([[NSApp mainMenu] performKeyEquivalent:event]) {
@@ -694,6 +695,7 @@ int _glfwPlatformInit(void)
 
     NSEvent* (^keyup_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
     {
+        debug_key("----------------- key up --------------------\n");
         debug_key("%s\n", [[event description] UTF8String]);
         if (last_keydown_shortcut_event.virtual_key_code != 0xffff && last_keydown_shortcut_event.virtual_key_code == [event keyCode]) {
             // ignore as the corresponding key down event triggered a menu bar or macOS shortcut
