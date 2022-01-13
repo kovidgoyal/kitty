@@ -680,15 +680,16 @@ int _glfwPlatformInit(void)
         }
         // now check if there is a useful apple shortcut
         int global_shortcut = is_active_apple_global_shortcut(event);
-        if (!is_useful_apple_global_shortcut(global_shortcut)) {
-            [[NSApp keyWindow].contentView keyDown:event];
-            last_keydown_shortcut_event.virtual_key_code = 0xffff;
-            return nil;
+        if (is_useful_apple_global_shortcut(global_shortcut)) {
+            debug_key("keyDown triggerred global macOS shortcut ignoring\n");
+            last_keydown_shortcut_event.virtual_key_code = [event keyCode];
+            last_keydown_shortcut_event.timestamp = [event timestamp];
+            return event;
         }
-        debug_key("keyDown triggerred global macOS shortcut ignoring\n");
-        last_keydown_shortcut_event.virtual_key_code = [event keyCode];
-        last_keydown_shortcut_event.timestamp = [event timestamp];
-        return event;
+        last_keydown_shortcut_event.virtual_key_code = 0xffff;
+        NSWindow *kw = [NSApp keyWindow];
+        if (kw && kw.contentView) [kw.contentView keyDown:event];
+        return nil;
     };
 
     NSEvent* (^keyup_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
@@ -700,7 +701,8 @@ int _glfwPlatformInit(void)
             debug_key("keyUp ignored as corresponds to previous keyDown that trigerred a shortcut\n");
             return nil;
         }
-        [[NSApp keyWindow].contentView keyUp:event];
+        NSWindow *kw = [NSApp keyWindow];
+        if (kw && kw.contentView) [kw.contentView keyDown:event];
         return nil;
     };
 
