@@ -96,6 +96,9 @@ Detailed list of changes
 - macOS: Respect the users system-wide global keyboard shortcut preferences
   (:iss:`4501`)
 
+- macOS: Fix a few key-presses causing beeps from cocoa text input system
+  (:iss:`4489`)
+
 
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
