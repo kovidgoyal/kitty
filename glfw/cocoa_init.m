@@ -513,11 +513,11 @@ typedef enum AppleShortcutNames {
     kSHKTurnFocusFollowingOnOrOff               = 179,  //
 } AppleShortcutNames;
 
-static NSDictionary *global_shortcuts = nil;
+static NSDictionary<NSString*,NSNumber*> *global_shortcuts = nil;
 
 static void
 build_global_shortcuts_lookup(void) {
-    NSMutableDictionary *temp = [NSMutableDictionary dictionaryWithCapacity:128];  // will be autoreleased
+    NSMutableDictionary<NSString*, NSNumber*> *temp = [NSMutableDictionary dictionaryWithCapacity:128];  // will be autoreleased
     NSDictionary *apple_settings = [[NSUserDefaults standardUserDefaults] persistentDomainForName:@"com.apple.symbolichotkeys"];
     if (apple_settings) {
         NSDictionary<NSString*, id> *symbolic_hotkeys = [apple_settings objectForKey:@"AppleSymbolicHotKeys"];
