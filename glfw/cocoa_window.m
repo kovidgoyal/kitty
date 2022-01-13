@@ -513,8 +513,6 @@ translateFlags(NSUInteger flags)
     return mods;
 }
 
-#define debug_key(...) if (_glfw.hints.init.debugKeyboard) { fprintf(stderr, __VA_ARGS__); fflush(stderr); }
-
 static const char*
 format_mods(int mods) {
     static char buf[128];

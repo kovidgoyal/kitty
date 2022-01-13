@@ -93,6 +93,9 @@ Detailed list of changes
 
 - Draw the dots for braille characters more evenly spaced at all font sizes (:iss:`4499`)
 
+- macOS: Respect the users system-wide global keyboard shortcut preferences
+  (:iss:`4501`)
+
 
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
