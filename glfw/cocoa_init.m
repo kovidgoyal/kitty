@@ -533,11 +533,11 @@ build_global_shortcuts_lookup(void) {
                 if (!v || ![v isKindOfClass:[NSDictionary class]]) continue;
                 NSDictionary *value = v;
                 id p = [value objectForKey:@"parameters"];
-                if (!p || ![p isKindOfClass:[NSArray class]]) continue;
+                if (!p || ![p isKindOfClass:[NSArray class]] || [(NSArray*)p count] < 2) continue;
                 NSArray<NSNumber*> *parameters = p;
-                NSInteger ch = [parameters[0] integerValue];
-                NSInteger vk = [parameters[1] integerValue];
-                NSEventModifierFlags mods = [parameters[2] unsignedIntegerValue];
+                NSInteger ch = [parameters[0] isKindOfClass:[NSNumber class]] ? [parameters[0] integerValue] : 0xffff;
+                NSInteger vk = [parameters[1] isKindOfClass:[NSNumber class]] ? [parameters[0] integerValue] : 0xffff;
+                NSEventModifierFlags mods = ([parameters count] > 2 && [parameters[2] isKindOfClass:[NSNumber class]]) ? [parameters[2] unsignedIntegerValue] : 0;
                 static char buf[64];
                 if (ch == 0xffff) {
                     if (vk == 0xffff) continue;
