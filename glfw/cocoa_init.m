@@ -690,6 +690,7 @@ int _glfwPlatformInit(void)
         last_keydown_shortcut_event.virtual_key_code = 0xffff;
         NSWindow *kw = [NSApp keyWindow];
         if (kw && kw.contentView) [kw.contentView keyDown:event];
+        else debug_key("keyUp ignored as no keyWindow present");
         return nil;
     };
 
@@ -705,6 +706,7 @@ int _glfwPlatformInit(void)
         }
         NSWindow *kw = [NSApp keyWindow];
         if (kw && kw.contentView) [kw.contentView keyUp:event];
+        else debug_key("keyUp ignored as no keyWindow present");
         return nil;
     };
 
