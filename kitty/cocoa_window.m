@@ -861,10 +861,17 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+static void
+uncaughtExceptionHandler(NSException *exception) {
+    log_error("Unhandled exception in Cocoa: %s", [[exception description] UTF8String]);
+    log_error("Stack trace:\n%s", [[exception.callStackSymbols description] UTF8String]);
+}
+
 bool
 init_cocoa(PyObject *module) {
     memset(&global_shortcuts, 0, sizeof(global_shortcuts));
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     register_at_exit_cleanup_func(COCOA_CLEANUP_FUNC, cleanup);
+    NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
     return true;
 }
