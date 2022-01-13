@@ -536,7 +536,7 @@ build_global_shortcuts_lookup(void) {
                 if (!p || ![p isKindOfClass:[NSArray class]] || [(NSArray*)p count] < 2) continue;
                 NSArray<NSNumber*> *parameters = p;
                 NSInteger ch = [parameters[0] isKindOfClass:[NSNumber class]] ? [parameters[0] integerValue] : 0xffff;
-                NSInteger vk = [parameters[1] isKindOfClass:[NSNumber class]] ? [parameters[0] integerValue] : 0xffff;
+                NSInteger vk = [parameters[1] isKindOfClass:[NSNumber class]] ? [parameters[1] integerValue] : 0xffff;
                 NSEventModifierFlags mods = ([parameters count] > 2 && [parameters[2] isKindOfClass:[NSNumber class]]) ? [parameters[2] unsignedIntegerValue] : 0;
                 static char buf[64];
                 if (ch == 0xffff) {
@@ -548,6 +548,7 @@ build_global_shortcuts_lookup(void) {
         }
     }
     global_shortcuts = [[NSDictionary dictionaryWithDictionary:temp] retain];
+    /* NSLog(@"global_shortcuts: %@", global_shortcuts); */
 }
 
 static int
@@ -555,7 +556,6 @@ is_active_apple_global_shortcut(NSEvent *event) {
     // TODO: watch for settings change and rebuild global_shortcuts using key/value observing on NSUserDefaults
     if (global_shortcuts == nil) build_global_shortcuts_lookup();
     NSEventModifierFlags modifierFlags = [event modifierFlags] & (NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagControl);
-    /* NSLog(@"global_shortcuts: %@", global_shortcuts); */
     static char lookup_key[64];
     if ([event.charactersIgnoringModifiers length] == 1) {
         const unichar ch = [event.charactersIgnoringModifiers characterAtIndex:0];
