@@ -264,6 +264,8 @@ display_reconfigured(CGDirectDisplayID display UNUSED, CGDisplayChangeSummaryFla
     }
 }
 
+static NSDictionary<NSString*,NSNumber*> *global_shortcuts = nil;
+
 @interface GLFWHelper : NSObject
 @end
 
@@ -278,6 +280,16 @@ display_reconfigured(CGDirectDisplayID display UNUSED, CGDisplayChangeSummaryFla
 - (void)doNothing:(id)object
 {
     (void)object;
+}
+
+// watch for settings change and rebuild global_shortcuts using key/value observing on NSUserDefaults
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
+{
+    (void)keyPath; (void)object; (void)change; (void)context;
+    if (global_shortcuts != nil) {
+        [global_shortcuts release];
+        global_shortcuts = nil;
+    }
 }
 
 @end // GLFWHelper
@@ -464,56 +476,83 @@ void* _glfwLoadLocalVulkanLoaderNS(void)
  * 6. restore defaults in System Preferences > Keyboard > Shortcuts
  */
 typedef enum AppleShortcutNames {
-    kSHKUnknown                                 = 0,    //
+    // launchpad & dock
+    kSHKTurnDockHidingOnOrOff                   = 52,   // Opt, Cmd, D
+    kSHKShowLaunchpad                           = 160,  //
+
+    // display
+    kSHKDecreaseDisplayBrightness1              = 53,   // F14 (Fn)
+    kSHKDecreaseDisplayBrightness2              = 55,   // F14 (Fn, Ctrl)
+    kSHKIncreaseDisplayBrightness1              = 54,   // F15 (Fn)
+    kSHKIncreaseDisplayBrightness2              = 56,   // F15 (Fn, Ctrl)
+
+    // mission control
+    kSHKMissionControl                          = 32,   // Ctrl, Arrow Up
+    kSHKShowNotificationCenter                  = 163,  //
+    kSHKTurnDoNotDisturbOnOrOff                 = 175,  //
+    kSHKApplicationWindows                      = 33,   // Ctrl, Arrow Down
+    kSHKShowDesktop                             = 36,   // F11
+    kSHKMoveLeftASpace                          = 79,   // Ctrl, Arrow Left
+    kSHKMoveRightASpace                         = 81,   // Ctrl, Arrow Right
+    kSHKSwitchToDesktop1                        = 118,  // Ctrl, 1
+    kSHKSwitchToDesktop2                        = 119,  // Ctrl, 2
+    kSHKSwitchToDesktop3                        = 120,  // Ctrl, 3
+    kSHKSwitchToDesktop4                        = 121,  // Ctrl, 4
+    kSHKQuickNote                               = 190,  // Fn, Q
+
+    // keyboard
+    kSHKChangeTheWayTabMovesFocus               = 13,   // Ctrl, F7
+    kSHKTurnKeyboardAccessOnOrOff               = 12,   // Ctrl, F1
     kSHKMoveFocusToTheMenuBar                   = 7,    // Ctrl, F2
     kSHKMoveFocusToTheDock                      = 8,    // Ctrl, F3
     kSHKMoveFocusToActiveOrNextWindow           = 9,    // Ctrl, F4
     kSHKMoveFocusToTheWindowToolbar             = 10,   // Ctrl, F5
     kSHKMoveFocusToTheFloatingWindow            = 11,   // Ctrl, F6
-    kSHKTurnKeyboardAccessOnOrOff               = 12,   // Ctrl, F1
-    kSHKChangeTheWayTabMovesFocus               = 13,   // Ctrl, F7
-    kSHKTurnZoomOnOrOff                         = 15,   // Opt, Cmd, 8
-    kSHKZoomIn                                  = 17,   // Opt, Cmd, =
-    kSHKZoomOut                                 = 19,   // Opt, Cmd, -
-    kSHKInvertColors                            = 21,   // Ctrl, Opt, Cmd, 8
-    kSHKTurnImageSmoothingOnOrOff               = 23,   // Opt, Cmd, Backslash "\"
-    kSHKIncreaseContrast                        = 25,   // Ctrl, Opt, Cmd, .
-    kSHKDecreaseContrast                        = 26,   // Ctrl, Opt, Cmd, ,
     kSHKMoveFocusToNextWindow                   = 27,   // Cmd, `
+    kSHKMoveFocusToStatusMenus                  = 57,   // Ctrl, F8
+
+    // input sources
+    kSHKSelectThePreviousInputSource            = 60,   // Ctrl, Space bar
+    kSHKSelectNextSourceInInputMenu             = 61,   // Ctrl, Opt, Space bar
+
+    // screenshots
     kSHKSavePictureOfScreenAsAFile              = 28,   // Shift, Cmd, 3
     kSHKCopyPictureOfScreenToTheClipboard       = 29,   // Ctrl, Shift, Cmd, 3
     kSHKSavePictureOfSelectedAreaAsAFile        = 30,   // Shift, Cmd, 4
     kSHKCopyPictureOfSelectedAreaToTheClipboard = 31,   // Ctrl, Shift, Cmd, 4
-    kSHKMissionControl                          = 32,   // Ctrl, Arrow Up
-    kSHKApplicationWindows                      = 33,   // Ctrl, Arrow Down
-    kSHKShowDesktop                             = 36,   // F11
-    kSHKMoveFocusToTheWindowDrawer              = 51,   // Opt, Cmd, `
-    kSHKTurnDockHidingOnOrOff                   = 52,   // Opt, Cmd, D
-    kSHKMoveFocusToStatusMenus                  = 57,   // Ctrl, F8
-    kSHKTurnVoiceOverOnOrOff                    = 59,   // Cmd, F5
-    kSHKSelectThePreviousInputSource            = 60,   // Ctrl, Space bar
-    kSHKSelectNextSourceInInputMenu             = 61,   // Ctrl, Opt, Space bar
-    kSHKShowDashboard                           = 62,   // F12
+    kSHKScreenshotAndRecordingOptions           = 184,  // Shift, Cmd, 5
+
+    // spotlight
     kSHKShowSpotlightSearch                     = 64,   // Cmd, Space bar
     kSHKShowFinderSearchWindow                  = 65,   // Opt, Cmd, Space bar
+
+    // accessibility
+    kSHKTurnZoomOnOrOff                         = 15,   // Opt, Cmd, 8
+    kSHKTurnImageSmoothingOnOrOff               = 23,   // Opt, Cmd, Backslash "\"
+    kSHKZoomOut                                 = 19,   // Opt, Cmd, -
+    kSHKZoomIn                                  = 17,   // Opt, Cmd, =
+    kSHKTurnFocusFollowingOnOrOff               = 179,  //
+
+    kSHKIncreaseContrast                        = 25,   // Ctrl, Opt, Cmd, .
+    kSHKDecreaseContrast                        = 26,   // Ctrl, Opt, Cmd, ,
+
+    kSHKInvertColors                            = 21,   // Ctrl, Opt, Cmd, 8
+    kSHKTurnVoiceOverOnOrOff                    = 59,   // Cmd, F5
+    kSHKShowAccessibilityControls               = 162,  // Opt, Cmd, F5
+
+    // app shortcuts
+    kSHKShowHelpMenu                            = 98,   // Shift, Cmd, /
+
+    // deprecated (Not shown on macOS Monterey)
+    kSHKMoveFocusToTheWindowDrawer              = 51,   // Opt, Cmd, `
+    kSHKShowDashboard                           = 62,   // F12
     kSHKLookUpInDictionary                      = 70,   // Shift, Cmd, E
     kSHKHideAndShowFrontRow                     = 73,   // Cmd, Esc
     kSHKActivateSpaces                          = 75,   // F8
-    kSHKMoveLeftASpace                          = 79,   // Ctrl, Arrow Left
-    kSHKMoveRightASpace                         = 81,   // Ctrl, Arrow Right
-    kSHKShowHelpMenu                            = 98,   // Shift, Cmd, /
-    kSHKSwitchToDesktop1                        = 118,  // Ctrl, 1
-    kSHKSwitchToDesktop2                        = 119,  // Ctrl, 2
-    kSHKSwitchToDesktop3                        = 120,  // Ctrl, 3
-    kSHKSwitchToDesktop4                        = 121,  // Ctrl, 4
-    kSHKShowLaunchpad                           = 160,  //
-    kSHKShowAccessibilityControls               = 162,  // Opt, Cmd, F5
-    kSHKShowNotificationCenter                  = 163,  //
-    kSHKTurnDoNotDisturbOnOrOff                 = 175,  //
-    kSHKTurnFocusFollowingOnOrOff               = 179,  //
-} AppleShortcutNames;
 
-static NSDictionary<NSString*,NSNumber*> *global_shortcuts = nil;
+    // unknown
+    kSHKUnknown                                 = 0,    //
+} AppleShortcutNames;
 
 static void
 build_global_shortcuts_lookup(void) {
@@ -532,6 +571,8 @@ build_global_shortcuts_lookup(void) {
                 id v = [sc_value objectForKey:@"value"];
                 if (!v || ![v isKindOfClass:[NSDictionary class]]) continue;
                 NSDictionary *value = v;
+                id t = [value objectForKey:@"type"];
+                if (!t || ![t isKindOfClass:[NSString class]] || ![t isEqualToString:@"standard"]) continue;
                 id p = [value objectForKey:@"parameters"];
                 if (!p || ![p isKindOfClass:[NSArray class]] || [(NSArray*)p count] < 2) continue;
                 NSArray<NSNumber*> *parameters = p;
@@ -553,7 +594,6 @@ build_global_shortcuts_lookup(void) {
 
 static int
 is_active_apple_global_shortcut(NSEvent *event) {
-    // TODO: watch for settings change and rebuild global_shortcuts using key/value observing on NSUserDefaults
     if (global_shortcuts == nil) build_global_shortcuts_lookup();
     NSEventModifierFlags modifierFlags = [event modifierFlags] & (NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagControl);
     static char lookup_key[64];
@@ -575,52 +615,77 @@ is_active_apple_global_shortcut(NSEvent *event) {
 static bool
 is_useful_apple_global_shortcut(int sc) {
     switch(sc) {
-        case kSHKMoveFocusToTheMenuBar:                   // Ctrl, F2
-        case kSHKMoveFocusToTheDock:                      // Ctrl, F3
-        case kSHKMoveFocusToActiveOrNextWindow:           // Ctrl, F4
-        case kSHKMoveFocusToTheWindowToolbar:             // Ctrl, F5
-        case kSHKMoveFocusToTheFloatingWindow:            // Ctrl, F6
-        /* case kSHKTurnKeyboardAccessOnOrOff:               // Ctrl, F1 */
-        /* case kSHKChangeTheWayTabMovesFocus:               // Ctrl, F7 */
-        /* case kSHKTurnZoomOnOrOff:                         // Opt, Cmd, 8 */
-        /* case kSHKZoomIn:                                  // Opt, Cmd, = */
-        /* case kSHKZoomOut:                                 // Opt, Cmd, - */
-        /* case kSHKInvertColors:                            // Ctrl, Opt, Cmd, 8 */
-        /* case kSHKTurnImageSmoothingOnOrOff:               // Opt, Cmd, Backslash "\" */
-        /* case kSHKIncreaseContrast:                        // Ctrl, Opt, Cmd, . */
-        /* case kSHKDecreaseContrast:                        // Ctrl, Opt, Cmd, , */
-        case kSHKMoveFocusToNextWindow:                   // Cmd, `
-        /* case kSHKSavePictureOfScreenAsAFile:              // Shift, Cmd, 3 */
-        /* case kSHKCopyPictureOfScreenToTheClipboard:       // Ctrl, Shift, Cmd, 3 */
-        /* case kSHKSavePictureOfSelectedAreaAsAFile:        // Shift, Cmd, 4 */
-        /* case kSHKCopyPictureOfSelectedAreaToTheClipboard: // Ctrl, Shift, Cmd, 4 */
+        // launchpad & dock
+        case kSHKTurnDockHidingOnOrOff:                   // Opt, Cmd, D
+        case kSHKShowLaunchpad:                           //
+
+        // display
+        case kSHKDecreaseDisplayBrightness1:              // F14 (Fn)
+        case kSHKDecreaseDisplayBrightness2:              // F14 (Fn, Ctrl)
+        case kSHKIncreaseDisplayBrightness1:              // F15 (Fn)
+        case kSHKIncreaseDisplayBrightness2:              // F14 (Fn, Ctrl)
+
+        // mission control
         case kSHKMissionControl:                          // Ctrl, Arrow Up
+        case kSHKShowNotificationCenter:                  //
+        case kSHKTurnDoNotDisturbOnOrOff:                 //
         case kSHKApplicationWindows:                      // Ctrl, Arrow Down
         case kSHKShowDesktop:                             // F11
-        case kSHKMoveFocusToTheWindowDrawer:              // Opt, Cmd, `
-        case kSHKTurnDockHidingOnOrOff:                   // Opt, Cmd, D
-        /* case kSHKMoveFocusToStatusMenus:                  // Ctrl, F8 */
-        /* case kSHKTurnVoiceOverOnOrOff:                    // Cmd, F5 */
-        case kSHKSelectThePreviousInputSource:            // Ctrl, Space bar
-        case kSHKSelectNextSourceInInputMenu:             // Ctrl, Opt, Space bar
-        case kSHKShowDashboard:                           // F12
-        case kSHKShowSpotlightSearch:                     // Cmd, Space bar
-        case kSHKShowFinderSearchWindow:                  // Opt, Cmd, Space bar
-        /* case kSHKLookUpInDictionary:                      // Shift, Cmd, E */
-        /* case kSHKHideAndShowFrontRow:                     // Cmd, Esc */
-        case kSHKActivateSpaces:                          // F8
         case kSHKMoveLeftASpace:                          // Ctrl, Arrow Left
         case kSHKMoveRightASpace:                         // Ctrl, Arrow Right
-        /* case kSHKShowHelpMenu:                            // Shift, Cmd, / */
         case kSHKSwitchToDesktop1:                        // Ctrl, 1
         case kSHKSwitchToDesktop2:                        // Ctrl, 2
         case kSHKSwitchToDesktop3:                        // Ctrl, 3
         case kSHKSwitchToDesktop4:                        // Ctrl, 4
-        case kSHKShowLaunchpad:                           //
-        /* case kSHKShowAccessibilityControls:               // Opt, Cmd, F5 */
-        /* case kSHKShowNotificationCenter:                  // */
-        /* case kSHKTurnDoNotDisturbOnOrOff:                 // */
+        case kSHKQuickNote:                               // Fn, Q
+
+        // keyboard
+        /* case kSHKChangeTheWayTabMovesFocus:               // Ctrl, F7 */
+        /* case kSHKTurnKeyboardAccessOnOrOff:               // Ctrl, F1 */
+        case kSHKMoveFocusToTheMenuBar:                   // Ctrl, F2
+        case kSHKMoveFocusToTheDock:                      // Ctrl, F3
+        case kSHKMoveFocusToActiveOrNextWindow:           // Ctrl, F4
+        /* case kSHKMoveFocusToTheWindowToolbar:             // Ctrl, F5 */
+        /* case kSHKMoveFocusToTheFloatingWindow:            // Ctrl, F6 */
+        case kSHKMoveFocusToNextWindow:                   // Cmd, `
+        case kSHKMoveFocusToStatusMenus:                  // Ctrl, F8
+
+        // input sources
+        case kSHKSelectThePreviousInputSource:            // Ctrl, Space bar
+        case kSHKSelectNextSourceInInputMenu:             // Ctrl, Opt, Space bar
+
+        // screenshots
+        /* case kSHKSavePictureOfScreenAsAFile:              // Shift, Cmd, 3 */
+        /* case kSHKCopyPictureOfScreenToTheClipboard:       // Ctrl, Shift, Cmd, 3 */
+        /* case kSHKSavePictureOfSelectedAreaAsAFile:        // Shift, Cmd, 4 */
+        /* case kSHKCopyPictureOfSelectedAreaToTheClipboard: // Ctrl, Shift, Cmd, 4 */
+        /* case kSHKScreenshotAndRecordingOptions:           // Shift, Cmd, 5 */
+
+        // spotlight
+        case kSHKShowSpotlightSearch:                     // Cmd, Space bar
+        case kSHKShowFinderSearchWindow:                  // Opt, Cmd, Space bar
+
+        // accessibility
+        /* case kSHKTurnZoomOnOrOff:                         // Opt, Cmd, 8 */
+        /* case kSHKTurnImageSmoothingOnOrOff:               // Opt, Cmd, Backslash "\" */
+        /* case kSHKZoomOut:                                 // Opt, Cmd, - */
+        /* case kSHKZoomIn:                                  // Opt, Cmd, = */
         /* case kSHKTurnFocusFollowingOnOrOff:               // */
+        /* case kSHKIncreaseContrast:                        // Ctrl, Opt, Cmd, . */
+        /* case kSHKDecreaseContrast:                        // Ctrl, Opt, Cmd, , */
+        /* case kSHKInvertColors:                            // Ctrl, Opt, Cmd, 8 */
+        /* case kSHKTurnVoiceOverOnOrOff:                    // Cmd, F5 */
+        /* case kSHKShowAccessibilityControls:               // Opt, Cmd, F5 */
+
+        // app shortcuts
+        /* case kSHKShowHelpMenu:                            // Shift, Cmd, / */
+
+        // deprecated (Not shown on macOS Monterey)
+        /* case kSHKMoveFocusToTheWindowDrawer:              // Opt, Cmd, ` */
+        /* case kSHKShowDashboard:                           // F12 */
+        /* case kSHKLookUpInDictionary:                      // Shift, Cmd, E */
+        /* case kSHKHideAndShowFrontRow:                     // Cmd, Esc */
+        /* case kSHKActivateSpaces:                          // F8 */
             return true;
         default:
             return false;
@@ -691,7 +756,7 @@ int _glfwPlatformInit(void)
         last_keydown_shortcut_event.virtual_key_code = 0xffff;
         NSWindow *kw = [NSApp keyWindow];
         if (kw && kw.contentView) [kw.contentView keyDown:event];
-        else debug_key("keyUp ignored as no keyWindow present");
+        else debug_key("keyUp ignored as no keyWindow present\n");
         return nil;
     };
 
@@ -707,7 +772,7 @@ int _glfwPlatformInit(void)
         }
         NSWindow *kw = [NSApp keyWindow];
         if (kw && kw.contentView) [kw.contentView keyUp:event];
-        else debug_key("keyUp ignored as no keyWindow present");
+        else debug_key("keyUp ignored as no keyWindow present\n");
         return nil;
     };
 
@@ -728,6 +793,13 @@ int _glfwPlatformInit(void)
         @"NSTreatUnknownArgumentsAsOpen": @"NO",
     };
     [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
+
+    NSUserDefaults *apple_settings = [[NSUserDefaults alloc] initWithSuiteName:@"com.apple.symbolichotkeys"];
+    [apple_settings addObserver:_glfw.ns.helper
+                     forKeyPath:@"AppleSymbolicHotKeys"
+                        options:NSKeyValueObservingOptionNew
+                        context:NULL];
+    _glfw.ns.appleSettings = apple_settings;
 
     [[NSNotificationCenter defaultCenter]
         addObserver:_glfw.ns.helper
@@ -784,6 +856,8 @@ void _glfwPlatformTerminate(void)
                     object:nil];
         [[NSNotificationCenter defaultCenter]
             removeObserver:_glfw.ns.helper];
+        if (_glfw.ns.appleSettings)
+            [_glfw.ns.appleSettings removeObserver:_glfw.ns.helper forKeyPath:@"AppleSymbolicHotKeys"];
         [_glfw.ns.helper release];
         _glfw.ns.helper = nil;
     }
@@ -792,6 +866,11 @@ void _glfwPlatformTerminate(void)
         [NSEvent removeMonitor:_glfw.ns.keyUpMonitor];
     if (_glfw.ns.keyDownMonitor)
         [NSEvent removeMonitor:_glfw.ns.keyDownMonitor];
+
+    if (_glfw.ns.appleSettings != nil) {
+        [_glfw.ns.appleSettings release];
+        _glfw.ns.appleSettings = nil;
+    }
 
     free(_glfw.ns.clipboardString);
 
