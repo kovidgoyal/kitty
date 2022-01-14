@@ -19,6 +19,7 @@ from kitty.cli import parse_args
 from kitty.cli_stub import IcatCLIOptions
 from kitty.constants import appname
 from kitty.guess_mime_type import guess_type
+from kitty.rgb import to_color
 from kitty.types import run_once
 from kitty.typing import GRT_f, GRT_t
 from kitty.utils import (
@@ -53,6 +54,19 @@ type=bool-set
 When used in combination with :option:`--place` it will cause images that
 are smaller than the specified area to be scaled up to use as much
 of the specified area as possible.
+
+
+--background
+default=none
+Specify a background color, this will cause transparent images to be composited on
+top of the specified color.
+
+
+--mirror
+default=none
+type=choices
+choices=none,horizontal,vertical,both
+Mirror the image about a horizontal or vertical axis or both.
 
 
 --clear
@@ -307,6 +321,9 @@ class ParsedOpts:
 
     place: Optional['Place'] = None
     z_index: int = 0
+    remove_alpha: str = ''
+    flip: bool = False
+    flop: bool = False
 
 
 def process(path: str, args: IcatCLIOptions, parsed_opts: ParsedOpts, is_tempfile: bool) -> bool:
@@ -316,9 +333,10 @@ def process(path: str, args: IcatCLIOptions, parsed_opts: ParsedOpts, is_tempfil
     available_height = parsed_opts.place.height * (ss.height // ss.rows) if parsed_opts.place else 10 * m.height
     needs_scaling = m.width > available_width or m.height > available_height
     needs_scaling = needs_scaling or args.scale_up
+    needs_conversion = needs_scaling or bool(parsed_opts.remove_alpha) or parsed_opts.flip or parsed_opts.flop
     file_removed = False
     use_number = 0
-    if m.fmt == 'png' and not needs_scaling:
+    if m.fmt == 'png' and not needs_conversion:
         outfile = path
         transmit_mode: 'GRT_t' = 't' if is_tempfile else 'f'
         fmt: 'GRT_f' = 100
@@ -328,13 +346,17 @@ def process(path: str, args: IcatCLIOptions, parsed_opts: ParsedOpts, is_tempfil
         fmt = 24 if m.mode == 'rgb' else 32
         transmit_mode = 't'
         if len(m) == 1 or args.loop == 0:
-            outfile, width, height = render_as_single_image(path, m, available_width, available_height, args.scale_up)
+            outfile, width, height = render_as_single_image(
+                path, m, available_width, available_height, args.scale_up,
+                remove_alpha=parsed_opts.remove_alpha, flip=parsed_opts.flip, flop=parsed_opts.flop)
         else:
             import struct
             use_number = max(1, struct.unpack('@I', os.urandom(4))[0])
             with NamedTemporaryFile() as f:
                 prefix = f.name
-            frame_data = render_image(path, prefix, m, available_width, available_height, args.scale_up)
+            frame_data = render_image(
+                path, prefix, m, available_width, available_height, args.scale_up,
+                remove_alpha=parsed_opts.remove_alpha, flip=parsed_opts.flip, flop=parsed_opts.flop)
             outfile, width, height = frame_data.frames[0].path, frame_data.width, frame_data.height
     show(
         outfile, width, height, parsed_opts.z_index, fmt, transmit_mode,
@@ -526,6 +548,13 @@ def main(args: List[str] = sys.argv) -> None:
         parsed_opts.z_index = parse_z_index(cli_opts.z_index)
     except Exception:
         raise SystemExit(f'Not a valid z-index specification: {cli_opts.z_index}')
+    try:
+        if cli_opts.background != 'none':
+            parsed_opts.remove_alpha = to_color(cli_opts.background, validate=True).as_sharp
+    except ValueError:
+        raise SystemExit(f'Not a valid color specification: {cli_opts.background}')
+    parsed_opts.flip = cli_opts.mirror in ('both', 'vertical')
+    parsed_opts.flop = cli_opts.mirror in ('both', 'horizontal')
 
     if cli_opts.detect_support:
         if not detect_support(wait_for=cli_opts.detection_timeout, silent=True):

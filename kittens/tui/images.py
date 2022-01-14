@@ -189,7 +189,9 @@ def render_image(
     m: ImageData,
     available_width: int, available_height: int,
     scale_up: bool,
-    only_first_frame: bool = False
+    only_first_frame: bool = False,
+    remove_alpha: str = '',
+    flip: bool = False, flop: bool = False,
 ) -> RenderedImage:
     import tempfile
     has_multiple_frames = len(m) > 1
@@ -202,7 +204,15 @@ def render_image(
         if exe is None:
             raise OSError('Failed to find the ImageMagick convert executable, make sure it is present in PATH')
         cmd = [exe]
-    cmd += ['-background', 'none', '--', path]
+    if remove_alpha:
+        cmd += ['-background', remove_alpha, '-alpha', 'remove']
+    else:
+        cmd += ['-background', 'none']
+    if flip:
+        cmd.append('-flip')
+    if flop:
+        cmd.append('-flop')
+    cmd += ['--', path]
     if only_first_frame and has_multiple_frames:
         cmd[-1] += '[0]'
     cmd.append('-auto-orient')
@@ -287,12 +297,15 @@ def render_as_single_image(
     path: str, m: ImageData,
     available_width: int, available_height: int,
     scale_up: bool,
-    tdir: Optional[str] = None
+    tdir: Optional[str] = None,
+    remove_alpha: str = '', flip: bool = False, flop: bool = False,
 ) -> Tuple[str, int, int]:
     import tempfile
     fd, output = tempfile.mkstemp(prefix='icat-', suffix=f'.{m.mode}', dir=tdir)
     os.close(fd)
-    result = render_image(path, output, m, available_width, available_height, scale_up, only_first_frame=True)
+    result = render_image(
+        path, output, m, available_width, available_height, scale_up,
+        only_first_frame=True, remove_alpha=remove_alpha, flip=flip, flop=flop)
     os.rename(result.frames[0].path, output)
     return output, result.width, result.height
 

@@ -55,7 +55,7 @@ __all__ = (
     'GraphicsCommandType', 'HandlerType', 'AbstractEventLoop', 'AddressFamily', 'Socket', 'CompletedProcess',
     'PopenType', 'Protocol', 'TypedDict', 'MarkType', 'ImageManagerType', 'Debug', 'LoopType', 'MouseEvent',
     'TermManagerType', 'BossType', 'ChildType', 'BadLineType', 'MouseButton',
-    'KeyActionType', 'KeyMap', 'KittyCommonOpts', 'SequenceMap', 'CoreTextFont', 'WindowSystemMouseEvent',
+    'KeyActionType', 'KeyMap', 'KittyCommonOpts', 'AliasMap', 'SequenceMap', 'CoreTextFont', 'WindowSystemMouseEvent',
     'FontConfigPattern', 'ScreenType', 'StartupCtx', 'KeyEventType', 'LayoutType', 'PowerlineStyle',
     'RemoteCommandType', 'SessionType', 'SessionTab', 'SpecialWindowInstance', 'TabType', 'ScreenSize', 'WindowType'
 )

@@ -102,6 +102,9 @@ Detailed list of changes
 
 - Draw the dots for braille characters more evenly spaced at all font sizes (:iss:`4499`)
 
+- icat kitten: Add options to mirror images and remove their transparency
+  before displaying them (:iss:`4513`)
+
 - macOS: Respect the users system-wide global keyboard shortcut preferences
   (:iss:`4501`)
 
