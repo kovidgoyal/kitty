@@ -55,13 +55,21 @@ function _ksi_main
     end
 
     if not contains "no-title" $_ksi
-        function fish_title
-            if set -q argv[1]
-                echo $argv[1]
-            else
-                prompt_pwd
+        function _ksi_function_is_not_overridden -d "Check if the specified function is not overridden"
+            string match -q -- "$__fish_data_dir/functions/*" (functions --details $argv[1])
+        end
+
+        if _ksi_function_is_not_overridden fish_title
+            function fish_title
+                if set -q argv[1]
+                    echo $argv[1]
+                else
+                    prompt_pwd
+                end
             end
         end
+
+        functions --erase _ksi_function_is_not_overridden
     end
 
     if not contains "no-prompt-mark" $_ksi
@@ -131,6 +139,8 @@ function _ksi_main
         # with prompt marking kitty clears the current prompt on resize so we need
         # fish to redraw it
         set --global fish_handle_reflow 1
+
+        functions --erase _ksi_function_is_not_empty
     end
     functions --erase _ksi_main _ksi_schedule
 end
