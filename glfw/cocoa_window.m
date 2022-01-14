@@ -786,6 +786,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     [trackingArea release];
     [markedText release];
     if (input_source_at_last_key_event) [input_source_at_last_key_event release];
+    [input_context release];
     [super dealloc];
 }
 
