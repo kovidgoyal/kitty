@@ -200,12 +200,16 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
         screen.cursor.fg = fg
     if tab.has_activity_since_last_focus and draw_data.tab_activity_symbol:
         template = draw_data.tab_activity_symbol
+        fg = screen.cursor.fg
+        screen.cursor.fg = draw_data.bell_fg
         try:
             text = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
         except Exception as e:
             report_template_failure(template, str(e))
         else:
             draw_attributed_string(text, screen)
+        if screen.cursor.fg == draw_data.bell_fg:
+            screen.cursor.fg = fg
 
     template = draw_data.title_template
     if tab.is_active and draw_data.active_title_template is not None:
