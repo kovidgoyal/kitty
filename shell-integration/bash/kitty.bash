@@ -122,3 +122,5 @@ _ksi_main() {
 }
 _ksi_main
 unset -f _ksi_main
+# freeze _ksi_prompt to prevent it from being changed
+declare -r _ksi_prompt
