@@ -561,6 +561,8 @@ build_global_shortcuts_lookup(void) {
                 id v = [sc_value objectForKey:@"value"];
                 if (!v || ![v isKindOfClass:[NSDictionary class]]) continue;
                 NSDictionary *value = v;
+                id t = [value objectForKey:@"type"];
+                if (!t || ![t isKindOfClass:[NSString class]] || ![t isEqualToString:@"standard"]) continue;
                 id p = [value objectForKey:@"parameters"];
                 if (!p || ![p isKindOfClass:[NSArray class]] || [(NSArray*)p count] < 2) continue;
                 NSArray<NSNumber*> *parameters = p;
