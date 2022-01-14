@@ -98,6 +98,9 @@ Detailed list of changes
 - Shell integration: Fix cursor shape not working with fish's vi mode
   (:iss:`4508`)
 
+- Shell integration: fish: Only override fish_title if it has not been set by
+  the user (:iss:`4452`)
+
 - macOS: Fix hiding via :kbd:`cmd+h` not working on macOS 10.15.7 (:iss:`4472`)
 
 - Draw the dots for braille characters more evenly spaced at all font sizes (:iss:`4499`)
