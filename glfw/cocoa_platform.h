@@ -176,6 +176,7 @@ typedef struct _GLFWlibraryNS
     id                  helper;
     id                  keyUpMonitor;
     id                  keyDownMonitor;
+    id                  appleSettings;
     id                  nibObjects;
 
     char                keyName[64];

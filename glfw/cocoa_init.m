@@ -264,6 +264,8 @@ display_reconfigured(CGDirectDisplayID display UNUSED, CGDisplayChangeSummaryFla
     }
 }
 
+static NSDictionary<NSString*,NSNumber*> *global_shortcuts = nil;
+
 @interface GLFWHelper : NSObject
 @end
 
@@ -278,6 +280,16 @@ display_reconfigured(CGDirectDisplayID display UNUSED, CGDisplayChangeSummaryFla
 - (void)doNothing:(id)object
 {
     (void)object;
+}
+
+// watch for settings change and rebuild global_shortcuts using key/value observing on NSUserDefaults
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
+{
+    (void)keyPath; (void)object; (void)change; (void)context;
+    if (global_shortcuts != nil) {
+        [global_shortcuts release];
+        global_shortcuts = nil;
+    }
 }
 
 @end // GLFWHelper
@@ -542,8 +554,6 @@ typedef enum AppleShortcutNames {
     kSHKUnknown                                 = 0,    //
 } AppleShortcutNames;
 
-static NSDictionary<NSString*,NSNumber*> *global_shortcuts = nil;
-
 static void
 build_global_shortcuts_lookup(void) {
     NSMutableDictionary<NSString*, NSNumber*> *temp = [NSMutableDictionary dictionaryWithCapacity:128];  // will be autoreleased
@@ -584,7 +594,6 @@ build_global_shortcuts_lookup(void) {
 
 static int
 is_active_apple_global_shortcut(NSEvent *event) {
-    // TODO: watch for settings change and rebuild global_shortcuts using key/value observing on NSUserDefaults
     if (global_shortcuts == nil) build_global_shortcuts_lookup();
     NSEventModifierFlags modifierFlags = [event modifierFlags] & (NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagControl);
     static char lookup_key[64];
@@ -785,6 +794,13 @@ int _glfwPlatformInit(void)
     };
     [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
 
+    NSUserDefaults *apple_settings = [[NSUserDefaults alloc] initWithSuiteName:@"com.apple.symbolichotkeys"];
+    [apple_settings addObserver:_glfw.ns.helper
+                     forKeyPath:@"AppleSymbolicHotKeys"
+                        options:NSKeyValueObservingOptionNew
+                        context:NULL];
+    _glfw.ns.appleSettings = apple_settings;
+
     [[NSNotificationCenter defaultCenter]
         addObserver:_glfw.ns.helper
            selector:@selector(selectedKeyboardInputSourceChanged:)
@@ -840,6 +856,8 @@ void _glfwPlatformTerminate(void)
                     object:nil];
         [[NSNotificationCenter defaultCenter]
             removeObserver:_glfw.ns.helper];
+        if (_glfw.ns.appleSettings)
+            [_glfw.ns.appleSettings removeObserver:_glfw.ns.helper forKeyPath:@"AppleSymbolicHotKeys"];
         [_glfw.ns.helper release];
         _glfw.ns.helper = nil;
     }
@@ -848,6 +866,11 @@ void _glfwPlatformTerminate(void)
         [NSEvent removeMonitor:_glfw.ns.keyUpMonitor];
     if (_glfw.ns.keyDownMonitor)
         [NSEvent removeMonitor:_glfw.ns.keyDownMonitor];
+
+    if (_glfw.ns.appleSettings != nil) {
+        [_glfw.ns.appleSettings release];
+        _glfw.ns.appleSettings = nil;
+    }
 
     free(_glfw.ns.clipboardString);
 
