@@ -29,13 +29,29 @@ function _ksi_main
     end
 
     if not contains "no-cursor" $_ksi
-        function _ksi_bar_cursor --on-event fish_prompt
-            printf "\e[5 q"
+        function _ksi_set_cursor --on-variable fish_key_bindings
+            if test "$fish_key_bindings" = fish_default_key_bindings
+                function _ksi_bar_cursor --on-event fish_prompt
+                    printf "\e[5 q"
+                end
+                function _ksi_block_cursor --on-event fish_preexec
+                    printf "\e[2 q"
+                end
+            else
+                functions -q _ksi_bar_cursor && functions --erase _ksi_bar_cursor
+                functions -q _ksi_block_cursor && functions --erase _ksi_block_cursor
+            end
         end
-        function _ksi_block_cursor --on-event fish_preexec
-            printf "\e[2 q"
+
+        set -q fish_cursor_insert || set --global fish_cursor_insert "line"
+        _ksi_set_cursor
+
+        # Change the cursor shape on the first run
+        if functions -q _ksi_bar_cursor
+            _ksi_bar_cursor
+        else if test "$fish_bind_mode" = "insert"
+            functions -q fish_vi_cursor_handle && fish_vi_cursor_handle || printf "\e[5 q"
         end
-        _ksi_bar_cursor
     end
 
     if not contains "no-title" $_ksi
@@ -116,8 +132,7 @@ function _ksi_main
         # fish to redraw it
         set --global fish_handle_reflow 1
     end
-    functions --erase _ksi_main
-    functions --erase _ksi_schedule
+    functions --erase _ksi_main _ksi_schedule
 end
 
 if status --is-interactive
