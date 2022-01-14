@@ -3,11 +3,8 @@
 
 import re
 from contextlib import suppress
-from typing import Optional, overload, TYPE_CHECKING
+from typing import Optional
 from .fast_data_types import Color
-
-if TYPE_CHECKING:
-    from typing import Literal
 
 
 def alpha_blend_channel(top_color: int, bottom_color: int, alpha: float) -> int:
@@ -57,12 +54,6 @@ def color_as_sharp(x: Color) -> str:
 
 def color_as_sgr(x: Color) -> str:
     return x.as_sgr
-
-
-@overload
-def to_color(raw: str, validate: 'Literal[True]' = True) -> Color: ...
-@overload
-def to_color(raw: str, validate: 'Literal[False]' = False) -> Optional[Color]: ...
 
 
 def to_color(raw: str, validate: bool = False) -> Optional[Color]:

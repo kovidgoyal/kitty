@@ -548,11 +548,11 @@ def main(args: List[str] = sys.argv) -> None:
         parsed_opts.z_index = parse_z_index(cli_opts.z_index)
     except Exception:
         raise SystemExit(f'Not a valid z-index specification: {cli_opts.z_index}')
-    try:
-        if cli_opts.background != 'none':
-            parsed_opts.remove_alpha = to_color(cli_opts.background, validate=True).as_sharp
-    except ValueError:
-        raise SystemExit(f'Not a valid color specification: {cli_opts.background}')
+    if cli_opts.background != 'none':
+        ra = to_color(cli_opts.background)
+        if ra is None:
+            raise SystemExit(f'Not a valid color specification: {cli_opts.background}')
+        parsed_opts.remove_alpha = ra.as_sharp
     parsed_opts.flip = cli_opts.mirror in ('both', 'vertical')
     parsed_opts.flop = cli_opts.mirror in ('both', 'horizontal')
 
