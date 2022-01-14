@@ -95,6 +95,9 @@ Detailed list of changes
   rather than a plane. This means the first and last window are considered
   neighbors (:iss:`4494`)
 
+- Shell integration: Fix cursor shape not working with fish's vi mode
+  (:pull:`4514`)
+
 - macOS: Fix hiding via :kbd:`cmd+h` not working on macOS 10.15.7 (:iss:`4472`)
 
 - Draw the dots for braille characters more evenly spaced at all font sizes (:iss:`4499`)
