@@ -449,9 +449,8 @@ def process_single_item(
     file_removed = False
     try:
         if isinstance(item, bytes):
-            tf = NamedTemporaryFile(prefix='stdin-image-data-', delete=False)
-            tf.write(item)
-            tf.close()
+            with NamedTemporaryFile(prefix='stdin-image-data-', delete=False) as tf:
+                tf.write(item)
             item = tf.name
             is_tempfile = True
         if url_pat is not None and url_pat.match(item) is not None:
