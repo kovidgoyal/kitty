@@ -22,7 +22,7 @@ _ksi_main() {
 
     _ksi_debug_print() {
         # print a line to STDOUT of parent kitty process
-        builtin local b=$(builtin printf "%s\n" "$1" | base64 | tr -d \\n)
+        builtin local b=$(command base64 <<< "${@}" | tr -d \\n)
         builtin printf "\eP@kitty-print|%s\e\\" "$b" 
         # "
     }
@@ -87,7 +87,7 @@ _ksi_main() {
             builtin local limit
             # Send all words up to the word the cursor is currently on
             builtin let limit=1+$COMP_CWORD
-            src=$(builtin printf "%s\n" "${COMP_WORDS[@]: 0:$limit}" | kitty +complete bash)
+            src=$(builtin printf "%s\n" "${COMP_WORDS[@]: 0:$limit}" | command kitty +complete bash)
             if [[ $? == 0 ]]; then
                 builtin eval ${src}
             fi
