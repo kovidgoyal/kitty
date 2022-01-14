@@ -1,22 +1,20 @@
 #!/bin/bash
 
+if [[ $- != *i* ]] ; then builtin return; fi  # check in interactive mode
+if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then builtin return; fi
+
 # this is defined outside _ksi_main to make it global without using declare -g
 # which is not available on older bash
 builtin declare -A _ksi_prompt
 _ksi_prompt=( [cursor]='y' [title]='y' [mark]='y' [complete]='y' [ps0]='' [ps1]='' [ps2]='' )
 
 _ksi_main() {
-    if [[ $- != *i* ]] ; then builtin return; fi  # check in interactive mode
-    if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then builtin return; fi
-    builtin set -f
     for i in ${KITTY_SHELL_INTEGRATION[@]}; do
-        builtin set +f
         if [[ "$i" == "no-cursor" ]]; then _ksi_prompt[cursor]='n'; fi
         if [[ "$i" == "no-title" ]]; then _ksi_prompt[title]='n'; fi
         if [[ "$i" == "no-prompt-mark" ]]; then _ksi_prompt[mark]='n'; fi
         if [[ "$i" == "no-complete" ]]; then _ksi_prompt[complete]='n'; fi
     done
-    builtin set +f
 
     builtin unset KITTY_SHELL_INTEGRATION
 
