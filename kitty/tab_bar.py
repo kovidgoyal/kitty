@@ -4,7 +4,7 @@
 import os
 from functools import lru_cache, partial, wraps
 from typing import (
-    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
+    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, TYPE_CHECKING
 )
 
 from .borders import Border, BorderColor
@@ -18,6 +18,10 @@ from .rgb import alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
 from .typing import EdgeLiteral, PowerlineStyle
 from .utils import color_as_int, log_error
+
+
+if TYPE_CHECKING:
+    import re
 
 
 class TabBarData(NamedTuple):
@@ -152,54 +156,66 @@ class ExtraData:
     next_tab: Optional[TabBarData] = None
 
 
-def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
-    if tab.needs_attention and draw_data.bell_on_tab:
-        fg = screen.cursor.fg
-        screen.cursor.fg = draw_data.bell_fg
-        screen.draw('🔔 ')
-        screen.cursor.fg = fg
-    if tab.has_activity_since_last_focus and draw_data.tab_activity_symbol:
-        fg = screen.cursor.fg
-        screen.cursor.fg = draw_data.bell_fg
-        screen.draw(draw_data.tab_activity_symbol)
-        screen.cursor.fg = fg
+@run_once
+def attributed_string_pat() -> 're.Pattern[str]':
+    import re
+    return re.compile('(\x1b\\[[^m]*m)')
 
-    template = draw_data.title_template
-    if tab.is_active and draw_data.active_title_template is not None:
-        template = draw_data.active_title_template
-    try:
-        data = {
-            'index': index,
-            'layout_name': tab.layout_name,
-            'num_windows': tab.num_windows,
-            'num_window_groups': tab.num_window_groups,
-            'title': tab.title,
-        }
-        ColorFormatter.draw_data = draw_data
-        ColorFormatter.tab_data = tab
-        eval_locals = {
-            'index': index,
-            'layout_name': tab.layout_name,
-            'num_windows': tab.num_windows,
-            'num_window_groups': tab.num_window_groups,
-            'title': tab.title,
-            'fmt': Formatter,
-            'sup': SupSub(data),
-            'sub': SupSub(data, True),
-        }
-        title = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
-    except Exception as e:
-        report_template_failure(template, str(e))
-        title = tab.title
+
+def draw_attributed_string(title: str, screen: Screen) -> None:
     if '\x1b' in title:
-        import re
-        for x in re.split('(\x1b\\[[^m]*m)', title):
+        for x in attributed_string_pat().split(title):
             if x.startswith('\x1b') and x.endswith('m'):
                 screen.apply_sgr(x[2:-1])
             else:
                 screen.draw(x)
     else:
         screen.draw(title)
+
+
+def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
+    data = {
+        'index': index,
+        'layout_name': tab.layout_name,
+        'num_windows': tab.num_windows,
+        'num_window_groups': tab.num_window_groups,
+        'title': tab.title,
+    }
+    ColorFormatter.draw_data = draw_data
+    ColorFormatter.tab_data = tab
+    eval_locals = {
+        'index': index,
+        'layout_name': tab.layout_name,
+        'num_windows': tab.num_windows,
+        'num_window_groups': tab.num_window_groups,
+        'title': tab.title,
+        'fmt': Formatter,
+        'sup': SupSub(data),
+        'sub': SupSub(data, True),
+    }
+    if tab.needs_attention and draw_data.bell_on_tab:
+        fg = screen.cursor.fg
+        screen.cursor.fg = draw_data.bell_fg
+        screen.draw('🔔 ')
+        screen.cursor.fg = fg
+    if tab.has_activity_since_last_focus and draw_data.tab_activity_symbol:
+        template = draw_data.tab_activity_symbol
+        try:
+            text = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
+        except Exception as e:
+            report_template_failure(template, str(e))
+        else:
+            draw_attributed_string(text, screen)
+
+    template = draw_data.title_template
+    if tab.is_active and draw_data.active_title_template is not None:
+        template = draw_data.active_title_template
+    try:
+        title = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
+    except Exception as e:
+        report_template_failure(template, str(e))
+        title = tab.title
+    draw_attributed_string(title, screen)
 
 
 DrawTabFunc = Callable[[DrawData, Screen, TabBarData, int, int, int, bool, ExtraData], int]
