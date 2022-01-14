@@ -1,9 +1,12 @@
 #!/bin/bash
 
+# this is defined outside _ksi_main to make it global without using declare -g
+# which is not available on older bash
+declare -A _ksi_prompt=( [cursor]='y' [title]='y' [mark]='y' [complete]='y' [ps0]='' [ps1]='' [ps2]='' )
+
 _ksi_main() {
     if [[ $- != *i* ]] ; then return; fi  # check in interactive mode
     if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then return; fi
-    declare -g -A _ksi_prompt=( [cursor]='y' [title]='y' [mark]='y' [complete]='y' [ps0]='' [ps1]='' [ps2]='' )
     set -f
     for i in ${KITTY_SHELL_INTEGRATION[@]}; do
         set +f
