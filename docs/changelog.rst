@@ -96,7 +96,7 @@ Detailed list of changes
   neighbors (:iss:`4494`)
 
 - Shell integration: Fix cursor shape not working with fish's vi mode
-  (:pull:`4514`)
+  (:iss:`4508`)
 
 - macOS: Fix hiding via :kbd:`cmd+h` not working on macOS 10.15.7 (:iss:`4472`)
 
