@@ -43,14 +43,21 @@ function _ksi_main
             end
         end
 
-        set -q fish_cursor_insert || set --global fish_cursor_insert "line"
         _ksi_set_cursor
+        set -q fish_cursor_default     || set --global fish_cursor_default block blink
+        set -q fish_cursor_insert      || set --global fish_cursor_insert line blink
+        set -q fish_cursor_replace_one || set --global fish_cursor_replace_one underscore blink
+        set -q fish_cursor_visual      || set --global fish_cursor_visual block blink
 
         # Change the cursor shape on the first run
         if functions -q _ksi_bar_cursor
             _ksi_bar_cursor
-        else if test "$fish_bind_mode" = "insert"
-            functions -q fish_vi_cursor_handle && fish_vi_cursor_handle || printf "\e[5 q"
+        else if contains "$fish_key_bindings" fish_vi_key_bindings fish_hybrid_key_bindings
+            if functions -q fish_vi_cursor_handle
+                fish_vi_cursor_handle
+            else if test "$fish_bind_mode" = "insert"
+                printf "\e[5 q"
+            end
         end
     end
 
