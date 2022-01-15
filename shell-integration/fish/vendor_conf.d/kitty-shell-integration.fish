@@ -4,7 +4,9 @@ status --is-interactive || exit 0
 not functions -q _ksi_schedule || exit 0
 
 function _ksi_main
+    functions --erase _ksi_main _ksi_schedule
     test -n "$KITTY_SHELL_INTEGRATION" || return 0
+
     if set -q XDG_DATA_DIRS KITTY_FISH_XDG_DATA_DIR
         set --global --export --path XDG_DATA_DIRS "$XDG_DATA_DIRS"
         if set -l index (contains -i "$KITTY_FISH_XDG_DATA_DIR" $XDG_DATA_DIRS)
@@ -163,7 +165,6 @@ function _ksi_main
 
         functions --erase _ksi_function_is_not_empty
     end
-    functions --erase _ksi_main _ksi_schedule
 end
 
 function _ksi_schedule --on-event fish_prompt -d "Setup kitty integration after other scripts have run, we hope"
