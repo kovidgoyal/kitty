@@ -592,6 +592,11 @@ build_global_shortcuts_lookup(void) {
     /* NSLog(@"global_shortcuts: %@", global_shortcuts); */
 }
 
+static bool
+is_shiftable_shortcut(int scv) {
+    return scv == kSHKMoveFocusToActiveOrNextWindow || scv == kSHKMoveFocusToNextWindow;
+}
+
 static int
 is_active_apple_global_shortcut(NSEvent *event) {
     if (global_shortcuts == nil) build_global_shortcuts_lookup();
@@ -610,7 +615,7 @@ is_active_apple_global_shortcut(NSEvent *event) {
                 NSNumber *sc = global_shortcuts[@(lookup_key)];
                 if (sc != nil) {
                     int scv = [sc intValue];
-                    if (scv == kSHKMoveFocusToActiveOrNextWindow || scv == kSHKMoveFocusToNextWindow) return scv;
+                    if (is_shiftable_shortcut(scv)) return scv;
                 }
             }
         }
@@ -620,6 +625,13 @@ is_active_apple_global_shortcut(NSEvent *event) {
         snprintf(lookup_key, sizeof(lookup_key) - 1, "v:%lx:%ld", (unsigned long)modifierFlags, (long)vk);
         NSNumber *sc = global_shortcuts[@(lookup_key)];
         if (sc != nil) return [sc intValue];
+        // the move to next window shortcuts also respond to the same shortcut + shift so check for that
+        snprintf(lookup_key, sizeof(lookup_key) - 1, "v:%lx:%ld", (unsigned long)(modifierFlags & ~NSEventModifierFlagShift), (long)vk);
+        sc = global_shortcuts[@(lookup_key)];
+        if (sc != nil) {
+            int scv = [sc intValue];
+            if (is_shiftable_shortcut(scv)) return scv;
+        }
     }
     return kSHKUnknown;
 }
