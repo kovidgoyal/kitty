@@ -584,6 +584,8 @@ struct _GLFWlibrary
     _GLFWtls            contextSlot;
     _GLFWmutex          errorLock;
 
+    bool                ignoreOSKeyboardProcessing;
+
     struct {
         bool            available;
         void*           handle;

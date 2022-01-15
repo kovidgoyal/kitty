@@ -1564,6 +1564,11 @@ strip_csi(PyObject *self UNUSED, PyObject *src) {
     return PyUnicode_FromString(buf);
 }
 
+void
+set_ignore_os_keyboard_processing(bool enabled) {
+    glfwSetIgnoreOSKeyboardProcessing(enabled);
+}
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {

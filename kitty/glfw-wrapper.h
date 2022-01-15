@@ -1916,6 +1916,14 @@ typedef void (*glfwPostEmptyEvent_func)(void);
 GFW_EXTERN glfwPostEmptyEvent_func glfwPostEmptyEvent_impl;
 #define glfwPostEmptyEvent glfwPostEmptyEvent_impl
 
+typedef bool (*glfwGetIgnoreOSKeyboardProcessing_func)(void);
+GFW_EXTERN glfwGetIgnoreOSKeyboardProcessing_func glfwGetIgnoreOSKeyboardProcessing_impl;
+#define glfwGetIgnoreOSKeyboardProcessing glfwGetIgnoreOSKeyboardProcessing_impl
+
+typedef void (*glfwSetIgnoreOSKeyboardProcessing_func)(bool);
+GFW_EXTERN glfwSetIgnoreOSKeyboardProcessing_func glfwSetIgnoreOSKeyboardProcessing_impl;
+#define glfwSetIgnoreOSKeyboardProcessing glfwSetIgnoreOSKeyboardProcessing_impl
+
 typedef int (*glfwGetInputMode_func)(GLFWwindow*, int);
 GFW_EXTERN glfwGetInputMode_func glfwGetInputMode_impl;
 #define glfwGetInputMode glfwGetInputMode_impl

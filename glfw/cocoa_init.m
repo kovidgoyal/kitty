@@ -765,25 +765,27 @@ int _glfwPlatformInit(void)
     {
         debug_key("---------------- key down -------------------\n");
         debug_key("%s\n", [[event description] UTF8String]);
-        // first check if there is global menu bar shortcut
-        if ([[NSApp mainMenu] performKeyEquivalent:event]) {
-            debug_key("keyDown triggerred global menu bar action ignoring\n");
-            last_keydown_shortcut_event.virtual_key_code = [event keyCode];
-            last_keydown_shortcut_event.timestamp = [event timestamp];
-            return nil;
-        }
-        // now check if there is a useful apple shortcut
-        int global_shortcut = is_active_apple_global_shortcut(event);
-        if (is_useful_apple_global_shortcut(global_shortcut)) {
-            debug_key("keyDown triggerred global macOS shortcut ignoring\n");
-            last_keydown_shortcut_event.virtual_key_code = [event keyCode];
-            last_keydown_shortcut_event.timestamp = [event timestamp];
-            return event;
+        if (!_glfw.ignoreOSKeyboardProcessing) {
+            // first check if there is a global menu bar shortcut
+            if (_glfw.ignoreOSKeyboardProcessing && [[NSApp mainMenu] performKeyEquivalent:event]) {
+                debug_key("keyDown triggerred global menu bar action ignoring\n");
+                last_keydown_shortcut_event.virtual_key_code = [event keyCode];
+                last_keydown_shortcut_event.timestamp = [event timestamp];
+                return nil;
+            }
+            // now check if there is a useful apple shortcut
+            int global_shortcut = is_active_apple_global_shortcut(event);
+            if (is_useful_apple_global_shortcut(global_shortcut)) {
+                debug_key("keyDown triggerred global macOS shortcut ignoring\n");
+                last_keydown_shortcut_event.virtual_key_code = [event keyCode];
+                last_keydown_shortcut_event.timestamp = [event timestamp];
+                return event;
+            }
         }
         last_keydown_shortcut_event.virtual_key_code = 0xffff;
         NSWindow *kw = [NSApp keyWindow];
         if (kw && kw.contentView) [kw.contentView keyDown:event];
-        else debug_key("keyUp ignored as no keyWindow present\n");
+        else debug_key("keyDown ignored as no keyWindow present\n");
         return nil;
     };
 

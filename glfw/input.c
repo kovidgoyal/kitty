@@ -667,6 +667,14 @@ void _glfwCenterCursorInContentArea(_GLFWwindow* window)
 //////                        GLFW public API                       //////
 //////////////////////////////////////////////////////////////////////////
 
+GLFWAPI bool glfwGetIgnoreOSKeyboardProcessing(void) {
+    return _glfw.ignoreOSKeyboardProcessing;
+}
+
+GLFWAPI void glfwSetIgnoreOSKeyboardProcessing(bool enabled) {
+    _glfw.ignoreOSKeyboardProcessing = enabled;
+}
+
 GLFWAPI int glfwGetInputMode(GLFWwindow* handle, int mode)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;

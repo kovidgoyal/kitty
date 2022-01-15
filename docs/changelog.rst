@@ -114,6 +114,9 @@ Detailed list of changes
 - macOS: Fix a few key-presses causing beeps from cocoa text input system
   (:iss:`4489`)
 
+- macOS: Fix using shortcuts from the global menu bar as subsequent key presses
+  in a multi key mapping not working (:iss:`4519`)
+
 
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

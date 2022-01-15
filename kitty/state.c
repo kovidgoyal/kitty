@@ -703,7 +703,11 @@ PYWRAP1(set_options) {
     Py_RETURN_NONE;
 }
 
-BOOL_SET(in_sequence_mode)
+PYWRAP1(set_in_sequence_mode) {
+    global_state.in_sequence_mode = PyObject_IsTrue(args);
+    set_ignore_os_keyboard_processing(global_state.in_sequence_mode);
+    Py_RETURN_NONE;
+}
 
 static void
 init_screen_render_data(OSWindow *osw, const WindowGeometry *g, ScreenRenderData *d) {
