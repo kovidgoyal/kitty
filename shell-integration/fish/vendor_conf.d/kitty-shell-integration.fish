@@ -1,53 +1,64 @@
 #!/bin/fish
 
+status --is-interactive || exit 0
+not functions -q _ksi_schedule || exit 0
+
 function _ksi_main
-    test -z "$KITTY_SHELL_INTEGRATION" && return
+    test -n "$KITTY_SHELL_INTEGRATION" || return 0
     if set -q XDG_DATA_DIRS KITTY_FISH_XDG_DATA_DIR
         set --global --export --path XDG_DATA_DIRS "$XDG_DATA_DIRS"
         if set -l index (contains -i "$KITTY_FISH_XDG_DATA_DIR" $XDG_DATA_DIRS)
             set --erase --global XDG_DATA_DIRS[$index]
-            test -z "$XDG_DATA_DIRS" && set --erase --global XDG_DATA_DIRS
+            test -n "$XDG_DATA_DIRS" || set --erase --global XDG_DATA_DIRS
         end
         if set -q XDG_DATA_DIRS
             set --global --export --unpath XDG_DATA_DIRS "$XDG_DATA_DIRS"
         end
     end
     set --local _ksi (string split " " -- "$KITTY_SHELL_INTEGRATION")
-    set --erase KITTY_SHELL_INTEGRATION
-    set --erase KITTY_FISH_XDG_DATA_DIR
+    set --erase KITTY_SHELL_INTEGRATION KITTY_FISH_XDG_DATA_DIR
 
     function _ksi_osc
         printf "\e]%s\a" "$argv[1]"
     end
 
     if not contains "no-complete" $_ksi
+        and not functions -q _ksi_completions
         function _ksi_completions
             set --local ct (commandline --current-token)
             set --local tokens (commandline --tokenize --cut-at-cursor --current-process)
-            printf "%s\n" $tokens $ct | kitty +complete fish2
+            printf "%s\n" $tokens $ct | command kitty +complete fish2
         end
     end
 
     if not contains "no-cursor" $_ksi
+        and not functions -q _ksi_set_cursor
+
         function _ksi_set_cursor --on-variable fish_key_bindings
             if test "$fish_key_bindings" = fish_default_key_bindings
+                and not functions -q _ksi_bar_cursor _ksi_block_cursor
+
                 function _ksi_bar_cursor --on-event fish_prompt
                     printf "\e[5 q"
                 end
+
                 function _ksi_block_cursor --on-event fish_preexec
                     printf "\e[2 q"
                 end
             else
-                functions -q _ksi_bar_cursor && functions --erase _ksi_bar_cursor
-                functions -q _ksi_block_cursor && functions --erase _ksi_block_cursor
+                functions --erase _ksi_bar_cursor _ksi_block_cursor
             end
         end
 
+        function _ksi_set_vi_cursor
+            set -q $argv[1] || set --global $argv[1] $argv[2] blink
+        end
+
         _ksi_set_cursor
-        set -q fish_cursor_default     || set --global fish_cursor_default block blink
-        set -q fish_cursor_insert      || set --global fish_cursor_insert line blink
-        set -q fish_cursor_replace_one || set --global fish_cursor_replace_one underscore blink
-        set -q fish_cursor_visual      || set --global fish_cursor_visual block blink
+        _ksi_set_vi_cursor fish_cursor_default block
+        _ksi_set_vi_cursor fish_cursor_insert line
+        _ksi_set_vi_cursor fish_cursor_replace_one underscore
+        _ksi_set_vi_cursor fish_cursor_visual block
 
         # Change the cursor shape on the first run
         if functions -q _ksi_bar_cursor
@@ -59,11 +70,13 @@ function _ksi_main
                 printf "\e[5 q"
             end
         end
+
+        functions --erase _ksi_set_vi_cursor
     end
 
     if not contains "no-title" $_ksi
         function _ksi_function_is_not_overridden -d "Check if the specified function is not overridden"
-            string match -q -- "$__fish_data_dir/functions/*" (functions --details $argv[1])
+            functions --details $argv[1] | string match -q -- "$__fish_data_dir/functions/*"
         end
 
         if _ksi_function_is_not_overridden fish_title
@@ -80,13 +93,14 @@ function _ksi_main
     end
 
     if not contains "no-prompt-mark" $_ksi
+        and not functions -q _ksi_mark
         set --global _ksi_prompt_state "first-run"
 
         function _ksi_function_is_not_empty -d "Check if the specified function exists and is not empty"
-            functions $argv[1] | string match -qnvr '^ *(#|function |end$|$)'
+            functions --no-details $argv[1] | string match -qnvr '^ *(#|function |end$|$)'
         end
 
-        function _ksi_mark -d "tell kitty to mark the current cursor position using OSC 133"
+        function _ksi_mark -d "Tell kitty to mark the current cursor position using OSC 133"
             _ksi_osc "133;$argv[1]"
         end
 
@@ -152,10 +166,6 @@ function _ksi_main
     functions --erase _ksi_main _ksi_schedule
 end
 
-if status --is-interactive
-    function _ksi_schedule --on-event fish_prompt -d "Setup kitty integration after other scripts have run, we hope"
-        _ksi_main
-    end
-else
-    functions --erase _ksi_main
+function _ksi_schedule --on-event fish_prompt -d "Setup kitty integration after other scripts have run, we hope"
+    _ksi_main
 end
