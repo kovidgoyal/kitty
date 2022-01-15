@@ -71,8 +71,10 @@ _ksi_main() {
             _ksi_debug_print "ignoreboth or ignorespace present in bash HISTCONTROL setting, showing running command in window title will not be robust"
         fi
         _ksi_get_current_command() {
-            local last_cmd=$(HISTTIMEFORMAT= builtin history 1 | command sed -e "s/^[ ]*[0-9]*[ ]*//")
-            builtin printf "\e]2;%s\a" "$last_cmd"
+            local last_cmd=$(HISTTIMEFORMAT= builtin history 1)
+            last_cmd="${last_cmd#*[0-9]*[[:space:]]}"  # remove leading history number
+            last_cmd="${last_cmd#"${last_cmd%%[![:space:]]*}"}"  # remove remaining leading whitespace
+            builtin printf "\e]2;%s\a" "${last_cmd}"
         }
         _ksi_prompt[ps0]+='$(_ksi_get_current_command)'
     fi
