@@ -2668,10 +2668,10 @@ get_line_from_offset(void *x, int y) {
 }
 
 static bool
-find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int scrolled_by, int direction, bool on_screen_only) {
+find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsigned int scrolled_by, int direction, bool on_screen_only) {
     bool found_prompt = false, found_output = false, found_next_prompt = false;
     int start = 0, end = 0;
-    int y1 = start_y - scrolled_by, y2 = y1;
+    int init_y = start_screen_y - scrolled_by, y1 = init_y, y2 = init_y;
     const int upward_limit = -self->historybuf->count;
     const int downward_limit = self->lines - 1;
     const int screen_limit = -scrolled_by + downward_limit;
@@ -2736,7 +2736,7 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int
     if (found_next_prompt) {
         oo->num_lines = end >= start ? end - start : 0;
     } else if (found_output) {
-        end = direction < 0 ? start_y : (unsigned int)downward_limit;
+        end = direction < 0 ? init_y : downward_limit;
         oo->num_lines = end >= start ? end - start : 0;
     } else return false;
     oo->start = start;
