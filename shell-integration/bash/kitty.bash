@@ -70,7 +70,11 @@ _ksi_main() {
         if [[ "$HISTCONTROL" == *"ignoreboth"* ]] || [[ "$HISTCONTROL" == *"ignorespace"* ]]; then
             _ksi_debug_print "ignoreboth or ignorespace present in bash HISTCONTROL setting, showing running command in window title will not be robust"
         fi
-        _ksi_prompt[ps0]+='$(printf "\e]2;%s\a" "$(HISTTIMEFORMAT= history 1 | sed -e "s/^[ ]*[0-9]*[ ]*//")")'
+        _ksi_get_current_command() {
+            local last_cmd=$(HISTTIMEFORMAT= builtin history 1 | command sed -e "s/^[ ]*[0-9]*[ ]*//")
+            builtin printf "\e]2;%s\a" "$last_cmd"
+        }
+        _ksi_prompt[ps0]+='$(_ksi_get_current_command)'
     fi
 
     if [[ "${_ksi_prompt[mark]}" == "y" ]]; then 
