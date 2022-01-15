@@ -767,7 +767,7 @@ int _glfwPlatformInit(void)
         debug_key("%s\n", [[event description] UTF8String]);
         if (!_glfw.ignoreOSKeyboardProcessing) {
             // first check if there is a global menu bar shortcut
-            if (_glfw.ignoreOSKeyboardProcessing && [[NSApp mainMenu] performKeyEquivalent:event]) {
+            if ([[NSApp mainMenu] performKeyEquivalent:event]) {
                 debug_key("keyDown triggerred global menu bar action ignoring\n");
                 last_keydown_shortcut_event.virtual_key_code = [event keyCode];
                 last_keydown_shortcut_event.timestamp = [event timestamp];
