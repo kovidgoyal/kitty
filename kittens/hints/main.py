@@ -186,7 +186,7 @@ class Hints(Handler):
             self.current_input = self.current_input[:-1]
             self.current_text = None
             self.draw_screen()
-        elif key_event.matches('enter') and self.current_input:
+        elif (key_event.matches('enter') or key_event.matches('space')) and self.current_input:
             try:
                 idx = decode_hint(self.current_input, self.alphabet)
                 self.chosen.append(self.index_map[idx])

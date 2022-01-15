@@ -33,6 +33,12 @@ that has been marked as such by the program running in the terminal,
 for example, by ``ls --hyperlink=auto``. You can also :doc:`customize what actions are
 taken for different types of URLs <../open_actions>`.
 
+.. note:: If there are more hints than letters, hints will use multiple
+   letters. In this case, when you press the first letter, only hints
+   starting with that letter are displayed. Pressing the second letter will
+   select that hint or press :kbd:`Enter` or :kbd:`Space` to select the empty
+   hint.
+
 The hints kitten is very powerful to see more detailed help on its various
 options and modes of operation, see below. You can use these options to
 create mappings in :file:`kitty.conf` to select various different text
