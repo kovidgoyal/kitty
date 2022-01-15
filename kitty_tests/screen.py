@@ -1043,11 +1043,11 @@ class TestScreen(BaseTest):
 
         # resize
         # get last cmd output with continued output mark
-        draw_prompt('3'), draw_output(1, 'long_line'), draw_output(2, 'l')
+        draw_prompt('3'), draw_output(1, 'long_line'), draw_output(2, 'l', False)
         s.resize(4, 5)
         s.scroll_to_prompt(-4)
         self.ae(str(s.visual_line(0)), '$ 0')
-        self.ae(lco(), '0l\n1l')
+        self.ae(lco(), '0long_line\n0l\n1l')
 
         # last visited cmd output
         self.ae(lvco(), '0\n1\n2')
