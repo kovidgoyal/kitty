@@ -72,7 +72,7 @@ _ksi_main() {
         fi
         _ksi_get_current_command() {
             local last_cmd=$(HISTTIMEFORMAT= builtin history 1)
-            last_cmd="${last_cmd#*[0-9]*[[:space:]]}"  # remove leading history number
+            last_cmd="${last_cmd#*[[:digit:]]*[[:space:]]}"  # remove leading history number
             last_cmd="${last_cmd#"${last_cmd%%[![:space:]]*}"}"  # remove remaining leading whitespace
             builtin printf "\e]2;%s\a" "${last_cmd}"
         }
