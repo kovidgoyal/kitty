@@ -2684,7 +2684,7 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int
             found_prompt = true;
             // change direction to downwards to find command output
             direction = 1;
-        } else if (line && line->attrs.prompt_kind == OUTPUT_START) {
+        } else if (line && line->attrs.prompt_kind == OUTPUT_START && !line->attrs.continued) {
             found_output = true; start = y1;
             found_prompt = true;
             // keep finding the first output start upwards
@@ -2698,14 +2698,14 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int
         // find upwards: find prompt after the output, and the first output
         while (y1 >= upward_limit) {
             line = checked_range_line(self, y1);
-            if (line && line->attrs.prompt_kind == PROMPT_START) {
+            if (line && line->attrs.prompt_kind == PROMPT_START && !line->attrs.continued) {
                 if (direction == 0) {
                     // find around: stop at prompt start
                     start = y1 + 1;
                     break;
                 }
                 found_next_prompt = true; end = y1;
-            } else if (line && line->attrs.prompt_kind == OUTPUT_START) {
+            } else if (line && line->attrs.prompt_kind == OUTPUT_START && !line->attrs.continued) {
                 start = y1;
                 break;
             }
