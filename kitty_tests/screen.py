@@ -974,14 +974,19 @@ class TestScreen(BaseTest):
         self.assertTrue(s.scroll_to_prompt())
         self.ae(str(s.visual_line(0)), '$ 1')
 
+        def lco():
+            a = []
+            s.cmd_output(0, a.append)
+            return ''.join(a)
+
         def fco():
             a = []
             s.cmd_output(1, a.append)
             return ''.join(a)
 
-        def lco():
+        def lvco():
             a = []
-            s.cmd_output(0, a.append)
+            s.cmd_output(2, a.append)
             return ''.join(a)
 
         s = self.create_screen()
@@ -998,3 +1003,53 @@ class TestScreen(BaseTest):
         mark_prompt(), s.draw('$ 1')
         self.ae(fco(), 'abcd\n12')
         self.ae(lco(), 'abcd\n12')
+
+        def draw_prompt(x):
+            mark_prompt(), s.draw(f'$ {x}'), s.carriage_return(), s.index()
+
+        def draw_output(n, x='', m=True):
+            if m:
+                mark_output()
+            for i in range(n):
+                s.draw(f'{i}{x}'), s.index(), s.carriage_return()
+
+        s = self.create_screen(cols=5, lines=5, scrollback=15)
+        draw_output(1, 'start', False)
+        draw_prompt('0'), draw_output(3)
+        draw_prompt('1')
+        draw_prompt('2'), draw_output(2, 'x')
+
+        # last cmd output
+        # test: find upwards
+        self.ae(s.scrolled_by, 0)
+        self.ae(lco(), '0x\n1x')
+        # get output after scroll up
+        s.scroll_to_prompt()
+        self.ae(s.scrolled_by, 4)
+        self.ae(str(s.visual_line(0)), '$ 0')
+        self.ae(lco(), '0x\n1x')
+
+        # first cmd output on screen
+        # test: find around
+        self.ae(fco(), '0\n1\n2')
+        s.scroll(2, False)
+        self.ae(s.scrolled_by, 2)
+        self.ae(str(s.visual_line(0)), '1')
+        self.ae(fco(), '0x\n1x')
+        # test: find downwards
+        s.scroll(2, False)
+        self.ae(str(s.visual_line(0)), '$ 1')
+        self.ae(fco(), '0x\n1x')
+
+        # resize
+        # get last cmd output with continued output mark
+        draw_prompt('3'), draw_output(1, 'long_line'), draw_output(2, 'l')
+        s.resize(4, 5)
+        s.scroll_to_prompt(-4)
+        self.ae(str(s.visual_line(0)), '$ 0')
+        self.ae(lco(), '0l\n1l')
+
+        # last visited cmd output
+        self.ae(lvco(), '0\n1\n2')
+        s.scroll_to_prompt(1)
+        self.ae(lvco(), '0x\n1x')
