@@ -2668,10 +2668,10 @@ get_line_from_offset(void *x, int y) {
 }
 
 static bool
-find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int scrolled_by, int direction, bool on_screen_only) {
+find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsigned int scrolled_by, int direction, bool on_screen_only) {
     bool found_prompt = false, found_output = false, found_next_prompt = false;
     int start = 0, end = 0;
-    int y1 = start_y - scrolled_by, y2 = y1;
+    int init_y = start_screen_y - scrolled_by, y1 = init_y, y2 = init_y;
     const int upward_limit = -self->historybuf->count;
     const int downward_limit = self->lines - 1;
     const int screen_limit = -scrolled_by + downward_limit;
@@ -2684,7 +2684,7 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int
             found_prompt = true;
             // change direction to downwards to find command output
             direction = 1;
-        } else if (line && line->attrs.prompt_kind == OUTPUT_START) {
+        } else if (line && line->attrs.prompt_kind == OUTPUT_START && !line->attrs.continued) {
             found_output = true; start = y1;
             found_prompt = true;
             // keep finding the first output start upwards
@@ -2698,14 +2698,14 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int
         // find upwards: find prompt after the output, and the first output
         while (y1 >= upward_limit) {
             line = checked_range_line(self, y1);
-            if (line && line->attrs.prompt_kind == PROMPT_START) {
+            if (line && line->attrs.prompt_kind == PROMPT_START && !line->attrs.continued) {
                 if (direction == 0) {
                     // find around: stop at prompt start
                     start = y1 + 1;
                     break;
                 }
                 found_next_prompt = true; end = y1;
-            } else if (line && line->attrs.prompt_kind == OUTPUT_START) {
+            } else if (line && line->attrs.prompt_kind == OUTPUT_START && !line->attrs.continued) {
                 start = y1;
                 break;
             }
@@ -2736,7 +2736,7 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_y, unsigned int
     if (found_next_prompt) {
         oo->num_lines = end >= start ? end - start : 0;
     } else if (found_output) {
-        end = direction < 0 ? start_y : (unsigned int)downward_limit;
+        end = direction < 0 ? init_y : downward_limit;
         oo->num_lines = end >= start ? end - start : 0;
     } else return false;
     oo->start = start;
@@ -2756,12 +2756,14 @@ cmd_output(Screen *self, PyObject *args) {
 
     switch (which) {
         case 0: // last run cmd
-            found = find_cmd_output(self, &oo, self->cursor->y, self->scrolled_by, -1, false);
+            // When scrolled, the starting point of the search for the last command output
+            // is actually out of the screen, so add the number of scrolled lines
+            found = find_cmd_output(self, &oo, self->cursor->y + self->scrolled_by, self->scrolled_by, -1, false);
             break;
         case 1: // first on screen
             found = find_cmd_output(self, &oo, 0, self->scrolled_by, 1, true);
             break;
-        case 2:  // last visited cmd
+        case 2: // last visited cmd
             if (self->last_visited_prompt.scrolled_by <= self->historybuf->count && self->last_visited_prompt.is_set) {
                 found = find_cmd_output(self, &oo, self->last_visited_prompt.y, self->last_visited_prompt.scrolled_by, 0, false);
             } break;
