@@ -117,6 +117,9 @@ Detailed list of changes
 - macOS: Fix using shortcuts from the global menu bar as subsequent key presses
   in a multi key mapping not working (:iss:`4519`)
 
+- Fix getting last command output not working correctly when the screen is
+  scrolled (:pull:`4522`)
+
 
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
