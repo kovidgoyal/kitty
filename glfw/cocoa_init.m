@@ -602,6 +602,18 @@ is_active_apple_global_shortcut(NSEvent *event) {
         snprintf(lookup_key, sizeof(lookup_key) - 1, "c:%lx:%ld", (unsigned long)modifierFlags, (long)ch);
         NSNumber *sc = global_shortcuts[@(lookup_key)];
         if (sc != nil) return [sc intValue];
+        if (modifierFlags & NSEventModifierFlagShift) {
+            // the move to next window shortcuts also respond to the same shortcut + shift so check for that
+            const uint32_t ch_without_shift = vk_to_unicode_key_with_current_layout([event keyCode]);
+            if (ch_without_shift < GLFW_FKEY_FIRST || ch_without_shift > GLFW_FKEY_LAST) {
+                snprintf(lookup_key, sizeof(lookup_key) - 1, "c:%lx:%ld", (unsigned long)(modifierFlags & ~NSEventModifierFlagShift), (long)ch_without_shift);
+                NSNumber *sc = global_shortcuts[@(lookup_key)];
+                if (sc != nil) {
+                    int scv = [sc intValue];
+                    if (scv == kSHKMoveFocusToActiveOrNextWindow || scv == kSHKMoveFocusToNextWindow) return scv;
+                }
+            }
+        }
     }
     unsigned short vk = [event keyCode];
     if (vk != 0xffff) {

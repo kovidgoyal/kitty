@@ -259,7 +259,7 @@ is_pua_char(uint32_t ch) {
     return (0xE000 <= ch && ch <= 0xF8FF) || (0xF0000 <= ch && ch <= 0xFFFFF) || (0x100000 <= ch && ch <= 0x10FFFF);
 }
 
-static uint32_t
+uint32_t
 vk_to_unicode_key_with_current_layout(uint16_t keycode)
 {
     UInt32 dead_key_state = 0;
@@ -736,7 +736,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (void)doCommandBySelector:(SEL)selector
 {
     // interpretKeyEvents: May call insertText: or doCommandBySelector:.
-    // With the default macOS keybindings, pressing certain key combinations 
+    // With the default macOS keybindings, pressing certain key combinations
     // (e.g. Ctrl+/, Ctrl+Cmd+Down/Left/Right) will produce a beep sound.
     debug_key("\n\tTextInputCtx: doCommandBySelector: (%s)\n", [NSStringFromSelector(selector) UTF8String]);
 }
