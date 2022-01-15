@@ -554,6 +554,8 @@ typedef enum AppleShortcutNames {
     kSHKUnknown                                 = 0,    //
 } AppleShortcutNames;
 
+#define USEFUL_MODS(x) (x & (NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagControl))
+
 static void
 build_global_shortcuts_lookup(void) {
     NSMutableDictionary<NSString*, NSNumber*> *temp = [NSMutableDictionary dictionaryWithCapacity:128];  // will be autoreleased
@@ -579,6 +581,7 @@ build_global_shortcuts_lookup(void) {
                 NSInteger ch = [parameters[0] isKindOfClass:[NSNumber class]] ? [parameters[0] integerValue] : 0xffff;
                 NSInteger vk = [parameters[1] isKindOfClass:[NSNumber class]] ? [parameters[1] integerValue] : 0xffff;
                 NSEventModifierFlags mods = ([parameters count] > 2 && [parameters[2] isKindOfClass:[NSNumber class]]) ? [parameters[2] unsignedIntegerValue] : 0;
+                mods = USEFUL_MODS(mods);
                 static char buf[64];
                 if (ch == 0xffff) {
                     if (vk == 0xffff) continue;
@@ -600,7 +603,7 @@ is_shiftable_shortcut(int scv) {
 static int
 is_active_apple_global_shortcut(NSEvent *event) {
     if (global_shortcuts == nil) build_global_shortcuts_lookup();
-    NSEventModifierFlags modifierFlags = [event modifierFlags] & (NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagControl);
+    NSEventModifierFlags modifierFlags = USEFUL_MODS([event modifierFlags]);
     static char lookup_key[64];
     if ([event.charactersIgnoringModifiers length] == 1) {
         const unichar ch = [event.charactersIgnoringModifiers characterAtIndex:0];
