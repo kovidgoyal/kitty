@@ -227,6 +227,7 @@ GLFWAPI int glfwInit(monotonic_t start_time)
 
     memset(&_glfw, 0, sizeof(_glfw));
     _glfw.hints.init = _glfwInitHints;
+    _glfw.ignoreOSKeyboardProcessing = false;
 
     if (!_glfwPlatformInit())
     {
