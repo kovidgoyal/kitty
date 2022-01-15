@@ -2756,12 +2756,14 @@ cmd_output(Screen *self, PyObject *args) {
 
     switch (which) {
         case 0: // last run cmd
-            found = find_cmd_output(self, &oo, self->cursor->y, self->scrolled_by, -1, false);
+            // When scrolled, the starting point of the search for the last command output
+            // is actually out of the screen, so add the number of scrolled lines
+            found = find_cmd_output(self, &oo, self->cursor->y + self->scrolled_by, self->scrolled_by, -1, false);
             break;
         case 1: // first on screen
             found = find_cmd_output(self, &oo, 0, self->scrolled_by, 1, true);
             break;
-        case 2:  // last visited cmd
+        case 2: // last visited cmd
             if (self->last_visited_prompt.scrolled_by <= self->historybuf->count && self->last_visited_prompt.is_set) {
                 found = find_cmd_output(self, &oo, self->last_visited_prompt.y, self->last_visited_prompt.scrolled_by, 0, false);
             } break;
