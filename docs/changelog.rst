@@ -95,11 +95,11 @@ Detailed list of changes
   rather than a plane. This means the first and last window are considered
   neighbors (:iss:`4494`)
 
-- Shell integration: Fix cursor shape not working with fish's vi mode
+- Shell integration: fish: Fix cursor shape not working with fish's vi mode
   (:iss:`4508`)
 
-- Shell integration: fish: Only override fish_title if it has not been set by
-  the user (:iss:`4452`)
+- Shell integration: fish: Dont override fish's native title setting functionality.
+  See `discussion https://github.com/fish-shell/fish-shell/issues/8641`__.
 
 - macOS: Fix hiding via :kbd:`cmd+h` not working on macOS 10.15.7 (:iss:`4472`)
 

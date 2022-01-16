@@ -76,24 +76,6 @@ function _ksi_main
         functions --erase _ksi_set_vi_cursor
     end
 
-    if not contains "no-title" $_ksi
-        function _ksi_function_is_not_overridden -d "Check if the specified function is not overridden"
-            functions --details $argv[1] | string match -q -- "$__fish_data_dir/functions/*"
-        end
-
-        if _ksi_function_is_not_overridden fish_title
-            function fish_title
-                if set -q argv[1]
-                    echo $argv[1]
-                else
-                    prompt_pwd
-                end
-            end
-        end
-
-        functions --erase _ksi_function_is_not_overridden
-    end
-
     if not contains "no-prompt-mark" $_ksi
         and not functions -q _ksi_mark
         set --global _ksi_prompt_state "first-run"

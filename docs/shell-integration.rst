@@ -26,7 +26,7 @@ Features
   to view it in a pager
 
 * The current working directory or the command being executed are automatically
-  displayed in the kitty window titlebar/tab title.
+  displayed in the kitty window titlebar/tab title
 
 * The text cursor is changed to a bar when editing commands at the shell prompt
 
@@ -58,7 +58,9 @@ no-cursor
     Turn off changing of the text cursor to a bar when editing text
 
 no-title
-    Turn off setting the kitty window/tab title based on shell state
+    Turn off setting the kitty window/tab title based on shell state.
+    Note that for the ``fish`` shell kitty relies on fish's native title
+    setting functionality instead.
 
 no-prompt-mark
     Turn off marking of prompts. This disables jumping to prompt, browsing
