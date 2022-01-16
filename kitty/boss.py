@@ -2109,13 +2109,26 @@ class Boss:
     def select_tab(self) -> None:
 
         def chosen(ans: Union[None, str, int]) -> None:
+            if ans == 0:
+                self.new_tab()
             if isinstance(ans, int):
                 for tab in self.all_tabs:
                     if tab.id == ans:
                         self.set_active_tab(tab)
 
         ct = self.active_tab
-        self.choose_entry('Choose a tab to switch to', ((t.id, t.title) for t in self.all_tabs if t is not ct), chosen)
+        entries = ()
+        entries = entries + ((0, '[New tab]'),)
+        for t in self.all_tabs:
+            title = t.title
+            count = len(t.windows)
+            if count > 1:
+                title = title + ' [{count} windows]'.format(count=count)
+            if t.id == ct.id:
+                title = title + ' [current tab]'
+            entries = entries + ((t.id, title),)
+
+        self.choose_entry('Choose a tab to switch to', entries, chosen)
 
     @ac('win', '''
         Detach a window, moving it to another tab or OS Window
