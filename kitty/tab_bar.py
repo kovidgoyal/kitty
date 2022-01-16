@@ -4,7 +4,7 @@
 import os
 from functools import lru_cache, partial, wraps
 from typing import (
-    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, TYPE_CHECKING
+    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
 )
 
 from .borders import Border, BorderColor
@@ -17,11 +17,7 @@ from .fast_data_types import (
 from .rgb import alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
 from .typing import EdgeLiteral, PowerlineStyle
-from .utils import color_as_int, log_error
-
-
-if TYPE_CHECKING:
-    import re
+from .utils import color_as_int, log_error, sgr_sanitizer_pat
 
 
 class TabBarData(NamedTuple):
@@ -156,15 +152,9 @@ class ExtraData:
     next_tab: Optional[TabBarData] = None
 
 
-@run_once
-def attributed_string_pat() -> 're.Pattern[str]':
-    import re
-    return re.compile('(\x1b\\[[^m]*m)')
-
-
 def draw_attributed_string(title: str, screen: Screen) -> None:
     if '\x1b' in title:
-        for x in attributed_string_pat().split(title):
+        for x in sgr_sanitizer_pat(for_splitting=True).split(title):
             if x.startswith('\x1b') and x.endswith('m'):
                 screen.apply_sgr(x[2:-1])
             else:
