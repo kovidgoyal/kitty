@@ -2116,15 +2116,14 @@ class Boss:
                     if tab.id == ans:
                         self.set_active_tab(tab)
 
-        ct = self.active_tab
-        entries = ()
+        entries: Tuple[Tuple[int, str], ...] = ()
         entries = entries + ((0, '[New tab]'),)
         for t in self.all_tabs:
             title = t.title
             count = len(t.windows)
             if count > 1:
                 title = title + ' [{count} windows]'.format(count=count)
-            if t.id == ct.id:
+            if t.id == getattr(self.active_tab, 'id'):
                 title = title + ' [current tab]'
             entries = entries + ((t.id, title),)
 
