@@ -55,9 +55,10 @@ def expandvars(val: str, env: Mapping[str, str] = {}, fallback_to_os_env: bool =
 
 @lru_cache(maxsize=2)
 def sgr_sanitizer_pat(for_splitting: bool = False) -> 're.Pattern[str]':
+    pat = '\033\\[.*?m'
     if for_splitting:
-        return re.compile('(\033\\[.*?m)')
-    return re.compile('\033\\[.*?m')
+        return re.compile(f'({pat})')
+    return re.compile(pat)
 
 
 def platform_window_id(os_window_id: int) -> Optional[int]:
