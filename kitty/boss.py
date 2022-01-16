@@ -2076,9 +2076,10 @@ class Boss:
 
     def choose_entry(
         self, title: str, entries: Iterable[Tuple[Union[_T, str, None], str]],
-        callback: Callable[[Union[_T, str, None]], None]
+        callback: Callable[[Union[_T, str, None]], None],
+        subtitle: str = ''
     ) -> Optional[Window]:
-        lines = [title, '']
+        lines = [title, subtitle, '']
         idx_map: List[Union[_T, str]] = []
         ans: Union[str, _T, None] = None
         fmt = ': {1}'
@@ -2114,8 +2115,19 @@ class Boss:
                     if tab.id == ans:
                         self.set_active_tab(tab)
 
+        def format_tab_title(tab: Tab) -> str:
+            w = 'windows' if tab.num_window_groups > 1 else 'window'
+            return f'{tab.title} [{tab.num_window_groups} {w}]'
+
         ct = self.active_tab
-        self.choose_entry('Choose a tab to switch to', ((t.id, t.title) for t in self.all_tabs if t is not ct), chosen)
+        st = ''
+        if ct is not None:
+            st = f'Current tab: {format_tab_title(ct)}'
+        self.choose_entry(
+            'Choose a tab to switch to',
+            ((t.id, format_tab_title(t)) for t in self.all_tabs if t is not ct),
+            chosen, subtitle=st
+        )
 
     @ac('win', '''
         Detach a window, moving it to another tab or OS Window

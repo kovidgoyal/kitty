@@ -120,6 +120,8 @@ Detailed list of changes
 - Fix getting last command output not working correctly when the screen is
   scrolled (:pull:`4522`)
 
+- Show number of windows per tab in the :ac:`select_tab` action (:pull:`4523`)
+
 
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
