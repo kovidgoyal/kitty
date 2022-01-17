@@ -14,6 +14,7 @@ kitty
     changelog
     integrations
     protocol-extensions
+    press-mentions
 
 
 .. tab:: Fast
