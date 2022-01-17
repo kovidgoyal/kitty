@@ -279,6 +279,21 @@ def add_curl(buf: CBufType, cell_width: int, position: int, thickness: int, cell
             add_intensity(x, y1 + t, 255)
 
 
+def add_dots(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
+    y = 1 + position - thickness // 2
+    for i in range(y, min(y + thickness, cell_height)):
+        for j in range(0, cell_width, 2 * thickness):
+            buf[cell_width * i + j:cell_width * i + min(j + thickness, cell_width)] = [255] * min(thickness, cell_width - j)
+
+
+def add_dashes(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
+    halfspace_width = cell_width // 4
+    y = 1 + position - thickness // 2
+    for i in range(y, min(y + thickness, cell_height)):
+        buf[cell_width * i:cell_width * i + (cell_width - 3 * halfspace_width)] = [255] * (cell_width - 3 * halfspace_width)
+        buf[cell_width * i + 3 * halfspace_width:cell_width * (i + 1)] = [255] * (cell_width - 3 * halfspace_width)
+
+
 def render_special(
     underline: int = 0,
     strikethrough: bool = False,
@@ -313,7 +328,7 @@ def render_special(
         t = underline_thickness
         if underline > 1:
             t = max(1, min(cell_height - underline_position - 1, t))
-        dl([add_line, add_line, add_dline, add_curl, add_line, add_curl][underline], underline_position, t, cell_height)
+        dl([add_line, add_line, add_dline, add_curl, add_dots, add_dashes][underline], underline_position, t, cell_height)
     if strikethrough:
         dl(add_line, strikethrough_position, strikethrough_thickness, cell_height)
 
