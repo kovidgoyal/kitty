@@ -36,12 +36,12 @@ Then you can simply use ``icat image.png`` to view images.
    manager, there are a couple of things to keep in mind. icat works by
    communicating over the TTY device, it both writes to and reads from the TTY.
    So it is imperative that while it is running the host program does not do
-   any TTY I/O. And any key presses or other input from the user on the TTY
-   device will be discarded. At a minimum, you should use the
-   :option:`kitty +kitten icat --silent` and :option:`kitty +kitten icat --transfer-mode` flags. To be really robust
-   you should consider writing proper support for the
-   :doc:`../graphics-protocol` in the program instead.
-   Nowadays there are many libraries that have support for it.
+   any TTY I/O. Any key presses or other input from the user on the TTY device
+   will be discarded. At a minimum, you should use the :option:`kitty +kitten
+   icat --silent` and :option:`kitty +kitten icat --transfer-mode` flags. To be
+   really robust you should consider writing proper support for the
+   :doc:`../graphics-protocol` in the program instead.  Nowadays there are many
+   libraries that have support for it.
 
 
 .. program:: kitty +kitten icat
