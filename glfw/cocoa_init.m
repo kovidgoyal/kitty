@@ -554,6 +554,11 @@ typedef enum AppleShortcutNames {
     kSHKUnknown                                 = 0,    //
 } AppleShortcutNames;
 
+static bool
+is_shiftable_shortcut(int scv) {
+    return scv == kSHKMoveFocusToActiveOrNextWindow || scv == kSHKMoveFocusToNextWindow;
+}
+
 #define USEFUL_MODS(x) (x & (NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagControl))
 
 static void
@@ -583,11 +588,16 @@ build_global_shortcuts_lookup(void) {
                 NSEventModifierFlags mods = ([parameters count] > 2 && [parameters[2] isKindOfClass:[NSNumber class]]) ? [parameters[2] unsignedIntegerValue] : 0;
                 mods = USEFUL_MODS(mods);
                 static char buf[64];
-                if (ch == 0xffff) {
-                    if (vk == 0xffff) continue;
-                    snprintf(buf, sizeof(buf) - 1, "v:%lx:%ld", (unsigned long)mods, (long)vk);
-                } else snprintf(buf, sizeof(buf) - 1, "c:%lx:%ld", (unsigned long)mods, (long)ch);
+#define S(x, k) snprintf(buf, sizeof(buf) - 1, #x":%lx:%ld", (unsigned long)mods, (long)k)
+                if (ch == 0xffff) { if (vk == 0xffff) continue; S(v, vk); } else S(c, ch);
                 temp[@(buf)] = @(sc);
+                // the move to next window shortcuts also respond to the same shortcut + shift
+                if (is_shiftable_shortcut([key intValue]) && !(mods & NSEventModifierFlagShift)) {
+                    mods |= NSEventModifierFlagShift;
+                    if (ch == 0xffff) S(v, vk); else S(c, ch);
+                    temp[@(buf)] = @(sc);
+                }
+#undef S
             }
         }
     }
@@ -595,47 +605,32 @@ build_global_shortcuts_lookup(void) {
     /* NSLog(@"global_shortcuts: %@", global_shortcuts); */
 }
 
-static bool
-is_shiftable_shortcut(int scv) {
-    return scv == kSHKMoveFocusToActiveOrNextWindow || scv == kSHKMoveFocusToNextWindow;
-}
-
 static int
 is_active_apple_global_shortcut(NSEvent *event) {
     if (global_shortcuts == nil) build_global_shortcuts_lookup();
     NSEventModifierFlags modifierFlags = USEFUL_MODS([event modifierFlags]);
     static char lookup_key[64];
+
+#define LOOKUP(t, k) \
+    snprintf(lookup_key, sizeof(lookup_key) - 1, #t":%lx:%ld", (unsigned long)modifierFlags, (long)k); \
+    NSNumber *sc = global_shortcuts[@(lookup_key)]; \
+    if (sc != nil) return [sc intValue];
+
     if ([event.charactersIgnoringModifiers length] == 1) {
-        const unichar ch = [event.charactersIgnoringModifiers characterAtIndex:0];
-        snprintf(lookup_key, sizeof(lookup_key) - 1, "c:%lx:%ld", (unsigned long)modifierFlags, (long)ch);
-        NSNumber *sc = global_shortcuts[@(lookup_key)];
-        if (sc != nil) return [sc intValue];
         if (modifierFlags & NSEventModifierFlagShift) {
-            // the move to next window shortcuts also respond to the same shortcut + shift so check for that
             const uint32_t ch_without_shift = vk_to_unicode_key_with_current_layout([event keyCode]);
             if (ch_without_shift < GLFW_FKEY_FIRST || ch_without_shift > GLFW_FKEY_LAST) {
-                snprintf(lookup_key, sizeof(lookup_key) - 1, "c:%lx:%ld", (unsigned long)(modifierFlags & ~NSEventModifierFlagShift), (long)ch_without_shift);
-                NSNumber *sc = global_shortcuts[@(lookup_key)];
-                if (sc != nil) {
-                    int scv = [sc intValue];
-                    if (is_shiftable_shortcut(scv)) return scv;
-                }
+                LOOKUP(c, ch_without_shift);
             }
         }
+        const unichar ch = [event.charactersIgnoringModifiers characterAtIndex:0];
+        LOOKUP(c, ch);
     }
     unsigned short vk = [event keyCode];
     if (vk != 0xffff) {
-        snprintf(lookup_key, sizeof(lookup_key) - 1, "v:%lx:%ld", (unsigned long)modifierFlags, (long)vk);
-        NSNumber *sc = global_shortcuts[@(lookup_key)];
-        if (sc != nil) return [sc intValue];
-        // the move to next window shortcuts also respond to the same shortcut + shift so check for that
-        snprintf(lookup_key, sizeof(lookup_key) - 1, "v:%lx:%ld", (unsigned long)(modifierFlags & ~NSEventModifierFlagShift), (long)vk);
-        sc = global_shortcuts[@(lookup_key)];
-        if (sc != nil) {
-            int scv = [sc intValue];
-            if (is_shiftable_shortcut(scv)) return scv;
-        }
+        LOOKUP(v, vk);
     }
+#undef LOOKUP
     return kSHKUnknown;
 }
 
