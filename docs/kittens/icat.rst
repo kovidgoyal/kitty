@@ -30,25 +30,23 @@ Then you can simply use ``icat image.png`` to view images.
     multiplexer has added support for it or not.
 
 
-.. note::
-
-   If you are trying to integrate icat into another program like a file
-   manager, there are a couple of things to keep in mind. icat works by
-   communicating over the TTY device, it both writes to and reads from the TTY.
-   So it is imperative that while it is running the host program does not do
-   any TTY I/O. Any key presses or other input from the user on the TTY device
-   will be discarded. At a minimum, you should use the :option:`kitty +kitten
-   icat --silent` and :option:`kitty +kitten icat --transfer-mode` flags. To be
-   really robust you should consider writing proper support for the
-   :doc:`../graphics-protocol` in the program instead.  Nowadays there are many
-   libraries that have support for it.
-
-
 .. program:: kitty +kitten icat
 
 
 The ``icat`` kitten has various command line arguments to allow it to be used
 from inside other programs to display images. In particular, :option:`--place`,
-:option:`--detect-support` and :option:`--print-window-size`.
+:option:`--detect-support`, :option:`--silent` and :option:`--print-window-size`.
+
+If you are trying to integrate icat into a complex program like a file
+manager or editor, there are a few things to keep in mind. icat works by
+communicating over the TTY device, it both writes to and reads from the TTY.
+So it is imperative that while it is running the host program does not do
+any TTY I/O. Any key presses or other input from the user on the TTY device
+will be discarded. At a minimum, you should use the :option:`--silent` and
+:option:`--transfer-mode` command line arguments. To be
+really robust you should consider writing proper support for the
+:doc:`../graphics-protocol` in the program instead.  Nowadays there are many
+libraries that have support for it.
+
 
 .. include:: /generated/cli-kitten-icat.rst
