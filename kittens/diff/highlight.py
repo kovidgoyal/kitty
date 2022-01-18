@@ -4,7 +4,10 @@
 import concurrent
 import os
 import re
-from typing import IO, Dict, Iterable, List, Optional, Tuple, Union, cast
+from concurrent.futures import ProcessPoolExecutor
+from typing import (
+    IO, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
+)
 
 from pygments import highlight  # type: ignore
 from pygments.formatter import Formatter  # type: ignore
@@ -136,10 +139,22 @@ def highlight_for_diff(path: str, aliases: Dict[str, str]) -> DiffHighlight:
     return ans
 
 
+process_pool_executor: Optional[ProcessPoolExecutor] = None
+
+
+def get_highlight_processes() -> Iterator[int]:
+    if process_pool_executor is None:
+        return
+    for pid in process_pool_executor._processes:
+        yield pid
+
+
 def highlight_collection(collection: Collection, aliases: Optional[Dict[str, str]] = None) -> Union[str, Dict[str, DiffHighlight]]:
+    global process_pool_executor
     jobs = {}
     ans: Dict[str, DiffHighlight] = {}
     with get_process_pool_executor(prefer_fork=True) as executor:
+        process_pool_executor = executor
         for path, item_type, other_path in collection:
             if item_type != 'rename':
                 for p in (path, other_path):
@@ -159,8 +174,9 @@ def highlight_collection(collection: Collection, aliases: Optional[Dict[str, str
 
 def main() -> None:
     # kitty +runpy "from kittens.diff.highlight import main; main()" file
-    from .options.types import defaults
     import sys
+
+    from .options.types import defaults
     initialize_highlighter()
     with open(sys.argv[-1]) as f:
         highlighted = highlight_data(f.read(), f.name, defaults.syntax_aliases)
