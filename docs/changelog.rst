@@ -94,6 +94,8 @@ Detailed list of changes
 - hints kitten: Fix common single letter extension files not being detected
   (:iss:`4491`)
 
+- Support dotted and dashed underline styles (:pull:`4529`)
+
 - For the vertical and horizontal layouts have the windows arranged on a ring
   rather than a plane. This means the first and last window are considered
   neighbors (:iss:`4494`)
