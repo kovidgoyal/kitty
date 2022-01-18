@@ -17,7 +17,7 @@ from kitty.fast_data_types import (
     test_render_line, test_shape
 )
 from kitty.fonts.box_drawing import (
-    BufType, render_box_char, render_missing_glyph
+    BufType, distribute_dots, render_box_char, render_missing_glyph
 )
 from kitty.options.types import Options, defaults
 from kitty.typing import CoreTextFont, FontConfigPattern
@@ -279,6 +279,23 @@ def add_curl(buf: CBufType, cell_width: int, position: int, thickness: int, cell
             add_intensity(x, y1 + t, 255)
 
 
+def add_dots(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
+    spacing, size = distribute_dots(cell_width, cell_width // (2 * thickness))
+
+    y = 1 + position - thickness // 2
+    for i in range(y, min(y + thickness, cell_height)):
+        for j, s in enumerate(spacing):
+            buf[cell_width * i + j * size + s: cell_width * i + (j + 1) * size + s] = [255] * size
+
+
+def add_dashes(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
+    halfspace_width = cell_width // 4
+    y = 1 + position - thickness // 2
+    for i in range(y, min(y + thickness, cell_height)):
+        buf[cell_width * i:cell_width * i + (cell_width - 3 * halfspace_width)] = [255] * (cell_width - 3 * halfspace_width)
+        buf[cell_width * i + 3 * halfspace_width:cell_width * (i + 1)] = [255] * (cell_width - 3 * halfspace_width)
+
+
 def render_special(
     underline: int = 0,
     strikethrough: bool = False,
@@ -313,7 +330,7 @@ def render_special(
         t = underline_thickness
         if underline > 1:
             t = max(1, min(cell_height - underline_position - 1, t))
-        dl([add_line, add_line, add_dline, add_curl][underline], underline_position, t, cell_height)
+        dl([add_line, add_line, add_dline, add_curl, add_dots, add_dashes][underline], underline_position, t, cell_height)
     if strikethrough:
         dl(add_line, strikethrough_position, strikethrough_thickness, cell_height)
 
@@ -384,7 +401,7 @@ def prerender_function(
         render_cursor, cursor_beam_thickness=cursor_beam_thickness,
         cursor_underline_thickness=cursor_underline_thickness, cell_width=cell_width,
         cell_height=cell_height, dpi_x=dpi_x, dpi_y=dpi_y)
-    cells = f(1), f(2), f(3), f(0, True), f(missing=True), c(1), c(2), c(3)
+    cells = f(1), f(2), f(3), f(4), f(5), f(0, strikethrough=True), f(missing=True), c(1), c(2), c(3)
     return tuple(map(ctypes.addressof, cells)), cells
 
 

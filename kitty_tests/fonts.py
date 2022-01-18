@@ -28,7 +28,7 @@ class Rendering(BaseTest):
         self.test_ctx.__enter__()
         self.sprites, self.cell_width, self.cell_height = self.test_ctx.__enter__()
         try:
-            self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4, 5, 6, 7, 8])
+            self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         except Exception:
             self.test_ctx.__exit__()
             del self.test_ctx
@@ -44,15 +44,15 @@ class Rendering(BaseTest):
         sprite_map_set_limits(10, 2)
         sprite_map_set_layout(5, 5)
         self.ae(test_sprite_position_for(0), (0, 0, 0))
-        self.ae(test_sprite_position_for(0), (0, 0, 0))
         self.ae(test_sprite_position_for(1), (1, 0, 0))
         self.ae(test_sprite_position_for(2), (0, 1, 0))
         self.ae(test_sprite_position_for(3), (1, 1, 0))
         self.ae(test_sprite_position_for(4), (0, 0, 1))
         self.ae(test_sprite_position_for(5), (1, 0, 1))
-        self.ae(test_sprite_position_for(0, 1), (0, 1, 1))
-        self.ae(test_sprite_position_for(0, 2), (1, 1, 1))
-        self.ae(test_sprite_position_for(0, 2), (1, 1, 1))
+        self.ae(test_sprite_position_for(6), (0, 1, 1))
+        self.ae(test_sprite_position_for(7), (1, 1, 1))
+        self.ae(test_sprite_position_for(0, 1), (0, 0, 2))
+        self.ae(test_sprite_position_for(0, 2), (1, 0, 2))
 
     def test_box_drawing(self):
         prerendered = len(self.sprites)

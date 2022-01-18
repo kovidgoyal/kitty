@@ -79,8 +79,8 @@ const uint COLOR_MASK = uint(0x4000);
 const uint ZERO = uint(0);
 const uint ONE = uint(1);
 const uint TWO = uint(2);
-const uint THREE = uint(3);
 const uint FOUR = uint(4);
+const uint SEVEN = uint(7);
 
 vec3 color_to_vec(uint c) {
     uint r, g, b;
@@ -193,7 +193,7 @@ void main() {
     foreground = choose_color(float(is_selected & ONE), selection_color, foreground);
     decoration_fg = choose_color(float(is_selected & ONE), selection_color, decoration_fg);
     // Underline and strike through (rendered via sprites)
-    underline_pos = choose_color(in_url, to_sprite_pos(pos, url_style, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> DECORATION_SHIFT) & THREE, ZERO, ZERO));
+    underline_pos = choose_color(in_url, to_sprite_pos(pos, url_style, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> DECORATION_SHIFT) & SEVEN, ZERO, ZERO));
     strike_pos = to_sprite_pos(pos, ((text_attrs >> STRIKE_SHIFT) & ONE) * FOUR, ZERO, ZERO);
 
     // Cursor

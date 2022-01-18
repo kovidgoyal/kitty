@@ -142,7 +142,7 @@ typedef struct {
 typedef union CellAttrs {
     struct {
         uint16_t width : 2;
-        uint16_t decoration : 2;
+        uint16_t decoration : 3;
         uint16_t bold : 1;
         uint16_t italic : 1;
         uint16_t reverse : 1;
