@@ -17,7 +17,7 @@ from kitty.fast_data_types import (
     test_render_line, test_shape
 )
 from kitty.fonts.box_drawing import (
-    BufType, render_box_char, render_missing_glyph
+    BufType, distribute_dots, render_box_char, render_missing_glyph
 )
 from kitty.options.types import Options, defaults
 from kitty.typing import CoreTextFont, FontConfigPattern
@@ -280,10 +280,12 @@ def add_curl(buf: CBufType, cell_width: int, position: int, thickness: int, cell
 
 
 def add_dots(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
+    spacing, size = distribute_dots(cell_width, cell_width // (2 * thickness))
+
     y = 1 + position - thickness // 2
     for i in range(y, min(y + thickness, cell_height)):
-        for j in range(0, cell_width, 2 * thickness):
-            buf[cell_width * i + j:cell_width * i + min(j + thickness, cell_width)] = [255] * min(thickness, cell_width - j)
+        for j, s in enumerate(spacing):
+            buf[cell_width * i + j * size + s: cell_width * i + (j + 1) * size + s] = [255] * size
 
 
 def add_dashes(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
