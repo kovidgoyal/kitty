@@ -10,6 +10,7 @@ import tempfile
 import warnings
 from collections import defaultdict
 from contextlib import suppress
+from enum import Enum, auto
 from functools import partial
 from gettext import gettext as _
 from typing import (
@@ -63,6 +64,13 @@ except ImportError:
 INITIALIZING, COLLECTED, DIFFED, COMMAND, MESSAGE = range(5)
 
 
+class BackgroundWork(Enum):
+    none = auto()
+    collecting = auto()
+    diffing = auto()
+    highlighting = auto()
+
+
 def generate_diff(collection: Collection, context: int) -> Union[str, Dict[str, Patch]]:
     d = Differ()
 
@@ -95,7 +103,7 @@ class DiffHandler(Handler):
         if self.current_context_count < 0:
             self.current_context_count = self.original_context_count = self.opts.num_context_lines
         self.highlighting_done = False
-        self.doing_background_work = ''
+        self.doing_background_work = BackgroundWork.none
         self.restore_position: Optional[Reference] = None
         for key_def, action in self.opts.key_definitions.items():
             self.add_shortcut(action, key_def)
@@ -139,7 +147,7 @@ class DiffHandler(Handler):
     def create_collection(self) -> None:
 
         def collect_done(collection: Collection) -> None:
-            self.doing_background_work = ''
+            self.doing_background_work = BackgroundWork.none
             self.collection = collection
             self.state = COLLECTED
             self.generate_diff()
@@ -149,12 +157,12 @@ class DiffHandler(Handler):
             self.asyncio_loop.call_soon_threadsafe(collect_done, collection)
 
         self.asyncio_loop.run_in_executor(None, collect, self.left, self.right)
-        self.doing_background_work = 'collecting'
+        self.doing_background_work = BackgroundWork.collecting
 
     def generate_diff(self) -> None:
 
         def diff_done(diff_map: Union[str, Dict[str, Patch]]) -> None:
-            self.doing_background_work = ''
+            self.doing_background_work = BackgroundWork.none
             if isinstance(diff_map, str):
                 self.report_traceback_on_exit = diff_map
                 self.terminate(1)
@@ -184,12 +192,12 @@ class DiffHandler(Handler):
             self.asyncio_loop.call_soon_threadsafe(diff_done, diff_map)
 
         self.asyncio_loop.run_in_executor(None, diff, self.collection, self.current_context_count)
-        self.doing_background_work = 'diffing'
+        self.doing_background_work = BackgroundWork.diffing
 
     def syntax_highlight(self) -> None:
 
         def highlighting_done(hdata: Union[str, Dict[str, 'DiffHighlight']]) -> None:
-            self.doing_background_work = ''
+            self.doing_background_work = BackgroundWork.none
             if isinstance(hdata, str):
                 self.report_traceback_on_exit = hdata
                 self.terminate(1)
@@ -203,7 +211,7 @@ class DiffHandler(Handler):
             self.asyncio_loop.call_soon_threadsafe(highlighting_done, result)
 
         self.asyncio_loop.run_in_executor(None, highlight, self.collection, self.opts.syntax_aliases)
-        self.doing_background_work = 'highlighting'
+        self.doing_background_work = BackgroundWork.highlighting
 
     def calculate_statistics(self) -> None:
         self.added_count = self.collection.added_count
@@ -654,9 +662,9 @@ def main(args: List[str]) -> None:
     for message in showwarning.warnings:
         from kitty.utils import safe_print
         safe_print(message, file=sys.stderr)
-    if handler.doing_background_work == 'highlighting':
+    if handler.doing_background_work is BackgroundWork.highlighting:
         terminate_processes(tuple(get_highlight_processes()))
-    elif handler.doing_background_work == 'diffing':
+    elif handler.doing_background_work == BackgroundWork.diffing:
         terminate_processes(tuple(worker_processes))
     if loop.return_code != 0:
         if handler.report_traceback_on_exit:
