@@ -68,6 +68,8 @@ no-prompt-mark
 
 no-complete
     Turn off completion for the kitty command.
+    Note that for the ``fish`` shell this does not take effect, since fish
+    already comes with a kitty completion script.
 
 
 More ways to browse command output
