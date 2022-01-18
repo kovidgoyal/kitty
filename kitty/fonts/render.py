@@ -399,7 +399,7 @@ def prerender_function(
         render_cursor, cursor_beam_thickness=cursor_beam_thickness,
         cursor_underline_thickness=cursor_underline_thickness, cell_width=cell_width,
         cell_height=cell_height, dpi_x=dpi_x, dpi_y=dpi_y)
-    cells = f(1), f(2), f(3), f(4), f(5), f(0, True), f(missing=True), c(1), c(2), c(3)
+    cells = f(1), f(2), f(3), f(4), f(5), f(0, strikethrough=True), f(missing=True), c(1), c(2), c(3)
     return tuple(map(ctypes.addressof, cells)), cells
 
 
