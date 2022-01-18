@@ -25,12 +25,14 @@ character. This works only if the ``#`` character is the first character
 in the line.
 
 You can include secondary config files via the :code:`include` directive.  If
-you use a relative path for include, it is resolved with respect to the
+you use a relative path for :code:`include`, it is resolved with respect to the
 location of the current config file. Note that environment variables are
 expanded, so :code:`${USER}.conf` becomes :file:`name.conf` if
-:code:`USER=name`.  For example::
+:code:`USER=name`. Also, you can use :code:`globinclude` to include files
+matching a shell glob pattern. For example::
 
      include other.conf
+     globinclude kitty.d/**/*.conf
 
 
 .. note:: Syntax highlighting for :file:`kitty.conf` in vim is available via

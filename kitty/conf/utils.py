@@ -170,24 +170,30 @@ def parse_line(
         log_error(f'Ignoring invalid config line: {line}')
         return
     key, val = m.groups()
-    if key == 'include':
+    if key in ('include', 'globinclude'):
         val = os.path.expandvars(os.path.expanduser(val.strip()))
-        if not os.path.isabs(val):
-            val = os.path.join(base_path_for_includes, val)
-        try:
-            with open(val, encoding='utf-8', errors='replace') as include:
-                with currently_parsing.set_file(val):
-                    _parse(include, parse_conf_item, ans, accumulate_bad_lines)
-        except FileNotFoundError:
-            log_error(
-                'Could not find included config file: {}, ignoring'.
-                format(val)
-            )
-        except OSError:
-            log_error(
-                'Could not read from included config file: {}, ignoring'.
-                format(val)
-            )
+        if key == 'globinclude':
+            from pathlib import Path
+            vals = tuple(map(lambda x: str(os.fspath(x)), Path(base_path_for_includes).glob(val)))
+        else:
+            if not os.path.isabs(val):
+                val = os.path.join(base_path_for_includes, val)
+            vals = (val,)
+        for val in vals:
+            try:
+                with open(val, encoding='utf-8', errors='replace') as include:
+                    with currently_parsing.set_file(val):
+                        _parse(include, parse_conf_item, ans, accumulate_bad_lines)
+            except FileNotFoundError:
+                log_error(
+                    'Could not find included config file: {}, ignoring'.
+                    format(val)
+                )
+            except OSError:
+                log_error(
+                    'Could not read from included config file: {}, ignoring'.
+                    format(val)
+                )
         return
     if not parse_conf_item(key, val, ans):
         log_error(f'Ignoring unknown config key: {key}')

@@ -79,6 +79,9 @@ Detailed list of changes
 - macOS: Allow opening text files, images and directories with kitty when
   launched using "Open with" in Finder (:iss:`4460`)
 
+- Allow including config files matching glob patterns in :file:`kitty.conf`
+  (:iss:`4533`)
+
 - Shell integration: Fix bash integration not working when ``PROMPT_COMMAND``
   is used to change the prompt variables (:iss:`4476`)
 
