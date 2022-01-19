@@ -102,7 +102,7 @@ def compare_mousemaps(final: MouseMap, initial: MouseMap, print: Callable[..., N
         names = list(mod_to_names(trigger.mods)) + [f'b{trigger.button+1}']
         when = {-1: 'repeat', 1: 'press', 2: 'doublepress', 3: 'triplepress'}.get(trigger.repeat_count, trigger.repeat_count)
         grabbed = 'grabbed' if trigger.grabbed else 'ungrabbed'
-        print('\t', '+'.join(names), when, grabbed, defn)
+        print('\t' + '+'.join(names), when, grabbed, defn)
 
     def print_changes(defns: MouseMap, changes: Set[MouseEvent], text: str) -> None:
         if changes:
