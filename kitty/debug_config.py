@@ -20,10 +20,9 @@ from .constants import (
 )
 from .fast_data_types import Color, num_users
 from .options.types import Options as KittyOpts, defaults
-from .options.utils import MouseMap
+from .options.utils import MouseMap, SequenceMap, mouse_button_map, mouse_trigger_count_map
 from .rgb import color_as_sharp
 from .types import MouseEvent, SingleKey
-from .typing import SequenceMap
 
 ShortcutMap = Dict[Tuple[SingleKey, ...], str]
 
@@ -51,6 +50,18 @@ def mod_to_names(mods: int) -> Iterator[str]:
     for name, val in modmap.items():
         if mods & val:
             yield name
+
+
+def mouse_button_num_to_name(num: int) -> str:
+    button_map = {v: k for k, v in mouse_button_map.items()}
+    name = f'b{num+1}'
+    return button_map.get(name, name)
+
+
+def mouse_trigger_count_to_name(count: int) -> str:
+    trigger_count_map = {str(v): k for k, v in mouse_trigger_count_map.items()}
+    k = str(count)
+    return trigger_count_map.get(k, k)
 
 
 def print_shortcut(key_sequence: Iterable[SingleKey], defn: str, print: Callable[..., None]) -> None:
@@ -99,8 +110,8 @@ def compare_mousemaps(final: MouseMap, initial: MouseMap, print: Callable[..., N
     changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
 
     def print_mouse_action(trigger: MouseEvent, defn: str) -> None:
-        names = list(mod_to_names(trigger.mods)) + [f'b{trigger.button+1}']
-        when = {-1: 'repeat', 1: 'press', 2: 'doublepress', 3: 'triplepress'}.get(trigger.repeat_count, trigger.repeat_count)
+        names = list(mod_to_names(trigger.mods)) + [mouse_button_num_to_name(trigger.button)]
+        when = mouse_trigger_count_to_name(trigger.repeat_count)
         grabbed = 'grabbed' if trigger.grabbed else 'ungrabbed'
         print('\t' + '+'.join(names), when, grabbed, defn)
 
