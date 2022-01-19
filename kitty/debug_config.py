@@ -72,8 +72,9 @@ def print_shortcut(key_sequence: Iterable[SingleKey], defn: str, print: Callable
         mods, is_native, key = key_spec
         names = list(mod_to_names(mods))
         if key:
-            kname = glfw_get_key_name(0, key) if is_native else glfw_get_key_name(key, 0)
-            names.append(kname or f'{key}')
+            kname = (glfw_get_key_name(0, key) if is_native else glfw_get_key_name(key, 0)) or f'{key}'
+            kname = {' ': 'space'}.get(kname, kname)
+            names.append(kname)
         keys.append('+'.join(names))
 
     print('\t' + ' > '.join(keys), defn)
