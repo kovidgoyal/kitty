@@ -10,7 +10,7 @@ import time
 from contextlib import suppress
 from functools import partial
 from pprint import pformat
-from typing import IO, Callable, Dict, Iterable, Iterator, Optional, Set, Tuple, TypeVar
+from typing import IO, Callable, Dict, Iterator, Optional, Set, TypeVar
 
 from kittens.tui.operations import colored, styled
 
@@ -20,13 +20,13 @@ from .constants import (
 )
 from .fast_data_types import Color, num_users
 from .options.types import Options as KittyOpts, defaults
-from .options.utils import SequenceMap, mouse_button_map, mouse_trigger_count_map
+from .options.utils import SequenceMap
 from .rgb import color_as_sharp
-from .types import MouseEvent, SingleKey
+from .types import MouseEvent, Shortcut
 
-AnyEvent = TypeVar('AnyEvent', MouseEvent, Tuple[SingleKey, ...])
+AnyEvent = TypeVar('AnyEvent', MouseEvent, Shortcut)
 Print = Callable[..., None]
-ShortcutMap = Dict[Tuple[SingleKey, ...], str]
+ShortcutMap = Dict[Shortcut, str]
 
 
 def green(x: str) -> str:
@@ -41,63 +41,15 @@ def title(x: str) -> str:
     return colored(x, 'blue', intense=True)
 
 
-def mod_to_names(mods: int) -> Iterator[str]:
-    from .fast_data_types import (
-        GLFW_MOD_ALT, GLFW_MOD_CAPS_LOCK, GLFW_MOD_CONTROL, GLFW_MOD_HYPER,
-        GLFW_MOD_META, GLFW_MOD_NUM_LOCK, GLFW_MOD_SHIFT, GLFW_MOD_SUPER
-    )
-    modmap = {'ctrl': GLFW_MOD_CONTROL, 'shift': GLFW_MOD_SHIFT, ('opt' if is_macos else 'alt'): GLFW_MOD_ALT,
-              ('cmd' if is_macos else 'super'): GLFW_MOD_SUPER, 'hyper': GLFW_MOD_HYPER, 'meta': GLFW_MOD_META,
-              'caps_lock': GLFW_MOD_CAPS_LOCK, 'num_lock': GLFW_MOD_NUM_LOCK}
-    for name, val in modmap.items():
-        if mods & val:
-            yield name
-
-
-def mouse_button_num_to_name(num: int) -> str:
-    button_map = {v: k for k, v in mouse_button_map.items()}
-    name = f'b{num+1}'
-    return button_map.get(name, name)
-
-
-def mouse_trigger_count_to_name(count: int) -> str:
-    trigger_count_map = {str(v): k for k, v in mouse_trigger_count_map.items()}
-    k = str(count)
-    return trigger_count_map.get(k, k)
-
-
-def print_shortcut(key_sequence: Iterable[SingleKey], defn: str, print: Print) -> None:
-    from .fast_data_types import glfw_get_key_name
-    keys = []
-    for key_spec in key_sequence:
-        names = []
-        mods, is_native, key = key_spec
-        names = list(mod_to_names(mods))
-        if key:
-            kname = (glfw_get_key_name(0, key) if is_native else glfw_get_key_name(key, 0)) or f'{key}'
-            kname = {' ': 'space'}.get(kname, kname)
-            names.append(kname)
-        keys.append('+'.join(names))
-
-    print('\t' + ' > '.join(keys), defn)
-
-
-def print_mouse_action(trigger: MouseEvent, defn: str, print: Print) -> None:
-    names = list(mod_to_names(trigger.mods)) + [mouse_button_num_to_name(trigger.button)]
-    when = mouse_trigger_count_to_name(trigger.repeat_count)
-    grabbed = 'grabbed' if trigger.grabbed else 'ungrabbed'
-    print('\t' + '+'.join(names), when, grabbed, defn)
+def print_event(ev: AnyEvent, defn: str, print: Print) -> None:
+    print('\t' + ev.human_repr, defn)
 
 
 def print_mapping_changes(defns: Dict[AnyEvent, str], changes: Set[AnyEvent], text: str, print: Print) -> None:
     if changes:
         print(title(text))
         for k in sorted(changes):
-            v = defns[k]
-            if isinstance(k, MouseEvent):
-                print_mouse_action(k, v, print)
-            else:
-                print_shortcut(k, defns[k], print)
+            print_event(k, defns[k], print)
 
 
 def compare_maps(final: Dict[AnyEvent, str], initial: Dict[AnyEvent, str], print: Print) -> None:
@@ -119,7 +71,7 @@ def flatten_sequence_map(m: SequenceMap) -> ShortcutMap:
     ans = {}
     for key_spec, rest_map in m.items():
         for r, action in rest_map.items():
-            ans[(key_spec,) + (r)] = action
+            ans[Shortcut((key_spec,) + (r))] = action
     return ans
 
 
@@ -154,8 +106,8 @@ def compare_opts(opts: KittyOpts, print: Print) -> None:
 
     compare_maps(opts.mousemap, default_opts.mousemap, print)
     final_, initial_ = opts.keymap, default_opts.keymap
-    final: ShortcutMap = {(k,): v for k, v in final_.items()}
-    initial: ShortcutMap = {(k,): v for k, v in initial_.items()}
+    final: ShortcutMap = {Shortcut((k,)): v for k, v in final_.items()}
+    initial: ShortcutMap = {Shortcut((k,)): v for k, v in initial_.items()}
     final_s, initial_s = map(flatten_sequence_map, (opts.sequence_map, default_opts.sequence_map))
     final.update(final_s)
     initial.update(initial_s)

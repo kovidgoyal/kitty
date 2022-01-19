@@ -3,7 +3,7 @@
 
 from functools import update_wrapper
 from typing import (
-    TYPE_CHECKING, Any, Callable, Generic, NamedTuple, TypeVar, Union
+    TYPE_CHECKING, Any, Callable, Generic, NamedTuple, Tuple, TypeVar, Union, Iterator
 )
 
 _T = TypeVar('_T')
@@ -38,6 +38,20 @@ class WindowGeometry(NamedTuple):
     spaces: Edges = Edges()
 
 
+def mod_to_names(mods: int) -> Iterator[str]:
+    from .fast_data_types import (
+        GLFW_MOD_ALT, GLFW_MOD_CAPS_LOCK, GLFW_MOD_CONTROL, GLFW_MOD_HYPER,
+        GLFW_MOD_META, GLFW_MOD_NUM_LOCK, GLFW_MOD_SHIFT, GLFW_MOD_SUPER
+    )
+    from .constants import is_macos
+    modmap = {'ctrl': GLFW_MOD_CONTROL, 'shift': GLFW_MOD_SHIFT, ('opt' if is_macos else 'alt'): GLFW_MOD_ALT,
+              ('cmd' if is_macos else 'super'): GLFW_MOD_SUPER, 'hyper': GLFW_MOD_HYPER, 'meta': GLFW_MOD_META,
+              'caps_lock': GLFW_MOD_CAPS_LOCK, 'num_lock': GLFW_MOD_NUM_LOCK}
+    for name, val in modmap.items():
+        if mods & val:
+            yield name
+
+
 class SingleKey(NamedTuple):
     mods: int = 0
     is_native: bool = False
@@ -51,12 +65,50 @@ class SingleKey(NamedTuple):
                 kwds.append(f'{f}={val!r}')
         return 'SingleKey(' + ', '.join(kwds) + ')'
 
+    @property
+    def human_repr(self) -> str:
+        from .fast_data_types import glfw_get_key_name
+        names = []
+        names = list(mod_to_names(self.mods))
+        if self.key > 0:
+            kname = (glfw_get_key_name(0, self.key) if self.is_native else glfw_get_key_name(self.key, 0)) or f'{self.key}'
+            kname = {' ': 'space'}.get(kname, kname)
+            names.append(kname)
+        return '+'.join(names)
+
+
+class Shortcut(NamedTuple):
+    keys: Tuple[SingleKey, ...]
+
+    @property
+    def human_repr(self) -> str:
+        return ' > '.join(k.human_repr for k in self.keys)
+
 
 class MouseEvent(NamedTuple):
     button: int = 0
     mods: int = 0
     repeat_count: int = 1
     grabbed: bool = False
+
+    @property
+    def human_repr(self) -> str:
+        from .options.utils import mouse_button_map, mouse_trigger_count_map
+
+        def mouse_button_num_to_name(num: int) -> str:
+            button_map = {v: k for k, v in mouse_button_map.items()}
+            name = f'b{num+1}'
+            return button_map.get(name, name)
+
+        def mouse_trigger_count_to_name(count: int) -> str:
+            trigger_count_map = {str(v): k for k, v in mouse_trigger_count_map.items()}
+            k = str(count)
+            return trigger_count_map.get(k, k)
+
+        names = list(mod_to_names(self.mods)) + [mouse_button_num_to_name(self.button)]
+        when = mouse_trigger_count_to_name(self.repeat_count)
+        grabbed = 'grabbed' if self.grabbed else 'ungrabbed'
+        return ' '.join(('+'.join(names), when, grabbed))
 
 
 class WindowSystemMouseEvent(NamedTuple):
