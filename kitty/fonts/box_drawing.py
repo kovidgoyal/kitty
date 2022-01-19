@@ -754,7 +754,7 @@ def eight_block(buf: BufType, width: int, height: int, level: int = 1, which: Tu
         eight_bar(buf, width, height, level, x, horizontal)
 
 
-@lru_cache(maxsize=32)
+@lru_cache(maxsize=64)
 def distribute_dots(available_space: int, num_of_dots: int) -> Tuple[Tuple[int, ...], int]:
     dot_size = max(1, available_space // (2 * num_of_dots))
     extra = available_space - 2 * num_of_dots * dot_size
