@@ -25,6 +25,7 @@ from .rgb import color_as_sharp
 from .types import MouseEvent, SingleKey
 
 AnyEvent = TypeVar('AnyEvent', MouseEvent, Tuple[SingleKey, ...])
+Print = Callable[..., None]
 ShortcutMap = Dict[Tuple[SingleKey, ...], str]
 
 
@@ -65,7 +66,7 @@ def mouse_trigger_count_to_name(count: int) -> str:
     return trigger_count_map.get(k, k)
 
 
-def print_shortcut(key_sequence: Iterable[SingleKey], defn: str, print: Callable[..., None]) -> None:
+def print_shortcut(key_sequence: Iterable[SingleKey], defn: str, print: Print) -> None:
     from .fast_data_types import glfw_get_key_name
     keys = []
     for key_spec in key_sequence:
@@ -81,14 +82,14 @@ def print_shortcut(key_sequence: Iterable[SingleKey], defn: str, print: Callable
     print('\t' + ' > '.join(keys), defn)
 
 
-def print_mouse_action(trigger: MouseEvent, defn: str, print: Callable[..., None]) -> None:
+def print_mouse_action(trigger: MouseEvent, defn: str, print: Print) -> None:
     names = list(mod_to_names(trigger.mods)) + [mouse_button_num_to_name(trigger.button)]
     when = mouse_trigger_count_to_name(trigger.repeat_count)
     grabbed = 'grabbed' if trigger.grabbed else 'ungrabbed'
     print('\t' + '+'.join(names), when, grabbed, defn)
 
 
-def print_mapping_changes(defns: Dict[AnyEvent, str], changes: Set[AnyEvent], text: str, print: Callable[..., None]) -> None:
+def print_mapping_changes(defns: Dict[AnyEvent, str], changes: Set[AnyEvent], text: str, print: Print) -> None:
     if changes:
         print(title(text))
         for k in sorted(changes):
@@ -99,7 +100,7 @@ def print_mapping_changes(defns: Dict[AnyEvent, str], changes: Set[AnyEvent], te
                 print_shortcut(k, defns[k], print)
 
 
-def compare_maps(final: Dict[AnyEvent, str], initial: Dict[AnyEvent, str], print: Callable[..., None]) -> None:
+def compare_maps(final: Dict[AnyEvent, str], initial: Dict[AnyEvent, str], print: Print) -> None:
     is_mouse = False
     for k in initial:
         if isinstance(k, MouseEvent):
@@ -122,7 +123,7 @@ def flatten_sequence_map(m: SequenceMap) -> ShortcutMap:
     return ans
 
 
-def compare_opts(opts: KittyOpts, print: Callable[..., None]) -> None:
+def compare_opts(opts: KittyOpts, print: Print) -> None:
     from .config import load_config
     print()
     print('Config options different from defaults:')
