@@ -42,6 +42,8 @@ character_key_name_aliases_with_ascii_lowercase: Dict[str, str] = character_key_
 for x in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
     character_key_name_aliases_with_ascii_lowercase[x] = x.lower()
 sequence_sep = '>'
+mouse_button_map = {'left': 'b1', 'middle': 'b3', 'right': 'b2'}
+mouse_trigger_count_map = {'doubleclick': -3, 'click': -2, 'release': -1, 'press': 1, 'doublepress': 2, 'triplepress': 3}
 FuncArgsType = Tuple[str, Sequence[Any]]
 func_with_args = KeyFuncWrapper[FuncArgsType]()
 DELETE_ENV_VAR = '_delete_this_env_var_'
@@ -1054,13 +1056,13 @@ def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
         obutton = parts[0].lower()
         mods = 0
     try:
-        b = {'left': 'b1', 'middle': 'b3', 'right': 'b2'}.get(obutton, obutton)[1:]
+        b = mouse_button_map.get(obutton, obutton)[1:]
         button = getattr(defines, f'GLFW_MOUSE_BUTTON_{b}')
     except Exception:
         log_error(f'Mouse button: {xbutton} not recognized, ignoring')
         return
     try:
-        count = {'doubleclick': -3, 'click': -2, 'release': -1, 'press': 1, 'doublepress': 2, 'triplepress': 3}[event.lower()]
+        count = mouse_trigger_count_map[event.lower()]
     except KeyError:
         log_error(f'Mouse event type: {event} not recognized, ignoring')
         return
