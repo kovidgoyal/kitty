@@ -42,7 +42,7 @@ def title(x: str) -> str:
 
 
 def print_event(ev: AnyEvent, defn: str, print: Print) -> None:
-    print('\t' + ev.human_repr, defn)
+    print(f'\t{ev.human_repr} → {defn}')
 
 
 def print_mapping_changes(defns: Dict[AnyEvent, str], changes: Set[AnyEvent], text: str, print: Print) -> None:
