@@ -10,7 +10,7 @@ import time
 from contextlib import suppress
 from functools import partial
 from pprint import pformat
-from typing import IO, Callable, Dict, Iterable, Iterator, Optional, Set, Tuple
+from typing import IO, Callable, Dict, Iterable, Iterator, Optional, Set, Tuple, TypeVar
 
 from kittens.tui.operations import colored, styled
 
@@ -20,10 +20,11 @@ from .constants import (
 )
 from .fast_data_types import Color, num_users
 from .options.types import Options as KittyOpts, defaults
-from .options.utils import MouseMap, SequenceMap, mouse_button_map, mouse_trigger_count_map
+from .options.utils import SequenceMap, mouse_button_map, mouse_trigger_count_map
 from .rgb import color_as_sharp
 from .types import MouseEvent, SingleKey
 
+AnyEvent = TypeVar('AnyEvent', MouseEvent, Tuple[SingleKey, ...])
 ShortcutMap = Dict[Tuple[SingleKey, ...], str]
 
 
@@ -87,36 +88,24 @@ def print_mouse_action(trigger: MouseEvent, defn: str, print: Callable[..., None
     print('\t' + '+'.join(names), when, grabbed, defn)
 
 
-def print_shortcut_changes(defns: ShortcutMap, changes: Set[Tuple[SingleKey, ...]], text: str, print: Callable[..., None]) -> None:
+def print_mapping_changes(defns: Dict[AnyEvent, str], changes: Set[AnyEvent], text: str, print: Callable[..., None]) -> None:
     if changes:
         print(title(text))
-    for k in sorted(changes):
-        print_shortcut(k, defns[k], print)
+        for k in sorted(changes):
+            v = defns[k]
+            if isinstance(k, MouseEvent):
+                print_mouse_action(k, v, print)
+            else:
+                print_shortcut(k, defns[k], print)
 
 
-def print_mousemap_changes(defns: MouseMap, changes: Set[MouseEvent], text: str, print: Callable[..., None]) -> None:
-    if changes:
-        print(title(text))
-    for k in sorted(changes):
-        print_mouse_action(k, defns[k], print)
-
-
-def compare_keymaps(final: ShortcutMap, initial: ShortcutMap, print: Callable[..., None]) -> None:
+def compare_maps(final: Dict[AnyEvent, str], initial: Dict[AnyEvent, str], print: Callable[..., None]) -> None:
     added = set(final) - set(initial)
     removed = set(initial) - set(final)
     changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
-    print_shortcut_changes(final, added, 'Added shortcuts:', print)
-    print_shortcut_changes(initial, removed, 'Removed shortcuts:', print)
-    print_shortcut_changes(final, changed, 'Changed shortcuts:', print)
-
-
-def compare_mousemaps(final: MouseMap, initial: MouseMap, print: Callable[..., None]) -> None:
-    added = set(final) - set(initial)
-    removed = set(initial) - set(final)
-    changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
-    print_mousemap_changes(final, added, 'Added mouse actions:', print)
-    print_mousemap_changes(initial, removed, 'Removed mouse actions:', print)
-    print_mousemap_changes(final, changed, 'Changed mouse actions:', print)
+    print_mapping_changes(final, added, 'Added shortcuts:', print)
+    print_mapping_changes(initial, removed, 'Removed shortcuts:', print)
+    print_mapping_changes(final, changed, 'Changed shortcuts:', print)
 
 
 def flatten_sequence_map(m: SequenceMap) -> ShortcutMap:
@@ -156,14 +145,14 @@ def compare_opts(opts: KittyOpts, print: Callable[..., None]) -> None:
             else:
                 print(fmt.format(f), str(getattr(opts, f)))
 
-    compare_mousemaps(opts.mousemap, default_opts.mousemap, print)
+    compare_maps(opts.mousemap, default_opts.mousemap, print)
     final_, initial_ = opts.keymap, default_opts.keymap
     final: ShortcutMap = {(k,): v for k, v in final_.items()}
     initial: ShortcutMap = {(k,): v for k, v in initial_.items()}
     final_s, initial_s = map(flatten_sequence_map, (opts.sequence_map, default_opts.sequence_map))
     final.update(final_s)
     initial.update(initial_s)
-    compare_keymaps(final, initial, print)
+    compare_maps(final, initial, print)
     if colors:
         print(f'{title("Colors")}:', end='\n\t')
         print('\n\t'.join(sorted(colors)))
