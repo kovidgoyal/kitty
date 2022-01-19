@@ -1103,6 +1103,8 @@ is_ascii_control_char(char x) {
             GLFWkeyevent dummy = {.action = GLFW_RELEASE, .ime_state = GLFW_IME_PREEDIT_CHANGED};
             window->ns.deadKeyState = 0;
             _glfwInputKeyboard(window, &dummy); // clear pre-edit text
+            [input_source_at_last_key_event release];
+            input_source_at_last_key_event = nil;
         }
         input_source_at_last_key_event = [inpctx.selectedKeyboardInputSource retain];
         [self unmarkText];
