@@ -1181,6 +1181,7 @@ is_ascii_control_char(char x) {
         }
         if (([self hasMarkedText] || previous_has_marked_text) && !_glfw.ns.text[0]) {
             // do not pass keys like BACKSPACE while there's pre-edit text, let IME handle it
+            debug_key("Ignoring key press as IME is active and it generated no text\n");
             return;
         }
     }
