@@ -79,21 +79,43 @@ def print_shortcut(key_sequence: Iterable[SingleKey], defn: str, print: Callable
     print('\t' + ' > '.join(keys), defn)
 
 
-def print_shortcut_changes(defns: ShortcutMap, text: str, changes: Set[Tuple[SingleKey, ...]], print: Callable[..., None]) -> None:
+def print_mouse_action(trigger: MouseEvent, defn: str, print: Callable[..., None]) -> None:
+    names = list(mod_to_names(trigger.mods)) + [mouse_button_num_to_name(trigger.button)]
+    when = mouse_trigger_count_to_name(trigger.repeat_count)
+    grabbed = 'grabbed' if trigger.grabbed else 'ungrabbed'
+    print('\t' + '+'.join(names), when, grabbed, defn)
+
+
+def print_shortcut_changes(defns: ShortcutMap, changes: Set[Tuple[SingleKey, ...]], text: str, print: Callable[..., None]) -> None:
     if changes:
         print(title(text))
+    for k in sorted(changes):
+        print_shortcut(k, defns[k], print)
 
-        for k in sorted(changes):
-            print_shortcut(k, defns[k], print)
+
+def print_mousemap_changes(defns: MouseMap, changes: Set[MouseEvent], text: str, print: Callable[..., None]) -> None:
+    if changes:
+        print(title(text))
+    for k in sorted(changes):
+        print_mouse_action(k, defns[k], print)
 
 
 def compare_keymaps(final: ShortcutMap, initial: ShortcutMap, print: Callable[..., None]) -> None:
     added = set(final) - set(initial)
     removed = set(initial) - set(final)
     changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
-    print_shortcut_changes(final, 'Added shortcuts:', added, print)
-    print_shortcut_changes(initial, 'Removed shortcuts:', removed, print)
-    print_shortcut_changes(final, 'Changed shortcuts:', changed, print)
+    print_shortcut_changes(final, added, 'Added shortcuts:', print)
+    print_shortcut_changes(initial, removed, 'Removed shortcuts:', print)
+    print_shortcut_changes(final, changed, 'Changed shortcuts:', print)
+
+
+def compare_mousemaps(final: MouseMap, initial: MouseMap, print: Callable[..., None]) -> None:
+    added = set(final) - set(initial)
+    removed = set(initial) - set(final)
+    changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
+    print_mousemap_changes(final, added, 'Added mouse actions:', print)
+    print_mousemap_changes(initial, removed, 'Removed mouse actions:', print)
+    print_mousemap_changes(final, changed, 'Changed mouse actions:', print)
 
 
 def flatten_sequence_map(m: SequenceMap) -> ShortcutMap:
@@ -102,28 +124,6 @@ def flatten_sequence_map(m: SequenceMap) -> ShortcutMap:
         for r, action in rest_map.items():
             ans[(key_spec,) + (r)] = action
     return ans
-
-
-def compare_mousemaps(final: MouseMap, initial: MouseMap, print: Callable[..., None]) -> None:
-    added = set(final) - set(initial)
-    removed = set(initial) - set(final)
-    changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
-
-    def print_mouse_action(trigger: MouseEvent, defn: str) -> None:
-        names = list(mod_to_names(trigger.mods)) + [mouse_button_num_to_name(trigger.button)]
-        when = mouse_trigger_count_to_name(trigger.repeat_count)
-        grabbed = 'grabbed' if trigger.grabbed else 'ungrabbed'
-        print('\t' + '+'.join(names), when, grabbed, defn)
-
-    def print_changes(defns: MouseMap, changes: Set[MouseEvent], text: str) -> None:
-        if changes:
-            print(title(text))
-            for k in sorted(changes):
-                print_mouse_action(k, defns[k])
-
-    print_changes(final, added, 'Added mouse actions:')
-    print_changes(initial, removed, 'Removed mouse actions:')
-    print_changes(final, changed, 'Changed mouse actions:')
 
 
 def compare_opts(opts: KittyOpts, print: Callable[..., None]) -> None:
