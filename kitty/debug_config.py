@@ -100,12 +100,18 @@ def print_mapping_changes(defns: Dict[AnyEvent, str], changes: Set[AnyEvent], te
 
 
 def compare_maps(final: Dict[AnyEvent, str], initial: Dict[AnyEvent, str], print: Callable[..., None]) -> None:
+    is_mouse = False
+    for k in initial:
+        if isinstance(k, MouseEvent):
+            is_mouse = True
+        break
     added = set(final) - set(initial)
     removed = set(initial) - set(final)
     changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
-    print_mapping_changes(final, added, 'Added shortcuts:', print)
-    print_mapping_changes(initial, removed, 'Removed shortcuts:', print)
-    print_mapping_changes(final, changed, 'Changed shortcuts:', print)
+    which = 'mouse actions' if is_mouse else 'shortcuts'
+    print_mapping_changes(final, added, f'Added {which}:', print)
+    print_mapping_changes(initial, removed, f'Removed {which}:', print)
+    print_mapping_changes(final, changed, f'Changed {which}:', print)
 
 
 def flatten_sequence_map(m: SequenceMap) -> ShortcutMap:
