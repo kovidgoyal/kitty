@@ -1423,7 +1423,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     char *s = _glfw.ns.text + strnlen(_glfw.ns.text, sizeof(_glfw.ns.text));
     snprintf(s, sizeof(_glfw.ns.text) - (s - _glfw.ns.text), "%s", utf8);
     _glfw.ns.text[sizeof(_glfw.ns.text) - 1] = 0;
-    if (!in_key_down && !_glfw.ns.text[0]) {
+    if (!in_key_down && !strlen(utf8)) {
         // is called by cocoa when a modifier is pressed, for example shift
         GLFWkeyevent dummy = {.action = GLFW_RELEASE, .ime_state = GLFW_IME_PREEDIT_CHANGED};
         _glfwInputKeyboard(window, &dummy);
