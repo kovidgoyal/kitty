@@ -4,6 +4,8 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+.. recent major features {{{
+
 Recent major new features
 ---------------------------
 
@@ -68,7 +70,7 @@ command.
 
     Hints for selecting kitty windows visually
 
-
+.. }}}
 
 Detailed list of changes
 -------------------------------------
