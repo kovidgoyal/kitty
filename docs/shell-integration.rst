@@ -239,7 +239,7 @@ completely, in which case simply do not set the
 :envvar:`KITTY_SHELL_INTEGRATION` variable at all.
 
 If you want this to work while SSHing into a remote system, then you will
-need to add some code to the snippets above to check if :code:`KITTY_INSTALLATION_DIR`
+need to add some code to the snippets above to check if :envvar:`KITTY_INSTALLATION_DIR`
 is empty and if so to set it to some hard coded location with the shell
 integration scripts that need to be copied onto the remote system.
 
