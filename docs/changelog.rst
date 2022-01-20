@@ -127,6 +127,8 @@ Detailed list of changes
 
 - Show number of windows per tab in the :ac:`select_tab` action (:pull:`4523`)
 
+- macOS: Fix the shift key not clearing pre-edit text in IME (:iss:`4541`)
+
 
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
