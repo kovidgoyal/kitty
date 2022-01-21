@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Tuple
 from kitty.cli import parse_args
 from kitty.cli_stub import AskCLIOptions
 from kitty.constants import cache_dir
-from kitty.fast_data_types import wcswidth
-from kitty.typing import BossType, TypedDict
+from kitty.fast_data_types import truncate_point_for_length, wcswidth
+from kitty.typing import BossType, KeyEventType, TypedDict
 from kitty.utils import ScreenSize
 
 from ..tui.handler import Handler, result_handler
@@ -118,6 +118,14 @@ class Range(NamedTuple):
         return y == self.y and self.start <= x <= self.end
 
 
+def truncate_at_space(text: str, width: int) -> Tuple[str, str]:
+    p = truncate_point_for_length(text, width)
+    i = text.rfind(' ', 0, p + 1)
+    if i > 0 and p - i < 12:
+        p = i + 1
+    return text[:p], text[p:]
+
+
 class Choose(Handler):
     mouse_tracking = MouseTracking.buttons_only
 
@@ -147,45 +155,86 @@ class Choose(Handler):
     def finalize(self) -> None:
         self.cmd.set_cursor_visible(True)
 
+    def draw_long_text(self, text: str) -> int:
+        y = 0
+        width = self.screen_size.cols - 2
+        while text:
+            t, text = truncate_at_space(text, width)
+            y += 1
+            extra = 1 + ((width - wcswidth(t)) // 2)
+            self.cmd.styled(' ' * extra + t, bold=True)
+            self.print()
+        return y
+
     @Handler.atomic_update
     def draw_screen(self) -> None:
         self.cmd.clear_screen()
-        y = 1
+        y = max(0, self.screen_size.rows // 2 - 2)
+        self.print(end='\r\n'*y)
         if self.cli_opts.message:
-            self.cmd.styled(self.cli_opts.message, bold=True)
-            y += wcswidth(self.cli_opts.message) // self.screen_size.cols
+            y += self.draw_long_text(self.cli_opts.message)
         self.print()
+        y += 1
         if self.cli_opts.type == 'yesno':
             self.draw_yesno(y)
         else:
             self.draw_choice(y)
 
     def draw_choice(self, y: int) -> None:
-        x = 0
         self.clickable_ranges.clear()
+        current_line = ''
+        current_ranges: Dict[str, int] = {}
+        width = self.screen_size.cols - 2
+
+        def commit_line() -> None:
+            nonlocal current_line, y
+            extra = (width - wcswidth(current_line)) // 2
+            x = extra + 1
+            self.print(' ' * x + current_line)
+            for letter, sz in current_ranges.items():
+                self.clickable_ranges[letter] = Range(x, x + sz - 3, y)
+                x += sz
+            current_ranges.clear()
+            y += 1
+            current_line = ''
+
         for letter, choice in self.choices.items():
             text = choice.text[:choice.idx]
             text += styled(choice.text[choice.idx], fg=choice.color)
             text += choice.text[choice.idx + 1:]
             text += '  '
             sz = wcswidth(text)
-            if sz + x >= self.screen_size.cols:
-                y += 1
-                x = 0
-                self.print()
-            self.clickable_ranges[letter] = Range(x, x + sz - 1, y)
-            x += sz
-            self.print(text, end='')
+            if sz + wcswidth(current_line) >= width:
+                commit_line()
+            current_line += text
+            current_ranges[letter] = sz
+        if current_line:
+            commit_line()
 
     def draw_yesno(self, y: int) -> None:
-        self.clickable_ranges = {'y': Range(2, 4, y), 'n': Range(8, 9, y)}
-        self.print(' ', styled('Y', fg='green') + 'es', ' ', styled('N', fg='red') + 'o')
+        sep = ' ' * 3
+        yes = styled('Y', fg='green') + 'es'
+        no = styled('N', fg='red') + 'o'
+        text = yes + sep + no
+        w = wcswidth(text)
+        extra = (self.screen_size.cols - w) // 2
+        x = extra
+        nx = x + wcswidth(yes) + len(sep)
+        self.clickable_ranges = {'y': Range(x, x + wcswidth(yes) - 1, y), 'n': Range(nx, nx + 1, y)}
+        self.print(' ' * extra + text)
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
         text = text.lower()
         if text in self.allowed:
             self.response = text
             self.quit_loop(0)
+
+    def on_key(self, key_event: KeyEventType) -> None:
+        if self.cli_opts.type == 'yesno':
+            if key_event.matches('esc'):
+                self.on_text('n')
+            elif key_event.matches('enter'):
+                self.on_text('y')
 
     def on_click(self, ev: MouseEvent) -> None:
         for letter, r in self.clickable_ranges.items():
