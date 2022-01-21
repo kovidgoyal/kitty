@@ -1425,7 +1425,7 @@ class Boss:
 
     def do_set_tab_title(self, title: str, tab_id: int) -> None:
         tm = self.active_tab_manager
-        if tm is not None and title:
+        if tm is not None:
             tab_id = int(tab_id)
             for tab in tm.tabs:
                 if tab.id == tab_id:
