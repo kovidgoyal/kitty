@@ -59,6 +59,7 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
+    'sphinx.ext.extlinks',
     'sphinx_copybutton',
     'sphinx_inline_tabs',
     "sphinxext.opengraph",
@@ -167,24 +168,11 @@ texinfo_documents = [
 
 # GitHub linking inline roles {{{
 
-def num_role(
-    which: str, name: str, rawtext: str, text: str, lineno: int, inliner: Any, options: Any = {}, content: Any = []
-) -> Tuple[List[nodes.reference], List[nodes.problematic]]:
-    ' Link to a github issue '
-    try:
-        issue_num = int(text)
-        if issue_num <= 0:
-            raise ValueError
-    except ValueError:
-        msg = inliner.reporter.error(
-            'GitHub issue number must be a number greater than or equal to 1; '
-            '"%s" is invalid.' % text, line=lineno)
-        prb = inliner.problematic(rawtext, rawtext, msg)
-        return [prb], [msg]
-    url = f'https://github.com/kovidgoyal/kitty/{which}/{issue_num}'
-    set_classes(options)
-    node = nodes.reference(rawtext, f'#{issue_num}', refuri=url, **options)
-    return [node], []
+extlinks = {
+    'iss': ('https://github.com/kovidgoyal/kitty/issues/%s', '#%s'),
+    'pull': ('https://github.com/kovidgoyal/kitty/pull/%s', '#%s'),
+    'disc': ('https://github.com/kovidgoyal/kitty/discussions/%s', '#%s'),
+}
 
 
 def commit_role(
@@ -517,9 +505,6 @@ def setup(app: Any) -> None:
     app.connect('html-page-context', add_html_context)
     app.add_lexer('session', SessionLexer() if version_info[0] < 3 else SessionLexer)
     app.add_role('link', link_role)
-    app.add_role('iss', partial(num_role, 'issues'))
-    app.add_role('pull', partial(num_role, 'pull'))
-    app.add_role('disc', partial(num_role, 'discussions'))
     app.add_role('commit', commit_role)
     # monkey patch sphinx_inline_tabs to avoid a warning about parallel reads
     # see https://github.com/pradyunsg/sphinx-inline-tabs/issues/26
