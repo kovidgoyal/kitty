@@ -241,13 +241,14 @@ class Choose(Handler):
         if text in self.allowed:
             self.response = text
             self.quit_loop(0)
+        elif self.cli_opts.type == 'yesno' and text == 'q':
+            self.on_interrupt()
 
     def on_key(self, key_event: KeyEventType) -> None:
-        if self.cli_opts.type == 'yesno':
-            if key_event.matches('esc'):
-                self.on_text('n')
-            elif key_event.matches('enter'):
-                self.on_text('y')
+        if key_event.matches('esc'):
+            self.on_interrupt()
+        elif key_event.matches('enter'):
+            self.quit_loop(0)
 
     def on_click(self, ev: MouseEvent) -> None:
         for letter, r in self.clickable_ranges.items():
