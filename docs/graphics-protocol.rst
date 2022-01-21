@@ -12,8 +12,7 @@ emulator. The major design goals are:
   below as well as above the text, with alpha blending. The graphics should also scroll with the text, automatically.
 * Should use optimizations when the client is running on the same computer as the terminal emulator.
 
-For some discussion regarding the design choices, see `#33
-<https://github.com/kovidgoyal/kitty/issues/33>`_.
+For some discussion regarding the design choices, see :iss:`33`.
 
 To see a quick demo, inside a |kitty| terminal run::
 

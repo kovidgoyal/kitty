@@ -325,7 +325,7 @@ Kittens created by kitty users
 `smart-scroll <https://github.com/yurikhan/kitty-smart-scroll>`_
     Makes the kitty scroll bindings work in full screen applications
 
-`insert password <https://github.com/kovidgoyal/kitty/issues/1222>`_
+:iss:`insert password <1222>`
     Insert a password from a CLI password manager, taking care to only do it at
     a password prompt.
 

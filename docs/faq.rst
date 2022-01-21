@@ -245,7 +245,7 @@ How can I assign a single global shortcut to bring up the kitty terminal?
 Bringing up applications on a single key press is the job of the window
 manager/desktop environment. For ways to do it with kitty (or indeed any
 terminal) in different environments,
-see `here <https://github.com/kovidgoyal/kitty/issues/45>`_.
+see :iss:`here <45>`.
 
 
 I do not like the kitty icon!
@@ -337,8 +337,7 @@ sorts of places where they may or may not work.
 I am using tmux and have a problem
 --------------------------------------
 
-First, terminal multiplexers are `a bad idea
-<https://github.com/kovidgoyal/kitty/issues/391#issuecomment-638320745>`_, do
+First, terminal multiplexers are :iss:`a bad idea <391#issuecomment-638320745>`, do
 not use them, if at all possible. kitty contains features that do all of what
 tmux does, but better, with the exception of remote persistence (:iss:`391`).
 If you still want to use tmux, read on.
