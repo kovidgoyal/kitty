@@ -653,6 +653,7 @@ class Window:
                     'What would you like to do with this URL:\n') +
                     styled(unquote(url), fg='yellow'),
                     '--choice=o:Open', '--choice=c:Copy to clipboard', '--choice=n;red:Nothing'
+                    '--default=o'
                     ],
                     window=self,
                     custom_callback=partial(self.hyperlink_open_confirmed, url, cwd),

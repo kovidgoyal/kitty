@@ -262,6 +262,7 @@ class Choose(Handler):
         self.draw_screen()
 
     def on_interrupt(self) -> None:
+        self.response = ''
         self.quit_loop(1)
     on_eot = on_interrupt
 

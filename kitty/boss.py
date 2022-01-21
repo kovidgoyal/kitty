@@ -654,7 +654,7 @@ class Boss:
             if window.has_running_program:
                 msg += ' ' + _('It is running a program.')
             self._run_kitten(
-                'ask', ['--type=yesno', '--message', msg],
+                'ask', ['--type=yesno', '--default=y', '--message', msg],
                 window=window,
                 custom_callback=partial(self.handle_close_window_confirmation, window.id)
             )
@@ -676,7 +676,7 @@ class Boss:
                 window: Optional[Window] = None, confirm_on_cancel: bool = False) -> None:
         def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
             callback(res.get('response') == 'y', *args)
-        self._run_kitten('ask', ['--type=yesno', '--message', msg],
+        self._run_kitten('ask', ['--type=yesno', '--default=y', '--message', msg],
                          window=window, custom_callback=callback_, default_data={'response': 'y' if confirm_on_cancel else 'n'})
 
     def confirm_tab_close(self, tab: Tab) -> None:
