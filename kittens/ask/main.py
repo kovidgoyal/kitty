@@ -298,7 +298,15 @@ def main(args: List[str]) -> Response:
 
         prompt = '> '
         with suppress(KeyboardInterrupt, EOFError):
-            response = input(prompt)
+            if cli_opts.default:
+                def prefill_text():
+                    readline.insert_text(cli_opts.default)
+                    readline.redisplay()
+                readline.set_pre_input_hook(prefill_text)
+                response = input(prompt)
+                readline.set_pre_input_hook()
+            else:
+                response = input(prompt)
     return {'items': items, 'response': response}
 
 

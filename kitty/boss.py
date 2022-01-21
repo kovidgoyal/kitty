@@ -1418,7 +1418,9 @@ class Boss:
     def set_tab_title(self) -> None:
         tab = self.active_tab
         if tab:
-            args = ['--name=tab-title', '--message', _('Enter the new title for this tab below.'), 'do_set_tab_title', str(tab.id)]
+            args = [
+                '--name=tab-title', '--message', _('Enter the new title for this tab below.'),
+                '--default', tab.name or tab.title, 'do_set_tab_title', str(tab.id)]
             self._run_kitten('ask', args)
 
     def do_set_tab_title(self, title: str, tab_id: int) -> None:
