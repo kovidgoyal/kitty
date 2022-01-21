@@ -120,9 +120,10 @@ class Range(NamedTuple):
 
 def truncate_at_space(text: str, width: int) -> Tuple[str, str]:
     p = truncate_point_for_length(text, width)
-    i = text.rfind(' ', 0, p + 1)
-    if i > 0 and p - i < 12:
-        p = i + 1
+    if p < len(text):
+        i = text.rfind(' ', 0, p + 1)
+        if i > 0 and p - i < 12:
+            p = i + 1
     return text[:p], text[p:]
 
 
@@ -221,7 +222,7 @@ class Choose(Handler):
         x = extra
         nx = x + wcswidth(yes) + len(sep)
         self.clickable_ranges = {'y': Range(x, x + wcswidth(yes) - 1, y), 'n': Range(nx, nx + 1, y)}
-        self.print(' ' * extra + text)
+        self.print(' ' * extra + text, end='')
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
         text = text.lower()
