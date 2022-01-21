@@ -372,7 +372,8 @@ opt('open_url_with', 'default',
     option_type='to_cmdline',
     long_text='''
 The program with which to open URLs that are clicked on. The special value
-:code:`default` means to use the operating system's default URL handler.
+:code:`default` means to use the operating system's default URL handler
+(:file:`open` on macOS and :file:`xdg-open` on Linux).
 '''
     )
 
