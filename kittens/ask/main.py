@@ -95,6 +95,12 @@ letter is the accelerator key and text is the corresponding text.  There can be
 an optional color specification after the letter to indicate what color it should
 be.
 For example: y:Yes and n;red:No
+
+
+--default -d
+A default choice or text. If unspecified, it is no for yesno and empty for the
+others. If the input type is choices and the specified value is not one of the
+available choices, it is empty.
 '''
 
 
@@ -132,7 +138,6 @@ class Choose(Handler):
 
     def __init__(self, cli_opts: AskCLIOptions) -> None:
         self.cli_opts = cli_opts
-        self.response = 'n' if cli_opts.type == 'yesno' else ''
         self.allowed = frozenset('yn')
         self.choices: Dict[str, Choice] = {}
         self.clickable_ranges: Dict[str, Range] = {}
@@ -148,6 +153,12 @@ class Choose(Handler):
                 allowed.append(letter)
                 self.choices[letter] = Choice(text, idx, color)
             self.allowed = frozenset(allowed)
+        if not cli_opts.default:
+            self.response = 'n' if cli_opts.type == 'yesno' else ''
+        elif cli_opts.type == 'choices' and cli_opts.default not in self.allowed:
+            self.response = ''
+        else:
+            self.response = cli_opts.default
 
     def initialize(self) -> None:
         self.cmd.set_cursor_visible(False)
