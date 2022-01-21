@@ -222,7 +222,7 @@ class Choose(Handler):
         extra = (self.screen_size.cols - w) // 2
         x = extra
         nx = x + wcswidth(yes) + len(sep)
-        self.clickable_ranges = {'y': Range(x, x + wcswidth(yes) - 1, y), 'n': Range(nx, nx + 1, y)}
+        self.clickable_ranges = {'y': Range(x, x + wcswidth(yes) - 1, y), 'n': Range(nx, nx + 2, y)}
         self.print(' ' * extra + text, end='')
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
