@@ -174,8 +174,9 @@ class Choose(Handler):
         self.print(end='\r\n'*y)
         if self.cli_opts.message:
             y += self.draw_long_text(self.cli_opts.message)
-        self.print()
-        y += 1
+        if self.screen_size.rows > 2:
+            self.print()
+            y += 1
         if self.cli_opts.type == 'yesno':
             self.draw_yesno(y)
         else:
@@ -187,11 +188,11 @@ class Choose(Handler):
         current_ranges: Dict[str, int] = {}
         width = self.screen_size.cols - 2
 
-        def commit_line() -> None:
+        def commit_line(end: str = '\r\n') -> None:
             nonlocal current_line, y
             extra = (width - wcswidth(current_line)) // 2
             x = extra + 1
-            self.print(' ' * x + current_line)
+            self.print(' ' * x + current_line, end=end)
             for letter, sz in current_ranges.items():
                 self.clickable_ranges[letter] = Range(x, x + sz - 3, y)
                 x += sz
@@ -210,7 +211,7 @@ class Choose(Handler):
             current_line += text
             current_ranges[letter] = sz
         if current_line:
-            commit_line()
+            commit_line(end='')
 
     def draw_yesno(self, y: int) -> None:
         sep = ' ' * 3
