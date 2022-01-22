@@ -652,7 +652,7 @@ class Window:
                 get_boss()._run_kitten('ask', ['--type=choices', '--message', _(
                     'What would you like to do with this URL:\n') +
                     styled(unquote(url), fg='yellow'),
-                    '--choice=o:Open', '--choice=c:Copy to clipboard', '--choice=n;red:Nothing'
+                    '--choice=o:Open', '--choice=c:Copy to clipboard', '--choice=n;red:Nothing',
                     '--default=o'
                     ],
                     window=self,
