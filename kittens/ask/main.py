@@ -140,7 +140,7 @@ class Choose(Handler):
     def __init__(self, cli_opts: AskCLIOptions) -> None:
         self.cli_opts = cli_opts
         self.choices: Dict[str, Choice] = {}
-        self.clickable_ranges: Dict[str, Range] = {}
+        self.clickable_ranges: Dict[str, List[Range]] = {}
         if cli_opts.type == 'yesno':
             self.allowed = frozenset('yn')
         else:
@@ -205,7 +205,7 @@ class Choose(Handler):
             x = extra + 1
             self.print(' ' * x + current_line, end=end)
             for letter, sz in current_ranges.items():
-                self.clickable_ranges[letter] = Range(x, x + sz - 3, y)
+                self.clickable_ranges[letter] = [Range(x, x + sz - 3, y)]
                 x += sz
             current_ranges.clear()
             y += 1
@@ -233,7 +233,7 @@ class Choose(Handler):
         extra = (self.screen_size.cols - w) // 2
         x = extra
         nx = x + wcswidth(yes) + len(sep)
-        self.clickable_ranges = {'y': Range(x, x + wcswidth(yes) - 1, y), 'n': Range(nx, nx + 1, y)}
+        self.clickable_ranges = {'y': [Range(x, x + wcswidth(yes) - 1, y)], 'n': [Range(nx, nx + 1, y)]}
         self.print(' ' * extra + text, end='')
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
@@ -251,11 +251,12 @@ class Choose(Handler):
             self.quit_loop(0)
 
     def on_click(self, ev: MouseEvent) -> None:
-        for letter, r in self.clickable_ranges.items():
-            if r.has_point(ev.cell_x, ev.cell_y):
-                self.response = letter
-                self.quit_loop(0)
-                break
+        for letter, ranges in self.clickable_ranges.items():
+            for r in ranges:
+                if r.has_point(ev.cell_x, ev.cell_y):
+                    self.response = letter
+                    self.quit_loop(0)
+                    return
 
     def on_resize(self, screen_size: ScreenSize) -> None:
         self.screen_size = screen_size
