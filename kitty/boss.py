@@ -680,6 +680,22 @@ class Boss:
         self._run_kitten('ask', ['--type=yesno', '--message', msg, '--default', 'y' if confirm_on_accept else 'n'],
                          window=window, custom_callback=callback_, default_data={'response': 'y' if confirm_on_cancel else 'n'})
 
+    def choose(
+        self, msg: str,  # can contain newlines and ANSI formatting
+        callback: Callable[..., None],  # called with the choice or empty string when aborted
+        *choices: str,   # The choices, see the help for the ask kitten for format of a choice
+        window: Optional[Window] = None,  # the window associated with the confirmation
+        default: str = '',  # the default choice when the user presses Enter
+    ) -> None:
+        def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
+            callback(res.get('response') or '')
+        cmd = ['--type=choices', '--message', msg]
+        if default:
+            cmd += ['-d', default]
+        for c in choices:
+            cmd += ['-c', c]
+        self._run_kitten('ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''})
+
     def confirm_tab_close(self, tab: Tab) -> None:
         x = get_options().confirm_os_window_close
         num = tab.number_of_windows_with_running_programs if x < 0 else len(tab)

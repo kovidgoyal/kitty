@@ -649,21 +649,16 @@ class Window:
                     url = urlunparse(purl._replace(netloc=''))
             if opts.allow_hyperlinks & 0b10:
                 from kittens.tui.operations import styled
-                get_boss()._run_kitten('ask', ['--type=choices', '--message', _(
-                    'What would you like to do with this URL:\n') +
-                    styled(unquote(url), fg='yellow'),
-                    '--choice=o:Open', '--choice=c:Copy to clipboard', '--choice=n;red:Nothing',
-                    '--default=o'
-                    ],
+                get_boss().choose(
+                    'What would you like to do with this URL:\n' + styled(unquote(url), fg='yellow'),
+                    partial(self.hyperlink_open_confirmed, url, cwd),
+                    'o:Open', 'c:Copy to clipboard', 'n;red:Nothing', default='o',
                     window=self,
-                    custom_callback=partial(self.hyperlink_open_confirmed, url, cwd),
-                    default_data={'response': ''}
                 )
                 return
         get_boss().open_url(url, cwd=cwd)
 
-    def hyperlink_open_confirmed(self, url: str, cwd: Optional[str], data: Dict[str, Any], *a: Any) -> None:
-        q = data.get('response', '')
+    def hyperlink_open_confirmed(self, url: str, cwd: Optional[str], q: str) -> None:
         if q == 'o':
             get_boss().open_url(url, cwd=cwd)
         elif q == 'c':
