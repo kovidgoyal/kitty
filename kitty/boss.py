@@ -653,18 +653,13 @@ class Boss:
             msg = _('Are you sure you want to close this window?')
             if window.has_running_program:
                 msg += ' ' + _('It is running a program.')
-            self._run_kitten(
-                'ask', ['--type=yesno', '--message', msg],
-                window=window,
-                custom_callback=partial(self.handle_close_window_confirmation, window.id)
-            )
+            self.confirm(msg, self.handle_close_window_confirmation, window.id, window=window)
         else:
             self.mark_window_for_close(window)
 
-    def handle_close_window_confirmation(self, window_id: int, data: Dict[str, Any], *a: Any) -> None:
-        if data['response'] != 'y':
-            return
-        self.mark_window_for_close(window_id)
+    def handle_close_window_confirmation(self, allowed: bool, window_id: int) -> None:
+        if allowed:
+            self.mark_window_for_close(window_id)
 
     @ac('tab', 'Close the current tab')
     def close_tab(self, tab: Optional[Tab] = None) -> None:
