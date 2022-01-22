@@ -98,9 +98,8 @@ For example: y:Yes and n;red:No
 
 
 --default -d
-A default choice or text. If unspecified, it is "y" for yesno and empty for the
-others. If the input type is choices and the specified value is not one of the
-available choices, it is the first choice. The default choice is selected when the user
+A default choice or text. If unspecified, it is "y" for :code:`yesno`, the first choice
+for :code:`choices` and empty for others. The default choice is selected when the user
 presses the Enter key.
 '''
 
@@ -159,9 +158,10 @@ class Choose(Handler):
                 allowed.append(letter)
                 self.choices[letter] = Choice(text, idx, color)
             self.allowed = frozenset(allowed)
-        self.response = cli_opts.default
-        if cli_opts.type in ('yesno', 'choices') and self.response not in self.allowed:
-            self.response = 'y' if cli_opts.type == 'yesno' else tuple(self.choices.keys())[0]
+        self.response = ''
+        self.response_on_accept = cli_opts.default or ''
+        if cli_opts.type in ('yesno', 'choices') and self.response_on_accept not in self.allowed:
+            self.response_on_accept = 'y' if cli_opts.type == 'yesno' else tuple(self.choices.keys())[0]
 
     def initialize(self) -> None:
         self.cmd.set_cursor_visible(False)
@@ -215,7 +215,7 @@ class Choose(Handler):
 
         for letter, choice in self.choices.items():
             text = choice.text[:choice.idx]
-            color = choice.color or ('yellow' if letter == self.response else 'green')
+            color = choice.color or ('yellow' if letter == self.response_on_accept else 'green')
             text += styled(choice.text[choice.idx], fg=color)
             text += choice.text[choice.idx + 1:]
             text += '  '
@@ -260,7 +260,7 @@ class Choose(Handler):
             nx = x + wcswidth(yes) + len(sep)
             self.clickable_ranges['y'].append(Range(x, x + wcswidth(yes) - 1, y + line_count))
             self.clickable_ranges['n'].append(Range(nx, nx + wcswidth(no) - 1, y + line_count))
-            if self.response == 'y':
+            if self.response_on_accept == 'y':
                 yes = highlight(yes, line_count == 1)
             else:
                 no = highlight(no, line_count == 1)
@@ -292,6 +292,7 @@ class Choose(Handler):
         if key_event.matches('esc'):
             self.on_interrupt()
         elif key_event.matches('enter'):
+            self.response = self.response_on_accept
             self.quit_loop(0)
 
     def on_click(self, ev: MouseEvent) -> None:
@@ -307,7 +308,6 @@ class Choose(Handler):
         self.draw_screen()
 
     def on_interrupt(self) -> None:
-        self.response = ''
         self.quit_loop(1)
     on_eot = on_interrupt
 
