@@ -5,13 +5,13 @@ import sys
 from contextlib import contextmanager
 from enum import Enum, auto
 from functools import wraps
-from typing import (
-    IO, Any, Callable, Dict, Generator, Optional, TypeVar, Union
-)
+from typing import IO, Any, Callable, Dict, Generator, Optional, TypeVar, Union
 
 from kitty.fast_data_types import Color
 from kitty.rgb import color_as_sharp, to_color
-from kitty.typing import GraphicsCommandType, HandlerType, ScreenSize
+from kitty.typing import (
+    GraphicsCommandType, HandlerType, ScreenSize, UnderlineLiteral
+)
 
 from .operations_stub import CMD
 
@@ -214,7 +214,7 @@ def styled(
     bg_intense: bool = False,
     italic: Optional[bool] = None,
     bold: Optional[bool] = None,
-    underline: Optional[str] = None,
+    underline: Optional[UnderlineLiteral] = None,
     underline_color: Optional[ColorSpec] = None,
     reverse: Optional[bool] = None,
     dim: Optional[bool] = None,

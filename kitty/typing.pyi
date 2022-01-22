@@ -33,6 +33,7 @@ from .utils import ScreenSize as ScreenSize
 from .window import Window as WindowType
 
 EdgeLiteral = Literal['left', 'top', 'right', 'bottom']
+UnderlineLiteral = Literal['straight', 'double', 'curly', 'dotted', 'dashed']
 MatchType = Literal['mime', 'ext', 'protocol', 'file', 'path', 'url', 'fragment_matches']
 PowerlineStyle = Literal['angled', 'slanted', 'round']
 GRT_a = Literal['t', 'T', 'q', 'p', 'd', 'f', 'a', 'c', 'q']
