@@ -134,6 +134,10 @@ def truncate_at_space(text: str, width: int) -> Tuple[str, str]:
     return text[:p], text[p:]
 
 
+def extra_for(width: int, screen_width: int) -> int:
+    return max(0, screen_width - width) // 2 + 1
+
+
 class Choose(Handler):
     mouse_tracking = MouseTracking.buttons_only
 
@@ -171,10 +175,9 @@ class Choose(Handler):
         width = self.screen_size.cols - 2
         while text:
             t, text = truncate_at_space(text, width)
+            t = t.strip()
+            self.print(' ' * extra_for(wcswidth(t), width), styled(t, bold=True), sep='')
             y += 1
-            extra = 1 + ((width - wcswidth(t)) // 2)
-            self.cmd.styled(' ' * extra + t, bold=True)
-            self.print()
         return y
 
     @Handler.atomic_update
@@ -201,8 +204,7 @@ class Choose(Handler):
 
         def commit_line(end: str = '\r\n') -> None:
             nonlocal current_line, y
-            extra = (width - wcswidth(current_line)) // 2
-            x = extra + 1
+            x = extra_for(wcswidth(current_line), width)
             self.print(' ' * x + current_line, end=end)
             for letter, sz in current_ranges.items():
                 self.clickable_ranges[letter] = [Range(x, x + sz - 3, y)]
@@ -225,16 +227,57 @@ class Choose(Handler):
             commit_line(end='')
 
     def draw_yesno(self, y: int) -> None:
-        sep = ' ' * 3
         yes = styled('Y', fg='green') + 'es'
         no = styled('N', fg='red') + 'o'
+        if y + 3 <= self.screen_size.rows:
+            self.draw_yesno_buttons(y, yes, no)
+            return
+        sep = ' ' * 3
         text = yes + sep + no
         w = wcswidth(text)
-        extra = (self.screen_size.cols - w) // 2
-        x = extra
+        x = extra_for(w, self.screen_size.cols - 2)
         nx = x + wcswidth(yes) + len(sep)
-        self.clickable_ranges = {'y': [Range(x, x + wcswidth(yes) - 1, y)], 'n': [Range(nx, nx + 1, y)]}
-        self.print(' ' * extra + text, end='')
+        self.clickable_ranges = {'y': [Range(x, x + wcswidth(yes) - 1, y)], 'n': [Range(nx, nx + wcswidth(no) - 1, y)]}
+        self.print(' ' * x + text, end='')
+
+    def draw_yesno_buttons(self, y: int, yes: str, no: str) -> None:
+        sep = '  '
+        self.clickable_ranges = {'y': [], 'n': []}
+        yl, nl = wcswidth(yes), wcswidth(no)
+        line_count = 0
+        width = self.screen_size.cols - 2
+
+        def highlight(text: str, only_edges: bool = False) -> str:
+            if only_edges:
+                return styled(text[0], fg='yellow') + text[1:-1] + styled(text[-1], fg='yellow')
+            return styled(text, fg='yellow')
+
+        def print_line(yes: str, no: str) -> None:
+            nonlocal line_count
+            sz = wcswidth(yes) + wcswidth(sep) + wcswidth(no)
+            x = extra_for(sz, width)
+            nx = x + wcswidth(yes) + len(sep)
+            self.clickable_ranges['y'].append(Range(x, x + wcswidth(yes) - 1, y + line_count))
+            self.clickable_ranges['n'].append(Range(nx, nx + wcswidth(no) - 1, y + line_count))
+            if self.response == 'y':
+                yes = highlight(yes, line_count == 1)
+            else:
+                no = highlight(no, line_count == 1)
+            self.print(' ' * x, yes, sep, no, sep='', end='' if line_count == 2 else '\r\n')
+            line_count += 1
+
+        def top(sz: int) -> str:
+            return '╭' + '─' * (sz + 2) + '╮'
+
+        def middle(text: str) -> str:
+            return f'│ {text} │'
+
+        def bottom(sz: int) -> str:
+            return '╰' + '─' * (sz + 2) + '╯'
+
+        print_line(top(yl), top(nl))
+        print_line(middle(yes), middle(no))
+        print_line(bottom(yl), bottom(nl))
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
         text = text.lower()
