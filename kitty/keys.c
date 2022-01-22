@@ -152,12 +152,6 @@ on_key_input(GLFWkeyevent *ev) {
             debug("invalid state, ignoring\n");
             return;
     }
-    if (!native_key && !key && text[0]) {
-        // key == 0 is sent by the glfw coca backend when text is inserted by the IME outside the key handlers
-        schedule_write_to_child(w->id, 1, text, strlen(text));
-        debug("sent key as text to child\n");
-        return;
-    }
     PyObject *ke = NULL;
 #define create_key_event() { ke = convert_glfw_key_event_to_python(ev); if (!ke) { PyErr_Print(); return; } }
     if (global_state.in_sequence_mode) {
