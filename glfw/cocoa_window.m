@@ -1461,7 +1461,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     snprintf(s, sizeof(_glfw.ns.text) - (s - _glfw.ns.text), "%s", utf8);
     _glfw.ns.text[sizeof(_glfw.ns.text) - 1] = 0;
     if (!in_key_handler && _glfw.ns.text[0]) {
-        debug_key("sending text to kitty from insertText called from event loop: %s", _glfw.ns.text);
+        debug_key("sending text to kitty from insertText called from event loop: %s\n", _glfw.ns.text);
         GLFWkeyevent glfw_keyevent = {.text=_glfw.ns.text};
         _glfwInputKeyboard(window, &glfw_keyevent);
         _glfw.ns.text[0] = 0;
