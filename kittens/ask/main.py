@@ -4,7 +4,9 @@
 import os
 import sys
 from contextlib import suppress
-from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Tuple
+from typing import (
+    TYPE_CHECKING, Callable, Dict, List, NamedTuple, Optional, Tuple
+)
 
 from kitty.cli import parse_args
 from kitty.cli_stub import AskCLIOptions
@@ -113,6 +115,7 @@ class Choice(NamedTuple):
     text: str
     idx: int
     color: str
+    letter: str
 
 
 class Range(NamedTuple):
@@ -156,7 +159,7 @@ class Choose(Handler):
                 letter = letter.lower()
                 idx = text.lower().index(letter)
                 allowed.append(letter)
-                self.choices[letter] = Choice(text, idx, color)
+                self.choices[letter] = Choice(text, idx, color, letter)
             self.allowed = frozenset(allowed)
         self.response = ''
         self.response_on_accept = cli_opts.default or ''
@@ -196,7 +199,73 @@ class Choose(Handler):
         else:
             self.draw_choice(y)
 
+    def draw_choice_boxes(self, y: int, *choices: Choice) -> None:
+        self.clickable_ranges.clear()
+        width = self.screen_size.cols - 2
+        current_line_length = 0
+        current_line: List[Tuple[str, str]] = []
+        lines: List[List[Tuple[str, str]]] = []
+        sep, sep_sz = '  ', 2
+
+        for choice in choices:
+            self.clickable_ranges[choice.letter] = []
+            text = ' ' + choice.text[:choice.idx]
+            text += styled(choice.text[choice.idx], fg=choice.color or 'green')
+            text += choice.text[choice.idx + 1:] + ' '
+            sz = wcswidth(text)
+            if sz + sep_sz + current_line_length > width:
+                lines.append(current_line)
+                current_line = []
+                current_line_length = 0
+            current_line.append((choice.letter, text))
+            current_line_length += sz
+        if current_line:
+            lines.append(current_line)
+
+        def top(text: str) -> str:
+            return '╭' + '─' * wcswidth(text) + '╮'
+
+        def middle(text: str) -> str:
+            return f'│{text}│'
+
+        def bottom(text: str) -> str:
+            return '╰' + '─' * wcswidth(text) + '╯'
+
+        def highlight(text: str, only_edges: bool = False) -> str:
+            if only_edges:
+                return styled(text[0], fg='yellow') + text[1:-1] + styled(text[-1], fg='yellow')
+            return styled(text, fg='yellow')
+
+        def print_line(add_borders: Callable[[str], str], *items: Tuple[str, str], is_last: bool = False) -> None:
+            nonlocal y
+            texts = []
+            positions = []
+            x = 0
+            for (letter, text) in items:
+                positions.append((letter, x, wcswidth(text) + 2))
+                text = add_borders(text)
+                if letter == self.response_on_accept:
+                    text = highlight(text, only_edges=add_borders is middle)
+                text += sep
+                x += wcswidth(text)
+                texts.append(text)
+            line = ''.join(texts).rstrip()
+            offset = extra_for(wcswidth(line), width)
+            for (letter, x, sz) in positions:
+                x += offset
+                self.clickable_ranges[letter].append(Range(x, x + sz - 1, y))
+            self.print(' ' * offset, line, sep='', end='' if is_last else '\r\n')
+            y += 1
+
+        for boxed_line in lines:
+            print_line(top, *boxed_line)
+            print_line(middle, *boxed_line)
+            print_line(bottom, *boxed_line, is_last=boxed_line is lines[-1])
+
     def draw_choice(self, y: int) -> None:
+        if y + 3 <= self.screen_size.rows:
+            self.draw_choice_boxes(y, *self.choices.values())
+            return
         self.clickable_ranges.clear()
         current_line = ''
         current_ranges: Dict[str, int] = {}
@@ -230,7 +299,7 @@ class Choose(Handler):
         yes = styled('Y', fg='green') + 'es'
         no = styled('N', fg='red') + 'o'
         if y + 3 <= self.screen_size.rows:
-            self.draw_yesno_buttons(y, yes, no)
+            self.draw_choice_boxes(y, Choice('Yes', 0, 'green', 'y'), Choice('No', 0, 'red', 'n'))
             return
         sep = ' ' * 3
         text = yes + sep + no
@@ -239,45 +308,6 @@ class Choose(Handler):
         nx = x + wcswidth(yes) + len(sep)
         self.clickable_ranges = {'y': [Range(x, x + wcswidth(yes) - 1, y)], 'n': [Range(nx, nx + wcswidth(no) - 1, y)]}
         self.print(' ' * x + text, end='')
-
-    def draw_yesno_buttons(self, y: int, yes: str, no: str) -> None:
-        sep = '  '
-        self.clickable_ranges = {'y': [], 'n': []}
-        yl, nl = wcswidth(yes), wcswidth(no)
-        line_count = 0
-        width = self.screen_size.cols - 2
-
-        def highlight(text: str, only_edges: bool = False) -> str:
-            if only_edges:
-                return styled(text[0], fg='yellow') + text[1:-1] + styled(text[-1], fg='yellow')
-            return styled(text, fg='yellow')
-
-        def print_line(yes: str, no: str) -> None:
-            nonlocal line_count
-            sz = wcswidth(yes) + wcswidth(sep) + wcswidth(no)
-            x = extra_for(sz, width)
-            nx = x + wcswidth(yes) + len(sep)
-            self.clickable_ranges['y'].append(Range(x, x + wcswidth(yes) - 1, y + line_count))
-            self.clickable_ranges['n'].append(Range(nx, nx + wcswidth(no) - 1, y + line_count))
-            if self.response_on_accept == 'y':
-                yes = highlight(yes, line_count == 1)
-            else:
-                no = highlight(no, line_count == 1)
-            self.print(' ' * x, yes, sep, no, sep='', end='' if line_count == 2 else '\r\n')
-            line_count += 1
-
-        def top(sz: int) -> str:
-            return '╭' + '─' * (sz + 2) + '╮'
-
-        def middle(text: str) -> str:
-            return f'│ {text} │'
-
-        def bottom(sz: int) -> str:
-            return '╰' + '─' * (sz + 2) + '╯'
-
-        print_line(top(yl), top(nl))
-        print_line(middle(yes), middle(no))
-        print_line(bottom(yl), bottom(nl))
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
         text = text.lower()
