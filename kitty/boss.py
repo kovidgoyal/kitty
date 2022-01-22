@@ -654,7 +654,7 @@ class Boss:
             if window.has_running_program:
                 msg += ' ' + _('It is running a program.')
             self._run_kitten(
-                'ask', ['--type=yesno', '--default=y', '--message', msg],
+                'ask', ['--type=yesno', '--message', msg],
                 window=window,
                 custom_callback=partial(self.handle_close_window_confirmation, window.id)
             )
@@ -672,11 +672,17 @@ class Boss:
         if tab:
             self.confirm_tab_close(tab)
 
-    def confirm(self, msg: str, callback: Callable[..., None], *args: Any,
-                window: Optional[Window] = None, confirm_on_cancel: bool = False) -> None:
+    def confirm(
+        self, msg: str,  # can contain newlines and ANSI formatting
+        callback: Callable[..., None],  # called with True or False and *args
+        *args: Any,  # passed to the callback function
+        window: Optional[Window] = None,  # the window associated with the confirmation
+        confirm_on_cancel: bool = False,  # on closing window
+        confirm_on_accept: bool = True,  # on pressing enter
+    ) -> None:
         def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
             callback(res.get('response') == 'y', *args)
-        self._run_kitten('ask', ['--type=yesno', '--default=y', '--message', msg],
+        self._run_kitten('ask', ['--type=yesno', '--message', msg, '--default', 'y' if confirm_on_accept else 'n'],
                          window=window, custom_callback=callback_, default_data={'response': 'y' if confirm_on_cancel else 'n'})
 
     def confirm_tab_close(self, tab: Tab) -> None:

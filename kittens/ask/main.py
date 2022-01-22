@@ -98,9 +98,10 @@ For example: y:Yes and n;red:No
 
 
 --default -d
-A default choice or text. If unspecified, it is no for yesno and empty for the
+A default choice or text. If unspecified, it is "y" for yesno and empty for the
 others. If the input type is choices and the specified value is not one of the
-available choices, it is empty.
+available choices, it is empty. The default choice is selected when the user
+presses the Enter key.
 '''
 
 
@@ -138,10 +139,11 @@ class Choose(Handler):
 
     def __init__(self, cli_opts: AskCLIOptions) -> None:
         self.cli_opts = cli_opts
-        self.allowed = frozenset('yn')
         self.choices: Dict[str, Choice] = {}
         self.clickable_ranges: Dict[str, Range] = {}
-        if cli_opts.type != 'yesno':
+        if cli_opts.type == 'yesno':
+            self.allowed = frozenset('yn')
+        else:
             allowed = []
             for choice in cli_opts.choices:
                 color = 'green'
@@ -153,12 +155,9 @@ class Choose(Handler):
                 allowed.append(letter)
                 self.choices[letter] = Choice(text, idx, color)
             self.allowed = frozenset(allowed)
-        if not cli_opts.default:
-            self.response = 'n' if cli_opts.type == 'yesno' else ''
-        elif cli_opts.type == 'choices' and cli_opts.default not in self.allowed:
-            self.response = ''
-        else:
-            self.response = cli_opts.default
+        self.response = cli_opts.default
+        if cli_opts.type in ('yesno', 'choices') and self.response not in self.allowed:
+            self.response = 'y' if cli_opts.type == 'yesno' else ''
 
     def initialize(self) -> None:
         self.cmd.set_cursor_visible(False)
@@ -234,7 +233,7 @@ class Choose(Handler):
         extra = (self.screen_size.cols - w) // 2
         x = extra
         nx = x + wcswidth(yes) + len(sep)
-        self.clickable_ranges = {'y': Range(x, x + wcswidth(yes) - 1, y), 'n': Range(nx, nx + 2, y)}
+        self.clickable_ranges = {'y': Range(x, x + wcswidth(yes) - 1, y), 'n': Range(nx, nx + 1, y)}
         self.print(' ' * extra + text, end='')
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
@@ -242,7 +241,7 @@ class Choose(Handler):
         if text in self.allowed:
             self.response = text
             self.quit_loop(0)
-        elif self.cli_opts.type == 'yesno' and text == 'q':
+        elif self.cli_opts.type == 'yesno':
             self.on_interrupt()
 
     def on_key(self, key_event: KeyEventType) -> None:
