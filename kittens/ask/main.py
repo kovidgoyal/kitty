@@ -150,8 +150,8 @@ class Choose(Handler):
         else:
             allowed = []
             for choice in cli_opts.choices:
-                color = 'green'
                 letter, text = choice.split(':', maxsplit=1)
+                color = ''
                 if ';' in letter:
                     letter, color = letter.split(';', maxsplit=1)
                 letter = letter.lower()
@@ -215,7 +215,8 @@ class Choose(Handler):
 
         for letter, choice in self.choices.items():
             text = choice.text[:choice.idx]
-            text += styled(choice.text[choice.idx], fg=choice.color)
+            color = choice.color or ('yellow' if letter == self.response else 'green')
+            text += styled(choice.text[choice.idx], fg=color)
             text += choice.text[choice.idx + 1:]
             text += '  '
             sz = wcswidth(text)
