@@ -327,23 +327,31 @@ detect_url(Screen *screen, unsigned int x, unsigned int y) {
     else set_mouse_cursor_for_screen(screen);
 }
 
+static bool
+set_mouse_position(Window *w, bool *mouse_cell_changed, bool *cell_half_changed) {
+    unsigned int x = 0, y = 0;
+    bool in_left_half_of_cell = false;
+    if (!cell_for_pos(w, &x, &y, &in_left_half_of_cell, global_state.callback_os_window)) return false;
+    *mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
+    *cell_half_changed = in_left_half_of_cell != w->mouse_pos.in_left_half_of_cell;
+    w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
+    w->mouse_pos.in_left_half_of_cell = in_left_half_of_cell;
+    return true;
+}
+
 HANDLER(handle_move_event) {
     modifiers &= ~GLFW_LOCK_MASK;
-    unsigned int x = 0, y = 0;
     if (OPT(focus_follows_mouse)) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         if (window_idx != t->active_window) {
             call_boss(switch_focus_to, "K", t->windows[window_idx].id);
         }
     }
-    bool in_left_half_of_cell = false;
-    if (!cell_for_pos(w, &x, &y, &in_left_half_of_cell, global_state.callback_os_window)) return;
+    bool mouse_cell_changed = false;
+    bool cell_half_changed = false;
+    if (!set_mouse_position(w, &mouse_cell_changed, &cell_half_changed)) return;
     Screen *screen = w->render_data.screen;
-    if(OPT(detect_urls)) detect_url(screen, x, y);
-    bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
-    bool cell_half_changed = in_left_half_of_cell != w->mouse_pos.in_left_half_of_cell;
-    w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
-    w->mouse_pos.in_left_half_of_cell = in_left_half_of_cell;
+    if(OPT(detect_urls)) detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
     bool in_tracking_mode = (
         screen->modes.mouse_tracking_mode == ANY_MODE ||
         (screen->modes.mouse_tracking_mode == MOTION_MODE && button >= 0));
@@ -497,6 +505,8 @@ HANDLER(handle_button_event) {
     }
     Screen *screen = w->render_data.screen;
     if (!screen) return;
+    bool a, b;
+    set_mouse_position(w, &a, &b);
     id_type wid = w->id;
     if (!dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, screen->modes.mouse_tracking_mode != 0)) {
         if (screen->modes.mouse_tracking_mode != 0) {
