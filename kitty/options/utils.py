@@ -500,16 +500,12 @@ def scrollback_pager_history_size(x: str) -> int:
     return min(ans, 4096 * 1024 * 1024 - 1)
 
 
+# "single" for backwards compat
+url_style_map = {'none': 0, 'single': 1, 'straight': 1, 'double': 2, 'curly': 3, 'dotted': 4, 'dashed': 5}
+
+
 def url_style(x: str) -> int:
-    # for backwards compat
-    if x == 'single':
-        x = 'straight'
     return url_style_map.get(x, url_style_map['curly'])
-
-
-url_style_map = {
-    v: i for i, v in enumerate('none straight double curly dotted dashed'.split())
-}
 
 
 def url_prefixes(x: str) -> Tuple[str, ...]:
