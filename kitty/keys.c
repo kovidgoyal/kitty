@@ -187,7 +187,8 @@ on_key_input(GLFWkeyevent *ev) {
             }
         }
         if (!w) return;
-    } else if (w->last_special_key_pressed == key) {
+    } else if (w->last_special_key_pressed == key && key != 0) {
+        // key == 0 is sent by the glfw coca backend when text is inserted by the IME outside the key handlers
         w->last_special_key_pressed = 0;
         debug("ignoring release event for previous press that was handled as shortcut\n");
         return;

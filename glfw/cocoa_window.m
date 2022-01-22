@@ -1375,8 +1375,19 @@ is_ascii_control_char(char x) {
         selectedRange:(NSRange)selectedRange
      replacementRange:(NSRange)replacementRange
 {
-    debug_key("\n\tsetMarkedText: %s selectedRange: (%lu, %lu) replacementRange: (%lu, %lu)\n", polymorphic_string_as_utf8(string), selectedRange.location, selectedRange.length, replacementRange.location, replacementRange.length);
-    if (string == nil) { [self unmarkText]; return; }
+    const char *s = polymorphic_string_as_utf8(string);
+    debug_key("\n\tsetMarkedText: %s selectedRange: (%lu, %lu) replacementRange: (%lu, %lu)\n", s, selectedRange.location, selectedRange.length, replacementRange.location, replacementRange.length);
+    if (string == nil || !s[0]) {
+        bool had_marked_text = [self hasMarkedText];
+        [self unmarkText];
+        if (had_marked_text && !in_key_handler) {
+            debug_key("clearing pre-edit because setMarkedText called from event loop\n");
+            GLFWkeyevent glfw_keyevent = {.ime_state = GLFW_IME_PREEDIT_CHANGED};
+            _glfwInputKeyboard(window, &glfw_keyevent);
+            _glfw.ns.text[0] = 0;
+        }
+        return;
+    }
     if ([string isKindOfClass:[NSAttributedString class]]) {
         if (((NSMutableAttributedString*)string).length == 0) { [self unmarkText]; return; }
         [markedText release];
