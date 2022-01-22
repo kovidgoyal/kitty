@@ -1401,7 +1401,7 @@ is_ascii_control_char(char x) {
     }
     if (!in_key_handler) {
         debug_key("updating IME text in kitty from setMarkedText called from event loop: %s\n", _glfw.ns.text);
-        GLFWkeyevent glfw_keyevent = {.text=_glfw.ns.text, .ime_state = GLFW_IME_PREEDIT_CHANGED};
+        GLFWkeyevent glfw_keyevent = {.text=[[markedText string] UTF8String], .ime_state = GLFW_IME_PREEDIT_CHANGED};
         _glfwInputKeyboard(window, &glfw_keyevent);
         _glfw.ns.text[0] = 0;
     }
