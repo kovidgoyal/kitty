@@ -95,6 +95,12 @@ letter is the accelerator key and text is the corresponding text.  There can be
 an optional color specification after the letter to indicate what color it should
 be.
 For example: y:Yes and n;red:No
+
+
+--default -d
+A default choice or text. If unspecified, it is no for yesno and empty for the
+others. If the input type is choices and the specified value is not one of the
+available choices, it is empty.
 '''
 
 
@@ -132,7 +138,6 @@ class Choose(Handler):
 
     def __init__(self, cli_opts: AskCLIOptions) -> None:
         self.cli_opts = cli_opts
-        self.response = 'n' if cli_opts.type == 'yesno' else ''
         self.allowed = frozenset('yn')
         self.choices: Dict[str, Choice] = {}
         self.clickable_ranges: Dict[str, Range] = {}
@@ -148,6 +153,12 @@ class Choose(Handler):
                 allowed.append(letter)
                 self.choices[letter] = Choice(text, idx, color)
             self.allowed = frozenset(allowed)
+        if not cli_opts.default:
+            self.response = 'n' if cli_opts.type == 'yesno' else ''
+        elif cli_opts.type == 'choices' and cli_opts.default not in self.allowed:
+            self.response = ''
+        else:
+            self.response = cli_opts.default
 
     def initialize(self) -> None:
         self.cmd.set_cursor_visible(False)
@@ -223,7 +234,7 @@ class Choose(Handler):
         extra = (self.screen_size.cols - w) // 2
         x = extra
         nx = x + wcswidth(yes) + len(sep)
-        self.clickable_ranges = {'y': Range(x, x + wcswidth(yes) - 1, y), 'n': Range(nx, nx + 1, y)}
+        self.clickable_ranges = {'y': Range(x, x + wcswidth(yes) - 1, y), 'n': Range(nx, nx + 2, y)}
         self.print(' ' * extra + text, end='')
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
@@ -231,13 +242,14 @@ class Choose(Handler):
         if text in self.allowed:
             self.response = text
             self.quit_loop(0)
+        elif self.cli_opts.type == 'yesno' and text == 'q':
+            self.on_interrupt()
 
     def on_key(self, key_event: KeyEventType) -> None:
-        if self.cli_opts.type == 'yesno':
-            if key_event.matches('esc'):
-                self.on_text('n')
-            elif key_event.matches('enter'):
-                self.on_text('y')
+        if key_event.matches('esc'):
+            self.on_interrupt()
+        elif key_event.matches('enter'):
+            self.quit_loop(0)
 
     def on_click(self, ev: MouseEvent) -> None:
         for letter, r in self.clickable_ranges.items():
@@ -251,6 +263,7 @@ class Choose(Handler):
         self.draw_screen()
 
     def on_interrupt(self) -> None:
+        self.response = ''
         self.quit_loop(1)
     on_eot = on_interrupt
 
@@ -287,7 +300,15 @@ def main(args: List[str]) -> Response:
 
         prompt = '> '
         with suppress(KeyboardInterrupt, EOFError):
-            response = input(prompt)
+            if cli_opts.default:
+                def prefill_text() -> None:
+                    readline.insert_text(cli_opts.default or '')
+                    readline.redisplay()
+                readline.set_pre_input_hook(prefill_text)
+                response = input(prompt)
+                readline.set_pre_input_hook()
+            else:
+                response = input(prompt)
     return {'items': items, 'response': response}
 
 

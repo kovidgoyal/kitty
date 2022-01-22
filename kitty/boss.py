@@ -654,7 +654,7 @@ class Boss:
             if window.has_running_program:
                 msg += ' ' + _('It is running a program.')
             self._run_kitten(
-                'ask', ['--type=yesno', '--message', msg],
+                'ask', ['--type=yesno', '--default=y', '--message', msg],
                 window=window,
                 custom_callback=partial(self.handle_close_window_confirmation, window.id)
             )
@@ -676,7 +676,7 @@ class Boss:
                 window: Optional[Window] = None, confirm_on_cancel: bool = False) -> None:
         def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
             callback(res.get('response') == 'y', *args)
-        self._run_kitten('ask', ['--type=yesno', '--message', msg],
+        self._run_kitten('ask', ['--type=yesno', '--default=y', '--message', msg],
                          window=window, custom_callback=callback_, default_data={'response': 'y' if confirm_on_cancel else 'n'})
 
     def confirm_tab_close(self, tab: Tab) -> None:
@@ -1418,12 +1418,14 @@ class Boss:
     def set_tab_title(self) -> None:
         tab = self.active_tab
         if tab:
-            args = ['--name=tab-title', '--message', _('Enter the new title for this tab below.'), 'do_set_tab_title', str(tab.id)]
+            args = [
+                '--name=tab-title', '--message', _('Enter the new title for this tab below.'),
+                '--default', tab.name or tab.title, 'do_set_tab_title', str(tab.id)]
             self._run_kitten('ask', args)
 
     def do_set_tab_title(self, title: str, tab_id: int) -> None:
         tm = self.active_tab_manager
-        if tm is not None and title:
+        if tm is not None:
             tab_id = int(tab_id)
             for tab in tm.tabs:
                 if tab.id == tab_id:
