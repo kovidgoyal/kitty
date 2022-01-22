@@ -300,8 +300,8 @@ def main(args: List[str]) -> Response:
         prompt = '> '
         with suppress(KeyboardInterrupt, EOFError):
             if cli_opts.default:
-                def prefill_text():
-                    readline.insert_text(cli_opts.default)
+                def prefill_text() -> None:
+                    readline.insert_text(cli_opts.default or '')
                     readline.redisplay()
                 readline.set_pre_input_hook(prefill_text)
                 response = input(prompt)
