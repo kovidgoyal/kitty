@@ -506,7 +506,7 @@ HANDLER(handle_button_event) {
     Screen *screen = w->render_data.screen;
     if (!screen) return;
     bool a, b;
-    set_mouse_position(w, &a, &b);
+    if (!set_mouse_position(w, &a, &b)) return;
     id_type wid = w->id;
     if (!dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, screen->modes.mouse_tracking_mode != 0)) {
         if (screen->modes.mouse_tracking_mode != 0) {
