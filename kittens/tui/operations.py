@@ -166,11 +166,8 @@ def scroll_screen(amt: int = 1) -> str:
     return '\033[' + str(abs(amt)) + ('T' if amt < 0 else 'S')
 
 
-STANDARD_COLORS = {name: i for i, name in enumerate(
-    'black red green yellow blue magenta cyan gray'.split())}
-STANDARD_COLORS['white'] = STANDARD_COLORS['gray']
-UNDERLINE_STYLES = {name: i + 1 for i, name in enumerate(
-    'straight double curly'.split())}
+STANDARD_COLORS = {'black': 0, 'red': 1, 'green': 2, 'yellow': 3, 'blue': 4, 'magenta': 5, 'cyan': 6, 'gray': 7, 'white': 7}
+UNDERLINE_STYLES = {'straight': 1, 'double': 2, 'curly': 3, 'dotted': 4, 'dashed': 5}
 
 
 ColorSpec = Union[int, str, Color]
