@@ -215,8 +215,7 @@ class Choose(Handler):
 
         for letter, choice in self.choices.items():
             text = choice.text[:choice.idx]
-            color = choice.color or ('yellow' if letter == self.response_on_accept else 'green')
-            text += styled(choice.text[choice.idx], fg=color)
+            text += styled(choice.text[choice.idx], fg=choice.color or 'green', underline='straight' if letter == self.response_on_accept else None)
             text += choice.text[choice.idx + 1:]
             text += '  '
             sz = wcswidth(text)
