@@ -1247,14 +1247,16 @@ is_ascii_control_char(char x) {
     if (process_text && inpctx) {
         // this will call insertText which will fill up _glfw.ns.text
         in_key_handler = 2;
-        [inpctx handleEvent:event];
+        const bool handled = [inpctx handleEvent:event];
         in_key_handler = 0;
-        if (marked_text_cleared_by_insert) {
-            debug_key("Clearing pre-edit text");
-            CLEAR_PRE_EDIT_TEXT;
+        if (handled) {
+            if (marked_text_cleared_by_insert) {
+                debug_key("Clearing pre-edit text");
+                CLEAR_PRE_EDIT_TEXT;
+            }
+            if (_glfw.ns.text[0]) glfw_keyevent.text = _glfw.ns.text;
+            else _glfw.ns.text[0] = old_first_char;
         }
-        if (_glfw.ns.text[0]) glfw_keyevent.text = _glfw.ns.text;
-        else _glfw.ns.text[0] = old_first_char;
     }
     glfw_keyevent.ime_state = GLFW_IME_NONE;
     debug_key("\n");
