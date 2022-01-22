@@ -1251,7 +1251,7 @@ is_ascii_control_char(char x) {
         else _glfw.ns.text[0] = old_first_char;
     }
     glfw_keyevent.ime_state = GLFW_IME_NONE;
-    debug_key("\x1b[m\n");
+    debug_key("\n");
     _glfwInputKeyboard(window, &glfw_keyevent);
 }
 
