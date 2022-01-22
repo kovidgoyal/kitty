@@ -100,7 +100,7 @@ For example: y:Yes and n;red:No
 --default -d
 A default choice or text. If unspecified, it is "y" for yesno and empty for the
 others. If the input type is choices and the specified value is not one of the
-available choices, it is empty. The default choice is selected when the user
+available choices, it is the first choice. The default choice is selected when the user
 presses the Enter key.
 '''
 
@@ -161,7 +161,7 @@ class Choose(Handler):
             self.allowed = frozenset(allowed)
         self.response = cli_opts.default
         if cli_opts.type in ('yesno', 'choices') and self.response not in self.allowed:
-            self.response = 'y' if cli_opts.type == 'yesno' else ''
+            self.response = 'y' if cli_opts.type == 'yesno' else tuple(self.choices.keys())[0]
 
     def initialize(self) -> None:
         self.cmd.set_cursor_visible(False)
