@@ -800,12 +800,26 @@ int _glfwPlatformInit(void)
         return nil;
     };
 
+    NSEvent* (^flags_changed_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
+    {
+        debug_key("-------------- flags changed -----------------\n");
+        debug_key("%s\n", [[event description] UTF8String]);
+        last_keydown_shortcut_event.virtual_key_code = 0xffff;
+        NSWindow *kw = [NSApp keyWindow];
+        if (kw && kw.contentView) [kw.contentView flagsChanged:event];
+        else debug_key("flagsChanged ignored as no keyWindow present\n");
+        return nil;
+    };
+
     _glfw.ns.keyUpMonitor =
         [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyUp
                                               handler:keyup_block];
     _glfw.ns.keyDownMonitor =
         [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown
                                               handler:keydown_block];
+    _glfw.ns.flagsChangedMonitor =
+        [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskFlagsChanged
+                                              handler:flags_changed_block];
 
     if (_glfw.hints.init.ns.chdir)
         changeToResourcesDirectory();
@@ -890,6 +904,8 @@ void _glfwPlatformTerminate(void)
         [NSEvent removeMonitor:_glfw.ns.keyUpMonitor];
     if (_glfw.ns.keyDownMonitor)
         [NSEvent removeMonitor:_glfw.ns.keyDownMonitor];
+    if (_glfw.ns.flagsChangedMonitor)
+        [NSEvent removeMonitor:_glfw.ns.flagsChangedMonitor];
 
     if (_glfw.ns.appleSettings != nil) {
         [_glfw.ns.appleSettings release];

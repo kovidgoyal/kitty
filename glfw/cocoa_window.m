@@ -752,7 +752,6 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     NSMutableAttributedString* markedText;
     NSRect markedRect;
     bool marked_text_cleared_by_insert;
-    bool in_key_down;
     NSString *input_source_at_last_key_event;
 }
 
@@ -1151,14 +1150,12 @@ is_ascii_control_char(char x) {
         debug_key("\x1b[31mPress:\x1b[m native_key: 0x%x (%s) glfw_key: 0x%x %schar_count: %lu deadKeyState: %u repeat: %d ",
                 keycode, safe_name_for_keycode(keycode), key, format_mods(mods), char_count, window->ns.deadKeyState, event.ARepeat);
         marked_text_cleared_by_insert = false;
-        in_key_down = true;
         if (process_text) {
             // this will call insertText which will fill up _glfw.ns.text
             [self interpretKeyEvents:@[event]];
         } else {
             window->ns.deadKeyState = 0;
         }
-        in_key_down = false;
         if (window->ns.deadKeyState && (char_count == 0 || keycode == 0x75)) {
             // 0x75 is the delete key which needs to be ignored during a compose sequence
             debug_key("Sending pre-edit text for dead key (text: %s markedText: %s).\n", format_text(_glfw.ns.text), glfw_keyevent.text);
@@ -1201,16 +1198,19 @@ is_ascii_control_char(char x) {
         // insertText followed by setMarkedText
         UPDATE_PRE_EDIT_TEXT;
     }
-#undef CLEAR_PRE_EDIT_TEXT
-#undef UPDATE_PRE_EDIT_TEXT
 }
 
 - (void)flagsChanged:(NSEvent *)event
 {
     int action = GLFW_RELEASE;
-    const unsigned int modifierFlags =
-        [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
+    const char old_first_char = _glfw.ns.text[0];
+    _glfw.ns.text[0] = 0;
+    const NSUInteger modifierFlags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
     const uint32_t key = vk_code_to_functional_key_code([event keyCode]);
+    const unsigned int keycode = [event keyCode];
+    const int mods = translateFlags(modifierFlags);
+    const bool process_text = !_glfw.ignoreOSKeyboardProcessing && (!window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, keycode, modifierFlags) != 1);
+
     switch(key) {
         case GLFW_FKEY_CAPS_LOCK:
             action = modifierFlags & NSEventModifierFlagCapsLock ? GLFW_PRESS : GLFW_RELEASE; break;
@@ -1229,7 +1229,17 @@ is_ascii_control_char(char x) {
         default:
             return;
     }
-    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = [event keyCode], .native_key_id = [event keyCode], .action = action, .mods = translateFlags(modifierFlags)};
+    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .native_key_id = keycode, .action = action, .mods = mods};
+    marked_text_cleared_by_insert = false;
+    NSTextInputContext *inpctx = [NSTextInputContext currentInputContext];
+    if (process_text && inpctx) {
+        // this will call insertText which will fill up _glfw.ns.text
+        [inpctx handleEvent:event];
+        if (marked_text_cleared_by_insert) { CLEAR_PRE_EDIT_TEXT; }
+        if (_glfw.ns.text[0]) glfw_keyevent.text = _glfw.ns.text;
+        else _glfw.ns.text[0] = old_first_char;
+    }
+    glfw_keyevent.ime_state = GLFW_IME_NONE;
     _glfwInputKeyboard(window, &glfw_keyevent);
 }
 
@@ -1245,6 +1255,9 @@ is_ascii_control_char(char x) {
             keycode, safe_name_for_keycode(keycode), key, format_mods(mods));
     _glfwInputKeyboard(window, &glfw_keyevent);
 }
+
+#undef CLEAR_PRE_EDIT_TEXT
+#undef UPDATE_PRE_EDIT_TEXT
 
 - (void)scrollWheel:(NSEvent *)event
 {
@@ -1423,11 +1436,6 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     char *s = _glfw.ns.text + strnlen(_glfw.ns.text, sizeof(_glfw.ns.text));
     snprintf(s, sizeof(_glfw.ns.text) - (s - _glfw.ns.text), "%s", utf8);
     _glfw.ns.text[sizeof(_glfw.ns.text) - 1] = 0;
-    if (!in_key_down && !strlen(utf8)) {
-        // is called by cocoa when a modifier is pressed, for example shift
-        GLFWkeyevent dummy = {.action = GLFW_RELEASE, .ime_state = GLFW_IME_PREEDIT_CHANGED};
-        _glfwInputKeyboard(window, &dummy);
-    }
 }
 
 - (void)doCommandBySelector:(SEL)selector
