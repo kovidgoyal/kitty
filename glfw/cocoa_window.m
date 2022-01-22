@@ -1210,36 +1210,48 @@ is_ascii_control_char(char x) {
     const unsigned int keycode = [event keyCode];
     const int mods = translateFlags(modifierFlags);
     const bool process_text = !_glfw.ignoreOSKeyboardProcessing && (!window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, keycode, modifierFlags) != 1);
+    const char *mod_name = "unknown";
 
     switch(key) {
         case GLFW_FKEY_CAPS_LOCK:
+            mod_name = "caps";
             action = modifierFlags & NSEventModifierFlagCapsLock ? GLFW_PRESS : GLFW_RELEASE; break;
         case GLFW_FKEY_LEFT_SUPER:
         case GLFW_FKEY_RIGHT_SUPER:
+            mod_name = "super";
             action = modifierFlags & NSEventModifierFlagCommand ? GLFW_PRESS : GLFW_RELEASE; break;
         case GLFW_FKEY_LEFT_CONTROL:
         case GLFW_FKEY_RIGHT_CONTROL:
+            mod_name = "ctrl";
             action = modifierFlags & NSEventModifierFlagControl ? GLFW_PRESS : GLFW_RELEASE; break;
         case GLFW_FKEY_LEFT_ALT:
         case GLFW_FKEY_RIGHT_ALT:
+            mod_name = "alt";
             action = modifierFlags & NSEventModifierFlagOption ? GLFW_PRESS : GLFW_RELEASE; break;
         case GLFW_FKEY_LEFT_SHIFT:
         case GLFW_FKEY_RIGHT_SHIFT:
+            mod_name = "shift";
             action = modifierFlags & NSEventModifierFlagShift ? GLFW_PRESS : GLFW_RELEASE; break;
         default:
             return;
     }
     GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .native_key_id = keycode, .action = action, .mods = mods};
+    debug_key("\x1b[33mflagsChanged:\x1b[m modifer: %s native_key: 0x%x (%s) glfw_key: 0x%x %s\n",
+            mod_name, keycode, safe_name_for_keycode(keycode), key, format_mods(mods));
     marked_text_cleared_by_insert = false;
     NSTextInputContext *inpctx = [NSTextInputContext currentInputContext];
     if (process_text && inpctx) {
         // this will call insertText which will fill up _glfw.ns.text
         [inpctx handleEvent:event];
-        if (marked_text_cleared_by_insert) { CLEAR_PRE_EDIT_TEXT; }
+        if (marked_text_cleared_by_insert) {
+            debug_key("Clearing pre-edit text");
+            CLEAR_PRE_EDIT_TEXT;
+        }
         if (_glfw.ns.text[0]) glfw_keyevent.text = _glfw.ns.text;
         else _glfw.ns.text[0] = old_first_char;
     }
     glfw_keyevent.ime_state = GLFW_IME_NONE;
+    debug_key("\x1b[m\n");
     _glfwInputKeyboard(window, &glfw_keyevent);
 }
 
