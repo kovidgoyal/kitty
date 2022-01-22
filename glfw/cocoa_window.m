@@ -752,6 +752,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     NSMutableAttributedString* markedText;
     NSRect markedRect;
     bool marked_text_cleared_by_insert;
+    int in_key_handler;
     NSString *input_source_at_last_key_event;
 }
 
@@ -773,6 +774,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         markedText = [[NSMutableAttributedString alloc] init];
         markedRect = NSMakeRect(0.0, 0.0, 0.0, 0.0);
         input_source_at_last_key_event = nil;
+        in_key_handler = 0;
 
         [self updateTrackingAreas];
         [self registerForDraggedTypes:@[NSPasteboardTypeFileURL, NSPasteboardTypeString]];
@@ -1150,12 +1152,14 @@ is_ascii_control_char(char x) {
         debug_key("\x1b[31mPress:\x1b[m native_key: 0x%x (%s) glfw_key: 0x%x %schar_count: %lu deadKeyState: %u repeat: %d ",
                 keycode, safe_name_for_keycode(keycode), key, format_mods(mods), char_count, window->ns.deadKeyState, event.ARepeat);
         marked_text_cleared_by_insert = false;
+        in_key_handler = 1;
         if (process_text) {
             // this will call insertText which will fill up _glfw.ns.text
             [self interpretKeyEvents:@[event]];
         } else {
             window->ns.deadKeyState = 0;
         }
+        in_key_handler = 0;
         if (window->ns.deadKeyState && (char_count == 0 || keycode == 0x75)) {
             // 0x75 is the delete key which needs to be ignored during a compose sequence
             debug_key("Sending pre-edit text for dead key (text: %s markedText: %s).\n", format_text(_glfw.ns.text), glfw_keyevent.text);
@@ -1242,7 +1246,9 @@ is_ascii_control_char(char x) {
     NSTextInputContext *inpctx = [NSTextInputContext currentInputContext];
     if (process_text && inpctx) {
         // this will call insertText which will fill up _glfw.ns.text
+        in_key_handler = 2;
         [inpctx handleEvent:event];
+        in_key_handler = 0;
         if (marked_text_cleared_by_insert) {
             debug_key("Clearing pre-edit text");
             CLEAR_PRE_EDIT_TEXT;
@@ -1443,11 +1449,23 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     if ([self hasMarkedText]) {
         [self unmarkText];
         marked_text_cleared_by_insert = true;
+        if (!in_key_handler) {
+            debug_key("clearing pre-edit because insertText called from event loop\n");
+            GLFWkeyevent glfw_keyevent = {.ime_state = GLFW_IME_PREEDIT_CHANGED};
+            _glfwInputKeyboard(window, &glfw_keyevent);
+            _glfw.ns.text[0] = 0;
+        }
     }
     // insertText can be called multiple times for a single key event
     char *s = _glfw.ns.text + strnlen(_glfw.ns.text, sizeof(_glfw.ns.text));
     snprintf(s, sizeof(_glfw.ns.text) - (s - _glfw.ns.text), "%s", utf8);
     _glfw.ns.text[sizeof(_glfw.ns.text) - 1] = 0;
+    if (!in_key_handler && _glfw.ns.text[0]) {
+        debug_key("sending text to kitty from insertText called from event loop: %s", _glfw.ns.text);
+        GLFWkeyevent glfw_keyevent = {.text=_glfw.ns.text};
+        _glfwInputKeyboard(window, &glfw_keyevent);
+        _glfw.ns.text[0] = 0;
+    }
 }
 
 - (void)doCommandBySelector:(SEL)selector
