@@ -360,7 +360,7 @@ opt('url_color', '#0087bd',
     option_type='to_color', ctype='color_as_int',
     long_text='''
 The color and style for highlighting URLs on mouse-over. :code:`url_style` can
-be one of: none, single, double, curly
+be one of: none, straight, double, curly, dotted, dashed
 '''
     )
 

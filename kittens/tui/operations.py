@@ -170,7 +170,7 @@ STANDARD_COLORS = {name: i for i, name in enumerate(
     'black red green yellow blue magenta cyan gray'.split())}
 STANDARD_COLORS['white'] = STANDARD_COLORS['gray']
 UNDERLINE_STYLES = {name: i + 1 for i, name in enumerate(
-    'straight double curly'.split())}
+    'straight double curly dotted dashed'.split())}
 
 
 ColorSpec = Union[int, str, Color]

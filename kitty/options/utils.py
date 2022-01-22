@@ -501,11 +501,14 @@ def scrollback_pager_history_size(x: str) -> int:
 
 
 def url_style(x: str) -> int:
+    # for backwards compat
+    if x == 'single':
+        x = 'straight'
     return url_style_map.get(x, url_style_map['curly'])
 
 
 url_style_map = {
-    v: i for i, v in enumerate('none single double curly'.split())
+    v: i for i, v in enumerate('none straight double curly dotted dashed'.split())
 }
 
 
