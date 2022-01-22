@@ -2851,7 +2851,9 @@ agr('shortcuts', 'Keyboard shortcuts', '''
 Keys are identified simply by their lowercase unicode characters. For example:
 ``a`` for the A key, ``[`` for the left square bracket key, etc. For functional
 keys, such as ``Enter or Escape`` the names are present at :ref:`functional`.
-For a list of modifier names, see:
+For modifier keys, the names are :kbd:`ctrl` (:kbd:`control`, :kbd:`⌃`),
+:kbd:`shift` (:kbd:`⇧`), :kbd:`alt` (:kbd:`opt`, :kbd:`option`, :kbd:`⌥`),
+:kbd:`super` (:kbd:`cmd`, :kbd:`command`, :kbd:`⌘`). See also:
 :link:`GLFW mods <https://www.glfw.org/docs/latest/group__mods.html>`
 
 On Linux you can also use XKB key names to bind keys that are not supported by
