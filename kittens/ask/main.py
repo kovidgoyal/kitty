@@ -173,7 +173,8 @@ class Choose(Handler):
         y = max(0, self.screen_size.rows // 2 - 2)
         self.print(end='\r\n'*y)
         if self.cli_opts.message:
-            y += self.draw_long_text(self.cli_opts.message)
+            for line in self.cli_opts.message.splitlines():
+                y += self.draw_long_text(line)
         if self.screen_size.rows > 2:
             self.print()
             y += 1
