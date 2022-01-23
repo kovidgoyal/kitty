@@ -2,7 +2,7 @@
 #
 
 ifdef FAIL_WARN
-FAIL_WARN=-W
+override FAIL_WARN=-W
 endif
 
 # You can set these variables from the command line.
