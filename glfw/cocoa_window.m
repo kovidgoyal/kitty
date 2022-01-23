@@ -1218,7 +1218,7 @@ is_ascii_control_char(char x) {
 
     switch(key) {
         case GLFW_FKEY_CAPS_LOCK:
-            mod_name = "caps";
+            mod_name = "capslock";
             action = modifierFlags & NSEventModifierFlagCapsLock ? GLFW_PRESS : GLFW_RELEASE; break;
         case GLFW_FKEY_LEFT_SUPER:
         case GLFW_FKEY_RIGHT_SUPER:
@@ -1240,7 +1240,7 @@ is_ascii_control_char(char x) {
             return;
     }
     GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .native_key_id = keycode, .action = action, .mods = mods};
-    debug_key("\x1b[33mflagsChanged:\x1b[m modifer: %s native_key: 0x%x (%s) glfw_key: 0x%x %s\n",
+    debug_key("\x1b[33mflagsChanged:\x1b[m modifier: %s native_key: 0x%x (%s) glfw_key: 0x%x %s\n",
             mod_name, keycode, safe_name_for_keycode(keycode), key, format_mods(mods));
     marked_text_cleared_by_insert = false;
     NSTextInputContext *inpctx = [NSTextInputContext currentInputContext];
@@ -1250,14 +1250,13 @@ is_ascii_control_char(char x) {
         [inpctx handleEvent:event];
         in_key_handler = 0;
         if (marked_text_cleared_by_insert) {
-            debug_key("Clearing pre-edit text");
+            debug_key("Clearing pre-edit text because insertText called from flagsChanged\n");
             CLEAR_PRE_EDIT_TEXT;
             if (_glfw.ns.text[0]) glfw_keyevent.text = _glfw.ns.text;
             else _glfw.ns.text[0] = old_first_char;
         }
     }
     glfw_keyevent.ime_state = GLFW_IME_NONE;
-    debug_key("\n");
     _glfwInputKeyboard(window, &glfw_keyevent);
 }
 
@@ -1381,7 +1380,7 @@ is_ascii_control_char(char x) {
         bool had_marked_text = [self hasMarkedText];
         [self unmarkText];
         if (had_marked_text && !in_key_handler) {
-            debug_key("clearing pre-edit because setMarkedText called from event loop\n");
+            debug_key("Clearing pre-edit because setMarkedText called from event loop\n");
             GLFWkeyevent glfw_keyevent = {.ime_state = GLFW_IME_PREEDIT_CHANGED};
             _glfwInputKeyboard(window, &glfw_keyevent);
             _glfw.ns.text[0] = 0;
@@ -1398,7 +1397,7 @@ is_ascii_control_char(char x) {
         markedText = [[NSMutableAttributedString alloc] initWithString:string];
     }
     if (!in_key_handler) {
-        debug_key("updating IME text in kitty from setMarkedText called from event loop: %s\n", _glfw.ns.text);
+        debug_key("Updating IME text in kitty from setMarkedText called from event loop: %s\n", _glfw.ns.text);
         GLFWkeyevent glfw_keyevent = {.text=[[markedText string] UTF8String], .ime_state = GLFW_IME_PREEDIT_CHANGED};
         _glfwInputKeyboard(window, &glfw_keyevent);
         _glfw.ns.text[0] = 0;
@@ -1467,7 +1466,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
         [self unmarkText];
         marked_text_cleared_by_insert = true;
         if (!in_key_handler) {
-            debug_key("clearing pre-edit because insertText called from event loop\n");
+            debug_key("Clearing pre-edit because insertText called from event loop\n");
             GLFWkeyevent glfw_keyevent = {.ime_state = GLFW_IME_PREEDIT_CHANGED};
             _glfwInputKeyboard(window, &glfw_keyevent);
             _glfw.ns.text[0] = 0;
@@ -1478,7 +1477,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     snprintf(s, sizeof(_glfw.ns.text) - (s - _glfw.ns.text), "%s", utf8);
     _glfw.ns.text[sizeof(_glfw.ns.text) - 1] = 0;
     if ((!in_key_handler || in_key_handler == 2) && _glfw.ns.text[0]) {
-        debug_key("sending text to kitty from insertText called from event loop: %s\n", _glfw.ns.text);
+        debug_key("Sending text to kitty from insertText called from event loop: %s\n", _glfw.ns.text);
         GLFWkeyevent glfw_keyevent = {.text=_glfw.ns.text, .ime_state=GLFW_IME_COMMIT_TEXT};
         _glfwInputKeyboard(window, &glfw_keyevent);
         _glfw.ns.text[0] = 0;
