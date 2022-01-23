@@ -1461,7 +1461,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 {
     const char *utf8 = polymorphic_string_as_utf8(string);
     debug_key("\n\tinsertText: %s replacementRange: (%lu, %lu)\n", utf8, replacementRange.location, replacementRange.length);
-    if ([self hasMarkedText]) {
+    if ([self hasMarkedText] && !is_ascii_control_char(utf8[0])) {
         [self unmarkText];
         marked_text_cleared_by_insert = true;
         if (!in_key_handler) {
