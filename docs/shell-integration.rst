@@ -173,6 +173,7 @@ code used for each shell below:
 
     .. literalinclude:: ../shell-integration/fish/vendor_conf.d/kitty-shell-integration.fish
         :language: fish
+        :force:
 
 .. tab:: bash
 

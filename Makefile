@@ -5,6 +5,10 @@ ifdef VERBOSE
 	VVAL=--verbose
 endif
 
+ifdef FAIL_WARN
+export FAIL_WARN
+endif
+
 all:
 	python3 setup.py $(VVAL)
 
@@ -32,13 +36,16 @@ app:
 	python3 setup.py kitty.app $(VVAL)
 
 man:
-	$(MAKE) FAIL_WARN=$(FAIL_WARN) -C docs man
+	$(MAKE) -C docs man
 
 html:
-	$(MAKE) FAIL_WARN=$(FAIL_WARN) -C docs html
+	$(MAKE) -C docs html
+
+dirhtml:
+	$(MAKE) -C docs dirhtml
 
 linkcheck:
-	$(MAKE) FAIL_WARN=$(FAIL_WARN) -C docs linkcheck
+	$(MAKE) -C docs linkcheck
 
 website:
 	./publish.py --only website
