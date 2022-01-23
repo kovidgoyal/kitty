@@ -79,11 +79,11 @@ def run_tag(args: Any) -> None:
 
 
 def run_man(args: Any) -> None:
-    call('make FAIL_WARN=-W man', cwd=docs_dir)
+    call('make FAIL_WARN=1 man', cwd=docs_dir)
 
 
 def run_html(args: Any) -> None:
-    call('make FAIL_WARN=-W "OPTS=-D analytics_id=UA-20736318-2" dirhtml', cwd=docs_dir)
+    call('make FAIL_WARN=1 "OPTS=-D analytics_id=UA-20736318-2" dirhtml', cwd=docs_dir)
     add_old_redirects('docs/_build/dirhtml')
 
 

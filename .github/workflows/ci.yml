@@ -88,10 +88,10 @@ jobs:
               run: python test.py mypy
 
             - name: Build man page
-              run: make FAIL_WARN=-W man
+              run: make FAIL_WARN=1 man
 
             - name: Build HTML docs
-              run: make FAIL_WARN=-W html
+              run: make FAIL_WARN=1 html
 
     bundle:
         name: Bundle test (${{ matrix.os }})

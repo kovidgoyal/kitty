@@ -1,6 +1,10 @@
 # Minimal makefile for Sphinx documentation
 #
 
+ifdef FAIL_WARN
+FAIL_WARN=-W
+endif
+
 # You can set these variables from the command line.
 SPHINXOPTS    = -n -q -j auto -T $(FAIL_WARN) $(OPTS)
 SPHINXBUILD   = sphinx-build
