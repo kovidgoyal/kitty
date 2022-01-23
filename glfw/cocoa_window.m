@@ -1379,8 +1379,8 @@ is_ascii_control_char(char x) {
     if (string == nil || !s[0]) {
         bool had_marked_text = [self hasMarkedText];
         [self unmarkText];
-        if (had_marked_text && !in_key_handler) {
-            debug_key("Clearing pre-edit because setMarkedText called from event loop\n");
+        if (had_marked_text && (!in_key_handler || in_key_handler == 2)) {
+            debug_key("Clearing pre-edit because setMarkedText called from event loop or flagsChanged\n");
             GLFWkeyevent glfw_keyevent = {.ime_state = GLFW_IME_PREEDIT_CHANGED};
             _glfwInputKeyboard(window, &glfw_keyevent);
             _glfw.ns.text[0] = 0;
@@ -1396,8 +1396,8 @@ is_ascii_control_char(char x) {
         [markedText release];
         markedText = [[NSMutableAttributedString alloc] initWithString:string];
     }
-    if (!in_key_handler) {
-        debug_key("Updating IME text in kitty from setMarkedText called from event loop: %s\n", _glfw.ns.text);
+    if (!in_key_handler || in_key_handler == 2) {
+        debug_key("Updating IME text in kitty from setMarkedText called from event loop or flagsChanged: %s\n", _glfw.ns.text);
         GLFWkeyevent glfw_keyevent = {.text=[[markedText string] UTF8String], .ime_state = GLFW_IME_PREEDIT_CHANGED};
         _glfwInputKeyboard(window, &glfw_keyevent);
         _glfw.ns.text[0] = 0;
@@ -1477,7 +1477,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     snprintf(s, sizeof(_glfw.ns.text) - (s - _glfw.ns.text), "%s", utf8);
     _glfw.ns.text[sizeof(_glfw.ns.text) - 1] = 0;
     if ((!in_key_handler || in_key_handler == 2) && _glfw.ns.text[0]) {
-        debug_key("Sending text to kitty from insertText called from event loop: %s\n", _glfw.ns.text);
+        debug_key("Sending text to kitty from insertText called from called from event loop or flagsChanged: %s\n", _glfw.ns.text);
         GLFWkeyevent glfw_keyevent = {.text=_glfw.ns.text, .ime_state=GLFW_IME_COMMIT_TEXT};
         _glfwInputKeyboard(window, &glfw_keyevent);
         _glfw.ns.text[0] = 0;
