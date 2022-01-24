@@ -120,7 +120,7 @@ Detailed list of changes
 - macOS: Respect the users system-wide global keyboard shortcut preferences
   (:iss:`4501`)
 
-- macOS: Fix a few key-presses causing beeps from cocoa text input system
+- macOS: Fix a few key-presses causing beeps from Cocoa's text input system
   (:iss:`4489`)
 
 - macOS: Fix using shortcuts from the global menu bar as subsequent key presses
