@@ -26,6 +26,7 @@ class TestOpenActions(BaseTest):
 
     def test_parsing_of_open_actions(self):
         from kitty.open_actions import actions_for_url, KeyAction
+        self.set_options()
         spec = '''
 protocol file
 mime text/*
