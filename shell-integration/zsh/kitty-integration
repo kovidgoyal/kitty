@@ -119,21 +119,6 @@ _ksi_deferred_init() {
         fpath=($comp_dir ${fpath:#$comp_dir})
     fi
 
-    # Enable cursor shape changes depending on the current keymap.
-    if (( ! opt[(Ie)no-cursor] )); then
-        # This implementation leaks blinking block cursor into external commands
-        # executed from zle. For example, users of fzf-based widgets may find
-        # themselves with a blinking block cursor within fzf.
-        _ksi_zle_line_init _ksi_zle_line_finish _ksi_zle_keymap_select() {
-            case ${KEYMAP-} in
-                # Blinking block cursor.
-                vicmd|visual) builtin print -nu "$_ksi_fd" '\e[1 q';;
-                # Blinking bar cursor.
-                *)            builtin print -nu "$_ksi_fd" '\e[5 q';;
-            esac
-        }
-    fi
-
     # Enable semantic markup with OSC 133.
     if (( ! opt[(Ie)no-prompt-mark] )); then
         _ksi_precmd() {
@@ -252,6 +237,24 @@ _ksi_deferred_init() {
         functions[_ksi_preexec]+="
             builtin print -rnu $_ksi_fd \$'\\e]2;'\"\${(V)1}\"\$'\\a'"
     fi
+
+    # Enable cursor shape changes depending on the current keymap.
+    if (( ! opt[(Ie)no-cursor] )); then
+        # This implementation leaks blinking block cursor into external commands
+        # executed from zle. For example, users of fzf-based widgets may find
+        # themselves with a blinking block cursor within fzf.
+        _ksi_zle_line_init _ksi_zle_line_finish _ksi_zle_keymap_select() {
+            case ${KEYMAP-} in
+                # Blinking block cursor.
+                vicmd|visual) builtin print -nu "$_ksi_fd" '\e[1 q';;
+                # Blinking bar cursor.
+                *)            builtin print -nu "$_ksi_fd" '\e[5 q';;
+            esac
+        }
+        functions[_ksi_preexec]+="
+            builtin print -rnu $_ksi_fd \$'\\e[1 q'"
+    fi
+
 
     # Some zsh users manually run `source ~/.zshrc` in order to apply rc file
     # changes to the current shell. This is a terrible practice that breaks many
