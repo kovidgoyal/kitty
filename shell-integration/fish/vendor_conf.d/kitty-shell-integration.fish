@@ -27,8 +27,8 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     if not contains "no-cursor" $_ksi
         and not functions -q __ksi_set_cursor
 
-        function __ksi_block_cursor --on-event fish_preexec -d "Set cursor shape to steady block before executing command"
-            printf "\e[2 q"
+        function __ksi_block_cursor --on-event fish_preexec -d "Set cursor shape to blinking block before executing command"
+            printf "\e[1 q"
         end
 
         function __ksi_set_cursor --on-variable fish_key_bindings -d "Set the cursor shape for different modes when switching key bindings"
