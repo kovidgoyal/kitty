@@ -1943,7 +1943,7 @@ screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
         case '"':  // DECCSA
             break;
         case ' ': // DECSCUSR
-            shape = 0; blink = false;
+            shape = 0; blink = true;
             if (mode > 0) {
                 blink = mode % 2;
                 shape = (mode < 3) ? CURSOR_BLOCK : (mode < 5) ? CURSOR_UNDERLINE : (mode < 7) ? CURSOR_BEAM : NO_CURSOR_SHAPE;
