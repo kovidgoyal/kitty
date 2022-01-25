@@ -61,7 +61,7 @@ _ksi_main() {
 
     if [[ "${_ksi_prompt[cursor]}" == "y" ]]; then 
         _ksi_prompt[ps1]+="\[\e[5 q\]"  # blinking bar cursor
-        _ksi_prompt[ps0]+="\[\e[1 q\]"  # blinking block cursor
+        _ksi_prompt[ps0]+="\[\e[0 q\]"  # blinking default cursor
     fi
 
     if [[ "${_ksi_prompt[title]}" == "y" ]]; then 

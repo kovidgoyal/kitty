@@ -251,9 +251,9 @@ _ksi_deferred_init() {
                 *)            builtin print -nu "$_ksi_fd" '\e[5 q';;
             esac
         }
-        # Restore the blinking block cursor before executing an external command
+        # Restore the blinking default shape before executing an external command
         functions[_ksi_preexec]+="
-            builtin print -rnu $_ksi_fd \$'\\e[1 q'"
+            builtin print -rnu $_ksi_fd \$'\\e[0 q'"
     fi
 
 
