@@ -7,6 +7,9 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     functions --erase __ksi_schedule
     test -n "$KITTY_SHELL_INTEGRATION" || return 0
 
+    # To use fish's autoloading feature, kitty prepends the vendored integration script directory to XDG_DATA_DIRS.
+    # The original paths needs to be restored here to not affect other programs.
+    # In particular, if the original XDG_DATA_DIRS does not exist, it needs to be removed.
     if set -q XDG_DATA_DIRS KITTY_FISH_XDG_DATA_DIR
         set --global --export --path XDG_DATA_DIRS "$XDG_DATA_DIRS"
         if set -l index (contains -i "$KITTY_FISH_XDG_DATA_DIR" $XDG_DATA_DIRS)
@@ -20,10 +23,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     set --local _ksi (string split " " -- "$KITTY_SHELL_INTEGRATION")
     set --erase KITTY_SHELL_INTEGRATION KITTY_FISH_XDG_DATA_DIR
 
-    function __ksi_osc
-        printf "\e]%s\a" "$argv[1]"
-    end
-
+    # Enable cursor shape changes for default mode and vi mode
     if not contains "no-cursor" $_ksi
         and not functions -q __ksi_set_cursor
 
@@ -60,6 +60,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         end
     end
 
+    # Enable prompt marking with OSC 133
     if not contains "no-prompt-mark" $_ksi
         and not set -q __ksi_prompt_state
         set --global __ksi_prompt_state first-run
@@ -69,11 +70,11 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         end
 
         function __ksi_mark -d "Tell kitty to mark the current cursor position using OSC 133"
-            __ksi_osc "133;$argv[1]"
+            printf "\e]133;%s\a" "$argv[1]"
         end
 
         function __ksi_prompt_start
-            # preserve the command exit code from $status
+            # Preserve the command exit code from $status
             set --local cmd_status $status
             if contains "$__ksi_prompt_state" post-exec first-run
                 __ksi_mark D
@@ -100,7 +101,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         functions -c fish_prompt __ksi_original_fish_prompt
 
         if __ksi_function_is_not_empty fish_mode_prompt
-            # see https://github.com/starship/starship/issues/1283
+            # See https://github.com/starship/starship/issues/1283
             # for why we have to test for a non-empty fish_mode_prompt
             functions -c fish_mode_prompt __ksi_original_fish_mode_prompt
             function fish_mode_prompt
@@ -126,7 +127,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
             set --global __ksi_prompt_state post-exec
             __ksi_mark "D;$status"
         end
-        # with prompt marking kitty clears the current prompt on resize so we need
+        # With prompt marking kitty clears the current prompt on resize so we need
         # fish to redraw it
         set --global fish_handle_reflow 1
 
