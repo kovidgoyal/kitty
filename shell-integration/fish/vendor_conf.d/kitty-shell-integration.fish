@@ -27,37 +27,41 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     if not contains "no-cursor" $_ksi
         and not functions -q __ksi_set_cursor
 
-        function __ksi_set_cursor --on-variable fish_key_bindings -d "Set cursor shape for fish default mode"
-            if test "$fish_key_bindings" = fish_default_key_bindings
-                not functions -q __ksi_bar_cursor __ksi_block_cursor || return
+        function __ksi_block_cursor --on-event fish_preexec -d "Set cursor shape to steady block before executing command"
+            printf "\e[2 q"
+        end
 
-                function __ksi_bar_cursor --on-event fish_prompt
+        function __ksi_set_cursor --on-variable fish_key_bindings -d "Set the cursor shape for different modes when switching key bindings"
+            if test "$fish_key_bindings" = fish_default_key_bindings
+                not functions -q __ksi_bar_cursor || return
+                function __ksi_bar_cursor --on-event fish_prompt -d "Set cursor shape to blinking bar on prompt"
                     printf "\e[5 q"
                 end
-
-                function __ksi_block_cursor --on-event fish_preexec
-                    printf "\e[2 q"
-                end
             else
-                functions --erase __ksi_bar_cursor __ksi_block_cursor
+                functions --erase __ksi_bar_cursor
+                contains "$fish_key_bindings" fish_vi_key_bindings fish_hybrid_key_bindings
+                and __ksi_set_vi_cursor
             end
         end
-        __ksi_set_cursor
-        functions -q __ksi_bar_cursor
-        and __ksi_bar_cursor
 
-        # Set the vi mode cursor shapes only when none of them are configured
-        set --local vi_modes fish_cursor_{default,insert,replace_one,visual}
-        set --local vi_cursor_shapes block line underscore block
-        set -q $vi_modes
-        if test "$status" -eq 4
+        function __ksi_set_vi_cursor -d "Set the vi mode cursor shapes"
+            # Set the vi mode cursor shapes only when none of them are configured
+            set --local vi_modes fish_cursor_{default,insert,replace_one,visual}
+            set -q $vi_modes
+            test "$status" -eq 4 || return
+
+            set --local vi_cursor_shapes block line underscore block
             for i in 1 2 3 4
                 set --global $vi_modes[$i] $vi_cursor_shapes[$i] blink
             end
-            # Change the vi mode cursor shape on the first run
-            contains "$fish_key_bindings" fish_vi_key_bindings fish_hybrid_key_bindings
-            and test "$fish_bind_mode" = "insert" && printf "\e[5 q" || printf "\e[1 q"
+
+            # Change the cursor shape for current mode
+            test "$fish_bind_mode" = "insert" && printf "\e[5 q" || printf "\e[1 q"
         end
+
+        __ksi_set_cursor
+        functions -q __ksi_bar_cursor
+        and __ksi_bar_cursor
     end
 
     # Enable prompt marking with OSC 133
