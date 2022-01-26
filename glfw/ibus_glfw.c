@@ -226,6 +226,7 @@ message_handler(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data) 
             break;
         case 2:
             debug("IBUS: HidePreeditText\n");
+            send_text("", GLFW_IME_PREEDIT_CHANGED);
             break;
         case 3:
             debug("IBUS: ShowPreeditText\n");
