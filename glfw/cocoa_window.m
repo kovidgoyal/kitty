@@ -1099,8 +1099,7 @@ is_ascii_control_char(char x) {
 #define UPDATE_PRE_EDIT_TEXT glfw_keyevent.text = [[markedText string] UTF8String]; glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED; _glfwInputKeyboard(window, &glfw_keyevent);
 
     const bool previous_has_marked_text = [self hasMarkedText];
-    NSTextInputContext *inpctx = [NSTextInputContext currentInputContext];
-    if (inpctx && (!input_source_at_last_key_event || ![input_source_at_last_key_event isEqualToString:inpctx.selectedKeyboardInputSource])) {
+    if (input_context && (!input_source_at_last_key_event || ![input_source_at_last_key_event isEqualToString:input_context.selectedKeyboardInputSource])) {
         if (input_source_at_last_key_event) {
             debug_key("Input source changed, clearing pre-edit text and resetting deadkey state\n");
             GLFWkeyevent dummy = {.action = GLFW_RELEASE, .ime_state = GLFW_IME_PREEDIT_CHANGED};
@@ -1109,7 +1108,7 @@ is_ascii_control_char(char x) {
             [input_source_at_last_key_event release];
             input_source_at_last_key_event = nil;
         }
-        input_source_at_last_key_event = [inpctx.selectedKeyboardInputSource retain];
+        input_source_at_last_key_event = [input_context.selectedKeyboardInputSource retain];
         [self unmarkText];
     }
 
@@ -1243,11 +1242,10 @@ is_ascii_control_char(char x) {
     debug_key("\x1b[33mflagsChanged:\x1b[m modifier: %s native_key: 0x%x (%s) glfw_key: 0x%x %s\n",
             mod_name, keycode, safe_name_for_keycode(keycode), key, format_mods(mods));
     marked_text_cleared_by_insert = false;
-    NSTextInputContext *inpctx = [NSTextInputContext currentInputContext];
-    if (process_text && inpctx) {
+    if (process_text && input_context) {
         // this will call insertText which will fill up _glfw.ns.text
         in_key_handler = 2;
-        [inpctx handleEvent:event];
+        [input_context handleEvent:event];
         in_key_handler = 0;
         if (marked_text_cleared_by_insert) {
             debug_key("Clearing pre-edit text because insertText called from flagsChanged\n");
