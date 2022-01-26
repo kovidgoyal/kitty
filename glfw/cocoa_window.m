@@ -709,6 +709,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     _glfwInputWindowFocus(window, false);
     // IME is cancelled when losing the focus
     if ([window->ns.view hasMarkedText]) {
+        [[window->ns.view inputContext] discardMarkedText];
         [window->ns.view unmarkText];
         GLFWkeyevent dummy = {.action = GLFW_RELEASE, .ime_state = GLFW_IME_PREEDIT_CHANGED};
         _glfwInputKeyboard(window, &dummy);
