@@ -1378,7 +1378,7 @@ is_ascii_control_char(char x) {
         bool had_marked_text = [self hasMarkedText];
         [self unmarkText];
         if (had_marked_text && (!in_key_handler || in_key_handler == 2)) {
-            debug_key("Clearing pre-edit because setMarkedText called from event loop or flagsChanged\n");
+            debug_key("Clearing pre-edit because setMarkedText called from %s\n", in_key_handler ? "flagsChanged" : "event loop");
             GLFWkeyevent glfw_keyevent = {.ime_state = GLFW_IME_PREEDIT_CHANGED};
             _glfwInputKeyboard(window, &glfw_keyevent);
             _glfw.ns.text[0] = 0;
