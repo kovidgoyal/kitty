@@ -61,7 +61,10 @@ copy_with_sendfile(int infd, int outfd, off_t in_pos, size_t len, FastFileCopyBu
         ssize_t n = sendfile(outfd, infd, &r, len);
         if (n < 0) {
             if (errno == EAGAIN) continue;
-            if (errno == ENOSYS || errno == EPERM) return copy_with_buffer(infd, outfd, in_pos, len, fcb);
+            if (errno == ENOSYS || // No kernel support
+                errno == EPERM  ||
+                errno == EINVAL)   // ZFS for some reason
+                return copy_with_buffer(infd, outfd, in_pos, len, fcb);
             return false;
         }
         if (n == 0) {
@@ -84,7 +87,13 @@ copy_with_file_range(int infd, int outfd, off_t in_pos, size_t len, FastFileCopy
         ssize_t n = copy_file_range(infd, &r, outfd, NULL, len, 0);
         if (n < 0) {
             if (errno == EAGAIN) continue;
-            if (errno == ENOSYS || errno == EPERM) return copy_with_sendfile(infd, outfd, in_pos, len, fcb);
+            if (errno == ENOSYS     || // Linux < 4.5
+                errno == EPERM      || // Possibly Docker
+                errno == EINVAL     || // ZFS for some reason
+                errno == EIO        || // CIFS
+                errno == EOPNOTSUPP || // NFS
+                errno == EXDEV)        // Prior to Linux 5.3, it was not possible to copy_file_range across file systems
+                return copy_with_sendfile(infd, outfd, in_pos, len, fcb);
             return false;
         }
         if (n == 0) {
