@@ -24,6 +24,17 @@
 //
 //========================================================================
 
+/* To test under X11 start IBUS as:
+ * ibus-daemon -drxR
+ * Setup the input sources you want with:
+ * ibus-setup
+ * Switch to the input source you want to test with:
+ * ibus engine name
+ * You can list available engines with:
+ * ibus list-engine
+ * Then run kitty as:
+ * GLFW_IM_MODULE=ibus kitty
+ */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
