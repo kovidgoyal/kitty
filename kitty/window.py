@@ -10,6 +10,7 @@ from enum import IntEnum
 from functools import partial
 from gettext import gettext as _
 from itertools import chain
+from time import monotonic
 from typing import (
     TYPE_CHECKING, Any, Callable, Deque, Dict, Iterable, List, NamedTuple,
     Optional, Pattern, Sequence, Tuple, Union
@@ -28,10 +29,11 @@ from .fast_data_types import (
     SCROLL_PAGE, STRIKETHROUGH, TINT_PROGRAM, Color, KeyEvent, Screen,
     add_timer, add_window, cell_size_for_window, click_mouse_cmd_output,
     click_mouse_url, compile_program, current_os_window, encode_key_for_tty,
-    get_boss, get_clipboard_string, get_options, init_cell_program,
-    mark_os_window_dirty, mouse_selection, move_cursor_to_mouse_if_in_prompt,
-    pt_to_px, set_clipboard_string, set_titlebar_color, set_window_logo,
-    set_window_padding, set_window_render_data, update_ime_position_for_window,
+    get_boss, get_click_interval, get_clipboard_string, get_options,
+    init_cell_program, mark_os_window_dirty, mouse_selection,
+    move_cursor_to_mouse_if_in_prompt, pt_to_px, set_clipboard_string,
+    set_titlebar_color, set_window_logo, set_window_padding,
+    set_window_render_data, update_ime_position_for_window,
     update_window_title, update_window_visibility
 )
 from .keys import keyboard_mode_name, mod_mask
@@ -43,8 +45,8 @@ from .types import MouseEvent, WindowGeometry, ac
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     get_primary_selection, load_shaders, log_error, open_cmd, open_url,
-    parse_color_set, resolve_custom_file, sanitize_title, set_primary_selection,
-    sgr_sanitizer_pat
+    parse_color_set, resolve_custom_file, sanitize_title,
+    set_primary_selection, sgr_sanitizer_pat
 )
 
 MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]]]]
@@ -344,6 +346,7 @@ class Window:
             self.watchers.add(global_watchers())
         else:
             self.watchers = global_watchers().copy()
+        self.last_focused_at = 0.
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()
@@ -682,6 +685,7 @@ class Window:
         call_watchers(weakref.ref(self), 'on_focus_change', {'focused': focused})
         self.screen.focus_changed(focused)
         if focused:
+            self.last_focused_at = monotonic()
             update_ime_position_for_window(self.id)
             changed = self.needs_attention
             self.needs_attention = False
@@ -953,6 +957,12 @@ class Window:
                 if click_mouse_url(self.os_window_id, self.tab_id, self.id):
                     break
             if a == 'prompt':
+                # Do not send move cursor events too soon after the window is
+                # focused, this is because there are people that click on
+                # windows and start typing immediately and the cursor event
+                # can interfere with that. See https://github.com/kovidgoyal/kitty/issues/4128
+                if monotonic() - self.last_focused_at < 1.5 * get_click_interval():
+                    return
                 if move_cursor_to_mouse_if_in_prompt(self.os_window_id, self.tab_id, self.id):
                     self.screen.ignore_bells_for(1)
                     break

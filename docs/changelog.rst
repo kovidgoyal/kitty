@@ -136,6 +136,9 @@ Detailed list of changes
 
 - macOS: Fix the shift key not clearing pre-edit text in IME (:iss:`4541`)
 
+- Fix clicking in a window to focus it and typing immediately sometimes having
+  unexpected effects if at a shell prompt (:iss:`4128`)
+
 
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
