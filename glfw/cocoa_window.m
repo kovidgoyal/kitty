@@ -713,6 +713,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         [window->ns.view unmarkText];
         GLFWkeyevent dummy = {.action = GLFW_RELEASE, .ime_state = GLFW_IME_PREEDIT_CHANGED};
         _glfwInputKeyboard(window, &dummy);
+        _glfw.ns.text[0] = 0;
     }
 }
 
