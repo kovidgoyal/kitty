@@ -32,11 +32,6 @@
 #include <float.h>
 #include <string.h>
 
-#if (MAC_OS_X_VERSION_MAX_ALLOWED < 101300)
-#define NSControlStateValueOn NSOnState
-#define NSControlStateValueOff NSOffState
-#define NSControlStateValueMixed NSMixedState
-#endif
 
 static const char*
 polymorphic_string_as_utf8(id string) {

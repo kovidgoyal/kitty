@@ -20,6 +20,11 @@
 #include <crt_externs.h>
 #include <objc/runtime.h>
 
+#if (MAC_OS_X_VERSION_MAX_ALLOWED < 101300)
+#define NSControlStateValueOn NSOnState
+#define NSControlStateValueOff NSOffState
+#define NSControlStateValueMixed NSMixedState
+#endif
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
 #define NSWindowStyleMaskResizable NSResizableWindowMask
 #define NSEventModifierFlagOption NSAlternateKeyMask
