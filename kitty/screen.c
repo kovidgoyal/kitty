@@ -3651,6 +3651,7 @@ focus_changed(Screen *self, PyObject *has_focus_) {
     if (has_focus != previous) {
         self->has_focus = has_focus;
         if (has_focus) self->has_activity_since_last_focus = false;
+        else if (self->overlay_line.is_active) deactivate_overlay_line(self);
         if (self->modes.mFOCUS_TRACKING) write_escape_code_to_child(self, CSI, has_focus ? "I" : "O");
         Py_RETURN_TRUE;
     }
