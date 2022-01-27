@@ -14,7 +14,7 @@ typedef struct FastFileCopyBuffer {
 } FastFileCopyBuffer;
 
 static inline void
-free_fast_file_copy_buffer(FastFileCopyBuffer *fcb) { free(fcb->buf); }
+free_fast_file_copy_buffer(FastFileCopyBuffer *fcb) { free(fcb->buf); fcb->buf = NULL; }
 
 #define FREE_FCB_AFTER_FUNCTION __attribute__ ((__cleanup__(free_fast_file_copy_buffer)))
 #define AutoFreeFastFileCopyBuffer FREE_FCB_AFTER_FUNCTION FastFileCopyBuffer
