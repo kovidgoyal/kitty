@@ -689,6 +689,9 @@ class Window:
                 tab = self.tabref()
                 if tab is not None:
                     tab.relayout_borders()
+        else:
+            # Cancel IME composition after loses focus
+            update_ime_position_for_window(self.id, True, True)
 
     def title_changed(self, new_title: Optional[str]) -> None:
         self.child_title = sanitize_title(new_title or self.default_title)
@@ -1021,6 +1024,8 @@ class Window:
         self.call_watchers(self.watchers.on_close, {})
         self.destroyed = True
         if hasattr(self, 'screen'):
+            # Cancel IME composition when window is destroyed
+            update_ime_position_for_window(self.id, True, True)
             # Remove cycles so that screen is de-allocated immediately
             self.screen.reset_callbacks()
             del self.screen

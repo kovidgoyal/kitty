@@ -762,7 +762,7 @@ restore_overlay_line(struct SaveOverlayLine *sol) {
         debug("Received input from child (%s) while overlay active. Overlay contents: %s\n", sol->func_name, PyUnicode_AsUTF8(sol->overlay_text));
         screen_draw_overlay_text(sol->screen, PyUnicode_AsUTF8(sol->overlay_text));
         Py_DECREF(sol->overlay_text);
-        update_ime_position_for_window(sol->screen->window_id, false);
+        update_ime_position_for_window(sol->screen->window_id, false, false);
     }
 }
 
@@ -3651,6 +3651,7 @@ focus_changed(Screen *self, PyObject *has_focus_) {
     if (has_focus != previous) {
         self->has_focus = has_focus;
         if (has_focus) self->has_activity_since_last_focus = false;
+        else if (self->overlay_line.is_active) deactivate_overlay_line(self);
         if (self->modes.mFOCUS_TRACKING) write_escape_code_to_child(self, CSI, has_focus ? "I" : "O");
         Py_RETURN_TRUE;
     }
