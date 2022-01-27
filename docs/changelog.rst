@@ -133,8 +133,6 @@ Detailed list of changes
 
 - macOS: Fix the shift key not clearing pre-edit text in IME (:iss:`4541`)
 
-- Add support for dotted and dashed underline styles (:pull:`4529`)
-
 
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
