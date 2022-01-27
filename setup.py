@@ -1031,32 +1031,41 @@ def macos_info_plist() -> bytes:
     ]
 
     pl = dict(
+        # Naming
+        CFBundleName=appname,
+        CFBundleDisplayName=appname,
+        # Identification
+        CFBundleIdentifier='net.kovidgoyal.' + appname,
+        # Bundle Version Info
+        CFBundleVersion=VERSION,
+        CFBundleShortVersionString=VERSION,
+        CFBundleInfoDictionaryVersion=VERSION,
+        NSHumanReadableCopyright=time.strftime('Copyright %Y, Kovid Goyal'),
+        CFBundleGetInfoString='kitty - The fast, feature-rich, GPU based terminal emulator. https://sw.kovidgoyal.net/kitty/',
+        # Operating System Version
+        LSMinimumSystemVersion='10.12.0',
+        # Categorization
+        CFBundlePackageType='APPL',
+        CFBundleSignature='????',
+        CFBundleDocumentTypes=docs,
+        LSApplicationCategoryType='public.app-category.utilities',
+        # App Execution
+        CFBundleExecutable=appname,
+        LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
+        # Launch Conditions
+        LSRequiresNativeExecution=True,
+        # Localization
         # see https://github.com/kovidgoyal/kitty/issues/1233
         CFBundleDevelopmentRegion='English',
         CFBundleAllowMixedLocalizations=True,
-
-        CFBundleDisplayName=appname,
-        CFBundleName=appname,
-        CFBundleIdentifier='net.kovidgoyal.' + appname,
-        CFBundleVersion=VERSION,
-        CFBundleShortVersionString=VERSION,
-        CFBundlePackageType='APPL',
-        CFBundleSignature='????',
-        CFBundleExecutable=appname,
-        CFBundleDocumentTypes=docs,
-        LSMinimumSystemVersion='10.12.0',
-        LSRequiresNativeExecution=True,
-        NSAppleScriptEnabled=False,
-        # Needed for dark mode in Mojave when linking against older SDKs
-        NSRequiresAquaSystemAppearance='NO',
-        NSHumanReadableCopyright=time.strftime(
-            'Copyright %Y, Kovid Goyal'),
-        CFBundleGetInfoString='kitty, an OpenGL based terminal emulator https://sw.kovidgoyal.net/kitty/',
+        TICapsLockLanguageSwitchCapable=True,
+        # User Interface and Graphics
         CFBundleIconFile=appname + '.icns',
         NSHighResolutionCapable=True,
         NSSupportsAutomaticGraphicsSwitching=True,
-        LSApplicationCategoryType='public.app-category.utilities',
-        LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
+        # Needed for dark mode in Mojave when linking against older SDKs
+        NSRequiresAquaSystemAppearance='NO',
+        # Services
         NSServices=[
             {
                 'NSMenuItem': {'default': 'New ' + appname + ' Tab Here'},
@@ -1071,16 +1080,30 @@ def macos_info_plist() -> bytes:
                 'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
             },
         ],
-        NSAppleEventsUsageDescription=access('AppleScript.'),
+        # Calendar and Reminders
         NSCalendarsUsageDescription=access('your calendar data.'),
-        NSCameraUsageDescription=access('the camera.'),
-        NSContactsUsageDescription=access('your contacts.'),
-        NSLocationAlwaysUsageDescription=access('your location information, even in the background.'),
-        NSLocationUsageDescription=access('your location information.'),
-        NSLocationWhenInUseUsageDescription=access('your location while active.'),
-        NSMicrophoneUsageDescription=access('your microphone.'),
         NSRemindersUsageDescription=access('your reminders.'),
+        # Camera and Microphone
+        NSCameraUsageDescription=access('the camera.'),
+        NSMicrophoneUsageDescription=access('the microphone.'),
+        # Contacts
+        NSContactsUsageDescription=access('your contacts.'),
+        # Location
+        NSLocationUsageDescription=access('your location information.'),
+        NSLocationTemporaryUsageDescriptionDictionary=access('your location temporarily.'),
+        # Motion
+        NSMotionUsageDescription=access('motion data.'),
+        # Networking
+        NSLocalNetworkUsageDescription=access('local network.'),
+        # Photos
+        NSPhotoLibraryUsageDescription=access('your photo library.'),
+        # Scripting
+        NSAppleScriptEnabled=False,
+        # Security
+        NSAppleEventsUsageDescription=access('AppleScript.'),
         NSSystemAdministrationUsageDescription=access('elevated privileges.', 'requires'),
+        # Speech
+        NSSpeechRecognitionUsageDescription=access('speech recognition.'),
     )
     return plistlib.dumps(pl)
 
