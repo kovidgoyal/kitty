@@ -87,6 +87,9 @@ Detailed list of changes
 - Shell integration: Fix bash integration not working when ``PROMPT_COMMAND``
   is used to change the prompt variables (:iss:`4476`)
 
+- Shell integration: Fix cursor shape not being restored to default when
+  running commands in the shell
+
 - Improve the UI of the ask kitten (:iss:`4545`)
 
 - Allow using templates with text formatting for :opt:`tab_activity_symbol`
