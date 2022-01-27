@@ -11,7 +11,7 @@ You can open the config file within kitty by pressing :sc:`edit_config_file` (:k
 You can reload the config file within kitty by pressing
 :sc:`reload_config_file` (:kbd:`⌃+⌘+,` on macOS) or sending kitty the ``SIGUSR1`` signal.
 You can also display the current configuration by pressing the :sc:`debug_config`
-(:kbd:`⌘+⌥+f6` on macOS) key.
+(:kbd:`⌘+⌥+,` on macOS) key.
 
 .. _confloc:
 
