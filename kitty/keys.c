@@ -80,6 +80,12 @@ active_window(void) {
 }
 
 void
+update_ime_focus(OSWindow *osw, bool focused) {
+    GLFWIMEUpdateEvent ev = { .focused = focused, .type = GLFW_IME_UPDATE_FOCUS };
+    glfwUpdateIMEState(osw->handle, &ev);
+}
+
+void
 update_ime_position(Window* w, Screen *screen) {
     unsigned int cell_width = global_state.callback_os_window->fonts_data->cell_width, cell_height = global_state.callback_os_window->fonts_data->cell_height;
     unsigned int left = w->geometry.left, top = w->geometry.top;

@@ -1343,5 +1343,5 @@ def set_os_window_title(os_window_id: int, title: str) -> None:
     pass
 
 
-def update_ime_position_for_window(window_id: int, force: bool = False) -> bool:
+def update_ime_position_for_window(window_id: int, force: bool = False, lost_focus: bool = False) -> bool:
     pass

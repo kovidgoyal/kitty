@@ -335,6 +335,7 @@ void get_platform_dependent_config_values(void *glfw_window);
 bool draw_window_title(OSWindow *window, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height);
 uint8_t* draw_single_ascii_char(const char ch, size_t *result_width, size_t *result_height);
 bool is_os_window_fullscreen(OSWindow *);
+void update_ime_focus(OSWindow* osw, bool focused);
 void update_ime_position(Window* w, Screen *screen);
-bool update_ime_position_for_window(id_type window_id, bool force);
+bool update_ime_position_for_window(id_type window_id, bool force, bool lost_focus);
 void set_ignore_os_keyboard_processing(bool enabled);
