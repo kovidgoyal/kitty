@@ -433,7 +433,7 @@ class ThemesHandler(Handler):
     def draw_accepting_screen(self) -> None:
         name = self.themes_list.current_theme.name
         name = styled(name, bold=True, fg="green")
-        kc = styled('kitty.conf', italic=True)
+        kc = styled(self.cli_opts.config_file_name, italic=True)
 
         def ac(x: str) -> str:
             return styled(x, fg='red')
@@ -465,7 +465,7 @@ class ThemesHandler(Handler):
             self.quit_on_next_key_release = 0
             return
         if key_event.matches_text('m'):
-            self.themes_list.current_theme.save_in_conf(config_dir, self.cli_opts.reload_in)
+            self.themes_list.current_theme.save_in_conf(config_dir, self.cli_opts.reload_in, self.cli_opts.config_file_name)
             self.update_recent()
             self.quit_on_next_key_release = 0
             return
@@ -536,6 +536,13 @@ type=bool-set
 default=false
 When running non-interactively, dump the specified theme to STDOUT
 instead of changing kitty.conf.
+
+
+--config-file-name
+default=kitty.conf
+The name or path to the config file to edit. Relative paths are interpreted
+with respect to the kitty config directory. By default the kitty config file,
+kitty.conf is edited.
 '''.format
 
 
@@ -559,7 +566,7 @@ def non_interactive(cli_opts: ThemesCLIOptions, theme_name: str) -> None:
     if cli_opts.dump_theme:
         print(theme.raw)
         return
-    theme.save_in_conf(config_dir, cli_opts.reload_in)
+    theme.save_in_conf(config_dir, cli_opts.reload_in, cli_opts.config_file_name)
 
 
 def main(args: List[str]) -> None:

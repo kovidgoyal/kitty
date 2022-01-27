@@ -139,6 +139,8 @@ Detailed list of changes
 - Fix clicking in a window to focus it and typing immediately sometimes having
   unexpected effects if at a shell prompt (:iss:`4128`)
 
+- themes kitten: Allow writing to a different file than :file:`kitty.conf`.
+
 
 0.24.1 [2022-01-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
