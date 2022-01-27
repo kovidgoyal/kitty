@@ -1408,15 +1408,23 @@ is_ascii_control_char(char x) {
 }
 
 void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
-    [w->ns.view updateIMEStateFor: ev->type left:(CGFloat)ev->cursor.left top:(CGFloat)ev->cursor.top cellWidth:(CGFloat)ev->cursor.width cellHeight:(CGFloat)ev->cursor.height];
+    [w->ns.view updateIMEStateFor: ev->type focused:(bool)ev->focused left:(CGFloat)ev->cursor.left top:(CGFloat)ev->cursor.top cellWidth:(CGFloat)ev->cursor.width cellHeight:(CGFloat)ev->cursor.height];
 }
 
 - (void)updateIMEStateFor:(GLFWIMEUpdateType)which
+                  focused:(bool)focused
                      left:(CGFloat)left
                       top:(CGFloat)top
                 cellWidth:(CGFloat)cellWidth
                cellHeight:(CGFloat)cellHeight
 {
+    if (which == GLFW_IME_UPDATE_FOCUS && !focused && [self hasMarkedText] && window) {
+        [input_context discardMarkedText];
+        [self unmarkText];
+        GLFWkeyevent glfw_keyevent = {.ime_state = GLFW_IME_PREEDIT_CHANGED};
+        _glfwInputKeyboard(window, &glfw_keyevent);
+        _glfw.ns.text[0] = 0;
+    }
     if (which != GLFW_IME_UPDATE_CURSOR_POSITION) return;
     left /= window->ns.xscale;
     top /= window->ns.yscale;
