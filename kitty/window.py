@@ -27,10 +27,10 @@ from .fast_data_types import (
     MARK, MARK_MASK, NO_CURSOR_SHAPE, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE,
     SCROLL_PAGE, STRIKETHROUGH, TINT_PROGRAM, Color, KeyEvent, Screen,
     add_timer, add_window, cell_size_for_window, click_mouse_cmd_output,
-    click_mouse_url, compile_program, encode_key_for_tty, get_boss,
-    get_clipboard_string, get_options, init_cell_program, mark_os_window_dirty,
-    mouse_selection, move_cursor_to_mouse_if_in_prompt, pt_to_px,
-    set_clipboard_string, set_titlebar_color, set_window_logo,
+    click_mouse_url, compile_program, current_os_window, encode_key_for_tty,
+    get_boss, get_clipboard_string, get_options, init_cell_program,
+    mark_os_window_dirty, mouse_selection, move_cursor_to_mouse_if_in_prompt,
+    pt_to_px, set_clipboard_string, set_titlebar_color, set_window_logo,
     set_window_padding, set_window_render_data, update_ime_position_for_window,
     update_window_title, update_window_visibility
 )
@@ -689,9 +689,9 @@ class Window:
                 tab = self.tabref()
                 if tab is not None:
                     tab.relayout_borders()
-        else:
+        elif self.os_window_id == current_os_window():
             # Cancel IME composition after loses focus
-            update_ime_position_for_window(self.id, True, True)
+            update_ime_position_for_window(self.id, False, True)
 
     def title_changed(self, new_title: Optional[str]) -> None:
         self.child_title = sanitize_title(new_title or self.default_title)
@@ -1024,8 +1024,9 @@ class Window:
         self.call_watchers(self.watchers.on_close, {})
         self.destroyed = True
         if hasattr(self, 'screen'):
-            # Cancel IME composition when window is destroyed
-            update_ime_position_for_window(self.id, True, True)
+            if self.is_active and self.os_window_id == current_os_window():
+                # Cancel IME composition when window is destroyed
+                update_ime_position_for_window(self.id, False, True)
             # Remove cycles so that screen is de-allocated immediately
             self.screen.reset_callbacks()
             del self.screen
