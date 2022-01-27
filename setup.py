@@ -1021,12 +1021,12 @@ def macos_info_plist() -> bytes:
             'CFBundleTypeRole': 'Viewer',
             'LSHandlerRank': 'Alternate',
         },
-        # Allows dragging arbitrary files to kitty, but does not include kitty in the open with list.
+        # Allows dragging arbitrary files to kitty Dock icon, and list kitty in the Open With context menu.
         {
             'CFBundleTypeName': 'All files',
             'LSItemContentTypes': ['public.content', 'public.data'],
-            'CFBundleTypeRole': 'None',
-            'LSHandlerRank': 'None',
+            'CFBundleTypeRole': 'Editor',
+            'LSHandlerRank': 'Alternate',
         },
     ]
 
