@@ -81,13 +81,13 @@ class Options(argparse.Namespace):
 
 def emphasis(text: str) -> str:
     if sys.stdout.isatty():
-        text = '\033[32m' + text + '\033[39m'
+        text = f'\033[32m{text}\033[39m'
     return text
 
 
 def error(text: str) -> str:
     if sys.stdout.isatty():
-        text = '\033[91m' + text + '\033[39m'
+        text = f'\033[91m{text}\033[39m'
     return text
 
 
@@ -118,7 +118,7 @@ def pkg_version(package: str) -> Tuple[int, int]:
 
 def at_least_version(package: str, major: int, minor: int = 0) -> None:
     q = f'{major}.{minor}'
-    if subprocess.run([PKGCONFIG, package, '--atleast-version=' + q]
+    if subprocess.run([PKGCONFIG, package, f'--atleast-version={q}']
                       ).returncode != 0:
         qmajor = qminor = 0
         try:
@@ -176,7 +176,7 @@ def get_python_include_paths() -> List[str]:
 
 
 def get_python_flags(cflags: List[str]) -> List[str]:
-    cflags.extend('-I' + x for x in get_python_include_paths())
+    cflags.extend(f'-I{x}' for x in get_python_include_paths())
     libs: List[str] = []
     libs += (sysconfig.get_config_var('LIBS') or '').split()
     libs += (sysconfig.get_config_var('SYSLIBS') or '').split()
@@ -199,10 +199,10 @@ def get_python_flags(cflags: List[str]) -> List[str]:
     else:
         ldlib = sysconfig.get_config_var('LIBDIR')
         if ldlib:
-            libs += ['-L' + ldlib]
+            libs += [f'-L{ldlib}']
         ldlib = sysconfig.get_config_var('VERSION')
         if ldlib:
-            libs += ['-lpython' + ldlib + sys.abiflags]
+            libs += [f'-lpython{ldlib}{sys.abiflags}']
         libs += (sysconfig.get_config_var('LINKFORSHARED') or '').split()
     return libs
 
@@ -369,16 +369,16 @@ def init_env(
 
     if egl_library is not None:
         assert('"' not in egl_library)
-        library_paths['glfw/egl_context.c'] = ['_GLFW_EGL_LIBRARY="' + egl_library + '"']
+        library_paths['glfw/egl_context.c'] = [f'_GLFW_EGL_LIBRARY="{egl_library}"']
 
     desktop_libs = []
     if startup_notification_library is not None:
         assert('"' not in startup_notification_library)
-        desktop_libs = ['_KITTY_STARTUP_NOTIFICATION_LIBRARY="' + startup_notification_library + '"']
+        desktop_libs = [f'_KITTY_STARTUP_NOTIFICATION_LIBRARY="{startup_notification_library}"']
 
     if canberra_library is not None:
         assert('"' not in canberra_library)
-        desktop_libs += ['_KITTY_CANBERRA_LIBRARY="' + canberra_library + '"']
+        desktop_libs += [f'_KITTY_CANBERRA_LIBRARY="{canberra_library}"']
 
     if desktop_libs != []:
         library_paths['kitty/desktop.c'] = desktop_libs
@@ -454,7 +454,7 @@ def kitty_env() -> Env:
 
 
 def define(x: str) -> str:
-    return '-D' + x
+    return f'-D{x}'
 
 
 def run_tool(cmd: Union[str, List[str]], desc: Optional[str] = None) -> None:
@@ -681,7 +681,7 @@ def compile_c_extension(
 ) -> None:
     prefix = os.path.basename(module)
     objects = [
-        os.path.join(build_dir, prefix + '-' + os.path.basename(src) + '.o')
+        os.path.join(build_dir, f'{prefix}-{os.path.basename(src)}.o')
         for src in sources
     ]
 
@@ -700,8 +700,8 @@ def compile_c_extension(
         key = CompileKey(original_src, os.path.basename(dest))
         desc = f'Compiling {emphasis(desc_prefix + src)} ...'
         compilation_database.add_command(desc, cmd, partial(newer, dest, *dependecies_for(src, dest, headers)), key=key, keyfile=src)
-    dest = os.path.join(build_dir, module + '.so')
-    real_dest = module + '.so'
+    dest = os.path.join(build_dir, f'{module}.so')
+    real_dest = f'{module}.so'
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     desc = f'Linking {emphasis(desc_prefix + module)} ...'
     # Old versions of clang don't like -pthread being passed to the linker
@@ -756,7 +756,7 @@ def compile_glfw(compilation_database: CompilationDatabase) -> None:
                 print(error('Disabling building of wayland backend'), file=sys.stderr)
                 continue
         compile_c_extension(
-            genv, 'kitty/glfw-' + module, compilation_database,
+            genv, f'kitty/glfw-{module}', compilation_database,
             sources, all_headers, desc_prefix=f'[{module}] ')
 
 
@@ -975,7 +975,7 @@ Categories=System;TerminalEmulator;
             )
 
     base = Path(ddir)
-    in_src_launcher = base / (libdir_name + '/kitty/kitty/launcher/kitty')
+    in_src_launcher = base / (f'{libdir_name}/kitty/kitty/launcher/kitty')
     launcher = base / 'bin/kitty'
     if os.path.exists(in_src_launcher):
         os.remove(in_src_launcher)
@@ -994,7 +994,7 @@ def macos_info_plist() -> bytes:
         {
             'CFBundleTypeName': 'Terminal scripts',
             'CFBundleTypeExtensions': ['command', 'sh', 'zsh', 'bash', 'fish', 'tool'],
-            'CFBundleTypeIconFile': appname + '.icns',
+            'CFBundleTypeIconFile': f'{appname}.icns',
             'CFBundleTypeRole': 'Editor',
         },
         {
@@ -1035,7 +1035,7 @@ def macos_info_plist() -> bytes:
         CFBundleName=appname,
         CFBundleDisplayName=appname,
         # Identification
-        CFBundleIdentifier='net.kovidgoyal.' + appname,
+        CFBundleIdentifier=f'net.kovidgoyal.{appname}',
         # Bundle Version Info
         CFBundleVersion=VERSION,
         CFBundleShortVersionString=VERSION,
@@ -1060,7 +1060,7 @@ def macos_info_plist() -> bytes:
         CFBundleAllowMixedLocalizations=True,
         TICapsLockLanguageSwitchCapable=True,
         # User Interface and Graphics
-        CFBundleIconFile=appname + '.icns',
+        CFBundleIconFile=f'{appname}.icns',
         NSHighResolutionCapable=True,
         NSSupportsAutomaticGraphicsSwitching=True,
         # Needed for dark mode in Mojave when linking against older SDKs
@@ -1068,13 +1068,13 @@ def macos_info_plist() -> bytes:
         # Services
         NSServices=[
             {
-                'NSMenuItem': {'default': 'New ' + appname + ' Tab Here'},
+                'NSMenuItem': {'default': f'New {appname} Tab Here'},
                 'NSMessage': 'openTab',
                 'NSRequiredContext': {'NSTextContent': 'FilePath'},
                 'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
             },
             {
-                'NSMenuItem': {'default': 'New ' + appname + ' Window Here'},
+                'NSMenuItem': {'default': f'New {appname} Window Here'},
                 'NSMessage': 'openOSWindow',
                 'NSRequiredContext': {'NSTextContent': 'FilePath'},
                 'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
@@ -1109,8 +1109,8 @@ def macos_info_plist() -> bytes:
 
 
 def create_macos_app_icon(where: str = 'Resources') -> None:
-    iconset_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
-    icns_dir = os.path.join(where, appname + '.icns')
+    iconset_dir = os.path.abspath(os.path.join('logo', f'{appname}.iconset'))
+    icns_dir = os.path.join(where, f'{appname}.icns')
     try:
         subprocess.check_call([
             'iconutil', '-c', 'icns', iconset_dir, '-o', icns_dir
