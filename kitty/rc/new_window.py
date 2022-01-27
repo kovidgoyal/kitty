@@ -48,7 +48,7 @@ The initial working directory for the new window. Defaults to whatever
 the working directory for the kitty process you are talking to is.
 
 
---keep-focus
+--keep-focus --dont-take-focus
 type=bool-set
 Keep the current window focused instead of switching to the newly opened window
 
