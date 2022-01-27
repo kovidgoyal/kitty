@@ -11,10 +11,10 @@ from .config import atomic_save
 from .constants import shell_integration_dir
 from .utils import log_error, resolved_shell
 
-posix_template = '''
+posix_template = '''\
 # BEGIN_KITTY_SHELL_INTEGRATION
 if test -n "$KITTY_INSTALLATION_DIR" -a -e "$KITTY_INSTALLATION_DIR/{path}"; then source "$KITTY_INSTALLATION_DIR/{path}"; fi
-# END_KITTY_SHELL_INTEGRATION
+# END_KITTY_SHELL_INTEGRATION\
 '''
 
 
@@ -36,10 +36,11 @@ def setup_integration(shell_name: str, rc_path: str, template: str = posix_templ
     rc_path = os.path.realpath(rc_path)
     rc = safe_read(rc_path)
     integration = template.format(path=f"shell-integration/{shell_name}/kitty.{shell_name}")
-    newrc = re.sub(
+    newrc, num_subs = re.subn(
         r'^# BEGIN_KITTY_SHELL_INTEGRATION.+?^# END_KITTY_SHELL_INTEGRATION',
-        '', rc, flags=re.DOTALL | re.MULTILINE)
-    newrc = newrc.rstrip() + '\n\n' + integration
+        integration, rc, flags=re.DOTALL | re.MULTILINE)
+    if num_subs < 1:
+        newrc = newrc.rstrip() + '\n\n' + integration
     if newrc != rc:
         atomic_write(rc_path, newrc)
 
