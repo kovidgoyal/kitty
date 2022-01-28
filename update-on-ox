@@ -16,17 +16,17 @@ if False:
     dmg = sys.argv[-1]
     mp = tempfile.mkdtemp()
     atexit.register(os.rmdir, mp)
-    subprocess.check_call('hdiutil attach {} -mountpoint {}'.format(dmg, mp).split())
+    subprocess.check_call(f'hdiutil attach {dmg} -mountpoint {mp}'.split())
     try:
         os.chdir(mp)
         for app in glob.glob('*.app'):
             d = os.path.join('/Applications', app)
             if os.path.exists(d):
                 shutil.rmtree(d)
-            subprocess.check_call('ditto -v {} {}'.format(app, os.path.join('/Applications', app)).split())
+            subprocess.check_call(f'ditto -v {app} {d}'.split())
     finally:
         os.chdir('/')
-        subprocess.check_call('hdiutil detach {}'.format(mp).split())
+        subprocess.check_call(f'hdiutil detach {mp}'.split())
 
 # EOF_REMOTE
 

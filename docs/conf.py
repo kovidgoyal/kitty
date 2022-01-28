@@ -371,7 +371,7 @@ def expand_opt_references(conf_name: str, text: str) -> str:
         ref = m.group(1)
         if '<' not in ref and '.' not in ref:
             full_ref = conf_name + ref
-            return ':opt:`{} <{}>`'.format(ref, full_ref)
+            return f':opt:`{ref} <{full_ref}>`'
         return str(m.group())
 
     return re.sub(r':opt:`(.+?)`', expand, text)
@@ -399,7 +399,7 @@ def parse_opt_node(env: Any, sig: str, signode: Any) -> str:
             opt_aliases[optname] = firstname
         count += 1
     if not firstname:
-        raise ValueError('{} is not a valid opt'.format(sig))
+        raise ValueError(f'{sig} is not a valid opt')
     return firstname
 
 
@@ -426,7 +426,7 @@ def process_shortcut_link(env: Any, refnode: Any, has_explicit_title: bool, titl
     try:
         target, stitle = shortcut_slugs[full_name]
     except KeyError:
-        logger.warning('Unknown shortcut: {}'.format(target), location=refnode)
+        logger.warning(f'Unknown shortcut: {target}', location=refnode)
     else:
         if not has_explicit_title:
             title = stitle

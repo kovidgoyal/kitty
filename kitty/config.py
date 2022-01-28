@@ -49,8 +49,7 @@ def atomic_save(data: bytes, path: str) -> None:
         except FileNotFoundError:
             pass
         except Exception as err:
-            log_error('Failed to delete temp file {} for atomic save with error: {}'.format(
-                p, err))
+            log_error(f'Failed to delete temp file {p} for atomic save with error: {err}')
 
 
 @contextmanager
@@ -63,8 +62,7 @@ def cached_values_for(name: str) -> Generator[Dict[str, Any], None, None]:
     except FileNotFoundError:
         pass
     except Exception as err:
-        log_error('Failed to load cached in {} values with error: {}'.format(
-            name, err))
+        log_error(f'Failed to load cached in {name} values with error: {err}')
 
     yield cached_values
 
@@ -72,8 +70,7 @@ def cached_values_for(name: str) -> Generator[Dict[str, Any], None, None]:
         data = json.dumps(cached_values).encode('utf-8')
         atomic_save(data, cached_path)
     except Exception as err:
-        log_error('Failed to save cached values with error: {}'.format(
-            err))
+        log_error(f'Failed to save cached values with error: {err}')
 
 
 def commented_out_default_config() -> str:

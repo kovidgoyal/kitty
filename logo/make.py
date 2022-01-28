@@ -19,7 +19,7 @@ def run(*args):
     try:
         subprocess.check_call(args)
     except OSError:
-        raise SystemExit('You are missing the {} program needed to generate the kitty logo'.format(args[0]))
+        raise SystemExit(f'You are missing the {args[0]} program needed to generate the kitty logo')
 
 
 def render(output, sz=256, src=unframed_src):

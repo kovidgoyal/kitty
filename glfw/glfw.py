@@ -67,7 +67,7 @@ class Env:
 
 def wayland_protocol_file_name(base: str, ext: str = 'c') -> str:
     base = os.path.basename(base).rpartition('.')[0]
-    return 'wayland-{}-client-protocol.{}'.format(base, ext)
+    return f'wayland-{base}-client-protocol.{ext}'
 
 
 def init_env(
@@ -150,14 +150,14 @@ def build_wayland_protocols(
     for protocol in env.wayland_protocols:
         src = os.path.join(env.wayland_packagedir, protocol)
         if not os.path.exists(src):
-            raise SystemExit('The wayland-protocols package on your system is missing the {} protocol definition file'.format(protocol))
+            raise SystemExit(f'The wayland-protocols package on your system is missing the {protocol} protocol definition file')
         for ext in 'hc':
             dest = wayland_protocol_file_name(src, ext)
             dest = os.path.join(dest_dir, dest)
             if newer(dest, src):
                 q = 'client-header' if ext == 'h' else env.wayland_scanner_code
                 items.append(Command(
-                    'Generating {} ...'.format(emphasis(os.path.basename(dest))),
+                    f'Generating {emphasis(os.path.basename(dest))} ...',
                     [env.wayland_scanner, q, src, dest], lambda: True))
     if items:
         parallel_run(items)
@@ -174,7 +174,7 @@ class Arg:
             self.type = self.type + '*'
 
     def __repr__(self) -> str:
-        return 'Arg({}, {})'.format(self.type, self.name)
+        return f'Arg({self.type}, {self.name})'
 
 
 class Function:

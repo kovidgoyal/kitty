@@ -43,7 +43,7 @@ cause ligatures to be changed in all windows.
                 ' never, always or cursor')
         strategy = args[0]
         if strategy not in ('never', 'always', 'cursor'):
-            self.fatal('{} is not a valid disable_ligatures strategy'.format('strategy'))
+            self.fatal(f'{strategy} is not a valid disable_ligatures strategy')
         return {
             'strategy': strategy, 'match_window': opts.match, 'match_tab': opts.match_tab,
             'all': opts.all,

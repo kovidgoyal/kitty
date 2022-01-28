@@ -323,8 +323,7 @@ def parse_kittens_func_args(action: str, args_funcs: Dict[str, KeyFunc[Tuple[str
         parser = args_funcs[func]
     except KeyError as e:
         raise KeyError(
-            'Unknown action: {}. Check if map action: '
-            '{} is valid'.format(func, action)
+            f'Unknown action: {func}. Check if map action: {action} is valid'
         ) from e
 
     try:
