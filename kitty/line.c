@@ -811,23 +811,22 @@ mark_text_in_line(PyObject *marker, Line *line) {
 
 PyObject*
 as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, ANSIBuf *ansibuf) {
+#define APPEND(x) { PyObject* retval = PyObject_CallFunctionObjArgs(callback, x, NULL); if (!retval) return NULL; Py_DECREF(retval); }
+#define APPEND_AND_DECREF(x) { if (x == NULL) { if (PyErr_Occurred()) return NULL; Py_RETURN_NONE; } PyObject* retval = PyObject_CallFunctionObjArgs(callback, x, NULL); Py_CLEAR(x); if (!retval) return NULL; Py_DECREF(retval); }
     PyObject *callback;
     int as_ansi = 0, insert_wrap_markers = 0;
     if (!PyArg_ParseTuple(args, "O|pp", &callback, &as_ansi, &insert_wrap_markers)) return NULL;
-    PyObject *ret = NULL, *t = NULL;
-    PyObject *nl = PyUnicode_FromString("\n");
-    PyObject *cr = PyUnicode_FromString("\r");
-    PyObject *sgr_reset = PyUnicode_FromString("\x1b[m");
-    if (nl == NULL || cr == NULL || sgr_reset == NULL) goto end;
+    PyObject *t = NULL;
+    DECREF_AFTER_FUNCTION PyObject *nl = PyUnicode_FromString("\n");
+    DECREF_AFTER_FUNCTION PyObject *cr = PyUnicode_FromString("\r");
+    DECREF_AFTER_FUNCTION PyObject *sgr_reset = PyUnicode_FromString("\x1b[m");
+    if (nl == NULL || cr == NULL || sgr_reset == NULL) return NULL;
     const GPUCell *prev_cell = NULL;
     ansibuf->active_hyperlink_id = 0;
     for (index_type y = 0; y < lines; y++) {
         Line *line = get_line(container, y);
-        if (!line->attrs.continued && y > 0) {
-            ret = PyObject_CallFunctionObjArgs(callback, nl, NULL);
-            if (ret == NULL) goto end;
-            Py_CLEAR(ret);
-        }
+        if (!line) { if (PyErr_Occurred()) return NULL; break; }
+        if (!line->attrs.continued && y > 0) APPEND(nl);
         if (as_ansi) {
             // less has a bug where it resets colors when it sees a \r, so work
             // around it by resetting SGR at the start of every line. This is
@@ -837,36 +836,21 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
             prev_cell = NULL;
             line_as_ansi(line, ansibuf, &prev_cell);
             t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, ansibuf->buf, ansibuf->len);
-            if (t && ansibuf->len > 0) {
-                ret = PyObject_CallFunctionObjArgs(callback, sgr_reset, NULL);
-                if (ret == NULL) goto end;
-                Py_CLEAR(ret);
-            }
+            if (t && ansibuf->len > 0) APPEND(sgr_reset);
         } else {
             t = line_as_unicode(line, false);
         }
-        if (t == NULL) goto end;
-        ret = PyObject_CallFunctionObjArgs(callback, t, NULL);
-        Py_DECREF(t); if (ret == NULL) goto end; Py_DECREF(ret);
-        if (insert_wrap_markers) {
-            ret = PyObject_CallFunctionObjArgs(callback, cr, NULL);
-            if (ret == NULL) goto end;
-            Py_CLEAR(ret);
-        }
+        APPEND_AND_DECREF(t);
+        if (insert_wrap_markers) APPEND(cr);
     }
     if (ansibuf->active_hyperlink_id) {
         ansibuf->active_hyperlink_id = 0;
         t = PyUnicode_FromString("\x1b]8;;\x1b\\");
-        if (t) {
-            ret = PyObject_CallFunctionObjArgs(callback, t, NULL);
-            Py_CLEAR(t);
-            Py_CLEAR(ret);
-        }
+        APPEND_AND_DECREF(t);
     }
-end:
-    Py_CLEAR(nl); Py_CLEAR(cr); Py_CLEAR(sgr_reset);
-    if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
+#undef APPEND
+#undef APPEND_AND_DECREF
 }
 
 // Boilerplate {{{
