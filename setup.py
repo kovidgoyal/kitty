@@ -130,11 +130,7 @@ def at_least_version(package: str, major: int, minor: int = 0) -> None:
         except Exception:
             ver = 'not found'
         if qmajor < major or (qmajor == major and qminor < minor):
-            raise SystemExit(
-                '{} >= {}.{} is required, found version: {}'.format(
-                    error(package), major, minor, ver
-                )
-            )
+            raise SystemExit(f'{error(package)} >= {major}.{minor} is required, found version: {ver}')
 
 
 def cc_version() -> Tuple[List[str], Tuple[int, int]]:
@@ -880,7 +876,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     cmd = env.cc + cppflags + cflags + [
            src, '-o', dest] + ldflags + libs + pylib
     key = CompileKey('launcher.c', 'kitty')
-    desc = 'Building {}...'.format(emphasis('launcher'))
+    desc = f'Building {emphasis("launcher")} ...'
     args.compilation_database.add_command(desc, cmd, partial(newer, dest, src), key=key, keyfile=src)
     args.compilation_database.build_all()
 
@@ -948,7 +944,7 @@ def compile_python(base_path: str) -> None:
 
 def create_linux_bundle_gunk(ddir: str, libdir_name: str) -> None:
     if not os.path.exists('docs/_build/html'):
-        make = "gmake" if is_freebsd else "make"
+        make = 'gmake' if is_freebsd else 'make'
         run_tool([make, 'docs'])
     copy_man_pages(ddir)
     copy_html_docs(ddir)

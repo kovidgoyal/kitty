@@ -1104,8 +1104,7 @@ def deprecated_send_text(key: str, val: str, ans: Dict[str, Any]) -> None:
     parts = val.split(' ')
 
     def abort(msg: str) -> None:
-        log_error('Send text: {} is invalid ({}), ignoring'.format(
-            val, msg))
+        log_error(f'Send text: {val} is invalid ({msg}), ignoring')
 
     if len(parts) < 3:
         return abort('Incomplete')

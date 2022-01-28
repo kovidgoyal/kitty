@@ -323,8 +323,7 @@ def render_special(
         try:
             f(ans, cell_width, *a)
         except Exception as e:
-            log_error('Failed to render {} at cell_width={} and cell_height={} with error: {}'.format(
-                f.__name__, cell_width, cell_height, e))
+            log_error(f'Failed to render {f.__name__} at cell_width={cell_width} and cell_height={cell_height} with error: {e}')
 
     if underline:
         t = underline_thickness

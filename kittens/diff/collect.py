@@ -32,8 +32,7 @@ class Segment:
         self.end_code: Optional[str] = None
 
     def __repr__(self) -> str:
-        return 'Segment(start={!r}, start_code={!r}, end={!r}, end_code={!r})'.format(
-            self.start, self.start_code, self.end, self.end_code)
+        return f'Segment(start={self.start!r}, start_code={self.start_code!r}, end={self.end!r}, end_code={self.end_code!r})'
 
 
 class Collection:

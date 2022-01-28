@@ -108,7 +108,7 @@ features of the graphics protocol:
 
     def serialize_gr_command(**cmd):
         payload = cmd.pop('payload', None)
-        cmd = ','.join('{}={}'.format(k, v) for k, v in cmd.items())
+        cmd = ','.join(f'{k}={v}' for k, v in cmd.items())
         ans = []
         w = ans.append
         w(b'\033_G'), w(cmd.encode('ascii'))

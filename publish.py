@@ -249,7 +249,7 @@ class GitHub(Base):  # {{{
         self.requests = s = requests.Session()
         s.auth = (self.username, self.password)
         s.headers.update({'Accept': 'application/vnd.github.v3+json'})
-        self.url_base = self.API + f'repos/{self.username}/{self.reponame}/releases/'
+        self.url_base = f'{self.API}repos/{self.username}/{self.reponame}/releases/'
 
     def patch(self, url: str, fail_msg: str, **data: Any) -> None:
         rdata = json.dumps(data)
@@ -283,7 +283,7 @@ class GitHub(Base):  # {{{
                 self.info(f'Deleting {fname} from GitHub')
                 r = self.requests.delete(asset_url.format(existing_assets[fname]))
                 if r.status_code not in (204, 404):
-                    self.fail(r, 'Failed to delete %s from GitHub' % fname)
+                    self.fail(r, f'Failed to delete {fname} from GitHub')
             self.update_nightly_description(release['id'])
         for path, desc in self.files.items():
             self.info('')
@@ -305,17 +305,12 @@ class GitHub(Base):  # {{{
             if release.get(
                     'assets',
                     None) and release['tag_name'] != self.current_tag_name:
-                self.info('\nDeleting old released installers from: %s' %
-                          release['tag_name'])
+                self.info(f'\nDeleting old released installers from: {release["tag_name"]}')
                 for asset in release['assets']:
                     r = self.requests.delete(
-                        self.API + 'repos/{}/{}/releases/assets/{}'.format(
-                            self.username, self.reponame, asset['id']))
+                        f'{self.API}repos/{self.username}/{self.reponame}/releases/assets/{asset["id"]}')
                     if r.status_code != 204:
-                        self.fail(
-                            r,
-                            'Failed to delete obsolete asset: %s for release: %s'
-                            % (asset['name'], release['tag_name']))
+                        self.fail(r, f'Failed to delete obsolete asset: {asset["name"]} for release: {release["tag_name"]}')
 
     def do_upload(self, url: str, path: str, desc: str, fname: str) -> requests.Response:
         mime_type = mimetypes.guess_type(fname)[0] or 'application/octet-stream'
@@ -331,8 +326,8 @@ class GitHub(Base):  # {{{
                 data=cast(IO[bytes], f))
 
     def fail(self, r: requests.Response, msg: str) -> None:
-        print(msg, ' Status Code: %s' % r.status_code, file=sys.stderr)
-        print("JSON from response:", file=sys.stderr)
+        print(msg, f' Status Code: {r.status_code}', file=sys.stderr)
+        print('JSON from response:', file=sys.stderr)
         pprint.pprint(dict(r.json()), stream=sys.stderr)
         raise SystemExit(1)
 
@@ -341,8 +336,7 @@ class GitHub(Base):  # {{{
         return bool(error_code == 'already_exists')
 
     def existing_assets(self, release_id: str) -> Dict[str, str]:
-        url = self.API + 'repos/{}/{}/releases/{}/assets'.format(
-            self.username, self.reponame, release_id)
+        url = f'{self.API}repos/{self.username}/{self.reponame}/releases/{release_id}/assets'
         r = self.requests.get(url)
         if r.status_code != 200:
             self.fail(r, 'Failed to get assets for release')
@@ -357,13 +351,13 @@ class GitHub(Base):  # {{{
             return dict(r.json())
         if self.is_nightly:
             raise SystemExit('No existing nightly release found on GitHub')
-        url = self.API + f'repos/{self.username}/{self.reponame}/releases'
+        url = f'{self.API}repos/{self.username}/{self.reponame}/releases'
         r = self.requests.post(
             url,
             data=json.dumps({
                 'tag_name': self.current_tag_name,
                 'target_commitish': 'master',
-                'name': 'version %s' % self.version,
+                'name': f'version {self.version}',
                 'body': f'Release version {self.version}.'
                 ' For changelog, see https://sw.kovidgoyal.net/kitty/changelog/'
                 ' GPG key used for signing tarballs is: https://calibre-ebook.com/signatures/kovid.gpg',
@@ -371,8 +365,7 @@ class GitHub(Base):  # {{{
                 'prerelease': False
             }))
         if r.status_code != 201:
-            self.fail(r, 'Failed to create release for version: %s' %
-                      self.version)
+            self.fail(r, f'Failed to create release for version: {self.version}')
         return dict(r.json())
 # }}}
 

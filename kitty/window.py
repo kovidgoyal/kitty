@@ -449,8 +449,7 @@ class Window:
         return self.override_title or self.child_title
 
     def __repr__(self) -> str:
-        return 'Window(title={}, id={})'.format(
-                self.title, self.id)
+        return f'Window(title={self.title}, id={self.id})'
 
     def as_dict(self, is_focused: bool = False, is_self: bool = False) -> WindowDict:
         return dict(
