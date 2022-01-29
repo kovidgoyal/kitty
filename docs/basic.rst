@@ -133,7 +133,7 @@ Input unicode character             :sc:`input_unicode_character` (also :kbd:`�
 Open URL in web browser             :sc:`open_url`
 Reset the terminal                  :sc:`reset_terminal` (also :kbd:`⌥+⌘+r` on macOS)
 Reload :file:`kitty.conf`           :sc:`reload_config_file` (also :kbd:`⌃+⌘+,` on macOS)
-Debug :file:`kitty.conf`            :sc:`debug_config` (also :kbd:`⌘+⌥+f6` on macOS)
+Debug :file:`kitty.conf`            :sc:`debug_config` (also :kbd:`⌥+⌘+,` on macOS)
 Pass current selection to program   :sc:`pass_selection_to_program`
 Edit |kitty| config file            :sc:`edit_config_file` (also :kbd:`⌘+,` on macOS)
 Open a |kitty| shell                :sc:`kitty_shell`
