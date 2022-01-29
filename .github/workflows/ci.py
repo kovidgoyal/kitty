@@ -48,7 +48,7 @@ def install_deps():
 
 def build_kitty():
     python = shutil.which('python3') if is_bundle else sys.executable
-    cmd = '{} setup.py build --verbose'.format(python)
+    cmd = f'{python} setup.py build --verbose'
     if os.environ.get('KITTY_SANITIZE') == '1':
         cmd += ' --debug --sanitize'
     run(cmd)
@@ -59,8 +59,8 @@ def test_kitty():
 
 
 def package_kitty():
-    py = 'python3' if is_macos else 'python'
-    run(py + ' setup.py linux-package --update-check-interval=0 --verbose')
+    python = 'python3' if is_macos else 'python'
+    run(f'{python} setup.py linux-package --update-check-interval=0 --verbose')
     if is_macos:
         run('python3 setup.py kitty.app --update-check-interval=0 --verbose')
         run('kitty.app/Contents/MacOS/kitty +runpy "from kitty.constants import *; print(kitty_exe())"')
@@ -76,11 +76,11 @@ def replace_in_file(path, src, dest):
 def setup_bundle_env():
     global SW
     os.environ['SW'] = SW = '/Users/Shared/kitty-build/sw/sw' if is_macos else os.path.join(os.environ['GITHUB_WORKSPACE'], 'sw')
-    os.environ['PKG_CONFIG_PATH'] = SW + '/lib/pkgconfig'
+    os.environ['PKG_CONFIG_PATH'] = os.path.join(SW, 'lib', 'pkgconfig')
     if is_macos:
         os.environ['PATH'] = '{}:{}'.format('/usr/local/opt/sphinx-doc/bin', os.environ['PATH'])
     else:
-        os.environ['LD_LIBRARY_PATH'] = SW + '/lib'
+        os.environ['LD_LIBRARY_PATH'] = os.path.join(SW, 'lib')
         os.environ['PYTHONHOME'] = SW
     os.environ['PATH'] = '{}:{}'.format(os.path.join(SW, 'bin'), os.environ['PATH'])
 
@@ -111,7 +111,7 @@ def main():
         setup_bundle_env()
     else:
         if not is_macos and 'pythonLocation' in os.environ:
-            os.environ['LD_LIBRARY_PATH'] = '{}/lib'.format(os.environ['pythonLocation'])
+            os.environ['LD_LIBRARY_PATH'] = os.path.join(os.environ['pythonLocation'], 'lib')
     action = sys.argv[-1]
     if action in ('build', 'package'):
         install_deps()
@@ -122,7 +122,7 @@ def main():
     elif action == 'test':
         test_kitty()
     else:
-        raise SystemExit('Unknown action: ' + action)
+        raise SystemExit(f'Unknown action: {action}')
 
 
 if __name__ == '__main__':

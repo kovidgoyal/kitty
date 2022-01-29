@@ -67,7 +67,7 @@ def cmd_for_report(report_name: str, keymap: KeymapType, type_map: Dict[str, Any
         flag_fmt, flag_attrs = [], []
         cv = {'flag': 'c', 'int': 'i', 'uint': 'I'}[atype]
         for ch in type_map[atype]:
-            flag_fmt.append('s' + cv)
+            flag_fmt.append(f's{cv}')
             attr = keymap[ch][0]
             flag_attrs.append(f'"{attr}", {conv}g.{attr}')
         return ' '.join(flag_fmt), ', '.join(flag_attrs)

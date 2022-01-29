@@ -13,7 +13,7 @@ import tempfile
 
 def compile_terminfo(base):
     with tempfile.TemporaryDirectory() as tdir:
-        proc = subprocess.run(['tic', '-x', '-o' + tdir, 'terminfo/kitty.terminfo'], check=True, stderr=subprocess.PIPE)
+        proc = subprocess.run(['tic', '-x', f'-o{tdir}', 'terminfo/kitty.terminfo'], check=True, stderr=subprocess.PIPE)
         regex = '^"terminfo/kitty.terminfo", line [0-9]+, col [0-9]+, terminal \'xterm-kitty\': older tic versions may treat the description field as an alias$'
         for error in proc.stderr.decode('utf-8').splitlines():
             if not re.match(regex, error):

@@ -217,7 +217,8 @@ if you specify a program-to-run you can use the special placeholder
     from kitty.remote_control import cli_msg, global_options_spec
     with open('generated/cli-kitty-at.rst', 'w') as f:
         p = partial(print, file=f)
-        p('kitty @\n' + '-' * 80)
+        p('kitty @')
+        p('-' * 80)
         p('.. program::', 'kitty @')
         p('\n\n' + as_rst(
             global_options_spec, message=cli_msg, usage='command ...', appname='kitty @'))
@@ -225,7 +226,8 @@ if you specify a program-to-run you can use the special placeholder
         for cmd_name in sorted(all_command_names()):
             func = command_for_name(cmd_name)
             p(f'.. _at_{func.name}:\n')
-            p('kitty @', func.name + '\n' + '-' * 120)
+            p('kitty @', func.name)
+            p('-' * 120)
             p('.. program::', 'kitty @', func.name)
             p('\n\n' + as_rst(*cli_params_for(func)))
     from kittens.runner import get_kitten_cli_docs
@@ -234,12 +236,12 @@ if you specify a program-to-run you can use the special placeholder
         if data:
             with open(f'generated/cli-kitten-{kitten}.rst', 'w') as f:
                 p = partial(print, file=f)
-                p('.. program::', f'kitty +kitten {kitten}')
-                p(f'\nSource code for {kitten}')
+                p('.. program::', 'kitty +kitten', kitten)
+                p('\nSource code for', kitten)
                 p('-' * 72)
                 p(f'\nThe source code for this kitten is `available on GitHub <https://github.com/kovidgoyal/kitty/tree/master/kittens/{kitten}>`_.')
                 p('\nCommand Line Interface')
-                p('-' * 72, file=f)
+                p('-' * 72)
                 p('\n\n' + option_spec_as_rst(
                     data['options'], message=data['help_text'], usage=data['usage'], appname=f'kitty +kitten {kitten}',
                     heading_char='^'))
@@ -370,8 +372,8 @@ def expand_opt_references(conf_name: str, text: str) -> str:
     def expand(m: Match[str]) -> str:
         ref = m.group(1)
         if '<' not in ref and '.' not in ref:
-            full_ref = conf_name + ref
-            return f':opt:`{ref} <{full_ref}>`'
+            # full ref
+            return f':opt:`{ref} <{conf_name}{ref}>`'
         return str(m.group())
 
     return re.sub(r':opt:`(.+?)`', expand, text)
