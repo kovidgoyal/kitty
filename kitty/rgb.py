@@ -28,7 +28,7 @@ def parse_single_color(c: str) -> int:
 def parse_sharp(spec: str) -> Optional[Color]:
     if len(spec) in (3, 6, 9, 12):
         part_len = len(spec) // 3
-        colors = re.findall(r'[a-fA-F0-9]{%d}' % part_len, spec)
+        colors = re.findall(fr'[a-fA-F0-9]{{{part_len}}}', spec)
         return Color(*map(parse_single_color, colors))
     return None
 

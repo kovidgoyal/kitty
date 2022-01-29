@@ -270,7 +270,7 @@ def zsh_output_serializer(ans: Completions) -> str:
         yield ans
 
     for description, matches in ans.match_groups.items():
-        cmd = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote('%B' + description + '%b')]
+        cmd = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote(f'%B{description}%b')]
         if not matches.trailing_space:
             cmd += ['-S', '""']
         if matches.is_files:
@@ -350,10 +350,10 @@ def fish2_output_serializer(ans: Completions) -> str:
 
 
 def completions_for_first_word(ans: Completions, prefix: str, entry_points: Iterable[str], namespaced_entry_points: Iterable[str]) -> None:
-    cmds = ['@' + c for c in remote_control_command_names()]
+    cmds = [f'@{c}' for c in remote_control_command_names()]
     ans.add_match_group('Entry points', {
         k: '' for k in
-        list(entry_points) + cmds + ['+' + k for k in namespaced_entry_points]
+        list(entry_points) + cmds + [f'+{k}' for k in namespaced_entry_points]
         if not prefix or k.startswith(prefix)
     })
     if prefix:
@@ -443,7 +443,7 @@ def complete_alias_map(
                 long_opt = option_map.get(parts[0])
                 if long_opt is not None and complete_args is not None:
                     complete_args(ans, long_opt, parts[1], Delegate())
-                    ans.add_prefix(parts[0] + '=')
+                    ans.add_prefix(f'{parts[0]}=')
                 return
         opt = option_map.get(w)
         if w is last_word and not new_word:
@@ -682,7 +682,7 @@ def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterabl
     if words[0].startswith('@'):
         if len(words) == 1 and not new_word:
             prefix = words[0]
-            ans.add_match_group('Remote control commands', {'@' + c: '' for c in remote_control_command_names() if c.startswith(prefix)})
+            ans.add_match_group('Remote control commands', {f'@{c}': '' for c in remote_control_command_names() if c.startswith(prefix)})
         else:
             complete_remote_command(ans, words[0][1:], words[1:], new_word)
     if words[0] == '+':

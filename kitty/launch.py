@@ -369,7 +369,7 @@ def launch(
         if opts.stdin_add_formatting:
             if q in ('@screen', '@screen_scrollback', '@alternate', '@alternate_scrollback',
                      '@first_cmd_output_on_screen', '@last_cmd_output', '@last_visited_cmd_output'):
-                q = '@ansi_' + q[1:]
+                q = f'@ansi_{q[1:]}'
         if opts.stdin_add_line_wrap_markers:
             q += '_wrap'
         penv, stdin = boss.process_stdin_source(window=active, stdin=q, copy_pipe_data=pipe_data)

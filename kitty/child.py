@@ -62,7 +62,7 @@ else:
             except Exception:
                 continue
             try:
-                with open('/proc/' + x + '/stat', 'rb') as f:
+                with open(f'/proc/{x}/stat', 'rb') as f:
                     raw = f.read().decode('utf-8')
             except OSError:
                 continue
@@ -268,7 +268,7 @@ class Child:
             # https://github.com/kovidgoyal/kitty/issues/1870
             # xterm, urxvt, konsole and gnome-terminal do not do it in my
             # testing.
-            argv[0] = ('-' + exe.split('/')[-1])
+            argv[0] = (f'-{exe.split("/")[-1]}')
         exe = which(exe) or exe
         pid = fast_data_types.spawn(exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd)
         os.close(slave)

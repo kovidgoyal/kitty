@@ -102,14 +102,14 @@ class ColorFormatter:
             ans = '9'
         elif q == 'tab':
             col = color_from_int((self.draw_data.tab_bg if self.which == '4' else self.draw_data.tab_fg)(self.tab_data))
-            ans = '8' + color_as_sgr(col)
+            ans = f'8{color_as_sgr(col)}'
         else:
             if name.startswith('_'):
-                q = '#' + name[1:]
+                q = f'#{name[1:]}'
             c = to_color(q)
             if c is None:
                 raise AttributeError(f'{name} is not a valid color')
-            ans = '8' + color_as_sgr(c)
+            ans = f'8{color_as_sgr(c)}'
         return f'\x1b[{self.which}{ans}m'
 
 

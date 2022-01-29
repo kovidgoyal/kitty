@@ -221,7 +221,7 @@ def real_main(global_opts: RCOptions) -> None:
             if e.code != 0:
                 print(end=output_prefix, flush=True)
                 print_err(e)
-                print_err('Use "{}" to see how to use this command.'.format(emph('help ' + cmd)))
+                print_err('Use "{}" to see how to use this command.'.format(emph(f'help {cmd}')))
             continue
         except Exception:
             print(end=output_prefix, flush=True)

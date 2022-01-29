@@ -63,7 +63,7 @@ else:
         import ctypes
         for suffix in ('.0', ''):
             with suppress(Exception):
-                lib = ctypes.CDLL('libxkbcommon.so' + suffix)
+                lib = ctypes.CDLL(f'libxkbcommon.so{suffix}')
                 break
         else:
             from ctypes.util import find_library

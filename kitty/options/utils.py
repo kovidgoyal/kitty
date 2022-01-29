@@ -379,7 +379,7 @@ def parse_mods(parts: Iterable[str], sc: str) -> Optional[int]:
     mods = 0
     for m in parts:
         try:
-            mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
+            mods |= getattr(defines, f'GLFW_MOD_{map_mod(m.upper())}')
         except AttributeError:
             if m.upper() != 'NONE':
                 log_error(f'Shortcut: {sc} has unknown modifier, ignoring')
@@ -394,7 +394,7 @@ def to_modifiers(val: str) -> int:
 
 def parse_shortcut(sc: str) -> SingleKey:
     if sc.endswith('+') and len(sc) > 1:
-        sc = sc[:-1] + 'plus'
+        sc = f'{sc[:-1]}plus'
     parts = sc.split('+')
     mods = 0
     if len(parts) > 1:
@@ -895,13 +895,13 @@ def resolve_aliases_and_parse_actions(
             parts = rest.split(maxsplit=1)
             if parts[0] != alias.name:
                 continue
-            new_defn = possible_alias + ' ' + alias.value + ((' ' + parts[1]) if len(parts) > 1 else '')
+            new_defn = f'{possible_alias} {alias.value} {f" {parts[1]}" if len(parts) > 1 else ""}'
             new_aliases = aliases.copy()
             new_aliases[possible_alias] = [a for a in aliases[possible_alias] if a is not alias]
             yield from resolve_aliases_and_parse_actions(new_defn, new_aliases, map_type)
             return
         else:  # action_alias
-            new_defn = alias.value + ((' ' + rest) if rest else '')
+            new_defn = f'{alias.value} {rest}' if rest else alias.value
             new_aliases = aliases.copy()
             new_aliases.pop(possible_alias)
             yield from resolve_aliases_and_parse_actions(new_defn, new_aliases, map_type)
@@ -909,7 +909,7 @@ def resolve_aliases_and_parse_actions(
 
     if possible_alias == 'combine':
         sep, rest = rest.split(maxsplit=1)
-        parts = re.split(r'\s*' + re.escape(sep) + r'\s*', rest)
+        parts = re.split(fr'\s*{re.escape(sep)}\s*', rest)
         for x in parts:
             if x:
                 yield from resolve_aliases_and_parse_actions(x, aliases, map_type)
