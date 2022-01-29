@@ -90,7 +90,7 @@ def strip_files(files, argv_max=(256 * 1024)):
 def files_in(folder):
     for record in os.walk(folder):
         for f in record[-1]:
-            yield os.path.join(record[0], f)
+            yield join(record[0], f)
 
 
 def expand_dirs(items, exclude=lambda x: x.endswith('.so')):
@@ -103,7 +103,7 @@ def expand_dirs(items, exclude=lambda x: x.endswith('.so')):
 
 
 def do_sign(app_dir):
-    with current_dir(os.path.join(app_dir, 'Contents')):
+    with current_dir(join(app_dir, 'Contents')):
         # Sign all .so files
         so_files = {x for x in files_in('.') if x.endswith('.so')}
         codesign(so_files)
@@ -153,7 +153,7 @@ class Freeze(object):
         self.to_strip = []
         self.warnings = []
         self.py_ver = py_ver
-        self.python_stdlib = join(self.resources_dir, 'Python', 'lib', 'python' + self.py_ver)
+        self.python_stdlib = join(self.resources_dir, 'Python', 'lib', f'python{self.py_ver}')
         self.site_packages = self.python_stdlib  # hack to avoid needing to add site-packages to path
         self.obj_dir = mkdtemp('launchers-')
 
@@ -177,7 +177,7 @@ class Freeze(object):
             self.run_tests()
         # self.run_shell()
 
-        ret = self.makedmg(self.build_dir, APPNAME + '-' + VERSION)
+        ret = self.makedmg(self.build_dir, f'{APPNAME}-{VERSION}')
 
         return ret
 
@@ -186,7 +186,7 @@ class Freeze(object):
         print('\nDownloading CA certs...')
         from urllib.request import urlopen
         cdata = urlopen(kitty_constants['cacerts_url']).read()
-        dest = os.path.join(self.contents_dir, 'Resources', 'cacert.pem')
+        dest = join(self.contents_dir, 'Resources', 'cacert.pem')
         with open(dest, 'wb') as f:
             f.write(cdata)
 
@@ -197,7 +197,7 @@ class Freeze(object):
 
     @flush
     def run_tests(self):
-        iv['run_tests'](os.path.join(self.contents_dir, 'MacOS', 'kitty'))
+        iv['run_tests'](join(self.contents_dir, 'MacOS', 'kitty'))
 
     @flush
     def set_id(self, path_to_lib, new_id):
@@ -222,10 +222,10 @@ class Freeze(object):
     @flush
     def get_local_dependencies(self, path_to_lib):
         for x, is_id in self.get_dependencies(path_to_lib):
-            for y in (PREFIX + '/lib/', PREFIX + '/python/Python.framework/', '@rpath/'):
+            for y in (f'{PREFIX}/lib/', f'{PREFIX}/python/Python.framework/', '@rpath/'):
                 if x.startswith(y):
-                    if y == PREFIX + '/python/Python.framework/':
-                        y = PREFIX + '/python/'
+                    if y == f'{PREFIX}/python/Python.framework/':
+                        y = f'{PREFIX}/python/'
                     yield x, x[len(y):], is_id
                     break
 
@@ -239,7 +239,7 @@ class Freeze(object):
         self.to_strip.append(path_to_lib)
         old_mode = flipwritable(path_to_lib)
         for dep, bname, is_id in self.get_local_dependencies(path_to_lib):
-            ndep = self.FID + '/' + bname
+            ndep = f'{self.FID}/{bname}'
             self.change_dep(dep, ndep, is_id, path_to_lib)
         ldeps = list(self.get_local_dependencies(path_to_lib))
         if ldeps:
@@ -252,7 +252,7 @@ class Freeze(object):
     @flush
     def add_python_framework(self):
         print('\nAdding Python framework')
-        src = join(PREFIX + '/python', 'Python.framework')
+        src = join(f'{PREFIX}/python', 'Python.framework')
         x = join(self.frameworks_dir, 'Python.framework')
         curr = os.path.realpath(join(src, 'Versions', 'Current'))
         currd = join(x, 'Versions', basename(curr))
@@ -262,12 +262,12 @@ class Freeze(object):
         shutil.copy2(join(curr, 'Python'), currd)
         self.set_id(
             join(currd, 'Python'),
-            self.FID + '/Python.framework/Versions/%s/Python' % basename(curr))
+            f'{self.FID}/Python.framework/Versions/{basename(curr)}/Python')
         # The following is needed for codesign
         with current_dir(x):
             os.symlink(basename(curr), 'Versions/Current')
             for y in ('Python', 'Resources'):
-                os.symlink('Versions/Current/%s' % y, y)
+                os.symlink(f'Versions/Current/{y}', y)
 
     @flush
     def install_dylib(self, path, set_id=True):
@@ -275,7 +275,7 @@ class Freeze(object):
         if set_id:
             self.set_id(
                 join(self.frameworks_dir, basename(path)),
-                self.FID + '/' + basename(path))
+                f'{self.FID}/{basename(path)}')
         self.fix_dependencies_in_lib(join(self.frameworks_dir, basename(path)))
 
     @flush
@@ -291,11 +291,11 @@ class Freeze(object):
                 'rsync.2',
         ):
             print('\nAdding', x)
-            x = 'lib%s.dylib' % x
+            x = f'lib{x}.dylib'
             src = join(PREFIX, 'lib', x)
             shutil.copy2(src, self.frameworks_dir)
             dest = join(self.frameworks_dir, x)
-            self.set_id(dest, self.FID + '/' + x)
+            self.set_id(dest, f'{self.FID}/{x}')
             self.fix_dependencies_in_lib(dest)
 
     @flush
@@ -321,7 +321,7 @@ class Freeze(object):
     @flush
     def add_stdlib(self):
         print('\nAdding python stdlib')
-        src = PREFIX + '/python/Python.framework/Versions/Current/lib/python' + self.py_ver
+        src = f'{PREFIX}/python/Python.framework/Versions/Current/lib/python{self.py_ver}'
         dest = self.python_stdlib
         if not os.path.exists(dest):
             os.makedirs(dest)
@@ -345,19 +345,19 @@ class Freeze(object):
         kitty_dir = join(self.resources_dir, 'kitty')
         bases = ('kitty', 'kittens', 'kitty_tests')
         for x in bases:
-            dest = os.path.join(self.python_stdlib, x)
-            os.rename(os.path.join(kitty_dir, x), dest)
+            dest = join(self.python_stdlib, x)
+            os.rename(join(kitty_dir, x), dest)
             if x == 'kitty':
-                shutil.rmtree(os.path.join(dest, 'launcher'))
-        os.rename(os.path.join(kitty_dir, '__main__.py'), os.path.join(self.python_stdlib, 'kitty_main.py'))
-        shutil.rmtree(os.path.join(kitty_dir, '__pycache__'))
-        pdir = os.path.join(dirname(self.python_stdlib), 'kitty-extensions')
+                shutil.rmtree(join(dest, 'launcher'))
+        os.rename(join(kitty_dir, '__main__.py'), join(self.python_stdlib, 'kitty_main.py'))
+        shutil.rmtree(join(kitty_dir, '__pycache__'))
+        pdir = join(dirname(self.python_stdlib), 'kitty-extensions')
         os.mkdir(pdir)
         print('Extracting extension modules from', self.python_stdlib, 'to', pdir)
         ext_map = extract_extension_modules(self.python_stdlib, pdir)
-        shutil.copy(os.path.join(os.path.dirname(self_dir), 'site.py'), os.path.join(self.python_stdlib, 'site.py'))
+        shutil.copy(join(os.path.dirname(self_dir), 'site.py'), join(self.python_stdlib, 'site.py'))
         for x in bases:
-            iv['sanitize_source_folder'](os.path.join(self.python_stdlib, x))
+            iv['sanitize_source_folder'](join(self.python_stdlib, x))
         self.compile_py_modules()
         freeze_python(self.python_stdlib, pdir, self.obj_dir, ext_map, develop_mode_env_var='KITTY_DEVELOP_FROM', remove_pyc_files=True)
         iv['build_frozen_launcher']([path_to_freeze_dir(), self.obj_dir])
@@ -434,23 +434,23 @@ class Freeze(object):
         ''' Copy a directory d into a dmg named volname '''
         print('\nMaking dmg...')
         sys.stdout.flush()
-        destdir = os.path.join(SW, 'dist')
+        destdir = join(SW, 'dist')
         try:
             shutil.rmtree(destdir)
         except FileNotFoundError:
             pass
         os.mkdir(destdir)
-        dmg = os.path.join(destdir, volname + '.dmg')
+        dmg = join(destdir, f'{volname}.dmg')
         if os.path.exists(dmg):
             os.unlink(dmg)
         tdir = tempfile.mkdtemp()
-        appdir = os.path.join(tdir, os.path.basename(d))
+        appdir = join(tdir, os.path.basename(d))
         shutil.copytree(d, appdir, symlinks=True)
         if self.sign_installers:
             with timeit() as times:
                 sign_app(appdir, self.notarize)
-            print('Signing completed in %d minutes %d seconds' % tuple(times))
-        os.symlink('/Applications', os.path.join(tdir, 'Applications'))
+            print('Signing completed in {} minutes {} seconds'.format(*times))
+        os.symlink('/Applications', join(tdir, 'Applications'))
         size_in_mb = int(
             subprocess.check_output(['du', '-s', '-k', tdir]).decode('utf-8')
             .split()[0]) / 1024.
@@ -466,10 +466,10 @@ class Freeze(object):
         print('\nCreating dmg...')
         with timeit() as times:
             subprocess.check_call(cmd + [dmg])
-        print('dmg created in %d minutes and %d seconds' % tuple(times))
+        print('dmg created in {} minutes and {} seconds'.format(*times))
         shutil.rmtree(tdir)
         size = os.stat(dmg).st_size / (1024 * 1024.)
-        print('\nInstaller size: %.2fMB\n' % size)
+        print(f'\nInstaller size: {size:.2f}MB\n')
         return dmg
 
 
@@ -477,7 +477,7 @@ def main():
     args = globals()['args']
     ext_dir = globals()['ext_dir']
     Freeze(
-        os.path.join(ext_dir, kitty_constants['appname'] + '.app'),
+        join(ext_dir, f'{kitty_constants["appname"]}.app'),
         dont_strip=args.dont_strip,
         sign_installers=args.sign_installers,
         notarize=args.notarize,

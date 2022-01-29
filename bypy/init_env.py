@@ -26,7 +26,7 @@ def initialize_constants():
     kitty_constants = {}
     src = read_src_file('constants.py')
     nv = re.search(r'Version\((\d+), (\d+), (\d+)\)', src)
-    kitty_constants['version'] = '%s.%s.%s' % (nv.group(1), nv.group(2), nv.group(3))
+    kitty_constants['version'] = f'{nv.group(1)}.{nv.group(2)}.{nv.group(3)}'
     kitty_constants['appname'] = re.search(
             r'appname: str\s+=\s+(u{0,1})[\'"]([^\'"]+)[\'"]', src
     ).group(2)

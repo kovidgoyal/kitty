@@ -38,7 +38,7 @@ def binary_includes():
             'ncursesw', 'readline', 'brotlicommon', 'brotlienc', 'brotlidec'
         ))) + (
                 get_dll_path('bz2', 2), get_dll_path('ssl', 2), get_dll_path('crypto', 2),
-                get_dll_path('python' + py_ver, 2),
+                get_dll_path(f'python{py_ver}', 2),
         )
 
 
@@ -47,7 +47,7 @@ class Env:
     def __init__(self, package_dir):
         self.base = package_dir
         self.lib_dir = j(self.base, 'lib')
-        self.py_dir = j(self.lib_dir, 'python' + py_ver)
+        self.py_dir = j(self.lib_dir, f'python{py_ver}')
         os.makedirs(self.py_dir)
         self.bin_dir = j(self.base, 'bin')
         self.obj_dir = mkdtemp('launchers-')
@@ -107,7 +107,7 @@ def add_ca_certs(env):
 
 def copy_python(env):
     print('Copying python...')
-    srcdir = j(PREFIX, 'lib/python' + py_ver)
+    srcdir = j(PREFIX, f'lib/python{py_ver}')
 
     for x in os.listdir(srcdir):
         y = j(srcdir, x)
@@ -187,11 +187,11 @@ def strip_files(files, argv_max=(256 * 1024)):
 
 
 def strip_binaries(files):
-    print('Stripping %d files...' % len(files))
+    print(f'Stripping {len(files)} files...')
     before = sum(os.path.getsize(x) for x in files)
     strip_files(files)
     after = sum(os.path.getsize(x) for x in files)
-    print('Stripped %.1f MB' % ((before - after) / (1024 * 1024.)))
+    print('Stripped {:.1f} MB'.format((before - after) / (1024 * 1024.)))
 
 
 def create_tarfile(env, compression_level='9'):
@@ -203,7 +203,7 @@ def create_tarfile(env, compression_level='9'):
         if err.errno != errno.ENOENT:
             raise
     os.mkdir(base)
-    dist = os.path.join(base, '%s-%s-%s.tar' % (kitty_constants['appname'], kitty_constants['version'], arch))
+    dist = os.path.join(base, f'{kitty_constants["appname"]}-{kitty_constants["version"]}-{arch}.tar')
     with tarfile.open(dist, mode='w', format=tarfile.PAX_FORMAT) as tf:
         cwd = os.getcwd()
         os.chdir(env.base)
@@ -213,13 +213,13 @@ def create_tarfile(env, compression_level='9'):
         finally:
             os.chdir(cwd)
     print('Compressing archive...')
-    ans = dist.rpartition('.')[0] + '.txz'
+    ans = f'{dist.rpartition(".")[0]}.txz'
     start_time = time.time()
-    subprocess.check_call(['xz', '--threads=0', '-f', '-' + compression_level, dist])
+    subprocess.check_call(['xz', '--threads=0', '-f', f'-{compression_level}', dist])
     secs = time.time() - start_time
-    print('Compressed in %d minutes %d seconds' % (secs // 60, secs % 60))
-    os.rename(dist + '.xz', ans)
-    print('Archive %s created: %.2f MB' % (
+    print('Compressed in {} minutes {} seconds'.format(secs // 60, secs % 60))
+    os.rename(f'{dist}.xz', ans)
+    print('Archive {} created: {:.2f} MB'.format(
         os.path.basename(ans), os.stat(ans).st_size / (1024.**2)))
 
 
