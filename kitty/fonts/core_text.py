@@ -29,7 +29,7 @@ def create_font_map(all_fonts: Iterable[CoreTextFont]) -> FontMap:
         ps = (x['postscript_name'] or '').lower()
         ans['family_map'].setdefault(f, []).append(x)
         ans['ps_map'].setdefault(ps, []).append(x)
-        ans['full_map'].setdefault(f + ' ' + s, []).append(x)
+        ans['full_map'].setdefault(f'{f} {s}', []).append(x)
     return ans
 
 
@@ -45,7 +45,7 @@ def list_fonts() -> Generator[ListedFont, None, None]:
     for fd in coretext_all_fonts():
         f = fd['family']
         if f:
-            fn = (f + ' ' + (fd['style'] or '')).strip()
+            fn = f'{f} {fd.get("style", "")}'.strip()
             is_mono = bool(fd['monospace'])
             yield {'family': f, 'full_name': fn, 'postscript_name': fd['postscript_name'] or '', 'is_monospace': is_mono}
 

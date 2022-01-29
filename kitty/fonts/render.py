@@ -515,7 +515,7 @@ def test_fallback_font(qtext: Optional[str] = None, bold: bool = False, italic: 
             try:
                 print(text, f)
             except UnicodeEncodeError:
-                sys.stdout.buffer.write((text + ' %s\n' % f).encode('utf-8'))
+                sys.stdout.buffer.write(f'{text} {f}\n'.encode('utf-8'))
 
 
 def showcase() -> None:

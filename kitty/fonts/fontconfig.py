@@ -58,7 +58,7 @@ def list_fonts() -> Generator[ListedFont, None, None]:
             if fn_:
                 fn = str(fn_)
             else:
-                fn = (f + ' ' + str(fd.get('style', ''))).strip()
+                fn = f'{f} {fd.get("style", "")}'.strip()
             is_mono = fd.get('spacing') in ('MONO', 'DUAL')
             yield {'family': f, 'full_name': fn, 'postscript_name': str(fd.get('postscript_name', '')), 'is_monospace': is_mono}
 

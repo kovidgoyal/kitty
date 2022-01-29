@@ -28,13 +28,13 @@ def main(argv: Sequence[str]) -> None:
     groups = create_family_groups()
     for k in sorted(groups, key=lambda x: x.lower()):
         if isatty:
-            print('\033[1;32m' + k + '\033[m')
+            print(f'\033[1;32m{k}\033[m')
         else:
             print(k)
         for f in sorted(groups[k], key=lambda x: x['full_name'].lower()):
             p = f['full_name']
             if isatty:
-                p = '\033[3m' + p + '\033[m'
+                p = f'\033[3m{p}\033[m'
             if psnames:
                 p += ' ({})'.format(f['postscript_name'])
             print('   ', p)
