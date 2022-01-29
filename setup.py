@@ -1048,8 +1048,8 @@ def macos_info_plist() -> bytes:
         # App Execution
         CFBundleExecutable=appname,
         LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
-        # Launch Conditions
         LSRequiresNativeExecution=True,
+        NSSupportsSuddenTermination=False,
         # Localization
         # see https://github.com/kovidgoyal/kitty/issues/1233
         CFBundleDevelopmentRegion='English',
