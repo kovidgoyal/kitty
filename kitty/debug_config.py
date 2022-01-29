@@ -215,8 +215,6 @@ def debug_config(opts: KittyOpts) -> str:
         p(' ', '\n  '.join(opts.config_overrides))
     compare_opts(opts, p)
     p()
-    p(green('Environment variables seen by the kitty process:'))
-    ml = max(map(len, os.environ)) if os.environ else 5
-    for k, v in os.environ.items():
-        p(k.ljust(ml), styled(repr(v), dim=True))
+    p(green('Environment variable names seen by the kitty process:'))
+    p('\t' + '\n\t'.join(sorted(os.environ)))
     return out.getvalue()
