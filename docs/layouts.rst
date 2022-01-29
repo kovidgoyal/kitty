@@ -172,6 +172,17 @@ are placed into vertical or horizontal splits, by default::
     │              │               │
     └──────────────┴───────────────┘
 
+.. note::
+    The layout action ``split_axis`` refers to the placement of the layout for
+    the new windows, the above config means that the new windows will be placed
+    horizontally one by one. It does not refer to the cutting direction of the
+    original window.
+
+    The ``--location`` of the :doc:`launch <launch>` action specifies the
+    relative position of the new window, and ``hsplit`` means that the new
+    window will be below the horizontal level of the active window by default.
+    I.e. In a horizontal split.
+
 .. versionadded:: 0.17.0
     The Splits layout
 
