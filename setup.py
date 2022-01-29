@@ -1035,7 +1035,7 @@ def macos_info_plist() -> bytes:
         # Bundle Version Info
         CFBundleVersion=VERSION,
         CFBundleShortVersionString=VERSION,
-        CFBundleInfoDictionaryVersion=VERSION,
+        CFBundleInfoDictionaryVersion='6.0',
         NSHumanReadableCopyright=time.strftime('Copyright %Y, Kovid Goyal'),
         CFBundleGetInfoString='kitty - The fast, feature-rich, GPU based terminal emulator. https://sw.kovidgoyal.net/kitty/',
         # Operating System Version
