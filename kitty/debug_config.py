@@ -200,7 +200,7 @@ def debug_config(opts: KittyOpts) -> str:
         with open('/etc/lsb-release', encoding='utf-8', errors='replace') as f:
             p(f.read().strip())
     if not is_macos:
-        p('Running under:' + green('Wayland' if is_wayland() else 'X11'))
+        p('Running under:', green('Wayland' if is_wayland() else 'X11'))
     p(green('Frozen:'), 'True' if getattr(sys, 'frozen', False) else 'False')
     p(green('Paths:'))
     p(yellow('  kitty:'), os.path.realpath(kitty_exe()))
@@ -214,4 +214,9 @@ def debug_config(opts: KittyOpts) -> str:
         p(green('Loaded config overrides:'))
         p(' ', '\n  '.join(opts.config_overrides))
     compare_opts(opts, p)
+    p()
+    p(green('Environment variables seen by the kitty process:'))
+    ml = max(map(len, os.environ)) if os.environ else 5
+    for k, v in os.environ.items():
+        p(k.ljust(ml), styled(repr(v), dim=True))
     return out.getvalue()
