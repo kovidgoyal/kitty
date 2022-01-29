@@ -729,7 +729,7 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
             else:
                 import shlex
                 text = ' '.join(shlex.quote(arg) for arg in cmd)
-                w.paste_bytes(text + '\r')
+                w.paste_bytes(f'{text}\r')
     elif action == 'background':
         import subprocess
         subprocess.Popen(cmd, cwd=data['cwd'])

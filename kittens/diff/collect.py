@@ -101,7 +101,7 @@ def remote_hostname(path: str) -> Tuple[Optional[str], Optional[str]]:
 def resolve_remote_name(path: str, default: str) -> str:
     remote_dir, rh = remote_hostname(path)
     if remote_dir and rh:
-        return rh + ':' + os.path.relpath(path, remote_dir)
+        return f'{rh}:{os.path.relpath(path, remote_dir)}'
     return default
 
 

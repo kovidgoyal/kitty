@@ -17,7 +17,7 @@ def print_key(raw: bytearray) -> None:
     unix = ''
     for ch in raw:
         if ch < len(ctrl_keys):
-            unix += '^' + ctrl_keys[ch]
+            unix += f'^{ctrl_keys[ch]}'
         elif ch == 127:
             unix += '^?'
         else:

@@ -131,7 +131,7 @@ def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
     other_ssh_args: Set[str] = set()
     boolean_ssh_args: Set[str] = set()
     for k, v in ssh_options().items():
-        k = '-' + k
+        k = f'-{k}'
         if v:
             other_ssh_args.add(k)
         else:
@@ -213,7 +213,7 @@ class InvalidSSHArgs(ValueError):
 
 def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
     boolean_ssh_args, other_ssh_args = get_ssh_cli()
-    passthrough_args = {'-' + x for x in 'Nnf'}
+    passthrough_args = {f'-{x}' for x in 'Nnf'}
     ssh_args = []
     server_args: List[str] = []
     expecting_option_val = False
@@ -230,7 +230,7 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
             # could be a multi-character option
             all_args = argument[1:]
             for i, arg in enumerate(all_args):
-                arg = '-' + arg
+                arg = f'-{arg}'
                 if arg in passthrough_args:
                     passthrough = True
                 if arg in boolean_ssh_args:

@@ -376,7 +376,7 @@ def fetch_themes(
 
     needs_delete = False
     try:
-        with tempfile.NamedTemporaryFile(suffix='-' + os.path.basename(dest_path), dir=os.path.dirname(dest_path), delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=f'-{os.path.basename(dest_path)}', dir=os.path.dirname(dest_path), delete=False) as f:
             needs_delete = True
             shutil.copyfileobj(res, f)
             f.flush()
@@ -405,7 +405,7 @@ def theme_name_from_file_name(fname: str) -> str:
     ans = ans.replace('_', ' ')
 
     def camel_case(m: 'Match[str]') -> str:
-        return str(m.group(1) + ' ' + m.group(2))
+        return f'{m.group(1)} {m.group(2)}'
 
     ans = re.sub(r'([a-z])([A-Z])', camel_case, ans)
     return ' '.join(x.capitalize() for x in filter(None, ans.split()))
@@ -533,7 +533,7 @@ class Theme:
             raw = ''
         nraw = patch_conf(raw, self.name)
         if raw:
-            with open(confpath + '.bak', 'w') as f:
+            with open(f'{confpath}.bak', 'w') as f:
                 f.write(raw)
         atomic_save(nraw.encode('utf-8'), confpath)
         if reload_in == 'parent':

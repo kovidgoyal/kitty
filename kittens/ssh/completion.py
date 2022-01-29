@@ -281,7 +281,7 @@ def complete_choices(ans: Completions, prefix: str, title: str, choices: Iterabl
         if q.startswith(effective_prefix):
             if comma_separated:
                 tq = q
-                q = hidden_prefix + q + ','
+                q = f'{hidden_prefix}{q},'
                 word_transforms[q] = tq
             matches[q] = ''
     ans.add_match_group(title, matches, trailing_space=not comma_separated, word_transforms=word_transforms)

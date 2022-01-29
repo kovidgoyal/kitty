@@ -45,7 +45,7 @@ def render_path_in_width(path: str, width: int) -> str:
     if wcswidth(path) <= width:
         return path
     x = truncate_point_for_length(path, width - 1)
-    return path[:x] + '…'
+    return f'{path[:x]}…'
 
 
 def render_seconds(val: float) -> str:

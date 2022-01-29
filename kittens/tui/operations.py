@@ -163,7 +163,7 @@ def set_scrolling_region(screen_size: Optional['ScreenSize'] = None, top: Option
 
 @cmd
 def scroll_screen(amt: int = 1) -> str:
-    return '\033[' + str(abs(amt)) + ('T' if amt < 0 else 'S')
+    return f'\033[{abs(amt)}{"T" if amt < 0 else "S"}'
 
 
 STANDARD_COLORS = {'black': 0, 'red': 1, 'green': 2, 'yellow': 3, 'blue': 4, 'magenta': 5, 'cyan': 6, 'gray': 7, 'white': 7}
@@ -465,7 +465,7 @@ def as_type_stub() -> str:
     for name, func in all_cmds.items():
         args = ', '.join(func_sig(func))
         if args:
-            args = ', ' + args
+            args = f', {args}'
         methods.append(f'    def {name}(self{args}) -> str: pass')
     ans += ['', '', 'class CMD:'] + methods
 
