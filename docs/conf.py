@@ -13,7 +13,7 @@ import subprocess
 import sys
 import time
 from functools import partial
-from typing import Any, Callable, Dict, Iterable, List, Match, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
@@ -28,7 +28,7 @@ kitty_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if kitty_src not in sys.path:
     sys.path.insert(0, kitty_src)
 
-from kitty.conf.types import Definition  # noqa
+from kitty.conf.types import Definition, expand_opt_references  # noqa
 from kitty.constants import str_version, website_url  # noqa
 
 # config {{{
@@ -366,19 +366,6 @@ def link_role(
     return [node], []
 
 
-def expand_opt_references(conf_name: str, text: str) -> str:
-    conf_name += '.'
-
-    def expand(m: Match[str]) -> str:
-        ref = m.group(1)
-        if '<' not in ref and '.' not in ref:
-            # full ref
-            return f':opt:`{ref} <{conf_name}{ref}>`'
-        return str(m.group())
-
-    return re.sub(r':opt:`(.+?)`', expand, text)
-
-
 opt_aliases: Dict[str, str] = {}
 shortcut_slugs: Dict[str, Tuple[str, str]] = {}
 
@@ -416,7 +403,7 @@ def process_opt_link(env: Any, refnode: Any, has_explicit_title: bool, title: st
     conf_name, opt = target.partition('.')[::2]
     if not opt:
         conf_name, opt = 'kitty', conf_name
-    full_name = conf_name + '.' + opt
+    full_name = f'{conf_name}.{opt}'
     return title, opt_aliases.get(full_name, full_name)
 
 
@@ -424,7 +411,7 @@ def process_shortcut_link(env: Any, refnode: Any, has_explicit_title: bool, titl
     conf_name, slug = target.partition('.')[::2]
     if not slug:
         conf_name, slug = 'kitty', conf_name
-    full_name = conf_name + '.' + slug
+    full_name = f'{conf_name}.{slug}'
     try:
         target, stitle = shortcut_slugs[full_name]
     except KeyError:

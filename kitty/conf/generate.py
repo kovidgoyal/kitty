@@ -418,9 +418,9 @@ def generate_c_conversion(loc: str, ctypes: List[Option]) -> str:
 def write_output(loc: str, defn: Definition) -> None:
     cls, tc = generate_class(defn, loc)
     with open(os.path.join(*loc.split('.'), 'options', 'types.py'), 'w') as f:
-        f.write(cls + '\n')
+        f.write(f'{cls}\n')
     with open(os.path.join(*loc.split('.'), 'options', 'parse.py'), 'w') as f:
-        f.write(tc + '\n')
+        f.write(f'{tc}\n')
     ctypes = []
     for opt in defn.root_group.iter_all_non_groups():
         if isinstance(opt, Option) and opt.ctype:
@@ -428,7 +428,7 @@ def write_output(loc: str, defn: Definition) -> None:
     if ctypes:
         c = generate_c_conversion(loc, ctypes)
         with open(os.path.join(*loc.split('.'), 'options', 'to-c-generated.h'), 'w') as f:
-            f.write(c + '\n')
+            f.write(f'{c}\n')
 
 
 def main() -> None:
@@ -454,6 +454,6 @@ def main() -> None:
     loc = package_name
     cls, tc = generate_class(defn, loc)
     with open(os.path.join(os.path.dirname(path), 'kitten_options_types.py'), 'w') as f:
-        f.write(cls + '\n')
+        f.write(f'{cls}\n')
     with open(os.path.join(os.path.dirname(path), 'kitten_options_parse.py'), 'w') as f:
-        f.write(tc + '\n')
+        f.write(f'{tc}\n')
