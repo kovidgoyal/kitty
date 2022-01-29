@@ -1035,7 +1035,7 @@ def macos_info_plist() -> bytes:
         # Bundle Version Info
         CFBundleVersion=VERSION,
         CFBundleShortVersionString=VERSION,
-        CFBundleInfoDictionaryVersion=VERSION,
+        CFBundleInfoDictionaryVersion='6.0',
         NSHumanReadableCopyright=time.strftime('Copyright %Y, Kovid Goyal'),
         CFBundleGetInfoString='kitty - The fast, feature-rich, GPU based terminal emulator. https://sw.kovidgoyal.net/kitty/',
         # Operating System Version
@@ -1048,8 +1048,8 @@ def macos_info_plist() -> bytes:
         # App Execution
         CFBundleExecutable=appname,
         LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
-        # Launch Conditions
         LSRequiresNativeExecution=True,
+        NSSupportsSuddenTermination=False,
         # Localization
         # see https://github.com/kovidgoyal/kitty/issues/1233
         CFBundleDevelopmentRegion='English',
