@@ -91,7 +91,7 @@ def compare_opts(opts: KittyOpts, print: Print) -> None:
     for f in changed_opts:
         val = getattr(opts, f)
         if isinstance(val, dict):
-            print(f'{title(f)}:')
+            print(title(f'{f}:'))
             if f == 'symbol_map':
                 for k in sorted(val):
                     print(f'\tU+{k[0]:04x} - U+{k[1]:04x} → {val[k]}')
