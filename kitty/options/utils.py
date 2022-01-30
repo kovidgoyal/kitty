@@ -895,7 +895,7 @@ def resolve_aliases_and_parse_actions(
             parts = rest.split(maxsplit=1)
             if parts[0] != alias.name:
                 continue
-            new_defn = f'{possible_alias} {alias.value} {f" {parts[1]}" if len(parts) > 1 else ""}'
+            new_defn = f'{possible_alias} {alias.value}{f" {parts[1]}" if len(parts) > 1 else ""}'
             new_aliases = aliases.copy()
             new_aliases[possible_alias] = [a for a in aliases[possible_alias] if a is not alias]
             yield from resolve_aliases_and_parse_actions(new_defn, new_aliases, map_type)
