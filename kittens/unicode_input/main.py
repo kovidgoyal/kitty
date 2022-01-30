@@ -192,7 +192,7 @@ class Table:
                 if w < 2:
                     text += ' ' * (2 - w)
                 if len(desc) > space_for_desc:
-                    text += desc[:space_for_desc - 1] + '…'
+                    text += f'{desc[:space_for_desc - 1]}…'
                 else:
                     text += desc
                 extra = space_for_desc - len(desc)

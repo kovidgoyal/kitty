@@ -238,7 +238,7 @@ def patch_file(path: str, what: str, text: str, start_marker: str = '/* ', end_m
             end = raw.index(end_q)
         except ValueError:
             raise SystemExit(f'Failed to find "{end_q}" in {path}')
-        raw = raw[:start] + start_q + '\n' + text + '\n' + raw[end:]
+        raw = f'{raw[:start]}{start_q}\n{text}\n{raw[end:]}'
         f.seek(0)
         f.truncate(0)
         f.write(raw)
@@ -368,7 +368,7 @@ def generate_ctrl_mapping() -> None:
         val = str(ctrl_mapping[k])
         items.append(val)
         if k in "\\'":
-            k = '\\' + k
+            k = f'\\{k}'
         mi.append(f"        case '{k}': return {val};")
 
     for line_items in chunks(items, 6):

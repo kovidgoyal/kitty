@@ -80,7 +80,7 @@ def init_env(
 ) -> Env:
     ans = env.copy()
     ans.cflags.append('-fPIC')
-    ans.cppflags.append('-D_GLFW_' + module.upper())
+    ans.cppflags.append(f'-D_GLFW_{module.upper()}')
     ans.cppflags.append('-D_GLFW_BUILD_DLL')
 
     with open(os.path.join(base, 'source-info.json')) as f:

@@ -97,7 +97,7 @@ def highlight_data(code: str, filename: str, aliases: Optional[Dict[str, str]] =
         base, ext = os.path.splitext(filename)
         alias = aliases.get(ext[1:])
         if alias is not None:
-            filename = base + '.' + alias
+            filename = f'{base}.{alias}'
     try:
         lexer = get_lexer_for_filename(filename, stripnl=False)
     except ClassNotFound:

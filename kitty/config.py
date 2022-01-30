@@ -54,7 +54,7 @@ def atomic_save(data: bytes, path: str) -> None:
 
 @contextmanager
 def cached_values_for(name: str) -> Generator[Dict[str, Any], None, None]:
-    cached_path = os.path.join(cache_dir(), name + '.json')
+    cached_path = os.path.join(cache_dir(), f'{name}.json')
     cached_values: Dict[str, Any] = {}
     try:
         with open(cached_path, 'rb') as f:

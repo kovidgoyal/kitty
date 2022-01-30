@@ -217,7 +217,7 @@ class Layout:
         self.blank_rects: List[Rect] = []
         self.layout_opts = self.parse_layout_opts(layout_opts)
         assert self.name is not None
-        self.full_name = self.name + ((':' + layout_opts) if layout_opts else '')
+        self.full_name = f'{self.name}:{layout_opts}' if layout_opts else self.name
         self.remove_all_biases()
 
     def bias_increment_for_cell(self, is_horizontal: bool) -> float:

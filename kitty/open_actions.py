@@ -114,7 +114,7 @@ def url_matches_criterion(purl: 'ParseResult', url: str, unquoted_path: str, mc:
         path = unquoted_path.lower()
         for ext in mc.value.split(','):
             ext = ext.strip()
-            if path.endswith('.' + ext):
+            if path.endswith(f'.{ext}'):
                 return True
         return False
 

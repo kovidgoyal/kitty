@@ -101,7 +101,7 @@ def human_readable(size: int, sep: str = ' ') -> str:
         s = s[:s.find(".")+2]
     if s.endswith('.0'):
         s = s[:-2]
-    return s + sep + suffix
+    return f'{s}{sep}{suffix}'
 
 
 def fit_in(text: str, count: int) -> str:
@@ -110,7 +110,7 @@ def fit_in(text: str, count: int) -> str:
         return text
     if count > 1:
         p = truncate_point_for_length(text, count - 1)
-    return text[:p] + '…'
+    return f'{text[:p]}…'
 
 
 def fill_in(text: str, sz: int) -> str:
@@ -127,8 +127,8 @@ def place_in(text: str, sz: int) -> str:
 def format_func(which: str) -> Callable[[str], str]:
     def formatted(text: str) -> str:
         fmt = formats[which]
-        return '\x1b[' + fmt + 'm' + text + '\x1b[0m'
-    formatted.__name__ = which + '_format'
+        return f'\x1b[{fmt}m{text}\x1b[0m'
+    formatted.__name__ = f'{which}_format'
     return formatted
 
 
@@ -148,8 +148,8 @@ highlight_map = {'remove': ('removed_highlight', 'removed'), 'add': ('added_high
 
 def highlight_boundaries(ltype: str) -> Tuple[str, str]:
     s, e = highlight_map[ltype]
-    start = '\x1b[' + formats[s] + 'm'
-    stop = '\x1b[' + formats[e] + 'm'
+    start = f'\x1b[{formats[s]}m'
+    stop = f'\x1b[{formats[e]}m'
     return start, stop
 
 

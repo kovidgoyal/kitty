@@ -37,8 +37,8 @@ def expand_opt_references(conf_name: str, text: str) -> str:
     def expand(m: 'Match[str]') -> str:
         ref = m.group(1)
         if '<' not in ref and '.' not in ref:
-            full_ref = conf_name + ref
-            return f':opt:`{ref} <{full_ref}>`'
+            # full ref
+            return f':opt:`{ref} <{conf_name}{ref}>`'
         return str(m.group())
 
     return re.sub(r':opt:`(.+?)`', expand, text)
@@ -214,7 +214,7 @@ class Option:
         if not self.documented:
             return ans
         mopts = [self] + option_group
-        a('.. opt:: ' + ', '.join(conf_name + '.' + mo.name for mo in mopts))
+        a('.. opt:: ' + ', '.join(f'{conf_name}.{mo.name}' for mo in mopts))
         a('.. code-block:: conf')
         a('')
         sz = max(len(x.name) for x in mopts)
@@ -330,7 +330,7 @@ class Mapping:
             raise ValueError(f'The shortcut for {self.name} has no short_text')
         sc_text = f'{conf_name}.{self.short_text}'
         shortcut_slugs[f'{conf_name}.{self.name}'] = (sc_text, self.key_text.replace('kitty_mod', kitty_mod))
-        a('.. shortcut:: ' + sc_text)
+        a(f'.. shortcut:: {sc_text}')
         block_started = False
         for sc in [self] + action_group:
             if sc.add_to_default and sc.documented:
@@ -534,7 +534,7 @@ class Group:
                     ans[i] = ' '.join(parts)
 
             if commented:
-                ans = [x if x.startswith('#') or not x.strip() else ('# ' + x) for x in ans]
+                ans = [x if x.startswith('#') or not x.strip() else (f'# {x}') for x in ans]
 
         return ans
 

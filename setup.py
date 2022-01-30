@@ -710,7 +710,7 @@ def compile_c_extension(
     def on_success() -> None:
         os.rename(dest, real_dest)
 
-    compilation_database.add_command(desc, cmd, partial(newer, real_dest, *objects), on_success=on_success, key=CompileKey('', module + '.so'))
+    compilation_database.add_command(desc, cmd, partial(newer, real_dest, *objects), on_success=on_success, key=CompileKey('', f'{module}.so'))
 
 
 def find_c_files() -> Tuple[List[str], List[str]]:
@@ -1112,7 +1112,7 @@ def create_macos_app_icon(where: str = 'Resources') -> None:
             'iconutil', '-c', 'icns', iconset_dir, '-o', icns_dir
         ])
     except FileNotFoundError:
-        print(error('iconutil not found') + ', using png2icns (without retina support) to convert the logo', file=sys.stderr)
+        print(f'{error("iconutil not found")}, using png2icns (without retina support) to convert the logo', file=sys.stderr)
         subprocess.check_call([
             'png2icns', icns_dir
         ] + [os.path.join(iconset_dir, logo) for logo in [

@@ -347,7 +347,7 @@ class DiffHandler(Handler):
                 text = line.text
                 if line.image_data is not None:
                     image_involved = True
-            self.write('\r\x1b[K' + text + '\x1b[0m')
+            self.write(f'\r\x1b[K{text}\x1b[0m')
             if self.current_search is not None:
                 self.current_search.highlight_line(self.write, lpos)
             if i < num - 1:
@@ -465,7 +465,7 @@ class DiffHandler(Handler):
                 )
             else:
                 counts = styled(f'{len(self.current_search)} matches', fg=self.opts.margin_fg)
-            suffix = counts + '  ' + scroll_frac
+            suffix = f'{counts}  {scroll_frac}'
             prefix = styled(':', fg=self.opts.margin_fg)
             filler = self.screen_size.cols - wcswidth(prefix) - wcswidth(suffix)
             text = '{}{}{}'.format(prefix, ' ' * filler, suffix)

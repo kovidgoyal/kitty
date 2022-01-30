@@ -331,7 +331,7 @@ class Dircolors:
                 # change .xyz to *.xyz
                 yield '*' + pair[0], pair[1]
 
-        return ':'.join('%s=%s' % pair for pair in gen_pairs())
+        return ':'.join('{}={}'.format(*pair) for pair in gen_pairs())
 
     def _format_code(self, text: str, code: str) -> str:
         val = self.codes.get(code)

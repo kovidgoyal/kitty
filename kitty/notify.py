@@ -113,7 +113,7 @@ def parse_osc_99(raw: str) -> NotificationCommand:
             elif k == 'd':
                 cmd.done = v != '0'
             elif k == 'a':
-                cmd.actions += ',' + v
+                cmd.actions += f',{v}'
     if payload_type not in ('body', 'title'):
         log_error(f'Malformed OSC 99: unknown payload type: {payload_type}')
         return NotificationCommand()
@@ -139,7 +139,7 @@ def limit_size(x: str) -> str:
 def merge_osc_99(prev: NotificationCommand, cmd: NotificationCommand) -> NotificationCommand:
     if prev.done or prev.identifier != cmd.identifier:
         return cmd
-    cmd.actions = limit_size(prev.actions + ',' + cmd.actions)
+    cmd.actions = limit_size(f'{prev.actions},{cmd.actions}')
     cmd.title = limit_size(prev.title + cmd.title)
     cmd.body = limit_size(prev.body + cmd.body)
     return cmd
@@ -198,7 +198,7 @@ def notify_with_command(cmd: NotificationCommand, window_id: int, notify_impleme
     title = cmd.title or cmd.body
     body = cmd.body if cmd.title else ''
     if title:
-        identifier = 'i' + str(next(id_counter))
+        identifier = f'i{next(id_counter)}'
         notify_implementation(title, body, identifier)
         register_identifier(identifier, cmd, window_id)
 

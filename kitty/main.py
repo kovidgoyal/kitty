@@ -44,7 +44,7 @@ def set_custom_ibeam_cursor() -> None:
         data = f.read()
     rgba_data, width, height = load_png_data(data)
     c2x = os.path.splitext(beam_cursor_data_file)
-    with open(c2x[0] + '@2x' + c2x[1], 'rb') as f:
+    with open(f'{c2x[0]}@2x{c2x[1]}', 'rb') as f:
         data = f.read()
     rgba_data2, width2, height2 = load_png_data(data)
     images = (rgba_data, width, height), (rgba_data2, width2, height2)
@@ -138,7 +138,7 @@ def get_macos_shortcut_for(
 def set_x11_window_icon() -> None:
     # max icon size on X11 64bits is 128x128
     path, ext = os.path.splitext(logo_png_file)
-    set_default_window_icon(path + '-128' + ext)
+    set_default_window_icon(f'{path}-128{ext}')
 
 
 def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
@@ -220,7 +220,7 @@ def ensure_macos_locale() -> None:
                     lang = 'en_US'
                 else:
                     log_error(f'Could not set LANG Cocoa returns language as: {lang}')
-            os.environ['LANG'] = lang + '.UTF-8'
+            os.environ['LANG'] = f'{lang}.UTF-8'
 
 
 @contextmanager

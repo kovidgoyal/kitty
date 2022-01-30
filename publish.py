@@ -40,7 +40,7 @@ def echo_cmd(cmd: Iterable[str]) -> None:
     isatty = sys.stdout.isatty()
     end = '\n'
     if isatty:
-        end = '\x1b[m' + end
+        end = f'\x1b[m{end}'
         print('\x1b[92m', end='')
     print(shlex.join(cmd), end=end, flush=True)
 
@@ -146,11 +146,11 @@ def run_website(args: Any) -> None:
 
 
 def sign_file(path: str) -> None:
-    dest = path + '.sig'
+    dest = f'{path}.sig'
     with suppress(FileNotFoundError):
         os.remove(dest)
     subprocess.check_call([
-        os.environ['PENV'] + '/gpg-as-kovid', '--output', path + '.sig',
+        os.environ['PENV'] + '/gpg-as-kovid', '--output', f'{path}.sig',
         '--detach-sig', path
     ])
 
@@ -159,7 +159,7 @@ def run_sdist(args: Any) -> None:
     with tempfile.TemporaryDirectory() as tdir:
         base = os.path.join(tdir, f'kitty-{version}')
         os.mkdir(base)
-        subprocess.check_call('git archive HEAD | tar -x -C ' + base, shell=True)
+        subprocess.check_call(f'git archive HEAD | tar -x -C {base}', shell=True)
         dest = os.path.join(base, 'docs', '_build')
         os.mkdir(dest)
         for x in 'html man'.split():
@@ -167,9 +167,9 @@ def run_sdist(args: Any) -> None:
         dest = os.path.abspath(os.path.join('build', f'kitty-{version}.tar'))
         subprocess.check_call(['tar', '-cf', dest, os.path.basename(base)], cwd=tdir)
         with suppress(FileNotFoundError):
-            os.remove(dest + '.xz')
+            os.remove(f'{dest}.xz')
         subprocess.check_call(['xz', '-9', dest])
-        sign_file(dest + '.xz')
+        sign_file(f'{dest}.xz')
 
 
 class ReadFileWithProgressReporting(io.FileIO):  # {{{
@@ -231,7 +231,7 @@ class Base:  # {{{
 
 class GitHub(Base):  # {{{
 
-    API = 'https://api.github.com/'
+    API = 'https://api.github.com'
 
     def __init__(
         self,
@@ -244,12 +244,12 @@ class GitHub(Base):  # {{{
     ):
         self.files, self.reponame, self.version, self.username, self.password, self.replace = (
             files, reponame, version, username, password, replace)
-        self.current_tag_name = self.version if self.version == 'nightly' else ('v' + self.version)
+        self.current_tag_name = self.version if self.version == 'nightly' else f'v{self.version}'
         self.is_nightly = self.current_tag_name == 'nightly'
         self.requests = s = requests.Session()
         s.auth = (self.username, self.password)
         s.headers.update({'Accept': 'application/vnd.github.v3+json'})
-        self.url_base = f'{self.API}repos/{self.username}/{self.reponame}/releases/'
+        self.url_base = f'{self.API}/repos/{self.username}/{self.reponame}/releases'
 
     def patch(self, url: str, fail_msg: str, **data: Any) -> None:
         rdata = json.dumps(data)
@@ -262,7 +262,7 @@ class GitHub(Base):  # {{{
             self.fail(r, fail_msg)
 
     def update_nightly_description(self, release_id: int) -> None:
-        url = self.url_base + str(release_id)
+        url = f'{self.url_base}/{release_id}'
         now = str(datetime.datetime.utcnow()).split('.')[0] + ' UTC'
         with open('.git/refs/heads/master') as f:
             commit = f.read().strip()
@@ -276,7 +276,7 @@ class GitHub(Base):  # {{{
         # self.clean_older_releases(releases)
         release = self.create_release()
         upload_url = release['upload_url'].partition('{')[0]
-        asset_url = self.url_base + 'assets/{}'
+        asset_url = f'{self.url_base}/assets/{{}}'
         existing_assets = self.existing_assets(release['id'])
         if self.is_nightly:
             for fname in existing_assets:
@@ -308,7 +308,7 @@ class GitHub(Base):  # {{{
                 self.info(f'\nDeleting old released installers from: {release["tag_name"]}')
                 for asset in release['assets']:
                     r = self.requests.delete(
-                        f'{self.API}repos/{self.username}/{self.reponame}/releases/assets/{asset["id"]}')
+                        f'{self.url_base}/assets/{asset["id"]}')
                     if r.status_code != 204:
                         self.fail(r, f'Failed to delete obsolete asset: {asset["name"]} for release: {release["tag_name"]}')
 
@@ -336,7 +336,7 @@ class GitHub(Base):  # {{{
         return bool(error_code == 'already_exists')
 
     def existing_assets(self, release_id: str) -> Dict[str, str]:
-        url = f'{self.API}repos/{self.username}/{self.reponame}/releases/{release_id}/assets'
+        url = f'{self.url_base}/{release_id}/assets'
         r = self.requests.get(url)
         if r.status_code != 200:
             self.fail(r, 'Failed to get assets for release')
@@ -345,15 +345,14 @@ class GitHub(Base):  # {{{
     def create_release(self) -> Dict[str, Any]:
         ' Create a release on GitHub or if it already exists, return the existing release '
         # Check for existing release
-        url = f'{self.API}repos/{self.username}/{self.reponame}/releases/tags/{self.current_tag_name}'
+        url = f'{self.url_base}/tags/{self.current_tag_name}'
         r = self.requests.get(url)
         if r.status_code == 200:
             return dict(r.json())
         if self.is_nightly:
             raise SystemExit('No existing nightly release found on GitHub')
-        url = f'{self.API}repos/{self.username}/{self.reponame}/releases'
         r = self.requests.post(
-            url,
+            self.url_base,
             data=json.dumps({
                 'tag_name': self.current_tag_name,
                 'target_commitish': 'master',
@@ -394,7 +393,7 @@ def files_for_upload() -> Dict[str, str]:
     files[f'build/kitty-{version}.tar.xz.sig'] = 'Source code GPG signature'
     for path, desc in signatures.items():
         sign_file(path)
-        files[path + '.sig'] = desc
+        files[f'{path}.sig'] = desc
     for f in files:
         if not os.path.exists(f):
             raise SystemExit(f'The release artifact {f} does not exist')
@@ -460,7 +459,7 @@ def exec_actions(actions: Iterable[str], args: Any) -> None:
     for action in actions:
         print('Running', action)
         cwd = os.getcwd()
-        globals()['run_' + action](args)
+        globals()[f'run_{action}'](args)
         os.chdir(cwd)
 
 

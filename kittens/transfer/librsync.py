@@ -155,12 +155,12 @@ def develop() -> None:
     import sys
     src = sys.argv[-1]
     sig_loader = LoadSignature()
-    with open(src + '.sig', 'wb') as f:
+    with open(f'{src}.sig', 'wb') as f:
         for chunk in signature_of_file(src):
             sig_loader.add_chunk(chunk)
             f.write(chunk)
     sig_loader.commit()
-    with open(src + '.delta', 'wb') as f, PatchFile(src, src + '.output') as patcher:
+    with open(f'{src}.delta', 'wb') as f, PatchFile(src, f'{src}.output') as patcher:
         for chunk in delta_for_file(src, sig_loader.signature):
             f.write(chunk)
             patcher.write(chunk)

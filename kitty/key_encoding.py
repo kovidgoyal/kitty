@@ -181,7 +181,7 @@ class EventType(IntEnum):
 @lru_cache(maxsize=128)
 def parse_shortcut(spec: str) -> ParsedShortcut:
     if spec.endswith('+'):
-        spec = spec[:-1] + 'plus'
+        spec = f'{spec[:-1]}plus'
     parts = spec.split('+')
     key_name = parts[-1]
     key_name = functional_key_name_aliases.get(key_name.upper(), key_name)

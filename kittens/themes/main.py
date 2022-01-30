@@ -37,7 +37,7 @@ def limit_length(text: str, limit: int = 32) -> str:
     x = truncate_point_for_length(text, limit - 1)
     if x >= len(text):
         return text
-    return text[:x] + '…'
+    return f'{text[:x]}…'
 
 
 class State(Enum):
@@ -332,7 +332,7 @@ class ThemesHandler(Handler):
         for line, width, is_current in self.themes_list.lines(num_rows):
             num_rows -= 1
             if is_current:
-                line = line.replace(MARK_AFTER, '\033[' + color_code('green') + 'm')
+                line = line.replace(MARK_AFTER, f'\033[{color_code("green")}m')
             self.cmd.styled('>' if is_current else ' ', fg='green')
             self.cmd.styled(line, bold=is_current, fg='green' if is_current else None)
             self.cmd.move_cursor_by(mw - width, 'right')

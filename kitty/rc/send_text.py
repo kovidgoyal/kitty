@@ -107,20 +107,20 @@ Do not send text to the active window, even if it is one of the matched windows.
                         if '\x04' in decoded_data:
                             decoded_data = decoded_data[:decoded_data.index('\x04')]
                             keep_going = False
-                        ret['data'] = 'text:' + decoded_data
+                        ret['data'] = f'text:{decoded_data}'
                         yield ret
             else:
                 while True:
                     data = sys.stdin.buffer.read(limit)
                     if not data:
                         break
-                    ret['data'] = 'base64:' + base64.standard_b64encode(data).decode('ascii')
+                    ret['data'] = f'base64:{base64.standard_b64encode(data).decode("ascii")}'
                     yield ret
 
         def chunks(text: str) -> CmdGenerator:
             data = parse_send_text_bytes(text).decode('utf-8')
             while data:
-                ret['data'] = 'text:' + data[:limit]
+                ret['data'] = f'text:{data[:limit]}'
                 yield ret
                 data = data[limit:]
 
@@ -130,7 +130,7 @@ Do not send text to the active window, even if it is one of the matched windows.
                     data = f.read(limit)
                     if not data:
                         break
-                    ret['data'] = 'base64:' + base64.standard_b64encode(data).decode('ascii')
+                    ret['data'] = f'base64:{base64.standard_b64encode(data).decode("ascii")}'
                     yield ret
 
         sources = []

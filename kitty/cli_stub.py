@@ -82,7 +82,7 @@ def generate_stub() -> None:
     for cmd_name in all_command_names():
         cmd = command_for_name(cmd_name)
         if cmd.options_spec:
-            do(cmd.options_spec, cmd.__class__.__name__ + 'RCOptions')
+            do(cmd.options_spec, f'{cmd.__class__.__name__}RCOptions')
 
     save_type_stub(text, __file__)
 

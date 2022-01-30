@@ -58,7 +58,7 @@ def guess_type(path: str, allow_filesystem_access: bool = False) -> Optional[str
         ext = path.rpartition('.')[-1].lower()
         mt = known_extensions.get(ext)
     if mt in text_mimes:
-        mt = 'text/' + mt.split('/', 1)[-1]
+        mt = f'text/{mt.split("/", 1)[-1]}'
     if not mt and is_rc_file(path):
         mt = 'text/plain'
     if not mt and is_folder(path):

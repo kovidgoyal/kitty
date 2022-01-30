@@ -244,14 +244,14 @@ class Differ:
             except Exception as e:
                 return f'Running git diff for {left_path} vs. {right_path} generated an exception: {e}'
             if not ok:
-                return output + f'\nRunning git diff for {left_path} vs. {right_path} failed'
+                return f'{output}\nRunning git diff for {left_path} vs. {right_path} failed'
             left_lines = lines_for_path(left_path)
             right_lines = lines_for_path(right_path)
             try:
                 patch = parse_patch(output)
             except Exception:
                 import traceback
-                return traceback.format_exc() + f'\nParsing diff for {left_path} vs. {right_path} failed'
+                return f'{traceback.format_exc()}\nParsing diff for {left_path} vs. {right_path} failed'
             else:
                 ans[key] = patch
         return ans

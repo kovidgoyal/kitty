@@ -245,7 +245,7 @@ def main(args: List[str] = sys.argv) -> None:
             raise SystemExit(f'Unknown queries: {", ".join(extra)}')
 
     for key, val in do_queries(queries, cli_opts).items():
-        print(key + ':', val)
+        print(f'{key}:', val)
 
 
 if __name__ == '__main__':

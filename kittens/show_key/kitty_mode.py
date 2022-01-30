@@ -52,7 +52,7 @@ class KeysHandler(Handler):
         self.cmd.colored(etype + ' ', 'yellow')
         self.cmd.styled(key_event.text, italic=True)
         self.print()
-        rep = 'CSI ' + encode_key_event(key_event)[2:]
+        rep = f'CSI {encode_key_event(key_event)[2:]}'
         rep = rep.replace(';', ' ; ').replace(':', ' : ')[:-1] + ' ' + rep[-1]
         self.cmd.styled(rep, fg='magenta')
         if (key_event.shifted_key or key_event.alternate_key):
