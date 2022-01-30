@@ -128,33 +128,42 @@ The Splits Layout
 
 This is the most flexible layout. You can create any arrangement of windows
 by splitting exiting windows repeatedly. To best use this layout you should
-define a few extra keybindings in :file:`kitty.conf`::
+define a few extra key bindings in :file:`kitty.conf`::
 
+    # Create a new window splitting the space used by the existing one so that
+    # the two windows are placed one above the other
     map F5 launch --location=hsplit
+
+    # Create a new window splitting the space used by the existing one so that
+    # the two windows are placed side by side
     map F6 launch --location=vsplit
+
+    # Rotate the current split, chaging its split axis from vertical to
+    # horizontal or vice versa
     map F7 layout_action rotate
 
+    # Move the active window in the indicated direction
     map shift+up move_window up
     map shift+left move_window left
     map shift+right move_window right
     map shift+down move_window down
 
+    # Switch focus to the neighboring window in the indicated direction
     map ctrl+left neighboring_window left
     map ctrl+right neighboring_window right
     map ctrl+up neighboring_window up
     map ctrl+down neighboring_window down
 
-Now you can create horizontal and vertical splits by using :kbd:`F5` and
-:kbd:`F6`. You can move them around using :kbd:`shift+arrow` keys
-and you can move focus to neighboring windows using :kbd:`ctrl+arrow` keys.
-You can switch an existing split from horizontal to vertical and vice versa
-using :kbd:`F7`. Finally, windows can be resized using :ref:`window_resizing`.
-
-Note that you can swap the windows in a split using the ``rotate`` action with
-an argument of ``180`` and rotate and swap with an argument of ``270``.
+Windows can be resized using :ref:`window_resizing`.  You can swap the windows
+in a split using the ``rotate`` action with an argument of ``180`` and rotate
+and swap with an argument of ``270``.
 
 This layout takes one option, ``split_axis`` that controls whether new windows
-are placed into vertical or horizontal splits, by default::
+are placed into vertical or horizontal splits when a ``--location`` is not
+specified. A value of ``horizontal`` (same as ``--location=vsplit``)
+means when a new split is created the two windows will be placed side by side
+and a value of ``vertical`` (same as ``--location=hsplit``) means the two
+windows will be placed one on top of the other. By default::
 
     enabled_layouts splits:split_axis=horizontal
 
