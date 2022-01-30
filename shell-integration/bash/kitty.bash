@@ -6,7 +6,7 @@ if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then builtin return; fi
 # this is defined outside _ksi_main to make it global without using declare -g
 # which is not available on older bash
 builtin declare -A _ksi_prompt
-_ksi_prompt=( [cursor]='y' [title]='y' [mark]='y' [complete]='y' [ps0]='' [ps1]='' [ps2]='' )
+_ksi_prompt=( [cursor]='y' [title]='y' [mark]='y' [complete]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]='' )
 
 _ksi_main() {
     for i in ${KITTY_SHELL_INTEGRATION[@]}; do
@@ -33,6 +33,8 @@ _ksi_main() {
     _ksi_set_mark end
     _ksi_set_mark start_secondary
     _ksi_set_mark end_secondary
+    _ksi_set_mark start_suffix
+    _ksi_set_mark end_suffix
     builtin unset -f _ksi_set_mark
     _ksi_prompt[secondary_prompt]="\n${_ksi_prompt[start_secondary_mark]}\[\e]133;A;k=s\a\]${_ksi_prompt[end_secondary_mark]}"
 
@@ -42,6 +44,10 @@ _ksi_main() {
         if [[ -n "${_ksi_prompt[ps0]}" ]]; then
             PS0=${PS0//\\\[\\e\]133;k;start_kitty\\a\\\]*end_kitty\\a\\\]}
             PS0="${_ksi_prompt[ps0]}$PS0"
+        fi
+        if [[ -n "${_ksi_prompt[ps0_suffix]}" ]]; then
+            PS0=${PS0//\\\[\\e\]133;k;start_suffix_kitty\\a\\\]*end_suffix_kitty\\a\\\]}
+            PS0="${PS0}${_ksi_prompt[ps0_suffix]}"
         fi
         if [[ -n "${_ksi_prompt[ps1]}" ]]; then
             PS1=${PS1//\\\[\\e\]133;k;start_kitty\\a\\\]*end_kitty\\a\\\]}
@@ -53,6 +59,10 @@ _ksi_main() {
                 PS1=${PS1//"\n"/${_ksi_prompt[secondary_prompt]}}
             fi
         fi
+        if [[ -n "${_ksi_prompt[ps1_suffix]}" ]]; then
+            PS1=${PS1//\\\[\\e\]133;k;start_suffix_kitty\\a\\\]*end_suffix_kitty\\a\\\]}
+            PS1="${PS1}${_ksi_prompt[ps1_suffix]}"
+        fi
         if [[ -n "${_ksi_prompt[ps2]}" ]]; then
             PS2=${PS2//\\\[\\e\]133;k;start_kitty\\a\\\]*end_kitty\\a\\\]}
             PS2="${_ksi_prompt[ps2]}$PS2"
@@ -60,13 +70,14 @@ _ksi_main() {
     }
 
     if [[ "${_ksi_prompt[cursor]}" == "y" ]]; then 
-        _ksi_prompt[ps1]+="\[\e[5 q\]"  # blinking bar cursor
-        _ksi_prompt[ps0]+="\[\e[0 q\]"  # blinking default cursor
+        _ksi_prompt[ps1_suffix]+="\[\e[5 q\]"  # blinking bar cursor
+        _ksi_prompt[ps0_suffix]+="\[\e[0 q\]"  # blinking default cursor
     fi
 
     if [[ "${_ksi_prompt[title]}" == "y" ]]; then 
         # see https://www.gnu.org/software/bash/manual/html_node/Controlling-the-Prompt.html#Controlling-the-Prompt
-        _ksi_prompt[ps1]+="\[\e]2;\w\a\]"
+        # we use suffix here because some distros add title setting to their bashrc files by default
+        _ksi_prompt[ps1_suffix]+="\[\e]2;\w\a\]"
         if [[ "$HISTCONTROL" == *"ignoreboth"* ]] || [[ "$HISTCONTROL" == *"ignorespace"* ]]; then
             _ksi_debug_print "ignoreboth or ignorespace present in bash HISTCONTROL setting, showing running command in window title will not be robust"
         fi
@@ -76,7 +87,7 @@ _ksi_main() {
             last_cmd="${last_cmd#"${last_cmd%%[![:space:]]*}"}"  # remove remaining leading whitespace
             builtin printf "\e]2;%s\a" "${last_cmd}"
         }
-        _ksi_prompt[ps0]+='$(_ksi_get_current_command)'
+        _ksi_prompt[ps0_suffix]+='$(_ksi_get_current_command)'
     fi
 
     if [[ "${_ksi_prompt[mark]}" == "y" ]]; then 
@@ -104,14 +115,22 @@ _ksi_main() {
     if [[ -n "${_ksi_prompt[ps0]}" ]]; then 
         _ksi_prompt[ps0]="${_ksi_prompt[start_mark]}${_ksi_prompt[ps0]}${_ksi_prompt[end_mark]}"
     fi
+    if [[ -n "${_ksi_prompt[ps0_suffix]}" ]]; then 
+        _ksi_prompt[ps0_suffix]="${_ksi_prompt[start_suffix_mark]}${_ksi_prompt[ps0_suffix]}${_ksi_prompt[end_suffix_mark]}"
+    fi
     if [[ -n "${_ksi_prompt[ps1]}" ]]; then 
         _ksi_prompt[ps1]="${_ksi_prompt[start_mark]}${_ksi_prompt[ps1]}${_ksi_prompt[end_mark]}"
+    fi
+    if [[ -n "${_ksi_prompt[ps1_suffix]}" ]]; then 
+        _ksi_prompt[ps1_suffix]="${_ksi_prompt[start_suffix_mark]}${_ksi_prompt[ps1_suffix]}${_ksi_prompt[end_suffix_mark]}"
     fi
     if [[ -n "${_ksi_prompt[ps2]}" ]]; then 
         _ksi_prompt[ps2]="${_ksi_prompt[start_mark]}${_ksi_prompt[ps2]}${_ksi_prompt[end_mark]}"
     fi
     builtin unset _ksi_prompt[start_mark]
     builtin unset _ksi_prompt[end_mark]
+    builtin unset _ksi_prompt[start_suffix_mark]
+    builtin unset _ksi_prompt[end_suffix_mark]
     builtin unset _ksi_prompt[start_secondary_mark]
     builtin unset _ksi_prompt[end_secondary_mark]
 
