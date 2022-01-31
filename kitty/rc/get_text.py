@@ -22,6 +22,7 @@ class GetText(RemoteCommand):
     ansi: Boolean, if True send ANSI formatting codes
     cursor: Boolean, if True send cursor position/style as ANSI codes
     wrap_markers: Boolean, if True add wrap markers to output
+    clear_selection: Boolean, if True clear the selection in the matched window
     self: Boolean, if True use window command was run in
     '''
 
@@ -60,6 +61,10 @@ screen edges).
 --self
 type=bool-set
 If specified get text from the window this command is run in, rather than the active window.
+
+
+--clear-selection
+Clear the selection in the matched window, if any
 '''
     argspec = ''
 
@@ -71,6 +76,7 @@ If specified get text from the window this command is run in, rather than the ac
             'self': opts.self,
             'cursor': opts.add_cursor,
             'wrap_markers': opts.add_wrap_markers,
+            'clear_selection': opts.clear_selection,
         }
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
@@ -103,6 +109,8 @@ If specified get text from the window this command is run in, rather than the ac
                 add_cursor=bool(payload_get('cursor')),
                 add_wrap_markers=bool(payload_get('wrap_markers')),
             )
+        if payload_get('clear_selection'):
+            window.clear_selection()
         return ans
 
 
