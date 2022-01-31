@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class GetText(RemoteCommand):
 
     '''
-    match: The tab to focus
+    match: The window to get text from
     extent: One of :code:`screen`, :code:`first_cmd_output_on_screen`, :code:`last_cmd_output`, \
             :code:`last_visited_cmd_output`, :code:`all`, or :code:`selection`
     ansi: Boolean, if True send ANSI formatting codes
