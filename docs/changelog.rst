@@ -107,6 +107,8 @@ Detailed list of changes
   rather than a plane. This means the first and last window are considered
   neighbors (:iss:`4494`)
 
+- A new action to clear the current selection (:iss:`4600`)
+
 - Shell integration: fish: Fix cursor shape not working with fish's vi mode
   (:iss:`4508`)
 

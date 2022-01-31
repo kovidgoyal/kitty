@@ -1178,6 +1178,10 @@ class Window:
             else:
                 open_url(text, cwd=cwd)
 
+    @ac('cp', 'Clear the current selection')
+    def clear_selection(self) -> None:
+        self.screen.clear_selection()
+
     @ac('sc', 'Scroll up by one line')
     def scroll_line_up(self) -> None:
         if self.screen.is_main_linebuf():
