@@ -1273,7 +1273,18 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         'action',
         nargs='?',
         default=Options.action,
-        choices='build test linux-package kitty.app linux-freeze macos-freeze build-launcher build-frozen-launcher clean export-ci-bundles build-dep'.split(),
+        choices=('build',
+                 'test',
+                 'linux-package',
+                 'kitty.app',
+                 'linux-freeze',
+                 'macos-freeze',
+                 'build-launcher',
+                 'build-frozen-launcher',
+                 'clean',
+                 'export-ci-bundles',
+                 'build-dep',
+                 ),
         help='Action to perform (default is build)'
     )
     p.add_argument(
