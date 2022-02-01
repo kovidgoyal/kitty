@@ -187,9 +187,9 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
     template = draw_data.title_template
     if tab.is_active and draw_data.active_title_template is not None:
         template = draw_data.active_title_template
-    if '{activity_symbol' not in template:
+    if eval_locals['activity_symbol'] and 'activity_symbol' not in template:
         template = '{fmt.fg.red}{activity_symbol}{fmt.fg.default}' + template
-    if '{bell_symbol' not in template:
+    if eval_locals['bell_symbol'] and 'bell_symbol' not in template:
         template = '{fmt.fg.red}{bell_symbol}{fmt.fg.default}' + template
     try:
         title = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
