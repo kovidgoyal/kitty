@@ -29,12 +29,17 @@ class WindowSizeData(NamedTuple):
     window_padding_width: FloatEdges
 
 
+def sanitize_window_size(x: Any) -> int:
+    ans = int(x)
+    return max(20, min(ans, 100000))
+
+
 def initial_window_size_func(opts: WindowSizeData, cached_values: Dict[str, Any]) -> Callable[[int, int, float, float, float, float], Tuple[int, int]]:
 
     if 'window-size' in cached_values and opts.remember_window_size:
         ws = cached_values['window-size']
         try:
-            w, h = map(int, ws)
+            w, h = map(sanitize_window_size, ws)
 
             def initial_window_size(*a: Any) -> Tuple[int, int]:
                 return w, h
