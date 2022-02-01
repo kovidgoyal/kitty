@@ -465,7 +465,7 @@ class Options:
     background_opacity: float = 1.0
     background_tint: float = 0
     bell_border_color: Color = Color(255, 90, 0)
-    bell_on_tab: bool = True
+    bell_on_tab: str = '🔔 '
     bell_path: typing.Optional[str] = None
     bold_font: str = 'auto'
     bold_italic_font: str = 'auto'
@@ -552,7 +552,7 @@ class Options:
     startup_session: typing.Optional[str] = None
     strip_trailing_spaces: choices_for_strip_trailing_spaces = 'never'
     sync_to_monitor: bool = True
-    tab_activity_symbol: typing.Optional[str] = None
+    tab_activity_symbol: str = ''
     tab_bar_align: choices_for_tab_bar_align = 'left'
     tab_bar_background: typing.Optional[kitty.fast_data_types.Color] = None
     tab_bar_edge: int = 3
@@ -565,7 +565,7 @@ class Options:
     tab_powerline_style: choices_for_tab_powerline_style = 'angled'
     tab_separator: str = ' ┇'
     tab_switch_strategy: choices_for_tab_switch_strategy = 'previous'
-    tab_title_template: str = '{title}'
+    tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.default}{title}'
     term: str = 'xterm-kitty'
     touch_scroll_multiplier: float = 1.0
     update_check_interval: float = 24.0

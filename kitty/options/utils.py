@@ -639,10 +639,19 @@ def tab_fade(x: str) -> Tuple[float, ...]:
     return tuple(map(unit_float, x.split()))
 
 
-def tab_activity_symbol(x: str) -> Optional[str]:
+def tab_activity_symbol(x: str) -> str:
     if x == 'none':
-        return None
-    return tab_title_template(x) or None
+        return ''
+    return tab_title_template(x)
+
+
+def bell_on_tab(x: str) -> str:
+    xl = x.lower()
+    if xl in ('yes', 'y', 'true'):
+        return '🔔 '
+    if xl in ('no', 'n', 'false', 'none'):
+        return ''
+    return tab_title_template(x)
 
 
 def tab_title_template(x: str) -> str:

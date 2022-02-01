@@ -38,8 +38,7 @@ class DrawData(NamedTuple):
     leading_spaces: int
     sep: str
     trailing_spaces: int
-    bell_on_tab: bool
-    bell_fg: int
+    bell_on_tab: str
     alpha: Sequence[float]
     active_fg: Color
     active_bg: Color
@@ -48,7 +47,7 @@ class DrawData(NamedTuple):
     default_bg: Color
     title_template: str
     active_title_template: Optional[str]
-    tab_activity_symbol: Optional[str]
+    tab_activity_symbol: str
     powerline_style: PowerlineStyle
     tab_bar_edge: EdgeLiteral
 
@@ -182,28 +181,16 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
         'fmt': Formatter,
         'sup': SupSub(data),
         'sub': SupSub(data, True),
+        'bell_symbol': draw_data.bell_on_tab if tab.needs_attention else '',
+        'activity_symbol': draw_data.tab_activity_symbol if tab.has_activity_since_last_focus else '',
     }
-    if tab.needs_attention and draw_data.bell_on_tab:
-        fg = screen.cursor.fg
-        screen.cursor.fg = draw_data.bell_fg
-        screen.draw('🔔 ')
-        screen.cursor.fg = fg
-    if tab.has_activity_since_last_focus and draw_data.tab_activity_symbol:
-        template = draw_data.tab_activity_symbol
-        fg = screen.cursor.fg
-        screen.cursor.fg = draw_data.bell_fg
-        try:
-            text = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
-        except Exception as e:
-            report_template_failure(template, str(e))
-        else:
-            draw_attributed_string(text, screen)
-        if screen.cursor.fg == draw_data.bell_fg:
-            screen.cursor.fg = fg
-
     template = draw_data.title_template
     if tab.is_active and draw_data.active_title_template is not None:
         template = draw_data.active_title_template
+    if '{activity_symbol' not in template:
+        template = '{fmt.fg.red}{activity_symbol}{fmt.fg.default}' + template
+    if '{bell_symbol' not in template:
+        template = '{fmt.fg.red}{bell_symbol}{fmt.fg.default}' + template
     try:
         title = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
     except Exception as e:
@@ -445,9 +432,8 @@ class TabBar:
 
         self.active_bg = as_rgb(color_as_int(opts.active_tab_background))
         self.active_fg = as_rgb(color_as_int(opts.active_tab_foreground))
-        self.bell_fg = as_rgb(0xff0000)
         self.draw_data = DrawData(
-            self.leading_spaces, self.sep, self.trailing_spaces, opts.bell_on_tab, self.bell_fg,
+            self.leading_spaces, self.sep, self.trailing_spaces, opts.bell_on_tab,
             opts.tab_fade, opts.active_tab_foreground, opts.active_tab_background,
             opts.inactive_tab_foreground, opts.inactive_tab_background,
             opts.tab_bar_background or opts.background, opts.tab_title_template,
@@ -567,7 +553,7 @@ class TabBar:
             if s.cursor.x > s.columns - max_title_length and t is not last_tab:
                 s.cursor.x = s.columns - 2
                 s.cursor.bg = as_rgb(color_as_int(self.draw_data.default_bg))
-                s.cursor.fg = self.bell_fg
+                s.cursor.fg = as_rgb(0xff0000)
                 s.draw(' …')
                 break
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab

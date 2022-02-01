@@ -695,11 +695,17 @@ taskbar flash on linux.
 '''
     )
 
-opt('bell_on_tab', 'yes',
-    option_type='to_bool',
+opt('bell_on_tab', '"🔔 "',
+    option_type='bell_on_tab',
     long_text='''
-Show a bell symbol on the tab if a bell occurs in one of the windows in the tab
-and the window is not the currently focused window
+Some text or a unicode symbol to show on the tab if a window in the tab that
+does not have focus has a bell. If you want to use leading or trailing
+spaces surround the text with quotes. See :opt:`tab_title_template` for how
+this is rendered.
+
+For backwards compatibility, values of :code:`yes`, :code:`y`, :code:`true` are
+converted to the default bell symbol and :code:`no`, :code:`n`, :code:`false`,
+:code:`none` are converted to the empty string.
 '''
     )
 
@@ -1054,16 +1060,15 @@ opt('tab_activity_symbol', 'none',
     long_text='''
 Some text or a unicode symbol to show on the tab if a window in the tab that
 does not have focus has some activity. If you want to use leading or trailing spaces
-surround the text with quotes. You can also use text formatting via the same templating
-system as for :opt:`tab_title_template`.
+surround the text with quotes. See :opt:`tab_title_template` for how this is rendered.
 '''
     )
 
-opt('tab_title_template', '"{title}"',
+opt('tab_title_template', '"{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.default}{title}"',
     option_type='tab_title_template',
     long_text='''
-A template to render the tab title. The default just renders the title. If you
-wish to include the tab-index as well, use something like: :code:`{index}:
+A template to render the tab title. The default just renders the title with optional symbols for bell and activity.
+If you wish to include the tab-index as well, use something like: :code:`{index}:
 {title}`. Useful if you have shortcuts mapped for :code:`goto_tab N`. If you
 prefer to see the index as a superscript, use {sup.index}. In
 addition you can use :code:`{layout_name}` for the current layout name,
@@ -1077,6 +1082,8 @@ directives, for example:
 :code:`{fmt.fg.red}red{fmt.fg.default}normal{fmt.bg._00FF00}green
 bg{fmt.bg.tab}`. Similarly, for bold and italic:
 :code:`{fmt.bold}bold{fmt.nobold}normal{fmt.italic}italic{fmt.noitalic}`.
+Note that for backward compatibility, if :code:`{bell_symbol}` or :code:`{activity_symbol}`
+are not present in the template, they are prepended to it.
 '''
     )
 

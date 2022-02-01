@@ -92,8 +92,9 @@ Detailed list of changes
 
 - Improve the UI of the ask kitten (:iss:`4545`)
 
-- Allow using templates with text formatting for :opt:`tab_activity_symbol`
-  (:pull:`4507`)
+- Allow customizing the placement and formatting of the
+  :opt:`tab_activity_symbol` and :opt:`bell_on_tab` symbols
+  by adding them to the :opt:`tab_title_template` (:iss:`4581`, :pull:`4507`)
 
 - macOS: Persist "Secure Keyboard Entry" across restarts to match the behavior
   of Terminal.app (:iss:`4471`)

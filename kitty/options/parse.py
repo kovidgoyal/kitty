@@ -7,7 +7,7 @@ from kitty.conf.utils import (
 )
 from kitty.options.utils import (
     action_alias, active_tab_title_template, adjust_baseline, adjust_line_height, allow_hyperlinks,
-    allow_remote_control, box_drawing_scale, clear_all_mouse_actions, clear_all_shortcuts,
+    allow_remote_control, bell_on_tab, box_drawing_scale, clear_all_mouse_actions, clear_all_shortcuts,
     clipboard_control, config_or_absolute_path, copy_on_select, cursor_text_color,
     deprecated_hide_window_decorations_aliases, deprecated_macos_show_window_title_in_menubar_alias,
     deprecated_send_text, disable_ligatures, edge_width, env, font_features, hide_window_decorations,
@@ -83,7 +83,7 @@ class Parser:
         ans['bell_border_color'] = to_color(val)
 
     def bell_on_tab(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['bell_on_tab'] = to_bool(val)
+        ans['bell_on_tab'] = bell_on_tab(val)
 
     def bell_path(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['bell_path'] = config_or_absolute_path(val)
