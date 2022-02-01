@@ -199,11 +199,11 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
         template = draw_data.active_title_template
     prefix = ''
     if eval_locals['bell_symbol'] and not template_has_field(template, 'bell_symbol'):
-        prefix = '{fmt.fg.red}{bell_symbol}{fmt.fg.default}'
+        prefix = '{bell_symbol}'
     if eval_locals['activity_symbol'] and not template_has_field(template, 'activity_symbol'):
-        prefix += '{fmt.fg.red}{activity_symbol}{fmt.fg.default}'
+        prefix += '{activity_symbol}'
     if prefix:
-        template = prefix + template
+        template = '{fmt.fg.red}' + prefix + '{fmt.fg.default}' + template
     try:
         title = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
     except Exception as e:
