@@ -39,17 +39,16 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
     imports: Set[Tuple[str, str]] = set()
     tc_imports: Set[Tuple[str, str]] = set()
 
-    def type_name(x: type) -> str:
-        ans = x.__name__
-        if x.__module__ and x.__module__ != 'builtins':
-            imports.add((x.__module__, x.__name__))
-        return ans
-
     def option_type_as_str(x: Any) -> str:
-        if hasattr(x, '__name__'):
-            return type_name(x)
-        ans = repr(x)
-        ans = ans.replace('NoneType', 'None')
+        needs_import = False
+        if type(x) is type:
+            ans = x.__name__
+            needs_import = True
+        else:
+            ans = repr(x)
+            ans = ans.replace('NoneType', 'None')
+        if needs_import and getattr(x, '__module__', None) and x.__module__ not in ('builtins', 'typing'):
+            imports.add((x.__module__, x.__name__))
         return ans
 
     def option_type_data(option: Union[Option, MultiOption]) -> Tuple[Callable[[Any], Any], str]:
