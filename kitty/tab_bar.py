@@ -3,6 +3,7 @@
 
 import os
 from functools import lru_cache, partial, wraps
+from string import Formatter as StringFormatter
 from typing import (
     Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
 )
@@ -162,6 +163,15 @@ def draw_attributed_string(title: str, screen: Screen) -> None:
         screen.draw(title)
 
 
+@lru_cache(maxsize=16)
+def template_has_field(template: str, field: str) -> bool:
+    q = StringFormatter()
+    for (literal_text, field_name, format_spec, conversion) in q.parse(template):
+        if field_name and field in field_name.split():
+            return True
+    return False
+
+
 def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
     data = {
         'index': index,
@@ -187,10 +197,13 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
     template = draw_data.title_template
     if tab.is_active and draw_data.active_title_template is not None:
         template = draw_data.active_title_template
-    if '{activity_symbol' not in template:
-        template = '{fmt.fg.red}{activity_symbol}{fmt.fg.default}' + template
-    if '{bell_symbol' not in template:
-        template = '{fmt.fg.red}{bell_symbol}{fmt.fg.default}' + template
+    prefix = ''
+    if eval_locals['bell_symbol'] and not template_has_field(template, 'bell_symbol'):
+        prefix = '{fmt.fg.red}{bell_symbol}{fmt.fg.default}'
+    if eval_locals['activity_symbol'] and not template_has_field(template, 'activity_symbol'):
+        prefix += '{fmt.fg.red}{activity_symbol}{fmt.fg.default}'
+    if prefix:
+        template = prefix + template
     try:
         title = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
     except Exception as e:
