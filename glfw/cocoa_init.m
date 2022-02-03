@@ -563,6 +563,7 @@ is_shiftable_shortcut(int scv) {
 
 static void
 build_global_shortcuts_lookup(void) {
+    // dump these in a terminal with: defaults read com.apple.symbolichotkeys
     NSMutableDictionary<NSString*, NSNumber*> *temp = [NSMutableDictionary dictionaryWithCapacity:128];  // will be autoreleased
     NSDictionary *apple_settings = [[NSUserDefaults standardUserDefaults] persistentDomainForName:@"com.apple.symbolichotkeys"];
     if (apple_settings) {
