@@ -75,7 +75,7 @@ command.
 Detailed list of changes
 -------------------------------------
 
-0.24.2 [future]
+0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: Allow opening text files, images and directories with kitty when
