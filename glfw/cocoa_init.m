@@ -358,32 +358,49 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
         finish_launching_callback();
 }
 
-- (BOOL)application:(NSApplication *)theApplication openFile:(NSString *)filename {
-    (void)theApplication;
-    if (!filename || !_glfw.ns.file_open_callback) return NO;
-    const char *path = NULL;
+- (BOOL)application:(NSApplication *)sender openFile:(NSString *)filename {
+    (void)sender;
+    if (!filename || !_glfw.ns.url_open_callback) return NO;
+    const char *url = NULL;
     @try {
-        path = [[NSFileManager defaultManager] fileSystemRepresentationWithPath: filename];
+        url = [[[NSURL fileURLWithPath:filename] absoluteString] UTF8String];
     } @catch(NSException *exc) {
         NSLog(@"Converting openFile filename: %@ failed with error: %@", filename, exc.reason);
         return NO;
     }
-    if (!path) return NO;
-    return _glfw.ns.file_open_callback(path);
+    if (!url) return NO;
+    return _glfw.ns.url_open_callback(url);
 }
 
 - (void)application:(NSApplication *)sender openFiles:(NSArray *)filenames {
     (void)sender;
-    if (!_glfw.ns.file_open_callback || !filenames) return;
+    if (!_glfw.ns.url_open_callback || !filenames) return;
     for (id x in filenames) {
         NSString *filename = x;
-        const char *path = NULL;
+        const char *url = NULL;
         @try {
-            path = [[NSFileManager defaultManager] fileSystemRepresentationWithPath: filename];
+            url = [[[NSURL fileURLWithPath:filename] absoluteString] UTF8String];
         } @catch(NSException *exc) {
             NSLog(@"Converting openFiles filename: %@ failed with error: %@", filename, exc.reason);
         }
-        if (path) _glfw.ns.file_open_callback(path);
+        if (url) _glfw.ns.url_open_callback(url);
+    }
+}
+
+// Remove openFile and openFiles when the minimum supported macOS version is 10.13
+- (void)application:(NSApplication *)sender openURLs:(NSArray<NSURL *> *)urls
+{
+    (void)sender;
+    if (!_glfw.ns.url_open_callback || !urls) return;
+    for (id x in urls) {
+        NSURL *ns_url = x;
+        const char *url = NULL;
+        @try {
+            url = [[ns_url absoluteString] UTF8String];
+        } @catch(NSException *exc) {
+            NSLog(@"Converting openURLs url: %@ failed with error: %@", ns_url, exc.reason);
+        }
+        if (url) _glfw.ns.url_open_callback(url);
     }
 }
 
@@ -391,7 +408,7 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
 {
     (void)notification;
     [NSApp stop:nil];
-    if (_glfw.ns.file_open_callback) _glfw.ns.file_open_callback(":cocoa::application launched::");
+    if (_glfw.ns.url_open_callback) _glfw.ns.url_open_callback(":cocoa::application launched::");
 
     CGDisplayRegisterReconfigurationCallback(display_reconfigured, NULL);
     _glfwCocoaPostEmptyEvent();

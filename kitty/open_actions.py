@@ -9,7 +9,7 @@ from contextlib import suppress
 from typing import (
     Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, cast
 )
-from urllib.parse import ParseResult, quote, unquote, urlparse
+from urllib.parse import ParseResult, unquote, urlparse
 
 from .conf.utils import KeyAction, to_cmdline_implementation
 from .constants import config_dir
@@ -254,8 +254,7 @@ def actions_for_url(url: str, actions_spec: Optional[str] = None) -> Iterator[Ke
     yield from actions_for_url_from_list(url, actions)
 
 
-def actions_for_launch(path: str) -> Iterator[KeyAction]:
-    url = f'file://{quote(path)}'
+def actions_for_launch(url: str) -> Iterator[KeyAction]:
     found = False
     for action in actions_for_url_from_list(url, load_launch_actions()):
         found = True

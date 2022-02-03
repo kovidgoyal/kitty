@@ -2642,10 +2642,10 @@ GLFWAPI GLFWcocoatextinputfilterfun glfwSetCocoaTextInputFilter(GLFWwindow *hand
     return previous;
 }
 
-GLFWAPI GLFWhandlefileopen glfwSetCocoaFileOpenCallback(GLFWhandlefileopen callback) {
+GLFWAPI GLFWhandleurlopen glfwSetCocoaURLOpenCallback(GLFWhandleurlopen callback) {
     _GLFW_REQUIRE_INIT_OR_RETURN(nil);
-    GLFWhandlefileopen prev = _glfw.ns.file_open_callback;
-    _glfw.ns.file_open_callback = callback;
+    GLFWhandleurlopen prev = _glfw.ns.url_open_callback;
+    _glfw.ns.url_open_callback = callback;
     return prev;
 }
 

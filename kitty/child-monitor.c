@@ -1001,18 +1001,18 @@ static bool cocoa_pending_actions[NUM_COCOA_PENDING_ACTIONS] = {0};
 static bool has_cocoa_pending_actions = false;
 typedef struct {
     char* wd;
-    char **open_files;
-    size_t open_files_count;
-    size_t open_files_capacity;
+    char **open_urls;
+    size_t open_urls_count;
+    size_t open_urls_capacity;
 } CocoaPendingActionsData;
 static CocoaPendingActionsData cocoa_pending_actions_data = {0};
 
 void
 set_cocoa_pending_action(CocoaPendingAction action, const char *wd) {
     if (wd) {
-        if (action == OPEN_FILE) {
-            ensure_space_for(&cocoa_pending_actions_data, open_files, char*, cocoa_pending_actions_data.open_files_count + 8, open_files_capacity, 8, true);
-            cocoa_pending_actions_data.open_files[cocoa_pending_actions_data.open_files_count++] = strdup(wd);
+        if (action == LAUNCH_URL) {
+            ensure_space_for(&cocoa_pending_actions_data, open_urls, char*, cocoa_pending_actions_data.open_urls_count + 8, open_urls_capacity, 8, true);
+            cocoa_pending_actions_data.open_urls[cocoa_pending_actions_data.open_urls_count++] = strdup(wd);
         } else {
             if (cocoa_pending_actions_data.wd) free(cocoa_pending_actions_data.wd);
             cocoa_pending_actions_data.wd = strdup(wd);
@@ -1047,15 +1047,15 @@ process_cocoa_pending_actions(void) {
         free(cocoa_pending_actions_data.wd);
         cocoa_pending_actions_data.wd = NULL;
     }
-    if (cocoa_pending_actions_data.open_files_count) {
-        for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.open_files_count; cpa++) {
-            if (cocoa_pending_actions_data.open_files[cpa]) {
-                call_boss(open_file, "s", cocoa_pending_actions_data.open_files[cpa]);
-                free(cocoa_pending_actions_data.open_files[cpa]);
-                cocoa_pending_actions_data.open_files[cpa] = NULL;
+    if (cocoa_pending_actions_data.open_urls_count) {
+        for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.open_urls_count; cpa++) {
+            if (cocoa_pending_actions_data.open_urls[cpa]) {
+                call_boss(launch_url, "s", cocoa_pending_actions_data.open_urls[cpa]);
+                free(cocoa_pending_actions_data.open_urls[cpa]);
+                cocoa_pending_actions_data.open_urls[cpa] = NULL;
             }
         }
-        cocoa_pending_actions_data.open_files_count = 0;
+        cocoa_pending_actions_data.open_urls_count = 0;
     }
     memset(cocoa_pending_actions, 0, sizeof(cocoa_pending_actions));
     has_cocoa_pending_actions = false;
@@ -1115,11 +1115,11 @@ main_loop(ChildMonitor *self, PyObject *a UNUSED) {
     run_main_loop(process_global_state, self);
 #ifdef __APPLE__
     if (cocoa_pending_actions_data.wd) { free(cocoa_pending_actions_data.wd); cocoa_pending_actions_data.wd = NULL; }
-    if (cocoa_pending_actions_data.open_files) {
-        for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.open_files_count; cpa++) {
-            if (cocoa_pending_actions_data.open_files[cpa]) free(cocoa_pending_actions_data.open_files[cpa]);
+    if (cocoa_pending_actions_data.open_urls) {
+        for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.open_urls_count; cpa++) {
+            if (cocoa_pending_actions_data.open_urls[cpa]) free(cocoa_pending_actions_data.open_urls[cpa]);
         }
-        free(cocoa_pending_actions_data.open_files); cocoa_pending_actions_data.open_files = NULL;
+        free(cocoa_pending_actions_data.open_urls); cocoa_pending_actions_data.open_urls = NULL;
     }
 #endif
     if (PyErr_Occurred()) return NULL;

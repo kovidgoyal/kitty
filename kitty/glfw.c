@@ -429,8 +429,8 @@ static void get_window_dpi(GLFWwindow *w, double *x, double *y);
 
 #ifdef __APPLE__
 static bool
-apple_file_open_callback(const char* filepath) {
-    set_cocoa_pending_action(OPEN_FILE, filepath);
+apple_url_open_callback(const char* url) {
+    set_cocoa_pending_action(LAUNCH_URL, url);
     return true;
 }
 
@@ -1003,7 +1003,7 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
     PyObject *ans = glfwInit(monotonic_start_time) ? Py_True: Py_False;
     if (ans == Py_True) {
 #ifdef __APPLE__
-        glfwSetCocoaFileOpenCallback(apple_file_open_callback);
+        glfwSetCocoaURLOpenCallback(apple_url_open_callback);
 #else
         glfwSetDrawTextFunction(draw_text_callback);
 #endif
