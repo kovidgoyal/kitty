@@ -1064,7 +1064,7 @@ surround the text with quotes. See :opt:`tab_title_template` for how this is ren
 '''
     )
 
-opt('tab_title_template', '"{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.default}{title}"',
+opt('tab_title_template', '"{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{title}"',
     option_type='tab_title_template',
     long_text='''
 A template to render the tab title. The default just renders the title with optional symbols for bell and activity.
@@ -1079,7 +1079,7 @@ is done by Python's string formatting machinery, so you can use, for instance,
 :code:`{layout_name[:2].upper()}` to show only the first two letters of the
 layout name, upper-cased. If you want to style the text, you can use styling
 directives, for example:
-:code:`{fmt.fg.red}red{fmt.fg.default}normal{fmt.bg._00FF00}green
+:code:`{fmt.fg.red}red{fmt.fg.tab}normal{fmt.bg._00FF00}green
 bg{fmt.bg.tab}`. Similarly, for bold and italic:
 :code:`{fmt.bold}bold{fmt.nobold}normal{fmt.italic}italic{fmt.noitalic}`.
 Note that for backward compatibility, if :code:`{bell_symbol}` or :code:`{activity_symbol}`

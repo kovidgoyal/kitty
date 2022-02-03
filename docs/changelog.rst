@@ -75,6 +75,11 @@ command.
 Detailed list of changes
 -------------------------------------
 
+0.24.3 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fix a regression in the previous release that broke :opt:`active_tab_foreground` (:iss:`4620`)
+
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

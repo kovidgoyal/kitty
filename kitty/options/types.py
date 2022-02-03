@@ -565,7 +565,7 @@ class Options:
     tab_powerline_style: choices_for_tab_powerline_style = 'angled'
     tab_separator: str = ' ┇'
     tab_switch_strategy: choices_for_tab_switch_strategy = 'previous'
-    tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.default}{title}'
+    tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{title}'
     term: str = 'xterm-kitty'
     touch_scroll_multiplier: float = 1.0
     update_check_interval: float = 24.0
