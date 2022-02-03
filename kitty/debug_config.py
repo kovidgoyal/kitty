@@ -215,6 +215,16 @@ def debug_config(opts: KittyOpts) -> str:
         p(' ', '\n  '.join(opts.config_overrides))
     compare_opts(opts, p)
     p()
-    p(green('Environment variable names seen by the kitty process:'))
-    p('\t' + '\n\t'.join(sorted(os.environ)))
+    p(green('Important environment variables seen by the kitty process:'))
+
+    def penv(k: str) -> None:
+        v = os.environ.get(k)
+        if v is not None:
+            p('\t' + k.ljust(35), styled(v, dim=True))
+
+    for k in 'PATH LANG KITTY_CONFIG_DIRECTORY KITTY_CACHE_DIRECTORY VISUAL EDITOR GLFW_IM_MODULE KITTY_WAYLAND_DETECT_MODIFIERS'.split():
+        penv(k)
+    for k in os.environ:
+        if k.startswith('LC_'):
+            penv(k)
     return out.getvalue()
