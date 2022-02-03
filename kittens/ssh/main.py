@@ -22,6 +22,7 @@ TERMEOF
 
 tname=.terminfo
 if [ -e "/usr/share/misc/terminfo.cdb" ]; then
+    # NetBSD requires this see https://github.com/kovidgoyal/kitty/issues/4622
     tname=".terminfo.cdb"
 fi
 tic_out=$(tic -x -o $HOME/$tname $tmp 2>&1)
