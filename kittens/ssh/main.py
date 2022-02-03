@@ -20,12 +20,16 @@ cat >$tmp << 'TERMEOF'
 TERMINFO
 TERMEOF
 
-tic_out=$(tic -x -o $HOME/.terminfo $tmp 2>&1)
+tname=.terminfo
+if [ -e "/usr/share/misc/terminfo.cdb" ]; then
+    tname=".terminfo.cdb"
+fi
+tic_out=$(tic -x -o $HOME/$tname $tmp 2>&1)
 rc=$?
 rm $tmp
 if [ "$rc" != "0" ]; then echo "$tic_out"; exit 1; fi
 if [ -z "$USER" ]; then export USER=$(whoami); fi
-export TERMINFO="$HOME/.terminfo"
+export TERMINFO="$HOME/$tname"
 login_shell=""
 python=""
 
@@ -109,8 +113,11 @@ import subprocess, os, sys, pwd, binascii, json
 # macOS ships with an ancient version of tic that cannot read from stdin, so we
 # create a temp file for it
 with NamedTemporaryFile() as tmp:
+    tname = '.terminfo'
+    if os.path.exists('/usr/share/misc/terminfo.cdb'):
+        tname += '.cdb'
     tmp.write(binascii.unhexlify('{terminfo}'))
-    p = subprocess.Popen(['tic', '-x', '-o', os.path.expanduser('~/.terminfo'), tmp.name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(['tic', '-x', '-o', os.path.expanduser('~/' + tname), tmp.name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
     if p.wait() != 0:
         getattr(sys.stderr, 'buffer', sys.stderr).write(stdout + stderr)

@@ -80,6 +80,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that broke :opt:`active_tab_foreground` (:iss:`4620`)
 
+- ssh kitten: Fix location of generated terminfo files on NetBSD (:iss:`4622`)
+
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
