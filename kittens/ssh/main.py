@@ -117,6 +117,7 @@ with NamedTemporaryFile() as tmp:
     if os.path.exists('/usr/share/misc/terminfo.cdb'):
         tname += '.cdb'
     tmp.write(binascii.unhexlify('{terminfo}'))
+    tmp.flush()
     p = subprocess.Popen(['tic', '-x', '-o', os.path.expanduser('~/' + tname), tmp.name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
     if p.wait() != 0:
