@@ -14,7 +14,7 @@ from kitty.constants import is_macos
 from kitty.fast_data_types import (
     Screen, create_test_font_group, get_fallback_font, set_font_data,
     set_options, set_send_sprite_to_gpu, sprite_map_set_limits,
-    test_render_line, test_shape
+    test_render_line, test_shape, NUM_UNDERLINE_STYLES
 )
 from kitty.fonts.box_drawing import (
     BufType, distribute_dots, render_box_char, render_missing_glyph
@@ -400,8 +400,12 @@ def prerender_function(
         render_cursor, cursor_beam_thickness=cursor_beam_thickness,
         cursor_underline_thickness=cursor_underline_thickness, cell_width=cell_width,
         cell_height=cell_height, dpi_x=dpi_x, dpi_y=dpi_y)
-    cells = f(1), f(2), f(3), f(4), f(5), f(0, strikethrough=True), f(missing=True), c(1), c(2), c(3)
-    return tuple(map(ctypes.addressof, cells)), cells
+    cells = list(map(f, range(1, NUM_UNDERLINE_STYLES + 1)))
+    cells.append(f(0, strikethrough=True))
+    cells.append(f(missing=True))
+    cells.extend((c(1), c(2), c(3)))
+    tcells = tuple(cells)
+    return tuple(map(ctypes.addressof, tcells)), tcells
 
 
 def render_box_drawing(codepoint: int, cell_width: int, cell_height: int, dpi: float) -> Tuple[int, CBufType]:

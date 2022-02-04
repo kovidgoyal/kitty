@@ -302,6 +302,8 @@ PyInit_fast_data_types(void) {
     s(STRIKETHROUGH, strike); s(DIM, dim); s(DECORATION, decoration);
 #undef s
     PyModule_AddIntConstant(m, "MARK_MASK", MARK_MASK);
+    PyModule_AddIntConstant(m, "DECORATION_MASK", DECORATION_MASK);
+    PyModule_AddIntConstant(m, "NUM_UNDERLINE_STYLES", NUM_UNDERLINE_STYLES);
     PyModule_AddStringMacro(m, ERROR_PREFIX);
 #ifdef KITTY_VCS_REV
     PyModule_AddStringMacro(m, KITTY_VCS_REV);

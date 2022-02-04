@@ -23,17 +23,17 @@ from .constants import appname, is_macos, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
     CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK,
-    CURSOR_UNDERLINE, DCS, DECORATION, DIM, GLFW_MOD_CONTROL,
+    CURSOR_UNDERLINE, DCS, DECORATION, DECORATION_MASK, DIM, GLFW_MOD_CONTROL,
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
-    MARK, MARK_MASK, NO_CURSOR_SHAPE, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE,
-    SCROLL_PAGE, STRIKETHROUGH, TINT_PROGRAM, Color, KeyEvent, Screen,
-    add_timer, add_window, cell_size_for_window, click_mouse_cmd_output,
-    click_mouse_url, compile_program, current_os_window, encode_key_for_tty,
-    get_boss, get_click_interval, get_clipboard_string, get_options,
-    init_cell_program, mark_os_window_dirty, mouse_selection,
-    move_cursor_to_mouse_if_in_prompt, pt_to_px, set_clipboard_string,
-    set_titlebar_color, set_window_logo, set_window_padding,
-    set_window_render_data, update_ime_position_for_window,
+    MARK, MARK_MASK, NO_CURSOR_SHAPE, NUM_UNDERLINE_STYLES, OSC, REVERSE,
+    SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, STRIKETHROUGH, TINT_PROGRAM, Color,
+    KeyEvent, Screen, add_timer, add_window, cell_size_for_window,
+    click_mouse_cmd_output, click_mouse_url, compile_program,
+    current_os_window, encode_key_for_tty, get_boss, get_click_interval,
+    get_clipboard_string, get_options, init_cell_program, mark_os_window_dirty,
+    mouse_selection, move_cursor_to_mouse_if_in_prompt, pt_to_px,
+    set_clipboard_string, set_titlebar_color, set_window_logo,
+    set_window_padding, set_window_render_data, update_ime_position_for_window,
     update_window_title, update_window_visibility
 )
 from .keys import keyboard_mode_name, mod_mask
@@ -228,6 +228,8 @@ class LoadShaderPrograms:
                     'DECORATION_SHIFT': DECORATION,
                     'MARK_SHIFT': MARK,
                     'MARK_MASK': MARK_MASK,
+                    'DECORATION_MASK': DECORATION_MASK,
+                    'STRIKE_SPRITE_INDEX': NUM_UNDERLINE_STYLES + 1,
             }.items():
                 vv = vv.replace(f'{{{gln}}}', str(pyn), 1)
             if semi_transparent:

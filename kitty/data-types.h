@@ -154,6 +154,8 @@ typedef union CellAttrs {
 } CellAttrs;
 #define MARK_MASK (3u)
 #define WIDTH_MASK (3u)
+#define DECORATION_MASK (7u)
+#define NUM_UNDERLINE_STYLES (5u)
 #define SGR_MASK (~(((CellAttrs){.width=WIDTH_MASK, .mark=MARK_MASK}).val))
 
 typedef struct {

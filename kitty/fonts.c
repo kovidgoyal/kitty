@@ -13,7 +13,7 @@
 #include "charsets.h"
 #include "glyph-cache.h"
 
-#define MISSING_GLYPH 4
+#define MISSING_GLYPH (NUM_UNDERLINE_STYLES + 2)
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u
 
 typedef void (*send_sprite_to_gpu_func)(FONTS_DATA_HANDLE fg, unsigned int, unsigned int, unsigned int, pixel*);
