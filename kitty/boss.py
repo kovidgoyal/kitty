@@ -779,7 +779,8 @@ class Boss:
             map kitty_mod+f11 clear_terminal scrollback active
             # Scroll the contents of the screen into the scrollback
             map kitty_mod+f12 clear_terminal scroll active
-
+            # Clear everything up to the line with the cursor
+            map kitty_mod+f9 clear_terminal to_cursor active
         ''')
     def clear_terminal(self, action: str, only_active: bool) -> None:
         if only_active:
@@ -792,8 +793,10 @@ class Boss:
         reset = action == 'reset'
         how = 3 if action == 'scrollback' else 2
         for w in windows:
-            if action == 'scroll':
+            if action in ('to_cursor', 'scroll'):
                 w.screen.scroll_until_cursor()
+                if action == 'to_cursor':
+                    w.screen.clear_scrollback()
                 continue
             w.screen.cursor.x = w.screen.cursor.y = 0
             if reset:

@@ -1616,6 +1616,15 @@ screen_erase_in_line(Screen *self, unsigned int how, bool private) {
     }
 }
 
+static void
+screen_clear_scrollback(Screen *self) {
+    historybuf_clear(self->historybuf);
+    if (self->scrolled_by != 0) {
+        self->scrolled_by = 0;
+        self->scroll_changed = true;
+    }
+}
+
 void
 screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     /* Erases display in a specific way.
@@ -1662,11 +1671,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         if (how == 1) linebuf_clear_attrs_and_dirty(self->linebuf, self->cursor->y);
     }
     if (how == 3 && self->linebuf == self->main_linebuf) {
-        historybuf_clear(self->historybuf);
-        if (self->scrolled_by != 0) {
-            self->scrolled_by = 0;
-            self->scroll_changed = true;
-        }
+        screen_clear_scrollback(self);
     }
 }
 
@@ -1685,10 +1690,9 @@ screen_insert_lines(Screen *self, unsigned int count) {
 void
 screen_scroll_until_cursor(Screen *self) {
     unsigned int num_lines_to_scroll = MIN(self->margin_bottom, self->cursor->y + 1);
-    index_type y = self->cursor->y;
     self->cursor->y = self->margin_bottom;
     while (num_lines_to_scroll--) screen_index(self);
-    self->cursor->y = y;
+    self->cursor->y = self->margin_top;
 }
 
 void
@@ -2957,6 +2961,7 @@ WRAP1E(cursor_back, 1, -1)
 WRAP1B(erase_in_line, 0)
 WRAP1B(erase_in_display, 0)
 WRAP0(scroll_until_cursor)
+WRAP0(clear_scrollback)
 
 #define MODE_GETSET(name, uname) \
     static PyObject* name##_get(Screen *self, void UNUSED *closure) { PyObject *ans = self->modes.m##uname ? Py_True : Py_False; Py_INCREF(ans); return ans; } \
@@ -3777,6 +3782,7 @@ static PyMethodDef methods[] = {
     MND(cursor_back, METH_VARARGS)
     MND(erase_in_line, METH_VARARGS)
     MND(erase_in_display, METH_VARARGS)
+    MND(clear_scrollback, METH_NOARGS)
     MND(scroll_until_cursor, METH_NOARGS)
     MND(hyperlinks_as_list, METH_NOARGS)
     MND(garbage_collect_hyperlink_pool, METH_NOARGS)

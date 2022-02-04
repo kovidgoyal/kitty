@@ -1136,6 +1136,9 @@ class Screen:
     def erase_in_display(self, how: int = 0, private: bool = False) -> None:
         pass
 
+    def clear_scrollback(self) -> None:
+        pass
+
     def focus_changed(self, focused: bool) -> bool:
         pass
 

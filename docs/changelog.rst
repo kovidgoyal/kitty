@@ -82,6 +82,9 @@ Detailed list of changes
 
 - ssh kitten: Fix location of generated terminfo files on NetBSD (:iss:`4622`)
 
+- A new action to clear the screen up to the line containing the cursor, see
+  :ac:`clear_terminal`
+
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
