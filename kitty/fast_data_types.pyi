@@ -1105,6 +1105,9 @@ class Screen:
     def reverse_scroll(self, amt: int, fill_from_scrollback: bool = False) -> bool:
         pass
 
+    def scroll_prompt_to_bottom(self) -> None:
+        pass
+
     def clear_selection(self) -> None:
         pass
 

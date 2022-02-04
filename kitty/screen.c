@@ -3718,6 +3718,33 @@ reverse_scroll(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+
+static PyObject*
+scroll_prompt_to_bottom(Screen *self, PyObject *args UNUSED) {
+    if (self->linebuf != self->main_linebuf || !self->historybuf->count) Py_RETURN_NONE;
+    int q = screen_cursor_at_a_shell_prompt(self);
+    index_type limit_y = q > -1 ? (unsigned int)q : self->cursor->y;
+    index_type y = self->lines - 1;
+    // not before prompt or cursor line
+    while (y > limit_y) {
+        Line *line = checked_range_line(self, y);
+        if (line_length(line)) break;
+        y--;
+    }
+    // don't scroll back beyond the history buffer range
+    unsigned int count = MIN(self->lines - (y + 1), self->historybuf->count);
+    if (count > 0) {
+        _reverse_scroll(self, count, true);
+        screen_cursor_down(self, count);
+    }
+    // always scroll to the bottom
+    if (self->scrolled_by != 0) {
+        self->scrolled_by = 0;
+        self->scroll_changed = true;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject*
 dump_lines_with_attrs(Screen *self, PyObject *accum) {
     int y = (self->linebuf == self->main_linebuf) ? -self->historybuf->count : 0;
@@ -3790,6 +3817,7 @@ static PyMethodDef methods[] = {
     MND(garbage_collect_hyperlink_pool, METH_NOARGS)
     MND(hyperlink_for_id, METH_O)
     MND(reverse_scroll, METH_VARARGS)
+    MND(scroll_prompt_to_bottom, METH_NOARGS)
     METHOD(current_char_width, METH_NOARGS)
     MND(insert_lines, METH_VARARGS)
     MND(delete_lines, METH_VARARGS)
