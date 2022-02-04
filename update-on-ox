@@ -57,4 +57,4 @@ with tempfile.NamedTemporaryFile(prefix='install-dmg-', suffix='.py') as f:
     f.write(script.encode('utf-8'))
     f.flush()
     run(f'scp bypy/b/macos/dist/{dmg} {f.name} {HOST}:/tmp')
-    run(f'ssh {HOST} python /tmp/{os.path.basename(f.name)} /tmp/{dmg}')
+    run(f'ssh {HOST} python3 /tmp/{os.path.basename(f.name)} /tmp/{dmg}')
