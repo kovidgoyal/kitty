@@ -400,10 +400,13 @@ def prerender_function(
         render_cursor, cursor_beam_thickness=cursor_beam_thickness,
         cursor_underline_thickness=cursor_underline_thickness, cell_width=cell_width,
         cell_height=cell_height, dpi_x=dpi_x, dpi_y=dpi_y)
-    cells = list(map(f, range(1, NUM_UNDERLINE_STYLES + 1)))
-    cells.append(f(0, strikethrough=True))
-    cells.append(f(missing=True))
-    cells.extend((c(1), c(2), c(3)))
+    # If you change the mapping of these cells you will need to change
+    # NUM_UNDERLINE_STYLES and BEAM_IDX in shader.c and STRIKE_SPRITE_INDEX in
+    # window.py and MISSING_GLYPH in font.c
+    cells = list(map(f, range(1, NUM_UNDERLINE_STYLES + 1)))  # underline sprites
+    cells.append(f(0, strikethrough=True))  # strikethrough sprite
+    cells.append(f(missing=True))  # missing glyph
+    cells.extend((c(1), c(2), c(3)))  # cursor glyphs
     tcells = tuple(cells)
     return tuple(map(ctypes.addressof, tcells)), tcells
 
