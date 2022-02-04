@@ -243,6 +243,10 @@ action launch --type=os-window $EDITOR $FILE_PATH
 protocol file
 mime image/*
 action launch --type=os-window kitty +kitten icat --hold $FILE_PATH
+
+# Open ssh URLs with ssh command
+protocol ssh
+action launch --type=os-window ssh $URL
 '''.splitlines()))
 
 
