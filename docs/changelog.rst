@@ -85,6 +85,9 @@ Detailed list of changes
 - A new action to clear the screen up to the line containing the cursor, see
   :ac:`clear_terminal`
 
+- macOS: Fix a regression in the previous release that broke switching input
+  sources by keyboard (:iss:`4621`)
+
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
