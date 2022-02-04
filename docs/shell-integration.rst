@@ -49,7 +49,7 @@ takes a space separated list of keywords:
 
 disabled
     Turn off all shell integration. The shell's launch environment is not
-    modified and :env:`KITTY_SHELL_INTEGRATION` is not set. Useful for
+    modified and :envvar:`KITTY_SHELL_INTEGRATION` is not set. Useful for
     :ref:`manual integration <manual_shell_integration>`.
 
 no-rc
@@ -57,7 +57,7 @@ no-rc
     to load the kitty shell integration code yourself, either as part of
     :ref:`manually integration <manual_shell_integration>` or because you have
     some other software that sets up shell integration.
-    This will still set the :env:`KITTY_SHELL_INTEGRATION` environment variable when kitty runs the shell.
+    This will still set the :envvar:`KITTY_SHELL_INTEGRATION` environment variable when kitty runs the shell.
 
 no-cursor
     Turn off changing of the text cursor to a bar when editing text
