@@ -753,9 +753,11 @@ int _glfwPlatformInit(void)
     [NSApp setDelegate:_glfw.ns.delegate];
     static struct {
         unsigned short virtual_key_code;
+        NSEventModifierFlags input_source_switch_modifiers;
         NSTimeInterval timestamp;
     } last_keydown_shortcut_event;
     last_keydown_shortcut_event.virtual_key_code = 0xffff;
+    last_keydown_shortcut_event.input_source_switch_modifiers = 0;
 
     NSEvent* (^keydown_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
     {
@@ -766,6 +768,7 @@ int _glfwPlatformInit(void)
             if ([[NSApp mainMenu] performKeyEquivalent:event]) {
                 debug_key("keyDown triggerred global menu bar action ignoring\n");
                 last_keydown_shortcut_event.virtual_key_code = [event keyCode];
+                last_keydown_shortcut_event.input_source_switch_modifiers = 0;
                 last_keydown_shortcut_event.timestamp = [event timestamp];
                 return nil;
             }
@@ -774,6 +777,8 @@ int _glfwPlatformInit(void)
             if (is_useful_apple_global_shortcut(global_shortcut)) {
                 debug_key("keyDown triggerred global macOS shortcut ignoring\n");
                 last_keydown_shortcut_event.virtual_key_code = [event keyCode];
+                // record the modifier keys if switching to the next input source
+                last_keydown_shortcut_event.input_source_switch_modifiers = (global_shortcut == kSHKSelectNextSourceInInputMenu) ? USEFUL_MODS([event modifierFlags]) : 0;
                 last_keydown_shortcut_event.timestamp = [event timestamp];
                 return event;
             }
@@ -806,6 +811,12 @@ int _glfwPlatformInit(void)
         debug_key("-------------- flags changed -----------------\n");
         debug_key("%s\n", [[event description] UTF8String]);
         last_keydown_shortcut_event.virtual_key_code = 0xffff;
+        // switching to the next input source is only confirmed when all modifier keys are released
+        if (last_keydown_shortcut_event.input_source_switch_modifiers) {
+            if (!([event modifierFlags] & last_keydown_shortcut_event.input_source_switch_modifiers))
+                last_keydown_shortcut_event.input_source_switch_modifiers = 0;
+            return event;
+        }
         NSWindow *kw = [NSApp keyWindow];
         if (kw && kw.contentView) [kw.contentView flagsChanged:event];
         else debug_key("flagsChanged ignored as no keyWindow present\n");
