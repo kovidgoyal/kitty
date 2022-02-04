@@ -594,7 +594,7 @@ cocoa_create_global_menu(void) {
     MENU_ITEM(shellMenu, @"Close Window", close_window);
     [shellMenu addItem:[NSMenuItem separatorItem]];
     MENU_ITEM(shellMenu, @"Reset", reset_terminal);
-    MENU_ITEM(shellMenu, @"Clear up to cursor line", clear_terminal_and_scrollback);
+    MENU_ITEM(shellMenu, @"Clear to Cursor Line", clear_terminal_and_scrollback);
     [shellMenu release];
 
     NSMenuItem* windowMenuItem =
