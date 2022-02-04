@@ -3,6 +3,7 @@
 
 import json
 import os
+import re
 import sys
 import weakref
 from collections import deque
@@ -208,6 +209,15 @@ def as_text(
     return ans
 
 
+def multi_replace(src: str, **replacements: Any) -> str:
+    r = {k: str(v) for k, v in replacements.items()}
+
+    def sub(m: 're.Match[str]') -> str:
+        return r.get(m.group(1), m.group(1))
+
+    return re.sub(r'\{([A-Z_]+)\}', sub, src)
+
+
 class LoadShaderPrograms:
 
     def __call__(self, semi_transparent: bool = False) -> None:
@@ -220,18 +230,19 @@ class LoadShaderPrograms:
                 'SPECIAL': CELL_SPECIAL_PROGRAM,
                 'FOREGROUND': CELL_FG_PROGRAM,
         }.items():
-            vv, ff = v.replace('WHICH_PROGRAM', which), f.replace('WHICH_PROGRAM', which)
-            for gln, pyn in {
-                    'REVERSE_SHIFT': REVERSE,
-                    'STRIKE_SHIFT': STRIKETHROUGH,
-                    'DIM_SHIFT': DIM,
-                    'DECORATION_SHIFT': DECORATION,
-                    'MARK_SHIFT': MARK,
-                    'MARK_MASK': MARK_MASK,
-                    'DECORATION_MASK': DECORATION_MASK,
-                    'STRIKE_SPRITE_INDEX': NUM_UNDERLINE_STYLES + 1,
-            }.items():
-                vv = vv.replace(f'{{{gln}}}', str(pyn), 1)
+            ff = f.replace('{WHICH_PROGRAM}', which)
+            vv = multi_replace(
+                v,
+                WHICH_PROGRAM=which,
+                REVERSE_SHIFT=REVERSE,
+                STRIKE_SHIFT=STRIKETHROUGH,
+                DIM_SHIFT=DIM,
+                DECORATION_SHIFT=DECORATION,
+                MARK_SHIFT=MARK,
+                MARK_MASK=MARK_MASK,
+                DECORATION_MASK=DECORATION_MASK,
+                STRIKE_SPRITE_INDEX=NUM_UNDERLINE_STYLES + 1,
+            )
             if semi_transparent:
                 vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
                 ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')

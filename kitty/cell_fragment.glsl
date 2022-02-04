@@ -1,5 +1,5 @@
 #version GLSL_VERSION
-#define WHICH_PROGRAM
+#define {WHICH_PROGRAM}
 #define NOT_TRANSPARENT
 
 #if defined(SIMPLE) || defined(BACKGROUND) || defined(SPECIAL)
