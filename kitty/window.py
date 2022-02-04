@@ -1168,7 +1168,7 @@ class Window:
             cursor_key_mode=self.screen.cursor_key_mode,
         ).encode('ascii')
 
-    @ac('cp', 'Copy the selected text from the active window to the clipboard, if no selection, send Ctrl-C')
+    @ac('cp', 'Copy the selected text from the active window to the clipboard, if no selection, send SIGINT (aka :kbd:`ctrl+c`)')
     def copy_or_interrupt(self) -> None:
         text = self.text_for_selection()
         if text:
@@ -1176,7 +1176,7 @@ class Window:
         else:
             self.write_to_child(self.encoded_key(KeyEvent(key=ord('c'), mods=GLFW_MOD_CONTROL)))
 
-    @ac('cp', 'Copy the selected text from the active window to the clipboard and clear selection, if no selection, send Ctrl-C')
+    @ac('cp', 'Copy the selected text from the active window to the clipboard and clear selection, if no selection, send SIGINT (aka :kbd:`ctrl+c`)')
     def copy_and_clear_or_interrupt(self) -> None:
         self.copy_or_interrupt()
         self.screen.clear_selection()
