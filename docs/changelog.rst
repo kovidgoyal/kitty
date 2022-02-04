@@ -88,6 +88,9 @@ Detailed list of changes
 - macOS: Fix a regression in the previous release that broke switching input
   sources by keyboard (:iss:`4621`)
 
+- macOS: Add the default shortcut :kbd:`cmd+k` to clear the terminal screen and
+  scrollback up to the cursor (:iss:`4625`)
+
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

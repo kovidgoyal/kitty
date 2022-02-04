@@ -163,9 +163,13 @@ def clear_terminal(func: str, rest: str) -> FuncArgsType:
     vals = rest.strip().split(maxsplit=1)
     if len(vals) != 2:
         log_error('clear_terminal needs two arguments, using defaults')
-        args: List[Union[str, bool]] = ['reset', 'active']
+        args = ['reset', True]
     else:
-        args = [vals[0].lower(), vals[1].lower() == 'active']
+        action = vals[0].lower()
+        if action not in ('reset', 'scroll', 'scrollback', 'clear', 'to_cursor',):
+            log_error(f'{action} is unknown for clear_terminal, using reset')
+            action = 'reset'
+        args = [action, vals[1].lower() == 'active']
     return func, args
 
 

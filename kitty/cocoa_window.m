@@ -231,6 +231,7 @@ PENDING(previous_tab, PREVIOUS_TAB)
 PENDING(new_window, NEW_WINDOW)
 PENDING(close_window, CLOSE_WINDOW)
 PENDING(reset_terminal, RESET_TERMINAL)
+PENDING(clear_terminal_and_scrollback, CLEAR_TERMINAL_AND_SCROLLBACK)
 PENDING(reload_config, RELOAD_CONFIG)
 PENDING(toggle_macos_secure_keyboard_entry, TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY)
 
@@ -270,7 +271,7 @@ typedef struct {
 } GlobalShortcut;
 typedef struct {
     GlobalShortcut new_os_window, close_os_window, close_tab, edit_config_file, reload_config;
-    GlobalShortcut previous_tab, next_tab, new_tab, new_window, close_window, reset_terminal;
+    GlobalShortcut previous_tab, next_tab, new_tab, new_window, close_window, reset_terminal, clear_terminal_and_scrollback;
     GlobalShortcut toggle_macos_secure_keyboard_entry;
 } GlobalShortcuts;
 static GlobalShortcuts global_shortcuts;
@@ -285,7 +286,7 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
 #define Q(x) if (strcmp(name, #x) == 0) gs = &global_shortcuts.x
     Q(new_os_window); else Q(close_os_window); else Q(close_tab); else Q(edit_config_file);
     else Q(new_tab); else Q(next_tab); else Q(previous_tab);
-    else Q(new_window); else Q(close_window); else Q(reset_terminal); else Q(reload_config);
+    else Q(new_window); else Q(close_window); else Q(reset_terminal); else Q(clear_terminal_and_scrollback); else Q(reload_config);
     else Q(toggle_macos_secure_keyboard_entry);
 #undef Q
     if (gs == NULL) { PyErr_SetString(PyExc_KeyError, "Unknown shortcut name"); return NULL; }
@@ -593,6 +594,7 @@ cocoa_create_global_menu(void) {
     MENU_ITEM(shellMenu, @"Close Window", close_window);
     [shellMenu addItem:[NSMenuItem separatorItem]];
     MENU_ITEM(shellMenu, @"Reset", reset_terminal);
+    MENU_ITEM(shellMenu, @"Clear up to cursor line", clear_terminal_and_scrollback);
     [shellMenu release];
 
     NSMenuItem* windowMenuItem =

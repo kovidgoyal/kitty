@@ -158,6 +158,9 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ())
         val = get_macos_shortcut_for(func_map, 'clear_terminal reset active', lookup_name='reset_terminal')
         if val is not None:
             global_shortcuts['reset_terminal'] = val
+        val = get_macos_shortcut_for(func_map, 'clear_terminal to_cursor active', lookup_name='clear_terminal_and_scrollback')
+        if val is not None:
+            global_shortcuts['clear_terminal_and_scrollback'] = val
         val = get_macos_shortcut_for(func_map, 'load_config_file', lookup_name='reload_config')
         if val is not None:
             global_shortcuts['reload_config'] = val
