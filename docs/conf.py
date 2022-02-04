@@ -399,12 +399,22 @@ def parse_shortcut_node(env: Any, sig: str, signode: Any) -> str:
     return sig
 
 
+def parse_action_node(env: Any, sig: str, signode: Any) -> str:
+    """Transform an action description into RST nodes."""
+    signode += addnodes.desc_name(sig, sig)
+    return sig
+
+
 def process_opt_link(env: Any, refnode: Any, has_explicit_title: bool, title: str, target: str) -> Tuple[str, str]:
     conf_name, opt = target.partition('.')[::2]
     if not opt:
         conf_name, opt = 'kitty', conf_name
     full_name = f'{conf_name}.{opt}'
     return title, opt_aliases.get(full_name, full_name)
+
+
+def process_action_link(env: Any, refnode: Any, has_explicit_title: bool, title: str, target: str) -> Tuple[str, str]:
+    return title, target
 
 
 def process_shortcut_link(env: Any, refnode: Any, has_explicit_title: bool, title: str, target: str) -> Tuple[str, str]:
@@ -443,6 +453,15 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
     sc_role.warn_dangling = True
     sc_role.process_link = process_shortcut_link
     shortcut_slugs.clear()
+
+    app.add_object_type(
+        'action', 'ac',
+        indextemplate="pair: %s; Action",
+        parse_node=parse_action_node,
+    )
+    ac_role = app.registry.domain_roles['std']['ac']
+    ac_role.warn_dangling = True
+    ac_role.process_link = process_action_link
 
     def generate_default_config(definition: Definition, name: str) -> None:
         with open(f'generated/conf-{name}.rst', 'w', encoding='utf-8') as f:

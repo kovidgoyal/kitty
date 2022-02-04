@@ -947,7 +947,7 @@ windows, via the quit action). Negative values are converted to positive ones,
 however, with :ref:`shell_integration` enabled, using negative values means
 windows sitting at a shell prompt are not counted, only windows where some
 command is currently running. Note that if you want confirmation when closing
-individual windows, you can map the :ref:`action-close_window_with_confirmation` action.
+individual windows, you can map the :ac:`close_window_with_confirmation` action.
 '''
     )
 egr()  # }}}
@@ -998,7 +998,7 @@ The tab bar style, can be one of:
     :disc:`this discussion <4447>` for examples from kitty users.
 :code:`hidden`
     The tab bar is hidden. If you use this, you might want to create a
-    mapping for the :ref:`action-select_tab`
+    mapping for the :ac:`select_tab`
     action which presents you with a list of tabs and allows for easy
     switching to a tab.
 '''

@@ -99,10 +99,7 @@ def as_rst() -> str:
 
         for action in allg[group]:
             a('')
-            a(f'.. _action-{action.name}:')
-            a('')
-            a(action.name)
-            a('+' * len(action.name))
+            a(f'.. action:: {action.name}')
             a('')
             a(action.short_help)
             a('')

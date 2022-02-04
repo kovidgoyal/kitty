@@ -93,7 +93,7 @@ to be copied.
 
 The feature to jump to previous prompts (
 :sc:`scroll_to_previous_prompt` and :sc:`scroll_to_next_prompt`) and mouse
-actions (:ref:`action-mouse_select_command_output` and :ref:`action-mouse_show_command_output`) can
+actions (:ac:`mouse_select_command_output` and :ac:`mouse_show_command_output`) can
 be integrated with browsing command output as well. For example, define the
 following mapping in :file:`kitty.conf`:
 

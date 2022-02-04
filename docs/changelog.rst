@@ -83,7 +83,7 @@ Detailed list of changes
 - ssh kitten: Fix location of generated terminfo files on NetBSD (:iss:`4622`)
 
 - A new action to clear the screen up to the line containing the cursor, see
-  :ref:`action-clear_terminal`
+  :ac:`clear_terminal`
 
 - macOS: Fix a regression in the previous release that broke switching input
   sources by keyboard (:iss:`4621`)
@@ -153,7 +153,7 @@ Detailed list of changes
 - Fix getting last command output not working correctly when the screen is
   scrolled (:pull:`4522`)
 
-- Show number of windows per tab in the :ref:`action-select_tab` action (:pull:`4523`)
+- Show number of windows per tab in the :ac:`select_tab` action (:pull:`4523`)
 
 - macOS: Fix the shift key not clearing pre-edit text in IME (:iss:`4541`)
 
@@ -438,7 +438,7 @@ Detailed list of changes
 0.22.0 [2021-07-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Add a new :ref:`action-toggle_layout` action to easily zoom/unzoom a window
+- Add a new :ac:`toggle_layout` action to easily zoom/unzoom a window
 
 - When right clicking to extend a selection, move the nearest selection
   boundary rather than the end of the selection. To restore previous behavior

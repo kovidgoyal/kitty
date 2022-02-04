@@ -134,7 +134,7 @@ terminal program, you can tell the kittens system to run the
 
 For example, here is a kitten that "zooms/unzooms" the current terminal window
 by switching to the stack layout or back to the previous layout. This is
-equivalent to the builtin :ref:`action-toggle_layout` action.
+equivalent to the builtin :ac:`toggle_layout` action.
 
 Create a file in the kitty config folder, :file:`~/.config/kitty/zoom_toggle.py`
 

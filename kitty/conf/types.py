@@ -66,6 +66,9 @@ def remove_markup(text: str) -> str:
         if m.group(1) == 'ref':
             q = m.group(2).split('<')[-1].rstrip('>')
             return ref_map()[q]
+        if m.group(1) == 'ac':
+            q = m.group(2).split('<')[-1].rstrip('>')
+            return ref_map()[f'action-{q}']
         return str(m.group(2))
 
     return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)
