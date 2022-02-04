@@ -1516,8 +1516,7 @@ int
 screen_cursor_at_a_shell_prompt(const Screen *self) {
     if (self->cursor->y >= self->lines || self->linebuf != self->main_linebuf || !screen_is_cursor_visible(self)) return -1;
     for (index_type y=self->cursor->y + 1; y-- > 0; ) {
-        linebuf_init_line(self->linebuf, y);
-        switch(self->linebuf->line->attrs.prompt_kind) {
+        switch(self->linebuf->line_attrs[y].prompt_kind) {
             case OUTPUT_START:
                 return -1;
             case PROMPT_START:
@@ -1687,12 +1686,15 @@ screen_insert_lines(Screen *self, unsigned int count) {
     }
 }
 
-void
-screen_scroll_until_cursor(Screen *self) {
-    unsigned int num_lines_to_scroll = MIN(self->margin_bottom, self->cursor->y + 1);
+static void
+screen_scroll_until_cursor_prompt(Screen *self) {
+    int q = screen_cursor_at_a_shell_prompt(self);
+    unsigned int y = q > -1 ? (unsigned int)q : self->cursor->y;
+    unsigned int num_lines_to_scroll = MIN(self->margin_bottom, y);
+    unsigned int final_y = num_lines_to_scroll <= self->cursor->y ? self->cursor->y - num_lines_to_scroll : 0;
     self->cursor->y = self->margin_bottom;
     while (num_lines_to_scroll--) screen_index(self);
-    self->cursor->y = self->margin_top;
+    self->cursor->y = final_y;
 }
 
 void
@@ -2960,7 +2962,7 @@ is_using_alternate_linebuf(Screen *self, PyObject *a UNUSED) {
 WRAP1E(cursor_back, 1, -1)
 WRAP1B(erase_in_line, 0)
 WRAP1B(erase_in_display, 0)
-WRAP0(scroll_until_cursor)
+WRAP0(scroll_until_cursor_prompt)
 WRAP0(clear_scrollback)
 
 #define MODE_GETSET(name, uname) \
@@ -3783,7 +3785,7 @@ static PyMethodDef methods[] = {
     MND(erase_in_line, METH_VARARGS)
     MND(erase_in_display, METH_VARARGS)
     MND(clear_scrollback, METH_NOARGS)
-    MND(scroll_until_cursor, METH_NOARGS)
+    MND(scroll_until_cursor_prompt, METH_NOARGS)
     MND(hyperlinks_as_list, METH_NOARGS)
     MND(garbage_collect_hyperlink_pool, METH_NOARGS)
     MND(hyperlink_for_id, METH_O)

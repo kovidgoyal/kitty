@@ -794,7 +794,7 @@ class Boss:
         how = 3 if action == 'scrollback' else 2
         for w in windows:
             if action in ('to_cursor', 'scroll'):
-                w.screen.scroll_until_cursor()
+                w.screen.scroll_until_cursor_prompt()
                 if action == 'to_cursor':
                     w.screen.clear_scrollback()
                 continue
