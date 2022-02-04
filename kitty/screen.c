@@ -3728,7 +3728,7 @@ scroll_prompt_to_bottom(Screen *self, PyObject *args UNUSED) {
     // not before prompt or cursor line
     while (y > limit_y) {
         Line *line = checked_range_line(self, y);
-        if (line_length(line)) break;
+        if (!line || line_length(line)) break;
         y--;
     }
     // don't scroll back beyond the history buffer range

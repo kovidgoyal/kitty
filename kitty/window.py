@@ -1241,7 +1241,7 @@ class Window:
         if self.screen.is_main_linebuf():
             self.screen.scroll_to_prompt(num_of_prompts)
 
-    @ac('sc', 'Scroll prompt to the bottom of the screen')
+    @ac('sc', 'Scroll prompt to the bottom of the screen, filling in extra lines form the scrollback buffer')
     def scroll_prompt_to_bottom(self) -> None:
         self.screen.scroll_prompt_to_bottom()
 

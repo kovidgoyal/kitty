@@ -93,8 +93,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that broke strikethrough (:disc:`4632`)
 
-- A new action :ac:`scroll_prompt_to_bottom` to moves the non-empty prompt lines
-  to the bottom. (:pull:`4634`)
+- A new action :ac:`scroll_prompt_to_bottom` to move the current prompt
+  to the bottom, filling in the window from the scrollback (:pull:`4634`)
 
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
