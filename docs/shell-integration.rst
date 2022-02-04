@@ -48,11 +48,16 @@ off or it can be disabled entirely as well. The :opt:`shell_integration` option
 takes a space separated list of keywords:
 
 disabled
-    Turn off all shell integration
+    Turn off all shell integration. The shell's launch environment is not
+    modified and :env:`KITTY_SHELL_INTEGRATION` is not set. Useful for
+    :ref:`manual integration <manual_shell_integration>`.
 
 no-rc
     Do not modify the shell's launch environment to enable integration. Useful if you prefer
-    to :ref:`manually enable integration <manual_shell_integration>`.
+    to load the kitty shell integration code yourself, either as part of
+    :ref:`manually integration <manual_shell_integration>` or because you have
+    some other software that sets up shell integration.
+    This will still set the :env:`KITTY_SHELL_INTEGRATION` environment variable when kitty runs the shell.
 
 no-cursor
     Turn off changing of the text cursor to a bar when editing text
