@@ -91,6 +91,8 @@ Detailed list of changes
 - macOS: Add the default shortcut :kbd:`cmd+k` to clear the terminal screen and
   scrollback up to the cursor (:iss:`4625`)
 
+- Fix a regression in the previous release that broke strikethrough (:disc:`4632`)
+
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
