@@ -46,6 +46,32 @@ get_platform_dependent_config_values(void *glfw_window) {
     }
 }
 
+static void
+strip_csi_(const char *title, char *buf, size_t bufsz) {
+    enum { NORMAL, IN_ESC, IN_CSI} state = NORMAL;
+    char *dest = buf, *last = &buf[bufsz-1];
+    *dest = 0; *last = 0;
+
+    for (; *title && dest < last; title++) {
+        const char ch = *title;
+        switch (state) {
+            case NORMAL: {
+                if (ch == 0x1b) { state = IN_ESC; }
+                else *(dest++) = ch;
+            } break;
+            case IN_ESC: {
+                if (ch == '[') { state = IN_CSI; }
+                else { state = NORMAL; }
+            } break;
+            case IN_CSI: {
+                if (!(('0' <= ch && ch <= '9') || ch == ';' || ch == ':')) state = NORMAL;
+            } break;
+        }
+    }
+    *dest = 0;
+}
+
+
 void
 request_tick_callback(void) {
     glfwPostEmptyEvent();
@@ -438,7 +464,9 @@ extern bool cocoa_render_line_of_text(const char *text, const color_type fg, con
 
 bool
 draw_window_title(OSWindow *window UNUSED, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
-    return cocoa_render_line_of_text(text, fg, bg, output_buf, width, height);
+    static char buf[2048];
+    strip_csi_(text, buf, arraysz(buf));
+    return cocoa_render_line_of_text(buf, fg, bg, output_buf, width, height);
 }
 
 extern uint8_t* render_single_ascii_char_as_mask(const char ch, size_t *result_width, size_t *result_height);
@@ -484,10 +512,12 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
 bool
 draw_window_title(OSWindow *window, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
     if (!ensure_csd_title_render_ctx()) return false;
+    static char buf[2048];
+    strip_csi_(text, buf, arraysz(buf));
     unsigned px_sz = (unsigned)(window->fonts_data->font_sz_in_pts * window->fonts_data->logical_dpi_y / 72.);
     px_sz = MIN(px_sz, 3 * height / 4);
 #define RGB2BGR(x) (x & 0xFF000000) | ((x & 0xFF0000) >> 16) | (x & 0x00FF00) | ((x & 0x0000FF) << 16)
-    bool ok = render_single_line(csd_title_render_ctx, text, px_sz, RGB2BGR(fg), RGB2BGR(bg), output_buf, width, height, 0, 0, 0);
+    bool ok = render_single_line(csd_title_render_ctx, buf, px_sz, RGB2BGR(fg), RGB2BGR(bg), output_buf, width, height, 0, 0, 0);
 #undef RGB2BGR
     if (!ok && PyErr_Occurred()) PyErr_Print();
     return ok;
@@ -1284,31 +1314,6 @@ request_window_attention(id_type kitty_window_id, bool audio_bell) {
         if (OPT(window_alert_on_bell)) glfwRequestWindowAttention(w->handle);
         glfwPostEmptyEvent();
     }
-}
-
-static void
-strip_csi_(const char *title, char *buf, size_t bufsz) {
-    enum { NORMAL, IN_ESC, IN_CSI} state = NORMAL;
-    char *dest = buf, *last = &buf[bufsz-1];
-    *dest = 0; *last = 0;
-
-    for (; *title && dest < last; title++) {
-        const char ch = *title;
-        switch (state) {
-            case NORMAL: {
-                if (ch == 0x1b) { state = IN_ESC; }
-                else *(dest++) = ch;
-            } break;
-            case IN_ESC: {
-                if (ch == '[') { state = IN_CSI; }
-                else { state = NORMAL; }
-            } break;
-            case IN_CSI: {
-                if (!(('0' <= ch && ch <= '9') || ch == ';' || ch == ':')) state = NORMAL;
-            } break;
-        }
-    }
-    *dest = 0;
 }
 
 void
