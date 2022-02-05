@@ -78,6 +78,9 @@ Detailed list of changes
 0.24.3 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- macOS: Allow kitty to handle various URL types. Can be configured via
+  :ref:`launch_actions`
+
 - Fix a regression in the previous release that broke :opt:`active_tab_foreground` (:iss:`4620`)
 
 - ssh kitten: Fix location of generated terminfo files on NetBSD (:iss:`4622`)

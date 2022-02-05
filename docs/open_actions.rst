@@ -102,14 +102,20 @@ lines. The various available criteria are:
     ``image-??.png``
 
 
+.. _launch_actions:
+
 Scripting the opening of files with kitty on macOS
 -------------------------------------------------------
 
-On macOS you can use :guilabel:`Open With` in Finder or drag and drop files
-onto the kitty dock icon to open them with kitty. The default action
-is to open text files in your editor and images using the icat kitten.
-Shell scripts are run in a shell. You can customize these actions by creating
-a :file:`launch-actions.conf` file in the kitty config directory, just like
+On macOS you can use :guilabel:`Open With` in Finder or drag and drop files and
+URLs onto the kitty dock icon to open them with kitty. The default actions are:
+
+* Open text files in your editor and images using the icat kitten.
+* Run shell scripts in a shell
+* Open SSH urls using the ssh command
+
+You can customize these actions by creating a :file:`launch-actions.conf` file
+in the kitty config directory, just like
 the :file:`open-actions.conf` file above. For example:
 
 .. code:: conf
@@ -138,3 +144,7 @@ the :file:`open-actions.conf` file above. For example:
     protocol file
     mime image/*
     action launch --type=os-window kitty +kitten icat --hold $FILE_PATH
+
+    # Open ssh URLs with ssh command
+    protocol ssh
+    action launch --type=os-window ssh $URL
