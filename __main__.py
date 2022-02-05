@@ -42,6 +42,13 @@ def complete(args: List[str]) -> None:
     complete_main(args[1:], entry_points, namespaced_entry_points)
 
 
+def open_urls(args: List[str]) -> None:
+    setattr(sys, 'cmdline_args_for_open', True)
+    sys.argv = ['kitty'] + args[1:]
+    from kitty.main import main as kitty_main
+    kitty_main()
+
+
 def launch(args: List[str]) -> None:
     import runpy
     sys.argv = args[1:]
@@ -129,6 +136,7 @@ namespaced_entry_points['hold'] = hold
 namespaced_entry_points['complete'] = complete
 namespaced_entry_points['runpy'] = runpy
 namespaced_entry_points['launch'] = launch
+namespaced_entry_points['open'] = open_urls
 namespaced_entry_points['kitten'] = run_kitten
 namespaced_entry_points['edit-config'] = edit_config_file
 namespaced_entry_points['shebang'] = shebang

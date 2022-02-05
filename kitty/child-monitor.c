@@ -1050,7 +1050,7 @@ process_cocoa_pending_actions(void) {
     if (cocoa_pending_actions_data.open_urls_count) {
         for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.open_urls_count; cpa++) {
             if (cocoa_pending_actions_data.open_urls[cpa]) {
-                call_boss(launch_url, "s", cocoa_pending_actions_data.open_urls[cpa]);
+                call_boss(launch_urls, "s", cocoa_pending_actions_data.open_urls[cpa]);
                 free(cocoa_pending_actions_data.open_urls[cpa]);
                 cocoa_pending_actions_data.open_urls[cpa] = NULL;
             }

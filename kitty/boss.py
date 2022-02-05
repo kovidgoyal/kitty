@@ -5,12 +5,13 @@ import atexit
 import json
 import os
 import re
+import sys
 from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
 from typing import (
-    Any, Callable, Container, Dict, Iterable, Iterator, List, Optional, Tuple,
-    Union
+    Any, Callable, Container, Dict, Iterable, Iterator, List, Optional,
+    Sequence, Tuple, Union
 )
 from weakref import WeakValueDictionary
 
@@ -273,8 +274,8 @@ class Boss:
         for sc in self.global_shortcuts.values():
             self.keymap.pop(sc, None)
 
-    def startup_first_child(self, os_window_id: Optional[int]) -> None:
-        startup_sessions = create_sessions(get_options(), self.args, default_session=get_options().startup_session)
+    def startup_first_child(self, os_window_id: Optional[int], startup_sessions: Sequence[Optional[Session]] = ()) -> None:
+        startup_sessions = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
         for startup_session in startup_sessions:
             self.add_os_window(startup_session, os_window_id=os_window_id)
             os_window_id = None
@@ -546,6 +547,10 @@ class Boss:
             from .cli_stub import CLIOptions
             startup_id = data.get('startup_id')
             args, rest = parse_args(data['args'][1:], result_class=CLIOptions)
+            cmdline_args_for_open = data.get('cmdline_args_for_open')
+            if cmdline_args_for_open:
+                self.launch_urls(*cmdline_args_for_open, no_replace_window=True)
+                return None
             args.args = rest
             opts = create_opts(args)
             if args.session == '-':
@@ -746,7 +751,14 @@ class Boss:
         if not getattr(self, 'io_thread_started', False):
             self.child_monitor.start()
             self.io_thread_started = True
-            self.startup_first_child(first_os_window_id)
+            urls: List[str] = getattr(sys, 'cmdline_args_for_open', [])
+            sess = create_sessions(get_options(), self.args, special_window=SpecialWindow([kitty_exe(), '+runpy', 'input()']))
+            if urls:
+                delattr(sys, 'cmdline_args_for_open')
+                self.startup_first_child(first_os_window_id, startup_sessions=tuple(sess))
+                self.launch_urls(*urls)
+            else:
+                self.startup_first_child(first_os_window_id)
 
         if get_options().update_check_interval > 0 and not hasattr(self, 'update_check_started'):
             from .update_check import run_update_check
@@ -2234,19 +2246,21 @@ class Boss:
             output = '\n'.join(f'{k}={v}' for k, v in os.environ.items())
             self.display_scrollback(w, output, title=_('Current kitty env vars'), report_cursor=False)
 
-    def launch_url(self, url: str) -> None:
-        if url == ":cocoa::application launched::":
+    def launch_urls(self, *urls: str, no_replace_window: bool = False) -> None:
+        if urls == (":cocoa::application launched::",):
             self.cocoa_application_launched = True
             return
-        from .open_actions import actions_for_launch
         from .launch import force_window_launch
-        actions = list(actions_for_launch(url))
+        from .open_actions import actions_for_launch
+        actions = []
+        for url in urls:
+            actions.extend(actions_for_launch(url))
         tab = self.active_tab
         if tab is not None:
             w = tab.active_window
         else:
             w = None
-        needs_window_replaced = not self.cocoa_application_launched or not self.os_window_map and w is not None and w.id == 1
+        needs_window_replaced = not no_replace_window and (not self.cocoa_application_launched or not self.os_window_map) and w is not None and w.id == 1
 
         def clear_initial_window() -> None:
             if needs_window_replaced and tab is not None and w is not None:
@@ -2254,7 +2268,7 @@ class Boss:
 
         if not actions:
             with force_window_launch(needs_window_replaced):
-                self.launch(kitty_exe(), '+runpy', f'print("The url:", {url!r}, "is of unknown type, cannot open it.");'
+                self.launch(kitty_exe(), '+runpy', f'print("The url:", {urls[0]!r}, "is of unknown type, cannot open it.");'
                             'from kitty.utils import hold_till_enter; hold_till_enter(); raise SystemExit(1)')
             clear_initial_window()
         else:

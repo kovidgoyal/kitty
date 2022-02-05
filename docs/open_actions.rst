@@ -114,6 +114,12 @@ URLs onto the kitty dock icon to open them with kitty. The default actions are:
 * Run shell scripts in a shell
 * Open SSH urls using the ssh command
 
+These actions can also be executed from the command line by running::
+
+    open -a kitty.app file_or_url ... (on macOS only)
+    or
+    kitty +open file_or_url ...
+
 You can customize these actions by creating a :file:`launch-actions.conf` file
 in the kitty config directory, just like
 the :file:`open-actions.conf` file above. For example:

@@ -60,7 +60,7 @@ def talk_to_instance(args: CLIOptions) -> None:
     stdin = ''
     if args.session == '-':
         stdin = sys.stdin.read()
-    data = {'cmd': 'new_instance', 'args': tuple(sys.argv),
+    data = {'cmd': 'new_instance', 'args': tuple(sys.argv), 'cmdline_args_for_open': getattr(sys, 'cmdline_args_for_open', []),
             'startup_id': os.environ.get('DESKTOP_STARTUP_ID'),
             'cwd': os.getcwd(), 'stdin': stdin}
     notify_socket = None
@@ -367,8 +367,21 @@ def _main() -> None:
         cwd_ok = False
     if not cwd_ok:
         os.chdir(os.path.expanduser('~'))
-    cli_opts, rest = parse_args(args=args, result_class=CLIOptions)
-    cli_opts.args = rest
+    if getattr(sys, 'cmdline_args_for_open', False):
+        usage = 'file_or_url ...'
+        appname = 'kitty +open'
+        msg = (
+            'Run kitty and open the specified files or URLs in it, using launch-actions.conf. For details'
+            ' see https://sw.kovidgoyal.net/kitty/open_actions/#scripting-the-opening-of-files-with-kitty-on-macos'
+            '\n\nAll the normal kitty options can be used.')
+    else:
+        usage = msg = appname = None
+    cli_opts, rest = parse_args(args=args, result_class=CLIOptions, usage=usage, message=msg, appname=appname)
+    if getattr(sys, 'cmdline_args_for_open', False):
+        setattr(sys, 'cmdline_args_for_open', rest)
+        cli_opts.args = []
+    else:
+        cli_opts.args = rest
     if cli_opts.detach:
         if cli_opts.session == '-':
             from .session import PreReadSession
