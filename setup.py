@@ -1006,21 +1006,19 @@ def macos_info_plist() -> bytes:
         {
             'CFBundleTypeName': 'Text files',
             'LSItemContentTypes': ['public.text'],
-            'LSTypeIsPackage': False,
             'CFBundleTypeRole': 'Editor',
             'LSHandlerRank': 'Alternate',
         },
         {
             'CFBundleTypeName': 'Image files',
             'LSItemContentTypes': ['public.image'],
-            'LSTypeIsPackage': False,
             'CFBundleTypeRole': 'Viewer',
             'LSHandlerRank': 'Alternate',
         },
         # Allows dragging arbitrary files to kitty Dock icon, and list kitty in the Open With context menu.
         {
             'CFBundleTypeName': 'All files',
-            'LSItemContentTypes': ['public.content', 'public.data'],
+            'LSItemContentTypes': ['public.archive', 'public.content', 'public.data'],
             'CFBundleTypeRole': 'Editor',
             'LSHandlerRank': 'Alternate',
         },
