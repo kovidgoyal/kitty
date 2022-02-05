@@ -389,7 +389,7 @@ class Tab:  # {{{
                                     line = f.read(4096).splitlines()[0]
                                     cmd += shlex.split(line) + [old_exe]
                                 else:
-                                    cmd += [resolved_shell(get_options())[0], cmd[0]]
+                                    cmd += [resolved_shell(get_options())[0], old_exe]
                                 if cmd_rest:
                                     cmd += cmd_rest
         fenv: Dict[str, str] = {}
