@@ -95,6 +95,12 @@ the command line:
 ``@cursor-y``
     replaced by the current cursor y position with 1 being the topmost cell
 
+``@first-line-on-screen``
+    replaced by the first line on screen. Can be used for pager positioning.
+
+``@last-line-on-screen``
+    replaced by the last line on screen. Can be used for pager positioning.
+
 
 For example::
 
