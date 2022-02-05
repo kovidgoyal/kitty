@@ -99,8 +99,8 @@ Detailed list of changes
 - A new action :ac:`scroll_prompt_to_bottom` to move the current prompt
   to the bottom, filling in the window from the scrollback (:pull:`4634`)
 
-- Add two special arguments ``@first-line-on-screen`` and ``@first-line-on-screen``
-  for the :doc:`launch <launch>` command to be used for pager positioning. 
+- Add two special arguments ``@first-line-on-screen`` and ``@last-line-on-screen``
+  for the :doc:`launch <launch>` command to be used for pager positioning.
   (:iss:`4462`)
 
 0.24.2 [2022-02-03]
