@@ -1026,6 +1026,74 @@ def macos_info_plist() -> bytes:
         },
     ]
 
+    url_schemes = [
+        {
+            'CFBundleURLName': 'File URL',
+            'CFBundleURLSchemes': ['file'],
+        },
+        {
+            'CFBundleURLName': 'FTP URL',
+            'CFBundleURLSchemes': ['ftp', 'ftps'],
+        },
+        {
+            'CFBundleURLName': 'Gemini URL',
+            'CFBundleURLSchemes': ['gemini'],
+        },
+        {
+            'CFBundleURLName': 'Git URL',
+            'CFBundleURLSchemes': ['git'],
+        },
+        {
+            'CFBundleURLName': 'Gopher URL',
+            'CFBundleURLSchemes': ['gopher'],
+        },
+        {
+            'CFBundleURLName': 'HTTP URL',
+            'CFBundleURLSchemes': ['http', 'https'],
+        },
+        {
+            'CFBundleURLName': 'IRC URL',
+            'CFBundleURLSchemes': ['irc', 'irc6', 'ircs'],
+        },
+        {
+            'CFBundleURLName': 'kitty URL',
+            'CFBundleURLSchemes': ['kitty'],
+            'LSHandlerRank': 'Owner',
+            'LSIsAppleDefaultForScheme': True,
+        },
+        {
+            'CFBundleURLName': 'Mail Address URL',
+            'CFBundleURLSchemes': ['mailto'],
+        },
+        {
+            'CFBundleURLName': 'News URL',
+            'CFBundleURLSchemes': ['news', 'nntp'],
+        },
+        {
+            'CFBundleURLName': 'SSH and SFTP URL',
+            'CFBundleURLSchemes': ['ssh', 'sftp'],
+        },
+        {
+            'CFBundleURLName': 'Telnet URL',
+            'CFBundleURLSchemes': ['telnet'],
+        },
+    ]
+
+    services = [
+        {
+            'NSMenuItem': {'default': f'New {appname} Tab Here'},
+            'NSMessage': 'openTab',
+            'NSRequiredContext': {'NSTextContent': 'FilePath'},
+            'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
+        },
+        {
+            'NSMenuItem': {'default': f'New {appname} Window Here'},
+            'NSMessage': 'openOSWindow',
+            'NSRequiredContext': {'NSTextContent': 'FilePath'},
+            'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
+        },
+    ]
+
     pl = dict(
         # Naming
         CFBundleName=appname,
@@ -1043,7 +1111,6 @@ def macos_info_plist() -> bytes:
         # Categorization
         CFBundlePackageType='APPL',
         CFBundleSignature='????',
-        CFBundleDocumentTypes=docs,
         LSApplicationCategoryType='public.app-category.utilities',
         # App Execution
         CFBundleExecutable=appname,
@@ -1061,21 +1128,11 @@ def macos_info_plist() -> bytes:
         NSSupportsAutomaticGraphicsSwitching=True,
         # Needed for dark mode in Mojave when linking against older SDKs
         NSRequiresAquaSystemAppearance='NO',
+        # Document and URL Types
+        CFBundleDocumentTypes=docs,
+        CFBundleURLTypes=url_schemes,
         # Services
-        NSServices=[
-            {
-                'NSMenuItem': {'default': f'New {appname} Tab Here'},
-                'NSMessage': 'openTab',
-                'NSRequiredContext': {'NSTextContent': 'FilePath'},
-                'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
-            },
-            {
-                'NSMenuItem': {'default': f'New {appname} Window Here'},
-                'NSMessage': 'openOSWindow',
-                'NSRequiredContext': {'NSTextContent': 'FilePath'},
-                'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
-            },
-        ],
+        NSServices=services,
         # Calendar and Reminders
         NSCalendarsUsageDescription=access('your calendar data.'),
         NSRemindersUsageDescription=access('your reminders.'),
