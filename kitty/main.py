@@ -368,9 +368,9 @@ def _main() -> None:
     if not cwd_ok:
         os.chdir(os.path.expanduser('~'))
     if getattr(sys, 'cmdline_args_for_open', False):
-        usage = 'file_or_url ...'
-        appname = 'kitty +open'
-        msg = (
+        usage: Optional[str] = 'file_or_url ...'
+        appname: Optional[str] = 'kitty +open'
+        msg: Optional[str] = (
             'Run kitty and open the specified files or URLs in it, using launch-actions.conf. For details'
             ' see https://sw.kovidgoyal.net/kitty/open_actions/#scripting-the-opening-of-files-with-kitty-on-macos'
             '\n\nAll the normal kitty options can be used.')

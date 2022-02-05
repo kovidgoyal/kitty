@@ -275,8 +275,8 @@ class Boss:
             self.keymap.pop(sc, None)
 
     def startup_first_child(self, os_window_id: Optional[int], startup_sessions: Sequence[Optional[Session]] = ()) -> None:
-        startup_sessions = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
-        for startup_session in startup_sessions:
+        si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
+        for startup_session in si:
             self.add_os_window(startup_session, os_window_id=os_window_id)
             os_window_id = None
             if self.args.start_as != 'normal':
@@ -2252,7 +2252,7 @@ class Boss:
             return
         from .launch import force_window_launch
         from .open_actions import actions_for_launch
-        actions = []
+        actions: List[KeyAction] = []
         for url in urls:
             actions.extend(actions_for_launch(url))
         tab = self.active_tab

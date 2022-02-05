@@ -1051,6 +1051,9 @@ class Screen:
     def line(self, num: int) -> Line:
         pass
 
+    def visual_line(self, num: int) -> Line:
+        pass
+
     def draw(self, text: str) -> None:
         pass
 
