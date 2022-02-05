@@ -1413,7 +1413,7 @@ def build_dep() -> None:
     p.add_argument(
         '--platform',
         default='all',
-        choices='all macos linux linux-x86'.split(),
+        choices='all macos linux linux-32 linux-arm64 linux-64'.split(),
         help='Platforms to build the dep for'
     )
     p.add_argument(
@@ -1423,15 +1423,25 @@ def build_dep() -> None:
         help='Names of the dependencies, if none provided, build all'
     )
     args = p.parse_args(sys.argv[2:], namespace=Options)
+    linux_platforms = [
+        ['linux', '--arch=64'],
+        ['linux', '--arch=32'],
+        ['linux', '--arch=arm64'],
+    ]
     if args.platform == 'all':
-        platforms = ['linux', 'linux 32', 'macos']
-    elif args.platform == 'linux-x86':
-        platforms = ['linux 32']
+        platforms = linux_platforms + [['macos']]
+    elif args.platform == 'linux':
+        platforms = linux_platforms
+    elif args.platform == 'macos':
+        platforms = [['macos']]
+    elif '-' in args.platform:
+        parts = args.platform.split('-')
+        platforms = [[parts[0], f'--arch={parts[1]}']]
     else:
-        platforms = [args.platform]
+        raise SystemExit(f'Unknown platform: {args.platform}')
     base = [sys.executable, '../bypy']
     for pf in platforms:
-        cmd = base + pf.split() + args.deps
+        cmd = base + pf + ['dependencies'] + args.deps
         run_tool(cmd)
 
 
