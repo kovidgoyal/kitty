@@ -377,7 +377,7 @@ The program with which to open URLs that are clicked on. The special value
 '''
     )
 
-opt('url_prefixes', 'http https file ftp gemini irc gopher mailto news git',
+opt('url_prefixes', 'file ftp ftps gemini git gopher http https irc ircs kitty mailto news sftp ssh',
     option_type='url_prefixes', ctype='!url_prefixes',
     long_text='''
 The set of URL prefixes to look for when detecting a URL under the mouse cursor.

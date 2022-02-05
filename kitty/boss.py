@@ -2234,13 +2234,13 @@ class Boss:
             output = '\n'.join(f'{k}={v}' for k, v in os.environ.items())
             self.display_scrollback(w, output, title=_('Current kitty env vars'), report_cursor=False)
 
-    def open_file(self, path: str) -> None:
-        if path == ":cocoa::application launched::":
+    def launch_url(self, url: str) -> None:
+        if url == ":cocoa::application launched::":
             self.cocoa_application_launched = True
             return
         from .open_actions import actions_for_launch
         from .launch import force_window_launch
-        actions = list(actions_for_launch(path))
+        actions = list(actions_for_launch(url))
         tab = self.active_tab
         if tab is not None:
             w = tab.active_window
@@ -2254,7 +2254,7 @@ class Boss:
 
         if not actions:
             with force_window_launch(needs_window_replaced):
-                self.launch(kitty_exe(), '+runpy', f'print("The file:", {path!r}, "is of unknown type, cannot open it.");'
+                self.launch(kitty_exe(), '+runpy', f'print("The url:", {url!r}, "is of unknown type, cannot open it.");'
                             'from kitty.utils import hold_till_enter; hold_till_enter(); raise SystemExit(1)')
             clear_initial_window()
         else:

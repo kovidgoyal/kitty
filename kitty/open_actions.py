@@ -9,7 +9,7 @@ from contextlib import suppress
 from typing import (
     Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, cast
 )
-from urllib.parse import ParseResult, quote, unquote, urlparse
+from urllib.parse import ParseResult, unquote, urlparse
 
 from .conf.utils import KeyAction, to_cmdline_implementation
 from .constants import config_dir
@@ -243,6 +243,10 @@ action launch --type=os-window $EDITOR $FILE_PATH
 protocol file
 mime image/*
 action launch --type=os-window kitty +kitten icat --hold $FILE_PATH
+
+# Open ssh URLs with ssh command
+protocol ssh
+action launch --type=os-window ssh $URL
 '''.splitlines()))
 
 
@@ -254,8 +258,10 @@ def actions_for_url(url: str, actions_spec: Optional[str] = None) -> Iterator[Ke
     yield from actions_for_url_from_list(url, actions)
 
 
-def actions_for_launch(path: str) -> Iterator[KeyAction]:
-    url = f'file://{quote(path)}'
+def actions_for_launch(url: str) -> Iterator[KeyAction]:
+    # Custom launch actions using kitty URL scheme needs to be prefixed with `kitty:///launch/`
+    if url.startswith('kitty://') and not url.startswith('kitty:///launch/'):
+        return
     found = False
     for action in actions_for_url_from_list(url, load_launch_actions()):
         found = True
