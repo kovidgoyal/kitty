@@ -259,6 +259,9 @@ def actions_for_url(url: str, actions_spec: Optional[str] = None) -> Iterator[Ke
 
 
 def actions_for_launch(url: str) -> Iterator[KeyAction]:
+    # Custom launch actions using kitty URL scheme needs to be prefixed with `kitty:///launch/`
+    if url.startswith('kitty://') and not url.startswith('kitty:///launch/'):
+        return
     found = False
     for action in actions_for_url_from_list(url, load_launch_actions()):
         found = True
