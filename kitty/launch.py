@@ -397,7 +397,7 @@ def launch(
                 elif x == '@line-count':
                     if 'lines' in pipe_data:
                         x = str(pipe_data['lines'])
-                elif x in ('@cursor-x', '@cursor-y', '@scrolled-by'):
+                elif x in ('@cursor-x', '@cursor-y', '@scrolled-by', '@first-line-on-screen', '@last-line-on-screen'):
                     if active is not None:
                         screen = active.screen
                         if x == '@scrolled-by':
@@ -406,6 +406,10 @@ def launch(
                             x = str(screen.cursor.x + 1)
                         elif x == '@cursor-y':
                             x = str(screen.cursor.y + 1)
+                        elif x == '@first-line-on-screen':
+                            x = str(screen.visual_line(0) or '')
+                        elif x == '@last-line-on-screen':
+                            x = str(screen.visual_line(screen.lines - 1) or '')
             final_cmd.append(x)
         exe = which(final_cmd[0])
         if exe:
