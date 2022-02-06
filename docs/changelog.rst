@@ -79,7 +79,10 @@ Detailed list of changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: Allow kitty to handle various URL types. Can be configured via
-  :ref:`launch_actions`
+  :ref:`launch_actions` (:pull:`4618`)
+
+- macOS: Add a new service ``Open with kitty`` to open file types that are not
+  recognized by the system (:pull:`4641`)
 
 - Fix a regression in the previous release that broke :opt:`active_tab_foreground` (:iss:`4620`)
 
