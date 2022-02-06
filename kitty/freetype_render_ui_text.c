@@ -134,7 +134,7 @@ choose_bitmap_size(FT_Face face, FT_UInt desired_height) {
 static void
 set_pixel_size(RenderCtx *ctx, Face *face, FT_UInt sz, bool get_metrics UNUSED) {
     if (sz != face->pixel_size) {
-        if (FT_HAS_COLOR(face->freetype)) sz = choose_bitmap_size(face->freetype, font_units_to_pixels_y(main_face.freetype, main_face.freetype->height));
+        if (face->freetype->num_fixed_sizes > 0 && FT_HAS_COLOR(face->freetype)) choose_bitmap_size(face->freetype, font_units_to_pixels_y(main_face.freetype, main_face.freetype->height));
         else FT_Set_Pixel_Sizes(face->freetype, sz, sz);
         hb_ft_font_changed(face->hb);
         hb_ft_font_set_load_flags(face->hb, get_load_flags(face->hinting, face->hintstyle, FT_LOAD_DEFAULT));
@@ -304,7 +304,7 @@ render_run(RenderCtx *ctx, RenderState *rs) {
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
     hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(hb_buffer, NULL);
     int baseline = font_units_to_pixels_y(face, face->ascender);
-    int load_flags = get_load_flags(rs->current_face->hinting, rs->current_face->hintstyle, has_color ? FT_LOAD_COLOR : FT_LOAD_RENDER);
+    int load_flags = get_load_flags(rs->current_face->hinting, rs->current_face->hintstyle, FT_LOAD_RENDER | (has_color ? FT_LOAD_COLOR : 0));
     float pos = rs->x;
     unsigned int limit = len;
     for (unsigned int i = 0; i < len; i++) {

@@ -103,6 +103,8 @@ Detailed list of changes
   for the :doc:`launch <launch>` command to be used for pager positioning.
   (:iss:`4462`)
 
+- Linux: Fix rendering of emoji when using scalable fonts such as Segoe UI Emoji
+
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

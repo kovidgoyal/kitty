@@ -522,19 +522,20 @@ detect_right_edge(ProcessedBitmap *ans) {
 static bool
 render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline UNUSED) {
     unsigned short best = 0, diff = USHRT_MAX;
-    const short limit = self->face->num_fixed_sizes;
-    for (short i = 0; i < limit; i++) {
-        unsigned short w = self->face->available_sizes[i].width;
-        unsigned short d = w > (unsigned short)cell_width ? w - (unsigned short)cell_width : (unsigned short)cell_width - w;
-        if (d < diff) {
-            diff = d;
-            best = i;
+    if (self->face->num_fixed_sizes > 0) {
+        const short limit = self->face->num_fixed_sizes;
+        for (short i = 0; i < limit; i++) {
+            unsigned short w = self->face->available_sizes[i].width;
+            unsigned short d = w > (unsigned short)cell_width ? w - (unsigned short)cell_width : (unsigned short)cell_width - w;
+            if (d < diff) {
+                diff = d;
+                best = i;
+            }
         }
-    }
-    FT_Error error = FT_Select_Size(self->face, best);
-    if (error) { set_freetype_error("Failed to set char size for non-scalable font, with error:", error); return false; }
-    if (!load_glyph(self, glyph_id, FT_LOAD_COLOR)) return false;
-    FT_Set_Char_Size(self->face, 0, self->char_height, self->xdpi, self->ydpi);
+        FT_Error error = FT_Select_Size(self->face, best);
+        if (error) { set_freetype_error("Failed to set char size for non-scalable font, with error:", error); return false; }
+    } else FT_Set_Char_Size(self->face, 0, self->char_height, self->xdpi, self->ydpi);
+    if (!load_glyph(self, glyph_id, FT_LOAD_COLOR | FT_LOAD_RENDER)) return false;
     FT_Bitmap *bitmap = &self->face->glyph->bitmap;
     if (bitmap->pixel_mode != FT_PIXEL_MODE_BGRA) return false;
     ans->buf = bitmap->buffer;
