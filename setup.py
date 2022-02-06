@@ -969,7 +969,7 @@ Icon=kitty
 Categories=System;TerminalEmulator;
 '''
             )
-    with open(os.path.join(deskdir, 'kitty-launcher.desktop'), 'w') as f:
+    with open(os.path.join(deskdir, 'kitty-open.desktop'), 'w') as f:
         f.write(
             '''\
 [Desktop Entry]
@@ -983,7 +983,7 @@ Exec=kitty +open %U
 Icon=kitty
 Categories=System;TerminalEmulator;
 NoDisplay=true
-MimeType=x-scheme-handler/kitty;
+MimeType=image/*;application/x-sh;inode/directory;text/*;x-scheme-handler/kitty;
 '''
             )
 
