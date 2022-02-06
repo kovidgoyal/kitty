@@ -383,7 +383,7 @@ class Tab:  # {{{
                         import shlex
                         with suppress(OSError):
                             with open(old_exe) as f:
-                                cmd_rest = cmd[1:] if len(cmd) > 1 else []
+                                cmd_rest = cmd[1:]
                                 cmd = [kitty_exe(), '+hold']
                                 if f.read(2) == '#!':
                                     line = f.read(4096).splitlines()[0]
