@@ -141,6 +141,8 @@ _ksi_main() {
     elif [[ $(builtin declare -p PROMPT_COMMAND 2> /dev/null) =~ 'declare -a PROMPT_COMMAND' ]]; then
         PROMPT_COMMAND+=("_ksi_prompt_command")
     else
+        PROMPT_COMMAND="${PROMPT_COMMAND%% }"
+        PROMPT_COMMAND="${PROMPT_COMMAND%%;}"
         PROMPT_COMMAND+="; _ksi_prompt_command"
     fi
 }

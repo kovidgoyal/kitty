@@ -105,6 +105,8 @@ Detailed list of changes
 
 - Linux: Fix rendering of emoji when using scalable fonts such as Segoe UI Emoji
 
+- Shell integration: bash: Dont fail if an existing PROMPT_COMMAND ends with a semi-colon (:iss:`4645`)
+
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
