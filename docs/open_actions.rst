@@ -120,6 +120,16 @@ These actions can also be executed from the command line by running::
     or
     kitty +open file_or_url ...
 
+Since macOS lacks an official interface to set default URL scheme handler, you
+can set it with the following command. The first argument for
+``cocoa_set_url_handler`` is the URL scheme, and the second optional argument is
+the bundle id of the app, which defaults to kitty's. (Restores when the second
+argument is an empty string.)
+
+.. code-block:: sh
+
+    kitty +runpy 'from kitty.fast_data_types import cocoa_set_url_handler; print(cocoa_set_url_handler("ssh", "net.kovidgoyal.kitty"));'
+
 You can customize these actions by creating a :file:`launch-actions.conf` file
 in the kitty config directory, just like
 the :file:`open-actions.conf` file above. For example:

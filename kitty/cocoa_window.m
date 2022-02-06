@@ -829,6 +829,31 @@ cocoa_set_titlebar_color(void *w, color_type titlebar_color)
     } // autoreleasepool
 }
 
+static PyObject*
+cocoa_set_url_handler(PyObject UNUSED *self, PyObject *args) {
+    @autoreleasepool {
+
+    const char *url_scheme = NULL, *bundle_id = NULL;
+    if (!PyArg_ParseTuple(args, "s|z", &url_scheme, &bundle_id)) return NULL;
+    if (!url_scheme || url_scheme[0] == '\0') Py_RETURN_FALSE;
+
+    NSString *scheme = [NSString stringWithUTF8String:url_scheme];
+    NSString *identifier = @"";
+    if (!bundle_id) {
+        identifier = [[NSBundle mainBundle] bundleIdentifier];
+        if (!identifier || identifier.length == 0) identifier = @"net.kovidgoyal.kitty";
+    } else if (bundle_id[0] != '\0') {
+        identifier = [NSString stringWithUTF8String:bundle_id];
+    }
+    // This API has been marked as deprecated. It will need to be replaced when a new approach is available.
+    if (LSSetDefaultHandlerForURLScheme((CFStringRef)scheme, (CFStringRef)identifier) == noErr) {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+
+    } // autoreleasepool
+}
+
 static NSSound *beep_sound = nil;
 
 static void
@@ -878,6 +903,7 @@ static PyMethodDef module_methods[] = {
     {"cocoa_set_global_shortcut", (PyCFunction)cocoa_set_global_shortcut, METH_VARARGS, ""},
     {"cocoa_send_notification", (PyCFunction)cocoa_send_notification, METH_VARARGS, ""},
     {"cocoa_set_notification_activated_callback", (PyCFunction)set_notification_activated_callback, METH_O, ""},
+    {"cocoa_set_url_handler", (PyCFunction)cocoa_set_url_handler, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
