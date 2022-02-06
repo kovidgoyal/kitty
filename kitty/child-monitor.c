@@ -1008,14 +1008,14 @@ typedef struct {
 static CocoaPendingActionsData cocoa_pending_actions_data = {0};
 
 void
-set_cocoa_pending_action(CocoaPendingAction action, const char *wd) {
-    if (wd) {
-        if (action == LAUNCH_URL) {
+set_cocoa_pending_action(CocoaPendingAction action, const char *data) {
+    if (data) {
+        if (action == LAUNCH_URLS) {
             ensure_space_for(&cocoa_pending_actions_data, open_urls, char*, cocoa_pending_actions_data.open_urls_count + 8, open_urls_capacity, 8, true);
-            cocoa_pending_actions_data.open_urls[cocoa_pending_actions_data.open_urls_count++] = strdup(wd);
+            cocoa_pending_actions_data.open_urls[cocoa_pending_actions_data.open_urls_count++] = strdup(data);
         } else {
             if (cocoa_pending_actions_data.wd) free(cocoa_pending_actions_data.wd);
-            cocoa_pending_actions_data.wd = strdup(wd);
+            cocoa_pending_actions_data.wd = strdup(data);
         }
     }
     cocoa_pending_actions[action] = true;

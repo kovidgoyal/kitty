@@ -298,7 +298,7 @@ typedef enum {
     NEXT_TAB,
     PREVIOUS_TAB,
     DETACH_TAB,
-    LAUNCH_URL,
+    LAUNCH_URLS,
     NEW_WINDOW,
     CLOSE_WINDOW,
     RESET_TERMINAL,
