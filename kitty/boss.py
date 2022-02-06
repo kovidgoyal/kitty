@@ -9,6 +9,7 @@ import sys
 from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
+from time import monotonic
 from typing import (
     Any, Callable, Container, Dict, Iterable, Iterator, List, Optional,
     Sequence, Tuple, Union
@@ -230,7 +231,6 @@ class Boss:
         global_shortcuts: Dict[str, SingleKey]
     ):
         set_layout_options(opts)
-        self.cocoa_application_launched = False
         self.clipboard_buffers: Dict[str, str] = {}
         self.update_check_process: Optional['PopenType[bytes]'] = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
@@ -2223,8 +2223,6 @@ class Boss:
 
     # Can be called with kitty -o "map f1 send_test_notification"
     def send_test_notification(self) -> None:
-        from time import monotonic
-
         from .notify import notify
         now = monotonic()
         ident = f'test-notify-{now}'
@@ -2247,9 +2245,6 @@ class Boss:
             self.display_scrollback(w, output, title=_('Current kitty env vars'), report_cursor=False)
 
     def launch_urls(self, *urls: str, no_replace_window: bool = False) -> None:
-        if urls == (":cocoa::application launched::",):
-            self.cocoa_application_launched = True
-            return
         from .launch import force_window_launch
         from .open_actions import actions_for_launch
         actions: List[KeyAction] = []
@@ -2260,7 +2255,11 @@ class Boss:
             w = tab.active_window
         else:
             w = None
-        needs_window_replaced = not no_replace_window and (not self.cocoa_application_launched or not self.os_window_map) and w is not None and w.id == 1
+        needs_window_replaced = False
+        if not no_replace_window:
+            if w is not None and w.id == 1 and monotonic() - w.started_at < 2 and len(tuple(self.all_windows)) == 1:
+                # first window, soon after startup replace it
+                needs_window_replaced = True
 
         def clear_initial_window() -> None:
             if needs_window_replaced and tab is not None and w is not None:

@@ -360,6 +360,7 @@ class Window:
         else:
             self.watchers = global_watchers().copy()
         self.last_focused_at = 0.
+        self.started_at = monotonic()
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()

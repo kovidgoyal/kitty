@@ -408,7 +408,6 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
 {
     (void)notification;
     [NSApp stop:nil];
-    if (_glfw.ns.url_open_callback) _glfw.ns.url_open_callback(":cocoa::application launched::");
 
     CGDisplayRegisterReconfigurationCallback(display_reconfigured, NULL);
     _glfwCocoaPostEmptyEvent();
