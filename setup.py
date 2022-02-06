@@ -969,6 +969,23 @@ Icon=kitty
 Categories=System;TerminalEmulator;
 '''
             )
+    with open(os.path.join(deskdir, 'kitty-launcher.desktop'), 'w') as f:
+        f.write(
+            '''\
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=kitty URL Launcher
+GenericName=Terminal emulator
+Comment=Open URLs with kitty
+TryExec=kitty
+Exec=kitty +open %U
+Icon=kitty
+Categories=System;TerminalEmulator;
+NoDisplay=true
+MimeType=x-scheme-handler/kitty;
+'''
+            )
 
     base = Path(ddir)
     in_src_launcher = base / (f'{libdir_name}/kitty/kitty/launcher/kitty')
