@@ -527,7 +527,7 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     for (NSURL *url in urlArray) {
         NSString *path = [url path];
         if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
-            set_cocoa_pending_action(LAUNCH_URL, [[[NSURL fileURLWithPath:path] absoluteString] UTF8String]);
+            set_cocoa_pending_action(LAUNCH_URLS, [[[NSURL fileURLWithPath:path] absoluteString] UTF8String]);
         }
     }
     return YES;

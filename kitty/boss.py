@@ -2256,7 +2256,7 @@ class Boss:
         else:
             w = None
         needs_window_replaced = False
-        if not no_replace_window:
+        if not no_replace_window and not get_options().startup_session:
             if w is not None and w.id == 1 and monotonic() - w.started_at < 2 and len(tuple(self.all_windows)) == 1:
                 # first window, soon after startup replace it
                 needs_window_replaced = True

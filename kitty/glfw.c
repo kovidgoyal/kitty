@@ -456,7 +456,7 @@ static void get_window_dpi(GLFWwindow *w, double *x, double *y);
 #ifdef __APPLE__
 static bool
 apple_url_open_callback(const char* url) {
-    set_cocoa_pending_action(LAUNCH_URL, url);
+    set_cocoa_pending_action(LAUNCH_URLS, url);
     return true;
 }
 

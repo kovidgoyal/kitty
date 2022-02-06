@@ -383,15 +383,12 @@ class Tab:  # {{{
                         import shlex
                         with suppress(OSError):
                             with open(old_exe) as f:
-                                cmd_rest = cmd[1:]
-                                cmd = [kitty_exe(), '+hold']
                                 if f.read(2) == '#!':
                                     line = f.read(4096).splitlines()[0]
-                                    cmd += shlex.split(line) + [old_exe]
+                                    cmd[:0] = shlex.split(line)
                                 else:
-                                    cmd += [resolved_shell(get_options())[0], old_exe]
-                                if cmd_rest:
-                                    cmd += cmd_rest
+                                    cmd[:0] = [resolved_shell(get_options())[0]]
+                                cmd[:0] = [kitty_exe(), '+hold']
         fenv: Dict[str, str] = {}
         if env:
             fenv.update(env)
