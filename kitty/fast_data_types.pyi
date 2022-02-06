@@ -737,8 +737,10 @@ def cocoa_set_global_shortcut(name: str, mods: int, key: int) -> bool:
 def cocoa_get_lang() -> Optional[str]:
     pass
 
-def cocoa_set_url_handler(url_scheme: str, bundle_id: Optional[str]) -> bool:
+
+def cocoa_set_url_handler(url_scheme: str, bundle_id: Optional[str]) -> None:
     pass
+
 
 def locale_is_valid(name: str) -> bool:
     pass

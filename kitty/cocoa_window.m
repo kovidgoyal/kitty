@@ -846,11 +846,10 @@ cocoa_set_url_handler(PyObject UNUSED *self, PyObject *args) {
         identifier = [NSString stringWithUTF8String:bundle_id];
     }
     // This API has been marked as deprecated. It will need to be replaced when a new approach is available.
-    if (LSSetDefaultHandlerForURLScheme((CFStringRef)scheme, (CFStringRef)identifier) == noErr) {
-        Py_RETURN_TRUE;
-    }
-    Py_RETURN_FALSE;
-
+    OSStatus err = LSSetDefaultHandlerForURLScheme((CFStringRef)scheme, (CFStringRef)identifier);
+    if (err == noErr) Py_RETURN_NONE;
+    PyErr_Format(PyExc_OSError, "Failed to set default handler with error code: %d", err);
+    return NULL;
     } // autoreleasepool
 }
 
