@@ -835,7 +835,10 @@ cocoa_set_url_handler(PyObject UNUSED *self, PyObject *args) {
 
     const char *url_scheme = NULL, *bundle_id = NULL;
     if (!PyArg_ParseTuple(args, "s|z", &url_scheme, &bundle_id)) return NULL;
-    if (!url_scheme || url_scheme[0] == '\0') Py_RETURN_FALSE;
+    if (!url_scheme || url_scheme[0] == '\0') {
+        PyErr_SetString(PyExc_TypeError, "Empty url scheme");
+        return NULL;
+    }
 
     NSString *scheme = [NSString stringWithUTF8String:url_scheme];
     NSString *identifier = @"";
