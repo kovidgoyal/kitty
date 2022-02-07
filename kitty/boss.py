@@ -1826,6 +1826,8 @@ class Boss:
         self._create_tab(list(args), cwd_from=cwd_from)
 
     def new_tab_with_wd(self, wd: str) -> None:
+        if not self.os_window_map:
+            self.add_os_window()
         special_window = SpecialWindow(None, cwd=wd)
         self._new_tab(special_window)
 
