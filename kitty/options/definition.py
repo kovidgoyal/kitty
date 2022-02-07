@@ -2829,9 +2829,14 @@ Show or hide the window title in the macOS window or menu-bar. A value of
 the macOS window. A value of :code:`menubar` will show the title of the
 currently active window in the macOS menu-bar, making use of otherwise wasted
 space. :code:`all` will show the title everywhere and :code:`none` hides the
-title in the window and the menu-bar.
-'''
-    )
+title in the window and the menu-bar. See :opt`macos_menubar_title_max_length`
+for how to control the length of the title in the menu bar.
+''')
+
+opt('macos_menubar_title_max_length', '0', option_type='positive_int', ctype='int', long_text='''
+The maximum number of characters from the window title to show in the global menubar.
+Values less than one mean there is no maximum.
+''')
 
 opt('macos_custom_beam_cursor', 'no',
     option_type='to_bool',

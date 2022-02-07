@@ -671,7 +671,15 @@ cocoa_create_global_menu(void) {
 
 void
 cocoa_update_menu_bar_title(PyObject *pytitle) {
-    NSString *title = @(PyUnicode_AsUTF8(pytitle));
+    NSString *title = nil;
+    if (OPT(macos_menubar_title_max_length) > 0 && PyUnicode_GetLength(pytitle) > OPT(macos_menubar_title_max_length)) {
+        static char buf[2048];
+        snprintf(buf, sizeof(buf), "%*.*s…", (int)OPT(macos_menubar_title_max_length), (int)OPT(macos_menubar_title_max_length), PyUnicode_AsUTF8(pytitle));
+        title = @(buf);
+    } else {
+        title = @(PyUnicode_AsUTF8(pytitle));
+    }
+    if (!title) return;
     NSMenu *bar = [NSApp mainMenu];
     if (title_menu != NULL) {
         [bar removeItem:title_menu];

@@ -112,6 +112,9 @@ Detailed list of changes
 
 - Linux: Fix fontconfig alias not being used if the aliased font is dual spaced instead of monospaced (:iss:`4649`)
 
+- macOS: Add an option :opt:`macos_menubar_title_max_length` to control the max length of the window title displayed in the global menubar (:iss:`2132`)
+
+
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

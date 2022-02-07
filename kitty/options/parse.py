@@ -1029,6 +1029,9 @@ class Parser:
     def macos_hide_from_tasks(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['macos_hide_from_tasks'] = to_bool(val)
 
+    def macos_menubar_title_max_length(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['macos_menubar_title_max_length'] = int(val)
+
     def macos_option_as_alt(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['macos_option_as_alt'] = macos_option_as_alt(val)
 
