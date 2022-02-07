@@ -860,13 +860,15 @@ def sanitize_control_codes(text: str, replace_with: str = '') -> str:
 def hold_till_enter() -> None:
     import termios
     from kittens.tui.operations import init_state, set_cursor_visible
-    with suppress(BaseException):
-        print(
-            '\n\x1b[1;32mPress Enter to exit',
-            end=init_state(alternate_screen=False, kitty_keyboard_mode=False) + set_cursor_visible(False),
-            flush=True)
-    with suppress(BaseException):
-        fd = sys.stdin.fileno()
+    term = os.ctermid() or '/dev/tty'
+    with open(term, 'w') as tty:
+        with suppress(BaseException):
+            print(
+                '\n\x1b[1;32mPress Enter to exit',
+                end=init_state(alternate_screen=False, kitty_keyboard_mode=False) + set_cursor_visible(False),
+                flush=True, file=tty)
+    with suppress(BaseException), open(term, 'rb') as inp:
+        fd = inp.fileno()
         old = termios.tcgetattr(fd)
         new = old[:]
         new[3] &= ~termios.ECHO  # 3 == 'lflags'
@@ -875,4 +877,5 @@ def hold_till_enter() -> None:
             tcsetattr_flags |= getattr(termios, 'TCSASOFT')
         termios.tcsetattr(fd, tcsetattr_flags, new)
         with suppress(KeyboardInterrupt):
-            input()
+            while inp.read(1) not in b'\n\r':
+                pass
