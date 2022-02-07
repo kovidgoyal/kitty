@@ -208,7 +208,7 @@ bitmapped fonts.
 
         symbol_map U+23FB-U+23FE,U+2B58,U+E200-U+E2A9,U+E0A0-U+E0A3,U+E0B0-U+E0BF,U+E0C0-U+E0C8,U+E0CC-U+E0CF,U+E0D0-U+E0D2,U+E0D4,U+E700-U+E7C5,U+F000-U+F2E0,U+2665,U+26A1,U+F400-U+F4A8,U+F67C,U+E000-U+E00A,U+F300-U+F313,U+E5FA-U+E62B Symbols Nerd Font
 
-If your font is not listed in ``kitty list-fonts`` it means that it is not
+If your font is not listed in ``kitty +list-fonts`` it means that it is not
 monospace or is a bitmapped font. On Linux you can list all monospace fonts with::
 
     fc-list : family spacing outline scalable | grep -e spacing=100 -e spacing=90 | grep -e outline=True | grep -e scalable=True
@@ -236,7 +236,7 @@ command to rebuild your fontconfig cache::
 
     fc-cache -r
 
-Then, the font will be available in ``kitty list-fonts``.
+Then, the font will be available in ``kitty +list-fonts``.
 
 
 How can I assign a single global shortcut to bring up the kitty terminal?

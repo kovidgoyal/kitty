@@ -33,7 +33,7 @@ and even specify special fonts for particular characters.
 opt('font_family', 'monospace',
     long_text='''
 You can specify different fonts for the bold/italic/bold-italic variants.
-To get a full list of supported fonts use the `kitty list-fonts` command.
+To get a full list of supported fonts use the `kitty +list-fonts` command.
 By default they are derived automatically, by the OSes font system. When
 bold_font or bold_italic_font is set to :code:`auto` on macOS, the priority of
 bold fonts is semi-bold, bold, heavy. Setting them manually is useful for font
@@ -166,11 +166,11 @@ disable a feature in the italic font but not in the regular font.
 On Linux, these are read from the FontConfig database first and then this,
 setting is applied, so they can be configured in a single, central place.
 
-To get the PostScript name for a font, use :code:`kitty + list-fonts --psnames`:
+To get the PostScript name for a font, use :code:`kitty +list-fonts --psnames`:
 
 .. code-block:: sh
 
-    $ kitty + list-fonts --psnames | grep Fira
+    $ kitty +list-fonts --psnames | grep Fira
     Fira Code
     Fira Code Bold (FiraCode-Bold)
     Fira Code Light (FiraCode-Light)
