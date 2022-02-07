@@ -673,9 +673,10 @@ void
 cocoa_update_menu_bar_title(PyObject *pytitle) {
     NSString *title = nil;
     if (OPT(macos_menubar_title_max_length) > 0 && PyUnicode_GetLength(pytitle) > OPT(macos_menubar_title_max_length)) {
-        static char buf[2048];
-        snprintf(buf, sizeof(buf), "%*.*s…", (int)OPT(macos_menubar_title_max_length), (int)OPT(macos_menubar_title_max_length), PyUnicode_AsUTF8(pytitle));
-        title = @(buf);
+        static char fmt[64];
+        snprintf(fmt, sizeof(fmt), "%%%ld.%ldU%%s", OPT(macos_menubar_title_max_length), OPT(macos_menubar_title_max_length));
+        DECREF_AFTER_FUNCTION PyObject *st = PyUnicode_FromFormat(fmt, pytitle, "…");
+        if (st) title = @(PyUnicode_AsUTF8(st));
     } else {
         title = @(PyUnicode_AsUTF8(pytitle));
     }
