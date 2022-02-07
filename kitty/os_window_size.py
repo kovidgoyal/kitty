@@ -31,7 +31,7 @@ class WindowSizeData(NamedTuple):
 
 def sanitize_window_size(x: Any) -> int:
     ans = int(x)
-    return max(20, min(ans, 100000))
+    return max(20, min(ans, 50000))
 
 
 def initial_window_size_func(opts: WindowSizeData, cached_values: Dict[str, Any]) -> Callable[[int, int, float, float, float, float], Tuple[int, int]]:
