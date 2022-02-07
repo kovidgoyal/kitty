@@ -21,10 +21,10 @@ from .constants import (
     appname, config_dir, is_macos, is_wayland, read_kitty_resource, shell_path,
     supports_primary_selection
 )
+from .fast_data_types import Color, open_tty
 from .rgb import to_color
 from .types import run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
-from .fast_data_types import Color
 
 if TYPE_CHECKING:
     from .fast_data_types import OSWindowSize
@@ -459,7 +459,6 @@ class TTYIO:
         self.read_with_timeout = read_with_timeout
 
     def __enter__(self) -> 'TTYIO':
-        from .fast_data_types import open_tty
         self.tty_fd, self.original_termios = open_tty(self.read_with_timeout)
         return self
 
@@ -654,6 +653,7 @@ def which(name: str, only_system: bool = False) -> Optional[str]:
     if os.sep in name:
         return name
     import shutil
+
     from .fast_data_types import get_options
     opts: Optional[Options] = None
     with suppress(RuntimeError):
@@ -837,6 +837,7 @@ def is_kitty_gui_cmdline(*cmd: str) -> bool:
 
 def reload_conf_in_all_kitties() -> None:
     import signal
+
     from kitty.child import cmdline_of_process
 
     for pid in get_all_processes():
@@ -858,24 +859,25 @@ def sanitize_control_codes(text: str, replace_with: str = '') -> str:
 
 
 def hold_till_enter() -> None:
+    import select
     import termios
+
     from kittens.tui.operations import init_state, set_cursor_visible
-    term = os.ctermid() or '/dev/tty'
-    with open(term, 'w') as tty:
-        with suppress(BaseException):
-            print(
-                '\n\x1b[1;32mPress Enter to exit',
-                end=init_state(alternate_screen=False, kitty_keyboard_mode=False) + set_cursor_visible(False),
-                flush=True, file=tty)
-    with suppress(BaseException), open(term, 'rb') as inp:
-        fd = inp.fileno()
-        old = termios.tcgetattr(fd)
-        new = old[:]
-        new[3] &= ~termios.ECHO  # 3 == 'lflags'
-        tcsetattr_flags = termios.TCSAFLUSH
-        if hasattr(termios, 'TCSASOFT'):
-            tcsetattr_flags |= getattr(termios, 'TCSASOFT')
-        termios.tcsetattr(fd, tcsetattr_flags, new)
-        with suppress(KeyboardInterrupt):
-            while inp.read(1) not in b'\n\r':
-                pass
+    fd, original_termios = open_tty()
+    write_all(fd, '\n\x1b[1;32mPress Enter or Esc to exit')
+    write_all(fd, init_state(alternate_screen=False, kitty_keyboard_mode=False) + set_cursor_visible(False))
+    old = termios.tcgetattr(fd)
+    new = old[:]
+    new[3] &= ~termios.ECHO  # 3 == 'lflags'
+    tcsetattr_flags = termios.TCSAFLUSH
+    if hasattr(termios, 'TCSASOFT'):
+        tcsetattr_flags |= getattr(termios, 'TCSASOFT')
+    termios.tcsetattr(fd, tcsetattr_flags, new)
+    termios.tcdrain(fd)
+    while True:
+        rd = select.select([fd], [], [])[0]
+        if not rd:
+            break
+        q = os.read(fd, 1)
+        if q in b'\n\r\x1b\x03':
+            break
