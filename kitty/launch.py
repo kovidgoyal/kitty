@@ -11,7 +11,7 @@ from .cli_stub import LaunchCLIOptions
 from .constants import kitty_exe, shell_path
 from .fast_data_types import patch_color_profiles, set_clipboard_string
 from .options.utils import env as parse_env
-from .tabs import Tab
+from .tabs import Tab, TabManager
 from .types import run_once
 from .utils import log_error, resolve_custom_file, set_primary_selection, which
 from .window import Watchers, Window
@@ -227,25 +227,26 @@ def get_env(opts: LaunchCLIOptions, active_child: Optional[Child]) -> Dict[str, 
 
 
 def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab] = None) -> Optional[Tab]:
+
+    def create_tab(tm: Optional[TabManager] = None) -> Tab:
+        if tm is None:
+            oswid = boss.add_os_window(wclass=opts.os_window_class, wname=opts.os_window_name, override_title=opts.os_window_title or None)
+            tm = boss.os_window_map[oswid]
+        tab = tm.new_tab(empty_tab=True, location=opts.location)
+        if opts.tab_title:
+            tab.set_title(opts.tab_title)
+        return tab
+
     if opts.type == 'tab':
         if target_tab is not None:
             tm = target_tab.tab_manager_ref() or boss.active_tab_manager
         else:
             tm = boss.active_tab_manager
-        if tm:
-            tab: Optional[Tab] = tm.new_tab(empty_tab=True, location=opts.location)
-            if opts.tab_title and tab is not None:
-                tab.set_title(opts.tab_title)
-        else:
-            tab = None
+        tab = create_tab(tm)
     elif opts.type == 'os-window':
-        oswid = boss.add_os_window(wclass=opts.os_window_class, wname=opts.os_window_name, override_title=opts.os_window_title or None)
-        tm = boss.os_window_map[oswid]
-        tab = tm.new_tab(empty_tab=True)
-        if opts.tab_title and tab is not None:
-            tab.set_title(opts.tab_title)
+        tab = create_tab()
     else:
-        tab = target_tab or boss.active_tab
+        tab = target_tab or boss.active_tab or create_tab()
 
     return tab
 
