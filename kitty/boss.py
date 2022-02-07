@@ -2250,8 +2250,13 @@ class Boss:
         from .launch import force_window_launch
         from .open_actions import actions_for_launch
         actions: List[KeyAction] = []
+        failures = []
         for url in urls:
-            actions.extend(actions_for_launch(url))
+            uactions = tuple(actions_for_launch(url))
+            if uactions:
+                actions.extend(uactions)
+            else:
+                failures.append(url)
         tab = self.active_tab
         if tab is not None:
             w = tab.active_window
@@ -2267,12 +2272,14 @@ class Boss:
             if needs_window_replaced and tab is not None and w is not None:
                 tab.remove_window(w)
 
-        if not actions:
+        if failures:
             with force_window_launch(needs_window_replaced):
-                self.launch(kitty_exe(), '+runpy', f'print("The url:", {urls[0]!r}, "is of unknown type, cannot open it.");'
-                            'from kitty.utils import hold_till_enter; hold_till_enter(); raise SystemExit(1)')
+                from kittens.tui.operations import styled
+                spec = '\n  '.join(styled(u, fg='red') for u in failures)
+                self.launch('--hold', '--type=os-window', kitty_exe(), '+runpy', fr'print("Unknown URL type, cannot open:\n\n ", {spec!r});')
             clear_initial_window()
-        else:
+            needs_window_replaced = False
+        if actions:
             with force_window_launch(needs_window_replaced):
                 self.dispatch_action(actions.pop(0))
             clear_initial_window()
