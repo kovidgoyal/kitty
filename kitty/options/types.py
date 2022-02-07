@@ -517,7 +517,7 @@ class Options:
     listen_on: str = 'none'
     macos_custom_beam_cursor: bool = False
     macos_hide_from_tasks: bool = False
-    macos_menubar_title_max_length: int = -1
+    macos_menubar_title_max_length: int = 0
     macos_option_as_alt: int = 0
     macos_quit_when_last_window_closed: bool = False
     macos_show_window_title_in: choices_for_macos_show_window_title_in = 'all'
@@ -573,7 +573,7 @@ class Options:
     update_check_interval: float = 24.0
     url_color: Color = Color(0, 135, 189)
     url_excluded_characters: str = ''
-    url_prefixes: typing.Tuple[str, ...] = ('file', 'ftp', 'ftps', 'gemini', 'git', 'gopher', 'http', 'https', 'irc', 'ircs', 'kitty', 'mailto', 'news', 'sftp', 'ssh')
+    url_prefixes: typing.Tuple[str, ...] = ('file', 'ftp', 'ftps', 'gemini', 'git', 'gopher', 'http', 'https', 'irc', 'ircs', 'kitty', 'mailto', 'news', 'sftp', 'ssh') # noqa
     url_style: int = 3
     visual_bell_color: typing.Optional[kitty.fast_data_types.Color] = None
     visual_bell_duration: float = 0

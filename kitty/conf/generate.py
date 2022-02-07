@@ -120,6 +120,8 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
                 tc_imports.add((func.__module__, func.__name__))
 
         defval = repr(func(option.defval_as_string))
+        if len(defval) > 100:
+            defval += ' # noqa'
         if option.macos_defval is not unset:
             md = repr(func(option.macos_defval))
             defval = f'{md} if is_macos else {defval}'
