@@ -115,8 +115,13 @@ def find_best_match(family: str, bold: bool = False, italic: bool = False, monos
         return candidates[0]
 
     # Use fc-match to see if we can find a monospaced font that matches family
-    for spacing in (FC_MONO, FC_DUAL):
-        possibility = fc_match(family, False, False, spacing)
+    # When aliases are defined, spacing can cause the incorrect font to be
+    # returned, so check with and without spacing and use the one that matches.
+    mono_possibility = fc_match(family, False, False, FC_MONO)
+    dual_possibility = fc_match(family, False, False, FC_DUAL)
+    any_possibility = fc_match(family, False, False, 0)
+    tries = (dual_possibility, mono_possibility) if any_possibility == dual_possibility else (mono_possibility, dual_possibility)
+    for possibility in tries:
         for key, map_key in (('postscript_name', 'ps_map'), ('full_name', 'full_map'), ('family', 'family_map')):
             val: Optional[str] = cast(Optional[str], possibility.get(key))
             if val:

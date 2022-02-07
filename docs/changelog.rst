@@ -110,6 +110,8 @@ Detailed list of changes
 
 - Shell integration: bash: Dont fail if an existing PROMPT_COMMAND ends with a semi-colon (:iss:`4645`)
 
+- Linux: Fix fontconfig alias not being used if the aliased font is dual spaced instead of monospaced (:iss:`4649`)
+
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
