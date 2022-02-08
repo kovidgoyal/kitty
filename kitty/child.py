@@ -344,8 +344,18 @@ class Child:
             assert self.child_fd is not None
             pgrp = os.tcgetpgrp(self.child_fd)
             foreground_processes = processes_in_group(pgrp) if pgrp >= 0 else []
-            if len(foreground_processes) == 1:
-                return foreground_processes[0]
+            if foreground_processes:
+                # there is no easy way that I know of to know which process is the
+                # foreground process in this group from the users perspective,
+                # so we assume the one with the highest PID is as that is most
+                # likely to be the newest process. This situation can happen
+                # for example with a shell script such as:
+                # #!/bin/bash
+                # cd /tmp
+                # vim
+                # With this script , the foreground process group will contain
+                # both the bash instance running the script and vim.
+                return max(foreground_processes)
         return self.pid
 
     @property

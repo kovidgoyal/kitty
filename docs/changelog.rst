@@ -86,6 +86,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that broke :opt:`active_tab_foreground` (:iss:`4620`)
 
+- Improve CWD detection when there are multiple foreground processes in the TTY process group
+
 - ssh kitten: Fix location of generated terminfo files on NetBSD (:iss:`4622`)
 
 - A new action to clear the screen up to the line containing the cursor, see
