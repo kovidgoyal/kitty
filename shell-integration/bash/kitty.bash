@@ -136,14 +136,15 @@ _ksi_main() {
 
     # install our prompt command, using an array if it is unset or already an array,
     # otherwise append a string
+    builtin local pc='builtin declare -F _ksi_prompt_command > /dev/null 2> /dev/null && _ksi_prompt_command'
     if [[ -z "${PROMPT_COMMAND}" ]]; then
-        PROMPT_COMMAND=([0]="_ksi_prompt_command")
+        PROMPT_COMMAND=([0]="$pc")
     elif [[ $(builtin declare -p PROMPT_COMMAND 2> /dev/null) =~ 'declare -a PROMPT_COMMAND' ]]; then
-        PROMPT_COMMAND+=("_ksi_prompt_command")
+        PROMPT_COMMAND+=("$pc")
     else
         PROMPT_COMMAND="${PROMPT_COMMAND%% }"
         PROMPT_COMMAND="${PROMPT_COMMAND%%;}"
-        PROMPT_COMMAND+="; _ksi_prompt_command"
+        PROMPT_COMMAND+="; $pc"
     fi
 }
 _ksi_main
