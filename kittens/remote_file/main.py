@@ -122,10 +122,17 @@ class ControlMaster:
             cmd.extend(['-i', conn_data.identity_file])
         self.batch_cmd_prefix = cmd + ['-o', 'BatchMode=yes']
 
+    def check_call(self, cmd: List[str]) -> None:
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+        stdout = p.communicate()[0]
+        if p.wait() != 0:
+            out = stdout.decode('utf-8', 'replace')
+            raise Exception(f'The ssh command: {shlex.join(cmd)} failed with exit code {p.returncode} and output: {out}')
+
     def __enter__(self) -> 'ControlMaster':
-        subprocess.check_call(
+        self.check_call(
             self.cmd_prefix + ['-o', 'ControlMaster=auto', '-fN', self.conn_data.hostname])
-        subprocess.check_call(
+        self.check_call(
             self.batch_cmd_prefix + ['-O', 'check', self.conn_data.hostname])
         if not self.dest:
             self.tdir = tempfile.mkdtemp()
