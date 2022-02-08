@@ -135,7 +135,9 @@ _ksi_main() {
     builtin unset _ksi_prompt[end_secondary_mark]
 
     # install our prompt command, using an array if it is unset or already an array,
-    # otherwise append a string
+    # otherwise append a string. We check if _ksi_prompt_command exists as some shell
+    # scripts stupidly export PROMPT_COMMAND making it inherited by all programs launched
+    # from the shell
     builtin local pc='builtin declare -F _ksi_prompt_command > /dev/null 2> /dev/null && _ksi_prompt_command'
     if [[ -z "${PROMPT_COMMAND}" ]]; then
         PROMPT_COMMAND=([0]="$pc")
