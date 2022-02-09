@@ -553,8 +553,6 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 #undef INCREF_CHILD
 #undef DECREF_CHILD
 
-extern void cocoa_update_menu_bar_title(PyObject*);
-
 static bool
 cursor_needs_render(Window *w) {
     return w->cursor_visible_at_last_render != w->render_data.screen->cursor_render_info.is_visible || w->last_cursor_x != w->render_data.screen->cursor_render_info.x || w->last_cursor_y != w->render_data.screen->cursor_render_info.y || w->last_cursor_shape != w->render_data.screen->cursor_render_info.shape;
@@ -592,7 +590,7 @@ change_menubar_title(PyObject *title UNUSED) {
     static PyObject *current_title = NULL;
     if (title != current_title) {
         current_title = title;
-        if (title && OPT(macos_show_window_title_in) & MENUBAR) cocoa_update_menu_bar_title(title);
+        if (title && OPT(macos_show_window_title_in) & MENUBAR) update_menu_bar_title(title);
     }
 #endif
 }

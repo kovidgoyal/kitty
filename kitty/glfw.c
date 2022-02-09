@@ -25,6 +25,7 @@ extern void cocoa_set_titlebar_appearance(void *w, unsigned int theme);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
 extern void cocoa_toggle_secure_keyboard_entry(void);
+extern void cocoa_update_menu_bar_title(PyObject*);
 extern size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz);
 extern monotonic_t cocoa_cursor_blink_interval(void);
 
@@ -69,6 +70,17 @@ strip_csi_(const char *title, char *buf, size_t bufsz) {
         }
     }
     *dest = 0;
+}
+
+
+void
+update_menu_bar_title(PyObject *title UNUSED) {
+#ifdef __APPLE__
+    static char buf[2048];
+    strip_csi_(PyUnicode_AsUTF8(title), buf, arraysz(buf));
+    DECREF_AFTER_FUNCTION PyObject *stitle = PyUnicode_FromString(buf);
+    cocoa_update_menu_bar_title(stitle);
+#endif
 }
 
 
