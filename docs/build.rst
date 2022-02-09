@@ -173,7 +173,7 @@ servers into which they ssh, without needing to install all of |kitty|.
    ``python -m pip -r docs/requirements.txt``.
 
 This applies to creating packages for |kitty| for macOS package managers such as
-brew or MacPorts as well.
+Homebrew or MacPorts as well.
 
 
 Changing defaults for packages

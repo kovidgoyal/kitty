@@ -30,7 +30,7 @@ def install_deps():
     print('Installing kitty dependencies...')
     sys.stdout.flush()
     if is_macos:
-        items = (x.strip() for x in open('Brewfile').readlines() if not x.startswith('#'))
+        items = (x.split()[1].strip('"') for x in open('Brewfile').readlines() if x.strip().startswith('brew '))
         run('brew', 'install', *items)
     else:
         run('sudo apt-get update')
