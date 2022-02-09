@@ -242,7 +242,7 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     const GPUCell *prev_cell = NULL;
     Line l = {.xnum=self->xnum};
     init_line(self, self->start_of_data, &l);
-    line_as_ansi(&l, as_ansi_buf, &prev_cell);
+    line_as_ansi(&l, as_ansi_buf, &prev_cell, 0, l.xnum);
     if (ringbuf_bytes_used(ph->ringbuf) && !l.attrs.continued) pagerhist_write_bytes(ph, (const uint8_t*)"\n", 1);
     pagerhist_write_bytes(ph, (const uint8_t*)"\x1b[m", 3);
     if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) pagerhist_write_bytes(ph, (const uint8_t*)"\r", 1);
@@ -324,7 +324,7 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
         if (i < self->count - 1) {
             l.attrs.continued = attrptr(self, index_of(self, i + 1))->continued;
         } else l.attrs.continued = false;
-        line_as_ansi(&l, &output, &prev_cell);
+        line_as_ansi(&l, &output, &prev_cell, 0, l.xnum);
         if (!l.attrs.continued) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
             output.buf[output.len++] = 10; // 10 = \n
