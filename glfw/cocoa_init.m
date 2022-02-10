@@ -265,7 +265,7 @@ display_reconfigured(CGDirectDisplayID display UNUSED, CGDisplayChangeSummaryFla
 }
 
 static NSDictionary<NSString*,NSNumber*> *global_shortcuts = nil;
-static NSDictionary<NSString*,NSNumber*> *disabled_global_shortcuts = nil;
+static NSSet<NSNumber*> *global_configured_shortcuts = nil;
 
 @interface GLFWHelper : NSObject
 @end
@@ -291,9 +291,9 @@ static NSDictionary<NSString*,NSNumber*> *disabled_global_shortcuts = nil;
         [global_shortcuts release];
         global_shortcuts = nil;
     }
-    if (disabled_global_shortcuts != nil) {
-        [disabled_global_shortcuts release];
-        disabled_global_shortcuts = nil;
+    if (global_configured_shortcuts != nil) {
+        [global_configured_shortcuts release];
+        global_configured_shortcuts = nil;
     }
 }
 
@@ -586,7 +586,7 @@ static void
 build_global_shortcuts_lookup(void) {
     // dump these in a terminal with: defaults read com.apple.symbolichotkeys
     NSMutableDictionary<NSString*, NSNumber*> *temp = [NSMutableDictionary dictionaryWithCapacity:128];  // will be autoreleased
-    NSMutableDictionary<NSString*, NSNumber*> *temp_disabled = [NSMutableDictionary dictionaryWithCapacity:128];  // will be autoreleased
+    NSMutableSet<NSNumber*> *temp_configured = [NSMutableSet setWithCapacity:128];  // will be autoreleased
     NSDictionary *apple_settings = [[NSUserDefaults standardUserDefaults] persistentDomainForName:@"com.apple.symbolichotkeys"];
     if (apple_settings) {
         NSDictionary<NSString*, id> *symbolic_hotkeys = [apple_settings objectForKey:@"AppleSymbolicHotKeys"];
@@ -598,7 +598,7 @@ build_global_shortcuts_lookup(void) {
                 NSDictionary *sc_value = obj;
                 id enabled = [sc_value objectForKey:@"enabled"];
                 if (!enabled || ![enabled isKindOfClass:[NSNumber class]] ) continue;
-
+                [temp_configured addObject:@(sc)];
                 id v = [sc_value objectForKey:@"value"];
                 if (!v || ![v isKindOfClass:[NSDictionary class]]) continue;
                 NSDictionary *value = v;
@@ -614,22 +614,21 @@ build_global_shortcuts_lookup(void) {
                 static char buf[64];
 #define S(x, k) snprintf(buf, sizeof(buf) - 1, #x":%lx:%ld", (unsigned long)mods, (long)k)
                 if (ch == 0xffff) { if (vk == 0xffff) continue; S(v, vk); } else S(c, ch);
-                NSMutableDictionary<NSString*, NSNumber*> *dest = ([(NSNumber*)enabled boolValue]) ? temp : temp_disabled;
-                dest[@(buf)] = @(sc);
+                temp[@(buf)] = @(sc);
                 // the move to next window shortcuts also respond to the same shortcut + shift
                 if (is_shiftable_shortcut([key intValue]) && !(mods & NSEventModifierFlagShift)) {
                     mods |= NSEventModifierFlagShift;
                     if (ch == 0xffff) S(v, vk); else S(c, ch);
-                    dest[@(buf)] = @(sc);
+                    temp[@(buf)] = @(sc);
                 }
 #undef S
             }
         }
     }
     global_shortcuts = [[NSDictionary dictionaryWithDictionary:temp] retain];
-    disabled_global_shortcuts = [[NSDictionary dictionaryWithDictionary:temp_disabled] retain];
+    global_configured_shortcuts = [[NSSet setWithSet:temp_configured] retain];
     /* NSLog(@"global_shortcuts: %@", global_shortcuts); */
-    /* NSLog(@"disabled_global_shortcuts: %@", disabled_global_shortcuts); */
+    /* NSLog(@"global_configured_shortcuts: %@", global_configured_shortcuts); */
 }
 
 static int
@@ -677,8 +676,6 @@ is_active_apple_global_shortcut(NSEvent *event) {
     if (global_shortcuts == nil) build_global_shortcuts_lookup();
     int ans = lookup_global_shortcut(event, global_shortcuts);
     if (ans != kSHKUnknown) return ans;
-    ans = lookup_global_shortcut(event, disabled_global_shortcuts);
-    if (ans != kSHKUnknown) return kSHKUnknown;  // disabled shortcut
     // look for known global shortcuts
     NSEventModifierFlags modifierFlags = USEFUL_MODS([event modifierFlags]);
     if ([event.charactersIgnoringModifiers length] == 1) {
@@ -686,15 +683,17 @@ is_active_apple_global_shortcut(NSEvent *event) {
             const uint32_t ch_without_shift = vk_to_unicode_key_with_current_layout([event keyCode]);
             if (ch_without_shift < GLFW_FKEY_FIRST || ch_without_shift > GLFW_FKEY_LAST) {
                 ans = default_global_character_shortcut(ch_without_shift, modifierFlags);
-                if (ans != kSHKUnknown) return ans;
+                if (ans != kSHKUnknown && [global_configured_shortcuts member:@(ans)] == nil) return ans;
             }
             const unichar ch = [event.charactersIgnoringModifiers characterAtIndex:0];
             ans = default_global_character_shortcut(ch, modifierFlags);
-            if (ans != kSHKUnknown) return ans;
+            if (ans != kSHKUnknown && [global_configured_shortcuts member:@(ans)] == nil) return ans;
         }
     }
     unsigned short vk = [event keyCode];
-    return default_global_vk_shortcut(vk, modifierFlags);
+    ans = default_global_vk_shortcut(vk, modifierFlags);
+    if (ans != kSHKUnknown && [global_configured_shortcuts member:@(ans)] == nil) return ans;
+    return kSHKUnknown;
 }
 
 static bool
@@ -990,7 +989,7 @@ void _glfwPlatformTerminate(void)
 
     _glfwTerminateNSGL();
     if (global_shortcuts != nil) { [global_shortcuts release]; global_shortcuts = nil; }
-    if (disabled_global_shortcuts != nil) { [disabled_global_shortcuts release]; disabled_global_shortcuts = nil; }
+    if (global_configured_shortcuts != nil) { [global_configured_shortcuts release]; global_configured_shortcuts = nil; }
 
     } // autoreleasepool
 }
