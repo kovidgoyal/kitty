@@ -1085,7 +1085,7 @@ class Screen:
     def has_selection(self) -> bool:
         pass
 
-    def text_for_selection(self) -> Tuple[str, ...]:
+    def text_for_selection(self, ansi: bool, strip_trailing_spaces: bool) -> Tuple[str, ...]:
         pass
 
     def is_rectangle_select(self) -> bool:

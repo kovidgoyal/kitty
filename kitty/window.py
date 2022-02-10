@@ -1026,12 +1026,10 @@ class Window:
             self.show_cmd_output(CommandOutput.last_visited, 'Clicked command output')
     # }}}
 
-    def text_for_selection(self) -> str:
-        lines = self.screen.text_for_selection()
+    def text_for_selection(self, as_ansi: bool = False) -> str:
         sts = get_options().strip_trailing_spaces
-        if sts == 'always' or (
-                sts == 'smart' and not self.screen.is_rectangle_select()):
-            return ''.join((ln.rstrip() or '\n') for ln in lines)
+        strip_trailing_spaces = sts == 'always' or (sts == 'smart' and not self.screen.is_rectangle_select())
+        lines = self.screen.text_for_selection(as_ansi, strip_trailing_spaces)
         return ''.join(lines)
 
     def call_watchers(self, which: Iterable[Watcher], data: Dict[str, Any]) -> None:
@@ -1158,6 +1156,12 @@ class Window:
     @ac('cp', 'Copy the selected text from the active window to the clipboard')
     def copy_to_clipboard(self) -> None:
         text = self.text_for_selection()
+        if text:
+            set_clipboard_string(text)
+
+    @ac('cp', 'Copy the selected text from the active window to the clipboard with ANSI formatting codes')
+    def copy_ansi_to_clipboard(self) -> None:
+        text = self.text_for_selection(as_ansi=True)
         if text:
             set_clipboard_string(text)
 

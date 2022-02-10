@@ -43,8 +43,7 @@ requires :ref:`shell_integration` to be enabled.
 --ansi
 type=bool-set
 By default, only plain text is returned. If you specify this flag, the text will
-include the formatting escape codes for colors/bold/italic/etc. Note that when
-getting the current selection, the result is always plain text.
+include the formatting escape codes for colors/bold/italic/etc.
 
 
 --add-cursor
@@ -83,7 +82,7 @@ Clear the selection in the matched window, if any
         from kitty.window import CommandOutput
         window = self.windows_for_match_payload(boss, window, payload_get)[0]
         if payload_get('extent') == 'selection':
-            ans = window.text_for_selection()
+            ans = window.text_for_selection(as_ansi=payload_get('ansi'))
         elif payload_get('extent') == 'first_cmd_output_on_screen':
             ans = window.cmd_output(
                 CommandOutput.first_on_screen,

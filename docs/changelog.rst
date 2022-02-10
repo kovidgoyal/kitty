@@ -93,6 +93,9 @@ Detailed list of changes
 - A new action to clear the screen up to the line containing the cursor, see
   :ac:`clear_terminal`
 
+- A new action :ac:`copy_ansi_to_clipboard` to copy the current selection with ANSI formatting codes
+  (:iss:`4665`)
+
 - macOS: Fix a regression in the previous release that broke switching input
   sources by keyboard (:iss:`4621`)
 

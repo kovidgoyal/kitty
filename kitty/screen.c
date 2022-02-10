@@ -2403,8 +2403,25 @@ screen_apply_selection(Screen *self, void *address, size_t size) {
     self->url_ranges.last_rendered_count = self->url_ranges.count;
 }
 
+static index_type
+limit_without_trailing_whitespace(const Line *line, index_type limit) {
+    if (!limit) return limit;
+    if (limit > line->xnum) limit = line->xnum;
+    while (limit > 0) {
+        CPUCell *cell = line->cpu_cells + limit - 1;
+        if (cell->cc_idx[0]) break;
+        switch(cell->ch) {
+            case ' ': case '\t': case '\n': case '\r': case 0: break;
+            default:
+                return limit;
+        }
+        limit--;
+    }
+    return limit;
+}
+
 static PyObject*
-text_for_range(Screen *self, const Selection *sel, bool insert_newlines) {
+text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool strip_trailing_whitespace) {
     IterationData idata;
     iteration_data(self, sel, &idata, -self->historybuf->count, false);
     int limit = MIN((int)self->lines, idata.y_limit);
@@ -2414,12 +2431,67 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines) {
         Line *line = range_line_(self, y);
         XRange xr = xrange_for_iteration(&idata, y, line);
         char leading_char = (i > 0 && insert_newlines && !line->attrs.continued) ? '\n' : 0;
-        PyObject *text = unicode_in_range(line, xr.x, xr.x_limit, true, leading_char, false);
+        index_type x_limit = xr.x_limit;
+        if (strip_trailing_whitespace) {
+            index_type new_limit = limit_without_trailing_whitespace(line, x_limit);
+            if (new_limit != x_limit) {
+                x_limit = new_limit;
+                if (!x_limit) {
+                    PyObject *text = PyUnicode_FromString("\n");
+                    if (text == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); }
+                    PyTuple_SET_ITEM(ans, i, text);
+                    continue;
+                }
+            }
+        }
+        PyObject *text = unicode_in_range(line, xr.x, x_limit, true, leading_char, false);
         if (text == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); }
         PyTuple_SET_ITEM(ans, i, text);
     }
     return ans;
 }
+
+static PyObject*
+ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool strip_trailing_whitespace) {
+    IterationData idata;
+    iteration_data(self, sel, &idata, -self->historybuf->count, false);
+    int limit = MIN((int)self->lines, idata.y_limit);
+    DECREF_AFTER_FUNCTION PyObject *ans = PyTuple_New(limit - idata.y + 1);
+    DECREF_AFTER_FUNCTION PyObject *nl = PyUnicode_FromString("\n");
+    if (!ans || !nl) return NULL;
+    ANSIBuf output = {0};
+    const GPUCell *prev_cell = NULL;
+    for (int i = 0, y = idata.y; y < limit; y++, i++) {
+        Line *line = range_line_(self, y);
+        XRange xr = xrange_for_iteration(&idata, y, line);
+        output.len = 0;
+        if (i > 0 && insert_newlines && !line->attrs.continued) {
+            ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
+            output.buf[output.len++] = '\n';
+        }
+        index_type x_limit = xr.x_limit;
+        if (strip_trailing_whitespace) {
+            index_type new_limit = limit_without_trailing_whitespace(line, x_limit);
+            if (new_limit != x_limit) {
+                x_limit = new_limit;
+                if (!x_limit) {
+                    PyTuple_SET_ITEM(ans, i, nl);
+                    continue;
+                }
+            }
+        }
+        line_as_ansi(line, &output, &prev_cell, xr.x, x_limit);
+        PyObject *t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
+        if (!t) return NULL;
+        PyTuple_SET_ITEM(ans, i, t);
+    }
+    PyObject *t = PyUnicode_FromFormat("%s%s", "\x1b[m", output.active_hyperlink_id ? "\x1b]8;;\x1b\\" : "");
+    if (!t) return NULL;
+    PyTuple_SET_ITEM(ans, PyTuple_GET_SIZE(ans) - 1, t);
+    Py_INCREF(ans);
+    return ans;
+}
+
 
 static hyperlink_id_type
 hyperlink_id_for_range(Screen *self, const Selection *sel) {
@@ -2456,7 +2528,7 @@ current_url_text(Screen *self, PyObject *args UNUSED) {
     for (size_t i = 0; i < self->url_ranges.count; i++) {
         Selection *s = self->url_ranges.items + i;
         if (!is_selection_empty(s)) {
-            PyObject *temp = text_for_range(self, s, false);
+            PyObject *temp = text_for_range(self, s, false, false);
             if (!temp) goto error;
             PyObject *text = PyUnicode_Join(empty_string, temp);
             Py_CLEAR(temp);
@@ -3089,10 +3161,10 @@ copy_colors_from(Screen *self, Screen *other) {
 }
 
 static PyObject*
-text_for_selections(Screen *self, Selections *selections) {
+text_for_selections(Screen *self, Selections *selections, bool ansi, bool strip_trailing_whitespace) {
     PyObject *lines = NULL;
     for (size_t i = 0; i < selections->count; i++) {
-        PyObject *temp = text_for_range(self, selections->items + i, true);
+        PyObject *temp = ansi ? ansi_for_range(self, selections->items +i, true, strip_trailing_whitespace) : text_for_range(self, selections->items + i, true, strip_trailing_whitespace);
         if (temp) {
             if (lines) {
                 lines = extend_tuple(lines, temp);
@@ -3106,13 +3178,17 @@ text_for_selections(Screen *self, Selections *selections) {
 }
 
 static PyObject*
-text_for_selection(Screen *self, PyObject *a UNUSED) {
-    return text_for_selections(self, &self->selections);
+text_for_selection(Screen *self, PyObject *args) {
+    int ansi = 0, strip_trailing_whitespace = 0;
+    if (!PyArg_ParseTuple(args, "|pp", &ansi, &strip_trailing_whitespace)) return NULL;
+    return text_for_selections(self, &self->selections, ansi, strip_trailing_whitespace);
 }
 
 static PyObject*
-text_for_marked_url(Screen *self, PyObject *a UNUSED) {
-    return text_for_selections(self, &self->url_ranges);
+text_for_marked_url(Screen *self, PyObject *args) {
+    int ansi = 0, strip_trailing_whitespace = 0;
+    if (!PyArg_ParseTuple(args, "|pp", &ansi, &strip_trailing_whitespace)) return NULL;
+    return text_for_selections(self, &self->url_ranges, ansi, strip_trailing_whitespace);
 }
 
 
@@ -3853,8 +3929,8 @@ static PyMethodDef methods[] = {
     MND(detect_url, METH_VARARGS)
     MND(rescale_images, METH_NOARGS)
     MND(current_key_encoding_flags, METH_NOARGS)
-    MND(text_for_selection, METH_NOARGS)
-    MND(text_for_marked_url, METH_NOARGS)
+    MND(text_for_selection, METH_VARARGS)
+    MND(text_for_marked_url, METH_VARARGS)
     MND(is_rectangle_select, METH_NOARGS)
     MND(scroll, METH_VARARGS)
     MND(scroll_to_prompt, METH_VARARGS)
