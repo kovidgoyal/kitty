@@ -265,7 +265,6 @@ display_reconfigured(CGDirectDisplayID display UNUSED, CGDisplayChangeSummaryFla
 }
 
 static NSDictionary<NSString*,NSNumber*> *global_shortcuts = nil;
-static NSSet<NSNumber*> *global_configured_shortcuts = nil;
 
 @interface GLFWHelper : NSObject
 @end
@@ -290,10 +289,6 @@ static NSSet<NSNumber*> *global_configured_shortcuts = nil;
     if (global_shortcuts != nil) {
         [global_shortcuts release];
         global_shortcuts = nil;
-    }
-    if (global_configured_shortcuts != nil) {
-        [global_configured_shortcuts release];
-        global_configured_shortcuts = nil;
     }
 }
 
@@ -663,13 +658,12 @@ build_global_shortcuts_lookup(void) {
 
 #undef S
     global_shortcuts = [[NSDictionary dictionaryWithDictionary:temp] retain];
-    global_configured_shortcuts = [[NSSet setWithSet:temp_configured] retain];
     /* NSLog(@"global_shortcuts: %@", global_shortcuts); */
-    /* NSLog(@"global_configured_shortcuts: %@", global_configured_shortcuts); */
 }
 
 static int
-lookup_global_shortcut(NSEvent *event, NSDictionary<NSString*,NSNumber*> *global_shortcuts) {
+is_active_apple_global_shortcut(NSEvent *event) {
+    if (global_shortcuts == nil) build_global_shortcuts_lookup();
     NSEventModifierFlags modifierFlags = USEFUL_MODS([event modifierFlags]);
     static char lookup_key[64];
 #define LOOKUP(t, k) \
@@ -692,45 +686,6 @@ lookup_global_shortcut(NSEvent *event, NSDictionary<NSString*,NSNumber*> *global
         LOOKUP(v, vk);
     }
 #undef LOOKUP
-    return kSHKUnknown;
-}
-
-static int
-default_global_character_shortcut(uint32_t ch, NSEventModifierFlags mods) {
-    if ((ch == '`' || ch == '~') && (mods & ~NSEventModifierFlagShift) == NSEventModifierFlagCommand) return kSHKMoveFocusToNextWindow;
-    if (ch == NSF4FunctionKey && (mods & ~NSEventModifierFlagShift) == NSEventModifierFlagCommand) return kSHKMoveFocusToActiveOrNextWindow;
-    return kSHKUnknown;
-}
-
-static int
-default_global_vk_shortcut(unsigned short vk, NSEventModifierFlags mods) {
-    (void)vk; (void)mods;
-    return kSHKUnknown;
-}
-
-
-static int
-is_active_apple_global_shortcut(NSEvent *event) {
-    if (global_shortcuts == nil) build_global_shortcuts_lookup();
-    int ans = lookup_global_shortcut(event, global_shortcuts);
-    if (ans != kSHKUnknown) return ans;
-    // look for known global shortcuts
-    NSEventModifierFlags modifierFlags = USEFUL_MODS([event modifierFlags]);
-    if ([event.charactersIgnoringModifiers length] == 1) {
-        if (modifierFlags & NSEventModifierFlagShift) {
-            const uint32_t ch_without_shift = vk_to_unicode_key_with_current_layout([event keyCode]);
-            if (ch_without_shift < GLFW_FKEY_FIRST || ch_without_shift > GLFW_FKEY_LAST) {
-                ans = default_global_character_shortcut(ch_without_shift, modifierFlags);
-                if (ans != kSHKUnknown && [global_configured_shortcuts member:@(ans)] == nil) return ans;
-            }
-            const unichar ch = [event.charactersIgnoringModifiers characterAtIndex:0];
-            ans = default_global_character_shortcut(ch, modifierFlags);
-            if (ans != kSHKUnknown && [global_configured_shortcuts member:@(ans)] == nil) return ans;
-        }
-    }
-    unsigned short vk = [event keyCode];
-    ans = default_global_vk_shortcut(vk, modifierFlags);
-    if (ans != kSHKUnknown && [global_configured_shortcuts member:@(ans)] == nil) return ans;
     return kSHKUnknown;
 }
 
@@ -1027,7 +982,6 @@ void _glfwPlatformTerminate(void)
 
     _glfwTerminateNSGL();
     if (global_shortcuts != nil) { [global_shortcuts release]; global_shortcuts = nil; }
-    if (global_configured_shortcuts != nil) { [global_configured_shortcuts release]; global_configured_shortcuts = nil; }
 
     } // autoreleasepool
 }
