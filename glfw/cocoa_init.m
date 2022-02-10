@@ -587,6 +587,7 @@ build_global_shortcuts_lookup(void) {
     // dump these in a terminal with: defaults read com.apple.symbolichotkeys
     NSMutableDictionary<NSString*, NSNumber*> *temp = [NSMutableDictionary dictionaryWithCapacity:128];  // will be autoreleased
     NSMutableSet<NSNumber*> *temp_configured = [NSMutableSet setWithCapacity:128];  // will be autoreleased
+    NSMutableSet<NSNumber*> *temp_missing_value = [NSMutableSet setWithCapacity:128];  // will be autoreleased
     NSDictionary *apple_settings = [[NSUserDefaults standardUserDefaults] persistentDomainForName:@"com.apple.symbolichotkeys"];
     if (apple_settings) {
         NSDictionary<NSString*, id> *symbolic_hotkeys = [apple_settings objectForKey:@"AppleSymbolicHotKeys"];
@@ -600,7 +601,10 @@ build_global_shortcuts_lookup(void) {
                 if (!enabled || ![enabled isKindOfClass:[NSNumber class]] ) continue;
                 [temp_configured addObject:@(sc)];
                 id v = [sc_value objectForKey:@"value"];
-                if (!v || ![v isKindOfClass:[NSDictionary class]]) continue;
+                if (!v || ![v isKindOfClass:[NSDictionary class]]) {
+                    if ([(NSNumber*)enabled intValue]) [temp_missing_value addObject:@(sc)];
+                    continue;
+                }
                 NSDictionary *value = v;
                 id t = [value objectForKey:@"type"];
                 if (!t || ![t isKindOfClass:[NSString class]] || ![t isEqualToString:@"standard"]) continue;
@@ -625,6 +629,39 @@ build_global_shortcuts_lookup(void) {
             }
         }
     }
+
+    // Add global shortcut definitions when the default enabled shortcut is not defined,
+    // or when the default enabled shortcut is not disabled and is missing a value.
+    // Here are the shortcuts that are enabled by default in the standard ANSI (US) layout.
+    // macOS provides separate configurations for some languages or keyboards.
+    // In general, the rules here will not take effect.
+    static char buf[64];
+#define S(i, t, m, k) if ([temp_configured member:@(i)] == nil || [temp_missing_value member:@(i)] != nil) { \
+        snprintf(buf, sizeof(buf) - 1, #t":%lx:%ld", (unsigned long)m, (long)k); \
+        temp[@(buf)] = @(i); \
+    }
+
+    // launchpad & dock
+    S(kSHKTurnDockHidingOnOrOff, c, (NSEventModifierFlagOption | NSEventModifierFlagCommand), 'd'); // Opt, Cmd, D
+    // mission control
+    S(kSHKMissionControl, v, NSEventModifierFlagControl, 126); // Ctrl, Arrow Up
+    S(kSHKApplicationWindows, v, NSEventModifierFlagControl, 125); // Ctrl, Arrow Down
+    // keyboard
+    S(kSHKMoveFocusToTheMenuBar, v, NSEventModifierFlagControl, 120); // Ctrl, F2
+    S(kSHKMoveFocusToTheDock, v, NSEventModifierFlagControl, 99); // Ctrl, F3
+    S(kSHKMoveFocusToActiveOrNextWindow, v, NSEventModifierFlagControl, 118); // Ctrl, F4
+    S(kSHKMoveFocusToActiveOrNextWindow, v, (NSEventModifierFlagShift | NSEventModifierFlagControl), 118); // Shift, Ctrl, F4
+    S(kSHKMoveFocusToNextWindow, c, NSEventModifierFlagCommand, 96); // Cmd, `
+    S(kSHKMoveFocusToNextWindow, c, (NSEventModifierFlagShift | NSEventModifierFlagCommand), 96); // Shift, Cmd, `
+    S(kSHKMoveFocusToStatusMenus, v, NSEventModifierFlagControl, 100); // Ctrl, F8
+    // input sources
+    S(kSHKSelectThePreviousInputSource, c, NSEventModifierFlagControl, 32); // Ctrl, Space bar
+    S(kSHKSelectNextSourceInInputMenu, c, (NSEventModifierFlagControl | NSEventModifierFlagOption), 32); // Ctrl, Opt, Space bar
+    // spotlight
+    S(kSHKShowSpotlightSearch, c, NSEventModifierFlagCommand, 32); // Cmd, Space bar
+    S(kSHKShowFinderSearchWindow, c, (NSEventModifierFlagOption | NSEventModifierFlagCommand), 32); // Opt, Cmd, Space bar
+
+#undef S
     global_shortcuts = [[NSDictionary dictionaryWithDictionary:temp] retain];
     global_configured_shortcuts = [[NSSet setWithSet:temp_configured] retain];
     /* NSLog(@"global_shortcuts: %@", global_shortcuts); */
