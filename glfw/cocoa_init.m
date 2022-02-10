@@ -660,7 +660,8 @@ lookup_global_shortcut(NSEvent *event, NSDictionary<NSString*,NSNumber*> *global
 
 static int
 default_global_character_shortcut(uint32_t ch, NSEventModifierFlags mods) {
-    (void)ch; (void)mods;
+    if ((ch == '`' || ch == '~') && (mods & ~NSEventModifierFlagShift) == NSEventModifierFlagCommand) return kSHKMoveFocusToNextWindow;
+    if (ch == NSF4FunctionKey && (mods & ~NSEventModifierFlagShift) == NSEventModifierFlagCommand) return kSHKMoveFocusToActiveOrNextWindow;
     return kSHKUnknown;
 }
 
