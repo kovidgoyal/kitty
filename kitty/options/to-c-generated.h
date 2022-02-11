@@ -201,6 +201,19 @@ convert_from_opts_touch_scroll_multiplier(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_touch_scroll_pixel_per_line(PyObject *val, Options *opts) {
+    opts->touch_scroll_pixel_per_line = PyFloat_AsDouble(val);
+}
+
+static void
+convert_from_opts_touch_scroll_pixel_per_line(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "touch_scroll_pixel_per_line");
+    if (ret == NULL) return;
+    convert_from_python_touch_scroll_pixel_per_line(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_mouse_hide_wait(PyObject *val, Options *opts) {
     opts->mouse_hide_wait = parse_s_double_to_monotonic_t(val);
 }
@@ -1024,6 +1037,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_wheel_scroll_multiplier(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_touch_scroll_multiplier(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_touch_scroll_pixel_per_line(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_mouse_hide_wait(py_opts, opts);
     if (PyErr_Occurred()) return false;

@@ -355,6 +355,17 @@ precision scrolling devices on platforms such as macOS and Wayland. Use negative
 numbers to change scroll direction.
 '''
     )
+
+opt('touch_scroll_pixel_per_line', '0.0',
+    option_type='float', ctype='double',
+    long_text='''
+Converts this many pixels scrolled by a high precision device to one mouse
+wheel scroll. When non-zero, overrides `touch_scroll_multiplier`, and uses
+`wheel_scroll_multiplier` to determine the number of lines scrolled instead.
+Useful when mouse is detected as high precision, or in mixed DPI environments
+to maintain a consistent scrolling speed across screens.
+'''
+    )
 egr()  # }}}
 
 # mouse {{{

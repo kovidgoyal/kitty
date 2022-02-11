@@ -427,6 +427,7 @@ option_names = (  # {{{
  'tab_title_template',
  'term',
  'touch_scroll_multiplier',
+ 'touch_scroll_pixel_per_line',
  'update_check_interval',
  'url_color',
  'url_excluded_characters',
@@ -571,6 +572,7 @@ class Options:
     tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{title}'
     term: str = 'xterm-kitty'
     touch_scroll_multiplier: float = 1.0
+    touch_scroll_pixel_per_line: float = 0.0
     update_check_interval: float = 24.0
     url_color: Color = Color(0, 135, 189)
     url_excluded_characters: str = ''

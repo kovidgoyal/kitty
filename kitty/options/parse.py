@@ -1167,7 +1167,7 @@ class Parser:
     choices_for_strip_trailing_spaces = frozenset(('always', 'never', 'smart'))
 
     def symbol_map(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        for k, v in symbol_map(val):
+        for k, v in symbol_map(val, ans["symbol_map"]):
             ans["symbol_map"][k] = v
 
     def sync_to_monitor(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
@@ -1240,6 +1240,9 @@ class Parser:
 
     def touch_scroll_multiplier(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['touch_scroll_multiplier'] = float(val)
+
+    def touch_scroll_pixel_per_line(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['touch_scroll_pixel_per_line'] = float(val)
 
     def update_check_interval(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['update_check_interval'] = float(val)

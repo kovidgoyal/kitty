@@ -878,7 +878,12 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
 // scale the scroll by the multiplier unless the mouse is grabbed. If the mouse is grabbed only change direction.
 #define SCALE_SCROLL(which) { double scale = OPT(which); if (screen->modes.mouse_tracking_mode) scale /= fabs(scale); yoffset *= scale; }
     if (is_high_resolution) {
-        SCALE_SCROLL(touch_scroll_multiplier);
+        if (OPT(touch_scroll_pixel_per_line) > 0) {
+            yoffset *= (global_state.callback_os_window->fonts_data->cell_height / OPT(touch_scroll_pixel_per_line));
+            SCALE_SCROLL(wheel_scroll_multiplier);
+        } else {
+            SCALE_SCROLL(touch_scroll_multiplier);
+        }
         double pixels = screen->pending_scroll_pixels + yoffset;
         if (fabs(pixels) < global_state.callback_os_window->fonts_data->cell_height) {
             screen->pending_scroll_pixels = pixels;

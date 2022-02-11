@@ -23,7 +23,7 @@ typedef struct {
 
 typedef struct {
     monotonic_t visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval;
-    double wheel_scroll_multiplier, touch_scroll_multiplier;
+    double wheel_scroll_multiplier, touch_scroll_multiplier, touch_scroll_pixel_per_line;
     bool enable_audio_bell;
     CursorShape cursor_shape;
     float cursor_beam_thickness;
