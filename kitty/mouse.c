@@ -722,7 +722,10 @@ mouse_event(const int button, int modifiers, int action) {
     bool in_tab_bar;
     unsigned int window_idx = 0;
     Window *w = NULL;
-    debug("%s mouse_button: %d %s", action == GLFW_RELEASE ? "\x1b[32mRelease\x1b[m" : (button < 0 ? "\x1b[36mMove\x1b[m" : "\x1b[31mPress\x1b[m"), button, format_mods(modifiers));
+    if (OPT(debug_keyboard)) {
+        if (button < 0) { debug("%s x: %.1f y: %.1f ", "\x1b[36mMove\x1b[m", global_state.callback_os_window->mouse_x, global_state.callback_os_window->mouse_y); }
+        else { debug("%s mouse_button: %d %s", action == GLFW_RELEASE ? "\x1b[32mRelease\x1b[m" : "\x1b[31mPress\x1b[m", button, format_mods(modifiers)); }
+    }
     if (global_state.redirect_mouse_handling) {
         w = window_for_event(&window_idx, &in_tab_bar);
         call_boss(mouse_event, "OK iiii dd",
