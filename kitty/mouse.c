@@ -851,11 +851,10 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
     int s;
     bool is_high_resolution = flags & 1;
 
+// scale the scroll by the multiplier unless the mouse is grabbed. If the mouse is grabbed only change direction.
+#define SCALE_SCROLL(which) { double scale = OPT(which); if (screen->modes.mouse_tracking_mode) scale /= fabs(scale); yoffset *= scale; }
     if (is_high_resolution) {
-        yoffset *= OPT(touch_scroll_multiplier);
-        if (yoffset * screen->pending_scroll_pixels < 0) {
-            screen->pending_scroll_pixels = 0;  // change of direction
-        }
+        SCALE_SCROLL(touch_scroll_multiplier);
         double pixels = screen->pending_scroll_pixels + yoffset;
         if (fabs(pixels) < global_state.callback_os_window->fonts_data->cell_height) {
             screen->pending_scroll_pixels = pixels;
@@ -864,20 +863,14 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
         s = (int)round(pixels) / (int)global_state.callback_os_window->fonts_data->cell_height;
         screen->pending_scroll_pixels = pixels - s * (int) global_state.callback_os_window->fonts_data->cell_height;
     } else {
-        if (!screen->modes.mouse_tracking_mode) {
-            // Dont use multiplier if we are sending events to the application
-            yoffset *= OPT(wheel_scroll_multiplier);
-        } else if (OPT(wheel_scroll_multiplier) < 0) {
-            // ensure that changing scroll direction still works, even though
-            // we are not using wheel_scroll_multiplier
-            yoffset *= -1;
-        }
+        SCALE_SCROLL(wheel_scroll_multiplier);
         s = (int) round(yoffset);
         // apparently on cocoa some mice generate really small yoffset values
         // when scrolling slowly https://github.com/kovidgoyal/kitty/issues/1238
         if (s == 0 && yoffset != 0) s = yoffset > 0 ? 1 : -1;
         screen->pending_scroll_pixels = 0;
     }
+#undef SCALE_SCROLL
     if (s == 0) return;
     bool upwards = s > 0;
     if (screen->modes.mouse_tracking_mode) {

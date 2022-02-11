@@ -121,6 +121,8 @@ Detailed list of changes
 
 - macOS: Add an option :opt:`macos_menubar_title_max_length` to control the max length of the window title displayed in the global menubar (:iss:`2132`)
 
+- Fix :opt:`touch_scroll_multiplier` also taking effect in terminal programs such as vim that handle mouse events themselves (:iss:`4680`)
+
 
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
