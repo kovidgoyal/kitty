@@ -21,6 +21,7 @@ from kitty.fonts.box_drawing import (
 )
 from kitty.options.types import Options, defaults
 from kitty.typing import CoreTextFont, FontConfigPattern
+from kitty.types import _T
 from kitty.utils import log_error
 
 if is_macos:
@@ -50,10 +51,9 @@ def font_for_family(family: str) -> Tuple[FontObject, bool, bool]:
     return font_for_family_fontconfig(family)
 
 
-Range = Tuple[Tuple[int, int], str]
-
-
-def merge_ranges(a: Range, b: Range, priority_map: Dict[Tuple[int, int], int]) -> Generator[Range, None, None]:
+def merge_ranges(
+    a: Tuple[Tuple[int, int], _T], b: Tuple[Tuple[int, int], _T], priority_map: Dict[Tuple[int, int], int]
+) -> Generator[Tuple[Tuple[int, int], _T], None, None]:
     a_start, a_end = a[0]
     b_start, b_end = b[0]
     a_val, b_val = a[1], b[1]
@@ -95,7 +95,7 @@ def merge_ranges(a: Range, b: Range, priority_map: Dict[Tuple[int, int], int]) -
             after_range = ((b_end + 1, a_end), a_val)
             after_range_prio = a_prio
     # check if the before, mid and after ranges can be coalesced
-    ranges: List[Range] = []
+    ranges: List[Tuple[Tuple[int, int], _T]] = []
     priorities: List[int] = []
     for rq, prio in ((before_range, before_range_prio), (mid_range, mid_range_prio), (after_range, after_range_prio)):
         if rq is None:
@@ -117,7 +117,7 @@ def merge_ranges(a: Range, b: Range, priority_map: Dict[Tuple[int, int], int]) -
     yield from ranges
 
 
-def coalesce_symbol_maps(maps: Dict[Tuple[int, int], str]) -> Dict[Tuple[int, int], str]:
+def coalesce_symbol_maps(maps: Dict[Tuple[int, int], _T]) -> Dict[Tuple[int, int], _T]:
     if not maps:
         return maps
     priority_map = {r: i for i, r in enumerate(maps.keys())}
@@ -153,6 +153,10 @@ def create_symbol_map(opts: Options) -> Tuple[Tuple[int, int, int], ...]:
             current_faces.append((font, bold, italic))
     sm = tuple((a, b, family_map[f]) for (a, b), f in val.items())
     return sm
+
+
+def create_narrow_symbols(opts: Options) -> Tuple[Tuple[int, int, int], ...]:
+    return tuple((a, b, v) for (a, b), v in coalesce_symbol_maps(opts.narrow_symbols).items())
 
 
 def descriptor_for_idx(idx: int) -> Tuple[FontObject, bool, bool]:
@@ -193,6 +197,7 @@ def set_font_family(opts: Optional[Options] = None, override_font_size: Optional
             current_faces.append((font_map[k], 'b' in k, 'i' in k))
     before = len(current_faces)
     sm = create_symbol_map(opts)
+    ns = create_narrow_symbols(opts)
     num_symbol_fonts = len(current_faces) - before
     font_features = {}
     for face, _, _ in current_faces:
@@ -203,7 +208,7 @@ def set_font_family(opts: Optional[Options] = None, override_font_size: Optional
     set_font_data(
         render_box_drawing, prerender_function, descriptor_for_idx,
         indices['bold'], indices['italic'], indices['bi'], num_symbol_fonts,
-        sm, sz, font_features
+        sm, sz, font_features, ns
     )
 
 

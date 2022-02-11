@@ -50,8 +50,8 @@ typedef struct {
     size_t font_idx;
 } SymbolMap;
 
-static SymbolMap *symbol_maps = NULL;
-static size_t num_symbol_maps = 0;
+static SymbolMap *symbol_maps = NULL, *narrow_symbols = NULL;
+static size_t num_symbol_maps = 0, num_narrow_symbols = 0;
 
 typedef enum { SPACER_STRATEGY_UNKNOWN, SPACERS_BEFORE, SPACERS_AFTER, SPACERS_IOSEVKA } SpacerStrategy;
 
@@ -1219,6 +1219,17 @@ is_non_emoji_dingbat(char_type ch) {
     return false;
 }
 
+static unsigned int
+cell_cap_for_codepoint(const char_type cp) {
+    unsigned int ans = UINT_MAX;
+    for (size_t i = 0; i < num_narrow_symbols; i++) {
+        SymbolMap *sm = narrow_symbols + i;
+        if (sm->left <= cp && cp <= sm->right) ans = sm->font_idx;
+    }
+    return ans;
+}
+
+
 void
 render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, DisableLigature disable_ligature_strategy) {
 #define RENDER if (run_font_idx != NO_FONT && i > first_cell_in_run) { \
@@ -1251,6 +1262,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                 int width = get_glyph_width(font->face, glyph_id);
                 desired_cells = (unsigned int)ceilf((float)width / fg->cell_width);
             }
+            desired_cells = MIN(desired_cells, cell_cap_for_codepoint(cpu_cell->ch));
 
             unsigned int num_spaces = 0;
             while (
@@ -1303,6 +1315,7 @@ render_simple_text(FONTS_DATA_HANDLE fg_, const char *text) {
 static void
 clear_symbol_maps(void) {
     if (symbol_maps) { free(symbol_maps); symbol_maps = NULL; num_symbol_maps = 0; }
+    if (narrow_symbols) { free(narrow_symbols); narrow_symbols = NULL; num_narrow_symbols = 0; }
 }
 
 typedef struct {
@@ -1311,26 +1324,33 @@ typedef struct {
 
 DescriptorIndices descriptor_indices = {0};
 
-static PyObject*
-set_font_data(PyObject UNUSED *m, PyObject *args) {
-    PyObject *sm;
-    Py_CLEAR(box_drawing_function); Py_CLEAR(prerender_function); Py_CLEAR(descriptor_for_idx); Py_CLEAR(font_feature_settings);
-    if (!PyArg_ParseTuple(args, "OOOIIIIO!dO",
-                &box_drawing_function, &prerender_function, &descriptor_for_idx,
-                &descriptor_indices.bold, &descriptor_indices.italic, &descriptor_indices.bi, &descriptor_indices.num_symbol_fonts,
-                &PyTuple_Type, &sm, &OPT(font_size), &font_feature_settings)) return NULL;
-    Py_INCREF(box_drawing_function); Py_INCREF(prerender_function); Py_INCREF(descriptor_for_idx); Py_INCREF(font_feature_settings);
-    free_font_groups();
-    clear_symbol_maps();
-    num_symbol_maps = PyTuple_GET_SIZE(sm);
-    symbol_maps = calloc(num_symbol_maps, sizeof(SymbolMap));
-    if (symbol_maps == NULL) return PyErr_NoMemory();
-    for (size_t s = 0; s < num_symbol_maps; s++) {
+static bool
+set_symbol_maps(SymbolMap **symbol_maps, size_t *num_symbol_maps, const PyObject *sm) {
+    *num_symbol_maps = PyTuple_GET_SIZE(sm);
+    *symbol_maps = calloc(*num_symbol_maps, sizeof(SymbolMap));
+    if (*symbol_maps == NULL) { PyErr_NoMemory(); return false; }
+    for (size_t s = 0; s < *num_symbol_maps; s++) {
         unsigned int left, right, font_idx;
-        SymbolMap *x = symbol_maps + s;
+        SymbolMap *x = *symbol_maps + s;
         if (!PyArg_ParseTuple(PyTuple_GET_ITEM(sm, s), "III", &left, &right, &font_idx)) return NULL;
         x->left = left; x->right = right; x->font_idx = font_idx;
     }
+    return true;
+}
+
+static PyObject*
+set_font_data(PyObject UNUSED *m, PyObject *args) {
+    PyObject *sm, *ns;
+    Py_CLEAR(box_drawing_function); Py_CLEAR(prerender_function); Py_CLEAR(descriptor_for_idx); Py_CLEAR(font_feature_settings);
+    if (!PyArg_ParseTuple(args, "OOOIIIIO!dOO!",
+                &box_drawing_function, &prerender_function, &descriptor_for_idx,
+                &descriptor_indices.bold, &descriptor_indices.italic, &descriptor_indices.bi, &descriptor_indices.num_symbol_fonts,
+                &PyTuple_Type, &sm, &OPT(font_size), &font_feature_settings, &PyTuple_Type, &ns)) return NULL;
+    Py_INCREF(box_drawing_function); Py_INCREF(prerender_function); Py_INCREF(descriptor_for_idx); Py_INCREF(font_feature_settings);
+    free_font_groups();
+    clear_symbol_maps();
+    set_symbol_maps(&symbol_maps, &num_symbol_maps, sm);
+    set_symbol_maps(&narrow_symbols, &num_narrow_symbols, ns);
     Py_RETURN_NONE;
 }
 

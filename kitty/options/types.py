@@ -387,6 +387,7 @@ option_names = (  # {{{
  'mark3_foreground',
  'mouse_hide_wait',
  'mouse_map',
+ 'narrow_symbols',
  'open_url_with',
  'placement_strategy',
  'pointer_shape_when_dragging',
@@ -594,6 +595,7 @@ class Options:
     exe_search_path: typing.Dict[str, str] = {}
     font_features: typing.Dict[str, typing.Tuple[kitty.fonts.FontFeature, ...]] = {}
     kitten_alias: typing.Dict[str, str] = {}
+    narrow_symbols: typing.Dict[typing.Tuple[int, int], int] = {}
     symbol_map: typing.Dict[typing.Tuple[int, int], str] = {}
     watcher: typing.Dict[str, str] = {}
     map: typing.List[kitty.options.utils.KeyDefinition] = []
@@ -712,6 +714,7 @@ defaults.env = {}
 defaults.exe_search_path = {}
 defaults.font_features = {}
 defaults.kitten_alias = {}
+defaults.narrow_symbols = {}
 defaults.symbol_map = {}
 defaults.watcher = {}
 defaults.map = [

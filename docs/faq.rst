@@ -6,21 +6,22 @@ Frequently Asked Questions
 Some special symbols are rendered small/truncated in kitty?
 -----------------------------------------------------------
 
-The number of cells a unicode character takes up are controlled by the unicode
-standard.  All characters are rendered in a single cell unless the unicode
+The number of cells a Unicode character takes up are controlled by the Unicode
+standard. All characters are rendered in a single cell unless the Unicode
 standard says they should be rendered in two cells. When a symbol does not fit,
 it will either be rescaled to be smaller or truncated (depending on how much
 extra space it needs). This is often different from other terminals which just
 let the character overflow into neighboring cells, which is fine if the
 neighboring cell is empty, but looks terrible if it is not.
 
-Some programs, like powerline, vim with fancy gutter symbols/status-bar, etc.
-misuse unicode characters from the private use area to represent symbols. Often
-these symbols are square and should be rendered in two cells.  However, since
-private use area symbols all have their width set to one in the unicode
+Some programs, like Powerline, vim with fancy gutter symbols/status-bar, etc.
+use Unicode characters from the private use area to represent symbols. Often
+these symbols are wide and should be rendered in two cells. However, since
+private use area symbols all have their width set to one in the Unicode
 standard, |kitty| renders them either smaller or truncated. The exception is if
 these characters are followed by a space or empty cell in which case kitty
-makes use of the extra cell to render them in two cells.
+makes use of the extra cell to render them in two cells. This behavior can be
+turned off for specific symbols using :opt:`narrow_symbols`.
 
 
 Using a color theme with a background color does not work well in vim?

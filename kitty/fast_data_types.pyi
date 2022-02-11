@@ -967,7 +967,8 @@ def set_font_data(
     descriptor_for_idx: Callable[[int], Tuple[FontObject, bool, bool]],
     bold: int, italic: int, bold_italic: int, num_symbol_fonts: int,
     symbol_maps: Tuple[Tuple[int, int, int], ...], font_sz_in_pts: float,
-    font_feature_settings: Dict[str, Tuple[FontFeature, ...]]
+    font_feature_settings: Dict[str, Tuple[FontFeature, ...]],
+    narrow_symbols: Tuple[Tuple[int, int, int], ...],
 ) -> None:
     pass
 

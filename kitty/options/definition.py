@@ -124,6 +124,22 @@ Syntax is::
 '''
     )
 
+opt('+narrow_symbols', 'U+E0A0-U+E0A3,U+E0C0-U+E0C7 1',
+    option_type='narrow_symbols',
+    add_to_default=False,
+    long_text='''
+Usually, for Private Use Unicode characters and some symbol/dingbat characters,
+if the character is followed by one or more spaces, kitty will use those extra cells
+to render the character larger, if the character in the font has a wide aspect ratio.
+Using this setting you can force kitty to restrict the specified code points to render in
+the specified number of cells (defaulting to one cell).
+Syntax is::
+
+    narrow_symbols codepoints Optionally the number of cells
+'''
+    )
+
+
 opt('disable_ligatures', 'never',
     option_type='disable_ligatures', ctype='int',
     long_text='''

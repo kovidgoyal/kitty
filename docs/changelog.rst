@@ -88,6 +88,8 @@ Detailed list of changes
 
 - Improve CWD detection when there are multiple foreground processes in the TTY process group
 
+- A new option :opt:`narrow_symbols` to turn off opportunistic wide rendering of private use codepoints
+
 - ssh kitten: Fix location of generated terminfo files on NetBSD (:iss:`4622`)
 
 - A new action to clear the screen up to the line containing the cursor, see
