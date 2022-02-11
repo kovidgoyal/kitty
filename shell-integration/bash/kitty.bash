@@ -54,9 +54,13 @@ _ksi_main() {
             PS1="${_ksi_prompt[ps1]}$PS1"
             if [[ "${_ksi_prompt[mark]}" == "y" ]]; then 
                 # bash does not redraw the leading lines in a multiline prompt so
-                # mark them as secondary prompts
+                # mark the last line as a secondary prompt. Otherwise on resize the
+                # lines before the last line will be erased by kitty.
                 PS1=${PS1//\\\[\\e\]133;k;start_secondary_kitty\\a\\\]*end_secondary_kitty\\a\\\]}
-                PS1=${PS1//"\n"/${_ksi_prompt[secondary_prompt]}}
+                # the first part removes everything from the last \n onwards
+                # the second part appends a newline with the secondary marking 
+                # the third part appends everything after the last newline
+                PS1=${PS1%'\n'*}${_ksi_prompt[secondary_prompt]}${PS1##*'\n'}
             fi
         fi
         if [[ -n "${_ksi_prompt[ps1_suffix]}" ]]; then

@@ -115,6 +115,8 @@ Detailed list of changes
 
 - Shell integration: bash: Dont fail if an existing PROMPT_COMMAND ends with a semi-colon (:iss:`4645`)
 
+- Shell integration: bash: Fix rendering of multiline prompts with more than two lines (:iss:`4681`)
+
 - Linux: Fix fontconfig alias not being used if the aliased font is dual spaced instead of monospaced (:iss:`4649`)
 
 - macOS: Add an option :opt:`macos_menubar_title_max_length` to control the max length of the window title displayed in the global menubar (:iss:`2132`)
