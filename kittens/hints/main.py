@@ -230,7 +230,7 @@ def regex_finditer(pat: 'Pattern[str]', minimum_match_length: int, text: str) ->
             yield s, e, m.groupdict()
 
 
-closing_bracket_map = {'(': ')', '[': ']', '{': '}', '<': '>', '*': '*', '"': '"', "'": "'"}
+closing_bracket_map = {'(': ')', '[': ']', '{': '}', '<': '>', '*': '*', '"': '"', "'": "'", "“": "”", "‘": "’"}
 opening_brackets = ''.join(closing_bracket_map)
 PostprocessorFunc = Callable[[str, int, int], Tuple[int, int]]
 postprocessor_map: Dict[str, PostprocessorFunc] = {}
@@ -288,11 +288,12 @@ def quotes(text: str, s: int, e: int) -> Tuple[int, int]:
     # Remove matching quotes
     if s < e <= len(text):
         before = text[s]
-        if before in '\'"':
-            if text[e-1] == before:
+        if before in '\'"“‘':
+            q = closing_bracket_map[before]
+            if text[e-1] == q:
                 s += 1
                 e -= 1
-            elif text[e:e+1] == before:
+            elif text[e:e+1] == q:
                 s += 1
     return s, e
 
