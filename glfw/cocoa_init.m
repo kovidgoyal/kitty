@@ -593,11 +593,12 @@ build_global_shortcuts_lookup(void) {
                 NSInteger sc = [key integerValue];
                 NSDictionary *sc_value = obj;
                 id enabled = [sc_value objectForKey:@"enabled"];
-                if (!enabled || ![enabled isKindOfClass:[NSNumber class]] ) continue;
+                if (!enabled || ![enabled isKindOfClass:[NSNumber class]]) continue;
                 [temp_configured addObject:@(sc)];
+                if (![enabled boolValue]) continue;
                 id v = [sc_value objectForKey:@"value"];
                 if (!v || ![v isKindOfClass:[NSDictionary class]]) {
-                    if ([(NSNumber*)enabled intValue]) [temp_missing_value addObject:@(sc)];
+                    if ([enabled boolValue]) [temp_missing_value addObject:@(sc)];
                     continue;
                 }
                 NSDictionary *value = v;
