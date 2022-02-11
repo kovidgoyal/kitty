@@ -316,6 +316,9 @@ class Tab:  # {{{
         See :ref:`window_resizing` for details.
         ''')
     def resize_window(self, quality: str, increment: int) -> None:
+        if quality == 'reset':
+            self.reset_window_sizes()
+            return
         if increment < 1:
             raise ValueError(increment)
         is_horizontal = quality in ('wider', 'narrower')

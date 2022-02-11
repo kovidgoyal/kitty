@@ -248,6 +248,8 @@ action, for example::
    map ctrl+right resize_window wider
    map ctrl+up resize_window taller
    map ctrl+down resize_window shorter 3
+   # reset all windows to default sizes
+   map ctrl+home resize_window reset
 
 The ``resize_window`` action has a second, optional argument to control
 the resizing increment (a positive integer that defaults to 1).
