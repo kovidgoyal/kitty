@@ -492,8 +492,8 @@ in_symbol_maps(FontGroup *fg, char_type ch) {
 // - BOX_FONT
 // - an index in the fonts list
 static ssize_t
-font_for_cell(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell, bool *is_fallback_font, bool *is_emoji_presentation) {
-    *is_fallback_font = false;
+font_for_cell(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell, bool *is_main_font, bool *is_emoji_presentation) {
+    *is_main_font = false;
     *is_emoji_presentation = false;
 START_ALLOW_CASE_RANGE
     ssize_t ans;
@@ -510,6 +510,7 @@ START_ALLOW_CASE_RANGE
         case 0x1fba0 ... 0x1fbae:
             return BOX_FONT;
         default:
+            *is_emoji_presentation = has_emoji_presentation(cpu_cell, gpu_cell);
             ans = in_symbol_maps(fg, cpu_cell->ch);
             if (ans > -1) return ans;
             switch(gpu_cell->attrs.bold | (gpu_cell->attrs.italic << 1)) {
@@ -523,9 +524,7 @@ START_ALLOW_CASE_RANGE
                     ans = fg->bi_font_idx; break;
             }
             if (ans < 0) ans = fg->medium_font_idx;
-            *is_emoji_presentation = has_emoji_presentation(cpu_cell, gpu_cell);
-            if (!*is_emoji_presentation && has_cell_text(fg->fonts + ans, cpu_cell)) return ans;
-            *is_fallback_font = true;
+            if (!*is_emoji_presentation && has_cell_text(fg->fonts + ans, cpu_cell)) { *is_main_font = true; return ans; }
             return fallback_font(fg, cpu_cell, gpu_cell);
     }
 END_ALLOW_CASE_RANGE
@@ -1237,12 +1236,12 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
         if (prev_width == 2) { prev_width = 0; continue; }
         CPUCell *cpu_cell = line->cpu_cells + i;
         GPUCell *gpu_cell = line->gpu_cells + i;
-        bool is_fallback_font, is_emoji_presentation;
-        ssize_t cell_font_idx = font_for_cell(fg, cpu_cell, gpu_cell, &is_fallback_font, &is_emoji_presentation);
+        bool is_main_font, is_emoji_presentation;
+        ssize_t cell_font_idx = font_for_cell(fg, cpu_cell, gpu_cell, &is_main_font, &is_emoji_presentation);
 
         if (
                 cell_font_idx != MISSING_FONT &&
-                ((is_fallback_font && !is_emoji_presentation && is_symbol(cpu_cell->ch)) || (cell_font_idx != BOX_FONT && (is_private_use(cpu_cell->ch))) || is_non_emoji_dingbat(cpu_cell->ch))
+                ((!is_main_font && !is_emoji_presentation && is_symbol(cpu_cell->ch)) || (cell_font_idx != BOX_FONT && (is_private_use(cpu_cell->ch))) || is_non_emoji_dingbat(cpu_cell->ch))
         ) {
             unsigned int desired_cells = 1;
             if (cell_font_idx > 0) {

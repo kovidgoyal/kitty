@@ -123,6 +123,8 @@ Detailed list of changes
 
 - Fix :opt:`touch_scroll_multiplier` also taking effect in terminal programs such as vim that handle mouse events themselves (:iss:`4680`)
 
+- Fix symbol/PUA glyphs loaded via :opt:`symbol_map` instead of as fallbacks not using following spaces to render larger versions (:iss:`4670`)
+
 
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
