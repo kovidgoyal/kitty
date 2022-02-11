@@ -105,6 +105,7 @@ typedef struct {
     monotonic_t at;
     int button, modifiers;
     double x, y;
+    unsigned long num;
 } Click;
 
 #define CLICK_QUEUE_SZ 3

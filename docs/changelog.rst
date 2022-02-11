@@ -129,6 +129,8 @@ Detailed list of changes
 
 - macOS: Fix regression in previous release that caused Apple's global shortcuts to not work if they had never been configured on a particular machine (:iss:`4657`)
 
+- Fix a fast click, move mouse, click sequence causing the first click event to be discarded (:iss:`4603`)
+
 
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

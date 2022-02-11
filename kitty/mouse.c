@@ -378,17 +378,22 @@ clear_click_queue(Window *w, int button) {
 #define N(n) (q->clicks[q->length - n])
 
 static bool
-release_is_click(Window *w, int button) {
-    ClickQueue *q = &w->click_queues[button];
+release_is_click(const Window *w, int button) {
+    const ClickQueue *q = &w->click_queues[button];
     double click_allowed_radius = 1.2 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->cell_height : 20);
     monotonic_t now = monotonic();
     return (q->length > 0 && distance(N(1).x, N(1).y, MAX(0, w->mouse_pos.global_x), MAX(0, w->mouse_pos.global_y)) <= click_allowed_radius && now - N(1).at < OPT(click_interval));
 }
 
+static double
+radius_for_multiclick(void) {
+    return 1.2 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->cell_height : 20);
+}
+
 static unsigned
-multi_click_count(Window *w, int button) {
-    ClickQueue *q = &w->click_queues[button];
-    double multi_click_allowed_radius = 1.2 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->cell_height : 20);
+multi_click_count(const Window *w, int button) {
+    const ClickQueue *q = &w->click_queues[button];
+    double multi_click_allowed_radius = radius_for_multiclick();
     if (q->length > 2) {
         // possible triple-click
         if (
@@ -414,7 +419,8 @@ add_press(Window *w, int button, int modifiers) {
     ClickQueue *q = &w->click_queues[button];
     if (q->length == CLICK_QUEUE_SZ) { memmove(q->clicks, q->clicks + 1, sizeof(Click) * (CLICK_QUEUE_SZ - 1)); q->length--; }
     monotonic_t now = monotonic();
-    N(0).at = now; N(0).button = button; N(0).modifiers = modifiers; N(0).x = MAX(0, w->mouse_pos.global_x); N(0).y = MAX(0, w->mouse_pos.global_y);
+    static unsigned long num = 0;
+    N(0).at = now; N(0).button = button; N(0).modifiers = modifiers; N(0).x = MAX(0, w->mouse_pos.global_x); N(0).y = MAX(0, w->mouse_pos.global_y); N(0).num = ++num;
     q->length++;
     Screen *screen = w->render_data.screen;
     int count = multi_click_count(w, button);
@@ -459,6 +465,8 @@ typedef struct PendingClick {
     bool grabbed;
     monotonic_t at;
     MousePosition mouse_pos;
+    unsigned long press_num;
+    double radius_for_multiclick;
 } PendingClick;
 
 static void
@@ -467,14 +475,24 @@ free_pending_click(id_type timer_id UNUSED, void *pc) { free(pc); }
 void
 send_pending_click_to_window(Window *w, void *data) {
     PendingClick *pc = (PendingClick*)data;
-    ClickQueue *q = &w->click_queues[pc->button];
-    // only send click if no presses have happened since the release that triggered the click
-    if (q->length && q->clicks[q->length - 1].at <= pc->at) {
+    const ClickQueue *q = &w->click_queues[pc->button];
+    // only send click if no presses have happened since the release that triggered
+    // the click or if the subsequent press is too far or too late for a double click
+    if (!q->length) return;
+#define press(n) q->clicks[q->length - n]
+    if (
+            press(1).at <= pc->at || // latest press is before click release
+            (q->length > 1 && press(2).num == pc->press_num &&  (   // penultimate press is the press that belongs to this click
+                press(1).at - press(2).at > OPT(click_interval) ||  // too long between the presses for it to be a double click
+                distance(press(1).x, press(1).y, press(2).x, press(2).y) > pc->radius_for_multiclick  // presses are too far apart
+            ))
+    ) {
         MousePosition current_pos = w->mouse_pos;
         w->mouse_pos = pc->mouse_pos;
         dispatch_mouse_event(w, pc->button, pc->count, pc->modifiers, pc->grabbed);
         w->mouse_pos = current_pos;
     }
+#undef press
 }
 
 static void
@@ -484,6 +502,8 @@ dispatch_possible_click(Window *w, int button, int modifiers) {
     if (release_is_click(w, button)) {
         PendingClick *pc = calloc(sizeof(PendingClick), 1);
         if (pc) {
+            const ClickQueue *q = &w->click_queues[button];
+            pc->press_num = q->length ? q->clicks[q->length - 1].num : 0;
             pc->window_id = w->id;
             pc->mouse_pos = w->mouse_pos;
             pc->at = monotonic();
@@ -491,6 +511,7 @@ dispatch_possible_click(Window *w, int button, int modifiers) {
             pc->count = count == 2 ? -3 : -2;
             pc->modifiers = modifiers;
             pc->grabbed = screen->modes.mouse_tracking_mode != 0;
+            pc->radius_for_multiclick = radius_for_multiclick();
             add_main_loop_timer(OPT(click_interval), false, send_pending_click_to_window_id, pc, free_pending_click);
         }
     }
