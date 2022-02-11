@@ -125,6 +125,8 @@ Detailed list of changes
 
 - Fix symbol/PUA glyphs loaded via :opt:`symbol_map` instead of as fallbacks not using following spaces to render larger versions (:iss:`4670`)
 
+- macOS: Fix regression in previous release that caused Apple's global shortcuts to not work if they had never been configured on a particular machine (:iss:`4657`)
+
 
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
