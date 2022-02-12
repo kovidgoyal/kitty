@@ -317,10 +317,10 @@ static void pointerHandleButton(void* data UNUSED,
 #undef x
 #undef y
 
-// flags for ignoring axis events following axis_discrete events in the
+// counters for ignoring axis events following axis_discrete events in the
 // same frame along the same axis
-static bool ignoreNextX = false;
-static bool ignoreNextY = false;
+static unsigned int discreteXCount = 0;
+static unsigned int discreteYCount = 0;
 
 static void pointerHandleAxis(void* data UNUSED,
                               struct wl_pointer* pointer UNUSED,
@@ -337,15 +337,15 @@ static void pointerHandleAxis(void* data UNUSED,
            axis == WL_POINTER_AXIS_VERTICAL_SCROLL);
 
     if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
-        if (ignoreNextX) {
-            ignoreNextX = false;
+        if (discreteXCount) {
+            --discreteXCount;
             return;
         }
         x = -wl_fixed_to_double(value);
     }
     else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
-        if (ignoreNextY) {
-            ignoreNextY = false;
+        if (discreteYCount) {
+            --discreteYCount;
             return;
         }
         y = -wl_fixed_to_double(value);
@@ -357,8 +357,8 @@ static void pointerHandleAxis(void* data UNUSED,
 static void pointerHandleFrame(void* data UNUSED,
                                struct wl_pointer* pointer UNUSED)
 {
-    ignoreNextX = false;
-    ignoreNextY = false;
+    discreteXCount = 0;
+    discreteYCount = 0;
 }
 
 static void pointerHandleAxisSource(void* data UNUSED,
@@ -390,11 +390,11 @@ static void pointerHandleAxisDiscrete(void *data UNUSED,
 
     if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
         x = -discrete;
-        ignoreNextX = true;
+        ++discreteXCount;
     }
     else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
         y = -discrete;
-        ignoreNextY = true;
+        ++discreteYCount;
     }
 
     _glfwInputScroll(window, x, y, 0, _glfw.wl.xkb.states.modifiers);
