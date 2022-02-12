@@ -1417,6 +1417,11 @@ initialize_font_group(FontGroup *fg) {
     }
 #undef I
     calc_cell_metrics(fg);
+    // rescale the symbol_map faces for the desired cell height, this is how fallback fonts are sized as well
+    for (size_t i = 0; i < descriptor_indices.num_symbol_fonts; i++) {
+        Font *font = fg->fonts + i + fg->first_symbol_font_idx;
+        set_size_for_face(font->face, fg->cell_height, true, (FONTS_DATA_HANDLE)fg);
+    }
 }
 
 
