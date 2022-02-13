@@ -2479,13 +2479,10 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
                 }
             }
         }
-        line_as_ansi(line, &output, &prev_cell, xr.x, x_limit, prefix_char);
+        if (line_as_ansi(line, &output, &prev_cell, xr.x, x_limit, prefix_char)) has_escape_codes = true;
         PyObject *t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
         if (!t) return NULL;
         PyTuple_SET_ITEM(ans, i, t);
-        if (!has_escape_codes) {
-            for (size_t i = 0; i < output.len; i++) { if (output.buf[i] == 0x1b) { has_escape_codes = true; break; } }
-        }
     }
     PyObject *t = PyUnicode_FromFormat("%s%s", has_escape_codes ? "\x1b[m" : "", output.active_hyperlink_id ? "\x1b]8;;\x1b\\" : "");
     if (!t) return NULL;

@@ -302,17 +302,18 @@ write_hyperlink(hyperlink_id_type hid, ANSIBuf *output) {
 }
 
 
-void
+bool
 line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell, index_type start_at, index_type stop_before, char_type prefix_char) {
 #define ENSURE_SPACE(extra) ensure_space_for(output, buf, Py_UCS4, output->len + extra, capacity, 2048, false);
-#define WRITE_SGR(val) { ENSURE_SPACE(128); write_sgr(val, output); }
+#define WRITE_SGR(val) { ENSURE_SPACE(128); escape_code_written = true; write_sgr(val, output); }
 #define WRITE_CH(val) { ENSURE_SPACE(1); output->buf[output->len++] = val; }
-#define WRITE_HYPERLINK(val) { ENSURE_SPACE(2256); write_hyperlink(val, output); }
+#define WRITE_HYPERLINK(val) { ENSURE_SPACE(2256); escape_code_written = true; write_hyperlink(val, output); }
+    bool escape_code_written = false;
     output->len = 0;
     index_type limit = MIN(stop_before, xlimit_for_line(self));
     char_type previous_width = 0;
     if (prefix_char) { WRITE_CH(prefix_char); previous_width = wcwidth_std(prefix_char); }
-    if (limit <= start_at) return;
+    if (limit <= start_at) return escape_code_written;
 
     static const GPUCell blank_cell = { 0 };
     GPUCell *cell;
@@ -354,6 +355,7 @@ line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell, index_type 
         }
         previous_width = cell->attrs.width;
     }
+    return escape_code_written;
 #undef CMP_ATTRS
 #undef CMP
 #undef WRITE_SGR
