@@ -317,6 +317,11 @@ static void pointerHandleButton(void* data UNUSED,
 #undef x
 #undef y
 
+// counters for ignoring axis events following axis_discrete events in the
+// same frame along the same axis
+static unsigned int discreteXCount = 0;
+static unsigned int discreteYCount = 0;
+
 static void pointerHandleAxis(void* data UNUSED,
                               struct wl_pointer* pointer UNUSED,
                               uint32_t time UNUSED,
@@ -331,12 +336,68 @@ static void pointerHandleAxis(void* data UNUSED,
     assert(axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL ||
            axis == WL_POINTER_AXIS_VERTICAL_SCROLL);
 
-    if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL)
+    if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
+        if (discreteXCount) {
+            --discreteXCount;
+            return;
+        }
         x = -wl_fixed_to_double(value);
-    else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL)
+    }
+    else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
+        if (discreteYCount) {
+            --discreteYCount;
+            return;
+        }
         y = -wl_fixed_to_double(value);
+    }
 
     _glfwInputScroll(window, x, y, 1, _glfw.wl.xkb.states.modifiers);
+}
+
+static void pointerHandleFrame(void* data UNUSED,
+                               struct wl_pointer* pointer UNUSED)
+{
+    discreteXCount = 0;
+    discreteYCount = 0;
+}
+
+static void pointerHandleAxisSource(void* data UNUSED,
+                                    struct wl_pointer* pointer UNUSED,
+                                    uint32_t source UNUSED)
+{
+}
+
+static void pointerHandleAxisStop(void *data UNUSED,
+                  struct wl_pointer *wl_pointer UNUSED,
+                  uint32_t time UNUSED,
+                  uint32_t axis UNUSED)
+{
+}
+
+
+static void pointerHandleAxisDiscrete(void *data UNUSED,
+                  struct wl_pointer *wl_pointer UNUSED,
+                  uint32_t axis UNUSED,
+                  int32_t discrete UNUSED)
+{
+    _GLFWwindow* window = _glfw.wl.pointerFocus;
+    double x = 0.0, y = 0.0;
+    if (!window)
+        return;
+
+    assert(axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL ||
+           axis == WL_POINTER_AXIS_VERTICAL_SCROLL);
+
+    if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
+        x = -discrete;
+        ++discreteXCount;
+    }
+    else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
+        y = -discrete;
+        ++discreteYCount;
+    }
+
+    _glfwInputScroll(window, x, y, 0, _glfw.wl.xkb.states.modifiers);
 }
 
 static const struct wl_pointer_listener pointerListener = {
@@ -345,6 +406,10 @@ static const struct wl_pointer_listener pointerListener = {
     pointerHandleMotion,
     pointerHandleButton,
     pointerHandleAxis,
+    pointerHandleFrame,
+    pointerHandleAxisSource,
+    pointerHandleAxisStop,
+    pointerHandleAxisDiscrete,
 };
 
 static void keyboardHandleKeymap(void* data UNUSED,
@@ -571,7 +636,7 @@ static void registryHandleGlobal(void* data UNUSED,
     {
         if (!_glfw.wl.seat)
         {
-            _glfw.wl.seatVersion = min(4, version);
+            _glfw.wl.seatVersion = min(5, version);
             _glfw.wl.seat =
                 wl_registry_bind(registry, name, &wl_seat_interface,
                                  _glfw.wl.seatVersion);
