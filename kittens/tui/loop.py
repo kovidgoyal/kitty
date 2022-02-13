@@ -110,14 +110,16 @@ class TermManager:
 
 class MouseButton(IntFlag):
     NONE, LEFT, MIDDLE, RIGHT, FOURTH, FIFTH = 0, 1, 2, 4, 8, 16
+    WHEEL_UP, WHEEL_DOWN = -1, -2
 
 
 bmap = {0: MouseButton.LEFT, 1: MouseButton.MIDDLE, 2: MouseButton.RIGHT}
-MOTION_INDICATOR = 1 << 5
-EXTRA_BUTTON_INDICATOR = 1 << 7
 SHIFT_INDICATOR = 1 << 2
 ALT_INDICATOR = 1 << 3
 CTRL_INDICATOR = 1 << 4
+MOTION_INDICATOR = 1 << 5
+SCROLL_BUTTON_INDICATOR = 1 << 6
+EXTRA_BUTTON_INDICATOR = 1 << 7
 
 
 class EventType(Enum):
@@ -149,7 +151,9 @@ def decode_sgr_mouse(text: str, screen_size: ScreenSize) -> MouseEvent:
     buttons: MouseButton = MouseButton.NONE
     cb3 = cb & 3
     if cb3 != 3:
-        if cb & EXTRA_BUTTON_INDICATOR:
+        if cb & SCROLL_BUTTON_INDICATOR:
+            buttons = MouseButton.WHEEL_DOWN if cb3 & 1 else MouseButton.WHEEL_UP
+        elif cb & EXTRA_BUTTON_INDICATOR:
             buttons |= MouseButton.FIFTH if cb3 & 1 else MouseButton.FOURTH
         else:
             buttons |= bmap[cb3]
