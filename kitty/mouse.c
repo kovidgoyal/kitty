@@ -377,17 +377,16 @@ clear_click_queue(Window *w, int button) {
 
 #define N(n) (q->clicks[q->length - n])
 
+static double
+radius_for_multiclick(void) {
+    return 0.5 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->cell_height : 8);
+}
+
 static bool
 release_is_click(const Window *w, int button) {
     const ClickQueue *q = &w->click_queues[button];
-    double click_allowed_radius = 1.2 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->cell_height : 20);
     monotonic_t now = monotonic();
-    return (q->length > 0 && distance(N(1).x, N(1).y, MAX(0, w->mouse_pos.global_x), MAX(0, w->mouse_pos.global_y)) <= click_allowed_radius && now - N(1).at < OPT(click_interval));
-}
-
-static double
-radius_for_multiclick(void) {
-    return 1.2 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->cell_height : 20);
+    return (q->length > 0 && distance(N(1).x, N(1).y, MAX(0, w->mouse_pos.global_x), MAX(0, w->mouse_pos.global_y)) <= radius_for_multiclick() && now - N(1).at < OPT(click_interval));
 }
 
 static unsigned
