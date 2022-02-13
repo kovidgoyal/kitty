@@ -2461,6 +2461,7 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     if (!ans || !nl) return NULL;
     ANSIBuf output = {0};
     const GPUCell *prev_cell = NULL;
+    bool has_escape_codes = false;
     for (int i = 0, y = idata.y; y < limit; y++, i++) {
         Line *line = range_line_(self, y);
         XRange xr = xrange_for_iteration(&idata, y, line);
@@ -2482,8 +2483,11 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
         PyObject *t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
         if (!t) return NULL;
         PyTuple_SET_ITEM(ans, i, t);
+        if (!has_escape_codes) {
+            for (size_t i = 0; i < output.len; i++) { if (output.buf[i] == 0x1b) { has_escape_codes = true; break; } }
+        }
     }
-    PyObject *t = PyUnicode_FromFormat("%s%s", "\x1b[m", output.active_hyperlink_id ? "\x1b]8;;\x1b\\" : "");
+    PyObject *t = PyUnicode_FromFormat("%s%s", has_escape_codes ? "\x1b[m" : "", output.active_hyperlink_id ? "\x1b]8;;\x1b\\" : "");
     if (!t) return NULL;
     PyTuple_SET_ITEM(ans, PyTuple_GET_SIZE(ans) - 1, t);
     Py_INCREF(ans);
