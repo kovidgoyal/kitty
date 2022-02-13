@@ -413,7 +413,7 @@ as_ansi(LineBuf *self, PyObject *callback) {
     ANSIBuf output = {0};
     do {
         init_line(self, (&l), self->line_map[ylimit]);
-        line_as_ansi(&l, &output, &prev_cell, 0, l.xnum);
+        line_as_ansi(&l, &output, &prev_cell, 0, l.xnum, 0);
         if (output.len) break;
         ylimit--;
     } while(ylimit > 0);
@@ -421,7 +421,7 @@ as_ansi(LineBuf *self, PyObject *callback) {
     for(index_type i = 0; i <= ylimit; i++) {
         l.attrs.continued = self->line_attrs[(i + 1 < self->ynum) ? i+1 : i].continued;
         init_line(self, (&l), self->line_map[i]);
-        line_as_ansi(&l, &output, &prev_cell, 0, l.xnum);
+        line_as_ansi(&l, &output, &prev_cell, 0, l.xnum, 0);
         if (!l.attrs.continued) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
             output.buf[output.len++] = 10; // 10 = \n

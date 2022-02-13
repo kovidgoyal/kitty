@@ -2465,10 +2465,8 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
         Line *line = range_line_(self, y);
         XRange xr = xrange_for_iteration(&idata, y, line);
         output.len = 0;
-        if (i > 0 && insert_newlines && !line->attrs.continued) {
-            ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
-            output.buf[output.len++] = '\n';
-        }
+        char_type prefix_char = 0;
+        if (i > 0 && insert_newlines && !line->attrs.continued)  prefix_char = '\n';
         index_type x_limit = xr.x_limit;
         if (strip_trailing_whitespace) {
             index_type new_limit = limit_without_trailing_whitespace(line, x_limit);
@@ -2480,7 +2478,7 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
                 }
             }
         }
-        line_as_ansi(line, &output, &prev_cell, xr.x, x_limit);
+        line_as_ansi(line, &output, &prev_cell, xr.x, x_limit, prefix_char);
         PyObject *t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
         if (!t) return NULL;
         PyTuple_SET_ITEM(ans, i, t);

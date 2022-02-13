@@ -302,7 +302,7 @@ write_hyperlink(hyperlink_id_type hid, ANSIBuf *output) {
 
 
 void
-line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell, index_type start_at, index_type stop_before) {
+line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell, index_type start_at, index_type stop_before, char_type prefix_char) {
 #define ENSURE_SPACE(extra) ensure_space_for(output, buf, Py_UCS4, output->len + extra, capacity, 2048, false);
 #define WRITE_SGR(val) { ENSURE_SPACE(128); write_sgr(val, output); }
 #define WRITE_CH(val) { ENSURE_SPACE(1); output->buf[output->len++] = val; }
@@ -316,6 +316,7 @@ line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell, index_type 
     GPUCell *cell;
     if (*prev_cell == NULL) *prev_cell = &blank_cell;
     const CellAttrs mask_for_sgr = {.val=SGR_MASK};
+    if (prefix_char) WRITE_CH(prefix_char);
 
     for (index_type pos=start_at; pos < limit; pos++) {
         char_type ch = self->cpu_cells[pos].ch;
@@ -365,7 +366,7 @@ as_ansi(Line* self, PyObject *a UNUSED) {
 #define as_ansi_doc "Return the line's contents with ANSI (SGR) escape codes for formatting"
     const GPUCell *prev_cell = NULL;
     ANSIBuf output = {0};
-    line_as_ansi(self, &output, &prev_cell, 0, self->xnum);
+    line_as_ansi(self, &output, &prev_cell, 0, self->xnum, 0);
     PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
     free(output.buf);
     return ans;
@@ -834,7 +835,7 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
             // get around to writing a nice pager kitten.
             // see https://github.com/kovidgoyal/kitty/issues/2381
             prev_cell = NULL;
-            line_as_ansi(line, ansibuf, &prev_cell, 0, line->xnum);
+            line_as_ansi(line, ansibuf, &prev_cell, 0, line->xnum, 0);
             t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, ansibuf->buf, ansibuf->len);
             if (t && ansibuf->len > 0) APPEND(sgr_reset);
         } else {
