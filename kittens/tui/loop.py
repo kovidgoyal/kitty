@@ -114,7 +114,7 @@ class MouseButton(IntFlag):
 
 bmap = {0: MouseButton.LEFT, 1: MouseButton.MIDDLE, 2: MouseButton.RIGHT}
 MOTION_INDICATOR = 1 << 5
-EXTRA_BUTTON_INDICATOR = 1 << 6
+EXTRA_BUTTON_INDICATOR = 1 << 7
 SHIFT_INDICATOR = 1 << 2
 ALT_INDICATOR = 1 << 3
 CTRL_INDICATOR = 1 << 4
