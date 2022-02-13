@@ -9,6 +9,7 @@
 #include "unicode-data.h"
 #include "lineops.h"
 #include "charsets.h"
+#include "wcwidth-std.h"
 
 extern PyTypeObject Cursor_Type;
 
@@ -309,14 +310,14 @@ line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell, index_type 
 #define WRITE_HYPERLINK(val) { ENSURE_SPACE(2256); write_hyperlink(val, output); }
     output->len = 0;
     index_type limit = MIN(stop_before, xlimit_for_line(self));
-    if (limit <= start_at) return;
     char_type previous_width = 0;
+    if (prefix_char) { WRITE_CH(prefix_char); previous_width = wcwidth_std(prefix_char); }
+    if (limit <= start_at) return;
 
     static const GPUCell blank_cell = { 0 };
     GPUCell *cell;
     if (*prev_cell == NULL) *prev_cell = &blank_cell;
     const CellAttrs mask_for_sgr = {.val=SGR_MASK};
-    if (prefix_char) WRITE_CH(prefix_char);
 
     for (index_type pos=start_at; pos < limit; pos++) {
         char_type ch = self->cpu_cells[pos].ch;
