@@ -212,6 +212,11 @@ typedef struct _GLFWwindowWayland
 
     uint32_t toplevel_states;
     bool maximize_on_first_show;
+    // counters for ignoring axis events following axis_discrete events in the
+    // same frame along the same axis
+    struct {
+        unsigned int x, y;
+    } axis_discrete_count;
 
 } _GLFWwindowWayland;
 

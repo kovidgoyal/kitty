@@ -317,11 +317,6 @@ static void pointerHandleButton(void* data UNUSED,
 #undef x
 #undef y
 
-// counters for ignoring axis events following axis_discrete events in the
-// same frame along the same axis
-static unsigned int discreteXCount = 0;
-static unsigned int discreteYCount = 0;
-
 static void pointerHandleAxis(void* data UNUSED,
                               struct wl_pointer* pointer UNUSED,
                               uint32_t time UNUSED,
@@ -337,15 +332,15 @@ static void pointerHandleAxis(void* data UNUSED,
            axis == WL_POINTER_AXIS_VERTICAL_SCROLL);
 
     if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
-        if (discreteXCount) {
-            --discreteXCount;
+        if (window->wl.axis_discrete_count.x) {
+            window->wl.axis_discrete_count.x--;
             return;
         }
         x = -wl_fixed_to_double(value);
     }
     else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
-        if (discreteYCount) {
-            --discreteYCount;
+        if (window->wl.axis_discrete_count.y) {
+            window->wl.axis_discrete_count.y--;
             return;
         }
         y = -wl_fixed_to_double(value);
@@ -357,8 +352,11 @@ static void pointerHandleAxis(void* data UNUSED,
 static void pointerHandleFrame(void* data UNUSED,
                                struct wl_pointer* pointer UNUSED)
 {
-    discreteXCount = 0;
-    discreteYCount = 0;
+    _GLFWwindow* window = _glfw.wl.pointerFocus;
+    if (window) {
+        window->wl.axis_discrete_count.x = 0;
+        window->wl.axis_discrete_count.y = 0;
+    }
 }
 
 static void pointerHandleAxisSource(void* data UNUSED,
@@ -390,11 +388,11 @@ static void pointerHandleAxisDiscrete(void *data UNUSED,
 
     if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
         x = -discrete;
-        ++discreteXCount;
+        window->wl.axis_discrete_count.x++;
     }
     else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
         y = -discrete;
-        ++discreteYCount;
+        window->wl.axis_discrete_count.y++;
     }
 
     _glfwInputScroll(window, x, y, 0, _glfw.wl.xkb.states.modifiers);
