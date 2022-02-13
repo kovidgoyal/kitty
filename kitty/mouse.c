@@ -141,6 +141,13 @@ static bool
 dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabbed) {
     bool handled = false;
     if (w->render_data.screen && w->render_data.screen->callbacks != Py_None) {
+        PyObject *callback_ret = PyObject_CallMethod(w->render_data.screen->callbacks, "on_mouse_event", "{si si si sO}",
+            "button", button, "repeat_count", count, "mods", modifiers, "grabbed", grabbed ? Py_True : Py_False);
+        if (callback_ret == NULL) PyErr_Print();
+        else {
+            handled = callback_ret == Py_True;
+            Py_DECREF(callback_ret);
+        }
         if (OPT(debug_keyboard)) {
             const char *evname = "move";
             switch(count) {
@@ -162,14 +169,7 @@ dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabb
                 case GLFW_MOUSE_BUTTON_7: bname = "b7"; break;
                 case GLFW_MOUSE_BUTTON_8: bname = "b8"; break;
             }
-            debug("\x1b[33mon_mouse_input\x1b[m: %s button: %s %sgrabbed: %d\n", evname, bname, format_mods(modifiers), grabbed);
-        }
-        PyObject *callback_ret = PyObject_CallMethod(w->render_data.screen->callbacks, "on_mouse_event", "{si si si sO}",
-            "button", button, "repeat_count", count, "mods", modifiers, "grabbed", grabbed ? Py_True : Py_False);
-        if (callback_ret == NULL) PyErr_Print();
-        else {
-            handled = callback_ret == Py_True;
-            Py_DECREF(callback_ret);
+            debug("\x1b[33mon_mouse_input\x1b[m: %s button: %s %sgrabbed: %d handled_in_kitty: %d\n", evname, bname, format_mods(modifiers), grabbed, handled);
         }
     }
     return handled;
@@ -784,9 +784,9 @@ mouse_event(const int button, int modifiers, int action) {
                 clamp_to_window = true;
                 Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
                 for (window_idx = 0; window_idx < t->num_windows && t->windows[window_idx].id != w->id; window_idx++);
+                debug("sent to child as drag end\n");
                 handle_button_event(w, button, modifiers, window_idx);
                 clamp_to_window = false;
-                debug("sent to child as drag end\n");
                 return;
             }
         }
