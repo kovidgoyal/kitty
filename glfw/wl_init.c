@@ -377,8 +377,8 @@ static void pointerHandleAxisStop(void *data UNUSED,
 
 static void pointerHandleAxisDiscrete(void *data UNUSED,
                   struct wl_pointer *wl_pointer UNUSED,
-                  uint32_t axis UNUSED,
-                  int32_t discrete UNUSED)
+                  uint32_t axis,
+                  int32_t discrete)
 {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     double x = 0.0, y = 0.0;

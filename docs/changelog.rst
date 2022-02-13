@@ -131,6 +131,8 @@ Detailed list of changes
 
 - Fix a fast *click, move mouse, click* sequence causing the first click event to be discarded (:iss:`4603`)
 
+- Wayland: Fix wheel mice with line based scrolling being incorrectly handled as high precision devices (:iss:`4694`)
+
 
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
