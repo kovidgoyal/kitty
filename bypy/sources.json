@@ -166,8 +166,8 @@
     {
         "name": "pygments",
         "unix": {
-            "filename": "Pygments-2.7.4.tar.gz",
-            "hash": "sha256:df49d09b498e83c1a73128295860250b0b7edd4c723a32e9bc0d295c7c2ec337",
+            "filename": "Pygments-2.11.2.tar.gz",
+            "hash": "sha256:4e426f72023d88d03b2fa258de560726ce890ff3b630f88c21cbb8b2503b8c6a",
             "urls": ["pypi"]
         }
     },
