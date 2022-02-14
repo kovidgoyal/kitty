@@ -888,13 +888,15 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
     } else {
         SCALE_SCROLL(wheel_scroll_multiplier);
         s = (int) round(yoffset);
-        int min_lines = OPT(wheel_scroll_min_lines);
-        if (min_lines > 0 && abs(s) < min_lines) s = yoffset > 0 ? min_lines : -min_lines;
-        // Add the minimum number of lines when it is negative and the scrolling acceleration takes effect
-        else if (min_lines < 0) s = yoffset > 0 ? s - min_lines : s + min_lines;
-        // apparently on cocoa some mice generate really small yoffset values
-        // when scrolling slowly https://github.com/kovidgoyal/kitty/issues/1238
-        if (s == 0) s = yoffset > 0 ? 1 : -1;
+        if (yoffset != 0) {
+            const int min_lines = OPT(wheel_scroll_min_lines);
+            if (min_lines > 0 && abs(s) < min_lines) s = yoffset > 0 ? min_lines : -min_lines;
+            // Always add the minimum number of lines when it is negative
+            else if (min_lines < 0) s = yoffset > 0 ? s - min_lines : s + min_lines;
+            // apparently on cocoa some mice generate really small yoffset values
+            // when scrolling slowly https://github.com/kovidgoyal/kitty/issues/1238
+            if (s == 0) s = yoffset > 0 ? 1 : -1;
+        }
         screen->pending_scroll_pixels = 0;
     }
 #undef SCALE_SCROLL

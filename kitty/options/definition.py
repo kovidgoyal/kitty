@@ -343,17 +343,18 @@ opt('wheel_scroll_multiplier', '5.0',
     long_text='''
 Modify the amount scrolled by the mouse wheel. Note this is only used for low
 precision scrolling devices, not for high precision scrolling on platforms such
-as macOS and Wayland. Use negative numbers to change scroll direction.
+as macOS and Wayland. Use negative numbers to change scroll direction. See also
+:opt:`wheel_scroll_min_lines`.
 '''
     )
 
 opt('wheel_scroll_min_lines', '1',
     option_type='int', ctype='int',
     long_text='''
-The minimum number of lines scrolled by the mouse wheel. The scrolling
-acceleration only takes effect after it reaches the number. Note that this is
-only used for low precision scrolling devices. With a negative number, the
-minimum number of lines will always be added.
+The minimum number of lines scrolled by the mouse wheel. The :opt:`scroll multiplier <wheel_scroll_multiplier>`
+only takes effect after it reaches this number. Note that this is only used for
+low precision scrolling devices like wheel mice that scroll by very small amounts when using the wheel.
+With a negative number, the minimum number of lines will always be added.
 '''
     )
 
