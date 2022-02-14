@@ -2153,7 +2153,7 @@ class Boss:
 
         def format_tab_title(tab: Tab) -> str:
             w = 'windows' if tab.num_window_groups > 1 else 'window'
-            return f'{tab.title} [{tab.num_window_groups} {w}]'
+            return f'{tab.name or tab.title} [{tab.num_window_groups} {w}]'
 
         ct = self.active_tab
         st = ''
