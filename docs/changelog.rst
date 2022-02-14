@@ -135,6 +135,8 @@ Detailed list of changes
 
 - Wayland: Fix touchpads and high resolution wheels not scrolling at the same speed on monitors with different scales (:iss:`4703`)
 
+- Add an option :opt:`wheel_scroll_min_lines` to set the minimum number of lines for mouse wheel scrolling (:pull:`4710`)
+
 
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

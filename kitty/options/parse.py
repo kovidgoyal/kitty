@@ -1272,6 +1272,9 @@ class Parser:
     def wayland_titlebar_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['wayland_titlebar_color'] = titlebar_color(val)
 
+    def wheel_scroll_min_lines(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['wheel_scroll_min_lines'] = int(val)
+
     def wheel_scroll_multiplier(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['wheel_scroll_multiplier'] = float(val)
 
