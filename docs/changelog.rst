@@ -133,6 +133,8 @@ Detailed list of changes
 
 - Wayland: Fix wheel mice with line based scrolling being incorrectly handled as high precision devices (:iss:`4694`)
 
+- Wayland: Fix touchpads and high resolution wheels not scrolling at the same speed on monitors with different scales (:iss:`4703`)
+
 
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
