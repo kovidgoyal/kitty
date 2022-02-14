@@ -347,6 +347,16 @@ as macOS and Wayland. Use negative numbers to change scroll direction.
 '''
     )
 
+opt('wheel_scroll_min_lines', '1',
+    option_type='int', ctype='int',
+    long_text='''
+The minimum number of lines scrolled by the mouse wheel. The scrolling
+acceleration only takes effect after it reaches the number. Note that this is
+only used for low precision scrolling devices. With a negative number, the
+minimum number of lines will always be added.
+'''
+    )
+
 opt('touch_scroll_multiplier', '1.0',
     option_type='float', ctype='double',
     long_text='''

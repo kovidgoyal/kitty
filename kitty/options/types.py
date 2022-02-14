@@ -437,6 +437,7 @@ option_names = (  # {{{
  'visual_window_select_characters',
  'watcher',
  'wayland_titlebar_color',
+ 'wheel_scroll_min_lines',
  'wheel_scroll_multiplier',
  'window_alert_on_bell',
  'window_border_width',
@@ -580,6 +581,7 @@ class Options:
     visual_bell_duration: float = 0
     visual_window_select_characters: str = '1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     wayland_titlebar_color: int = 0
+    wheel_scroll_min_lines: int = 1
     wheel_scroll_multiplier: float = 5.0
     window_alert_on_bell: bool = True
     window_border_width: typing.Tuple[float, str] = (0.5, 'pt')
