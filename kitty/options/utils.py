@@ -818,7 +818,7 @@ def action_alias(val: str) -> Iterable[Tuple[str, str]]:
 kitten_alias = action_alias
 
 
-def symbol_map(val: str, min_size: int = 2) -> Iterable[Tuple[Tuple[int, int], str]]:
+def symbol_map_parser(val: str, min_size: int = 2) -> Iterable[Tuple[Tuple[int, int], str]]:
     parts = val.split()
 
     def abort() -> None:
@@ -845,8 +845,12 @@ def symbol_map(val: str, min_size: int = 2) -> Iterable[Tuple[Tuple[int, int], s
         yield (a, b), family
 
 
+def symbol_map(val: str) -> Iterable[Tuple[Tuple[int, int], str]]:
+    yield from symbol_map_parser(val)
+
+
 def narrow_symbols(val: str) -> Iterable[Tuple[Tuple[int, int], int]]:
-    for x, y in symbol_map(val, min_size=1):
+    for x, y in symbol_map_parser(val, min_size=1):
         yield x, int(y or 1)
 
 
