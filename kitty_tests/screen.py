@@ -996,9 +996,9 @@ class TestScreen(BaseTest):
         self.assertTrue(s.scroll_to_prompt())
         self.ae(str(s.visual_line(0)), '$ 1')
 
-        def lco():
+        def lco(as_ansi=False):
             a = []
-            s.cmd_output(0, a.append)
+            s.cmd_output(0, a.append, as_ansi)
             return ''.join(a)
 
         def fco():
@@ -1025,6 +1025,7 @@ class TestScreen(BaseTest):
         mark_prompt(), s.draw('$ 1')
         self.ae(fco(), 'abcd\n12')
         self.ae(lco(), 'abcd\n12')
+        self.ae(lco(as_ansi=True), '\x1b[m\x1b]133;C\x1b\\abcd\n\x1b[m12')
 
         def draw_prompt(x):
             mark_prompt(), s.draw(f'$ {x}'), s.carriage_return(), s.index()

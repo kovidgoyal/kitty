@@ -301,6 +301,15 @@ write_hyperlink(hyperlink_id_type hid, ANSIBuf *output) {
 #undef W
 }
 
+static void
+write_mark(const char *mark, ANSIBuf *output) {
+#define W(c) output->buf[output->len++] = c
+    W(0x1b); W(']'); W('1'); W('3'); W('3'); W(';');
+    for (size_t i = 0; mark[i] != 0 && i < 32; i++) W(mark[i]);
+    W(0x1b); W('\\');
+#undef W
+
+}
 
 bool
 line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell, index_type start_at, index_type stop_before, char_type prefix_char) {
@@ -308,11 +317,26 @@ line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell, index_type 
 #define WRITE_SGR(val) { ENSURE_SPACE(128); escape_code_written = true; write_sgr(val, output); }
 #define WRITE_CH(val) { ENSURE_SPACE(1); output->buf[output->len++] = val; }
 #define WRITE_HYPERLINK(val) { ENSURE_SPACE(2256); escape_code_written = true; write_hyperlink(val, output); }
+#define WRITE_MARK(val) { ENSURE_SPACE(64); escape_code_written = true; write_mark(val, output); }
     bool escape_code_written = false;
     output->len = 0;
     index_type limit = MIN(stop_before, xlimit_for_line(self));
     char_type previous_width = 0;
     if (prefix_char) { WRITE_CH(prefix_char); previous_width = wcwidth_std(prefix_char); }
+
+    switch (self->attrs.prompt_kind) {
+        case UNKNOWN_PROMPT_KIND:
+            break;
+        case PROMPT_START:
+            WRITE_MARK("A");
+            break;
+        case SECONDARY_PROMPT:
+            WRITE_MARK("A;k=s");
+            break;
+        case OUTPUT_START:
+            WRITE_MARK("C");
+            break;
+    }
     if (limit <= start_at) return escape_code_written;
 
     static const GPUCell blank_cell = { 0 };
@@ -362,6 +386,7 @@ line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell, index_type 
 #undef WRITE_CH
 #undef ENSURE_SPACE
 #undef WRITE_HYPERLINK
+#undef WRITE_MARK
 }
 
 static PyObject*
