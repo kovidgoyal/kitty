@@ -889,7 +889,7 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
         SCALE_SCROLL(wheel_scroll_multiplier);
         s = (int) round(yoffset);
         if (yoffset != 0) {
-            const int min_lines = OPT(wheel_scroll_min_lines);
+            const int min_lines = screen->modes.mouse_tracking_mode ? 1 : OPT(wheel_scroll_min_lines);
             if (min_lines > 0 && abs(s) < min_lines) s = yoffset > 0 ? min_lines : -min_lines;
             // Always add the minimum number of lines when it is negative
             else if (min_lines < 0) s = yoffset > 0 ? s - min_lines : s + min_lines;
