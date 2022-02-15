@@ -20,7 +20,8 @@ from kitty.fast_data_types import get_options, set_clipboard_string
 from kitty.key_encoding import KeyEvent
 from kitty.typing import BossType, KittyCommonOpts
 from kitty.utils import (
-    ScreenSize, resolve_custom_file, screen_size_function, set_primary_selection
+    ScreenSize, ansi_sanitizer_pat, resolve_custom_file, screen_size_function,
+    set_primary_selection
 )
 
 from ..tui.handler import Handler, result_handler
@@ -436,7 +437,7 @@ def remove_escape_codes(text: str) -> str:
     return re.sub(r'\x1b(?:\[.*?m|\]133;.*?\x1b\\)', '', text)
 
 
-def process_hyperlinks(text: str) -> Tuple[str, Tuple[Mark, ...]]:
+def process_escape_codes(text: str) -> Tuple[str, Tuple[Mark, ...]]:
     hyperlinks: List[Mark] = []
     removed_size = idx = 0
     active_hyperlink_url: Optional[str] = None
@@ -459,6 +460,9 @@ def process_hyperlinks(text: str) -> Tuple[str, Tuple[Mark, ...]]:
     def process_hyperlink(m: 're.Match[str]') -> str:
         nonlocal removed_size, active_hyperlink_url, active_hyperlink_id, active_hyperlink_start_offset
         raw = m.group()
+        if not raw.startswith('\x1b]8'):
+            removed_size += len(raw)
+            return ''
         start = m.start() - removed_size
         removed_size += len(raw)
         if active_hyperlink_url is not None:
@@ -476,7 +480,7 @@ def process_hyperlinks(text: str) -> Tuple[str, Tuple[Mark, ...]]:
 
         return ''
 
-    text = re.sub(r'\x1b\]8.+?\x1b\\', process_hyperlink, text)
+    text = ansi_sanitizer_pat().sub(process_hyperlink, text)
     if active_hyperlink_url is not None:
         add_hyperlink(len(text))
     return text, tuple(hyperlinks)
@@ -484,8 +488,8 @@ def process_hyperlinks(text: str) -> Tuple[str, Tuple[Mark, ...]]:
 
 def run(args: HintsCLIOptions, text: str, extra_cli_args: Sequence[str] = ()) -> Optional[Dict[str, Any]]:
     try:
-        text = parse_input(remove_escape_codes(text))
-        text, hyperlinks = process_hyperlinks(text)
+        text = parse_input(text)
+        text, hyperlinks = process_escape_codes(text)
         pattern, post_processors = functions_for(args)
         if args.type == 'linenum':
             args.customize_processing = '::linenum::'
