@@ -418,8 +418,21 @@ pagerhist_write(HistoryBuf *self, PyObject *what) {
     Py_RETURN_NONE;
 }
 
+static const uint8_t*
+reverse_find(const uint8_t *haystack, size_t haystack_sz, const uint8_t *needle) {
+    const size_t needle_sz = strlen((const char*)needle);
+    if (!needle_sz || needle_sz > haystack_sz) return NULL;
+    const uint8_t *p = haystack + haystack_sz - (needle_sz - 1);
+    while (--p >= haystack) {
+        if (*p == needle[0] && memcmp(p, needle, MIN(needle_sz, haystack_sz - (p - haystack))) == 0) return p;
+    }
+    return NULL;
+}
+
 static PyObject*
-pagerhist_as_bytes(HistoryBuf *self, PyObject *args UNUSED) {
+pagerhist_as_bytes(HistoryBuf *self, PyObject *args) {
+    int upto_output_start = 0;
+    if (!PyArg_ParseTuple(args, "|p", &upto_output_start)) return NULL;
 #define ph self->pagerhist
     if (!ph || !ringbuf_bytes_used(ph->ringbuf)) return PyBytes_FromStringAndSize("", 0);
     pagerhist_ensure_start_is_valid_utf8(ph);
@@ -433,6 +446,13 @@ pagerhist_as_bytes(HistoryBuf *self, PyObject *args UNUSED) {
     uint8_t *buf = (uint8_t*)PyBytes_AS_STRING(ans);
     ringbuf_memcpy_from(buf, ph->ringbuf, sz);
     if (!l.attrs.continued) buf[sz-1] = '\n';
+    if (upto_output_start) {
+        const uint8_t *p = reverse_find(buf, sz, (const uint8_t*)"\x1b]133;C\x1b\\");
+        if (p) {
+            PyObject *t = PyBytes_FromStringAndSize((const char*)p, sz - (p - buf));
+            Py_DECREF(ans); ans = t;
+        }
+    }
     return ans;
 #undef ph
 }
@@ -501,8 +521,8 @@ static PyMethodDef methods[] = {
     METHOD(as_ansi, METH_O)
     METHODB(pagerhist_write, METH_O),
     METHODB(pagerhist_rewrap, METH_O),
-    METHODB(pagerhist_as_text, METH_NOARGS),
-    METHODB(pagerhist_as_bytes, METH_NOARGS),
+    METHODB(pagerhist_as_text, METH_VARARGS),
+    METHODB(pagerhist_as_bytes, METH_VARARGS),
     METHODB(as_text, METH_VARARGS),
     METHOD(dirty_lines, METH_NOARGS)
     METHOD(push, METH_VARARGS)

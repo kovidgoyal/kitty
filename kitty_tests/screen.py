@@ -5,6 +5,7 @@ from kitty.fast_data_types import (
     DECAWM, DECCOLM, DECOM, IRM, Cursor, parse_bytes
 )
 from kitty.marks import marker_from_function, marker_from_regex
+from kitty.window import pagerhist
 
 from . import BaseTest
 
@@ -998,7 +999,10 @@ class TestScreen(BaseTest):
 
         def lco(as_ansi=False):
             a = []
-            s.cmd_output(0, a.append, as_ansi)
+            if s.cmd_output(0, a.append, as_ansi):
+                pht = pagerhist(s, as_ansi=as_ansi, upto_output_start=True)
+                if pht:
+                    a.insert(0, pht)
             return ''.join(a)
 
         def fco():
@@ -1076,3 +1080,9 @@ class TestScreen(BaseTest):
         self.ae(lvco(), '0\n1\n2')
         s.scroll_to_prompt(1)
         self.ae(lvco(), '0x\n1x')
+
+        # last command output from pager history
+        s = self.create_screen()
+        draw_prompt('p1')
+        draw_output(30)
+        self.ae(tuple(map(int, lco()[len('\x1b]133;C\x1b\\'):].split())), tuple(range(0, 30)))

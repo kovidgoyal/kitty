@@ -2736,6 +2736,7 @@ typedef struct OutputOffset {
     Screen *screen;
     int start;
     unsigned num_lines;
+    bool reached_upper_limit;
 } OutputOffset;
 
 static Line*
@@ -2788,7 +2789,10 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
             }
             y1--;
         }
-        if (y1 < upward_limit) start = upward_limit;
+        if (y1 < upward_limit) {
+            oo->reached_upper_limit = true;
+            start = upward_limit;
+        }
         found_output = true; found_prompt = true;
     }
 
@@ -2848,8 +2852,12 @@ cmd_output(Screen *self, PyObject *args) {
             PyErr_Format(PyExc_KeyError, "%u is not a valid type of command", which);
             return NULL;
     }
-    if (found) return as_text_generic(as_text_args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf);
-    Py_RETURN_NONE;
+    if (found) {
+        DECREF_AFTER_FUNCTION PyObject *ret = as_text_generic(as_text_args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf);
+        if (!ret) return NULL;
+    }
+    if (oo.reached_upper_limit && self->linebuf == self->main_linebuf && OPT(scrollback_pager_history_size) > 0) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
 }
 
 bool

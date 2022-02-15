@@ -157,6 +157,14 @@ def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data:
     add_timer(callback, 0, False)
 
 
+def pagerhist(screen: Screen, as_ansi: bool = False, add_wrap_markers: bool = True, upto_output_start: bool = False) -> str:
+    pht = screen.historybuf.pagerhist_as_text(upto_output_start)
+    if pht and (not as_ansi or not add_wrap_markers):
+        sanitizer = text_sanitizer(as_ansi, add_wrap_markers)
+        pht = sanitizer(pht)
+    return pht
+
+
 def as_text(
     screen: Screen,
     as_ansi: bool = False,
@@ -186,13 +194,8 @@ def as_text(
             ctext += f'\x1b[{code} q'
 
     if add_history:
-        h: List[str] = []
-        pht = screen.historybuf.pagerhist_as_text()
-        if pht:
-            h.append(pht)
-        if h and (not as_ansi or not add_wrap_markers):
-            sanitizer = text_sanitizer(as_ansi, add_wrap_markers)
-            h = list(map(sanitizer, h))
+        pht = pagerhist(screen, as_ansi, add_wrap_markers)
+        h: List[str] = [pht] if pht else []
         screen.historybuf.as_text(h.append, as_ansi, add_wrap_markers)
         if h:
             if not screen.linebuf.is_continued(0):
@@ -1064,7 +1067,11 @@ class Window:
 
     def cmd_output(self, which: CommandOutput = CommandOutput.last_run, as_ansi: bool = False, add_wrap_markers: bool = False) -> str:
         lines: List[str] = []
-        self.screen.cmd_output(which, lines.append, as_ansi, add_wrap_markers)
+        search_in_pager_hist = self.screen.cmd_output(which, lines.append, as_ansi, add_wrap_markers)
+        if search_in_pager_hist:
+            pht = pagerhist(self.screen, as_ansi, add_wrap_markers, True)
+            if pht:
+                lines.insert(0, pht)
         return ''.join(lines)
 
     @property

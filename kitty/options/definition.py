@@ -326,7 +326,7 @@ Separate scrollback history size, used only for browsing the scrollback buffer
 (in MB). This separate buffer is not available for interactive scrolling but
 will be piped to the pager program when viewing scrollback buffer in a separate
 window. The current implementation stores the data in UTF-8, so approximatively
-10000 lines per megabyte at 100 chars per line, for pure ASCII text, unformatted
+10000 lines per megabyte at 100 chars per line, for pure ASCII, unformatted
 text. A value of zero or less disables this feature. The maximum allowed size is
 4GB. Note that on config reload if this
 is changed it will only affect newly created windows, not existing ones.

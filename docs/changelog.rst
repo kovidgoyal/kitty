@@ -86,6 +86,9 @@ Detailed list of changes
 
 - Fix a regression in the previous release that broke :opt:`active_tab_foreground` (:iss:`4620`)
 
+- Fix :ac:`show_last_command_output` not working when the output is stored
+  partially in the scrollback pager history buffer (:iss:`4435`)
+
 - Improve CWD detection when there are multiple foreground processes in the TTY process group
 
 - A new option :opt:`narrow_symbols` to turn off opportunistic wide rendering of private use codepoints

@@ -987,7 +987,7 @@ class HistoryBuf:
     def as_text(self, callback: Callable[[str], None], as_ansi: bool, insert_wrap_markers: bool) -> None:
         pass
 
-    def pagerhist_as_text(self) -> str:
+    def pagerhist_as_text(self, upto_output_start: bool = False) -> str:
         pass
 
     def pagerhist_as_bytes(self) -> bytes:
@@ -1137,7 +1137,7 @@ class Screen:
     as_text_non_visual = as_text
     as_text_alternate = as_text
 
-    def cmd_output(self, which: int, callback: Callable[[str], None], as_ansi: bool, insert_wrap_markers: bool) -> None:
+    def cmd_output(self, which: int, callback: Callable[[str], None], as_ansi: bool, insert_wrap_markers: bool) -> bool:
         pass
 
     def scroll_until_cursor_prompt(self) -> None:
