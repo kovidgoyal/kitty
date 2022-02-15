@@ -20,8 +20,8 @@ from kitty.fast_data_types import get_options, set_clipboard_string
 from kitty.key_encoding import KeyEvent
 from kitty.typing import BossType, KittyCommonOpts
 from kitty.utils import (
-    ScreenSize, ansi_sanitizer_pat, resolve_custom_file, screen_size_function,
-    set_primary_selection
+    ScreenSize, kitty_ansi_sanitizer_pat, resolve_custom_file,
+    screen_size_function, set_primary_selection
 )
 
 from ..tui.handler import Handler, result_handler
@@ -475,7 +475,7 @@ def process_escape_codes(text: str) -> Tuple[str, Tuple[Mark, ...]]:
 
         return ''
 
-    text = ansi_sanitizer_pat().sub(process_hyperlink, text)
+    text = kitty_ansi_sanitizer_pat().sub(process_hyperlink, text)
     if active_hyperlink_url is not None:
         add_hyperlink(len(text))
     return text, tuple(hyperlinks)

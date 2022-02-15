@@ -45,7 +45,7 @@ from .terminfo import get_capabilities
 from .types import MouseEvent, WindowGeometry, ac
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
-    ansi_sanitizer_pat, get_primary_selection, load_shaders, log_error,
+    get_primary_selection, kitty_ansi_sanitizer_pat, load_shaders, log_error,
     open_cmd, open_url, parse_color_set, resolve_custom_file, sanitize_title,
     set_primary_selection
 )
@@ -284,7 +284,7 @@ def setup_colors(screen: Screen, opts: Options) -> None:
 
 
 def text_sanitizer(as_ansi: bool, add_wrap_markers: bool) -> Callable[[str], str]:
-    pat = ansi_sanitizer_pat()
+    pat = kitty_ansi_sanitizer_pat()
     ansi, wrap_markers = not as_ansi, not add_wrap_markers
 
     def remove_wrap_markers(line: str) -> str:
