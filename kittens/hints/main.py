@@ -431,8 +431,9 @@ def load_custom_processor(customize_processing: str) -> Any:
     return runpy.run_path(custom_path, run_name='__main__')
 
 
-def remove_sgr(text: str) -> str:
-    return re.sub(r'\x1b\[.*?m', '', text)
+def remove_escape_codes(text: str) -> str:
+    # remove SGR and OSC 133 escape codes
+    return re.sub(r'\x1b(?:\[.*?m|\]133;.*?\x1b\\)', '', text)
 
 
 def process_hyperlinks(text: str) -> Tuple[str, Tuple[Mark, ...]]:
@@ -483,7 +484,7 @@ def process_hyperlinks(text: str) -> Tuple[str, Tuple[Mark, ...]]:
 
 def run(args: HintsCLIOptions, text: str, extra_cli_args: Sequence[str] = ()) -> Optional[Dict[str, Any]]:
     try:
-        text = parse_input(remove_sgr(text))
+        text = parse_input(remove_escape_codes(text))
         text, hyperlinks = process_hyperlinks(text)
         pattern, post_processors = functions_for(args)
         if args.type == 'linenum':
