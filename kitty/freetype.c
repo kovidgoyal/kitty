@@ -143,11 +143,6 @@ static bool
 set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt xdpi, FT_UInt ydpi, unsigned int desired_height, unsigned int cell_height) {
     int error = FT_Set_Char_Size(self->face, 0, char_height, xdpi, ydpi);
     if (!error) {
-        unsigned int ch = calc_cell_height(self, false);
-        if (desired_height && ch != desired_height) {
-            FT_F26Dot6 h = (FT_F26Dot6)floor((double)char_height * (double)desired_height / (double) ch);
-            return set_font_size(self, 0, h, xdpi, ydpi, 0, cell_height);
-        }
         self->char_width = char_width; self->char_height = char_height; self->xdpi = xdpi; self->ydpi = ydpi;
         if (self->harfbuzz_font != NULL) hb_ft_font_changed(self->harfbuzz_font);
     } else {

@@ -98,6 +98,10 @@ Detailed list of changes
 - A new action :ac:`copy_ansi_to_clipboard` to copy the current selection with ANSI formatting codes
   (:iss:`4665`)
 
+- Linux: Do not rescale fallback fonts to match the main font cell height, instead just
+  set the font size and let FreeType take care of it. This matches
+  rendering on macOS (:iss:`4707`)
+
 - macOS: Fix a regression in the previous release that broke switching input
   sources by keyboard (:iss:`4621`)
 
