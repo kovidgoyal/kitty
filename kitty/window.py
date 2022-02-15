@@ -42,11 +42,12 @@ from .notify import NotificationCommand, handle_notification_cmd
 from .options.types import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .types import MouseEvent, WindowGeometry, ac, run_once
+from .types import MouseEvent, WindowGeometry, ac
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
-    get_primary_selection, load_shaders, log_error, open_cmd, open_url,
-    parse_color_set, resolve_custom_file, sanitize_title, set_primary_selection
+    ansi_sanitizer_pat, get_primary_selection, load_shaders, log_error,
+    open_cmd, open_url, parse_color_set, resolve_custom_file, sanitize_title,
+    set_primary_selection
 )
 
 MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]]]]
@@ -280,11 +281,6 @@ def setup_colors(screen: Screen, opts: Options) -> None:
         s(opts.selection_foreground), s(opts.selection_background),
         s(opts.visual_bell_color)
     )
-
-
-@run_once
-def ansi_sanitizer_pat() -> 're.Pattern[str]':
-    return re.compile(r'\x1b(?:\[.*?m|\].*?\x1b\\)')
 
 
 def text_sanitizer(as_ansi: bool, add_wrap_markers: bool) -> Callable[[str], str]:

@@ -61,6 +61,11 @@ def sgr_sanitizer_pat(for_splitting: bool = False) -> 're.Pattern[str]':
     return re.compile(pat)
 
 
+@run_once
+def ansi_sanitizer_pat() -> 're.Pattern[str]':
+    return re.compile(r'\x1b(?:\[.*?m|\].*?\x1b\\)')
+
+
 def platform_window_id(os_window_id: int) -> Optional[int]:
     if is_macos:
         from .fast_data_types import cocoa_window_id
