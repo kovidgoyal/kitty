@@ -1022,7 +1022,8 @@ The tab bar style, can be one of:
     :file:`tab_bar.py` in the kitty config directory. For examples of how to
     write such a function, see the functions named :code:`draw_tab_with_*` in
     kitty's source code: :file:`kitty/tab_bar.py`. See also
-    :disc:`this discussion <4447>` for examples from kitty users.
+    :disc:`this discussion <4447>`
+    for examples from kitty users.
 :code:`hidden`
     The tab bar is hidden. If you use this, you might want to create a
     mapping for the :ac:`select_tab`

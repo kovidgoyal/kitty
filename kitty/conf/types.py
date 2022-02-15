@@ -53,6 +53,7 @@ def ref_map() -> Dict[str, str]:
         'sessions': f'{website_url("overview")}#startup-sessions',
         'functional': f'{website_url("keyboard-protocol")}#functional-key-definitions',
         'shell_integration': website_url("shell-integration"),
+        'github_discussions': 'https://github.com/kovidgoyal/kitty/discussions',
     }
     for actions in get_all_actions().values():
         for ac in actions:
@@ -69,6 +70,11 @@ def remove_markup(text: str) -> str:
         if m.group(1) == 'ac':
             q = m.group(2).split('<')[-1].rstrip('>')
             return ref_map()[f'action-{q}']
+        if m.group(1) == 'disc':
+            parts = m.group(2).split('<')
+            t = parts[0].strip()
+            q = parts[-1].rstrip('>')
+            return f'{t} {ref_map()["github_discussions"]}/{q}'
         return str(m.group(2))
 
     return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)
