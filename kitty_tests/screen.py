@@ -1085,4 +1085,4 @@ class TestScreen(BaseTest):
         s = self.create_screen()
         draw_prompt('p1')
         draw_output(30)
-        self.ae(tuple(map(int, lco()[len('\x1b]133;C\x1b\\'):].split())), tuple(range(0, 30)))
+        self.ae(tuple(map(int, lco().split())), tuple(range(0, 30)))
