@@ -432,11 +432,6 @@ def load_custom_processor(customize_processing: str) -> Any:
     return runpy.run_path(custom_path, run_name='__main__')
 
 
-def remove_escape_codes(text: str) -> str:
-    # remove SGR and OSC 133 escape codes
-    return re.sub(r'\x1b(?:\[.*?m|\]133;.*?\x1b\\)', '', text)
-
-
 def process_escape_codes(text: str) -> Tuple[str, Tuple[Mark, ...]]:
     hyperlinks: List[Mark] = []
     removed_size = idx = 0
