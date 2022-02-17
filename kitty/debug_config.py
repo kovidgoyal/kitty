@@ -222,9 +222,12 @@ def debug_config(opts: KittyOpts) -> str:
         if v is not None:
             p('\t' + k.ljust(35), styled(v, dim=True))
 
-    for k in 'PATH LANG KITTY_CONFIG_DIRECTORY KITTY_CACHE_DIRECTORY VISUAL EDITOR GLFW_IM_MODULE KITTY_WAYLAND_DETECT_MODIFIERS'.split():
+    for k in (
+        'PATH LANG KITTY_CONFIG_DIRECTORY KITTY_CACHE_DIRECTORY VISUAL EDITOR SHELL'
+        ' GLFW_IM_MODULE KITTY_WAYLAND_DETECT_MODIFIERS DISPLAY WAYLAND_DISPLAY USER XCURSOR_SIZE'
+    ).split():
         penv(k)
     for k in os.environ:
-        if k.startswith('LC_'):
+        if k.startswith('LC_') or k.startswith('XDG_'):
             penv(k)
     return out.getvalue()
