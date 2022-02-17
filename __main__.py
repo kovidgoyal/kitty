@@ -35,6 +35,10 @@ def hold(args: List[str]) -> None:
         ret = subprocess.Popen(args[1:]).wait()
     except KeyboardInterrupt:
         pass
+    except FileNotFoundError:
+        print(f'Could not find {args[1]!r} to execute', file=sys.stderr)
+    except Exception as e:
+        print(e, file=sys.stderr)
     from kitty.utils import hold_till_enter
     hold_till_enter()
     raise SystemExit(ret)
