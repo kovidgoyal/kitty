@@ -722,6 +722,18 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     }
 }
 
+- (void)windowDidEnterFullScreen:(NSNotification *)notification
+{
+    (void)notification;
+    window->ns.in_fullscreen_transition = false;
+}
+
+- (void)windowDidExitFullScreen:(NSNotification *)notification
+{
+    (void)notification;
+    window->ns.in_fullscreen_transition = false;
+}
+
 @end // }}}
 
 // Text input context class for the GLFW content view {{{
@@ -1554,8 +1566,10 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 - (void)toggleFullScreen:(nullable id)sender
 {
+    if (glfw_window->ns.in_fullscreen_transition) return;
     if (glfw_window && glfw_window->ns.toggleFullscreenCallback && glfw_window->ns.toggleFullscreenCallback((GLFWwindow*)glfw_window) == 1)
-            return;
+        return;
+    glfw_window->ns.in_fullscreen_transition = true;
     // When resizeIncrements is set, Cocoa cannot restore the original window size after returning from fullscreen.
     const NSSize original = [self resizeIncrements];
     [self setResizeIncrements:NSMakeSize(1.0, 1.0)];

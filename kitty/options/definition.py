@@ -3572,6 +3572,10 @@ agr('shortcuts.misc', 'Miscellaneous')
 map('Toggle fullscreen',
     'toggle_fullscreen kitty_mod+f11 toggle_fullscreen',
     )
+map('Toggle fullscreen',
+    'toggle_fullscreen ctrl+cmd+f toggle_fullscreen',
+    only='macos',
+    )
 
 map('Toggle maximized',
     'toggle_maximized kitty_mod+f10 toggle_maximized',

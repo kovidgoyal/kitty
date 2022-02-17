@@ -234,6 +234,7 @@ PENDING(reset_terminal, RESET_TERMINAL)
 PENDING(clear_terminal_and_scrollback, CLEAR_TERMINAL_AND_SCROLLBACK)
 PENDING(reload_config, RELOAD_CONFIG)
 PENDING(toggle_macos_secure_keyboard_entry, TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY)
+PENDING(toggle_fullscreen, TOGGLE_FULLSCREEN)
 
 - (void)open_kitty_website_url:(id)sender {
     (void)sender;
@@ -243,6 +244,8 @@ PENDING(toggle_macos_secure_keyboard_entry, TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY)
 - (BOOL)validateMenuItem:(NSMenuItem *)item {
     if (item.action == @selector(toggle_macos_secure_keyboard_entry:)) {
         item.state = [SecureKeyboardEntryController sharedInstance].isDesired ? NSControlStateValueOn : NSControlStateValueOff;
+    } else if (item.action == @selector(toggle_fullscreen:)) {
+        item.title = ([NSApp currentSystemPresentationOptions] & NSApplicationPresentationFullScreen) ? @"Exit Full Screen" : @"Enter Full Screen";
     }
     return YES;
 }
@@ -272,7 +275,7 @@ typedef struct {
 typedef struct {
     GlobalShortcut new_os_window, close_os_window, close_tab, edit_config_file, reload_config;
     GlobalShortcut previous_tab, next_tab, new_tab, new_window, close_window, reset_terminal, clear_terminal_and_scrollback;
-    GlobalShortcut toggle_macos_secure_keyboard_entry;
+    GlobalShortcut toggle_macos_secure_keyboard_entry, toggle_fullscreen;
 } GlobalShortcuts;
 static GlobalShortcuts global_shortcuts;
 
@@ -287,7 +290,7 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
     Q(new_os_window); else Q(close_os_window); else Q(close_tab); else Q(edit_config_file);
     else Q(new_tab); else Q(next_tab); else Q(previous_tab);
     else Q(new_window); else Q(close_window); else Q(reset_terminal); else Q(clear_terminal_and_scrollback); else Q(reload_config);
-    else Q(toggle_macos_secure_keyboard_entry);
+    else Q(toggle_macos_secure_keyboard_entry); else Q(toggle_fullscreen);
 #undef Q
     if (gs == NULL) { PyErr_SetString(PyExc_KeyError, "Unknown shortcut name"); return NULL; }
     int cocoa_mods;
@@ -636,10 +639,7 @@ cocoa_create_global_menu(void) {
                     keyEquivalent:@""] setTarget:global_menu_target];
 
     [windowMenu addItem:[NSMenuItem separatorItem]];
-    [[windowMenu addItemWithTitle:@"Enter Full Screen"
-                           action:@selector(toggleFullScreen:)
-                    keyEquivalent:@"f"]
-     setKeyEquivalentModifierMask:NSEventModifierFlagControl | NSEventModifierFlagCommand];
+    MENU_ITEM(windowMenu, @"Enter Full Screen", toggle_fullscreen);
     [NSApp setWindowsMenu:windowMenu];
     [windowMenu release];
 

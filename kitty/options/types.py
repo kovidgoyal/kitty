@@ -905,6 +905,7 @@ if is_macos:
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=45), definition='change_font_size all -2.0'))  # noqa
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=45), definition='change_font_size all -2.0'))  # noqa
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=48), definition='change_font_size all 0'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=12, key=102), definition='toggle_fullscreen'))  # noqa
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=115), definition='toggle_macos_secure_keyboard_entry'))  # noqa
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=12, key=32), definition='kitten unicode_input'))  # noqa
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=44), definition='edit_config_file'))  # noqa

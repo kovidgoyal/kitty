@@ -131,6 +131,7 @@ typedef struct _GLFWwindowNS
     bool            maximized;
     bool            retina;
     bool            in_traditional_fullscreen;
+    bool            in_fullscreen_transition;
     bool            titlebar_hidden;
     unsigned long   pre_full_screen_style_mask;
 
