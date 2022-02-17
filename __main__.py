@@ -31,7 +31,10 @@ def runpy(args: List[str]) -> None:
 
 def hold(args: List[str]) -> None:
     import subprocess
-    ret = subprocess.Popen(args[1:]).wait()
+    try:
+        ret = subprocess.Popen(args[1:]).wait()
+    except KeyboardInterrupt:
+        pass
     from kitty.utils import hold_till_enter
     hold_till_enter()
     raise SystemExit(ret)
