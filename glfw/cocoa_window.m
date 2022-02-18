@@ -582,7 +582,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 }
 
 - (instancetype)initWithGlfwWindow:(_GLFWwindow *)initWindow;
-- (void)requestInitialCursorUpdate:(id)sender;
+- (void)request_delayed_cursor_update:(id)sender;
 
 @end
 
@@ -695,7 +695,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     }
     // macOS will send a delayed event to update the cursor to arrow after switching desktops.
     // So we need to delay and update the cursor once after that.
-    [self performSelector:@selector(requestInitialCursorUpdate:) withObject:nil afterDelay:0.3];
+    [self performSelector:@selector(request_delayed_cursor_update:) withObject:nil afterDelay:0.3];
 }
 
 - (void)windowDidResignKey:(NSNotification *)notification
@@ -726,10 +726,10 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     }
 }
 
-- (void)requestInitialCursorUpdate:(id)sender
+- (void)request_delayed_cursor_update:(id)sender
 {
     (void)sender;
-    if (window) window->ns.initialCursorUpdateRequested = true;
+    if (window) window->ns.delayed_cursor_update_requested = true;
 }
 
 - (void)windowWillEnterFullScreen:(NSNotification *)notification
@@ -742,7 +742,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 {
     (void)notification;
     if (window) window->ns.in_fullscreen_transition = false;
-    [self performSelector:@selector(requestInitialCursorUpdate:) withObject:nil afterDelay:0.3];
+    [self performSelector:@selector(request_delayed_cursor_update:) withObject:nil afterDelay:0.3];
 }
 
 - (void)windowWillExitFullScreen:(NSNotification *)notification
@@ -755,7 +755,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 {
     (void)notification;
     if (window) window->ns.in_fullscreen_transition = false;
-    [self performSelector:@selector(requestInitialCursorUpdate:) withObject:nil afterDelay:0.3];
+    [self performSelector:@selector(request_delayed_cursor_update:) withObject:nil afterDelay:0.3];
 }
 
 @end // }}}
@@ -941,8 +941,8 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     window->ns.cursorWarpDeltaX = 0;
     window->ns.cursorWarpDeltaY = 0;
 
-    if (window->ns.initialCursorUpdateRequested) {
-        window->ns.initialCursorUpdateRequested = false;
+    if (window->ns.delayed_cursor_update_requested) {
+        window->ns.delayed_cursor_update_requested = false;
         if (cursorInContentArea(window)) updateCursorImage(window);
     }
 }

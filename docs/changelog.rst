@@ -144,9 +144,9 @@ Detailed list of changes
 
 - Add an option :opt:`wheel_scroll_min_lines` to set the minimum number of lines for mouse wheel scrolling when using a mouse with a wheel that generates very small offsets when slow scrolling (:pull:`4710`)
 
-- macOS: Allows to configure the toggle fullscreen shortcut in global menu. (:pull:`4714`)
+- macOS: Make the shortcut to toggle full screen configurable (:pull:`4714`)
 
-- macOS: Fix the mouse cursor being set to arrow after switching desktops or toggling fullscreen. (:pull:`4716`)
+- macOS: Fix the mouse cursor being set to arrow after switching desktops or toggling full screen (:pull:`4716`)
 
 
 0.24.2 [2022-02-03]
