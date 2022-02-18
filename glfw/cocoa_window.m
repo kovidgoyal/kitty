@@ -722,16 +722,29 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     }
 }
 
+
+- (void)windowWillEnterFullScreen:(NSNotification *)notification
+{
+    (void)notification;
+    if (window) window->ns.in_fullscreen_transition = true;
+}
+
 - (void)windowDidEnterFullScreen:(NSNotification *)notification
 {
     (void)notification;
-    window->ns.in_fullscreen_transition = false;
+    if (window) window->ns.in_fullscreen_transition = false;
+}
+
+- (void)windowWillExitFullScreen:(NSNotification *)notification
+{
+    (void)notification;
+    if (window) window->ns.in_fullscreen_transition = true;
 }
 
 - (void)windowDidExitFullScreen:(NSNotification *)notification
 {
     (void)notification;
-    window->ns.in_fullscreen_transition = false;
+    if (window) window->ns.in_fullscreen_transition = false;
 }
 
 @end // }}}
@@ -1566,10 +1579,11 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 - (void)toggleFullScreen:(nullable id)sender
 {
-    if (glfw_window->ns.in_fullscreen_transition) return;
-    if (glfw_window && glfw_window->ns.toggleFullscreenCallback && glfw_window->ns.toggleFullscreenCallback((GLFWwindow*)glfw_window) == 1)
-        return;
-    glfw_window->ns.in_fullscreen_transition = true;
+    if (glfw_window) {
+        if (glfw_window->ns.in_fullscreen_transition) return;
+        if (glfw_window->ns.toggleFullscreenCallback && glfw_window->ns.toggleFullscreenCallback((GLFWwindow*)glfw_window) == 1) return;
+        glfw_window->ns.in_fullscreen_transition = true;
+    }
     // When resizeIncrements is set, Cocoa cannot restore the original window size after returning from fullscreen.
     const NSSize original = [self resizeIncrements];
     [self setResizeIncrements:NSMakeSize(1.0, 1.0)];
