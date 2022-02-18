@@ -154,6 +154,8 @@ typedef struct _GLFWwindowNS
     // Whether a render frame has been requested for this window
     bool renderFrameRequested;
     GLFWcocoarenderframefun renderFrameCallback;
+    // update cursor after switching desktops with Mission Control
+    bool initialCursorUpdateRequested;
 } _GLFWwindowNS;
 
 typedef struct _GLFWDisplayLinkNS

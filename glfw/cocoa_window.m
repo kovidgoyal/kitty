@@ -582,6 +582,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 }
 
 - (instancetype)initWithGlfwWindow:(_GLFWwindow *)initWindow;
+- (void)requestInitialCursorUpdate:(id)sender;
 
 @end
 
@@ -692,6 +693,9 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         _glfwPlatformGetCursorPos(window, &x, &y);
         _glfwInputCursorPos(window, x, y);
     }
+    // macOS will send a delayed event to update the cursor to arrow after switching desktops.
+    // So we need to delay and update the cursor once after that.
+    [self performSelector:@selector(requestInitialCursorUpdate:) withObject:nil afterDelay:0.3];
 }
 
 - (void)windowDidResignKey:(NSNotification *)notification
@@ -722,16 +726,36 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     }
 }
 
+- (void)requestInitialCursorUpdate:(id)sender
+{
+    (void)sender;
+    if (window) window->ns.initialCursorUpdateRequested = true;
+}
+
+- (void)windowWillEnterFullScreen:(NSNotification *)notification
+{
+    (void)notification;
+    if (window) window->ns.in_fullscreen_transition = true;
+}
+
 - (void)windowDidEnterFullScreen:(NSNotification *)notification
 {
     (void)notification;
-    window->ns.in_fullscreen_transition = false;
+    if (window) window->ns.in_fullscreen_transition = false;
+    [self performSelector:@selector(requestInitialCursorUpdate:) withObject:nil afterDelay:0.3];
+}
+
+- (void)windowWillExitFullScreen:(NSNotification *)notification
+{
+    (void)notification;
+    if (window) window->ns.in_fullscreen_transition = true;
 }
 
 - (void)windowDidExitFullScreen:(NSNotification *)notification
 {
     (void)notification;
-    window->ns.in_fullscreen_transition = false;
+    if (window) window->ns.in_fullscreen_transition = false;
+    [self performSelector:@selector(requestInitialCursorUpdate:) withObject:nil afterDelay:0.3];
 }
 
 @end // }}}
@@ -916,6 +940,11 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
     window->ns.cursorWarpDeltaX = 0;
     window->ns.cursorWarpDeltaY = 0;
+
+    if (window->ns.initialCursorUpdateRequested) {
+        window->ns.initialCursorUpdateRequested = false;
+        if (cursorInContentArea(window)) updateCursorImage(window);
+    }
 }
 
 - (void)rightMouseDown:(NSEvent *)event
@@ -1015,6 +1044,8 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
 - (void)updateTrackingAreas
 {
+    if (window && [window->ns.object areCursorRectsEnabled])
+        [window->ns.object disableCursorRects];
     if (trackingArea != nil)
     {
         [self removeTrackingArea:trackingArea];
@@ -1566,10 +1597,11 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 - (void)toggleFullScreen:(nullable id)sender
 {
-    if (glfw_window->ns.in_fullscreen_transition) return;
-    if (glfw_window && glfw_window->ns.toggleFullscreenCallback && glfw_window->ns.toggleFullscreenCallback((GLFWwindow*)glfw_window) == 1)
-        return;
-    glfw_window->ns.in_fullscreen_transition = true;
+    if (glfw_window) {
+        if (glfw_window->ns.in_fullscreen_transition) return;
+        if (glfw_window->ns.toggleFullscreenCallback && glfw_window->ns.toggleFullscreenCallback((GLFWwindow*)glfw_window) == 1) return;
+        glfw_window->ns.in_fullscreen_transition = true;
+    }
     // When resizeIncrements is set, Cocoa cannot restore the original window size after returning from fullscreen.
     const NSSize original = [self resizeIncrements];
     [self setResizeIncrements:NSMakeSize(1.0, 1.0)];
