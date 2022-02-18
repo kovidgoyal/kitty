@@ -1028,6 +1028,8 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
 - (void)updateTrackingAreas
 {
+    if (window && [window->ns.object areCursorRectsEnabled])
+        [window->ns.object disableCursorRects];
     if (trackingArea != nil)
     {
         [self removeTrackingArea:trackingArea];
