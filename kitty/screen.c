@@ -2508,7 +2508,7 @@ hyperlink_id_for_range(Screen *self, const Selection *sel) {
 
 static PyObject*
 extend_tuple(PyObject *a, PyObject *b) {
-    Py_ssize_t bs = PyBytes_GET_SIZE(b);
+    Py_ssize_t bs = PyTuple_GET_SIZE(b);
     if (bs < 1) return a;
     Py_ssize_t off = PyTuple_GET_SIZE(a);
     if (_PyTuple_Resize(&a, off + bs) != 0) return NULL;
