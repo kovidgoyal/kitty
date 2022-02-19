@@ -109,6 +109,11 @@ accordingly.
 '''
     )
 
+opt('underline_offset', '0',
+    option_type='int', ctype='int',
+    long_text='Defines the offset of the text underline (in px)'
+    )
+
 opt('+symbol_map', 'U+E0A0-U+E0A3,U+E0C0-U+E0C7 PowerlineSymbols',
     option_type='symbol_map',
     add_to_default=False,

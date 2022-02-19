@@ -1241,6 +1241,9 @@ class Parser:
     def touch_scroll_multiplier(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['touch_scroll_multiplier'] = float(val)
 
+    def underline_offset(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['underline_offset'] = int(val)
+
     def update_check_interval(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['update_check_interval'] = float(val)
 

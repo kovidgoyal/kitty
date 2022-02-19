@@ -379,6 +379,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     int baseline_offset = 0;
     if (OPT(adjust_baseline_px) != 0) baseline_offset = OPT(adjust_baseline_px);
     else if (OPT(adjust_baseline_frac) != 0) baseline_offset = (int)(*cell_height * OPT(adjust_baseline_frac));
+    int underline_offset = OPT(underline_offset);
     *baseline = (unsigned int)floor(bounds_ascent + 0.5);
     // Not sure if we should add this to bounds ascent and then round it or add
     // it to already rounded baseline and round again.
@@ -397,6 +398,9 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
         *baseline = adjust_ypos(*baseline, *cell_height, baseline_offset);
         *underline_position = adjust_ypos(*underline_position, *cell_height, baseline_offset);
         *strikethrough_position = adjust_ypos(*strikethrough_position, *cell_height, baseline_offset);
+    }
+    if (underline_offset){
+        *underline_position = adjust_ypos(*underline_position, *cell_height, underline_offset);
     }
 
     CFRelease(test_frame); CFRelease(path); CFRelease(framesetter);
