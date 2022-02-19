@@ -154,6 +154,7 @@ play_canberra_sound(const char *which_sound, const char *event_id, bool is_path,
         which_type, which_sound,
         "event.description", event_id,
         "media.role", media_role,
+        "canberra.cache-control", "permanent",
         NULL
     );
 }
