@@ -185,7 +185,16 @@ class Freeze(object):
     def add_ca_certs(self):
         print('\nDownloading CA certs...')
         from urllib.request import urlopen
-        cdata = urlopen(kitty_constants['cacerts_url']).read()
+        cdata = None
+        for i in range(5):
+            try:
+                cdata = urlopen(kitty_constants['cacerts_url']).read()
+                break
+            except Exception as e:
+                print(f'Downloading CA certs failed with error: {e}, retrying...')
+
+        if cdata is None:
+            raise SystemExit('Downloading C certs failed, giving up')
         dest = join(self.contents_dir, 'Resources', 'cacert.pem')
         with open(dest, 'wb') as f:
             f.write(cdata)
