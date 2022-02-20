@@ -46,6 +46,7 @@ Some programs and libraries that use the kitty graphics protocol:
 Other terminals that have implemented the graphics protocol:
 
 * `WezTerm <https://github.com/wez/wezterm/issues/986>`_
+* `Konsole <https://invent.kde.org/utilities/konsole/-/merge_requests/594>`_
 
 
 Getting the window size
