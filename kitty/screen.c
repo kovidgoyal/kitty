@@ -2105,6 +2105,13 @@ screen_handle_print(Screen *self, PyObject *msg) {
 }
 
 void
+screen_handle_echo(Screen *self, PyObject *msg) {
+    Py_ssize_t sz;
+    const char *bytes = PyUnicode_AsUTF8AndSize(msg, &sz);
+    write_to_child(self, bytes, sz);
+}
+
+void
 screen_request_capabilities(Screen *self, char c, PyObject *q) {
     static char buf[128];
     int shape = 0;

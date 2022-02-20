@@ -1080,11 +1080,22 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                     screen_handle_print(screen, msg);
                     Py_DECREF(msg);
                 } else PyErr_Clear();
+#undef PRINT_PREFIX
+#define ECHO_PREFIX "kitty-echo|"
+            } else if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 1, ECHO_PREFIX)) {
+                const size_t pp_size = sizeof(ECHO_PREFIX);
+                PyObject *msg = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + pp_size, screen->parser_buf_pos - pp_size);
+                if (msg != NULL) {
+                    REPORT_OSC2(screen_handle_echo, (char)screen->parser_buf[0], msg);
+                    screen_handle_echo(screen, msg);
+                    Py_DECREF(msg);
+                } else PyErr_Clear();
+#undef ECHO_PREFIX
+
             } else {
                 REPORT_ERROR("Unrecognized DCS @ code: 0x%x", screen->parser_buf[1]);
             }
             break;
-#undef PRINT_PREFIX
         default:
             REPORT_ERROR("Unrecognized DCS code: 0x%x", screen->parser_buf[0]);
             break;
