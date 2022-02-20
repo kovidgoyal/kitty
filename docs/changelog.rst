@@ -148,6 +148,8 @@ Detailed list of changes
 
 - macOS: Fix the mouse cursor being set to arrow after switching desktops or toggling full screen (:pull:`4716`)
 
+- Fix copying of selection after selection has been scrolled off history buffer raising an error (:iss:`4713`)
+
 
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

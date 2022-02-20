@@ -2334,6 +2334,7 @@ iteration_data(const Screen *self, const Selection *sel, IterationData *ans, int
         ans->y += self->scrolled_by; ans->y_limit += self->scrolled_by;
     }
     ans->y = MAX(ans->y, min_y);
+    ans->y_limit = MAX(ans->y, ans->y_limit);  // iteration is from y to y_limit
 }
 
 static XRange
