@@ -58,9 +58,12 @@ PS1="{ps1}"
 RPS1="{rps1}"
 ''') as pty:
             q = ps1 + ' ' * (pty.screen.columns - len(ps1) - len(rps1)) + rps1
-            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
+            try:
+                pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
+            except TimeoutError:
+                raise AssertionError(f'Cursor was not changed to beam. Screen contents: {repr(pty.screen_contents())}')
             self.ae(pty.screen_contents(), q)
             self.ae(pty.callbacks.titlebuf, '~')
             pty.send_cmd_to_child('mkdir test && ls -a')
-            pty.wait_till(lambda: pty.screen_contents().count('left>') == 2)
+            pty.wait_till(lambda: pty.screen_contents().count(ps1) == 2)
             self.ae(pty.last_cmd_output(), str(pty.screen.line(1)))
