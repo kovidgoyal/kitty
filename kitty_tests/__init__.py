@@ -216,6 +216,8 @@ class PTY:
             raise TimeoutError('The condition was not met')
 
     def set_window_size(self, rows=25, columns=80):
+        if hasattr(self, 'screen'):
+            self.screen.resize(rows, columns)
         x_pixels = columns * self.cell_width
         y_pixels = rows * self.cell_height
         s = struct.pack('HHHH', rows, columns, x_pixels, y_pixels)

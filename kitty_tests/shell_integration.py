@@ -70,7 +70,23 @@ RPS1="{rps1}"
             self.ae(pty.callbacks.titlebuf, ['~'])
             pty.callbacks.clear()
             pty.send_cmd_to_child('mkdir test && ls -a')
-            pty.wait_till(lambda: pty.screen_contents().count(ps1) == 2)
+            pty.wait_till(lambda: pty.screen_contents().count(rps1) == 2)
             self.ae(pty.callbacks.titlebuf, ['mkdir test && ls -a', '~'])
             q = '\n'.join(str(pty.screen.line(i)) for i in range(1, pty.screen.cursor.y))
             self.ae(pty.last_cmd_output(), q)
+            # shrink the screen
+            pty.write_to_child(r'echo $COLUMNS')
+            pty.set_window_size(rows=20, columns=40)
+            q = ps1 + 'echo $COLUMNS' + ' ' * (40 - len(ps1) - len(rps1) - len('echo $COLUMNS')) + rps1
+            pty.process_input_from_child()
+
+            def redrawn():
+                q = pty.screen_contents()
+                return '$COLUMNS' in q and q.count(rps1) == 2 and q.count(ps1) == 2
+
+            pty.wait_till(redrawn)
+            self.ae(q, str(pty.screen.line(pty.screen.cursor.y)))
+            pty.write_to_child('\r')
+            pty.wait_till(lambda: pty.screen_contents().count(rps1) == 3)
+            self.ae('40', str(pty.screen.line(pty.screen.cursor.y - 1)))
+            self.ae(q, str(pty.screen.line(pty.screen.cursor.y - 2)))
