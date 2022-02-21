@@ -52,7 +52,7 @@ _ksi_main() {
         if [[ -n "${_ksi_prompt[ps1]}" ]]; then
             PS1=${PS1//\\\[\\e\]133;k;start_kitty\\a\\\]*end_kitty\\a\\\]}
             PS1="${_ksi_prompt[ps1]}$PS1"
-            if [[ "${_ksi_prompt[mark]}" == "y" ]]; then 
+            if [[ "${_ksi_prompt[mark]}" == "y" && "${PS1}" == *$'\n'* ]]; then 
                 # bash does not redraw the leading lines in a multiline prompt so
                 # mark the last line as a secondary prompt. Otherwise on resize the
                 # lines before the last line will be erased by kitty.
