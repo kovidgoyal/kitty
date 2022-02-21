@@ -3,6 +3,8 @@
 
 
 import os
+import shutil
+import unittest
 from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 
@@ -43,6 +45,7 @@ class ShellIntegration(BaseTest):
                 i -= 1
             yield pty
 
+    @unittest.skipUnless(shutil.which('zsh'), 'zsh not installed')
     def test_zsh_integration(self):
         ps1, rps1 = 'left>', '<right'
         with self.run_shell(
