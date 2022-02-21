@@ -130,10 +130,8 @@ class BaseTest(TestCase):
         return options
 
     def cmd_to_run_python_code(self, code):
-        cmd = [sys.executable]
-        cmd.append('-c' if 'python' in sys.executable.lower() else '+runpy')
-        cmd.append(code)
-        return cmd
+        from kitty.constants import kitty_exe
+        return [kitty_exe(), '+runpy', code]
 
     def create_screen(self, cols=5, lines=5, scrollback=5, cell_width=10, cell_height=20, options=None):
         self.set_options(options)
