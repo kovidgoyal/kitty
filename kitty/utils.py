@@ -9,7 +9,7 @@ import os
 import re
 import string
 import sys
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from functools import lru_cache
 from time import monotonic
 from typing import (
@@ -499,6 +499,21 @@ class TTYIO:
             data = os.read(fd, sz)
             if data and not more_needed(data):
                 break
+
+
+@contextmanager
+def no_echo(fd: int = -1) -> Generator[None, None, None]:
+    import termios
+    if fd < 0:
+        fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    new = termios.tcgetattr(fd)
+    new[3] = new[3] & ~termios.ECHO
+    try:
+        termios.tcsetattr(fd, termios.TCSADRAIN, new)
+        yield
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
 
 def natsort_ints(iterable: Iterable[str]) -> List[str]:
