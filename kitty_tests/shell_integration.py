@@ -67,8 +67,10 @@ RPS1="{rps1}"
             except TimeoutError:
                 raise AssertionError(f'Cursor was not changed to beam. Screen contents: {repr(pty.screen_contents())}')
             self.ae(pty.screen_contents(), q)
-            self.ae(pty.callbacks.titlebuf, '~')
+            self.ae(pty.callbacks.titlebuf, ['~'])
+            pty.callbacks.clear()
             pty.send_cmd_to_child('mkdir test && ls -a')
             pty.wait_till(lambda: pty.screen_contents().count(ps1) == 2)
+            self.ae(pty.callbacks.titlebuf, ['mkdir test && ls -a', '~'])
             q = '\n'.join(str(pty.screen.line(i)) for i in range(1, pty.screen.cursor.y))
             self.ae(pty.last_cmd_output(), q)

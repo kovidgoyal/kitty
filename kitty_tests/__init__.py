@@ -31,7 +31,7 @@ class Callbacks:
         self.wtcbuf += data
 
     def title_changed(self, data) -> None:
-        self.titlebuf += data
+        self.titlebuf.append(data)
 
     def icon_changed(self, data) -> None:
         self.iconbuf += data
@@ -61,7 +61,8 @@ class Callbacks:
 
     def clear(self) -> None:
         self.wtcbuf = b''
-        self.iconbuf = self.titlebuf = self.colorbuf = self.ctbuf = ''
+        self.iconbuf = self.colorbuf = self.ctbuf = ''
+        self.titlebuf = []
         self.iutf8 = True
         self.notifications = []
         self.open_urls = []
