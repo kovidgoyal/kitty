@@ -4,9 +4,9 @@
 
 import os
 import shutil
+import tempfile
 import unittest
 from contextlib import contextmanager
-from tempfile import TemporaryDirectory
 
 from kitty.constants import terminfo_dir
 from kitty.fast_data_types import CURSOR_BEAM
@@ -37,13 +37,17 @@ class ShellIntegration(BaseTest):
 
     @contextmanager
     def run_shell(self, shell='zsh', rc=''):
-        with TemporaryDirectory() as home_dir:
+        home_dir = os.path.realpath(tempfile.mkdtemp())
+        try:
             pty = self.create_pty(f'{shell} -il', cwd=home_dir, env=safe_env_for_running_shell(home_dir, rc))
             i = 10
             while i > 0 and not pty.screen_contents().strip():
                 pty.process_input_from_child()
                 i -= 1
             yield pty
+        finally:
+            if os.path.exists(home_dir):
+                shutil.rmtree(home_dir)
 
     @unittest.skipUnless(shutil.which('zsh'), 'zsh not installed')
     def test_zsh_integration(self):
