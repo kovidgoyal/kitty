@@ -23,6 +23,7 @@ import requests
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 docs_dir = os.path.abspath('docs')
 publish_dir = os.path.abspath(os.path.join('..', 'kovidgoyal.github.io', 'kitty'))
+building_nightly = False
 with open('kitty/constants.py') as f:
     raw = f.read()
 nv = re.search(r'^version: Version\s+=\s+Version\((\d+), (\d+), (\d+)\)', raw, flags=re.MULTILINE)
@@ -58,18 +59,24 @@ def call(*cmd: str, cwd: Optional[str] = None, echo: bool = False) -> None:
 
 
 def run_build(args: Any) -> None:
-    for x in ('64', '32', 'arm64'):
+
+    def run_with_retry(cmd: str) -> None:
         try:
-            call(f'python ../bypy linux --arch {x} program', echo=True)
+            call(cmd, echo=True)
         except (SystemExit, Exception):
-            if x != 'arm64':
+            needs_retry = 'arm64' in cmd or building_nightly
+            if not needs_retry:
                 raise
-            print('Linux ARM build failed, retrying in a few seconds...', file=sys.stderr)
+            print('Build failed, retrying in a few seconds...', file=sys.stderr)
             time.sleep(15)
-            call(f'python ../bypy linux --arch {x} program', echo=True)
+            call(cmd, echo=True)
+
+    for x in ('64', '32', 'arm64'):
+        cmd = f'python ../bypy linux --arch {x} program'
+        run_with_retry(cmd)
         call(f'python ../bypy linux --arch {x} shutdown', echo=True)
-    call('python ../bypy macos program --sign-installers --notarize', echo=True)
-    call('python ../bypy macos shutdown')
+    cmd = 'python ../bypy macos program --sign-installers --notarize'
+    run_with_retry(cmd)
 
 
 def run_tag(args: Any) -> None:
@@ -464,6 +471,7 @@ def exec_actions(actions: Iterable[str], args: Any) -> None:
 
 
 def main() -> None:
+    global building_nightly
     parser = argparse.ArgumentParser(description='Publish kitty')
     parser.add_argument(
         '--only',
@@ -485,6 +493,7 @@ def main() -> None:
     require_penv()
     if args.nightly:
         with change_to_git_master():
+            building_nightly = True
             exec_actions(NIGHTLY_ACTIONS, args)
         return
     require_git_master()
