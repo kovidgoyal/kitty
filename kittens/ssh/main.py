@@ -1,15 +1,36 @@
 #!/usr/bin/env python3
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import io
 import os
 import shlex
 import subprocess
 import sys
+import tarfile
 from contextlib import suppress
 from typing import List, NoReturn, Optional, Set, Tuple
-from .completion import ssh_options, complete
 
+from kitty.constants import shell_integration_dir, terminfo_dir
 from kitty.utils import SSHConnectionData
+
+from .completion import complete, ssh_options
+
+
+def make_tarfile() -> bytes:
+
+    def filter_files(tarinfo: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
+        if tarinfo.name.endswith('ssh/bootstrap.sh'):
+            return None
+        tarinfo.uname = tarinfo.gname = 'kitty'
+        tarinfo.uid = tarinfo.gid = 0
+        return tarinfo
+
+    buf = io.BytesIO()
+    with tarfile.open(mode='w:bz2', fileobj=buf, encoding='utf-8') as tf:
+        tf.add(shell_integration_dir, arcname='.local/share/kitty-ssh-kitten/shell-integration', filter=filter_files)
+        tf.add(terminfo_dir, arcname='.terminfo', filter=filter_files)
+    return buf.getvalue()
+
 
 SHELL_SCRIPT = '''\
 #!/bin/sh

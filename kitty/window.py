@@ -875,6 +875,11 @@ class Window:
     def handle_remote_cmd(self, cmd: str) -> None:
         get_boss().handle_remote_cmd(cmd, self)
 
+    def handle_remote_echo(self, msg: bytes) -> None:
+        from base64 import standard_b64decode
+        data = standard_b64decode(msg)
+        self.write_to_child(data)
+
     def handle_remote_print(self, msg: bytes) -> None:
         text = process_remote_print(msg)
         print(text, end='', file=sys.stderr)

@@ -2106,9 +2106,7 @@ screen_handle_print(Screen *self, PyObject *msg) {
 
 void
 screen_handle_echo(Screen *self, PyObject *msg) {
-    Py_ssize_t sz;
-    const char *bytes = PyUnicode_AsUTF8AndSize(msg, &sz);
-    write_to_child(self, bytes, sz);
+    CALLBACK("handle_remote_echo", "O", msg);
 }
 
 void

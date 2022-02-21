@@ -3,6 +3,8 @@
 
 
 import os
+import shutil
+import tempfile
 
 from kittens.ssh.main import get_connection_data
 from kitty.utils import SSHConnectionData
@@ -35,3 +37,13 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         t('ssh un@ip -i ident -p34', host='un@ip', port=34, identity_file='ident')
         t('ssh un@ip -iident -p34', host='un@ip', port=34, identity_file='ident')
         t('ssh -p 33 main', port=33)
+
+    def test_ssh_launcher_script(self):
+        for sh in ('sh', 'zsh', 'bash', 'dash'):
+            q = shutil.which(sh)
+            if q:
+                with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
+                    self.run_launcher(sh, tdir)
+
+    def run_launcher(self, sh, tdir):
+        pass
