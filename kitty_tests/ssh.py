@@ -14,7 +14,6 @@ class SSHTest(BaseTest):
 
     def test_basic_pty_operations(self):
         pty = self.create_pty('echo hello')
-        self.assertTrue(pty.wait_for_input_from_child())
         pty.process_input_from_child()
         self.ae(pty.screen_contents(), 'hello')
         pty = self.create_pty(self.cmd_to_run_python_code('''\
@@ -22,9 +21,8 @@ import array, fcntl, sys, termios
 buf = array.array('H', [0, 0, 0, 0])
 fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
 print(' '.join(map(str, buf)))'''), lines=13, cols=77)
-        self.assertTrue(pty.wait_for_input_from_child())
         pty.process_input_from_child()
-        self.ae(pty.screen_contents(), '13 77 0 0')
+        self.ae(pty.screen_contents(), '13 77 770 260')
 
     def test_ssh_connection_data(self):
         def t(cmdline, binary='ssh', host='main', port=None, identity_file=''):

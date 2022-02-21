@@ -7,8 +7,8 @@ import os
 import select
 import shlex
 import struct
-import sys
 import termios
+import time
 from pty import CHILD, fork
 from unittest import TestCase
 
@@ -19,7 +19,7 @@ from kitty.fast_data_types import (
 from kitty.options.parse import merge_result_dicts
 from kitty.options.types import Options, defaults
 from kitty.types import MouseEvent
-from kitty.utils import no_echo, write_all
+from kitty.utils import read_screen_size, write_all
 
 
 class Callbacks:
@@ -139,9 +139,9 @@ class BaseTest(TestCase):
         s = Screen(c, lines, cols, scrollback, cell_width, cell_height, 0, c)
         return s
 
-    def create_pty(self, argv, cols=80, lines=25, scrollback=100, cell_width=10, cell_height=20, options=None, cwd=None):
+    def create_pty(self, argv, cols=80, lines=25, scrollback=100, cell_width=10, cell_height=20, options=None, cwd=None, env=None):
         self.set_options(options)
-        return PTY(argv, lines, cols, scrollback, cell_width, cell_height, cwd)
+        return PTY(argv, lines, cols, scrollback, cell_width, cell_height, cwd, env)
 
     def assertEqualAttributes(self, c1, c2):
         x1, y1, c1.x, c1.y = c1.x, c1.y, 0, 0
@@ -154,23 +154,27 @@ class BaseTest(TestCase):
 
 class PTY:
 
-    def __init__(self, argv, rows=25, columns=80, scrollback=100, cell_width=10, cell_height=20, cwd=None):
+    def __init__(self, argv, rows=25, columns=80, scrollback=100, cell_width=10, cell_height=20, cwd=None, env=None):
         pid, self.master_fd = fork()
         self.is_child = pid == CHILD
         if self.is_child:
+            while read_screen_size().width != columns * cell_width:
+                time.sleep(0.01)
             if cwd:
                 os.chdir(cwd)
+            if env:
+                os.environ.clear()
+                os.environ.update(env)
             if isinstance(argv, str):
                 argv = shlex.split(argv)
-            with no_echo():
-                sys.stdin.readline()
             os.execlp(argv[0], *argv)
         os.set_blocking(self.master_fd, False)
+        self.cell_width = cell_width
+        self.cell_height = cell_height
         self.set_window_size(rows=rows, columns=columns)
         new = termios.tcgetattr(self.master_fd)
         new[3] = new[3] & ~termios.ECHO
         termios.tcsetattr(self.master_fd, termios.TCSADRAIN, new)
-        self.write_to_child('ready\r\n')
         self.callbacks = Callbacks()
         self.screen = Screen(self.callbacks, rows, columns, scrollback, cell_width, cell_height, 0, self.callbacks)
 
@@ -186,7 +190,11 @@ class PTY:
         rd = select.select([self.master_fd], [], [], timeout)[0]
         return bool(rd)
 
-    def process_input_from_child(self):
+    def send_cmd_to_child(self, cmd):
+        self.write_to_child(cmd + '\r')
+
+    def process_input_from_child(self, timeout=10):
+        self.wait_for_input_from_child(timeout=10)
         bytes_read = 0
         while True:
             try:
@@ -199,7 +207,16 @@ class PTY:
             parse_bytes(self.screen, data)
         return bytes_read
 
-    def set_window_size(self, rows=25, columns=80, x_pixels=0, y_pixels=0):
+    def wait_till(self, q, timeout=10):
+        st = time.monotonic()
+        while not q() and time.monotonic() - st < timeout:
+            self.process_input_from_child(timeout=timeout - (time.monotonic() - st))
+        if not q():
+            raise TimeoutError('The condition was not met')
+
+    def set_window_size(self, rows=25, columns=80):
+        x_pixels = columns * self.cell_width
+        y_pixels = rows * self.cell_height
         s = struct.pack('HHHH', rows, columns, x_pixels, y_pixels)
         fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, s)
 
@@ -210,3 +227,9 @@ class PTY:
             if x:
                 lines.append(x)
         return '\n'.join(lines)
+
+    def last_cmd_output(self, as_ansi=False, add_wrap_markers=False):
+        lines = []
+        from kitty.window import CommandOutput
+        self.screen.cmd_output(CommandOutput.last_run, lines.append, as_ansi, add_wrap_markers)
+        return ''.join(lines)

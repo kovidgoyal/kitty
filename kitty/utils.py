@@ -148,6 +148,19 @@ class ScreenSize(NamedTuple):
     cell_height: int
 
 
+def read_screen_size(fd: int = -1) -> ScreenSize:
+    import array
+    import fcntl
+    import termios
+    buf = array.array('H', [0, 0, 0, 0])
+    if fd < 0:
+        fd = sys.stdout.fileno()
+    fcntl.ioctl(fd, termios.TIOCGWINSZ, cast(bytearray, buf))
+    rows, cols, width, height = tuple(buf)
+    cell_width, cell_height = width // (cols or 1), height // (rows or 1)
+    return ScreenSize(rows, cols, width, height, cell_width, cell_height)
+
+
 class ScreenSizeGetter:
     changed = True
     Size = ScreenSize
@@ -160,14 +173,7 @@ class ScreenSizeGetter:
 
     def __call__(self) -> ScreenSize:
         if self.changed:
-            import array
-            import fcntl
-            import termios
-            buf = array.array('H', [0, 0, 0, 0])
-            fcntl.ioctl(self.fd, termios.TIOCGWINSZ, cast(bytearray, buf))
-            rows, cols, width, height = tuple(buf)
-            cell_width, cell_height = width // (cols or 1), height // (rows or 1)
-            self.ans = ScreenSize(rows, cols, width, height, cell_width, cell_height)
+            self.ans = read_screen_size()
             self.changed = False
         return cast(ScreenSize, self.ans)
 

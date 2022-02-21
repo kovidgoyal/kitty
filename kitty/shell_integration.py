@@ -74,7 +74,8 @@ def is_new_zsh_install(env: Dict[str, str]) -> bool:
     # the latter will bail if there are rc files in $HOME
     zdotdir = env.get('ZDOTDIR')
     if not zdotdir:
-        zdotdir = os.path.expanduser('~')
+        zdotdir = env.get('HOME', os.path.expanduser('~'))
+        assert isinstance(zdotdir, str)
         if zdotdir == '~':
             return True
     for q in ('.zshrc', '.zshenv', '.zprofile', '.zlogin'):
