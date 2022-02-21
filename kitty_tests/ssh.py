@@ -3,7 +3,6 @@
 
 
 import os
-import sys
 
 from kittens.ssh.main import get_connection_data
 from kitty.utils import SSHConnectionData
@@ -18,14 +17,14 @@ class SSHTest(BaseTest):
         self.assertTrue(pty.wait_for_input_from_child())
         pty.process_input_from_child()
         self.ae(pty.screen_contents(), 'hello')
-        pty = self.create_pty([sys.executable, '-c', '''\
+        pty = self.create_pty(self.cmd_to_run_python_code('''\
 import array, fcntl, sys, termios
 buf = array.array('H', [0, 0, 0, 0])
 fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
-print(' '.join(map(str, buf)))'''], lines=13, cols=17)
+print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         self.assertTrue(pty.wait_for_input_from_child())
         pty.process_input_from_child()
-        self.ae(pty.screen_contents(), '13 17 0 0')
+        self.ae(pty.screen_contents(), '13 77 0 0')
 
     def test_ssh_connection_data(self):
         def t(cmdline, binary='ssh', host='main', port=None, identity_file=''):

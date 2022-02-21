@@ -129,6 +129,12 @@ class BaseTest(TestCase):
         set_options(options)
         return options
 
+    def cmd_to_run_python_code(self, code):
+        cmd = [sys.executable]
+        cmd.append('-c' if 'python' in sys.executable.lower() else '+runpy')
+        cmd.append(code)
+        return cmd
+
     def create_screen(self, cols=5, lines=5, scrollback=5, cell_width=10, cell_height=20, options=None):
         self.set_options(options)
         c = Callbacks()
@@ -178,7 +184,7 @@ class PTY:
     def write_to_child(self, data):
         write_all(self.master_fd, data)
 
-    def wait_for_input_from_child(self, timeout=2):
+    def wait_for_input_from_child(self, timeout=10):
         rd = select.select([self.master_fd], [], [], timeout)[0]
         return bool(rd)
 
