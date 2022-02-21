@@ -38,6 +38,9 @@ def install_deps():
             ' libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev libx11-xcb-dev zsh'
             ' libpng-dev liblcms2-dev libfontconfig-dev libxkbcommon-x11-dev libcanberra-dev librsync-dev uuid-dev'
             ' zsh bash dash fish')
+        # for some reason these directories are world writable which causes zsh
+        # compinit to break
+        run('sudo chmod -R og-w /usr/share/zsh')
     if is_bundle:
         install_bundle()
     else:

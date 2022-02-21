@@ -5,8 +5,8 @@ import importlib
 import os
 import sys
 import warnings
-from tempfile import TemporaryDirectory
 from contextlib import contextmanager
+from tempfile import TemporaryDirectory
 from typing import Iterator
 
 base = os.path.dirname(os.path.abspath(__file__))
