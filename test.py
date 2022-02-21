@@ -32,8 +32,11 @@ def init_env() -> None:
 
 def main() -> None:
     warnings.simplefilter('error')
+    current_home = os.path.expanduser('~') + os.sep
+    paths = os.environ.get('PATH', '/usr/local/sbin:/usr/local/bin:/usr/bin').split(os.pathsep)
+    path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
     with TemporaryDirectory() as tdir, env_vars(
-        PYTHONWARNINGS='error', HOME=tdir, USERPROFILE=tdir,
+        PYTHONWARNINGS='error', HOME=tdir, USERPROFILE=tdir, PATH=path,
         XDG_CONFIG_HOME=os.path.join(tdir, '.config'),
         XDG_CONFIG_DIRS=os.path.join(tdir, '.config'),
         XDG_DATA_DIRS=os.path.join(tdir, '.local', 'xdg'),
