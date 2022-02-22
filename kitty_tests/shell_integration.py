@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from contextlib import contextmanager
 
-from kitty.constants import kitty_base_dir, terminfo_dir
+from kitty.constants import kitty_base_dir, terminfo_dir, is_macos
 from kitty.fast_data_types import CURSOR_BEAM
 from kitty.shell_integration import rc_inset, setup_zsh_env
 
@@ -35,12 +35,10 @@ def safe_env_for_running_shell(home_dir, rc='', shell='zsh'):
             print(rc + '\n', file=f)
         setup_zsh_env(ans)
     elif shell == 'bash':
-        with open(os.path.join(home_dir, '.bash_profile'), 'w') as f:
-            print('if [ -f ~/.bashrc ]; then . ~/.bashrc; fi', file=f)
+        ans['ENV'] = '~/.bashrc'
         with open(os.path.join(home_dir, '.bashrc'), 'w') as f:
-            # there is no way to prevent bash from reading the system
-            # /etc/profile and some distros set a PROMPT_COMMAND in it.
-            print('unset PROMPT_COMMAND', file=f)
+            # get out of POSIX mode
+            print('set +o posix', file=f)
             # ensure LINES and COLUMNS are kept up to date
             print('shopt -s checkwinsize', file=f)
             # Not sure why bash turns off echo in this scenario
@@ -51,11 +49,22 @@ def safe_env_for_running_shell(home_dir, rc='', shell='zsh'):
     return ans
 
 
+def launch_cmd_for_shell(shell):
+    if shell == 'bash':
+        # Sadly we cannot use --noprofile as the idiotic Linux distros compile
+        # bash with -DSYS_BASHRC which causes it to unconditionally source the
+        # system wide bashrc file (which is distro dependent). So we use POSIX
+        # mode.
+        return 'bash --posix'
+    return shell
+
+
 class ShellIntegration(BaseTest):
 
     @contextmanager
-    def run_shell(self, shell='zsh', rc='', cmd='{shell} -il'):
+    def run_shell(self, shell='zsh', rc='', cmd=''):
         home_dir = os.path.realpath(tempfile.mkdtemp())
+        cmd = cmd or launch_cmd_for_shell(shell)
         try:
             pty = self.create_pty(cmd.format(**locals()), cwd=home_dir, env=safe_env_for_running_shell(home_dir, rc=rc, shell=shell))
             i = 10
@@ -78,8 +87,8 @@ RPS1="{rps1}"
             q = ps1 + ' ' * (pty.screen.columns - len(ps1) - len(rps1)) + rps1
             try:
                 pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
-            except TimeoutError:
-                raise AssertionError(f'Cursor was not changed to beam. Screen contents: {repr(pty.screen_contents())}')
+            except TimeoutError as e:
+                raise AssertionError(f'Cursor was not changed to beam. Screen contents: {repr(pty.screen_contents())}') from e
             self.ae(pty.screen_contents(), q)
             self.ae(pty.callbacks.titlebuf[-1], '~')
             pty.callbacks.clear()
@@ -105,7 +114,7 @@ RPS1="{rps1}"
             self.ae('40', str(pty.screen.line(pty.screen.cursor.y - 1)))
             self.ae(q, str(pty.screen.line(pty.screen.cursor.y - 2)))
 
-    @unittest.skipUnless(shutil.which('bash'), 'bash not installed')
+    @unittest.skipUnless(not is_macos and shutil.which('bash'), 'macOS bash is too old' if is_macos else 'bash not installed')
     def test_bash_integration(self):
         ps1 = 'prompt> '
         with self.run_shell(
@@ -114,8 +123,8 @@ PS1="{ps1}"
 ''') as pty:
             try:
                 pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
-            except TimeoutError:
-                raise AssertionError(f'Cursor was not changed to beam. Screen contents: {repr(pty.screen_contents())}')
+            except TimeoutError as e:
+                raise AssertionError(f'Cursor was not changed to beam. Screen contents: {repr(pty.screen_contents())}') from e
             pty.wait_till(lambda: pty.screen_contents().count(ps1) == 1)
             self.ae(pty.screen_contents(), ps1)
             pty.wait_till(lambda: pty.callbacks.titlebuf[-1:] == ['~'])
