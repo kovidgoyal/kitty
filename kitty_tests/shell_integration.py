@@ -41,8 +41,6 @@ def safe_env_for_running_shell(home_dir, rc='', shell='zsh'):
             print('set +o posix', file=f)
             # ensure LINES and COLUMNS are kept up to date
             print('shopt -s checkwinsize', file=f)
-            # Not sure why bash turns off echo in this scenario
-            print('stty echo', file=f)
             if rc:
                 print(rc, file=f)
             print(rc_inset('bash'), file=f)

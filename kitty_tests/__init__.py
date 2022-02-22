@@ -171,6 +171,9 @@ class PTY:
                 time.sleep(0.01)
             if cwd:
                 os.chdir(cwd)
+            new = termios.tcgetattr(sys.stdin.fileno())
+            new[3] = new[3] | termios.ECHO
+            termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, new)
             os.execvpe(argv[0], argv, env or os.environ)
         os.set_blocking(self.master_fd, False)
         self.cell_width = cell_width
