@@ -49,22 +49,27 @@ _ksi_main() {
             PS0=${PS0//\\\[\\e\]133;k;start_suffix_kitty\\a\\\]*end_suffix_kitty\\a\\\]}
             PS0="${PS0}${_ksi_prompt[ps0_suffix]}"
         fi
+        # restore PS1 to its pristine state without our additions
         if [[ -n "${_ksi_prompt[ps1]}" ]]; then
             PS1=${PS1//\\\[\\e\]133;k;start_kitty\\a\\\]*end_kitty\\a\\\]}
-            PS1="${_ksi_prompt[ps1]}$PS1"
-            if [[ "${_ksi_prompt[mark]}" == "y" && "${PS1}" == *$'\n'* ]]; then 
+            PS1=${PS1//\\\[\\e\]133;k;start_secondary_kitty\\a\\\]*end_secondary_kitty\\a\\\]}
+        fi
+        if [[ -n "${_ksi_prompt[ps1_suffix]}" ]]; then
+            PS1=${PS1//\\\[\\e\]133;k;start_suffix_kitty\\a\\\]*end_suffix_kitty\\a\\\]}
+        fi
+        if [[ -n "${_ksi_prompt[ps1]}" ]]; then
+            if [[ "${_ksi_prompt[mark]}" == "y" && "${PS1}" == *"\n"* ]]; then 
                 # bash does not redraw the leading lines in a multiline prompt so
                 # mark the last line as a secondary prompt. Otherwise on resize the
                 # lines before the last line will be erased by kitty.
-                PS1=${PS1//\\\[\\e\]133;k;start_secondary_kitty\\a\\\]*end_secondary_kitty\\a\\\]}
                 # the first part removes everything from the last \n onwards
                 # the second part appends a newline with the secondary marking 
                 # the third part appends everything after the last newline
                 PS1=${PS1%'\n'*}${_ksi_prompt[secondary_prompt]}${PS1##*'\n'}
             fi
+            PS1="${_ksi_prompt[ps1]}$PS1"
         fi
         if [[ -n "${_ksi_prompt[ps1_suffix]}" ]]; then
-            PS1=${PS1//\\\[\\e\]133;k;start_suffix_kitty\\a\\\]*end_suffix_kitty\\a\\\]}
             PS1="${PS1}${_ksi_prompt[ps1_suffix]}"
         fi
         if [[ -n "${_ksi_prompt[ps2]}" ]]; then
