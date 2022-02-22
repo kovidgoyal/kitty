@@ -31,11 +31,15 @@ def safe_read(path: str) -> str:
     return ''
 
 
+def rc_inset(shell_name: str = 'bash', template: str = posix_template) -> str:
+    return template.format(path=f"shell-integration/{shell_name}/kitty.{shell_name}")
+
+
 def setup_integration(shell_name: str, rc_path: str, template: str = posix_template) -> None:
     import re
     rc_path = os.path.realpath(rc_path)
     rc = safe_read(rc_path)
-    integration = template.format(path=f"shell-integration/{shell_name}/kitty.{shell_name}")
+    integration = rc_inset(shell_name, template)
     newrc, num_subs = re.subn(
         r'^# BEGIN_KITTY_SHELL_INTEGRATION.+?^# END_KITTY_SHELL_INTEGRATION',
         integration, rc, flags=re.DOTALL | re.MULTILINE)
