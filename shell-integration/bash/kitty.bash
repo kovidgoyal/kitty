@@ -36,10 +36,7 @@ _ksi_main() {
     if [[ -n "$KITTY_BASH_INJECT" ]]; then
         builtin unset ENV;
         if [[ "$KITTY_BASH_INJECT" == *"posix"* ]]; then 
-            if [[ -n "$KITTY_BASH_POSIX_ENV" && -r "$KITTY_BASH_POSIX_ENV" ]]; then
-                builtin source "$KITTY_BASH_POSIX_ENV";
-                export ENV="$KITTY_BASH_POSIX_ENV";
-            fi
+            _ksi_safe_source "$KITTY_BASH_POSIX_ENV" && builtin export ENV="$KITTY_BASH_POSIX_ENV";
         else
             set +o posix; 
             # See run_startup_files() in shell.c in the BASH source code
