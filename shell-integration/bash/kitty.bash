@@ -34,9 +34,11 @@ _ksi_main() {
     }
 
     if [[ -n "$KITTY_BASH_INJECT" ]]; then
+        builtin unset ENV;
         if [[ "$KITTY_BASH_INJECT" == *"posix"* ]]; then 
             if [[ -n "$KITTY_BASH_POSIX_ENV" && -r "$KITTY_BASH_POSIX_ENV" ]]; then
                 builtin source "$KITTY_BASH_POSIX_ENV";
+                export ENV="$KITTY_BASH_POSIX_ENV";
             fi
         else
             set +o posix; 
