@@ -851,6 +851,19 @@ detect_spacer_strategy(hb_font_t *hbf, Font *font) {
             }
         }
     }
+
+    // If spacer_strategy is still default, check ### glyph to to confirm strategy
+    // https://github.com/kovidgoyal/kitty/issues/4721
+    if (font->spacer_strategy == SPACERS_BEFORE) {
+        CPUCell cpu_cells[3] = {{.ch = '#'}, {.ch = '#'}, {.ch = '#'}};
+        shape(cpu_cells, gpu_cells, arraysz(cpu_cells), hbf, font, false);
+        if (G(num_glyphs) > 1) {
+            glyph_index glyph_id = G(info)[G(num_glyphs) - 1].codepoint;
+            bool is_special = is_special_glyph(glyph_id, font, &G(current_cell_data));
+            bool is_empty = is_special && is_empty_glyph(glyph_id, font);
+            if (is_empty) font->spacer_strategy = SPACERS_AFTER;
+        }
+    }
 }
 
 static LigatureType
@@ -962,7 +975,7 @@ group_normal(Font *font, hb_font_t *hbf) {
      *
      * We rely on the cluster numbers from harfbuzz to tell us how many unicode codepoints a glyph corresponds to.
      * Then we check if the glyph is a ligature glyph (is_special_glyph) and if it is an empty glyph.
-     * We detect if the font uses EMPTY glyphs before or after ligature glyphs (1. or 3. above) by checking what it does for ===.
+     * We detect if the font uses EMPTY glyphs before or after ligature glyphs (1. or 3. above) by checking what it does for === and ###.
      * Finally we look at the glyph name. These five datapoints give us enough information to satisfy the constraint above,
      * for a wide variety of fonts.
      */
