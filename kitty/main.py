@@ -30,7 +30,6 @@ from .options.types import Options
 from .options.utils import DELETE_ENV_VAR
 from .os_window_size import initial_window_size_func
 from .session import get_os_window_sizing_data
-from .shell_integration import setup_shell_integration
 from .types import SingleKey
 from .utils import (
     detach, expandvars, log_error, single_instance,
@@ -322,7 +321,6 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
         os.environ['KITTY_LISTEN_ON'] = cli_opts.listen_on
     env = opts.env.copy()
     ensure_kitty_in_path()
-    setup_shell_integration(opts, env)
     kitty_path = shutil.which('kitty')
     if kitty_path:
         child_path = env.get('PATH')

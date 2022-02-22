@@ -3,19 +3,20 @@
 
 
 import os
+import shlex
 import shutil
 import tempfile
 import unittest
 from contextlib import contextmanager
 
-from kitty.constants import kitty_base_dir, terminfo_dir, is_macos
+from kitty.constants import is_macos, kitty_base_dir, terminfo_dir
 from kitty.fast_data_types import CURSOR_BEAM
-from kitty.shell_integration import rc_inset, setup_zsh_env
+from kitty.shell_integration import setup_bash_env, setup_zsh_env
 
 from . import BaseTest
 
 
-def safe_env_for_running_shell(home_dir, rc='', shell='zsh'):
+def safe_env_for_running_shell(argv, home_dir, rc='', shell='zsh'):
     ans = {
         'PATH': os.environ['PATH'],
         'HOME': home_dir,
@@ -33,28 +34,17 @@ def safe_env_for_running_shell(home_dir, rc='', shell='zsh'):
             print('unset GLOBAL_RCS', file=f)
         with open(os.path.join(home_dir, '.zshrc'), 'w') as f:
             print(rc + '\n', file=f)
-        setup_zsh_env(ans)
+        setup_zsh_env(ans, argv)
     elif shell == 'bash':
-        ans['ENV'] = '~/.bashrc'
-        with open(os.path.join(home_dir, '.bashrc'), 'w') as f:
-            # get out of POSIX mode
-            print('set +o posix', file=f)
+        setup_bash_env(ans, argv)
+        ans['KITTY_BASH_INJECT'] += ' posix'
+        ans['KITTY_BASH_POSIX_ENV'] = os.path.join(home_dir, '.bashrc')
+        with open(ans['KITTY_BASH_POSIX_ENV'], 'w') as f:
             # ensure LINES and COLUMNS are kept up to date
             print('shopt -s checkwinsize', file=f)
             if rc:
                 print(rc, file=f)
-            print(rc_inset('bash'), file=f)
     return ans
-
-
-def launch_cmd_for_shell(shell):
-    if shell == 'bash':
-        # Sadly we cannot use --noprofile as the idiotic Linux distros compile
-        # bash with -DSYS_BASHRC which causes it to unconditionally source the
-        # system wide bashrc file (which is distro dependent). So we use POSIX
-        # mode.
-        return 'bash --posix'
-    return shell
 
 
 class ShellIntegration(BaseTest):
@@ -62,9 +52,11 @@ class ShellIntegration(BaseTest):
     @contextmanager
     def run_shell(self, shell='zsh', rc='', cmd=''):
         home_dir = os.path.realpath(tempfile.mkdtemp())
-        cmd = cmd or launch_cmd_for_shell(shell)
+        cmd = cmd or shell
+        cmd = shlex.split(cmd.format(**locals()))
+        env = safe_env_for_running_shell(cmd, home_dir, rc=rc, shell=shell)
         try:
-            pty = self.create_pty(cmd.format(**locals()), cwd=home_dir, env=safe_env_for_running_shell(home_dir, rc=rc, shell=shell))
+            pty = self.create_pty(cmd, cwd=home_dir, env=env)
             i = 10
             while i > 0 and not pty.screen_contents().strip():
                 pty.process_input_from_child()

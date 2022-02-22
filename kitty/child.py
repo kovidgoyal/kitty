@@ -196,7 +196,7 @@ class Child:
         allow_remote_control: bool = False
     ):
         self.allow_remote_control = allow_remote_control
-        self.argv = argv
+        self.argv = list(argv)
         if cwd_from is not None:
             try:
                 cwd = cwd_of_process(cwd_from)
@@ -233,7 +233,7 @@ class Child:
             opts = fast_data_types.get_options()
             if 'disabled' not in opts.shell_integration:
                 from .shell_integration import modify_shell_environ
-                modify_shell_environ(self.argv[0], opts, env)
+                modify_shell_environ(opts, env, self.argv)
             env = {k: v for k, v in env.items() if v is not DELETE_ENV_VAR}
         return env
 

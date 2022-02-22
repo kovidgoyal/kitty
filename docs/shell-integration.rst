@@ -148,8 +148,10 @@ different shells.
 
 .. tab:: bash
 
-    For bash, kitty adds a couple of lines to the bottom of :file:`~/.bashrc`
-    (in an atomic manner) to load the shell integration code.
+    For bash, kitty starts bash in POSIX mode and implements the loading of the
+    bash startup files in the integration script itself, after disabling POSIX
+    mode. From the perspective of those scripts there should be no difference
+    to running vanilla bash.
 
 
 Then, when launching the shell, kitty sets the environment variable

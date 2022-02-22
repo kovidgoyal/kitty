@@ -190,13 +190,11 @@ update-checking
 
 shell-integration
    |kitty| by default injects its :ref:`shell_integration` code into the user's
-   shell using environment variables or (for bash only) modifying
-   the user's :file:`~/.bashrc` file.
-   For a package, it might make more sense to distribute the shell
-   integration scripts into the system-wide shell vendor locations. The
-   shell integration files are found in the :file:`shell-integration`
-   directory. Copy them to the system wide shell vendor locations for each
-   shell, and use::
+   shell using environment variables. For a package, it might make more sense
+   to distribute the shell integration scripts into the system-wide shell
+   vendor locations. The shell integration files are found in the
+   :file:`shell-integration` directory. Copy them to the system wide shell
+   vendor locations for each shell, and use::
 
        ./setup.py linux-package --shell-integration=enabled\ no-rc
 
