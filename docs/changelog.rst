@@ -78,7 +78,8 @@ Detailed list of changes
 0.24.3 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- BASH integration: No longer modify :file:`~/.bashrc` to load :ref:`shell integration <shell_integration>`
+- BASH integration: No longer modify :file:`~/.bashrc` to load :ref:`shell integration <shell_integration>`.
+  It is recommended to remove the lines used to load the shell integration from :file:`~/.bashrc`.
 
 - macOS: Allow kitty to handle various URL types. Can be configured via
   :ref:`launch_actions` (:pull:`4618`)

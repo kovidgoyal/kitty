@@ -142,7 +142,7 @@ different shells.
 
     For fish, to make it automatically load the integration code provided by
     kitty, the integration script directory path is prepended to the
-    :code:`XDG_DATA_DIRS` environment variable. This is only applied to the fish
+    ``XDG_DATA_DIRS`` environment variable. This is only applied to the fish
     process and will be cleaned up by the integration script after startup. No files
     are added or modified.
 
