@@ -162,6 +162,8 @@ class BaseTest(TestCase):
 class PTY:
 
     def __init__(self, argv, rows=25, columns=80, scrollback=100, cell_width=10, cell_height=20, cwd=None, env=None):
+        if isinstance(argv, str):
+            argv = shlex.split(argv)
         pid, self.master_fd = fork()
         self.is_child = pid == CHILD
         if self.is_child:
@@ -169,12 +171,7 @@ class PTY:
                 time.sleep(0.01)
             if cwd:
                 os.chdir(cwd)
-            if env:
-                os.environ.clear()
-                os.environ.update(env)
-            if isinstance(argv, str):
-                argv = shlex.split(argv)
-            os.execlp(argv[0], *argv)
+            os.execvpe(argv[0], argv, env or os.environ)
         os.set_blocking(self.master_fd, False)
         self.cell_width = cell_width
         self.cell_height = cell_height
