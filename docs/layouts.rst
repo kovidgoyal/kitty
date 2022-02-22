@@ -138,6 +138,11 @@ define a few extra key bindings in :file:`kitty.conf`::
     # the two windows are placed side by side
     map F6 launch --location=vsplit
 
+    # Create a new window splitting the space used by the existing one so that
+    # the two windows are placed side by side if the existing window is wide or
+    # one above the other if the existing window is tall.
+    map F4 launch --location=split
+
     # Rotate the current split, chaging its split axis from vertical to
     # horizontal or vice versa
     map F7 layout_action rotate

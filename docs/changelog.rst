@@ -87,6 +87,9 @@ Detailed list of changes
 - macOS: Add a new service ``Open with kitty`` to open file types that are not
   recognized by the system (:pull:`4641`)
 
+- Splits layout: A new value for :option:`launch --location` to auto-select the split axis when splitting existing windows.
+  Wide windows are split side-by-side and tall windows are split one-above-the-other
+
 - Fix a regression in the previous release that broke :opt:`active_tab_foreground` (:iss:`4620`)
 
 - Fix :ac:`show_last_command_output` not working when the output is stored

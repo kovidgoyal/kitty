@@ -102,16 +102,17 @@ kitty remote control feature with :code:`kitty @launch --copy-env`.
 --location
 type=choices
 default=default
-choices=first,after,before,neighbor,last,vsplit,hsplit,default
+choices=first,after,before,neighbor,last,vsplit,hsplit,split,default
 Where to place the newly created window when it is added to a tab which
 already has existing windows in it. :code:`after` and :code:`before` place the new
 window before or after the active window. :code:`neighbor` is a synonym for :code:`after`.
 Also applies to creating a new tab, where the value of :code:`after`
 will cause the new tab to be placed next to the current tab instead of at the end.
-The values of :code:`vsplit` and :code:`hsplit` are only used by the :code:`splits`
-layout and control if the new window is placed in a vertical or horizontal split
-with the currently active window. The default is to place the window in a
-layout dependent manner, typically, after the currently active window.
+The values of :code:`vsplit`, :code:`hsplit` and :code:`split` are only used by the
+:code:`splits` layout and control if the new window is placed in a vertical,
+horizontal or automatic split with the currently active window. The default is
+to place the window in a layout dependent manner, typically, after the
+currently active window.
 
 
 --allow-remote-control

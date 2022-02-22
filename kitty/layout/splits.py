@@ -450,13 +450,12 @@ class Splits(Layout):
     ) -> None:
         horizontal = self.default_axis_is_horizontal
         after = True
-        if location is not None:
-            if location == 'vsplit':
-                horizontal = True
-            elif location == 'hsplit':
-                horizontal = False
-            if location in ('before', 'first'):
-                after = False
+        if location == 'vsplit':
+            horizontal = True
+        elif location == 'hsplit':
+            horizontal = False
+        elif location in ('before', 'first'):
+            after = False
         aw = all_windows.active_window
         if aw is not None:
             ag = all_windows.active_group
@@ -464,6 +463,10 @@ class Splits(Layout):
             group_id = ag.id
             pair = self.pairs_root.pair_for_window(group_id)
             if pair is not None:
+                if location == 'split':
+                    wwidth = aw.geometry.right - aw.geometry.left
+                    wheight = aw.geometry.bottom - aw.geometry.top
+                    horizontal = wwidth >= wheight
                 target_group = all_windows.add_window(window, next_to=aw, before=not after)
                 pair.split_and_add(group_id, target_group.id, horizontal, after)
                 return
