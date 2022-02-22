@@ -7,6 +7,7 @@ import os
 import select
 import shlex
 import struct
+import sys
 import termios
 import time
 from pty import CHILD, fork
@@ -20,6 +21,7 @@ from kitty.options.parse import merge_result_dicts
 from kitty.options.types import Options, defaults
 from kitty.types import MouseEvent
 from kitty.utils import read_screen_size, write_all
+from kitty.window import process_remote_print
 
 
 class Callbacks:
@@ -86,6 +88,10 @@ class Callbacks:
             getattr(self, action.func)(*action.args)
         self.current_mouse_button = 0
         return True
+
+    def handle_remote_print(self, msg):
+        text = process_remote_print(msg)
+        print(text, file=sys.__stderr__)
 
 
 def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):
@@ -178,6 +184,7 @@ class PTY:
         termios.tcsetattr(self.master_fd, termios.TCSADRAIN, new)
         self.callbacks = Callbacks()
         self.screen = Screen(self.callbacks, rows, columns, scrollback, cell_width, cell_height, 0, self.callbacks)
+        self.received_bytes = b''
 
     def __del__(self):
         if not self.is_child:
@@ -205,6 +212,7 @@ class PTY:
             if not data:
                 break
             bytes_read += len(data)
+            self.received_bytes += data
             parse_bytes(self.screen, data)
         return bytes_read
 
@@ -213,7 +221,7 @@ class PTY:
         while not q() and time.monotonic() - st < timeout:
             self.process_input_from_child(timeout=timeout - (time.monotonic() - st))
         if not q():
-            raise TimeoutError('The condition was not met')
+            raise TimeoutError(f'The condition was not met. Screen contents: \n {repr(self.screen_contents())}')
 
     def set_window_size(self, rows=25, columns=80):
         if hasattr(self, 'screen'):
