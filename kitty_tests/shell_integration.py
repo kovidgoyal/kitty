@@ -150,3 +150,23 @@ PS1="{ps1}"
             pty.wait_till(lambda: pty.screen_contents().count(ps1) == 3)
             self.ae('40', str(pty.screen.line(pty.screen.cursor.y - 1)))
             self.ae(ps1 + 'echo $COLUMNS', str(pty.screen.line(pty.screen.cursor.y - 2)))
+
+        for ps1 in ('line1\\nline\\2\\prompt> ', 'line1\nprompt> ', 'line1\\nprompt> ',):
+            with self.subTest(ps1=ps1), self.run_shell(
+                shell='bash', rc=f'''
+    PS1="{ps1}"
+    ''') as pty:
+                ps1 = ps1.replace('\\n', '\n')
+                pty.wait_till(lambda: pty.screen_contents().count(ps1) == 1)
+                pty.send_cmd_to_child('echo test')
+                pty.wait_till(lambda: pty.screen_contents().count(ps1) == 2)
+                self.ae(pty.screen_contents(), f'{ps1}echo test\ntest\n{ps1}')
+                pty.write_to_child(r'echo $COLUMNS')
+                pty.set_window_size(rows=20, columns=40)
+                pty.process_input_from_child()
+                pty.wait_till(redrawn)
+                self.ae(ps1.splitlines()[-1] + 'echo $COLUMNS', str(pty.screen.line(pty.screen.cursor.y)))
+                pty.write_to_child('\r')
+                pty.wait_till(lambda: pty.screen_contents().count(ps1) == 3)
+                self.ae('40', str(pty.screen.line(pty.screen.cursor.y - len(ps1.splitlines()))))
+                self.ae(ps1.splitlines()[-1] + 'echo $COLUMNS', str(pty.screen.line(pty.screen.cursor.y - 1 - len(ps1.splitlines()))))

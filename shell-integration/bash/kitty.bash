@@ -58,14 +58,17 @@ _ksi_main() {
             PS1=${PS1//\\\[\\e\]133;k;start_suffix_kitty\\a\\\]*end_suffix_kitty\\a\\\]}
         fi
         if [[ -n "${_ksi_prompt[ps1]}" ]]; then
-            if [[ "${_ksi_prompt[mark]}" == "y" && "${PS1}" == *"\n"* ]]; then 
+            if [[ "${_ksi_prompt[mark]}" == "y" && ( "${PS1}" == *"\n"* || "${PS1}" == *$'\n'* ) ]]; then
+                local oldval=$(builtin shopt -p extglob)
+                builtin shopt -s extglob
                 # bash does not redraw the leading lines in a multiline prompt so
                 # mark the last line as a secondary prompt. Otherwise on resize the
                 # lines before the last line will be erased by kitty.
                 # the first part removes everything from the last \n onwards
                 # the second part appends a newline with the secondary marking 
                 # the third part appends everything after the last newline
-                PS1=${PS1%'\n'*}${_ksi_prompt[secondary_prompt]}${PS1##*'\n'}
+                PS1=${PS1%@('\n'|$'\n')*}${_ksi_prompt[secondary_prompt]}${PS1##*@('\n'|$'\n')};
+                eval "$oldval"
             fi
             PS1="${_ksi_prompt[ps1]}$PS1"
         fi
