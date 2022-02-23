@@ -187,7 +187,7 @@ PS1="{ps1}"
         def setup_env(excluded, argv, home_dir, rc='', shell='bash'):
             ans = basic_shell_env(home_dir)
             setup_bash_env(ans, argv)
-            for x in {'profile', 'bash.bashrc', '.bash_profile', '.bash_login', '.profile', '.bashrc'} - excluded:
+            for x in {'profile', 'bash.bashrc', '.bash_profile', '.bash_login', '.profile', '.bashrc', 'rcfile'} - excluded:
                 with open(os.path.join(home_dir, x), 'w') as f:
                     print(f'echo {x}', file=f)
             ans['KITTY_BASH_ETC_LOCATION'] = home_dir
@@ -201,6 +201,10 @@ PS1="{ps1}"
                     self.assertIn(x, q)
 
         run_test('bash', 'bash.bashrc', '.bashrc')
+        run_test('bash --rcfile rcfile', 'bash.bashrc', 'rcfile')
+        run_test('bash --init-file rcfile', 'bash.bashrc', 'rcfile')
+        run_test('bash --norc')
         run_test('bash -l', 'profile', '.bash_profile')
+        run_test('bash --noprofile -l')
         run_test('bash -l', 'profile', '.bash_login', excluded=('.bash_profile',))
         run_test('bash -l', 'profile', '.profile', excluded=('.bash_profile', '.bash_login'))
