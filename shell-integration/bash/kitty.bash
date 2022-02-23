@@ -20,7 +20,7 @@ _ksi_main() {
 
     _ksi_debug_print() {
         # print a line to STDOUT of parent kitty process
-        builtin local b=$(command base64 <<< "${@}" | tr -d \\n)
+        builtin local b=$(builtin command base64 <<< "${@}" | tr -d \\n)
         builtin printf "\eP@kitty-print|%s\e\\" "$b"
         # "
     }
@@ -40,7 +40,7 @@ _ksi_main() {
         if [[ "$KITTY_BASH_INJECT" == *"posix"* ]]; then
             _ksi_safe_source "$KITTY_BASH_POSIX_ENV" && builtin export ENV="$KITTY_BASH_POSIX_ENV";
         else
-            set +o posix;
+            builtin set +o posix;
             # See run_startup_files() in shell.c in the BASH source code
             if builtin shopt -q login_shell; then
                 if [[ "$KITTY_BASH_INJECT" != *"no-profile"* ]]; then
@@ -99,7 +99,7 @@ _ksi_main() {
         fi
         if [[ -n "${_ksi_prompt[ps1]}" ]]; then
             if [[ "${_ksi_prompt[mark]}" == "y" && ( "${PS1}" == *"\n"* || "${PS1}" == *$'\n'* ) ]]; then
-                local oldval=$(builtin shopt -p extglob)
+                builtin local oldval=$(builtin shopt -p extglob)
                 builtin shopt -s extglob
                 # bash does not redraw the leading lines in a multiline prompt so
                 # mark the last line as a secondary prompt. Otherwise on resize the
@@ -108,7 +108,7 @@ _ksi_main() {
                 # the second part appends a newline with the secondary marking
                 # the third part appends everything after the last newline
                 PS1=${PS1%@('\n'|$'\n')*}${_ksi_prompt[secondary_prompt]}${PS1##*@('\n'|$'\n')};
-                eval "$oldval"
+                builtin eval "$oldval"
             fi
             PS1="${_ksi_prompt[ps1]}$PS1"
         fi
@@ -134,7 +134,7 @@ _ksi_main() {
             _ksi_debug_print "ignoreboth or ignorespace present in bash HISTCONTROL setting, showing running command in window title will not be robust"
         fi
         _ksi_get_current_command() {
-            local last_cmd=$(HISTTIMEFORMAT= builtin history 1)
+            builtin local last_cmd=$(HISTTIMEFORMAT= builtin history 1)
             last_cmd="${last_cmd#*[[:digit:]]*[[:space:]]}"  # remove leading history number
             last_cmd="${last_cmd#"${last_cmd%%[![:space:]]*}"}"  # remove remaining leading whitespace
             builtin printf "\e]2;%s\a" "${last_cmd}"
@@ -154,7 +154,7 @@ _ksi_main() {
             builtin local limit
             # Send all words up to the word the cursor is currently on
             builtin let limit=1+$COMP_CWORD
-            src=$(builtin printf "%s\n" "${COMP_WORDS[@]:0:$limit}" | command kitty +complete bash)
+            src=$(builtin printf "%s\n" "${COMP_WORDS[@]:0:$limit}" | builtin command kitty +complete bash)
             if [[ $? == 0 ]]; then
                 builtin eval ${src}
             fi
