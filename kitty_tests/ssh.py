@@ -11,7 +11,7 @@ from kittens.ssh.main import bootstrap_script, get_connection_data
 from kitty.utils import SSHConnectionData
 
 from . import BaseTest
-from .shell_integration import basic_shell_env
+from .shell_integration import bash_ok, basic_shell_env
 
 
 class SSHTest(BaseTest):
@@ -40,10 +40,12 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         t('ssh un@ip -iident -p34', host='un@ip', port=34, identity_file='ident')
         t('ssh -p 33 main', port=33)
 
-    def test_ssh_launcher_script(self):
+    def test_ssh_bootstrap_script(self):
         for sh in ('dash', 'zsh', 'bash', 'posh', 'sh'):
             q = shutil.which(sh)
             if q:
+                if sh == 'bash' and not bash_ok():
+                    continue
                 with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
                     script = bootstrap_script(EXEC_CMD='echo UNTAR_DONE; exit 0')
                     env = basic_shell_env(tdir)
