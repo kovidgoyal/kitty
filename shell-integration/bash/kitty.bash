@@ -41,7 +41,7 @@ _ksi_main() {
             _ksi_safe_source "$KITTY_BASH_POSIX_ENV" && builtin export ENV="$KITTY_BASH_POSIX_ENV";
         else
             builtin set +o posix;
-            # See run_startup_files() in shell.c in the BASH source code
+            # See run_startup_files() in shell.c in the Bash source code
             if builtin shopt -q login_shell; then
                 if [[ "$KITTY_BASH_INJECT" != *"no-profile"* ]]; then
                     _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/profile";
