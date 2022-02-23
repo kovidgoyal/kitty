@@ -31,7 +31,7 @@ def install_deps():
     sys.stdout.flush()
     if is_macos:
         items = (x.split()[1].strip('"') for x in open('Brewfile').readlines() if x.strip().startswith('brew '))
-        run('brew', 'install', *items)
+        run('brew', 'install', 'fish', *items)
     else:
         run('sudo apt-get update')
         run('sudo apt-get install -y libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev ca-certificates'
