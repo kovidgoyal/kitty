@@ -171,17 +171,11 @@ class PTY:
                 time.sleep(0.01)
             if cwd:
                 os.chdir(cwd)
-            new = termios.tcgetattr(sys.stdin.fileno())
-            new[3] = new[3] | termios.ECHO
-            termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, new)
             os.execvpe(argv[0], argv, env or os.environ)
         os.set_blocking(self.master_fd, False)
         self.cell_width = cell_width
         self.cell_height = cell_height
         self.set_window_size(rows=rows, columns=columns)
-        new = termios.tcgetattr(self.master_fd)
-        new[3] = new[3] & ~termios.ECHO
-        termios.tcsetattr(self.master_fd, termios.TCSADRAIN, new)
         self.callbacks = Callbacks()
         self.screen = Screen(self.callbacks, rows, columns, scrollback, cell_width, cell_height, 0, self.callbacks)
         self.received_bytes = b''
