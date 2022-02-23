@@ -65,6 +65,7 @@ rc=$?
 command rm -f "$encoded_data_file"
 encoded_data_file=""
 if [ "$rc" != "0" ]; then die "Failed to extract data transmitted by ssh kitten over the TTY device"; fi
+if [ ! -f "$HOME/.terminfo/kitty.terminfo" ]; then die "Extracted data transmitted by ssh kitten is incomplete"; fi
 
 # export TERMINFO
 tname=".terminfo"
@@ -76,7 +77,7 @@ export TERMINFO="$HOME/$tname"
 
 # compile terminfo for this system
 if [ -x "$(command -v tic)" ]; then
-    tic_out=$(command tic -x -o "$HOME/$tname" ".terminfo/kitty.terminfo" 2>&1)
+    tic_out=$(command tic -x -o "$HOME/$tname" "$HOME/.terminfo/kitty.terminfo" 2>&1)
     rc=$?
     if [ "$rc" != "0" ]; then die "$tic_out"; fi
 fi
