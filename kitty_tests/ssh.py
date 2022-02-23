@@ -42,22 +42,29 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         t('ssh -p 33 main', port=33)
 
     def test_ssh_bootstrap_script(self):
+        ok_login_shell = ''
         for sh in ('dash', 'zsh', 'bash', 'posh', 'sh'):
             q = shutil.which(sh)
             if q:
                 if sh == 'bash' and not bash_ok():
                     continue
-                for login_shell in ('', 'bash', 'zsh', 'fish'):
+                for login_shell in ('', 'fish', 'zsh', 'bash'):
                     if (login_shell and not shutil.which(login_shell)) or (login_shell == 'bash' and not bash_ok()):
                         continue
+                    ok_login_shell = login_shell
                     with self.subTest(sh=sh, login_shell=login_shell), tempfile.TemporaryDirectory() as tdir:
                         self.check_bootstrap(sh, tdir, login_shell)
+        # check that turning off shell integration works
+        if ok_login_shell in ('bash', 'zsh'):
+            for val in ('', 'no-rc'):
+                with tempfile.TemporaryDirectory() as tdir:
+                    self.check_bootstrap('sh', tdir, ok_login_shell, val)
 
-    def check_bootstrap(self, sh, home_dir, login_shell):
-        ps1 = 'prompt> '
+    def check_bootstrap(self, sh, home_dir, login_shell, SHELL_INTEGRATION_VALUE='enabled'):
         script = bootstrap_script(
-            EXEC_CMD=f'echo "UNTAR_DONE"; export PS1="{ps1}"',
+            EXEC_CMD='echo "UNTAR_DONE"',
             OVERRIDE_LOGIN_SHELL=login_shell,
+            SHELL_INTEGRATION_VALUE=SHELL_INTEGRATION_VALUE,
         )
         env = basic_shell_env(home_dir)
         # Avoid generating unneeded completion scripts
@@ -66,5 +73,11 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         open(os.path.join(home_dir, '.zshrc'), 'w').close()
         self.assertFalse(os.path.exists(os.path.join(home_dir, '.terminfo/kitty.terminfo')))
         pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=home_dir, env=env)
-        pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
+        del script
+        pty.wait_till(lambda: 'UNTAR_DONE' in pty.screen_contents())
         self.assertTrue(os.path.exists(os.path.join(home_dir, '.terminfo/kitty.terminfo')))
+        if SHELL_INTEGRATION_VALUE != 'enabled':
+            pty.wait_till(lambda: len(pty.screen_contents().splitlines()) > 1)
+            self.assertEqual(pty.screen.cursor.shape, 0)
+        else:
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)

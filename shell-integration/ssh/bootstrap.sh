@@ -226,7 +226,6 @@ esac
 # We need to pass the first argument to the executed program with a leading -
 # to make sure the shell executes as a login shell. Note that not all shells
 # support exec -a so we use the below to try to detect such shells
-shell_name=$(basename $login_shell)
 if [ -z "$PIPESTATUS" ]; then
     # the dash shell does not support exec -a and also does not define PIPESTATUS
     execute_with_python
