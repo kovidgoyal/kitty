@@ -103,6 +103,14 @@ RPS1="{rps1}"
             pty.wait_till(lambda: pty.screen_contents().count(rps1) == 3)
             self.ae('40', str(pty.screen.line(pty.screen.cursor.y - 1)))
             self.ae(q, str(pty.screen.line(pty.screen.cursor.y - 2)))
+            pty.send_cmd_to_child('clear')
+            q = ps1 + ' ' * (pty.screen.columns - len(ps1) - len(rps1)) + rps1
+            pty.wait_till(lambda: pty.screen_contents() == q)
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
+            pty.send_cmd_to_child('cat')
+            pty.wait_till(lambda: pty.screen.cursor.shape == 0)
+            pty.write_to_child('\x04')
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
 
     @unittest.skipUnless(not is_macos and shutil.which('bash'), 'macOS bash is too old' if is_macos else 'bash not installed')
     def test_bash_integration(self):
@@ -140,6 +148,13 @@ PS1="{ps1}"
             pty.wait_till(lambda: pty.screen_contents().count(ps1) == 3)
             self.ae('40', str(pty.screen.line(pty.screen.cursor.y - 1)))
             self.ae(ps1 + 'echo $COLUMNS', str(pty.screen.line(pty.screen.cursor.y - 2)))
+            pty.send_cmd_to_child('clear')
+            pty.wait_till(lambda: pty.screen_contents() == ps1)
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
+            pty.send_cmd_to_child('cat')
+            pty.wait_till(lambda: pty.screen.cursor.shape == 0)
+            pty.write_to_child('\x04')
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
 
         for ps1 in ('line1\\nline\\2\\prompt> ', 'line1\nprompt> ', 'line1\\nprompt> ',):
             with self.subTest(ps1=ps1), self.run_shell(
