@@ -702,7 +702,7 @@ def main(args: List[str]) -> Optional[Dict[str, Any]]:
     return None
 
 
-def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType, extra_cli_args: Sequence[str], *a: Any) -> None:
+def linenum_process_result(data: Dict[str, Any]) -> Tuple[str, int]:
     pat = re.compile(r':(\d+)$')
     for m, g in zip(data['match'], data['groupdicts']):
         if m:
@@ -715,10 +715,13 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
                 line = m.group(1)
                 path = path[:-len(m.group())]
 
-            path = os.path.expanduser(path.split(':')[-1])
-            line = int(line)
-            break
-    else:
+            return os.path.expanduser(path), int(line)
+    return '', -1
+
+
+def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType, extra_cli_args: Sequence[str], *a: Any) -> None:
+    path, line = linenum_process_result(data)
+    if not path:
         return
 
     cmd = [x.format(path=path, line=line) for x in extra_cli_args or ('vim', '+{line}', '{path}')]
