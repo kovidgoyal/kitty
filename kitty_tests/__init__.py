@@ -4,11 +4,13 @@
 import fcntl
 import io
 import os
+import queue
 import select
 import shlex
 import struct
 import sys
 import termios
+import threading
 import time
 from pty import CHILD, fork
 from unittest import TestCase
@@ -179,14 +181,30 @@ class PTY:
         self.callbacks = Callbacks()
         self.screen = Screen(self.callbacks, rows, columns, scrollback, cell_width, cell_height, 0, self.callbacks)
         self.received_bytes = b''
+        self.queue = queue.Queue()
+        self.thread = threading.Thread(name='PTYWriter', target=self.write_loop, daemon=True)
+        self.thread.start()
 
     def __del__(self):
         if not self.is_child:
+            self.queue.put(None)
             os.close(self.master_fd)
             del self.master_fd
 
+    def write_loop(self):
+        while True:
+            x = self.queue.get()
+            if x is None:
+                break
+            try:
+                write_all(self.master_fd, x)
+            except AttributeError:
+                break
+            except OSError as err:
+                print(f'Failed to write to master_fd: {err}', file=sys.stderr)
+
     def write_to_child(self, data):
-        write_all(self.master_fd, data)
+        self.queue.put(data)
 
     def wait_for_input_from_child(self, timeout=10):
         rd = select.select([self.master_fd], [], [], timeout)[0]
