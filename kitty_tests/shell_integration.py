@@ -33,7 +33,7 @@ def bash_ok():
 
 def basic_shell_env(home_dir):
     ans = {
-        'PATH': os.environ['PATH'],
+        'PATH': os.environ.get('PATH', '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'),
         'HOME': home_dir,
         'TERM': 'xterm-kitty',
         'TERMINFO': terminfo_dir,
