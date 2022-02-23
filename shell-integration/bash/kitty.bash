@@ -35,6 +35,8 @@ _ksi_main() {
 
     if [[ -n "$KITTY_BASH_INJECT" ]]; then
         builtin unset ENV;
+        if [[ -z "$HOME" ]]; then HOME=~; fi
+        if [[ -z "$KITTY_BASH_ETC_LOCATION" ]]; then KITTY_BASH_ETC_LOCATION="/etc"; fi
         if [[ "$KITTY_BASH_INJECT" == *"posix"* ]]; then 
             _ksi_safe_source "$KITTY_BASH_POSIX_ENV" && builtin export ENV="$KITTY_BASH_POSIX_ENV";
         else
@@ -42,14 +44,14 @@ _ksi_main() {
             # See run_startup_files() in shell.c in the BASH source code
             if builtin shopt -q login_shell; then
                 if [[ "$KITTY_BASH_INJECT" != *"no-profile"* ]]; then
-                    _ksi_safe_source "/etc/profile";
+                    _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/profile";
                     _ksi_safe_source "$HOME/.bash_profile" || _ksi_safe_source "$HOME/.bash_login" || _ksi_safe_source "$HOME/.profile"; 
                 fi
             else
                 if [[ "$KITTY_BASH_INJECT" != *"no-rc"* ]]; then
                     # Linux distros build bash with -DSYS_BASHRC. Unfortunately, there is
                     # no way to to probe bash for it and different distros use different files
-                    _ksi_safe_source "/etc/bash.bashrc"  # Arch, Debian, Ubuntu
+                    _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/bash.bashrc"  # Arch, Debian, Ubuntu
                     # Fedora uses /etc/bashrc sourced from ~/.bashrc instead of SYS_BASHRC
                     if [[ -z "$KITTY_BASH_RCFILE" ]]; then KITTY_BASH_RCFILE="$HOME/.bashrc"; fi
                     _ksi_safe_source "$KITTY_BASH_RCFILE";
@@ -59,6 +61,7 @@ _ksi_main() {
         builtin unset KITTY_BASH_RCFILE;
         builtin unset KITTY_BASH_POSIX_ENV;
         builtin unset KITTY_BASH_INJECT;
+        builtin unset KITTY_BASH_ETC_LOCATION;
     fi
     builtin unset -f _ksi_safe_source
 

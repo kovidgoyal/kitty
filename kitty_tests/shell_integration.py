@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import unittest
 from contextlib import contextmanager
+from functools import partial
 
 from kitty.constants import is_macos, kitty_base_dir, terminfo_dir
 from kitty.fast_data_types import CURSOR_BEAM
@@ -16,7 +17,7 @@ from kitty.shell_integration import setup_bash_env, setup_zsh_env
 from . import BaseTest
 
 
-def safe_env_for_running_shell(argv, home_dir, rc='', shell='zsh'):
+def basic_shell_env(home_dir):
     ans = {
         'PATH': os.environ['PATH'],
         'HOME': home_dir,
@@ -28,6 +29,11 @@ def safe_env_for_running_shell(argv, home_dir, rc='', shell='zsh'):
     for x in ('USER', 'LANG'):
         if os.environ.get(x):
             ans[x] = os.environ[x]
+    return ans
+
+
+def safe_env_for_running_shell(argv, home_dir, rc='', shell='zsh'):
+    ans = basic_shell_env(home_dir)
     if shell == 'zsh':
         ans['ZLE_RPROMPT_INDENT'] = '0'
         with open(os.path.join(home_dir, '.zshenv'), 'w') as f:
@@ -50,11 +56,11 @@ def safe_env_for_running_shell(argv, home_dir, rc='', shell='zsh'):
 class ShellIntegration(BaseTest):
 
     @contextmanager
-    def run_shell(self, shell='zsh', rc='', cmd=''):
+    def run_shell(self, shell='zsh', rc='', cmd='', setup_env=None):
         home_dir = os.path.realpath(tempfile.mkdtemp())
         cmd = cmd or shell
         cmd = shlex.split(cmd.format(**locals()))
-        env = safe_env_for_running_shell(cmd, home_dir, rc=rc, shell=shell)
+        env = (setup_env or safe_env_for_running_shell)(cmd, home_dir, rc=rc, shell=shell)
         try:
             pty = self.create_pty(cmd, cwd=home_dir, env=env)
             i = 10
@@ -175,3 +181,26 @@ PS1="{ps1}"
                 pty.wait_till(lambda: pty.screen_contents().count(ps1) == 3)
                 self.ae('40', str(pty.screen.line(pty.screen.cursor.y - len(ps1.splitlines()))))
                 self.ae(ps1.splitlines()[-1] + 'echo $COLUMNS', str(pty.screen.line(pty.screen.cursor.y - 1 - len(ps1.splitlines()))))
+
+        # test startup file sourcing
+
+        def setup_env(excluded, argv, home_dir, rc='', shell='bash'):
+            ans = basic_shell_env(home_dir)
+            setup_bash_env(ans, argv)
+            for x in {'profile', 'bash.bashrc', '.bash_profile', '.bash_login', '.profile', '.bashrc'} - excluded:
+                with open(os.path.join(home_dir, x), 'w') as f:
+                    print(f'echo {x}', file=f)
+            ans['KITTY_BASH_ETC_LOCATION'] = home_dir
+            return ans
+
+        def run_test(argv, *expected, excluded=()):
+            with self.subTest(argv=argv), self.run_shell(shell='bash', setup_env=partial(setup_env, set(excluded)), cmd=argv) as pty:
+                pty.wait_till(lambda: '$' in pty.screen_contents())
+                q = pty.screen_contents()
+                for x in expected:
+                    self.assertIn(x, q)
+
+        run_test('bash', 'bash.bashrc', '.bashrc')
+        run_test('bash -l', 'profile', '.bash_profile')
+        run_test('bash -l', 'profile', '.bash_login', excluded=('.bash_profile',))
+        run_test('bash -l', 'profile', '.profile', excluded=('.bash_profile', '.bash_login'))
