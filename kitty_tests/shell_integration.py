@@ -5,16 +5,30 @@
 import os
 import shlex
 import shutil
+import subprocess
 import tempfile
 import unittest
 from contextlib import contextmanager
-from functools import partial
+from functools import lru_cache, partial
 
-from kitty.constants import is_macos, kitty_base_dir, terminfo_dir
+from kitty.constants import kitty_base_dir, terminfo_dir
 from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
-from kitty.shell_integration import setup_bash_env, setup_fish_env, setup_zsh_env
+from kitty.shell_integration import (
+    setup_bash_env, setup_fish_env, setup_zsh_env
+)
 
 from . import BaseTest
+
+
+@lru_cache()
+def bash_ok():
+    v = shutil.which('bash')
+    if not v:
+        return False
+    o = subprocess.check_output([v, '-c', 'echo "${BASH_VERSION}"']).decode('utf-8').strip()
+    if not o or int(o[0]) < 5:
+        return False
+    return True
 
 
 def basic_shell_env(home_dir):
@@ -25,6 +39,7 @@ def basic_shell_env(home_dir):
         'TERMINFO': terminfo_dir,
         'KITTY_SHELL_INTEGRATION': 'enabled',
         'KITTY_INSTALLATION_DIR': kitty_base_dir,
+        'BASH_SILENCE_DEPRECATION_WARNING': '1',
     }
     for x in ('USER', 'LANG'):
         if os.environ.get(x):
@@ -194,7 +209,7 @@ function _ksi_test_comp; contains "{completions_dir}" $fish_complete_path; and e
 
             pty.write_to_child('\x1biexit\r')
 
-    @unittest.skipUnless(not is_macos and shutil.which('bash'), 'macOS bash is too old' if is_macos else 'bash not installed')
+    @unittest.skipUnless(bash_ok(), 'bash not installed or too old')
     def test_bash_integration(self):
         ps1 = 'prompt> '
         with self.run_shell(
