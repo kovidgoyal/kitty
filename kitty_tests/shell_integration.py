@@ -126,7 +126,6 @@ RPS1="{rps1}"
             pty.write_to_child('\x04')
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
 
-
     @unittest.skipUnless(shutil.which('fish'), 'fish not installed')
     def test_fish_integration(self):
         fish_prompt, right_prompt = 'left>', '<right'
