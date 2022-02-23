@@ -1256,7 +1256,7 @@ def package(args: Options, bundle_type: str) -> None:
     for x in (libdir, os.path.join(ddir, 'share')):
         odir = os.path.join(x, 'terminfo')
         safe_makedirs(odir)
-        build_terminfo['compile_terminfo'](odir)
+        build_terminfo['compile_terminfo'](odir, add_other_versions=True)
     shutil.copy2('__main__.py', libdir)
     shutil.copy2('logo/kitty-128.png', os.path.join(libdir, 'logo'))
     shutil.copy2('logo/kitty.png', os.path.join(libdir, 'logo'))

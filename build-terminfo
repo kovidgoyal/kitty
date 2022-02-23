@@ -11,7 +11,7 @@ import sys
 import tempfile
 
 
-def compile_terminfo(base):
+def compile_terminfo(base, add_other_versions=False):
     with tempfile.TemporaryDirectory() as tdir:
         proc = subprocess.run(['tic', '-x', f'-o{tdir}', 'terminfo/kitty.terminfo'], check=True, stderr=subprocess.PIPE)
         regex = '^"terminfo/kitty.terminfo", line [0-9]+, col [0-9]+, terminal \'xterm-kitty\': older tic versions may treat the description field as an alias$'
@@ -29,6 +29,13 @@ def compile_terminfo(base):
         os.makedirs(odir, exist_ok=True)
         ofile = os.path.join(odir, xterm_kitty)
         shutil.move(tfile, ofile)
+    if add_other_versions:
+        shutil.copy2('terminfo/kitty.terminfo', base)
+        for x in os.listdir('terminfo'):
+            if x == 'kitty.terminfo':
+                continue
+            if not os.path.exists(os.path.join(base, x)):
+                os.symlink(directory, os.path.join(base, x))
 
 
 def generate_terminfo():
