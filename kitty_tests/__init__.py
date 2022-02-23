@@ -240,7 +240,5 @@ class PTY:
         return '\n'.join(lines)
 
     def last_cmd_output(self, as_ansi=False, add_wrap_markers=False):
-        lines = []
-        from kitty.window import CommandOutput
-        self.screen.cmd_output(CommandOutput.last_run, lines.append, as_ansi, add_wrap_markers)
-        return ''.join(lines)
+        from kitty.window import cmd_output
+        return cmd_output(self.screen, as_ansi=as_ansi, add_wrap_markers=add_wrap_markers)

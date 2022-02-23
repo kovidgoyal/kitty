@@ -301,6 +301,16 @@ def text_sanitizer(as_ansi: bool, add_wrap_markers: bool) -> Callable[[str], str
     return remove_wrap_markers
 
 
+def cmd_output(screen: Screen, which: CommandOutput = CommandOutput.last_run, as_ansi: bool = False, add_wrap_markers: bool = False) -> str:
+    lines: List[str] = []
+    search_in_pager_hist = screen.cmd_output(which, lines.append, as_ansi, add_wrap_markers)
+    if search_in_pager_hist:
+        pht = pagerhist(screen, as_ansi, add_wrap_markers, True)
+        if pht:
+            lines.insert(0, pht)
+    return ''.join(lines)
+
+
 def process_remote_print(msg: bytes) -> str:
     from base64 import standard_b64decode
     from .cli import green
@@ -1069,13 +1079,7 @@ class Window:
         return as_text(self.screen, as_ansi, add_history, add_wrap_markers, alternate_screen, add_cursor)
 
     def cmd_output(self, which: CommandOutput = CommandOutput.last_run, as_ansi: bool = False, add_wrap_markers: bool = False) -> str:
-        lines: List[str] = []
-        search_in_pager_hist = self.screen.cmd_output(which, lines.append, as_ansi, add_wrap_markers)
-        if search_in_pager_hist:
-            pht = pagerhist(self.screen, as_ansi, add_wrap_markers, True)
-            if pht:
-                lines.insert(0, pht)
-        return ''.join(lines)
+        return cmd_output(self.screen, which, as_ansi, add_wrap_markers)
 
     @property
     def cwd_of_child(self) -> Optional[str]:
