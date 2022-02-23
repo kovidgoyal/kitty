@@ -151,8 +151,6 @@ function _ksi_test_comp; contains "{completions_dir}" $fish_complete_path; and e
             pty.send_cmd_to_child('clear')
             pty.send_cmd_to_child('_ksi_test_comp')
             pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 2)
-            # with open('/tmp/1.log', 'a') as logf:
-            #     print(str(pty.screen_contents()), file=logf)
             q = '\n'.join(str(pty.screen.line(i)) for i in range(1, pty.screen.cursor.y))
             self.ae(q, 'ok')
             self.ae(pty.last_cmd_output(), q)
