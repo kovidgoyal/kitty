@@ -188,8 +188,9 @@ class PTY:
     def __del__(self):
         if not self.is_child:
             self.queue.put(None)
-            os.close(self.master_fd)
+            fd = self.master_fd
             del self.master_fd
+            os.close(fd)
 
     def write_loop(self):
         while True:
