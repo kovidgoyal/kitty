@@ -99,14 +99,12 @@ class Callbacks:
         if self.pty:
             for line in get_ssh_data(msg):
                 self.pty.write_to_child(line)
-                self.pty.process_input_from_child(timeout=0)
 
     def handle_remote_echo(self, msg):
         from base64 import standard_b64decode
         if self.pty:
             data = standard_b64decode(msg)
             self.pty.write_to_child(data)
-            self.pty.process_input_from_child(timeout=0)
 
 
 def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):
