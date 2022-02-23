@@ -20,7 +20,8 @@ _ksi_main() {
 
     _ksi_debug_print() {
         # print a line to STDOUT of parent kitty process
-        builtin local b=$(builtin command base64 <<< "${@}")
+        builtin local b
+        b=$(builtin command base64 <<< "${@}")
         builtin printf "\eP@kitty-print|%s\e\\" "${b//\\n}"
     }
 
@@ -98,7 +99,8 @@ _ksi_main() {
         fi
         if [[ -n "${_ksi_prompt[ps1]}" ]]; then
             if [[ "${_ksi_prompt[mark]}" == "y" && ( "${PS1}" == *"\n"* || "${PS1}" == *$'\n'* ) ]]; then
-                builtin local oldval=$(builtin shopt -p extglob)
+                builtin local oldval
+                oldval=$(builtin shopt -p extglob)
                 builtin shopt -s extglob
                 # bash does not redraw the leading lines in a multiline prompt so
                 # mark the last line as a secondary prompt. Otherwise on resize the
@@ -133,7 +135,8 @@ _ksi_main() {
             _ksi_debug_print "ignoreboth or ignorespace present in bash HISTCONTROL setting, showing running command in window title will not be robust"
         fi
         _ksi_get_current_command() {
-            builtin local last_cmd=$(HISTTIMEFORMAT= builtin history 1)
+            builtin local last_cmd
+            last_cmd=$(HISTTIMEFORMAT= builtin history 1)
             last_cmd="${last_cmd#*[[:digit:]]*[[:space:]]}"  # remove leading history number
             last_cmd="${last_cmd#"${last_cmd%%[![:space:]]*}"}"  # remove remaining leading whitespace
             builtin printf "\e]2;%s\a" "${last_cmd}"
@@ -189,7 +192,8 @@ _ksi_main() {
     # otherwise append a string. We check if _ksi_prompt_command exists as some shell
     # scripts stupidly export PROMPT_COMMAND making it inherited by all programs launched
     # from the shell
-    builtin local pc='builtin declare -F _ksi_prompt_command > /dev/null 2> /dev/null && _ksi_prompt_command'
+    builtin local pc
+    pc='builtin declare -F _ksi_prompt_command > /dev/null 2> /dev/null && _ksi_prompt_command'
     if [[ -z "${PROMPT_COMMAND}" ]]; then
         PROMPT_COMMAND=([0]="$pc")
     elif [[ $(builtin declare -p PROMPT_COMMAND 2> /dev/null) =~ 'declare -a PROMPT_COMMAND' ]]; then
