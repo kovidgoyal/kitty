@@ -1338,11 +1338,11 @@ typedef struct {
 DescriptorIndices descriptor_indices = {0};
 
 static bool
-set_symbol_maps(SymbolMap **symbol_maps, size_t *num_symbol_maps, const PyObject *sm) {
-    *num_symbol_maps = PyTuple_GET_SIZE(sm);
-    *symbol_maps = calloc(*num_symbol_maps, sizeof(SymbolMap));
+set_symbol_maps(SymbolMap **symbol_maps, size_t *num, const PyObject *sm) {
+    *num = PyTuple_GET_SIZE(sm);
+    *symbol_maps = calloc(*num, sizeof(SymbolMap));
     if (*symbol_maps == NULL) { PyErr_NoMemory(); return false; }
-    for (size_t s = 0; s < *num_symbol_maps; s++) {
+    for (size_t s = 0; s < *num; s++) {
         unsigned int left, right, font_idx;
         SymbolMap *x = *symbol_maps + s;
         if (!PyArg_ParseTuple(PyTuple_GET_ITEM(sm, s), "III", &left, &right, &font_idx)) return NULL;
