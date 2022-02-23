@@ -884,7 +884,6 @@ class Window:
         from kittens.ssh.main import get_ssh_data
         for line in get_ssh_data(msg):
             self.write_to_child(line)
-            self.write_to_child('\n')
 
     def handle_remote_print(self, msg: str) -> None:
         text = process_remote_print(msg)

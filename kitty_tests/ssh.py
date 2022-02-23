@@ -3,13 +3,15 @@
 
 
 import os
+import shlex
 import shutil
 import tempfile
 
-from kittens.ssh.main import get_connection_data
+from kittens.ssh.main import bootstrap_script, get_connection_data
 from kitty.utils import SSHConnectionData
 
 from . import BaseTest
+from .shell_integration import basic_shell_env
 
 
 class SSHTest(BaseTest):
@@ -39,11 +41,14 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         t('ssh -p 33 main', port=33)
 
     def test_ssh_launcher_script(self):
-        for sh in ('sh', 'zsh', 'bash', 'dash'):
+        for sh in ('dash', 'zsh', 'bash', 'posh', 'sh'):
             q = shutil.which(sh)
             if q:
                 with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
-                    self.run_launcher(sh, tdir)
+                    script = bootstrap_script('echo TEST_DONE; return 0')
+                    env = basic_shell_env(tdir)
+                    pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=tdir, env=env)
+                    self.check_bootstrap(tdir, pty)
 
-    def run_launcher(self, sh, tdir):
-        pass
+    def check_bootstrap(self, home_dir, pty):
+        pty.wait_till(lambda: 'TEST_DONE' in pty.screen_contents())

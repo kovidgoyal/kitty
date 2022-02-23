@@ -13,7 +13,7 @@ from contextlib import suppress
 from typing import Iterator, List, NoReturn, Optional, Set, Tuple
 
 from kitty.constants import cache_dir, shell_integration_dir, terminfo_dir
-from kitty.short_uuid import uuid4_for_escape_code
+from kitty.short_uuid import uuid4
 from kitty.utils import SSHConnectionData
 
 from .completion import complete, ssh_options
@@ -36,30 +36,31 @@ def make_tarfile(hostname: str = '') -> bytes:
 
 
 def get_ssh_data(msg: str) -> Iterator[bytes]:
-    yield b"KITTY_SSH_DATA_START"
+    yield b"KITTY_SSH_DATA_START\n"
     try:
         hostname, pwfilename, pw = msg.split(':', 2)
     except Exception:
-        yield b' invalid ssh data request message'
+        yield b' invalid ssh data request message\n'
     try:
         with open(os.path.join(cache_dir(), pwfilename)) as f:
             os.unlink(f.name)
             if pw != f.read():
                 raise ValueError('Incorrect password')
     except Exception:
-        yield b' incorrect ssh data password'
+        yield b' incorrect ssh data password\n'
     else:
         try:
             data = make_tarfile(hostname)
         except Exception:
-            yield b' error while gathering ssh data'
+            yield b' error while gathering ssh data\n'
         else:
             from base64 import standard_b64encode
             encoded_data = memoryview(standard_b64encode(data))
             while encoded_data:
-                yield encoded_data[:1024]
-                encoded_data = encoded_data[1024:]
-    yield b"KITTY_SSH_DATA_END"
+                yield encoded_data[:2048]
+                yield b'\n'
+                encoded_data = encoded_data[2048:]
+    yield b"KITTY_SSH_DATA_END\n"
 
 
 def safe_remove(x: str) -> None:
@@ -69,7 +70,7 @@ def safe_remove(x: str) -> None:
 
 def prepare_script(ans: str, EXEC_CMD: str = '') -> str:
     ans = ans.replace('EXEC_CMD', EXEC_CMD, 1)
-    pw = uuid4_for_escape_code()
+    pw = uuid4()
     with tempfile.NamedTemporaryFile(prefix='ssh-kitten-pw-', dir=cache_dir(), delete=False) as tf:
         tf.write(pw.encode('utf-8'))
     atexit.register(safe_remove, tf.name)
@@ -336,18 +337,6 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
     if not server_args:
         raise InvalidSSHArgs()
     return ssh_args, server_args, passthrough
-
-
-def quote(x: str) -> str:
-    # we have to escape unbalanced quotes and other unparsable
-    # args as they will break the shell script
-    # But we do not want to quote things like * or 'echo hello'
-    # See https://github.com/kovidgoyal/kitty/issues/1787
-    try:
-        shlex.split(x)
-    except ValueError:
-        x = shlex.quote(x)
-    return x
 
 
 def get_posix_cmd(terminfo: str, remote_args: List[str]) -> List[str]:

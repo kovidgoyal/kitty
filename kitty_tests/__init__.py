@@ -26,8 +26,9 @@ from kitty.window import process_remote_print, process_title_from_child
 
 class Callbacks:
 
-    def __init__(self) -> None:
+    def __init__(self, pty=None) -> None:
         self.clear()
+        self.pty = pty
 
     def write(self, data) -> None:
         self.wtcbuf += data
@@ -92,6 +93,18 @@ class Callbacks:
     def handle_remote_print(self, msg):
         text = process_remote_print(msg)
         print(text, file=sys.__stderr__)
+
+    def handle_remote_ssh(self, msg):
+        from kittens.ssh.main import get_ssh_data
+        for line in get_ssh_data(msg):
+            self.pty.write_to_child(line)
+            self.pty.process_input_from_child(timeout=0)
+
+    def handle_remote_echo(self, msg):
+        from base64 import standard_b64decode
+        data = standard_b64decode(msg)
+        self.pty.write_to_child(data)
+        self.pty.process_input_from_child(timeout=0)
 
 
 def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):
@@ -177,7 +190,7 @@ class PTY:
         self.cell_width = cell_width
         self.cell_height = cell_height
         self.set_window_size(rows=rows, columns=columns)
-        self.callbacks = Callbacks()
+        self.callbacks = Callbacks(self)
         self.screen = Screen(self.callbacks, rows, columns, scrollback, cell_width, cell_height, 0, self.callbacks)
         self.received_bytes = b''
 
