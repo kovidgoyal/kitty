@@ -4,13 +4,14 @@
 import atexit
 import io
 import os
+import re
 import shlex
 import subprocess
 import sys
 import tarfile
 import tempfile
 from contextlib import suppress
-from typing import Iterator, List, NoReturn, Optional, Set, Tuple
+from typing import Dict, Iterator, List, NoReturn, Optional, Set, Tuple
 
 from kitty.constants import cache_dir, shell_integration_dir, terminfo_dir
 from kitty.short_uuid import uuid4
@@ -18,8 +19,10 @@ from kitty.utils import SSHConnectionData
 
 from .completion import complete, ssh_options
 
+DEFAULT_SHELL_INTEGRATION_DEST = '.local/share/kitty-ssh-kitten/shell-integration'
 
-def make_tarfile(hostname: str = '') -> bytes:
+
+def make_tarfile(hostname: str = '', shell_integration_dest: str = DEFAULT_SHELL_INTEGRATION_DEST) -> bytes:
 
     def filter_files(tarinfo: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
         if tarinfo.name.endswith('ssh/bootstrap.sh') or tarinfo.name.endswith('ssh/bootstrap.py'):
@@ -30,12 +33,12 @@ def make_tarfile(hostname: str = '') -> bytes:
 
     buf = io.BytesIO()
     with tarfile.open(mode='w:bz2', fileobj=buf, encoding='utf-8') as tf:
-        tf.add(shell_integration_dir, arcname='.local/share/kitty-ssh-kitten/shell-integration', filter=filter_files)
+        tf.add(shell_integration_dir, arcname=shell_integration_dest, filter=filter_files)
         tf.add(terminfo_dir, arcname='.terminfo', filter=filter_files)
     return buf.getvalue()
 
 
-def get_ssh_data(msg: str) -> Iterator[bytes]:
+def get_ssh_data(msg: str, shell_integration_dest: str = DEFAULT_SHELL_INTEGRATION_DEST) -> Iterator[bytes]:
     yield b"KITTY_SSH_DATA_START\n"
     try:
         hostname, pwfilename, pw = msg.split(':', 2)
@@ -50,7 +53,7 @@ def get_ssh_data(msg: str) -> Iterator[bytes]:
         yield b' incorrect ssh data password\n'
     else:
         try:
-            data = make_tarfile(hostname)
+            data = make_tarfile(hostname, shell_integration_dest)
         except Exception:
             yield b' error while gathering ssh data\n'
         else:
@@ -68,21 +71,28 @@ def safe_remove(x: str) -> None:
         os.remove(x)
 
 
-def prepare_script(ans: str, EXEC_CMD: str = '') -> str:
-    ans = ans.replace('EXEC_CMD', EXEC_CMD, 1)
+def prepare_script(ans: str, replacements: Dict[str, str]) -> str:
     pw = uuid4()
     with tempfile.NamedTemporaryFile(prefix='ssh-kitten-pw-', dir=cache_dir(), delete=False) as tf:
         tf.write(pw.encode('utf-8'))
     atexit.register(safe_remove, tf.name)
-    ans = ans.replace('DATA_PASSWORD', pw, 1)
-    ans = ans.replace("PASSWORD_FILENAME", os.path.basename(tf.name))
-    return ans
+    replacements['DATA_PASSWORD'] = pw
+    replacements['PASSWORD_FILENAME'] = os.path.basename(tf.name)
+    for k in ('EXEC_CMD', 'OVERRIDE_LOGIN_SHELL'):
+        replacements[k] = replacements.get(k, '')
+    replacements['SHELL_INTEGRATION_DIR'] = replacements.get('SHELL_INTEGRATION_DIR', DEFAULT_SHELL_INTEGRATION_DEST)
+    replacements['SHELL_INTEGRATION_VALUE'] = replacements.get('SHELL_INTEGRATION_VALUE', 'enabled')
+
+    def sub(m: 're.Match[str]') -> str:
+        return replacements[m.group()]
+
+    return re.sub('|'.join(fr'\b{k}\b' for k in replacements), sub, ans)
 
 
-def bootstrap_script(EXEC_CMD: str = '', script_type: str = 'sh') -> str:
+def bootstrap_script(script_type: str = 'sh', **replacements: str) -> str:
     with open(os.path.join(shell_integration_dir, 'ssh', f'bootstrap.{script_type}')) as f:
         ans = f.read()
-    return prepare_script(ans, EXEC_CMD)
+    return prepare_script(ans, replacements)
 
 
 SHELL_SCRIPT = '''\

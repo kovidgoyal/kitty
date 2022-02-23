@@ -45,10 +45,11 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
             q = shutil.which(sh)
             if q:
                 with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
-                    script = bootstrap_script('echo TEST_DONE; return 0')
+                    script = bootstrap_script(EXEC_CMD='echo UNTAR_DONE; exit 0')
                     env = basic_shell_env(tdir)
                     pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=tdir, env=env)
                     self.check_bootstrap(tdir, pty)
 
     def check_bootstrap(self, home_dir, pty):
-        pty.wait_till(lambda: 'TEST_DONE' in pty.screen_contents())
+        pty.wait_till(lambda: 'UNTAR_DONE' in pty.screen_contents())
+        self.assertTrue(os.path.exists(os.path.join(home_dir, '.terminfo/kitty.terminfo')))
