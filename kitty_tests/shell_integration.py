@@ -309,11 +309,12 @@ PS1="{ps1}"
                 with open(os.path.join(home_dir, x), 'w') as f:
                     print(f'echo {x}', file=f)
             ans['KITTY_BASH_ETC_LOCATION'] = home_dir
+            ans['PS1'] = 'PROMPT $ '
             return ans
 
         def run_test(argv, *expected, excluded=()):
             with self.subTest(argv=argv), self.run_shell(shell='bash', setup_env=partial(setup_env, set(excluded)), cmd=argv) as pty:
-                pty.wait_till(lambda: '$' in pty.screen_contents())
+                pty.wait_till(lambda: 'PROMPT $' in pty.screen_contents())
                 q = pty.screen_contents()
                 for x in expected:
                     self.assertIn(x, q)
