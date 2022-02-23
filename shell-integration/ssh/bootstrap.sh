@@ -13,7 +13,7 @@ cleanup_on_bootstrap_exit() {
 }
 trap 'cleanup_on_bootstrap_exit' EXIT
 die() { echo "$*" >/dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
-debug() { printf "\033P@kitty-print|%s\033\\" "$(echo -n "debug: $1" | base64)"; }
+debug() { printf "\033P@kitty-print|%s\033\\" "$(printf "%s" "debug: $1" | base64)"; }
 
 data_started="n"
 data_complete="n"
@@ -49,7 +49,7 @@ while [ "$data_complete" = "n" ]; do
             ;;
         *)
             if [ "$data_started" = "y" ]; then
-                echo -n "$line" >> "$encoded_data_file"
+                printf "%s" "$line" >> "$encoded_data_file"
             else
                 pending_data="$pending_data$line\n"
             fi
@@ -59,7 +59,7 @@ done
 command stty "$saved_tty_settings"
 saved_tty_settings=""
 if [ -n "$pending_data" ]; then
-    printf "\033P@kitty-echo|%s\033\\" "$(echo -n "$pending_data" | base64)"
+    printf "\033P@kitty-echo|%s\033\\" "$(printf "%s" "$pending_data" | base64)"
 fi
 command base64 -d < "$encoded_data_file" | command tar xjf - --no-same-owner -C "$HOME"
 rc=$?
