@@ -703,9 +703,18 @@ def main(args: List[str]) -> Optional[Dict[str, Any]]:
 
 
 def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType, extra_cli_args: Sequence[str], *a: Any) -> None:
+    pat = re.compile(r':(\d+)$')
     for m, g in zip(data['match'], data['groupdicts']):
         if m:
             path, line = g['path'], g['line']
+            # look for trailers on path of the for :number
+            while True:
+                m = pat.search(path)
+                if m is None:
+                    break
+                line = m.group(1)
+                path = path[:-len(m.group())]
+
             path = os.path.expanduser(path.split(':')[-1])
             line = int(line)
             break

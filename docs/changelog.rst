@@ -90,6 +90,8 @@ Detailed list of changes
 - Splits layout: A new value for :option:`launch --location` to auto-select the split axis when splitting existing windows.
   Wide windows are split side-by-side and tall windows are split one-above-the-other
 
+- hints kitten: Fix a regression that broke recognition of path:linenumber:colnumber (:iss:`4675`)
+
 - Fix a regression in the previous release that broke :opt:`active_tab_foreground` (:iss:`4620`)
 
 - Fix :ac:`show_last_command_output` not working when the output is stored
