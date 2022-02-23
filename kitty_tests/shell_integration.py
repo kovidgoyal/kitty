@@ -11,8 +11,8 @@ from contextlib import contextmanager
 from functools import partial
 
 from kitty.constants import is_macos, kitty_base_dir, terminfo_dir
-from kitty.fast_data_types import CURSOR_BEAM
-from kitty.shell_integration import setup_bash_env, setup_zsh_env
+from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
+from kitty.shell_integration import setup_bash_env, setup_fish_env, setup_zsh_env
 
 from . import BaseTest
 
@@ -41,6 +41,14 @@ def safe_env_for_running_shell(argv, home_dir, rc='', shell='zsh'):
         with open(os.path.join(home_dir, '.zshrc'), 'w') as f:
             print(rc + '\n', file=f)
         setup_zsh_env(ans, argv)
+    elif shell == 'fish':
+        conf_dir = os.path.join(home_dir, '.config', 'fish')
+        os.makedirs(conf_dir, exist_ok=True)
+        # Avoid generating unneeded completion scripts
+        os.makedirs(os.path.join(home_dir, '.local', 'share', 'fish', 'generated_completions'), exist_ok=True)
+        with open(os.path.join(conf_dir, 'config.fish'), 'w') as f:
+            print(rc + '\n', file=f)
+        setup_fish_env(ans, argv)
     elif shell == 'bash':
         setup_bash_env(ans, argv)
         ans['KITTY_BASH_INJECT'] += ' posix'
@@ -117,6 +125,75 @@ RPS1="{rps1}"
             pty.wait_till(lambda: pty.screen.cursor.shape == 0)
             pty.write_to_child('\x04')
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
+
+
+    @unittest.skipUnless(shutil.which('fish'), 'fish not installed')
+    def test_fish_integration(self):
+        fish_prompt, right_prompt = 'left>', '<right'
+        completions_dir = os.path.join(kitty_base_dir, 'shell-integration', 'fish', 'vendor_completions.d')
+        with self.run_shell(
+            shell='fish',
+            rc=f'''
+set -g fish_greeting
+function fish_prompt; echo -n "{fish_prompt}"; end
+function fish_right_prompt; echo -n "{right_prompt}"; end
+function _ksi_test_comp; contains "{completions_dir}" $fish_complete_path; and echo ok; end
+''') as pty:
+            q = fish_prompt + ' ' * (pty.screen.columns - len(fish_prompt) - len(right_prompt)) + right_prompt
+            pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 1)
+            self.ae(pty.screen_contents(), q)
+
+            # XDG_DATA_DIRS
+            pty.send_cmd_to_child('set -q XDG_DATA_DIRS; or echo ok')
+            pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 2)
+            self.ae(str(pty.screen.line(1)), 'ok')
+
+            # completion and prompt marking
+            pty.send_cmd_to_child('clear')
+            pty.send_cmd_to_child('_ksi_test_comp')
+            pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 2)
+            # with open('/tmp/1.log', 'a') as logf:
+            #     print(str(pty.screen_contents()), file=logf)
+            q = '\n'.join(str(pty.screen.line(i)) for i in range(1, pty.screen.cursor.y))
+            self.ae(q, 'ok')
+            self.ae(pty.last_cmd_output(), q)
+
+            # resize and redraw (fish_handle_reflow)
+            pty.write_to_child(r'echo $COLUMNS')
+            pty.set_window_size(rows=20, columns=40)
+            q = fish_prompt + 'echo $COLUMNS' + ' ' * (40 - len(fish_prompt) - len(right_prompt) - len('echo $COLUMNS')) + right_prompt
+            pty.process_input_from_child()
+
+            def redrawn():
+                q = pty.screen_contents()
+                return '$COLUMNS' in q and q.count(right_prompt) == 2 and q.count(fish_prompt) == 2
+
+            pty.wait_till(redrawn)
+            self.ae(q, str(pty.screen.line(pty.screen.cursor.y)))
+            pty.write_to_child('\r')
+            pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 3)
+            self.ae('40', str(pty.screen.line(pty.screen.cursor.y - 1)))
+            self.ae(q, str(pty.screen.line(pty.screen.cursor.y - 2)))
+
+            # cursor shapes
+            pty.send_cmd_to_child('clear')
+            q = fish_prompt + ' ' * (pty.screen.columns - len(fish_prompt) - len(right_prompt)) + right_prompt
+            pty.wait_till(lambda: pty.screen_contents() == q)
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
+            pty.send_cmd_to_child('echo; cat')
+            pty.wait_till(lambda: pty.screen.cursor.shape == 0 and pty.screen.cursor.y > 1)
+            pty.write_to_child('\x04')
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
+            pty.send_cmd_to_child('fish_vi_key_bindings')
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BLOCK)
+            pty.write_to_child('i')
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
+            pty.write_to_child('\x1b')
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BLOCK)
+            pty.write_to_child('r')
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_UNDERLINE)
+
+            pty.write_to_child('\x1biexit\r')
 
     @unittest.skipUnless(not is_macos and shutil.which('bash'), 'macOS bash is too old' if is_macos else 'bash not installed')
     def test_bash_integration(self):
