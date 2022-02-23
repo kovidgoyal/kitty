@@ -9,6 +9,7 @@ import tempfile
 
 from kittens.ssh.main import bootstrap_script, get_connection_data
 from kitty.utils import SSHConnectionData
+from kitty.fast_data_types import CURSOR_BEAM
 
 from . import BaseTest
 from .shell_integration import bash_ok, basic_shell_env
@@ -46,12 +47,24 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
             if q:
                 if sh == 'bash' and not bash_ok():
                     continue
-                with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
-                    script = bootstrap_script(EXEC_CMD='echo UNTAR_DONE; exit 0')
-                    env = basic_shell_env(tdir)
-                    pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=tdir, env=env)
-                    self.check_bootstrap(tdir, pty)
+                for login_shell in ('', 'bash', 'zsh', 'fish'):
+                    if (login_shell and not shutil.which(login_shell)) or (login_shell == 'bash' and not bash_ok()):
+                        continue
+                    with self.subTest(sh=sh, login_shell=login_shell), tempfile.TemporaryDirectory() as tdir:
+                        self.check_bootstrap(sh, tdir, login_shell)
 
-    def check_bootstrap(self, home_dir, pty):
-        pty.wait_till(lambda: 'UNTAR_DONE' in pty.screen_contents())
+    def check_bootstrap(self, sh, home_dir, login_shell):
+        ps1 = 'prompt> '
+        script = bootstrap_script(
+            EXEC_CMD=f'echo "UNTAR_DONE"; export PS1="{ps1}"',
+            OVERRIDE_LOGIN_SHELL=login_shell,
+        )
+        env = basic_shell_env(home_dir)
+        # Avoid generating unneeded completion scripts
+        os.makedirs(os.path.join(home_dir, '.local', 'share', 'fish', 'generated_completions'), exist_ok=True)
+        # prevent newuser-install from running
+        open(os.path.join(home_dir, '.zshrc'), 'w').close()
+        self.assertFalse(os.path.exists(os.path.join(home_dir, '.terminfo/kitty.terminfo')))
+        pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=home_dir, env=env)
+        pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
         self.assertTrue(os.path.exists(os.path.join(home_dir, '.terminfo/kitty.terminfo')))

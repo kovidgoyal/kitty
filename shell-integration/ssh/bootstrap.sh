@@ -176,12 +176,12 @@ exec_zsh_with_integration() {
     zdotdir="$ZDOTDIR"
     if [ -z "$zdotdir" ]; then 
         zdotdir=~; 
-        unset KITTY_ORIG_ZDOTDIR
+        unset KITTY_ORIG_ZDOTDIR  # ensure this is not propagated
     else
         export KITTY_ORIG_ZDOTDIR="$zdotdir"
     fi
     # dont prevent zsh-new-user from running
-    if [ -e "$zdotdir/.zshrc" || -e "$zdotdir/.zshenv" || -e "$zdotdir/.zprofile" || -e "$zdotdir/.zlogin" ]; then
+    if [ -f "$zdotdir/.zshrc" -o -f "$zdotdir/.zshenv" -o -f "$zdotdir/.zprofile" -o -f "$zdotdir/.zlogin" ]; then
         export ZDOTDIR="$shell_integration_dir/zsh"
         exec "$login_shell" "-l"
     fi
@@ -198,14 +198,14 @@ exec_fish_with_integration() {
 }
 
 exec_with_shell_integration() {
-    case "$login_shell" in
-        *"zsh")
+    case "$shell_name" in
+        "zsh")
             exec_zsh_with_integration
             ;;
-        *"bash")
+        "bash")
             exec_bash_with_integration
             ;;
-        *"fish")
+        "fish")
             exec_fish_with_integration
             ;;
     esac

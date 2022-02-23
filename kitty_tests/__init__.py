@@ -235,9 +235,9 @@ class PTY:
         return bytes_read
 
     def wait_till(self, q, timeout=10):
-        st = time.monotonic()
-        while not q() and time.monotonic() - st < timeout:
-            self.process_input_from_child(timeout=timeout - (time.monotonic() - st))
+        end_time = time.monotonic() + timeout
+        while not q() and time.monotonic() <= end_time:
+            self.process_input_from_child(timeout=max(0, end_time - time.monotonic()))
         if not q():
             raise TimeoutError(f'The condition was not met. Screen contents: \n {repr(self.screen_contents())}')
 
