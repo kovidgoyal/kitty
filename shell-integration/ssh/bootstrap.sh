@@ -87,7 +87,7 @@ EXEC_CMD
 shell_integration_dir="$HOME/SHELL_INTEGRATION_DIR"
 
 login_shell_is_ok() {
-    if [ -z "$login_shell" ] || [ ! -x "$login_shell" ]; then return 1; fi
+    if [ -z "$login_shell" -o ! -x "$login_shell" ]; then return 1; fi
     case "$login_shell" in
         *sh) return 0;
     esac
@@ -98,7 +98,7 @@ detect_python() {
     python=$(command -v python3)
     if [ -z "$python" ]; then python=$(command -v python2); fi
     if [ -z "$python" ]; then python=python; fi
-    if [ -z "$python" || ! -x "$python" ]; then return 1; fi
+    if [ -z "$python" -o ! -x "$python" ]; then return 1; fi
     return 0;
 }
 
