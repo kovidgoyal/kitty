@@ -55,3 +55,11 @@ _global_instance = ShortUUID()
 uuid4 = _global_instance.uuid4
 uuid5 = _global_instance.uuid5
 decode = _global_instance.decode
+_escape_code_instance: Optional[ShortUUID] = None
+
+
+def uuid4_for_escape_code() -> str:
+    global _escape_code_instance
+    if _escape_code_instance is None:
+        _escape_code_instance = ShortUUID(escape_code_safe_alphabet)
+    return _escape_code_instance.uuid4()

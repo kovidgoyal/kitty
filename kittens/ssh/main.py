@@ -1,25 +1,28 @@
 #!/usr/bin/env python3
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import atexit
 import io
 import os
 import shlex
 import subprocess
 import sys
 import tarfile
+import tempfile
 from contextlib import suppress
-from typing import List, NoReturn, Optional, Set, Tuple
+from typing import Iterator, List, NoReturn, Optional, Set, Tuple
 
-from kitty.constants import shell_integration_dir, terminfo_dir
+from kitty.constants import cache_dir, shell_integration_dir, terminfo_dir
+from kitty.short_uuid import uuid4_for_escape_code
 from kitty.utils import SSHConnectionData
 
 from .completion import complete, ssh_options
 
 
-def make_tarfile() -> bytes:
+def make_tarfile(hostname: str = '') -> bytes:
 
     def filter_files(tarinfo: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
-        if tarinfo.name.endswith('ssh/bootstrap.sh'):
+        if tarinfo.name.endswith('ssh/bootstrap.sh') or tarinfo.name.endswith('ssh/bootstrap.py'):
             return None
         tarinfo.uname = tarinfo.gname = 'kitty'
         tarinfo.uid = tarinfo.gid = 0
@@ -30,6 +33,55 @@ def make_tarfile() -> bytes:
         tf.add(shell_integration_dir, arcname='.local/share/kitty-ssh-kitten/shell-integration', filter=filter_files)
         tf.add(terminfo_dir, arcname='.terminfo', filter=filter_files)
     return buf.getvalue()
+
+
+def get_ssh_data(msg: str) -> Iterator[bytes]:
+    yield b"KITTY_SSH_DATA_START"
+    try:
+        hostname, pwfilename, pw = msg.split(':', 2)
+    except Exception:
+        yield b' invalid ssh data request message'
+    try:
+        with open(os.path.join(cache_dir(), pwfilename)) as f:
+            os.unlink(f.name)
+            if pw != f.read():
+                raise ValueError('Incorrect password')
+    except Exception:
+        yield b' incorrect ssh data password'
+    else:
+        try:
+            data = make_tarfile(hostname)
+        except Exception:
+            yield b' error while gathering ssh data'
+        else:
+            from base64 import standard_b64encode
+            encoded_data = memoryview(standard_b64encode(data))
+            while encoded_data:
+                yield encoded_data[:1024]
+                encoded_data = encoded_data[1024:]
+    yield b"KITTY_SSH_DATA_END"
+
+
+def safe_remove(x: str) -> None:
+    with suppress(OSError):
+        os.remove(x)
+
+
+def prepare_script(ans: str, EXEC_CMD: str = '') -> str:
+    ans = ans.replace('EXEC_CMD', EXEC_CMD, 1)
+    pw = uuid4_for_escape_code()
+    with tempfile.NamedTemporaryFile(prefix='ssh-kitten-pw-', dir=cache_dir(), delete=False) as tf:
+        tf.write(pw.encode('utf-8'))
+    atexit.register(safe_remove, tf.name)
+    ans = ans.replace('DATA_PASSWORD', pw, 1)
+    ans = ans.replace("PASSWORD_FILENAME", os.path.basename(tf.name))
+    return ans
+
+
+def bootstrap_script(EXEC_CMD: str = '', script_type: str = 'sh') -> str:
+    with open(os.path.join(shell_integration_dir, 'ssh', f'bootstrap.{script_type}')) as f:
+        ans = f.read()
+    return prepare_script(ans, EXEC_CMD)
 
 
 SHELL_SCRIPT = '''\

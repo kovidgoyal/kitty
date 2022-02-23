@@ -1071,27 +1071,20 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                     Py_DECREF(cmd);
                 } else PyErr_Clear();
 #undef CMD_PREFIX
-#define PRINT_PREFIX "kitty-print|"
-            } else if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 1, PRINT_PREFIX)) {
-                const size_t pp_size = sizeof(PRINT_PREFIX);
-                PyObject *msg = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + pp_size, screen->parser_buf_pos - pp_size);
-                if (msg != NULL) {
-                    REPORT_OSC2(screen_handle_print, (char)screen->parser_buf[0], msg);
-                    screen_handle_print(screen, msg);
-                    Py_DECREF(msg);
-                } else PyErr_Clear();
-#undef PRINT_PREFIX
-#define ECHO_PREFIX "kitty-echo|"
-            } else if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 1, ECHO_PREFIX)) {
-                const size_t pp_size = sizeof(ECHO_PREFIX);
-                PyObject *msg = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + pp_size, screen->parser_buf_pos - pp_size);
-                if (msg != NULL) {
-                    REPORT_OSC2(screen_handle_echo, (char)screen->parser_buf[0], msg);
-                    screen_handle_echo(screen, msg);
-                    Py_DECREF(msg);
-                } else PyErr_Clear();
-#undef ECHO_PREFIX
+#define IF_SIMPLE_PREFIX(prefix, func) \
+    if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 1, prefix)) { \
+        const size_t pp_size = sizeof(prefix); \
+        PyObject *msg = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + pp_size, screen->parser_buf_pos - pp_size); \
+        if (msg != NULL) { \
+            REPORT_OSC2(func, (char)screen->parser_buf[0], msg); \
+            func(screen, msg); \
+            Py_DECREF(msg); \
+        } else PyErr_Clear();
 
+            } else IF_SIMPLE_PREFIX("kitty-print|", screen_handle_print)
+            } else IF_SIMPLE_PREFIX("kitty-echo|", screen_handle_echo)
+            } else IF_SIMPLE_PREFIX("kitty-ssh|", screen_handle_ssh)
+#undef IF_SIMPLE_PREFIX
             } else {
                 REPORT_ERROR("Unrecognized DCS @ code: 0x%x", screen->parser_buf[1]);
             }

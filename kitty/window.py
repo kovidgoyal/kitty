@@ -321,7 +321,7 @@ def cmd_output(screen: Screen, which: CommandOutput = CommandOutput.last_run, as
     return ''.join(lines)
 
 
-def process_remote_print(msg: bytes) -> str:
+def process_remote_print(msg: str) -> str:
     from base64 import standard_b64decode
     from .cli import green
     text = standard_b64decode(msg).decode('utf-8', 'replace')
@@ -875,12 +875,18 @@ class Window:
     def handle_remote_cmd(self, cmd: str) -> None:
         get_boss().handle_remote_cmd(cmd, self)
 
-    def handle_remote_echo(self, msg: bytes) -> None:
+    def handle_remote_echo(self, msg: str) -> None:
         from base64 import standard_b64decode
         data = standard_b64decode(msg)
         self.write_to_child(data)
 
-    def handle_remote_print(self, msg: bytes) -> None:
+    def handle_remote_ssh(self, msg: str) -> None:
+        from kittens.ssh.main import get_ssh_data
+        for line in get_ssh_data(msg):
+            self.write_to_child(line)
+            self.write_to_child('\n')
+
+    def handle_remote_print(self, msg: str) -> None:
         text = process_remote_print(msg)
         print(text, end='', file=sys.stderr)
         sys.stderr.flush()
