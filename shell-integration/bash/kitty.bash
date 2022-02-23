@@ -22,7 +22,6 @@ _ksi_main() {
         # print a line to STDOUT of parent kitty process
         builtin local b=$(builtin command base64 <<< "${@}")
         builtin printf "\eP@kitty-print|%s\e\\" "${b//\\n}"
-        # "
     }
 
     _ksi_safe_source() {
