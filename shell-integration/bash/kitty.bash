@@ -20,8 +20,8 @@ _ksi_main() {
 
     _ksi_debug_print() {
         # print a line to STDOUT of parent kitty process
-        builtin local b=$(builtin command base64 <<< "${@}" | tr -d \\n)
-        builtin printf "\eP@kitty-print|%s\e\\" "$b"
+        builtin local b=$(builtin command base64 <<< "${@}")
+        builtin printf "\eP@kitty-print|%s\e\\" "${b//\\n}"
         # "
     }
 
