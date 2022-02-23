@@ -13,6 +13,7 @@ cleanup_on_bootstrap_exit() {
 }
 trap 'cleanup_on_bootstrap_exit' EXIT
 die() { echo "$*" >/dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
+debug() { printf "\033P@kitty-print|%s\033\\" "$(echo -n "debug: $1" | base64)"; }
 
 data_started="n"
 data_complete="n"
