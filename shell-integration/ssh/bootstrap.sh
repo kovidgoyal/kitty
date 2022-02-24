@@ -105,12 +105,16 @@ detect_python() {
     return 0;
 }
 
+parse_passwd_record() {
+    printf "%s" "$(grep -o '[^:]*$')"
+}
+
 using_getent() {
     cmd=$(command -v getent)
     if [ -n "$cmd" ]; then 
         output=$($cmd passwd $USER 2>/dev/null)
         if [ $? = 0 ]; then 
-            login_shell=$(echo $output | grep -o '[^:]*$');
+            login_shell=$(echo $output | parse_passwd_record);
             if login_shell_is_ok; then return 0; fi
         fi
     fi
@@ -122,7 +126,7 @@ using_id() {
     if [ -n "$cmd" ]; then 
         output=$($cmd -P $USER 2>/dev/null)
         if [ $? = 0 ]; then 
-            login_shell=$(echo $output | grep -o '[^:]*$');
+            login_shell=$(echo $output | parse_passwd_record);
             if login_shell_is_ok; then return 0; fi
         fi
     fi
@@ -134,7 +138,7 @@ using_passwd() {
     if [ -n "$cmd" ]; then 
         output=$($cmd "^$USER:" /etc/passwd 2>/dev/null)
         if [ $? = 0 ]; then 
-            login_shell=$(echo $output | grep -o '[^:]*$');
+            login_shell=$(echo $output | parse_passwd_record);
             if login_shell_is_ok; then return 0; fi
         fi
     fi

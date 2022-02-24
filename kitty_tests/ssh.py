@@ -60,23 +60,23 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         self.assertTrue(methods)
         import pwd
         expected_login_shell = pwd.getpwuid(os.geteuid()).pw_shell
+        all_possible_sh = tuple(sh for sh in ('dash', 'zsh', 'bash', 'posh', 'sh') if shutil.which(sh))
         for m in methods:
-            with self.subTest(method=m):
-                pty = self.check_bootstrap('sh', tdir, extra_exec=f'{m}; echo "$login_shell"; exit 0', SHELL_INTEGRATION_VALUE='')
-                self.assertIn(expected_login_shell, pty.screen_contents())
+            for sh in all_possible_sh:
+                with self.subTest(sh=sh, method=m):
+                    pty = self.check_bootstrap(sh, tdir, extra_exec=f'{m}; echo "$login_shell"; exit 0', SHELL_INTEGRATION_VALUE='')
+                    self.assertIn(expected_login_shell, pty.screen_contents())
 
         ok_login_shell = ''
-        for sh in ('dash', 'zsh', 'bash', 'posh', 'sh'):
-            q = shutil.which(sh)
-            if q:
-                if sh == 'bash' and not bash_ok():
+        for sh in all_possible_sh:
+            if sh == 'bash' and not bash_ok():
+                continue
+            for login_shell in ('', 'fish', 'zsh', 'bash'):
+                if (login_shell and not shutil.which(login_shell)) or (login_shell == 'bash' and not bash_ok()):
                     continue
-                for login_shell in ('', 'fish', 'zsh', 'bash'):
-                    if (login_shell and not shutil.which(login_shell)) or (login_shell == 'bash' and not bash_ok()):
-                        continue
-                    ok_login_shell = login_shell
-                    with self.subTest(sh=sh, login_shell=login_shell), tempfile.TemporaryDirectory() as tdir:
-                        self.check_bootstrap(sh, tdir, login_shell)
+                ok_login_shell = login_shell
+                with self.subTest(sh=sh, login_shell=login_shell), tempfile.TemporaryDirectory() as tdir:
+                    self.check_bootstrap(sh, tdir, login_shell)
         # check that turning off shell integration works
         if ok_login_shell in ('bash', 'zsh'):
             for val in ('', 'no-rc'):
