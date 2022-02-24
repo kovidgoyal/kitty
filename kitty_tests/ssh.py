@@ -10,6 +10,7 @@ import tempfile
 from kittens.ssh.main import bootstrap_script, get_connection_data
 from kitty.constants import is_macos
 from kitty.fast_data_types import CURSOR_BEAM
+from kitty.options.utils import shell_integration
 from kitty.utils import SSHConnectionData
 
 from . import BaseTest
@@ -83,7 +84,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
                     self.check_bootstrap(sh, tdir, login_shell)
         # check that turning off shell integration works
         if ok_login_shell in ('bash', 'zsh'):
-            for val in ('', 'no-rc'):
+            for val in ('', 'no-rc', 'enabled no-rc'):
                 with tempfile.TemporaryDirectory() as tdir:
                     self.check_bootstrap('sh', tdir, ok_login_shell, val)
 
@@ -91,14 +92,14 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         script = bootstrap_script(
             EXEC_CMD=f'echo "UNTAR_DONE"; {extra_exec}',
             OVERRIDE_LOGIN_SHELL=login_shell,
-            SHELL_INTEGRATION_VALUE=SHELL_INTEGRATION_VALUE,
         )
         env = basic_shell_env(home_dir)
         # Avoid generating unneeded completion scripts
         os.makedirs(os.path.join(home_dir, '.local', 'share', 'fish', 'generated_completions'), exist_ok=True)
         # prevent newuser-install from running
         open(os.path.join(home_dir, '.zshrc'), 'w').close()
-        pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=home_dir, env=env)
+        options = {'shell_integration': shell_integration(SHELL_INTEGRATION_VALUE or 'disabled')}
+        pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=home_dir, env=env, options=options)
         if pre_data:
             pty.write_buf = pre_data.encode('utf-8')
         del script

@@ -10,6 +10,7 @@ from typing import Dict, List, Optional
 from .constants import shell_integration_dir
 from .options.types import Options
 from .utils import log_error, which
+from .fast_data_types import get_options
 
 
 def setup_fish_env(env: Dict[str, str], argv: List[str]) -> None:
@@ -120,11 +121,19 @@ def shell_integration_allows_rc_modification(opts: Options) -> bool:
     return not (opts.shell_integration & {'disabled', 'no-rc'})
 
 
+def get_effective_ksi_env_var(opts: Optional[Options] = None) -> str:
+    opts = opts or get_options()
+    if 'disabled' in opts.shell_integration:
+        return ''
+    return ' '.join(opts.shell_integration)
+
+
 def modify_shell_environ(opts: Options, env: Dict[str, str], argv: List[str]) -> None:
     shell = get_supported_shell_name(argv[0])
-    if shell is None or 'disabled' in opts.shell_integration:
+    ksi = get_effective_ksi_env_var(opts)
+    if shell is None or not ksi:
         return
-    env['KITTY_SHELL_INTEGRATION'] = ' '.join(opts.shell_integration)
+    env['KITTY_SHELL_INTEGRATION'] = ksi
     if not shell_integration_allows_rc_modification(opts):
         return
     f = ENV_MODIFIERS.get(shell)

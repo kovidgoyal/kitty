@@ -77,7 +77,9 @@ get_data
 command stty "$saved_tty_settings"
 saved_tty_settings=""
 if [ "$rc" != "0" ]; then die "Failed to extract data transmitted by ssh kitten over the TTY device"; fi
-if [ ! -f "$HOME/.terminfo/kitty.terminfo" ]; then die "Extracted data transmitted by ssh kitten is incomplete"; fi
+shell_integration_dir="$HOME/SHELL_INTEGRATION_DIR"
+shell_integration_settings_file="$shell_integration_dir/settings/ksi_env_var"
+if [ ! -f "$shell_integration_settings_file" ]; then die "Extracted data transmitted by ssh kitten is incomplete"; fi
 if [ -n "$leading_data" ]; then
     # clear current line as it might have things echoed on it from leading_data
     # because we only turn off echo in this script whereas the leading bytes could 
@@ -100,7 +102,6 @@ if [ -x "$(command -v tic)" ]; then
     if [ "$rc" != "0" ]; then die "$tic_out"; fi
 fi
 
-shell_integration_dir="$HOME/SHELL_INTEGRATION_DIR"
 
 login_shell_is_ok() {
     if [ -z "$login_shell" -o ! -x "$login_shell" ]; then return 1; fi
@@ -187,7 +188,8 @@ else
 fi
 shell_name=$(basename $login_shell)
 
-export KITTY_SHELL_INTEGRATION="SHELL_INTEGRATION_VALUE"
+# read the variable and remove all leading and trailing spaces and collapse multiple spaces using xargs
+export KITTY_SHELL_INTEGRATION="$(cat $shell_integration_settings_file | xargs echo)"
 
 exec_bash_with_integration() {
     export ENV="$shell_integration_dir/bash/kitty.bash"
@@ -235,14 +237,18 @@ exec_with_shell_integration() {
 }
 
 case "$KITTY_SHELL_INTEGRATION" in
-    "")
+    ("") 
+        # only blanks or unset
         unset KITTY_SHELL_INTEGRATION
         ;;
-    *"no-rc"*)
-        ;;
-    *)
-        exec_with_shell_integration
-        unset KITTY_SHELL_INTEGRATION
+    (*) 
+        # not blank
+        q=$(printf "%s" "$KITTY_SHELL_INTEGRATION" | grep '\bno-rc\b')
+        if [ -z "$q"  ]; then
+            exec_with_shell_integration
+            # exec failed, unset 
+            unset KITTY_SHELL_INTEGRATION
+        fi
         ;;
 esac
 

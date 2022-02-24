@@ -6,14 +6,15 @@ import io
 import os
 import re
 import shlex
-import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 from contextlib import suppress
-from typing import Dict, Iterator, List, NoReturn, Optional, Set, Tuple
+from typing import Dict, Iterator, List, NoReturn, Optional, Set, Tuple, Union
 
 from kitty.constants import cache_dir, shell_integration_dir, terminfo_dir
+from kitty.shell_integration import get_effective_ksi_env_var
 from kitty.short_uuid import uuid4
 from kitty.utils import SSHConnectionData
 
@@ -24,17 +25,32 @@ DEFAULT_SHELL_INTEGRATION_DEST = '.local/share/kitty-ssh-kitten/shell-integratio
 
 def make_tarfile(hostname: str = '', shell_integration_dest: str = DEFAULT_SHELL_INTEGRATION_DEST) -> bytes:
 
-    def filter_files(tarinfo: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
-        if tarinfo.name.endswith('ssh/bootstrap.sh') or tarinfo.name.endswith('ssh/bootstrap.py'):
-            return None
+    def normalize_tarinfo(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo:
         tarinfo.uname = tarinfo.gname = 'kitty'
         tarinfo.uid = tarinfo.gid = 0
         return tarinfo
+
+    def add_data_as_file(tf: tarfile.TarFile, arcname: str, data: Union[str, bytes]) -> tarfile.TarInfo:
+        ans = tarfile.TarInfo(arcname)
+        ans.mtime = int(time.time())
+        ans.type = tarfile.REGTYPE
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        ans.size = len(data)
+        normalize_tarinfo(ans)
+        tf.addfile(ans, io.BytesIO(data))
+        return ans
+
+    def filter_files(tarinfo: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
+        if tarinfo.name.endswith('ssh/bootstrap.sh') or tarinfo.name.endswith('ssh/bootstrap.py'):
+            return None
+        return normalize_tarinfo(tarinfo)
 
     buf = io.BytesIO()
     with tarfile.open(mode='w:bz2', fileobj=buf, encoding='utf-8') as tf:
         tf.add(shell_integration_dir, arcname=shell_integration_dest, filter=filter_files)
         tf.add(terminfo_dir, arcname='.terminfo', filter=filter_files)
+        add_data_as_file(tf, shell_integration_dest.rstrip('/') + '/settings/ksi_env_var', get_effective_ksi_env_var())
     return buf.getvalue()
 
 
@@ -77,7 +93,6 @@ def prepare_script(ans: str, replacements: Dict[str, str]) -> str:
     for k in ('EXEC_CMD', 'OVERRIDE_LOGIN_SHELL'):
         replacements[k] = replacements.get(k, '')
     replacements['SHELL_INTEGRATION_DIR'] = replacements.get('SHELL_INTEGRATION_DIR', DEFAULT_SHELL_INTEGRATION_DEST)
-    replacements['SHELL_INTEGRATION_VALUE'] = replacements.get('SHELL_INTEGRATION_VALUE', 'enabled')
 
     def sub(m: 're.Match[str]') -> str:
         return replacements[m.group()]
@@ -91,129 +106,8 @@ def bootstrap_script(script_type: str = 'sh', **replacements: str) -> str:
     return prepare_script(ans, replacements)
 
 
-SHELL_SCRIPT = '''\
-#!/bin/sh
-# macOS ships with an ancient version of tic that cannot read from stdin, so we
-# create a temp file for it
-tmp=$(mktemp)
-cat >$tmp << 'TERMEOF'
-TERMINFO
-TERMEOF
-
-tname=.terminfo
-if [ -e "/usr/share/misc/terminfo.cdb" ]; then
-    # NetBSD requires this see https://github.com/kovidgoyal/kitty/issues/4622
-    tname=".terminfo.cdb"
-fi
-tic_out=$(tic -x -o $HOME/$tname $tmp 2>&1)
-rc=$?
-rm $tmp
-if [ "$rc" != "0" ]; then echo "$tic_out"; exit 1; fi
-if [ -z "$USER" ]; then export USER=$(whoami); fi
-export TERMINFO="$HOME/$tname"
-login_shell=""
-python=""
-
-login_shell_is_ok() {
-    if [ -z "$login_shell" ] || [ ! -x "$login_shell" ]; then return 1; fi
-    case "$login_shell" in
-        *sh) return 0;
-    esac
-    return 1;
-}
-
-detect_python() {
-    python=$(command -v python3)
-    if [ -z "$python" ]; then python=$(command -v python2); fi
-    if [ -z "$python" ]; then python=python; fi
-}
-
-using_getent() {
-    cmd=$(command -v getent)
-    if [ -z "$cmd" ]; then return; fi
-    output=$($cmd passwd $USER 2>/dev/null)
-    if [ $? = 0 ]; then login_shell=$(echo $output | cut -d: -f7); fi
-}
-
-using_id() {
-    cmd=$(command -v id)
-    if [ -z "$cmd" ]; then return; fi
-    output=$($cmd -P $USER 2>/dev/null)
-    if [ $? = 0 ]; then login_shell=$(echo $output | cut -d: -f7); fi
-}
-
-using_passwd() {
-    cmd=$(command -v grep)
-    if [ -z "$cmd" ]; then return; fi
-    output=$($cmd "^$USER:" /etc/passwd 2>/dev/null)
-    if [ $? = 0 ]; then login_shell=$(echo $output | cut -d: -f7); fi
-}
-
-using_python() {
-    detect_python
-    if [ ! -x "$python" ]; then return; fi
-    output=$($python -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
-    if [ $? = 0 ]; then login_shell=$output; fi
-}
-
-execute_with_python() {
-    detect_python
-    exec $python -c "import os; os.execl('$login_shell', '-' '$shell_name')"
-}
-
-die() { echo "$*" 1>&2 ; exit 1; }
-
-using_getent
-if ! login_shell_is_ok; then using_id; fi
-if ! login_shell_is_ok; then using_python; fi
-if ! login_shell_is_ok; then using_passwd; fi
-if ! login_shell_is_ok; then die "Could not detect login shell"; fi
-
-
-# If a command was passed to SSH execute it here
-EXEC_CMD
-
-# We need to pass the first argument to the executed program with a leading -
-# to make sure the shell executes as a login shell. Note that not all shells
-# support exec -a so we use the below to try to detect such shells
-shell_name=$(basename $login_shell)
-if [ -z "$PIPESTATUS" ]; then
-    # the dash shell does not support exec -a and also does not define PIPESTATUS
-    execute_with_python
-fi
-exec -a "-$shell_name" $login_shell
-'''
-
-
-PYTHON_SCRIPT = '''\
-#!/usr/bin/env python
-from __future__ import print_function
-from tempfile import NamedTemporaryFile
-import subprocess, os, sys, pwd, binascii, json
-
-# macOS ships with an ancient version of tic that cannot read from stdin, so we
-# create a temp file for it
-with NamedTemporaryFile() as tmp:
-    tname = '.terminfo'
-    if os.path.exists('/usr/share/misc/terminfo.cdb'):
-        tname += '.cdb'
-    tmp.write(binascii.unhexlify('{terminfo}'))
-    tmp.flush()
-    p = subprocess.Popen(['tic', '-x', '-o', os.path.expanduser('~/' + tname), tmp.name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = p.communicate()
-    if p.wait() != 0:
-        getattr(sys.stderr, 'buffer', sys.stderr).write(stdout + stderr)
-        raise SystemExit('Failed to compile terminfo using tic')
-command_to_execute = json.loads(binascii.unhexlify('{command_to_execute}'))
-try:
-    shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
-except KeyError:
-    shell_path = '/bin/sh'
-shell_name = '-' + os.path.basename(shell_path)
-if command_to_execute:
-    os.execlp(shell_path, shell_path, '-c', command_to_execute)
-os.execlp(shell_path, shell_name)
-'''
+def load_script(script_type: str = 'sh', exec_cmd: str = '') -> str:
+    return bootstrap_script(script_type, EXEC_CMD=exec_cmd)
 
 
 def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
@@ -345,8 +239,7 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
     return ssh_args, server_args, passthrough
 
 
-def get_posix_cmd(terminfo: str, remote_args: List[str]) -> List[str]:
-    sh_script = SHELL_SCRIPT.replace('TERMINFO', terminfo, 1)
+def get_posix_cmd(remote_args: List[str]) -> List[str]:
     command_to_execute = ''
     if remote_args:
         # ssh simply concatenates multiple commands using a space see
@@ -354,17 +247,12 @@ def get_posix_cmd(terminfo: str, remote_args: List[str]) -> List[str]:
         # concatenated command as shell -c cmd
         args = [c.replace("'", """'"'"'""") for c in remote_args]
         command_to_execute = "exec $login_shell -c '{}'".format(' '.join(args))
-    sh_script = sh_script.replace('EXEC_CMD', command_to_execute)
+    sh_script = load_script(exec_cmd=command_to_execute)
     return [f'sh -c {shlex.quote(sh_script)}']
 
 
-def get_python_cmd(terminfo: str, command_to_execute: List[str]) -> List[str]:
-    import json
-    script = PYTHON_SCRIPT.format(
-        terminfo=terminfo.encode('utf-8').hex(),
-        command_to_execute=json.dumps(' '.join(command_to_execute)).encode('utf-8').hex()
-    )
-    return [f'python -c "{script}"']
+def get_python_cmd(remote_args: List[str]) -> List[str]:
+    raise NotImplementedError('TODO: Implement me')
 
 
 def main(args: List[str]) -> NoReturn:
@@ -386,9 +274,8 @@ def main(args: List[str]) -> NoReturn:
             cmd.append('-t')
         cmd.append('--')
         cmd.append(hostname)
-        terminfo = subprocess.check_output(['infocmp', '-a']).decode('utf-8')
         f = get_posix_cmd if use_posix else get_python_cmd
-        cmd += f(terminfo, remote_args)
+        cmd += f(remote_args)
     os.execvp('ssh', cmd)
 
 
