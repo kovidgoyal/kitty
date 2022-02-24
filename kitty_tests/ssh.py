@@ -43,9 +43,6 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         t('ssh -p 33 main', port=33)
 
     def test_ssh_bootstrap_script(self):
-        # test simple untar with only sh
-        with tempfile.TemporaryDirectory() as tdir:
-            self.check_bootstrap('sh', tdir, 'sh', SHELL_INTEGRATION_VALUE='')
         # test various detection methods for login_shell
         methods = []
         if shutil.which('python') or shutil.which('python3') or shutil.which('python2'):
@@ -63,16 +60,15 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         all_possible_sh = tuple(sh for sh in ('dash', 'zsh', 'bash', 'posh', 'sh') if shutil.which(sh))
         for m in methods:
             for sh in all_possible_sh:
-                with self.subTest(sh=sh, method=m):
+                with self.subTest(sh=sh, method=m), tempfile.TemporaryDirectory() as tdir:
                     pty = self.check_bootstrap(sh, tdir, extra_exec=f'{m}; echo "$login_shell"; exit 0', SHELL_INTEGRATION_VALUE='')
                     self.assertIn(expected_login_shell, pty.screen_contents())
 
+        # check that shell integration works
         ok_login_shell = ''
         for sh in all_possible_sh:
-            if sh == 'bash' and not bash_ok():
-                continue
-            for login_shell in ('', 'fish', 'zsh', 'bash'):
-                if (login_shell and not shutil.which(login_shell)) or (login_shell == 'bash' and not bash_ok()):
+            for login_shell in {'fish', 'zsh', 'bash'} & set(all_possible_sh):
+                if login_shell == 'bash' and not bash_ok():
                     continue
                 ok_login_shell = login_shell
                 with self.subTest(sh=sh, login_shell=login_shell), tempfile.TemporaryDirectory() as tdir:
