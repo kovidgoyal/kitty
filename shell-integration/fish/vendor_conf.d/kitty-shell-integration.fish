@@ -19,6 +19,8 @@ end
 
 status is-interactive || exit 0
 not functions -q __ksi_schedule || exit 0
+# Check fish version 3.3.0+ efficiently and exit on outdated versions
+set -q fish_killring || exit 0
 
 function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after other scripts have run, we hope"
     functions --erase __ksi_schedule
