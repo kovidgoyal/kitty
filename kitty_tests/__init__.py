@@ -4,13 +4,11 @@
 import fcntl
 import io
 import os
-import queue
 import select
 import shlex
 import struct
 import sys
 import termios
-import threading
 import time
 from pty import CHILD, fork
 from unittest import TestCase
@@ -22,7 +20,7 @@ from kitty.fast_data_types import (
 from kitty.options.parse import merge_result_dicts
 from kitty.options.types import Options, defaults
 from kitty.types import MouseEvent
-from kitty.utils import read_screen_size, write_all
+from kitty.utils import read_screen_size
 from kitty.window import process_remote_print
 
 
@@ -168,6 +166,7 @@ class PTY:
             argv = shlex.split(argv)
         pid, self.master_fd = fork()
         self.is_child = pid == CHILD
+        self.write_buf = b''
         if self.is_child:
             while read_screen_size().width != columns * cell_width:
                 time.sleep(0.01)
@@ -181,43 +180,36 @@ class PTY:
         self.callbacks = Callbacks()
         self.screen = Screen(self.callbacks, rows, columns, scrollback, cell_width, cell_height, 0, self.callbacks)
         self.received_bytes = b''
-        self.queue = queue.Queue()
-        self.thread = threading.Thread(name='PTYWriter', target=self.write_loop, daemon=True)
-        self.thread.start()
 
     def __del__(self):
         if not self.is_child:
-            self.queue.put(None)
             fd = self.master_fd
             del self.master_fd
             os.close(fd)
 
-    def write_loop(self):
-        while True:
-            x = self.queue.get()
-            if x is None:
-                break
-            try:
-                write_all(self.master_fd, x)
-            except AttributeError:
-                break
-            except OSError as err:
-                print(f'Failed to write to master_fd: {err}', file=sys.stderr)
-
     def write_to_child(self, data):
-        self.queue.put(data)
-
-    def wait_for_input_from_child(self, timeout=10):
-        rd = select.select([self.master_fd], [], [], timeout)[0]
-        return bool(rd)
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        self.write_buf += data
 
     def send_cmd_to_child(self, cmd):
         self.write_to_child(cmd + '\r')
 
     def process_input_from_child(self, timeout=10):
-        self.wait_for_input_from_child(timeout=10)
+        rd, wd, err = select.select([self.master_fd], [self.master_fd] if self.write_buf else [], [self.master_fd], timeout)
+        if err:
+            raise OSError('master_fd is in error condition')
+        while wd:
+            try:
+                n = os.write(self.master_fd, self.write_buf)
+            except (BlockingIOError, OSError):
+                n = 0
+            if not n:
+                break
+            self.write_buf = self.write_buf[n:]
+
         bytes_read = 0
-        while True:
+        while rd:
             try:
                 data = os.read(self.master_fd, io.DEFAULT_BUFFER_SIZE)
             except (BlockingIOError, OSError):
