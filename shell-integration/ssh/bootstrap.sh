@@ -7,7 +7,7 @@ cleanup_on_bootstrap_exit() {
     [ ! -z "$saved_tty_settings" ] && command stty "$saved_tty_settings"
 }
 
-die() { echo "$*" >/dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
+die() { echo "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
 dsc_to_kitty() { printf "\033P@kitty-$1|%s\033\\" "$(printf "%s" "$2" | base64)"; }
 debug() { dsc_to_kitty "print" "debug $1"; }
 echo_via_kitty() { dsc_to_kitty "echo" "$1"; }
@@ -50,11 +50,19 @@ get_data() {
     # head -c reads beyond the specified number of bytes into an internal buffer on macOS
     #
     # POSIX dd works for one byte at a time but for reading X bytes it needs the GNU iflag=count_bytes
-    # extension. 
+    # extension, and is anyway unsafe as it can lead to corrupt output when the read syscall is interrupted.
+    record_started=0
+    record_separator=$(printf "\036")
     while :; do
         n=$(command dd bs=1 count=1 2> /dev/null) 
-        if [ "$n" = ":" ]; then break; fi
-        size="$size$n"
+        if [ $record_started = 1 ]; then
+            if [ "$n" = ":" ]; then break; fi
+            size="$size$n"
+        else
+            if [ "$n" = "$record_separator" ]; then 
+                record_started=1; 
+            fi
+        fi
     done
     # using dd with bs=1 is very slow on Linux, so use head 
     command head -c "$size" | untar
