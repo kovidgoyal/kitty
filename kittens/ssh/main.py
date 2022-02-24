@@ -58,7 +58,7 @@ def get_ssh_data(msg: str, shell_integration_dest: str = DEFAULT_SHELL_INTEGRATI
         else:
             from base64 import standard_b64encode
             encoded_data = standard_b64encode(data)
-            yield f"{len(encoded_data)}\n".encode('ascii')
+            yield f"{len(encoded_data)}:".encode('ascii')
             yield encoded_data
 
 

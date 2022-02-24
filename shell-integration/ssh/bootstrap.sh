@@ -11,7 +11,7 @@ die() { echo "$*" >/dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
 debug() { printf "\033P@kitty-print|%s\033\\" "$(printf "%s" "debug: $1" | base64)"; }
 
 saved_tty_settings=$(command stty -g)
-command stty raw min 1 time 0 || die "stty not available"
+command stty raw min 1 time 0 -echo || die "stty not available"
 trap 'cleanup_on_bootstrap_exit' EXIT
 
 data_started="n"
@@ -35,17 +35,35 @@ pending_data=""
 data_complete="n"
 
 printf "\033P@kitty-ssh|%s:%s:%s\033\\" "$hostname" "$password_filename" "$data_password"
-IFS= read -r size || die "Failed to read data size";
-case "$size" in
-    " "*) 
-        die "$size";
-        ;;
-    "") 
-        die "Got empty size";
-        ;;
-esac
-command head -c "$size" < /dev/stdin | command base64 -d | command tar xjf - --no-same-owner -C "$HOME" 
-rc="$?"
+size=""
+
+untar() {
+    command base64 -d | command tar xjf - --no-same-owner -C "$HOME" 
+}
+
+get_data() {
+    # We need a way to read a single byte at a time and to read a specified number of bytes in one invocation.
+    # The options are head -c, read -N and dd
+    #
+    # read -N is not in POSIX and dash/posh dont implement it. Also bash seems to read beyond
+    # the specified number of bytes into an internal buffer.
+    #
+    # head -c reads beyond the specified number of bytes into an internal buffer on macOS
+    #
+    # POSIX dd works for one byte at a time but for reading X bytes it needs the GNU iflag=count_bytes
+    # extension. 
+    while :; do
+        n=$(command dd bs=1 count=1 2> /dev/null) 
+        if [ "$n" = ":" ]; then break; fi
+        size="$size$n"
+    done
+    # using dd with bs=1 is very slow on Linux, so use head 
+    command head -c "$size" | untar
+    # command dd bs=1 "count=$size" 2> /dev/null | untar
+    rc="$?";
+}
+
+get_data
 command stty "$saved_tty_settings"
 saved_tty_settings=""
 if [ "$rc" != "0" ]; then die "Failed to extract data transmitted by ssh kitten over the TTY device"; fi
