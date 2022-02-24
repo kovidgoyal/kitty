@@ -39,7 +39,6 @@ def make_tarfile(hostname: str = '', shell_integration_dest: str = DEFAULT_SHELL
 
 
 def get_ssh_data(msg: str, shell_integration_dest: str = DEFAULT_SHELL_INTEGRATION_DEST) -> Iterator[bytes]:
-    yield b"KITTY_SSH_DATA_START\n"
     try:
         hostname, pwfilename, pw = msg.split(':', 2)
     except Exception:
@@ -58,12 +57,9 @@ def get_ssh_data(msg: str, shell_integration_dest: str = DEFAULT_SHELL_INTEGRATI
             yield b' error while gathering ssh data\n'
         else:
             from base64 import standard_b64encode
-            encoded_data = memoryview(standard_b64encode(data))
-            while encoded_data:
-                yield encoded_data[:2048]
-                yield b'\n'
-                encoded_data = encoded_data[2048:]
-    yield b"KITTY_SSH_DATA_END\n"
+            encoded_data = standard_b64encode(data)
+            yield f"{len(encoded_data)}\n".encode('ascii')
+            yield encoded_data
 
 
 def safe_remove(x: str) -> None:

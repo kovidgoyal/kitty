@@ -3,17 +3,16 @@
 # Distributed under terms of the GPLv3 license.
 
 # read the transmitted data from STDIN
-saved_tty_settings=$(command stty -g)
-command stty raw -echo
-encoded_data_file=$(mktemp)
-
 cleanup_on_bootstrap_exit() {
-    [ ! -z "$encoded_data_file" ] && command rm -f "$encoded_data_file"
     [ ! -z "$saved_tty_settings" ] && command stty "$saved_tty_settings"
 }
-trap 'cleanup_on_bootstrap_exit' EXIT
+
 die() { echo "$*" >/dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
 debug() { printf "\033P@kitty-print|%s\033\\" "$(printf "%s" "debug: $1" | base64)"; }
+
+saved_tty_settings=$(command stty -g)
+command stty raw min 1 time 0 || die "stty not available"
+trap 'cleanup_on_bootstrap_exit' EXIT
 
 data_started="n"
 data_complete="n"
@@ -34,38 +33,25 @@ data_password="DATA_PASSWORD"
 password_filename="PASSWORD_FILENAME"
 pending_data=""
 data_complete="n"
-printf "\033P@kitty-ssh|%s:%s:%s\033\\" "$hostname" "$password_filename" "$data_password"
 
-while [ "$data_complete" = "n" ]; do
-    IFS= read -r line || die "Incomplete ssh data";
-    case "$line" in
-        *"KITTY_SSH_DATA_START")
-            prefix=$(command expr "$line" : "\(.*\)KITTY_SSH_DATA_START")
-            pending_data="$pending_data$prefix"
-            data_started="y";
-            ;;
-        "KITTY_SSH_DATA_END")
-            data_complete="y";
-            ;;
-        *)
-            if [ "$data_started" = "y" ]; then
-                printf "%s" "$line" >> "$encoded_data_file"
-            else
-                pending_data="$pending_data$line\n"
-            fi
-            ;;
-    esac
-done
+printf "\033P@kitty-ssh|%s:%s:%s\033\\" "$hostname" "$password_filename" "$data_password"
+IFS= read -r size || die "Failed to read data size";
+case "$size" in
+    " "*) 
+        die "$size";
+        ;;
+    "") 
+        die "Got empty size";
+        ;;
+esac
+command head -c "$size" < /dev/stdin | command base64 -d | command tar xjf - --no-same-owner -C "$HOME" 
+rc="$?"
 command stty "$saved_tty_settings"
 saved_tty_settings=""
+if [ "$rc" != "0" ]; then die "Failed to extract data transmitted by ssh kitten over the TTY device"; fi
 if [ -n "$pending_data" ]; then
     printf "\033P@kitty-echo|%s\033\\" "$(printf "%s" "$pending_data" | base64)"
 fi
-command base64 -d < "$encoded_data_file" | command tar xjf - --no-same-owner -C "$HOME"
-rc=$?
-command rm -f "$encoded_data_file"
-encoded_data_file=""
-if [ "$rc" != "0" ]; then die "Failed to extract data transmitted by ssh kitten over the TTY device"; fi
 if [ ! -f "$HOME/.terminfo/kitty.terminfo" ]; then die "Extracted data transmitted by ssh kitten is incomplete"; fi
 
 # export TERMINFO

@@ -42,6 +42,10 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         t('ssh -p 33 main', port=33)
 
     def test_ssh_bootstrap_script(self):
+        # test simple untar with only sh
+        with tempfile.TemporaryDirectory() as tdir:
+            self.check_bootstrap('sh', tdir, 'sh', SHELL_INTEGRATION_VALUE='')
+
         ok_login_shell = ''
         for sh in ('dash', 'zsh', 'bash', 'posh', 'sh'):
             q = shutil.which(sh)
