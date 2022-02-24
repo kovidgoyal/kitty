@@ -32,6 +32,7 @@ if [ -z "$USER" ]; then USER=$(whoami); fi
 data_password="DATA_PASSWORD"
 password_filename="PASSWORD_FILENAME"
 data_complete="n"
+leading_data=""
 
 printf "\033P@kitty-ssh|%s:%s:%s\033\\" "$hostname" "$password_filename" "$data_password"
 size=""
@@ -61,6 +62,8 @@ get_data() {
         else
             if [ "$n" = "$record_separator" ]; then 
                 record_started=1; 
+            else
+                leading_data="$leading_data$n"
             fi
         fi
     done
@@ -75,6 +78,12 @@ command stty "$saved_tty_settings"
 saved_tty_settings=""
 if [ "$rc" != "0" ]; then die "Failed to extract data transmitted by ssh kitten over the TTY device"; fi
 if [ ! -f "$HOME/.terminfo/kitty.terminfo" ]; then die "Extracted data transmitted by ssh kitten is incomplete"; fi
+if [ -n "$leading_data" ]; then
+    # clear current line as it might have things echoed on it from leading_data
+    # because we only turn off echo in this script whereas the leading bytes could 
+    # have been sent before the script had a chance to run
+    printf "\r\033[K"  
+fi
 
 # export TERMINFO
 tname=".terminfo"

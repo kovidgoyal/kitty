@@ -43,6 +43,15 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         t('ssh -p 33 main', port=33)
 
     def test_ssh_bootstrap_script(self):
+        # test handling of data in tty before tarfile is sent
+        all_possible_sh = tuple(sh for sh in ('dash', 'zsh', 'bash', 'posh', 'sh') if shutil.which(sh))
+        for sh in all_possible_sh:
+            with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
+                pty = self.check_bootstrap(
+                    sh, tdir, extra_exec='echo "ld:$leading_data"; exit 0',
+                    SHELL_INTEGRATION_VALUE='', pre_data='before_tarfile')
+                self.ae(pty.screen_contents(), 'UNTAR_DONE\nld:before_tarfile')
+
         # test various detection methods for login_shell
         methods = []
         if shutil.which('python') or shutil.which('python3') or shutil.which('python2'):
@@ -57,7 +66,6 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         self.assertTrue(methods)
         import pwd
         expected_login_shell = pwd.getpwuid(os.geteuid()).pw_shell
-        all_possible_sh = tuple(sh for sh in ('dash', 'zsh', 'bash', 'posh', 'sh') if shutil.which(sh))
         for m in methods:
             for sh in all_possible_sh:
                 with self.subTest(sh=sh, method=m), tempfile.TemporaryDirectory() as tdir:
@@ -79,7 +87,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
                 with tempfile.TemporaryDirectory() as tdir:
                     self.check_bootstrap('sh', tdir, ok_login_shell, val)
 
-    def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', extra_exec=''):
+    def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', extra_exec='', pre_data=''):
         script = bootstrap_script(
             EXEC_CMD=f'echo "UNTAR_DONE"; {extra_exec}',
             OVERRIDE_LOGIN_SHELL=login_shell,
@@ -91,6 +99,8 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         # prevent newuser-install from running
         open(os.path.join(home_dir, '.zshrc'), 'w').close()
         pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=home_dir, env=env)
+        if pre_data:
+            pty.write_buf = pre_data.encode('utf-8')
         del script
 
         def check_untar_or_fail():
