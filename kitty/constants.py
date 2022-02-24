@@ -26,12 +26,33 @@ version: Version = Version(0, 24, 4)
 str_version: str = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 is_macos: bool = 'darwin' in _plat
+is_running_from_develop: bool = False
 if getattr(sys, 'frozen', False):
     extensions_dir: str = getattr(sys, 'kitty_extensions_dir')
-    kitty_base_dir = os.path.dirname(extensions_dir)
-    if is_macos:
-        kitty_base_dir = os.path.dirname(os.path.dirname(kitty_base_dir))
-    kitty_base_dir = os.path.join(kitty_base_dir, 'kitty')
+
+    def get_frozen_base() -> str:
+        global is_running_from_develop
+        try:
+            from bypy_importer import running_in_develop_mode  # type: ignore
+        except ImportError:
+            pass
+        else:
+            is_running_from_develop = running_in_develop_mode()
+
+        if is_running_from_develop:
+            q = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            try:
+                if os.path.isdir(q):
+                    return q
+            except OSError:
+                pass
+        ans = os.path.dirname(extensions_dir)
+        if is_macos:
+            ans = os.path.dirname(os.path.dirname(ans))
+        ans = os.path.join(ans, 'kitty')
+        return ans
+    kitty_base_dir = get_frozen_base()
+    del get_frozen_base
 else:
     kitty_base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     extensions_dir = os.path.join(kitty_base_dir, 'kitty')
