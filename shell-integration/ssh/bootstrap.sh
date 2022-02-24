@@ -8,15 +8,15 @@ cleanup_on_bootstrap_exit() {
 }
 
 die() { echo "$*" >/dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
-debug() { printf "\033P@kitty-print|%s\033\\" "$(printf "%s" "debug: $1" | base64)"; }
-
+dsc_to_kitty() { printf "\033P@kitty-$1|%s\033\\" "$(printf "%s" "$2" | base64)"; }
+debug() { dsc_to_kitty "print" "debug $1"; }
+echo_via_kitty() { dsc_to_kitty "echo" "$1"; }
 saved_tty_settings=$(command stty -g)
 command stty raw min 1 time 0 -echo || die "stty not available"
 trap 'cleanup_on_bootstrap_exit' EXIT
 
 data_started="n"
 data_complete="n"
-pending_data=""
 if [ -z "$HOSTNAME" ]; then
     hostname=$(hostname)
     if [ -z "$hostname" ]; then hostname="_"; fi
@@ -31,7 +31,6 @@ if [ -z "$USER" ]; then USER=$(whoami); fi
 # ask for the SSH data
 data_password="DATA_PASSWORD"
 password_filename="PASSWORD_FILENAME"
-pending_data=""
 data_complete="n"
 
 printf "\033P@kitty-ssh|%s:%s:%s\033\\" "$hostname" "$password_filename" "$data_password"
@@ -67,9 +66,6 @@ get_data
 command stty "$saved_tty_settings"
 saved_tty_settings=""
 if [ "$rc" != "0" ]; then die "Failed to extract data transmitted by ssh kitten over the TTY device"; fi
-if [ -n "$pending_data" ]; then
-    printf "\033P@kitty-echo|%s\033\\" "$(printf "%s" "$pending_data" | base64)"
-fi
 if [ ! -f "$HOME/.terminfo/kitty.terminfo" ]; then die "Extracted data transmitted by ssh kitten is incomplete"; fi
 
 # export TERMINFO
