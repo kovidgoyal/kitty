@@ -8,8 +8,9 @@ import shutil
 import tempfile
 
 from kittens.ssh.main import bootstrap_script, get_connection_data
-from kitty.utils import SSHConnectionData
+from kitty.constants import is_macos
 from kitty.fast_data_types import CURSOR_BEAM
+from kitty.utils import SSHConnectionData
 
 from . import BaseTest
 from .shell_integration import bash_ok, basic_shell_env
@@ -45,6 +46,24 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         # test simple untar with only sh
         with tempfile.TemporaryDirectory() as tdir:
             self.check_bootstrap('sh', tdir, 'sh', SHELL_INTEGRATION_VALUE='')
+        # test various detection methods for login_shell
+        methods = []
+        if shutil.which('python') or shutil.which('python3') or shutil.which('python2'):
+            methods.append('using_python')
+        if is_macos:
+            methods += ['using_id']
+        else:
+            if shutil.which('getent'):
+                methods.append('using_getent')
+            if os.access('/etc/passwd', os.R_OK):
+                methods.append('using_passwd')
+        self.assertTrue(methods)
+        import pwd
+        expected_login_shell = pwd.getpwuid(os.geteuid()).pw_shell
+        for m in methods:
+            with self.subTest(method=m):
+                pty = self.check_bootstrap('sh', tdir, extra_exec=f'{m}; echo "$login_shell"; exit 0', SHELL_INTEGRATION_VALUE='')
+                self.assertIn(expected_login_shell, pty.screen_contents())
 
         ok_login_shell = ''
         for sh in ('dash', 'zsh', 'bash', 'posh', 'sh'):
@@ -64,9 +83,9 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
                 with tempfile.TemporaryDirectory() as tdir:
                     self.check_bootstrap('sh', tdir, ok_login_shell, val)
 
-    def check_bootstrap(self, sh, home_dir, login_shell, SHELL_INTEGRATION_VALUE='enabled'):
+    def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', extra_exec=''):
         script = bootstrap_script(
-            EXEC_CMD='echo "UNTAR_DONE"',
+            EXEC_CMD=f'echo "UNTAR_DONE"; {extra_exec}',
             OVERRIDE_LOGIN_SHELL=login_shell,
             SHELL_INTEGRATION_VALUE=SHELL_INTEGRATION_VALUE,
         )
@@ -75,7 +94,6 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         os.makedirs(os.path.join(home_dir, '.local', 'share', 'fish', 'generated_completions'), exist_ok=True)
         # prevent newuser-install from running
         open(os.path.join(home_dir, '.zshrc'), 'w').close()
-        self.assertFalse(os.path.exists(os.path.join(home_dir, '.terminfo/kitty.terminfo')))
         pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=home_dir, env=env)
         del script
 
@@ -91,3 +109,4 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
             self.assertEqual(pty.screen.cursor.shape, 0)
         else:
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
+        return pty

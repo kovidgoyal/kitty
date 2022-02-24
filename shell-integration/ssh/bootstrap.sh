@@ -87,9 +87,6 @@ if [ -x "$(command -v tic)" ]; then
     if [ "$rc" != "0" ]; then die "$tic_out"; fi
 fi
 
-# If a command was passed to SSH execute it here
-EXEC_CMD
-
 shell_integration_dir="$HOME/SHELL_INTEGRATION_DIR"
 
 login_shell_is_ok() {
@@ -113,7 +110,7 @@ using_getent() {
     if [ -n "$cmd" ]; then 
         output=$($cmd passwd $USER 2>/dev/null)
         if [ $? = 0 ]; then 
-            login_shell=$(echo $output | cut -d: -f7);
+            login_shell=$(echo $output | grep -o '[^:]*$');
             if login_shell_is_ok; then return 0; fi
         fi
     fi
@@ -161,6 +158,9 @@ execute_with_python() {
     fi
     return 1;
 }
+
+# If a command was passed to SSH execute it here
+EXEC_CMD
 
 LOGIN_SHELL="OVERRIDE_LOGIN_SHELL"
 if [ -n "$LOGIN_SHELL" ]; then
