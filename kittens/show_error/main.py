@@ -32,7 +32,7 @@ def real_main(args: List[str]) -> None:
 
 def main(args: List[str]) -> None:
     try:
-        with suppress(KeyboardInterrupt):
+        with suppress(KeyboardInterrupt, EOFError):
             real_main(args)
     except Exception:
         import traceback
