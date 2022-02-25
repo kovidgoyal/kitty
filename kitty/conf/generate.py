@@ -306,7 +306,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
 
     t('')
     t('')
-    t(f'actions = frozenset({tuple(defn.actions)!r})')
+    t(f'actions: typing.FrozenSet[str] = frozenset({tuple(defn.actions)!r})')
     t('')
     t('')
     t('def merge_result_dicts(defaults: typing.Dict[str, typing.Any], vals: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:')

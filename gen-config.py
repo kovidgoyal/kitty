@@ -38,6 +38,8 @@ def main() -> None:
 
     from kittens.diff.options.definition import definition as kd
     write_output('kittens.diff', kd)
+    from kittens.ssh.options.definition import definition as sd
+    write_output('kittens.ssh', sd)
 
 
 if __name__ == '__main__':

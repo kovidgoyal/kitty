@@ -93,7 +93,7 @@ def create_result_dict() -> typing.Dict[str, typing.Any]:
     }
 
 
-actions = frozenset(('map',))
+actions: typing.FrozenSet[str] = frozenset(('map',))
 
 
 def merge_result_dicts(defaults: typing.Dict[str, typing.Any], vals: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:
