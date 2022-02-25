@@ -1537,8 +1537,9 @@ screen_fake_move_cursor_to_position(Screen *self, index_type start_x, index_type
     else { start = &b; end = &a; key = GLFW_FKEY_RIGHT; }
     unsigned int count = 0;
 
-    for (unsigned y = start->y, x = start->x; y <= end->y; y++) {
+    for (unsigned y = start->y, x = start->x; y <= end->y && y < self->lines; y++) {
         unsigned x_limit = y == end->y ? end->x : self->columns;
+        x_limit = MIN(x_limit, self->columns);
         bool found_non_empty_cell = false;
         while (x < x_limit) {
             unsigned int w = linebuf_char_width_at(self->linebuf, x, y);
