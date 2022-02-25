@@ -521,8 +521,12 @@ class Window:
         return self.screen.color_profile.as_dict()
 
     @property
+    def at_prompt(self) -> bool:
+        return self.screen.cursor_at_prompt()
+
+    @property
     def has_running_program(self) -> bool:
-        return not self.screen.cursor_at_prompt()
+        return not self.at_prompt
 
     def matches(self, field: str, pat: MatchPatternType) -> bool:
         if not pat:

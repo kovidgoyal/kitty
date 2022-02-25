@@ -97,6 +97,9 @@ Detailed list of changes
 - Fix :ac:`show_last_command_output` not working when the output is stored
   partially in the scrollback pager history buffer (:iss:`4435`)
 
+- When dropping URLs/files onto kitty at a shell prompt insert them appropriately quoted and space
+  separated (:iss:`4734`)
+
 - Improve CWD detection when there are multiple foreground processes in the TTY process group
 
 - A new option :opt:`narrow_symbols` to turn off opportunistic wide rendering of private use codepoints

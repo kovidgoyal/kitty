@@ -1221,7 +1221,12 @@ class Boss:
             if w is not None:
                 text = data.decode('utf-8', 'replace')
                 if mime == 'text/uri-list':
-                    text = '\n'.join(parse_uri_list(text))
+                    urls = parse_uri_list(text)
+                    if w.at_prompt:
+                        import shlex
+                        text = ' '.join(map(shlex.quote, urls))
+                    else:
+                        text = '\n'.join(urls)
                 w.paste(text)
 
     @ac('win', 'Focus the nth OS window')
