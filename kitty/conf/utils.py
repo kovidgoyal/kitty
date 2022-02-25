@@ -238,7 +238,7 @@ def merge_dicts(defaults: Dict[str, Any], newvals: Dict[str, Any]) -> Dict[str, 
     return ans
 
 
-def resolve_config(SYSTEM_CONF: str, defconf: str, config_files_on_cmd_line: Sequence[str]) -> Generator[str, None, None]:
+def resolve_config(SYSTEM_CONF: str, defconf: str, config_files_on_cmd_line: Sequence[str] = ()) -> Generator[str, None, None]:
     if config_files_on_cmd_line:
         if 'NONE' not in config_files_on_cmd_line:
             yield SYSTEM_CONF
