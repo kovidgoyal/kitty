@@ -1368,14 +1368,17 @@ is_ascii_control_char(char x) {
                                               options:options];
     if (!objs) return NO;
     const NSUInteger count = [objs count];
+    NSMutableString *uri_list = [NSMutableString stringWithCapacity:4096];  // auto-released
     if (count)
     {
         for (NSUInteger i = 0;  i < count;  i++)
         {
             id obj = objs[i];
             if ([obj isKindOfClass:[NSURL class]]) {
-                const char *path = [obj fileSystemRepresentation];
-                _glfwInputDrop(window, "text/plain;charset=utf-8", path, strlen(path));
+                NSURL *url = (NSURL*)obj;
+                if ([uri_list length] > 0) [uri_list appendString:@("\n")];
+                if (url.fileURL) [uri_list appendFormat:@("file://%s"), url.fileSystemRepresentation];
+                else [uri_list appendString:url.absoluteString];
             } else if ([obj isKindOfClass:[NSString class]]) {
                 const char *text = [obj UTF8String];
                 _glfwInputDrop(window, "text/plain;charset=utf-8", text, strlen(text));
@@ -1385,6 +1388,7 @@ is_ascii_control_char(char x) {
             }
         }
     }
+    if ([uri_list length] > 0) _glfwInputDrop(window, "text/uri-list", uri_list.UTF8String, strlen(uri_list.UTF8String));
 
     return YES;
 }
