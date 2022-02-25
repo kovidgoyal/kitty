@@ -8,7 +8,7 @@ cleanup_on_bootstrap_exit() {
 }
 
 die() { echo "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
-dsc_to_kitty() { printf "\033P@kitty-$1|%s\033\\" "$(printf "%s" "$2" | base64)"; }
+dsc_to_kitty() { printf "\033P@kitty-$1|%s\033\\" "$(printf "%s" "$2" | base64)" > /dev/tty; }
 debug() { dsc_to_kitty "print" "debug $1"; }
 echo_via_kitty() { dsc_to_kitty "echo" "$1"; }
 saved_tty_settings=$(command stty -g)
