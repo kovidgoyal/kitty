@@ -137,6 +137,10 @@ Detailed list of changes
 
 - Shell integration: bash: Fix rendering of multiline prompts with more than two lines (:iss:`4681`)
 
+- Shell integration: fish: Check fish version 3.3.0+ and exit on outdated versions (:pull:`4745`)
+
+- Shell integration: fish: Fix pipestatus being overwritten (:pull:`4756`)
+
 - Linux: Fix fontconfig alias not being used if the aliased font is dual spaced instead of monospaced (:iss:`4649`)
 
 - macOS: Add an option :opt:`macos_menubar_title_max_length` to control the max length of the window title displayed in the global menubar (:iss:`2132`)
