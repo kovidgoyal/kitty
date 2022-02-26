@@ -11,7 +11,9 @@ import tarfile
 import tempfile
 import time
 from contextlib import suppress
-from typing import Dict, Iterator, List, NoReturn, Optional, Set, Tuple, Union
+from typing import (
+    Any, Dict, Iterator, List, NoReturn, Optional, Set, Tuple, Union
+)
 
 from kitty.constants import cache_dir, shell_integration_dir, terminfo_dir
 from kitty.shell_integration import get_effective_ksi_env_var
@@ -55,26 +57,30 @@ def make_tarfile(hostname: str = '', shell_integration_dest: str = DEFAULT_SHELL
 
 
 def get_ssh_data(msg: str, shell_integration_dest: str = DEFAULT_SHELL_INTEGRATION_DEST) -> Iterator[bytes]:
+
+    def fmt_prefix(msg: Any) -> bytes:
+        return f'\036{msg}:'.encode('ascii')
+
     try:
         hostname, pwfilename, pw = msg.split(':', 2)
     except Exception:
-        yield b' invalid ssh data request message\n'
+        yield fmt_prefix('!invalid ssh data request message')
     try:
         with open(os.path.join(cache_dir(), pwfilename)) as f:
             os.unlink(f.name)
             if pw != f.read():
                 raise ValueError('Incorrect password')
     except Exception:
-        yield b' incorrect ssh data password\n'
+        yield fmt_prefix('!incorrect ssh data password')
     else:
         try:
             data = make_tarfile(hostname, shell_integration_dest)
         except Exception:
-            yield b' error while gathering ssh data\n'
+            yield fmt_prefix('!error while gathering ssh data')
         else:
             from base64 import standard_b64encode
             encoded_data = standard_b64encode(data)
-            yield f"\036{len(encoded_data)}:".encode('ascii')
+            yield fmt_prefix(len(encoded_data))
             yield encoded_data
 
 

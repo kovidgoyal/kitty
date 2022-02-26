@@ -7,7 +7,7 @@ cleanup_on_bootstrap_exit() {
     [ ! -z "$saved_tty_settings" ] && command stty "$saved_tty_settings"
 }
 
-die() { echo "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
+die() { printf "\033[31m%s\033[m\n" "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
 dsc_to_kitty() { printf "\033P@kitty-$1|%s\033\\" "$(printf "%s" "$2" | base64)" > /dev/tty; }
 debug() { dsc_to_kitty "print" "debug $1"; }
 echo_via_kitty() { dsc_to_kitty "echo" "$1"; }
@@ -67,6 +67,11 @@ get_data() {
             fi
         fi
     done
+    case "$size" in
+        ("!"*)
+            die "$size"
+            ;;
+    esac
     # using dd with bs=1 is very slow on Linux, so use head 
     command head -c "$size" | untar
     # command dd bs=1 "count=$size" 2> /dev/null | untar
