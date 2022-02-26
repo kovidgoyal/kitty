@@ -8,7 +8,7 @@ cleanup_on_bootstrap_exit() {
 }
 
 die() { printf "\033[31m%s\033[m\n" "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
-dsc_to_kitty() { printf "\033P@kitty-$1|%s\033\\" "$(printf "%s" "$2" | base64)" > /dev/tty; }
+dsc_to_kitty() { printf "\033P@kitty-$1|%s\033\\" "$(printf "%s" "$2" | base64 | tr -d \\n)" > /dev/tty; }
 debug() { dsc_to_kitty "print" "debug $1"; }
 echo_via_kitty() { dsc_to_kitty "echo" "$1"; }
 saved_tty_settings=$(command stty -g)
@@ -34,7 +34,7 @@ password_filename="PASSWORD_FILENAME"
 data_complete="n"
 leading_data=""
 
-printf "\033P@kitty-ssh|%s:%s:%s\033\\" "$hostname" "$password_filename" "$data_password"
+dsc_to_kitty "ssh" "hostname=$hostname:pwfile=$password_filename:pw=$data_password"
 size=""
 
 untar() {

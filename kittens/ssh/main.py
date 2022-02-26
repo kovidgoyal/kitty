@@ -10,6 +10,7 @@ import sys
 import tarfile
 import tempfile
 import time
+from base64 import standard_b64decode
 from contextlib import suppress
 from typing import (
     Any, Dict, Iterator, List, NoReturn, Optional, Set, Tuple, Union
@@ -62,7 +63,11 @@ def get_ssh_data(msg: str, shell_integration_dest: str = DEFAULT_SHELL_INTEGRATI
         return f'\036{msg}:'.encode('ascii')
 
     try:
-        hostname, pwfilename, pw = msg.split(':', 2)
+        msg = standard_b64decode(msg).decode('utf-8')
+        md = dict(x.split('=', 1) for x in msg.split(':'))
+        hostname = md['hostname']
+        pw = md['pw']
+        pwfilename = md['pwfile']
     except Exception:
         yield fmt_prefix('!invalid ssh data request message')
     try:
