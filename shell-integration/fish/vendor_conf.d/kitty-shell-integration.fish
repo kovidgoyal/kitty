@@ -32,18 +32,14 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
 
     # Enable cursor shape changes for default mode and vi mode
     if not contains "no-cursor" $_ksi
-        and not functions -q __ksi_set_cursor
-
-        function __ksi_block_cursor --on-event fish_preexec -d "Set cursor shape to blinking default shape before executing command"
-            echo -en "\e[0 q"
-        end
-
         function __ksi_set_cursor --on-variable fish_key_bindings -d "Set the cursor shape for different modes when switching key bindings"
             if test "$fish_key_bindings" = fish_default_key_bindings
-                not functions -q __ksi_bar_cursor || return
                 function __ksi_bar_cursor --on-event fish_prompt -d "Set cursor shape to blinking bar on prompt"
                     echo -en "\e[5 q"
                 end
+                # Change the cursor shape on first run
+                set -q argv[1]
+                and __ksi_bar_cursor
             else
                 functions --erase __ksi_bar_cursor
                 contains "$fish_key_bindings" fish_vi_key_bindings fish_hybrid_key_bindings
@@ -66,9 +62,11 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
             test "$fish_bind_mode" = "insert" && echo -en "\e[5 q" || echo -en "\e[1 q"
         end
 
-        __ksi_set_cursor
-        functions -q __ksi_bar_cursor
-        and __ksi_bar_cursor
+        function __ksi_default_cursor --on-event fish_preexec -d "Set cursor shape to blinking default shape before executing command"
+            echo -en "\e[0 q"
+        end
+
+        __ksi_set_cursor init
     end
 
     # Enable prompt marking with OSC 133
