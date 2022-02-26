@@ -263,7 +263,7 @@ call_method_with_msg(DBusConnection *conn, DBusMessage *msg, int timeout, dbus_p
 
 static bool
 call_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, int timeout, dbus_pending_callback callback, void *user_data, va_list ap) {
-    if (!conn) return false;
+    if (!conn || !path) return false;
     DBusMessage *msg = dbus_message_new_method_call(node, path, interface, method);
     if (!msg) return false;
     bool retval = false;
