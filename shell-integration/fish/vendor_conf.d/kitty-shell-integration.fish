@@ -74,53 +74,27 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     # Enable prompt marking with OSC 133
     if not contains "no-prompt-mark" $_ksi
         and not set -q __ksi_prompt_state
-        set --global __ksi_prompt_state first-run
-
-        function __ksi_prompt_start
-            # Preserve the command exit code from $status
-            set --local cmd_status $status
-            if contains "$__ksi_prompt_state" post-exec first-run
-                echo -en "\e]133;D\a"
-            end
+        function __ksi_mark_prompt_start --on-event fish_prompt
+            contains "$__ksi_prompt_state" post-exec pre-exec ""
+            and echo -en "\e]133;D\a"
             set --global __ksi_prompt_state prompt-start
             echo -en "\e]133;A\a"
-            return $cmd_status
         end
-
-        function __ksi_prompt_end
-            set --local cmd_status $status
-            # fish trims one trailing newline from the output of fish_prompt, so
-            # we need to do the same. See https://github.com/kovidgoyal/kitty/issues/4032
-            set --local op (__ksi_original_fish_prompt) # op is a list because fish splits on newlines in command substitution
-            if set -q op[2]
-                printf '%s\n' $op[1..-2] # print all but last element of the list, each followed by a new line
-            end
-            printf '%s' $op[-1] # print the last component without a newline
-            set --global __ksi_prompt_state prompt-end
-            echo -en "\e]133;B\a"
-            return $cmd_status
-        end
+        __ksi_mark_prompt_start
 
         functions -c fish_prompt __ksi_original_fish_prompt
-
-        # Check whether the mode prompt function exists and is not empty
-        if functions --no-details fish_mode_prompt | string match -qnvr '^ *(#|function |end$|$)'
-            # When vi mode changes, fish redraws fish_prompt when fish_mode_prompt is empty.
-            # Some prompt rely on this side effect to draw vi mode indicator.
-            # See https://github.com/starship/starship/issues/1283
-            functions -c fish_mode_prompt __ksi_original_fish_mode_prompt
-            function fish_mode_prompt
-                __ksi_prompt_start
-                __ksi_original_fish_mode_prompt
-            end
-            function fish_prompt
-                __ksi_prompt_end
-            end
-        else
-            function fish_prompt
-                __ksi_prompt_start
-                __ksi_prompt_end
-            end
+        function fish_prompt
+            # fish trims one trailing newline from the output of fish_prompt, so
+            # we need to do the same. See https://github.com/kovidgoyal/kitty/issues/4032
+            # op is a list because fish splits on newlines in command substitution
+            set --local op (__ksi_original_fish_prompt)
+            # print all but last element of the list, each followed by a new line
+            set -q op[2]
+            and printf '%s\n' $op[1..-2]
+            # print the last component without a newline
+            printf '%s' $op[-1]
+            set --global __ksi_prompt_state prompt-end
+            echo -en "\e]133;B\a"
         end
 
         function __ksi_mark_output_start --on-event fish_preexec
