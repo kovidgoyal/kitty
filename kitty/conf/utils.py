@@ -253,9 +253,10 @@ def load_config(
     parse_config: Callable[[Iterable[str]], Dict[str, Any]],
     merge_configs: Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]],
     *paths: str,
-    overrides: Optional[Iterable[str]] = None
+    overrides: Optional[Iterable[str]] = None,
+    initialize_defaults: Callable[[Dict[str, Any]], Dict[str, Any]] = lambda x: x,
 ) -> Tuple[Dict[str, Any], Tuple[str, ...]]:
-    ans = defaults._asdict()
+    ans = initialize_defaults(defaults._asdict())
     found_paths = []
     for path in paths:
         if not path:

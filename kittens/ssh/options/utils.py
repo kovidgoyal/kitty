@@ -1,30 +1,51 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Iterable, Tuple
+
+
+DELETE_ENV_VAR = '_delete_this_env_var_'
+
+
+def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:
+    val = val.strip()
+    if val:
+        if '=' in val:
+            key, v = val.split('=', 1)
+            key, v = key.strip(), v.strip()
+            if key:
+                yield key, v
+        else:
+            yield val, DELETE_ENV_VAR
 
 
 def init_results_dict(ans: Dict[str, Any]) -> Dict[str, Any]:
-    ans['current_hostname'] = '*'
-    ans['current_host_dict'] = chd = {'hostname': '*'}
-    ans['per_host_dicts'] = {'*': chd}
+    ans['hostname'] = '*'
+    ans['per_host_dicts'] = {}
     return ans
 
 
-ignored_dict_keys = tuple(init_results_dict({}))
+def get_per_hosts_dict(results_dict: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    ans: Dict[str, Dict[str, Any]] = results_dict.get('per_host_dicts', {}).copy()
+    h = results_dict['hostname']
+    hd = {k: v for k, v in results_dict.items() if k != 'per_host_dicts'}
+    ans[h] = hd
+    return ans
+
+
+first_seen_positions: Dict[str, int] = {}
 
 
 def hostname(val: str, dict_with_parse_results: Optional[Dict[str, Any]] = None) -> str:
     if dict_with_parse_results is not None:
-        ch = dict_with_parse_results['current_hostname']
+        ch = dict_with_parse_results['hostname']
         if val != ch:
-            hd = dict_with_parse_results.copy()
-            for k in ignored_dict_keys:
-                del hd[k]
-            phd = dict_with_parse_results['per_host_dicts']
-            phd[ch] = hd
+            from .parse import create_result_dict
+            phd = get_per_hosts_dict(dict_with_parse_results)
             dict_with_parse_results.clear()
+            dict_with_parse_results.update(phd.pop(val, create_result_dict()))
             dict_with_parse_results['per_host_dicts'] = phd
-            dict_with_parse_results['current_hostname'] = val
-            dict_with_parse_results['current_host_dict'] = phd.setdefault(val, {'hostname': val})
+            dict_with_parse_results['hostname'] = val
+            if val not in first_seen_positions:
+                first_seen_positions[val] = len(first_seen_positions)
     return val

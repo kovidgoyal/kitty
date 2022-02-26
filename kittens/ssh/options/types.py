@@ -4,11 +4,12 @@ import typing
 
 
 option_names = (  # {{{
- 'hostname',)  # }}}
+ 'env', 'hostname')  # }}}
 
 
 class Options:
     hostname: str = '*'
+    env: typing.Dict[str, str] = {}
     config_paths: typing.Tuple[str, ...] = ()
     config_overrides: typing.Tuple[str, ...] = ()
 
@@ -59,3 +60,4 @@ class Options:
 
 
 defaults = Options()
+defaults.env = {}

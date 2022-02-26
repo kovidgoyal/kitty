@@ -15,7 +15,7 @@ agr = definition.add_group
 egr = definition.end_group
 opt = definition.add_option
 
-agr('global', 'Global')  # {{{
+agr('host', 'Host environment')  # {{{
 
 opt('hostname', '*', option_type='hostname',
     long_text='''
@@ -26,4 +26,23 @@ against is the hostname used by the remote computer, not the name you pass
 to SSH to connect to it.
 '''
     )
+
+opt('+env', '',
+    option_type='env',
+    add_to_default=False,
+    long_text='''
+Specify environment variables to set on the remote host. Note that
+environment variables can refer to each other, so if you use::
+
+    env MYVAR1=a
+    env MYVAR2=$MYVAR1/$HOME/b
+
+The value of MYVAR2 will be :code:`a/<path to home directory>/b`. Using
+:code:`VAR=` will set it to the empty string and using just :code:`VAR`
+will delete the variable from the child process' environment. The definitions
+are processed alphabetically.
+'''
+    )
+
+
 egr()  # }}}

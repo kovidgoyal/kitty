@@ -7,6 +7,7 @@ import shlex
 import shutil
 import tempfile
 
+from kittens.ssh.config import load_config, options_for_host
 from kittens.ssh.main import bootstrap_script, get_connection_data
 from kitty.constants import is_macos
 from kitty.fast_data_types import CURSOR_BEAM
@@ -42,6 +43,27 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         t('ssh un@ip -i ident -p34', host='un@ip', port=34, identity_file='ident')
         t('ssh un@ip -iident -p34', host='un@ip', port=34, identity_file='ident')
         t('ssh -p 33 main', port=33)
+
+    def test_ssh_config_parsing(self):
+        def parse(conf):
+            with tempfile.NamedTemporaryFile(suffix='test.conf') as cf:
+                cf.write(conf.encode('utf-8'))
+                cf.flush()
+                return load_config(cf.name)
+
+        def for_host(hostname, conf):
+            if isinstance(conf, str):
+                conf = parse(conf)
+            return options_for_host(hostname, conf)
+
+        self.ae(for_host('x', '').env, {})
+        self.ae(for_host('x', 'env a=b').env, {'a': 'b'})
+        pc = parse('env a=b\nhostname 2\nenv a=c\nenv b=b')
+        self.ae(set(pc.keys()), {'*', '2'})
+        self.ae(for_host('x', pc).env, {'a': 'b'})
+        self.ae(for_host('2', pc).env, {'a': 'c', 'b': 'b'})
+        self.ae(for_host('x', 'env a=').env, {'a': ''})
+        self.ae(for_host('x', 'env a').env, {'a': '_delete_this_env_var_'})
 
     def test_ssh_bootstrap_script(self):
         # test handling of data in tty before tarfile is sent
