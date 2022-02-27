@@ -38,18 +38,28 @@ dsc_to_kitty "ssh" "hostname=$hostname:pwfile=$password_filename:pw=$data_passwo
 size=""
 record_separator=$(printf "\036")
 
-untar() {
+untar_and_read_env() {
     # extract the tar file atomically, in the sense that any file from the 
     # tarfile is only put into place after it has been fully written to disk
-    tdir=$(mktemp -d "$HOME/.kitty-ssh-kitten-untar-XXXXXXXXXXXX")
-    [ $? = 0 ] || die "Creating temp directory failed"
-    command base64 -d | command tar xjf - --no-same-owner -C "$tdir" 
+
+    tdir=$(mktemp -d "$HOME/.kitty-ssh-kitten-untar-XXXXXXXXXXXX");
+    [ $? = 0 ] || die "Creating temp directory failed";
+    # using dd with bs=1 is very slow, so use head. On non GNU coreutils head
+    # does not limit itself to reading -c bytes only from the pipe so we can potentially lose
+    # some trailing data, for instance if the user starts typing. Cant be helped.
+    command head -c "$size" < /dev/tty | command base64 -d | command tar xjf - --no-same-owner -C "$tdir";
+    data_file="$tdir/kitty-ssh-kitten-data.sh";
+    [ -f "$data_file" ] && . "$data_file";
+    data_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR"
+    command rm -f "$data_file";
     cwd="$PWD";
     cd "$tdir";
-    find . -type d -exec mkdir -p "${HOME}/{}" ";"
-    find . -type f -exec mv "{}" "${HOME}/{}" ";"
+    command find . -type d -exec mkdir -p "${HOME}/{}" ";"
+    command find . -type f -exec mv "{}" "${HOME}/{}" ";"
     cd "$cwd";
-    rm -rf "$tdir";
+    command rm -rf "$tdir";
+    [ -z "KITTY_SSH_KITTEN_DATA_DIR" ] && die "Failed to read SSH data from tty";
+    unset KITTY_SSH_KITTEN_DATA_DIR;
 }
 
 read_record() {
@@ -80,9 +90,7 @@ get_data() {
             die "$size"
             ;;
     esac
-    data_dir="$HOME/$(read_record)"
-    # using dd with bs=1 is very slow on Linux, so use head 
-    command head -c "$size" < /dev/tty | untar
+    untar_and_read_env "$size"
 }
 
 get_data
@@ -96,8 +104,7 @@ if [ -n "$leading_data" ]; then
 fi
 shell_integration_dir="$data_dir/shell-integration"
 settings_dir="$data_dir/settings"
-env_var_file="$settings_dir/env-vars.sh"
-[ -f "$HOME/.terminfo/kitty.terminfo" -a -f "$env_var_file"  ] || die "Incomplete extraction of ssh data";
+[ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data";
 
 # export TERMINFO
 tname=".terminfo"
@@ -106,9 +113,6 @@ if [ -e "/usr/share/misc/terminfo.cdb" ]; then
     tname=".terminfo.cdb"
 fi
 export TERMINFO="$HOME/$tname"
-
-# setup env vars
-. "$env_var_file"
 
 # compile terminfo for this system
 if [ -x "$(command -v tic)" ]; then
