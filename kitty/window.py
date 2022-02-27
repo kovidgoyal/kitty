@@ -57,6 +57,16 @@ if TYPE_CHECKING:
     from .file_transmission import FileTransmission
 
 
+def process_title_from_child(title: str, is_base64: bool) -> str:
+    if is_base64:
+        from base64 import standard_b64decode
+        try:
+            title = standard_b64decode(title).decode('utf-8', 'replace')
+        except Exception:
+            title = 'undecodeable title'
+    return sanitize_title(title)
+
+
 class WindowDict(TypedDict):
     id: int
     is_focused: bool
@@ -734,8 +744,8 @@ class Window:
             # Cancel IME composition after loses focus
             update_ime_position_for_window(self.id, False, True)
 
-    def title_changed(self, new_title: Optional[str]) -> None:
-        self.child_title = sanitize_title(new_title or self.default_title)
+    def title_changed(self, new_title: Optional[str], is_base64: bool = False) -> None:
+        self.child_title = process_title_from_child(new_title or self.default_title, is_base64)
         if self.override_title is None:
             self.title_updated()
 

@@ -21,7 +21,7 @@ from kitty.options.parse import merge_result_dicts
 from kitty.options.types import Options, defaults
 from kitty.types import MouseEvent
 from kitty.utils import read_screen_size
-from kitty.window import process_remote_print
+from kitty.window import process_remote_print, process_title_from_child
 
 
 class Callbacks:
@@ -32,8 +32,8 @@ class Callbacks:
     def write(self, data) -> None:
         self.wtcbuf += data
 
-    def title_changed(self, data) -> None:
-        self.titlebuf.append(data)
+    def title_changed(self, data, is_base64=False) -> None:
+        self.titlebuf.append(process_title_from_child(data, is_base64))
 
     def icon_changed(self, data) -> None:
         self.iconbuf += data
