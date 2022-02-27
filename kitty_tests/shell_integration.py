@@ -151,7 +151,9 @@ RPS1="{rps1}"
 set -g fish_greeting
 function fish_prompt; echo -n "{fish_prompt}"; end
 function fish_right_prompt; echo -n "{right_prompt}"; end
-function _ksi_test_comp; contains "{completions_dir}" $fish_complete_path; and echo ok; end
+function _test_comp_path; contains "{completions_dir}" $fish_complete_path; and echo ok; end
+function _set_key; set -g fish_key_bindings fish_$argv[1]_key_bindings; end
+function _set_status_prompt; function fish_prompt; echo -n "$pipestatus $status {fish_prompt}"; end; end
 ''') as pty:
             q = fish_prompt + ' ' * (pty.screen.columns - len(fish_prompt) - len(right_prompt)) + right_prompt
             pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 1)
@@ -164,7 +166,7 @@ function _ksi_test_comp; contains "{completions_dir}" $fish_complete_path; and e
 
             # completion and prompt marking
             pty.send_cmd_to_child('clear')
-            pty.send_cmd_to_child('_ksi_test_comp')
+            pty.send_cmd_to_child('_test_comp_path')
             pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 2)
             q = '\n'.join(str(pty.screen.line(i)) for i in range(1, pty.screen.cursor.y))
             self.ae(q, 'ok')
@@ -196,16 +198,30 @@ function _ksi_test_comp; contains "{completions_dir}" $fish_complete_path; and e
             pty.wait_till(lambda: pty.screen.cursor.shape == 0 and pty.screen.cursor.y > 1)
             pty.write_to_child('\x04')
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
-            pty.send_cmd_to_child('fish_vi_key_bindings')
+            pty.send_cmd_to_child('_set_key vi')
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BLOCK)
-            pty.write_to_child('i')
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
             pty.write_to_child('\x1b')
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BLOCK)
             pty.write_to_child('r')
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_UNDERLINE)
+            pty.write_to_child('\x1b')
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BLOCK)
+            pty.write_to_child('i')
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
+            pty.send_cmd_to_child('_set_key default')
 
-            pty.write_to_child('\x1biexit\r')
+            # pipestatus
+            pty.send_cmd_to_child('clear;false|true|false')
+            pty.send_cmd_to_child('echo $pipestatus $status')
+            pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 2)
+            self.ae(pty.last_cmd_output(), '1 0 1 1')
+            pty.send_cmd_to_child('_set_status_prompt')
+            pty.send_cmd_to_child('false|true|false')
+            pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 4)
+            self.assertTrue(str(pty.screen.line(pty.screen.cursor.y)).startswith(f'1 0 1 1 {fish_prompt}'))
+
+            pty.send_cmd_to_child('exit')
 
     @unittest.skipUnless(bash_ok(), 'bash not installed or too old')
     def test_bash_integration(self):
