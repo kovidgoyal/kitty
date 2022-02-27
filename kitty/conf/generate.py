@@ -38,6 +38,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
     choices = {}
     imports: Set[Tuple[str, str]] = set()
     tc_imports: Set[Tuple[str, str]] = set()
+    ki_imports: 're.Pattern[str]' = re.compile(r'\b((?:kittens|kitty).+?)[,\]]')
 
     def option_type_as_str(x: Any) -> str:
         needs_import = False
@@ -61,6 +62,11 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
         if isinstance(option, MultiOption):
             typ = typ[typ.index('[') + 1:-1]
             typ = typ.replace('Tuple', 'Dict', 1)
+            kq = ki_imports.search(typ)
+            if kq is not None:
+                kqi = kq.group(1)
+                kqim, kqii = kqi.rsplit('.', 1)
+                imports.add((kqim, ''))
         return func, typ
 
     is_mutiple_vars = {}
@@ -343,14 +349,17 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
         for mod, name in imports:
             mmap.setdefault(mod, []).append(name)
         for mod in sorted(mmap):
-            names = sorted(mmap[mod])
-            lines = textwrap.wrap(', '.join(names), 100)
-            if len(lines) == 1:
-                s = lines[0]
+            names = list(filter(None, sorted(mmap[mod])))
+            if names:
+                lines = textwrap.wrap(', '.join(names), 100)
+                if len(lines) == 1:
+                    s = lines[0]
+                else:
+                    s = '\n    '.join(lines)
+                    s = f'(\n    {s}\n)'
+                a(f'from {mod} import {s}')
             else:
-                s = '\n    '.join(lines)
-                s = f'(\n    {s}\n)'
-            a(f'from {mod} import {s}')
+                s = ''
             if add_module_imports and mod not in seen_mods and mod != s:
                 a(f'import {mod}')
                 seen_mods.add(mod)

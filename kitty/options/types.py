@@ -6,6 +6,7 @@ from kitty.constants import is_macos
 import kitty.constants
 from kitty.fast_data_types import Color
 import kitty.fast_data_types
+import kitty.fonts
 from kitty.options.utils import AliasMap, KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap, TabBarMarginHeight
 import kitty.options.utils
 from kitty.types import FloatEdges, SingleKey

@@ -4,6 +4,8 @@
 from typing import Any, Dict, Optional, Iterable, Tuple
 import posixpath
 
+from ..copy import CopyInstruction
+
 
 DELETE_ENV_VAR = '_delete_this_env_var_'
 
@@ -28,6 +30,10 @@ def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:
                 yield key, v
         else:
             yield val, DELETE_ENV_VAR
+
+
+def copy(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, CopyInstruction]]:
+    pass
 
 
 def init_results_dict(ans: Dict[str, Any]) -> Dict[str, Any]:

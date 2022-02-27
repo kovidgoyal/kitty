@@ -26,17 +26,8 @@ against is the hostname used by the remote computer, not the name you pass
 to SSH to connect to it.
 ''')
 
-opt('remote_dir', '.local/share/kitty-ssh-kitten', option_type='relative_dir', long_text='''
-The location on the remote computer where the files needed for this kitten
-are installed. The location is relative to the HOME directory. Absolute paths or paths
-that resolve to a location outside the HOME are not allowed.
+opt('+copy', '', option_type='copy', add_to_default=False, long_text='''
 ''')
-
-opt('shell_integration', 'inherit', long_text='''
-Control the shell integration on the remote host. See ref:`shell_integration`
-for details on how this setting works. The special value :code:`inherit` means
-use the setting from kitty.conf. This setting is useful for overriding
-integration on a per-host basis.''')
 
 opt('+env', '', option_type='env', add_to_default=False, long_text='''
 Specify environment variables to set on the remote host. Note that
@@ -51,4 +42,18 @@ will delete the variable from the child process' environment. The definitions
 are processed alphabetically. The special value :code:`_kitty_copy_env_var_`
 will cause the value of the variable to be copied from the local machine.
 ''')
+
+opt('remote_dir', '.local/share/kitty-ssh-kitten', option_type='relative_dir', long_text='''
+The location on the remote computer where the files needed for this kitten
+are installed. The location is relative to the HOME directory. Absolute paths or paths
+that resolve to a location outside the HOME are not allowed.
+''')
+
+opt('shell_integration', 'inherit', long_text='''
+Control the shell integration on the remote host. See ref:`shell_integration`
+for details on how this setting works. The special value :code:`inherit` means
+use the setting from kitty.conf. This setting is useful for overriding
+integration on a per-host basis.''')
+
+
 egr()  # }}}
