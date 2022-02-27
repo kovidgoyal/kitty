@@ -406,10 +406,6 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             START_DISPATCH
             DISPATCH_OSC(set_title);
             END_DISPATCH
-        case 22222:
-            START_DISPATCH
-            DISPATCH_OSC(set_title_base64);
-            END_DISPATCH
         case 4:
         case 104:
             START_DISPATCH

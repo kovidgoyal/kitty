@@ -211,7 +211,6 @@ void screen_handle_print(Screen *, PyObject *cmd);
 void screen_designate_charset(Screen *, uint32_t which, uint32_t as);
 void screen_use_latin1(Screen *, bool);
 void set_title(Screen *self, PyObject*);
-void set_title_base64(Screen *self, PyObject*);
 void desktop_notify(Screen *self, unsigned int, PyObject*);
 void set_icon(Screen *self, PyObject*);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject*);

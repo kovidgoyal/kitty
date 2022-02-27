@@ -1968,12 +1968,6 @@ set_title(Screen *self, PyObject *title) {
 }
 
 void
-set_title_base64(Screen *self, PyObject *title) {
-    CALLBACK("title_changed", "OO", title, Py_True);
-}
-
-
-void
 desktop_notify(Screen *self, unsigned int osc_code, PyObject *data) {
     CALLBACK("desktop_notify", "IO", osc_code, data);
 }
