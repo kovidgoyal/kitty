@@ -39,7 +39,17 @@ size=""
 record_separator=$(printf "\036")
 
 untar() {
-    command base64 -d | command tar xjf - --no-same-owner -C "$HOME" 
+    # extract the tar file atomically, in the sense that any file from the 
+    # tarfile is only put into place after it has been fully written to disk
+    tdir=$(mktemp -d "$HOME/.kitty-ssh-kitten-untar-XXXXXXXXXXXX")
+    [ $? = 0 ] || die "Creating temp directory failed"
+    command base64 -d | command tar xjf - --no-same-owner -C "$tdir" 
+    cwd="$PWD";
+    cd "$tdir";
+    find . -type d -exec mkdir -p "${HOME}/{}" ";"
+    find . -type f -exec mv "{}" "${HOME}/{}" ";"
+    cd "$cwd";
+    rm -rf "$tdir";
 }
 
 read_record() {
@@ -73,7 +83,6 @@ get_data() {
     data_dir="$HOME/$(read_record)"
     # using dd with bs=1 is very slow on Linux, so use head 
     command head -c "$size" < /dev/tty | untar
-    rc="$?";
 }
 
 get_data
@@ -85,11 +94,10 @@ if [ -n "$leading_data" ]; then
     # have been sent before the script had a chance to run
     printf "\r\033[K"  
 fi
-if [ "$rc" != "0" ]; then die "Failed to extract data transmitted by ssh kitten over the TTY device"; fi
-[ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data, no kitty.terminfo found";
 shell_integration_dir="$data_dir/shell-integration"
 settings_dir="$data_dir/settings"
 env_var_file="$settings_dir/env-vars.sh"
+[ -f "$HOME/.terminfo/kitty.terminfo" -a -f "$env_var_file"  ] || die "Incomplete extraction of ssh data";
 
 # export TERMINFO
 tname=".terminfo"
