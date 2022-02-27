@@ -4,12 +4,13 @@ import typing
 
 
 option_names = (  # {{{
- 'env', 'hostname', 'remote_dir')  # }}}
+ 'env', 'hostname', 'remote_dir', 'shell_integration')  # }}}
 
 
 class Options:
     hostname: str = '*'
     remote_dir: str = '.local/share/kitty-ssh-kitten'
+    shell_integration: str = 'inherit'
     env: typing.Dict[str, str] = {}
     config_paths: typing.Tuple[str, ...] = ()
     config_overrides: typing.Tuple[str, ...] = ()

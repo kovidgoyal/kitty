@@ -17,6 +17,9 @@ class Parser:
     def remote_dir(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['remote_dir'] = str(val)
 
+    def shell_integration(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['shell_integration'] = str(val)
+
 
 def create_result_dict() -> typing.Dict[str, typing.Any]:
     return {

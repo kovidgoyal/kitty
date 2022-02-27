@@ -17,7 +17,6 @@ from typing import (
 )
 
 from kitty.constants import cache_dir, shell_integration_dir, terminfo_dir
-from kitty.shell_integration import get_effective_ksi_env_var
 from kitty.short_uuid import uuid4
 from kitty.types import run_once
 from kitty.utils import SSHConnectionData
@@ -52,7 +51,13 @@ def make_tarfile(ssh_opts: SSHOptions) -> bytes:
     buf = io.BytesIO()
     with tarfile.open(mode='w:bz2', fileobj=buf, encoding='utf-8') as tf:
         rd = ssh_opts.remote_dir.rstrip('/')
-        ksi = get_effective_ksi_env_var()
+        from kitty.shell_integration import get_effective_ksi_env_var
+        if ssh_opts.shell_integration == 'inherit':
+            ksi = get_effective_ksi_env_var()
+        else:
+            from kitty.options.types import Options
+            from kitty.options.utils import shell_integration
+            ksi = get_effective_ksi_env_var(Options({'shell_integration': shell_integration(ssh_opts.shell_integration)}))
         if ksi:
             tf.add(shell_integration_dir, arcname=rd + '/shell-integration', filter=filter_files)
             add_data_as_file(tf, rd + '/settings/ksi_env_var', ksi)

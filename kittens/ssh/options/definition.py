@@ -24,14 +24,18 @@ hosts can be used. When not specified options apply to all hosts, until the
 first hostname specification is found. Note that the hostname this matches
 against is the hostname used by the remote computer, not the name you pass
 to SSH to connect to it.
-'''
-    )
+''')
 
 opt('remote_dir', '.local/share/kitty-ssh-kitten', long_text='''
 The location on the remote computer where the files needed for this kitten
 are installed. The location is relative to the HOME directory.
-'''
-    )
+''')
+
+opt('shell_integration', 'inherit', long_text='''
+Control the shell integration on the remote host. See ref:`shell_integration`
+for details on how this setting works. The special value :code:`inherit` means
+use the setting from kitty.conf. This setting is  mainly useful for overriding
+integration on a per-host basis.''')
 
 opt('+env', '', option_type='env', add_to_default=False, long_text='''
 Specify environment variables to set on the remote host. Note that
