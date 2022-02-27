@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Any, Dict, Optional, Iterable, Tuple
 import posixpath
+from typing import Any, Dict, Iterable, Optional, Tuple
 
-from ..copy import CopyInstruction
+from kitty.cli_stub import CopyCLIOptions
 
+from ..copy import parse_copy_instructions
 
 DELETE_ENV_VAR = '_delete_this_env_var_'
 
@@ -32,8 +33,8 @@ def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:
             yield val, DELETE_ENV_VAR
 
 
-def copy(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, CopyInstruction]]:
-    pass
+def copy(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, CopyCLIOptions]]:
+    yield from parse_copy_instructions(val)
 
 
 def init_results_dict(ans: Dict[str, Any]) -> Dict[str, Any]:
