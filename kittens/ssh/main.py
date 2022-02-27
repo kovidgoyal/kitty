@@ -11,6 +11,7 @@ import sys
 import tarfile
 import tempfile
 import time
+import traceback
 from base64 import standard_b64decode
 from contextlib import suppress
 from typing import (
@@ -124,6 +125,7 @@ def get_ssh_data(msg: str, ssh_opts: Optional[Dict[str, SSHOptions]] = None) -> 
         pw = md['pw']
         pwfilename = md['pwfile']
     except Exception:
+        traceback.print_exc()
         yield fmt_prefix('!invalid ssh data request message')
     else:
         try:
@@ -133,7 +135,6 @@ def get_ssh_data(msg: str, ssh_opts: Optional[Dict[str, SSHOptions]] = None) -> 
                 if pw != env_data['pw']:
                     raise ValueError('Incorrect password')
         except Exception:
-            import traceback
             traceback.print_exc()
             yield fmt_prefix('!incorrect ssh data password')
         else:
@@ -141,6 +142,7 @@ def get_ssh_data(msg: str, ssh_opts: Optional[Dict[str, SSHOptions]] = None) -> 
             try:
                 data = make_tarfile(resolved_ssh_opts, env_data['env'])
             except Exception:
+                traceback.print_exc()
                 yield fmt_prefix('!error while gathering ssh data')
             else:
                 from base64 import standard_b64encode
