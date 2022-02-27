@@ -277,8 +277,8 @@ PS1="{ps1}"
         with self.run_shell(shell='bash', rc=f'''PS1="{ps1}"''') as pty:
             pty.callbacks.clear()
             pty.send_cmd_to_child('printf "%s\x16\a%s" "a" "b"')
-            pty.wait_till(lambda: 'ab' in pty.screen_contents())
-            self.ae(pty.screen_contents(), 'prompt> printf "%s^G%s" "a" "b"\nab')
+            pty.wait_till(lambda: pty.screen_contents().count(ps1) == 2)
+            self.ae(pty.screen_contents(), f'{ps1}printf "%s^G%s" "a" "b"\nab{ps1}')
 
         for ps1 in ('line1\\nline\\2\\prompt> ', 'line1\nprompt> ', 'line1\\nprompt> ',):
             with self.subTest(ps1=ps1), self.run_shell(
