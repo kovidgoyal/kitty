@@ -50,9 +50,8 @@ def basic_shell_env(home_dir):
 def safe_env_for_running_shell(argv, home_dir, rc='', shell='zsh'):
     ans = basic_shell_env(home_dir)
     if shell == 'zsh':
+        argv.insert(1, '--noglobalrcs')
         ans['ZLE_RPROMPT_INDENT'] = '0'
-        with open(os.path.join(home_dir, '.zshenv'), 'w') as f:
-            print('unset GLOBAL_RCS', file=f)
         with open(os.path.join(home_dir, '.zshrc'), 'w') as f:
             print(rc + '\n', file=f)
         setup_zsh_env(ans, argv)
