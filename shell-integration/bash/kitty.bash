@@ -139,8 +139,8 @@ _ksi_main() {
             last_cmd=$(HISTTIMEFORMAT= builtin history 1)
             last_cmd="${last_cmd#*[[:digit:]]*[[:space:]]}"  # remove leading history number
             last_cmd="${last_cmd#"${last_cmd%%[![:space:]]*}"}"  # remove remaining leading whitespace
-            last_cmd=$(printf "%s" "$last_cmd" | base64 | tr -d \\n)
-            builtin printf "\e]22222;%s\a" "${last_cmd}"
+            last_cmd=$(printf "%s" "$last_cmd" | base64)
+            builtin printf "\e]22222;%s\a" "${last_cmd//[[:space:]]}"
         }
         _ksi_prompt[ps0_suffix]+='$(_ksi_get_current_command)'
     fi
