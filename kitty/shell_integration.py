@@ -3,11 +3,12 @@
 
 
 import os
+import subprocess
 from typing import Optional, Dict, List
 
 from .options.types import Options
 from .constants import shell_integration_dir
-from .utils import log_error
+from .utils import log_error, which
 
 
 def setup_fish_env(env: Dict[str, str], argv: List[str]) -> None:
@@ -21,11 +22,10 @@ def setup_fish_env(env: Dict[str, str], argv: List[str]) -> None:
         env['XDG_DATA_DIRS'] = os.pathsep.join(dirs)
 
 
-def is_new_zsh_install(env: Dict[str, str]) -> bool:
+def is_new_zsh_install(env: Dict[str, str], zdotdir: Optional[str]) -> bool:
     # if ZDOTDIR is empty, zsh will read user rc files from /
     # if there aren't any, it'll run zsh-newuser-install
     # the latter will bail if there are rc files in $HOME
-    zdotdir = env.get('ZDOTDIR')
     if not zdotdir:
         zdotdir = env.get('HOME', os.path.expanduser('~'))
         assert isinstance(zdotdir, str)
@@ -37,12 +37,27 @@ def is_new_zsh_install(env: Dict[str, str]) -> bool:
     return True
 
 
+def get_zsh_zdotdir_from_gloabl_zshenv(env: Dict[str, str], argv: List[str]) -> Optional[str]:
+    exe = which(argv[0], only_system=True) or 'zsh'
+    try:
+        zdotdir = subprocess.check_output([exe, '--norcs', '--interactive', '-c', 'echo -n $ZDOTDIR'], env=env).decode('utf-8')
+    except Exception:
+        zdotdir = None
+    return zdotdir
+
+
 def setup_zsh_env(env: Dict[str, str], argv: List[str]) -> None:
-    if is_new_zsh_install(env):
-        # dont prevent zsh-newuser-install from running
-        # zsh-newuser-install never runs as root but we assume that it does
-        return
     zdotdir = env.get('ZDOTDIR')
+    if is_new_zsh_install(env, zdotdir):
+        if zdotdir is None:
+            # Try to get ZDOTDIR from /etc/zshenv, when all startup files are not present
+            zdotdir = get_zsh_zdotdir_from_gloabl_zshenv(env, argv)
+            if zdotdir is None or is_new_zsh_install(env, zdotdir):
+                return
+        else:
+            # dont prevent zsh-newuser-install from running
+            # zsh-newuser-install never runs as root but we assume that it does
+            return
     if zdotdir is not None:
         env['KITTY_ORIG_ZDOTDIR'] = zdotdir
     else:
