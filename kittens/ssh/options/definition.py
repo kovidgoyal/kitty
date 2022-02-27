@@ -26,9 +26,10 @@ against is the hostname used by the remote computer, not the name you pass
 to SSH to connect to it.
 ''')
 
-opt('remote_dir', '.local/share/kitty-ssh-kitten', long_text='''
+opt('remote_dir', '.local/share/kitty-ssh-kitten', option_type='relative_dir', long_text='''
 The location on the remote computer where the files needed for this kitten
-are installed. The location is relative to the HOME directory for relative paths.
+are installed. The location is relative to the HOME directory. Absolute paths or paths
+that resolve to a location outside the HOME are not allowed.
 ''')
 
 opt('shell_integration', 'inherit', long_text='''
