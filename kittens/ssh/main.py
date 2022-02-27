@@ -67,7 +67,7 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
         return ans
 
     def filter_files(tarinfo: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
-        if tarinfo.name.endswith('ssh/bootstrap.sh') or tarinfo.name.endswith('ssh/bootstrap.py'):
+        if tarinfo.name.endswith('ssh/bootstrap.sh'):
             return None
         return normalize_tarinfo(tarinfo)
 
@@ -324,16 +324,10 @@ def get_posix_cmd(remote_args: List[str]) -> List[str]:
     return [f'sh -c {shlex.quote(sh_script)}']
 
 
-def get_python_cmd(remote_args: List[str]) -> List[str]:
-    raise NotImplementedError('TODO: Implement me')
-
-
 def main(args: List[str]) -> NoReturn:
     args = args[1:]
-    use_posix = True
     if args and args[0] == 'use-python':
-        args = args[1:]
-        use_posix = False
+        args = args[1:]  # backwards compat from when we had a python implementation
     try:
         ssh_args, server_args, passthrough = parse_ssh_args(args)
     except InvalidSSHArgs as e:
@@ -347,7 +341,7 @@ def main(args: List[str]) -> NoReturn:
             cmd.append('-t')
         cmd.append('--')
         cmd.append(hostname)
-        f = get_posix_cmd if use_posix else get_python_cmd
+        f = get_posix_cmd
         cmd += f(remote_args)
     os.execvp('ssh', cmd)
 

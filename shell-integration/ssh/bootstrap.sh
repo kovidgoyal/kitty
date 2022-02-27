@@ -35,7 +35,6 @@ data_complete="n"
 leading_data=""
 
 dsc_to_kitty "ssh" "hostname=$hostname:pwfile=$password_filename:pw=$data_password"
-size=""
 record_separator=$(printf "\036")
 
 untar_and_read_env() {
@@ -47,7 +46,7 @@ untar_and_read_env() {
     # using dd with bs=1 is very slow, so use head. On non GNU coreutils head
     # does not limit itself to reading -c bytes only from the pipe so we can potentially lose
     # some trailing data, for instance if the user starts typing. Cant be helped.
-    command head -c "$size" < /dev/tty | command base64 -d | command tar xjf - --no-same-owner -C "$tdir";
+    command head -c "$1" < /dev/tty | command base64 -d | command tar xjf - --no-same-owner -C "$tdir";
     data_file="$tdir/kitty-ssh-kitten-data.sh";
     [ -f "$data_file" ] && . "$data_file";
     data_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR"

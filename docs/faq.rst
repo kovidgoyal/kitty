@@ -47,22 +47,12 @@ terminfo files to the server::
     kitty +kitten ssh myserver
 
 This ssh kitten takes all the same command line arguments
-as ssh, you can alias it to ssh in your shell's rc files to avoid having to
-type it each time::
+as ssh, you can alias it to something small in your shell's rc files to avoid
+having to type it each time::
 
-    alias ssh="kitty +kitten ssh"
+    alias s="kitty +kitten ssh"
 
-Remember to also setup :ref:`shell_integration` for completion and other
-niceties.
-
-If for some reason that does not work (typically because the server is using a
-non POSIX compliant shell as ``/bin/sh``), you can try using it with ``python``
-instead::
-
-    kitty +kitten ssh use-python myserver
-
-If that also fails, perhaps because python is not installed on the remote
-server, use the following one-liner instead (it
+If the ssh kitten fails, use the following one-liner instead (it
 is slower as it needs to ssh into the server twice, but will work with most
 servers)::
 
