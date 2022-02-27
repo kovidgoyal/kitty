@@ -5,10 +5,8 @@ import importlib
 import os
 import sys
 import unittest
-from typing import Callable, Generator, NoReturn, Sequence, Set
-
-
 from importlib.resources import contents
+from typing import Callable, Generator, NoReturn, Sequence, Set
 
 
 def itertests(suite: unittest.TestSuite) -> Generator[unittest.TestCase, None, None]:
@@ -88,10 +86,15 @@ def run_tests() -> None:
         'name', nargs='*', default=[],
         help='The name of the test to run, for e.g. linebuf corresponds to test_linebuf. Can be specified multiple times')
     parser.add_argument('--verbosity', default=4, type=int, help='Test verbosity')
+    parser.add_argument('--module', default='', help='Name of a test module to restrict to. For example: ssh')
     args = parser.parse_args()
     if args.name and args.name[0] in ('type-check', 'type_check', 'mypy'):
         type_check()
     tests = find_all_tests()
+    if args.module:
+        tests = filter_tests_by_module(tests, args.module)
+        if not tests._tests:
+            raise SystemExit('No test module named %s found' % args.module)
     if args.name:
         tests = filter_tests_by_name(tests, *args.name)
         if not tests._tests:

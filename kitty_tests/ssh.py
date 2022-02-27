@@ -20,7 +20,7 @@ from . import BaseTest
 from .shell_integration import bash_ok, basic_shell_env
 
 
-class SSHTest(BaseTest):
+class SSHKitten(BaseTest):
 
     def test_basic_pty_operations(self):
         pty = self.create_pty('echo hello')
@@ -72,19 +72,20 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
     def all_possible_sh(self):
         return tuple(sh for sh in ('dash', 'zsh', 'bash', 'posh', 'sh') if shutil.which(sh))
 
-    def test_ssh_bootstrap_script(self):
-        # test setting env vars
-        with tempfile.TemporaryDirectory() as tdir:
-            pty = self.check_bootstrap(
-                'dash', tdir, extra_exec='env; exit 0', SHELL_INTEGRATION_VALUE='',
-                ssh_opts={'env': {
-                    'TSET': 'set-works',
-                    'COLORTERM': DELETE_ENV_VAR,
-                }}
-            )
-            pty.wait_till(lambda: 'TSET=set-works' in pty.screen_contents())
-            self.assertNotIn('COLORTERM', pty.screen_contents())
-        # test handling of data in tty before tarfile is sent
+    def test_ssh_env_vars(self):
+        for sh in self.all_possible_sh:
+            with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
+                pty = self.check_bootstrap(
+                    sh, tdir, extra_exec='env; exit 0', SHELL_INTEGRATION_VALUE='',
+                    ssh_opts={'env': {
+                        'TSET': 'set-works',
+                        'COLORTERM': DELETE_ENV_VAR,
+                    }}
+                )
+                pty.wait_till(lambda: 'TSET=set-works' in pty.screen_contents())
+                self.assertNotIn('COLORTERM', pty.screen_contents())
+
+    def test_ssh_leading_data(self):
         for sh in self.all_possible_sh:
             with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
                 pty = self.check_bootstrap(
@@ -92,7 +93,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
                     SHELL_INTEGRATION_VALUE='', pre_data='before_tarfile')
                 self.ae(pty.screen_contents(), 'UNTAR_DONE\nld:before_tarfile')
 
-        # test various detection methods for login_shell
+    def test_ssh_login_shell_detection(self):
         methods = []
         if shutil.which('python') or shutil.which('python3') or shutil.which('python2'):
             methods.append('using_python')
@@ -112,7 +113,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
                     pty = self.check_bootstrap(sh, tdir, extra_exec=f'{m}; echo "$login_shell"; exit 0', SHELL_INTEGRATION_VALUE='')
                     self.assertIn(expected_login_shell, pty.screen_contents())
 
-        # check that shell integration works
+    def test_ssh_shell_integration(self):
         ok_login_shell = ''
         for sh in self.all_possible_sh:
             for login_shell in {'fish', 'zsh', 'bash'} & set(self.all_possible_sh):
