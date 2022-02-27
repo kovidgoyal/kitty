@@ -140,6 +140,11 @@ RPS1="{rps1}"
             pty.wait_till(lambda: pty.screen.cursor.shape == 0)
             pty.write_to_child('\x04')
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
+        with self.run_shell(rc=f'''PS1="{ps1}"''') as pty:
+            pty.callbacks.clear()
+            pty.send_cmd_to_child('printf "%s\x16\a%s" "a" "b"')
+            pty.wait_till(lambda: 'ab' in pty.screen_contents())
+            self.assertIn('%s^G%s', pty.screen_contents())
 
     @unittest.skipUnless(shutil.which('fish'), 'fish not installed')
     def test_fish_integration(self):
