@@ -28,13 +28,13 @@ to SSH to connect to it.
 
 opt('remote_dir', '.local/share/kitty-ssh-kitten', long_text='''
 The location on the remote computer where the files needed for this kitten
-are installed. The location is relative to the HOME directory.
+are installed. The location is relative to the HOME directory for relative paths.
 ''')
 
 opt('shell_integration', 'inherit', long_text='''
 Control the shell integration on the remote host. See ref:`shell_integration`
 for details on how this setting works. The special value :code:`inherit` means
-use the setting from kitty.conf. This setting is  mainly useful for overriding
+use the setting from kitty.conf. This setting is useful for overriding
 integration on a per-host basis.''')
 
 opt('+env', '', option_type='env', add_to_default=False, long_text='''
@@ -47,6 +47,7 @@ environment variables can refer to each other, so if you use::
 The value of MYVAR2 will be :code:`a/<path to home directory>/b`. Using
 :code:`VAR=` will set it to the empty string and using just :code:`VAR`
 will delete the variable from the child process' environment. The definitions
-are processed alphabetically.
+are processed alphabetically. The special value :code:`_kitty_copy_env_var_`
+will cause the value of the variable to be copied from the local machine.
 ''')
 egr()  # }}}

@@ -6,9 +6,11 @@ import os
 import shlex
 import shutil
 import tempfile
+from functools import lru_cache
 
 from kittens.ssh.config import load_config, options_for_host
 from kittens.ssh.main import bootstrap_script, get_connection_data
+from kittens.ssh.options.utils import DELETE_ENV_VAR
 from kitty.constants import is_macos
 from kitty.fast_data_types import CURSOR_BEAM
 from kitty.options.utils import shell_integration
@@ -65,10 +67,25 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         self.ae(for_host('x', 'env a=').env, {'a': ''})
         self.ae(for_host('x', 'env a').env, {'a': '_delete_this_env_var_'})
 
+    @property
+    @lru_cache()
+    def all_possible_sh(self):
+        return tuple(sh for sh in ('dash', 'zsh', 'bash', 'posh', 'sh') if shutil.which(sh))
+
     def test_ssh_bootstrap_script(self):
+        # test setting env vars
+        with tempfile.TemporaryDirectory() as tdir:
+            pty = self.check_bootstrap(
+                'dash', tdir, extra_exec='env; exit 0', SHELL_INTEGRATION_VALUE='',
+                ssh_opts={'env': {
+                    'TSET': 'set-works',
+                    'COLORTERM': DELETE_ENV_VAR,
+                }}
+            )
+            pty.wait_till(lambda: 'TSET=set-works' in pty.screen_contents())
+            self.assertNotIn('COLORTERM', pty.screen_contents())
         # test handling of data in tty before tarfile is sent
-        all_possible_sh = tuple(sh for sh in ('dash', 'zsh', 'bash', 'posh', 'sh') if shutil.which(sh))
-        for sh in all_possible_sh:
+        for sh in self.all_possible_sh:
             with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
                 pty = self.check_bootstrap(
                     sh, tdir, extra_exec='echo "ld:$leading_data"; exit 0',
@@ -90,15 +107,15 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         import pwd
         expected_login_shell = pwd.getpwuid(os.geteuid()).pw_shell
         for m in methods:
-            for sh in all_possible_sh:
+            for sh in self.all_possible_sh:
                 with self.subTest(sh=sh, method=m), tempfile.TemporaryDirectory() as tdir:
                     pty = self.check_bootstrap(sh, tdir, extra_exec=f'{m}; echo "$login_shell"; exit 0', SHELL_INTEGRATION_VALUE='')
                     self.assertIn(expected_login_shell, pty.screen_contents())
 
         # check that shell integration works
         ok_login_shell = ''
-        for sh in all_possible_sh:
-            for login_shell in {'fish', 'zsh', 'bash'} & set(all_possible_sh):
+        for sh in self.all_possible_sh:
+            for login_shell in {'fish', 'zsh', 'bash'} & set(self.all_possible_sh):
                 if login_shell == 'bash' and not bash_ok():
                     continue
                 ok_login_shell = login_shell
@@ -110,7 +127,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
                 with tempfile.TemporaryDirectory() as tdir:
                     self.check_bootstrap('sh', tdir, ok_login_shell, val)
 
-    def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', extra_exec='', pre_data=''):
+    def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', extra_exec='', pre_data='', ssh_opts=None):
         script = bootstrap_script(
             EXEC_CMD=f'echo "UNTAR_DONE"; {extra_exec}',
             OVERRIDE_LOGIN_SHELL=login_shell,
@@ -121,7 +138,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         # prevent newuser-install from running
         open(os.path.join(home_dir, '.zshrc'), 'w').close()
         options = {'shell_integration': shell_integration(SHELL_INTEGRATION_VALUE or 'disabled')}
-        pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=home_dir, env=env, options=options)
+        pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=home_dir, env=env, options=options, ssh_opts=ssh_opts)
         if pre_data:
             pty.write_buf = pre_data.encode('utf-8')
         del script

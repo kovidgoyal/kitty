@@ -70,14 +70,7 @@ get_data() {
             die "$size"
             ;;
     esac
-    data_dir=$(read_record)
-    case "$data_dir" in 
-        ("/"*)
-            ;;
-        (*)
-            data_dir="$HOME/$data_dir"
-            ;;
-    esac
+    data_dir="$HOME/$(read_record)"
     # using dd with bs=1 is very slow on Linux, so use head 
     command head -c "$size" < /dev/tty | untar
     rc="$?";
@@ -95,7 +88,8 @@ fi
 if [ "$rc" != "0" ]; then die "Failed to extract data transmitted by ssh kitten over the TTY device"; fi
 [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data, no kitty.terminfo found";
 shell_integration_dir="$data_dir/shell-integration"
-shell_integration_settings_file="$data_dir/settings/ksi_env_var"
+settings_dir="$data_dir/settings"
+env_var_file="$settings_dir/env-vars.sh"
 
 # export TERMINFO
 tname=".terminfo"
@@ -104,6 +98,9 @@ if [ -e "/usr/share/misc/terminfo.cdb" ]; then
     tname=".terminfo.cdb"
 fi
 export TERMINFO="$HOME/$tname"
+
+# setup env vars
+. "$env_var_file"
 
 # compile terminfo for this system
 if [ -x "$(command -v tic)" ]; then
@@ -197,13 +194,6 @@ else
     using_getent || using_id || using_python || using_passwd || die "Could not detect login shell";
 fi
 shell_name=$(basename $login_shell)
-
-# read the variable and remove all leading and trailing spaces and collapse multiple spaces using xargs
-if [  -f "$shell_integration_settings_file" ]; then 
-    export KITTY_SHELL_INTEGRATION="$(cat $shell_integration_settings_file | xargs echo)"
-else
-    unset KITTY_SHELL_INTEGRATION
-fi
 
 exec_bash_with_integration() {
     export ENV="$shell_integration_dir/bash/kitty.bash"

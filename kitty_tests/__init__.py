@@ -97,7 +97,7 @@ class Callbacks:
     def handle_remote_ssh(self, msg):
         from kittens.ssh.main import get_ssh_data
         if self.pty:
-            for line in get_ssh_data(msg):
+            for line in get_ssh_data(msg, {'*': self.pty.ssh_opts} if self.pty.ssh_opts else None):
                 self.pty.write_to_child(line)
 
     def handle_remote_echo(self, msg):
@@ -159,9 +159,9 @@ class BaseTest(TestCase):
         s = Screen(c, lines, cols, scrollback, cell_width, cell_height, 0, c)
         return s
 
-    def create_pty(self, argv, cols=80, lines=25, scrollback=100, cell_width=10, cell_height=20, options=None, cwd=None, env=None):
+    def create_pty(self, argv, cols=80, lines=25, scrollback=100, cell_width=10, cell_height=20, options=None, cwd=None, env=None, ssh_opts=None):
         self.set_options(options)
-        return PTY(argv, lines, cols, scrollback, cell_width, cell_height, cwd, env)
+        return PTY(argv, lines, cols, scrollback, cell_width, cell_height, cwd, env, ssh_opts)
 
     def assertEqualAttributes(self, c1, c2):
         x1, y1, c1.x, c1.y = c1.x, c1.y, 0, 0
@@ -174,7 +174,12 @@ class BaseTest(TestCase):
 
 class PTY:
 
-    def __init__(self, argv, rows=25, columns=80, scrollback=100, cell_width=10, cell_height=20, cwd=None, env=None):
+    def __init__(self, argv, rows=25, columns=80, scrollback=100, cell_width=10, cell_height=20, cwd=None, env=None, ssh_opts=None):
+        if ssh_opts:
+            from kittens.ssh.options.types import Options as SSHOptions
+            self.ssh_opts = SSHOptions(ssh_opts or {})
+        else:
+            self.ssh_opts = None
         if isinstance(argv, str):
             argv = shlex.split(argv)
         pid, self.master_fd = fork()
