@@ -27,10 +27,13 @@ to SSH to connect to it.
 '''
     )
 
-opt('+env', '',
-    option_type='env',
-    add_to_default=False,
-    long_text='''
+opt('remote_dir', '.local/share/kitty-ssh-kitten', long_text='''
+The location on the remote computer where the files needed for this kitten
+are installed. The location is relative to the HOME directory.
+'''
+    )
+
+opt('+env', '', option_type='env', add_to_default=False, long_text='''
 Specify environment variables to set on the remote host. Note that
 environment variables can refer to each other, so if you use::
 
@@ -41,8 +44,5 @@ The value of MYVAR2 will be :code:`a/<path to home directory>/b`. Using
 :code:`VAR=` will set it to the empty string and using just :code:`VAR`
 will delete the variable from the child process' environment. The definitions
 are processed alphabetically.
-'''
-    )
-
-
+''')
 egr()  # }}}

@@ -4,11 +4,12 @@ import typing
 
 
 option_names = (  # {{{
- 'env', 'hostname')  # }}}
+ 'env', 'hostname', 'remote_dir')  # }}}
 
 
 class Options:
     hostname: str = '*'
+    remote_dir: str = '.local/share/kitty-ssh-kitten'
     env: typing.Dict[str, str] = {}
     config_paths: typing.Tuple[str, ...] = ()
     config_overrides: typing.Tuple[str, ...] = ()

@@ -36,12 +36,13 @@ leading_data=""
 
 dsc_to_kitty "ssh" "hostname=$hostname:pwfile=$password_filename:pw=$data_password"
 size=""
+record_separator=$(printf "\036")
 
 untar() {
     command base64 -d | command tar xjf - --no-same-owner -C "$HOME" 
 }
 
-get_data() {
+read_record() {
     # We need a way to read a single byte at a time and to read a specified number of bytes in one invocation.
     # The options are head -c, read -N and dd
     #
@@ -52,45 +53,49 @@ get_data() {
     #
     # POSIX dd works for one byte at a time but for reading X bytes it needs the GNU iflag=count_bytes
     # extension, and is anyway unsafe as it can lead to corrupt output when the read syscall is interrupted.
-    record_started=0
-    record_separator=$(printf "\036")
+    record=""
     while :; do
-        n=$(command dd bs=1 count=1 2> /dev/null) 
-        if [ $record_started = 1 ]; then
-            if [ "$n" = ":" ]; then break; fi
-            size="$size$n"
-        else
-            if [ "$n" = "$record_separator" ]; then 
-                record_started=1; 
-            else
-                leading_data="$leading_data$n"
-            fi
-        fi
+        n=$(command dd bs=1 count=1 2> /dev/null < /dev/tty) 
+        [ "$n" = "$record_separator" ] && break
+        record="$record$n"
     done
+    printf "%s" "$record"
+}
+
+get_data() {
+    leading_data=$(read_record)
+    size=$(read_record)
     case "$size" in
         ("!"*)
             die "$size"
             ;;
     esac
+    data_dir=$(read_record)
+    case "$data_dir" in 
+        ("/"*)
+            ;;
+        (*)
+            data_dir="$HOME/$data_dir"
+            ;;
+    esac
     # using dd with bs=1 is very slow on Linux, so use head 
-    command head -c "$size" | untar
-    # command dd bs=1 "count=$size" 2> /dev/null | untar
+    command head -c "$size" < /dev/tty | untar
     rc="$?";
 }
 
 get_data
 command stty "$saved_tty_settings"
 saved_tty_settings=""
-if [ "$rc" != "0" ]; then die "Failed to extract data transmitted by ssh kitten over the TTY device"; fi
-shell_integration_dir="$HOME/SHELL_INTEGRATION_DIR"
-shell_integration_settings_file="$shell_integration_dir/settings/ksi_env_var"
-if [ ! -f "$shell_integration_settings_file" ]; then die "Extracted data transmitted by ssh kitten is incomplete"; fi
 if [ -n "$leading_data" ]; then
     # clear current line as it might have things echoed on it from leading_data
     # because we only turn off echo in this script whereas the leading bytes could 
     # have been sent before the script had a chance to run
     printf "\r\033[K"  
 fi
+if [ "$rc" != "0" ]; then die "Failed to extract data transmitted by ssh kitten over the TTY device"; fi
+[ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data, no kitty.terminfo found";
+shell_integration_dir="$data_dir/shell-integration"
+shell_integration_settings_file="$data_dir/settings/ksi_env_var"
 
 # export TERMINFO
 tname=".terminfo"
@@ -194,7 +199,11 @@ fi
 shell_name=$(basename $login_shell)
 
 # read the variable and remove all leading and trailing spaces and collapse multiple spaces using xargs
-export KITTY_SHELL_INTEGRATION="$(cat $shell_integration_settings_file | xargs echo)"
+if [  -f "$shell_integration_settings_file" ]; then 
+    export KITTY_SHELL_INTEGRATION="$(cat $shell_integration_settings_file | xargs echo)"
+else
+    unset KITTY_SHELL_INTEGRATION
+fi
 
 exec_bash_with_integration() {
     export ENV="$shell_integration_dir/bash/kitty.bash"

@@ -19,14 +19,14 @@ from typing import (
 from kitty.constants import cache_dir, shell_integration_dir, terminfo_dir
 from kitty.shell_integration import get_effective_ksi_env_var
 from kitty.short_uuid import uuid4
+from kitty.types import run_once
 from kitty.utils import SSHConnectionData
 
 from .completion import complete, ssh_options
+from .options.types import Options as SSHOptions
 
-DEFAULT_SHELL_INTEGRATION_DEST = '.local/share/kitty-ssh-kitten/shell-integration'
 
-
-def make_tarfile(hostname: str = '', shell_integration_dest: str = DEFAULT_SHELL_INTEGRATION_DEST) -> bytes:
+def make_tarfile(ssh_opts: SSHOptions) -> bytes:
 
     def normalize_tarinfo(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo:
         tarinfo.uname = tarinfo.gname = 'kitty'
@@ -51,17 +51,32 @@ def make_tarfile(hostname: str = '', shell_integration_dest: str = DEFAULT_SHELL
 
     buf = io.BytesIO()
     with tarfile.open(mode='w:bz2', fileobj=buf, encoding='utf-8') as tf:
-        tf.add(shell_integration_dir, arcname=shell_integration_dest, filter=filter_files)
+        rd = ssh_opts.remote_dir.rstrip('/')
+        ksi = get_effective_ksi_env_var()
+        if ksi:
+            tf.add(shell_integration_dir, arcname=rd + '/shell-integration', filter=filter_files)
+            add_data_as_file(tf, rd + '/settings/ksi_env_var', ksi)
         tf.add(terminfo_dir, arcname='.terminfo', filter=filter_files)
-        add_data_as_file(tf, shell_integration_dest.rstrip('/') + '/settings/ksi_env_var', get_effective_ksi_env_var())
     return buf.getvalue()
 
 
-def get_ssh_data(msg: str, shell_integration_dest: str = DEFAULT_SHELL_INTEGRATION_DEST) -> Iterator[bytes]:
+@run_once
+def load_ssh_options() -> Dict[str, SSHOptions]:
+    from .config import init_config
+    return init_config()
+
+
+def get_ssh_data(msg: str, ssh_opts: Optional[Dict[str, SSHOptions]] = None) -> Iterator[bytes]:
+    from .config import options_for_host
+    record_sep = b'\036'
+
+    if ssh_opts is None:
+        ssh_opts = load_ssh_options()
 
     def fmt_prefix(msg: Any) -> bytes:
-        return f'\036{msg}:'.encode('ascii')
+        return str(msg).encode('ascii') + record_sep
 
+    yield record_sep  # to discard leading data
     try:
         msg = standard_b64decode(msg).decode('utf-8')
         md = dict(x.split('=', 1) for x in msg.split(':'))
@@ -70,23 +85,26 @@ def get_ssh_data(msg: str, shell_integration_dest: str = DEFAULT_SHELL_INTEGRATI
         pwfilename = md['pwfile']
     except Exception:
         yield fmt_prefix('!invalid ssh data request message')
-    try:
-        with open(os.path.join(cache_dir(), pwfilename)) as f:
-            os.unlink(f.name)
-            if pw != f.read():
-                raise ValueError('Incorrect password')
-    except Exception:
-        yield fmt_prefix('!incorrect ssh data password')
     else:
         try:
-            data = make_tarfile(hostname, shell_integration_dest)
+            with open(os.path.join(cache_dir(), pwfilename)) as f:
+                os.unlink(f.name)
+                if pw != f.read():
+                    raise ValueError('Incorrect password')
         except Exception:
-            yield fmt_prefix('!error while gathering ssh data')
+            yield fmt_prefix('!incorrect ssh data password')
         else:
-            from base64 import standard_b64encode
-            encoded_data = standard_b64encode(data)
-            yield fmt_prefix(len(encoded_data))
-            yield encoded_data
+            resolved_ssh_opts = options_for_host(hostname, ssh_opts)
+            try:
+                data = make_tarfile(resolved_ssh_opts)
+            except Exception:
+                yield fmt_prefix('!error while gathering ssh data')
+            else:
+                from base64 import standard_b64encode
+                encoded_data = standard_b64encode(data)
+                yield fmt_prefix(len(encoded_data))
+                yield fmt_prefix(resolved_ssh_opts.remote_dir)
+                yield encoded_data
 
 
 def safe_remove(x: str) -> None:
@@ -103,7 +121,6 @@ def prepare_script(ans: str, replacements: Dict[str, str]) -> str:
     replacements['PASSWORD_FILENAME'] = os.path.basename(tf.name)
     for k in ('EXEC_CMD', 'OVERRIDE_LOGIN_SHELL'):
         replacements[k] = replacements.get(k, '')
-    replacements['SHELL_INTEGRATION_DIR'] = replacements.get('SHELL_INTEGRATION_DIR', DEFAULT_SHELL_INTEGRATION_DEST)
 
     def sub(m: 're.Match[str]') -> str:
         return replacements[m.group()]
