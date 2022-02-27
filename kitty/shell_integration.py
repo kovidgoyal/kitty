@@ -4,10 +4,11 @@
 
 import os
 import subprocess
-from typing import Optional, Dict, List
+from contextlib import suppress
+from typing import Dict, List, Optional
 
-from .options.types import Options
 from .constants import shell_integration_dir
+from .options.types import Options
 from .utils import log_error, which
 
 
@@ -37,13 +38,11 @@ def is_new_zsh_install(env: Dict[str, str], zdotdir: Optional[str]) -> bool:
     return True
 
 
-def get_zsh_zdotdir_from_gloabl_zshenv(env: Dict[str, str], argv: List[str]) -> Optional[str]:
+def get_zsh_zdotdir_from_global_zshenv(env: Dict[str, str], argv: List[str]) -> Optional[str]:
     exe = which(argv[0], only_system=True) or 'zsh'
-    try:
-        zdotdir = subprocess.check_output([exe, '--norcs', '--interactive', '-c', 'echo -n $ZDOTDIR'], env=env).decode('utf-8')
-    except Exception:
-        zdotdir = None
-    return zdotdir
+    with suppress(Exception):
+        return subprocess.check_output([exe, '--norcs', '--interactive', '-c', 'echo -n $ZDOTDIR'], env=env).decode('utf-8')
+    return None
 
 
 def setup_zsh_env(env: Dict[str, str], argv: List[str]) -> None:
@@ -51,7 +50,7 @@ def setup_zsh_env(env: Dict[str, str], argv: List[str]) -> None:
     if is_new_zsh_install(env, zdotdir):
         if zdotdir is None:
             # Try to get ZDOTDIR from /etc/zshenv, when all startup files are not present
-            zdotdir = get_zsh_zdotdir_from_gloabl_zshenv(env, argv)
+            zdotdir = get_zsh_zdotdir_from_global_zshenv(env, argv)
             if zdotdir is None or is_new_zsh_install(env, zdotdir):
                 return
         else:
