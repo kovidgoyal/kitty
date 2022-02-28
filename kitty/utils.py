@@ -892,7 +892,8 @@ def hold_till_enter() -> None:
 
     from kittens.tui.operations import init_state, set_cursor_visible
     fd, original_termios = open_tty()
-    write_all(fd, '\n\x1b[1;32mPress Enter or Esc to exit')
+    msg = '\n\r\x1b[1;32mPress Enter or Esc to exit'
+    write_all(fd, msg)
     write_all(fd, init_state(alternate_screen=False, kitty_keyboard_mode=False) + set_cursor_visible(False))
     with no_echo(fd):
         termios.tcdrain(fd)
@@ -901,5 +902,7 @@ def hold_till_enter() -> None:
             if not rd:
                 break
             q = os.read(fd, 1)
-            if q in b'\n\r\x1b\x03':
+            if q in b'\n\r\x1b':
                 break
+            if q in b'\x03\x04':
+                write_all(fd, msg)
