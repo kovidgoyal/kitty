@@ -907,5 +907,5 @@ def hold_till_enter() -> None:
         if not rd:
             break
         q = os.read(fd, 1)
-        if q in b'\n\r\x1b\x03':
+        if q in b'\n\r\x1b\x03\x04':
             break
