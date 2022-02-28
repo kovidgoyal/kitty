@@ -894,18 +894,12 @@ def hold_till_enter() -> None:
     fd, original_termios = open_tty()
     write_all(fd, '\n\x1b[1;32mPress Enter or Esc to exit')
     write_all(fd, init_state(alternate_screen=False, kitty_keyboard_mode=False) + set_cursor_visible(False))
-    old = termios.tcgetattr(fd)
-    new = old[:]
-    new[3] &= ~termios.ECHO  # 3 == 'lflags'
-    tcsetattr_flags = termios.TCSAFLUSH
-    if hasattr(termios, 'TCSASOFT'):
-        tcsetattr_flags |= getattr(termios, 'TCSASOFT')
-    termios.tcsetattr(fd, tcsetattr_flags, new)
-    termios.tcdrain(fd)
-    while True:
-        rd = select.select([fd], [], [])[0]
-        if not rd:
-            break
-        q = os.read(fd, 1)
-        if q in b'\n\r\x1b\x03':
-            break
+    with no_echo(fd):
+        termios.tcdrain(fd)
+        while True:
+            rd = select.select([fd], [], [])[0]
+            if not rd:
+                break
+            q = os.read(fd, 1)
+            if q in b'\n\r\x1b\x03':
+                break
