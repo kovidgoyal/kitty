@@ -31,6 +31,7 @@ def runpy(args: List[str]) -> None:
 
 def hold(args: List[str]) -> None:
     import subprocess
+    ret = 1
     try:
         ret = subprocess.Popen(args[1:]).wait()
     except KeyboardInterrupt:
