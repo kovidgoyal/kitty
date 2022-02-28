@@ -35,7 +35,8 @@ def binary_includes():
             'expat', 'sqlite3', 'ffi', 'z', 'lzma', 'png16', 'lcms2', 'crypt',
             'iconv', 'pcre', 'graphite2', 'glib-2.0', 'freetype', 'rsync',
             'harfbuzz', 'xkbcommon', 'xkbcommon-x11',
-            'ncursesw', 'readline', 'brotlicommon', 'brotlienc', 'brotlidec'
+            'ncursesw', 'readline', 'brotlicommon', 'brotlienc', 'brotlidec',
+            'wayland-client', 'wayland-cursor',
         ))) + (
                 get_dll_path('bz2', 2), get_dll_path('ssl', 2), get_dll_path('crypto', 2),
                 get_dll_path(f'python{py_ver}', 2),
