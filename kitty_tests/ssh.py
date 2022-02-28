@@ -167,7 +167,10 @@ copy --exclude */w.* d1
                     continue
                 ok_login_shell = login_shell
                 with self.subTest(sh=sh, login_shell=login_shell), tempfile.TemporaryDirectory() as tdir:
-                    self.check_bootstrap(sh, tdir, login_shell)
+                    pty = self.check_bootstrap(sh, tdir, login_shell)
+                    if login_shell == 'bash':
+                        pty.send_cmd_to_child('echo $HISTFILE')
+                        pty.wait_till(lambda: '/.bash_history' in pty.screen_contents())
         # check that turning off shell integration works
         if ok_login_shell in ('bash', 'zsh'):
             for val in ('', 'no-rc', 'enabled no-rc'):

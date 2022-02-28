@@ -214,6 +214,10 @@ shell_name=$(basename $login_shell)
 exec_bash_with_integration() {
     export ENV="$shell_integration_dir/bash/kitty.bash"
     export KITTY_BASH_INJECT="1"
+    if [ -z "$HISTFILE" ]; then
+        export HISTFILE="$HOME/.bash_history"
+        export KITTY_BASH_UNEXPORT_HISTFILE="1"
+    fi
     exec "$login_shell" "--posix"
 }
 
