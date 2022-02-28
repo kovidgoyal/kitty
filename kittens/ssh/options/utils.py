@@ -4,9 +4,7 @@
 import posixpath
 from typing import Any, Dict, Iterable, Optional, Tuple
 
-from kitty.cli_stub import CopyCLIOptions
-
-from ..copy import parse_copy_instructions
+from ..copy import CopyInstruction, parse_copy_instructions
 
 DELETE_ENV_VAR = '_delete_this_env_var_'
 
@@ -33,7 +31,7 @@ def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:
             yield val, DELETE_ENV_VAR
 
 
-def copy(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, CopyCLIOptions]]:
+def copy(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, CopyInstruction]]:
     yield from parse_copy_instructions(val)
 
 

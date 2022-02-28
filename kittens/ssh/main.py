@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import atexit
+import fnmatch
 import io
 import json
 import os
@@ -15,7 +16,7 @@ import traceback
 from base64 import standard_b64decode
 from contextlib import suppress
 from typing import (
-    Any, Dict, Iterator, List, NoReturn, Optional, Set, Tuple, Union
+    Any, Callable, Dict, Iterator, List, NoReturn, Optional, Set, Tuple, Union
 )
 
 from kitty.constants import cache_dir, shell_integration_dir, terminfo_dir
@@ -66,10 +67,13 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
         tf.addfile(ans, io.BytesIO(data))
         return ans
 
-    def filter_files(tarinfo: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
-        if tarinfo.name.endswith('ssh/bootstrap.sh'):
-            return None
-        return normalize_tarinfo(tarinfo)
+    def filter_from_globs(*pats: str) -> Callable[[tarfile.TarInfo], Optional[tarfile.TarInfo]]:
+        def filter(tarinfo: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
+            for pat in pats:
+                if fnmatch.fnmatch(tarinfo.name, pat):
+                    return None
+            return normalize_tarinfo(tarinfo)
+        return filter
 
     from kitty.shell_integration import get_effective_ksi_env_var
     if ssh_opts.shell_integration == 'inherit':
@@ -94,10 +98,13 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
     buf = io.BytesIO()
     with tarfile.open(mode='w:bz2', fileobj=buf, encoding='utf-8') as tf:
         rd = ssh_opts.remote_dir.rstrip('/')
+        for location, ci in ssh_opts.copy.items():
+            tf.add(location, arcname=ci.arcname, filter=filter_from_globs(*ci.exclude_patterns))
         add_data_as_file(tf, 'kitty-ssh-kitten-data.sh', env_script)
         if ksi:
-            tf.add(shell_integration_dir, arcname=rd + '/shell-integration', filter=filter_files)
-        tf.add(terminfo_dir, arcname='.terminfo', filter=filter_files)
+            arcname = rd + '/shell-integration'
+            tf.add(shell_integration_dir, arcname=arcname, filter=filter_from_globs(f'{arcname}/ssh/bootstrap.*'))
+        tf.add(terminfo_dir, arcname='.terminfo', filter=normalize_tarinfo)
     return buf.getvalue()
 
 

@@ -5,7 +5,9 @@
 import glob
 import os
 import shlex
-from typing import Iterable, Iterator, List, Optional, Sequence, Tuple
+from typing import (
+    Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple
+)
 
 from kitty.cli import parse_args
 from kitty.cli_stub import CopyCLIOptions
@@ -24,8 +26,15 @@ Interpret file arguments as glob patterns.
 The destination on the remote computer to copy to. Relative paths are resolved
 relative to HOME on the remote machine. When this option is not specified, the
 local file path is used as the remote destination (with the HOME directory
-getting automatically replaced by the remote HOME). Note that enviroment
+getting automatically replaced by the remote HOME). Note that environment
 variables and ~ are not expanded.
+
+
+--exclude
+type=list
+A glob pattern. Files whose names would match this pattern after transfer
+are excluded from being transferred. Useful when adding directories. Can
+be specified multiple times, if any of the patterns match the file will be excluded.
 '''
 
 
@@ -58,7 +67,23 @@ class CopyCLIError(ValueError):
     pass
 
 
-def parse_copy_instructions(val: str) -> Iterable[Tuple[str, CopyCLIOptions]]:
+def get_arcname(loc: str, dest: Optional[str], home: str) -> str:
+    if dest:
+        arcname = dest
+    else:
+        arcname = os.path.normpath(loc)
+        if arcname.startswith(home):
+            arcname = os.path.relpath(arcname, home)
+    arcname = os.path.normpath(arcname).replace(os.sep, '/')
+    return arcname
+
+
+class CopyInstruction(NamedTuple):
+    arcname: str
+    exclude_patterns: Tuple[str, ...]
+
+
+def parse_copy_instructions(val: str) -> Iterable[Tuple[str, CopyInstruction]]:
     opts, args = parse_copy_args(shlex.split(val))
     locations: List[str] = []
     for a in args:
@@ -67,5 +92,7 @@ def parse_copy_instructions(val: str) -> Iterable[Tuple[str, CopyCLIOptions]]:
         raise CopyCLIError('No files to copy specified')
     if len(locations) > 1 and opts.dest:
         raise CopyCLIError('Specifying a remote location with more than one file is not supported')
+    home = os.path.expanduser('~')
     for loc in locations:
-        yield loc, opts
+        arcname = get_arcname(loc, opts.dest, home)
+        yield loc, CopyInstruction(arcname, tuple(opts.exclude))
