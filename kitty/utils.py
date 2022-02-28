@@ -892,7 +892,7 @@ def hold_till_enter() -> None:
 
     from kittens.tui.operations import init_state, set_cursor_visible
     fd, original_termios = open_tty()
-    msg = '\n\r\x1b[1;32mPress Enter or Esc to exit'
+    msg = '\n\r\x1b[1;32mPress Enter or Esc to exit\x1b[m'
     write_all(fd, msg)
     write_all(fd, init_state(alternate_screen=False, kitty_keyboard_mode=False) + set_cursor_visible(False))
     with no_echo(fd):
