@@ -23,11 +23,12 @@ def real_main(args: List[str]) -> None:
     cli_opts, items = parse_args(args[1:], OPTIONS, '', msg, 'hints', result_class=ErrorCLIOptions)
     error_message = sys.stdin.buffer.read().decode('utf-8')
     sys.stdin = open(os.ctermid())
-    print(styled(cli_opts.title, fg_intense=True, fg='red', bold=True))
-    print()
+    if cli_opts.title:
+        print(styled(cli_opts.title, fg_intense=True, fg='red', bold=True))
+        print()
     print(error_message)
     print()
-    input('Press Enter to close.')
+    input('\x1b[1;32mPress Enter to close\x1b[m')
 
 
 def main(args: List[str]) -> None:

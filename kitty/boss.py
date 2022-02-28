@@ -2278,10 +2278,14 @@ class Boss:
                 tab.remove_window(w)
 
         if failures:
-            with force_window_launch(needs_window_replaced):
-                from kittens.tui.operations import styled
-                spec = '\n  '.join(styled(u, fg='red') for u in failures)
-                self.launch('--hold', '--type=os-window', kitty_exe(), '+runpy', fr'print("Unknown URL type, cannot open:\n\n ", {spec!r});')
+            from kittens.tui.operations import styled
+            spec = '\n  '.join(styled(u, fg='red') for u in failures)
+            bdata = f"Unknown URL type, cannot open:\n\n  {spec}".encode('utf-8')
+            special_window = SpecialWindow([kitty_exe(), '+kitten', 'show_error', '--title', 'Open URL Error'], bdata, 'Open URL Error')
+            if needs_window_replaced and tab is not None:
+                tab.new_special_window(special_window)
+            else:
+                self._new_os_window(special_window)
             clear_initial_window()
             needs_window_replaced = False
         if actions:
