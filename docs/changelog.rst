@@ -75,7 +75,7 @@ command.
 Detailed list of changes
 -------------------------------------
 
-0.24.3 [future]
+0.24.3 [2022-02-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Bash integration: No longer modify :file:`~/.bashrc` to load :ref:`shell integration <shell_integration>`.
