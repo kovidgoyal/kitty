@@ -48,10 +48,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
 
     def test_ssh_config_parsing(self):
         def parse(conf):
-            with tempfile.NamedTemporaryFile(suffix='test.conf') as cf:
-                cf.write(conf.encode('utf-8'))
-                cf.flush()
-                return load_config(cf.name)
+            return load_config(overrides=conf.splitlines())
 
         def for_host(hostname, conf):
             if isinstance(conf, str):
@@ -71,6 +68,9 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
     @lru_cache()
     def all_possible_sh(self):
         return tuple(sh for sh in ('dash', 'zsh', 'bash', 'posh', 'sh') if shutil.which(sh))
+
+    def test_ssh_copy(self):
+        pass
 
     def test_ssh_env_vars(self):
         for sh in self.all_possible_sh:

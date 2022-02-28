@@ -37,6 +37,14 @@ leading_data=""
 dsc_to_kitty "ssh" "hostname=$hostname:pwfile=$password_filename:pw=$data_password"
 record_separator=$(printf "\036")
 
+mv_files_and_dirs() {
+    cwd="$PWD";
+    cd "$1";
+    command find . -type d -exec mkdir -p "$2/{}" ";"
+    command find . -type f -exec mv "{}" "$2/{}" ";"
+    cd "$cwd";
+}
+
 untar_and_read_env() {
     # extract the tar file atomically, in the sense that any file from the 
     # tarfile is only put into place after it has been fully written to disk
@@ -47,15 +55,11 @@ untar_and_read_env() {
     # does not limit itself to reading -c bytes only from the pipe so we can potentially lose
     # some trailing data, for instance if the user starts typing. Cant be helped.
     command head -c "$1" < /dev/tty | command base64 -d | command tar xjf - --no-same-owner -C "$tdir";
-    data_file="$tdir/kitty-ssh-kitten-data.sh";
+    data_file="$tdir/data.sh";
     [ -f "$data_file" ] && . "$data_file";
     data_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR"
-    command rm -f "$data_file";
-    cwd="$PWD";
-    cd "$tdir";
-    command find . -type d -exec mkdir -p "${HOME}/{}" ";"
-    command find . -type f -exec mv "{}" "${HOME}/{}" ";"
-    cd "$cwd";
+    mv_files_and_dirs "$tdir/home" "$HOME"
+    [ -e "$tdir/root" ] && mv_files_and_dirs "$tdir/root" ""
     command rm -rf "$tdir";
     [ -z "KITTY_SSH_KITTEN_DATA_DIR" ] && die "Failed to read SSH data from tty";
     unset KITTY_SSH_KITTEN_DATA_DIR;

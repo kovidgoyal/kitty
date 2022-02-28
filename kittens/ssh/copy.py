@@ -75,7 +75,8 @@ def get_arcname(loc: str, dest: Optional[str], home: str) -> str:
         if arcname.startswith(home):
             arcname = os.path.relpath(arcname, home)
     arcname = os.path.normpath(arcname).replace(os.sep, '/')
-    return arcname
+    prefix = 'root' if arcname.startswith('/') else 'home/'
+    return prefix + arcname
 
 
 class CopyInstruction(NamedTuple):

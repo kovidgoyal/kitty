@@ -100,11 +100,11 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
         rd = ssh_opts.remote_dir.rstrip('/')
         for location, ci in ssh_opts.copy.items():
             tf.add(location, arcname=ci.arcname, filter=filter_from_globs(*ci.exclude_patterns))
-        add_data_as_file(tf, 'kitty-ssh-kitten-data.sh', env_script)
+        add_data_as_file(tf, 'data.sh', env_script)
         if ksi:
-            arcname = rd + '/shell-integration'
+            arcname = 'home/' + rd + '/shell-integration'
             tf.add(shell_integration_dir, arcname=arcname, filter=filter_from_globs(f'{arcname}/ssh/bootstrap.*'))
-        tf.add(terminfo_dir, arcname='.terminfo', filter=normalize_tarinfo)
+        tf.add(terminfo_dir, arcname='home/.terminfo', filter=normalize_tarinfo)
     return buf.getvalue()
 
 
