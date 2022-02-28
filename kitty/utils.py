@@ -173,7 +173,7 @@ class ScreenSizeGetter:
 
     def __call__(self) -> ScreenSize:
         if self.changed:
-            self.ans = read_screen_size()
+            self.ans = read_screen_size(self.fd)
             self.changed = False
         return cast(ScreenSize, self.ans)
 
