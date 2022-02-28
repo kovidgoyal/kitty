@@ -19,10 +19,10 @@ end
 
 status is-interactive || exit 0
 not functions -q __ksi_schedule || exit 0
-# Check fish version 3.3.0+ efficiently and exit on outdated versions
+# Check fish version 3.3.0+ efficiently and fallback to check the last working version 3.2.0, exit on outdated versions.
 # "Warning: Update fish to version 3.3.0+ to enable kitty shell integration.\n"
-set -q fish_killring
-or echo -en "\eP@kitty-print|V2FybmluZzogVXBkYXRlIGZpc2ggdG8gdmVyc2lvbiAzLjMuMCsgdG8gZW5hYmxlIGtpdHR5IHNoZWxsIGludGVncmF0aW9uLgo=\e\\" && exit 0
+set -q fish_killring || set -q status_generation || string match -qnv "3.1.*" "$version"
+or echo -en "\eP@kitty-print|V2FybmluZzogVXBkYXRlIGZpc2ggdG8gdmVyc2lvbiAzLjMuMCsgdG8gZW5hYmxlIGtpdHR5IHNoZWxsIGludGVncmF0aW9uLgo=\e\\" && exit 0 || exit 0
 
 function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after other scripts have run, we hope"
     functions --erase __ksi_schedule
