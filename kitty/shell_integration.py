@@ -93,6 +93,10 @@ def setup_bash_env(env: Dict[str, str], argv: List[str]) -> None:
         env['KITTY_BASH_RCFILE'] = rcfile
     for i in sorted(remove_args, reverse=True):
         del argv[i]
+    if 'HISTFILE' not in env and 'posix' not in inject:
+        # In POSIX mode the default history file is ~/.sh_history instead of ~/.bash_history
+        env['HISTFILE'] = os.path.expanduser('~/.bash_history')
+        env['KITTY_BASH_UNEXPORT_HISTFILE'] = '1'
     argv.insert(1, '--posix')
 
 

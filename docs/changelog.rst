@@ -75,6 +75,15 @@ command.
 Detailed list of changes
 -------------------------------------
 
+0.24.4 [2022-02-28]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fix the default bash HISTFILE changing to :file:`~/.sh_history` instead of :file:`~/.bash_history` (:iss:`4765`)
+
+- Linux binaries: Fix binaries not working on systems with older wayland client
+  libraries (:iss:`4760`)
+
+- Bash integration: No longer modify :file:`~/.bashrc` to load :ref:`shell integration <shell_integration>`.
 0.24.3 [2022-02-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
