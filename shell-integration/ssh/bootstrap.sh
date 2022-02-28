@@ -41,6 +41,7 @@ mv_files_and_dirs() {
     cwd="$PWD";
     cd "$1";
     command find . -type d -exec mkdir -p "$2/{}" ";"
+    command find . -type l -exec sh -c "tgt=\$(command readlink -n \"{}\"); command ln -s \"\$tgt\" \"$2/{}\"; command rm -f \"{}\"" ";"
     command find . -type f -exec mv "{}" "$2/{}" ";"
     cd "$cwd";
 }

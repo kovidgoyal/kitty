@@ -11,6 +11,7 @@ from functools import lru_cache
 from kittens.ssh.config import load_config, options_for_host
 from kittens.ssh.main import bootstrap_script, get_connection_data
 from kittens.ssh.options.utils import DELETE_ENV_VAR
+from kittens.transfer.utils import set_paths
 from kitty.constants import is_macos
 from kitty.fast_data_types import CURSOR_BEAM
 from kitty.options.utils import shell_integration
@@ -18,6 +19,12 @@ from kitty.utils import SSHConnectionData
 
 from . import BaseTest
 from .shell_integration import bash_ok, basic_shell_env
+
+
+def files_in(path):
+    for record in os.walk(path):
+        for f in record[-1]:
+            yield os.path.relpath(os.path.join(record[0], f), path)
 
 
 class SSHKitten(BaseTest):
@@ -70,7 +77,42 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         return tuple(sh for sh in ('dash', 'zsh', 'bash', 'posh', 'sh') if shutil.which(sh))
 
     def test_ssh_copy(self):
-        pass
+        simple_data = 'rkjlhfwf9whoaa'
+
+        def touch(p):
+            with open(os.path.join(local_home, p), 'w') as f:
+                f.write(simple_data)
+
+        for sh in self.all_possible_sh:
+            with self.subTest(sh=sh), tempfile.TemporaryDirectory() as remote_home, tempfile.TemporaryDirectory() as local_home, set_paths(home=local_home):
+                tuple(map(touch, 'simple-file g.1 g.2'.split()))
+                os.makedirs(f'{local_home}/d1/d2/d3')
+                touch('d1/d2/x')
+                os.symlink('d2/x', f'{local_home}/d1/y')
+
+                conf = '''\
+copy simple-file
+copy --glob g.*
+copy d1
+'''
+                copy = load_config(overrides=filter(None, conf.splitlines()))['*'].copy
+                self.check_bootstrap(
+                    sh, remote_home, extra_exec='env; exit 0', SHELL_INTEGRATION_VALUE='',
+                    ssh_opts={'copy': copy}
+                )
+                self.assertTrue(os.path.lexists(f'{remote_home}/.terminfo/78'))
+                self.assertTrue(os.path.exists(f'{remote_home}/.terminfo/78/xterm-kitty'))
+                self.assertTrue(os.path.exists(f'{remote_home}/.terminfo/x/xterm-kitty'))
+                with open(os.path.join(remote_home, 'simple-file'), 'r') as f:
+                    self.ae(f.read(), simple_data)
+                self.assertTrue(os.path.lexists(f'{remote_home}/d1/y'))
+                self.assertTrue(os.path.exists(f'{remote_home}/d1/y'))
+                self.ae(os.readlink(f'{remote_home}/d1/y'), 'd2/x')
+                contents = set(files_in(remote_home))
+                contents.discard('.zshrc')  # added by check_bootstrap()
+                self.ae(contents, {
+                    'g.1', 'g.2', '.terminfo/kitty.terminfo', 'simple-file', '.terminfo/x/xterm-kitty', 'd1/d2/x', 'd1/y',
+                })
 
     def test_ssh_env_vars(self):
         for sh in self.all_possible_sh:

@@ -12,6 +12,7 @@ from typing import (
 from kitty.cli import parse_args
 from kitty.cli_stub import CopyCLIOptions
 from kitty.types import run_once
+from ..transfer.utils import expand_home, home_path
 
 
 @run_once
@@ -48,9 +49,9 @@ def parse_copy_args(args: Optional[Sequence[str]] = None) -> Tuple[CopyCLIOption
 
 
 def resolve_file_spec(spec: str, is_glob: bool) -> Iterator[str]:
-    ans = os.path.expandvars(os.path.expanduser(spec))
+    ans = os.path.expandvars(expand_home(spec))
     if not os.path.isabs(ans):
-        ans = os.path.expanduser(f'~/{ans}')
+        ans = expand_home(f'~/{ans}')
     if is_glob:
         files = glob.glob(ans)
         if not files:
@@ -93,7 +94,7 @@ def parse_copy_instructions(val: str) -> Iterable[Tuple[str, CopyInstruction]]:
         raise CopyCLIError('No files to copy specified')
     if len(locations) > 1 and opts.dest:
         raise CopyCLIError('Specifying a remote location with more than one file is not supported')
-    home = os.path.expanduser('~')
+    home = home_path()
     for loc in locations:
         arcname = get_arcname(loc, opts.dest, home)
         yield loc, CopyInstruction(arcname, tuple(opts.exclude))
