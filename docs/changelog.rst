@@ -83,6 +83,9 @@ Detailed list of changes
 - Linux binaries: Fix binaries not working on systems with older Wayland client libraries (:iss:`4760`)
 
 - Bash integration: No longer modify :file:`~/.bashrc` to load :ref:`shell integration <shell_integration>`.
+
+- Fix a regression in the previous release that broke kittens launched with STDIN not being a terminal (:iss:`4763`)
+
 0.24.3 [2022-02-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
