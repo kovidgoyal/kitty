@@ -32,7 +32,7 @@ def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:
 
 
 def copy(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, CopyInstruction]]:
-    yield from parse_copy_instructions(val)
+    yield from parse_copy_instructions(val, current_val)
 
 
 def init_results_dict(ans: Dict[str, Any]) -> Dict[str, Any]:

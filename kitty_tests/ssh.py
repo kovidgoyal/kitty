@@ -88,12 +88,14 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
                 tuple(map(touch, 'simple-file g.1 g.2'.split()))
                 os.makedirs(f'{local_home}/d1/d2/d3')
                 touch('d1/d2/x')
+                touch('d1/d2/w.exclude')
                 os.symlink('d2/x', f'{local_home}/d1/y')
 
                 conf = '''\
 copy simple-file
+copy --dest=a/sfa simple-file
 copy --glob g.*
-copy d1
+copy --exclude */w.* d1
 '''
                 copy = load_config(overrides=filter(None, conf.splitlines()))['*'].copy
                 self.check_bootstrap(
@@ -103,8 +105,9 @@ copy d1
                 self.assertTrue(os.path.lexists(f'{remote_home}/.terminfo/78'))
                 self.assertTrue(os.path.exists(f'{remote_home}/.terminfo/78/xterm-kitty'))
                 self.assertTrue(os.path.exists(f'{remote_home}/.terminfo/x/xterm-kitty'))
-                with open(os.path.join(remote_home, 'simple-file'), 'r') as f:
-                    self.ae(f.read(), simple_data)
+                for w in ('simple-file', 'a/sfa'):
+                    with open(os.path.join(remote_home, w), 'r') as f:
+                        self.ae(f.read(), simple_data)
                 self.assertTrue(os.path.lexists(f'{remote_home}/d1/y'))
                 self.assertTrue(os.path.exists(f'{remote_home}/d1/y'))
                 self.ae(os.readlink(f'{remote_home}/d1/y'), 'd2/x')
@@ -112,6 +115,7 @@ copy d1
                 contents.discard('.zshrc')  # added by check_bootstrap()
                 self.ae(contents, {
                     'g.1', 'g.2', '.terminfo/kitty.terminfo', 'simple-file', '.terminfo/x/xterm-kitty', 'd1/d2/x', 'd1/y',
+                    'a/sfa'
                 })
 
     def test_ssh_env_vars(self):

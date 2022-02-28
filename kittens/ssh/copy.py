@@ -5,13 +5,15 @@
 import glob
 import os
 import shlex
+import uuid
 from typing import (
-    Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple
+    Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple
 )
 
 from kitty.cli import parse_args
 from kitty.cli_stub import CopyCLIOptions
 from kitty.types import run_once
+
 from ..transfer.utils import expand_home, home_path
 
 
@@ -81,11 +83,12 @@ def get_arcname(loc: str, dest: Optional[str], home: str) -> str:
 
 
 class CopyInstruction(NamedTuple):
+    local_path: str
     arcname: str
     exclude_patterns: Tuple[str, ...]
 
 
-def parse_copy_instructions(val: str) -> Iterable[Tuple[str, CopyInstruction]]:
+def parse_copy_instructions(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, CopyInstruction]]:
     opts, args = parse_copy_args(shlex.split(val))
     locations: List[str] = []
     for a in args:
@@ -97,4 +100,4 @@ def parse_copy_instructions(val: str) -> Iterable[Tuple[str, CopyInstruction]]:
     home = home_path()
     for loc in locations:
         arcname = get_arcname(loc, opts.dest, home)
-        yield loc, CopyInstruction(arcname, tuple(opts.exclude))
+        yield str(uuid.uuid4()), CopyInstruction(loc, arcname, tuple(opts.exclude))

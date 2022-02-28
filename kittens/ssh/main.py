@@ -98,8 +98,8 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
     buf = io.BytesIO()
     with tarfile.open(mode='w:bz2', fileobj=buf, encoding='utf-8') as tf:
         rd = ssh_opts.remote_dir.rstrip('/')
-        for location, ci in ssh_opts.copy.items():
-            tf.add(location, arcname=ci.arcname, filter=filter_from_globs(*ci.exclude_patterns))
+        for ci in ssh_opts.copy.values():
+            tf.add(ci.local_path, arcname=ci.arcname, filter=filter_from_globs(*ci.exclude_patterns))
         add_data_as_file(tf, 'data.sh', env_script)
         if ksi:
             arcname = 'home/' + rd + '/shell-integration'
