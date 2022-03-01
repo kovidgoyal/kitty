@@ -479,6 +479,7 @@ xdgToplevelHandleConfigure(void* data,
     window->wl.pending.toplevel_states = new_states;
     window->wl.pending.width = width;
     window->wl.pending.height = height;
+    window->wl.pending.set = true;
 }
 
 static void xdgToplevelHandleClose(void* data,
@@ -499,7 +500,8 @@ static void xdgSurfaceHandleConfigure(void* data,
 {
     _GLFWwindow* window = data;
     xdg_surface_ack_configure(surface, serial);
-    
+    if (!window->wl.pending.set) return;
+
 
     uint32_t new_states = window->wl.pending.toplevel_states;
     int width = window->wl.pending.width;
@@ -509,6 +511,7 @@ static void xdgSurfaceHandleConfigure(void* data,
             width != window->wl.current.width ||
             height != window->wl.current.height) {
 
+        window->wl.pending.set = false;
         bool live_resize_done = !(new_states & TOPLEVEL_STATE_RESIZING) && (window->wl.current.toplevel_states & TOPLEVEL_STATE_RESIZING);
         window->wl.current.toplevel_states = new_states;
         set_csd_window_geometry(window, &width, &height);

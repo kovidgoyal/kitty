@@ -219,6 +219,7 @@ typedef struct _GLFWwindowWayland
     struct {
         int width, height;
         uint32_t toplevel_states;
+        bool set;
     } current, pending;
 } _GLFWwindowWayland;
 
