@@ -475,16 +475,10 @@ xdgToplevelHandleConfigure(void* data,
             }
         }
     }
-    bool live_resize_done = !(new_states & TOPLEVEL_STATE_RESIZING) && (window->wl.current.toplevel_states & TOPLEVEL_STATE_RESIZING);
-    window->wl.current.toplevel_states = new_states;
-    set_csd_window_geometry(window, &width, &height);
-    dispatchChangesAfterConfigure(window, width, height);
-    debug("final window content size: %dx%d\n", window->wl.current.width, window->wl.current.height);
-    _glfwInputWindowFocus(window, window->wl.current.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
-    ensure_csd_resources(window);
-    wl_surface_commit(window->wl.surface);
-    inform_compositor_of_window_geometry(window, "configure");
-    if (live_resize_done) _glfwInputLiveResize(window, false);
+
+    window->wl.pending.toplevel_states = new_states;
+    window->wl.pending.width = width;
+    window->wl.pending.height = height;
 }
 
 static void xdgToplevelHandleClose(void* data,
@@ -499,11 +493,33 @@ static const struct xdg_toplevel_listener xdgToplevelListener = {
     xdgToplevelHandleClose
 };
 
-static void xdgSurfaceHandleConfigure(void* data UNUSED,
+static void xdgSurfaceHandleConfigure(void* data,
                                       struct xdg_surface* surface,
                                       uint32_t serial)
 {
+    _GLFWwindow* window = data;
     xdg_surface_ack_configure(surface, serial);
+    
+
+    uint32_t new_states = window->wl.pending.toplevel_states;
+    int width = window->wl.pending.width;
+    int height = window->wl.pending.height;
+
+    if (new_states != window->wl.current.toplevel_states ||
+            width != window->wl.current.width ||
+            height != window->wl.current.height) {
+
+        bool live_resize_done = !(new_states & TOPLEVEL_STATE_RESIZING) && (window->wl.current.toplevel_states & TOPLEVEL_STATE_RESIZING);
+        window->wl.current.toplevel_states = new_states;
+        set_csd_window_geometry(window, &width, &height);
+        dispatchChangesAfterConfigure(window, width, height);
+        debug("final window content size: %dx%d\n", window->wl.current.width, window->wl.current.height);
+        _glfwInputWindowFocus(window, window->wl.current.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
+        ensure_csd_resources(window);
+        wl_surface_commit(window->wl.surface);
+        inform_compositor_of_window_geometry(window, "configure");
+        if (live_resize_done) _glfwInputLiveResize(window, false);
+    }
 }
 
 static const struct xdg_surface_listener xdgSurfaceListener = {

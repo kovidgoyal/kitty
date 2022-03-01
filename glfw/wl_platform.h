@@ -221,7 +221,7 @@ typedef struct _GLFWwindowWayland
         unsigned int x, y;
     } axis_discrete_count;
 
-    _GLFWwindowWaylandState current;
+    _GLFWwindowWaylandState current, pending;
 } _GLFWwindowWayland;
 
 typedef enum _GLFWWaylandOfferType
