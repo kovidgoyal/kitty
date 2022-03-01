@@ -128,11 +128,15 @@ typedef enum WaylandWindowState {
 static const WaylandWindowState TOPLEVEL_STATE_DOCKED = TOPLEVEL_STATE_MAXIMIZED | TOPLEVEL_STATE_FULLSCREEN | TOPLEVEL_STATE_TILED_TOP | TOPLEVEL_STATE_TILED_LEFT | TOPLEVEL_STATE_TILED_RIGHT | TOPLEVEL_STATE_TILED_BOTTOM;
 
 
+typedef struct _GLFWwindowWaylandState {
+    int                         width, height;
+    uint32_t toplevel_states;
+} _GLFWwindowWaylandState;
+
 // Wayland-specific per-window data
 //
 typedef struct _GLFWwindowWayland
 {
-    int                         width, height;
     bool                        visible;
     bool                        hovered;
     bool                        transparent;
@@ -210,7 +214,6 @@ typedef struct _GLFWwindowWayland
         int32_t width, height;
     } user_requested_content_size;
 
-    uint32_t toplevel_states;
     bool maximize_on_first_show;
     // counters for ignoring axis events following axis_discrete events in the
     // same frame along the same axis
@@ -218,6 +221,7 @@ typedef struct _GLFWwindowWayland
         unsigned int x, y;
     } axis_discrete_count;
 
+    _GLFWwindowWaylandState current, pending;
 } _GLFWwindowWayland;
 
 typedef enum _GLFWWaylandOfferType

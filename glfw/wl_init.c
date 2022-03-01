@@ -206,7 +206,7 @@ static void pointerHandleMotion(void* data UNUSED,
         case BOTTOM_DECORATION:
             if (x < window->wl.decorations.metrics.width)
                 cursorShape = GLFW_SW_RESIZE_CURSOR;
-            else if (x > window->wl.width + window->wl.decorations.metrics.width)
+            else if (x > window->wl.current.width + window->wl.decorations.metrics.width)
                 cursorShape = GLFW_SE_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_VRESIZE_CURSOR;
@@ -243,7 +243,7 @@ static void pointerHandleButton(void* data UNUSED,
                     window->wl.decorations.last_click_on_top_decoration_at = monotonic();
                     if (window->wl.decorations.last_click_on_top_decoration_at - last_click_at <= _glfwPlatformGetDoubleClickInterval(window)) {
                         window->wl.decorations.last_click_on_top_decoration_at = 0;
-                        if (window->wl.toplevel_states & TOPLEVEL_STATE_MAXIMIZED)
+                        if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED)
                             xdg_toplevel_unset_maximized(window->wl.xdg.toplevel);
                         else
                             xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
@@ -274,7 +274,7 @@ static void pointerHandleButton(void* data UNUSED,
             case BOTTOM_DECORATION:
                 if (x < window->wl.decorations.metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
-                else if (x > window->wl.width + window->wl.decorations.metrics.width)
+                else if (x > window->wl.current.width + window->wl.decorations.metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
