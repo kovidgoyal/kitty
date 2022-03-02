@@ -9,9 +9,9 @@ from contextlib import contextmanager
 from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, FrozenSet, Generator, List, cast
 
+from kitty.constants import list_kitty_resources
 from kitty.types import run_once
 from kitty.utils import resolve_abs_or_config_path
-
 
 aliases = {'url_hints': 'hints'}
 if TYPE_CHECKING:
@@ -85,7 +85,7 @@ def launch(args: List[str]) -> None:
     del args[:2]
     args = [kitten] + args
     os.environ['KITTY_CONFIG_DIRECTORY'] = config_dir
-    from kittens.tui.operations import clear_screen, reset_mode, Mode
+    from kittens.tui.operations import Mode, clear_screen, reset_mode
     set_debug(kitten)
     m = import_kitten_main_module(config_dir, kitten)
     try:
@@ -116,11 +116,9 @@ def run_kitten(kitten: str, run_name: str = '__main__') -> None:
     original_kitten_name = kitten
     kitten = resolved_kitten(kitten)
     set_debug(kitten)
-    try:
+    if kitten in all_kitten_names():
         runpy.run_module(f'kittens.{kitten}.main', run_name=run_name)
         return
-    except ImportError:
-        pass
     # Look for a custom kitten
     if not kitten.endswith('.py'):
         kitten += '.py'
@@ -137,7 +135,6 @@ def run_kitten(kitten: str, run_name: str = '__main__') -> None:
 
 @run_once
 def all_kitten_names() -> FrozenSet[str]:
-    from kitty.constants import list_kitty_resources
     ans = []
     for name in list_kitty_resources('kittens'):
         if '__' not in name and '.' not in name and name != 'tui':
