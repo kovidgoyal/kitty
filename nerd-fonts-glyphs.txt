@@ -372,12 +372,12 @@ f009 fa th large
 f00a fa th
 f00b fa th list
 f00c fa check
-f00d fa times
+f00d fa close remove times
 f00e fa search plus
 f010 fa search minus
 f011 fa power off
 f012 fa signal
-f013 fa cog
+f013 fa cog gear
 f014 fa trash o
 f015 fa home
 f016 fa file o
@@ -388,7 +388,7 @@ f01a fa arrow circle o down
 f01b fa arrow circle o up
 f01c fa inbox
 f01d fa play circle o
-f01e fa repeat
+f01e fa repeat rotate right
 f021 fa refresh
 f022 fa list alt
 f023 fa lock
@@ -418,12 +418,12 @@ f03a fa list
 f03b fa outdent
 f03c fa indent
 f03d fa video camera
-f03e fa picture o
+f03e fa picture o image photo
 f040 fa pencil
 f041 fa map marker
 f042 fa adjust
 f043 fa tint
-f044 fa pencil square o
+f044 fa pencil square o edit
 f045 fa share square o
 f046 fa check square o
 f047 fa arrows
@@ -453,7 +453,7 @@ f060 fa arrow left
 f061 fa arrow right
 f062 fa arrow up
 f063 fa arrow down
-f064 fa share
+f064 fa share mail forward
 f065 fa expand
 f066 fa compress
 f067 fa plus
@@ -465,7 +465,7 @@ f06c fa leaf
 f06d fa fire
 f06e fa eye
 f070 fa eye slash
-f071 fa exclamation triangle
+f071 fa exclamation triangle warning
 f072 fa plane
 f073 fa calendar
 f074 fa random
@@ -484,7 +484,7 @@ f081 fa twitter square
 f082 fa facebook square
 f083 fa camera retro
 f084 fa key
-f085 fa cogs
+f085 fa cogs gears
 f086 fa comments
 f087 fa thumbs o up
 f088 fa thumbs o down
@@ -508,7 +508,7 @@ f09a fa facebook
 f09b fa github
 f09c fa unlock
 f09d fa credit card
-f09e fa rss
+f09e fa rss feed
 f0a0 fa hdd o
 f0a1 fa bullhorn
 f0a2 fa bell o
@@ -527,16 +527,16 @@ f0ae fa tasks
 f0b0 fa filter
 f0b1 fa briefcase
 f0b2 fa arrows alt
-f0c0 fa users
-f0c1 fa link
+f0c0 fa users group
+f0c1 fa link chain
 f0c2 fa cloud
 f0c3 fa flask
-f0c4 fa scissors
-f0c5 fa files o
+f0c4 fa scissors cut
+f0c5 fa files o copy
 f0c6 fa paperclip
-f0c7 fa floppy o
+f0c7 fa floppy o save
 f0c8 fa square
-f0c9 fa bars
+f0c9 fa bars navicon reorder
 f0ca fa list ul
 f0cb fa list ol
 f0cc fa strikethrough
@@ -559,15 +559,14 @@ f0dd fa sort desc
 f0de fa sort asc
 f0e0 fa envelope
 f0e1 fa linkedin
-f0e2 fa undo
-f0e3 fa gavel
-f0e4 fa tachometer
+f0e2 fa undo rotate left
+f0e4 fa tachometer dashboard
 f0e5 fa comment o
 f0e6 fa comments o
-f0e7 fa bolt
+f0e7 fa bolt flash
 f0e8 fa sitemap
 f0e9 fa umbrella
-f0ea fa clipboard
+f0ea fa clipboard paste
 f0eb fa lightbulb o
 f0ec fa exchange
 f0ed fa cloud download
@@ -598,7 +597,7 @@ f107 fa angle down
 f108 fa desktop
 f109 fa laptop
 f10a fa tablet
-f10b fa mobile
+f10b fa mobile phone
 f10c fa circle o
 f10d fa quote left
 f10e fa quote right
@@ -622,7 +621,7 @@ f123 fa star half o
 f124 fa location arrow
 f125 fa crop
 f126 fa code fork
-f127 fa chain broken
+f127 fa chain broken unlink
 f128 fa question
 f129 fa info
 f12a fa exclamation
@@ -663,14 +662,14 @@ f14e fa compass
 f150 fa caret square o down
 f151 fa caret square o up
 f152 fa caret square o right
-f153 fa eur
+f153 fa eur euro
 f154 fa gbp
-f155 fa usd
-f156 fa inr
-f157 fa jpy
-f158 fa rub
-f159 fa krw
-f15a fa btc
+f155 fa usd dollar
+f156 fa inr rupee
+f157 fa cny rmb jpy yen
+f158 fa rub rouble
+f159 fa krw won
+f15a fa btc bitcoin
 f15b fa file
 f15c fa file text
 f15d fa sort alpha asc
@@ -725,15 +724,15 @@ f191 fa caret square o left
 f192 fa dot circle o
 f193 fa wheelchair
 f194 fa vimeo square
-f195 fa try
+f195 fa try turkish lira
 f196 fa plus square o
 f197 fa space shuttle
 f198 fa slack
 f199 fa envelope square
 f19a fa wordpress
 f19b fa openid
-f19c fa university
-f19d fa graduation cap
+f19c fa university institution bank
+f19d fa graduation cap mortar board
 f19e fa yahoo
 f1a0 fa google
 f1a1 fa reddit
@@ -759,8 +758,8 @@ f1b5 fa behance square
 f1b6 fa steam
 f1b7 fa steam square
 f1b8 fa recycle
-f1b9 fa car
-f1ba fa taxi
+f1b9 fa car automobile
+f1ba fa taxi cab
 f1bb fa tree
 f1bc fa spotify
 f1bd fa deviantart
@@ -770,26 +769,26 @@ f1c1 fa file pdf o
 f1c2 fa file word o
 f1c3 fa file excel o
 f1c4 fa file powerpoint o
-f1c5 fa file image o
-f1c6 fa file archive o
-f1c7 fa file audio o
-f1c8 fa file video o
+f1c5 fa file image o photo picture
+f1c6 fa file archive o zip
+f1c7 fa file audio o sound
+f1c8 fa file video o movie
 f1c9 fa file code o
 f1ca fa vine
 f1cb fa codepen
 f1cc fa jsfiddle
-f1cd fa life ring
+f1cd fa life ring support
 f1ce fa circle o notch
 f1d0 fa rebel
 f1d1 fa empire
 f1d2 fa git square
 f1d3 fa git
-f1d4 fa hacker news
+f1d4 fa hacker news y combinator
 f1d5 fa tencent weibo
 f1d6 fa qq
-f1d7 fa weixin
-f1d8 fa paper plane
-f1d9 fa paper plane o
+f1d7 fa weixin wechat
+f1d8 fa paper plane send
+f1d9 fa paper plane o send
 f1da fa history
 f1db fa circle thin
 f1dc fa header
@@ -798,7 +797,7 @@ f1de fa sliders
 f1e0 fa share alt
 f1e1 fa share alt square
 f1e2 fa bomb
-f1e3 fa futbol o
+f1e3 fa futbol o soccer ball
 f1e4 fa tty
 f1e5 fa binoculars
 f1e6 fa plug
@@ -836,7 +835,7 @@ f207 fa bus
 f208 fa ioxhost
 f209 fa angellist
 f20a fa cc
-f20b fa ils
+f20b fa ils shekel sheqel
 f20c fa meanpath
 f20d fa buysellads
 f20e fa connectdevelop
@@ -874,7 +873,7 @@ f232 fa whatsapp
 f233 fa server
 f234 fa user plus
 f235 fa user times
-f236 fa bed
+f236 fa bed hotel
 f237 fa viacoin
 f238 fa train
 f239 fa subway
@@ -999,8 +998,8 @@ f2b7 fa envelope open o
 f2b8 fa linode
 f2b9 fa address book
 f2ba fa address book o
-f2bb fa address card
-f2bc fa address card o
+f2bb fa address card vcard
+f2bc fa address card o vcard
 f2bd fa user circle
 f2be fa user circle o
 f2c0 fa user o
@@ -1242,7 +1241,7 @@ f4a8 oct reply
 f4a9 oct device desktop
 e0a0 pl branch
 e0a1 pl line number
-e0a2 pl hostname
+e0a2 pl hostname readonly
 e0a3 ple column number
 e0b0 pl left hard divider
 e0b1 pl left soft divider
@@ -1313,7 +1312,7 @@ e60e seti html
 e60f seti mustache
 e610 seti gulp
 e611 seti grunt
-e612 seti default
+e612 seti default text
 e613 seti folder
 e614 seti css
 e615 seti config
@@ -1328,7 +1327,7 @@ e61d custom cpp
 e61e custom c
 e61f seti haskell
 e620 seti lua
-e621 indent line
+e621 indent line dotted guide
 e622 seti karma
 e623 seti favicon
 e624 seti julia
