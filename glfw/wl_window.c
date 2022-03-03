@@ -519,10 +519,11 @@ static void xdgSurfaceHandleConfigure(void* data,
         debug("final window content size: %dx%d\n", window->wl.current.width, window->wl.current.height);
         _glfwInputWindowFocus(window, window->wl.current.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
         ensure_csd_resources(window);
-        wl_surface_commit(window->wl.surface);
         inform_compositor_of_window_geometry(window, "configure");
         if (live_resize_done) _glfwInputLiveResize(window, false);
     }
+
+    wl_surface_commit(window->wl.surface);
 }
 
 static const struct xdg_surface_listener xdgSurfaceListener = {
