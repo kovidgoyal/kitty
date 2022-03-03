@@ -500,29 +500,27 @@ static void xdgSurfaceHandleConfigure(void* data,
 {
     _GLFWwindow* window = data;
     xdg_surface_ack_configure(surface, serial);
-    if (!window->wl.pending.set) return;
-
-
-    uint32_t new_states = window->wl.pending.toplevel_states;
-    int width = window->wl.pending.width;
-    int height = window->wl.pending.height;
-
-    if (new_states != window->wl.current.toplevel_states ||
-            width != window->wl.current.width ||
-            height != window->wl.current.height) {
-
+    if (window->wl.pending.set) {
+        uint32_t new_states = window->wl.pending.toplevel_states;
+        int width = window->wl.pending.width;
+        int height = window->wl.pending.height;
         window->wl.pending.set = false;
-        bool live_resize_done = !(new_states & TOPLEVEL_STATE_RESIZING) && (window->wl.current.toplevel_states & TOPLEVEL_STATE_RESIZING);
-        window->wl.current.toplevel_states = new_states;
-        set_csd_window_geometry(window, &width, &height);
-        dispatchChangesAfterConfigure(window, width, height);
-        debug("final window content size: %dx%d\n", window->wl.current.width, window->wl.current.height);
-        _glfwInputWindowFocus(window, window->wl.current.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
-        ensure_csd_resources(window);
-        inform_compositor_of_window_geometry(window, "configure");
-        if (live_resize_done) _glfwInputLiveResize(window, false);
-    }
 
+        if (new_states != window->wl.current.toplevel_states ||
+                width != window->wl.current.width ||
+                height != window->wl.current.height) {
+
+            bool live_resize_done = !(new_states & TOPLEVEL_STATE_RESIZING) && (window->wl.current.toplevel_states & TOPLEVEL_STATE_RESIZING);
+            window->wl.current.toplevel_states = new_states;
+            set_csd_window_geometry(window, &width, &height);
+            dispatchChangesAfterConfigure(window, width, height);
+            debug("final window content size: %dx%d\n", window->wl.current.width, window->wl.current.height);
+            _glfwInputWindowFocus(window, window->wl.current.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
+            ensure_csd_resources(window);
+            inform_compositor_of_window_geometry(window, "configure");
+            if (live_resize_done) _glfwInputLiveResize(window, false);
+        }
+    }
     wl_surface_commit(window->wl.surface);
 }
 
