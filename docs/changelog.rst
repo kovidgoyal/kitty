@@ -75,14 +75,18 @@ command.
 Detailed list of changes
 -------------------------------------
 
-0.24.4 [future]
+0.24.4 [2022-03-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Shell integration: Fix the default bash :code:`$HISTFILE` changing to :file:`~/.sh_history` instead of :file:`~/.bash_history` (:iss:`4765`)
+- Shell integration: Fix the default Bash :code:`$HISTFILE` changing to :file:`~/.sh_history` instead of :file:`~/.bash_history` (:iss:`4765`)
 
 - Linux binaries: Fix binaries not working on systems with older Wayland client libraries (:iss:`4760`)
 
-- Fix a regression in the previous release that broke kittens launched with STDIN not being a terminal (:iss:`4763`)
+- Fix a regression in the previous release that broke kittens launched with :code:`STDIN` not connected to a terminal (:iss:`4763`)
+
+- Wayland: Fix surface configure events not being acknowledged before commit
+  the resized buffer (:pull:`4768`)
+
 
 0.24.3 [2022-02-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
