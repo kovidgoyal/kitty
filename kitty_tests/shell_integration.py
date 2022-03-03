@@ -51,9 +51,8 @@ def safe_env_for_running_shell(argv, home_dir, rc='', shell='zsh'):
     ans = basic_shell_env(home_dir)
     if shell == 'zsh':
         argv.insert(1, '--noglobalrcs')
-        ans['ZLE_RPROMPT_INDENT'] = '0'
         with open(os.path.join(home_dir, '.zshrc'), 'w') as f:
-            print(rc + '\n', file=f)
+            print(rc + '\nZLE_RPROMPT_INDENT=0', file=f)
         setup_zsh_env(ans, argv)
     elif shell == 'fish':
         conf_dir = os.path.join(home_dir, '.config', 'fish')
