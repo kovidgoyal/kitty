@@ -357,3 +357,6 @@ if __name__ == '__main__':
     main(sys.argv)
 elif __name__ == '__completer__':
     setattr(sys, 'kitten_completer', complete)
+elif __name__ == '__conf__':
+    from .options.definition import definition
+    sys.options_definition = definition  # type: ignore

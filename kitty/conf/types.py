@@ -52,6 +52,7 @@ def ref_map() -> Dict[str, str]:
         'watchers': f'{website_url("launch")}#watchers',
         'sessions': f'{website_url("overview")}#startup-sessions',
         'functional': f'{website_url("keyboard-protocol")}#functional-key-definitions',
+        'ssh_copy_command': f'{website_url("kittens/ssh")}#ssh-copy-command',
         'shell_integration': website_url("shell-integration"),
         'github_discussions': 'https://github.com/kovidgoyal/kitty/discussions',
     }

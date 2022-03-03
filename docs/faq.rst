@@ -46,7 +46,7 @@ terminfo files to the server::
 
     kitty +kitten ssh myserver
 
-This ssh kitten takes all the same command line arguments
+This :doc:`ssh kitten <kittens/ssh>` takes all the same command line arguments
 as ssh, you can alias it to something small in your shell's rc files to avoid
 having to type it each time::
 

@@ -15,6 +15,7 @@ Extend with kittens
    kittens/remote_file
    kittens/hyperlinked_grep
    kittens/transfer
+   kittens/ssh
    kittens/custom
    kittens/*
 

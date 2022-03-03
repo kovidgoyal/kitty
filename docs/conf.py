@@ -200,6 +200,13 @@ def commit_role(
 def write_cli_docs(all_kitten_names: Iterable[str]) -> None:
     from kitty.cli import option_spec_as_rst
     from kitty.launch import options_spec as launch_options_spec
+    from kittens.ssh.copy import option_text
+    from kittens.ssh.options.definition import copy_message
+    with open('generated/ssh-copy.rst', 'w') as f:
+        f.write(option_spec_as_rst(
+            appname='copy', ospec=option_text, heading_char='^',
+            usage='file-or-dir-to-copy ...', message=copy_message
+        ))
     with open('generated/launch.rst', 'w') as f:
         f.write(option_spec_as_rst(
             appname='launch', ospec=launch_options_spec, heading_char='_',

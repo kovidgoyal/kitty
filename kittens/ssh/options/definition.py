@@ -7,6 +7,12 @@
 from kitty.conf.types import Definition
 
 
+copy_message = '''\
+Copy files and directories from the local computer to the remote one. The
+specified files are assumed to be relative to the HOME directory and copied
+to the HOME on the server. Directories are copied recursively. If absolute paths
+are used, they are copied as is.'''
+
 definition = Definition(
     'kittens.ssh',
 )
@@ -26,7 +32,26 @@ against is the hostname used by the remote computer, not the name you pass
 to SSH to connect to it.
 ''')
 
-opt('+copy', '', option_type='copy', add_to_default=False, long_text='''
+opt('+copy', '', option_type='copy', add_to_default=False, long_text=f'''
+{copy_message} For example::
+
+    copy .vimrc .zshrc .config/some-dir
+
+If a file should be copied to some other destination on the remote machine,
+use :code:`--dest`::
+
+    copy --dest some-other-name some-file
+
+Glob patterns can be specified to copy multiple files, with :code:`--glob`::
+
+    copy --glob images/*.png
+
+Files can be excluded when copying with :code:`--exclude`::
+
+    copy --glob --exclude *.jpg --exclude *.bmp images/*
+
+Files whose remote name matches the exclude pattern will not be copied.
+For more details, see :ref:`ssh_copy_command`.
 ''')
 
 opt('+env', '', option_type='env', add_to_default=False, long_text='''
