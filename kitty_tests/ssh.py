@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+import glob
 import os
 import shlex
 import shutil
@@ -111,9 +112,12 @@ copy --exclude */w.* d1
                     sh, remote_home, extra_exec='env; exit 0', SHELL_INTEGRATION_VALUE='',
                     ssh_opts={'copy': copy}
                 )
-                self.assertTrue(os.path.lexists(f'{remote_home}/.terminfo/78'))
-                self.assertTrue(os.path.exists(f'{remote_home}/.terminfo/78/xterm-kitty'))
-                self.assertTrue(os.path.exists(f'{remote_home}/.terminfo/x/xterm-kitty'))
+                tname = '.terminfo'
+                if os.path.exists('/usr/share/misc/terminfo.cdb'):
+                    tname += '.cdb'
+                self.assertTrue(os.path.lexists(f'{remote_home}/{tname}/78'))
+                self.assertTrue(os.path.exists(f'{remote_home}/{tname}/78/xterm-kitty'))
+                self.assertTrue(os.path.exists(f'{remote_home}/{tname}/x/xterm-kitty'))
                 for w in ('simple-file', 'a/sfa'):
                     with open(os.path.join(remote_home, w), 'r') as f:
                         self.ae(f.read(), simple_data)
@@ -122,10 +126,14 @@ copy --exclude */w.* d1
                 self.ae(os.readlink(f'{remote_home}/d1/y'), 'd2/x')
                 contents = set(files_in(remote_home))
                 contents.discard('.zshrc')  # added by check_bootstrap()
+                # depending on platform one of these is a symlink and hence
+                # isnt in contents
+                contents.discard(f'{tname}/x/xterm-kitty')
+                contents.discard(f'{tname}/78/xterm-kitty')
                 self.ae(contents, {
-                    'g.1', 'g.2', '.terminfo/kitty.terminfo', 'simple-file', '.terminfo/x/xterm-kitty', 'd1/d2/x', 'd1/y',
-                    'a/sfa'
+                    'g.1', 'g.2', f'{tname}/kitty.terminfo', 'simple-file', 'd1/d2/x', 'd1/y', 'a/sfa'
                 })
+                self.ae(len(glob.glob(f'{remote_home}/{tname}/*/xterm-kitty')), 2)
 
     def test_ssh_env_vars(self):
         for sh in self.all_possible_sh:
