@@ -155,7 +155,11 @@ _ksi_main() {
     fi
 
     if [[ "${_ksi_prompt[title]}" == "y" ]]; then
-        [[ "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]] && _ksi_prompt[hostname_prefix]="\h: "
+        if [[ -n "$SSH_TTY$SSH2_TTY" ]]; then
+            _ksi_prompt[hostname_prefix]="\h: ";
+        elif [[ -n "$(builtin command -v who)" ]]; then
+            [[ "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]] && _ksi_prompt[hostname_prefix]="\h: ";
+        fi
         # see https://www.gnu.org/software/bash/manual/html_node/Controlling-the-Prompt.html#Controlling-the-Prompt
         # we use suffix here because some distros add title setting to their bashrc files by default
         _ksi_prompt[ps1_suffix]+="\[\e]2;${_ksi_prompt[hostname_prefix]}\w\a\]"

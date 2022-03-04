@@ -90,11 +90,11 @@ _ksi_deferred_init() {
     unset KITTY_SHELL_INTEGRATION
 
     # The directory where kitty-integration is located: /.../shell-integration/zsh.
-    builtin local self_dir=${functions_source[_ksi_deferred_init]:A:h}
+    builtin local self_dir="${functions_source[_ksi_deferred_init]:A:h}"
     # The directory with _kitty. We store it in a directory of its own rather than
     # in $self_dir because we are adding it to fpath and we don't want any other
     # files to be accidentally autoloadable.
-    builtin local comp_dir=$self_dir/completions
+    builtin local comp_dir="$self_dir/completions"
 
     # Enable completions for `kitty` command.
     if (( ! opt[(Ie)no-complete] )) && [[ -r $comp_dir/_kitty ]]; then
@@ -232,8 +232,14 @@ _ksi_deferred_init() {
         # We use (V) in preexec to convert control characters to something visible
         # (LF becomes \n, etc.). This isn't necessary in precmd because (%) does it
         # for us.
+        builtin local is_ssh_session="n"
+        if [[ -n "$SSH_TTY$SSH2_TTY" ]]; then
+            is_ssh_session="y";
+        elif [[ -n "$(builtin command -v who)" ]]; then
+            [[ "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]] && is_ssh_session="y";
+        fi
         
-        if [[ "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]]; then
+        if [[ "$is_ssh_session" == "y" ]]; then
             # show the hostname via %m for SSH sessions
             functions[_ksi_precmd]+="
                 builtin print -Prnu $_ksi_fd \$'\\e]2;'\"%m: \${(%):-%(4~|…/%3~|%~)}\"\$'\\a'"
