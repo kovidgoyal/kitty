@@ -119,7 +119,6 @@ if [ "$tty_ok" = "y" ]; then
         printf "\r\033[K"  
     fi
     shell_integration_dir="$data_dir/shell-integration"
-    settings_dir="$data_dir/settings"
     [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data";
 
     # export TERMINFO
