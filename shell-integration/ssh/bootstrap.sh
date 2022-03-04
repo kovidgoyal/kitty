@@ -4,7 +4,8 @@
 
 # read the transmitted data from STDIN
 cleanup_on_bootstrap_exit() {
-    [ -n "$saved_tty_settings" ] && command stty "$saved_tty_settings" 2> /dev/null
+    [ -n "$saved_tty_settings" ] && command stty "$saved_tty_settings" 2> /dev/null < /dev/tty
+    saved_tty_settings=""
 }
 
 die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
@@ -16,7 +17,7 @@ tty_ok="n"
 [ -n "$saved_tty_settings" ] && tty_ok="y"
 
 if [ "$tty_ok" = "y" ]; then
-    command stty raw min 1 time 0 -echo 2> /dev/null < /dev/tty || die "stty not available"
+    command stty raw min 1 time 0 -echo 2> /dev/null < /dev/tty || die "stty failed to set raw mode"
     trap 'cleanup_on_bootstrap_exit' EXIT
 fi
 

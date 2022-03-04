@@ -31,7 +31,7 @@ When not specified options apply to all hosts, until the
 first hostname specification is found. Note that the hostname this matches
 against is the hostname used by the remote computer, not the name you pass
 to SSH to connect to it. If you wish to include the same basic configuration for many
-different hosts, you can do so with the :code:`include` directive (see :doc:`conf`).
+different hosts, you can do so with the :code:`include` directive (see :doc:`/conf`).
 ''')
 
 opt('+copy', '', option_type='copy', add_to_default=False, long_text=f'''
