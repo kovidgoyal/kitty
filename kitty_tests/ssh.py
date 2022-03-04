@@ -57,10 +57,10 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         def parse(conf):
             return load_config(overrides=conf.splitlines())
 
-        def for_host(hostname, conf):
+        def for_host(hostname, conf, username='kitty'):
             if isinstance(conf, str):
                 conf = parse(conf)
-            return options_for_host(hostname, conf)
+            return options_for_host(hostname, username, conf)
 
         self.ae(for_host('x', '').env, {})
         self.ae(for_host('x', 'env a=b').env, {'a': 'b'})
@@ -70,6 +70,15 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         self.ae(for_host('2', pc).env, {'a': 'c', 'b': 'b'})
         self.ae(for_host('x', 'env a=').env, {'a': ''})
         self.ae(for_host('x', 'env a').env, {'a': '_delete_this_env_var_'})
+        pc = parse('env a=b\nhostname test@2\nenv a=c\nenv b=b')
+        self.ae(set(pc.keys()), {'*', 'test@2'})
+        self.ae(for_host('x', pc).env, {'a': 'b'})
+        self.ae(for_host('2', pc).env, {'a': 'b'})
+        self.ae(for_host('2', pc, 'test').env, {'a': 'c', 'b': 'b'})
+        pc = parse('env a=b\nhostname 1 2\nenv a=c\nenv b=b')
+        self.ae(for_host('x', pc).env, {'a': 'b'})
+        self.ae(for_host('1', pc).env, {'a': 'c', 'b': 'b'})
+        self.ae(for_host('2', pc).env, {'a': 'c', 'b': 'b'})
 
     @property
     @lru_cache()

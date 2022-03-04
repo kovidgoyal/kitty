@@ -27,6 +27,7 @@ opt('hostname', '*', option_type='hostname',
     long_text='''
 The hostname the following options apply to. A glob pattern to match multiple
 hosts can be used. Multiple hostnames can also be specified separated by spaces.
+The hostname can include an optional username in the form :code:`user@host`.
 When not specified options apply to all hosts, until the
 first hostname specification is found. Note that the hostname this matches
 against is the hostname used by the remote computer, not the name you pass

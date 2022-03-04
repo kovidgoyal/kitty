@@ -46,7 +46,7 @@ quick example:
    copy env-files
    env SOMETHING=else
 
-   hostname somehost
+   hostname someuser@somehost
    copy --dest=foo/bar some-file
    copy --glob some/files.*
 

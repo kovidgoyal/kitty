@@ -15,6 +15,7 @@ import time
 import traceback
 from base64 import standard_b64decode
 from contextlib import suppress
+from getpass import getuser
 from typing import (
     Any, Callable, Dict, Iterator, List, NoReturn, Optional, Set, Tuple, Union
 )
@@ -131,6 +132,7 @@ def get_ssh_data(msg: str, ssh_opts: Optional[Dict[str, SSHOptions]] = None) -> 
         hostname = md['hostname']
         pw = md['pw']
         pwfilename = md['pwfile']
+        username = md['user']
     except Exception:
         traceback.print_exc()
         yield fmt_prefix('!invalid ssh data request message')
@@ -145,7 +147,7 @@ def get_ssh_data(msg: str, ssh_opts: Optional[Dict[str, SSHOptions]] = None) -> 
             traceback.print_exc()
             yield fmt_prefix('!incorrect ssh data password')
         else:
-            resolved_ssh_opts = options_for_host(hostname, ssh_opts)
+            resolved_ssh_opts = options_for_host(hostname, username, ssh_opts)
             try:
                 data = make_tarfile(resolved_ssh_opts, env_data['env'])
             except Exception:
@@ -348,8 +350,18 @@ def main(args: List[str]) -> NoReturn:
             cmd.append('-t')
         cmd.append('--')
         cmd.append(hostname)
+        uname = getuser()
+        if hostname.startswith('ssh://'):
+            from urllib.parse import urlparse
+            purl = urlparse(hostname)
+            hostname_for_match = purl.hostname or hostname
+            uname = purl.username or uname
+        elif '@' in hostname and hostname[0] != '@':
+            uname, hostname_for_match = hostname.split('@', 1)
+        else:
+            hostname_for_match = hostname
         hostname_for_match = hostname.split('@', 1)[-1].split(':', 1)[0]
-        cmd += get_remote_command(remote_args, hostname, options_for_host(hostname_for_match, load_ssh_options()).interpreter)
+        cmd += get_remote_command(remote_args, hostname, options_for_host(hostname_for_match, uname, load_ssh_options()).interpreter)
     os.execvp('ssh', cmd)
 
 

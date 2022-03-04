@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+import fnmatch
 import os
 from typing import Any, Dict, Iterable, Optional
 
@@ -16,12 +17,18 @@ SYSTEM_CONF = '/etc/xdg/kitty/ssh.conf'
 defconf = os.path.join(config_dir, 'ssh.conf')
 
 
-def options_for_host(hostname: str, per_host_opts: Dict[str, SSHOptions]) -> SSHOptions:
-    import fnmatch
+def host_matches(pat: str, hostname: str, username: str) -> bool:
+    upat = '*'
+    if '@' in pat:
+        upat, pat = pat.split('@', 1)
+    return fnmatch.fnmatchcase(hostname, pat) and fnmatch.fnmatchcase(username, upat)
+
+
+def options_for_host(hostname: str, username: str, per_host_opts: Dict[str, SSHOptions]) -> SSHOptions:
     matches = []
     for spat, opts in per_host_opts.items():
         for pat in spat.split():
-            if fnmatch.fnmatchcase(hostname, pat):
+            if host_matches(pat, hostname, username):
                 matches.append(opts)
     if not matches:
         return SSHOptions({})
@@ -45,7 +52,9 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None) -> Dict[
     from .options.parse import (
         create_result_dict, merge_result_dicts, parse_conf_item
     )
-    from .options.utils import get_per_hosts_dict, init_results_dict, first_seen_positions
+    from .options.utils import (
+        first_seen_positions, get_per_hosts_dict, init_results_dict
+    )
 
     def merge_dicts(base: Dict[str, Any], vals: Dict[str, Any]) -> Dict[str, Any]:
         base_phd = get_per_hosts_dict(base)
