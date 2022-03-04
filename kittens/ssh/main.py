@@ -26,6 +26,7 @@ from kitty.types import run_once
 from kitty.utils import SSHConnectionData
 
 from .completion import complete, ssh_options
+from .config import options_for_host
 from .options.types import Options as SSHOptions
 from .options.utils import DELETE_ENV_VAR
 
@@ -115,7 +116,6 @@ def load_ssh_options() -> Dict[str, SSHOptions]:
 
 
 def get_ssh_data(msg: str, ssh_opts: Optional[Dict[str, SSHOptions]] = None) -> Iterator[bytes]:
-    from .config import options_for_host
     record_sep = b'\036'
 
     if ssh_opts is None:
@@ -319,7 +319,7 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
     return ssh_args, server_args, passthrough
 
 
-def get_posix_cmd(remote_args: List[str]) -> List[str]:
+def get_remote_command(remote_args: List[str], hostname: str = 'localhost', interpreter: str = 'sh') -> List[str]:
     command_to_execute = ''
     if remote_args:
         # ssh simply concatenates multiple commands using a space see
@@ -328,7 +328,7 @@ def get_posix_cmd(remote_args: List[str]) -> List[str]:
         args = [c.replace("'", """'"'"'""") for c in remote_args]
         command_to_execute = "exec \"$login_shell\" -c '{}'".format(' '.join(args))
     sh_script = load_script(exec_cmd=command_to_execute)
-    return [f'sh -c {shlex.quote(sh_script)}']
+    return [f'{interpreter} -c {shlex.quote(sh_script)}']
 
 
 def main(args: List[str]) -> NoReturn:
@@ -348,8 +348,8 @@ def main(args: List[str]) -> NoReturn:
             cmd.append('-t')
         cmd.append('--')
         cmd.append(hostname)
-        f = get_posix_cmd
-        cmd += f(remote_args)
+        hostname_for_match = hostname.split('@', 1)[-1].split(':', 1)[0]
+        cmd += get_remote_command(remote_args, hostname, options_for_host(hostname_for_match, load_ssh_options()).interpreter)
     os.execvp('ssh', cmd)
 
 

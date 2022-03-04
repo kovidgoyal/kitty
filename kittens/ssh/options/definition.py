@@ -70,6 +70,14 @@ are processed alphabetically. The special value :code:`_kitty_copy_env_var_`
 will cause the value of the variable to be copied from the local machine.
 ''')
 
+opt('interpreter', 'sh', long_text='''
+The interpreter to use on the remote host. Must be either a POSIX complaint shell
+or a python executable. If the default sh is not available for broken, using
+an alternate interpreter can be useful. Note that as the interpreter is used for
+bootstrapping, hostname specific values are matched again the hostname from the
+command line args rather than the actual remote hostname.
+''')
+
 opt('remote_dir', '.local/share/kitty-ssh-kitten', option_type='relative_dir', long_text='''
 The location on the remote computer where the files needed for this kitten
 are installed. The location is relative to the HOME directory. Absolute paths or paths
