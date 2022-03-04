@@ -45,7 +45,7 @@ password_filename="PASSWORD_FILENAME"
 data_complete="n"
 leading_data=""
 
-[ "$tty_ok" = "y" ] && dsc_to_kitty "ssh" "hostname=$hostname:pwfile=$password_filename:pw=$data_password"
+[ "$tty_ok" = "y" ] && dsc_to_kitty "ssh" "hostname="$hostname":pwfile="$password_filename":user="$USER":pw="$data_password""
 record_separator=$(printf "\036")
 
 mv_files_and_dirs() {
