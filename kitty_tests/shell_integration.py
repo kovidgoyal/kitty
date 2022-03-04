@@ -202,7 +202,7 @@ function _set_status_prompt; function fish_prompt; echo -n "$pipestatus $status 
             pty.write_to_child('\x04')
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
             pty.send_cmd_to_child('_set_key vi')
-            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BLOCK)
+            pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 3)
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
             pty.write_to_child('\x1b')
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BLOCK)
