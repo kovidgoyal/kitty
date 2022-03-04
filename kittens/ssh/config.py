@@ -19,9 +19,10 @@ defconf = os.path.join(config_dir, 'ssh.conf')
 def options_for_host(hostname: str, per_host_opts: Dict[str, SSHOptions]) -> SSHOptions:
     import fnmatch
     matches = []
-    for pat, opts in per_host_opts.items():
-        if fnmatch.fnmatchcase(hostname, pat):
-            matches.append(opts)
+    for spat, opts in per_host_opts.items():
+        for pat in spat.split():
+            if fnmatch.fnmatchcase(hostname, pat):
+                matches.append(opts)
     if not matches:
         return SSHOptions({})
     base = matches[0]
