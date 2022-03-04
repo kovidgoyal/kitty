@@ -219,7 +219,7 @@ if [ -n "$LOGIN_SHELL" ]; then
 else
     using_getent || using_id || using_python || using_passwd || die "Could not detect login shell";
 fi
-shell_name=$(basename $login_shell)
+shell_name=$(command basename $login_shell)
 
 # If a command was passed to SSH execute it here
 EXEC_CMD
