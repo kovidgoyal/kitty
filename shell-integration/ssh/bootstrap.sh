@@ -4,16 +4,21 @@
 
 # read the transmitted data from STDIN
 cleanup_on_bootstrap_exit() {
-    [ ! -z "$saved_tty_settings" ] && command stty "$saved_tty_settings"
+    [ -n "$saved_tty_settings" ] && command stty "$saved_tty_settings" 2> /dev/null
 }
 
 die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
 dsc_to_kitty() { printf "\033P@kitty-$1|%s\033\\" "$(printf "%s" "$2" | base64 | tr -d \\n)" > /dev/tty; }
 debug() { dsc_to_kitty "print" "debug $1"; }
 echo_via_kitty() { dsc_to_kitty "echo" "$1"; }
-saved_tty_settings=$(command stty -g)
-command stty raw min 1 time 0 -echo || die "stty not available"
-trap 'cleanup_on_bootstrap_exit' EXIT
+saved_tty_settings=$(command stty -g 2> /dev/null < /dev/tty)
+tty_ok="n"
+[ -n "$saved_tty_settings" ] && tty_ok="y"
+
+if [ "$tty_ok" = "y" ]; then
+    command stty raw min 1 time 0 -echo 2> /dev/null < /dev/tty || die "stty not available"
+    trap 'cleanup_on_bootstrap_exit' EXIT
+fi
 
 data_started="n"
 data_complete="n"
@@ -31,7 +36,7 @@ fi
 # ensure $HOME is set
 if [ -z "$HOME" ]; then HOME=~; fi
 # ensure $USER is set
-if [ -z "$USER" ]; then USER=$(whoami); fi
+if [ -z "$USER" ]; then USER=$(whoami 2> /dev/null); fi
 
 # ask for the SSH data
 data_password="DATA_PASSWORD"
@@ -39,7 +44,7 @@ password_filename="PASSWORD_FILENAME"
 data_complete="n"
 leading_data=""
 
-dsc_to_kitty "ssh" "hostname=$hostname:pwfile=$password_filename:pw=$data_password"
+[ "$tty_ok" = "y" ] && dsc_to_kitty "ssh" "hostname=$hostname:pwfile=$password_filename:pw=$data_password"
 record_separator=$(printf "\036")
 
 mv_files_and_dirs() {
@@ -102,32 +107,34 @@ get_data() {
     untar_and_read_env "$size"
 }
 
-get_data
-command stty "$saved_tty_settings"
-saved_tty_settings=""
-if [ -n "$leading_data" ]; then
-    # clear current line as it might have things echoed on it from leading_data
-    # because we only turn off echo in this script whereas the leading bytes could 
-    # have been sent before the script had a chance to run
-    printf "\r\033[K"  
-fi
-shell_integration_dir="$data_dir/shell-integration"
-settings_dir="$data_dir/settings"
-[ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data";
+if [ "$tty_ok" = "y" ]; then 
+    get_data
+    command stty "$saved_tty_settings" 2> /dev/null
+    saved_tty_settings=""
+    if [ -n "$leading_data" ]; then
+        # clear current line as it might have things echoed on it from leading_data
+        # because we only turn off echo in this script whereas the leading bytes could 
+        # have been sent before the script had a chance to run
+        printf "\r\033[K"  
+    fi
+    shell_integration_dir="$data_dir/shell-integration"
+    settings_dir="$data_dir/settings"
+    [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data";
 
-# export TERMINFO
-tname=".terminfo"
-if [ -e "/usr/share/misc/terminfo.cdb" ]; then
-    # NetBSD requires this see https://github.com/kovidgoyal/kitty/issues/4622
-    tname=".terminfo.cdb"
-fi
-export TERMINFO="$HOME/$tname"
+    # export TERMINFO
+    tname=".terminfo"
+    if [ -e "/usr/share/misc/terminfo.cdb" ]; then
+        # NetBSD requires this see https://github.com/kovidgoyal/kitty/issues/4622
+        tname=".terminfo.cdb"
+    fi
+    export TERMINFO="$HOME/$tname"
 
-# compile terminfo for this system
-if [ -x "$(command -v tic)" ]; then
-    tic_out=$(command tic -x -o "$HOME/$tname" "$HOME/.terminfo/kitty.terminfo" 2>&1)
-    rc=$?
-    if [ "$rc" != "0" ]; then die "$tic_out"; fi
+    # compile terminfo for this system
+    if [ -x "$(command -v tic)" ]; then
+        tic_out=$(command tic -x -o "$HOME/$tname" "$HOME/.terminfo/kitty.terminfo" 2>&1)
+        rc=$?
+        if [ "$rc" != "0" ]; then die "$tic_out"; fi
+    fi
 fi
 
 
@@ -207,6 +214,14 @@ execute_with_python() {
 
 # If a command was passed to SSH execute it here
 EXEC_CMD
+
+if [ "$tty_ok" = "n" ]; then
+    if [ -z "$(command -v stty)" ]; then
+        printf "%s\n" "stty missing ssh kitten cannot function" > /dev/stderr
+    else
+        printf "%s\n" "stty failed ssh kitten cannot function" > /dev/stderr
+    fi
+fi
 
 LOGIN_SHELL="OVERRIDE_LOGIN_SHELL"
 if [ -n "$LOGIN_SHELL" ]; then
