@@ -1,33 +1,10 @@
 #!/bin/bash
 
-if [[ $- != *i* ]] ; then builtin return; fi  # check in interactive mode
+if [[ "$-" != *i* ]] ; then builtin return; fi  # check in interactive mode
 if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then builtin return; fi
 
-# this is defined outside _ksi_main to make it global without using declare -g
-# which is not available on older bash
-builtin declare -A _ksi_prompt
-_ksi_prompt=( 
-    [cursor]='y' [title]='y' [mark]='y' [complete]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]='' 
-    [hostname_prefix]='' 
-)
-
-_ksi_main() {
-    for i in ${KITTY_SHELL_INTEGRATION[@]}; do
-        if [[ "$i" == "no-cursor" ]]; then _ksi_prompt[cursor]='n'; fi
-        if [[ "$i" == "no-title" ]]; then _ksi_prompt[title]='n'; fi
-        if [[ "$i" == "no-prompt-mark" ]]; then _ksi_prompt[mark]='n'; fi
-        if [[ "$i" == "no-complete" ]]; then _ksi_prompt[complete]='n'; fi
-    done
-
-    builtin unset KITTY_SHELL_INTEGRATION
-
-    _ksi_debug_print() {
-        # print a line to STDOUT of parent kitty process
-        builtin local b
-        b=$(builtin command base64 <<< "${@}")
-        builtin printf "\eP@kitty-print|%s\e\\" "${b//\\n}"
-    }
-
+_ksi_inject() {
+    # Load the normal bash startup files
     if [[ -n "$KITTY_BASH_INJECT" ]]; then
         builtin unset ENV;
         if [[ -z "$HOME" ]]; then HOME=~; fi
@@ -73,6 +50,39 @@ _ksi_main() {
         builtin unset KITTY_BASH_ETC_LOCATION;
         builtin unset -f _ksi_safe_source
     fi
+}
+_ksi_inject
+builtin unset -f _ksi_inject
+if [ -n "$_ksi_prompt[sourced]" ]; then 
+    # we have already run
+    builtin unset KITTY_SHELL_INTEGRATION
+    builtin return; 
+fi  
+
+# this is defined outside _ksi_main to make it global without using declare -g
+# which is not available on older bash
+builtin declare -A _ksi_prompt
+_ksi_prompt=( 
+    [cursor]='y' [title]='y' [mark]='y' [complete]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]='' 
+    [hostname_prefix]='' [sourced]='y'
+)
+
+_ksi_main() {
+    for i in ${KITTY_SHELL_INTEGRATION[@]}; do
+        if [[ "$i" == "no-cursor" ]]; then _ksi_prompt[cursor]='n'; fi
+        if [[ "$i" == "no-title" ]]; then _ksi_prompt[title]='n'; fi
+        if [[ "$i" == "no-prompt-mark" ]]; then _ksi_prompt[mark]='n'; fi
+        if [[ "$i" == "no-complete" ]]; then _ksi_prompt[complete]='n'; fi
+    done
+
+    builtin unset KITTY_SHELL_INTEGRATION
+
+    _ksi_debug_print() {
+        # print a line to STDOUT of parent kitty process
+        builtin local b
+        b=$(builtin command base64 <<< "${@}")
+        builtin printf "\eP@kitty-print|%s\e\\" "${b//\\n}"
+    }
 
     _ksi_set_mark() {
         _ksi_prompt["${1}_mark"]="\[\e]133;k;${1}_kitty\a\]"
