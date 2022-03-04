@@ -71,21 +71,66 @@ def setup_bash_env(env: Dict[str, str], argv: List[str]) -> None:
     inject = {'1'}
     posix_env = rcfile = ''
     remove_args = set()
+
+    expecting_multi_chars_opt = True
+    expecting_option_arg = False
+    interactive_opt = False
+    expecting_file_arg = False
+    file_arg_set = False
+
     for i in range(1, len(argv)):
         arg = argv[i]
-        if arg == '--posix':
-            inject.add('posix')
-            posix_env = env.get('ENV', '')
-            remove_args.add(i)
-        elif arg == '--norc':
-            inject.add('no-rc')
-            remove_args.add(i)
-        elif arg == '--noprofile':
-            inject.add('no-profile')
-            remove_args.add(i)
-        elif arg in ('--rcfile', '--init-file') and i + 1 < len(argv):
-            rcfile = argv[i+1]
-            remove_args |= {i, i+1}
+        if expecting_file_arg:
+            file_arg_set = True
+            break
+        if expecting_option_arg:
+            expecting_option_arg = False
+            continue
+        if arg in ('-', '--'):
+            if not expecting_file_arg:
+                expecting_file_arg = True
+            continue
+        elif len(arg) > 1 and arg[1] != '-' and (arg[0] == '-' or arg.startswith('+O')):
+            expecting_multi_chars_opt = False
+            options = arg.lstrip('-+')
+            # shopt option
+            if 'O' in options:
+                t = options.split('O', maxsplit=1)
+                if not t[1]:
+                    expecting_option_arg = True
+                options = t[0]
+            # command string
+            if 'c' in options:
+                # non-interactive shell
+                # also skip `bash -ic` interactive mode with command string
+                return
+            # read from stdin and follow with args
+            if 's' in options:
+                break
+            # interactive option
+            if 'i' in options:
+                interactive_opt = True
+        elif arg.startswith('--') and expecting_multi_chars_opt:
+            if arg == '--posix':
+                inject.add('posix')
+                posix_env = env.get('ENV', '')
+                remove_args.add(i)
+            elif arg == '--norc':
+                inject.add('no-rc')
+                remove_args.add(i)
+            elif arg == '--noprofile':
+                inject.add('no-profile')
+                remove_args.add(i)
+            elif arg in ('--rcfile', '--init-file') and i + 1 < len(argv):
+                expecting_option_arg = True
+                rcfile = argv[i+1]
+                remove_args |= {i, i+1}
+        else:
+            file_arg_set = True
+            break
+    if file_arg_set and not interactive_opt:
+        # non-interactive shell
+        return
     env['ENV'] = os.path.join(shell_integration_dir, 'bash', 'kitty.bash')
     env['KITTY_BASH_INJECT'] = ' '.join(inject)
     if posix_env:
