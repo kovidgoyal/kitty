@@ -53,7 +53,7 @@ _ksi_inject() {
 }
 _ksi_inject
 builtin unset -f _ksi_inject
-if [ -n "$_ksi_prompt[sourced]" ]; then 
+if [[ "$_ksi_prompt[sourced]" != "[sourced]" ]]; then 
     # we have already run
     builtin unset KITTY_SHELL_INTEGRATION
     builtin return; 
