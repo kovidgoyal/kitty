@@ -18,8 +18,13 @@ trap 'cleanup_on_bootstrap_exit' EXIT
 data_started="n"
 data_complete="n"
 if [ -z "$HOSTNAME" ]; then
-    hostname=$(hostname)
-    if [ -z "$hostname" ]; then hostname="_"; fi
+    hostname=$(hostname 2> /dev/null)
+    if [ -z "$hostname" ]; then 
+        hostname=$(hostnamectl hostname 2> /dev/null)
+        if [ -z "$hostname" ]; then
+            hostname="_"; 
+        fi
+    fi
 else
     hostname="$HOSTNAME"
 fi
