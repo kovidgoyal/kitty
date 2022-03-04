@@ -454,6 +454,7 @@ def parse_address_spec(spec: str) -> Tuple[AddressFamily, Union[Tuple[str, int],
 def write_all(fd: int, data: Union[str, bytes], block_until_written: bool = True) -> None:
     if isinstance(data, str):
         data = data.encode('utf-8')
+    data = memoryview(data)
     while data:
         try:
             n = os.write(fd, data)
