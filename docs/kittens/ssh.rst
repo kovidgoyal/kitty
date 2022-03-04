@@ -42,11 +42,11 @@ quick example:
    env COPIED_VAR=_kitty_copy_env_var_
 
    # Create some per hostname settings
-   hostname *.myservers.net
+   hostname someserver-*
    copy env-files
    env SOMETHING=else
 
-   hostname somehost.org
+   hostname somehost
    copy --dest=foo/bar some-file
    copy --glob some/files.*
 
@@ -66,7 +66,7 @@ editor, respectively:
 .. code-block:: conf
 
    # Have these settings apply to servers in my organization
-   hostname *.my-organization.net
+   hostname myserver-*
 
    # Setup zsh to read its files from my-conf/zsh
    env ZDOTDIR $HOME/my-conf/zsh
