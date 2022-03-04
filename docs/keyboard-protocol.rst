@@ -38,6 +38,7 @@ In addition to kitty, this protocol is also implemented in:
 * The `notcurses library
   <https://github.com/dankamongmen/notcurses/issues/2131>`__
 * The `kakoune text editor <https://github.com/mawww/kakoune/issues/4103>`__
+* The `dte text editor <https://gitlab.com/craigbarnes/dte/-/issues/138>`__
 
 .. versionadded:: 0.20.0
 
