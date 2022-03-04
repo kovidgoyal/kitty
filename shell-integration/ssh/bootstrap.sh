@@ -184,9 +184,8 @@ using_id() {
 }
 
 using_passwd() {
-    cmd=$(command -v grep)
-    if [ -n "$cmd" ]; then 
-        output=$($cmd "^$USER:" /etc/passwd 2>/dev/null)
+    if [ -f "/etc/passwd" -a -r "/etc/passwd" ]; then 
+        output=$(grep "^$USER:" /etc/passwd 2>/dev/null)
         if [ $? = 0 ]; then 
             login_shell=$(echo $output | parse_passwd_record);
             if login_shell_is_ok; then return 0; fi
