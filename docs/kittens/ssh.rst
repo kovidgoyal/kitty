@@ -54,6 +54,33 @@ quick example:
 See below for full details on the syntax and options of :file:`ssh.conf`.
 
 
+A real world example
+----------------------
+
+Suppose you often SSH into a production server, and you would like to setup
+your shell and editor there using your custom settings. However, other people
+could SSH in as well and you don't want to clobber their settings. Here is how
+this could be achieved using the ssh kitten with zsh and vim as the shell and
+editor, respectively:
+
+.. code-block:: conf
+
+   # Have these settings apply to servers in my organization
+   hostname *.my-organization.net
+
+   # Setup zsh to read its files from my-conf/zsh
+   env ZDOTDIR $HOME/my-conf/zsh
+   copy --dest my-conf/zsh/.zshrc .zshrc
+   copy --dest my-conf/zsh/.zshenv .zshenv
+   # If you use other zsh init files add them in a similar manner
+
+   # Setup vim to read its config from my-conf/vim
+   env VIMINIT $HOME/my-conf/vim/vimrc
+   env VIMRUNTIME $HOME/my-conf/vim
+   copy --dest my-conf/vim .vim
+   copy --dest my-conf/vim/vimrc .vimrc
+
+
 .. include:: /generated/conf-kitten-ssh.rst
 
 

@@ -194,13 +194,27 @@ code used for each shell below:
    </details>
 
 
+Shell integration over SSH
+----------------------------
+
+The easiest way to have shell integration work when SSHing into remote systems
+is to use the :doc:`ssh kitten <kittens/ssh>`. Simply run::
+
+    kitty +kitten ssh hostname
+
+And, by magic, you will be logged into the remote system with fully functional
+shell integration. Alternately, you can :ref:`setup shell integration manually
+<manual_shell_integration>`, by copying the kitty shell integration scripts to
+the remote server and editing the shell rc files there, as described below.
+
+
 .. _manual_shell_integration:
 
 Manual shell integration
 ----------------------------
 
 The automatic shell integration is designed to be minimally intrusive, as such
-it wont work for sub-shells, terminal multiplexers, containers, remote systems, etc.
+it wont work for sub-shells, terminal multiplexers, containers, etc.
 For such systems, you should setup manual shell integration by adding some code
 to your shells startup files to load the shell integration script.
 
@@ -248,11 +262,9 @@ The value of :envvar:`KITTY_SHELL_INTEGRATION` is the same as that for
 completely, in which case simply do not set the
 :envvar:`KITTY_SHELL_INTEGRATION` variable at all.
 
-If you want this to work while SSHing into a remote system, then you will
-need to add some code to the snippets above to check if :envvar:`KITTY_INSTALLATION_DIR`
-is empty and if so to set it to some hard coded location with the shell
-integration scripts that need to be copied onto the remote system.
-
+In a container, you will need to install the kitty shell integration scripts
+and make sure the :envvar:`KITTY_INSTALLATION_DIR` environment variable is set
+to point to the location of the scripts.
 
 Integration with other shells
 -------------------------------
