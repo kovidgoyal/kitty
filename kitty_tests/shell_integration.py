@@ -307,17 +307,23 @@ PS1="{ps1}"
             setup_bash_env(ans, argv)
             for x in {'profile', 'bash.bashrc', '.bash_profile', '.bash_login', '.profile', '.bashrc', 'rcfile'} - excluded:
                 with open(os.path.join(home_dir, x), 'w') as f:
-                    print(f'echo {x}', file=f)
+                    if x == '.bashrc' and rc:
+                        print(rc, file=f)
+                    else:
+                        print(f'echo [{x}]', file=f)
             ans['KITTY_BASH_ETC_LOCATION'] = home_dir
             ans['PS1'] = 'PROMPT $ '
             return ans
 
-        def run_test(argv, *expected, excluded=()):
-            with self.subTest(argv=argv), self.run_shell(shell='bash', setup_env=partial(setup_env, set(excluded)), cmd=argv) as pty:
-                pty.wait_till(lambda: 'PROMPT $' in pty.screen_contents())
+        def run_test(argv, *expected, excluded=(), rc='', wait_string='PROMPT $', assert_not_in=False):
+            with self.subTest(argv=argv), self.run_shell(shell='bash', setup_env=partial(setup_env, set(excluded)), cmd=argv, rc=rc) as pty:
+                pty.wait_till(lambda: wait_string in pty.screen_contents())
                 q = pty.screen_contents()
                 for x in expected:
-                    self.assertIn(x, q)
+                    if assert_not_in:
+                        self.assertNotIn(f'[{x}]', q)
+                    else:
+                        self.assertIn(f'[{x}]', q)
 
         run_test('bash', 'bash.bashrc', '.bashrc')
         run_test('bash --rcfile rcfile', 'bash.bashrc', 'rcfile')
@@ -327,3 +333,9 @@ PS1="{ps1}"
         run_test('bash --noprofile -l')
         run_test('bash -l', 'profile', '.bash_login', excluded=('.bash_profile',))
         run_test('bash -l', 'profile', '.profile', excluded=('.bash_profile', '.bash_login'))
+
+        # test argument parsing and non-interactive shell
+        run_test('bash -s arg1 --rcfile rcfile', 'rcfile', rc='echo ok;read', wait_string='ok', assert_not_in=True)
+        run_test('bash +O login_shell -ic "echo ok;read"', 'bash.bashrc', excluded=('.bash_profile'), wait_string='ok', assert_not_in=True)
+        run_test('bash -l .bashrc', 'profile', rc='echo ok;read', wait_string='ok', assert_not_in=True)
+        run_test('bash -il -- .bashrc', 'profile', rc='echo ok;read', wait_string='ok')
