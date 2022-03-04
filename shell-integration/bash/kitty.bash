@@ -53,7 +53,13 @@ _ksi_inject() {
 }
 _ksi_inject
 builtin unset -f _ksi_inject
-if [[ "$_ksi_prompt[sourced]" != "[sourced]" ]]; then 
+
+if [ "${BASH_VERSINFO:-0}" -lt 4 ]; then
+    builtin printf "%s\n" "Bash version ${BASH_VERSION} too old, kitty shell integration disabled" > /dev/stderr;
+    builtin return;
+fi
+
+if [[ "${_ksi_prompt[sourced]}" == "y" ]]; then 
     # we have already run
     builtin unset KITTY_SHELL_INTEGRATION
     builtin return; 
