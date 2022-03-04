@@ -6,6 +6,8 @@ if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then builtin return; fi
 _ksi_inject() {
     # Load the normal bash startup files
     if [[ -n "$KITTY_BASH_INJECT" ]]; then
+        builtin local kitty_bash_inject="$KITTY_BASH_INJECT"
+        builtin unset KITTY_BASH_INJECT
         builtin unset ENV;
         if [[ -z "$HOME" ]]; then HOME=~; fi
         if [[ -z "$KITTY_BASH_ETC_LOCATION" ]]; then KITTY_BASH_ETC_LOCATION="/etc"; fi
@@ -18,7 +20,7 @@ _ksi_inject() {
             builtin return 1;
         }
 
-        if [[ "$KITTY_BASH_INJECT" == *"posix"* ]]; then
+        if [[ "$kitty_bash_inject" == *"posix"* ]]; then
             _ksi_safe_source "$KITTY_BASH_POSIX_ENV" && builtin export ENV="$KITTY_BASH_POSIX_ENV";
         else
             builtin set +o posix;
@@ -29,12 +31,12 @@ _ksi_inject() {
 
             # See run_startup_files() in shell.c in the Bash source code
             if builtin shopt -q login_shell; then
-                if [[ "$KITTY_BASH_INJECT" != *"no-profile"* ]]; then
+                if [[ "$kitty_bash_inject" != *"no-profile"* ]]; then
                     _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/profile";
                     _ksi_safe_source "$HOME/.bash_profile" || _ksi_safe_source "$HOME/.bash_login" || _ksi_safe_source "$HOME/.profile";
                 fi
             else
-                if [[ "$KITTY_BASH_INJECT" != *"no-rc"* ]]; then
+                if [[ "$kitty_bash_inject" != *"no-rc"* ]]; then
                     # Linux distros build bash with -DSYS_BASHRC. Unfortunately, there is
                     # no way to to probe bash for it and different distros use different files
                     _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/bash.bashrc"  # Arch, Debian, Ubuntu
@@ -46,7 +48,6 @@ _ksi_inject() {
         fi
         builtin unset KITTY_BASH_RCFILE;
         builtin unset KITTY_BASH_POSIX_ENV;
-        builtin unset KITTY_BASH_INJECT;
         builtin unset KITTY_BASH_ETC_LOCATION;
         builtin unset -f _ksi_safe_source
     fi
@@ -55,6 +56,7 @@ _ksi_inject
 builtin unset -f _ksi_inject
 
 if [ "${BASH_VERSINFO:-0}" -lt 4 ]; then
+    builtin unset KITTY_SHELL_INTEGRATION
     builtin printf "%s\n" "Bash version ${BASH_VERSION} too old, kitty shell integration disabled" > /dev/stderr;
     builtin return;
 fi
