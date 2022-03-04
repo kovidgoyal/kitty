@@ -64,7 +64,7 @@ typeset -gi _ksi_fd
 # Asks kitty to print $@ to its STDOUT. This is for debugging.
 _ksi_debug_print() {
     builtin local data
-    data=$(command base64 <<<"${(j: :)@}") || builtin return
+    data=$(builtin command base64 <<<"${(j: :)@}") || builtin return
     # Removing all spaces rather than just \n allows this code to
     # work on broken systems where base64 outputs \r\n.
     builtin print -nu "$_ksi_fd" '\eP@kitty-print|'"${data//[[:space:]]}"'\e\\'
@@ -232,10 +232,19 @@ _ksi_deferred_init() {
         # We use (V) in preexec to convert control characters to something visible
         # (LF becomes \n, etc.). This isn't necessary in precmd because (%) does it
         # for us.
-        functions[_ksi_precmd]+="
-            builtin print -rnu $_ksi_fd \$'\\e]2;'\"\${(%):-%(4~|…/%3~|%~)}\"\$'\\a'"
-        functions[_ksi_preexec]+="
-            builtin print -rnu $_ksi_fd \$'\\e]2;'\"\${(V)1}\"\$'\\a'"
+        
+        if [[ "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]]; then
+            # show the hostname via %m for SSH sessions
+            functions[_ksi_precmd]+="
+                builtin print -Prnu $_ksi_fd \$'\\e]2;'\"%m: \${(%):-%(4~|…/%3~|%~)}\"\$'\\a'"
+            functions[_ksi_preexec]+="
+                builtin print -Prnu $_ksi_fd \$'\\e]2;'\"%m: \${(V)1}\"\$'\\a'"
+        else
+            functions[_ksi_precmd]+="
+                builtin print -rnu $_ksi_fd \$'\\e]2;'\"\${(%):-%(4~|…/%3~|%~)}\"\$'\\a'"
+            functions[_ksi_preexec]+="
+                builtin print -rnu $_ksi_fd \$'\\e]2;'\"\${(V)1}\"\$'\\a'"
+        fi
     fi
 
     # Enable cursor shape changes depending on the current keymap.

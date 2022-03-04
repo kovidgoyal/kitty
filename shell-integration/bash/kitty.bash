@@ -6,7 +6,10 @@ if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then builtin return; fi
 # this is defined outside _ksi_main to make it global without using declare -g
 # which is not available on older bash
 builtin declare -A _ksi_prompt
-_ksi_prompt=( [cursor]='y' [title]='y' [mark]='y' [complete]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]='' )
+_ksi_prompt=( 
+    [cursor]='y' [title]='y' [mark]='y' [complete]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]='' 
+    [hostname_prefix]='' 
+)
 
 _ksi_main() {
     for i in ${KITTY_SHELL_INTEGRATION[@]}; do
@@ -133,9 +136,10 @@ _ksi_main() {
     fi
 
     if [[ "${_ksi_prompt[title]}" == "y" ]]; then
+        [[ "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]] && _ksi_prompt[hostname_prefix]="\h: "
         # see https://www.gnu.org/software/bash/manual/html_node/Controlling-the-Prompt.html#Controlling-the-Prompt
         # we use suffix here because some distros add title setting to their bashrc files by default
-        _ksi_prompt[ps1_suffix]+="\[\e]2;\w\a\]"
+        _ksi_prompt[ps1_suffix]+="\[\e]2;${_ksi_prompt[hostname_prefix]}\w\a\]"
         if [[ "$HISTCONTROL" == *"ignoreboth"* ]] || [[ "$HISTCONTROL" == *"ignorespace"* ]]; then
             _ksi_debug_print "ignoreboth or ignorespace present in bash HISTCONTROL setting, showing running command in window title will not be robust"
         fi
@@ -144,7 +148,7 @@ _ksi_main() {
             last_cmd=$(HISTTIMEFORMAT= builtin history 1)
             last_cmd="${last_cmd#*[[:digit:]]*[[:space:]]}"  # remove leading history number
             last_cmd="${last_cmd#"${last_cmd%%[![:space:]]*}"}"  # remove remaining leading whitespace
-            builtin printf "\e]2;%s\a" "${last_cmd//[[:cntrl:]]}"  # remove any control characters
+            builtin printf "\e]2;%s%s\a" "${_ksi_prompt[hostname_prefix]@P}" "${last_cmd//[[:cntrl:]]}"  # remove any control characters
         }
         _ksi_prompt[ps0_suffix]+='$(_ksi_get_current_command)'
     fi
