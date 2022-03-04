@@ -9,9 +9,9 @@ cleanup_on_bootstrap_exit() {
 }
 
 die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
-dsc_to_kitty() { printf "\033P@kitty-$1|%s\033\\" "$(printf "%s" "$2" | base64 | tr -d \\n)" > /dev/tty; }
-debug() { dsc_to_kitty "print" "debug $1"; }
-echo_via_kitty() { dsc_to_kitty "echo" "$1"; }
+dcs_to_kitty() { printf "\033P@kitty-$1|%s\033\\" "$(printf "%s" "$2" | base64 | tr -d \\n)" > /dev/tty; }
+debug() { dcs_to_kitty "print" "debug $1"; }
+echo_via_kitty() { dcs_to_kitty "echo" "$1"; }
 saved_tty_settings=$(command stty -g 2> /dev/null < /dev/tty)
 tty_ok="n"
 [ -n "$saved_tty_settings" ] && tty_ok="y"
@@ -45,7 +45,7 @@ password_filename="PASSWORD_FILENAME"
 data_complete="n"
 leading_data=""
 
-[ "$tty_ok" = "y" ] && dsc_to_kitty "ssh" "hostname="$hostname":pwfile="$password_filename":user="$USER":pw="$data_password""
+[ "$tty_ok" = "y" ] && dcs_to_kitty "ssh" "hostname="$hostname":pwfile="$password_filename":user="$USER":pw="$data_password""
 record_separator=$(printf "\036")
 
 mv_files_and_dirs() {
