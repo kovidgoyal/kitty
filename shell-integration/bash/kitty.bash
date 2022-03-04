@@ -28,25 +28,26 @@ _ksi_main() {
         builtin printf "\eP@kitty-print|%s\e\\" "${b//\\n}"
     }
 
-    _ksi_safe_source() {
-        if [[ -f "$1" && -r "$1" ]]; then
-            builtin source "$1";
-            builtin return 0;
-        fi
-        builtin return 1;
-    }
-
     if [[ -n "$KITTY_BASH_INJECT" ]]; then
         builtin unset ENV;
         if [[ -z "$HOME" ]]; then HOME=~; fi
         if [[ -z "$KITTY_BASH_ETC_LOCATION" ]]; then KITTY_BASH_ETC_LOCATION="/etc"; fi
+
+        _ksi_safe_source() {
+            if [[ -f "$1" && -r "$1" ]]; then
+                builtin source "$1";
+                builtin return 0;
+            fi
+            builtin return 1;
+        }
+
         if [[ "$KITTY_BASH_INJECT" == *"posix"* ]]; then
             _ksi_safe_source "$KITTY_BASH_POSIX_ENV" && builtin export ENV="$KITTY_BASH_POSIX_ENV";
         else
             builtin set +o posix;
             if [[ -n "$KITTY_BASH_UNEXPORT_HISTFILE" ]]; then
-                export -n HISTFILE;
-                unset KITTY_BASH_UNEXPORT_HISTFILE;
+                builtin export -n HISTFILE;
+                builtin unset KITTY_BASH_UNEXPORT_HISTFILE;
             fi
 
             # See run_startup_files() in shell.c in the Bash source code
@@ -70,8 +71,8 @@ _ksi_main() {
         builtin unset KITTY_BASH_POSIX_ENV;
         builtin unset KITTY_BASH_INJECT;
         builtin unset KITTY_BASH_ETC_LOCATION;
+        builtin unset -f _ksi_safe_source
     fi
-    builtin unset -f _ksi_safe_source
 
     _ksi_set_mark() {
         _ksi_prompt["${1}_mark"]="\[\e]133;k;${1}_kitty\a\]"
