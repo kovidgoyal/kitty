@@ -213,6 +213,14 @@ execute_with_python() {
     return 1;
 }
 
+LOGIN_SHELL="OVERRIDE_LOGIN_SHELL"
+if [ -n "$LOGIN_SHELL" ]; then
+    login_shell="$LOGIN_SHELL"
+else
+    using_getent || using_id || using_python || using_passwd || die "Could not detect login shell";
+fi
+shell_name=$(basename $login_shell)
+
 # If a command was passed to SSH execute it here
 EXEC_CMD
 
@@ -224,13 +232,6 @@ if [ "$tty_ok" = "n" ]; then
     fi
 fi
 
-LOGIN_SHELL="OVERRIDE_LOGIN_SHELL"
-if [ -n "$LOGIN_SHELL" ]; then
-    login_shell="$LOGIN_SHELL"
-else
-    using_getent || using_id || using_python || using_passwd || die "Could not detect login shell";
-fi
-shell_name=$(basename $login_shell)
 
 exec_bash_with_integration() {
     export ENV="$shell_integration_dir/bash/kitty.bash"

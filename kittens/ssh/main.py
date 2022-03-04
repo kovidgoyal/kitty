@@ -326,7 +326,7 @@ def get_posix_cmd(remote_args: List[str]) -> List[str]:
         # line 1129 of ssh.c and on the remote side sshd.c runs the
         # concatenated command as shell -c cmd
         args = [c.replace("'", """'"'"'""") for c in remote_args]
-        command_to_execute = "exec $login_shell -c '{}'".format(' '.join(args))
+        command_to_execute = "exec \"$login_shell\" -c '{}'".format(' '.join(args))
     sh_script = load_script(exec_cmd=command_to_execute)
     return [f'sh -c {shlex.quote(sh_script)}']
 
