@@ -158,6 +158,7 @@ _ksi_main() {
         if [[ -n "$SSH_TTY$SSH2_TTY" ]]; then
             _ksi_prompt[hostname_prefix]="\h: ";
         elif [[ -n "$(builtin command -v who)" ]]; then
+            # OpenSSH's sshd creates entries in utmp for every login so use those
             [[ "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]] && _ksi_prompt[hostname_prefix]="\h: ";
         fi
         # see https://www.gnu.org/software/bash/manual/html_node/Controlling-the-Prompt.html#Controlling-the-Prompt

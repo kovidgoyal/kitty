@@ -236,6 +236,7 @@ _ksi_deferred_init() {
         if [[ -n "$SSH_TTY$SSH2_TTY" ]]; then
             is_ssh_session="y";
         elif [[ -n "$(builtin command -v who)" ]]; then
+            # OpenSSH's sshd creates entries in utmp for every login so use those
             [[ "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]] && is_ssh_session="y";
         fi
         
