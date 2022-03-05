@@ -155,7 +155,7 @@ if [ "$tty_ok" = "y" ]; then
         # clear current line as it might have things echoed on it from leading_data
         # because we only turn off echo in this script whereas the leading bytes could
         # have been sent before the script had a chance to run
-        printf "\r\033[K"
+        printf "\r\033[K" > /dev/tty
     fi
     shell_integration_dir="$data_dir/shell-integration"
     [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data";
@@ -283,8 +283,7 @@ exec_bash_with_integration() {
 exec_zsh_with_integration() {
     zdotdir="$ZDOTDIR"
     if [ -z "$zdotdir" ]; then
-        zdotdir=~;
-        unset KITTY_ORIG_ZDOTDIR  # ensure this is not propagated
+        zdotdir=~
     else
         export KITTY_ORIG_ZDOTDIR="$zdotdir"
     fi
@@ -293,6 +292,7 @@ exec_zsh_with_integration() {
         export ZDOTDIR="$shell_integration_dir/zsh"
         exec "$login_shell" "-l"
     fi
+    unset KITTY_ORIG_ZDOTDIR  # ensure this is not propagated
 }
 
 exec_fish_with_integration() {
