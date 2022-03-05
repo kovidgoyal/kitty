@@ -245,9 +245,9 @@ execute_with_python() {
     return 1;
 }
 
-LOGIN_SHELL="OVERRIDE_LOGIN_SHELL"
-if [ -n "$LOGIN_SHELL" ]; then
-    login_shell="$LOGIN_SHELL"
+if [ -n "$KITTY_LOGIN_SHELL" ]; then
+    login_shell="$KITTY_LOGIN_SHELL"
+    unset KITTY_LOGIN_SHELL
 else
     using_getent || using_id || using_python || using_passwd || die "Could not detect login shell";
 fi

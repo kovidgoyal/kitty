@@ -91,5 +91,8 @@ for details on how this setting works. The special value :code:`inherit` means
 use the setting from kitty.conf. This setting is useful for overriding
 integration on a per-host basis.''')
 
+opt('login_shell', '', long_text='''
+The login shell to execute on the remote host. By default, the remote user account's
+login shell is used.''')
 
 egr()  # }}}

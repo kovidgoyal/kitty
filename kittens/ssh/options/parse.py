@@ -21,6 +21,9 @@ class Parser:
     def interpreter(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['interpreter'] = str(val)
 
+    def login_shell(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['login_shell'] = str(val)
+
     def remote_dir(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['remote_dir'] = relative_dir(val)
 

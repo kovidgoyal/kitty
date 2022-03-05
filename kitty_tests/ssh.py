@@ -84,7 +84,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
     @property
     @lru_cache()
     def all_possible_sh(self):
-        return tuple(sh for sh in ('dash', 'zsh', 'bash', 'posh', 'sh') if shutil.which(sh))
+        return tuple(filter(shutil.which, ('dash', 'zsh', 'bash', 'posh', 'sh')))
 
     def test_ssh_copy(self):
         simple_data = 'rkjlhfwf9whoaa'
@@ -188,6 +188,9 @@ copy --exclude */w.* d1
                     if login_shell == 'bash':
                         pty.send_cmd_to_child('echo $HISTFILE')
                         pty.wait_till(lambda: '/.bash_history' in pty.screen_contents())
+                    elif login_shell == 'zsh':
+                        pty.send_cmd_to_child('echo "login_shell=$ZSH_NAME"')
+                        pty.wait_till(lambda: 'login_shell=zsh' in pty.screen_contents())
         # check that turning off shell integration works
         if ok_login_shell in ('bash', 'zsh'):
             for val in ('', 'no-rc', 'enabled no-rc'):
@@ -197,7 +200,6 @@ copy --exclude */w.* d1
     def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', extra_exec='', pre_data='', ssh_opts=None):
         script = bootstrap_script(
             EXEC_CMD=f'echo "UNTAR_DONE"; {extra_exec}',
-            OVERRIDE_LOGIN_SHELL=login_shell,
         )
         env = basic_shell_env(home_dir)
         # Avoid generating unneeded completion scripts
@@ -205,6 +207,9 @@ copy --exclude */w.* d1
         # prevent newuser-install from running
         open(os.path.join(home_dir, '.zshrc'), 'w').close()
         options = {'shell_integration': shell_integration(SHELL_INTEGRATION_VALUE or 'disabled')}
+        if login_shell:
+            ssh_opts = ssh_opts or {}
+            ssh_opts['login_shell'] = login_shell
         pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=home_dir, env=env, options=options, ssh_opts=ssh_opts)
         if pre_data:
             pty.write_buf = pre_data.encode('utf-8')

@@ -96,6 +96,8 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
     env.update(ssh_opts.env)
     env['KITTY_SHELL_INTEGRATION'] = ksi or DELETE_ENV_VAR
     env['KITTY_SSH_KITTEN_DATA_DIR'] = ssh_opts.remote_dir
+    if ssh_opts.login_shell:
+        env['KITTY_LOGIN_SHELL'] = ssh_opts.login_shell
     env_script = serialize_env(env, base_env)
     buf = io.BytesIO()
     with tarfile.open(mode='w:bz2', fileobj=buf, encoding='utf-8') as tf:
@@ -173,7 +175,7 @@ def prepare_script(ans: str, replacements: Dict[str, str]) -> str:
     atexit.register(safe_remove, tf.name)
     replacements['DATA_PASSWORD'] = pw
     replacements['PASSWORD_FILENAME'] = os.path.basename(tf.name)
-    for k in ('EXEC_CMD', 'OVERRIDE_LOGIN_SHELL'):
+    for k in ('EXEC_CMD',):
         replacements[k] = replacements.get(k, '')
 
     def sub(m: 're.Match[str]') -> str:

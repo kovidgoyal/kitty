@@ -5,12 +5,19 @@ import kittens.ssh.copy
 
 
 option_names = (  # {{{
- 'copy', 'env', 'hostname', 'interpreter', 'remote_dir', 'shell_integration')  # }}}
+ 'copy',
+ 'env',
+ 'hostname',
+ 'interpreter',
+ 'login_shell',
+ 'remote_dir',
+ 'shell_integration')  # }}}
 
 
 class Options:
     hostname: str = '*'
     interpreter: str = 'sh'
+    login_shell: str = ''
     remote_dir: str = '.local/share/kitty-ssh-kitten'
     shell_integration: str = 'inherit'
     copy: typing.Dict[str, kittens.ssh.copy.CopyInstruction] = {}
