@@ -43,7 +43,8 @@ directory is always used and the above searching does not happen.
 
 If :file:`/etc/xdg/{appname}/{conf_name}.conf` exists it is merged before (i.e. with lower
 priority) than any user config files. It can be used to specify system-wide
-defaults for all users.
+defaults for all users. You can use either :code:`-` or :code:`/dev/stdin` to read the
+config from STDIN.
 '''.replace(
     '{macos_confpath}',
     (':file:`~/Library/Preferences/{appname}/{conf_name}.conf`,' if is_macos else ''), 1

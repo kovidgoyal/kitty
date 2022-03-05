@@ -4,6 +4,7 @@
 import os
 import re
 import shlex
+import sys
 from contextlib import contextmanager
 from typing import (
     Any, Callable, Dict, Generator, Generic, Iterable, Iterator, List,
@@ -261,12 +262,17 @@ def load_config(
     for path in paths:
         if not path:
             continue
-        try:
-            with open(path, encoding='utf-8', errors='replace') as f:
-                with currently_parsing.set_file(path):
-                    vals = parse_config(f)
-        except (FileNotFoundError, PermissionError):
-            continue
+        if path == '-':
+            path = '/dev/stdin'
+            with currently_parsing.set_file(path):
+                vals = parse_config(sys.stdin)
+        else:
+            try:
+                with open(path, encoding='utf-8', errors='replace') as f:
+                    with currently_parsing.set_file(path):
+                        vals = parse_config(f)
+            except (FileNotFoundError, PermissionError):
+                continue
         found_paths.append(path)
         ans = merge_configs(ans, vals)
     if overrides is not None:
