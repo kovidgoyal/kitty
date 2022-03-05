@@ -339,7 +339,7 @@ def get_remote_command(remote_args: List[str], hostname: str = 'localhost', inte
         else:
             args = [c.replace("'", """'"'"'""") for c in remote_args]
             command_to_execute = "exec \"$login_shell\" -c '{}'".format(' '.join(args))
-    sh_script = load_script(exec_cmd=command_to_execute)
+    sh_script = load_script(script_type='py' if is_python else 'sh', exec_cmd=command_to_execute)
     return [f'{interpreter} -c {shlex.quote(sh_script)}']
 
 
