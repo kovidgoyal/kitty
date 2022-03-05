@@ -1217,6 +1217,7 @@ class Window:
         if text:
             set_clipboard_string(text)
         else:
+            self.scroll_end()
             self.write_to_child(self.encoded_key(KeyEvent(key=ord('c'), mods=GLFW_MOD_CONTROL)))
 
     @ac('cp', 'Copy the selected text from the active window to the clipboard and clear selection, if no selection, send SIGINT (aka :kbd:`ctrl+c`)')
