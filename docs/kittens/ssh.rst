@@ -50,6 +50,10 @@ quick example:
    copy --dest=foo/bar some-file
    copy --glob some/files.*
 
+   # Include secondary config files
+   include other-hosts.conf
+   globinclude ssh/**/*.conf
+
 
 See below for full details on the syntax and options of :file:`ssh.conf`.
 
