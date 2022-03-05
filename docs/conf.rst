@@ -29,10 +29,14 @@ you use a relative path for :code:`include`, it is resolved with respect to the
 location of the current config file. Note that environment variables are
 expanded, so :code:`${USER}.conf` becomes :file:`name.conf` if
 :code:`USER=name`. Also, you can use :code:`globinclude` to include files
-matching a shell glob pattern. For example::
+matching a shell glob pattern and :code:`envinclude` to include configuration
+from environment variables. For example::
 
      include other.conf
+     # Include *.conf files from all subdirs of kitty.d inside the kitty config dir
      globinclude kitty.d/**/*.conf
+     # Include the *contents* of all env vars starting with KITTY_CONF_
+     envinclude KITTY_CONF_*
 
 
 .. note:: Syntax highlighting for :file:`kitty.conf` in vim is available via

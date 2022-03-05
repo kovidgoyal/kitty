@@ -107,7 +107,11 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
         add_data_as_file(tf, 'data.sh', env_script)
         if ksi:
             arcname = 'home/' + rd + '/shell-integration'
-            tf.add(shell_integration_dir, arcname=arcname, filter=filter_from_globs(f'{arcname}/ssh/bootstrap.*'))
+            tf.add(shell_integration_dir, arcname=arcname, filter=filter_from_globs(
+                f'{arcname}/ssh/bootstrap.*',  # bootstrap files are sent as command line args
+                f'{arcname}/zsh/kitty.zsh',  # present for legacy compat not needed by ssh kitten
+                '*/.DS_Store',
+            ))
         tf.add(terminfo_dir, arcname='home/.terminfo', filter=normalize_tarinfo)
     return buf.getvalue()
 

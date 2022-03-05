@@ -156,6 +156,16 @@ class CurrentlyParsing:
 currently_parsing = CurrentlyParsing()
 
 
+class NamedLineIterator:
+
+    def __init__(self, name: str, lines: Iterator[str]):
+        self.lines = lines
+        self.name = name
+
+    def __iter__(self) -> Iterator[str]:
+        return self.lines
+
+
 def parse_line(
     line: str,
     parse_conf_item: ItemParser,
@@ -171,11 +181,18 @@ def parse_line(
         log_error(f'Ignoring invalid config line: {line}')
         return
     key, val = m.groups()
-    if key in ('include', 'globinclude'):
+    if key in ('include', 'globinclude', 'envinclude'):
         val = os.path.expandvars(os.path.expanduser(val.strip()))
         if key == 'globinclude':
             from pathlib import Path
             vals = tuple(map(lambda x: str(os.fspath(x)), Path(base_path_for_includes).glob(val)))
+        elif key == 'envinclude':
+            from fnmatch import fnmatchcase
+            for x in os.environ:
+                if fnmatchcase(x, val):
+                    with currently_parsing.set_file(f'<env var: {x}>'):
+                        _parse(NamedLineIterator(base_path_for_includes, iter(os.environ[x].splitlines())), parse_conf_item, ans, accumulate_bad_lines)
+            return
         else:
             if not os.path.isabs(val):
                 val = os.path.join(base_path_for_includes, val)

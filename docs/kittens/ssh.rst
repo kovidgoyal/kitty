@@ -50,6 +50,11 @@ quick example:
    copy --dest=foo/bar some-file
    copy --glob some/files.*
 
+   # Include some config from environment variables.
+   # This will read config directives from the contents
+   # of all environemnt variables starting with SSH_KITTEN_
+   envinclude SSH_KITTEN_*
+
 
 See below for full details on the syntax and options of :file:`ssh.conf`.
 
