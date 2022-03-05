@@ -13,7 +13,7 @@ import tarfile
 import tempfile
 import time
 import traceback
-from base64 import standard_b64decode
+from base64 import standard_b64decode, standard_b64encode
 from contextlib import suppress
 from getpass import getuser
 from typing import (
@@ -323,12 +323,16 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
 
 def get_remote_command(remote_args: List[str], hostname: str = 'localhost', interpreter: str = 'sh') -> List[str]:
     command_to_execute = ''
+    is_python = 'python' in interpreter.lower()
     if remote_args:
         # ssh simply concatenates multiple commands using a space see
         # line 1129 of ssh.c and on the remote side sshd.c runs the
         # concatenated command as shell -c cmd
-        args = [c.replace("'", """'"'"'""") for c in remote_args]
-        command_to_execute = "exec \"$login_shell\" -c '{}'".format(' '.join(args))
+        if is_python:
+            command_to_execute = standard_b64encode(' '.join(remote_args).encode('utf-8')).decode('ascii')
+        else:
+            args = [c.replace("'", """'"'"'""") for c in remote_args]
+            command_to_execute = "exec \"$login_shell\" -c '{}'".format(' '.join(args))
     sh_script = load_script(exec_cmd=command_to_execute)
     return [f'{interpreter} -c {shlex.quote(sh_script)}']
 
