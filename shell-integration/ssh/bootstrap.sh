@@ -71,9 +71,9 @@ fi
 data_started="n"
 data_complete="n"
 if [ -z "$HOSTNAME" ]; then
-    hostname=$(hostname 2> /dev/null)
+    hostname=$(command hostname 2> /dev/null)
     if [ -z "$hostname" ]; then 
-        hostname=$(hostnamectl hostname 2> /dev/null)
+        hostname=$(command hostnamectl hostname 2> /dev/null)
         if [ -z "$hostname" ]; then
             hostname="_"; 
         fi
@@ -84,7 +84,7 @@ fi
 # ensure $HOME is set
 if [ -z "$HOME" ]; then HOME=~; fi
 # ensure $USER is set
-if [ -z "$USER" ]; then USER=$(whoami 2> /dev/null); fi
+if [ -z "$USER" ]; then USER=$(command whoami 2> /dev/null); fi
 
 # ask for the SSH data
 data_password="DATA_PASSWORD"
@@ -108,7 +108,7 @@ untar_and_read_env() {
     # extract the tar file atomically, in the sense that any file from the 
     # tarfile is only put into place after it has been fully written to disk
 
-    tdir=$(mktemp -d "$HOME/.kitty-ssh-kitten-untar-XXXXXXXXXXXX");
+    tdir=$(command mktemp -d "$HOME/.kitty-ssh-kitten-untar-XXXXXXXXXXXX");
     [ $? = 0 ] || die "Creating temp directory failed";
     read_n_bytes_from_tty "$1" | command base64 -d | command tar xjf - --no-same-owner -C "$tdir";
     data_file="$tdir/data.sh";
@@ -189,7 +189,7 @@ detect_python() {
 }
 
 parse_passwd_record() {
-    printf "%s" "$(grep -o '[^:]*$')"
+    printf "%s" "$(command grep -o '[^:]*$')"
 }
 
 using_getent() {
@@ -218,7 +218,7 @@ using_id() {
 
 using_passwd() {
     if [ -f "/etc/passwd" -a -r "/etc/passwd" ]; then 
-        output=$(grep "^$USER:" /etc/passwd 2>/dev/null)
+        output=$(command grep "^$USER:" /etc/passwd 2>/dev/null)
         if [ $? = 0 ]; then 
             login_shell=$(echo $output | parse_passwd_record);
             if login_shell_is_ok; then return 0; fi
@@ -321,8 +321,8 @@ case "$KITTY_SHELL_INTEGRATION" in
         ;;
     (*) 
         # not blank
-        q=$(printf "%s" "$KITTY_SHELL_INTEGRATION" | grep '\bno-rc\b')
-        if [ -z "$q"  ]; then
+        q=$(printf "%s" "$KITTY_SHELL_INTEGRATION" | command grep '\bno-rc\b')
+        if [ -z "$q" ]; then
             exec_with_shell_integration
             # exec failed, unset 
             unset KITTY_SHELL_INTEGRATION
