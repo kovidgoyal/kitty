@@ -7,10 +7,12 @@ cleanup_on_bootstrap_exit() {
     saved_tty_settings=""
 }
 
-# try to use zsh's builtin functions for reading/writing to TTY fd as they are superior to the POSIX variants
+# try to use zsh's builtin sysread function for reading to TTY
+# as it is superior to the POSIX variants. The builtin read function doesn't work
+# as it hangs reading N bytes on macOS
 tty_fd=-1
 if builtin zmodload zsh/system 2> /dev/null; then
-    builtin sysopen -o cloexec -rwu tty_fd -- $TTY 2> /dev/null
+    builtin sysopen -o cloexec -rwu tty_fd -- "$TTY" 2> /dev/null
     [ $tty_fd = -1 ] && builtin sysopen -o cloexec -rwu tty_fd -- /dev/tty 2> /dev/null
 fi
 if [ $tty_fd -gt -1 ]; then
