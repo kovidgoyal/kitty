@@ -70,8 +70,6 @@ if [ "$tty_ok" = "y" ]; then
     trap 'cleanup_on_bootstrap_exit' EXIT
 fi
 
-data_started="n"
-data_complete="n"
 if [ -z "$HOSTNAME" ]; then
     hostname=$(command hostname 2> /dev/null)
     if [ -z "$hostname" ]; then
@@ -91,7 +89,6 @@ if [ -z "$USER" ]; then USER=$(command whoami 2> /dev/null); fi
 # ask for the SSH data
 data_password="DATA_PASSWORD"
 password_filename="PASSWORD_FILENAME"
-data_complete="n"
 leading_data=""
 
 [ "$tty_ok" = "y" ] && dcs_to_kitty "ssh" "hostname="$hostname":pwfile="$password_filename":user="$USER":pw="$data_password""
@@ -146,8 +143,7 @@ get_data() {
 
 if [ "$tty_ok" = "y" ]; then
     get_data
-    command stty "$saved_tty_settings" 2> /dev/null
-    saved_tty_settings=""
+    cleanup_on_bootstrap_exit
     if [ -n "$leading_data" ]; then
         # clear current line as it might have things echoed on it from leading_data
         # because we only turn off echo in this script whereas the leading bytes could
