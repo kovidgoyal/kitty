@@ -2,9 +2,24 @@
 # Copyright (C) 2022 Kovid Goyal <kovid at kovidgoyal.net>
 # Distributed under terms of the GPLv3 license.
 
+saved_tty_settings=""
 cleanup_on_bootstrap_exit() {
     [ -n "$saved_tty_settings" ] && command stty "$saved_tty_settings" 2> /dev/null < /dev/tty
     saved_tty_settings=""
+}
+
+die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
+
+init_tty() {
+    saved_tty_settings=$(command stty -g 2> /dev/null < /dev/tty)
+    tty_ok="n"
+    [ -n "$saved_tty_settings" ] && tty_ok="y"
+
+    if [ "$tty_ok" = "y" ]; then
+        command stty raw min 1 time 0 -echo 2> /dev/null < /dev/tty || die "stty failed to set raw mode"
+        return 0
+    fi
+    return 1
 }
 
 # try to use zsh's builtin sysread function for reading to TTY
@@ -58,17 +73,8 @@ else
     }
 fi
 
-die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
 debug() { dcs_to_kitty "print" "debug $1"; }
 echo_via_kitty() { dcs_to_kitty "echo" "$1"; }
-saved_tty_settings=$(command stty -g 2> /dev/null < /dev/tty)
-tty_ok="n"
-[ -n "$saved_tty_settings" ] && tty_ok="y"
-
-if [ "$tty_ok" = "y" ]; then
-    command stty raw min 1 time 0 -echo 2> /dev/null < /dev/tty || die "stty failed to set raw mode"
-    trap 'cleanup_on_bootstrap_exit' EXIT
-fi
 
 if [ -z "$HOSTNAME" ]; then
     hostname=$(command hostname 2> /dev/null)
@@ -91,6 +97,7 @@ data_password="DATA_PASSWORD"
 password_filename="PASSWORD_FILENAME"
 leading_data=""
 
+init_tty && trap 'cleanup_on_bootstrap_exit' EXIT
 [ "$tty_ok" = "y" ] && dcs_to_kitty "ssh" "hostname="$hostname":pwfile="$password_filename":user="$USER":pw="$data_password""
 record_separator=$(printf "\036")
 
