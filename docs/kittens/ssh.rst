@@ -58,6 +58,12 @@ quick example:
 
 See below for full details on the syntax and options of :file:`ssh.conf`.
 
+.. note::
+
+   Because of the poor design of SSH, any typing you do before the shell prompt
+   appears may be lost. So ideally dont start typing till you see the shell
+   prompt :)
+
 
 A real world example
 ----------------------
