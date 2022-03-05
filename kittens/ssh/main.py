@@ -104,8 +104,14 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
             tf.add(ci.local_path, arcname=ci.arcname, filter=filter_from_globs(*ci.exclude_patterns))
         add_data_as_file(tf, 'data.sh', env_script)
         if ksi:
-            arcname = 'home/' + rd + '/shell-integration'
-            tf.add(shell_integration_dir, arcname=arcname, filter=filter_from_globs(f'{arcname}/ssh/bootstrap.*'))
+            arcname = f'home/{rd}/shell-integration'
+            exclude_patterns = (
+                '*/.DS_Store',
+                f'{arcname}/ssh/bootstrap.*',
+                # zsh integration script for backward compatibility
+                f'{arcname}/zsh/kitty.zsh',
+            )
+            tf.add(shell_integration_dir, arcname=arcname, filter=filter_from_globs(*exclude_patterns))
         tf.add(terminfo_dir, arcname='home/.terminfo', filter=normalize_tarinfo)
     return buf.getvalue()
 
