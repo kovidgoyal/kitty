@@ -86,7 +86,7 @@ that resolve to a location outside the HOME are not allowed.
 ''')
 
 opt('shell_integration', 'inherit', long_text='''
-Control the shell integration on the remote host. See ref:`shell_integration`
+Control the shell integration on the remote host. See :ref:`shell_integration`
 for details on how this setting works. The special value :code:`inherit` means
 use the setting from kitty.conf. This setting is useful for overriding
 integration on a per-host basis.''')

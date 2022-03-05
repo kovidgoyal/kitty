@@ -16,7 +16,7 @@ fi
 if [ $tty_fd -gt -1 ]; then
     dcs_to_kitty() {
         builtin local b64data
-        b64data=$(builtin printf "%s" "$2" | builtin command base64) 
+        b64data=$(builtin printf "%s" "$2" | builtin command base64)
         builtin print -nu "$tty_fd" '\eP@kitty-'"${1}|${b64data//[[:space:]]}"'\e\\'
     }
     read_one_byte_from_tty() {
@@ -44,7 +44,7 @@ else
         #
         # POSIX dd works for one byte at a time but for reading X bytes it needs the GNU iflag=count_bytes
         # extension, and is anyway unsafe as it can lead to corrupt output when the read syscall is interrupted.
-        n=$(command dd bs=1 count=1 2> /dev/null < /dev/tty) 
+        n=$(command dd bs=1 count=1 2> /dev/null < /dev/tty)
         return $?
     }
 
@@ -52,7 +52,7 @@ else
         # using dd with bs=1 is very slow, so use head. On non GNU coreutils head
         # does not limit itself to reading -c bytes only from the pipe so we can potentially lose
         # some trailing data, for instance if the user starts typing. Cant be helped.
-        command head -c "$1" < /dev/tty 
+        command head -c "$1" < /dev/tty
     }
 fi
 
@@ -71,11 +71,11 @@ fi
 data_started="n"
 data_complete="n"
 if [ -z "$HOSTNAME" ]; then
-    hostname=$(hostname 2> /dev/null)
-    if [ -z "$hostname" ]; then 
-        hostname=$(hostnamectl hostname 2> /dev/null)
+    hostname=$(command hostname 2> /dev/null)
+    if [ -z "$hostname" ]; then
+        hostname=$(command hostnamectl hostname 2> /dev/null)
         if [ -z "$hostname" ]; then
-            hostname="_"; 
+            hostname="_";
         fi
     fi
 else
@@ -84,7 +84,7 @@ fi
 # ensure $HOME is set
 if [ -z "$HOME" ]; then HOME=~; fi
 # ensure $USER is set
-if [ -z "$USER" ]; then USER=$(whoami 2> /dev/null); fi
+if [ -z "$USER" ]; then USER=$(command whoami 2> /dev/null); fi
 
 # ask for the SSH data
 data_password="DATA_PASSWORD"
@@ -105,10 +105,10 @@ mv_files_and_dirs() {
 }
 
 untar_and_read_env() {
-    # extract the tar file atomically, in the sense that any file from the 
+    # extract the tar file atomically, in the sense that any file from the
     # tarfile is only put into place after it has been fully written to disk
 
-    tdir=$(mktemp -d "$HOME/.kitty-ssh-kitten-untar-XXXXXXXXXXXX");
+    tdir=$(command mktemp -d "$HOME/.kitty-ssh-kitten-untar-XXXXXXXXXXXX");
     [ $? = 0 ] || die "Creating temp directory failed";
     read_n_bytes_from_tty "$1" | command base64 -d | command tar xjf - --no-same-owner -C "$tdir";
     data_file="$tdir/data.sh";
@@ -142,15 +142,15 @@ get_data() {
     untar_and_read_env "$size"
 }
 
-if [ "$tty_ok" = "y" ]; then 
+if [ "$tty_ok" = "y" ]; then
     get_data
     command stty "$saved_tty_settings" 2> /dev/null
     saved_tty_settings=""
     if [ -n "$leading_data" ]; then
         # clear current line as it might have things echoed on it from leading_data
-        # because we only turn off echo in this script whereas the leading bytes could 
+        # because we only turn off echo in this script whereas the leading bytes could
         # have been sent before the script had a chance to run
-        printf "\r\033[K"  
+        printf "\r\033[K"
     fi
     shell_integration_dir="$data_dir/shell-integration"
     [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data";
@@ -189,14 +189,14 @@ detect_python() {
 }
 
 parse_passwd_record() {
-    printf "%s" "$(grep -o '[^:]*$')"
+    printf "%s" "$(command grep -o '[^:]*$')"
 }
 
 using_getent() {
     cmd=$(command -v getent)
-    if [ -n "$cmd" ]; then 
+    if [ -n "$cmd" ]; then
         output=$($cmd passwd $USER 2>/dev/null)
-        if [ $? = 0 ]; then 
+        if [ $? = 0 ]; then
             login_shell=$(echo $output | parse_passwd_record);
             if login_shell_is_ok; then return 0; fi
         fi
@@ -206,9 +206,9 @@ using_getent() {
 
 using_id() {
     cmd=$(command -v id)
-    if [ -n "$cmd" ]; then 
+    if [ -n "$cmd" ]; then
         output=$($cmd -P $USER 2>/dev/null)
-        if [ $? = 0 ]; then 
+        if [ $? = 0 ]; then
             login_shell=$(echo $output | parse_passwd_record);
             if login_shell_is_ok; then return 0; fi
         fi
@@ -217,9 +217,9 @@ using_id() {
 }
 
 using_passwd() {
-    if [ -f "/etc/passwd" -a -r "/etc/passwd" ]; then 
-        output=$(grep "^$USER:" /etc/passwd 2>/dev/null)
-        if [ $? = 0 ]; then 
+    if [ -f "/etc/passwd" -a -r "/etc/passwd" ]; then
+        output=$(command grep "^$USER:" /etc/passwd 2>/dev/null)
+        if [ $? = 0 ]; then
             login_shell=$(echo $output | parse_passwd_record);
             if login_shell_is_ok; then return 0; fi
         fi
@@ -229,9 +229,9 @@ using_passwd() {
 
 using_python() {
     if detect_python; then
-        output=$($python -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
-        if [ $? = 0 ]; then 
-            login_shell=$output; 
+        output=$(command $python -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
+        if [ $? = 0 ]; then
+            login_shell=$output;
             if login_shell_is_ok; then return 0; fi
         fi
     fi
@@ -277,8 +277,8 @@ exec_bash_with_integration() {
 
 exec_zsh_with_integration() {
     zdotdir="$ZDOTDIR"
-    if [ -z "$zdotdir" ]; then 
-        zdotdir=~; 
+    if [ -z "$zdotdir" ]; then
+        zdotdir=~;
         unset KITTY_ORIG_ZDOTDIR  # ensure this is not propagated
     else
         export KITTY_ORIG_ZDOTDIR="$zdotdir"
@@ -315,16 +315,16 @@ exec_with_shell_integration() {
 }
 
 case "$KITTY_SHELL_INTEGRATION" in
-    ("") 
+    ("")
         # only blanks or unset
         unset KITTY_SHELL_INTEGRATION
         ;;
-    (*) 
+    (*)
         # not blank
-        q=$(printf "%s" "$KITTY_SHELL_INTEGRATION" | grep '\bno-rc\b')
+        q=$(printf "%s" "$KITTY_SHELL_INTEGRATION" | command grep '\bno-rc\b')
         if [ -z "$q"  ]; then
             exec_with_shell_integration
-            # exec failed, unset 
+            # exec failed, unset
             unset KITTY_SHELL_INTEGRATION
         fi
         ;;
