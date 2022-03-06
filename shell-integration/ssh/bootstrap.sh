@@ -73,7 +73,7 @@ else
     }
 fi
 
-debug() { dcs_to_kitty "print" "debug $1"; }
+debug() { dcs_to_kitty "print" "debug: $1"; }
 echo_via_kitty() { dcs_to_kitty "echo" "$1"; }
 
 if [ -z "$HOSTNAME" ]; then

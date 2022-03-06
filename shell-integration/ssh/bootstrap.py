@@ -9,6 +9,7 @@ import io
 import os
 import pwd
 import select
+import shlex
 import shutil
 import subprocess
 import sys
@@ -62,7 +63,12 @@ def send_data_request():
 
 
 def debug(msg):
-    write_all(tty_fd, dcs_to_kitty('print', 'debug: {}'.format(msg)))
+    data = dcs_to_kitty('print', 'debug: {}'.format(msg))
+    if tty_fd == -1:
+        with open(os.ctermid(), 'wb') as fl:
+            write_all(fl.fileno(), data)
+    else:
+        write_all(tty_fd, data)
 
 
 def apply_env_vars(raw):
@@ -74,6 +80,7 @@ def apply_env_vars(raw):
             key, val = parts[0], ''
         else:
             key, val = parts
+            val = shlex.split(val)[0]
         os.environ[key] = val
 
     for line in raw.splitlines():
