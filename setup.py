@@ -931,6 +931,8 @@ def compile_python(base_path: str) -> None:
             if f.rpartition('.')[-1] in ('pyc', 'pyo'):
                 os.remove(os.path.join(root, f))
 
+    exclude = re.compile('.*/shell-integration/ssh/bootstrap.py')
+
     def c(base_path: str, **kw: object) -> None:
         try:
             kw['invalidation_mode'] = py_compile.PycInvalidationMode.UNCHECKED_HASH
@@ -939,7 +941,7 @@ def compile_python(base_path: str) -> None:
         compileall.compile_dir(base_path, **kw)  # type: ignore
 
     for optimize in (0, 1, 2):
-        c(base_path, ddir='', force=True, optimize=optimize, quiet=1, workers=num_workers)
+        c(base_path, ddir='', rx=exclude, force=True, optimize=optimize, quiet=1, workers=num_workers)
 
 
 def create_linux_bundle_gunk(ddir: str, libdir_name: str) -> None:
