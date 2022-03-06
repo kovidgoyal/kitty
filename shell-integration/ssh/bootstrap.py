@@ -63,17 +63,17 @@ def send_data_request():
 def apply_env_vars(raw):
     global login_shell
 
-    def process_defn(defn, dest):
+    def process_defn(defn):
         parts = defn.split('=', 1)
         if len(parts) == 1:
             key, val = parts[0], ''
         else:
             key, val = parts
-        dest[key] = val
+        os.environ[key] = val
 
     for line in raw.splitlines():
         if line.startswith('export '):
-            process_defn(line.split(' ', 1)[-1], os.environ)
+            process_defn(line.split(' ', 1)[-1])
         elif line.startswith('unset '):
             os.environ.pop(line.split(' ', 1)[-1], None)
     login_shell = os.environ.pop('KITTY_LOGIN_SHELL', login_shell)
@@ -153,7 +153,7 @@ def exec_bash_with_integration():
     if not os.environ.get('HISTFILE'):
         os.environ['HISTFILE'] = os.path.join(HOME, '.bash_history')
         os.environ['KITTY_BASH_UNEXPORT_HISTFILE'] = '1'
-    os.execlp(login_shell, '--posix')
+    os.execlp(login_shell, os.path.basename('login_shell'), '--posix')
 
 
 def exec_zsh_with_integration():
@@ -166,11 +166,9 @@ def exec_zsh_with_integration():
     # dont prevent zsh-new-user from running
     for q in '.zshrc .zshenv .zprofile .zlogin'.split():
         if os.path.exists(os.path.join(HOME, q)):
-            break
-    else:
-        os.environ.pop('KITTY_ORIG_ZDOTDIR', None)  # ensure this is not propagated
-        return
-    os.execlp(login_shell, '-l')
+            os.environ['ZDOTDIR'] = f'{shell_integration_dir}/zsh'
+            os.execlp(login_shell, os.path.basename(login_shell), '-l')
+    os.environ.pop('KITTY_ORIG_ZDOTDIR', None)  # ensure this is not propagated
 
 
 def exec_fish_with_integration():
@@ -179,7 +177,7 @@ def exec_fish_with_integration():
     else:
         os.environ['XDG_DATA_DIRS'] = f'{shell_integration_dir}:' + os.environ['XDG_DATA_DIRS']
     os.environ['KITTY_FISH_XDG_DATA_DIR'] = shell_integration_dir
-    os.execlp(login_shell, '-l')
+    os.execlp(login_shell, os.path.basename(login_shell), '-l')
 
 
 def exec_with_shell_integration():
@@ -216,13 +214,14 @@ def main():
             get_data()
         finally:
             cleanup()
-    ksi = frozenset(filter(None, os.environ.pop('KITTY_SHELL_INTEGRATION', '').split()))
+    ksi = frozenset(filter(None, os.environ.get('KITTY_SHELL_INTEGRATION', '').split()))
     exec_cmd = b'EXEC_CMD'
     if exec_cmd:
         cmd = base64.standard_b64decode(exec_cmd).decode('utf-8')
         os.execlp(login_shell, os.path.basename(login_shell), '-c', cmd)
     if ksi and 'no-rc' not in ksi:
         exec_with_shell_integration()
+    os.environ.pop('KITTY_SHELL_INTEGRATION', None)
     os.execlp(login_shell, '-' + os.path.basename(login_shell))
 
 
