@@ -71,6 +71,10 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
 
     def filter_from_globs(*pats: str) -> Callable[[tarfile.TarInfo], Optional[tarfile.TarInfo]]:
         def filter(tarinfo: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
+            for junk_dir in ('.DS_Store', '__pycache__'):
+                for pat in (f'*/{junk_dir}', '*/{junk_dir}/*'):
+                    if fnmatch.fnmatch(tarinfo.name, pat):
+                        return None
             for pat in pats:
                 if fnmatch.fnmatch(tarinfo.name, pat):
                     return None
@@ -110,7 +114,6 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
             tf.add(shell_integration_dir, arcname=arcname, filter=filter_from_globs(
                 f'{arcname}/ssh/bootstrap.*',  # bootstrap files are sent as command line args
                 f'{arcname}/zsh/kitty.zsh',  # present for legacy compat not needed by ssh kitten
-                '*/.DS_Store',
             ))
         tf.add(terminfo_dir, arcname='home/.terminfo', filter=normalize_tarinfo)
     return buf.getvalue()
