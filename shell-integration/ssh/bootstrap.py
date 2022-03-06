@@ -89,19 +89,22 @@ def move(src, base_dest):
             os.rename(x.path, dest)
 
 
-def compile_terminfo():
+def compile_terminfo(base):
     if not shutil.which('tic'):
         return
     tname = '.terminfo'
     if os.path.exists('/usr/share/misc/terminfo.cdb'):
         tname += '.cdb'
-    cp = subprocess.run(
-        ['tic', '-x', '-o', os.path.join(HOME, tname), os.path.join(HOME, '.terminfo', 'kitty.terminfo')],
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-    )
-    if cp.returncode != 0:
-        sys.stderr.buffer.write(cp.stdout)
-        raise SystemExit('Failed to compile the terminfo database')
+    os.environ['TERMINFO'] = os.path.join(HOME, tname)
+    tic = shutil.which('tic')
+    if tic:
+        cp = subprocess.run(
+            [tic, '-x', '-o', os.path.join(base, tname), os.path.join(base, '.terminfo', 'kitty.terminfo')],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
+        if cp.returncode != 0:
+            sys.stderr.buffer.write(cp.stdout)
+            raise SystemExit('Failed to compile the terminfo database')
 
 
 def get_data():
@@ -138,6 +141,7 @@ def get_data():
             apply_env_vars(env_vars)
             data_dir = os.path.join(HOME, os.environ.pop('KITTY_SSH_KITTEN_DATA_DIR'))
             shell_integration_dir = os.path.join(data_dir, 'shell-integration')
+            compile_terminfo(tdir + '/home')
             move(tdir + '/home', HOME)
             if os.path.exists(tdir + '/root'):
                 move(tdir + '/root', '/')
@@ -213,7 +217,6 @@ def main():
         finally:
             cleanup()
     ksi = frozenset(filter(None, os.environ.pop('KITTY_SHELL_INTEGRATION', '').split()))
-    compile_terminfo()
     exec_cmd = b'EXEC_CMD'
     if exec_cmd:
         cmd = base64.standard_b64decode(exec_cmd).decode('utf-8')

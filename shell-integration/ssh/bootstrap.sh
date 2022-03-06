@@ -110,6 +110,24 @@ mv_files_and_dirs() {
     cd "$cwd";
 }
 
+compile_terminfo() {
+    # export TERMINFO
+    tname=".terminfo"
+    if [ -e "/usr/share/misc/terminfo.cdb" ]; then
+        # NetBSD requires this see https://github.com/kovidgoyal/kitty/issues/4622
+        tname=".terminfo.cdb"
+    fi
+    export TERMINFO="$HOME/$tname"
+
+    # compile terminfo for this system
+    if [ -x "$(command -v tic)" ]; then
+        tic_out=$(command tic -x -o "$1/$tname" "$1/.terminfo/kitty.terminfo" 2>&1)
+        rc=$?
+        if [ "$rc" != "0" ]; then die "$tic_out"; fi
+    fi
+}
+
+
 untar_and_read_env() {
     # extract the tar file atomically, in the sense that any file from the
     # tarfile is only put into place after it has been fully written to disk
@@ -120,6 +138,7 @@ untar_and_read_env() {
     data_file="$tdir/data.sh";
     [ -f "$data_file" ] && . "$data_file";
     data_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR"
+    compile_terminfo "$tdir/home"
     mv_files_and_dirs "$tdir/home" "$HOME"
     [ -e "$tdir/root" ] && mv_files_and_dirs "$tdir/root" ""
     command rm -rf "$tdir";
@@ -160,20 +179,6 @@ if [ "$tty_ok" = "y" ]; then
     shell_integration_dir="$data_dir/shell-integration"
     [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data";
 
-    # export TERMINFO
-    tname=".terminfo"
-    if [ -e "/usr/share/misc/terminfo.cdb" ]; then
-        # NetBSD requires this see https://github.com/kovidgoyal/kitty/issues/4622
-        tname=".terminfo.cdb"
-    fi
-    export TERMINFO="$HOME/$tname"
-
-    # compile terminfo for this system
-    if [ -x "$(command -v tic)" ]; then
-        tic_out=$(command tic -x -o "$HOME/$tname" "$HOME/.terminfo/kitty.terminfo" 2>&1)
-        rc=$?
-        if [ "$rc" != "0" ]; then die "$tic_out"; fi
-    fi
 fi
 
 
