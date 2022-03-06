@@ -1329,7 +1329,7 @@ class Boss:
         tab = self.active_tab
         if tab is not None:
             bdata = data.encode('utf-8') if isinstance(data, str) else data
-            if is_macos and which(cmd[0]) == '/usr/bin/less':
+            if is_macos and cmd[0] == '/usr/bin/less':
                 # the system less on macOS barfs up OSC codes, so sanitize them ourselves
                 bdata = re.sub(br'\x1b\].*?\x1b\\', b'', bdata)
 
