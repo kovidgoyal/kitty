@@ -61,6 +61,10 @@ def send_data_request():
     write_all(tty_fd, dcs_to_kitty('ssh', 'hostname={}:pwfile=PASSWORD_FILENAME:user={}:pw=DATA_PASSWORD'.format(hostname, getpass.getuser())))
 
 
+def debug(msg):
+    write_all(tty_fd, dcs_to_kitty('print', 'debug: {}'.format(msg)))
+
+
 def apply_env_vars(raw):
     global login_shell
 
@@ -167,7 +171,7 @@ def exec_zsh_with_integration():
     # dont prevent zsh-new-user from running
     for q in '.zshrc .zshenv .zprofile .zlogin'.split():
         if os.path.exists(os.path.join(HOME, q)):
-            os.environ['ZDOTDIR'] = f'{shell_integration_dir}/zsh'
+            os.environ['ZDOTDIR'] = shell_integration_dir + '/zsh'
             os.execlp(login_shell, os.path.basename(login_shell), '-l')
     os.environ.pop('KITTY_ORIG_ZDOTDIR', None)  # ensure this is not propagated
 
@@ -176,7 +180,7 @@ def exec_fish_with_integration():
     if not os.environ.get('XDG_DATA_DIRS'):
         os.environ['XDG_DATA_DIRS'] = shell_integration_dir
     else:
-        os.environ['XDG_DATA_DIRS'] = f'{shell_integration_dir}:' + os.environ['XDG_DATA_DIRS']
+        os.environ['XDG_DATA_DIRS'] = shell_integration_dir + ':' + os.environ['XDG_DATA_DIRS']
     os.environ['KITTY_FISH_XDG_DATA_DIR'] = shell_integration_dir
     os.execlp(login_shell, os.path.basename(login_shell), '-l')
 
