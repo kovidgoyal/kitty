@@ -78,7 +78,7 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
         return filter
 
     from kitty.shell_integration import get_effective_ksi_env_var
-    if ssh_opts.shell_integration == 'inherit':
+    if ssh_opts.shell_integration == 'inherited':
         ksi = get_effective_ksi_env_var()
     else:
         from kitty.options.types import Options
