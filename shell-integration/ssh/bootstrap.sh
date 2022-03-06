@@ -245,7 +245,7 @@ using_python() {
 
 execute_with_python() {
     if detect_python; then
-        exec $python -c "import os; os.execl('$login_shell', '-' '$shell_name')"
+        exec $python -c "import os; os.execlp('$login_shell', '-' '$shell_name')"
     fi
     return 1;
 }
