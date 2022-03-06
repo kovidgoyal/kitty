@@ -199,6 +199,7 @@ copy --exclude */w.* d1
                     elif login_shell == 'zsh':
                         pty.send_cmd_to_child('echo "login_shell=$ZSH_NAME"')
                         pty.wait_till(lambda: 'login_shell=zsh' in pty.screen_contents())
+                    self.assertIn(b'\x1b]133;', pty.received_bytes)
         # check that turning off shell integration works
         if ok_login_shell in ('bash', 'zsh'):
             for val in ('', 'no-rc', 'enabled no-rc'):
@@ -210,6 +211,7 @@ copy --exclude */w.* d1
                         pty.wait_till(lambda: 'kitty=fruity' in pty.screen_contents())
                         pty.wait_till(lambda: len(pty.screen_contents().splitlines()) >= num_lines + 2)
                         self.assertEqual(pty.screen.cursor.shape, 0)
+                        self.assertNotIn(b'\x1b]133;', pty.received_bytes)
 
     def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', test_script='', pre_data='', ssh_opts=None):
         ssh_opts = ssh_opts or {}
