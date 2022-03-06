@@ -23,11 +23,11 @@ from typing import (
 from kitty.constants import cache_dir, shell_integration_dir, terminfo_dir
 from kitty.fast_data_types import get_options
 from kitty.short_uuid import uuid4
-from kitty.types import run_once
 from kitty.utils import SSHConnectionData
 
 from .completion import complete, ssh_options
-from .config import options_for_host
+from .config import init_config, options_for_host
+from .copy import CopyInstruction
 from .options.types import Options as SSHOptions
 from .options.utils import DELETE_ENV_VAR
 
@@ -40,7 +40,7 @@ def serialize_env(env: Dict[str, str], base_env: Dict[str, str]) -> bytes:
 
     for k in sorted(env):
         v = env[k]
-        if v is DELETE_ENV_VAR:
+        if v == DELETE_ENV_VAR:
             lines.append(f'unset {shlex.quote(k)}')
         elif v == '_kitty_copy_env_var_':
             q = base_env.get(k)
@@ -119,17 +119,8 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
     return buf.getvalue()
 
 
-@run_once
-def load_ssh_options() -> Dict[str, SSHOptions]:
-    from .config import init_config
-    return init_config()
-
-
-def get_ssh_data(msg: str, ssh_opts: Optional[Dict[str, SSHOptions]] = None) -> Iterator[bytes]:
+def get_ssh_data(msg: str) -> Iterator[bytes]:
     record_sep = b'\036'
-
-    if ssh_opts is None:
-        ssh_opts = load_ssh_options()
 
     def fmt_prefix(msg: Any) -> bytes:
         return str(msg).encode('ascii') + record_sep
@@ -156,7 +147,9 @@ def get_ssh_data(msg: str, ssh_opts: Optional[Dict[str, SSHOptions]] = None) -> 
             traceback.print_exc()
             yield fmt_prefix('!incorrect ssh data password')
         else:
+            ssh_opts = {k: SSHOptions(v) for k, v in env_data['opts'].items()}
             resolved_ssh_opts = options_for_host(hostname, username, ssh_opts)
+            resolved_ssh_opts.copy = {k: CopyInstruction(*v) for k, v in resolved_ssh_opts.copy.items()}
             try:
                 data = make_tarfile(resolved_ssh_opts, env_data['env'])
             except Exception:
@@ -175,13 +168,6 @@ def safe_remove(x: str) -> None:
 
 
 def prepare_script(ans: str, replacements: Dict[str, str]) -> str:
-    pw = uuid4()
-    with tempfile.NamedTemporaryFile(prefix='ssh-kitten-pw-', suffix='.json', dir=cache_dir(), delete=False) as tf:
-        data = {'pw': pw, 'env': dict(os.environ)}
-        tf.write(json.dumps(data).encode('utf-8'))
-    atexit.register(safe_remove, tf.name)
-    replacements['DATA_PASSWORD'] = pw
-    replacements['PASSWORD_FILENAME'] = os.path.basename(tf.name)
     for k in ('EXEC_CMD',):
         replacements[k] = replacements.get(k, '')
 
@@ -191,14 +177,20 @@ def prepare_script(ans: str, replacements: Dict[str, str]) -> str:
     return re.sub('|'.join(fr'\b{k}\b' for k in replacements), sub, ans)
 
 
-def bootstrap_script(script_type: str = 'sh', **replacements: str) -> str:
+def bootstrap_script(script_type: str = 'sh', exec_cmd: str = '', ssh_opts_dict: Dict[str, Dict[str, Any]] = {}) -> str:
     with open(os.path.join(shell_integration_dir, 'ssh', f'bootstrap.{script_type}')) as f:
         ans = f.read()
+    pw = uuid4()
+    with tempfile.NamedTemporaryFile(prefix='ssh-kitten-pw-', suffix='.json', dir=cache_dir(), delete=False) as tf:
+        data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict}
+        tf.write(json.dumps(data).encode('utf-8'))
+    atexit.register(safe_remove, tf.name)
+    replacements = {'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': os.path.basename(tf.name), 'EXEC_CMD': exec_cmd}
     return prepare_script(ans, replacements)
 
 
-def load_script(script_type: str = 'sh', exec_cmd: str = '') -> str:
-    return bootstrap_script(script_type, EXEC_CMD=exec_cmd)
+def load_script(script_type: str = 'sh', exec_cmd: str = '', ssh_opts_dict: Dict[str, Dict[str, Any]] = {}) -> str:
+    return bootstrap_script(script_type, exec_cmd, ssh_opts_dict=ssh_opts_dict)
 
 
 def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
@@ -213,13 +205,22 @@ def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
     return boolean_ssh_args, other_ssh_args
 
 
-def get_connection_data(args: List[str], cwd: str = '') -> Optional[SSHConnectionData]:
+def is_extra_arg(arg: str, extra_args: Tuple[str, ...]) -> str:
+    for x in extra_args:
+        if arg == x or arg.startswith(f'{x}='):
+            return x
+    return ''
+
+
+def get_connection_data(args: List[str], cwd: str = '', extra_args: Tuple[str, ...] = ()) -> Optional[SSHConnectionData]:
     boolean_ssh_args, other_ssh_args = get_ssh_cli()
     port: Optional[int] = None
     expecting_port = expecting_identity = False
     expecting_option_val = False
     expecting_hostname = False
+    expecting_extra_val = ''
     host_name = identity_file = found_ssh = ''
+    found_extra_args: List[Tuple[str, str]] = []
 
     for i, arg in enumerate(args):
         if not found_ssh:
@@ -247,6 +248,15 @@ def get_connection_data(args: List[str], cwd: str = '') -> Optional[SSHConnectio
                 else:
                     identity_file = arg[2:]
                     continue
+            if arg.startswith('--') and extra_args:
+                matching_ex = is_extra_arg(arg, extra_args)
+                if matching_ex:
+                    if '=' in arg:
+                        exval = arg.partition('=')[-1]
+                        found_extra_args.append((matching_ex, exval))
+                        continue
+                    expecting_extra_val = matching_ex
+
             expecting_option_val = True
             continue
 
@@ -257,6 +267,8 @@ def get_connection_data(args: List[str], cwd: str = '') -> Optional[SSHConnectio
                 expecting_port = False
             elif expecting_identity:
                 identity_file = arg
+            elif expecting_extra_val:
+                found_extra_args.append((expecting_extra_val, arg))
             expecting_option_val = False
             continue
 
@@ -270,7 +282,7 @@ def get_connection_data(args: List[str], cwd: str = '') -> Optional[SSHConnectio
         if not os.path.isabs(identity_file):
             identity_file = os.path.normpath(os.path.join(cwd or os.getcwd(), identity_file))
 
-    return SSHConnectionData(found_ssh, host_name, port, identity_file)
+    return SSHConnectionData(found_ssh, host_name, port, identity_file, tuple(found_extra_args))
 
 
 class InvalidSSHArgs(ValueError):
@@ -285,7 +297,7 @@ class InvalidSSHArgs(ValueError):
         os.execlp('ssh', 'ssh')
 
 
-def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
+def parse_ssh_args(args: List[str], extra_args: Tuple[str, ...] = ()) -> Tuple[List[str], List[str], bool, Tuple[str, ...]]:
     boolean_ssh_args, other_ssh_args = get_ssh_cli()
     passthrough_args = {f'-{x}' for x in 'Nnf'}
     ssh_args = []
@@ -293,6 +305,8 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
     expecting_option_val = False
     passthrough = False
     stop_option_processing = False
+    found_extra_args: List[str] = []
+    expecting_extra_val = ''
     for argument in args:
         if len(server_args) > 1 or stop_option_processing:
             server_args.append(argument)
@@ -301,6 +315,16 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
             if argument == '--':
                 stop_option_processing = True
                 continue
+            if extra_args:
+                matching_ex = is_extra_arg(argument, extra_args)
+                if matching_ex:
+                    if '=' in argument:
+                        exval = argument.partition('=')[-1]
+                        found_extra_args.extend((matching_ex, exval))
+                    else:
+                        expecting_extra_val = matching_ex
+                        expecting_option_val = True
+                    continue
             # could be a multi-character option
             all_args = argument[1:]
             for i, arg in enumerate(all_args):
@@ -321,16 +345,22 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
                 raise InvalidSSHArgs(f'unknown option -- {arg[1:]}')
             continue
         if expecting_option_val:
-            ssh_args.append(argument)
+            if expecting_extra_val:
+                found_extra_args.extend((expecting_extra_val, argument))
+            else:
+                ssh_args.append(argument)
             expecting_option_val = False
             continue
         server_args.append(argument)
     if not server_args:
         raise InvalidSSHArgs()
-    return ssh_args, server_args, passthrough
+    return ssh_args, server_args, passthrough, tuple(found_extra_args)
 
 
-def get_remote_command(remote_args: List[str], hostname: str = 'localhost', interpreter: str = 'sh') -> List[str]:
+def get_remote_command(
+    remote_args: List[str], hostname: str = 'localhost', interpreter: str = 'sh',
+    ssh_opts_dict: Dict[str, Dict[str, Any]] = {}
+) -> List[str]:
     command_to_execute = ''
     is_python = 'python' in interpreter.lower()
     if remote_args:
@@ -342,7 +372,7 @@ def get_remote_command(remote_args: List[str], hostname: str = 'localhost', inte
         else:
             args = [c.replace("'", """'"'"'""") for c in remote_args]
             command_to_execute = "exec \"$login_shell\" -c '{}'".format(' '.join(args))
-    sh_script = load_script(script_type='py' if is_python else 'sh', exec_cmd=command_to_execute)
+    sh_script = load_script(script_type='py' if is_python else 'sh', exec_cmd=command_to_execute, ssh_opts_dict=ssh_opts_dict)
     return [f'{interpreter} -c {shlex.quote(sh_script)}']
 
 
@@ -351,7 +381,7 @@ def main(args: List[str]) -> NoReturn:
     if args and args[0] == 'use-python':
         args = args[1:]  # backwards compat from when we had a python implementation
     try:
-        ssh_args, server_args, passthrough = parse_ssh_args(args)
+        ssh_args, server_args, passthrough, found_extra_args = parse_ssh_args(args, extra_args=('--kitten',))
     except InvalidSSHArgs as e:
         e.system_exit()
     cmd = ['ssh'] + ssh_args
@@ -374,7 +404,14 @@ def main(args: List[str]) -> NoReturn:
         else:
             hostname_for_match = hostname
         hostname_for_match = hostname.split('@', 1)[-1].split(':', 1)[0]
-        cmd += get_remote_command(remote_args, hostname, options_for_host(hostname_for_match, uname, load_ssh_options()).interpreter)
+        overrides = []
+        pat = re.compile(r'^([a-zA-Z0-9_]+)[ \t]*=')
+        for i, a in enumerate(found_extra_args):
+            if i % 2 == 1:
+                overrides.append(pat.sub(r'\1 ', a.lstrip()))
+        so = init_config(overrides)
+        sod = {k: v._asdict() for k, v in so.items()}
+        cmd += get_remote_command(remote_args, hostname, options_for_host(hostname_for_match, uname, so).interpreter, sod)
     os.execvp('ssh', cmd)
 
 

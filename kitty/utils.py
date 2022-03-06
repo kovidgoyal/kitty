@@ -820,6 +820,7 @@ class SSHConnectionData(NamedTuple):
     hostname: str
     port: Optional[int] = None
     identity_file: str = ''
+    extra_args: Tuple[Tuple[str, str], ...] = ()
 
 
 def get_new_os_window_size(

@@ -43,16 +43,18 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         self.ae(pty.screen_contents(), '13 77 770 260')
 
     def test_ssh_connection_data(self):
-        def t(cmdline, binary='ssh', host='main', port=None, identity_file=''):
+        def t(cmdline, binary='ssh', host='main', port=None, identity_file='', extra_args=()):
             if identity_file:
                 identity_file = os.path.abspath(identity_file)
-            q = get_connection_data(cmdline.split())
-            self.ae(q, SSHConnectionData(binary, host, port, identity_file))
+            en = set(f'{x[0]}' for x in extra_args)
+            q = get_connection_data(cmdline.split(), extra_args=en)
+            self.ae(q, SSHConnectionData(binary, host, port, identity_file, extra_args))
 
         t('ssh main')
         t('ssh un@ip -i ident -p34', host='un@ip', port=34, identity_file='ident')
         t('ssh un@ip -iident -p34', host='un@ip', port=34, identity_file='ident')
         t('ssh -p 33 main', port=33)
+        t('ssh --kitten=one -p 12 --kitten two -ix main', identity_file='x', port=12, extra_args=(('--kitten', 'one'), ('--kitten', 'two')))
 
     def test_ssh_config_parsing(self):
         def parse(conf):
@@ -198,8 +200,11 @@ copy --exclude */w.* d1
                     self.check_bootstrap('sh', tdir, ok_login_shell, val)
 
     def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', extra_exec='', pre_data='', ssh_opts=None):
+        ssh_opts = ssh_opts or {}
+        if login_shell:
+            ssh_opts['login_shell'] = login_shell
         script = bootstrap_script(
-            EXEC_CMD=f'echo "UNTAR_DONE"; {extra_exec}',
+            exec_cmd=f'echo "UNTAR_DONE"; {extra_exec}', ssh_opts_dict={'*': ssh_opts},
         )
         env = basic_shell_env(home_dir)
         # Avoid generating unneeded completion scripts
@@ -207,10 +212,7 @@ copy --exclude */w.* d1
         # prevent newuser-install from running
         open(os.path.join(home_dir, '.zshrc'), 'w').close()
         options = {'shell_integration': shell_integration(SHELL_INTEGRATION_VALUE or 'disabled')}
-        if login_shell:
-            ssh_opts = ssh_opts or {}
-            ssh_opts['login_shell'] = login_shell
-        pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=home_dir, env=env, options=options, ssh_opts=ssh_opts)
+        pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=home_dir, env=env, options=options)
         if pre_data:
             pty.write_buf = pre_data.encode('utf-8')
         del script

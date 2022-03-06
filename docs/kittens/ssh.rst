@@ -50,13 +50,19 @@ quick example:
    copy --dest=foo/bar some-file
    copy --glob some/files.*
 
-   # Include some config from environment variables.
-   # This will read config directives from the contents
-   # of all environemnt variables starting with SSH_KITTEN_
-   envinclude SSH_KITTEN_*
-
 
 See below for full details on the syntax and options of :file:`ssh.conf`.
+Additionally, you can pass config options on the command line:
+
+.. code-block:: sh
+
+   kitty +kitten ssh --kitten hostname=somehost --kitten interpreter=python ...
+
+The :code:`--kitten` argument can be specified multiple times, with directives
+from :file:`ssh.conf`. These are merged with :file:`ssh.conf` as if they were
+appended to the end of that file. It is important to specify the hostname as
+the first setting, otherwise the last hostname from :file:`ssh.conf` will be
+used.
 
 .. note::
 

@@ -86,7 +86,7 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None) -> Dict[
     return ans
 
 
-def init_config() -> Dict[str, SSHOptions]:
+def init_config(overrides: Optional[Iterable[str]] = None) -> Dict[str, SSHOptions]:
     config = tuple(resolve_config(SYSTEM_CONF, defconf))
-    opts_dict = load_config(*config)
+    opts_dict = load_config(*config, overrides=overrides)
     return opts_dict
