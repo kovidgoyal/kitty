@@ -17,7 +17,8 @@ from base64 import standard_b64decode, standard_b64encode
 from contextlib import suppress
 from getpass import getuser
 from typing import (
-    Any, Callable, Dict, Iterator, List, NoReturn, Optional, Set, Tuple, Union
+    Any, Callable, Dict, Iterator, List, NoReturn, Optional, Sequence, Set,
+    Tuple, Union
 )
 
 from kitty.constants import cache_dir, shell_integration_dir, terminfo_dir
@@ -156,7 +157,6 @@ def get_ssh_data(msg: str) -> Iterator[bytes]:
                 traceback.print_exc()
                 yield fmt_prefix('!error while gathering ssh data')
             else:
-                from base64 import standard_b64encode
                 encoded_data = standard_b64encode(data)
                 yield fmt_prefix(len(encoded_data))
                 yield encoded_data
@@ -177,7 +177,18 @@ def prepare_script(ans: str, replacements: Dict[str, str]) -> str:
     return re.sub('|'.join(fr'\b{k}\b' for k in replacements), sub, ans)
 
 
-def bootstrap_script(script_type: str = 'sh', exec_cmd: str = '', ssh_opts_dict: Dict[str, Dict[str, Any]] = {}) -> str:
+def prepare_exec_cmd(remote_args: Sequence[str], is_python: bool) -> str:
+    # ssh simply concatenates multiple commands using a space see
+    # line 1129 of ssh.c and on the remote side sshd.c runs the
+    # concatenated command as shell -c cmd
+    if is_python:
+        return standard_b64encode(' '.join(remote_args).encode('utf-8')).decode('ascii')
+    args = ' '.join(c.replace("'", """'"'"'""") for c in remote_args)
+    return f"""exec "$login_shell" -c '{args}'"""
+
+
+def bootstrap_script(script_type: str = 'sh', remote_args: Sequence[str] = (), ssh_opts_dict: Dict[str, Dict[str, Any]] = {}, test_script: str = '') -> str:
+    exec_cmd = prepare_exec_cmd(remote_args, script_type == 'py') if remote_args else ''
     with open(os.path.join(shell_integration_dir, 'ssh', f'bootstrap.{script_type}')) as f:
         ans = f.read()
     pw = uuid4()
@@ -185,12 +196,12 @@ def bootstrap_script(script_type: str = 'sh', exec_cmd: str = '', ssh_opts_dict:
         data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict}
         tf.write(json.dumps(data).encode('utf-8'))
     atexit.register(safe_remove, tf.name)
-    replacements = {'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': os.path.basename(tf.name), 'EXEC_CMD': exec_cmd}
+    replacements = {'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': os.path.basename(tf.name), 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script}
     return prepare_script(ans, replacements)
 
 
-def load_script(script_type: str = 'sh', exec_cmd: str = '', ssh_opts_dict: Dict[str, Dict[str, Any]] = {}) -> str:
-    return bootstrap_script(script_type, exec_cmd, ssh_opts_dict=ssh_opts_dict)
+def load_script(script_type: str = 'sh', remote_args: Sequence[str] = (), ssh_opts_dict: Dict[str, Dict[str, Any]] = {}) -> str:
+    return bootstrap_script(script_type, remote_args, ssh_opts_dict=ssh_opts_dict)
 
 
 def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
@@ -361,18 +372,8 @@ def get_remote_command(
     remote_args: List[str], hostname: str = 'localhost', interpreter: str = 'sh',
     ssh_opts_dict: Dict[str, Dict[str, Any]] = {}
 ) -> List[str]:
-    command_to_execute = ''
     is_python = 'python' in interpreter.lower()
-    if remote_args:
-        # ssh simply concatenates multiple commands using a space see
-        # line 1129 of ssh.c and on the remote side sshd.c runs the
-        # concatenated command as shell -c cmd
-        if is_python:
-            command_to_execute = standard_b64encode(' '.join(remote_args).encode('utf-8')).decode('ascii')
-        else:
-            args = [c.replace("'", """'"'"'""") for c in remote_args]
-            command_to_execute = "exec \"$login_shell\" -c '{}'".format(' '.join(args))
-    sh_script = load_script(script_type='py' if is_python else 'sh', exec_cmd=command_to_execute, ssh_opts_dict=ssh_opts_dict)
+    sh_script = load_script(script_type='py' if is_python else 'sh', remote_args=remote_args, ssh_opts_dict=ssh_opts_dict)
     return [f'{interpreter} -c {shlex.quote(sh_script)}']
 
 

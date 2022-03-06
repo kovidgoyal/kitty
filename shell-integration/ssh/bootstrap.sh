@@ -324,6 +324,9 @@ exec_with_shell_integration() {
     esac
 }
 
+# Used in the tests
+TEST_SCRIPT
+
 case "$KITTY_SHELL_INTEGRATION" in
     ("")
         # only blanks or unset

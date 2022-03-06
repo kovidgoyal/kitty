@@ -86,7 +86,8 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
     @property
     @lru_cache()
     def all_possible_sh(self):
-        return tuple(filter(shutil.which, ('dash', 'zsh', 'bash', 'posh', 'sh')))
+        python = 'python3' if shutil.which('python3') else 'python'
+        return tuple(filter(shutil.which, ('dash', 'zsh', 'bash', 'posh', 'sh', python)))
 
     def test_ssh_copy(self):
         simple_data = 'rkjlhfwf9whoaa'
@@ -111,7 +112,7 @@ copy --exclude */w.* d1
 '''
                 copy = load_config(overrides=filter(None, conf.splitlines()))['*'].copy
                 self.check_bootstrap(
-                    sh, remote_home, extra_exec='env; exit 0', SHELL_INTEGRATION_VALUE='',
+                    sh, remote_home, test_script='env; exit 0', SHELL_INTEGRATION_VALUE='',
                     ssh_opts={'copy': copy}
                 )
                 tname = '.terminfo'
@@ -141,7 +142,7 @@ copy --exclude */w.* d1
         for sh in self.all_possible_sh:
             with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
                 pty = self.check_bootstrap(
-                    sh, tdir, extra_exec='env; exit 0', SHELL_INTEGRATION_VALUE='',
+                    sh, tdir, test_script='env; exit 0', SHELL_INTEGRATION_VALUE='',
                     ssh_opts={'env': {
                         'TSET': 'set-works',
                         'COLORTERM': DELETE_ENV_VAR,
@@ -151,10 +152,13 @@ copy --exclude */w.* d1
                 self.assertNotIn('COLORTERM', pty.screen_contents())
 
     def test_ssh_leading_data(self):
+        script = 'echo "ld:$leading_data"; exit 0'
         for sh in self.all_possible_sh:
+            if 'python' in sh:
+                script = 'print("ld:" + leading_data.decode("ascii")); raise SystemExit(0);'
             with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
                 pty = self.check_bootstrap(
-                    sh, tdir, extra_exec='echo "ld:$leading_data"; exit 0',
+                    sh, tdir, test_script=script,
                     SHELL_INTEGRATION_VALUE='', pre_data='before_tarfile')
                 self.ae(pty.screen_contents(), 'UNTAR_DONE\nld:before_tarfile')
 
@@ -174,8 +178,10 @@ copy --exclude */w.* d1
         expected_login_shell = pwd.getpwuid(os.geteuid()).pw_shell
         for m in methods:
             for sh in self.all_possible_sh:
+                if 'python' in sh:
+                    continue
                 with self.subTest(sh=sh, method=m), tempfile.TemporaryDirectory() as tdir:
-                    pty = self.check_bootstrap(sh, tdir, extra_exec=f'{m}; echo "$login_shell"; exit 0', SHELL_INTEGRATION_VALUE='')
+                    pty = self.check_bootstrap(sh, tdir, test_script=f'{m}; echo "$login_shell"; exit 0', SHELL_INTEGRATION_VALUE='')
                     self.assertIn(expected_login_shell, pty.screen_contents())
 
     def test_ssh_shell_integration(self):
@@ -205,12 +211,19 @@ copy --exclude */w.* d1
                         pty.wait_till(lambda: len(pty.screen_contents().splitlines()) >= num_lines + 2)
                         self.assertEqual(pty.screen.cursor.shape, 0)
 
-    def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', extra_exec='', pre_data='', ssh_opts=None):
+    def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', test_script='', pre_data='', ssh_opts=None):
         ssh_opts = ssh_opts or {}
         if login_shell:
             ssh_opts['login_shell'] = login_shell
+        if 'python' in sh:
+            if test_script.startswith('env;'):
+                test_script = f'os.execlp("sh", "sh", "-c", {test_script!r})'
+            test_script = f'print("UNTAR_DONE", flush=True); {test_script}'
+        else:
+            test_script = f'echo "UNTAR_DONE"; {test_script}'
         script = bootstrap_script(
-            exec_cmd=f'echo "UNTAR_DONE"; {extra_exec}', ssh_opts_dict={'*': ssh_opts},
+            script_type='py' if 'python' in sh else 'sh',
+            test_script=test_script, ssh_opts_dict={'*': ssh_opts},
         )
         env = basic_shell_env(home_dir)
         # Avoid generating unneeded completion scripts

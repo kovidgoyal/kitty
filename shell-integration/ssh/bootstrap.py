@@ -20,6 +20,7 @@ import tty
 tty_fd = -1
 original_termios_state = None
 data_dir = shell_integration_dir = ''
+leading_data = b''
 HOME = os.path.expanduser('~')
 login_shell = pwd.getpwuid(os.geteuid()).pw_shell or 'sh'
 
@@ -108,7 +109,7 @@ def compile_terminfo(base):
 
 
 def get_data():
-    global data_dir, shell_integration_dir
+    global data_dir, shell_integration_dir, leading_data
     data = b''
 
     while data.count(b'\036') < 2:
@@ -219,6 +220,7 @@ def main():
     if exec_cmd:
         cmd = base64.standard_b64decode(exec_cmd).decode('utf-8')
         os.execlp(login_shell, os.path.basename(login_shell), '-c', cmd)
+    TEST_SCRIPT  # noqa
     if ksi and 'no-rc' not in ksi:
         exec_with_shell_integration()
     os.environ.pop('KITTY_SHELL_INTEGRATION', None)
