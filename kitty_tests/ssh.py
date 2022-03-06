@@ -196,8 +196,14 @@ copy --exclude */w.* d1
         # check that turning off shell integration works
         if ok_login_shell in ('bash', 'zsh'):
             for val in ('', 'no-rc', 'enabled no-rc'):
-                with tempfile.TemporaryDirectory() as tdir:
-                    self.check_bootstrap('sh', tdir, ok_login_shell, val)
+                for sh in self.all_possible_sh:
+                    with tempfile.TemporaryDirectory() as tdir:
+                        pty = self.check_bootstrap(sh, tdir, ok_login_shell, val)
+                        num_lines = len(pty.screen_contents().splitlines())
+                        pty.send_cmd_to_child('echo "$TERM=fruity"')
+                        pty.wait_till(lambda: 'kitty=fruity' in pty.screen_contents())
+                        pty.wait_till(lambda: len(pty.screen_contents().splitlines()) >= num_lines + 2)
+                        self.assertEqual(pty.screen.cursor.shape, 0)
 
     def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', extra_exec='', pre_data='', ssh_opts=None):
         ssh_opts = ssh_opts or {}
