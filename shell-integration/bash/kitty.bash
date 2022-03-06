@@ -61,17 +61,17 @@ if [ "${BASH_VERSINFO:-0}" -lt 4 ]; then
     builtin return;
 fi
 
-if [[ "${_ksi_prompt[sourced]}" == "y" ]]; then 
+if [[ "${_ksi_prompt[sourced]}" == "y" ]]; then
     # we have already run
     builtin unset KITTY_SHELL_INTEGRATION
-    builtin return; 
-fi  
+    builtin return;
+fi
 
 # this is defined outside _ksi_main to make it global without using declare -g
 # which is not available on older bash
 builtin declare -A _ksi_prompt
-_ksi_prompt=( 
-    [cursor]='y' [title]='y' [mark]='y' [complete]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]='' 
+_ksi_prompt=(
+    [cursor]='y' [title]='y' [mark]='y' [complete]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]=''
     [hostname_prefix]='' [sourced]='y'
 )
 
@@ -157,9 +157,6 @@ _ksi_main() {
     if [[ "${_ksi_prompt[title]}" == "y" ]]; then
         if [[ -n "$SSH_TTY$SSH2_TTY" ]]; then
             _ksi_prompt[hostname_prefix]="\h: ";
-        elif [[ -n "$(builtin command -v who)" ]]; then
-            # OpenSSH's sshd creates entries in utmp for every login so use those
-            [[ "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]] && _ksi_prompt[hostname_prefix]="\h: ";
         fi
         # see https://www.gnu.org/software/bash/manual/html_node/Controlling-the-Prompt.html#Controlling-the-Prompt
         # we use suffix here because some distros add title setting to their bashrc files by default
