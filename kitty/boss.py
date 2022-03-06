@@ -1313,7 +1313,6 @@ class Boss:
             s.close()
 
     def display_scrollback(self, window: Window, data: Union[bytes, str], input_line_number: int = 0, title: str = '', report_cursor: bool = True) -> None:
-        import shutil
 
         def prepare_arg(x: str) -> str:
             x = x.replace('INPUT_LINE_NUMBER', str(input_line_number))
@@ -1330,7 +1329,7 @@ class Boss:
         tab = self.active_tab
         if tab is not None:
             bdata = data.encode('utf-8') if isinstance(data, str) else data
-            if is_macos and shutil.which(cmd[0]) == '/usr/bin/less':
+            if is_macos and which(cmd[0]) == '/usr/bin/less':
                 # the system less on macOS barfs up OSC codes, so sanitize them ourselves
                 bdata = re.sub(br'\x1b\].*?\x1b\\', b'', bdata)
 
