@@ -79,9 +79,14 @@ def apply_env_vars(raw):
     login_shell = os.environ.pop('KITTY_LOGIN_SHELL', login_shell)
 
 
-def move(src, dest):
-    for x in os.listdir(src):
-        os.rename(os.path.join(src, x), os.path.join(dest, x))
+def move(src, base_dest):
+    for x in os.scandir(src):
+        dest = os.path.join(base_dest, x.name)
+        if x.is_dir(follow_symlinks=False):
+            os.makedirs(dest, exist_ok=True)
+            move(x.path, dest)
+        else:
+            os.rename(x.path, dest)
 
 
 def compile_terminfo():
@@ -186,7 +191,7 @@ def exec_with_shell_integration():
 def main():
     global tty_fd, original_termios_state, login_shell
     try:
-        tty_fd = os.open(os.ctermid(), os.O_RDWR | os.O_NONBLOCK | os.O_NOINHERIT)
+        tty_fd = os.open(os.ctermid(), os.O_RDWR | os.O_NONBLOCK | os.O_CLOEXEC)
     except OSError:
         pass
     else:
@@ -195,7 +200,7 @@ def main():
         except OSError:
             pass
         else:
-            tty.makeraw(tty_fd, termios.TCSANOW)
+            tty.setraw(tty_fd, termios.TCSANOW)
             new_state = termios.tcgetattr(tty_fd)
             new_state[3] &= ~termios.ECHO
             new_state[-1][termios.VMIN] = 1
