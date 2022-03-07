@@ -107,21 +107,20 @@ def move(src, base_dest):
 
 
 def compile_terminfo(base):
-    if not shutil.which('tic'):
+    tic = shutil.which('tic')
+    if not tic:
         return
     tname = '.terminfo'
     if os.path.exists('/usr/share/misc/terminfo.cdb'):
         tname += '.cdb'
     os.environ['TERMINFO'] = os.path.join(HOME, tname)
-    tic = shutil.which('tic')
-    if tic:
-        cp = subprocess.run(
-            [tic, '-x', '-o', os.path.join(base, tname), os.path.join(base, '.terminfo', 'kitty.terminfo')],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        )
-        if cp.returncode != 0:
-            sys.stderr.buffer.write(cp.stdout)
-            raise SystemExit('Failed to compile the terminfo database')
+    cp = subprocess.run(
+        [tic, '-x', '-o', os.path.join(base, tname), os.path.join(base, '.terminfo', 'kitty.terminfo')],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
+    if cp.returncode != 0:
+        sys.stderr.buffer.write(cp.stdout)
+        raise SystemExit('Failed to compile the terminfo database')
 
 
 def get_data():
@@ -164,15 +163,6 @@ def get_data():
                 move(tdir + '/root', '/')
 
 
-def exec_bash_with_integration():
-    os.environ['ENV'] = os.path.join(shell_integration_dir, 'bash', 'kitty.bash')
-    os.environ['KITTY_BASH_INJECT'] = '1'
-    if not os.environ.get('HISTFILE'):
-        os.environ['HISTFILE'] = os.path.join(HOME, '.bash_history')
-        os.environ['KITTY_BASH_UNEXPORT_HISTFILE'] = '1'
-    os.execlp(login_shell, os.path.basename('login_shell'), '--posix')
-
-
 def exec_zsh_with_integration():
     zdotdir = os.environ.get('ZDOTDIR') or ''
     if not zdotdir:
@@ -180,8 +170,8 @@ def exec_zsh_with_integration():
         os.environ.pop('KITTY_ORIG_ZDOTDIR', None)  # ensure this is not propagated
     else:
         os.environ['KITTY_ORIG_ZDOTDIR'] = zdotdir
-    # dont prevent zsh-new-user from running
-    for q in '.zshrc .zshenv .zprofile .zlogin'.split():
+    # dont prevent zsh-newuser-install from running
+    for q in ('.zshrc', '.zshenv', '.zprofile', '.zlogin'):
         if os.path.exists(os.path.join(HOME, q)):
             os.environ['ZDOTDIR'] = shell_integration_dir + '/zsh'
             os.execlp(login_shell, os.path.basename(login_shell), '-l')
@@ -197,14 +187,23 @@ def exec_fish_with_integration():
     os.execlp(login_shell, os.path.basename(login_shell), '-l')
 
 
+def exec_bash_with_integration():
+    os.environ['ENV'] = os.path.join(shell_integration_dir, 'bash', 'kitty.bash')
+    os.environ['KITTY_BASH_INJECT'] = '1'
+    if not os.environ.get('HISTFILE'):
+        os.environ['HISTFILE'] = os.path.join(HOME, '.bash_history')
+        os.environ['KITTY_BASH_UNEXPORT_HISTFILE'] = '1'
+    os.execlp(login_shell, os.path.basename('login_shell'), '--posix')
+
+
 def exec_with_shell_integration():
     shell_name = os.path.basename(login_shell).lower()
-    if shell_name == 'bash':
-        exec_bash_with_integration()
     if shell_name == 'zsh':
         exec_zsh_with_integration()
     if shell_name == 'fish':
         exec_fish_with_integration()
+    if shell_name == 'bash':
+        exec_bash_with_integration()
 
 
 def main():
