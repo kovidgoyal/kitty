@@ -73,7 +73,7 @@ def debug(msg):
 
 
 def unquote_env_val(x):
-    return re.sub('\\\\([\\$`"\n])', r'\1', x[1:-1])
+    return re.sub('\\\\([\\$`\x22\n])', r'\1', x[1:-1])
 
 
 def apply_env_vars(raw):
