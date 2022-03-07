@@ -120,7 +120,7 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
     return buf.getvalue()
 
 
-def get_ssh_data(msg: str) -> Iterator[bytes]:
+def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
     record_sep = b'\036'
 
     def fmt_prefix(msg: Any) -> bytes:
@@ -134,6 +134,7 @@ def get_ssh_data(msg: str) -> Iterator[bytes]:
         pw = md['pw']
         pwfilename = md['pwfile']
         username = md['user']
+        rq_id = md['id']
     except Exception:
         traceback.print_exc()
         yield fmt_prefix('!invalid ssh data request message')
@@ -144,9 +145,11 @@ def get_ssh_data(msg: str) -> Iterator[bytes]:
                 env_data = json.load(f)
                 if pw != env_data['pw']:
                     raise ValueError('Incorrect password')
-        except Exception:
+                if rq_id != request_id:
+                    raise ValueError('Incorrect request id')
+        except Exception as e:
             traceback.print_exc()
-            yield fmt_prefix('!incorrect ssh data password')
+            yield fmt_prefix(f'!{e}')
         else:
             ssh_opts = {k: SSHOptions(v) for k, v in env_data['opts'].items()}
             resolved_ssh_opts = options_for_host(hostname, username, ssh_opts)
@@ -187,7 +190,13 @@ def prepare_exec_cmd(remote_args: Sequence[str], is_python: bool) -> str:
     return f"""exec "$login_shell" -c '{args}'"""
 
 
-def bootstrap_script(script_type: str = 'sh', remote_args: Sequence[str] = (), ssh_opts_dict: Dict[str, Dict[str, Any]] = {}, test_script: str = '') -> str:
+def bootstrap_script(
+    script_type: str = 'sh', remote_args: Sequence[str] = (),
+    ssh_opts_dict: Dict[str, Dict[str, Any]] = {},
+    test_script: str = '', request_id: Optional[str] = None
+) -> str:
+    if request_id is None:
+        request_id = os.environ['KITTY_PID'] + '-' + os.environ['KITTY_WINDOW_ID']
     exec_cmd = prepare_exec_cmd(remote_args, script_type == 'py') if remote_args else ''
     with open(os.path.join(shell_integration_dir, 'ssh', f'bootstrap.{script_type}')) as f:
         ans = f.read()
@@ -196,7 +205,10 @@ def bootstrap_script(script_type: str = 'sh', remote_args: Sequence[str] = (), s
         data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict}
         tf.write(json.dumps(data).encode('utf-8'))
     atexit.register(safe_remove, tf.name)
-    replacements = {'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': os.path.basename(tf.name), 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script}
+    replacements = {
+        'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': os.path.basename(tf.name), 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script,
+        'REQUEST_ID': request_id
+    }
     return prepare_script(ans, replacements)
 
 
@@ -385,6 +397,8 @@ def main(args: List[str]) -> NoReturn:
         ssh_args, server_args, passthrough, found_extra_args = parse_ssh_args(args, extra_args=('--kitten',))
     except InvalidSSHArgs as e:
         e.system_exit()
+    if not os.environ.get('KITTY_WINDOW_ID'):
+        passthrough = True
     cmd = ['ssh'] + ssh_args
     if passthrough:
         cmd += server_args

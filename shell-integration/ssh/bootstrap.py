@@ -59,7 +59,8 @@ def dcs_to_kitty(type, payload):
 
 def send_data_request():
     hostname = os.environ.get('HOSTNAME') or os.uname().nodename
-    write_all(tty_fd, dcs_to_kitty('ssh', 'hostname={}:pwfile=PASSWORD_FILENAME:user={}:pw=DATA_PASSWORD'.format(hostname, getpass.getuser())))
+    write_all(tty_fd, dcs_to_kitty(
+        'ssh', 'id=REQUEST_ID:hostname={}:pwfile=PASSWORD_FILENAME:user={}:pw=DATA_PASSWORD'.format(hostname, getpass.getuser())))
 
 
 def debug(msg):

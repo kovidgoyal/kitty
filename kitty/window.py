@@ -882,7 +882,7 @@ class Window:
 
     def handle_remote_ssh(self, msg: str) -> None:
         from kittens.ssh.main import get_ssh_data
-        for line in get_ssh_data(msg):
+        for line in get_ssh_data(msg, f'{os.getpid()}-{self.id}'):
             self.write_to_child(line)
 
     def handle_remote_print(self, msg: str) -> None:

@@ -93,12 +93,10 @@ if [ -z "$HOME" ]; then HOME=~; fi
 if [ -z "$USER" ]; then USER=$(command whoami 2> /dev/null); fi
 
 # ask for the SSH data
-data_password="DATA_PASSWORD"
-password_filename="PASSWORD_FILENAME"
 leading_data=""
 
 init_tty && trap 'cleanup_on_bootstrap_exit' EXIT
-[ "$tty_ok" = "y" ] && dcs_to_kitty "ssh" "hostname="$hostname":pwfile="$password_filename":user="$USER":pw="$data_password""
+[ "$tty_ok" = "y" ] && dcs_to_kitty "ssh" "id="REQUEST_ID":hostname="$hostname":pwfile="PASSWORD_FILENAME":user="$USER":pw="DATA_PASSWORD""
 record_separator=$(printf "\036")
 
 mv_files_and_dirs() {

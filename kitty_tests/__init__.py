@@ -97,7 +97,7 @@ class Callbacks:
     def handle_remote_ssh(self, msg):
         from kittens.ssh.main import get_ssh_data
         if self.pty:
-            for line in get_ssh_data(msg):
+            for line in get_ssh_data(msg, "testing"):
                 self.pty.write_to_child(line)
 
     def handle_remote_echo(self, msg):

@@ -224,7 +224,7 @@ copy --exclude */w.* d1
         else:
             test_script = f'echo "UNTAR_DONE"; {test_script}'
         script = bootstrap_script(
-            script_type='py' if 'python' in sh else 'sh',
+            script_type='py' if 'python' in sh else 'sh', request_id="testing",
             test_script=test_script, ssh_opts_dict={'*': ssh_opts},
         )
         env = basic_shell_env(home_dir)
