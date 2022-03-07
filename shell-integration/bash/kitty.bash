@@ -8,32 +8,32 @@ _ksi_inject() {
     if [[ -n "$KITTY_BASH_INJECT" ]]; then
         builtin local kitty_bash_inject="$KITTY_BASH_INJECT"
         builtin unset KITTY_BASH_INJECT
-        builtin unset ENV;
+        builtin unset ENV
         if [[ -z "$HOME" ]]; then HOME=~; fi
         if [[ -z "$KITTY_BASH_ETC_LOCATION" ]]; then KITTY_BASH_ETC_LOCATION="/etc"; fi
 
         _ksi_safe_source() {
             if [[ -f "$1" && -r "$1" ]]; then
-                builtin source "$1";
-                builtin return 0;
+                builtin source "$1"
+                builtin return 0
             fi
-            builtin return 1;
+            builtin return 1
         }
 
         if [[ "$kitty_bash_inject" == *"posix"* ]]; then
-            _ksi_safe_source "$KITTY_BASH_POSIX_ENV" && builtin export ENV="$KITTY_BASH_POSIX_ENV";
+            _ksi_safe_source "$KITTY_BASH_POSIX_ENV" && builtin export ENV="$KITTY_BASH_POSIX_ENV"
         else
-            builtin set +o posix;
+            builtin set +o posix
             if [[ -n "$KITTY_BASH_UNEXPORT_HISTFILE" ]]; then
-                builtin export -n HISTFILE;
-                builtin unset KITTY_BASH_UNEXPORT_HISTFILE;
+                builtin export -n HISTFILE
+                builtin unset KITTY_BASH_UNEXPORT_HISTFILE
             fi
 
             # See run_startup_files() in shell.c in the Bash source code
             if builtin shopt -q login_shell; then
                 if [[ "$kitty_bash_inject" != *"no-profile"* ]]; then
-                    _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/profile";
-                    _ksi_safe_source "$HOME/.bash_profile" || _ksi_safe_source "$HOME/.bash_login" || _ksi_safe_source "$HOME/.profile";
+                    _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/profile"
+                    _ksi_safe_source "$HOME/.bash_profile" || _ksi_safe_source "$HOME/.bash_login" || _ksi_safe_source "$HOME/.profile"
                 fi
             else
                 if [[ "$kitty_bash_inject" != *"no-rc"* ]]; then
@@ -42,13 +42,13 @@ _ksi_inject() {
                     _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/bash.bashrc"  # Arch, Debian, Ubuntu
                     # Fedora uses /etc/bashrc sourced from ~/.bashrc instead of SYS_BASHRC
                     if [[ -z "$KITTY_BASH_RCFILE" ]]; then KITTY_BASH_RCFILE="$HOME/.bashrc"; fi
-                    _ksi_safe_source "$KITTY_BASH_RCFILE";
+                    _ksi_safe_source "$KITTY_BASH_RCFILE"
                 fi
             fi
         fi
-        builtin unset KITTY_BASH_RCFILE;
-        builtin unset KITTY_BASH_POSIX_ENV;
-        builtin unset KITTY_BASH_ETC_LOCATION;
+        builtin unset KITTY_BASH_RCFILE
+        builtin unset KITTY_BASH_POSIX_ENV
+        builtin unset KITTY_BASH_ETC_LOCATION
         builtin unset -f _ksi_safe_source
     fi
 }
@@ -57,14 +57,14 @@ builtin unset -f _ksi_inject
 
 if [ "${BASH_VERSINFO:-0}" -lt 4 ]; then
     builtin unset KITTY_SHELL_INTEGRATION
-    builtin printf "%s\n" "Bash version ${BASH_VERSION} too old, kitty shell integration disabled" > /dev/stderr;
-    builtin return;
+    builtin printf "%s\n" "Bash version ${BASH_VERSION} too old, kitty shell integration disabled" > /dev/stderr
+    builtin return
 fi
 
 if [[ "${_ksi_prompt[sourced]}" == "y" ]]; then
     # we have already run
     builtin unset KITTY_SHELL_INTEGRATION
-    builtin return;
+    builtin return
 fi
 
 # this is defined outside _ksi_main to make it global without using declare -g
@@ -135,7 +135,7 @@ _ksi_main() {
                 # the first part removes everything from the last \n onwards
                 # the second part appends a newline with the secondary marking
                 # the third part appends everything after the last newline
-                PS1=${PS1%@('\n'|$'\n')*}${_ksi_prompt[secondary_prompt]}${PS1##*@('\n'|$'\n')};
+                PS1=${PS1%@('\n'|$'\n')*}${_ksi_prompt[secondary_prompt]}${PS1##*@('\n'|$'\n')}
                 builtin eval "$oldval"
             fi
             PS1="${_ksi_prompt[ps1]}$PS1"
@@ -159,13 +159,13 @@ _ksi_main() {
             if [[ -n "$SSH_TTY" || -n "$SSH2_TTY$KITTY_WINDOW_ID" ]]; then
                 # connected to most SSH servers
                 # or use ssh kitten to connected to some SSH servers that do not set SSH_TTY
-                _ksi_prompt[hostname_prefix]="\h: ";
+                _ksi_prompt[hostname_prefix]="\h: "
             else
                 if [[ -n "$(builtin command -v who)" && "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]]; then
                     # the shell integration script is installed manually on the remote system
                     # the environment variables are cleared after sudo
                     # OpenSSH's sshd creates entries in utmp for every login so use those
-                    _ksi_prompt[hostname_prefix]="\h: ";
+                    _ksi_prompt[hostname_prefix]="\h: "
                 fi
             fi
         fi
