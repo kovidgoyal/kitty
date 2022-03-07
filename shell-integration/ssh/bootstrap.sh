@@ -203,7 +203,7 @@ parse_passwd_record() {
 using_getent() {
     cmd=$(command -v getent)
     if [ -n "$cmd" ]; then
-        output=$($cmd passwd $USER 2>/dev/null)
+        output=$(command $cmd passwd $USER 2>/dev/null)
         if [ $? = 0 ]; then
             login_shell=$(echo $output | parse_passwd_record);
             if login_shell_is_ok; then return 0; fi
@@ -215,7 +215,7 @@ using_getent() {
 using_id() {
     cmd=$(command -v id)
     if [ -n "$cmd" ]; then
-        output=$($cmd -P $USER 2>/dev/null)
+        output=$(command $cmd -P $USER 2>/dev/null)
         if [ $? = 0 ]; then
             login_shell=$(echo $output | parse_passwd_record);
             if login_shell_is_ok; then return 0; fi
