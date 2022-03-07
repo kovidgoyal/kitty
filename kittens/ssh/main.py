@@ -430,7 +430,7 @@ def main(args: List[str]) -> NoReturn:
     import subprocess
     with suppress(FileNotFoundError):
         raise SystemExit(subprocess.run(cmd).returncode)
-    raise SystemExit('Could not find the ssh executable, is it in your PATH')
+    raise SystemExit('Could not find the ssh executable, is it in your PATH?')
 
 
 if __name__ == '__main__':
