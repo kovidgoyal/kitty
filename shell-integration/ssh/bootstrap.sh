@@ -26,8 +26,8 @@ detect_python() {
 }
 
 if command -v base64 > /dev/null 2> /dev/null; then
-    base64_encode() { base64 | tr -d \\n\\r; }
-    base64_decode() { base64 -d; }
+    base64_encode() { command base64 | command tr -d \\n\\r; }
+    base64_decode() { command base64 -d; }
 elif detect_python; then
     pybase64() { python -c "import sys, base64; getattr(sys.stdout, 'buffer', sys.stdout).write(base64.standard_b64$1(getattr(sys.stdin, 'buffer', sys.stdin).read()))"; }
     base64_encode() { pybase64 "encode"; }
