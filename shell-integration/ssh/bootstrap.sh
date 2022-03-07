@@ -90,8 +90,11 @@ leading_data=""
 login_cwd=""
 
 init_tty && trap "cleanup_on_bootstrap_exit" EXIT
-[ "$tty_ok" = "y" ] && dcs_to_kitty "ssh" "id="REQUEST_ID":hostname="$hostname":pwfile="PASSWORD_FILENAME":user="$USER":pw="DATA_PASSWORD""
+if [ "$tty_ok" = "y" ]; then
+    command -v base64 > /dev/null 2> /dev/null  || die "base64 executable not present on remote host, ssh kitten cannot function. You can try using --kitten interpreter=python if python is available."
+    dcs_to_kitty "ssh" "id="REQUEST_ID":hostname="$hostname":pwfile="PASSWORD_FILENAME":user="$USER":pw="DATA_PASSWORD""
 record_separator=$(printf "\036")
+fi
 
 mv_files_and_dirs() {
     cwd="$PWD"
