@@ -89,7 +89,7 @@ _ksi_main() {
         # print a line to STDOUT of parent kitty process
         builtin local b
         b=$(builtin command base64 <<< "${@}")
-        builtin printf "\eP@kitty-print|%s\e\\" "${b//\\n}"
+        builtin printf "\eP@kitty-print|%s\e\\" "${b//[[:space:]]}}"
     }
 
     _ksi_set_mark() {
