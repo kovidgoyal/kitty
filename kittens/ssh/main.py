@@ -65,7 +65,7 @@ def serialize_env(env: Dict[str, str], base_env: Dict[str, str]) -> bytes:
 def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
 
     def normalize_tarinfo(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo:
-        tarinfo.uname = tarinfo.gname = 'kitty'
+        tarinfo.uname = tarinfo.gname = ''
         tarinfo.uid = tarinfo.gid = 0
         return tarinfo
 
