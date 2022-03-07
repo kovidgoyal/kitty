@@ -76,21 +76,15 @@ fi
 debug() { dcs_to_kitty "print" "debug: $1"; }
 echo_via_kitty() { dcs_to_kitty "echo" "$1"; }
 
-if [ -z "$HOSTNAME" ]; then
-    hostname=$(command hostname 2> /dev/null)
-    if [ -z "$hostname" ]; then
-        hostname=$(command hostnamectl hostname 2> /dev/null)
-        if [ -z "$hostname" ]; then
-            hostname="_"
-        fi
-    fi
-else
-    hostname="$HOSTNAME"
-fi
+hostname="$HOSTNAME"
+[ -z "$hostname" ] && hostname="$(command hostname 2> /dev/null)"
+[ -z "$hostname" ] && hostname="$(command hostnamectl hostname 2> /dev/null)"
+[ -z "$hostname" ] && hostname="$(command uname -m 2> /dev/null)"
+[ -z "$hostname" ] && hostname="_"
 # ensure $HOME is set
-if [ -z "$HOME" ]; then HOME=~; fi
+[ -z "$HOME" ] && HOME=~
 # ensure $USER is set
-if [ -z "$USER" ]; then USER=$(command whoami 2> /dev/null); fi
+[ -z "$USER" ] && USER="$(command whoami 2> /dev/null)"
 
 # ask for the SSH data
 leading_data=""
