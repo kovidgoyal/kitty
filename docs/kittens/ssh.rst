@@ -18,7 +18,7 @@ out, simply run:
     kitty +kitten ssh some-hostname-to-connect-to
 
 You should end up at a shell prompt on the remote server, with shell
-integration enabled. If you like it you can add an alias to it in you shell's
+integration enabled. If you like it you can add an alias to it in your shell's
 rc files:
 
 .. code-block:: sh
@@ -60,8 +60,8 @@ Additionally, you can pass config options on the command line:
 
 The :code:`--kitten` argument can be specified multiple times, with directives
 from :file:`ssh.conf`. These are merged with :file:`ssh.conf` as if they were
-appended to the end of that file. It is important to specify the hostname as
-the first setting, otherwise the last hostname from :file:`ssh.conf` will be
+appended to the end of that file. It is important to specify the :opt:`hostname <kitten-ssh.hostname>` as
+the first setting, otherwise the last :opt:`hostname <kitten-ssh.hostname>` from :file:`ssh.conf` will be
 used.
 
 .. note::
@@ -97,6 +97,20 @@ editor, respectively:
    copy --dest my-conf/vim .vim
    copy --dest my-conf/vim/vimrc .vimrc
 
+
+How it works
+----------------
+
+The ssh kitten works by having SSH transmit and execute a POSIX sh (or optionally
+Python) script on the remote server using an :opt:`interpreter
+<kitten-ssh.interpreter>`. This script asks kitty for the setup data over
+the tty device, which kitty sends as a tarball. The script extracts it and
+places the :opt:`files <kitten-ssh.copy>` and sets the :opt:`environment
+variables <kitten-ssh.env>` before finally launching the :opt:`login shell
+<kitten-ssh.login_shell>` with shell integration enabled. The data is requested
+with a one-time random password that is generated when the script is transmitted, so
+that on the remote server, only the script can request data transmission over
+the TTY, any other requests are responded to by errors.
 
 .. include:: /generated/conf-kitten-ssh.rst
 
