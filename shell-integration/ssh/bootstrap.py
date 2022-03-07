@@ -159,15 +159,6 @@ def get_data():
                 move(tdir + '/root', '/')
 
 
-def exec_bash_with_integration():
-    os.environ['ENV'] = os.path.join(shell_integration_dir, 'bash', 'kitty.bash')
-    os.environ['KITTY_BASH_INJECT'] = '1'
-    if not os.environ.get('HISTFILE'):
-        os.environ['HISTFILE'] = os.path.join(HOME, '.bash_history')
-        os.environ['KITTY_BASH_UNEXPORT_HISTFILE'] = '1'
-    os.execlp(login_shell, os.path.basename('login_shell'), '--posix')
-
-
 def exec_zsh_with_integration():
     zdotdir = os.environ.get('ZDOTDIR') or ''
     if not zdotdir:
@@ -192,14 +183,23 @@ def exec_fish_with_integration():
     os.execlp(login_shell, os.path.basename(login_shell), '-l')
 
 
+def exec_bash_with_integration():
+    os.environ['ENV'] = os.path.join(shell_integration_dir, 'bash', 'kitty.bash')
+    os.environ['KITTY_BASH_INJECT'] = '1'
+    if not os.environ.get('HISTFILE'):
+        os.environ['HISTFILE'] = os.path.join(HOME, '.bash_history')
+        os.environ['KITTY_BASH_UNEXPORT_HISTFILE'] = '1'
+    os.execlp(login_shell, os.path.basename('login_shell'), '--posix')
+
+
 def exec_with_shell_integration():
     shell_name = os.path.basename(login_shell).lower()
-    if shell_name == 'bash':
-        exec_bash_with_integration()
     if shell_name == 'zsh':
         exec_zsh_with_integration()
     if shell_name == 'fish':
         exec_fish_with_integration()
+    if shell_name == 'bash':
+        exec_bash_with_integration()
 
 
 def main():

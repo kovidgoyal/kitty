@@ -222,22 +222,22 @@ using_id() {
     return 1
 }
 
-using_passwd() {
-    if [ -f "/etc/passwd" -a -r "/etc/passwd" ]; then
-        output=$(command grep "^$USER:" /etc/passwd 2>/dev/null)
+using_python() {
+    if detect_python; then
+        output=$(command $python -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
         if [ $? = 0 ]; then
-            login_shell=$(echo $output | parse_passwd_record)
+            login_shell=$output
             if login_shell_is_ok; then return 0; fi
         fi
     fi
     return 1
 }
 
-using_python() {
-    if detect_python; then
-        output=$(command $python -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
+using_passwd() {
+    if [ -f "/etc/passwd" -a -r "/etc/passwd" ]; then
+        output=$(command grep "^$USER:" /etc/passwd 2>/dev/null)
         if [ $? = 0 ]; then
-            login_shell=$output
+            login_shell=$(echo $output | parse_passwd_record)
             if login_shell_is_ok; then return 0; fi
         fi
     fi
@@ -270,16 +270,6 @@ if [ "$tty_ok" = "n" ]; then
     fi
 fi
 
-exec_bash_with_integration() {
-    export ENV="$shell_integration_dir/bash/kitty.bash"
-    export KITTY_BASH_INJECT="1"
-    if [ -z "$HISTFILE" ]; then
-        export HISTFILE="$HOME/.bash_history"
-        export KITTY_BASH_UNEXPORT_HISTFILE="1"
-    fi
-    exec "$login_shell" "--posix"
-}
-
 exec_zsh_with_integration() {
     zdotdir="$ZDOTDIR"
     if [ -z "$zdotdir" ]; then
@@ -305,16 +295,26 @@ exec_fish_with_integration() {
     exec "$login_shell" "-l"
 }
 
+exec_bash_with_integration() {
+    export ENV="$shell_integration_dir/bash/kitty.bash"
+    export KITTY_BASH_INJECT="1"
+    if [ -z "$HISTFILE" ]; then
+        export HISTFILE="$HOME/.bash_history"
+        export KITTY_BASH_UNEXPORT_HISTFILE="1"
+    fi
+    exec "$login_shell" "--posix"
+}
+
 exec_with_shell_integration() {
     case "$shell_name" in
         "zsh")
             exec_zsh_with_integration
             ;;
-        "bash")
-            exec_bash_with_integration
-            ;;
         "fish")
             exec_fish_with_integration
+            ;;
+        "bash")
+            exec_bash_with_integration
             ;;
     esac
 }
