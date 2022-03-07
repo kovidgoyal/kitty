@@ -62,7 +62,7 @@ def serialize_env(env: Dict[str, str], base_env: Dict[str, str]) -> bytes:
     return '\n'.join(lines).encode('utf-8')
 
 
-def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
+def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: str = 'gz') -> bytes:
 
     def normalize_tarinfo(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo:
         tarinfo.uname = tarinfo.gname = ''
@@ -117,7 +117,7 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
         env['KITTY_LOGIN_CWD'] = ssh_opts.cwd
     env_script = serialize_env(env, base_env)
     buf = io.BytesIO()
-    with tarfile.open(mode='w:bz2', fileobj=buf, encoding='utf-8') as tf:
+    with tarfile.open(mode=f'w:{compression}', fileobj=buf, encoding='utf-8') as tf:
         rd = ssh_opts.remote_dir.rstrip('/')
         for ci in ssh_opts.copy.values():
             tf.add(ci.local_path, arcname=ci.arcname, filter=filter_from_globs(*ci.exclude_patterns))
@@ -147,6 +147,7 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
         pwfilename = md['pwfile']
         username = md['user']
         rq_id = md['id']
+        compression = md['compression']
     except Exception:
         traceback.print_exc()
         yield fmt_prefix('!invalid ssh data request message')
@@ -169,7 +170,7 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
             resolved_ssh_opts = options_for_host(hostname, username, ssh_opts, cli_hostname, cli_uname)
             resolved_ssh_opts.copy = {k: CopyInstruction(*v) for k, v in resolved_ssh_opts.copy.items()}
             try:
-                data = make_tarfile(resolved_ssh_opts, env_data['env'])
+                data = make_tarfile(resolved_ssh_opts, env_data['env'], compression)
             except Exception:
                 traceback.print_exc()
                 yield fmt_prefix('!error while gathering ssh data')

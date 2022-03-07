@@ -120,7 +120,9 @@ login_cwd=""
 
 init_tty && trap "cleanup_on_bootstrap_exit" EXIT
 if [ "$tty_ok" = "y" ]; then
-    dcs_to_kitty "ssh" "id="REQUEST_ID":hostname="$hostname":pwfile="PASSWORD_FILENAME":user="$USER":pw="DATA_PASSWORD""
+    compression="gz"
+    command -v "bzip2" > /dev/null 2> /dev/null && compression="bz2"
+    dcs_to_kitty "ssh" "id="REQUEST_ID":hostname="$hostname":pwfile="PASSWORD_FILENAME":user="$USER":compression="$compression":pw="DATA_PASSWORD""
 record_separator=$(printf "\036")
 fi
 
@@ -157,7 +159,9 @@ untar_and_read_env() {
 
     tdir=$(command mktemp -d "$HOME/.kitty-ssh-kitten-untar-XXXXXXXXXXXX")
     [ $? = 0 ] || die "Creating temp directory failed"
-    read_n_bytes_from_tty "$1" | base64_decode | command tar xpjf - -C "$tdir"
+    cflag="j"
+    [ "$compression" = "gz" ] && cflag="z"
+    read_n_bytes_from_tty "$1" | base64_decode | command tar "x${cflag}pf" - -C "$tdir"
     data_file="$tdir/data.sh"
     [ -f "$data_file" ] && . "$data_file"
     [ -z "$KITTY_SSH_KITTEN_DATA_DIR" ] && die "Failed to read SSH data from tty"
