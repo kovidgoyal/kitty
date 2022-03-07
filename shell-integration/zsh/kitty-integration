@@ -61,7 +61,7 @@ typeset -gi _ksi_fd
     }
 } 2>/dev/null || (( _ksi_fd = 1 ))
 
-# Asks kitty to print $@ to its STDOUT. This is for debugging.
+# Asks kitty to print $@ to its STDERR. This is for debugging.
 _ksi_debug_print() {
     builtin local data
     data=$(builtin command base64 <<<"${(j: :)@}") || builtin return
