@@ -28,6 +28,9 @@ detect_python() {
 if command -v base64 > /dev/null 2> /dev/null; then
     base64_encode() { command base64 | command tr -d \\n\\r; }
     base64_decode() { command base64 -d; }
+elif command -v uuencode > /dev/null 2> /dev/null; then
+    base64_encode() { command uuencode -m -o /dev/stdout /dev/stdin | command sed '1d;$d' | command tr -d \\n\\r; }
+    base64_decode() { printf 'begin-base64 644 -\n%s' $(</dev/stdin) | command uudecode -m -o /dev/stdout 2> /dev/null; }
 elif detect_python; then
     pybase64() { command "$python" -c "import sys, base64; getattr(sys.stdout, 'buffer', sys.stdout).write(base64.standard_b64$1(getattr(sys.stdin, 'buffer', sys.stdin).read()))"; }
     base64_encode() { pybase64 "encode"; }
@@ -52,7 +55,7 @@ init_tty() {
 # as it is superior to the POSIX variants. The builtin read function doesn't work
 # as it hangs reading N bytes on macOS
 tty_fd=-1
-if builtin zmodload zsh/system 2> /dev/null; then
+if [ -n "$ZSH_VERSION" ] && builtin zmodload zsh/system 2> /dev/null; then
     builtin sysopen -o cloexec -rwu tty_fd -- "$TTY" 2> /dev/null
     [ $tty_fd = -1 ] && builtin sysopen -o cloexec -rwu tty_fd -- /dev/tty 2> /dev/null
 fi
@@ -74,7 +77,7 @@ if [ $tty_fd -gt -1 ]; then
         done
     }
 else
-    dcs_to_kitty() { printf "\033P@kitty-$1|%s\033\\" "$(printf "%s" "$2" | base64_encode)" > /dev/tty; }
+    dcs_to_kitty() { printf "\033P@kitty-$1|%s\033\134" "$(printf "%s" "$2" | base64_encode)" > /dev/tty; }
 
     read_one_byte_from_tty() {
         # We need a way to read a single byte at a time and to read a specified number of bytes in one invocation.
