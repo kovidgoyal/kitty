@@ -213,16 +213,8 @@ function _set_status_prompt; function fish_prompt; echo -n "$pipestatus $status 
             pty.write_to_child('i')
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
             pty.send_cmd_to_child('_set_key default')
-
-            # pipestatus
-            pty.send_cmd_to_child('clear;false|true|false')
-            pty.send_cmd_to_child('echo $pipestatus $status')
-            pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 2)
-            self.ae(pty.last_cmd_output(), '1 0 1 1')
-            pty.send_cmd_to_child('_set_status_prompt')
-            pty.send_cmd_to_child('false|true|false')
             pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 4)
-            self.assertTrue(str(pty.screen.line(pty.screen.cursor.y)).startswith(f'1 0 1 1 {fish_prompt}'))
+            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
 
             pty.send_cmd_to_child('exit')
 
