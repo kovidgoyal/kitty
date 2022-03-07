@@ -86,7 +86,7 @@ _ksi_main() {
     builtin unset KITTY_SHELL_INTEGRATION
 
     _ksi_debug_print() {
-        # print a line to STDOUT of parent kitty process
+        # print a line to STDERR of parent kitty process
         builtin local b
         b=$(builtin command base64 <<< "${@}")
         builtin printf "\eP@kitty-print|%s\e\\" "${b//[[:space:]]}}"
