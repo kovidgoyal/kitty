@@ -10,6 +10,25 @@ cleanup_on_bootstrap_exit() {
 
 die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
 
+detect_python() {
+    python=$(command -v python3)
+    if [ -z "$python" ]; then python=$(command -v python2); fi
+    if [ -z "$python" ]; then python=$(command -v python); fi
+    if [ -z "$python" -o ! -x "$python" ]; then return 1; fi
+    return 0
+}
+
+if command -v base64 > /dev/null 2> /dev/null; then
+    base64_encode() { base64 | tr -d \\n\\r; }
+    base64_decode() { base64 -d; }
+elif detect_python; then
+    pybase64() { python -c "import sys, base64; getattr(sys.stdout, 'buffer', sys.stdout).write(base64.standard_b64$1(getattr(sys.stdin, 'buffer', sys.stdin).read()))"; }
+    base64_encode() { pybase64 "encode"; }
+    base64_decode() { pybase64 "decode"; }
+else
+    die "base64 executable not present on remote host, ssh kitten cannot function."
+fi
+
 init_tty() {
     saved_tty_settings=$(command stty -g 2> /dev/null < /dev/tty)
     tty_ok="n"
@@ -33,7 +52,7 @@ fi
 if [ $tty_fd -gt -1 ]; then
     dcs_to_kitty() {
         builtin local b64data
-        b64data=$(builtin printf "%s" "$2" | builtin command base64)
+        b64data=$(builtin printf "%s" "$2" | base64_encode)
         builtin print -nu "$tty_fd" '\eP@kitty-'"${1}|${b64data//[[:space:]]}"'\e\\'
     }
     read_one_byte_from_tty() {
@@ -48,7 +67,7 @@ if [ $tty_fd -gt -1 ]; then
         done
     }
 else
-    dcs_to_kitty() { printf "\033P@kitty-$1|%s\033\\" "$(printf "%s" "$2" | command base64 | command tr -d \\n)" > /dev/tty; }
+    dcs_to_kitty() { printf "\033P@kitty-$1|%s\033\\" "$(printf "%s" "$2" | base64_encode)" > /dev/tty; }
 
     read_one_byte_from_tty() {
         # We need a way to read a single byte at a time and to read a specified number of bytes in one invocation.
@@ -91,7 +110,6 @@ login_cwd=""
 
 init_tty && trap "cleanup_on_bootstrap_exit" EXIT
 if [ "$tty_ok" = "y" ]; then
-    command -v base64 > /dev/null 2> /dev/null  || die "base64 executable not present on remote host, ssh kitten cannot function. You can try using --kitten interpreter=python if python is available."
     dcs_to_kitty "ssh" "id="REQUEST_ID":hostname="$hostname":pwfile="PASSWORD_FILENAME":user="$USER":pw="DATA_PASSWORD""
 record_separator=$(printf "\036")
 fi
@@ -129,7 +147,7 @@ untar_and_read_env() {
 
     tdir=$(command mktemp -d "$HOME/.kitty-ssh-kitten-untar-XXXXXXXXXXXX")
     [ $? = 0 ] || die "Creating temp directory failed"
-    read_n_bytes_from_tty "$1" | command base64 -d | command tar xpjf - -C "$tdir"
+    read_n_bytes_from_tty "$1" | base64_decode | command tar xpjf - -C "$tdir"
     data_file="$tdir/data.sh"
     [ -f "$data_file" ] && . "$data_file"
     [ -z "$KITTY_SSH_KITTEN_DATA_DIR" ] && die "Failed to read SSH data from tty"
@@ -184,14 +202,6 @@ login_shell_is_ok() {
         *sh) return 0;
     esac
     return 1
-}
-
-detect_python() {
-    python=$(command -v python3)
-    if [ -z "$python" ]; then python=$(command -v python2); fi
-    if [ -z "$python" ]; then python=$(command -v python); fi
-    if [ -z "$python" -o ! -x "$python" ]; then return 1; fi
-    return 0
 }
 
 parse_passwd_record() {
