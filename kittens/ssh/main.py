@@ -33,11 +33,21 @@ from .options.types import Options as SSHOptions
 from .options.utils import DELETE_ENV_VAR
 
 
+# See https://www.gnu.org/software/bash/manual/html_node/Double-Quotes.html
+quote_pat = re.compile('([\\`"\n])')
+
+
+def quote_env_val(x: str) -> str:
+    x = quote_pat.sub(r'\\\1', x)
+    x = x.replace('$(', r'\$(')  # prevent execution with $()
+    return f'"{x}"'
+
+
 def serialize_env(env: Dict[str, str], base_env: Dict[str, str]) -> bytes:
     lines = []
 
     def a(k: str, val: str) -> None:
-        lines.append(f'export {k}={shlex.quote(val)}')
+        lines.append(f'export {shlex.quote(k)}={quote_env_val(val)}')
 
     for k in sorted(env):
         v = env[k]

@@ -8,8 +8,8 @@ import getpass
 import io
 import os
 import pwd
+import re
 import select
-import shlex
 import shutil
 import subprocess
 import sys
@@ -72,6 +72,10 @@ def debug(msg):
         write_all(tty_fd, data)
 
 
+def unquote_env_val(x):
+    return re.sub('\\\\([\\$`"\n])', r'\1', x[1:-1])
+
+
 def apply_env_vars(raw):
     global login_shell
 
@@ -81,7 +85,7 @@ def apply_env_vars(raw):
             key, val = parts[0], ''
         else:
             key, val = parts
-            val = shlex.split(val)[0]
+            val = os.path.expandvars(unquote_env_val(val))
         os.environ[key] = val
 
     for line in raw.splitlines():

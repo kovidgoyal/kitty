@@ -139,16 +139,18 @@ copy --exclude */w.* d1
                 self.ae(len(glob.glob(f'{remote_home}/{tname}/*/xterm-kitty')), 2)
 
     def test_ssh_env_vars(self):
+        tset = '$A-$(echo no)-`echo no2` "something"'
         for sh in self.all_possible_sh:
             with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
                 pty = self.check_bootstrap(
                     sh, tdir, test_script='env; exit 0', SHELL_INTEGRATION_VALUE='',
                     ssh_opts={'env': {
-                        'TSET': 'set-works',
+                        'A': 'AAA',
+                        'TSET': tset,
                         'COLORTERM': DELETE_ENV_VAR,
                     }}
                 )
-                pty.wait_till(lambda: 'TSET=set-works' in pty.screen_contents())
+                pty.wait_till(lambda: 'TSET={}'.format(tset.replace('$A', 'AAA')) in pty.screen_contents())
                 self.assertNotIn('COLORTERM', pty.screen_contents())
 
     def test_ssh_leading_data(self):
