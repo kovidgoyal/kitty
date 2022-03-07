@@ -126,7 +126,7 @@ untar_and_read_env() {
 
     tdir=$(command mktemp -d "$HOME/.kitty-ssh-kitten-untar-XXXXXXXXXXXX")
     [ $? = 0 ] || die "Creating temp directory failed"
-    read_n_bytes_from_tty "$1" | command base64 -d | command tar xjf - --no-same-owner -C "$tdir"
+    read_n_bytes_from_tty "$1" | command base64 -d | command tar xpjf - --no-same-owner -C "$tdir"
     data_file="$tdir/data.sh"
     [ -f "$data_file" ] && . "$data_file"
     data_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR"
