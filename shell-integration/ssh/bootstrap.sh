@@ -10,7 +10,14 @@ cleanup_on_bootstrap_exit() {
 
 die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
 
+python_detected="0"
+
 detect_python() {
+    if [ python_detected = "1" ]; then
+        [ -n "$python" ] && return 0;
+        return 1;
+    fi
+    python_detected="1"
     python=$(command -v python3)
     if [ -z "$python" ]; then python=$(command -v python2); fi
     if [ -z "$python" ]; then python=$(command -v python); fi
