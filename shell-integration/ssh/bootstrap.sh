@@ -21,7 +21,7 @@ detect_python() {
     python=$(command -v python3)
     if [ -z "$python" ]; then python=$(command -v python2); fi
     if [ -z "$python" ]; then python=$(command -v python); fi
-    if [ -z "$python" -o ! -x "$python" ]; then return 1; fi
+    if [ -z "$python" -o ! -x "$python" ]; then python=""; return 1; fi
     return 0
 }
 
