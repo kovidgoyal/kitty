@@ -29,7 +29,7 @@ if command -v base64 > /dev/null 2> /dev/null; then
     base64_encode() { command base64 | command tr -d \\n\\r; }
     base64_decode() { command base64 -d; }
 elif detect_python; then
-    pybase64() { python -c "import sys, base64; getattr(sys.stdout, 'buffer', sys.stdout).write(base64.standard_b64$1(getattr(sys.stdin, 'buffer', sys.stdin).read()))"; }
+    pybase64() { command "$python" -c "import sys, base64; getattr(sys.stdout, 'buffer', sys.stdout).write(base64.standard_b64$1(getattr(sys.stdin, 'buffer', sys.stdin).read()))"; }
     base64_encode() { pybase64 "encode"; }
     base64_decode() { pybase64 "decode"; }
 else
@@ -241,7 +241,7 @@ using_id() {
 
 using_python() {
     if detect_python; then
-        output=$(command $python -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
+        output=$(command "$python" -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
         if [ $? = 0 ]; then
             login_shell=$output
             if login_shell_is_ok; then return 0; fi
@@ -263,7 +263,7 @@ using_passwd() {
 
 execute_with_python() {
     if detect_python; then
-        exec $python -c "import os; os.execlp('$login_shell', '-' '$shell_name')"
+        exec "$python" -c "import os; os.execlp('$login_shell', '-' '$shell_name')"
     fi
     return 1
 }
