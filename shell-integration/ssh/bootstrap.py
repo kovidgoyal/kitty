@@ -230,6 +230,9 @@ def main():
             get_data()
         finally:
             cleanup()
+    cwd = os.environ.pop('KITTY_LOGIN_CWD', '')
+    if cwd:
+        os.chdir(cwd)
     ksi = frozenset(filter(None, os.environ.get('KITTY_SHELL_INTEGRATION', '').split()))
     exec_cmd = b'EXEC_CMD'
     if exec_cmd:

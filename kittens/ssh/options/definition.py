@@ -71,6 +71,14 @@ are processed alphabetically. The special value :code:`_kitty_copy_env_var_`
 will cause the value of the variable to be copied from the local machine.
 ''')
 
+
+opt('cwd', '', long_text='''
+The working directory on the remote host to change to. Env vars in this
+value are expanded. The default is empty so no changing is done, which
+usually means the home directory is used.
+''')
+
+
 opt('interpreter', 'sh', long_text='''
 The interpreter to use on the remote host. Must be either a POSIX complaint shell
 or a python executable. If the default sh is not available for broken, using

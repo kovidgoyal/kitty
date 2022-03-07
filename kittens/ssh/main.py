@@ -113,6 +113,8 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
     env['KITTY_SSH_KITTEN_DATA_DIR'] = ssh_opts.remote_dir
     if ssh_opts.login_shell:
         env['KITTY_LOGIN_SHELL'] = ssh_opts.login_shell
+    if ssh_opts.cwd:
+        env['KITTY_LOGIN_CWD'] = ssh_opts.cwd
     env_script = serialize_env(env, base_env)
     buf = io.BytesIO()
     with tarfile.open(mode='w:bz2', fileobj=buf, encoding='utf-8') as tf:

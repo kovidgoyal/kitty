@@ -86,8 +86,8 @@ hostname="$HOSTNAME"
 # ensure $USER is set
 [ -z "$USER" ] && USER="$(command whoami 2> /dev/null)"
 
-# ask for the SSH data
 leading_data=""
+login_cwd=""
 
 init_tty && trap "cleanup_on_bootstrap_exit" EXIT
 [ "$tty_ok" = "y" ] && dcs_to_kitty "ssh" "id="REQUEST_ID":hostname="$hostname":pwfile="PASSWORD_FILENAME":user="$USER":pw="DATA_PASSWORD""
@@ -129,13 +129,15 @@ untar_and_read_env() {
     read_n_bytes_from_tty "$1" | command base64 -d | command tar xpjf - -C "$tdir"
     data_file="$tdir/data.sh"
     [ -f "$data_file" ] && . "$data_file"
+    [ -z "$KITTY_SSH_KITTEN_DATA_DIR" ] && die "Failed to read SSH data from tty"
     data_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR"
+    unset KITTY_SSH_KITTEN_DATA_DIR
+    login_cwd="$KITTY_LOGIN_CWD"
+    unset KITTY_LOGIN_CWD
     compile_terminfo "$tdir/home"
     mv_files_and_dirs "$tdir/home" "$HOME"
     [ -e "$tdir/root" ] && mv_files_and_dirs "$tdir/root" ""
     command rm -rf "$tdir"
-    [ -z "KITTY_SSH_KITTEN_DATA_DIR" ] && die "Failed to read SSH data from tty"
-    unset KITTY_SSH_KITTEN_DATA_DIR
 }
 
 read_record() {
@@ -160,6 +162,7 @@ get_data() {
 }
 
 if [ "$tty_ok" = "y" ]; then
+    # ask for the SSH data
     get_data
     cleanup_on_bootstrap_exit
     if [ -n "$leading_data" ]; then
@@ -252,6 +255,7 @@ else
     using_getent || using_id || using_python || using_passwd || die "Could not detect login shell"
 fi
 shell_name=$(command basename $login_shell)
+[ -n "$login_cwd" ] && cd "$login_cwd"
 
 # If a command was passed to SSH execute it here
 EXEC_CMD

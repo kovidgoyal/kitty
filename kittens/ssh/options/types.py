@@ -6,6 +6,7 @@ import kittens.ssh.copy
 
 option_names = (  # {{{
  'copy',
+ 'cwd',
  'env',
  'hostname',
  'interpreter',
@@ -15,6 +16,7 @@ option_names = (  # {{{
 
 
 class Options:
+    cwd: str = ''
     hostname: str = '*'
     interpreter: str = 'sh'
     login_shell: str = ''

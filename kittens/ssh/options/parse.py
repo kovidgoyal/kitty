@@ -11,6 +11,9 @@ class Parser:
         for k, v in copy(val, ans["copy"]):
             ans["copy"][k] = v
 
+    def cwd(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['cwd'] = str(val)
+
     def env(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         for k, v in env(val, ans["env"]):
             ans["env"][k] = v
