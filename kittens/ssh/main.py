@@ -427,7 +427,10 @@ def main(args: List[str]) -> NoReturn:
         so = init_config(overrides)
         sod = {k: v._asdict() for k, v in so.items()}
         cmd += get_remote_command(remote_args, hostname, options_for_host(hostname_for_match, uname, so).interpreter, sod)
-    os.execvp('ssh', cmd)
+    import subprocess
+    with suppress(FileNotFoundError):
+        raise SystemExit(subprocess.run(cmd).returncode)
+    raise SystemExit('Could not find the ssh executable, is it in your PATH')
 
 
 if __name__ == '__main__':
