@@ -73,7 +73,7 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str]) -> bytes:
     def filter_from_globs(*pats: str) -> Callable[[tarfile.TarInfo], Optional[tarfile.TarInfo]]:
         def filter(tarinfo: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
             for junk_dir in ('.DS_Store', '__pycache__'):
-                for pat in (f'*/{junk_dir}', '*/{junk_dir}/*'):
+                for pat in (f'*/{junk_dir}', f'*/{junk_dir}/*'):
                     if fnmatch.fnmatch(tarinfo.name, pat):
                         return None
             for pat in pats:

@@ -95,7 +95,7 @@ if [ -z "$USER" ]; then USER=$(command whoami 2> /dev/null); fi
 # ask for the SSH data
 leading_data=""
 
-init_tty && trap 'cleanup_on_bootstrap_exit' EXIT
+init_tty && trap "cleanup_on_bootstrap_exit" EXIT
 [ "$tty_ok" = "y" ] && dcs_to_kitty "ssh" "id="REQUEST_ID":hostname="$hostname":pwfile="PASSWORD_FILENAME":user="$USER":pw="DATA_PASSWORD""
 record_separator=$(printf "\036")
 
@@ -287,7 +287,7 @@ exec_zsh_with_integration() {
     else
         export KITTY_ORIG_ZDOTDIR="$zdotdir"
     fi
-    # dont prevent zsh-new-user from running
+    # dont prevent zsh-newuser-install from running
     if [ -f "$zdotdir/.zshrc" -o -f "$zdotdir/.zshenv" -o -f "$zdotdir/.zprofile" -o -f "$zdotdir/.zlogin" ]; then
         export ZDOTDIR="$shell_integration_dir/zsh"
         exec "$login_shell" "-l"
