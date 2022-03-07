@@ -159,12 +159,14 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
                     raise ValueError('Incorrect password')
                 if rq_id != request_id:
                     raise ValueError('Incorrect request id')
+                cli_hostname = env_data['cli_hostname']
+                cli_uname = env_data['cli_uname']
         except Exception as e:
             traceback.print_exc()
             yield fmt_prefix(f'!{e}')
         else:
             ssh_opts = {k: SSHOptions(v) for k, v in env_data['opts'].items()}
-            resolved_ssh_opts = options_for_host(hostname, username, ssh_opts)
+            resolved_ssh_opts = options_for_host(hostname, username, ssh_opts, cli_hostname, cli_uname)
             resolved_ssh_opts.copy = {k: CopyInstruction(*v) for k, v in resolved_ssh_opts.copy.items()}
             try:
                 data = make_tarfile(resolved_ssh_opts, env_data['env'])
@@ -205,7 +207,7 @@ def prepare_exec_cmd(remote_args: Sequence[str], is_python: bool) -> str:
 def bootstrap_script(
     script_type: str = 'sh', remote_args: Sequence[str] = (),
     ssh_opts_dict: Dict[str, Dict[str, Any]] = {},
-    test_script: str = '', request_id: Optional[str] = None
+    test_script: str = '', request_id: Optional[str] = None, cli_hostname: str = '', cli_uname: str = ''
 ) -> str:
     if request_id is None:
         request_id = os.environ['KITTY_PID'] + '-' + os.environ['KITTY_WINDOW_ID']
@@ -214,7 +216,7 @@ def bootstrap_script(
         ans = f.read()
     pw = uuid4()
     with tempfile.NamedTemporaryFile(prefix='ssh-kitten-pw-', suffix='.json', dir=cache_dir(), delete=False) as tf:
-        data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict}
+        data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict, 'cli_hostname': cli_hostname, 'cli_uname': cli_uname}
         tf.write(json.dumps(data).encode('utf-8'))
     atexit.register(safe_remove, tf.name)
     replacements = {
@@ -222,10 +224,6 @@ def bootstrap_script(
         'REQUEST_ID': request_id
     }
     return prepare_script(ans, replacements)
-
-
-def load_script(script_type: str = 'sh', remote_args: Sequence[str] = (), ssh_opts_dict: Dict[str, Dict[str, Any]] = {}) -> str:
-    return bootstrap_script(script_type, remote_args, ssh_opts_dict=ssh_opts_dict)
 
 
 def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
@@ -393,11 +391,14 @@ def parse_ssh_args(args: List[str], extra_args: Tuple[str, ...] = ()) -> Tuple[L
 
 
 def get_remote_command(
-    remote_args: List[str], hostname: str = 'localhost', interpreter: str = 'sh',
+    remote_args: List[str], hostname: str = 'localhost', cli_hostname: str = '', cli_uname: str = '',
+    interpreter: str = 'sh',
     ssh_opts_dict: Dict[str, Dict[str, Any]] = {}
 ) -> List[str]:
     is_python = 'python' in interpreter.lower()
-    sh_script = load_script(script_type='py' if is_python else 'sh', remote_args=remote_args, ssh_opts_dict=ssh_opts_dict)
+    sh_script = bootstrap_script(
+        script_type='py' if is_python else 'sh', remote_args=remote_args, ssh_opts_dict=ssh_opts_dict,
+        cli_hostname=cli_hostname, cli_uname=cli_uname)
     return [f'{interpreter} -c {shlex.quote(sh_script)}']
 
 
@@ -436,12 +437,17 @@ def main(args: List[str]) -> NoReturn:
         for i, a in enumerate(found_extra_args):
             if i % 2 == 1:
                 overrides.append(pat.sub(r'\1 ', a.lstrip()))
+        if overrides:
+            overrides.insert(0, f'hostname {uname}@{hostname_for_match}')
         so = init_config(overrides)
         sod = {k: v._asdict() for k, v in so.items()}
-        cmd += get_remote_command(remote_args, hostname, options_for_host(hostname_for_match, uname, so).interpreter, sod)
+        cmd += get_remote_command(remote_args, hostname, hostname_for_match, uname, options_for_host(hostname_for_match, uname, so).interpreter, sod)
     import subprocess
     with suppress(FileNotFoundError):
-        raise SystemExit(subprocess.run(cmd).returncode)
+        try:
+            raise SystemExit(subprocess.run(cmd).returncode)
+        except KeyboardInterrupt:
+            raise SystemExit(1)
     raise SystemExit('Could not find the ssh executable, is it in your PATH?')
 
 

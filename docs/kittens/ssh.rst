@@ -56,19 +56,18 @@ Additionally, you can pass config options on the command line:
 
 .. code-block:: sh
 
-   kitty +kitten ssh --kitten hostname=somehost --kitten interpreter=python ...
+   kitty +kitten ssh --kitten interpreter=python servername
 
 The :code:`--kitten` argument can be specified multiple times, with directives
 from :file:`ssh.conf`. These are merged with :file:`ssh.conf` as if they were
-appended to the end of that file. It is important to specify the :opt:`hostname <kitten-ssh.hostname>` as
-the first setting, otherwise the last :opt:`hostname <kitten-ssh.hostname>` from :file:`ssh.conf` will be
-used.
+appended to the end of that file. They apply only to the host being SSHed to
+by this invocation.
 
 .. note::
 
-   Because of the poor design of SSH, any typing you do before the shell prompt
-   appears may be lost. So ideally dont start typing till you see the shell
-   prompt :)
+   Because of limitations of the design of SSH, any typing you do before the
+   shell prompt appears may be lost. So ideally dont start typing till you see
+   the shell prompt 😇.
 
 
 A real world example

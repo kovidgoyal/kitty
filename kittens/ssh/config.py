@@ -24,11 +24,11 @@ def host_matches(pat: str, hostname: str, username: str) -> bool:
     return fnmatch.fnmatchcase(hostname, pat) and fnmatch.fnmatchcase(username, upat)
 
 
-def options_for_host(hostname: str, username: str, per_host_opts: Dict[str, SSHOptions]) -> SSHOptions:
+def options_for_host(hostname: str, username: str, per_host_opts: Dict[str, SSHOptions], cli_hostname: str = '', cli_uname: str = '') -> SSHOptions:
     matches = []
     for spat, opts in per_host_opts.items():
         for pat in spat.split():
-            if host_matches(pat, hostname, username):
+            if host_matches(pat, hostname, username) or (cli_hostname and host_matches(pat, cli_hostname, cli_uname)):
                 matches.append(opts)
     if not matches:
         return SSHOptions({})

@@ -49,6 +49,7 @@ def ref_map() -> Dict[str, str]:
     from kitty.actions import get_all_actions
     ref_map = {
         'layouts': f'{website_url("overview")}#layouts',
+        'include': f'{website_url("conf")}#include',
         'watchers': f'{website_url("launch")}#watchers',
         'sessions': f'{website_url("overview")}#startup-sessions',
         'functional': f'{website_url("keyboard-protocol")}#functional-key-definitions',

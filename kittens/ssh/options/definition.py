@@ -29,10 +29,11 @@ The hostname the following options apply to. A glob pattern to match multiple
 hosts can be used. Multiple hostnames can also be specified separated by spaces.
 The hostname can include an optional username in the form :code:`user@host`.
 When not specified options apply to all hosts, until the
-first hostname specification is found. Note that the hostname this matches
-against is the hostname used by the remote computer, not the name you pass
-to SSH to connect to it. If you wish to include the same basic configuration for many
-different hosts, you can do so with the :code:`include` directive (see :doc:`/conf`).
+first hostname specification is found. Note that matching of hostname is done against
+both the hostname used by the remote computer, and the name you pass
+to SSH to connect to it. If either matches, it is considered a match.
+If you wish to include the same basic configuration for many
+different hosts, you can do so with the :ref:`include <include>` directive.
 ''')
 
 opt('+copy', '', option_type='copy', add_to_default=False, long_text=f'''
@@ -84,7 +85,7 @@ The interpreter to use on the remote host. Must be either a POSIX complaint shel
 or a python executable. If the default sh is not available for broken, using
 an alternate interpreter can be useful. Note that as the interpreter is used for
 bootstrapping, hostname specific values are matched again the hostname from the
-command line args rather than the actual remote hostname.
+command line args only.
 ''')
 
 opt('remote_dir', '.local/share/kitty-ssh-kitten', option_type='relative_dir', long_text='''
