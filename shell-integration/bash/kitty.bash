@@ -155,8 +155,17 @@ _ksi_main() {
     fi
 
     if [[ "${_ksi_prompt[title]}" == "y" ]]; then
-        if [[ -n "$SSH_TTY$SSH2_TTY" ]]; then
+        if [[ -n "$KITTY_PID" ]]; then
+            # kitty running locally
+        elif [[ -n "$SSH_TTY" || -n "$SSH2_TTY$KITTY_WINDOW_ID" ]]; then
+            # connected to most SSH servers
+            # or use ssh kitten to connected to some SSH servers that do not set SSH_TTY
             _ksi_prompt[hostname_prefix]="\h: ";
+        elif [[ -n "$(builtin command -v who)" ]]; then
+            # the shell integration script is installed manually on the remote system
+            # the environment variables are cleared after sudo
+            # OpenSSH's sshd creates entries in utmp for every login so use those
+            [[ "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]] && _ksi_prompt[hostname_prefix]="\h: ";
         fi
         # see https://www.gnu.org/software/bash/manual/html_node/Controlling-the-Prompt.html#Controlling-the-Prompt
         # we use suffix here because some distros add title setting to their bashrc files by default
