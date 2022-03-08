@@ -28,9 +28,9 @@ detect_python() {
 if command -v base64 > /dev/null 2> /dev/null; then
     base64_encode() { command base64 | command tr -d \\n\\r; }
     base64_decode() { command base64 -d; }
-elif command -v uuencode > /dev/null 2> /dev/null; then
-    base64_encode() { command uuencode -m -o /dev/stdout /dev/stdin | command sed '1d;$d' | command tr -d \\n\\r; }
-    base64_decode() { printf 'begin-base64 644 -\n%s' $(</dev/stdin) | command uudecode -m -o /dev/stdout 2> /dev/null; }
+elif command -v b64encode > /dev/null 2> /dev/null; then
+    base64_encode() { command b64encode - | command sed '1d;$d' | command tr -d \\n\\r; }
+    base64_decode() { command fold -w 76 | command b64decode -r; }
 elif detect_python; then
     pybase64() { command "$python" -c "import sys, base64; getattr(sys.stdout, 'buffer', sys.stdout).write(base64.standard_b64$1(getattr(sys.stdin, 'buffer', sys.stdin).read()))"; }
     base64_encode() { pybase64 "encode"; }
