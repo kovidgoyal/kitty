@@ -804,7 +804,7 @@ def shell_integration(x: str) -> FrozenSet[str]:
     q = frozenset(x.lower().split())
     if not q.issubset(s):
         log_error(f'Invalid shell integration options: {q - s}, ignoring')
-        return q & s
+        return q & s or frozenset({'invalid'})
     return q
 
 
