@@ -172,7 +172,7 @@ def get_effective_ksi_env_var(opts: Optional[Options] = None) -> str:
         return ''
     # Use the default when shell_integration is empty due to misconfiguration
     if 'invalid' in opts.shell_integration:
-        return defaults.shell_integration
+        return ' '.join(defaults.shell_integration)
     return ' '.join(opts.shell_integration)
 
 
