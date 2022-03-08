@@ -400,7 +400,7 @@ def get_remote_command(
     sh_script = bootstrap_script(
         script_type='py' if is_python else 'sh', remote_args=remote_args, ssh_opts_dict=ssh_opts_dict,
         cli_hostname=cli_hostname, cli_uname=cli_uname)
-    return [f'{interpreter} -c {shlex.quote(sh_script)}']
+    return [interpreter, '-c', shlex.quote(sh_script)]  # sshd concats args with a space and passes them to login-shell -c
 
 
 def main(args: List[str]) -> NoReturn:
