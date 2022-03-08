@@ -8,7 +8,7 @@ from contextlib import suppress
 from typing import Dict, List, Optional
 
 from .constants import shell_integration_dir
-from .options.types import Options
+from .options.types import Options, defaults
 from .utils import log_error, which
 from .fast_data_types import get_options
 
@@ -170,6 +170,9 @@ def get_effective_ksi_env_var(opts: Optional[Options] = None) -> str:
     opts = opts or get_options()
     if 'disabled' in opts.shell_integration:
         return ''
+    # Use the default when shell_integration is empty due to misconfiguration
+    if 'invalid' in opts.shell_integration:
+        return ' '.join(defaults.shell_integration)
     return ' '.join(opts.shell_integration)
 
 
