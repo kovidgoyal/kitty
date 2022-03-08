@@ -400,6 +400,10 @@ def get_remote_command(
     sh_script = bootstrap_script(
         script_type='py' if is_python else 'sh', remote_args=remote_args, ssh_opts_dict=ssh_opts_dict,
         cli_hostname=cli_hostname, cli_uname=cli_uname)
+    q = os.path.basename(interpreter).lower()
+    if 'python' in q:
+        es = standard_b64encode(sh_script.encode('utf-8')).decode('ascii')
+        return [interpreter, '-c', '''"import base64, sys; eval(compile(base64.standard_b64decode(sys.argv[-1]), 'bootstrap.py', 'exec'))"''', es]
     return [interpreter, '-c', shlex.quote(sh_script)]  # sshd concats args with a space and passes them to login-shell -c
 
 
