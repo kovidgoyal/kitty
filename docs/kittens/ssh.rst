@@ -101,7 +101,7 @@ How it works
 ----------------
 
 The ssh kitten works by having SSH transmit and execute a POSIX sh (or optionally
-Python) script on the remote server using an :opt:`interpreter
+Python) bootstrap script on the remote server using an :opt:`interpreter
 <kitten-ssh.interpreter>`. This script asks kitty for the setup data over
 the tty device, which kitty sends as a tarball. The script extracts it and
 places the :opt:`files <kitten-ssh.copy>` and sets the :opt:`environment
@@ -110,6 +110,13 @@ variables <kitten-ssh.env>` before finally launching the :opt:`login shell
 with a one-time random password that is generated when the script is transmitted, so
 that on the remote server, only the script can request data transmission over
 the TTY, any other requests are responded to by errors.
+
+.. note::
+
+   When connecting to BSD servers, it is possible the bootstrap script will
+   fail or run slowly, because they are crippled in various ways. Your best bet
+   is to install python on the server and use :code:`python` as the
+   :opt:`interpreter kitten.ssh-interpreter>` in :file:`ssh.conf`.
 
 .. include:: /generated/conf-kitten-ssh.rst
 
