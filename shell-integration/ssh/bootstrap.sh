@@ -10,8 +10,19 @@ cleanup_on_bootstrap_exit() {
 
 die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
 
-python_detected="0"
+perl_detected="0"
+detect_perl() {
+    if [ perl_detected = "1" ]; then
+        [ -n "$perl" ] && return 0;
+        return 1;
+    fi
+    perl_detected="1"
+    perl=$(command -v perl)
+    if [ -z "$perl" -o ! -x "$perl" ]; then perl=""; return 1; fi
+    return 0
+}
 
+python_detected="0"
 detect_python() {
     if [ python_detected = "1" ]; then
         [ -n "$python" ] && return 0;
@@ -31,6 +42,9 @@ if command -v base64 > /dev/null 2> /dev/null; then
 elif command -v b64encode > /dev/null 2> /dev/null; then
     base64_encode() { command b64encode - | command sed '1d;$d' | command tr -d \\n\\r; }
     base64_decode() { command fold -w 76 | command b64decode -r; }
+elif detect_perl; then
+    base64_encode() { command "$perl" -MMIME::Base64 -0777 -ne 'print encode_base64($_)'; }
+    base64_decode() { command "$perl" -MMIME::Base64 -ne 'print decode_base64($_)'; }
 elif detect_python; then
     pybase64() { command "$python" -c "import sys, base64; getattr(sys.stdout, 'buffer', sys.stdout).write(base64.standard_b64$1(getattr(sys.stdin, 'buffer', sys.stdin).read()))"; }
     base64_encode() { pybase64 "encode"; }
@@ -94,10 +108,16 @@ else
         return $?
     }
 
-    # using dd with bs=1 is very slow, so use head. On non GNU coreutils head
-    # does not limit itself to reading -c bytes only from the pipe so we can potentially lose
-    # some trailing data, for instance if the user starts typing. Cant be helped.
-    if [ "$(printf "%s" "test" | command head -c 3 2> /dev/null)" = "tes" ]; then
+    if detect_perl; then
+        read_n_bytes_from_tty() {
+            command "$perl" -MList::Util=min -e \
+'open(my $fh,"</dev/tty"); binmode($fh); my ($n,$buf)=(@ARGV[0],"");'\
+'while($n){my $rv=sysread($fh,$buf,min(65536,$n)); die($!) if !defined($rv); die() if !$rv; $n-=$rv; print $buf;}' "$1" 2> /dev/null
+        }
+    elif [ "$(printf "%s" "test" | command head -c 3 2> /dev/null)" = "tes" ]; then
+        # using dd with bs=1 is very slow, so use head. On non GNU coreutils head
+        # does not limit itself to reading -c bytes only from the pipe so we can potentially lose
+        # some trailing data, for instance if the user starts typing. Cant be helped.
         read_n_bytes_from_tty() {
             command head -c "$1" < /dev/tty
         }
@@ -129,8 +149,8 @@ if [ "$tty_ok" = "y" ]; then
     compression="gz"
     command -v "bzip2" > /dev/null 2> /dev/null && compression="bz2"
     dcs_to_kitty "ssh" "id="REQUEST_ID":hostname="$hostname":pwfile="PASSWORD_FILENAME":user="$USER":compression="$compression":pw="DATA_PASSWORD""
-record_separator=$(printf "\036")
 fi
+record_separator=$(printf "\036")
 
 mv_files_and_dirs() {
     cwd="$PWD"
@@ -157,7 +177,6 @@ compile_terminfo() {
         if [ "$rc" != "0" ]; then die "$tic_out"; fi
     fi
 }
-
 
 untar_and_read_env() {
     # extract the tar file atomically, in the sense that any file from the
@@ -252,6 +271,17 @@ using_id() {
     return 1
 }
 
+using_perl() {
+    if detect_perl; then
+        output=$(command "$perl" -e 'my $shell = (getpwuid($<))[8]; print $shell')
+        if [ $? = 0 ]; then
+            login_shell=$output
+            if login_shell_is_ok; then return 0; fi
+        fi
+    fi
+    return 1
+}
+
 using_python() {
     if detect_python; then
         output=$(command "$python" -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
@@ -274,9 +304,16 @@ using_passwd() {
     return 1
 }
 
+execute_with_perl() {
+    if detect_perl; then
+        exec "$perl" "-e" "exec {'$login_shell'} '-$shell_name'"
+    fi
+    return 1
+}
+
 execute_with_python() {
     if detect_python; then
-        exec "$python" -c "import os; os.execlp('$login_shell', '-' '$shell_name')"
+        exec "$python" "-c" "import os; os.execlp('$login_shell', '-' '$shell_name')"
     fi
     return 1
 }
@@ -285,7 +322,7 @@ if [ -n "$KITTY_LOGIN_SHELL" ]; then
     login_shell="$KITTY_LOGIN_SHELL"
     unset KITTY_LOGIN_SHELL
 else
-    using_getent || using_id || using_python || using_passwd || die "Could not detect login shell"
+    using_getent || using_id || using_perl || using_python || using_passwd || die "Could not detect login shell"
 fi
 shell_name=$(command basename $login_shell)
 [ -n "$login_cwd" ] && cd "$login_cwd"
@@ -373,5 +410,6 @@ esac
 # to make sure the shell executes as a login shell. Note that not all shells
 # support exec -a so we use the below to try to detect such shells
 [ "$(exec -a echo echo OK 2> /dev/null)" = "OK" ] && exec -a "-$shell_name" $login_shell
+execute_with_perl
 execute_with_python
 exec $login_shell "-l"
