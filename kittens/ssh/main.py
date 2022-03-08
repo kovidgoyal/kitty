@@ -401,10 +401,22 @@ def get_remote_command(
     sh_script = bootstrap_script(
         script_type='py' if is_python else 'sh', remote_args=remote_args, ssh_opts_dict=ssh_opts_dict,
         cli_hostname=cli_hostname, cli_uname=cli_uname)
+    # sshd will execute the command we pass it by join all command line
+    # arguments witha  space and apssing it as a single argument to the users
+    # login shell with -c. If the user has a non POSIX login shell it might
+    # have different escaping semantics and syntax, so the command it should
+    # execute has to be as simple as possible, basically of the form
+    # interpreter -c wrapper_cmd escaped_bootstrap_script
+    # The wrapper_cmd is responsible for unescaping the bootstrap script and
+    # executing it.
     if is_python:
         es = standard_b64encode(sh_script.encode('utf-8')).decode('ascii')
         return [interpreter, '-c', '''"import base64, sys; eval(compile(base64.standard_b64decode(sys.argv[-1]), 'bootstrap.py', 'exec'))"''', es]
-    return [interpreter, '-c', shlex.quote(sh_script)]  # sshd concats args with a space and passes them to login-shell -c
+    # We cant rely on base64 being available on the remote system, so instead
+    # we quote the bootstrap script by replace ' and \ with \v and \f and
+    # surrounding with '
+    es = "'" + sh_script.replace("'", '\v').replace('\\', '\f') + "'"
+    return [interpreter, '-c', r"""'eval "$(echo "$0" | tr \\\v\\\f \\\047\\\134)"' """, es]
 
 
 def main(args: List[str]) -> NoReturn:
