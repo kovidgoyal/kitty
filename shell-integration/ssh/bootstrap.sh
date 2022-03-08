@@ -10,18 +10,6 @@ cleanup_on_bootstrap_exit() {
 
 die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
 
-perl_detected="0"
-detect_perl() {
-    if [ perl_detected = "1" ]; then
-        [ -n "$perl" ] && return 0;
-        return 1;
-    fi
-    perl_detected="1"
-    perl=$(command -v perl)
-    if [ -z "$perl" -o ! -x "$perl" ]; then perl=""; return 1; fi
-    return 0
-}
-
 python_detected="0"
 detect_python() {
     if [ python_detected = "1" ]; then
@@ -33,6 +21,18 @@ detect_python() {
     if [ -z "$python" ]; then python=$(command -v python2); fi
     if [ -z "$python" ]; then python=$(command -v python); fi
     if [ -z "$python" -o ! -x "$python" ]; then python=""; return 1; fi
+    return 0
+}
+
+perl_detected="0"
+detect_perl() {
+    if [ perl_detected = "1" ]; then
+        [ -n "$perl" ] && return 0;
+        return 1;
+    fi
+    perl_detected="1"
+    perl=$(command -v perl)
+    if [ -z "$perl" -o ! -x "$perl" ]; then perl=""; return 1; fi
     return 0
 }
 
@@ -293,9 +293,9 @@ using_id() {
     return 1
 }
 
-using_perl() {
-    if detect_perl; then
-        output=$(command "$perl" -e 'my $shell = (getpwuid($<))[8]; print $shell')
+using_python() {
+    if detect_python; then
+        output=$(command "$python" -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
         if [ $? = 0 ]; then
             login_shell=$output
             if login_shell_is_ok; then return 0; fi
@@ -304,9 +304,9 @@ using_perl() {
     return 1
 }
 
-using_python() {
-    if detect_python; then
-        output=$(command "$python" -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
+using_perl() {
+    if detect_perl; then
+        output=$(command "$perl" -e 'my $shell = (getpwuid($<))[8]; print $shell')
         if [ $? = 0 ]; then
             login_shell=$output
             if login_shell_is_ok; then return 0; fi
@@ -326,16 +326,16 @@ using_passwd() {
     return 1
 }
 
-execute_with_perl() {
-    if detect_perl; then
-        exec "$perl" "-e" "exec {'$login_shell'} '-$shell_name'"
+execute_with_python() {
+    if detect_python; then
+        exec "$python" "-c" "import os; os.execlp('$login_shell', '-' '$shell_name')"
     fi
     return 1
 }
 
-execute_with_python() {
-    if detect_python; then
-        exec "$python" "-c" "import os; os.execlp('$login_shell', '-' '$shell_name')"
+execute_with_perl() {
+    if detect_perl; then
+        exec "$perl" "-e" "exec {'$login_shell'} '-$shell_name'"
     fi
     return 1
 }
@@ -344,7 +344,7 @@ if [ -n "$KITTY_LOGIN_SHELL" ]; then
     login_shell="$KITTY_LOGIN_SHELL"
     unset KITTY_LOGIN_SHELL
 else
-    using_getent || using_id || using_perl || using_python || using_passwd || die "Could not detect login shell"
+    using_getent || using_id || using_python || using_perl || using_passwd || die "Could not detect login shell"
 fi
 shell_name=$(command basename $login_shell)
 [ -n "$login_cwd" ] && cd "$login_cwd"
@@ -432,6 +432,6 @@ esac
 # to make sure the shell executes as a login shell. Note that not all shells
 # support exec -a so we use the below to try to detect such shells
 [ "$(exec -a echo echo OK 2> /dev/null)" = "OK" ] && exec -a "-$shell_name" $login_shell
-execute_with_perl
 execute_with_python
+execute_with_perl
 exec $login_shell "-l"
