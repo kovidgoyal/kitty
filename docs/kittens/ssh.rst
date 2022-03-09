@@ -116,7 +116,7 @@ the TTY, any other requests are responded to by errors.
    When connecting to BSD servers, it is possible the bootstrap script will
    fail or run slowly, because they are crippled in various ways. Your best bet
    is to install python on the server, make sure the login shell is something
-   POSIX compliant, not csh and use :code:`python` as the :opt:`interpreter
+   POSIX sh compliant, not csh, and use :code:`python` as the :opt:`interpreter
    <kitten-ssh.interpreter>` in :file:`ssh.conf`.
 
 .. include:: /generated/conf-kitten-ssh.rst
