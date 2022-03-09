@@ -4,6 +4,7 @@
 
 saved_tty_settings=""
 tdir=""
+shell_integration_dir=""
 cleanup_on_bootstrap_exit() {
     [ -n "$saved_tty_settings" ] && command stty "$saved_tty_settings" 2> /dev/null < /dev/tty
     [ -n "$tdir" ] && command rm -rf "$tdir"
@@ -399,6 +400,7 @@ exec_bash_with_integration() {
 }
 
 exec_with_shell_integration() {
+    [ -z "$shell_integration_dir" ] && return
     case "$shell_name" in
         "zsh")
             exec_zsh_with_integration
@@ -415,6 +417,7 @@ exec_with_shell_integration() {
 execute_sh_with_posix_env() {
     [ "$shell_name" = "sh" ] || return  # only for sh as that is likely to be POSIX compliant
     command "$login_shell" -l -c ":" > /dev/null 2> /dev/null && return  # sh supports -l so use that
+    [ -z "$shell_integration_dir" ] && die "Could not read data over tty ssh kitten cannot function"
     sh_dir="$shell_integration_dir/sh"
     command mkdir -p "$sh_dir" || die "Creating $sh_dir failed";
     sh_script="$sh_dir/login_shell_env.sh"
