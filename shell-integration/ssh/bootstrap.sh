@@ -215,6 +215,7 @@ untar_and_read_env() {
     [ -f "$data_file" ] && . "$data_file"
     [ -z "$KITTY_SSH_KITTEN_DATA_DIR" ] && die "Failed to read SSH data from tty"
     data_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR"
+    shell_integration_dir="$data_dir/shell-integration"
     unset KITTY_SSH_KITTEN_DATA_DIR
     login_cwd="$KITTY_LOGIN_CWD"
     unset KITTY_LOGIN_CWD
@@ -256,7 +257,6 @@ if [ "$tty_ok" = "y" ]; then
         # have been sent before the script had a chance to run
         printf "\r\033[K" > /dev/tty
     fi
-    shell_integration_dir="$data_dir/shell-integration"
     [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data"
 fi
 
@@ -413,19 +413,13 @@ exec_with_shell_integration() {
 }
 
 execute_sh_with_posix_env() {
-    if [ "$login_shell" != "/bin/sh" ]; then return 1; fi
-    if command "$login_shell" -l -c ":" > /dev/null 2> /dev/null; then return 1; fi
-    if [ -z "$shell_integration_dir" ]; then
-        if [ -n "$KITTY_SSH_KITTEN_DATA_DIR" ]; then
-            shell_integration_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR/shell-integration"
-        else
-            die "The data directory is not defined, ssh kitten cannot function."
-        fi
-    fi
+    [ "$shell_name" = "sh" ] || return  # only for sh as that is likely to be POSIX compliant
+    command "$login_shell" -l -c ":" > /dev/null 2> /dev/null && return  # sh supports -l so use that
     sh_dir="$shell_integration_dir/sh"
-    if [ ! -d "$sh_dir" ]; then mkdir -p "$sh_dir" || die "Creating data directory failed"; fi
+    command mkdir -p "$sh_dir" || die "Creating $sh_dir failed";
+    sh_script="$sh_dir/login_shell_env.sh"
     # Source /etc/profile, ~/.profile, and then check and source ENV
-    echo '
+    printf "%s" '
 if [ -n "$KITTY_SH_INJECT" ]; then
     unset ENV; unset KITTY_SH_INJECT
     _ksi_safe_source() { if [ -f "$1" -a -r "$1" ]; then . "$1"; return 0; fi; return 1; }
@@ -433,12 +427,10 @@ if [ -n "$KITTY_SH_INJECT" ]; then
     unset KITTY_SH_POSIX_ENV
     _ksi_safe_source "/etc/profile"; _ksi_safe_source "${HOME-}/.profile"
     if [ -n "$ENV" ]; then _ksi_safe_source "$ENV"; fi
-fi' > "$sh_dir/login_shell_env.sh"
+fi' > "$sh_script"
     export KITTY_SH_INJECT=1
-    if [ -n "$ENV" ]; then
-        export KITTY_SH_POSIX_ENV="$ENV"
-    fi
-    export ENV="$sh_dir/login_shell_env.sh"
+    [ -n "$ENV" ] && export KITTY_SH_POSIX_ENV="$ENV"
+    export ENV="$sh_script"
     exec "$login_shell"
 }
 
@@ -452,16 +444,9 @@ case "$KITTY_SHELL_INTEGRATION" in
         ;;
     (*)
         # not blank
-        if [ -n "$shell_integration_dir" ]; then
-            q=$(printf "%s" "$KITTY_SHELL_INTEGRATION" | command grep '\bno-rc\b')
-            if [ -z "$q" ]; then
-                exec_with_shell_integration
-                # exec failed, unset
-                unset KITTY_SHELL_INTEGRATION
-            fi
-        else
-            unset KITTY_SHELL_INTEGRATION
-        fi
+        printf "%s" "$KITTY_SHELL_INTEGRATION" | command grep '\bno-rc\b' || exec_with_shell_integration
+        # either no-rc or exec failed
+        unset KITTY_SHELL_INTEGRATION
         ;;
 esac
 
