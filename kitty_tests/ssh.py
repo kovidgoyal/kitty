@@ -158,10 +158,12 @@ copy --exclude */w.* d1
 
     def test_ssh_bootstrap_with_different_launchers(self):
         for launcher in ('sh', 'bash', 'zsh', 'fish'):
-            q = shutil.which(launcher)
-            if q:
-                with self.subTest(launcher=q), tempfile.TemporaryDirectory() as tdir:
-                    self.check_bootstrap('sh', tdir, test_script='env; exit 0', SHELL_INTEGRATION_VALUE='', launcher=q)
+            for sh in self.all_possible_sh:
+                if sh == 'sh' or 'python' in sh:
+                    q = shutil.which(launcher)
+                    if q:
+                        with self.subTest(sh=sh, launcher=q), tempfile.TemporaryDirectory() as tdir:
+                            self.check_bootstrap(sh, tdir, test_script='env; exit 0', SHELL_INTEGRATION_VALUE='', launcher=q)
 
     def test_ssh_leading_data(self):
         script = 'echo "ld:$leading_data"; exit 0'
