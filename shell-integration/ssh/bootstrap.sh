@@ -113,7 +113,7 @@ else
     }
 
     if [ "$(printf "%s" "test" | command head -c 3 2> /dev/null)" = "tes" ]; then
-        # using dd with bs=1 is very slow, so use head. On non GNU coreutils head
+        # Using dd with ibs=1 is very slow, so use head. On non GNU coreutils head
         # does not limit itself to reading -c bytes only from the pipe so we can potentially lose
         # some trailing data, for instance if the user starts typing. Cant be helped.
         read_n_bytes_from_tty() {
@@ -149,7 +149,7 @@ while n > 0:
         }
     else
         read_n_bytes_from_tty() {
-            command dd bs=1 count="$1" < /dev/tty 2> /dev/null
+            command dd ibs=1 count="$1" < /dev/tty 2> /dev/null
         }
     fi
 fi
