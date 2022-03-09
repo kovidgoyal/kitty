@@ -3,9 +3,12 @@
 # Distributed under terms of the GPLv3 license.
 
 saved_tty_settings=""
+tdir=""
 cleanup_on_bootstrap_exit() {
     [ -n "$saved_tty_settings" ] && command stty "$saved_tty_settings" 2> /dev/null < /dev/tty
+    [ -n "$tdir" ] && command rm -rf "$tdir"
     saved_tty_settings=""
+    tdir=""
 }
 
 die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; cleanup_on_bootstrap_exit; exit 1; }
@@ -195,8 +198,7 @@ compile_terminfo() {
     # compile terminfo for this system
     if [ -x "$(command -v tic)" ]; then
         tic_out=$(command tic -x -o "$1/$tname" "$1/.terminfo/kitty.terminfo" 2>&1)
-        rc=$?
-        if [ "$rc" != "0" ]; then die "$tic_out"; fi
+        [ $? = 0 ] || die "Failed to compile terminfo with err: $tic_out";
     fi
 }
 
@@ -220,6 +222,7 @@ untar_and_read_env() {
     mv_files_and_dirs "$tdir/home" "$HOME"
     [ -e "$tdir/root" ] && mv_files_and_dirs "$tdir/root" ""
     command rm -rf "$tdir"
+    tdir=""
 }
 
 read_record() {
