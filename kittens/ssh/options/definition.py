@@ -79,6 +79,12 @@ value are expanded. The default is empty so no changing is done, which
 usually means the home directory is used.
 ''')
 
+opt('share_connections', 'y', option_type='to_bool', long_text='''
+Within a single kitty instance, all connections to a particular server can be
+shared. This reduces startup latency for subsequent connections and means that you have
+to enter the password only once. Under the hood, it uses SSH ControlMasters and
+these are automatically cleaned up by kitty when it quits.
+''')
 
 opt('interpreter', 'sh', long_text='''
 The interpreter to use on the remote host. Must be either a POSIX complaint shell

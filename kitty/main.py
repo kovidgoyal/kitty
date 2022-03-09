@@ -16,7 +16,7 @@ from .cli_stub import CLIOptions
 from .conf.utils import BadLine
 from .config import cached_values_for
 from .constants import (
-    appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
+    appname, beam_cursor_data_file, cache_dir, config_dir, glfw_path, is_macos,
     is_wayland, kitty_exe, logo_png_file, running_in_kitty
 )
 from .fast_data_types import (
@@ -345,6 +345,19 @@ def set_locale() -> None:
             log_error('Failed to set locale with no LANG')
 
 
+def cleanup_ssh_control_masters() -> None:
+    import glob
+    import subprocess
+    try:
+        files = glob.glob(os.path.join(cache_dir(), 'ssh', f'{os.getpid()}-master-*'))
+    except OSError:
+        return
+    for x in files:
+        subprocess.run(['ssh', '-o', f'ControlPath={x}', '-O', 'exit', 'kitty-unused-host-name'])
+        with suppress(OSError):
+            os.remove(x)
+
+
 def _main() -> None:
     running_in_kitty(True)
     with suppress(AttributeError):  # python compiled without threading
@@ -408,6 +421,7 @@ def _main() -> None:
             run_app(opts, cli_opts, bad_lines)
     finally:
         glfw_terminate()
+        cleanup_ssh_control_masters()
 
 
 def main() -> None:

@@ -2,7 +2,7 @@
 
 import typing
 from kittens.ssh.options.utils import copy, env, hostname, relative_dir
-from kitty.conf.utils import merge_dicts
+from kitty.conf.utils import merge_dicts, to_bool
 
 
 class Parser:
@@ -29,6 +29,9 @@ class Parser:
 
     def remote_dir(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['remote_dir'] = relative_dir(val)
+
+    def share_connections(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['share_connections'] = to_bool(val)
 
     def shell_integration(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['shell_integration'] = str(val)

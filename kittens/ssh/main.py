@@ -153,7 +153,7 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
         yield fmt_prefix('!invalid ssh data request message')
     else:
         try:
-            with open(os.path.join(cache_dir(), pwfilename), 'rb') as f:
+            with open(os.path.join(cache_dir(), 'ssh', pwfilename), 'rb') as f:
                 os.unlink(f.name)
                 env_data = json.load(f)
                 if pw != env_data['pw']:
@@ -216,7 +216,9 @@ def bootstrap_script(
     with open(os.path.join(shell_integration_dir, 'ssh', f'bootstrap.{script_type}')) as f:
         ans = f.read()
     pw = uuid4()
-    with tempfile.NamedTemporaryFile(prefix='ssh-kitten-pw-', suffix='.json', dir=cache_dir(), delete=False) as tf:
+    ddir = os.path.join(cache_dir(), 'ssh')
+    os.makedirs(ddir, exist_ok=True)
+    with tempfile.NamedTemporaryFile(prefix='ssh-kitten-pw-', suffix='.json', dir=ddir, delete=False) as tf:
         data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict, 'cli_hostname': cli_hostname, 'cli_uname': cli_uname}
         tf.write(json.dumps(data).encode('utf-8'))
     atexit.register(safe_remove, tf.name)
@@ -333,7 +335,7 @@ class InvalidSSHArgs(ValueError):
 
 def parse_ssh_args(args: List[str], extra_args: Tuple[str, ...] = ()) -> Tuple[List[str], List[str], bool, Tuple[str, ...]]:
     boolean_ssh_args, other_ssh_args = get_ssh_cli()
-    passthrough_args = {f'-{x}' for x in 'Nnf'}
+    passthrough_args = {f'-{x}' for x in 'NnfG'}
     ssh_args = []
     server_args: List[str] = []
     expecting_option_val = False
@@ -429,6 +431,16 @@ def get_remote_command(
     return wrap_bootstrap_script(sh_script, interpreter)
 
 
+def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
+    cp = os.path.join(cache_dir(), 'ssh', f'{kitty_pid}-master-%C')
+    ans: List[str] = [
+        '-o', 'ControlMaster=auto',
+        '-o', f'ControlPath={cp}',
+        '-o', 'ControlPersist=yes',
+    ]
+    return ans
+
+
 def main(args: List[str]) -> NoReturn:
     args = args[1:]
     if args and args[0] == 'use-python':
@@ -446,6 +458,7 @@ def main(args: List[str]) -> NoReturn:
         hostname, remote_args = server_args[0], server_args[1:]
         if not remote_args:
             cmd.append('-t')
+        insertion_point = len(cmd)
         cmd.append('--')
         cmd.append(hostname)
         uname = getuser()
@@ -468,7 +481,11 @@ def main(args: List[str]) -> NoReturn:
             overrides.insert(0, f'hostname {uname}@{hostname_for_match}')
         so = init_config(overrides)
         sod = {k: v._asdict() for k, v in so.items()}
-        cmd += get_remote_command(remote_args, hostname, hostname_for_match, uname, options_for_host(hostname_for_match, uname, so).interpreter, sod)
+        host_opts = options_for_host(hostname_for_match, uname, so)
+        use_control_master = 'KITTY_PID' in os.environ and host_opts.share_connections
+        cmd += get_remote_command(remote_args, hostname, hostname_for_match, uname, host_opts.interpreter, sod)
+        if use_control_master:
+            cmd[insertion_point:insertion_point] = connection_sharing_args(host_opts, int(os.environ['KITTY_PID']))
     import subprocess
     with suppress(FileNotFoundError):
         try:

@@ -12,6 +12,7 @@ option_names = (  # {{{
  'interpreter',
  'login_shell',
  'remote_dir',
+ 'share_connections',
  'shell_integration')  # }}}
 
 
@@ -21,6 +22,7 @@ class Options:
     interpreter: str = 'sh'
     login_shell: str = ''
     remote_dir: str = '.local/share/kitty-ssh-kitten'
+    share_connections: bool = True
     shell_integration: str = 'inherited'
     copy: typing.Dict[str, kittens.ssh.copy.CopyInstruction] = {}
     env: typing.Dict[str, str] = {}
