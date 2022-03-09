@@ -157,7 +157,9 @@ copy --exclude */w.* d1
                 pty.wait_till(lambda: '/cwd' in pty.screen_contents())
 
     def test_ssh_bootstrap_with_different_launchers(self):
-        for launcher in ('sh', 'bash', 'zsh', 'fish'):
+        for launcher in self.all_possible_sh:
+            if 'python' in launcher:
+                continue
             for sh in self.all_possible_sh:
                 if sh == 'sh' or 'python' in sh:
                     q = shutil.which(launcher)
