@@ -101,7 +101,7 @@ get_load_flags(int hinting, int hintstyle, int base) {
 static bool
 load_font(FontConfigFace *info, Face *ans) {
     ans->freetype = native_face_from_path(info->path, info->index);
-    if (!ans->freetype) return false;
+    if (!ans->freetype || PyErr_Occurred()) return false;
     ans->hb = hb_ft_font_create(ans->freetype, NULL);
     if (!ans->hb) { PyErr_NoMemory(); return false; }
     ans->hinting = info->hinting; ans->hintstyle = info->hintstyle;
@@ -268,6 +268,7 @@ find_fallback_font_for(RenderCtx *ctx, char_type codep, char_type next_codep) {
     ensure_space_for(&main_face, fallbacks, Face, main_face.count + 1, capacity, 8, true);
     Face *ans = main_face.fallbacks + main_face.count;
     bool ok = load_font(&q, ans);
+    if (PyErr_Occurred()) PyErr_Print();
     free(q.path);
     if (!ok) return NULL;
     main_face.count++;
@@ -556,10 +557,10 @@ create_freetype_render_context(const char *family, bool bold, bool italic) {
     RenderCtx *ctx = calloc(1, sizeof(RenderCtx));
     main_face_family.name = family ? strdup(family) : NULL;
     main_face_family.bold = bold; main_face_family.italic = italic;
-    if (!information_for_font_family(main_face_family.name, main_face_family.bold, main_face_family.italic, &main_face_information)) return false;
-    if (!load_font(&main_face_information, &main_face)) return false;
+    if (!information_for_font_family(main_face_family.name, main_face_family.bold, main_face_family.italic, &main_face_information)) return NULL;
+    if (!load_font(&main_face_information, &main_face)) return NULL;
     hb_buffer = hb_buffer_create();
-    if (!hb_buffer) { PyErr_NoMemory(); return false; }
+    if (!hb_buffer) { PyErr_NoMemory(); return NULL; }
     ctx->created = true;
     return (FreeTypeRenderCtx)ctx;
 }
