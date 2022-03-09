@@ -156,6 +156,13 @@ copy --exclude */w.* d1
                 self.assertNotIn('COLORTERM', pty.screen_contents())
                 pty.wait_till(lambda: '/cwd' in pty.screen_contents())
 
+    def test_ssh_bootstrap_with_different_launchers(self):
+        for launcher in ('sh', 'bash', 'zsh', 'fish'):
+            q = shutil.which(launcher)
+            if q:
+                with self.subTest(launcher=q), tempfile.TemporaryDirectory() as tdir:
+                    self.check_bootstrap('sh', tdir, test_script='env; exit 0', SHELL_INTEGRATION_VALUE='', launcher=q)
+
     def test_ssh_leading_data(self):
         script = 'echo "ld:$leading_data"; exit 0'
         for sh in self.all_possible_sh:
