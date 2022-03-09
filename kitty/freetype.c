@@ -210,6 +210,14 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_
     return true;
 }
 
+static void*
+set_load_error(const char *path, int error) {
+    char buf[2048];
+    snprintf(buf, sizeof(buf), "Failed to load face from path: %s with error:", path);
+    set_freetype_error(buf, error);
+    return NULL;
+}
+
 PyObject*
 face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
 #define D(key, conv, missing_ok) { \
@@ -230,7 +238,7 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
     Face *self = (Face *)Face_Type.tp_alloc(&Face_Type, 0);
     if (self != NULL) {
         int error = FT_New_Face(library, path, index, &(self->face));
-        if(error) { set_freetype_error("Failed to load face, with error:", error); Py_CLEAR(self); return NULL; }
+        if(error) { Py_CLEAR(self); return set_load_error(path, error); }
         if (!init_ft_face(self, PyDict_GetItemString(descriptor, "path"), hinting, hint_style, fg)) { Py_CLEAR(self); return NULL; }
     }
     return (PyObject*)self;
@@ -241,7 +249,7 @@ native_face_from_path(const char *path, int index) {
     int error;
     FT_Face ans;
     error = FT_New_Face(library, path, index, &ans);
-    if (error) { set_freetype_error("Failed to load face, with error:", error); return NULL; }
+    if (error) return set_load_error(path, error);
     return ans;
 }
 
@@ -251,7 +259,7 @@ face_from_path(const char *path, int index, FONTS_DATA_HANDLE fg) {
     if (ans == NULL) return NULL;
     int error;
     error = FT_New_Face(library, path, index, &ans->face);
-    if (error) { set_freetype_error("Failed to load face, with error:", error); ans->face = NULL; return NULL; }
+    if (error) { ans->face = NULL; return set_load_error(path, error); }
     if (!init_ft_face(ans, Py_None, true, 3, fg)) { Py_CLEAR(ans); return NULL; }
     return (PyObject*)ans;
 }
