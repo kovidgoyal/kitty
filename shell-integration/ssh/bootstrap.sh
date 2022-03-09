@@ -119,6 +119,10 @@ else
         read_n_bytes_from_tty() {
             command head -c "$1" < /dev/tty
         }
+    elif [ "$(printf "%s" "test" | command ghead -c 3 2> /dev/null)" = "tes" ]; then
+        read_n_bytes_from_tty() {
+            command ghead -c "$1" < /dev/tty
+        }
     elif detect_python; then
         read_n_bytes_from_tty() {
             command "$python" "-c" "
