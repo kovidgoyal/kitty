@@ -407,10 +407,11 @@ def wrap_bootstrap_script(sh_script: str, interpreter: str) -> List[str]:
         unwrap_script = '''"import base64, sys; eval(compile(base64.standard_b64decode(sys.argv[-1]), 'bootstrap.py', 'exec'))"'''
     else:
         # We cant rely on base64 being available on the remote system, so instead
-        # we quote the bootstrap script by replacing ' and \ with \v and \f and
-        # surrounding with '
-        es = "'" + sh_script.replace("'", '\v').replace('\\', '\f') + "'"
-        unwrap_script = r"""'eval "$(echo "$0" | tr \\\v\\\f \\\047\\\134)"' """
+        # we quote the bootstrap script by replacing ' and \ with \v and \f
+        # also replacing \n and ! with \r and \b for tcsh
+        # finally surrounding with '
+        es = "'" + sh_script.replace("'", '\v').replace('\\', '\f').replace('\n', '\r').replace('!', '\b') + "'"
+        unwrap_script = r"""'eval "$(echo "$0" | tr \\\v\\\f\\\r\\\b \\\047\\\134\\\n\\\041)"' """
     return [interpreter, '-c', unwrap_script, es]
 
 
