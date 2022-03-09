@@ -4,13 +4,14 @@
 
 import glob
 import os
-import shlex
 import shutil
 import tempfile
 from functools import lru_cache
 
 from kittens.ssh.config import load_config, options_for_host
-from kittens.ssh.main import bootstrap_script, get_connection_data
+from kittens.ssh.main import (
+    bootstrap_script, get_connection_data, wrap_bootstrap_script
+)
 from kittens.ssh.options.utils import DELETE_ENV_VAR
 from kittens.transfer.utils import set_paths
 from kitty.constants import is_macos
@@ -217,7 +218,7 @@ copy --exclude */w.* d1
                         self.assertEqual(pty.screen.cursor.shape, 0)
                         self.assertNotIn(b'\x1b]133;', pty.received_bytes)
 
-    def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', test_script='', pre_data='', ssh_opts=None):
+    def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', test_script='', pre_data='', ssh_opts=None, launcher='sh'):
         ssh_opts = ssh_opts or {}
         if login_shell:
             ssh_opts['login_shell'] = login_shell
@@ -237,7 +238,8 @@ copy --exclude */w.* d1
         # prevent newuser-install from running
         open(os.path.join(home_dir, '.zshrc'), 'w').close()
         options = {'shell_integration': shell_integration(SHELL_INTEGRATION_VALUE or 'disabled')}
-        pty = self.create_pty(f'{sh} -c {shlex.quote(script)}', cwd=home_dir, env=env, options=options)
+        cmd = wrap_bootstrap_script(script, sh)
+        pty = self.create_pty([launcher, '-c', ' '.join(cmd)], cwd=home_dir, env=env, options=options)
         if pre_data:
             pty.write_buf = pre_data.encode('utf-8')
         del script

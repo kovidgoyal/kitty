@@ -391,16 +391,7 @@ def parse_ssh_args(args: List[str], extra_args: Tuple[str, ...] = ()) -> Tuple[L
     return ssh_args, server_args, passthrough, tuple(found_extra_args)
 
 
-def get_remote_command(
-    remote_args: List[str], hostname: str = 'localhost', cli_hostname: str = '', cli_uname: str = '',
-    interpreter: str = 'sh',
-    ssh_opts_dict: Dict[str, Dict[str, Any]] = {}
-) -> List[str]:
-    q = os.path.basename(interpreter).lower()
-    is_python = 'python' in q
-    sh_script = bootstrap_script(
-        script_type='py' if is_python else 'sh', remote_args=remote_args, ssh_opts_dict=ssh_opts_dict,
-        cli_hostname=cli_hostname, cli_uname=cli_uname)
+def wrap_bootstrap_script(sh_script: str, interpreter: str) -> List[str]:
     # sshd will execute the command we pass it by join all command line
     # arguments with a space and passing it as a single argument to the users
     # login shell with -c. If the user has a non POSIX login shell it might
@@ -409,6 +400,8 @@ def get_remote_command(
     # interpreter -c unwrap_script escaped_bootstrap_script
     # The unwrap_script is responsible for unescaping the bootstrap script and
     # executing it.
+    q = os.path.basename(interpreter).lower()
+    is_python = 'python' in q
     if is_python:
         es = standard_b64encode(sh_script.encode('utf-8')).decode('ascii')
         unwrap_script = '''"import base64, sys; eval(compile(base64.standard_b64decode(sys.argv[-1]), 'bootstrap.py', 'exec'))"'''
@@ -419,6 +412,19 @@ def get_remote_command(
         es = "'" + sh_script.replace("'", '\v').replace('\\', '\f') + "'"
         unwrap_script = r"""'eval "$(echo "$0" | tr \\\v\\\f \\\047\\\134)"' """
     return [interpreter, '-c', unwrap_script, es]
+
+
+def get_remote_command(
+    remote_args: List[str], hostname: str = 'localhost', cli_hostname: str = '', cli_uname: str = '',
+    interpreter: str = 'sh',
+    ssh_opts_dict: Dict[str, Dict[str, Any]] = {}
+) -> List[str]:
+    q = os.path.basename(interpreter).lower()
+    is_python = 'python' in q
+    sh_script = bootstrap_script(
+        script_type='py' if is_python else 'sh', remote_args=remote_args, ssh_opts_dict=ssh_opts_dict,
+        cli_hostname=cli_hostname, cli_uname=cli_uname)
+    return wrap_bootstrap_script(sh_script, interpreter)
 
 
 def main(args: List[str]) -> NoReturn:
