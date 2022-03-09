@@ -412,7 +412,8 @@ def wrap_bootstrap_script(sh_script: str, interpreter: str) -> List[str]:
         # finally surrounding with '
         es = "'" + sh_script.replace("'", '\v').replace('\\', '\f').replace('\n', '\r').replace('!', '\b') + "'"
         unwrap_script = r"""'eval "$(echo "$0" | tr \\\v\\\f\\\r\\\b \\\047\\\134\\\n\\\041)"' """
-    return [interpreter, '-c', unwrap_script, es]
+    # exec is supported by as sh like shells, and fish and csh
+    return ['exec', interpreter, '-c', unwrap_script, es]
 
 
 def get_remote_command(
