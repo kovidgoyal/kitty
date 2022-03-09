@@ -242,7 +242,7 @@ copy --exclude */w.* d1
         script = bootstrap_script(
             script_type='py' if 'python' in sh else 'sh', request_id="testing",
             test_script=test_script, ssh_opts_dict={'*': ssh_opts},
-        )
+        )[0]
         env = basic_shell_env(home_dir)
         # Avoid generating unneeded completion scripts
         os.makedirs(os.path.join(home_dir, '.local', 'share', 'fish', 'generated_completions'), exist_ok=True)

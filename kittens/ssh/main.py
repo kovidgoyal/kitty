@@ -209,7 +209,7 @@ def bootstrap_script(
     script_type: str = 'sh', remote_args: Sequence[str] = (),
     ssh_opts_dict: Dict[str, Dict[str, Any]] = {},
     test_script: str = '', request_id: Optional[str] = None, cli_hostname: str = '', cli_uname: str = ''
-) -> str:
+) -> Tuple[str, Dict[str, str]]:
     if request_id is None:
         request_id = os.environ['KITTY_PID'] + '-' + os.environ['KITTY_WINDOW_ID']
     exec_cmd = prepare_exec_cmd(remote_args, script_type == 'py') if remote_args else ''
@@ -226,7 +226,7 @@ def bootstrap_script(
         'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': os.path.basename(tf.name), 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script,
         'REQUEST_ID': request_id
     }
-    return prepare_script(ans, replacements)
+    return prepare_script(ans, replacements), replacements
 
 
 def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
@@ -422,13 +422,13 @@ def get_remote_command(
     remote_args: List[str], hostname: str = 'localhost', cli_hostname: str = '', cli_uname: str = '',
     interpreter: str = 'sh',
     ssh_opts_dict: Dict[str, Dict[str, Any]] = {}
-) -> List[str]:
+) -> Tuple[List[str], Dict[str, str]]:
     q = os.path.basename(interpreter).lower()
     is_python = 'python' in q
-    sh_script = bootstrap_script(
+    sh_script, replacements = bootstrap_script(
         script_type='py' if is_python else 'sh', remote_args=remote_args, ssh_opts_dict=ssh_opts_dict,
         cli_hostname=cli_hostname, cli_uname=cli_uname)
-    return wrap_bootstrap_script(sh_script, interpreter)
+    return wrap_bootstrap_script(sh_script, interpreter), replacements
 
 
 def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
@@ -483,7 +483,8 @@ def main(args: List[str]) -> NoReturn:
         sod = {k: v._asdict() for k, v in so.items()}
         host_opts = options_for_host(hostname_for_match, uname, so)
         use_control_master = 'KITTY_PID' in os.environ and host_opts.share_connections
-        cmd += get_remote_command(remote_args, hostname, hostname_for_match, uname, host_opts.interpreter, sod)
+        rcmd, replacements = get_remote_command(remote_args, hostname, hostname_for_match, uname, host_opts.interpreter, sod)
+        cmd += rcmd
         if use_control_master:
             cmd[insertion_point:insertion_point] = connection_sharing_args(host_opts, int(os.environ['KITTY_PID']))
     import subprocess
