@@ -412,6 +412,36 @@ exec_with_shell_integration() {
     esac
 }
 
+execute_sh_with_posix_env() {
+    if [ "$login_shell" != "/bin/sh" ]; then return 1; fi
+    if command "$login_shell" -l -c ":" > /dev/null 2> /dev/null; then return 1; fi
+    if [ -z "$shell_integration_dir" ]; then
+        if [ -n "$KITTY_SSH_KITTEN_DATA_DIR" ]; then
+            shell_integration_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR/shell-integration"
+        else
+            die "The data directory is not defined, ssh kitten cannot function."
+        fi
+    fi
+    sh_dir="$shell_integration_dir/sh"
+    if [ ! -d "$sh_dir" ]; then mkdir -p "$sh_dir" || die "Creating data directory failed"; fi
+    # Source /etc/profile, ~/.profile, and then check and source ENV
+    echo '
+if [ -n "$KITTY_SH_INJECT" ]; then
+    unset ENV; unset KITTY_SH_INJECT
+    _ksi_safe_source() { if [ -f "$1" -a -r "$1" ]; then . "$1"; return 0; fi; return 1; }
+    if [ -n "$KITTY_SH_POSIX_ENV" ]; then export ENV="$KITTY_SH_POSIX_ENV"; fi
+    unset KITTY_SH_POSIX_ENV
+    _ksi_safe_source "/etc/profile"; _ksi_safe_source "${HOME-}/.profile"
+    if [ -n "$ENV" ]; then _ksi_safe_source "$ENV"; fi
+fi' > "$sh_dir/login_shell_env.sh"
+    export KITTY_SH_INJECT=1
+    if [ -n "$ENV" ]; then
+        export KITTY_SH_POSIX_ENV="$ENV"
+    fi
+    export ENV="$sh_dir/login_shell_env.sh"
+    exec "$login_shell"
+}
+
 # Used in the tests
 TEST_SCRIPT
 
@@ -422,10 +452,14 @@ case "$KITTY_SHELL_INTEGRATION" in
         ;;
     (*)
         # not blank
-        q=$(printf "%s" "$KITTY_SHELL_INTEGRATION" | command grep '\bno-rc\b')
-        if [ -z "$q" ]; then
-            exec_with_shell_integration
-            # exec failed, unset
+        if [ -n "$shell_integration_dir" ]; then
+            q=$(printf "%s" "$KITTY_SHELL_INTEGRATION" | command grep '\bno-rc\b')
+            if [ -z "$q" ]; then
+                exec_with_shell_integration
+                # exec failed, unset
+                unset KITTY_SHELL_INTEGRATION
+            fi
+        else
             unset KITTY_SHELL_INTEGRATION
         fi
         ;;
@@ -437,4 +471,5 @@ esac
 [ "$(exec -a echo echo OK 2> /dev/null)" = "OK" ] && exec -a "-$shell_name" $login_shell
 execute_with_python
 execute_with_perl
+execute_sh_with_posix_env
 exec $login_shell "-l"
