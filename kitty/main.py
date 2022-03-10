@@ -350,11 +350,16 @@ def cleanup_ssh_control_masters() -> None:
     import glob
     import subprocess
     try:
-        files = glob.glob(os.path.join(runtime_dir(), ssh_control_master_template.format(kitty_pid=os.getpid(), ssh_placeholder='*')))
+        files = frozenset(glob.glob(os.path.join(runtime_dir(), ssh_control_master_template.format(
+            kitty_pid=os.getpid(), ssh_placeholder='*'))))
     except OSError:
         return
+    workers = tuple(subprocess.Popen([
+        'ssh', '-o', f'ControlPath={x}', '-O', 'exit', 'kitty-unused-host-name'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    for x in files)
+    for w in workers:
+        w.wait()
     for x in files:
-        subprocess.run(['ssh', '-o', f'ControlPath={x}', '-O', 'exit', 'kitty-unused-host-name'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         with suppress(OSError):
             os.remove(x)
 
