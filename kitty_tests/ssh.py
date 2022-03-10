@@ -239,32 +239,35 @@ copy --exclude */w.* d1
             test_script = f'print("UNTAR_DONE", flush=True); {test_script}'
         else:
             test_script = f'echo "UNTAR_DONE"; {test_script}'
-        script = bootstrap_script(
+        script, replacements, shm = bootstrap_script(
             script_type='py' if 'python' in sh else 'sh', request_id="testing",
             test_script=test_script, ssh_opts_dict={'*': ssh_opts},
-        )[0]
-        env = basic_shell_env(home_dir)
-        # Avoid generating unneeded completion scripts
-        os.makedirs(os.path.join(home_dir, '.local', 'share', 'fish', 'generated_completions'), exist_ok=True)
-        # prevent newuser-install from running
-        open(os.path.join(home_dir, '.zshrc'), 'w').close()
-        options = {'shell_integration': shell_integration(SHELL_INTEGRATION_VALUE or 'disabled')}
-        cmd = wrap_bootstrap_script(script, sh)
-        pty = self.create_pty([launcher, '-c', ' '.join(cmd)], cwd=home_dir, env=env, options=options)
-        if pre_data:
-            pty.write_buf = pre_data.encode('utf-8')
-        del script
+        )
+        try:
+            env = basic_shell_env(home_dir)
+            # Avoid generating unneeded completion scripts
+            os.makedirs(os.path.join(home_dir, '.local', 'share', 'fish', 'generated_completions'), exist_ok=True)
+            # prevent newuser-install from running
+            open(os.path.join(home_dir, '.zshrc'), 'w').close()
+            options = {'shell_integration': shell_integration(SHELL_INTEGRATION_VALUE or 'disabled')}
+            cmd = wrap_bootstrap_script(script, sh)
+            pty = self.create_pty([launcher, '-c', ' '.join(cmd)], cwd=home_dir, env=env, options=options)
+            if pre_data:
+                pty.write_buf = pre_data.encode('utf-8')
+            del script
 
-        def check_untar_or_fail():
-            q = pty.screen_contents()
-            if 'bzip2' in q:
-                raise ValueError('Untarring failed with screen contents:\n' + q)
-            return 'UNTAR_DONE' in q
-        pty.wait_till(check_untar_or_fail)
-        self.assertTrue(os.path.exists(os.path.join(home_dir, '.terminfo/kitty.terminfo')))
-        if SHELL_INTEGRATION_VALUE != 'enabled':
-            pty.wait_till(lambda: len(pty.screen_contents().splitlines()) > 1)
-            self.assertEqual(pty.screen.cursor.shape, 0)
-        else:
-            pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
-        return pty
+            def check_untar_or_fail():
+                q = pty.screen_contents()
+                if 'bzip2' in q:
+                    raise ValueError('Untarring failed with screen contents:\n' + q)
+                return 'UNTAR_DONE' in q
+            pty.wait_till(check_untar_or_fail)
+            self.assertTrue(os.path.exists(os.path.join(home_dir, '.terminfo/kitty.terminfo')))
+            if SHELL_INTEGRATION_VALUE != 'enabled':
+                pty.wait_till(lambda: len(pty.screen_contents().splitlines()) > 1)
+                self.assertEqual(pty.screen.cursor.shape, 0)
+            else:
+                pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
+            return pty
+        finally:
+            shm.unlink()

@@ -216,7 +216,7 @@ def bootstrap_script(
     script_type: str = 'sh', remote_args: Sequence[str] = (),
     ssh_opts_dict: Dict[str, Dict[str, Any]] = {},
     test_script: str = '', request_id: Optional[str] = None, cli_hostname: str = '', cli_uname: str = ''
-) -> Tuple[str, Dict[str, str]]:
+) -> Tuple[str, Dict[str, str], SharedMemory]:
     if request_id is None:
         request_id = os.environ['KITTY_PID'] + '-' + os.environ['KITTY_WINDOW_ID']
     exec_cmd = prepare_exec_cmd(remote_args, script_type == 'py') if remote_args else ''
@@ -236,7 +236,7 @@ def bootstrap_script(
         'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': shm.name, 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script,
         'REQUEST_ID': request_id
     }
-    return prepare_script(ans, replacements), replacements
+    return prepare_script(ans, replacements), replacements, shm
 
 
 def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
@@ -435,7 +435,7 @@ def get_remote_command(
 ) -> Tuple[List[str], Dict[str, str]]:
     q = os.path.basename(interpreter).lower()
     is_python = 'python' in q
-    sh_script, replacements = bootstrap_script(
+    sh_script, replacements, shm = bootstrap_script(
         script_type='py' if is_python else 'sh', remote_args=remote_args, ssh_opts_dict=ssh_opts_dict,
         cli_hostname=cli_hostname, cli_uname=cli_uname)
     return wrap_bootstrap_script(sh_script, interpreter), replacements
