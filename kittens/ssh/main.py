@@ -10,6 +10,7 @@ import re
 import secrets
 import shlex
 import stat
+import struct
 import sys
 import tarfile
 import time
@@ -155,13 +156,13 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
         try:
             with SharedMemory(pwfilename, readonly=True) as shm:
                 shm.unlink()
-                st = os.stat(shm.fileno())
-                mode = stat.S_IMODE(st.st_mode)
-                if st.st_uid != os.geteuid() or st.st_gid != os.getegid():
+                if shm.stats.st_uid != os.geteuid() or shm.stats.st_gid != os.getegid():
                     raise ValueError('Incorrect owner on pwfile')
+                mode = stat.S_IMODE(shm.stats.st_mode)
                 if mode != stat.S_IREAD:
                     raise ValueError('Incorrect permissions on pwfile')
-                env_data = json.loads(bytes(shm.buf))
+                sz = struct.unpack('>I', shm.read(struct.calcsize('>I')))[0]
+                env_data = json.loads(shm.read(sz))
                 if pw != env_data['pw']:
                     raise ValueError('Incorrect password')
                 if rq_id != request_id:
@@ -226,8 +227,10 @@ def bootstrap_script(
     os.makedirs(ddir, exist_ok=True)
     data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict, 'cli_hostname': cli_hostname, 'cli_uname': cli_uname}
     db = json.dumps(data).encode('utf-8')
-    with SharedMemory(create=True, size=len(db), mode=stat.S_IREAD) as shm:
-        shm.buf[:] = db
+    sz = struct.pack('>I', len(db))
+    with SharedMemory(size=len(db) + len(sz), mode=stat.S_IREAD, prefix=f'kssh-{os.getpid()}-') as shm:
+        shm.write(sz)
+        shm.write(db)
         atexit.register(shm.unlink)
     replacements = {
         'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': shm.name, 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script,

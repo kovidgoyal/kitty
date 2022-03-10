@@ -343,7 +343,7 @@ PyInit_fast_data_types(void) {
     PyModule_AddIntMacro(m, FILE_TRANSFER_CODE);
 #ifdef __APPLE__
     // Apple says its SHM_NAME_MAX but SHM_NAME_MAX is not actually declared in typical CrApple style.
-    // This value is based on experimentation
+    // This value is based on experimentation and from qsharedmemory.cpp in Qt
     PyModule_AddIntConstant(m, "SHM_NAME_MAX", 30);
 #else
     // FreeBSD's man page says this is 1023. Linux says its PATH_MAX.
