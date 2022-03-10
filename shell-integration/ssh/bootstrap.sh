@@ -201,6 +201,12 @@ compile_terminfo() {
         tic_out=$(command tic -x -o "$1/$tname" "$1/.terminfo/kitty.terminfo" 2>&1)
         [ $? = 0 ] || die "Failed to compile terminfo with err: $tic_out";
     fi
+
+    # Ensure the 78 dir is present
+    if [ ! -f "$1/$tname/78/xterm-kitty" ]; then
+        command mkdir -p "$1/$tname/78"
+        command ln -sf "../x/xterm-kitty" "$1/$tname/78/xterm-kitty"
+    fi
 }
 
 untar_and_read_env() {

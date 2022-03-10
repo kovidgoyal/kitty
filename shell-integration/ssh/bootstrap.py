@@ -121,6 +121,10 @@ def compile_terminfo(base):
     if cp.returncode != 0:
         sys.stderr.buffer.write(cp.stdout)
         raise SystemExit('Failed to compile the terminfo database')
+    q = os.path.join(base, tname, '78', 'xterm-kitty')
+    if not os.path.exists(q):
+        os.makedirs(os.path.dirname(q), exist_ok=True)
+        os.symlink("../x/xterm-kitty", q)
 
 
 def get_data():

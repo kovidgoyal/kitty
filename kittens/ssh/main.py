@@ -3,6 +3,7 @@
 
 import atexit
 import fnmatch
+import glob
 import io
 import json
 import os
@@ -131,7 +132,8 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
                 f'{arcname}/ssh/*',          # bootstrap files are sent as command line args
                 f'{arcname}/zsh/kitty.zsh',  # present for legacy compat not needed by ssh kitten
             ))
-        tf.add(terminfo_dir, arcname='home/.terminfo', filter=normalize_tarinfo)
+        tf.add(f'{terminfo_dir}/kitty.terminfo', arcname='home/.terminfo/kitty.terminfo', filter=normalize_tarinfo)
+        tf.add(glob.glob(f'{terminfo_dir}/*/xterm-kitty')[0], arcname='home/.terminfo/x/xterm-kitty', filter=normalize_tarinfo)
     return buf.getvalue()
 
 
