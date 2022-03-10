@@ -234,7 +234,7 @@ clipboard_mime(void) {
     return buf;
 }
 
-static void
+static bool
 dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height) {
     bool size_changed = width != window->wl.width || height != window->wl.height;
     bool scale_changed = checkScaleChange(window);
@@ -252,6 +252,8 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
     }
 
     _glfwInputWindowDamage(window);
+
+    return size_changed || scale_changed;
 }
 
 static void
@@ -510,10 +512,11 @@ static void xdgSurfaceHandleConfigure(void* data,
         window->wl.current.decoration_mode = mode;
     }
 
+    bool resized = false;
     if (window->wl.pending_state) {
         int width = window->wl.pending.width, height = window->wl.pending.height;
         set_csd_window_geometry(window, &width, &height);
-        dispatchChangesAfterConfigure(window, width, height);
+        resized = dispatchChangesAfterConfigure(window, width, height);
         if (window->wl.decorations.serverSide) {
             free_csd_surfaces(window);
         } else {
@@ -523,7 +526,11 @@ static void xdgSurfaceHandleConfigure(void* data,
     }
 
     inform_compositor_of_window_geometry(window, "configure");
-    wl_surface_commit(window->wl.surface);
+
+    if (!resized) {
+        wl_surface_commit(window->wl.surface);
+    }
+
     window->wl.pending_state = 0;
 }
 
