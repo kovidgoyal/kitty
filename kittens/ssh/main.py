@@ -5,6 +5,7 @@ import atexit
 import fnmatch
 import io
 import json
+import stat
 import os
 import re
 import shlex
@@ -155,6 +156,10 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
         try:
             with open(os.path.join(cache_dir(), 'ssh', pwfilename), 'rb') as f:
                 os.unlink(f.name)
+                st = os.stat(f.fileno())
+                mode = stat.S_IMODE(st.st_mode)
+                if mode != stat.S_IREAD:
+                    raise ValueError('Incorrect permissions on pwfile')
                 env_data = json.load(f)
                 if pw != env_data['pw']:
                     raise ValueError('Incorrect password')
@@ -221,6 +226,7 @@ def bootstrap_script(
     with tempfile.NamedTemporaryFile(prefix='ssh-kitten-pw-', suffix='.json', dir=ddir, delete=False) as tf:
         data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict, 'cli_hostname': cli_hostname, 'cli_uname': cli_uname}
         tf.write(json.dumps(data).encode('utf-8'))
+        os.fchmod(tf.fileno(), stat.S_IREAD)
     atexit.register(safe_remove, tf.name)
     replacements = {
         'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': os.path.basename(tf.name), 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script,
