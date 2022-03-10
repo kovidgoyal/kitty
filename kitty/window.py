@@ -885,6 +885,35 @@ class Window:
         for line in get_ssh_data(msg, f'{os.getpid()}-{self.id}'):
             self.write_to_child(line)
 
+    def handle_remote_askpass(self, msg: str) -> None:
+        from .shm import SharedMemory
+        with SharedMemory(name=msg, readonly=True) as shm:
+            shm.seek(1)
+            data = json.loads(shm.read_data_with_size())
+
+        def callback(ans: Any) -> None:
+            data = json.dumps(ans)
+            with SharedMemory(name=msg) as shm:
+                shm.seek(1)
+                shm.write_data_with_size(data)
+                shm.flush()
+                shm.seek(0)
+                shm.write(b'\x01')
+
+        prompt: str = data['prompt']
+        if data['type'] == 'confirm':
+            get_boss().confirm(
+                prompt, callback, window=self, confirm_on_cancel=bool(data.get('confirm_on_cancel')),
+                confirm_on_accept=bool(data.get('confirm_on_accept')))
+        elif data['type'] == 'choose':
+            get_boss().choose(
+                prompt, callback, *data['choices'], window=self, default=data.get('default', ''))
+        elif data['type'] == 'get_line':
+            get_boss().get_line(
+                prompt, callback, window=self, is_password=bool(data.get('is_password')))
+        else:
+            log_error(f'Ignoring ask request with unknown type: {data["type"]}')
+
     def handle_remote_print(self, msg: str) -> None:
         text = process_remote_print(msg)
         print(text, end='', file=sys.stderr)

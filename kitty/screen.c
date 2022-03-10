@@ -2115,6 +2115,12 @@ screen_handle_ssh(Screen *self, PyObject *msg) {
 }
 
 void
+screen_handle_askpass(Screen *self, PyObject *msg) {
+    CALLBACK("handle_remote_askpass", "O", msg);
+}
+
+
+void
 screen_request_capabilities(Screen *self, char c, PyObject *q) {
     static char buf[128];
     int shape = 0;
