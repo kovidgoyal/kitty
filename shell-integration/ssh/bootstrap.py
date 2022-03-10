@@ -103,7 +103,7 @@ def move(src, base_dest):
             os.makedirs(dest, exist_ok=True)
             move(x.path, dest)
         else:
-            os.rename(x.path, dest)
+            shutil.move(x.path, dest)
 
 
 def compile_terminfo(base):
