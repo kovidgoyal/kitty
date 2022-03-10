@@ -447,6 +447,9 @@ def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
         '-o', 'ControlMaster=auto',
         '-o', f'ControlPath={cp}',
         '-o', 'ControlPersist=yes',
+        '-o', 'ServerAliveInterval=60',
+        '-o', 'ServerAliveCountMax=5',
+        '-o', 'TCPKeepAlive=no',
     ]
     return ans
 
