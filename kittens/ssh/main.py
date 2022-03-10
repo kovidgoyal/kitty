@@ -5,10 +5,11 @@ import atexit
 import fnmatch
 import io
 import json
-import stat
 import os
 import re
+import secrets
 import shlex
+import stat
 import sys
 import tarfile
 import tempfile
@@ -24,7 +25,6 @@ from typing import (
 
 from kitty.constants import cache_dir, shell_integration_dir, terminfo_dir
 from kitty.fast_data_types import get_options
-from kitty.short_uuid import uuid4
 from kitty.utils import SSHConnectionData
 
 from .completion import complete, ssh_options
@@ -32,7 +32,6 @@ from .config import init_config, options_for_host
 from .copy import CopyInstruction
 from .options.types import Options as SSHOptions
 from .options.utils import DELETE_ENV_VAR
-
 
 # See https://www.gnu.org/software/bash/manual/html_node/Double-Quotes.html
 quote_pat = re.compile('([\\`"\n])')
@@ -220,7 +219,7 @@ def bootstrap_script(
     exec_cmd = prepare_exec_cmd(remote_args, script_type == 'py') if remote_args else ''
     with open(os.path.join(shell_integration_dir, 'ssh', f'bootstrap.{script_type}')) as f:
         ans = f.read()
-    pw = uuid4()
+    pw = secrets.token_hex()
     ddir = os.path.join(cache_dir(), 'ssh')
     os.makedirs(ddir, exist_ok=True)
     with tempfile.NamedTemporaryFile(prefix='ssh-kitten-pw-', suffix='.json', dir=ddir, delete=False) as tf:
