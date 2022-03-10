@@ -46,8 +46,9 @@ class SharedMemory:
     def __init__(
             self, name: str = '', size: int = 0, readonly: bool = False,
             mode: int = stat.S_IREAD | stat.S_IWRITE,
-            prefix: str = 'kitty-'
+            prefix: str = 'kitty-', unlink_on_exit: bool = False
     ):
+        self.unlink_on_exit = unlink_on_exit
         if size < 0:
             raise TypeError("'size' must be a non-negative integer")
         if size and name:
@@ -100,6 +101,9 @@ class SharedMemory:
     def seek(self, pos: int, whence: int = os.SEEK_SET) -> None:
         self.mmap.seek(pos, whence)
 
+    def flush(self) -> None:
+        self.mmap.flush()
+
     def __del__(self) -> None:
         try:
             self.close()
@@ -111,6 +115,8 @@ class SharedMemory:
 
     def __exit__(self, *a: object) -> None:
         self.close()
+        if self.unlink_on_exit:
+            self.unlink()
 
     @property
     def size(self) -> int:

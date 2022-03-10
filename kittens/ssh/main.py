@@ -129,7 +129,7 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
         if ksi:
             arcname = 'home/' + rd + '/shell-integration'
             tf.add(shell_integration_dir, arcname=arcname, filter=filter_from_globs(
-                f'{arcname}/ssh/bootstrap.*',  # bootstrap files are sent as command line args
+                f'{arcname}/ssh/*',          # bootstrap files are sent as command line args
                 f'{arcname}/zsh/kitty.zsh',  # present for legacy compat not needed by ssh kitten
             ))
         tf.add(terminfo_dir, arcname='home/.terminfo', filter=normalize_tarinfo)
@@ -234,6 +234,7 @@ def bootstrap_script(
     with SharedMemory(size=len(db) + len(sz), mode=stat.S_IREAD, prefix=f'kssh-{os.getpid()}-') as shm:
         shm.write(sz)
         shm.write(db)
+        shm.flush()
         atexit.register(shm.unlink)
     replacements = {
         'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': shm.name, 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script,
