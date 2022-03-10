@@ -74,7 +74,7 @@ class HistoryCompleter:
 def option_text() -> str:
     return '''\
 --type -t
-choices=line,yesno,choices
+choices=line,yesno,choices,password
 default=line
 Type of input. Defaults to asking for a line of text.
 
@@ -360,6 +360,13 @@ def main(args: List[str]) -> Response:
         handler = Choose(cli_opts)
         loop.loop(handler)
         return {'items': items, 'response': handler.response}
+
+    if cli_opts.type == 'password':
+        import getpass
+        if cli_opts.message:
+            print(styled(cli_opts.message, bold=True))
+        q = getpass.getpass()
+        return {'items': items, 'response': q or ''}
 
     import readline as rl
     readline = rl

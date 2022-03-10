@@ -1084,7 +1084,7 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             } else IF_SIMPLE_PREFIX("kitty-print|", screen_handle_print)
             } else IF_SIMPLE_PREFIX("kitty-echo|", screen_handle_echo)
             } else IF_SIMPLE_PREFIX("kitty-ssh|", screen_handle_ssh)
-            } else IF_SIMPLE_PREFIX("kitty-askpass|", screen_handle_askpass)
+            } else IF_SIMPLE_PREFIX("kitty-ask|", screen_handle_askpass)
 #undef IF_SIMPLE_PREFIX
             } else {
                 REPORT_ERROR("Unrecognized DCS @ code: 0x%x", screen->parser_buf[1]);

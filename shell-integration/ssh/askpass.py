@@ -3,22 +3,36 @@
 
 import json
 import os
-import struct
 import sys
+import time
 
 from kitty.shm import SharedMemory
 
 msg = sys.argv[-1]
 prompt = os.environ.get('SSH_ASKPASS_PROMPT', '')
 is_confirm = prompt == 'confirm'
-ask_cmdline = ['-m', msg, '--type', 'yesno' if is_confirm else 'password']
-if is_confirm:
-    ask_cmdline += ['--default', 'y']
-data = json.dumps(ask_cmdline).encode('utf-8')
-sz = struct.pack('>I', len(data))
-with SharedMemory(size=len(data) + len(sz) + 1, unlink_on_exit=True, prefix=f'askpass-{os.getpid()}-') as shm, open(os.ctermid(), 'wb') as tty:
+q = {
+    'prompt': msg,
+    'type': 'confirm' if is_confirm else 'get_line',
+    'is_password': True,
+}
+
+data = json.dumps(q)
+with SharedMemory(size=len(data) + 1 + SharedMemory.num_bytes_for_size, unlink_on_exit=True, prefix=f'askpass-{os.getpid()}-'
+                  ) as shm, open(os.ctermid(), 'wb') as tty:
     shm.write(b'\0')
-    shm.write(sz)
-    shm.write(data)
+    shm.write_data_with_size(data)
     shm.flush()
-    print(f'\x1bP@kitty-ask|{shm.name}\x1b\\', flush=True)
+    with open(os.ctermid(), 'wb') as f:
+        f.write(f'\x1bP@kitty-ask|{shm.name}\x1b\\'.encode('ascii'))
+    while True:
+        # TODO: Replace sleep() with a mutex and condition variable created in the shared memory
+        time.sleep(0.05)
+        shm.seek(0)
+        if shm.read(1) == b'\x01':
+            break
+    response = json.loads(shm.read_data_with_size())
+    if is_confirm:
+        response = 'yes' if response else 'no'
+    if response:
+        print(response, flush=True)
