@@ -246,8 +246,7 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
     }
 
     if (scale_changed) {
-        if (!size_changed)
-            resizeFramebuffer(window);
+        if (!size_changed) resizeFramebuffer(window);
         _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
     }
 
@@ -522,15 +521,12 @@ static void xdgSurfaceHandleConfigure(void* data,
         } else {
             ensure_csd_resources(window);
         }
-        debug("final window content size: %dx%d\n", width, height);
+        debug("final window content size: %dx%d resized: %d\n", width, height, resized);
     }
 
     inform_compositor_of_window_geometry(window, "configure");
 
-    if (!resized) {
-        wl_surface_commit(window->wl.surface);
-    }
-
+    if (!resized) wl_surface_commit(window->wl.surface);
     window->wl.pending_state = 0;
 }
 

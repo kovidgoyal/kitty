@@ -54,6 +54,8 @@
 #endif
 
 
+#define debug(...) if (_glfw.hints.init.debugRendering) fprintf(stderr, __VA_ARGS__);
+
 static int min(int n1, int n2)
 {
     return n1 < n2 ? n1 : n2;
@@ -96,7 +98,6 @@ static void pointerHandleEnter(void* data UNUSED,
         if (!window)
             return;
     }
-
     window->wl.decorations.focus = focus;
     _glfw.wl.serial = serial;
     _glfw.wl.pointerFocus = window;
