@@ -526,6 +526,8 @@ static void xdgSurfaceHandleConfigure(void* data,
 
     inform_compositor_of_window_geometry(window, "configure");
 
+    // if a resize happened there will be a commit at the next render frame so
+    // dont commit here, GNOME doesnt like it and its not really needed anyway
     if (!resized) wl_surface_commit(window->wl.surface);
     window->wl.pending_state = 0;
 }
