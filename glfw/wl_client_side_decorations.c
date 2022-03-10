@@ -353,6 +353,7 @@ ensure_csd_resources(_GLFWwindow *window) {
         !decs.mapping.data
     );
     const bool needs_update = focus_changed || size_changed || !decs.left.surface;
+    debug("CSD: old.size: %dx%d new.size: %dx%d needs_update: %d size_changed: %d\n", decs.for_window_state.width, decs.for_window_state.height, window->wl.width, window->wl.height, needs_update, size_changed);
     if (!needs_update) return false;
     if (size_changed) {
         free_csd_buffers(window);
