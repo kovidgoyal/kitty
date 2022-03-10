@@ -269,24 +269,8 @@ xdgDecorationHandleConfigure(void* data,
                                          uint32_t mode)
 {
     _GLFWwindow* window = data;
-
-    bool has_server_side_decorations = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
-    debug("XDG decoration configure event received: has_server_side_decorations: %d\n", has_server_side_decorations);
-    if (has_server_side_decorations == window->wl.decorations.serverSide) return;
-    window->wl.decorations.serverSide = has_server_side_decorations;
-    int width = window->wl.current.width, height = window->wl.current.height;
-    if (window->wl.decorations.serverSide) {
-        free_csd_surfaces(window);
-        height += window->wl.decorations.metrics.visible_titlebar_height;
-    } else {
-        ensure_csd_resources(window);
-    }
-    set_csd_window_geometry(window, &width, &height);
-    dispatchChangesAfterConfigure(window, width, height);
-    ensure_csd_resources(window);
-    wl_surface_commit(window->wl.surface);
-    debug("final window content size: %dx%d\n", window->wl.current.width, window->wl.current.height);
-    inform_compositor_of_window_geometry(window, "configure-decorations");
+    window->wl.pending.decoration_mode = mode;
+    window->wl.pending_state |= PENDING_STATE_DECORATION;
 }
 
 static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener = {
@@ -511,17 +495,34 @@ static void xdgSurfaceHandleConfigure(void* data,
 
             bool live_resize_done = !(new_states & TOPLEVEL_STATE_RESIZING) && (window->wl.current.toplevel_states & TOPLEVEL_STATE_RESIZING);
             window->wl.current.toplevel_states = new_states;
-            set_csd_window_geometry(window, &width, &height);
-            dispatchChangesAfterConfigure(window, width, height);
             window->wl.current.width = width;
             window->wl.current.height = height;
-            debug("final window content size: %dx%d\n", window->wl.current.width, window->wl.current.height);
             _glfwInputWindowFocus(window, window->wl.current.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
-            ensure_csd_resources(window);
-            inform_compositor_of_window_geometry(window, "configure");
             if (live_resize_done) _glfwInputLiveResize(window, false);
         }
     }
+
+    if (window->wl.pending_state & PENDING_STATE_DECORATION) {
+        uint32_t mode = window->wl.pending.decoration_mode;
+        bool has_server_side_decorations = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+        debug("XDG decoration configure event received: has_server_side_decorations: %d\n", has_server_side_decorations);
+        window->wl.decorations.serverSide = has_server_side_decorations;
+        window->wl.current.decoration_mode = mode;
+    }
+
+    if (window->wl.pending_state) {
+        int width = window->wl.pending.width, height = window->wl.pending.height;
+        set_csd_window_geometry(window, &width, &height);
+        dispatchChangesAfterConfigure(window, width, height);
+        if (window->wl.decorations.serverSide) {
+            free_csd_surfaces(window);
+        } else {
+            ensure_csd_resources(window);
+        }
+        debug("final window content size: %dx%d\n", width, height);
+    }
+
+    inform_compositor_of_window_geometry(window, "configure");
     wl_surface_commit(window->wl.surface);
     window->wl.pending_state = 0;
 }

@@ -129,6 +129,7 @@ static const WaylandWindowState TOPLEVEL_STATE_DOCKED = TOPLEVEL_STATE_MAXIMIZED
 
 enum WaylandWindowPendingState {
     PENDING_STATE_TOPLEVEL = 1,
+    PENDING_STATE_DECORATION = 2
 };
 
 // Wayland-specific per-window data
@@ -224,6 +225,7 @@ typedef struct _GLFWwindowWayland
     struct {
         int width, height;
         uint32_t toplevel_states;
+        uint32_t decoration_mode;
     } current, pending;
 } _GLFWwindowWayland;
 
