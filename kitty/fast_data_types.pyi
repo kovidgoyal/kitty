@@ -1361,3 +1361,11 @@ def set_os_window_title(os_window_id: int, title: str) -> None:
 
 def update_ime_position_for_window(window_id: int, force: bool = False, lost_focus: bool = False) -> bool:
     pass
+
+
+def shm_open(name: str, flags: int, mode: int = 0o600) -> int:
+    pass
+
+
+def shm_unlink(name: str) -> None:
+    pass

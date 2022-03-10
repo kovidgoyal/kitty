@@ -157,6 +157,24 @@ close_tty(PyObject *self UNUSED, PyObject *args) {
 #undef TTY_ARGS
 
 static PyObject*
+py_shm_open(PyObject UNUSED *self, PyObject *args) {
+    char *name;
+    int flags, mode = 0600;
+    if (!PyArg_ParseTuple(args, "si|i", &name, &flags, &mode)) return NULL;
+    long fd = safe_shm_open(name, flags, mode);
+    if (fd < 0) return PyErr_SetFromErrnoWithFilenameObject(PyExc_OSError, PyTuple_GET_ITEM(args, 0));
+    return PyLong_FromLong(fd);
+}
+
+static PyObject*
+py_shm_unlink(PyObject UNUSED *self, PyObject *args) {
+    char *name;
+    if (!PyArg_ParseTuple(args, "s", &name)) return NULL;
+    if (shm_unlink(name) != 0) return PyErr_SetFromErrnoWithFilenameObject(PyExc_OSError, PyTuple_GET_ITEM(args, 0));
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
     return PyLong_FromLong(wcwidth_std(PyLong_AsLong(chr)));
 }
@@ -184,6 +202,8 @@ static PyMethodDef module_methods[] = {
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
     {"locale_is_valid", (PyCFunction)locale_is_valid, METH_VARARGS, ""},
+    {"shm_open", (PyCFunction)py_shm_open, METH_VARARGS, ""},
+    {"shm_unlink", (PyCFunction)py_shm_unlink, METH_VARARGS, ""},
 #ifdef __APPLE__
     METHODB(user_cache_dir, METH_NOARGS),
     METHODB(process_group_map, METH_NOARGS),
