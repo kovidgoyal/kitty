@@ -1,20 +1,27 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
-# This is present in the python stdlib after version 3.7 but we need to support
-# 3.7 for another year, so sigh.
+# This is present in the python stdlib (version 3.7) in
+# multiprocessing.shared_memory. However, it is crippled in various ways, most
+# notably using extremely small filenames.
 
 import mmap
 import os
 import secrets
+import stat
 from typing import Optional
 
-from kitty.fast_data_types import shm_open, shm_unlink
+from kitty.fast_data_types import SHM_NAME_MAX, shm_open, shm_unlink
 
 
-def make_filename(safe_length: int = 14, prefix: str = '/ky-') -> str:
+def make_filename(prefix: str) -> str:
     "Create a random filename for the shared memory object."
-    # number of random bytes to use for name
+    # number of random bytes to use for name. Use a largeish value
+    # to make double unlink safe.
+    safe_length = min(128, SHM_NAME_MAX)
+    if not prefix.startswith('/'):
+        # FreeBSD requires name to start with /
+        prefix = '/' + prefix
     nbytes = (safe_length - len(prefix)) // 2
     name = prefix + secrets.token_hex(nbytes)
     return name
@@ -24,7 +31,11 @@ class SharedMemory:
     _buf: Optional[memoryview] = None
     _fd: int = -1
 
-    def __init__(self, name: Optional[str] = None, create: bool = False, size: int = 0, readonly: bool = False, mode: int = 0o600):
+    def __init__(
+            self, name: Optional[str] = None, create: bool = False, size: int = 0, readonly: bool = False,
+            mode: int = stat.S_IREAD | stat.S_IWRITE,
+            prefix: str = 'kitty-'
+    ):
         if not size >= 0:
             raise ValueError("'size' must be a positive integer")
         if create:
@@ -39,7 +50,7 @@ class SharedMemory:
 
         if name is None:
             while True:
-                name = make_filename()
+                name = make_filename(prefix)
                 try:
                     self._fd = shm_open(name, flags, mode)
                 except FileExistsError:

@@ -12,6 +12,7 @@ from kitty.marks import MarkerFunc
 from kitty.options.types import Options
 
 # Constants {{{
+SHM_NAME_MAX: int
 MOUSE_SELECTION_LINE: int
 MOUSE_SELECTION_EXTEND: int
 MOUSE_SELECTION_NORMAL: int

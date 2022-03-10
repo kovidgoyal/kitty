@@ -341,6 +341,10 @@ PyInit_fast_data_types(void) {
     PyModule_AddIntMacro(m, APC);
     PyModule_AddIntMacro(m, OSC);
     PyModule_AddIntMacro(m, FILE_TRANSFER_CODE);
+    // FreeBSD's man page says this is 1023. Linux says its PATH_MAX.
+    // Apple says its SHM_NAME_MAX but SHM_NAME_MAX is not actually declared in typical CrApple style.
+    // Experimentation shows that 1023 is allowed on macOS Catalina
+    PyModule_AddIntConstant(m, "SHM_NAME_MAX", MIN(1023, PATH_MAX));
 
     return m;
 }
