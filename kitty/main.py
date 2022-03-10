@@ -353,7 +353,7 @@ def cleanup_ssh_control_masters() -> None:
     except OSError:
         return
     for x in files:
-        subprocess.run(['ssh', '-o', f'ControlPath={x}', '-O', 'exit', 'kitty-unused-host-name'])
+        subprocess.run(['ssh', '-o', f'ControlPath={x}', '-O', 'exit', 'kitty-unused-host-name'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         with suppress(OSError):
             os.remove(x)
 
