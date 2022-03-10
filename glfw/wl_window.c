@@ -273,6 +273,7 @@ xdgDecorationHandleConfigure(void* data,
     _GLFWwindow* window = data;
     window->wl.pending.decoration_mode = mode;
     window->wl.pending_state |= PENDING_STATE_DECORATION;
+    debug("XDG decoration configure event received: has_server_side_decorations: %d\n", (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE));
 }
 
 static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener = {
@@ -507,7 +508,6 @@ static void xdgSurfaceHandleConfigure(void* data,
     if (window->wl.pending_state & PENDING_STATE_DECORATION) {
         uint32_t mode = window->wl.pending.decoration_mode;
         bool has_server_side_decorations = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
-        debug("XDG decoration configure event received: has_server_side_decorations: %d\n", has_server_side_decorations);
         window->wl.decorations.serverSide = has_server_side_decorations;
         window->wl.current.decoration_mode = mode;
     }
