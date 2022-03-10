@@ -63,9 +63,19 @@ class SharedMemory:
         except OSError:
             pass
 
+    def __enter__(self) -> 'SharedMemory':
+        return self
+
+    def __exit__(self, *a: object) -> None:
+        self.close()
+
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def fileno(self) -> int:
+        return self._fd
 
     @property
     def buf(self) -> memoryview:
