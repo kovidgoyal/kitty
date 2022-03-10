@@ -160,8 +160,7 @@ Then, when launching the shell, kitty sets the environment variable
 :envvar:`KITTY_SHELL_INTEGRATION` to the value of the :opt:`shell_integration`
 option. The shell integration code reads the environment variable, turns on the
 specified integration functionality and then unsets the variable so as to not
-pollute the system. This has the nice effect that the changes to the shell's rc
-files become no-ops when running the shell in anything other than kitty itself.
+pollute the system.
 
 The actual shell integration code uses hooks provided by each shell to send
 special escape codes to kitty, to perform the various tasks. You can see the
