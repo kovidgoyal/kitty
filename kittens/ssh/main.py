@@ -12,7 +12,6 @@ import shlex
 import stat
 import sys
 import tarfile
-import tempfile
 import time
 import traceback
 from base64 import standard_b64decode, standard_b64encode
@@ -25,6 +24,7 @@ from typing import (
 
 from kitty.constants import cache_dir, shell_integration_dir, terminfo_dir
 from kitty.fast_data_types import get_options
+from kitty.shm import SharedMemory
 from kitty.utils import SSHConnectionData
 
 from .completion import complete, ssh_options
@@ -153,13 +153,15 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
         yield fmt_prefix('!invalid ssh data request message')
     else:
         try:
-            with open(os.path.join(cache_dir(), 'ssh', pwfilename), 'rb') as f:
-                os.unlink(f.name)
-                st = os.stat(f.fileno())
+            with SharedMemory(pwfilename, readonly=True) as shm:
+                shm.unlink()
+                st = os.stat(shm.fileno())
                 mode = stat.S_IMODE(st.st_mode)
+                if st.st_uid != os.geteuid() or st.st_gid != os.getegid():
+                    raise ValueError('Incorrect owner on pwfile')
                 if mode != stat.S_IREAD:
                     raise ValueError('Incorrect permissions on pwfile')
-                env_data = json.load(f)
+                env_data = json.loads(bytes(shm.buf))
                 if pw != env_data['pw']:
                     raise ValueError('Incorrect password')
                 if rq_id != request_id:
@@ -222,13 +224,13 @@ def bootstrap_script(
     pw = secrets.token_hex()
     ddir = os.path.join(cache_dir(), 'ssh')
     os.makedirs(ddir, exist_ok=True)
-    with tempfile.NamedTemporaryFile(prefix='ssh-kitten-pw-', suffix='.json', dir=ddir, delete=False) as tf:
-        data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict, 'cli_hostname': cli_hostname, 'cli_uname': cli_uname}
-        tf.write(json.dumps(data).encode('utf-8'))
-        os.fchmod(tf.fileno(), stat.S_IREAD)
-    atexit.register(safe_remove, tf.name)
+    data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict, 'cli_hostname': cli_hostname, 'cli_uname': cli_uname}
+    db = json.dumps(data).encode('utf-8')
+    with SharedMemory(create=True, size=len(db), mode=stat.S_IREAD) as shm:
+        shm.buf[:] = db
+        atexit.register(shm.unlink)
     replacements = {
-        'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': os.path.basename(tf.name), 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script,
+        'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': shm.name, 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script,
         'REQUEST_ID': request_id
     }
     return prepare_script(ans, replacements), replacements

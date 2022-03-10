@@ -21,6 +21,8 @@ def make_filename(safe_length: int = 14, prefix: str = '/ky-') -> str:
 
 
 class SharedMemory:
+    _buf: Optional[memoryview] = None
+    _fd: int = -1
 
     def __init__(self, name: Optional[str] = None, create: bool = False, size: int = 0, readonly: bool = False, mode: int = 0o600):
         if not size >= 0:
@@ -30,7 +32,8 @@ class SharedMemory:
             if size <= 0:
                 raise ValueError("'size' must be > 0")
         else:
-            flags = os.O_RDONLY if readonly else os.O_RDWR
+            flags = 0
+        flags |= os.O_RDONLY if readonly else os.O_RDWR
         if name is None and not flags & os.O_EXCL:
             raise ValueError("'name' can only be None if create=True")
 
@@ -43,19 +46,21 @@ class SharedMemory:
                     continue
                 self._name = name
                 break
+        else:
+            self._fd = shm_open(name, flags)
         self._name = name
         try:
             if create and size:
                 os.ftruncate(self._fd, size)
             stats = os.fstat(self._fd)
             size = stats.st_size
-            self._mmap = mmap.mmap(self._fd, size)
+            self._mmap = mmap.mmap(self._fd, size, access=mmap.ACCESS_READ if readonly else mmap.ACCESS_WRITE)
         except OSError:
             self.unlink()
             raise
 
         self.size = size
-        self._buf: Optional[memoryview] = memoryview(self._mmap)
+        self._buf = memoryview(self._mmap)
 
     def __del__(self) -> None:
         try:
@@ -73,7 +78,6 @@ class SharedMemory:
     def name(self) -> str:
         return self._name
 
-    @property
     def fileno(self) -> int:
         return self._fd
 
@@ -93,7 +97,7 @@ class SharedMemory:
         if self._buf is not None:
             self._buf.release()
             self._buf = None
-        if self._mmap is not None:
+        if getattr(self, '_mmap', None) is not None:
             self._mmap.close()
         if self._fd >= 0:
             os.close(self._fd)
@@ -106,5 +110,8 @@ class SharedMemory:
         called once (and only once) across all processes which have access
         to the shared memory block."""
         if self._name:
-            shm_unlink(self._name)
+            try:
+                shm_unlink(self._name)
+            except FileNotFoundError:
+                pass
             self._name = ''
