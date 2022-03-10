@@ -444,7 +444,19 @@ def get_remote_command(
 
 
 def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
-    cp = os.path.join(runtime_dir(), ssh_control_master_template.format(kitty_pid=kitty_pid, ssh_placeholder='%C'))
+    rd = runtime_dir()
+    # Bloody OpenSSH generates a 40 char hash and in creating the socket
+    # appends a 27 char temp suffix to it. Socket max path length is approx
+    # ~104 chars. macOS has no system runtime dir so we use a cache dir in
+    # /Users/WHY_DOES_ANYONE_USE_MACOS/Library/Caches/APPLE_ARE_IDIOTIC
+    if len(rd) > 35 and os.path.isdir('/tmp'):
+        idiotic_design = '/tmp/kssh-rdir'
+        with suppress(FileNotFoundError):
+            os.unlink(idiotic_design)
+        os.symlink(rd, idiotic_design)
+        rd = idiotic_design
+
+    cp = os.path.join(rd, ssh_control_master_template.format(kitty_pid=kitty_pid, ssh_placeholder='%C'))
     ans: List[str] = [
         '-o', 'ControlMaster=auto',
         '-o', f'ControlPath={cp}',
