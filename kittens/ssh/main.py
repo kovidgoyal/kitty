@@ -10,7 +10,6 @@ import re
 import secrets
 import shlex
 import stat
-import struct
 import sys
 import tarfile
 import time
@@ -164,8 +163,7 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
                 mode = stat.S_IMODE(shm.stats.st_mode)
                 if mode != stat.S_IREAD:
                     raise ValueError('Incorrect permissions on pwfile')
-                sz = struct.unpack('>I', shm.read(struct.calcsize('>I')))[0]
-                env_data = json.loads(shm.read(sz))
+                env_data = json.loads(shm.read_data_with_size())
                 if pw != env_data['pw']:
                     raise ValueError('Incorrect password')
                 if rq_id != request_id:
@@ -229,11 +227,9 @@ def bootstrap_script(
     ddir = os.path.join(cache_dir(), 'ssh')
     os.makedirs(ddir, exist_ok=True)
     data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict, 'cli_hostname': cli_hostname, 'cli_uname': cli_uname}
-    db = json.dumps(data).encode('utf-8')
-    sz = struct.pack('>I', len(db))
-    with SharedMemory(size=len(db) + len(sz), mode=stat.S_IREAD, prefix=f'kssh-{os.getpid()}-') as shm:
-        shm.write(sz)
-        shm.write(db)
+    db = json.dumps(data)
+    with SharedMemory(size=len(db) + SharedMemory.num_bytes_for_size, mode=stat.S_IREAD, prefix=f'kssh-{os.getpid()}-') as shm:
+        shm.write_data_with_size(db)
         shm.flush()
         atexit.register(shm.unlink)
     replacements = {

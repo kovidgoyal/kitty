@@ -10,7 +10,8 @@ import mmap
 import os
 import secrets
 import stat
-from typing import Optional
+import struct
+from typing import Optional, Union
 
 from kitty.fast_data_types import SHM_NAME_MAX, shm_open, shm_unlink
 
@@ -42,6 +43,8 @@ class SharedMemory:
     _name: str = ''
     _mmap: Optional[mmap.mmap] = None
     _size: int = 0
+    size_fmt = '!I'
+    num_bytes_for_size = struct.calcsize(size_fmt)
 
     def __init__(
             self, name: str = '', size: int = 0, readonly: bool = False,
@@ -103,6 +106,17 @@ class SharedMemory:
 
     def flush(self) -> None:
         self.mmap.flush()
+
+    def write_data_with_size(self, data: Union[str, bytes]) -> None:
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        sz = struct.pack(self.size_fmt, len(data))
+        self.write(sz)
+        self.write(data)
+
+    def read_data_with_size(self) -> bytes:
+        sz = struct.unpack(self.size_fmt, self.read(self.num_bytes_for_size))[0]
+        return self.read(sz)
 
     def __del__(self) -> None:
         try:
