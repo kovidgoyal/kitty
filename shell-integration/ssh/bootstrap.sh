@@ -112,10 +112,16 @@ else
         return $?
     }
 
-    if [ "$(printf "%s" "test" | command head -c 3 2> /dev/null)" = "tes" ]; then
-        # using dd with bs=1 is very slow, so use head. On non GNU coreutils head
-        # does not limit itself to reading -c bytes only from the pipe so we can potentially lose
-        # some trailing data, for instance if the user starts typing. Cant be helped.
+    # using dd with bs=1 is very slow, so use head. On non GNU coreutils head
+    # does not limit itself to reading -c bytes only from the pipe so we can potentially lose
+    # some trailing data, for instance if the user starts typing. Cant be helped.
+    if [ "$(printf "%s" "test" | command ghead -c 3 2> /dev/null)" = "tes" ]; then
+        # Some BSD based systems use ghead for GNU head which is strictly superior to
+        # Broken System Design head, so prefer it.
+        read_n_bytes_from_tty() {
+            command ghead -c "$1" < /dev/tty
+        }
+    elif [ "$(printf "%s" "test" | command head -c 3 2> /dev/null)" = "tes" ]; then
         read_n_bytes_from_tty() {
             command head -c "$1" < /dev/tty
         }
