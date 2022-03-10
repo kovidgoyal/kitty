@@ -30,6 +30,9 @@ def make_filename(prefix: str) -> str:
 class SharedMemory:
     _buf: Optional[memoryview] = None
     _fd: int = -1
+    _name: str = ''
+    _mmap: Optional[mmap.mmap] = None
+    _size: int = 0
 
     def __init__(
             self, name: Optional[str] = None, create: bool = False, size: int = 0, readonly: bool = False,
@@ -55,7 +58,6 @@ class SharedMemory:
                     self._fd = shm_open(name, flags, mode)
                 except FileExistsError:
                     continue
-                self._name = name
                 break
         else:
             self._fd = shm_open(name, flags)
@@ -70,7 +72,7 @@ class SharedMemory:
             self.unlink()
             raise
 
-        self.size = size
+        self._size = size
         self._buf = memoryview(self._mmap)
 
     def __del__(self) -> None:
@@ -84,6 +86,10 @@ class SharedMemory:
 
     def __exit__(self, *a: object) -> None:
         self.close()
+
+    @property
+    def size(self) -> int:
+        return self._size
 
     @property
     def name(self) -> str:
@@ -108,8 +114,9 @@ class SharedMemory:
         if self._buf is not None:
             self._buf.release()
             self._buf = None
-        if getattr(self, '_mmap', None) is not None:
+        if self._mmap is not None:
             self._mmap.close()
+            self._mmap = None
         if self._fd >= 0:
             os.close(self._fd)
             self._fd = -1
