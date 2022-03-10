@@ -132,6 +132,7 @@ static const WaylandWindowState TOPLEVEL_STATE_DOCKED = TOPLEVEL_STATE_MAXIMIZED
 //
 typedef struct _GLFWwindowWayland
 {
+    int                         width, height;
     bool                        visible;
     bool                        hovered;
     bool                        transparent;

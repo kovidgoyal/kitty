@@ -206,7 +206,7 @@ static void setOpaqueRegion(_GLFWwindow* window)
     if (!region)
         return;
 
-    wl_region_add(region, 0, 0, window->wl.current.width, window->wl.current.height);
+    wl_region_add(region, 0, 0, window->wl.width, window->wl.height);
     wl_surface_set_opaque_region(window->wl.surface, region);
     wl_surface_commit(window->wl.surface);
     wl_region_destroy(region);
@@ -216,9 +216,9 @@ static void setOpaqueRegion(_GLFWwindow* window)
 static void
 resizeFramebuffer(_GLFWwindow* window) {
     int scale = window->wl.scale;
-    int scaledWidth = window->wl.current.width * scale;
-    int scaledHeight = window->wl.current.height * scale;
-    debug("Resizing framebuffer to: %dx%d at scale: %d\n", window->wl.current.width, window->wl.current.height, scale);
+    int scaledWidth = window->wl.width * scale;
+    int scaledHeight = window->wl.height * scale;
+    debug("Resizing framebuffer to: %dx%d at scale: %d\n", window->wl.width, window->wl.height, scale);
     wl_egl_window_resize(window->wl.native, scaledWidth, scaledHeight, 0, 0);
     if (!window->wl.transparent) setOpaqueRegion(window);
     _glfwInputFramebufferSize(window, scaledWidth, scaledHeight);
@@ -236,12 +236,12 @@ clipboard_mime(void) {
 
 static void
 dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height) {
-    bool size_changed = width != window->wl.current.width || height != window->wl.current.height;
+    bool size_changed = width != window->wl.width || height != window->wl.height;
     bool scale_changed = checkScaleChange(window);
 
     if (size_changed) {
         _glfwInputWindowSize(window, width, height);
-        window->wl.current.width = width; window->wl.current.height = height;
+        window->wl.width = width; window->wl.height = height;
         resizeFramebuffer(window);
     }
 
@@ -384,8 +384,8 @@ static bool createSurface(_GLFWwindow* window,
     if (!window->wl.native)
         return false;
 
-    window->wl.current.width = wndconfig->width;
-    window->wl.current.height = wndconfig->height;
+    window->wl.width = wndconfig->width;
+    window->wl.height = wndconfig->height;
     window->wl.user_requested_content_size.width = wndconfig->width;
     window->wl.user_requested_content_size.height = wndconfig->height;
     window->wl.scale = 1;
@@ -514,6 +514,8 @@ static void xdgSurfaceHandleConfigure(void* data,
             window->wl.current.toplevel_states = new_states;
             set_csd_window_geometry(window, &width, &height);
             dispatchChangesAfterConfigure(window, width, height);
+            window->wl.current.width = width;
+            window->wl.current.height = height;
             debug("final window content size: %dx%d\n", window->wl.current.width, window->wl.current.height);
             _glfwInputWindowFocus(window, window->wl.current.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
             ensure_csd_resources(window);
@@ -904,19 +906,19 @@ void _glfwPlatformSetWindowPos(_GLFWwindow* window UNUSED, int xpos UNUSED, int 
 void _glfwPlatformGetWindowSize(_GLFWwindow* window, int* width, int* height)
 {
     if (width)
-        *width = window->wl.current.width;
+        *width = window->wl.width;
     if (height)
-        *height = window->wl.current.height;
+        *height = window->wl.height;
 }
 
 void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
 {
-    if (width != window->wl.current.width || height != window->wl.current.height) {
+    if (width != window->wl.width || height != window->wl.height) {
         window->wl.user_requested_content_size.width = width;
         window->wl.user_requested_content_size.height = height;
         int32_t w = 0, h = 0;
         set_csd_window_geometry(window, &w, &h);
-        window->wl.current.width = w; window->wl.current.height = h;
+        window->wl.width = w; window->wl.height = h;
         resizeFramebuffer(window);
         ensure_csd_resources(window);
         wl_surface_commit(window->wl.surface);
