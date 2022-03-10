@@ -146,7 +146,9 @@ def runtime_dir() -> str:
     elif 'XDG_RUNTIME_DIR' in os.environ:
         candidate = os.path.abspath(os.environ['XDG_RUNTIME_DIR'])
     else:
-        candidate = os.environ.get('XDG_RUNTIME_DIR', os.path.join(cache_dir(), 'run'))
+        candidate = f'/run/user/{os.geteuid()}'
+        if not os.path.isdir(candidate) or not os.access(candidate, os.X_OK | os.W_OK | os.R_OK):
+            candidate = os.path.join(cache_dir(), 'run')
     os.makedirs(candidate, exist_ok=True)
     os.chmod(candidate, 0o700)
     return candidate
