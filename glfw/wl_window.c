@@ -206,7 +206,7 @@ static void setOpaqueRegion(_GLFWwindow* window)
     if (!region)
         return;
 
-    wl_region_add(region, 0, 0, window->wl.current.width, window->wl.current.height);
+    wl_region_add(region, 0, 0, window->wl.width, window->wl.height);
     wl_surface_set_opaque_region(window->wl.surface, region);
     wl_surface_commit(window->wl.surface);
     wl_region_destroy(region);
@@ -216,9 +216,9 @@ static void setOpaqueRegion(_GLFWwindow* window)
 static void
 resizeFramebuffer(_GLFWwindow* window) {
     int scale = window->wl.scale;
-    int scaledWidth = window->wl.current.width * scale;
-    int scaledHeight = window->wl.current.height * scale;
-    debug("Resizing framebuffer to: %dx%d at scale: %d\n", window->wl.current.width, window->wl.current.height, scale);
+    int scaledWidth = window->wl.width * scale;
+    int scaledHeight = window->wl.height * scale;
+    debug("Resizing framebuffer to: %dx%d at scale: %d\n", window->wl.width, window->wl.height, scale);
     wl_egl_window_resize(window->wl.native, scaledWidth, scaledHeight, 0, 0);
     if (!window->wl.transparent) setOpaqueRegion(window);
     _glfwInputFramebufferSize(window, scaledWidth, scaledHeight);
@@ -234,14 +234,14 @@ clipboard_mime(void) {
     return buf;
 }
 
-static void
+static bool
 dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height) {
-    bool size_changed = width != window->wl.current.width || height != window->wl.current.height;
+    bool size_changed = width != window->wl.width || height != window->wl.height;
     bool scale_changed = checkScaleChange(window);
 
     if (size_changed) {
         _glfwInputWindowSize(window, width, height);
-        window->wl.current.width = width; window->wl.current.height = height;
+        window->wl.width = width; window->wl.height = height;
         resizeFramebuffer(window);
     }
 
@@ -252,6 +252,8 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
     }
 
     _glfwInputWindowDamage(window);
+
+    return size_changed || scale_changed;
 }
 
 static void
@@ -269,24 +271,8 @@ xdgDecorationHandleConfigure(void* data,
                                          uint32_t mode)
 {
     _GLFWwindow* window = data;
-
-    bool has_server_side_decorations = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
-    debug("XDG decoration configure event received: has_server_side_decorations: %d\n", has_server_side_decorations);
-    if (has_server_side_decorations == window->wl.decorations.serverSide) return;
-    window->wl.decorations.serverSide = has_server_side_decorations;
-    int width = window->wl.current.width, height = window->wl.current.height;
-    if (window->wl.decorations.serverSide) {
-        free_csd_surfaces(window);
-        height += window->wl.decorations.metrics.visible_titlebar_height;
-    } else {
-        ensure_csd_resources(window);
-    }
-    set_csd_window_geometry(window, &width, &height);
-    dispatchChangesAfterConfigure(window, width, height);
-    ensure_csd_resources(window);
-    wl_surface_commit(window->wl.surface);
-    debug("final window content size: %dx%d\n", window->wl.current.width, window->wl.current.height);
-    inform_compositor_of_window_geometry(window, "configure-decorations");
+    window->wl.pending.decoration_mode = mode;
+    window->wl.pending_state |= PENDING_STATE_DECORATION;
 }
 
 static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener = {
@@ -384,8 +370,8 @@ static bool createSurface(_GLFWwindow* window,
     if (!window->wl.native)
         return false;
 
-    window->wl.current.width = wndconfig->width;
-    window->wl.current.height = wndconfig->height;
+    window->wl.width = wndconfig->width;
+    window->wl.height = wndconfig->height;
     window->wl.user_requested_content_size.width = wndconfig->width;
     window->wl.user_requested_content_size.height = wndconfig->height;
     window->wl.scale = 1;
@@ -479,7 +465,7 @@ xdgToplevelHandleConfigure(void* data,
     window->wl.pending.toplevel_states = new_states;
     window->wl.pending.width = width;
     window->wl.pending.height = height;
-    window->wl.pending.set = true;
+    window->wl.pending_state |= PENDING_STATE_TOPLEVEL;
 }
 
 static void xdgToplevelHandleClose(void* data,
@@ -500,11 +486,10 @@ static void xdgSurfaceHandleConfigure(void* data,
 {
     _GLFWwindow* window = data;
     xdg_surface_ack_configure(surface, serial);
-    if (window->wl.pending.set) {
+    if (window->wl.pending_state & PENDING_STATE_TOPLEVEL) {
         uint32_t new_states = window->wl.pending.toplevel_states;
         int width = window->wl.pending.width;
         int height = window->wl.pending.height;
-        window->wl.pending.set = false;
 
         if (new_states != window->wl.current.toplevel_states ||
                 width != window->wl.current.width ||
@@ -512,16 +497,41 @@ static void xdgSurfaceHandleConfigure(void* data,
 
             bool live_resize_done = !(new_states & TOPLEVEL_STATE_RESIZING) && (window->wl.current.toplevel_states & TOPLEVEL_STATE_RESIZING);
             window->wl.current.toplevel_states = new_states;
-            set_csd_window_geometry(window, &width, &height);
-            dispatchChangesAfterConfigure(window, width, height);
-            debug("final window content size: %dx%d\n", window->wl.current.width, window->wl.current.height);
+            window->wl.current.width = width;
+            window->wl.current.height = height;
             _glfwInputWindowFocus(window, window->wl.current.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
-            ensure_csd_resources(window);
-            inform_compositor_of_window_geometry(window, "configure");
             if (live_resize_done) _glfwInputLiveResize(window, false);
         }
     }
-    wl_surface_commit(window->wl.surface);
+
+    if (window->wl.pending_state & PENDING_STATE_DECORATION) {
+        uint32_t mode = window->wl.pending.decoration_mode;
+        bool has_server_side_decorations = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+        debug("XDG decoration configure event received: has_server_side_decorations: %d\n", has_server_side_decorations);
+        window->wl.decorations.serverSide = has_server_side_decorations;
+        window->wl.current.decoration_mode = mode;
+    }
+
+    bool resized = false;
+    if (window->wl.pending_state) {
+        int width = window->wl.pending.width, height = window->wl.pending.height;
+        set_csd_window_geometry(window, &width, &height);
+        resized = dispatchChangesAfterConfigure(window, width, height);
+        if (window->wl.decorations.serverSide) {
+            free_csd_surfaces(window);
+        } else {
+            ensure_csd_resources(window);
+        }
+        debug("final window content size: %dx%d\n", width, height);
+    }
+
+    inform_compositor_of_window_geometry(window, "configure");
+
+    if (!resized) {
+        wl_surface_commit(window->wl.surface);
+    }
+
+    window->wl.pending_state = 0;
 }
 
 static const struct xdg_surface_listener xdgSurfaceListener = {
@@ -904,19 +914,19 @@ void _glfwPlatformSetWindowPos(_GLFWwindow* window UNUSED, int xpos UNUSED, int 
 void _glfwPlatformGetWindowSize(_GLFWwindow* window, int* width, int* height)
 {
     if (width)
-        *width = window->wl.current.width;
+        *width = window->wl.width;
     if (height)
-        *height = window->wl.current.height;
+        *height = window->wl.height;
 }
 
 void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
 {
-    if (width != window->wl.current.width || height != window->wl.current.height) {
+    if (width != window->wl.width || height != window->wl.height) {
         window->wl.user_requested_content_size.width = width;
         window->wl.user_requested_content_size.height = height;
         int32_t w = 0, h = 0;
         set_csd_window_geometry(window, &w, &h);
-        window->wl.current.width = w; window->wl.current.height = h;
+        window->wl.width = w; window->wl.height = h;
         resizeFramebuffer(window);
         ensure_csd_resources(window);
         wl_surface_commit(window->wl.surface);

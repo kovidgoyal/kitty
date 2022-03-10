@@ -206,7 +206,7 @@ static void pointerHandleMotion(void* data UNUSED,
         case BOTTOM_DECORATION:
             if (x < window->wl.decorations.metrics.width)
                 cursorShape = GLFW_SW_RESIZE_CURSOR;
-            else if (x > window->wl.current.width + window->wl.decorations.metrics.width)
+            else if (x > window->wl.width + window->wl.decorations.metrics.width)
                 cursorShape = GLFW_SE_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_VRESIZE_CURSOR;
@@ -274,7 +274,7 @@ static void pointerHandleButton(void* data UNUSED,
             case BOTTOM_DECORATION:
                 if (x < window->wl.decorations.metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
-                else if (x > window->wl.current.width + window->wl.decorations.metrics.width)
+                else if (x > window->wl.width + window->wl.decorations.metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;

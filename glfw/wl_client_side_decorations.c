@@ -263,11 +263,11 @@ static bool
 create_shm_buffers(_GLFWwindow* window) {
     const unsigned scale = window->wl.scale >= 1 ? window->wl.scale : 1;
 
-    const size_t vertical_width = decs.metrics.width, vertical_height = window->wl.current.height + decs.metrics.top;
-    const size_t horizontal_height = decs.metrics.width, horizontal_width = window->wl.current.width + 2 * decs.metrics.width;
+    const size_t vertical_width = decs.metrics.width, vertical_height = window->wl.height + decs.metrics.top;
+    const size_t horizontal_height = decs.metrics.width, horizontal_width = window->wl.width + 2 * decs.metrics.width;
 
     decs.mapping.size = 0;
-    decs.mapping.size += init_buffer_pair(&decs.top.buffer, window->wl.current.width, decs.metrics.top, scale);
+    decs.mapping.size += init_buffer_pair(&decs.top.buffer, window->wl.width, decs.metrics.top, scale);
     decs.mapping.size += init_buffer_pair(&decs.left.buffer, vertical_width, vertical_height, scale);
     decs.mapping.size += init_buffer_pair(&decs.bottom.buffer, horizontal_width, horizontal_height, scale);
     decs.mapping.size += init_buffer_pair(&decs.right.buffer, vertical_width, vertical_height, scale);
@@ -347,8 +347,8 @@ ensure_csd_resources(_GLFWwindow *window) {
     const bool is_focused = window->id == _glfw.focusedWindowId;
     const bool focus_changed = is_focused != decs.for_window_state.focused;
     const bool size_changed = (
-        decs.for_window_state.width != window->wl.current.width ||
-        decs.for_window_state.height != window->wl.current.height ||
+        decs.for_window_state.width != window->wl.width ||
+        decs.for_window_state.height != window->wl.height ||
         decs.for_window_state.scale != window->wl.scale ||
         !decs.mapping.data
     );
@@ -368,11 +368,11 @@ ensure_csd_resources(_GLFWwindow *window) {
     if (!decs.left.surface) create_csd_surfaces(window, &decs.left);
     position_csd_surface(&decs.left, x, y, scale);
 
-    x = -decs.metrics.width; y = window->wl.current.height;
+    x = -decs.metrics.width; y = window->wl.height;
     if (!decs.bottom.surface) create_csd_surfaces(window, &decs.bottom);
     position_csd_surface(&decs.bottom, x, y, scale);
 
-    x = window->wl.current.width; y = -decs.metrics.top;
+    x = window->wl.width; y = -decs.metrics.top;
     if (!decs.right.surface) create_csd_surfaces(window, &decs.right);
     position_csd_surface(&decs.right, x, y, scale);
 
@@ -382,8 +382,8 @@ ensure_csd_resources(_GLFWwindow *window) {
     damage_csd(bottom, is_focused ? decs.bottom.buffer.front : decs.bottom.buffer.back);
     damage_csd(right, is_focused ? decs.right.buffer.front : decs.right.buffer.back);
 
-    decs.for_window_state.width = window->wl.current.width;
-    decs.for_window_state.height = window->wl.current.height;
+    decs.for_window_state.width = window->wl.width;
+    decs.for_window_state.height = window->wl.height;
     decs.for_window_state.scale = window->wl.scale;
     decs.for_window_state.focused = is_focused;
     return true;
