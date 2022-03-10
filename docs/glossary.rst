@@ -57,6 +57,12 @@ Variables that influence kitty behavior
    Controls where kitty stores cache files. Defaults to :file:`~/.cache/kitty`
    or :file:`~/Library/Caches/kitty` on macOS.
 
+.. envvar:: KITTY_RUNTIME_DIRECTORY
+
+   Controls where kitty stores runtime files like sockets. Defaults to
+   the :code:`XDG_RUNTIME_DIR` environment variable if that is defined
+   otherwise the run directory inside the kitty cache directory is used.
+
 .. envvar:: VISUAL
 
    The terminal editor (such as ``vi`` or ``nano``) kitty uses, when, for

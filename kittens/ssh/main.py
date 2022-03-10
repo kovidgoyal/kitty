@@ -23,7 +23,10 @@ from typing import (
     Tuple, Union
 )
 
-from kitty.constants import cache_dir, shell_integration_dir, terminfo_dir
+from kitty.constants import (
+    cache_dir, runtime_dir, shell_integration_dir, ssh_control_master_template,
+    terminfo_dir
+)
 from kitty.fast_data_types import get_options
 from kitty.shm import SharedMemory
 from kitty.utils import SSHConnectionData
@@ -442,7 +445,7 @@ def get_remote_command(
 
 
 def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
-    cp = os.path.join(cache_dir(), 'ssh', f'{kitty_pid}-master-%C')
+    cp = os.path.join(runtime_dir(), ssh_control_master_template.format(kitty_pid=kitty_pid, ssh_placeholder='%C'))
     ans: List[str] = [
         '-o', 'ControlMaster=auto',
         '-o', f'ControlPath={cp}',

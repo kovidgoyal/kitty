@@ -137,6 +137,19 @@ def cache_dir() -> str:
     return candidate
 
 
+@run_once
+def runtime_dir() -> str:
+    if 'KITTY_RUNTIME_DIRECTORY' in os.environ:
+        candidate = os.path.abspath(os.environ['KITTY_RUNTIME_DIRECTORY'])
+    elif 'XDG_RUNTIME_DIR' in os.environ:
+        candidate = os.path.abspath(os.environ['XDG_RUNTIME_DIR'])
+    else:
+        candidate = os.path.join(cache_dir(), 'run')
+    os.makedirs(candidate, exist_ok=True)
+    os.chmod(candidate, 0o700)
+    return candidate
+
+
 def wakeup() -> None:
     from .fast_data_types import get_boss
     b = get_boss()
@@ -154,6 +167,7 @@ except KeyError:
     with suppress(Exception):
         print('Failed to read login shell via getpwuid() for current user, falling back to /bin/sh', file=sys.stderr)
     shell_path = '/bin/sh'
+ssh_control_master_template = 'ssh-kitten-{kitty_pid}-master-{ssh_placeholder}'
 
 
 def glfw_path(module: str) -> str:

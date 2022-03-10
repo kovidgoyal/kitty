@@ -16,8 +16,9 @@ from .cli_stub import CLIOptions
 from .conf.utils import BadLine
 from .config import cached_values_for
 from .constants import (
-    appname, beam_cursor_data_file, cache_dir, config_dir, glfw_path, is_macos,
-    is_wayland, kitty_exe, logo_png_file, running_in_kitty
+    appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
+    is_wayland, kitty_exe, logo_png_file, running_in_kitty, runtime_dir,
+    ssh_control_master_template
 )
 from .fast_data_types import (
     GLFW_IBEAM_CURSOR, GLFW_MOD_ALT, GLFW_MOD_SHIFT, create_os_window,
@@ -349,7 +350,7 @@ def cleanup_ssh_control_masters() -> None:
     import glob
     import subprocess
     try:
-        files = glob.glob(os.path.join(cache_dir(), 'ssh', f'{os.getpid()}-master-*'))
+        files = glob.glob(os.path.join(runtime_dir(), ssh_control_master_template.format(kitty_pid=os.getpid(), ssh_placeholder='*')))
     except OSError:
         return
     for x in files:
