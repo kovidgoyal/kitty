@@ -479,7 +479,7 @@ xdgToplevelHandleConfigure(void* data,
     window->wl.pending.toplevel_states = new_states;
     window->wl.pending.width = width;
     window->wl.pending.height = height;
-    window->wl.pending.set = true;
+    window->wl.pending_state |= PENDING_STATE_TOPLEVEL;
 }
 
 static void xdgToplevelHandleClose(void* data,
@@ -500,11 +500,10 @@ static void xdgSurfaceHandleConfigure(void* data,
 {
     _GLFWwindow* window = data;
     xdg_surface_ack_configure(surface, serial);
-    if (window->wl.pending.set) {
+    if (window->wl.pending_state & PENDING_STATE_TOPLEVEL) {
         uint32_t new_states = window->wl.pending.toplevel_states;
         int width = window->wl.pending.width;
         int height = window->wl.pending.height;
-        window->wl.pending.set = false;
 
         if (new_states != window->wl.current.toplevel_states ||
                 width != window->wl.current.width ||
@@ -524,6 +523,7 @@ static void xdgSurfaceHandleConfigure(void* data,
         }
     }
     wl_surface_commit(window->wl.surface);
+    window->wl.pending_state = 0;
 }
 
 static const struct xdg_surface_listener xdgSurfaceListener = {
