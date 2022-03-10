@@ -149,7 +149,7 @@ different shells.
 .. tab:: bash
 
     For bash, kitty starts bash in POSIX mode, using the environment variable
-    ``ENV`` to load the shell integrtion script. This prevents bash from
+    ``ENV`` to load the shell integration script. This prevents bash from
     loading any startup files itself. The loading of the startup files is done
     by the integration script, after disabling POSIX mode. From the
     perspective of those scripts there should be no difference to running
