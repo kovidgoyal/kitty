@@ -145,6 +145,54 @@ def extra_for(width: int, screen_width: int) -> int:
     return max(0, screen_width - width) // 2 + 1
 
 
+class Password(Handler):
+
+    def __init__(self, cli_opts: AskCLIOptions, prompt: str) -> None:
+        self.cli_opts = cli_opts
+        self.prompt = prompt
+        from kittens.tui.line_edit import LineEdit
+        self.line_edit = LineEdit(is_password=True)
+
+    def initialize(self) -> None:
+        self.draw_screen()
+
+    @Handler.atomic_update
+    def draw_screen(self) -> None:
+        self.cmd.clear_screen()
+        if self.cli_opts.message:
+            for line in self.cli_opts.message.splitlines():
+                self.print(line)
+            self.print()
+        self.line_edit.write(self.write, self.prompt)
+
+    def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
+        self.line_edit.on_text(text, in_bracketed_paste)
+        self.draw_screen()
+
+    def on_key(self, key_event: KeyEventType) -> None:
+        if self.line_edit.on_key(key_event):
+            self.draw_screen()
+            return
+        if key_event.matches('enter'):
+            self.quit_loop(0)
+        if key_event.matches('esc'):
+            self.quit_loop(1)
+
+    def on_resize(self, screen_size: ScreenSize) -> None:
+        self.screen_size = screen_size
+        self.draw_screen()
+
+    def on_interrupt(self) -> None:
+        self.quit_loop(1)
+    on_eot = on_interrupt
+
+    @property
+    def response(self) -> str:
+        if self._tui_loop.return_code == 0:
+            return self.line_edit.current_input
+        return ''
+
+
 class Choose(Handler):
     mouse_tracking = MouseTracking.buttons_only
 
@@ -370,11 +418,10 @@ def main(args: List[str]) -> Response:
     if prompt[0] == prompt[-1] and prompt[0] in '\'"':
         prompt = prompt[1:-1]
     if cli_opts.type == 'password':
-        import getpass
-        if cli_opts.message:
-            print(styled(cli_opts.message, bold=True))
-        q = getpass.getpass(prompt)
-        return {'items': items, 'response': q or ''}
+        loop = Loop()
+        phandler = Password(cli_opts, prompt)
+        loop.loop(phandler)
+        return {'items': items, 'response': phandler.response}
 
     import readline as rl
     readline = rl

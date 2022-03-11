@@ -13,8 +13,9 @@ from .operations import (
 
 class LineEdit:
 
-    def __init__(self) -> None:
+    def __init__(self, is_password: bool = False) -> None:
         self.clear()
+        self.is_password = is_password
 
     def clear(self) -> None:
         self.current_input = ''
@@ -31,7 +32,10 @@ class LineEdit:
         if self.pending_bell:
             write('\a')
             self.pending_bell = False
-        text = prompt + self.current_input
+        ci = self.current_input
+        if self.is_password:
+            ci = '*' * wcswidth(ci)
+        text = prompt + ci
         cursor_pos = self.cursor_pos + wcswidth(prompt)
         if screen_cols:
             write(SAVE_CURSOR + text + RESTORE_CURSOR)
