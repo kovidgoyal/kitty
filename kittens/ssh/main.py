@@ -523,6 +523,11 @@ def main(args: List[str]) -> NoReturn:
         cmd += rcmd
         if use_control_master:
             cmd[insertion_point:insertion_point] = connection_sharing_args(host_opts, int(os.environ['KITTY_PID']))
+        # We force use of askpass so that OpenSSH does not use the tty leaving
+        # it free for us to use
+        os.environ['SSH_ASKPASS_REQUIRE'] = 'force'
+        if not os.environ.get('SSH_ASKPASS'):
+            os.environ['SSH_ASKPASS'] = os.path.join(shell_integration_dir, 'ssh', 'askpass.py')
     import subprocess
     with suppress(FileNotFoundError):
         try:
