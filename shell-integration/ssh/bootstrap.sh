@@ -149,9 +149,9 @@ while n > 0:
         }
     elif detect_perl; then
         read_n_bytes_from_tty() {
-            command "$perl" -MList::Util=min -e \
-'open(my $fh,"</dev/tty"); binmode($fh); my ($n,$buf)=(@ARGV[0],"");'\
-'while($n){my $rv=sysread($fh,$buf,min(65536,$n)); die($!) if !defined($rv); die() if !$rv; $n-=$rv; print $buf;}' "$1" 2> /dev/null
+            command "$perl" -MList::Util=min -e '
+open(my $fh,"<","/dev/tty");binmode($fh);binmode(STDOUT);my ($n,$buf)=(@ARGV[0],"");
+while($n>0){my $rv=sysread($fh,$buf,min(65536,$n));unless($rv){exit(1);};$n-=$rv;print STDOUT $buf;}' "$1" 2> /dev/null
         }
     else
         read_n_bytes_from_tty() {
