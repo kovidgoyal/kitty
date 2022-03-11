@@ -17,8 +17,8 @@ die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; cleanup_on_bootstrap_e
 python_detected="0"
 detect_python() {
     if [ python_detected = "1" ]; then
-        [ -n "$python" ] && return 0;
-        return 1;
+        [ -n "$python" ] && return 0
+        return 1
     fi
     python_detected="1"
     python=$(command -v python3)
@@ -31,8 +31,8 @@ detect_python() {
 perl_detected="0"
 detect_perl() {
     if [ perl_detected = "1" ]; then
-        [ -n "$perl" ] && return 0;
-        return 1;
+        [ -n "$perl" ] && return 0
+        return 1
     fi
     perl_detected="1"
     perl=$(command -v perl)
@@ -149,13 +149,13 @@ while n > 0:
         }
     elif detect_perl; then
         read_n_bytes_from_tty() {
-            command "$perl" -MList::Util=min -e \
-'open(my $fh,"</dev/tty"); binmode($fh); my ($n,$buf)=(@ARGV[0],"");'\
-'while($n){my $rv=sysread($fh,$buf,min(65536,$n)); die($!) if !defined($rv); die() if !$rv; $n-=$rv; print $buf;}' "$1" 2> /dev/null
+            command "$perl" -MList::Util=min -e '
+open(my $fh,"<","/dev/tty");binmode($fh);binmode(STDOUT);my ($n,$buf)=(@ARGV[0],"");
+while($n>0){my $rv=sysread($fh,$buf,min(65536,$n));unless($rv){exit(1);};$n-=$rv;print STDOUT $buf;}' "$1" 2> /dev/null
         }
     else
         read_n_bytes_from_tty() {
-            command dd bs=1 count="$1" < /dev/tty 2> /dev/null
+            command dd bs=1 count="$1" 2> /dev/null < /dev/tty
         }
     fi
 fi
@@ -171,6 +171,7 @@ hostname="$HOSTNAME"
 # ensure $HOME is set
 [ -z "$HOME" ] && HOME=~
 # ensure $USER is set
+[ -z "$USER" ] && USER="$LOGNAME"
 [ -z "$USER" ] && USER="$(command whoami 2> /dev/null)"
 
 leading_data=""
@@ -205,7 +206,7 @@ compile_terminfo() {
     # compile terminfo for this system
     if [ -x "$(command -v tic)" ]; then
         tic_out=$(command tic -x -o "$1/$tname" "$1/.terminfo/kitty.terminfo" 2>&1)
-        [ $? = 0 ] || die "Failed to compile terminfo with err: $tic_out";
+        [ $? = 0 ] || die "Failed to compile terminfo with err: $tic_out"
     fi
 
     # Ensure the 78 dir is present
@@ -274,10 +275,7 @@ if [ "$tty_ok" = "y" ]; then
 fi
 
 login_shell_is_ok() {
-    if [ -z "$login_shell" -o ! -x "$login_shell" ]; then return 1; fi
-    case "$login_shell" in
-        *sh) return 0;
-    esac
+    if [ -n "$login_shell" -a -x "$login_shell" ]; then return 0; fi
     return 1
 }
 
@@ -288,7 +286,7 @@ parse_passwd_record() {
 using_getent() {
     cmd=$(command -v getent)
     if [ -n "$cmd" ]; then
-        output=$(command $cmd passwd $USER 2>/dev/null)
+        output=$(command "$cmd" passwd "$USER" 2>/dev/null)
         if [ $? = 0 ]; then
             login_shell=$(echo $output | parse_passwd_record)
             if login_shell_is_ok; then return 0; fi
@@ -300,7 +298,7 @@ using_getent() {
 using_id() {
     cmd=$(command -v id)
     if [ -n "$cmd" ]; then
-        output=$(command $cmd -P $USER 2>/dev/null)
+        output=$(command "$cmd" -P "$USER" 2>/dev/null)
         if [ $? = 0 ]; then
             login_shell=$(echo $output | parse_passwd_record)
             if login_shell_is_ok; then return 0; fi
@@ -313,7 +311,7 @@ using_python() {
     if detect_python; then
         output=$(command "$python" -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
         if [ $? = 0 ]; then
-            login_shell=$output
+            login_shell="$output"
             if login_shell_is_ok; then return 0; fi
         fi
     fi
@@ -324,7 +322,7 @@ using_perl() {
     if detect_perl; then
         output=$(command "$perl" -e 'my $shell = (getpwuid($<))[8]; print $shell')
         if [ $? = 0 ]; then
-            login_shell=$output
+            login_shell="$output"
             if login_shell_is_ok; then return 0; fi
         fi
     fi
@@ -431,19 +429,20 @@ execute_sh_with_posix_env() {
     command "$login_shell" -l -c ":" > /dev/null 2> /dev/null && return  # sh supports -l so use that
     [ -z "$shell_integration_dir" ] && die "Could not read data over tty ssh kitten cannot function"
     sh_dir="$shell_integration_dir/sh"
-    command mkdir -p "$sh_dir" || die "Creating $sh_dir failed";
+    command mkdir -p "$sh_dir" || die "Creating $sh_dir failed"
     sh_script="$sh_dir/login_shell_env.sh"
     # Source /etc/profile, ~/.profile, and then check and source ENV
     printf "%s" '
 if [ -n "$KITTY_SH_INJECT" ]; then
     unset ENV; unset KITTY_SH_INJECT
-    _ksi_safe_source() { if [ -f "$1" -a -r "$1" ]; then . "$1"; return 0; fi; return 1; }
-    if [ -n "$KITTY_SH_POSIX_ENV" ]; then export ENV="$KITTY_SH_POSIX_ENV"; fi
+    _ksi_safe_source() { [ -f "$1" -a -r "$1" ] || return 1; . "$1"; return 0; }
+    [ -n "$KITTY_SH_POSIX_ENV" ] && export ENV="$KITTY_SH_POSIX_ENV"
     unset KITTY_SH_POSIX_ENV
     _ksi_safe_source "/etc/profile"; _ksi_safe_source "${HOME-}/.profile"
-    if [ -n "$ENV" ]; then _ksi_safe_source "$ENV"; fi
+    [ -n "$ENV" ] && _ksi_safe_source "$ENV"
+    unset -f _ksi_safe_source
 fi' > "$sh_script"
-    export KITTY_SH_INJECT=1
+    export KITTY_SH_INJECT="1"
     [ -n "$ENV" ] && export KITTY_SH_POSIX_ENV="$ENV"
     export ENV="$sh_script"
     exec "$login_shell"
@@ -468,8 +467,11 @@ esac
 # We need to pass the first argument to the executed program with a leading -
 # to make sure the shell executes as a login shell. Note that not all shells
 # support exec -a so we use the below to try to detect such shells
-[ "$(exec -a echo echo OK 2> /dev/null)" = "OK" ] && exec -a "-$shell_name" $login_shell
+[ "$(exec -a echo echo OK 2> /dev/null)" = "OK" ] && exec -a "-$shell_name" "$login_shell"
 execute_with_python
 execute_with_perl
 execute_sh_with_posix_env
-exec $login_shell "-l"
+exec "$login_shell" "-l"
+
+printf "%s\n" "Could not execute the shell as a login shell" > /dev/stderr
+exec "$login_shell"

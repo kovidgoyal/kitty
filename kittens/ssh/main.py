@@ -25,7 +25,7 @@ from typing import (
 )
 
 from kitty.constants import (
-    cache_dir, runtime_dir, shell_integration_dir, ssh_control_master_template,
+    runtime_dir, shell_integration_dir, ssh_control_master_template,
     terminfo_dir
 )
 from kitty.fast_data_types import get_options
@@ -227,8 +227,6 @@ def bootstrap_script(
     with open(os.path.join(shell_integration_dir, 'ssh', f'bootstrap.{script_type}')) as f:
         ans = f.read()
     pw = secrets.token_hex()
-    ddir = os.path.join(cache_dir(), 'ssh')
-    os.makedirs(ddir, exist_ok=True)
     data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict, 'cli_hostname': cli_hostname, 'cli_uname': cli_uname}
     db = json.dumps(data)
     with SharedMemory(size=len(db) + SharedMemory.num_bytes_for_size, mode=stat.S_IREAD, prefix=f'kssh-{os.getpid()}-') as shm:
@@ -451,7 +449,7 @@ def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
     # ~104 chars. macOS has no system runtime dir so we use a cache dir in
     # /Users/WHY_DOES_ANYONE_USE_MACOS/Library/Caches/APPLE_ARE_IDIOTIC
     if len(rd) > 35 and os.path.isdir('/tmp'):
-        idiotic_design = '/tmp/kssh-rdir'
+        idiotic_design = f'/tmp/kssh-rdir-{os.getuid()}'
         try:
             os.symlink(rd, idiotic_design)
         except FileExistsError:
