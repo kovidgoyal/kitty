@@ -275,10 +275,7 @@ if [ "$tty_ok" = "y" ]; then
 fi
 
 login_shell_is_ok() {
-    if [ -z "$login_shell" -o ! -x "$login_shell" ]; then return 1; fi
-    case "$login_shell" in
-        *sh) return 0;
-    esac
+    if [ -n "$login_shell" -a -x "$login_shell" ]; then return 0; fi
     return 1
 }
 
