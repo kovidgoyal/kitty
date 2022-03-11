@@ -451,9 +451,16 @@ def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
     # /Users/WHY_DOES_ANYONE_USE_MACOS/Library/Caches/APPLE_ARE_IDIOTIC
     if len(rd) > 35 and os.path.isdir('/tmp'):
         idiotic_design = '/tmp/kssh-rdir'
-        with suppress(FileNotFoundError):
-            os.unlink(idiotic_design)
-        os.symlink(rd, idiotic_design)
+        try:
+            os.symlink(rd, idiotic_design)
+        except FileExistsError:
+            try:
+                dest = os.readlink(idiotic_design)
+            except OSError as e:
+                raise ValueError(f'The {idiotic_design} symlink could not be created as something with that name exists already') from e
+            else:
+                if dest != rd:
+                    raise ValueError(f'The {idiotic_design} symlink exists and points to the incorrect location: {dest}')
         rd = idiotic_design
 
     cp = os.path.join(rd, ssh_control_master_template.format(kitty_pid=kitty_pid, ssh_placeholder='%C'))
