@@ -227,8 +227,6 @@ def bootstrap_script(
     with open(os.path.join(shell_integration_dir, 'ssh', f'bootstrap.{script_type}')) as f:
         ans = f.read()
     pw = secrets.token_hex()
-    ddir = os.path.join(cache_dir(), 'ssh')
-    os.makedirs(ddir, exist_ok=True)
     data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict, 'cli_hostname': cli_hostname, 'cli_uname': cli_uname}
     db = json.dumps(data)
     with SharedMemory(size=len(db) + SharedMemory.num_bytes_for_size, mode=stat.S_IREAD, prefix=f'kssh-{os.getpid()}-') as shm:
