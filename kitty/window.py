@@ -904,7 +904,7 @@ class Window:
         if data['type'] == 'confirm':
             get_boss().confirm(
                 message, callback, window=self, confirm_on_cancel=bool(data.get('confirm_on_cancel')),
-                confirm_on_accept=bool(data.get('confirm_on_accept')))
+                confirm_on_accept=bool(data.get('confirm_on_accept', True)))
         elif data['type'] == 'choose':
             get_boss().choose(
                 message, callback, *data['choices'], window=self, default=data.get('default', ''))

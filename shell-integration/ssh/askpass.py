@@ -33,7 +33,7 @@ with SharedMemory(
         if shm.read(1) == b'\x01':
             break
     response = json.loads(shm.read_data_with_size())
-    if is_confirm:
-        response = 'yes' if response else 'no'
-    if response:
-        print(response, flush=True)
+if is_confirm:
+    response = 'yes' if response else 'no'
+if response:
+    print(response, flush=True)
