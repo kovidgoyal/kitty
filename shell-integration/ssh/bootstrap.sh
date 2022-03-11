@@ -475,3 +475,6 @@ execute_with_python
 execute_with_perl
 execute_sh_with_posix_env
 exec "$login_shell" "-l"
+
+printf "%s\n" "Could not execute the shell as a login shell" > /dev/stderr
+exec "$login_shell"
