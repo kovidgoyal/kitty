@@ -219,7 +219,8 @@ def prepare_exec_cmd(remote_args: Sequence[str], is_python: bool) -> str:
 def bootstrap_script(
     script_type: str = 'sh', remote_args: Sequence[str] = (),
     ssh_opts_dict: Dict[str, Dict[str, Any]] = {},
-    test_script: str = '', request_id: Optional[str] = None, cli_hostname: str = '', cli_uname: str = ''
+    test_script: str = '', request_id: Optional[str] = None, cli_hostname: str = '', cli_uname: str = '',
+    request_data: str = '1',
 ) -> Tuple[str, Dict[str, str], SharedMemory]:
     if request_id is None:
         request_id = os.environ['KITTY_PID'] + '-' + os.environ['KITTY_WINDOW_ID']
@@ -235,7 +236,7 @@ def bootstrap_script(
         atexit.register(shm.unlink)
     replacements = {
         'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': shm.name, 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script,
-        'REQUEST_ID': request_id
+        'REQUEST_ID': request_id, 'REQUEST_DATA': request_data,
     }
     return prepare_script(ans, replacements), replacements, shm
 

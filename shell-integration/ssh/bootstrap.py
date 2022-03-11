@@ -21,6 +21,7 @@ import tty
 tty_fd = -1
 original_termios_state = None
 data_dir = shell_integration_dir = ''
+request_data = int('REQUEST_DATA')
 leading_data = b''
 HOME = os.path.expanduser('~')
 login_shell = pwd.getpwuid(os.geteuid()).pw_shell or 'sh'
@@ -217,23 +218,25 @@ def main():
     except OSError:
         pass
     else:
-        try:
-            original_termios_state = termios.tcgetattr(tty_fd)
-        except OSError:
-            pass
-        else:
-            tty.setraw(tty_fd, termios.TCSANOW)
-            new_state = termios.tcgetattr(tty_fd)
-            new_state[3] &= ~termios.ECHO
-            new_state[-1][termios.VMIN] = 1
-            new_state[-1][termios.VTIME] = 0
-            termios.tcsetattr(tty_fd, termios.TCSANOW, new_state)
-    if original_termios_state is not None:
-        try:
+        if request_data:
+            try:
+                original_termios_state = termios.tcgetattr(tty_fd)
+            except OSError:
+                pass
+            else:
+                tty.setraw(tty_fd, termios.TCSANOW)
+                new_state = termios.tcgetattr(tty_fd)
+                new_state[3] &= ~termios.ECHO
+                new_state[-1][termios.VMIN] = 1
+                new_state[-1][termios.VTIME] = 0
+                termios.tcsetattr(tty_fd, termios.TCSANOW, new_state)
+    try:
+        if original_termios_state is not None:
             send_data_request()
+        if tty_fd > -1:
             get_data()
-        finally:
-            cleanup()
+    finally:
+        cleanup()
     cwd = os.environ.pop('KITTY_LOGIN_CWD', '')
     if cwd:
         os.chdir(cwd)

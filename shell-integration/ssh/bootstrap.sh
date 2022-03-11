@@ -5,6 +5,8 @@
 saved_tty_settings=""
 tdir=""
 shell_integration_dir=""
+compression="gz"
+
 cleanup_on_bootstrap_exit() {
     [ -n "$saved_tty_settings" ] && command stty "$saved_tty_settings" 2> /dev/null < /dev/tty
     [ -n "$tdir" ] && command rm -rf "$tdir"
@@ -177,9 +179,10 @@ hostname="$HOSTNAME"
 leading_data=""
 login_cwd=""
 
-init_tty && trap "cleanup_on_bootstrap_exit" EXIT
-if [ "$tty_ok" = "y" ]; then
-    compression="gz"
+request_data="REQUEST_DATA"
+[ "$request_data" = "1" ] && init_tty
+trap "cleanup_on_bootstrap_exit" EXIT
+if [ "$tty_ok" = "y" -a "$request_data" = "1" ]; then
     command -v "bzip2" > /dev/null 2> /dev/null && compression="bz2"
     dcs_to_kitty "ssh" "id="REQUEST_ID":hostname="$hostname":pwfile="PASSWORD_FILENAME":user="$USER":compression="$compression":pw="DATA_PASSWORD""
 fi
