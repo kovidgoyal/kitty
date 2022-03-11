@@ -23,7 +23,7 @@ class SignalChild(RemoteCommand):
     desc = (
         'Send one or more signals to the foreground process in the specified window(s).'
         ' If you use the :option:`kitty @ signal-child --match` option'
-        ' the title will be set for all matched windows. By default, only the active'
+        ' the signal will be sent for all matched windows. By default, only the active'
         ' window is affected. If you do not specify any signals, :code:`SIGINT` is sent by default.'
         ' You can also map this to a keystroke in kitty.conf, for example::\n\n'
         '    map F1 signal_child SIGTERM'
