@@ -10,16 +10,17 @@ from kitty.shm import SharedMemory
 
 msg = sys.argv[-1]
 prompt = os.environ.get('SSH_ASKPASS_PROMPT', '')
-is_confirm = prompt == 'confirm'
+is_confirm = prompt == 'confirm' or 'continue connecting' in msg
 q = {
-    'prompt': msg,
+    'message': msg,
     'type': 'confirm' if is_confirm else 'get_line',
     'is_password': True,
 }
 
 data = json.dumps(q)
-with SharedMemory(size=len(data) + 1 + SharedMemory.num_bytes_for_size, unlink_on_exit=True, prefix=f'askpass-{os.getpid()}-'
-                  ) as shm, open(os.ctermid(), 'wb') as tty:
+with SharedMemory(
+    size=len(data) + 1 + SharedMemory.num_bytes_for_size, unlink_on_exit=True, prefix=f'askpass-{os.getpid()}-') as shm, \
+        open(os.ctermid(), 'wb') as tty:
     shm.write(b'\0')
     shm.write_data_with_size(data)
     shm.flush()

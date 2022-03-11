@@ -900,17 +900,17 @@ class Window:
                 shm.seek(0)
                 shm.write(b'\x01')
 
-        prompt: str = data['prompt']
+        message: str = data['message']
         if data['type'] == 'confirm':
             get_boss().confirm(
-                prompt, callback, window=self, confirm_on_cancel=bool(data.get('confirm_on_cancel')),
+                message, callback, window=self, confirm_on_cancel=bool(data.get('confirm_on_cancel')),
                 confirm_on_accept=bool(data.get('confirm_on_accept')))
         elif data['type'] == 'choose':
             get_boss().choose(
-                prompt, callback, *data['choices'], window=self, default=data.get('default', ''))
+                message, callback, *data['choices'], window=self, default=data.get('default', ''))
         elif data['type'] == 'get_line':
             get_boss().get_line(
-                prompt, callback, window=self, is_password=bool(data.get('is_password')))
+                message, callback, window=self, is_password=bool(data.get('is_password')), prompt=data.get('prompt', '> '))
         else:
             log_error(f'Ignoring ask request with unknown type: {data["type"]}')
 

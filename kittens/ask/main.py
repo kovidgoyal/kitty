@@ -103,6 +103,11 @@ For example: y:Yes and n;red:No
 A default choice or text. If unspecified, it is "y" for :code:`yesno`, the first choice
 for :code:`choices` and empty for others. The default choice is selected when the user
 presses the Enter key.
+
+
+--prompt -p
+default="> "
+The prompt to use when inputting a line of text or a password.
 '''
 
 
@@ -361,11 +366,14 @@ def main(args: List[str]) -> Response:
         loop.loop(handler)
         return {'items': items, 'response': handler.response}
 
+    prompt = cli_opts.prompt
+    if prompt[0] == prompt[-1] and prompt[0] in '\'"':
+        prompt = prompt[1:-1]
     if cli_opts.type == 'password':
         import getpass
         if cli_opts.message:
             print(styled(cli_opts.message, bold=True))
-        q = getpass.getpass()
+        q = getpass.getpass(prompt)
         return {'items': items, 'response': q or ''}
 
     import readline as rl
@@ -378,7 +386,6 @@ def main(args: List[str]) -> Response:
         if cli_opts.message:
             print(styled(cli_opts.message, bold=True))
 
-        prompt = '> '
         with suppress(KeyboardInterrupt, EOFError):
             if cli_opts.default:
                 def prefill_text() -> None:

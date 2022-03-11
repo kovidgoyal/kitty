@@ -705,11 +705,12 @@ class Boss:
         self, msg: str,  # can contain newlines and ANSI formatting
         callback: Callable[..., None],  # called with the answer or empty string when aborted
         window: Optional[Window] = None,  # the window associated with the confirmation
+        prompt: str = '> ',
         is_password: bool = False
     ) -> None:
         def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
             callback(res.get('response') or '')
-        cmd = ['--type', 'password' if is_password else 'line', '--message', msg]
+        cmd = ['--type', 'password' if is_password else 'line', '--message', msg, '--prompt', prompt]
         self._run_kitten('ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''})
 
     def confirm_tab_close(self, tab: Tab) -> None:
