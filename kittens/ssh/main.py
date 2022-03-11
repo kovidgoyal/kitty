@@ -13,6 +13,7 @@ import shlex
 import stat
 import sys
 import tarfile
+import tempfile
 import time
 import traceback
 from base64 import standard_b64decode, standard_b64encode
@@ -460,7 +461,10 @@ def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
                 raise ValueError(f'The {idiotic_design} symlink could not be created as something with that name exists already') from e
             else:
                 if dest != rd:
-                    raise ValueError(f'The {idiotic_design} symlink exists and points to the incorrect location: {dest}')
+                    with tempfile.TemporaryDirectory(dir='/tmp') as tdir:
+                        tlink = os.path.join(tdir, 'sigh')
+                        os.symlink(rd, tlink)
+                        os.rename(tlink, idiotic_design)
         rd = idiotic_design
 
     cp = os.path.join(rd, ssh_control_master_template.format(kitty_pid=kitty_pid, ssh_placeholder='%C'))
