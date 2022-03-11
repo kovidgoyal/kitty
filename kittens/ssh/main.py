@@ -25,7 +25,7 @@ from typing import (
 )
 
 from kitty.constants import (
-    cache_dir, runtime_dir, shell_integration_dir, ssh_control_master_template,
+    runtime_dir, shell_integration_dir, ssh_control_master_template,
     terminfo_dir
 )
 from kitty.fast_data_types import get_options
