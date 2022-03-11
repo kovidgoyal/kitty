@@ -171,6 +171,7 @@ hostname="$HOSTNAME"
 # ensure $HOME is set
 [ -z "$HOME" ] && HOME=~
 # ensure $USER is set
+[ -z "$USER" ] && USER="$LOGNAME"
 [ -z "$USER" ] && USER="$(command whoami 2> /dev/null)"
 
 leading_data=""
