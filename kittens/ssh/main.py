@@ -451,7 +451,7 @@ def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
     # ~104 chars. macOS has no system runtime dir so we use a cache dir in
     # /Users/WHY_DOES_ANYONE_USE_MACOS/Library/Caches/APPLE_ARE_IDIOTIC
     if len(rd) > 35 and os.path.isdir('/tmp'):
-        idiotic_design = '/tmp/kssh-rdir'
+        idiotic_design = f'/tmp/kssh-rdir-{os.getuid()}'
         try:
             os.symlink(rd, idiotic_design)
         except FileExistsError:
