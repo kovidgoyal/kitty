@@ -154,6 +154,7 @@ class Password(Handler):
         self.line_edit = LineEdit(is_password=True)
 
     def initialize(self) -> None:
+        self.cmd.set_cursor_shape('beam')
         self.draw_screen()
 
     @Handler.atomic_update

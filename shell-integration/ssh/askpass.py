@@ -10,11 +10,12 @@ from kitty.shm import SharedMemory
 
 msg = sys.argv[-1]
 prompt = os.environ.get('SSH_ASKPASS_PROMPT', '')
-is_confirm = prompt == 'confirm' or 'continue connecting' in msg
+is_confirm = prompt == 'confirm'
+is_fingerprint_check = '(yes/no/[fingerprint])' in msg
 q = {
     'message': msg,
     'type': 'confirm' if is_confirm else 'get_line',
-    'is_password': True,
+    'is_password': not is_fingerprint_check,
 }
 
 data = json.dumps(q)
@@ -35,5 +36,10 @@ with SharedMemory(
     response = json.loads(shm.read_data_with_size())
 if is_confirm:
     response = 'yes' if response else 'no'
+elif is_fingerprint_check:
+    if response.lower() in ('y', 'yes'):
+        response = 'yes'
+    if response.lower() in ('n', 'no'):
+        response = 'no'
 if response:
     print(response, flush=True)
