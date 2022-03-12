@@ -17,7 +17,7 @@ import tempfile
 import time
 import traceback
 from base64 import standard_b64decode, standard_b64encode
-from contextlib import suppress
+from contextlib import suppress, contextmanager
 from getpass import getuser
 from typing import (
     Any, Callable, Dict, Iterator, List, NoReturn, Optional, Sequence, Set,
@@ -477,6 +477,17 @@ def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
     return ans
 
 
+@contextmanager
+def restore_terminal_state() -> Iterator[None]:
+    import termios
+    with open(os.ctermid()) as f:
+        val = termios.tcgetattr(f.fileno())
+        try:
+            yield
+        finally:
+            termios.tcsetattr(f.fileno(), termios.TCSAFLUSH, val)
+
+
 def main(args: List[str]) -> NoReturn:
     args = args[1:]
     if args and args[0] == 'use-python':
@@ -531,7 +542,8 @@ def main(args: List[str]) -> NoReturn:
     import subprocess
     with suppress(FileNotFoundError):
         try:
-            raise SystemExit(subprocess.run(cmd).returncode)
+            with restore_terminal_state():
+                raise SystemExit(subprocess.run(cmd).returncode)
         except KeyboardInterrupt:
             raise SystemExit(1)
     raise SystemExit('Could not find the ssh executable, is it in your PATH?')
