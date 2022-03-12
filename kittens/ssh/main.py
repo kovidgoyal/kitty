@@ -28,7 +28,6 @@ from kitty.constants import (
     runtime_dir, shell_integration_dir, ssh_control_master_template,
     terminfo_dir
 )
-from kitty.fast_data_types import get_options
 from kitty.shm import SharedMemory
 from kitty.utils import SSHConnectionData
 
@@ -99,14 +98,15 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
 
     from kitty.shell_integration import get_effective_ksi_env_var
     if ssh_opts.shell_integration == 'inherited':
-        ksi = get_effective_ksi_env_var()
+        from kitty.cli import create_default_opts
+        ksi = get_effective_ksi_env_var(create_default_opts())
     else:
         from kitty.options.types import Options
         from kitty.options.utils import shell_integration
         ksi = get_effective_ksi_env_var(Options({'shell_integration': shell_integration(ssh_opts.shell_integration)}))
 
     env = {
-        'TERM': get_options().term,
+        'TERM': os.environ['TERM'],
         'COLORTERM': 'truecolor',
     }
     for q in ('KITTY_WINDOW_ID', 'WINDOWID'):
@@ -148,12 +148,9 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
     try:
         msg = standard_b64decode(msg).decode('utf-8')
         md = dict(x.split('=', 1) for x in msg.split(':'))
-        hostname = md['hostname']
         pw = md['pw']
         pwfilename = md['pwfile']
-        username = md['user']
         rq_id = md['id']
-        compression = md['compression']
     except Exception:
         traceback.print_exc()
         yield fmt_prefix('!invalid ssh data request message')
@@ -171,24 +168,15 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
                     raise ValueError('Incorrect password')
                 if rq_id != request_id:
                     raise ValueError('Incorrect request id')
-                cli_hostname = env_data['cli_hostname']
-                cli_uname = env_data['cli_uname']
         except Exception as e:
             traceback.print_exc()
             yield fmt_prefix(f'!{e}')
         else:
-            ssh_opts = {k: SSHOptions(v) for k, v in env_data['opts'].items()}
-            resolved_ssh_opts = options_for_host(hostname, username, ssh_opts, cli_hostname, cli_uname)
-            resolved_ssh_opts.copy = {k: CopyInstruction(*v) for k, v in resolved_ssh_opts.copy.items()}
-            try:
-                data = make_tarfile(resolved_ssh_opts, env_data['env'], compression)
-            except Exception:
-                traceback.print_exc()
-                yield fmt_prefix('!error while gathering ssh data')
-            else:
-                encoded_data = standard_b64encode(data)
-                yield fmt_prefix(len(encoded_data))
-                yield encoded_data
+            ssh_opts = SSHOptions(env_data['opts'])
+            ssh_opts.copy = {k: CopyInstruction(*v) for k, v in ssh_opts.copy.items()}
+            encoded_data = env_data['tarfile'].encode('ascii')
+            yield fmt_prefix(len(encoded_data))
+            yield encoded_data
 
 
 def safe_remove(x: str) -> None:
@@ -217,8 +205,7 @@ def prepare_exec_cmd(remote_args: Sequence[str], is_python: bool) -> str:
 
 
 def bootstrap_script(
-    script_type: str = 'sh', remote_args: Sequence[str] = (),
-    ssh_opts_dict: Dict[str, Dict[str, Any]] = {},
+    ssh_opts: SSHOptions, script_type: str = 'sh', remote_args: Sequence[str] = (),
     test_script: str = '', request_id: Optional[str] = None, cli_hostname: str = '', cli_uname: str = '',
     request_data: str = '1',
 ) -> Tuple[str, Dict[str, str], SharedMemory]:
@@ -228,7 +215,8 @@ def bootstrap_script(
     with open(os.path.join(shell_integration_dir, 'ssh', f'bootstrap.{script_type}')) as f:
         ans = f.read()
     pw = secrets.token_hex()
-    data = {'pw': pw, 'env': dict(os.environ), 'opts': ssh_opts_dict, 'cli_hostname': cli_hostname, 'cli_uname': cli_uname}
+    tfd = standard_b64encode(make_tarfile(ssh_opts, dict(os.environ), 'gz' if script_type == 'sh' else 'bz2')).decode('ascii')
+    data = {'pw': pw, 'opts': ssh_opts._asdict(), 'hostname': cli_hostname, 'uname': cli_uname, 'tarfile': tfd}
     db = json.dumps(data)
     with SharedMemory(size=len(db) + SharedMemory.num_bytes_for_size, mode=stat.S_IREAD, prefix=f'kssh-{os.getpid()}-') as shm:
         shm.write_data_with_size(db)
@@ -431,14 +419,15 @@ def wrap_bootstrap_script(sh_script: str, interpreter: str) -> List[str]:
 
 
 def get_remote_command(
-    remote_args: List[str], hostname: str = 'localhost', cli_hostname: str = '', cli_uname: str = '',
-    interpreter: str = 'sh',
-    ssh_opts_dict: Dict[str, Dict[str, Any]] = {}
+    remote_args: List[str],
+    ssh_opts: SSHOptions,
+    hostname: str = 'localhost', cli_hostname: str = '', cli_uname: str = '',
 ) -> Tuple[List[str], Dict[str, str]]:
+    interpreter = ssh_opts.interpreter
     q = os.path.basename(interpreter).lower()
     is_python = 'python' in q
     sh_script, replacements, shm = bootstrap_script(
-        script_type='py' if is_python else 'sh', remote_args=remote_args, ssh_opts_dict=ssh_opts_dict,
+        ssh_opts, script_type='py' if is_python else 'sh', remote_args=remote_args,
         cli_hostname=cli_hostname, cli_uname=cli_uname)
     return wrap_bootstrap_script(sh_script, interpreter), replacements
 
@@ -528,10 +517,10 @@ def main(args: List[str]) -> NoReturn:
         if overrides:
             overrides.insert(0, f'hostname {uname}@{hostname_for_match}')
         so = init_config(overrides)
-        sod = {k: v._asdict() for k, v in so.items()}
         host_opts = options_for_host(hostname_for_match, uname, so)
-        use_control_master = 'KITTY_PID' in os.environ and host_opts.share_connections
-        rcmd, replacements = get_remote_command(remote_args, hostname, hostname_for_match, uname, host_opts.interpreter, sod)
+        running_in_kitty = 'KITTY_PID' in os.environ
+        use_control_master = running_in_kitty and host_opts.share_connections
+        rcmd, replacements = get_remote_command(remote_args, host_opts, hostname, hostname_for_match, uname)
         cmd += rcmd
         if use_control_master:
             cmd[insertion_point:insertion_point] = connection_sharing_args(host_opts, int(os.environ['KITTY_PID']))

@@ -12,11 +12,11 @@ from kittens.ssh.config import load_config, options_for_host
 from kittens.ssh.main import (
     bootstrap_script, get_connection_data, wrap_bootstrap_script
 )
+from kittens.ssh.options.types import Options as SSHOptions
 from kittens.ssh.options.utils import DELETE_ENV_VAR
 from kittens.transfer.utils import set_paths
 from kitty.constants import is_macos, runtime_dir
 from kitty.fast_data_types import CURSOR_BEAM
-from kitty.options.utils import shell_integration
 from kitty.utils import SSHConnectionData
 
 from . import BaseTest
@@ -240,9 +240,9 @@ copy --exclude */w.* d1
             test_script = f'print("UNTAR_DONE", flush=True); {test_script}'
         else:
             test_script = f'echo "UNTAR_DONE"; {test_script}'
+        ssh_opts['shell_integration'] = SHELL_INTEGRATION_VALUE or 'disabled'
         script, replacements, shm = bootstrap_script(
-            script_type='py' if 'python' in sh else 'sh', request_id="testing",
-            test_script=test_script, ssh_opts_dict={'*': ssh_opts},
+            SSHOptions(ssh_opts), script_type='py' if 'python' in sh else 'sh', request_id="testing", test_script=test_script
         )
         try:
             env = basic_shell_env(home_dir)
@@ -250,9 +250,9 @@ copy --exclude */w.* d1
             os.makedirs(os.path.join(home_dir, '.local', 'share', 'fish', 'generated_completions'), exist_ok=True)
             # prevent newuser-install from running
             open(os.path.join(home_dir, '.zshrc'), 'w').close()
-            options = {'shell_integration': shell_integration(SHELL_INTEGRATION_VALUE or 'disabled')}
             cmd = wrap_bootstrap_script(script, sh)
-            pty = self.create_pty([launcher, '-c', ' '.join(cmd)], cwd=home_dir, env=env, options=options)
+            pty = self.create_pty([launcher, '-c', ' '.join(cmd)], cwd=home_dir, env=env)
+            del cmd
             if pre_data:
                 pty.write_buf = pre_data.encode('utf-8')
             del script
