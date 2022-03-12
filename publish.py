@@ -273,8 +273,13 @@ class GitHub(Base):  # {{{
     def update_nightly_description(self, release_id: int) -> None:
         url = f'{self.url_base}/{release_id}'
         now = str(datetime.datetime.utcnow()).split('.')[0] + ' UTC'
-        with open('.git/refs/heads/master') as f:
-            commit = f.read().strip()
+        try:
+            with open('.git/refs/heads/master') as f:
+                commit = f.read().strip()
+        except FileNotFoundError:
+            time.sleep(1)
+            with open('.git/refs/heads/master') as f:
+                commit = f.read().strip()
         self.patch(
             url, 'Failed to update nightly release description',
             body=f'Nightly release, generated on: {now} from commit: {commit}.'
