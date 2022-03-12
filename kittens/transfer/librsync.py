@@ -126,7 +126,7 @@ class PatchFile(StreamingJob):
 
     def read_from_src(self, b: memoryview, pos: int) -> int:
         self.src_file.seek(pos)
-        return self.src_file.readinto(b)  # type: ignore
+        return self.src_file.readinto(b)
 
     def close(self) -> None:
         if not self.src_file.closed:

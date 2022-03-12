@@ -104,7 +104,8 @@ def layout_dimension(
 ) -> LayoutDimension:
     number_of_windows = len(decoration_pairs)
     number_of_cells = length // cell_length
-    space_needed_for_decorations: int = sum(map(sum, decoration_pairs))
+    dec_vals: Iterable[int] = map(sum, decoration_pairs)
+    space_needed_for_decorations = sum(dec_vals)
     extra = length - number_of_cells * cell_length
     while extra < space_needed_for_decorations:
         number_of_cells -= 1
