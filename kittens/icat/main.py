@@ -515,7 +515,12 @@ def main(args: List[str] = sys.argv) -> None:
     if cli_opts.print_window_size:
         screen_size_function.cache_clear()
         with open(os.ctermid()) as tty:
-            ss = screen_size_function(tty)()
+            try:
+                fd = tty.fileno()
+            except AttributeError:
+                # use default value for fd if ctermid is not available
+                fd = None
+            ss = screen_size_function(fd)()
         print(f'{ss.width}x{ss.height}', end='')
         raise SystemExit(0)
 

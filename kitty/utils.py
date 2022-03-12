@@ -178,7 +178,7 @@ class ScreenSizeGetter:
         return cast(ScreenSize, self.ans)
 
 
-@lru_cache(maxsize=64)
+@lru_cache(maxsize=64, typed=True)
 def screen_size_function(fd: Optional[int] = None) -> ScreenSizeGetter:
     return ScreenSizeGetter(fd)
 
