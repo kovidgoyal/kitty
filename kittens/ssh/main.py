@@ -234,11 +234,15 @@ def bootstrap_script(
         shm.write_data_with_size(db)
         shm.flush()
         atexit.register(shm.unlink)
+    sensitive_data = {'REQUEST_ID': request_id, 'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': shm.name}
     replacements = {
-        'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': shm.name, 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script,
-        'REQUEST_ID': request_id, 'REQUEST_DATA': '1' if request_data else '0', 'ECHO_ON': '1' if echo_on else '0',
+        'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script, 'REQUEST_DATA': '1' if request_data else '0', 'ECHO_ON': '1' if echo_on else '0',
     }
-    return prepare_script(ans, replacements), replacements, shm
+    sd = replacements.copy()
+    if request_data:
+        sd.update(sensitive_data)
+    replacements.update(sensitive_data)
+    return prepare_script(ans, sd), replacements, shm
 
 
 def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
