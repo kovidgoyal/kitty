@@ -14,7 +14,7 @@ from kittens.ssh.main import (
 )
 from kittens.ssh.options.utils import DELETE_ENV_VAR
 from kittens.transfer.utils import set_paths
-from kitty.constants import is_macos
+from kitty.constants import is_macos, runtime_dir
 from kitty.fast_data_types import CURSOR_BEAM
 from kitty.options.utils import shell_integration
 from kitty.utils import SSHConnectionData
@@ -56,6 +56,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         t('ssh un@ip -iident -p34', host='un@ip', port=34, identity_file='ident')
         t('ssh -p 33 main', port=33)
         t('ssh --kitten=one -p 12 --kitten two -ix main', identity_file='x', port=12, extra_args=(('--kitten', 'one'), ('--kitten', 'two')))
+        self.assertTrue(runtime_dir())
 
     def test_ssh_config_parsing(self):
         def parse(conf):

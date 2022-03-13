@@ -151,7 +151,9 @@ def runtime_dir() -> str:
         if not os.path.isdir(candidate) or not os.access(candidate, os.X_OK | os.W_OK | os.R_OK):
             candidate = os.path.join(cache_dir(), 'run')
     os.makedirs(candidate, exist_ok=True)
-    os.chmod(candidate, 0o700)
+    import stat
+    if stat.S_IMODE(os.stat(candidate).st_mode) != 0o700:
+        os.chmod(candidate, 0o700)
     return candidate
 
 
