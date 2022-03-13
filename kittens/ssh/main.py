@@ -31,7 +31,7 @@ from kitty.constants import (
 from kitty.options.types import Options
 from kitty.shm import SharedMemory
 from kitty.types import run_once
-from kitty.utils import SSHConnectionData
+from kitty.utils import SSHConnectionData, no_echo
 
 from .completion import complete, ssh_options
 from .config import init_config, options_for_host
@@ -216,7 +216,7 @@ def prepare_exec_cmd(remote_args: Sequence[str], is_python: bool) -> str:
 def bootstrap_script(
     ssh_opts: SSHOptions, script_type: str = 'sh', remote_args: Sequence[str] = (),
     test_script: str = '', request_id: Optional[str] = None, cli_hostname: str = '', cli_uname: str = '',
-    request_data: str = '1',
+    request_data: str = '1', echo_on: bool = True
 ) -> Tuple[str, Dict[str, str], SharedMemory]:
     if request_id is None:
         request_id = os.environ['KITTY_PID'] + '-' + os.environ['KITTY_WINDOW_ID']
@@ -233,7 +233,7 @@ def bootstrap_script(
         atexit.register(shm.unlink)
     replacements = {
         'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': shm.name, 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script,
-        'REQUEST_ID': request_id, 'REQUEST_DATA': request_data,
+        'REQUEST_ID': request_id, 'REQUEST_DATA': request_data, 'ECHO_ON': '1' if echo_on else '0',
     }
     return prepare_script(ans, replacements), replacements, shm
 
@@ -428,16 +428,15 @@ def wrap_bootstrap_script(sh_script: str, interpreter: str) -> List[str]:
 
 
 def get_remote_command(
-    remote_args: List[str],
-    ssh_opts: SSHOptions,
-    hostname: str = 'localhost', cli_hostname: str = '', cli_uname: str = '',
+    remote_args: List[str], ssh_opts: SSHOptions,
+    hostname: str = 'localhost', cli_hostname: str = '', cli_uname: str = '', echo_on: bool = True,
 ) -> Tuple[List[str], Dict[str, str]]:
     interpreter = ssh_opts.interpreter
     q = os.path.basename(interpreter).lower()
     is_python = 'python' in q
     sh_script, replacements, shm = bootstrap_script(
         ssh_opts, script_type='py' if is_python else 'sh', remote_args=remote_args,
-        cli_hostname=cli_hostname, cli_uname=cli_uname)
+        cli_hostname=cli_hostname, cli_uname=cli_uname, echo_on=echo_on)
     return wrap_bootstrap_script(sh_script, interpreter), replacements
 
 
@@ -477,14 +476,61 @@ def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
 
 
 @contextmanager
-def restore_terminal_state() -> Iterator[None]:
+def restore_terminal_state() -> Iterator[bool]:
     import termios
     with open(os.ctermid()) as f:
         val = termios.tcgetattr(f.fileno())
         try:
-            yield
+            yield bool(val[3] & termios.ECHO)
         finally:
             termios.tcsetattr(f.fileno(), termios.TCSAFLUSH, val)
+
+
+def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple[str, ...], echo_on: bool) -> NoReturn:
+    cmd = ['ssh'] + ssh_args
+    hostname, remote_args = server_args[0], server_args[1:]
+    if not remote_args:
+        cmd.append('-t')
+    insertion_point = len(cmd)
+    cmd.append('--')
+    cmd.append(hostname)
+    uname = getuser()
+    if hostname.startswith('ssh://'):
+        from urllib.parse import urlparse
+        purl = urlparse(hostname)
+        hostname_for_match = purl.hostname or hostname
+        uname = purl.username or uname
+    elif '@' in hostname and hostname[0] != '@':
+        uname, hostname_for_match = hostname.split('@', 1)
+    else:
+        hostname_for_match = hostname
+    hostname_for_match = hostname.split('@', 1)[-1].split(':', 1)[0]
+    overrides = []
+    pat = re.compile(r'^([a-zA-Z0-9_]+)[ \t]*=')
+    for i, a in enumerate(found_extra_args):
+        if i % 2 == 1:
+            overrides.append(pat.sub(r'\1 ', a.lstrip()))
+    if overrides:
+        overrides.insert(0, f'hostname {uname}@{hostname_for_match}')
+    so = init_config(overrides)
+    host_opts = options_for_host(hostname_for_match, uname, so)
+    use_control_master = host_opts.share_connections
+    rcmd, replacements = get_remote_command(remote_args, host_opts, hostname, hostname_for_match, uname, echo_on)
+    cmd += rcmd
+    if use_control_master:
+        cmd[insertion_point:insertion_point] = connection_sharing_args(host_opts, int(os.environ['KITTY_PID']))
+    # We force use of askpass so that OpenSSH does not use the tty leaving
+    # it free for us to use
+    os.environ['SSH_ASKPASS_REQUIRE'] = 'force'
+    if not os.environ.get('SSH_ASKPASS'):
+        os.environ['SSH_ASKPASS'] = os.path.join(shell_integration_dir, 'ssh', 'askpass.py')
+    import subprocess
+    with suppress(FileNotFoundError):
+        try:
+            raise SystemExit(subprocess.run(cmd).returncode)
+        except KeyboardInterrupt:
+            raise SystemExit(1)
+    raise SystemExit('Could not find the ssh executable, is it in your PATH?')
 
 
 def main(args: List[str]) -> NoReturn:
@@ -495,57 +541,14 @@ def main(args: List[str]) -> NoReturn:
         ssh_args, server_args, passthrough, found_extra_args = parse_ssh_args(args, extra_args=('--kitten',))
     except InvalidSSHArgs as e:
         e.system_exit()
-    if not os.environ.get('KITTY_WINDOW_ID'):
-        passthrough = True
-    cmd = ['ssh'] + ssh_args
+    if not os.environ.get('KITTY_WINDOW_ID') or not os.environ.get('KITTY_PID'):
+        raise SystemExit('The SSH kitten is meant to run inside a kitty window')
     if passthrough:
-        cmd += server_args
-    else:
-        hostname, remote_args = server_args[0], server_args[1:]
-        if not remote_args:
-            cmd.append('-t')
-        insertion_point = len(cmd)
-        cmd.append('--')
-        cmd.append(hostname)
-        uname = getuser()
-        if hostname.startswith('ssh://'):
-            from urllib.parse import urlparse
-            purl = urlparse(hostname)
-            hostname_for_match = purl.hostname or hostname
-            uname = purl.username or uname
-        elif '@' in hostname and hostname[0] != '@':
-            uname, hostname_for_match = hostname.split('@', 1)
-        else:
-            hostname_for_match = hostname
-        hostname_for_match = hostname.split('@', 1)[-1].split(':', 1)[0]
-        overrides = []
-        pat = re.compile(r'^([a-zA-Z0-9_]+)[ \t]*=')
-        for i, a in enumerate(found_extra_args):
-            if i % 2 == 1:
-                overrides.append(pat.sub(r'\1 ', a.lstrip()))
-        if overrides:
-            overrides.insert(0, f'hostname {uname}@{hostname_for_match}')
-        so = init_config(overrides)
-        host_opts = options_for_host(hostname_for_match, uname, so)
-        running_in_kitty = 'KITTY_PID' in os.environ
-        use_control_master = running_in_kitty and host_opts.share_connections
-        rcmd, replacements = get_remote_command(remote_args, host_opts, hostname, hostname_for_match, uname)
-        cmd += rcmd
-        if use_control_master:
-            cmd[insertion_point:insertion_point] = connection_sharing_args(host_opts, int(os.environ['KITTY_PID']))
-        # We force use of askpass so that OpenSSH does not use the tty leaving
-        # it free for us to use
-        os.environ['SSH_ASKPASS_REQUIRE'] = 'force'
-        if not os.environ.get('SSH_ASKPASS'):
-            os.environ['SSH_ASKPASS'] = os.path.join(shell_integration_dir, 'ssh', 'askpass.py')
-    import subprocess
-    with suppress(FileNotFoundError):
-        try:
-            with restore_terminal_state():
-                raise SystemExit(subprocess.run(cmd).returncode)
-        except KeyboardInterrupt:
-            raise SystemExit(1)
-    raise SystemExit('Could not find the ssh executable, is it in your PATH?')
+        raise SystemExit('The SSH kitten is meant for interactive use via SSH only')
+    if not sys.stdin.isatty():
+        raise SystemExit('The SSH kitten is meant for interactive use only, STDIN must be a terminal')
+    with restore_terminal_state() as echo_on, no_echo(sys.stdin.fileno()):
+        run_ssh(ssh_args, server_args, found_extra_args, echo_on)
 
 
 if __name__ == '__main__':

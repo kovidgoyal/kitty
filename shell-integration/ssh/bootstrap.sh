@@ -2,14 +2,14 @@
 # Copyright (C) 2022 Kovid Goyal <kovid at kovidgoyal.net>
 # Distributed under terms of the GPLv3 license.
 
-saved_tty_settings=""
 tdir=""
 shell_integration_dir=""
+echo_on="ECHO_ON"
 
 cleanup_on_bootstrap_exit() {
-    [ -n "$saved_tty_settings" ] && command stty "$saved_tty_settings" 2> /dev/null < /dev/tty
+    [ "$echo_on" = "1" ] && command stty "echo" 2> /dev/null < /dev/tty
+    echo_on="0"
     [ -n "$tdir" ] && command rm -rf "$tdir"
-    saved_tty_settings=""
     tdir=""
 }
 
@@ -58,18 +58,6 @@ else
     die "base64 executable not present on remote host, ssh kitten cannot function."
 fi
 
-init_tty() {
-    saved_tty_settings=$(command stty -g 2> /dev/null < /dev/tty)
-    tty_ok="n"
-    [ -n "$saved_tty_settings" ] && tty_ok="y"
-
-    if [ "$tty_ok" = "y" ]; then
-        command stty -echo 2> /dev/null < /dev/tty || die "stty failed to set raw mode"
-        return 0
-    fi
-    return 1
-}
-
 dcs_to_kitty() { printf "\033P@kitty-$1|%s\033\134" "$(printf "%s" "$2" | base64_encode)" > /dev/tty; }
 debug() { dcs_to_kitty "print" "debug: $1"; }
 echo_via_kitty() { dcs_to_kitty "echo" "$1"; }
@@ -84,11 +72,8 @@ leading_data=""
 login_cwd=""
 
 request_data="REQUEST_DATA"
-[ "$request_data" = "1" ] && init_tty
 trap "cleanup_on_bootstrap_exit" EXIT
-if [ "$tty_ok" = "y" -a "$request_data" = "1" ]; then
-    dcs_to_kitty "ssh" "id="REQUEST_ID":pwfile="PASSWORD_FILENAME":pw="DATA_PASSWORD""
-fi
+dcs_to_kitty "ssh" "id="REQUEST_ID":pwfile="PASSWORD_FILENAME":pw="DATA_PASSWORD""
 record_separator=$(printf "\036")
 
 mv_files_and_dirs() {
@@ -177,18 +162,16 @@ get_data() {
     untar_and_read_env
 }
 
-if [ "$tty_ok" = "y" ]; then
-    # ask for the SSH data
-    get_data
-    cleanup_on_bootstrap_exit
-    if [ -n "$leading_data" ]; then
-        # clear current line as it might have things echoed on it from leading_data
-        # because we only turn off echo in this script whereas the leading bytes could
-        # have been sent before the script had a chance to run
-        printf "\r\033[K" > /dev/tty
-    fi
-    [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data"
+# ask for the SSH data
+get_data
+cleanup_on_bootstrap_exit
+if [ -n "$leading_data" ]; then
+    # clear current line as it might have things echoed on it from leading_data
+    # because we only turn off echo in this script whereas the leading bytes could
+    # have been sent before the script had a chance to run
+    printf "\r\033[K" > /dev/tty
 fi
+[ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data"
 
 login_shell_is_ok() {
     if [ -n "$login_shell" -a -x "$login_shell" ]; then return 0; fi
@@ -281,14 +264,6 @@ shell_name=$(command basename $login_shell)
 
 # If a command was passed to SSH execute it here
 EXEC_CMD
-
-if [ "$tty_ok" = "n" ]; then
-    if [ -z "$(command -v stty)" ]; then
-        printf "%s\n" "stty missing ssh kitten cannot function" > /dev/stderr
-    else
-        printf "%s\n" "stty failed ssh kitten cannot function" > /dev/stderr
-    fi
-fi
 
 exec_zsh_with_integration() {
     zdotdir="$ZDOTDIR"

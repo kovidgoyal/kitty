@@ -16,7 +16,7 @@ import tempfile
 import termios
 
 tty_fd = -1
-original_termios_state = None
+echo_on = int('ECHO_ON')
 data_dir = shell_integration_dir = ''
 request_data = int('REQUEST_DATA')
 leading_data = b''
@@ -25,11 +25,12 @@ login_shell = pwd.getpwuid(os.geteuid()).pw_shell or 'sh'
 
 
 def cleanup():
-    global tty_fd, original_termios_state
+    global tty_fd
     if tty_fd > -1:
-        if original_termios_state is not None:
-            termios.tcsetattr(tty_fd, termios.TCSANOW, original_termios_state)
-            original_termios_state = None
+        if echo_on:
+            s = termios.tcgetattr(tty_fd)
+            s[3] |= termios.ECHO
+            termios.tcsetattr(tty_fd, termios.TCSANOW, s)
         os.close(tty_fd)
         tty_fd = -1
 
@@ -150,7 +151,6 @@ def get_data():
     data = []
     with open(tty_fd, 'rb', closefd=False) as f:
         data = b''.join(iter_base64_data(f))
-    cleanup()
     if leading_data:
         # clear current line as it might have things echoed on it from leading_data
         # because we only turn off echo in this script whereas the leading bytes could
@@ -214,26 +214,11 @@ def exec_with_shell_integration():
 
 
 def main():
-    global tty_fd, original_termios_state, login_shell
+    global tty_fd, login_shell
+    tty_fd = os.open(os.ctermid(), os.O_RDWR | os.O_CLOEXEC)
     try:
-        tty_fd = os.open(os.ctermid(), os.O_RDWR | os.O_CLOEXEC)
-    except OSError:
-        pass
-    else:
-        if request_data:
-            try:
-                original_termios_state = termios.tcgetattr(tty_fd)
-            except OSError:
-                pass
-            else:
-                new_state = termios.tcgetattr(tty_fd)
-                new_state[3] &= ~termios.ECHO
-                termios.tcsetattr(tty_fd, termios.TCSANOW, new_state)
-    try:
-        if original_termios_state is not None:
-            send_data_request()
-        if tty_fd > -1:
-            get_data()
+        send_data_request()
+        get_data()
     finally:
         cleanup()
     cwd = os.environ.pop('KITTY_LOGIN_CWD', '')

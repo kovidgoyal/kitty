@@ -156,6 +156,7 @@ copy --exclude */w.* d1
                 pty.wait_till(lambda: 'TSET={}'.format(tset.replace('$A', 'AAA')) in pty.screen_contents())
                 self.assertNotIn('COLORTERM', pty.screen_contents())
                 pty.wait_till(lambda: '/cwd' in pty.screen_contents())
+                self.assertTrue(pty.is_echo_on())
 
     def test_ssh_bootstrap_with_different_launchers(self):
         for launcher in self.all_possible_sh:
@@ -252,6 +253,7 @@ copy --exclude */w.* d1
             open(os.path.join(home_dir, '.zshrc'), 'w').close()
             cmd = wrap_bootstrap_script(script, sh)
             pty = self.create_pty([launcher, '-c', ' '.join(cmd)], cwd=home_dir, env=env)
+            pty.turn_off_echo()
             del cmd
             if pre_data:
                 pty.write_buf = pre_data.encode('utf-8')

@@ -194,6 +194,15 @@ class PTY:
         self.screen = Screen(self.callbacks, rows, columns, scrollback, cell_width, cell_height, 0, self.callbacks)
         self.received_bytes = b''
 
+    def turn_off_echo(self):
+        s = termios.tcgetattr(self.master_fd)
+        s[3] &= ~termios.ECHO
+        termios.tcsetattr(self.master_fd, termios.TCSANOW, s)
+
+    def is_echo_on(self):
+        s = termios.tcgetattr(self.master_fd)
+        return True if s[3] & termios.ECHO else False
+
     def __del__(self):
         if not self.is_child:
             fd = self.master_fd
