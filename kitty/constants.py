@@ -142,7 +142,8 @@ def runtime_dir() -> str:
     if 'KITTY_RUNTIME_DIRECTORY' in os.environ:
         candidate = os.path.abspath(os.environ['KITTY_RUNTIME_DIRECTORY'])
     elif is_macos:
-        candidate = os.path.join(cache_dir(), 'run')
+        from .fast_data_types import user_cache_dir
+        candidate = user_cache_dir()
     elif 'XDG_RUNTIME_DIR' in os.environ:
         candidate = os.path.abspath(os.environ['XDG_RUNTIME_DIR'])
     else:
