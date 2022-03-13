@@ -319,10 +319,10 @@ schedule_write_to_child_python(unsigned long id, const char *prefix, PyObject *a
 static PyObject *
 needs_write(ChildMonitor UNUSED *self, PyObject *args) {
 #define needs_write_doc "needs_write(id, data) -> Queue data to be written to child."
-    unsigned long id, sz;
-    const char *data;
-    if (!PyArg_ParseTuple(args, "ks#", &id, &data, &sz)) return NULL;
-    if (schedule_write_to_child(id, 1, data, (size_t)sz)) { Py_RETURN_TRUE; }
+    unsigned long id;
+    Py_buffer buf;
+    if (!PyArg_ParseTuple(args, "ky*", &id, &buf)) return NULL;
+    if (schedule_write_to_child(id, 1, buf.buf, (size_t)buf.len)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 
