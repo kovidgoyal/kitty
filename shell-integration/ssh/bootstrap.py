@@ -2,7 +2,6 @@
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-import atexit
 import base64
 import io
 import os
@@ -49,7 +48,7 @@ def write_all(fd, data) -> None:
         data = data[n:]
 
 
-def dcs_to_kitty(type, payload):
+def dcs_to_kitty(payload, type='ssh'):
     if isinstance(payload, str):
         payload = payload.encode('utf-8')
     payload = base64.standard_b64encode(payload)
@@ -57,12 +56,11 @@ def dcs_to_kitty(type, payload):
 
 
 def send_data_request():
-    write_all(tty_fd, dcs_to_kitty(
-        'ssh', 'id=REQUEST_ID:pwfile=PASSWORD_FILENAME:pw=DATA_PASSWORD'))
+    write_all(tty_fd, dcs_to_kitty('id=REQUEST_ID:pwfile=PASSWORD_FILENAME:pw=DATA_PASSWORD'))
 
 
 def debug(msg):
-    data = dcs_to_kitty('print', 'debug: {}'.format(msg))
+    data = dcs_to_kitty('debug: {}'.format(msg), 'print')
     if tty_fd == -1:
         with open(os.ctermid(), 'wb') as fl:
             write_all(fl.fileno(), data)
@@ -217,7 +215,8 @@ def main():
     global tty_fd, login_shell
     tty_fd = os.open(os.ctermid(), os.O_RDWR | os.O_CLOEXEC)
     try:
-        send_data_request()
+        if request_data:
+            send_data_request()
         get_data()
     finally:
         cleanup()
@@ -236,5 +235,4 @@ def main():
     os.execlp(login_shell, '-' + os.path.basename(login_shell))
 
 
-atexit.register(cleanup)
 main()
