@@ -57,6 +57,7 @@ class TestBuild(BaseTest):
         self.assertTrue(os.path.isdir(terminfo_dir), f'Terminfo dir: {terminfo_dir}')
         self.assertTrue(os.path.exists(logo_png_file), f'Logo file: {logo_png_file}')
         self.assertTrue(os.path.exists(zsh), f'Shell integration: {zsh}')
+        self.assertTrue(os.access(os.path.join(shell_integration_dir, 'ssh', 'askpass.py'), os.X_OK))
 
     def test_ca_certificates(self):
         import ssl

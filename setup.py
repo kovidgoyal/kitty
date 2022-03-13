@@ -1306,7 +1306,7 @@ def package(args: Options, bundle_type: str) -> None:
     for root, dirs, files in os.walk(libdir):
         for f_ in files:
             path = os.path.join(root, f_)
-            os.chmod(path, 0o755 if f_.endswith('.so') else 0o644)
+            os.chmod(path, 0o755 if f_.endswith('.so') or os.path.basename(f_) == 'askpass.py' else 0o644)
     if not is_macos:
         create_linux_bundle_gunk(ddir, args.libdir_name)
 
