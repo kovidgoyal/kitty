@@ -497,23 +497,28 @@ def dcs_to_kitty(payload: Union[bytes, str], type: str = 'ssh') -> bytes:
 
 @contextmanager
 def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str) -> Iterator[None]:
+    ssh_started_at = time.monotonic()
     with open(os.open(os.ctermid(), os.O_CLOEXEC | os.O_RDWR | os.O_NOCTTY), 'wb') as tty:
         tty.write(dcs_to_kitty(data_request))
         tty.flush()
         try:
             yield
         finally:
-            if p.returncode:
-                # discard queued data on tty in case data transmission was
+            if p.returncode and time.monotonic() - ssh_started_at < 30:
+                # discard queued input data on tty in case data transmission was
                 # interrupted due to SSH failure, avoids spewing garbage to
                 # screen
-                termios.tcflush(tty.fileno(), termios.TCIOFLUSH)
+                termios.tcflush(tty.fileno(), termios.TCIFLUSH)
+                data = b''
+                start = time.monotonic()
                 with open(tty.fileno(), 'rb', closefd=False) as tf:
                     os.set_blocking(tf.fileno(), False)
                     from tty import setraw
                     setraw(tf.fileno(), termios.TCSANOW)
-                    while select([tf], [], [], 0)[0]:
-                        tf.read()
+                    while time.monotonic() - start < 1 and select([tf], [], [], 0.075)[0]:
+                        data += tf.read()
+                        if b'KITTY_DATA_END' in data:
+                            return
 
 
 def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple[str, ...], echo_on: bool) -> NoReturn:
