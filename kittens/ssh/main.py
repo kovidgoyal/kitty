@@ -17,18 +17,20 @@ import tempfile
 import time
 import traceback
 from base64 import standard_b64decode, standard_b64encode
-from contextlib import suppress, contextmanager
+from contextlib import contextmanager, suppress
 from getpass import getuser
 from typing import (
-    Any, Callable, Dict, Iterator, List, NoReturn, Optional, Sequence, Set,
-    Tuple, Union
+    Callable, Dict, Iterator, List, NoReturn, Optional, Sequence, Set, Tuple,
+    Union
 )
 
 from kitty.constants import (
     runtime_dir, shell_integration_dir, ssh_control_master_template,
     terminfo_dir
 )
+from kitty.options.types import Options
 from kitty.shm import SharedMemory
+from kitty.types import run_once
 from kitty.utils import SSHConnectionData
 
 from .completion import complete, ssh_options
@@ -66,6 +68,12 @@ def serialize_env(env: Dict[str, str], base_env: Dict[str, str]) -> bytes:
     return '\n'.join(lines).encode('utf-8')
 
 
+@run_once
+def kitty_opts() -> Options:
+    from kitty.cli import create_default_opts
+    return create_default_opts()
+
+
 def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: str = 'gz') -> bytes:
 
     def normalize_tarinfo(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo:
@@ -98,15 +106,13 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
 
     from kitty.shell_integration import get_effective_ksi_env_var
     if ssh_opts.shell_integration == 'inherited':
-        from kitty.cli import create_default_opts
-        ksi = get_effective_ksi_env_var(create_default_opts())
+        ksi = get_effective_ksi_env_var(kitty_opts())
     else:
-        from kitty.options.types import Options
         from kitty.options.utils import shell_integration
         ksi = get_effective_ksi_env_var(Options({'shell_integration': shell_integration(ssh_opts.shell_integration)}))
 
     env = {
-        'TERM': os.environ['TERM'],
+        'TERM': os.environ.get('TERM') or kitty_opts().term,
         'COLORTERM': 'truecolor',
     }
     for q in ('KITTY_WINDOW_ID', 'WINDOWID'):
@@ -139,12 +145,7 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
 
 
 def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
-    record_sep = b'\036'
-
-    def fmt_prefix(msg: Any) -> bytes:
-        return str(msg).encode('ascii') + record_sep
-
-    yield record_sep  # to discard leading data
+    yield b'\nKITTY_DATA_START\n'  # to discard leading data
     try:
         msg = standard_b64decode(msg).decode('utf-8')
         md = dict(x.split('=', 1) for x in msg.split(':'))
@@ -153,7 +154,7 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
         rq_id = md['id']
     except Exception:
         traceback.print_exc()
-        yield fmt_prefix('!invalid ssh data request message')
+        yield b'invalid ssh data request message\n'
     else:
         try:
             with SharedMemory(pwfilename, readonly=True) as shm:
@@ -170,13 +171,21 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
                     raise ValueError('Incorrect request id')
         except Exception as e:
             traceback.print_exc()
-            yield fmt_prefix(f'!{e}')
+            yield f'{e}\n'.encode('utf-8')
         else:
+            yield b'OK\n'
             ssh_opts = SSHOptions(env_data['opts'])
             ssh_opts.copy = {k: CopyInstruction(*v) for k, v in ssh_opts.copy.items()}
-            encoded_data = env_data['tarfile'].encode('ascii')
-            yield fmt_prefix(len(encoded_data))
-            yield encoded_data
+            encoded_data = memoryview(env_data['tarfile'].encode('ascii'))
+            # macOS has a 255 byte limit on its input queue as per man stty.
+            # Not clear if that applies to canonical mode input as well, but
+            # better to be safe.
+            line_sz = 254
+            while encoded_data:
+                yield encoded_data[:line_sz]
+                yield b'\n'
+                encoded_data = encoded_data[line_sz:]
+            yield b'KITTY_DATA_END\n'
 
 
 def safe_remove(x: str) -> None:

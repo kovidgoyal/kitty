@@ -64,103 +64,13 @@ init_tty() {
     [ -n "$saved_tty_settings" ] && tty_ok="y"
 
     if [ "$tty_ok" = "y" ]; then
-        command stty raw min 1 time 0 -echo 2> /dev/null < /dev/tty || die "stty failed to set raw mode"
+        command stty -echo 2> /dev/null < /dev/tty || die "stty failed to set raw mode"
         return 0
     fi
     return 1
 }
 
-# try to use zsh's builtin sysread function for reading to TTY
-# as it is superior to the POSIX variants. The builtin read function doesn't work
-# as it hangs reading N bytes on macOS
-tty_fd=-1
-if [ -n "$ZSH_VERSION" ] && builtin zmodload zsh/system 2> /dev/null; then
-    builtin sysopen -o cloexec -rwu tty_fd -- "$TTY" 2> /dev/null
-    [ $tty_fd = -1 ] && builtin sysopen -o cloexec -rwu tty_fd -- /dev/tty 2> /dev/null
-fi
-if [ $tty_fd -gt -1 ]; then
-    dcs_to_kitty() {
-        builtin local b64data
-        b64data=$(builtin printf "%s" "$2" | base64_encode)
-        builtin print -nu "$tty_fd" '\eP@kitty-'"${1}|${b64data//[[:space:]]}"'\e\\'
-    }
-    read_one_byte_from_tty() {
-        builtin sysread -s "1" -i "$tty_fd" n 2> /dev/null
-        return $?
-    }
-    read_n_bytes_from_tty() {
-        builtin let num_left=$1
-        while [ $num_left -gt 0 ]; do
-            builtin sysread -c num_read -s "$num_left" -i "$tty_fd" -o "1" 2> /dev/null || die "Failed to read $num_left bytes from TTY using sysread"
-            builtin let num_left=$num_left-$num_read
-        done
-    }
-else
-    dcs_to_kitty() { printf "\033P@kitty-$1|%s\033\134" "$(printf "%s" "$2" | base64_encode)" > /dev/tty; }
-
-    read_one_byte_from_tty() {
-        # We need a way to read a single byte at a time and to read a specified number of bytes in one invocation.
-        # The options are head -c, read -N and dd
-        #
-        # read -N is not in POSIX and dash/posh dont implement it. Also bash seems to read beyond
-        # the specified number of bytes into an internal buffer.
-        #
-        # head -c reads beyond the specified number of bytes into an internal buffer on macOS
-        #
-        # POSIX dd works for one byte at a time but for reading X bytes it needs the GNU iflag=count_bytes
-        # extension, and is anyway unsafe as it can lead to corrupt output when the read syscall is interrupted.
-        n=$(command dd bs=1 count=1 2> /dev/null < /dev/tty)
-        return $?
-    }
-
-    # using dd with bs=1 is very slow, so use head. On non GNU coreutils head
-    # does not limit itself to reading -c bytes only from the pipe so we can potentially lose
-    # some trailing data, for instance if the user starts typing. Cant be helped.
-    if [ "$(printf "%s" "test" | command ghead -c 3 2> /dev/null)" = "tes" ]; then
-        # Some BSD based systems use ghead for GNU head which is strictly superior to
-        # Broken System Design head, so prefer it.
-        read_n_bytes_from_tty() {
-            command ghead -c "$1" < /dev/tty
-        }
-    elif [ "$(printf "%s" "test" | command head -c 3 2> /dev/null)" = "tes" ]; then
-        read_n_bytes_from_tty() {
-            command head -c "$1" < /dev/tty
-        }
-    elif detect_python; then
-        read_n_bytes_from_tty() {
-            command "$python" "-c" "
-import sys, os, errno
-def eintr_retry(func, *args):
-    while True:
-        try:
-            return func(*args)
-        except EnvironmentError as e:
-            if e.errno != errno.EINTR:
-                raise
-n = $1
-in_fd = sys.stdin.fileno()
-out_fd = sys.stdout.fileno()
-while n > 0:
-    d = memoryview(eintr_retry(os.read, in_fd, n))
-    n -= len(d)
-    while d:
-        nw = eintr_retry(os.write, out_fd, d)
-        d = d[nw:]
-" < /dev/tty
-        }
-    elif detect_perl; then
-        read_n_bytes_from_tty() {
-            command "$perl" -MList::Util=min -e '
-open(my $fh,"<","/dev/tty");binmode($fh);binmode(STDOUT);my ($n,$buf)=(@ARGV[0],"");
-while($n>0){my $rv=sysread($fh,$buf,min(65536,$n));unless($rv){exit(1);};$n-=$rv;print STDOUT $buf;}' "$1" 2> /dev/null
-        }
-    else
-        read_n_bytes_from_tty() {
-            command dd bs=1 count="$1" 2> /dev/null < /dev/tty
-        }
-    fi
-fi
-
+dcs_to_kitty() { printf "\033P@kitty-$1|%s\033\134" "$(printf "%s" "$2" | base64_encode)" > /dev/tty; }
 debug() { dcs_to_kitty "print" "debug: $1"; }
 echo_via_kitty() { dcs_to_kitty "echo" "$1"; }
 
@@ -212,13 +122,19 @@ compile_terminfo() {
     fi
 }
 
+read_base64_from_tty() {
+    while IFS= read -r line; do
+        [ "$line" = "KITTY_DATA_END" ] && return 0
+        printf "%s" "$line"
+    done
+}
+
 untar_and_read_env() {
     # extract the tar file atomically, in the sense that any file from the
     # tarfile is only put into place after it has been fully written to disk
-
     tdir=$(command mktemp -d "$HOME/.kitty-ssh-kitten-untar-XXXXXXXXXXXX")
     [ $? = 0 ] || die "Creating temp directory failed"
-    read_n_bytes_from_tty "$1" | base64_decode | command tar "xpzf" "-" "-C" "$tdir"
+    read_base64_from_tty | base64_decode | command tar "xpzf" "-" "-C" "$tdir"
     data_file="$tdir/data.sh"
     [ -f "$data_file" ] && . "$data_file"
     [ -z "$KITTY_SSH_KITTEN_DATA_DIR" ] && die "Failed to read SSH data from tty"
@@ -245,14 +161,20 @@ read_record() {
 }
 
 get_data() {
-    leading_data=$(read_record)
-    size=$(read_record)
-    case "$size" in
-        ("!"*)
-            die "$size"
-            ;;
-    esac
-    untar_and_read_env "$size"
+    started="n"
+    while IFS= read -r line; do
+        if [ "$started" = "y" ]; then
+            [ "$line" = "OK" ] && break
+            die "$line"
+        else
+            if [ "$line" = "KITTY_DATA_START" ]; then
+                started="y"
+            else
+                leading_data="$leading_data$line"
+            fi
+        fi
+    done
+    untar_and_read_env
 }
 
 if [ "$tty_ok" = "y" ]; then

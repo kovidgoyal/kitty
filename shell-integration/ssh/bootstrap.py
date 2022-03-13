@@ -8,14 +8,12 @@ import io
 import os
 import pwd
 import re
-import select
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
 import termios
-import tty
 
 tty_fd = -1
 original_termios_state = None
@@ -126,26 +124,32 @@ def compile_terminfo(base):
         os.symlink('../x/xterm-kitty', q)
 
 
+def iter_base64_data(f):
+    global leading_data
+    started = 0
+    for line in f:
+        line = line.rstrip()
+        if started == 0:
+            if line == b'KITTY_DATA_START':
+                started = 1
+            else:
+                leading_data += line
+        elif started == 1:
+            if line == b'OK':
+                started = 2
+            else:
+                raise SystemExit(line.decode('utf-8', 'replace').rstrip())
+        else:
+            if line == b'KITTY_DATA_END':
+                break
+            yield line
+
+
 def get_data():
     global data_dir, shell_integration_dir, leading_data
-    data = b''
-
-    while data.count(b'\036') < 2:
-        select.select([tty_fd], [], [])
-        n = os.read(tty_fd, 64)
-        if not n:
-            raise SystemExit('Unexpected EOF while reading data from terminal')
-        data += n
-    leading_data, size, data = data.split(b'\036', 2)
-    if size.startswith(b'!'):
-        raise SystemExit(size[1:].decode('utf-8', 'replace'))
-    size = int(size)
-    while len(data) < size:
-        select.select([tty_fd], [], [])
-        n = os.read(tty_fd, size - len(data))
-        if not n:
-            raise SystemExit('Unexpected EOF while reading data from terminal')
-        data += n
+    data = []
+    with open(tty_fd, 'rb', closefd=False) as f:
+        data = b''.join(iter_base64_data(f))
     cleanup()
     if leading_data:
         # clear current line as it might have things echoed on it from leading_data
@@ -212,7 +216,7 @@ def exec_with_shell_integration():
 def main():
     global tty_fd, original_termios_state, login_shell
     try:
-        tty_fd = os.open(os.ctermid(), os.O_RDWR | os.O_NONBLOCK | os.O_CLOEXEC)
+        tty_fd = os.open(os.ctermid(), os.O_RDWR | os.O_CLOEXEC)
     except OSError:
         pass
     else:
@@ -222,11 +226,8 @@ def main():
             except OSError:
                 pass
             else:
-                tty.setraw(tty_fd, termios.TCSANOW)
                 new_state = termios.tcgetattr(tty_fd)
                 new_state[3] &= ~termios.ECHO
-                new_state[-1][termios.VMIN] = 1
-                new_state[-1][termios.VTIME] = 0
                 termios.tcsetattr(tty_fd, termios.TCSANOW, new_state)
     try:
         if original_termios_state is not None:
