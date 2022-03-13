@@ -11,14 +11,17 @@ import re
 import secrets
 import shlex
 import stat
+import subprocess
 import sys
 import tarfile
 import tempfile
+import termios
 import time
 import traceback
 from base64 import standard_b64decode, standard_b64encode
 from contextlib import contextmanager, suppress
 from getpass import getuser
+from select import select
 from typing import (
     Callable, Dict, Iterator, List, NoReturn, Optional, Sequence, Set, Tuple,
     Union
@@ -216,7 +219,7 @@ def prepare_exec_cmd(remote_args: Sequence[str], is_python: bool) -> str:
 def bootstrap_script(
     ssh_opts: SSHOptions, script_type: str = 'sh', remote_args: Sequence[str] = (),
     test_script: str = '', request_id: Optional[str] = None, cli_hostname: str = '', cli_uname: str = '',
-    request_data: str = '1', echo_on: bool = True
+    request_data: bool = False, echo_on: bool = True
 ) -> Tuple[str, Dict[str, str], SharedMemory]:
     if request_id is None:
         request_id = os.environ['KITTY_PID'] + '-' + os.environ['KITTY_WINDOW_ID']
@@ -233,7 +236,7 @@ def bootstrap_script(
         atexit.register(shm.unlink)
     replacements = {
         'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': shm.name, 'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script,
-        'REQUEST_ID': request_id, 'REQUEST_DATA': request_data, 'ECHO_ON': '1' if echo_on else '0',
+        'REQUEST_ID': request_id, 'REQUEST_DATA': '1' if request_data else '0', 'ECHO_ON': '1' if echo_on else '0',
     }
     return prepare_script(ans, replacements), replacements, shm
 
@@ -477,13 +480,40 @@ def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
 
 @contextmanager
 def restore_terminal_state() -> Iterator[bool]:
-    import termios
     with open(os.ctermid()) as f:
         val = termios.tcgetattr(f.fileno())
         try:
             yield bool(val[3] & termios.ECHO)
         finally:
             termios.tcsetattr(f.fileno(), termios.TCSAFLUSH, val)
+
+
+def dcs_to_kitty(payload: Union[bytes, str], type: str = 'ssh') -> bytes:
+    if isinstance(payload, str):
+        payload = payload.encode('utf-8')
+    payload = standard_b64encode(payload)
+    return b'\033P@kitty-' + type.encode('ascii') + b'|' + payload + b'\033\\'
+
+
+@contextmanager
+def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str) -> Iterator[None]:
+    with open(os.open(os.ctermid(), os.O_CLOEXEC | os.O_RDWR | os.O_NOCTTY), 'wb') as tty:
+        tty.write(dcs_to_kitty(data_request))
+        tty.flush()
+        try:
+            yield
+        finally:
+            if p.returncode:
+                # discard queued data on tty in case data transmission was
+                # interrupted due to SSH failure, avoids spewing garbage to
+                # screen
+                termios.tcflush(tty.fileno(), termios.TCIOFLUSH)
+                with open(tty.fileno(), 'rb', closefd=False) as tf:
+                    os.set_blocking(tf.fileno(), False)
+                    from tty import setraw
+                    setraw(tf.fileno(), termios.TCSANOW)
+                    while select([tf], [], [], 0)[0]:
+                        tf.read()
 
 
 def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple[str, ...], echo_on: bool) -> NoReturn:
@@ -524,13 +554,16 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
     os.environ['SSH_ASKPASS_REQUIRE'] = 'force'
     if not os.environ.get('SSH_ASKPASS'):
         os.environ['SSH_ASKPASS'] = os.path.join(shell_integration_dir, 'ssh', 'askpass.py')
-    import subprocess
-    with suppress(FileNotFoundError):
-        try:
-            raise SystemExit(subprocess.run(cmd).returncode)
-        except KeyboardInterrupt:
-            raise SystemExit(1)
-    raise SystemExit('Could not find the ssh executable, is it in your PATH?')
+    try:
+        p = subprocess.Popen(cmd)
+    except FileNotFoundError:
+        raise SystemExit('Could not find the ssh executable, is it in your PATH?')
+    else:
+        with drain_potential_tty_garbage(p, 'id={REQUEST_ID}:pwfile={PASSWORD_FILENAME}:pw={DATA_PASSWORD}'.format(**replacements)):
+            try:
+                raise SystemExit(p.wait())
+            except KeyboardInterrupt:
+                raise SystemExit(1)
 
 
 def main(args: List[str]) -> NoReturn:

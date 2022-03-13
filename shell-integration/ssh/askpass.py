@@ -27,6 +27,7 @@ with SharedMemory(
     shm.flush()
     with open(os.ctermid(), 'wb') as f:
         f.write(f'\x1bP@kitty-ask|{shm.name}\x1b\\'.encode('ascii'))
+        f.flush()
     while True:
         # TODO: Replace sleep() with a mutex and condition variable created in the shared memory
         time.sleep(0.05)

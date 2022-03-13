@@ -243,7 +243,8 @@ copy --exclude */w.* d1
             test_script = f'echo "UNTAR_DONE"; {test_script}'
         ssh_opts['shell_integration'] = SHELL_INTEGRATION_VALUE or 'disabled'
         script, replacements, shm = bootstrap_script(
-            SSHOptions(ssh_opts), script_type='py' if 'python' in sh else 'sh', request_id="testing", test_script=test_script
+            SSHOptions(ssh_opts), script_type='py' if 'python' in sh else 'sh', request_id="testing", test_script=test_script,
+            request_data=True
         )
         try:
             env = basic_shell_env(home_dir)

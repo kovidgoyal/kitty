@@ -73,8 +73,7 @@ login_cwd=""
 
 request_data="REQUEST_DATA"
 trap "cleanup_on_bootstrap_exit" EXIT
-dcs_to_kitty "ssh" "id="REQUEST_ID":pwfile="PASSWORD_FILENAME":pw="DATA_PASSWORD""
-record_separator=$(printf "\036")
+[ "$request_data" = "1" ] && dcs_to_kitty "ssh" "id="REQUEST_ID":pwfile="PASSWORD_FILENAME":pw="DATA_PASSWORD""
 
 mv_files_and_dirs() {
     cwd="$PWD"
@@ -133,16 +132,6 @@ untar_and_read_env() {
     [ -e "$tdir/root" ] && mv_files_and_dirs "$tdir/root" ""
     command rm -rf "$tdir"
     tdir=""
-}
-
-read_record() {
-    record=""
-    while :; do
-        read_one_byte_from_tty || die "Reading a byte from the TTY failed"
-        [ "$n" = "$record_separator" ] && break
-        record="$record$n"
-    done
-    printf "%s" "$record"
 }
 
 get_data() {
