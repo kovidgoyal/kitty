@@ -79,6 +79,14 @@ Detailed list of changes
 
 - macOS: When using Apple's less as the pager for viewing scrollback strip out OSC codes as Apple's less cant parse them (:iss:`4788`)
 
+- diff kitten: Fix incorrect rendering in rare circumstances when scrolling after changing the context size (:iss:`4831`)
+
+- icat kitten: Fix a regression that broke :option:`kitten.icat --print-window-size` (:pull:`4818`)
+
+- Wayland: Fix :opt:`hide_window_decorations` causing docked windows to be resized on blur (:iss:`4797`)
+
+- Bash integration: Prevent shell integration code from running twice if user enables both automatic and manual integration
+
 0.24.4 [2022-03-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
