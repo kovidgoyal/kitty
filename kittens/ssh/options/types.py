@@ -5,6 +5,7 @@ import kittens.ssh.copy
 
 
 option_names = (  # {{{
+ 'askpass',
  'copy',
  'cwd',
  'env',
@@ -17,6 +18,7 @@ option_names = (  # {{{
 
 
 class Options:
+    askpass: str = 'unless-set'
     cwd: str = ''
     hostname: str = '*'
     interpreter: str = 'sh'

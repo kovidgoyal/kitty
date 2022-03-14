@@ -34,7 +34,7 @@ from kitty.constants import (
 from kitty.options.types import Options
 from kitty.shm import SharedMemory
 from kitty.types import run_once
-from kitty.utils import SSHConnectionData, no_echo
+from kitty.utils import SSHConnectionData, set_echo as turn_off_echo
 
 from .completion import complete, ssh_options
 from .config import init_config, options_for_host
@@ -435,15 +435,15 @@ def wrap_bootstrap_script(sh_script: str, interpreter: str) -> List[str]:
 
 
 def get_remote_command(
-    remote_args: List[str], ssh_opts: SSHOptions,
-    hostname: str = 'localhost', cli_hostname: str = '', cli_uname: str = '', echo_on: bool = True,
+    remote_args: List[str], ssh_opts: SSHOptions, hostname: str = 'localhost', cli_hostname: str = '', cli_uname: str = '',
+    echo_on: bool = True, request_data: bool = False
 ) -> Tuple[List[str], Dict[str, str], str]:
     interpreter = ssh_opts.interpreter
     q = os.path.basename(interpreter).lower()
     is_python = 'python' in q
     sh_script, replacements, shm = bootstrap_script(
         ssh_opts, script_type='py' if is_python else 'sh', remote_args=remote_args,
-        cli_hostname=cli_hostname, cli_uname=cli_uname, echo_on=echo_on)
+        cli_hostname=cli_hostname, cli_uname=cli_uname, echo_on=echo_on, request_data=request_data)
     return wrap_bootstrap_script(sh_script, interpreter), replacements, shm.name
 
 
@@ -503,8 +503,10 @@ def dcs_to_kitty(payload: Union[bytes, str], type: str = 'ssh') -> bytes:
 def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str) -> Iterator[None]:
     ssh_started_at = time.monotonic()
     with open(os.open(os.ctermid(), os.O_CLOEXEC | os.O_RDWR | os.O_NOCTTY), 'wb') as tty:
-        tty.write(dcs_to_kitty(data_request))
-        tty.flush()
+        if data_request:
+            turn_off_echo(tty.fileno())
+            tty.write(dcs_to_kitty(data_request))
+            tty.flush()
         try:
             yield
         finally:
@@ -556,25 +558,26 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
     use_control_master = host_opts.share_connections
     if use_control_master:
         cmd[insertion_point:insertion_point] = connection_sharing_args(host_opts, int(os.environ['KITTY_PID']))
-    with restore_terminal_state() as echo_on:
-        rcmd, replacements, shm_name = get_remote_command(remote_args, host_opts, hostname, hostname_for_match, uname, echo_on)
-        cmd += rcmd
-        # We force use of askpass so that OpenSSH does not use the tty leaving
-        # it free for us to use
+    use_kitty_askpass = host_opts.askpass == 'native' or (host_opts.askpass == 'unless-set' and 'SSH_ASKPASS' not in os.environ)
+    need_to_request_data = not use_kitty_askpass
+    if use_kitty_askpass:
         os.environ['SSH_ASKPASS_REQUIRE'] = 'force'
-        if not os.environ.get('SSH_ASKPASS'):
-            os.environ['SSH_ASKPASS'] = os.path.join(shell_integration_dir, 'ssh', 'askpass.py')
-        with no_echo(sys.stdin.fileno()):
-            try:
-                p = subprocess.Popen(cmd)
-            except FileNotFoundError:
-                raise SystemExit('Could not find the ssh executable, is it in your PATH?')
-            else:
-                with drain_potential_tty_garbage(p, 'id={REQUEST_ID}:pwfile={PASSWORD_FILENAME}:pw={DATA_PASSWORD}'.format(**replacements)):
-                    try:
-                        raise SystemExit(p.wait())
-                    except KeyboardInterrupt:
-                        raise SystemExit(1)
+        os.environ['SSH_ASKPASS'] = os.path.join(shell_integration_dir, 'ssh', 'askpass.py')
+    with restore_terminal_state() as echo_on:
+        rcmd, replacements, shm_name = get_remote_command(
+            remote_args, host_opts, hostname, hostname_for_match, uname, echo_on, request_data=need_to_request_data)
+        cmd += rcmd
+        try:
+            p = subprocess.Popen(cmd)
+        except FileNotFoundError:
+            raise SystemExit('Could not find the ssh executable, is it in your PATH?')
+        else:
+            rq = '' if need_to_request_data else 'id={REQUEST_ID}:pwfile={PASSWORD_FILENAME}:pw={DATA_PASSWORD}'.format(**replacements)
+            with drain_potential_tty_garbage(p, rq):
+                try:
+                    raise SystemExit(p.wait())
+                except KeyboardInterrupt:
+                    raise SystemExit(1)
 
 
 def main(args: List[str]) -> NoReturn:

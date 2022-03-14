@@ -73,7 +73,10 @@ login_cwd=""
 
 request_data="REQUEST_DATA"
 trap "cleanup_on_bootstrap_exit" EXIT
-[ "$request_data" = "1" ] && dcs_to_kitty "ssh" "id="REQUEST_ID":pwfile="PASSWORD_FILENAME":pw="DATA_PASSWORD""
+[ "$request_data" = "1" ] && {
+    command stty "-echo" < /dev/tty
+    dcs_to_kitty "ssh" "id="REQUEST_ID":pwfile="PASSWORD_FILENAME":pw="DATA_PASSWORD""
+}
 
 mv_files_and_dirs() {
     cwd="$PWD"

@@ -7,6 +7,9 @@ from kitty.conf.utils import merge_dicts, to_bool
 
 class Parser:
 
+    def askpass(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['askpass'] = str(val)
+
     def copy(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         for k, v in copy(val, ans["copy"]):
             ans["copy"][k] = v

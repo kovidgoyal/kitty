@@ -508,16 +508,25 @@ class TTYIO:
                 break
 
 
-@contextmanager
-def no_echo(fd: int = -1) -> Generator[None, None, None]:
+def set_echo(fd: int = -1, on: bool = False) -> Tuple[int, List[Union[int, List[Union[bytes, int]]]]]:
     import termios
     if fd < 0:
         fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
     new = termios.tcgetattr(fd)
-    new[3] = new[3] & ~termios.ECHO
+    if on:
+        new[3] |= termios.ECHO
+    else:
+        new[3] &= ~termios.ECHO
+    termios.tcsetattr(fd, termios.TCSADRAIN, new)
+    return fd, old
+
+
+@contextmanager
+def no_echo(fd: int = -1) -> Generator[None, None, None]:
+    import termios
+    fd, old = set_echo(fd)
     try:
-        termios.tcsetattr(fd, termios.TCSADRAIN, new)
         yield
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)

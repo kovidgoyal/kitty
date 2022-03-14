@@ -23,13 +23,24 @@ HOME = os.path.expanduser('~')
 login_shell = pwd.getpwuid(os.geteuid()).pw_shell or 'sh'
 
 
+def set_echo(fd, on=False):
+    if fd < 0:
+        fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    new = termios.tcgetattr(fd)
+    if on:
+        new[3] |= termios.ECHO
+    else:
+        new[3] &= ~termios.ECHO
+    termios.tcsetattr(fd, termios.TCSANOW, new)
+    return fd, old
+
+
 def cleanup():
     global tty_fd
     if tty_fd > -1:
         if echo_on:
-            s = termios.tcgetattr(tty_fd)
-            s[3] |= termios.ECHO
-            termios.tcsetattr(tty_fd, termios.TCSANOW, s)
+            set_echo(tty_fd, True)
         os.close(tty_fd)
         tty_fd = -1
 
@@ -218,6 +229,7 @@ def main():
     tty_fd = os.open(os.ctermid(), os.O_RDWR | getattr(os, 'O_CLOEXEC', 16777216))
     try:
         if request_data:
+            set_echo(tty_fd, on=False)
             send_data_request()
         get_data()
     finally:
