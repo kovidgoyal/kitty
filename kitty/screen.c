@@ -2070,10 +2070,12 @@ set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
 }
 
 void
-process_cwd_notification(Screen *self, unsigned int code UNUSED, PyObject *cwd) {
-    Py_CLEAR(self->last_reported_cwd);
-    self->last_reported_cwd = cwd;
-    Py_INCREF(self->last_reported_cwd);
+process_cwd_notification(Screen *self, unsigned int code, PyObject *cwd) {
+    if (code == 7) {
+        Py_CLEAR(self->last_reported_cwd);
+        self->last_reported_cwd = cwd;
+        Py_INCREF(self->last_reported_cwd);
+    }  // we ignore OSC 6 document reporting as we dont have a use for it
 }
 
 void
