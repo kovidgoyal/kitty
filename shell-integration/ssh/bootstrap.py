@@ -3,6 +3,7 @@
 
 
 import base64
+import contextlib
 import io
 import os
 import pwd
@@ -14,7 +15,7 @@ import tarfile
 import tempfile
 import termios
 
-tty_fd = -1
+tty_file_obj = None
 echo_on = int('ECHO_ON')
 data_dir = shell_integration_dir = ''
 request_data = int('REQUEST_DATA')
@@ -37,12 +38,12 @@ def set_echo(fd, on=False):
 
 
 def cleanup():
-    global tty_fd
-    if tty_fd > -1:
+    global tty_file_obj
+    if tty_file_obj is not None:
         if echo_on:
-            set_echo(tty_fd, True)
-        os.close(tty_fd)
-        tty_fd = -1
+            set_echo(tty_file_obj.fileno(), True)
+        tty_file_obj.close()
+        tty_file_obj = None
 
 
 def write_all(fd, data):
@@ -67,16 +68,16 @@ def dcs_to_kitty(payload, type='ssh'):
 
 
 def send_data_request():
-    write_all(tty_fd, dcs_to_kitty('id=REQUEST_ID:pwfile=PASSWORD_FILENAME:pw=DATA_PASSWORD'))
+    write_all(tty_file_obj.fileno(), dcs_to_kitty('id=REQUEST_ID:pwfile=PASSWORD_FILENAME:pw=DATA_PASSWORD'))
 
 
 def debug(msg):
     data = dcs_to_kitty('debug: {}'.format(msg), 'print')
-    if tty_fd == -1:
+    if tty_file_obj is None:
         with open(os.ctermid(), 'wb') as fl:
             write_all(fl.fileno(), data)
     else:
-        write_all(tty_fd, data)
+        write_all(tty_file_obj.fileno(), data)
 
 
 def unquote_env_val(x):
@@ -104,29 +105,48 @@ def apply_env_vars(raw):
 
 
 def move(src, base_dest):
-    for x in os.scandir(src):
-        dest = os.path.join(base_dest, x.name)
-        if x.is_dir(follow_symlinks=False):
-            os.makedirs(dest, exist_ok=True)
-            move(x.path, dest)
+    for x in os.listdir(src):
+        path = os.path.join(src, x)
+        dest = os.path.join(base_dest, x)
+        if os.path.islink(path):
+            try:
+                os.unlink(dest)
+            except EnvironmentError:
+                pass
+            os.symlink(os.readlink(path), dest)
+        elif os.path.isdir(path):
+            if not os.path.exists(dest):
+                os.makedirs(dest)
+            move(path, dest)
         else:
-            shutil.move(x.path, dest)
+            shutil.move(path, dest)
 
 
 def compile_terminfo(base):
-    tic = shutil.which('tic')
+    try:
+        tic = shutil.which('tic')
+    except AttributeError:
+        # python2
+        for x in os.environ.get('PATH', '').split(os.pathsep):
+            q = os.path.join(x, 'tic')
+            if os.access(q, os.X_OK) and os.path.isfile(q):
+                tic = q
+                break
+        else:
+            tic = ''
     if not tic:
         return
     tname = '.terminfo'
     if os.path.exists('/usr/share/misc/terminfo.cdb'):
         tname += '.cdb'
     os.environ['TERMINFO'] = os.path.join(HOME, tname)
-    cp = subprocess.run(
+    p = subprocess.Popen(
         [tic, '-x', '-o', os.path.join(base, tname), os.path.join(base, '.terminfo', 'kitty.terminfo')],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT
     )
-    if cp.returncode != 0:
-        sys.stderr.buffer.write(cp.stdout)
+    rc = p.wait()
+    if rc != 0:
+        getattr(sys.stderr, 'buffer', sys.stderr).write(p.stdout)
         raise SystemExit('Failed to compile the terminfo database')
     q = os.path.join(base, tname, '78', 'xterm-kitty')
     if not os.path.exists(q):
@@ -137,8 +157,8 @@ def compile_terminfo(base):
 def iter_base64_data(f):
     global leading_data
     started = 0
-    for line in f:
-        line = line.rstrip()
+    while True:
+        line = f.readline().rstrip()
         if started == 0:
             if line == b'KITTY_DATA_START':
                 started = 1
@@ -155,18 +175,27 @@ def iter_base64_data(f):
             yield line
 
 
+@contextlib.contextmanager
+def temporary_directory(dir, prefix):
+    # tempfile.TemporaryDirectory not available in python2
+    tdir = tempfile.mkdtemp(dir=dir, prefix=prefix)
+    try:
+        yield tdir
+    finally:
+        shutil.rmtree(tdir)
+
+
 def get_data():
     global data_dir, shell_integration_dir, leading_data
     data = []
-    with open(tty_fd, 'rb', closefd=False) as f:
-        data = b''.join(iter_base64_data(f))
+    data = b''.join(iter_base64_data(tty_file_obj))
     if leading_data:
         # clear current line as it might have things echoed on it from leading_data
         # because we only turn off echo in this script whereas the leading bytes could
         # have been sent before the script had a chance to run
         sys.stdout.write('\r\033[K')
     data = base64.standard_b64decode(data)
-    with tempfile.TemporaryDirectory(dir=HOME, prefix='.kitty-ssh-kitten-untar-') as tdir, tarfile.open(fileobj=io.BytesIO(data)) as tf:
+    with temporary_directory(dir=HOME, prefix='.kitty-ssh-kitten-untar-') as tdir, tarfile.open(fileobj=io.BytesIO(data)) as tf:
         tf.extractall(tdir)
         with open(tdir + '/data.sh') as f:
             env_vars = f.read()
@@ -223,13 +252,13 @@ def exec_with_shell_integration():
 
 
 def main():
-    global tty_fd, login_shell
+    global tty_file_obj, login_shell
     # the value of O_CLOEXEC below is on macOS which is most likely to not have
     # os.O_CLOEXEC being still stuck with python2
-    tty_fd = os.open(os.ctermid(), os.O_RDWR | getattr(os, 'O_CLOEXEC', 16777216))
+    tty_file_obj = os.fdopen(os.open(os.ctermid(), os.O_RDWR | getattr(os, 'O_CLOEXEC', 16777216)), 'rb')
     try:
         if request_data:
-            set_echo(tty_fd, on=False)
+            set_echo(tty_file_obj.fileno(), on=False)
             send_data_request()
         get_data()
     finally:
