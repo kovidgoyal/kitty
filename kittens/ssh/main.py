@@ -321,6 +321,7 @@ def get_connection_data(args: List[str], cwd: str = '', extra_args: Tuple[str, .
                 identity_file = arg
             elif expecting_extra_val:
                 found_extra_args.append((expecting_extra_val, arg))
+                expecting_extra_val = ''
             expecting_option_val = False
             continue
 
@@ -399,6 +400,7 @@ def parse_ssh_args(args: List[str], extra_args: Tuple[str, ...] = ()) -> Tuple[L
         if expecting_option_val:
             if expecting_extra_val:
                 found_extra_args.extend((expecting_extra_val, argument))
+                expecting_extra_val = ''
             else:
                 ssh_args.append(argument)
             expecting_option_val = False
