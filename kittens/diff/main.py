@@ -293,10 +293,11 @@ class DiffHandler(Handler):
 
     def scroll_lines(self, amt: int = 1) -> None:
         new_pos = max(0, min(self.scroll_pos + amt, self.max_scroll_pos))
+        amt = new_pos - self.scroll_pos
         if new_pos == self.scroll_pos:
             self.cmd.bell()
             return
-        if abs(new_pos - self.scroll_pos) >= self.num_lines - 1:
+        if abs(amt) >= self.num_lines - 1:
             self.scroll_pos = new_pos
             self.draw_screen()
             return
