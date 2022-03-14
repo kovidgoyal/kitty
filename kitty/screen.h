@@ -149,6 +149,7 @@ typedef struct {
         index_type y;
         bool is_set;
     } last_visited_prompt;
+    PyObject *last_reported_cwd;
 } Screen;
 
 

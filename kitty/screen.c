@@ -445,6 +445,7 @@ dealloc(Screen* self) {
     pthread_mutex_destroy(&self->write_buf_lock);
     Py_CLEAR(self->main_grman);
     Py_CLEAR(self->alt_grman);
+    Py_CLEAR(self->last_reported_cwd);
     PyMem_RawFree(self->write_buf);
     Py_CLEAR(self->callbacks);
     Py_CLEAR(self->test_child);
@@ -2069,10 +2070,10 @@ set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
 }
 
 void
-process_cwd_notification(Screen *self, unsigned int code, PyObject *cwd) {
-    (void)self; (void)code; (void)cwd;
-    // we ignore this as we dont need the stupid OSC 7 cwd reporting protocol,
-    // since, being moderately intelligent, we can get CWD directly.
+process_cwd_notification(Screen *self, unsigned int code UNUSED, PyObject *cwd) {
+    Py_CLEAR(self->last_reported_cwd);
+    self->last_reported_cwd = cwd;
+    Py_INCREF(self->last_reported_cwd);
 }
 
 void
@@ -3998,6 +3999,7 @@ static PyGetSetDef getsetters[] = {
 static PyMemberDef members[] = {
     {"callbacks", T_OBJECT_EX, offsetof(Screen, callbacks), 0, "callbacks"},
     {"cursor", T_OBJECT_EX, offsetof(Screen, cursor), READONLY, "cursor"},
+    {"last_reported_cwd", T_OBJECT_EX, offsetof(Screen, last_reported_cwd), READONLY, "last_reported_cwd"},
     {"grman", T_OBJECT_EX, offsetof(Screen, grman), READONLY, "grman"},
     {"color_profile", T_OBJECT_EX, offsetof(Screen, color_profile), READONLY, "color_profile"},
     {"linebuf", T_OBJECT_EX, offsetof(Screen, linebuf), READONLY, "linebuf"},
