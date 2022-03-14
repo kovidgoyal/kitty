@@ -437,14 +437,14 @@ def wrap_bootstrap_script(sh_script: str, interpreter: str) -> List[str]:
 def get_remote_command(
     remote_args: List[str], ssh_opts: SSHOptions,
     hostname: str = 'localhost', cli_hostname: str = '', cli_uname: str = '', echo_on: bool = True,
-) -> Tuple[List[str], Dict[str, str]]:
+) -> Tuple[List[str], Dict[str, str], str]:
     interpreter = ssh_opts.interpreter
     q = os.path.basename(interpreter).lower()
     is_python = 'python' in q
     sh_script, replacements, shm = bootstrap_script(
         ssh_opts, script_type='py' if is_python else 'sh', remote_args=remote_args,
         cli_hostname=cli_hostname, cli_uname=cli_uname, echo_on=echo_on)
-    return wrap_bootstrap_script(sh_script, interpreter), replacements
+    return wrap_bootstrap_script(sh_script, interpreter), replacements, shm.name
 
 
 def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
@@ -525,7 +525,7 @@ def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str)
                             return
 
 
-def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple[str, ...], echo_on: bool) -> NoReturn:
+def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple[str, ...]) -> NoReturn:
     cmd = ['ssh'] + ssh_args
     hostname, remote_args = server_args[0], server_args[1:]
     if not remote_args:
@@ -554,25 +554,27 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
     so = init_config(overrides)
     host_opts = options_for_host(hostname_for_match, uname, so)
     use_control_master = host_opts.share_connections
-    rcmd, replacements = get_remote_command(remote_args, host_opts, hostname, hostname_for_match, uname, echo_on)
-    cmd += rcmd
     if use_control_master:
         cmd[insertion_point:insertion_point] = connection_sharing_args(host_opts, int(os.environ['KITTY_PID']))
-    # We force use of askpass so that OpenSSH does not use the tty leaving
-    # it free for us to use
-    os.environ['SSH_ASKPASS_REQUIRE'] = 'force'
-    if not os.environ.get('SSH_ASKPASS'):
-        os.environ['SSH_ASKPASS'] = os.path.join(shell_integration_dir, 'ssh', 'askpass.py')
-    try:
-        p = subprocess.Popen(cmd)
-    except FileNotFoundError:
-        raise SystemExit('Could not find the ssh executable, is it in your PATH?')
-    else:
-        with drain_potential_tty_garbage(p, 'id={REQUEST_ID}:pwfile={PASSWORD_FILENAME}:pw={DATA_PASSWORD}'.format(**replacements)):
+    with restore_terminal_state() as echo_on:
+        rcmd, replacements, shm_name = get_remote_command(remote_args, host_opts, hostname, hostname_for_match, uname, echo_on)
+        cmd += rcmd
+        # We force use of askpass so that OpenSSH does not use the tty leaving
+        # it free for us to use
+        os.environ['SSH_ASKPASS_REQUIRE'] = 'force'
+        if not os.environ.get('SSH_ASKPASS'):
+            os.environ['SSH_ASKPASS'] = os.path.join(shell_integration_dir, 'ssh', 'askpass.py')
+        with no_echo(sys.stdin.fileno()):
             try:
-                raise SystemExit(p.wait())
-            except KeyboardInterrupt:
-                raise SystemExit(1)
+                p = subprocess.Popen(cmd)
+            except FileNotFoundError:
+                raise SystemExit('Could not find the ssh executable, is it in your PATH?')
+            else:
+                with drain_potential_tty_garbage(p, 'id={REQUEST_ID}:pwfile={PASSWORD_FILENAME}:pw={DATA_PASSWORD}'.format(**replacements)):
+                    try:
+                        raise SystemExit(p.wait())
+                    except KeyboardInterrupt:
+                        raise SystemExit(1)
 
 
 def main(args: List[str]) -> NoReturn:
@@ -589,8 +591,7 @@ def main(args: List[str]) -> NoReturn:
         raise SystemExit('The SSH kitten is meant for interactive use via SSH only')
     if not sys.stdin.isatty():
         raise SystemExit('The SSH kitten is meant for interactive use only, STDIN must be a terminal')
-    with restore_terminal_state() as echo_on, no_echo(sys.stdin.fileno()):
-        run_ssh(ssh_args, server_args, found_extra_args, echo_on)
+    run_ssh(ssh_args, server_args, found_extra_args)
 
 
 if __name__ == '__main__':
