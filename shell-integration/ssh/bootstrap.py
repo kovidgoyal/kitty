@@ -34,7 +34,7 @@ def cleanup():
         tty_fd = -1
 
 
-def write_all(fd, data) -> None:
+def write_all(fd, data):
     if isinstance(data, str):
         data = data.encode('utf-8')
     data = memoryview(data)
@@ -153,7 +153,7 @@ def get_data():
         # clear current line as it might have things echoed on it from leading_data
         # because we only turn off echo in this script whereas the leading bytes could
         # have been sent before the script had a chance to run
-        print(end='\r\033[K')
+        sys.stdout.write('\r\033[K')
     data = base64.standard_b64decode(data)
     with tempfile.TemporaryDirectory(dir=HOME, prefix='.kitty-ssh-kitten-untar-') as tdir, tarfile.open(fileobj=io.BytesIO(data)) as tf:
         tf.extractall(tdir)
@@ -213,7 +213,9 @@ def exec_with_shell_integration():
 
 def main():
     global tty_fd, login_shell
-    tty_fd = os.open(os.ctermid(), os.O_RDWR | os.O_CLOEXEC)
+    # the value of O_CLOEXEC below is on macOS which is most likely to not have
+    # os.O_CLOEXEC being still stuck with python2
+    tty_fd = os.open(os.ctermid(), os.O_RDWR | getattr(os, 'O_CLOEXEC', 16777216))
     try:
         if request_data:
             send_data_request()
