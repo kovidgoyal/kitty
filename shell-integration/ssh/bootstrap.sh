@@ -274,7 +274,8 @@ exec_zsh_with_integration() {
         export ZDOTDIR="$shell_integration_dir/zsh"
         exec "$login_shell" "-l"
     fi
-    unset KITTY_ORIG_ZDOTDIR  # ensure this is not propagated
+    # ensure this is not propagated
+    unset KITTY_ORIG_ZDOTDIR
 }
 
 exec_fish_with_integration() {
@@ -313,8 +314,10 @@ exec_with_shell_integration() {
 }
 
 execute_sh_with_posix_env() {
-    [ "$shell_name" = "sh" ] || return  # only for sh as that is likely to be POSIX compliant
-    command "$login_shell" -l -c ":" > /dev/null 2> /dev/null && return  # sh supports -l so use that
+    # only for sh as that is likely to be POSIX compliant
+    [ "$shell_name" = "sh" ] || return
+    # sh supports -l so use that
+    command "$login_shell" -l -c ":" > /dev/null 2> /dev/null && return
     [ -z "$shell_integration_dir" ] && die "Could not read data over tty ssh kitten cannot function"
     sh_dir="$shell_integration_dir/sh"
     command mkdir -p "$sh_dir" || die "Creating $sh_dir failed"

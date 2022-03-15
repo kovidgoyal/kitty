@@ -10,7 +10,8 @@ from functools import lru_cache
 
 from kittens.ssh.config import load_config
 from kittens.ssh.main import (
-    bootstrap_script, get_connection_data, wrap_bootstrap_script
+    bootstrap_script, get_connection_data, get_remote_command,
+    wrap_bootstrap_script
 )
 from kittens.ssh.options.types import Options as SSHOptions
 from kittens.ssh.options.utils import DELETE_ENV_VAR
@@ -77,6 +78,11 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         self.ae(parse(conf).env, {'a': 'b'})
         self.ae(parse(conf, '1').env, {'a': 'c', 'b': 'b'})
         self.ae(parse(conf, '2').env, {'a': 'c', 'b': 'b'})
+
+    def test_ssh_bootstrap_sh_cmd_limit(self):
+        rcmd, _, _ = get_remote_command([], SSHOptions({'interpreter': 'sh'}))
+        # dropbear has a 9000 bytes maximum command length limit
+        self.assertLessEqual(sum(len(x) for x in rcmd), 9000)
 
     @property
     @lru_cache()
