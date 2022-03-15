@@ -87,7 +87,7 @@ these are automatically cleaned up by kitty when it quits.
 
 opt('interpreter', 'sh', long_text='''
 The interpreter to use on the remote host. Must be either a POSIX complaint shell
-or a python executable. If the default sh is not available for broken, using
+or a python executable. If the default sh is not available or broken, using
 an alternate interpreter can be useful.
 ''')
 
