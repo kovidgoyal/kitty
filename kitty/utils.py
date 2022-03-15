@@ -942,6 +942,6 @@ def path_from_osc7_url(url: str) -> str:
     if url.startswith('kitty-shell-cwd://'):
         return '/' + url.split('/', 3)[-1]
     if url.startswith('file://'):
-        from urllib.parse import urlparse
-        return urlparse(url).path
+        from urllib.parse import urlparse, unquote
+        return unquote(urlparse(url).path)
     return ''
