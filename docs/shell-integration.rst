@@ -69,8 +69,8 @@ no-title
 
 no-cwd
     Turn off reporting the current working directory. This is used to allow
-    :ref:`action-new_window_with_cwd` and similar to open windows logged
-    into remote machines using the :doc:`ssh kitten <kitten/ssh>`
+    :ac:`new_window_with_cwd` and similar to open windows logged
+    into remote machines using the :doc:`ssh kitten <kittens/ssh>`
     automatically with the same working directory as the current window.
 
 no-prompt-mark
