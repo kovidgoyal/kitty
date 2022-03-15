@@ -16,9 +16,7 @@ from typing import (
 )
 from weakref import WeakValueDictionary
 
-from .child import (
-    cached_process_data, default_env, set_default_env
-)
+from .child import cached_process_data, default_env, set_default_env
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
 from .conf.utils import BadLine, KeyAction, to_cmdline
@@ -58,10 +56,11 @@ from .tabs import (
 from .types import _T, AsyncResponse, SingleKey, WindowSystemMouseEvent, ac
 from .typing import PopenType, TypedDict
 from .utils import (
-    func_name, get_editor, get_new_os_window_size, get_primary_selection,
-    is_path_in_temp_dir, log_error, open_url, parse_address_spec,
-    parse_uri_list, platform_window_id, remove_socket_file, safe_print,
-    set_primary_selection, single_instance, startup_notification_handler, which
+    cleanup_ssh_control_masters, func_name, get_editor, get_new_os_window_size,
+    get_primary_selection, is_path_in_temp_dir, log_error, open_url,
+    parse_address_spec, parse_uri_list, platform_window_id, remove_socket_file,
+    safe_print, set_primary_selection, single_instance,
+    startup_notification_handler, which
 )
 from .window import CommandOutput, MatchPatternType, Window
 
@@ -2262,6 +2261,10 @@ class Boss:
         if w:
             output = '\n'.join(f'{k}={v}' for k, v in os.environ.items())
             self.display_scrollback(w, output, title=_('Current kitty env vars'), report_cursor=False)
+
+    @ac('debug', 'Close all shared SSH connections')
+    def close_shared_ssh_connections(self) -> None:
+        cleanup_ssh_control_masters()
 
     def launch_urls(self, *urls: str, no_replace_window: bool = False) -> None:
         from .launch import force_window_launch

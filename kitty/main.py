@@ -17,8 +17,7 @@ from .conf.utils import BadLine
 from .config import cached_values_for
 from .constants import (
     appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
-    is_wayland, kitty_exe, logo_png_file, running_in_kitty, runtime_dir,
-    ssh_control_master_template
+    is_wayland, kitty_exe, logo_png_file, running_in_kitty
 )
 from .fast_data_types import (
     GLFW_IBEAM_CURSOR, GLFW_MOD_ALT, GLFW_MOD_SHIFT, create_os_window,
@@ -33,8 +32,8 @@ from .os_window_size import initial_window_size_func
 from .session import get_os_window_sizing_data
 from .types import SingleKey
 from .utils import (
-    detach, expandvars, log_error, single_instance,
-    startup_notification_handler, unix_socket_paths
+    cleanup_ssh_control_masters, detach, expandvars, log_error,
+    single_instance, startup_notification_handler, unix_socket_paths
 )
 from .window import load_shader_programs
 
@@ -344,24 +343,6 @@ def set_locale() -> None:
             locale.setlocale(locale.LC_ALL, '')
         except Exception:
             log_error('Failed to set locale with no LANG')
-
-
-def cleanup_ssh_control_masters() -> None:
-    import glob
-    import subprocess
-    try:
-        files = frozenset(glob.glob(os.path.join(runtime_dir(), ssh_control_master_template.format(
-            kitty_pid=os.getpid(), ssh_placeholder='*'))))
-    except OSError:
-        return
-    workers = tuple(subprocess.Popen([
-        'ssh', '-o', f'ControlPath={x}', '-O', 'exit', 'kitty-unused-host-name'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    for x in files)
-    for w in workers:
-        w.wait()
-    for x in files:
-        with suppress(OSError):
-            os.remove(x)
 
 
 def _main() -> None:

@@ -18,7 +18,8 @@ from typing import (
 )
 
 from .constants import (
-    appname, config_dir, is_macos, is_wayland, read_kitty_resource, shell_path,
+    appname, config_dir, is_macos, is_wayland, read_kitty_resource,
+    runtime_dir, shell_path, ssh_control_master_template,
     supports_primary_selection
 )
 from .fast_data_types import Color, open_tty
@@ -917,3 +918,21 @@ def hold_till_enter() -> None:
                 break
             if q in b'\x03\x04':
                 write_all(fd, msg)
+
+
+def cleanup_ssh_control_masters() -> None:
+    import glob
+    import subprocess
+    try:
+        files = frozenset(glob.glob(os.path.join(runtime_dir(), ssh_control_master_template.format(
+            kitty_pid=os.getpid(), ssh_placeholder='*'))))
+    except OSError:
+        return
+    workers = tuple(subprocess.Popen([
+        'ssh', '-o', f'ControlPath={x}', '-O', 'exit', 'kitty-unused-host-name'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    for x in files)
+    for w in workers:
+        w.wait()
+    for x in files:
+        with suppress(OSError):
+            os.remove(x)
