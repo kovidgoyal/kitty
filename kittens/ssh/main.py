@@ -86,7 +86,7 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
 
     def add_data_as_file(tf: tarfile.TarFile, arcname: str, data: Union[str, bytes]) -> tarfile.TarInfo:
         ans = tarfile.TarInfo(arcname)
-        ans.mtime = int(time.time())
+        ans.mtime = 0
         ans.type = tarfile.REGTYPE
         if isinstance(data, str):
             data = data.encode('utf-8')
