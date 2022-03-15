@@ -107,14 +107,14 @@ opt('login_shell', '', long_text='''
 The login shell to execute on the remote host. By default, the remote user account's
 login shell is used.''')
 
-opt('askpass', 'unless-set', long_text='''
+opt('askpass', 'unless-set', choices=('unless-set', 'ssh', 'native'), long_text='''
 Control the program SSH uses to ask for passwords or confirmation of host keys
 etc. The default is to use kitty's native askpass, unless the SSH_ASKPASS
 environment variable is set. Set it to :code:`ssh` to not interfere with the
 normal ssh askpass mechanism at all, which typically means that ssh will prompt
 at the terminal. Set it to :code:`native` to always use kitty's native,
-built-in askpass implementation. Note that not using an askpass implementation
-means that SSH needs to use the terminal before the connection is established
+built-in askpass implementation. Note that not using the kitty askpass implementation
+means that SSH might need to use the terminal before the connection is established
 so the kitten cannot use the terminal to send data without an extra roundtrip,
 adding to initial connection latency.
 ''')

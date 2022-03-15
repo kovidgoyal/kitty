@@ -3,6 +3,10 @@
 import typing
 import kittens.ssh.copy
 
+if typing.TYPE_CHECKING:
+    choices_for_askpass = typing.Literal['unless-set', 'ssh', 'native']
+else:
+    choices_for_askpass = str
 
 option_names = (  # {{{
  'askpass',
@@ -18,7 +22,7 @@ option_names = (  # {{{
 
 
 class Options:
-    askpass: str = 'unless-set'
+    askpass: choices_for_askpass = 'unless-set'
     cwd: str = ''
     hostname: str = '*'
     interpreter: str = 'sh'

@@ -8,7 +8,12 @@ from kitty.conf.utils import merge_dicts, to_bool
 class Parser:
 
     def askpass(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['askpass'] = str(val)
+        val = val.lower()
+        if val not in self.choices_for_askpass:
+            raise ValueError(f"The value {val} is not a valid choice for askpass")
+        ans["askpass"] = val
+
+    choices_for_askpass = frozenset(('unless-set', 'ssh', 'native'))
 
     def copy(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         for k, v in copy(val, ans["copy"]):
