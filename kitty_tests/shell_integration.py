@@ -181,6 +181,7 @@ function _set_status_prompt; function fish_prompt; echo -n "$pipestatus $status 
 
             # completion and prompt marking
             pty.send_cmd_to_child('clear')
+            pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 1)
             pty.send_cmd_to_child('_test_comp_path')
             pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 2)
             q = '\n'.join(str(pty.screen.line(i)) for i in range(1, pty.screen.cursor.y))
