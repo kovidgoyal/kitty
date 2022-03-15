@@ -67,6 +67,9 @@ no-title
     Note that for the ``fish`` shell kitty relies on fish's native title
     setting functionality instead.
 
+no-cwd
+    Turn off reporting
+
 no-prompt-mark
     Turn off marking of prompts. This disables jumping to prompt, browsing
     output of last command and click to move cursor functionality.

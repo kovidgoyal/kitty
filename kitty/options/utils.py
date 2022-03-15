@@ -800,7 +800,7 @@ def store_multiple(val: str, current_val: Container[str]) -> Iterable[Tuple[str,
 
 
 def shell_integration(x: str) -> FrozenSet[str]:
-    s = frozenset({'enabled', 'disabled', 'no-rc', 'no-cursor', 'no-title', 'no-prompt-mark', 'no-complete'})
+    s = frozenset({'enabled', 'disabled', 'no-rc', 'no-cursor', 'no-title', 'no-prompt-mark', 'no-complete', 'no-cwd'})
     q = frozenset(x.lower().split())
     if not q.issubset(s):
         log_error(f'Invalid shell integration options: {q - s}, ignoring')

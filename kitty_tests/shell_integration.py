@@ -78,7 +78,7 @@ class ShellIntegration(BaseTest):
 
     @contextmanager
     def run_shell(self, shell='zsh', rc='', cmd='', setup_env=None):
-        home_dir = os.path.realpath(tempfile.mkdtemp())
+        home_dir = self.home_dir = os.path.realpath(tempfile.mkdtemp())
         cmd = cmd or shell
         cmd = shlex.split(cmd.format(**locals()))
         env = (setup_env or safe_env_for_running_shell)(cmd, home_dir, rc=rc, shell=shell)
@@ -142,7 +142,12 @@ RPS1="{rps1}"
             pty.callbacks.clear()
             pty.send_cmd_to_child('printf "%s\x16\a%s" "a" "b"')
             pty.wait_till(lambda: 'ab' in pty.screen_contents())
+            self.assertTrue(pty.screen.last_reported_cwd.endswith(self.home_dir))
             self.assertIn('%s^G%s', pty.screen_contents())
+            q = os.path.join(self.home_dir, 'testing-cwd-notification')
+            os.mkdir(q)
+            pty.send_cmd_to_child(f'cd {q}')
+            pty.wait_till(lambda: pty.screen.last_reported_cwd.endswith(q))
 
     @unittest.skipUnless(shutil.which('fish'), 'fish not installed')
     def test_fish_integration(self):

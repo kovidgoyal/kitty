@@ -84,7 +84,7 @@ precmd_functions+=(_ksi_deferred_init)
 _ksi_deferred_init() {
     builtin emulate -L zsh -o no_warn_create_global -o no_aliases
 
-    # Recognized options: no-cursor, no-title, no-prompt-mark, no-complete.
+    # Recognized options: no-cursor, no-title, no-prompt-mark, no-complete, no-cwd.
     builtin local -a opt
     opt=(${(s: :)KITTY_SHELL_INTEGRATION})
     builtin unset KITTY_SHELL_INTEGRATION
@@ -222,6 +222,13 @@ _ksi_deferred_init() {
         # so we can at least tell users to use no-cursor and with that avoid hooking ZLE widgets at all
         # functions[_ksi_zle_line_init]+='
         #     builtin print -nu "$_ksi_fd" "\\e]133;B\\a"'
+    fi
+
+    # Enable reporting current working dir to terminal
+    if (( ! opt[(Ie)no-cwd] )); then
+        _ksi_report_pwd() { builtin print -nu $_ksi_fd '\e]7;kitty-shell-cwd://'"$HOST""$PWD"'\a'; }
+        chpwd_functions=(${chpwd_functions[@]} "_ksi_report_pwd")
+        _ksi_report_pwd
     fi
 
     # Enable terminal title changes.
