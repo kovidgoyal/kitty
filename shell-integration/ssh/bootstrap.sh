@@ -166,70 +166,39 @@ if [ -n "$leading_data" ]; then
 fi
 [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data"
 
-login_shell_is_ok() {
-    if [ -n "$login_shell" -a -x "$login_shell" ]; then return 0; fi
-    return 1
-}
-
 parse_passwd_record() {
     printf "%s" "$(command grep -o '[^:]*$')"
 }
 
-using_getent() {
-    cmd=$(command -v getent)
-    if [ -n "$cmd" ]; then
-        output=$(command "$cmd" passwd "$USER" 2>/dev/null)
-        if [ $? = 0 ]; then
-            login_shell=$(echo $output | parse_passwd_record)
-            if login_shell_is_ok; then return 0; fi
-        fi
-    fi
+login_shell_is_ok() {
+    [ -n "$1" ] && login_shell=$(echo $1 | parse_passwd_record)
+    [ -n "$login_shell" -a -x "$login_shell" ] && return 0
     return 1
+}
+
+using_getent() {
+    cmd=$(command -v getent) && [ -n "$cmd" ] && output=$(command "$cmd" passwd "$USER" 2>/dev/null) \
+    && login_shell_is_ok "$output"
 }
 
 using_id() {
-    cmd=$(command -v id)
-    if [ -n "$cmd" ]; then
-        output=$(command "$cmd" -P "$USER" 2>/dev/null)
-        if [ $? = 0 ]; then
-            login_shell=$(echo $output | parse_passwd_record)
-            if login_shell_is_ok; then return 0; fi
-        fi
-    fi
-    return 1
+    cmd=$(command -v id) && [ -n "$cmd" ] && output=$(command "$cmd" -P "$USER" 2>/dev/null) \
+    && login_shell_is_ok "$output"
 }
 
 using_python() {
-    if detect_python; then
-        output=$(command "$python" -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
-        if [ $? = 0 ]; then
-            login_shell="$output"
-            if login_shell_is_ok; then return 0; fi
-        fi
-    fi
-    return 1
+    detect_python && output=$(command "$python" -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)") \
+    && login_shell="$output" && login_shell_is_ok
 }
 
 using_perl() {
-    if detect_perl; then
-        output=$(command "$perl" -e 'my $shell = (getpwuid($<))[8]; print $shell')
-        if [ $? = 0 ]; then
-            login_shell="$output"
-            if login_shell_is_ok; then return 0; fi
-        fi
-    fi
-    return 1
+    detect_perl && output=$(command "$perl" -e 'my $shell = (getpwuid($<))[8]; print $shell') \
+    && login_shell="$output" && login_shell_is_ok
 }
 
 using_passwd() {
-    if [ -f "/etc/passwd" -a -r "/etc/passwd" ]; then
-        output=$(command grep "^$USER:" /etc/passwd 2>/dev/null)
-        if [ $? = 0 ]; then
-            login_shell=$(echo $output | parse_passwd_record)
-            if login_shell_is_ok; then return 0; fi
-        fi
-    fi
-    return 1
+    [ -f "/etc/passwd" -a -r "/etc/passwd" ] && output=$(command grep "^$USER:" /etc/passwd 2>/dev/null) \
+    && login_shell_is_ok "$output"
 }
 
 using_shell_env() {
