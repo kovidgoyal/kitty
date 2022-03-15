@@ -28,7 +28,7 @@ from typing import (
 )
 
 from kitty.constants import (
-    runtime_dir, shell_integration_dir, ssh_control_master_template,
+    cache_dir, runtime_dir, shell_integration_dir, ssh_control_master_template,
     terminfo_dir
 )
 from kitty.options.types import Options
@@ -593,7 +593,9 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
     use_kitty_askpass = host_opts.askpass == 'native' or (host_opts.askpass == 'unless-set' and 'SSH_ASKPASS' not in os.environ)
     need_to_request_data = True
     if use_kitty_askpass:
-        if ssh_version() >= (8, 4):
+        sentinel = os.path.join(cache_dir(), 'openssh-is-new-enough-for-askpass')
+        if os.path.exists(sentinel) or ssh_version() >= (8, 4):
+            open(sentinel, 'w').close()
             # SSH_ASKPASS_REQUIRE was introduced in 8.4 release on 2020-09-27
             need_to_request_data = False
             os.environ['SSH_ASKPASS_REQUIRE'] = 'force'
