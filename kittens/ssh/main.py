@@ -571,14 +571,13 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
     if use_control_master:
         cmd[insertion_point:insertion_point] = connection_sharing_args(host_opts, int(os.environ['KITTY_PID']))
     use_kitty_askpass = host_opts.askpass == 'native' or (host_opts.askpass == 'unless-set' and 'SSH_ASKPASS' not in os.environ)
+    need_to_request_data = True
     if use_kitty_askpass:
         # SSH_ASKPASS_REQUIRE was introduced in 8.4 release on 2020-09-27
         if os.environ.get('DISPLAY') or ssh_version() >= (8, 4):
+            need_to_request_data = False
             os.environ['SSH_ASKPASS_REQUIRE'] = 'force'
             os.environ['SSH_ASKPASS'] = os.path.join(shell_integration_dir, 'ssh', 'askpass.py')
-        else:
-            use_kitty_askpass = False
-    need_to_request_data = not use_kitty_askpass
     with restore_terminal_state() as echo_on:
         rcmd, replacements, shm_name = get_remote_command(
             remote_args, host_opts, hostname, hostname_for_match, uname, echo_on, request_data=need_to_request_data)
