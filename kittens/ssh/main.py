@@ -519,14 +519,13 @@ def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str)
                 termios.tcflush(tty.fileno(), termios.TCIFLUSH)
                 data = b''
                 start = time.monotonic()
-                with open(tty.fileno(), 'rb', closefd=False) as tf:
-                    os.set_blocking(tf.fileno(), False)
-                    from tty import setraw
-                    setraw(tf.fileno(), termios.TCSANOW)
-                    while time.monotonic() - start < 1 and select([tf], [], [], 0.075)[0]:
-                        data += tf.read()
-                        if b'KITTY_DATA_END' in data:
-                            return
+                while time.monotonic() - start < 1 and select([tty], [], [], 0.075)[0]:
+                    q = os.read(tty.fileno(), io.DEFAULT_BUFFER_SIZE)
+                    if not q:
+                        break
+                    data += q
+                    if b'KITTY_DATA_END' in data:
+                        return
 
 
 def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple[str, ...]) -> NoReturn:
