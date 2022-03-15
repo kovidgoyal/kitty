@@ -285,7 +285,10 @@ def zsh_output_serializer(ans: Completions) -> str:
         has_descriptions = any(matches.values())
         if has_descriptions or matches.word_transforms:
             lines.append('compdescriptions=(')
-            sz = max(map(wcswidth, matches.transformed_words()))
+            try:
+                sz = max(map(wcswidth, matches.transformed_words()))
+            except ValueError:
+                sz = 0
             limit = min(16, sz)
             for word, desc in matches.transformed_items():
                 lines.extend(map(shlex.quote, fmt_desc(word, desc, limit)))
