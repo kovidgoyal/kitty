@@ -599,6 +599,11 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
             need_to_request_data = False
             os.environ['SSH_ASKPASS_REQUIRE'] = 'force'
         os.environ['SSH_ASKPASS'] = os.path.join(shell_integration_dir, 'ssh', 'askpass.py')
+    if need_to_request_data and use_control_master:
+        cp = subprocess.run(cmd[:1] + ['-O', 'check'] + cmd[1:], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if cp.returncode == 0:
+            # we will use the master connection so SSH does not need to use the tty
+            need_to_request_data = False
     with restore_terminal_state() as echo_on:
         rcmd, replacements, shm_name = get_remote_command(
             remote_args, host_opts, hostname, hostname_for_match, uname, echo_on, request_data=need_to_request_data)
