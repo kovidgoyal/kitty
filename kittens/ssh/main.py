@@ -10,6 +10,7 @@ import os
 import re
 import secrets
 import shlex
+import shutil
 import stat
 import subprocess
 import sys
@@ -41,6 +42,11 @@ from .config import init_config
 from .copy import CopyInstruction
 from .options.types import Options as SSHOptions
 from .options.utils import DELETE_ENV_VAR
+
+
+@run_once
+def ssh_exe() -> str:
+    return shutil.which('ssh') or 'ssh'
 
 
 def is_kitten_cmdline(q: List[str]) -> bool:
@@ -368,7 +374,7 @@ class InvalidSSHArgs(ValueError):
     def system_exit(self) -> None:
         if self.err_msg:
             print(self.err_msg, file=sys.stderr)
-        os.execlp('ssh', 'ssh')
+        os.execlp(ssh_exe(), 'ssh')
 
 
 def parse_ssh_args(args: List[str], extra_args: Tuple[str, ...] = ()) -> Tuple[List[str], List[str], bool, Tuple[str, ...]]:
@@ -524,7 +530,7 @@ def dcs_to_kitty(payload: Union[bytes, str], type: str = 'ssh') -> bytes:
 
 @run_once
 def ssh_version() -> Tuple[int, int]:
-    o = subprocess.check_output(['ssh', '-V'], stderr=subprocess.STDOUT).decode()
+    o = subprocess.check_output([ssh_exe(), '-V'], stderr=subprocess.STDOUT).decode()
     m = re.match(r'OpenSSH_(\d+).(\d+)', o)
     if m is None:
         raise ValueError(f'Invalid version string for OpenSSH: {o}')
@@ -560,7 +566,7 @@ def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str)
 
 
 def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple[str, ...]) -> NoReturn:
-    cmd = ['ssh'] + ssh_args
+    cmd = [ssh_exe()] + ssh_args
     hostname, remote_args = server_args[0], server_args[1:]
     if not remote_args:
         cmd.append('-t')
