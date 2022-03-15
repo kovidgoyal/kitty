@@ -81,7 +81,7 @@ Detailed list of changes
 
 - diff kitten: Fix incorrect rendering in rare circumstances when scrolling after changing the context size (:iss:`4831`)
 
-- icat kitten: Fix a regression that broke :option:`kitten.icat --print-window-size` (:pull:`4818`)
+- icat kitten: Fix a regression that broke :option:`kitty +kitten icat --print-window-size` (:pull:`4818`)
 
 - Wayland: Fix :opt:`hide_window_decorations` causing docked windows to be resized on blur (:iss:`4797`)
 
