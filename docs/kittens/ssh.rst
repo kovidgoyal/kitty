@@ -61,7 +61,7 @@ Additionally, you can pass config options on the command line:
 The :code:`--kitten` argument can be specified multiple times, with directives
 from :file:`ssh.conf`. These are merged with :file:`ssh.conf` as if they were
 appended to the end of that file. They apply only to the host being SSHed to
-by this invocation, so any :opt:`hostname` directives are ignored.
+by this invocation, so any :opt:`hostname <kitten-ssh.hostname>` directives are ignored.
 
 .. note::
 
