@@ -11,44 +11,23 @@ from kitty.conf.utils import (
 )
 from kitty.constants import config_dir
 
-from .options.types import Options as SSHOptions, defaults, option_names
+from .options.types import Options as SSHOptions, defaults
 
 SYSTEM_CONF = '/etc/xdg/kitty/ssh.conf'
 defconf = os.path.join(config_dir, 'ssh.conf')
 
 
-def host_matches(pat: str, hostname: str, username: str) -> bool:
-    upat = '*'
-    if '@' in pat:
-        upat, pat = pat.split('@', 1)
-    return fnmatch.fnmatchcase(hostname, pat) and fnmatch.fnmatchcase(username, upat)
+def host_matches(mpat: str, hostname: str, username: str) -> bool:
+    for pat in mpat.split():
+        upat = '*'
+        if '@' in pat:
+            upat, pat = pat.split('@', 1)
+        if fnmatch.fnmatchcase(hostname, pat) and fnmatch.fnmatchcase(username, upat):
+            return True
+    return False
 
 
-def options_for_host(hostname: str, username: str, per_host_opts: Dict[str, SSHOptions], cli_hostname: str = '', cli_uname: str = '') -> SSHOptions:
-    matches = []
-    for spat, opts in per_host_opts.items():
-        for pat in spat.split():
-            if host_matches(pat, hostname, username) or (cli_hostname and host_matches(pat, cli_hostname, cli_uname)):
-                matches.append(opts)
-    if not matches:
-        return SSHOptions({})
-    base = matches[0]
-    rest = matches[1:]
-    if rest:
-        ans = SSHOptions(base._asdict())
-        for name in option_names:
-            for opts in rest:
-                val = getattr(opts, name)
-                if isinstance(val, dict):
-                    getattr(ans, name).update(val)
-                else:
-                    setattr(ans, name, val)
-    else:
-        ans = base
-    return ans
-
-
-def load_config(*paths: str, overrides: Optional[Iterable[str]] = None) -> Dict[str, SSHOptions]:
+def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, hostname: str = '!', username: str = '') -> SSHOptions:
     from .options.parse import (
         create_result_dict, merge_result_dicts, parse_conf_item
     )
@@ -75,18 +54,21 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None) -> Dict[
     first_seen_positions['*'] = 0
     opts_dict, paths = _load_config(
         defaults, parse_config, merge_dicts, *paths, overrides=overrides, initialize_defaults=init_results_dict)
-    ans: Dict[str, SSHOptions] = {}
     phd = get_per_hosts_dict(opts_dict)
-    for hostname in sorted(phd, key=first_seen_positions.__getitem__):
-        opts = SSHOptions(phd[hostname])
-        opts.config_paths = paths
-        opts.config_overrides = overrides
-        ans[hostname] = opts
+    final_dict: Dict[str, Any] = {}
+    for hostname_pat in sorted(phd, key=first_seen_positions.__getitem__):
+        if host_matches(hostname_pat, hostname, username):
+            od = phd[hostname_pat]
+            for k, v in od.items():
+                if isinstance(v, dict):
+                    bv = final_dict.setdefault(k, {})
+                    bv.update(v)
+                else:
+                    final_dict[k] = v
     first_seen_positions.clear()
-    return ans
+    return SSHOptions(final_dict)
 
 
-def init_config(overrides: Optional[Iterable[str]] = None) -> Dict[str, SSHOptions]:
+def init_config(hostname: str, username: str, overrides: Optional[Iterable[str]] = None) -> SSHOptions:
     config = tuple(resolve_config(SYSTEM_CONF, defconf))
-    opts_dict = load_config(*config, overrides=overrides)
-    return opts_dict
+    return load_config(*config, overrides=overrides, hostname=hostname, username=username)

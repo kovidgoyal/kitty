@@ -8,7 +8,7 @@ import shutil
 import tempfile
 from functools import lru_cache
 
-from kittens.ssh.config import load_config, options_for_host
+from kittens.ssh.config import load_config
 from kittens.ssh.main import (
     bootstrap_script, get_connection_data, wrap_bootstrap_script
 )
@@ -59,31 +59,24 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         self.assertTrue(runtime_dir())
 
     def test_ssh_config_parsing(self):
-        def parse(conf):
-            return load_config(overrides=conf.splitlines())
+        def parse(conf, hostname='unmatched_host', username=''):
+            return load_config(overrides=conf.splitlines(), hostname=hostname, username=username)
 
-        def for_host(hostname, conf, username='kitty'):
-            if isinstance(conf, str):
-                conf = parse(conf)
-            return options_for_host(hostname, username, conf)
-
-        self.ae(for_host('x', '').env, {})
-        self.ae(for_host('x', 'env a=b').env, {'a': 'b'})
-        pc = parse('env a=b\nhostname 2\nenv a=c\nenv b=b')
-        self.ae(set(pc.keys()), {'*', '2'})
-        self.ae(for_host('x', pc).env, {'a': 'b'})
-        self.ae(for_host('2', pc).env, {'a': 'c', 'b': 'b'})
-        self.ae(for_host('x', 'env a=').env, {'a': ''})
-        self.ae(for_host('x', 'env a').env, {'a': '_delete_this_env_var_'})
-        pc = parse('env a=b\nhostname test@2\nenv a=c\nenv b=b')
-        self.ae(set(pc.keys()), {'*', 'test@2'})
-        self.ae(for_host('x', pc).env, {'a': 'b'})
-        self.ae(for_host('2', pc).env, {'a': 'b'})
-        self.ae(for_host('2', pc, 'test').env, {'a': 'c', 'b': 'b'})
-        pc = parse('env a=b\nhostname 1 2\nenv a=c\nenv b=b')
-        self.ae(for_host('x', pc).env, {'a': 'b'})
-        self.ae(for_host('1', pc).env, {'a': 'c', 'b': 'b'})
-        self.ae(for_host('2', pc).env, {'a': 'c', 'b': 'b'})
+        self.ae(parse('').env, {})
+        self.ae(parse('env a=b').env, {'a': 'b'})
+        conf = 'env a=b\nhostname 2\nenv a=c\nenv b=b'
+        self.ae(parse(conf).env, {'a': 'b'})
+        self.ae(parse(conf, '2').env, {'a': 'c', 'b': 'b'})
+        self.ae(parse('env a=').env, {'a': ''})
+        self.ae(parse('env a').env, {'a': '_delete_this_env_var_'})
+        conf = 'env a=b\nhostname test@2\nenv a=c\nenv b=b'
+        self.ae(parse(conf).env, {'a': 'b'})
+        self.ae(parse(conf, '2').env, {'a': 'b'})
+        self.ae(parse(conf, '2', 'test').env, {'a': 'c', 'b': 'b'})
+        conf = 'env a=b\nhostname 1 2\nenv a=c\nenv b=b'
+        self.ae(parse(conf).env, {'a': 'b'})
+        self.ae(parse(conf, '1').env, {'a': 'c', 'b': 'b'})
+        self.ae(parse(conf, '2').env, {'a': 'c', 'b': 'b'})
 
     @property
     @lru_cache()
@@ -112,7 +105,7 @@ copy --dest=a/sfa simple-file
 copy --glob g.*
 copy --exclude */w.* d1
 '''
-                copy = load_config(overrides=filter(None, conf.splitlines()))['*'].copy
+                copy = load_config(overrides=filter(None, conf.splitlines())).copy
                 self.check_bootstrap(
                     sh, remote_home, test_script='env; exit 0', SHELL_INTEGRATION_VALUE='',
                     ssh_opts={'copy': copy}

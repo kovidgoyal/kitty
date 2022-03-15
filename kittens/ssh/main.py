@@ -37,7 +37,7 @@ from kitty.types import run_once
 from kitty.utils import SSHConnectionData, set_echo as turn_off_echo
 
 from .completion import complete, ssh_options
-from .config import init_config, options_for_host
+from .config import init_config
 from .copy import CopyInstruction
 from .options.types import Options as SSHOptions
 from .options.utils import DELETE_ENV_VAR
@@ -557,8 +557,7 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
                 overrides.append(aq)
     if overrides:
         overrides.insert(0, f'hostname {uname}@{hostname_for_match}')
-    so = init_config(overrides)
-    host_opts = options_for_host(hostname_for_match, uname, so)
+    host_opts = init_config(hostname_for_match, uname, overrides)
     use_control_master = host_opts.share_connections
     if use_control_master:
         cmd[insertion_point:insertion_point] = connection_sharing_args(host_opts, int(os.environ['KITTY_PID']))
