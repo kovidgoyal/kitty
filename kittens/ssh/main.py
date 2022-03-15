@@ -552,7 +552,9 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
     pat = re.compile(r'^([a-zA-Z0-9_]+)[ \t]*=')
     for i, a in enumerate(found_extra_args):
         if i % 2 == 1:
-            overrides.append(pat.sub(r'\1 ', a.lstrip()))
+            aq = pat.sub(r'\1 ', a.lstrip())
+            if aq.split(maxsplit=1)[0] != 'hostname':
+                overrides.append(aq)
     if overrides:
         overrides.insert(0, f'hostname {uname}@{hostname_for_match}')
     so = init_config(overrides)
