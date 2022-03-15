@@ -588,8 +588,7 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
     if overrides:
         overrides.insert(0, f'hostname {uname}@{hostname_for_match}')
     host_opts = init_config(hostname_for_match, uname, overrides)
-    use_control_master = host_opts.share_connections
-    if use_control_master:
+    if host_opts.share_connections:
         cmd[insertion_point:insertion_point] = connection_sharing_args(host_opts, int(os.environ['KITTY_PID']))
     use_kitty_askpass = host_opts.askpass == 'native' or (host_opts.askpass == 'unless-set' and 'SSH_ASKPASS' not in os.environ)
     need_to_request_data = True
@@ -599,7 +598,7 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
             need_to_request_data = False
             os.environ['SSH_ASKPASS_REQUIRE'] = 'force'
         os.environ['SSH_ASKPASS'] = os.path.join(shell_integration_dir, 'ssh', 'askpass.py')
-    if need_to_request_data and use_control_master:
+    if need_to_request_data and host_opts.share_connections:
         cp = subprocess.run(cmd[:1] + ['-O', 'check'] + cmd[1:], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if cp.returncode == 0:
             # we will use the master connection so SSH does not need to use the tty
