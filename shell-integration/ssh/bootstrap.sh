@@ -88,24 +88,26 @@ mv_files_and_dirs() {
 }
 
 compile_terminfo() {
-    # export TERMINFO
     tname=".terminfo"
+    # Ensure the 78 dir is present
+    if [ ! -f "$1/$tname/78/xterm-kitty" ]; then
+        command mkdir -p "$1/$tname/78"
+        command ln -sf "../x/xterm-kitty" "$1/$tname/78/xterm-kitty"
+    fi
+
     if [ -e "/usr/share/misc/terminfo.cdb" ]; then
-        # NetBSD requires this see https://github.com/kovidgoyal/kitty/issues/4622
+        # NetBSD requires this file, see https://github.com/kovidgoyal/kitty/issues/4622
+        command ln -sf "../../.terminfo.cdb" "$1/$tname/x/xterm-kitty"
         tname=".terminfo.cdb"
     fi
+
+    # export TERMINFO
     export TERMINFO="$HOME/$tname"
 
     # compile terminfo for this system
     if [ -x "$(command -v tic)" ]; then
         tic_out=$(command tic -x -o "$1/$tname" "$1/.terminfo/kitty.terminfo" 2>&1)
         [ $? = 0 ] || die "Failed to compile terminfo with err: $tic_out"
-    fi
-
-    # Ensure the 78 dir is present
-    if [ ! -f "$1/$tname/78/xterm-kitty" ]; then
-        command mkdir -p "$1/$tname/78"
-        command ln -sf "../x/xterm-kitty" "$1/$tname/78/xterm-kitty"
     fi
 }
 
