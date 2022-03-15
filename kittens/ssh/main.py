@@ -516,7 +516,6 @@ def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str)
                 # discard queued input data on tty in case data transmission was
                 # interrupted due to SSH failure, avoids spewing garbage to
                 # screen
-                termios.tcflush(tty.fileno(), termios.TCIFLUSH)
                 data = b''
                 give_up_at = time.monotonic() + 1
                 tty_fd = tty.fileno()
