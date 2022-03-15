@@ -100,6 +100,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         # This is actually builtin to fish but stupidly gated on TERM
         # https://github.com/fish-shell/fish-shell/blob/master/share/functions/__fish_config_interactive.fish#L257
         function __ksi_report_cwd --on-variable PWD --description "Report PWD changes to the terminal"
+            status --is-command-substitution; and return
             echo -en "\e]7;kitty-shell-cwd://$hostname$PWD\a"
         end
         __ksi_report_cwd
