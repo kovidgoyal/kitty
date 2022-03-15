@@ -518,9 +518,13 @@ def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str)
                 # screen
                 termios.tcflush(tty.fileno(), termios.TCIFLUSH)
                 data = b''
-                start = time.monotonic()
-                while time.monotonic() - start < 1 and select([tty], [], [], 0.075)[0]:
-                    q = os.read(tty.fileno(), io.DEFAULT_BUFFER_SIZE)
+                give_up_at = time.monotonic() + 1
+                tty_fd = tty.fileno()
+                while time.monotonic() < give_up_at:
+                    rd, wr, err = select([tty_fd], [], [tty_fd], max(0, give_up_at - time.monotonic()))
+                    if err or not rd:
+                        break
+                    q = os.read(tty_fd, io.DEFAULT_BUFFER_SIZE)
                     if not q:
                         break
                     data += q
