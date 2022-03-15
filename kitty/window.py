@@ -20,7 +20,7 @@ from typing import (
 from .child import ProcessDesc
 from .cli_stub import CLIOptions
 from .config import build_ansi_color_table
-from .constants import appname, is_macos, wakeup
+from .constants import appname, is_macos, shell_path, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
     CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK,
@@ -46,8 +46,8 @@ from .types import MouseEvent, WindowGeometry, ac
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     get_primary_selection, kitty_ansi_sanitizer_pat, load_shaders, log_error,
-    open_cmd, open_url, parse_color_set, resolve_custom_file, sanitize_title,
-    set_primary_selection
+    open_cmd, open_url, parse_color_set, path_from_osc7_url,
+    resolve_custom_file, sanitize_title, set_primary_selection
 )
 
 MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]]]]
@@ -323,6 +323,7 @@ def cmd_output(screen: Screen, which: CommandOutput = CommandOutput.last_run, as
 
 def process_remote_print(msg: str) -> str:
     from base64 import standard_b64decode
+
     from .cli import green
     text = standard_b64decode(msg).decode('utf-8', 'replace')
     return text.replace('\x1b', green(r'\e')).replace('\a', green(r'\a')).replace('\0', green(r'\0'))
@@ -1137,6 +1138,23 @@ class Window:
     @property
     def cwd_of_child(self) -> Optional[str]:
         return self.child.foreground_cwd or self.child.current_cwd
+
+    def modify_argv_for_launch_with_cwd(self, argv: List[str]) -> str:
+        if argv[0] != shell_path or not self.screen.last_reported_cwd:
+            return self.cwd_of_child or ''
+        from kittens.ssh.main import is_kitten_cmdline, set_cwd_in_cmdline
+        ssh_kitten_cmdline: List[str] = []
+        for p in self.child.foreground_processes:
+            q = list(p['cmdline'] or ())
+            if is_kitten_cmdline(q):
+                ssh_kitten_cmdline = q
+                break
+        if ssh_kitten_cmdline:
+            cwd = path_from_osc7_url(self.screen.last_reported_cwd)
+            if cwd:
+                set_cwd_in_cmdline(path_from_osc7_url(self.screen.last_reported_cwd), ssh_kitten_cmdline)
+                argv[:] = ssh_kitten_cmdline
+        return self.cwd_of_child or ''
 
     def pipe_data(self, text: str, has_wrap_markers: bool = False) -> PipeData:
         text = text or ''

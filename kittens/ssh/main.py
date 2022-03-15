@@ -42,6 +42,27 @@ from .copy import CopyInstruction
 from .options.types import Options as SSHOptions
 from .options.utils import DELETE_ENV_VAR
 
+
+def is_kitten_cmdline(q: List[str]) -> bool:
+    if len(q) < 4:
+        return False
+    if os.path.basename(q[0]).lower() != 'kitty':
+        return False
+    return q[1:3] == ['+kitten', 'ssh'] or q[1:4] == ['+', 'kitten', 'ssh']
+
+
+def set_cwd_in_cmdline(cwd: str, argv: List[str]) -> None:
+    for i, arg in enumerate(tuple(argv)):
+        if arg.startswith('--kitten=cwd'):
+            argv[i] = f'--kitten=cwd={cwd}'
+            return
+        elif i > 0 and argv[i-1] == '--kitten' and (arg.startswith('cwd=') or arg.startswith('cwd ')):
+            argv[i] = cwd
+            return
+    idx = argv.index('ssh')
+    argv.insert(idx + 1, f'--kitten=cwd={cwd}')
+
+
 # See https://www.gnu.org/software/bash/manual/html_node/Double-Quotes.html
 quote_pat = re.compile('([\\`"\n])')
 

@@ -936,3 +936,12 @@ def cleanup_ssh_control_masters() -> None:
     for x in files:
         with suppress(OSError):
             os.remove(x)
+
+
+def path_from_osc7_url(url: str) -> str:
+    if url.startswith('kitty-shell-cwd://'):
+        return '/' + url.split('/', 3)[-1]
+    if url.startswith('file://'):
+        from urllib.parse import urlparse
+        return urlparse(url).path
+    return ''

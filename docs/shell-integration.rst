@@ -68,7 +68,10 @@ no-title
     setting functionality instead.
 
 no-cwd
-    Turn off reporting
+    Turn off reporting the current working directory. This is used to allow
+    :ref:`action-new_window_with_cwd` and similar to open windows logged
+    into remote machines using the :doc:`ssh kitten <kitten/ssh>`
+    automatically with the same working directory as the current window.
 
 no-prompt-mark
     Turn off marking of prompts. This disables jumping to prompt, browsing

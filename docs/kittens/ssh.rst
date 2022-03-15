@@ -27,6 +27,13 @@ rc files:
 
 So you can now type just ``s hostname`` to connect.
 
+If you define a mapping in :file:`kitty.conf` such as::
+
+    map f1 new_window_with_cwd
+
+Then, pressing :kbd:`F1` will open a new window automatically logged
+into the same server using the ssh kitten, at the same directory.
+
 The ssh kitten can be configured using the :file:`~/.config/kitty/ssh.conf`
 file where you can specify environment variables to set on the remote server
 and files to copy from your local machine to the remote server. Let's see a
