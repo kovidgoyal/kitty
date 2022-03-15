@@ -21,7 +21,7 @@ data_dir = shell_integration_dir = ''
 request_data = int('REQUEST_DATA')
 leading_data = b''
 HOME = os.path.expanduser('~')
-login_shell = pwd.getpwuid(os.geteuid()).pw_shell or 'sh'
+login_shell = pwd.getpwuid(os.geteuid()).pw_shell or os.environ.get('SHELL') or 'sh'
 
 
 def set_echo(fd, on=False):

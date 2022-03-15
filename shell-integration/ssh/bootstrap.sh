@@ -232,6 +232,10 @@ using_passwd() {
     return 1
 }
 
+using_shell_env() {
+    [ -n "$SHELL" ] && login_shell="$SHELL" && login_shell_is_ok
+}
+
 execute_with_python() {
     if detect_python; then
         exec "$python" "-c" "import os; os.execlp('$login_shell', '-' '$shell_name')"
@@ -250,7 +254,7 @@ if [ -n "$KITTY_LOGIN_SHELL" ]; then
     login_shell="$KITTY_LOGIN_SHELL"
     unset KITTY_LOGIN_SHELL
 else
-    using_getent || using_id || using_python || using_perl || using_passwd || die "Could not detect login shell"
+    using_getent || using_id || using_python || using_perl || using_passwd || using_shell_env || login_shell="sh"
 fi
 shell_name=$(command basename $login_shell)
 [ -n "$login_cwd" ] && cd "$login_cwd"
