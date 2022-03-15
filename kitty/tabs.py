@@ -58,7 +58,7 @@ class SpecialWindowInstance(NamedTuple):
     cmd: Optional[List[str]]
     stdin: Optional[bytes]
     override_title: Optional[str]
-    cwd_from: Optional[int]
+    cwd_from: Optional[Window]
     cwd: Optional[str]
     overlay_for: Optional[int]
     env: Optional[Dict[str, str]]
@@ -69,7 +69,7 @@ def SpecialWindow(
     cmd: Optional[List[str]],
     stdin: Optional[bytes] = None,
     override_title: Optional[str] = None,
-    cwd_from: Optional[int] = None,
+    cwd_from: Optional[Window] = None,
     cwd: Optional[str] = None,
     overlay_for: Optional[int] = None,
     env: Optional[Dict[str, str]] = None,
@@ -98,7 +98,7 @@ class Tab:  # {{{
         tab_manager: 'TabManager',
         session_tab: Optional['SessionTab'] = None,
         special_window: Optional[SpecialWindowInstance] = None,
-        cwd_from: Optional[int] = None,
+        cwd_from: Optional[Window] = None,
         no_initial_window: bool = False
     ):
         self.tab_manager_ref = weakref.ref(tab_manager)
@@ -347,7 +347,7 @@ class Tab:  # {{{
         use_shell: bool = False,
         cmd: Optional[List[str]] = None,
         stdin: Optional[bytes] = None,
-        cwd_from: Optional[int] = None,
+        cwd_from: Optional[Window] = None,
         cwd: Optional[str] = None,
         env: Optional[Dict[str, str]] = None,
         allow_remote_control: bool = False
@@ -414,7 +414,7 @@ class Tab:  # {{{
         cmd: Optional[List[str]] = None,
         stdin: Optional[bytes] = None,
         override_title: Optional[str] = None,
-        cwd_from: Optional[int] = None,
+        cwd_from: Optional[Window] = None,
         cwd: Optional[str] = None,
         overlay_for: Optional[int] = None,
         env: Optional[Dict[str, str]] = None,
@@ -942,7 +942,7 @@ class TabManager:  # {{{
     def new_tab(
         self,
         special_window: Optional[SpecialWindowInstance] = None,
-        cwd_from: Optional[int] = None,
+        cwd_from: Optional[Window] = None,
         as_neighbor: bool = False,
         empty_tab: bool = False,
         location: str = 'last'

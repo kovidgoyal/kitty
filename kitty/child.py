@@ -7,7 +7,7 @@ import sys
 from collections import defaultdict
 from contextlib import contextmanager, suppress
 from typing import (
-    DefaultDict, Dict, Generator, List, Optional, Sequence, Tuple
+    DefaultDict, Dict, Generator, List, Optional, Sequence, Tuple, TYPE_CHECKING
 )
 
 import kitty.fast_data_types as fast_data_types
@@ -20,6 +20,8 @@ try:
     from typing import TypedDict
 except ImportError:
     TypedDict = dict
+if TYPE_CHECKING:
+    from .window import Window
 
 
 if is_macos:
@@ -192,14 +194,14 @@ class Child:
         cwd: str,
         stdin: Optional[bytes] = None,
         env: Optional[Dict[str, str]] = None,
-        cwd_from: Optional[int] = None,
+        cwd_from: Optional['Window'] = None,
         allow_remote_control: bool = False
     ):
         self.allow_remote_control = allow_remote_control
         self.argv = list(argv)
         if cwd_from is not None:
             try:
-                cwd = cwd_of_process(cwd_from)
+                cwd = cwd_from.cwd_of_child or cwd
             except Exception as err:
                 log_error(f'Failed to read cwd of {cwd_from} with error: {err}')
         else:

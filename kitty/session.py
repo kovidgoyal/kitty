@@ -3,7 +3,7 @@
 
 import shlex
 import sys
-from typing import Generator, List, Optional, Union
+from typing import Generator, List, Optional, Union, TYPE_CHECKING
 
 from .cli_stub import CLIOptions
 from .options.utils import to_layout_names, window_size
@@ -13,6 +13,10 @@ from .options.types import Options
 from .os_window_size import WindowSize, WindowSizeData, WindowSizes
 from .typing import SpecialWindowInstance
 from .utils import log_error, resolved_shell
+
+
+if TYPE_CHECKING:
+    from .window import Window
 
 
 def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None) -> WindowSizeData:
@@ -146,7 +150,7 @@ def create_sessions(
     opts: Options,
     args: Optional[CLIOptions] = None,
     special_window: Optional['SpecialWindowInstance'] = None,
-    cwd_from: Optional[int] = None,
+    cwd_from: Optional['Window'] = None,
     respect_cwd: bool = False,
     default_session: Optional[str] = None
 ) -> Generator[Session, None, None]:

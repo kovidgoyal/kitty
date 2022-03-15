@@ -290,7 +290,7 @@ def load_watch_modules(watchers: Iterable[str]) -> Optional[Watchers]:
 class LaunchKwds(TypedDict):
 
     allow_remote_control: bool
-    cwd_from: Optional[int]
+    cwd_from: Optional[Window]
     cwd: Optional[str]
     location: Optional[str]
     override_title: Optional[str]
@@ -357,8 +357,8 @@ def launch(
     }
     if opts.cwd:
         if opts.cwd == 'current':
-            if active_child:
-                kw['cwd_from'] = active_child.pid_for_cwd
+            if active:
+                kw['cwd_from'] = active
         else:
             kw['cwd'] = opts.cwd
     if opts.location != 'default':
