@@ -121,7 +121,8 @@ untar_and_read_env() {
     # tarfile is only put into place after it has been fully written to disk
     tdir=$(command mktemp -d "$HOME/.kitty-ssh-kitten-untar-XXXXXXXXXXXX")
     [ $? = 0 ] || die "Creating temp directory failed"
-    read_base64_from_tty | base64_decode | command tar "xpzf" "-" "-C" "$tdir"
+    # suppress STDERR for tar as tar prints various warnings if for instance, timestamps are in the future
+    read_base64_from_tty | base64_decode | command tar "xpzf" "-" "-C" "$tdir" 2> /dev/null
     data_file="$tdir/data.sh"
     [ -f "$data_file" ] && . "$data_file"
     [ -z "$KITTY_SSH_KITTEN_DATA_DIR" ] && die "Failed to read SSH data from tty"
