@@ -171,6 +171,13 @@ function _set_status_prompt; function fish_prompt; echo -n "$pipestatus $status 
             pty.send_cmd_to_child('set -q XDG_DATA_DIRS; or echo ok')
             pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 2)
             self.ae(str(pty.screen.line(1)), 'ok')
+            self.assertTrue(pty.screen.last_reported_cwd.endswith(self.home_dir))
+            q = os.path.join(self.home_dir, 'testing-cwd-notification-🐱')
+            os.mkdir(q)
+            pty.send_cmd_to_child(f'cd {q}')
+            pty.wait_till(lambda: pty.screen.last_reported_cwd.endswith(q))
+            pty.send_cmd_to_child('cd -')
+            pty.wait_till(lambda: pty.screen.last_reported_cwd.endswith(self.home_dir))
 
             # completion and prompt marking
             pty.send_cmd_to_child('clear')

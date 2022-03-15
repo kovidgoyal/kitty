@@ -94,4 +94,12 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         # so we need fish to redraw it.
         set --global fish_handle_reflow 1
     end
+
+    # Enable CWD reporting
+    if not contains "no-cwd" $_ksi
+        function __ksi_report_cwd --on-variable PWD --description "Report PWD changes to the terminal"
+            echo -en "\e]7;kitty-shell-cwd://$hostname$PWD\a"
+        end
+        __ksi_report_cwd
+    end
 end
