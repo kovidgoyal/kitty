@@ -519,7 +519,7 @@ def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str)
                 data = b''
                 give_up_at = time.monotonic() + 1
                 tty_fd = tty.fileno()
-                while time.monotonic() < give_up_at:
+                while time.monotonic() < give_up_at and b'KITTY_DATA_END' not in data:
                     rd, wr, err = select([tty_fd], [], [tty_fd], max(0, give_up_at - time.monotonic()))
                     if err or not rd:
                         break
@@ -527,8 +527,6 @@ def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str)
                     if not q:
                         break
                     data += q
-                    if b'KITTY_DATA_END' in data:
-                        return
 
 
 def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple[str, ...]) -> NoReturn:
