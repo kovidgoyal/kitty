@@ -71,16 +71,19 @@ fi
 # which is not available on older bash
 builtin declare -A _ksi_prompt
 _ksi_prompt=(
-    [cursor]='y' [title]='y' [mark]='y' [complete]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]=''
-    [hostname_prefix]='' [sourced]='y'
+    [cursor]='y' [title]='y' [mark]='y' [complete]='y' [cwd]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]=''
+    [hostname_prefix]='' [sourced]='y' [last_reported_cwd]=''
 )
 
 _ksi_main() {
     for i in ${KITTY_SHELL_INTEGRATION[@]}; do
-        if [[ "$i" == "no-cursor" ]]; then _ksi_prompt[cursor]='n'; fi
-        if [[ "$i" == "no-title" ]]; then _ksi_prompt[title]='n'; fi
-        if [[ "$i" == "no-prompt-mark" ]]; then _ksi_prompt[mark]='n'; fi
-        if [[ "$i" == "no-complete" ]]; then _ksi_prompt[complete]='n'; fi
+        case "$i" in
+            "no-cursor") _ksi_prompt[cursor]='n';;
+            "no-title") _ksi_prompt[title]='n';;
+            "no-prompt-mark") _ksi_prompt[mark]='n';;
+            "no-complete") _ksi_prompt[complete]='n';;
+            "no-cwd") _ksi_prompt[cwd]='n';;
+        esac
     done
 
     builtin unset KITTY_SHELL_INTEGRATION
@@ -146,6 +149,16 @@ _ksi_main() {
         if [[ -n "${_ksi_prompt[ps2]}" ]]; then
             PS2=${PS2//\\\[\\e\]133;k;start_kitty\\a\\\]*end_kitty\\a\\\]}
             PS2="${_ksi_prompt[ps2]}$PS2"
+        fi
+
+        if [[ "${_ksi_prompt[cwd]}" == "y" ]]; then
+            # unfortunately bash provides no hooks to detect cwd changes
+            # in particular this means cwd reporting will not happen for a
+            # command like cd /test && cat. PS0 is evaluated before cd is run.
+            if [[ "${_ksi_prompt[last_reported_cwd]}" != "$PWD" ]]; then
+                _ksi_prompt[last_reported_cwd]="$PWD";
+                builtin printf "\e]7;kitty-shell-cwd://%s%s\a" "$HOST" "$PWD"
+            fi
         fi
     }
 
@@ -245,5 +258,3 @@ _ksi_main() {
 }
 _ksi_main
 builtin unset -f _ksi_main
-# freeze _ksi_prompt to prevent it from being changed
-builtin declare -r _ksi_prompt
