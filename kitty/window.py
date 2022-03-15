@@ -1137,6 +1137,10 @@ class Window:
 
     @property
     def cwd_of_child(self) -> Optional[str]:
+        if self.at_prompt and self.screen.last_reported_cwd:
+            cwd = path_from_osc7_url(self.screen.last_reported_cwd)
+            if cwd:
+                return cwd
         return self.child.foreground_cwd or self.child.current_cwd
 
     def modify_argv_for_launch_with_cwd(self, argv: List[str]) -> str:
