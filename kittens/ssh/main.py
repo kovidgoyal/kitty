@@ -233,7 +233,7 @@ def prepare_script(ans: str, replacements: Dict[str, str], script_type: str) -> 
     if script_type == 'sh':
         # Remove comments and indents. The dropbear SSH server has 9000 bytes limit on ssh arguments length.
         # Needs to be trimmed before replacing EXEC_CMD to avoid affecting the indentation of user commands.
-        ans = re.sub(r'^\s*#.*\n|^\s*', '', ans, flags=re.MULTILINE)
+        ans = re.sub(r'^[ \t]*#.*$|^[ \t]*', '', ans, flags=re.MULTILINE)
     return re.sub('|'.join(fr'\b{k}\b' for k in replacements), sub, ans)
 
 
