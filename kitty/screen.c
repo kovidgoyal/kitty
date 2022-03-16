@@ -1355,6 +1355,7 @@ screen_linefeed(Screen *self) {
     bool in_margins = cursor_within_margins(self);
     screen_index(self);
     if (self->modes.mLNM) screen_carriage_return(self);
+    if (self->cursor->y < self->lines) linebuf_mark_line_as_not_continued(self->linebuf, self->cursor->y);
     screen_ensure_bounds(self, false, in_margins);
 }
 

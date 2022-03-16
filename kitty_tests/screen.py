@@ -293,6 +293,18 @@ class TestScreen(BaseTest):
         self.ae(str(s.linebuf), '55555\n66666\n77777\n88888\n99999')
         s.resize(5, 2)
         self.ae(str(s.linebuf), '88\n88\n99\n99\n9')
+        s = self.create_screen()
+        s.draw('a' * s.columns)
+        s.linefeed(), s.carriage_return()
+        s.draw('bb')
+        s.resize(s.lines, s.columns - 2)
+        self.ae(str(s.linebuf), 'aaa\naa\nbb\n\n')
+        s.cursor.y = s.cursor.x = 0
+        s.draw('x' * len(str(s.line(0))))
+        s.linefeed(), s.carriage_return()
+        s.draw('x' * len(str(s.line(1))))
+        s.resize(s.lines, s.columns + 4)
+        self.ae(str(s.linebuf), 'xxx\nxx\nbb\n\n')
 
     def test_cursor_after_resize(self):
 

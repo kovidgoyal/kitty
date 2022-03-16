@@ -87,6 +87,9 @@ Detailed list of changes
 
 - Bash integration: Prevent shell integration code from running twice if user enables both automatic and manual integration
 
+- Fix continued lines not having their continued status reset on line feed (:iss:`4837`)
+
+
 0.24.4 [2022-03-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
