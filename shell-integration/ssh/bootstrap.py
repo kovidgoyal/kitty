@@ -137,7 +137,13 @@ def compile_terminfo(base):
     if not tic:
         return
     tname = '.terminfo'
+    q = os.path.join(base, tname, '78', 'xterm-kitty')
+    if not os.path.exists(q):
+        os.makedirs(os.path.dirname(q), exist_ok=True)
+        os.symlink('../x/xterm-kitty', q)
     if os.path.exists('/usr/share/misc/terminfo.cdb'):
+        # NetBSD requires this
+        os.symlink('../../.terminfo.cdb', os.path.join(base, tname, 'x', 'xterm-kitty'))
         tname += '.cdb'
     os.environ['TERMINFO'] = os.path.join(HOME, tname)
     p = subprocess.Popen(
@@ -148,10 +154,6 @@ def compile_terminfo(base):
     if rc != 0:
         getattr(sys.stderr, 'buffer', sys.stderr).write(p.stdout)
         raise SystemExit('Failed to compile the terminfo database')
-    q = os.path.join(base, tname, '78', 'xterm-kitty')
-    if not os.path.exists(q):
-        os.makedirs(os.path.dirname(q), exist_ok=True)
-        os.symlink('../x/xterm-kitty', q)
 
 
 def iter_base64_data(f):
