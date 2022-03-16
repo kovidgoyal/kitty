@@ -87,30 +87,6 @@ mv_files_and_dirs() {
     cd "$cwd"
 }
 
-compile_terminfo() {
-    tname=".terminfo"
-    # Ensure the 78 dir is present
-    if [ ! -f "$1/$tname/78/xterm-kitty" ]; then
-        command mkdir -p "$1/$tname/78"
-        command ln -sf "../x/xterm-kitty" "$1/$tname/78/xterm-kitty"
-    fi
-
-    if [ -e "/usr/share/misc/terminfo.cdb" ]; then
-        # NetBSD requires this file, see https://github.com/kovidgoyal/kitty/issues/4622
-        command ln -sf "../../.terminfo.cdb" "$1/$tname/x/xterm-kitty"
-        tname=".terminfo.cdb"
-    fi
-
-    # export TERMINFO
-    export TERMINFO="$HOME/$tname"
-
-    # compile terminfo for this system
-    if [ -x "$(command -v tic)" ]; then
-        tic_out=$(command tic -x -o "$1/$tname" "$1/.terminfo/kitty.terminfo" 2>&1)
-        [ $? = 0 ] || die "Failed to compile terminfo with err: $tic_out"
-    fi
-}
-
 read_base64_from_tty() {
     while IFS= read -r line; do
         [ "$line" = "KITTY_DATA_END" ] && return 0
@@ -125,8 +101,8 @@ untar_and_read_env() {
     [ $? = 0 ] || die "Creating temp directory failed"
     # suppress STDERR for tar as tar prints various warnings if for instance, timestamps are in the future
     read_base64_from_tty | base64_decode | command tar "xpzf" "-" "-C" "$tdir" 2> /dev/null
-    data_file="$tdir/data.sh"
-    [ -f "$data_file" ] && . "$data_file"
+    . "$tdir/bootstrap-utils.sh"
+    . "$tdir/data.sh"
     [ -z "$KITTY_SSH_KITTEN_DATA_DIR" ] && die "Failed to read SSH data from tty"
     data_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR"
     shell_integration_dir="$data_dir/shell-integration"
@@ -168,59 +144,6 @@ if [ -n "$leading_data" ]; then
 fi
 [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data"
 
-parse_passwd_record() {
-    printf "%s" "$(command grep -o '[^:]*$')"
-}
-
-login_shell_is_ok() {
-    [ -n "$1" ] && login_shell=$(echo $1 | parse_passwd_record)
-    [ -n "$login_shell" -a -x "$login_shell" ] && return 0
-    return 1
-}
-
-using_getent() {
-    cmd=$(command -v getent) && [ -n "$cmd" ] && output=$(command "$cmd" passwd "$USER" 2>/dev/null) \
-    && login_shell_is_ok "$output"
-}
-
-using_id() {
-    cmd=$(command -v id) && [ -n "$cmd" ] && output=$(command "$cmd" -P "$USER" 2>/dev/null) \
-    && login_shell_is_ok "$output"
-}
-
-using_python() {
-    detect_python && output=$(command "$python" -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)") \
-    && login_shell="$output" && login_shell_is_ok
-}
-
-using_perl() {
-    detect_perl && output=$(command "$perl" -e 'my $shell = (getpwuid($<))[8]; print $shell') \
-    && login_shell="$output" && login_shell_is_ok
-}
-
-using_passwd() {
-    [ -f "/etc/passwd" -a -r "/etc/passwd" ] && output=$(command grep "^$USER:" /etc/passwd 2>/dev/null) \
-    && login_shell_is_ok "$output"
-}
-
-using_shell_env() {
-    [ -n "$SHELL" ] && login_shell="$SHELL" && login_shell_is_ok
-}
-
-execute_with_python() {
-    if detect_python; then
-        exec "$python" "-c" "import os; os.execlp('$login_shell', '-' '$shell_name')"
-    fi
-    return 1
-}
-
-execute_with_perl() {
-    if detect_perl; then
-        exec "$perl" "-e" "exec {'$login_shell'} '-$shell_name'"
-    fi
-    return 1
-}
-
 if [ -n "$KITTY_LOGIN_SHELL" ]; then
     login_shell="$KITTY_LOGIN_SHELL"
     unset KITTY_LOGIN_SHELL
@@ -232,83 +155,6 @@ shell_name=$(command basename $login_shell)
 
 # If a command was passed to SSH execute it here
 EXEC_CMD
-
-exec_zsh_with_integration() {
-    zdotdir="$ZDOTDIR"
-    if [ -z "$zdotdir" ]; then
-        zdotdir=~
-    else
-        export KITTY_ORIG_ZDOTDIR="$zdotdir"
-    fi
-    # dont prevent zsh-newuser-install from running
-    if [ -f "$zdotdir/.zshrc" -o -f "$zdotdir/.zshenv" -o -f "$zdotdir/.zprofile" -o -f "$zdotdir/.zlogin" ]; then
-        export ZDOTDIR="$shell_integration_dir/zsh"
-        exec "$login_shell" "-l"
-    fi
-    # ensure this is not propagated
-    unset KITTY_ORIG_ZDOTDIR
-}
-
-exec_fish_with_integration() {
-    if [ -z "$XDG_DATA_DIRS" ]; then
-        export XDG_DATA_DIRS="$shell_integration_dir"
-    else
-        export XDG_DATA_DIRS="$shell_integration_dir:$XDG_DATA_DIRS"
-    fi
-    export KITTY_FISH_XDG_DATA_DIR="$shell_integration_dir"
-    exec "$login_shell" "-l"
-}
-
-exec_bash_with_integration() {
-    export ENV="$shell_integration_dir/bash/kitty.bash"
-    export KITTY_BASH_INJECT="1"
-    if [ -z "$HISTFILE" ]; then
-        export HISTFILE="$HOME/.bash_history"
-        export KITTY_BASH_UNEXPORT_HISTFILE="1"
-    fi
-    exec "$login_shell" "--posix"
-}
-
-exec_with_shell_integration() {
-    [ -z "$shell_integration_dir" ] && return
-    case "$shell_name" in
-        "zsh")
-            exec_zsh_with_integration
-            ;;
-        "fish")
-            exec_fish_with_integration
-            ;;
-        "bash")
-            exec_bash_with_integration
-            ;;
-    esac
-}
-
-execute_sh_with_posix_env() {
-    # only for sh as that is likely to be POSIX compliant
-    [ "$shell_name" = "sh" ] || return
-    # sh supports -l so use that
-    command "$login_shell" -l -c ":" > /dev/null 2> /dev/null && return
-    [ -z "$shell_integration_dir" ] && die "Could not read data over tty ssh kitten cannot function"
-    sh_dir="$shell_integration_dir/sh"
-    command mkdir -p "$sh_dir" || die "Creating $sh_dir failed"
-    sh_script="$sh_dir/login_shell_env.sh"
-    # Source /etc/profile, ~/.profile, and then check and source ENV
-    printf "%s" '
-if [ -n "$KITTY_SH_INJECT" ]; then
-    unset ENV; unset KITTY_SH_INJECT
-    _ksi_safe_source() { [ -f "$1" -a -r "$1" ] || return 1; . "$1"; return 0; }
-    [ -n "$KITTY_SH_POSIX_ENV" ] && export ENV="$KITTY_SH_POSIX_ENV"
-    unset KITTY_SH_POSIX_ENV
-    _ksi_safe_source "/etc/profile"; _ksi_safe_source "${HOME-}/.profile"
-    [ -n "$ENV" ] && _ksi_safe_source "$ENV"
-    unset -f _ksi_safe_source
-fi' > "$sh_script"
-    export KITTY_SH_INJECT="1"
-    [ -n "$ENV" ] && export KITTY_SH_POSIX_ENV="$ENV"
-    export ENV="$sh_script"
-    exec "$login_shell"
-}
 
 # Used in the tests
 TEST_SCRIPT

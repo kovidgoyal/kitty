@@ -163,6 +163,8 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
         for ci in ssh_opts.copy.values():
             tf.add(ci.local_path, arcname=ci.arcname, filter=filter_from_globs(*ci.exclude_patterns))
         add_data_as_file(tf, 'data.sh', env_script)
+        if compression == 'gz':
+            tf.add(f'{shell_integration_dir}/ssh/bootstrap-utils.sh', arcname='bootstrap-utils.sh', filter=normalize_tarinfo)
         if ksi:
             arcname = 'home/' + rd + '/shell-integration'
             tf.add(shell_integration_dir, arcname=arcname, filter=filter_from_globs(
@@ -230,10 +232,6 @@ def prepare_script(ans: str, replacements: Dict[str, str], script_type: str) -> 
     def sub(m: 're.Match[str]') -> str:
         return replacements[m.group()]
 
-    if script_type == 'sh':
-        # Remove comments and indents. The dropbear SSH server has 9000 bytes limit on ssh arguments length.
-        # Needs to be trimmed before replacing EXEC_CMD to avoid affecting the indentation of user commands.
-        ans = re.sub(r'^[ \t]*#.*$|^[ \t]*', '', ans, flags=re.MULTILINE)
     return re.sub('|'.join(fr'\b{k}\b' for k in replacements), sub, ans)
 
 
