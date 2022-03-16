@@ -6,6 +6,16 @@
 # Distributed under terms of the MIT license.
 #
 
+mv_files_and_dirs() {
+    cwd="$PWD"
+    cd "$1"
+    command find . -type d -exec mkdir -p "$2/{}" ";"
+    command find . -type l -exec sh -c "tgt=\$(command readlink -n \"{}\"); command ln -snf \"\$tgt\" \"$2/{}\"; command rm -f \"{}\"" ";"
+    command find . -type f -exec mv "{}" "$2/{}" ";"
+    cd "$cwd"
+}
+
+
 compile_terminfo() {
     tname=".terminfo"
     # Ensure the 78 dir is present

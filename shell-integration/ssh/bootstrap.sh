@@ -78,15 +78,6 @@ trap "cleanup_on_bootstrap_exit" EXIT
     dcs_to_kitty "ssh" "id="REQUEST_ID":pwfile="PASSWORD_FILENAME":pw="DATA_PASSWORD""
 }
 
-mv_files_and_dirs() {
-    cwd="$PWD"
-    cd "$1"
-    command find . -type d -exec mkdir -p "$2/{}" ";"
-    command find . -type l -exec sh -c "tgt=\$(command readlink -n \"{}\"); command ln -snf \"\$tgt\" \"$2/{}\"; command rm -f \"{}\"" ";"
-    command find . -type f -exec mv "{}" "$2/{}" ";"
-    cd "$cwd"
-}
-
 read_base64_from_tty() {
     while IFS= read -r line; do
         [ "$line" = "KITTY_DATA_END" ] && return 0
