@@ -160,3 +160,48 @@ fi' > "$sh_script"
     export ENV="$sh_script"
     exec "$login_shell"
 }
+
+prepare_for_exec() {
+    if [ -n "$leading_data" ]; then
+        # clear current line as it might have things echoed on it from leading_data
+        # because we only turn off echo in this script whereas the leading bytes could
+        # have been sent before the script had a chance to run
+        printf "\r\033[K" > /dev/tty
+    fi
+    [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data"
+
+    if [ -n "$KITTY_LOGIN_SHELL" ]; then
+        login_shell="$KITTY_LOGIN_SHELL"
+        unset KITTY_LOGIN_SHELL
+    else
+        using_getent || using_id || using_python || using_perl || using_passwd || using_shell_env || login_shell="sh"
+    fi
+    shell_name=$(command basename $login_shell)
+    [ -n "$login_cwd" ] && cd "$login_cwd"
+}
+
+exec_login_shell() {
+    case "$KITTY_SHELL_INTEGRATION" in
+        ("")
+            # only blanks or unset
+            unset KITTY_SHELL_INTEGRATION
+            ;;
+        (*)
+            # not blank
+            printf "%s" "$KITTY_SHELL_INTEGRATION" | command grep '\bno-rc\b' || exec_with_shell_integration
+            # either no-rc or exec failed
+            unset KITTY_SHELL_INTEGRATION
+            ;;
+    esac
+
+    # We need to pass the first argument to the executed program with a leading -
+    # to make sure the shell executes as a login shell. Note that not all shells
+    # support exec -a so we use the below to try to detect such shells
+    [ "$(exec -a echo echo OK 2> /dev/null)" = "OK" ] && exec -a "-$shell_name" "$login_shell"
+    execute_with_python
+    execute_with_perl
+    execute_sh_with_posix_env
+    exec "$login_shell" "-l"
+    printf "%s\n" "Could not execute the shell $login_shell as a login shell" > /dev/stderr
+    exec "$login_shell"
+}
