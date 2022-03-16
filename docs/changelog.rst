@@ -76,6 +76,7 @@ Detailed list of changes
 -------------------------------------
 
 0.25.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: When using Apple's less as the pager for viewing scrollback strip out OSC codes as Apple's less cant parse them (:iss:`4788`)
 
