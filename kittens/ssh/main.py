@@ -223,13 +223,17 @@ def safe_remove(x: str) -> None:
         os.remove(x)
 
 
-def prepare_script(ans: str, replacements: Dict[str, str]) -> str:
+def prepare_script(ans: str, replacements: Dict[str, str], script_type: str) -> str:
     for k in ('EXEC_CMD',):
         replacements[k] = replacements.get(k, '')
 
     def sub(m: 're.Match[str]') -> str:
         return replacements[m.group()]
 
+    if script_type == 'sh':
+        # Remove comments and indents. The dropbear SSH server has 9000 bytes limit on ssh arguments length.
+        # Needs to be trimmed before replacing EXEC_CMD to avoid affecting the indentation of user commands.
+        ans = re.sub(r'^[ \t]*#.*$|^[ \t]*', '', ans, flags=re.MULTILINE)
     return re.sub('|'.join(fr'\b{k}\b' for k in replacements), sub, ans)
 
 
@@ -269,7 +273,7 @@ def bootstrap_script(
     if request_data:
         sd.update(sensitive_data)
     replacements.update(sensitive_data)
-    return prepare_script(ans, sd), replacements, shm
+    return prepare_script(ans, sd, script_type), replacements, shm
 
 
 def get_ssh_cli() -> Tuple[Set[str], Set[str]]:

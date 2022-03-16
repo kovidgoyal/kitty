@@ -73,7 +73,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     if not contains "no-prompt-mark" $_ksi
         and not set -q __ksi_prompt_state
         function __ksi_mark_prompt_start --on-event fish_prompt
-            contains "$__ksi_prompt_state" post-exec pre-exec ""
+            test "$__ksi_prompt_state" != prompt-start
             and echo -en "\e]133;D\a"
             set --global __ksi_prompt_state prompt-start
             echo -en "\e]133;A\a"
@@ -97,12 +97,13 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
 
     # Enable CWD reporting
     if not contains "no-cwd" $_ksi
-        # This is actually builtin to fish but stupidly gated on TERM
-        # https://github.com/fish-shell/fish-shell/blob/master/share/functions/__fish_config_interactive.fish#L257
-        function __ksi_report_cwd --on-variable PWD --description "Report PWD changes to the terminal"
-            status --is-command-substitution; and return
-            echo -en "\e]7;kitty-shell-cwd://$hostname$PWD\a"
+        # This function name is from fish and will override the builtin one if fish enabled this feature by default.
+        # We provide this to ensure that fish 3.2.0 and above will work.
+        # https://github.com/fish-shell/fish-shell/blob/3.2.0/share/functions/__fish_config_interactive.fish#L275
+        function __update_cwd_osc --on-variable PWD -d "Report PWD changes to kitty"
+            status is-command-substitution
+            or echo -en "\e]7;kitty-shell-cwd://$hostname$PWD\a"
         end
-        __ksi_report_cwd
+        __update_cwd_osc
     end
 end

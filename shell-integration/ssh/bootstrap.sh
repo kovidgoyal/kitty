@@ -88,24 +88,26 @@ mv_files_and_dirs() {
 }
 
 compile_terminfo() {
-    # export TERMINFO
     tname=".terminfo"
+    # Ensure the 78 dir is present
+    if [ ! -f "$1/$tname/78/xterm-kitty" ]; then
+        command mkdir -p "$1/$tname/78"
+        command ln -sf "../x/xterm-kitty" "$1/$tname/78/xterm-kitty"
+    fi
+
     if [ -e "/usr/share/misc/terminfo.cdb" ]; then
-        # NetBSD requires this see https://github.com/kovidgoyal/kitty/issues/4622
+        # NetBSD requires this file, see https://github.com/kovidgoyal/kitty/issues/4622
+        command ln -sf "../../.terminfo.cdb" "$1/$tname/x/xterm-kitty"
         tname=".terminfo.cdb"
     fi
+
+    # export TERMINFO
     export TERMINFO="$HOME/$tname"
 
     # compile terminfo for this system
     if [ -x "$(command -v tic)" ]; then
         tic_out=$(command tic -x -o "$1/$tname" "$1/.terminfo/kitty.terminfo" 2>&1)
         [ $? = 0 ] || die "Failed to compile terminfo with err: $tic_out"
-    fi
-
-    # Ensure the 78 dir is present
-    if [ ! -f "$1/$tname/78/xterm-kitty" ]; then
-        command mkdir -p "$1/$tname/78"
-        command ln -sf "../x/xterm-kitty" "$1/$tname/78/xterm-kitty"
     fi
 }
 
@@ -166,70 +168,43 @@ if [ -n "$leading_data" ]; then
 fi
 [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data"
 
-login_shell_is_ok() {
-    if [ -n "$login_shell" -a -x "$login_shell" ]; then return 0; fi
-    return 1
-}
-
 parse_passwd_record() {
     printf "%s" "$(command grep -o '[^:]*$')"
 }
 
-using_getent() {
-    cmd=$(command -v getent)
-    if [ -n "$cmd" ]; then
-        output=$(command "$cmd" passwd "$USER" 2>/dev/null)
-        if [ $? = 0 ]; then
-            login_shell=$(echo $output | parse_passwd_record)
-            if login_shell_is_ok; then return 0; fi
-        fi
-    fi
+login_shell_is_ok() {
+    [ -n "$1" ] && login_shell=$(echo $1 | parse_passwd_record)
+    [ -n "$login_shell" -a -x "$login_shell" ] && return 0
     return 1
+}
+
+using_getent() {
+    cmd=$(command -v getent) && [ -n "$cmd" ] && output=$(command "$cmd" passwd "$USER" 2>/dev/null) \
+    && login_shell_is_ok "$output"
 }
 
 using_id() {
-    cmd=$(command -v id)
-    if [ -n "$cmd" ]; then
-        output=$(command "$cmd" -P "$USER" 2>/dev/null)
-        if [ $? = 0 ]; then
-            login_shell=$(echo $output | parse_passwd_record)
-            if login_shell_is_ok; then return 0; fi
-        fi
-    fi
-    return 1
+    cmd=$(command -v id) && [ -n "$cmd" ] && output=$(command "$cmd" -P "$USER" 2>/dev/null) \
+    && login_shell_is_ok "$output"
 }
 
 using_python() {
-    if detect_python; then
-        output=$(command "$python" -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
-        if [ $? = 0 ]; then
-            login_shell="$output"
-            if login_shell_is_ok; then return 0; fi
-        fi
-    fi
-    return 1
+    detect_python && output=$(command "$python" -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)") \
+    && login_shell="$output" && login_shell_is_ok
 }
 
 using_perl() {
-    if detect_perl; then
-        output=$(command "$perl" -e 'my $shell = (getpwuid($<))[8]; print $shell')
-        if [ $? = 0 ]; then
-            login_shell="$output"
-            if login_shell_is_ok; then return 0; fi
-        fi
-    fi
-    return 1
+    detect_perl && output=$(command "$perl" -e 'my $shell = (getpwuid($<))[8]; print $shell') \
+    && login_shell="$output" && login_shell_is_ok
 }
 
 using_passwd() {
-    if [ -f "/etc/passwd" -a -r "/etc/passwd" ]; then
-        output=$(command grep "^$USER:" /etc/passwd 2>/dev/null)
-        if [ $? = 0 ]; then
-            login_shell=$(echo $output | parse_passwd_record)
-            if login_shell_is_ok; then return 0; fi
-        fi
-    fi
-    return 1
+    [ -f "/etc/passwd" -a -r "/etc/passwd" ] && output=$(command grep "^$USER:" /etc/passwd 2>/dev/null) \
+    && login_shell_is_ok "$output"
+}
+
+using_shell_env() {
+    [ -n "$SHELL" ] && login_shell="$SHELL" && login_shell_is_ok
 }
 
 execute_with_python() {
@@ -250,7 +225,7 @@ if [ -n "$KITTY_LOGIN_SHELL" ]; then
     login_shell="$KITTY_LOGIN_SHELL"
     unset KITTY_LOGIN_SHELL
 else
-    using_getent || using_id || using_python || using_perl || using_passwd || die "Could not detect login shell"
+    using_getent || using_id || using_python || using_perl || using_passwd || using_shell_env || login_shell="sh"
 fi
 shell_name=$(command basename $login_shell)
 [ -n "$login_cwd" ] && cd "$login_cwd"
@@ -270,7 +245,8 @@ exec_zsh_with_integration() {
         export ZDOTDIR="$shell_integration_dir/zsh"
         exec "$login_shell" "-l"
     fi
-    unset KITTY_ORIG_ZDOTDIR  # ensure this is not propagated
+    # ensure this is not propagated
+    unset KITTY_ORIG_ZDOTDIR
 }
 
 exec_fish_with_integration() {
@@ -309,8 +285,10 @@ exec_with_shell_integration() {
 }
 
 execute_sh_with_posix_env() {
-    [ "$shell_name" = "sh" ] || return  # only for sh as that is likely to be POSIX compliant
-    command "$login_shell" -l -c ":" > /dev/null 2> /dev/null && return  # sh supports -l so use that
+    # only for sh as that is likely to be POSIX compliant
+    [ "$shell_name" = "sh" ] || return
+    # sh supports -l so use that
+    command "$login_shell" -l -c ":" > /dev/null 2> /dev/null && return
     [ -z "$shell_integration_dir" ] && die "Could not read data over tty ssh kitten cannot function"
     sh_dir="$shell_integration_dir/sh"
     command mkdir -p "$sh_dir" || die "Creating $sh_dir failed"
