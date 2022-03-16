@@ -23,8 +23,8 @@ detect_python() {
     fi
     python_detected="1"
     python=$(command -v python3)
-    if [ -z "$python" ]; then python=$(command -v python2); fi
-    if [ -z "$python" ]; then python=$(command -v python); fi
+    [ -z "$python" ] && python=$(command -v python2)
+    [ -z "$python" ] && python=$(command -v python)
     if [ -z "$python" -o ! -x "$python" ]; then python=""; return 1; fi
     return 0
 }
