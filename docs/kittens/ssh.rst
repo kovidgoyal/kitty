@@ -107,16 +107,18 @@ editor, respectively:
 How it works
 ----------------
 
-The ssh kitten works by having SSH transmit and execute a POSIX sh (or optionally
-Python) bootstrap script on the remote server using an :opt:`interpreter
-<kitten-ssh.interpreter>`. This script asks kitty for the setup data over
-the tty device, which kitty sends as a tarball. The script extracts it and
-places the :opt:`files <kitten-ssh.copy>` and sets the :opt:`environment
-variables <kitten-ssh.env>` before finally launching the :opt:`login shell
-<kitten-ssh.login_shell>` with shell integration enabled. The data is requested
-with a one-time random password that is generated when the script is transmitted, so
-that on the remote server, only the script can request data transmission over
-the TTY, any other requests are responded to by errors.
+The ssh kitten works by having SSH transmit and execute a POSIX sh (or
+optionally Python) bootstrap script on the remote server using an
+:opt:`interpreter <kitten-ssh.interpreter>`. This script reads setup data over
+the tty device, which kitty sends as a base64 encoded tarball. The script
+extracts it and places the :opt:`files <kitten-ssh.copy>` and sets the
+:opt:`environment variables <kitten-ssh.env>` before finally launching the
+:opt:`login shell <kitten-ssh.login_shell>` with shell integration enabled. The
+data is requested by the kitten over the TTY with a random one time password.
+kitty reads the request and if the password matches a password pre-stored in
+shared memory on the localhost by the kitten, the transmission is allowed. If
+your OpenSSH version is >= 8.4 then the data is transmitted instantly without
+any roundtrip delay.
 
 .. note::
 
