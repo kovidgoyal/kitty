@@ -14,7 +14,7 @@ from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import run_once
 from .utils import log_error, resolve_custom_file, set_primary_selection, which
-from .window import Watchers, Window
+from .window import CwdRequest, Watchers, Window
 
 try:
     from typing import TypedDict
@@ -290,7 +290,7 @@ def load_watch_modules(watchers: Iterable[str]) -> Optional[Watchers]:
 class LaunchKwds(TypedDict):
 
     allow_remote_control: bool
-    cwd_from: Optional[Window]
+    cwd_from: Optional[CwdRequest]
     cwd: Optional[str]
     location: Optional[str]
     override_title: Optional[str]
@@ -358,7 +358,7 @@ def launch(
     if opts.cwd:
         if opts.cwd == 'current':
             if active:
-                kw['cwd_from'] = active
+                kw['cwd_from'] = CwdRequest(active)
         else:
             kw['cwd'] = opts.cwd
     if opts.location != 'default':

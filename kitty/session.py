@@ -16,7 +16,7 @@ from .utils import log_error, resolved_shell
 
 
 if TYPE_CHECKING:
-    from .window import Window
+    from .window import CwdRequest
 
 
 def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None) -> WindowSizeData:
@@ -150,7 +150,7 @@ def create_sessions(
     opts: Options,
     args: Optional[CLIOptions] = None,
     special_window: Optional['SpecialWindowInstance'] = None,
-    cwd_from: Optional['Window'] = None,
+    cwd_from: Optional['CwdRequest'] = None,
     respect_cwd: bool = False,
     default_session: Optional[str] = None
 ) -> Generator[Session, None, None]:

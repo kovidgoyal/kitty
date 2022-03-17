@@ -62,7 +62,7 @@ from .utils import (
     safe_print, set_primary_selection, single_instance,
     startup_notification_handler, which
 )
-from .window import CommandOutput, MatchPatternType, Window
+from .window import CommandOutput, CwdRequest, MatchPatternType, Window
 
 
 class OSWindowDict(TypedDict):
@@ -439,7 +439,7 @@ class Boss:
                         return os_window_id
         return None
 
-    def _new_os_window(self, args: Union[SpecialWindowInstance, Iterable[str]], cwd_from: Optional[Window] = None) -> int:
+    def _new_os_window(self, args: Union[SpecialWindowInstance, Iterable[str]], cwd_from: Optional[CwdRequest] = None) -> int:
         if isinstance(args, SpecialWindowInstance):
             sw: Optional[SpecialWindowInstance] = args
         else:
@@ -461,7 +461,7 @@ class Boss:
     @ac('win', 'New OS Window with the same working directory as the currently active window')
     def new_os_window_with_cwd(self, *args: str) -> None:
         w = self.active_window_for_cwd
-        self._new_os_window(args, w)
+        self._new_os_window(args, CwdRequest(w))
 
     def new_os_window_with_wd(self, wd: str) -> None:
         special_window = SpecialWindow(None, cwd=wd)
@@ -1717,7 +1717,7 @@ class Boss:
         self, cmd: List[str],
         window: Optional[Window] = None,
         stdin: Optional[str] = None,
-        cwd_from: Optional[Window] = None,
+        cwd_from: Optional[CwdRequest] = None,
         as_overlay: bool = False
     ) -> SpecialWindowInstance:
         w = window or self.active_window
@@ -1739,7 +1739,7 @@ class Boss:
         cwd: Optional[str] = None,
         env: Optional[Dict[str, str]] = None,
         stdin: Optional[bytes] = None,
-        cwd_from: Optional[Window] = None
+        cwd_from: Optional[CwdRequest] = None
     ) -> None:
         import subprocess
         env = env or None
@@ -1766,7 +1766,8 @@ class Boss:
 
     def pipe(self, source: str, dest: str, exe: str, *args: str) -> Optional[Window]:
         cmd = [exe] + list(args)
-        window = cwd_from = self.active_window
+        window = self.active_window
+        cwd_from = CwdRequest(window) if window else None
 
         def create_window() -> SpecialWindowInstance:
             return self.special_window_for_cmd(
@@ -1794,7 +1795,7 @@ class Boss:
             self.run_background_process(cmd, cwd_from=cwd_from, stdin=stdin, env=env)
         return None
 
-    def args_to_special_window(self, args: Iterable[str], cwd_from: Optional[Window] = None) -> SpecialWindowInstance:
+    def args_to_special_window(self, args: Iterable[str], cwd_from: Optional[CwdRequest] = None) -> SpecialWindowInstance:
         args = list(args)
         stdin = None
         w = self.active_window
@@ -1815,7 +1816,7 @@ class Boss:
             cmd.append(arg)
         return SpecialWindow(cmd, stdin, cwd_from=cwd_from)
 
-    def _new_tab(self, args: Union[SpecialWindowInstance, Iterable[str]], cwd_from: Optional[Window] = None, as_neighbor: bool = False) -> Optional[Tab]:
+    def _new_tab(self, args: Union[SpecialWindowInstance, Iterable[str]], cwd_from: Optional[CwdRequest] = None, as_neighbor: bool = False) -> Optional[Tab]:
         special_window = None
         if args:
             if isinstance(args, SpecialWindowInstance):
@@ -1827,7 +1828,7 @@ class Boss:
             return tm.new_tab(special_window=special_window, cwd_from=cwd_from, as_neighbor=as_neighbor)
         return None
 
-    def _create_tab(self, args: List[str], cwd_from: Optional[Window] = None) -> None:
+    def _create_tab(self, args: List[str], cwd_from: Optional[CwdRequest] = None) -> None:
         as_neighbor = False
         if args and args[0].startswith('!'):
             as_neighbor = 'neighbor' in args[0][1:].split(',')
@@ -1840,7 +1841,7 @@ class Boss:
 
     @ac('tab', 'Create a new tab with working directory for the window in it set to the same as the active window')
     def new_tab_with_cwd(self, *args: str) -> None:
-        self._create_tab(list(args), cwd_from=self.active_window_for_cwd)
+        self._create_tab(list(args), cwd_from=CwdRequest(self.active_window_for_cwd))
 
     def new_tab_with_wd(self, wd: str) -> None:
         if not self.os_window_map:
@@ -1848,7 +1849,7 @@ class Boss:
         special_window = SpecialWindow(None, cwd=wd)
         self._new_tab(special_window)
 
-    def _new_window(self, args: List[str], cwd_from: Optional[Window] = None) -> Optional[Window]:
+    def _new_window(self, args: List[str], cwd_from: Optional[CwdRequest] = None) -> Optional[Window]:
         tab = self.active_tab
         if tab is None:
             return None
@@ -1876,7 +1877,7 @@ class Boss:
         w = self.active_window_for_cwd
         if w is None:
             return self.new_window(*args)
-        self._new_window(list(args), cwd_from=w)
+        self._new_window(list(args), cwd_from=CwdRequest(w))
 
     @ac('misc', '''
         Launch the specified program in a new window/tab/etc.

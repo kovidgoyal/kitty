@@ -21,7 +21,7 @@ try:
 except ImportError:
     TypedDict = dict
 if TYPE_CHECKING:
-    from .window import Window
+    from .window import CwdRequest
 
 
 if is_macos:
@@ -194,12 +194,12 @@ class Child:
         cwd: str,
         stdin: Optional[bytes] = None,
         env: Optional[Dict[str, str]] = None,
-        cwd_from: Optional['Window'] = None,
+        cwd_from: Optional['CwdRequest'] = None,
         allow_remote_control: bool = False
     ):
         self.allow_remote_control = allow_remote_control
         self.argv = list(argv)
-        if cwd_from is not None:
+        if cwd_from:
             try:
                 cwd = cwd_from.modify_argv_for_launch_with_cwd(self.argv) or cwd
             except Exception as err:

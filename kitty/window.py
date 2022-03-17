@@ -7,7 +7,7 @@ import re
 import sys
 import weakref
 from collections import deque
-from enum import IntEnum
+from enum import Enum, IntEnum, auto
 from functools import partial
 from gettext import gettext as _
 from itertools import chain
@@ -55,6 +55,30 @@ MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]
 
 if TYPE_CHECKING:
     from .file_transmission import FileTransmission
+
+
+class CwdRequestType(Enum):
+    current: int = auto()
+    last_reported: int = auto()
+
+
+class CwdRequest:
+
+    def __init__(self, window: Optional['Window'] = None, request_type: CwdRequestType = CwdRequestType.current) -> None:
+        self.window_id = -1 if window is None else window.id
+        self.request_type = request_type
+
+    def __bool__(self) -> bool:
+        return self.window_id > -1
+
+    def modify_argv_for_launch_with_cwd(self, argv: List[str]) -> str:
+        window = get_boss().window_id_map.get(self.window_id)
+        return window.modify_argv_for_launch_with_cwd(argv) if window else ''
+
+    @property
+    def cwd_of_child(self) -> Optional[str]:
+        window = get_boss().window_id_map.get(self.window_id)
+        return window.cwd_of_child if window else None
 
 
 def process_title_from_child(title: str, is_base64: bool) -> str:
