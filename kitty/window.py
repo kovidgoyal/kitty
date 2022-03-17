@@ -1165,11 +1165,19 @@ class Window:
 
     @property
     def cwd_of_child(self) -> Optional[str]:
-        if self.at_prompt and self.screen.last_reported_cwd:
+        if self.at_prompt and self.screen.last_reported_cwd and not self.child_is_remote:
             cwd = path_from_osc7_url(self.screen.last_reported_cwd)
             if cwd:
                 return cwd
         return self.child.foreground_cwd or self.child.current_cwd
+
+    @property
+    def child_is_remote(self) -> bool:
+        for p in self.child.foreground_processes:
+            q = list(p['cmdline'] or ())
+            if q and q[0].lower() == 'ssh':
+                return True
+        return False
 
     def modify_argv_for_launch_with_cwd(self, argv: List[str]) -> str:
         if argv[0] != resolved_shell(get_options())[0] or not self.screen.last_reported_cwd:
