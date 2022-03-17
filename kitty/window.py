@@ -78,6 +78,10 @@ class CwdRequest:
     @property
     def cwd_of_child(self) -> Optional[str]:
         window = get_boss().window_id_map.get(self.window_id)
+        if window and self.request_type is CwdRequestType.last_reported and window.screen.last_reported_cwd:
+            cwd = path_from_osc7_url(window.screen.last_reported_cwd)
+            if cwd:
+                return cwd
         return window.cwd_of_child if window else None
 
 

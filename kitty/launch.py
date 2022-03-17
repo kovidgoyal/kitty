@@ -14,7 +14,7 @@ from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import run_once
 from .utils import log_error, resolve_custom_file, set_primary_selection, which
-from .window import CwdRequest, Watchers, Window
+from .window import CwdRequest, CwdRequestType, Watchers, Window
 
 try:
     from typing import TypedDict
@@ -62,6 +62,8 @@ to the newly opened window.
 --cwd
 The working directory for the newly launched child. Use the special value
 :code:`current` to use the working directory of the currently active window.
+The special value :code:`last_reported` uses the last working directory
+reported by the shell (needs :ref:`shell_integration` to work).
 
 
 --env
@@ -359,6 +361,9 @@ def launch(
         if opts.cwd == 'current':
             if active:
                 kw['cwd_from'] = CwdRequest(active)
+        elif opts.cwd == 'last_reported':
+            if active:
+                kw['cwd_from'] = CwdRequest(active, CwdRequestType.last_reported)
         else:
             kw['cwd'] = opts.cwd
     if opts.location != 'default':
