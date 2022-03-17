@@ -602,8 +602,10 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
     need_to_request_data = True
     if use_kitty_askpass:
         sentinel = os.path.join(cache_dir(), 'openssh-is-new-enough-for-askpass')
-        if os.path.exists(sentinel) or ssh_version() >= (8, 4):
-            open(sentinel, 'w').close()
+        sentinel_exists = os.path.exists(sentinel)
+        if sentinel_exists or ssh_version() >= (8, 4):
+            if not sentinel_exists:
+                open(sentinel, 'w').close()
             # SSH_ASKPASS_REQUIRE was introduced in 8.4 release on 2020-09-27
             need_to_request_data = False
             os.environ['SSH_ASKPASS_REQUIRE'] = 'force'
