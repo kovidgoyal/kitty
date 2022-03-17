@@ -2964,7 +2964,7 @@ the default shortcuts.
 opt('clear_all_shortcuts', 'no',
     option_type='clear_all_shortcuts',
     long_text='''
-You can have kitty remove all shortcut definition seen up to this point. Useful,
+You can have kitty remove all shortcut definitions seen up to this point. Useful,
 for instance, to remove the default shortcuts.
 '''
     )
