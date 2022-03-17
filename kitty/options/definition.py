@@ -2671,7 +2671,7 @@ opt('+exe_search_path', '',
     long_text='''
 Control where kitty looks to find programs to run. The default search order is:
 First search the system wide :code:`PATH`, then :file:`~/.local/bin` and :file:`~/bin`.
-If not still not found, the :code:`PATH` defined in the login shell after sourcing
+If still not found, the :code:`PATH` defined in the login shell after sourcing
 all its startup files is tried. Finally, if present, the :code:`PATH` in the :opt:`env`
 option is tried.
 
