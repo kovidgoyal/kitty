@@ -490,6 +490,13 @@ static void xdgSurfaceHandleConfigure(void* data,
         uint32_t new_states = window->wl.pending.toplevel_states;
         int width = window->wl.pending.width;
         int height = window->wl.pending.height;
+        if (!window->wl.surface_configured_once && !width && !height && !window->wl.decorations.serverSide && getenv("XAUTHORITY") && strstr(getenv("XAUTHORITY"), "mutter")) {
+            // https://github.com/kovidgoyal/kitty/issues/4802
+            window->wl.surface_configured_once = true;
+            debug("Ignoring first zero size surface configure event on mutter.\n");
+            return;
+        }
+        window->wl.surface_configured_once = true;
 
         if (new_states != window->wl.current.toplevel_states ||
                 width != window->wl.current.width ||

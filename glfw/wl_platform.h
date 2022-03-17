@@ -220,6 +220,7 @@ typedef struct _GLFWwindowWayland
     struct {
         unsigned int x, y;
     } axis_discrete_count;
+    bool surface_configured_once;
 
     uint32_t pending_state;
     struct {
