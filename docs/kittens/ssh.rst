@@ -10,7 +10,7 @@ the remote server and copies the kitty terminfo database there.
 
 The ssh kitten is a thin wrapper around the traditional `ssh <https://man.openbsd.org/ssh>`__
 command line program and supports all the same options and arguments and configuration.
-In most scenarios it is in fact a drop in replacement for ``ssh``. To try it
+In interactive usage scenarios it is a drop in replacement for ``ssh``. To try it
 out, simply run:
 
 .. code-block:: sh
