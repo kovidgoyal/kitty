@@ -945,3 +945,19 @@ def path_from_osc7_url(url: str) -> str:
         from urllib.parse import urlparse, unquote
         return unquote(urlparse(url).path)
     return ''
+
+
+@run_once
+def macos_version() -> Tuple[int, ...]:
+    import platform
+    return tuple(map(int, platform.mac_ver()[0].split('.')))
+
+
+@run_once
+def less_version(less_exe: str = 'less') -> int:
+    import subprocess
+    o = subprocess.check_output([less_exe, '-V'], stderr=subprocess.STDOUT).decode()
+    m = re.match(r'less (\d+)', o)
+    if m is None:
+        raise ValueError(f'Invalid version string for less: {o}')
+    return int(m.group(1))
