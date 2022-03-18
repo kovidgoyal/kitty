@@ -71,18 +71,36 @@ class CwdRequest:
     def __bool__(self) -> bool:
         return self.window_id > -1
 
-    def modify_argv_for_launch_with_cwd(self, argv: List[str]) -> str:
-        window = get_boss().window_id_map.get(self.window_id)
-        return window.modify_argv_for_launch_with_cwd(argv) if window else ''
+    @property
+    def window(self) -> Optional['Window']:
+        return get_boss().window_id_map.get(self.window_id)
 
     @property
-    def cwd_of_child(self) -> Optional[str]:
-        window = get_boss().window_id_map.get(self.window_id)
-        if window and self.request_type is CwdRequestType.last_reported and window.screen.last_reported_cwd:
-            cwd = path_from_osc7_url(window.screen.last_reported_cwd)
-            if cwd:
-                return cwd
-        return window.cwd_of_child if window else None
+    def cwd_of_child(self) -> str:
+        window = self.window
+        if not window:
+            return ''
+        reported_cwd = path_from_osc7_url(window.screen.last_reported_cwd) if window.screen.last_reported_cwd else ''
+        if reported_cwd and not window.child_is_remote and (self.request_type is CwdRequestType.last_reported or window.at_prompt):
+            return reported_cwd
+        return window.cwd_of_child or ''
+
+    def modify_argv_for_launch_with_cwd(self, argv: List[str]) -> str:
+        window = self.window
+        if not window:
+            return ''
+        reported_cwd = path_from_osc7_url(window.screen.last_reported_cwd) if window.screen.last_reported_cwd else ''
+        # First check if we are running ssh kitten, and trying to open the configured login shell
+        if reported_cwd and argv[0] == resolved_shell(get_options())[0]:
+            ssh_kitten_cmdline = window.ssh_kitten_cmdline()
+            if ssh_kitten_cmdline:
+                from kittens.ssh.main import set_cwd_in_cmdline
+                argv[:] = ssh_kitten_cmdline
+                set_cwd_in_cmdline(reported_cwd, argv)
+                return ''
+        if self.request_type is CwdRequestType.last_reported and reported_cwd and not window.child_is_remote:
+            return reported_cwd
+        return window.cwd_of_child or ''
 
 
 def process_title_from_child(title: str, is_base64: bool) -> str:
@@ -1165,10 +1183,6 @@ class Window:
 
     @property
     def cwd_of_child(self) -> Optional[str]:
-        if self.at_prompt and self.screen.last_reported_cwd and not self.child_is_remote:
-            cwd = path_from_osc7_url(self.screen.last_reported_cwd)
-            if cwd:
-                return cwd
         return self.child.foreground_cwd or self.child.current_cwd
 
     @property
@@ -1179,22 +1193,13 @@ class Window:
                 return True
         return False
 
-    def modify_argv_for_launch_with_cwd(self, argv: List[str]) -> str:
-        if argv[0] != resolved_shell(get_options())[0] or not self.screen.last_reported_cwd:
-            return self.cwd_of_child or ''
-        from kittens.ssh.main import is_kitten_cmdline, set_cwd_in_cmdline
-        ssh_kitten_cmdline: List[str] = []
+    def ssh_kitten_cmdline(self) -> List[str]:
+        from kittens.ssh.main import is_kitten_cmdline
         for p in self.child.foreground_processes:
             q = list(p['cmdline'] or ())
             if is_kitten_cmdline(q):
-                ssh_kitten_cmdline = q
-                break
-        if ssh_kitten_cmdline:
-            cwd = path_from_osc7_url(self.screen.last_reported_cwd)
-            if cwd:
-                set_cwd_in_cmdline(path_from_osc7_url(self.screen.last_reported_cwd), ssh_kitten_cmdline)
-                argv[:] = ssh_kitten_cmdline
-        return self.cwd_of_child or ''
+                return q
+        return []
 
     def pipe_data(self, text: str, has_wrap_markers: bool = False) -> PipeData:
         text = text or ''
