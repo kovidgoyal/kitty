@@ -63,6 +63,11 @@ Some prominent kittens:
     other :term:`kitty windows <window>`.
 
 
+:doc:`SSH <kittens/ssh>`
+    SSH with automatic shell integration, connection re-use for low latency and easy cloning
+    of local shell and editor configuration to the remote machine.
+
+
 :doc:`Panel <kittens/panel>`
     Draw a GPU accelerated dock panel on your desktop showing the output
     from an arbitrary terminal program.

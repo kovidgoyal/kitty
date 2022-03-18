@@ -1,6 +1,12 @@
 Truly convenient SSH
 =========================================
 
+* Automatic :ref:`shell_integration` on remote machines
+
+* Easily :ref:`clone local shell/editor config <real_world_ssh_kitten_config>` on remote machines
+
+* Automatic :opt:`re-use of existing connections <kitten-ssh.share_connections>` to avoid connection setup latency
+
 The ssh kitten allows you to login easily to remote servers, and automatically
 setup the environment there to be as comfortable as your local shell. You
 can specify environment variables to set on the remote server and
@@ -77,6 +83,8 @@ by this invocation, so any :opt:`hostname <kitten-ssh.hostname>` directives are 
    the shell prompt 😇.
 
 
+.. _real_world_ssh_kitten_config:
+
 A real world example
 ----------------------
 
@@ -108,17 +116,17 @@ How it works
 ----------------
 
 The ssh kitten works by having SSH transmit and execute a POSIX sh (or
-optionally Python) bootstrap script on the remote server using an
-:opt:`interpreter <kitten-ssh.interpreter>`. This script reads setup data over
-the tty device, which kitty sends as a base64 encoded tarball. The script
-extracts it and places the :opt:`files <kitten-ssh.copy>` and sets the
-:opt:`environment variables <kitten-ssh.env>` before finally launching the
-:opt:`login shell <kitten-ssh.login_shell>` with shell integration enabled. The
-data is requested by the kitten over the TTY with a random one time password.
-kitty reads the request and if the password matches a password pre-stored in
-shared memory on the localhost by the kitten, the transmission is allowed. If
-your OpenSSH version is >= 8.4 then the data is transmitted instantly without
-any roundtrip delay.
+:opt:`optionally <kitten-ssh.interpreter>` Python) bootstrap script on the
+remote server using an :opt:`interpreter <kitten-ssh.interpreter>`. This script
+reads setup data over the tty device, which kitty sends as a base64 encoded
+compressed tarball. The script extracts it and places the :opt:`files <kitten-ssh.copy>`
+and sets the :opt:`environment variables <kitten-ssh.env>` before finally
+launching the :opt:`login shell <kitten-ssh.login_shell>` with shell
+integration enabled. The data is requested by the kitten over the TTY with a
+random one time password. kitty reads the request and if the password matches
+a password pre-stored in shared memory on the localhost by the kitten, the
+transmission is allowed. If your OpenSSH version is >= 8.4 then the data is
+transmitted instantly without any roundtrip delay.
 
 .. note::
 

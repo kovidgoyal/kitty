@@ -9,23 +9,14 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
-.. only:: dirhtml
+Truly convenient SSH
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-   A demo video
-   ~~~~~~~~~~~~~~~~
+The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 
-   A new video showcasing some of kitty's many productivity enhancing features.
-
-   .. raw:: html
-
-        <video controls width="640" height="360" poster="../_static/poster.png">
-            <source src="https://download.calibre-ebook.com/videos/kitty.mp4" type="video/mp4">
-            <source src="https://download.calibre-ebook.com/videos/kitty.webm" type="video/webm">
-        </video>
-
-   .. rst-class:: caption caption-text
-
-       Watch kitty in action!
+* Automatic :ref:`shell_integration` on remote machines
+* Easily :ref:`clone local shell/editor config <real_world_ssh_kitten_config>` on remote machines
+* Automatic :opt:`re-use of existing connections <kitten-ssh.share_connections>` to avoid connection setup latency
 
 
 Shell integration
@@ -38,38 +29,6 @@ scrollback by pressing :sc:`scroll_to_previous_prompt` and clicking with the
 mouse anywhere in the current command to move the cursor there. See
 :doc:`shell-integration` for details.
 
-Logos for windows
-~~~~~~~~~~~~~~~~~~~~
-
-kitty has the ability to display arbitrary ``PNG`` images at the corner
-of any kitty window to serve as a *logo* for quick window identification.
-Can be controlled via :opt:`window_logo_path` and also and changed via
-the :ref:`at_set-window-logo` remote control command.
-Useful to quickly identify special windows or just for some *bling*.
-
-.. figure:: screenshots/window-logo.png
-    :alt: A screenshot of the kitty shell window showing the kitty logo
-    :align: center
-    :width: 100%
-
-    A screenshot of the kitty shell window showing the kitty logo
-
-
-Visual keyboard based window select
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Select a kitty window visually using the keyboard, like the
-:doc:`kittens/hints`, but for kitty windows. Can also be used from shell
-scripts/third party integrations via the :ref:`at_select-window` remote control
-command.
-
-.. figure:: screenshots/select-window.png
-    :alt: A screenshot of the kitty select window function
-    :align: center
-    :width: 100%
-
-    Hints for selecting kitty windows visually
-
 .. }}}
 
 Detailed list of changes
@@ -77,6 +36,10 @@ Detailed list of changes
 
 0.25.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- :doc:`kittens/ssh`: automatic shell integration when using SSH. Easily
+  clone local shell and editor configuration on remote machines, and automatic
+  re-use of existing connections to avoid connection setup latency.
 
 - macOS: When using Apple's less as the pager for viewing scrollback strip out OSC codes as it cant parse them (:iss:`4788`)
 
