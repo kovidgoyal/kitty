@@ -97,7 +97,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
 
     # Enable CWD reporting
     if not contains "no-cwd" $_ksi
-        # This function name is from fish and will override the builtin one if fish enabled this feature by default.
+        # This function name is from fish and will override the builtin one, which is enabled by default for kitty in fish 3.5.0+.
         # We provide this to ensure that fish 3.2.0 and above will work.
         # https://github.com/fish-shell/fish-shell/blob/3.2.0/share/functions/__fish_config_interactive.fish#L275
         function __update_cwd_osc --on-variable PWD -d "Report PWD changes to kitty"
