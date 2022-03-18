@@ -72,6 +72,8 @@ no-cwd
     :ac:`new_window_with_cwd` and similar to open windows logged
     into remote machines using the :doc:`ssh kitten <kittens/ssh>`
     automatically with the same working directory as the current window.
+    Note that for the ``fish`` shell this will not disable its built-in current
+    working directory reporting.
 
 no-prompt-mark
     Turn off marking of prompts. This disables jumping to prompt, browsing
