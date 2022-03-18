@@ -22,8 +22,8 @@ from .cli_stub import CLIOptions
 from .conf.utils import BadLine, KeyAction, to_cmdline
 from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
-    appname, config_dir, is_macos, is_wayland, kitty_exe, logo_png_file,
-    supports_primary_selection, website_url
+    appname, cache_dir, config_dir, is_macos, is_wayland, kitty_exe,
+    logo_png_file, supports_primary_selection, website_url
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
@@ -57,10 +57,10 @@ from .types import _T, AsyncResponse, SingleKey, WindowSystemMouseEvent, ac
 from .typing import PopenType, TypedDict
 from .utils import (
     cleanup_ssh_control_masters, func_name, get_editor, get_new_os_window_size,
-    get_primary_selection, is_path_in_temp_dir, log_error, open_url,
-    parse_address_spec, parse_uri_list, platform_window_id, remove_socket_file,
-    safe_print, set_primary_selection, single_instance,
-    startup_notification_handler, which
+    get_primary_selection, is_path_in_temp_dir, less_version, log_error,
+    macos_version, open_url, parse_address_spec, parse_uri_list,
+    platform_window_id, remove_socket_file, safe_print, set_primary_selection,
+    single_instance, startup_notification_handler, which
 )
 from .window import CommandOutput, CwdRequest, MatchPatternType, Window
 
@@ -1339,9 +1339,14 @@ class Boss:
         tab = self.active_tab
         if tab is not None:
             bdata = data.encode('utf-8') if isinstance(data, str) else data
-            if is_macos and cmd[0] == '/usr/bin/less':
-                # the system less on macOS barfs up OSC codes, so sanitize them ourselves
-                bdata = re.sub(br'\x1b\].*?\x1b\\', b'', bdata)
+            if is_macos and cmd[0] == '/usr/bin/less' and macos_version()[:2] < (12, 3):
+                # the system less before macOS 12.3 barfs up OSC codes, so sanitize them ourselves
+                sentinel = os.path.join(cache_dir(), 'less-is-new-enough')
+                if not os.path.exists(sentinel):
+                    if less_version() >= 581:
+                        open(sentinel, 'w').close()
+                    else:
+                        bdata = re.sub(br'\x1b\].*?\x1b\\', b'', bdata)
 
             tab.new_special_window(
                 SpecialWindow(cmd, bdata, title or _('History'), overlay_for=window.id, cwd=window.cwd_of_child),
