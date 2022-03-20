@@ -463,9 +463,9 @@ class Boss:
         w = self.active_window_for_cwd
         self._new_os_window(args, CwdRequest(w))
 
-    def new_os_window_with_wd(self, wd: Union[str, List[str]]) -> None:
+    def new_os_window_with_wd(self, wd: Union[str, List[str]], str_is_multiple_paths: bool = False) -> None:
         if isinstance(wd, str):
-            wd = [wd]
+            wd = wd.split(os.pathsep) if str_is_multiple_paths else [wd]
         for path in wd:
             special_window = SpecialWindow(None, cwd=path)
             self._new_os_window(special_window)
@@ -1851,11 +1851,11 @@ class Boss:
     def new_tab_with_cwd(self, *args: str) -> None:
         self._create_tab(list(args), cwd_from=CwdRequest(self.active_window_for_cwd))
 
-    def new_tab_with_wd(self, wd: Union[str, List[str]]) -> None:
+    def new_tab_with_wd(self, wd: Union[str, List[str]], str_is_multiple_paths: bool = False) -> None:
         if not self.os_window_map:
             self.add_os_window()
         if isinstance(wd, str):
-            wd = [wd]
+            wd = wd.split(os.pathsep) if str_is_multiple_paths else [wd]
         for path in wd:
             special_window = SpecialWindow(None, cwd=path)
             self._new_tab(special_window)
