@@ -499,26 +499,29 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
 
 - (BOOL)openTab:(NSPasteboard*)pasteboard
         userData:(NSString *) UNUSED userData error:(NSError **) UNUSED error {
-    return [self openFilesFromPasteboard:pasteboard type:NEW_TAB_WITH_WD];
+    return [self openDirsFromPasteboard:pasteboard type:NEW_TAB_WITH_WD];
 }
 
 - (BOOL)openOSWindow:(NSPasteboard*)pasteboard
         userData:(NSString *) UNUSED userData  error:(NSError **) UNUSED error {
-    return [self openFilesFromPasteboard:pasteboard type:NEW_OS_WINDOW_WITH_WD];
+    return [self openDirsFromPasteboard:pasteboard type:NEW_OS_WINDOW_WITH_WD];
 }
 
-- (BOOL)openFilesFromPasteboard:(NSPasteboard *)pasteboard type:(int)type {
+- (BOOL)openDirsFromPasteboard:(NSPasteboard *)pasteboard type:(int)type {
     NSDictionary *options = @{ NSPasteboardURLReadingFileURLsOnlyKey: @YES };
     NSArray *filePathArray = [pasteboard readObjectsForClasses:[NSArray arrayWithObject:[NSURL class]] options:options];
+    NSMutableArray<NSString*> *dirPathArray = [NSMutableArray arrayWithCapacity:[filePathArray count]];
     for (NSURL *url in filePathArray) {
         NSString *path = [url path];
         BOOL isDirectory = NO;
         if ([[NSFileManager defaultManager] fileExistsAtPath:path isDirectory:&isDirectory]) {
-            if (!isDirectory) {
-                path = [path stringByDeletingLastPathComponent];
-            }
-            set_cocoa_pending_action(type, [path UTF8String]);
+            if (!isDirectory) path = [path stringByDeletingLastPathComponent];
+            if (![dirPathArray containsObject:path]) [dirPathArray addObject:path];
         }
+    }
+    if ([dirPathArray count] > 0) {
+        // Colons are not valid in paths under macOS.
+        set_cocoa_pending_action(type, [[dirPathArray componentsJoinedByString:@":"] UTF8String]);
     }
     return YES;
 }

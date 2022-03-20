@@ -463,9 +463,12 @@ class Boss:
         w = self.active_window_for_cwd
         self._new_os_window(args, CwdRequest(w))
 
-    def new_os_window_with_wd(self, wd: str) -> None:
-        special_window = SpecialWindow(None, cwd=wd)
-        self._new_os_window(special_window)
+    def new_os_window_with_wd(self, wd: Union[str, List[str]]) -> None:
+        if isinstance(wd, str):
+            wd = [wd]
+        for path in wd:
+            special_window = SpecialWindow(None, cwd=path)
+            self._new_os_window(special_window)
 
     def add_child(self, window: Window) -> None:
         assert window.child.pid is not None and window.child.child_fd is not None
@@ -1848,11 +1851,14 @@ class Boss:
     def new_tab_with_cwd(self, *args: str) -> None:
         self._create_tab(list(args), cwd_from=CwdRequest(self.active_window_for_cwd))
 
-    def new_tab_with_wd(self, wd: str) -> None:
+    def new_tab_with_wd(self, wd: Union[str, List[str]]) -> None:
         if not self.os_window_map:
             self.add_os_window()
-        special_window = SpecialWindow(None, cwd=wd)
-        self._new_tab(special_window)
+        if isinstance(wd, str):
+            wd = [wd]
+        for path in wd:
+            special_window = SpecialWindow(None, cwd=path)
+            self._new_tab(special_window)
 
     def _new_window(self, args: List[str], cwd_from: Optional[CwdRequest] = None) -> Optional[Window]:
         tab = self.active_tab
