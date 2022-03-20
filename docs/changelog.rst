@@ -53,6 +53,8 @@ Detailed list of changes
 
 - Fix continued lines not having their continued status reset on line feed (:iss:`4837`)
 
+- macOS: Allow the New kitty Tab/Window Here services to open multiple selected folders.  (:pull:`4848`)
+
 
 0.24.4 [2022-03-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

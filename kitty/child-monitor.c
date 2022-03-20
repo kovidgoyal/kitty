@@ -1041,8 +1041,17 @@ process_cocoa_pending_actions(void) {
     if (cocoa_pending_actions[TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY]) { call_boss(toggle_macos_secure_keyboard_entry, NULL); }
     if (cocoa_pending_actions[TOGGLE_FULLSCREEN]) { call_boss(toggle_fullscreen, NULL); }
     if (cocoa_pending_actions_data.wd) {
-        if (cocoa_pending_actions[NEW_OS_WINDOW_WITH_WD]) { call_boss(new_os_window_with_wd, "s", cocoa_pending_actions_data.wd); }
-        if (cocoa_pending_actions[NEW_TAB_WITH_WD]) { call_boss(new_tab_with_wd, "s", cocoa_pending_actions_data.wd); }
+#define C(a, f) \
+        if (cocoa_pending_actions[a]) { \
+            PyObject *wds = PyUnicode_FromString(cocoa_pending_actions_data.wd); \
+            PyObject *sep = PyUnicode_FromString(":"); \
+            PyObject *paths = PyUnicode_Split(wds, sep, -1); \
+            call_boss(f, "O", paths); \
+            Py_DECREF(paths); Py_DECREF(sep); Py_DECREF(wds); \
+        }
+        C(NEW_OS_WINDOW_WITH_WD, new_os_window_with_wd);
+        C(NEW_TAB_WITH_WD, new_tab_with_wd);
+#undef C
         free(cocoa_pending_actions_data.wd);
         cocoa_pending_actions_data.wd = NULL;
     }
