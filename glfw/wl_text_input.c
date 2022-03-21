@@ -139,7 +139,12 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     switch(ev->type) {
         case GLFW_IME_UPDATE_FOCUS:
             debug("\ntext-input: updating IME focus state, focused: %d\n", ev->focused);
-            if (ev->focused) zwp_text_input_v3_enable(text_input); else zwp_text_input_v3_disable(text_input);
+            if (ev->focused) {
+                zwp_text_input_v3_enable(text_input);
+                zwp_text_input_v3_set_content_type(text_input, ZWP_TEXT_INPUT_V3_CONTENT_HINT_NONE, ZWP_TEXT_INPUT_V3_CONTENT_PURPOSE_TERMINAL);
+            } else {
+                zwp_text_input_v3_disable(text_input);
+            }
             commit();
             break;
         case GLFW_IME_UPDATE_CURSOR_POSITION: {

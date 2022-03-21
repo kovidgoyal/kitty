@@ -780,7 +780,7 @@ class Window:
         self.screen.focus_changed(focused)
         if focused:
             self.last_focused_at = monotonic()
-            update_ime_position_for_window(self.id)
+            update_ime_position_for_window(self.id, False, 1)
             changed = self.needs_attention
             self.needs_attention = False
             if changed:
@@ -789,7 +789,7 @@ class Window:
                     tab.relayout_borders()
         elif self.os_window_id == current_os_window():
             # Cancel IME composition after loses focus
-            update_ime_position_for_window(self.id, False, True)
+            update_ime_position_for_window(self.id, False, -1)
 
     def title_changed(self, new_title: Optional[str], is_base64: bool = False) -> None:
         self.child_title = process_title_from_child(new_title or self.default_title, is_base64)
@@ -1163,7 +1163,7 @@ class Window:
         if hasattr(self, 'screen'):
             if self.is_active and self.os_window_id == current_os_window():
                 # Cancel IME composition when window is destroyed
-                update_ime_position_for_window(self.id, False, True)
+                update_ime_position_for_window(self.id, False, -1)
             # Remove cycles so that screen is de-allocated immediately
             self.screen.reset_callbacks()
             del self.screen

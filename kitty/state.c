@@ -602,7 +602,7 @@ send_pending_click_to_window_id(id_type timer_id UNUSED, void *data) {
 }
 
 bool
-update_ime_position_for_window(id_type window_id, bool force, bool lost_focus) {
+update_ime_position_for_window(id_type window_id, bool force, int update_focus) {
     for (size_t o = 0; o < global_state.num_os_windows; o++) {
         OSWindow *osw = global_state.os_windows + o;
         for (size_t t = 0; t < osw->num_tabs; t++) {
@@ -610,11 +610,14 @@ update_ime_position_for_window(id_type window_id, bool force, bool lost_focus) {
             for (size_t w = 0; w < qtab->num_windows; w++) {
                 Window *window = qtab->windows + w;
                 if (window->id == window_id) {
-                    if (window->render_data.screen && (force || osw->is_focused)) {
+                    // The screen may not be ready after the new window is created and focused, and still needs to enable IME.
+                    if ((window->render_data.screen && (force || osw->is_focused)) || update_focus > 0) {
                         OSWindow *orig = global_state.callback_os_window;
                         global_state.callback_os_window = osw;
-                        if (lost_focus) update_ime_focus(osw, false);
-                        else update_ime_position(window, window->render_data.screen);
+                        if (update_focus) update_ime_focus(osw, update_focus > 0);
+                        if (update_focus >= 0 && window->render_data.screen) {
+                            update_ime_position(window, window->render_data.screen);
+                        }
                         global_state.callback_os_window = orig;
                         return true;
                     }
@@ -653,9 +656,9 @@ update_ime_position_for_window(id_type window_id, bool force, bool lost_focus) {
 PYWRAP1(update_ime_position_for_window) {
     id_type window_id;
     int force = 0;
-    int lost_focus = 0;
-    PA("K|pp", &window_id, &force, &lost_focus);
-    if (update_ime_position_for_window(window_id, force, lost_focus)) Py_RETURN_TRUE;
+    int update_focus = 0;
+    PA("K|pi", &window_id, &force, &update_focus);
+    if (update_ime_position_for_window(window_id, force, update_focus)) Py_RETURN_TRUE;
     Py_RETURN_FALSE;
 }
 
