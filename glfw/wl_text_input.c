@@ -47,7 +47,7 @@ static void
 send_text(const char *text, GLFWIMEState ime_state) {
     _GLFWwindow *w = _glfwFocusedWindow();
     if (w && w->callbacks.keyboard) {
-        GLFWkeyevent fake_ev = {.action = GLFW_PRESS};
+        GLFWkeyevent fake_ev = {.action = text ? GLFW_PRESS : GLFW_RELEASE};
         fake_ev.text = text;
         fake_ev.ime_state = ime_state;
         w->callbacks.keyboard((GLFWwindow*) w, &fake_ev);
@@ -93,6 +93,9 @@ text_input_done(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, u
     if (pending_pre_edit) {
         send_text(pending_pre_edit, GLFW_IME_PREEDIT_CHANGED);
         free(pending_pre_edit); pending_pre_edit = NULL;
+    } else {
+        // Clear pre-edit text
+        send_text(NULL, GLFW_IME_PREEDIT_CHANGED);
     }
     if (pending_commit) {
         send_text(pending_commit, GLFW_IME_COMMIT_TEXT);
@@ -143,6 +146,14 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
                 zwp_text_input_v3_enable(text_input);
                 zwp_text_input_v3_set_content_type(text_input, ZWP_TEXT_INPUT_V3_CONTENT_HINT_NONE, ZWP_TEXT_INPUT_V3_CONTENT_PURPOSE_TERMINAL);
             } else {
+                if (pending_pre_edit) {
+                    // Clear pre-edit text
+                    send_text(NULL, GLFW_IME_PREEDIT_CHANGED);
+                    free(pending_pre_edit); pending_pre_edit = NULL;
+                }
+                if (pending_commit) {
+                    free(pending_commit); pending_commit = NULL;
+                }
                 zwp_text_input_v3_disable(text_input);
             }
             commit();
