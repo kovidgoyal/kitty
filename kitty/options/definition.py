@@ -858,6 +858,12 @@ MP3 or WAV on macOS (NSSound)
 '''
     )
 
+opt('linux_bell_theme_name', '__custom',
+    long_text='If audio bell is enabled on Linux, sets the XDG Sound Theme kitty will use to play the bell sound.'
+    ' Defaults to the custom theme name used by GNOME and Budgie, falling back to the default freedesktop theme if it does not exist.'
+    ' This option may be removed if Linux ever provides desktop-agnostic support for setting system sound themes.'
+    )
+
 egr()  # }}}
 
 

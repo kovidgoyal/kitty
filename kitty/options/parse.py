@@ -1024,6 +1024,9 @@ class Parser:
     def kitty_mod(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['kitty_mod'] = to_modifiers(val)
 
+    def linux_bell_theme_name(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['linux_bell_theme_name'] = str(val)
+
     def linux_display_server(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_linux_display_server:

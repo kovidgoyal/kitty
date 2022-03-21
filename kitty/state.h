@@ -29,6 +29,7 @@ typedef struct {
     double wheel_scroll_multiplier, touch_scroll_multiplier;
     int wheel_scroll_min_lines;
     bool enable_audio_bell;
+    const char *linux_bell_theme_name;
     CursorShape cursor_shape;
     float cursor_beam_thickness;
     float cursor_underline_thickness;
