@@ -76,7 +76,7 @@ class SharedMemory:
         if tries <= 0:
             raise OSError(f'Failed to create a uniquely named SHM file, try shortening the prefix from: {prefix}')
         if self._fd < 0:
-            self._fd = shm_open(name, flags)
+            self._fd = shm_open(name, flags, mode)
         self._name = name
         try:
             if flags & os.O_CREAT and size:
