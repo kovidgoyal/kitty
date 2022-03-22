@@ -31,7 +31,7 @@ rc files:
 
     alias s=kitty +kitten ssh
 
-So you can now type just ``s hostname`` to connect.
+So now you can just type ``s hostname`` to connect.
 
 If you define a mapping in :file:`kitty.conf` such as::
 
@@ -76,11 +76,11 @@ from :file:`ssh.conf`. These are merged with :file:`ssh.conf` as if they were
 appended to the end of that file. They apply only to the host being SSHed to
 by this invocation, so any :opt:`hostname <kitten-ssh.hostname>` directives are ignored.
 
-.. note::
+.. warning::
 
-   Because of limitations of the design of SSH, any typing you do before the
-   shell prompt appears may be lost. So ideally dont start typing till you see
-   the shell prompt 😇.
+   Due to the limitations in the design of SSH, any typing you do before the
+   shell prompt appears may be lost. So ideally don't start typing till you see
+   the shell prompt. 😇
 
 
 .. _real_world_ssh_kitten_config:
@@ -121,12 +121,12 @@ remote server using an :opt:`interpreter <kitten-ssh.interpreter>`. This script
 reads setup data over the tty device, which kitty sends as a base64 encoded
 compressed tarball. The script extracts it and places the :opt:`files <kitten-ssh.copy>`
 and sets the :opt:`environment variables <kitten-ssh.env>` before finally
-launching the :opt:`login shell <kitten-ssh.login_shell>` with shell
-integration enabled. The data is requested by the kitten over the TTY with a
-random one time password. kitty reads the request and if the password matches
-a password pre-stored in shared memory on the localhost by the kitten, the
-transmission is allowed. If your OpenSSH version is >= 8.4 then the data is
-transmitted instantly without any roundtrip delay.
+launching the :opt:`login shell <kitten-ssh.login_shell>` with :opt:`shell
+integration <kitten-ssh.shell_integration>` enabled. The data is requested by
+the kitten over the TTY with a random one time password. kitty reads the request
+and if the password matches a password pre-stored in shared memory on the
+localhost by the kitten, the transmission is allowed. If your OpenSSH version is
+>= 8.4 then the data is transmitted instantly without any roundtrip delay.
 
 .. note::
 
