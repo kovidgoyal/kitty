@@ -342,6 +342,6 @@ uint8_t* draw_single_ascii_char(const char ch, size_t *result_width, size_t *res
 bool is_os_window_fullscreen(OSWindow *);
 void update_ime_focus(OSWindow* osw, bool focused);
 void update_ime_position(Window* w, Screen *screen);
-bool update_ime_position_for_window(id_type window_id, bool force, bool lost_focus);
+bool update_ime_position_for_window(id_type window_id, bool force, int update_focus);
 void set_ignore_os_keyboard_processing(bool enabled);
 void update_menu_bar_title(PyObject *title UNUSED);
