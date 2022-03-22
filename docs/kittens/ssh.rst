@@ -78,7 +78,7 @@ by this invocation, so any :opt:`hostname <kitten-ssh.hostname>` directives are 
 
 .. warning::
 
-   Due to the limitations in the design of SSH, any typing you do before the
+   Due to limitations in the design of SSH, any typing you do before the
    shell prompt appears may be lost. So ideally don't start typing till you see
    the shell prompt. 😇
 
