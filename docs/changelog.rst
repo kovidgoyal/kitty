@@ -55,7 +55,7 @@ Detailed list of changes
 
 - macOS: Allow the New kitty Tab/Window Here services to open multiple selected folders.  (:pull:`4848`)
 
-- Wayland: Fix a regression that brok IME when changing windows/tabs (:iss:`4853`)
+- Wayland: Fix a regression that broke IME when changing windows/tabs (:iss:`4853`)
 
 
 0.24.4 [2022-03-03]
