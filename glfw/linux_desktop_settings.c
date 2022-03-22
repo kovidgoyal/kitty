@@ -104,6 +104,6 @@ void
 glfw_initialize_desktop_settings(void) {
     get_cursor_theme_from_env();
     const char *desktop = getenv("XDG_CURRENT_DESKTOP");
-    bool is_gnome = desktop && strncasecmp(desktop, "GNOME", sizeof("GNOME") - 1) == 0;
+    bool is_gnome = desktop && strstr(desktop, "GNOME");
     if (is_gnome) get_from_gnome();
 }
