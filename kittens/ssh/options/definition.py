@@ -8,10 +8,10 @@ from kitty.conf.types import Definition
 
 
 copy_message = '''\
-Copy files and directories from the local computer to the remote one. The
-specified files are assumed to be relative to the HOME directory and copied
-to the HOME on the server. Directories are copied recursively. If absolute paths
-are used, they are copied as is.'''
+Copy files and directories from local to remote hosts. The specified files are
+assumed to be relative to the HOME directory and copied to the HOME on the
+remote. Directories are copied recursively. If absolute paths are used, they are
+copied as is.'''
 
 definition = Definition(
     'kittens.ssh',
@@ -29,7 +29,7 @@ hosts can be used. Multiple hostnames can also be specified separated by spaces.
 The hostname can include an optional username in the form :code:`user@host`.
 When not specified options apply to all hosts, until the
 first hostname specification is found. Note that matching of hostname is done against
-the name you specify on the command line to connect to the remote computer.
+the name you specify on the command line to connect to the remote host.
 If you wish to include the same basic configuration for many
 different hosts, you can do so with the :ref:`include <include>` directive.
 ''')
@@ -41,7 +41,7 @@ an alternate interpreter can be useful.
 ''')
 
 opt('remote_dir', '.local/share/kitty-ssh-kitten', option_type='relative_dir', long_text='''
-The location on the remote computer where the files needed for this kitten
+The location on the remote host where the files needed for this kitten
 are installed. The location is relative to the HOME directory. Absolute paths or paths
 that resolve to a location outside the HOME are not allowed.
 ''')
@@ -51,7 +51,7 @@ opt('+copy', '', option_type='copy', add_to_default=False, long_text=f'''
 
     copy .vimrc .zshrc .config/some-dir
 
-If a file should be copied to some other destination on the remote machine,
+If a file should be copied to some other destination on the remote host,
 use :code:`--dest`::
 
     copy --dest some-other-name some-file
@@ -94,7 +94,7 @@ The value of MYVAR2 will be :code:`a/<path to home directory>/b`. Using
 :code:`VAR=` will set it to the empty string and using just :code:`VAR`
 will delete the variable from the child process' environment. The definitions
 are processed alphabetically. The special value :code:`_kitty_copy_env_var_`
-will cause the value of the variable to be copied from the local machine.
+will cause the value of the variable to be copied from the local environment.
 ''')
 
 opt('cwd', '', long_text='''

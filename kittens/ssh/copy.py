@@ -26,8 +26,8 @@ Interpret file arguments as glob patterns.
 
 
 --dest
-The destination on the remote computer to copy to. Relative paths are resolved
-relative to HOME on the remote machine. When this option is not specified, the
+The destination on the remote host to copy to. Relative paths are resolved
+relative to HOME on the remote host. When this option is not specified, the
 local file path is used as the remote destination (with the HOME directory
 getting automatically replaced by the remote HOME). Note that environment
 variables and ~ are not expanded.
