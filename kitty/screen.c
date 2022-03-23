@@ -2092,7 +2092,12 @@ screen_push_colors(Screen *self, unsigned int idx) {
 
 void
 screen_pop_colors(Screen *self, unsigned int idx) {
-    if (colorprofile_pop_colors(self->color_profile, idx)) self->color_profile->dirty = true;
+    color_type bg_before = colorprofile_to_color(self->color_profile, self->color_profile->overridden.default_bg, self->color_profile->configured.default_bg).rgb;
+    if (colorprofile_pop_colors(self->color_profile, idx)) {
+        self->color_profile->dirty = true;
+        color_type bg_after = colorprofile_to_color(self->color_profile, self->color_profile->overridden.default_bg, self->color_profile->configured.default_bg).rgb;
+        CALLBACK("color_profile_popped", "O", bg_before == bg_after ? Py_False : Py_True);
+    }
 }
 
 void

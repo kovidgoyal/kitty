@@ -862,6 +862,10 @@ class Window:
         if default_bg_changed:
             get_boss().default_bg_changed_for(self.id)
 
+    def color_profile_popped(self, bg_changed: bool) -> None:
+        if bg_changed:
+            get_boss().default_bg_changed_for(self.id)
+
     def report_color(self, code: str, r: int, g: int, b: int) -> None:
         r |= r << 8
         g |= g << 8
