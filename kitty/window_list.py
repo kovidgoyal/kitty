@@ -61,8 +61,23 @@ class WindowGroup:
     def active_window_id(self) -> int:
         return self.windows[-1].id if self.windows else 0
 
-    def add_window(self, window: WindowType) -> None:
+    def add_window(self, window: WindowType, head_of_group: bool = False) -> None:
+        if head_of_group:
+            self.windows.insert(0, window)
+        else:
+            self.windows.append(window)
+
+    def move_window_to_top_of_group(self, window: WindowType) -> bool:
+        id
+        try:
+            idx = self.windows.index(window)
+        except ValueError:
+            return False
+        if idx == len(self.windows) - 1:
+            return False
+        del self.windows[idx]
         self.windows.append(window)
+        return True
 
     def remove_window(self, window: WindowType) -> None:
         with suppress(ValueError):
@@ -252,6 +267,19 @@ class WindowList:
                 return i
         return None
 
+    def move_window_to_top_of_group(self, window: WindowType) -> bool:
+        g = self.group_for_window(window)
+        if g is None:
+            return False
+        before = self.active_window
+        if not g.move_window_to_top_of_group(window):
+            return False
+        after = self.active_window
+        changed = before is not after
+        if changed:
+            self.notify_on_active_window_change(before, after)
+        return changed
+
     def windows_in_group_of(self, x: WindowOrId) -> Iterator[WindowType]:
         g = self.group_for_window(x)
         if g is not None:
@@ -292,7 +320,8 @@ class WindowList:
         group_of: Optional[WindowOrId] = None,
         next_to: Optional[WindowOrId] = None,
         before: bool = False,
-        make_active: bool = True
+        make_active: bool = True,
+        head_of_group: bool = False,
     ) -> WindowGroup:
         self.all_windows.append(window)
         self.id_map[window.id] = window
@@ -318,7 +347,7 @@ class WindowList:
                 self.groups.append(target_group)
 
         old_active_window = self.active_window
-        target_group.add_window(window)
+        target_group.add_window(window, head_of_group=head_of_group)
         if make_active:
             for i, g in enumerate(self.groups):
                 if g is target_group:

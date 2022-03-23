@@ -940,6 +940,13 @@ class Window:
         import base64
         self.kitten_result: Dict[str, Any] = json.loads(base64.b85decode(msg))
 
+    def handle_overlay_ready(self, msg: str) -> None:
+        boss = get_boss()
+        tab = boss.tab_for_window(self)
+        if tab is None:
+            return
+        tab.move_window_to_top_of_group(self)
+
     def handle_remote_askpass(self, msg: str) -> None:
         from .shm import SharedMemory
         with SharedMemory(name=msg, readonly=True) as shm:

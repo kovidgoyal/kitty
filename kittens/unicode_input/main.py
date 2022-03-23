@@ -377,6 +377,7 @@ class UnicodeInput(Handler):
     def initialize(self) -> None:
         self.init_terminal_state()
         self.draw_screen()
+        self.cmd.overlay_ready()
 
     def draw_title_bar(self) -> None:
         entries = []
@@ -585,7 +586,7 @@ def main(args: List[str]) -> Optional[str]:
     return None
 
 
-@result_handler()
+@result_handler(has_ready_notification=True)
 def handle_result(args: List[str], current_char: str, target_window_id: int, boss: BossType) -> None:
     w = boss.window_id_map.get(target_window_id)
     if w is not None:

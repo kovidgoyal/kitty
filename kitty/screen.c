@@ -2135,6 +2135,11 @@ screen_handle_kitten_result(Screen *self, PyObject *msg) {
 }
 
 void
+screen_handle_overlay_ready(Screen *self, PyObject *msg) {
+    CALLBACK("handle_overlay_ready", "O", msg);
+}
+
+void
 screen_request_capabilities(Screen *self, char c, PyObject *q) {
     static char buf[128];
     int shape = 0;

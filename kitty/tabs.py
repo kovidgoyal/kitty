@@ -63,6 +63,7 @@ class SpecialWindowInstance(NamedTuple):
     overlay_for: Optional[int]
     env: Optional[Dict[str, str]]
     watchers: Optional[Watchers]
+    overlay_behind: bool
 
 
 def SpecialWindow(
@@ -73,9 +74,10 @@ def SpecialWindow(
     cwd: Optional[str] = None,
     overlay_for: Optional[int] = None,
     env: Optional[Dict[str, str]] = None,
-    watchers: Optional[Watchers] = None
+    watchers: Optional[Watchers] = None,
+    overlay_behind: bool = False
 ) -> SpecialWindowInstance:
-    return SpecialWindowInstance(cmd, stdin, override_title, cwd_from, cwd, overlay_for, env, watchers)
+    return SpecialWindowInstance(cmd, stdin, override_title, cwd_from, cwd, overlay_for, env, watchers, overlay_behind)
 
 
 def add_active_id_to_history(items: Deque[int], item_id: int, maxlen: int = 64) -> None:
@@ -403,8 +405,8 @@ class Tab:  # {{{
         ans.fork()
         return ans
 
-    def _add_window(self, window: Window, location: Optional[str] = None, overlay_for: Optional[int] = None) -> None:
-        self.current_layout.add_window(self.windows, window, location, overlay_for)
+    def _add_window(self, window: Window, location: Optional[str] = None, overlay_for: Optional[int] = None, overlay_behind: bool = False) -> None:
+        self.current_layout.add_window(self.windows, window, location, overlay_for, put_overlay_behind=overlay_behind)
         self.mark_tab_bar_dirty()
         self.relayout()
 
@@ -422,7 +424,8 @@ class Tab:  # {{{
         copy_colors_from: Optional[Window] = None,
         allow_remote_control: bool = False,
         marker: Optional[str] = None,
-        watchers: Optional[Watchers] = None
+        watchers: Optional[Watchers] = None,
+        overlay_behind: bool = False
     ) -> Window:
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env, allow_remote_control=allow_remote_control)
@@ -432,7 +435,7 @@ class Tab:  # {{{
         )
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
-        self._add_window(window, location=location, overlay_for=overlay_for)
+        self._add_window(window, location=location, overlay_for=overlay_for, overlay_behind=overlay_behind)
         if marker:
             try:
                 window.set_marker(marker)
@@ -453,7 +456,7 @@ class Tab:  # {{{
             override_title=special_window.override_title,
             cwd_from=special_window.cwd_from, cwd=special_window.cwd, overlay_for=special_window.overlay_for,
             env=special_window.env, location=location, copy_colors_from=copy_colors_from,
-            allow_remote_control=allow_remote_control, watchers=special_window.watchers
+            allow_remote_control=allow_remote_control, watchers=special_window.watchers, overlay_behind=special_window.overlay_behind
         )
 
     @ac('win', 'Close all windows in the tab other than the currently active window')
@@ -463,6 +466,9 @@ class Tab:  # {{{
             for window in tuple(self.windows):
                 if window is not active_window:
                     self.remove_window(window)
+
+    def move_window_to_top_of_group(self, window: Window) -> bool:
+        return self.windows.move_window_to_top_of_group(window)
 
     def remove_window(self, window: Window, destroy: bool = True) -> None:
         self.windows.remove_window(window)

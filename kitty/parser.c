@@ -1080,6 +1080,7 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                 Py_DECREF(msg); \
             } else PyErr_Clear();
 
+                } else IF_SIMPLE_PREFIX("overlay-ready|", screen_handle_overlay_ready)
                 } else IF_SIMPLE_PREFIX("kitten-result|", screen_handle_kitten_result)
                 } else IF_SIMPLE_PREFIX("print|", screen_handle_print)
                 } else IF_SIMPLE_PREFIX("echo|", screen_handle_echo)

@@ -159,6 +159,7 @@ class Hints(Handler):
     def initialize(self) -> None:
         self.init_terminal_state()
         self.draw_screen()
+        self.cmd.overlay_ready()
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
         changed = False
@@ -752,7 +753,7 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
             }[action])(*cmd)
 
 
-@result_handler(type_of_input='screen-ansi')
+@result_handler(type_of_input='screen-ansi', has_ready_notification=True)
 def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType) -> None:
     if data['customize_processing']:
         m = load_custom_processor(data['customize_processing'])

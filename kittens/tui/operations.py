@@ -414,6 +414,11 @@ def restore_colors() -> str:
 
 
 @cmd
+def overlay_ready() -> str:
+    return '\x1bP@kitty-overlay-ready|\x1b\\'
+
+
+@cmd
 def write_to_clipboard(data: Union[str, bytes], use_primary: bool = False) -> str:
     from base64 import standard_b64encode
     fmt = 'p' if use_primary else 'c'

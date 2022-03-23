@@ -271,9 +271,12 @@ class Layout:
     def move_window_to_group(self, all_windows: WindowList, group: int) -> bool:
         return all_windows.move_window_group(to_group=group)
 
-    def add_window(self, all_windows: WindowList, window: WindowType, location: Optional[str] = None, overlay_for: Optional[int] = None) -> None:
+    def add_window(
+        self, all_windows: WindowList, window: WindowType, location: Optional[str] = None,
+        overlay_for: Optional[int] = None, put_overlay_behind: bool = False
+    ) -> None:
         if overlay_for is not None and overlay_for in all_windows:
-            all_windows.add_window(window, group_of=overlay_for)
+            all_windows.add_window(window, group_of=overlay_for, head_of_group=put_overlay_behind)
             return
         if location == 'neighbor':
             location = 'after'

@@ -69,6 +69,7 @@ def create_kitten_handler(kitten: str, orig_args: List[str]) -> Any:
     ans = partial(m['end'], [kitten] + orig_args)
     setattr(ans, 'type_of_input', getattr(m['end'], 'type_of_input', None))
     setattr(ans, 'no_ui', getattr(m['end'], 'no_ui', False))
+    setattr(ans, 'has_ready_notification', getattr(m['end'], 'has_ready_notification', False))
     return ans
 
 

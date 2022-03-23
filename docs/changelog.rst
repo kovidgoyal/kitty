@@ -57,6 +57,8 @@ Detailed list of changes
 
 - Wayland: Fix a regression that broke IME when changing windows/tabs (:iss:`4853`)
 
+- Avoid flicker when starting kittens such as the hints kitten (:iss:`4674`)
+
 
 0.24.4 [2022-03-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

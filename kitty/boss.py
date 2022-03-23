@@ -1427,7 +1427,8 @@ class Boss:
                         'OVERLAID_WINDOW_COLS': str(w.screen.columns),
                     },
                     cwd=w.cwd_of_child,
-                    overlay_for=w.id
+                    overlay_for=w.id,
+                    overlay_behind=end_kitten.has_ready_notification,
                 ),
                 copy_colors_from=w
             )
