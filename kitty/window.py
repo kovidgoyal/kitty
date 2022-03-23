@@ -943,9 +943,8 @@ class Window:
     def handle_overlay_ready(self, msg: str) -> None:
         boss = get_boss()
         tab = boss.tab_for_window(self)
-        if tab is None:
-            return
-        tab.move_window_to_top_of_group(self)
+        if tab is not None:
+            tab.move_window_to_top_of_group(self)
 
     def handle_remote_askpass(self, msg: str) -> None:
         from .shm import SharedMemory

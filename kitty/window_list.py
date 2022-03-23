@@ -68,7 +68,6 @@ class WindowGroup:
             self.windows.append(window)
 
     def move_window_to_top_of_group(self, window: WindowType) -> bool:
-        id
         try:
             idx = self.windows.index(window)
         except ValueError:
