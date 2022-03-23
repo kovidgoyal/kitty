@@ -41,7 +41,7 @@ class ScrollWindow(RemoteCommand):
             pages = 'p' in amt
             unscroll = 'u' in amt
             mult = -1 if amt.endswith('-') and not unscroll else 1
-            q = int(amt.rstrip('+-pu'))
+            q = int(amt.rstrip('+-plu'))
             amount = q * mult, 'p' if pages else ('u' if unscroll else 'l')
 
         return {'match': opts.match, 'amount': amount}

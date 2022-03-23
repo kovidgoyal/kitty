@@ -1346,7 +1346,7 @@ class Boss:
                 # the system less before macOS 12.3 barfs up OSC codes, so sanitize them ourselves
                 sentinel = os.path.join(cache_dir(), 'less-is-new-enough')
                 if not os.path.exists(sentinel):
-                    if less_version() >= 581:
+                    if less_version(cmd[0]) >= 581:
                         open(sentinel, 'w').close()
                     else:
                         bdata = re.sub(br'\x1b\].*?\x1b\\', b'', bdata)
