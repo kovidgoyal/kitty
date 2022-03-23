@@ -1017,10 +1017,9 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 // DCS mode {{{
 
 static bool
-startswith(const uint32_t *string, size_t sz, const char *prefix) {
-    size_t l = strlen(prefix);
+startswith(const uint32_t *string, ssize_t sz, const char *prefix, ssize_t l) {
     if (sz < l) return false;
-    for (size_t i = 0; i < l; i++) {
+    for (ssize_t i = 0; i < l; i++) {
         if (string[i] != (unsigned char)prefix[i]) return false;
     }
     return true;
@@ -1063,33 +1062,33 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             }
             break;
         case '@':
-#define CMD_PREFIX "kitty-cmd{"
-            if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 2, CMD_PREFIX)) {
-                PyObject *cmd = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + 10, screen->parser_buf_pos - 10);
-                if (cmd != NULL) {
-                    REPORT_OSC2(screen_handle_cmd, (char)screen->parser_buf[0], cmd);
-                    screen_handle_cmd(screen, cmd);
-                    Py_DECREF(cmd);
-                } else PyErr_Clear();
-#undef CMD_PREFIX
+            if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 2, "kitty-", sizeof("kitty-") - 1)) {
+                if (startswith(screen->parser_buf + 7, screen->parser_buf_pos - 2, "cmd{", sizeof("cmd{") - 1)) {
+                    PyObject *cmd = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + 10, screen->parser_buf_pos - 10);
+                    if (cmd != NULL) {
+                        REPORT_OSC2(screen_handle_cmd, (char)screen->parser_buf[0], cmd);
+                        screen_handle_cmd(screen, cmd);
+                        Py_DECREF(cmd);
+                    } else PyErr_Clear();
 #define IF_SIMPLE_PREFIX(prefix, func) \
-    if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 1, prefix)) { \
-        const size_t pp_size = sizeof(prefix); \
-        PyObject *msg = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + pp_size, screen->parser_buf_pos - pp_size); \
-        if (msg != NULL) { \
-            REPORT_OSC2(func, (char)screen->parser_buf[0], msg); \
-            func(screen, msg); \
-            Py_DECREF(msg); \
-        } else PyErr_Clear();
+        if (startswith(screen->parser_buf + 7, screen->parser_buf_pos - 1, prefix, sizeof(prefix) - 1)) { \
+            const size_t pp_size = sizeof("kitty") + sizeof(prefix); \
+            PyObject *msg = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + pp_size, screen->parser_buf_pos - pp_size); \
+            if (msg != NULL) { \
+                REPORT_OSC2(func, (char)screen->parser_buf[0], msg); \
+                func(screen, msg); \
+                Py_DECREF(msg); \
+            } else PyErr_Clear();
 
-            } else IF_SIMPLE_PREFIX("kitty-kitten-result|", screen_handle_kitten_result)
-            } else IF_SIMPLE_PREFIX("kitty-print|", screen_handle_print)
-            } else IF_SIMPLE_PREFIX("kitty-echo|", screen_handle_echo)
-            } else IF_SIMPLE_PREFIX("kitty-ssh|", screen_handle_ssh)
-            } else IF_SIMPLE_PREFIX("kitty-ask|", screen_handle_askpass)
+                } else IF_SIMPLE_PREFIX("kitten-result|", screen_handle_kitten_result)
+                } else IF_SIMPLE_PREFIX("print|", screen_handle_print)
+                } else IF_SIMPLE_PREFIX("echo|", screen_handle_echo)
+                } else IF_SIMPLE_PREFIX("ssh|", screen_handle_ssh)
+                } else IF_SIMPLE_PREFIX("ask|", screen_handle_askpass)
 #undef IF_SIMPLE_PREFIX
-            } else {
-                REPORT_ERROR("Unrecognized DCS @ code: 0x%x", screen->parser_buf[1]);
+                } else {
+                    REPORT_ERROR("Unrecognized DCS @ code: 0x%x", screen->parser_buf[1]);
+                }
             }
             break;
         default:
