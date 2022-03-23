@@ -358,6 +358,15 @@ def get_connection_data(args: List[str], cwd: str = '', extra_args: Tuple[str, .
             host_name = arg
     if not host_name:
         return None
+    if host_name.startswith('ssh://'):
+        from urllib.parse import urlparse
+        purl = urlparse(host_name)
+        if purl.hostname:
+            host_name = purl.hostname
+        if purl.username:
+            host_name = f'{purl.username}@{host_name}'
+        if port is None and purl.port:
+            port = purl.port
     if identity_file:
         if not os.path.isabs(identity_file):
             identity_file = os.path.expanduser(identity_file)
