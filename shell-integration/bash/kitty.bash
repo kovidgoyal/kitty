@@ -157,7 +157,7 @@ _ksi_main() {
             # command like cd /test && cat. PS0 is evaluated before cd is run.
             if [[ "${_ksi_prompt[last_reported_cwd]}" != "$PWD" ]]; then
                 _ksi_prompt[last_reported_cwd]="$PWD";
-                builtin printf "\e]7;kitty-shell-cwd://%s%s\a" "$HOST" "$PWD"
+                builtin printf "\e]7;kitty-shell-cwd://%s%s\a" "$HOSTNAME" "$PWD"
             fi
         fi
     }

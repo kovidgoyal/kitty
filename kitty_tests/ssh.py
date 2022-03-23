@@ -55,6 +55,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         t('ssh un@ip -i ident -p34', host='un@ip', port=34, identity_file='ident')
         t('ssh un@ip -iident -p34', host='un@ip', port=34, identity_file='ident')
         t('ssh -p 33 main', port=33)
+        t('ssh -p 34 ssh://un@ip:33/', host='un@ip', port=34)
         t('ssh --kitten=one -p 12 --kitten two -ix main', identity_file='x', port=12, extra_args=(('--kitten', 'one'), ('--kitten', 'two')))
         self.assertTrue(runtime_dir())
 

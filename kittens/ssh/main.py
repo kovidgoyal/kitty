@@ -358,6 +358,15 @@ def get_connection_data(args: List[str], cwd: str = '', extra_args: Tuple[str, .
             host_name = arg
     if not host_name:
         return None
+    if host_name.startswith('ssh://'):
+        from urllib.parse import urlparse
+        purl = urlparse(host_name)
+        if purl.hostname:
+            host_name = purl.hostname
+        if purl.username:
+            host_name = f'{purl.username}@{host_name}'
+        if port is None and purl.port:
+            port = purl.port
     if identity_file:
         if not os.path.isabs(identity_file):
             identity_file = os.path.expanduser(identity_file)
@@ -466,7 +475,7 @@ def wrap_bootstrap_script(sh_script: str, interpreter: str) -> List[str]:
 
 
 def get_remote_command(
-    remote_args: List[str], ssh_opts: SSHOptions, hostname: str = 'localhost', cli_hostname: str = '', cli_uname: str = '',
+    remote_args: List[str], ssh_opts: SSHOptions, cli_hostname: str = '', cli_uname: str = '',
     echo_on: bool = True, request_data: bool = False
 ) -> Tuple[List[str], Dict[str, str], str]:
     interpreter = ssh_opts.interpreter
@@ -579,13 +588,13 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
     if hostname.startswith('ssh://'):
         from urllib.parse import urlparse
         purl = urlparse(hostname)
-        hostname_for_match = purl.hostname or hostname
+        hostname_for_match = purl.hostname or hostname[6:].split('/', 1)[0]
         uname = purl.username or uname
     elif '@' in hostname and hostname[0] != '@':
         uname, hostname_for_match = hostname.split('@', 1)
     else:
         hostname_for_match = hostname
-    hostname_for_match = hostname.split('@', 1)[-1].split(':', 1)[0]
+    hostname_for_match = hostname_for_match.split('@', 1)[-1].split(':', 1)[0]
     overrides = []
     pat = re.compile(r'^([a-zA-Z0-9_]+)[ \t]*=')
     for i, a in enumerate(found_extra_args):
@@ -617,7 +626,7 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
             need_to_request_data = False
     with restore_terminal_state() as echo_on:
         rcmd, replacements, shm_name = get_remote_command(
-            remote_args, host_opts, hostname, hostname_for_match, uname, echo_on, request_data=need_to_request_data)
+            remote_args, host_opts, hostname_for_match, uname, echo_on, request_data=need_to_request_data)
         cmd += rcmd
         try:
             p = subprocess.Popen(cmd)

@@ -15,7 +15,6 @@ mv_files_and_dirs() {
     cd "$cwd"
 }
 
-
 compile_terminfo() {
     tname=".terminfo"
     # Ensure the 78 dir is present
@@ -39,7 +38,6 @@ compile_terminfo() {
         [ $? = 0 ] || die "Failed to compile terminfo with err: $tic_out"
     fi
 }
-
 
 parse_passwd_record() {
     printf "%s" "$(command grep -o '[^:]*$')"
@@ -152,7 +150,7 @@ execute_sh_with_posix_env() {
     command "$login_shell" -l -c ":" > /dev/null 2> /dev/null && return
     [ -z "$shell_integration_dir" ] && die "Could not read data over tty ssh kitten cannot function"
     sh_dir="$shell_integration_dir/sh"
-    command mkdir -p "$sh_dir" || die "Creating $sh_dir failed"
+    command mkdir -p "$sh_dir" || die "Creating directory $sh_dir failed"
     sh_script="$sh_dir/login_shell_env.sh"
     # Source /etc/profile, ~/.profile, and then check and source ENV
     printf "%s" '

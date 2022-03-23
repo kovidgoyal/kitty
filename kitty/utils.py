@@ -953,7 +953,7 @@ def macos_version() -> Tuple[int, ...]:
     return tuple(map(int, platform.mac_ver()[0].split('.')))
 
 
-@run_once
+@lru_cache(maxsize=2)
 def less_version(less_exe: str = 'less') -> int:
     import subprocess
     o = subprocess.check_output([less_exe, '-V'], stderr=subprocess.STDOUT).decode()
