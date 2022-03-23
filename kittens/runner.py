@@ -95,20 +95,13 @@ def launch(args: List[str]) -> None:
     print(reset_mode(Mode.ALTERNATE_SCREEN) + clear_screen(), end='')
     if result is not None:
         import json
-        data = json.dumps(result)
-        print('OK:', len(data), data)
+        import base64
+        data = base64.b85encode(json.dumps(result).encode('utf-8'))
+        sys.stdout.buffer.write(b'\x1bP@kitty-kitten-result|')
+        sys.stdout.buffer.write(data)
+        sys.stdout.buffer.write(b'\x1b\\')
     sys.stderr.flush()
     sys.stdout.flush()
-
-
-def deserialize(output: str) -> Any:
-    import json
-    if output.startswith('OK: '):
-        try:
-            prefix, sz, rest = output.split(' ', 2)
-            return json.loads(rest[:int(sz)])
-        except Exception:
-            raise ValueError(f'Failed to parse kitten output: {output!r}')
 
 
 def run_kitten(kitten: str, run_name: str = '__main__') -> None:

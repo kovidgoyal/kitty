@@ -936,6 +936,10 @@ class Window:
         for line in get_ssh_data(msg, f'{os.getpid()}-{self.id}'):
             self.write_to_child(line)
 
+    def handle_kitten_result(self, msg: str) -> None:
+        import base64
+        self.kitten_result: Dict[str, Any] = json.loads(base64.b85decode(msg))
+
     def handle_remote_askpass(self, msg: str) -> None:
         from .shm import SharedMemory
         with SharedMemory(name=msg, readonly=True) as shm:

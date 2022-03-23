@@ -1364,15 +1364,6 @@ class Boss:
         cmd = [kitty_exe(), '+runpy', 'import os, sys, time; time.sleep(0.05); os.execvp(sys.argv[1], sys.argv[1:])'] + get_editor(get_options()) + [confpath]
         self.new_os_window(*cmd)
 
-    def get_output(self, source_window: Window, num_lines: Optional[int] = 1) -> str:
-        output = ''
-        s = source_window.screen
-        if num_lines is None:
-            num_lines = s.lines
-        for i in range(min(num_lines, s.lines)):
-            output += str(s.linebuf.line(i))
-        return output
-
     def _run_kitten(
         self,
         kitten: str,
@@ -1462,9 +1453,7 @@ class Boss:
         source_window: Window,
         default_data: Optional[Dict[str, Any]] = None
     ) -> None:
-        output = self.get_output(source_window, num_lines=None)
-        from kittens.runner import deserialize
-        data = deserialize(output)
+        data = getattr(source_window, 'kitten_result', None)
         if data is None:
             data = default_data
         if data is not None:

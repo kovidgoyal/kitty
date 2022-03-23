@@ -2129,6 +2129,10 @@ screen_handle_askpass(Screen *self, PyObject *msg) {
     CALLBACK("handle_remote_askpass", "O", msg);
 }
 
+void
+screen_handle_kitten_result(Screen *self, PyObject *msg) {
+    CALLBACK("handle_kitten_result", "O", msg);
+}
 
 void
 screen_request_capabilities(Screen *self, char c, PyObject *q) {

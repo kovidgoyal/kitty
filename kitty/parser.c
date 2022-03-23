@@ -1082,6 +1082,7 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             Py_DECREF(msg); \
         } else PyErr_Clear();
 
+            } else IF_SIMPLE_PREFIX("kitty-kitten-result|", screen_handle_kitten_result)
             } else IF_SIMPLE_PREFIX("kitty-print|", screen_handle_print)
             } else IF_SIMPLE_PREFIX("kitty-echo|", screen_handle_echo)
             } else IF_SIMPLE_PREFIX("kitty-ssh|", screen_handle_ssh)
