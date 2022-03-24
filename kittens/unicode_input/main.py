@@ -282,6 +282,8 @@ def is_index(w: str) -> bool:
 
 class UnicodeInput(Handler):
 
+    overlay_ready_report_needed = True
+
     def __init__(self, cached_values: Dict[str, Any], emoji_variation: str = 'none') -> None:
         self.cached_values = cached_values
         self.emoji_variation = ''
@@ -378,7 +380,6 @@ class UnicodeInput(Handler):
     def initialize(self) -> None:
         self.init_terminal_state()
         self.draw_screen()
-        self.cmd.overlay_ready()
 
     def draw_title_bar(self) -> None:
         entries = []
@@ -586,7 +587,7 @@ def main(args: List[str]) -> Optional[str]:
     return None
 
 
-@result_handler(has_ready_notification=True)
+@result_handler(has_ready_notification=UnicodeInput.overlay_ready_report_needed)
 def handle_result(args: List[str], current_char: str, target_window_id: int, boss: BossType) -> None:
     w = boss.window_id_map.get(target_window_id)
     if w is not None:
