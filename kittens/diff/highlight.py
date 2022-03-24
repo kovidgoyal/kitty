@@ -167,7 +167,9 @@ def highlight_collection(collection: Collection, aliases: Optional[Dict[str, str
             try:
                 highlights = future.result()
             except Exception as e:
-                return f'Running syntax highlighting for {path} generated an exception: {e}'
+                import traceback
+                tb = traceback.format_exc()
+                return f'Running syntax highlighting for {path} generated an exception: {e} with traceback:\n{tb}'
             ans[path] = highlights
     return ans
 
