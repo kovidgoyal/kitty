@@ -41,6 +41,8 @@ Detailed list of changes
   clone local shell and editor configuration on remote machines, and automatic
   re-use of existing connections to avoid connection setup latency.
 
+- When pasting URLs at shell prompts automatically quote them. Also allow filtering pasted text and confirm pastes. See :opt:`paste_actions` for details. (:iss:`4873`)
+
 - macOS: When using Apple's less as the pager for viewing scrollback strip out OSC codes as it cant parse them (:iss:`4788`)
 
 - diff kitten: Fix incorrect rendering in rare circumstances when scrolling after changing the context size (:iss:`4831`)

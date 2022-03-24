@@ -390,6 +390,7 @@ option_names = (  # {{{
  'mouse_map',
  'narrow_symbols',
  'open_url_with',
+ 'paste_actions',
  'placement_strategy',
  'pointer_shape_when_dragging',
  'pointer_shape_when_grabbed',
@@ -536,6 +537,7 @@ class Options:
     mark3_foreground: Color = Color(0, 0, 0)
     mouse_hide_wait: float = 0.0 if is_macos else 3.0
     open_url_with: typing.List[str] = ['default']
+    paste_actions: typing.FrozenSet[str] = frozenset({'quote-urls-at-prompt'})
     placement_strategy: choices_for_placement_strategy = 'center'
     pointer_shape_when_dragging: choices_for_pointer_shape_when_dragging = 'beam'
     pointer_shape_when_grabbed: choices_for_pointer_shape_when_grabbed = 'arrow'

@@ -447,6 +447,21 @@ system clipboard.
 '''
     )
 
+opt(
+    'paste_actions', 'quote-urls-at-prompt', option_type='paste_actions',
+    long_text='''
+A comma separated list of actions to take when pasting text into the terminal.
+Possibilities are:
+
+* quote-urls-at-prompt: If the text being pasted is a URL and the cursor is at a shell prompt,
+automatically quote the URL (needs :ref:`shell_integration`).
+* confirm: Confirm the paste if bracketed paste mode is not active or there is more
+a large amount of text being pasted.
+* filter: Run the filter_paste() function from the file :file:`paste-actions.py` in
+the kitty config directory on the pasted text. The text returned by the function will be actually pasted.
+'''
+)
+
 opt('strip_trailing_spaces', 'never',
     choices=('always', 'never', 'smart'),
     long_text='''

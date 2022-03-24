@@ -591,7 +591,7 @@ def main(args: List[str]) -> Optional[str]:
 def handle_result(args: List[str], current_char: str, target_window_id: int, boss: BossType) -> None:
     w = boss.window_id_map.get(target_window_id)
     if w is not None:
-        w.paste(current_char)
+        w.paste_text(current_char)
 
 
 if __name__ == '__main__':

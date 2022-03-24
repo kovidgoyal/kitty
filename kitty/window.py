@@ -20,7 +20,7 @@ from typing import (
 from .child import ProcessDesc
 from .cli_stub import CLIOptions
 from .config import build_ansi_color_table
-from .constants import appname, is_macos, wakeup
+from .constants import appname, is_macos, wakeup, config_dir
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
     CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK,
@@ -42,7 +42,7 @@ from .notify import NotificationCommand, handle_notification_cmd
 from .options.types import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .types import MouseEvent, WindowGeometry, ac
+from .types import MouseEvent, WindowGeometry, ac, run_once
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     get_primary_selection, kitty_ansi_sanitizer_pat, load_shaders, log_error,
@@ -337,6 +337,23 @@ def setup_colors(screen: Screen, opts: Options) -> None:
         s(opts.selection_foreground), s(opts.selection_background),
         s(opts.visual_bell_color)
     )
+
+
+@run_once
+def load_paste_filter() -> Callable[[str], str]:
+    import runpy
+    import traceback
+    try:
+        m = runpy.run_path(os.path.join(config_dir, 'paste-actions.py'))
+        func: Callable[[str], str] = m['filter_paste']
+    except Exception as e:
+        if not isinstance(e, FileNotFoundError):
+            traceback.print_exc()
+            log_error(f'Failed to load custom draw_tab function with error: {e}')
+
+        def func(text: str) -> str:
+            return text
+    return func
 
 
 def text_sanitizer(as_ansi: bool, add_wrap_markers: bool) -> Callable[[str], str]:
@@ -1131,13 +1148,13 @@ class Window:
     def paste_selection(self) -> None:
         txt = get_boss().current_primary_selection()
         if txt:
-            self.paste(txt)
+            self.paste_with_actions(txt)
 
     @ac('mouse', 'Paste the current primary selection or the clipboard if no selection is present')
     def paste_selection_or_clipboard(self) -> None:
         txt = get_boss().current_primary_selection_or_clipboard()
         if txt:
-            self.paste(txt)
+            self.paste_with_actions(txt)
 
     @ac('mouse', '''
         Select clicked command output
@@ -1236,6 +1253,58 @@ class Window:
         path = resolve_custom_file(path) if path else ''
         set_window_logo(self.os_window_id, self.tab_id, self.id, path, position or '', alpha)
 
+    def paste_with_actions(self, text: str) -> None:
+        if self.destroyed or not text:
+            return
+        opts = get_options()
+        if 'filter' in opts.paste_actions:
+            text = load_paste_filter()(text)
+            if not text:
+                return
+        if 'quote-urls-at-prompt' in opts.paste_actions and self.at_prompt:
+            prefixes = '|'.join(opts.url_prefixes)
+            if re.match(f'{prefixes}:', text) is not None:
+                import shlex
+                text = shlex.quote(text)
+        btext = text.encode('utf-8')
+        if 'confirm' in opts.paste_actions:
+            msg = ''
+            limit = 16 * 1024
+            if not self.screen.in_bracketed_paste_mode:
+                msg = _('Pasting text into shells that do not support bracketed paste can be dangerous.')
+            elif len(btext) > limit:
+                msg = _('Pasting very large amounts of text ({} bytes) can be slow.').format(len(btext))
+            if msg:
+                get_boss().confirm(msg + _(' Are you sure?'), partial(self.handle_paste_confirmation, btext), window=self)
+                return
+        self.paste_text(btext)
+
+    def handle_paste_confirmation(self, btext: bytes, confirmed: bool) -> None:
+        if confirmed:
+            self.paste_text(btext)
+
+    def paste_bytes(self, text: Union[str, bytes]) -> None:
+        # paste raw bytes without any processing
+        if isinstance(text, str):
+            text = text.encode('utf-8')
+        self.screen.paste_bytes(text)
+
+    def paste_text(self, text: Union[str, bytes]) -> None:
+        if text and not self.destroyed:
+            if isinstance(text, str):
+                text = text.encode('utf-8')
+            if self.screen.in_bracketed_paste_mode:
+                while True:
+                    new_text = text.replace(b'\033[201~', b'').replace(b'\x9b201~', b'')
+                    if len(text) == len(new_text):
+                        break
+                    text = new_text
+            else:
+                # Workaround for broken editors like nano that cannot handle
+                # newlines in pasted text see https://github.com/kovidgoyal/kitty/issues/994
+                text = text.replace(b'\r\n', b'\n').replace(b'\n', b'\r')
+            self.screen.paste(text)
+
     # actions {{{
 
     @ac('cp', 'Show scrollback in a pager like less')
@@ -1275,28 +1344,9 @@ class Window:
     def show_last_visited_command_output(self) -> None:
         self.show_cmd_output(CommandOutput.last_visited, 'Last visited command output')
 
-    def paste_bytes(self, text: Union[str, bytes]) -> None:
-        # paste raw bytes without any processing
-        if isinstance(text, str):
-            text = text.encode('utf-8')
-        self.screen.paste_bytes(text)
-
     @ac('cp', 'Paste the specified text into the current window')
-    def paste(self, text: Union[str, bytes]) -> None:
-        if text and not self.destroyed:
-            if isinstance(text, str):
-                text = text.encode('utf-8')
-            if self.screen.in_bracketed_paste_mode:
-                while True:
-                    new_text = text.replace(b'\033[201~', b'').replace(b'\x9b201~', b'')
-                    if len(text) == len(new_text):
-                        break
-                    text = new_text
-            else:
-                # Workaround for broken editors like nano that cannot handle
-                # newlines in pasted text see https://github.com/kovidgoyal/kitty/issues/994
-                text = text.replace(b'\r\n', b'\n').replace(b'\n', b'\r')
-            self.screen.paste(text)
+    def paste(self, text: str) -> None:
+        self.paste_with_actions(text)
 
     @ac('cp', 'Copy the selected text from the active window to the clipboard')
     def copy_to_clipboard(self) -> None:

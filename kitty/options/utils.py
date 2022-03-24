@@ -808,6 +808,15 @@ def shell_integration(x: str) -> FrozenSet[str]:
     return q
 
 
+def paste_actions(x: str) -> FrozenSet[str]:
+    s = frozenset({'quote-urls-at-prompt', 'confirm', 'filter'})
+    q = frozenset(x.lower().split(','))
+    if not q.issubset(s):
+        log_error(f'Invalid paste actions: {q - s}, ignoring')
+        return q & s or frozenset({'invalid'})
+    return q
+
+
 def action_alias(val: str) -> Iterable[Tuple[str, str]]:
     parts = val.split(maxsplit=1)
     if len(parts) > 1:

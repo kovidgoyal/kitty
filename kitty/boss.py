@@ -1240,7 +1240,7 @@ class Boss:
                         text = ' '.join(map(shlex.quote, urls))
                     else:
                         text = '\n'.join(urls)
-                w.paste(text)
+                w.paste_text(text)
 
     @ac('win', 'Focus the nth OS window')
     def nth_os_window(self, num: int = 1) -> None:
@@ -1590,7 +1590,7 @@ class Boss:
         if text:
             w = self.active_window
             if w is not None:
-                w.paste(text)
+                w.paste_with_actions(text)
 
     @ac('cp', 'Paste from the clipboard to the active window')
     def paste_from_clipboard(self) -> None:

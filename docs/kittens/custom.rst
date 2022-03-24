@@ -35,7 +35,7 @@ your machine).
         # get the kitty window into which to paste answer
         w = boss.window_id_map.get(target_window_id)
         if w is not None:
-            w.paste(answer)
+            w.paste_text(answer)
 
 
 Now in :file:`kitty.conf` add the lines::

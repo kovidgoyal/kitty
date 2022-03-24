@@ -787,7 +787,7 @@ def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, 
         if program == '-':
             w = boss.window_id_map.get(target_window_id)
             if w is not None:
-                w.paste(joined_text())
+                w.paste_text(joined_text())
         elif program == '@':
             set_clipboard_string(joined_text())
         elif program == '*':
