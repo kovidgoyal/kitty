@@ -1263,9 +1263,12 @@ class Window:
                 return
         if 'quote-urls-at-prompt' in opts.paste_actions and self.at_prompt:
             prefixes = '|'.join(opts.url_prefixes)
-            if re.match(f'{prefixes}:', text) is not None:
-                import shlex
-                text = shlex.quote(text)
+            m = re.match(f'({prefixes}):(.+)', text)
+            if m is not None:
+                scheme, rest = m.group(1), m.group(2)
+                if rest.startswith('//') or scheme in ('mailto', 'irc'):
+                    import shlex
+                    text = shlex.quote(text)
         btext = text.encode('utf-8')
         if 'confirm' in opts.paste_actions:
             msg = ''
