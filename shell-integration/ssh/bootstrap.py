@@ -276,6 +276,7 @@ def main():
     ksi = frozenset(filter(None, os.environ.get('KITTY_SHELL_INTEGRATION', '').split()))
     exec_cmd = b'EXEC_CMD'
     if exec_cmd:
+        os.environ.pop('KITTY_SHELL_INTEGRATION', None)
         cmd = base64.standard_b64decode(exec_cmd).decode('utf-8')
         os.execlp(login_shell, os.path.basename(login_shell), '-c', cmd)
     TEST_SCRIPT  # noqa

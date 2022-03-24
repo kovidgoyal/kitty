@@ -242,7 +242,7 @@ def prepare_exec_cmd(remote_args: Sequence[str], is_python: bool) -> str:
     if is_python:
         return standard_b64encode(' '.join(remote_args).encode('utf-8')).decode('ascii')
     args = ' '.join(c.replace("'", """'"'"'""") for c in remote_args)
-    return f"""exec "$login_shell" -c '{args}'"""
+    return f"""unset KITTY_SHELL_INTEGRATION; exec "$login_shell" -c '{args}'"""
 
 
 def prepare_export_home_cmd(ssh_opts: SSHOptions, is_python: bool) -> str:
