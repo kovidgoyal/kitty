@@ -71,6 +71,7 @@ EXPORT_HOME_CMD
 [ -z "$USER" ] && USER="$(command whoami 2> /dev/null)"
 
 leading_data=""
+login_shell=""
 login_cwd=""
 
 request_data="REQUEST_DATA"
@@ -100,6 +101,8 @@ untar_and_read_env() {
     data_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR"
     shell_integration_dir="$data_dir/shell-integration"
     unset KITTY_SSH_KITTEN_DATA_DIR
+    login_shell="$KITTY_LOGIN_SHELL"
+    unset KITTY_LOGIN_SHELL
     login_cwd="$KITTY_LOGIN_CWD"
     unset KITTY_LOGIN_CWD
     compile_terminfo "$tdir/home"
