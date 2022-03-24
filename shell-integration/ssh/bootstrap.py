@@ -20,8 +20,13 @@ echo_on = int('ECHO_ON')
 data_dir = shell_integration_dir = ''
 request_data = int('REQUEST_DATA')
 leading_data = b''
-HOME = os.path.expanduser('~')
 login_shell = pwd.getpwuid(os.geteuid()).pw_shell or os.environ.get('SHELL') or 'sh'
+export_home_cmd = b'EXPORT_HOME_CMD'
+if export_home_cmd:
+    HOME = base64.standard_b64decode(export_home_cmd).decode('utf-8')
+    os.chdir(HOME)
+else:
+    HOME = os.path.expanduser('~')
 
 
 def set_echo(fd, on=False):
@@ -219,7 +224,7 @@ def exec_zsh_with_integration():
         os.environ['KITTY_ORIG_ZDOTDIR'] = zdotdir
     # dont prevent zsh-newuser-install from running
     for q in ('.zshrc', '.zshenv', '.zprofile', '.zlogin'):
-        if os.path.exists(os.path.join(HOME, q)):
+        if os.path.exists(os.path.join(zdotdir, q)):
             os.environ['ZDOTDIR'] = shell_integration_dir + '/zsh'
             os.execlp(login_shell, os.path.basename(login_shell), '-l')
     os.environ.pop('KITTY_ORIG_ZDOTDIR', None)  # ensure this is not propagated
@@ -271,6 +276,7 @@ def main():
     ksi = frozenset(filter(None, os.environ.get('KITTY_SHELL_INTEGRATION', '').split()))
     exec_cmd = b'EXEC_CMD'
     if exec_cmd:
+        os.environ.pop('KITTY_SHELL_INTEGRATION', None)
         cmd = base64.standard_b64decode(exec_cmd).decode('utf-8')
         os.execlp(login_shell, os.path.basename(login_shell), '-c', cmd)
     TEST_SCRIPT  # noqa

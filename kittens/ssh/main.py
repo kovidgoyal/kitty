@@ -226,7 +226,7 @@ def safe_remove(x: str) -> None:
 
 
 def prepare_script(ans: str, replacements: Dict[str, str], script_type: str) -> str:
-    for k in ('EXEC_CMD',):
+    for k in ('EXEC_CMD', 'EXPORT_HOME_CMD'):
         replacements[k] = replacements.get(k, '')
 
     def sub(m: 're.Match[str]') -> str:
@@ -242,7 +242,19 @@ def prepare_exec_cmd(remote_args: Sequence[str], is_python: bool) -> str:
     if is_python:
         return standard_b64encode(' '.join(remote_args).encode('utf-8')).decode('ascii')
     args = ' '.join(c.replace("'", """'"'"'""") for c in remote_args)
-    return f"""exec "$login_shell" -c '{args}'"""
+    return f"""unset KITTY_SHELL_INTEGRATION; exec "$login_shell" -c '{args}'"""
+
+
+def prepare_export_home_cmd(ssh_opts: SSHOptions, is_python: bool) -> str:
+    home = ssh_opts.env.get('HOME')
+    if home == '_kitty_copy_env_var_':
+        home = os.environ.get('HOME')
+    if home:
+        if is_python:
+            return standard_b64encode(home.encode('utf-8')).decode('ascii')
+        else:
+            return f'export HOME={quote_env_val(home)}; cd "$HOME"'
+    return ''
 
 
 def bootstrap_script(
@@ -252,7 +264,9 @@ def bootstrap_script(
 ) -> Tuple[str, Dict[str, str], SharedMemory]:
     if request_id is None:
         request_id = os.environ['KITTY_PID'] + '-' + os.environ['KITTY_WINDOW_ID']
-    exec_cmd = prepare_exec_cmd(remote_args, script_type == 'py') if remote_args else ''
+    is_python = script_type == 'py'
+    export_home_cmd = prepare_export_home_cmd(ssh_opts, is_python) if 'HOME' in ssh_opts.env else ''
+    exec_cmd = prepare_exec_cmd(remote_args, is_python) if remote_args else ''
     with open(os.path.join(shell_integration_dir, 'ssh', f'bootstrap.{script_type}')) as f:
         ans = f.read()
     pw = secrets.token_hex()
@@ -265,7 +279,9 @@ def bootstrap_script(
         atexit.register(shm.unlink)
     sensitive_data = {'REQUEST_ID': request_id, 'DATA_PASSWORD': pw, 'PASSWORD_FILENAME': shm.name}
     replacements = {
-        'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script, 'REQUEST_DATA': '1' if request_data else '0', 'ECHO_ON': '1' if echo_on else '0',
+        'EXPORT_HOME_CMD': export_home_cmd,
+        'EXEC_CMD': exec_cmd, 'TEST_SCRIPT': test_script,
+        'REQUEST_DATA': '1' if request_data else '0', 'ECHO_ON': '1' if echo_on else '0',
     }
     sd = replacements.copy()
     if request_data:

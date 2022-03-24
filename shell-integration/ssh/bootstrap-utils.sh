@@ -178,12 +178,7 @@ prepare_for_exec() {
     fi
     [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data"
 
-    if [ -n "$KITTY_LOGIN_SHELL" ]; then
-        login_shell="$KITTY_LOGIN_SHELL"
-        unset KITTY_LOGIN_SHELL
-    else
-        using_getent || using_id || using_python || using_perl || using_passwd || using_shell_env || login_shell="sh"
-    fi
+    [ -n "$login_shell" ] || using_getent || using_id || using_python || using_perl || using_passwd || using_shell_env || login_shell="sh"
     shell_name=$(command basename $login_shell)
     [ -n "$login_cwd" ] && cd "$login_cwd"
 }

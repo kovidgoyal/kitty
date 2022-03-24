@@ -62,6 +62,8 @@ dcs_to_kitty() { printf "\033P@kitty-$1|%s\033\134" "$(printf "%s" "$2" | base64
 debug() { dcs_to_kitty "print" "debug: $1"; }
 echo_via_kitty() { dcs_to_kitty "echo" "$1"; }
 
+# If $HOME is configured set it here
+EXPORT_HOME_CMD
 # ensure $HOME is set
 [ -z "$HOME" ] && HOME=~
 # ensure $USER is set
@@ -69,6 +71,7 @@ echo_via_kitty() { dcs_to_kitty "echo" "$1"; }
 [ -z "$USER" ] && USER="$(command whoami 2> /dev/null)"
 
 leading_data=""
+login_shell=""
 login_cwd=""
 
 request_data="REQUEST_DATA"
@@ -98,6 +101,8 @@ untar_and_read_env() {
     data_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR"
     shell_integration_dir="$data_dir/shell-integration"
     unset KITTY_SSH_KITTEN_DATA_DIR
+    login_shell="$KITTY_LOGIN_SHELL"
+    unset KITTY_LOGIN_SHELL
     login_cwd="$KITTY_LOGIN_CWD"
     unset KITTY_LOGIN_CWD
     compile_terminfo "$tdir/home"
