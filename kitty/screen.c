@@ -2109,34 +2109,8 @@ screen_report_color_stack(Screen *self) {
     write_escape_code_to_child(self, CSI, buf);
 }
 
-void
-screen_handle_print(Screen *self, PyObject *msg) {
-    CALLBACK("handle_remote_print", "O", msg);
-}
-
-void
-screen_handle_echo(Screen *self, PyObject *msg) {
-    CALLBACK("handle_remote_echo", "O", msg);
-}
-
-void
-screen_handle_ssh(Screen *self, PyObject *msg) {
-    CALLBACK("handle_remote_ssh", "O", msg);
-}
-
-void
-screen_handle_askpass(Screen *self, PyObject *msg) {
-    CALLBACK("handle_remote_askpass", "O", msg);
-}
-
-void
-screen_handle_kitten_result(Screen *self, PyObject *msg) {
-    CALLBACK("handle_kitten_result", "O", msg);
-}
-
-void
-screen_handle_overlay_ready(Screen *self, PyObject *msg) {
-    CALLBACK("handle_overlay_ready", "O", msg);
+void screen_handle_kitty_dcs(Screen *self, const char *callback_name, PyObject *cmd) {
+    CALLBACK(callback_name, "O", cmd);
 }
 
 void

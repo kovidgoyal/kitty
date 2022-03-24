@@ -1076,16 +1076,16 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             PyObject *msg = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + pp_size, screen->parser_buf_pos - pp_size); \
             if (msg != NULL) { \
                 REPORT_OSC2(func, (char)screen->parser_buf[0], msg); \
-                func(screen, msg); \
+                screen_handle_kitty_dcs(screen, #func, msg); \
                 Py_DECREF(msg); \
             } else PyErr_Clear();
 
-                } else IF_SIMPLE_PREFIX("overlay-ready|", screen_handle_overlay_ready)
-                } else IF_SIMPLE_PREFIX("kitten-result|", screen_handle_kitten_result)
-                } else IF_SIMPLE_PREFIX("print|", screen_handle_print)
-                } else IF_SIMPLE_PREFIX("echo|", screen_handle_echo)
-                } else IF_SIMPLE_PREFIX("ssh|", screen_handle_ssh)
-                } else IF_SIMPLE_PREFIX("ask|", screen_handle_askpass)
+                } else IF_SIMPLE_PREFIX("overlay-ready|", handle_overlay_ready)
+                } else IF_SIMPLE_PREFIX("kitten-result|", handle_kitten_result)
+                } else IF_SIMPLE_PREFIX("print|", handle_remote_print)
+                } else IF_SIMPLE_PREFIX("echo|", handle_remote_echo)
+                } else IF_SIMPLE_PREFIX("ssh|", handle_remote_ssh)
+                } else IF_SIMPLE_PREFIX("ask|", handle_remote_askpass)
 #undef IF_SIMPLE_PREFIX
                 } else {
                     REPORT_ERROR("Unrecognized DCS @ code: 0x%x", screen->parser_buf[1]);
