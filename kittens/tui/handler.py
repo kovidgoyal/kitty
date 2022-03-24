@@ -44,6 +44,7 @@ class Handler:
     use_alternate_screen = True
     mouse_tracking = MouseTracking.none
     terminal_io_ended = False
+    overlay_ready_report_needed = False
 
     def _initialize(
         self,
@@ -219,7 +220,7 @@ class HandleResult:
 def result_handler(
     type_of_input: Optional[str] = None,
     no_ui: bool = False,
-    has_ready_notification: bool = False
+    has_ready_notification: bool = Handler.overlay_ready_report_needed
 ) -> Callable[[Callable[..., Any]], HandleResult]:
 
     def wrapper(impl: Callable[..., Any]) -> HandleResult:

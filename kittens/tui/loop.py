@@ -236,6 +236,7 @@ class Loop:
         else:
             self.asyncio_loop = asyncio.get_event_loop()
         self.return_code = 0
+        self.overlay_ready_reported = False
         self.optional_actions = optional_actions
         self.read_buf = ''
         self.decoder = codecs.getincrementaldecoder('utf-8')('ignore')
@@ -435,6 +436,8 @@ class Loop:
         self.asyncio_loop.set_exception_handler(handle_exception)
         handler._initialize(self._get_screen_size(), term_manager, schedule_write, self, debug, image_manager)
         with handler:
+            if handler.overlay_ready_report_needed:
+                handler.cmd.overlay_ready()
             self.asyncio_loop.add_reader(
                     tty_fd, self._read_ready, handler, tty_fd)
             self.asyncio_loop.add_writer(
@@ -467,9 +470,12 @@ class Loop:
 
             term_manager.extra_finalize = b''.join(self.write_buf).decode('utf-8')
             if tb is not None:
+                report_overlay_ready = handler.overlay_ready_report_needed and not self.overlay_ready_reported
                 self.return_code = 1
                 if not handler.terminal_io_ended:
-                    self._report_error_loop(tb, term_manager)
+                    self._report_error_loop(tb, term_manager, report_overlay_ready)
 
-    def _report_error_loop(self, tb: str, term_manager: TermManager) -> None:
-        self.loop_impl(UnhandledException(tb), term_manager)
+    def _report_error_loop(self, tb: str, term_manager: TermManager, overlay_ready_report_needed: bool) -> None:
+        handler = UnhandledException(tb)
+        handler.overlay_ready_report_needed = overlay_ready_report_needed
+        self.loop_impl(handler, term_manager)

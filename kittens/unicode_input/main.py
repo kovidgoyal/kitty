@@ -28,6 +28,7 @@ from ..tui.operations import (
     clear_screen, colored, cursor, faint, set_line_wrapping, set_window_title,
     sgr, styled
 )
+from ..tui.utils import report_unhandled_error
 
 HEX, NAME, EMOTICONS, FAVORITES = 'HEX', 'NAME', 'EMOTICONS', 'FAVORITES'
 favorites_path = os.path.join(config_dir, 'unicode-input-favorites.conf')
@@ -567,8 +568,7 @@ def main(args: List[str]) -> Optional[str]:
         cli_opts, items = parse_unicode_input_args(args[1:])
     except SystemExit as e:
         if e.code != 0:
-            print(e.args[0], file=sys.stderr)
-            input(_('Press Enter to quit'))
+            report_unhandled_error(e.args[0])
         return None
 
     loop = Loop()

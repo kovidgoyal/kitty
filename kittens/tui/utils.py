@@ -48,3 +48,17 @@ def human_size(
     from math import log
     exponent = min(int(log(size, 1024)), len(unit_list) - 1)
     return format_number(size / 1024**exponent, max_num_of_decimals) + sep + unit_list[exponent]
+
+
+def report_unhandled_error(msg: str = '') -> None:
+    ' Report an unhandled exception also sending the overlay ready message to ensure kitten is visible '
+    from .operations import overlay_ready
+    print(end=overlay_ready())
+    if msg:
+        print(msg, file=sys.stderr)
+    cls, e, tb = sys.exc_info()
+    if not isinstance(e, (SystemExit, KeyboardInterrupt)):
+        import traceback
+        traceback.print_exc()
+    input('Press Enter to quit.')
+    raise SystemExit(1)

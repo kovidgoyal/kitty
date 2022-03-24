@@ -27,6 +27,7 @@ from kitty.utils import (
 from ..tui.handler import Handler, result_handler
 from ..tui.loop import Loop
 from ..tui.operations import faint, styled
+from ..tui.utils import report_unhandled_error
 
 
 @lru_cache()
@@ -117,6 +118,8 @@ def render(text: str, current_input: str, all_marks: Sequence[Mark], ignore_mark
 
 class Hints(Handler):
 
+    overlay_ready_report_needed = True
+
     def __init__(self, text: str, all_marks: Sequence[Mark], index_map: Dict[int, Mark], args: HintsCLIOptions):
         self.text, self.index_map = text, index_map
         self.alphabet = args.alphabet or DEFAULT_HINT_ALPHABET
@@ -159,7 +162,6 @@ class Hints(Handler):
     def initialize(self) -> None:
         self.init_terminal_state()
         self.draw_screen()
-        self.cmd.overlay_ready()
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
         changed = False
@@ -513,11 +515,7 @@ def run(args: HintsCLIOptions, text: str, extra_cli_args: Sequence[str] = ()) ->
                 m.index = largest_index - m.index + offset
         index_map = {m.index: m for m in all_marks}
     except Exception:
-        import traceback
-        traceback.print_exc()
-        input('Press Enter to quit.')
-        raise SystemExit(1)
-
+        report_unhandled_error()
     return run_loop(args, text, all_marks, index_map, extra_cli_args)
 
 
@@ -678,9 +676,7 @@ def main(args: List[str]) -> Optional[Dict[str, Any]]:
     text = ''
     if sys.stdin.isatty():
         if '--help' not in args and '-h' not in args:
-            print('You must pass the text to be hinted on STDIN', file=sys.stderr)
-            input(_('Press Enter to quit'))
-            return None
+            report_unhandled_error('You must pass the text to be hinted on STDIN')
     else:
         text = sys.stdin.buffer.read().decode('utf-8')
         sys.stdin = open(os.ctermid())
@@ -688,18 +684,14 @@ def main(args: List[str]) -> Optional[Dict[str, Any]]:
         opts, items = parse_hints_args(args[1:])
     except SystemExit as e:
         if e.code != 0:
-            print(e.args[0], file=sys.stderr)
-            input(_('Press Enter to quit'))
+            report_unhandled_error(e.args[0])
         return None
     if items and not (opts.customize_processing or opts.type == 'linenum'):
-        print('Extra command line arguments present: {}'.format(' '.join(items)), file=sys.stderr)
-        input(_('Press Enter to quit'))
+        report_unhandled_error('Extra command line arguments present: {}'.format(' '.join(items)))
     try:
         return run(opts, text, items)
     except Exception:
-        import traceback
-        traceback.print_exc()
-        input(_('Press Enter to quit'))
+        report_unhandled_error()
     return None
 
 
@@ -753,7 +745,7 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
             }[action])(*cmd)
 
 
-@result_handler(type_of_input='screen-ansi', has_ready_notification=True)
+@result_handler(type_of_input='screen-ansi', has_ready_notification=Handler.overlay_ready_report_needed)
 def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType) -> None:
     if data['customize_processing']:
         m = load_custom_processor(data['customize_processing'])
