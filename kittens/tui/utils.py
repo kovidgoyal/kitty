@@ -57,7 +57,7 @@ def report_unhandled_error(msg: str = '') -> None:
     if msg:
         print(msg, file=sys.stderr)
     cls, e, tb = sys.exc_info()
-    if not isinstance(e, (SystemExit, KeyboardInterrupt)):
+    if e and not isinstance(e, (SystemExit, KeyboardInterrupt)):
         import traceback
         traceback.print_exc()
     input('Press Enter to quit.')
