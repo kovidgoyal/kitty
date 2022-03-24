@@ -219,7 +219,7 @@ def exec_zsh_with_integration():
         os.environ['KITTY_ORIG_ZDOTDIR'] = zdotdir
     # dont prevent zsh-newuser-install from running
     for q in ('.zshrc', '.zshenv', '.zprofile', '.zlogin'):
-        if os.path.exists(os.path.join(HOME, q)):
+        if os.path.exists(os.path.join(zdotdir, q)):
             os.environ['ZDOTDIR'] = shell_integration_dir + '/zsh'
             os.execlp(login_shell, os.path.basename(login_shell), '-l')
     os.environ.pop('KITTY_ORIG_ZDOTDIR', None)  # ensure this is not propagated
