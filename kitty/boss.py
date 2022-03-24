@@ -1454,7 +1454,7 @@ class Boss:
         source_window: Window,
         default_data: Optional[Dict[str, Any]] = None
     ) -> None:
-        data = getattr(source_window, 'kitten_result', None)
+        data, source_window.kitten_result = source_window.kitten_result, None
         if data is None:
             data = default_data
         if data is not None:

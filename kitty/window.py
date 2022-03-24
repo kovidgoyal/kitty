@@ -455,6 +455,7 @@ class Window:
         self.id: int = add_window(tab.os_window_id, tab.id, self.title)
         self.margin = EdgeWidths()
         self.padding = EdgeWidths()
+        self.kitten_result: Optional[Dict[str, Any]] = None
         if not self.id:
             raise Exception(f'No tab with id: {tab.id} in OS Window: {tab.os_window_id} was found, or the window counter wrapped')
         self.tab_id = tab.id
@@ -938,7 +939,7 @@ class Window:
 
     def handle_kitten_result(self, msg: str) -> None:
         import base64
-        self.kitten_result: Dict[str, Any] = json.loads(base64.b85decode(msg))
+        self.kitten_result = json.loads(base64.b85decode(msg))
 
     def handle_overlay_ready(self, msg: str) -> None:
         boss = get_boss()
