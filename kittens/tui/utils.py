@@ -50,15 +50,22 @@ def human_size(
     return format_number(size / 1024**exponent, max_num_of_decimals) + sep + unit_list[exponent]
 
 
-def report_unhandled_error(msg: str = '') -> None:
-    ' Report an unhandled exception also sending the overlay ready message to ensure kitten is visible '
+def report_error(msg: str = '', return_code: int = 1, print_exc: bool = False) -> None:
+    ' Report an error also sending the overlay ready message to ensure kitten is visible '
     from .operations import overlay_ready
     print(end=overlay_ready())
     if msg:
         print(msg, file=sys.stderr)
-    cls, e, tb = sys.exc_info()
-    if e and not isinstance(e, (SystemExit, KeyboardInterrupt)):
-        import traceback
-        traceback.print_exc()
-    input('Press Enter to quit.')
-    raise SystemExit(1)
+    if print_exc:
+        cls, e, tb = sys.exc_info()
+        if e and not isinstance(e, (SystemExit, KeyboardInterrupt)):
+            import traceback
+            traceback.print_exc()
+    with suppress(KeyboardInterrupt, EOFError):
+        input('Press Enter to quit')
+    raise SystemExit(return_code)
+
+
+def report_unhandled_error(msg: str = '') -> None:
+    ' Report an unhandled exception with the overlay ready message '
+    return report_error(msg, print_exc=True)

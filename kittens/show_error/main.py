@@ -38,7 +38,7 @@ def main(args: List[str]) -> None:
     except Exception:
         import traceback
         traceback.print_exc()
-        input('Press Enter to close.')
+        input('Press Enter to close')
 
 
 if __name__ == '__main__':
