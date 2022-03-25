@@ -745,7 +745,7 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
             }[action])(*cmd)
 
 
-@result_handler(type_of_input='screen-ansi', has_ready_notification=Handler.overlay_ready_report_needed)
+@result_handler(type_of_input='screen-ansi', has_ready_notification=Hints.overlay_ready_report_needed)
 def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType) -> None:
     if data['customize_processing']:
         m = load_custom_processor(data['customize_processing'])
