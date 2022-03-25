@@ -349,7 +349,7 @@ def load_paste_filter() -> Callable[[str], str]:
     except Exception as e:
         if not isinstance(e, FileNotFoundError):
             traceback.print_exc()
-            log_error(f'Failed to load custom draw_tab function with error: {e}')
+            log_error(f'Failed to load paste filter function with error: {e}')
 
         def func(text: str) -> str:
             return text
