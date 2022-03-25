@@ -1377,7 +1377,7 @@ is_ascii_control_char(char x) {
             if ([obj isKindOfClass:[NSURL class]]) {
                 NSURL *url = (NSURL*)obj;
                 if ([uri_list length] > 0) [uri_list appendString:@("\n")];
-                if (url.fileURL) [uri_list appendFormat:@("file://%s"), url.fileSystemRepresentation];
+                if (url.fileURL) [uri_list appendString:url.filePathURL.absoluteString];
                 else [uri_list appendString:url.absoluteString];
             } else if ([obj isKindOfClass:[NSString class]]) {
                 const char *text = [obj UTF8String];
