@@ -118,6 +118,7 @@ def render(text: str, current_input: str, all_marks: Sequence[Mark], ignore_mark
 
 class Hints(Handler):
 
+    use_alternate_screen = False
     overlay_ready_report_needed = True
 
     def __init__(self, text: str, all_marks: Sequence[Mark], index_map: Dict[int, Mark], args: HintsCLIOptions):
