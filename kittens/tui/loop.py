@@ -182,7 +182,7 @@ class UnhandledException(Handler):
         self.cmd.set_default_colors()
         self.write(self.tb.replace('\n', '\r\n'))
         self.write('\r\n')
-        self.write('Press the Enter key to quit')
+        self.write('Press Enter to quit')
 
     def on_key(self, key_event: KeyEventType) -> None:
         if key_event.key == 'ENTER':

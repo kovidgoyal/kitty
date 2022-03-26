@@ -27,7 +27,7 @@ from kitty.utils import (
 from ..tui.handler import Handler, result_handler
 from ..tui.loop import Loop
 from ..tui.operations import faint, styled
-from ..tui.utils import report_unhandled_error
+from ..tui.utils import report_error, report_unhandled_error
 
 
 @lru_cache()
@@ -118,6 +118,7 @@ def render(text: str, current_input: str, all_marks: Sequence[Mark], ignore_mark
 
 class Hints(Handler):
 
+    use_alternate_screen = False
     overlay_ready_report_needed = True
 
     def __init__(self, text: str, all_marks: Sequence[Mark], index_map: Dict[int, Mark], args: HintsCLIOptions):
@@ -503,7 +504,7 @@ def run(args: HintsCLIOptions, text: str, extra_cli_args: Sequence[str] = ()) ->
             all_marks = tuple(mark(pattern, post_processors, text, args))
         if not all_marks:
             none_of = {'url': 'URLs', 'hyperlink': 'hyperlinks'}.get(args.type, 'matches')
-            input(_('No {} found, press Enter to quit.').format(none_of))
+            report_error(_('No {} found.').format(none_of))
             return None
 
         largest_index = all_marks[-1].index
