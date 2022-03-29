@@ -3650,13 +3650,15 @@ map('Reset the terminal',
 You can create shortcuts to clear/reset the terminal. For example::
 
     # Reset the terminal
-    map kitty_mod+f9 clear_terminal reset active
+    map f1 clear_terminal reset active
     # Clear the terminal screen by erasing all contents
-    map kitty_mod+f10 clear_terminal clear active
+    map f1 clear_terminal clear active
     # Clear the terminal scrollback by erasing it
-    map kitty_mod+f11 clear_terminal scrollback active
+    map f1 clear_terminal scrollback active
     # Scroll the contents of the screen into the scrollback
-    map kitty_mod+f12 clear_terminal scroll active
+    map f1 clear_terminal scroll active
+    # Clear everything up to the line with the cursor
+    map f1 clear_terminal to_cursor active
 
 If you want to operate on all windows instead of just the current one, use
 :italic:`all` instead of :italic:`active`.

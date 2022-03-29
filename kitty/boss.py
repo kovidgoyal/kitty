@@ -797,15 +797,15 @@ class Boss:
         See :sc:`reset_terminal <reset_terminal>` for details. For example::
 
             # Reset the terminal
-            map kitty_mod+f9 clear_terminal reset active
+            map f1 clear_terminal reset active
             # Clear the terminal screen by erasing all contents
-            map kitty_mod+f10 clear_terminal clear active
+            map f1 clear_terminal clear active
             # Clear the terminal scrollback by erasing it
-            map kitty_mod+f11 clear_terminal scrollback active
+            map f1 clear_terminal scrollback active
             # Scroll the contents of the screen into the scrollback
-            map kitty_mod+f12 clear_terminal scroll active
+            map f1 clear_terminal scroll active
             # Clear everything up to the line with the cursor
-            map kitty_mod+f9 clear_terminal to_cursor active
+            map f1 clear_terminal to_cursor active
         ''')
     def clear_terminal(self, action: str, only_active: bool) -> None:
         if only_active:
@@ -815,19 +815,21 @@ class Boss:
                 windows.append(w)
         else:
             windows = list(self.all_windows)
-        reset = action == 'reset'
-        how = 3 if action == 'scrollback' else 2
-        for w in windows:
-            if action in ('to_cursor', 'scroll'):
-                w.screen.scroll_until_cursor_prompt()
-                if action == 'to_cursor':
-                    w.screen.clear_scrollback()
-                continue
-            w.screen.cursor.x = w.screen.cursor.y = 0
-            if reset:
-                w.screen.reset()
-            else:
-                w.screen.erase_in_display(how, False)
+        if action == 'reset':
+            for w in windows:
+                w.clear_screen(reset=True, scrollback=True)
+        elif action == 'scrollback':
+            for w in windows:
+                w.clear_screen(scrollback=True)
+        elif action == 'clear':
+            for w in windows:
+                w.clear_screen()
+        elif action == 'scroll':
+            for w in windows:
+                w.scroll_prompt_to_top()
+        elif action == 'to_cursor':
+            for w in windows:
+                w.scroll_prompt_to_top(clear_scrollback=True)
 
     def increase_font_size(self) -> None:  # legacy
         cfs = global_font_size()
