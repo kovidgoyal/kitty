@@ -1308,6 +1308,13 @@ class Window:
                 text = text.replace(b'\r\n', b'\n').replace(b'\n', b'\r')
             self.screen.paste(text)
 
+    def clear_screen(self, reset: bool = False, scrollback: bool = False) -> None:
+        self.screen.cursor.x = self.screen.cursor.y = 0
+        if reset:
+            self.screen.reset()
+        else:
+            self.screen.erase_in_display(3 if scrollback else 2, False)
+
     # actions {{{
 
     @ac('cp', 'Show scrollback in a pager like less')
@@ -1445,7 +1452,16 @@ class Window:
         if self.screen.is_main_linebuf():
             self.screen.scroll_to_prompt(num_of_prompts)
 
-    @ac('sc', 'Scroll prompt to the bottom of the screen, filling in extra lines form the scrollback buffer')
+    @ac('sc', 'Scroll prompt to the top of the screen, filling screen with empty lines')
+    def scroll_prompt_to_top(self, clear_scrollback: bool = False) -> None:
+        if self.screen.is_main_linebuf():
+            self.screen.scroll_until_cursor_prompt()
+            if clear_scrollback:
+                self.screen.clear_scrollback()
+            elif self.screen.scrolled_by > 0:
+                self.screen.scroll(SCROLL_FULL, False)
+
+    @ac('sc', 'Scroll prompt to the bottom of the screen, filling in extra lines from the scrollback buffer')
     def scroll_prompt_to_bottom(self) -> None:
         self.screen.scroll_prompt_to_bottom()
 
