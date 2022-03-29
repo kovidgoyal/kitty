@@ -797,15 +797,15 @@ class Boss:
         See :sc:`reset_terminal <reset_terminal>` for details. For example::
 
             # Reset the terminal
-            map kitty_mod+f9 clear_terminal reset active
+            map f1 clear_terminal reset active
             # Clear the terminal screen by erasing all contents
-            map kitty_mod+f10 clear_terminal clear active
+            map f1 clear_terminal clear active
             # Clear the terminal scrollback by erasing it
-            map kitty_mod+f11 clear_terminal scrollback active
+            map f1 clear_terminal scrollback active
             # Scroll the contents of the screen into the scrollback
-            map kitty_mod+f12 clear_terminal scroll active
+            map f1 clear_terminal scroll active
             # Clear everything up to the line with the cursor
-            map kitty_mod+f9 clear_terminal to_cursor active
+            map f1 clear_terminal to_cursor active
         ''')
     def clear_terminal(self, action: str, only_active: bool) -> None:
         if only_active:
