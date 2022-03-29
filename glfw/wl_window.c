@@ -246,7 +246,7 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
     }
 
     if (scale_changed) {
-        debug("Scale changed to %d in dispatchChangesAfterConfigure", window->wl.scale);
+        debug("Scale changed to %d in dispatchChangesAfterConfigure\n", window->wl.scale);
         if (!size_changed) resizeFramebuffer(window);
         _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
     }
@@ -298,7 +298,7 @@ static void surfaceHandleEnter(void *data,
     window->wl.monitors[window->wl.monitorsCount++] = monitor;
 
     if (checkScaleChange(window)) {
-        debug("Scale changed to %d in surface enter event", window->wl.scale);
+        debug("Scale changed to %d in surface enter event\n", window->wl.scale);
         resizeFramebuffer(window);
         _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
         ensure_csd_resources(window);
@@ -324,7 +324,7 @@ static void surfaceHandleLeave(void *data,
     window->wl.monitors[--window->wl.monitorsCount] = NULL;
 
     if (checkScaleChange(window)) {
-        debug("Scale changed to %d in surface leave event", window->wl.scale);
+        debug("Scale changed to %d in surface leave event\n", window->wl.scale);
         resizeFramebuffer(window);
         _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
         ensure_csd_resources(window);
