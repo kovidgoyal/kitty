@@ -698,21 +698,27 @@ def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterabl
                     ans.add_match_group('Kittens', (k for k in all_kitten_names() if k.startswith('' if len(words) == 2 else words[2])))
                 else:
                     complete_kitten(ans, words[2], words[3:], new_word)
+            elif words[1] == 'open':
+                complete_cli(ans, words[2:], new_word, options_for_completion(), complete_kitty_cli_arg)
         return ans
     if words[0].startswith('+'):
         if len(words) == 1:
             if new_word:
                 if words[0] == '+kitten':
                     ans.add_match_group('Kittens', all_kitten_names())
+                elif words[0] == '+open':
+                    complete_cli(ans, words[1:], new_word, options_for_completion(), complete_kitty_cli_arg)
             else:
                 prefix = words[0]
                 ans.add_match_group('Entry points', (c for c in namespaced_entry_points if c.startswith(prefix)))
         else:
-            if len(words) == 2 and not new_word:
-                ans.add_match_group('Kittens', (k for k in all_kitten_names() if k.startswith(words[1])))
-            else:
-                if words[0] == '+kitten':
+            if words[0] == '+kitten':
+                if len(words) == 2 and not new_word:
+                    ans.add_match_group('Kittens', (k for k in all_kitten_names() if k.startswith(words[1])))
+                else:
                     complete_kitten(ans, words[1], words[2:], new_word)
+            elif words[0] == '+open':
+                complete_cli(ans, words[1:], new_word, options_for_completion(), complete_kitty_cli_arg)
     else:
         complete_cli(ans, words, new_word, options_for_completion(), complete_kitty_cli_arg)
 
