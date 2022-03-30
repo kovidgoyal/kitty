@@ -58,8 +58,9 @@ servers)::
 
     infocmp -a xterm-kitty | ssh myserver tic -x -o \~/.terminfo /dev/stdin
 
-If you are behind a proxy (like Balabit) that prevents this, you must redirect the
-1st command to a file, copy that to the server and run ``tic`` manually.  If you
+If you are behind a proxy (like Balabit) that prevents this, or ``tic`` comes
+with macOS that does not support reading from STDIN, you must redirect the 1st
+command to a file, copy that to the server and run ``tic`` manually.  If you
 connect to a server, embedded or Android system that doesn't have ``tic``, copy over
 your local file terminfo to the other system as :file:`~/.terminfo/x/xterm-kitty`.
 
@@ -86,6 +87,12 @@ Keys such as arrow keys, backspace, delete, home/end, etc. do not work when usin
 Make sure the TERM environment variable, is ``xterm-kitty``.  And either the
 TERMINFO environment variable points to a directory containing :file:`x/xterm-kitty`
 or that file is under :file:`~/.terminfo/x/`.
+
+For macOS, you may also need to put that file under :file:`~/.terminfo/78/`::
+
+    mkdir -p ~/.terminfo/{78,x}
+    ln -snf ../x/xterm-kitty ~/.terminfo/78/xterm-kitty
+    tic -x -o ~/.terminfo $KITTY_INSTALLATION_DIR/terminfo/kitty.terminfo
 
 Note that ``sudo`` might remove TERMINFO.  Then setting it at the shell prompt can
 be too late, because command line editing may not be reinitialized.  In that case
