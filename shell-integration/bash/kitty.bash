@@ -251,7 +251,7 @@ _ksi_main() {
     elif [[ $(builtin declare -p PROMPT_COMMAND 2> /dev/null) =~ 'declare -a PROMPT_COMMAND' ]]; then
         PROMPT_COMMAND+=("$pc")
     else
-        PROMPT_COMMAND="${PROMPT_COMMAND%% }"
+        PROMPT_COMMAND="${PROMPT_COMMAND%%[[:space:]]}"
         PROMPT_COMMAND="${PROMPT_COMMAND%%;}"
         PROMPT_COMMAND+="; $pc"
     fi

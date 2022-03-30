@@ -53,6 +53,8 @@ Detailed list of changes
 
 - Bash integration: Prevent shell integration code from running twice if user enables both automatic and manual integration
 
+- Bash integration: Handle existing PROMPT_COMMAND ending with a literal newline
+
 - Fix continued lines not having their continued status reset on line feed (:iss:`4837`)
 
 - macOS: Allow the New kitty Tab/Window Here services to open multiple selected folders.  (:pull:`4848`)
