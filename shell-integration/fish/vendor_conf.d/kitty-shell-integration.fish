@@ -72,7 +72,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     # Enable prompt marking with OSC 133
     if not contains "no-prompt-mark" $_ksi
         and not set -q __ksi_prompt_state
-        function __ksi_mark_prompt_start --on-event fish_prompt
+        function __ksi_mark_prompt_start --on-event fish_prompt --on-event fish_cancel --on-event fish_posterror
             test "$__ksi_prompt_state" != prompt-start
             and echo -en "\e]133;D\a"
             set --global __ksi_prompt_state prompt-start
