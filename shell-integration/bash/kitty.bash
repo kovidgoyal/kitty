@@ -251,6 +251,7 @@ _ksi_main() {
     elif [[ $(builtin declare -p PROMPT_COMMAND 2> /dev/null) =~ 'declare -a PROMPT_COMMAND' ]]; then
         PROMPT_COMMAND+=("$pc")
     else
+        builtin local oldval
         oldval=$(builtin shopt -p extglob)
         builtin shopt -s extglob
         PROMPT_COMMAND="${PROMPT_COMMAND%%+([[:space:]])}"
