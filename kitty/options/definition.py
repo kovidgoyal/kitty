@@ -980,7 +980,7 @@ be a series of unique numbers or alphabets, case insensitive, from the set
 '''
     )
 
-opt('confirm_os_window_close', '0',
+opt('confirm_os_window_close', '-1',
     option_type='int',
     long_text='''
 Ask for confirmation when closing an OS window or a Tab with at least this
