@@ -1078,10 +1078,11 @@ class Boss:
             self.mouse_handler(ev)
 
     def select_window_in_tab_using_overlay(self, tab: Tab, msg: str, only_window_ids: Container[int] = ()) -> Optional[Window]:
-        windows = tuple((w.id, w.title) for i, w in tab.windows.iter_windows_with_number(only_visible=False)
-                        if not only_window_ids or w.id in only_window_ids)
+        windows = tuple((None, f'Current window: {w.title}' if w is self.active_window else w.title)
+                        if only_window_ids and w.id not in only_window_ids else (w.id, w.title)
+                        for i, w in tab.windows.iter_windows_with_number(only_visible=False))
         if len(windows) < 1:
-            self.visual_window_select_action_trigger(windows[0][0] if windows else 0)
+            self.visual_window_select_action_trigger(windows[0][0] if windows and windows[0][0] is not None else 0)
             if get_options().enable_audio_bell:
                 ring_bell()
             return None
@@ -1092,7 +1093,8 @@ class Boss:
             self.current_visual_select = None
             if cvs and q is cvs:
                 q.trigger(ans if isinstance(ans, int) else 0)
-        return self.choose_entry(msg, windows, chosen)
+
+        return self.choose_entry(msg, windows, chosen, hints_args=('--hints-offset=0', '--alphabet', get_options().visual_window_select_characters.lower()))
 
     @ac('win', '''
         Resize the active window interactively
@@ -2133,7 +2135,8 @@ class Boss:
     def choose_entry(
         self, title: str, entries: Iterable[Tuple[Union[_T, str, None], str]],
         callback: Callable[[Union[_T, str, None]], None],
-        subtitle: str = ''
+        subtitle: str = '',
+        hints_args: Optional[Tuple[str, ...]] = None,
     ) -> Optional[Window]:
         lines = [title, subtitle, ' '] if subtitle else [title, ' ']
         idx_map: List[Union[_T, str, None]] = []
@@ -2158,6 +2161,7 @@ class Boss:
             'hints', args=(
                 '--ascending', '--customize-processing=::import::kitty.choose_entry',
                 '--window-title', title,
+                *(hints_args or ())
             ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
         )
         return q if isinstance(q, Window) else None
