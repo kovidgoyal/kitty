@@ -2135,16 +2135,16 @@ class Boss:
         callback: Callable[[Union[_T, str, None]], None],
         subtitle: str = ''
     ) -> Optional[Window]:
-        lines = [title, subtitle, ''] if subtitle else [title, '']
-        idx_map: List[Union[_T, str]] = []
+        lines = [title, subtitle, ' '] if subtitle else [title, ' ']
+        idx_map: List[Union[_T, str, None]] = []
         ans: Union[str, _T, None] = None
         fmt = ': {1}'
 
         for obj, text in entries:
+            idx_map.append(obj)
             if obj is None:
                 lines.append(text)
             else:
-                idx_map.append(obj)
                 lines.append(fmt.format(len(idx_map), text))
 
         def done(data: Dict[str, Any], target_window_id: int, self: Boss) -> None:
@@ -2157,7 +2157,7 @@ class Boss:
         q = self._run_kitten(
             'hints', args=(
                 '--ascending', '--customize-processing=::import::kitty.choose_entry',
-                r'--regex=(?m)^:\s+.+$', '--window-title', title,
+                '--window-title', title,
             ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
         )
         return q if isinstance(q, Window) else None
@@ -2176,13 +2176,10 @@ class Boss:
             return f'{tab.name or tab.title} [{tab.num_window_groups} {w}]'
 
         ct = self.active_tab
-        st = ''
-        if ct is not None:
-            st = f'Current tab: {format_tab_title(ct)}'
         self.choose_entry(
             'Choose a tab to switch to',
-            ((t.id, format_tab_title(t)) for t in self.all_tabs if t is not ct),
-            chosen, subtitle=st
+            ((None, f'Current tab: {format_tab_title(t)}') if t is ct else (t.id, format_tab_title(t)) for t in self.all_tabs),
+            chosen
         )
 
     @ac('win', '''

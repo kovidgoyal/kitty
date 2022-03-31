@@ -10,7 +10,17 @@ from .typing import MarkType
 
 
 def mark(text: str, args: HintsCLIOptions, Mark: Type[MarkType], extra_cli_args: List[str], *a: Any) -> Generator[MarkType, None, None]:
-    for idx, m in enumerate(re.finditer(args.regex, text)):
+    idx = 0
+    found_start_line = False
+    for m in re.finditer(r'(?m)^.+$', text):
         start, end = m.span()
-        mark_text = text[start:end].replace('\n', '').replace('\0', '')
-        yield Mark(idx, start, end, mark_text, {'index': idx})
+        line = text[start:end].replace('\0', '').replace('\n', '')
+        if line == ' ':
+            found_start_line = True
+            continue
+        if line.startswith(': '):
+            yield Mark(idx, start, end, line, {'index': idx})
+            idx += 1
+        elif found_start_line:
+            # skip this line incrementing the index
+            idx += 1

@@ -67,6 +67,8 @@ Detailed list of changes
 
 - A new action :ac:`scroll_prompt_to_top` to move the current prompt to the top (:pull:`4891`)
 
+- :ac:`select_tab`: Use stable numbers when selecting the tab (:iss:`4792`)
+
 
 0.24.4 [2022-03-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
