@@ -2135,7 +2135,7 @@ class Boss:
         callback: Callable[[Union[_T, str, None]], None],
         subtitle: str = ''
     ) -> Optional[Window]:
-        lines = [title, subtitle, '']
+        lines = [title, subtitle, ''] if subtitle else [title, '']
         idx_map: List[Union[_T, str]] = []
         ans: Union[str, _T, None] = None
         fmt = ': {1}'
