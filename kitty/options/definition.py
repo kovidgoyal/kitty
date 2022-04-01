@@ -2820,12 +2820,17 @@ just hiding the titlebar with :opt:`hide_window_decorations`.
 opt('macos_option_as_alt', 'no',
     option_type='macos_option_as_alt', ctype='uint',
     long_text='''
-Use the option key as an alt key. With this set to :code:`no`, kitty will use
-the macOS native :kbd:`Option+Key` = unicode character behavior. This will break
-any :kbd:`Alt+key` keyboard shortcuts in your terminal programs, but you can use
-the macOS unicode input technique. You can use the values: :code:`left`,
-:code:`right`, or :code:`both` to use only the left, right or both Option keys
-as Alt, instead. Changing this setting by reloading the config is not supported.
+Use the :kbd:`Option` key as an :kbd:`Alt` key. With this set to :code:`no`,
+kitty will use the macOS native :kbd:`Option+Key` = unicode character behavior.
+This will break any :kbd:`Alt+Key` keyboard shortcuts in your terminal programs,
+but you can use the macOS unicode input technique. You can use the values:
+:code:`left`, :code:`right`, or :code:`both` to use only the left, right or both
+:kbd:`Option` keys as :kbd:`Alt`, instead. Note that kitty itself always treats
+:kbd:`Option` the same as :kbd:`Alt`. This means you cannot use this setting to
+configure different kitty shortcuts for :kbd:`Option+Key` vs. `:kbd:`Alt+Key`.
+Also, any kitty shortcuts using :kbd:`Option/Alt+Key` will take priority, so
+that any such key presses will not be passed to terminal programs running inside
+kitty. Changing this setting by reloading the config is not supported.
 '''
     )
 
