@@ -63,7 +63,7 @@ jobs:
             CFLAGS: -funsigned-char
         steps:
             - name: Checkout source code
-              uses: actions/checkout@master
+              uses: actions/checkout@v3
               with:
                 fetch-depth: 10
 
@@ -71,7 +71,7 @@ jobs:
               run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
 
             - name: Set up Python
-              uses: actions/setup-python@master
+              uses: actions/setup-python@v3
               with:
                 python-version: 3.8
 
