@@ -7,6 +7,9 @@ Truly convenient SSH
 
 * Automatic :opt:`re-use of existing connections <kitten-ssh.share_connections>` to avoid connection setup latency
 
+.. versionadded:: 0.25.0
+   Automatic shell integration, file transfer and reuse of connections
+
 The ssh kitten allows you to login easily to remote hosts, and automatically
 setup the environment there to be as comfortable as your local shell. You
 can specify environment variables to set on the remote host and
