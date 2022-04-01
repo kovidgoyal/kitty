@@ -171,7 +171,7 @@ def get_python_include_paths() -> List[str]:
     return sorted(frozenset(filter(None, map(gp, sorted(ans)))))
 
 
-def get_python_flags(cflags: List[str]) -> List[str]:
+def get_python_flags(cflags: List[str], for_main_executable: bool = False) -> List[str]:
     cflags.extend(f'-I{x}' for x in get_python_include_paths())
     libs: List[str] = []
     libs += (sysconfig.get_config_var('LIBS') or '').split()
@@ -199,7 +199,12 @@ def get_python_flags(cflags: List[str]) -> List[str]:
         ldlib = sysconfig.get_config_var('VERSION')
         if ldlib:
             libs += [f'-lpython{ldlib}{sys.abiflags}']
-        libs += (sysconfig.get_config_var('LINKFORSHARED') or '').split()
+        lval = sysconfig.get_config_var('LINKFORSHARED') or ''
+        if not for_main_executable:
+            # Python sets the stack size on macOS which is not allowed unless
+            # compiling an executable https://github.com/kovidgoyal/kitty/issues/289
+            lval = re.sub(r'-Wl,-stack_size,\d+', '', lval)
+        libs += list(filter(None, lval.split()))
     return libs
 
 
@@ -859,7 +864,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     else:
         raise SystemExit(f'Unknown bundle type: {bundle_type}')
     cppflags.append(f'-DKITTY_LIB_PATH="{klp}"')
-    pylib = get_python_flags(cflags)
+    pylib = get_python_flags(cflags, for_main_executable=True)
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
