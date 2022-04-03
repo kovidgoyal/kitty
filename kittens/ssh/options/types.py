@@ -5,8 +5,10 @@ import kittens.ssh.copy
 
 if typing.TYPE_CHECKING:
     choices_for_askpass = typing.Literal['unless-set', 'ssh', 'native']
+    choices_for_remote_kitty = typing.Literal['if-needed', 'no', 'yes']
 else:
     choices_for_askpass = str
+    choices_for_remote_kitty = str
 
 option_names = (  # {{{
  'askpass',
@@ -17,6 +19,7 @@ option_names = (  # {{{
  'interpreter',
  'login_shell',
  'remote_dir',
+ 'remote_kitty',
  'share_connections',
  'shell_integration')  # }}}
 
@@ -28,6 +31,7 @@ class Options:
     interpreter: str = 'sh'
     login_shell: str = ''
     remote_dir: str = '.local/share/kitty-ssh-kitten'
+    remote_kitty: choices_for_remote_kitty = 'if-needed'
     share_connections: bool = True
     shell_integration: str = 'inherited'
     copy: typing.Dict[str, kittens.ssh.copy.CopyInstruction] = {}

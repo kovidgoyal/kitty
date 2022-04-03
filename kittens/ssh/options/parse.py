@@ -38,6 +38,14 @@ class Parser:
     def remote_dir(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['remote_dir'] = relative_dir(val)
 
+    def remote_kitty(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_remote_kitty:
+            raise ValueError(f"The value {val} is not a valid choice for remote_kitty")
+        ans["remote_kitty"] = val
+
+    choices_for_remote_kitty = frozenset(('if-needed', 'no', 'yes'))
+
     def share_connections(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['share_connections'] = to_bool(val)
 

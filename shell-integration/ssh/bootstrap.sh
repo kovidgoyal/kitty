@@ -106,6 +106,8 @@ untar_and_read_env() {
     unset KITTY_LOGIN_SHELL
     login_cwd="$KITTY_LOGIN_CWD"
     unset KITTY_LOGIN_CWD
+    kitty_remote="$KITTY_REMOTE"
+    unset KITTY_REMOTE
     compile_terminfo "$tdir/home"
     mv_files_and_dirs "$tdir/home" "$HOME"
     [ -e "$tdir/root" ] && mv_files_and_dirs "$tdir/root" ""

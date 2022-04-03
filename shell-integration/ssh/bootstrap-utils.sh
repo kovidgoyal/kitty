@@ -169,6 +169,24 @@ fi' > "$sh_script"
     exec "$login_shell"
 }
 
+install_kitty_bootstrap() {
+    case "$(command uname)" in
+        Linux) ;;
+        Darwin) ;;
+        *) return ;;
+    esac
+    kitty_exists="n"
+    command -v kitty 2> /dev/null > /dev/null && kitty_exists="y"
+    if [ "$kitty_remote" = "yes" -o "$kitty_remote-$kitty_exists" = "if-needed-n" ]; then
+        kitty_dir="$data_dir/kitty/bin"
+        if [ "$kitty_exists" = "y" ]; then
+            export PATH="$kitty_dir:$PATH"
+        else
+            export PATH="$PATH:$kitty_dir"
+        fi
+    fi
+}
+
 prepare_for_exec() {
     if [ -n "$leading_data" ]; then
         # clear current line as it might have things echoed on it from leading_data
@@ -177,6 +195,7 @@ prepare_for_exec() {
         printf "\r\033[K" > /dev/tty
     fi
     [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data"
+    install_kitty_bootstrap
 
     [ -n "$login_shell" ] || using_getent || using_id || using_python || using_perl || using_passwd || using_shell_env || login_shell="sh"
     shell_name=$(command basename $login_shell)

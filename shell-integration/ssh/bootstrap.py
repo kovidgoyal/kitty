@@ -258,6 +258,19 @@ def exec_with_shell_integration():
         exec_bash_with_integration()
 
 
+def install_kitty_bootstrap():
+    kitty_remote = os.environ.pop('KITTY_REMOTE', '')
+    if os.uname().sysname not in ('Linux', 'Darwin'):
+        return
+    kitty_exists = shutil.which('kitty')
+    if kitty_remote == 'yes' or (kitty_remote == 'if-needed' and not kitty_exists):
+        kitty_dir = os.path.join(data_dir, 'kitty', 'bin')
+        if kitty_exists:
+            os.environ['PATH'] = kitty_dir + os.pathsep + os.environ['PATH']
+        else:
+            os.environ['PATH'] = os.environ['PATH'] + os.pathsep + kitty_dir
+
+
 def main():
     global tty_file_obj, login_shell
     # the value of O_CLOEXEC below is on macOS which is most likely to not have
@@ -271,6 +284,7 @@ def main():
     finally:
         cleanup()
     cwd = os.environ.pop('KITTY_LOGIN_CWD', '')
+    install_kitty_bootstrap()
     if cwd:
         os.chdir(cwd)
     ksi = frozenset(filter(None, os.environ.get('KITTY_SHELL_INTEGRATION', '').split()))
