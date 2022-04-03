@@ -482,7 +482,7 @@ class Options:
     clipboard_max_size: float = 64.0
     close_on_child_death: bool = False
     command_on_bell: typing.List[str] = ['none']
-    confirm_os_window_close: int = 0
+    confirm_os_window_close: int = -1
     copy_on_select: str = ''
     cursor: typing.Optional[kitty.fast_data_types.Color] = Color(204, 204, 204)
     cursor_beam_thickness: float = 1.5
