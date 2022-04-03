@@ -1,0 +1,92 @@
+#!/bin/sh
+
+{ \unalias command; \unset -f command; } >/dev/null 2>&1
+
+
+die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; exit 1; }
+
+exec_kitty() {
+    exec "$kitty_exe" "$@"
+    die "Failed to execute kitty"
+}
+
+script_path=$(command readlink -f "$0" 2> /dev/null)
+[ $? == 0 ] || script_path="$0"
+script_dir=$(command dirname "$script_path")
+install_dir="$(command dirname "$script_dir")/install"
+kitty_exe="$install_dir/bin/kitty"
+if [ -e "$kitty_exe" ]; then
+    local_kitty_version=$("$kitty_exe" +runpy "from kitty.constants import str_version; print(str_version)")
+    if [ $? = 0 ]; then
+        version_sort_key() {
+            printf "%05d%05d%05d" $(echo "$1" | command tr '.' '\n' | command head -n 3)
+        }
+        remote_kitty_version=$(command cat "$script_dir"/../version)
+        [ $? = 0 ] || die "Failed to read remote kitty version"
+        [ $(version_sort_key "$remote_kitty_version") -le $(version_sort_key "$local_kitty_version") ] && exec_kitty "$@"
+    fi
+fi
+
+if command -v curl 2> /dev/null > /dev/null; then
+    fetch() {
+        command curl -fL "$1"
+    }
+    fetch_quiet() {
+        command curl -fsSL "$1"
+    }
+elif command -v wget 2> /dev/null > /dev/null; then
+    fetch() {
+        command wget -O- "$1"
+    }
+    fetch_quiet() {
+        command wget --quiet -O- "$1"
+    }
+else
+    die "Neither curl nor wget available, cannot download kitty"
+fi
+
+case "$(command uname)" in
+    'Linux') OS="linux";;
+    'Darwin') OS="macos";;
+    *) die "kitty pre-built binaries are not available for the $(command uname) operating system";;
+esac
+
+release_version=$(fetch_quiet "https://api.github.com/repos/kovidgoyal/kitty/releases/latest" | command grep tag_name | command cut -dv -f2 | command cut -d '"' -f1)
+[ -z "$release_version" ] && die "Could not get kitty latest release version"
+command rm -rf "$install_dir"
+
+if [ "$OS" = "linux" ]; then
+    case "$(command uname -m)" in
+        x86_64) arch="x86_64";;
+        aarch64*) arch="arm64";;
+        armv8*) arch="arm64";;
+        i386) arch="i686";;
+        i686) arch="i686";;
+        *) die "Unknown CPU architecture $(command uname -m)";;
+    esac
+    url="https://github.com/kovidgoyal/kitty/releases/download/v$release_version/kitty-$release_version-$arch.txz"
+else
+    url="https://github.com/kovidgoyal/kitty/releases/download/v$release_version/kitty-$release_version.dmg"
+fi
+
+printf "Downloading kitty from: \033[32m%s\033[m\n\n" "$url"
+command mkdir -p "$install_dir"
+
+if [ "$OS" = "linux" ]; then
+    fetch "$url" | command tar -C "$install_dir" -xJof -
+    [ $? = 0 ] || die "Failed to download and install kitty"
+else
+    tdir=$(command mktemp -d "$install_dir/tmp-for-dmg-XXXXXXXXXXXX")
+    [ $? = 0 ] || die "Creating temp directory failed"
+    fetch "$url" > "$tdir/kitty.dmg"
+    command mkdir "$tdir/mp"
+    command hdiutil attach "$tdir/kitty.dmg" "-mountpoint" "$tdir/mp" || die "Failed to mount kitty.dmg"
+    command ditto -v "$tdir/mp/kitty.app" "$install_dir/kitty.app"
+    rc="$?"
+    command hdiutil detach "$tdir/mp"
+    command rm -rf "$tdir"
+    [ "$rc" != "0" ] && die "Failed to copy kitty.app from mounted dmg"
+    command mkdir "$install_dir/bin"
+    command ln -sf "$install_dir/kitty.app/Contents/MacOS/kitty" "$install_dir/bin/kitty"
+fi
+exec_kitty "$@"
