@@ -2,6 +2,7 @@
 # Copyright (C) 2022 Kovid Goyal <kovid at kovidgoyal.net>
 # Distributed under terms of the GPLv3 license.
 
+{ \unalias command; \unset -f command; } >/dev/null 2>&1
 tdir=""
 shell_integration_dir=""
 echo_on="ECHO_ON"
