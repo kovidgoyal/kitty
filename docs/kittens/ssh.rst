@@ -7,6 +7,8 @@ Truly convenient SSH
 
 * Automatic :opt:`re-use of existing connections <kitten-ssh.share_connections>` to avoid connection setup latency
 
+* Make kitty itself available in the remote host :opt:`on demand <kitten-ssh.remote_kitty>`
+
 .. versionadded:: 0.25.0
    Automatic shell integration, file transfer and reuse of connections
 
