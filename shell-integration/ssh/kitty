@@ -5,17 +5,25 @@
 
 die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; exit 1; }
 
+delete_lock_dir() {
+    trap '' EXIT INT QUIT TERM
+    [ -n "$lock_dir" ] && command rm -rf "$lock_dir"
+}
+
 exec_kitty() {
+    delete_lock_dir
     [ -n "$kitty_exe" ] && exec "$kitty_exe" "$@"
     die "Failed to execute kitty"
 }
 
+lock_dir=""
 script_path=$(command readlink -f "$0" 2> /dev/null)
 [ $? == 0 ] || script_path="$0"
 script_dir=$(command dirname "$script_path")
 install_dir="$(command dirname "$script_dir")/install"
 local_kitty_version_file="$install_dir/installed-kitty-version"
 kitty_exe="$install_dir/bin/kitty"
+
 if [ -r "$local_kitty_version_file" -a -f "$local_kitty_version_file" ]; then
     if [ $? = 0 ]; then
         version_sort_key() {
@@ -28,6 +36,12 @@ if [ -r "$local_kitty_version_file" -a -f "$local_kitty_version_file" ]; then
         [ $(version_sort_key "$remote_kitty_version") -le $(version_sort_key "$local_kitty_version") ] && exec_kitty "$@"
     fi
 fi
+
+case "$(command uname)" in
+    'Linux') OS="linux";;
+    'Darwin') OS="macos";;
+    *) die "kitty pre-built binaries are not available for the $(command uname) operating system";;
+esac
 
 if command -v curl 2> /dev/null > /dev/null; then
     fetch() {
@@ -47,16 +61,6 @@ else
     die "Neither curl nor wget available, cannot download kitty"
 fi
 
-case "$(command uname)" in
-    'Linux') OS="linux";;
-    'Darwin') OS="macos";;
-    *) die "kitty pre-built binaries are not available for the $(command uname) operating system";;
-esac
-
-release_version=$(fetch_quiet "https://api.github.com/repos/kovidgoyal/kitty/releases/latest" | command grep tag_name | command head -n1 | command cut -dv -f2 | command cut -d '"' -f1)
-[ -z "$release_version" ] && die "Could not get kitty latest release version"
-command rm -rf "$install_dir"
-
 if [ "$OS" = "linux" ]; then
     case "$(command uname -m)" in
         x86_64) arch="x86_64";;
@@ -66,13 +70,28 @@ if [ "$OS" = "linux" ]; then
         i686) arch="i686";;
         *) die "Unknown CPU architecture $(command uname -m)";;
     esac
+fi
+
+release_version=$(fetch_quiet "https://api.github.com/repos/kovidgoyal/kitty/releases/latest" | command grep tag_name | command head -n1 | command cut -dv -f2 | command cut -d '"' -f1)
+[ -z "$release_version" ] && die "Could not get kitty latest release version"
+
+if [ "$OS" = "linux" ]; then
     url="https://github.com/kovidgoyal/kitty/releases/download/v$release_version/kitty-$release_version-$arch.txz"
 else
     url="https://github.com/kovidgoyal/kitty/releases/download/v$release_version/kitty-$release_version.dmg"
 fi
 
-printf "Downloading kitty from: \033[32m%s\033[m\n\n" "$url"
+lock_dir="$script_dir/kitty-install-lock"
+if ! command mkdir "$lock_dir" 2> /dev/null; then
+    ed="$lock_dir"
+    lock_dir="";
+    die "Failed to create lock dir another instance of the kitty bootstrap script is running. If you are sure that is not the case delete: $ed";
+fi
+trap 'delete_lock_dir' EXIT INT QUIT TERM
+
+command rm -rf "$install_dir"
 command mkdir -p "$install_dir"
+printf "Downloading kitty from: \033[32m%s\033[m\n\n" "$url"
 
 if [ "$OS" = "linux" ]; then
     fetch "$url" | command tar -C "$install_dir" -xJof -
