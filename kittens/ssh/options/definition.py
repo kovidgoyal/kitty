@@ -113,7 +113,8 @@ and run kitty when kitty is first executed on the remote server. A value of
 :code:`needed` means kitty is installed only if not already present in the
 system-wide PATH. A value of :code:`yes` means that kitty is installed even if
 already present, and the installed kitty takes precedence. Finally, :code:`no`
-means no kitty is installed on the remote machine.
+means no kitty is installed on the remote machine. The installed kitty
+can be updated by running: :code:`kitty +update-kitty` on the remote machine.
 ''')
 egr()  # }}}
 

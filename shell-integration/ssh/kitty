@@ -27,22 +27,12 @@ script_path=$(command readlink -f "$0" 2> /dev/null)
 [ $? == 0 ] || script_path="$0"
 script_dir=$(command dirname "$script_path")
 install_dir="$(command dirname "$script_dir")/install"
+remote_kitty_version_file="$script_dir/../version"
 local_kitty_version_file="$install_dir/installed-kitty-version"
 kitty_exe="$install_dir/bin/kitty"
-what="installed"
 local_kitty_version=""
 
-if [ -r "$local_kitty_version_file" -a -f "$local_kitty_version_file" ]; then
-    what="updated"
-    version_sort_key() {
-        printf "%05d%05d%05d" $(echo "$1" | command tr '.' '\n' | command head -n 3)
-    }
-    remote_kitty_version=$(command cat "$script_dir/../version")
-    [ $? = 0 ] || die "Failed to read remote kitty version"
-    local_kitty_version=$(command cat "$local_kitty_version_file")
-    [ $? = 0 ] || die "Failed to read local kitty version"
-    [ $(version_sort_key "$remote_kitty_version") -le $(version_sort_key "$local_kitty_version") ] && exec_kitty "$@"
-fi
+[ -f "$kitty_exe" -a -x "$kitty_exe" -a "$1" != "+update-kitty" ] && exec_kitty "$@"
 
 case "$(command uname)" in
     'Linux') OS="linux";;
@@ -99,7 +89,7 @@ if ! command mkdir "$lock_dir" 2> /dev/null; then
 fi
 trap 'delete_lock_dir' EXIT INT QUIT TERM
 
-printf "\033[33mkitty needs to be %s\033[m\n\n" "$what"
+printf "\033[33mkitty needs to be installed\033[m\n\n"
 command rm -rf "$install_dir"
 command mkdir -p "$install_dir"
 printf "Downloading kitty from: \033[32m%s\033[m\n\n" "$url"
