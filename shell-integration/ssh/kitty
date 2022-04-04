@@ -27,6 +27,7 @@ install_dir="$(command dirname "$script_dir")/install"
 local_kitty_version_file="$install_dir/installed-kitty-version"
 kitty_exe="$install_dir/bin/kitty"
 what="installed"
+local_kitty_version=""
 
 if [ -r "$local_kitty_version_file" -a -f "$local_kitty_version_file" ]; then
     what="updated"
@@ -75,8 +76,11 @@ if [ "$OS" = "linux" ]; then
     esac
 fi
 
-release_version=$(fetch_quiet "https://api.github.com/repos/kovidgoyal/kitty/releases/latest" | command grep tag_name | command head -n1 | command cut -dv -f2 | command cut -d '"' -f1)
-[ -z "$release_version" ] && die "Could not get kitty latest release version"
+release_version=$(fetch_quiet "https://sw.kovidgoyal.net/kitty/current-version.txt")
+[ $? -ne 0 -o -z "$release_version" ] && {
+    [ -n "$local_kitty_version" ] && exec_kitty "$@"
+    die "Could not get kitty latest release version"
+}
 
 if [ "$OS" = "linux" ]; then
     url="https://github.com/kovidgoyal/kitty/releases/download/v$release_version/kitty-$release_version-$arch.txz"
