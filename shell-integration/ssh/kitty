@@ -8,8 +8,6 @@ die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; exit 1; }
 delete_lock_dir() {
     trap '' EXIT INT QUIT TERM
     [ -n "$lock_dir" ] && {
-        # switch to normal mode
-        printf "\033[?1049l"
         command rm -rf "$lock_dir"
         lock_dir=""
     }
@@ -94,8 +92,6 @@ if ! command mkdir "$lock_dir" 2> /dev/null; then
 fi
 trap 'delete_lock_dir' EXIT INT QUIT TERM
 
-# switch to alternate screen
-printf "\033[?1049h"
 printf "\033[33mkitty needs to be %s\033[m\n\n" "$what"
 command rm -rf "$install_dir"
 command mkdir -p "$install_dir"
