@@ -338,11 +338,13 @@ def set_locale() -> None:
         locale.setlocale(locale.LC_ALL, '')
     except Exception:
         log_error('Failed to set locale with LANG:', os.environ.get('LANG'))
-        if os.environ.pop('LANG', None) is not None:
+        old_lang = os.environ.pop('LANG', None)
+        if old_lang is not None:
             try:
                 locale.setlocale(locale.LC_ALL, '')
             except Exception:
                 log_error('Failed to set locale with no LANG')
+            os.environ['LANG'] = old_lang
 
 
 def _main() -> None:
