@@ -326,14 +326,14 @@ use the *query action*, set ``a=q``. Then the terminal emulator will try to load
 the image and respond with either OK or an error, as above, but it will not
 replace an existing image with the same id, nor will it store the image.
 
-As of September 2021, kitty and WezTerm are the only terminal emulators to support this
-graphics protocol. We intend that any terminal emulator that wishes to support
-it can do so. To check if a terminal emulator supports the graphics protocol the best way
-is to send the above *query action* followed by a request for the
-`primary device attributes <https://vt100.net/docs/vt510-rm/DA1.html>`_. If you
-get back an answer for the device attributes without getting back an answer for
-the *query action* the terminal emulator does not support the graphics
-protocol.
+As of April 2022, kitty and WezTerm are the only terminal emulators to
+support this graphics protocol completely, with Konsole having partial support.
+We intend that any terminal emulator that wishes to support it can do so. To
+check if a terminal emulator supports the graphics protocol the best way is to
+send the above *query action* followed by a request for the `primary device
+attributes <https://vt100.net/docs/vt510-rm/DA1.html>`_. If you get back an
+answer for the device attributes without getting back an answer for the *query
+action* the terminal emulator does not support the graphics protocol.
 
 This means that terminal emulators that support the graphics protocol, **must**
 reply to *query actions* immediately without processing other input. Most
