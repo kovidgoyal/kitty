@@ -2710,8 +2710,9 @@ opt('update_check_interval', '24',
     long_text='''
 Periodically check if an update to kitty is available. If an update is found a
 system notification is displayed informing you of the available update. The
-default is to check every 24 hrs, set to zero to disable. Changing this option
-by reloading the config is not supported.
+default is to check every 24 hrs, set to zero to disable. Update checking is
+only done by the official binary builds. Distro packages or source builds do not
+do update checking. Changing this option by reloading the config is not supported.
 '''
     )
 

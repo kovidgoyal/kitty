@@ -773,7 +773,7 @@ class Boss:
             else:
                 self.startup_first_child(first_os_window_id)
 
-        if get_options().update_check_interval > 0 and not hasattr(self, 'update_check_started'):
+        if get_options().update_check_interval > 0 and not hasattr(self, 'update_check_started') and getattr(sys, 'frozen', False):
             from .update_check import run_update_check
             run_update_check(get_options().update_check_interval * 60 * 60)
             self.update_check_started = True

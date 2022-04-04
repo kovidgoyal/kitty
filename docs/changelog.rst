@@ -69,6 +69,9 @@ Detailed list of changes
 
 - :ac:`select_tab`: Use stable numbers when selecting the tab (:iss:`4792`)
 
+- Only check for updates in the official binary builds. Distro packages or source builds will no longer check for updates, regardless of the
+  value of :opt:`update_check_interval`.
+
 
 0.24.4 [2022-03-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
