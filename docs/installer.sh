@@ -1,292 +1,174 @@
 #!/bin/sh
-#
-# installer.sh
 # Copyright (C) 2018 Kovid Goyal <kovid at kovidgoyal.net>
 #
 # Distributed under terms of the GPLv3 license.
-#
 
-python=$(command -v python3)
-if [ -z "$python" ]; then
-    python=$(command -v python2)
-fi
-if [ -z "$python" ]; then
-    python=$(command -v python2.7)
-fi
-if [ -z "$python" ]; then
-    python=$(command -v python)
-fi
-if [ -z "$python" ]; then
-    python=python
-fi
+{ \unalias command; \unset -f command; } >/dev/null 2>&1
+tdir=''
+cleanup() {
+    [ -n "$tdir" ] && {
+        command rm -rf "$tdir"
+        tdir=''
+    }
+}
 
-echo Using python executable: $python
+die() {
+    cleanup
+    printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr;
+    exit 1;
+}
 
-$python -c "import sys; script_launch=lambda:sys.exit('Download of installer failed!'); exec(sys.stdin.read()); script_launch()" "$@" <<'INSTALLER_HEREDOC'
-# {{{
-# HEREDOC_START
-#!/usr/bin/env python3
-# vim:fileencoding=utf-8
-# License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
-
-from __future__ import (
-    absolute_import, division, print_function, unicode_literals
-)
-
-import atexit
-import json
-import os
-import platform
-import re
-import shlex
-import shutil
-import subprocess
-import sys
-import tempfile
-
-py3 = sys.version_info[0] > 2
-is64bit = platform.architecture()[0] == '64bit'
-is_macos = 'darwin' in sys.platform.lower()
-is_linux_arm = is_linux_arm64 = False
-if is_macos:
-    mac_ver = tuple(map(int, platform.mac_ver()[0].split('.')))
-    if mac_ver[:2] < (10, 12):
-        raise SystemExit('Your version of macOS is too old, at least 10.12 is required')
-else:
-    machine = (os.uname()[4] or '').lower()
-    if machine.startswith('arm') or machine.startswith('aarch64'):
-        is_linux_arm = True
-        is_linux_arm64 = machine.startswith('arm64') or machine.startswith('aarch64')
-
-try:
-    __file__
-    from_file = True
-except NameError:
-    from_file = False
-
-if py3:
-    unicode = str
-    raw_input = input
-    import urllib.request as urllib
-
-    def encode_for_subprocess(x):
-        return x
-else:
-    from future_builtins import map
-    import urllib2 as urllib
-
-    def encode_for_subprocess(x):
-        if isinstance(x, unicode):
-            x = x.encode('utf-8')
-        return x
+detect_network_tool() {
+    if command -v curl 2> /dev/null > /dev/null; then
+        fetch() {
+            command curl -fL "$1"
+        }
+        fetch_quiet() {
+            command curl -fsSL "$1"
+        }
+    elif command -v wget 2> /dev/null > /dev/null; then
+        fetch() {
+            command wget -O- "$1"
+        }
+        fetch_quiet() {
+            command wget --quiet -O- "$1"
+        }
+    else
+        die "Neither curl nor wget available, cannot download kitty"
+    fi
+}
 
 
-def run(*args):
-    if len(args) == 1:
-        args = shlex.split(args[0])
-    args = list(map(encode_for_subprocess, args))
-    ret = subprocess.Popen(args).wait()
-    if ret != 0:
-        raise SystemExit(ret)
+detect_os() {
+    arch=""
+    case "$(command uname)" in
+        'Darwin') OS="macos";;
+        'Linux')
+            OS="linux"
+            case "$(command uname -m)" in
+                x86_64) arch="x86_64";;
+                aarch64*) arch="arm64";;
+                armv8*) arch="arm64";;
+                i386) arch="i686";;
+                i686) arch="i686";;
+                *) die "Unknown CPU architecture $(command uname -m)";;
+            esac
+            ;;
+        *) die "kitty binaries are not available for $(command uname)"
+    esac
+}
+
+expand_tilde() {
+    tilde_less="${1#\~/}"
+    [ "$1" != "$tilde_less" ] && tilde_less="$HOME/$tilde_less"
+    printf '%s' "$tilde_less"
+}
+
+parse_args() {
+    dest='~/.local'
+    launch='y'
+    installer=''
+    [ "$OS" = "macos" ] && dest="/Applications"
+    while :; do
+        case "$1" in
+            dest=*) dest="${1#*=}";;
+            launch=*) launch="${1#*=}";;
+            installer=*) installer="${1#*=}";;
+            "") break;;
+            *) die "Unrecognized command line option: $1";;
+        esac
+        shift
+    done
+    dest=$(expand_tilde "${dest}")
+    [ "$launch" != "y" -a "$launch" != "n" ] && die "Unrecognized command line option: launch=$launch"
+    dest="$dest/kitty.app"
+}
 
 
-class Reporter:  # {{{
+get_file_url() {
+    url="https://github.com/kovidgoyal/kitty/releases/download/$1/kitty-$2"
+    if [ "$OS" = "macos" ]; then
+        url="$url.dmg"
+    else
+        url="$url-$arch.txz"
+    fi
+}
 
-    def __init__(self, fname):
-        self.fname = fname
-        self.last_percent = 0
-
-    def __call__(self, blocks, block_size, total_size):
-        percent = (blocks*block_size)/float(total_size)
-        report = '\rDownloaded {:.1%}         '.format(percent)
-        if percent - self.last_percent > 0.05:
-            self.last_percent = percent
-            print(report, end='')
-            sys.stdout.flush()
-# }}}
-
-
-def get_release_data(relname='latest'):
-    print('Checking for latest release on GitHub...')
-    req = urllib.Request(
-        'https://api.github.com/repos/kovidgoyal/kitty/releases/' + relname,
-        headers={'Accept': 'application/vnd.github.v3+json'})
-    try:
-        res = urllib.urlopen(req).read().decode('utf-8')
-    except Exception as err:
-        raise SystemExit('Failed to contact {} with error: {}'.format(req.get_full_url(), err))
-    data = json.loads(res)
-    html_url = data['html_url'].replace('/tag/', '/download/').rstrip('/')
-    for asset in data.get('assets', ()):
-        name = asset['name']
-        if is_macos:
-            if name.endswith('.dmg'):
-                return html_url + '/' + name, asset['size']
-        else:
-            if name.endswith('.txz'):
-                if is64bit:
-                    q = '-arm64.txz' if is_linux_arm64 else '-x86_64.txz'
-                    if name.endswith(q):
-                        return html_url + '/' + name, asset['size']
-                else:
-                    if name.endswith('-i686.txz'):
-                        return html_url + '/' + name, asset['size']
-    raise SystemExit('Failed to find the installer package on github')
+get_release_url() {
+    release_version=$(fetch_quiet "https://sw.kovidgoyal.net/kitty/current-version.txt")
+    [ $? -ne 0 -o -z "$release_version" ] && die "Could not get kitty latest release version"
+    get_file_url "v$release_version" "$release_version"
+}
 
 
-def do_download(url, size, dest):
-    print('Will download and install', os.path.basename(dest))
-    reporter = Reporter(os.path.basename(dest))
+get_nightly_url() {
+    get_file_url "nightly" "nightly"
+}
 
-    # Get content length and check if range is supported
-    rq = urllib.urlopen(url)
-    headers = rq.info()
-    sent_size = int(headers['content-length'])
-    if sent_size != size:
-        raise SystemExit('Failed to download from {} Content-Length ({}) != {}'.format(url, sent_size, size))
-    with open(dest, 'wb') as f:
-        while f.tell() < size:
-            raw = rq.read(8192)
-            if not raw:
-                break
-            f.write(raw)
-            reporter(f.tell(), 1, size)
-    rq.close()
-    if os.path.getsize(dest) < size:
-        raise SystemExit('Download failed, try again later')
-    print('\rDownloaded {} bytes'.format(os.path.getsize(dest)))
+get_download_url() {
+    installer_is_file="n"
+    case "$installer" in
+        "nightly") get_nightly_url ;;
+        "") get_release_url ;;
+        *) installer_is_file="y" ;;
+    esac
+}
 
+linux_install() {
+    if [ "$installer_is_file" = "y" ]; then
+        command tar -C "$dest" "-xJof" "$installer"
+    else
+        printf '%s\n\n' "Downloading from: $url"
+        fetch "$url" | command tar -C "$dest" "-xJof" "-"
+    fi
+}
 
-def clean_cache(cache, fname):
-    for x in os.listdir(cache):
-        if fname not in x:
-            os.remove(os.path.join(cache, x))
+macos_install() {
+    tdir=$(command mktemp -d "/tmp/kitty-install-XXXXXXXXXXXX")
+    [ "$installer_is_file" != "y" ] && {
+        installer="$tdir/kitty.dmg"
+        printf '%s\n\n' "Downloading from: $url"
+        fetch "$url" > "$installer" || die "Failed to download: $url"
+    }
+    command mkdir "$tdir/mp"
+    command hdiutil attach "$installer" "-mountpoint" "$tdir/mp" || die "Failed to mount kitty.dmg"
+    command ditto -v "$tdir/mp/kitty.app" "$dest"
+    rc="$?"
+    command hdiutil detach "$tdir/mp"
+    command rm -rf "$tdir"
+    tdir=''
+    [ "$rc" != "0" ] && die "Failed to copy kitty.app from mounted dmg"
+}
 
+prepare_install_dest() {
+    printf "%s\n" "Installing to $dest"
+    command rm -rf "$dest"
+    command mkdir -p "$dest" || die "Failed to create the directory: $dest"
+}
 
-def download_installer(url, size):
-    fname = url.rpartition('/')[-1]
-    tdir = tempfile.gettempdir()
-    cache = os.path.join(tdir, 'kitty-installer-cache')
-    if not os.path.exists(cache):
-        os.makedirs(cache)
-    clean_cache(cache, fname)
-    dest = os.path.join(cache, fname)
-    if os.path.exists(dest) and os.path.getsize(dest) == size:
-        print('Using previously downloaded', fname)
-        return dest
-    if os.path.exists(dest):
-        os.remove(dest)
-    do_download(url, size, dest)
-    return dest
+exec_kitty() {
+    if [ "$OS" = "macos" ]; then
+        exec open "$dest"
+    else
+        exec "$dest/bin/kitty" "--detach"
+    fi
+    die "Failed to launch kitty"
+}
 
+main() {
+    [ -n "$KITTY_WINDOW_ID" ] && die "You should not try to update kitty from within kitty itself. For best results, quit all kitty instances and run this script from another terminal"
+    detect_os
+    parse_args "$@"
+    detect_network_tool
+    get_download_url
+    prepare_install_dest
+    if [ "$OS" = "macos" ]; then
+        macos_install
+    else
+        linux_install
+    fi
+    [ "$launch" = "y" ] && exec_kitty
+    exit 0
+}
 
-def macos_install(dmg, dest='/Applications', launch=True):
-    mp = tempfile.mkdtemp()
-    atexit.register(shutil.rmtree, mp)
-    run('hdiutil', 'attach', dmg, '-mountpoint', mp)
-    try:
-        os.chdir(mp)
-        app = 'kitty.app'
-        d = os.path.join(dest, app)
-        if os.path.exists(d):
-            shutil.rmtree(d)
-        dest = os.path.join(dest, app)
-        run('ditto', '-v', app, dest)
-        print('Successfully installed kitty into', dest)
-        if launch:
-            run('open', dest)
-    finally:
-        os.chdir('/')
-        run('hdiutil', 'detach', mp)
-
-
-def linux_install(installer, dest=os.path.expanduser('~/.local'), launch=True):
-    dest = os.path.join(dest, 'kitty.app')
-    if os.path.exists(dest):
-        shutil.rmtree(dest)
-    os.makedirs(dest)
-    print('Extracting tarball...')
-    run('tar', '-C', dest, '-xJof', installer)
-    print('kitty successfully installed to', dest)
-    kitty = os.path.join(dest, 'bin', 'kitty')
-    print('Use', kitty, 'to run kitty')
-    if launch:
-        run(kitty, '--detach')
-
-
-def main(dest=None, launch=True, installer=None):
-    if not dest:
-        if is_macos:
-            dest = '/Applications'
-        else:
-            dest = os.path.expanduser('~/.local')
-    if is_linux_arm and not is_linux_arm64:
-        raise SystemExit(
-            'You are running on a 32-bit ARM system. The kitty binaries are only'
-            ' available for 64 bit ARM systems. You will have to build from'
-            ' source.')
-    if not installer:
-        url, size = get_release_data()
-        installer = download_installer(url, size)
-    else:
-        if installer == 'nightly':
-            url, size = get_release_data('tags/nightly')
-            installer = download_installer(url, size)
-        else:
-            installer = os.path.abspath(installer)
-            if not os.access(installer, os.R_OK):
-                raise SystemExit('Could not read from: {}'.format(installer))
-    if is_macos:
-        macos_install(installer, dest=dest, launch=launch)
-    else:
-        linux_install(installer, dest=dest, launch=launch)
-
-
-def script_launch():
-    # To test: python3 -c "import runpy; runpy.run_path('installer.py', run_name='script_launch')"
-    def path(x):
-        return os.path.expandvars(os.path.expanduser(x))
-
-    def to_bool(x):
-        return x.lower() in {'y', 'yes', '1', 'true'}
-
-    type_map = {x: path for x in 'dest installer'.split()}
-    type_map['launch'] = to_bool
-    kwargs = {}
-
-    for arg in sys.argv[1:]:
-        if arg:
-            m = re.match('([a-z_]+)=(.+)', arg)
-            if m is None:
-                raise SystemExit('Unrecognized command line argument: ' + arg)
-            k = m.group(1)
-            if k not in type_map:
-                raise SystemExit('Unrecognized command line argument: ' + arg)
-            kwargs[k] = type_map[k](m.group(2))
-    main(**kwargs)
-
-
-def update_installer_wrapper():
-    # To run: python3 -c "import runpy; runpy.run_path('installer.py', run_name='update_wrapper')" installer.sh
-    with open(__file__, 'rb') as f:
-        src = f.read().decode('utf-8')
-    wrapper = sys.argv[-1]
-    with open(wrapper, 'r+b') as f:
-        raw = f.read().decode('utf-8')
-        nraw = re.sub(r'^# HEREDOC_START.+^# HEREDOC_END', lambda m: '# HEREDOC_START\n{}\n# HEREDOC_END'.format(src), raw, flags=re.MULTILINE | re.DOTALL)
-        if 'update_intaller_wrapper()' not in nraw:
-            raise SystemExit('regex substitute of HEREDOC failed')
-        f.seek(0), f.truncate()
-        f.write(nraw.encode('utf-8'))
-
-
-if __name__ == '__main__' and from_file:
-    main()
-elif __name__ == 'update_wrapper':
-    update_installer_wrapper()
-elif __name__ == 'script_launch':
-    script_launch()
-
-# HEREDOC_END
-# }}}
-INSTALLER_HEREDOC
+main "$@"
