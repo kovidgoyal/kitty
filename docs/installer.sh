@@ -66,9 +66,9 @@ expand_tilde() {
 
 parse_args() {
     dest='~/.local'
+    [ "$OS" = "macos" ] && dest="/Applications"
     launch='y'
     installer=''
-    [ "$OS" = "macos" ] && dest="/Applications"
     while :; do
         case "$1" in
             dest=*) dest="${1#*=}";;
@@ -148,7 +148,7 @@ prepare_install_dest() {
 
 exec_kitty() {
     if [ "$OS" = "macos" ]; then
-        exec open "$dest"
+        exec "open" "$dest"
     else
         exec "$dest/bin/kitty" "--detach"
     fi
