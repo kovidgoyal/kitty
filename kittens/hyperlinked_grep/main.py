@@ -23,7 +23,10 @@ def main() -> None:
     if not sys.stdout.isatty() and '--pretty' not in sys.argv:
         os.execlp('rg', 'rg', *sys.argv[1:])
     cmdline = ['rg', '--pretty', '--with-filename'] + sys.argv[1:]
-    p = subprocess.Popen(cmdline, stdout=subprocess.PIPE)
+    try:
+        p = subprocess.Popen(cmdline, stdout=subprocess.PIPE)
+    except FileNotFoundError:
+        raise SystemExit('Could not find the rg executable in your PATH. Is ripgrep installed?')
     assert p.stdout is not None
     write: Callable[[bytes], None] = cast(Callable[[bytes], None], sys.stdout.buffer.write)
     sgr_pat = re.compile(br'\x1b\[.*?m')
