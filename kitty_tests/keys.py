@@ -491,7 +491,7 @@ class TestKeys(BaseTest):
 
         self.ae(enc(), '<0;1;1M')
         self.ae(enc(action=defines.RELEASE), '<0;1;1m')
-        self.ae(enc(action=defines.MOVE), '<35;1;1M')
+        self.ae(enc(action=defines.MOVE, button=0), '<35;1;1M')
         self.ae(enc(action=defines.DRAG), '<32;1;1M')
 
         self.ae(enc(R), '<2;1;1M')
