@@ -39,8 +39,10 @@ _ksi_inject() {
                 if [[ "$kitty_bash_inject" != *"no-rc"* ]]; then
                     # Linux distros build bash with -DSYS_BASHRC. Unfortunately, there is
                     # no way to to probe bash for it and different distros use different files
-                    _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/bash.bashrc"  # Arch, Debian, Ubuntu
+                    # Arch, Debian, Ubuntu use /etc/bash.bashrc
                     # Fedora uses /etc/bashrc sourced from ~/.bashrc instead of SYS_BASHRC
+                    # Void Linux uses /etc/bash/bashrc
+                    _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/bash.bashrc" || _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/bash/bashrc"
                     if [[ -z "$KITTY_BASH_RCFILE" ]]; then KITTY_BASH_RCFILE="$HOME/.bashrc"; fi
                     _ksi_safe_source "$KITTY_BASH_RCFILE"
                 fi
