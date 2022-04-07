@@ -961,6 +961,8 @@ class TabManager:  # {{{
             location = 'after'
         if location == 'neighbor':
             location = 'after'
+        if location == 'default':
+            location = 'last'
         if len(self.tabs) > 1 and location != 'last':
             if location == 'first':
                 desired_idx = 0
