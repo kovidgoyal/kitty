@@ -40,6 +40,8 @@ _ksi_inject() {
                     # Linux distros build bash with -DSYS_BASHRC. Unfortunately, there is
                     # no way to to probe bash for it and different distros use different files
                     _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/bash.bashrc"  # Arch, Debian, Ubuntu
+                    # Void uses /etc/bash/bashrc 
+                    _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/bash/bashrc"  # Void
                     # Fedora uses /etc/bashrc sourced from ~/.bashrc instead of SYS_BASHRC
                     if [[ -z "$KITTY_BASH_RCFILE" ]]; then KITTY_BASH_RCFILE="$HOME/.bashrc"; fi
                     _ksi_safe_source "$KITTY_BASH_RCFILE"
