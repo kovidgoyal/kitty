@@ -72,6 +72,8 @@ Detailed list of changes
 - Only check for updates in the official binary builds. Distro packages or source builds will no longer check for updates, regardless of the
   value of :opt:`update_check_interval`.
 
+- Fix :opt:`inactive_text_alpha` still being applied to the cursor hidden window after focus (:iss:`4928`)
+
 
 0.24.4 [2022-03-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
