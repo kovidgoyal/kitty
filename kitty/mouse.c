@@ -69,7 +69,9 @@ static int
 encode_mouse_event_impl(const MousePosition *mpos, int mouse_tracking_protocol, int button, MouseAction action, int mods) {
     unsigned int cb = 0;
     if (action == MOVE) {
-        cb = 3;
+        cb = encode_button(button);
+        if (cb == UINT_MAX) cb = 3;
+        cb += 32;
     } else {
         cb = encode_button(button);
         if (cb == UINT_MAX) return 0;
