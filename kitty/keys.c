@@ -137,8 +137,8 @@ on_key_input(GLFWkeyevent *ev) {
 
     switch(ev->ime_state) {
         case GLFW_IME_PREEDIT_CHANGED:
-            update_ime_position(w, screen);
             screen_draw_overlay_text(screen, text);
+            update_ime_position(w, screen);
             debug("updated pre-edit text: '%s'\n", text);
             return;
         case GLFW_IME_COMMIT_TEXT:
