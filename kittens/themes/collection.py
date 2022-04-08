@@ -483,6 +483,10 @@ def update_theme_file(path: str) -> bool:
     return True
 
 
+def text_as_opts(text: str) -> KittyOptions:
+    return KittyOptions(options_dict=parse_config(text.splitlines()))
+
+
 class Theme:
     name: str = ''
     author: str = ''
@@ -516,7 +520,7 @@ class Theme:
     @property
     def kitty_opts(self) -> KittyOptions:
         if self._opts is None:
-            self._opts = KittyOptions(options_dict=parse_config(self.raw.splitlines()))
+            self._opts = text_as_opts(self.raw)
         return self._opts
 
     def save_in_dir(self, dirpath: str) -> None:

@@ -14,6 +14,7 @@ from typing import (
 from kitty.cli import create_default_opts, parse_args
 from kitty.cli_stub import ThemesCLIOptions
 from kitty.config import cached_values_for
+from kitty.options.types import Options as KittyOptions
 from kitty.constants import config_dir
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 from kitty.rgb import color_as_sharp, color_from_int
@@ -23,7 +24,7 @@ from kitty.utils import ScreenSize
 from ..tui.handler import Handler
 from ..tui.line_edit import LineEdit
 from ..tui.loop import Loop
-from ..tui.operations import color_code, styled
+from ..tui.operations import color_code, set_default_colors, styled
 from .collection import MARK_AFTER, NoCacheFound, Theme, Themes, load_themes
 
 separator = '║'
@@ -132,6 +133,17 @@ class ThemesList:
         return self.themes[self.current_idx]
 
 
+def colors_as_escape_codes(o: KittyOptions) -> str:
+    ans = set_default_colors(
+        fg=o.foreground, bg=o.background, cursor=o.cursor, select_bg=o.selection_background, select_fg=o.selection_foreground
+    )
+    cmds = []
+    for i in range(256):
+        col = color_as_sharp(color_from_int(o.color_table[i]))
+        cmds.append(f'{i};{col}')
+    return ans + '\033]4;' + ';'.join(cmds) + '\033\\'
+
+
 class ThemesHandler(Handler):
 
     def __init__(self, cached_values: Dict[str, Any], cli_opts: ThemesCLIOptions) -> None:
@@ -195,15 +207,9 @@ class ThemesHandler(Handler):
             o = self.themes_list.current_theme.kitty_opts
         else:
             o = create_default_opts()
-        self.cmd.set_default_colors(
-            fg=o.foreground, bg=o.background, cursor=o.cursor, select_bg=o.selection_background, select_fg=o.selection_foreground
-        )
         self.current_opts = o
-        cmds = []
-        for i in range(256):
-            col = color_as_sharp(color_from_int(o.color_table[i]))
-            cmds.append(f'{i};{col}')
-        self.print(end='\033]4;' + ';'.join(cmds) + '\033\\')
+        cmd = colors_as_escape_codes(o)
+        self.write(cmd)
         return True
 
     def redraw_after_category_change(self) -> None:
