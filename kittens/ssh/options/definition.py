@@ -103,6 +103,15 @@ value are expanded. The default is empty so no changing is done, which
 usually means the home directory is used.
 ''')
 
+opt('color_scheme', '', long_text='''
+Specify a color scheme to use when connecting to the remote host.  If the
+color_scheme ends with :code:`.conf` it is assumed to be the name of a config
+file to load from the kitty config directory, otherwise it is assumed to be the
+name of a color theme to load via the themes kitten. Note that only colors
+applying to the text/background are changed, other config settings in the .conf
+files/themes are ignored.
+''')
+
 opt('remote_kitty', 'if-needed', choices=('if-needed', 'no', 'yes'), long_text='''
 Make kitty available on the remote server. Useful to run kittens such as the
 icat kitten to display images or the transfer file kitten to transfer files.

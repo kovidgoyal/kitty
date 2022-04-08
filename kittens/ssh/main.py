@@ -28,6 +28,7 @@ from typing import (
     Union
 )
 
+from kittens.tui.operations import restore_colors, save_colors
 from kitty.constants import (
     cache_dir, runtime_dir, shell_integration_dir, ssh_control_master_template,
     str_version, terminfo_dir
@@ -35,7 +36,7 @@ from kitty.constants import (
 from kitty.options.types import Options
 from kitty.shm import SharedMemory
 from kitty.types import run_once
-from kitty.utils import SSHConnectionData, set_echo as turn_off_echo
+from kitty.utils import SSHConnectionData, set_echo as turn_off_echo, expandvars, resolve_abs_or_config_path
 
 from .completion import complete, ssh_options
 from .config import init_config
@@ -598,6 +599,34 @@ def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str)
                     data += q
 
 
+def change_colors(color_scheme: str) -> bool:
+    if not color_scheme:
+        return False
+    from kittens.themes.collection import load_themes, NoCacheFound, text_as_opts
+    from kittens.themes.main import colors_as_escape_codes
+    if color_scheme.endswith('.conf'):
+        conf_file = resolve_abs_or_config_path(color_scheme)
+        try:
+            with open(conf_file) as f:
+                opts = text_as_opts(f.read())
+        except FileNotFoundError:
+            raise SystemExit(f'Failed to find the color conf file: {expandvars(conf_file)}')
+    else:
+        try:
+            themes = load_themes(-1)
+        except NoCacheFound:
+            themes = load_themes()
+        cs = expandvars(color_scheme)
+        try:
+            theme = themes[cs]
+        except KeyError:
+            raise SystemExit(f'Failed to find the color theme: {cs}')
+        opts = theme.kitty_opts
+    raw = colors_as_escape_codes(opts)
+    print(save_colors(), sep='', end=raw, flush=True)
+    return True
+
+
 def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple[str, ...]) -> NoReturn:
     cmd = [ssh_exe()] + ssh_args
     hostname, remote_args = server_args[0], server_args[1:]
@@ -650,6 +679,7 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
         rcmd, replacements, shm_name = get_remote_command(
             remote_args, host_opts, hostname_for_match, uname, echo_on, request_data=need_to_request_data)
         cmd += rcmd
+        colors_changed = change_colors(host_opts.color_scheme)
         try:
             p = subprocess.Popen(cmd)
         except FileNotFoundError:
@@ -661,6 +691,9 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
                     raise SystemExit(p.wait())
                 except KeyboardInterrupt:
                     raise SystemExit(1)
+        finally:
+            if colors_changed:
+                print(end=restore_colors(), flush=True)
 
 
 def main(args: List[str]) -> NoReturn:

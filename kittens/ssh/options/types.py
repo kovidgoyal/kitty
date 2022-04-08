@@ -12,6 +12,7 @@ else:
 
 option_names = (  # {{{
  'askpass',
+ 'color_scheme',
  'copy',
  'cwd',
  'env',
@@ -26,6 +27,7 @@ option_names = (  # {{{
 
 class Options:
     askpass: choices_for_askpass = 'unless-set'
+    color_scheme: str = ''
     cwd: str = ''
     hostname: str = '*'
     interpreter: str = 'sh'

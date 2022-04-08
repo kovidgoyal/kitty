@@ -9,6 +9,8 @@ Truly convenient SSH
 
 * Make kitty itself available in the remote host :opt:`on demand <kitten-ssh.remote_kitty>`
 
+* Easily :opt:`change terminal colors <kitten-ssh.color_scheme>` when connecting to remote hosts
+
 .. versionadded:: 0.25.0
    Automatic shell integration, file transfer and reuse of connections
 

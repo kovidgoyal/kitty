@@ -15,6 +15,9 @@ class Parser:
 
     choices_for_askpass = frozenset(('unless-set', 'ssh', 'native'))
 
+    def color_scheme(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['color_scheme'] = str(val)
+
     def copy(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         for k, v in copy(val, ans["copy"]):
             ans["copy"][k] = v
