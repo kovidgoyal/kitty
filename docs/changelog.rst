@@ -74,6 +74,9 @@ Detailed list of changes
 
 - Fix :opt:`inactive_text_alpha` still being applied to the cursor hidden window after focus (:iss:`4928`)
 
+- Fix resizing window that is extra tall/wide because of left-over cells not
+  working reliably (:iss:`4913`)
+
 
 0.24.4 [2022-03-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

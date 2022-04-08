@@ -10,7 +10,7 @@ from kitty.window_list import WindowGroup, WindowList
 
 from .base import (
     BorderLine, Layout, LayoutData, LayoutDimension, NeighborsMap,
-    lgd, variable_bias
+    lgd
 )
 
 
@@ -71,7 +71,7 @@ class Vertical(Layout):
 
     def variable_layout(self, all_windows: WindowList, biased_map: Dict[int, float]) -> LayoutDimension:
         num_windows = all_windows.num_groups
-        bias = variable_bias(num_windows, biased_map) if num_windows else None
+        bias = biased_map if num_windows > 1 else None
         return self.main_axis_layout(all_windows.iter_all_layoutable_groups(), bias=bias)
 
     def fixed_layout(self, wg: WindowGroup) -> LayoutDimension:

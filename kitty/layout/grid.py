@@ -15,7 +15,7 @@ from kitty.window_list import WindowGroup, WindowList
 
 from .base import (
     BorderLine, Layout, LayoutData, LayoutDimension, ListOfWindows,
-    NeighborsMap, layout_dimension, lgd, variable_bias
+    NeighborsMap, layout_dimension, lgd
 )
 from .tall import neighbors_for_tall_window
 
@@ -61,7 +61,7 @@ class Grid(Layout):
         return layout_dimension(lgd.central.top, lgd.central.height, lgd.cell_height, decoration_pairs, bias=bias, left_align=lgd.align_top_left)
 
     def variable_layout(self, layout_func: Callable[..., LayoutDimension], num_windows: int, biased_map: Dict[int, float]) -> LayoutDimension:
-        return layout_func(num_windows, bias=variable_bias(num_windows, biased_map) if num_windows > 1 else None)
+        return layout_func(num_windows, bias=biased_map if num_windows > 1 else None)
 
     def apply_bias(self, idx: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
         num_windows = all_windows.num_groups

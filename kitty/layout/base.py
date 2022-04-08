@@ -5,7 +5,7 @@ from functools import partial
 from itertools import repeat
 from typing import (
     Any, Dict, Generator, Iterable, Iterator, List, NamedTuple, Optional,
-    Sequence, Tuple
+    Sequence, Tuple, Union
 )
 
 from kitty.borders import BorderColor
@@ -78,7 +78,20 @@ def set_layout_options(opts: Options) -> None:
     lgd.align_top_left = opts.placement_strategy == 'top-left'
 
 
-def calculate_cells_map(bias: Optional[Sequence[float]], number_of_windows: int, number_of_cells: int) -> List[int]:
+def convert_bias_map(bias: Dict[int, float], number_of_windows: int, number_of_cells: int) -> Sequence[float]:
+    cells_per_window, extra = divmod(number_of_cells, number_of_windows)
+    cell_map = list(repeat(cells_per_window, number_of_windows))
+    cell_map[-1] += extra
+    base_bias = [x / number_of_cells for x in cell_map]
+    return distribute_indexed_bias(base_bias, bias)
+
+
+def calculate_cells_map(
+    bias: Union[None, Sequence[float], Dict[int, float]],
+    number_of_windows: int, number_of_cells: int
+) -> List[int]:
+    if isinstance(bias, dict):
+        bias = convert_bias_map(bias, number_of_windows, number_of_cells)
     cells_per_window = number_of_cells // number_of_windows
     if bias is not None and number_of_windows > 1 and number_of_windows == len(bias) and cells_per_window > 5:
         cells_map = [int(b * number_of_cells) for b in bias]
@@ -100,7 +113,7 @@ def layout_dimension(
     start_at: int, length: int, cell_length: int,
     decoration_pairs: DecorationPairs,
     left_align: bool = False,
-    bias: Optional[Sequence[float]] = None
+    bias: Union[None, Sequence[float], Dict[int, float]] = None
 ) -> LayoutDimension:
     number_of_windows = len(decoration_pairs)
     number_of_cells = length // cell_length
@@ -195,10 +208,6 @@ def distribute_indexed_bias(base_bias: Sequence[float], index_bias_map: Dict[int
         other_increment = -increment / (limit - 1)
         ans = [safe_increment_bias(b, increment if i == row else other_increment) for i, b in enumerate(ans)]
     return normalize_biases(ans)
-
-
-def variable_bias(num_windows: int, candidate: Dict[int, float]) -> Sequence[float]:
-    return distribute_indexed_bias(list(repeat(1/(num_windows), num_windows)), candidate)
 
 
 class Layout:
@@ -334,7 +343,7 @@ class Layout:
     def xlayout(
         self,
         groups: Iterator[WindowGroup],
-        bias: Optional[Sequence[float]] = None,
+        bias: Union[None, Sequence[float], Dict[int, float]] = None,
         start: Optional[int] = None,
         size: Optional[int] = None,
         offset: int = 0,
@@ -353,7 +362,7 @@ class Layout:
     def ylayout(
         self,
         groups: Iterator[WindowGroup],
-        bias: Optional[Sequence[float]] = None,
+        bias: Union[None, Sequence[float], Dict[int, float]] = None,
         start: Optional[int] = None,
         size: Optional[int] = None,
         offset: int = 0,

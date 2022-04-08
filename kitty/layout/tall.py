@@ -12,7 +12,7 @@ from kitty.window_list import WindowGroup, WindowList
 
 from .base import (
     BorderLine, Layout, LayoutData, LayoutDimension, LayoutOpts, NeighborsMap,
-    lgd, normalize_biases, safe_increment_bias, variable_bias
+    lgd, normalize_biases, safe_increment_bias
 )
 from .vertical import borders
 
@@ -96,7 +96,7 @@ class Tall(Layout):
 
     def variable_layout(self, all_windows: WindowList, biased_map: Dict[int, float]) -> LayoutDimension:
         num = all_windows.num_groups - self.num_full_size_windows
-        bias = variable_bias(num, biased_map) if num > 1 else None
+        bias = biased_map if num > 1 else None
         return self.perp_axis_layout(all_windows.iter_all_layoutable_groups(), bias=bias, offset=self.num_full_size_windows)
 
     def apply_bias(self, idx: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
