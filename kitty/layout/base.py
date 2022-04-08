@@ -80,7 +80,7 @@ def set_layout_options(opts: Options) -> None:
 
 def calculate_cells_map(bias: Optional[Sequence[float]], number_of_windows: int, number_of_cells: int) -> List[int]:
     cells_per_window = number_of_cells // number_of_windows
-    if bias is not None and 1 < number_of_windows == len(bias) and cells_per_window > 5:
+    if bias is not None and number_of_windows > 1 and number_of_windows == len(bias) and cells_per_window > 5:
         cells_map = [int(b * number_of_cells) for b in bias]
         while min(cells_map) < 5:
             maxi, mini = map(cells_map.index, (max(cells_map), min(cells_map)))
@@ -221,8 +221,11 @@ class Layout:
         self.full_name = f'{self.name}:{layout_opts}' if layout_opts else self.name
         self.remove_all_biases()
 
-    def bias_increment_for_cell(self, is_horizontal: bool) -> float:
+    def bias_increment_for_cell(self, all_windows: WindowList, window_id: int, is_horizontal: bool) -> float:
         self._set_dimensions()
+        return self.calculate_bias_increment_for_a_single_cell(all_windows, window_id, is_horizontal)
+
+    def calculate_bias_increment_for_a_single_cell(self, all_windows: WindowList, window_id: int, is_horizontal: bool) -> float:
         if is_horizontal:
             return (lgd.cell_width + 1) / lgd.central.width
         return (lgd.cell_height + 1) / lgd.central.height
