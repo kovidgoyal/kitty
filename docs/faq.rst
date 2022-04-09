@@ -92,7 +92,7 @@ For macOS, you may also need to put that file under :file:`~/.terminfo/78/`::
 
     mkdir -p ~/.terminfo/{78,x}
     ln -snf ../x/xterm-kitty ~/.terminfo/78/xterm-kitty
-    tic -x -o ~/.terminfo $KITTY_INSTALLATION_DIR/terminfo/kitty.terminfo
+    tic -x -o ~/.terminfo "$KITTY_INSTALLATION_DIR/terminfo/kitty.terminfo"
 
 Note that ``sudo`` might remove TERMINFO.  Then setting it at the shell prompt can
 be too late, because command line editing may not be reinitialized.  In that case
