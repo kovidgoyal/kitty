@@ -77,6 +77,8 @@ Detailed list of changes
 - Fix resizing window that is extra tall/wide because of left-over cells not
   working reliably (:iss:`4913`)
 
+- A new action :ac:`close_other_tabs_in_os_window` to close other tabs in the active OS window (:pull:`4944`)
+
 
 0.24.4 [2022-03-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
