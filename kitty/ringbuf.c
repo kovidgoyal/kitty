@@ -26,10 +26,6 @@
 #include <sys/param.h>
 #include <assert.h>
 
-static size_t
-size_t_min(size_t x, size_t y) {
-    return x > y ? y : x;
-}
 
 /*
  * The code is written for clarity, not cleverness or performance, and
