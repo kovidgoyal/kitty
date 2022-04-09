@@ -125,6 +125,19 @@ make them available in the newly spawned shell.
 Then proceed with ``make`` or ``make app`` according to the platform specific instructions above.
 
 
+Debug builds
+--------------
+
+A basic debug build can be done with::
+
+    make debug
+
+This includes debug info in the binary for better traces. To build with address sanitizer, use::
+
+    make asan
+
+Which will result in a debug binary that uses the address sanitizer as well.
+
 .. _packagers:
 
 Notes for Linux/macOS packagers
