@@ -47,6 +47,7 @@ Other terminals that have implemented the graphics protocol:
 
 * `WezTerm <https://github.com/wez/wezterm/issues/986>`_
 * `Konsole <https://invent.kde.org/utilities/konsole/-/merge_requests/594>`_
+* `wayst <https://github.com/91861/wayst>`_
 
 
 Getting the window size
@@ -327,7 +328,7 @@ the image and respond with either OK or an error, as above, but it will not
 replace an existing image with the same id, nor will it store the image.
 
 As of April 2022, kitty and WezTerm are the only terminal emulators to
-support this graphics protocol completely, with Konsole having partial support.
+support this graphics protocol completely, with Konsole and wayst having partial support.
 We intend that any terminal emulator that wishes to support it can do so. To
 check if a terminal emulator supports the graphics protocol the best way is to
 send the above *query action* followed by a request for the `primary device
