@@ -156,7 +156,6 @@ exec_kitty() {
 }
 
 main() {
-    [ -n "$KITTY_WINDOW_ID" ] && die "You should not try to update kitty from within kitty itself. For best results, quit all kitty instances and run this script from another terminal"
     detect_os
     parse_args "$@"
     detect_network_tool
