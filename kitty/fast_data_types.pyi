@@ -1361,6 +1361,10 @@ def set_os_window_title(os_window_id: int, title: str) -> None:
     pass
 
 
+def get_os_window_title(os_window_id: int) -> Optional[str]:
+    pass
+
+
 def update_ime_position_for_window(window_id: int, force: bool = False, update_focus: int = 0) -> bool:
     pass
 

@@ -927,17 +927,29 @@ PYWRAP1(sync_os_window_title) {
 
 PYWRAP1(set_os_window_title) {
     id_type os_window_id;
-    const char *title;
-    PA("Ks", &os_window_id, &title);
+    PyObject *title;
+    PA("KU", &os_window_id, &title);
     WITH_OS_WINDOW(os_window_id)
-        if (strlen(title)) {
+        if (PyUnicode_GetLength(title)) {
             os_window->title_is_overriden = true;
-            set_os_window_title(os_window, title);
+            Py_XDECREF(os_window->window_title);
+            os_window->window_title = title;
+            Py_INCREF(title);
+            set_os_window_title(os_window, PyUnicode_AsUTF8(title));
         } else {
             os_window->title_is_overriden = false;
             if (os_window->window_title) set_os_window_title(os_window, PyUnicode_AsUTF8(os_window->window_title));
             update_os_window_title(os_window);
         }
+    END_WITH_OS_WINDOW
+    Py_RETURN_NONE;
+}
+
+PYWRAP1(get_os_window_title) {
+    id_type os_window_id;
+    PA("K", &os_window_id);
+    WITH_OS_WINDOW(os_window_id)
+        if (os_window->window_title) return Py_BuildValue("O", os_window->window_title);
     END_WITH_OS_WINDOW
     Py_RETURN_NONE;
 }
@@ -1280,6 +1292,7 @@ static PyMethodDef module_methods[] = {
     MW(background_opacity_of, METH_O),
     MW(update_window_visibility, METH_VARARGS),
     MW(sync_os_window_title, METH_VARARGS),
+    MW(get_os_window_title, METH_VARARGS),
     MW(set_os_window_title, METH_VARARGS),
     MW(global_font_size, METH_VARARGS),
     MW(set_background_image, METH_VARARGS),

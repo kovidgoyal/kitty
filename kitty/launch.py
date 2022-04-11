@@ -9,7 +9,9 @@ from .child import Child
 from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .constants import kitty_exe, shell_path
-from .fast_data_types import patch_color_profiles, set_clipboard_string
+from .fast_data_types import (
+    get_os_window_title, patch_color_profiles, set_clipboard_string
+)
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import run_once
@@ -32,12 +34,14 @@ def options_spec() -> str:
     return '''
 --window-title --title
 The title to set for the new window. By default, title is controlled by the
-child process.
+child process. The special value :code:`current` will copy the title from the currently
+active window.
 
 
 --tab-title
 The title for the new tab if launching in a new tab. By default, the title
-of the active window in the tab is used as the tab title.
+of the active window in the tab is used as the tab title. The special value
+:code:`current` will copy the title form the title of the currently active tab.
 
 
 --type
@@ -175,7 +179,8 @@ Set the WM_NAME property on X11 for the newly created OS Window when using
 
 --os-window-title
 Set the title for the newly created OS window. This title will override any
-titles set by programs running in kitty.
+titles set by programs running in kitty. The special value :code:`current`
+will use the title of the current OS Window, if any.
 
 
 --logo
@@ -344,6 +349,14 @@ def launch(
         active_child = active.child
     else:
         active_child = None
+    if opts.window_title == 'current':
+        opts.window_title = active.title if active else None
+    if opts.tab_title == 'current':
+        atab = boss.active_tab
+        opts.tab_title = atab.title if atab else None
+    if opts.os_window_title == 'current':
+        tm = boss.active_tab_manager
+        opts.os_window_title = get_os_window_title(tm.os_window_id) if tm else None
     env = get_env(opts, active_child)
     kw: LaunchKwds = {
         'allow_remote_control': opts.allow_remote_control,

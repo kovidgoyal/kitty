@@ -564,7 +564,7 @@ class Window:
         return dict(
             id=self.id,
             is_focused=is_focused,
-            title=self.override_title or self.title,
+            title=self.title,
             pid=self.child.pid,
             cwd=self.child.current_cwd or self.child.cwd,
             cmdline=self.child.cmdline,
