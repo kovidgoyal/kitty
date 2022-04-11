@@ -144,10 +144,6 @@ def run_website(args: Any) -> None:
     with open(os.path.join(publish_dir, 'current-version.txt'), 'w') as f:
         f.write(version)
     shutil.copy2(os.path.join(docs_dir, 'installer.sh'), publish_dir)
-    installer = os.path.join(docs_dir, 'installer.py')
-    subprocess.check_call([
-        'python3', '-c', f"import runpy; runpy.run_path('{installer}', run_name='update_wrapper')",
-        os.path.join(publish_dir, 'installer.sh')])
     os.chdir(os.path.dirname(publish_dir))
     subprocess.check_call(['git', 'add', 'kitty'])
     subprocess.check_call(['git', 'commit', '-m', 'kitty website updates'])
