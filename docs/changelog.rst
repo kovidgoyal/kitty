@@ -34,7 +34,7 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.25.0 [future]
+0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - :doc:`kittens/ssh`: automatic shell integration when using SSH. Easily
