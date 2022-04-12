@@ -353,7 +353,7 @@ def launch(
         opts.window_title = active.title if active else None
     if opts.tab_title == 'current':
         atab = boss.active_tab
-        opts.tab_title = atab.title if atab else None
+        opts.tab_title = atab.effective_title if atab else None
     if opts.os_window_title == 'current':
         tm = boss.active_tab_manager
         opts.os_window_title = get_os_window_title(tm.os_window_id) if tm else None

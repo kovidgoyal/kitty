@@ -10,7 +10,7 @@ from operator import attrgetter
 from time import monotonic
 from typing import (
     Any, Deque, Dict, Generator, Iterable, Iterator, List, NamedTuple,
-    Optional, Pattern, Sequence, Set, Tuple, Union, cast
+    Optional, Pattern, Sequence, Set, Tuple, Union
 )
 
 from .borders import Border, Borders
@@ -210,7 +210,12 @@ class Tab:  # {{{
 
     @property
     def title(self) -> str:
-        return cast(str, getattr(self.active_window, 'title', appname))
+        w = self.active_window
+        return w.title if w else appname
+
+    @property
+    def effective_title(self) -> str:
+        return self.name or self.title
 
     @property
     def number_of_windows_with_running_programs(self) -> int:
@@ -686,7 +691,7 @@ class Tab:  # {{{
         if field == 'id':
             return bool(pat.pattern == str(self.id))
         if field == 'title':
-            return pat.search(self.name or self.title) is not None
+            return pat.search(self.effective_title) is not None
         return False
 
     def __iter__(self) -> Iterator[Window]:
@@ -709,7 +714,7 @@ class Tab:  # {{{
         self.windows = WindowList(self)
 
     def __repr__(self) -> str:
-        return f'Tab(title={self.name or self.title}, id={hex(id(self))})'
+        return f'Tab(title={self.effective_title}, id={hex(id(self))})'
 
     def make_active(self) -> None:
         tm = self.tab_manager_ref()
