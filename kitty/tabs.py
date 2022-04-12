@@ -20,10 +20,10 @@ from .cli_stub import CLIOptions
 from .constants import appname, kitty_exe
 from .fast_data_types import (
     GLFW_MOUSE_BUTTON_LEFT, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE,
-    add_tab, attach_window, detach_window, get_boss, get_click_interval,
-    get_options, mark_tab_bar_dirty, next_window_id, remove_tab, remove_window,
-    ring_bell, set_active_tab, set_active_window, swap_tabs,
-    sync_os_window_title
+    add_tab, attach_window, current_os_window, detach_window, get_boss,
+    get_click_interval, get_options, mark_tab_bar_dirty, next_window_id,
+    remove_tab, remove_window, ring_bell, set_active_tab, set_active_window,
+    swap_tabs, sync_os_window_title
 )
 from .layout.base import Layout
 from .layout.interface import create_layout_object_for, evict_cached_layouts
@@ -707,6 +707,16 @@ class Tab:  # {{{
         if field == 'recent':
             if active_tab_manager and len(active_tab_manager.tabs):
                 return self is active_tab_manager.nth_active_tab(int(query))
+            return False
+        if field == 'state':
+            if query == 'active':
+                return active_tab_manager is not None and self is active_tab_manager.active_tab
+            if query == 'focused':
+                return active_tab_manager is not None and self is active_tab_manager.active_tab and self.os_window_id == current_os_window()
+            if query == 'needs_attention':
+                for w in self:
+                    if w.needs_attention:
+                        return True
             return False
         return False
 

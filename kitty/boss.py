@@ -346,7 +346,9 @@ class Boss:
         def get_matches(location: str, query: str, candidates: Set[int]) -> Set[int]:
             return {wid for wid in candidates if self.window_id_map[wid].matches_query(location, query, tab)}
 
-        for wid in search(match, ('id', 'title', 'pid', 'cwd', 'cmdline', 'num', 'env', 'recent',), set(self.window_id_map), get_matches):
+        for wid in search(match, (
+                'id', 'title', 'pid', 'cwd', 'cmdline', 'num', 'env', 'recent', 'state'
+        ), set(self.window_id_map), get_matches):
             yield self.window_id_map[wid]
 
     def tab_for_window(self, window: Window) -> Optional[Tab]:
@@ -365,7 +367,9 @@ class Boss:
             return {wid for wid in candidates if tim[wid].matches_query(location, query, tm)}
 
         found = False
-        for tid in search(match, ('id', 'index', 'title', 'window_id', 'window_title', 'pid', 'cwd', 'env', 'cmdline', 'recent',), set(tim), get_matches):
+        for tid in search(match, (
+                'id', 'index', 'title', 'window_id', 'window_title', 'pid', 'cwd', 'env', 'cmdline', 'recent', 'state'
+        ), set(tim), get_matches):
             found = True
             yield tim[tid]
 

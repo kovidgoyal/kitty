@@ -660,7 +660,15 @@ class Window:
                     if field == 'num':
                         return active_tab.get_nth_window(q) is self
                     return active_tab.nth_active_window_id(q) == self.id
-                return False
+            return False
+        if field == 'state':
+            if query == 'active':
+                return active_tab is not None and self is active_tab.active_window
+            if query == 'focused':
+                return active_tab is not None and self is active_tab.active_window and current_os_window() == self.os_window_id
+            if query == 'needs_attention':
+                return self.needs_attention
+            return False
         pat = compile_match_query(query, field != 'env')
         return self.matches(field, pat)
 
