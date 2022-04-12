@@ -18,59 +18,26 @@ class CloseTab(RemoteCommand):
     '''
     match: Which tab to close
     self: Boolean indicating whether to close the tab of the window the command is run in
-    target_group: The target group to close
     '''
 
     short_desc = 'Close the specified tab(s)'
+    desc = '''\
+Close an arbitrary set of tags. The :code:`--match` option can be used to specify complex sets of tabs to close. For example, to close
+all non-focused tabs in the currently focused OS window, use:
+
+    kitty @ close-tab --match "not state:focused and state:parent_focused"
+'''
     options_spec = MATCH_TAB_OPTION + '''\n
 --self
 type=bool-set
 If specified close the tab of the window this command is run in, rather than the active tab.
-
-
---target-group
-choices=inactive-in-os-window,inactive,others,others-in-os-window,none
-default=none
-Close the specified group of tabs. When specified, this option takes precedence over other
-options controlling which tabs to close.
-inactive is all tabs in the kitty instance except the currently active tab.
-inactive-in-os-window is the same as inactive except restricted to the OS Window with the currently active tab
-others is all tabs except the tab containing the window this command was run in
-others-in-os-window is the same as others except restricted to the OS window this command was run in
 '''
     argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'match': opts.match, 'self': opts.self, 'target_group': opts.target_group}
+        return {'match': opts.match, 'self': opts.self}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        g = payload_get('target_group')
-        if g == 'others' and window:
-            avoid = boss.tab_for_window(window)
-            for tab in boss.all_tabs:
-                if tab is not avoid:
-                    boss.close_tab_no_confirm(tab)
-        elif g == 'others-in-os-window' and window:
-            avoid = boss.tab_for_window(window)
-            if avoid:
-                tm = boss.os_window_map[avoid.os_window_id]
-                for tab in tm:
-                    if tab is not avoid:
-                        boss.close_tab_no_confirm(tab)
-        elif g == 'inactive':
-            avoid = boss.active_tab
-            for tab in boss.all_tabs:
-                if tab is not avoid:
-                    boss.close_tab_no_confirm(tab)
-        elif g == 'inactive-in-os-window':
-            avoid = boss.active_tab
-            if avoid:
-                tm = boss.os_window_map[avoid.os_window_id]
-                for tab in tm:
-                    if tab is not avoid:
-                        boss.close_tab_no_confirm(tab)
-        if g != 'none':
-            return None
         for tab in self.tabs_for_match_payload(boss, window, payload_get):
             if tab:
                 boss.close_tab_no_confirm(tab)
