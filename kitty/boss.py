@@ -11,8 +11,8 @@ from functools import partial
 from gettext import gettext as _
 from time import monotonic
 from typing import (
-    Any, Callable, Container, Dict, Iterable, Iterator, List, Optional,
-    Sequence, Set, Tuple, Union
+    Any, Callable, Container, Dict, Iterable, Iterator, List, Optional, Set,
+    Tuple, Union
 )
 from weakref import WeakValueDictionary
 
@@ -274,7 +274,7 @@ class Boss:
         for sc in self.global_shortcuts.values():
             self.keymap.pop(sc, None)
 
-    def startup_first_child(self, os_window_id: Optional[int], startup_sessions: Sequence[Optional[Session]] = ()) -> None:
+    def startup_first_child(self, os_window_id: Optional[int], startup_sessions: Iterable[Session] = ()) -> None:
         si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
         for startup_session in si:
             self.add_os_window(startup_session, os_window_id=os_window_id)
@@ -723,7 +723,7 @@ class Boss:
     def toggle_macos_secure_keyboard_entry(self) -> None:
         toggle_secure_input()
 
-    def start(self, first_os_window_id: int) -> None:
+    def start(self, first_os_window_id: int, startup_sessions: Iterable[Session]) -> None:
         if not getattr(self, 'io_thread_started', False):
             self.child_monitor.start()
             self.io_thread_started = True
@@ -734,7 +734,7 @@ class Boss:
                 self.startup_first_child(first_os_window_id, startup_sessions=tuple(sess))
                 self.launch_urls(*urls)
             else:
-                self.startup_first_child(first_os_window_id)
+                self.startup_first_child(first_os_window_id, startup_sessions=startup_sessions)
 
         if get_options().update_check_interval > 0 and not self.update_check_started and getattr(sys, 'frozen', False):
             from .update_check import run_update_check

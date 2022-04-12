@@ -149,7 +149,7 @@ For example:
 
     # Create a new OS window
     new_os_window
-    # set new window size to 80x25 cells
+    # set new window size to 80x25 cells (if specifed before new_os_window will apply to first OS window)
     os_window_size 80c 25c
     # set the --class for the new OS window
     os_window_class mywindow

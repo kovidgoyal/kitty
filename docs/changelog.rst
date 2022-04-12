@@ -39,6 +39,9 @@ Detailed list of changes
 
 - Remote control: Allow using :ref:`Boolean operators <search_syntax>` when constructing queries to match windows or tabs
 
+- Sessions: Fix :code:`os_window_size` and :code:`os_window_class` not applying to the first OS Window (:iss:`4957`)
+
+
 0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -29,7 +29,7 @@ from .fonts.render import set_font_family
 from .options.types import Options
 from .options.utils import DELETE_ENV_VAR
 from .os_window_size import initial_window_size_func
-from .session import get_os_window_sizing_data
+from .session import create_sessions, get_os_window_sizing_data
 from .types import SingleKey
 from .utils import (
     cleanup_ssh_control_masters, detach, expandvars, log_error,
@@ -168,14 +168,16 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ())
     if not is_wayland() and not is_macos:  # no window icons on wayland
         set_x11_window_icon()
     with cached_values_for(run_app.cached_values_name) as cached_values:
+        startup_sessions = tuple(create_sessions(opts, args, default_session=opts.startup_session))
+        wincls = (startup_sessions[0].os_window_class if startup_sessions else '') or args.cls or appname
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(
-                    run_app.initial_window_size_func(get_os_window_sizing_data(opts), cached_values),
+                    run_app.initial_window_size_func(get_os_window_sizing_data(opts, startup_sessions[0] if startup_sessions else None), cached_values),
                     pre_show_callback,
                     args.title or appname, args.name or args.cls or appname,
-                    args.cls or appname, load_all_shaders, disallow_override_title=bool(args.title))
+                    wincls, load_all_shaders, disallow_override_title=bool(args.title))
         boss = Boss(opts, args, cached_values, global_shortcuts)
-        boss.start(window_id)
+        boss.start(window_id, startup_sessions)
         if bad_lines:
             boss.show_bad_config_lines(bad_lines)
         try:

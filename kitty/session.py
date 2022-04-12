@@ -3,17 +3,16 @@
 
 import shlex
 import sys
-from typing import Generator, List, Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Generator, Iterator, List, Optional, Union
 
 from .cli_stub import CLIOptions
-from .options.utils import to_layout_names, window_size
 from .constants import kitty_exe
 from .layout.interface import all_layouts
 from .options.types import Options
+from .options.utils import to_layout_names, window_size
 from .os_window_size import WindowSize, WindowSizeData, WindowSizes
 from .typing import SpecialWindowInstance
 from .utils import log_error, resolved_shell
-
 
 if TYPE_CHECKING:
     from .window import CwdRequest
@@ -153,7 +152,7 @@ def create_sessions(
     cwd_from: Optional['CwdRequest'] = None,
     respect_cwd: bool = False,
     default_session: Optional[str] = None
-) -> Generator[Session, None, None]:
+) -> Iterator[Session]:
     if args and args.session:
         if isinstance(args.session, PreReadSession):
             session_data = '' + str(args.session)
