@@ -29,12 +29,12 @@ If specified close the tab of the window this command is run in, rather than the
 
 
 --target-group
-choices=unactive-in-os-window,unactive,others,others-in-os-window,none
+choices=inactive-in-os-window,inactive,others,others-in-os-window,none
 default=none
 Close the specified group of tabs. When specified, this option takes precedence over other
 options controlling which tabs to close.
-unactive is all tabs in the kitty instance except the currently active tab.
-unactive-in-os-window is the same as unactive except restricted to the OS Window with the currently active tab
+inactive is all tabs in the kitty instance except the currently active tab.
+inactive-in-os-window is the same as inactive except restricted to the OS Window with the currently active tab
 others is all tabs except the tab containing the window this command was run in
 others-in-os-window is the same as others except restricted to the OS window this command was run in
 '''
@@ -57,12 +57,12 @@ others-in-os-window is the same as others except restricted to the OS window thi
                 for tab in tm:
                     if tab is not avoid:
                         boss.close_tab_no_confirm(tab)
-        elif g == 'unactive':
+        elif g == 'inactive':
             avoid = boss.active_tab
             for tab in boss.all_tabs:
                 if tab is not avoid:
                     boss.close_tab_no_confirm(tab)
-        elif g == 'unactive-in-os-window':
+        elif g == 'inactive-in-os-window':
             avoid = boss.active_tab
             if avoid:
                 tm = boss.os_window_map[avoid.os_window_id]
