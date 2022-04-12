@@ -230,6 +230,7 @@ class Boss:
         global_shortcuts: Dict[str, SingleKey]
     ):
         set_layout_options(opts)
+        self.update_check_started = False
         self.clipboard_buffers: Dict[str, str] = {}
         self.update_check_process: Optional['PopenType[bytes]'] = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
@@ -735,7 +736,7 @@ class Boss:
             else:
                 self.startup_first_child(first_os_window_id)
 
-        if get_options().update_check_interval > 0 and not hasattr(self, 'update_check_started') and getattr(sys, 'frozen', False):
+        if get_options().update_check_interval > 0 and not self.update_check_started and getattr(sys, 'frozen', False):
             from .update_check import run_update_check
             run_update_check(get_options().update_check_interval * 60 * 60)
             self.update_check_started = True
