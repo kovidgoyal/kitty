@@ -76,7 +76,9 @@ ArgsType = List[str]
 MATCH_WINDOW_OPTION = '''\
 --match -m
 The window to match. Match specifications are of the form:
-:italic:`field:regexp`. Where field can be one of: id, title, pid, cwd, cmdline, num, env, state and recent.
+:italic:`field:regexp`. Where field can be one of:
+:code:`id`, :code:`title`, :code:`pid`, :code:`cwd`, :code:`cmdline`,
+:code:`num`, :code:`env`, :code:`state` and :code:`recent`.
 You can use the :italic:`ls` command to get a list of windows. Expressions can
 be :ref:`combined using Boolean operators <search_syntax>`. Note that for
 numeric fields such as :code:`id`, :code:`pid`, :code:`recent` and :code:`num` the expression is interpreted as a number,
@@ -96,15 +98,16 @@ MATCH_TAB_OPTION = '''\
 --match -m
 The tab to match. Match specifications are of the form:
 :italic:`field:regexp`. Where field can be one of:
-id, index, title, window_id, window_title, pid, cwd, env, cmdline and recent.
+:code:`id`, :code:`index`, :code:`title`, :code:`window_id`,
+:code:`window_title`, :code:`pid`, :code:`cwd`, :code:`env`, :code:`cmdline` and :code:`recent`.
 You can use the :italic:`ls` command to get a list of tabs. Expressions can
 be :ref:`combined using Boolean operators <search_syntax>`. Note that for
-numeric fields such as id, recent, index and pid the expression is interpreted as a number,
-not a regular expression. When using title or id, first a matching tab is
+numeric fields such as :code:`id`, :code:`recent`, :code:`index` or :code:`pid` the expression
+is interpreted as a number, not a regular expression. When using :code:`title` or :code:`id`, first a matching tab is
 looked for and if not found a matching window is looked for, and the tab
-for that window is used. You can also use window_id and window_title to match
-the tab that contains the window with the specified id or title. The index number
-is used to match the nth tab in the currently active OS window. The recent number
+for that window is used. You can also use :code:`window_id` and :code:`window_title` to match
+the tab that contains the window with the specified id or title. The :code:`index` number
+is used to match the nth tab in the currently active OS window. The :code:`recent` number
 matches recently active tabs in the currently active OS window, with zero being the currently
 active tab, one the previously active tab and so on. The field :code:`state` matches
 on the state of the tab. Supported states are: :code:`active`, :code:`focused` and :code:`needs_attention`.
