@@ -149,6 +149,11 @@ def doc(x: str) -> str:
     return website_url(x)
 
 
+@role
+def ref(x: str) -> str:
+    return re.sub(r'\s*<.+?>', '', x)
+
+
 OptionSpecSeq = List[Union[str, OptionDict]]
 
 
