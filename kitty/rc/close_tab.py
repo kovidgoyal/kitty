@@ -69,7 +69,7 @@ others-in-os-window is the same as others except restricted to the OS window thi
                 for tab in tm:
                     if tab is not avoid:
                         boss.close_tab_no_confirm(tab)
-        if g:
+        if g != 'none':
             return None
         for tab in self.tabs_for_match_payload(boss, window, payload_get):
             if tab:
