@@ -727,9 +727,9 @@ class Boss:
             self.child_monitor.start()
             self.io_thread_started = True
             urls: List[str] = getattr(sys, 'cmdline_args_for_open', [])
-            sess = create_sessions(get_options(), self.args, special_window=SpecialWindow([kitty_exe(), '+runpy', 'input()']))
             if urls:
                 delattr(sys, 'cmdline_args_for_open')
+                sess = create_sessions(get_options(), self.args, special_window=SpecialWindow([kitty_exe(), '+runpy', 'input()']))
                 self.startup_first_child(first_os_window_id, startup_sessions=tuple(sess))
                 self.launch_urls(*urls)
             else:
