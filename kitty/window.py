@@ -381,6 +381,10 @@ def cmd_output(screen: Screen, which: CommandOutput = CommandOutput.last_run, as
         pht = pagerhist(screen, as_ansi, add_wrap_markers, True)
         if pht:
             lines.insert(0, pht)
+    for i in range(min(len(lines), 3)):
+        x = lines[i]
+        if x.startswith('\x1b]133;C'):
+            lines[i] = x.partition('\\')[-1]
     return ''.join(lines)
 
 
