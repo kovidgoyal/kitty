@@ -27,13 +27,6 @@ def compile_terminfo(base):
         os.makedirs(odir, exist_ok=True)
         ofile = os.path.join(odir, xterm_kitty)
         shutil.move(tfile, ofile)
-        proc = subprocess.run(['tic', '-CrT0', 'terminfo/kitty.terminfo'], capture_output=True)
-        if proc.returncode != 0:
-            sys.stderr.buffer.write(proc.stderr)
-            raise SystemExit(proc.returncode)
-        tcap = proc.stdout.decode('utf-8').splitlines()[-1]
-        with open('terminfo/kitty.termcap', 'w') as f:
-            f.write(tcap)
 
 
 def generate_terminfo():
@@ -45,6 +38,13 @@ def generate_terminfo():
 
     with open('terminfo/kitty.terminfo', 'w') as f:
         f.write(generate_terminfo())
+    proc = subprocess.run(['tic', '-CrT0', 'terminfo/kitty.terminfo'], capture_output=True)
+    if proc.returncode != 0:
+        sys.stderr.buffer.write(proc.stderr)
+        raise SystemExit(proc.returncode)
+    tcap = proc.stdout.decode('utf-8').splitlines()[-1]
+    with open('terminfo/kitty.termcap', 'w') as f:
+        f.write(tcap)
 
     compile_terminfo(os.path.join(base, 'terminfo'))
 
