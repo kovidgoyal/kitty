@@ -78,6 +78,8 @@ _ksi_prompt=(
 )
 
 _ksi_main() {
+    builtin local ifs="$IFS"
+    IFS=" "
     for i in ${KITTY_SHELL_INTEGRATION[@]}; do
         case "$i" in
             "no-cursor") _ksi_prompt[cursor]='n';;
@@ -87,6 +89,7 @@ _ksi_main() {
             "no-cwd") _ksi_prompt[cwd]='n';;
         esac
     done
+    IFS="$ifs"
 
     builtin unset KITTY_SHELL_INTEGRATION
 
