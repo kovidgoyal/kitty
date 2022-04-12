@@ -717,6 +717,10 @@ class Tab:  # {{{
                 for w in self:
                     if w.needs_attention:
                         return True
+            if query == 'parent_active':
+                return active_tab_manager is not None and self.tab_manager_ref() is active_tab_manager
+            if query == 'parent_focused':
+                return active_tab_manager is not None and self.tab_manager_ref() is active_tab_manager and self.os_window_id == current_os_window()
             return False
         return False
 

@@ -668,6 +668,10 @@ class Window:
                 return active_tab is not None and self is active_tab.active_window and current_os_window() == self.os_window_id
             if query == 'needs_attention':
                 return self.needs_attention
+            if query == 'parent_active':
+                return active_tab is not None and self.tabref() is active_tab
+            if query == 'parent_focused':
+                return active_tab is not None and self.tabref() is active_tab and current_os_window() == self.os_window_id
             return False
         pat = compile_match_query(query, field != 'env')
         return self.matches(field, pat)

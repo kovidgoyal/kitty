@@ -90,7 +90,8 @@ active windows in the currently active tab, with zero being the currently active
 window and so on. When using the :italic:`env` field
 to match on environment variables you can specify only the environment variable name or a name
 and value, for example, :italic:`env:MY_ENV_VAR=2`. The field :code:`state` matches
-on the state of the window. Supported states are: :code:`active`, :code:`focused` and :code:`needs_attention`.
+on the state of the window. Supported states are:
+:code:`active`, :code:`focused`, :code:`needs_attention`, :code:`parent_active` and :code:`parent_focused`.
 Active windows are windows that are the active window in their parent tab. There is only one focused window
 and it is the window to which keyboard events are delivered.
 '''
@@ -110,7 +111,8 @@ the tab that contains the window with the specified id or title. The :code:`inde
 is used to match the nth tab in the currently active OS window. The :code:`recent` number
 matches recently active tabs in the currently active OS window, with zero being the currently
 active tab, one the previously active tab and so on. The field :code:`state` matches
-on the state of the tab. Supported states are: :code:`active`, :code:`focused` and :code:`needs_attention`.
+on the state of the tab. Supported states are:
+:code:`active`, :code:`focused`, :code:`needs_attention`, :code:`parent_active` and :code:`parent_focused`.
 Active tabs are tabs that are the active tab in their parent OS Window. There is only one focused tab
 and it is the tab to which keyboard events are delivered.
 '''
