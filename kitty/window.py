@@ -7,8 +7,9 @@ import re
 import sys
 import weakref
 from collections import deque
+from contextlib import suppress
 from enum import Enum, IntEnum, auto
-from functools import partial
+from functools import lru_cache, partial
 from gettext import gettext as _
 from itertools import chain
 from time import monotonic
@@ -20,7 +21,7 @@ from typing import (
 from .child import ProcessDesc
 from .cli_stub import CLIOptions
 from .config import build_ansi_color_table
-from .constants import appname, is_macos, wakeup, config_dir
+from .constants import appname, config_dir, is_macos, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
     CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK,
@@ -111,6 +112,19 @@ def process_title_from_child(title: str, is_base64: bool) -> str:
         except Exception:
             title = 'undecodeable title'
     return sanitize_title(title)
+
+
+@lru_cache(maxsize=64)
+def compile_match_query(exp: str, is_simple: bool = True) -> MatchPatternType:
+    if is_simple:
+        pat: MatchPatternType = re.compile(exp)
+    else:
+        kp, vp = exp.partition('=')[::2]
+        if vp:
+            pat = re.compile(kp), re.compile(vp)
+        else:
+            pat = re.compile(kp), None
+    return pat
 
 
 class WindowDict(TypedDict):
@@ -621,9 +635,9 @@ class Window:
         assert not isinstance(pat, tuple)
 
         if field in ('id', 'window_id'):
-            return True if pat.pattern == str(self.id) else False
+            return pat.pattern == str(self.id)
         if field == 'pid':
-            return True if pat.pattern == str(self.child.pid) else False
+            return pat.pattern == str(self.child.pid)
         if field == 'title':
             return pat.search(self.override_title or self.title) is not None
         if field in 'cwd':
@@ -634,6 +648,21 @@ class Window:
                     return True
             return False
         return False
+
+    def matches_query(self, field: str, query: str, active_tab: Optional[TabType] = None) -> bool:
+        if field in ('num', 'recent'):
+            if active_tab is not None:
+                try:
+                    q = int(query)
+                except Exception:
+                    return False
+                with suppress(Exception):
+                    if field == 'num':
+                        return active_tab.get_nth_window(q) is self
+                    return active_tab.nth_active_window_id(q) == self.id
+                return False
+        pat = compile_match_query(query, field != 'env')
+        return self.matches(field, pat)
 
     def set_visible_in_layout(self, val: bool) -> None:
         val = bool(val)

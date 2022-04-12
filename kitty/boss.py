@@ -12,7 +12,7 @@ from gettext import gettext as _
 from time import monotonic
 from typing import (
     Any, Callable, Container, Dict, Iterable, Iterator, List, Optional,
-    Sequence, Tuple, Union
+    Sequence, Set, Tuple, Union
 )
 from weakref import WeakValueDictionary
 
@@ -62,7 +62,7 @@ from .utils import (
     platform_window_id, remove_socket_file, safe_print, set_primary_selection,
     single_instance, startup_notification_handler, which
 )
-from .window import CommandOutput, CwdRequest, MatchPatternType, Window
+from .window import CommandOutput, CwdRequest, Window
 
 
 class OSWindowDict(TypedDict):
@@ -340,42 +340,14 @@ class Boss:
             yield from tab
 
     def match_windows(self, match: str) -> Iterator[Window]:
-        try:
-            field, exp = match.split(':', 1)
-        except ValueError:
-            return
-        if field == 'num':
-            tab = self.active_tab
-            if tab is not None:
-                try:
-                    w = tab.get_nth_window(int(exp))
-                except Exception:
-                    return
-                if w is not None:
-                    yield w
-            return
-        if field == 'recent':
-            tab = self.active_tab
-            if tab is not None:
-                try:
-                    num = int(exp)
-                except Exception:
-                    return
-                w = self.window_id_map.get(tab.nth_active_window_id(num))
-                if w is not None:
-                    yield w
-            return
-        if field != 'env':
-            pat: MatchPatternType = re.compile(exp)
-        else:
-            kp, vp = exp.partition('=')[::2]
-            if vp:
-                pat = re.compile(kp), re.compile(vp)
-            else:
-                pat = re.compile(kp), None
-        for window in self.all_windows:
-            if window.matches(field, pat):
-                yield window
+        from .search_query_parser import search
+        tab = self.active_tab
+
+        def get_matches(location: str, query: str, candidates: Set[int]) -> Set[int]:
+            return {wid for wid in candidates if self.window_id_map[wid].matches_query(location, query, tab)}
+
+        for wid in search(match, ('id', 'title', 'pid', 'cwd', 'cmdline', 'num', 'env', 'recent',), set(self.window_id_map), get_matches):
+            yield self.window_id_map[wid]
 
     def tab_for_window(self, window: Window) -> Optional[Tab]:
         for tab in self.all_tabs:
@@ -385,41 +357,18 @@ class Boss:
         return None
 
     def match_tabs(self, match: str) -> Iterator[Tab]:
-        try:
-            field, exp = match.split(':', 1)
-        except ValueError:
-            return
-        pat = re.compile(exp)
+        from .search_query_parser import search
+        tm = self.active_tab_manager
+        tim = {t.id: t for t in self.all_tabs}
+
+        def get_matches(location: str, query: str, candidates: Set[int]) -> Set[int]:
+            return {wid for wid in candidates if tim[wid].matches_query(location, query, tm)}
+
         found = False
-        if field in ('title', 'id'):
-            for tab in self.all_tabs:
-                if tab.matches(field, pat):
-                    yield tab
-                    found = True
-        elif field in ('window_id', 'window_title'):
-            wf = field.split('_')[1]
-            tabs = {self.tab_for_window(w) for w in self.match_windows(f'{wf}:{exp}')}
-            for q in tabs:
-                if q:
-                    found = True
-                    yield q
-        elif field == 'index':
-            tm = self.active_tab_manager
-            if tm is not None and len(tm.tabs) > 0:
-                idx = (int(pat.pattern) + len(tm.tabs)) % len(tm.tabs)
-                found = True
-                yield tm.tabs[idx]
-        elif field == 'recent':
-            tm = self.active_tab_manager
-            if tm is not None and len(tm.tabs) > 0:
-                try:
-                    num = int(exp)
-                except Exception:
-                    return
-                q = tm.nth_active_tab(num)
-                if q is not None:
-                    found = True
-                    yield q
+        for tid in search(match, ('id', 'index', 'title', 'window_id', 'window_title', 'pid', 'cwd', 'env', 'cmdline', 'recent',), set(tim), get_matches):
+            found = True
+            yield tim[tid]
+
         if not found:
             tabs = {self.tab_for_window(w) for w in self.match_windows(match)}
             for q in tabs:

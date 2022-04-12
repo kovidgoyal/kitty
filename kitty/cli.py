@@ -151,7 +151,7 @@ def doc(x: str) -> str:
 
 @role
 def ref(x: str) -> str:
-    return re.sub(r'\s*<.+?>', '', x)
+    return re.sub(r'\s*<\S+?>', '', x)
 
 
 OptionSpecSeq = List[Union[str, OptionDict]]

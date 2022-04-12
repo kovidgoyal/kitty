@@ -178,6 +178,24 @@ The remote control protocol
 If you wish to develop your own client to talk to |kitty|, you
 can use the :doc:`protocol specification <rc_protocol>`.
 
+
+.. _search_syntax:
+
+Matching windows and tabs
+----------------------------
+
+Many remote control operations operate on windows or tabs. To select these,
+the :code:`--match` option is often used. This allows matching using various
+sophisticated criteria such as title, ids, cmdlines, etc. These criteria are
+expressions of the form :code:`field:query`. Where field is the field against
+which to match and query is the expression to match. They can be further
+combined using Boolean operators, best illustrated with some examples::
+
+    title:"My special window" or id:43
+    title:bash and env:USER=kovid
+    not id:1
+    (id:2 or id:3) and title:something
+
 .. toctree::
    :hidden:
 

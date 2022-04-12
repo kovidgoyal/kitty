@@ -34,6 +34,11 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
+0.25.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Remote control: Allow using :ref:`Boolean operators <search_syntax>` when constructing queries to match windows or tabs
+
 0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
