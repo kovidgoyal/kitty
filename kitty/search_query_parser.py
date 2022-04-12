@@ -223,13 +223,15 @@ class Parser:
         return self.base_token()
 
     def base_token(self) -> SearchTreeNode:
-        tt = self.token(advance=True)
-        assert tt is not None
         if self.token_type() is TokenType.QUOTED_WORD:
+            tt = self.token(advance=True)
+            assert tt is not None
             if self.allow_no_location:
                 return TokenNode('all', tt)
             raise ParseException(f'No location specified before {tt}')
 
+        tt = self.token(advance=True)
+        assert tt is not None
         words = tt.split(':')
         # The complexity here comes from having colon-separated search
         # values. That forces us to check that the first "word" in a colon-
