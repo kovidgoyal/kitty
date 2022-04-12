@@ -72,7 +72,7 @@ If the server is running FreeBSD, or another system that relies on termcap
 rather than terminfo, you will need to convert the terminfo file on your local
 machine by running (on local machine with |kitty|)::
 
-    infocmp -C xterm-kitty
+    infocmp -CrT0 xterm-kitty
 
 The output of this command is the termcap description, which should be appended
 to :file:`/usr/share/misc/termcap` on the remote server. Then run the following

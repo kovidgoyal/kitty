@@ -4,7 +4,6 @@
 
 import glob
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -13,11 +12,10 @@ import tempfile
 
 def compile_terminfo(base):
     with tempfile.TemporaryDirectory() as tdir:
-        proc = subprocess.run(['tic', '-x', f'-o{tdir}', 'terminfo/kitty.terminfo'], check=True, stderr=subprocess.PIPE)
-        regex = '^"terminfo/kitty.terminfo", line [0-9]+, col [0-9]+, terminal \'xterm-kitty\': older tic versions may treat the description field as an alias$'
-        for error in proc.stderr.decode('utf-8').splitlines():
-            if not re.match(regex, error):
-                print(error, file=sys.stderr)
+        proc = subprocess.run(['tic', '-x', f'-o{tdir}', 'terminfo/kitty.terminfo'], capture_output=True)
+        if proc.returncode != 0:
+            sys.stderr.buffer.write(proc.stderr)
+            raise SystemExit(proc.returncode)
         tfiles = glob.glob(os.path.join(tdir, '*', 'xterm-kitty'))
         if not tfiles:
             raise SystemExit('tic failed to output the compiled kitty terminfo file')
@@ -29,6 +27,13 @@ def compile_terminfo(base):
         os.makedirs(odir, exist_ok=True)
         ofile = os.path.join(odir, xterm_kitty)
         shutil.move(tfile, ofile)
+        proc = subprocess.run(['tic', '-CrT0', 'terminfo/kitty.terminfo'], capture_output=True)
+        if proc.returncode != 0:
+            sys.stderr.buffer.write(proc.stderr)
+            raise SystemExit(proc.returncode)
+        tcap = proc.stdout.decode('utf-8').splitlines()[-1]
+        with open('terminfo/kitty.termcap', 'w') as f:
+            f.write(tcap)
 
 
 def generate_terminfo():
