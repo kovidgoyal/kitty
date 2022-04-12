@@ -26,6 +26,7 @@ version: Version = Version(0, 25, 0)
 str_version: str = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 is_macos: bool = 'darwin' in _plat
+is_freebsd: bool = 'freebsd' in _plat
 is_running_from_develop: bool = False
 if getattr(sys, 'frozen', False):
     extensions_dir: str = getattr(sys, 'kitty_extensions_dir')

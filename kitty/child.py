@@ -7,12 +7,15 @@ import sys
 from collections import defaultdict
 from contextlib import contextmanager, suppress
 from typing import (
-    DefaultDict, Dict, Generator, List, Optional, Sequence, Tuple, TYPE_CHECKING
+    TYPE_CHECKING, DefaultDict, Dict, Generator, List, Optional, Sequence,
+    Tuple
 )
 
 import kitty.fast_data_types as fast_data_types
 
-from .constants import is_macos, kitty_base_dir, shell_path, terminfo_dir
+from .constants import (
+    is_freebsd, is_macos, kitty_base_dir, shell_path, terminfo_dir
+)
 from .types import run_once
 from .utils import log_error, which
 
@@ -48,9 +51,18 @@ else:
         with open(f'/proc/{pid}/cmdline', 'rb') as f:
             return list(filter(None, f.read().decode('utf-8').split('\0')))
 
-    def cwd_of_process(pid: int) -> str:
-        ans = f'/proc/{pid}/cwd'
-        return os.path.realpath(ans)
+    if is_freebsd:
+        def cwd_of_process(pid: int) -> str:
+            import subprocess
+            cp = subprocess.run(['pwdx', str(pid)], capture_output=True)
+            if cp.returncode != 0:
+                raise ValueError(f'Failed to find cwd of process with pid: {pid}')
+            ans = cp.stdout.decode('utf-8', 'replace').split()[1]
+            return os.path.realpath(ans)
+    else:
+        def cwd_of_process(pid: int) -> str:
+            ans = f'/proc/{pid}/cwd'
+            return os.path.realpath(ans)
 
     def _environ_of_process(pid: int) -> str:
         with open(f'/proc/{pid}/environ', 'rb') as f:
