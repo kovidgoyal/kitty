@@ -370,7 +370,7 @@ clone-in-kitty() {
     while [ $pos -lt ${#data} ]; do
         builtin local chunk="${data:$pos:2048}"
         pos=$(($pos+2048))
-        builtin print -nu "$_ksi_fd" '\eP@kitty-clone|'"${chunk}:"'\e\\'
+        builtin print -nu "$_ksi_fd" -f '\eP@kitty-clone|%s:%s\e\\' "${chunk_num}" "${chunk}"
         chunk_num=$(($chunk_num+1))
     done
     builtin print -nu "$_ksi_fd" '\eP@kitty-clone|\e\\'

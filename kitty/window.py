@@ -1022,7 +1022,7 @@ class Window:
         num, rest = msg.split(':', 1)
         if num == '0' or len(self.current_clone_data) > 1024 * 1024:
             self.current_clone_data = ''
-        self.current_clone_data += msg
+        self.current_clone_data += rest
 
     def handle_remote_askpass(self, msg: str) -> None:
         from .shm import SharedMemory
