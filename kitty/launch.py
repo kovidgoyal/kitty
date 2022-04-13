@@ -532,4 +532,11 @@ def clone_and_launch(msg: str, window: Window) -> None:
         cmdline = []
     if not cmdline:
         cmdline = list(window.child.argv)
+    ssh_kitten_cmdline = window.ssh_kitten_cmdline()
+    if ssh_kitten_cmdline:
+        from kittens.ssh.main import set_cwd_in_cmdline
+        cmdline[:] = ssh_kitten_cmdline
+        if opts.cwd:
+            set_cwd_in_cmdline(opts.cwd, cmdline)
+            opts.cwd = None
     launch(get_boss(), opts, cmdline, base_env=env)
