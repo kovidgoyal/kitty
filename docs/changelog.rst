@@ -41,6 +41,8 @@ Detailed list of changes
 
 - Sessions: Fix :code:`os_window_size` and :code:`os_window_class` not applying to the first OS Window (:iss:`4957`)
 
+- Allow using the cwd of the oldest as well as the newest foreground process for :option:`launch --cwd` (:disc:`4869`)
+
 
 0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

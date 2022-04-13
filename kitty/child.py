@@ -352,8 +352,7 @@ class Child:
             return cwd_of_process(self.pid)
         return None
 
-    @property
-    def pid_for_cwd(self) -> Optional[int]:
+    def get_pid_for_cwd(self, oldest: bool = False) -> Optional[int]:
         with suppress(Exception):
             assert self.child_fd is not None
             pgrp = os.tcgetpgrp(self.child_fd)
@@ -369,25 +368,32 @@ class Child:
                 # vim
                 # With this script , the foreground process group will contain
                 # both the bash instance running the script and vim.
-                return max(foreground_processes)
+                return min(foreground_processes) if oldest else max(foreground_processes)
         return self.pid
 
     @property
-    def foreground_cwd(self) -> Optional[str]:
+    def pid_for_cwd(self) -> Optional[int]:
+        return self.get_pid_for_cwd()
+
+    def get_foreground_cwd(self, oldest: bool = False) -> Optional[str]:
         with suppress(Exception):
-            assert self.pid_for_cwd is not None
-            return cwd_of_process(self.pid_for_cwd) or None
+            pid = self.get_pid_for_cwd(oldest)
+            if pid is not None:
+                return cwd_of_process(pid) or None
         return None
 
     @property
+    def foreground_cwd(self) -> Optional[str]:
+        return self.get_foreground_cwd()
+
+    @property
     def foreground_environ(self) -> Dict[str, str]:
-        try:
-            assert self.pid_for_cwd is not None
-            return environ_of_process(self.pid_for_cwd)
-        except Exception:
-            try:
-                assert self.pid is not None
-                return environ_of_process(self.pid)
-            except Exception:
-                pass
+        pid = self.pid_for_cwd
+        if pid is not None:
+            with suppress(Exception):
+                return environ_of_process(pid)
+        pid = self.pid
+        if pid is not None:
+            with suppress(Exception):
+                return environ_of_process(pid)
         return {}

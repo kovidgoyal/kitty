@@ -61,6 +61,7 @@ if TYPE_CHECKING:
 class CwdRequestType(Enum):
     current: int = auto()
     last_reported: int = auto()
+    oldest: int = auto()
 
 
 class CwdRequest:
@@ -84,7 +85,7 @@ class CwdRequest:
         reported_cwd = path_from_osc7_url(window.screen.last_reported_cwd) if window.screen.last_reported_cwd else ''
         if reported_cwd and not window.child_is_remote and (self.request_type is CwdRequestType.last_reported or window.at_prompt):
             return reported_cwd
-        return window.cwd_of_child or ''
+        return window.get_cwd_of_child(oldest=self.request_type is CwdRequestType.oldest) or ''
 
     def modify_argv_for_launch_with_cwd(self, argv: List[str]) -> str:
         window = self.window
@@ -1272,9 +1273,12 @@ class Window:
     def cmd_output(self, which: CommandOutput = CommandOutput.last_run, as_ansi: bool = False, add_wrap_markers: bool = False) -> str:
         return cmd_output(self.screen, which, as_ansi, add_wrap_markers)
 
+    def get_cwd_of_child(self, oldest: bool = False) -> Optional[str]:
+        return self.child.get_foreground_cwd(oldest) or self.child.current_cwd
+
     @property
     def cwd_of_child(self) -> Optional[str]:
-        return self.child.foreground_cwd or self.child.current_cwd
+        return self.get_cwd_of_child()
 
     @property
     def child_is_remote(self) -> bool:

@@ -67,7 +67,10 @@ to the newly opened window.
 The working directory for the newly launched child. Use the special value
 :code:`current` to use the working directory of the currently active window.
 The special value :code:`last_reported` uses the last working directory
-reported by the shell (needs :ref:`shell_integration` to work).
+reported by the shell (needs :ref:`shell_integration` to work). The special
+value :code:`oldest` works like :code:`current` but uses the working directory
+of the oldest foreground process associated with the currently active window
+rather than the newest foreground process.
 
 
 --env
@@ -381,6 +384,8 @@ def launch(
                 kw['cwd_from'] = CwdRequest(active)
         elif opts.cwd == 'last_reported':
             if active:
+                kw['cwd_from'] = CwdRequest(active, CwdRequestType.last_reported)
+        elif opts.cwd == 'oldest':
                 kw['cwd_from'] = CwdRequest(active, CwdRequestType.last_reported)
         else:
             kw['cwd'] = opts.cwd
