@@ -486,6 +486,7 @@ def launch(
 def parse_opts_for_clone(args: List[str]) -> LaunchCLIOptions:
     unsafe, unsafe_args = parse_launch_args(args)
     default_opts, default_args = parse_launch_args()
+    # only copy safe options, those that dont lead to local code exec
     for x in (
         'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'env', 'hold',
         'location', 'os_window_class', 'os_window_name', 'os_window_title',
