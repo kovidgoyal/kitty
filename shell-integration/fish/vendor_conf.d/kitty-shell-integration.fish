@@ -22,7 +22,7 @@ not functions -q __ksi_schedule || exit 0
 # Check fish version 3.3.0+ efficiently and fallback to check the minimum working version 3.2.0, exit on outdated versions.
 # "Warning: Update fish to version 3.3.0+ to enable kitty shell integration.\n"
 set -q fish_killring || set -q status_generation || string match -qnv "3.1.*" "$version"
-or echo -en "\eP@kitty-print|V2FybmluZzogVXBkYXRlIGZpc2ggdG8gdmVyc2lvbiAzLjMuMCsgdG8gZW5hYmxlIGtpdHR5IHNoZWxsIGludGVncmF0aW9uLgo=\e\\" && exit 0 || exit 0
+or echo -en "\eP@kitty-print|V2FybmluZzogVXBkYXRlIGZpc2ggdG8gdmVyc2lvbiAzLjMuMCsgdG8gZW5hYmxlIGtpdHR5IHNoZWxsIGludGVncmF0aW9uLgo=\e\\" && exit 0 || exit 0 # "
 
 function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after other scripts have run, we hope"
     functions --erase __ksi_schedule
@@ -106,4 +106,31 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         end
         __update_cwd_osc
     end
+end
+
+
+function clone-in-kitty -d "Clone the current shell session into a new kitty window"
+    set --function data (printf "%s" "$PWD" | command base64)
+    set -l env (command env -0 | command base64)
+    set --function data "pid=$fish_pid,cwd=$data,env=$env"
+    for a in $argv
+        if builtin test "$a" = -h -o "$a" = --help
+            builtin printf "%s\n" "Clone the current fish session into a new kitty window. For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#clone-shell"
+            return 
+        end
+        set --local ea (builtin printf "%s" "$a" | command base64)
+        set --function data "$data,a=$ea"
+    end
+    set --function data (builtin printf "%s" "$data" | command tr -d "\n\t\r ")
+    set --function pos 1
+    set --function chunk_num 0
+    set --function data_len (builtin string length "$data")
+    echo $data_len
+    while test $pos -le $data_len;
+        set -l chunk (builtin string sub -s $pos -l 1024 $data)
+        set --function pos (math $pos + 1024)
+        builtin printf '\eP@kitty-clone|%s:%s\e\\' "$chunk_num" "$chunk" # '
+        set --function chunk_num (math $chunk_num + 1)
+    end
+    builtin printf '\eP@kitty-clone|\e\\' # '
 end
