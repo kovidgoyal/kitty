@@ -115,7 +115,7 @@ function clone-in-kitty -d "Clone the current fish session into a new kitty wind
     set --function data "pid=$fish_pid,cwd=$data,env=$env"
     for a in $argv
         if builtin test "$a" = -h -o "$a" = --help
-            builtin printf "%s\n" "Clone the current fish session into a new kitty window. For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#clone-shell"
+            builtin printf "%s\n\n%s\n" "Clone the current fish session into a new kitty window." "For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#clone-shell"
             return 
         end
         set --local ea (builtin printf "%s" "$a" | command base64)
