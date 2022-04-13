@@ -127,8 +127,8 @@ function clone-in-kitty -d "Clone the current fish session into a new kitty wind
     set --function data_len (builtin string length "$data")
     echo $data_len
     while builtin test $pos -le $data_len;
-        set -l chunk (builtin string sub -s $pos -l 1024 $data)
-        set --function pos (math $pos + 1024)
+        set -l chunk (builtin string sub -s $pos -l 2048 $data)
+        set --function pos (math $pos + 2048)
         builtin printf '\eP@kitty-clone|%s:%s\e\\' "$chunk_num" "$chunk" # '
         set --function chunk_num (math $chunk_num + 1)
     end
