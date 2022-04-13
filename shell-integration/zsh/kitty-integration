@@ -356,7 +356,7 @@ _ksi_deferred_init() {
 }
 
 clone-in-kitty() {
-    builtin local data="pid=$$,cwd=$(builtin pwd -P | builtin command base64),env=$(builtin command env -0 | builtin command base64)"
+    builtin local data="pid=$$,cwd=$(builtin printf "%s" "$PWD" | builtin command base64),env=$(builtin command env -0 | builtin command base64)"
     while :; do
         case "$1" in
             "") break;;

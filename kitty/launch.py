@@ -515,7 +515,7 @@ def clone_and_launch(msg: str, window: Window) -> None:
                         continue
                     env[k] = v
         elif k == 'cwd':
-            cwd = v.rstrip()
+            cwd = v
     opts = parse_opts_for_clone(args)
     if cwd:
         opts.cwd = cwd
