@@ -74,8 +74,9 @@ fi
 builtin declare -A _ksi_prompt
 _ksi_prompt=(
     [cursor]='y' [title]='y' [mark]='y' [complete]='y' [cwd]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]=''
-    [hostname_prefix]='' [sourced]='y' [last_reported_cwd]=''
+    [hostname_prefix]='' [sourced]='y' [last_reported_cwd]='' [argv]="$KITTY_BASH_ORIGINAL_ARGV"
 )
+builtin unset KITTY_BASH_ORIGINAL_ARGV
 
 _ksi_main() {
     builtin local ifs="$IFS"
@@ -267,3 +268,24 @@ _ksi_main() {
 }
 _ksi_main
 builtin unset -f _ksi_main
+
+clone-in-kitty() {
+    builtin local data="argv=${_ksi_prompt[argv]},cwd=$(builtin printf "%s" "$PWD" | builtin command base64),env=$(builtin command env -0 | builtin command base64)"
+    while :; do
+        case "$1" in
+            "") break;;
+            *) data="$data,a=$(builtin printf "%s" "$1" | builtin command base64)";;
+        esac
+        shift
+    done
+    data="${data//[[:space:]]}"
+    builtin local pos=0
+    builtin local chunk_num=0
+    while [ $pos -lt ${#data} ]; do
+        builtin local chunk="${data:$pos:2048}"
+        pos=$(($pos+2048))
+        builtin printf '\eP@kitty-clone|%s:%s\e\\' "${chunk_num}" "${chunk}"
+        chunk_num=$(($chunk_num+1))
+    done
+    builtin printf '\eP@kitty-clone|\e\\'
+}

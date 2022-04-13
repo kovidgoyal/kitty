@@ -2,15 +2,17 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+import base64
+import json
 import os
 import subprocess
 from contextlib import suppress
 from typing import Dict, List, Optional
 
 from .constants import shell_integration_dir
+from .fast_data_types import get_options
 from .options.types import Options, defaults
 from .utils import log_error, which
-from .fast_data_types import get_options
 
 
 def setup_fish_env(env: Dict[str, str], argv: List[str]) -> None:
@@ -133,6 +135,7 @@ def setup_bash_env(env: Dict[str, str], argv: List[str]) -> None:
         return
     env['ENV'] = os.path.join(shell_integration_dir, 'bash', 'kitty.bash')
     env['KITTY_BASH_INJECT'] = ' '.join(inject)
+    env['KITTY_BASH_ORIGINAL_ARGV'] = base64.standard_b64encode(json.dumps(argv).encode('utf-8')).decode('ascii')
     if posix_env:
         env['KITTY_BASH_POSIX_ENV'] = posix_env
     if rcfile:

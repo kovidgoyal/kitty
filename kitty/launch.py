@@ -498,9 +498,11 @@ def parse_opts_for_clone(args: List[str]) -> LaunchCLIOptions:
 
 def clone_and_launch(msg: str, window: Window) -> None:
     import base64
+    import json
 
     from .child import cmdline_of_process
     args = []
+    cmdline: List[str] = []
     env: Optional[Dict[str, str]] = None
     cwd = ''
     pid = -1
@@ -524,16 +526,19 @@ def clone_and_launch(msg: str, window: Window) -> None:
                     env[k] = v
         elif k == 'cwd':
             cwd = v
+        elif k == 'argv':
+            cmdline = json.loads(v)
     opts = parse_opts_for_clone(args)
     if cwd:
         opts.cwd = cwd
     opts.copy_colors = True
-    try:
-        cmdline = cmdline_of_process(pid)
-    except Exception:
-        cmdline = []
-    if not cmdline:
-        cmdline = list(window.child.argv)
+    if pid > -1:
+        try:
+            cmdline = cmdline_of_process(pid)
+        except Exception:
+            cmdline = []
+        if not cmdline:
+            cmdline = list(window.child.argv)
     ssh_kitten_cmdline = window.ssh_kitten_cmdline()
     if ssh_kitten_cmdline:
         from kittens.ssh.main import set_cwd_in_cmdline, set_env_in_cmdline
