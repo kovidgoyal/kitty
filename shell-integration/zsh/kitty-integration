@@ -360,6 +360,10 @@ clone-in-kitty() {
     while :; do
         case "$1" in
             "") break;;
+            -h|--help) 
+                builtin printf "%s\n" "Clone the current zsh session into a new kitty window. For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#clone-shell"
+                return
+                ;;
             *) data="$data,a=$(builtin printf "%s" "$1" | builtin command base64)";;
         esac
         shift
