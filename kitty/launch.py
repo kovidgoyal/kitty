@@ -361,7 +361,7 @@ def launch(
     if opts.os_window_title == 'current':
         tm = boss.active_tab_manager
         opts.os_window_title = get_os_window_title(tm.os_window_id) if tm else None
-    if base_env:
+    if base_env is not None:
         env = base_env.copy()
         env.update(get_env(opts))
     else:
@@ -501,7 +501,7 @@ def clone_and_launch(msg: str, window: Window) -> None:
 
     from .child import cmdline_of_process
     args = []
-    env: Dict[str, str] = {}
+    env: Optional[Dict[str, str]] = None
     cwd = ''
     pid = -1
 
@@ -514,6 +514,7 @@ def clone_and_launch(msg: str, window: Window) -> None:
         if k == 'a':
             args.append(v)
         elif k == 'env':
+            env = {}
             for line in v.split('\0'):
                 if line:
                     try:
@@ -535,9 +536,12 @@ def clone_and_launch(msg: str, window: Window) -> None:
         cmdline = list(window.child.argv)
     ssh_kitten_cmdline = window.ssh_kitten_cmdline()
     if ssh_kitten_cmdline:
-        from kittens.ssh.main import set_cwd_in_cmdline
+        from kittens.ssh.main import set_cwd_in_cmdline, set_env_in_cmdline
         cmdline[:] = ssh_kitten_cmdline
         if opts.cwd:
             set_cwd_in_cmdline(opts.cwd, cmdline)
             opts.cwd = None
+        if env:
+            set_env_in_cmdline(env, cmdline)
+            env = None
     launch(get_boss(), opts, cmdline, base_env=env)

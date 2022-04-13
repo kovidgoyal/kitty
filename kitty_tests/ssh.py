@@ -7,6 +7,7 @@ import os
 import shutil
 import tempfile
 from functools import lru_cache
+from contextlib import suppress
 
 from kittens.ssh.config import load_config
 from kittens.ssh.main import (
@@ -16,7 +17,7 @@ from kittens.ssh.options.types import Options as SSHOptions
 from kittens.ssh.options.utils import DELETE_ENV_VAR
 from kittens.transfer.utils import set_paths
 from kitty.constants import is_macos, runtime_dir
-from kitty.fast_data_types import CURSOR_BEAM
+from kitty.fast_data_types import CURSOR_BEAM, shm_unlink
 from kitty.utils import SSHConnectionData
 
 from . import BaseTest
@@ -243,7 +244,7 @@ copy --exclude */w.* d1
         else:
             test_script = f'echo "UNTAR_DONE"; {test_script}'
         ssh_opts['shell_integration'] = SHELL_INTEGRATION_VALUE or 'disabled'
-        script, replacements, shm = bootstrap_script(
+        script, replacements, shm_name = bootstrap_script(
             SSHOptions(ssh_opts), script_type='py' if 'python' in sh else 'sh', request_id="testing", test_script=test_script,
             request_data=True
         )
@@ -275,4 +276,5 @@ copy --exclude */w.* d1
                 pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
             return pty
         finally:
-            shm.unlink()
+            with suppress(FileNotFoundError):
+                shm_unlink(shm_name)
