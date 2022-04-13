@@ -529,7 +529,7 @@ def clone_and_launch(msg: str, window: Window) -> None:
         elif k == 'argv':
             cmdline = json.loads(v)
     opts = parse_opts_for_clone(args)
-    if cwd:
+    if cwd and not opts.cwd:
         opts.cwd = cwd
     opts.copy_colors = True
     if pid > -1:

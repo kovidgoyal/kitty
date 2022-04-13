@@ -30,6 +30,8 @@ Features
 
 * The text cursor is changed to a bar when editing commands at the shell prompt
 
+* :ref:`clone_shell` with all environment variables and the working directory copied
+
 * Glitch free window resizing even with complex prompts. Achieved by erasing
   the prompt on resize and allowing the shell to redraw it cleanly.
 
@@ -213,6 +215,39 @@ And, by magic, you will be logged into the remote system with fully functional
 shell integration. Alternately, you can :ref:`setup shell integration manually
 <manual_shell_integration>`, by copying the kitty shell integration scripts to
 the remote server and editing the shell rc files there, as described below.
+
+
+.. _clone_shell:
+
+Clone the current shell into a new window
+-----------------------------------------------
+
+You can clone the current shell into a new kitty window by simply running the
+command:
+
+.. code-block:: sh
+
+    clone-in-kitty
+
+This will open a new window running a new shell instance but with all
+environment variables and the current working directory copied. This even
+works over SSH when using :doc:`kittens/ssh`.
+
+The :file:`clone-in-kitty` command takes almost all the same arguments as the
+:doc:`launch <launch>` command, so you can open a new tab instead or a new OS
+window, etc. Arguments of launch that can cause code execution or that don't
+make sense when cloning are ignored. Most prominently, the following options
+are ignored: :option:`launch --allow-remote-control`, :option:`launch
+--copy-cmdline`, :option:`launch --copy-env`, :option:`launch
+--allow-remote-control`, :option:`launch --stdin-source`, :option:`launch
+--marker` and :option:`launch --watcher`.
+
+Some examples:
+
+.. code-block:: sh
+
+    clone-in-kitty --type=tab
+    clone-in-kitty --title "I am a clone"
 
 
 .. _manual_shell_integration:
