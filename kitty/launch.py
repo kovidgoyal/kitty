@@ -386,6 +386,7 @@ def launch(
             if active:
                 kw['cwd_from'] = CwdRequest(active, CwdRequestType.last_reported)
         elif opts.cwd == 'oldest':
+            if active:
                 kw['cwd_from'] = CwdRequest(active, CwdRequestType.last_reported)
         else:
             kw['cwd'] = opts.cwd
