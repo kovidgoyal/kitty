@@ -109,7 +109,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
 end
 
 
-function clone-in-kitty -d "Clone the current shell session into a new kitty window"
+function clone-in-kitty -d "Clone the current fish session into a new kitty window"
     set --function data (printf "%s" "$PWD" | command base64)
     set -l env (command env -0 | command base64)
     set --function data "pid=$fish_pid,cwd=$data,env=$env"
@@ -126,7 +126,7 @@ function clone-in-kitty -d "Clone the current shell session into a new kitty win
     set --function chunk_num 0
     set --function data_len (builtin string length "$data")
     echo $data_len
-    while test $pos -le $data_len;
+    while builtin test $pos -le $data_len;
         set -l chunk (builtin string sub -s $pos -l 1024 $data)
         set --function pos (math $pos + 1024)
         builtin printf '\eP@kitty-clone|%s:%s\e\\' "$chunk_num" "$chunk" # '
