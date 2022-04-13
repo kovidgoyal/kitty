@@ -269,6 +269,9 @@ _ksi_main() {
 _ksi_main
 builtin unset -f _ksi_main
 
+case :$SHELLOPTS: in
+  *:posix:*) ;;
+  *)
 clone-in-kitty() {
     builtin local data="argv=${_ksi_prompt[argv]},cwd=$(builtin printf "%s" "$PWD" | builtin command base64),env=$(builtin command env -0 | builtin command base64)"
     while :; do
@@ -289,3 +292,6 @@ clone-in-kitty() {
     done
     builtin printf '\eP@kitty-clone|\e\\'
 }
+      ;;
+esac
+
