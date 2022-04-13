@@ -473,6 +473,7 @@ class Window:
             self.watchers = global_watchers().copy()
         self.last_focused_at = 0.
         self.started_at = monotonic()
+        self.current_clone_data = ''
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()
@@ -1008,6 +1009,19 @@ class Window:
         tab = boss.tab_for_window(self)
         if tab is not None:
             tab.move_window_to_top_of_group(self)
+
+    def handle_remote_clone(self, msg: str) -> None:
+        if not msg:
+            if self.current_clone_data:
+                cdata, self.current_clone_data = self.current_clone_data, ''
+                from .launch import clone_and_launch
+                clone_and_launch(cdata, self)
+            self.current_clone_data = ''
+            return
+        num, rest = msg.split(':', 1)
+        if num == '0' or len(self.current_clone_data) > 1024 * 1024:
+            self.current_clone_data = ''
+        self.current_clone_data += msg
 
     def handle_remote_askpass(self, msg: str) -> None:
         from .shm import SharedMemory

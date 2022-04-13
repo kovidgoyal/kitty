@@ -10,7 +10,7 @@ from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .constants import kitty_exe, shell_path
 from .fast_data_types import (
-    get_os_window_title, patch_color_profiles, set_clipboard_string
+    get_boss, get_os_window_title, patch_color_profiles, set_clipboard_string
 )
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
@@ -224,7 +224,7 @@ def parse_launch_args(args: Optional[Sequence[str]] = None) -> LaunchSpec:
     return LaunchSpec(opts, args)
 
 
-def get_env(opts: LaunchCLIOptions, active_child: Optional[Child]) -> Dict[str, str]:
+def get_env(opts: LaunchCLIOptions, active_child: Optional[Child] = None) -> Dict[str, str]:
     env: Dict[str, str] = {}
     if opts.copy_env and active_child:
         env.update(active_child.foreground_environ)
@@ -342,7 +342,8 @@ def launch(
     opts: LaunchCLIOptions,
     args: List[str],
     target_tab: Optional[Tab] = None,
-    force_target_tab: bool = False
+    force_target_tab: bool = False,
+    base_env: Optional[Dict[str, str]] = None
 ) -> Optional[Window]:
     active = boss.active_window_for_cwd
     if active:
@@ -357,7 +358,11 @@ def launch(
     if opts.os_window_title == 'current':
         tm = boss.active_tab_manager
         opts.os_window_title = get_os_window_title(tm.os_window_id) if tm else None
-    env = get_env(opts, active_child)
+    if base_env:
+        env = base_env.copy()
+        env.update(get_env(opts))
+    else:
+        env = get_env(opts, active_child)
     kw: LaunchKwds = {
         'allow_remote_control': opts.allow_remote_control,
         'cwd_from': None,
@@ -470,3 +475,55 @@ def launch(
                 new_window.set_logo(opts.logo, opts.logo_position or '', opts.logo_alpha)
             return new_window
     return None
+
+
+def parse_opts_for_clone(args: List[str]) -> LaunchCLIOptions:
+    unsafe, unsafe_args = parse_launch_args(args)
+    default_opts, default_args = parse_launch_args()
+    for x in (
+        'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'env', 'hold',
+        'location', 'os_window_class', 'os_window_name', 'os_window_title',
+        'logo', 'logo_position', 'logo_alpha', 'color'
+    ):
+        setattr(default_opts, x, getattr(unsafe, x))
+    return default_opts
+
+
+def clone_and_launch(msg: str, window: Window) -> None:
+    import base64
+
+    from .child import cmdline_of_process
+    args = []
+    env: Dict[str, str] = {}
+    cwd = ''
+    pid = -1
+
+    for x in msg.split(','):
+        k, v = x.split('=', 1)
+        if k == 'pid':
+            pid = int(v)
+            continue
+        v = base64.standard_b64decode(v).decode('utf-8', 'replace')
+        if k == 'a':
+            args.append(v)
+        elif k == 'env':
+            for line in v.split('\0'):
+                if line:
+                    try:
+                        k, v = line.split('=', 1)
+                    except ValueError:
+                        continue
+                    env[k] = v
+        elif k == 'cwd':
+            cwd = v.rstrip()
+    opts = parse_opts_for_clone(args)
+    if cwd:
+        opts.cwd = cwd
+    opts.copy_colors = True
+    try:
+        cmdline = cmdline_of_process(pid)
+    except Exception:
+        cmdline = []
+    if not cmdline:
+        cmdline = list(window.child.argv)
+    launch(get_boss(), opts, cmdline, base_env=env)
