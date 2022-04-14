@@ -39,6 +39,8 @@ Detailed list of changes
 
 - Shell integration: Add a command to :ref:`clone_shell`
 
+- Shell integration: Fix a regression that bash integration code causing :opt:`shell_integration` configuration not taking effect (:iss:`4955`)
+
 - Remote control: Allow using :ref:`Boolean operators <search_syntax>` when constructing queries to match windows or tabs
 
 - Sessions: Fix :code:`os_window_size` and :code:`os_window_class` not applying to the first OS Window (:iss:`4957`)

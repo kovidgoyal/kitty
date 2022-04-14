@@ -2,6 +2,8 @@
 
 if [[ "$-" != *i* ]] ; then builtin return; fi  # check in interactive mode
 if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then builtin return; fi
+if [[ "$_ksi_sourced" == "y" || "${_ksi_prompt[sourced]}" == "y" ]]; then builtin return; fi  # we have already sourced
+_ksi_sourced="y"
 
 _ksi_inject() {
     # Load the normal bash startup files
@@ -63,14 +65,8 @@ if [ "${BASH_VERSINFO:-0}" -lt 4 ]; then
     builtin return
 fi
 
-if [[ "${_ksi_prompt[sourced]}" == "y" ]]; then
-    # we have already run
-    builtin unset KITTY_SHELL_INTEGRATION
-    builtin return
-fi
-
 # this is defined outside _ksi_main to make it global without using declare -g
-# which is not available on older bash
+# which is not available on bash 4.1 and below
 builtin declare -A _ksi_prompt
 _ksi_prompt=(
     [cursor]='y' [title]='y' [mark]='y' [complete]='y' [cwd]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]=''
@@ -93,6 +89,7 @@ _ksi_main() {
     IFS="$ifs"
 
     builtin unset KITTY_SHELL_INTEGRATION
+    builtin unset _ksi_sourced
 
     _ksi_debug_print() {
         # print a line to STDERR of parent kitty process
