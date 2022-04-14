@@ -54,7 +54,7 @@ _ksi_inject() {
         builtin unset KITTY_BASH_POSIX_ENV
         builtin unset KITTY_BASH_ETC_LOCATION
         builtin unset -f _ksi_safe_source
-        export KITTY_SHELL_INTEGRATION="$ksi_val"
+        builtin export KITTY_SHELL_INTEGRATION="$ksi_val"
     fi
 }
 _ksi_inject
