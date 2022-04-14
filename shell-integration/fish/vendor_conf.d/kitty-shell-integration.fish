@@ -6,7 +6,7 @@
 if set -q KITTY_FISH_XDG_DATA_DIR
     if set -q XDG_DATA_DIRS
         set --global --export --path XDG_DATA_DIRS "$XDG_DATA_DIRS"
-        if set -l index (contains -i "$KITTY_FISH_XDG_DATA_DIR" $XDG_DATA_DIRS)
+        if set --local index (contains --index "$KITTY_FISH_XDG_DATA_DIR" $XDG_DATA_DIRS)
             set --erase --global XDG_DATA_DIRS[$index]
             test -n "$XDG_DATA_DIRS" || set --erase --global XDG_DATA_DIRS
         end
@@ -22,7 +22,7 @@ not functions -q __ksi_schedule || exit 0
 # Check fish version 3.3.0+ efficiently and fallback to check the minimum working version 3.2.0, exit on outdated versions.
 # "Warning: Update fish to version 3.3.0+ to enable kitty shell integration.\n"
 set -q fish_killring || set -q status_generation || string match -qnv "3.1.*" "$version"
-or echo -en "\eP@kitty-print|V2FybmluZzogVXBkYXRlIGZpc2ggdG8gdmVyc2lvbiAzLjMuMCsgdG8gZW5hYmxlIGtpdHR5IHNoZWxsIGludGVncmF0aW9uLgo=\e\\" && exit 0 || exit 0 # "
+or echo -en \eP@kitty-print\|V2FybmluZzogVXBkYXRlIGZpc2ggdG8gdmVyc2lvbiAzLjMuMCsgdG8gZW5hYmxlIGtpdHR5IHNoZWxsIGludGVncmF0aW9uLgo=\e\\ && exit 0 || exit 0
 
 function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after other scripts have run, we hope"
     functions --erase __ksi_schedule
@@ -108,29 +108,33 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     end
 end
 
-
 function clone-in-kitty -d "Clone the current fish session into a new kitty window"
-    set --function data (printf "%s" "$PWD" | command base64)
-    set -l env (command env -0 | command base64)
-    set --function data "pid=$fish_pid,cwd=$data,env=$env"
+    set --local data
     for a in $argv
-        if builtin test "$a" = -h -o "$a" = --help
-            builtin printf "%s\n\n%s\n" "Clone the current fish session into a new kitty window." "For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#clone-shell"
-            return 
+        if contains -- "$a" -h --help
+            echo "Clone the current fish session into a new kitty window."
+            echo
+            echo "For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#clone-shell"
+            return
         end
-        set --local ea (builtin printf "%s" "$a" | command base64)
-        set --function data "$data,a=$ea"
+        set --local ea (printf "%s" "$a" | base64)
+        set --append data "a=$ea"
     end
-    set --function data (builtin printf "%s" "$data" | command tr -d "\n\t\r ")
-    set --function pos 1
-    set --function chunk_num 0
-    set --function data_len (builtin string length "$data")
-    echo $data_len
-    while builtin test $pos -le $data_len;
-        set -l chunk (builtin string sub -s $pos -l 2048 $data)
-        set --function pos (math $pos + 2048)
-        builtin printf '\eP@kitty-clone|%s:%s\e\\' "$chunk_num" "$chunk" # '
-        set --function chunk_num (math $chunk_num + 1)
+    set --local envs
+    for e in (set --export --names)
+        set --append envs "$e=$$e"
     end
-    builtin printf '\eP@kitty-clone|\e\\' # '
+    set --local b64_envs (string join0 $envs | base64)
+    set --local b64_cwd (printf "%s" "$PWD" | base64)
+    set --prepend data "pid=$fish_pid" "cwd=$b64_cwd" "env=$b64_envs"
+    set data (string join "," -- $data | tr -d "\t\n\r ")
+    set --local data_len (string length -- "$data")
+    set --local pos 1
+    set --local chunk_num 0
+    while test "$pos" -le $data_len
+        printf \eP@kitty-clone\|%s:%s\e\\ "$chunk_num" (string sub --start $pos --length 2048 -- $data | string collect)
+        set pos (math $pos + 2048)
+        set chunk_num (math $chunk_num + 1)
+    end
+    echo -en \eP@kitty-clone\|\e\\
 end
