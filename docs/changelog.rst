@@ -55,6 +55,8 @@ Detailed list of changes
 
 - When pasting URLs at shell prompts automatically quote them. Also allow filtering pasted text and confirm pastes. See :opt:`paste_actions` for details. (:iss:`4873`)
 
+- Change the default value of :opt:`confirm_os_window_close` to ask for confirmation when closing windows that are not sitting at shell prompts
+
 - macOS: When using Apple's less as the pager for viewing scrollback strip out OSC codes as it cant parse them (:iss:`4788`)
 
 - diff kitten: Fix incorrect rendering in rare circumstances when scrolling after changing the context size (:iss:`4831`)
