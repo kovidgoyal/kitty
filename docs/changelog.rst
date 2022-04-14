@@ -45,6 +45,8 @@ Detailed list of changes
 
 - Allow using the cwd of the oldest as well as the newest foreground process for :option:`launch --cwd` (:disc:`4869`)
 
+- Bash integration: Fix the value of :opt:`shell_integration` not taking effect if the integration script is sourced in bashrc (:pull:`4964`)
+
 
 0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

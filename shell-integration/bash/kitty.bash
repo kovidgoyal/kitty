@@ -7,6 +7,8 @@ _ksi_inject() {
     # Load the normal bash startup files
     if [[ -n "$KITTY_BASH_INJECT" ]]; then
         builtin local kitty_bash_inject="$KITTY_BASH_INJECT"
+        builtin local ksi_val="$KITTY_SHELL_INTEGRATION"
+        builtin unset KITTY_SHELL_INTEGRATION  # ensure manual sourcing of this file in bashrc does not have any effect
         builtin unset KITTY_BASH_INJECT
         builtin unset ENV
         if [[ -z "$HOME" ]]; then HOME=~; fi
@@ -52,6 +54,7 @@ _ksi_inject() {
         builtin unset KITTY_BASH_POSIX_ENV
         builtin unset KITTY_BASH_ETC_LOCATION
         builtin unset -f _ksi_safe_source
+        export KITTY_SHELL_INTEGRATION="$ksi_val"
     fi
 }
 _ksi_inject
