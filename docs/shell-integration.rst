@@ -223,11 +223,13 @@ Clone the current shell into a new window
 -----------------------------------------------
 
 You can clone the current shell into a new kitty window by simply running the
-command:
+:code:`clone-in-kitty` command, for example:
 
 .. code-block:: sh
 
     clone-in-kitty
+    clone-in-kitty --type=tab
+    clone-in-kitty --title "I am a clone"
 
 This will open a new window running a new shell instance but with all
 environment variables and the current working directory copied. This even
@@ -241,13 +243,6 @@ are ignored: :option:`launch --allow-remote-control`, :option:`launch
 --copy-cmdline`, :option:`launch --copy-env`, :option:`launch
 --allow-remote-control`, :option:`launch --stdin-source`, :option:`launch
 --marker` and :option:`launch --watcher`.
-
-Some examples:
-
-.. code-block:: sh
-
-    clone-in-kitty --type=tab
-    clone-in-kitty --title "I am a clone"
 
 
 .. _manual_shell_integration:
