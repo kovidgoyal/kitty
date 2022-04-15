@@ -148,6 +148,12 @@ RPS1="{rps1}"
             os.mkdir(q)
             pty.send_cmd_to_child(f'cd {q}')
             pty.wait_till(lambda: pty.screen.last_reported_cwd.endswith(q))
+        with self.run_shell(rc=f'''PS1="{ps1}"\nexport ES="a\n b c\nd"''') as pty:
+            pty.callbacks.clear()
+            pty.send_cmd_to_child('clone-in-kitty')
+            pty.wait_till(lambda: len(pty.callbacks.clone_cmds) == 1)
+            env = pty.callbacks.clone_cmds[0].env
+            self.ae(env.get('ES'), 'a\n b c\nd')
 
     @unittest.skipUnless(shutil.which('fish'), 'fish not installed')
     def test_fish_integration(self):

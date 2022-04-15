@@ -71,6 +71,8 @@ class Callbacks:
         self.open_urls = []
         self.cc_buf = []
         self.bell_count = 0
+        self.clone_cmds = []
+        self.current_clone_data = ''
 
     def on_bell(self) -> None:
         self.bell_count += 1
@@ -93,6 +95,19 @@ class Callbacks:
     def handle_remote_print(self, msg):
         text = process_remote_print(msg)
         print(text, file=sys.__stderr__)
+
+    def handle_remote_clone(self, msg):
+        if not msg:
+            if self.current_clone_data:
+                cdata, self.current_clone_data = self.current_clone_data, ''
+                from kitty.launch import CloneCmd
+                self.clone_cmds.append(CloneCmd(cdata))
+            self.current_clone_data = ''
+            return
+        num, rest = msg.split(':', 1)
+        if num == '0' or len(self.current_clone_data) > 1024 * 1024:
+            self.current_clone_data = ''
+        self.current_clone_data += rest
 
     def handle_remote_ssh(self, msg):
         from kittens.ssh.main import get_ssh_data

@@ -520,14 +520,14 @@ class CloneCmd:
             if k == 'a':
                 self.args.append(v)
             elif k == 'env':
-                env = {}
+                self.env = {}
                 for line in v.split('\0'):
                     if line:
                         try:
                             k, v = line.split('=', 1)
                         except ValueError:
                             continue
-                        env[k] = v
+                        self.env[k] = v
             elif k == 'cwd':
                 self.cwd = v
             elif k == 'argv':
