@@ -2795,8 +2795,13 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
                 }
                 found_next_prompt = true; end = y1;
             } else if (line && line->attrs.prompt_kind == OUTPUT_START && !line->attrs.continued) {
-                start = y1;
-                break;
+                if (direction == -2 && !found_next_prompt) {
+                    // The command output is incomplete, because it is not
+                    // followed by a prompt.
+                } else {
+                    start = y1;
+                    break;
+                }
             }
             y1--;
         }
@@ -2859,6 +2864,11 @@ cmd_output(Screen *self, PyObject *args) {
             if (self->last_visited_prompt.scrolled_by <= self->historybuf->count && self->last_visited_prompt.is_set) {
                 found = find_cmd_output(self, &oo, self->last_visited_prompt.y, self->last_visited_prompt.scrolled_by, 0, false);
             } break;
+        case 3: // last complete cmd
+            // When scrolled, the starting point of the search for the last command output
+            // is actually out of the screen, so add the number of scrolled lines
+            found = find_cmd_output(self, &oo, self->cursor->y + self->scrolled_by, self->scrolled_by, -2, false);
+            break;
         default:
             PyErr_Format(PyExc_KeyError, "%u is not a valid type of command", which);
             return NULL;
