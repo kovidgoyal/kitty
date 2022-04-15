@@ -567,6 +567,10 @@ class CloneCmd:
                 self.args.append(v)
             elif k == 'env':
                 self.env = parse_bash_env(v) if self.envfmt == 'bash' else parse_null_env(v)
+                for filtered in ('PS0', 'PS1', 'PS2', 'PS3', 'PS4', 'RPS1', 'PROMPT_COMMAND'):
+                    # some people export these. We want the shell rc files to
+                    # recreate them
+                    self.env.pop(filtered, None)
             elif k == 'cwd':
                 self.cwd = v
             elif k == 'argv':
