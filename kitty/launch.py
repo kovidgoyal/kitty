@@ -579,6 +579,7 @@ def clone_and_launch(msg: str, window: Window) -> None:
     if c.cwd and not c.opts.cwd:
         c.opts.cwd = c.cwd
     c.opts.copy_colors = True
+    c.opts.copy_env = False
     if c.pid > -1:
         try:
             cmdline = cmdline_of_process(c.pid)
