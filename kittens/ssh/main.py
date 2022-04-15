@@ -103,7 +103,7 @@ def set_env_in_cmdline(env: Dict[str, str], argv: List[str]) -> None:
 
 
 # See https://www.gnu.org/software/bash/manual/html_node/Double-Quotes.html
-quote_pat = re.compile('([\\`"\n])')
+quote_pat = re.compile('([\\`"])')
 
 
 def quote_env_val(x: str) -> str:
@@ -112,16 +112,26 @@ def quote_env_val(x: str) -> str:
     return f'"{x}"'
 
 
-def serialize_env(env: Dict[str, str], base_env: Dict[str, str]) -> bytes:
+def serialize_env(env: Dict[str, str], base_env: Dict[str, str], for_python: bool = False) -> bytes:
     lines = []
 
-    def a(k: str, val: str) -> None:
-        lines.append(f'export {shlex.quote(k)}={quote_env_val(val)}')
+    if for_python:
+        def a(k: str, val: str = '', prefix: str = 'export') -> None:
+            if val:
+                lines.append(f'{prefix} {json.dumps((k, val))}')
+            else:
+                lines.append(f'{prefix} {json.dumps((k,))}')
+    else:
+        def a(k: str, val: str = '', prefix: str = 'export') -> None:
+            if val:
+                lines.append(f'{prefix} {shlex.quote(k)}={quote_env_val(val)}')
+            else:
+                lines.append(f'{prefix} {shlex.quote(k)}')
 
     for k in sorted(env):
         v = env[k]
         if v == DELETE_ENV_VAR:
-            lines.append(f'unset {shlex.quote(k)}')
+            a(k, prefix='unset')
         elif v == '_kitty_copy_env_var_':
             q = base_env.get(k)
             if q is not None:
@@ -192,7 +202,7 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
         env['KITTY_LOGIN_CWD'] = ssh_opts.cwd
     if ssh_opts.remote_kitty != 'no':
         env['KITTY_REMOTE'] = ssh_opts.remote_kitty
-    env_script = serialize_env(env, base_env)
+    env_script = serialize_env(env, base_env, for_python=compression != 'gz')
     buf = io.BytesIO()
     with tarfile.open(mode=f'w:{compression}', fileobj=buf, encoding='utf-8') as tf:
         rd = ssh_opts.remote_dir.rstrip('/')

@@ -5,9 +5,9 @@
 import base64
 import contextlib
 import io
+import json
 import os
 import pwd
-import re
 import shutil
 import subprocess
 import sys
@@ -85,27 +85,24 @@ def debug(msg):
         write_all(tty_file_obj.fileno(), data)
 
 
-def unquote_env_val(x):
-    return re.sub('\\\\([\\$`\x22\n])', r'\1', x[1:-1])
-
-
 def apply_env_vars(raw):
     global login_shell
 
     def process_defn(defn):
-        parts = defn.split('=', 1)
+        parts = json.loads(defn)
         if len(parts) == 1:
             key, val = parts[0], ''
         else:
             key, val = parts
-            val = os.path.expandvars(unquote_env_val(val))
+            val = os.path.expandvars(val)
         os.environ[key] = val
 
     for line in raw.splitlines():
+        val = line.split(' ', 1)[-1]
         if line.startswith('export '):
-            process_defn(line.split(' ', 1)[-1])
+            process_defn(val)
         elif line.startswith('unset '):
-            os.environ.pop(line.split(' ', 1)[-1], None)
+            os.environ.pop(json.loads(val)[0], None)
     login_shell = os.environ.pop('KITTY_LOGIN_SHELL', login_shell)
 
 
