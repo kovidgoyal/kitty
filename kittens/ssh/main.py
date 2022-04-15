@@ -106,28 +106,39 @@ def set_env_in_cmdline(env: Dict[str, str], argv: List[str]) -> None:
 quote_pat = re.compile('([\\`"])')
 
 
-def quote_env_val(x: str) -> str:
-    x = quote_pat.sub(r'\\\1', x)
-    x = x.replace('$(', r'\$(')  # prevent execution with $()
-    return f'"{x}"'
+def quote_env_val(x: str, literal_quote: bool = False) -> str:
+    if not literal_quote:
+        x = quote_pat.sub(r'\\\1', x)
+        x = x.replace('$(', r'\$(')  # prevent execution with $()
+        return f'"{x}"'
+    if "'" in x:
+        x = quote_pat.sub(r'\\\1', x)
+        x = x.replace('$', r'\$')
+        return f'"{x}"'
+    return f'{x}'
 
 
-def serialize_env(env: Dict[str, str], base_env: Dict[str, str], for_python: bool = False) -> bytes:
+def serialize_env(literal_env: Dict[str, str], env: Dict[str, str], base_env: Dict[str, str], for_python: bool = False) -> bytes:
     lines = []
+    literal_quote = True
 
     if for_python:
         def a(k: str, val: str = '', prefix: str = 'export') -> None:
             if val:
-                lines.append(f'{prefix} {json.dumps((k, val))}')
+                lines.append(f'{prefix} {json.dumps((k, val, literal_quote))}')
             else:
                 lines.append(f'{prefix} {json.dumps((k,))}')
     else:
         def a(k: str, val: str = '', prefix: str = 'export') -> None:
             if val:
-                lines.append(f'{prefix} {shlex.quote(k)}={quote_env_val(val)}')
+                lines.append(f'{prefix} {shlex.quote(k)}={quote_env_val(val, literal_quote)}')
             else:
                 lines.append(f'{prefix} {shlex.quote(k)}')
 
+    for k, v in literal_env.items():
+        a(k, v)
+
+    literal_quote = False
     for k in sorted(env):
         v = env[k]
         if v == DELETE_ENV_VAR:
@@ -188,7 +199,6 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
         'TERM': os.environ.get('TERM') or kitty_opts().term,
         'COLORTERM': 'truecolor',
     }
-    env.update(literal_env)
     env.update(ssh_opts.env)
     for q in ('KITTY_WINDOW_ID', 'WINDOWID'):
         val = os.environ.get(q)
@@ -202,7 +212,7 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
         env['KITTY_LOGIN_CWD'] = ssh_opts.cwd
     if ssh_opts.remote_kitty != 'no':
         env['KITTY_REMOTE'] = ssh_opts.remote_kitty
-    env_script = serialize_env(env, base_env, for_python=compression != 'gz')
+    env_script = serialize_env(literal_env, env, base_env, for_python=compression != 'gz')
     buf = io.BytesIO()
     with tarfile.open(mode=f'w:{compression}', fileobj=buf, encoding='utf-8') as tf:
         rd = ssh_opts.remote_dir.rstrip('/')

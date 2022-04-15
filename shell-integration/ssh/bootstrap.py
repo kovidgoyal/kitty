@@ -93,8 +93,9 @@ def apply_env_vars(raw):
         if len(parts) == 1:
             key, val = parts[0], ''
         else:
-            key, val = parts
-            val = os.path.expandvars(val)
+            key, val, literal_quote = parts
+            if not literal_quote:
+                val = os.path.expandvars(val)
         os.environ[key] = val
 
     for line in raw.splitlines():
