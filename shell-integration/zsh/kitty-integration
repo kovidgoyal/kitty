@@ -356,7 +356,7 @@ _ksi_deferred_init() {
 }
 
 clone-in-kitty() {
-    builtin local data="pid=$$,cwd=$(builtin printf "%s" "$PWD" | builtin command base64),env=$(builtin command env -0 | builtin command base64)"
+    builtin local data="pid=$$,cwd=$(builtin printf "%s" "$PWD" | builtin command base64)"
     while :; do
         case "$1" in
             "") break;;
@@ -368,6 +368,16 @@ clone-in-kitty() {
         esac
         shift
     done
+    builtin local env
+    builtin local env_vars
+    builtin local varname
+    env_vars=(${(f)"$(builtin export)"})
+    for i in $env_vars; do
+        varname="${i%%=*}"
+        env="${env}$(builtin printf "%s=%s\0" "$varname" "${(P)varname}")"
+    done
+    data="$data,env=$(builtin printf "%s" "$env" | builtin command base64)"
+
     data="${data//[[:space:]]}"
     builtin local pos=0
     builtin local chunk_num=0
