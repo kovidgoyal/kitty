@@ -284,6 +284,7 @@ class Child:
             # testing.
             argv[0] = (f'-{exe.split("/")[-1]}')
         self.final_exe = which(exe) or exe
+        self.final_argv0 = argv[0]
         pid = fast_data_types.spawn(self.final_exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd)
         os.close(slave)
         self.pid = pid

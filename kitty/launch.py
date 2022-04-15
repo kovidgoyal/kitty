@@ -591,7 +591,7 @@ def clone_and_launch(msg: str, window: Window) -> None:
             cmdline = []
         if not cmdline:
             cmdline = list(window.child.argv)
-        if cmdline and cmdline[0] == window.child.argv[0]:
+        if cmdline and cmdline[0] == window.child.final_argv0:
             cmdline[0] = window.child.final_exe
     ssh_kitten_cmdline = window.ssh_kitten_cmdline()
     if ssh_kitten_cmdline:
