@@ -568,6 +568,7 @@ class CloneCmd:
             elif k == 'env':
                 self.env = parse_bash_env(v) if self.envfmt == 'bash' else parse_null_env(v)
                 for filtered in (
+                    'HOME', 'LOGNAME', 'USER',
                     # some people export these. We want the shell rc files to
                     # recreate them
                     'PS0', 'PS1', 'PS2', 'PS3', 'PS4', 'RPS1', 'PROMPT_COMMAND', 'SHLVL',
