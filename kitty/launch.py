@@ -346,9 +346,10 @@ def launch(
     args: List[str],
     target_tab: Optional[Tab] = None,
     force_target_tab: bool = False,
-    base_env: Optional[Dict[str, str]] = None
+    base_env: Optional[Dict[str, str]] = None,
+    active: Optional[Window] = None,
 ) -> Optional[Window]:
-    active = boss.active_window_for_cwd
+    active = active or boss.active_window_for_cwd
     if active:
         active_child = active.child
     else:
@@ -496,45 +497,52 @@ def parse_opts_for_clone(args: List[str]) -> LaunchCLIOptions:
     return default_opts
 
 
+class CloneCmd:
+
+    def __init__(self, msg: str) -> None:
+        self.cmdline: List[str] = []
+        self.args: List[str] = []
+        self.env: Optional[Dict[str, str]] = None
+        self.cwd = ''
+        self.pid = -1
+        self.parse_message(msg)
+        self.opts = parse_opts_for_clone(self.args)
+
+    def parse_message(self, msg: str) -> None:
+        import base64
+        import json
+        for x in msg.split(','):
+            k, v = x.split('=', 1)
+            if k == 'pid':
+                self.pid = int(v)
+                continue
+            v = base64.standard_b64decode(v).decode('utf-8', 'replace')
+            if k == 'a':
+                self.args.append(v)
+            elif k == 'env':
+                env = {}
+                for line in v.split('\0'):
+                    if line:
+                        try:
+                            k, v = line.split('=', 1)
+                        except ValueError:
+                            continue
+                        env[k] = v
+            elif k == 'cwd':
+                self.cwd = v
+            elif k == 'argv':
+                self.cmdline = json.loads(v)
+
+
 def clone_and_launch(msg: str, window: Window) -> None:
-    import base64
-    import json
-
     from .child import cmdline_of_process
-    args = []
-    cmdline: List[str] = []
-    env: Optional[Dict[str, str]] = None
-    cwd = ''
-    pid = -1
-
-    for x in msg.split(','):
-        k, v = x.split('=', 1)
-        if k == 'pid':
-            pid = int(v)
-            continue
-        v = base64.standard_b64decode(v).decode('utf-8', 'replace')
-        if k == 'a':
-            args.append(v)
-        elif k == 'env':
-            env = {}
-            for line in v.split('\0'):
-                if line:
-                    try:
-                        k, v = line.split('=', 1)
-                    except ValueError:
-                        continue
-                    env[k] = v
-        elif k == 'cwd':
-            cwd = v
-        elif k == 'argv':
-            cmdline = json.loads(v)
-    opts = parse_opts_for_clone(args)
-    if cwd and not opts.cwd:
-        opts.cwd = cwd
-    opts.copy_colors = True
-    if pid > -1:
+    c = CloneCmd(msg)
+    if c.cwd and not c.opts.cwd:
+        c.opts.cwd = c.cwd
+    c.opts.copy_colors = True
+    if c.pid > -1:
         try:
-            cmdline = cmdline_of_process(pid)
+            cmdline = cmdline_of_process(c.pid)
         except Exception:
             cmdline = []
         if not cmdline:
@@ -543,10 +551,10 @@ def clone_and_launch(msg: str, window: Window) -> None:
     if ssh_kitten_cmdline:
         from kittens.ssh.main import set_cwd_in_cmdline, set_env_in_cmdline
         cmdline[:] = ssh_kitten_cmdline
-        if opts.cwd:
-            set_cwd_in_cmdline(opts.cwd, cmdline)
-            opts.cwd = None
-        if env:
-            set_env_in_cmdline(env, cmdline)
-            env = None
-    launch(get_boss(), opts, cmdline, base_env=env)
+        if c.opts.cwd:
+            set_cwd_in_cmdline(c.opts.cwd, cmdline)
+            c.opts.cwd = None
+        if c.env:
+            set_env_in_cmdline(c.env, cmdline)
+            c.env = None
+    launch(get_boss(), c.opts, cmdline, base_env=c.env, active=window)
