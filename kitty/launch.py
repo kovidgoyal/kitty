@@ -595,7 +595,7 @@ def clone_and_launch(msg: str, window: Window) -> None:
             cmdline[0] = window.child.final_exe
     ssh_kitten_cmdline = window.ssh_kitten_cmdline()
     if ssh_kitten_cmdline:
-        from kittens.ssh.main import set_cwd_in_cmdline, set_env_in_cmdline
+        from kittens.ssh.main import set_cwd_in_cmdline, set_env_in_cmdline, patch_cmdline
         cmdline[:] = ssh_kitten_cmdline
         if c.opts.cwd:
             set_cwd_in_cmdline(c.opts.cwd, cmdline)
@@ -603,4 +603,7 @@ def clone_and_launch(msg: str, window: Window) -> None:
         if c.env:
             set_env_in_cmdline(c.env, cmdline)
             c.env = None
+        if c.opts.env:
+            for entry in reversed(c.opts.env):
+                patch_cmdline('env', entry, cmdline)
     launch(get_boss(), c.opts, cmdline, base_env=c.env, active=window)
