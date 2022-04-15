@@ -34,6 +34,24 @@ else:
     Options = object
 
 
+class Flag:
+
+    def __init__(self, initial_val: bool = True) -> None:
+        self.val = initial_val
+
+    def __enter__(self) -> None:
+        self.val ^= True
+
+    def __exit__(self, *a: object) -> None:
+        self.val ^= True
+
+    def __bool__(self) -> bool:
+        return self.val
+
+
+disallow_expand_vars = Flag(False)
+
+
 def expandvars(val: str, env: Mapping[str, str] = {}, fallback_to_os_env: bool = True) -> str:
     '''
     Expand $VAR and ${VAR} Use $$ for a literal $
@@ -48,7 +66,7 @@ def expandvars(val: str, env: Mapping[str, str] = {}, fallback_to_os_env: bool =
             result = m.group()
         return result
 
-    if '$' not in val:
+    if disallow_expand_vars or '$' not in val:
         return val
 
     return re.sub(r'\$(?:(\w+)|\{([^}]+)\})', sub, val.replace('$$', '\0')).replace('\0', '$')
