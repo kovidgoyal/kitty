@@ -276,7 +276,7 @@ case :$SHELLOPTS: in
   *:posix:*) ;;
   *)
 clone-in-kitty() {
-    builtin local data="argv=${_ksi_prompt[argv]},cwd=$(builtin printf "%s" "$PWD" | builtin command base64),env=$(builtin command env -0 | builtin command base64)"
+    builtin local data="argv=${_ksi_prompt[argv]},cwd=$(builtin printf "%s" "$PWD" | builtin command base64),envfmt=bash,env=$(builtin export | builtin command base64)"
     while :; do
         case "$1" in
             "") break;;

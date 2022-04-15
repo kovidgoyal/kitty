@@ -357,3 +357,10 @@ PS1="{ps1}"
         run_test('bash +O login_shell -ic "echo ok;read"', 'bash.bashrc', excluded=('.bash_profile'), wait_string='ok', assert_not_in=True)
         run_test('bash -l .bashrc', 'profile', rc='echo ok;read', wait_string='ok', assert_not_in=True)
         run_test('bash -il -- .bashrc', 'profile', rc='echo ok;read', wait_string='ok')
+
+        with self.run_shell(rc=f'''PS1="{ps1}"\nexport ES=$'a\n `b` c\n$d' ''') as pty:
+            pty.callbacks.clear()
+            pty.send_cmd_to_child('clone-in-kitty')
+            pty.wait_till(lambda: len(pty.callbacks.clone_cmds) == 1)
+            env = pty.callbacks.clone_cmds[0].env
+            self.ae(env.get('ES'), 'a\n `b` c\n$d')

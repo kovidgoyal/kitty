@@ -497,6 +497,51 @@ def parse_opts_for_clone(args: List[str]) -> LaunchCLIOptions:
     return default_opts
 
 
+def parse_bash_env(text: str) -> Dict[str, str]:
+    # See https://www.gnu.org/software/bash/manual/html_node/Double-Quotes.html
+    ans = {}
+    pos = 0
+    escapes = r'"\$`'
+    while pos < len(text):
+        idx = text.find('="', pos)
+        if idx < 0:
+            break
+        i = text.rfind(' ', 0, idx)
+        if i < 0:
+            break
+        key = text[i+1:idx]
+        pos = idx + 2
+        buf: List[str] = []
+        a = buf.append
+        while pos < len(text):
+            ch = text[pos]
+            pos += 1
+            if ch == '\\':
+                if text[pos] in escapes:
+                    a(text[pos])
+                    pos += 1
+                    continue
+                a(ch)
+            elif ch == '"':
+                break
+            else:
+                a(ch)
+        ans[key] = ''.join(buf)
+    return ans
+
+
+def parse_null_env(text: str) -> Dict[str, str]:
+    ans = {}
+    for line in text.split('\0'):
+        if line:
+            try:
+                k, v = line.split('=', 1)
+            except ValueError:
+                continue
+            ans[k] = v
+    return ans
+
+
 class CloneCmd:
 
     def __init__(self, msg: str) -> None:
@@ -504,6 +549,7 @@ class CloneCmd:
         self.args: List[str] = []
         self.env: Optional[Dict[str, str]] = None
         self.cwd = ''
+        self.envfmt = 'default'
         self.pid = -1
         self.parse_message(msg)
         self.opts = parse_opts_for_clone(self.args)
@@ -520,14 +566,7 @@ class CloneCmd:
             if k == 'a':
                 self.args.append(v)
             elif k == 'env':
-                self.env = {}
-                for line in v.split('\0'):
-                    if line:
-                        try:
-                            k, v = line.split('=', 1)
-                        except ValueError:
-                            continue
-                        self.env[k] = v
+                self.env = parse_bash_env(v) if self.envfmt == 'bash' else parse_null_env(v)
             elif k == 'cwd':
                 self.cwd = v
             elif k == 'argv':
