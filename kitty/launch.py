@@ -547,6 +547,8 @@ def clone_and_launch(msg: str, window: Window) -> None:
             cmdline = []
         if not cmdline:
             cmdline = list(window.child.argv)
+        if cmdline and cmdline[0] == window.child.argv[0]:
+            cmdline[0] = window.child.final_exe
     ssh_kitten_cmdline = window.ssh_kitten_cmdline()
     if ssh_kitten_cmdline:
         from kittens.ssh.main import set_cwd_in_cmdline, set_env_in_cmdline

@@ -283,8 +283,8 @@ class Child:
             # xterm, urxvt, konsole and gnome-terminal do not do it in my
             # testing.
             argv[0] = (f'-{exe.split("/")[-1]}')
-        exe = which(exe) or exe
-        pid = fast_data_types.spawn(exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd)
+        self.final_exe = which(exe) or exe
+        pid = fast_data_types.spawn(self.final_exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd)
         os.close(slave)
         self.pid = pid
         self.child_fd = master
