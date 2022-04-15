@@ -115,7 +115,7 @@ def quote_env_val(x: str, literal_quote: bool = False) -> str:
         x = quote_pat.sub(r'\\\1', x)
         x = x.replace('$', r'\$')
         return f'"{x}"'
-    return f'{x}'
+    return f"'{x}'"
 
 
 def serialize_env(literal_env: Dict[str, str], env: Dict[str, str], base_env: Dict[str, str], for_python: bool = False) -> bytes:
