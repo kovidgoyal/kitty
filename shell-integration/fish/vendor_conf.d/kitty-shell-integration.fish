@@ -124,9 +124,9 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         else if test -n "$__ksi_pre_rc_conda_default_env" 
             and type -q conda
             and test "$__ksi_pre_rc_conda_default_env" != "$CONDA_DEFAULT_ENV"
-            echo $__ksi_pre_rc_conda_default_env
             # for some reason that I cant be bothered to figure out this doesnt take effect
-            conda activate $_ksi_pre_rc_conda_default_env
+            # conda activate $_ksi_pre_rc_conda_default_env
+            eval ($CONDA_EXE shell.fish activate $__ksi_pre_rc_conda_default_env)
         end
         set --erase __ksi_is_clone_launch __ksi_pre_rc_path __ksi_pre_rc_conda_default_env __ksi_pre_rc_python_venv
     end
