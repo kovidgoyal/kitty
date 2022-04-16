@@ -1015,14 +1015,22 @@ class Window:
         if not msg:
             if self.current_clone_data:
                 cdata, self.current_clone_data = self.current_clone_data, ''
-                from .launch import clone_and_launch
-                clone_and_launch(cdata, self)
+                get_boss().confirm(_(
+                    'A program running in this window wants to clone it into another window.'
+                    ' Allow it do so, once?'),
+                    partial(self.handle_remote_clone_confirmation, cdata), window=self,
+                )
             self.current_clone_data = ''
             return
         num, rest = msg.split(':', 1)
         if num == '0' or len(self.current_clone_data) > 1024 * 1024:
             self.current_clone_data = ''
         self.current_clone_data += rest
+
+    def handle_remote_clone_confirmation(self, cdata: str, confirmed: bool) -> None:
+        if confirmed:
+            from .launch import clone_and_launch
+            clone_and_launch(cdata, self)
 
     def handle_remote_askpass(self, msg: str) -> None:
         from .shm import SharedMemory

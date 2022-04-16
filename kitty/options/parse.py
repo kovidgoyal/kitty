@@ -50,6 +50,14 @@ class Parser:
     def adjust_line_height(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['adjust_line_height'] = adjust_line_height(val)
 
+    def allow_cloning(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_allow_cloning:
+            raise ValueError(f"The value {val} is not a valid choice for allow_cloning")
+        ans["allow_cloning"] = val
+
+    choices_for_allow_cloning = frozenset(('yes', 'no', 'ask'))
+
     def allow_hyperlinks(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['allow_hyperlinks'] = allow_hyperlinks(val)
 

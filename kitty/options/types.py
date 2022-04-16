@@ -13,6 +13,7 @@ from kitty.types import FloatEdges, SingleKey
 import kitty.types
 
 if typing.TYPE_CHECKING:
+    choices_for_allow_cloning = typing.Literal['yes', 'no', 'ask']
     choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled', 'clamped']
     choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'hand']
     choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
@@ -27,6 +28,7 @@ if typing.TYPE_CHECKING:
     choices_for_tab_switch_strategy = typing.Literal['last', 'left', 'previous', 'right']
     choices_for_window_logo_position = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
 else:
+    choices_for_allow_cloning = str
     choices_for_background_image_layout = str
     choices_for_default_pointer_shape = str
     choices_for_linux_display_server = str
@@ -51,6 +53,7 @@ option_names = (  # {{{
  'adjust_baseline',
  'adjust_column_width',
  'adjust_line_height',
+ 'allow_cloning',
  'allow_hyperlinks',
  'allow_remote_control',
  'background',
@@ -461,6 +464,7 @@ class Options:
     adjust_baseline: typing.Union[int, float] = 0
     adjust_column_width: typing.Union[int, float] = 0
     adjust_line_height: typing.Union[int, float] = 0
+    allow_cloning: choices_for_allow_cloning = 'ask'
     allow_hyperlinks: int = 1
     allow_remote_control: str = 'n'
     background: Color = Color(0, 0, 0)

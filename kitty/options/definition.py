@@ -2774,6 +2774,15 @@ pager, etc. on supported shells.  Set to ``disabled`` to turn off shell
 integration, completely. See :ref:`shell_integration` for details.
 ''')
 
+opt('allow_cloning', 'ask', choices=('yes', 'no', 'ask'), long_text='''
+Control whether programs running in the terminal can request new
+windows to be created. The canonical example is :code:`clone-in-kitty`.
+By default, kitty will ask for permission for each clone request.
+Allowing cloning unconditionally gives programs running in the terminal
+(including over SSH) permission to execute arbitrary code as the user
+the terminal is running as on the computer the terminal is running on.
+''')
+
 opt('term', 'xterm-kitty',
     long_text='''
 The value of the TERM environment variable to set. Changing this can break many
