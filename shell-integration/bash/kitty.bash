@@ -6,6 +6,14 @@ if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then builtin return; fi
 _ksi_inject() {
     # Load the normal bash startup files
     if [[ -n "$KITTY_BASH_INJECT" ]]; then
+        if [ -n "$KITTY_IS_CLONE_LAUNCH" ]; then
+            # store some vars before the rc files have a chance to change them
+            builtin declare -Ag _ksi_pre_rc
+            _ksi_pre_rc=(
+                [path]="$PATH" [conda_default_env]="$CONDA_DEFAULT_ENV" [python_venv]="$VIRTUAL_ENV" [is_clone_launch]="$KITTY_IS_CLONE_LAUNCH"
+            )
+        fi
+
         builtin local kitty_bash_inject="$KITTY_BASH_INJECT"
         builtin local ksi_val="$KITTY_SHELL_INTEGRATION"
         builtin unset KITTY_SHELL_INTEGRATION  # ensure manual sourcing of this file in bashrc does not have any effect
@@ -59,6 +67,7 @@ _ksi_inject() {
 }
 _ksi_inject
 builtin unset -f _ksi_inject
+builtin unset KITTY_IS_CLONE_LAUNCH
 
 if [ "${BASH_VERSINFO:-0}" -lt 4 ]; then
     builtin unset KITTY_SHELL_INTEGRATION
@@ -268,6 +277,31 @@ _ksi_main() {
         builtin eval "$oldval"
         PROMPT_COMMAND+="; $pc"
     fi
+    if [ -n "${_ksi_pre_rc[is_clone_launch]}" ]; then
+        builtin export PATH="${_ksi_pre_rc[path]}"
+        builtin hash -r 2> /dev/null 1> /dev/null
+        if [ -n "${_ksi_pre_rc[python_venv]}" -a -r "${_ksi_pre_rc[python_venv]}/bin/activate" ]; then
+            builtin unset VIRTUAL_ENV
+            . "${_ksi_pre_rc[python_venv]}/bin/activate"
+        elif [ -n "${_ksi_pre_rc[conda_default_env]}" ] && builtin command -v conda >/dev/null 2>/dev/null && [ "${_ksi_pre_rc[conda_default_env]}" != "$CONDA_DEFAULT_ENV" ]; then
+            conda activate "${_ksi_pre_rc[conda_default_env]}"
+        fi
+        # Ensure PATH has no duplicate entries
+        if [ -n "$PATH" ]; then
+            builtin local old_PATH=$PATH:; PATH=
+            while [ -n "$old_PATH" ]; do
+                builtin local x
+                x=${old_PATH%%:*}
+                case $PATH: in
+                    *:"$x":*) ;;
+                    *) PATH=$PATH:$x;;
+                esac
+                old_PATH=${old_PATH#*:}
+            done
+            PATH=${PATH#:}
+        fi
+    fi
+    builtin unset _ksi_pre_rc
 }
 _ksi_main
 builtin unset -f _ksi_main

@@ -562,6 +562,9 @@ class CloneCmd:
             if k == 'pid':
                 self.pid = int(v)
                 continue
+            if k == 'envfmt':
+                self.envfmt = v
+                continue
             v = base64.standard_b64decode(v).decode('utf-8', 'replace')
             if k == 'a':
                 self.args.append(v)
@@ -589,6 +592,8 @@ def clone_and_launch(msg: str, window: Window) -> None:
         c.opts.cwd = c.cwd
     c.opts.copy_colors = True
     c.opts.copy_env = False
+    c.opts.env = list(c.opts.env) + ['KITTY_IS_CLONE_LAUNCH=1']
+    cmdline = c.cmdline
     if c.pid > -1:
         try:
             cmdline = cmdline_of_process(c.pid)

@@ -32,6 +32,16 @@ builtin emulate -L zsh -o no_warn_create_global -o no_aliases
 # 2: none of the above.
 builtin typeset -gi _ksi_state
 
+if [ -n "$KITTY_IS_CLONE_LAUNCH" ]; then
+    # store some vars before the rc files have a chance to change them
+    builtin typeset -gA _ksi_pre_rc
+    _ksi_pre_rc[path]="$PATH"
+    _ksi_pre_rc[conda_default_env]="$CONDA_DEFAULT_ENV"
+    _ksi_pre_rc[python_venv]="$VIRTUAL_ENV"
+    _ksi_pre_rc[is_clone_launch]="$KITTY_IS_CLONE_LAUNCH"
+    builtin unset KITTY_IS_CLONE_LAUNCH
+fi
+
 # Attempt to create a writable file descriptor to the TTY so that we can print
 # to the TTY later even when STDOUT is redirected. This code is fairly subtle.
 #
@@ -348,6 +358,20 @@ _ksi_deferred_init() {
     else
         precmd_functions=(${precmd_functions:#_ksi_deferred_init})
     fi
+
+    if [ -n "${_ksi_pre_rc[is_clone_launch]}" ]; then
+        builtin export PATH="${_ksi_pre_rc[path]}"
+        builtin hash -r 2> /dev/null 1> /dev/null
+        if [ -n "${_ksi_pre_rc[python_venv]}" -a -r "${_ksi_pre_rc[python_venv]}/bin/activate" ]; then
+            builtin unset VIRTUAL_ENV
+            . "${_ksi_pre_rc[python_venv]}/bin/activate"
+        elif [[ -n "${_ksi_pre_rc[conda_default_env]}" && (( $+commands[conda] )) && "${_ksi_pre_rc[conda_default_env]}" != "$CONDA_DEFAULT_ENV" ]]; then
+            conda activate "${_ksi_pre_rc[conda_default_env]}"
+        fi
+        # Ensure PATH has no duplicate entries
+        typeset -U path
+    fi
+    builtin unset _ksi_pre_rc
 
     # Unfunction _ksi_deferred_init to save memory. Don't unfunction
     # kitty-integration though because decent public functions aren't supposed to
