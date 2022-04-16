@@ -611,4 +611,5 @@ def clone_and_launch(msg: str, window: Window) -> None:
         if c.opts.env:
             for entry in reversed(c.opts.env):
                 patch_cmdline('env', entry, cmdline)
+            c.opts.env = []
     launch(get_boss(), c.opts, cmdline, base_env=c.env, active=window)
