@@ -569,16 +569,14 @@ class CloneCmd:
             if k == 'a':
                 self.args.append(v)
             elif k == 'env':
-                self.env = parse_bash_env(v) if self.envfmt == 'bash' else parse_null_env(v)
-                for filtered in (
+                env = parse_bash_env(v) if self.envfmt == 'bash' else parse_null_env(v)
+                self.env = {k: v for k, v in env.items() if k not in (
                     'HOME', 'LOGNAME', 'USER',
-                    # some people export these. We want the shell rc files to
-                    # recreate them
+                    # some people export these. We want the shell rc files to recreate them
                     'PS0', 'PS1', 'PS2', 'PS3', 'PS4', 'RPS1', 'PROMPT_COMMAND', 'SHLVL',
                     # skip SSH environment variables
                     'SSH_CLIENT', 'SSH_CONNECTION', 'SSH_ORIGINAL_COMMAND', 'SSH_TTY', 'SSH2_TTY',
-                ):
-                    self.env.pop(filtered, None)
+                )}
             elif k == 'cwd':
                 self.cwd = v
             elif k == 'argv':

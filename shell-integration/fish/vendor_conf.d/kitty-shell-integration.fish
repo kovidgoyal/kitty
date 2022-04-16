@@ -24,6 +24,14 @@ not functions -q __ksi_schedule || exit 0
 set -q fish_killring || set -q status_generation || string match -qnv "3.1.*" "$version"
 or echo -en \eP@kitty-print\|V2FybmluZzogVXBkYXRlIGZpc2ggdG8gdmVyc2lvbiAzLjMuMCsgdG8gZW5hYmxlIGtpdHR5IHNoZWxsIGludGVncmF0aW9uLgo=\e\\ && exit 0 || exit 0
 
+if test -n "$KITTY_IS_CLONE_LAUNCH"
+    set -g __ksi_is_clone_launch "$KITTY_IS_CLONE_LAUNCH"
+    set --erase KITTY_IS_CLONE_LAUNCH
+    set -g __ksi_pre_rc_path "$PATH"
+    set -g __ksi_pre_rc_conda_default_env "$CONDA_DEFAULT_ENV"
+    set -g __ksi_pre_rc_python_venv "$VIRTUAL_ENV"
+end
+
 function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after other scripts have run, we hope"
     functions --erase __ksi_schedule
     test -n "$KITTY_SHELL_INTEGRATION" || return 0
@@ -105,6 +113,22 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
             or echo -en "\e]7;kitty-shell-cwd://$hostname$PWD\a"
         end
         __update_cwd_osc
+    end
+
+    # Handle clone launches
+    if test -n "$__ksi_is_clone_launch"
+        set -gx --path PATH "$__ksi_pre_rc_path"
+        if test -n "$__ksi_pre_rc_python_venv" -a -r "$__ksi_pre_rc_python_venv/bin/activate.fish" 
+            set -e VIRTUAL_ENV _OLD_FISH_PROMPT_OVERRIDE  # activate.fish stupidly exports _OLD_FISH_PROMPT_OVERRIDE
+            source "$__ksi_pre_rc_python_venv/bin/activate.fish"
+        else if test -n "$__ksi_pre_rc_conda_default_env" 
+            and type -q conda
+            and test "$__ksi_pre_rc_conda_default_env" != "$CONDA_DEFAULT_ENV"
+            echo $__ksi_pre_rc_conda_default_env
+            # for some reason that I cant be bothered to figure out this doesnt take effect
+            conda activate $_ksi_pre_rc_conda_default_env
+        end
+        set --erase __ksi_is_clone_launch __ksi_pre_rc_path __ksi_pre_rc_conda_default_env __ksi_pre_rc_python_venv
     end
 end
 
