@@ -1015,11 +1015,15 @@ class Window:
         if not msg:
             if self.current_clone_data:
                 cdata, self.current_clone_data = self.current_clone_data, ''
-                get_boss().confirm(_(
-                    'A program running in this window wants to clone it into another window.'
-                    ' Allow it do so, once?'),
-                    partial(self.handle_remote_clone_confirmation, cdata), window=self,
-                )
+                ac = get_options().allow_cloning
+                if ac == 'ask':
+                    get_boss().confirm(_(
+                        'A program running in this window wants to clone it into another window.'
+                        ' Allow it do so, once?'),
+                        partial(self.handle_remote_clone_confirmation, cdata), window=self,
+                    )
+                elif ac == 'yes':
+                    self.handle_remote_clone_confirmation(cdata, True)
             self.current_clone_data = ''
             return
         num, rest = msg.split(':', 1)
