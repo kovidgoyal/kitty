@@ -34,6 +34,7 @@ from kitty.constants import (
     str_version, terminfo_dir
 )
 from kitty.options.types import Options
+from kitty.shell_integration import as_str_literal
 from kitty.shm import SharedMemory
 from kitty.types import run_once
 from kitty.utils import (
@@ -107,15 +108,11 @@ quote_pat = re.compile('([\\`"])')
 
 
 def quote_env_val(x: str, literal_quote: bool = False) -> str:
-    if not literal_quote:
-        x = quote_pat.sub(r'\\\1', x)
-        x = x.replace('$(', r'\$(')  # prevent execution with $()
-        return f'"{x}"'
-    if "'" in x:
-        x = quote_pat.sub(r'\\\1', x)
-        x = x.replace('$', r'\$')
-        return f'"{x}"'
-    return f"'{x}'"
+    if literal_quote:
+        return as_str_literal(x)
+    x = quote_pat.sub(r'\\\1', x)
+    x = x.replace('$(', r'\$(')  # prevent execution with $()
+    return f'"{x}"'
 
 
 def serialize_env(literal_env: Dict[str, str], env: Dict[str, str], base_env: Dict[str, str], for_python: bool = False) -> bytes:

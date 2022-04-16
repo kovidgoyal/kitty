@@ -7,7 +7,7 @@ import json
 import os
 import subprocess
 from contextlib import suppress
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from .constants import shell_integration_dir
 from .fast_data_types import get_options
@@ -149,10 +149,39 @@ def setup_bash_env(env: Dict[str, str], argv: List[str]) -> None:
     argv.insert(1, '--posix')
 
 
+def as_str_literal(x: str) -> str:
+    parts = x.split("'")
+    return '"\'"'.join(f"'{x}'" for x in parts)
+
+
+def as_fish_str_literal(x: str) -> str:
+    return x.replace('\\', '\\\\').replace("'", "\\'")
+
+
+def posix_serialize_env(env: Dict[str, str], prefix: str = 'builtin export', sep: str = '=') -> str:
+    ans = []
+    for k, v in env.items():
+        ans.append(f'{prefix} {as_str_literal(k)}{sep}{as_str_literal(v)}')
+    return '\n'.join(ans)
+
+
+def fish_serialize_env(env: Dict[str, str]) -> str:
+    ans = []
+    for k, v in env.items():
+        ans.append(f'set -gx {as_fish_str_literal(k)} {as_fish_str_literal(v)}')
+    return '\n'.join(ans)
+
+
 ENV_MODIFIERS = {
     'fish': setup_fish_env,
     'zsh': setup_zsh_env,
     'bash': setup_bash_env,
+}
+
+ENV_SERIALIZERS: Dict[str, Callable[[Dict[str, str]], str]] = {
+    'zsh':  posix_serialize_env,
+    'bash': posix_serialize_env,
+    'fish': fish_serialize_env,
 }
 
 
@@ -167,6 +196,13 @@ def get_supported_shell_name(path: str) -> Optional[str]:
 
 def shell_integration_allows_rc_modification(opts: Options) -> bool:
     return not (opts.shell_integration & {'disabled', 'no-rc'})
+
+
+def serialize_env(path: str, env: Dict[str, str]) -> str:
+    name = get_supported_shell_name(path)
+    if not name:
+        raise ValueError(f'{path} is not a supported shell')
+    return ENV_SERIALIZERS[name](env)
 
 
 def get_effective_ksi_env_var(opts: Optional[Options] = None) -> str:
