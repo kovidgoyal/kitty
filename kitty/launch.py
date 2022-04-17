@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2019, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+import os
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Sequence
 
 from .boss import Boss
@@ -592,6 +593,10 @@ def clone_and_launch(msg: str, window: Window) -> None:
     c.opts.copy_env = False
     if c.opts.type in ('clipboard', 'primary', 'background'):
         c.opts.type = 'window'
+    if c.env and c.env.get('PATH') and c.env.get('VIRTUAL_ENV'):
+        # only pass VIRTUAL_ENV if it is currently active
+        if f"{c.env['VIRTUAL_ENV']}/bin" not in c.env['PATH'].split(os.pathsep):
+            del c.env['VIRTUAL_ENV']
     is_clone_launch = serialize_env(c.shell, c.env or {})
     ssh_kitten_cmdline = window.ssh_kitten_cmdline()
     if ssh_kitten_cmdline:
