@@ -545,10 +545,10 @@ def parse_null_env(text: str) -> Dict[str, str]:
 class CloneCmd:
 
     def __init__(self, msg: str) -> None:
-        self.cmdline: List[str] = []
         self.args: List[str] = []
         self.env: Optional[Dict[str, str]] = None
         self.cwd = ''
+        self.shell = ''
         self.envfmt = 'default'
         self.pid = -1
         self.parse_message(msg)
@@ -556,43 +556,55 @@ class CloneCmd:
 
     def parse_message(self, msg: str) -> None:
         import base64
-        import json
+        simple = 'pid', 'envfmt', 'shell'
         for x in msg.split(','):
             k, v = x.split('=', 1)
-            if k == 'pid':
-                self.pid = int(v)
-                continue
-            if k == 'envfmt':
-                self.envfmt = v
+            if k in simple:
+                setattr(self, k, int(v) if k == 'pid' else v)
                 continue
             v = base64.standard_b64decode(v).decode('utf-8', 'replace')
             if k == 'a':
                 self.args.append(v)
             elif k == 'env':
                 env = parse_bash_env(v) if self.envfmt == 'bash' else parse_null_env(v)
-                self.env = {k: v for k, v in env.items() if k not in (
-                    'HOME', 'LOGNAME', 'USER',
+                self.env = {k: v for k, v in env.items() if k not in {
+                    'HOME', 'LOGNAME', 'USER', 'PWD',
                     # some people export these. We want the shell rc files to recreate them
                     'PS0', 'PS1', 'PS2', 'PS3', 'PS4', 'RPS1', 'PROMPT_COMMAND', 'SHLVL',
+                    # conda state env vars
+                    'CONDA_SHLVL', 'CONDA_PREFIX', 'CONDA_EXE', 'CONDA_PROMPT_MODIFIER', 'CONDA_EXE', 'CONDA_PYTHON_EXE',
                     # skip SSH environment variables
                     'SSH_CLIENT', 'SSH_CONNECTION', 'SSH_ORIGINAL_COMMAND', 'SSH_TTY', 'SSH2_TTY',
-                )}
+                }}
             elif k == 'cwd':
                 self.cwd = v
-            elif k == 'argv':
-                self.cmdline = json.loads(v)
 
 
 def clone_and_launch(msg: str, window: Window) -> None:
     from .child import cmdline_of_process
+    from .shell_integration import serialize_env
     c = CloneCmd(msg)
     if c.cwd and not c.opts.cwd:
         c.opts.cwd = c.cwd
     c.opts.copy_colors = True
     c.opts.copy_env = False
-    c.opts.env = list(c.opts.env) + ['KITTY_IS_CLONE_LAUNCH=1']
-    cmdline = c.cmdline
-    if c.pid > -1:
+    serialized_env = serialize_env(c.shell, c.env or {})
+    ssh_kitten_cmdline = window.ssh_kitten_cmdline()
+    if ssh_kitten_cmdline:
+        from kittens.ssh.main import set_cwd_in_cmdline, set_env_in_cmdline, patch_cmdline
+        cmdline = ssh_kitten_cmdline
+        if c.opts.cwd:
+            set_cwd_in_cmdline(c.opts.cwd, cmdline)
+            c.opts.cwd = None
+        if c.env:
+            set_env_in_cmdline({'KITTY_IS_CLONE_LAUNCH': serialized_env}, cmdline)
+            c.env = None
+        if c.opts.env:
+            for entry in reversed(c.opts.env):
+                patch_cmdline('env', entry, cmdline)
+            c.opts.env = []
+    else:
+        c.opts.env = list(c.opts.env) + ['KITTY_IS_CLONE_LAUNCH=' + serialized_env]
         try:
             cmdline = cmdline_of_process(c.pid)
         except Exception:
@@ -601,18 +613,6 @@ def clone_and_launch(msg: str, window: Window) -> None:
             cmdline = list(window.child.argv)
         if cmdline and cmdline[0] == window.child.final_argv0:
             cmdline[0] = window.child.final_exe
-    ssh_kitten_cmdline = window.ssh_kitten_cmdline()
-    if ssh_kitten_cmdline:
-        from kittens.ssh.main import set_cwd_in_cmdline, set_env_in_cmdline, patch_cmdline
-        cmdline[:] = ssh_kitten_cmdline
-        if c.opts.cwd:
-            set_cwd_in_cmdline(c.opts.cwd, cmdline)
-            c.opts.cwd = None
-        if c.env:
-            set_env_in_cmdline(c.env, cmdline)
-            c.env = None
-        if c.opts.env:
-            for entry in reversed(c.opts.env):
-                patch_cmdline('env', entry, cmdline)
-            c.opts.env = []
+        if cmdline and cmdline == [window.child.final_exe] + window.child.argv[1:]:
+            cmdline = window.child.unmodified_argv
     launch(get_boss(), c.opts, cmdline, base_env=c.env, active=window)

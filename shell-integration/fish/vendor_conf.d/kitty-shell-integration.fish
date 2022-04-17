@@ -24,13 +24,6 @@ not functions -q __ksi_schedule || exit 0
 set -q fish_killring || set -q status_generation || string match -qnv "3.1.*" "$version"
 or echo -en \eP@kitty-print\|V2FybmluZzogVXBkYXRlIGZpc2ggdG8gdmVyc2lvbiAzLjMuMCsgdG8gZW5hYmxlIGtpdHR5IHNoZWxsIGludGVncmF0aW9uLgo=\e\\ && exit 0 || exit 0
 
-if test -n "$KITTY_IS_CLONE_LAUNCH"
-    set -g __ksi_is_clone_launch "$KITTY_IS_CLONE_LAUNCH"
-    set --erase KITTY_IS_CLONE_LAUNCH
-    set -g __ksi_pre_rc_path "$PATH"
-    set -g __ksi_pre_rc_conda_default_env "$CONDA_DEFAULT_ENV"
-    set -g __ksi_pre_rc_python_venv "$VIRTUAL_ENV"
-end
 
 function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after other scripts have run, we hope"
     functions --erase __ksi_schedule
@@ -116,19 +109,21 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     end
 
     # Handle clone launches
-    if test -n "$__ksi_is_clone_launch"
-        set -gx --path PATH "$__ksi_pre_rc_path"
-        if test -n "$__ksi_pre_rc_python_venv" -a -r "$__ksi_pre_rc_python_venv/bin/activate.fish" 
+    if test -n "$KITTY_IS_CLONE_LAUNCH"
+        set -l orig_conda_env "$CONDA_DEFAULT_ENV"
+        eval "$KITTY_IS_CLONE_LAUNCH"
+        set -l venv "$VIRTUAL_ENV/bin/activate.fish"
+        if test -n "$VIRTUAL_ENV" -a -r "$venv" 
             set -e VIRTUAL_ENV _OLD_FISH_PROMPT_OVERRIDE  # activate.fish stupidly exports _OLD_FISH_PROMPT_OVERRIDE
-            source "$__ksi_pre_rc_python_venv/bin/activate.fish"
-        else if test -n "$__ksi_pre_rc_conda_default_env" 
+            source "$venv"
+        else if test -n "$CONDA_DEFAULT_ENV" 
             and type -q conda
-            and test "$__ksi_pre_rc_conda_default_env" != "$CONDA_DEFAULT_ENV"
+            and test "$CONDA_DEFAULT_ENV" != "$orig_conda_env"
             # for some reason that I cant be bothered to figure out this doesnt take effect
             # conda activate $_ksi_pre_rc_conda_default_env
-            eval ($CONDA_EXE shell.fish activate $__ksi_pre_rc_conda_default_env)
+            eval ($CONDA_EXE shell.fish activate $CONDA_DEFAULT_ENV)
         end
-        set --erase __ksi_is_clone_launch __ksi_pre_rc_path __ksi_pre_rc_conda_default_env __ksi_pre_rc_python_venv
+        set --erase KITTY_IS_CLONE_LAUNCH
     end
 end
 
@@ -150,7 +145,7 @@ function clone-in-kitty -d "Clone the current fish session into a new kitty wind
     end
     set --local b64_envs (string join0 $envs | base64)
     set --local b64_cwd (printf "%s" "$PWD" | base64)
-    set --prepend data "pid=$fish_pid" "cwd=$b64_cwd" "env=$b64_envs"
+    set --prepend data "shell=fish,pid=$fish_pid" "cwd=$b64_cwd" "env=$b64_envs"
     set data (string join "," -- $data | tr -d "\t\n\r ")
     set --local data_len (string length -- "$data")
     set --local pos 1

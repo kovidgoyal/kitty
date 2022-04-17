@@ -2,8 +2,6 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-import base64
-import json
 import os
 import subprocess
 from contextlib import suppress
@@ -135,7 +133,6 @@ def setup_bash_env(env: Dict[str, str], argv: List[str]) -> None:
         return
     env['ENV'] = os.path.join(shell_integration_dir, 'bash', 'kitty.bash')
     env['KITTY_BASH_INJECT'] = ' '.join(inject)
-    env['KITTY_BASH_ORIGINAL_ARGV'] = base64.standard_b64encode(json.dumps(argv).encode('utf-8')).decode('ascii')
     if posix_env:
         env['KITTY_BASH_POSIX_ENV'] = posix_env
     if rcfile:
@@ -155,7 +152,8 @@ def as_str_literal(x: str) -> str:
 
 
 def as_fish_str_literal(x: str) -> str:
-    return x.replace('\\', '\\\\').replace("'", "\\'")
+    x = x.replace('\\', '\\\\').replace("'", "\\'")
+    return f"'{x}'"
 
 
 def posix_serialize_env(env: Dict[str, str], prefix: str = 'builtin export', sep: str = '=') -> str:
@@ -199,6 +197,8 @@ def shell_integration_allows_rc_modification(opts: Options) -> bool:
 
 
 def serialize_env(path: str, env: Dict[str, str]) -> str:
+    if not env:
+        return ''
     name = get_supported_shell_name(path)
     if not name:
         raise ValueError(f'{path} is not a supported shell')
@@ -231,4 +231,3 @@ def modify_shell_environ(opts: Options, env: Dict[str, str], argv: List[str]) ->
             import traceback
             traceback.print_exc()
             log_error(f'Failed to setup shell integration for: {shell}')
-    return

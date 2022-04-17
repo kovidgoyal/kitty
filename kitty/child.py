@@ -245,6 +245,7 @@ class Child:
                 env['TERMINFO'] = tdir
             env['KITTY_INSTALLATION_DIR'] = kitty_base_dir
             opts = fast_data_types.get_options()
+            self.unmodified_argv = list(self.argv)
             if 'disabled' not in opts.shell_integration:
                 from .shell_integration import modify_shell_environ
                 modify_shell_environ(opts, env, self.argv)

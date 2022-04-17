@@ -6,19 +6,10 @@ if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then builtin return; fi
 _ksi_inject() {
     # Load the normal bash startup files
     if [[ -n "$KITTY_BASH_INJECT" ]]; then
-        if [ -n "$KITTY_IS_CLONE_LAUNCH" ]; then
-            # store some vars before the rc files have a chance to change them
-            builtin declare -Ag _ksi_pre_rc
-            _ksi_pre_rc=(
-                [path]="$PATH" [conda_default_env]="$CONDA_DEFAULT_ENV" [python_venv]="$VIRTUAL_ENV" [is_clone_launch]="$KITTY_IS_CLONE_LAUNCH"
-            )
-        fi
-
         builtin local kitty_bash_inject="$KITTY_BASH_INJECT"
         builtin local ksi_val="$KITTY_SHELL_INTEGRATION"
         builtin unset KITTY_SHELL_INTEGRATION  # ensure manual sourcing of this file in bashrc does not have any effect
-        builtin unset KITTY_BASH_INJECT
-        builtin unset ENV
+        builtin unset KITTY_BASH_INJECT ENV
         if [[ -z "$HOME" ]]; then HOME=~; fi
         if [[ -z "$KITTY_BASH_ETC_LOCATION" ]]; then KITTY_BASH_ETC_LOCATION="/etc"; fi
 
@@ -58,16 +49,13 @@ _ksi_inject() {
                 fi
             fi
         fi
-        builtin unset KITTY_BASH_RCFILE
-        builtin unset KITTY_BASH_POSIX_ENV
-        builtin unset KITTY_BASH_ETC_LOCATION
+        builtin unset KITTY_BASH_RCFILE KITTY_BASH_POSIX_ENV KITTY_BASH_ETC_LOCATION
         builtin unset -f _ksi_safe_source
         builtin export KITTY_SHELL_INTEGRATION="$ksi_val"
     fi
 }
 _ksi_inject
 builtin unset -f _ksi_inject
-builtin unset KITTY_IS_CLONE_LAUNCH
 
 if [ "${BASH_VERSINFO:-0}" -lt 4 ]; then
     builtin unset KITTY_SHELL_INTEGRATION
@@ -86,9 +74,8 @@ fi
 builtin declare -A _ksi_prompt
 _ksi_prompt=(
     [cursor]='y' [title]='y' [mark]='y' [complete]='y' [cwd]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]=''
-    [hostname_prefix]='' [sourced]='y' [last_reported_cwd]='' [argv]="$KITTY_BASH_ORIGINAL_ARGV"
+    [hostname_prefix]='' [sourced]='y' [last_reported_cwd]=''
 )
-builtin unset KITTY_BASH_ORIGINAL_ARGV
 
 _ksi_main() {
     builtin local ifs="$IFS"
@@ -251,12 +238,7 @@ _ksi_main() {
     if [[ -n "${_ksi_prompt[ps2]}" ]]; then
         _ksi_prompt[ps2]="${_ksi_prompt[start_mark]}${_ksi_prompt[ps2]}${_ksi_prompt[end_mark]}"
     fi
-    builtin unset _ksi_prompt[start_mark]
-    builtin unset _ksi_prompt[end_mark]
-    builtin unset _ksi_prompt[start_suffix_mark]
-    builtin unset _ksi_prompt[end_suffix_mark]
-    builtin unset _ksi_prompt[start_secondary_mark]
-    builtin unset _ksi_prompt[end_secondary_mark]
+    builtin unset _ksi_prompt[start_mark] _ksi_prompt[end_mark] _ksi_prompt[start_suffix_mark] _ksi_prompt[end_suffix_mark] _ksi_prompt[start_secondary_mark] _ksi_prompt[end_secondary_mark]
 
     # install our prompt command, using an array if it is unset or already an array,
     # otherwise append a string. We check if _ksi_prompt_command exists as some shell
@@ -277,14 +259,16 @@ _ksi_main() {
         builtin eval "$oldval"
         PROMPT_COMMAND+="; $pc"
     fi
-    if [ -n "${_ksi_pre_rc[is_clone_launch]}" ]; then
-        builtin export PATH="${_ksi_pre_rc[path]}"
+    if [ -n "${KITTY_IS_CLONE_LAUNCH}" ]; then
+        builtin local orig_conda_env="$CONDA_DEFAULT_ENV"
+        builtin eval "${KITTY_IS_CLONE_LAUNCH}"
         builtin hash -r 2> /dev/null 1> /dev/null
-        if [ -n "${_ksi_pre_rc[python_venv]}" -a -r "${_ksi_pre_rc[python_venv]}/bin/activate" ]; then
+        builtin local venv="${VIRTUAL_ENV}/bin/activate"
+        if [ -n "${VIRTUAL_ENV}" -a -r "$venv" ]; then
             builtin unset VIRTUAL_ENV
-            . "${_ksi_pre_rc[python_venv]}/bin/activate"
-        elif [ -n "${_ksi_pre_rc[conda_default_env]}" ] && builtin command -v conda >/dev/null 2>/dev/null && [ "${_ksi_pre_rc[conda_default_env]}" != "$CONDA_DEFAULT_ENV" ]; then
-            conda activate "${_ksi_pre_rc[conda_default_env]}"
+            . "$venv"
+        elif [ -n "${CONDA_DEFAULT_ENV}" ] && builtin command -v conda >/dev/null 2>/dev/null && [ "${CONDA_DEFAULT_ENV}" != "$orig_conda_env" ]; then
+            conda activate "${CONDA_DEFAULT_ENV}"
         fi
         # Ensure PATH has no duplicate entries
         if [ -n "$PATH" ]; then
@@ -301,7 +285,7 @@ _ksi_main() {
             PATH=${PATH#:}
         fi
     fi
-    builtin unset _ksi_pre_rc
+    builtin unset KITTY_IS_CLONE_LAUNCH
 }
 _ksi_main
 builtin unset -f _ksi_main
@@ -310,7 +294,7 @@ case :$SHELLOPTS: in
   *:posix:*) ;;
   *)
 clone-in-kitty() {
-    builtin local data="argv=${_ksi_prompt[argv]},cwd=$(builtin printf "%s" "$PWD" | builtin command base64),envfmt=bash,env=$(builtin export | builtin command base64)"
+    builtin local data="shell=bash,pid=$$,cwd=$(builtin printf "%s" "$PWD" | builtin command base64),envfmt=bash,env=$(builtin export | builtin command base64)"
     while :; do
         case "$1" in
             "") break;;
