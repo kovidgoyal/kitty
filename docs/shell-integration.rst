@@ -244,6 +244,15 @@ are ignored: :option:`launch --allow-remote-control`, :option:`launch
 --allow-remote-control`, :option:`launch --stdin-source`, :option:`launch
 --marker` and :option:`launch --watcher`.
 
+:file:`clone-in-kitty` can be configured to source arbitrary code in the
+cloned window using environment variables. It will automatically clone virtual
+environments created by the python venv module or conda. In addition, setting the
+env var :file:`KITTY_CLONE_SOURCE_PATH` to the path of a file will cause
+that file to be sourced in the cloned window. Similarly, setting
+:file:`KITTY_CLONE_SOURCE_CODE` to some shell code will cause that code to be
+run in the cloned window with :code:`eval`. This can be controlled by
+:opt:`clone_source_strategies`.
+
 
 .. _manual_shell_integration:
 
