@@ -8,15 +8,16 @@ from kitty.conf.utils import (
 from kitty.options.utils import (
     action_alias, active_tab_title_template, adjust_baseline, adjust_line_height, allow_hyperlinks,
     allow_remote_control, bell_on_tab, box_drawing_scale, clear_all_mouse_actions, clear_all_shortcuts,
-    clipboard_control, config_or_absolute_path, copy_on_select, cursor_text_color,
-    deprecated_hide_window_decorations_aliases, deprecated_macos_show_window_title_in_menubar_alias,
-    deprecated_send_text, disable_ligatures, edge_width, env, font_features, hide_window_decorations,
-    macos_option_as_alt, macos_titlebar_color, narrow_symbols, optional_edge_width, parse_map,
-    parse_mouse_map, paste_actions, resize_draw_strategy, scrollback_lines,
-    scrollback_pager_history_size, shell_integration, store_multiple, symbol_map, tab_activity_symbol,
-    tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
-    tab_title_template, titlebar_color, to_cursor_shape, to_font_size, to_layout_names, to_modifiers,
-    url_prefixes, url_style, visual_window_select_characters, window_border_width, window_size
+    clipboard_control, clone_source_strategies, config_or_absolute_path, copy_on_select,
+    cursor_text_color, deprecated_hide_window_decorations_aliases,
+    deprecated_macos_show_window_title_in_menubar_alias, deprecated_send_text, disable_ligatures,
+    edge_width, env, font_features, hide_window_decorations, macos_option_as_alt, macos_titlebar_color,
+    narrow_symbols, optional_edge_width, parse_map, parse_mouse_map, paste_actions,
+    resize_draw_strategy, scrollback_lines, scrollback_pager_history_size, shell_integration,
+    store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge, tab_bar_margin_height,
+    tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator, tab_title_template, titlebar_color,
+    to_cursor_shape, to_font_size, to_layout_names, to_modifiers, url_prefixes, url_style,
+    visual_window_select_characters, window_border_width, window_size
 )
 
 
@@ -56,7 +57,7 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for allow_cloning")
         ans["allow_cloning"] = val
 
-    choices_for_allow_cloning = frozenset(('yes', 'no', 'ask'))
+    choices_for_allow_cloning = frozenset(('yes', 'y', 'true', 'no', 'n', 'false', 'ask'))
 
     def allow_hyperlinks(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['allow_hyperlinks'] = allow_hyperlinks(val)
@@ -119,6 +120,9 @@ class Parser:
 
     def clipboard_max_size(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['clipboard_max_size'] = positive_float(val)
+
+    def clone_source_strategies(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['clone_source_strategies'] = clone_source_strategies(val)
 
     def close_on_child_death(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['close_on_child_death'] = to_bool(val)

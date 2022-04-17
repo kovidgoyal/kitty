@@ -746,6 +746,10 @@ def tab_bar_margin_height(x: str) -> TabBarMarginHeight:
     return TabBarMarginHeight(next(ans), next(ans))
 
 
+def clone_source_strategies(x: str) -> FrozenSet[str]:
+    return frozenset({'venv', 'conda', 'path', 'env_var'} & set(x.lower().split(',')))
+
+
 def clear_all_mouse_actions(val: str, dict_with_parse_results: Optional[Dict[str, Any]] = None) -> bool:
     ans = to_bool(val)
     if ans and dict_with_parse_results is not None:

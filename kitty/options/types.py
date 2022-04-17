@@ -13,7 +13,7 @@ from kitty.types import FloatEdges, SingleKey
 import kitty.types
 
 if typing.TYPE_CHECKING:
-    choices_for_allow_cloning = typing.Literal['yes', 'no', 'ask']
+    choices_for_allow_cloning = typing.Literal['yes', 'y', 'true', 'no', 'n', 'false', 'ask']
     choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled', 'clamped']
     choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'hand']
     choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
@@ -73,6 +73,7 @@ option_names = (  # {{{
  'click_interval',
  'clipboard_control',
  'clipboard_max_size',
+ 'clone_source_strategies',
  'close_on_child_death',
  'color0',
  'color1',
@@ -484,6 +485,7 @@ class Options:
     click_interval: float = -1.0
     clipboard_control: typing.Tuple[str, ...] = ('write-clipboard', 'write-primary', 'read-clipboard-ask', 'read-primary-ask')
     clipboard_max_size: float = 64.0
+    clone_source_strategies: typing.FrozenSet[str] = frozenset({'venv', 'env_var', 'conda', 'path'})
     close_on_child_death: bool = False
     command_on_bell: typing.List[str] = ['none']
     confirm_os_window_close: int = -1

@@ -251,6 +251,7 @@ class Child:
         env = {k: v for k, v in env.items() if v is not DELETE_ENV_VAR}
         if self.is_clone_launch:
             env['KITTY_IS_CLONE_LAUNCH'] = self.is_clone_launch
+            env['KITTY_CLONE_SOURCE_STRATEGIES'] = ',' + ','.join(opts.clone_source_strategies) + ','
             self.is_clone_launch = '1'  # free memory
         else:
             env.pop('KITTY_IS_CLONE_LAUNCH', None)

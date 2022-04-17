@@ -10,7 +10,8 @@ from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .constants import kitty_exe, shell_path
 from .fast_data_types import (
-    get_boss, get_os_window_title, patch_color_profiles, set_clipboard_string
+    get_boss, get_options, get_os_window_title, patch_color_profiles,
+    set_clipboard_string
 )
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
@@ -594,13 +595,18 @@ def clone_and_launch(msg: str, window: Window) -> None:
     is_clone_launch = serialize_env(c.shell, c.env or {})
     ssh_kitten_cmdline = window.ssh_kitten_cmdline()
     if ssh_kitten_cmdline:
-        from kittens.ssh.main import set_cwd_in_cmdline, set_env_in_cmdline, patch_cmdline
+        from kittens.ssh.main import (
+            patch_cmdline, set_cwd_in_cmdline, set_env_in_cmdline
+        )
         cmdline = ssh_kitten_cmdline
         if c.opts.cwd:
             set_cwd_in_cmdline(c.opts.cwd, cmdline)
             c.opts.cwd = None
         if c.env:
-            set_env_in_cmdline({'KITTY_IS_CLONE_LAUNCH': is_clone_launch}, cmdline)
+            set_env_in_cmdline({
+                'KITTY_IS_CLONE_LAUNCH': is_clone_launch,
+                'KITTY_CLONE_SOURCE_STRATEGIES': ',' + ','.join(get_options().clone_source_strategies) + ','
+            }, cmdline)
             c.env = None
         if c.opts.env:
             for entry in reversed(c.opts.env):

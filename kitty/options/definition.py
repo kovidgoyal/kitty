@@ -2783,6 +2783,23 @@ Allowing cloning unconditionally gives programs running in the terminal
 the terminal is running as on the computer the terminal is running on.
 ''')
 
+opt('clone_source_strategies', 'venv,conda,env_var,path', option_type='clone_source_strategies', long_text='''
+Control what shell code is sourced when running :code:`clone-in-kitty`
+in the newly cloned window. The supported strategies are:
+
+:code:`venv`
+   Source the file :file:`$VIRTUAL_ENV/bin/activate` (this is used
+   by the Python stdlin venv module and allows cloning venvs automatically)
+:code:`conda`
+  Run :code:`conda activate $CONDA_DEFAULT_ENV` this supports the virtual envs created by conda
+:code:`env_var`
+  Source the contents of the environment variable :code:`KITTY_CLONE_SOURCE_CODE`
+:code:`path`
+  Source the file pointed to by the environment variable :code:`KITTY_CLONE_SOURCE_PATH`
+
+This setting must be a comma separated list of the above values.
+''')
+
 opt('term', 'xterm-kitty',
     long_text='''
 The value of the TERM environment variable to set. Changing this can break many
