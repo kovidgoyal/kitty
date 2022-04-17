@@ -1022,7 +1022,7 @@ class Window:
                         ' Allow it do so, once?'),
                         partial(self.handle_remote_clone_confirmation, cdata), window=self,
                     )
-                elif ac == 'yes':
+                elif ac in ('yes', 'y', 'true'):
                     self.handle_remote_clone_confirmation(cdata, True)
             self.current_clone_data = ''
             return

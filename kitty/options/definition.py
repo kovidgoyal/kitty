@@ -2774,7 +2774,7 @@ pager, etc. on supported shells.  Set to ``disabled`` to turn off shell
 integration, completely. See :ref:`shell_integration` for details.
 ''')
 
-opt('allow_cloning', 'ask', choices=('yes', 'no', 'ask'), long_text='''
+opt('allow_cloning', 'ask', choices=('yes', 'y', 'true', 'no', 'n', 'false', 'ask'), long_text='''
 Control whether programs running in the terminal can request new
 windows to be created. The canonical example is :code:`clone-in-kitty`.
 By default, kitty will ask for permission for each clone request.
