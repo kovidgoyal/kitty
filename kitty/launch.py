@@ -617,4 +617,4 @@ def clone_and_launch(msg: str, window: Window) -> None:
             cmdline[0] = window.child.final_exe
         if cmdline and cmdline == [window.child.final_exe] + window.child.argv[1:]:
             cmdline = window.child.unmodified_argv
-    launch(get_boss(), c.opts, cmdline, base_env=c.env, active=window, is_clone_launch=is_clone_launch)
+    launch(get_boss(), c.opts, cmdline, active=window, is_clone_launch=is_clone_launch)
