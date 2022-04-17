@@ -881,7 +881,7 @@ class Window:
         if cb and cb != ['none']:
             import shlex
             import subprocess
-            env = self.child.final_env
+            env = self.child.foreground_environ
             env['KITTY_CHILD_CMDLINE'] = ' '.join(map(shlex.quote, self.child.cmdline))
             subprocess.Popen(cb, env=env, cwd=self.child.foreground_cwd)
         if not self.is_active:

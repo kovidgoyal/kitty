@@ -224,38 +224,36 @@ class Child:
         self.stdin = stdin
         self.env = env or {}
 
-    @property
     def final_env(self) -> Dict[str, str]:
         from kitty.options.utils import DELETE_ENV_VAR
-        env: Optional[Dict[str, str]] = getattr(self, '_final_env', None)
-        if env is None:
-            env = self._final_env = default_env().copy()
-            if is_macos and env.get('LC_CTYPE') == 'UTF-8' and not sys._xoptions.get(
-                    'lc_ctype_before_python') and not getattr(default_env, 'lc_ctype_set_by_user', False):
-                del env['LC_CTYPE']
-            env.update(self.env)
-            env['TERM'] = fast_data_types.get_options().term
-            env['COLORTERM'] = 'truecolor'
-            env['KITTY_PID'] = getpid()
-            if self.cwd:
-                # needed in case cwd is a symlink, in which case shells
-                # can use it to display the current directory name rather
-                # than the resolved path
-                env['PWD'] = self.cwd
-            tdir = checked_terminfo_dir()
-            if tdir:
-                env['TERMINFO'] = tdir
-            env['KITTY_INSTALLATION_DIR'] = kitty_base_dir
-            opts = fast_data_types.get_options()
-            self.unmodified_argv = list(self.argv)
-            if 'disabled' not in opts.shell_integration:
-                from .shell_integration import modify_shell_environ
-                modify_shell_environ(opts, env, self.argv)
-            env = {k: v for k, v in env.items() if v is not DELETE_ENV_VAR}
-            if self.is_clone_launch:
-                env['KITTY_IS_CLONE_LAUNCH'] = self.is_clone_launch
-            else:
-                env.pop('KITTY_IS_CLONE_LAUNCH', None)
+        env = default_env().copy()
+        if is_macos and env.get('LC_CTYPE') == 'UTF-8' and not sys._xoptions.get(
+                'lc_ctype_before_python') and not getattr(default_env, 'lc_ctype_set_by_user', False):
+            del env['LC_CTYPE']
+        env.update(self.env)
+        env['TERM'] = fast_data_types.get_options().term
+        env['COLORTERM'] = 'truecolor'
+        env['KITTY_PID'] = getpid()
+        if self.cwd:
+            # needed in case cwd is a symlink, in which case shells
+            # can use it to display the current directory name rather
+            # than the resolved path
+            env['PWD'] = self.cwd
+        tdir = checked_terminfo_dir()
+        if tdir:
+            env['TERMINFO'] = tdir
+        env['KITTY_INSTALLATION_DIR'] = kitty_base_dir
+        opts = fast_data_types.get_options()
+        self.unmodified_argv = list(self.argv)
+        if 'disabled' not in opts.shell_integration:
+            from .shell_integration import modify_shell_environ
+            modify_shell_environ(opts, env, self.argv)
+        env = {k: v for k, v in env.items() if v is not DELETE_ENV_VAR}
+        if self.is_clone_launch:
+            env['KITTY_IS_CLONE_LAUNCH'] = self.is_clone_launch
+            self.is_clone_launch = '1'  # free memory
+        else:
+            env.pop('KITTY_IS_CLONE_LAUNCH', None)
         return env
 
     def fork(self) -> Optional[int]:
@@ -271,7 +269,7 @@ class Child:
             remove_cloexec(stdin_read_fd)
         else:
             stdin_read_fd = stdin_write_fd = -1
-        env = tuple(f'{k}={v}' for k, v in self.final_env.items())
+        env = tuple(f'{k}={v}' for k, v in self.final_env().items())
         argv = list(self.argv)
         exe = argv[0]
         if is_macos and exe == shell_path:
