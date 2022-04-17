@@ -589,7 +589,7 @@ def clone_and_launch(msg: str, window: Window) -> None:
         c.opts.cwd = c.cwd
     c.opts.copy_colors = True
     c.opts.copy_env = False
-    if c.opts.type in ('clipboard', 'primary', 'background'):
+    if c.opts.type not in ('os-window', 'tab', 'window', 'overlay'):
         c.opts.type = 'window'
     is_clone_launch = serialize_env(c.shell, c.env or {})
     ssh_kitten_cmdline = window.ssh_kitten_cmdline()
