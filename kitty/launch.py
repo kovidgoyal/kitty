@@ -348,6 +348,7 @@ def launch(
     force_target_tab: bool = False,
     base_env: Optional[Dict[str, str]] = None,
     active: Optional[Window] = None,
+    is_clone_launch: str = '',
 ) -> Optional[Window]:
     active = active or boss.active_window_for_cwd
     if active:
@@ -473,7 +474,7 @@ def launch(
             tab = tab_for_window(boss, opts, target_tab)
         if tab is not None:
             watchers = load_watch_modules(opts.watcher)
-            new_window: Window = tab.new_window(env=env or None, watchers=watchers or None, **kw)
+            new_window: Window = tab.new_window(env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, **kw)
             if opts.color:
                 apply_colors(new_window, opts.color)
             if opts.keep_focus and active:
@@ -590,7 +591,7 @@ def clone_and_launch(msg: str, window: Window) -> None:
     c.opts.copy_env = False
     if c.opts.type in ('clipboard', 'primary', 'background'):
         c.opts.type = 'window'
-    serialized_env = serialize_env(c.shell, c.env or {})
+    is_clone_launch = serialize_env(c.shell, c.env or {})
     ssh_kitten_cmdline = window.ssh_kitten_cmdline()
     if ssh_kitten_cmdline:
         from kittens.ssh.main import set_cwd_in_cmdline, set_env_in_cmdline, patch_cmdline
@@ -599,14 +600,13 @@ def clone_and_launch(msg: str, window: Window) -> None:
             set_cwd_in_cmdline(c.opts.cwd, cmdline)
             c.opts.cwd = None
         if c.env:
-            set_env_in_cmdline({'KITTY_IS_CLONE_LAUNCH': serialized_env}, cmdline)
+            set_env_in_cmdline({'KITTY_IS_CLONE_LAUNCH': is_clone_launch}, cmdline)
             c.env = None
         if c.opts.env:
             for entry in reversed(c.opts.env):
                 patch_cmdline('env', entry, cmdline)
             c.opts.env = []
     else:
-        c.opts.env = list(c.opts.env) + ['KITTY_IS_CLONE_LAUNCH=' + serialized_env]
         try:
             cmdline = cmdline_of_process(c.pid)
         except Exception:
@@ -617,4 +617,4 @@ def clone_and_launch(msg: str, window: Window) -> None:
             cmdline[0] = window.child.final_exe
         if cmdline and cmdline == [window.child.final_exe] + window.child.argv[1:]:
             cmdline = window.child.unmodified_argv
-    launch(get_boss(), c.opts, cmdline, base_env=c.env, active=window)
+    launch(get_boss(), c.opts, cmdline, base_env=c.env, active=window, is_clone_launch=is_clone_launch)

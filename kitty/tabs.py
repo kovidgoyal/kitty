@@ -358,7 +358,8 @@ class Tab:  # {{{
         cwd_from: Optional[CwdRequest] = None,
         cwd: Optional[str] = None,
         env: Optional[Dict[str, str]] = None,
-        allow_remote_control: bool = False
+        allow_remote_control: bool = False,
+        is_clone_launch: str = '',
     ) -> Child:
         check_for_suitability = True
         if cmd is None:
@@ -407,7 +408,7 @@ class Tab:  # {{{
         pwid = platform_window_id(self.os_window_id)
         if pwid is not None:
             fenv['WINDOWID'] = str(pwid)
-        ans = Child(cmd, cwd or self.cwd, stdin, fenv, cwd_from, allow_remote_control=allow_remote_control)
+        ans = Child(cmd, cwd or self.cwd, stdin, fenv, cwd_from, allow_remote_control=allow_remote_control, is_clone_launch=is_clone_launch)
         ans.fork()
         return ans
 
@@ -431,10 +432,13 @@ class Tab:  # {{{
         allow_remote_control: bool = False,
         marker: Optional[str] = None,
         watchers: Optional[Watchers] = None,
-        overlay_behind: bool = False
+        overlay_behind: bool = False,
+        is_clone_launch: str = '',
     ) -> Window:
         child = self.launch_child(
-            use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env, allow_remote_control=allow_remote_control)
+            use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env, allow_remote_control=allow_remote_control,
+            is_clone_launch=is_clone_launch
+        )
         window = Window(
             self, child, self.args, override_title=override_title,
             copy_colors_from=copy_colors_from, watchers=watchers

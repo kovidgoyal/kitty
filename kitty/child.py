@@ -207,9 +207,11 @@ class Child:
         stdin: Optional[bytes] = None,
         env: Optional[Dict[str, str]] = None,
         cwd_from: Optional['CwdRequest'] = None,
-        allow_remote_control: bool = False
+        allow_remote_control: bool = False,
+        is_clone_launch: str = '',
     ):
         self.allow_remote_control = allow_remote_control
+        self.is_clone_launch = is_clone_launch
         self.argv = list(argv)
         if cwd_from:
             try:
@@ -250,6 +252,10 @@ class Child:
                 from .shell_integration import modify_shell_environ
                 modify_shell_environ(opts, env, self.argv)
             env = {k: v for k, v in env.items() if v is not DELETE_ENV_VAR}
+            if self.is_clone_launch:
+                env['KITTY_IS_CLONE_LAUNCH'] = self.is_clone_launch
+            else:
+                env.pop('KITTY_IS_CLONE_LAUNCH', None)
         return env
 
     def fork(self) -> Optional[int]:
