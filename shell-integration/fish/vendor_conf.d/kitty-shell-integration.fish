@@ -132,7 +132,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
             and type -q conda
             and test "$CONDA_DEFAULT_ENV" != "$orig_conda_env"
             set _ksi_sourced "y"
-            conda activate $CONDA_DEFAULT_ENV
+            conda activate "$CONDA_DEFAULT_ENV"
         end
         if _ksi_s_is_ok "env_var"
             and test -n "$KITTY_CLONE_SOURCE_CODE"
