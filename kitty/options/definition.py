@@ -3774,11 +3774,13 @@ or a comma separated combination of them.  The special keyword :code:`all` means
 modes. The modes :code:`normal` and :code:`application` refer to the DECCKM cursor key mode for
 terminals, and :code:`kitty` refers to the special kitty extended keyboard protocol.
 
-Another example, that outputs a word and then moves the cursor to the start of
-the line (same as pressing the Home key)::
+Some more examples::
 
+    # Output a word and move the cursor ro the start of the line (like typing and pressing Home)
     map ctrl+alt+a send_text normal Word\\x1b[H
     map ctrl+alt+a send_text application Word\\x1bOH
+    # Run a command at a shell prompt (like typing the command and pressing enter)
+    map ctrl+alt+a send_text normal,application some command with arguments\r
 '''
     )
 egr()  # }}}
