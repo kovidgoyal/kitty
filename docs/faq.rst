@@ -295,7 +295,10 @@ the :sc:`send_text <send_text>` you can use the ``show_key`` kitten. Run::
 
     kitty +kitten show_key
 
-Then press the key you want to emulate.
+Then press the key you want to emulate. Note that this kitten will only show
+keys that actually reach the terminal program, in particular, keys mapped to
+actions in kitty will not be shown. To check those first map them to
+:code:`no_op`.
 
 How do I open a new window or tab with the same working directory as the current window?
 --------------------------------------------------------------------------------------------
