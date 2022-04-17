@@ -113,17 +113,41 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         set -l orig_conda_env "$CONDA_DEFAULT_ENV"
         eval "$KITTY_IS_CLONE_LAUNCH"
         set -l venv "$VIRTUAL_ENV/bin/activate.fish"
-        if test -n "$VIRTUAL_ENV" -a -r "$venv" 
+        set -g _ksi_sourced 'n'
+        function _ksi_s_is_ok
+            if test "$_ksi_sourced" = 'n'
+                and string match -q -- "*,$argv[1],*" "$KITTY_CLONE_SOURCE_STRATEGIES"
+                return 0
+            end
+            return 1
+        end
+        if _ksi_s_is_ok "venv" 
+            and test -n "$VIRTUAL_ENV" -a -r "$venv" 
+            set _ksi_sourced "y"
             set -e VIRTUAL_ENV _OLD_FISH_PROMPT_OVERRIDE  # activate.fish stupidly exports _OLD_FISH_PROMPT_OVERRIDE
             source "$venv"
-        else if test -n "$CONDA_DEFAULT_ENV" 
+        end
+        if _ksi_s_is_ok "conda"
+            and test -n "$CONDA_DEFAULT_ENV" 
             and type -q conda
             and test "$CONDA_DEFAULT_ENV" != "$orig_conda_env"
+            set _ksi_sourced "y"
             # for some reason that I cant be bothered to figure out this doesnt take effect
             # conda activate $_ksi_pre_rc_conda_default_env
             eval ($CONDA_EXE shell.fish activate $CONDA_DEFAULT_ENV)
         end
-        set --erase KITTY_IS_CLONE_LAUNCH
+        if _ksi_s_is_ok "env_var"
+            and test -n "$KITTY_CLONE_SOURCE_CODE"
+            set _ksi_sourced "y"
+            eval "$KITTY_CLONE_SOURCE_CODE"
+        end
+        if _ksi_s_is_ok "path"
+            and test -r "$KITTY_CLONE_SOURCE_PATH"
+            set _ksi_sourced "y"
+            source "$KITTY_CLONE_SOURCE_PATH"
+        end
+        set --erase KITTY_IS_CLONE_LAUNCH KITTY_CLONE_SOURCE_STRATEGIES _ksi_sourced
+        functions --erase _ksi_s_is_ok
     end
 end
 

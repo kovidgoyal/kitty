@@ -264,12 +264,27 @@ _ksi_main() {
         builtin eval "${KITTY_IS_CLONE_LAUNCH}"
         builtin hash -r 2> /dev/null 1> /dev/null
         builtin local venv="${VIRTUAL_ENV}/bin/activate"
-        if [ -n "${VIRTUAL_ENV}" -a -r "$venv" ]; then
+        builtin local sourced=""
+        _ksi_s_is_ok() {
+            [[ -z "$sourced" && "$KITTY_CLONE_SOURCE_STRATEGIES" == *",$1,"* ]] && return 0
+            return 1
+        }
+
+        if _ksi_s_is_ok "venv" && [ -n "${VIRTUAL_ENV}" -a -r "$venv" ]; then
+            sourced="y"
             builtin unset VIRTUAL_ENV
             . "$venv"
-        elif [ -n "${CONDA_DEFAULT_ENV}" ] && builtin command -v conda >/dev/null 2>/dev/null && [ "${CONDA_DEFAULT_ENV}" != "$orig_conda_env" ]; then
+        fi; if _ksi_s_is_ok "conda" && [ -n "${CONDA_DEFAULT_ENV}" ] && builtin command -v conda >/dev/null 2>/dev/null && [ "${CONDA_DEFAULT_ENV}" != "$orig_conda_env" ]; then
+            sourced="y"
             conda activate "${CONDA_DEFAULT_ENV}"
+        fi; if _ksi_s_is_ok "env_var" && [[ -n "${KITTY_CLONE_SOURCE_CODE}" ]]; then
+            sourced="y"
+            eval "${KITTY_CLONE_SOURCE_CODE}"
+        fi; if _ksi_s_is_ok "path" && [[ -r "${KITTY_CLONE_SOURCE_PATH}" ]]; then
+            sourced="y"
+            builtin source "${KITTY_CLONE_SOURCE_PATH}"
         fi
+        builtin unset -f _ksi_s_is_ok
         # Ensure PATH has no duplicate entries
         if [ -n "$PATH" ]; then
             builtin local old_PATH=$PATH:; PATH=
@@ -285,7 +300,7 @@ _ksi_main() {
             PATH=${PATH#:}
         fi
     fi
-    builtin unset KITTY_IS_CLONE_LAUNCH
+    builtin unset KITTY_IS_CLONE_LAUNCH KITTY_CLONE_SOURCE_STRATEGIES
 }
 _ksi_main
 builtin unset -f _ksi_main

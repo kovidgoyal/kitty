@@ -340,6 +340,7 @@ class ForceWindowLaunch:
 
 
 force_window_launch = ForceWindowLaunch()
+non_window_launch_types = 'background', 'clipboard', 'primary'
 
 
 def launch(
@@ -348,7 +349,6 @@ def launch(
     args: List[str],
     target_tab: Optional[Tab] = None,
     force_target_tab: bool = False,
-    base_env: Optional[Dict[str, str]] = None,
     active: Optional[Window] = None,
     is_clone_launch: str = '',
 ) -> Optional[Window]:
@@ -365,11 +365,7 @@ def launch(
     if opts.os_window_title == 'current':
         tm = boss.active_tab_manager
         opts.os_window_title = get_os_window_title(tm.os_window_id) if tm else None
-    if base_env is not None:
-        env = base_env.copy()
-        env.update(get_env(opts))
-    else:
-        env = get_env(opts, active_child)
+    env = get_env(opts, active_child)
     kw: LaunchKwds = {
         'allow_remote_control': opts.allow_remote_control,
         'cwd_from': None,
@@ -450,7 +446,7 @@ def launch(
         if exe:
             final_cmd[0] = exe
         kw['cmd'] = final_cmd
-    if force_window_launch and opts.type not in ('background', 'clipboard', 'primary'):
+    if force_window_launch and opts.type not in non_window_launch_types:
         opts.type = 'window'
     if opts.type == 'overlay' and active:
         kw['overlay_for'] = active.id
@@ -575,7 +571,7 @@ class CloneCmd:
                     # some people export these. We want the shell rc files to recreate them
                     'PS0', 'PS1', 'PS2', 'PS3', 'PS4', 'RPS1', 'PROMPT_COMMAND', 'SHLVL',
                     # conda state env vars
-                    'CONDA_SHLVL', 'CONDA_PREFIX', 'CONDA_EXE', 'CONDA_PROMPT_MODIFIER', 'CONDA_EXE', 'CONDA_PYTHON_EXE',
+                    'CONDA_SHLVL', 'CONDA_PREFIX', 'CONDA_PROMPT_MODIFIER', 'CONDA_EXE', 'CONDA_PYTHON_EXE', '_CE_CONDA', '_CE_M',
                     # skip SSH environment variables
                     'SSH_CLIENT', 'SSH_CONNECTION', 'SSH_ORIGINAL_COMMAND', 'SSH_TTY', 'SSH2_TTY',
                 }}
@@ -591,7 +587,7 @@ def clone_and_launch(msg: str, window: Window) -> None:
         c.opts.cwd = c.cwd
     c.opts.copy_colors = True
     c.opts.copy_env = False
-    if c.opts.type in ('clipboard', 'primary', 'background'):
+    if c.opts.type in non_window_launch_types:
         c.opts.type = 'window'
     if c.env and c.env.get('PATH') and c.env.get('VIRTUAL_ENV'):
         # only pass VIRTUAL_ENV if it is currently active
@@ -628,4 +624,4 @@ def clone_and_launch(msg: str, window: Window) -> None:
             cmdline[0] = window.child.final_exe
         if cmdline and cmdline == [window.child.final_exe] + window.child.argv[1:]:
             cmdline = window.child.unmodified_argv
-    launch(get_boss(), c.opts, cmdline, base_env=c.env, active=window, is_clone_launch=is_clone_launch)
+    launch(get_boss(), c.opts, cmdline, active=window, is_clone_launch=is_clone_launch)
