@@ -3772,10 +3772,10 @@ UTF-8 text). You can use the show_key kitten :code:`kitty +kitten show_key` to
 get the key escape codes you want to emulate. The first argument to
 :code:`send_text` is the keyboard modes in which to activate the shortcut. The
 possible values are :code:`normal` or :code:`application` or :code:`kitty` or a
-comma separated combination of them.  The special keyword :code:`all` means all
+comma separated combination of them. The special keyword :code:`all` means all
 modes. The modes :code:`normal` and :code:`application` refer to the DECCKM
-cursor key mode forterminals, and :code:`kitty` refers to the special kitty
-extended keyboard protocol.
+cursor key mode for terminals, and :code:`kitty` refers to the kitty extended
+keyboard protocol.
 
 Some more examples::
 
@@ -3783,7 +3783,7 @@ Some more examples::
     map ctrl+alt+a send_text normal Word\\x1b[H
     map ctrl+alt+a send_text application Word\\x1bOH
     # Run a command at a shell prompt (like typing the command and pressing Enter)
-    map ctrl+alt+a send_text normal,application some command with arguments\r
+    map ctrl+alt+a send_text normal,application some command with arguments\\r
 '''
     )
 egr()  # }}}

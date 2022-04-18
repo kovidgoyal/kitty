@@ -485,7 +485,7 @@ class Options:
     click_interval: float = -1.0
     clipboard_control: typing.Tuple[str, ...] = ('write-clipboard', 'write-primary', 'read-clipboard-ask', 'read-primary-ask')
     clipboard_max_size: float = 64.0
-    clone_source_strategies: typing.FrozenSet[str] = frozenset({'venv', 'env_var', 'conda', 'path'})
+    clone_source_strategies: typing.FrozenSet[str] = frozenset({'conda', 'env_var', 'venv', 'path'})
     close_on_child_death: bool = False
     command_on_bell: typing.List[str] = ['none']
     confirm_os_window_close: int = -1
