@@ -215,7 +215,7 @@ _ksi_main() {
             builtin let limit=1+$COMP_CWORD
             src=$(builtin printf "%s\n" "${COMP_WORDS[@]:0:$limit}" | builtin command kitty +complete bash)
             if [[ $? == 0 ]]; then
-                builtin eval ${src}
+                builtin eval "${src}"
             fi
         }
         builtin complete -o nospace -F _ksi_completions kitty
@@ -273,13 +273,13 @@ _ksi_main() {
         if _ksi_s_is_ok "venv" && [ -n "${VIRTUAL_ENV}" -a -r "$venv" ]; then
             sourced="y"
             builtin unset VIRTUAL_ENV
-            . "$venv"
+            builtin source "$venv"
         fi; if _ksi_s_is_ok "conda" && [ -n "${CONDA_DEFAULT_ENV}" ] && builtin command -v conda >/dev/null 2>/dev/null && [ "${CONDA_DEFAULT_ENV}" != "$orig_conda_env" ]; then
             sourced="y"
             conda activate "${CONDA_DEFAULT_ENV}"
         fi; if _ksi_s_is_ok "env_var" && [[ -n "${KITTY_CLONE_SOURCE_CODE}" ]]; then
             sourced="y"
-            eval "${KITTY_CLONE_SOURCE_CODE}"
+            builtin eval "${KITTY_CLONE_SOURCE_CODE}"
         fi; if _ksi_s_is_ok "path" && [[ -r "${KITTY_CLONE_SOURCE_PATH}" ]]; then
             sourced="y"
             builtin source "${KITTY_CLONE_SOURCE_PATH}"

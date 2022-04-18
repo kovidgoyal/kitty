@@ -574,7 +574,10 @@ class CloneCmd:
                     'CONDA_SHLVL', 'CONDA_PREFIX', 'CONDA_PROMPT_MODIFIER', 'CONDA_EXE', 'CONDA_PYTHON_EXE', '_CE_CONDA', '_CE_M',
                     # skip SSH environment variables
                     'SSH_CLIENT', 'SSH_CONNECTION', 'SSH_ORIGINAL_COMMAND', 'SSH_TTY', 'SSH2_TTY',
-                }}
+                } and not k.startswith((
+                    # conda state env vars for multi-level virtual environments
+                    'CONDA_PREFIX_',
+                ))}
             elif k == 'cwd':
                 self.cwd = v
 

@@ -24,7 +24,6 @@ not functions -q __ksi_schedule || exit 0
 set -q fish_killring || set -q status_generation || string match -qnv "3.1.*" "$version"
 or echo -en \eP@kitty-print\|V2FybmluZzogVXBkYXRlIGZpc2ggdG8gdmVyc2lvbiAzLjMuMCsgdG8gZW5hYmxlIGtpdHR5IHNoZWxsIGludGVncmF0aW9uLgo=\e\\ && exit 0 || exit 0
 
-
 function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after other scripts have run, we hope"
     functions --erase __ksi_schedule
     test -n "$KITTY_SHELL_INTEGRATION" || return 0
@@ -110,15 +109,14 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
 
     # Handle clone launches
     if test -n "$KITTY_IS_CLONE_LAUNCH"
-        set -l orig_conda_env "$CONDA_DEFAULT_ENV"
+        set --local orig_conda_env "$CONDA_DEFAULT_ENV"
         eval "$KITTY_IS_CLONE_LAUNCH"
-        set -l venv "$VIRTUAL_ENV/bin/activate.fish"
-        set -g _ksi_sourced 'n'
+        set --local venv "$VIRTUAL_ENV/bin/activate.fish"
+        set --global _ksi_sourced
         function _ksi_s_is_ok
-            if test "$_ksi_sourced" = 'n'
-                and string match -q -- "*,$argv[1],*" "$KITTY_CLONE_SOURCE_STRATEGIES"
-                return 0
-            end
+            test -z "$_ksi_sourced"
+            and string match -q -- "*,$argv[1],*" "$KITTY_CLONE_SOURCE_STRATEGIES"
+            and return 0
             return 1
         end
         if _ksi_s_is_ok "venv" 
@@ -128,9 +126,8 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
             source "$venv"
         end
         if _ksi_s_is_ok "conda"
-            and test -n "$CONDA_DEFAULT_ENV" 
-            and type -q conda
-            and test "$CONDA_DEFAULT_ENV" != "$orig_conda_env"
+            and test -n "$CONDA_DEFAULT_ENV" -a "$CONDA_DEFAULT_ENV" != "$orig_conda_env"
+            and functions -q conda
             set _ksi_sourced "y"
             conda activate "$CONDA_DEFAULT_ENV"
         end
@@ -146,6 +143,15 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         end
         set --erase KITTY_IS_CLONE_LAUNCH KITTY_CLONE_SOURCE_STRATEGIES _ksi_sourced
         functions --erase _ksi_s_is_ok
+
+        # Ensure PATH has no duplicate entries
+        set --local --path new_path
+        for p in $PATH
+            contains -- "$p" $new_path
+            or set --append new_path "$p"
+        end
+        test (count $new_path) -eq (count $PATH)
+        or set --global --export --path PATH $new_path
     end
 end
 
@@ -165,9 +171,9 @@ function clone-in-kitty -d "Clone the current fish session into a new kitty wind
     for e in (set --export --names)
         set --append envs "$e=$$e"
     end
-    set --local b64_envs (string join0 $envs | base64)
+    set --local b64_envs (string join0 -- $envs | base64)
     set --local b64_cwd (printf "%s" "$PWD" | base64)
-    set --prepend data "shell=fish,pid=$fish_pid" "cwd=$b64_cwd" "env=$b64_envs"
+    set --prepend data "shell=fish" "pid=$fish_pid" "cwd=$b64_cwd" "env=$b64_envs"
     set data (string join "," -- $data | tr -d "\t\n\r ")
     set --local data_len (string length -- "$data")
     set --local pos 1
