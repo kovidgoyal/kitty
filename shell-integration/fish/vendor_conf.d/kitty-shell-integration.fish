@@ -122,7 +122,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         if _ksi_s_is_ok "venv" 
             and test -n "$VIRTUAL_ENV" -a -r "$venv" 
             set _ksi_sourced "y"
-            set -e VIRTUAL_ENV _OLD_FISH_PROMPT_OVERRIDE  # activate.fish stupidly exports _OLD_FISH_PROMPT_OVERRIDE
+            set --erase VIRTUAL_ENV _OLD_FISH_PROMPT_OVERRIDE  # activate.fish stupidly exports _OLD_FISH_PROMPT_OVERRIDE
             source "$venv"
         end
         if _ksi_s_is_ok "conda"
