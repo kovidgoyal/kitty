@@ -240,9 +240,8 @@ The :file:`clone-in-kitty` command takes almost all the same arguments as the
 window, etc. Arguments of launch that can cause code execution or that don't
 make sense when cloning are ignored. Most prominently, the following options
 are ignored: :option:`launch --allow-remote-control`, :option:`launch
---copy-cmdline`, :option:`launch --copy-env`, :option:`launch
---allow-remote-control`, :option:`launch --stdin-source`, :option:`launch
---marker` and :option:`launch --watcher`.
+--copy-cmdline`, :option:`launch --copy-env`, :option:`launch --stdin-source`,
+:option:`launch --marker` and :option:`launch --watcher`.
 
 :file:`clone-in-kitty` can be configured to source arbitrary code in the
 cloned window using environment variables. It will automatically clone virtual
