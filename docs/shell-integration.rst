@@ -253,6 +253,10 @@ that file to be sourced in the cloned window. Similarly, setting
 run in the cloned window with :code:`eval`. This can be controlled by
 :opt:`clone_source_strategies`.
 
+:file:`clone-in-kitty` works by asking the shell to serialize its internal
+state (mainly CWD and env vars) and this state is transmitted to kitty and
+restored by the shell integration scripts in the cloned window.
+
 
 .. _manual_shell_integration:
 
