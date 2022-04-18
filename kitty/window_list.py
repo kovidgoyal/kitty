@@ -303,7 +303,7 @@ class WindowList:
             return self.id_map[self.groups[self.active_group_idx].base_window_id]
         return None
 
-    def set_active_window_group_for(self, x: WindowOrId) -> None:
+    def set_active_window_group_for(self, x: WindowOrId, for_keep_focus: Optional[WindowType] = None) -> None:
         try:
             q = self.id_map[x] if isinstance(x, int) else x
         except KeyError:
@@ -311,6 +311,10 @@ class WindowList:
         for i, group in enumerate(self.groups):
             if q in group:
                 self.set_active_group_idx(i)
+                h = self.active_group_history
+                if for_keep_focus and len(h) > 2 and h[-2] == for_keep_focus.id and h[-1] != for_keep_focus.id:
+                    h.pop()
+                    h.pop()
                 break
 
     def add_window(

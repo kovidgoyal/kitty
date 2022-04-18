@@ -504,8 +504,8 @@ class Tab:  # {{{
         attach_window(self.os_window_id, self.id, window.id)
         self._add_window(window)
 
-    def set_active_window(self, x: Union[Window, int]) -> None:
-        self.windows.set_active_window_group_for(x)
+    def set_active_window(self, x: Union[Window, int], for_keep_focus: Optional[Window] = None) -> None:
+        self.windows.set_active_window_group_for(x, for_keep_focus=for_keep_focus)
 
     def get_nth_window(self, n: int) -> Optional[Window]:
         if self.windows:
@@ -865,12 +865,16 @@ class TabManager:  # {{{
             tab.relayout_borders()
         self.mark_tab_bar_dirty()
 
-    def set_active_tab(self, tab: Tab) -> bool:
+    def set_active_tab(self, tab: Tab, for_keep_focus: Optional[Tab] = None) -> bool:
         try:
             idx = self.tabs.index(tab)
         except Exception:
             return False
         self.set_active_tab_idx(idx)
+        h = self.active_tab_history
+        if for_keep_focus and len(h) > 2 and h[-2] == for_keep_focus.id and h[-1] != for_keep_focus.id:
+            h.pop()
+            h.pop()
         return True
 
     def next_tab(self, delta: int = 1) -> None:

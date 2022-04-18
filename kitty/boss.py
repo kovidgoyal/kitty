@@ -380,14 +380,14 @@ class Boss:
                 if q:
                     yield q
 
-    def set_active_window(self, window: Window, switch_os_window_if_needed: bool = False) -> Optional[int]:
+    def set_active_window(self, window: Window, switch_os_window_if_needed: bool = False, for_keep_focus: bool = False) -> Optional[int]:
         for os_window_id, tm in self.os_window_map.items():
             for tab in tm:
                 for w in tab:
                     if w.id == window.id:
                         if tab is not self.active_tab:
-                            tm.set_active_tab(tab)
-                        tab.set_active_window(w)
+                            tm.set_active_tab(tab, for_keep_focus=window.tabref() if for_keep_focus else None)
+                        tab.set_active_window(w, for_keep_focus=window if for_keep_focus else None)
                         if switch_os_window_if_needed and current_os_window() != os_window_id:
                             focus_os_window(os_window_id, True)
                         return os_window_id

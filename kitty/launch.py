@@ -476,7 +476,7 @@ def launch(
             if opts.color:
                 apply_colors(new_window, opts.color)
             if opts.keep_focus and active:
-                boss.set_active_window(active, switch_os_window_if_needed=True)
+                boss.set_active_window(active, switch_os_window_if_needed=True, for_keep_focus=True)
             if opts.logo:
                 new_window.set_logo(opts.logo, opts.logo_position or '', opts.logo_alpha)
             return new_window
