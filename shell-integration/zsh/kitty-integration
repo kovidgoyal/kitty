@@ -369,7 +369,7 @@ _ksi_deferred_init() {
             conda activate "${CONDA_DEFAULT_ENV}"
         fi; if _ksi_s_is_ok "env_var" && [[ -n "${KITTY_CLONE_SOURCE_CODE}" ]]; then
             sourced="y"
-            eval "${KITTY_CLONE_SOURCE_CODE}"
+            builtin eval "${KITTY_CLONE_SOURCE_CODE}"
         fi; if _ksi_s_is_ok "path" && [[ -r "${KITTY_CLONE_SOURCE_PATH}" ]]; then
             sourced="y"
             builtin source "${KITTY_CLONE_SOURCE_PATH}"

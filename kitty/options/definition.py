@@ -3768,18 +3768,21 @@ This will send "Special text" when you press the :kbd:`ctrl+alt+a` key
 combination.  The text to be sent is a python string literal so you can use
 escapes like :code:`\\x1b` to send control codes or :code:`\\u21fb` to send
 unicode characters (or you can just input the unicode characters directly as
-UTF-8 text). The first argument to :code:`send_text` is the keyboard modes in which to
-activate the shortcut. The possible values are :code:`normal` or :code:`application` or :code:`kitty`
-or a comma separated combination of them.  The special keyword :code:`all` means all
-modes. The modes :code:`normal` and :code:`application` refer to the DECCKM cursor key mode for
-terminals, and :code:`kitty` refers to the special kitty extended keyboard protocol.
+UTF-8 text). You can use the show_key kitten :code:`kitty +kitten show_key` to
+get the key escape codes you want to emulate. The first argument to
+:code:`send_text` is the keyboard modes in which to activate the shortcut. The
+possible values are :code:`normal` or :code:`application` or :code:`kitty` or a
+comma separated combination of them.  The special keyword :code:`all` means all
+modes. The modes :code:`normal` and :code:`application` refer to the DECCKM
+cursor key mode forterminals, and :code:`kitty` refers to the special kitty
+extended keyboard protocol.
 
 Some more examples::
 
-    # Output a word and move the cursor ro the start of the line (like typing and pressing Home)
+    # Output a word and move the cursor to the start of the line (like typing and pressing Home)
     map ctrl+alt+a send_text normal Word\\x1b[H
     map ctrl+alt+a send_text application Word\\x1bOH
-    # Run a command at a shell prompt (like typing the command and pressing enter)
+    # Run a command at a shell prompt (like typing the command and pressing Enter)
     map ctrl+alt+a send_text normal,application some command with arguments\r
 '''
     )
