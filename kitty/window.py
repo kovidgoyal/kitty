@@ -163,7 +163,7 @@ class DynamicColor(IntEnum):
 
 
 class CommandOutput(IntEnum):
-    last_run, first_on_screen, last_visited, last_complete_run = 0, 1, 2, 3
+    last_run, first_on_screen, last_visited, last_non_empty_run = 0, 1, 2, 3
 
 
 DYNAMIC_COLOR_CODES = {

@@ -1027,7 +1027,7 @@ class TestScreen(BaseTest):
             s.cmd_output(2, a.append)
             return ''.join(a)
 
-        def lcco():
+        def lnco():
             a = []
             s.cmd_output(3, a.append)
             return ''.join(a)
@@ -1104,7 +1104,10 @@ class TestScreen(BaseTest):
         draw_output(30)
         self.ae(tuple(map(int, lco().split())), tuple(range(0, 30)))
 
+        # last non-empty command output
         draw_prompt('a'), draw_output(2, 'a')
-        draw_prompt('b'), draw_output(2, 'b')
-        self.ae(lcco(), '0a\n1a')
-        self.ae(lco(), '0b\n1b')
+        draw_prompt('b'), mark_output()
+        self.ae(lco(), '')
+        self.ae(lnco(), '0a\n1a')
+        s.draw('running'), s.index(),  s.carriage_return()
+        self.ae(lnco(), 'running')

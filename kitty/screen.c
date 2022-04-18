@@ -2795,9 +2795,12 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
                 }
                 found_next_prompt = true; end = y1;
             } else if (line && line->attrs.prompt_kind == OUTPUT_START && !line->attrs.continued) {
-                if (direction == -2 && !found_next_prompt) {
-                    // The command output is incomplete, because it is not
-                    // followed by a prompt.
+                if (direction == -2 && y1 == init_y) {
+                    // Commands without output don't have an OUTPUT_START
+                    // marker with the exception of the currently running
+                    // command. It gets an OUTPUT_START even before the
+                    // first output is written, so we must skip the
+                    // output market if it is on the last line.
                 } else {
                     start = y1;
                     break;
@@ -2864,7 +2867,7 @@ cmd_output(Screen *self, PyObject *args) {
             if (self->last_visited_prompt.scrolled_by <= self->historybuf->count && self->last_visited_prompt.is_set) {
                 found = find_cmd_output(self, &oo, self->last_visited_prompt.y, self->last_visited_prompt.scrolled_by, 0, false);
             } break;
-        case 3: // last complete cmd
+        case 3: // last non-empty cmd output
             // When scrolled, the starting point of the search for the last command output
             // is actually out of the screen, so add the number of scrolled lines
             found = find_cmd_output(self, &oo, self->cursor->y + self->scrolled_by, self->scrolled_by, -2, false);

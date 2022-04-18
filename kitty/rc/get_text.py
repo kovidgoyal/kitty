@@ -30,14 +30,14 @@ class GetText(RemoteCommand):
     options_spec = MATCH_WINDOW_OPTION + '''\n
 --extent
 default=screen
-choices=screen, all, selection, first_cmd_output_on_screen, last_cmd_output, last_complete_output, last_visited_cmd_output
+choices=screen, all, selection, first_cmd_output_on_screen, last_cmd_output, last_non_empty_output, last_visited_cmd_output
 What text to get. The default of :code:`screen` means all text currently on the screen.
 :code:`all` means all the screen+scrollback and :code:`selection` means the
 currently selected text. :code:`first_cmd_output_on_screen` means the output of the first
-command that was run in the window on screen. :code:`last_cmd_output` means
-the output of the last command that was run in the window. :code:`last_complete_output` means
-the output of the last command which is followed by a prompt (useful when
-executing get-text in the same window). :code:`last_visited_cmd_output` means
+command that was run in the window on screen. :code:`last_cmd_output` and
+:code:`last_non_empty_output` means the output of the last command that was run
+in the window (with the latter skipping commands without any output).
+:code:`last_visited_cmd_output` means
 the first command output below the last scrolled position via scroll_to_prompt. The last four
 requires :ref:`shell_integration` to be enabled.
 
@@ -97,9 +97,9 @@ Clear the selection in the matched window, if any
                 as_ansi=bool(payload_get('ansi')),
                 add_wrap_markers=bool(payload_get('wrap_markers')),
             )
-        elif payload_get('extent') == 'last_complete_output':
+        elif payload_get('extent') == 'last_non_empty_output':
             ans = window.cmd_output(
-                CommandOutput.last_complete_run,
+                CommandOutput.last_non_empty_run,
                 as_ansi=bool(payload_get('ansi')),
                 add_wrap_markers=bool(payload_get('wrap_markers')),
             )
