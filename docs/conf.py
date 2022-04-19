@@ -104,6 +104,10 @@ rst_prolog = '''
 '''.replace('VERSION', str_version)
 smartquotes_action = 'qe'  # educate quotes and ellipses but not dashes
 
+string_replacements = {
+    '_kitty_install_cmd': 'curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin',
+}
+
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -299,6 +303,12 @@ def write_remote_control_protocol_docs() -> None:  # {{{
             format_cmd(p, name, cmd)
 # }}}
 
+def replace_string(app: Any, docname: str, source: List[str]) -> None:  # {{{
+    src = source[0]
+    for k, v in app.config.string_replacements.items():
+        src = src.replace(k, v)
+    source[0] = src
+# }}}
 
 # config file docs {{{
 
@@ -516,6 +526,8 @@ def setup(app: Any) -> None:
     write_cli_docs(kn)
     write_remote_control_protocol_docs()
     write_conf_docs(app, kn)
+    app.add_config_value('string_replacements', {}, True)
+    app.connect('source-read', replace_string)
     app.add_config_value('analytics_id', '', 'env')
     app.connect('html-page-context', add_html_context)
     app.add_lexer('session', SessionLexer() if version_info[0] < 3 else SessionLexer)
