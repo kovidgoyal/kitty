@@ -1030,15 +1030,18 @@ class TabManager:  # {{{
             except ValueError:
                 break
 
+        def idx_for_id(tab_id: int) -> int:
+            for idx, qtab in enumerate(self.tabs):
+                if qtab.id == tab_id:
+                    return idx
+            return -1
+
         if active_tab_needs_to_change:
             next_active_tab = -1
             if get_options().tab_switch_strategy == 'previous':
                 while self.active_tab_history and next_active_tab < 0:
                     tab_id = self.active_tab_history.pop()
-                    for idx, qtab in enumerate(self.tabs):
-                        if qtab.id == tab_id:
-                            next_active_tab = idx
-                            break
+                    next_active_tab = idx_for_id(tab_id)
             elif get_options().tab_switch_strategy == 'left':
                 next_active_tab = max(0, self.active_tab_idx - 1)
             elif get_options().tab_switch_strategy == 'right':
