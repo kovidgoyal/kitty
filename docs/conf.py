@@ -303,6 +303,7 @@ def write_remote_control_protocol_docs() -> None:  # {{{
             format_cmd(p, name, cmd)
 # }}}
 
+
 def replace_string(app: Any, docname: str, source: List[str]) -> None:  # {{{
     src = source[0]
     for k, v in app.config.string_replacements.items():
@@ -311,6 +312,7 @@ def replace_string(app: Any, docname: str, source: List[str]) -> None:  # {{{
 # }}}
 
 # config file docs {{{
+
 
 class ConfLexer(RegexLexer):  # type: ignore
     name = 'Conf'
