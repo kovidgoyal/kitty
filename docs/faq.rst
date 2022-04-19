@@ -133,6 +133,9 @@ Or you can enable :doc:`remote control <remote-control>` for |kitty| and use :re
 The shortcut mapping technique has the same syntax as the remote control
 command, for details, see :ref:`at_set-colors`.
 
+To change colors when SSHing into a remote host, use the :opt:`color_scheme
+<kitten-ssh.color_scheme>` setting for the :doc:`ssh kitten <kittens/ssh>`.
+
 Additionally, You can use the
 `OSC terminal escape codes <https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands>`_
 to set colors. Examples of using OSC escape codes to set colors::
