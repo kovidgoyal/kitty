@@ -829,8 +829,11 @@ class TabManager:  # {{{
         if visible_before and not self.tab_bar_should_be_visible:
             self.tabbar_visibility_changed()
 
-    def _set_active_tab(self, idx: int) -> None:
-        self.active_tab_idx = idx
+    def _set_active_tab(self, idx: int, store_in_history: bool = True) -> None:
+        if store_in_history:
+            self.active_tab_idx = idx
+        else:
+            self._active_tab_idx = idx
         set_active_tab(self.os_window_id, idx)
 
     def tabbar_visibility_changed(self) -> None:
@@ -1050,7 +1053,7 @@ class TabManager:  # {{{
             if next_active_tab < 0:
                 next_active_tab = max(0, min(self.active_tab_idx, len(self.tabs) - 1))
 
-            self._set_active_tab(next_active_tab)
+            self._set_active_tab(next_active_tab, store_in_history=False)
         elif active_tab_before_removal is not None:
             try:
                 idx = self.tabs.index(active_tab_before_removal)
