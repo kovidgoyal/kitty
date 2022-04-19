@@ -200,7 +200,7 @@ def parse_patch(raw: str) -> Patch:
         else:
             if current_hunk is None:
                 continue
-            q = line[0]
+            q = line[0] if line else ''
             if q == '+':
                 current_hunk.add_line()
             elif q == '-':
