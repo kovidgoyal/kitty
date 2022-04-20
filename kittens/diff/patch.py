@@ -153,7 +153,7 @@ class Hunk:
         if c.left_start + c.left_count != self.left_start + self.left_count:
             raise ValueError(f'Left side line mismatch {c.left_start + c.left_count} != {self.left_start + self.left_count}')
         if c.right_start + c.right_count != self.right_start + self.right_count:
-            raise ValueError(f'Left side line mismatch {c.right_start + c.right_count} != {self.right_start + self.right_count}')
+            raise ValueError(f'Right side line mismatch {c.right_start + c.right_count} != {self.right_start + self.right_count}')
         for c in self.chunks:
             c.finalize()
 
