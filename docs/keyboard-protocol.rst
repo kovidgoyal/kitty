@@ -377,7 +377,7 @@ An application can query the terminal for support of this protocol by sending
 the escape code querying for the :ref:`current progressive enhancement
 <progressive_enhancement>` status
 followed by request for the `primary device attributes
-<https://vt100.net/docs/vt510-rm/DA1.html>`. If an answer for the device
+<https://vt100.net/docs/vt510-rm/DA1.html>`__. If an answer for the device
 attributes is received without getting back an answer for the progressive
 enhancement the terminal does not support this protocol.
 
