@@ -120,9 +120,13 @@ encode_mouse_button(Window *w, int button, MouseAction action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
         switch(action) {
             case PRESS:
-                global_state.tracked_drag_in_window = w->id; break;
+                global_state.tracked_drag_in_window = w->id;
+                global_state.tracked_drag_button = button;
+                break;
             case RELEASE:
-                global_state.tracked_drag_in_window = 0; break;
+                global_state.tracked_drag_in_window = 0;
+                global_state.tracked_drag_button = -1;
+                break;
             default:
                 break;
         }
@@ -769,7 +773,7 @@ mouse_event(const int button, int modifiers, int action) {
                         clamp_to_window = true;
                         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
                         for (window_idx = 0; window_idx < t->num_windows && t->windows[window_idx].id != w->id; window_idx++);
-                        handle_move_event(w, button, modifiers, window_idx);
+                        handle_move_event(w, global_state.tracked_drag_button, modifiers, window_idx);
                         clamp_to_window = false;
                         debug("sent to child as drag move\n");
                         return;
