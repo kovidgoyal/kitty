@@ -1002,7 +1002,6 @@ class TabManager:  # {{{
         idx = len(self.tabs)
         orig_active_tab_idx = self.active_tab_idx
         self._add_tab(Tab(self, no_initial_window=True) if empty_tab else Tab(self, special_window=special_window, cwd_from=cwd_from))
-        self._set_active_tab(idx)
         if as_neighbor:
             location = 'after'
         if location == 'neighbor':
@@ -1018,8 +1017,8 @@ class TabManager:  # {{{
                 for i in range(idx, desired_idx, -1):
                     self.tabs[i], self.tabs[i-1] = self.tabs[i-1], self.tabs[i]
                     swap_tabs(self.os_window_id, i, i-1)
-                self._set_active_tab(desired_idx)
                 idx = desired_idx
+        self._set_active_tab(idx)
         self.mark_tab_bar_dirty()
         return self.tabs[idx]
 
@@ -1041,14 +1040,17 @@ class TabManager:  # {{{
 
         if active_tab_needs_to_change:
             next_active_tab = -1
-            if get_options().tab_switch_strategy == 'previous':
+            tss = get_options().tab_switch_strategy
+            if tss == 'previous':
                 while self.active_tab_history and next_active_tab < 0:
                     tab_id = self.active_tab_history.pop()
                     next_active_tab = idx_for_id(tab_id)
-            elif get_options().tab_switch_strategy == 'left':
+            elif tss == 'left':
                 next_active_tab = max(0, self.active_tab_idx - 1)
-            elif get_options().tab_switch_strategy == 'right':
+            elif tss == 'right':
                 next_active_tab = min(self.active_tab_idx, len(self.tabs) - 1)
+            elif tss == 'last':
+                next_active_tab = len(self.tabs) - 1
 
             if next_active_tab < 0:
                 next_active_tab = max(0, min(self.active_tab_idx, len(self.tabs) - 1))
