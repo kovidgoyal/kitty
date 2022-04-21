@@ -1570,7 +1570,7 @@ class Boss:
     def current_primary_selection_or_clipboard(self) -> str:
         return get_primary_selection() if supports_primary_selection else get_clipboard_string()
 
-    @ac('cp', 'Paste from the clipboard to the active window')
+    @ac('cp', 'Paste from the primary selection, if present, otherwise the clipboard to the active window')
     def paste_from_selection(self) -> None:
         text = self.current_primary_selection_or_clipboard()
         self.paste_to_active_window(text)
