@@ -1002,7 +1002,6 @@ class TabManager:  # {{{
         idx = len(self.tabs)
         orig_active_tab_idx = self.active_tab_idx
         self._add_tab(Tab(self, no_initial_window=True) if empty_tab else Tab(self, special_window=special_window, cwd_from=cwd_from))
-        self._set_active_tab(idx)
         if as_neighbor:
             location = 'after'
         if location == 'neighbor':
@@ -1018,8 +1017,8 @@ class TabManager:  # {{{
                 for i in range(idx, desired_idx, -1):
                     self.tabs[i], self.tabs[i-1] = self.tabs[i-1], self.tabs[i]
                     swap_tabs(self.os_window_id, i, i-1)
-                self._set_active_tab(desired_idx)
                 idx = desired_idx
+        self._set_active_tab(idx)
         self.mark_tab_bar_dirty()
         return self.tabs[idx]
 
