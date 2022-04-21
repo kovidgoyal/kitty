@@ -47,6 +47,8 @@ Detailed list of changes
 
 - Bash integration: Fix the value of :opt:`shell_integration` not taking effect if the integration script is sourced in bashrc (:pull:`4964`)
 
+- Fix a regression in the previous release that caused mouse move events to be incorrectly reported as drag events even when a button is not pressed (:iss:`4992`)
+
 
 0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
