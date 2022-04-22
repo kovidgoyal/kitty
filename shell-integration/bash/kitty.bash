@@ -330,6 +330,8 @@ clone-in-kitty() {
         builtin printf '\eP@kitty-clone|%s:%s\e\\' "${chunk_num}" "${chunk}"
         chunk_num=$(($chunk_num+1))
     done
+    # append current commands to history file
+    builtin history -a
     builtin printf '\eP@kitty-clone|\e\\'
 }
       ;;
