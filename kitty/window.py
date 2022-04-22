@@ -92,16 +92,17 @@ class CwdRequest:
         if not window:
             return ''
         reported_cwd = path_from_osc7_url(window.screen.last_reported_cwd) if window.screen.last_reported_cwd else ''
-        # First check if we are running ssh kitten, and trying to open the configured login shell
-        if reported_cwd and argv[0] == resolved_shell(get_options())[0]:
-            ssh_kitten_cmdline = window.ssh_kitten_cmdline()
-            if ssh_kitten_cmdline:
-                from kittens.ssh.main import set_cwd_in_cmdline
-                argv[:] = ssh_kitten_cmdline
-                set_cwd_in_cmdline(reported_cwd, argv)
-                return ''
-        if self.request_type is CwdRequestType.last_reported and reported_cwd and not window.child_is_remote:
-            return reported_cwd
+        if reported_cwd:
+            # First check if we are running ssh kitten, and trying to open the configured login shell
+            if argv[0] == resolved_shell(get_options())[0]:
+                ssh_kitten_cmdline = window.ssh_kitten_cmdline()
+                if ssh_kitten_cmdline:
+                    from kittens.ssh.main import set_cwd_in_cmdline
+                    argv[:] = ssh_kitten_cmdline
+                    set_cwd_in_cmdline(reported_cwd, argv)
+                    return ''
+            if not window.child_is_remote and (self.request_type is CwdRequestType.last_reported or window.at_prompt):
+                return reported_cwd
         return window.cwd_of_child or ''
 
 
