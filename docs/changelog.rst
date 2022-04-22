@@ -63,6 +63,8 @@ Detailed list of changes
 
 - Change the default value of :opt:`confirm_os_window_close` to ask for confirmation when closing windows that are not sitting at shell prompts
 
+- A new value :code:`last_reported` for :option:`launch --cwd` to use the current working directory last reported from OSC 7
+
 - macOS: When using Apple's less as the pager for viewing scrollback strip out OSC codes as it cant parse them (:iss:`4788`)
 
 - diff kitten: Fix incorrect rendering in rare circumstances when scrolling after changing the context size (:iss:`4831`)
