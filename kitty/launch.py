@@ -550,6 +550,7 @@ class CloneCmd:
         self.shell = ''
         self.envfmt = 'default'
         self.pid = -1
+        self.history = ''
         self.parse_message(msg)
         self.opts = parse_opts_for_clone(self.args)
 
@@ -580,6 +581,8 @@ class CloneCmd:
                 ))}
             elif k == 'cwd':
                 self.cwd = v
+            elif k == 'history':
+                self.history = v
 
 
 def clone_and_launch(msg: str, window: Window) -> None:
@@ -592,11 +595,13 @@ def clone_and_launch(msg: str, window: Window) -> None:
     c.opts.copy_env = False
     if c.opts.type in non_window_launch_types:
         c.opts.type = 'window'
-    if c.env and c.env.get('PATH') and c.env.get('VIRTUAL_ENV'):
+    env_to_serialize = c.env or {}
+    if env_to_serialize.get('PATH') and env_to_serialize.get('VIRTUAL_ENV'):
         # only pass VIRTUAL_ENV if it is currently active
-        if f"{c.env['VIRTUAL_ENV']}/bin" not in c.env['PATH'].split(os.pathsep):
-            del c.env['VIRTUAL_ENV']
-    is_clone_launch = serialize_env(c.shell, c.env or {})
+        if f"{env_to_serialize['VIRTUAL_ENV']}/bin" not in env_to_serialize['PATH'].split(os.pathsep):
+            del env_to_serialize['VIRTUAL_ENV']
+    env_to_serialize['KITTY_CLONE_SOURCE_STRATEGIES'] = ',' + ','.join(get_options().clone_source_strategies) + ','
+    is_clone_launch = serialize_env(c.shell, env_to_serialize)
     ssh_kitten_cmdline = window.ssh_kitten_cmdline()
     if ssh_kitten_cmdline:
         from kittens.ssh.main import (
@@ -609,7 +614,6 @@ def clone_and_launch(msg: str, window: Window) -> None:
         if c.env:
             set_env_in_cmdline({
                 'KITTY_IS_CLONE_LAUNCH': is_clone_launch,
-                'KITTY_CLONE_SOURCE_STRATEGIES': ',' + ','.join(get_options().clone_source_strategies) + ','
             }, cmdline)
             c.env = None
         if c.opts.env:
