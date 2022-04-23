@@ -17,7 +17,7 @@ from .conf.utils import BadLine
 from .config import cached_values_for
 from .constants import (
     appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
-    is_wayland, kitty_exe, logo_png_file, running_in_kitty
+    is_wayland, kitty_exe, logo_png_file, running_in_kitty, website_url
 )
 from .fast_data_types import (
     GLFW_IBEAM_CURSOR, GLFW_MOD_ALT, GLFW_MOD_SHIFT, create_os_window,
@@ -163,6 +163,9 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ())
         val = get_macos_shortcut_for(func_map, 'load_config_file', lookup_name='reload_config')
         if val is not None:
             global_shortcuts['reload_config'] = val
+        val = get_macos_shortcut_for(func_map, f'open_url {website_url()}', lookup_name='open_kitty_website')
+        if val is not None:
+            global_shortcuts['open_kitty_website'] = val
     if is_macos and opts.macos_custom_beam_cursor:
         set_custom_ibeam_cursor()
     if not is_wayland() and not is_macos:  # no window icons on wayland

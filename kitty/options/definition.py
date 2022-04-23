@@ -5,6 +5,7 @@
 
 import string
 from kitty.conf.types import Action, Definition
+from kitty.constants import website_url
 
 
 definition = Definition(
@@ -3785,6 +3786,11 @@ Some more examples::
     # Run a command at a shell prompt (like typing the command and pressing Enter)
     map ctrl+alt+a send_text normal,application some command with arguments\\r
 '''
+    )
+
+map('Open kitty Website',
+    f'open_kitty_website shift+cmd+/ open_url {website_url()}',
+    only='macos',
     )
 egr()  # }}}
 egr()  # }}}

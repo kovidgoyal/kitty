@@ -235,11 +235,7 @@ PENDING(clear_terminal_and_scrollback, CLEAR_TERMINAL_AND_SCROLLBACK)
 PENDING(reload_config, RELOAD_CONFIG)
 PENDING(toggle_macos_secure_keyboard_entry, TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY)
 PENDING(toggle_fullscreen, TOGGLE_FULLSCREEN)
-
-- (void)open_kitty_website_url:(id)sender {
-    (void)sender;
-    [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://sw.kovidgoyal.net/kitty/"]];
-}
+PENDING(open_kitty_website, OPEN_KITTY_WEBSITE)
 
 - (BOOL)validateMenuItem:(NSMenuItem *)item {
     if (item.action == @selector(toggle_macos_secure_keyboard_entry:)) {
@@ -275,7 +271,7 @@ typedef struct {
 typedef struct {
     GlobalShortcut new_os_window, close_os_window, close_tab, edit_config_file, reload_config;
     GlobalShortcut previous_tab, next_tab, new_tab, new_window, close_window, reset_terminal, clear_terminal_and_scrollback;
-    GlobalShortcut toggle_macos_secure_keyboard_entry, toggle_fullscreen;
+    GlobalShortcut toggle_macos_secure_keyboard_entry, toggle_fullscreen, open_kitty_website;
 } GlobalShortcuts;
 static GlobalShortcuts global_shortcuts;
 
@@ -290,7 +286,7 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
     Q(new_os_window); else Q(close_os_window); else Q(close_tab); else Q(edit_config_file);
     else Q(new_tab); else Q(next_tab); else Q(previous_tab);
     else Q(new_window); else Q(close_window); else Q(reset_terminal); else Q(clear_terminal_and_scrollback); else Q(reload_config);
-    else Q(toggle_macos_secure_keyboard_entry); else Q(toggle_fullscreen);
+    else Q(toggle_macos_secure_keyboard_entry); else Q(toggle_fullscreen); else Q(open_kitty_website);
 #undef Q
     if (gs == NULL) { PyErr_SetString(PyExc_KeyError, "Unknown shortcut name"); return NULL; }
     int cocoa_mods;
@@ -652,10 +648,8 @@ cocoa_create_global_menu(void) {
                 keyEquivalent:@""];
     NSMenu* helpMenu = [[NSMenu alloc] initWithTitle:@"Help"];
     [helpMenuItem setSubmenu:helpMenu];
-    [[helpMenu addItemWithTitle:[NSString stringWithFormat:@"Visit %@ Website", app_name]
-                         action:@selector(open_kitty_website_url:)
-                  keyEquivalent:@"?"]
-                      setTarget:global_menu_target];
+
+    MENU_ITEM(helpMenu, @"Visit kitty Website", open_kitty_website);
     [NSApp setHelpMenu:helpMenu];
     [helpMenu release];
 

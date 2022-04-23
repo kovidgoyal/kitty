@@ -53,6 +53,9 @@ Detailed list of changes
 
 - A new action :ac:`open_url` to open the specified URL (:pull:`5004`)
 
+- macOS: Make the global menu shortcut to open kitty website configurable (:pull:`5004`)
+
+
 0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
