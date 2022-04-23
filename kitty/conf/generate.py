@@ -125,7 +125,11 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
             if func.__module__ != 'builtins':
                 tc_imports.add((func.__module__, func.__name__))
 
-        defval = repr(func(option.defval_as_string))
+        defval_as_obj = func(option.defval_as_string)
+        if isinstance(defval_as_obj, frozenset):
+            defval = 'frozenset({' + ', '.join(repr(x) for x in sorted(defval_as_obj)) + '})'
+        else:
+            defval = repr(defval_as_obj)
         if len(defval) > 100:
             defval += ' # noqa'
         if option.macos_defval is not unset:
