@@ -1513,6 +1513,7 @@ class Boss:
         if tab:
             tab.set_active_window(window_id)
 
+    @ac('misc', 'Open the specified URL')
     def open_url(self, url: str, program: Optional[Union[str, List[str]]] = None, cwd: Optional[str] = None) -> None:
         if not url:
             return
