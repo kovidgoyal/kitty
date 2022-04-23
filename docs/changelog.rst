@@ -51,6 +51,7 @@ Detailed list of changes
 
 - Fix tab selection when closing a new tab not correct in some scenarios (:iss:`4987`)
 
+- A new action :ac:`open_url` to open the specified URL (:pull:`5004`)
 
 0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
