@@ -703,7 +703,7 @@ Replay previously dumped commands. Specify the path to a dump file previously
 created by :option:`{appname} --dump-commands`. You
 can open a new kitty window to replay the commands with::
 
-    {appname} --hold {appname} --replay-commands /path/to/dump/file
+    {appname} sh -c "{appname} --replay-commands /path/to/dump/file; read"
 
 
 --dump-bytes
