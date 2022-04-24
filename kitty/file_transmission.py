@@ -976,7 +976,7 @@ class FileTransmission:
             finally:
                 self.drop_receive(ar.id)
         else:
-            log_error('Transmission receive command with unknown action: {cmd.action}, ignoring')
+            log_error(f'Transmission receive command with unknown action: {cmd.action}, ignoring')
 
     def transmit_rsync_signature(
         self, fs: Iterator[memoryview],
