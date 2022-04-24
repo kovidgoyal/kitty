@@ -405,7 +405,7 @@ opt('url_style', 'curly',
 opt('open_url_with', 'default',
     option_type='to_cmdline',
     long_text='''
-The program to open the clicked URLs. The special value :code:`default` means to
+The program to open clicked URLs. The special value :code:`default` means to
 use the operating system's default URL handler (:program:`open` on macOS and
 :program:`xdg-open` on Linux).
 '''
@@ -431,7 +431,7 @@ opt('url_excluded_characters', '',
     ctype='!url_excluded_characters',
     long_text='''
 Additional characters to be disallowed from URLs, when detecting URLs under the
-mouse cursor. By default, all legal characters in URL are allowed.
+mouse cursor. By default, all characters that are legal in URLs are allowed.
 '''
     )
 
@@ -2646,7 +2646,7 @@ reads its startup rc files.
 
 opt('editor', '.',
     long_text='''
-The command-line text editor (such as :program:`vim` or :program:`nano`) to use
+The terminal based text editor (such as :program:`vim` or :program:`nano`) to use
 when editing the kitty config file or similar tasks.
 
 The default value of :code:`.` means to use the environment variables
