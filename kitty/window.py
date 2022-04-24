@@ -832,7 +832,7 @@ class Window:
         args = self.child.foreground_cmdline
         conn_data = get_connection_data(args, self.child.foreground_cwd or self.child.current_cwd or '')
         if conn_data is None:
-            get_boss().show_error('Could not handle remote file', 'No SSH connection data found in: {args}')
+            get_boss().show_error('Could not handle remote file', f'No SSH connection data found in: {args}')
             return
         get_boss().run_kitten(
             'remote_file', '--hostname', netloc.partition(':')[0], '--path', remote_path,
