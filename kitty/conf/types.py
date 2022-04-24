@@ -55,6 +55,7 @@ def ref_map() -> Dict[str, str]:
         'functional': f'{website_url("keyboard-protocol")}#functional-key-definitions',
         'ssh_copy_command': f'{website_url("kittens/ssh")}#ssh-copy-command',
         'shell_integration': website_url("shell-integration"),
+        'clone_shell': f'{website_url("shell-integration")}#clone-shell',
         'github_discussions': 'https://github.com/kovidgoyal/kitty/discussions',
     }
     for actions in get_all_actions().values():
@@ -65,17 +66,30 @@ def ref_map() -> Dict[str, str]:
 
 def remove_markup(text: str) -> str:
 
+    def extract(m: 'Match[str]') -> Tuple[str, str]:
+        parts = m.group(2).split('<')
+        t = parts[0].strip()
+        q = parts[-1].rstrip('>')
+        return t, q
+
     def sub(m: 'Match[str]') -> str:
         if m.group(1) == 'ref':
-            q = m.group(2).split('<')[-1].rstrip('>')
-            return ref_map()[q]
+            t, q = extract(m)
+            return f'{t} <{ref_map()[q]}>'
+        if m.group(1) == 'doc':
+            t, q = extract(m)
+            return f'{t} <{website_url(q.lstrip("/"))}>'
         if m.group(1) == 'ac':
             q = m.group(2).split('<')[-1].rstrip('>')
-            return ref_map()[f'action-{q}']
+            return q
+        if m.group(1) == 'term':
+            t, _ = extract(m)
+            return t
+        if m.group(1) == 'option':
+            t, _ = extract(m)
+            return t
         if m.group(1) == 'disc':
-            parts = m.group(2).split('<')
-            t = parts[0].strip()
-            q = parts[-1].rstrip('>')
+            t, q = extract(m)
             return f'{t} {ref_map()["github_discussions"]}/{q}'
         return str(m.group(2))
 
