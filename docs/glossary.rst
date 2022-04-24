@@ -45,6 +45,7 @@ Environment variables
 ------------------------
 
 Variables that influence kitty behavior
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. envvar:: KITTY_CONFIG_DIRECTORY
 
@@ -68,7 +69,6 @@ Variables that influence kitty behavior
    The terminal editor (such as ``vi`` or ``nano``) kitty uses, when, for
    instance, opening :file:`kitty.conf` in response to :sc:`edit_config_file`.
 
-
 .. envvar:: EDITOR
 
    Same as :envvar:`VISUAL`. Used if :envvar:`VISUAL` is not set.
@@ -84,13 +84,24 @@ Variables that influence kitty behavior
    is possible for the autodiscovery to fail; the default Wayland XKB mappings
    are used in this case. See :pull:`3943` for details.
 
+.. envvar:: KITTY_CLONE_SOURCE_CODE
+
+   Set this to some shell code that will be executed in the cloned window with
+   :code:`eval` when :ref:`clone-in-kitty <clone_shell>` is used.
+
+.. envvar:: KITTY_CLONE_SOURCE_PATH
+
+   Set this to the path of a file that will be sourced in the cloned window when
+   :ref:`clone-in-kitty <clone_shell>` is used.
+
 
 Variables that kitty sets when running child programs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. envvar:: LANG
 
-   This is set only on macOS, and only if the country and language from the
-   macOS user settings form a valid locale.
+   This is only set on macOS. If the country and language from the macOS user
+   settings form an invalid locale, it will be set to :code:`en_US.UTF-8`.
 
 
 .. envvar:: KITTY_WINDOW_ID
@@ -137,7 +148,7 @@ Variables that kitty sets when running child programs
 
    Set when the :doc:`remote control <remote-control>` facility is enabled and
    the a socket is used for control via :option:`kitty --listen-on` or :opt:`listen_on`.
-   Contains the path to the socket. Avoids needs to use :option:`kitty @ --to` when
+   Contains the path to the socket. Avoid the need to use :option:`kitty @ --to` when
    issuing remote control commands.
 
 
@@ -158,7 +169,7 @@ Variables that kitty sets when running child programs
 .. envvar:: KITTY_COMMON_OPTS
 
    Set with the values of some common kitty options when running
-   kittens, so kittens can use them without needing to load kitty.conf.
+   kittens, so kittens can use them without needing to load :file:`kitty.conf`.
 
 
 .. envvar:: KITTY_SHELL_INTEGRATION

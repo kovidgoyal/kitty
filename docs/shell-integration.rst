@@ -223,7 +223,7 @@ Clone the current shell into a new window
 -----------------------------------------------
 
 You can clone the current shell into a new kitty window by simply running the
-:code:`clone-in-kitty` command, for example:
+:command:`clone-in-kitty` command, for example:
 
 .. code-block:: sh
 
@@ -235,24 +235,27 @@ This will open a new window running a new shell instance but with all
 environment variables and the current working directory copied. This even
 works over SSH when using :doc:`kittens/ssh`.
 
-The :file:`clone-in-kitty` command takes almost all the same arguments as the
+The :command:`clone-in-kitty` command takes almost all the same arguments as the
 :doc:`launch <launch>` command, so you can open a new tab instead or a new OS
 window, etc. Arguments of launch that can cause code execution or that don't
-make sense when cloning are ignored. Most prominently, the following options
-are ignored: :option:`launch --allow-remote-control`, :option:`launch
---copy-cmdline`, :option:`launch --copy-env`, :option:`launch --stdin-source`,
-:option:`launch --marker` and :option:`launch --watcher`.
+make sense when cloning are ignored. Most prominently, the following options are
+ignored: :option:`--allow-remote-control <launch --allow-remote-control>`,
+:option:`--copy-cmdline <launch --copy-cmdline>`, :option:`--copy-env <launch
+--copy-env>`, :option:`--stdin-source <launch --stdin-source>`,
+:option:`--marker <launch --marker>` and :option:`--watcher <launch --watcher>`.
 
-:file:`clone-in-kitty` can be configured to source arbitrary code in the
+:command:`clone-in-kitty` can be configured to source arbitrary code in the
 cloned window using environment variables. It will automatically clone virtual
-environments created by the python venv module or conda. In addition, setting the
-env var :file:`KITTY_CLONE_SOURCE_PATH` to the path of a file will cause
-that file to be sourced in the cloned window. Similarly, setting
-:file:`KITTY_CLONE_SOURCE_CODE` to some shell code will cause that code to be
-run in the cloned window with :code:`eval`. This can be controlled by
+environments created by the :link:`Python venv module
+<https://docs.python.org/3/library/venv.html>` or :link:`Conda
+<https://conda.io/>`. In addition, setting the
+env var :envvar:`KITTY_CLONE_SOURCE_CODE` to some shell code will cause that
+code to be run in the cloned window with :code:`eval`. Similarly, setting
+:envvar:`KITTY_CLONE_SOURCE_PATH` to the path of a file will cause that file to
+be sourced in the cloned window. This can be controlled by
 :opt:`clone_source_strategies`.
 
-:file:`clone-in-kitty` works by asking the shell to serialize its internal
+:command:`clone-in-kitty` works by asking the shell to serialize its internal
 state (mainly CWD and env vars) and this state is transmitted to kitty and
 restored by the shell integration scripts in the cloned window.
 

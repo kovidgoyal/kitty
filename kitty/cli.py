@@ -28,26 +28,27 @@ class OptionDict(TypedDict):
 
 CONFIG_HELP = '''\
 Specify a path to the configuration file(s) to use. All configuration files are
-merged onto the builtin {conf_name}.conf, overriding the builtin values. This option
-can be specified multiple times to read multiple configuration files in
-sequence, which are merged. Use the special value NONE to not load a config
-file.
+merged onto the builtin :file:`{conf_name}.conf`, overriding the builtin values.
+This option can be specified multiple times to read multiple configuration files
+in sequence, which are merged. Use the special value :code:`NONE` to not load
+any config file.
 
 If this option is not specified, config files are searched for in the order:
-:file:`$XDG_CONFIG_HOME/{appname}/{conf_name}.conf`, :file:`~/.config/{appname}/{conf_name}.conf`, {macos_confpath}
-:file:`$XDG_CONFIG_DIRS/{appname}/{conf_name}.conf`. The first one that exists is used as the
-config file.
+:file:`$XDG_CONFIG_HOME/{appname}/{conf_name}.conf`,
+:file:`~/.config/{appname}/{conf_name}.conf`,{macos_confpath}
+:file:`$XDG_CONFIG_DIRS/{appname}/{conf_name}.conf`. The first one that exists
+is used as the config file.
 
 If the environment variable :envvar:`KITTY_CONFIG_DIRECTORY` is specified, that
 directory is always used and the above searching does not happen.
 
-If :file:`/etc/xdg/{appname}/{conf_name}.conf` exists it is merged before (i.e. with lower
-priority) than any user config files. It can be used to specify system-wide
-defaults for all users. You can use either :code:`-` or :code:`/dev/stdin` to read the
-config from STDIN.
+If :file:`/etc/xdg/{appname}/{conf_name}.conf` exists, it is merged before (i.e.
+with lower priority) than any user config files. It can be used to specify
+system-wide defaults for all users. You can use either :code:`-` or
+:file:`/dev/stdin` to read the config from STDIN.
 '''.replace(
     '{macos_confpath}',
-    (':file:`~/Library/Preferences/{appname}/{conf_name}.conf`,' if is_macos else ''), 1
+    (' :file:`~/Library/Preferences/{appname}/{conf_name}.conf`,' if is_macos else ''), 1
 )
 
 
@@ -294,9 +295,10 @@ def get_defaults_from_seq(seq: OptionSpecSeq) -> Dict[str, Any]:
 
 
 default_msg = ('''\
-Run the :italic:`{appname}` terminal emulator. You can also specify the :italic:`program`
-to run inside :italic:`{appname}` as normal arguments following the :italic:`options`.
-For example: {appname} sh -c "echo hello, world. Press ENTER to quit; read"
+Run the :italic:`{appname}` terminal emulator. You can also specify the
+:italic:`program` to run inside :italic:`{appname}` as normal arguments
+following the :italic:`options`.
+For example: {appname} --hold sh -c "echo hello, world"
 
 For comprehensive documentation for kitty, please see: {url}''').format(
     appname=appname, url=website_url())
@@ -583,17 +585,20 @@ def options_spec() -> str:
 dest=cls
 default={appname}
 condition=not is_macos
-Set the class part of the :italic:`WM_CLASS` window property. On Wayland, it sets the app id.
+Set the class part of the :italic:`WM_CLASS` window property. On Wayland, it
+sets the app id.
 
 
 --name
 condition=not is_macos
-Set the name part of the :italic:`WM_CLASS` property (defaults to using the value from :option:`{appname} --class`)
+Set the name part of the :italic:`WM_CLASS` property. Defaults to using the
+value from :option:`{appname} --class`.
 
 
 --title -T
-Set the OS window title. This will override any title set by the program running inside kitty, permanently
-fixing the OS Window's title. So only use this if you are running a program that does not set titles.
+Set the OS window title. This will override any title set by the program running
+inside kitty, permanently fixing the OS window's title. So only use this if you
+are running a program that does not set titles.
 
 
 --config -c
@@ -604,68 +609,74 @@ type=list
 --override -o
 type=list
 Override individual configuration options, can be specified multiple times.
-Syntax: :italic:`name=value`. For example: :option:`kitty -o` font_size=20
+Syntax: :italic:`name=value`. For example: :option:`{appname} -o` font_size=20
 
 
 --directory --working-directory -d
 default=.
-Change to the specified directory when launching
+Change to the specified directory when launching.
 
 
 --detach
 type=bool-set
 condition=not is_macos
-Detach from the controlling terminal, if any
+Detach from the controlling terminal, if any.
 
 
 --session
-Path to a file containing the startup :italic:`session` (tabs, windows, layout, programs).
-Use - to read from STDIN. See the README file for details and an example.
+Path to a file containing the startup :italic:`session` (tabs, windows, layout,
+programs). Use - to read from STDIN. See the :file:`README` file for details and
+an example.
 
 
 --hold
 type=bool-set
 Remain open after child process exits. Note that this only affects the first
-window. You can quit by either using the close window shortcut or pressing any key.
+window. You can quit by either using the close window shortcut or pressing any
+key.
 
 
 --single-instance -1
 type=bool-set
-If specified only a single instance of :italic:`{appname}` will run. New invocations will
-instead create a new top-level window in the existing :italic:`{appname}` instance. This
-allows :italic:`{appname}` to share a single sprite cache on the GPU and also reduces
-startup time. You can also have separate groups of :italic:`{appname}` instances by using the
-:option:`kitty --instance-group` option
+If specified only a single instance of :italic:`{appname}` will run. New
+invocations will instead create a new top-level window in the existing
+:italic:`{appname}` instance. This allows :italic:`{appname}` to share a single
+sprite cache on the GPU and also reduces startup time. You can also have
+separate groups of :italic:`{appname}` instances by using the :option:`{appname}
+--instance-group` option.
 
 
 --instance-group
-Used in combination with the :option:`kitty --single-instance` option. All :italic:`{appname}` invocations
-with the same :option:`kitty --instance-group` will result in new windows being created
-in the first :italic:`{appname}` instance within that group
+Used in combination with the :option:`{appname} --single-instance` option. All
+:italic:`{appname}` invocations with the same :option:`{appname}
+--instance-group` will result in new windows being created in the first
+:italic:`{appname}` instance within that group.
 
 
 --wait-for-single-instance-window-close
 type=bool-set
-Normally, when using :option:`--single-instance`, :italic:`{appname}` will open a new window in an existing
-instance and quit immediately. With this option, it will not quit till the newly opened
-window is closed. Note that if no previous instance is found, then :italic:`{appname}` will wait anyway,
+Normally, when using :option:`{appname} --single-instance`, :italic:`{appname}`
+will open a new window in an existing instance and quit immediately. With this
+option, it will not quit till the newly opened window is closed. Note that if no
+previous instance is found, then :italic:`{appname}` will wait anyway,
 regardless of this option.
 
 
 --listen-on
-Tell kitty to listen on the specified address for control
-messages. For example, :option:`{appname} --listen-on`=unix:/tmp/mykitty or
+Listen on the specified socket address for control messages. For example,
+:option:`{appname} --listen-on`=unix:/tmp/mykitty or
 :option:`{appname} --listen-on`=tcp:localhost:12345. On Linux systems, you can
 also use abstract UNIX sockets, not associated with a file, like this:
-:option:`{appname} --listen-on`=unix:@mykitty. Environment variables
-in the setting are expanded and relative paths are resolved with
-respect to the temporary directory. To control kitty, you can send
-it commands with :italic:`kitty @` using the :option:`kitty @ --to` option to
-specify this address. This option will be ignored, unless you set
-:opt:`allow_remote_control` to yes in :file:`kitty.conf`. Note that if you run
-:italic:`kitty @` within a kitty window, there is no need to specify the :option:`kitty @ --to`
-option as it is read automatically from the environment. For UNIX sockets, this
-can also be specified in :file:`kitty.conf`.
+:option:`{appname} --listen-on`=unix:@mykitty. Environment variables are
+expanded and relative paths are resolved with respect to the temporary
+directory. To control kitty, you can send commands to it with
+:italic:`{appname} @` using the :option:`{appname} @ --to` option to specify
+this address. Unless you enabled :opt:`allow_remote_control` in
+:file:`{conf_name}.conf`, this option will be ignored. Note that if you run
+:italic:`{appname} @` within a kitty window, there is
+no need to specify the :option:`{appname} @ --to` option as it will
+automatically read from the environment. For UNIX sockets, this can also be
+specified in :file:`{conf_name}.conf`.
 
 
 --start-as
@@ -679,45 +690,48 @@ Control how the initial kitty window is created.
 
 --version -v
 type=bool-set
-The current {appname} version
+The current {appname} version.
 
 
 --dump-commands
 type=bool-set
-Output commands received from child process to stdout
+Output commands received from child process to STDOUT.
 
 
 --replay-commands
-Replay previously dumped commands. Specify the path to a dump file previously created by :option:`kitty --dump-commands`. You
+Replay previously dumped commands. Specify the path to a dump file previously
+created by :option:`{appname} --dump-commands`. You
 can open a new kitty window to replay the commands with::
 
-    kitty sh -c "kitty --replay-commands /path/to/dump/file; read"
+    {appname} --hold {appname} --replay-commands /path/to/dump/file
 
 
 --dump-bytes
-Path to file in which to store the raw bytes received from the child process
+Path to file in which to store the raw bytes received from the child process.
 
 
 --debug-rendering --debug-gl
 type=bool-set
 Debug rendering commands. This will cause all OpenGL calls to check for errors
 instead of ignoring them. Also prints out miscellaneous debug information.
-Useful when debugging rendering problems
+Useful when debugging rendering problems.
 
 
 --debug-input --debug-keyboard
 dest=debug_keyboard
 type=bool-set
-This option will cause kitty to print out key and mouse events as they are received
+Print out key and mouse events as they are received.
 
 
 --debug-font-fallback
 type=bool-set
-Print out information about the selection of fallback fonts for characters not present in the main font.
+Print out information about the selection of fallback fonts for characters not
+present in the main font.
 
 
 --watcher
-This option is deprecated in favor of the :opt:`watcher` option in kitty.conf and should not be used.
+This option is deprecated in favor of the :opt:`watcher` option in
+:file:`{conf_name}.conf` and should not be used.
 
 
 --execute -e
@@ -725,7 +739,8 @@ type=bool-set
 !
 '''
         setattr(options_spec, 'ans', OPTIONS.format(
-            appname=appname, config_help=CONFIG_HELP.format(appname=appname, conf_name=appname),
+            appname=appname, conf_name=appname,
+            config_help=CONFIG_HELP.format(appname=appname, conf_name=appname),
         ))
     ans: str = getattr(options_spec, 'ans')
     return ans
@@ -769,7 +784,7 @@ def parse_args(
     return ans, parse_cmdline(oc, disabled, ans, args=args)
 
 
-SYSTEM_CONF = '/etc/xdg/kitty/kitty.conf'
+SYSTEM_CONF = f'/etc/xdg/{appname}/{appname}.conf'
 
 
 def create_opts(args: CLIOptions, accumulate_bad_lines: Optional[List[BadLineType]] = None) -> KittyOpts:
