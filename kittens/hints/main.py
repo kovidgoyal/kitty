@@ -525,10 +525,10 @@ OPTIONS = r'''
 --program
 type=list
 What program to use to open matched text. Defaults to the default open program
-for the operating system. Use a value of :file:`-` to paste the match into the
-terminal window instead. A value of :file:`@` will copy the match to the
-clipboard. A value of :file:`*` will copy the match to the primary selection
-(on systems that support primary selections). A value of :file:`default` will
+for the operating system. Use a value of :code:`-` to paste the match into the
+terminal window instead. A value of :code:`@` will copy the match to the
+clipboard. A value of :code:`*` will copy the match to the primary selection
+(on systems that support primary selections). A value of :code:`default` will
 run the default open program. Can be specified multiple times to run multiple
 programs.
 
@@ -538,22 +538,22 @@ default=url
 choices=url,regex,path,line,hash,word,linenum,hyperlink,ip
 The type of text to search for. A value of :code:`linenum` is special, it looks
 for error messages using the pattern specified with :option:`--regex`, which
-must have the named groups, :code:`path` and :code:`line`. If not specified,
+must have the named groups: :code:`path` and :code:`line`. If not specified,
 will look for :code:`path:line`. The :option:`--linenum-action` option
 controls where to display the selected error message, other options are ignored.
 
 
 --regex
 default={default_regex}
-The regular expression to use when :option:`kitty +kitten hints --type`=regex.
-The regular expression is in python syntax. If you specify a numbered group in
-the regular expression only the group will be matched. This allow you to match
-text ignoring a prefix/suffix, as needed. The default expression matches lines.
-To match text over multiple lines you should prefix the regular expression with
+The regular expression to use when option :option:`--type` is set to
+:code:`regex`, in python syntax. If you specify a numbered group in the regular
+expression, only the group will be matched. This allow you to match text
+ignoring a prefix/suffix, as needed. The default expression matches lines. To
+match text over multiple lines, you should prefix the regular expression with
 :code:`(?ms)`, which turns on MULTILINE and DOTALL modes for the regex engine.
-If you specify named groups and a :option:`kitty +kitten hints --program` then
-the program will be passed arguments corresponding to each named group of
-the form key=value.
+If you specify named groups and a :option:`--program`, then the program will be
+passed arguments corresponding to each named group of the form
+:code:`key=value`.
 
 
 --linenum-action
@@ -565,22 +565,22 @@ window, :code:`window` a new kitty window, :code:`tab` a new tab,
 :code:`os_window` a new OS window and :code:`background` run in the background.
 The actual action is whatever arguments are provided to the kitten, for
 example:
-:code:`kitty + kitten hints --type=linenum --linenum-action=tab vim +{line} {path}`
+:code:`kitty +kitten hints --type=linenum --linenum-action=tab vim +{line} {path}`
 will open the matched path at the matched line number in vim in
-a new kitty tab. Note that only when using :code:`self` are the special values for
-:option:`kitty +kitten hints --program` to copy/paste the text respected.
+a new kitty tab. Note that in order to use :option:`--program` to copy or paste
+text, you need to use the special value :code:`self`.
 
 
 --url-prefixes
 default=default
-Comma separated list of recognized URL prefixes. Defaults, to
-the list of prefixes defined in kitty.conf.
+Comma separated list of recognized URL prefixes. Defaults to the list of
+prefixes defined by the :opt:`url_prefixes` option in :file:`kitty.conf`.
 
 
 --word-characters
 Characters to consider as part of a word. In addition, all characters marked as
-alphanumeric in the unicode database will be considered as word characters.
-Defaults to the select_by_word_characters setting from kitty.conf.
+alphanumeric in the Unicode database will be considered as word characters.
+Defaults to the :opt:`select_by_word_characters` option from :file:`kitty.conf`.
 
 
 --minimum-match-length
@@ -591,26 +591,26 @@ The minimum number of characters to consider a match.
 
 --multiple
 type=bool-set
-Select multiple matches and perform the action on all of them together at the end.
-In this mode, press :kbd:`Esc` to finish selecting.
+Select multiple matches and perform the action on all of them together at the
+end. In this mode, press :kbd:`Esc` to finish selecting.
 
 
 --multiple-joiner
 default=auto
-String to use to join multiple selections when copying to the clipboard or
-inserting into the terminal. The special strings: "space", "newline", "empty",
-"json" and "auto" are interpreted as a space character, a newline an empty
-joiner, a JSON serialized list and an automatic choice, based on the type of
-text being selected. In addition, integers are interpreted as zero-based
-indices into the list of selections. You can use 0 for the first selection and
--1 for the last.
+String for joining multiple selections when copying to the clipboard or
+inserting into the terminal. The special values are: :code:`space` - a space
+character, :code:`newline` - a newline, :code:`empty` - an empty joiner,
+:code:`json` - a JSON serialized list, :code:`auto` - an automatic choice, based
+on the type of text being selected. In addition, integers are interpreted as
+zero-based indices into the list of selections. You can use :code:`0` for the
+first selection and :code:`-1` for the last.
 
 
 --add-trailing-space
 default=auto
 choices=auto,always,never
-Add trailing space after matched text. Defaults to auto, which adds the space
-when used together with :option:`--multiple`.
+Add trailing space after matched text. Defaults to :code:`auto`, which adds the
+space when used together with :option:`--multiple`.
 
 
 --hints-offset
@@ -621,45 +621,47 @@ greater than or equal to zero are respected.
 
 
 --alphabet
-The list of characters to use for hints. The default is to use numbers and lowercase
-English alphabets. Specify your preference as a string of characters. Note that
-unless you specify the hints offset as zero the first match will be highlighted with
-the second character you specify.
+The list of characters to use for hints. The default is to use numbers and
+lowercase English alphabets. Specify your preference as a string of characters.
+Note that you need to specify the :option:`--hints-offset` as zero to use the
+first character to highlight the first match, otherwise it will start with the
+second character by default.
 
 
 --ascending
 type=bool-set
-Have the hints increase from top to bottom instead of decreasing from top to bottom.
+Make the hints increase from top to bottom, instead of decreasing from top to
+bottom.
 
 
 --hints-foreground-color
 default=black
 type=str
-The foreground color for hints
+The foreground color for hints.
 
 
 --hints-background-color
 default=green
 type=str
-The background color for hints
+The background color for hints.
 
 
 --hints-text-color
 default=gray
 type=str
-The foreground color for text pointed to by the hints
+The foreground color for text pointed to by the hints.
 
 
 --customize-processing
-Name of a python file in the kitty config directory which will be imported to provide
-custom implementations for pattern finding and performing actions
-on selected matches. See {hints_url}
-for details. You can also specify absolute paths to load the script from elsewhere.
+Name of a python file in the kitty config directory which will be imported to
+provide custom implementations for pattern finding and performing actions
+on selected matches. You can also specify absolute paths to load the script from
+elsewhere. See {hints_url} for details.
 
 
 --window-title
-The window title for the hints window, default title is selected based on
-the type of text being hinted.
+The title for the hints window, default title is based on the type of text being
+hinted.
 '''.format(
     default_regex=DEFAULT_REGEX,
     line='{{line}}', path='{{path}}',
