@@ -84,6 +84,12 @@ Variables that influence kitty behavior
    is possible for the autodiscovery to fail; the default Wayland XKB mappings
    are used in this case. See :pull:`3943` for details.
 
+.. envvar:: SSH_ASKPASS
+
+   Specify the program for SSH to ask for passwords. When this is set, :doc:`ssh
+   kitten </kittens/ssh>` will use this environment variable by default. See
+   :opt:`askpass <kitten-ssh.askpass>` for details.
+
 .. envvar:: KITTY_CLONE_SOURCE_CODE
 
    Set this to some shell code that will be executed in the cloned window with
@@ -103,6 +109,10 @@ Variables that kitty sets when running child programs
    This is only set on macOS. If the country and language from the macOS user
    settings form an invalid locale, it will be set to :code:`en_US.UTF-8`.
 
+.. envvar:: PATH
+
+   kitty prepends itself to the PATH of its own environment to ensure the
+   functions calling :program:`kitty` will work properly.
 
 .. envvar:: KITTY_WINDOW_ID
 
