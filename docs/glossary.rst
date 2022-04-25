@@ -109,6 +109,10 @@ Variables that kitty sets when running child programs
    This is only set on macOS. If the country and language from the macOS user
    settings form an invalid locale, it will be set to :code:`en_US.UTF-8`.
 
+.. envvar:: PATH
+
+   kitty prepends itself to the PATH of its own environment to ensure the
+   functions calling :program:`kitty` will work properly.
 
 .. envvar:: KITTY_WINDOW_ID
 

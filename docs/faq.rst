@@ -27,14 +27,15 @@ turned off for specific symbols using :opt:`narrow_symbols`.
 Using a color theme with a background color does not work well in vim?
 -----------------------------------------------------------------------
 
-First make sure you have not changed the TERM environment variable, it should
-be ``xterm-kitty``. vim uses *background color erase* even if the terminfo file
-does not contain the ``bce`` capability. This is a bug in vim. You can work around
-it by adding the following to your vimrc::
+First make sure you have not changed the :envvar:`TERM` environment variable, it
+should be ``xterm-kitty``. vim uses *background color erase* even if the
+terminfo file does not contain the ``bce`` capability. This is a bug in vim. You
+can work around it by adding the following to your vimrc::
 
     let &t_ut=''
 
-See :doc:`here <deccara>` for why |kitty| does not support background color erase.
+See :doc:`here <deccara>` for why |kitty| does not support background color
+erase.
 
 
 I get errors about the terminal being unknown or opening the terminal failing when SSHing into a different computer?
@@ -47,26 +48,26 @@ terminfo files to the server::
     kitty +kitten ssh myserver
 
 This :doc:`ssh kitten <kittens/ssh>` takes all the same command line arguments
-as ssh, you can alias it to something small in your shell's rc files to avoid
-having to type it each time::
+as :program:`ssh`, you can alias it to something small in your shell's rc files
+to avoid having to type it each time::
 
     alias s="kitty +kitten ssh"
 
-If the ssh kitten fails, use the following one-liner instead (it
-is slower as it needs to ssh into the server twice, but will work with most
-servers)::
+If the ssh kitten fails, use the following one-liner instead (it is slower as it
+needs to ssh into the server twice, but will work with most servers)::
 
     infocmp -a xterm-kitty | ssh myserver tic -x -o \~/.terminfo /dev/stdin
 
-If you are behind a proxy (like Balabit) that prevents this, or ``tic`` comes
-with macOS that does not support reading from STDIN, you must redirect the 1st
-command to a file, copy that to the server and run ``tic`` manually.  If you
-connect to a server, embedded or Android system that doesn't have ``tic``, copy over
-your local file terminfo to the other system as :file:`~/.terminfo/x/xterm-kitty`.
+If you are behind a proxy (like Balabit) that prevents this, or :program:`tic`
+comes with macOS that does not support reading from STDIN, you must redirect the
+first command to a file, copy that to the server and run :program:`tic`
+manually. If you connect to a server, embedded or Android system that doesn't
+have :program:`tic`, copy over your local file terminfo to the other system as
+:file:`~/.terminfo/x/xterm-kitty`.
 
 Really, the correct solution for this is to convince the OpenSSH maintainers to
-have ssh do this automatically, if possible, when connecting to a server, so that
-all terminals work transparently.
+have :program:`ssh` do this automatically, if possible, when connecting to a
+server, so that all terminals work transparently.
 
 If the server is running FreeBSD, or another system that relies on termcap
 rather than terminfo, you will need to convert the terminfo file on your local
@@ -84,9 +85,9 @@ command to apply your change (on the server)::
 Keys such as arrow keys, backspace, delete, home/end, etc. do not work when using su or sudo?
 -------------------------------------------------------------------------------------------------
 
-Make sure the TERM environment variable, is ``xterm-kitty``.  And either the
-TERMINFO environment variable points to a directory containing :file:`x/xterm-kitty`
-or that file is under :file:`~/.terminfo/x/`.
+Make sure the :envvar:`TERM` environment variable, is ``xterm-kitty``.  And
+either the :envvar:`TERMINFO` environment variable points to a directory
+containing :file:`x/xterm-kitty` or that file is under :file:`~/.terminfo/x/`.
 
 For macOS, you may also need to put that file under :file:`~/.terminfo/78/`::
 
@@ -94,18 +95,19 @@ For macOS, you may also need to put that file under :file:`~/.terminfo/78/`::
     ln -snf ../x/xterm-kitty ~/.terminfo/78/xterm-kitty
     tic -x -o ~/.terminfo "$KITTY_INSTALLATION_DIR/terminfo/kitty.terminfo"
 
-Note that ``sudo`` might remove TERMINFO.  Then setting it at the shell prompt can
-be too late, because command line editing may not be reinitialized.  In that case
-you can either ask ``sudo`` to set it or if that is not supported, insert an ``env``
-command before starting the shell, or, if not possible, after sudo start another
-Shell providing the right terminfo path::
+Note that :program:`sudo` might remove :envvar:`TERMINFO`. Then setting it at
+the shell prompt can be too late, because command line editing may not be
+reinitialized. In that case you can either ask :program:`sudo` to set it or if
+that is not supported, insert an :program:`env` command before starting the
+shell, or, if not possible, after sudo start another shell providing the right
+terminfo path::
 
     sudo … TERMINFO=$HOME/.terminfo bash -i
     sudo … env TERMINFO=$HOME/.terminfo bash -i
     TERMINFO=/home/ORIGINALUSER/.terminfo exec bash -i
 
-You can configure sudo to preserve TERMINFO by running ``sudo
-visudo`` and adding the following line::
+You can configure :program:`sudo` to preserve :envvar:`TERMINFO` by running
+``sudo visudo`` and adding the following line::
 
     Defaults env_keep += "TERM TERMINFO"
 
@@ -129,15 +131,15 @@ You can also define keyboard shortcuts to set colors, for example::
 
     map f1 set_colors --configured /path/to/some/config/file/colors.conf
 
-Or you can enable :doc:`remote control <remote-control>` for |kitty| and use :ref:`at_set-colors`.
-The shortcut mapping technique has the same syntax as the remote control
-command, for details, see :ref:`at_set-colors`.
+Or you can enable :doc:`remote control <remote-control>` for |kitty| and use
+:ref:`at_set-colors`. The shortcut mapping technique has the same syntax as the
+remote control command, for details, see :ref:`at_set-colors`.
 
 To change colors when SSHing into a remote host, use the :opt:`color_scheme
 <kitten-ssh.color_scheme>` setting for the :doc:`ssh kitten <kittens/ssh>`.
 
 Additionally, You can use the
-`OSC terminal escape codes <https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands>`_
+`OSC terminal escape codes <https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands>`__
 to set colors. Examples of using OSC escape codes to set colors::
 
     Change the default foreground color:
@@ -154,7 +156,7 @@ to set colors. Examples of using OSC escape codes to set colors::
     printf '\x1b]4;n;green\x1b\\'
 
 You can use various syntaxes/names for color specifications in the above
-examples. See `XParseColor <https://linux.die.net/man/3/xparsecolor>`_
+examples. See `XParseColor <https://linux.die.net/man/3/xparsecolor>`__
 for full details.
 
 If a ``?`` is given rather than a color specification, kitty will respond
@@ -167,14 +169,15 @@ How do I specify command line options for kitty on macOS?
 Apple does not want you to use command line options with GUI applications. To
 workaround that limitation, |kitty| will read command line options from the file
 :file:`<kitty config dir>/macos-launch-services-cmdline` when it is launched
-from the GUI, i.e. by clicking the |kitty| application icon or using ``open -a kitty``.
-Note that this file is *only read* when running via the GUI.
+from the GUI, i.e. by clicking the |kitty| application icon or using
+``open -a kitty``. Note that this file is *only read* when running via the GUI.
 
-You can, of course, also run |kitty| from a terminal with command line options, using:
-:file:`/Applications/kitty.app/Contents/MacOS/kitty`.
+You can, of course, also run |kitty| from a terminal with command line options,
+using: :file:`/Applications/kitty.app/Contents/MacOS/kitty`.
 
-And within |kitty| itself, you can always run |kitty| using just `kitty` as it
-cleverly adds itself to the ``PATH``.
+And within |kitty| itself, you can always run |kitty| using just ``kitty`` as it
+cleverly adds itself to the :envvar:`PATH`.
+
 
 I catted a binary file and now kitty is hung?
 -----------------------------------------------
@@ -182,10 +185,10 @@ I catted a binary file and now kitty is hung?
 **Never** output unknown binary data directly into a terminal.
 
 Terminals have a single channel for both data and control. Certain bytes
-are control codes. Some of these control codes are of arbitrary length, so
-if the binary data you output into the terminal happens to contain the starting
-sequence for one of these control codes, the terminal will hang waiting for
-the closing sequence. Press :kbd:`ctrl+shift+delete` to reset the terminal.
+are control codes. Some of these control codes are of arbitrary length, so if
+the binary data you output into the terminal happens to contain the starting
+sequence for one of these control codes, the terminal will hang waiting for the
+closing sequence. Press :sc:`reset_terminal` to reset the terminal.
 
 If you do want to cat unknown data, use ``cat -v``.
 
@@ -193,30 +196,34 @@ If you do want to cat unknown data, use ``cat -v``.
 kitty is not able to use my favorite font?
 ---------------------------------------------
 
-|kitty| achieves its stellar performance by caching alpha masks of each
-rendered character on the GPU, and rendering them all in parallel. This means
-it is a strictly character cell based display. As such it can use only
-monospace fonts, since every cell in the grid has to be the same size.
-Furthermore, it needs fonts to be freely resizable, so it does not support
-bitmapped fonts.
+|kitty| achieves its stellar performance by caching alpha masks of each rendered
+character on the GPU, and rendering them all in parallel. This means it is a
+strictly character cell based display. As such it can use only monospace fonts,
+since every cell in the grid has to be the same size. Furthermore, it needs
+fonts to be freely resizable, so it does not support bitmapped fonts.
 
 .. note::
-   If you are trying to use a font patched with NERD font symbols, dont do that
-   as patching destroys fonts. There is no need, simply install the standalone
-   NERD font (the file :file:`NerdFontsSymbolsOnly.zip` from the `NERD font
-   releases page <https://github.com/ryanoasis/nerd-fonts/releases>`__). kitty
-   should pick up symbols from it automatically, and you can tell it to do so
-   explicitly in case it doesnt with the :opt:`symbol_map` directive::
+   If you are trying to use a font patched with `Nerd Fonts
+   <https://nerdfonts.com/>`__ symbols, don't do that as patching destroys
+   fonts. There is no need, simply install the standalone ``Symbols Nerd Font``
+   (the file :file:`NerdFontsSymbolsOnly.zip` from the `Nerd Fonts releases page
+   <https://github.com/ryanoasis/nerd-fonts/releases>`__). kitty should pick up
+   symbols from it automatically, and you can tell it to do so explicitly in
+   case it doesn't with the :opt:`symbol_map` directive::
 
         symbol_map U+23FB-U+23FE,U+2665,U+26A1,U+2B58,U+E000-U+E00A,U+E0A0-U+E0A3,U+E0B0-U+E0C8,U+E0CA,U+E0CC-U+E0D2,U+E0D4,U+E200-U+E2A9,U+E300-U+E3E3,U+E5FA-U+E62F,U+E700-U+E7C5,U+F000-U+F2E0,U+F300-U+F31C,U+F400-U+F4A9,U+F500-U+F8FF Symbols Nerd Font
 
+   Those Unicode symbols beyond the ``E000-F8FF`` Unicode private use area are
+   not included.
+
 If your font is not listed in ``kitty +list-fonts`` it means that it is not
-monospace or is a bitmapped font. On Linux you can list all monospace fonts with::
+monospace or is a bitmapped font. On Linux you can list all monospace fonts
+with::
 
     fc-list : family spacing outline scalable | grep -e spacing=100 -e spacing=90 | grep -e outline=True | grep -e scalable=True
 
-Note that the spacing property is calculated by fontconfig based on actual
-glyph widths in the font. If for some reason fontconfig concludes your favorite
+Note that the spacing property is calculated by fontconfig based on actual glyph
+widths in the font. If for some reason fontconfig concludes your favorite
 monospace font does not have ``spacing=100`` you can override it by using the
 following :file:`~/.config/fontconfig/fonts.conf`::
 
@@ -278,7 +285,7 @@ homepage:
 
 On macOS you can change the icon by following the steps:
 
-#. Find :file:`kitty.app` in the Applications folder, select it and press :kbd:`⌘+i`
+#. Find :file:`kitty.app` in the Applications folder, select it and press :kbd:`⌘+I`
 #. Drag :file:`kitty.icns` onto the application icon in the kitty info pane
 #. Delete the icon cache and restart Dock::
 
@@ -301,7 +308,7 @@ the :sc:`send_text <send_text>` you can use the ``show_key`` kitten. Run::
 Then press the key you want to emulate. Note that this kitten will only show
 keys that actually reach the terminal program, in particular, keys mapped to
 actions in kitty will not be shown. To check those first map them to
-:code:`no_op`.
+:ac:`no_op`.
 
 How do I open a new window or tab with the same working directory as the current window?
 --------------------------------------------------------------------------------------------
@@ -328,8 +335,8 @@ variables which kitty will now inherit.
 You need to make sure that the environment variables you define in your shell's
 rc files are either also defined system wide or via the :opt:`env` directive in
 :file:`kitty.conf`. Common environment variables that cause issues are those
-related to localization, such as ``LANG, LC_*`` and loading of configuration
-files such as ``XDG_*, KITTY_CONFIG_DIRECTORY``.
+related to localization, such as :envvar:`LANG`, ``LC_*`` and loading of
+configuration files such as ``XDG_*``, :envvar:`KITTY_CONFIG_DIRECTORY`.
 
 To see the environment variables that kitty sees, you can add the following
 mapping to :file:`kitty.conf`::
@@ -346,40 +353,42 @@ sorts of places where they may or may not work.
 I am using tmux and have a problem
 --------------------------------------
 
-First, terminal multiplexers are :iss:`a bad idea <391#issuecomment-638320745>`, do
-not use them, if at all possible. kitty contains features that do all of what
+First, terminal multiplexers are :iss:`a bad idea <391#issuecomment-638320745>`,
+do not use them, if at all possible. kitty contains features that do all of what
 tmux does, but better, with the exception of remote persistence (:iss:`391`).
 If you still want to use tmux, read on.
 
 Image display will not work, see `tmux issue
-<https://github.com/tmux/tmux/issues/1391>`_.
+<https://github.com/tmux/tmux/issues/1391>`__.
 
-Using ancient versions of tmux such as 1.8 will
-cause gibberish on screen when pressing keys (:iss:`3541`).
+Using ancient versions of tmux such as 1.8 will cause gibberish on screen when
+pressing keys (:iss:`3541`).
 
-If you are using tmux with multiple terminals or you start it under one
-terminal and then switch to another and these terminals have different TERM
-variables, tmux will break. You will need to restart it as tmux does not
-support multiple terminfo definitions.
+If you are using tmux with multiple terminals or you start it under one terminal
+and then switch to another and these terminals have different :envvar:`TERM`
+variables, tmux will break. You will need to restart it as tmux does not support
+multiple terminfo definitions.
 
 If you use any of the advanced features that kitty has innovated, such as
-styled underlines, desktop notifications, extended keyboard support, etc.
-they may or may not work, depending on the whims of tmux's maintainer, your
-version of tmux, etc.
+:doc:`styled underlines </underlines>`, :doc:`desktop notifications
+</desktop-notifications>`, :doc:`extended keyboard support
+</keyboard-protocol>`, etc. they may or may not work, depending on the whims of
+tmux's maintainer, your version of tmux, etc.
 
 
 I opened and closed a lot of windows/tabs and top shows kitty's memory usage is very high?
 -------------------------------------------------------------------------------------------
 
-``top`` is not a good way to measure process memory usage. That is because on
-modern systems, when allocating memory to a process, the C library functions
-will typically allocate memory in large blocks, and give the process chunks of
-these blocks. When the process frees a chunk, the C library will not
+:program:`top` is not a good way to measure process memory usage. That is
+because on modern systems, when allocating memory to a process, the C library
+functions will typically allocate memory in large blocks, and give the process
+chunks of these blocks. When the process frees a chunk, the C library will not
 necessarily release the underlying block back to the OS. So even though the
-application has released the memory, ``top`` will still claim the process is
-using it.
+application has released the memory, :program:`top` will still claim the process
+is using it.
 
-To check for memory leaks, instead use a tool like ``valgrind``. Run::
+To check for memory leaks, instead use a tool like `Valgrind
+<https://valgrind.org/>`__. Run::
 
     PYTHONMALLOC=malloc valgrind --tool=massif kitty
 
@@ -392,17 +401,18 @@ that window, maybe run yes or find again. Then quit kitty and run::
 You will see the allocations graph goes up when you opened the windows, then
 goes back down when you closed them, indicating there were no memory leaks.
 
-For those interested, you can get a similar profile out of ``valgrind`` as you get
-with ``top`` by adding ``--pages-as-heap=yes`` then you will see that memory
-allocated in malloc is not freed in free. This can be further refined if you
-use `glibc`` as your C library by setting the environment variable
-``MALLOC_MMAP_THRESHOLD_=64``. This will cause free to actually free memory
-allocated in sizes of more than 64 bytes. With this set, memory usage will
-climb high, then fall when closing windows, but not fall all the way back. The
-remaining used memory can be investigated using valgrind again, and it will
+For those interested, you can get a similar profile out of :program:`valgrind`
+as you get with :program:`top` by adding ``--pages-as-heap=yes`` then you will
+see that memory allocated in malloc is not freed in free. This can be further
+refined if you use ``glibc`` as your C library by setting the environment
+variable ``MALLOC_MMAP_THRESHOLD_=64``. This will cause free to actually free
+memory allocated in sizes of more than 64 bytes. With this set, memory usage
+will climb high, then fall when closing windows, but not fall all the way back.
+The remaining used memory can be investigated using valgrind again, and it will
 come from arenas in the GPU drivers and the per thread arenas glibc's malloc
-maintains. These too allocate memory in large blocks and dont release it back
+maintains. These too allocate memory in large blocks and don't release it back
 to the OS immediately.
+
 
 Why does kitty sometimes start slowly on my Linux system?
 -------------------------------------------------------------------------------------------
@@ -427,4 +437,4 @@ The correct command will depend on your situation and hardware.
 :file:`libEGL_mesa.so` and ignore :file:`libEGL_nvidia.so` also available on the
 system, which will wake the NVIDIA card during device enumeration.
 ``MESA_LOADER_DRIVER_OVERRIDE`` also assures that Mesa won't offer any NVIDIA
-card during enumeration, and will instead just use `/lib/dri/radeonsi_dri.so`.
+card during enumeration, and will instead just use :file:`radeonsi_dri.so`.
