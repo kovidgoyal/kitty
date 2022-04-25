@@ -15,28 +15,27 @@ Truly convenient SSH
    Automatic shell integration, file transfer and reuse of connections
 
 The ssh kitten allows you to login easily to remote hosts, and automatically
-setup the environment there to be as comfortable as your local shell. You
-can specify environment variables to set on the remote host and
-files to copy there, making your remote experience just like your
-local shell. Additionally, it automatically sets up :ref:`shell_integration` on
-the remote host and copies the kitty terminfo database there.
+setup the environment there to be as comfortable as your local shell. You can
+specify environment variables to set on the remote host and files to copy there,
+making your remote experience just like your local shell. Additionally, it
+automatically sets up :ref:`shell_integration` on the remote host and copies the
+kitty terminfo database there.
 
 The ssh kitten is a thin wrapper around the traditional `ssh <https://man.openbsd.org/ssh>`__
 command line program and supports all the same options and arguments and configuration.
-In interactive usage scenarios it is a drop in replacement for ``ssh``. To try it
-out, simply run:
+In interactive usage scenarios it is a drop in replacement for :program:`ssh`.
+To try it out, simply run:
 
 .. code-block:: sh
 
     kitty +kitten ssh some-hostname-to-connect-to
 
-You should end up at a shell prompt on the remote host, with shell
-integration enabled. If you like it you can add an alias to it in your shell's
-rc files:
+You should end up at a shell prompt on the remote host, with shell integration
+enabled. If you like it you can add an alias to it in your shell's rc files:
 
 .. code-block:: sh
 
-    alias s=kitty +kitten ssh
+    alias s="kitty +kitten ssh"
 
 So now you can just type ``s hostname`` to connect.
 
@@ -44,13 +43,12 @@ If you define a mapping in :file:`kitty.conf` such as::
 
     map f1 new_window_with_cwd
 
-Then, pressing :kbd:`F1` will open a new window automatically logged
-into the same host using the ssh kitten, at the same directory.
+Then, pressing :kbd:`F1` will open a new window automatically logged into the
+same host using the ssh kitten, at the same directory.
 
-The ssh kitten can be configured using the :file:`~/.config/kitty/ssh.conf`
-file where you can specify environment variables to set on the remote host
-and files to copy from the local to the remote host. Let's see a
-quick example:
+The ssh kitten can be configured using the :file:`~/.config/kitty/ssh.conf` file
+where you can specify environment variables to set on the remote host and files
+to copy from the local to the remote host. Let's see a quick example:
 
 .. code-block:: conf
 
@@ -80,8 +78,9 @@ Additionally, you can pass config options on the command line:
 
 The :code:`--kitten` argument can be specified multiple times, with directives
 from :file:`ssh.conf`. These are merged with :file:`ssh.conf` as if they were
-appended to the end of that file. They apply only to the host being SSHed to
-by this invocation, so any :opt:`hostname <kitten-ssh.hostname>` directives are ignored.
+appended to the end of that file. They apply only to the host being SSHed to by
+this invocation, so any :opt:`hostname <kitten-ssh.hostname>` directives are
+ignored.
 
 .. warning::
 
@@ -98,8 +97,8 @@ A real world example
 Suppose you often SSH into a production server, and you would like to setup
 your shell and editor there using your custom settings. However, other people
 could SSH in as well and you don't want to clobber their settings. Here is how
-this could be achieved using the ssh kitten with zsh and vim as the shell and
-editor, respectively:
+this could be achieved using the ssh kitten with :program:`zsh` and
+:program:`vim` as the shell and editor, respectively:
 
 .. code-block:: conf
 
@@ -125,23 +124,24 @@ How it works
 The ssh kitten works by having SSH transmit and execute a POSIX sh (or
 :opt:`optionally <kitten-ssh.interpreter>` Python) bootstrap script on the
 remote host using an :opt:`interpreter <kitten-ssh.interpreter>`. This script
-reads setup data over the tty device, which kitty sends as a base64 encoded
+reads setup data over the TTY device, which kitty sends as a base64 encoded
 compressed tarball. The script extracts it and places the :opt:`files <kitten-ssh.copy>`
 and sets the :opt:`environment variables <kitten-ssh.env>` before finally
 launching the :opt:`login shell <kitten-ssh.login_shell>` with :opt:`shell
 integration <kitten-ssh.shell_integration>` enabled. The data is requested by
 the kitten over the TTY with a random one time password. kitty reads the request
 and if the password matches a password pre-stored in shared memory on the
-localhost by the kitten, the transmission is allowed. If your OpenSSH version is
->= 8.4 then the data is transmitted instantly without any roundtrip delay.
+localhost by the kitten, the transmission is allowed. If your local
+`OpenSSH <https://www.openssh.com/>`__ version is >= 8.4 then the data is
+transmitted instantly without any roundtrip delay.
 
 .. note::
 
-   When connecting to BSD hosts, it is possible the bootstrap script will
-   fail or run slowly, because the default shells are crippled in various ways.
+   When connecting to BSD hosts, it is possible the bootstrap script will fail
+   or run slowly, because the default shells are crippled in various ways.
    Your best bet is to install Python on the remote, make sure the login shell
-   is something POSIX sh compliant, and use :code:`python` as the :opt:`interpreter
-   <kitten-ssh.interpreter>` in :file:`ssh.conf`.
+   is something POSIX sh compliant, and use :code:`python` as the
+   :opt:`interpreter <kitten-ssh.interpreter>` in :file:`ssh.conf`.
 
 .. include:: /generated/conf-kitten-ssh.rst
 

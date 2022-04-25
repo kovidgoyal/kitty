@@ -84,6 +84,12 @@ Variables that influence kitty behavior
    is possible for the autodiscovery to fail; the default Wayland XKB mappings
    are used in this case. See :pull:`3943` for details.
 
+.. envvar:: SSH_ASKPASS
+
+   Specify the program for SSH to ask for passwords. When this is set, :doc:`ssh
+   kitten </kittens/ssh>` will use this environment variable by default. See
+   :opt:`askpass <kitten-ssh.askpass>` for details.
+
 .. envvar:: KITTY_CLONE_SOURCE_CODE
 
    Set this to some shell code that will be executed in the cloned window with
