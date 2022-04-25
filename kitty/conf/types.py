@@ -96,6 +96,10 @@ def remove_markup(text: str) -> str:
     return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)
 
 
+def strip_inline_literal(text: str) -> str:
+    return re.sub(r'``([^`]+)``', r'`\1`', text, flags=re.DOTALL)
+
+
 def iter_blocks(lines: Iterable[str]) -> Iterator[Tuple[List[str], int]]:
     current_block: List[str] = []
     prev_indent = 0
@@ -137,6 +141,7 @@ def wrapped_block(lines: Iterable[str], comment_symbol: str = '#: ') -> Iterator
 
 def render_block(text: str, comment_symbol: str = '#: ') -> str:
     text = remove_markup(text)
+    text = strip_inline_literal(text)
     lines = text.splitlines()
     return '\n'.join(wrapped_block(lines, comment_symbol))
 

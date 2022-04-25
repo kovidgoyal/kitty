@@ -34,7 +34,7 @@ and even specify special fonts for particular characters.
 opt('font_family', 'monospace',
     long_text='''
 You can specify different fonts for the bold/italic/bold-italic variants.
-To get a full list of supported fonts use the :code:`kitty +list-fonts` command.
+To get a full list of supported fonts use the ``kitty +list-fonts`` command.
 By default they are derived automatically, by the OSes font system. When
 :opt:`bold_font` or :opt:`bold_italic_font` is set to :code:`auto` on macOS, the
 priority of bold fonts is semi-bold, bold, heavy. Setting them manually is
@@ -114,8 +114,8 @@ opt('+symbol_map', 'U+E0A0-U+E0A3,U+E0C0-U+E0C7 PowerlineSymbols',
     long_text='''
 Map the specified Unicode codepoints to a particular font. Useful if you need
 special rendering for some symbols, such as for Powerline. Avoids the need for
-patched fonts. Each Unicode code point is specified in the form :code:`U+<code
-point in hexadecimal>`. You can specify multiple code points, separated by
+patched fonts. Each Unicode code point is specified in the form ``U+<code
+point in hexadecimal>``. You can specify multiple code points, separated by
 commas and ranges separated by hyphens. This option can be specified multiple
 times. The syntax is::
 
@@ -134,7 +134,7 @@ aspect ratio. Using this option you can force kitty to restrict the specified
 code points to render in the specified number of cells (defaulting to one cell).
 This option can be specified multiple times. The syntax is::
 
-    narrow_symbols codepoints Optionally the number of cells
+    narrow_symbols codepoints [optionally the number of cells]
 '''
     )
 
@@ -181,7 +181,7 @@ feature in the italic font but not in the regular font.
 On Linux, font features are first read from the FontConfig database and then
 this option is applied, so they can be configured in a single, central place.
 
-To get the PostScript name for a font, use :code:`kitty +list-fonts --psnames`:
+To get the PostScript name for a font, use ``kitty +list-fonts --psnames``:
 
 .. code-block:: sh
 
@@ -259,8 +259,8 @@ The cursor shape can be one of :code:`block`, :code:`beam`, :code:`underline`.
 Note that when reloading the config this will be changed only if the cursor
 shape has not been set by the program running in the terminal. This sets the
 default cursor shape, applications running in the terminal can override it. In
-particular, :ref:`shell_integration` in kitty sets the cursor shape to
-:code:`beam` at shell prompts. You can avoid this by setting
+particular, :ref:`shell integration <shell_integration>` in kitty sets the
+cursor shape to :code:`beam` at shell prompts. You can avoid this by setting
 :opt:`shell_integration` to :code:`no-cursor`.
 '''
     )
@@ -279,8 +279,8 @@ opt('cursor_blink_interval', '-1',
     option_type='float', ctype='time',
     long_text='''
 The interval to blink the cursor (in seconds). Set to zero to disable blinking.
-Negative values mean use system default. Note that numbers smaller
-than :opt:`repaint_delay` will be limited to :opt:`repaint_delay`.
+Negative values mean use system default. Note that the minimum interval will be
+limited to :opt:`repaint_delay`.
 '''
     )
 
@@ -459,11 +459,11 @@ opt(
     'paste_actions', 'quote-urls-at-prompt', option_type='paste_actions',
     long_text='''
 A comma separated list of actions to take when pasting text into the terminal.
-Possibilities are:
+The supported paste actions are:
 
 :code:`quote-urls-at-prompt`:
     If the text being pasted is a URL and the cursor is at a shell prompt,
-    automatically quote the URL (needs :ref:`shell_integration`).
+    automatically quote the URL (needs :opt:`shell_integration`).
 :code:`confirm`:
     Confirm the paste if bracketed paste mode is not active or there is more
     a large amount of text being pasted.
@@ -479,7 +479,7 @@ opt('strip_trailing_spaces', 'never',
     long_text='''
 Remove spaces at the end of lines when copying to clipboard. A value of
 :code:`smart` will do it when using normal selections, but not rectangle
-selections. :code:`always` will always do it.
+selections. A value of :code:`always` will always do it.
 '''
     )
 
@@ -586,7 +586,8 @@ mma('Click the link under the mouse or move the cursor',
 First check for a selection and if one exists do nothing. Then check for a link
 under the mouse cursor and if one exists, click it. Finally check if the click
 happened at the current shell prompt and if so, move the cursor to the click
-location. Note that this requires :doc:`shell-integration` to work.
+location. Note that this requires :ref:`shell integration <shell_integration>`
+to work.
 '''
     )
 
@@ -684,7 +685,7 @@ mma('Extend the current selection even when grabbed',
 
 mma('Show clicked command output in pager',
     'show_clicked_cmd_output_ungrabbed ctrl+shift+right press ungrabbed mouse_show_command_output',
-    long_text='Requires :ref:`shell_integration` to work.'
+    long_text='Requires :ref:`shell integration <shell_integration>` to work.'
     )
 egr()  # }}}
 egr()  # }}}
@@ -952,7 +953,7 @@ Path to a logo image. Must be in PNG format. Relative paths are interpreted
 relative to the kitty config directory. The logo is displayed in a corner of
 every kitty window. The position is controlled by :opt:`window_logo_position`.
 Individual windows can be configured to have different logos either using the
-:ac:`launch` action or the :doc:`remote-control` facility.
+:ac:`launch` action or the :doc:`remote control <remote-control>` facility.
 '''
     )
 
@@ -1161,9 +1162,9 @@ formatting machinery, so you can use, for instance,
 :code:`{layout_name[:2].upper()}` to show only the first two letters of the
 layout name, upper-cased. If you want to style the text, you can use styling
 directives, for example:
-:code:`{fmt.fg.red}red{fmt.fg.tab}normal{fmt.bg._00FF00}greenbg{fmt.bg.tab}`.
+``{fmt.fg.red}red{fmt.fg.tab}normal{fmt.bg._00FF00}greenbg{fmt.bg.tab}``.
 Similarly, for bold and italic:
-:code:`{fmt.bold}bold{fmt.nobold}normal{fmt.italic}italic{fmt.noitalic}`.
+``{fmt.bold}bold{fmt.nobold}normal{fmt.italic}italic{fmt.noitalic}``.
 Note that for backward compatibility, if :code:`{bell_symbol}` or
 :code:`{activity_symbol}` are not present in the template, they are prepended to
 it.
@@ -2646,8 +2647,8 @@ reads its startup rc files.
 
 opt('editor', '.',
     long_text='''
-The terminal based text editor (such as :program:`vim` or :program:`nano`) to use
-when editing the kitty config file or similar tasks.
+The terminal based text editor (such as :program:`vim` or :program:`nano`) to
+use when editing the kitty config file or similar tasks.
 
 The default value of :code:`.` means to use the environment variables
 :envvar:`VISUAL` and :envvar:`EDITOR` in that order. If these variables aren't
@@ -2835,7 +2836,7 @@ pager, etc. on supported shells. Set to :code:`disabled` to turn off shell
 integration, completely. It is also possible to disable individual features, set
 to a space separated list of these values: :code:`no-rc`, :code:`no-cursor`,
 :code:`no-title`, :code:`no-cwd`, :code:`no-prompt-mark`, :code:`no-complete`.
-See :ref:`shell_integration` for details.
+See :ref:`Shell integration <shell_integration>` for details.
 '''
     )
 
@@ -2858,17 +2859,17 @@ Control what shell code is sourced when running :command:`clone-in-kitty`
 in the newly cloned window. The supported strategies are:
 
 :code:`venv`
-    Source the file :file:`$VIRTUAL_ENV/bin/activate` (this is used by the
-    Python stdlib venv module and allows cloning venvs automatically)
+    Source the file :file:`$VIRTUAL_ENV/bin/activate`. This is used by the
+    Python stdlib venv module and allows cloning venvs automatically.
 :code:`conda`
-    Run :code:`conda activate $CONDA_DEFAULT_ENV` this supports the virtual envs
-    created by conda
+    Run :code:`conda activate $CONDA_DEFAULT_ENV`. This supports the virtual
+    environments created by :program:`conda`.
 :code:`env_var`
-    Source the contents of the environment variable
-    :code:`KITTY_CLONE_SOURCE_CODE`
+    Execute the contents of the environment variable
+    :envvar:`KITTY_CLONE_SOURCE_CODE` with :code:`eval`.
 :code:`path`
     Source the file pointed to by the environment variable
-    :code:`KITTY_CLONE_SOURCE_PATH`
+    :envvar:`KITTY_CLONE_SOURCE_PATH`.
 
 This option must be a comma separated list of the above values. This only
 source the first valid one in the above order.
@@ -3262,8 +3263,8 @@ map('Scroll to previous shell prompt',
     'scroll_to_previous_prompt kitty_mod+z scroll_to_prompt -1',
     long_text='''
 Use a parameter of :code:`0` for :ac:`scroll_to_prompt` to scroll to the last
-jumped to or the last clicked position. Requires :ref:`shell_integration` to
-work.
+jumped to or the last clicked position. Requires :ref:`shell integration
+<shell_integration>` to work.
 '''
     )
 
@@ -3306,7 +3307,7 @@ You can pipe the output of the last command run in the shell using the
 To get the output of the first command on the screen, use :code:`@first_cmd_output_on_screen`.
 To get the output of the last jumped to command, use :code:`@last_visited_cmd_output`.
 
-Requires :ref:`shell_integration` to work.
+Requires :ref:`shell integration <shell_integration>` to work.
 '''
     )
 egr()  # }}}
@@ -3686,7 +3687,7 @@ map('Insert selected line',
     'insert_selected_line kitty_mod+p>l kitten hints --type line --program -',
     long_text='''
 Select a line of text and insert it into the terminal. Useful for the output of
-things like: :code:`ls -1`.
+things like: ``ls -1``.
 '''
     )
 
@@ -3715,7 +3716,7 @@ map('Open the selected hyperlink',
     'open_selected_hyperlink kitty_mod+p>y kitten hints --type hyperlink',
     long_text='''
 Select a :term:`hyperlink <hyperlinks>` (i.e. a URL that has been marked as such
-by the terminal program, for example, by :code:`ls --hyperlink=auto`).
+by the terminal program, for example, by ``ls --hyperlink=auto``).
 '''
     )
 egr('''
@@ -3877,7 +3878,7 @@ This will send "Special text" when you press the :kbd:`Ctrl+Alt+A` key
 combination. The text to be sent is a python string literal so you can use
 escapes like :code:`\\x1b` to send control codes or :code:`\\u21fb` to send
 Unicode characters (or you can just input the Unicode characters directly as
-UTF-8 text). You can use :code:`kitty +kitten show_key` to get the key escape
+UTF-8 text). You can use ``kitty +kitten show_key`` to get the key escape
 codes you want to emulate.
 
 The first argument to :code:`send_text` is the keyboard modes in which to
