@@ -775,6 +775,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, wm_class_name);
     glfwWindowHintString(GLFW_X11_CLASS_NAME, wm_class_class);
     glfwWindowHintString(GLFW_WAYLAND_APP_ID, wm_class_class);
+    glfwWindowHint(GLFW_COCOA_COLOR_SPACE, OPT(macos_colorspace));
 #endif
 
     if (global_state.num_os_windows >= MAX_CHILDREN) {

@@ -55,6 +55,8 @@ Detailed list of changes
 
 - macOS: Make the global menu shortcut to open kitty website configurable (:pull:`5004`)
 
+- macOS: Add the :opt:`macos_colorspace` option to control what color space colors are rendered in (:iss:`4686`)
+
 
 0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

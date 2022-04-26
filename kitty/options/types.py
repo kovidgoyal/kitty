@@ -17,6 +17,7 @@ if typing.TYPE_CHECKING:
     choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled', 'clamped']
     choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'hand']
     choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
+    choices_for_macos_colorspace = typing.Literal['srgb', 'default', 'displayp3']
     choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none', 'window']
     choices_for_placement_strategy = typing.Literal['center', 'top-left']
     choices_for_pointer_shape_when_dragging = typing.Literal['arrow', 'beam', 'hand']
@@ -32,6 +33,7 @@ else:
     choices_for_background_image_layout = str
     choices_for_default_pointer_shape = str
     choices_for_linux_display_server = str
+    choices_for_macos_colorspace = str
     choices_for_macos_show_window_title_in = str
     choices_for_placement_strategy = str
     choices_for_pointer_shape_when_dragging = str
@@ -373,6 +375,7 @@ option_names = (  # {{{
  'kitty_mod',
  'linux_display_server',
  'listen_on',
+ 'macos_colorspace',
  'macos_custom_beam_cursor',
  'macos_hide_from_tasks',
  'macos_menubar_title_max_length',
@@ -525,6 +528,7 @@ class Options:
     kitty_mod: int = 5
     linux_display_server: choices_for_linux_display_server = 'auto'
     listen_on: str = 'none'
+    macos_colorspace: choices_for_macos_colorspace = 'srgb'
     macos_custom_beam_cursor: bool = False
     macos_hide_from_tasks: bool = False
     macos_menubar_title_max_length: int = 0

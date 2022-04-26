@@ -3016,6 +3016,16 @@ dual GPU machines. Changing this option by reloading the config is not supported
 '''
     )
 
+opt('macos_colorspace', 'srgb', choices=('srgb', 'default', 'displayp3'), ctype='macos_colorspace',
+    long_text='''
+The colorspace in which to interpret terminal colors. The default of :code:`srgb` will
+cause colors to match those seen in web browsers. The value of :code:`default` will
+use whatever the native colorspace of the display is. The value of :code:`displayp3`
+will use Apple's special snowflake display P3 color space, which will result in over
+saturated (brighter) colors with some color shift.
+''')
+
+
 opt('linux_display_server', 'auto',
     choices=('auto', 'wayland', 'x11'),
     long_text='''

@@ -127,6 +127,13 @@ pointer_shape(PyObject *shape_name) {
     return BEAM;
 }
 
+static int
+macos_colorspace(PyObject *csname) {
+    if (PyUnicode_CompareWithASCIIString(csname, "srgb")) return 1;
+    if (PyUnicode_CompareWithASCIIString(csname, "displayp3")) return 2;
+    return 0;
+}
+
 static inline void
 free_url_prefixes(void) {
     OPT(url_prefixes).num = 0;

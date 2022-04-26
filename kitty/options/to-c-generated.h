@@ -1006,6 +1006,19 @@ convert_from_opts_macos_menubar_title_max_length(PyObject *py_opts, Options *opt
     Py_DECREF(ret);
 }
 
+static void
+convert_from_python_macos_colorspace(PyObject *val, Options *opts) {
+    opts->macos_colorspace = macos_colorspace(val);
+}
+
+static void
+convert_from_opts_macos_colorspace(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "macos_colorspace");
+    if (ret == NULL) return;
+    convert_from_python_macos_colorspace(ret, opts);
+    Py_DECREF(ret);
+}
+
 static bool
 convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_font_size(py_opts, opts);
@@ -1161,6 +1174,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_macos_show_window_title_in(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_macos_menubar_title_max_length(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_macos_colorspace(py_opts, opts);
     if (PyErr_Occurred()) return false;
     return true;
 }

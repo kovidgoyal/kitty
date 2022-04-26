@@ -1035,6 +1035,14 @@ class Parser:
     def listen_on(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['listen_on'] = str(val)
 
+    def macos_colorspace(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_macos_colorspace:
+            raise ValueError(f"The value {val} is not a valid choice for macos_colorspace")
+        ans["macos_colorspace"] = val
+
+    choices_for_macos_colorspace = frozenset(('srgb', 'default', 'displayp3'))
+
     def macos_custom_beam_cursor(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['macos_custom_beam_cursor'] = to_bool(val)
 

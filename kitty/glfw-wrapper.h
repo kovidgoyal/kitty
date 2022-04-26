@@ -762,6 +762,16 @@ typedef enum GLFWMouseButton {
  *  [window hint](@ref GLFW_COCOA_GRAPHICS_SWITCHING_hint).
  */
 #define GLFW_COCOA_GRAPHICS_SWITCHING 0x00023003
+/*! @brief macOS specific
+ *  [window hint](@ref GLFW_COCOA_COLOR_SPACE_hint).
+ */
+#define GLFW_COCOA_COLOR_SPACE 0x00023004
+typedef enum {
+    DEFAULT_COLORSPACE = 0,
+    SRGB_COLORSPACE = 1,
+    DISPLAY_P3_COLORSPACE = 2,
+} GlfwCocoaColorSpaces;
+
 /*! @brief X11 specific
  *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
  */
