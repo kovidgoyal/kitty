@@ -24,7 +24,7 @@ def print_key(raw: bytearray) -> None:
             unix += chr(ch)
     print(unix + '\t\t', end='')
     for ch in raw:
-        x = chr(ch).encode('ascii')
+        x = chr(ch).encode('utf-8')
         print(styled(repr(x)[2:-1], fg='yellow'), end='')
     print(end='\r\n', flush=True)
 
