@@ -3023,7 +3023,7 @@ cause colors to match those seen in web browsers. The value of :code:`default` w
 use whatever the native colorspace of the display is. The value of :code:`displayp3`
 will use Apple's special snowflake display P3 color space, which will result in over
 saturated (brighter) colors with some color shift. Reloading configuration will change this
-value only for newly created windows.
+value only for newly created OS windows.
 ''')
 
 
