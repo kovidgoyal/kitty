@@ -1452,7 +1452,12 @@ class Boss:
                     break
 
     def show_error(self, title: str, msg: str) -> None:
-        self._run_kitten('show_error', args=['--title', title], input_data=msg)
+        ec = sys.exc_info()
+        tb = ''
+        if ec != (None, None, None):
+            import traceback
+            tb = traceback.format_exc()
+        self._run_kitten('show_error', args=['--title', title], input_data=json.dumps({'msg': msg, 'tb': tb}))
 
     @ac('mk', 'Create a new marker')
     def create_marker(self) -> None:
