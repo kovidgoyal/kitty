@@ -307,6 +307,7 @@ struct _GLFWwndconfig
     bool          scaleToMonitor;
     struct {
         bool      retina;
+        int       color_space;
         char      frameName[256];
     } ns;
     struct {

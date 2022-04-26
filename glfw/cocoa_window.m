@@ -1731,7 +1731,11 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
 
     if (!createNativeWindow(window, wndconfig, fbconfig))
         return false;
-    [window->ns.object setColorSpace:[NSColorSpace sRGBColorSpace]];
+    switch((GlfwCocoaColorSpaces)wndconfig->ns.color_space) {
+        case SRGB_COLORSPACE: [window->ns.object setColorSpace:[NSColorSpace sRGBColorSpace]]; break;
+        case DISPLAY_P3_COLORSPACE: [window->ns.object setColorSpace:[NSColorSpace displayP3ColorSpace]]; break;
+        case DEFAULT_COLORSPACE: break;
+    }
 
     if (ctxconfig->client != GLFW_NO_API)
     {

@@ -332,6 +332,8 @@ void glfwDefaultWindowHints(void)
 
     // The default is to use full Retina resolution framebuffers
     _glfw.hints.window.ns.retina = true;
+    // use the default colorspace assigned by the system
+    _glfw.hints.window.ns.color_space = 0;
 }
 
 GLFWAPI void glfwWindowHint(int hint, int value)
@@ -411,6 +413,9 @@ GLFWAPI void glfwWindowHint(int hint, int value)
             return;
         case GLFW_COCOA_RETINA_FRAMEBUFFER:
             _glfw.hints.window.ns.retina = value ? true : false;
+            return;
+        case GLFW_COCOA_COLOR_SPACE:
+            _glfw.hints.window.ns.color_space = value;
             return;
         case GLFW_COCOA_GRAPHICS_SWITCHING:
             _glfw.hints.context.nsgl.offline = value ? true : false;
