@@ -37,6 +37,7 @@ In addition to kitty, this protocol is also implemented in:
 * The `foot terminal <https://codeberg.org/dnkl/foot/issues/319>`__
 * The `notcurses library
   <https://github.com/dankamongmen/notcurses/issues/2131>`__
+* The `neovim text editor <https://github.com/neovim/neovim/pull/18181>`__
 * The `kakoune text editor <https://github.com/mawww/kakoune/issues/4103>`__
 * The `dte text editor <https://gitlab.com/craigbarnes/dte/-/issues/138>`__
 
