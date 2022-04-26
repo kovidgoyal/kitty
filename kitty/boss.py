@@ -1169,6 +1169,8 @@ class Boss:
                         if len(actions) > 1:
                             self.drain_actions(list(actions[1:]), window_for_dispatch, dispatch_type)
                 except Exception as e:
+                    import traceback
+                    traceback.print_exc()
                     self.show_error('Key action failed', f'{actions[0].pretty()}\n{e}')
                     consumed = True
         return consumed
