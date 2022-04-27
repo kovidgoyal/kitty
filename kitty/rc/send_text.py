@@ -7,7 +7,7 @@ from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 
 from kitty.fast_data_types import (
-    KeyEvent as WindowSystemKeyEvent, add_timer, get_boss, remove_timer
+    KeyEvent as WindowSystemKeyEvent, add_timer, get_boss, remove_timer, get_options
 )
 from kitty.key_encoding import decode_key_event_as_window_system_key
 from kitty.options.utils import parse_send_text_bytes
@@ -33,7 +33,6 @@ class Session:
 
 
 sessions_map: Dict[str, Session] = {}
-TIMEOUT_FOR_SESSION = 3.0
 
 
 def clear_unfocused_cursors(sid: str, *a: Any) -> None:
@@ -202,14 +201,14 @@ Do not send text to the active window, even if it is one of the matched windows.
             s = create_or_update_session()
             if window is not None:
                 window.actions_on_close.append(partial(clear_unfocused_cursors, sid))
-            s.timer_id = add_timer(partial(clear_unfocused_cursors, sid), TIMEOUT_FOR_SESSION, False)
+            s.timer_id = add_timer(partial(clear_unfocused_cursors, sid), get_options().cursor_stop_blinking_after, False)
             for w in actual_windows:
                 w.screen.render_unfocused_cursor = 1
                 s.window_ids.add(w.id)
         else:
             if sid:
                 s = create_or_update_session()
-                s.timer_id = add_timer(partial(clear_unfocused_cursors, sid), TIMEOUT_FOR_SESSION, False)
+                s.timer_id = add_timer(partial(clear_unfocused_cursors, sid), get_options().cursor_stop_blinking_after, False)
             for w in actual_windows:
                 if sid:
                     w.screen.render_unfocused_cursor = 1
