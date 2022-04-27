@@ -3,7 +3,6 @@
 
 import base64
 import sys
-from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 
 from kitty.fast_data_types import KeyEvent as WindowSystemKeyEvent, get_boss
@@ -32,25 +31,35 @@ class Session:
 sessions_map: Dict[str, Session] = {}
 
 
-def clear_unfocused_cursors(sid: str, *a: Any) -> None:
-    s = sessions_map.pop(sid, None)
-    if s is not None:
-        boss = get_boss()
-        for wid in s.window_ids:
-            qw = boss.window_id_map.get(wid)
-            if qw is not None:
-                qw.screen.render_unfocused_cursor = 0
+class SessionAction:
+
+    def __init__(self, sid: str):
+        self.sid = sid
 
 
-def handle_focus_change(sid: str, window: Window, focused: bool) -> None:
-    s = sessions_map.get(sid)
-    if s is not None:
-        boss = get_boss()
-        val = int(focused)
-        for wid in s.window_ids:
-            qw = boss.window_id_map.get(wid)
-            if qw is not None:
-                qw.screen.render_unfocused_cursor = val
+class ClearSession(SessionAction):
+
+    def __call__(self, *a: Any) -> None:
+        s = sessions_map.pop(self.sid, None)
+        if s is not None:
+            boss = get_boss()
+            for wid in s.window_ids:
+                qw = boss.window_id_map.get(wid)
+                if qw is not None:
+                    qw.screen.render_unfocused_cursor = 0
+
+
+class FocusChangedSession(SessionAction):
+
+    def __call__(self, window: Window, focused: bool) -> None:
+        s = sessions_map.get(self.sid)
+        if s is not None:
+            boss = get_boss()
+            val = int(focused)
+            for wid in s.window_ids:
+                qw = boss.window_id_map.get(wid)
+                if qw is not None:
+                    qw.screen.render_unfocused_cursor = val
 
 
 class SendText(RemoteCommand):
@@ -200,12 +209,18 @@ Do not send text to the active window, even if it is one of the matched windows.
             for w in actual_windows:
                 w.screen.render_unfocused_cursor = 0
                 s.window_ids.discard(w.id)
-            clear_unfocused_cursors(sid)
+            ClearSession(sid)()
         elif session == 'start':
             s = create_or_update_session()
             if window is not None:
-                window.actions_on_removal.append(partial(clear_unfocused_cursors, sid))
-                window.actions_on_focus_change.append(partial(handle_focus_change, sid))
+
+                def is_ok(x: Any) -> bool:
+                    return not isinstance(x, SessionAction) or x.sid != sid
+
+                window.actions_on_removal = list(filter(is_ok, window.actions_on_removal))
+                window.actions_on_focus_change = list(filter(is_ok, window.actions_on_focus_change))
+                window.actions_on_removal.append(ClearSession(sid))
+                window.actions_on_focus_change.append(FocusChangedSession(sid))
             for w in actual_windows:
                 w.screen.render_unfocused_cursor = 1
                 s.window_ids.add(w.id)
