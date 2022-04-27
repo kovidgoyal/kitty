@@ -34,7 +34,7 @@ Some prominent kittens:
 
 
 :doc:`Unicode Input <kittens/unicode_input>`
-    Easily input arbitrary unicode characters in |kitty| by name or hex code.
+    Easily input arbitrary Unicode characters in |kitty| by name or hex code.
 
 
 :doc:`Hints <kittens/hints>`
@@ -53,7 +53,7 @@ Some prominent kittens:
 
 
 :doc:`Hyperlinked grep <kittens/hyperlinked_grep>`
-    Search your files using `ripgrep <https://github.com/BurntSushi/ripgrep>`_
+    Search your files using `ripgrep <https://github.com/BurntSushi/ripgrep>`__
     and open the results directly in your favorite editor in the terminal,
     at the line containing the search result, simply by clicking on the result you want.
 

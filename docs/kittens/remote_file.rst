@@ -1,12 +1,12 @@
 Remote files
 ==============
 
-|kitty| has the ability to easily *Edit*, *Open* or *Download* files
-from a computer into which you are SSHed. In your SSH session run::
+|kitty| has the ability to easily *Edit*, *Open* or *Download* files from a
+computer into which you are SSHed. In your SSH session run::
 
     ls --hyperlink=auto
 
-Then hold down :kbd:`ctrl+shift` and click the name of the file.
+Then hold down :kbd:`Ctrl+Shift` and click the name of the file.
 
 .. figure:: ../screenshots/remote_file.png
     :alt: Remote file actions
@@ -19,8 +19,8 @@ Then hold down :kbd:`ctrl+shift` and click the name of the file.
 to *Edit* it in which case kitty will download it and open it locally in your
 :envvar:`EDITOR`. As you make changes to the file, they are automatically
 transferred to the remote computer. Note that this happens without needing
-to install *any* special software on the server, beyond ``ls`` that supports
-hyperlinks.
+to install *any* special software on the server, beyond :program:`ls` that
+supports hyperlinks.
 
 .. seealso:: See the :doc:`transfer` kitten
 
@@ -33,9 +33,9 @@ hyperlinks.
    :doc:`transfer` kitten for such situations.
 
 .. note::
-   If you have not setup automatic password-less SSH access, then, when
-   editing starts you will be asked to enter your password just once,
-   thereafter the SSH connection will be re-used.
+   If you have not setup automatic password-less SSH access, then, when editing
+   starts you will be asked to enter your password just once, thereafter the SSH
+   connection will be re-used.
 
 Similarly, you can choose to save the file to the local computer or download
 and open it in its default file handler.

@@ -19,8 +19,8 @@ You can also display the current configuration by pressing :sc:`debug_config`
 
 |kitty| looks for a config file in the OS config directories (usually
 :file:`~/.config/kitty/kitty.conf`) but you can pass a specific path via the
-:option:`kitty --config` option or use the ``KITTY_CONFIG_DIRECTORY``
-environment variable. See the :option:`kitty --config` option for full details.
+:option:`kitty --config` option or use the :envvar:`KITTY_CONFIG_DIRECTORY`
+environment variable. See :option:`kitty --config` for full details.
 
 Comments can be added to the config file as lines starting with the ``#``
 character. This works only if the ``#`` character is the first character

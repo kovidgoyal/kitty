@@ -571,8 +571,8 @@ OPTIONS = partial('''\
 --context
 type=int
 default=-1
-Number of lines of context to show between changes. Negative values
-use the number set in diff.conf
+Number of lines of context to show between changes. Negative values use the
+number set in :file:`diff.conf`.
 
 
 --config
@@ -599,7 +599,7 @@ class ShowWarning:
 
 
 showwarning = ShowWarning()
-help_text = 'Show a side-by-side diff of the specified files/directories. You can also use ssh:hostname:remote-file-path to diff remote files.'
+help_text = 'Show a side-by-side diff of the specified files/directories. You can also use :italic:`ssh:hostname:remote-file-path` to diff remote files.'
 usage = 'file_or_directory_left file_or_directory_right'
 
 

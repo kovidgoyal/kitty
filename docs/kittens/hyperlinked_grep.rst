@@ -1,11 +1,10 @@
 Hyperlinked grep
 =================
 
-
 This kitten allows you to search your files using `ripgrep
-<https://github.com/BurntSushi/ripgrep>`_ and open the results
-directly in your favorite editor in the terminal, at the line containing
-the search result, simply by clicking on the result you want.
+<https://github.com/BurntSushi/ripgrep>`__ and open the results directly in your
+favorite editor in the terminal, at the line containing the search result,
+simply by clicking on the result you want.
 
 .. versionadded:: 0.19.0
 
@@ -25,19 +24,19 @@ following contents:
     mime text/*
     action launch --type=overlay ${EDITOR} ${FILE_PATH}
 
-
 Now, run a search with::
 
     kitty +kitten hyperlinked_grep something
 
-Hold down the :kbd:`ctrl+shift` keys and click on any of the
-result lines, to open the file in vim at the matching line. If
-you use some editor other than vim, you should adjust the
-:file:`open-actions.conf` file accordingly.
+Hold down the :kbd:`Ctrl+Shift` keys and click on any of the result lines, to
+open the file in :program:`vim` at the matching line. If you use some editor
+other than :program:`vim`, you should adjust the :file:`open-actions.conf` file
+accordingly.
 
-Finally, add an alias to your shell's rc files to invoke the kitten as ``hg``::
+Finally, add an alias to your shell's rc files to invoke the kitten as
+:command:`hg`::
 
-    alias hg='kitty +kitten hyperlinked_grep'
+    alias hg="kitty +kitten hyperlinked_grep"
 
 
 You can now run searches with::
@@ -45,13 +44,13 @@ You can now run searches with::
     hg some-search-term
 
 If you want to enable completion, for the kitten, you can delegate completion
-to rg. How to do that varies based on the shell:
+to :program:`rg`. How to do that varies based on the shell:
 
 
 .. tab:: zsh
 
-    Instead of using an alias create a simple wrapper script named
-    :file:`hg` somewhere in your ``PATH``:
+    Instead of using an alias, create a simple wrapper script named
+    :program:`hg` somewhere in your :envvar:`PATH`:
 
     .. code-block:: sh
 
@@ -64,22 +63,23 @@ to rg. How to do that varies based on the shell:
 
 .. tab:: fish
 
-    You can combine both the aliasing/wrapping and pointing fish
-    to rg's autocompletion with a fish "wrapper" function in your :file:`config.fish`:
+    You can combine both the aliasing/wrapping and pointing fish to ripgrep's
+    autocompletion with a fish wrapper function in your :file:`config.fish`
+    or :file:`~/.config/fish/functions/hg.fish`:
 
-    .. code-block:: sh
+    .. code-block:: fish
 
         function hg --wraps rg; kitty +kitten hyperlinked_grep $argv; end
 
 To learn more about kitty's powerful framework for customizing URL click
-actions, :doc:`see here </open_actions>`.
+actions, see :doc:`here </open_actions>`.
 
 Hopefully, someday this functionality will make it into some `upstream grep
-<https://github.com/BurntSushi/ripgrep/issues/665>`_
-program directly removing the need for this kitten.
+<https://github.com/BurntSushi/ripgrep/issues/665>`__ program directly removing
+the need for this kitten.
 
 
 .. note::
    While you can pass any of ripgrep's comand line options to the kitten and
-   they will be forwarded to rg, do not use options that change the output
-   formatting as the kitten works by parsing the output from ripgrep.
+   they will be forwarded to :program:`rg`, do not use options that change the
+   output formatting as the kitten works by parsing the output from ripgrep.

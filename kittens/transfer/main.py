@@ -35,26 +35,28 @@ destination path on the receiving computer.
 
 
 --permissions-bypass -p
-The password to use to skip the transfer confirmation popup in kitty. Must match the
-password set for the :opt:`file_transfer_confirmation_bypass` option in kitty.conf. Note that
-leading and trailing whitespace is removed from the password. A password starting with
-., / or ~ characters is assumed to be a file name to read the password from. A value
-of - means read the password from STDIN. A password that is purely a number less than 256
-is assumed to be the number of a file descriptor from which to read the actual password.
+The password to use to skip the transfer confirmation popup in kitty. Must match
+the password set for the :opt:`file_transfer_confirmation_bypass` option in
+:file:`kitty.conf`. Note that leading and trailing whitespace is removed from
+the password. A password starting with :code:`.`, :code:`/` or :code:`~`
+characters is assumed to be a file name to read the password from. A value of
+:code:`-` means read the password from STDIN. A password that is purely a number
+less than 256 is assumed to be the number of a file descriptor from which to
+read the actual password.
 
 
 --confirm-paths -c
 type=bool-set
-Before actually transferring files, show a mapping of local file names to remote file names
-and ask for confirmation.
+Before actually transferring files, show a mapping of local file names to remote
+file names and ask for confirmation.
 
 
 --transmit-deltas -x
 type=bool-set
-If a file on the receiving side already exists, use the rsync algorithm to update it to match
-the file on the sending side, potentially saving lots of bandwidth and also automatically resuming
-partial transfers. Note that this will actually degrade performance on fast links with small
-files, so use with care.
+If a file on the receiving side already exists, use the rsync algorithm to
+update it to match the file on the sending side, potentially saving lots of
+bandwidth and also automatically resuming partial transfers. Note that this will
+actually degrade performance on fast links with small files, so use with care.
 '''
 
 

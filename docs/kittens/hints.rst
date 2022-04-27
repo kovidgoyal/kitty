@@ -1,9 +1,9 @@
 Hints
 ==========
 
-|kitty| has a *hints mode* to select and act on arbitrary text snippets currently
-visible on the screen.  For example, you can press :sc:`open_url`
-to choose any URL visible on the screen and then open it using your system
+|kitty| has a *hints mode* to select and act on arbitrary text snippets
+currently visible on the screen.  For example, you can press :sc:`open_url`
+to choose any URL visible on the screen and then open it using your default web
 browser.
 
 .. figure:: ../screenshots/hints_mode.png
@@ -13,25 +13,29 @@ browser.
 
     URL hints mode
 
-Similarly, you can press :sc:`insert_selected_path` to
-select anything that looks like a path or filename and then insert it into the
-terminal, very useful for picking files from the output of a ``git`` or ``ls`` command and
-adding them to the command line for the next command.
+Similarly, you can press :sc:`insert_selected_path` to select anything that
+looks like a path or filename and then insert it into the terminal, very useful
+for picking files from the output of a :program:`git` or :program:`ls` command
+and adding them to the command line for the next command.
 
-You can also press :sc:`goto_file_line` to select anything that looks
-like a path or filename followed by a colon and a line number and open
-the file in vim at the specified line number. The patterns and editor
-to be used can be modified using options passed to the kitten. For example::
+You can also press :sc:`goto_file_line` to select anything that looks like a
+path or filename followed by a colon and a line number and open the file in
+:program:`vim` at the specified line number. The patterns and editor to be used
+can be modified using options passed to the kitten. For example::
 
     map ctrl+g kitten hints --type=linenum --linenum-action=tab nvim +{line} {path}
 
-will open the selected file in a new tab inside neovim when you press
-:kbd:`ctrl+g`.
+will open the selected file in a new tab inside `Neovim <https://neovim.io/>`__
+when you press :kbd:`Ctrl+G`.
 
-Pressing :sc:`open_selected_hyperlink` will open hyperlinks, i.e. a URL
+Pressing :sc:`open_selected_hyperlink` will open :term:`hyperlinks`, i.e. a URL
 that has been marked as such by the program running in the terminal,
-for example, by ``ls --hyperlink=auto``. You can also :doc:`customize what actions are
-taken for different types of URLs <../open_actions>`.
+for example, by ``ls --hyperlink=auto``. If :program:`ls` comes with your OS
+does not support hyperlink, you may need to install `GNU Coreutils
+<https://www.gnu.org/software/coreutils/>`__.
+
+You can also :doc:`customize what actions are taken for different types of URLs
+<../open_actions>`.
 
 .. note:: If there are more hints than letters, hints will use multiple
    letters. In this case, when you press the first letter, only hints
@@ -50,11 +54,10 @@ Completely customizing the matching and actions of the kitten
 
 The hints kitten supports writing simple python scripts that can be used to
 completely customize how it finds matches and what happens when a match is
-selected. This allows the hints kitten to provide the user interface, while
-you can provide the logic for finding matches and performing actions on them.
-This is best illustrated with an example. Create the file
-:file:`custom-hints.py` in the kitty config directory with the following
-contents:
+selected. This allows the hints kitten to provide the user interface, while you
+can provide the logic for finding matches and performing actions on them. This
+is best illustrated with an example. Create the file :file:`custom-hints.py` in
+the :ref:`kitty config directory <confloc>` with the following contents:
 
 .. code-block:: python
 
@@ -98,9 +101,10 @@ look it up in the Google dictionary.
 
 .. note::
 
-    To avoid having to specify the same command line options on every invocation,
-    you can use the :opt:`action_alias` option in :file:`kitty.conf`, creating aliases
-    that have common sets of options. For example::
+    To avoid having to specify the same command line options on every
+    invocation, you can use the :opt:`action_alias` option in
+    :file:`kitty.conf`, creating aliases that have common sets of options.
+    For example::
 
         action_alias myhints kitten hints --alphabet qfjdkslaureitywovmcxzpq1234567890
         map f1 myhints --customize-processing custom-hints.py

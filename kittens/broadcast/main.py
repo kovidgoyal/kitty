@@ -99,7 +99,7 @@ class Broadcast(Handler):
 
 
 OPTIONS = (MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')).format
-help_text = 'Broadcast typed text to all kitty windows. By default text is sent to all windows, unless one of the matching options is specified'
+help_text = 'Broadcast typed text to kitty windows. By default text is sent to all windows, unless one of the matching options is specified'
 usage = '[initial text to send ...]'
 
 
