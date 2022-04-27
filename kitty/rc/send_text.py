@@ -6,9 +6,7 @@ import sys
 from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 
-from kitty.fast_data_types import (
-    KeyEvent as WindowSystemKeyEvent, get_boss, remove_timer
-)
+from kitty.fast_data_types import KeyEvent as WindowSystemKeyEvent, get_boss
 from kitty.key_encoding import decode_key_event_as_window_system_key
 from kitty.options.utils import parse_send_text_bytes
 
@@ -25,7 +23,6 @@ if TYPE_CHECKING:
 class Session:
     id: str
     window_ids: Set[int]
-    timer_id: int = 0
 
     def __init__(self, id: str):
         self.id = id
@@ -197,9 +194,6 @@ Do not send text to the active window, even if it is one of the matched windows.
 
         def create_or_update_session() -> Session:
             s = sessions_map.setdefault(sid, Session(sid))
-            if s.timer_id:
-                remove_timer(s.timer_id)
-                s.timer_id = 0
             return s
         if session == 'end':
             s = create_or_update_session()
