@@ -283,12 +283,6 @@ def detach(fork: bool = True, setsid: bool = True, redirect: bool = True) -> Non
         redirect_std_streams(os.devnull)
 
 
-def adjust_line_height(cell_height: int, val: Union[int, float]) -> int:
-    if isinstance(val, int):
-        return cell_height + val
-    return int(cell_height * val)
-
-
 def init_startup_notification_x11(window_handle: int, startup_id: Optional[str] = None) -> Optional['StartupCtx']:
     # https://specifications.freedesktop.org/startup-notification-spec/startup-notification-latest.txt
     from kitty.fast_data_types import init_x11_startup_notification
