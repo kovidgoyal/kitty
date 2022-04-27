@@ -480,6 +480,7 @@ class Window:
         self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()
         self.actions_on_close: List[Callable[['Window'], None]] = []
+        self.actions_on_focus_change: List[Callable[['Window', bool], None]] = []
         self.actions_on_removal: List[Callable[['Window'], None]] = []
         self.current_marker_spec: Optional[Tuple[str, Union[str, Tuple[Tuple[int, str], ...]]]] = None
         self.pty_resized_once = False
@@ -843,6 +844,12 @@ class Window:
         if self.destroyed:
             return
         call_watchers(weakref.ref(self), 'on_focus_change', {'focused': focused})
+        for c in self.actions_on_focus_change:
+            try:
+                c(self, focused)
+            except Exception:
+                import traceback
+                traceback.print_exc()
         self.screen.focus_changed(focused)
         if focused:
             self.last_focused_at = monotonic()

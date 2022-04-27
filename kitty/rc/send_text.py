@@ -7,7 +7,7 @@ from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 
 from kitty.fast_data_types import (
-    KeyEvent as WindowSystemKeyEvent, add_timer, get_boss, remove_timer, get_options
+    KeyEvent as WindowSystemKeyEvent, get_boss, remove_timer
 )
 from kitty.key_encoding import decode_key_event_as_window_system_key
 from kitty.options.utils import parse_send_text_bytes
@@ -43,6 +43,17 @@ def clear_unfocused_cursors(sid: str, *a: Any) -> None:
             qw = boss.window_id_map.get(wid)
             if qw is not None:
                 qw.screen.render_unfocused_cursor = 0
+
+
+def handle_focus_change(sid: str, window: Window, focused: bool) -> None:
+    s = sessions_map.get(sid)
+    if s is not None:
+        boss = get_boss()
+        val = int(focused)
+        for wid in s.window_ids:
+            qw = boss.window_id_map.get(wid)
+            if qw is not None:
+                qw.screen.render_unfocused_cursor = val
 
 
 class SendText(RemoteCommand):
@@ -190,8 +201,6 @@ Do not send text to the active window, even if it is one of the matched windows.
                 remove_timer(s.timer_id)
                 s.timer_id = 0
             return s
-        blink_time = 15 if not get_options().cursor_stop_blinking_after else max(3, get_options().cursor_stop_blinking_after)
-
         if session == 'end':
             s = create_or_update_session()
             for w in actual_windows:
@@ -201,15 +210,14 @@ Do not send text to the active window, even if it is one of the matched windows.
         elif session == 'start':
             s = create_or_update_session()
             if window is not None:
-                window.actions_on_close.append(partial(clear_unfocused_cursors, sid))
-            s.timer_id = add_timer(partial(clear_unfocused_cursors, sid), blink_time, False)
+                window.actions_on_removal.append(partial(clear_unfocused_cursors, sid))
+                window.actions_on_focus_change.append(partial(handle_focus_change, sid))
             for w in actual_windows:
                 w.screen.render_unfocused_cursor = 1
                 s.window_ids.add(w.id)
         else:
             if sid:
                 s = create_or_update_session()
-                s.timer_id = add_timer(partial(clear_unfocused_cursors, sid), blink_time, False)
             for w in actual_windows:
                 if sid:
                     w.screen.render_unfocused_cursor = 1
