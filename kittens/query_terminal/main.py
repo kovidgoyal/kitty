@@ -66,7 +66,7 @@ def query(cls: Type[Query]) -> Type[Query]:
 class TerminalName(Query):
     name: str = 'name'
     override_query_name: str = 'name'
-    help_text: str = f'Terminal name ({names[0]})'
+    help_text: str = f'Terminal name (e.g. :code:`{names[0]}`)'
 
     @staticmethod
     def get_result(opts: Options) -> str:
@@ -76,7 +76,7 @@ class TerminalName(Query):
 @query
 class TerminalVersion(Query):
     name: str = 'version'
-    help_text: str = 'Terminal version, for e.g.: 0.19.2'
+    help_text: str = f'Terminal version (e.g. :code:`{str_version}`)'
 
     @staticmethod
     def get_result(opts: Options) -> str:
@@ -86,7 +86,7 @@ class TerminalVersion(Query):
 @query
 class AllowHyperlinks(Query):
     name: str = 'allow_hyperlinks'
-    help_text: str = 'The :opt:`setting <allow_hyperlinks>` for allowing hyperlinks can be yes, no or ask'
+    help_text: str = 'The :opt:`setting <allow_hyperlinks>` for allowing hyperlinks can be :code:`yes`, :code:`no` or :code:`ask`'
 
     @staticmethod
     def get_result(opts: Options) -> str:
@@ -154,7 +154,7 @@ class FontSize(Query):
 @query
 class ClipboardControl(Query):
     name: str = 'clipboard_control'
-    help_text: str = 'The :opt:`setting <clipboard_control>` for allowing reads/writes to/from the clipboard'
+    help_text: str = 'The config option :opt:`clipboard_control` in :file:`kitty.conf` for allowing reads/writes to/from the clipboard'
 
     @staticmethod
     def get_result(opts: Options) -> str:
@@ -200,30 +200,28 @@ querying it.
 
 
 help_text = '''\
-Query the terminal this kitten is run in for various
-capabilities. This sends escape codes to the terminal
-and based on its response prints out data about supported
-capabilities. Note that this is a blocking operation, since
-it has to wait for a response from the terminal. You can control
-the maximum wait time via the ``--wait-for`` option.
+Query the terminal this kitten is run in for various capabilities. This sends
+escape codes to the terminal and based on its response prints out data about
+supported capabilities. Note that this is a blocking operation, since it has to
+wait for a response from the terminal. You can control the maximum wait time via
+the :code:`--wait-for` option.
 
 The output is lines of the form::
 
-  query: data
+    :italic:`query`: :italic:`data`
 
-If a particular query is unsupported by the running kitty version,
-the data will be blank.
+If a particular query is unsupported by the running kitty version, the data will
+be blank.
 
-Note that when calling this from another program, be very
-careful not to perform any I/O on the terminal device
-until the kitten exits.
+Note that when calling this from another program, be very careful not to perform
+any I/O on the terminal device until thos kitten exits.
 
 Available queries are:
 
 {}
 
 '''.format('\n'.join(
-    f'``{name}``\n  {c.help_text}\n' for name, c in all_queries.items()))
+    f':code:`{name}`:\n  {c.help_text}\n' for name, c in all_queries.items()))
 usage = '[query1 query2 ...]'
 
 

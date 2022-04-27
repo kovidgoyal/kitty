@@ -252,5 +252,5 @@ def main(global_opts: RCOptions) -> None:
             real_main(global_opts)
     except Exception:
         traceback.print_exc()
-        input('Press enter to quit...')
+        input('Press Enter to quit')
         raise SystemExit(1)

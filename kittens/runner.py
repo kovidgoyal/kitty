@@ -175,4 +175,4 @@ def main() -> None:
         print('Unhandled exception running kitten:')
         import traceback
         traceback.print_exc()
-        input('Press Enter to quit...')
+        input('Press Enter to quit')

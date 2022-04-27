@@ -24,8 +24,8 @@ agr('diff', 'Diffing')
 opt('syntax_aliases', 'pyj:py pyi:py recipe:py',
     option_type='syntax_aliases',
     long_text='''
-File extension aliases for syntax highlight For example, to syntax highlight
-:file:`file.xyz` as :file:`file.abc` use a setting of :code:`xyz:abc`
+File extension aliases for syntax highlight. For example, to syntax highlight
+:file:`file.xyz` as :file:`file.abc` use a setting of :code:`xyz:abc`.
 '''
     )
 
@@ -38,7 +38,7 @@ opt('diff_cmd', 'auto',
     long_text='''
 The diff command to use. Must contain the placeholder :code:`_CONTEXT_` which
 will be replaced by the number of lines of context. The default is to search the
-system for either git or diff and use that, if found.
+system for either :program:`git` or :program:`diff` and use that, if found.
 '''
     )
 

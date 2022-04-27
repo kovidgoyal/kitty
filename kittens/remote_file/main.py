@@ -55,7 +55,7 @@ The data used to connect over ssh.
 def show_error(msg: str) -> None:
     print(styled(msg, fg='red'))
     print()
-    print('Press any key to exit...')
+    print('Press any key to quit')
     sys.stdout.flush()
     with raw_mode():
         while True:
@@ -208,7 +208,7 @@ def main(args: List[str]) -> Result:
     except SystemExit as e:
         if e.code != 0:
             print(e.args[0])
-            input('Press enter to quit...')
+            input('Press Enter to quit')
         raise SystemExit(e.code)
 
     try:
@@ -236,7 +236,7 @@ def save_as(conn_data: SSHConnectionData, remote_path: str, cli_opts: RemoteFile
         last_used_path = tempfile.gettempdir()
     last_used_file = os.path.join(last_used_path, os.path.basename(remote_path))
     print(
-        'Where do you wish to save the file? Leaving it blank will save it as:',
+        'Where do you want to save the file? Leaving it blank will save it as:',
         styled(last_used_file, fg='yellow')
     )
     print('Relative paths will be resolved from:', styled(os.getcwd(), fg_intense=True, bold=True))

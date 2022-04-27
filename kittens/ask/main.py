@@ -92,17 +92,17 @@ be used for completions and via the browse history readline bindings.
 --choice -c
 type=list
 dest=choices
-A choice for the choices type. Every choice has the syntax: letter:text Where
-letter is the accelerator key and text is the corresponding text.  There can be
-an optional color specification after the letter to indicate what color it should
-be.
-For example: y:Yes and n;red:No
+A choice for the choices type. Can be specified multiple times. Every choice has
+the syntax: ``letter[;color]:text``. Where :italic:`letter` is the accelerator key
+and :italic:`text` is the corresponding text. There can be an optional color
+specification after the letter to indicate what color it should be.
+For example: :code:`y:Yes` and :code:`n;red:No`
 
 
 --default -d
-A default choice or text. If unspecified, it is "y" for :code:`yesno`, the first choice
-for :code:`choices` and empty for others. The default choice is selected when the user
-presses the Enter key.
+A default choice or text. If unspecified, it is :code:`y` for the type
+:code:`yesno`, the first choice for :code:`choices` and empty for others types.
+The default choice is selected when the user presses the :kbd:`Enter` key.
 
 
 --prompt -p
@@ -406,7 +406,7 @@ def main(args: List[str]) -> Response:
     except SystemExit as e:
         if e.code != 0:
             print(e.args[0])
-            input('Press enter to quit...')
+            input('Press Enter to quit')
         raise SystemExit(e.code)
 
     if cli_opts.type in ('yesno', 'choices'):

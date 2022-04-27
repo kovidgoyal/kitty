@@ -37,7 +37,8 @@ Glossary
    hyperlinks
       Terminals can have hyperlinks, just like the internet. In kitty you can
       :doc:`control exactly what happens <open_actions>` when clicking on a
-      hyperlink, based on the type of link and its URL.
+      hyperlink, based on the type of link and its URL. See also `Hyperlinks in terminal
+      emulators <https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda>`__.
 
 .. _env_vars:
 
@@ -109,10 +110,12 @@ Variables that kitty sets when running child programs
    This is only set on macOS. If the country and language from the macOS user
    settings form an invalid locale, it will be set to :code:`en_US.UTF-8`.
 
+
 .. envvar:: PATH
 
    kitty prepends itself to the PATH of its own environment to ensure the
    functions calling :program:`kitty` will work properly.
+
 
 .. envvar:: KITTY_WINDOW_ID
 

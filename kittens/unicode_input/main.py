@@ -546,7 +546,7 @@ class UnicodeInput(Handler):
         self.refresh()
 
 
-help_text = 'Input a unicode character'
+help_text = 'Input a Unicode character'
 usage = ''
 OPTIONS = '''
 --emoji-variation
@@ -554,7 +554,7 @@ type=choices
 default=none
 choices=none,graphic,text
 Whether to use the textual or the graphical form for emoji. By default the
-default form specified in the unicode standard for the symbol is used.
+default form specified in the Unicode standard for the symbol is used.
 
 
 '''.format

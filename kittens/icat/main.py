@@ -42,24 +42,24 @@ Horizontal alignment for the displayed image.
 
 
 --place
-Choose where on the screen to display the image. The image will
-be scaled to fit into the specified rectangle. The syntax for
-specifying rectangles is <:italic:`width`>x<:italic:`height`>@<:italic:`left`>x<:italic:`top`>.
-All measurements are in cells (i.e. cursor positions) with the
-origin :italic:`(0, 0)` at the top-left corner of the screen.
+Choose where on the screen to display the image. The image will be scaled to fit
+into the specified rectangle. The syntax for specifying rectangles is
+<:italic:`width`>x<:italic:`height`>@<:italic:`left`>x<:italic:`top`>.
+All measurements are in cells (i.e. cursor positions) with the origin
+:italic:`(0, 0)` at the top-left corner of the screen.
 
 
 --scale-up
 type=bool-set
-When used in combination with :option:`--place` it will cause images that
-are smaller than the specified area to be scaled up to use as much
-of the specified area as possible.
+When used in combination with :option:`--place` it will cause images that are
+smaller than the specified area to be scaled up to use as much of the specified
+area as possible.
 
 
 --background
 default=none
-Specify a background color, this will cause transparent images to be composited on
-top of the specified color.
+Specify a background color, this will cause transparent images to be composited
+on top of the specified color.
 
 
 --mirror
@@ -79,17 +79,18 @@ type=choices
 choices=detect,file,stream
 default=detect
 Which mechanism to use to transfer images to the terminal. The default is to
-auto-detect. :italic:`file` means to use a temporary file and :italic:`stream` means to
-send the data via terminal escape codes. Note that if you use the :italic:`file`
-transfer mode and you are connecting over a remote session then image display
-will not work.
+auto-detect. :italic:`file` means to use a temporary file and :italic:`stream`
+means to send the data via terminal escape codes. Note that if you use the
+:italic:`file` transfer mode and you are connecting over a remote session then
+image display will not work.
 
 
 --detect-support
 type=bool-set
 Detect support for image display in the terminal. If not supported, will exit
 with exit code 1, otherwise will exit with code 0 and print the supported
-transfer mode to stderr, which can be used with the :option:`--transfer-mode` option.
+transfer mode to stderr, which can be used with the :option:`--transfer-mode`
+option.
 
 
 --detection-timeout
@@ -101,17 +102,17 @@ detecting image display support.
 
 --print-window-size
 type=bool-set
-Print out the window size as :italic:`widthxheight` (in pixels) and quit. This is a
-convenience method to query the window size if using :code:`kitty +kitten icat` from a
-scripting language that cannot make termios calls.
+Print out the window size as <:italic:`width`>x<:italic:`height`> (in pixels) and quit. This is a
+convenience method to query the window size if using :code:`kitty +kitten icat`
+from a scripting language that cannot make termios calls.
 
 
 --stdin
 type=choices
 choices=detect,yes,no
 default=detect
-Read image data from stdin. The default is to do it automatically, when STDIN is not a terminal,
-but you can turn it off or on explicitly, if needed.
+Read image data from STDIN. The default is to do it automatically, when STDIN is
+not a terminal, but you can turn it off or on explicitly, if needed.
 
 
 --silent
@@ -121,9 +122,9 @@ Do not print out anything to STDOUT during operation.
 
 --z-index -z
 default=0
-Z-index of the image. When negative, text will be displayed on top of the image. Use
-a double minus for values under the threshold for drawing images under cell background
-colors. For example, :code:`--1` evaluates as -1,073,741,825.
+Z-index of the image. When negative, text will be displayed on top of the image.
+Use a double minus for values under the threshold for drawing images under cell
+background colors. For example, :code:`--1` evaluates as -1,073,741,825.
 
 
 --loop -l
