@@ -190,6 +190,7 @@ Do not send text to the active window, even if it is one of the matched windows.
                 remove_timer(s.timer_id)
                 s.timer_id = 0
             return s
+        blink_time = 15 if not get_options().cursor_stop_blinking_after else max(3, get_options().cursor_stop_blinking_after)
 
         if session == 'end':
             s = create_or_update_session()
@@ -201,14 +202,14 @@ Do not send text to the active window, even if it is one of the matched windows.
             s = create_or_update_session()
             if window is not None:
                 window.actions_on_close.append(partial(clear_unfocused_cursors, sid))
-            s.timer_id = add_timer(partial(clear_unfocused_cursors, sid), get_options().cursor_stop_blinking_after, False)
+            s.timer_id = add_timer(partial(clear_unfocused_cursors, sid), blink_time, False)
             for w in actual_windows:
                 w.screen.render_unfocused_cursor = 1
                 s.window_ids.add(w.id)
         else:
             if sid:
                 s = create_or_update_session()
-                s.timer_id = add_timer(partial(clear_unfocused_cursors, sid), get_options().cursor_stop_blinking_after, False)
+                s.timer_id = add_timer(partial(clear_unfocused_cursors, sid), blink_time, False)
             for w in actual_windows:
                 if sid:
                     w.screen.render_unfocused_cursor = 1
