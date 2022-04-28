@@ -161,7 +161,7 @@ def highlight_collection(collection: Collection, aliases: Optional[Dict[str, str
                     if p:
                         is_binary = isinstance(data_for_path(p), bytes)
                         if not is_binary:
-                            jobs[executor.submit(highlight_for_diff, p, aliases)] = p
+                            jobs[executor.submit(highlight_for_diff, p, aliases or {})] = p
         for future in concurrent.futures.as_completed(jobs):
             path = jobs[future]
             try:

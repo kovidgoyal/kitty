@@ -36,6 +36,8 @@ def images_supported() -> bool:
 
 class Ref:
 
+    __slots__: Tuple[str, ...] = ()
+
     def __setattr__(self, name: str, value: object) -> None:
         raise AttributeError("can't set attribute")
 
