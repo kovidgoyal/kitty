@@ -28,11 +28,11 @@ class SetEnabledLayouts(RemoteCommand):
     configured: Boolean indicating whether to change the configured value
     '''
 
-    short_desc = 'Set the enabled layouts in a tab'
+    short_desc = 'Set the enabled layouts in tabs'
     desc = (
-        'Set the enabled layouts in the specified tab (or the active tab if not specified).'
-        ' You can use special match value :italic:`all` to set the layout in all tabs. If the'
-        ' current layout of the tab is not included in the enabled layouts its layout is changed'
+        'Set the enabled layouts in the specified tabs (or the active tab if not specified).'
+        ' You can use special match value :code:`all` to set the enabled layouts in all tabs. If the'
+        ' current layout of the tab is not included in the enabled layouts, its layout is changed'
         ' to the first enabled layout.'
     )
     options_spec = MATCH_TAB_OPTION + '''\n\n

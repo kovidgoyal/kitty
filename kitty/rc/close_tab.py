@@ -20,17 +20,18 @@ class CloseTab(RemoteCommand):
     self: Boolean indicating whether to close the tab of the window the command is run in
     '''
 
-    short_desc = 'Close the specified tab(s)'
+    short_desc = 'Close the specified tabs'
     desc = '''\
-Close an arbitrary set of tabs. The :code:`--match` option can be used to specify complex sets of tabs to close. For example, to close
-all non-focused tabs in the currently focused OS window, use:
+Close an arbitrary set of tabs. The :code:`--match` option can be used to
+specify complex sets of tabs to close. For example, to close all non-focused
+tabs in the currently focused OS window, use:
 
     kitty @ close-tab --match "not state:focused and state:parent_focused"
 '''
     options_spec = MATCH_TAB_OPTION + '''\n
 --self
 type=bool-set
-If specified close the tab of the window this command is run in, rather than the active tab.
+Close the tab of the window this command is run in, rather than the active tab.
 '''
     argspec = ''
 

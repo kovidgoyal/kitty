@@ -24,7 +24,7 @@ class RemoveMarker(RemoteCommand):
     options_spec = MATCH_WINDOW_OPTION + '''\n
 --self
 type=bool-set
-If specified apply marker to the window this command is run in, rather than the active window.
+Apply marker to the window this command is run in, rather than the active window.
 '''
     argspec = ''
 

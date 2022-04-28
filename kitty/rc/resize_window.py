@@ -20,9 +20,9 @@ class ResizeWindow(RemoteCommand):
     axis: One of :code:`horizontal, vertical` or :code:`reset`
     '''
 
-    short_desc = 'Resize the specified window'
+    short_desc = 'Resize the specified windows'
     desc = (
-        'Resize the specified window in the current layout.'
+        'Resize the specified windows in the current layout.'
         ' Note that not all layouts can resize all windows in all directions.'
     )
     options_spec = MATCH_WINDOW_OPTION + '''\n
@@ -36,15 +36,15 @@ The number of cells to change the size by, can be negative to decrease the size.
 type=choices
 choices=horizontal,vertical,reset
 default=horizontal
-The axis along which to resize. If :italic:`horizontal`,
+The axis along which to resize. If :code:`horizontal`,
 it will make the window wider or narrower by the specified increment.
-If :italic:`vertical`, it will make the window taller or shorter by the specified increment.
-The special value :italic:`reset` will reset the layout to its default configuration.
+If :code:`vertical`, it will make the window taller or shorter by the specified increment.
+The special value :code:`reset` will reset the layout to its default configuration.
 
 
 --self
 type=bool-set
-If specified resize the window this command is run in, rather than the active window.
+Resize the window this command is run in, rather than the active window.
 '''
     argspec = ''
     string_return_is_error = True

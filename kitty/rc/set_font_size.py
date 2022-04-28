@@ -25,7 +25,7 @@ class SetFontSize(RemoteCommand):
         ' that in kitty all sub-windows in the same OS window'
         ' must have the same font size. A value of zero'
         ' resets the font size to default. Prefixing the value'
-        ' with a + or - increments the font size by the specified'
+        ' with a :code:`+` or :code:`-` increments the font size by the specified'
         ' amount.'
     )
     argspec = 'FONT_SIZE'

@@ -12,13 +12,13 @@ from .base import (
 class Env(RemoteCommand):
 
     '''
-    env+: dictionary of environment variables to values. Empty values cause the variable to be deleted.
+    env+: Dictionary of environment variables to values. Empty values cause the variable to be removed.
     '''
 
     short_desc = 'Change environment variables seen by future children'
     desc = (
-        'Change the environment variables seen by processing in newly launched windows.'
-        ' Similar to the :opt:`env` option in kitty.conf, but affects running kitty instances.'
+        'Change the environment variables that will be seen in newly launched windows.'
+        ' Similar to the :opt:`env` option in :file:`kitty.conf`, but affects running kitty instances.'
         ' Empty values cause the environment variable to be removed.'
     )
     argspec = 'env_var1=val env_var2=val ...'

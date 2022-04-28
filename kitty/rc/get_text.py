@@ -23,7 +23,7 @@ class GetText(RemoteCommand):
     cursor: Boolean, if True send cursor position/style as ANSI codes
     wrap_markers: Boolean, if True add wrap markers to output
     clear_selection: Boolean, if True clear the selection in the matched window
-    self: Boolean, if True use window command was run in
+    self: Boolean, if True use window the command was run in
     '''
 
     short_desc = 'Get text from the specified window'
@@ -42,8 +42,8 @@ requires :ref:`shell_integration` to be enabled.
 
 --ansi
 type=bool-set
-By default, only plain text is returned. If you specify this flag, the text will
-include the formatting escape codes for colors/bold/italic/etc.
+By default, only plain text is returned. With this flag, the text will
+include the ANSI formatting escape codes for colors, bold, italic, etc.
 
 
 --add-cursor
@@ -57,13 +57,13 @@ Add carriage returns at every line wrap location (where long lines are wrapped a
 screen edges).
 
 
+--clear-selection
+Clear the selection in the matched window, if any.
+
+
 --self
 type=bool-set
-If specified get text from the window this command is run in, rather than the active window.
-
-
---clear-selection
-Clear the selection in the matched window, if any
+Get text from the window this command is run in, rather than the active window.
 '''
     argspec = ''
 
@@ -72,10 +72,10 @@ Clear the selection in the matched window, if any
             'match': opts.match,
             'extent': opts.extent,
             'ansi': opts.ansi,
-            'self': opts.self,
             'cursor': opts.add_cursor,
             'wrap_markers': opts.add_wrap_markers,
             'clear_selection': opts.clear_selection,
+            'self': opts.self,
         }
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:

@@ -22,11 +22,11 @@ class Kitten(RemoteCommand):
 
     short_desc = 'Run a kitten'
     desc = (
-        'Run a kitten over the specified window (active window by default).'
+        'Run a kitten over the specified windows (active window by default).'
         ' The :italic:`kitten_name` can be either the name of a builtin kitten'
-        ' or the path to a python file containing a custom kitten. If a relative path'
-        ' is used it is searched for in the kitty config directory. If the kitten is a'
-        ' no_ui kitten and its handle response method returns a string or boolean, this'
+        ' or the path to a Python file containing a custom kitten. If a relative path'
+        ' is used it is searched for in the :ref:`kitty config directory <confloc>`. If the kitten is a'
+        ' :italic:`no_ui` kitten and its handle response method returns a string or boolean, this'
         ' is printed out to stdout.'
     )
     options_spec = MATCH_WINDOW_OPTION

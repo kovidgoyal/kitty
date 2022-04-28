@@ -24,8 +24,8 @@ class DisableLigatures(RemoteCommand):
 
     short_desc = 'Control ligature rendering'
     desc = (
-        'Control ligature rendering for the specified windows/tabs (defaults to active window). The STRATEGY'
-        ' can be one of: never, always, cursor'
+        'Control ligature rendering for the specified windows/tabs (defaults to active window). The :italic:`STRATEGY`'
+        ' can be one of: :code:`never`, :code:`always`, :code:`cursor`.'
     )
     options_spec = '''\
 --all -a

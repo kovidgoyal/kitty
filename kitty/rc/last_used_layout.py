@@ -21,7 +21,7 @@ class LastUsedLayout(RemoteCommand):
 
     short_desc = 'Switch to the last used layout'
     desc = (
-        'Switch to the last used window layout in the specified tab (or the active tab if not specified).'
+        'Switch to the last used window layout in the specified tabs (or the active tab if not specified).'
     )
     options_spec = '''\
 --all -a
