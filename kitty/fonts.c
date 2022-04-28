@@ -422,7 +422,7 @@ load_fallback_font(FontGroup *fg, CPUCell *cell, bool bold, bool italic, bool em
     if (fg->fallback_fonts_count > 100) { log_error("Too many fallback fonts"); return MISSING_FONT; }
     ssize_t f;
 
-    if (bold) f = fg->italic_font_idx > 0 ? fg->bi_font_idx : fg->bold_font_idx;
+    if (bold) f = italic ? fg->bi_font_idx : fg->bold_font_idx;
     else f = italic ? fg->italic_font_idx : fg->medium_font_idx;
     if (f < 0) f = fg->medium_font_idx;
 
