@@ -57,7 +57,7 @@ OPTIONS = r'''
 default=False
 type=bool-set
 Output the current contents of the clipboard to STDOUT. Note that by default
-kitty will prompt you asking to allow access to the clipboard. Can be controlled
+kitty will prompt for permission to access the clipboard. Can be controlled
 by :opt:`clipboard_control`.
 
 

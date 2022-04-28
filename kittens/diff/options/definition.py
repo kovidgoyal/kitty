@@ -37,8 +37,9 @@ opt('num_context_lines', '3',
 opt('diff_cmd', 'auto',
     long_text='''
 The diff command to use. Must contain the placeholder :code:`_CONTEXT_` which
-will be replaced by the number of lines of context. The default is to search the
-system for either :program:`git` or :program:`diff` and use that, if found.
+will be replaced by the number of lines of context. The default special value
+:code:`auto` is to search the system for either :program:`git` or
+:program:`diff` and use that, if found.
 '''
     )
 
