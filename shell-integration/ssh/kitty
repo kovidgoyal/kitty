@@ -95,7 +95,10 @@ command mkdir -p "$install_dir"
 printf "Downloading kitty from: \033[32m%s\033[m\n\n" "$url"
 
 if [ "$OS" = "linux" ]; then
+    old_umask=$(umask)
+    umask 000
     fetch "$url" | command tar -C "$install_dir" -xJof -
+    umask "$old_umask"
     [ $? = 0 ] || die "Failed to download and install kitty"
 else
     tdir=$(command mktemp -d "$install_dir/tmp-for-dmg-XXXXXXXXXXXX")
