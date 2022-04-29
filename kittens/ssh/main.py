@@ -39,7 +39,7 @@ from kitty.shm import SharedMemory
 from kitty.types import run_once
 from kitty.utils import (
     SSHConnectionData, expandvars, resolve_abs_or_config_path,
-    set_echo as turn_off_echo
+    set_echo as turn_off_echo, suppress_error_logging
 )
 
 from .completion import complete, ssh_options
@@ -152,7 +152,8 @@ def serialize_env(literal_env: Dict[str, str], env: Dict[str, str], base_env: Di
 @run_once
 def kitty_opts() -> Options:
     from kitty.cli import create_default_opts
-    return create_default_opts()
+    with suppress_error_logging():
+        return create_default_opts()
 
 
 def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: str = 'gz', literal_env: Dict[str, str] = {}) -> bytes:

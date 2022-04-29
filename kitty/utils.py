@@ -13,8 +13,8 @@ from contextlib import contextmanager, suppress
 from functools import lru_cache
 from time import monotonic
 from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, List, Mapping,
-    Match, NamedTuple, Optional, Pattern, Tuple, Union, cast
+    TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, Iterator, List,
+    Mapping, Match, NamedTuple, Optional, Pattern, Tuple, Union, cast
 )
 
 from .constants import (
@@ -120,6 +120,19 @@ def log_error(*a: Any, **k: str) -> None:
     with suppress(Exception):
         msg = k.get('sep', ' ').join(map(str, a)) + k.get('end', '').replace('\0', '')
         output(msg)
+
+
+@contextmanager
+def suppress_error_logging() -> Iterator[None]:
+    before = getattr(log_error, 'redirect', suppress_error_logging)
+    setattr(log_error, 'redirect', lambda *a: None)
+    try:
+        yield
+    finally:
+        if before is suppress_error_logging:
+            delattr(log_error, 'redirect')
+        else:
+            setattr(log_error, 'redirect', before)
 
 
 def ceil_int(x: float) -> int:
@@ -536,7 +549,7 @@ def set_echo(fd: int = -1, on: bool = False) -> Tuple[int, List[Union[int, List[
 
 
 @contextmanager
-def no_echo(fd: int = -1) -> Generator[None, None, None]:
+def no_echo(fd: int = -1) -> Iterator[None]:
     import termios
     fd, old = set_echo(fd)
     try:
@@ -954,7 +967,7 @@ def path_from_osc7_url(url: str) -> str:
     if url.startswith('kitty-shell-cwd://'):
         return '/' + url.split('/', 3)[-1]
     if url.startswith('file://'):
-        from urllib.parse import urlparse, unquote
+        from urllib.parse import unquote, urlparse
         return unquote(urlparse(url).path)
     return ''
 
