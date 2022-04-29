@@ -16,19 +16,19 @@ class DetachTab(RemoteCommand):
 
     '''
     match: Which tab to detach
-    target_tab: Which OS Window that containing the target tab to move the detached tab to
+    target_tab: Which tab to move the detached tab to the OS window it is run in
     self: Boolean indicating whether to detach the tab the command is run in
     '''
 
-    short_desc = 'Detach a tab and place it in a different/new OS Window'
+    short_desc = 'Detach the specified tabs and place them in a different/new OS window'
     desc = (
-        'Detach the specified tab and either move it into a new OS window'
-        ' or add it to the OS Window containing the tab specified by :option:`kitty @ detach-tab --target-tab`'
+        'Detach the specified tabs and either move them into a new OS window'
+        ' or add them to the OS window containing the tab specified by :option:`kitty @ detach-tab --target-tab`'
     )
     options_spec = MATCH_TAB_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--target-tab -t') + '''\n
 --self
 type=bool-set
-If specified detach the tab this command is run in, rather than the active tab.
+Detach the tab this command is run in, rather than the active tab.
 '''
     argspec = ''
 

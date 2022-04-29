@@ -17,7 +17,7 @@ You can use the options described below to control which windows are selected.
 
 For example, only broadcast to other windows in the current tab::
 
-    map f1 launch --allow-remote-control kitty +kitten broadcast --match state:parent_active
+    map f1 launch --allow-remote-control kitty +kitten broadcast --match-tab state:focused
 
 .. program:: kitty +kitten broadcast
 

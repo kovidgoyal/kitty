@@ -22,7 +22,7 @@ class SetWindowTitle(RemoteCommand):
 
     short_desc = 'Set the window title'
     desc = (
-        'Set the title for the specified window(s). If you use the :option:`kitty @ set-window-title --match` option'
+        'Set the title for the specified windows. If you use the :option:`kitty @ set-window-title --match` option'
         ' the title will be set for all matched windows. By default, only the window'
         ' in which the command is run is affected. If you do not specify a title, the'
         ' last title set by the child process running in the window will be used.'
@@ -30,9 +30,8 @@ class SetWindowTitle(RemoteCommand):
     options_spec = '''\
 --temporary
 type=bool-set
-By default, if you use :italic:`set-window-title` the title will be permanently changed
-and programs running in the window will not be able to change it again. If you
-want to allow other programs to change it afterwards, use this option.
+By default, the title will be permanently changed and programs running in the window will not be able to change it
+again. If you want to allow other programs to change it afterwards, use this option.
     ''' + '\n\n' + MATCH_WINDOW_OPTION
     argspec = '[TITLE ...]'
 

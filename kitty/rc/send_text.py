@@ -74,8 +74,8 @@ class SendText(RemoteCommand):
     short_desc = 'Send arbitrary text to specified windows'
     desc = (
         'Send arbitrary text to specified windows. The text follows Python'
-        ' escaping rules. So you can use escapes like :italic:`\\x1b` to send control codes'
-        ' and :italic:`\\u21fa` to send unicode characters. If you use the :option:`kitty @ send-text --match` option'
+        ' escaping rules. So you can use escapes like :code:`\\x1b` to send control codes'
+        ' and :code:`\\u21fa` to send unicode characters. If you use the :option:`kitty @ send-text --match` option'
         ' the text will be sent to all matched windows. By default, text is sent to'
         ' only the currently active window.'
     )
@@ -88,7 +88,7 @@ Match all windows.
 --stdin
 type=bool-set
 Read the text to be sent from :italic:`stdin`. Note that in this case the text is sent as is,
-not interpreted for escapes. If stdin is a terminal, you can press Ctrl-D to end reading.
+not interpreted for escapes. If stdin is a terminal, you can press :kbd:`Ctrl-D` to end reading.
 
 
 --from-file

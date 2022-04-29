@@ -15,18 +15,18 @@ if TYPE_CHECKING:
 class SignalChild(RemoteCommand):
 
     '''
-    signals: The signals, a list of names, such as SIGTERM, SIGKILL, SIGUSR1, etc.
-    match: Which windows to change the title in
+    signals: The signals, a list of names, such as :code:`SIGTERM`, :code:`SIGKILL`, :code:`SIGUSR1`, etc.
+    match: Which windows to send the signals to
     '''
 
-    short_desc = 'Send a signal to the foreground process in the specified window'
+    short_desc = 'Send a signal to the foreground process in the specified windows'
     desc = (
-        'Send one or more signals to the foreground process in the specified window(s).'
+        'Send one or more signals to the foreground process in the specified windows.'
         ' If you use the :option:`kitty @ signal-child --match` option'
         ' the signal will be sent for all matched windows. By default, only the active'
         ' window is affected. If you do not specify any signals, :code:`SIGINT` is sent by default.'
-        ' You can also map this to a keystroke in kitty.conf, for example::\n\n'
-        '    map F1 signal_child SIGTERM'
+        ' You can also map this to a shortcut in :file:`kitty.conf`, for example::\n\n'
+        '    map f1 signal_child SIGTERM'
     )
     options_spec = '''\
     ''' + '\n\n' + MATCH_WINDOW_OPTION

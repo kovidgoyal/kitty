@@ -23,12 +23,12 @@ class ScrollWindow(RemoteCommand):
     match: The window to scroll
     '''
 
-    short_desc = 'Scroll the specified window'
+    short_desc = 'Scroll the specified windows'
     desc = (
-        'Scroll the specified window, if no window is specified, scroll the window this command is run inside.'
-        ' SCROLL_AMOUNT can be either the keywords :code:`start` or :code:`end` or an'
-        ' argument of the form <number>[unit][+-]. For example, 30 will scroll down 30 lines and 2p- will'
-        ' scroll up 2 pages. 3u will *unscroll* by 3 lines, which means that 3 lines will move from the'
+        'Scroll the specified windows, if no window is specified, scroll the window this command is run inside.'
+        ' :italic:`SCROLL_AMOUNT` can be either the keywords :code:`start` or :code:`end` or an'
+        ' argument of the form <number>[unit][+-]. For example, :code:`30` will scroll down 30 lines and :code:`2p-`'
+        ' will scroll up 2 pages. :code:`3u` will *unscroll* by 3 lines, which means that 3 lines will move from the'
         ' scrollback buffer onto the top of the screen.'
     )
     argspec = 'SCROLL_AMOUNT'

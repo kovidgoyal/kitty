@@ -19,11 +19,11 @@ class CloseWindow(RemoteCommand):
     self: Boolean indicating whether to close the window the command is run in
     '''
 
-    short_desc = 'Close the specified window(s)'
+    short_desc = 'Close the specified windows'
     options_spec = MATCH_WINDOW_OPTION + '''\n
 --self
 type=bool-set
-If specified close the window this command is run in, rather than the active window.
+Close the window this command is run in, rather than the active window.
 '''
     argspec = ''
 

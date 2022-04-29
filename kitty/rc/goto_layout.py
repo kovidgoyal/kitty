@@ -26,8 +26,8 @@ class GotoLayout(RemoteCommand):
 
     short_desc = 'Set the window layout'
     desc = (
-        'Set the window layout in the specified tab (or the active tab if not specified).'
-        ' You can use special match value :italic:`all` to set the layout in all tabs.'
+        'Set the window layout in the specified tabs (or the active tab if not specified).'
+        ' You can use special match value :code:`all` to set the layout in all tabs.'
     )
     options_spec = MATCH_TAB_OPTION
     argspec = 'LAYOUT_NAME'

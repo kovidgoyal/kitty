@@ -41,30 +41,30 @@ class SetSpacing(RemoteCommand):
 
     '''
     settings+: An object mapping margins/paddings using canonical form {'margin-top': 50, 'padding-left': null} etc
-    match_window: Window to change colors in
-    match_tab: Tab to change colors in
-    all: Boolean indicating change colors everywhere or not
-    configured: Boolean indicating whether to change the configured colors. Must be True if reset is True
+    match_window: Window to change paddings and margins in
+    match_tab: Tab to change paddings and margins in
+    all: Boolean indicating change paddings and margins everywhere or not
+    configured: Boolean indicating whether to change the configured paddings and margins. Must be True if reset is True
     '''
 
-    short_desc = 'Set window padding and margins'
+    short_desc = 'Set window paddings and margins'
     desc = (
-        'Set the padding and margins for the specified windows (defaults to active window).'
-        ' For example: margin=20 or padding-left=10 or margin-h=30. The shorthand form sets'
+        'Set the paddings and margins for the specified windows (defaults to active window).'
+        ' For example: :code:`margin=20` or :code:`padding-left=10` or :code:`margin-h=30`. The shorthand form sets'
         ' all values, the :code:`*-h` and :code:`*-v` variants set horizontal and vertical values.'
-        ' The special value "default" resets to using the default value.'
+        ' The special value :code:`default` resets to using the default value.'
         ' If you specify a tab rather than a window, all windows in that tab are affected.'
     )
     options_spec = '''\
 --all -a
 type=bool-set
 By default, settings are only changed for the currently active window. This option will
-cause colors to be changed in all windows.
+cause paddings and margins to be changed in all windows.
 
 
 --configured -c
 type=bool-set
-Also change the configured padding and margins (i.e. the settings kitty will use for new
+Also change the configured paddings and margins (i.e. the settings kitty will use for new
 windows).
 ''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')
     argspec = 'MARGIN_OR_PADDING ...'

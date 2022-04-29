@@ -23,17 +23,17 @@ class SetBackgroundOpacity(RemoteCommand):
     all: Boolean indicating operate on all windows
     '''
 
-    short_desc = 'Set the background_opacity'
+    short_desc = 'Set the background opacity'
     desc = (
         'Set the background opacity for the specified windows. This will only work if you have turned on'
         ' :opt:`dynamic_background_opacity` in :file:`kitty.conf`. The background opacity affects all kitty windows in a'
-        ' single os_window. For example: kitty @ set-background-opacity 0.5'
+        ' single OS window. For example: :code:`kitty @ set-background-opacity 0.5`'
     )
     options_spec = '''\
 --all -a
 type=bool-set
-By default, colors are only changed for the currently active window. This option will
-cause colors to be changed in all windows.
+By default, background opacity are only changed for the currently active window. This option will
+cause background opacity to be changed in all windows.
 
 ''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')
     argspec = 'OPACITY'

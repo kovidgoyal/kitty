@@ -29,10 +29,10 @@ class SetBackgroundImage(RemoteCommand):
     configured: Boolean indicating if the configured value should be changed
     '''
 
-    short_desc = 'Set the background_image'
+    short_desc = 'Set the background image'
     desc = (
         'Set the background image for the specified OS windows. You must specify the path to a PNG image that'
-        ' will be used as the background. If you specify the special value "none" then any existing image will'
+        ' will be used as the background. If you specify the special value :code:`none` then any existing image will'
         ' be removed.'
     )
     options_spec = '''\
@@ -50,7 +50,7 @@ Change the configured background image which is used for new OS windows.
 --layout
 type=choices
 choices=tiled,scaled,mirror-tiled,clamped,configured
-How the image should be displayed. The value of configured will use the configured value.
+How the image should be displayed. A value of :code:`configured` will use the configured value.
 
 
 --no-response

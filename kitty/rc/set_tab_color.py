@@ -43,7 +43,7 @@ class SetTabColor(RemoteCommand):
     self: Boolean indicating whether to use the tab of the window the command is run in
     '''
 
-    short_desc = 'Change the color of the specified tab(s) in the tab bar'
+    short_desc = 'Change the color of the specified tabs in the tab bar'
     desc = f'''
 {short_desc}
 
@@ -55,7 +55,7 @@ the keyword NONE to revert to using the default colors.
     options_spec = MATCH_TAB_OPTION + '''\n
 --self
 type=bool-set
-If specified close the tab this command is run in, rather than the active tab.
+Close the tab this command is run in, rather than the active tab.
 '''
     argspec = 'COLORS'
 

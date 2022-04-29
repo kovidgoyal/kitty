@@ -86,7 +86,7 @@ class TerminalVersion(Query):
 @query
 class AllowHyperlinks(Query):
     name: str = 'allow_hyperlinks'
-    help_text: str = 'The :opt:`setting <allow_hyperlinks>` for allowing hyperlinks can be :code:`yes`, :code:`no` or :code:`ask`'
+    help_text: str = 'The config option :opt:`allow_hyperlinks` in :file:`kitty.conf` for allowing hyperlinks can be :code:`yes`, :code:`no` or :code:`ask`'
 
     @staticmethod
     def get_result(opts: Options) -> str:
@@ -208,10 +208,10 @@ the :code:`--wait-for` option.
 
 The output is lines of the form::
 
-    :italic:`query`: :italic:`data`
+    query: data
 
-If a particular query is unsupported by the running kitty version, the data will
-be blank.
+If a particular :italic:`query` is unsupported by the running kitty version, the
+:italic:`data` will be blank.
 
 Note that when calling this from another program, be very careful not to perform
 any I/O on the terminal device until thos kitten exits.

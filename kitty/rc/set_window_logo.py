@@ -22,9 +22,9 @@ if TYPE_CHECKING:
 class SetWindowLogo(RemoteCommand):
     '''
     data+: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image. \
-    Or the special value - to indicate image must be removed.
+    Or the special value :code:`-` to indicate image must be removed.
     position: The logo position as a string, empty string means default
-    alpha: The logo alpha between 0 and 1. -1 means use default
+    alpha: The logo alpha between :code:`0` and :code:`1`. :code:`-1` means use default
     match: Which window to change the logo in
     self: Boolean indicating whether to act on the window the command is run in
     '''
@@ -32,14 +32,14 @@ class SetWindowLogo(RemoteCommand):
     short_desc = 'Set the window logo'
     desc = (
         'Set the logo image for the specified windows. You must specify the path to a PNG image that'
-        ' will be used as the logo. If you specify the special value "none" then any existing logo will'
+        ' will be used as the logo. If you specify the special value :code:`none` then any existing logo will'
         ' be removed.'
     )
 
     options_spec = MATCH_WINDOW_OPTION + '''\n
 --self
 type=bool-set
-If specified act on the window this command is run in, rather than the active window.
+Act on the window this command is run in, rather than the active window.
 
 
 --position

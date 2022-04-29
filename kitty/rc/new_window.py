@@ -50,7 +50,7 @@ the working directory for the kitty process you are talking to is.
 
 --keep-focus --dont-take-focus
 type=bool-set
-Keep the current window focused instead of switching to the newly opened window
+Keep the current window focused instead of switching to the newly opened window.
 
 
 --window-type
@@ -61,11 +61,11 @@ What kind of window to open. A kitty window or a top-level OS window.
 
 --new-tab
 type=bool-set
-Open a new tab
+Open a new tab.
 
 
 --tab-title
-When using :option:`kitty @ new-window --new-tab` set the title of the tab.
+Set the title of the tab, when open a new tab.
 
 
 --no-response

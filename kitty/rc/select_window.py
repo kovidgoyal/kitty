@@ -39,23 +39,23 @@ The time in seconds to wait for the user to select a window.
 
 --self
 type=bool-set
-If specified the tab containing the window this command is run in is used
+Select window from the tab containing the window this command is run in,
 instead of the active tab.
 
 
 --title
-A title that will be displayed to the user to describe what this selection is for
+A title that will be displayed to the user to describe what this selection is for.
 
 
 --exclude-active
 type=bool-set
-Exclude the currently active window from the list of windows to pick
+Exclude the currently active window from the list of windows to pick.
 
 
 --reactivate-prev-tab
 type=bool-set
-When the selection is finished, the tab in the same os window that was activated
-before the selection will be reactivated. The last activated os window will also
+When the selection is finished, the tab in the same OS window that was activated
+before the selection will be reactivated. The last activated OS window will also
 be refocused.
 '''
     is_asynchronous = True

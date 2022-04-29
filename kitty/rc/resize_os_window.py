@@ -23,9 +23,9 @@ class ResizeOSWindow(RemoteCommand):
     height: Integer indicating desired window height
     '''
 
-    short_desc = 'Resize the specified OS Window'
+    short_desc = 'Resize the specified OS Windows'
     desc = (
-        'Resize the specified OS Window.'
+        'Resize the specified OS Windows.'
         ' Note that some window managers/environments do not allow applications to resize'
         ' their windows, for example, tiling window managers.'
     )
@@ -39,7 +39,7 @@ The action to perform.
 --unit
 default=cells
 choices=cells,pixels
-The unit in which to interpret specified sizes
+The unit in which to interpret specified sizes.
 
 
 --width
@@ -62,7 +62,7 @@ instead of absolute sizes.
 
 --self
 type=bool-set
-If specified resize the window this command is run in, rather than the active window.
+Resize the window this command is run in, rather than the active window.
 
 
 --no-response
