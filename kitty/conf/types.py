@@ -289,7 +289,11 @@ class MultiOption:
         for k in self.items:
             if k.documented:
                 documented = True
-                a(f'{self.name} {k.defval_as_str if k.add_to_default else ""}'.rstrip())
+                if k.add_to_default:
+                    a(f'{self.name} {k.defval_as_str}'.rstrip())
+                else:
+                    # Comment out multi-options that have no default values
+                    a(f'# {self.name}'.rstrip())
                 if not k.add_to_default and k.defval_as_str:
                     a('')
                     a(f'#: E.g. {self.name} {k.defval_as_str}'.rstrip())
@@ -565,6 +569,9 @@ class Group:
 
             if commented:
                 ans = [x if x.startswith('#') or not x.strip() else (f'# {x}') for x in ans]
+            else:
+                # Comment out any invalid options that have no value
+                ans = [f'# {x}' if not x.startswith('#') and len(x.strip().split()) == 1 else x for x in ans]
 
         return ans
 
