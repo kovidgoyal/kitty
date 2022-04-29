@@ -80,19 +80,28 @@ Where :italic:`field` can be one of: :code:`id`, :code:`title`, :code:`pid`, :co
 :code:`env`, :code:`state` and :code:`recent`.
 :italic:`query` is the expression to match. Expressions can be either a number or a regular expression, and can be
 :ref:`combined using Boolean operators <search_syntax>`.
-Note that for numeric fields: :code:`id`, :code:`pid`, :code:`num` and :code:`recent`, the expression is interpreted as
+
+The special value :code:`all` matches all windows.
+
+For numeric fields: :code:`id`, :code:`pid`, :code:`num` and :code:`recent`, the expression is interpreted as
 a number, not a regular expression.
+
 The field :code:`num` refers to the window position in the current tab, starting from zero and counting clockwise (this
 is the same as the order in which the windows are reported by the :italic:`ls` command).
+
 The window id of the current window is available as the :envvar:`KITTY_WINDOW_ID` environment variable.
+
 The field :code:`recent` refers to recently active windows in the currently active tab, with zero being the currently
 active window, one being the previously active window and so on.
+
 When using the :code:`env` field to match on environment variables, you can specify only the environment variable name
 or a name and value, for example, :italic:`env:MY_ENV_VAR=2`.
+
 The field :code:`state` matches on the state of the window. Supported states are:
 :code:`active`, :code:`focused`, :code:`needs_attention`, :code:`parent_active` and :code:`parent_focused`.
 Active windows are the windows that are active in their parent tab. There is only one focused window and it is the
 window to which keyboard events are delivered.
+
 Note that you can use the :ref:`kitty @ ls <at_ls>` command to get a list of windows.
 '''
 MATCH_TAB_OPTION = '''\
@@ -102,22 +111,31 @@ Where :italic:`field` can be one of: :code:`id`, :code:`index`, :code:`title`, :
 :code:`pid`, :code:`cwd`, :code:`cmdline` :code:`env`, :code:`state` and :code:`recent`.
 :italic:`query` is the expression to match. Expressions can be either a number or a regular expression, and can be
 :ref:`combined using Boolean operators <search_syntax>`.
-Note that for numeric fields: :code:`id`, :code:`index`, :code:`window_id`, :code:`pid` and :code:`recent`, the
+
+The special value :code:`all` matches all windows.
+
+For numeric fields: :code:`id`, :code:`index`, :code:`window_id`, :code:`pid` and :code:`recent`, the
 expression is interpreted as a number, not a regular expression.
+
 When using :code:`title` or :code:`id`, first a matching tab is looked for, and if not found a matching window is looked
 for, and the tab for that window is used.
+
 You can also use :code:`window_id` and :code:`window_title` to match the tab that contains the window with the specified
 id or title.
+
 The :code:`index` number is used to match the nth tab in the currently active OS window.
 The :code:`recent` number matches recently active tabs in the currently active OS window, with zero being the currently
 active tab, one the previously active tab and so on.
+
 When using the :code:`env` field to match on environment variables, you can specify only the environment variable name
 or a name and value, for example, :italic:`env:MY_ENV_VAR=2`. Tabs containing any window with the specified environment
 variables are matched.
+
 The field :code:`state` matches on the state of the tab. Supported states are:
 :code:`active`, :code:`focused`, :code:`needs_attention`, :code:`parent_active` and :code:`parent_focused`.
 Active tabs are the tabs that are active in their parent OS window. There is only one focused tab
 and it is the tab to which keyboard events are delivered.
+
 Note that you can use the :ref:`kitty @ ls <at_ls>` command to get a list of tabs.
 '''
 

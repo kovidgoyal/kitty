@@ -341,6 +341,8 @@ class Boss:
             yield from tab
 
     def match_windows(self, match: str) -> Iterator[Window]:
+        if match == 'all':
+            return self.all_windows
         from .search_query_parser import search
         tab = self.active_tab
 
@@ -360,6 +362,8 @@ class Boss:
         return None
 
     def match_tabs(self, match: str) -> Iterator[Tab]:
+        if match == 'all':
+            return self.all_tabs
         from .search_query_parser import search
         tm = self.active_tab_manager
         tim = {t.id: t for t in self.all_tabs}
