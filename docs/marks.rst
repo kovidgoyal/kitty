@@ -53,21 +53,20 @@ If you want to create markers dynamically rather than pre-defining them in
     map f1 create_marker
     map f2 remove_marker
 
-Then pressing :kbd:`F1` will allow you to enter the marker definition and set
-it and pressing :kbd:`F2` will remove the marker. ``create_marker`` accepts
-the same syntax as ``toggle_marker`` above. Note that while creating markers,
-the prompt has history so you can easily re-use previous marker expressions.
+Then pressing :kbd:`F1` will allow you to enter the marker definition and set it
+and pressing :kbd:`F2` will remove the marker. :ac:`create_marker` accepts the
+same syntax as :ac:`toggle_marker` above. Note that while creating markers, the
+prompt has history so you can easily re-use previous marker expressions.
 
-You can also use the facilities for :doc:`remote-control` to dynamically
-add/remove markers.
+You can also use the facilities for :doc:`remote-control` to dynamically add or
+remove markers.
 
 
 Scrolling to marks
 --------------------
 
-kitty has an action :ac:`scroll_to_mark` to scroll to the next line that
-contains a mark. You can use it by mapping it to some shortcut in
-:file:`kitty.conf`::
+kitty has a :ac:`scroll_to_mark` action to scroll to the next line that contains
+a mark. You can use it by mapping it to some shortcut in :file:`kitty.conf`::
 
     map ctrl+p scroll_to_mark prev
     map ctrl+n scroll_to_mark next
@@ -92,8 +91,8 @@ The syntax of the :ac:`toggle_marker` action is::
 
 Here :code:`marker-type` is one of:
 
-* :code:`text` - simple substring matching
-* :code:`itext` - case-insensitive substring matching
+* :code:`text` - Simple substring matching
+* :code:`itext` - Case-insensitive substring matching
 * :code:`regex` - A Python regular expression
 * :code:`iregex` - A case-insensitive Python regular expression
 * :code:`function` - An arbitrary function defined in a Python file, see :ref:`marker_funcs`.
@@ -104,8 +103,8 @@ Arbitrary marker functions
 -----------------------------
 
 You can create your own marker functions. Create a Python file named
-:file:`mymarker.py` and in it create a :code:`marker` function. This
-function receives the text of the line as input and must yield three numbers,
+:file:`mymarker.py` and in it create a :code:`marker` function. This function
+receives the text of the line as input and must yield three numbers,
 the starting character position, the ending character position and the mark
 group (1-3). For example:
 

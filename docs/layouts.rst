@@ -10,7 +10,8 @@ other in arbitrary arrangements, based on *Layouts*, see below for examples:
     :align: center
     :width: 100%
 
-    Screenshot, showing vim, tig and git running in |kitty| with the 'Tall' layout
+    Screenshot, showing :program:`vim`, :program:`tig` and :program:`git`
+    running in |kitty| with the *Tall* layout
 
 
 .. figure:: screenshots/splits.png
@@ -18,21 +19,22 @@ other in arbitrary arrangements, based on *Layouts*, see below for examples:
     :align: center
     :width: 100%
 
-    Screenshot, showing windows with arbitrary arrangement in the 'Splits'
+    Screenshot, showing windows with arbitrary arrangement in the *Splits*
     layout
 
 
-There are many different layouts available. They are all enabled by default,
-you can switch layouts using :sc:`next_layout`. To control which layouts
-are available use :opt:`enabled_layouts`, the first listed layout becomes
-the default. Individual layouts and how to use them are described below.
+There are many different layouts available. They are all enabled by default, you
+can switch layouts using :ac:`next_layout` (:sc:`next_layout` by default). To
+control which layouts are available use :opt:`enabled_layouts`, the first listed
+layout becomes the default. Individual layouts and how to use them are described
+below.
 
 
 The Stack Layout
 ------------------
 
-This is the simplest layout it displays a single window using all available
-space, other windows are hidden behind it. It has no options::
+This is the simplest layout. It displays a single window using all available
+space, other windows are hidden behind it. This layout has no options::
 
     enabled_layouts stack
 
@@ -40,14 +42,14 @@ space, other windows are hidden behind it. It has no options::
 The Tall Layout
 ------------------
 
-Displays one (or optionally more) full height windows on the left half of the
+Displays one (or optionally more) full-height windows on the left half of the
 screen. Remaining windows are tiled vertically on the right half of the screen.
 There are options to control how the screen is split horizontally ``bias``
 (an integer between ``10`` and ``90``) and options to control how many
 full-height windows there are ``full_size`` (a positive integer). The
-``mirrored`` option when set to ``true`` will cause the short windows to be
-on the left side of the screen instead of the right. The syntax
-for the options is shown below::
+``mirrored`` option when set to ``true`` will cause the full-height windows to
+be on the right side of the screen instead of the left. The syntax
+for the options is::
 
     enabled_layouts tall:bias=50;full_size=1;mirrored=false
 
@@ -65,7 +67,7 @@ for the options is shown below::
     │              │               │
     └──────────────┴───────────────┘
 
-In addition, you can map keys to increase or decrease the number of full size
+In addition, you can map keys to increase or decrease the number of full-height
 windows, for example::
 
    map ctrl+[ layout_action decrease_num_full_size_windows
@@ -75,14 +77,13 @@ windows, for example::
 The Fat Layout
 ----------------
 
-Displays one (or optionally more) full width windows on the top half of the
-screen. Remaining windows are tiled horizontally on the bottom half of the screen.
-There are options to control how the screen is split vertically ``bias``
+Displays one (or optionally more) full-width windows on the top half of the
+screen. Remaining windows are tiled horizontally on the bottom half of the
+screen. There are options to control how the screen is split vertically ``bias``
 (an integer between ``10`` and ``90``) and options to control how many
-full-height windows there are ``full_size`` (a positive integer). The
-``mirrored`` option when set to ``true`` will cause the narrow windows to be
-on the top of the screen instead of the bottom. The syntax for the options is
-shown below::
+full-width windows there are ``full_size`` (a positive integer). The
+``mirrored`` option when set to ``true`` will cause the full-width windows to be
+on the bottom of the screen instead of the top. The syntax for the options is::
 
     enabled_layouts fat:bias=50;full_size=1;mirrored=false
 
@@ -100,11 +101,16 @@ shown below::
     └─────────┴──────────┴─────────┘
 
 
+This layout also supports ``decrease_num_full_size_windows`` layout action like
+the *Tall* layout, shown above.
+
+
 The Grid Layout
 --------------------
 
 Display windows in a balanced grid with all windows the same size except the
-last column if there are not enough windows to fill the grid. Has no options::
+last column if there are not enough windows to fill the grid. This layout has no
+options::
 
     enabled_layouts grid
 
@@ -132,20 +138,20 @@ define a few extra key bindings in :file:`kitty.conf`::
 
     # Create a new window splitting the space used by the existing one so that
     # the two windows are placed one above the other
-    map F5 launch --location=hsplit
+    map f5 launch --location=hsplit
 
     # Create a new window splitting the space used by the existing one so that
     # the two windows are placed side by side
-    map F6 launch --location=vsplit
+    map f6 launch --location=vsplit
 
     # Create a new window splitting the space used by the existing one so that
     # the two windows are placed side by side if the existing window is wide or
     # one above the other if the existing window is tall.
-    map F4 launch --location=split
+    map f4 launch --location=split
 
     # Rotate the current split, chaging its split axis from vertical to
     # horizontal or vice versa
-    map F7 layout_action rotate
+    map f7 layout_action rotate
 
     # Move the active window in the indicated direction
     map shift+up move_window up
@@ -159,16 +165,16 @@ define a few extra key bindings in :file:`kitty.conf`::
     map ctrl+up neighboring_window up
     map ctrl+down neighboring_window down
 
-Windows can be resized using :ref:`window_resizing`.  You can swap the windows
+Windows can be resized using :ref:`window_resizing`. You can swap the windows
 in a split using the ``rotate`` action with an argument of ``180`` and rotate
 and swap with an argument of ``270``.
 
 This layout takes one option, ``split_axis`` that controls whether new windows
-are placed into vertical or horizontal splits when a ``--location`` is not
-specified. A value of ``horizontal`` (same as ``--location=vsplit``)
-means when a new split is created the two windows will be placed side by side
-and a value of ``vertical`` (same as ``--location=hsplit``) means the two
-windows will be placed one on top of the other. By default::
+are placed into vertical or horizontal splits when a :option:`--location <launch
+--location>` is not specified. A value of ``horizontal`` (same as
+``--location=vsplit``) means when a new split is created the two windows will be
+placed side by side and a value of ``vertical`` (same as ``--location=hsplit``)
+means the two windows will be placed one on top of the other. By default::
 
     enabled_layouts splits:split_axis=horizontal
 
@@ -193,7 +199,7 @@ windows will be placed one on top of the other. By default::
 The Horizontal Layout
 ------------------------
 
-All windows are shown side by side. Has no options::
+All windows are shown side by side. This layout has no options::
 
     enabled_layouts horizontal
 
@@ -213,7 +219,7 @@ All windows are shown side by side. Has no options::
 The Vertical Layout
 -----------------------
 
-All windows are shown one below the other. Has no options::
+All windows are shown one below the other. This layout has no options::
 
     enabled_layouts vertical
 
@@ -239,14 +245,14 @@ Resizing windows
 
 You can resize windows inside layouts. Press :sc:`start_resizing_window` (also
 :kbd:`⌘+r` on macOS) to enter resizing mode and follow the on-screen
-instructions.  In a given window layout only some operations may be possible
-for a particular window. For example, in the Tall layout you can make the first
+instructions. In a given window layout only some operations may be possible for
+a particular window. For example, in the *Tall* layout you can make the first
 window wider/narrower, but not taller/shorter. Note that what you are resizing
 is actually not a window, but a row/column in the layout, all windows in that
 row/column will be resized.
 
 You can also define shortcuts in :file:`kitty.conf` to make the active window
-wider, narrower, taller, or shorter by mapping to the ``resize_window``
+wider, narrower, taller, or shorter by mapping to the :ac:`resize_window`
 action, for example::
 
    map ctrl+left resize_window narrower
@@ -256,22 +262,21 @@ action, for example::
    # reset all windows in the tab to default sizes
    map ctrl+home resize_window reset
 
-The ``resize_window`` action has a second, optional argument to control
+The :ac:`resize_window` action has a second optional argument to control
 the resizing increment (a positive integer that defaults to 1).
 
-
-Some layouts take options to control their behavior. For example, the ``fat``
-and ``tall`` layouts accept the ``bias`` and ``full_size`` options to control
-how the available space is split up.
-To specify the option, in :opt:`kitty.conf <enabled_layouts>` use::
+Some layouts take options to control their behavior. For example, the *Fat*
+and *Tall* layouts accept the ``bias`` and ``full_size`` options to control
+how the available space is split up. To specify the option, in :opt:`kitty.conf
+<enabled_layouts>` use::
 
     enabled_layouts tall:bias=70;full_size=2
 
 This will have ``2`` instead of a single tall window, that occupy ``70%``
-instead of ``50%`` of available width. ``bias`` can be any number between 10
-and 90.
+instead of ``50%`` of available width. ``bias`` can be any number between ``10``
+and ``90``.
 
 Writing a new layout only requires about two hundred lines of code, so if there
 is some layout you want, take a look at one of the existing layouts in the
-`layout <https://github.com/kovidgoyal/kitty/tree/master/kitty/layout>`_
+`layout <https://github.com/kovidgoyal/kitty/tree/master/kitty/layout>`__
 package and submit a pull request!

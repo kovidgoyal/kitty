@@ -136,6 +136,8 @@ Within a single kitty instance, all connections to a particular server can be
 shared. This reduces startup latency for subsequent connections and means that
 you have to enter the password only once. Under the hood, it uses SSH
 ControlMasters and these are automatically cleaned up by kitty when it quits.
+You can map a shortcut to :ac:`close_shared_ssh_connections` to disconnect all
+active shared connections.
 ''')
 
 opt('askpass', 'unless-set', choices=('unless-set', 'ssh', 'native'), long_text='''

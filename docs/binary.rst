@@ -21,7 +21,7 @@ simply re-run the command.
 
 .. warning::
    **Do not** copy the kitty binary out of the installation folder. If you want
-   to add it to your ``PATH`` create a symlink in :file:`~/.local/bin` or
+   to add it to your :envvar:`PATH`, create a symlink in :file:`~/.local/bin` or
    :file:`/usr/bin` or wherever.
 
 
@@ -30,10 +30,11 @@ Manually installing
 
 If something goes wrong or you simply do not want to run the installer, you can
 manually download and install |kitty| from the `GitHub releases page
-<https://github.com/kovidgoyal/kitty/releases>`_. If you are on macOS, download
-the :file:`.dmg` and install as normal. If you are on Linux, download the tarball
-and extract it into a directory. The |kitty| executable will be in the
+<https://github.com/kovidgoyal/kitty/releases>`__. If you are on macOS, download
+the :file:`.dmg` and install as normal. If you are on Linux, download the
+tarball and extract it into a directory. The |kitty| executable will be in the
 :file:`bin` sub-directory.
+
 
 Desktop integration on Linux
 --------------------------------
@@ -57,9 +58,19 @@ particular desktop, but it should work for most major desktop environments.
     sed -i "s|Exec=kitty|Exec=/home/$USER/.local/kitty.app/bin/kitty|g" ~/.local/share/applications/kitty*.desktop
 
 .. note::
-    If you use the venerable `stow <https://www.gnu.org/software/stow/>`_
+    In :file:`kitty-open.desktop`, kitty is registered to handle some supported
+    MIME types. This will cause kitty to take precedence on some systems where
+    the default apps are not explicitly set. For example, you expect to use
+    other GUI file managers to open dir paths when using commands such as
+    :program:`xdg-open`, you should configure the default opener for the MIME
+    type ``inode/directory``::
+
+        xdg-mime default org.kde.dolphin.desktop inode/directory
+
+.. note::
+    If you use the venerable `stow <https://www.gnu.org/software/stow/>`__
     command to manage your manual installations, the following takes care of the
-    above for you (use with :file:`dest=~/.local/stow`)::
+    above for you (use with :code:`dest=~/.local/stow`)::
 
         cd ~/.local/stow
         stow -v kitty.app

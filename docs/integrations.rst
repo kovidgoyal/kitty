@@ -4,8 +4,8 @@ Integrations with other tools
 ================================
 
 kitty provides extremely powerful interfaces such as :doc:`remote-control` and
-:doc:`kittens/custom` and :doc:`kittens/icat`
-that allow it to be integrated with other tools seamlessly.
+:doc:`kittens/custom` and :doc:`kittens/icat` that allow it to be integrated
+with other tools seamlessly.
 
 
 Image and document viewers
@@ -30,19 +30,22 @@ Display markdown files nicely formatted with images in the terminal
 
 `ranger <https://github.com/ranger/ranger>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A terminal file manager, with previews of file contents powered by kitty's graphics protocol.
+A terminal file manager, with previews of file contents powered by kitty's
+graphics protocol.
 
 .. _tool_nnn:
 
 `nnn <https://github.com/jarun/nnn/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Another terminal file manager, with previews of file contents powered by kitty's graphics protocol.
+Another terminal file manager, with previews of file contents powered by kitty's
+graphics protocol.
 
 .. _tool_hunter:
 
 `hunter <https://github.com/rabite0/hunter>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Another terminal file manager, with previews of file contents powered by kitty's graphics protocol.
+Another terminal file manager, with previews of file contents powered by kitty's
+graphics protocol.
 
 .. _tool_koneko:
 
@@ -61,8 +64,8 @@ View images in the terminal, similar to kitty's icat.
 
 `nb <https://github.com/xwmx/nb>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-command line and local web note-taking, bookmarking, archiving, and
-knowledge base application that uses kitty's graphics protocol for images.
+Command line and local web note-taking, bookmarking, archiving, and knowledge
+base application that uses kitty's graphics protocol for images.
 
 .. _tool_w3m:
 
@@ -75,9 +78,9 @@ images.
 
 `timg <https://github.com/hzeller/timg>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A terminal image and video viewer, that displays static and animated
-images or plays videos. Fast multi-threaded loading, JPEG exif rotation,
-grid view and connecting to the webcam make it a versatile terminal utility.
+A terminal image and video viewer, that displays static and animated images or
+plays videos. Fast multi-threaded loading, JPEG exif rotation, grid view and
+connecting to the webcam make it a versatile terminal utility.
 
 
 System and data visualisation tools
@@ -87,7 +90,8 @@ System and data visualisation tools
 
 `neofetch <https://github.com/dylanaraps/neofetch>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A command line system information tool that shows images using kitty's graphics protocol
+A command line system information tool that shows images using kitty's graphics
+protocol
 
 .. _tool_matplotlib:
 
@@ -105,16 +109,16 @@ Show images from Julia directly in kitty
 
 `euporie <https://github.com/joouha/euporie>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A text-based user interface for running and editing Jupyter notebooks,
-powered by kitty's graphics protocol for displaying plots
+A text-based user interface for running and editing Jupyter notebooks, powered
+by kitty's graphics protocol for displaying plots
 
 .. _tool_gnuplot:
 
 `gnuplot <http://www.gnuplot.info/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A graphing and data visualization tool that can be made to display its
-output in kitty with the following bash snippet:
+A graphing and data visualization tool that can be made to display its output in
+kitty with the following bash snippet:
 
 .. code-block:: sh
 
@@ -171,26 +175,28 @@ Run applications on your system with fuzzy find inside a kitty window
 Editor integration
 -----------------------
 
-|kitty| can be integrated into many different terminal editors to add features
-such a split windows, previews, REPLs etc.
+|kitty| can be integrated into many different terminal based text editors to add
+features such a split windows, previews, REPLs etc.
 
 .. tool_kakoune:
 
 `kakoune <https://kakoune.org/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-integrates with kitty to use native kitty windows for its windows/panels and REPLs.
+Integrates with kitty to use native kitty windows for its windows/panels and
+REPLs.
 
 .. tool_vim_slime:
 
 `vim-slime <https://github.com/jpalardy/vim-slime#kitty>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-uses kitty remote control for a Lisp REPL.
+Uses kitty remote control for a Lisp REPL.
 
 .. tool_vim_kitty_navigator:
 
 `vim-kitty-navigator <https://github.com/knubie/vim-kitty-navigator>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-allows you to navigate seamlessly between vim and kitty splits using a consistent set of hotkeys.
+Allows you to navigate seamlessly between vim and kitty splits using a
+consistent set of hotkeys.
 
 .. tool_vim_test:
 
@@ -202,7 +208,7 @@ Allows easily running tests in a terminal window
 
 `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Terminal image viewer for nvim
+Terminal image viewer for Neovim
 
 
 Scrollback manipulation
@@ -228,21 +234,21 @@ Miscellaneous
 
 `kitty-smart-tab <https://github.com/yurikhan/kitty-smart-tab>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-use keys to either control tabs or pass them onto running applications if
-no tabs are present
+Use keys to either control tabs or pass them onto running applications if no
+tabs are present
 
 .. tool_kitty_smart_scroll:
 
 `kitty-smart-scroll <https://github.com/yurikhan/kitty-smart-scroll>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-use keys to either scroll or pass them onto running applications if
-no scrollback buffer is present
+Use keys to either scroll or pass them onto running applications if no
+scrollback buffer is present
 
 .. tool_kitti3:
 
 `kitti3 <https://github.com/LandingEllipse/kitti3>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-allow using kitty as a drop-down terminal under the i3 window manager
+Allow using kitty as a drop-down terminal under the i3 window manager
 
 .. tool_weechat_hints:
 

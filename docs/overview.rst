@@ -4,23 +4,22 @@ Overview
 Design philosophy
 -------------------
 
-|kitty| is designed for power keyboard users. To that end all its controls
-work with the keyboard (although it fully supports mouse interactions as
-well). Its configuration is a simple, human editable, single file for
-easy reproducibility (I like to store configuration in source control).
+|kitty| is designed for power keyboard users. To that end all its controls work
+with the keyboard (although it fully supports mouse interactions as well). Its
+configuration is a simple, human editable, single file for easy reproducibility
+(I like to store configuration in source control).
 
 The code in |kitty| is designed to be simple, modular and hackable. It is
-written in a mix of C (for performance sensitive parts) and Python (for
-easy hackability of the UI). It does not depend on any large and complex
-UI toolkit, using only OpenGL for rendering everything.
+written in a mix of C (for performance sensitive parts) and Python (for easy
+hackability of the UI). It does not depend on any large and complex UI toolkit,
+using only OpenGL for rendering everything.
 
-Finally, |kitty| is designed from the ground up to support all modern
-terminal features, such as unicode, true color, bold/italic fonts, text
-formatting, etc. It even extends existing text formatting escape codes,
-to add support for features not available elsewhere, such as colored and
-styled (curly) underlines. One of the design goals of |kitty| is to be
-easily extensible so that new features can be added in the future with
-relatively little effort.
+Finally, |kitty| is designed from the ground up to support all modern terminal
+features, such as Unicode, true color, bold/italic fonts, text formatting, etc.
+It even extends existing text formatting escape codes, to add support for
+features not available elsewhere, such as colored and styled (curly) underlines.
+One of the design goals of |kitty| is to be easily extensible so that new
+features can be added in the future with relatively little effort.
 
 .. include:: basic.rst
 
@@ -28,10 +27,10 @@ relatively little effort.
 Configuring kitty
 -------------------
 
-|kitty| is highly configurable, everything from keyboard shortcuts to
-painting frames-per-second. Press :sc:`edit_config_file` in kitty
-to open its fully commented sample config file in your text editor.
-For details see the :doc:`configuration docs <conf>`.
+|kitty| is highly configurable, everything from keyboard shortcuts to painting
+frames-per-second. Press :sc:`edit_config_file` in kitty to open its fully
+commented sample config file in your text editor. For details see the
+:doc:`configuration docs <conf>`.
 
 .. toctree::
    :hidden:
@@ -51,17 +50,26 @@ windows automatically, resizing and moving them as needed. You can create a new
 
 Currently, there are seven layouts available:
 
-* **Fat** -- One (or optionally more) windows are shown full width on the top, the rest of the windows are shown side-by-side on the bottom
+* **Fat** -- One (or optionally more) windows are shown full width on the top,
+  the rest of the windows are shown side-by-side on the bottom
+
 * **Grid** -- All windows are shown in a grid
+
 * **Horizontal** -- All windows are shown side-by-side
-* **Splits** -- Windows arranged in arbitrary patterns created using horizontal and vertical splits
+
+* **Splits** -- Windows arranged in arbitrary patterns created using horizontal
+  and vertical splits
+
 * **Stack** -- Only a single maximized window is shown at a time
-* **Tall** -- One (or optionally more) windows are shown full height on the left, the rest of the windows are shown one below the other on the right
+
+* **Tall** -- One (or optionally more) windows are shown full height on the
+  left, the rest of the windows are shown one below the other on the right
+
 * **Vertical** -- All windows are shown one below the other
 
 By default, all layouts are enabled and you can switch between layouts using
 the :sc:`next_layout` key combination. You can also create shortcuts to select
-particular layouts, and choose which layouts you want to enable/disable, see
+particular layouts, and choose which layouts you want to enable, see
 :ref:`conf-kitty-shortcuts.layout` for examples. The first layout listed in
 :opt:`enabled_layouts` becomes the default layout.
 
@@ -79,9 +87,9 @@ Extending kitty
 kitty has a powerful framework for scripting. You can create small terminal
 programs called :doc:`kittens <kittens_intro>`. These can used to add features
 to kitty, for example, :doc:`editing remote files <kittens/remote_file>` or
-:doc:`inputting unicode characters <kittens/unicode_input>`. They can also be
+:doc:`inputting Unicode characters <kittens/unicode_input>`. They can also be
 used to create programs that leverage kitty's powerful features, for example,
-:doc:`viewing images <kittens/icat>` or :doc:`diffing files with images
+:doc:`viewing images <kittens/icat>` or :doc:`diffing files with image support
 <kittens/diff>`.
 
 You can :doc:`create your own kittens to scratch your own itches
@@ -101,9 +109,9 @@ Remote control
 |kitty| has a very powerful system that allows you to control it from the
 :doc:`shell prompt, even over SSH <remote-control>`. You can change colors,
 fonts, open new :term:`windows <window>`, :term:`tabs <tab>`, set their titles,
-change window layout, get text
-from one window and send text to another, etc, etc. The possibilities are
-endless. See the :doc:`tutorial <remote-control>` to get started.
+change window layout, get text from one window and send text to another, etc.
+The possibilities are endless. See the :doc:`tutorial <remote-control>` to get
+started.
 
 .. toctree::
    :hidden:
@@ -117,10 +125,9 @@ Startup Sessions
 ------------------
 
 You can control the :term:`tabs <tab>`, :term:`kitty window <window>` layout,
-working directory, startup programs,
-etc. by creating a "session" file and using the :option:`kitty --session`
-command line flag or the :opt:`startup_session` option in :file:`kitty.conf`.
-For example:
+working directory, startup programs, etc. by creating a *session* file and using
+the :option:`kitty --session` command line flag or the :opt:`startup_session`
+option in :file:`kitty.conf`. For example:
 
 .. code-block:: session
 
@@ -130,28 +137,28 @@ For example:
     cd ~
     # Create a window and run the specified command in it
     launch zsh
-    # Create a window with some environment variables set and run
-    # vim in it
+    # Create a window with some environment variables set and run vim in it
     launch --env FOO=BAR vim
     # Set the title for the next window
     launch --title "Chat with x" irssi --profile x
 
-    # Create a new tab (the part after new_tab is the optional tab
-    # name which will be displayed in the tab bar, if omitted, the
-    # title of the active window will be used instead)
+    # Create a new tab
+    # The part after new_tab is the optional tab title which will be displayed in
+    # the tab bar, if omitted, the title of the active window will be used instead.
     new_tab my tab
     cd ~/somewhere
     # Set the layouts allowed in this tab
-    enabled_layouts tall, stack
+    enabled_layouts tall,stack
     # Set the current layout
     layout stack
     launch zsh
 
     # Create a new OS window
+    # Any definitions specifed before the first new_os_window will apply to first OS window.
     new_os_window
-    # set new window size to 80x25 cells (if specifed before new_os_window will apply to first OS window)
-    os_window_size 80c 25c
-    # set the --class for the new OS window
+    # Set new window size to 80x24 cells
+    os_window_size 80c 24c
+    # Set the --class for the new OS window
     os_window_class mywindow
     launch sh
     # Make the current window the active (focused) window
@@ -159,8 +166,8 @@ For example:
     launch emacs
 
 .. note::
-    The :doc:`launch <launch>` command when used in a session file
-    cannot create new OS windows, or tabs.
+    The :doc:`launch <launch>` command when used in a session file cannot create
+    new OS windows, or tabs.
 
 
 Creating tabs/windows
@@ -182,25 +189,25 @@ Mouse features
 * You can click on a URL to open it in a browser.
 * You can double click to select a word and then drag to select more words.
 * You can triple click to select a line and then drag to select more lines.
-* You can triple click while holding :kbd:`ctrl+alt` to select from clicked
+* You can triple click while holding :kbd:`Ctrl+Alt` to select from clicked
   point to end of line.
 * You can right click to extend a previous selection.
-* You can hold down :kbd:`ctrl+alt` and drag with the mouse to select in
+* You can hold down :kbd:`Ctrl+Alt` and drag with the mouse to select in
   columns.
-* Selecting text automatically copies it to the primary clipboard (on
-  platforms with a primary clipboard).
-* You can middle click to paste from the primary clipboard (on platforms
+* Selecting text automatically copies it to the primary clipboard (on platforms
   with a primary clipboard).
-* You can right click while holding :kbd:`ctrl+shift` to open the output
-  of the clicked on command in a pager (requires :ref:`shell_integration`)
-* You can select text with kitty even when a terminal program has grabbed
-  the mouse by holding down the :kbd:`shift` key
+* You can middle click to paste from the primary clipboard (on platforms with a
+  primary clipboard).
+* You can right click while holding :kbd:`Ctrl+Shift` to open the output of the
+  clicked on command in a pager (requires :ref:`shell_integration`)
+* You can select text with kitty even when a terminal program has grabbed the
+  mouse by holding down the :kbd:`Shift` key
 
 All these actions can be customized in :file:`kitty.conf` as described
 :ref:`here <conf-kitty-mouse.mousemap>`.
 
-You can also customize what happens when clicking on :term:`hyperlinks` in kitty,
-having it open files in your editor, download remote files, open things
+You can also customize what happens when clicking on :term:`hyperlinks` in
+kitty, having it open files in your editor, download remote files, open things
 in your browser, etc.
 
 For details, see :doc:`here <open_actions>`.
@@ -214,12 +221,11 @@ Font control
 -----------------
 
 |kitty| has extremely flexible and powerful font selection features. You can
-specify individual families for the regular, bold, italic and bold+italic
-fonts. You can even specify specific font families for specific ranges of
-unicode characters. This allows precise control over text rendering. It can
-come in handy for applications like powerline, without the need to use patched
-fonts. See the various font related configuration directives in
-:ref:`conf-kitty-fonts`.
+specify individual families for the regular, bold, italic and bold+italic fonts.
+You can even specify specific font families for specific ranges of Unicode
+characters. This allows precise control over text rendering. It can comein handy
+for applications like powerline, without the need to use patched fonts. See the
+various font related configuration directives in :ref:`conf-kitty-fonts`.
 
 
 .. _scrollback:
@@ -228,29 +234,29 @@ The scrollback buffer
 -----------------------
 
 |kitty| supports scrolling back to view history, just like most terminals. You
-can use either keyboard shortcuts or the mouse scroll wheel to do so.  However,
-|kitty| has an extra, neat feature. Sometimes you need to explore the
-scrollback buffer in more detail, maybe search for some text or refer to it
-side-by-side while typing in a follow-up command. |kitty| allows you to do this
-by pressing the :sc:`show_scrollback` key-combination, which will open the
-scrollback buffer in your favorite pager program (which is ``less`` by default).
-Colors and text formatting are preserved. You can explore the scrollback buffer
-comfortably within the pager.
+can use either keyboard shortcuts or the mouse scroll wheel to do so. However,
+|kitty| has an extra, neat feature. Sometimes you need to explore the scrollback
+buffer in more detail, maybe search for some text or refer to it side-by-side
+while typing in a follow-up command. |kitty| allows you to do this by pressing
+the :sc:`show_scrollback` shortcut, which will open the scrollback buffer in
+your favorite pager program (which is :program:`less` by default). Colors and
+text formatting are preserved. You can explore the scrollback buffer comfortably
+within the pager.
 
 Additionally, you can pipe the contents of the scrollback buffer to an
-arbitrary, command running in a new :term:`window`, :term:`tab` or :term:`overlay`,
-for example::
+arbitrary, command running in a new :term:`window`, :term:`tab` or
+:term:`overlay`. For example::
 
    map f1 launch --stdin-source=@screen_scrollback --stdin-add-formatting less +G -R
 
-Would open the scrollback buffer in a new :term:`window` when you press the :kbd:`F1`
-key. See :sc:`show_scrollback <show_scrollback>` for details.
+Would open the scrollback buffer in a new :term:`window` when you press the
+:kbd:`F1` key. See :sc:`show_scrollback <show_scrollback>` for details.
 
-If you want to use it with an editor such as vim to get more powerful features,
-you can see tips for doing so, in :iss:`this thread <719>`.
+If you want to use it with an editor such as :program:`vim` to get more powerful
+features, you can see tips for doing so, in :iss:`this thread <719>`.
 
-If you wish to store very large amounts of scrollback to view using the piping or
-:sc:`show_scrollback <show_scrollback>` features, you can use the
+If you wish to store very large amounts of scrollback to view using the piping
+or :sc:`show_scrollback <show_scrollback>` features, you can use the
 :opt:`scrollback_pager_history_size` option.
 
 
@@ -258,8 +264,8 @@ Integration with shells
 ---------------------------------
 
 kitty has the ability to integrate closely within common shells, such as `zsh
-<https://www.zsh.org/>`_, `fish <https://fishshell.com>`_ and `bash
-<https://www.gnu.org/software/bash/>`_ to enable features such as jumping to
+<https://www.zsh.org/>`__, `fish <https://fishshell.com>`__ and `bash
+<https://www.gnu.org/software/bash/>`__ to enable features such as jumping to
 previous prompts in the scrollback, viewing the output of the last command in
 :program:`less`, using the mouse to move the cursor while editing prompts, etc.
 See :doc:`shell-integration` for details.
@@ -274,17 +280,16 @@ See :doc:`shell-integration` for details.
 Multiple copy/paste buffers
 -----------------------------
 
-In addition to being able to copy/paste from the system clipboard, in |kitty| you
-can also setup an arbitrary number of copy paste buffers. To do so, simply add
-something like the following to your :file:`kitty.conf`::
+In addition to being able to copy/paste from the system clipboard, in |kitty|
+you can also setup an arbitrary number of copy paste buffers. To do so, simply
+add something like the following to your :file:`kitty.conf`::
 
    map f1 copy_to_buffer a
    map f2 paste_from_buffer a
 
 This will allow you to press :kbd:`F1` to copy the current selection to an
 internal buffer named ``a`` and :kbd:`F2` to paste from that buffer. The buffer
-names are arbitrary strings, so you can define as many such buffers as you
-need.
+names are arbitrary strings, so you can define as many such buffers as you need.
 
 
 Marks

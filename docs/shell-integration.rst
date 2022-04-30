@@ -4,8 +4,8 @@ Shell integration
 -------------------
 
 kitty has the ability to integrate closely within common shells, such as `zsh
-<https://www.zsh.org/>`_, `fish <https://fishshell.com>`_ and `bash
-<https://www.gnu.org/software/bash/>`_ to enable features such as jumping to
+<https://www.zsh.org/>`__, `fish <https://fishshell.com>`__ and `bash
+<https://www.gnu.org/software/bash/>`__ to enable features such as jumping to
 previous prompts in the scrollback, viewing the output of the last command in
 :program:`less`, using the mouse to move the cursor while editing prompts, etc.
 
@@ -22,7 +22,7 @@ Features
 
 * Click with the mouse anywhere in the current command to move the cursor there
 
-* Hold :kbd:`ctrl+shift` and right-click on any command output in the scrollback
+* Hold :kbd:`Ctrl+Shift` and right-click on any command output in the scrollback
   to view it in a pager
 
 * The current working directory or the command being executed are automatically
@@ -30,7 +30,8 @@ Features
 
 * The text cursor is changed to a bar when editing commands at the shell prompt
 
-* :ref:`clone_shell` with all environment variables and the working directory copied
+* :ref:`clone_shell` with all environment variables and the working directory
+  copied
 
 * Glitch free window resizing even with complex prompts. Achieved by erasing
   the prompt on resize and allowing the shell to redraw it cleanly.
@@ -45,7 +46,7 @@ Configuration
 ---------------
 
 Shell integration is controlled by the :opt:`shell_integration` option. By
-default, all shell integration is enabled. Individual features can be turned
+default, all integration features are enabled. Individual features can be turned
 off or it can be disabled entirely as well. The :opt:`shell_integration` option
 takes a space separated list of keywords:
 
@@ -55,26 +56,28 @@ disabled
     :ref:`manual integration <manual_shell_integration>`.
 
 no-rc
-    Do not modify the shell's launch environment to enable integration. Useful if you prefer
-    to load the kitty shell integration code yourself, either as part of
-    :ref:`manually integration <manual_shell_integration>` or because you have
-    some other software that sets up shell integration.
-    This will still set the :envvar:`KITTY_SHELL_INTEGRATION` environment variable when kitty runs the shell.
+    Do not modify the shell's launch environment to enable integration. Useful
+    if you prefer to load the kitty shell integration code yourself, either as
+    part of :ref:`manually integration <manual_shell_integration>` or because
+    you have some other software that sets up shell integration.
+    This will still set the :envvar:`KITTY_SHELL_INTEGRATION` environment
+    variable when kitty runs the shell.
 
 no-cursor
-    Turn off changing of the text cursor to a bar when editing text
+    Turn off changing of the text cursor to a bar when editing shell command
+    line.
 
 no-title
     Turn off setting the kitty window/tab title based on shell state.
-    Note that for the ``fish`` shell kitty relies on fish's native title
-    setting functionality instead.
+    Note that for the fish shell kitty relies on fish's native title setting
+    functionality instead.
 
 no-cwd
     Turn off reporting the current working directory. This is used to allow
-    :ac:`new_window_with_cwd` and similar to open windows logged
-    into remote machines using the :doc:`ssh kitten <kittens/ssh>`
-    automatically with the same working directory as the current window.
-    Note that for the ``fish`` shell this will not disable its built-in current
+    :ac:`new_window_with_cwd` and similar to open windows logged into remote
+    machines using the :doc:`ssh kitten <kittens/ssh>` automatically with the
+    same working directory as the current window.
+    Note that for the fish shell this will not disable its built-in current
     working directory reporting.
 
 no-prompt-mark
@@ -83,16 +86,16 @@ no-prompt-mark
 
 no-complete
     Turn off completion for the kitty command.
-    Note that for the ``fish`` shell this does not take effect, since fish
-    already comes with a kitty completion script.
+    Note that for the fish shell this does not take effect, since fish already
+    comes with a kitty completion script.
 
 
 More ways to browse command output
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can add further key and mouse bindings to browse the output of commands
-easily. For example to select the output of a command by right clicking the mouse
-on the output, define the following in :file:`kitty.conf`:
+easily. For example to select the output of a command by right clicking the
+mouse on the output, define the following in :file:`kitty.conf`:
 
 .. code:: conf
 
@@ -103,8 +106,8 @@ to be copied.
 
 The feature to jump to previous prompts (
 :sc:`scroll_to_previous_prompt` and :sc:`scroll_to_next_prompt`) and mouse
-actions (:ac:`mouse_select_command_output` and :ac:`mouse_show_command_output`) can
-be integrated with browsing command output as well. For example, define the
+actions (:ac:`mouse_select_command_output` and :ac:`mouse_show_command_output`)
+can be integrated with browsing command output as well. For example, define the
 following mapping in :file:`kitty.conf`:
 
 .. code:: conf
@@ -136,34 +139,34 @@ How it works
 -----------------
 
 At startup, kitty detects if the shell you have configured (either system wide
-or in kitty.conf) is a supported shell. If so, kitty injects some shell specific
-code into the shell, to enable shell integration. How it does so varies for
-different shells.
+or the :opt:`shell` option in :file:`kitty.conf`) is a supported shell. If so,
+kitty injects some shell specific code into the shell, to enable shell
+integration. How it does so varies for different shells.
 
 
 .. tab:: zsh
 
-   For zsh, kitty sets the ``ZDOTDIR`` environment variable to make zsh load
-   kitty's :file:`.zshenv` which restores the original value of ``ZDOTDIR``
-   and sources the original :file:`.zshenv`. It then loads the shell integration code.
-   The remainder of zsh's startup process proceeds as normal.
+   For zsh, kitty sets the :envvar:`ZDOTDIR` environment variable to make zsh
+   load kitty's :file:`.zshenv` which restores the original value of
+   :envvar:`ZDOTDIR` and sources the original :file:`.zshenv`. It then loads
+   the shell integration code. The remainder of zsh's startup process proceeds
+   as normal.
 
 .. tab:: fish
 
     For fish, to make it automatically load the integration code provided by
     kitty, the integration script directory path is prepended to the
-    ``XDG_DATA_DIRS`` environment variable. This is only applied to the fish
-    process and will be cleaned up by the integration script after startup. No files
-    are added or modified.
+    :envvar:`XDG_DATA_DIRS` environment variable. This is only applied to the
+    fish process and will be cleaned up by the integration script after startup.
+    No files are added or modified.
 
 .. tab:: bash
 
     For bash, kitty starts bash in POSIX mode, using the environment variable
-    ``ENV`` to load the shell integration script. This prevents bash from
+    :envvar:`ENV` to load the shell integration script. This prevents bash from
     loading any startup files itself. The loading of the startup files is done
-    by the integration script, after disabling POSIX mode. From the
-    perspective of those scripts there should be no difference to running
-    vanilla bash.
+    by the integration script, after disabling POSIX mode. From the perspective
+    of those scripts there should be no difference to running vanilla bash.
 
 
 Then, when launching the shell, kitty sets the environment variable
@@ -232,8 +235,8 @@ You can clone the current shell into a new kitty window by simply running the
     clone-in-kitty --title "I am a clone"
 
 This will open a new window running a new shell instance but with all
-environment variables and the current working directory copied. This even
-works over SSH when using :doc:`kittens/ssh`.
+environment variables and the current working directory copied. This even works
+over SSH when using :doc:`kittens/ssh`.
 
 The :command:`clone-in-kitty` command takes almost all the same arguments as the
 :doc:`launch <launch>` command, so you can open a new tab instead or a new OS
@@ -321,9 +324,10 @@ to point to the location of the scripts.
 Integration with other shells
 -------------------------------
 
-There exist third-party integrations to use these features for various other shells:
+There exist third-party integrations to use these features for various other
+shells:
 
-* Jupyter console via a patch (:iss:`4475`)
+* Jupyter console and IPython via a patch (:iss:`4475`)
 * `xonsh <https://github.com/xonsh/xonsh/issues/4623>`__
 
 

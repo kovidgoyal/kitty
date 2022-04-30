@@ -5,7 +5,7 @@ This kitten is used to query |kitty| from terminal programs about version, value
 of various runtime options controlling its features, etc.
 
 The querying is done using the (*semi*) standard XTGETTCAP escape sequence
-pioneered by XTerm, so it works over SSH as well. The downside is that it is
+pioneered by xterm, so it works over SSH as well. The downside is that it is
 slow, since it requires a roundtrip to the terminal emulator and back.
 
 If you want to do some of the same querying in your terminal program without

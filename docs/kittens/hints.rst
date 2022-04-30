@@ -52,7 +52,7 @@ snippets. See :sc:`insert_selected_path <insert_selected_path>` for examples.
 Completely customizing the matching and actions of the kitten
 ---------------------------------------------------------------
 
-The hints kitten supports writing simple python scripts that can be used to
+The hints kitten supports writing simple Python scripts that can be used to
 completely customize how it finds matches and what happens when a match is
 selected. This allows the hints kitten to provide the user interface, while you
 can provide the logic for finding matches and performing actions on them. This

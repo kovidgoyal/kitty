@@ -112,7 +112,7 @@ Where :italic:`field` can be one of: :code:`id`, :code:`index`, :code:`title`, :
 :italic:`query` is the expression to match. Expressions can be either a number or a regular expression, and can be
 :ref:`combined using Boolean operators <search_syntax>`.
 
-The special value :code:`all` matches all windows.
+The special value :code:`all` matches all tabs.
 
 For numeric fields: :code:`id`, :code:`index`, :code:`window_id`, :code:`pid` and :code:`recent`, the
 expression is interpreted as a number, not a regular expression.
