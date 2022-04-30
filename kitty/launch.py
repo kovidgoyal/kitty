@@ -103,12 +103,12 @@ currently active window.
 --copy-env
 type=bool-set
 Copy the environment variables from the currently active window into the newly
-launched child process. Note that most shells only set environment variables for
-child processes, so this will only copy the environment variables that the shell
-process itself has, not the environment variables child processes inside the
-shell see. To copy that enviroment, use the kitty remote control feature with
-:option:`kitty @ launch --copy-env`, and the :ref:`clone-in-kitty <clone_shell>`
-feature can also be used.
+launched child process. Note that most shells only set environment variables
+for child processes, so this will only copy the environment variables that the
+shell process itself has, not the environment variables child processes inside
+the shell see. To copy that enviroment, use either the :ref:`clone-in-kitty
+<clone_shell>` feature or the kitty remote control feature with :option:`kitty
+@ launch --copy-env`.
 
 
 --location

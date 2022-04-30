@@ -3,7 +3,7 @@ Tabs and Windows
 
 |kitty| is capable of running multiple programs organized into tabs and windows.
 The top level of organization is the :term:`OS window <os_window>`. Each OS
-window consists of one or :term:`tabs <tab>`. Each tab consists of one or more
+window consists of one or more :term:`tabs <tab>`. Each tab consists of one or more
 :term:`kitty windows <window>`. The kitty windows can be arranged in multiple
 different :term:`layouts <layout>`, like windows are organized in a tiling
 window manager. The keyboard controls (which are :ref:`all customizable
