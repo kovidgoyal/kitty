@@ -2245,7 +2245,11 @@ class Boss:
             output = '\n'.join(f'{k}={v}' for k, v in os.environ.items())
             self.display_scrollback(w, output, title=_('Current kitty env vars'), report_cursor=False)
 
-    @ac('debug', 'Close all shared SSH connections')
+    @ac('debug', '''
+        Close all shared SSH connections
+
+        See :opt:`share_connections <kitten-ssh.share_connections>` for details.
+        ''')
     def close_shared_ssh_connections(self) -> None:
         cleanup_ssh_control_masters()
 
