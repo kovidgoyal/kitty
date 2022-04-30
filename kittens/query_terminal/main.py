@@ -173,17 +173,22 @@ def do_queries(queries: Iterable[str], cli_opts: QueryTerminalCLIOptions) -> Dic
     actions = tuple(all_queries[x]() for x in queries)
     qstring = ''.join(a.query_code() for a in actions)
     received = b''
+    pat = re.compile(rb'\x1b\[\?.+?c')
 
     def more_needed(data: bytes) -> bool:
         nonlocal received
         received += data
+        has_da1_response = pat.search(received) is not None
+        if has_da1_response:
+            return False
         for a in actions:
             if a.more_needed(received):
                 return True
-        return False
+        return has_da1_response
 
     with TTYIO() as ttyio:
         ttyio.send(qstring)
+        ttyio.send('\x1b[c')  # DA1 query https://vt100.net/docs/vt510-rm/DA1.html
         ttyio.recv(more_needed, timeout=cli_opts.wait_for)
 
     return {a.name: a.output_line() for a in actions}
@@ -214,7 +219,7 @@ If a particular :italic:`query` is unsupported by the running kitty version, the
 :italic:`data` will be blank.
 
 Note that when calling this from another program, be very careful not to perform
-any I/O on the terminal device until thos kitten exits.
+any I/O on the terminal device until this kitten exits.
 
 Available queries are:
 
