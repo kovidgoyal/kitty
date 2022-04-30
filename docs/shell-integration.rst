@@ -4,8 +4,8 @@ Shell integration
 -------------------
 
 kitty has the ability to integrate closely within common shells, such as `zsh
-<https://www.zsh.org/>`_, `fish <https://fishshell.com>`_ and `bash
-<https://www.gnu.org/software/bash/>`_ to enable features such as jumping to
+<https://www.zsh.org/>`__, `fish <https://fishshell.com>`__ and `bash
+<https://www.gnu.org/software/bash/>`__ to enable features such as jumping to
 previous prompts in the scrollback, viewing the output of the last command in
 :program:`less`, using the mouse to move the cursor while editing prompts, etc.
 
@@ -22,7 +22,7 @@ Features
 
 * Click with the mouse anywhere in the current command to move the cursor there
 
-* Hold :kbd:`ctrl+shift` and right-click on any command output in the scrollback
+* Hold :kbd:`Ctrl+Shift` and right-click on any command output in the scrollback
   to view it in a pager
 
 * The current working directory or the command being executed are automatically
@@ -30,7 +30,8 @@ Features
 
 * The text cursor is changed to a bar when editing commands at the shell prompt
 
-* :ref:`clone_shell` with all environment variables and the working directory copied
+* :ref:`clone_shell` with all environment variables and the working directory
+  copied
 
 * Glitch free window resizing even with complex prompts. Achieved by erasing
   the prompt on resize and allowing the shell to redraw it cleanly.
@@ -45,7 +46,7 @@ Configuration
 ---------------
 
 Shell integration is controlled by the :opt:`shell_integration` option. By
-default, all shell integration is enabled. Individual features can be turned
+default, all integration features are enabled. Individual features can be turned
 off or it can be disabled entirely as well. The :opt:`shell_integration` option
 takes a space separated list of keywords:
 
@@ -63,19 +64,20 @@ no-rc
     variable when kitty runs the shell.
 
 no-cursor
-    Turn off changing of the text cursor to a bar when editing text.
+    Turn off changing of the text cursor to a bar when editing shell command
+    line.
 
 no-title
     Turn off setting the kitty window/tab title based on shell state.
-    Note that for the ``fish`` shell kitty relies on fish's native title
-    setting functionality instead.
+    Note that for the fish shell kitty relies on fish's native title setting
+    functionality instead.
 
 no-cwd
     Turn off reporting the current working directory. This is used to allow
     :ac:`new_window_with_cwd` and similar to open windows logged into remote
-    machines using the :doc:`ssh kitten <kittens/ssh>` automatically with the same
-    working directory as the current window.
-    Note that for the ``fish`` shell this will not disable its built-in current
+    machines using the :doc:`ssh kitten <kittens/ssh>` automatically with the
+    same working directory as the current window.
+    Note that for the fish shell this will not disable its built-in current
     working directory reporting.
 
 no-prompt-mark
@@ -84,8 +86,8 @@ no-prompt-mark
 
 no-complete
     Turn off completion for the kitty command.
-    Note that for the ``fish`` shell this does not take effect, since fish
-    already comes with a kitty completion script.
+    Note that for the fish shell this does not take effect, since fish already
+    comes with a kitty completion script.
 
 
 More ways to browse command output
@@ -137,9 +139,9 @@ How it works
 -----------------
 
 At startup, kitty detects if the shell you have configured (either system wide
-or in kitty.conf) is a supported shell. If so, kitty injects some shell specific
-code into the shell, to enable shell integration. How it does so varies for
-different shells.
+or the :opt:`shell` option in :file:`kitty.conf`) is a supported shell. If so,
+kitty injects some shell specific code into the shell, to enable shell
+integration. How it does so varies for different shells.
 
 
 .. tab:: zsh

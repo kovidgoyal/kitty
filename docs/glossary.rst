@@ -67,8 +67,9 @@ Variables that influence kitty behavior
 
 .. envvar:: VISUAL
 
-   The terminal editor (such as ``vi`` or ``nano``) kitty uses, when, for
-   instance, opening :file:`kitty.conf` in response to :sc:`edit_config_file`.
+   The terminal based text editor (such as :program:`vi` or :program:`nano`)
+   kitty uses, when, for instance, opening :file:`kitty.conf` in response to
+   :sc:`edit_config_file`.
 
 .. envvar:: EDITOR
 
@@ -100,6 +101,11 @@ Variables that influence kitty behavior
 
    Set this to the path of a file that will be sourced in the cloned window when
    :ref:`clone-in-kitty <clone_shell>` is used.
+
+.. envvar:: KITTY_DEVELOP_FROM
+
+   Set this to the directory path of the kitty source code and its Python code
+   will be loaded from there. Only works with official binary builds.
 
 
 Variables that kitty sets when running child programs

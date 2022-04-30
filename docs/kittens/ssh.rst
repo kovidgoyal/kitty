@@ -124,7 +124,7 @@ How it works
 The ssh kitten works by having SSH transmit and execute a POSIX sh (or
 :opt:`optionally <kitten-ssh.interpreter>` Python) bootstrap script on the
 remote host using an :opt:`interpreter <kitten-ssh.interpreter>`. This script
-reads setup data over the TTY device, which kitty sends as a base64 encoded
+reads setup data over the TTY device, which kitty sends as a Base64 encoded
 compressed tarball. The script extracts it and places the :opt:`files <kitten-ssh.copy>`
 and sets the :opt:`environment variables <kitten-ssh.env>` before finally
 launching the :opt:`login shell <kitten-ssh.login_shell>` with :opt:`shell

@@ -36,51 +36,51 @@ def options_spec() -> str:
     return '''
 --window-title --title
 The title to set for the new window. By default, title is controlled by the
-child process. The special value :code:`current` will copy the title from the currently
-active window.
+child process. The special value :code:`current` will copy the title from the
+currently active window.
 
 
 --tab-title
 The title for the new tab if launching in a new tab. By default, the title
 of the active window in the tab is used as the tab title. The special value
-:code:`current` will copy the title form the title of the currently active tab.
+:code:`current` will copy the title from the title of the currently active tab.
 
 
 --type
 type=choices
 default=window
 choices=window,tab,os-window,overlay,background,clipboard,primary
-Where to launch the child process, in a new kitty window in the current tab,
-a new tab, or a new OS window or an overlay over the current window.
-Note that if the current window already has an overlay, then it will
-open a new window. The value of background means the process will be
-run in the background. The values clipboard and primary are meant
-to work with :option:`launch --stdin-source` to copy data to the system
-clipboard or primary selection.
+Where to launch the child process, in a new kitty :code:`window` in the current
+tab, a new :code:`tab`, or a new :code:`os-window` or an :code:`overlay` over
+the current window. Note that if the current window already has an overlay, then
+it will open a new window. The value of :code:`background` means the process
+will be run in the background. The values :code:`clipboard` and :code:`primary`
+are meant to work with :option:`--stdin-source <launch --stdin-source>` to copy
+data to the system clipboard or primary selection.
 
 
 --keep-focus --dont-take-focus
 type=bool-set
-Keep the focus on the currently active window instead of switching
-to the newly opened window.
+Keep the focus on the currently active window instead of switching to the newly
+opened window.
 
 
 --cwd
 The working directory for the newly launched child. Use the special value
 :code:`current` to use the working directory of the currently active window.
-The special value :code:`last_reported` uses the last working directory
-reported by the shell (needs :ref:`shell_integration` to work). The special
-value :code:`oldest` works like :code:`current` but uses the working directory
-of the oldest foreground process associated with the currently active window
-rather than the newest foreground process.
+The special value :code:`last_reported` uses the last working directory reported
+by the shell (needs :ref:`shell_integration` to work). The special value
+:code:`oldest` works like :code:`current` but uses the working directory of the
+oldest foreground process associated with the currently active window rather
+than the newest foreground process.
 
 
 --env
 type=list
 Environment variables to set in the child process. Can be specified multiple
-times to set different environment variables.  Syntax: :code:`name=value`.
-Using :code:`name=` will set to empty string and just :code:`name` will
-remove the environment variable.
+times to set different environment variables. Syntax: :code:`name=value`. Using
+:code:`name=` will set to empty string and just :code:`name` will remove the
+environment variable.
 
 
 --hold
@@ -102,121 +102,129 @@ currently active window.
 
 --copy-env
 type=bool-set
-Copy the environment variables from the currently active window into the
-newly launched child process. Note that most shells only set environment
-variables for child processes, so this will only copy the environment
-variables that the shell process itself has not the environment variables
-child processes inside the shell see. To copy that enviroment, use the
-kitty remote control feature with :code:`kitty @launch --copy-env`.
+Copy the environment variables from the currently active window into the newly
+launched child process. Note that most shells only set environment variables for
+child processes, so this will only copy the environment variables that the shell
+process itself has, not the environment variables child processes inside the
+shell see. To copy that enviroment, use the kitty remote control feature with
+:option:`kitty @ launch --copy-env`, and the :ref:`clone-in-kitty <clone_shell>`
+feature can also be used.
 
 
 --location
 type=choices
 default=default
 choices=first,after,before,neighbor,last,vsplit,hsplit,split,default
-Where to place the newly created window when it is added to a tab which
-already has existing windows in it. :code:`after` and :code:`before` place the new
-window before or after the active window. :code:`neighbor` is a synonym for :code:`after`.
-Also applies to creating a new tab, where the value of :code:`after`
-will cause the new tab to be placed next to the current tab instead of at the end.
-The values of :code:`vsplit`, :code:`hsplit` and :code:`split` are only used by the
-:code:`splits` layout and control if the new window is placed in a vertical,
-horizontal or automatic split with the currently active window. The default is
-to place the window in a layout dependent manner, typically, after the
-currently active window.
+Where to place the newly created window when it is added to a tab which already
+has existing windows in it. :code:`after` and :code:`before` place the new
+window before or after the active window. :code:`neighbor` is a synonym for
+:code:`after`. Also applies to creating a new tab, where the value of
+:code:`after` will cause the new tab to be placed next to the current tab
+instead of at the end. The values of :code:`vsplit`, :code:`hsplit` and
+:code:`split` are only used by the :code:`splits` layout and control if the new
+window is placed in a vertical, horizontal or automatic split with the currently
+active window. The default is to place the window in a layout dependent manner,
+typically, after the currently active window.
 
 
 --allow-remote-control
 type=bool-set
-Programs running in this window can control kitty (if remote control is
-enabled). Note that any program with the right level of permissions can still
-write to the pipes of any other program on the same computer and therefore can
-control kitty. It can, however, be useful to block programs running on other
-computers (for example, over ssh) or as other users.
+Programs running in this window can control kitty (even if remote control is not
+enabled in :file:`kitty.conf`). Note that any program with the right level of
+permissions can still write to the pipes of any other program on the same
+computer and therefore can control kitty. It can, however, be useful to block
+programs running on other computers (for example, over SSH) or as other users.
 
 
 --stdin-source
 type=choices
 default=none
 choices=none,@selection,@screen,@screen_scrollback,@alternate,@alternate_scrollback,@first_cmd_output_on_screen,@last_cmd_output,@last_visited_cmd_output
-Pass the screen contents as :code:`STDIN` to the child process. :code:`@selection` is
-the currently selected text. :code:`@screen` is the contents of the currently active
-window. :code:`@screen_scrollback` is the same as :code:`@screen`, but includes the
-scrollback buffer as well. :code:`@alternate` is the secondary screen of the current
-active window. For example if you run a full screen terminal application, the
-secondary screen will be the screen you return to when quitting the application.
-:code:`@first_cmd_output_on_screen` is the output from the first command run in the shell on screen,
-:code:`@last_cmd_output` is the output from the last command run in the shell,
-:code:`@last_visited_cmd_output` is the first output below the last scrolled position via
-scroll_to_prompt, this three needs :ref:`shell_integration` to work.
+Pass the screen contents as :file:`STDIN` to the child process.
+:code:`@selection` is the currently selected text. :code:`@screen` is the
+contents of the currently active window. :code:`@screen_scrollback` is the same
+as :code:`@screen`, but includes the scrollback buffer as well.
+:code:`@alternate` is the secondary screen of the current active window. For
+example if you run a full screen terminal application, the secondary screen will
+be the screen you return to when quitting the application.
+:code:`@first_cmd_output_on_screen` is the output from the first command run in
+the shell on screen, :code:`@last_cmd_output` is the output from the last
+command run in the shell, :code:`@last_visited_cmd_output` is the first output
+below the last scrolled position via :ac:`scroll_to_prompt`, this three needs
+:ref:`shell integration <shell_integration>` to work.
 
 
 --stdin-add-formatting
 type=bool-set
-When using :option:`launch --stdin-source` add formatting escape codes, without this
-only plain text will be sent.
+When using :option:`--stdin-source <launch --stdin-source>` add formatting
+escape codes, without this only plain text will be sent.
 
 
 --stdin-add-line-wrap-markers
 type=bool-set
-When using :option:`launch --stdin-source` add a carriage return at every line wrap
-location (where long lines are wrapped at screen edges). This is useful if you
-want to pipe to program that wants to duplicate the screen layout of the
-screen.
+When using :option:`--stdin-source <launch --stdin-source>` add a carriage
+return at every line wrap location (where long lines are wrapped at screen
+edges). This is useful if you want to pipe to program that wants to duplicate
+the screen layout of the screen.
 
 
 --marker
 Create a marker that highlights text in the newly created window. The syntax is
-the same as for the :code:`toggle_marker` map action (see :doc:`/marks`).
+the same as for the :ac:`toggle_marker` action (see :doc:`/marks`).
 
 
 --os-window-class
-Set the WM_CLASS property on X11 and the application id property on Wayland for
-the newly created OS Window when using :option:`launch --type`=os-window.
-Defaults to whatever is used by the parent kitty process, which in turn
-defaults to :code:`kitty`.
+Set the *WM_CLASS* property on X11 and the application id property on Wayland
+for the newly created OS window when using :option:`--type=os-window
+<launch --type>`. Defaults to whatever is used by the parent kitty process,
+which in turn defaults to :code:`kitty`.
 
 
 --os-window-name
-Set the WM_NAME property on X11 for the newly created OS Window when using
-:option:`launch --type`=os-window. Defaults to :option:`launch --os-window-class`.
+Set the *WM_NAME* property on X11 for the newly created OS Window when using
+:option:`--type=os-window <launch --type>`. Defaults to
+:option:`--os-window-class <launch --os-window-class>`.
 
 
 --os-window-title
 Set the title for the newly created OS window. This title will override any
-titles set by programs running in kitty. The special value :code:`current`
-will use the title of the current OS Window, if any.
+titles set by programs running in kitty. The special value :code:`current` will
+use the title of the current OS window, if any.
 
 
 --logo
-Path to a PNG image to use as the logo for the newly created window. See :opt:`window_logo_path`.
+Path to a PNG image to use as the logo for the newly created window. See
+:opt:`window_logo_path`.
 
 
 --logo-position
-The position for the window logo. Only takes effect if :option:`--logo` is specified. See :opt:`window_logo_position`.
+The position for the window logo. Only takes effect if :option:`--logo` is
+specified. See :opt:`window_logo_position`.
 
 
 --logo-alpha
 type=float
 default=-1
-The amount the window logo should be faded into the background.
-Only takes effect if :option:`--logo` is specified. See :opt:`window_logo_position`.
+The amount the window logo should be faded into the background. Only takes
+effect if :option:`--logo` is specified. See :opt:`window_logo_position`.
 
 
 --color
 type=list
-Change colors in the newly launched window. You can either specify a path to a .conf
-file with the same syntax as kitty.conf to read the colors from, or specify them
-individually, for example: ``--color background=white`` ``--color foreground=red``
+Change colors in the newly launched window. You can either specify a path to a
+:file:`.conf` file with the same syntax as :file:`kitty.conf` to read the colors
+from, or specify them individually, for example: ``--color background=white``
+``--color foreground=red``
 
 
 --watcher -w
 type=list
-Path to a python file. Appropriately named functions in this file will be called
-for various events, such as when the window is resized, focused or closed. See the section
-on watchers in the launch command documentation: :ref:`watchers`. Relative paths are
-resolved relative to the kitty config directory. Global watchers for all windows can be
-specified with :opt:`watcher`.
+Path to a Python file. Appropriately named functions in this file will be called
+for various events, such as when the window is resized, focused or closed. See
+the section on watchers in the launch command documentation: :ref:`watchers`.
+Relative paths are resolved relative to the :ref:`kitty config directory
+<confloc>`. Global watchers for all windows can be specified with
+:opt:`watcher` in :file:`kitty.conf`.
 '''
 
 

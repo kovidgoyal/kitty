@@ -1,12 +1,13 @@
 Tabs and Windows
 -------------------
 
-|kitty| is capable of running multiple programs organized into tabs and
-windows. The top level of organization is the *Tab*. Each tab consists
-of one or more *windows*. The windows can be arranged in multiple
-different layouts, like windows are organized in a tiling window
-manager. The keyboard controls (which are all customizable) for tabs and
-windows are:
+|kitty| is capable of running multiple programs organized into tabs and windows.
+The top level of organization is the :term:`OS window <os_window>`. Each OS
+window consists of one or :term:`tabs <tab>`. Each tab consists of one or more
+:term:`kitty windows <window>`. The kitty windows can be arranged in multiple
+different :term:`layouts <layout>`, like windows are organized in a tiling
+window manager. The keyboard controls (which are :ref:`all customizable
+<conf-kitty-shortcuts>`) for tabs and windows are:
 
 Scrolling
 ~~~~~~~~~~~~~~
@@ -64,8 +65,9 @@ Focus specific window       :sc:`first_window`, :sc:`second_window` ... :sc:`ten
                             (clockwise from the top-left)
 ========================    =======================
 
-Additionally, you can define shortcuts in :file:`kitty.conf` to focus neighboring
-windows and move windows around (similar to window movement in vim)::
+Additionally, you can define shortcuts in :file:`kitty.conf` to focus
+neighboring windows and move windows around (similar to window movement in
+:program:`vim`)::
 
    map ctrl+left neighboring_window left
    map shift+left move_window right
@@ -77,20 +79,20 @@ You can also define a shortcut to switch to the previously active window::
 
    map ctrl+p nth_window -1
 
-``nth_window`` will focus the nth window for positive numbers (starting from
+:ac:`nth_window` will focus the nth window for positive numbers (starting from
 zero) and the previously active windows for negative numbers.
 
-To switch to the nth OS window, you can define ``nth_os_window``. Only positive
-numbers are accepted, starting from one.
+To switch to the nth OS window, you can define :ac:`nth_os_window`. Only
+positive numbers are accepted, starting from one.
 
 .. _detach_window:
 
-You can define shortcuts to detach the current window and
-move it to another tab or another OS window::
+You can define shortcuts to detach the current window and move it to another tab
+or another OS window::
 
     # moves the window into a new OS window
     map ctrl+f2 detach_window
-    # moves the window into a new Tab
+    # moves the window into a new tab
     map ctrl+f3 detach_window new-tab
     # moves the window into the previously active tab
     map ctrl+f3 detach_window tab-prev
@@ -106,8 +108,8 @@ Similarly, you can detach the current tab, with::
     # asks which OS Window to move the tab into
     map ctrl+f4 detach_tab ask
 
-Finally, you can define a shortcut to close all windows in a tab other than
-the currently active window::
+Finally, you can define a shortcut to close all windows in a tab other than the
+currently active window::
 
     map f9 close_other_windows_in_tab
 
@@ -124,18 +126,18 @@ Action                              Shortcut
 Copy to clipboard                   :sc:`copy_to_clipboard` (also :kbd:`⌘+c` on macOS)
 Paste from clipboard                :sc:`paste_from_clipboard` (also :kbd:`⌘+v` on macOS)
 Paste from selection                :sc:`paste_from_selection`
+Pass selection to program           :sc:`pass_selection_to_program`
 Increase font size                  :sc:`increase_font_size` (also :kbd:`⌘++` on macOS)
 Decrease font size                  :sc:`decrease_font_size` (also :kbd:`⌘+-` on macOS)
 Restore font size                   :sc:`reset_font_size` (also :kbd:`⌘+0` on macOS)
 Toggle fullscreen                   :sc:`toggle_fullscreen` (also :kbd:`⌃+⌘+f` on macOS)
 Toggle maximized                    :sc:`toggle_maximized`
-Input unicode character             :sc:`input_unicode_character` (also :kbd:`⌃+⌘+space` on macOS)
+Input Unicode character             :sc:`input_unicode_character` (also :kbd:`⌃+⌘+space` on macOS)
 Open URL in web browser             :sc:`open_url`
 Reset the terminal                  :sc:`reset_terminal` (also :kbd:`⌥+⌘+r` on macOS)
+Edit :file:`kitty.conf`             :sc:`edit_config_file` (also :kbd:`⌘+,` on macOS)
 Reload :file:`kitty.conf`           :sc:`reload_config_file` (also :kbd:`⌃+⌘+,` on macOS)
 Debug :file:`kitty.conf`            :sc:`debug_config` (also :kbd:`⌥+⌘+,` on macOS)
-Pass current selection to program   :sc:`pass_selection_to_program`
-Edit |kitty| config file            :sc:`edit_config_file` (also :kbd:`⌘+,` on macOS)
 Open a |kitty| shell                :sc:`kitty_shell`
 Increase background opacity         :sc:`increase_background_opacity`
 Decrease background opacity         :sc:`decrease_background_opacity`

@@ -20,8 +20,8 @@ Extend with kittens
    kittens/*
 
 |kitty| has a framework for easily creating terminal programs that make use of
-its advanced features. These programs are called kittens. They are used both
-to add features to |kitty| itself and to create useful standalone programs.
+its advanced features. These programs are called kittens. They are used both to
+add features to |kitty| itself and to create useful standalone programs.
 Some prominent kittens:
 
 :doc:`icat <kittens/icat>`
@@ -33,7 +33,7 @@ Some prominent kittens:
     images
 
 
-:doc:`Unicode Input <kittens/unicode_input>`
+:doc:`Unicode input <kittens/unicode_input>`
     Easily input arbitrary Unicode characters in |kitty| by name or hex code.
 
 
@@ -48,29 +48,31 @@ Some prominent kittens:
 
 
 :doc:`Transfer files <kittens/transfer>`
-    Transfer files and directories seamlessly and easily from remote machines over your existing
-    SSH sessions with a simple command.
+    Transfer files and directories seamlessly and easily from remote machines
+    over your existing SSH sessions with a simple command.
 
 
 :doc:`Hyperlinked grep <kittens/hyperlinked_grep>`
     Search your files using `ripgrep <https://github.com/BurntSushi/ripgrep>`__
     and open the results directly in your favorite editor in the terminal,
-    at the line containing the search result, simply by clicking on the result you want.
+    at the line containing the search result, simply by clicking on the result
+    you want.
 
 
 :doc:`Broadcast <kittens/broadcast>`
-    Type in one :term:`kitty window <window>` and have it broadcast to all (or a subset) of
-    other :term:`kitty windows <window>`.
+    Type in one :term:`kitty window <window>` and have it broadcast to all (or a
+    subset) of other :term:`kitty windows <window>`.
 
 
 :doc:`SSH <kittens/ssh>`
-    SSH with automatic shell integration, connection re-use for low latency and easy cloning
-    of local shell and editor configuration to the remote machine.
+    SSH with automatic :ref:`shell integration <shell_integration>`, connection
+    re-use for low latency and easy cloning of local shell and editor
+    configuration to the remote host.
 
 
 :doc:`Panel <kittens/panel>`
-    Draw a GPU accelerated dock panel on your desktop showing the output
-    from an arbitrary terminal program.
+    Draw a GPU accelerated dock panel on your desktop showing the output from an
+    arbitrary terminal program.
 
 
 :doc:`Clipboard <kittens/clipboard>`
