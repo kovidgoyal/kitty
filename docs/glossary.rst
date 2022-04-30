@@ -189,3 +189,21 @@ Variables that kitty sets when running child programs
 
    Set when enabling :ref:`shell_integration`. It is automatically removed by
    the shell integration scripts.
+
+
+.. envvar:: ZDOTDIR
+
+   Set when enabling :ref:`shell_integration` with :program:`zsh`, allowing
+   :program:`zsh` to automatically load the integration script.
+
+
+.. envvar:: XDG_DATA_DIRS
+
+   Set when enabling :ref:`shell_integration` with :program:`fish`, allowing
+   :program:`fish` to automatically load the integration script.
+
+
+.. envvar:: ENV
+
+   Set when enabling :ref:`shell_integration` with :program:`bash`, allowing
+   :program:`bash` to automatically load the integration script.
