@@ -28,6 +28,6 @@ print_stack_trace(void) {
 #else
 static inline void
 print_stack_trace(void) {
-    fprintf(stderr, "stack trace functionality not available");
+    fprintf(stderr, "Stack trace functionality not available.\n");
 }
 #endif
