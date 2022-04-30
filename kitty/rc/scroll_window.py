@@ -35,6 +35,8 @@ class ScrollWindow(RemoteCommand):
     options_spec = MATCH_WINDOW_OPTION
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
+        if len(args) < 1:
+            self.fatal('Scroll amount must be specified')
         amt = args[0]
         amount: Tuple[Union[str, int], Optional[str]] = (amt, None)
         if amt not in ('start', 'end'):

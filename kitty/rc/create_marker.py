@@ -37,7 +37,10 @@ Apply marker to the window this command is run in, rather than the active window
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) < 2:
             self.fatal('Invalid marker specification: {}'.format(' '.join(args)))
-        parse_marker_spec(args[0], args[1:])
+        try:
+            parse_marker_spec(args[0], args[1:])
+        except Exception as err:
+            self.fatal(f"Failed to parse marker specification {' '.join(args)} with error: {err}")
         return {'match': opts.match, 'self': opts.self, 'marker_spec': args}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
