@@ -147,6 +147,7 @@ setCursorImage(_GLFWwindow* window, bool on_theme_change) {
         cursorWayland->yhot = image->hotspot_y;
     }
 
+    debug("Calling wl_pointer_set_cursor in setCursorImage with surface: %p\n", (void*)surface);
     wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.serial,
                           surface,
                           cursorWayland->xhot / scale,
@@ -1397,6 +1398,7 @@ static void lockPointer(_GLFWwindow* window)
     window->wl.pointerLock.relativePointer = relativePointer;
     window->wl.pointerLock.lockedPointer = lockedPointer;
 
+    debug("Calling wl_pointer_set_cursor in lockPointer with surface: %p\n", NULL);
     wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.serial,
                           NULL, 0, 0);
 }
@@ -1433,6 +1435,7 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
     }
     else if (window->cursorMode == GLFW_CURSOR_HIDDEN)
     {
+        debug("Calling wl_pointer_set_cursor in _glfwPlatformSetCursor with surface: %p\n", NULL);
         wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.serial, NULL, 0, 0);
     }
 }

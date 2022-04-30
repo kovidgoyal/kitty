@@ -147,6 +147,7 @@ static void setCursor(GLFWCursorShape shape, _GLFWwindow* window)
     buffer = wl_cursor_image_get_buffer(image);
     if (!buffer)
         return;
+    debug("Calling wl_pointer_set_cursor in setCursor with surface: %p\n", (void*)surface);
     wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.serial,
                           surface,
                           image->hotspot_x / scale,
