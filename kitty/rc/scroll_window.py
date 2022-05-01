@@ -5,8 +5,8 @@
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType,
-    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions,
+    RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
