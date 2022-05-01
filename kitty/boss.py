@@ -342,7 +342,8 @@ class Boss:
 
     def match_windows(self, match: str) -> Iterator[Window]:
         if match == 'all':
-            return self.all_windows
+            yield from self.all_windows
+            return
         from .search_query_parser import search
         tab = self.active_tab
 
