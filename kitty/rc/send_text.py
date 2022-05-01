@@ -85,6 +85,11 @@ type=bool-set
 Match all windows.
 
 
+--exclude-active
+type=bool-set
+Do not send text to the active window, even if it is one of the matched windows.
+
+
 --stdin
 type=bool-set
 Read the text to be sent from :italic:`stdin`. Note that in this case the text is sent as is,
@@ -94,11 +99,6 @@ not interpreted for escapes. If stdin is a terminal, you can press :kbd:`Ctrl-D`
 --from-file
 Path to a file whose contents you wish to send. Note that in this case the file contents
 are sent as is, not interpreted for escapes.
-
-
---exclude-active
-type=bool-set
-Do not send text to the active window, even if it is one of the matched windows.
 '''
     no_response = True
     argspec = '[TEXT TO SEND]'
@@ -165,6 +165,7 @@ Do not send text to the active window, even if it is one of the matched windows.
         return chain()
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+        sid = payload_get('session_id', '')
         if payload_get('all'):
             windows: List[Optional[Window]] = list(boss.all_windows)
         else:
@@ -172,14 +173,17 @@ Do not send text to the active window, even if it is one of the matched windows.
             match = payload_get('match')
             if match:
                 windows = list(boss.match_windows(match))
+                if not windows and not sid:
+                    raise MatchError(payload_get('match'))
             mt = payload_get('match_tab')
             if mt:
                 windows = []
                 tabs = tuple(boss.match_tabs(mt))
-                if not tabs:
+                if not tabs and not sid:
                     raise MatchError(payload_get('match_tab'), 'tabs')
                 for tab in tabs:
-                    windows += tuple(tab)
+                    if tab:
+                        windows += tuple(tab)
         pdata: str = payload_get('data')
         encoding, _, q = pdata.partition(':')
         session = ''
@@ -199,7 +203,6 @@ Do not send text to the active window, even if it is one of the matched windows.
             raise TypeError(f'Invalid encoding for send-text data: {encoding}')
         exclude_active = payload_get('exclude_active')
         actual_windows = (w for w in windows if w is not None and (not exclude_active or w is not boss.active_window))
-        sid = payload_get('session_id', '')
 
         def create_or_update_session() -> Session:
             s = sessions_map.setdefault(sid, Session(sid))
