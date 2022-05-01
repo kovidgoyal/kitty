@@ -36,27 +36,18 @@ Detach the tab this command is run in, rather than the active tab.
         return {'match': opts.match, 'target_tab': opts.target_tab, 'self': opts.self}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        match = payload_get('match')
-        if match:
-            tabs = list(boss.match_tabs(match))
-            if not tabs:
-                raise MatchError(match)
-        else:
-            if payload_get('self') and window:
-                tab = window.tabref() or boss.active_tab
-            else:
-                tab = boss.active_tab
-            tabs = [tab] if tab else []
         match = payload_get('target_tab')
         kwargs = {}
         if match:
             targets = tuple(boss.match_tabs(match))
             if not targets:
                 raise MatchError(match, 'tabs')
-            kwargs['target_os_window_id'] = targets[0].os_window_id
+            if targets[0]:
+                kwargs['target_os_window_id'] = targets[0].os_window_id
 
-        for tab in tabs:
-            boss._move_tab_to(tab=tab, **kwargs)
+        for tab in self.tabs_for_match_payload(boss, window, payload_get):
+            if tab:
+                boss._move_tab_to(tab=tab, **kwargs)
         return None
 
 

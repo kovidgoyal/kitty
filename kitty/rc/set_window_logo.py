@@ -113,7 +113,8 @@ failed, the command will exit with a success code.
         alpha = float(payload_get('alpha', '-1'))
         position = payload_get('position') or ''
         for window in self.windows_for_match_payload(boss, window, payload_get):
-            window.set_logo(path, position, alpha)
+            if window:
+                window.set_logo(path, position, alpha)
         return None
 
 

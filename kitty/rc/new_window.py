@@ -105,11 +105,13 @@ the id of the new window will not be printed out.
                     focus_os_window(os_window_id)
             return None if not aw or payload_get('no_response') else str(aw.id)
 
-        tab = self.tabs_for_match_payload(boss, window, payload_get)[0]
-        ans = tab.new_special_window(w)
-        if payload_get('keep_focus') and old_window:
-            boss.set_active_window(old_window)
-        return None if payload_get('no_response') else str(ans.id)
+        tabs = self.tabs_for_match_payload(boss, window, payload_get)
+        if tabs and tabs[0]:
+            ans = tabs[0].new_special_window(w)
+            if payload_get('keep_focus') and old_window:
+                boss.set_active_window(old_window)
+            return None if payload_get('no_response') else str(ans.id)
+        return None
 
 
 new_window = NewWindow()

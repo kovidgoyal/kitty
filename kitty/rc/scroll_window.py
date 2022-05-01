@@ -46,17 +46,12 @@ class ScrollWindow(RemoteCommand):
             q = int(amt.rstrip('+-plu'))
             amount = q * mult, 'p' if pages else ('u' if unscroll else 'l')
 
-        return {'match': opts.match, 'amount': amount}
+        # defaults to scroll the window this command is run in
+        return {'match': opts.match, 'amount': amount, 'self': True}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        windows = [window or boss.active_window]
-        match = payload_get('match')
         amt = payload_get('amount')
-        if match:
-            windows = list(boss.match_windows(match))
-            if not windows:
-                raise MatchError(match)
-        for window in windows:
+        for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:
                 if amt[0] in ('start', 'end'):
                     getattr(window, {'start': 'scroll_home'}.get(amt[0], 'scroll_end'))()

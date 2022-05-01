@@ -33,18 +33,13 @@ class SignalChild(RemoteCommand):
     argspec = '[SIGNAL_NAME ...]'
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'match': opts.match, 'signals': [x.upper() for x in args] or ['SIGINT']}
+        # defaults to signal the window this command is run in
+        return {'match': opts.match, 'self': True, 'signals': [x.upper() for x in args] or ['SIGINT']}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         import signal
-        windows = [window or boss.active_window]
-        match = payload_get('match')
-        if match:
-            windows = list(boss.match_windows(match))
-            if not windows:
-                raise MatchError(match)
         signals = tuple(getattr(signal, x) for x in payload_get('signals'))
-        for window in windows:
+        for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:
                 window.signal_child(*signals)
         return None

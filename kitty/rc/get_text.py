@@ -80,7 +80,11 @@ Get text from the window this command is run in, rather than the active window.
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         from kitty.window import CommandOutput
-        window = self.windows_for_match_payload(boss, window, payload_get)[0]
+        windows = self.windows_for_match_payload(boss, window, payload_get)
+        if windows and windows[0]:
+            window = windows[0]
+        else:
+            return None
         if payload_get('extent') == 'selection':
             ans = window.text_for_selection(as_ansi=payload_get('ansi'))
         elif payload_get('extent') == 'first_cmd_output_on_screen':

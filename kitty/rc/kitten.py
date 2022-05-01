@@ -38,14 +38,8 @@ class Kitten(RemoteCommand):
         return {'match': opts.match, 'args': list(args)[1:], 'kitten': args[0]}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        windows = [window or boss.active_window]
-        match = payload_get('match')
-        if match:
-            windows = list(boss.match_windows(match))
-            if not windows:
-                raise MatchError(match)
         retval = None
-        for window in windows:
+        for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:
                 retval = boss._run_kitten(payload_get('kitten'), args=tuple(payload_get('args') or ()), window=window)
                 break
