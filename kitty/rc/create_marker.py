@@ -46,7 +46,8 @@ Apply marker to the window this command is run in, rather than the active window
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         args = payload_get('marker_spec')
         for window in self.windows_for_match_payload(boss, window, payload_get):
-            window.set_marker(args)
+            if window:
+                window.set_marker(args)
         return None
 
 

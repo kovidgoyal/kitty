@@ -81,9 +81,11 @@ instead of the active tab
             if val is None:
                 val = default_value
             setattr(opts, key, val)
-        tab = self.tabs_for_match_payload(boss, window, payload_get)[0]
-        w = do_launch(boss, opts, payload_get('args') or [], target_tab=tab)
-        return None if payload_get('no_response') else str(getattr(w, 'id', 0))
+        tabs = self.tabs_for_match_payload(boss, window, payload_get)
+        if tabs and tabs[0]:
+            w = do_launch(boss, opts, payload_get('args') or [], target_tab=tabs[0])
+            return None if payload_get('no_response') else str(getattr(w, 'id', 0))
+        return None
 
 
 launch = Launch()

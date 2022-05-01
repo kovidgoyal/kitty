@@ -113,14 +113,15 @@ this option, any color arguments are ignored and :option:`kitty @ set-colors --c
         if payload_get('reset'):
             colors = {k: int(v) for k, v in boss.startup_colors.items()}
             colors['cursor_text_color'] = None if boss.startup_cursor_text_color is None else int(boss.startup_cursor_text_color)
-        profiles = tuple(w.screen.color_profile for w in windows)
+        profiles = tuple(w.screen.color_profile for w in windows if w)
         patch_color_profiles(colors, profiles, payload_get('configured'))
         boss.patch_colors(colors, payload_get('configured'))
         default_bg_changed = 'background' in colors
         for w in windows:
-            if default_bg_changed:
-                boss.default_bg_changed_for(w.id)
-            w.refresh()
+            if w:
+                if default_bg_changed:
+                    boss.default_bg_changed_for(w.id)
+                w.refresh()
         return None
 
 

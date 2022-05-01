@@ -84,7 +84,7 @@ using this option means that you will not be notified of failures.
         windows = self.windows_for_match_payload(boss, window, payload_get)
         if windows:
             ac = payload_get('action')
-            for os_window_id in {w.os_window_id for w in windows}:
+            for os_window_id in {w.os_window_id for w in windows if w}:
                 if ac == 'resize':
                     boss.resize_os_window(
                         os_window_id, width=payload_get('width'), height=payload_get('height'),

@@ -4,8 +4,8 @@
 from typing import TYPE_CHECKING, Optional
 
 from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType,
-    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions,
+    RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -40,16 +40,12 @@ again. If you want to allow other programs to change it afterwards, use this opt
         title = ' '.join(args)
         if title:
             ans['title'] = title
+        # defaults to set the window title this command is run in
+        ans['self'] = True
         return ans
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        windows = [window or boss.active_window]
-        match = payload_get('match')
-        if match:
-            windows = list(boss.match_windows(match))
-            if not windows:
-                raise MatchError(match)
-        for window in windows:
+        for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:
                 if payload_get('temporary'):
                     window.override_title = None

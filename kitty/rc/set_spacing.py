@@ -112,10 +112,11 @@ windows).
             patch_configured_edges(get_options(), settings)
 
         for w in windows:
-            patch_window_edges(w, settings)
-            tab = w.tabref()
-            if tab is not None:
-                dirtied_tabs[tab.id] = tab
+            if w:
+                patch_window_edges(w, settings)
+                tab = w.tabref()
+                if tab is not None:
+                    dirtied_tabs[tab.id] = tab
 
         for tab in dirtied_tabs.values():
             tab.relayout()

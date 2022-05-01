@@ -104,7 +104,7 @@ failed, the command will exit with a success code.
                 return AsyncResponse()
 
         windows = self.windows_for_payload(boss, window, payload_get)
-        os_windows = tuple({w.os_window_id for w in windows})
+        os_windows = tuple({w.os_window_id for w in windows if w})
         layout = payload_get('layout')
         if data == '-':
             path = None
