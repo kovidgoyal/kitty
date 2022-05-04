@@ -2756,13 +2756,15 @@ get_line_from_offset(void *x, int y) {
     return range_line_(r->screen, r->start + y);
 }
 
-typedef enum FindCmdOutputDirections
+
+/* Matches kitty.window.CommandOutput */
+typedef enum CommandOutputs
 {
     LAST_RUN_CMD = 0,
-    LAST_NON_EMPTY_CMD = 1,
-    FIRST_ON_SCREEN = 2,
-    LAST_VISISTED_CMD = 3,
-} FindCmdOutputDirection;
+    FIRST_ON_SCREEN = 1,
+    LAST_VISISTED_CMD = 2,
+    LAST_NON_EMPTY_CMD = 3,
+} CommandOutput;
 
 static bool
 find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsigned int scrolled_by, int direction, bool on_screen_only) {
@@ -2863,19 +2865,19 @@ cmd_output(Screen *self, PyObject *args) {
     bool found = false;
 
     switch (which) {
-        case 0: // last run cmd
+        case LAST_RUN_CMD: // last run cmd
             // When scrolled, the starting point of the search for the last command output
             // is actually out of the screen, so add the number of scrolled lines
             found = find_cmd_output(self, &oo, self->cursor->y + self->scrolled_by, self->scrolled_by, LAST_RUN_CMD, false);
             break;
-        case 1: // first on screen
+        case FIRST_ON_SCREEN: // first on screen
             found = find_cmd_output(self, &oo, 0, self->scrolled_by, FIRST_ON_SCREEN, true);
             break;
-        case 2: // last visited cmd
+        case LAST_VISISTED_CMD: // last visited cmd
             if (self->last_visited_prompt.scrolled_by <= self->historybuf->count && self->last_visited_prompt.is_set) {
                 found = find_cmd_output(self, &oo, self->last_visited_prompt.y, self->last_visited_prompt.scrolled_by, LAST_VISISTED_CMD, false);
             } break;
-        case 3: // last non-empty cmd output
+        case LAST_NON_EMPTY_CMD: // last non-empty cmd output
             // When scrolled, the starting point of the search for the last command output
             // is actually out of the screen, so add the number of scrolled lines
             found = find_cmd_output(self, &oo, self->cursor->y + self->scrolled_by, self->scrolled_by, LAST_NON_EMPTY_CMD, false);

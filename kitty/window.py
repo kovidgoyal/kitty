@@ -162,6 +162,7 @@ class DynamicColor(IntEnum):
     default_fg, default_bg, cursor_color, highlight_fg, highlight_bg = range(1, 6)
 
 
+# Matches kitty/screen.c/CommandOutput
 class CommandOutput(IntEnum):
     last_run, first_on_screen, last_visited, last_non_empty_run = 0, 1, 2, 3
 
