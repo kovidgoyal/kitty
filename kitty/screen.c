@@ -2767,7 +2767,7 @@ typedef enum CommandOutputs
 } CommandOutput;
 
 static bool
-find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsigned int scrolled_by, int direction, bool on_screen_only) {
+find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsigned int scrolled_by, CommandOutput direction, bool on_screen_only) {
     bool found_prompt = false, found_output = false, found_next_prompt = false;
     int start = 0, end = 0;
     int init_y = start_screen_y - scrolled_by, y1 = init_y, y2 = init_y;
@@ -2855,7 +2855,7 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
 
 static PyObject*
 cmd_output(Screen *self, PyObject *args) {
-    unsigned int which = 0;
+    CommandOutput which = LAST_RUN_CMD;
     DECREF_AFTER_FUNCTION PyObject *which_args = PyTuple_GetSlice(args, 0, 1);
     DECREF_AFTER_FUNCTION PyObject *as_text_args = PyTuple_GetSlice(args, 1, PyTuple_GET_SIZE(args));
     if (!which_args || !as_text_args) return NULL;
