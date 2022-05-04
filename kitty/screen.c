@@ -2756,6 +2756,14 @@ get_line_from_offset(void *x, int y) {
     return range_line_(r->screen, r->start + y);
 }
 
+typedef enum FindCmdOutputDirections
+{
+    LAST_RUN_CMD = 0,
+    LAST_NON_EMPTY_CMD = 1,
+    FIRST_ON_SCREEN = 2,
+    LAST_VISISTED_CMD = 3,
+} FindCmdOutputDirection;
+
 static bool
 find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsigned int scrolled_by, int direction, bool on_screen_only) {
     bool found_prompt = false, found_output = false, found_next_prompt = false;
@@ -2767,12 +2775,12 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
     Line *line = NULL;
 
     // find around
-    if (direction == 0) {
+    if (direction == LAST_VISISTED_CMD) {
         line = checked_range_line(self, y1);
         if (line && line->attrs.prompt_kind == PROMPT_START) {
             found_prompt = true;
             // change direction to downwards to find command output
-            direction = 1;
+            direction = FIRST_ON_SCREEN;
         } else if (line && line->attrs.prompt_kind == OUTPUT_START && !line->attrs.continued) {
             found_output = true; start = y1;
             found_prompt = true;
@@ -2782,20 +2790,20 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
     }
 
     // find upwards
-    if (direction <= 0) {
+    if (direction != FIRST_ON_SCREEN) {
         // find around: only needs to find the first output start
         // find upwards: find prompt after the output, and the first output
         while (y1 >= upward_limit) {
             line = checked_range_line(self, y1);
             if (line && line->attrs.prompt_kind == PROMPT_START && !line->attrs.continued) {
-                if (direction == 0) {
+                if (direction == LAST_VISISTED_CMD) {
                     // find around: stop at prompt start
                     start = y1 + 1;
                     break;
                 }
                 found_next_prompt = true; end = y1;
             } else if (line && line->attrs.prompt_kind == OUTPUT_START && !line->attrs.continued) {
-                if (direction == -2 && y1 == init_y) {
+                if (direction == LAST_NON_EMPTY_CMD && y1 == init_y) {
                     // Commands without output don't have an OUTPUT_START
                     // marker with the exception of the currently running
                     // command. It gets an OUTPUT_START even before the
@@ -2816,7 +2824,7 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
     }
 
     // find downwards
-    if (direction >= 0) {
+    if (direction == LAST_VISISTED_CMD || direction == FIRST_ON_SCREEN) {
         while (y2 <= downward_limit) {
             if (on_screen_only && !found_output && y2 > screen_limit) break;
             line = checked_range_line(self, y2);
@@ -2836,7 +2844,7 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
     if (found_next_prompt) {
         oo->num_lines = end >= start ? end - start : 0;
     } else if (found_output) {
-        end = direction < 0 ? init_y : downward_limit;
+        end = (direction == LAST_RUN_CMD || direction == LAST_NON_EMPTY_CMD) ? init_y : downward_limit;
         oo->num_lines = end >= start ? end - start : 0;
     } else return false;
     oo->start = start;
@@ -2858,19 +2866,19 @@ cmd_output(Screen *self, PyObject *args) {
         case 0: // last run cmd
             // When scrolled, the starting point of the search for the last command output
             // is actually out of the screen, so add the number of scrolled lines
-            found = find_cmd_output(self, &oo, self->cursor->y + self->scrolled_by, self->scrolled_by, -1, false);
+            found = find_cmd_output(self, &oo, self->cursor->y + self->scrolled_by, self->scrolled_by, LAST_RUN_CMD, false);
             break;
         case 1: // first on screen
-            found = find_cmd_output(self, &oo, 0, self->scrolled_by, 1, true);
+            found = find_cmd_output(self, &oo, 0, self->scrolled_by, FIRST_ON_SCREEN, true);
             break;
         case 2: // last visited cmd
             if (self->last_visited_prompt.scrolled_by <= self->historybuf->count && self->last_visited_prompt.is_set) {
-                found = find_cmd_output(self, &oo, self->last_visited_prompt.y, self->last_visited_prompt.scrolled_by, 0, false);
+                found = find_cmd_output(self, &oo, self->last_visited_prompt.y, self->last_visited_prompt.scrolled_by, LAST_VISISTED_CMD, false);
             } break;
         case 3: // last non-empty cmd output
             // When scrolled, the starting point of the search for the last command output
             // is actually out of the screen, so add the number of scrolled lines
-            found = find_cmd_output(self, &oo, self->cursor->y + self->scrolled_by, self->scrolled_by, -2, false);
+            found = find_cmd_output(self, &oo, self->cursor->y + self->scrolled_by, self->scrolled_by, LAST_NON_EMPTY_CMD, false);
             break;
         default:
             PyErr_Format(PyExc_KeyError, "%u is not a valid type of command", which);
