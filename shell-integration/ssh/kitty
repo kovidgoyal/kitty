@@ -23,9 +23,9 @@ exec_kitty() {
 }
 
 lock_dir=""
-script_path=$(command readlink -f "$0" 2> /dev/null)
-[ $? == 0 ] || script_path="$0"
-script_dir=$(command dirname "$script_path")
+script_path="$(command readlink -f "$0" 2> /dev/null)"
+[ $? = 0 ] || script_path="$0"
+script_dir="$(command dirname "$script_path")"
 install_dir="$(command dirname "$script_dir")/install"
 remote_kitty_version_file="$script_dir/../version"
 local_kitty_version_file="$install_dir/installed-kitty-version"
