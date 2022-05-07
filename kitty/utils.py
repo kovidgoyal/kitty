@@ -974,8 +974,13 @@ def path_from_osc7_url(url: str) -> str:
 
 @run_once
 def macos_version() -> Tuple[int, ...]:
-    import platform
-    return tuple(map(int, platform.mac_ver()[0].split('.')))
+    # platform.mac_ver does not work thanks to Apple's stupid "hardening", so just use sw_vers
+    import subprocess
+    try:
+        o = subprocess.check_output(['sw_vers', '-productVersion'], stderr=subprocess.STDOUT).decode()
+    except Exception:
+        return 0, 0, 0
+    return tuple(map(int, o.strip().split('.')))
 
 
 @lru_cache(maxsize=2)
