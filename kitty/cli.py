@@ -787,9 +787,13 @@ def parse_args(
 SYSTEM_CONF = f'/etc/xdg/{appname}/{appname}.conf'
 
 
+def default_config_paths(conf_paths: Sequence[str]) -> Tuple[str, ...]:
+    return tuple(resolve_config(SYSTEM_CONF, defconf, conf_paths))
+
+
 def create_opts(args: CLIOptions, accumulate_bad_lines: Optional[List[BadLineType]] = None) -> KittyOpts:
     from .config import load_config
-    config = tuple(resolve_config(SYSTEM_CONF, defconf, args.config))
+    config = default_config_paths(args.config)
     # Does not cover the case where `name =` when `=` is the value.
     pat = re.compile(r'^([a-zA-Z0-9_]+)[ \t]*=')
     overrides = (pat.sub(r'\1 ', a.lstrip()) for a in args.override or ())
@@ -799,6 +803,6 @@ def create_opts(args: CLIOptions, accumulate_bad_lines: Optional[List[BadLineTyp
 
 def create_default_opts() -> KittyOpts:
     from .config import load_config
-    config = tuple(resolve_config(SYSTEM_CONF, defconf, ()))
+    config = default_config_paths(())
     opts = load_config(*config)
     return opts

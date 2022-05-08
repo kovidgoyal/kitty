@@ -1964,8 +1964,10 @@ class Boss:
         ''')
     def load_config_file(self, *paths: str, apply_overrides: bool = True) -> None:
         from .config import load_config
+        from .cli import default_config_paths
         old_opts = get_options()
-        paths = paths or old_opts.config_paths
+        prev_paths = old_opts.config_paths or default_config_paths(self.args.config)
+        paths = paths or prev_paths
         bad_lines: List[BadLine] = []
         opts = load_config(*paths, overrides=old_opts.config_overrides if apply_overrides else None, accumulate_bad_lines=bad_lines)
         if bad_lines:

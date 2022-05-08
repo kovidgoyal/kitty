@@ -57,6 +57,8 @@ Detailed list of changes
 
 - macOS: Add the :opt:`macos_colorspace` option to control what color space colors are rendered in (:iss:`4686`)
 
+- Fix reloading of config not working when :file:`kitty.conf` does not exist when kitty is launched (:iss:`5071`)
+
 
 0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
