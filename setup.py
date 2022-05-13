@@ -77,6 +77,7 @@ class Options(argparse.Namespace):
     egl_library: Optional[str] = os.getenv('KITTY_EGL_LIBRARY')
     startup_notification_library: Optional[str] = os.getenv('KITTY_STARTUP_NOTIFICATION_LIBRARY')
     canberra_library: Optional[str] = os.getenv('KITTY_CANBERRA_LIBRARY')
+    fontconfig_library: Optional[str] = os.getenv('KITTY_FONTCONFIG_LIBRARY')
 
 
 def emphasis(text: str) -> str:
@@ -296,6 +297,7 @@ def init_env(
     egl_library: Optional[str] = None,
     startup_notification_library: Optional[str] = None,
     canberra_library: Optional[str] = None,
+    fontconfig_library: Optional[str] = None,
     extra_logging: Iterable[str] = (),
     extra_include_dirs: Iterable[str] = (),
     ignore_compiler_warnings: bool = False,
@@ -381,6 +383,10 @@ def init_env(
         assert('"' not in canberra_library)
         desktop_libs += [f'_KITTY_CANBERRA_LIBRARY="{canberra_library}"']
 
+    if fontconfig_library is not None:
+        assert('"' not in fontconfig_library)
+        desktop_libs += [f'_KITTY_FONTCONFIG_LIBRARY="{fontconfig_library}"']
+
     if desktop_libs != []:
         library_paths['kitty/desktop.c'] = desktop_libs
 
@@ -432,7 +438,7 @@ def kitty_env() -> Env:
         cppflags.append('-DGL_SILENCE_DEPRECATION')
     else:
         cflags.extend(pkg_config('fontconfig', '--cflags-only-I'))
-        platform_libs = pkg_config('fontconfig', '--libs')
+        platform_libs = []
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
     platform_libs.extend(pkg_config('harfbuzz', '--libs'))
     pylib = get_python_flags(cflags)
@@ -810,7 +816,7 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
     global env
     env = init_env(
         args.debug, args.sanitize, native_optimizations, args.link_time_optimization, args.profile,
-        args.egl_library, args.startup_notification_library, args.canberra_library,
+        args.egl_library, args.startup_notification_library, args.canberra_library, args.fontconfig_library,
         args.extra_logging, args.extra_include_dirs, args.ignore_compiler_warnings,
         args.build_universal_binary, args.extra_library_dirs
     )
@@ -1468,6 +1474,13 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         type=str,
         default=Options.canberra_library,
         help='The filename argument passed to dlopen for libcanberra.'
+        ' This can be used to change the name of the loaded library or specify an absolute path.'
+    )
+    p.add_argument(
+        '--fontconfig-library',
+        type=str,
+        default=Options.fontconfig_library,
+        help='The filename argument passed to dlopen for libfontconfig.'
         ' This can be used to change the name of the loaded library or specify an absolute path.'
     )
     p.add_argument(

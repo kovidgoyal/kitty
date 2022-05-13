@@ -10,6 +10,7 @@
 #include "lineops.h"
 #include "fonts.h"
 #include <fontconfig/fontconfig.h>
+#include <dlfcn.h>
 #include "emoji.h"
 #include "freetype_render_ui_text.h"
 #ifndef FC_COLOR
@@ -18,10 +19,111 @@
 
 
 static bool initialized = false;
+static void* libfontconfig_handle = NULL;
+
+#define FcInit dynamically_loaded_fc_symbol.Init
+#define FcFini dynamically_loaded_fc_symbol.Fini
+#define FcCharSetAddChar dynamically_loaded_fc_symbol.CharSetAddChar
+#define FcPatternDestroy dynamically_loaded_fc_symbol.PatternDestroy
+#define FcObjectSetDestroy dynamically_loaded_fc_symbol.ObjectSetDestroy
+#define FcPatternAddDouble dynamically_loaded_fc_symbol.PatternAddDouble
+#define FcPatternAddString dynamically_loaded_fc_symbol.PatternAddString
+#define FcFontMatch dynamically_loaded_fc_symbol.FontMatch
+#define FcCharSetCreate dynamically_loaded_fc_symbol.CharSetCreate
+#define FcPatternGetString dynamically_loaded_fc_symbol.PatternGetString
+#define FcFontSetDestroy dynamically_loaded_fc_symbol.FontSetDestroy
+#define FcPatternGetInteger dynamically_loaded_fc_symbol.PatternGetInteger
+#define FcPatternAddBool dynamically_loaded_fc_symbol.PatternAddBool
+#define FcFontList dynamically_loaded_fc_symbol.FontList
+#define FcObjectSetBuild dynamically_loaded_fc_symbol.ObjectSetBuild
+#define FcCharSetDestroy dynamically_loaded_fc_symbol.CharSetDestroy
+#define FcConfigSubstitute dynamically_loaded_fc_symbol.ConfigSubstitute
+#define FcDefaultSubstitute dynamically_loaded_fc_symbol.DefaultSubstitute
+#define FcPatternAddInteger dynamically_loaded_fc_symbol.PatternAddInteger
+#define FcPatternCreate dynamically_loaded_fc_symbol.PatternCreate
+#define FcPatternGetBool dynamically_loaded_fc_symbol.PatternGetBool
+#define FcPatternAddCharSet dynamically_loaded_fc_symbol.PatternAddCharSet
+
+static struct {
+    FcBool(*Init)(void);
+    void(*Fini)(void);
+    FcBool (*CharSetAddChar) (FcCharSet *fcs, FcChar32 ucs4);
+    void (*PatternDestroy) (FcPattern *p);
+    void (*ObjectSetDestroy) (FcObjectSet *os);
+    FcBool (*PatternAddDouble) (FcPattern *p, const char *object, double d);
+    FcBool (*PatternAddString) (FcPattern *p, const char *object, const FcChar8 *s);
+    FcPattern * (*FontMatch) (FcConfig	*config, FcPattern	*p, FcResult	*result);
+    FcCharSet* (*CharSetCreate) (void);
+    FcResult (*PatternGetString) (const FcPattern *p, const char *object, int n, FcChar8 ** s);
+    void (*FontSetDestroy) (FcFontSet *s);
+    FcResult (*PatternGetInteger) (const FcPattern *p, const char *object, int n, int *i);
+    FcBool (*PatternAddBool) (FcPattern *p, const char *object, FcBool b);
+    FcFontSet * (*FontList) (FcConfig	*config, FcPattern	*p, FcObjectSet *os);
+    FcObjectSet * (*ObjectSetBuild) (const char *first, ...);
+    void (*CharSetDestroy) (FcCharSet *fcs);
+    FcBool (*ConfigSubstitute) (FcConfig	*config, FcPattern	*p, FcMatchKind	kind);
+    void (*DefaultSubstitute) (FcPattern *pattern);
+    FcBool (*PatternAddInteger) (FcPattern *p, const char *object, int i);
+    FcPattern * (*PatternCreate) (void);
+    FcResult (*PatternGetBool) (const FcPattern *p, const char *object, int n, FcBool *b);
+    FcBool (*PatternAddCharSet) (FcPattern *p, const char *object, const FcCharSet *c);
+} dynamically_loaded_fc_symbol = {0};
+#define LOAD_FUNC(name) {\
+    *(void **) (&dynamically_loaded_fc_symbol.name) = dlsym(libfontconfig_handle, "Fc" #name); \
+    if (!dynamically_loaded_fc_symbol.name) { \
+        const char* error = dlerror(); \
+        fatal("Failed to load the function Fc" #name " with error: %s", error ? error : ""); \
+    } \
+}
+
+
+static void
+load_fontconfig_lib(void) {
+        const char* libnames[] = {
+#if defined(_KITTY_FONTCONFIG_LIBRARY)
+            _KITTY_FONTCONFIG_LIBRARY,
+#else
+            "libfontconfig.so",
+            // some installs are missing the .so symlink, so try the full name
+            "libfontconfig.so.1",
+#endif
+            NULL
+        };
+        for (int i = 0; libnames[i]; i++) {
+            libfontconfig_handle = dlopen(libnames[i], RTLD_LAZY);
+            if (libfontconfig_handle) break;
+        }
+        if (libfontconfig_handle == NULL) { fatal("Failed to find and load fontconfig"); }
+        dlerror();    /* Clear any existing error */
+        LOAD_FUNC(Init);
+        LOAD_FUNC(Fini);
+        LOAD_FUNC(CharSetAddChar);
+        LOAD_FUNC(PatternDestroy);
+        LOAD_FUNC(ObjectSetDestroy);
+        LOAD_FUNC(PatternAddDouble);
+        LOAD_FUNC(PatternAddString);
+        LOAD_FUNC(FontMatch);
+        LOAD_FUNC(CharSetCreate);
+        LOAD_FUNC(PatternGetString);
+        LOAD_FUNC(FontSetDestroy);
+        LOAD_FUNC(PatternGetInteger);
+        LOAD_FUNC(PatternAddBool);
+        LOAD_FUNC(FontList);
+        LOAD_FUNC(ObjectSetBuild);
+        LOAD_FUNC(CharSetDestroy);
+        LOAD_FUNC(ConfigSubstitute);
+        LOAD_FUNC(DefaultSubstitute);
+        LOAD_FUNC(PatternAddInteger);
+        LOAD_FUNC(PatternCreate);
+        LOAD_FUNC(PatternGetBool);
+        LOAD_FUNC(PatternAddCharSet);
+}
+#undef LOAD_FUNC
 
 static void
 ensure_initialized(void) {
     if (!initialized) {
+        load_fontconfig_lib();
         if (!FcInit()) fatal("Failed to initialize fontconfig library");
         initialized = true;
     }
@@ -31,6 +133,8 @@ static void
 finalize(void) {
     if (initialized) {
         FcFini();
+        dlclose(libfontconfig_handle);
+        libfontconfig_handle = NULL;
         initialized = false;
     }
 }

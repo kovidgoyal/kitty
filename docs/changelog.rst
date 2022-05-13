@@ -61,6 +61,9 @@ Detailed list of changes
 
 - Fix deleting images by row not calculating image bounds correctly (:iss:`5081`)
 
+- Linux: Load libfontconfig at runtime to allow the binaries to work for
+  running kittens on servers without FontConfig
+
 
 0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
