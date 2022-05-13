@@ -59,6 +59,8 @@ Detailed list of changes
 
 - Fix reloading of config not working when :file:`kitty.conf` does not exist when kitty is launched (:iss:`5071`)
 
+- Fix deleting images by row not calculating image bounds correctly (:iss:`5081`)
+
 
 0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
