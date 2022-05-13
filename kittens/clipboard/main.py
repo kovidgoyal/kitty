@@ -93,7 +93,10 @@ def main(args: List[str]) -> NoReturn:
     data: Optional[bytes] = None
     if not sys.stdin.isatty():
         data = sys.stdin.buffer.read()
-        sys.stdin = open(os.ctermid())
+        try:
+            sys.stdin = open(os.ctermid())
+        except FileNotFoundError:
+            raise SystemExit('Not connected to a controlling terminal device, no /dev/tty')
     loop = Loop()
     handler = Clipboard(data, cli_opts)
     loop.loop(handler)
