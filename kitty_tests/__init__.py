@@ -45,6 +45,9 @@ class Callbacks:
     def set_color_table_color(self, code, data) -> None:
         self.ctbuf += ''
 
+    def color_profile_popped(self, x) -> None:
+        pass
+
     def request_capabilities(self, q) -> None:
         from kitty.terminfo import get_capabilities
         for c in get_capabilities(q, None):
