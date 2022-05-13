@@ -35,6 +35,9 @@ def binary_includes():
             'expat', 'sqlite3', 'ffi', 'z', 'lzma', 'png16', 'lcms2', 'crypt',
             'iconv', 'pcre', 'graphite2', 'glib-2.0', 'freetype', 'rsync',
             'harfbuzz', 'xkbcommon', 'xkbcommon-x11',
+            # fontconfig is not bundled because in typical brain dead Linux
+            # distro fashion, different distros use different default config
+            # paths for fontconfig.
             'ncursesw', 'readline', 'brotlicommon', 'brotlienc', 'brotlidec',
             'wayland-client', 'wayland-cursor',
         ))) + (
