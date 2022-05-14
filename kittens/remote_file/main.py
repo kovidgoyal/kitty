@@ -27,6 +27,9 @@ from ..tui.operations import (
 from ..tui.utils import get_key_press
 
 
+is_ssh_kitten_sentinel = '!#*&$#($ssh-kitten)(##$'
+
+
 def key(x: str) -> str:
     return styled(x, bold=True, fg='green')
 
@@ -53,10 +56,9 @@ The data used to connect over ssh.
 
 
 def show_error(msg: str) -> None:
-    print(styled(msg, fg='red'))
+    print(styled(msg, fg='red'), file=sys.stderr)
     print()
-    print('Press any key to quit')
-    sys.stdout.flush()
+    print('Press any key to quit', flush=True)
     with raw_mode():
         while True:
             try:
@@ -112,15 +114,25 @@ class ControlMaster:
         self.remote_path = remote_path
         self.dest = dest
         self.tdir = ''
+        self.last_error_log = ''
         self.cmd_prefix = cmd = [
             conn_data.binary, '-o', f'ControlPath=~/.ssh/kitty-master-{os.getpid()}-%r@%h:%p',
             '-o', 'TCPKeepAlive=yes', '-o', 'ControlPersist=yes'
         ]
-        if conn_data.port:
-            cmd.extend(['-p', str(conn_data.port)])
-        if conn_data.identity_file:
-            cmd.extend(['-i', conn_data.identity_file])
-        self.batch_cmd_prefix = cmd + ['-o', 'BatchMode=yes']
+        self.is_ssh_kitten = conn_data.binary is is_ssh_kitten_sentinel
+        if self.is_ssh_kitten:
+            del cmd[:]
+            self.batch_cmd_prefix = cmd
+            sk_cmdline = json.loads(conn_data.identity_file)
+            while '-t' in sk_cmdline:
+                sk_cmdline.remove('-t')
+            cmd.extend(sk_cmdline[:-2])
+        else:
+            if conn_data.port:
+                cmd.extend(['-p', str(conn_data.port)])
+            if conn_data.identity_file:
+                cmd.extend(['-i', conn_data.identity_file])
+            self.batch_cmd_prefix = cmd + ['-o', 'BatchMode=yes']
 
     def check_call(self, cmd: List[str]) -> None:
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
@@ -130,31 +142,37 @@ class ControlMaster:
             raise Exception(f'The ssh command: {shlex.join(cmd)} failed with exit code {p.returncode} and output: {out}')
 
     def __enter__(self) -> 'ControlMaster':
-        self.check_call(
-            self.cmd_prefix + ['-o', 'ControlMaster=auto', '-fN', self.conn_data.hostname])
-        self.check_call(
-            self.batch_cmd_prefix + ['-O', 'check', self.conn_data.hostname])
+        if not self.is_ssh_kitten:
+            self.check_call(
+                self.cmd_prefix + ['-o', 'ControlMaster=auto', '-fN', self.conn_data.hostname])
+            self.check_call(
+                self.batch_cmd_prefix + ['-O', 'check', self.conn_data.hostname])
         if not self.dest:
             self.tdir = tempfile.mkdtemp()
             self.dest = os.path.join(self.tdir, os.path.basename(self.remote_path))
         return self
 
     def __exit__(self, *a: Any) -> None:
-        subprocess.Popen(
-            self.batch_cmd_prefix + ['-O', 'exit', self.conn_data.hostname],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
-        ).wait()
+        if not self.is_ssh_kitten:
+            subprocess.Popen(
+                self.batch_cmd_prefix + ['-O', 'exit', self.conn_data.hostname],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
+            ).wait()
         if self.tdir:
             shutil.rmtree(self.tdir)
 
     @property
     def is_alive(self) -> bool:
+        if self.is_ssh_kitten:
+            return True
         return subprocess.Popen(
             self.batch_cmd_prefix + ['-O', 'check', self.conn_data.hostname],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
         ).wait() == 0
 
     def check_hostname_matches(self) -> bool:
+        if self.is_ssh_kitten:
+            return True
         cp = subprocess.run(self.batch_cmd_prefix + [self.conn_data.hostname, 'hostname', '-f'], stdout=subprocess.PIPE,
                             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
         if cp.returncode == 0:
@@ -181,21 +199,35 @@ class ControlMaster:
                 return response == 'y'
         return True
 
+    def show_error(self, msg: str) -> None:
+        if self.last_error_log:
+            print(self.last_error_log, file=sys.stderr)
+            self.last_error_log = ''
+        show_error(msg)
+
     def download(self) -> bool:
+        cmdline = self.batch_cmd_prefix + [self.conn_data.hostname, 'cat', self.remote_path]
         with open(self.dest, 'wb') as f:
-            return subprocess.run(
-                self.batch_cmd_prefix + [self.conn_data.hostname, 'cat', self.remote_path],
-                stdout=f, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
-            ).returncode == 0
+            cp = subprocess.run(cmdline, stdout=f, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
+            if cp.returncode != 0:
+                self.last_error_log = f'The command: {shlex.join(cmdline)} failed\n' + cp.stderr.decode()
+                return False
+        return True
 
     def upload(self, suppress_output: bool = True) -> bool:
         cmd_prefix = self.cmd_prefix if suppress_output else self.batch_cmd_prefix
         cmd = cmd_prefix + [self.conn_data.hostname, 'cat', '>', self.remote_path]
         if not suppress_output:
-            print(' '.join(map(shlex.quote, cmd)))
-        redirect = subprocess.DEVNULL if suppress_output else None
+            print(shlex.join(cmd))
         with open(self.dest, 'rb') as f:
-            return subprocess.run(cmd, stdout=redirect, stderr=redirect, stdin=f).returncode == 0
+            if suppress_output:
+                cp = subprocess.run(cmd, stdin=f, capture_output=True)
+                if cp.returncode == 0:
+                    return True
+                self.last_error_log = f'The command: {shlex.join(cmd)} failed\n' + cp.stdout.decode()
+            else:
+                return subprocess.run(cmd, stdin=f).returncode == 0
+        return False
 
 
 Result = Optional[str]
@@ -278,11 +310,15 @@ def save_as(conn_data: SSHConnectionData, remote_path: str, cli_opts: RemoteFile
     with ControlMaster(conn_data, remote_path, cli_opts, dest=dest) as master:
         if master.check_hostname_matches():
             if not master.download():
-                show_error('Failed to copy file from remote machine')
+                master.show_error('Failed to copy file from remote machine')
 
 
 def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
-    conn_data = SSHConnectionData(*json.loads(cli_opts.ssh_connection_data or ''))
+    cli_data = json.loads(cli_opts.ssh_connection_data or '')
+    if cli_data and cli_data[0] == is_ssh_kitten_sentinel:
+        conn_data = SSHConnectionData(is_ssh_kitten_sentinel, cli_data[-1], -1, identity_file=json.dumps(cli_data[1:]))
+    else:
+        conn_data = SSHConnectionData(*cli_data)
     remote_path = cli_opts.path or ''
     if action == 'open':
         print('Opening', cli_opts.path, 'from', cli_opts.hostname)
@@ -291,7 +327,7 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
             if master.check_hostname_matches():
                 if master.download():
                     return dest
-                show_error('Failed to copy file from remote machine')
+                master.show_error('Failed to copy file from remote machine')
     elif action == 'edit':
         print('Editing', cli_opts.path, 'from', cli_opts.hostname)
         editor = get_editor()
@@ -299,7 +335,7 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
             if not master.check_hostname_matches():
                 return None
             if not master.download():
-                show_error(f'Failed to download {remote_path}')
+                master.show_error(f'Failed to download {remote_path}')
                 return None
             mtime = os.path.getmtime(master.dest)
             print(reset_terminal(), end='', flush=True)
@@ -314,9 +350,9 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
             print(reset_terminal(), end='', flush=True)
             if master.is_alive:
                 if not master.upload(suppress_output=False):
-                    show_error(f'Failed to upload {remote_path}')
+                    master.show_error(f'Failed to upload {remote_path}')
             else:
-                show_error(f'Failed to upload {remote_path}, SSH master process died')
+                master.show_error(f'Failed to upload {remote_path}, SSH master process died')
     elif action == 'save':
         print('Saving', cli_opts.path, 'from', cli_opts.hostname)
         save_as(conn_data, remote_path, cli_opts)

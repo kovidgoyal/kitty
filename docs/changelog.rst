@@ -49,6 +49,10 @@ Detailed list of changes
 
 - Fix a regression in the previous release that caused mouse move events to be incorrectly reported as drag events even when a button is not pressed (:iss:`4992`)
 
+- remote file kitten: Integrate with the ssh kitten for improved performance
+  and robustness. Re-uses the control master connection of the ssh kitten to
+  avoid round-trip latency.
+
 - Fix tab selection when closing a new tab not correct in some scenarios (:iss:`4987`)
 
 - A new action :ac:`open_url` to open the specified URL (:pull:`5004`)

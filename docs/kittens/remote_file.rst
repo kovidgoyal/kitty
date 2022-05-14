@@ -27,13 +27,16 @@ supports hyperlinks.
 .. versionadded:: 0.19.0
 
 .. note::
-   Nested SSH sessions are not supported. The kitten will always try to copy
-   remote files from the first SSH host. This is because there is no way for
+   For best results, use this kitten with the :doc:`ssh kitten <./ssh>`.
+   Otherwise, nested SSH sessions are not supported. The kitten will always try to copy
+   remote files from the first SSH host. This is because, without the ssh
+   kitten, there is no way for
    |kitty| to detect and follow a nested SSH session robustly. Use the
    :doc:`transfer` kitten for such situations.
 
 .. note::
-   If you have not setup automatic password-less SSH access, then, when editing
+   If you have not setup automatic password-less SSH access, and are not using
+   the ssh kitten, then, when editing
    starts you will be asked to enter your password just once, thereafter the SSH
    connection will be re-used.
 

@@ -829,12 +829,21 @@ class Window:
             set_clipboard_string(url)
 
     def handle_remote_file(self, netloc: str, remote_path: str) -> None:
+        from .utils import SSHConnectionData
         from kittens.ssh.main import get_connection_data
-        args = self.child.foreground_cmdline
-        conn_data = get_connection_data(args, self.child.foreground_cwd or self.child.current_cwd or '')
-        if conn_data is None:
-            get_boss().show_error('Could not handle remote file', f'No SSH connection data found in: {args}')
-            return
+        from kittens.remote_file.main import is_ssh_kitten_sentinel
+        args = self.ssh_kitten_cmdline()
+        conn_data: Union[None, List[str], SSHConnectionData] = None
+        if args:
+            ssh_cmdline = sorted(self.child.foreground_processes, key=lambda p: p['pid'])[-1]['cmdline'] or ['']
+            idx = ssh_cmdline.index('--')
+            conn_data = [is_ssh_kitten_sentinel] + list(ssh_cmdline[:idx + 2])
+        else:
+            args = self.child.foreground_cmdline
+            conn_data = get_connection_data(args, self.child.foreground_cwd or self.child.current_cwd or '')
+            if conn_data is None:
+                get_boss().show_error('Could not handle remote file', f'No SSH connection data found in: {args}')
+                return
         get_boss().run_kitten(
             'remote_file', '--hostname', netloc.partition(':')[0], '--path', remote_path,
             '--ssh-connection-data', json.dumps(conn_data)
