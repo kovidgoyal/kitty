@@ -836,9 +836,10 @@ class Window:
         conn_data: Union[None, List[str], SSHConnectionData] = None
         if args:
             ssh_cmdline = sorted(self.child.foreground_processes, key=lambda p: p['pid'])[-1]['cmdline'] or ['']
-            idx = ssh_cmdline.index('--')
-            conn_data = [is_ssh_kitten_sentinel] + list(ssh_cmdline[:idx + 2])
-        else:
+            if 'ControlPath=' in ' '.join(ssh_cmdline):
+                idx = ssh_cmdline.index('--')
+                conn_data = [is_ssh_kitten_sentinel] + list(ssh_cmdline[:idx + 2])
+        if conn_data is None:
             args = self.child.foreground_cmdline
             conn_data = get_connection_data(args, self.child.foreground_cwd or self.child.current_cwd or '')
             if conn_data is None:
