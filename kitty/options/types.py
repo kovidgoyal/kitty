@@ -411,6 +411,7 @@ option_names = (  # {{{
  'scrollback_pager',
  'scrollback_pager_history_size',
  'select_by_word_characters',
+ 'select_by_word_characters_forward',
  'selection_background',
  'selection_foreground',
  'shell',
@@ -561,6 +562,7 @@ class Options:
     scrollback_pager: typing.List[str] = ['less', '--chop-long-lines', '--RAW-CONTROL-CHARS', '+INPUT_LINE_NUMBER']
     scrollback_pager_history_size: int = 0
     select_by_word_characters: str = '@-./_~?&=%+#'
+    select_by_word_characters_forward: str = ''
     selection_background: typing.Optional[kitty.fast_data_types.Color] = Color(255, 250, 205)
     selection_foreground: typing.Optional[kitty.fast_data_types.Color] = Color(0, 0, 0)
     shell: str = '.'

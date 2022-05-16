@@ -1163,6 +1163,9 @@ class Parser:
     def select_by_word_characters(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['select_by_word_characters'] = str(val)
 
+    def select_by_word_characters_forward(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['select_by_word_characters_forward'] = str(val)
+
     def selection_background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['selection_background'] = to_color_or_none(val)
 

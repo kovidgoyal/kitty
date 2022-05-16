@@ -3222,7 +3222,15 @@ screen_selection_range_for_line(Screen *self, index_type y, index_type *start, i
 }
 
 static bool
-is_opt_word_char(char_type ch) {
+is_opt_word_char(char_type ch, bool forward) {
+    if (forward && OPT(select_by_word_characters_forward)) {
+        for (const char_type *p = OPT(select_by_word_characters_forward); *p; p++) {
+            if (ch == *p) return true;
+        }
+        if (*OPT(select_by_word_characters_forward)) {
+            return false;
+        }
+    }
     if (OPT(select_by_word_characters)) {
         for (const char_type *p = OPT(select_by_word_characters); *p; p++) {
             if (ch == *p) return true;
@@ -3232,9 +3240,9 @@ is_opt_word_char(char_type ch) {
 }
 
 static bool
-is_char_ok_for_word_extension(Line* line, index_type x) {
+is_char_ok_for_word_extension(Line* line, index_type x, bool forward) {
     char_type ch = line->cpu_cells[x].ch;
-    if (is_word_char(ch) || is_opt_word_char(ch)) return true;
+    if (is_word_char(ch) || is_opt_word_char(ch, forward)) return true;
     // pass : from :// so that common URLs are matched
     if (ch == ':' && x + 2 < line->xnum && line->cpu_cells[x+1].ch == '/' && line->cpu_cells[x+2].ch == '/') return true;
     return false;
@@ -3247,26 +3255,26 @@ screen_selection_range_for_word(Screen *self, const index_type x, const index_ty
     Line *line = visual_line_(self, y);
     *y1 = y;
     *y2 = y;
-#define is_ok(x) is_char_ok_for_word_extension(line, x)
-    if (!is_ok(x)) {
+#define is_ok(x, forward) is_char_ok_for_word_extension(line, x, forward)
+    if (!is_ok(x, false)) {
         if (initial_selection) return false;
         *s = x; *e = x;
         return true;
     }
     start = x; end = x;
     while(true) {
-        while(start > 0 && is_ok(start - 1)) start--;
+        while(start > 0 && is_ok(start - 1, false)) start--;
         if (start > 0 || !line->attrs.continued || *y1 == 0) break;
         line = visual_line_(self, *y1 - 1);
-        if (!is_ok(self->columns - 1)) break;
+        if (!is_ok(self->columns - 1, false)) break;
         (*y1)--; start = self->columns - 1;
     }
     line = visual_line_(self, *y2);
     while(true) {
-        while(end < self->columns - 1 && is_ok(end + 1)) end++;
+        while(end < self->columns - 1 && is_ok(end + 1, true)) end++;
         if (end < self->columns - 1 || *y2 >= self->lines - 1) break;
         line = visual_line_(self, *y2 + 1);
-        if (!line->attrs.continued || !is_ok(0)) break;
+        if (!line->attrs.continued || !is_ok(0, true)) break;
         (*y2)++; end = 0;
     }
     *s = start; *e = end;
