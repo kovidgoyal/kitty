@@ -492,6 +492,18 @@ Unicode database will be matched.
 '''
     )
 
+opt('select_by_word_characters_forward', '',
+    ctype='!select_by_word_characters_forward',
+    long_text='''
+Characters considered part of a word when extending the selection forward on
+double clicking. In addition to these characters any character that is marked
+as an alphanumeric character in the Unicode database will be matched.
+
+If empty (default) :opt:`select_by_word_characters` will be used for both
+directions.
+'''
+    )
+
 opt('click_interval', '-1.0',
     option_type='float', ctype='time',
     long_text='''

@@ -305,6 +305,19 @@ convert_from_opts_select_by_word_characters(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_select_by_word_characters_forward(PyObject *val, Options *opts) {
+    select_by_word_characters_forward(val, opts);
+}
+
+static void
+convert_from_opts_select_by_word_characters_forward(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "select_by_word_characters_forward");
+    if (ret == NULL) return;
+    convert_from_python_select_by_word_characters_forward(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_click_interval(PyObject *val, Options *opts) {
     opts->click_interval = parse_s_double_to_monotonic_t(val);
 }
@@ -1066,6 +1079,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_url_excluded_characters(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_select_by_word_characters(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_select_by_word_characters_forward(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_click_interval(py_opts, opts);
     if (PyErr_Occurred()) return false;

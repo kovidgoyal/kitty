@@ -188,6 +188,12 @@ select_by_word_characters(PyObject *chars, Options *opts) {
 }
 
 static void
+select_by_word_characters_forward(PyObject *chars, Options *opts) {
+    free(opts->select_by_word_characters_forward);
+    opts->select_by_word_characters_forward = list_of_chars(chars);
+}
+
+static void
 tab_bar_style(PyObject *val, Options *opts) {
     opts->tab_bar_hidden = PyUnicode_CompareWithASCIIString(val, "hidden") == 0 ? true: false;
 }
