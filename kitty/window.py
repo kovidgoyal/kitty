@@ -97,7 +97,7 @@ class CwdRequest:
             if argv[0] == resolved_shell(get_options())[0]:
                 ssh_kitten_cmdline = window.ssh_kitten_cmdline()
                 if ssh_kitten_cmdline:
-                    from kittens.ssh.main import set_cwd_in_cmdline
+                    from kittens.ssh.utils import set_cwd_in_cmdline
                     argv[:] = ssh_kitten_cmdline
                     set_cwd_in_cmdline(reported_cwd, argv)
                     return ''
@@ -1319,7 +1319,7 @@ class Window:
         return False
 
     def ssh_kitten_cmdline(self) -> List[str]:
-        from kittens.ssh.main import is_kitten_cmdline
+        from kittens.ssh.utils import is_kitten_cmdline
         for p in self.child.foreground_processes:
             q = list(p['cmdline'] or ())
             if is_kitten_cmdline(q):

@@ -613,7 +613,7 @@ def clone_and_launch(msg: str, window: Window) -> None:
     is_clone_launch = serialize_env(c.shell, env_to_serialize)
     ssh_kitten_cmdline = window.ssh_kitten_cmdline()
     if ssh_kitten_cmdline:
-        from kittens.ssh.main import (
+        from kittens.ssh.utils import (
             patch_cmdline, set_cwd_in_cmdline, set_env_in_cmdline
         )
         cmdline = ssh_kitten_cmdline
