@@ -57,6 +57,10 @@ Detailed list of changes
 
 - A new action :ac:`open_url` to open the specified URL (:pull:`5004`)
 
+- A new option :opt:`select_by_word_characters_forward` that allows changing
+  which characters are considered part of a word to the right when double clicking to select
+  words (:pull:`5103`)
+
 - macOS: Make the global menu shortcut to open kitty website configurable (:pull:`5004`)
 
 - macOS: Add the :opt:`macos_colorspace` option to control what color space colors are rendered in (:iss:`4686`)
