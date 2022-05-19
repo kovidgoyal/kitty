@@ -177,7 +177,7 @@ class BaseTest(TestCase):
         s = Screen(c, lines, cols, scrollback, cell_width, cell_height, 0, c)
         return s
 
-    def create_pty(self, argv, cols=80, lines=25, scrollback=100, cell_width=10, cell_height=20, options=None, cwd=None, env=None):
+    def create_pty(self, argv, cols=80, lines=100, scrollback=100, cell_width=10, cell_height=20, options=None, cwd=None, env=None):
         self.set_options(options)
         return PTY(argv, lines, cols, scrollback, cell_width, cell_height, cwd, env)
 
