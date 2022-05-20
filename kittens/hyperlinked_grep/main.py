@@ -59,7 +59,7 @@ def main() -> None:
                     write(line)
     except KeyboardInterrupt:
         p.send_signal(signal.SIGINT)
-    except EOFError:
+    except (EOFError, BrokenPipeError):
         pass
     finally:
         p.stdout.close()
