@@ -20,7 +20,7 @@ def write_hyperlink(write: Callable[[bytes], None], url: bytes, line: bytes, fra
 
 
 def main() -> None:
-    if not sys.stdout.isatty() and '--pretty' not in sys.argv:
+    if not sys.stdout.isatty() and '--pretty' not in sys.argv and '-p' not in sys.argv:
         os.execlp('rg', 'rg', *sys.argv[1:])
     cmdline = ['rg', '--pretty', '--with-filename'] + sys.argv[1:]
     try:
