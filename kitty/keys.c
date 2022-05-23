@@ -136,6 +136,12 @@ on_key_input(GLFWkeyevent *ev) {
     id_type active_window_id = w->id;
 
     switch(ev->ime_state) {
+        case GLFW_IME_WAYLAND_DONE_EVENT:
+            // If we update IME position here it sends GNOME's text input system into
+            // an infinite loop. See https://github.com/kovidgoyal/kitty/issues/5105
+            screen_draw_overlay_text(screen, NULL);
+            debug("handled wayland IME done event");
+            return;
         case GLFW_IME_PREEDIT_CHANGED:
             update_ime_position(w, screen);
             screen_draw_overlay_text(screen, text);

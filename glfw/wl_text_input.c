@@ -84,7 +84,7 @@ text_input_delete_surrounding_text(
 }
 
 static void
-text_input_done(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, uint32_t serial UNUSED) {
+text_input_done(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, uint32_t serial) {
     debug("text-input: done event: serial: %u current_commit_serial: %u\n", serial, commit_serial);
     if (serial != commit_serial) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: text_input_done serial mismatch, expected=%u got=%u\n", commit_serial, serial);
@@ -95,7 +95,7 @@ text_input_done(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, u
         free(pending_pre_edit); pending_pre_edit = NULL;
     } else {
         // Clear pre-edit text
-        send_text(NULL, GLFW_IME_PREEDIT_CHANGED);
+        send_text(NULL, GLFW_IME_WAYLAND_DONE_EVENT);
     }
     if (pending_commit) {
         send_text(pending_commit, GLFW_IME_COMMIT_TEXT);

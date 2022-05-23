@@ -72,6 +72,10 @@ Detailed list of changes
 - Linux: Load libfontconfig at runtime to allow the binaries to work for
   running kittens on servers without FontConfig
 
+- GNOME: Fix for high CPU usage caused by GNOME's text input subsystem going
+  into an infinite loop when IME cursor position is updated after a done event
+  (:iss:`5105`)
+
 
 0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1216,7 +1216,8 @@ typedef enum {
 typedef enum {
     GLFW_IME_NONE,
     GLFW_IME_PREEDIT_CHANGED,
-    GLFW_IME_COMMIT_TEXT
+    GLFW_IME_COMMIT_TEXT,
+    GLFW_IME_WAYLAND_DONE_EVENT,
 } GLFWIMEState;
 
 typedef enum {
