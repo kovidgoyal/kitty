@@ -1338,7 +1338,7 @@ class Boss:
         cmd = [kitty_exe(), '+runpy', 'import os, sys, time; time.sleep(0.05); os.execvp(sys.argv[1], sys.argv[1:])'] + get_editor(get_options()) + [confpath]
         self.new_os_window(*cmd)
 
-    def _run_kitten(
+    def run_kitten_with_metadata(
         self,
         kitten: str,
         args: Iterable[str] = (),
@@ -1415,6 +1415,7 @@ class Boss:
                         action_on_removal(wid, self)
                 overlay_window.actions_on_removal.append(callback_wrapper)
             return overlay_window
+    _run_kitten = run_kitten_with_metadata
 
     @ac('misc', 'Run the specified kitten. See :doc:`/kittens/custom` for details')
     def kitten(self, kitten: str, *kargs: str) -> None:
