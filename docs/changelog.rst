@@ -34,7 +34,7 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.25.1 [future]
+0.25.1 [2022-05-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Shell integration: Add a command to :ref:`clone_shell`
@@ -68,6 +68,8 @@ Detailed list of changes
 - Fix reloading of config not working when :file:`kitty.conf` does not exist when kitty is launched (:iss:`5071`)
 
 - Fix deleting images by row not calculating image bounds correctly (:iss:`5081`)
+
+- Increase the max number of combining chars per cell from two to three, without increasing memory usage.
 
 - Linux: Load libfontconfig at runtime to allow the binaries to work for
   running kittens on servers without FontConfig
