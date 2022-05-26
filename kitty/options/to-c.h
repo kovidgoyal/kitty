@@ -129,8 +129,8 @@ pointer_shape(PyObject *shape_name) {
 
 static int
 macos_colorspace(PyObject *csname) {
-    if (PyUnicode_CompareWithASCIIString(csname, "srgb")) return 1;
-    if (PyUnicode_CompareWithASCIIString(csname, "displayp3")) return 2;
+    if (PyUnicode_CompareWithASCIIString(csname, "srgb") == 0) return 1;
+    if (PyUnicode_CompareWithASCIIString(csname, "displayp3") == 0) return 2;
     return 0;
 }
 
