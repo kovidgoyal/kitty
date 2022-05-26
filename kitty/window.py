@@ -475,7 +475,7 @@ class Window:
             self.watchers = global_watchers().copy()
         self.last_focused_at = 0.
         self.started_at = monotonic()
-        self.current_clone_data = ''
+        self.current_remote_data: List[str] = []
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()
@@ -1029,25 +1029,30 @@ class Window:
         if tab is not None:
             tab.move_window_to_top_of_group(self)
 
-    def handle_remote_clone(self, msg: str) -> None:
+    def append_remote_data(self, msg: str) -> str:
         if not msg:
-            if self.current_clone_data:
-                cdata, self.current_clone_data = self.current_clone_data, ''
-                ac = get_options().allow_cloning
-                if ac == 'ask':
-                    get_boss().confirm(_(
-                        'A program running in this window wants to clone it into another window.'
-                        ' Allow it do so, once?'),
-                        partial(self.handle_remote_clone_confirmation, cdata), window=self,
-                    )
-                elif ac in ('yes', 'y', 'true'):
-                    self.handle_remote_clone_confirmation(cdata, True)
-            self.current_clone_data = ''
-            return
+            cdata = ''.join(self.current_remote_data)
+            self.current_remote_data = []
+            return cdata
         num, rest = msg.split(':', 1)
-        if num == '0' or len(self.current_clone_data) > 1024 * 1024:
-            self.current_clone_data = ''
-        self.current_clone_data += rest
+        max_size = get_options().clipboard_max_size * 1024 * 1024
+        if num == '0' or sum(map(len, self.current_remote_data)) > max_size:
+            self.current_remote_data = []
+        self.current_remote_data.append(rest)
+        return ''
+
+    def handle_remote_clone(self, msg: str) -> None:
+        cdata = self.append_remote_data(msg)
+        if cdata:
+            ac = get_options().allow_cloning
+            if ac == 'ask':
+                get_boss().confirm(_(
+                    'A program running in this window wants to clone it into another window.'
+                    ' Allow it do so, once?'),
+                    partial(self.handle_remote_clone_confirmation, cdata), window=self,
+                )
+            elif ac in ('yes', 'y', 'true'):
+                self.handle_remote_clone_confirmation(cdata, True)
 
     def handle_remote_clone_confirmation(self, cdata: str, confirmed: bool) -> None:
         if confirmed:
