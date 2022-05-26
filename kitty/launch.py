@@ -3,7 +3,12 @@
 
 
 import os
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Sequence
+import shutil
+from contextlib import suppress
+from typing import (
+    Any, Container, Dict, Iterable, Iterator, List, NamedTuple, Optional,
+    Sequence, Tuple
+)
 
 from .boss import Boss
 from .child import Child
@@ -11,13 +16,15 @@ from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .constants import kitty_exe, shell_path
 from .fast_data_types import (
-    get_boss, get_options, get_os_window_title, patch_color_profiles,
-    set_clipboard_string
+    add_timer, get_boss, get_options, get_os_window_title,
+    patch_color_profiles, set_clipboard_string
 )
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import run_once
-from .utils import log_error, resolve_custom_file, set_primary_selection, which
+from .utils import (
+    get_editor, log_error, resolve_custom_file, set_primary_selection, which
+)
 from .window import CwdRequest, CwdRequestType, Watchers, Window
 
 try:
@@ -549,6 +556,113 @@ def parse_null_env(text: str) -> Dict[str, str]:
     return ans
 
 
+def parse_message(msg: str, simple: Container[str]) -> Iterator[Tuple[str, str]]:
+    from base64 import standard_b64decode
+    for x in msg.split(','):
+        try:
+            k, v = x.split('=', 1)
+        except ValueError:
+            continue
+        if k not in simple:
+            v = standard_b64decode(v).decode('utf-8', 'replace')
+        yield k, v
+
+
+class EditCmd:
+
+    def __init__(self, msg: str) -> None:
+        self.args: List[str] = []
+        self.cwd = self.file_name = self.file_localpath = ''
+        self.file_data = b''
+        self.file_inode = -1, -1
+        self.file_size = -1
+        self.source_window_id = self.editor_window_id = -1
+        self.abort_signaled = ''
+        simple = 'file_inode', 'file_data', 'abort_signaled'
+        for k, v in parse_message(msg, simple):
+            if k == 'file_inode':
+                q = map(int, v.split(':'))
+                self.file_inode = next(q), next(q)
+                self.file_size = next(q)
+            elif k == 'a':
+                self.args.append(v)
+            elif k == 'file_data':
+                import base64
+                self.file_data = base64.standard_b64decode(v)
+            else:
+                setattr(self, k, v)
+        if self.abort_signaled:
+            return
+        self.file_spec = self.args.pop()
+        self.file_name = os.path.basename(self.file_spec)
+        self.file_localpath = os.path.normpath(os.path.join(self.cwd, self.file_spec))
+        self.is_local_file = False
+        self.tdir = ''
+        with suppress(FileNotFoundError):
+            st = os.stat(self.file_localpath)
+            self.is_local_file = (st.st_dev, st.st_ino) == self.file_inode
+        if not self.is_local_file:
+            import tempfile
+            self.tdir = tempfile.mkdtemp()
+            self.file_localpath = os.path.join(self.tdir, self.file_name)
+            with open(self.file_localpath, 'wb') as f:
+                f.write(self.file_data)
+        self.file_obj = open(self.file_localpath, 'rb')
+        self.file_data = b''
+        self.last_mod_time = self.file_mod_time
+        self.opts = parse_opts_for_clone(['--type=overlay'] + self.args)
+        if not self.opts.cwd:
+            self.opts.cwd = os.path.dirname(self.file_obj.name)
+
+    def __del__(self) -> None:
+        if self.tdir:
+            with suppress(OSError):
+                shutil.rmtree(self.tdir)
+            self.tdir = ''
+
+    def read_data(self) -> bytes:
+        self.file_obj.seek(0)
+        return self.file_obj.read()
+
+    @property
+    def file_mod_time(self) -> int:
+        return os.stat(self.file_obj.fileno()).st_mtime_ns
+
+    def schedule_check(self) -> None:
+        if not self.abort_signaled:
+            add_timer(self.check_status, 1.0, False)
+
+    def check_status(self, timer_id: Optional[int] = None) -> None:
+        if self.abort_signaled:
+            return
+        boss = get_boss()
+        source_window = boss.window_id_map.get(self.source_window_id)
+        if source_window is not None and not self.is_local_file:
+            mtime = self.file_mod_time
+            if mtime != self.last_mod_time:
+                self.last_mod_time = mtime
+                data = self.read_data()
+                self.send_data(source_window, 'UPDATE', data)
+        editor_window = boss.window_id_map.get(self.editor_window_id)
+        if editor_window is None:
+            edits_in_flight.pop(self.source_window_id, None)
+            if source_window is not None:
+                self.send_data(source_window, 'DONE')
+        else:
+            self.schedule_check()
+
+    def send_data(self, window: Window, data_type: str, data: bytes = b'') -> None:
+        window.write_to_child(f'KITTY_DATA_START\n{data_type}\n')
+        if data:
+            import base64
+            mv = memoryview(base64.standard_b64encode(data))
+            while mv:
+                window.write_to_child(bytes(mv[:512]))
+                window.write_to_child('\n')
+                mv = mv[512:]
+        window.write_to_child('KITTY_DATA_END\n')
+
+
 class CloneCmd:
 
     def __init__(self, msg: str) -> None:
@@ -563,15 +677,14 @@ class CloneCmd:
         self.opts = parse_opts_for_clone(self.args)
 
     def parse_message(self, msg: str) -> None:
-        import base64
         simple = 'pid', 'envfmt', 'shell'
-        for x in msg.split(','):
-            k, v = x.split('=', 1)
+        for k, v in parse_message(msg, simple):
             if k in simple:
-                setattr(self, k, int(v) if k == 'pid' else v)
-                continue
-            v = base64.standard_b64decode(v).decode('utf-8', 'replace')
-            if k == 'a':
+                if k == 'pid':
+                    self.pid = int(v)
+                else:
+                    setattr(self, k, v)
+            elif k == 'a':
                 self.args.append(v)
             elif k == 'env':
                 env = parse_bash_env(v) if self.envfmt == 'bash' else parse_null_env(v)
@@ -592,6 +705,28 @@ class CloneCmd:
                 self.cwd = v
             elif k == 'history':
                 self.history = v
+
+
+edits_in_flight: Dict[int, EditCmd] = {}
+
+
+def remote_edit(msg: str, window: Window) -> None:
+    c = EditCmd(msg)
+    if c.abort_signaled:
+        q = edits_in_flight.pop(window.id, None)
+        if q is not None:
+            q.abort_signaled = c.abort_signaled
+        return
+    cmdline = get_editor() + [c.file_obj.name]
+    w = launch(get_boss(), c.opts, cmdline, active=window)
+    if w is not None:
+        c.source_window_id = window.id
+        c.editor_window_id = w.id
+        q = edits_in_flight.pop(window.id, None)
+        if q is not None:
+            q.abort_signaled = 'replaced'
+        edits_in_flight[window.id] = c
+        c.schedule_check()
 
 
 def clone_and_launch(msg: str, window: Window) -> None:

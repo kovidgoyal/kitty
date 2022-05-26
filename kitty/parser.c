@@ -1087,6 +1087,7 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                 } else IF_SIMPLE_PREFIX("ssh|", handle_remote_ssh)
                 } else IF_SIMPLE_PREFIX("ask|", handle_remote_askpass)
                 } else IF_SIMPLE_PREFIX("clone|", handle_remote_clone)
+                } else IF_SIMPLE_PREFIX("edit|", handle_remote_edit)
 #undef IF_SIMPLE_PREFIX
                 } else {
                     REPORT_ERROR("Unrecognized DCS @ code: 0x%x", screen->parser_buf[1]);

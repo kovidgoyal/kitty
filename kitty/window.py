@@ -751,6 +751,8 @@ class Window:
 
     def write_to_child(self, data: Union[str, bytes]) -> None:
         if data:
+            if isinstance(data, str):
+                data = data.encode('utf-8')
             if get_boss().child_monitor.needs_write(self.id, data) is not True:
                 log_error(f'Failed to write to child {self.id} as it does not exist')
 
@@ -1040,6 +1042,12 @@ class Window:
             self.current_remote_data = []
         self.current_remote_data.append(rest)
         return ''
+
+    def handle_remote_edit(self, msg: str) -> None:
+        cdata = self.append_remote_data(msg)
+        if cdata:
+            from .launch import remote_edit
+            remote_edit(cdata, self)
 
     def handle_remote_clone(self, msg: str) -> None:
         cdata = self.append_remote_data(msg)
