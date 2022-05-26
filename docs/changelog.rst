@@ -34,6 +34,11 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
+0.25.2 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fix a bug that caused :opt:`macos_colorspace` to always be ``default`` regardless of its actual value (:iss:`5129`)
+
 0.25.1 [2022-05-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
