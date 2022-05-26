@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/sh
 #
 # bootstrap-utils.sh
 # Copyright (C) 2022 Kovid Goyal <kovid at kovidgoyal.net>
