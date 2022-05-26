@@ -125,7 +125,7 @@ exec_bash_with_integration() {
         export HISTFILE="$HOME/.bash_history"
         export KITTY_BASH_UNEXPORT_HISTFILE="1"
     fi
-    exec "$login_shell" "--posix"
+    exec "$login_shell" "--login" "--posix"
 }
 
 exec_with_shell_integration() {
