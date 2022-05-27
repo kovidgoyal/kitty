@@ -632,6 +632,9 @@ class EditCmd:
         if not self.abort_signaled:
             add_timer(self.check_status, 1.0, False)
 
+    def on_edit_window_close(self, window: Window) -> None:
+        self.check_status()
+
     def check_status(self, timer_id: Optional[int] = None) -> None:
         if self.abort_signaled:
             return
@@ -648,6 +651,7 @@ class EditCmd:
             edits_in_flight.pop(self.source_window_id, None)
             if source_window is not None:
                 self.send_data(source_window, 'DONE')
+            self.abort_signaled = self.abort_signaled or 'closed'
         else:
             self.schedule_check()
 
@@ -726,6 +730,7 @@ def remote_edit(msg: str, window: Window) -> None:
         if q is not None:
             q.abort_signaled = 'replaced'
         edits_in_flight[window.id] = c
+        w.actions_on_close.append(c.on_edit_window_close)
         c.schedule_check()
 
 
