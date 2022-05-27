@@ -571,6 +571,7 @@ def parse_message(msg: str, simple: Container[str]) -> Iterator[Tuple[str, str]]
 class EditCmd:
 
     def __init__(self, msg: str) -> None:
+        self.tdir = ''
         self.args: List[str] = []
         self.cwd = self.file_name = self.file_localpath = ''
         self.file_data = b''
@@ -605,7 +606,6 @@ class EditCmd:
         self.file_name = os.path.basename(self.file_spec)
         self.file_localpath = os.path.normpath(os.path.join(self.cwd, self.file_spec))
         self.is_local_file = False
-        self.tdir = ''
         with suppress(FileNotFoundError):
             st = os.stat(self.file_localpath)
             self.is_local_file = (st.st_dev, st.st_ino) == self.file_inode
