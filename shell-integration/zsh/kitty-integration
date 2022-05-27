@@ -472,7 +472,7 @@ edit-in-kitty() {
     builtin local old_tty_settings=$(builtin command stty -g)
     builtin command stty "-echo"
     builtin trap "builtin command stty '$old_tty_settings'" EXIT
-    builtin trap "builtin command stty '$old_tty_settings'; _ksi_transmit_data 'abort_signaled=interrupt' 'edit'; return 1;" INT
+    builtin trap "builtin command stty '$old_tty_settings'; _ksi_transmit_data 'abort_signaled=interrupt' 'edit'; return 1;" INT TERM
     while :; do
         started="n"
         while IFS= read -r line; do
