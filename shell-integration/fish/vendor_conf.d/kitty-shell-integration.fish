@@ -155,6 +155,19 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     end
 end
 
+function _ksi_transmit_data -d "Transmit data to kitty using chunked DCS escapes"
+    set --local data_len (string length -- "$argv[1]")
+    set --local pos 1
+    set --local chunk_num 0
+    while test "$pos" -le $data_len
+        printf \eP@kitty-%s\|%s:%s\e\\ "$argv[2]" "$chunk_num" (string sub --start $pos --length 2048 -- $argv[1] | string collect)
+        set pos (math $pos + 2048)
+        set chunk_num (math $chunk_num + 1)
+    end
+    printf \eP@kitty-%s\|\e\\ "$argv[2]"
+
+end
+
 function clone-in-kitty -d "Clone the current fish session into a new kitty window"
     set --local data
     for a in $argv
@@ -175,13 +188,5 @@ function clone-in-kitty -d "Clone the current fish session into a new kitty wind
     set --local b64_cwd (printf "%s" "$PWD" | base64)
     set --prepend data "shell=fish" "pid=$fish_pid" "cwd=$b64_cwd" "env=$b64_envs"
     set data (string join "," -- $data | tr -d "\t\n\r ")
-    set --local data_len (string length -- "$data")
-    set --local pos 1
-    set --local chunk_num 0
-    while test "$pos" -le $data_len
-        printf \eP@kitty-clone\|%s:%s\e\\ "$chunk_num" (string sub --start $pos --length 2048 -- $data | string collect)
-        set pos (math $pos + 2048)
-        set chunk_num (math $chunk_num + 1)
-    end
-    echo -en \eP@kitty-clone\|\e\\
+    _ksi_transmit_data "$data" "clone"
 end
