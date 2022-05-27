@@ -606,7 +606,7 @@ class EditCmd:
         self.file_name = os.path.basename(self.file_spec)
         self.file_localpath = os.path.normpath(os.path.join(self.cwd, self.file_spec))
         self.is_local_file = False
-        with suppress(FileNotFoundError):
+        with suppress(OSError):
             st = os.stat(self.file_localpath)
             self.is_local_file = (st.st_dev, st.st_ino) == self.file_inode
         if not self.is_local_file:
