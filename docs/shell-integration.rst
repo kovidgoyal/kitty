@@ -33,6 +33,8 @@ Features
 * :ref:`clone_shell` with all environment variables and the working directory
   copied
 
+* :ref:`Edit files in new kitty windows <edit_file>` even over SSH
+
 * Glitch free window resizing even with complex prompts. Achieved by erasing
   the prompt on resize and allowing the shell to redraw it cleanly.
 
@@ -261,6 +263,31 @@ be sourced in the cloned window. This can be controlled by
 :command:`clone-in-kitty` works by asking the shell to serialize its internal
 state (mainly CWD and env vars) and this state is transmitted to kitty and
 restored by the shell integration scripts in the cloned window.
+
+
+.. _edit_file:
+
+Edit files in new kitty windows even over SSH
+------------------------------------------------
+
+.. code-block:: sh
+
+   edit-in-kitty myfile.txt
+   edit-in-kitty --type tab --title "Editing My File" myfile.txt
+
+The :command:`edit-in-kitty` command allows you to seamlessly edit files
+in your default :opt:`editor` in new kitty windows. This works even over
+SSH (if you use the :doc:`ssh kitten <kittens/ssh>`), allowing you
+to easily edit remote files in your local editor with all its bells and
+whistles.
+
+The :command:`edit-in-kitty` command takes almost all the same arguments as the
+:doc:`launch <launch>` command, so you can open a new tab instead or a new OS
+window, etc. Not all arguments are supported, see the discussion in the
+:ref:`clone_shell` section above.
+
+In order to avoid remote code execution, kitty will only execute the configured
+editor and pass the file path to edit to it.
 
 
 .. _manual_shell_integration:
