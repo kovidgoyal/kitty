@@ -458,10 +458,10 @@ edit-in-kitty() {
     builtin local stat_result=""
     stat_result=$(builtin command stat -L --format '%d:%i:%s' "$ed_filename" 2> /dev/null)
     [ $? != 0 ] && stat_result=$(builtin command stat -L -f '%d:%i:%z' "$ed_filename" 2> /dev/null)
-    [ -z "$stat_result" ] && { builtin echo "Failed to stat the file: $ed_filename" > /dev/stderr; return 1 }
+    [ -z "$stat_result" ] && { builtin echo "Failed to stat the file: $ed_filename" > /dev/stderr; return 1; }
     data="$data,file_inode=$stat_result"
     builtin local file_size=$(builtin echo "$stat_result" | builtin command cut -d: -f3)
-    [ "$file_size" -gt "2097152" ] && { builtin echo "File is too large for performant editing"; return 1; }
+    [ "$file_size" -gt $((8 * 1024 * 1024)) ] && { builtin echo "File is too large for performant editing"; return 1; }
     data="$data,file_data=$(builtin command cat "$ed_filename" | builtin command base64)"
     _ksi_transmit_data "$data" "edit" 
     data=""
