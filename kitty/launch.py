@@ -498,7 +498,7 @@ def launch(
     return None
 
 
-def parse_opts_for_clone(args: List[str]) -> LaunchCLIOptions:
+def parse_opts_for_clone(args: List[str]) -> Tuple[LaunchCLIOptions, List[str]]:
     unsafe, unsafe_args = parse_launch_args(args)
     default_opts, default_args = parse_launch_args()
     # only copy safe options, those that dont lead to local code exec
@@ -508,7 +508,7 @@ def parse_opts_for_clone(args: List[str]) -> LaunchCLIOptions:
         'logo', 'logo_position', 'logo_alpha', 'color'
     ):
         setattr(default_opts, x, getattr(unsafe, x))
-    return default_opts
+    return default_opts, unsafe_args
 
 
 def parse_bash_env(text: str) -> Dict[str, str]:
@@ -593,7 +593,15 @@ class EditCmd:
                 setattr(self, k, v)
         if self.abort_signaled:
             return
-        self.file_spec = self.args.pop()
+        self.opts, extra_args = parse_opts_for_clone(['--type=overlay'] + self.args)
+        self.file_spec = extra_args.pop()
+        self.line_number = 0
+        import re
+        pat = re.compile(r'\+(-?\d+)')
+        for x in extra_args:
+            m = pat.match(x)
+            if m is not None:
+                self.line_number = int(m.group(1))
         self.file_name = os.path.basename(self.file_spec)
         self.file_localpath = os.path.normpath(os.path.join(self.cwd, self.file_spec))
         self.is_local_file = False
@@ -610,7 +618,6 @@ class EditCmd:
         self.file_obj = open(self.file_localpath, 'rb')
         self.file_data = b''
         self.last_mod_time = self.file_mod_time
-        self.opts = parse_opts_for_clone(['--type=overlay'] + self.args)
         if not self.opts.cwd:
             self.opts.cwd = os.path.dirname(self.file_obj.name)
 
@@ -678,7 +685,7 @@ class CloneCmd:
         self.pid = -1
         self.history = ''
         self.parse_message(msg)
-        self.opts = parse_opts_for_clone(self.args)
+        self.opts = parse_opts_for_clone(self.args)[0]
 
     def parse_message(self, msg: str) -> None:
         simple = 'pid', 'envfmt', 'shell'
@@ -721,7 +728,7 @@ def remote_edit(msg: str, window: Window) -> None:
         if q is not None:
             q.abort_signaled = c.abort_signaled
         return
-    cmdline = get_editor() + [c.file_obj.name]
+    cmdline = get_editor(path_to_edit=c.file_obj.name, line_number=c.line_number)
     w = launch(get_boss(), c.opts, cmdline, active=window)
     if w is not None:
         c.source_window_id = window.id

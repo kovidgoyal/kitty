@@ -620,7 +620,7 @@ def get_editor_from_env_vars(opts: Optional[Options] = None) -> List[str]:
     return shlex.split(ans)
 
 
-def get_editor(opts: Optional[Options] = None) -> List[str]:
+def get_editor(opts: Optional[Options] = None, path_to_edit: str = '', line_number: int = 0) -> List[str]:
     if opts is None:
         from .fast_data_types import get_options
         try:
@@ -630,9 +630,20 @@ def get_editor(opts: Optional[Options] = None) -> List[str]:
             from .cli import create_default_opts
             opts = create_default_opts()
     if opts.editor == '.':
-        return get_editor_from_env_vars()
-    import shlex
-    return shlex.split(opts.editor)
+        ans = get_editor_from_env_vars()
+    else:
+        import shlex
+        ans = shlex.split(opts.editor)
+    if path_to_edit:
+        if line_number:
+            eq = os.path.basename(ans[-1]).lower()
+            if eq in ('code', 'code.exe'):
+                path_to_edit += f':{line_number}'
+                ans.append('--goto')
+            else:
+                ans.append(f'+{line_number}')
+        ans.append(path_to_edit)
+    return ans
 
 
 def is_path_in_temp_dir(path: str) -> bool:
