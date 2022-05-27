@@ -460,7 +460,7 @@ edit-in-kitty() {
     builtin zstat -H stat_result "$ed_filename" || { builtin echo "Failed to stat the file: $ed_filename" > /dev/stderr; return 1; }
     [ "${stat_result[size]}" -gt $((8 * 1024 * 1024)) ] && { builtin echo "File is too large for performant editing"; return 1; }
     data="$data,file_inode=${stat_result[device]}:${stat_result[inode]}:${stat_result[size]}"
-    data="$data,file_data=$(builtin command cat "$ed_filename" | builtin command base64)"
+    data="$data,file_data=$(builtin command base64 < "$ed_filename")"
     _ksi_transmit_data "$data" "edit" 
     data=""
     builtin echo "Waiting for editing to be completed..."

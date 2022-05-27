@@ -376,7 +376,7 @@ edit-in-kitty() {
     data="$data,file_inode=$stat_result"
     builtin local file_size=$(builtin echo "$stat_result" | builtin command cut -d: -f3)
     [ "$file_size" -gt $((8 * 1024 * 1024)) ] && { builtin echo "File is too large for performant editing"; return 1; }
-    data="$data,file_data=$(builtin command cat "$ed_filename" | builtin command base64)"
+    data="$data,file_data=$(builtin command base64 < "$ed_filename")"
     _ksi_transmit_data "$data" "edit"
     data=""
     builtin echo "Waiting for editing to be completed..."
