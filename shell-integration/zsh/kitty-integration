@@ -387,7 +387,7 @@ _ksi_deferred_init() {
 }
 
 _ksi_transmit_data() {
-    data="${1//[[:space:]]}"
+    builtin local data="${1//[[:space:]]}"
     builtin local pos=0
     builtin local chunk_num=0
     while [ $pos -lt ${#data} ]; do
