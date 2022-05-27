@@ -613,7 +613,7 @@ cocoa_create_global_menu(void) {
     [shellMenu release];
 
     NSMenuItem* windowMenuItem =
-        [bar addItemWithTitle:@""
+        [bar addItemWithTitle:@"Window"
                        action:NULL
                 keyEquivalent:@""];
     NSMenu* windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
