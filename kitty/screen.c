@@ -2859,6 +2859,30 @@ cmd_output(Screen *self, PyObject *args) {
             if (self->last_visited_prompt.scrolled_by <= self->historybuf->count && self->last_visited_prompt.is_set) {
                 found = find_cmd_output(self, &oo, self->last_visited_prompt.y, self->last_visited_prompt.scrolled_by, 0, false);
             } break;
+        case 3: { // last non-empty output
+            int y = self->cursor->y;
+            Line *line;
+            bool reached_upper_limit = false;
+            while (!found && !reached_upper_limit) {
+                line = checked_range_line(self, y);
+                if (!line || (line->attrs.prompt_kind == OUTPUT_START && !line->attrs.continued)) {
+                    int start = line ? y : y + 1; reached_upper_limit = !line;
+                    int y2 = start; unsigned int num_lines = 0;
+                    bool found_content = false;
+                    while ((line = checked_range_line(self, y2)) && line->attrs.prompt_kind != PROMPT_START) {
+                        if (!found_content) found_content = !line_is_empty(line);
+                        num_lines++; y2++;
+                    }
+                    if (found_content) {
+                        found = true;
+                        oo.reached_upper_limit = reached_upper_limit;
+                        oo.start = start; oo.num_lines = num_lines;
+                        break;
+                    }
+                }
+                y--;
+            }
+        } break;
         default:
             PyErr_Format(PyExc_KeyError, "%u is not a valid type of command", which);
             return NULL;

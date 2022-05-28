@@ -73,6 +73,13 @@ left_shift_line(Line *line, index_type at, index_type num) {
     }
 }
 
+static inline bool
+line_is_empty(const Line *line) {
+    for (index_type i = 0; i < line->xnum; i++) {
+        if (line->cpu_cells[i].ch != BLANK_CHAR) return false;
+    }
+    return true;
+}
 
 typedef Line*(get_line_func)(void *, int);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);

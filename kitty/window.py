@@ -164,7 +164,7 @@ class DynamicColor(IntEnum):
 
 
 class CommandOutput(IntEnum):
-    last_run, first_on_screen, last_visited = 0, 1, 2
+    last_run, first_on_screen, last_visited, last_non_empty = 0, 1, 2, 3
 
 
 DYNAMIC_COLOR_CODES = {
@@ -1459,6 +1459,14 @@ class Window:
         ''')
     def show_last_visited_command_output(self) -> None:
         self.show_cmd_output(CommandOutput.last_visited, 'Last visited command output')
+
+    @ac('cp', '''
+        Show the last non-empty output from a shell command in a pager like less
+
+        Requires :ref:`shell_integration` to work
+        ''')
+    def show_last_non_empty_command_output(self) -> None:
+        self.show_cmd_output(CommandOutput.last_non_empty, 'Last non-empty command output')
 
     @ac('cp', 'Paste the specified text into the current window')
     def paste(self, text: str) -> None:

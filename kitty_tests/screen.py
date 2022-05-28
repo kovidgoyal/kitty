@@ -1009,9 +1009,9 @@ class TestScreen(BaseTest):
         self.assertTrue(s.scroll_to_prompt())
         self.ae(str(s.visual_line(0)), '$ 1')
 
-        def lco(as_ansi=False):
+        def lco(as_ansi=False, which=0):
             a = []
-            if s.cmd_output(0, a.append, as_ansi):
+            if s.cmd_output(which, a.append, as_ansi):
                 pht = pagerhist(s, as_ansi=as_ansi, upto_output_start=True)
                 if pht:
                     a.insert(0, pht)
@@ -1098,3 +1098,11 @@ class TestScreen(BaseTest):
         draw_prompt('p1')
         draw_output(30)
         self.ae(tuple(map(int, lco().split())), tuple(range(0, 30)))
+
+        # last non empty command output
+        draw_prompt('a'), draw_output(2, 'a')
+        draw_prompt('b'), mark_output()
+        self.ae(lco(), '')
+        self.ae(lco(which=3), '0a\n1a')
+        s.draw('running'), s.index(),  s.carriage_return()
+        self.ae(lco(which=3), 'running\n')
