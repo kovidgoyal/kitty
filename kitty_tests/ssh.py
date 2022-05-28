@@ -196,6 +196,8 @@ copy --exclude */w.* d1
         self.assertTrue(methods)
         import pwd
         expected_login_shell = pwd.getpwuid(os.geteuid()).pw_shell
+        if os.path.basename(expected_login_shell) == 'nologin':
+            self.skipTest('Skipping login shell detection as login shell is set to nologin')
         for m in methods:
             for sh in self.all_possible_sh:
                 if 'python' in sh:
