@@ -198,6 +198,20 @@ prepare_for_exec() {
     install_kitty_bootstrap
 
     [ -n "$login_shell" ] || using_getent || using_id || using_python || using_perl || using_passwd || using_shell_env || login_shell="sh"
+    case "$login_shell" in
+        /*) ;;
+        *)
+            if ! command -v "$login_shell" > /dev/null 2> /dev/null; then
+                for i in /opt/homebrew/bin /opt/homebrew/sbin /usr/local/bin /usr/bin /bin /usr/sbin /sbin
+                do
+                    if [ -x "$i/$login_shell" ]; then
+                        login_shell="$i/$login_shell"
+                        break;
+                    fi
+                done
+            fi
+            ;;
+    esac
     shell_name=$(command basename $login_shell)
     [ -n "$login_cwd" ] && cd "$login_cwd"
 }
