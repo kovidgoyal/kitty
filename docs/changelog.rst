@@ -37,6 +37,8 @@ Detailed list of changes
 0.25.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new command :command:`edit-in-kitty` to :ref:`edit_file`
+
 - Fix a bug that caused :opt:`macos_colorspace` to always be ``default`` regardless of its actual value (:iss:`5129`)
 
 - ssh kitten: Fix bash not being executed as a login shell since kitty 0.25.0 (:iss:`5130`)
