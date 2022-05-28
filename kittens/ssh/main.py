@@ -123,6 +123,9 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
     def normalize_tarinfo(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo:
         tarinfo.uname = tarinfo.gname = ''
         tarinfo.uid = tarinfo.gid = 0
+        # some distro's like nix mess with installed file permissions so ensure
+        # files are at least readable and writable by owning user
+        tarinfo.mode |= stat.S_IWUSR | stat.S_IRUSR
         return tarinfo
 
     def add_data_as_file(tf: tarfile.TarFile, arcname: str, data: Union[str, bytes]) -> tarfile.TarInfo:
