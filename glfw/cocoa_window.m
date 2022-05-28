@@ -2498,8 +2498,52 @@ const char* _glfwPlatformGetClipboardString(void)
         return NULL;
     }
 
+    NSArray *classes = [NSArray arrayWithObject:[NSURL class]];
+    NSDictionary *options = [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES]
+                                          forKey:NSPasteboardURLReadingFileURLsOnlyKey];
+    NSArray *objs = [pasteboard readObjectsForClasses:classes options:options];
     free(_glfw.ns.clipboardString);
-    _glfw.ns.clipboardString = _glfw_strdup([object UTF8String]);
+    if (!objs || [objs count] == 0) {
+      _glfw.ns.clipboardString = _glfw_strdup([object UTF8String]);
+      return _glfw.ns.clipboardString;
+    }
+
+    const NSUInteger count = [objs count];
+    NSMutableString *uri_list = [NSMutableString stringWithCapacity:4096];  // auto-released
+                                                                            //
+    NSArray *specialCharacters = @[@" ", @"(", @")"];
+    if (count) {
+        for (NSUInteger i = 0;  i < count;  i++) {
+            id obj = objs[i];
+            if ([obj isKindOfClass:[NSURL class]]) {
+                NSURL *url = (NSURL*)obj;
+                if ([uri_list length] > 0) [uri_list appendString:@(" ")];
+                if (url.fileURL) {
+                  NSString *filePath = url.filePathURL.absoluteString;
+                  filePath = [filePath stringByReplacingOccurrencesOfString:@"file://" withString: @""];
+                  filePath = [filePath stringByRemovingPercentEncoding];
+
+                  for (NSString* specialChacter in specialCharacters) {
+                    filePath = [filePath stringByReplacingOccurrencesOfString:specialChacter
+                                         withString:[NSString stringWithFormat:@"\\%@", specialChacter]];
+                  }
+                  if([filePath hasSuffix:@"/"]) {
+                    filePath = [filePath substringToIndex:([filePath length] - 1)];
+                  }
+                  [uri_list appendString:filePath];
+                }
+                else [uri_list appendString:url.absoluteString];
+            } else if ([obj isKindOfClass:[NSString class]]) {
+                [uri_list appendString:obj];
+            } else {
+                _glfwInputError(GLFW_PLATFORM_ERROR,
+                                "Cocoa: Object is neither a URL nor a string");
+            }
+        }
+    }
+    if ([uri_list length] > 0) {
+      _glfw.ns.clipboardString = _glfw_strdup([uri_list UTF8String]);
+    }
 
     return _glfw.ns.clipboardString;
 }
