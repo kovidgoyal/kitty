@@ -651,8 +651,9 @@ class Boss:
     ) -> None:
         def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
             callback(res.get('response') == 'y', *args)
-        self._run_kitten('ask', ['--type=yesno', '--message', msg, '--default', 'y' if confirm_on_accept else 'n'],
-                         window=window, custom_callback=callback_, default_data={'response': 'y' if confirm_on_cancel else 'n'})
+        self.run_kitten_with_metadata(
+            'ask', ['--type=yesno', '--message', msg, '--default', 'y' if confirm_on_accept else 'n'],
+            window=window, custom_callback=callback_, default_data={'response': 'y' if confirm_on_cancel else 'n'})
 
     def choose(
         self, msg: str,  # can contain newlines and ANSI formatting
@@ -668,7 +669,7 @@ class Boss:
             cmd += ['-d', default]
         for c in choices:
             cmd += ['-c', c]
-        self._run_kitten('ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''})
+        self.run_kitten_with_metadata('ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''})
 
     def get_line(
         self, msg: str,  # can contain newlines and ANSI formatting
@@ -680,7 +681,7 @@ class Boss:
         def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
             callback(res.get('response') or '')
         cmd = ['--type', 'password' if is_password else 'line', '--message', msg, '--prompt', prompt]
-        self._run_kitten('ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''})
+        self.run_kitten_with_metadata('ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''})
 
     def confirm_tab_close(self, tab: Tab) -> None:
         x = get_options().confirm_os_window_close
@@ -1073,7 +1074,7 @@ class Boss:
         w = self.active_window
         if w is None:
             return
-        overlay_window = self._run_kitten('resize_window', args=[
+        overlay_window = self.run_kitten_with_metadata('resize_window', args=[
             f'--horizontal-increment={get_options().window_resize_step_cells}',
             f'--vertical-increment={get_options().window_resize_step_lines}'
         ])
@@ -1419,10 +1420,10 @@ class Boss:
 
     @ac('misc', 'Run the specified kitten. See :doc:`/kittens/custom` for details')
     def kitten(self, kitten: str, *kargs: str) -> None:
-        self._run_kitten(kitten, kargs)
+        self.run_kitten_with_metadata(kitten, kargs)
 
     def run_kitten(self, kitten: str, *args: str) -> None:
-        self._run_kitten(kitten, args)
+        self.run_kitten_with_metadata(kitten, args)
 
     def on_kitten_finish(
         self, target_window_id: int, end_kitten: Callable[[Dict[str, Any], int, 'Boss'], None],
@@ -1437,7 +1438,7 @@ class Boss:
 
     @ac('misc', 'Input an arbitrary unicode character. See :doc:`/kittens/unicode_input` for details.')
     def input_unicode_character(self) -> None:
-        self._run_kitten('unicode_input')
+        self.run_kitten_with_metadata('unicode_input')
 
     @ac('tab', 'Change the title of the active tab')
     def set_tab_title(self) -> None:
@@ -1446,7 +1447,7 @@ class Boss:
             args = [
                 '--name=tab-title', '--message', _('Enter the new title for this tab below.'),
                 '--default', tab.name or tab.title, 'do_set_tab_title', str(tab.id)]
-            self._run_kitten('ask', args)
+            self.run_kitten_with_metadata('ask', args)
 
     def do_set_tab_title(self, title: str, tab_id: int) -> None:
         tm = self.active_tab_manager
@@ -1463,7 +1464,7 @@ class Boss:
         if ec != (None, None, None):
             import traceback
             tb = traceback.format_exc()
-        self._run_kitten('show_error', args=['--title', title], input_data=json.dumps({'msg': msg, 'tb': tb}))
+        self.run_kitten_with_metadata('show_error', args=['--title', title], input_data=json.dumps({'msg': msg, 'tb': tb}))
 
     @ac('mk', 'Create a new marker')
     def create_marker(self) -> None:
@@ -1483,7 +1484,7 @@ class Boss:
                     except Exception as err:
                         self.show_error(_('Invalid marker specification'), str(err))
 
-            self._run_kitten('ask', [
+            self.run_kitten_with_metadata('ask', [
                 '--name=create-marker', '--message',
                 _('Create marker, for example:\ntext 1 ERROR\nSee {}\n').format(website_url('marks'))
                 ],
@@ -1549,7 +1550,7 @@ class Boss:
 
     @ac('misc', 'Click a URL using the keyboard')
     def open_url_with_hints(self) -> None:
-        self._run_kitten('hints')
+        self.run_kitten_with_metadata('hints')
 
     def drain_actions(self, actions: List[KeyAction], window_for_dispatch: Optional[Window] = None, dispatch_type: str = 'KeyPress') -> None:
 
@@ -2139,7 +2140,7 @@ class Boss:
         def done2(target_window_id: int, self: Boss) -> None:
             callback(ans)
 
-        q = self._run_kitten(
+        q = self.run_kitten_with_metadata(
             'hints', args=(
                 '--ascending', '--customize-processing=::import::kitty.choose_entry',
                 '--window-title', title,

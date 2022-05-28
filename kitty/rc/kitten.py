@@ -41,7 +41,7 @@ class Kitten(RemoteCommand):
         retval = None
         for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:
-                retval = boss._run_kitten(payload_get('kitten'), args=tuple(payload_get('args') or ()), window=window)
+                retval = boss.run_kitten_with_metadata(payload_get('kitten'), args=tuple(payload_get('args') or ()), window=window)
                 break
         if isinstance(retval, (str, bool)):
             return retval
