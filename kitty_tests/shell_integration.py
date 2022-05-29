@@ -358,7 +358,7 @@ PS1="{ps1}"
         run_test('bash -l .bashrc', 'profile', rc='echo ok;read', wait_string='ok', assert_not_in=True)
         run_test('bash -il -- .bashrc', 'profile', rc='echo ok;read', wait_string='ok')
 
-        with self.run_shell(rc=f'''PS1="{ps1}"\nexport ES=$'a\n `b` c\n$d' ''') as pty:
+        with self.run_shell(shell='bash', setup_env=partial(setup_env, set()), cmd='bash', rc=f'''PS1="{ps1}"\nexport ES=$'a\n `b` c\n$d' ''') as pty:
             pty.callbacks.clear()
             pty.send_cmd_to_child('clone-in-kitty')
             pty.wait_till(lambda: len(pty.callbacks.clone_cmds) == 1)
