@@ -573,6 +573,10 @@ static void seatHandleCapabilities(void* data UNUSED,
     {
         wl_pointer_destroy(_glfw.wl.pointer);
         _glfw.wl.pointer = NULL;
+        if (_glfw.wl.cursorAnimationTimer) {
+            removeTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer);
+            _glfw.wl.cursorAnimationTimer = 0;
+        }
     }
 
     if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !_glfw.wl.keyboard)
@@ -584,6 +588,11 @@ static void seatHandleCapabilities(void* data UNUSED,
     {
         wl_keyboard_destroy(_glfw.wl.keyboard);
         _glfw.wl.keyboard = NULL;
+        _glfw.wl.keyboardFocusId = 0;
+        if (_glfw.wl.keyRepeatInfo.keyRepeatTimer) {
+            removeTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer);
+            _glfw.wl.keyRepeatInfo.keyRepeatTimer = 0;
+        }
     }
 }
 
