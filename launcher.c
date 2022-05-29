@@ -44,27 +44,48 @@ safe_realpath(const char* src, char *buf, size_t buf_sz) {
 }
 #endif
 
-static bool
-set_xoptions(const char *exe_dir_c, const char *lc_ctype, bool from_source) {
-    wchar_t *exe_dir = Py_DecodeLocale(exe_dir_c, NULL);
-    if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir: %s\n", exe_dir_c); return false; }
-    wchar_t buf[PATH_MAX+1] = {0};
-    swprintf(buf, PATH_MAX, L"bundle_exe_dir=%ls", exe_dir);
-    PySys_AddXOption(buf);
-    PyMem_RawFree(exe_dir);
-    if (from_source) PySys_AddXOption(L"kitty_from_source=1");
-    if (lc_ctype) {
-        swprintf(buf, PATH_MAX, L"lc_ctype_before_python=%s", lc_ctype);
-        PySys_AddXOption(buf);
-    }
-    return true;
-}
-
 typedef struct {
     const char *exe, *exe_dir, *lc_ctype, *lib_dir;
     char **argv;
     int argc;
+    wchar_t* xoptions[8];
+    int num_xoptions;
 } RunData;
+
+
+static bool
+set_xoptions(RunData *run_data, bool from_source) {
+    wchar_t *exe_dir = Py_DecodeLocale(run_data->exe_dir, NULL);
+    if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir: %s\n", run_data->exe_dir); return false; }
+    size_t len = 32 + wcslen(exe_dir);
+    run_data->xoptions[run_data->num_xoptions] = calloc(len, sizeof(wchar_t));
+    if (!run_data->xoptions[run_data->num_xoptions]) { fprintf(stderr, "Out of memory allocating for bundle_exe_dir\n"); return false; }
+    swprintf(run_data->xoptions[run_data->num_xoptions++], len, L"bundle_exe_dir=%ls", exe_dir);
+    PyMem_RawFree(exe_dir);
+    if (from_source) {
+        len = 32;
+        run_data->xoptions[run_data->num_xoptions] = calloc(len, sizeof(wchar_t));
+        if (!run_data->xoptions[run_data->num_xoptions]) { fprintf(stderr, "Out of memory allocating for from_source\n"); return false; }
+        swprintf(run_data->xoptions[run_data->num_xoptions++], len, L"kitty_from_source=1");
+    }
+    if (run_data->lc_ctype) {
+        len = 32 + 4 * strlen(run_data->lc_ctype);
+        run_data->xoptions[run_data->num_xoptions] = calloc(len, sizeof(wchar_t));
+        if (!run_data->xoptions[run_data->num_xoptions]) { fprintf(stderr, "Out of memory allocating for lc_ctype\n"); return false; }
+        swprintf(run_data->xoptions[run_data->num_xoptions++], len, L"lc_ctype_before_python=%s", run_data->lc_ctype);
+    }
+    return true;
+}
+
+static void
+free_xoptions(RunData *run_data) {
+    if (run_data->num_xoptions > 0) {
+        while (run_data->num_xoptions--) {
+            free(run_data->xoptions[run_data->num_xoptions]);
+            run_data->xoptions[run_data->num_xoptions] = 0;
+        }
+    }
+}
 
 #ifdef FOR_BUNDLE
 #include <bypy-freeze.h>
@@ -133,7 +154,7 @@ canonicalize_path_wide(const char *srcpath, wchar_t *dest, size_t sz) {
 }
 
 static int
-run_embedded(const RunData run_data) {
+run_embedded(RunData *run_data) {
     bypy_pre_initialize_interpreter(false);
     char extensions_dir_full[PATH_MAX+1] = {0}, python_home_full[PATH_MAX+1] = {0};
 #ifdef __APPLE__
@@ -141,20 +162,23 @@ run_embedded(const RunData run_data) {
 #else
     const char *python_relpath = "../" KITTY_LIB_DIR_NAME;
 #endif
-    int num = snprintf(extensions_dir_full, PATH_MAX, "%s/%s/kitty-extensions", run_data.exe_dir, python_relpath);
-    if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to extensions_dir: %s/%s\n", run_data.exe_dir, python_relpath); return 1; }
+    int num = snprintf(extensions_dir_full, PATH_MAX, "%s/%s/kitty-extensions", run_data->exe_dir, python_relpath);
+    if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to extensions_dir: %s/%s\n", run_data->exe_dir, python_relpath); return 1; }
     wchar_t extensions_dir[num+2];
     if (!canonicalize_path_wide(extensions_dir_full, extensions_dir, num+1)) {
         fprintf(stderr, "Failed to canonicalize the path: %s\n", extensions_dir_full); return 1; }
 
-    num = snprintf(python_home_full, PATH_MAX, "%s/%s/python%s", run_data.exe_dir, python_relpath, PYVER);
-    if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to python home: %s/%s\n", run_data.exe_dir, python_relpath); return 1; }
+    num = snprintf(python_home_full, PATH_MAX, "%s/%s/python%s", run_data->exe_dir, python_relpath, PYVER);
+    if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to python home: %s/%s\n", run_data->exe_dir, python_relpath); return 1; }
     wchar_t python_home[num+2];
     if (!canonicalize_path_wide(python_home_full, python_home, num+1)) {
         fprintf(stderr, "Failed to canonicalize the path: %s\n", python_home_full); return 1; }
 
-    bypy_initialize_interpreter(L"kitty", python_home, L"kitty_main", extensions_dir, run_data.argc, run_data.argv);
-    if (!set_xoptions(run_data.exe_dir, run_data.lc_ctype, false)) return 1;
+    if (!set_xoptions(run_data, false)) return 1;
+    bypy_initialize_interpreter_with_xoptions(
+            L"kitty", python_home, L"kitty_main", extensions_dir, run_data->argc, run_data->argv,
+            run_data->num_xoptions, run_data->xoptions);
+    free_xoptions(run_data);
     set_sys_bool("frozen", true);
     set_sys_string("kitty_extensions_dir", extensions_dir);
     return bypy_run_interpreter();
@@ -163,36 +187,41 @@ run_embedded(const RunData run_data) {
 #else
 
 static int
-free_argv(wchar_t **argv) {
-    wchar_t **p = argv;
-    while (*p) { PyMem_RawFree(*p); p++; }
-    free(argv);
-    return 1;
-}
-
-static int
-run_embedded(const RunData run_data) {
+run_embedded(RunData *run_data) {
     bool from_source = false;
 #ifdef FROM_SOURCE
     from_source = true;
 #endif
-    if (!set_xoptions(run_data.exe_dir, run_data.lc_ctype, from_source)) return 1;
-    int argc = run_data.argc + 1;
-    wchar_t **argv = calloc(argc, sizeof(wchar_t*));
-    if (!argv) { fprintf(stderr, "Out of memory creating argv\n"); return 1; }
-    memset(argv, 0, sizeof(wchar_t*) * argc);
-    argv[0] = Py_DecodeLocale(run_data.exe, NULL);
-    if (!argv[0]) { fprintf(stderr, "Failed to decode path to exe\n"); return free_argv(argv); }
-    argv[1] = Py_DecodeLocale(run_data.lib_dir, NULL);
-    if (!argv[1]) { fprintf(stderr, "Failed to decode path to lib_dir\n"); return free_argv(argv); }
-    for (int i=1; i < run_data.argc; i++) {
-        argv[i+1] = Py_DecodeLocale(run_data.argv[i], NULL);
-        if (!argv[i+1]) { fprintf(stderr, "Failed to decode the command line argument: %s\n", run_data.argv[i]); return free_argv(argv); }
-    }
-    int ret = Py_Main(argc, argv);
-    // we cannot free argv properly as Py_Main modifies it
-    free(argv);
-    return ret;
+    PyStatus status;
+    PyPreConfig preconfig;
+    PyPreConfig_InitPythonConfig(&preconfig);
+    preconfig.utf8_mode = 1;
+    preconfig.coerce_c_locale = 1;
+    status = Py_PreInitialize(&preconfig);
+    if (PyStatus_Exception(status)) goto fail;
+    PyConfig config;
+    PyConfig_InitPythonConfig(&config);
+    config.parse_argv = 0;
+    config.optimization_level = 2;
+    status = PyConfig_SetBytesArgv(&config, run_data->argc, run_data->argv);
+    if (PyStatus_Exception(status)) goto fail;
+    status = PyConfig_SetBytesString(&config, &config.executable, run_data->exe);
+    if (PyStatus_Exception(status)) goto fail;
+    status = PyConfig_SetBytesString(&config, &config.run_filename, run_data->lib_dir);
+    if (PyStatus_Exception(status)) goto fail;
+
+    if (!set_xoptions(run_data, from_source)) return 1;
+    status = PyConfig_SetWideStringList(&config, &config.xoptions, run_data->num_xoptions, run_data->xoptions);
+    free_xoptions(run_data);
+    if (PyStatus_Exception(status)) goto fail;
+    status = Py_InitializeFromConfig(&config);
+    if (PyStatus_Exception(status))  goto fail;
+    PyConfig_Clear(&config);
+    return Py_RunMain();
+fail:
+    PyConfig_Clear(&config);
+    if (PyStatus_IsExit(status)) return status.exitcode;
+    Py_ExitStatusException(status);
 }
 
 #endif
@@ -275,11 +304,7 @@ int main(int argc, char *argv[]) {
     num = snprintf(lib, PATH_MAX, "%s/%s", exe_dir, KITTY_LIB_PATH);
 
     if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to kitty lib\n"); return 1; }
-#if PY_VERSION_HEX >= 0x03070000
-    // Always use UTF-8 mode, see https://github.com/kovidgoyal/kitty/issues/924
-    Py_UTF8Mode = 1;
-#endif
     RunData run_data = {.exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .argc = argc, .argv = argv, .lc_ctype = lc_ctype};
-    ret = run_embedded(run_data);
+    ret = run_embedded(&run_data);
     return ret;
 }

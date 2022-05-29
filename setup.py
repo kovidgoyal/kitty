@@ -26,8 +26,8 @@ from typing import (
 from glfw import glfw
 from glfw.glfw import Command, CompileKey
 
-if sys.version_info[:2] < (3, 7):
-    raise SystemExit('kitty requires python >= 3.7')
+if sys.version_info[:2] < (3, 8):
+    raise SystemExit('kitty requires python >= 3.8')
 base = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, base)
 del sys.path[0]
