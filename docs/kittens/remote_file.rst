@@ -22,6 +22,8 @@ transferred to the remote computer. Note that this happens without needing
 to install *any* special software on the server, beyond :program:`ls` that
 supports hyperlinks.
 
+.. seealso:: See the :ref:`edit-in-kitty <edit_file>` command
+
 .. seealso:: See the :doc:`transfer` kitten
 
 .. versionadded:: 0.19.0
