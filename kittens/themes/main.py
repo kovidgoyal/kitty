@@ -389,7 +389,7 @@ class ThemesHandler(Handler):
         if key_event.matches('esc') or key_event.matches_text('q'):
             self.quit_on_next_key_release = 0
             return
-        for cat in 'all dark light recent'.split():
+        for cat in self.tabs:
             if key_event.matches_text(cat[0]) or key_event.matches(f'alt+{cat[0]}'):
                 if cat != self.current_category:
                     self.current_category = cat
