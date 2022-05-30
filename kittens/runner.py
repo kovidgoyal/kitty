@@ -28,6 +28,8 @@ def resolved_kitten(k: str) -> str:
 
 
 def path_to_custom_kitten(config_dir: str, kitten: str) -> str:
+    if kitten.startswith('@'):
+        kitten = 'kittens/' + kitten.split('.')[0][1:] + '/main.py'
     path = resolve_abs_or_config_path(kitten, conf_dir=config_dir)
     return os.path.abspath(path)
 
