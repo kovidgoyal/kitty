@@ -219,6 +219,8 @@ _ksi_main() {
             fi
         }
         builtin complete -o nospace -F _ksi_completions kitty
+        builtin complete -o nospace -F _ksi_completions edit-in-kitty
+        builtin complete -o nospace -F _ksi_completions clone-in-kitty
     fi
 
     # wrap our prompt additions in markers we can use to remove them using

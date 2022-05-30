@@ -505,6 +505,16 @@ def complete_remote_command(ans: Completions, cmd_name: str, words: Sequence[str
     complete_alias_map(ans, words, new_word, alias_map, complete_args=args_completer)
 
 
+def complete_launch_wrapper(ans: Completions, words: Sequence[str], new_word: bool, allow_files: bool = True) -> None:
+    from kitty.launch import clone_safe_opts
+    aliases, alias_map = options_for_cmd('launch')
+    alias_map = {k: v for k, v in alias_map.items() if v['dest'] in clone_safe_opts()}
+    args_completer: Optional[CompleteArgsFunc] = None
+    if allow_files:
+        args_completer = remote_files_completer('Files', ('*',))
+    complete_alias_map(ans, words, new_word, alias_map, complete_args=args_completer)
+
+
 def path_completion(prefix: str = '') -> Tuple[List[str], List[str]]:
     prefix = prefix.replace(r'\ ', ' ')
     dirs, files = [], []
@@ -664,7 +674,12 @@ def complete_kitten(ans: Completions, kitten: str, words: Sequence[str], new_wor
 
 def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterable[str], namespaced_entry_points: Iterable[str]) -> Completions:
     ans = Completions()
-    if not words or words[0] != 'kitty':
+    if not words:
+        return ans
+    if words[0] in ('edit-in-kitty', 'clone-in-kitty'):
+        complete_launch_wrapper(ans, words[1:], new_word, allow_files=words[0] != 'clone-in-kitty')
+        return ans
+    if words[0] != 'kitty':
         return ans
     words = words[1:]
     if not words or (len(words) == 1 and not new_word):

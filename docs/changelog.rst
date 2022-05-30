@@ -16,6 +16,7 @@ The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 
 * Automatic :ref:`shell_integration` on remote machines
 * Easily :ref:`clone local shell/editor config <real_world_ssh_kitten_config>` on remote machines
+* Easily :ref:`edit files in your local editor <edit-file>` on remote machines
 * Automatic :opt:`re-use of existing connections <kitten-ssh.share_connections>` to avoid connection setup latency
 
 
@@ -45,6 +46,9 @@ Detailed list of changes
 - Fix a bug that caused :opt:`macos_colorspace` to always be ``default`` regardless of its actual value (:iss:`5129`)
 
 - ssh kitten: Fix bash not being executed as a login shell since kitty 0.25.0 (:iss:`5130`)
+
+- macOS: When pasting text and the clipboard has a filesystem path, paste the
+  full path instead of the text, which is sometimes just the file name (:pull:`5142`)
 
 
 0.25.1 [2022-05-26]
