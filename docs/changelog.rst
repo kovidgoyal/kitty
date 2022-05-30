@@ -46,6 +46,9 @@ Detailed list of changes
 
 - ssh kitten: Fix bash not being executed as a login shell since kitty 0.25.0 (:iss:`5130`)
 
+- macOS: When pasting text and the clipboard has a filesystem path, paste the
+  full path instead of the text, which is sometimes just the file name (:pull:`5142`)
+
 
 0.25.1 [2022-05-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
