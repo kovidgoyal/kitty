@@ -69,6 +69,10 @@ def create_recent_filter(names: Iterable[str]) -> Callable[[Theme], bool]:
     return recent_filter
 
 
+def user_filter(q: Theme) -> bool:
+    return q.is_user_defined
+
+
 def mark_shortcut(text: str, acc: str) -> str:
     acc_idx = text.lower().index(acc.lower())
     return text[:acc_idx] + styled(text[acc_idx], underline='straight', bold=True, fg_intense=True) + text[acc_idx+1:]
@@ -153,12 +157,13 @@ class ThemesHandler(Handler):
         self.report_traceback_on_exit: Optional[str] = None
         self.filter_map: Dict[str, Callable[[Theme], bool]] = {
             'dark': dark_filter, 'light': light_filter, 'all': all_filter,
-            'recent': create_recent_filter(self.cached_values.get('recent', ()))
+            'recent': create_recent_filter(self.cached_values.get('recent', ())),
+            'user': user_filter
         }
         self.themes_list = ThemesList()
         self.colors_set_once = False
         self.line_edit = LineEdit()
-        self.tabs = tuple('all dark light recent'.split())
+        self.tabs = tuple('all dark light recent user'.split())
         self.quit_on_next_key_release = -1
 
     def update_recent(self) -> None:
