@@ -106,6 +106,8 @@ _ksi_deferred_init() {
             builtin unset "functions[_kitty]"
             builtin autoload -Uz -- $comp_dir/_kitty
             compdef _kitty kitty
+            compdef _kitty edit-in-kitty
+            compdef _kitty clone-in-kitty
         fi
 
         # If compdef is not set, compinit has not run yet. In this case we must

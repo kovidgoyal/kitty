@@ -6,8 +6,8 @@ import os
 import shutil
 from contextlib import suppress
 from typing import (
-    Any, Container, Dict, Iterable, Iterator, List, NamedTuple, Optional,
-    Sequence, Tuple
+    Any, Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple,
+    Optional, Sequence, Tuple
 )
 
 from .boss import Boss
@@ -498,15 +498,20 @@ def launch(
     return None
 
 
+@run_once
+def clone_safe_opts() -> FrozenSet[str]:
+    return frozenset((
+        'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'env', 'hold',
+        'location', 'os_window_class', 'os_window_name', 'os_window_title',
+        'logo', 'logo_position', 'logo_alpha', 'color'
+    ))
+
+
 def parse_opts_for_clone(args: List[str]) -> Tuple[LaunchCLIOptions, List[str]]:
     unsafe, unsafe_args = parse_launch_args(args)
     default_opts, default_args = parse_launch_args()
     # only copy safe options, those that dont lead to local code exec
-    for x in (
-        'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'env', 'hold',
-        'location', 'os_window_class', 'os_window_name', 'os_window_title',
-        'logo', 'logo_position', 'logo_alpha', 'color'
-    ):
+    for x in clone_safe_opts():
         setattr(default_opts, x, getattr(unsafe, x))
     return default_opts, unsafe_args
 
