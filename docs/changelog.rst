@@ -50,6 +50,9 @@ Detailed list of changes
 - macOS: When pasting text and the clipboard has a filesystem path, paste the
   full path instead of the text, which is sometimes just the file name (:pull:`5142`)
 
+- Themes kitten: Add a tab to show user defined custom color themes separately
+  (:pull:`5150`)
+
 
 0.25.1 [2022-05-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
