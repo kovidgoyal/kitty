@@ -494,6 +494,7 @@ class Theme:
     is_dark: bool = False
     blurb: str = ''
     num_settings: int = 0
+    is_user_defined: bool = False
 
     def apply_dict(self, d: Dict[str, Any]) -> None:
         self.name = str(d['name'])
@@ -501,7 +502,7 @@ class Theme:
             a = d.get(x)
             if isinstance(a, str):
                 setattr(self, x, a)
-        for x in ('is_dark', 'num_settings'):
+        for x in ('is_dark', 'num_settings', 'is_user_defined'):
             a = d.get(x)
             if isinstance(a, int):
                 setattr(self, x, a)
@@ -594,6 +595,7 @@ class Themes:
                     d = parse_theme(name, raw)
                 except (Exception, SystemExit):
                     continue
+                d['is_user_defined'] = True
                 t = Theme(raw.__str__)
                 t.apply_dict(d)
                 if t.name:
