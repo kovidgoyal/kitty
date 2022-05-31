@@ -66,7 +66,8 @@ def launch(args: List[str]) -> None:
         raise SystemExit(
             'usage: kitty +launch script.py [arguments to be passed to script.py ...]\n\n'
             'script.py will be run with full access to kitty code. If script.py is '
-            'prefixed with a : it will be searched for in PATH'
+            'prefixed with a : it will be searched for in PATH. If script.py is a directory '
+            'the __main__.py file inside it is run just as with the normal Python interpreter.'
         )
     if exe.startswith(':'):
         import shutil
