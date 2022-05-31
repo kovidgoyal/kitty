@@ -16,7 +16,7 @@ The :doc:`ssh kitten <kittens/ssh>` is redesigned with powerful new features:
 
 * Automatic :ref:`shell_integration` on remote machines
 * Easily :ref:`clone local shell/editor config <real_world_ssh_kitten_config>` on remote machines
-* Easily :ref:`edit files in your local editor <edit-file>` on remote machines
+* Easily :ref:`edit files in your local editor <edit_file>` on remote machines
 * Automatic :opt:`re-use of existing connections <kitten-ssh.share_connections>` to avoid connection setup latency
 
 
