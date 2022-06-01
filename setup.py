@@ -510,6 +510,7 @@ def get_library_defines(env: Env, src: str) -> Optional[List[str]]:
 SPECIAL_SOURCES: Dict[str, Tuple[str, Union[List[str], Callable[[Env, str], Union[Optional[List[str]], Iterator[str]]]]]] = {
     'glfw/egl_context.c': ('glfw/egl_context.c', get_library_defines),
     'kitty/desktop.c': ('kitty/desktop.c', get_library_defines),
+    'kitty/fontconfig.c': ('kitty/fontconfig.c', get_library_defines),
     'kitty/parser_dump.c': ('kitty/parser.c', ['DUMP_COMMANDS']),
     'kitty/data-types.c': ('kitty/data-types.c', get_vcs_rev_defines),
 }
