@@ -375,6 +375,7 @@ def init_env(
         library_paths['glfw/egl_context.c'] = [f'_GLFW_EGL_LIBRARY="{egl_library}"']
 
     desktop_libs = []
+    fc_libs = []
     if startup_notification_library is not None:
         assert('"' not in startup_notification_library)
         desktop_libs = [f'_KITTY_STARTUP_NOTIFICATION_LIBRARY="{startup_notification_library}"']
@@ -385,10 +386,12 @@ def init_env(
 
     if fontconfig_library is not None:
         assert('"' not in fontconfig_library)
-        desktop_libs += [f'_KITTY_FONTCONFIG_LIBRARY="{fontconfig_library}"']
+        fc_libs += [f'_KITTY_FONTCONFIG_LIBRARY="{fontconfig_library}"']
 
     if desktop_libs != []:
         library_paths['kitty/desktop.c'] = desktop_libs
+    if fc_libs != []:
+        library_paths['kitty/fontconfig.c'] = fc_libs
 
     for path in extra_include_dirs:
         cflags.append(f'-I{path}')
