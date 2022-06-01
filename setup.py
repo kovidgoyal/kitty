@@ -388,9 +388,9 @@ def init_env(
         assert('"' not in fontconfig_library)
         fc_libs += [f'_KITTY_FONTCONFIG_LIBRARY="{fontconfig_library}"']
 
-    if desktop_libs != []:
+    if desktop_libs:
         library_paths['kitty/desktop.c'] = desktop_libs
-    if fc_libs != []:
+    if fc_libs:
         library_paths['kitty/fontconfig.c'] = fc_libs
 
     for path in extra_include_dirs:
