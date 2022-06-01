@@ -13,7 +13,7 @@ import subprocess
 import sys
 import time
 from functools import partial
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Tuple
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
@@ -85,7 +85,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language: Optional[str] = None
+language: str = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
