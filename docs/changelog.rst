@@ -53,6 +53,9 @@ Detailed list of changes
 - Themes kitten: Add a tab to show user defined custom color themes separately
   (:pull:`5150`)
 
+- Iosevka: Fix incorrect rendering when there is a combining char that does not
+  group with its neighbors (:iss:`5153`)
+
 
 0.25.1 [2022-05-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -928,8 +928,14 @@ group_iosevka(Font *font, hb_font_t *hbf) {
         const LigatureType current = ligature_types[G(glyph_idx)];
         const LigatureType after = is_last_glyph ? LIGATURE_UNKNOWN : ligature_types[G(glyph_idx + 1)];
         bool end_current_group = false;
-        if (current_group->num_glyphs && is_iosevka_lig_ender(before, current, after)) {
-            end_current_group = true;
+        if (current_group->num_glyphs) {
+            if (is_iosevka_lig_ender(before, current, after)) end_current_group = true;
+            else {
+                if (!current_group->num_cells && !current_group->has_special_glyph) {
+                    if (is_iosevka_lig_starter(before, current, after)) current_group->has_special_glyph = true;
+                    else end_current_group = true;
+                }
+            }
         }
         if (!current_group->num_glyphs++) {
             if (is_iosevka_lig_starter(before, current, after)) current_group->has_special_glyph = true;
@@ -954,7 +960,7 @@ group_iosevka(Font *font, hb_font_t *hbf) {
             }
             current_group->num_cells += num_cells_consumed;
         }
-        if (end_current_group) G(group_idx)++;
+        if (end_current_group && current_group->num_cells) G(group_idx)++;
         G(glyph_idx)++;
     }
 }
