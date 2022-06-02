@@ -2286,8 +2286,8 @@ class Boss:
 
         if failures:
             from kittens.tui.operations import styled
-            spec = '\n  '.join(styled(u, fg='red') for u in failures)
-            bdata = f"Unknown URL type, cannot open:\n\n  {spec}".encode('utf-8')
+            spec = '\n  '.join(styled(u, fg='yellow') for u in failures)
+            bdata = json.dumps({'msg': f"Unknown URL type, cannot open:\n  {spec}"}).encode('utf-8')
             special_window = SpecialWindow([kitty_exe(), '+kitten', 'show_error', '--title', 'Open URL Error'], bdata, 'Open URL Error')
             if needs_window_replaced and tab is not None:
                 tab.new_special_window(special_window)
