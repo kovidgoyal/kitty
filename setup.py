@@ -368,30 +368,18 @@ def init_env(
         cflags.append('-g3')
         ldflags.append('-lprofiler')
 
-    library_paths = {}
+    library_paths: Dict[str, List[str]] = {}
 
-    if egl_library is not None:
-        assert('"' not in egl_library)
-        library_paths['glfw/egl_context.c'] = [f'_GLFW_EGL_LIBRARY="{egl_library}"']
+    def add_lpath(which: str, name: str, val: Optional[str]) -> None:
+        if val:
+            if '"' in val:
+                raise SystemExit(f'Cannot have quotes in library paths: {val}')
+            library_paths.setdefault(which, []).append(f'{name}="{val}"')
 
-    desktop_libs = []
-    fc_libs = []
-    if startup_notification_library is not None:
-        assert('"' not in startup_notification_library)
-        desktop_libs = [f'_KITTY_STARTUP_NOTIFICATION_LIBRARY="{startup_notification_library}"']
-
-    if canberra_library is not None:
-        assert('"' not in canberra_library)
-        desktop_libs += [f'_KITTY_CANBERRA_LIBRARY="{canberra_library}"']
-
-    if fontconfig_library is not None:
-        assert('"' not in fontconfig_library)
-        fc_libs += [f'_KITTY_FONTCONFIG_LIBRARY="{fontconfig_library}"']
-
-    if desktop_libs:
-        library_paths['kitty/desktop.c'] = desktop_libs
-    if fc_libs:
-        library_paths['kitty/fontconfig.c'] = fc_libs
+    add_lpath('glfw/egl_context.c', '_GLFW_EGL_LIBRARY', egl_library)
+    add_lpath('kitty/desktop.c', '_KITTY_STARTUP_NOTIFICATION_LIBRARY', startup_notification_library)
+    add_lpath('kitty/desktop.c', '_KITTY_CANBERRA_LIBRARY', canberra_library)
+    add_lpath('kitty/fontconfig.c', '_KITTY_FONTCONFIG_LIBRARY', fontconfig_library)
 
     for path in extra_include_dirs:
         cflags.append(f'-I{path}')
