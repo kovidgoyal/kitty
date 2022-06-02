@@ -231,7 +231,7 @@ def ensure_macos_locale() -> None:
 
 
 @contextmanager
-def setup_profiling(args: CLIOptions) -> Generator[None, None, None]:
+def setup_profiling() -> Generator[None, None, None]:
     try:
         from .fast_data_types import start_profiler, stop_profiler
         do_profile = True
@@ -410,7 +410,7 @@ def _main() -> None:
         global_watchers.set_extra(cli_opts.watcher)
         log_error('The --watcher command line option has been deprecated in favor of using the watcher option in kitty.conf')
     try:
-        with setup_profiling(cli_opts):
+        with setup_profiling():
             # Avoid needing to launch threads to reap zombies
             run_app(opts, cli_opts, bad_lines)
     finally:
