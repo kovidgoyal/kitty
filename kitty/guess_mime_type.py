@@ -74,5 +74,5 @@ def guess_type(path: str, allow_filesystem_access: bool = False) -> Optional[str
         if is_dir:
             mt = 'inode/directory'  # type: ignore
         elif is_exe:
-            mt = 'application/executable'
+            mt = 'inode/executable'
     return mt
