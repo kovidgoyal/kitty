@@ -41,12 +41,11 @@ from kitty.utils import (
     set_echo as turn_off_echo, suppress_error_logging
 )
 
-from .completion import complete, ssh_options
 from .config import init_config
 from .copy import CopyInstruction
 from .options.types import Options as SSHOptions
 from .options.utils import DELETE_ENV_VAR
-from .utils import create_shared_memory
+from .utils import create_shared_memory, ssh_options
 
 
 @run_once
@@ -735,6 +734,7 @@ def main(args: List[str]) -> NoReturn:
 if __name__ == '__main__':
     main(sys.argv)
 elif __name__ == '__completer__':
+    from .completion import complete
     setattr(sys, 'kitten_completer', complete)
 elif __name__ == '__conf__':
     from .options.definition import definition

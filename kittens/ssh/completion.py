@@ -8,6 +8,7 @@ from typing import Callable, Dict, Iterable, Iterator, Sequence, Tuple
 
 from kitty.complete import Completions, complete_files_and_dirs, debug
 from kitty.types import run_once
+from .utils import ssh_options
 
 debug
 
@@ -69,47 +70,6 @@ def iter_known_hosts() -> Iterator[str]:
 @run_once
 def known_hosts() -> Tuple[str, ...]:
     return tuple(sorted(filter(lambda x: '*' not in x and '[' not in x, set(iter_known_hosts()))))
-
-
-@run_once
-def ssh_options() -> Dict[str, str]:
-    try:
-        p = subprocess.run(['ssh'], stderr=subprocess.PIPE, encoding='utf-8')
-        raw = p.stderr or ''
-    except FileNotFoundError:
-        return {
-            '4': '', '6': '', 'A': '', 'a': '', 'C': '', 'f': '', 'G': '', 'g': '', 'K': '', 'k': '',
-            'M': '', 'N': '', 'n': '', 'q': '', 's': '', 'T': '', 't': '', 'V': '', 'v': '', 'X': '',
-            'x': '', 'Y': '', 'y': '', 'B': 'bind_interface', 'b': 'bind_address', 'c': 'cipher_spec',
-            'D': '[bind_address:]port', 'E': 'log_file', 'e': 'escape_char', 'F': 'configfile', 'I': 'pkcs11',
-            'i': 'identity_file', 'J': '[user@]host[:port]', 'L': 'address', 'l': 'login_name', 'm': 'mac_spec',
-            'O': 'ctl_cmd', 'o': 'option', 'p': 'port', 'Q': 'query_option', 'R': 'address',
-            'S': 'ctl_path', 'W': 'host:port', 'w': 'local_tun[:remote_tun]'
-        }
-
-    ans: Dict[str, str] = {}
-    pos = 0
-    while True:
-        pos = raw.find('[', pos)
-        if pos < 0:
-            break
-        num = 1
-        epos = pos
-        while num > 0:
-            epos += 1
-            if raw[epos] not in '[]':
-                continue
-            num += 1 if raw[epos] == '[' else -1
-        q = raw[pos+1:epos]
-        pos = epos
-        if len(q) < 2 or q[0] != '-':
-            continue
-        if ' ' in q:
-            opt, desc = q.split(' ', 1)
-            ans[opt[1:]] = desc
-        else:
-            ans.update(dict.fromkeys(q[1:], ''))
-    return ans
 
 
 # option help {{{
