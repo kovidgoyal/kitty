@@ -2482,45 +2482,35 @@ void _glfwPlatformSetClipboardString(const char* string)
 const char* _glfwPlatformGetClipboardString(void)
 {
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
-
-    if (![[pasteboard types] containsObject:NSPasteboardTypeString])
-    {
-        _glfwInputError(GLFW_FORMAT_UNAVAILABLE,
-                        "Cocoa: Failed to retrieve string from pasteboard");
-        return NULL;
-    }
-
-    NSString* object = [pasteboard stringForType:NSPasteboardTypeString];
-    if (!object)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Cocoa: Failed to retrieve object from pasteboard");
-        return NULL;
-    }
     free(_glfw.ns.clipboardString); _glfw.ns.clipboardString = NULL;
 
     NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
     NSArray* objs = [pasteboard readObjectsForClasses:@[[NSURL class], [NSString class]] options:options];
-    if (!objs) return NULL;
-    const NSUInteger count = [objs count];
-    if (count) {
-        NSMutableString *path_list = [NSMutableString stringWithCapacity:4096];  // auto-released
-        const char *text = NULL;
-        for (NSUInteger i = 0;  i < count;  i++) {
-            id obj = objs[i];
-            if ([obj isKindOfClass:[NSURL class]]) {
-                NSURL *url = (NSURL*)obj;
-                if (url.fileURL && url.fileSystemRepresentation) {
-                    if ([path_list length] > 0) [path_list appendString:@("\n")];
-                    [path_list appendString:@(url.fileSystemRepresentation)];
+    if (objs) {
+        const NSUInteger count = [objs count];
+        if (count) {
+            NSMutableString *path_list = [NSMutableString stringWithCapacity:4096];  // auto-released
+            NSMutableString *text_list = [NSMutableString stringWithCapacity:4096];  // auto-released
+            for (NSUInteger i = 0;  i < count;  i++) {
+                id obj = objs[i];
+                if ([obj isKindOfClass:[NSURL class]]) {
+                    NSURL *url = (NSURL*)obj;
+                    if (url.fileURL && url.fileSystemRepresentation) {
+                        if ([path_list length] > 0) [path_list appendString:@("\n")];
+                        [path_list appendString:@(url.fileSystemRepresentation)];
+                    }
+                } else if ([obj isKindOfClass:[NSString class]]) {
+                    if ([text_list length] > 0) [text_list appendString:@("\n")];
+                    [text_list appendString:obj];
                 }
-            } else if ([obj isKindOfClass:[NSString class]]) {
-                text = [obj UTF8String];
             }
+            const char *text = NULL;
+            if (path_list.length > 0) text = [path_list UTF8String];
+            else if (text_list.length > 0) text = [text_list UTF8String];
+            if (text) _glfw.ns.clipboardString = _glfw_strdup(text);
         }
-        if (path_list.length > 0) _glfw.ns.clipboardString = _glfw_strdup([path_list UTF8String]);
-        else if (text) _glfw.ns.clipboardString = _glfw_strdup([path_list UTF8String]);
     }
+    if (!_glfw.ns.clipboardString) _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Failed to retrieve object from pasteboard");
     return _glfw.ns.clipboardString;
 }
 
