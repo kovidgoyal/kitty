@@ -234,6 +234,11 @@ protocol file
 mime inode/directory
 action launch --type=os-window --cwd $FILE_PATH
 
+# Open executable file
+protocol file
+mime application/executable,application/vnd.microsoft.portable-executable
+action launch --hold --type=os-window $FILE_PATH
+
 # Open text files without fragments in the editor
 protocol file
 mime text/*
