@@ -101,7 +101,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             sigset_t signals = {0};
             struct sigaction act = {.sa_handler=SIG_DFL};
 #define SA(which) { if (sigaction(which, &act, NULL) != 0) exit_on_err("sigaction() in child process failed"); }
-            SA(SIGINT); SA(SIGTERM); SA(SIGCHLD);
+            SA(SIGINT); SA(SIGTERM); SA(SIGCHLD); SA(SIGPIPE);
 #undef SA
             if (sigprocmask(SIG_SETMASK, &signals, NULL) != 0) exit_on_err("sigprocmask() in child process failed");
             // Use only signal-safe functions (man 7 signal-safety)
@@ -139,9 +139,6 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             for (int c = 3; c < 201; c++) safe_close(c, __FILE__, __LINE__);
 
             environ = env;
-            // for some reason SIGPIPE is set to SIG_IGN, so reset it, needed by bash,
-            // which does not reset signal handlers on its own
-            signal(SIGPIPE, SIG_DFL);
             execvp(exe, argv);
             // Report the failure and exec a shell instead, so that we are not left
             // with a forked but not exec'ed process
