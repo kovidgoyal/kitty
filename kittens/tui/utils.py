@@ -3,9 +3,14 @@
 
 import sys
 from contextlib import suppress
-from typing import Tuple
+from typing import TYPE_CHECKING, Tuple
+
+from kitty.types import run_once
 
 from .operations import raw_mode, set_cursor_visible
+
+if TYPE_CHECKING:
+    from kitty.options.types import Options
 
 
 def get_key_press(allowed: str, default: str) -> str:
@@ -48,6 +53,14 @@ def human_size(
     from math import log
     exponent = min(int(log(size, 1024)), len(unit_list) - 1)
     return format_number(size / 1024**exponent, max_num_of_decimals) + sep + unit_list[exponent]
+
+
+@run_once
+def kitty_opts() -> Options:
+    from kitty.cli import create_default_opts
+    from kitty.utils import suppress_error_logging
+    with suppress_error_logging():
+        return create_default_opts()
 
 
 def report_error(msg: str = '', return_code: int = 1, print_exc: bool = False) -> None:

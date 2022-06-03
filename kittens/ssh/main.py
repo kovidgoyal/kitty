@@ -32,15 +32,15 @@ from kitty.constants import (
     cache_dir, runtime_dir, shell_integration_dir, ssh_control_master_template,
     str_version, terminfo_dir
 )
-from kitty.options.types import Options
 from kitty.shell_integration import as_str_literal
 from kitty.shm import SharedMemory
 from kitty.types import run_once
 from kitty.utils import (
     SSHConnectionData, expandvars, resolve_abs_or_config_path,
-    set_echo as turn_off_echo, suppress_error_logging
+    set_echo as turn_off_echo
 )
 
+from ..tui.utils import kitty_opts
 from .config import init_config
 from .copy import CopyInstruction
 from .options.types import Options as SSHOptions
@@ -110,13 +110,6 @@ def serialize_env(literal_env: Dict[str, str], env: Dict[str, str], base_env: Di
     return '\n'.join(lines).encode('utf-8')
 
 
-@run_once
-def kitty_opts() -> Options:
-    from kitty.cli import create_default_opts
-    with suppress_error_logging():
-        return create_default_opts()
-
-
 def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: str = 'gz', literal_env: Dict[str, str] = {}) -> bytes:
 
     def normalize_tarinfo(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo:
@@ -154,6 +147,7 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
     if ssh_opts.shell_integration == 'inherited':
         ksi = get_effective_ksi_env_var(kitty_opts())
     else:
+        from kitty.options.types import Options
         from kitty.options.utils import shell_integration
         ksi = get_effective_ksi_env_var(Options({'shell_integration': shell_integration(ssh_opts.shell_integration)}))
 
