@@ -59,6 +59,9 @@ Detailed list of changes
 - Iosevka: Fix incorrect rendering when there is a combining char that does not
   group with its neighbors (:iss:`5153`)
 
+- Weston: Fix client side decorations flickering on slow computers during
+  window resize (:iss:`5162`)
+
 
 0.25.1 [2022-05-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

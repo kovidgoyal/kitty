@@ -172,7 +172,7 @@ typedef struct _GLFWwindowWayland
     struct zwp_idle_inhibitor_v1*          idleInhibitor;
 
     struct {
-        bool serverSide;
+        bool serverSide, buffer_destroyed;
         _GLFWdecorationSideWayland focus;
         _GLFWWaylandCSDEdge top, left, right, bottom;
 

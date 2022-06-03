@@ -102,13 +102,31 @@ init_buffer_pair(_GLFWWaylandBufferPair *pair, size_t width, size_t height, unsi
     return 2 * pair->size_in_bytes;
 }
 
+static bool
+window_has_buffer(_GLFWwindow *window, struct wl_buffer *q) {
+#define Q(which) decs.which.buffer.a == q || decs.which.buffer.b == q
+    return Q(left) || Q(top) || Q(right) || Q(bottom);
+#undef Q
+}
+
 static void
-alloc_buffer_pair(_GLFWWaylandBufferPair *pair, struct wl_shm_pool *pool, uint8_t *data, size_t *offset) {
+buffer_release_event(void *data, struct wl_buffer *buffer) {
+    wl_buffer_destroy(buffer);
+    _GLFWwindow *window = _glfwWindowForId((uintptr_t)data);
+    if (window && window_has_buffer(window, buffer)) decs.buffer_destroyed = true;
+}
+
+static struct wl_buffer_listener handle_buffer_events = {.release = buffer_release_event};
+
+static void
+alloc_buffer_pair(uintptr_t window_id, _GLFWWaylandBufferPair *pair, struct wl_shm_pool *pool, uint8_t *data, size_t *offset) {
     pair->data.a = data + *offset;
     pair->a = wl_shm_pool_create_buffer(pool, *offset, pair->width, pair->height, pair->stride, WL_SHM_FORMAT_ARGB8888);
+    wl_buffer_add_listener(pair->a, &handle_buffer_events, (void*)window_id);
     *offset += pair->size_in_bytes;
     pair->data.b = data + *offset;
     pair->b = wl_shm_pool_create_buffer(pool, *offset, pair->width, pair->height, pair->stride, WL_SHM_FORMAT_ARGB8888);
+    wl_buffer_add_listener(pair->b, &handle_buffer_events, (void*)window_id);
     *offset += pair->size_in_bytes;
     pair->front = pair->a; pair->back = pair->b;
     pair->data.front = pair->data.a; pair->data.back = pair->data.b;
@@ -287,7 +305,7 @@ create_shm_buffers(_GLFWwindow* window) {
     struct wl_shm_pool* pool = wl_shm_create_pool(_glfw.wl.shm, fd, decs.mapping.size);
     close(fd);
     size_t offset = 0;
-#define a(which) alloc_buffer_pair(&decs.which.buffer, pool, decs.mapping.data, &offset)
+#define a(which) alloc_buffer_pair(window->id, &decs.which.buffer, pool, decs.mapping.data, &offset)
     a(top); a(left); a(bottom); a(right);
 #undef a
     wl_shm_pool_destroy(pool);
@@ -313,8 +331,6 @@ free_csd_surfaces(_GLFWwindow *window) {
 static void
 free_csd_buffers(_GLFWwindow *window) {
 #define d(which) { \
-    if (decs.which.buffer.a) wl_buffer_destroy(decs.which.buffer.a); \
-    if (decs.which.buffer.b) wl_buffer_destroy(decs.which.buffer.b); \
     memset(&decs.which.buffer, 0, sizeof(_GLFWWaylandBufferPair)); \
 }
     d(left); d(top); d(right); d(bottom);
@@ -352,12 +368,14 @@ ensure_csd_resources(_GLFWwindow *window) {
         decs.for_window_state.scale != window->wl.scale ||
         !decs.mapping.data
     );
-    const bool needs_update = focus_changed || size_changed || !decs.left.surface;
-    debug("CSD: old.size: %dx%d new.size: %dx%d needs_update: %d size_changed: %d\n", decs.for_window_state.width, decs.for_window_state.height, window->wl.width, window->wl.height, needs_update, size_changed);
+    const bool needs_update = focus_changed || size_changed || !decs.left.surface || decs.buffer_destroyed;
+    debug("CSD: old.size: %dx%d new.size: %dx%d needs_update: %d size_changed: %d buffer_destroyed: %d\n",
+            decs.for_window_state.width, decs.for_window_state.height, window->wl.width, window->wl.height, needs_update, size_changed, decs.buffer_destroyed);
     if (!needs_update) return false;
-    if (size_changed) {
+    if (size_changed || decs.buffer_destroyed) {
         free_csd_buffers(window);
         if (!create_shm_buffers(window)) return false;
+        decs.buffer_destroyed = false;
     }
 
     int32_t x, y, scale = window->wl.scale < 1 ? 1 : window->wl.scale;
