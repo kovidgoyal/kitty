@@ -56,7 +56,7 @@ def human_size(
 
 
 @run_once
-def kitty_opts() -> Options:
+def kitty_opts() -> 'Options':
     from kitty.cli import create_default_opts
     from kitty.utils import suppress_error_logging
     with suppress_error_logging():
