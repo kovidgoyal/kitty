@@ -65,7 +65,7 @@ jobs:
             - name: Checkout source code
               uses: actions/checkout@v3
               with:
-                fetch-depth: 10
+                fetch-depth: 0  # needed for :commit: docs role
 
             - name: Test for trailing whitespace
               run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
