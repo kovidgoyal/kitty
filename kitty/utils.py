@@ -1002,3 +1002,13 @@ def less_version(less_exe: str = 'less') -> int:
     if m is None:
         raise ValueError(f'Invalid version string for less: {o}')
     return int(m.group(1))
+
+
+def is_pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except Exception:
+        pass
+    return True
