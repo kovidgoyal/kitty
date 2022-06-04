@@ -1375,3 +1375,7 @@ def shm_open(name: str, flags: int, mode: int = 0o600) -> int:
 
 def shm_unlink(name: str) -> None:
     pass
+
+
+def sigqueue(pid: int, signal: int, value: int) -> None:
+    pass

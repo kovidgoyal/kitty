@@ -23,6 +23,10 @@
 #include <signal.h>
 extern PyTypeObject Screen_Type;
 
+#if defined(__APPLE__) || defined(__OpenBSD__)
+#define NO_SIGQUEUE 1
+#endif
+
 #ifdef DEBUG_EVENT_LOOP
 #define EVDBG(...) log_event(__VA_ARGS__)
 #else
@@ -802,10 +806,24 @@ free_twd(ThreadWriteData *x) {
 }
 
 static PyObject*
+sig_queue(PyObject *self UNUSED, PyObject *args) {
+    int pid, signal, value;
+    if (!PyArg_ParseTuple(args, "iii", &pid, &signal, &value)) return NULL;
+#ifdef NO_SIGQUEUE
+    if (kill(pid, signal) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+#else
+    union sigval v;
+    v.sival_int = value;
+    if (sigqueue(pid, signal, v) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+#endif
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 monitor_pid(PyObject *self UNUSED, PyObject *args) {
-    long pid;
+    int pid;
     bool ok = true;
-    if (!PyArg_ParseTuple(args, "l", &pid)) return NULL;
+    if (!PyArg_ParseTuple(args, "i", &pid)) return NULL;
     children_mutex(lock);
     if (monitored_pids_count >= arraysz(monitored_pids)) {
         PyErr_SetString(PyExc_RuntimeError, "Too many monitored pids");
@@ -1224,7 +1242,7 @@ read_bytes(int fd, Screen *screen) {
 typedef struct { bool kill_signal, child_died, reload_config; } SignalSet;
 
 static void
-handle_signal(int signum, void *data) {
+handle_signal(int32_t signum, int32_t sigval, void *data) {
     SignalSet *ss = data;
     switch(signum) {
         case SIGINT:
@@ -1236,6 +1254,9 @@ handle_signal(int signum, void *data) {
             break;
         case SIGUSR1:
             ss->reload_config = true;
+            break;
+        case SIGUSR2:
+            printf("Received SIGUSR2: %d\n", sigval);
             break;
         default:
             break;
@@ -1739,6 +1760,7 @@ static PyMethodDef module_methods[] = {
     METHODB(monitor_pid, METH_VARARGS),
     METHODB(send_data_to_peer, METH_VARARGS),
     METHODB(cocoa_set_menubar_title, METH_VARARGS),
+    {"sigqueue", (PyCFunction)sig_queue, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };
 
@@ -1748,6 +1770,11 @@ init_child_monitor(PyObject *module) {
     if (PyModule_AddObject(module, "ChildMonitor", (PyObject *)&ChildMonitor_Type) != 0) return false;
     Py_INCREF(&ChildMonitor_Type);
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+#ifdef NO_SIGQUEUE
+    PyModule_AddIntConstant(module, "has_sigqueue", 0);
+#else
+    PyModule_AddIntConstant(module, "has_sigqueue", 1);
+#endif
     return true;
 }
 

@@ -37,7 +37,7 @@ typedef struct {
     int wakeup_read_fd;
     int signal_read_fd;
 } LoopData;
-typedef void(*handle_signal_func)(int, void *data);
+typedef void(*handle_signal_func)(int32_t, int32_t, void *data);
 
 bool init_loop_data(LoopData *ld);
 void free_loop_data(LoopData *ld);

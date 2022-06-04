@@ -29,11 +29,14 @@ init_loop_data(LoopData *ld) {
 static int signal_write_fd = -1;
 
 static void
-handle_signal(int sig_num) {
+handle_signal(int sig_num, siginfo_t *si, void *ucontext UNUSED) {
     int save_err = errno;
-    unsigned char byte = (unsigned char)sig_num;
-    while(signal_write_fd != -1) {
-        ssize_t ret = write(signal_write_fd, &byte, 1);
+    char buf[8];
+    int32_t sigval = si->si_value.sival_int, signum = sig_num;
+    memcpy(buf, &signum, 4);
+    memcpy(buf + 4, &sigval, 4);
+    while (signal_write_fd != -1) {
+        ssize_t ret = write(signal_write_fd, buf, 8);
         if (ret < 0 && errno == EINTR) continue;
         break;
     }
@@ -45,7 +48,7 @@ handle_signal(int sig_num) {
 #define SIGNAL_SET \
     sigset_t signals = {0}; \
     sigemptyset(&signals); \
-    sigaddset(&signals, SIGINT); sigaddset(&signals, SIGTERM); sigaddset(&signals, SIGCHLD); sigaddset(&signals, SIGUSR1); \
+    sigaddset(&signals, SIGINT); sigaddset(&signals, SIGTERM); sigaddset(&signals, SIGCHLD); sigaddset(&signals, SIGUSR1); sigaddset(&signals, SIGUSR2); \
 
 void
 free_loop_data(LoopData *ld) {
@@ -68,6 +71,8 @@ free_loop_data(LoopData *ld) {
         signal(SIGINT, SIG_DFL);
         signal(SIGTERM, SIG_DFL);
         signal(SIGCHLD, SIG_DFL);
+        signal(SIGUSR1, SIG_DFL);
+        signal(SIGUSR2, SIG_DFL);
     }
 #ifdef HAS_EVENT_FD
     safe_close(ld->wakeup_read_fd, __FILE__, __LINE__);
@@ -104,9 +109,9 @@ install_signal_handlers(LoopData *ld) {
 #else
     if (!self_pipe(ld->signal_fds, true)) return false;
     signal_write_fd = ld->signal_fds[1];
-    struct sigaction act = {.sa_handler=handle_signal};
+    struct sigaction act = {.sa_sigaction=handle_signal, .sa_flags=SA_SIGINFO};
 #define SA(which) { if (sigaction(which, &act, NULL) != 0) return false; if (siginterrupt(which, false) != 0) return false; }
-    SA(SIGINT); SA(SIGTERM); SA(SIGCHLD); SA(SIGUSR1);
+    SA(SIGINT); SA(SIGTERM); SA(SIGCHLD); SA(SIGUSR1); SA(SIGUSR2);
 #undef SA
     ld->signal_read_fd = ld->signal_fds[0];
 #endif
@@ -132,18 +137,25 @@ read_signals(int fd, handle_signal_func callback, void *data) {
             log_error("Incomplete signal read from signalfd");
             break;
         }
-        for (size_t i = 0; i < num_signals; i++) callback(fdsi[i].ssi_signo, data);
+        for (size_t i = 0; i < num_signals; i++) callback(fdsi[i].ssi_signo, fdsi[i].ssi_int, data);
     }
 #else
     static char buf[256];
+    static size_t buf_pos = 0;
     while(true) {
-        ssize_t len = read(fd, buf, sizeof(buf));
+        ssize_t len = read(fd, buf + buf_pos, sizeof(buf) - buf_pos);
         if (len < 0) {
             if (errno == EINTR) continue;
             if (errno != EIO && errno != EAGAIN) log_error("Call to read() from read_signals() failed with error: %s", strerror(errno));
             break;
         }
-        for (ssize_t i = 0; i < len; i++) callback(buf[i], data);
+        buf_pos += len;
+        while (buf_pos >= 8) {
+            int32_t *sdata = (int32_t*)buf;
+            callback(sdata[0], sdata[1], data);
+            memmove(buf, buf + 8, 8);
+            buf_pos -= 8;
+        }
         if (len == 0) break;
     }
 #endif
