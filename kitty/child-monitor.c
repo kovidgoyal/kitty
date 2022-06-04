@@ -1570,8 +1570,7 @@ wakeup_talk_loop(bool in_signal_handler) {
 
 static void
 prune_peers(void) {
-    for (size_t i = 0; i < talk_data.num_peers; i++) {
-        size_t idx = talk_data.num_peers - 1 - i;
+    for (size_t idx = talk_data.num_peers; idx-- > 0;) {
         Peer *p = talk_data.peers + idx;
         if (p->read.finished && !p->num_of_unresponded_messages_sent_to_main_thread && !p->write.used) {
             free_peer(p);
