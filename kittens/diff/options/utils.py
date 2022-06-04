@@ -3,7 +3,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import Any, Dict, Iterable, Tuple, Union
+from typing import Any, Dict, Iterable, List, Tuple, Union
 
 from kitty.conf.utils import (
     KeyFuncWrapper, KittensKeyDefinition, parse_kittens_key
@@ -56,6 +56,10 @@ def syntax_aliases(raw: str) -> Dict[str, str]:
         if a and b:
             ans[a.lower()] = b
     return ans
+
+
+def pattern_list(raw: str) -> List[str]:
+    return [pat for pat in raw.split(' ') if pat]
 
 
 def parse_map(val: str) -> Iterable[KittensKeyDefinition]:

@@ -4,6 +4,7 @@
 import os
 import re
 from contextlib import suppress
+from fnmatch import fnmatch
 from functools import lru_cache
 from hashlib import md5
 from kitty.guess_mime_type import guess_type
@@ -36,6 +37,9 @@ class Segment:
 
 
 class Collection:
+
+    file_ignores = ['']
+    ignore_paths = ['']
 
     def __init__(self) -> None:
         self.changes: Dict[str, str] = {}
@@ -113,7 +117,11 @@ def collect_files(collection: Collection, left: str, right: str) -> None:
 
     def walk(base: str, names: Set[str], pmap: Dict[str, str]) -> None:
         for dirpath, dirnames, filenames in os.walk(base):
+            if any(fnmatch(dirpath, f"*/{pat}") for pat in collection.ignore_paths):
+                continue
             for filename in filenames:
+                if any(fnmatch(filename, f"{pat}") for pat in collection.file_ignores):
+                    continue
                 path = os.path.abspath(os.path.join(dirpath, filename))
                 path_name_map[path] = name = os.path.relpath(path, base)
                 names.add(name)

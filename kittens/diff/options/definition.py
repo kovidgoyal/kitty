@@ -47,6 +47,17 @@ opt('replace_tab_by', '\\x20\\x20\\x20\\x20',
     option_type='python_string',
     long_text='The string to replace tabs with. Default is to use four spaces.'
     )
+
+opt('file_ignores', '',
+    option_type='pattern_list',
+    long_text='List of file patterns that are ignored when directories are compared'
+    )
+
+opt('ignore_paths', '',
+    option_type='pattern_list',
+    long_text='List of directory patterns that are ignored when directories are compared'
+    )
+
 egr()  # }}}
 
 # colors {{{
