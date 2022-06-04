@@ -62,6 +62,11 @@ Detailed list of changes
 - Weston: Fix client side decorations flickering on slow computers during
   window resize (:iss:`5162`)
 
+- Remote control: Fix commands with large or asynchronous payloads like
+  :command:`kitty @ set-backround-image`, :command:`kitty @ set-window-logo`
+  and :command:`kitty @ select-window` not working correctly
+  when using a socket (:iss:`5165`)
+
 
 0.25.1 [2022-05-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
