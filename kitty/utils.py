@@ -911,9 +911,7 @@ def is_kitty_gui_cmdline(*cmd: str) -> bool:
         return False
     if s == '+':
         if cmd[1] == '+':
-            if len(cmd) > 2 and cmd[2] == 'open':
-                return True
-            return False
+            return len(cmd) > 2 and cmd[2] == 'open'
         return cmd[1] == '+open'
     return True
 
