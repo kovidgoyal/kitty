@@ -1256,7 +1256,7 @@ handle_signal(int32_t signum, int32_t sigval, void *data) {
             ss->reload_config = true;
             break;
         case SIGUSR2:
-            printf("Received SIGUSR2: %d\n", sigval);
+            log_error("Received SIGUSR2: %d\n", sigval);
             break;
         default:
             break;
