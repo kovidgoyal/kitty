@@ -102,7 +102,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             sigset_t signals = {0};
             struct sigaction act = {.sa_handler=SIG_DFL};
 #define SA(which) { if (sigaction(which, &act, NULL) != 0) exit_on_err("sigaction() in child process failed"); }
-            SA(SIGINT); SA(SIGTERM); SA(SIGCHLD); SA(SIGPIPE);
+            SA(SIGINT); SA(SIGTERM); SA(SIGCHLD); SA(SIGPIPE); SA(SIGUSR1); SA(SIGUSR2);
 #ifdef SIGXFSZ
             SA(SIGXFSZ);
 #endif
