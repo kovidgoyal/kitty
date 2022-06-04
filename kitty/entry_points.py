@@ -125,6 +125,8 @@ def edit_config_file(args: List[str]) -> None:
 def namespaced(args: List[str]) -> None:
     try:
         func = namespaced_entry_points[args[1]]
+    except IndexError:
+        raise SystemExit('The kitty command line is incomplete')
     except KeyError:
         pass
     else:
