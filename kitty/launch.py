@@ -747,7 +747,6 @@ def remote_edit(msg: str, window: Window) -> None:
 
 
 def clone_and_launch(msg: str, window: Window) -> None:
-    from .child import cmdline_of_process
     from .shell_integration import serialize_env
     c = CloneCmd(msg)
     if c.cwd and not c.opts.cwd:
@@ -782,8 +781,9 @@ def clone_and_launch(msg: str, window: Window) -> None:
                 patch_cmdline('env', entry, cmdline)
             c.opts.env = []
     else:
+
         try:
-            cmdline = cmdline_of_process(c.pid)
+            cmdline = window.child.cmdline_of_pid(c.pid)
         except Exception:
             cmdline = []
         if not cmdline:

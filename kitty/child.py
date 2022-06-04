@@ -43,11 +43,11 @@ if is_macos:
             ans[pgid].append(pid)
         return ans
 
-    def cmdline_of_process(pid: int) -> List[str]:
+    def cmdline_of_pid(pid: int) -> List[str]:
         return cmdline_(pid)
 else:
 
-    def cmdline_of_process(pid: int) -> List[str]:
+    def cmdline_of_pid(pid: int) -> List[str]:
         with open(f'/proc/{pid}/cmdline', 'rb') as f:
             return list(filter(None, f.read().decode('utf-8').split('\0')))
 
@@ -307,6 +307,15 @@ class Child:
         os.close(self.terminal_ready_fd)
         self.terminal_ready_fd = -1
 
+    def cmdline_of_pid(self, pid: int) -> List[str]:
+        try:
+            ans = cmdline_of_pid(pid)
+        except Exception:
+            ans = []
+        if not ans and pid == self.pid:
+            ans = list(self.argv)
+        return ans
+
     @property
     def foreground_processes(self) -> List[ProcessDesc]:
         if self.child_fd is None:
@@ -318,7 +327,7 @@ class Child:
             def process_desc(pid: int) -> ProcessDesc:
                 ans: ProcessDesc = {'pid': pid, 'cmdline': None, 'cwd': None}
                 with suppress(Exception):
-                    ans['cmdline'] = cmdline_of_process(pid)
+                    ans['cmdline'] = self.cmdline_of_pid(pid)
                 with suppress(Exception):
                     ans['cwd'] = cwd_of_process(pid) or None
                 return ans
@@ -331,7 +340,7 @@ class Child:
     def cmdline(self) -> List[str]:
         try:
             assert self.pid is not None
-            return cmdline_of_process(self.pid) or list(self.argv)
+            return self.cmdline_of_pid(self.pid) or list(self.argv)
         except Exception:
             return list(self.argv)
 
@@ -339,7 +348,7 @@ class Child:
     def foreground_cmdline(self) -> List[str]:
         try:
             assert self.pid_for_cwd is not None
-            return cmdline_of_process(self.pid_for_cwd) or self.cmdline
+            return self.cmdline_of_pid(self.pid_for_cwd) or self.cmdline
         except Exception:
             return self.cmdline
 
