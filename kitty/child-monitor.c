@@ -1416,7 +1416,7 @@ io_loop(void *data) {
 
 typedef struct {
     id_type id;
-    size_t num_of_unresponded_messages_sent_to_main_thread;
+    size_t num_of_unresponded_messages_sent_to_main_thread, fd_array_idx;
     bool finished_reading;
     int fd;
     struct {
@@ -1603,13 +1603,14 @@ talk_loop(void *data) {
             for (size_t i = 0; i < talk_data.num_peers; i++) {
                 Peer *p = talk_data.peers + i;
                 if (!p->read.finished || p->write.used) {
-                    fds[num_listen_fds + num_peer_fds].fd = p->fd;
-                    fds[num_listen_fds + num_peer_fds].revents = 0;
+                    p->fd_array_idx = num_listen_fds + num_peer_fds++;
+                    fds[p->fd_array_idx].fd = p->fd;
+                    fds[p->fd_array_idx].revents = 0;
                     int flags = 0;
                     if (!p->read.finished) flags |= POLLIN;
                     if (p->write.used) flags |= POLLOUT;
-                    fds[num_listen_fds + num_peer_fds++].events = flags;
-                }
+                    fds[p->fd_array_idx].events = flags;
+                } else p->fd_array_idx = 0;
             }
             talk_mutex(unlock);
         }
@@ -1624,13 +1625,16 @@ talk_loop(void *data) {
             if (fds[num_listen_fds - 1].revents & POLLIN) {
                 drain_fd(fds[num_listen_fds - 1].fd);  // wakeup
             }
-            for (size_t i = num_listen_fds, k = 0; i < num_peer_fds + num_listen_fds; i++, k++) {
+            for (size_t k = 0; k < talk_data.num_peers; k++) {
                 Peer *p = talk_data.peers + k;
-                if (fds[i].revents & (POLLIN | POLLHUP)) read_from_peer(self, p);
-                if (fds[i].revents & POLLOUT) write_to_peer(p);
-                if (fds[i].revents & POLLNVAL) {
-                    p->read.finished = true;
-                    p->write.failed = true; p->write.used = 0;
+                if (p->fd_array_idx) {
+                    if (fds[p->fd_array_idx].revents & (POLLIN | POLLHUP)) read_from_peer(self, p);
+                    if (fds[p->fd_array_idx].revents & POLLOUT) write_to_peer(p);
+                    if (fds[p->fd_array_idx].revents & POLLNVAL) {
+                        p->read.finished = true;
+                        p->write.failed = true; p->write.used = 0;
+                    }
+                    break;
                 }
             }
         } else if (ret < 0) { if (errno != EAGAIN && errno != EINTR) perror("poll() on talk fds failed"); }
