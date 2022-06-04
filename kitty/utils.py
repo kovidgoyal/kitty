@@ -906,8 +906,15 @@ def is_kitty_gui_cmdline(*cmd: str) -> bool:
         return False
     if len(cmd) == 1:
         return True
-    if '+' in cmd or '@' in cmd or cmd[1].startswith('+') or cmd[1].startswith('@'):
+    s = cmd[1][:1]
+    if s == '@':
         return False
+    if s == '+':
+        if cmd[1] == '+':
+            if len(cmd) > 2 and cmd[2] == 'open':
+                return True
+            return False
+        return cmd[1] == '+open'
     return True
 
 
