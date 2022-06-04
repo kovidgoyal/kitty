@@ -98,10 +98,17 @@ spawn(PyObject *self UNUSED, PyObject *args) {
 #if PY_VERSION_HEX >= 0x03070000
             PyOS_AfterFork_Child();
 #endif
+            // See _Py_RestoreSignals in signalmodule.c for a list of signals python nukes
             sigset_t signals = {0};
             struct sigaction act = {.sa_handler=SIG_DFL};
 #define SA(which) { if (sigaction(which, &act, NULL) != 0) exit_on_err("sigaction() in child process failed"); }
             SA(SIGINT); SA(SIGTERM); SA(SIGCHLD); SA(SIGPIPE);
+#ifdef SIGXFSZ
+            SA(SIGXFSZ);
+#endif
+#ifdef SIGXFZ
+            SA(SIGXFZ);
+#endif
 #undef SA
             if (sigprocmask(SIG_SETMASK, &signals, NULL) != 0) exit_on_err("sigprocmask() in child process failed");
             // Use only signal-safe functions (man 7 signal-safety)
