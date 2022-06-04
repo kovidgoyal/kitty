@@ -460,6 +460,9 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             REPORT_COMMAND(screen_pop_dynamic_colors);
             screen_pop_colors(screen, 0);
             break;
+        // OSC 697 is used by Fig and can be ignored
+        case 697:
+            break;
         default:
             REPORT_ERROR("Unknown OSC code: %u", code);
             break;
