@@ -1379,3 +1379,7 @@ def shm_unlink(name: str) -> None:
 
 def sigqueue(pid: int, signal: int, value: int) -> None:
     pass
+
+
+def establish_controlling_tty(ttyname: str, stdin: int, stdout: int, stderr: int) -> None:
+    pass
