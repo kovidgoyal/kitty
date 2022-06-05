@@ -9,6 +9,7 @@
 #include "data-types.h"
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 
 #ifdef __has_include
 #if __has_include(<sys/signalfd.h>)
@@ -37,7 +38,7 @@ typedef struct {
     int wakeup_read_fd;
     int signal_read_fd;
 } LoopData;
-typedef void(*handle_signal_func)(int32_t, int32_t, void *data);
+typedef void(*handle_signal_func)(const siginfo_t* siginfo, void *data);
 
 bool init_loop_data(LoopData *ld);
 void free_loop_data(LoopData *ld);

@@ -1242,9 +1242,9 @@ read_bytes(int fd, Screen *screen) {
 typedef struct { bool kill_signal, child_died, reload_config; } SignalSet;
 
 static void
-handle_signal(int32_t signum, int32_t sigval, void *data) {
+handle_signal(const siginfo_t *siginfo, void *data) {
     SignalSet *ss = data;
-    switch(signum) {
+    switch(siginfo->si_signo) {
         case SIGINT:
         case SIGTERM:
             ss->kill_signal = true;
@@ -1256,7 +1256,7 @@ handle_signal(int32_t signum, int32_t sigval, void *data) {
             ss->reload_config = true;
             break;
         case SIGUSR2:
-            log_error("Received SIGUSR2: %d\n", sigval);
+            log_error("Received SIGUSR2: %d\n", siginfo->si_value.sival_int);
             break;
         default:
             break;
