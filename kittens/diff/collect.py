@@ -117,10 +117,10 @@ def collect_files(collection: Collection, left: str, right: str) -> None:
 
     def walk(base: str, names: Set[str], pmap: Dict[str, str]) -> None:
         for dirpath, dirnames, filenames in os.walk(base):
-            if any(fnmatch(dirpath, f"*/{pat}") for pat in collection.ignore_paths):
+            if any(fnmatch(dirpath, f"*/{pat}") for pat in collection.ignore_paths if pat):
                 continue
             for filename in filenames:
-                if any(fnmatch(filename, f"{pat}") for pat in collection.file_ignores):
+                if any(fnmatch(filename, f"{pat}") for pat in collection.file_ignores if pat):
                     continue
                 path = os.path.abspath(os.path.join(dirpath, filename))
                 path_name_map[path] = name = os.path.relpath(path, base)

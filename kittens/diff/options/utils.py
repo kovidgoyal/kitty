@@ -59,7 +59,7 @@ def syntax_aliases(raw: str) -> Dict[str, str]:
 
 
 def pattern_list(raw: str) -> List[str]:
-    return [pat for pat in raw.split(' ') if pat]
+    return raw.split(' ')
 
 
 def parse_map(val: str) -> Iterable[KittensKeyDefinition]:
