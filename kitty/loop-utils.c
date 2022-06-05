@@ -8,22 +8,6 @@
 #include "loop-utils.h"
 #include "safe-wrappers.h"
 
-bool
-init_loop_data(LoopData *ld) {
-#ifdef HAS_EVENT_FD
-    ld->wakeup_read_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-    if (ld->wakeup_read_fd < 0) return false;
-#else
-    if (!self_pipe(ld->wakeup_fds, true)) return false;
-    ld->wakeup_read_fd = ld->wakeup_fds[0];
-#endif
-    ld->signal_read_fd = -1;
-#ifndef HAS_SIGNAL_FD
-    ld->signal_fds[0] = -1; ld->signal_fds[1] = -1;
-#endif
-    return true;
-}
-
 #ifndef HAS_SIGNAL_FD
 static int signal_write_fd = -1;
 
@@ -48,10 +32,44 @@ handle_signal(int sig_num UNUSED, siginfo_t *si, void *ucontext UNUSED) {
 #endif
 
 
-#define SIGNAL_SET \
-    sigset_t signals = {0}; \
-    sigemptyset(&signals); \
-    sigaddset(&signals, SIGINT); sigaddset(&signals, SIGTERM); sigaddset(&signals, SIGCHLD); sigaddset(&signals, SIGUSR1); sigaddset(&signals, SIGUSR2); \
+bool
+init_loop_data(LoopData *ld, size_t num_signals, ...) {
+    ld->num_handled_signals = num_signals;
+    va_list valist;
+    va_start(valist, num_signals);
+    for (size_t i = 0; i < ld->num_handled_signals; i++) {
+        ld->handled_signals[i] = va_arg(valist, int);
+    }
+    va_end(valist);
+#ifdef HAS_EVENT_FD
+    ld->wakeup_read_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    if (ld->wakeup_read_fd < 0) return false;
+#else
+    if (!self_pipe(ld->wakeup_fds, true)) return false;
+    ld->wakeup_read_fd = ld->wakeup_fds[0];
+#endif
+    ld->signal_read_fd = -1;
+#ifdef HAS_SIGNAL_FD
+    sigemptyset(&ld->signals);
+    if (ld->num_handled_signals) {
+        for (size_t i = 0; i < ld->num_handled_signals; i++) sigaddset(&ld->signals, ld->handled_signals[i]);
+        if (sigprocmask(SIG_BLOCK, &ld->signals, NULL) == -1) return false;
+        ld->signal_read_fd = signalfd(-1, &ld->signals, SFD_NONBLOCK | SFD_CLOEXEC);
+        if (ld->signal_read_fd == -1) return false;
+    }
+#else
+    ld->signal_fds[0] = -1; ld->signal_fds[1] = -1;
+    if (ld->num_handled_signals) {
+        if (!self_pipe(ld->signal_fds, true)) return false;
+        signal_write_fd = ld->signal_fds[1];
+        ld->signal_read_fd = ld->signal_fds[0];
+        struct sigaction act = {.sa_sigaction=handle_signal, .sa_flags=SA_SIGINFO | SA_RESTART};
+        for (size_t i = 0; i < ld->num_handled_signals; i++) { if (sigaction(ld->handled_signals[i], &act, NULL) != 0) return false; }
+    }
+#endif
+    return true;
+}
+
 
 void
 free_loop_data(LoopData *ld) {
@@ -60,22 +78,16 @@ free_loop_data(LoopData *ld) {
     CLOSE(wakeup_fds, 0); CLOSE(wakeup_fds, 1);
 #endif
 #ifndef HAS_SIGNAL_FD
+    signal_write_fd = -1;
     CLOSE(signal_fds, 0); CLOSE(signal_fds, 1);
 #endif
 #undef CLOSE
     if (ld->signal_read_fd > -1) {
 #ifdef HAS_SIGNAL_FD
         safe_close(ld->signal_read_fd, __FILE__, __LINE__);
-        SIGNAL_SET
-        sigprocmask(SIG_UNBLOCK, &signals, NULL);
-#else
-        signal_write_fd = -1;
+        sigprocmask(SIG_UNBLOCK, &ld->signals, NULL);
 #endif
-        signal(SIGINT, SIG_DFL);
-        signal(SIGTERM, SIG_DFL);
-        signal(SIGCHLD, SIG_DFL);
-        signal(SIGUSR1, SIG_DFL);
-        signal(SIGUSR2, SIG_DFL);
+        for (size_t i = 0; i < ld->num_handled_signals; i++) signal(ld->num_handled_signals, SIG_DFL);
     }
 #ifdef HAS_EVENT_FD
     safe_close(ld->wakeup_read_fd, __FILE__, __LINE__);
@@ -99,26 +111,6 @@ wakeup_loop(LoopData *ld, bool in_signal_handler, const char *loop_name) {
         }
         break;
     }
-}
-
-
-bool
-install_signal_handlers(LoopData *ld) {
-#ifdef HAS_SIGNAL_FD
-    SIGNAL_SET
-    if (sigprocmask(SIG_BLOCK, &signals, NULL) == -1) return false;
-    ld->signal_read_fd = signalfd(-1, &signals, SFD_NONBLOCK | SFD_CLOEXEC);
-    if (ld->signal_read_fd == -1) return false;
-#else
-    if (!self_pipe(ld->signal_fds, true)) return false;
-    signal_write_fd = ld->signal_fds[1];
-    struct sigaction act = {.sa_sigaction=handle_signal, .sa_flags=SA_SIGINFO | SA_RESTART};
-#define SA(which) { if (sigaction(which, &act, NULL) != 0) return false; }
-    SA(SIGINT); SA(SIGTERM); SA(SIGCHLD); SA(SIGUSR1); SA(SIGUSR2);
-#undef SA
-    ld->signal_read_fd = ld->signal_fds[0];
-#endif
-    return true;
 }
 
 

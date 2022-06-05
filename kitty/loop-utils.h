@@ -34,16 +34,19 @@ typedef struct {
 #endif
 #ifndef HAS_SIGNAL_FD
     int signal_fds[2];
+#else
+    sigset_t signals;
 #endif
     int wakeup_read_fd;
     int signal_read_fd;
+    int handled_signals[16];
+    size_t num_handled_signals;
 } LoopData;
 typedef void(*handle_signal_func)(const siginfo_t* siginfo, void *data);
 
-bool init_loop_data(LoopData *ld);
+bool init_loop_data(LoopData *ld, size_t num_handled_signals, ...);
 void free_loop_data(LoopData *ld);
 void wakeup_loop(LoopData *ld, bool in_signal_handler, const char*);
-bool install_signal_handlers(LoopData *ld);
 void read_signals(int fd, handle_signal_func callback, void *data);
 
 static inline bool

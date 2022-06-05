@@ -329,7 +329,7 @@ ensure_state(DiskCache *self) {
     int ret;
     if (self->fully_initialized) return true;
     if (!self->loop_data_inited) {
-        if (!init_loop_data(&self->loop_data)) { PyErr_SetFromErrno(PyExc_OSError); return false; }
+        if (!init_loop_data(&self->loop_data, 0)) { PyErr_SetFromErrno(PyExc_OSError); return false; }
         self->loop_data_inited = true;
     }
     if (!self->currently_writing.hash_key) {
