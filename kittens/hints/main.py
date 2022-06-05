@@ -9,8 +9,8 @@ from functools import lru_cache
 from gettext import gettext as _
 from itertools import repeat
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, Optional, Pattern,
-    Sequence, Set, Tuple, Type, cast
+    Any, Callable, Dict, Generator, Iterable, Iterator, List, Optional,
+    Pattern, Sequence, Set, Tuple, Type, cast
 )
 
 from kitty.cli import parse_args
@@ -44,6 +44,7 @@ DEFAULT_HINT_ALPHABET = string.digits + string.ascii_lowercase
 DEFAULT_REGEX = r'(?m)^\s*(.+)\s*$'
 FILE_EXTENSION = r'\.(?:[a-zA-Z0-9]{2,7}|[ahcmo])(?!\.)'
 PATH_REGEX = fr'(?:\S*?/[\r\S]+)|(?:\S[\r\S]*{FILE_EXTENSION})\b'
+DEFAULT_LINENUM_REGEX = fr'(?P<path>{PATH_REGEX}):(?P<line>\d+)'
 
 
 class Mark:
@@ -63,6 +64,10 @@ class Mark:
         self.groupdict = groupdict
         self.is_hyperlink = is_hyperlink
         self.group_id = group_id
+
+    def __repr__(self) -> str:
+        return (f'Mark(index={self.index!r}, start={self.start!r}, end={self.end!r},'
+                f' text={self.text!r}, groupdict={self.groupdict!r}, is_hyperlink={self.is_hyperlink!r}, group_id={self.group_id!r})')
 
 
 @lru_cache(maxsize=2048)
@@ -225,14 +230,14 @@ class Hints(Handler):
         self.write(self.current_text)
 
 
-def regex_finditer(pat: 'Pattern[str]', minimum_match_length: int, text: str) -> Generator[Tuple[int, int, Dict[str, str]], None, None]:
+def regex_finditer(pat: 'Pattern[str]', minimum_match_length: int, text: str) -> Iterator[Tuple[int, int, 're.Match[str]']]:
     has_named_groups = bool(pat.groupindex)
     for m in pat.finditer(text):
         s, e = m.span(0 if has_named_groups else pat.groups)
         while e > s + 1 and text[e-1] == '\0':
             e -= 1
         if e - s >= minimum_match_length:
-            yield s, e, m.groupdict()
+            yield s, e, m
 
 
 closing_bracket_map = {'(': ')', '[': ']', '{': '}', '<': '>', '*': '*', '"': '"', "'": "'", "“": "”", "‘": "’"}
@@ -318,16 +323,23 @@ def ip(text: str, s: int, e: int) -> Tuple[int, int]:
     return s, e
 
 
-def mark(pattern: str, post_processors: Iterable[PostprocessorFunc], text: str, args: HintsCLIOptions) -> Generator[Mark, None, None]:
+def mark(pattern: str, post_processors: Iterable[PostprocessorFunc], text: str, args: HintsCLIOptions) -> Iterator[Mark]:
     pat = re.compile(pattern)
-    for idx, (s, e, groupdict) in enumerate(regex_finditer(pat, args.minimum_match_length, text)):
+    sanitize_pat = re.compile('[\r\n\0]')
+    for idx, (s, e, match_object) in enumerate(regex_finditer(pat, args.minimum_match_length, text)):
         try:
             for func in post_processors:
                 s, e = func(text, s, e)
+            groupdict = match_object.groupdict()
+            for group_name in groupdict:
+                group_idx = pat.groupindex[group_name]
+                gs, ge = match_object.span(group_idx)
+                gs, ge = max(gs, s), min(ge, e)
+                groupdict[group_name] = sanitize_pat.sub('', text[gs:ge])
         except InvalidMatch:
             continue
 
-        mark_text = re.sub('[\r\n\0]', '', text[s:e])
+        mark_text = sanitize_pat.sub('', text[s:e])
         yield Mark(idx, s, e, mark_text, groupdict)
 
 
@@ -420,7 +432,7 @@ def parse_input(text: str) -> str:
 def linenum_marks(text: str, args: HintsCLIOptions, Mark: Type[Mark], extra_cli_args: Sequence[str], *a: Any) -> Generator[Mark, None, None]:
     regex = args.regex
     if regex == DEFAULT_REGEX:
-        regex = fr'(?P<path>{PATH_REGEX}):(?P<line>\d+)'
+        regex = DEFAULT_LINENUM_REGEX
     yield from mark(regex, [brackets, quotes], text, args)
 
 
@@ -699,18 +711,14 @@ def main(args: List[str]) -> Optional[Dict[str, Any]]:
 
 
 def linenum_process_result(data: Dict[str, Any]) -> Tuple[str, int]:
-    pat = re.compile(r':(\d+)$')
-    for m, g in zip(data['match'], data['groupdicts']):
-        if m:
-            path, line = g['path'], g['line']
-            # look for trailers on path of the for :number
-            while True:
-                m = pat.search(path)
-                if m is None:
-                    break
-                line = m.group(1)
-                path = path[:-len(m.group())]
-
+    lnum_pat = re.compile(r'(:\d+)$')
+    for match, g in zip(data['match'], data['groupdicts']):
+        path, line = g['path'], g['line']
+        if path and line:
+            m = lnum_pat.search(path)
+            if m is not None:
+                line = m.group(1)[1:]
+                path = path.rpartition(':')[0]
             return os.path.expanduser(path), int(line)
     return '', -1
 

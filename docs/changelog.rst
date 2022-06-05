@@ -67,6 +67,9 @@ Detailed list of changes
   and :command:`kitty @ select-window` not working correctly
   when using a socket (:iss:`5165`)
 
+- hints kitten: Fix surrounding quotes/brackets and embedded carriage returns
+  not being removed when using line number processing (:iss:`5170`)
+
 
 0.25.1 [2022-05-26]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
