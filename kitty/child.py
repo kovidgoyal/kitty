@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import fcntl
 import os
 import sys
 from collections import defaultdict
@@ -144,7 +143,7 @@ def environ_of_process(pid: int) -> Dict[str, str]:
 
 
 def remove_cloexec(fd: int) -> None:
-    fcntl.fcntl(fd, fcntl.F_SETFD, fcntl.fcntl(fd, fcntl.F_GETFD) & ~fcntl.FD_CLOEXEC)
+    os.set_inheritable(fd, True)
 
 
 def remove_blocking(fd: int) -> None:
