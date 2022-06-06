@@ -43,6 +43,6 @@ class Prewarm(BaseTest):
         self.ae(data['cols'], cols)
         self.assertTrue(data['cterm'])
         self.ae(data['ttyname'], ttyname)
-        self.ae(data['cwd'], cwd)
+        self.ae(os.path.realpath(data['cwd']), os.path.realpath(cwd))
         self.ae(data['env'], env['TEST_ENV_PASS'])
         self.ae(int(p.from_worker.readline()), data['pid'])
