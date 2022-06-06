@@ -43,3 +43,43 @@ class TestDiff(BaseTest):
 
         highlights = [h(0, 1, 1), h(1, 3, 2)]
         self.ae(['S1SaE1ES2SbcE2Ed'], split_with_highlights('abcd', 10, highlights))
+
+    def test_walk(self):
+        from pathlib import Path
+        import tempfile
+        from kittens.diff.collect import walk
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # /tmp/test/
+            # ├── a
+            # │   └── b
+            # │       └── c
+            # ├── d
+            # ├── #d#
+            # ├── e
+            # ├── e~
+            # └── f
+            # │   └── g
+            # └── h space
+            Path(tmpdir, "a/b").mkdir(parents=True)
+            Path(tmpdir, "a/b/c").touch()
+            Path(tmpdir, "b").touch()
+            Path(tmpdir, "d").touch()
+            Path(tmpdir, "#d#").touch()
+            Path(tmpdir, "e").touch()
+            Path(tmpdir, "e~").touch()
+            Path(tmpdir, "f").mkdir()
+            Path(tmpdir, "f/g").touch()
+            Path(tmpdir, "h space").touch()
+            expected_names = {"d", "e", "f/g", "h space"}
+            expected_pmap = {
+                "d": f"{tmpdir}/d",
+                "e": f"{tmpdir}/e",
+                "f/g": f"{tmpdir}/f/g",
+                "h space": f"{tmpdir}/h space"
+            }
+            names = set()
+            pmap = {}
+            walk(tmpdir, names, pmap, ("*~", "#*#", "b"))
+            self.ae(expected_names, names)
+            self.ae(expected_pmap, pmap)
