@@ -330,15 +330,14 @@ def mark(pattern: str, post_processors: Iterable[PostprocessorFunc], text: str, 
         try:
             for func in post_processors:
                 s, e = func(text, s, e)
-            groupdict = match_object.groupdict()
-            for group_name in groupdict:
-                group_idx = pat.groupindex[group_name]
-                gs, ge = match_object.span(group_idx)
-                gs, ge = max(gs, s), min(ge, e)
-                groupdict[group_name] = sanitize_pat.sub('', text[gs:ge])
         except InvalidMatch:
             continue
-
+        groupdict = match_object.groupdict()
+        for group_name in groupdict:
+            group_idx = pat.groupindex[group_name]
+            gs, ge = match_object.span(group_idx)
+            gs, ge = max(gs, s), min(ge, e)
+            groupdict[group_name] = sanitize_pat.sub('', text[gs:ge])
         mark_text = sanitize_pat.sub('', text[s:e])
         yield Mark(idx, s, e, mark_text, groupdict)
 
