@@ -48,10 +48,17 @@ opt('replace_tab_by', '\\x20\\x20\\x20\\x20',
     long_text='The string to replace tabs with. Default is to use four spaces.'
     )
 
-opt('ignore_paths', '',
-    option_type='pattern_list',
-    long_text='''List of patterns that are matched against directory and file
-names and ignored when directories are compared.
+opt('+ignore_name', '',
+    option_type='store_multiple',
+    add_to_default=False,
+    long_text='''
+A glob pattern that is matched against only the filename of files and directories. Matching
+files and directories are ignored when scanning the filesystem to look for files to diff.
+Can be specified multiple times to use multiple patterns. For example::
+
+   ignore_name .git
+   ignore_name *~
+   ignore_name *.pyc
 ''',
     )
 

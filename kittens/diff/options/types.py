@@ -20,7 +20,7 @@ option_names = (  # {{{
  'highlight_removed_bg',
  'hunk_bg',
  'hunk_margin_bg',
- 'ignore_paths',
+ 'ignore_name',
  'map',
  'margin_bg',
  'margin_fg',
@@ -50,7 +50,6 @@ class Options:
     highlight_removed_bg: Color = Color(253, 184, 192)
     hunk_bg: Color = Color(241, 248, 255)
     hunk_margin_bg: Color = Color(219, 237, 255)
-    ignore_paths: typing.Tuple[str, ...] = ()
     margin_bg: Color = Color(250, 251, 252)
     margin_fg: Color = Color(170, 170, 170)
     margin_filler_bg: typing.Optional[kitty.fast_data_types.Color] = None
@@ -66,6 +65,7 @@ class Options:
     syntax_aliases: typing.Dict[str, str] = {'pyj': 'py', 'pyi': 'py', 'recipe': 'py'}
     title_bg: Color = Color(255, 255, 255)
     title_fg: Color = Color(0, 0, 0)
+    ignore_name: typing.Dict[str, str] = {}
     map: typing.List[typing.Tuple[kitty.types.ParsedShortcut, kitty.conf.utils.KeyAction]] = []
     key_definitions: KittensKeyMap = {}
     config_paths: typing.Tuple[str, ...] = ()
@@ -118,6 +118,7 @@ class Options:
 
 
 defaults = Options()
+defaults.ignore_name = {}
 defaults.map = [
     # quit
     (ParsedShortcut(mods=0, key_name='q'), KeyAction('quit')),  # noqa

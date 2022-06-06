@@ -45,6 +45,8 @@ Detailed list of changes
 
 - Fix a bug that caused :opt:`macos_colorspace` to always be ``default`` regardless of its actual value (:iss:`5129`)
 
+- diff kitten: A new option :opt:`kitten-diff.ignore_name` to exclude files and directories from being scanned (:pull:`5171`)
+
 - ssh kitten: Fix bash not being executed as a login shell since kitty 0.25.0 (:iss:`5130`)
 
 - macOS: When pasting text and the clipboard has a filesystem path, paste the
