@@ -138,7 +138,7 @@ read_signals(int fd, handle_signal_func callback, void *data) {
             si.si_code = fdsi[i].ssi_code;
             si.si_pid = fdsi[i].ssi_pid;
             si.si_uid = fdsi[i].ssi_uid;
-            si.si_addr = (void*)fdsi[i].ssi_addr;
+            si.si_addr = (void*)(uintptr_t)fdsi[i].ssi_addr;
             si.si_status = fdsi[i].ssi_status;
             si.si_value.sival_int = fdsi[i].ssi_int;
             callback(&si, data);
