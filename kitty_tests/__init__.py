@@ -177,7 +177,7 @@ class BaseTest(TestCase):
         s = Screen(c, lines, cols, scrollback, cell_width, cell_height, 0, c)
         return s
 
-    def create_pty(self, argv, cols=80, lines=100, scrollback=100, cell_width=10, cell_height=20, options=None, cwd=None, env=None):
+    def create_pty(self, argv=None, cols=80, lines=100, scrollback=100, cell_width=10, cell_height=20, options=None, cwd=None, env=None):
         self.set_options(options)
         return PTY(argv, lines, cols, scrollback, cell_width, cell_height, cwd, env)
 
@@ -228,9 +228,11 @@ class PTY:
 
     def __del__(self):
         if not self.is_child:
-            fd = self.master_fd
+            os.close(self.master_fd)
+            if hasattr(self, 'slave_fd'):
+                os.close(self.slave_fd)
+                del self.slave_fd
             del self.master_fd
-            os.close(fd)
 
     def write_to_child(self, data):
         if isinstance(data, str):
