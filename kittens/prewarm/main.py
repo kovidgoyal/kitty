@@ -353,10 +353,11 @@ def main(args: List[str] = sys.argv) -> None:
                     es = str(e).replace('\n', ' ')
                     output_buf += f'ERR:{es}\n'.encode()
                 else:
-                    child_id = len(child_id_map) + 1
-                    child_id_map[child_id] = child_pid
-                    child_ready_fds[child_id] = write_fd
-                    output_buf += f'CHILD:{child_id}:{child_pid}\n'.encode()
+                    if os.getpid() == self_pid:
+                        child_id = len(child_id_map) + 1
+                        child_id_map[child_id] = child_pid
+                        child_ready_fds[child_id] = write_fd
+                        output_buf += f'CHILD:{child_id}:{child_pid}\n'.encode()
                 finally:
                     if os.getpid() == self_pid:
                         os.close(read_fd)
@@ -403,6 +404,10 @@ def main(args: List[str] = sys.argv) -> None:
                 try:
                     pid, exit_status = os.waitpid(-1, os.WNOHANG)
                 except ChildProcessError:
+                    break
+                # a zero return means there is at least one child process
+                # existing and no exit status is available
+                if pid == 0:
                     break
                 matched_child_id = -1
                 for child_id, child_pid in child_id_map.items():
