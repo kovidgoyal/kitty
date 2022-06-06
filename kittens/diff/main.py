@@ -655,6 +655,7 @@ def main(args: List[str]) -> None:
     opts = init_config(cli_opts)
     set_diff_command(opts.diff_cmd)
     lines_for_path.replace_tab_by = opts.replace_tab_by
+    Collection.ignore_paths = opts.ignore_paths
     left, right = map(get_remote_file, (left, right))
     if os.path.isdir(left) != os.path.isdir(right):
         raise SystemExit('The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.')

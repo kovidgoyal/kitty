@@ -20,6 +20,7 @@ option_names = (  # {{{
  'highlight_removed_bg',
  'hunk_bg',
  'hunk_margin_bg',
+ 'ignore_paths',
  'map',
  'margin_bg',
  'margin_fg',
@@ -49,6 +50,7 @@ class Options:
     highlight_removed_bg: Color = Color(253, 184, 192)
     hunk_bg: Color = Color(241, 248, 255)
     hunk_margin_bg: Color = Color(219, 237, 255)
+    ignore_paths: typing.Tuple[str, ...] = ()
     margin_bg: Color = Color(250, 251, 252)
     margin_fg: Color = Color(170, 170, 170)
     margin_filler_bg: typing.Optional[kitty.fast_data_types.Color] = None

@@ -3,7 +3,8 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import Any, Dict, Iterable, Tuple, Union
+import shlex
+from typing import Any, Dict, Iterable, List, Tuple, Union
 
 from kitty.conf.utils import (
     KeyFuncWrapper, KittensKeyDefinition, parse_kittens_key
@@ -56,6 +57,10 @@ def syntax_aliases(raw: str) -> Dict[str, str]:
         if a and b:
             ans[a.lower()] = b
     return ans
+
+
+def pattern_list(raw: str) -> Tuple[str, ...]:
+    return tuple(shlex.split(raw, comments=True))
 
 
 def parse_map(val: str) -> Iterable[KittensKeyDefinition]:
