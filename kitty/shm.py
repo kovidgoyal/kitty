@@ -47,11 +47,13 @@ class SharedMemory:
     num_bytes_for_size = struct.calcsize(size_fmt)
 
     def __init__(
-            self, name: str = '', size: int = 0, readonly: bool = False,
-            mode: int = stat.S_IREAD | stat.S_IWRITE,
-            prefix: str = 'kitty-', unlink_on_exit: bool = False
+        self, name: str = '', size: int = 0, readonly: bool = False,
+        mode: int = stat.S_IREAD | stat.S_IWRITE,
+        prefix: str = 'kitty-',
+        unlink_on_exit: bool = False, ignore_close_failure: bool = False
     ):
         self.unlink_on_exit = unlink_on_exit
+        self.ignore_close_failure = ignore_close_failure
         if size < 0:
             raise TypeError("'size' must be a non-negative integer")
         if size and name:
@@ -157,7 +159,11 @@ class SharedMemory:
         """Closes access to the shared memory from this instance but does
         not destroy the shared memory block."""
         if self._mmap is not None:
-            self._mmap.close()
+            try:
+                self._mmap.close()
+            except BufferError:
+                if not self.ignore_close_failure:
+                    raise
             self._mmap = None
         if self._fd >= 0:
             os.close(self._fd)
