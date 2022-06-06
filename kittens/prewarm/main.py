@@ -297,12 +297,6 @@ def fork(shm_address: str, ready_fd: int) -> int:
                 sys.stdin = sys.__stdin__
 
 
-def waitstatus_to_exit_code(status: int) -> int:
-    with suppress(ValueError, AttributeError):
-        return os.waitstatus_to_exitcode(status)
-    return 0
-
-
 def main(args: List[str] = sys.argv) -> None:
     read_signal_fd, write_signal_fd = safe_pipe()
     notify_child_death_fd = int(sys.argv[-1])
