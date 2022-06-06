@@ -14,7 +14,6 @@ option_names = (  # {{{
  'added_margin_bg',
  'background',
  'diff_cmd',
- 'file_ignores',
  'filler_bg',
  'foreground',
  'highlight_added_bg',
@@ -45,14 +44,13 @@ class Options:
     added_margin_bg: Color = Color(205, 255, 216)
     background: Color = Color(255, 255, 255)
     diff_cmd: str = 'auto'
-    file_ignores: typing.List[str] = ['']
     filler_bg: Color = Color(250, 251, 252)
     foreground: Color = Color(0, 0, 0)
     highlight_added_bg: Color = Color(172, 242, 189)
     highlight_removed_bg: Color = Color(253, 184, 192)
     hunk_bg: Color = Color(241, 248, 255)
     hunk_margin_bg: Color = Color(219, 237, 255)
-    ignore_paths: typing.List[str] = ['']
+    ignore_paths: typing.Tuple[str, ...] = ()
     margin_bg: Color = Color(250, 251, 252)
     margin_fg: Color = Color(170, 170, 170)
     margin_filler_bg: typing.Optional[kitty.fast_data_types.Color] = None

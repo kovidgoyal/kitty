@@ -7,6 +7,7 @@ from contextlib import suppress
 from fnmatch import fnmatch
 from functools import lru_cache
 from hashlib import md5
+from itertools import product
 from kitty.guess_mime_type import guess_type
 from typing import TYPE_CHECKING, Dict, List, Set, Optional, Iterator, Tuple, Union
 
@@ -38,8 +39,7 @@ class Segment:
 
 class Collection:
 
-    file_ignores = ['']
-    ignore_paths = ['']
+    ignore_paths: Tuple[str, ...] = ()
 
     def __init__(self) -> None:
         self.changes: Dict[str, str] = {}
@@ -109,26 +109,29 @@ def resolve_remote_name(path: str, default: str) -> str:
     return default
 
 
+def walk(base: str, names: Set[str], pmap: Dict[str, str], ignore_paths: Tuple[str, ...]) -> None:
+    for dirpath, dirnames, filenames in os.walk(base):
+        ignored = [_dir for _dir, pat in product(dirnames, ignore_paths) if fnmatch(_dir, pat)]
+        for _dir in ignored:
+            dirnames.pop(dirnames.index(_dir))
+        for filename in filenames:
+            if any(fnmatch(filename, pat) for pat in ignore_paths if pat):
+                continue
+            path = os.path.abspath(os.path.join(dirpath, filename))
+            path_name_map[path] = name = os.path.relpath(path, base)
+            names.add(name)
+            pmap[name] = path
+
+
 def collect_files(collection: Collection, left: str, right: str) -> None:
     left_names: Set[str] = set()
     right_names: Set[str] = set()
     left_path_map: Dict[str, str] = {}
     right_path_map: Dict[str, str] = {}
 
-    def walk(base: str, names: Set[str], pmap: Dict[str, str]) -> None:
-        for dirpath, dirnames, filenames in os.walk(base):
-            if any(fnmatch(dirpath, f"*/{pat}") for pat in collection.ignore_paths if pat):
-                continue
-            for filename in filenames:
-                if any(fnmatch(filename, f"{pat}") for pat in collection.file_ignores if pat):
-                    continue
-                path = os.path.abspath(os.path.join(dirpath, filename))
-                path_name_map[path] = name = os.path.relpath(path, base)
-                names.add(name)
-                pmap[name] = path
+    walk(left, left_names, left_path_map, collection.ignore_paths)
+    walk(right, right_names, right_path_map, collection.ignore_paths)
 
-    walk(left, left_names, left_path_map)
-    walk(right, right_names, right_path_map)
     common_names = left_names & right_names
     changed_names = {n for n in common_names if data_for_path(left_path_map[n]) != data_for_path(right_path_map[n])}
     for n in changed_names:

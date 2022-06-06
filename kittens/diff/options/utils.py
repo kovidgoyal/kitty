@@ -3,6 +3,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+import shlex
 from typing import Any, Dict, Iterable, List, Tuple, Union
 
 from kitty.conf.utils import (
@@ -58,8 +59,8 @@ def syntax_aliases(raw: str) -> Dict[str, str]:
     return ans
 
 
-def pattern_list(raw: str) -> List[str]:
-    return raw.split(' ')
+def pattern_list(raw: str) -> Tuple[str, ...]:
+    return tuple(shlex.split(raw, comments=True))
 
 
 def parse_map(val: str) -> Iterable[KittensKeyDefinition]:

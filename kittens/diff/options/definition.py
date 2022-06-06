@@ -48,14 +48,11 @@ opt('replace_tab_by', '\\x20\\x20\\x20\\x20',
     long_text='The string to replace tabs with. Default is to use four spaces.'
     )
 
-opt('file_ignores', '',
-    option_type='pattern_list',
-    long_text='List of file patterns that are ignored when directories are compared'
-    )
-
 opt('ignore_paths', '',
     option_type='pattern_list',
-    long_text='List of directory patterns that are ignored when directories are compared'
+    long_text='''List of patterns that are matched against directory and file
+names and ignored when directories are compared.
+''',
     )
 
 egr()  # }}}

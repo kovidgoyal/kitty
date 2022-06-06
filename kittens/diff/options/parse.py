@@ -86,10 +86,7 @@ class Parser:
         for k in parse_map(val):
             ans['map'].append(k)
 
-    def file_ignores(self, val: str, ans: typing.Dict[str, typing.List[str]]):
-        ans['file_ignores'] = pattern_list(val)
-
-    def ignore_paths(self, val: str, ans: typing.Dict[str, typing.List[str]]):
+    def ignore_paths(self, val: str, ans: typing.Dict[str, typing.Any]):
         ans['ignore_paths'] = pattern_list(val)
 
 
