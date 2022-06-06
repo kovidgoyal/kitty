@@ -192,12 +192,17 @@ class BaseTest(TestCase):
 
 class PTY:
 
-    def __init__(self, argv, rows=25, columns=80, scrollback=100, cell_width=10, cell_height=20, cwd=None, env=None):
+    def __init__(self, argv=None, rows=25, columns=80, scrollback=100, cell_width=10, cell_height=20, cwd=None, env=None):
         if isinstance(argv, str):
             argv = shlex.split(argv)
-        pid, self.master_fd = fork()
-        self.is_child = pid == CHILD
         self.write_buf = b''
+        if argv is None:
+            from kitty.child import openpty
+            self.master_fd, self.slave_fd = openpty()
+            self.is_child = False
+        else:
+            pid, self.master_fd = fork()
+            self.is_child = pid == CHILD
         if self.is_child:
             while read_screen_size().width != columns * cell_width:
                 time.sleep(0.01)
@@ -268,13 +273,14 @@ class PTY:
         if not q():
             raise TimeoutError(f'The condition was not met. Screen contents: \n {repr(self.screen_contents())}')
 
-    def set_window_size(self, rows=25, columns=80):
+    def set_window_size(self, rows=25, columns=80, send_signal=True):
         if hasattr(self, 'screen'):
             self.screen.resize(rows, columns)
-        x_pixels = columns * self.cell_width
-        y_pixels = rows * self.cell_height
-        s = struct.pack('HHHH', rows, columns, x_pixels, y_pixels)
-        fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, s)
+        if send_signal:
+            x_pixels = columns * self.cell_width
+            y_pixels = rows * self.cell_height
+            s = struct.pack('HHHH', rows, columns, x_pixels, y_pixels)
+            fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, s)
 
     def screen_contents(self):
         lines = []
