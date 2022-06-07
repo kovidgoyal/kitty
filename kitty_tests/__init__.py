@@ -157,6 +157,9 @@ class BaseTest(TestCase):
     maxDiff = 2048
     is_ci = os.environ.get('CI') == 'true'
 
+    def tearDown(self):
+        set_options(None)
+
     def set_options(self, options=None):
         final_options = {'scrollback_pager_history_size': 1024, 'click_interval': 0.5}
         if options:

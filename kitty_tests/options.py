@@ -11,11 +11,13 @@ from kitty.fast_data_types import Color
 class TestConfParsing(BaseTest):
 
     def setUp(self):
+        super().setUp()
         self.error_messages = []
         log_error.redirect = self.error_messages.append
 
     def tearDown(self):
         del log_error.redirect
+        super().tearDown()
 
     def test_conf_parsing(self):
         from kitty.config import load_config, defaults

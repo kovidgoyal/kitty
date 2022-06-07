@@ -62,6 +62,7 @@ def serialized_cmd(**fields) -> str:
 class TestFileTransmission(BaseTest):
 
     def setUp(self):
+        super().setUp()
         self.tdir = os.path.realpath(tempfile.mkdtemp())
         self.responses = []
         self.orig_home = os.environ.get('HOME')
@@ -73,6 +74,7 @@ class TestFileTransmission(BaseTest):
             os.environ.pop('HOME', None)
         else:
             os.environ['HOME'] = self.orig_home
+        super().tearDown()
 
     def clean_tdir(self):
         shutil.rmtree(self.tdir)

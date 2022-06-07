@@ -24,6 +24,7 @@ from . import BaseTest
 class Rendering(BaseTest):
 
     def setUp(self):
+        super().setUp()
         self.test_ctx = setup_for_testing()
         self.test_ctx.__enter__()
         self.sprites, self.cell_width, self.cell_height = self.test_ctx.__enter__()
@@ -39,6 +40,7 @@ class Rendering(BaseTest):
         self.test_ctx.__exit__()
         del self.sprites, self.cell_width, self.cell_height, self.test_ctx
         shutil.rmtree(self.tdir)
+        super().tearDown()
 
     def test_sprite_map(self):
         sprite_map_set_limits(10, 2)
