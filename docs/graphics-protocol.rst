@@ -378,7 +378,9 @@ id. To do so add the ``p`` key with a number between ``1`` and ``4294967295``.
 When you specify a placement id, it will be added to the acknowledgement code
 above. Every placement is uniquely identified by the pair of the ``image id``
 and the ``placement id``. If you specify a placement id for an image that does
-not have an id, it will be ignored. An example response::
+not have an id (i.e. has id=0), it will be ignored. In particular this means
+there can exist multiple images with ``image id=0, placement id=0``.
+An example response::
 
     <ESC>_Gi=<image id>,p=<placement id>;OK<ESC>\
 
