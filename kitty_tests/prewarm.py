@@ -7,6 +7,7 @@ import os
 import tempfile
 
 from kitty.constants import kitty_exe
+from kitty.fast_data_types import get_options
 
 from . import BaseTest
 
@@ -25,13 +26,17 @@ class Prewarm(BaseTest):
         stdin_data = 'from_stdin'
         pty = self.create_pty(cols=cols)
         ttyname = os.ttyname(pty.slave_fd)
-        child = p(pty.slave_fd, [kitty_exe(), '+runpy', """import os, json; from kitty.utils import *; print(json.dumps({
+        opts = get_options()
+        opts.config_overrides = 'font_family prewarm',
+        child = p(pty.slave_fd, [kitty_exe(), '+runpy', """\
+import os, json; from kitty.utils import *; from kitty.fast_data_types import get_options; print(json.dumps({
         'cterm': os.ctermid(),
         'ttyname': os.ttyname(sys.stdout.fileno()),
         'cols': read_screen_size().cols,
         'cwd': os.getcwd(),
         'env': os.environ.get('TEST_ENV_PASS'),
         'pid': os.getpid(),
+        'font_family': get_options().font_family,
         'stdin': sys.stdin.read(),
 
         'done': 'hello',
@@ -45,4 +50,5 @@ class Prewarm(BaseTest):
         self.ae(data['ttyname'], ttyname)
         self.ae(os.path.realpath(data['cwd']), os.path.realpath(cwd))
         self.ae(data['env'], env['TEST_ENV_PASS'])
+        self.ae(data['font_family'], 'prewarm')
         self.ae(int(p.from_worker.readline()), data['pid'])

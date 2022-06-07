@@ -122,7 +122,11 @@ def run_kitten(kitten: str, run_name: str = '__main__') -> None:
             print(kitten, file=sys.stderr)
         raise SystemExit(f'No kitten named {original_kitten_name}')
     m = runpy.run_path(path, init_globals={'sys': sys, 'os': os}, run_name='__run_kitten__')
-    m['main'](sys.argv)
+    from kitty.fast_data_types import set_options
+    try:
+        m['main'](sys.argv)
+    finally:
+        set_options(None)
 
 
 @run_once

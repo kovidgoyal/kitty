@@ -18,7 +18,9 @@ from typing import (
 from kitty.child import remove_cloexec
 from kitty.constants import kitty_exe
 from kitty.entry_points import main as main_entry_point
-from kitty.fast_data_types import establish_controlling_tty, safe_pipe
+from kitty.fast_data_types import (
+    establish_controlling_tty, get_options, safe_pipe
+)
 from kitty.shm import SharedMemory
 
 if TYPE_CHECKING:
@@ -75,11 +77,19 @@ class PrewarmProcess:
     def worker_started(self) -> bool:
         return self.in_worker_fd == -1
 
+    @property
+    def prewarm_config(self) -> str:
+        opts = get_options()
+        return json.dumps({'paths': opts.config_paths, 'overrides': opts.config_overrides})
+
     def ensure_worker(self) -> None:
         if not self.worker_started:
             import subprocess
+            env = dict(os.environ)
+            env['KITTY_PREWARM_CONFIG'] = self.prewarm_config
             self.process = subprocess.Popen(
-                [kitty_exe(), '+kitten', 'prewarm', str(self.in_worker_fd)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, pass_fds=(self.in_worker_fd,))
+                [kitty_exe(), '+kitten', 'prewarm', str(self.in_worker_fd)],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, pass_fds=(self.in_worker_fd,), env=env)
             os.close(self.in_worker_fd)
             self.in_worker_fd = -1
             assert self.process.stdin is not None and self.process.stdout is not None
@@ -98,7 +108,7 @@ class PrewarmProcess:
 
     def reload_kitty_config(self) -> None:
         if self.worker_started:
-            self.send_to_prewarm_process('reload_kitty_config:\n')
+            self.send_to_prewarm_process('reload_kitty_config:{self.prewarm_config}\n')
 
     def __call__(
         self,
@@ -179,9 +189,9 @@ class PrewarmProcess:
 
 
 def reload_kitty_config() -> None:
-    from kittens.tui.utils import kitty_opts
-    kitty_opts.clear_cached()
-    kitty_opts()
+    d = json.loads(os.environ.pop('KITTY_PREWARM_CONFIG'))
+    from kittens.tui.utils import set_kitty_opts
+    set_kitty_opts(paths=d['paths'], overrides=d['overrides'])
 
 
 def prewarm() -> None:
@@ -337,6 +347,7 @@ def main(args: List[str] = sys.argv) -> None:
             input_buf = input_buf[idx+1:]
             cmd, _, payload = line.partition(':')
             if cmd == 'reload_kitty_config':
+                os.environ['KITTY_PREWARM_CONFIG'] = payload
                 reload_kitty_config()
             elif cmd == 'ready':
                 child_id = int(payload)

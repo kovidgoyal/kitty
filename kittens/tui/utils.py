@@ -3,9 +3,7 @@
 
 import sys
 from contextlib import suppress
-from typing import TYPE_CHECKING, Tuple
-
-from kitty.types import run_once
+from typing import TYPE_CHECKING, Optional, Sequence, Tuple, cast
 
 from .operations import raw_mode, set_cursor_visible
 
@@ -55,12 +53,26 @@ def human_size(
     return format_number(size / 1024**exponent, max_num_of_decimals) + sep + unit_list[exponent]
 
 
-@run_once
 def kitty_opts() -> 'Options':
-    from kitty.cli import create_default_opts
+    from kitty.fast_data_types import get_options, set_options
+    ans = cast(Optional['Options'], get_options())
+    if ans is None:
+        from kitty.cli import create_default_opts
+        from kitty.utils import suppress_error_logging
+        with suppress_error_logging():
+            ans = create_default_opts()
+            set_options(ans)
+    return ans
+
+
+def set_kitty_opts(paths: Sequence[str], overrides: Sequence[str] = ()) -> 'Options':
+    from kitty.config import load_config
+    from kitty.fast_data_types import set_options
     from kitty.utils import suppress_error_logging
     with suppress_error_logging():
-        return create_default_opts()
+        opts = load_config(*paths, overrides=overrides or None)
+        set_options(opts)
+        return opts
 
 
 def report_error(msg: str = '', return_code: int = 1, print_exc: bool = False) -> None:
