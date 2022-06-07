@@ -5,13 +5,9 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "prewarm-launcher.h"
+
 #include <libgen.h>
-#include <string.h>
-#include <errno.h>
-#include <stdbool.h>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #include <sys/syslimits.h>
@@ -19,9 +15,8 @@
 #else
 #include <limits.h>
 #endif
-#include <Python.h>
 #include <wchar.h>
-#include <stdbool.h>
+#include <Python.h>
 
 #ifndef KITTY_LIB_PATH
 #define KITTY_LIB_PATH "../.."
@@ -275,6 +270,7 @@ read_exe_path(char *exe, size_t buf_sz) {
 
 int main(int argc, char *argv[]) {
     if (argc < 1 || !argv) { fprintf(stderr, "Invalid argc/argv\n"); return 1; }
+    use_prewarmed_process(argc, argv);
     char exe[PATH_MAX+1] = {0};
     char exe_dir_buf[PATH_MAX+1] = {0};
     FREE_AFTER_FUNCTION const char *lc_ctype = NULL;

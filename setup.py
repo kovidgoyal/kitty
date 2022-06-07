@@ -870,7 +870,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
            src, '-o', dest] + ldflags + libs + pylib
     key = CompileKey('launcher.c', 'kitty')
     desc = f'Building {emphasis("launcher")} ...'
-    args.compilation_database.add_command(desc, cmd, partial(newer, dest, src), key=key, keyfile=src)
+    args.compilation_database.add_command(desc, cmd, partial(newer, dest, src, "prewarm-launcher.h"), key=key, keyfile=src)
     args.compilation_database.build_all()
 
 
