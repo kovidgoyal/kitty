@@ -372,15 +372,18 @@ class startup_notification_handler:
             end_startup_notification(self.ctx)
 
 
-def remove_socket_file(s: 'Socket', path: Optional[str] = None) -> None:
+def remove_socket_file(s: 'Socket', path: Optional[str] = None, is_dir: Optional[Callable[[str], None]] = None) -> None:
     with suppress(OSError):
         s.close()
     if path:
         with suppress(OSError):
-            os.unlink(path)
+            if is_dir:
+                is_dir(path)
+            else:
+                os.unlink(path)
 
 
-def unix_socket_paths(name: str, ext: str = '.lock') -> Generator[str, None, None]:
+def unix_socket_directories() -> Iterator[str]:
     import tempfile
     home = os.path.expanduser('~')
     candidates = [tempfile.gettempdir(), home]
@@ -389,8 +392,39 @@ def unix_socket_paths(name: str, ext: str = '.lock') -> Generator[str, None, Non
         candidates = [user_cache_dir(), '/Library/Caches']
     for loc in candidates:
         if os.access(loc, os.W_OK | os.R_OK | os.X_OK):
-            filename = ('.' if loc == home else '') + name + ext
-            yield os.path.join(loc, filename)
+            yield loc
+
+
+def unix_socket_paths(name: str, ext: str = '.lock') -> Generator[str, None, None]:
+    home = os.path.expanduser('~')
+    for loc in unix_socket_directories():
+        filename = ('.' if loc == home else '') + name + ext
+        yield os.path.join(loc, filename)
+
+
+def random_unix_socket() -> 'Socket':
+    import shutil
+    import socket
+    import stat
+    import tempfile
+
+    from kitty.fast_data_types import random_unix_socket as rus
+    try:
+        fd = rus()
+    except OSError:
+        for path in unix_socket_directories():
+            ans = socket.socket(family=socket.AF_UNIX, type=socket.SOCK_STREAM, proto=0)
+            tdir = tempfile.mkdtemp(prefix='.kitty-', dir=path)
+            atexit.register(remove_socket_file, ans, tdir, shutil.rmtree)
+            path = os.path.join(tdir, 's')
+            ans.bind(path)
+            os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+            break
+    else:
+        ans = socket.socket(family=socket.AF_UNIX, type=socket.SOCK_STREAM, proto=0, fileno=fd)
+    ans.set_inheritable(False)
+    ans.setblocking(False)
+    return ans
 
 
 def single_instance_unix(name: str) -> bool:
