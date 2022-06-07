@@ -17,7 +17,7 @@ class Prewarm(BaseTest):
     maxDiff = None
 
     def test_prewarming(self):
-        from kittens.prewarm.main import PrewarmProcess
+        from kitty.prewarm import PrewarmProcess
 
         p = PrewarmProcess(create_file_to_read_from_worker=True)
         cwd = tempfile.gettempdir()
