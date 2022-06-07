@@ -35,7 +35,7 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.25.2 [future]
+0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new command :command:`edit-in-kitty` to :ref:`edit_file`
