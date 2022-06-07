@@ -88,7 +88,7 @@ class PrewarmProcess:
             env = dict(os.environ)
             env['KITTY_PREWARM_CONFIG'] = self.prewarm_config
             self.process = subprocess.Popen(
-                [kitty_exe(), '+kitten', 'prewarm', str(self.in_worker_fd)],
+                [kitty_exe(), '+runpy', f'from kitty.prewarm import main; main({self.in_worker_fd})'],
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, pass_fds=(self.in_worker_fd,), env=env)
             os.close(self.in_worker_fd)
             self.in_worker_fd = -1
@@ -307,9 +307,8 @@ def fork(shm_address: str, ready_fd: int) -> int:
                 sys.stdin = sys.__stdin__
 
 
-def main(args: List[str] = sys.argv) -> None:
+def main(notify_child_death_fd: int) -> None:
     read_signal_fd, write_signal_fd = safe_pipe()
-    notify_child_death_fd = int(sys.argv[-1])
     os.set_blocking(notify_child_death_fd, False)
     signal.set_wakeup_fd(write_signal_fd)
     signal.signal(signal.SIGCHLD, lambda *a: None)
@@ -458,7 +457,3 @@ def main(args: List[str] = sys.argv) -> None:
             for fmd in child_ready_fds.values():
                 with suppress(OSError):
                     os.close(fmd)
-
-
-if __name__ == '__main__':
-    main()
