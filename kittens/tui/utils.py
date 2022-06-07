@@ -55,7 +55,10 @@ def human_size(
 
 def kitty_opts() -> 'Options':
     from kitty.fast_data_types import get_options, set_options
-    ans = cast(Optional['Options'], get_options())
+    try:
+        ans = cast(Optional['Options'], get_options())
+    except RuntimeError:
+        ans = None
     if ans is None:
         from kitty.cli import create_default_opts
         from kitty.utils import suppress_error_logging
