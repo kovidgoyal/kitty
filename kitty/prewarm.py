@@ -196,8 +196,10 @@ def reload_kitty_config() -> None:
 
 def prewarm() -> None:
     reload_kitty_config()
-    for kitten in ('hints', 'ssh', 'unicode_input', 'ask', 'show_error'):
+    from kittens.runner import all_kitten_names
+    for kitten in all_kitten_names():
         import_module(f'kittens.{kitten}.main')
+    import_module('kitty.complete')
 
 
 class MemoryViewReadWrapperBytes(io.BufferedIOBase):
