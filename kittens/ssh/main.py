@@ -508,7 +508,7 @@ def get_remote_command(
     return wrap_bootstrap_script(sh_script, interpreter), replacements, shm_name
 
 
-def connection_sharing_args(opts: SSHOptions, kitty_pid: int) -> List[str]:
+def connection_sharing_args(kitty_pid: int) -> List[str]:
     rd = runtime_dir()
     # Bloody OpenSSH generates a 40 char hash and in creating the socket
     # appends a 27 char temp suffix to it. Socket max path length is approx
@@ -669,7 +669,7 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
         overrides.insert(0, f'hostname {uname}@{hostname_for_match}')
     host_opts = init_config(hostname_for_match, uname, overrides)
     if host_opts.share_connections:
-        cmd[insertion_point:insertion_point] = connection_sharing_args(host_opts, int(os.environ['KITTY_PID']))
+        cmd[insertion_point:insertion_point] = connection_sharing_args(int(os.environ['KITTY_PID']))
     use_kitty_askpass = host_opts.askpass == 'native' or (host_opts.askpass == 'unless-set' and 'SSH_ASKPASS' not in os.environ)
     need_to_request_data = True
     if use_kitty_askpass:
