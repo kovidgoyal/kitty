@@ -1801,6 +1801,10 @@ send_data_to_peer(PyObject *self UNUSED, PyObject *args) {
 
 static PyObject *
 random_unix_socket(PyObject *self UNUSED, PyObject *args UNUSED) {
+#ifndef SO_PASSCRED
+    errno = ENOTSUP;
+    return PyErr_SetFromErrno(PyExc_OSError);
+#else
 	int fd, optval = 1;
 	struct sockaddr_un bind_addr = {.sun_family=AF_UNIX};
 	fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -1811,6 +1815,7 @@ random_unix_socket(PyObject *self UNUSED, PyObject *args UNUSED) {
 fail:
     safe_close(fd, __FILE__, __LINE__);
     return PyErr_SetFromErrno(PyExc_OSError);
+#endif
 }
 
 static PyMethodDef module_methods[] = {
