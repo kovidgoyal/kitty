@@ -4,7 +4,7 @@
 
 import os
 import subprocess
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Sequence
 
 from kitty.types import run_once
 
@@ -50,12 +50,14 @@ def ssh_options() -> Dict[str, str]:
     return ans
 
 
-def is_kitten_cmdline(q: List[str]) -> bool:
+def is_kitten_cmdline(q: Sequence[str]) -> bool:
     if len(q) < 4:
         return False
     if os.path.basename(q[0]).lower() != 'kitty':
         return False
-    return q[1:3] == ['+kitten', 'ssh'] or q[1:4] == ['+', 'kitten', 'ssh']
+    if q[1:3] == ['+kitten', 'ssh'] or q[1:4] == ['+', 'kitten', 'ssh']:
+        return True
+    return q[1:3] == ['+runpy', 'from kittens.runner import main; main()'] and len(q) >= 6 and q[5] == 'ssh'
 
 
 def patch_cmdline(key: str, val: str, argv: List[str]) -> None:
