@@ -49,6 +49,7 @@ from .notify import notification_activated
 from .options.types import Options
 from .options.utils import MINIMUM_FONT_SIZE, KeyMap, SubSequenceMap
 from .os_window_size import initial_window_size_func
+from .prewarm import PrewarmProcess
 from .rgb import color_from_int
 from .session import Session, create_sessions, get_os_window_sizing_data
 from .tabs import (
@@ -253,10 +254,11 @@ class Boss:
         self.allow_remote_control = opts.allow_remote_control
         if args.listen_on and (self.allow_remote_control in ('y', 'socket-only')):
             listen_fd = listen_on(args.listen_on)
+        self.prewarm = PrewarmProcess()
         self.child_monitor = ChildMonitor(
             self.on_child_death,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None,
-            talk_fd, listen_fd
+            talk_fd, listen_fd, self.prewarm.take_from_worker_fd()
         )
         set_boss(self)
         self.args = args
@@ -1957,6 +1959,7 @@ class Boss:
         for w in self.all_windows:
             self.default_bg_changed_for(w.id)
             w.refresh()
+        self.prewarm.reload_kitty_config()
 
     @ac('misc', '''
         Reload the config file

@@ -34,7 +34,7 @@ extern PyTypeObject Screen_Type;
 #define EVDBG(...)
 #endif
 
-#define EXTRA_FDS 2
+#define EXTRA_FDS 3
 #ifndef MSG_NOSIGNAL
 // Apple does not implement MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
@@ -57,7 +57,7 @@ typedef struct {
     bool shutting_down;
     pthread_t io_thread, talk_thread;
 
-    int talk_fd, listen_fd;
+    int talk_fd, listen_fd, prewarm_fd;
     Message *messages;
     size_t messages_capacity, messages_count;
     LoopData io_loop_data;
@@ -124,11 +124,11 @@ static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
     PyObject *dump_callback, *death_notify;
-    int talk_fd = -1, listen_fd = -1;
+    int talk_fd = -1, listen_fd = -1, prewarm_fd = -1;
     int ret;
 
     if (the_monitor) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "OO|ii", &death_notify, &dump_callback, &talk_fd, &listen_fd)) return NULL;
+    if (!PyArg_ParseTuple(args, "OO|iii", &death_notify, &dump_callback, &talk_fd, &listen_fd, &prewarm_fd)) return NULL;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
         return NULL;
@@ -141,6 +141,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (!init_loop_data(&self->io_loop_data, SIGINT, SIGHUP, SIGTERM, SIGCHLD, SIGUSR1, SIGUSR2, 0)) return PyErr_SetFromErrno(PyExc_OSError);
     self->talk_fd = talk_fd;
     self->listen_fd = listen_fd;
+    self->prewarm_fd = prewarm_fd;
     if (self == NULL) return PyErr_NoMemory();
     self->death_notify = death_notify; Py_INCREF(death_notify);
     if (dump_callback != Py_None) {
@@ -149,7 +150,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     } else parse_func = parse_worker;
     self->count = 0;
     children_fds[0].fd = self->io_loop_data.wakeup_read_fd; children_fds[1].fd = self->io_loop_data.signal_read_fd;
-    children_fds[0].events = POLLIN; children_fds[1].events = POLLIN;
+    children_fds[2].fd = self->prewarm_fd;
+    children_fds[0].events = POLLIN; children_fds[1].events = POLLIN; children_fds[2].events = POLLIN;
     the_monitor = self;
 
     return (PyObject*) self;
@@ -175,6 +177,7 @@ dealloc(ChildMonitor* self) {
         FREE_CHILD(add_queue[add_queue_count]);
     }
     free_loop_data(&self->io_loop_data);
+    safe_close(self->prewarm_fd, __FILE__, __LINE__); self->prewarm_fd = -1;
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -1303,6 +1306,34 @@ mark_monitored_pids(pid_t pid, int status) {
 }
 
 static void
+reap_prewarmed_children(ChildMonitor *self, int fd, bool enable_close_on_child_death) {
+    static char buf[256];
+    static size_t buf_pos = 0;
+    while(true) {
+        ssize_t len = read(fd, buf + buf_pos, sizeof(buf) - buf_pos);
+        if (len < 0) {
+            if (errno == EINTR) continue;
+            if (errno != EIO && errno != EAGAIN) log_error("Call to read() from reap_prewarmed_children() failed with error: %s", strerror(errno));
+            break;
+        }
+        buf_pos += len;
+        char *nl;
+        while (buf_pos > 1 && (nl = memchr(buf, '\n', buf_pos)) != NULL) {
+            size_t sz = nl - buf;
+            if (enable_close_on_child_death) {
+                *nl = 0;
+                int pid = atoi(buf);
+                if (pid) mark_child_for_removal(self, pid);
+            }
+            memmove(buf, buf + sz, sz);
+            buf_pos -= sz;
+        }
+        if (len == 0) break;
+    }
+
+}
+
+static void
 reap_children(ChildMonitor *self, bool enable_close_on_child_death) {
     int status;
     pid_t pid;
@@ -1391,6 +1422,9 @@ io_loop(void *data) {
                     children_mutex(unlock);
                 }
                 if (ss.child_died) reap_children(self, OPT(close_on_child_death));
+            }
+            if (children_fds[2].revents && POLLIN) {
+                reap_prewarmed_children(self, children_fds[2].fd, OPT(close_on_child_death));
             }
             for (i = 0; i < self->count; i++) {
                 if (children_fds[EXTRA_FDS + i].revents & (POLLIN | POLLHUP)) {

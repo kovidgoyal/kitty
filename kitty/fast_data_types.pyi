@@ -1193,7 +1193,8 @@ class ChildMonitor:
         death_notify: Callable[[int], None],
         dump_callback: Optional[Callable[[bytes], None]],
         talk_fd: int = -1,
-        listen_fd: int = -1
+        listen_fd: int = -1,
+        prewarm_fd: int = -1,
     ):
         pass
 
