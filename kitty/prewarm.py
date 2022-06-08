@@ -92,7 +92,7 @@ class PrewarmProcess:
             env['KITTY_PREWARM_CONFIG'] = self.prewarm_config
             self.process = subprocess.Popen(
                 [kitty_exe(), '+runpy', f'from kitty.prewarm import main; main({self.in_worker_fd})'],
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE, pass_fds=(self.in_worker_fd,), env=env)
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, pass_fds=(self.in_worker_fd,), env=env, start_new_session=True)
             os.close(self.in_worker_fd)
             self.in_worker_fd = -1
             assert self.process.stdin is not None and self.process.stdout is not None
@@ -337,7 +337,6 @@ def main(notify_child_death_fd: int) -> None:
     child_id_map: Dict[int, int] = {}
     child_id_counter = count()
     self_pid = os.getpid()
-    os.setsid()
 
     def check_event(event: int, err_msg: str) -> None:
         if event & select.POLLHUP:
