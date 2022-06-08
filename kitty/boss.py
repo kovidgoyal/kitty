@@ -22,8 +22,9 @@ from .cli_stub import CLIOptions
 from .conf.utils import BadLine, KeyAction, to_cmdline
 from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
-    appname, cache_dir, config_dir, is_macos, is_wayland, kitty_exe,
-    logo_png_file, supports_primary_selection, website_url
+    appname, cache_dir, clear_handled_signals, config_dir, handled_signals,
+    is_macos, is_wayland, kitty_exe, logo_png_file, supports_primary_selection,
+    website_url
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
@@ -733,6 +734,8 @@ class Boss:
         if not getattr(self, 'io_thread_started', False):
             self.child_monitor.start()
             self.io_thread_started = True
+            for signum in self.child_monitor.handled_signals():
+                handled_signals.add(signum)
             urls: List[str] = getattr(sys, 'cmdline_args_for_open', [])
             if urls:
                 delattr(sys, 'cmdline_args_for_open')
@@ -1737,7 +1740,7 @@ class Boss:
         if stdin:
             r, w = safe_pipe(False)
             try:
-                subprocess.Popen(cmd, env=env, stdin=r, cwd=cwd)
+                subprocess.Popen(cmd, env=env, stdin=r, cwd=cwd, preexec_fn=clear_handled_signals)
             except Exception:
                 os.close(w)
             else:
@@ -1745,7 +1748,7 @@ class Boss:
             finally:
                 os.close(r)
         else:
-            subprocess.Popen(cmd, env=env, cwd=cwd)
+            subprocess.Popen(cmd, env=env, cwd=cwd, preexec_fn=clear_handled_signals)
 
     def pipe(self, source: str, dest: str, exe: str, *args: str) -> Optional[Window]:
         cmd = [exe] + list(args)
@@ -1965,8 +1968,8 @@ class Boss:
             map f5 load_config_file /path/to/some/kitty.conf
         ''')
     def load_config_file(self, *paths: str, apply_overrides: bool = True) -> None:
-        from .config import load_config
         from .cli import default_config_paths
+        from .config import load_config
         old_opts = get_options()
         prev_paths = old_opts.config_paths or default_config_paths(self.args.config)
         paths = paths or prev_paths

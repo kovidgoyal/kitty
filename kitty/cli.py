@@ -11,7 +11,9 @@ from typing import (
 
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
-from .constants import appname, defconf, is_macos, str_version, website_url
+from .constants import (
+    appname, clear_handled_signals, defconf, is_macos, str_version, website_url
+)
 from .options.types import Options as KittyOpts
 from .typing import BadLineType, TypedDict
 
@@ -362,7 +364,7 @@ class PrintHelpForSeq:
         text = '\n'.join(blocks) + '\n\n' + version()
         if print_help_for_seq.allow_pager and sys.stdout.isatty():
             import subprocess
-            p = subprocess.Popen(['less', '-isRXF'], stdin=subprocess.PIPE)
+            p = subprocess.Popen(['less', '-isRXF'], stdin=subprocess.PIPE, preexec_fn=clear_handled_signals)
             try:
                 p.communicate(text.encode('utf-8'))
             except KeyboardInterrupt:

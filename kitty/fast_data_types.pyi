@@ -1200,6 +1200,9 @@ class ChildMonitor:
     def wakeup(self) -> None:
         pass
 
+    def handled_signals(self) -> Tuple[int, ...]:
+        pass
+
     def main_loop(self) -> None:
         pass
 
@@ -1279,7 +1282,8 @@ def spawn(
     stdin_read_fd: int,
     stdin_write_fd: int,
     ready_read_fd: int,
-    ready_write_fd: int
+    ready_write_fd: int,
+    handled_signals: Tuple[int, ...],
 ) -> int:
     pass
 

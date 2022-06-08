@@ -177,6 +177,17 @@ dealloc(ChildMonitor* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
+static PyObject*
+handled_signals(ChildMonitor *self, PyObject *args UNUSED) {
+    PyObject *ans = PyTuple_New(self->io_loop_data.num_handled_signals);
+    if (ans) {
+        for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(ans); i++) {
+            PyTuple_SET_ITEM(ans, i, PyLong_FromLong((long)self->io_loop_data.handled_signals[i]));
+        }
+    }
+    return ans;
+}
+
 static void
 wakeup_io_loop(ChildMonitor *self, bool in_signal_handler) {
     wakeup_loop(&self->io_loop_data, in_signal_handler, "io_loop");
@@ -1706,6 +1717,7 @@ static PyMethodDef methods[] = {
     METHOD(main_loop, METH_NOARGS)
     METHOD(mark_for_close, METH_VARARGS)
     METHOD(resize_pty, METH_VARARGS)
+    METHODB(handled_signals, METH_NOARGS),
     {"set_iutf8_winid", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };

@@ -18,8 +18,8 @@ from typing import (
 )
 
 from .constants import (
-    appname, config_dir, is_macos, is_wayland, read_kitty_resource,
-    runtime_dir, shell_path, ssh_control_master_template,
+    appname, clear_handled_signals, config_dir, is_macos, is_wayland,
+    read_kitty_resource, runtime_dir, shell_path, ssh_control_master_template,
     supports_primary_selection
 )
 from .fast_data_types import Color, open_tty
@@ -277,7 +277,9 @@ def open_cmd(cmd: Union[Iterable[str], List[str]], arg: Union[None, Iterable[str
             cmd.append(arg)
         else:
             cmd.extend(arg)
-    return subprocess.Popen(tuple(cmd), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=cwd or None)
+    return subprocess.Popen(
+        tuple(cmd), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=cwd or None,
+        preexec_fn=clear_handled_signals)
 
 
 def open_url(url: str, program: Union[str, List[str]] = 'default', cwd: Optional[str] = None) -> 'PopenType[bytes]':
@@ -797,7 +799,9 @@ def read_shell_environment(opts: Optional[Options] = None) -> Dict[str, str]:
         if '-i' not in shell and '--interactive' not in shell:
             shell += ['-i']
         try:
-            p = subprocess.Popen(shell + ['-c', 'env'], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True)
+            p = subprocess.Popen(
+                shell + ['-c', 'env'], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True,
+                preexec_fn=clear_handled_signals)
         except FileNotFoundError:
             log_error('Could not find shell to read environment')
             return ans
@@ -970,8 +974,8 @@ def cleanup_ssh_control_masters() -> None:
     except OSError:
         return
     workers = tuple(subprocess.Popen([
-        'ssh', '-o', f'ControlPath={x}', '-O', 'exit', 'kitty-unused-host-name'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    for x in files)
+        'ssh', '-o', f'ControlPath={x}', '-O', 'exit', 'kitty-unused-host-name'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        preexec_fn=clear_handled_signals) for x in files)
     for w in workers:
         w.wait()
     for x in files:

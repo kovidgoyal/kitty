@@ -21,7 +21,9 @@ from typing import (
 from .child import ProcessDesc
 from .cli_stub import CLIOptions
 from .config import build_ansi_color_table
-from .constants import appname, config_dir, is_macos, wakeup
+from .constants import (
+    appname, clear_handled_signals, config_dir, is_macos, wakeup
+)
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
     CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK,
@@ -831,9 +833,10 @@ class Window:
             set_clipboard_string(url)
 
     def handle_remote_file(self, netloc: str, remote_path: str) -> None:
-        from .utils import SSHConnectionData
-        from kittens.ssh.main import get_connection_data
         from kittens.remote_file.main import is_ssh_kitten_sentinel
+        from kittens.ssh.main import get_connection_data
+
+        from .utils import SSHConnectionData
         args = self.ssh_kitten_cmdline()
         conn_data: Union[None, List[str], SSHConnectionData] = None
         if args:
@@ -903,7 +906,7 @@ class Window:
             import subprocess
             env = self.child.foreground_environ
             env['KITTY_CHILD_CMDLINE'] = ' '.join(map(shlex.quote, self.child.cmdline))
-            subprocess.Popen(cb, env=env, cwd=self.child.foreground_cwd)
+            subprocess.Popen(cb, env=env, cwd=self.child.foreground_cwd, preexec_fn=clear_handled_signals)
         if not self.is_active:
             changed = not self.needs_attention
             self.needs_attention = True

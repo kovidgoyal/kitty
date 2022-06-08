@@ -6,7 +6,7 @@ import os
 import pwd
 import sys
 from contextlib import suppress
-from typing import TYPE_CHECKING, Iterable, NamedTuple, Optional, Set
+from typing import TYPE_CHECKING, Any, Iterable, NamedTuple, Optional, Set
 
 from .types import run_once
 
@@ -235,3 +235,16 @@ def website_url(doc_name: str = '') -> str:
         if doc_name:
             doc_name += '/'
     return f'https://sw.kovidgoyal.net/kitty/{doc_name}'
+
+
+handled_signals: Set[int] = set()
+
+
+def clear_handled_signals(*a: Any) -> None:
+    if not handled_signals:
+        return
+    import signal
+    if hasattr(signal, 'pthread_sigmask'):
+        signal.pthread_sigmask(signal.SIG_UNBLOCK, handled_signals)
+    for s in handled_signals:
+        signal.signal(s, signal.SIG_DFL)

@@ -79,14 +79,16 @@ wait_for_terminal_ready(int fd) {
 
 static PyObject*
 spawn(PyObject *self UNUSED, PyObject *args) {
-    PyObject *argv_p, *env_p;
+    PyObject *argv_p, *env_p, *handled_signals_p;
     int master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd;
     char *cwd, *exe;
-    if (!PyArg_ParseTuple(args, "ssO!O!iiiiii", &exe, &cwd, &PyTuple_Type, &argv_p, &PyTuple_Type, &env_p, &master, &slave, &stdin_read_fd, &stdin_write_fd, &ready_read_fd, &ready_write_fd)) return NULL;
+    if (!PyArg_ParseTuple(args, "ssO!O!iiiiiiO!", &exe, &cwd, &PyTuple_Type, &argv_p, &PyTuple_Type, &env_p, &master, &slave, &stdin_read_fd, &stdin_write_fd, &ready_read_fd, &ready_write_fd, &PyTuple_Type, &handled_signals_p)) return NULL;
     char name[2048] = {0};
     if (ttyname_r(slave, name, sizeof(name) - 1) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
     char **argv = serialize_string_tuple(argv_p);
     char **env = serialize_string_tuple(env_p);
+    int handled_signals[16] = {0}, num_handled_signals = MIN((int)arraysz(handled_signals), PyTuple_GET_SIZE(handled_signals_p));
+    for (Py_ssize_t i = 0; i < num_handled_signals; i++) handled_signals[i] = PyLong_AsLong(PyTuple_GET_ITEM(handled_signals_p, i));
 
 #if PY_VERSION_HEX >= 0x03070000
     PyOS_BeforeFork();
@@ -99,10 +101,10 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             PyOS_AfterFork_Child();
 #endif
             // See _Py_RestoreSignals in signalmodule.c for a list of signals python nukes
-            sigset_t signals = {0};
-            struct sigaction act = {.sa_handler=SIG_DFL};
-#define SA(which) { if (sigaction(which, &act, NULL) != 0) exit_on_err("sigaction() in child process failed"); }
-            SA(SIGINT); SA(SIGTERM); SA(SIGCHLD); SA(SIGPIPE); SA(SIGUSR1); SA(SIGUSR2);
+            const struct sigaction act = {.sa_handler=SIG_DFL};
+
+#define SA(which)  if (sigaction(which, &act, NULL) != 0) exit_on_err("sigaction() in child process failed");
+            for (int si = 0; si < num_handled_signals; si++) { SA(handled_signals[si]); }
 #ifdef SIGXFSZ
             SA(SIGXFSZ);
 #endif
@@ -110,6 +112,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             SA(SIGXFZ);
 #endif
 #undef SA
+            sigset_t signals; sigemptyset(&signals);
             if (sigprocmask(SIG_SETMASK, &signals, NULL) != 0) exit_on_err("sigprocmask() in child process failed");
             // Use only signal-safe functions (man 7 signal-safety)
             if (chdir(cwd) != 0) { if (chdir("/") != 0) {} };  // ignore failure to chdir to /

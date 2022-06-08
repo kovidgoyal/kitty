@@ -13,7 +13,8 @@ from typing import (
 import kitty.fast_data_types as fast_data_types
 
 from .constants import (
-    is_freebsd, is_macos, kitty_base_dir, shell_path, terminfo_dir
+    handled_signals, is_freebsd, is_macos, kitty_base_dir, shell_path,
+    terminfo_dir
 )
 from .types import run_once
 from .utils import log_error, which
@@ -289,7 +290,9 @@ class Child:
             argv[0] = (f'-{exe.split("/")[-1]}')
         self.final_exe = which(exe) or exe
         self.final_argv0 = argv[0]
-        pid = fast_data_types.spawn(self.final_exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd)
+        pid = fast_data_types.spawn(
+            self.final_exe, self.cwd, tuple(argv), env, master, slave,
+            stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd, tuple(handled_signals))
         os.close(slave)
         self.pid = pid
         self.child_fd = master

@@ -16,8 +16,9 @@ from .cli_stub import CLIOptions
 from .conf.utils import BadLine
 from .config import cached_values_for
 from .constants import (
-    appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
-    is_wayland, kitty_exe, logo_png_file, running_in_kitty, website_url
+    appname, beam_cursor_data_file, clear_handled_signals, config_dir,
+    glfw_path, is_macos, is_wayland, kitty_exe, logo_png_file,
+    running_in_kitty, website_url
 )
 from .fast_data_types import (
     GLFW_IBEAM_CURSOR, GLFW_MOD_ALT, GLFW_MOD_SHIFT, create_os_window,
@@ -249,7 +250,7 @@ def setup_profiling() -> Generator[None, None, None]:
         with open(cg, 'wb') as f:
             subprocess.call(['pprof', '--callgrind', exe, '/tmp/kitty-profile.log'], stdout=f)
         try:
-            subprocess.Popen(['kcachegrind', cg])
+            subprocess.Popen(['kcachegrind', cg], preexec_fn=clear_handled_signals)
         except FileNotFoundError:
             subprocess.call(['pprof', '--text', exe, '/tmp/kitty-profile.log'])
             print('To view the graphical call data, use: kcachegrind', cg)
