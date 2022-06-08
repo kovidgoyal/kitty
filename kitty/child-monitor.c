@@ -137,7 +137,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         return NULL;
     }
     self = (ChildMonitor *)type->tp_alloc(type, 0);
-    if (!init_loop_data(&self->io_loop_data, 6, SIGINT, SIGHUP, SIGTERM, SIGCHLD, SIGUSR1, SIGUSR2)) return PyErr_SetFromErrno(PyExc_OSError);
+    if (!init_loop_data(&self->io_loop_data, SIGINT, SIGHUP, SIGTERM, SIGCHLD, SIGUSR1, SIGUSR2, 0)) return PyErr_SetFromErrno(PyExc_OSError);
     self->talk_fd = talk_fd;
     self->listen_fd = listen_fd;
     if (self == NULL) return PyErr_NoMemory();

@@ -33,12 +33,14 @@ handle_signal(int sig_num UNUSED, siginfo_t *si, void *ucontext UNUSED) {
 
 
 bool
-init_loop_data(LoopData *ld, size_t num_signals, ...) {
-    ld->num_handled_signals = num_signals;
+init_loop_data(LoopData *ld, ...) {
+    ld->num_handled_signals = 0;
     va_list valist;
-    va_start(valist, num_signals);
-    for (size_t i = 0; i < ld->num_handled_signals; i++) {
-        ld->handled_signals[i] = va_arg(valist, int);
+    va_start(valist, ld);
+    while (true) {
+        int sig = va_arg(valist, int);
+        if (!sig) break;
+        ld->handled_signals[ld->num_handled_signals++] = sig;
     }
     va_end(valist);
 #ifdef HAS_EVENT_FD

@@ -44,7 +44,7 @@ typedef struct {
 } LoopData;
 typedef void(*handle_signal_func)(const siginfo_t* siginfo, void *data);
 
-bool init_loop_data(LoopData *ld, size_t num_handled_signals, ...);
+bool init_loop_data(LoopData *ld, ...);
 void free_loop_data(LoopData *ld);
 void wakeup_loop(LoopData *ld, bool in_signal_handler, const char*);
 void read_signals(int fd, handle_signal_func callback, void *data);
