@@ -194,11 +194,24 @@ class ProcessDesc(TypedDict):
     cmdline: Optional[Sequence[str]]
 
 
+def is_prewarmable(argv: Sequence[str]) -> bool:
+    if len(argv) < 3 or os.path.basename(argv[0]) != 'kitty':
+        return False
+    if argv[1][:1] not in '@+':
+        return False
+    if argv[1][0] == '@':
+        return True
+    if argv[1] == '+':
+        return argv[2] != 'open'
+    return argv[1] != '+open'
+
+
 class Child:
 
     child_fd: Optional[int] = None
     pid: Optional[int] = None
     forked = False
+    is_prewarmed = False
 
     def __init__(
         self,
@@ -262,14 +275,16 @@ class Child:
         self.forked = True
         master, slave = openpty()
         stdin, self.stdin = self.stdin, None
-        ready_read_fd, ready_write_fd = os.pipe()
-        remove_cloexec(ready_read_fd)
-        if stdin is not None:
-            stdin_read_fd, stdin_write_fd = os.pipe()
-            remove_cloexec(stdin_read_fd)
-        else:
-            stdin_read_fd = stdin_write_fd = -1
-        env = tuple(f'{k}={v}' for k, v in self.final_env().items())
+        self.is_prewarmed = is_prewarmable(self.argv)
+        if not self.is_prewarmed:
+            ready_read_fd, ready_write_fd = os.pipe()
+            remove_cloexec(ready_read_fd)
+            if stdin is not None:
+                stdin_read_fd, stdin_write_fd = os.pipe()
+                remove_cloexec(stdin_read_fd)
+            else:
+                stdin_read_fd = stdin_write_fd = -1
+            env = tuple(f'{k}={v}' for k, v in self.final_env().items())
         argv = list(self.argv)
         exe = argv[0]
         if is_macos and exe == shell_path:
@@ -290,24 +305,33 @@ class Child:
             argv[0] = (f'-{exe.split("/")[-1]}')
         self.final_exe = which(exe) or exe
         self.final_argv0 = argv[0]
-        pid = fast_data_types.spawn(
-            self.final_exe, self.cwd, tuple(argv), env, master, slave,
-            stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd, tuple(handled_signals))
+        if self.is_prewarmed:
+            fe = self.final_env()
+            self.prewarmed_child = fast_data_types.get_boss().prewarm(slave, self.argv, self.cwd, fe, stdin)
+            pid = self.prewarmed_child.child_process_pid
+        else:
+            pid = fast_data_types.spawn(
+                self.final_exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
+                ready_read_fd, ready_write_fd, tuple(handled_signals))
         os.close(slave)
         self.pid = pid
         self.child_fd = master
-        if stdin is not None:
-            os.close(stdin_read_fd)
-            fast_data_types.thread_write(stdin_write_fd, stdin)
-        os.close(ready_read_fd)
-        self.terminal_ready_fd = ready_write_fd
+        if not self.is_prewarmed:
+            if stdin is not None:
+                os.close(stdin_read_fd)
+                fast_data_types.thread_write(stdin_write_fd, stdin)
+            os.close(ready_read_fd)
+            self.terminal_ready_fd = ready_write_fd
         if self.child_fd is not None:
             remove_blocking(self.child_fd)
         return pid
 
     def mark_terminal_ready(self) -> None:
-        os.close(self.terminal_ready_fd)
-        self.terminal_ready_fd = -1
+        if self.is_prewarmed:
+            fast_data_types.get_boss().prewarm.mark_child_as_ready(self.prewarmed_child.child_id)
+        else:
+            os.close(self.terminal_ready_fd)
+            self.terminal_ready_fd = -1
 
     def cmdline_of_pid(self, pid: int) -> List[str]:
         try:
