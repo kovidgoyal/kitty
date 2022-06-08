@@ -821,13 +821,13 @@ def which(name: str, only_system: bool = False) -> Optional[str]:
 def read_shell_environment(opts: Optional[Options] = None) -> Dict[str, str]:
     ans: Optional[Dict[str, str]] = getattr(read_shell_environment, 'ans', None)
     if ans is None:
-        from .child import openpty, remove_blocking
+        from .child import openpty
         ans = {}
         setattr(read_shell_environment, 'ans', ans)
         import subprocess
         shell = resolved_shell(opts)
         master, slave = openpty()
-        remove_blocking(master)
+        os.set_blocking(master, False)
         if '-l' not in shell and '--login' not in shell:
             shell += ['-l']
         if '-i' not in shell and '--interactive' not in shell:

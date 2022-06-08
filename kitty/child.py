@@ -143,14 +143,6 @@ def environ_of_process(pid: int) -> Dict[str, str]:
     return parse_environ_block(_environ_of_process(pid))
 
 
-def remove_cloexec(fd: int) -> None:
-    os.set_inheritable(fd, True)
-
-
-def remove_blocking(fd: int) -> None:
-    os.set_blocking(fd, False)
-
-
 def process_env() -> Dict[str, str]:
     ans = dict(os.environ)
     ssl_env_var = getattr(sys, 'kitty_ssl_env_var', None)
@@ -178,7 +170,8 @@ def set_default_env(val: Optional[Dict[str, str]] = None) -> None:
 
 def openpty() -> Tuple[int, int]:
     master, slave = os.openpty()  # Note that master and slave are in blocking mode
-    remove_cloexec(slave)
+    os.set_inheritable(slave, True)
+    os.set_inheritable(master, False)
     fast_data_types.set_iutf8_fd(master, True)
     return master, slave
 
@@ -278,10 +271,12 @@ class Child:
         self.is_prewarmed = is_prewarmable(self.argv)
         if not self.is_prewarmed:
             ready_read_fd, ready_write_fd = os.pipe()
-            remove_cloexec(ready_read_fd)
+            os.set_inheritable(ready_write_fd, False)
+            os.set_inheritable(ready_read_fd, True)
             if stdin is not None:
                 stdin_read_fd, stdin_write_fd = os.pipe()
-                remove_cloexec(stdin_read_fd)
+                os.set_inheritable(stdin_write_fd, False)
+                os.set_inheritable(stdin_read_fd, True)
             else:
                 stdin_read_fd = stdin_write_fd = -1
             env = tuple(f'{k}={v}' for k, v in self.final_env().items())
@@ -323,8 +318,14 @@ class Child:
             os.close(ready_read_fd)
             self.terminal_ready_fd = ready_write_fd
         if self.child_fd is not None:
-            remove_blocking(self.child_fd)
+            os.set_blocking(self.child_fd, False)
         return pid
+
+    def __del__(self) -> None:
+        fd = getattr(self, 'terminal_ready_fd', -1)
+        if fd > -1:
+            os.close(fd)
+        self.terminal_ready_fd = -1
 
     def mark_terminal_ready(self) -> None:
         if self.is_prewarmed:
