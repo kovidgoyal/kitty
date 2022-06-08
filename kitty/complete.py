@@ -676,10 +676,11 @@ def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterabl
     ans = Completions()
     if not words:
         return ans
-    if words[0] in ('edit-in-kitty', 'clone-in-kitty'):
+    exe = os.path.basename(words[0])
+    if exe in ('edit-in-kitty', 'clone-in-kitty'):
         complete_launch_wrapper(ans, words[1:], new_word, allow_files=words[0] != 'clone-in-kitty')
         return ans
-    if words[0] != 'kitty':
+    if exe != 'kitty':
         return ans
     words = words[1:]
     if not words or (len(words) == 1 and not new_word):
