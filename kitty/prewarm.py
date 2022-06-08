@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 
 error_events = select.POLLERR | select.POLLNVAL | select.POLLHUP
+TIMEOUT = 4.0
 
 
 class PrewarmProcessFailed(Exception):
@@ -121,7 +122,8 @@ class PrewarmProcess:
         argv: List[str],
         cwd: str = '',
         env: Optional[Dict[str, str]] = None,
-        stdin_data: Optional[Union[str, bytes]] = None
+        stdin_data: Optional[Union[str, bytes]] = None,
+        timeout: float = TIMEOUT,
     ) -> Child:
         self.ensure_worker()
         tty_name = os.ttyname(tty_fd)
@@ -146,7 +148,7 @@ class PrewarmProcess:
             self.send_to_prewarm_process(f'fork:{shm.name}\n')
             input_buf = b''
             st = time.monotonic()
-            while time.monotonic() - st < 2:
+            while time.monotonic() - st < timeout:
                 for (fd, event) in self.poll.poll(0.2):
                     if event & error_events:
                         raise PrewarmProcessFailed('Failed doing I/O with prewarm process')
@@ -169,7 +171,7 @@ class PrewarmProcess:
         self.children[child_id] = c = Child(child_id, pid)
         return c
 
-    def send_to_prewarm_process(self, output_buf: Union[str, bytes] = b'', timeout: float = 2) -> None:
+    def send_to_prewarm_process(self, output_buf: Union[str, bytes] = b'', timeout: float = TIMEOUT) -> None:
         if isinstance(output_buf, str):
             output_buf = output_buf.encode()
         st = time.monotonic()
