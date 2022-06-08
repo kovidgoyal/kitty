@@ -5,15 +5,15 @@ import io
 import json
 import os
 import select
-import signal
 import sys
 import time
 from contextlib import suppress
 from dataclasses import dataclass
 from importlib import import_module
+from itertools import count
 from typing import (
-    IO, TYPE_CHECKING, Any, Dict, List, NoReturn, Optional, Sequence, Union,
-    cast
+    IO, TYPE_CHECKING, Any, Dict, List, NoReturn, Optional, Sequence, Tuple,
+    Union, cast
 )
 
 from kitty.constants import kitty_exe
@@ -270,7 +270,7 @@ def child_main(cmd: Dict[str, Any], ready_fd: int) -> NoReturn:
     raise SystemExit(0)
 
 
-def fork(shm_address: str, ready_fd: int) -> int:
+def fork(shm_address: str, ready_fd: int) -> Tuple[int, int]:
     sz = pos = 0
     with SharedMemory(name=shm_address, unlink_on_exit=True) as shm:
         data = shm.read_data_with_size()
@@ -291,22 +291,23 @@ def fork(shm_address: str, ready_fd: int) -> int:
     if child_pid:
         # master process
         os.close(w)
-        try:
-            poll = select.poll()
-            poll.register(r, select.POLLIN | select.POLLHUP | select.POLLERR)
-            tuple(poll.poll())
-        finally:
-            os.close(r)
-        return child_pid
+        poll = select.poll()
+        poll.register(r, select.POLLIN)
+        for (fd, event) in poll.poll():
+            if event & select.POLLIN:
+                os.read(r, 1)
+                return child_pid, r
+            else:
+                raise ValueError('Child process pipe failed')
     # child process
+    os.set_inheritable(w, False)
     os.setsid()
     tty_name = cmd.get('tty_name')
     if tty_name:
         sys.__stdout__.flush()
         sys.__stderr__.flush()
         establish_controlling_tty(tty_name, sys.__stdin__.fileno(), sys.__stdout__.fileno(), sys.__stderr__.fileno())
-    os.write(w, b'1')
-    os.close(w)
+    os.write(w, b'1')  # this will be closed on process exit and thereby used to detect child death
     if shm.unlink_on_exit:
         child_main(cmd, ready_fd)
     else:
@@ -322,11 +323,7 @@ def fork(shm_address: str, ready_fd: int) -> int:
 
 
 def main(notify_child_death_fd: int) -> None:
-    read_signal_fd, write_signal_fd = safe_pipe()
     os.set_blocking(notify_child_death_fd, False)
-    signal.set_wakeup_fd(write_signal_fd)
-    signal.signal(signal.SIGCHLD, lambda *a: None)
-    signal.siginterrupt(signal.SIGCHLD, False)
     prewarm()
     stdin_fd = sys.__stdin__.fileno()
     os.set_blocking(stdin_fd, False)
@@ -334,10 +331,11 @@ def main(notify_child_death_fd: int) -> None:
     os.set_blocking(stdout_fd, False)
     poll = select.poll()
     poll.register(stdin_fd, select.POLLIN)
-    poll.register(read_signal_fd, select.POLLIN)
     input_buf = output_buf = child_death_buf = b''
     child_ready_fds: Dict[int, int] = {}
+    child_death_fds: Dict[int, int] = {}
     child_id_map: Dict[int, int] = {}
+    child_id_counter = count()
     self_pid = os.getpid()
     os.setsid()
 
@@ -373,15 +371,17 @@ def main(notify_child_death_fd: int) -> None:
                 r, w = os.pipe()
                 os.set_inheritable(w, False)
                 try:
-                    child_pid = fork(payload, r)
+                    child_pid, child_death_fd = fork(payload, r)
                 except Exception as e:
                     es = str(e).replace('\n', ' ')
                     output_buf += f'ERR:{es}\n'.encode()
                 else:
                     if os.getpid() == self_pid:
-                        child_id = len(child_id_map) + 1
+                        child_id = next(child_id_counter)
                         child_id_map[child_id] = child_pid
                         child_ready_fds[child_id] = w
+                        child_death_fds[child_death_fd] = child_id
+                        poll.register(child_death_fd, select.POLLIN)
                         output_buf += f'CHILD:{child_id}:{child_pid}\n'.encode()
                 finally:
                     if os.getpid() == self_pid:
@@ -415,36 +415,17 @@ def main(notify_child_death_fd: int) -> None:
         if not child_death_buf:
             poll.unregister(notify_child_death_fd)
 
-    def handle_signal(event: int) -> None:
+    def handle_child_death(dead_child_fd: int, dead_child_id: int) -> None:
         nonlocal child_death_buf
-        check_event(event, 'Polling of signal fd failed')
-        if not (event & select.POLLIN):
-            return
-        d = os.read(read_signal_fd, io.DEFAULT_BUFFER_SIZE)
-        if not d:
-            raise SystemExit(0)
-        signals = set(bytearray(d))
-        if signal.SIGCHLD in signals:
-            while True:
-                try:
-                    pid, exit_status = os.waitpid(-1, os.WNOHANG)
-                except ChildProcessError:
-                    break
-                # a zero return means there is at least one child process
-                # existing and no exit status is available
-                if pid == 0:
-                    break
-                matched_child_id = -1
-                for child_id, child_pid in child_id_map.items():
-                    if child_pid == pid:
-                        matched_child_id = child_id
-                        break
-                if matched_child_id > -1:
-                    del child_id_map[matched_child_id]
-                    ofd = child_ready_fds.pop(matched_child_id, None)
-                    if ofd is not None:
-                        os.close(ofd)
-                    child_death_buf += f'{pid}\n'.encode()
+        poll.unregister(dead_child_fd)
+        del child_death_fds[dead_child_fd]
+        xfd = child_ready_fds.pop(dead_child_id, None)
+        if xfd is not None:
+            os.close(xfd)
+        dead_child_pid = child_id_map.pop(dead_child_id)
+        if dead_child_pid is not None:
+            child_death_buf += f'{dead_child_pid}\n'.encode()
+
     try:
         while True:
             if output_buf:
@@ -456,10 +437,12 @@ def main(notify_child_death_fd: int) -> None:
                     handle_input(event)
                 elif q == stdout_fd:
                     handle_output(event)
-                elif q == read_signal_fd:
-                    handle_signal(event)
                 elif q == notify_child_death_fd:
                     handle_notify_child_death(event)
+                else:
+                    dead_child_id = child_death_fds.get(q)
+                    if dead_child_id is not None and event & select.POLLHUP:
+                        handle_child_death(q, dead_child_id)
     except (KeyboardInterrupt, EOFError, BrokenPipeError):
         if os.getpid() == self_pid:
             raise SystemExit(1)
