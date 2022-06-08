@@ -7,6 +7,7 @@ import os
 import select
 import sys
 import time
+import warnings
 from contextlib import suppress
 from dataclasses import dataclass
 from importlib import import_module
@@ -338,6 +339,9 @@ def main(notify_child_death_fd: int) -> None:
     child_id_map: Dict[int, int] = {}
     child_id_counter = count()
     self_pid = os.getpid()
+    # runpy issues a warning when running modules that have already been
+    # imported. Ignore it.
+    warnings.filterwarnings('ignore', category=RuntimeWarning, module='runpy')
 
     def check_event(event: int, err_msg: str) -> None:
         if event & select.POLLHUP:
