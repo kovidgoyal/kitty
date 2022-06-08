@@ -16,7 +16,7 @@ from typing import (
     Union, cast
 )
 
-from kitty.constants import kitty_exe
+from kitty.constants import clear_handled_signals, kitty_exe
 from kitty.entry_points import main as main_entry_point
 from kitty.fast_data_types import (
     establish_controlling_tty, get_options, safe_pipe
@@ -92,7 +92,8 @@ class PrewarmProcess:
             env['KITTY_PREWARM_CONFIG'] = self.prewarm_config
             self.process = subprocess.Popen(
                 [kitty_exe(), '+runpy', f'from kitty.prewarm import main; main({self.in_worker_fd})'],
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE, pass_fds=(self.in_worker_fd,), env=env, start_new_session=True)
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, pass_fds=(self.in_worker_fd,), env=env,
+                start_new_session=True, preexec_fn=clear_handled_signals)
             os.close(self.in_worker_fd)
             self.in_worker_fd = -1
             assert self.process.stdin is not None and self.process.stdout is not None
