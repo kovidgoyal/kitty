@@ -12,7 +12,8 @@ from contextlib import suppress
 from dataclasses import dataclass
 from importlib import import_module
 from typing import (
-    IO, TYPE_CHECKING, Any, Dict, List, NoReturn, Optional, Union, cast
+    IO, TYPE_CHECKING, Any, Dict, List, NoReturn, Optional, Sequence, Union,
+    cast
 )
 
 from kitty.constants import kitty_exe
@@ -78,6 +79,11 @@ class PrewarmProcess:
     def prewarm_config(self) -> str:
         opts = get_options()
         return json.dumps({'paths': opts.config_paths, 'overrides': opts.config_overrides})
+
+    def is_prewarmed_argv(self, argv: Sequence[str]) -> bool:
+        if argv[:2] != [kitty_exe(), '+runpy']:
+            return False
+        return len(argv) > 2 and argv[2].startswith('from kitty.prewarm import main; main(')
 
     def ensure_worker(self) -> None:
         if not self.worker_started:

@@ -339,7 +339,7 @@ class Child:
             ans = cmdline_of_pid(pid)
         except Exception:
             ans = []
-        if not ans and pid == self.pid:
+        if pid == self.pid and (not ans or (self.is_prewarmed and fast_data_types.get_boss().prewarm.is_prewarmed_argv(ans))):
             ans = list(self.argv)
         return ans
 
