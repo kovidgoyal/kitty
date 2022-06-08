@@ -1319,7 +1319,7 @@ reap_prewarmed_children(ChildMonitor *self, int fd, bool enable_close_on_child_d
         buf_pos += len;
         char *nl;
         while (buf_pos > 1 && (nl = memchr(buf, '\n', buf_pos)) != NULL) {
-            size_t sz = nl - buf;
+            size_t sz = nl - buf + 1;
             if (enable_close_on_child_death) {
                 *nl = 0;
                 int pid = atoi(buf);
