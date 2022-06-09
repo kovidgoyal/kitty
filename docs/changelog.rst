@@ -35,6 +35,12 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
+0.26.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Reduce startup latency by ~50 milliseconds when running kittens via key-bindings or remote control (:iss:`5159`)
+
+
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
