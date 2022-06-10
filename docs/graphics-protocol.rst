@@ -417,7 +417,9 @@ they are semi-transparent. You can specify z-index values using the ``z`` key.
 Negative z-index values mean that the images will be drawn under the text. This
 allows rendering of text on top of images. Negative z-index values below
 INT32_MIN/2 (-1,073,741,824) will be drawn under cells with non-default background
-colors.
+colors. If two images with the same z-index overlap then the image with the
+lower id is considered to have the lower z-index. If the images have the same
+z-index and the same id, then the behavior is undefined.
 
 .. note:: After placing an image on the screen the cursor must be moved to the
    right by the number of cols in the image placement rectangle and down by the
