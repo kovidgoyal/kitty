@@ -40,6 +40,9 @@ Detailed list of changes
 
 - Reduce startup latency by ~50 milliseconds when running kittens via key-bindings or remote control (:iss:`5159`)
 
+- Wayland: Fix a regression in the previous release that caused mouse cursor
+  animation and keyboard repeat to stop working when switching seats (:iss:`5188`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
