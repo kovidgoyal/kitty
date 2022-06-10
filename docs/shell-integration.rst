@@ -41,7 +41,7 @@ Features
 * Sophisticated completion for the :program:`kitty` command in the shell.
 
 * When confirming a quit command if a window is sitting at a shell prompt,
-  it is optionally, not counted (see :opt:`confirm_os_window_close`)
+  it is not counted (for details, see :opt:`confirm_os_window_close`)
 
 
 Configuration
