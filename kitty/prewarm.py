@@ -429,7 +429,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int) -> None:
         xfd = child_ready_fds.pop(dead_child_id, None)
         if xfd is not None:
             os.close(xfd)
-        dead_child_pid = child_id_map.pop(dead_child_id)
+        dead_child_pid = child_id_map.pop(dead_child_id, None)
         if dead_child_pid is not None:
             wait_for_child_death(dead_child_pid)
             child_death_buf += f'{dead_child_pid}\n'.encode()
