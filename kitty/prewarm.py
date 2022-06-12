@@ -49,12 +49,12 @@ def wait_for_child_death(child_pid: int, timeout: float = 1) -> Optional[int]:
     st = time.monotonic()
     while time.monotonic() - st < timeout:
         try:
-            pid, status = os.waitpid(child_pid, os.WNOHANG)
+            x = os.waitid(os.P_PID, child_pid, os.WEXITED | os.WNOHANG)
         except ChildProcessError:
             return 0
         else:
-            if pid == child_pid:
-                return status
+            if x is not None and x.si_pid == child_pid:
+                return x.si_status
         time.sleep(0.01)
     return None
 
