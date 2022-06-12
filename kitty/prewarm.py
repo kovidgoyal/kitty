@@ -45,18 +45,32 @@ class Child:
     child_process_pid: int
 
 
-def wait_for_child_death(child_pid: int, timeout: float = 1) -> Optional[int]:
-    st = time.monotonic()
-    while time.monotonic() - st < timeout:
-        try:
-            x = os.waitid(os.P_PID, child_pid, os.WEXITED | os.WNOHANG)
-        except ChildProcessError:
-            return 0
-        else:
-            if x is not None and x.si_pid == child_pid:
-                return x.si_status
-        time.sleep(0.01)
-    return None
+if hasattr(os, 'waitid'):
+    def wait_for_child_death(child_pid: int, timeout: float = 1) -> Optional[int]:
+        st = time.monotonic()
+        while time.monotonic() - st < timeout:
+            try:
+                x = os.waitid(os.P_PID, child_pid, os.WEXITED | os.WNOHANG)
+            except ChildProcessError:
+                return 0
+            else:
+                if x is not None and x.si_pid == child_pid:
+                    return x.si_status
+            time.sleep(0.01)
+        return None
+else:
+    def wait_for_child_death(child_pid: int, timeout: float = 1) -> Optional[int]:
+        st = time.monotonic()
+        while time.monotonic() - st < timeout:
+            try:
+                pid, status = os.waitpid(child_pid, os.WNOHANG)
+            except ChildProcessError:
+                return 0
+            else:
+                if pid == child_pid:
+                    return status
+            time.sleep(0.01)
+        return None
 
 
 class PrewarmProcess:
