@@ -45,6 +45,20 @@ class Child:
     child_process_pid: int
 
 
+def wait_for_child_death(child_pid: int, timeout: float = 1) -> Optional[int]:
+    st = time.monotonic()
+    while time.monotonic() - st < timeout:
+        try:
+            pid, status = os.waitpid(child_pid, os.WNOHANG)
+        except ChildProcessError:
+            return 0
+        else:
+            if pid == child_pid:
+                return status
+        time.sleep(0.01)
+    return None
+
+
 class PrewarmProcess:
 
     def __init__(
@@ -86,19 +100,10 @@ class PrewarmProcess:
             self.from_worker.close()
             del self.from_worker
         if self.worker_pid > 0:
-            st = time.monotonic()
-            while time.monotonic() - st < 1:
-                try:
-                    pid, status = os.waitpid(self.worker_pid, os.WNOHANG)
-                except ChildProcessError:
-                    return
-                else:
-                    if pid == self.worker_pid:
-                        return
-                time.sleep(0.01)
-            log_error('Prewarm process failed to quite gracefully, killing it')
-            os.kill(self.worker_pid, signal.SIGKILL)
-            os.waitpid(self.worker_pid, 0)
+            if wait_for_child_death(self.worker_pid) is None:
+                log_error('Prewarm process failed to quite gracefully, killing it')
+                os.kill(self.worker_pid, signal.SIGKILL)
+                os.waitpid(self.worker_pid, 0)
 
     def poll_to_send(self, yes: bool = True) -> None:
         if yes:
@@ -426,6 +431,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int) -> None:
             os.close(xfd)
         dead_child_pid = child_id_map.pop(dead_child_id)
         if dead_child_pid is not None:
+            wait_for_child_death(dead_child_pid)
             child_death_buf += f'{dead_child_pid}\n'.encode()
 
     try:
