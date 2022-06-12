@@ -17,9 +17,8 @@ class Prewarm(BaseTest):
     maxDiff = None
 
     def test_prewarming(self):
-        from kitty.prewarm import PrewarmProcess
+        from kitty.prewarm import fork_prewarm_process
 
-        p = PrewarmProcess(create_file_to_read_from_worker=True)
         cwd = tempfile.gettempdir()
         env = {'TEST_ENV_PASS': 'xyz'}
         cols = 117
@@ -28,6 +27,10 @@ class Prewarm(BaseTest):
         ttyname = os.ttyname(pty.slave_fd)
         opts = get_options()
         opts.config_overrides = 'font_family prewarm',
+        p = fork_prewarm_process(opts, use_exec=True)
+        if p is None:
+            return
+        p.take_from_worker_fd(create_file=True)
         child = p(pty.slave_fd, [kitty_exe(), '+runpy', """\
 import os, json; from kitty.utils import *; from kitty.fast_data_types import get_options; print(json.dumps({
         'cterm': os.ctermid(),

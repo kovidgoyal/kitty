@@ -199,6 +199,15 @@ def is_prewarmable(argv: Sequence[str]) -> bool:
     return argv[1] != '+open'
 
 
+@run_once
+def cmdline_of_prewarmer() -> List[str]:
+    # we need this check in case the prewarmed process has done an exec and
+    # changed its cmdline
+    with suppress(Exception):
+        return cmdline_of_pid(fast_data_types.get_boss().prewarm.worker_pid)
+    return ['']
+
+
 class Child:
 
     child_fd: Optional[int] = None
@@ -339,7 +348,7 @@ class Child:
             ans = cmdline_of_pid(pid)
         except Exception:
             ans = []
-        if pid == self.pid and (not ans or (self.is_prewarmed and fast_data_types.get_boss().prewarm.is_prewarmed_argv(ans))):
+        if pid == self.pid and (not ans or (self.is_prewarmed and ans == cmdline_of_prewarmer())):
             ans = list(self.argv)
         return ans
 

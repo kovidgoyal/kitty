@@ -229,7 +229,8 @@ class Boss:
         opts: Options,
         args: CLIOptions,
         cached_values: Dict[str, Any],
-        global_shortcuts: Dict[str, SingleKey]
+        global_shortcuts: Dict[str, SingleKey],
+        prewarm: PrewarmProcess,
     ):
         set_layout_options(opts)
         self.update_check_started = False
@@ -254,7 +255,7 @@ class Boss:
         self.allow_remote_control = opts.allow_remote_control
         if args.listen_on and (self.allow_remote_control in ('y', 'socket-only')):
             listen_fd = listen_on(args.listen_on)
-        self.prewarm = PrewarmProcess()
+        self.prewarm = prewarm
         self.child_monitor = ChildMonitor(
             self.on_child_death,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None,

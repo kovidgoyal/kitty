@@ -5,6 +5,7 @@ import io
 import json
 import os
 import select
+import signal
 import sys
 import time
 import warnings
@@ -13,16 +14,17 @@ from dataclasses import dataclass
 from importlib import import_module
 from itertools import count
 from typing import (
-    IO, TYPE_CHECKING, Any, Dict, List, NoReturn, Optional, Sequence, Tuple,
-    Union, cast
+    IO, TYPE_CHECKING, Any, Dict, List, NoReturn, Optional, Tuple, Union, cast
 )
 
-from kitty.constants import clear_handled_signals, kitty_exe
+from kitty.constants import kitty_exe, running_in_kitty
 from kitty.entry_points import main as main_entry_point
 from kitty.fast_data_types import (
-    establish_controlling_tty, get_options, safe_pipe
+    establish_controlling_tty, get_options, safe_pipe, set_options
 )
+from kitty.options.types import Options
 from kitty.shm import SharedMemory
+from kitty.utils import log_error
 
 if TYPE_CHECKING:
     from _typeshed import ReadableBuffer, WriteableBuffer
@@ -44,67 +46,58 @@ class Child:
 
 class PrewarmProcess:
 
-    def __init__(self, create_file_to_read_from_worker: bool = False) -> None:
-        self.from_worker_fd, self.in_worker_fd = safe_pipe()
+    def __init__(
+        self,
+        prewarm_process_pid: int,
+        to_prewarm_stdin: int,
+        from_prewarm_stdout: int,
+        from_prewarm_death_notify: int,
+    ) -> None:
         self.children: Dict[int, Child] = {}
-        if create_file_to_read_from_worker:
-            os.set_blocking(self.from_worker_fd, True)
-            self.from_worker = open(self.from_worker_fd, mode='r', closefd=True)
-            self.from_worker_fd = -1
+        self.worker_pid = prewarm_process_pid
+        self.from_prewarm_death_notify = from_prewarm_death_notify
+        self.write_to_process_fd = to_prewarm_stdin
+        self.read_from_process_fd = from_prewarm_stdout
+        self.poll = select.poll()
+        self.poll.register(self.read_from_process_fd, select.POLLIN)
 
-    def take_from_worker_fd(self) -> int:
-        ans, self.from_worker_fd = self.from_worker_fd, -1
+    def take_from_worker_fd(self, create_file: bool = False) -> int:
+        if create_file:
+            os.set_blocking(self.from_prewarm_death_notify, True)
+            self.from_worker = open(self.from_prewarm_death_notify, mode='r', closefd=True)
+            self.from_prewarm_death_notify = -1
+            return -1
+        ans, self.from_prewarm_death_notify = self.from_prewarm_death_notify, -1
         return ans
 
     def __del__(self) -> None:
-        if self.from_worker_fd > -1:
-            os.close(self.from_worker_fd)
-            self.from_worker_fd = -1
+        if self.write_to_process_fd > -1:
+            os.close(self.write_to_process_fd)
+            self.write_to_process_fd = -1
+        if self.from_prewarm_death_notify > -1:
+            os.close(self.from_prewarm_death_notify)
+            self.from_prewarm_death_notify = -1
+        if self.read_from_process_fd > -1:
+            os.close(self.read_from_process_fd)
+            self.read_from_process_fd = -1
+
         if hasattr(self, 'from_worker'):
             self.from_worker.close()
             del self.from_worker
-        if self.worker_started:
-            import subprocess
-            self.process.stdin and self.process.stdin.close()
-            self.process.stdout and self.process.stdout.close()
-            try:
-                self.process.wait(timeout=1.0)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-            del self.process
-
-    @property
-    def worker_started(self) -> bool:
-        return self.in_worker_fd == -1
-
-    @property
-    def prewarm_config(self) -> str:
-        opts = get_options()
-        return json.dumps({'paths': opts.config_paths, 'overrides': opts.config_overrides})
-
-    def is_prewarmed_argv(self, argv: Sequence[str]) -> bool:
-        if argv[:2] != [kitty_exe(), '+runpy']:
-            return False
-        return len(argv) > 2 and argv[2].startswith('from kitty.prewarm import main; main(')
-
-    def ensure_worker(self) -> None:
-        if not self.worker_started:
-            import subprocess
-            env = dict(os.environ)
-            env['KITTY_PREWARM_CONFIG'] = self.prewarm_config
-            self.process = subprocess.Popen(
-                [kitty_exe(), '+runpy', f'from kitty.prewarm import main; main({self.in_worker_fd})'],
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE, pass_fds=(self.in_worker_fd,), env=env,
-                start_new_session=True, preexec_fn=clear_handled_signals)
-            os.close(self.in_worker_fd)
-            self.in_worker_fd = -1
-            assert self.process.stdin is not None and self.process.stdout is not None
-            self.write_to_process_fd = self.process.stdin.fileno()
-            self.read_from_process_fd = self.process.stdout.fileno()
-            os.set_blocking(self.write_to_process_fd, False)
-            os.set_blocking(self.read_from_process_fd, False)
-            self.poll = select.poll()
-            self.poll.register(self.process.stdout.fileno(), select.POLLIN)
+        if self.worker_pid > 0:
+            st = time.monotonic()
+            while time.monotonic() - st < 1:
+                try:
+                    pid, status = os.waitpid(self.worker_pid, os.WNOHANG)
+                except ChildProcessError:
+                    return
+                else:
+                    if pid == self.worker_pid:
+                        return
+                time.sleep(0.01)
+            log_error('Prewarm process failed to quite gracefully, killing it')
+            os.kill(self.worker_pid, signal.SIGKILL)
+            os.waitpid(self.worker_pid, 0)
 
     def poll_to_send(self, yes: bool = True) -> None:
         if yes:
@@ -112,9 +105,12 @@ class PrewarmProcess:
         else:
             self.poll.unregister(self.write_to_process_fd)
 
-    def reload_kitty_config(self) -> None:
-        if self.worker_started:
-            self.send_to_prewarm_process('reload_kitty_config:{self.prewarm_config}\n')
+    def reload_kitty_config(self, opts: Optional[Options] = None) -> None:
+        if opts is None:
+            opts = get_options()
+        data = json.dumps({'paths': opts.config_paths, 'overrides': opts.config_overrides})
+        if self.write_to_process_fd > -1:
+            self.send_to_prewarm_process(f'reload_kitty_config:{data}\n')
 
     def __call__(
         self,
@@ -125,7 +121,6 @@ class PrewarmProcess:
         stdin_data: Optional[Union[str, bytes]] = None,
         timeout: float = TIMEOUT,
     ) -> Child:
-        self.ensure_worker()
         tty_name = os.ttyname(tty_fd)
         if isinstance(stdin_data, str):
             stdin_data = stdin_data.encode()
@@ -195,14 +190,13 @@ class PrewarmProcess:
         return True
 
 
-def reload_kitty_config() -> None:
-    d = json.loads(os.environ.pop('KITTY_PREWARM_CONFIG'))
+def reload_kitty_config(payload: str) -> None:
+    d = json.loads(payload)
     from kittens.tui.utils import set_kitty_opts
     set_kitty_opts(paths=d['paths'], overrides=d['overrides'])
 
 
 def prewarm() -> None:
-    reload_kitty_config()
     from kittens.runner import all_kitten_names
     for kitten in all_kitten_names():
         with suppress(Exception):
@@ -274,7 +268,7 @@ def child_main(cmd: Dict[str, Any], ready_fd: int) -> NoReturn:
     raise SystemExit(0)
 
 
-def fork(shm_address: str, ready_fd: int) -> Tuple[int, int]:
+def fork(shm_address: str) -> Tuple[int, int, int]:
     sz = pos = 0
     with SharedMemory(name=shm_address, unlink_on_exit=True) as shm:
         data = shm.read_data_with_size()
@@ -284,8 +278,8 @@ def fork(shm_address: str, ready_fd: int) -> Tuple[int, int]:
             pos = shm.tell()
             shm.unlink_on_exit = False
 
-    r, w = os.pipe()
-    os.set_inheritable(r, False)
+    r, w = safe_pipe()
+    ready_fd_read, ready_fd_write = safe_pipe()
     try:
         child_pid = os.fork()
     except OSError:
@@ -295,16 +289,18 @@ def fork(shm_address: str, ready_fd: int) -> Tuple[int, int]:
     if child_pid:
         # master process
         os.close(w)
+        os.close(ready_fd_read)
         poll = select.poll()
         poll.register(r, select.POLLIN)
         for (fd, event) in poll.poll():
             if event & select.POLLIN:
                 os.read(r, 1)
-                return child_pid, r
+                return child_pid, r, ready_fd_write
             else:
                 raise ValueError('Child process pipe failed')
     # child process
-    os.set_inheritable(w, False)
+    os.close(r)
+    os.close(ready_fd_write)
     os.setsid()
     tty_name = cmd.get('tty_name')
     if tty_name:
@@ -313,25 +309,22 @@ def fork(shm_address: str, ready_fd: int) -> Tuple[int, int]:
         establish_controlling_tty(tty_name, sys.__stdin__.fileno(), sys.__stdout__.fileno(), sys.__stderr__.fileno())
     os.write(w, b'1')  # this will be closed on process exit and thereby used to detect child death
     if shm.unlink_on_exit:
-        child_main(cmd, ready_fd)
+        child_main(cmd, ready_fd_read)
     else:
         with SharedMemory(shm_address, unlink_on_exit=True) as shm:
             stdin_data = memoryview(shm.mmap)[pos:pos + sz]
             if stdin_data:
                 sys.stdin = MemoryViewReadWrapper(stdin_data)
             try:
-                child_main(cmd, ready_fd)
+                child_main(cmd, ready_fd_read)
             finally:
                 stdin_data.release()
                 sys.stdin = sys.__stdin__
 
 
-def main(notify_child_death_fd: int) -> None:
+def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int) -> None:
     os.set_blocking(notify_child_death_fd, False)
-    prewarm()
-    stdin_fd = sys.__stdin__.fileno()
     os.set_blocking(stdin_fd, False)
-    stdout_fd = sys.__stdout__.fileno()
     os.set_blocking(stdout_fd, False)
     poll = select.poll()
     poll.register(stdin_fd, select.POLLIN)
@@ -344,6 +337,7 @@ def main(notify_child_death_fd: int) -> None:
     # runpy issues a warning when running modules that have already been
     # imported. Ignore it.
     warnings.filterwarnings('ignore', category=RuntimeWarning, module='runpy')
+    prewarm()
 
     def check_event(event: int, err_msg: str) -> None:
         if event & select.POLLHUP:
@@ -365,19 +359,18 @@ def main(notify_child_death_fd: int) -> None:
             input_buf = input_buf[idx+1:]
             cmd, _, payload = line.partition(':')
             if cmd == 'reload_kitty_config':
-                os.environ['KITTY_PREWARM_CONFIG'] = payload
-                reload_kitty_config()
+                reload_kitty_config(payload)
             elif cmd == 'ready':
                 child_id = int(payload)
                 cfd = child_ready_fds.pop(child_id)
                 if cfd is not None:
                     os.write(cfd, b'1')
                     os.close(cfd)
+            elif cmd == 'quit':
+                raise SystemExit(0)
             elif cmd == 'fork':
-                r, w = os.pipe()
-                os.set_inheritable(w, False)
                 try:
-                    child_pid, child_death_fd = fork(payload, r)
+                    child_pid, child_death_fd, ready_fd_write = fork(payload)
                 except Exception as e:
                     es = str(e).replace('\n', ' ')
                     output_buf += f'ERR:{es}\n'.encode()
@@ -385,13 +378,10 @@ def main(notify_child_death_fd: int) -> None:
                     if os.getpid() == self_pid:
                         child_id = next(child_id_counter)
                         child_id_map[child_id] = child_pid
-                        child_ready_fds[child_id] = w
+                        child_ready_fds[child_id] = ready_fd_write
                         child_death_fds[child_death_fd] = child_id
                         poll.register(child_death_fd, select.POLLIN)
                         output_buf += f'CHILD:{child_id}:{child_pid}\n'.encode()
-                finally:
-                    if os.getpid() == self_pid:
-                        os.close(r)
             elif cmd == 'echo':
                 output_buf += f'{payload}\n'.encode()
 
@@ -463,3 +453,51 @@ def main(notify_child_death_fd: int) -> None:
             for fmd in child_ready_fds.values():
                 with suppress(OSError):
                     os.close(fmd)
+
+
+def exec_main(stdin_read: int, stdout_write: int, death_notify_write: int) -> None:
+    os.setsid()
+    # SIGUSR1 is used for reloading kitty config, we rely on the parent process
+    # to inform us of that
+    signal.signal(signal.SIGUSR1, signal.SIG_IGN)
+    signal.siginterrupt(signal.SIGUSR1, False)
+    os.set_inheritable(stdin_read, False)
+    os.set_inheritable(stdout_write, False)
+    os.set_inheritable(death_notify_write, False)
+    running_in_kitty(False)
+
+    try:
+        main(stdin_read, stdout_write, death_notify_write)
+    finally:
+        set_options(None)
+
+
+def fork_prewarm_process(opts: Options, use_exec: bool = False) -> Optional[PrewarmProcess]:
+    stdin_read, stdin_write = safe_pipe()
+    stdout_read, stdout_write = safe_pipe()
+    death_notify_read, death_notify_write = safe_pipe()
+    if use_exec:
+        import subprocess
+        tp = subprocess.Popen(
+            [kitty_exe(), '+runpy', f'from kitty.prewarm import exec_main; exec_main({stdin_read}, {stdout_write}, {death_notify_write})'],
+            pass_fds=(stdin_read, stdout_write, death_notify_write))
+        child_pid = tp.pid
+        tp.returncode = 0
+    else:
+        child_pid = os.fork()
+    if child_pid:
+        # master
+        os.close(stdin_read)
+        os.close(stdout_write)
+        os.close(death_notify_write)
+        p = PrewarmProcess(child_pid, stdin_write, stdout_read, death_notify_read)
+        if use_exec:
+            p.reload_kitty_config()
+        return p
+    # child
+    os.close(stdin_write)
+    os.close(stdout_read)
+    os.close(death_notify_read)
+    set_options(opts)
+    exec_main(stdin_read, stdout_write, death_notify_write)
+    raise SystemExit(0)
