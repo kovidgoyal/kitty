@@ -482,7 +482,7 @@ def fork_prewarm_process(opts: Options, use_exec: bool = False) -> Optional[Prew
             [kitty_exe(), '+runpy', f'from kitty.prewarm import exec_main; exec_main({stdin_read}, {stdout_write}, {death_notify_write})'],
             pass_fds=(stdin_read, stdout_write, death_notify_write))
         child_pid = tp.pid
-        tp.returncode = 0
+        tp.returncode = 0  # prevent a warning when the popen object is deleted with the process still running
     else:
         child_pid = os.fork()
     if child_pid:
