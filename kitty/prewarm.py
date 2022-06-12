@@ -302,6 +302,7 @@ def fork(shm_address: str) -> Tuple[int, int, int]:
     os.close(r)
     os.close(ready_fd_write)
     os.setsid()
+    signal.signal(signal.SIGUSR1, signal.SIG_DFL)
     tty_name = cmd.get('tty_name')
     if tty_name:
         sys.__stdout__.flush()
