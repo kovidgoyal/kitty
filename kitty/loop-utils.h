@@ -42,7 +42,7 @@ typedef struct {
     int handled_signals[16];
     size_t num_handled_signals;
 } LoopData;
-typedef void(*handle_signal_func)(const siginfo_t* siginfo, void *data);
+typedef bool(*handle_signal_func)(const siginfo_t* siginfo, void *data);
 
 bool init_loop_data(LoopData *ld, ...);
 void free_loop_data(LoopData *ld);

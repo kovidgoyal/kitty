@@ -1255,7 +1255,7 @@ read_bytes(int fd, Screen *screen) {
 
 typedef struct { bool kill_signal, child_died, reload_config; } SignalSet;
 
-static void
+static bool
 handle_signal(const siginfo_t *siginfo, void *data) {
     SignalSet *ss = data;
     switch(siginfo->si_signo) {
@@ -1276,6 +1276,7 @@ handle_signal(const siginfo_t *siginfo, void *data) {
         default:
             break;
     }
+    return true;
 }
 
 static void

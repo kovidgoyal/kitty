@@ -4,10 +4,14 @@
 
 import json
 import os
+import select
+import signal
 import tempfile
 
-from kitty.constants import kitty_exe
-from kitty.fast_data_types import get_options
+from kitty.constants import is_macos, kitty_exe
+from kitty.fast_data_types import (
+    get_options, install_signal_handlers, read_signals, remove_signal_handlers
+)
 
 from . import BaseTest
 
@@ -55,3 +59,43 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
         self.ae(data['env'], env['TEST_ENV_PASS'])
         self.ae(data['font_family'], 'prewarm')
         self.ae(int(p.from_worker.readline()), data['pid'])
+
+    def test_signal_handling(self):
+        import subprocess
+        expecting_code = 0
+        found_signal = False
+
+        def handle_signal(siginfo):
+            nonlocal found_signal
+            self.ae(siginfo.si_signo, signal.SIGCHLD)
+            self.ae(siginfo.si_code, expecting_code)
+            if expecting_code in (os.CLD_EXITED, os.CLD_KILLED):
+                p.wait(1)
+                p.stdin.close()
+            found_signal = True
+
+        def t(signal, q):
+            nonlocal expecting_code, found_signal
+            expecting_code = q
+            found_signal = False
+            if signal is not None:
+                p.send_signal(signal)
+            if q is not None:
+                for (fd, event) in poll.poll(4000):
+                    read_signals(signal_read_fd, handle_signal)
+                self.assertTrue(found_signal, f'Failed to to get SIGCHLD for signal {signal}')
+
+        poll = select.poll()
+        p = subprocess.Popen([kitty_exe(), '+runpy', 'input()'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
+        signal_read_fd = install_signal_handlers(signal.SIGCHLD)[0]
+        try:
+            poll.register(signal_read_fd, select.POLLIN)
+            t(signal.SIGTSTP, os.CLD_STOPPED)
+            # macOS doesnt send SIGCHLD for SIGCONT. This is not required by POSIX sadly
+            t(signal.SIGCONT, None if is_macos else os.CLD_CONTINUED)
+            t(signal.SIGINT, os.CLD_KILLED)
+            p = subprocess.Popen([kitty_exe(), '+runpy', 'input()'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
+            p.stdin.close()
+            t(None, os.CLD_EXITED)
+        finally:
+            remove_signal_handlers()

@@ -247,6 +247,7 @@ extern bool init_kittens(PyObject *module);
 extern bool init_logging(PyObject *module);
 extern bool init_png_reader(PyObject *module);
 extern bool init_utmp(PyObject *module);
+extern bool init_loop_utils(PyObject *module);
 #ifdef __APPLE__
 extern int init_CoreText(PyObject *);
 extern bool init_cocoa(PyObject *module);
@@ -315,6 +316,7 @@ PyInit_fast_data_types(void) {
 #endif
     if (!init_fonts(m)) return NULL;
     if (!init_utmp(m)) return NULL;
+    if (!init_loop_utils(m)) return NULL;
 
     CellAttrs a;
 #define s(name, attr) { a.val = 0; a.attr = 1; PyModule_AddIntConstant(m, #name, shift_to_first_set_bit(a)); }
