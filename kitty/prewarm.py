@@ -349,7 +349,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int) -> None:
     os.set_blocking(notify_child_death_fd, False)
     os.set_blocking(stdin_fd, False)
     os.set_blocking(stdout_fd, False)
-    signal_read_fd = install_signal_handlers(signal.SIGCHLD)[0]
+    signal_read_fd = install_signal_handlers(signal.SIGCHLD, signal.SIGUSR1)[0]
     poll = select.poll()
     poll.register(stdin_fd, select.POLLIN)
     poll.register(signal_read_fd, select.POLLIN)
