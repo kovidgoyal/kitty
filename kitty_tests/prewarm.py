@@ -81,7 +81,7 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             if signal is not None:
                 p.send_signal(signal)
             if q is not None:
-                for (fd, event) in poll.poll(4000):
+                for (fd, event) in poll.poll(5000):
                     read_signals(signal_read_fd, handle_signal)
                 self.assertTrue(found_signal, f'Failed to to get SIGCHLD for signal {signal}')
 
@@ -90,9 +90,10 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
         signal_read_fd = install_signal_handlers(signal.SIGCHLD)[0]
         try:
             poll.register(signal_read_fd, select.POLLIN)
-            t(signal.SIGTSTP, os.CLD_STOPPED)
-            # macOS doesnt send SIGCHLD for SIGCONT. This is not required by POSIX sadly
-            t(signal.SIGCONT, None if is_macos else os.CLD_CONTINUED)
+            if hasattr(os, 'CLD_STOPPED'):
+                t(signal.SIGTSTP, os.CLD_STOPPED)
+                # macOS doesnt send SIGCHLD for SIGCONT. This is not required by POSIX sadly
+                t(signal.SIGCONT, None if is_macos else os.CLD_CONTINUED)
             t(signal.SIGINT, os.CLD_KILLED)
             p = subprocess.Popen([kitty_exe(), '+runpy', 'input()'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
             p.stdin.close()
