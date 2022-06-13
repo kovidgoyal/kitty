@@ -324,7 +324,6 @@ def fork(shm_address: str, all_non_child_fds: Iterable[int]) -> Tuple[int, int]:
     for fd in all_non_child_fds:
         os.close(fd)
     os.setsid()
-    signal.signal(signal.SIGUSR1, signal.SIG_DFL)
     tty_name = cmd.get('tty_name')
     if tty_name:
         sys.__stdout__.flush()
