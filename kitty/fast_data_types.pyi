@@ -1395,7 +1395,7 @@ def sigqueue(pid: int, signal: int, value: int) -> None:
     pass
 
 
-def establish_controlling_tty(ttyname: str, stdin: int, stdout: int, stderr: int) -> None:
+def establish_controlling_tty(ttyname: str, stdin: int = -1, stdout: int = -1, stderr: int = -1) -> None:
     pass
 
 
