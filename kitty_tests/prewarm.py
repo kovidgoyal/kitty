@@ -10,7 +10,8 @@ import tempfile
 
 from kitty.constants import is_macos, kitty_exe
 from kitty.fast_data_types import (
-    get_options, install_signal_handlers, read_signals, remove_signal_handlers
+    CLD_CONTINUED, CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options,
+    install_signal_handlers, read_signals, remove_signal_handlers
 )
 
 from . import BaseTest
@@ -69,7 +70,7 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             nonlocal found_signal
             self.ae(siginfo.si_signo, signal.SIGCHLD)
             self.ae(siginfo.si_code, expecting_code)
-            if expecting_code in (os.CLD_EXITED, os.CLD_KILLED):
+            if expecting_code in (CLD_EXITED, CLD_KILLED):
                 p.wait(1)
                 p.stdin.close()
             found_signal = True
@@ -90,11 +91,10 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
         signal_read_fd = install_signal_handlers(signal.SIGCHLD)[0]
         try:
             poll.register(signal_read_fd, select.POLLIN)
-            if hasattr(os, 'CLD_STOPPED'):
-                t(signal.SIGTSTP, os.CLD_STOPPED)
-                # macOS doesnt send SIGCHLD for SIGCONT. This is not required by POSIX sadly
-                t(signal.SIGCONT, None if is_macos else os.CLD_CONTINUED)
-            t(signal.SIGINT, os.CLD_KILLED)
+            t(signal.SIGTSTP, CLD_STOPPED)
+            # macOS doesnt send SIGCHLD for SIGCONT. This is not required by POSIX sadly
+            t(signal.SIGCONT, None if is_macos else CLD_CONTINUED)
+            t(signal.SIGINT, CLD_KILLED)
             p = subprocess.Popen([kitty_exe(), '+runpy', 'input()'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
             p.stdin.close()
             t(None, os.CLD_EXITED)

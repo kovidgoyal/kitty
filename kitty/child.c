@@ -210,6 +210,10 @@ static PyMethodDef module_methods[] = {
 
 bool
 init_child(PyObject *module) {
+    PyModule_AddIntMacro(module, CLD_KILLED);
+    PyModule_AddIntMacro(module, CLD_STOPPED);
+    PyModule_AddIntMacro(module, CLD_EXITED);
+    PyModule_AddIntMacro(module, CLD_CONTINUED);
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }
