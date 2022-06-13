@@ -1,8 +1,8 @@
 import termios
 from ctypes import Array, c_ubyte
 from typing import (
-    Any, AnyStr, Callable, Dict, List, NamedTuple, NewType, Optional, Tuple,
-    TypedDict, Union
+    Any, AnyStr, Callable, Dict, List, NewType, Optional, Tuple, TypedDict,
+    Union
 )
 
 from kitty.boss import Boss
@@ -10,6 +10,7 @@ from kitty.fonts import FontFeature
 from kitty.fonts.render import FontObject
 from kitty.marks import MarkerFunc
 from kitty.options.types import Options
+from kitty.types import SignalInfo
 
 # Constants {{{
 CLD_KILLED: int
@@ -1396,17 +1397,6 @@ def establish_controlling_tty(ttyname: str, stdin: int, stdout: int, stderr: int
 
 def random_unix_socket() -> int:
     pass
-
-
-class SignalInfo(NamedTuple):
-    si_signo: int
-    si_code: int
-    si_pid: int
-    si_uid: int
-    si_addr: int
-    si_status: int
-    sival_int: int
-    sival_ptr: int
 
 
 def read_signals(fd: int, callback: Callable[[SignalInfo], None]) -> None:

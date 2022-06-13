@@ -10,10 +10,10 @@ import subprocess
 import tempfile
 import time
 
-from kitty.constants import is_macos, kitty_exe
+from kitty.constants import kitty_exe
 from kitty.fast_data_types import (
-    CLD_CONTINUED, CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options,
-    install_signal_handlers, read_signals, remove_signal_handlers
+    CLD_EXITED, CLD_KILLED, get_options, has_sigqueue, install_signal_handlers,
+    read_signals, remove_signal_handlers, sigqueue
 )
 
 from . import BaseTest
@@ -65,44 +65,58 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
 
     def test_signal_handling(self):
         expecting_code = 0
+        expecting_signal = 0
+        expecting_value = 0
         found_signal = False
 
         def handle_signal(siginfo):
             nonlocal found_signal
-            self.ae(siginfo.si_signo, signal.SIGCHLD)
-            self.ae(siginfo.si_code, expecting_code)
+            if expecting_signal:
+                self.ae(siginfo.si_signo, expecting_signal)
+            if expecting_code is not None:
+                self.ae(siginfo.si_code, expecting_code)
+            self.ae(siginfo.sival_int, expecting_value)
             if expecting_code in (CLD_EXITED, CLD_KILLED):
                 p.wait(1)
                 p.stdin.close()
             found_signal = True
 
-        def t(signal, q):
-            nonlocal expecting_code, found_signal
-            expecting_code = q
+        def assert_signal():
+            nonlocal found_signal
             found_signal = False
+            st = time.monotonic()
+            while time.monotonic() - st < 5:
+                for (fd, event) in poll.poll(10):
+                    if fd == signal_read_fd:
+                        read_signals(signal_read_fd, handle_signal)
+                if found_signal:
+                    break
+            self.assertTrue(found_signal, f'Failed to to get SIGCHLD for signal {signal}')
+
+        def t(signal, q, expecting_sig=signal.SIGCHLD):
+            nonlocal expecting_code, found_signal, expecting_signal
+            expecting_code = q
+            expecting_signal = expecting_sig.value
             if signal is not None:
                 p.send_signal(signal)
-            if q is not None:
-                st = time.monotonic()
-                while time.monotonic() - st < 5:
-                    for (fd, event) in poll.poll(10):
-                        if fd == signal_read_fd:
-                            read_signals(signal_read_fd, handle_signal)
-                    if found_signal:
-                        break
-                self.assertTrue(found_signal, f'Failed to to get SIGCHLD for signal {signal}')
+            assert_signal()
 
         poll = select.poll()
-        p = subprocess.Popen([kitty_exe(), '+runpy', 'while True:\n  x=2+2'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
-        signal_read_fd = install_signal_handlers(signal.SIGCHLD)[0]
+        p = subprocess.Popen([kitty_exe(), '+runpy', 'input()'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
+        signal_read_fd = install_signal_handlers(signal.SIGCHLD, signal.SIGUSR1)[0]
         try:
             poll.register(signal_read_fd, select.POLLIN)
-            t(signal.SIGTSTP, CLD_STOPPED)
-            # macOS doesnt send SIGCHLD for SIGCONT. This is not required by POSIX sadly
-            t(signal.SIGCONT, None if is_macos else CLD_CONTINUED)
             t(signal.SIGINT, CLD_KILLED)
             p = subprocess.Popen([kitty_exe(), '+runpy', 'input()'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
             p.stdin.close()
             t(None, os.CLD_EXITED)
+            expecting_code = None
+            expecting_signal = signal.SIGUSR1.value
+            os.kill(os.getpid(), signal.SIGUSR1)
+            assert_signal()
+            expecting_value = 17 if has_sigqueue else 0
+            sigqueue(os.getpid(), signal.SIGUSR1.value, expecting_value)
+            assert_signal()
+
         finally:
             remove_signal_handlers()

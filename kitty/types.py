@@ -38,6 +38,17 @@ class WindowGeometry(NamedTuple):
     spaces: Edges = Edges()
 
 
+class SignalInfo(NamedTuple):
+    si_signo: int
+    si_code: int
+    si_pid: int
+    si_uid: int
+    si_addr: int
+    si_status: int
+    sival_int: int
+    sival_ptr: int
+
+
 def mod_to_names(mods: int) -> Iterator[str]:
     from .fast_data_types import (
         GLFW_MOD_ALT, GLFW_MOD_CAPS_LOCK, GLFW_MOD_CONTROL, GLFW_MOD_HYPER,
