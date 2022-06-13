@@ -14,8 +14,8 @@ from dataclasses import dataclass
 from importlib import import_module
 from itertools import count
 from typing import (
-    IO, TYPE_CHECKING, Any, Dict, List, NoReturn, Optional, Sequence, Tuple,
-    Union, cast
+    IO, TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, NoReturn, Optional,
+    Tuple, Union, cast
 )
 
 from kitty.constants import kitty_exe, running_in_kitty
@@ -281,14 +281,14 @@ def child_main(cmd: Dict[str, Any], ready_fd: int) -> NoReturn:
     if argv:
         sys.argv = list(argv)
     poll = select.poll()
-    poll.register(ready_fd, select.POLLIN | select.POLLERR | select.POLLHUP)
+    poll.register(ready_fd, select.POLLIN)
     tuple(poll.poll())
     os.close(ready_fd)
     main_entry_point()
     raise SystemExit(0)
 
 
-def fork(shm_address: str, all_non_child_fds: Sequence[int]) -> Tuple[int, int, int]:
+def fork(shm_address: str, all_non_child_fds: Iterable[int]) -> Tuple[int, int, int]:
     sz = pos = 0
     with SharedMemory(name=shm_address, unlink_on_exit=True) as shm:
         data = shm.read_data_with_size()
@@ -362,8 +362,12 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int) -> None:
     warnings.filterwarnings('ignore', category=RuntimeWarning, module='runpy')
     prewarm()
 
-    def get_all_non_child_fds() -> Sequence[int]:
-        return [notify_child_death_fd, stdin_fd, stdout_fd] + list(child_ready_fds.values()) + list(child_death_fds)
+    def get_all_non_child_fds() -> Iterator[int]:
+        yield notify_child_death_fd
+        yield stdin_fd
+        yield stdout_fd
+        yield from child_ready_fds.values()
+        yield from child_death_fds.keys()
 
     def check_event(event: int, err_msg: str) -> None:
         if event & select.POLLHUP:
