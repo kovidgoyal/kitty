@@ -86,7 +86,7 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
                 self.assertTrue(found_signal, f'Failed to to get SIGCHLD for signal {signal}')
 
         poll = select.poll()
-        p = subprocess.Popen([kitty_exe(), '+runpy', 'input()'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
+        p = subprocess.Popen([kitty_exe(), '+runpy', 'while True: x=2+2'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
         signal_read_fd = install_signal_handlers(signal.SIGCHLD)[0]
         try:
             poll.register(signal_read_fd, select.POLLIN)
