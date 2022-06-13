@@ -164,7 +164,7 @@ class PrewarmProcess:
             input_buf = b''
             st = time.monotonic()
             while time.monotonic() - st < timeout:
-                for (fd, event) in self.poll.poll(200):
+                for (fd, event) in self.poll.poll(2):
                     if event & error_events:
                         raise PrewarmProcessFailed('Failed doing I/O with prewarm process')
                     if fd == self.read_from_process_fd and event & select.POLLIN:
@@ -192,7 +192,7 @@ class PrewarmProcess:
         st = time.monotonic()
         while time.monotonic() - st < timeout and output_buf:
             self.poll_to_send(bool(output_buf))
-            for (fd, event) in self.poll.poll(200):
+            for (fd, event) in self.poll.poll(2):
                 if event & error_events:
                     raise PrewarmProcessFailed('Failed doing I/O with prewarm process: {event}')
                 if fd == self.write_to_process_fd and event & select.POLLOUT:

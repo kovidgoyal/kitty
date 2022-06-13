@@ -6,7 +6,9 @@ import json
 import os
 import select
 import signal
+import subprocess
 import tempfile
+import time
 
 from kitty.constants import is_macos, kitty_exe
 from kitty.fast_data_types import (
@@ -62,7 +64,6 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
         self.ae(int(p.from_worker.readline()), data['pid'])
 
     def test_signal_handling(self):
-        import subprocess
         expecting_code = 0
         found_signal = False
 
@@ -82,12 +83,17 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             if signal is not None:
                 p.send_signal(signal)
             if q is not None:
-                for (fd, event) in poll.poll(5000):
-                    read_signals(signal_read_fd, handle_signal)
+                st = time.monotonic()
+                while time.monotonic() - st < 5:
+                    for (fd, event) in poll.poll(10):
+                        if fd == signal_read_fd:
+                            read_signals(signal_read_fd, handle_signal)
+                    if found_signal:
+                        break
                 self.assertTrue(found_signal, f'Failed to to get SIGCHLD for signal {signal}')
 
         poll = select.poll()
-        p = subprocess.Popen([kitty_exe(), '+runpy', 'while True: x=2+2'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
+        p = subprocess.Popen([kitty_exe(), '+runpy', 'while True:\n  x=2+2'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
         signal_read_fd = install_signal_handlers(signal.SIGCHLD)[0]
         try:
             poll.register(signal_read_fd, select.POLLIN)
