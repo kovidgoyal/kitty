@@ -35,6 +35,8 @@ def main() -> None:
     current_home = os.path.expanduser('~') + os.sep
     paths = os.environ.get('PATH', '/usr/local/sbin:/usr/local/bin:/usr/bin').split(os.pathsep)
     path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
+    launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
+    path = f'{launcher_dir}{os.pathsep}{path}'
     with TemporaryDirectory() as tdir, env_vars(
         PYTHONWARNINGS='error', HOME=tdir, USERPROFILE=tdir, PATH=path,
         XDG_CONFIG_HOME=os.path.join(tdir, '.config'),
