@@ -88,11 +88,10 @@ class Session:
             t.pending_resize_spec = None
 
     def resize_window(self, args: List[str]) -> None:
-        steps = 1
-        if len(args) > 1:
-            steps = int(args[1])
+        from .options.utils import resize_window
+        s = resize_window('resize_window', shlex.join(args))[1]
+        spec: ResizeSpec = s[0], s[1]
         t = self.tabs[-1]
-        spec = args[0], steps
         if t.windows:
             t.windows[-1].resize_spec = spec
         else:
