@@ -43,6 +43,8 @@ Detailed list of changes
 - Wayland: Fix a regression in the previous release that caused mouse cursor
   animation and keyboard repeat to stop working when switching seats (:iss:`5188`)
 
+- Allow resizing windows created in session files (:pull:`5196`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

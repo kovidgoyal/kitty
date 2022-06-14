@@ -161,6 +161,8 @@ option in :file:`kitty.conf`. For example:
     # Set the --class for the new OS window
     os_window_class mywindow
     launch sh
+    # Resize the current window (see the resize_window action for details)
+    resize_window wider 2
     # Make the current window the active (focused) window
     focus
     launch emacs

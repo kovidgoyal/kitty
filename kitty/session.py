@@ -3,7 +3,7 @@
 
 import shlex
 import sys
-from typing import TYPE_CHECKING, Generator, Iterator, List, Optional, Union
+from typing import TYPE_CHECKING, Generator, Iterator, List, Optional, Union, Tuple
 
 from .cli_stub import CLIOptions
 from .constants import kitty_exe
@@ -16,6 +16,7 @@ from .utils import log_error, resolved_shell
 
 if TYPE_CHECKING:
     from .window import CwdRequest
+    from .launch import LaunchSpec
 
 
 def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None) -> WindowSizeData:
@@ -26,11 +27,21 @@ def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None
     return WindowSizeData(sizes, opts.remember_window_size, opts.single_window_margin_width, opts.window_margin_width, opts.window_padding_width)
 
 
+ResizeSpec = Tuple[str, int]
+
+
+class WindowSpec:
+
+    def __init__(self, launch_spec: Union['LaunchSpec', 'SpecialWindowInstance']):
+        self.launch_spec = launch_spec
+        self.resize_spec: Optional[ResizeSpec] = None
+
+
 class Tab:
 
     def __init__(self, opts: Options, name: str):
-        from .launch import LaunchSpec
-        self.windows: List[Union[LaunchSpec, 'SpecialWindowInstance']] = []
+        self.windows: List[WindowSpec] = []
+        self.pending_resize_spec: Optional[ResizeSpec] = None
         self.name = name.strip()
         self.active_window_idx = 0
         self.enabled_layouts = opts.enabled_layouts
@@ -70,11 +81,25 @@ class Session:
         if t.next_title and not spec.opts.window_title:
             spec.opts.window_title = t.next_title
         spec.opts.cwd = spec.opts.cwd or t.cwd
-        t.windows.append(spec)
+        t.windows.append(WindowSpec(spec))
         t.next_title = None
+        if t.pending_resize_spec is not None:
+            t.windows[-1].resize_spec = t.pending_resize_spec
+            t.pending_resize_spec = None
+
+    def resize_window(self, args: List[str]) -> None:
+        steps = 1
+        if len(args) > 1:
+            steps = int(args[1])
+        t = self.tabs[-1]
+        spec = args[0], steps
+        if t.windows:
+            t.windows[-1].resize_spec = spec
+        else:
+            t.pending_resize_spec = spec
 
     def add_special_window(self, sw: 'SpecialWindowInstance') -> None:
-        self.tabs[-1].windows.append(sw)
+        self.tabs[-1].windows.append(WindowSpec(sw))
 
     def focus(self) -> None:
         self.active_tab_idx = max(0, len(self.tabs) - 1)
@@ -95,7 +120,7 @@ def parse_session(raw: str, opts: Options) -> Generator[Session, None, None]:
         from .tabs import SpecialWindow
         for t in ans.tabs:
             if not t.windows:
-                t.windows.append(SpecialWindow(cmd=resolved_shell(opts)))
+                t.windows.append(WindowSpec(SpecialWindow(cmd=resolved_shell(opts))))
         return ans
 
     ans = Session()
@@ -132,6 +157,8 @@ def parse_session(raw: str, opts: Options) -> Generator[Session, None, None]:
                 ans.os_window_size = WindowSizes(WindowSize(*w), WindowSize(*h))
             elif cmd == 'os_window_class':
                 ans.os_window_class = rest
+            elif cmd == 'resize_window':
+                ans.resize_window(rest.split())
             else:
                 raise ValueError(f'Unknown command in session file: {cmd}')
     yield finalize_session(ans)
