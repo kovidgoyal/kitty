@@ -78,14 +78,12 @@ class Session:
         t.windows.append(spec)
         t.next_title = None
 
-    def resize_window(self, cmd: str) -> None:
-        args = cmd.split(" ")
+    def resize_window(self, args: List[str]) -> None:
         steps = 1
         if len(args) > 1:
             steps = int(args[1])
         t = self.tabs[-1]
         t.windows.append(SessionResizeWindow(args[0], steps))
-
 
     def add_special_window(self, sw: 'SpecialWindowInstance') -> None:
         self.tabs[-1].windows.append(sw)
@@ -147,7 +145,7 @@ def parse_session(raw: str, opts: Options) -> Generator[Session, None, None]:
             elif cmd == 'os_window_class':
                 ans.os_window_class = rest
             elif cmd == 'resize_window':
-                ans.resize_window(rest)
+                ans.resize_window(rest.split())
             else:
                 raise ValueError(f'Unknown command in session file: {cmd}')
     yield finalize_session(ans)
