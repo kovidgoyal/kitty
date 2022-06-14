@@ -27,7 +27,6 @@ from .fast_data_types import (
 )
 from .layout.base import Layout
 from .layout.interface import create_layout_object_for, evict_cached_layouts
-from .session import SessionResizeWindow
 from .tab_bar import TabBar, TabBarData
 from .types import ac
 from .typing import EdgeLiteral, SessionTab, SessionType, TypedDict
@@ -169,14 +168,16 @@ class Tab:  # {{{
         self.mark_tab_bar_dirty()
 
     def startup(self, session_tab: 'SessionTab') -> None:
-        for cmd in session_tab.windows:
-            if isinstance(cmd, SessionResizeWindow):
-                self.resize_window(*cmd)
-            elif isinstance(cmd, SpecialWindowInstance):
-                self.new_special_window(cmd)
+        for window in session_tab.windows:
+            spec = window.launch_spec
+            if isinstance(window.launch_spec, SpecialWindowInstance):
+                self.new_special_window(spec)
             else:
                 from .launch import launch
-                launch(get_boss(), cmd.opts, cmd.args, target_tab=self, force_target_tab=True)
+                launch(get_boss(), spec.opts, spec.args, target_tab=self, force_target_tab=True)
+            if window.resize_spec is not None:
+                self.resize_window(*window.resize_spec)
+
         self.windows.set_active_window_group_for(self.windows.all_windows[session_tab.active_window_idx])
 
     def serialize_state(self) -> Dict[str, Any]:

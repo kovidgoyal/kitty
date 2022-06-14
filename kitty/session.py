@@ -3,7 +3,7 @@
 
 import shlex
 import sys
-from typing import TYPE_CHECKING, Generator, Iterator, List, Optional, Union, NamedTuple
+from typing import TYPE_CHECKING, Generator, Iterator, List, Optional, Union, NamedTuple, Tuple
 
 from .cli_stub import CLIOptions
 from .constants import kitty_exe
@@ -26,16 +26,17 @@ def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None
     return WindowSizeData(sizes, opts.remember_window_size, opts.single_window_margin_width, opts.window_margin_width, opts.window_padding_width)
 
 
-class SessionResizeWindow(NamedTuple):
-    direction: str
-    steps: int
+class WindowSpecs:
+    def __init__(self, launch_spec):
+        from .launch import LaunchSpec
+        self.launch_spec: Union[LaunchSpec, 'SpecialWindowInstance'] = launch_spec
+        self.resize_spec: Optional[Tuple[str,int]] = None
 
 
 class Tab:
 
     def __init__(self, opts: Options, name: str):
-        from .launch import LaunchSpec
-        self.windows: List[Union[LaunchSpec, SessionResizeWindow, 'SpecialWindowInstance']] = []
+        self.windows: List[WindowSpecs] = []
         self.name = name.strip()
         self.active_window_idx = 0
         self.enabled_layouts = opts.enabled_layouts
@@ -75,7 +76,7 @@ class Session:
         if t.next_title and not spec.opts.window_title:
             spec.opts.window_title = t.next_title
         spec.opts.cwd = spec.opts.cwd or t.cwd
-        t.windows.append(spec)
+        t.windows.append(WindowSpecs(spec))
         t.next_title = None
 
     def resize_window(self, args: List[str]) -> None:
@@ -83,7 +84,7 @@ class Session:
         if len(args) > 1:
             steps = int(args[1])
         t = self.tabs[-1]
-        t.windows.append(SessionResizeWindow(args[0], steps))
+        t.windows[-1].resize_spec = (args[0], steps)
 
     def add_special_window(self, sw: 'SpecialWindowInstance') -> None:
         self.tabs[-1].windows.append(sw)
