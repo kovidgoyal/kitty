@@ -3,20 +3,22 @@
 
 import shlex
 import sys
-from typing import TYPE_CHECKING, Generator, Iterator, List, Optional, Union, Tuple
+from typing import (
+    TYPE_CHECKING, Generator, Iterator, List, Optional, Tuple, Union
+)
 
 from .cli_stub import CLIOptions
 from .constants import kitty_exe
 from .layout.interface import all_layouts
 from .options.types import Options
-from .options.utils import to_layout_names, window_size
+from .options.utils import resize_window, to_layout_names, window_size
 from .os_window_size import WindowSize, WindowSizeData, WindowSizes
 from .typing import SpecialWindowInstance
 from .utils import log_error, resolved_shell
 
 if TYPE_CHECKING:
-    from .window import CwdRequest
     from .launch import LaunchSpec
+    from .window import CwdRequest
 
 
 def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None) -> WindowSizeData:
@@ -88,7 +90,6 @@ class Session:
             t.pending_resize_spec = None
 
     def resize_window(self, args: List[str]) -> None:
-        from .options.utils import resize_window
         s = resize_window('resize_window', shlex.join(args))[1]
         spec: ResizeSpec = s[0], s[1]
         t = self.tabs[-1]
