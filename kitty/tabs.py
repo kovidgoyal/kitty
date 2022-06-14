@@ -27,6 +27,7 @@ from .fast_data_types import (
 )
 from .layout.base import Layout
 from .layout.interface import create_layout_object_for, evict_cached_layouts
+from .session import SessionResizeWindow
 from .tab_bar import TabBar, TabBarData
 from .types import ac
 from .typing import EdgeLiteral, SessionTab, SessionType, TypedDict
@@ -169,7 +170,9 @@ class Tab:  # {{{
 
     def startup(self, session_tab: 'SessionTab') -> None:
         for cmd in session_tab.windows:
-            if isinstance(cmd, SpecialWindowInstance):
+            if isinstance(cmd, SessionResizeWindow):
+                self.resize_window(*cmd)
+            elif isinstance(cmd, SpecialWindowInstance):
                 self.new_special_window(cmd)
             else:
                 from .launch import launch
