@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 
 error_events = select.POLLERR | select.POLLNVAL | select.POLLHUP
-TIMEOUT = 5.0
+TIMEOUT = 15.0 if os.environ.get('CI') == 'true' else 5.0
 
 
 class PrewarmProcessFailed(Exception):
