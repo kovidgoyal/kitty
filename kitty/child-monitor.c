@@ -619,7 +619,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
     bool needs_render = os_window->needs_render;
     os_window->needs_render = false;
     if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
-        if (!os_window->tab_bar_data_updated) {
+        if (OPT(tab_bar_always_update) || !os_window->tab_bar_data_updated) {
             call_boss(update_tab_bar_data, "K", os_window->id);
             os_window->tab_bar_data_updated = true;
         }

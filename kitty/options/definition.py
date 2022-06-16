@@ -1231,6 +1231,13 @@ Color for the tab bar margin area. Defaults to using the terminal background
 color.
 '''
     )
+
+opt('tab_bar_always_update', 'no',
+    option_type='to_bool', ctype='bool',
+    long_text='''
+Update tab bar whenever os window is rerendered.
+'''
+    )
 egr()  # }}}
 
 

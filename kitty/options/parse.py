@@ -1210,6 +1210,9 @@ class Parser:
 
     choices_for_tab_bar_align = frozenset(('left', 'center', 'right'))
 
+    def tab_bar_always_update(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['tab_bar_always_update'] = to_bool(val)
+
     def tab_bar_background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['tab_bar_background'] = to_color_or_none(val)
 

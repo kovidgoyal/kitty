@@ -423,6 +423,7 @@ option_names = (  # {{{
  'sync_to_monitor',
  'tab_activity_symbol',
  'tab_bar_align',
+ 'tab_bar_always_update',
  'tab_bar_background',
  'tab_bar_edge',
  'tab_bar_margin_color',
@@ -573,6 +574,7 @@ class Options:
     sync_to_monitor: bool = True
     tab_activity_symbol: str = ''
     tab_bar_align: choices_for_tab_bar_align = 'left'
+    tab_bar_always_update: bool = False
     tab_bar_background: typing.Optional[kitty.fast_data_types.Color] = None
     tab_bar_edge: int = 3
     tab_bar_margin_color: typing.Optional[kitty.fast_data_types.Color] = None

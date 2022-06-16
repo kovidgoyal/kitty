@@ -78,6 +78,7 @@ typedef struct {
     char_type *url_excluded_characters;
     bool detect_urls;
     bool tab_bar_hidden;
+    bool tab_bar_always_update;
     double font_size;
     struct {
         double outer, inner;

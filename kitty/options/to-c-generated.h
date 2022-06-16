@@ -617,6 +617,19 @@ convert_from_opts_resize_in_steps(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_tab_bar_always_update(PyObject *val, Options *opts) {
+    opts->tab_bar_always_update = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_tab_bar_always_update(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "tab_bar_always_update");
+    if (ret == NULL) return;
+    convert_from_python_tab_bar_always_update(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_tab_bar_edge(PyObject *val, Options *opts) {
     opts->tab_bar_edge = PyLong_AsLong(val);
 }
@@ -1127,6 +1140,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_resize_draw_strategy(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_resize_in_steps(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_tab_bar_always_update(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_tab_bar_edge(py_opts, opts);
     if (PyErr_Occurred()) return false;
