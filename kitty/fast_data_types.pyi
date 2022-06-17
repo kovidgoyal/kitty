@@ -892,6 +892,10 @@ def cell_size_for_window(os_window_id: int) -> Tuple[int, int]:
     pass
 
 
+def wakeup_main_loop() -> None:
+    pass
+
+
 class Region:
     left: int
     top: int
