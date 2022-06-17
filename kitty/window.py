@@ -22,7 +22,7 @@ from .child import ProcessDesc
 from .cli_stub import CLIOptions
 from .config import build_ansi_color_table
 from .constants import (
-    appname, clear_handled_signals, config_dir, is_macos, wakeup
+    appname, clear_handled_signals, config_dir, is_macos, wakeup_io_loop
 )
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
@@ -38,7 +38,7 @@ from .fast_data_types import (
     mouse_selection, move_cursor_to_mouse_if_in_prompt, pt_to_px,
     set_clipboard_string, set_titlebar_color, set_window_logo,
     set_window_padding, set_window_render_data, update_ime_position_for_window,
-    update_window_title, update_window_visibility
+    update_window_title, update_window_visibility, wakeup_main_loop
 )
 from .keys import keyboard_mode_name, mod_mask
 from .notify import NotificationCommand, handle_notification_cmd
@@ -692,7 +692,8 @@ class Window:
 
     def refresh(self) -> None:
         self.screen.mark_as_dirty()
-        wakeup()
+        wakeup_io_loop()
+        wakeup_main_loop()
 
     def set_geometry(self, new_geometry: WindowGeometry) -> None:
         if self.destroyed:

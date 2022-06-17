@@ -158,7 +158,7 @@ def runtime_dir() -> str:
     return candidate
 
 
-def wakeup() -> None:
+def wakeup_io_loop() -> None:
     from .fast_data_types import get_boss
     b = get_boss()
     if b is not None:
