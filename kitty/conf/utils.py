@@ -185,7 +185,7 @@ def parse_line(
         val = os.path.expandvars(os.path.expanduser(val.strip()))
         if key == 'globinclude':
             from pathlib import Path
-            vals = tuple(map(lambda x: str(os.fspath(x)), Path(base_path_for_includes).glob(val)))
+            vals = tuple(map(lambda x: str(os.fspath(x)), sorted(Path(base_path_for_includes).glob(val))))
         elif key == 'envinclude':
             from fnmatch import fnmatchcase
             for x in os.environ:
