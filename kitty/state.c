@@ -1128,6 +1128,11 @@ PYWRAP0(destroy_global_data) {
     Py_RETURN_NONE;
 }
 
+PYWRAP0(wakeup_main_loop) {
+    wakeup_main_loop();
+    Py_RETURN_NONE;
+}
+
 static void
 destroy_mock_window(PyObject *capsule) {
     Window *w = PyCapsule_GetPointer(capsule, "Window");
@@ -1305,6 +1310,7 @@ static PyMethodDef module_methods[] = {
     MW(patch_global_colors, METH_VARARGS),
     MW(create_mock_window, METH_VARARGS),
     MW(destroy_global_data, METH_NOARGS),
+    MW(wakeup_main_loop, METH_NOARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
