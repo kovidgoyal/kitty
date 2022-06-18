@@ -78,7 +78,7 @@ typedef struct {
     PyObject_HEAD
 
     unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by;
-    double pending_scroll_pixels;
+    double pending_scroll_pixels_x, pending_scroll_pixels_y;
     CellPixelSize cell_size;
     OverlayLine overlay_line;
     id_type window_id;

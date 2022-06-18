@@ -135,8 +135,8 @@ encode_mouse_button(Window *w, int button, MouseAction action, int mods) {
 }
 
 static int
-encode_mouse_scroll(Window *w, bool upwards, int mods) {
-    return encode_mouse_event(w, upwards ? 4 : 5, PRESS, mods);
+encode_mouse_scroll(Window *w, int button, int mods) {
+    return encode_mouse_event(w, button, PRESS, mods);
 }
 
 // }}}
@@ -815,6 +815,38 @@ mouse_event(const int button, int modifiers, int action) {
     if (mouse_cursor_shape != old_cursor) set_mouse_cursor(mouse_cursor_shape);
 }
 
+static int
+scale_scroll(Screen *screen, double offset, bool is_high_resolution, double *pending_scroll_pixels, int cell_size) {
+// scale the scroll by the multiplier unless the mouse is grabbed. If the mouse is grabbed only change direction.
+#define SCALE_SCROLL(which) { double scale = OPT(which); if (screen->modes.mouse_tracking_mode) scale /= fabs(scale); offset *= scale; }
+    int s = 0;
+    if (is_high_resolution) {
+        SCALE_SCROLL(touch_scroll_multiplier);
+        double pixels = *pending_scroll_pixels + offset;
+        if (fabs(pixels) < cell_size) {
+            *pending_scroll_pixels = pixels;
+            return 0;
+        }
+        s = (int)round(pixels) / cell_size;
+        *pending_scroll_pixels = pixels - s * cell_size;
+    } else {
+        SCALE_SCROLL(wheel_scroll_multiplier);
+        s = (int) round(offset);
+        if (offset != 0) {
+            const int min_lines = screen->modes.mouse_tracking_mode ? 1 : OPT(wheel_scroll_min_lines);
+            if (min_lines > 0 && abs(s) < min_lines) s = offset > 0 ? min_lines : -min_lines;
+            // Always add the minimum number of lines when it is negative
+            else if (min_lines < 0) s = offset > 0 ? s - min_lines : s + min_lines;
+            // apparently on cocoa some mice generate really small yoffset values
+            // when scrolling slowly https://github.com/kovidgoyal/kitty/issues/1238
+            if (s == 0) s = offset > 0 ? 1 : -1;
+        }
+        *pending_scroll_pixels = 0;
+    }
+    return s;
+#undef SCALE_SCROLL
+}
+
 void
 scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
     debug("\x1b[36mScroll\x1b[m xoffset: %f yoffset: %f flags: %x modifiers: %s\n", xoffset, yoffset, flags, format_mods(modifiers));
@@ -874,51 +906,42 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
         default:
             break;
     }
-    if (yoffset == 0.0) return;
-
     int s;
     bool is_high_resolution = flags & 1;
 
-// scale the scroll by the multiplier unless the mouse is grabbed. If the mouse is grabbed only change direction.
-#define SCALE_SCROLL(which) { double scale = OPT(which); if (screen->modes.mouse_tracking_mode) scale /= fabs(scale); yoffset *= scale; }
-    if (is_high_resolution) {
-        SCALE_SCROLL(touch_scroll_multiplier);
-        double pixels = screen->pending_scroll_pixels + yoffset;
-        if (fabs(pixels) < global_state.callback_os_window->fonts_data->cell_height) {
-            screen->pending_scroll_pixels = pixels;
-            return;
-        }
-        s = (int)round(pixels) / (int)global_state.callback_os_window->fonts_data->cell_height;
-        screen->pending_scroll_pixels = pixels - s * (int) global_state.callback_os_window->fonts_data->cell_height;
-    } else {
-        SCALE_SCROLL(wheel_scroll_multiplier);
-        s = (int) round(yoffset);
-        if (yoffset != 0) {
-            const int min_lines = screen->modes.mouse_tracking_mode ? 1 : OPT(wheel_scroll_min_lines);
-            if (min_lines > 0 && abs(s) < min_lines) s = yoffset > 0 ? min_lines : -min_lines;
-            // Always add the minimum number of lines when it is negative
-            else if (min_lines < 0) s = yoffset > 0 ? s - min_lines : s + min_lines;
-            // apparently on cocoa some mice generate really small yoffset values
-            // when scrolling slowly https://github.com/kovidgoyal/kitty/issues/1238
-            if (s == 0) s = yoffset > 0 ? 1 : -1;
-        }
-        screen->pending_scroll_pixels = 0;
-    }
-#undef SCALE_SCROLL
-    if (s == 0) return;
-    bool upwards = s > 0;
-    if (screen->modes.mouse_tracking_mode) {
-        int sz = encode_mouse_scroll(w, upwards, modifiers);
-        if (sz > 0) {
-            mouse_event_buf[sz] = 0;
-            for (s = abs(s); s > 0; s--) {
-                write_escape_code_to_child(screen, CSI, mouse_event_buf);
+    if (yoffset != 0.0) {
+        s = scale_scroll(screen, yoffset, is_high_resolution, &screen->pending_scroll_pixels_y, global_state.callback_os_window->fonts_data->cell_height);
+        if (s) {
+            bool upwards = s > 0;
+            if (screen->modes.mouse_tracking_mode) {
+                int sz = encode_mouse_scroll(w, upwards ? 4 : 5, modifiers);
+                if (sz > 0) {
+                    mouse_event_buf[sz] = 0;
+                    for (s = abs(s); s > 0; s--) {
+                        write_escape_code_to_child(screen, CSI, mouse_event_buf);
+                    }
+                }
+            } else {
+                if (screen->linebuf == screen->main_linebuf) screen_history_scroll(screen, abs(s), upwards);
+                else fake_scroll(w, abs(s), upwards);
             }
         }
-    } else {
-        if (screen->linebuf == screen->main_linebuf) screen_history_scroll(screen, abs(s), upwards);
-        else fake_scroll(w, abs(s), upwards);
     }
+    if (xoffset != 0.0) {
+        s = scale_scroll(screen, xoffset, is_high_resolution, &screen->pending_scroll_pixels_x, global_state.callback_os_window->fonts_data->cell_width);
+        if (s) {
+            if (screen->modes.mouse_tracking_mode) {
+                int sz = encode_mouse_scroll(w, s > 0 ? 6 : 7, modifiers);
+                if (sz > 0) {
+                    mouse_event_buf[sz] = 0;
+                    for (s = abs(s); s > 0; s--) {
+                        write_escape_code_to_child(screen, CSI, mouse_event_buf);
+                    }
+                }
+            }
+        }
+    }
+
 }
 
 static PyObject*

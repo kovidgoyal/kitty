@@ -109,17 +109,17 @@ class TermManager:
 
 
 class MouseButton(IntFlag):
-    NONE, LEFT, MIDDLE, RIGHT, FOURTH, FIFTH = 0, 1, 2, 4, 8, 16
-    WHEEL_UP, WHEEL_DOWN = -1, -2
+    NONE, LEFT, MIDDLE, RIGHT, FOURTH, FIFTH, SIXTH, SEVENTH = 0, 1, 2, 4, 8, 16, 32, 64
+    WHEEL_UP, WHEEL_DOWN, WHEEL_LEFT, WHEEL_RIGHT = -1, -2, -4, -8
 
 
-bmap = {0: MouseButton.LEFT, 1: MouseButton.MIDDLE, 2: MouseButton.RIGHT}
+bmap = MouseButton.LEFT, MouseButton.MIDDLE, MouseButton.RIGHT
+ebmap = MouseButton.FOURTH, MouseButton.FIFTH, MouseButton.SIXTH, MouseButton.SEVENTH
+wbmap = MouseButton.WHEEL_UP, MouseButton.WHEEL_DOWN, MouseButton.WHEEL_LEFT, MouseButton.WHEEL_RIGHT
 SHIFT_INDICATOR = 1 << 2
 ALT_INDICATOR = 1 << 3
 CTRL_INDICATOR = 1 << 4
 MOTION_INDICATOR = 1 << 5
-SCROLL_BUTTON_INDICATOR = 1 << 6
-EXTRA_BUTTON_INDICATOR = 1 << 7
 
 
 class EventType(Enum):
@@ -150,13 +150,12 @@ def decode_sgr_mouse(text: str, screen_size: ScreenSize) -> MouseEvent:
     typ = EventType.RELEASE if m == 'm' else (EventType.MOVE if cb & MOTION_INDICATOR else EventType.PRESS)
     buttons: MouseButton = MouseButton.NONE
     cb3 = cb & 3
-    if cb3 != 3:
-        if cb & SCROLL_BUTTON_INDICATOR:
-            buttons = MouseButton.WHEEL_DOWN if cb3 & 1 else MouseButton.WHEEL_UP
-        elif cb & EXTRA_BUTTON_INDICATOR:
-            buttons |= MouseButton.FIFTH if cb3 & 1 else MouseButton.FOURTH
-        else:
-            buttons |= bmap[cb3]
+    if cb >= 128:
+        buttons |= ebmap[cb3]
+    elif cb >= 64:
+        buttons |= wbmap[cb3]
+    elif cb3 < 3:
+        buttons |= bmap[cb3]
     mods = 0
     if cb & SHIFT_INDICATOR:
         mods |= SHIFT

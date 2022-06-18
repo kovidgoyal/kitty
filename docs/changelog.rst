@@ -45,6 +45,8 @@ Detailed list of changes
 
 - Allow resizing windows created in session files (:pull:`5196`)
 
+- Fix horizontal wheel events not being reported to client programs when they grab the mouse (:iss:`2819`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
