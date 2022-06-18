@@ -816,7 +816,8 @@ mouse_event(const int button, int modifiers, int action) {
 }
 
 void
-scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
+scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
+    debug("\x1b[36mScroll\x1b[m xoffset: %f yoffset: %f flags: %x modifiers: %s\n", xoffset, yoffset, flags, format_mods(modifiers));
     bool in_tab_bar;
     static id_type window_for_momentum_scroll = 0;
     static bool main_screen_for_momentum_scroll = false;
