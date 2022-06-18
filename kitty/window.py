@@ -1030,7 +1030,11 @@ class Window:
         import base64
         self.kitten_result = json.loads(base64.b85decode(msg))
         for processor in self.kitten_result_processors:
-            processor(self, self.kitten_result)
+            try:
+                processor(self, self.kitten_result)
+            except Exception:
+                import traceback
+                traceback.print_exc()
 
     def add_kitten_result_processor(self, callback: Callable[['Window', Any], None]) -> None:
         self.kitten_result_processors.append(callback)
