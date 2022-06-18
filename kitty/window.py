@@ -485,6 +485,7 @@ class Window:
         self.actions_on_focus_change: List[Callable[['Window', bool], None]] = []
         self.actions_on_removal: List[Callable[['Window'], None]] = []
         self.current_marker_spec: Optional[Tuple[str, Union[str, Tuple[Tuple[int, str], ...]]]] = None
+        self.kitten_result_processors: List[Callable[['Window', Any], None]] = []
         self.pty_resized_once = False
         self.last_reported_pty_size = (-1, -1, -1, -1)
         self.needs_attention = False
@@ -1028,6 +1029,11 @@ class Window:
     def handle_kitten_result(self, msg: str) -> None:
         import base64
         self.kitten_result = json.loads(base64.b85decode(msg))
+        for processor in self.kitten_result_processors:
+            processor(self, self.kitten_result)
+
+    def add_kitten_result_processor(self, callback: Callable[['Window', Any], None]) -> None:
+        self.kitten_result_processors.append(callback)
 
     def handle_overlay_ready(self, msg: str) -> None:
         boss = get_boss()
@@ -1299,6 +1305,7 @@ class Window:
     def destroy(self) -> None:
         self.call_watchers(self.watchers.on_close, {})
         self.destroyed = True
+        del self.kitten_result_processors
         if hasattr(self, 'screen'):
             if self.is_active and self.os_window_id == current_os_window():
                 # Cancel IME composition when window is destroyed
