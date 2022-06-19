@@ -501,6 +501,10 @@ class TabBar:
         fg = spec.get('inactive_tab_foreground')
         if fg is None:
             fg = color_as_int(opts.inactive_tab_foreground)
+        else:
+            ifg = color_from_int(fg)
+            if ifg is not None:
+                self.draw_data = self.draw_data._replace(inactive_fg=ifg)
         self.screen.color_profile.set_configured_colors(fg, bg)
 
     def update_blank_rects(self, central: Region, tab_bar: Region, vw: int, vh: int) -> None:

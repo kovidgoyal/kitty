@@ -49,6 +49,8 @@ Detailed list of changes
 
 - macOS: Remote control: Fix unable to launch a new OS window or background process when there is no OS window (:iss:`5210`)
 
+- kitty @ set-colors: Fix changing inactive_tab_foreground not working (:iss:`5214`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
