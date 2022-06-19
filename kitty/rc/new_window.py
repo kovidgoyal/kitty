@@ -3,9 +3,6 @@
 
 from typing import TYPE_CHECKING, Optional
 
-from kitty.fast_data_types import focus_os_window
-from kitty.tabs import SpecialWindow
-
 from .base import (
     MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions,
     RemoteCommand, ResponseType, Window
@@ -22,9 +19,11 @@ class NewWindow(RemoteCommand):
     match: The tab to open the new window in
     title: Title for the new window
     cwd: Working directory for the new window
-    tab_title: Title for the new tab
-    window_type: One of :code:`kitty` or :code:`os`
     keep_focus: Boolean indicating whether the current window should retain focus or not
+    window_type: One of :code:`kitty` or :code:`os`
+    new_tab: Boolean indicating whether to open a new tab
+    tab_title: Title for the new tab
+    no_response: Boolean indicating whether to send back the window id
     '''
 
     short_desc = 'Open new window'
@@ -78,40 +77,19 @@ the id of the new window will not be printed out.
     argspec = '[CMD ...]'
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'match': opts.match, 'title': opts.title, 'cwd': opts.cwd,
-                'new_tab': opts.new_tab, 'tab_title': opts.tab_title,
-                'window_type': opts.window_type, 'no_response': opts.no_response,
-                'keep_focus': opts.keep_focus, 'args': args or []}
+        ans = {'args': args or [], 'type': 'window'}
+        for attr, val in opts.__dict__.items():
+            if attr == 'new_tab' and val:
+                ans['type'] = 'tab'
+            elif attr == 'window_type' and val == 'os':
+                ans['type'] = 'os-window'
+            else:
+                ans[attr] = val
+        return ans
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        w = SpecialWindow(cmd=payload_get('args') or None, override_title=payload_get('title'), cwd=payload_get('cwd'))
-        old_window = boss.active_window
-        if payload_get('new_tab'):
-            boss._new_tab(w)
-            tab = boss.active_tab
-            if payload_get('tab_title') and tab:
-                tab.set_title(payload_get('tab_title'))
-            aw = boss.active_window
-            if payload_get('keep_focus') and old_window:
-                boss.set_active_window(old_window)
-            return None if not aw or payload_get('no_response') else str(aw.id)
-
-        if payload_get('window_type') == 'os':
-            boss._new_os_window(w)
-            aw = boss.active_window
-            if payload_get('keep_focus') and old_window:
-                os_window_id = boss.set_active_window(old_window)
-                if os_window_id:
-                    focus_os_window(os_window_id)
-            return None if not aw or payload_get('no_response') else str(aw.id)
-
-        tabs = self.tabs_for_match_payload(boss, window, payload_get)
-        if tabs and tabs[0]:
-            ans = tabs[0].new_special_window(w)
-            if payload_get('keep_focus') and old_window:
-                boss.set_active_window(old_window)
-            return None if payload_get('no_response') else str(ans.id)
-        return None
+        from .launch import launch
+        return launch.response_from_kitty(boss, window, payload_get)
 
 
 new_window = NewWindow()
