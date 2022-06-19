@@ -81,11 +81,14 @@ instead of the active tab
             if val is None:
                 val = default_value
             setattr(opts, key, val)
+        target_tab = None
         tabs = self.tabs_for_match_payload(boss, window, payload_get)
         if tabs and tabs[0]:
-            w = do_launch(boss, opts, payload_get('args') or [], target_tab=tabs[0])
-            return None if payload_get('no_response') else str(getattr(w, 'id', 0))
-        return None
+            target_tab = tabs[0]
+        elif payload_get('type') not in ('os-window', 'background'):
+            return None
+        w = do_launch(boss, opts, payload_get('args') or [], target_tab=target_tab)
+        return None if payload_get('no_response') else str(getattr(w, 'id', 0))
 
 
 launch = Launch()
