@@ -47,7 +47,7 @@ Detailed list of changes
 
 - Fix horizontal wheel events not being reported to client programs when they grab the mouse (:iss:`2819`)
 
-- Remote control: Fix unable to launch a new OS window or background process when there is no OS window (:iss:`5210`)
+- macOS: Remote control: Fix unable to launch a new OS window or background process when there is no OS window (:iss:`5210`)
 
 
 0.25.2 [2022-06-07]
