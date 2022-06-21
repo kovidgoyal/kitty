@@ -283,6 +283,10 @@ homepage:
    :target: https://github.com/igrmk/whiskers
    :width: 256
 
+.. image:: https://github.com/samholmes/whiskers/raw/main/whiskers.png
+   :target: https://github.com/samholmes/whiskers
+   :width: 256
+
 On macOS you can change the icon by following the steps:
 
 #. Find :file:`kitty.app` in the Applications folder, select it and press :kbd:`⌘+I`
