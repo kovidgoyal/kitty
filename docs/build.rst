@@ -29,7 +29,7 @@ Dependencies
 
 Run-time dependencies:
 
-* ``python`` >= 3.6
+* ``python`` >= 3.8
 * ``harfbuzz`` >= 2.2.0
 * ``zlib``
 * ``libpng``
