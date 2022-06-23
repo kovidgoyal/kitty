@@ -35,6 +35,7 @@ inside the kitty terminal to report key events.
 In addition to kitty, this protocol is also implemented in:
 
 * The `foot terminal <https://codeberg.org/dnkl/foot/issues/319>`__
+* The `WezTerm terminal <https://wezfurlong.org/wezterm/config/lua/config/enable_kitty_keyboard.html>`__
 * The `notcurses library
   <https://github.com/dankamongmen/notcurses/issues/2131>`__
 * The `neovim text editor <https://github.com/neovim/neovim/pull/18181>`__
