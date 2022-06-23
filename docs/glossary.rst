@@ -136,6 +136,12 @@ Variables that kitty sets when running child programs
    the SIGUSR1 signal.
 
 
+.. envvar:: KITTY_PREWARM_SOCKET
+
+   Path to a UNIX domain socket used to avoid Python interpreter startup
+   latency when running kitten or using kitty +launch or kitty +ruunpy.
+
+
 .. envvar:: WINDOWID
 
    The id for the :term:`OS Window <os_window>` the program is running in. Only available

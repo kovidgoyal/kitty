@@ -442,6 +442,13 @@ class SocketChild:
         child_main({'cwd': self.cwd, 'env': self.env, 'argv': self.argv})
         raise SystemExit(0)
 
+    def handle_death(self, status: int) -> None:
+        if hasattr(os, 'waitstatus_to_exitcode'):
+            status = os.waitstatus_to_exitcode(status)
+        self.conn.sendall(f'{status}'.encode('ascii'))
+        self.conn.shutdown(socket.SHUT_RDWR)
+        self.conn.close()
+
 
 def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket: socket.socket) -> None:
     os.set_blocking(notify_child_death_fd, False)
@@ -575,9 +582,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
                 if child_id is None:
                     for sc in socket_children.values():
                         if sc.pid == pid:
-                            sc.conn.sendall(f'{status}'.encode('ascii'))
-                            sc.conn.shutdown(socket.SHUT_RDWR)
-                            sc.conn.close()
+                            sc.handle_death(status)
                             break
                 else:
                     handle_child_death(child_id, pid)
