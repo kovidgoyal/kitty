@@ -55,8 +55,8 @@ set_kitty_run_data(RunData *run_data, bool from_source, wchar_t *extensions_dir)
     PyObject *ans = PyDict_New();
     if (!ans) { PyErr_Print(); return false; }
     PyObject *exe_dir = PyUnicode_DecodeFSDefaultAndSize(run_data->exe_dir, strlen(run_data->exe_dir));
-    if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir: %s\n", run_data->exe_dir); PyErr_Print(); return false; }
-#define S(key, val) { if (!val) { PyErr_Print(); return false; } int ret = PyDict_SetItemString(ans, #key, val); Py_CLEAR(val); if (ret != 0) { PyErr_Print(); return false; } }
+    if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir: %s\n", run_data->exe_dir); PyErr_Print(); Py_CLEAR(ans); return false; }
+#define S(key, val) { if (!val) { PyErr_Print(); Py_CLEAR(ans); return false; } int ret = PyDict_SetItemString(ans, #key, val); Py_CLEAR(val); if (ret != 0) { PyErr_Print(); Py_CLEAR(ans); return false; } }
     S(bundle_exe_dir, exe_dir);
     if (from_source) {
         PyObject *one = Py_True; Py_INCREF(one);
