@@ -48,44 +48,35 @@ typedef struct {
     const char *exe, *exe_dir, *lc_ctype, *lib_dir;
     char **argv;
     int argc;
-    wchar_t* xoptions[8];
-    int num_xoptions;
 } RunData;
 
-
 static bool
-set_xoptions(RunData *run_data, bool from_source) {
-    wchar_t *exe_dir = Py_DecodeLocale(run_data->exe_dir, NULL);
-    if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir: %s\n", run_data->exe_dir); return false; }
-    size_t len = 32 + wcslen(exe_dir);
-    run_data->xoptions[run_data->num_xoptions] = calloc(len, sizeof(wchar_t));
-    if (!run_data->xoptions[run_data->num_xoptions]) { fprintf(stderr, "Out of memory allocating for bundle_exe_dir\n"); return false; }
-    swprintf(run_data->xoptions[run_data->num_xoptions++], len, L"bundle_exe_dir=%ls", exe_dir);
-    PyMem_RawFree(exe_dir);
+set_kitty_run_data(RunData *run_data, bool from_source, wchar_t *extensions_dir) {
+    PyObject *ans = PyDict_New();
+    if (!ans) { PyErr_Print(); return false; }
+    PyObject *exe_dir = PyUnicode_DecodeFSDefaultAndSize(run_data->exe_dir, strlen(run_data->exe_dir));
+    if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir: %s\n", run_data->exe_dir); PyErr_Print(); return false; }
+#define S(key, val) { if (!val) { PyErr_Print(); return false; } int ret = PyDict_SetItemString(ans, #key, val); Py_CLEAR(val); if (ret != 0) { PyErr_Print(); return false; } }
+    S(bundle_exe_dir, exe_dir);
     if (from_source) {
-        len = 32;
-        run_data->xoptions[run_data->num_xoptions] = calloc(len, sizeof(wchar_t));
-        if (!run_data->xoptions[run_data->num_xoptions]) { fprintf(stderr, "Out of memory allocating for from_source\n"); return false; }
-        swprintf(run_data->xoptions[run_data->num_xoptions++], len, L"kitty_from_source=1");
+        PyObject *one = Py_True; Py_INCREF(one);
+        S(from_source, one);
     }
     if (run_data->lc_ctype) {
-        len = 32 + 4 * strlen(run_data->lc_ctype);
-        run_data->xoptions[run_data->num_xoptions] = calloc(len, sizeof(wchar_t));
-        if (!run_data->xoptions[run_data->num_xoptions]) { fprintf(stderr, "Out of memory allocating for lc_ctype\n"); return false; }
-        swprintf(run_data->xoptions[run_data->num_xoptions++], len, L"lc_ctype_before_python=%s", run_data->lc_ctype);
+        PyObject *ctype = PyUnicode_DecodeLocaleAndSize(run_data->lc_ctype, strlen(run_data->lc_ctype), NULL);
+        S(lc_ctype_before_python, ctype);
     }
+    if (extensions_dir) {
+        PyObject *ed = PyUnicode_FromWideChar(extensions_dir, -1);
+        S(extensions_dir, ed);
+    }
+#undef S
+    int ret = PySys_SetObject("kitty_run_data", ans);
+    Py_CLEAR(ans);
+    if (ret != 0) { PyErr_Print(); return false; }
     return true;
 }
 
-static void
-free_xoptions(RunData *run_data) {
-    if (run_data->num_xoptions > 0) {
-        while (run_data->num_xoptions--) {
-            free(run_data->xoptions[run_data->num_xoptions]);
-            run_data->xoptions[run_data->num_xoptions] = 0;
-        }
-    }
-}
 
 #ifdef FOR_BUNDLE
 #include <bypy-freeze.h>
@@ -174,13 +165,10 @@ run_embedded(RunData *run_data) {
     if (!canonicalize_path_wide(python_home_full, python_home, num+1)) {
         fprintf(stderr, "Failed to canonicalize the path: %s\n", python_home_full); return 1; }
 
-    if (!set_xoptions(run_data, false)) return 1;
-    bypy_initialize_interpreter_with_xoptions(
-            L"kitty", python_home, L"kitty_main", extensions_dir, run_data->argc, run_data->argv,
-            run_data->num_xoptions, run_data->xoptions);
-    free_xoptions(run_data);
+    bypy_initialize_interpreter(
+            L"kitty", python_home, L"kitty_main", extensions_dir, run_data->argc, run_data->argv)
+    if (!set_kitty_run_data(run_data, false, extensions_dir)) return 1;
     set_sys_bool("frozen", true);
-    set_sys_string("kitty_extensions_dir", extensions_dir);
     return bypy_run_interpreter();
 }
 
@@ -210,13 +198,11 @@ run_embedded(RunData *run_data) {
     status = PyConfig_SetBytesString(&config, &config.run_filename, run_data->lib_dir);
     if (PyStatus_Exception(status)) goto fail;
 
-    if (!set_xoptions(run_data, from_source)) return 1;
-    status = PyConfig_SetWideStringList(&config, &config.xoptions, run_data->num_xoptions, run_data->xoptions);
-    free_xoptions(run_data);
-    if (PyStatus_Exception(status)) goto fail;
     status = Py_InitializeFromConfig(&config);
     if (PyStatus_Exception(status))  goto fail;
     PyConfig_Clear(&config);
+    if (!set_kitty_run_data(run_data, from_source, NULL)) return 1;
+    PySys_SetObject("frozen", Py_False);
     return Py_RunMain();
 fail:
     PyConfig_Clear(&config);

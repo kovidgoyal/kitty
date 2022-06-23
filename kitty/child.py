@@ -242,7 +242,7 @@ class Child:
     def final_env(self) -> Dict[str, str]:
         from kitty.options.utils import DELETE_ENV_VAR
         env = default_env().copy()
-        if is_macos and env.get('LC_CTYPE') == 'UTF-8' and not sys._xoptions.get(
+        if is_macos and env.get('LC_CTYPE') == 'UTF-8' and not getattr(sys, 'kitty_run_data').get(
                 'lc_ctype_before_python') and not getattr(default_env, 'lc_ctype_set_by_user', False):
             del env['LC_CTYPE']
         env.update(self.env)

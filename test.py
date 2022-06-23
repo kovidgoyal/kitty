@@ -36,6 +36,8 @@ def main() -> None:
     paths = os.environ.get('PATH', '/usr/local/sbin:/usr/local/bin:/usr/bin').split(os.pathsep)
     path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
     launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
+    if not hasattr(sys, 'kitty_run_data'):
+        setattr(sys, 'kitty_run_data', {'bundle_exe_dir': launcher_dir, 'from_source': True})
     path = f'{launcher_dir}{os.pathsep}{path}'
     with TemporaryDirectory() as tdir, env_vars(
         PYTHONWARNINGS='error', HOME=tdir, USERPROFILE=tdir, PATH=path,

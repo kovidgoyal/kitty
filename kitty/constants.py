@@ -29,7 +29,7 @@ is_macos: bool = 'darwin' in _plat
 is_freebsd: bool = 'freebsd' in _plat
 is_running_from_develop: bool = False
 if getattr(sys, 'frozen', False):
-    extensions_dir: str = getattr(sys, 'kitty_extensions_dir')
+    extensions_dir: str = getattr(sys, 'kitty_run_data')['extensions_dir']
 
     def get_frozen_base() -> str:
         global is_running_from_develop
@@ -61,7 +61,7 @@ else:
 
 @run_once
 def kitty_exe() -> str:
-    rpath = sys._xoptions.get('bundle_exe_dir')
+    rpath = getattr(sys, 'kitty_run_data').get('bundle_exe_dir')
     if not rpath:
         items = os.environ.get('PATH', '').split(os.pathsep) + [os.path.join(kitty_base_dir, 'kitty', 'launcher')]
         seen: Set[str] = set()

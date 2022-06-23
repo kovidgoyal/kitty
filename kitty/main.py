@@ -305,11 +305,12 @@ def prepend_if_not_present(path: str, paths_serialized: str) -> str:
 
 def ensure_kitty_in_path() -> None:
     # Ensure the correct kitty is in PATH
-    rpath = sys._xoptions.get('bundle_exe_dir')
+    krd = getattr(sys, 'kitty_run_data')
+    rpath = krd.get('bundle_exe_dir')
     if not rpath:
         return
     if rpath:
-        modify_path = is_macos or getattr(sys, 'frozen', False) or sys._xoptions.get('kitty_from_source') == '1'
+        modify_path = is_macos or getattr(sys, 'frozen', False) or krd.get('from_source')
         existing = shutil.which('kitty')
         if modify_path or not existing:
             env_path = os.environ.get('PATH', '')

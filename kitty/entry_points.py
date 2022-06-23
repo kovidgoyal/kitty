@@ -159,7 +159,7 @@ def setup_openssl_environment() -> None:
     # many systems come with no certificates in a useable form or have various
     # locations for the certificates.
     d = os.path.dirname
-    ext_dir: str = getattr(sys, 'kitty_extensions_dir')
+    ext_dir: str = getattr(sys, 'kitty_run_data')['extensions_dir']
     if 'darwin' in sys.platform.lower():
         cert_file = os.path.join(d(d(d(ext_dir))), 'cacert.pem')
     else:
