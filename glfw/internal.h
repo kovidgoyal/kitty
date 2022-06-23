@@ -52,6 +52,8 @@
 #define GLFW_INCLUDE_NONE
 #include "glfw3.h"
 
+#define EGL_PRESENT_OPAQUE_EXT 0x31df
+
 #define _GLFW_INSERT_FIRST      0
 #define _GLFW_INSERT_LAST       1
 

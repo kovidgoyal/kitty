@@ -186,6 +186,7 @@ typedef struct _GLFWlibraryEGL
     bool            EXT_platform_base;
     bool            EXT_platform_x11;
     bool            EXT_platform_wayland;
+    bool            EXT_present_opaque;
     bool            ANGLE_platform_angle;
     bool            ANGLE_platform_angle_opengl;
     bool            ANGLE_platform_angle_d3d;
