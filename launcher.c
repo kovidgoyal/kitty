@@ -166,7 +166,7 @@ run_embedded(RunData *run_data) {
         fprintf(stderr, "Failed to canonicalize the path: %s\n", python_home_full); return 1; }
 
     bypy_initialize_interpreter(
-            L"kitty", python_home, L"kitty_main", extensions_dir, run_data->argc, run_data->argv)
+            L"kitty", python_home, L"kitty_main", extensions_dir, run_data->argc, run_data->argv);
     if (!set_kitty_run_data(run_data, false, extensions_dir)) return 1;
     set_sys_bool("frozen", true);
     return bypy_run_interpreter();
