@@ -770,6 +770,11 @@ is_useful_apple_global_shortcut(int sc) {
     }
 }
 
+static bool
+is_apple_jis_layout_function_key(NSEvent *event) {
+    return [event keyCode] == 0x66 /* kVK_JIS_Eisu */ || [event keyCode] == 0x68 /* kVK_JIS_Kana */;
+}
+
 GLFWAPI GLFWapplicationshouldhandlereopenfun glfwSetApplicationShouldHandleReopen(GLFWapplicationshouldhandlereopenfun callback) {
     GLFWapplicationshouldhandlereopenfun previous = handle_reopen_callback;
     handle_reopen_callback = callback;
@@ -834,6 +839,14 @@ int _glfwPlatformInit(void)
                 last_keydown_shortcut_event.virtual_key_code = [event keyCode];
                 // record the modifier keys if switching to the next input source
                 last_keydown_shortcut_event.input_source_switch_modifiers = (global_shortcut == kSHKSelectNextSourceInInputMenu) ? USEFUL_MODS([event modifierFlags]) : 0;
+                last_keydown_shortcut_event.timestamp = [event timestamp];
+                return event;
+            }
+            // check for JIS keyboard layout function keys
+            if (is_apple_jis_layout_function_key(event)) {
+                debug_key("keyDown triggerred JIS layout function key ignoring\n");
+                last_keydown_shortcut_event.virtual_key_code = [event keyCode];
+                last_keydown_shortcut_event.input_source_switch_modifiers = 0;
                 last_keydown_shortcut_event.timestamp = [event timestamp];
                 return event;
             }
