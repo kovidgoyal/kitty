@@ -52,7 +52,7 @@ Detailed list of changes
 - kitty @ set-colors: Fix changing inactive_tab_foreground not working (:iss:`5214`)
 
 - macOS: Fix a regression that caused switching keyboard input using Eisu and
-  kana keys not working (:iss:`5232`)
+  Kana keys not working (:iss:`5232`)
 
 
 0.25.2 [2022-06-07]
