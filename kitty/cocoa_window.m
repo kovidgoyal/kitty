@@ -821,8 +821,9 @@ cocoa_set_titlebar_color(void *w, color_type titlebar_color)
                             green:green
                              blue:blue
                             alpha:1.0];
-    [window setTitlebarAppearsTransparent:YES];
+    [window setTitlebarAppearsTransparent:NO];
     [window setBackgroundColor:background];
+    [window setBackgroundColor:[NSColor clearColor]];
 
     double luma = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 
