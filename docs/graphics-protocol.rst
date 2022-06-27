@@ -43,6 +43,7 @@ Some programs and libraries that use the kitty graphics protocol:
 * `rasterm <https://github.com/BourgeoisBear/rasterm>`_  - Go library to display images in the terminal
 * `chafa <https://github.com/hpjansson/chafa>`_  - a terminal image viewer
 * `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_  - view images inside nvim
+* `term-image <https://github.com/AnonymouX47/term-image>`_  - A Python library, CLI and TUI to display and browse images in the terminal
 
 Other terminals that have implemented the graphics protocol:
 
