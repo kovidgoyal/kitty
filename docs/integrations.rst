@@ -47,6 +47,12 @@ graphics protocol.
 Another terminal file manager, with previews of file contents powered by kitty's
 graphics protocol.
 
+.. _tool_term_image:
+
+`term-image <https://github.com/AnonymouX47/term-image>`__
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Tool to browse images in a terminal using kitty's graphics protocol.
+
 .. _tool_koneko:
 
 `koneko <https://github.com/twenty5151/koneko>`_
