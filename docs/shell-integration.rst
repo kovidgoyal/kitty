@@ -274,8 +274,8 @@ Edit files in new kitty windows even over SSH
 
    edit-in-kitty myfile.txt
    edit-in-kitty --type tab --title "Editing My File" myfile.txt
-   # open file.txt at line 75 (works with vim, emacs, nano, micro)
-   edit-in-kitty +75 file.txt
+   # open myfile.txt at line 75 (works with vim, neovim, emacs, nano, micro)
+   edit-in-kitty +75 myfile.txt
 
 The :command:`edit-in-kitty` command allows you to seamlessly edit files
 in your default :opt:`editor` in new kitty windows. This works even over
