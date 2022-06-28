@@ -441,7 +441,11 @@ struct _GLFWwindow
     bool                rawMouseMotion;
 
     _GLFWcontext        context;
+#ifdef _GLFW_WAYLAND
     bool                swaps_disallowed;
+#else
+    const bool                swaps_disallowed;
+#endif
 
     struct {
         GLFWwindowposfun        pos;
