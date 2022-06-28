@@ -93,7 +93,7 @@ Do not send text to the active window, even if it is one of the matched windows.
 --stdin
 type=bool-set
 Read the text to be sent from :italic:`stdin`. Note that in this case the text is sent as is,
-not interpreted for escapes. If stdin is a terminal, you can press :kbd:`Ctrl-D` to end reading.
+not interpreted for escapes. If stdin is a terminal, you can press :kbd:`Ctrl+D` to end reading.
 
 
 --from-file

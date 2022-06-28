@@ -24,7 +24,7 @@ class CloseTab(RemoteCommand):
     desc = '''\
 Close an arbitrary set of tabs. The :code:`--match` option can be used to
 specify complex sets of tabs to close. For example, to close all non-focused
-tabs in the currently focused OS window, use:
+tabs in the currently focused OS window, use::
 
     kitty @ close-tab --match "not state:focused and state:parent_focused"
 '''
