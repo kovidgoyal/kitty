@@ -620,11 +620,10 @@ class EditCmd:
             self.file_localpath = os.path.join(self.tdir, self.file_name)
             with open(self.file_localpath, 'wb') as f:
                 f.write(self.file_data)
-        self.file_obj = open(self.file_localpath, 'rb')
         self.file_data = b''
         self.last_mod_time = self.file_mod_time
         if not self.opts.cwd:
-            self.opts.cwd = os.path.dirname(self.file_obj.name)
+            self.opts.cwd = os.path.dirname(self.file_localpath)
 
     def __del__(self) -> None:
         if self.tdir:
@@ -633,12 +632,12 @@ class EditCmd:
             self.tdir = ''
 
     def read_data(self) -> bytes:
-        self.file_obj.seek(0)
-        return self.file_obj.read()
+        with open(self.file_localpath, 'rb') as f:
+            return f.read()
 
     @property
     def file_mod_time(self) -> int:
-        return os.stat(self.file_obj.fileno()).st_mtime_ns
+        return os.stat(self.file_localpath).st_mtime_ns
 
     def schedule_check(self) -> None:
         if not self.abort_signaled:
@@ -733,7 +732,7 @@ def remote_edit(msg: str, window: Window) -> None:
         if q is not None:
             q.abort_signaled = c.abort_signaled
         return
-    cmdline = get_editor(path_to_edit=c.file_obj.name, line_number=c.line_number)
+    cmdline = get_editor(path_to_edit=c.file_localpath, line_number=c.line_number)
     w = launch(get_boss(), c.opts, cmdline, active=window)
     if w is not None:
         c.source_window_id = window.id
