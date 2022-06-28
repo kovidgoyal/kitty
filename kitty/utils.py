@@ -672,7 +672,7 @@ def get_editor(opts: Optional[Options] = None, path_to_edit: str = '', line_numb
         ans = shlex.split(opts.editor)
     if path_to_edit:
         if line_number:
-            eq = os.path.basename(ans[-1]).lower()
+            eq = os.path.basename(ans[0]).lower()
             if eq in ('code', 'code.exe'):
                 path_to_edit += f':{line_number}'
                 ans.append('--goto')
