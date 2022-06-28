@@ -202,11 +202,11 @@ prepare_for_exec() {
         /*) ;;
         *)
             if ! command -v "$login_shell" > /dev/null 2> /dev/null; then
-                for i in /opt/homebrew/bin /opt/homebrew/sbin /usr/local/bin /usr/bin /bin /usr/sbin /sbin
+                for i in /opt/homebrew/bin /opt/homebrew/sbin /opt/local/bin /opt/local/sbin /usr/local/bin /usr/bin /bin /usr/sbin /sbin
                 do
                     if [ -x "$i/$login_shell" ]; then
                         login_shell="$i/$login_shell"
-                        break;
+                        break
                     fi
                 done
             fi
