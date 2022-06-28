@@ -1751,6 +1751,10 @@ typedef bool (*glfwIsFullscreen_func)(GLFWwindow*, unsigned int);
 GFW_EXTERN glfwIsFullscreen_func glfwIsFullscreen_impl;
 #define glfwIsFullscreen glfwIsFullscreen_impl
 
+typedef bool (*glfwAreSwapsAllowed_func)(const GLFWwindow*);
+GFW_EXTERN glfwAreSwapsAllowed_func glfwAreSwapsAllowed_impl;
+#define glfwAreSwapsAllowed glfwAreSwapsAllowed_impl
+
 typedef void (*glfwDestroyWindow_func)(GLFWwindow*);
 GFW_EXTERN glfwDestroyWindow_func glfwDestroyWindow_impl;
 #define glfwDestroyWindow glfwDestroyWindow_impl

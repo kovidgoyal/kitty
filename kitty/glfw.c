@@ -826,7 +826,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (is_first_window) glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
 #endif
     // On Wayland the initial swap is allowed only after the first XDG configure event
-    if (!global_state.is_wayland) glfwSwapBuffers(glfw_window);
+    if (glfwAreSwapsAllowed(glfw_window)) glfwSwapBuffers(glfw_window);
     glfwSetInputMode(glfw_window, GLFW_LOCK_KEY_MODS, true);
     PyObject *pret = PyObject_CallFunction(pre_show_callback, "N", native_window_handle(glfw_window));
     if (pret == NULL) return NULL;
@@ -1343,7 +1343,7 @@ is_mouse_hidden(OSWindow *w) {
 
 void
 swap_window_buffers(OSWindow *os_window) {
-    glfwSwapBuffers(os_window->handle);
+    if (glfwAreSwapsAllowed(os_window->handle)) glfwSwapBuffers(os_window->handle);
 }
 
 void

@@ -497,6 +497,7 @@ static void xdgSurfaceHandleConfigure(void* data,
         if (!window->wl.surface_configured_once) {
             window->wl.surface_configured_once = true;
             // this will attach the buffer to the surface, the client is responsible for clearing the buffer to an appropriate blank
+            window->swaps_disallowed = false;
             window->context.swapBuffers(window);
 
             if (!width && !height && !new_states && !window->wl.decorations.serverSide && getenv("XAUTHORITY") && strstr(getenv("XAUTHORITY"), "mutter")) {
@@ -787,6 +788,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
     initialize_csd_metrics(window);
     window->wl.transparent = fbconfig->transparent;
     strncpy(window->wl.appId, wndconfig->wl.appId, sizeof(window->wl.appId));
+    window->swaps_disallowed = true;
 
     if (!createSurface(window, wndconfig))
         return false;
@@ -1066,6 +1068,7 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
         window->wl.xdg.toplevel = NULL;
         window->wl.xdg.surface = NULL;
         window->wl.surface_configured_once = false;
+        window->swaps_disallowed = true;
     }
     window->wl.visible = false;
 }

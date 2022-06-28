@@ -441,6 +441,7 @@ struct _GLFWwindow
     bool                rawMouseMotion;
 
     _GLFWcontext        context;
+    bool                swaps_disallowed;
 
     struct {
         GLFWwindowposfun        pos;

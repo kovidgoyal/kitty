@@ -1067,6 +1067,10 @@ GLFWAPI bool glfwIsFullscreen(GLFWwindow* wh, unsigned int flags) {
     return _glfwPlatformIsFullscreen((_GLFWwindow*)wh, flags);
 }
 
+GLFWAPI bool glfwAreSwapsAllowed(const GLFWwindow* wh) {
+    return !(((_GLFWwindow*)wh)->swaps_disallowed);
+}
+
 GLFWAPI void glfwSetWindowUserPointer(GLFWwindow* handle, void* pointer)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
