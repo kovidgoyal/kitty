@@ -254,7 +254,7 @@ _ksi_deferred_init() {
             # OpenSSH's sshd creates entries in utmp for every login so use those
             [[ "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]] && is_ssh_session="y"
         fi
-        
+
         if [[ "$is_ssh_session" == "y" ]]; then
             # show the hostname via %m for SSH sessions
             functions[_ksi_precmd]+="
@@ -408,7 +408,7 @@ clone-in-kitty() {
     while :; do
         case "$1" in
             "") break;;
-            -h|--help) 
+            -h|--help)
                 builtin printf "%s\n\n%s\n" "Clone the current zsh session into a new kitty window." "For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#clone-shell"
                 return
                 ;;
@@ -428,7 +428,6 @@ clone-in-kitty() {
     _ksi_transmit_data "$data" "clone" "save_history"
 }
 
-
 edit-in-kitty() {
     builtin local data=""
     builtin local ed_filename=""
@@ -437,7 +436,7 @@ edit-in-kitty() {
     while :; do
         case "$1" in
             "") break;;
-            -h|--help) 
+            -h|--help)
                 builtin printf "%s\n\n%s\n\n%s\n" "$usage" "Edit the specified file in a kitty overlay window. Works over SSH as well." "For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#edit-file"
                 return
                 ;;
@@ -463,7 +462,7 @@ edit-in-kitty() {
     [ "${stat_result[size]}" -gt $((8 * 1024 * 1024)) ] && { builtin echo "File is too large for performant editing"; return 1; }
     data="$data,file_inode=${stat_result[device]}:${stat_result[inode]}:${stat_result[size]}"
     data="$data,file_data=$(builtin command base64 < "$ed_filename")"
-    _ksi_transmit_data "$data" "edit" 
+    _ksi_transmit_data "$data" "edit"
     data=""
     builtin echo "Waiting for editing to be completed..."
     builtin local started="n"

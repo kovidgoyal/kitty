@@ -87,7 +87,7 @@ For numeric fields: :code:`id`, :code:`pid`, :code:`num` and :code:`recent`, the
 a number, not a regular expression.
 
 The field :code:`num` refers to the window position in the current tab, starting from zero and counting clockwise (this
-is the same as the order in which the windows are reported by the :italic:`ls` command).
+is the same as the order in which the windows are reported by the :ref:`kitty @ ls <at_ls>` command).
 
 The window id of the current window is available as the :envvar:`KITTY_WINDOW_ID` environment variable.
 
@@ -95,7 +95,7 @@ The field :code:`recent` refers to recently active windows in the currently acti
 active window, one being the previously active window and so on.
 
 When using the :code:`env` field to match on environment variables, you can specify only the environment variable name
-or a name and value, for example, :italic:`env:MY_ENV_VAR=2`.
+or a name and value, for example, :code:`env:MY_ENV_VAR=2`.
 
 The field :code:`state` matches on the state of the window. Supported states are:
 :code:`active`, :code:`focused`, :code:`needs_attention`, :code:`parent_active` and :code:`parent_focused`.
@@ -128,7 +128,7 @@ The :code:`recent` number matches recently active tabs in the currently active O
 active tab, one the previously active tab and so on.
 
 When using the :code:`env` field to match on environment variables, you can specify only the environment variable name
-or a name and value, for example, :italic:`env:MY_ENV_VAR=2`. Tabs containing any window with the specified environment
+or a name and value, for example, :code:`env:MY_ENV_VAR=2`. Tabs containing any window with the specified environment
 variables are matched.
 
 The field :code:`state` matches on the state of the tab. Supported states are:

@@ -181,15 +181,15 @@ the same as for the :ac:`toggle_marker` action (see :doc:`/marks`).
 
 
 --os-window-class
-Set the *WM_CLASS* property on X11 and the application id property on Wayland
-for the newly created OS window when using :option:`--type=os-window
+Set the :italic:`WM_CLASS` property on X11 and the application id property on
+Wayland for the newly created OS window when using :option:`--type=os-window
 <launch --type>`. Defaults to whatever is used by the parent kitty process,
 which in turn defaults to :code:`kitty`.
 
 
 --os-window-name
-Set the *WM_NAME* property on X11 for the newly created OS Window when using
-:option:`--type=os-window <launch --type>`. Defaults to
+Set the :italic:`WM_NAME` property on X11 for the newly created OS Window when
+using :option:`--type=os-window <launch --type>`. Defaults to
 :option:`--os-window-class <launch --os-window-class>`.
 
 
@@ -220,8 +220,8 @@ effect if :option:`--logo` is specified. See :opt:`window_logo_position`.
 type=list
 Change colors in the newly launched window. You can either specify a path to a
 :file:`.conf` file with the same syntax as :file:`kitty.conf` to read the colors
-from, or specify them individually, for example: ``--color background=white``
-``--color foreground=red``
+from, or specify them individually, for example: :code:`--color background=white
+--color foreground=red`.
 
 
 --watcher -w
