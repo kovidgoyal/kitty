@@ -758,7 +758,6 @@ render(monotonic_t now, bool input_read) {
 
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
-        w->render_calls++;
         if (!w->num_tabs) continue;
         if (!should_os_window_be_rendered(w)) {
             update_os_window_title(w);
@@ -767,8 +766,11 @@ render(monotonic_t now, bool input_read) {
         }
         if (USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY) {
             if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now, ms_to_monotonic_t(250ll))) request_frame_render(w);
-            continue;
+            // dont respect render frames soon after a resize on Wayland as they cause flicker because
+            // we want to fill the newly resized buffer ASAP, not at compositors convenience
+            if (global_state.is_wayland && (monotonic() - w->viewport_resized_at) > s_double_to_monotonic_t(1)) continue;
         }
+        w->render_calls++;
         make_os_window_context_current(w);
         if (w->live_resize.in_progress && OPT(resize_draw_strategy) >= RESIZE_DRAW_BLANK) {
             blank_os_window(w);

@@ -108,6 +108,7 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
         return; // no change, ignore
     }
     int min_width, min_height; min_size_for_os_window(window, &min_width, &min_height);
+    window->viewport_resized_at = monotonic();
     if (w <= 0 || h <= 0 || fw < min_width || fh < min_height || fw < w || fh < h) {
         log_error("Invalid geometry ignored: framebuffer: %dx%d window: %dx%d\n", fw, fh, w, h);
         if (!window->viewport_updated_at_least_once) {
@@ -1356,7 +1357,8 @@ should_os_window_be_rendered(OSWindow* w) {
     return (
             glfwGetWindowAttrib(w->handle, GLFW_ICONIFIED) ||
             !glfwGetWindowAttrib(w->handle, GLFW_VISIBLE) ||
-            glfwGetWindowAttrib(w->handle, GLFW_OCCLUDED)
+            glfwGetWindowAttrib(w->handle, GLFW_OCCLUDED) ||
+            !glfwAreSwapsAllowed(w->handle)
        ) ? false : true;
 }
 

@@ -201,6 +201,7 @@ typedef struct {
     PyObject *window_title;
     bool disallow_title_changes, title_is_overriden;
     bool viewport_size_dirty, viewport_updated_at_least_once;
+    monotonic_t viewport_resized_at;
     LiveResizeInfo live_resize;
     bool has_pending_resizes, is_semi_transparent, shown_once, is_damaged;
     uint32_t offscreen_texture_id;

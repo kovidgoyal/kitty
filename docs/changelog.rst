@@ -54,6 +54,8 @@ Detailed list of changes
 - macOS: Fix a regression that caused switching keyboard input using Eisu and
   Kana keys not working (:iss:`5232`)
 
+- Wayland: Reduce flicker at startup by not using render frames immediately after a resize (:iss:`5235`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
