@@ -496,6 +496,9 @@ static void xdgSurfaceHandleConfigure(void* data,
         int height = window->wl.pending.height;
         if (!window->wl.surface_configured_once) {
             window->wl.surface_configured_once = true;
+            // this will attach the buffer to the surface, the client is responsible for clearing the buffer to an appropriate blank
+            window->context.swapBuffers(window);
+
             if (!width && !height && !new_states && !window->wl.decorations.serverSide && getenv("XAUTHORITY") && strstr(getenv("XAUTHORITY"), "mutter")) {
                 // https://github.com/kovidgoyal/kitty/issues/4802
                 debug("Ignoring first empty surface configure event on mutter.\n");
@@ -1062,6 +1065,7 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
         xdg_surface_destroy(window->wl.xdg.surface);
         window->wl.xdg.toplevel = NULL;
         window->wl.xdg.surface = NULL;
+        window->wl.surface_configured_once = false;
     }
     window->wl.visible = false;
 }

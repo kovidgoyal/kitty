@@ -811,12 +811,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (ret == NULL) return NULL;
     int width = PyLong_AsLong(PyTuple_GET_ITEM(ret, 0)), height = PyLong_AsLong(PyTuple_GET_ITEM(ret, 1));
     Py_CLEAR(ret);
-    // The GLFW Wayland backend cannot create and show windows separately so we
-    // cannot call the pre_show_callback. See
-    // https://github.com/glfw/glfw/issues/1268 It doesn't matter since there
-    // is no startup notification in Wayland anyway. It amazes me that anyone
-    // uses Wayland as anything other than a butt for jokes.
-    if (global_state.is_wayland) glfwWindowHint(GLFW_VISIBLE, true);
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window ? temp_window : common_context);
     if (temp_window) { glfwDestroyWindow(temp_window); temp_window = NULL; }
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
@@ -831,25 +825,24 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
 #ifndef __APPLE__
     if (is_first_window) glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
 #endif
-    glfwSwapBuffers(glfw_window);
+    // On Wayland the initial swap is allowed only after the first XDG configure event
+    if (!global_state.is_wayland) glfwSwapBuffers(glfw_window);
     glfwSetInputMode(glfw_window, GLFW_LOCK_KEY_MODS, true);
-    if (!global_state.is_wayland) {
-        PyObject *pret = PyObject_CallFunction(pre_show_callback, "N", native_window_handle(glfw_window));
-        if (pret == NULL) return NULL;
-        Py_DECREF(pret);
-        if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
-        glfwShowWindow(glfw_window);
+    PyObject *pret = PyObject_CallFunction(pre_show_callback, "N", native_window_handle(glfw_window));
+    if (pret == NULL) return NULL;
+    Py_DECREF(pret);
+    if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
+    glfwShowWindow(glfw_window);
 #ifdef __APPLE__
-        float n_xscale, n_yscale;
-        double n_xdpi, n_ydpi;
-        get_window_content_scale(glfw_window, &n_xscale, &n_yscale, &n_xdpi, &n_ydpi);
-        if (n_xdpi != xdpi || n_ydpi != ydpi) {
-            // this can happen if the window is moved by the OS to a different monitor when shown
-            xdpi = n_xdpi; ydpi = n_ydpi;
-            fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
-        }
-#endif
+    float n_xscale, n_yscale;
+    double n_xdpi, n_ydpi;
+    get_window_content_scale(glfw_window, &n_xscale, &n_yscale, &n_xdpi, &n_ydpi);
+    if (n_xdpi != xdpi || n_ydpi != ydpi) {
+        // this can happen if the window is moved by the OS to a different monitor when shown
+        xdpi = n_xdpi; ydpi = n_ydpi;
+        fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
     }
+#endif
     if (is_first_window) {
         PyObject *ret = PyObject_CallFunction(load_programs, "O", is_semi_transparent ? Py_True : Py_False);
         if (ret == NULL) return NULL;
