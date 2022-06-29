@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import sys
 from contextlib import suppress
 from typing import TYPE_CHECKING, Optional, Sequence, Tuple, cast
+
+from kitty.types import run_once
 
 from .operations import raw_mode, set_cursor_visible
 
@@ -97,3 +100,26 @@ def report_error(msg: str = '', return_code: int = 1, print_exc: bool = False) -
 def report_unhandled_error(msg: str = '') -> None:
     ' Report an unhandled exception with the overlay ready message '
     return report_error(msg, print_exc=True)
+
+
+@run_once
+def running_in_tmux() -> str:
+    socket = os.environ.get('TMUX')
+    if not socket:
+        return ''
+    parts = socket.split(',')
+    if len(parts) < 2:
+        return ''
+    try:
+        if not os.access(parts[0], os.R_OK | os.W_OK):
+            return ''
+    except OSError:
+        return ''
+    from kitty.child import cmdline_of_pid
+    c = cmdline_of_pid(int(parts[1]))
+    if not c:
+        return ''
+    exe = os.path.basename(c[0])
+    if exe.lower() == 'tmux':
+        return exe
+    return ''
