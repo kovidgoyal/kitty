@@ -59,6 +59,9 @@ Detailed list of changes
 - Linux: Update cursor position after all key presses not just pre-edit text
   changes (:iss:`5241`)
 
+- ssh kitten: Allow ssh kitten to work from inside tmux, provided the tmux
+  session inherits the correct KITTY env vars (:iss:`5227`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

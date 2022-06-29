@@ -143,6 +143,16 @@ transmitted instantly without any roundtrip delay.
    is something POSIX sh compliant, and use :code:`python` as the
    :opt:`interpreter <kitten-ssh.interpreter>` in :file:`ssh.conf`.
 
+
+.. note::
+
+   This may or may not work when using terminal multiplexers, depending on
+   whether they passthrough the escape codes and if the values of the
+   environment variables :env:`KITTY_PID` and :env:`KITTY_WINDOW_ID` are
+   correct in the current session (they can be wrong is connecting to a tmux
+   session running in  different window) and the ssh kitten is run in the
+   currently active multiplexer window.
+
 .. include:: /generated/conf-kitten-ssh.rst
 
 

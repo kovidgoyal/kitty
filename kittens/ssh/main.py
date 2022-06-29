@@ -40,7 +40,7 @@ from kitty.utils import (
     set_echo as turn_off_echo
 )
 
-from ..tui.utils import kitty_opts
+from ..tui.utils import kitty_opts, running_in_tmux
 from .config import init_config
 from .copy import CopyInstruction
 from .options.types import Options as SSHOptions
@@ -209,7 +209,7 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
             if pw != env_data['pw']:
                 raise ValueError('Incorrect password')
             if rq_id != request_id:
-                raise ValueError('Incorrect request id')
+                raise ValueError(f'Incorrect request id: {rq_id!r} expecting the KITTY_PID-KITTY_WINDOW_ID for the current kitty window')
         except Exception as e:
             traceback.print_exc()
             yield f'{e}\n'.encode('utf-8')
@@ -557,7 +557,16 @@ def dcs_to_kitty(payload: Union[bytes, str], type: str = 'ssh') -> bytes:
     if isinstance(payload, str):
         payload = payload.encode('utf-8')
     payload = standard_b64encode(payload)
-    return b'\033P@kitty-' + type.encode('ascii') + b'|' + payload + b'\033\\'
+    ans = b'\033P@kitty-' + type.encode('ascii') + b'|' + payload
+    tmux = running_in_tmux()
+    if tmux:
+        cp = subprocess.run([tmux, 'set', '-p', 'allow-passthrough', 'on'])
+        if cp.returncode != 0:
+            raise SystemExit(cp.returncode)
+        ans = b'\033Ptmux;\033' + ans + b'\033\033\\\033\\'
+    else:
+        ans += b'\033\\'
+    return ans
 
 
 @run_once
