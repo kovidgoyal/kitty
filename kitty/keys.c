@@ -157,9 +157,8 @@ on_key_input(GLFWkeyevent *ev) {
         case GLFW_IME_NONE:
             // for macOS, update ime position on every key input
             // because the position is required before next input
-#if defined(__APPLE__)
+            // On Linux this is needed by Fig integration: https://github.com/kovidgoyal/kitty/issues/5241
             update_ime_position(w, screen);
-#endif
             break;
         default:
             debug("invalid state, ignoring\n");

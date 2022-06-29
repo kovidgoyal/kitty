@@ -56,6 +56,9 @@ Detailed list of changes
 
 - Wayland: Reduce flicker at startup by not using render frames immediately after a resize (:iss:`5235`)
 
+- Linux: Update cursor position after all key presses not just pre-edit text
+  changes (:iss:`5241`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
