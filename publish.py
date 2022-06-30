@@ -92,7 +92,7 @@ def run_man(args: Any) -> None:
 
 
 def run_html(args: Any) -> None:
-    call('make FAIL_WARN=1 "OPTS=-D analytics_id=UA-20736318-2" dirhtml', cwd=docs_dir)
+    call('make FAIL_WARN=1 "OPTS=-D analytics_id=G-XTJK3R7GF2" dirhtml', cwd=docs_dir)
     add_old_redirects('docs/_build/dirhtml')
 
 
