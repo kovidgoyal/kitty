@@ -836,7 +836,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         if args.profile:
             libs.append('-lprofiler')
     else:
-        cflags.append('-O3')
+        cflags.append('-g3' if args.debug else '-O3')
     if bundle_type.endswith('-freeze'):
         cppflags.append('-DFOR_BUNDLE')
         cppflags.append(f'-DPYVER="{sysconfig.get_python_version()}"')
