@@ -8,6 +8,8 @@
 
 // for SA_RESTART
 #define _XOPEN_SOURCE 700
+// for cfmakeraw
+#define _DEFAULT_SOURCE
 
 // Includes {{{
 #include <stdio.h>
@@ -42,6 +44,34 @@
         a > b ? a : b;})
 // }}}
 
+#define err_prefix "prewarm wrapper process error: "
+
+static inline void
+print_error(const char *s, int errnum) {
+    if (errnum != 0) fprintf(stderr, "%s%s: %s\n\r", err_prefix, s, strerror(errnum));
+    else fprintf(stderr, "%s%s\n\r", err_prefix, s);
+}
+#define pe(fmt, ...) { fprintf(stderr, err_prefix); fprintf(stderr, fmt, __VA_ARGS__); fprintf(stderr, "\n\r"); }
+
+static bool
+parse_long(const char *str, long *val) {
+    char *temp;
+    bool rc = true;
+    errno = 0;
+    const long t = strtol(str, &temp, 0);
+    if (temp == str || *temp != '\0' || ((*val == LONG_MIN || *val == LONG_MAX) && errno == ERANGE)) rc = false;
+    *val = t;
+    return rc;
+}
+
+static bool
+parse_int(const char *str, int *val) {
+    long lval;
+    if (!parse_long(str, &lval)) return false;
+    *val = lval;
+    return true;
+}
+
 static inline int
 safe_open(const char *path, int flags, mode_t mode) {
     while (true) {
@@ -54,6 +84,13 @@ safe_open(const char *path, int flags, mode_t mode) {
 static inline void
 safe_close(int fd) {
     while(close(fd) != 0 && errno == EINTR);
+}
+
+static inline bool
+safe_tcsetattr(int fd, int actions, const struct termios *tp) {
+    int ret = 0;
+    while((ret = tcsetattr(fd, actions, tp)) != 0 && errno == EINTR);
+    return ret == 0;
 }
 
 static size_t
@@ -103,7 +140,8 @@ is_prewarmable(int argc, char *argv[]) {
 static int child_master_fd = -1, child_slave_fd = -1;
 static char child_tty_name[PATH_MAX] = {0};
 static struct winsize self_winsize = {0};
-static struct termios self_termios = {0};
+static struct termios self_termios = {0}, restore_termios = {0};
+static bool termios_needs_restore = false;
 static int self_ttyfd = -1, socket_fd = -1, signal_read_fd = -1, signal_write_fd = -1;
 static int stdin_pos = -1, stdout_pos = -1, stderr_pos = -1;
 static char fd_send_buf[256];
@@ -111,9 +149,11 @@ struct iovec launch_msg = {0};
 struct msghdr launch_msg_container = {.msg_control = fd_send_buf, .msg_controllen = sizeof(fd_send_buf), .msg_iov = &launch_msg, .msg_iovlen = 1 };
 static size_t launch_msg_cap = 0;
 char *launch_msg_buf = NULL;
+static pid_t child_pid = 0;
 
 static void
 cleanup(void) {
+    if (self_ttyfd > -1 && termios_needs_restore) { safe_tcsetattr(self_ttyfd, TCSAFLUSH, &restore_termios); termios_needs_restore = false; }
 #define cfd(fd) if (fd > -1) { safe_close(fd); fd = -1; }
     cfd(child_master_fd); cfd(child_slave_fd);
     cfd(self_ttyfd); cfd(socket_fd); cfd(signal_read_fd); cfd(signal_write_fd);
@@ -230,8 +270,31 @@ create_launch_msg(int argc, char *argv[]) {
 #undef w
 }
 
-static char exitcode_buf[16] = {0};
 static int exit_status = EXIT_FAILURE;
+static char from_child_buf[64] = {0};
+static size_t from_child_buf_pos = 0;
+
+static bool
+read_child_data(int socket_fd) {
+    ssize_t n;
+    if (from_child_buf_pos >= sizeof(from_child_buf) - 2) { print_error("Too much data from prewarm socket", 0); return false; }
+    while ((n = read(socket_fd, from_child_buf, sizeof(from_child_buf) - 2 - from_child_buf_pos)) < 0 && errno == EINTR);
+    if (n < 0) {
+        print_error("Failed to read from prewarm socket", errno);
+        return false;
+    }
+    if (n) {
+        from_child_buf_pos += n;
+        char *p = memchr(from_child_buf, ':', from_child_buf_pos);
+        if (p && child_pid == 0) {
+            long cp = 0;
+            if (!parse_long(from_child_buf, &cp)) { print_error("Could not parse child pid from prewarm socket", 0); return false; }
+            if (cp == 0) { print_error("Got zero child pid from prewarm socket", 0); return false; }
+            child_pid = cp;
+        }
+    }
+    return true;
+}
 
 static bool
 send_launch_msg(void) {
@@ -241,7 +304,7 @@ send_launch_msg(void) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) return true;
         return false;
     }
-    // some bytes sent null out the control msg data as it is already sent
+    // some bytes sent, null out the control msg data as it is already sent
     launch_msg_container.msg_controllen = 0;
     launch_msg_container.msg_control = NULL;
     if ((size_t)n > launch_msg.iov_len) launch_msg.iov_len = 0;
@@ -250,30 +313,11 @@ send_launch_msg(void) {
     return true;
 }
 
-static bool
-parse_long(const char *str, long *val) {
-    char *temp;
-    bool rc = true;
-    errno = 0;
-    const long t = strtol(str, &temp, 0);
-    if (temp == str || *temp != '\0' || ((*val == LONG_MIN || *val == LONG_MAX) && errno == ERANGE)) rc = false;
-    *val = t;
-    return rc;
-}
-
-static bool
-parse_int(const char *str, int *val) {
-    long lval;
-    if (!parse_long(str, &lval)) return false;
-    *val = lval;
-    return true;
-}
-
 
 static void
 loop(int socket_fd) {
-#define fail(s) { perror(s); return; }
-#define check_fd(which, name) { if (poll_data[which].revents & POLLERR) { fprintf(stderr, "File descriptor %s failed\n", #name); return; } if (poll_data[which].revents & POLLHUP); { fprintf(stderr, "File descriptor %s hungup\n", #name); return; } }
+#define fail(s) { print_error(s, errno); return; }
+#define check_fd(which, name) { if (poll_data[which].revents & POLLERR) { pe("File descriptor %s failed", #name); return; } if (poll_data[which].revents & POLLHUP); { pe("File descriptor %s hungup", #name); return; } }
     struct pollfd poll_data[4];
     poll_data[0].fd = self_ttyfd; poll_data[0].events = POLLIN;
     poll_data[1].fd = child_master_fd; poll_data[1].events = POLLIN;
@@ -281,17 +325,22 @@ loop(int socket_fd) {
     poll_data[3].fd = signal_read_fd; poll_data[3].events = POLLIN;
 
     while (true) {
-        for (size_t i = 0; i < arraysz(poll_data); i++) poll_data[i].revents = 0;
         poll_data[2].events = POLLIN | (launch_msg.iov_len ? POLLOUT : 0);
-        while (poll(poll_data, 1, -1) == -1) { if (errno != EINTR) fail("poll() failed"); }
+
+        for (size_t i = 0; i < arraysz(poll_data); i++) poll_data[i].revents = 0;
+        while (poll(poll_data, arraysz(poll_data), -1) == -1) { if (errno != EINTR) fail("poll() failed"); }
+
         check_fd(0, self_ttyfd); check_fd(1, child_master_fd); check_fd(3, signal_read_fd);
 
         // socket_fd
         if (poll_data[2].revents & POLLERR) {
-            fprintf(stderr, "File descriptor %s failed\n", "socket_fd"); return;
+            print_error("File descriptor socket_fd failed", 0); return;
+        }
+        if (poll_data[2].revents & POLLIN) {
+            if (!read_child_data(socket_fd)) fail("reading information about child failed");
         }
         if (poll_data[2].revents & POLLHUP) {
-            if (exitcode_buf[0]) { parse_int(exitcode_buf, &exit_status); }
+            if (from_child_buf[0]) { char *p = memchr(from_child_buf, ':', sizeof(from_child_buf)); if (p) parse_int(p+1, &exit_status); }
             return;
         }
         if (poll_data[2].revents & POLLOUT) {
@@ -307,11 +356,16 @@ use_prewarmed_process(int argc, char *argv[]) {
     const char *env_addr = getenv("KITTY_PREWARM_SOCKET");
     if (!env_addr || !*env_addr || !is_prewarmable(argc, argv)) return;
     self_ttyfd = safe_open(ctermid(NULL), O_RDWR, 0);
-#define fail(s) { perror(s); cleanup(); return; }
+#define fail(s) { print_error(s, errno); cleanup(); return; }
     if (self_ttyfd == -1) fail("Failed to open controlling terminal");
     if (!get_window_size()) fail("Failed to get window size of controlling terminal");
     if (!get_termios_state()) fail("Failed to get termios state of controlling terminal");
     if (!open_pty()) fail("Failed to open slave pty");
+    memcpy(&restore_termios, &self_termios, sizeof(restore_termios));
+    termios_needs_restore = true;
+    cfmakeraw(&self_termios);
+    if (!safe_tcsetattr(self_ttyfd, TCSANOW, &self_termios)) fail("Failed to put tty into raw mode");
+    while (tcsetattr(self_ttyfd, TCSANOW, &self_termios) == -1 && errno == EINTR) {}
     setup_stdio_handles();
     if (!create_launch_msg(argc, argv)) fail("Failed to open controlling terminal");
     if (!setup_signal_handler()) fail("Failed to setup signal handling");

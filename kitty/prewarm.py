@@ -416,6 +416,7 @@ class SocketChild:
             if self.stderr > -1:
                 os.close(self.stderr)
                 self.stderr = -1
+            self.handle_creation()
             return
         # child process
         os.setsid()
@@ -445,9 +446,12 @@ class SocketChild:
     def handle_death(self, status: int) -> None:
         if hasattr(os, 'waitstatus_to_exitcode'):
             status = os.waitstatus_to_exitcode(status)
-        self.conn.sendall(f'{status}'.encode('ascii'))
+        self.conn.sendall(f'{status}:'.encode('ascii'))
         self.conn.shutdown(socket.SHUT_RDWR)
         self.conn.close()
+
+    def handle_creation(self) -> None:
+        self.conn.sendall(f'{self.pid}:'.encode('ascii'))
 
 
 def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket: socket.socket) -> None:
