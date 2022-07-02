@@ -446,7 +446,7 @@ class SocketChild:
     def handle_death(self, status: int) -> None:
         if hasattr(os, 'waitstatus_to_exitcode'):
             status = os.waitstatus_to_exitcode(status)
-        self.conn.sendall(f'{status}:'.encode('ascii'))
+        self.conn.sendall(f'{status}'.encode('ascii'))
         self.conn.shutdown(socket.SHUT_RDWR)
         self.conn.close()
 
@@ -626,7 +626,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
                                     poll.unregister(scq.fd)
                                     scq.conn.shutdown(socket.SHUT_RD)
                                     scq.fork(get_all_non_child_fds())
-                                    scq.child_id = child_pid_map[scq.pid] = next(child_id_counter)
+                                    scq.child_id = next(child_id_counter)
                             except SocketClosed:
                                 socket_children.pop(q)
                             continue

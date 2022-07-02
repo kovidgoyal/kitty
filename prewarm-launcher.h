@@ -289,10 +289,14 @@ read_child_data(void) {
         from_child_buf_pos += n;
         char *p = memchr(from_child_buf, ':', from_child_buf_pos);
         if (p && child_pid == 0) {
+            *p = 0;
             long cp = 0;
             if (!parse_long(from_child_buf, &cp)) { print_error("Could not parse child pid from prewarm socket", 0); return false; }
             if (cp == 0) { print_error("Got zero child pid from prewarm socket", 0); return false; }
             child_pid = cp;
+            memset(from_child_buf, 0, (p - from_child_buf) + 1);
+            from_child_buf_pos -= (p - from_child_buf) + 1;
+            if (from_child_buf_pos) memmove(from_child_buf, p + 1, from_child_buf_pos);
         }
     }
     return true;
@@ -344,7 +348,7 @@ loop(void) {
             if (!read_child_data()) fail("reading information about child failed");
         }
         if (poll_data[2].revents & POLLHUP) {
-            if (from_child_buf[0]) { char *p = memchr(from_child_buf, ':', sizeof(from_child_buf)); if (p) parse_int(p+1, &exit_status); }
+            if (from_child_buf[0]) { parse_int(from_child_buf, &exit_status); }
             return;
         }
         if (poll_data[2].revents & POLLOUT) {
