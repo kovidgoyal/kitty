@@ -1031,7 +1031,7 @@ class TestScreen(BaseTest):
         s.draw('abcd'), s.index(), s.carriage_return()
         s.draw('12'), s.index(), s.carriage_return()
         self.ae(fco(), '')
-        self.ae(lco(), 'abcd\n12')
+        self.ae(lco(), 'abcd\n12\n')
         s = self.create_screen()
         mark_prompt(), s.draw('$ 0')
         s.carriage_return(), s.index()
@@ -1061,12 +1061,12 @@ class TestScreen(BaseTest):
         # last cmd output
         # test: find upwards
         self.ae(s.scrolled_by, 0)
-        self.ae(lco(), '0x\n1x')
+        self.ae(lco(), '0x\n1x\n')
         # get output after scroll up
         s.scroll_to_prompt()
         self.ae(s.scrolled_by, 4)
         self.ae(str(s.visual_line(0)), '$ 0')
-        self.ae(lco(), '0x\n1x')
+        self.ae(lco(), '0x\n1x\n')
 
         # first cmd output on screen
         # test: find around
@@ -1074,11 +1074,11 @@ class TestScreen(BaseTest):
         s.scroll(2, False)
         self.ae(s.scrolled_by, 2)
         self.ae(str(s.visual_line(0)), '1')
-        self.ae(fco(), '0x\n1x')
+        self.ae(fco(), '0x\n1x\n')
         # test: find downwards
         s.scroll(2, False)
         self.ae(str(s.visual_line(0)), '$ 1')
-        self.ae(fco(), '0x\n1x')
+        self.ae(fco(), '0x\n1x\n')
 
         # resize
         # get last cmd output with continued output mark
@@ -1086,12 +1086,20 @@ class TestScreen(BaseTest):
         s.resize(4, 5)
         s.scroll_to_prompt(-4)
         self.ae(str(s.visual_line(0)), '$ 0')
-        self.ae(lco(), '0long_line\n0l\n1l')
+        self.ae(lco(), '0long_line\n0l\n1l\n')
 
         # last visited cmd output
         self.ae(lvco(), '0\n1\n2')
         s.scroll_to_prompt(1)
         self.ae(lvco(), '0x\n1x')
+
+        # last command output without line break
+        s = self.create_screen(cols=10, lines=3)
+        draw_prompt('p1')
+        mark_output(), s.draw('running')
+        self.ae(lco(), 'running')
+        s.index(), s.carriage_return()
+        self.ae(lco(), 'running\n')
 
         # last command output from pager history
         s = self.create_screen()
