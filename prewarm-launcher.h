@@ -319,22 +319,22 @@ send_launch_msg(void) {
 static void
 loop(void) {
 #define fail(s) { print_error(s, errno); return; }
-#define check_fd(which, name) { if (poll_data[which].revents & POLLERR) { pe("File descriptor %s failed", #name); return; } if (poll_data[which].revents & POLLHUP); { pe("File descriptor %s hungup", #name); return; } }
+#define check_fd(which, name) { if (poll_data[which].revents & POLLERR) { pe("File descriptor %s failed", #name); return; } if (poll_data[which].revents & POLLHUP) { pe("File descriptor %s hungup", #name); return; } }
     struct pollfd poll_data[4];
-    poll_data[0].fd = self_ttyfd; poll_data[0].events = POLLIN;
+    poll_data[0].fd = self_ttyfd;      poll_data[0].events = POLLIN;
     poll_data[1].fd = child_master_fd; poll_data[1].events = POLLIN;
-    poll_data[2].fd = socket_fd; poll_data[2].events = POLLIN;
-    poll_data[3].fd = signal_read_fd; poll_data[3].events = POLLIN;
+    poll_data[2].fd = socket_fd;       poll_data[2].events = POLLIN;
+    poll_data[3].fd = signal_read_fd;  poll_data[3].events = POLLIN;
 
     while (true) {
+        int ret;
         poll_data[2].events = POLLIN | (launch_msg.iov_len ? POLLOUT : 0);
 
         for (size_t i = 0; i < arraysz(poll_data); i++) poll_data[i].revents = 0;
-        while (poll(poll_data, arraysz(poll_data), -1) == -1) { if (errno != EINTR) fail("poll() failed"); }
+        while ((ret = poll(poll_data, arraysz(poll_data), -1)) == -1) { if (errno != EINTR) fail("poll() failed"); }
+        if (!ret) continue;
 
-        check_fd(0, self_ttyfd);
-        check_fd(1, child_master_fd);
-        check_fd(3, signal_read_fd);
+        check_fd(0, self_ttyfd); check_fd(1, child_master_fd); check_fd(3, signal_read_fd);
 
         // socket_fd
         if (poll_data[2].revents & POLLERR) {
