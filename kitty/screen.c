@@ -2828,7 +2828,7 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
     if (found_next_prompt) {
         oo->num_lines = end >= start ? end - start : 0;
     } else if (found_output) {
-        end = direction < 0 ? init_y : downward_limit;
+        end = (direction < 0 ? MIN(init_y, downward_limit) : downward_limit) + 1;
         oo->num_lines = end >= start ? end - start : 0;
     } else return false;
     oo->start = start;
