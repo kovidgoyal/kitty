@@ -108,7 +108,7 @@ static int self_ttyfd = -1, socket_fd = -1, signal_read_fd = -1, signal_write_fd
 static int stdin_pos = -1, stdout_pos = -1, stderr_pos = -1;
 static char fd_send_buf[256];
 struct iovec launch_msg = {0};
-struct msghdr launch_msg_container = {.msg_control = fd_send_buf, .msg_iov = &launch_msg, .msg_iovlen = 1 };
+struct msghdr launch_msg_container = {.msg_control = fd_send_buf, .msg_controllen = sizeof(fd_send_buf), .msg_iov = &launch_msg, .msg_iovlen = 1 };
 static size_t launch_msg_cap = 0;
 char *launch_msg_buf = NULL;
 
