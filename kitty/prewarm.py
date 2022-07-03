@@ -479,6 +479,11 @@ class SocketChild:
     def handle_death(self, status: int) -> None:
         if hasattr(os, 'waitstatus_to_exitcode'):
             status = os.waitstatus_to_exitcode(status)
+            # negative numbers are signals usually and shells report these as
+            # 128 + signal number, so do the same. There is no API to exit a
+            # process with full 32bit status information.
+            if -128 < status < 0:
+                status = 128 - status
         try:
             self.conn.sendall(f'{status}'.encode('ascii'))
         except OSError as e:
