@@ -185,11 +185,15 @@ cleanup(void) {
 }
 
 static bool
+safe_winsz(int fd, int action, struct winsize *ws) {
+    int ret;
+    while ((ret = ioctl(fd, action, ws)) == -1 && errno == EINTR);
+    return ret != -1;
+}
+
+static bool
 get_window_size(void) {
-    while (ioctl(self_ttyfd, TIOCGWINSZ, &self_winsize) == -1) {
-        if (errno != EINTR) return false;
-    }
-    return true;
+    return safe_winsz(self_ttyfd, TIOCGWINSZ, &self_winsize);
 }
 
 static bool
@@ -394,6 +398,32 @@ read_or_transfer_from_self_tty(void) {
     return read_or_transfer(self_ttyfd, child_master_fd, &to_child_tty);
 }
 
+static bool window_size_dirty = false;
+
+static bool
+read_signals(void) {
+    static char buf[sizeof(siginfo_t) * 8];
+    static size_t buf_pos = 0;
+    while(true) {
+        ssize_t len = safe_read(signal_read_fd, buf + buf_pos, sizeof(buf) - buf_pos);
+        if (len < 0) {
+            if (errno == EWOULDBLOCK || errno == EAGAIN) return true;
+            return false;
+        }
+        buf_pos += len;
+        while (buf_pos >= sizeof(siginfo_t)) {
+            siginfo_t *sig = (siginfo_t*)buf;
+            switch(sig->si_signo) {
+                case SIGWINCH:
+                    window_size_dirty = true; break;
+            }
+            memmove(buf, buf + sizeof(siginfo_t), sizeof(siginfo_t));
+            buf_pos -= sizeof(siginfo_t);
+        }
+        if (len == 0) break;
+    }
+    return true;
+}
 
 static void
 loop(void) {
@@ -414,6 +444,12 @@ loop(void) {
         // child_master_fd
         pd(child_master_fd).events = (from_child_tty.sz < IO_BUZ_SZ - 1 ? POLLIN : 0) | (to_child_tty.sz ? POLLOUT : 0);
 
+        if (window_size_dirty && child_master_fd > -1 ) {
+            if (!get_window_size()) fail("getting window size for self tty failed");
+            if (!safe_winsz(child_master_fd, TIOCSWINSZ, &self_winsize)) fail("setting window size on child pty failed");
+            window_size_dirty = false;
+        }
+
         for (size_t i = 0; i < arraysz(poll_data); i++) poll_data[i].revents = 0;
         while ((ret = poll(poll_data, num_to_poll, -1)) == -1) { if (errno != EINTR) fail("poll() failed"); }
         if (!ret) continue;
@@ -431,6 +467,9 @@ loop(void) {
         check_fd(self_ttyfd);
         if (child_master_fd > -1) check_fd(child_master_fd);
         check_fd(signal_read_fd);
+
+        // signal_read_fd
+        if (pd(signal_read_fd).revents & POLLIN) if (!read_signals()) fail("reading from signal fd failed");
 
         // socket_fd
         if (pd(socket_fd).revents & POLLERR) {
