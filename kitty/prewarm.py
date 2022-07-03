@@ -302,6 +302,7 @@ def fork(shm_address: str, all_non_child_fds: Iterable[int]) -> Tuple[int, int]:
         poll = select.poll()
         poll.register(r, select.POLLIN)
         tuple(poll.poll())
+        os.close(r)
         return child_pid, ready_fd_write
     # child process
     remove_signal_handlers()
