@@ -106,9 +106,13 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
                 touch('d1/d2/x')
                 touch('d1/d2/w.exclude')
                 os.symlink('d2/x', f'{local_home}/d1/y')
+                os.symlink('simple-file', f'{local_home}/s1')
+                os.symlink('simple-file', f'{local_home}/s2')
 
                 conf = '''\
 copy simple-file
+copy s1
+copy --symlink-strategy=keep-name s2
 copy --dest=a/sfa simple-file
 copy --glob g.*
 copy --exclude */w.* d1
@@ -124,12 +128,14 @@ copy --exclude */w.* d1
                 self.assertTrue(os.path.lexists(f'{remote_home}/{tname}/78'))
                 self.assertTrue(os.path.exists(f'{remote_home}/{tname}/78/xterm-kitty'))
                 self.assertTrue(os.path.exists(f'{remote_home}/{tname}/x/xterm-kitty'))
-                for w in ('simple-file', 'a/sfa'):
+                for w in ('simple-file', 'a/sfa', 's2'):
                     with open(os.path.join(remote_home, w), 'r') as f:
                         self.ae(f.read(), simple_data)
+                    self.assertFalse(os.path.islink(f.name))
                 self.assertTrue(os.path.lexists(f'{remote_home}/d1/y'))
                 self.assertTrue(os.path.exists(f'{remote_home}/d1/y'))
                 self.ae(os.readlink(f'{remote_home}/d1/y'), 'd2/x')
+                self.ae(os.readlink(f'{remote_home}/s1'), 'simple-file')
                 contents = set(files_in(remote_home))
                 contents.discard('.zshrc')  # added by check_bootstrap()
                 # depending on platform one of these is a symlink and hence
@@ -137,7 +143,7 @@ copy --exclude */w.* d1
                 contents.discard(f'{tname}/x/xterm-kitty')
                 contents.discard(f'{tname}/78/xterm-kitty')
                 self.ae(contents, {
-                    'g.1', 'g.2', f'{tname}/kitty.terminfo', 'simple-file', 'd1/d2/x', 'd1/y', 'a/sfa',
+                    'g.1', 'g.2', f'{tname}/kitty.terminfo', 'simple-file', 'd1/d2/x', 'd1/y', 'a/sfa', 's1', 's2',
                     '.local/share/kitty-ssh-kitten/kitty/version', '.local/share/kitty-ssh-kitten/kitty/bin/kitty'
                 })
                 self.ae(len(glob.glob(f'{remote_home}/{tname}/*/xterm-kitty')), 2)

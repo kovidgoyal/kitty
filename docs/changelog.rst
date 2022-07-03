@@ -62,6 +62,9 @@ Detailed list of changes
 - ssh kitten: Allow ssh kitten to work from inside tmux, provided the tmux
   session inherits the correct KITTY env vars (:iss:`5227`)
 
+- ssh kitten: A new option :code:`--symlink-strategy` to control how symlinks
+  are copied to the remote machine (:iss:`5249`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

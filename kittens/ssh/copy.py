@@ -39,6 +39,17 @@ A glob pattern. Files with names matching this pattern are excluded from being
 transferred. Useful when adding directories. Can
 be specified multiple times, if any of the patterns match the file will be
 excluded.
+
+
+--symlink-strategy
+default=preserve
+choices=preserve,resolve,keep-path
+Control what happens if the specified path is a symlink. The default is to preserve
+the symlink, re-creating it on the remote machine. Setting this to :code:`resolve`
+will cause the symlink to be followed and its target used as the file/directory to copy.
+The value of :code:`keep-path` is the same as :code:`resolve` except that the remote
+file path is derived from the symlink's path instead of the path of the symlink's target.
+Note that this option does not apply to symlinks encountered while recursively copying directories.
 '''
 
 
@@ -100,5 +111,9 @@ def parse_copy_instructions(val: str, current_val: Dict[str, str]) -> Iterable[T
         raise CopyCLIError('Specifying a remote location with more than one file is not supported')
     home = home_path()
     for loc in locations:
-        arcname = get_arcname(loc, opts.dest, home)
-        yield str(uuid.uuid4()), CopyInstruction(loc, arcname, tuple(opts.exclude))
+        if opts.symlink_strategy != 'preserve':
+            rp = os.path.realpath(loc)
+        else:
+            rp = loc
+        arcname = get_arcname(rp if opts.symlink_strategy == 'resolve' else loc, opts.dest, home)
+        yield str(uuid.uuid4()), CopyInstruction(rp, arcname, tuple(opts.exclude))
