@@ -250,7 +250,7 @@ class Child:
         env['COLORTERM'] = 'truecolor'
         env['KITTY_PID'] = getpid()
         if not self.is_prewarmed:
-            env['KITTY_PREWARM_SOCKET'] = fast_data_types.get_boss().prewarm.unix_socket_name
+            env['KITTY_PREWARM_SOCKET'] = f'{os.geteuid()}:{os.getegid()}:{fast_data_types.get_boss().prewarm.unix_socket_name}'
         if self.cwd:
             # needed in case cwd is a symlink, in which case shells
             # can use it to display the current directory name rather

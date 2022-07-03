@@ -452,10 +452,31 @@ loop(void) {
 #undef fail
 }
 
+static char*
+check_socket_addr(char *addr) {
+    char *p = strchr(addr, ':');
+    if (!p) return NULL;
+    *p = 0;
+    long val = -1;
+    bool ok = parse_long(addr, &val);
+    *p = ':';
+    if (!ok || val != geteuid()) return NULL;
+    addr = p + 1;
+    p = strchr(addr, ':');
+    if (!p) return NULL;
+    *p = 0;
+    ok = parse_long(addr, &val);
+    *p = ':';
+    if (!ok || val != getegid()) return NULL;
+    return p + 1;
+}
+
 static void
 use_prewarmed_process(int argc, char *argv[]) {
-    const char *env_addr = getenv("KITTY_PREWARM_SOCKET");
+    char *env_addr = getenv("KITTY_PREWARM_SOCKET");
     if (!env_addr || !*env_addr || !is_prewarmable(argc, argv)) return;
+    env_addr = check_socket_addr(env_addr);
+    if (!env_addr) return;
     self_ttyfd = safe_open(ctermid(NULL), O_RDWR | O_NONBLOCK, 0);
 #define fail(s) { print_error(s, errno); cleanup(); return; }
     if (self_ttyfd == -1) fail("Failed to open controlling terminal");
