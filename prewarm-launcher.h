@@ -205,6 +205,7 @@ open_pty(void) {
     while (openpty(&child_master_fd, &child_slave_fd, child_tty_name, &self_termios, &self_winsize) == -1) {
         if (errno != EINTR) return false;
     }
+    set_blocking(child_master_fd, false);
     return true;
 }
 
@@ -233,6 +234,7 @@ setup_signal_handler(void) {
     int fds[2];
     if (pipe(fds) != 0) return false;
     signal_read_fd = fds[0]; signal_write_fd = fds[1];
+    set_blocking(signal_read_fd, false); set_blocking(signal_write_fd, false);
     struct sigaction act = {.sa_sigaction=handle_signal, .sa_flags=SA_SIGINFO | SA_RESTART};
     if (sigaction(SIGWINCH, &act, NULL) != 0) return false;
     return true;
@@ -445,7 +447,7 @@ static void
 use_prewarmed_process(int argc, char *argv[]) {
     const char *env_addr = getenv("KITTY_PREWARM_SOCKET");
     if (!env_addr || !*env_addr || !is_prewarmable(argc, argv)) return;
-    self_ttyfd = safe_open(ctermid(NULL), O_RDWR, 0);
+    self_ttyfd = safe_open(ctermid(NULL), O_RDWR | O_NONBLOCK, 0);
 #define fail(s) { print_error(s, errno); cleanup(); return; }
     if (self_ttyfd == -1) fail("Failed to open controlling terminal");
     if (!get_window_size()) fail("Failed to get window size of controlling terminal");
