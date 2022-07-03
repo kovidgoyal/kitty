@@ -164,7 +164,7 @@ read_signals(int fd, handle_signal_func callback, void *data) {
         ssize_t len = read(fd, buf + buf_pos, sizeof(buf) - buf_pos);
         if (len < 0) {
             if (errno == EINTR) continue;
-            if (errno != EIO && errno != EAGAIN) log_error("Call to read() from read_signals() failed with error: %s", strerror(errno));
+            if (errno != EWOULDBLOCK && errno != EAGAIN) log_error("Call to read() from read_signals() failed with error: %s", strerror(errno));
             break;
         }
         buf_pos += len;
