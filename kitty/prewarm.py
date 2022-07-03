@@ -496,7 +496,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
         if event & select.POLLHUP:
             raise SystemExit(0)
         if event & error_events:
-            raise SystemExit(err_msg)
+            raise SystemExit(f'Prewarm zygote process: {err_msg}')
 
     def handle_input(event: int) -> None:
         nonlocal input_buf, output_buf

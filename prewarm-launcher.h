@@ -44,8 +44,16 @@
         a > b ? a : b;})
 // }}}
 
-#define err_prefix "prewarm wrapper process error: "
+#define IO_BUZ_SZ 8192
 
+typedef struct transfer_buf {
+    char *buf;
+    size_t sz;
+} transfer_buf;
+static transfer_buf from_child_tty = {0};
+static transfer_buf to_child_tty = {0};
+
+#define err_prefix "prewarm wrapper process error: "
 static inline void
 print_error(const char *s, int errnum) {
     if (errnum != 0) fprintf(stderr, "%s%s: %s\n\r", err_prefix, s, strerror(errnum));
@@ -91,6 +99,20 @@ safe_tcsetattr(int fd, int actions, const struct termios *tp) {
     int ret = 0;
     while((ret = tcsetattr(fd, actions, tp)) != 0 && errno == EINTR);
     return ret == 0;
+}
+
+static ssize_t
+safe_read(int fd, void *buf, size_t n) {
+    ssize_t ret = 0;
+    while((ret = read(fd, buf, n)) ==-1 && errno == EINTR);
+    return ret;
+}
+
+static ssize_t
+safe_write(int fd, void *buf, size_t n) {
+    ssize_t ret = 0;
+    while((ret = write(fd, buf, n)) ==-1 && errno == EINTR);
+    return ret;
 }
 
 static size_t
@@ -159,6 +181,7 @@ cleanup(void) {
     cfd(self_ttyfd); cfd(socket_fd); cfd(signal_read_fd); cfd(signal_write_fd);
 #undef cfd
     if (launch_msg_buf) { free(launch_msg_buf); launch_msg.iov_len = 0; launch_msg_buf = NULL; }
+    if (from_child_tty.buf) { free(from_child_tty.buf); from_child_tty.buf = NULL; }
 }
 
 static bool
@@ -319,6 +342,55 @@ send_launch_msg(void) {
     return true;
 }
 
+static bool
+read_or_transfer(int src_fd, int dest_fd, transfer_buf *t) {
+    (void)dest_fd;
+    if (t->sz >= IO_BUZ_SZ) return true;
+    ssize_t n = safe_read(src_fd, t->buf + t->sz, IO_BUZ_SZ - t->sz);
+    if (n < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) return true;
+        return false;
+    }
+    t->sz += n;
+    return true;
+}
+
+static bool
+read_or_transfer_from_child_tty(void) {
+    return read_or_transfer(child_master_fd, self_ttyfd, &from_child_tty);
+}
+
+static bool
+write_from_to(transfer_buf *src, int dest_fd) {
+    if (!src->sz) return true;
+    ssize_t n = safe_write(dest_fd, src->buf, src->sz);
+    if (n < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) return true;
+        return false;
+    }
+    if (n > 0) {
+        src->sz -= n;
+        memmove(src->buf, src->buf + n, src->sz);
+    }
+    return true;
+}
+
+static bool
+from_child_to_self(void) {
+    return write_from_to(&from_child_tty, self_ttyfd);
+}
+
+static bool
+from_self_to_child(void) {
+    return write_from_to(&to_child_tty, child_master_fd);
+}
+
+
+static bool
+read_or_transfer_from_self_tty(void) {
+    return read_or_transfer(self_ttyfd, child_master_fd, &to_child_tty);
+}
+
 
 static void
 loop(void) {
@@ -332,11 +404,21 @@ loop(void) {
 
     while (true) {
         int ret;
+        // self_ttyfd
+        poll_data[0].events = (to_child_tty.sz < IO_BUZ_SZ - 1 ? POLLIN : 0) | (from_child_tty.sz ? POLLOUT : 0);
+        // child_master_fd
+        poll_data[1].events = (from_child_tty.sz < IO_BUZ_SZ - 1 ? POLLIN : 0) | (to_child_tty.sz ? POLLOUT : 0);
+        // socket_fd
         poll_data[2].events = POLLIN | (launch_msg.iov_len ? POLLOUT : 0);
 
         for (size_t i = 0; i < arraysz(poll_data); i++) poll_data[i].revents = 0;
         while ((ret = poll(poll_data, arraysz(poll_data), -1)) == -1) { if (errno != EINTR) fail("poll() failed"); }
         if (!ret) continue;
+
+        if (poll_data[1].revents & POLLIN) if (!read_or_transfer_from_child_tty()) fail("reading from child tty failed");
+        if (poll_data[0].revents & POLLOUT) if (!from_child_to_self()) fail("writing to self tty failed");
+        if (poll_data[0].revents & POLLIN) if (!read_or_transfer_from_self_tty()) fail("reading from self tty failed");
+        if (poll_data[1].revents & POLLOUT) if (!from_self_to_child()) fail("writing to child tty failed");
 
         check_fd(0, self_ttyfd); check_fd(1, child_master_fd); check_fd(3, signal_read_fd);
 
@@ -379,9 +461,14 @@ use_prewarmed_process(int argc, char *argv[]) {
     if (!setup_signal_handler()) fail("Failed to setup signal handling");
     socket_fd = connect_to_socket_synchronously(env_addr);
     if (socket_fd < 0) fail("Failed to connect to prewarm socket");
+    from_child_tty.buf = malloc(IO_BUZ_SZ * 2);
+    if (!from_child_tty.buf) fail("Out of memory allocating IO buffer");
+    to_child_tty.buf = from_child_tty.buf + IO_BUZ_SZ;
 #undef fail
 
     loop();
+    read_or_transfer_from_child_tty();
+    from_child_to_self();
     cleanup();
     exit(exit_status);
 }
