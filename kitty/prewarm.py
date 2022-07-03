@@ -605,6 +605,28 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
         socket_children[sc.fd] = sc
         poll.register(sc.fd, select.POLLIN)
 
+    def handle_socket_launch(fd: int, event: int) -> None:
+        scq = socket_children.get(q)
+        if scq is None:
+            return
+        if event & select.POLLIN:
+            try:
+                if scq.read():
+                    poll.unregister(scq.fd)
+                    scq.fork(get_all_non_child_fds())
+                    socket_pid_map[scq.pid] = scq
+                    scq.child_id = next(child_id_counter)
+            except SocketClosed:
+                socket_children.pop(q, None)
+            except OSError as e:
+                if os.getpid() == self_pid:
+                    socket_children.pop(q, None)
+                    print_error(f'Failed to fork socket child with error: {e}')
+                else:
+                    raise
+        if event & error_events:
+            socket_children.pop(q, None)
+
     try:
         while True:
             if output_buf:
@@ -623,23 +645,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
                 elif q == unix_socket.fileno():
                     handle_socket_client(event)
                 else:
-                    scq = socket_children.get(q)
-                    if scq is not None:
-                        if event & select.POLLIN:
-                            try:
-                                if scq.read():
-                                    poll.unregister(scq.fd)
-                                    scq.fork(get_all_non_child_fds())
-                                    socket_pid_map[scq.pid] = scq
-                                    scq.child_id = next(child_id_counter)
-                            except SocketClosed:
-                                socket_children.pop(q)
-                            except OSError as e:
-                                print_error(f'Failed to fork socket child with error: {e}')
-                            continue
-                        if event & error_events:
-                            socket_children.pop(q)
-                            continue
+                    handle_socket_launch(q, event)
     except (KeyboardInterrupt, EOFError, BrokenPipeError):
         if os.getpid() == self_pid:
             raise SystemExit(1)
