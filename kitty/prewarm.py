@@ -110,7 +110,7 @@ class PrewarmProcess:
             del self.from_worker
         if self.worker_pid > 0:
             if wait_for_child_death(self.worker_pid) is None:
-                log_error('Prewarm process failed to quite gracefully, killing it')
+                log_error('Prewarm process failed to quit gracefully, killing it')
                 os.kill(self.worker_pid, signal.SIGKILL)
                 os.waitpid(self.worker_pid, 0)
 
@@ -408,8 +408,10 @@ class SocketChild:
         return False
 
     def fork(self, all_non_child_fds: Iterable[int]) -> None:
+        r, w = safe_pipe()
         self.pid = os.fork()
         if self.pid > 0:
+            os.close(w)
             # master process
             if self.stdin > -1:
                 os.close(self.stdin)
@@ -420,9 +422,14 @@ class SocketChild:
             if self.stderr > -1:
                 os.close(self.stderr)
                 self.stderr = -1
+            poll = select.poll()
+            poll.register(r, select.POLLIN)
+            tuple(poll.poll())
+            os.close(r)
             self.handle_creation()
             return
         # child process
+        os.close(r)
         os.setsid()
         remove_signal_handlers()
         if self.tty_name:
@@ -441,6 +448,7 @@ class SocketChild:
                 os.dup2(self.stdout, sys.__stdout__.fileno())
             if self.stderr > -1:
                 os.dup2(self.stderr, sys.__stderr__.fileno())
+        os.close(w)
         for fd in all_non_child_fds:
             if fd > -1:
                 os.close(fd)
@@ -698,6 +706,7 @@ def exec_main(stdin_read: int, stdout_write: int, death_notify_write: int, unix_
         main(stdin_read, stdout_write, death_notify_write, unix_socket)
     finally:
         set_options(None)
+        unix_socket.close()
 
 
 def fork_prewarm_process(opts: Options, use_exec: bool = False) -> Optional[PrewarmProcess]:
@@ -721,7 +730,8 @@ def fork_prewarm_process(opts: Options, use_exec: bool = False) -> Optional[Prew
         child_pid = os.fork()
     if child_pid:
         # master
-        unix_socket.close()
+        if not use_exec:
+            unix_socket.close()
         os.close(stdin_read)
         os.close(stdout_write)
         os.close(death_notify_write)
