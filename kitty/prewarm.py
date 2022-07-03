@@ -38,6 +38,10 @@ error_events = select.POLLERR | select.POLLNVAL | select.POLLHUP
 TIMEOUT = 15.0 if os.environ.get('CI') == 'true' else 5.0
 
 
+def print_error(*a: Any) -> None:
+    log_error('Prewarm zygote:', *a)
+
+
 class PrewarmProcessFailed(Exception):
     pass
 
@@ -496,7 +500,8 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
         if event & select.POLLHUP:
             raise SystemExit(0)
         if event & error_events:
-            raise SystemExit(f'Prewarm zygote process: {err_msg}')
+            print_error(err_msg)
+            raise SystemExit(1)
 
     def handle_input(event: int) -> None:
         nonlocal input_buf, output_buf
@@ -629,6 +634,8 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
                                     scq.child_id = next(child_id_counter)
                             except SocketClosed:
                                 socket_children.pop(q)
+                            except OSError as e:
+                                print_error(f'Failed to fork socket child with error: {e}')
                             continue
                         if event & error_events:
                             socket_children.pop(q)
