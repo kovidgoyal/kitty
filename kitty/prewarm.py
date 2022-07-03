@@ -450,12 +450,20 @@ class SocketChild:
     def handle_death(self, status: int) -> None:
         if hasattr(os, 'waitstatus_to_exitcode'):
             status = os.waitstatus_to_exitcode(status)
-        self.conn.sendall(f'{status}'.encode('ascii'))
+        try:
+            self.conn.sendall(f'{status}'.encode('ascii'))
+        except OSError as e:
+            print_error(f'Failed to send exit status of socket child with error: {e}')
         self.conn.shutdown(socket.SHUT_RDWR)
         self.conn.close()
 
-    def handle_creation(self) -> None:
-        self.conn.sendall(f'{self.pid}:'.encode('ascii'))
+    def handle_creation(self) -> bool:
+        try:
+            self.conn.sendall(f'{self.pid}:'.encode('ascii'))
+        except OSError as e:
+            print_error(f'Failed to send pid of socket child with error: {e}')
+            return False
+        return True
 
 
 def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket: socket.socket) -> None:
