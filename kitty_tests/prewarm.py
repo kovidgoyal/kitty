@@ -4,13 +4,15 @@
 
 import json
 import os
+import re
 import select
 import signal
 import subprocess
 import tempfile
 import time
+from contextlib import suppress
 
-from kitty.constants import kitty_exe
+from kitty.constants import kitty_exe, read_kitty_resource
 from kitty.fast_data_types import (
     CLD_EXITED, CLD_KILLED, get_options, has_sigqueue, install_signal_handlers,
     read_signals, remove_signal_handlers, sigqueue
@@ -19,9 +21,54 @@ from kitty.fast_data_types import (
 from . import BaseTest
 
 
+def socket_child_main(exit_code=0):
+    import json
+    import os
+    from kitty.fast_data_types import get_options
+    from kitty.utils import read_screen_size
+    output = {
+        'test_env': os.environ.get('TEST_ENV_PASS', ''),
+        'cwd': os.getcwd(),
+        'font_family': get_options().font_family,
+        'cols': read_screen_size().cols,
+
+        'done': 'hello',
+    }
+    print(json.dumps(output, indent=2))
+    raise SystemExit(exit_code)
+
+# END_socket_child_main
+
+
 class Prewarm(BaseTest):
 
     maxDiff = None
+
+    def test_socket_prewarming(self):
+        from kitty.prewarm import fork_prewarm_process
+        exit_code = 17
+        src = re.search(
+            r'^(def socket_child_main.+?)^# END_socket_child_main', read_kitty_resource('prewarm.py', 'kitty_tests').decode(),
+            flags=re.M | re.DOTALL).group(1) + '\n\n'
+
+        cwd = tempfile.gettempdir()
+        opts = self.set_options()
+        opts.config_overrides = 'font_family prewarm',
+        p = fork_prewarm_process(opts, use_exec=True)
+        if p is None:
+            return
+        env = {'TEST_ENV_PASS': 'xyz', 'KITTY_PREWARM_SOCKET': p.socket_env_var()}
+        cols = 117
+        pty = self.create_pty(argv=[kitty_exe(), '+runpy', src + f'socket_child_main({exit_code})'], cols=cols, env=env, cwd=cwd)
+        status = os.waitpid(pty.child_pid, 0)[1]
+        with suppress(AttributeError):
+            self.assertEqual(os.waitstatus_to_exitcode(status), exit_code)
+        pty.wait_till(lambda: 'hello' in pty.screen_contents())
+        output = json.loads(pty.screen_contents().strip())
+        self.assertEqual(output['test_env'], env['TEST_ENV_PASS'])
+        self.assertEqual(output['cwd'], cwd)
+        self.assertEqual(output['font_family'], 'prewarm')
+        self.assertEqual(output['cols'], cols)
 
     def test_prewarming(self):
         from kitty.prewarm import fork_prewarm_process

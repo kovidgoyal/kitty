@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from itertools import count
 from typing import (
-    IO, TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, NoReturn, Optional,
+    IO, TYPE_CHECKING, Any, Callable, Dict, Iterator, List, NoReturn, Optional,
     Tuple, Union, cast
 )
 
@@ -84,6 +84,9 @@ class PrewarmProcess:
         self.poll = select.poll()
         self.poll.register(self.read_from_process_fd, select.POLLIN)
         self.unix_socket_name = unix_socket_name
+
+    def socket_env_var(self) -> str:
+        return f'{os.geteuid()}:{os.getegid()}:{self.unix_socket_name}'
 
     def take_from_worker_fd(self, create_file: bool = False) -> int:
         if create_file:
@@ -293,7 +296,7 @@ def child_main(cmd: Dict[str, Any], ready_fd: int = -1) -> NoReturn:
     raise SystemExit(0)
 
 
-def fork(shm_address: str, all_non_child_fds: Iterable[int]) -> Tuple[int, int]:
+def fork(shm_address: str, free_non_child_resources: Callable[[], None]) -> Tuple[int, int]:
     global is_zygote
     sz = pos = 0
     with SharedMemory(name=shm_address, unlink_on_exit=True) as shm:
@@ -331,9 +334,7 @@ def fork(shm_address: str, all_non_child_fds: Iterable[int]) -> Tuple[int, int]:
     remove_signal_handlers()
     os.close(r)
     os.close(ready_fd_write)
-    for fd in all_non_child_fds:
-        if fd > -1:
-            os.close(fd)
+    free_non_child_resources()
     os.setsid()
     tty_name = cmd.get('tty_name')
     if tty_name:
@@ -363,12 +364,11 @@ class SocketClosed(Exception):
 class SocketChild:
 
     def __init__(self, conn: socket.socket, addr: bytes, poll: select.poll):
-        self.fd = conn.fileno()
-        poll.register(self.fd, select.POLLIN)
         self.registered = True
         self.poll = poll
         self.addr = addr
         self.conn = conn
+        self.poll.register(self.conn.fileno(), select.POLLIN)
         self.input_buf = self.output_buf = b''
         self.fds: List[int] = []
         self.child_id = -1
@@ -377,10 +377,13 @@ class SocketChild:
         self.argv: List[str] = []
         self.stdin = self.stdout = self.stderr = -1
         self.pid = -1
+        self.closed = False
 
     def unregister_from_poll(self) -> None:
         if self.registered:
-            self.poll.unregister(self.fd)
+            fd = self.conn.fileno()
+            if fd > -1:
+                self.poll.unregister(self.conn.fileno())
             self.registered = False
 
     def read(self) -> bool:
@@ -426,7 +429,7 @@ class SocketChild:
 
         return False
 
-    def fork(self, all_non_child_fds: Iterable[int]) -> None:
+    def fork(self, free_non_child_resources: Callable[[], None]) -> None:
         global is_zygote
         r, w = safe_pipe()
         self.pid = os.fork()
@@ -470,9 +473,7 @@ class SocketChild:
             if self.stderr > -1:
                 os.dup2(self.stderr, sys.__stderr__.fileno())
         os.close(w)
-        for fd in all_non_child_fds:
-            if fd > -1:
-                os.close(fd)
+        free_non_child_resources()
         child_main({'cwd': self.cwd, 'env': self.env, 'argv': self.argv})
         raise SystemExit(0)
 
@@ -498,6 +499,23 @@ class SocketChild:
             print_error(f'Failed to send pid of socket child with error: {e}')
             return False
         return True
+
+    def close(self) -> None:
+        if self.closed:
+            return
+        self.unregister_from_poll()
+        self.closed = True
+        self.conn.close()
+        if self.stdin > -1:
+            os.close(self.stdin)
+            self.stdin = -1
+        if self.stdout > -1:
+            os.close(self.stdout)
+            self.stdout = -1
+        if self.stderr > -1:
+            os.close(self.stderr)
+            self.stderr = -1
+    __del__ = close
 
 
 def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket: socket.socket) -> None:
@@ -525,10 +543,9 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
     prewarm()
 
     def remove_socket_child(sc: SocketChild) -> None:
-        socket_children.pop(sc.fd, None)
-        sc.unregister_from_poll()
+        socket_children.pop(sc.conn.fileno(), None)
         socket_pid_map.pop(sc.pid, None)
-        sc.conn.close()
+        sc.close()
 
     def get_all_non_child_fds() -> Iterator[int]:
         yield notify_child_death_fd
@@ -536,14 +553,14 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
         yield stdout_fd
         # the signal fds are closed by remove_signal_handlers()
         yield from child_ready_fds.values()
-        for sc in socket_children.values():
-            yield sc.fd
-            if sc.stdin > -1:
-                yield sc.stdin
-            if sc.stdout > -1:
-                yield sc.stdout
-            if sc.stderr > -1:
-                yield sc.stderr
+
+    def free_non_child_resources() -> None:
+        for fd in get_all_non_child_fds():
+            if fd > -1:
+                os.close(fd)
+        unix_socket.close()
+        for sc in tuple(socket_children.values()):
+            remove_socket_child(sc)
 
     def check_event(event: int, err_msg: str) -> None:
         if event & select.POLLHUP:
@@ -576,7 +593,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
                 raise SystemExit(0)
             elif cmd == 'fork':
                 try:
-                    child_pid, ready_fd_write = fork(payload, get_all_non_child_fds())
+                    child_pid, ready_fd_write = fork(payload, free_non_child_resources)
                 except Exception as e:
                     es = str(e).replace('\n', ' ')
                     output_buf += f'ERR:{es}\n'.encode()
@@ -654,7 +671,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
         check_event(event, 'UNIX socket fd listener failed')
         conn, addr = unix_socket.accept()
         sc = SocketChild(conn, addr, poll)
-        socket_children[sc.fd] = sc
+        socket_children[sc.conn.fileno()] = sc
 
     def handle_socket_launch(fd: int, event: int) -> None:
         scq = socket_children.get(q)
@@ -664,7 +681,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
             try:
                 if scq.read():
                     scq.unregister_from_poll()
-                    scq.fork(get_all_non_child_fds())
+                    scq.fork(free_non_child_resources)
                     socket_pid_map[scq.pid] = scq
                     scq.child_id = next(child_id_counter)
             except SocketClosed:
@@ -714,6 +731,8 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
             for fmd in child_ready_fds.values():
                 with suppress(OSError):
                     os.close(fmd)
+            for sc in tuple(socket_children.values()):
+                remove_socket_child(sc)
 
 
 def get_socket_name(unix_socket: socket.socket) -> str:
@@ -743,7 +762,8 @@ def exec_main(stdin_read: int, stdout_write: int, death_notify_write: int, unix_
         main(stdin_read, stdout_write, death_notify_write, unix_socket)
     finally:
         set_options(None)
-        unix_socket.close()
+        if is_zygote:
+            unix_socket.close()
 
 
 def fork_prewarm_process(opts: Options, use_exec: bool = False) -> Optional[PrewarmProcess]:

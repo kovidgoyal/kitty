@@ -204,8 +204,8 @@ class PTY:
             self.master_fd, self.slave_fd = openpty()
             self.is_child = False
         else:
-            pid, self.master_fd = fork()
-            self.is_child = pid == CHILD
+            self.child_pid, self.master_fd = fork()
+            self.is_child = self.child_pid == CHILD
         if self.is_child:
             while read_screen_size().width != columns * cell_width:
                 time.sleep(0.01)
