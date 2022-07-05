@@ -7,7 +7,11 @@
 // for SA_RESTART
 #define _XOPEN_SOURCE 700
 // for cfmakeraw
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE 1
+#else
 #define _DEFAULT_SOURCE
+#endif
 
 // Includes {{{
 #include <stdio.h>
@@ -32,8 +36,8 @@
 #include <sys/stat.h>
 #else
 #include <pty.h>
-#include <limits.h>
 #endif
+#include <limits.h>
 
 #define arraysz(x) (sizeof(x)/sizeof(x[0]))
 
@@ -72,7 +76,7 @@ parse_long(const char *str, long *val) {
 
 static bool
 parse_int(const char *str, int *val) {
-    long lval;
+    long lval = 0;
     if (!parse_long(str, &lval)) return false;
     *val = lval;
     return true;
