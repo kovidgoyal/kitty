@@ -25,7 +25,7 @@ class Prewarm(BaseTest):
     maxDiff = None
 
     def test_socket_prewarming(self):
-        from kitty.prewarm import fork_prewarm_process
+        from kitty.prewarm import fork_prewarm_process, wait_for_child_death
         exit_code = 17
         src = '''\
 def socket_child_main(exit_code=0):
@@ -69,7 +69,10 @@ def socket_child_main(exit_code=0):
             f.write(stdin_data)
         with open(stdout_r) as f:
             stdout_data = f.read()
-        status = os.waitpid(pty.child_pid, 0)[1]
+        status = wait_for_child_death(pty.child_pid, timeout=5)
+        if status is None:
+            os.kill(pty.child_pid, signal.SIGKILL)
+        self.assertIsNotNone(status, 'prewarm wrapper process did not exit')
         with suppress(AttributeError):
             self.assertEqual(os.waitstatus_to_exitcode(status), exit_code)
         pty.wait_till(lambda: 'hello' in pty.screen_contents())
