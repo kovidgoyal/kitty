@@ -826,10 +826,13 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         cflags += '-arch x86_64 -arch arm64'.split()
     cppflags = []
     libs: List[str] = []
+    ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
     if args.profile or args.sanitize:
         if args.sanitize:
             cflags.append('-g3')
-            cflags.extend(get_sanitize_args(env.cc, env.ccver))
+            sanitize_args = get_sanitize_args(env.cc, env.ccver)
+            cflags.extend(sanitize_args)
+            ldflags.extend(sanitize_args)
             libs += ['-lasan'] if is_gcc(env.cc) and not is_macos else []
         else:
             cflags.append('-g')
@@ -855,7 +858,6 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     pylib = get_python_flags(cflags, for_main_executable=True)
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
-    ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
     for path in args.extra_include_dirs:
         cflags.append(f'-I{path}')
     if bundle_type == 'linux-freeze':
