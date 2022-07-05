@@ -1413,3 +1413,7 @@ def install_signal_handlers(*signals: int) -> Tuple[int, int]:
 
 def remove_signal_handlers() -> None:
     pass
+
+
+def getpeereid(fd: int) -> Tuple[int, int]:
+    pass

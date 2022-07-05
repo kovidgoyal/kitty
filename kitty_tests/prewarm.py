@@ -24,6 +24,8 @@ from . import BaseTest
 def socket_child_main(exit_code=0):
     import json
     import os
+    import sys
+
     from kitty.fast_data_types import get_options
     from kitty.utils import read_screen_size
     output = {
@@ -34,7 +36,7 @@ def socket_child_main(exit_code=0):
 
         'done': 'hello',
     }
-    print(json.dumps(output, indent=2))
+    print(json.dumps(output, indent=2), file=sys.stderr, flush=True)
     raise SystemExit(exit_code)
 
 # END_socket_child_main
