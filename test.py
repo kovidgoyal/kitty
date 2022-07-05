@@ -1,4 +1,4 @@
-#!/usr/bin/env -S kitty +launch
+#!./kitty/launcher/kitty +launch
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import importlib

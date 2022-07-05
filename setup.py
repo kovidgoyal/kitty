@@ -1538,7 +1538,8 @@ def main() -> None:
     args.prefix = os.path.abspath(args.prefix)
     os.chdir(base)
     if args.action == 'test':
-        os.execlp('kitty', 'kitty', '+launch', 'test.py')
+        texe = os.path.abspath('kitty/launcher/kitty')
+        os.execl(texe, texe, '+launch', 'test.py')
     if args.action == 'clean':
         clean()
         return
