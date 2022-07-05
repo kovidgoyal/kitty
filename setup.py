@@ -1538,9 +1538,7 @@ def main() -> None:
     args.prefix = os.path.abspath(args.prefix)
     os.chdir(base)
     if args.action == 'test':
-        os.execlp(
-            sys.executable, sys.executable, 'test.py'
-        )
+        os.execlp('kitty', 'kitty', '+launch', 'test.py')
     if args.action == 'clean':
         clean()
         return
