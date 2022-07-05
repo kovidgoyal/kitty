@@ -866,6 +866,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         # RUNPATH locations for transitive dependencies, unlike RPATH.
         ldflags += ['-Wl,--disable-new-dtags', '-Wl,-rpath,$ORIGIN/../lib']
     os.makedirs(launcher_dir, exist_ok=True)
+    os.makedirs(build_dir, exist_ok=True)
     objects = []
     for src in ('launcher.c', 'prewarm-launcher.c'):
         obj = os.path.join(build_dir, src.replace('.c', '.o'))
