@@ -4,7 +4,6 @@
 
 import json
 import os
-import re
 import select
 import signal
 import subprocess
@@ -12,36 +11,13 @@ import tempfile
 import time
 from contextlib import suppress
 
-from kitty.constants import kitty_exe, read_kitty_resource
+from kitty.constants import kitty_exe
 from kitty.fast_data_types import (
     CLD_EXITED, CLD_KILLED, get_options, has_sigqueue, install_signal_handlers,
     read_signals, remove_signal_handlers, sigqueue
 )
 
 from . import BaseTest
-
-
-def socket_child_main(exit_code=0):
-    import json
-    import os
-    import sys
-
-    from kitty.fast_data_types import get_options
-    from kitty.utils import read_screen_size
-    output = {
-        'test_env': os.environ.get('TEST_ENV_PASS', ''),
-        'cwd': os.getcwd(),
-        'font_family': get_options().font_family,
-        'cols': read_screen_size(fd=sys.stderr.fileno()).cols,
-        'stdin_data': sys.stdin.read(),
-
-        'done': 'hello',
-    }
-    print(json.dumps(output, indent=2), file=sys.stderr, flush=True)
-    print('testing stdout', end='')
-    raise SystemExit(exit_code)
-
-# END_socket_child_main
 
 
 class Prewarm(BaseTest):
@@ -51,11 +27,28 @@ class Prewarm(BaseTest):
     def test_socket_prewarming(self):
         from kitty.prewarm import fork_prewarm_process
         exit_code = 17
-        src = re.search(
-            r'^(def socket_child_main.+?)^# END_socket_child_main', read_kitty_resource('prewarm.py', 'kitty_tests').decode(),
-            flags=re.M | re.DOTALL).group(1) + '\n\n'
+        src = '''\
+def socket_child_main(exit_code=0):
+    import json
+    import os
+    import sys
 
-        cwd = tempfile.gettempdir()
+    from kitty.fast_data_types import get_options
+    from kitty.utils import read_screen_size
+    output = {
+        'test_env': os.environ.get('TEST_ENV_PASS', ''),
+        'cwd': os.path.realpath(os.getcwd()),
+        'font_family': get_options().font_family,
+        'cols': read_screen_size(fd=sys.stderr.fileno()).cols,
+        'stdin_data': sys.stdin.read(),
+
+        'done': 'hello',
+    }
+    print(json.dumps(output, indent=2), file=sys.stderr, flush=True)
+    print('testing stdout', end='')
+    raise SystemExit(exit_code)
+    ''' + '\n\n'
+        cwd = os.path.realpath(tempfile.gettempdir())
         opts = self.set_options()
         opts.config_overrides = 'font_family prewarm',
         p = fork_prewarm_process(opts, use_exec=True)
