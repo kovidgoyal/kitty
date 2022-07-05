@@ -272,8 +272,9 @@ is_zygote = True
 
 
 def debug(*a: Any) -> None:
-    with open(parent_tty_name, 'w') as f:
-        print(*a, file=f)
+    if parent_tty_name:
+        with open(parent_tty_name, 'w') as f:
+            print(*a, file=f)
 
 
 def child_main(cmd: Dict[str, Any], ready_fd: int = -1) -> NoReturn:
@@ -526,7 +527,8 @@ class SocketChild:
 
 def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket: socket.socket) -> None:
     global parent_tty_name
-    parent_tty_name = os.ttyname(sys.stdout.fileno())
+    with suppress(OSError):
+        parent_tty_name = os.ttyname(sys.stdout.fileno())
     os.set_blocking(notify_child_death_fd, False)
     os.set_blocking(stdin_fd, False)
     os.set_blocking(stdout_fd, False)
