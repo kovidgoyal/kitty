@@ -5,8 +5,6 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "prewarm-launcher.h"
-
 #include <libgen.h>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -15,6 +13,8 @@
 #else
 #include <limits.h>
 #endif
+#include <stdbool.h>
+#include <stdint.h>
 #include <wchar.h>
 #include <Python.h>
 
@@ -267,6 +267,8 @@ read_exe_path(char *exe, size_t buf_sz) {
     return true;
 }
 #endif // }}}
+
+extern void use_prewarmed_process(int argc, char *argv[]);
 
 int main(int argc, char *argv[]) {
     if (argc < 1 || !argv) { fprintf(stderr, "Invalid argc/argv\n"); return 1; }

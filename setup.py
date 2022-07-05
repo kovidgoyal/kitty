@@ -864,13 +864,17 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         # RUNPATH locations for transitive dependencies, unlike RPATH.
         ldflags += ['-Wl,--disable-new-dtags', '-Wl,-rpath,$ORIGIN/../lib']
     os.makedirs(launcher_dir, exist_ok=True)
+    objects = []
+    for src in ('launcher.c', 'prewarm-launcher.c'):
+        obj = os.path.join(build_dir, src.replace('.c', '.o'))
+        objects.append(obj)
+        cmd = env.cc + cppflags + cflags + ['-c', src, '-o', obj]
+        key = CompileKey('launcher.c', os.path.basename(obj))
+        args.compilation_database.add_command(f'Compiling {emphasis(src)} ...', cmd, partial(newer, obj, src), key=key, keyfile=src)
     dest = os.path.join(launcher_dir, 'kitty')
-    src = 'launcher.c'
-    cmd = env.cc + cppflags + cflags + [
-           src, '-o', dest] + ldflags + libs + pylib
-    key = CompileKey('launcher.c', 'kitty')
-    desc = f'Building {emphasis("launcher")} ...'
-    args.compilation_database.add_command(desc, cmd, partial(newer, dest, src, "prewarm-launcher.h"), key=key, keyfile=src)
+    desc = f'Linking {emphasis("launcher")} ...'
+    cmd = env.cc + ldflags + objects + libs + pylib + ['-o', dest]
+    args.compilation_database.add_command(desc, cmd, partial(newer, dest, *objects), key=CompileKey('', 'kitty'))
     args.compilation_database.build_all()
 
 

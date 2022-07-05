@@ -4,8 +4,6 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#pragma once
-
 // for SA_RESTART
 #define _XOPEN_SOURCE 700
 // for cfmakeraw
@@ -510,7 +508,7 @@ check_socket_addr(char *addr) {
     return p + 1;
 }
 
-static void
+void
 use_prewarmed_process(int argc, char *argv[]) {
     char *env_addr = getenv("KITTY_PREWARM_SOCKET");
     if (!env_addr || !*env_addr || !is_prewarmable(argc, argv)) return;
