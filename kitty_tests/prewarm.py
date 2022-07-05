@@ -32,11 +32,13 @@ def socket_child_main(exit_code=0):
         'test_env': os.environ.get('TEST_ENV_PASS', ''),
         'cwd': os.getcwd(),
         'font_family': get_options().font_family,
-        'cols': read_screen_size().cols,
+        'cols': read_screen_size(fd=sys.stderr.fileno()).cols,
+        'stdin_data': sys.stdin.read(),
 
         'done': 'hello',
     }
     print(json.dumps(output, indent=2), file=sys.stderr, flush=True)
+    print('testing stdout', end='')
     raise SystemExit(exit_code)
 
 # END_socket_child_main
@@ -61,7 +63,18 @@ class Prewarm(BaseTest):
             return
         env = {'TEST_ENV_PASS': 'xyz', 'KITTY_PREWARM_SOCKET': p.socket_env_var()}
         cols = 117
-        pty = self.create_pty(argv=[kitty_exe(), '+runpy', src + f'socket_child_main({exit_code})'], cols=cols, env=env, cwd=cwd)
+        stdin_r, stdin_w = os.pipe()
+        os.set_inheritable(stdin_w, False)
+        stdout_r, stdout_w = os.pipe()
+        os.set_inheritable(stdout_r, False)
+        pty = self.create_pty(
+            argv=[kitty_exe(), '+runpy', src + f'socket_child_main({exit_code})'], cols=cols, env=env, cwd=cwd,
+            stdin_fd=stdin_r, stdout_fd=stdout_w)
+        stdin_data = 'testing--stdin-read'
+        with open(stdin_w, 'w') as f:
+            f.write(stdin_data)
+        with open(stdout_r) as f:
+            stdout_data = f.read()
         status = os.waitpid(pty.child_pid, 0)[1]
         with suppress(AttributeError):
             self.assertEqual(os.waitstatus_to_exitcode(status), exit_code)
@@ -71,6 +84,8 @@ class Prewarm(BaseTest):
         self.assertEqual(output['cwd'], cwd)
         self.assertEqual(output['font_family'], 'prewarm')
         self.assertEqual(output['cols'], cols)
+        self.assertEqual(output['stdin_data'], stdin_data)
+        self.assertEqual(stdout_data, 'testing stdout')
 
     def test_prewarming(self):
         from kitty.prewarm import fork_prewarm_process

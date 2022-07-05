@@ -10,7 +10,7 @@ import struct
 import sys
 import termios
 import time
-from pty import CHILD, fork
+from pty import CHILD, fork, STDIN_FILENO, STDOUT_FILENO
 from unittest import TestCase
 
 from kitty.config import finalize_keys, finalize_mouse_mappings
@@ -180,9 +180,12 @@ class BaseTest(TestCase):
         s = Screen(c, lines, cols, scrollback, cell_width, cell_height, 0, c)
         return s
 
-    def create_pty(self, argv=None, cols=80, lines=100, scrollback=100, cell_width=10, cell_height=20, options=None, cwd=None, env=None):
+    def create_pty(
+            self, argv=None, cols=80, lines=100, scrollback=100, cell_width=10, cell_height=20,
+            options=None, cwd=None, env=None, stdin_fd=None, stdout_fd=None
+    ):
         self.set_options(options)
-        return PTY(argv, lines, cols, scrollback, cell_width, cell_height, cwd, env)
+        return PTY(argv, lines, cols, scrollback, cell_width, cell_height, cwd, env, stdin_fd=stdin_fd, stdout_fd=stdout_fd)
 
     def assertEqualAttributes(self, c1, c2):
         x1, y1, c1.x, c1.y = c1.x, c1.y, 0, 0
@@ -195,7 +198,10 @@ class BaseTest(TestCase):
 
 class PTY:
 
-    def __init__(self, argv=None, rows=25, columns=80, scrollback=100, cell_width=10, cell_height=20, cwd=None, env=None):
+    def __init__(
+        self, argv=None, rows=25, columns=80, scrollback=100, cell_width=10, cell_height=20,
+        cwd=None, env=None, stdin_fd=None, stdout_fd=None
+    ):
         if isinstance(argv, str):
             argv = shlex.split(argv)
         self.write_buf = b''
@@ -211,7 +217,17 @@ class PTY:
                 time.sleep(0.01)
             if cwd:
                 os.chdir(cwd)
+            if stdin_fd is not None:
+                os.dup2(stdin_fd, STDIN_FILENO)
+                os.close(stdin_fd)
+            if stdout_fd is not None:
+                os.dup2(stdout_fd, STDOUT_FILENO)
+                os.close(stdout_fd)
             os.execvpe(argv[0], argv, env or os.environ)
+        if stdin_fd is not None:
+            os.close(stdin_fd)
+        if stdout_fd is not None:
+            os.close(stdout_fd)
         os.set_blocking(self.master_fd, False)
         self.cell_width = cell_width
         self.cell_height = cell_height

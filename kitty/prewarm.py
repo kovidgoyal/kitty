@@ -362,6 +362,8 @@ class SocketClosed(Exception):
 
 
 def verify_socket_creds(conn: socket.socket) -> bool:
+    # needed as abstract unix sockets used on Linux have no permissions and
+    # older BSDs ignore socket file permissions
     uid, gid = getpeereid(conn.fileno())
     return uid == os.geteuid() and gid == os.getegid()
 
