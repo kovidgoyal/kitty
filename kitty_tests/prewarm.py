@@ -54,7 +54,8 @@ def socket_child_main(exit_code=0):
         p = fork_prewarm_process(opts, use_exec=True)
         if p is None:
             return
-        env = {'TEST_ENV_PASS': 'xyz', 'KITTY_PREWARM_SOCKET': p.socket_env_var()}
+        env = os.environ.copy()
+        env.update({'TEST_ENV_PASS': 'xyz', 'KITTY_PREWARM_SOCKET': p.socket_env_var()})
         cols = 117
         stdin_r, stdin_w = os.pipe()
         os.set_inheritable(stdin_w, False)
