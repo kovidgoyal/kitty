@@ -29,7 +29,7 @@ from kitty.fast_data_types import (
 from kitty.options.types import Options
 from kitty.shm import SharedMemory
 from kitty.types import SignalInfo
-from kitty.utils import log_error, random_unix_socket
+from kitty.utils import log_error, random_unix_socket, safer_fork
 
 if TYPE_CHECKING:
     from _typeshed import ReadableBuffer, WriteableBuffer
@@ -51,11 +51,6 @@ class PrewarmProcessFailed(Exception):
 class Child:
     child_id: int
     child_process_pid: int
-
-
-def reinit_openssl_prng() -> None:
-    import ssl
-    ssl.RAND_add(os.urandom(64), 0.0)
 
 
 def wait_for_child_death(child_pid: int, timeout: float = 1) -> Optional[int]:
@@ -317,7 +312,7 @@ def fork(shm_address: str, free_non_child_resources: Callable[[], None]) -> Tupl
     r, w = safe_pipe()
     ready_fd_read, ready_fd_write = safe_pipe()
     try:
-        child_pid = os.fork()
+        child_pid = safer_fork()
     except OSError:
         os.close(r)
         os.close(w)
@@ -331,7 +326,6 @@ def fork(shm_address: str, free_non_child_resources: Callable[[], None]) -> Tupl
         # master process
         os.close(w)
         os.close(ready_fd_read)
-        reinit_openssl_prng()
         poll = select.poll()
         poll.register(r, select.POLLIN)
         tuple(poll.poll())
@@ -445,11 +439,10 @@ class SocketChild:
     def fork(self, free_non_child_resources: Callable[[], None]) -> None:
         global is_zygote
         r, w = safe_pipe()
-        self.pid = os.fork()
+        self.pid = safer_fork()
         if self.pid > 0:
             # master process
             os.close(w)
-            reinit_openssl_prng()
             if self.stdin > -1:
                 os.close(self.stdin)
                 self.stdin = -1
@@ -803,10 +796,9 @@ def fork_prewarm_process(opts: Options, use_exec: bool = False) -> Optional[Prew
     else:
         unix_socket = random_unix_socket()
         socket_name = get_socket_name(unix_socket)
-        child_pid = os.fork()
+        child_pid = safer_fork()
     if child_pid:
         # master
-        reinit_openssl_prng()
         if not use_exec:
             unix_socket.close()
         os.close(stdin_read)

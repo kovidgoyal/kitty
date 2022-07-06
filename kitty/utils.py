@@ -1056,3 +1056,16 @@ def is_pid_alive(pid: int) -> bool:
     except Exception:
         pass
     return True
+
+
+def safer_fork() -> int:
+    pid = os.fork()
+    if pid:
+        # master
+        import ssl
+        ssl.RAND_add(os.urandom(32), 0.0)
+    else:
+        # child
+        import atexit
+        atexit._clear()
+    return pid
