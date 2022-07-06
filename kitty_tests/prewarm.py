@@ -67,6 +67,7 @@ def socket_child_main(exit_code=0):
         stdin_data = 'testing--stdin-read'
         with open(stdin_w, 'w') as f:
             f.write(stdin_data)
+        pty.wait_till(lambda: 'hello' in pty.screen_contents())
         with open(stdout_r) as f:
             stdout_data = f.read()
         status = wait_for_child_death(pty.child_pid, timeout=5)
@@ -75,7 +76,6 @@ def socket_child_main(exit_code=0):
         self.assertIsNotNone(status, 'prewarm wrapper process did not exit')
         with suppress(AttributeError):
             self.assertEqual(os.waitstatus_to_exitcode(status), exit_code)
-        pty.wait_till(lambda: 'hello' in pty.screen_contents())
         output = json.loads(pty.screen_contents().strip())
         self.assertEqual(output['test_env'], env['TEST_ENV_PASS'])
         self.assertEqual(output['cwd'], cwd)
