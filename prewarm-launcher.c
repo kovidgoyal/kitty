@@ -117,13 +117,7 @@ safe_write(int fd, void *buf, size_t n) {
     return ret;
 }
 
-static size_t
-strnlength(const char* s, size_t n) {
-  const char* found = memchr(s, '\0', n);
-  return found ? (size_t)(found-s) : n;
-}
-
-bool
+static bool
 set_blocking(int fd, bool blocking) {
    if (fd < 0) return false;
    int flags = fcntl(fd, F_GETFL, 0);
@@ -136,9 +130,13 @@ static int
 connect_to_socket_synchronously(const char *addr) {
     struct sockaddr_un sock_addr = {.sun_family=AF_UNIX};
     strncpy(sock_addr.sun_path, addr, sizeof(sock_addr.sun_path) - 1);
-    const size_t addrlen = strnlength(sock_addr.sun_path, sizeof(sock_addr.sun_path)) + sizeof(sock_addr.sun_family);
-    if (sock_addr.sun_path[0] == '@') sock_addr.sun_path[0] = 0;
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+#ifdef __linux__
+    const size_t addrlen = strnlen(sock_addr.sun_path, sizeof(sock_addr.sun_path)) + sizeof(sock_addr.sun_family);
+    if (sock_addr.sun_path[0] == '@') sock_addr.sun_path[0] = 0;
+#else
+    const size_t addrlen = sizeof(sock_addr);
+#endif
     if (connect(fd, (struct sockaddr*)&sock_addr, addrlen) != 0) {
         if (errno != EINTR && errno != EINPROGRESS) return -1;
         struct pollfd poll_data = {.fd=fd, .events=POLLOUT};
