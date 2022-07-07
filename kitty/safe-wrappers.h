@@ -37,3 +37,10 @@ safe_close(int fd, const char* file UNUSED, const int line UNUSED) {
 #endif
     while(close(fd) != 0 && errno == EINTR);
 }
+
+static inline int
+safe_dup2(int a, int b) {
+    int ret;
+    while((ret = dup2(a, b)) < 0 && errno == EINTR);
+    return ret;
+}

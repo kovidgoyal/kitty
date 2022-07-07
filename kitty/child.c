@@ -128,14 +128,14 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             safe_close(tfd, __FILE__, __LINE__);
 
             // Redirect stdin/stdout/stderr to the pty
-            if (dup2(slave, 1) == -1) exit_on_err("dup2() failed for fd number 1");
-            if (dup2(slave, 2) == -1) exit_on_err("dup2() failed for fd number 2");
+            if (safe_dup2(slave, 1) == -1) exit_on_err("dup2() failed for fd number 1");
+            if (safe_dup2(slave, 2) == -1) exit_on_err("dup2() failed for fd number 2");
             if (stdin_read_fd > -1) {
-                if (dup2(stdin_read_fd, 0) == -1) exit_on_err("dup2() failed for fd number 0");
+                if (safe_dup2(stdin_read_fd, 0) == -1) exit_on_err("dup2() failed for fd number 0");
                 safe_close(stdin_read_fd, __FILE__, __LINE__);
                 safe_close(stdin_write_fd, __FILE__, __LINE__);
             } else {
-                if (dup2(slave, 0) == -1) exit_on_err("dup2() failed for fd number 0");
+                if (safe_dup2(slave, 0) == -1) exit_on_err("dup2() failed for fd number 0");
             }
             safe_close(slave, __FILE__, __LINE__);
             safe_close(master, __FILE__, __LINE__);
@@ -185,19 +185,13 @@ spawn(PyObject *self UNUSED, PyObject *args) {
 
 static PyObject*
 establish_controlling_tty(PyObject *self UNUSED, PyObject *args) {
-    const char *ttyname;
-    int stdin_fd = -1, stdout_fd = -1, stderr_fd = -1;
-    if (!PyArg_ParseTuple(args, "s|iii", &ttyname, &stdin_fd, &stdout_fd, &stderr_fd)) return NULL;
-    int tfd = safe_open(ttyname, O_RDWR, 0);
-    if (tfd == -1) return PyErr_SetFromErrnoWithFilename(PyExc_OSError, ttyname);
-#ifdef TIOCSCTTY
-    // On BSD open() does not establish the controlling terminal
-    if (ioctl(tfd, TIOCSCTTY, 0) == -1) return PyErr_SetFromErrno(PyExc_OSError);
-#endif
-    if (stdin_fd > -1 && dup2(tfd, stdin_fd) == -1) return PyErr_SetFromErrno(PyExc_OSError);
-    if (stdout_fd > -1 && dup2(tfd, stdout_fd) == -1) return PyErr_SetFromErrno(PyExc_OSError);
-    if (stderr_fd > -1 && dup2(tfd, stderr_fd) == -1) return PyErr_SetFromErrno(PyExc_OSError);
-    safe_close(tfd, __FILE__, __LINE__);
+    int tty_fd, stdin_fd = -1, stdout_fd = -1, stderr_fd = -1;
+    if (!PyArg_ParseTuple(args, "i|iii", &tty_fd, &stdin_fd, &stdout_fd, &stderr_fd)) return NULL;
+    if (ioctl(tty_fd, TIOCSCTTY, 0) == -1) { safe_close(tty_fd, __FILE__, __LINE__); return PyErr_SetFromErrno(PyExc_OSError); }
+    if (stdin_fd > -1 && safe_dup2(tty_fd, stdin_fd) == -1) { safe_close(tty_fd, __FILE__, __LINE__); return PyErr_SetFromErrno(PyExc_OSError); }
+    if (stdout_fd > -1 && safe_dup2(tty_fd, stdout_fd) == -1) { safe_close(tty_fd, __FILE__, __LINE__); return PyErr_SetFromErrno(PyExc_OSError); }
+    if (stderr_fd > -1 && safe_dup2(tty_fd, stderr_fd) == -1) { safe_close(tty_fd, __FILE__, __LINE__); return PyErr_SetFromErrno(PyExc_OSError); }
+    safe_close(tty_fd, __FILE__, __LINE__);
     Py_RETURN_NONE;
 }
 

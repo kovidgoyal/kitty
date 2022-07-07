@@ -351,7 +351,7 @@ def fork(shm_address: str, free_non_child_resources: Callable[[], None]) -> Tupl
     if tty_name:
         sys.__stdout__.flush()
         sys.__stderr__.flush()
-        establish_controlling_tty(tty_name, sys.__stdin__.fileno(), sys.__stdout__.fileno(), sys.__stderr__.fileno())
+        establish_controlling_tty(os.open(tty_name, os.O_RDWR | os.O_CLOEXEC, 0), sys.__stdin__.fileno(), sys.__stdout__.fileno(), sys.__stderr__.fileno())
     os.close(w)
     if shm.unlink_on_exit:
         child_main(cmd, ready_fd_read)
@@ -389,7 +389,7 @@ class SocketChild:
         self.input_buf = self.output_buf = b''
         self.fds: List[int] = []
         self.child_id = -1
-        self.cwd = self.tty_name = ''
+        self.cwd = ''
         self.env: Dict[str, str] = {}
         self.argv: List[str] = []
         self.stdin = self.stdout = self.stderr = -1
@@ -428,6 +428,9 @@ class SocketChild:
             self.input_buf = self.input_buf[idx+1:]
             cmd, _, payload = line.partition(':')
             if cmd == 'finish':
+                for x in self.fds:
+                    os.set_inheritable(x, x is not self.fds[0])
+                    os.set_blocking(x, True)
                 if self.stdin > -1:
                     self.stdin = self.fds[self.stdin]
                 if self.stdout > -1:
@@ -437,8 +440,6 @@ class SocketChild:
                 return True
             elif cmd == 'cwd':
                 self.cwd = payload
-            elif cmd == 'tty_name':
-                self.tty_name = payload
             elif cmd == 'env':
                 k, _, v = payload.partition('=')
                 self.env[k] = v
@@ -480,14 +481,14 @@ class SocketChild:
         os.close(r)
         os.setsid()
         restore_python_signal_handlers()
-        if self.tty_name:
+        if self.fds:
             sys.__stdout__.flush()
             sys.__stderr__.flush()
             establish_controlling_tty(
-                self.tty_name,
-                sys.__stdin__.fileno() if self.stdin == -1 else -1,
-                sys.__stdout__.fileno() if self.stdout == -1 else -1,
-                sys.__stderr__.fileno() if self.stderr == -1 else -1)
+                self.fds[0],
+                sys.__stdin__.fileno() if self.stdin < 0 else -1,
+                sys.__stdout__.fileno() if self.stdout < 0 else -1,
+                sys.__stderr__.fileno() if self.stderr < 0 else -1)
             # the std streams fds are in all_non_child_fds already
             # so they will be closed there
             if self.stdin > -1:

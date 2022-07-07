@@ -102,6 +102,13 @@ safe_close(int fd) {
     while(close(fd) != 0 && errno == EINTR);
 }
 
+static inline int
+safe_dup2(int a, int b) {
+    int ret;
+    while((ret = dup2(a, b)) < 0 && errno == EINTR);
+    return ret;
+}
+
 static inline bool
 safe_tcsetattr(int fd, int actions, const struct termios *tp) {
     int ret = 0;
@@ -166,7 +173,6 @@ is_prewarmable(int argc, char *argv[]) {
 }
 
 static int child_master_fd = -1, child_slave_fd = -1;
-static char child_tty_name[PATH_MAX] = {0};
 static struct winsize self_winsize = {0};
 static struct termios self_termios = {0}, restore_termios = {0};
 static bool termios_needs_restore = false;
@@ -213,7 +219,7 @@ get_termios_state(void) {
 
 static bool
 open_pty(void) {
-    while (openpty(&child_master_fd, &child_slave_fd, child_tty_name, &self_termios, &self_winsize) == -1) {
+    while (openpty(&child_master_fd, &child_slave_fd, NULL, &self_termios, &self_winsize) == -1) {
         if (errno != EINTR) return false;
     }
     set_blocking(child_master_fd, false);
@@ -255,7 +261,7 @@ setup_signal_handler(void) {
 
 static void
 setup_stdio_handles(void) {
-    int pos = 0;
+    int pos = 1;
     if (!isatty(STDIN_FILENO)) stdin_pos = pos++;
     if (!isatty(STDOUT_FILENO)) stdout_pos = pos++;
     if (!isatty(STDERR_FILENO)) stderr_pos = pos++;
@@ -290,27 +296,22 @@ static bool
 create_launch_msg(int argc, char *argv[]) {
 #define w(prefix, data) { if (!write_item_to_launch_msg(prefix, data)) return false; }
     static char buf[4*PATH_MAX];
-    w("tty_name", child_tty_name);
     if (getcwd(buf, sizeof(buf))) { w("cwd", buf); }
     for (int i = 0; i < argc; i++) w("argv", argv[i]);
     char **s = environ;
     for (; *s; s++) w("env", *s);
-    int num_fds = 0, fds[8];
+    int num_fds = 0, fds[4];
+    fds[num_fds++] = child_slave_fd;
 #define sio(which, x) if (which##_pos > -1) { snprintf(buf, sizeof(buf), "%d", which##_pos); w(#which, buf); fds[num_fds++] = x;  }
     sio(stdin, STDIN_FILENO); sio(stdout, STDOUT_FILENO); sio(stderr, STDERR_FILENO);
 #undef sio
     w("finish", "");
-    if (num_fds) {
-        struct cmsghdr *cmsg = CMSG_FIRSTHDR(&launch_msg_container);
-        cmsg->cmsg_len = CMSG_LEN(sizeof(fds[0]) * num_fds);
-        memcpy(CMSG_DATA(cmsg), fds, num_fds * sizeof(fds[0]));
-        launch_msg_container.msg_controllen = cmsg->cmsg_len;
-        cmsg->cmsg_level = SOL_SOCKET;
-        cmsg->cmsg_type = SCM_RIGHTS;
-    } else {
-        launch_msg_container.msg_controllen = 0;
-        launch_msg_container.msg_control = 0;
-    }
+    struct cmsghdr *cmsg = CMSG_FIRSTHDR(&launch_msg_container);
+    cmsg->cmsg_len = CMSG_LEN(sizeof(fds[0]) * num_fds);
+    memcpy(CMSG_DATA(cmsg), fds, num_fds * sizeof(fds[0]));
+    launch_msg_container.msg_controllen = cmsg->cmsg_len;
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_RIGHTS;
     return true;
 #undef w
 }
@@ -351,6 +352,16 @@ read_child_data(void) {
     return true;
 }
 
+static void
+close_sent_fds(void) {
+    if (child_slave_fd > -1) { safe_close(child_slave_fd); child_slave_fd = -1; }
+#define redirect(which, mode) { int fd = safe_open("/dev/null", mode | O_CLOEXEC, 0); if (fd > -1) { safe_dup2(fd, which); safe_close(fd); } }
+    if (stdin_pos > -1) redirect(STDIN_FILENO, O_RDONLY);
+    if (stdout_pos > -1) redirect(STDOUT_FILENO, O_WRONLY);
+    if (stderr_pos > -1) redirect(STDERR_FILENO, O_WRONLY);
+#undef redirect
+}
+
 static bool
 send_launch_msg(void) {
     ssize_t n;
@@ -362,7 +373,10 @@ send_launch_msg(void) {
     // some bytes sent, null out the control msg data as it is already sent
     launch_msg_container.msg_controllen = 0;
     launch_msg_container.msg_control = NULL;
-    if ((size_t)n > launch_msg.iov_len) launch_msg.iov_len = 0;
+    if ((size_t)n > launch_msg.iov_len) {
+        launch_msg.iov_len = 0;
+        close_sent_fds();
+    }
     else launch_msg.iov_len -= n;
     launch_msg.iov_base = (char*)launch_msg.iov_base + n;
     return true;
