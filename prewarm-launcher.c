@@ -294,12 +294,17 @@ create_launch_msg(int argc, char *argv[]) {
     sio(stdin, STDIN_FILENO); sio(stdout, STDOUT_FILENO); sio(stderr, STDERR_FILENO);
 #undef sio
     w("finish", "");
-    struct cmsghdr *cmsg = CMSG_FIRSTHDR(&launch_msg_container);
-    cmsg->cmsg_level = SOL_SOCKET;
-    cmsg->cmsg_type = SCM_RIGHTS;
-    cmsg->cmsg_len = CMSG_LEN(sizeof(fds[0]) * num_fds);
-    memcpy(CMSG_DATA(cmsg), fds, num_fds * sizeof(fds[0]));
-    launch_msg_container.msg_controllen = cmsg->cmsg_len;
+    if (num_fds) {
+        struct cmsghdr *cmsg = CMSG_FIRSTHDR(&launch_msg_container);
+        cmsg->cmsg_len = CMSG_LEN(sizeof(fds[0]) * num_fds);
+        memcpy(CMSG_DATA(cmsg), fds, num_fds * sizeof(fds[0]));
+        launch_msg_container.msg_controllen = cmsg->cmsg_len;
+        cmsg->cmsg_level = SOL_SOCKET;
+        cmsg->cmsg_type = SCM_RIGHTS;
+    } else {
+        launch_msg_container.msg_controllen = 0;
+        launch_msg_container.msg_control = 0;
+    }
     return true;
 #undef w
 }
