@@ -463,10 +463,9 @@ loop(void) {
 
     while (true) {
         int ret;
-        pd(self_ttyfd).events = (to_child_tty.sz < IO_BUZ_SZ - 1 ? POLLIN : 0) | (from_child_tty.sz ? POLLOUT : 0);
+        pd(self_ttyfd).events = (to_child_tty.sz < IO_BUZ_SZ ? POLLIN : 0) | (from_child_tty.sz ? POLLOUT : 0);
         pd(socket_fd).events = POLLIN | (launch_msg.iov_len ? POLLOUT : 0);
-        // child_master_fd
-        pd(child_master_fd).events = (from_child_tty.sz < IO_BUZ_SZ - 1 ? POLLIN : 0) | (to_child_tty.sz ? POLLOUT : 0);
+        pd(child_master_fd).events = (from_child_tty.sz < IO_BUZ_SZ ? POLLIN : 0) | (to_child_tty.sz ? POLLOUT : 0);
 
         if (window_size_dirty && child_master_fd > -1 ) {
             if (!get_window_size()) fail("getting window size for self tty failed");
