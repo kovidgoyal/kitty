@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
+import errno
 import io
 import json
 import os
@@ -22,9 +23,9 @@ from typing import (
 from kitty.constants import kitty_exe, running_in_kitty
 from kitty.entry_points import main as main_entry_point
 from kitty.fast_data_types import (
-    CLD_EXITED, CLD_KILLED, establish_controlling_tty, get_options,
+    CLD_EXITED, CLD_KILLED, establish_controlling_tty, get_options, getpeereid,
     install_signal_handlers, read_signals, remove_signal_handlers, safe_pipe,
-    set_options, getpeereid
+    set_options
 )
 from kitty.options.types import Options
 from kitty.shm import SharedMemory
@@ -405,7 +406,15 @@ class SocketChild:
     def read(self) -> bool:
         import array
         fds = array.array("i")   # Array of ints
-        msg, ancdata, flags, addr = self.conn.recvmsg(io.DEFAULT_BUFFER_SIZE, 1024)
+        try:
+            msg, ancdata, flags, addr = self.conn.recvmsg(io.DEFAULT_BUFFER_SIZE, 1024)
+        except OSError as e:
+            if e.errno == errno.ENOMEM:
+                # macOS does this when no ancilliary data is present
+                msg, ancdata, flags, addr = self.conn.recvmsg(io.DEFAULT_BUFFER_SIZE)
+            else:
+                raise
+
         for cmsg_level, cmsg_type, cmsg_data in ancdata:
             if cmsg_level == socket.SOL_SOCKET and cmsg_type == socket.SCM_RIGHTS:
                 # Append data, ignoring any truncated integers at the end.
