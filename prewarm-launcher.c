@@ -241,10 +241,9 @@ setup_signal_handler(void) {
     signal_read_fd = fds[0]; signal_write_fd = fds[1];
     set_blocking(signal_read_fd, false); set_blocking(signal_write_fd, false);
     struct sigaction act = {.sa_sigaction=handle_signal, .sa_flags=SA_SIGINFO | SA_RESTART};
-    if (sigaction(SIGWINCH, &act, NULL) != 0) return false;
-    if (sigaction(SIGINT, &act, NULL) != 0) return false;
-    if (sigaction(SIGTERM, &act, NULL) != 0) return false;
-    if (sigaction(SIGHUP, &act, NULL) != 0) return false;
+#define a(which) if (sigaction(which, &act, NULL) != 0) return false;
+    a(SIGWINCH); a(SIGINT); a(SIGTERM); a(SIGQUIT); a(SIGHUP);
+#undef a
     return true;
 }
 
@@ -430,7 +429,7 @@ read_signals(void) {
             switch(sig->si_signo) {
                 case SIGWINCH:
                     window_size_dirty = true; break;
-                case SIGINT: case SIGTERM: case SIGHUP:
+                case SIGINT: case SIGTERM: case SIGHUP: case SIGQUIT:
                     if (child_pid > 0) kill(child_pid, sig->si_signo);
                     else {
                         for (size_t i = 0; i < arraysz(pending_signals); i++) {
