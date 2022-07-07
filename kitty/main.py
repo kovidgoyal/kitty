@@ -357,8 +357,6 @@ def set_locale() -> None:
 
 def _main() -> None:
     running_in_kitty(True)
-    with suppress(AttributeError):  # python compiled without threading
-        sys.setswitchinterval(1000.0)  # we have only a single python thread
 
     try:
         set_locale()
@@ -410,6 +408,8 @@ def _main() -> None:
     prewarm = fork_prewarm_process(opts)
     if prewarm is None:
         raise SystemExit(1)
+    with suppress(AttributeError):  # python compiled without threading
+        sys.setswitchinterval(1000.0)  # we have only a single python thread
     init_glfw(opts, cli_opts.debug_keyboard, cli_opts.debug_rendering)
     if cli_opts.watcher:
         from .window import global_watchers
