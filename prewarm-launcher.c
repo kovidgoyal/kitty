@@ -459,13 +459,14 @@ loop(void) {
 #define init(name) pd(name).fd = name; pd(name).events = POLLIN;
     init(self_ttyfd); init(socket_fd); init(signal_read_fd); init(child_master_fd);
 #undef init
-    size_t num_to_poll = arraysz(poll_data);
 
     while (true) {
         int ret;
         pd(self_ttyfd).events = (to_child_tty.sz < IO_BUZ_SZ ? POLLIN : 0) | (from_child_tty.sz ? POLLOUT : 0);
-        pd(socket_fd).events = POLLIN | (launch_msg.iov_len ? POLLOUT : 0);
-        pd(child_master_fd).events = (from_child_tty.sz < IO_BUZ_SZ ? POLLIN : 0) | (to_child_tty.sz ? POLLOUT : 0);
+        if (socket_fd > -1) pd(socket_fd).events = POLLIN | (launch_msg.iov_len ? POLLOUT : 0);
+        else pd(socket_fd).events = 0;
+        if (child_master_fd > -1) pd(child_master_fd).events = (from_child_tty.sz < IO_BUZ_SZ ? POLLIN : 0) | (to_child_tty.sz ? POLLOUT : 0);
+        else pd(child_master_fd).events = 0;
 
         if (window_size_dirty && child_master_fd > -1 ) {
             if (!get_window_size()) fail("getting window size for self tty failed");
@@ -474,7 +475,7 @@ loop(void) {
         }
 
         for (size_t i = 0; i < arraysz(poll_data); i++) poll_data[i].revents = 0;
-        while ((ret = poll(poll_data, num_to_poll, -1)) == -1) { if (errno != EINTR) fail("poll() failed"); }
+        while ((ret = poll(poll_data, arraysz(poll_data), -1)) == -1) { if (errno != EINTR) fail("poll() failed"); }
         if (!ret) continue;
 
         if (pd(child_master_fd).revents & POLLIN) if (!read_or_transfer_from_child_tty()) fail("reading from child tty failed");
@@ -484,7 +485,6 @@ loop(void) {
         if (pd(child_master_fd).revents & POLLHUP) {
             // child has closed its tty, wait for exit code from prewarm zygote
             safe_close(child_master_fd); child_master_fd = -1;
-            num_to_poll--;
             if (!child_pid) return;
         }
 
@@ -505,7 +505,6 @@ loop(void) {
         if (pd(socket_fd).revents & POLLHUP) {
             if (from_child_buf[0]) { parse_int(from_child_buf, &exit_status); }
             child_pid = 0;
-            num_to_poll--;
             if (child_master_fd < 0) return;
         }
         if (pd(socket_fd).revents & POLLOUT) {
