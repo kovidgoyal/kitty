@@ -392,7 +392,7 @@ class SocketChild:
         self.cwd = ''
         self.env: Dict[str, str] = {}
         self.argv: List[str] = []
-        self.stdin = self.stdout = self.stderr = -1
+        self.stdin = self.stdout = self.stderr = self.tty_fd = -1
         self.pid = -1
         self.closed = False
 
@@ -431,12 +431,14 @@ class SocketChild:
                 for x in self.fds:
                     os.set_inheritable(x, x is not self.fds[0])
                     os.set_blocking(x, True)
+                self.tty_fd = self.fds[0]
                 if self.stdin > -1:
                     self.stdin = self.fds[self.stdin]
                 if self.stdout > -1:
                     self.stdout = self.fds[self.stdout]
                 if self.stderr > -1:
                     self.stderr = self.fds[self.stderr]
+                del self.fds[:]
                 return True
             elif cmd == 'cwd':
                 self.cwd = payload
@@ -481,16 +483,17 @@ class SocketChild:
         os.close(r)
         os.setsid()
         restore_python_signal_handlers()
-        if self.fds:
+        if self.tty_fd > -1:
             sys.__stdout__.flush()
             sys.__stderr__.flush()
             establish_controlling_tty(
-                self.fds[0],
+                self.tty_fd,
                 sys.__stdin__.fileno() if self.stdin < 0 else -1,
                 sys.__stdout__.fileno() if self.stdout < 0 else -1,
                 sys.__stderr__.fileno() if self.stderr < 0 else -1)
-            # the std streams fds are in all_non_child_fds already
-            # so they will be closed there
+            self.tty_fd = -1
+            # the std streams fds are closed in free_non_child_resources(), see
+            # SocketChild.close()
             if self.stdin > -1:
                 os.dup2(self.stdin, sys.__stdin__.fileno())
             if self.stdout > -1:
@@ -531,6 +534,12 @@ class SocketChild:
         self.unregister_from_poll()
         self.closed = True
         self.conn.close()
+        for x in self.fds:
+            os.close(x)
+        del self.fds[:]
+        if self.tty_fd > -1:
+            os.close(self.tty_fd)
+            self.tty_fd = -1
         if self.stdin > -1:
             os.close(self.stdin)
             self.stdin = -1

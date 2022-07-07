@@ -484,7 +484,12 @@ struct pollees {
 static struct pollees pollees = {0};
 
 #define register_for_poll(which) pollees.poll_data[pollees.num_fds].fd = which; pollees.poll_data[pollees.num_fds].events = POLLIN; pollees.idx.which = pollees.num_fds++;
-#define unregister_for_poll(which) if (pollees.idx.which > -1) { remove_i_from_array(pollees.poll_data, pollees.idx.which, pollees.num_fds); pollees.idx.which = -1; }
+#define unregister_for_poll(which) if (pollees.idx.which > -1) { remove_i_from_array(pollees.poll_data, pollees.idx.which, pollees.num_fds); \
+    if (pollees.idx.self_ttyfd > pollees.idx.which) pollees.idx.self_ttyfd--; \
+    if (pollees.idx.signal_read_fd > pollees.idx.which) pollees.idx.signal_read_fd--; \
+    if (pollees.idx.socket_fd > pollees.idx.which) pollees.idx.socket_fd--; \
+    if (pollees.idx.child_master_fd > pollees.idx.which) pollees.idx.child_master_fd--; \
+    pollees.idx.which = -1; }
 #define set_poll_events(which, val) if (pollees.idx.which > -1) { pollees.poll_data[pollees.idx.which].events = (val); }
 #define poll_revents(which) ((pollees.idx.which > -1) ? pollees.poll_data[pollees.idx.which].revents : 0)
 
@@ -492,7 +497,7 @@ static void
 loop(void) {
 #define fail(s) { print_error(s, errno); return; }
 #define check_fd(name) { if (poll_revents(name) & POLLERR) { pe("File descriptor %s failed", #name); return; } if (poll_revents(name) & POLLHUP) { pe("File descriptor %s hungup", #name); return; } }
-    register_for_poll(self_ttyfd); register_for_poll(socket_fd); register_for_poll(signal_read_fd); register_for_poll(child_master_fd);
+    register_for_poll(self_ttyfd); register_for_poll(signal_read_fd); register_for_poll(socket_fd); register_for_poll(child_master_fd);
 
     while (true) {
         int ret;
