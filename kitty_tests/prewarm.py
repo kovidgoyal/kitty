@@ -28,7 +28,11 @@ class Prewarm(BaseTest):
         from kitty.prewarm import fork_prewarm_process, wait_for_child_death
         exit_code = 17
         src = '''\
-def socket_child_main(exit_code=0):
+def socket_child_main(exit_code=0, for_signal=False):
+    if for_signal:
+        print('child ready')
+        sys.stdin.read()
+        raise SystemExit(exit_code)
     import json
     import os
     import sys
@@ -83,6 +87,20 @@ def socket_child_main(exit_code=0):
         self.assertEqual(output['cols'], cols)
         self.assertEqual(output['stdin_data'], stdin_data)
         self.assertEqual(stdout_data, 'testing stdout')
+
+        stdin_r, stdin_w = os.pipe()
+        os.set_inheritable(stdin_w, False)
+        pty = self.create_pty(
+            argv=[kitty_exe(), '+runpy', src + 'socket_child_main(for_signal=True)'], cols=cols, env=env, cwd=cwd, stdin_fd=stdin_r)
+        pty.wait_till(lambda: 'child ready' in pty.screen_contents())
+        os.kill(pty.child_pid, signal.SIGINT)
+        pty.wait_till(lambda: 'Traceback' in pty.screen_contents())
+        status = wait_for_child_death(pty.child_pid, timeout=5)
+        if status is None:
+            os.kill(pty.child_pid, signal.SIGKILL)
+        self.assertIsNotNone(status, 'prewarm wrapper process did not exit')
+        with suppress(AttributeError):
+            self.assertEqual(os.waitstatus_to_exitcode(status), 128 + signal.SIGINT)
 
     def test_prewarming(self):
         from kitty.prewarm import fork_prewarm_process

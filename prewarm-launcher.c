@@ -175,6 +175,7 @@ static pid_t child_pid = 0;
 
 static void
 cleanup(void) {
+    child_pid = 0;
     if (self_ttyfd > -1 && termios_needs_restore) { safe_tcsetattr(self_ttyfd, TCSAFLUSH, &restore_termios); termios_needs_restore = false; }
 #define cfd(fd) if (fd > -1) { safe_close(fd); fd = -1; }
     cfd(child_master_fd); cfd(child_slave_fd);
@@ -241,6 +242,9 @@ setup_signal_handler(void) {
     set_blocking(signal_read_fd, false); set_blocking(signal_write_fd, false);
     struct sigaction act = {.sa_sigaction=handle_signal, .sa_flags=SA_SIGINFO | SA_RESTART};
     if (sigaction(SIGWINCH, &act, NULL) != 0) return false;
+    if (sigaction(SIGINT, &act, NULL) != 0) return false;
+    if (sigaction(SIGTERM, &act, NULL) != 0) return false;
+    if (sigaction(SIGHUP, &act, NULL) != 0) return false;
     return true;
 }
 
@@ -304,6 +308,7 @@ create_launch_msg(int argc, char *argv[]) {
 static int exit_status = EXIT_FAILURE;
 static char from_child_buf[64] = {0};
 static size_t from_child_buf_pos = 0;
+static int pending_signals[32] = {0};
 
 static bool
 read_child_data(void) {
@@ -327,6 +332,10 @@ read_child_data(void) {
             memset(from_child_buf, 0, (p - from_child_buf) + 1);
             from_child_buf_pos -= (p - from_child_buf) + 1;
             if (from_child_buf_pos) memmove(from_child_buf, p + 1, from_child_buf_pos);
+            for (size_t i = 0; i < arraysz(pending_signals) && pending_signals[i]; i++) {
+                kill(child_pid, pending_signals[i]);
+            }
+            memset(pending_signals, 0, sizeof(pending_signals));
         }
     }
     return true;
@@ -416,6 +425,17 @@ read_signals(void) {
             switch(sig->si_signo) {
                 case SIGWINCH:
                     window_size_dirty = true; break;
+                case SIGINT: case SIGTERM: case SIGHUP:
+                    if (child_pid > 0) kill(child_pid, sig->si_signo);
+                    else {
+                        for (size_t i = 0; i < arraysz(pending_signals); i++) {
+                            if (!pending_signals[i]) {
+                                pending_signals[i] = sig->si_signo;
+                                break;
+                            }
+                        }
+                    }
+                    break;
             }
             memmove(buf, buf + sizeof(siginfo_t), sizeof(siginfo_t));
             buf_pos -= sizeof(siginfo_t);
@@ -480,6 +500,7 @@ loop(void) {
         }
         if (pd(socket_fd).revents & POLLHUP) {
             if (from_child_buf[0]) { parse_int(from_child_buf, &exit_status); }
+            child_pid = 0;
             return;
         }
         if (pd(socket_fd).revents & POLLOUT) {
@@ -518,6 +539,7 @@ use_prewarmed_process(int argc, char *argv[]) {
     if (!env_addr) return;
     self_ttyfd = safe_open(ctermid(NULL), O_RDWR | O_NONBLOCK, 0);
 #define fail(s) { print_error(s, errno); cleanup(); return; }
+    if (!setup_signal_handler()) fail("Failed to setup signal handling");
     if (self_ttyfd == -1) fail("Failed to open controlling terminal");
     if (!get_window_size()) fail("Failed to get window size of controlling terminal");
     if (!get_termios_state()) fail("Failed to get termios state of controlling terminal");
@@ -529,7 +551,6 @@ use_prewarmed_process(int argc, char *argv[]) {
     while (tcsetattr(self_ttyfd, TCSANOW, &self_termios) == -1 && errno == EINTR) {}
     setup_stdio_handles();
     if (!create_launch_msg(argc, argv)) fail("Failed to open controlling terminal");
-    if (!setup_signal_handler()) fail("Failed to setup signal handling");
     socket_fd = connect_to_socket_synchronously(env_addr);
     if (socket_fd < 0) fail("Failed to connect to prewarm socket");
     from_child_tty.buf = malloc(IO_BUZ_SZ * 2);
