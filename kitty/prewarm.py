@@ -39,6 +39,14 @@ error_events = select.POLLERR | select.POLLNVAL | select.POLLHUP
 TIMEOUT = 15.0 if os.environ.get('CI') == 'true' else 5.0
 
 
+def restore_python_signal_handlers() -> None:
+    remove_signal_handlers()
+    signal.signal(signal.SIGINT, signal.default_int_handler)
+    signal.signal(signal.SIGPIPE, signal.SIG_IGN)
+    signal.signal(signal.SIGUSR1, signal.SIG_DFL)
+    signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+
+
 def print_error(*a: Any) -> None:
     log_error('Prewarm zygote:', *a)
 
@@ -333,7 +341,7 @@ def fork(shm_address: str, free_non_child_resources: Callable[[], None]) -> Tupl
         return child_pid, ready_fd_write
     # child process
     is_zygote = False
-    remove_signal_handlers()
+    restore_python_signal_handlers()
     os.close(r)
     os.close(ready_fd_write)
     free_non_child_resources()
@@ -462,7 +470,7 @@ class SocketChild:
         is_zygote = False
         os.close(r)
         os.setsid()
-        remove_signal_handlers()
+        restore_python_signal_handlers()
         if self.tty_name:
             sys.__stdout__.flush()
             sys.__stderr__.flush()
@@ -739,7 +747,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
         raise
     finally:
         if is_zygote:
-            remove_signal_handlers()
+            restore_python_signal_handlers()
             for fmd in child_ready_fds.values():
                 with suppress(OSError):
                     os.close(fmd)
@@ -759,10 +767,6 @@ def get_socket_name(unix_socket: socket.socket) -> str:
 
 def exec_main(stdin_read: int, stdout_write: int, death_notify_write: int, unix_socket: Optional[socket.socket] = None) -> None:
     os.setsid()
-    # SIGUSR1 is used for reloading kitty config, we rely on the parent process
-    # to inform us of that
-    signal.signal(signal.SIGUSR1, signal.SIG_IGN)
-    signal.siginterrupt(signal.SIGUSR1, False)
     os.set_inheritable(stdin_read, False)
     os.set_inheritable(stdout_write, False)
     os.set_inheritable(death_notify_write, False)
