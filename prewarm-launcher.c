@@ -375,6 +375,7 @@ read_or_transfer(int src_fd, int dest_fd, transfer_buf *t) {
 
 static bool
 read_or_transfer_from_child_tty(void) {
+    if (child_master_fd < 0) return true;
     return read_or_transfer(child_master_fd, self_ttyfd, &from_child_tty);
 }
 
@@ -401,6 +402,7 @@ from_child_to_self(void) {
 
 static bool
 from_self_to_child(void) {
+    if (child_master_fd < 0) return true;
     return write_from_to(&to_child_tty, child_master_fd);
 }
 
@@ -454,7 +456,7 @@ loop(void) {
 #define pd(which) poll_data[which##_idx]
 #define check_fd(name) { if (pd(name).revents & POLLERR) { pe("File descriptor %s failed", #name); return; } if (pd(name).revents & POLLHUP) { pe("File descriptor %s hungup", #name); return; } }
     struct pollfd poll_data[4];
-    enum { self_ttyfd_idx, socket_fd_idx, signal_read_fd_idx, child_master_fd_idx };
+    enum { self_ttyfd_idx, signal_read_fd_idx, socket_fd_idx, child_master_fd_idx };
 #define init(name) pd(name).fd = name; pd(name).events = POLLIN;
     init(self_ttyfd); init(socket_fd); init(signal_read_fd); init(child_master_fd);
 #undef init
@@ -485,6 +487,7 @@ loop(void) {
             // child has closed its tty, wait for exit code from prewarm zygote
             safe_close(child_master_fd); child_master_fd = -1;
             num_to_poll--;
+            if (!child_pid) return;
         }
 
         check_fd(self_ttyfd);
@@ -504,7 +507,8 @@ loop(void) {
         if (pd(socket_fd).revents & POLLHUP) {
             if (from_child_buf[0]) { parse_int(from_child_buf, &exit_status); }
             child_pid = 0;
-            return;
+            num_to_poll--;
+            if (child_master_fd < 0) return;
         }
         if (pd(socket_fd).revents & POLLOUT) {
             if (!send_launch_msg()) fail("sending launch message failed");
