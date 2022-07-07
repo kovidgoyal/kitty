@@ -361,13 +361,15 @@ send_launch_msg(void) {
 static bool
 read_or_transfer(int src_fd, int dest_fd, transfer_buf *t) {
     (void)dest_fd;
-    if (t->sz >= IO_BUZ_SZ) return true;
-    ssize_t n = safe_read(src_fd, t->buf + t->sz, IO_BUZ_SZ - t->sz);
-    if (n < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) return true;
-        return false;
+    while(t->sz < IO_BUZ_SZ) {
+        ssize_t n = safe_read(src_fd, t->buf + t->sz, IO_BUZ_SZ - t->sz);
+        if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) return true;
+            return false;
+        }
+        if (!n) break;
+        t->sz += n;
     }
-    t->sz += n;
     return true;
 }
 
@@ -378,15 +380,16 @@ read_or_transfer_from_child_tty(void) {
 
 static bool
 write_from_to(transfer_buf *src, int dest_fd) {
-    if (!src->sz) return true;
-    ssize_t n = safe_write(dest_fd, src->buf, src->sz);
-    if (n < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) return true;
-        return false;
-    }
-    if (n > 0) {
-        src->sz -= n;
-        memmove(src->buf, src->buf + n, src->sz);
+    while (src->sz) {
+        ssize_t n = safe_write(dest_fd, src->buf, src->sz);
+        if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) return true;
+            return false;
+        }
+        if (n > 0) {
+            src->sz -= n;
+            memmove(src->buf, src->buf + n, src->sz);
+        } else break;
     }
     return true;
 }
