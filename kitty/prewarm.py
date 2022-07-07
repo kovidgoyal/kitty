@@ -707,10 +707,12 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
             except SocketClosed:
                 if is_zygote:
                     remove_socket_child(scq)
-            except OSError as e:
+            except OSError:
                 if is_zygote:
                     remove_socket_child(scq)
-                    print_error(f'Failed to fork socket child with error: {e}')
+                    import traceback
+                    tb = traceback.format_exc()
+                    print_error(f'Failed to fork socket child with error: {tb}')
                 else:
                     raise
         if is_zygote and (event & error_events):
