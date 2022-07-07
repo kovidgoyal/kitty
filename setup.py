@@ -872,7 +872,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         obj = os.path.join(build_dir, src.replace('.c', '.o'))
         objects.append(obj)
         cmd = env.cc + cppflags + cflags + ['-c', src, '-o', obj]
-        key = CompileKey('launcher.c', os.path.basename(obj))
+        key = CompileKey(src, os.path.basename(obj))
         args.compilation_database.add_command(f'Compiling {emphasis(src)} ...', cmd, partial(newer, obj, src), key=key, keyfile=src)
     dest = os.path.join(launcher_dir, 'kitty')
     desc = f'Linking {emphasis("launcher")} ...'
