@@ -29,9 +29,15 @@ class Prewarm(BaseTest):
         exit_code = 17
         src = '''\
 def socket_child_main(exit_code=0, initial_print=''):
-    import os, sys, json
+    import os, sys, json, signal
     from kitty.fast_data_types import get_options
     from kitty.utils import read_screen_size
+
+    def report_screen_size_change(*a):
+        print("Screen size changed:", read_screen_size(fd=sys.stderr.fileno()).cols, file=sys.stderr)
+
+    signal.signal(signal.SIGWINCH, report_screen_size_change)
+
     if initial_print:
         print(initial_print, flush=True, file=sys.stderr)
 
@@ -69,6 +75,8 @@ def socket_child_main(exit_code=0, initial_print=''):
         pty = self.create_pty(
             argv=[kitty_exe(), '+runpy', src + 'socket_child_main(initial_print="child ready:")'], cols=cols, env=env, cwd=cwd)
         pty.wait_till(lambda: 'child ready:' in pty.screen_contents())
+        pty.set_window_size(columns=cols + 3)
+        pty.wait_till(lambda: f'Screen size changed: {cols + 3}' in pty.screen_contents())
         os.kill(pty.child_pid, signal.SIGINT)
         wait_for_death(128 + signal.SIGINT)
         pty.wait_till(lambda: 'KeyboardInterrupt' in pty.screen_contents())
