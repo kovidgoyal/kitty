@@ -60,6 +60,7 @@ typedef struct transfer_buf {
 } transfer_buf;
 static transfer_buf from_child_tty = {0};
 static transfer_buf to_child_tty = {0};
+static char child_tty_name[256];
 
 #define err_prefix "prewarm wrapper process error: "
 static inline void
@@ -218,7 +219,7 @@ get_termios_state(void) {
 
 static bool
 open_pty(void) {
-    while (openpty(&child_master_fd, &child_slave_fd, NULL, &self_termios, &self_winsize) == -1) {
+    while (openpty(&child_master_fd, &child_slave_fd, child_tty_name, &self_termios, &self_winsize) == -1) {
         if (errno != EINTR) return false;
     }
     return true;
@@ -256,7 +257,7 @@ setup_signal_handler(void) {
 
 static void
 setup_stdio_handles(void) {
-    int pos = 1;
+    int pos = 0;
     if (!isatty(STDIN_FILENO)) stdin_pos = pos++;
     if (!isatty(STDOUT_FILENO)) stdout_pos = pos++;
     if (!isatty(STDERR_FILENO)) stderr_pos = pos++;
@@ -291,12 +292,12 @@ static bool
 create_launch_msg(int argc, char *argv[]) {
 #define w(prefix, data) { if (!write_item_to_launch_msg(prefix, data)) return false; }
     static char buf[4*PATH_MAX];
+    w("tty_name", child_tty_name);
     if (getcwd(buf, sizeof(buf))) { w("cwd", buf); }
     for (int i = 0; i < argc; i++) w("argv", argv[i]);
     char **s = environ;
     for (; *s; s++) w("env", *s);
     int num_fds = 0, fds[4];
-    fds[num_fds++] = child_slave_fd;
 #define sio(which, x) if (which##_pos > -1) { snprintf(buf, sizeof(buf), "%d", which##_pos); w(#which, buf); fds[num_fds++] = x;  }
     sio(stdin, STDIN_FILENO); sio(stdout, STDOUT_FILENO); sio(stderr, STDERR_FILENO);
 #undef sio
@@ -352,7 +353,6 @@ read_child_data(void) {
 
 static void
 close_sent_fds(void) {
-    if (child_slave_fd > -1) { safe_close(child_slave_fd); child_slave_fd = -1; }
 #define redirect(which, mode) { int fd = safe_open("/dev/null", mode | O_CLOEXEC, 0); if (fd > -1) { safe_dup2(fd, which); safe_close(fd); } }
     if (stdin_pos > -1) redirect(STDIN_FILENO, O_RDONLY);
     if (stdout_pos > -1) redirect(STDOUT_FILENO, O_WRONLY);

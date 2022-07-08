@@ -183,18 +183,17 @@ spawn(PyObject *self UNUSED, PyObject *args) {
 
 static PyObject*
 establish_controlling_tty(PyObject *self UNUSED, PyObject *args) {
-    int tty_fd=-1, stdin_fd = -1, stdout_fd = -1, stderr_fd = -1;
+    int stdin_fd = -1, stdout_fd = -1, stderr_fd = -1;
     const char *tty_name;
-    if (!PyArg_ParseTuple(args, "s|iiii", &tty_name, &tty_fd, &stdin_fd, &stdout_fd, &stderr_fd)) return NULL;
+    if (!PyArg_ParseTuple(args, "s|iii", &tty_name, &stdin_fd, &stdout_fd, &stderr_fd)) return NULL;
     int tfd = safe_open(tty_name, O_RDWR, 0);
-#define cleanup() if (tfd >= 0) safe_close(tfd, __FILE__, __LINE__); if (tty_fd >= 0) safe_close(tty_fd, __FILE__, __LINE__);
+#define cleanup() if (tfd >= 0) safe_close(tfd, __FILE__, __LINE__);
 #define fail() { cleanup(); return PyErr_SetFromErrno(PyExc_OSError); }
     if (tfd < 0) { cleanup(); return PyErr_SetFromErrnoWithFilename(PyExc_OSError, tty_name); }
-    if (tty_fd < 0) { tty_fd = tfd; tfd = -1; }
-    if (ioctl(tty_fd, TIOCSCTTY, 0) == -1) fail();
-    if (stdin_fd > -1 && safe_dup2(tty_fd, stdin_fd) == -1) fail();
-    if (stdout_fd > -1 && safe_dup2(tty_fd, stdout_fd) == -1) fail();
-    if (stderr_fd > -1 && safe_dup2(tty_fd, stderr_fd) == -1) fail();
+    if (ioctl(tfd, TIOCSCTTY, 0) == -1) fail();
+    if (stdin_fd > -1 && safe_dup2(tfd, stdin_fd) == -1) fail();
+    if (stdout_fd > -1 && safe_dup2(tfd, stdout_fd) == -1) fail();
+    if (stderr_fd > -1 && safe_dup2(tfd, stderr_fd) == -1) fail();
     cleanup();
 #undef cleanup
 #undef fail

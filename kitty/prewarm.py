@@ -351,7 +351,7 @@ def fork(shm_address: str, free_non_child_resources: Callable[[], None]) -> Tupl
     if tty_name:
         sys.__stdout__.flush()
         sys.__stderr__.flush()
-        establish_controlling_tty(tty_name, -1, sys.__stdin__.fileno(), sys.__stdout__.fileno(), sys.__stderr__.fileno())
+        establish_controlling_tty(tty_name, sys.__stdin__.fileno(), sys.__stdout__.fileno(), sys.__stderr__.fileno())
     os.close(w)
     if shm.unlink_on_exit:
         child_main(cmd, ready_fd_read)
@@ -389,10 +389,10 @@ class SocketChild:
         self.input_buf = self.output_buf = b''
         self.fds: List[int] = []
         self.child_id = -1
-        self.cwd = ''
+        self.cwd = self.tty_name = ''
         self.env: Dict[str, str] = {}
         self.argv: List[str] = []
-        self.stdin = self.stdout = self.stderr = self.tty_fd = -1
+        self.stdin = self.stdout = self.stderr = -1
         self.pid = -1
         self.closed = False
 
@@ -431,7 +431,6 @@ class SocketChild:
                 for x in self.fds:
                     os.set_inheritable(x, x is not self.fds[0])
                     os.set_blocking(x, True)
-                self.tty_fd = self.fds[0]
                 if self.stdin > -1:
                     self.stdin = self.fds[self.stdin]
                 if self.stdout > -1:
@@ -453,6 +452,8 @@ class SocketChild:
                 self.stdout = int(payload)
             elif cmd == 'stderr':
                 self.stderr = int(payload)
+            elif cmd == 'tty_name':
+                self.tty_name = payload
 
         return False
 
@@ -463,9 +464,6 @@ class SocketChild:
         if self.pid > 0:
             # master process
             os.close(w)
-            if self.tty_fd > -1:
-                os.close(self.tty_fd)
-                self.tty_fd = -1
             if self.stdin > -1:
                 os.close(self.stdin)
                 self.stdin = -1
@@ -486,15 +484,14 @@ class SocketChild:
         os.close(r)
         os.setsid()
         restore_python_signal_handlers()
-        if self.tty_fd > -1:
+        if self.tty_name:
             sys.__stdout__.flush()
             sys.__stderr__.flush()
             establish_controlling_tty(
-                os.ttyname(self.tty_fd), self.tty_fd,
+                self.tty_name,
                 sys.__stdin__.fileno() if self.stdin < 0 else -1,
                 sys.__stdout__.fileno() if self.stdout < 0 else -1,
                 sys.__stderr__.fileno() if self.stderr < 0 else -1)
-            self.tty_fd = -1
             # the std streams fds are closed in free_non_child_resources(), see
             # SocketChild.close()
             if self.stdin > -1:
@@ -542,9 +539,6 @@ class SocketChild:
         for x in self.fds:
             os.close(x)
         del self.fds[:]
-        if self.tty_fd > -1:
-            os.close(self.tty_fd)
-            self.tty_fd = -1
         if self.stdin > -1:
             os.close(self.stdin)
             self.stdin = -1
