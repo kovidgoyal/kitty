@@ -65,6 +65,8 @@ Detailed list of changes
 - ssh kitten: A new option :code:`--symlink-strategy` to control how symlinks
   are copied to the remote machine (:iss:`5249`)
 
+- Bash integration: Fix declare not creating global variables in .bashrc (:iss:`5254`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

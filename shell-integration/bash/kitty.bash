@@ -3,59 +3,60 @@
 if [[ "$-" != *i* ]] ; then builtin return; fi  # check in interactive mode
 if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then builtin return; fi
 
-_ksi_inject() {
-    # Load the normal bash startup files
-    if [[ -n "$KITTY_BASH_INJECT" ]]; then
-        builtin local kitty_bash_inject="$KITTY_BASH_INJECT"
-        builtin local ksi_val="$KITTY_SHELL_INTEGRATION"
-        builtin unset KITTY_SHELL_INTEGRATION  # ensure manual sourcing of this file in bashrc does not have any effect
-        builtin unset KITTY_BASH_INJECT ENV
-        if [[ -z "$HOME" ]]; then HOME=~; fi
-        if [[ -z "$KITTY_BASH_ETC_LOCATION" ]]; then KITTY_BASH_ETC_LOCATION="/etc"; fi
+# Load the normal bash startup files
+if [[ -n "$KITTY_BASH_INJECT" ]]; then
+    builtin declare kitty_bash_inject="$KITTY_BASH_INJECT"
+    builtin declare ksi_val="$KITTY_SHELL_INTEGRATION"
+    builtin unset KITTY_SHELL_INTEGRATION  # ensure manual sourcing of this file in bashrc does not have any effect
+    builtin unset KITTY_BASH_INJECT ENV
+    if [[ -z "$HOME" ]]; then HOME=~; fi
+    if [[ -z "$KITTY_BASH_ETC_LOCATION" ]]; then KITTY_BASH_ETC_LOCATION="/etc"; fi
 
-        _ksi_safe_source() {
-            if [[ -f "$1" && -r "$1" ]]; then
-                builtin source "$1"
-                builtin return 0
-            fi
-            builtin return 1
+    _ksi_sourceable() {
+        [[ -f "$1" && -r "$1" ]] && return 0; return 1;
+    }
+
+    if [[ "$kitty_bash_inject" == *"posix"* ]]; then
+        _ksi_sourceable "$KITTY_BASH_POSIX_ENV" && {
+            builtin source "$KITTY_BASH_POSIX_ENV"
+            builtin export ENV="$KITTY_BASH_POSIX_ENV"
         }
+    else
+        builtin set +o posix
+        if [[ -n "$KITTY_BASH_UNEXPORT_HISTFILE" ]]; then
+            builtin export -n HISTFILE
+            builtin unset KITTY_BASH_UNEXPORT_HISTFILE
+        fi
 
-        if [[ "$kitty_bash_inject" == *"posix"* ]]; then
-            _ksi_safe_source "$KITTY_BASH_POSIX_ENV" && builtin export ENV="$KITTY_BASH_POSIX_ENV"
-        else
-            builtin set +o posix
-            if [[ -n "$KITTY_BASH_UNEXPORT_HISTFILE" ]]; then
-                builtin export -n HISTFILE
-                builtin unset KITTY_BASH_UNEXPORT_HISTFILE
+        # See run_startup_files() in shell.c in the Bash source code
+        if builtin shopt -q login_shell; then
+            if [[ "$kitty_bash_inject" != *"no-profile"* ]]; then
+                _ksi_sourceable "$KITTY_BASH_ETC_LOCATION/profile" && builtin source "$KITTY_BASH_ETC_LOCATION/profile"
+                for _ksi_i in "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.profile"; do
+                    _ksi_sourceable "$_ksi_i" && { builtin source "$_ksi_i"; break; }
+                done
             fi
-
-            # See run_startup_files() in shell.c in the Bash source code
-            if builtin shopt -q login_shell; then
-                if [[ "$kitty_bash_inject" != *"no-profile"* ]]; then
-                    _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/profile"
-                    _ksi_safe_source "$HOME/.bash_profile" || _ksi_safe_source "$HOME/.bash_login" || _ksi_safe_source "$HOME/.profile"
-                fi
-            else
-                if [[ "$kitty_bash_inject" != *"no-rc"* ]]; then
-                    # Linux distros build bash with -DSYS_BASHRC. Unfortunately, there is
-                    # no way to to probe bash for it and different distros use different files
-                    # Arch, Debian, Ubuntu use /etc/bash.bashrc
-                    # Fedora uses /etc/bashrc sourced from ~/.bashrc instead of SYS_BASHRC
-                    # Void Linux uses /etc/bash/bashrc
-                    _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/bash.bashrc" || _ksi_safe_source "$KITTY_BASH_ETC_LOCATION/bash/bashrc"
-                    if [[ -z "$KITTY_BASH_RCFILE" ]]; then KITTY_BASH_RCFILE="$HOME/.bashrc"; fi
-                    _ksi_safe_source "$KITTY_BASH_RCFILE"
-                fi
+        else
+            if [[ "$kitty_bash_inject" != *"no-rc"* ]]; then
+                # Linux distros build bash with -DSYS_BASHRC. Unfortunately, there is
+                # no way to to probe bash for it and different distros use different files
+                # Arch, Debian, Ubuntu use /etc/bash.bashrc
+                # Fedora uses /etc/bashrc sourced from ~/.bashrc instead of SYS_BASHRC
+                # Void Linux uses /etc/bash/bashrc
+                for _ksi_i in "$KITTY_BASH_ETC_LOCATION/bash.bashrc" "$KITTY_BASH_ETC_LOCATION/bash/bashrc" ; do
+                    _ksi_sourceable "$_ksi_i" && { builtin source "$_ksi_i"; break; }
+                done
+                if [[ -z "$KITTY_BASH_RCFILE" ]]; then KITTY_BASH_RCFILE="$HOME/.bashrc"; fi
+                _ksi_sourceable "$KITTY_BASH_RCFILE" && builtin source "$KITTY_BASH_RCFILE"
             fi
         fi
-        builtin unset KITTY_BASH_RCFILE KITTY_BASH_POSIX_ENV KITTY_BASH_ETC_LOCATION
-        builtin unset -f _ksi_safe_source
-        builtin export KITTY_SHELL_INTEGRATION="$ksi_val"
     fi
-}
-_ksi_inject
-builtin unset -f _ksi_inject
+    builtin unset KITTY_BASH_RCFILE KITTY_BASH_POSIX_ENV KITTY_BASH_ETC_LOCATION
+    builtin unset -f _ksi_sourceable
+    builtin export KITTY_SHELL_INTEGRATION="$ksi_val"
+    builtin unset _ksi_i ksi_val kitty_bash_inject
+fi
+
 
 if [ "${BASH_VERSINFO:-0}" -lt 4 ]; then
     builtin unset KITTY_SHELL_INTEGRATION

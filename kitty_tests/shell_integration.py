@@ -285,6 +285,10 @@ PS1="{ps1}"
             pty.write_to_child('\x04')
             pty.send_cmd_to_child('clear')
             pty.wait_till(lambda: pty.callbacks.titlebuf)
+        with self.run_shell(shell='bash', rc=f'''PS1="{ps1}"\ndeclare LOCAL_KSI_VAR=1''') as pty:
+            pty.callbacks.clear()
+            pty.send_cmd_to_child('declare')
+            pty.wait_till(lambda: 'LOCAL_KSI_VAR' in pty.screen_contents())
         with self.run_shell(shell='bash', rc=f'''PS1="{ps1}"''') as pty:
             pty.callbacks.clear()
             pty.send_cmd_to_child('printf "%s\x16\a%s" "a" "b"')
