@@ -62,7 +62,7 @@ def socket_child_main(exit_code=0, initial_print=''):
             status = wait_for_child_death(pty.child_pid, timeout=5)
             if status is None:
                 os.kill(pty.child_pid, signal.SIGKILL)
-            self.assertIsNotNone(status, 'prewarm wrapper process did not exit')
+            self.assertIsNotNone(status, f'prewarm wrapper process did not exit. Screen contents: {pty.screen_contents()}')
             with suppress(AttributeError):
                 self.assertEqual(os.waitstatus_to_exitcode(status), exit_code, pty.screen_contents())
 

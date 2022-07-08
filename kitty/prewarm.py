@@ -202,7 +202,7 @@ class PrewarmProcess:
             self.poll_to_send(bool(output_buf))
             for (fd, event) in self.poll.poll(2):
                 if event & error_events:
-                    raise PrewarmProcessFailed('Failed doing I/O with prewarm process: {event}')
+                    raise PrewarmProcessFailed(f'Failed doing I/O with prewarm process: {event}')
                 if fd == self.write_to_process_fd and event & select.POLLOUT:
                     n = os.write(self.write_to_process_fd, output_buf)
                     output_buf = output_buf[n:]
