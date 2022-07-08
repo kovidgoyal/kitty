@@ -463,6 +463,9 @@ class SocketChild:
         if self.pid > 0:
             # master process
             os.close(w)
+            if self.tty_fd > -1:
+                os.close(self.tty_fd)
+                self.tty_fd = -1
             if self.stdin > -1:
                 os.close(self.stdin)
                 self.stdin = -1
