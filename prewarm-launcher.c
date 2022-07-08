@@ -217,12 +217,26 @@ get_termios_state(void) {
     return true;
 }
 
+bool
+set_iutf8(int fd, bool on) {
+    (void)fd; (void)on;
+#ifdef IUTF8
+    struct termios attrs;
+    if (tcgetattr(fd, &attrs) != 0) return false;
+    if (on) attrs.c_iflag |= IUTF8;
+    else attrs.c_iflag &= ~IUTF8;
+    if (tcsetattr(fd, TCSANOW, &attrs) != 0) return false;
+#endif
+    return true;
+}
+
+
 static bool
 open_pty(void) {
     while (openpty(&child_master_fd, &child_slave_fd, child_tty_name, &self_termios, &self_winsize) == -1) {
         if (errno != EINTR) return false;
     }
-    return true;
+    return set_iutf8(child_master_fd, true);
 }
 
 static void
