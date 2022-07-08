@@ -27,6 +27,11 @@ fi
     [[ ! -r "$_ksi_file" ]] || 'builtin' 'source' '--' "$_ksi_file"
 } always {
     if [[ -o 'interactive' && -n "${KITTY_SHELL_INTEGRATION-}" ]]; then
+        'builtin' 'autoload' '--' 'is-at-least'
+        'is-at-least' "5.1" || {
+            builtin echo "ZSH ${ZSH_VERSION} is too old for kitty shell integration" > /dev/stderr
+            return
+        }
         # ${(%):-%x} is the path to the current file.
         # On top of it we add :A:h to get the directory.
         'builtin' 'typeset' _ksi_file="${${(%):-%x}:A:h}"/kitty-integration
