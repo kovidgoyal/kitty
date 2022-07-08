@@ -520,8 +520,10 @@ class SocketChild:
             self.conn.sendall(f'{status}'.encode('ascii'))
         except OSError as e:
             print_error(f'Failed to send exit status of socket child with error: {e}')
-        self.conn.shutdown(socket.SHUT_RDWR)
-        self.conn.close()
+        with suppress(OSError):
+            self.conn.shutdown(socket.SHUT_RDWR)
+        with suppress(OSError):
+            self.conn.close()
 
     def handle_creation(self) -> bool:
         try:
