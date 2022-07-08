@@ -121,10 +121,8 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             // Establish the controlling terminal (see man 7 credentials)
             int tfd = safe_open(name, O_RDWR, 0);
             if (tfd == -1) exit_on_err("Failed to open controlling terminal");
-#ifdef TIOCSCTTY
             // On BSD open() does not establish the controlling terminal
             if (ioctl(tfd, TIOCSCTTY, 0) == -1) exit_on_err("Failed to set controlling terminal with TIOCSCTTY");
-#endif
             safe_close(tfd, __FILE__, __LINE__);
 
             // Redirect stdin/stdout/stderr to the pty
@@ -185,13 +183,21 @@ spawn(PyObject *self UNUSED, PyObject *args) {
 
 static PyObject*
 establish_controlling_tty(PyObject *self UNUSED, PyObject *args) {
-    int tty_fd, stdin_fd = -1, stdout_fd = -1, stderr_fd = -1;
-    if (!PyArg_ParseTuple(args, "i|iii", &tty_fd, &stdin_fd, &stdout_fd, &stderr_fd)) return NULL;
-    if (ioctl(tty_fd, TIOCSCTTY, 0) == -1) { safe_close(tty_fd, __FILE__, __LINE__); return PyErr_SetFromErrno(PyExc_OSError); }
-    if (stdin_fd > -1 && safe_dup2(tty_fd, stdin_fd) == -1) { safe_close(tty_fd, __FILE__, __LINE__); return PyErr_SetFromErrno(PyExc_OSError); }
-    if (stdout_fd > -1 && safe_dup2(tty_fd, stdout_fd) == -1) { safe_close(tty_fd, __FILE__, __LINE__); return PyErr_SetFromErrno(PyExc_OSError); }
-    if (stderr_fd > -1 && safe_dup2(tty_fd, stderr_fd) == -1) { safe_close(tty_fd, __FILE__, __LINE__); return PyErr_SetFromErrno(PyExc_OSError); }
-    safe_close(tty_fd, __FILE__, __LINE__);
+    int tty_fd=-1, stdin_fd = -1, stdout_fd = -1, stderr_fd = -1;
+    const char *tty_name;
+    if (!PyArg_ParseTuple(args, "s|iiii", &tty_name, &tty_fd, &stdin_fd, &stdout_fd, &stderr_fd)) return NULL;
+    int tfd = safe_open(tty_name, O_RDWR, 0);
+#define cleanup() if (tfd >= 0) safe_close(tfd, __FILE__, __LINE__); if (tty_fd >= 0) safe_close(tty_fd, __FILE__, __LINE__);
+#define fail() { cleanup(); return PyErr_SetFromErrno(PyExc_OSError); }
+    if (tfd < 0) { cleanup(); return PyErr_SetFromErrnoWithFilename(PyExc_OSError, tty_name); }
+    if (tty_fd < 0) { tty_fd = tfd; tfd = -1; }
+    if (ioctl(tty_fd, TIOCSCTTY, 0) == -1) fail();
+    if (stdin_fd > -1 && safe_dup2(tty_fd, stdin_fd) == -1) fail();
+    if (stdout_fd > -1 && safe_dup2(tty_fd, stdout_fd) == -1) fail();
+    if (stderr_fd > -1 && safe_dup2(tty_fd, stderr_fd) == -1) fail();
+    cleanup();
+#undef cleanup
+#undef fail
     Py_RETURN_NONE;
 }
 

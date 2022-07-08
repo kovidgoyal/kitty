@@ -351,7 +351,7 @@ def fork(shm_address: str, free_non_child_resources: Callable[[], None]) -> Tupl
     if tty_name:
         sys.__stdout__.flush()
         sys.__stderr__.flush()
-        establish_controlling_tty(os.open(tty_name, os.O_RDWR | os.O_CLOEXEC, 0), sys.__stdin__.fileno(), sys.__stdout__.fileno(), sys.__stderr__.fileno())
+        establish_controlling_tty(tty_name, -1, sys.__stdin__.fileno(), sys.__stdout__.fileno(), sys.__stderr__.fileno())
     os.close(w)
     if shm.unlink_on_exit:
         child_main(cmd, ready_fd_read)
@@ -490,7 +490,7 @@ class SocketChild:
             sys.__stdout__.flush()
             sys.__stderr__.flush()
             establish_controlling_tty(
-                self.tty_fd,
+                os.ttyname(self.tty_fd), self.tty_fd,
                 sys.__stdin__.fileno() if self.stdin < 0 else -1,
                 sys.__stdout__.fileno() if self.stdout < 0 else -1,
                 sys.__stderr__.fileno() if self.stderr < 0 else -1)
