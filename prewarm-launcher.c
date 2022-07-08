@@ -412,7 +412,10 @@ write_to_tty(transfer_buf *src, int *dest_fd) {
     if (*dest_fd < 0) return true;
     if (src->sz) {
         ssize_t n = safe_write(*dest_fd, src->buf, src->sz);
-        if (n < 0) return false;
+        if (n < 0) {
+            if (errno == EPIPE || errno == EIO) { *dest_fd = -1; return true; }
+            return false;
+        }
         if (n > 0) {
             src->sz -= n;
             memmove(src->buf, src->buf + n, src->sz);
