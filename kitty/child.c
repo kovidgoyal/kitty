@@ -119,7 +119,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             if (setsid() == -1) exit_on_err("setsid() in child process failed");
 
             // Establish the controlling terminal (see man 7 credentials)
-            int tfd = safe_open(name, O_RDWR, 0);
+            int tfd = safe_open(name, O_RDWR | O_CLOEXEC, 0);
             if (tfd == -1) exit_on_err("Failed to open controlling terminal");
             // On BSD open() does not establish the controlling terminal
             if (ioctl(tfd, TIOCSCTTY, 0) == -1) exit_on_err("Failed to set controlling terminal with TIOCSCTTY");
@@ -186,7 +186,7 @@ establish_controlling_tty(PyObject *self UNUSED, PyObject *args) {
     int stdin_fd = -1, stdout_fd = -1, stderr_fd = -1;
     const char *tty_name;
     if (!PyArg_ParseTuple(args, "s|iii", &tty_name, &stdin_fd, &stdout_fd, &stderr_fd)) return NULL;
-    int tfd = safe_open(tty_name, O_RDWR, 0);
+    int tfd = safe_open(tty_name, O_RDWR | O_CLOEXEC, 0);
 #define cleanup() if (tfd >= 0) safe_close(tfd, __FILE__, __LINE__);
 #define fail() { cleanup(); return PyErr_SetFromErrno(PyExc_OSError); }
     if (tfd < 0) { cleanup(); return PyErr_SetFromErrnoWithFilename(PyExc_OSError, tty_name); }
