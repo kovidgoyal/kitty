@@ -51,8 +51,10 @@ with open(__file__, 'rb') as f:
 script = script[:script.find('# EOF_REMOTE')].replace('if False:', 'if True:', 1)
 with tempfile.NamedTemporaryFile(prefix='install-dmg-', suffix='.py') as f:
     cmd = 'python ../bypy macos program --dont-strip'
-    if sys.argv[-1] == 'sign':
+    if 'sign' in sys.argv:
         cmd += ' --sign-installers --notarize'
+    if 'skip_tests' in sys.argv:
+        cmd += ' --skip-tests'
     run(cmd)
     f.write(script.encode('utf-8'))
     f.flush()
