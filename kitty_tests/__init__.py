@@ -262,9 +262,7 @@ class PTY:
         self.write_to_child(cmd + '\r')
 
     def process_input_from_child(self, timeout=10):
-        rd, wd, err = select.select([self.master_fd], [self.master_fd] if self.write_buf else [], [self.master_fd], timeout)
-        if err:
-            raise OSError('master_fd is in error condition')
+        rd, wd, err = select.select([self.master_fd], [self.master_fd] if self.write_buf else [], [], timeout)
         while wd:
             try:
                 n = os.write(self.master_fd, self.write_buf)
