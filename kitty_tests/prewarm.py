@@ -13,7 +13,7 @@ from contextlib import suppress
 
 from kitty.constants import kitty_exe, terminfo_dir
 from kitty.fast_data_types import (
-    CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options, has_sigqueue, install_signal_handlers,
+    CLD_EXITED, CLD_KILLED, get_options, has_sigqueue, install_signal_handlers,
     read_signals, sigqueue
 )
 
@@ -201,12 +201,16 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             assert_signal()
 
         poll = select.poll()
-        p = subprocess.Popen([kitty_exe(), '+runpy', 'input()'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
+
+        def run():
+            return subprocess.Popen([kitty_exe(), '+runpy', 'import sys; sys.stdin.read()'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
+        p = run()
+        orig_mask = signal.pthread_sigmask(signal.SIG_BLOCK, ())
         signal_read_fd = install_signal_handlers(signal.SIGCHLD, signal.SIGUSR1)[0]
         try:
             poll.register(signal_read_fd, select.POLLIN)
             t(signal.SIGINT, CLD_KILLED)
-            p = subprocess.Popen([kitty_exe(), '+runpy', 'input()'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
+            p = run()
             p.stdin.close()
             t(None, os.CLD_EXITED)
             expecting_code = None
@@ -219,8 +223,8 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
 
             expecting_code = None
             expecting_value = 0
-            p = subprocess.Popen([kitty_exe(), '+runpy', 'input()'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
-            t(signal.SIGTSTP, CLD_STOPPED)
+            p = run()
+            t(signal.SIGTSTP, os.CLD_STOPPED)
             # macOS does not send SIGCHLD when child is continued
             # https://stackoverflow.com/questions/48487935/sigchld-is-sent-on-sigcont-on-linux-but-not-on-macos
             p.send_signal(signal.SIGCONT)
@@ -228,3 +232,4 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             p.wait(1)
         finally:
             restore_python_signal_handlers()
+            signal.pthread_sigmask(signal.SIG_SETMASK, orig_mask)
