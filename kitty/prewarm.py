@@ -8,6 +8,7 @@ import os
 import select
 import signal
 import socket
+import struct
 import sys
 import time
 import warnings
@@ -525,15 +526,8 @@ class SocketChild:
     def handle_death(self, status: int) -> None:
         if self.closed:
             return
-        if hasattr(os, 'waitstatus_to_exitcode'):
-            status = os.waitstatus_to_exitcode(status)
-            # negative numbers are signals usually and shells report these as
-            # 128 + signal number, so do the same. There is no API to exit a
-            # process with full 32bit status information.
-            if -128 < status < 0:
-                status = 128 - status
         try:
-            self.conn.sendall(f'{status}'.encode('ascii'))
+            self.conn.sendall(struct.pack('q', status))
         except OSError as e:
             print_error(f'Failed to send exit status of socket child with error: {e}')
 
@@ -541,7 +535,7 @@ class SocketChild:
         if self.closed:
             return False
         try:
-            self.conn.sendall(f'{self.pid}:'.encode('ascii'))
+            self.conn.sendall(struct.pack('q', self.pid))
         except OSError as e:
             print_error(f'Failed to send pid of socket child with error: {e}')
             return False

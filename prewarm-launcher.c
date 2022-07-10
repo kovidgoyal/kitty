@@ -83,14 +83,6 @@ parse_long(const char *str, long *val) {
     return rc;
 }
 
-static bool
-parse_int(const char *str, int *val) {
-    long lval = 0;
-    if (!parse_long(str, &lval)) return false;
-    *val = lval;
-    return true;
-}
-
 static inline int
 safe_open(const char *path, int flags, mode_t mode) {
     while (true) {
@@ -355,26 +347,20 @@ static enum ChildState child_state = CHILD_NOT_STARTED;
 static bool
 read_child_data(void) {
     ssize_t n;
-    if (from_child_buf_pos >= sizeof(from_child_buf) - 2) { print_error("Too much data from prewarm socket", 0); return false; }
-    n = safe_read(socket_fd, from_child_buf, sizeof(from_child_buf) - 2 - from_child_buf_pos);
+    if (from_child_buf_pos >= sizeof(from_child_buf)) { print_error("Too much data from prewarm socket", 0); return false; }
+    n = safe_read(socket_fd, from_child_buf + from_child_buf_pos, sizeof(from_child_buf) - from_child_buf_pos);
     if (n < 0) {
         if (errno == EIO || errno == EPIPE) { socket_fd = -1; return true; }
         return false;
     }
     if (n) {
         from_child_buf_pos += n;
-        char *p = memchr(from_child_buf, ':', from_child_buf_pos);
-        if (p && child_pid == 0) {
-            *p = 0;
-            long cp = 0;
-            if (!parse_long(from_child_buf, &cp)) { print_error("Could not parse child pid from prewarm socket", 0); return false; }
+        if (from_child_buf_pos >= sizeof(long long)) {
+            pid_t cp = *((long long*)from_child_buf);
             if (cp == 0) { print_error("Got zero child pid from prewarm socket", 0); return false; }
             child_pid = cp;
             child_state = CHILD_STARTED;
             if (child_slave_fd > -1) { safe_close(child_slave_fd); child_slave_fd = -1; }
-            memset(from_child_buf, 0, (p - from_child_buf) + 1);
-            from_child_buf_pos -= (p - from_child_buf) + 1;
-            if (from_child_buf_pos) memmove(from_child_buf, p + 1, from_child_buf_pos);
             for (size_t i = 0; i < arraysz(pending_signals) && pending_signals[i]; i++) {
                 kill(child_pid, pending_signals[i]);
             }
@@ -612,7 +598,18 @@ loop(void) {
             if (FD_ISSET(socket_fd, &readable)) {
                 if (!read_child_data()) fail("reading information about child failed");
                 if (socket_fd < 0) { // hangup
-                    if (from_child_buf[0]) { parse_int(from_child_buf, &exit_status); }
+                    if (from_child_buf_pos >= 2 * sizeof(long long)) {
+                        int child_exit_status = *((long long*)(from_child_buf + sizeof(long long)));
+                        if (WIFEXITED(child_exit_status)) {
+                            exit_status = WEXITSTATUS(child_exit_status);
+                        } else if (WIFSIGNALED(child_exit_status)) {
+                            int signum = WTERMSIG(child_exit_status);
+                            if (signum > 0) {
+                                signal(signum, SIG_DFL);
+                                kill(getpid(), signum);
+                            }
+                        }
+                    }
                     child_pid = 0;
                     child_state = CHILD_EXITED;
                 }

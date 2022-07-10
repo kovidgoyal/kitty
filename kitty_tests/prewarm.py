@@ -69,8 +69,12 @@ def socket_child_main(exit_code=0, initial_print=''):
             if status is None:
                 os.kill(pty.child_pid, signal.SIGKILL)
             self.assertIsNotNone(status, f'prewarm wrapper process did not exit. Screen contents: {pty.screen_contents()}')
-            with suppress(AttributeError):
-                self.assertEqual(os.waitstatus_to_exitcode(status), exit_code, pty.screen_contents())
+            if isinstance(exit_code, signal.Signals):
+                self.assertTrue(os.WIFSIGNALED(status), 'prewarm wrapper did not die with a signal')
+                self.assertEqual(os.WTERMSIG(status), exit_code.value)
+            else:
+                with suppress(AttributeError):
+                    self.assertEqual(os.waitstatus_to_exitcode(status), exit_code, pty.screen_contents())
 
         # test SIGINT via signal to wrapper, unfortunately as best as I can
         # tell SIGINT is delivered reliably to the wrapper process
@@ -89,7 +93,7 @@ def socket_child_main(exit_code=0, initial_print=''):
         pty.wait_till(lambda: f'Screen size changed: {cols + 3}' in pty.screen_contents())
         pty.write_to_child('\x03')
         pty.wait_till(lambda: 'KeyboardInterrupt' in pty.screen_contents())
-        wait_for_death(128 + signal.SIGINT)
+        wait_for_death(signal.SIGINT)
 
         # test passing of data via cwd, env vars and stdin/stdout redirection
         stdin_r, stdin_w = os.pipe()
