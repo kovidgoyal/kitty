@@ -190,7 +190,7 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
                         handle_signals(signals)
                 if found_signal:
                     break
-            self.assertTrue(found_signal, f'Failed to get signal: {expecting_signal}')
+            self.assertTrue(found_signal, f'Failed to get signal: {expecting_signal!r}')
 
         def t(signal, q, expecting_sig=signal.SIGCHLD):
             nonlocal expecting_code, found_signal, expecting_signal
@@ -230,6 +230,8 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             p.send_signal(signal.SIGCONT)
             p.stdin.close()
             p.wait(1)
+            for fd, event in poll.poll(0):
+                read_signals(signal_read_fd, lambda si: None)
         finally:
             restore_python_signal_handlers()
             signal.pthread_sigmask(signal.SIG_SETMASK, orig_mask)
