@@ -34,7 +34,7 @@ def socket_child_main(exit_code=0, initial_print=''):
     from kitty.utils import read_screen_size
 
     def report_screen_size_change(*a):
-        print("Screen size changed:", read_screen_size(fd=sys.stderr.fileno()).cols, file=sys.stderr)
+        print("Screen size changed:", read_screen_size(fd=sys.stderr.fileno()).cols, file=sys.stderr, flush=True)
 
     signal.signal(signal.SIGWINCH, report_screen_size_change)
 
