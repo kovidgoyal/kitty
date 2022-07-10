@@ -64,10 +64,12 @@ def socket_child_main(exit_code=0, initial_print=''):
         env.update({'TEST_ENV_PASS': 'xyz', 'KITTY_PREWARM_SOCKET': p.socket_env_var(), 'TERM': 'xterm-kitty', 'TERMINFO': terminfo_dir})
         cols = 117
 
-        def wait_for_death(exit_code):
-            status = wait_for_child_death(pty.child_pid, timeout=5)
+        def wait_for_death(exit_code, timeout=5):
+            status = wait_for_child_death(pty.child_pid, timeout=timeout)
             if status is None:
                 os.kill(pty.child_pid, signal.SIGKILL)
+            if status is None:
+                pty.process_input_from_child(0)
             self.assertIsNotNone(status, f'prewarm wrapper process did not exit. Screen contents: {pty.screen_contents()}')
             if isinstance(exit_code, signal.Signals):
                 self.assertTrue(os.WIFSIGNALED(status), 'prewarm wrapper did not die with a signal')
