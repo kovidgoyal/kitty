@@ -6,11 +6,12 @@ import io
 import os
 import select
 import shlex
+import signal
 import struct
 import sys
 import termios
 import time
-from pty import CHILD, fork, STDIN_FILENO, STDOUT_FILENO
+from pty import CHILD, STDIN_FILENO, STDOUT_FILENO, fork
 from unittest import TestCase
 
 from kitty.config import finalize_keys, finalize_mouse_mappings
@@ -223,6 +224,7 @@ class PTY:
             if stdout_fd is not None:
                 os.dup2(stdout_fd, STDOUT_FILENO)
                 os.close(stdout_fd)
+            signal.pthread_sigmask(signal.SIG_SETMASK, ())
             os.execvpe(argv[0], argv, env or os.environ)
         if stdin_fd is not None:
             os.close(stdin_fd)
