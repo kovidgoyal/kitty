@@ -171,8 +171,8 @@ read_signals(int fd, handle_signal_func callback, void *data) {
         bool keep_going = true;
         while (keep_going && buf_pos >= sizeof(siginfo_t)) {
             keep_going = callback((siginfo_t*)buf, data);
-            memmove(buf, buf + sizeof(siginfo_t), sizeof(siginfo_t));
             buf_pos -= sizeof(siginfo_t);
+            memmove(buf, buf + sizeof(siginfo_t), buf_pos);
         }
         if (len == 0) break;
     }
