@@ -63,11 +63,11 @@ class Child:
     child_process_pid: int
 
 
-def wait_for_child_death(child_pid: int, timeout: float = 1) -> Optional[int]:
+def wait_for_child_death(child_pid: int, timeout: float = 1, options: int = 0) -> Optional[int]:
     st = time.monotonic()
     while not timeout or time.monotonic() - st < timeout:
         try:
-            pid, status = os.waitpid(child_pid, os.WNOHANG)
+            pid, status = os.waitpid(child_pid, options | os.WNOHANG)
         except ChildProcessError:
             return 0
         else:

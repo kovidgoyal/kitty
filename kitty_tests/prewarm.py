@@ -159,7 +159,7 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
         self.ae(int(p.from_worker.readline()), data['pid'])
 
     def test_signal_handling(self):
-        from kitty.prewarm import restore_python_signal_handlers
+        from kitty.prewarm import restore_python_signal_handlers, wait_for_child_death
         expecting_code = 0
         expecting_signal = signal.SIGCHLD
         expecting_value = 0
@@ -224,10 +224,15 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             expecting_code = None
             expecting_value = 0
             p = run()
-            t(signal.SIGTSTP, CLD_STOPPED)
+            p.send_signal(signal.SIGSTOP)
+            s = wait_for_child_death(p.pid, options=os.WUNTRACED, timeout=5)
+            self.assertTrue(os.WIFSTOPPED(s))
+            t(None, CLD_STOPPED)
+            p.send_signal(signal.SIGCONT)
+            s = wait_for_child_death(p.pid, options=os.WCONTINUED, timeout=5)
+            self.assertTrue(os.WIFCONTINUED(s))
             # macOS does not send SIGCHLD when child is continued
             # https://stackoverflow.com/questions/48487935/sigchld-is-sent-on-sigcont-on-linux-but-not-on-macos
-            p.send_signal(signal.SIGCONT)
             p.stdin.close()
             p.wait(1)
             for fd, event in poll.poll(0):
