@@ -125,6 +125,14 @@ safe_read(int fd, void *buf, size_t n) {
 }
 
 static ssize_t
+safe_send(int fd, void *buf, size_t n, int flags) {
+    ssize_t ret = 0;
+    while((ret = send(fd, buf, n, flags)) ==-1 && errno == EINTR);
+    return ret;
+}
+
+
+static ssize_t
 safe_write(int fd, void *buf, size_t n) {
     ssize_t ret = 0;
     while((ret = write(fd, buf, n)) ==-1 && errno == EINTR);
@@ -307,6 +315,8 @@ create_launch_msg(int argc, char *argv[]) {
 #define w(prefix, data) { if (!write_item_to_launch_msg(prefix, data)) return false; }
     static char buf[4*PATH_MAX];
     w("tty_name", child_tty_name);
+    snprintf(buf, sizeof(buf), "%zu", sizeof(self_winsize));
+    w("winsize", buf);
     if (getcwd(buf, sizeof(buf))) { w("cwd", buf); }
     for (int i = 0; i < argc; i++) w("argv", argv[i]);
     char **s = environ;
@@ -512,6 +522,40 @@ flush_data(void) {
     }
 }
 
+static char sosbuf[2 * sizeof(self_winsize)] = {0};
+static transfer_buf send_on_socket = {.buf=sosbuf};
+
+static void
+add_window_size_to_buffer(void) {
+    char *p;
+    if (send_on_socket.sz % sizeof(self_winsize)) {
+        // partial send
+        if (send_on_socket.sz > sizeof(self_winsize)) send_on_socket.sz -= sizeof(self_winsize); // replace second size
+        p = send_on_socket.buf + send_on_socket.sz;
+        send_on_socket.sz += sizeof(self_winsize);
+    } else {
+        // replace all sizes
+        p = send_on_socket.buf;
+        send_on_socket.sz = sizeof(self_winsize);
+    }
+    memcpy(p, &self_winsize, sizeof(self_winsize));
+}
+
+static bool
+send_over_socket(void) {
+    if (!send_on_socket.sz || socket_fd < 0) return true;
+    ssize_t n = safe_send(socket_fd, send_on_socket.buf, send_on_socket.sz, MSG_NOSIGNAL);
+    if (n < 0) return false;
+    if (n) {
+        if (n >= send_on_socket.sz) send_on_socket.sz = 0;
+        else {
+            send_on_socket.sz -= n;
+            memmove(send_on_socket.buf, send_on_socket.buf + n, send_on_socket.sz);
+        }
+    }
+    return true;
+}
+
 static void
 loop(void) {
 #define fail(s) { print_error(s, errno); return; }
@@ -523,15 +567,17 @@ loop(void) {
     nfds++;
 
     while (keep_going()) {
-        wf.self_ttyfd.want_read = to_child_tty.sz < IO_BUZ_SZ; wf.self_ttyfd.want_write = from_child_tty.sz > 0;
-        wf.child_master_fd.want_read = from_child_tty.sz < IO_BUZ_SZ; wf.child_master_fd.want_write = to_child_tty.sz > 0;
-        wf.socket_fd.want_write = launch_msg.iov_len > 0;
-
-        if (window_size_dirty && child_master_fd > -1 ) {
+        if (window_size_dirty) {
             if (!get_window_size()) fail("getting window size for self tty failed");
-            if (!safe_winsz(child_master_fd, TIOCSWINSZ, &self_winsize)) fail("setting window size on child pty failed");
+            // macOS barfs with ENOTTY if we try to use TIOCSWINSZ from this process, so send it to the zygote
+            /* if (!safe_winsz(child_master_fd, TIOCSWINSZ, &self_winsize)) fail("setting window size on child pty failed"); */
+            add_window_size_to_buffer();
             window_size_dirty = false;
         }
+        wf.self_ttyfd.want_read = to_child_tty.sz < IO_BUZ_SZ; wf.self_ttyfd.want_write = from_child_tty.sz > 0;
+        wf.child_master_fd.want_read = from_child_tty.sz < IO_BUZ_SZ; wf.child_master_fd.want_write = to_child_tty.sz > 0;
+        wf.socket_fd.want_write = launch_msg.iov_len > 0 || send_on_socket.sz > 0;
+
         FD_ZERO(&readable); FD_ZERO(&writable); FD_ZERO(&errorable);
 #define set(which) if (which > -1) { if (wf.which.want_read) { FD_SET(which, &readable); } if (wf.which.want_write) { FD_SET(which, &writable); } if (wf.which.want_error) { FD_SET(which, &errorable); } }
         set(self_ttyfd); set(child_master_fd); set(socket_fd); set(signal_read_fd);
@@ -553,7 +599,10 @@ loop(void) {
         if (signal_read_fd > -1 && FD_ISSET(signal_read_fd, &readable)) if (!read_signals()) fail("reading from signal fd failed");
 
         if (socket_fd > -1) {
-            if (FD_ISSET(socket_fd, &writable)) if (!send_launch_msg()) fail("sending launch message failed");
+            if (FD_ISSET(socket_fd, &writable)) {
+                if (launch_msg.iov_len > 0) { if (!send_launch_msg()) fail("sending launch message failed"); }
+                else if (send_on_socket.sz > 0) { if (!send_over_socket()) fail("sending on socket failed"); }
+            }
             if (FD_ISSET(socket_fd, &readable)) {
                 if (!read_child_data()) fail("reading information about child failed");
                 if (socket_fd < 0) { // hangup
