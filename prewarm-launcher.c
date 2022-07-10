@@ -491,8 +491,8 @@ read_signals(void) {
                 }
                 break;
         }
-        memmove(buf, buf + sizeof(siginfo_t), sizeof(siginfo_t));
         buf_pos -= sizeof(siginfo_t);
+        memmove(buf, buf + sizeof(siginfo_t), buf_pos);
     }
     return true;
 }
