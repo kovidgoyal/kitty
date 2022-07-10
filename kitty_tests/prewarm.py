@@ -14,7 +14,7 @@ from contextlib import suppress
 from kitty.constants import kitty_exe, terminfo_dir
 from kitty.fast_data_types import (
     CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options, has_sigqueue, install_signal_handlers,
-    read_signals, remove_signal_handlers, sigqueue
+    read_signals, sigqueue
 )
 
 from . import BaseTest
@@ -159,6 +159,7 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
         self.ae(int(p.from_worker.readline()), data['pid'])
 
     def test_signal_handling(self):
+        from kitty.prewarm import restore_python_signal_handlers
         expecting_code = 0
         expecting_signal = signal.SIGCHLD
         expecting_value = 0
@@ -226,4 +227,4 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             p.stdin.close()
             p.wait(1)
         finally:
-            remove_signal_handlers()
+            restore_python_signal_handlers()
