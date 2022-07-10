@@ -92,8 +92,8 @@ def socket_child_main(exit_code=0, initial_print=''):
         pty.set_window_size(columns=cols + 3)
         pty.wait_till(lambda: f'Screen size changed: {cols + 3}' in pty.screen_contents())
         pty.write_to_child('\x03' * 64)
+        wait_for_death(signal.SIGINT, timeout=30)
         pty.wait_till(lambda: 'KeyboardInterrupt' in pty.screen_contents(), timeout=30)
-        wait_for_death(signal.SIGINT)
 
         # test passing of data via cwd, env vars and stdin/stdout redirection
         stdin_r, stdin_w = os.pipe()
