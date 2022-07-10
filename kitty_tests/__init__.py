@@ -255,10 +255,12 @@ class PTY:
                 del self.slave_fd
             del self.master_fd
 
-    def write_to_child(self, data):
+    def write_to_child(self, data, flush=False):
         if isinstance(data, str):
             data = data.encode('utf-8')
         self.write_buf += data
+        if flush:
+            self.process_input_from_child(0)
 
     def send_cmd_to_child(self, cmd):
         self.write_to_child(cmd + '\r')
