@@ -92,7 +92,7 @@ def socket_child_main(exit_code=0, initial_print=''):
         pty.set_window_size(columns=cols + 3)
         pty.wait_till(lambda: f'Screen size changed: {cols + 3}' in pty.screen_contents())
         pty.write_to_child('\x03')
-        pty.wait_till(lambda: 'KeyboardInterrupt' in pty.screen_contents())
+        pty.wait_till(lambda: 'KeyboardInterrupt' in pty.screen_contents(), timeout=30)
         wait_for_death(signal.SIGINT)
 
         # test passing of data via cwd, env vars and stdin/stdout redirection
@@ -182,7 +182,7 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             nonlocal found_signal
             found_signal = False
             st = time.monotonic()
-            while time.monotonic() - st < 5:
+            while time.monotonic() - st < 30:
                 for (fd, event) in poll.poll(10):
                     if fd == signal_read_fd:
                         signals = []
