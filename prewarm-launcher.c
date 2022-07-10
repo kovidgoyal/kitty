@@ -52,6 +52,8 @@
     if ((i) < (count)) { \
         memmove((array) + (i), (array) + (i) + 1, sizeof((array)[0]) * ((count) - (i))); \
     }}
+#define left_shift_buffer(buf, n, sz) { \
+    if ((sz) > (n)) { sz -= n; memmove((buf), (buf) + (n), (sz)); } else sz = 0; }
 
 
 typedef struct transfer_buf {
@@ -441,8 +443,7 @@ write_to_tty(transfer_buf *src, int *dest_fd) {
             return false;
         }
         if (n > 0) {
-            src->sz -= n;
-            memmove(src->buf, src->buf + n, src->sz);
+            left_shift_buffer(src->buf, n, src->sz);
         } else *dest_fd = -1;
     }
     return true;
@@ -491,8 +492,7 @@ read_signals(void) {
                 }
                 break;
         }
-        buf_pos -= sizeof(siginfo_t);
-        memmove(buf, buf + sizeof(siginfo_t), buf_pos);
+        left_shift_buffer(buf, sizeof(siginfo_t), buf_pos);
     }
     return true;
 }
@@ -549,8 +549,7 @@ send_over_socket(void) {
     if (n) {
         if (n >= send_on_socket.sz) send_on_socket.sz = 0;
         else {
-            send_on_socket.sz -= n;
-            memmove(send_on_socket.buf, send_on_socket.buf + n, send_on_socket.sz);
+            left_shift_buffer(send_on_socket.buf, n, send_on_socket.sz);
         }
     }
     return true;
