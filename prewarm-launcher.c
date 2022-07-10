@@ -52,9 +52,6 @@
     if ((i) < (count)) { \
         memmove((array) + (i), (array) + (i) + 1, sizeof((array)[0]) * ((count) - (i))); \
     }}
-#define left_shift_buffer(buf, n, sz) { \
-    if ((sz) > (n)) { sz -= n; memmove((buf), (buf) + (n), (sz)); } else sz = 0; }
-
 
 typedef struct transfer_buf {
     char *buf;
@@ -63,6 +60,14 @@ typedef struct transfer_buf {
 static transfer_buf from_child_tty = {0};
 static transfer_buf to_child_tty = {0};
 static char child_tty_name[256];
+
+static void
+left_shift_buffer(transfer_buf *t, size_t n) {
+    if (t->sz > n) {
+        t->sz -= n;
+        memmove(t->buf, t->buf + n, t->sz);
+    } else t->sz = 0;
+}
 
 #define err_prefix "prewarm wrapper process error: "
 static inline void
@@ -436,7 +441,7 @@ write_to_tty(transfer_buf *src, int *dest_fd) {
             return false;
         }
         if (n > 0) {
-            left_shift_buffer(src->buf, n, src->sz);
+            left_shift_buffer(src, n);
         } else *dest_fd = -1;
     }
     return true;
@@ -463,12 +468,12 @@ static bool window_size_dirty = false;
 static bool
 read_signals(void) {
     static char buf[sizeof(siginfo_t) * 8];
-    static size_t buf_pos = 0;
-    ssize_t len = safe_read(signal_read_fd, buf + buf_pos, sizeof(buf) - buf_pos);
+    static transfer_buf b = {.buf=buf};
+    ssize_t len = safe_read(signal_read_fd, buf + b.sz, sizeof(buf) - b.sz);
     if (len < 0) return false;
     if (len == 0) return true;
-    buf_pos = len;
-    while (buf_pos >= sizeof(siginfo_t)) {
+    b.sz += len;
+    while (b.sz >= sizeof(siginfo_t)) {
         siginfo_t *sig = (siginfo_t*)buf;
         switch(sig->si_signo) {
             case SIGWINCH:
@@ -485,7 +490,7 @@ read_signals(void) {
                 }
                 break;
         }
-        left_shift_buffer(buf, sizeof(siginfo_t), buf_pos);
+        left_shift_buffer(&b, sizeof(siginfo_t));
     }
     return true;
 }
@@ -542,7 +547,7 @@ send_over_socket(void) {
     if (n) {
         if (n >= send_on_socket.sz) send_on_socket.sz = 0;
         else {
-            left_shift_buffer(send_on_socket.buf, n, send_on_socket.sz);
+            left_shift_buffer(&send_on_socket, n);
         }
     }
     return true;
