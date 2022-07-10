@@ -13,7 +13,7 @@ from contextlib import suppress
 
 from kitty.constants import kitty_exe, terminfo_dir
 from kitty.fast_data_types import (
-    CLD_EXITED, CLD_KILLED, get_options, has_sigqueue, install_signal_handlers,
+    CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options, has_sigqueue, install_signal_handlers,
     read_signals, sigqueue
 )
 
@@ -212,7 +212,7 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             t(signal.SIGINT, CLD_KILLED)
             p = run()
             p.stdin.close()
-            t(None, os.CLD_EXITED)
+            t(None, CLD_EXITED)
             expecting_code = None
             expecting_signal = signal.SIGUSR1
             os.kill(os.getpid(), signal.SIGUSR1)
@@ -224,7 +224,7 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             expecting_code = None
             expecting_value = 0
             p = run()
-            t(signal.SIGTSTP, os.CLD_STOPPED)
+            t(signal.SIGTSTP, CLD_STOPPED)
             # macOS does not send SIGCHLD when child is continued
             # https://stackoverflow.com/questions/48487935/sigchld-is-sent-on-sigcont-on-linux-but-not-on-macos
             p.send_signal(signal.SIGCONT)
