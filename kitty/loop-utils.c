@@ -34,10 +34,10 @@ handle_signal(int sig_num UNUSED, siginfo_t *si, void *ucontext UNUSED) {
 static bool
 init_signal_handlers(LoopData *ld) {
     ld->signal_read_fd = -1;
-#ifdef HAS_SIGNAL_FD
     sigemptyset(&ld->signals);
+    for (size_t i = 0; i < ld->num_handled_signals; i++) sigaddset(&ld->signals, ld->handled_signals[i]);
+#ifdef HAS_SIGNAL_FD
     if (ld->num_handled_signals) {
-        for (size_t i = 0; i < ld->num_handled_signals; i++) sigaddset(&ld->signals, ld->handled_signals[i]);
         if (sigprocmask(SIG_BLOCK, &ld->signals, NULL) == -1) return false;
         ld->signal_read_fd = signalfd(-1, &ld->signals, SFD_NONBLOCK | SFD_CLOEXEC);
         if (ld->signal_read_fd == -1) return false;
@@ -48,7 +48,7 @@ init_signal_handlers(LoopData *ld) {
         if (!self_pipe(ld->signal_fds, true)) return false;
         signal_write_fd = ld->signal_fds[1];
         ld->signal_read_fd = ld->signal_fds[0];
-        struct sigaction act = {.sa_sigaction=handle_signal, .sa_flags=SA_SIGINFO | SA_RESTART};
+        struct sigaction act = {.sa_sigaction=handle_signal, .sa_flags=SA_SIGINFO | SA_RESTART, .sa_mask = ld->signals};
         for (size_t i = 0; i < ld->num_handled_signals; i++) { if (sigaction(ld->handled_signals[i], &act, NULL) != 0) return false; }
     }
 #endif

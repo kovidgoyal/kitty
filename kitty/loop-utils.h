@@ -34,9 +34,8 @@ typedef struct {
 #endif
 #ifndef HAS_SIGNAL_FD
     int signal_fds[2];
-#else
-    sigset_t signals;
 #endif
+    sigset_t signals;
     int wakeup_read_fd;
     int signal_read_fd;
     int handled_signals[16];
