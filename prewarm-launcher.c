@@ -272,7 +272,14 @@ setup_signal_handler(void) {
     if (pipe(fds) != 0) return false;
     signal_read_fd = fds[0]; signal_write_fd = fds[1];
     set_blocking(signal_write_fd, false);
-    struct sigaction act = {.sa_sigaction=handle_signal, .sa_flags=SA_SIGINFO | SA_RESTART};
+    sigset_t masked_signals;
+    sigemptyset(&masked_signals);
+    sigaddset(&masked_signals, SIGWINCH);
+    sigaddset(&masked_signals, SIGINT);
+    sigaddset(&masked_signals, SIGTERM);
+    sigaddset(&masked_signals, SIGQUIT);
+    sigaddset(&masked_signals, SIGHUP);
+    struct sigaction act = {.sa_sigaction=handle_signal, .sa_flags=SA_SIGINFO | SA_RESTART, .sa_mask = masked_signals};
 #define a(which) if (sigaction(which, &act, NULL) != 0) return false;
     a(SIGWINCH); a(SIGINT); a(SIGTERM); a(SIGQUIT); a(SIGHUP);
 #undef a
