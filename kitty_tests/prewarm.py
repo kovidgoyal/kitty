@@ -13,7 +13,7 @@ from contextlib import suppress
 
 from kitty.constants import kitty_exe, terminfo_dir
 from kitty.fast_data_types import (
-    CLD_EXITED, CLD_KILLED, get_options, has_sigqueue, install_signal_handlers,
+    CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options, has_sigqueue, install_signal_handlers,
     read_signals, remove_signal_handlers, sigqueue
 )
 
@@ -160,21 +160,22 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
 
     def test_signal_handling(self):
         expecting_code = 0
-        expecting_signal = 0
+        expecting_signal = signal.SIGCHLD
         expecting_value = 0
         found_signal = False
 
-        def handle_signal(siginfo):
+        def handle_signals(signals):
             nonlocal found_signal
-            if expecting_signal:
-                self.ae(siginfo.si_signo, expecting_signal)
-            if expecting_code is not None:
-                self.ae(siginfo.si_code, expecting_code)
-            self.ae(siginfo.sival_int, expecting_value)
-            if expecting_code in (CLD_EXITED, CLD_KILLED):
-                p.wait(1)
-                p.stdin.close()
-            found_signal = True
+            for siginfo in signals:
+                if siginfo.si_signo != expecting_signal.value:
+                    continue
+                if expecting_code is not None:
+                    self.ae(siginfo.si_code, expecting_code)
+                self.ae(siginfo.sival_int, expecting_value)
+                if expecting_code in (CLD_EXITED, CLD_KILLED):
+                    p.wait(1)
+                    p.stdin.close()
+                found_signal = True
 
         def assert_signal():
             nonlocal found_signal
@@ -183,15 +184,17 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             while time.monotonic() - st < 5:
                 for (fd, event) in poll.poll(10):
                     if fd == signal_read_fd:
-                        read_signals(signal_read_fd, handle_signal)
+                        signals = []
+                        read_signals(signal_read_fd, signals.append)
+                        handle_signals(signals)
                 if found_signal:
                     break
-            self.assertTrue(found_signal, f'Failed to to get SIGCHLD for signal {signal}')
+            self.assertTrue(found_signal, f'Failed to get signal: {expecting_signal}')
 
         def t(signal, q, expecting_sig=signal.SIGCHLD):
             nonlocal expecting_code, found_signal, expecting_signal
             expecting_code = q
-            expecting_signal = expecting_sig.value
+            expecting_signal = expecting_sig
             if signal is not None:
                 p.send_signal(signal)
             assert_signal()
@@ -206,12 +209,21 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             p.stdin.close()
             t(None, os.CLD_EXITED)
             expecting_code = None
-            expecting_signal = signal.SIGUSR1.value
+            expecting_signal = signal.SIGUSR1
             os.kill(os.getpid(), signal.SIGUSR1)
             assert_signal()
             expecting_value = 17 if has_sigqueue else 0
             sigqueue(os.getpid(), signal.SIGUSR1.value, expecting_value)
             assert_signal()
 
+            expecting_code = None
+            expecting_value = 0
+            p = subprocess.Popen([kitty_exe(), '+runpy', 'input()'], stderr=subprocess.DEVNULL, stdin=subprocess.PIPE)
+            t(signal.SIGTSTP, CLD_STOPPED)
+            # macOS does not send SIGCHLD when child is continued
+            # https://stackoverflow.com/questions/48487935/sigchld-is-sent-on-sigcont-on-linux-but-not-on-macos
+            p.send_signal(signal.SIGCONT)
+            p.stdin.close()
+            p.wait(1)
         finally:
             remove_signal_handlers()
