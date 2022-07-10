@@ -262,8 +262,8 @@ class PTY:
         if flush:
             self.process_input_from_child(0)
 
-    def send_cmd_to_child(self, cmd):
-        self.write_to_child(cmd + '\r')
+    def send_cmd_to_child(self, cmd, flush=False):
+        self.write_to_child(cmd + '\r', flush=flush)
 
     def process_input_from_child(self, timeout=10):
         rd, wd, err = select.select([self.master_fd], [self.master_fd] if self.write_buf else [], [], timeout)
