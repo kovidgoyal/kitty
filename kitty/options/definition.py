@@ -159,6 +159,13 @@ Note that this refers to programming ligatures, typically implemented using the
 '''
     )
 
+opt('+modify_font', 'none',
+    option_type='modify_font',
+    add_to_default=False,
+    long_text='''
+    <SOMETHING THAT EXPLAINS THE FEATURE HERE>
+    ''')
+
 opt('+font_features', 'none',
     option_type='font_features',
     add_to_default=False,

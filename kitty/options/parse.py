@@ -12,7 +12,7 @@ from kitty.options.utils import (
     cursor_text_color, deprecated_hide_window_decorations_aliases,
     deprecated_macos_show_window_title_in_menubar_alias, deprecated_send_text, disable_ligatures,
     edge_width, env, font_features, hide_window_decorations, macos_option_as_alt, macos_titlebar_color,
-    narrow_symbols, optional_edge_width, parse_map, parse_mouse_map, paste_actions,
+    modify_font, narrow_symbols, optional_edge_width, parse_map, parse_mouse_map, paste_actions,
     resize_draw_strategy, scrollback_lines, scrollback_pager_history_size, shell_integration,
     store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge, tab_bar_margin_height,
     tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator, tab_title_template, titlebar_color,
@@ -1096,6 +1096,10 @@ class Parser:
     def mark3_foreground(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['mark3_foreground'] = to_color(val)
 
+    def modify_font(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        for k, v in modify_font(val):
+            ans["modify_font"][k] = v
+
     def mouse_hide_wait(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['mouse_hide_wait'] = float(val)
 
@@ -1364,6 +1368,7 @@ def create_result_dict() -> typing.Dict[str, typing.Any]:
         'exe_search_path': {},
         'font_features': {},
         'kitten_alias': {},
+        'modify_font': {},
         'narrow_symbols': {},
         'symbol_map': {},
         'watcher': {},

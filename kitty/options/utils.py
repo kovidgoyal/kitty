@@ -796,6 +796,27 @@ def font_features(val: str) -> Iterable[Tuple[str, Tuple[FontFeature, ...]]]:
                 features.append(FontFeature(feat, parsed))
         yield parts[0], tuple(features)
 
+def modify_font(val: str) -> Iterable[Tuple[str, Tuple[str, int]]]:
+    if val == 'none':
+        return
+    parts = val.split()
+    if len(parts) < 2:
+        log_error(f"Ignoring invalid modify_font {val}")
+        return
+    if parts[0]:
+        modifications = []
+        for mod in parts[1:]:
+            try:
+                key, v = val.split(" ")
+                key, v = key.strip(), v.strip()
+                parsed = [key, int(val)]
+            except ValueError:
+                log_error(f'Ignoring invalid font modification: {mod}')
+            else:
+                modifications.append([mod, parsed])
+        print(modifications)
+        yield parts[0], tuple(modifications)
+
 
 def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:
     val = val.strip()
