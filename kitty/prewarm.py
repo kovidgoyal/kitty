@@ -24,9 +24,9 @@ from typing import (
 from kitty.constants import kitty_exe, running_in_kitty
 from kitty.entry_points import main as main_entry_point
 from kitty.fast_data_types import (
-    CLD_EXITED, CLD_KILLED, establish_controlling_tty, get_options, getpeereid,
-    install_signal_handlers, read_signals, remove_signal_handlers, safe_pipe,
-    set_options
+    CLD_EXITED, CLD_KILLED, CLD_STOPPED, establish_controlling_tty,
+    get_options, getpeereid, install_signal_handlers, read_signals,
+    remove_signal_handlers, safe_pipe, set_options
 )
 from kitty.options.types import Options
 from kitty.shm import SharedMemory
@@ -523,6 +523,14 @@ class SocketChild:
         child_main({'cwd': self.cwd, 'env': self.env, 'argv': self.argv})
         raise SystemExit(0)
 
+    def handle_stop(self, status: int) -> None:
+        if self.closed:
+            return
+        try:
+            self.conn.sendall(struct.pack('q', status))
+        except OSError as e:
+            print_error(f'Failed to send exit status of socket child with error: {e}')
+
     def handle_death(self, status: int) -> None:
         if self.closed:
             return
@@ -694,15 +702,24 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
             return
 
         def handle_signal(siginfo: SignalInfo) -> None:
-            if siginfo.si_signo != signal.SIGCHLD or siginfo.si_code not in (CLD_KILLED, CLD_EXITED):
+            if siginfo.si_signo != signal.SIGCHLD or siginfo.si_code not in (CLD_KILLED, CLD_EXITED, CLD_STOPPED):
                 return
             while True:
                 try:
-                    pid, status = os.waitpid(-1, os.WNOHANG)
+                    pid, status = os.waitpid(-1, os.WNOHANG | os.WUNTRACED)
                 except ChildProcessError:
                     pid = 0
                 if not pid:
                     break
+                if os.WIFSTOPPED(status):
+                    sc = socket_pid_map.get(pid)
+                    if sc is not None:
+                        try:
+                            sc.handle_stop(status)
+                        except Exception:
+                            import traceback
+                            traceback.print_exc()
+                    return
                 child_id = child_pid_map.pop(pid, None)
                 if child_id is None:
                     sc = socket_pid_map.get(pid)
