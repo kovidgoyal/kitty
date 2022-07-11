@@ -383,14 +383,18 @@ read_from_zygote(void) {
                     if (signum > 0) {
                         signal(signum, SIG_DFL);
                         cleanup();
-                        kill(getpid(), signum);
+                        raise(signum);
                         _exit(1);
                     }
                 } else if (WIFSTOPPED(child_exit_status)) {
                     child_state = CHILD_STOPPED;
+                    int signum = WSTOPSIG(child_exit_status);
                     safe_tcsetattr(self_ttyfd, TCSANOW, &restore_termios);
                     termios_needs_restore = false;
-                    kill(getpid(), SIGSTOP);
+                    struct sigaction defval = {.sa_handler = SIG_DFL}, original;
+                    sigaction(signum, &defval, &original);
+                    raise(signum);
+                    sigaction(signum, &original, NULL);
                     safe_tcsetattr(self_ttyfd, TCSANOW, &self_termios);
                     termios_needs_restore = true;
                     if (child_pid > 0) {
