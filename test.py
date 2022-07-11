@@ -36,6 +36,7 @@ def main() -> None:
         XDG_CONFIG_DIRS=os.path.join(tdir, '.config'),
         XDG_DATA_DIRS=os.path.join(tdir, '.local', 'xdg'),
         XDG_CACHE_HOME=os.path.join(tdir, '.cache'),
+        KITTY_PREWARM_SOCKET='',
     ):
         m = importlib.import_module('kitty_tests.main')
         getattr(m, 'run_tests')()
