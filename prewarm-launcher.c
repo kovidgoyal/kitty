@@ -382,7 +382,9 @@ read_from_zygote(void) {
                     int signum = WTERMSIG(child_exit_status);
                     if (signum > 0) {
                         signal(signum, SIG_DFL);
+                        cleanup();
                         kill(getpid(), signum);
+                        _exit(1);
                     }
                 } else if (WIFSTOPPED(child_exit_status)) {
                     child_state = CHILD_STOPPED;
