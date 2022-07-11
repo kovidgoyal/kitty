@@ -60,6 +60,19 @@ typedef struct transfer_buf {
 static transfer_buf from_child_tty = {0};
 static transfer_buf to_child_tty = {0};
 static char child_tty_name[256];
+static int child_master_fd = -1, child_slave_fd = -1;
+static struct winsize self_winsize = {0};
+static struct termios self_termios = {0}, restore_termios = {0};
+static bool termios_needs_restore = false;
+static int self_ttyfd = -1, socket_fd = -1, signal_read_fd = -1, signal_write_fd = -1;
+static int stdin_pos = -1, stdout_pos = -1, stderr_pos = -1;
+static char fd_send_buf[256];
+struct iovec launch_msg = {0};
+struct msghdr launch_msg_container = {.msg_control = fd_send_buf, .msg_controllen = sizeof(fd_send_buf), .msg_iov = &launch_msg, .msg_iovlen = 1 };
+static size_t launch_msg_cap = 0;
+char *launch_msg_buf = NULL;
+static pid_t child_pid = 0;
+
 
 static void
 left_shift_buffer(transfer_buf *t, size_t n) {
@@ -178,19 +191,6 @@ is_prewarmable(int argc, char *argv[]) {
     if (argc < 3) return false;
     return strcmp(argv[2], "open") != 0;
 }
-
-static int child_master_fd = -1, child_slave_fd = -1;
-static struct winsize self_winsize = {0};
-static struct termios self_termios = {0}, restore_termios = {0};
-static bool termios_needs_restore = false;
-static int self_ttyfd = -1, socket_fd = -1, signal_read_fd = -1, signal_write_fd = -1;
-static int stdin_pos = -1, stdout_pos = -1, stderr_pos = -1;
-static char fd_send_buf[256];
-struct iovec launch_msg = {0};
-struct msghdr launch_msg_container = {.msg_control = fd_send_buf, .msg_controllen = sizeof(fd_send_buf), .msg_iov = &launch_msg, .msg_iovlen = 1 };
-static size_t launch_msg_cap = 0;
-char *launch_msg_buf = NULL;
-static pid_t child_pid = 0;
 
 static void
 cleanup(void) {
@@ -388,7 +388,11 @@ read_from_zygote(void) {
                     }
                 } else if (WIFSTOPPED(child_exit_status)) {
                     child_state = CHILD_STOPPED;
+                    safe_tcsetattr(self_ttyfd, TCSANOW, &restore_termios);
+                    termios_needs_restore = false;
                     kill(getpid(), SIGSTOP);
+                    safe_tcsetattr(self_ttyfd, TCSANOW, &self_termios);
+                    termios_needs_restore = true;
                     if (child_pid > 0) {
                         kill(child_pid, SIGCONT);
                     }
@@ -675,7 +679,6 @@ use_prewarmed_process(int argc, char *argv[]) {
     termios_needs_restore = true;
     cfmakeraw(&self_termios);
     if (!safe_tcsetattr(self_ttyfd, TCSANOW, &self_termios)) fail("Failed to put tty into raw mode");
-    while (tcsetattr(self_ttyfd, TCSANOW, &self_termios) == -1 && errno == EINTR) {}
     if (!create_launch_msg(argc, argv)) fail("Failed to open controlling terminal");
     socket_fd = connect_to_socket_synchronously(env_addr);
     if (socket_fd < 0) fail("Failed to connect to prewarm socket");
