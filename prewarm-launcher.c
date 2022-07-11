@@ -276,9 +276,10 @@ setup_signal_handler(void) {
     sigaddset(&masked_signals, SIGTERM);
     sigaddset(&masked_signals, SIGQUIT);
     sigaddset(&masked_signals, SIGHUP);
+    sigaddset(&masked_signals, SIGTSTP);
     struct sigaction act = {.sa_sigaction=handle_signal, .sa_flags=SA_SIGINFO | SA_RESTART, .sa_mask = masked_signals};
 #define a(which) if (sigaction(which, &act, NULL) != 0) return false;
-    a(SIGWINCH); a(SIGINT); a(SIGTERM); a(SIGQUIT); a(SIGHUP);
+    a(SIGWINCH); a(SIGINT); a(SIGTERM); a(SIGQUIT); a(SIGHUP); a(SIGTSTP);
 #undef a
     return true;
 }
@@ -343,33 +344,55 @@ create_launch_msg(int argc, char *argv[]) {
 }
 
 static int exit_status = EXIT_FAILURE;
-static char from_child_buf[64] = {0};
-static size_t from_child_buf_pos = 0;
 static int pending_signals[32] = {0};
-enum ChildState { CHILD_NOT_STARTED, CHILD_STARTED, CHILD_EXITED };
+enum ChildState { CHILD_NOT_STARTED, CHILD_STARTED, CHILD_STOPPED, CHILD_EXITED };
 static enum ChildState child_state = CHILD_NOT_STARTED;
 
 static bool
-read_child_data(void) {
+read_from_zygote(void) {
     ssize_t n;
-    if (from_child_buf_pos >= sizeof(from_child_buf)) { print_error("Too much data from prewarm socket", 0); return false; }
-    n = safe_read(socket_fd, from_child_buf + from_child_buf_pos, sizeof(from_child_buf) - from_child_buf_pos);
+    static char buf[64];
+    static transfer_buf t = {.buf=buf};
+    n = safe_read(socket_fd, t.buf + t.sz, sizeof(buf) - t.sz);
     if (n < 0) {
         if (errno == EIO || errno == EPIPE) { socket_fd = -1; return true; }
         return false;
     }
     if (n) {
-        from_child_buf_pos += n;
-        if (from_child_buf_pos >= sizeof(long long)) {
-            pid_t cp = *((long long*)from_child_buf);
-            if (cp == 0) { print_error("Got zero child pid from prewarm socket", 0); return false; }
-            child_pid = cp;
-            child_state = CHILD_STARTED;
-            if (child_slave_fd > -1) { safe_close(child_slave_fd); child_slave_fd = -1; }
-            for (size_t i = 0; i < arraysz(pending_signals) && pending_signals[i]; i++) {
-                kill(child_pid, pending_signals[i]);
+        t.sz += n;
+        while (t.sz >= sizeof(long long)) {
+            long long val = *((long long*)t.buf);
+            left_shift_buffer(&t, sizeof(long long));
+            if (child_state == CHILD_NOT_STARTED) {
+                if (val == 0) { print_error("Got zero child pid from prewarm socket", 0); return false; }
+                child_pid = val;
+                child_state = CHILD_STARTED;
+                if (child_slave_fd > -1) { safe_close(child_slave_fd); child_slave_fd = -1; }
+                for (size_t i = 0; i < arraysz(pending_signals) && pending_signals[i]; i++) {
+                    kill(child_pid, pending_signals[i]);
+                }
+                memset(pending_signals, 0, sizeof(pending_signals));
+            } else {
+                int child_exit_status = val;
+                if (WIFEXITED(child_exit_status)) {
+                    exit_status = WEXITSTATUS(child_exit_status);
+                    child_pid = 0;
+                    child_state = CHILD_EXITED;
+                } else if (WIFSIGNALED(child_exit_status)) {
+                    int signum = WTERMSIG(child_exit_status);
+                    if (signum > 0) {
+                        signal(signum, SIG_DFL);
+                        kill(getpid(), signum);
+                    }
+                } else if (WIFSTOPPED(child_exit_status)) {
+                    child_state = CHILD_STOPPED;
+                    kill(getpid(), SIGSTOP);
+                    if (child_pid > 0) {
+                        kill(child_pid, SIGCONT);
+                    }
+                    child_state = CHILD_STARTED;
+                }
             }
-            memset(pending_signals, 0, sizeof(pending_signals));
         }
     } else { socket_fd = -1; return true; }
     return true;
@@ -478,7 +501,7 @@ read_signals(void) {
         switch(sig->si_signo) {
             case SIGWINCH:
                 window_size_dirty = true; break;
-            case SIGINT: case SIGTERM: case SIGHUP: case SIGQUIT:
+            case SIGINT: case SIGTERM: case SIGHUP: case SIGQUIT: case SIGTSTP:
                 if (child_pid > 0) kill(child_pid, sig->si_signo);
                 else {
                     for (size_t i = 0; i < arraysz(pending_signals); i++) {
@@ -501,6 +524,7 @@ keep_going(void) {
         case CHILD_NOT_STARTED:
             return self_ttyfd > -1 && signal_read_fd > -1 && socket_fd > -1 && child_master_fd > -1;
         case CHILD_STARTED:
+        case CHILD_STOPPED:
             return self_ttyfd > -1 && signal_read_fd > -1 && socket_fd > -1;
         case CHILD_EXITED:
             return self_ttyfd > -1 && signal_read_fd > -1 && child_master_fd > -1;
@@ -601,20 +625,8 @@ loop(void) {
                 else if (send_on_socket.sz > 0) { if (!send_over_socket()) fail("sending on socket failed"); }
             }
             if (FD_ISSET(socket_fd, &readable)) {
-                if (!read_child_data()) fail("reading information about child failed");
+                if (!read_from_zygote()) fail("reading information about child failed");
                 if (socket_fd < 0) { // hangup
-                    if (from_child_buf_pos >= 2 * sizeof(long long)) {
-                        int child_exit_status = *((long long*)(from_child_buf + sizeof(long long)));
-                        if (WIFEXITED(child_exit_status)) {
-                            exit_status = WEXITSTATUS(child_exit_status);
-                        } else if (WIFSIGNALED(child_exit_status)) {
-                            int signum = WTERMSIG(child_exit_status);
-                            if (signum > 0) {
-                                signal(signum, SIG_DFL);
-                                kill(getpid(), signum);
-                            }
-                        }
-                    }
                     child_pid = 0;
                     child_state = CHILD_EXITED;
                 }
