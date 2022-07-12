@@ -163,7 +163,12 @@ opt('+modify_font', 'none',
     option_type='modify_font',
     add_to_default=False,
     long_text='''
-    <SOMETHING THAT EXPLAINS THE FEATURE HERE>
+Modify the appearance of a font. This setting is useful for changing the
+thickness of the underline or undercurl of a font, the position of the
+strikethrough or the underline or undercurl. It accepts the attribute you wish
+to change as well as a number representing pts. For example::
+
+    modify_font underline_thickness 2 underline_position 4
     ''')
 
 opt('+font_features', 'none',
