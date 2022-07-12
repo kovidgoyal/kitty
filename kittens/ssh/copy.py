@@ -38,7 +38,7 @@ type=list
 A glob pattern. Files with names matching this pattern are excluded from being
 transferred. Useful when adding directories. Can
 be specified multiple times, if any of the patterns match the file will be
-excluded.
+excluded. To exclude a directory use a pattern like */directory_name/*.
 
 
 --symlink-strategy
