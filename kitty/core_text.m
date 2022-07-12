@@ -401,8 +401,8 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
         *strikethrough_position = adjust_ypos(*strikethrough_position, *cell_height, baseline_offset);
     }
 
-    if (modified_underline_y) *underline_position = adjust_ypos(*underline_position, *cell_height, baseline_offset);
-    if (modified_strikethrough_y) *strikethrough_position = adjust_ypos(*strikethrough_position, *cell_height, baseline_offset);
+    if (modified_underline_y) *underline_position = adjust_ypos(*underline_position, *cell_height, *modified_underline_y);
+    if (modified_strikethrough_y) *strikethrough_position = adjust_ypos(*strikethrough_position, *cell_height, *modified_strikethrough_y);
 
     CFRelease(test_frame); CFRelease(path); CFRelease(framesetter);
 
