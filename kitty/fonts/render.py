@@ -201,12 +201,14 @@ def set_font_family(opts: Optional[Options] = None, override_font_size: Optional
     num_symbol_fonts = len(current_faces) - before
     font_features = {}
     font_modifications = {}
-    for font_name in opts.modify_font:
-        fields = opts.modify_font[font_name]
-        font_modifications = fields
+
+    if opts.modify_font["*"]:
+        font_modifications = opts.modify_font["*"]
 
     for face, _, _ in current_faces:
         font_features[face['postscript_name']] = find_font_features(face['postscript_name'])
+        if not font_modifications and face['postscript_name'] in opts.modify_font:
+            font_modifications = opts.modify_font[face['postscript_name']]
     font_features.update(opts.font_features)
     if debug_font_matching:
         dump_faces(ftypes, indices)
