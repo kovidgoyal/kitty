@@ -805,9 +805,12 @@ def modify_font(val: str) -> Iterable[Tuple[str, Dict[str, int]]]:
         return
     if parts[0]:
         modifications = {}
+        mod_key = ["underline_thickness", "underline_position", "strikethrough_position"]
         for i in range(1, len(parts), 2):
             key = parts[i].strip()
             try:
+                if key not in mod_key:
+                    raise ValueError(f'{key} is not a valid font modification')
                 modifications[key] = int(parts[i + 1])
             except ValueError:
                 log_error(f'Ignoring invalid font modification: {key}')
