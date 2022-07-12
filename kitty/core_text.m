@@ -332,7 +332,7 @@ adjust_ypos(unsigned int pos, unsigned int cell_height, int adjustment) {
 }
 
 void
-cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness, unsigned int* strikethrough_position, unsigned int* strikethrough_thickness) {
+cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness, unsigned int* strikethrough_position, unsigned int* strikethrough_thickness, unsigned int* modified_thickness, unsigned int* modified_underline_y, unsigned int* modified_strikethrough_y) {
     // See https://developer.apple.com/library/content/documentation/StringsTextFonts/Conceptual/TextAndWebiPhoneOS/TypoFeatures/TextSystemFeatures.html
     CTFace *self = (CTFace*)s;
 #define count (128 - 32)
@@ -349,7 +349,9 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
         }
     }
     *cell_width = MAX(1u, width);
-    *underline_thickness = (unsigned int)ceil(MAX(0.1, self->underline_thickness));
+    if (modified_thickness != NULL) *underline_thickness = *modified_thickness;
+    else *underline_thickness = (unsigned int)ceil(MAX(0.1, self->underline_thickness));
+
     *strikethrough_thickness = *underline_thickness;
     // float line_height = MAX(1, floor(self->ascent + self->descent + MAX(0, self->leading) + 0.5));
     // Let CoreText's layout engine calculate the line height. Slower, but hopefully more accurate.
@@ -398,6 +400,9 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
         *underline_position = adjust_ypos(*underline_position, *cell_height, baseline_offset);
         *strikethrough_position = adjust_ypos(*strikethrough_position, *cell_height, baseline_offset);
     }
+
+    if (modified_underline_y) *underline_position = adjust_ypos(*underline_position, *cell_height, baseline_offset);
+    if (modified_strikethrough_y) *strikethrough_position = adjust_ypos(*strikethrough_position, *cell_height, baseline_offset);
 
     CFRelease(test_frame); CFRelease(path); CFRelease(framesetter);
 

@@ -336,7 +336,28 @@ python_send_to_gpu(FONTS_DATA_HANDLE fg, unsigned int x, unsigned int y, unsigne
 static void
 calc_cell_metrics(FontGroup *fg) {
     unsigned int cell_height, cell_width, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
-    cell_metrics(fg->fonts[fg->medium_font_idx].face, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness, &strikethrough_position, &strikethrough_thickness);
+
+    unsigned int modified_thickness, modified_underline_y, modified_strikethrough_y;
+    PyObject* o = PyDict_GetItemString(font_modifications, "underline_thickness");
+    if (o != NULL) modified_thickness = PyLong_AsLong(o);
+    PyObject* p = PyDict_GetItemString(font_modifications, "underline_position");
+    if (p != NULL) modified_underline_y = PyLong_AsLong(p);
+    PyObject* s = PyDict_GetItemString(font_modifications, "strikethrough_position");
+    if (s != NULL) modified_strikethrough_y = PyLong_AsLong(s);
+
+    cell_metrics(
+        fg->fonts[fg->medium_font_idx].face,
+        &cell_width,
+        &cell_height,
+        &baseline,
+        &underline_position,
+        &underline_thickness,
+        &strikethrough_position,
+        &strikethrough_thickness,
+        &modified_thickness,
+        &modified_underline_y,
+        &modified_strikethrough_y
+    );
     if (!cell_width) fatal("Failed to calculate cell width for the specified font");
     unsigned int before_cell_height = cell_height;
     int cw = cell_width, ch = cell_height;

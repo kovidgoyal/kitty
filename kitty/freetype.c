@@ -314,7 +314,17 @@ adjust_ypos(unsigned int pos, unsigned int cell_height, int adjustment) {
 }
 
 void
-cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness, unsigned int* strikethrough_position, unsigned int* strikethrough_thickness) {
+cell_metrics(PyObject *s,
+             unsigned int* cell_width,
+             unsigned int* cell_height,
+             unsigned int* baseline,
+             unsigned int* underline_position,
+             unsigned int* underline_thickness,
+             unsigned int* strikethrough_position,
+             unsigned int* strikethrough_thickness,
+             unsigned int* modified_thickness,
+             unsigned int* modified_underline_y,
+             unsigned int* modified_strikethrough_y) {
     Face *self = (Face*)s;
     *cell_width = calc_cell_width(self);
     *cell_height = calc_cell_height(self, true);
@@ -323,7 +333,11 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     else if (OPT(adjust_baseline_frac) != 0) baseline_offset = (int)(*cell_height * OPT(adjust_baseline_frac));
     *baseline = font_units_to_pixels_y(self, self->ascender);
     *underline_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->underline_position)));
-    *underline_thickness = MAX(1, font_units_to_pixels_y(self, self->underline_thickness));
+    if (modified_thickness != NULL) {
+        *underline_thickness = *modified_thickness;
+    } else {
+        *underline_thickness = MAX(1, font_units_to_pixels_y(self, self->underline_thickness));
+    }
 
     if (self->strikethrough_position != 0) {
       *strikethrough_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->strikethrough_position)));
@@ -339,6 +353,13 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
         *baseline = adjust_ypos(*baseline, *cell_height, baseline_offset);
         *underline_position = adjust_ypos(*underline_position, *cell_height, baseline_offset);
         *strikethrough_position = adjust_ypos(*strikethrough_position, *cell_height, baseline_offset);
+    }
+
+    if (modified_underline_y) {
+        *underline_position = adjust_ypos(*underline_position, *cell_height, *modified_underline_y);
+    }
+    if (modified_strikethrough_y) {
+        *strikethrough_position = adjust_ypos(*strikethrough_position, *cell_height, *modified_strikethrough_y);
     }
 }
 
