@@ -613,7 +613,7 @@ class Options:
     exe_search_path: typing.Dict[str, str] = {}
     font_features: typing.Dict[str, typing.Tuple[kitty.fonts.FontFeature, ...]] = {}
     kitten_alias: typing.Dict[str, str] = {}
-    modify_font: typing.Dict[str, typing.Tuple[str, int]] = {}
+    modify_font: typing.Dict[str, typing.Dict[str, int]] = {}
     narrow_symbols: typing.Dict[typing.Tuple[int, int], int] = {}
     symbol_map: typing.Dict[typing.Tuple[int, int], str] = {}
     watcher: typing.Dict[str, str] = {}
