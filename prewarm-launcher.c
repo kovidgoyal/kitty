@@ -347,6 +347,7 @@ static int exit_status = EXIT_FAILURE;
 static int pending_signals[32] = {0};
 enum ChildState { CHILD_NOT_STARTED, CHILD_STARTED, CHILD_STOPPED, CHILD_EXITED };
 static enum ChildState child_state = CHILD_NOT_STARTED;
+static void flush_data(void);
 
 static bool
 read_from_zygote(void) {
@@ -381,8 +382,9 @@ read_from_zygote(void) {
                 } else if (WIFSIGNALED(child_exit_status)) {
                     int signum = WTERMSIG(child_exit_status);
                     if (signum > 0) {
-                        signal(signum, SIG_DFL);
+                        flush_data();
                         cleanup();
+                        signal(signum, SIG_DFL);
                         raise(signum);
                         _exit(1);
                     }
@@ -544,12 +546,17 @@ keep_going(void) {
 
 static void
 flush_data(void) {
+    if (self_ttyfd > -1 && from_child_tty.sz > 0) {
+        set_blocking(self_ttyfd, false);
+        from_child_to_self();
+    }
+
     if (child_master_fd > -1 && from_child_tty.sz < IO_BUZ_SZ) {
         set_blocking(child_master_fd, false);
         read_from_child_tty();
     }
+
     if (self_ttyfd > -1 && from_child_tty.sz > 0) {
-        set_blocking(self_ttyfd, false);
         from_child_to_self();
     }
 }
