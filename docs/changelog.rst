@@ -38,7 +38,7 @@ Detailed list of changes
 0.26.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Reduce startup latency by ~50 milliseconds when running kittens via key-bindings or remote control (:iss:`5159`)
+- Reduce startup latency by ~30 milliseconds when running kittens and remote control commands inside kitty (:iss:`5159`)
 
 - A new option :opt:`modify_font` to adjust various font metrics like underlines, cell sizes etc. (:pull:`5265`)
 
