@@ -11,6 +11,7 @@ import socket
 import struct
 import sys
 import time
+import traceback
 import warnings
 from contextlib import suppress
 from dataclasses import dataclass
@@ -18,7 +19,7 @@ from importlib import import_module
 from itertools import count
 from typing import (
     IO, TYPE_CHECKING, Any, Callable, Dict, Iterator, List, NoReturn, Optional,
-    Tuple, Union, cast, TypeVar
+    Tuple, TypeVar, Union, cast
 )
 
 from kitty.constants import kitty_exe, running_in_kitty
@@ -486,10 +487,15 @@ def fork_socket_child_supervisor(conn: socket.socket, free_non_child_resources: 
             return
         from_socket_buf += msg
         data = memoryview(from_socket_buf)
+        record = memoryview(b'')
         while len(data) >= winsize:
             record, data = data[:winsize], data[winsize:]
-            with suppress(OSError), open(os.open(os.ctermid(), os.O_RDWR | os.O_CLOEXEC | os.O_NOCTTY, 0), 'rb') as f:
-                eintr_retry(fcntl.ioctl, f.fileno(), termios.TIOCSWINSZ, record)
+        if record:
+            try:
+                with open(os.open(os.ctermid(), os.O_RDWR | os.O_CLOEXEC), 'w') as f:
+                    eintr_retry(fcntl.ioctl, f.fileno(), termios.TIOCSWINSZ, record)
+            except OSError:
+                traceback.print_exc()
         from_socket_buf = bytes(data)
 
     def read_launch_msg() -> bool:
@@ -769,7 +775,6 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
         raise
     except Exception:
         if is_zygote:
-            import traceback
             traceback.print_exc()
         raise
     finally:
