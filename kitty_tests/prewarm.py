@@ -80,21 +80,21 @@ def socket_child_main(exit_code=0, initial_print=''):
 
         # signal delivery tests are pretty flakey on CI so give up on them
 
-        # test SIGINT via signal to wrapper
+        # # test SIGINT via signal to wrapper
         # pty = self.create_pty(
         #     argv=[kitty_exe(), '+runpy', src + 'socket_child_main(initial_print="child ready:")'], cols=cols, env=env, cwd=cwd)
         # pty.wait_till(lambda: 'child ready:' in pty.screen_contents())
-        # os.killpg(os.getpgid(pty.child_pid), signal.SIGINT)
-        # wait_for_death(signal.SIGINT, timeout=30)
+        # os.kill(pty.child_pid, signal.SIGINT)
         # pty.wait_till(lambda: 'KeyboardInterrupt' in pty.screen_contents())
-
-        # test SIGINT via Ctrl-c and also test changing terminal window size
+        # wait_for_death(signal.SIGINT)
+        #
+        # # test SIGINT via Ctrl-c
         # pty = self.create_pty(
         #     argv=[kitty_exe(), '+runpy', src + 'socket_child_main(initial_print="child ready:")'], cols=cols, env=env, cwd=cwd)
         # pty.wait_till(lambda: 'child ready:' in pty.screen_contents())
         # pty.write_to_child('\x03', flush=True)
-        # wait_for_death(signal.SIGINT, timeout=30)
         # pty.wait_till(lambda: 'KeyboardInterrupt' in pty.screen_contents())
+        # wait_for_death(signal.SIGINT)
 
         # test SIGWINCH handling
         pty = self.create_pty(
