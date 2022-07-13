@@ -73,7 +73,7 @@ jobs:
             - name: Set up Python
               uses: actions/setup-python@v3
               with:
-                python-version: 3.8
+                python-version: 3.9
 
             - name: Install build-only deps
               run: pip install -r docs/requirements.txt flake8 mypy types-requests types-docutils
@@ -83,6 +83,9 @@ jobs:
 
             - name: Build kitty package
               run: python .github/workflows/ci.py package
+
+            - name: Build kitty
+              run: python setup.py build --debug
 
             - name: Run mypy
               run: ./test.py mypy
