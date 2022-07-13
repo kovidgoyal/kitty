@@ -385,13 +385,15 @@ class SocketChildData:
         self.env: Dict[str, str] = {}
 
 
-T = TypeVar('T')
+Funtion = TypeVar('Funtion', bound=Callable[..., Any])
 
 
-def eintr_retry(func: Callable[..., T], *args: Any) -> T:
-    while True:
-        with suppress(InterruptedError):
-            return func(*args)
+def eintr_retry(func: Funtion) -> Funtion:
+    def ret(*a: Any, **kw: Any) -> Any:
+        while True:
+            with suppress(InterruptedError):
+                return func(*a, **kw)
+    return cast(Funtion, ret)
 
 
 interactive_and_job_control_signals = (
@@ -405,15 +407,15 @@ def fork_socket_child(child_data: SocketChildData, tty_fd: int, stdio_fds: Dict[
     if child_pid:
         return child_pid
     # child process
-    eintr_retry(os.setpgid, 0, 0)
-    eintr_retry(os.tcsetpgrp, tty_fd, eintr_retry(os.getpgid, 0))
+    eintr_retry(os.setpgid)(0, 0)
+    eintr_retry(os.tcsetpgrp)(tty_fd, eintr_retry(os.getpgid)(0))
     for x in interactive_and_job_control_signals:
         signal.signal(x, signal.SIG_DFL)
     restore_python_signal_handlers()
     # the std streams fds are closed in free_non_child_resources()
     for which in ('stdin', 'stdout', 'stderr'):
         fd = stdio_fds[which] if stdio_fds[which] > -1 else tty_fd
-        os.dup2(fd, getattr(sys, which).fileno())
+        eintr_retry(os.dup2)(fd, getattr(sys, which).fileno())
     free_non_child_resources()
     child_main({'cwd': child_data.cwd, 'env': child_data.env, 'argv': child_data.argv})
 
@@ -497,7 +499,7 @@ def fork_socket_child_supervisor(conn: socket.socket, free_non_child_resources: 
         if record:
             try:
                 with open(os.open(os.ctermid(), os.O_RDWR | os.O_CLOEXEC), 'w') as f:
-                    eintr_retry(fcntl.ioctl, f.fileno(), termios.TIOCSWINSZ, record)
+                    eintr_retry(fcntl.ioctl)(f.fileno(), termios.TIOCSWINSZ, record)
             except OSError:
                 traceback.print_exc()
         from_socket_buf = bytes(data)
@@ -569,8 +571,8 @@ def fork_socket_child_supervisor(conn: socket.socket, free_non_child_resources: 
         if child_pid:
             # this is also done in the child process, but we dont
             # know when, so do it here as well
-            eintr_retry(os.setpgid, child_pid, child_pid)
-            eintr_retry(os.tcsetpgrp, tty_fd, child_pid)
+            eintr_retry(os.setpgid)(child_pid, child_pid)
+            eintr_retry(os.tcsetpgrp)(tty_fd, child_pid)
             for fd in stdio_fds.values():
                 if fd > -1:
                     os.close(fd)
