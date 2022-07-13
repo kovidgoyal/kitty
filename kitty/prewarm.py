@@ -48,9 +48,6 @@ def restore_python_signal_handlers() -> None:
     signal.signal(signal.SIGPIPE, signal.SIG_IGN)
     signal.signal(signal.SIGUSR1, signal.SIG_DFL)
     signal.signal(signal.SIGCHLD, signal.SIG_DFL)
-    signal.signal(signal.SIGTSTP, signal.SIG_DFL)
-    signal.signal(signal.SIGTTIN, signal.SIG_DFL)
-    signal.signal(signal.SIGTTOU, signal.SIG_DFL)
 
 
 def print_error(*a: Any) -> None:
@@ -397,6 +394,11 @@ def eintr_retry(func: Callable[..., T], *args: Any) -> T:
             return func(*args)
 
 
+interactive_and_job_control_signals = (
+    signal.SIGINT, signal.SIGQUIT, signal.SIGTSTP, signal.SIGTTIN, signal.SIGTTOU
+)
+
+
 def fork_socket_child(child_data: SocketChildData, tty_fd: int, stdio_fds: Dict[str, int], free_non_child_resources: Callable[[], None]) -> int:
     # see https://www.gnu.org/software/libc/manual/html_node/Launching-Jobs.html
     child_pid = safer_fork()
@@ -405,6 +407,8 @@ def fork_socket_child(child_data: SocketChildData, tty_fd: int, stdio_fds: Dict[
     # child process
     eintr_retry(os.setpgid, 0, 0)
     eintr_retry(os.tcsetpgrp, tty_fd, eintr_retry(os.getpgid, 0))
+    for x in interactive_and_job_control_signals:
+        signal.signal(x, signal.SIG_DFL)
     restore_python_signal_handlers()
     # the std streams fds are closed in free_non_child_resources()
     for which in ('stdin', 'stdout', 'stderr'):
@@ -426,10 +430,10 @@ def fork_socket_child_supervisor(conn: socket.socket, free_non_child_resources: 
     os.setsid()
     restore_python_signal_handlers()
     free_non_child_resources()
+    signal_read_fd = install_signal_handlers(signal.SIGCHLD, signal.SIGUSR1)[0]
     # See https://www.gnu.org/software/libc/manual/html_node/Initializing-the-Shell.html
-    signal_read_fd = install_signal_handlers(
-        signal.SIGCHLD, signal.SIGUSR1, signal.SIGINT, signal.SIGTSTP, signal.SIGTTIN, signal.SIGTTOU, signal.SIGQUIT
-    )[0]
+    for x in interactive_and_job_control_signals:
+        signal.signal(x, signal.SIG_IGN)
     poll = select.poll()
     poll.register(signal_read_fd, select.POLLIN)
     from_socket_buf = b''
