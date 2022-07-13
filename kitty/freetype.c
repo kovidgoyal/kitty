@@ -322,9 +322,9 @@ cell_metrics(PyObject *s,
              unsigned int* underline_thickness,
              unsigned int* strikethrough_position,
              unsigned int* strikethrough_thickness,
-             unsigned int* modified_thickness,
-             unsigned int* modified_underline_y,
-             unsigned int* modified_strikethrough_y) {
+             int* modified_thickness,
+             int* modified_underline_y,
+             int* modified_strikethrough_y) {
     Face *self = (Face*)s;
     *cell_width = calc_cell_width(self);
     *cell_height = calc_cell_height(self, true);

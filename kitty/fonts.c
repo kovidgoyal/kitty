@@ -337,7 +337,7 @@ static void
 calc_cell_metrics(FontGroup *fg) {
     unsigned int cell_height, cell_width, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
 
-    unsigned int modified_thickness, modified_underline_y, modified_strikethrough_y;
+    int modified_thickness, modified_underline_y, modified_strikethrough_y;
     PyObject* o = PyDict_GetItemString(font_modifications, "underline_thickness");
     if (o != NULL) modified_thickness = PyLong_AsLong(o);
     PyObject* p = PyDict_GetItemString(font_modifications, "underline_position");

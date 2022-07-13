@@ -332,7 +332,7 @@ adjust_ypos(unsigned int pos, unsigned int cell_height, int adjustment) {
 }
 
 void
-cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness, unsigned int* strikethrough_position, unsigned int* strikethrough_thickness, unsigned int* modified_thickness, unsigned int* modified_underline_y, unsigned int* modified_strikethrough_y) {
+cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness, unsigned int* strikethrough_position, unsigned int* strikethrough_thickness, int* modified_thickness, int* modified_underline_y, int* modified_strikethrough_y) {
     // See https://developer.apple.com/library/content/documentation/StringsTextFonts/Conceptual/TextAndWebiPhoneOS/TypoFeatures/TextSystemFeatures.html
     CTFace *self = (CTFace*)s;
 #define count (128 - 32)
