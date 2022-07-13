@@ -828,6 +828,8 @@ def exec_main(stdin_read: int, stdout_write: int, death_notify_write: int, unix_
     if unix_socket is None:
         unix_socket = random_unix_socket()
         os.write(stdout_write, f'{get_socket_name(unix_socket)}\n'.encode('utf-8'))
+    if not sys.stdout.line_buffering:  # happens if the parent kitty instance has stdout not pointing to a terminal
+        sys.stdout.reconfigure(line_buffering=True)  # type: ignore
     try:
         main(stdin_read, stdout_write, death_notify_write, unix_socket)
     finally:
