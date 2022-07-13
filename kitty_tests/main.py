@@ -3,7 +3,7 @@
 
 import importlib
 import os
-import sys
+import shutil
 import unittest
 from importlib.resources import contents
 from typing import Callable, Generator, NoReturn, Sequence, Set
@@ -66,7 +66,8 @@ def type_check() -> NoReturn:
     generate_stub()
     from kittens.tui.operations_stub import generate_stub  # type: ignore
     generate_stub()
-    os.execlp(sys.executable, 'python', '-m', 'mypy', '--pretty')
+    py = shutil.which('python') or shutil.which('python3')
+    os.execlp(py, py, '-m', 'mypy', '--pretty')
 
 
 def run_cli(suite: unittest.TestSuite, verbosity: int = 4) -> None:

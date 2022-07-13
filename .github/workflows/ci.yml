@@ -85,7 +85,7 @@ jobs:
               run: python .github/workflows/ci.py package
 
             - name: Run mypy
-              run: python test.py mypy
+              run: ./test.py mypy
 
             - name: Build man page
               run: make FAIL_WARN=1 man

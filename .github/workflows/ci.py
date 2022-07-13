@@ -59,7 +59,7 @@ def build_kitty():
 
 
 def test_kitty():
-    run('./kitty/launcher/kitty +launch test.py')
+    run('./test.py')
 
 
 def package_kitty():
