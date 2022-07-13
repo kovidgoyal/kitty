@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
 import errno
+import fcntl
 import io
 import json
 import os
@@ -10,6 +11,7 @@ import signal
 import socket
 import struct
 import sys
+import termios
 import time
 import traceback
 import warnings
@@ -25,9 +27,9 @@ from typing import (
 from kitty.constants import kitty_exe, running_in_kitty
 from kitty.entry_points import main as main_entry_point
 from kitty.fast_data_types import (
-    CLD_EXITED, CLD_KILLED, CLD_STOPPED, establish_controlling_tty,
-    get_options, getpeereid, install_signal_handlers, read_signals,
-    remove_signal_handlers, safe_pipe, set_options
+    CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options, getpeereid,
+    install_signal_handlers, read_signals, remove_signal_handlers, safe_pipe,
+    set_options
 )
 from kitty.options.types import Options
 from kitty.shm import SharedMemory
@@ -113,13 +115,13 @@ class PrewarmProcess:
 
     def __del__(self) -> None:
         if self.write_to_process_fd > -1:
-            os.close(self.write_to_process_fd)
+            safe_close(self.write_to_process_fd)
             self.write_to_process_fd = -1
         if self.from_prewarm_death_notify > -1:
-            os.close(self.from_prewarm_death_notify)
+            safe_close(self.from_prewarm_death_notify)
             self.from_prewarm_death_notify = -1
         if self.read_from_process_fd > -1:
-            os.close(self.read_from_process_fd)
+            safe_close(self.read_from_process_fd)
             self.read_from_process_fd = -1
 
         if hasattr(self, 'from_worker'):
@@ -306,7 +308,7 @@ def child_main(cmd: Dict[str, Any], ready_fd: int = -1) -> NoReturn:
         poll = select.poll()
         poll.register(ready_fd, select.POLLIN)
         tuple(poll.poll())
-        os.close(ready_fd)
+        safe_close(ready_fd)
     main_entry_point()
     raise SystemExit(0)
 
@@ -327,36 +329,36 @@ def fork(shm_address: str, free_non_child_resources: Callable[[], None]) -> Tupl
     try:
         child_pid = safer_fork()
     except OSError:
-        os.close(r)
-        os.close(w)
-        os.close(ready_fd_read)
-        os.close(ready_fd_write)
+        safe_close(r)
+        safe_close(w)
+        safe_close(ready_fd_read)
+        safe_close(ready_fd_write)
         if sz:
             with SharedMemory(shm_address, unlink_on_exit=True):
                 pass
         raise
     if child_pid:
         # master process
-        os.close(w)
-        os.close(ready_fd_read)
+        safe_close(w)
+        safe_close(ready_fd_read)
         poll = select.poll()
         poll.register(r, select.POLLIN)
         tuple(poll.poll())
-        os.close(r)
+        safe_close(r)
         return child_pid, ready_fd_write
     # child process
     is_zygote = False
     restore_python_signal_handlers()
-    os.close(r)
-    os.close(ready_fd_write)
+    safe_close(r)
+    safe_close(ready_fd_write)
     free_non_child_resources()
     os.setsid()
     tty_name = cmd.get('tty_name')
     if tty_name:
         sys.__stdout__.flush()
         sys.__stderr__.flush()
-        open(establish_controlling_tty(tty_name, sys.__stdin__.fileno(), sys.__stdout__.fileno(), sys.__stderr__.fileno()), 'w').close()
-    os.close(w)
+        establish_controlling_tty(tty_name, sys.__stdin__.fileno(), sys.__stdout__.fileno(), sys.__stderr__.fileno())
+    safe_close(w)
     if shm.unlink_on_exit:
         child_main(cmd, ready_fd_read)
     else:
@@ -396,6 +398,22 @@ def eintr_retry(func: Funtion) -> Funtion:
     return cast(Funtion, ret)
 
 
+safe_close = eintr_retry(os.close)
+safe_open = eintr_retry(os.open)
+safe_ioctl = eintr_retry(fcntl.ioctl)
+safe_dup2 = eintr_retry(os.dup2)
+
+
+def establish_controlling_tty(fd_or_tty_name: Union[str, int], *dups: int, closefd: bool = True) -> int:
+    tty_name = os.ttyname(fd_or_tty_name) if isinstance(fd_or_tty_name, int) else fd_or_tty_name
+    with open(safe_open(tty_name, os.O_RDWR | os.O_CLOEXEC), 'w', closefd=closefd) as f:
+        tty_fd = f.fileno()
+        safe_ioctl(tty_fd, termios.TIOCSCTTY, 0)
+        for fd in dups:
+            safe_dup2(tty_fd, fd)
+        return -1 if closefd else tty_fd
+
+
 interactive_and_job_control_signals = (
     signal.SIGINT, signal.SIGQUIT, signal.SIGTSTP, signal.SIGTTIN, signal.SIGTTOU
 )
@@ -415,15 +433,13 @@ def fork_socket_child(child_data: SocketChildData, tty_fd: int, stdio_fds: Dict[
     # the std streams fds are closed in free_non_child_resources()
     for which in ('stdin', 'stdout', 'stderr'):
         fd = stdio_fds[which] if stdio_fds[which] > -1 else tty_fd
-        eintr_retry(os.dup2)(fd, getattr(sys, which).fileno())
+        safe_dup2(fd, getattr(sys, which).fileno())
     free_non_child_resources()
     child_main({'cwd': child_data.cwd, 'env': child_data.env, 'argv': child_data.argv})
 
 
 def fork_socket_child_supervisor(conn: socket.socket, free_non_child_resources: Callable[[], None]) -> None:
     import array
-    import fcntl
-    import termios
     global is_zygote
     if safer_fork():
         conn.close()
@@ -498,8 +514,8 @@ def fork_socket_child_supervisor(conn: socket.socket, free_non_child_resources: 
             record, data = data[:winsize], data[winsize:]
         if record:
             try:
-                with open(os.open(os.ctermid(), os.O_RDWR | os.O_CLOEXEC), 'w') as f:
-                    eintr_retry(fcntl.ioctl)(f.fileno(), termios.TIOCSWINSZ, record)
+                with open(safe_open(os.ctermid(), os.O_RDWR | os.O_CLOEXEC), 'w') as f:
+                    safe_ioctl(f.fileno(), termios.TIOCSWINSZ, record)
             except OSError:
                 traceback.print_exc()
         from_socket_buf = bytes(data)
@@ -555,10 +571,10 @@ def fork_socket_child_supervisor(conn: socket.socket, free_non_child_resources: 
 
     def free_non_child_resources2() -> None:
         for fd in received_fds:
-            os.close(fd)
+            safe_close(fd)
         for k, v in tuple(stdio_fds.items()):
             if v > -1:
-                os.close(v)
+                safe_close(v)
                 stdio_fds[k] = -1
         conn.close()
 
@@ -566,7 +582,7 @@ def fork_socket_child_supervisor(conn: socket.socket, free_non_child_resources: 
         nonlocal to_socket_buf, child_pid
         sys.__stdout__.flush()
         sys.__stderr__.flush()
-        tty_fd = establish_controlling_tty(child_data.tty_name)
+        tty_fd = establish_controlling_tty(child_data.tty_name, closefd=False)
         child_pid = fork_socket_child(child_data, tty_fd, stdio_fds, free_non_child_resources2)
         if child_pid:
             # this is also done in the child process, but we dont
@@ -575,8 +591,8 @@ def fork_socket_child_supervisor(conn: socket.socket, free_non_child_resources: 
             eintr_retry(os.tcsetpgrp)(tty_fd, child_pid)
             for fd in stdio_fds.values():
                 if fd > -1:
-                    os.close(fd)
-            os.close(tty_fd)
+                    safe_close(fd)
+            safe_close(tty_fd)
         else:
             raise SystemExit('fork_socket_child() returned in the child process')
         to_socket_buf += struct.pack('q', child_pid)
@@ -647,7 +663,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
     def free_non_child_resources() -> None:
         for fd in get_all_non_child_fds():
             if fd > -1:
-                os.close(fd)
+                safe_close(fd)
         unix_socket.close()
 
     def check_event(event: int, err_msg: str) -> None:
@@ -676,7 +692,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
                 child_id = int(payload)
                 cfd = child_ready_fds.pop(child_id, None)
                 if cfd is not None:
-                    os.close(cfd)
+                    safe_close(cfd)
             elif cmd == 'quit':
                 raise SystemExit(0)
             elif cmd == 'fork':
@@ -724,7 +740,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
         nonlocal child_death_buf
         xfd = child_ready_fds.pop(dead_child_id, None)
         if xfd is not None:
-            os.close(xfd)
+            safe_close(xfd)
         child_death_buf += f'{dead_child_pid}\n'.encode()
 
     def handle_signals(event: int) -> None:
@@ -788,7 +804,7 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
             restore_python_signal_handlers()
             for fmd in child_ready_fds.values():
                 with suppress(OSError):
-                    os.close(fmd)
+                    safe_close(fmd)
 
 
 def get_socket_name(unix_socket: socket.socket) -> str:
@@ -841,17 +857,17 @@ def fork_prewarm_process(opts: Options, use_exec: bool = False) -> Optional[Prew
         # master
         if not use_exec:
             unix_socket.close()
-        os.close(stdin_read)
-        os.close(stdout_write)
-        os.close(death_notify_write)
+        safe_close(stdin_read)
+        safe_close(stdout_write)
+        safe_close(death_notify_write)
         p = PrewarmProcess(child_pid, stdin_write, stdout_read, death_notify_read, socket_name)
         if use_exec:
             p.reload_kitty_config()
         return p
     # child
-    os.close(stdin_write)
-    os.close(stdout_read)
-    os.close(death_notify_read)
+    safe_close(stdin_write)
+    safe_close(stdout_read)
+    safe_close(death_notify_read)
     set_options(opts)
     exec_main(stdin_read, stdout_write, death_notify_write, unix_socket)
     raise SystemExit(0)

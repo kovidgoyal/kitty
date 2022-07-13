@@ -181,27 +181,8 @@ spawn(PyObject *self UNUSED, PyObject *args) {
     return PyLong_FromLong(pid);
 }
 
-static PyObject*
-establish_controlling_tty(PyObject *self UNUSED, PyObject *args) {
-    int stdin_fd = -1, stdout_fd = -1, stderr_fd = -1;
-    const char *tty_name;
-    if (!PyArg_ParseTuple(args, "s|iii", &tty_name, &stdin_fd, &stdout_fd, &stderr_fd)) return NULL;
-    int tfd = safe_open(tty_name, O_RDWR | O_CLOEXEC, 0);
-#define cleanup() if (tfd >= 0) safe_close(tfd, __FILE__, __LINE__);
-#define fail() { cleanup(); return PyErr_SetFromErrno(PyExc_OSError); }
-    if (tfd < 0) { cleanup(); return PyErr_SetFromErrnoWithFilename(PyExc_OSError, tty_name); }
-    if (ioctl(tfd, TIOCSCTTY, 0) == -1) fail();
-    if (stdin_fd > -1 && safe_dup2(tfd, stdin_fd) == -1) fail();
-    if (stdout_fd > -1 && safe_dup2(tfd, stdout_fd) == -1) fail();
-    if (stderr_fd > -1 && safe_dup2(tfd, stderr_fd) == -1) fail();
-#undef cleanup
-#undef fail
-    return PyLong_FromLong(tfd);
-}
-
 static PyMethodDef module_methods[] = {
     METHODB(spawn, METH_VARARGS),
-    METHODB(establish_controlling_tty, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

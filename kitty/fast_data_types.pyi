@@ -1395,10 +1395,6 @@ def sigqueue(pid: int, signal: int, value: int) -> None:
     pass
 
 
-def establish_controlling_tty(tty_name: str, stdin: int = -1, stdout: int = -1, stderr: int = -1) -> int:
-    pass
-
-
 def random_unix_socket() -> int:
     pass
 
