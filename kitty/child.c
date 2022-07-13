@@ -194,10 +194,9 @@ establish_controlling_tty(PyObject *self UNUSED, PyObject *args) {
     if (stdin_fd > -1 && safe_dup2(tfd, stdin_fd) == -1) fail();
     if (stdout_fd > -1 && safe_dup2(tfd, stdout_fd) == -1) fail();
     if (stderr_fd > -1 && safe_dup2(tfd, stderr_fd) == -1) fail();
-    cleanup();
 #undef cleanup
 #undef fail
-    Py_RETURN_NONE;
+    return PyLong_FromLong(tfd);
 }
 
 static PyMethodDef module_methods[] = {
