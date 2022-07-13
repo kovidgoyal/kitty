@@ -292,7 +292,8 @@ def debug(*a: Any) -> None:
             print(*a, file=f)
 
 
-def child_main(cmd: Dict[str, Any], ready_fd: int = -1) -> NoReturn:
+def child_main(cmd: Dict[str, Any], ready_fd: int = -1, prewarm_type: str = 'direct') -> NoReturn:
+    getattr(sys, 'kitty_run_data')['prewarmed'] = prewarm_type
     cwd = cmd.get('cwd')
     if cwd:
         with suppress(OSError):
@@ -435,7 +436,7 @@ def fork_socket_child(child_data: SocketChildData, tty_fd: int, stdio_fds: Dict[
         fd = stdio_fds[which] if stdio_fds[which] > -1 else tty_fd
         safe_dup2(fd, getattr(sys, which).fileno())
     free_non_child_resources()
-    child_main({'cwd': child_data.cwd, 'env': child_data.env, 'argv': child_data.argv})
+    child_main({'cwd': child_data.cwd, 'env': child_data.env, 'argv': child_data.argv}, prewarm_type='socket')
 
 
 def fork_socket_child_supervisor(conn: socket.socket, free_non_child_resources: Callable[[], None]) -> None:
