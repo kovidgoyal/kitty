@@ -18,7 +18,7 @@ from importlib import import_module
 from itertools import count
 from typing import (
     IO, TYPE_CHECKING, Any, Callable, Dict, Iterator, List, NoReturn, Optional,
-    Tuple, Union, cast
+    Tuple, Union, cast, TypeVar
 )
 
 from kitty.constants import kitty_exe, running_in_kitty
@@ -387,14 +387,23 @@ class SocketChildData:
         self.env: Dict[str, str] = {}
 
 
+T = TypeVar('T')
+
+
+def eintr_retry(func: Callable[..., T], *args: Any) -> T:
+    while True:
+        with suppress(InterruptedError):
+            return func(*args)
+
+
 def fork_socket_child(child_data: SocketChildData, tty_fd: int, stdio_fds: Dict[str, int], free_non_child_resources: Callable[[], None]) -> int:
     # see https://www.gnu.org/software/libc/manual/html_node/Launching-Jobs.html
     child_pid = safer_fork()
     if child_pid:
         return child_pid
     # child process
-    os.setpgid(0, 0)
-    os.tcsetpgrp(tty_fd, os.getpgid(0))
+    eintr_retry(os.setpgid, 0, 0)
+    eintr_retry(os.tcsetpgrp, tty_fd, eintr_retry(os.getpgid, 0))
     restore_python_signal_handlers()
     # the std streams fds are closed in free_non_child_resources()
     for which in ('stdin', 'stdout', 'stderr'):
@@ -479,8 +488,8 @@ def fork_socket_child_supervisor(conn: socket.socket, free_non_child_resources: 
         data = memoryview(from_socket_buf)
         while len(data) >= winsize:
             record, data = data[:winsize], data[winsize:]
-            with open(os.open(os.ctermid(), os.O_RDWR | os.O_CLOEXEC | os.O_NOCTTY, 0), 'rb') as f:
-                fcntl.ioctl(f.fileno(), termios.TIOCSWINSZ, record)
+            with suppress(OSError), open(os.open(os.ctermid(), os.O_RDWR | os.O_CLOEXEC | os.O_NOCTTY, 0), 'rb') as f:
+                eintr_retry(fcntl.ioctl, f.fileno(), termios.TIOCSWINSZ, record)
         from_socket_buf = bytes(data)
 
     def read_launch_msg() -> bool:
@@ -550,8 +559,8 @@ def fork_socket_child_supervisor(conn: socket.socket, free_non_child_resources: 
         if child_pid:
             # this is also done in the child process, but we dont
             # know when, so do it here as well
-            os.setpgid(child_pid, child_pid)
-            os.tcsetpgrp(tty_fd, child_pid)
+            eintr_retry(os.setpgid, child_pid, child_pid)
+            eintr_retry(os.tcsetpgrp, tty_fd, child_pid)
             for fd in stdio_fds.values():
                 if fd > -1:
                     os.close(fd)
