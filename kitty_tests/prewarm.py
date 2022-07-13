@@ -47,7 +47,6 @@ def socket_child_main(exit_code=0, initial_print=''):
         'font_family': get_options().font_family,
         'cols': read_screen_size(fd=sys.stderr.fileno()).cols,
         'stdin_data': sys.stdin.read(),
-
         'done': 'hello',
     }
     print(json.dumps(output, indent=2), file=sys.stderr, flush=True)
@@ -114,7 +113,12 @@ def socket_child_main(exit_code=0, initial_print=''):
             stdin_data = 'testing--stdin-read'
             with open(stdin_w, 'w') as f:
                 f.write(stdin_data)
-            pty.wait_till(lambda: 'hello' in pty.screen_contents())
+
+            def has_json():
+                s = pty.screen_contents().strip()
+                return 'hello' in s and s.endswith('}')
+
+            pty.wait_till(has_json)
             wait_for_death(exit_code)
             output = json.loads(pty.screen_contents().strip())
             self.assertEqual(output['test_env'], env['TEST_ENV_PASS'])
