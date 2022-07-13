@@ -372,6 +372,7 @@ def fork(shm_address: str, free_non_child_resources: Callable[[], None]) -> Tupl
             finally:
                 stdin_data.release()
                 sys.stdin = sys.__stdin__
+    return 0, -1  # type: ignore
 
 
 def verify_socket_creds(conn: socket.socket) -> bool:
