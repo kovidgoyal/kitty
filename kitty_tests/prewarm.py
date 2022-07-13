@@ -36,7 +36,12 @@ def socket_child_main(exit_code=0, initial_print=''):
     def report_screen_size_change(*a):
         print("Screen size changed:", read_screen_size(fd=sys.stderr.fileno()).cols, file=sys.stderr, flush=True)
 
+    def report_tstp(*a):
+        print("SIGTSTP received", file=sys.stderr, flush=True)
+        raise SystemExit(19)
+
     signal.signal(signal.SIGWINCH, report_screen_size_change)
+    signal.signal(signal.SIGTSTP, report_tstp)
 
     if initial_print:
         print(initial_print, flush=True, file=sys.stderr)
@@ -93,6 +98,14 @@ def socket_child_main(exit_code=0, initial_print=''):
                 pty.write_to_child('\x03', flush=True)
                 pty.wait_till(lambda: 'KeyboardInterrupt' in pty.screen_contents())
                 wait_for_death(signal.SIGINT)
+
+            with self.subTest(msg='test SIGTSTP via Ctrl-z'):
+                pty = self.create_pty(
+                    argv=[kitty_exe(), '+runpy', src + 'socket_child_main(initial_print="child ready:")'], cols=cols, env=env, cwd=cwd)
+                pty.wait_till(lambda: 'child ready:' in pty.screen_contents())
+                pty.write_to_child('\x1a', flush=True)
+                pty.wait_till(lambda: 'SIGTSTP received' in pty.screen_contents())
+                wait_for_death(19)
 
         with self.subTest(msg='test SIGWINCH handling'):
             pty = self.create_pty(
