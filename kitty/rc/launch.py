@@ -85,7 +85,7 @@ instead of the active tab
         tabs = self.tabs_for_match_payload(boss, window, payload_get)
         if tabs and tabs[0]:
             target_tab = tabs[0]
-        elif payload_get('type') not in ('os-window', 'background'):
+        elif payload_get('type') not in ('background', 'os-window', 'tab', 'window'):
             return None
         w = do_launch(boss, opts, payload_get('args') or [], target_tab=target_tab)
         return None if payload_get('no_response') else str(getattr(w, 'id', 0))

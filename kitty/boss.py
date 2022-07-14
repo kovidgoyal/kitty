@@ -1812,6 +1812,8 @@ class Boss:
                 special_window = args
             else:
                 special_window = self.args_to_special_window(args, cwd_from=cwd_from)
+        if not self.os_window_map:
+            self.add_os_window()
         tm = self.active_tab_manager
         if tm is not None:
             return tm.new_tab(special_window=special_window, cwd_from=cwd_from, as_neighbor=as_neighbor)
@@ -1833,8 +1835,6 @@ class Boss:
         self._create_tab(list(args), cwd_from=CwdRequest(self.active_window_for_cwd))
 
     def new_tab_with_wd(self, wd: Union[str, List[str]], str_is_multiple_paths: bool = False) -> None:
-        if not self.os_window_map:
-            self.add_os_window()
         if isinstance(wd, str):
             wd = wd.split(os.pathsep) if str_is_multiple_paths else [wd]
         for path in wd:
@@ -1842,6 +1842,11 @@ class Boss:
             self._new_tab(special_window)
 
     def _new_window(self, args: List[str], cwd_from: Optional[CwdRequest] = None) -> Optional[Window]:
+        if not self.os_window_map:
+            os_window_id = self.add_os_window()
+            tm = self.os_window_map.get(os_window_id)
+            if tm is not None and not tm.active_tab:
+                tm.new_tab(empty_tab=True)
         tab = self.active_tab
         if tab is None:
             return None
