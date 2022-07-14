@@ -49,6 +49,8 @@ Detailed list of changes
 
 - macOS: Remote control: Fix unable to launch a new OS window or background process when there is no OS window (:iss:`5210`)
 
+- macOS: Fix unable to open new tab or new window when there is no OS window (:iss:`5276`)
+
 - kitty @ set-colors: Fix changing inactive_tab_foreground not working (:iss:`5214`)
 
 - macOS: Fix a regression that caused switching keyboard input using Eisu and
