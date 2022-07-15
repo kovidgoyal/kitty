@@ -116,17 +116,21 @@ window_logo_path(PyObject *src, Options *opts) { STR_SETTER(default_window_logo)
 #undef STR_SETTER
 
 static void
-parse_font_mod_size(PyObject *val, float *sz, bool *is_percent) {
+parse_font_mod_size(PyObject *val, float *sz, AdjustmentUnit *unit) {
     PyObject *mv = PyObject_GetAttrString(val, "mod_value");
     if (mv) {
         *sz = PyFloat_AsFloat(PyTuple_GET_ITEM(mv, 0));
-        *is_percent = PyLong_AsLong(PyTuple_GET_ITEM(mv, 1)) == 1;
+        switch (PyLong_AsLong(PyTuple_GET_ITEM(mv, 1))) {
+            case 0: *unit = POINT; break;
+            case 1: *unit = PIXEL; break;
+            case 2: *unit = PERCENT; break;
+        }
     }
 }
 
 static void
 modify_font(PyObject *mf, Options *opts) {
-#define S(which) { PyObject *v = PyDict_GetItemString(mf, #which); if (v) parse_font_mod_size(v, &opts->which.val, &opts->which.is_percent); }
+#define S(which) { PyObject *v = PyDict_GetItemString(mf, #which); if (v) parse_font_mod_size(v, &opts->which.val, &opts->which.unit); }
     S(underline_position); S(underline_thickness); S(strikethrough_thickness); S(strikethrough_position);
 #undef S
 }

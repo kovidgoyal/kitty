@@ -824,6 +824,9 @@ def modify_font(val: str) -> Iterable[Tuple[str, FontModification]]:
     if sz.endswith('%'):
         munit = ModificationUnit.percent
         sz = sz[:-1]
+    elif sz.endswith('px'):
+        munit = ModificationUnit.pixel
+        sz = sz[:-2]
     try:
         mvalue = float(sz)
     except Exception:

@@ -35,6 +35,7 @@ class ModificationType(Enum):
 class ModificationUnit(IntEnum):
     pt = 0
     percent = 1
+    pixel = 2
 
 
 class ModificationValue(NamedTuple):

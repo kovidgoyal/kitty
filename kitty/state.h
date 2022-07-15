@@ -21,6 +21,8 @@ typedef struct {
     size_t len;
 } UrlPrefix;
 
+typedef enum AdjustmentUnit { POINT, PERCENT, PIXEL } AdjustmentUnit;
+
 typedef struct {
     monotonic_t visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval;
     double wheel_scroll_multiplier, touch_scroll_multiplier;
@@ -85,7 +87,7 @@ typedef struct {
     long macos_menubar_title_max_length;
     int macos_colorspace;
     struct {
-        float val; bool is_percent;
+        float val; AdjustmentUnit unit;
     } underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
 } Options;
 

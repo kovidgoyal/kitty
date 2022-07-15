@@ -56,11 +56,11 @@ class TestConfParsing(BaseTest):
         self.assertFalse(bad_lines)
         opts = p('pointer_shape_when_grabbed XXX', bad_line_num=1)
         self.ae(opts.pointer_shape_when_grabbed, defaults.pointer_shape_when_grabbed)
-        opts = p('modify_font underline_position -2', 'modify_font underline_thickness 150%', 'modify_font size Test -1')
+        opts = p('modify_font underline_position -2', 'modify_font underline_thickness 150%', 'modify_font size Test -1px')
         self.ae(opts.modify_font, {
             'underline_position': FontModification(ModificationType.underline_position, ModificationValue(-2., ModificationUnit.pt)),
             'underline_thickness': FontModification(ModificationType.underline_thickness, ModificationValue(150, ModificationUnit.percent)),
-            'size:Test': FontModification(ModificationType.size, ModificationValue(-1., ModificationUnit.pt), 'Test'),
+            'size:Test': FontModification(ModificationType.size, ModificationValue(-1., ModificationUnit.pixel), 'Test'),
         })
 
         # test the aliasing options

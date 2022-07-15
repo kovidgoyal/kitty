@@ -221,13 +221,12 @@ opt('+modify_font', '', ctype='!modify_font',
     add_to_default=False,
     long_text='''
 Modify font characteristics such as the position or thickness of the underline and strikethrough.
-The modifications can be either plain numbers, in which case they are interpreted as
-pts, or percentages, in which case they are interpreted as a percentage of the original value.
-For example::
+The modifications can have the suffix :code:`px` for pixels or :code:`%` for percentage of original value.
+No suffix means use pts. For example::
 
     modify_font underline_position -2
     modify_font underline_thickness 150%
-    modify_font strikethrough_thickness 50%
+    modify_font strikethrough_position 2px
 ''')
 
 opt('box_drawing_scale', '0.001, 1, 1.5, 2',
