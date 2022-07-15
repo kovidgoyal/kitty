@@ -129,6 +129,7 @@ static void
 modify_font(PyObject *mf, Options *opts) {
 #define S(which) { PyObject *v = PyDict_GetItemString(mf, #which); if (v) parse_font_mod_size(v, &opts->which.val, &opts->which.unit); }
     S(underline_position); S(underline_thickness); S(strikethrough_thickness); S(strikethrough_position);
+    S(cell_height); S(cell_width); S(baseline);
 #undef S
 }
 
@@ -224,21 +225,3 @@ tab_bar_margin_height(PyObject *val, Options *opts) {
     opts->tab_bar_margin_height.outer = PyFloat_AsDouble(PyTuple_GET_ITEM(val, 0));
     opts->tab_bar_margin_height.inner = PyFloat_AsDouble(PyTuple_GET_ITEM(val, 1));
 }
-
-#define read_adjust(name) { \
-    if (PyFloat_Check(al)) { \
-        opts->name##_frac = (float)PyFloat_AsDouble(al); \
-        opts->name##_px = 0; \
-    } else { \
-        opts->name##_frac = 0; \
-        opts->name##_px = (int)PyLong_AsLong(al); \
-    } \
-}
-
-static void
-adjust_line_height(PyObject *al, Options *opts) { read_adjust(adjust_line_height); }
-static void
-adjust_column_width(PyObject *al, Options *opts) { read_adjust(adjust_column_width); }
-static void
-adjust_baseline(PyObject *al, Options *opts) { read_adjust(adjust_baseline); }
-#undef read_adjust

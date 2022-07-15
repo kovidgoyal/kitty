@@ -6,10 +6,10 @@ from kitty.conf.utils import (
     unit_float
 )
 from kitty.options.utils import (
-    action_alias, active_tab_title_template, adjust_baseline, adjust_line_height, allow_hyperlinks,
-    allow_remote_control, bell_on_tab, box_drawing_scale, clear_all_mouse_actions, clear_all_shortcuts,
-    clipboard_control, clone_source_strategies, config_or_absolute_path, copy_on_select,
-    cursor_text_color, deprecated_hide_window_decorations_aliases,
+    action_alias, active_tab_title_template, allow_hyperlinks, allow_remote_control, bell_on_tab,
+    box_drawing_scale, clear_all_mouse_actions, clear_all_shortcuts, clipboard_control,
+    clone_source_strategies, config_or_absolute_path, copy_on_select, cursor_text_color,
+    deprecated_adjust_line_height, deprecated_hide_window_decorations_aliases,
     deprecated_macos_show_window_title_in_menubar_alias, deprecated_send_text, disable_ligatures,
     edge_width, env, font_features, hide_window_decorations, macos_option_as_alt, macos_titlebar_color,
     modify_font, narrow_symbols, optional_edge_width, parse_map, parse_mouse_map, paste_actions,
@@ -41,15 +41,6 @@ class Parser:
 
     def active_tab_title_template(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['active_tab_title_template'] = active_tab_title_template(val)
-
-    def adjust_baseline(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['adjust_baseline'] = adjust_baseline(val)
-
-    def adjust_column_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['adjust_column_width'] = adjust_line_height(val)
-
-    def adjust_line_height(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['adjust_line_height'] = adjust_line_height(val)
 
     def allow_cloning(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         val = val.lower()
@@ -1351,6 +1342,15 @@ class Parser:
 
     def send_text(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         deprecated_send_text('send_text', val, ans)
+
+    def adjust_line_height(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        deprecated_adjust_line_height('adjust_line_height', val, ans)
+
+    def adjust_column_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        deprecated_adjust_line_height('adjust_column_width', val, ans)
+
+    def adjust_baseline(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        deprecated_adjust_line_height('adjust_baseline', val, ans)
 
     def map(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         for k in parse_map(val):

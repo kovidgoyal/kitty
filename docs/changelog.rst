@@ -40,7 +40,9 @@ Detailed list of changes
 
 - Reduce startup latency by ~50 milliseconds when running kittens via key-bindings or remote control (:iss:`5159`)
 
-- A new option :opt:`modify_font` to adjust various font metrics like underline thickness, etc. (:pull:`5265`)
+- A new option :opt:`modify_font` to adjust various font metrics like underlines, cell sizes etc. (:pull:`5265`)
+
+- Deprecate the ``adjust_baseline``, ``adjust_line_height`` and ``adjust_column_width`` options in favor of :opt:`modify_font`
 
 - Wayland: Fix a regression in the previous release that caused mouse cursor
   animation and keyboard repeat to stop working when switching seats (:iss:`5188`)
@@ -724,7 +726,7 @@ Detailed list of changes
 0.21.2 [2021-06-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A new :opt:`adjust_baseline` option to adjust the vertical alignment of text
+- A new ``adjust_baseline`` option to adjust the vertical alignment of text
   inside a line (:pull:`3734`)
 
 - A new :opt:`url_excluded_characters` option to exclude additional characters

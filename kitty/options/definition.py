@@ -18,6 +18,7 @@ definition = Definition(
 definition.add_deprecation('deprecated_hide_window_decorations_aliases', 'x11_hide_window_decorations', 'macos_hide_titlebar')
 definition.add_deprecation('deprecated_macos_show_window_title_in_menubar_alias', 'macos_show_window_title_in_menubar')
 definition.add_deprecation('deprecated_send_text', 'send_text')
+definition.add_deprecation('deprecated_adjust_line_height', 'adjust_line_height', 'adjust_column_width', 'adjust_baseline')
 
 agr = definition.add_group
 egr = definition.end_group
@@ -77,34 +78,6 @@ command line program :link:`GNU FriBidi
 <https://github.com/fribidi/fribidi#executable>` to get BIDI support, because it
 will force kitty to always treat the text as LTR, which FriBidi expects for
 terminals.
-'''
-    )
-
-opt('adjust_line_height', '0',
-    option_type='adjust_line_height', ctype='!adjust_line_height',
-    long_text='''
-Change the size of each character cell kitty renders. You can use either
-numbers, which are interpreted as pixels or percentages (number followed by %),
-which are interpreted as percentages of the unmodified values. You can use
-negative pixels or percentages less than 100% to reduce sizes (but this might
-cause rendering artifacts).
-'''
-    )
-
-opt('adjust_column_width', '0',
-    option_type='adjust_line_height', ctype='!adjust_column_width',
-    )
-
-opt('adjust_baseline', '0',
-    option_type='adjust_baseline', ctype='!adjust_baseline',
-    add_to_default=False,
-    long_text='''
-Adjust the vertical alignment of text (the height in the cell at which text is
-positioned). You can use either numbers, which are interpreted as pixels or
-percentages (number followed by %), which are interpreted as the percentage of
-the line height. A positive value moves the baseline up, and a negative value
-moves them down. The underline and strikethrough positions are adjusted
-accordingly.
 '''
     )
 
@@ -227,6 +200,17 @@ No suffix means use pts. For example::
     modify_font underline_position -2
     modify_font underline_thickness 150%
     modify_font strikethrough_position 2px
+
+Additionally, you can modify the size of the cell in which each font glyph is rendered and the baseline
+at which the glyph is placed in the cell. For example::
+
+    modify_font cell_width 80%
+    modify_font cell_height -2px
+    modify_font baseline 3
+
+Note that modifying the baseline will automatically adjust the underline and strikethrough positions
+by the same amount. Increasing the baseline raises glyphs inside the cell and decreasing it lowers them.
+Decreasing the cell size might cause rendering artifacts, so use with care.
 ''')
 
 opt('box_drawing_scale', '0.001, 1, 1.5, 2',

@@ -449,26 +449,6 @@ def parse_shortcut(sc: str) -> SingleKey:
     return SingleKey(mods, is_native, key or 0)
 
 
-def adjust_line_height(x: str) -> Union[int, float]:
-    if x.endswith('%'):
-        ans = float(x[:-1].strip()) / 100.0
-        if ans < 0:
-            log_error('Percentage adjustments of cell sizes must be positive numbers')
-            return 0
-        return ans
-    return int(x)
-
-
-def adjust_baseline(x: str) -> Union[int, float]:
-    if x.endswith('%'):
-        ans = float(x[:-1].strip()) / 100.0
-        if abs(ans) > 1:
-            log_error('Percentage adjustments of the baseline cannot exceed 100%')
-            return 0
-        return ans
-    return int(x)
-
-
 def to_font_size(x: str) -> float:
     return max(MINIMUM_FONT_SIZE, float(x))
 
@@ -1203,3 +1183,16 @@ def deprecated_send_text(key: str, val: str, ans: Dict[str, Any]) -> None:
     key_str = f'{sc} send_text {mode} {text}'
     for k in parse_map(key_str):
         ans['map'].append(k)
+
+
+def deprecated_adjust_line_height(key: str, x: str, opts_dict: Dict[str, Any]) -> None:
+    fm = {'adjust_line_height': 'cell_height', 'adjust_baseline': 'baseline', 'adjust_column_width': 'cell_width'}[key]
+    mtype = getattr(ModificationType, fm)
+    if x.endswith('%'):
+        ans = float(x[:-1].strip())
+        if ans < 0:
+            log_error(f'Percentage adjustments of {key} must be positive numbers')
+            return
+        opts_dict['modify_font'][fm] = FontModification(mtype, ModificationValue(ans, ModificationUnit.percent))
+    else:
+        opts_dict['modify_font'][fm] = FontModification(mtype, ModificationValue(int(x), ModificationUnit.pixel))

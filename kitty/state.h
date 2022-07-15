@@ -46,8 +46,6 @@ typedef struct {
     float macos_thicken_font;
     WindowTitleIn macos_show_window_title_in;
     char *bell_path;
-    int adjust_line_height_px, adjust_column_width_px, adjust_baseline_px;
-    float adjust_line_height_frac, adjust_column_width_frac, adjust_baseline_frac;
     float background_opacity, dim_opacity;
 
     char *background_image, *default_window_logo;
@@ -88,7 +86,7 @@ typedef struct {
     int macos_colorspace;
     struct {
         float val; AdjustmentUnit unit;
-    } underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
+    } underline_position, underline_thickness, strikethrough_position, strikethrough_thickness, cell_width, cell_height, baseline;
 } Options;
 
 typedef struct WindowLogoRenderData {

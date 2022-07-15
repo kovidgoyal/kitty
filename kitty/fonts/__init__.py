@@ -29,6 +29,9 @@ class ModificationType(Enum):
     underline_thickness = auto()
     strikethrough_position = auto()
     strikethrough_thickness = auto()
+    cell_width = auto()
+    cell_height = auto()
+    baseline = auto()
     size = auto()
 
 
