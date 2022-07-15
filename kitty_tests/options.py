@@ -23,6 +23,7 @@ class TestConfParsing(BaseTest):
         from kitty.config import load_config, defaults
         from kitty.constants import is_macos
         from kitty.options.utils import to_modifiers
+        from kitty.fonts import FontModification, ModificationType, ModificationValue, ModificationUnit
         bad_lines = []
 
         def p(*lines, bad_line_num=0):
@@ -55,6 +56,12 @@ class TestConfParsing(BaseTest):
         self.assertFalse(bad_lines)
         opts = p('pointer_shape_when_grabbed XXX', bad_line_num=1)
         self.ae(opts.pointer_shape_when_grabbed, defaults.pointer_shape_when_grabbed)
+        opts = p('modify_font underline_position -2', 'modify_font underline_thickness 150%', 'modify_font size Test -1')
+        self.ae(opts.modify_font, {
+            'underline_position': FontModification(ModificationType.underline_position, ModificationValue(-2., ModificationUnit.pt)),
+            'underline_thickness': FontModification(ModificationType.underline_thickness, ModificationValue(150, ModificationUnit.percent)),
+            'size:Test': FontModification(ModificationType.size, ModificationValue(-1., ModificationUnit.pt), 'Test'),
+        })
 
         # test the aliasing options
         opts = p('env A=1', 'env B=x$A', 'env C=', 'env D', 'clear_all_shortcuts y', 'kitten_alias a b --moo', 'map f1 kitten a arg')

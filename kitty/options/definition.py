@@ -216,6 +216,20 @@ You can do this with e.g.::
 '''
     )
 
+opt('+modify_font', '',
+    option_type='modify_font',
+    add_to_default=False,
+    long_text='''
+Modify font characteristics such as the position or thickness of the underline and strikethrough.
+The modifications can be either plain numbers, in which case they are interpreted as
+pts, or percentages, in which case they are interpreted as a percentage of the original value.
+For example::
+
+    modify_font underline_position -2
+    modify_font underline_thickness 150%
+    modify_font strikethrough_thickness 50%
+''')
+
 opt('box_drawing_scale', '0.001, 1, 1.5, 2',
     option_type='box_drawing_scale',
     long_text='''

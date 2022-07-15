@@ -20,7 +20,10 @@ from kitty.constants import is_macos
 from kitty.fast_data_types import (
     CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, Color
 )
-from kitty.fonts import FontFeature
+from kitty.fonts import (
+    FontFeature, FontModification, ModificationType, ModificationUnit,
+    ModificationValue
+)
 from kitty.key_names import (
     character_key_name_aliases, functional_key_name_aliases,
     get_key_name_lookup
@@ -795,6 +798,41 @@ def font_features(val: str) -> Iterable[Tuple[str, Tuple[FontFeature, ...]]]:
             else:
                 features.append(FontFeature(feat, parsed))
         yield parts[0], tuple(features)
+
+
+def modify_font(val: str) -> Iterable[Tuple[str, FontModification]]:
+    parts = val.split()
+    pos, plen = 0, len(parts)
+    if plen < 2:
+        log_error(f"Ignoring invalid modify_font: {val}")
+        return
+    mtype: Optional[ModificationType] = getattr(ModificationType, parts[pos], None)
+    if mtype is None:
+        log_error(f"Ignoring invalid modify_font with unknown modification type: {parts[pos]}")
+        return
+    pos += 1
+    font_name = ''
+    if mtype is ModificationType.size:
+        font_name = parts[pos]
+        pos += 1
+    if plen - pos < 1:
+        log_error(f"Ignoring invalid modify_font: {val}")
+        return
+    sz = parts[pos]
+    pos += 1
+    munit = ModificationUnit.pt
+    if sz.endswith('%'):
+        munit = ModificationUnit.percent
+        sz = sz[:-1]
+    try:
+        mvalue = float(sz)
+    except Exception:
+        log_error(f'Ignoring modify_font with invalid size: {sz}')
+        return
+    key = mtype.name
+    if font_name:
+        key += f':{font_name}'
+    yield key, FontModification(mtype, ModificationValue(mvalue, munit), font_name)
 
 
 def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:

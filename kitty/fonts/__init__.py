@@ -1,7 +1,8 @@
 try:
-    from typing import TypedDict
+    from typing import TypedDict, NamedTuple
 except ImportError:
     TypedDict = dict
+from enum import Enum, auto
 
 
 class ListedFont(TypedDict):
@@ -21,3 +22,27 @@ class FontFeature:
 
     def __repr__(self) -> str:
         return repr(self.name)
+
+
+class ModificationType(Enum):
+    underline_position = auto()
+    underline_thickness = auto()
+    strikethrough_position = auto()
+    strikethrough_thickness = auto()
+    size = auto()
+
+
+class ModificationUnit(Enum):
+    pt = auto()
+    percent = auto()
+
+
+class ModificationValue(NamedTuple):
+    val: float
+    unit: ModificationUnit
+
+
+class FontModification(NamedTuple):
+    mod_type: ModificationType
+    mod_value: ModificationValue
+    font_name: str = ''

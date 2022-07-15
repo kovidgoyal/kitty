@@ -393,6 +393,7 @@ option_names = (  # {{{
  'mark2_foreground',
  'mark3_background',
  'mark3_foreground',
+ 'modify_font',
  'mouse_hide_wait',
  'mouse_map',
  'narrow_symbols',
@@ -612,6 +613,7 @@ class Options:
     exe_search_path: typing.Dict[str, str] = {}
     font_features: typing.Dict[str, typing.Tuple[kitty.fonts.FontFeature, ...]] = {}
     kitten_alias: typing.Dict[str, str] = {}
+    modify_font: typing.Dict[str, kitty.fonts.FontModification] = {}
     narrow_symbols: typing.Dict[typing.Tuple[int, int], int] = {}
     symbol_map: typing.Dict[typing.Tuple[int, int], str] = {}
     watcher: typing.Dict[str, str] = {}
@@ -731,6 +733,7 @@ defaults.env = {}
 defaults.exe_search_path = {}
 defaults.font_features = {}
 defaults.kitten_alias = {}
+defaults.modify_font = {}
 defaults.narrow_symbols = {}
 defaults.symbol_map = {}
 defaults.watcher = {}
