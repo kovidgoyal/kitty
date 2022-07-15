@@ -41,8 +41,16 @@ class ModificationValue(NamedTuple):
     val: float
     unit: ModificationUnit
 
+    def __repr__(self) -> str:
+        u = '%' if self.unit is ModificationUnit.percent else ''
+        return f'{self.val:g}{u}'
+
 
 class FontModification(NamedTuple):
     mod_type: ModificationType
     mod_value: ModificationValue
     font_name: str = ''
+
+    def __repr__(self) -> str:
+        fn = f' {self.font_name}' if self.font_name else ''
+        return f'{self.mod_type.name}{fn} {self.mod_value}'

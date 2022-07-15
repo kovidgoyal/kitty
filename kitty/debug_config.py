@@ -95,6 +95,9 @@ def compare_opts(opts: KittyOpts, print: Print) -> None:
             if f == 'symbol_map':
                 for k in sorted(val):
                     print(f'\tU+{k[0]:04x} - U+{k[1]:04x} → {val[k]}')
+            elif f == 'modify_font':
+                for k in sorted(val):
+                    print('   ', val[k])
             else:
                 print(pformat(val))
         else:
