@@ -120,11 +120,8 @@ parse_font_mod_size(PyObject *val, float *sz, AdjustmentUnit *unit) {
     PyObject *mv = PyObject_GetAttrString(val, "mod_value");
     if (mv) {
         *sz = PyFloat_AsFloat(PyTuple_GET_ITEM(mv, 0));
-        switch (PyLong_AsLong(PyTuple_GET_ITEM(mv, 1))) {
-            case 0: *unit = POINT; break;
-            case 1: *unit = PIXEL; break;
-            case 2: *unit = PERCENT; break;
-        }
+        long u = PyLong_AsLong(PyTuple_GET_ITEM(mv, 1));
+        switch (u) { case POINT: case PERCENT: case PIXEL: *unit = u; break; }
     }
 }
 

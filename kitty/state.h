@@ -21,7 +21,7 @@ typedef struct {
     size_t len;
 } UrlPrefix;
 
-typedef enum AdjustmentUnit { POINT, PERCENT, PIXEL } AdjustmentUnit;
+typedef enum AdjustmentUnit { POINT = 0, PERCENT = 1, PIXEL = 2 } AdjustmentUnit;
 
 typedef struct {
     monotonic_t visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval;

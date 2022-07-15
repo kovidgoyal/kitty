@@ -331,6 +331,20 @@ python_send_to_gpu(FONTS_DATA_HANDLE fg, unsigned int x, unsigned int y, unsigne
     }
 }
 
+static void
+adjust_metric(unsigned int *metric, float adj, AdjustmentUnit unit, double dpi) {
+    if (adj == 0.f) return;
+    int a = 0;
+    switch (unit) {
+        case POINT:
+            a = ((long)round((adj * (dpi / 72.0)))); break;
+        case PERCENT:
+            *metric = (int)roundf((fabsf(adj) * (float)*metric) / 100.f); return;
+        case PIXEL:
+            a = (int)roundf(adj); break;
+    }
+    *metric = (a < 0 && -a > (int)*metric) ? 0 : *metric + a;
+}
 
 static void
 calc_cell_metrics(FontGroup *fg) {
@@ -358,6 +372,11 @@ calc_cell_metrics(FontGroup *fg) {
 #undef MIN_WIDTH
 #undef MIN_HEIGHT
 #undef MAX_DIM
+
+#define A(which, dpi) adjust_metric(&which, OPT(which).val, OPT(which).unit, fg->logical_dpi_##dpi);
+    A(underline_thickness, y); A(underline_position, y); A(strikethrough_thickness, y); A(strikethrough_position, y);
+#undef A
+
     underline_position = MIN(cell_height - 1, underline_position);
     // ensure there is at least a couple of pixels available to render styled underlines
     while (underline_position > baseline + 1 && cell_height - underline_position < 2) underline_position--;
