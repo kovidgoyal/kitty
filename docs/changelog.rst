@@ -40,6 +40,8 @@ Detailed list of changes
 
 - Reduce startup latency by ~50 milliseconds when running kittens via key-bindings or remote control (:iss:`5159`)
 
+- A new option :opt:`modify_font` to adjust various font metrics like underline thickness, etc. (:pull:`5265`)
+
 - Wayland: Fix a regression in the previous release that caused mouse cursor
   animation and keyboard repeat to stop working when switching seats (:iss:`5188`)
 
