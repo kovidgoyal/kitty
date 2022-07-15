@@ -216,7 +216,7 @@ You can do this with e.g.::
 '''
     )
 
-opt('+modify_font', '',
+opt('+modify_font', '', ctype='!modify_font',
     option_type='modify_font',
     add_to_default=False,
     long_text='''

@@ -2,7 +2,7 @@ try:
     from typing import TypedDict, NamedTuple
 except ImportError:
     TypedDict = dict
-from enum import Enum, auto
+from enum import Enum, IntEnum, auto
 
 
 class ListedFont(TypedDict):
@@ -32,9 +32,9 @@ class ModificationType(Enum):
     size = auto()
 
 
-class ModificationUnit(Enum):
-    pt = auto()
-    percent = auto()
+class ModificationUnit(IntEnum):
+    pt = 0
+    percent = 1
 
 
 class ModificationValue(NamedTuple):

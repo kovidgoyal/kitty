@@ -84,6 +84,9 @@ typedef struct {
     } tab_bar_margin_height;
     long macos_menubar_title_max_length;
     int macos_colorspace;
+    struct {
+        float val; bool is_percent;
+    } underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
 } Options;
 
 typedef struct WindowLogoRenderData {

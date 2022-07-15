@@ -390,7 +390,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
     return class_def, '\n'.join(preamble + ['', ''] + tc_lines)
 
 
-def generate_c_conversion(loc: str, ctypes: List[Option]) -> str:
+def generate_c_conversion(loc: str, ctypes: List[Union[Option, MultiOption]]) -> str:
     lines: List[str] = []
     basic_converters = {
         'int': 'PyLong_AsLong', 'uint': 'PyLong_AsUnsignedLong', 'bool': 'PyObject_IsTrue',
@@ -437,7 +437,7 @@ def write_output(loc: str, defn: Definition) -> None:
         f.write(f'{tc}\n')
     ctypes = []
     for opt in defn.root_group.iter_all_non_groups():
-        if isinstance(opt, Option) and opt.ctype:
+        if isinstance(opt, (Option, MultiOption)) and opt.ctype:
             ctypes.append(opt)
     if ctypes:
         c = generate_c_conversion(loc, ctypes)
