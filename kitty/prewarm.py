@@ -21,9 +21,8 @@ from typing import (
 from kitty.constants import kitty_exe, running_in_kitty
 from kitty.entry_points import main as main_entry_point
 from kitty.fast_data_types import (
-    CLD_EXITED, CLD_KILLED, establish_controlling_tty, get_options,
-    install_signal_handlers, read_signals, remove_signal_handlers, safe_pipe,
-    set_options
+    CLD_EXITED, CLD_KILLED, get_options, install_signal_handlers, read_signals,
+    remove_signal_handlers, safe_pipe, set_options
 )
 from kitty.options.types import Options
 from kitty.shm import SharedMemory
@@ -313,6 +312,7 @@ def fork(shm_address: str, all_non_child_fds: Iterable[int]) -> Tuple[int, int]:
     os.setsid()
     tty_name = cmd.get('tty_name')
     if tty_name:
+        from kitty.fast_data_types import establish_controlling_tty
         sys.__stdout__.flush()
         sys.__stderr__.flush()
         establish_controlling_tty(tty_name, sys.__stdin__.fileno(), sys.__stdout__.fileno(), sys.__stderr__.fileno())
