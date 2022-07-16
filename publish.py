@@ -450,11 +450,13 @@ def change_to_git_master() -> Generator[None, None, None]:
         branch_before = current_branch()
         if branch_before != 'master':
             subprocess.check_call(['git', 'switch', 'master'])
+            subprocess.check_call(['make', 'debug'])
         try:
             yield
         finally:
             if branch_before != 'master':
                 subprocess.check_call(['git', 'switch', branch_before])
+                subprocess.check_call(['make', 'debug'])
     finally:
         if stash_ref_before != safe_read('.git/refs/stash'):
             subprocess.check_call(['git', 'stash', 'pop'])
