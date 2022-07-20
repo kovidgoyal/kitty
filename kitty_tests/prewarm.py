@@ -107,12 +107,20 @@ def socket_child_main(exit_code=0, initial_print=''):
                 pty.wait_till(lambda: 'SIGTSTP received' in pty.screen_contents())
                 wait_for_death(19)
 
-        with self.subTest(msg='test SIGWINCH handling'):
+            with self.subTest(msg='test SIGWINCH handling'):
+                pty = self.create_pty(
+                    argv=[kitty_exe(), '+runpy', src + 'socket_child_main(initial_print="child ready:")'], cols=cols, env=env, cwd=cwd)
+                pty.wait_till(lambda: 'child ready:' in pty.screen_contents())
+                pty.set_window_size(columns=cols + 3)
+                pty.wait_till(lambda: f'Screen size changed: {cols + 3}' in pty.screen_contents())
+                os.close(pty.master_fd)
+
+        with self.subTest(msg='test env rewrite'):
             pty = self.create_pty(
                 argv=[kitty_exe(), '+runpy', src + 'socket_child_main(initial_print="child ready:")'], cols=cols, env=env, cwd=cwd)
             pty.wait_till(lambda: 'child ready:' in pty.screen_contents())
-            pty.set_window_size(columns=cols + 3)
-            pty.wait_till(lambda: f'Screen size changed: {cols + 3}' in pty.screen_contents())
+            from kitty.child import environ_of_process
+            self.assertTrue(environ_of_process(pty.child_pid).get('KITTY_PWPR'))
             os.close(pty.master_fd)
 
         with self.subTest(msg='test passing of data via cwd, env vars and stdin/stdout redirection'):

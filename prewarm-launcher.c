@@ -673,7 +673,7 @@ check_socket_addr(char *addr) {
 }
 
 void
-use_prewarmed_process(int argc, char *argv[]) {
+use_prewarmed_process(int argc, char *argv[], char *envp[]) {
     char *env_addr = getenv("KITTY_PREWARM_SOCKET");
     if (!env_addr || !*env_addr || !is_prewarmable(argc, argv)) return;
     env_addr = check_socket_addr(env_addr);
@@ -698,6 +698,12 @@ use_prewarmed_process(int argc, char *argv[]) {
     to_child_tty.buf = from_child_tty.buf + IO_BUZ_SZ;
 #undef fail
 
+    while (*envp) {
+        if (strncmp(*envp, "KITTY_PREWARM_SOCKET=", 2) == 0) {
+            sprintf(*envp,  "KITTY_PWPR=%s", child_tty_name);
+        }
+        envp++;
+    }
     loop();
     flush_data();
     cleanup();
