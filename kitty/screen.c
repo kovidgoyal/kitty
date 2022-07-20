@@ -984,6 +984,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         SIMPLE_MODE(DECARM)
         SIMPLE_MODE(BRACKETED_PASTE)
         SIMPLE_MODE(FOCUS_TRACKING)
+        SIMPLE_MODE(HANDLE_TERMIOS_SIGNALS)
         MOUSE_MODE(MOUSE_BUTTON_TRACKING, mouse_tracking_mode, BUTTON_MODE)
         MOUSE_MODE(MOUSE_MOTION_TRACKING, mouse_tracking_mode, MOTION_MODE)
         MOUSE_MODE(MOUSE_MOVE_TRACKING, mouse_tracking_mode, ANY_MODE)
@@ -2083,6 +2084,20 @@ process_cwd_notification(Screen *self, unsigned int code, PyObject *cwd) {
 void
 screen_handle_cmd(Screen *self, PyObject *cmd) {
     CALLBACK("handle_remote_cmd", "O", cmd);
+}
+
+bool
+screen_send_signal_for_key(Screen *self, char key) {
+    int ret = 0;
+    if (self->callbacks != Py_None) {
+        int cchar = key;
+        PyObject *callback_ret = PyObject_CallMethod(self->callbacks, "send_signal_for_key", "c", cchar);
+        if (callback_ret) {
+            ret = PyObject_IsTrue(callback_ret);
+            Py_DECREF(callback_ret);
+        } else { PyErr_Print(); }
+    }
+    return ret != 0;
 }
 
 void

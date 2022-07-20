@@ -857,6 +857,13 @@ class Window:
             '--ssh-connection-data', json.dumps(conn_data)
         )
 
+    def send_signal_for_key(self, key_num: int) -> bool:
+        try:
+            return self.child.send_signal_for_key(key_num)
+        except OSError as err:
+            log_error(f'Failed to send signal for key to child with err: {err}')
+            return False
+
     def focus_changed(self, focused: bool) -> None:
         if self.destroyed:
             return

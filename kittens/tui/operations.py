@@ -47,6 +47,7 @@ class Mode(Enum):
     ALTERNATE_SCREEN = 1049, '?'
     BRACKETED_PASTE = 2004, '?'
     PENDING_UPDATE = 2026, '?'
+    HANDLE_TERMIOS_SIGNALS = 19997, '?'
 
 
 def cmd(f: F) -> F:

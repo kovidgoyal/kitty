@@ -448,3 +448,24 @@ class Child:
             with suppress(Exception):
                 return environ_of_process(pid)
         return {}
+
+    def send_signal_for_key(self, key_num: int) -> bool:
+        import signal
+        import termios
+        if self.child_fd is None:
+            return False
+        t = termios.tcgetattr(self.child_fd)
+        if not t[3] & termios.ISIG:
+            return False
+        cc = t[-1]
+        if key_num == cc[termios.VINTR]:
+            s = signal.SIGINT
+        elif key_num == cc[termios.VSUSP]:
+            s = signal.SIGTSTP
+        elif key_num == cc[termios.VQUIT]:
+            s = signal.SIGQUIT
+        else:
+            return False
+        pgrp = os.tcgetpgrp(self.child_fd)
+        os.killpg(pgrp, s)
+        return True

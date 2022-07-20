@@ -39,7 +39,10 @@ from kitty.utils import (
     set_echo as turn_off_echo
 )
 
-from ..tui.operations import restore_colors, save_colors
+from ..tui.operations import (
+    RESTORE_PRIVATE_MODE_VALUES, SAVE_PRIVATE_MODE_VALUES, Mode,
+    restore_colors, save_colors, set_mode
+)
 from ..tui.utils import kitty_opts, running_in_tmux
 from .config import init_config
 from .copy import CopyInstruction
@@ -547,10 +550,13 @@ def connection_sharing_args(kitty_pid: int) -> List[str]:
 def restore_terminal_state() -> Iterator[bool]:
     with open(os.ctermid()) as f:
         val = termios.tcgetattr(f.fileno())
+        print(end=SAVE_PRIVATE_MODE_VALUES)
+        print(end=set_mode(Mode.HANDLE_TERMIOS_SIGNALS), flush=True)
         try:
             yield bool(val[3] & termios.ECHO)
         finally:
             termios.tcsetattr(f.fileno(), termios.TCSAFLUSH, val)
+            print(end=RESTORE_PRIVATE_MODE_VALUES, flush=True)
 
 
 def dcs_to_kitty(payload: Union[bytes, str], type: str = 'ssh') -> bytes:

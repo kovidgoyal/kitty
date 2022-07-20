@@ -218,6 +218,9 @@ on_key_input(GLFWkeyevent *ev) {
         schedule_write_to_child(w->id, 1, text, strlen(text));
         debug("sent key as text to child\n");
     } else if (size > 0) {
+        if (size == 1 && screen->modes.mHANDLE_TERMIOS_SIGNALS) {
+            if (screen_send_signal_for_key(screen, *encoded_key)) return;
+        }
         schedule_write_to_child(w->id, 1, encoded_key, size);
         debug("sent encoded key to child\n");
     } else {

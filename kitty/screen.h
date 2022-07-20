@@ -14,7 +14,7 @@ typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } Scr
 
 typedef struct {
     bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM,
-         mBRACKETED_PASTE, mFOCUS_TRACKING, mDECSACE;
+         mBRACKETED_PASTE, mFOCUS_TRACKING, mDECSACE, mHANDLE_TERMIOS_SIGNALS;
     MouseTrackingMode mouse_tracking_mode;
     MouseTrackingProtocol mouse_tracking_protocol;
     bool eight_bit_controls;  // S8C1T
@@ -263,6 +263,7 @@ void screen_report_key_encoding_flags(Screen *self);
 bool screen_detect_url(Screen *screen, unsigned int x, unsigned int y);
 int screen_cursor_at_a_shell_prompt(const Screen *);
 bool screen_fake_move_cursor_to_position(Screen *, index_type x, index_type y);
+bool screen_send_signal_for_key(Screen *, char key);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

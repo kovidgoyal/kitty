@@ -84,3 +84,6 @@
 
 // Pending updates mode
 #define PENDING_UPDATE (2026 << 5)
+
+// Handle Ctrl-C/Ctrl-Z mode
+#define HANDLE_TERMIOS_SIGNALS (19997 << 5)
