@@ -717,16 +717,13 @@ def run_ssh(ssh_args: List[str], server_args: List[str], found_extra_args: Tuple
         else:
             rq = '' if need_to_request_data else 'id={REQUEST_ID}:pwfile={PASSWORD_FILENAME}:pw={DATA_PASSWORD}'.format(**replacements)
             with drain_potential_tty_garbage(p, rq):
-                try:
-                    raise SystemExit(p.wait())
-                except KeyboardInterrupt:
-                    raise SystemExit(1)
+                raise SystemExit(p.wait())
         finally:
             if colors_changed:
                 print(end=restore_colors(), flush=True)
 
 
-def main(args: List[str]) -> NoReturn:
+def main(args: List[str]) -> None:
     args = args[1:]
     if args and args[0] == 'use-python':
         args = args[1:]  # backwards compat from when we had a python implementation
@@ -740,7 +737,11 @@ def main(args: List[str]) -> NoReturn:
         raise SystemExit('The SSH kitten is meant for interactive use via SSH only')
     if not sys.stdin.isatty():
         raise SystemExit('The SSH kitten is meant for interactive use only, STDIN must be a terminal')
-    run_ssh(ssh_args, server_args, found_extra_args)
+    try:
+        run_ssh(ssh_args, server_args, found_extra_args)
+    except KeyboardInterrupt:
+        sys.excepthook = lambda *a: None
+        raise
 
 
 if __name__ == '__main__':
