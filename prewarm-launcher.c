@@ -690,7 +690,7 @@ use_prewarmed_process(int argc, char *argv[]) {
     termios_needs_restore = true;
     cfmakeraw(&self_termios);
     if (!safe_tcsetattr(self_ttyfd, TCSANOW, &self_termios)) fail("Failed to put tty into raw mode");
-    if (!create_launch_msg(argc, argv)) fail("Failed to open controlling terminal");
+    if (!create_launch_msg(argc, argv)) fail("Failed to create launch message");
     socket_fd = connect_to_socket_synchronously(env_addr);
     if (socket_fd < 0) fail("Failed to connect to prewarm socket");
     from_child_tty.buf = malloc(IO_BUZ_SZ * 2);
