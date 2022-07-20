@@ -27,7 +27,6 @@ from typing import (
     Tuple, Union, cast
 )
 
-from kittens.tui.operations import restore_colors, save_colors
 from kitty.constants import (
     cache_dir, runtime_dir, shell_integration_dir, ssh_control_master_template,
     str_version, terminfo_dir
@@ -40,6 +39,7 @@ from kitty.utils import (
     set_echo as turn_off_echo
 )
 
+from ..tui.operations import restore_colors, save_colors
 from ..tui.utils import kitty_opts, running_in_tmux
 from .config import init_config
 from .copy import CopyInstruction
@@ -580,7 +580,6 @@ def ssh_version() -> Tuple[int, int]:
 
 @contextmanager
 def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str) -> Iterator[None]:
-    ssh_started_at = time.monotonic()
     with open(os.open(os.ctermid(), os.O_CLOEXEC | os.O_RDWR | os.O_NOCTTY), 'wb') as tty:
         if data_request:
             turn_off_echo(tty.fileno())
@@ -589,21 +588,24 @@ def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str)
         try:
             yield
         finally:
-            if p.returncode and time.monotonic() - ssh_started_at < 30:
-                # discard queued input data on tty in case data transmission was
-                # interrupted due to SSH failure, avoids spewing garbage to
-                # screen
-                data = b''
-                give_up_at = time.monotonic() + 1
-                tty_fd = tty.fileno()
-                while time.monotonic() < give_up_at and b'KITTY_DATA_END' not in data:
-                    rd, wr, err = select([tty_fd], [], [tty_fd], max(0, give_up_at - time.monotonic()))
-                    if err or not rd:
-                        break
-                    q = os.read(tty_fd, io.DEFAULT_BUFFER_SIZE)
-                    if not q:
-                        break
-                    data += q
+            # discard queued input data on tty in case data transmission was
+            # interrupted due to SSH failure, avoids spewing garbage to screen
+            from uuid import uuid4
+            canary = uuid4().hex.encode('ascii')
+            turn_off_echo(tty.fileno())
+            tty.write(dcs_to_kitty(canary + b'\n\r', type='echo'))
+            tty.flush()
+            data = b''
+            give_up_at = time.monotonic() + 2
+            tty_fd = tty.fileno()
+            while time.monotonic() < give_up_at and canary not in data:
+                rd, wr, err = select([tty_fd], [], [tty_fd], max(0, give_up_at - time.monotonic()))
+                if err or not rd:
+                    break
+                q = os.read(tty_fd, io.DEFAULT_BUFFER_SIZE)
+                if not q:
+                    break
+                data += q
 
 
 def change_colors(color_scheme: str) -> bool:
