@@ -605,13 +605,14 @@ def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str)
             give_up_at = time.monotonic() + 2
             tty_fd = tty.fileno()
             while time.monotonic() < give_up_at and canary not in data:
-                rd, wr, err = select([tty_fd], [], [tty_fd], max(0, give_up_at - time.monotonic()))
-                if err or not rd:
-                    break
-                q = os.read(tty_fd, io.DEFAULT_BUFFER_SIZE)
-                if not q:
-                    break
-                data += q
+                with suppress(KeyboardInterrupt):
+                    rd, wr, err = select([tty_fd], [], [tty_fd], max(0, give_up_at - time.monotonic()))
+                    if err or not rd:
+                        break
+                    q = os.read(tty_fd, io.DEFAULT_BUFFER_SIZE)
+                    if not q:
+                        break
+                    data += q
 
 
 def change_colors(color_scheme: str) -> bool:
