@@ -252,7 +252,7 @@ class Child:
         env['KITTY_PID'] = getpid()
         if not self.is_prewarmed:
             env['KITTY_PREWARM_SOCKET'] = fast_data_types.get_boss().prewarm.socket_env_var()
-            env['KITTY_PREWARM_SOCKET_REAL_TTY'] = '0' * 32
+            env['KITTY_PREWARM_SOCKET_REAL_TTY'] = ' ' * 32
         if self.cwd:
             # needed in case cwd is a symlink, in which case shells
             # can use it to display the current directory name rather

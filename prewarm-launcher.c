@@ -44,6 +44,9 @@
 #define MAX(x, y) __extension__ ({ \
     __typeof__ (x) a = (x); __typeof__ (y) b = (y); \
         a > b ? a : b;})
+#define MIN(x, y) __extension__ ({ \
+    __typeof__ (x) a = (x); __typeof__ (y) b = (y); \
+        a < b ? a : b;})
 // }}}
 
 #define IO_BUZ_SZ 8192
@@ -700,7 +703,8 @@ use_prewarmed_process(int argc, char *argv[], char *envp[]) {
 
     while (*envp) {
         if (strncmp(*envp, "KITTY_PREWARM_SOCKET_REAL_TTY=", 2) == 0) {
-            sprintf(*envp,  "KITTY_PREWARM_SOCKET_REAL_TTY=%s", child_tty_name);
+            char *p = *envp + sizeof("KITTY_PREWARM_SOCKET_REAL_TTY=") - 1;
+            snprintf(p, strlen(p) + 1, "%s", child_tty_name);
         }
         envp++;
     }

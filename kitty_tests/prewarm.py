@@ -68,7 +68,7 @@ def socket_child_main(exit_code=0, initial_print=''):
         env.update({
             'TEST_ENV_PASS': 'xyz',
             'KITTY_PREWARM_SOCKET': p.socket_env_var(),
-            'KITTY_PREWARM_SOCKET_REAL_TTY': '0' * 32,
+            'KITTY_PREWARM_SOCKET_REAL_TTY': ' ' * 32,
             'TERM': 'xterm-kitty',
             'TERMINFO': terminfo_dir
         })
