@@ -699,8 +699,8 @@ use_prewarmed_process(int argc, char *argv[], char *envp[]) {
 #undef fail
 
     while (*envp) {
-        if (strncmp(*envp, "KITTY_PREWARM_SOCKET=", 2) == 0) {
-            sprintf(*envp,  "KITTY_PWPR=%s", child_tty_name);
+        if (strncmp(*envp, "KITTY_PREWARM_SOCKET_REAL_TTY=", 2) == 0) {
+            sprintf(*envp,  "KITTY_PREWARM_SOCKET_REAL_TTY=%s", child_tty_name);
         }
         envp++;
     }

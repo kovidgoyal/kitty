@@ -252,6 +252,7 @@ class Child:
         env['KITTY_PID'] = getpid()
         if not self.is_prewarmed:
             env['KITTY_PREWARM_SOCKET'] = fast_data_types.get_boss().prewarm.socket_env_var()
+            env['KITTY_PREWARM_SOCKET_REAL_TTY'] = '0' * 32
         if self.cwd:
             # needed in case cwd is a symlink, in which case shells
             # can use it to display the current directory name rather
@@ -457,7 +458,12 @@ class Child:
         import termios
         if self.child_fd is None:
             return False
-        t = termios.tcgetattr(self.child_fd)
+        tty_name = self.foreground_environ.get('KITTY_PREWARM_SOCKET_REAL_TTY')
+        if tty_name and tty_name.startswith('/'):
+            with open(os.open(tty_name, os.O_RDWR | os.O_CLOEXEC | os.O_NOCTTY, 0)) as real_tty:
+                t = termios.tcgetattr(real_tty.fileno())
+        else:
+            t = termios.tcgetattr(self.child_fd)
         if not t[3] & termios.ISIG:
             return False
         cc = t[-1]

@@ -65,7 +65,13 @@ def socket_child_main(exit_code=0, initial_print=''):
         if p is None:
             return
         env = os.environ.copy()
-        env.update({'TEST_ENV_PASS': 'xyz', 'KITTY_PREWARM_SOCKET': p.socket_env_var(), 'TERM': 'xterm-kitty', 'TERMINFO': terminfo_dir})
+        env.update({
+            'TEST_ENV_PASS': 'xyz',
+            'KITTY_PREWARM_SOCKET': p.socket_env_var(),
+            'KITTY_PREWARM_SOCKET_REAL_TTY': '0' * 32,
+            'TERM': 'xterm-kitty',
+            'TERMINFO': terminfo_dir
+        })
         cols = 117
 
         def wait_for_death(exit_code, timeout=5):
@@ -120,7 +126,7 @@ def socket_child_main(exit_code=0, initial_print=''):
                 argv=[kitty_exe(), '+runpy', src + 'socket_child_main(initial_print="child ready:")'], cols=cols, env=env, cwd=cwd)
             pty.wait_till(lambda: 'child ready:' in pty.screen_contents())
             from kitty.child import environ_of_process
-            self.assertTrue(environ_of_process(pty.child_pid).get('KITTY_PWPR'))
+            self.assertIn('/', environ_of_process(pty.child_pid).get('KITTY_PREWARM_SOCKET_REAL_TTY'))
             os.close(pty.master_fd)
 
         with self.subTest(msg='test passing of data via cwd, env vars and stdin/stdout redirection'):
