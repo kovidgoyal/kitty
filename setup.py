@@ -822,8 +822,6 @@ def safe_makedirs(path: str) -> None:
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> None:
     werror = '' if args.ignore_compiler_warnings else '-pedantic-errors -Werror'
     cflags = f'-Wall {werror} -fpie'.split()
-    if args.build_universal_binary:
-        cflags += '-arch x86_64 -arch arm64'.split()
     cppflags = []
     libs: List[str] = []
     ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
@@ -860,6 +858,9 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     for path in args.extra_include_dirs:
         cflags.append(f'-I{path}')
+    if args.build_universal_binary:
+        set_arches(cflags)
+        set_arches(ldflags)
     if bundle_type == 'linux-freeze':
         # --disable-new-dtags prevents -rpath from generating RUNPATH instead of
         # RPATH entries in the launcher. The ld dynamic linker does not search
