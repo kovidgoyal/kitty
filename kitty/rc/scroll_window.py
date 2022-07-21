@@ -27,8 +27,8 @@ class ScrollWindow(RemoteCommand):
     desc = (
         'Scroll the specified windows, if no window is specified, scroll the window this command is run inside.'
         ' :italic:`SCROLL_AMOUNT` can be either the keywords :code:`start` or :code:`end` or an'
-        ' argument of the form :italic:`<number>[unit][+-]`. For example, :code:`30` will scroll down 30 lines and :code:`2p-`'
-        ' will scroll up 2 pages. :code:`3u` will *unscroll* by 3 lines, which means that 3 lines will move from the'
+        ' argument of the form :italic:`<number>[unit][+-]`. For example, :code:`30` will scroll down 30 lines, :code:`2p-`'
+        ' will scroll up 2 pages and :code:`0.5p`will scroll down half page. :code:`3u` will *unscroll* by 3 lines, which means that 3 lines will move from the'
         ' scrollback buffer onto the top of the screen.'
     )
     argspec = 'SCROLL_AMOUNT'
@@ -38,12 +38,14 @@ class ScrollWindow(RemoteCommand):
         if len(args) < 1:
             self.fatal('Scroll amount must be specified')
         amt = args[0]
-        amount: Tuple[Union[str, int], Optional[str]] = (amt, None)
+        amount: Tuple[Union[str, float], Optional[str]] = (amt, None)
         if amt not in ('start', 'end'):
             pages = 'p' in amt
             unscroll = 'u' in amt
             mult = -1 if amt.endswith('-') and not unscroll else 1
-            q = int(amt.rstrip('+-plu'))
+            q = float(amt.rstrip('+-plu'))
+            if not pages and not q.is_integer():
+                self.fatal('The number must be an integer')
             amount = q * mult, 'p' if pages else ('u' if unscroll else 'l')
 
         # defaults to scroll the window this command is run in
@@ -58,12 +60,15 @@ class ScrollWindow(RemoteCommand):
                 else:
                     amt, unit = amt
                     if unit == 'u':
-                        window.screen.reverse_scroll(abs(amt), True)
+                        window.screen.reverse_scroll(int(abs(amt)), True)
                     else:
                         unit = 'page' if unit == 'p' else 'line'
+                        if unit == 'page' and not amt.is_integer():
+                            amt = round(window.screen.lines * amt)
+                            unit = 'line'
                         direction = 'up' if amt < 0 else 'down'
                         func = getattr(window, f'scroll_{unit}_{direction}')
-                        for i in range(abs(amt)):
+                        for i in range(int(abs(amt))):
                             func()
         return None
 
