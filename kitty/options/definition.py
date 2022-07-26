@@ -1166,7 +1166,8 @@ mapped for :code:`goto_tab N`. If you prefer to see the index as a superscript,
 use :code:`{sup.index}`. In addition you can use :code:`{layout_name}` for the
 current layout name, :code:`{num_windows}` for the number of windows in the tab,
 :code:`{num_window_groups}` for the number of window groups (not counting
-overlay windows) in the tab, and {cwd} for current working directory.
+overlay windows) in the tab, and :code:`{tab.active_wd}` for the working directory
+of the active_window.
 Note that formatting is done by Python's string formatting machinery, so you can
 use, for instance, :code:`{layout_name[:2].upper()}` to show only the first two
 letters of the layout name, upper-cased. If you want to style the text, you can

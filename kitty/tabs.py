@@ -234,6 +234,10 @@ class Tab:  # {{{
         w = self.active_window
         return w.get_cwd_of_child(oldest) if w else None
 
+    @property
+    def active_wd(self) -> str:
+        return self.get_cwd_of_active_window() or ''
+
     def set_title(self, title: str) -> None:
         self.name = title or ''
         self.mark_tab_bar_dirty()

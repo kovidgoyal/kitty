@@ -84,6 +84,9 @@ Detailed list of changes
 
 - Expand ~ in paths configured in :opt:`editor` and :opt:`exe_search_path` (:disc:`5298`)
 
+- Allow showing the working directory of the active window in tab titles
+  (:pull:`5314`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
