@@ -7,7 +7,6 @@ from string import Formatter as StringFormatter
 from typing import (
     Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, TYPE_CHECKING
 )
-from weakref import ReferenceType
 
 from .borders import Border, BorderColor
 from .config import build_ansi_color_table
@@ -23,6 +22,7 @@ from .utils import color_as_int, log_error, sgr_sanitizer_pat
 
 
 if TYPE_CHECKING:
+    from weakref import ReferenceType
     from .tabs import Tab
 
 
@@ -30,7 +30,7 @@ class TabBarData(NamedTuple):
     title: str
     is_active: bool
     needs_attention: bool
-    tab_ref: "ReferenceType['Tab']"
+    tab_ref: 'ReferenceType[Tab]'
     num_windows: int
     num_window_groups: int
     layout_name: str
@@ -180,7 +180,7 @@ def template_has_field(template: str, field: str) -> bool:
 
 class TabCWD:
 
-    def __init__(self, tab_ref: "ReferenceType['Tab']"):
+    def __init__(self, tab_ref: 'ReferenceType[Tab]'):
         self.tab_ref = tab_ref
         self.saved_val: Optional[str] = None
 
