@@ -25,6 +25,7 @@ class TabBarData(NamedTuple):
     title: str
     is_active: bool
     needs_attention: bool
+    cwd: str
     num_windows: int
     num_window_groups: int
     layout_name: str
@@ -179,6 +180,7 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
         'num_windows': tab.num_windows,
         'num_window_groups': tab.num_window_groups,
         'title': tab.title,
+        'cwd': tab.cwd,
     }
     ColorFormatter.draw_data = draw_data
     ColorFormatter.tab_data = tab
@@ -188,6 +190,7 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
         'num_windows': tab.num_windows,
         'num_window_groups': tab.num_window_groups,
         'title': tab.title,
+        'cwd': tab.cwd,
         'fmt': Formatter,
         'sup': SupSub(data),
         'sub': SupSub(data, True),
