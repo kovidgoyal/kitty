@@ -5,8 +5,9 @@ import os
 from functools import lru_cache, partial, wraps
 from string import Formatter as StringFormatter
 from typing import (
-    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
+    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, TYPE_CHECKING
 )
+from weakref import ReferenceType
 
 from .borders import Border, BorderColor
 from .config import build_ansi_color_table
@@ -21,11 +22,15 @@ from .typing import EdgeLiteral, PowerlineStyle
 from .utils import color_as_int, log_error, sgr_sanitizer_pat
 
 
+if TYPE_CHECKING:
+    from .tabs import Tab
+
+
 class TabBarData(NamedTuple):
     title: str
     is_active: bool
     needs_attention: bool
-    cwd: str
+    tab_ref: ReferenceType['Tab']
     num_windows: int
     num_window_groups: int
     layout_name: str
@@ -173,14 +178,28 @@ def template_has_field(template: str, field: str) -> bool:
     return False
 
 
+class TabCWD:
+
+    def __init__(self, tab_ref: ReferenceType['Tab']):
+        self.tab_ref = tab_ref
+        self.saved_val: Optional[str] = None
+
+    def __str__(self) -> str:
+        if self.saved_val is None:
+            tab = self.tab_ref()
+            self.saved_val = (tab.get_cwd_of_active_window() or '') if tab else ''
+        return self.saved_val
+
+
 def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
+    tcwd = TabCWD(tab.tab_ref)
     data = {
         'index': index,
         'layout_name': tab.layout_name,
         'num_windows': tab.num_windows,
         'num_window_groups': tab.num_window_groups,
         'title': tab.title,
-        'cwd': tab.cwd,
+        'cwd': tcwd,
     }
     ColorFormatter.draw_data = draw_data
     ColorFormatter.tab_data = tab
@@ -190,7 +209,7 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
         'num_windows': tab.num_windows,
         'num_window_groups': tab.num_window_groups,
         'title': tab.title,
-        'cwd': tab.cwd,
+        'cwd': tcwd,
         'fmt': Formatter,
         'sup': SupSub(data),
         'sub': SupSub(data, True),

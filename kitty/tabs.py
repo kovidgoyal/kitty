@@ -230,10 +230,9 @@ class Tab:  # {{{
                 ans += 1
         return ans
 
-    @property
-    def get_cwd(self) -> str:
+    def get_cwd_of_active_window(self, oldest: bool = False) -> Optional[str]:
         w = self.active_window
-        return w.cwd_of_child if w and w.cwd_of_child else self.cwd
+        return w.get_cwd_of_child(oldest) if w else None
 
     def set_title(self, title: str) -> None:
         self.name = title or ''
@@ -1083,14 +1082,13 @@ class TabManager:  # {{{
             title = (t.name or t.title or appname).strip()
             needs_attention = False
             has_activity_since_last_focus = False
-            cwd = os.path.abspath(t.get_cwd)
             for w in t:
                 if w.needs_attention:
                     needs_attention = True
                 if w.has_activity_since_last_focus:
                     has_activity_since_last_focus = True
             ans.append(TabBarData(
-                title, t is at, needs_attention, cwd,
+                title, t is at, needs_attention, weakref.ref(t),
                 len(t), t.num_window_groups, t.current_layout.name or '',
                 has_activity_since_last_focus, t.active_fg, t.active_bg,
                 t.inactive_fg, t.inactive_bg
