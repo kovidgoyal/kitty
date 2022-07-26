@@ -702,9 +702,15 @@ use_prewarmed_process(int argc, char *argv[], char *envp[]) {
 #undef fail
 
     while (*envp) {
-        if (strncmp(*envp, "KITTY_PREWARM_SOCKET_REAL_TTY=", 2) == 0) {
-            char *p = *envp + sizeof("KITTY_PREWARM_SOCKET_REAL_TTY=") - 1;
-            snprintf(p, strlen(p) + 1, "%s", child_tty_name);
+        char *p = *envp;
+        const char *q = "KITTY_PREWARM_SOCKET_REAL_TTY=";
+        while (*p && *q && *p == *q) {
+            if (*p == '=') {
+                p++;
+                snprintf(p, strlen(p) + 1, "%s", child_tty_name);
+                break;
+            }
+            p++; q++;
         }
         envp++;
     }

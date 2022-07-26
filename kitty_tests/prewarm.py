@@ -126,7 +126,7 @@ def socket_child_main(exit_code=0, initial_print=''):
                 argv=[kitty_exe(), '+runpy', src + 'socket_child_main(initial_print="child ready:")'], cols=cols, env=env, cwd=cwd)
             pty.wait_till(lambda: 'child ready:' in pty.screen_contents())
             from kitty.child import environ_of_process
-            self.assertIn('/', environ_of_process(pty.child_pid).get('KITTY_PREWARM_SOCKET_REAL_TTY'))
+            self.assertIn('/', environ_of_process(pty.child_pid).get('KITTY_PREWARM_SOCKET_REAL_TTY', ''))
             os.close(pty.master_fd)
 
         with self.subTest(msg='test passing of data via cwd, env vars and stdin/stdout redirection'):
