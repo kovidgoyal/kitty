@@ -393,7 +393,8 @@ calc_cell_metrics(FontGroup *fg) {
     underline_position = MIN(cell_height - 1, underline_position);
     // ensure there is at least a couple of pixels available to render styled underlines
     // there should be at least one pixel on either side of the underline_position
-    while (underline_position > baseline + 1 && cell_height - underline_position < 1) underline_position--;
+    if (underline_position > baseline + 1 && underline_position > cell_height - 1)
+      underline_position = MAX(baseline + 1, cell_height - 1);
     if (line_height_adjustment > 1) {
         baseline += MIN(cell_height - 1, (unsigned)line_height_adjustment / 2);
         underline_position += MIN(cell_height - 1, (unsigned)line_height_adjustment / 2);
