@@ -813,7 +813,7 @@ class Window:
                     except Exception:
                         hostname = ''
                     remote_hostname = purl.netloc.partition(':')[0]
-                    if True or remote_hostname and remote_hostname != hostname and remote_hostname != 'localhost':
+                    if remote_hostname and remote_hostname != hostname and remote_hostname != 'localhost':
                         self.handle_remote_file(purl.netloc, unquote(purl.path))
                         return
                     url = urlunparse(purl._replace(netloc=''))
