@@ -186,7 +186,7 @@ function clone-in-kitty -d "Clone the current fish session into a new kitty wind
     set --local b64_envs (string join0 -- $envs | base64)
     set --local b64_cwd (printf "%s" "$PWD" | base64)
     set --prepend data "shell=fish" "pid=$fish_pid" "cwd=$b64_cwd" "env=$b64_envs"
-    __ksi_transmit_data (string join "," -- $data | tr -d "\t\n\r ") "clone"
+    __ksi_transmit_data (string join "," -- $data | string replace --regex --all "\s" "") "clone"
 end
 
 function edit-in-kitty -d "Edit the specified file in a new kitty overlay using your preferred editor, even over SSH"
@@ -234,7 +234,7 @@ function edit-in-kitty -d "Edit the specified file in a new kitty overlay using 
     end
     set --local file_data (base64 < "$ed_filename")
     set --append data "file_data=$file_data"
-    __ksi_transmit_data (string join "," -- $data | tr -d "\t\n\r ") "edit"
+    __ksi_transmit_data (string join "," -- $data | string replace --regex --all "\s" "") "edit"
     set --erase data
     echo "Waiting for editing to be completed..."
     set --global __ksi_waiting_for_edit "y"

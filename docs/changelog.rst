@@ -76,11 +76,13 @@ Detailed list of changes
 
 - Bash integration: Fix declare not creating global variables in .bashrc (:iss:`5254`)
 
-- :command`kitty @ scroll-window` allow scrolling by fractions of a screen
+- :command:`kitty @ scroll-window` allow scrolling by fractions of a screen
   (:iss:`5294`)
 
 - remote files kitten: Fix working with files whose names have characters that
   need to be quoted in shell scripts (:iss:`5313`)
+
+- Expand ~ in paths configured in :opt:`editor` and :opt:`exe_search_path` (:disc:`5298`)
 
 
 0.25.2 [2022-06-07]
