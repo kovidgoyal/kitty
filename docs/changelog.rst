@@ -76,7 +76,7 @@ Detailed list of changes
 
 - Bash integration: Fix declare not creating global variables in .bashrc (:iss:`5254`)
 
-- :command`kitty @ scroll-window` allow scrolling by fractions of a screen
+- :command:`kitty @ scroll-window` allow scrolling by fractions of a screen
   (:iss:`5294`)
 
 - remote files kitten: Fix working with files whose names have characters that
