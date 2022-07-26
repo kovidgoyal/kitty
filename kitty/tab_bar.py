@@ -192,7 +192,7 @@ class TabCWD:
 
 
 def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
-    tcwd = TabCWD(tab.tab_ref)
+    tcwd = str(TabCWD(tab.tab_ref))
     data = {
         'index': index,
         'layout_name': tab.layout_name,
