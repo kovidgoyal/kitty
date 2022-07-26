@@ -314,8 +314,7 @@ def render_special(
     dpi_x: float = 96.,
     dpi_y: float = 96.,
 ) -> CBufType:
-    udelta, uextra = divmod(underline_thickness, 2)
-    underline_position = min(underline_position, cell_height - udelta - uextra)
+    underline_position = min(underline_position, cell_height - sum(divmod(underline_thickness, 2)))
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
 
     if missing:
