@@ -79,6 +79,9 @@ Detailed list of changes
 - :command`kitty @ scroll-window` allow scrolling by fractions of a screen
   (:iss:`5294`)
 
+- remote files kitten: Fix working with files whose names have characters that
+  need to be quoted in shell scripts (:iss:`5313`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

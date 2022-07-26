@@ -206,7 +206,7 @@ class ControlMaster:
         show_error(msg)
 
     def download(self) -> bool:
-        cmdline = self.batch_cmd_prefix + [self.conn_data.hostname, 'cat', self.remote_path]
+        cmdline = self.batch_cmd_prefix + [self.conn_data.hostname, 'cat', shlex.quote(self.remote_path)]
         with open(self.dest, 'wb') as f:
             cp = subprocess.run(cmdline, stdout=f, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
             if cp.returncode != 0:
@@ -216,7 +216,7 @@ class ControlMaster:
 
     def upload(self, suppress_output: bool = True) -> bool:
         cmd_prefix = self.cmd_prefix if suppress_output else self.batch_cmd_prefix
-        cmd = cmd_prefix + [self.conn_data.hostname, 'cat', '>', self.remote_path]
+        cmd = cmd_prefix + [self.conn_data.hostname, 'cat', '>', shlex.quote(self.remote_path)]
         if not suppress_output:
             print(shlex.join(cmd))
         with open(self.dest, 'rb') as f:
