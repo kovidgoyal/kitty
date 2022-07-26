@@ -5,15 +5,15 @@ import os
 from functools import lru_cache, partial, wraps
 from string import Formatter as StringFormatter
 from typing import (
-    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, TYPE_CHECKING
+    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
 )
 
 from .borders import Border, BorderColor
 from .config import build_ansi_color_table
 from .constants import config_dir
 from .fast_data_types import (
-    DECAWM, Region, Screen, cell_size_for_window, get_options, pt_to_px,
-    set_tab_bar_render_data, viewport_for_window, Color
+    DECAWM, Color, Region, Screen, cell_size_for_window, get_boss, get_options,
+    pt_to_px, set_tab_bar_render_data, viewport_for_window
 )
 from .rgb import alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
@@ -21,16 +21,11 @@ from .typing import EdgeLiteral, PowerlineStyle
 from .utils import color_as_int, log_error, sgr_sanitizer_pat
 
 
-if TYPE_CHECKING:
-    from weakref import ReferenceType
-    from .tabs import Tab
-
-
 class TabBarData(NamedTuple):
     title: str
     is_active: bool
     needs_attention: bool
-    tab_ref: 'ReferenceType[Tab]'
+    tab_id: int
     num_windows: int
     num_window_groups: int
     layout_name: str
@@ -178,14 +173,26 @@ def template_has_field(template: str, field: str) -> bool:
     return False
 
 
+class TabAccessor:
+
+    def __init__(self, tab_id: int):
+        self.tab_id = tab_id
+
+    @property
+    def active_wd(self) -> str:
+        tab = get_boss().tab_for_id(self.tab_id)
+        return (tab.get_cwd_of_active_window() if tab else '') or ''
+
+
 def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
+    ta = TabAccessor(tab.tab_id)
     data = {
         'index': index,
         'layout_name': tab.layout_name,
         'num_windows': tab.num_windows,
         'num_window_groups': tab.num_window_groups,
         'title': tab.title,
-        'tab': tab.tab_ref(),
+        'tab': ta,
     }
     ColorFormatter.draw_data = draw_data
     ColorFormatter.tab_data = tab
@@ -195,7 +202,7 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
         'num_windows': tab.num_windows,
         'num_window_groups': tab.num_window_groups,
         'title': tab.title,
-        'tab': tab.tab_ref(),
+        'tab': ta,
         'fmt': Formatter,
         'sup': SupSub(data),
         'sub': SupSub(data, True),

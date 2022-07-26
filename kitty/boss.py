@@ -1106,6 +1106,13 @@ class Boss:
         w, h = get_new_os_window_size(metrics, width, height, unit, incremental, has_window_scaling)
         set_os_window_size(os_window_id, w, h)
 
+    def tab_for_id(self, tab_id: int) -> Optional[Tab]:
+        for tm in self.os_window_map.values():
+            tab = tm.tab_for_id(tab_id)
+            if tab is not None:
+                return tab
+        return None
+
     def default_bg_changed_for(self, window_id: int) -> None:
         w = self.window_id_map.get(window_id)
         if w is not None:

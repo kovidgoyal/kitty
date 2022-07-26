@@ -234,10 +234,6 @@ class Tab:  # {{{
         w = self.active_window
         return w.get_cwd_of_child(oldest) if w else None
 
-    @property
-    def active_wd(self) -> str:
-        return self.get_cwd_of_active_window() or ''
-
     def set_title(self, title: str) -> None:
         self.name = title or ''
         self.mark_tab_bar_dirty()
@@ -1092,7 +1088,7 @@ class TabManager:  # {{{
                 if w.has_activity_since_last_focus:
                     has_activity_since_last_focus = True
             ans.append(TabBarData(
-                title, t is at, needs_attention, weakref.ref(t),
+                title, t is at, needs_attention, t.id,
                 len(t), t.num_window_groups, t.current_layout.name or '',
                 has_activity_since_last_focus, t.active_fg, t.active_bg,
                 t.inactive_fg, t.inactive_bg
