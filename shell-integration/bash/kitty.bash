@@ -162,7 +162,7 @@ _ksi_main() {
             # in particular this means cwd reporting will not happen for a
             # command like cd /test && cat. PS0 is evaluated before cd is run.
             if [[ "${_ksi_prompt[last_reported_cwd]}" != "$PWD" ]]; then
-                _ksi_prompt[last_reported_cwd]="$PWD";
+                _ksi_prompt[last_reported_cwd]="$PWD"
                 builtin printf "\e]7;kitty-shell-cwd://%s%s\a" "$HOSTNAME" "$PWD"
             fi
         fi
@@ -392,27 +392,27 @@ edit-in-kitty() {
         builtin trap -- "builtin command stty '$old_tty_settings'; _ksi_transmit_data 'abort_signaled=interrupt' 'edit'; builtin exit 1;" SIGINT SIGTERM
         while :; do
             started="n"
-            while IFS= read -r line; do
+            while IFS= builtin read -r line; do
                 if [ "$started" = "y" ]; then
-                    [ "$line" = "UPDATE" ] && break;
+                    [ "$line" = "UPDATE" ] && break
                     [ "$line" = "DONE" ] && { started="done"; break; }
-                    builtin printf "%s\n" "$line" > /dev/stderr;
-                    return 1;
+                    builtin printf "%s\n" "$line" > /dev/stderr
+                    return 1
                 else
                     [ "$line" = "KITTY_DATA_START" ] && started="y"
                 fi
             done
-            [ "$started" = "n" ] && continue;
+            [ "$started" = "n" ] && continue
             data=""
-            while IFS= read -r line; do
-                [ "$line" = "KITTY_DATA_END" ] && break;
+            while IFS= builtin read -r line; do
+                [ "$line" = "KITTY_DATA_END" ] && break
                 data="$data$line"
             done
             [ -n "$data" -a "$started" != "done" ] && {
                 builtin echo "Updating $ed_filename..."
                 builtin printf "%s" "$data" | builtin command base64 -d > "$ed_filename"
             }
-            [ "$started" = "done" ] && break;
+            [ "$started" = "done" ] && break
         done
     }
     $(_ksi_wait_for_complete > /dev/tty)
