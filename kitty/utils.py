@@ -670,6 +670,7 @@ def get_editor(opts: Optional[Options] = None, path_to_edit: str = '', line_numb
     else:
         import shlex
         ans = shlex.split(opts.editor)
+    ans[0] = os.path.expanduser(ans[0])
     if path_to_edit:
         if line_number:
             eq = os.path.basename(ans[0]).lower()
@@ -778,11 +779,11 @@ def which(name: str, only_system: bool = False) -> Optional[str]:
             x = x.strip()
             if x:
                 if x[0] == '-':
-                    tried_paths.add(x[1:])
+                    tried_paths.add(os.path.expanduser(x[1:]))
                 elif x[0] == '+':
-                    append_paths.append(x[1:])
+                    append_paths.append(os.path.expanduser(x[1:]))
                 else:
-                    paths.append(x)
+                    paths.append(os.path.expanduser(x))
     ep = os.environ.get('PATH')
     if ep:
         paths.extend(ep.split(os.pathsep))

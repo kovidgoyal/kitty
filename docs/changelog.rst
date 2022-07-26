@@ -82,6 +82,8 @@ Detailed list of changes
 - remote files kitten: Fix working with files whose names have characters that
   need to be quoted in shell scripts (:iss:`5313`)
 
+- Expand ~ in paths configured in :opt:`editor` and :opt:`exe_search_path` (:disc:`5298`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
