@@ -10,6 +10,8 @@
 #define NEEDS_FOREGROUND
 #endif
 
+// All non-texture inputs are already in linear colorspace from the vertex-shader
+
 #ifdef NEEDS_BACKROUND
 in vec3 background;
 in float draw_bg;
@@ -34,32 +36,54 @@ in float colored_sprite;
 out vec4 final_color;
 
 // Util functions {{{
-vec4 alpha_blend(vec3 over, float over_alpha, vec3 under, float under_alpha) {
+vec4 alpha_blend_premul(vec4 over, vec4 under) {
     // Alpha blend two colors returning the resulting color pre-multiplied by its alpha
     // and its alpha.
     // See https://en.wikipedia.org/wiki/Alpha_compositing
-    float alpha = mix(under_alpha, 1.0f, over_alpha);
-    vec3 combined_color = mix(under * under_alpha, over, over_alpha);
-    return vec4(combined_color, alpha);
+    float inv_over_alpha = 1.0f - over.a;
+    float alpha = over.a + under.a * inv_over_alpha;
+
+    return vec4(over.rgb + under.rgb * inv_over_alpha, alpha);
 }
 
-vec3 premul_blend(vec3 over, float over_alpha, vec3 under) {
-    return over + (1.0f - over_alpha) * under;
+vec4 alpha_blend_premul(vec4 over, vec3 under) {
+    float inv_over_alpha = 1.0f - over.a;
+
+    return vec4(over.rgb + under.rgb * inv_over_alpha, 1.0);
 }
 
-vec4 alpha_blend_premul(vec3 over, float over_alpha, vec3 under, float under_alpha) {
-    // Same as alpha_blend() except that it assumes over and under are both premultiplied.
-    float alpha = mix(under_alpha, 1.0f, over_alpha);
-    return vec4(premul_blend(over, over_alpha, under), alpha);
+vec4 vec4_premul(vec3 rgb, float a) {
+    return vec4(rgb * a, a);
 }
 
-vec4 blend_onto_opaque_premul(vec3 over, float over_alpha, vec3 under) {
-    // same as alpha_blend_premul with under_alpha = 1 outputs a blended color
-    // with alpha 1 which is effectively pre-multiplied since alpha is 1
-    return vec4(premul_blend(over, over_alpha, under), 1.0);
+vec4 vec4_premul(vec4 rgba) {
+    return vec4(rgba.rgb * rgba.a, rgba.a);
 }
 
+// sRGB gamma functions
+vec3 from_linear(vec3 linear) {
+    bvec3 cutoff = lessThan(linear, vec3(0.0031308));
+    vec3 higher = vec3(1.055) * pow(linear, vec3(1.0 / 2.4)) - vec3(0.055);
+    vec3 lower = linear * vec3(12.92);
 
+    return mix(higher, lower, cutoff);
+}
+
+vec3 to_linear(vec3 srgb) {
+    bvec3 cutoff = lessThan(srgb, vec3(0.04045));
+    vec3 higher = pow((srgb + vec3(0.055)) / vec3(1.055), vec3(2.4));
+    vec3 lower = srgb / vec3(12.92);
+
+    return mix(higher, lower, cutoff);
+}
+
+vec4 from_linear(vec4 linear_a) {
+    return vec4(from_linear(linear_a.rgb), linear_a.a);
+}
+
+vec4 to_linear(vec4 srgba) {
+    return vec4(to_linear(srgba.rgb), srgba.a);
+}
 // }}}
 
 
@@ -95,49 +119,47 @@ vec4 blend_onto_opaque_premul(vec3 over, float over_alpha, vec3 under) {
  */
 #ifdef NEEDS_FOREGROUND
 vec4 calculate_foreground() {
-    // returns the effective foreground color in pre-multiplied form
-    vec4 text_fg = texture(sprites, sprite_pos);
+    // returns the effective foreground color in pre-multiplied form in linear space
+
+    // TODO: Skip to_linear on texture input if the texture is GL_SRGB_ALPHA
+    vec4 text_fg = to_linear(texture(sprites, sprite_pos));
     vec3 fg = mix(foreground, text_fg.rgb, colored_sprite);
     float text_alpha = text_fg.a;
     float underline_alpha = texture(sprites, underline_pos).a;
     float strike_alpha = texture(sprites, strike_pos).a;
     float cursor_alpha = texture(sprites, cursor_pos).a;
+
     // Since strike and text are the same color, we simply add the alpha values
     float combined_alpha = min(text_alpha + strike_alpha, 1.0f);
+
     // Underline color might be different, so alpha blend
-    vec4 ans = alpha_blend(fg, combined_alpha * effective_text_alpha, decoration_fg, underline_alpha * effective_text_alpha);
+    vec4 ans = alpha_blend_premul(vec4_premul(fg, combined_alpha * effective_text_alpha), vec4_premul(decoration_fg, underline_alpha * effective_text_alpha));
+
     return mix(ans, cursor_color_vec, cursor_alpha);
 }
 #endif
 
 void main() {
-#ifdef SIMPLE
-    vec4 fg = calculate_foreground();
-#ifdef TRANSPARENT
-    final_color = alpha_blend_premul(fg.rgb, fg.a, background.rgb * bg_alpha, bg_alpha);
-#else
-    final_color = blend_onto_opaque_premul(fg.rgb, fg.a, background.rgb);
-#endif
-#endif
+#ifdef NEEDS_FOREGROUND
+    final_color = calculate_foreground();
 
-#ifdef SPECIAL
+#ifdef NEEDS_BACKROUND
 #ifdef TRANSPARENT
-    final_color = vec4(background.rgb * bg_alpha, bg_alpha);
+    final_color = alpha_blend_premul(final_color, vec4_premul(background.rgb, bg_alpha));
 #else
+    final_color = alpha_blend_premul(final_color, background.rgb);
+#endif
+#endif
+#else
+    // TODO: Maybe always provide vec4 for background?
+#ifdef TRANSPARENT
     final_color = vec4(background.rgb, bg_alpha);
-#endif
-#endif
-
-#ifdef BACKGROUND
-#if defined(TRANSPARENT)
-    final_color = vec4(background.rgb * bg_alpha, bg_alpha);
 #else
     final_color = vec4(background.rgb, draw_bg);
 #endif
 #endif
 
-#ifdef FOREGROUND
-    final_color = calculate_foreground();  // pre-multiplied foreground
-#endif
-
+    // TODO: Disable if we are using GL_FRAMEBUFFER_SRGB
+    // convert back to sRGB if we are not using GL_FRAMEBUFFER_SRGB
+    final_color = from_linear(final_color);
 }
