@@ -32,8 +32,19 @@ def encode_response_for_peer(response: Any) -> bytes:
     return b'\x1bP@kitty-cmd' + json.dumps(response).encode('utf-8') + b'\x1b\\'
 
 
-def handle_cmd(boss: BossType, window: Optional[WindowType], serialized_cmd: str, peer_id: int) -> Union[Dict[str, Any], None, AsyncResponse]:
-    cmd = json.loads(serialized_cmd)
+def parse_cmd(serialized_cmd: str) -> Dict[str, Any]:
+    try:
+        pcmd = json.loads(serialized_cmd)
+        if not isinstance(pcmd, dict):
+            return {}
+    except Exception:
+        return {}
+    if 'version' not in pcmd:
+        return {}
+    return pcmd
+
+
+def handle_cmd(boss: BossType, window: Optional[WindowType], cmd: Dict[str, Any], peer_id: int) -> Union[Dict[str, Any], None, AsyncResponse]:
     v = cmd['version']
     no_response = cmd.get('no_response', False)
     if tuple(v)[:2] > version[:2]:

@@ -439,23 +439,22 @@ class Boss:
         self.window_id_map[window.id] = window
 
     def _handle_remote_command(self, cmd: str, window: Optional[Window] = None, peer_id: int = 0) -> Union[Dict[str, Any], None, AsyncResponse]:
-        from .remote_control import handle_cmd
+        from .remote_control import handle_cmd, parse_cmd
         response = None
         window = window or None
+        pcmd = parse_cmd(cmd)
+        if not pcmd:
+            return response
         if self.allow_remote_control == 'y' or peer_id > 0 or getattr(window, 'allow_remote_control', False):
             try:
-                response = handle_cmd(self, window, cmd, peer_id)
+                response = handle_cmd(self, window, pcmd, peer_id)
             except Exception as err:
                 import traceback
                 response = {'ok': False, 'error': str(err)}
                 if not getattr(err, 'hide_traceback', False):
                     response['tb'] = traceback.format_exc()
         else:
-            no_response = False
-            try:
-                no_response = json.loads(cmd).get('no_response')
-            except Exception:
-                pass
+            no_response = pcmd.get('no_response') or False
             if not no_response:
                 response = {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control to your kitty.conf'}
         return response
