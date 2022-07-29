@@ -1163,11 +1163,16 @@ A template to render the tab title. The default just renders the title with
 optional symbols for bell and activity. If you wish to include the tab-index as
 well, use something like: :code:`{index}:{title}`. Useful if you have shortcuts
 mapped for :code:`goto_tab N`. If you prefer to see the index as a superscript,
-use :code:`{sup.index}`. In addition you can use :code:`{layout_name}` for the
-current layout name, :code:`{num_windows}` for the number of windows in the tab,
-:code:`{num_window_groups}` for the number of window groups (not counting
-overlay windows) in the tab, and :code:`{tab.active_wd}` for the working directory
-of the active_window.
+use :code:`{sup.index}`. All data available is:
+
+* :code:`title` - the current tab title
+* :code:`index` - the tab index useable with :code:`goto_tab N` shortcuts
+* :code:`layout_name` - the current layout name
+* :code:`num_windows` - the number of windows in the tab
+* :code:`num_window_groups` - the number of window groups (not counting overlay windows) in the tab
+* :code:`tab.active_wd` - the working directory of the currently active window in the tab (expensive, requires syscall)
+* :code:`max_title_length` - the maximum title length available
+
 Note that formatting is done by Python's string formatting machinery, so you can
 use, for instance, :code:`{layout_name[:2].upper()}` to show only the first two
 letters of the layout name, upper-cased. If you want to style the text, you can

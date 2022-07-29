@@ -184,7 +184,12 @@ class TabAccessor:
         return (tab.get_cwd_of_active_window() if tab else '') or ''
 
 
-def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
+safe_builtins = {
+    'max': max, 'min': min, 'str': str, 'repr': repr, 'abs': abs, 'len': len,
+}
+
+
+def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int, max_title_length: int = 0) -> None:
     ta = TabAccessor(tab.tab_id)
     data = {
         'index': index,
@@ -208,6 +213,7 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
         'sub': SupSub(data, True),
         'bell_symbol': draw_data.bell_on_tab if tab.needs_attention else '',
         'activity_symbol': draw_data.tab_activity_symbol if tab.has_activity_since_last_focus else '',
+        'max_title_length': max_title_length,
     }
     template = draw_data.title_template
     if tab.is_active and draw_data.active_title_template is not None:
@@ -220,7 +226,7 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
     if prefix:
         template = '{fmt.fg.red}' + prefix + '{fmt.fg.tab}' + template
     try:
-        title = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
+        title = eval(compile_template(template), {'__builtins__': safe_builtins}, eval_locals)
     except Exception as e:
         report_template_failure(template, str(e))
         title = tab.title
@@ -259,7 +265,7 @@ def draw_tab_with_slant(
     else:
         draw_sep(left_sep)
         screen.draw(' ')
-        draw_title(draw_data, screen, tab, index)
+        draw_title(draw_data, screen, tab, index, max_title_length)
         extra = screen.cursor.x - before - max_title_length
         if extra >= 0:
             screen.cursor.x -= extra + 3
@@ -280,7 +286,7 @@ def draw_tab_with_separator(
 ) -> int:
     if draw_data.leading_spaces:
         screen.draw(' ' * draw_data.leading_spaces)
-    draw_title(draw_data, screen, tab, index)
+    draw_title(draw_data, screen, tab, index, max_title_length)
     trailing_spaces = min(max_title_length - 1, draw_data.trailing_spaces)
     max_title_length -= trailing_spaces
     extra = screen.cursor.x - before - max_title_length
@@ -311,11 +317,11 @@ def draw_tab_with_fade(
         screen.cursor.bg = bg
         screen.draw(' ')
     screen.cursor.bg = orig_bg
-    draw_title(draw_data, screen, tab, index)
+    draw_title(draw_data, screen, tab, index, max(0, max_title_length - 8))
     extra = screen.cursor.x - before - max_title_length
     if extra > 0:
         screen.cursor.x = before
-        draw_title(draw_data, screen, tab, index)
+        draw_title(draw_data, screen, tab, index, max(0, max_title_length - 8))
         extra = screen.cursor.x - before - max_title_length
         if extra > 0:
             screen.cursor.x -= extra + 1
@@ -366,7 +372,7 @@ def draw_tab_with_powerline(
     if min_title_length >= max_title_length:
         screen.draw('…')
     else:
-        draw_title(draw_data, screen, tab, index)
+        draw_title(draw_data, screen, tab, index, max_title_length)
         extra = screen.cursor.x + start_draw - before - max_title_length
         if extra > 0 and extra + 1 < screen.cursor.x:
             screen.cursor.x -= extra + 1
