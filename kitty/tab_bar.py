@@ -321,7 +321,7 @@ def draw_tab_with_fade(
     extra = screen.cursor.x - before - max_title_length
     if extra > 0:
         screen.cursor.x = before
-        draw_title(draw_data, screen, tab, index, max(0, max_title_length - 8))
+        draw_title(draw_data, screen, tab, index, max(0, max_title_length - 4))
         extra = screen.cursor.x - before - max_title_length
         if extra > 0:
             screen.cursor.x -= extra + 1
