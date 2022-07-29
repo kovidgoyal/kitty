@@ -87,6 +87,8 @@ Detailed list of changes
 - Allow showing the working directory of the active window in tab titles
   (:pull:`5314`)
 
+- ssh kitten: Allow completion of ssh options between the destination and command (:iss:`5322`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

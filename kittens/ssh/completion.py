@@ -291,6 +291,7 @@ def complete_option(ans: Completions, prefix: str = '-') -> None:
 def complete(ans: Completions, words: Sequence[str], new_word: bool) -> None:
     options = ssh_options()
     expecting_arg = False
+    seen_destination = False
     types = ['' for i in range(len(words))]
     for i, word in enumerate(words):
         if expecting_arg:
@@ -302,8 +303,10 @@ def complete(ans: Completions, words: Sequence[str], new_word: bool) -> None:
             if len(word) == 2 and options.get(word[1]):
                 expecting_arg = True
             continue
+        if seen_destination:
+            break
         types[i] = 'destination'
-        break
+        seen_destination = True
     if new_word:
         if words:
             if expecting_arg:
