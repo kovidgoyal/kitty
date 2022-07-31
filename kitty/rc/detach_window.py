@@ -27,13 +27,15 @@ class DetachWindow(RemoteCommand):
         ' or add them to the specified tab. Use the special value :code:`new` for :option:`kitty @ detach-window --target-tab`'
         ' to move to a new tab. If no target tab is specified the windows are moved to a new OS window.'
     )
-    options_spec = MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--target-tab -t') + '''Use the special value :code:`new` to move to a new tab.
+    options_spec = (
+        MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--target-tab -t') +
+        '''Use the special value :code:`new` to move to a new tab.
 
 
 --self
 type=bool-set
 Detach the window this command is run in, rather than the active window.
-'''
+''')
     argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
