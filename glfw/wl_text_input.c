@@ -87,7 +87,7 @@ static void
 text_input_done(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, uint32_t serial) {
     debug("text-input: done event: serial: %u current_commit_serial: %u\n", serial, commit_serial);
     if (serial != commit_serial) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: text_input_done serial mismatch, expected=%u got=%u\n", commit_serial, serial);
+        if (serial > commit_serial) _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: text_input_done serial mismatch, expected=%u got=%u\n", commit_serial, serial);
         return;
     }
     if (pending_pre_edit) {
