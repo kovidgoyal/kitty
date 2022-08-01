@@ -9,8 +9,18 @@
 // for cfmakeraw
 #ifdef __APPLE__
 #define _DARWIN_C_SOURCE 1
+const static int has_splice = 0;
 #else
 #define _DEFAULT_SOURCE
+// for splice()
+#define _GNU_SOURCE
+#ifdef __linux__
+#define HAS_SPLICE
+const static int has_splice = 0;  // sadly the kernel doesnt support splice between tty fds anymore
+                                  // https://www.spinics.net/lists/kernel/msg3799785.html
+#else
+const static int has_splice = 0;
+#endif
 #endif
 
 // Includes {{{
@@ -598,6 +608,28 @@ send_over_socket(void) {
 }
 
 static void
+set_append_mode(int fd, bool yes) {
+    int val = fcntl(fd, F_GETFL);
+    if (yes) val |= O_APPEND; else val &= ~O_APPEND;
+    fcntl(fd, F_SETFL, val);
+}
+
+#ifndef HAS_SPLICE
+#define splice(...) -1
+#endif
+
+static bool
+transfer_in_kernel(int from, int to, bool *read_failed) {
+    if (has_splice) {
+        ssize_t n = 0;
+        while ((n = splice(from, NULL, to, NULL, PIPE_BUF, 0)) == -1 && errno == EINTR);
+        *read_failed = n == 0;
+        return n > 0;
+    }
+    return false;
+}
+
+static void
 loop(void) {
 #define fail(s) { print_error(s, errno); return; }
     int ret, nfds = 0;
@@ -606,6 +638,8 @@ loop(void) {
 #undef init
     fd_set readable, writable, errorable;
     nfds++;
+    struct { bool data_available_from_child, data_available_from_self; } sd;
+    if (has_splice) { set_append_mode(child_master_fd, false); set_append_mode(self_ttyfd, false); }
 
     while (keep_going()) {
         if (window_size_dirty) {
@@ -615,8 +649,18 @@ loop(void) {
             add_window_size_to_buffer();
             window_size_dirty = false;
         }
-        wf.self_ttyfd.want_read = to_child_tty.sz < IO_BUZ_SZ; wf.self_ttyfd.want_write = from_child_tty.sz > 0;
-        wf.child_master_fd.want_read = from_child_tty.sz < IO_BUZ_SZ; wf.child_master_fd.want_write = to_child_tty.sz > 0;
+        const bool can_splice = has_splice && child_master_fd > -1 && self_ttyfd > -1;
+        static bool splice_ok = true;
+        if (can_splice && splice_ok) {
+            wf.self_ttyfd.want_read = !sd.data_available_from_self;
+            wf.self_ttyfd.want_write = sd.data_available_from_child;
+            wf.child_master_fd.want_read = !sd.data_available_from_child;
+            wf.child_master_fd.want_write = sd.data_available_from_self;
+            if (!splice_ok) { set_append_mode(self_ttyfd, true); set_append_mode(child_master_fd, true); }
+        } else {
+            wf.self_ttyfd.want_read = to_child_tty.sz < IO_BUZ_SZ; wf.self_ttyfd.want_write = from_child_tty.sz > 0;
+            wf.child_master_fd.want_read = from_child_tty.sz < IO_BUZ_SZ; wf.child_master_fd.want_write = to_child_tty.sz > 0;
+        }
         wf.socket_fd.want_write = launch_msg.iov_len > 0 || send_on_socket.sz > 0;
 
         FD_ZERO(&readable); FD_ZERO(&writable); FD_ZERO(&errorable);
@@ -626,15 +670,31 @@ loop(void) {
         while ((ret = select(nfds, &readable, &writable, &errorable, NULL)) == -1) { if (errno != EINTR) fail("select() failed"); }
         if (!ret) continue;
 
-        if (child_master_fd > -1) {
-            if (FD_ISSET(child_master_fd, &writable)) if (!from_self_to_child()) fail("writing to child tty failed");
-            if (FD_ISSET(child_master_fd, &readable)) {
-                if (!read_from_child_tty()) fail("reading from child tty failed");
+        if (can_splice && splice_ok) {
+            bool read_failed = false;
+            if (FD_ISSET(self_ttyfd, &readable)) sd.data_available_from_self = true;
+            if (sd.data_available_from_self && FD_ISSET(child_master_fd, &writable)) {
+                splice_ok = transfer_in_kernel(self_ttyfd, child_master_fd, &read_failed);
+                sd.data_available_from_self = false;
+                if (read_failed) fail("reading in kernel from self tty failed");
             }
-        }
-        if (self_ttyfd > -1)  {
-            if (FD_ISSET(self_ttyfd, &readable)) if (!read_from_self_tty()) fail("reading from self tty failed");
-            if (FD_ISSET(self_ttyfd, &writable)) if (!from_child_to_self()) fail("writing to self tty failed");
+            if (FD_ISSET(child_master_fd, &readable)) sd.data_available_from_child = true;
+            if (sd.data_available_from_child && FD_ISSET(self_ttyfd, &writable) && splice_ok) {
+                splice_ok = transfer_in_kernel(child_master_fd, self_ttyfd, &read_failed);
+                sd.data_available_from_child = false;
+                if (read_failed) fail("reading in kernel from child tty failed");
+            }
+        } else {
+            if (child_master_fd > -1) {
+                if (FD_ISSET(child_master_fd, &writable)) if (!from_self_to_child()) fail("writing to child tty failed");
+                if (FD_ISSET(child_master_fd, &readable)) {
+                    if (!read_from_child_tty()) fail("reading from child tty failed");
+                }
+            }
+            if (self_ttyfd > -1)  {
+                if (FD_ISSET(self_ttyfd, &readable)) if (!read_from_self_tty()) fail("reading from self tty failed");
+                if (FD_ISSET(self_ttyfd, &writable)) if (!from_child_to_self()) fail("writing to self tty failed");
+            }
         }
 
         if (signal_read_fd > -1 && FD_ISSET(signal_read_fd, &readable)) if (!read_signals()) fail("reading from signal fd failed");
