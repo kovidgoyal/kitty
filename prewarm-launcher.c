@@ -199,10 +199,20 @@ connect_to_socket_synchronously(const char *addr) {
 static bool
 is_prewarmable(int argc, char *argv[]) {
     if (argc < 2) return false;
-    if (argv[1][0] != '+') return false;
-    if (argv[1][1] != 0) return strcmp(argv[1], "+open") != 0;
-    if (argc < 3) return false;
-    return strcmp(argv[2], "open") != 0;
+    switch (argv[1][0]) {
+        case '+':
+            if (argv[1][1] != 0) return strcmp(argv[1], "+open") != 0;
+            if (argc < 3) return false;
+            return strcmp(argv[2], "open") != 0;
+            break;
+        case '@':
+            return true;
+            break;
+        default:
+            return false;
+            break;
+    }
+    return false;
 }
 
 static void
