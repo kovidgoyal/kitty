@@ -47,7 +47,10 @@ class KeysHandler(Handler):
         mods = format_mods(key_event.mods)
         if mods:
             mods += '+'
-        key = f'{mods}{key_event.key} '
+        kk = key_event.key
+        if kk == ' ':
+            kk = 'SPACE'
+        key = f'{mods}{kk} '
         self.cmd.colored(key, 'green')
         self.cmd.colored(etype + ' ', 'yellow')
         self.cmd.styled(key_event.text, italic=True)
