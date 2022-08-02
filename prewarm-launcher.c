@@ -79,7 +79,6 @@ static struct termios self_termios = {0}, restore_termios = {0};
 static bool termios_needs_restore = false;
 static int self_ttyfd = -1, socket_fd = -1, signal_read_fd = -1, signal_write_fd = -1;
 static int stdin_pos = -1, stdout_pos = -1, stderr_pos = -1;
-static bool controlling_the_tty = true;
 static char fd_send_buf[256];
 struct iovec launch_msg = {0};
 struct msghdr launch_msg_container = {.msg_control = fd_send_buf, .msg_controllen = sizeof(fd_send_buf), .msg_iov = &launch_msg, .msg_iovlen = 1 };
@@ -216,10 +215,37 @@ is_prewarmable(int argc, char *argv[]) {
     return false;
 }
 
+static bool
+get_termios_state(struct termios *t) {
+    while (tcgetattr(self_ttyfd, t) != 0) {
+        if (errno != EINTR) return false;
+    }
+    return true;
+}
+
+static void
+restore_termios_settings(void) {
+    if (self_ttyfd > -1 && termios_needs_restore) {
+        // we only restore termios if its current state is the same as the result of cfmakeraw() on the startup termios state
+        // this is to try to detect if something like less changed the termios state. This allows, for instance kitty @ ls | less to work
+        struct termios current_state;
+        if (get_termios_state(&current_state) && memcmp(&self_termios, &current_state, sizeof(current_state)) == 0) {
+            safe_tcsetattr(self_ttyfd, TCSAFLUSH, &restore_termios);
+            termios_needs_restore = false;
+        }
+    }
+}
+
+static void
+reapply_termios_settings(void) {
+    safe_tcsetattr(self_ttyfd, TCSANOW, &self_termios);
+    termios_needs_restore = true;
+}
+
 static void
 cleanup(void) {
     child_pid = 0;
-    if (self_ttyfd > -1 && termios_needs_restore) { safe_tcsetattr(self_ttyfd, TCSAFLUSH, &restore_termios); termios_needs_restore = false; }
+    restore_termios_settings();
 #define cfd(fd) if (fd > -1) { safe_close(fd); fd = -1; }
     cfd(child_master_fd); cfd(child_slave_fd);
     cfd(self_ttyfd); cfd(socket_fd); cfd(signal_read_fd); cfd(signal_write_fd);
@@ -238,14 +264,6 @@ safe_winsz(int fd, int action, struct winsize *ws) {
 static bool
 get_window_size(void) {
     return safe_winsz(self_ttyfd, TIOCGWINSZ, &self_winsize);
-}
-
-static bool
-get_termios_state(void) {
-    while (tcgetattr(self_ttyfd, &self_termios) != 0) {
-        if (errno != EINTR) return false;
-    }
-    return true;
 }
 
 bool
@@ -313,7 +331,6 @@ setup_stdio_handles(void) {
     int pos = 0;
     if (!isatty(STDIN_FILENO)) stdin_pos = pos++;
     if (!isatty(STDOUT_FILENO)) {
-        controlling_the_tty = false;
         stdout_pos = pos++;
     }
     if (!isatty(STDERR_FILENO)) stderr_pos = pos++;
@@ -418,18 +435,12 @@ read_from_zygote(void) {
                 } else if (WIFSTOPPED(child_exit_status)) {
                     child_state = CHILD_STOPPED;
                     int signum = WSTOPSIG(child_exit_status);
-                    if (controlling_the_tty) {
-                        safe_tcsetattr(self_ttyfd, TCSANOW, &restore_termios);
-                        termios_needs_restore = false;
-                    }
+                    restore_termios_settings();
                     struct sigaction defval = {.sa_handler = SIG_DFL}, original;
                     sigaction(signum, &defval, &original);
                     raise(signum);
                     sigaction(signum, &original, NULL);
-                    if (controlling_the_tty) {
-                        safe_tcsetattr(self_ttyfd, TCSANOW, &self_termios);
-                        termios_needs_restore = true;
-                    }
+                    reapply_termios_settings();
                     if (child_pid > 0) {
                         kill(child_pid, SIGCONT);
                     }
@@ -766,17 +777,11 @@ use_prewarmed_process(int argc, char *argv[], char *envp[]) {
 #define fail(s) { print_error(s, errno); cleanup(); return; }
     if (!setup_signal_handler()) fail("Failed to setup signal handling");
     if (!get_window_size()) fail("Failed to get window size of controlling terminal");
-    if (!get_termios_state()) fail("Failed to get termios state of controlling terminal");
+    if (!get_termios_state(&self_termios)) fail("Failed to get termios state of controlling terminal");
     if (!open_pty()) fail("Failed to open slave pty");
-    if (controlling_the_tty) {
-        // we dont touch termios settings when STDOUT is a pipe, because
-        // we may be part of a shell pipeline with a program that does tty
-        // manipulations to our right. In theory we might need to check STDIN as well
-        // but that is very unusual.
-        memcpy(&restore_termios, &self_termios, sizeof(restore_termios));
-        termios_needs_restore = true;
-        cfmakeraw(&self_termios);
-    }
+    memcpy(&restore_termios, &self_termios, sizeof(restore_termios));
+    termios_needs_restore = true;
+    cfmakeraw(&self_termios);
     if (!safe_tcsetattr(self_ttyfd, TCSANOW, &self_termios)) fail("Failed to put tty into raw mode");
     if (!create_launch_msg(argc, argv)) fail("Failed to create launch message");
     socket_fd = connect_to_socket_synchronously(env_addr);
