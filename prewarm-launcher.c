@@ -79,6 +79,7 @@ static struct termios self_termios = {0}, restore_termios = {0};
 static bool termios_needs_restore = false;
 static int self_ttyfd = -1, socket_fd = -1, signal_read_fd = -1, signal_write_fd = -1;
 static int stdin_pos = -1, stdout_pos = -1, stderr_pos = -1;
+static bool controlling_the_tty = true;
 static char fd_send_buf[256];
 struct iovec launch_msg = {0};
 struct msghdr launch_msg_container = {.msg_control = fd_send_buf, .msg_controllen = sizeof(fd_send_buf), .msg_iov = &launch_msg, .msg_iovlen = 1 };
@@ -311,7 +312,10 @@ static void
 setup_stdio_handles(void) {
     int pos = 0;
     if (!isatty(STDIN_FILENO)) stdin_pos = pos++;
-    if (!isatty(STDOUT_FILENO)) stdout_pos = pos++;
+    if (!isatty(STDOUT_FILENO)) {
+        controlling_the_tty = false;
+        stdout_pos = pos++;
+    }
     if (!isatty(STDERR_FILENO)) stderr_pos = pos++;
 }
 
@@ -414,14 +418,18 @@ read_from_zygote(void) {
                 } else if (WIFSTOPPED(child_exit_status)) {
                     child_state = CHILD_STOPPED;
                     int signum = WSTOPSIG(child_exit_status);
-                    safe_tcsetattr(self_ttyfd, TCSANOW, &restore_termios);
-                    termios_needs_restore = false;
+                    if (controlling_the_tty) {
+                        safe_tcsetattr(self_ttyfd, TCSANOW, &restore_termios);
+                        termios_needs_restore = false;
+                    }
                     struct sigaction defval = {.sa_handler = SIG_DFL}, original;
                     sigaction(signum, &defval, &original);
                     raise(signum);
                     sigaction(signum, &original, NULL);
-                    safe_tcsetattr(self_ttyfd, TCSANOW, &self_termios);
-                    termios_needs_restore = true;
+                    if (controlling_the_tty) {
+                        safe_tcsetattr(self_ttyfd, TCSANOW, &self_termios);
+                        termios_needs_restore = true;
+                    }
                     if (child_pid > 0) {
                         kill(child_pid, SIGCONT);
                     }
@@ -759,9 +767,15 @@ use_prewarmed_process(int argc, char *argv[], char *envp[]) {
     if (!get_window_size()) fail("Failed to get window size of controlling terminal");
     if (!get_termios_state()) fail("Failed to get termios state of controlling terminal");
     if (!open_pty()) fail("Failed to open slave pty");
-    memcpy(&restore_termios, &self_termios, sizeof(restore_termios));
-    termios_needs_restore = true;
-    cfmakeraw(&self_termios);
+    if (controlling_the_tty) {
+        // we dont touch termios settings when STDOUT is a pipe, because
+        // we may be part of a shell pipeline with a program that does tty
+        // manipulations to our right. In theory we might need to check STDIN as well
+        // but that is very unusual.
+        memcpy(&restore_termios, &self_termios, sizeof(restore_termios));
+        termios_needs_restore = true;
+        cfmakeraw(&self_termios);
+    }
     if (!safe_tcsetattr(self_ttyfd, TCSANOW, &self_termios)) fail("Failed to put tty into raw mode");
     if (!create_launch_msg(argc, argv)) fail("Failed to create launch message");
     socket_fd = connect_to_socket_synchronously(env_addr);
