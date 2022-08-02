@@ -484,6 +484,7 @@ read_from_tty(int *fd, transfer_buf *t) {
         ssize_t n = safe_read(*fd, t->buf + t->sz, IO_BUZ_SZ - t->sz);
         if (n < 0) {
             if (errno == EPIPE || errno == EIO) { *fd = -1; return true; }
+            if (errno == EAGAIN) return true;
             return false;
         }
         if (n == 0) *fd = -1; // hangup
