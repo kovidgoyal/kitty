@@ -196,6 +196,9 @@ class Tall(Layout):
         return neighbors_for_tall_window(self.num_full_size_windows, window, windows, self.layout_opts.mirrored, self.main_is_horizontal)
 
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
+        if action_name == 'toggle_mirrored':
+            self.layout_opts.mirrored = not self.layout_opts.mirrored
+            return True
         if action_name == 'increase_num_full_size_windows':
             self.layout_opts.full_size += 1
             return True
