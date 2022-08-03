@@ -30,7 +30,7 @@ Glossary
    overlay
       An *overlay window* is a :term:`kitty window <window>` that is placed on
       top of an existing kitty window, entirely covering it. Overlays are used
-      throught kitty, for example, to display the :ref:`the scrollback buffer <scrollback>`,
+      throughout kitty, for example, to display the :ref:`the scrollback buffer <scrollback>`,
       to display :doc:`hints </kittens/hints>`, for :doc:`unicode input
       </kittens/unicode_input>` etc.
 
