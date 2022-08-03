@@ -68,10 +68,13 @@ for the options is::
     └──────────────┴───────────────┘
 
 In addition, you can map keys to increase or decrease the number of full-height
-windows, for example::
+windows, or toggle the mirrored setting, for example::
 
    map ctrl+[ layout_action decrease_num_full_size_windows
    map ctrl+] layout_action increase_num_full_size_windows
+   map ctrl+/ layout_action mirror toggle
+   map ctrl+y layout_action mirror true
+   map ctrl+n layout_action mirror false
 
 
 The Fat Layout

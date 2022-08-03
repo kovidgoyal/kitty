@@ -203,6 +203,18 @@ class Tall(Layout):
             if self.layout_opts.full_size > 1:
                 self.layout_opts.full_size -= 1
                 return True
+        if action_name == 'mirror':
+            action = (args or ('toggle',))[0]
+            ok = False
+            if action == 'toggle':
+                self.layout_opts.mirrored = not self.layout_opts.mirrored
+                ok = True
+            else:
+                new_val = to_bool(action)
+                if new_val != self.layout_opts.mirrored:
+                    self.layout_opts.mirrored = new_val
+                    ok = True
+            return ok
         return None
 
     def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:

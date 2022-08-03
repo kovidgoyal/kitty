@@ -60,6 +60,9 @@ Detailed list of changes
 - macOS: Fix a regression that caused switching keyboard input using Eisu and
   Kana keys not working (:iss:`5232`)
 
+- Add a mappable action to toggle the mirrored setting for the tall and fat
+  layouts (:pull:`5344`)
+
 - Wayland: Reduce flicker at startup by not using render frames immediately after a resize (:iss:`5235`)
 
 - Linux: Update cursor position after all key presses not just pre-edit text
