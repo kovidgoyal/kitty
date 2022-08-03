@@ -257,6 +257,7 @@ extern int init_Line(PyObject *);
 extern int init_ColorProfile(PyObject *);
 extern int init_Screen(PyObject *);
 extern bool init_fontconfig_library(PyObject*);
+extern bool init_crypto_library(PyObject*);
 extern bool init_desktop(PyObject*);
 extern bool init_fonts(PyObject*);
 extern bool init_glfw(PyObject *m);
@@ -339,6 +340,7 @@ PyInit_fast_data_types(void) {
     if (!init_fonts(m)) return NULL;
     if (!init_utmp(m)) return NULL;
     if (!init_loop_utils(m)) return NULL;
+    if (!init_crypto_library(m)) return NULL;
 
     CellAttrs a;
 #define s(name, attr) { a.val = 0; a.attr = 1; PyModule_AddIntConstant(m, #name, shift_to_first_set_bit(a)); }

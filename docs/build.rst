@@ -35,6 +35,7 @@ Run-time dependencies:
 * ``libpng``
 * ``liblcms2``
 * ``librsync``
+* ``openssl``
 * ``freetype`` (not needed on macOS)
 * ``fontconfig`` (not needed on macOS)
 * ``libcanberra`` (not needed on macOS)
