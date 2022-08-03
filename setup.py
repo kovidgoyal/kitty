@@ -117,6 +117,28 @@ def pkg_version(package: str) -> Tuple[int, int]:
     return -1, -1
 
 
+def libcrypto_flags() -> Tuple[List[str], List[str]]:
+    # Apple use their special snowflake TLS libraries and additionally
+    # have an ancient broken system OpenSSL, so we need to check for one
+    # installed by all the various macOS package managers.
+    try:
+        return pkg_config('libcrypto', '--cflags-only-I'), pkg_config('libcrypto', '--libs')
+    except SystemExit:
+        if not is_macos:
+            raise
+        pp = os.environ.get('PKG_CONFIG_PATH', '')
+        for x in glob.glob('/usr/local/opt/openssl@*/lib/pkgconfig'):
+            try:
+                os.environ['PKG_CONFIG_PATH'] = f'{x}{os.pathsep}{pp}'
+                return pkg_config('libcrypto', '--cflags-only-I'), pkg_config('libcrypto', '--libs')
+            finally:
+                if pp:
+                    os.environ['PKG_CONFIG_PATH'] = pp
+                else:
+                    os.environ.pop('PKG_CONFIG_PATH')
+        raise SystemExit('Failed to find OpenSSL on your system, needed for libcrypto')
+
+
 def at_least_version(package: str, major: int, minor: int = 0) -> None:
     q = f'{major}.{minor}'
     if subprocess.run([PKGCONFIG, package, f'--atleast-version={q}']
@@ -405,6 +427,7 @@ def kitty_env() -> Env:
     cflags.append('-pthread')
     # We add 4000 to the primary version because vim turns on SGR mouse mode
     # automatically if this version is high enough
+    libcrypto_cflags, libcrypto_ldflags = libcrypto_flags()
     cppflags = ans.cppflags
     cppflags.append(f'-DPRIMARY_VERSION={version[0] + 4000}')
     cppflags.append(f'-DSECONDARY_VERSION={version[1]}')
@@ -412,7 +435,7 @@ def kitty_env() -> Env:
     at_least_version('harfbuzz', 1, 5)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
     cflags.extend(pkg_config('lcms2', '--cflags-only-I'))
-    cflags.extend(pkg_config('libcrypto', '--cflags-only-I'))
+    cflags.extend(libcrypto_cflags)
     if is_macos:
         platform_libs = [
             '-framework', 'Carbon', '-framework', 'CoreText', '-framework', 'CoreGraphics',
@@ -437,8 +460,7 @@ def kitty_env() -> Env:
     gl_libs = ['-framework', 'OpenGL'] if is_macos else pkg_config('gl', '--libs')
     libpng = pkg_config('libpng', '--libs')
     lcms2 = pkg_config('lcms2', '--libs')
-    libcrypto = pkg_config('libcrypto', '--libs')
-    ans.ldpaths += pylib + platform_libs + gl_libs + libpng + lcms2 + libcrypto
+    ans.ldpaths += pylib + platform_libs + gl_libs + libpng + lcms2 + libcrypto_ldflags
     if is_macos:
         ans.ldpaths.extend('-framework Cocoa'.split())
     elif not is_openbsd:
