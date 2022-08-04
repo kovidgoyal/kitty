@@ -13,7 +13,12 @@
 #include <openssl/pem.h>
 #include <openssl/bio.h>
 
-#define EC_KEY_CAPSULE_NAME "EC-key-capsule"
+typedef struct {
+    PyObject_HEAD
+
+    EVP_PKEY *key;
+} EllipticCurveKey;
+
 
 static PyObject*
 set_error_from_openssl(const char *prefix) {
@@ -28,16 +33,13 @@ set_error_from_openssl(const char *prefix) {
     return NULL;
 }
 
-static void
-destroy_ec_key_capsule(PyObject *cap) {
-    EVP_PKEY *key = PyCapsule_GetPointer(cap, EC_KEY_CAPSULE_NAME);
-    if (key) EVP_PKEY_free(key);
-}
 
-static PyObject*
-elliptic_curve_key_create(PyObject *self UNUSED, PyObject *args) {
+static PyObject *
+new_ec_key(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
+    EllipticCurveKey *self;
+    static const char* kwlist[] = {"curve_name", NULL};
     const char *curve_name = "X25519";
-    if (!PyArg_ParseTuple(args, "|s", &curve_name)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|s", (char**)kwlist, &curve_name)) return NULL;
     int nid = NID_X25519;
     if (strcmp(curve_name, "X25519") != 0) { PyErr_Format(PyExc_KeyError, "Unknown curve: %s", curve_name); return NULL; }
     EVP_PKEY *key = NULL;
@@ -49,44 +51,68 @@ elliptic_curve_key_create(PyObject *self UNUSED, PyObject *args) {
     if(1 != EVP_PKEY_keygen_init(pctx)) ssl_error("Failed to initialize keygen context");
 	if (1 != EVP_PKEY_keygen(pctx, &key)) ssl_error("Failed to generate key");
 
-    PyObject *ans = PyCapsule_New(key, EC_KEY_CAPSULE_NAME, destroy_ec_key_capsule);
-    if (ans) key = NULL;
+    self = (EllipticCurveKey *)type->tp_alloc(type, 0);
+    if (self) {
+        self->key = key; key = NULL;
+    }
     cleanup();
-    return ans;
+    return (PyObject*) self;
 #undef cleanup
 #undef ssl_error
 }
 
-static PyObject*
-elliptic_curve_key_public(PyObject *self UNUSED, PyObject *key_capsule) {
-    if (!PyCapsule_IsValid(key_capsule, EC_KEY_CAPSULE_NAME)) { PyErr_SetString(PyExc_TypeError, "Not a valid elliptic curve key capsule"); return NULL; }
-    EVP_PKEY *pkey = PyCapsule_GetPointer(key_capsule, EC_KEY_CAPSULE_NAME);
-    /* PEM_write_PUBKEY(stdout, pkey); */
-    size_t len = 0;
-    if (1 != EVP_PKEY_get_raw_public_key(pkey, NULL, &len)) return set_error_from_openssl("Could not get public key from EVP_KEY");
-    PyObject *ans = PyBytes_FromStringAndSize(NULL, len);
-    if (!ans) return NULL;
-    if (1 != EVP_PKEY_get_raw_public_key(pkey, (unsigned char*)PyBytes_AS_STRING(ans), &len)) return set_error_from_openssl("Could not get public key from EVP_KEY");
-    return ans;
+static void
+dealloc_ec_key(EllipticCurveKey* self) {
+    if (self->key) EVP_PKEY_free(self->key);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
+
 static PyObject*
-elliptic_curve_key_private(PyObject *self UNUSED, PyObject *key_capsule) {
-    if (!PyCapsule_IsValid(key_capsule, EC_KEY_CAPSULE_NAME)) { PyErr_SetString(PyExc_TypeError, "Not a valid elliptic curve key capsule"); return NULL; }
-    EVP_PKEY *pkey = PyCapsule_GetPointer(key_capsule, EC_KEY_CAPSULE_NAME);
+elliptic_curve_key_get_public(EllipticCurveKey *self, void UNUSED *closure) {
+    /* PEM_write_PUBKEY(stdout, pkey); */
     size_t len = 0;
-    if (1 != EVP_PKEY_get_raw_private_key(pkey, NULL, &len)) return set_error_from_openssl("Could not get public key from EVP_KEY");
+    if (1 != EVP_PKEY_get_raw_public_key(self->key, NULL, &len)) return set_error_from_openssl("Could not get public key from EVP_KEY");
     PyObject *ans = PyBytes_FromStringAndSize(NULL, len);
     if (!ans) return NULL;
-    if (1 != EVP_PKEY_get_raw_private_key(pkey, (unsigned char*)PyBytes_AS_STRING(ans), &len)) return set_error_from_openssl("Could not get public key from EVP_KEY");
+    if (1 != EVP_PKEY_get_raw_public_key(self->key, (unsigned char*)PyBytes_AS_STRING(ans), &len)) return set_error_from_openssl("Could not get public key from EVP_KEY");
     return ans;
+
 }
+
+
+static PyObject*
+elliptic_curve_key_get_private(EllipticCurveKey *self, void UNUSED *closure) {
+    size_t len = 0;
+    if (1 != EVP_PKEY_get_raw_private_key(self->key, NULL, &len)) return set_error_from_openssl("Could not get public key from EVP_KEY");
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, len);
+    if (!ans) return NULL;
+    if (1 != EVP_PKEY_get_raw_private_key(self->key, (unsigned char*)PyBytes_AS_STRING(ans), &len)) return set_error_from_openssl("Could not get public key from EVP_KEY");
+    return ans;
+
+}
+
+
+static PyGetSetDef getsetters[] = {
+    {"public", (getter)elliptic_curve_key_get_public, NULL, "Get the public key as raw bytes", NULL},
+    {"private", (getter)elliptic_curve_key_get_private, NULL, "Get the private key as raw bytes", NULL},
+    {NULL}  /* Sentinel */
+};
+
+
+PyTypeObject EllipticCurveKey_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "fast_data_types.EllipticCurveKey",
+    .tp_basicsize = sizeof(EllipticCurveKey),
+    .tp_dealloc = (destructor)dealloc_ec_key,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_doc = "Keys for use with Elliptic Curve crypto",
+    .tp_new = new_ec_key,
+    .tp_getset = getsetters,
+};
 
 
 static PyMethodDef module_methods[] = {
-    METHODB(elliptic_curve_key_create, METH_VARARGS),
-    METHODB(elliptic_curve_key_public, METH_O),
-    METHODB(elliptic_curve_key_private, METH_O),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -94,5 +120,8 @@ static PyMethodDef module_methods[] = {
 bool
 init_crypto_library(PyObject *module) {
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    if (PyType_Ready(&EllipticCurveKey_Type) < 0) return false;
+    if (PyModule_AddObject(module, "EllipticCurveKey", (PyObject *)&EllipticCurveKey_Type) != 0) return false;
+    Py_INCREF(&EllipticCurveKey_Type);
     return true;
 }
