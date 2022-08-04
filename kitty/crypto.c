@@ -14,11 +14,23 @@
 #include <openssl/bio.h>
 #include <sys/mman.h>
 
+#define SHA1_DIGEST_LENGTH SHA_DIGEST_LENGTH
+
+typedef enum HASH_ALGORITHM { SHA1_HASH, SHA224_HASH, SHA256_HASH, SHA384_HASH, SHA512_HASH } HASH_ALGORITHM;
+
 typedef struct {
     PyObject_HEAD
 
     EVP_PKEY *key;
+    int algorithm, nid;
 } EllipticCurveKey;
+
+typedef struct {
+    PyObject_HEAD
+
+    void *secret;
+    size_t secret_len;
+} Secret;
 
 
 static PyObject*
@@ -36,13 +48,28 @@ set_error_from_openssl(const char *prefix) {
 
 
 static PyObject *
-new_ec_key(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
+new_secret(PyTypeObject *type UNUSED, PyObject *args UNUSED, PyObject *kwds UNUSED) {
+    PyErr_SetString(PyExc_TypeError, "Cannot create Secret objects directly"); return NULL;
+}
+
+static Secret* alloc_secret(size_t len);
+
+static void
+dealloc_secret(Secret *self) {
+    if (self->secret) OPENSSL_clear_free(self->secret, self->secret_len);
+    Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+static PyObject *
+new_ec_key(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     EllipticCurveKey *self;
-    static const char* kwlist[] = {"curve_name", NULL};
-    const char *curve_name = "X25519";
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|s", (char**)kwlist, &curve_name)) return NULL;
-    int nid = NID_X25519;
-    if (strcmp(curve_name, "X25519") != 0) { PyErr_Format(PyExc_KeyError, "Unknown curve: %s", curve_name); return NULL; }
+    static const char* kwlist[] = {"algorithm", NULL};
+    int algorithm = EVP_PKEY_X25519, nid = NID_X25519;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|i", (char**)kwlist, &algorithm)) return NULL;
+    switch(algorithm) {
+        case EVP_PKEY_X25519: break;
+        default: PyErr_SetString(PyExc_KeyError, "Unknown algorithm"); return NULL;
+    }
     EVP_PKEY *key = NULL;
     EVP_PKEY_CTX *pctx = NULL;
 #define cleanup() { if (key) EVP_PKEY_free(key); key = NULL; if (pctx) EVP_PKEY_CTX_free(pctx); pctx = NULL; }
@@ -55,6 +82,7 @@ new_ec_key(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
     self = (EllipticCurveKey *)type->tp_alloc(type, 0);
     if (self) {
         self->key = key; key = NULL;
+        self->nid = nid; self->algorithm = algorithm;
     }
     cleanup();
     return (PyObject*) self;
@@ -66,6 +94,53 @@ static void
 dealloc_ec_key(EllipticCurveKey* self) {
     if (self->key) EVP_PKEY_free(self->key);
     Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+static PyObject*
+hash_data_to_secret(const unsigned char *data, size_t len, int hash_algorithm) {
+    size_t hash_size;
+#define H(which) case which##_HASH: hash_size = which##_DIGEST_LENGTH; break;
+    switch (hash_algorithm) {
+        H(SHA1) H(SHA224) H(SHA256) H(SHA384) H(SHA512)
+        default: PyErr_Format(PyExc_KeyError, "Unknown hash algorithm: %d", hash_algorithm); return NULL;
+    }
+#undef H
+    Secret *ans = alloc_secret(hash_size);
+    if (!ans) return NULL;
+#define H(which) case which##_HASH: if (which(data, len, ans->secret) == NULL) { Py_CLEAR(ans); return set_error_from_openssl("Failed to " #which); } break;
+    switch ((HASH_ALGORITHM)hash_algorithm) { H(SHA1) H(SHA224) H(SHA256) H(SHA384) H(SHA512) }
+#undef H
+    return (PyObject*)ans;
+}
+
+static PyObject*
+derive_secret(EllipticCurveKey *self, PyObject *args) {
+    const char *pubkey_raw;
+    int hash_algorithm;
+    Py_ssize_t pubkey_len;
+    if (!PyArg_ParseTuple(args, "y#|i", &pubkey_raw, &pubkey_len, &hash_algorithm)) return NULL;
+
+    EVP_PKEY_CTX *ctx = NULL;
+    unsigned char *secret = NULL; size_t secret_len = 0;
+    EVP_PKEY *public_key = EVP_PKEY_new_raw_public_key(self->algorithm, NULL, (const unsigned char*)pubkey_raw, pubkey_len);
+#define cleanup() { if (public_key) EVP_PKEY_free(public_key); public_key = NULL; if (ctx) EVP_PKEY_CTX_free(ctx); ctx = NULL; if (secret) OPENSSL_clear_free(secret, secret_len); secret = NULL; }
+#define ssl_error(text) { cleanup(); return set_error_from_openssl(text); }
+    if (!public_key) ssl_error("Failed to create public key");
+
+    if (NULL == (ctx = EVP_PKEY_CTX_new(self->key, NULL))) ssl_error("Failed to create context for shared secret derivation");
+    if (1 != EVP_PKEY_derive_init(ctx)) ssl_error("Failed to initialize derivation");
+    if (1 != EVP_PKEY_derive_set_peer(ctx, public_key)) ssl_error("Failed to add public key");
+
+    if (1 != EVP_PKEY_derive(ctx, NULL, &secret_len)) ssl_error("Failed to get length for secret");
+    if (NULL == (secret = OPENSSL_malloc(secret_len))) ssl_error("Failed to allocate secret key");
+    if (mlock(secret, secret_len) != 0) { cleanup(); return PyErr_SetFromErrno(PyExc_OSError); }
+    if (1 != (EVP_PKEY_derive(ctx, secret, &secret_len))) ssl_error("Failed to derive the secret");
+
+    PyObject *ans = hash_data_to_secret(secret, secret_len, hash_algorithm);
+    cleanup();
+    return ans;
+#undef cleanup
+#undef ssl_error
 }
 
 
@@ -101,6 +176,11 @@ static PyGetSetDef getsetters[] = {
     {NULL}  /* Sentinel */
 };
 
+static PyMethodDef methods[] = {
+    METHODB(derive_secret, METH_VARARGS),
+    {NULL}  /* Sentinel */
+};
+
 
 PyTypeObject EllipticCurveKey_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -110,7 +190,19 @@ PyTypeObject EllipticCurveKey_Type = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "Keys for use with Elliptic Curve crypto",
     .tp_new = new_ec_key,
+    .tp_methods = methods,
     .tp_getset = getsetters,
+};
+
+
+PyTypeObject SecretType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "fast_data_types.Secret",
+    .tp_basicsize = sizeof(Secret),
+    .tp_dealloc = (destructor)dealloc_secret,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_doc = "Secure storage for secrets",
+    .tp_new = new_secret,
 };
 
 
@@ -118,12 +210,30 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+static Secret*
+alloc_secret(size_t len) {
+    Secret *self = (Secret*)SecretType.tp_alloc(&SecretType, 0);
+    if (self) {
+        self->secret_len = len;
+        if (NULL == (self->secret = OPENSSL_malloc(len))) { Py_CLEAR(self); return (Secret*)set_error_from_openssl("Failed to malloc"); }
+        if (0 != mlock(self->secret, self->secret_len)) { Py_CLEAR(self); return (Secret*)PyErr_SetFromErrno(PyExc_OSError); }
+    }
+    return self;
+}
 
 bool
 init_crypto_library(PyObject *module) {
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     if (PyType_Ready(&EllipticCurveKey_Type) < 0) return false;
     if (PyModule_AddObject(module, "EllipticCurveKey", (PyObject *)&EllipticCurveKey_Type) != 0) return false;
+    if (PyType_Ready(&SecretType) < 0) return false;
+    if (PyModule_AddObject(module, "Secret", (PyObject *)&EllipticCurveKey_Type) != 0) return false;
+    if (PyModule_AddIntConstant(module, "X25519", EVP_PKEY_X25519) != 0) return false;
+    if (PyModule_AddIntMacro(module, SHA1_HASH) != 0) return false;
+    if (PyModule_AddIntMacro(module, SHA224_HASH) != 0) return false;
+    if (PyModule_AddIntMacro(module, SHA256_HASH) != 0) return false;
+    if (PyModule_AddIntMacro(module, SHA384_HASH) != 0) return false;
+    if (PyModule_AddIntMacro(module, SHA512_HASH) != 0) return false;
     Py_INCREF(&EllipticCurveKey_Type);
     return true;
 }
