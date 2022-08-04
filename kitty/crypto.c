@@ -60,6 +60,23 @@ dealloc_secret(Secret *self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
+static int
+__eq__(Secret *a, Secret *b) {
+    const size_t l = a->secret_len < b->secret_len ? a->secret_len : b->secret_len;
+    return memcmp(a->secret, b->secret, l) == 0;
+}
+
+static Py_ssize_t
+__len__(PyObject *self) {
+    return (Py_ssize_t)(((Secret*)self)->secret_len);
+}
+
+
+static PySequenceMethods sequence_methods = {
+    .sq_length = __len__,
+};
+
+
 static PyObject *
 new_ec_key(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     EllipticCurveKey *self;
@@ -116,7 +133,7 @@ hash_data_to_secret(const unsigned char *data, size_t len, int hash_algorithm) {
 static PyObject*
 derive_secret(EllipticCurveKey *self, PyObject *args) {
     const char *pubkey_raw;
-    int hash_algorithm;
+    int hash_algorithm = SHA256_HASH;
     Py_ssize_t pubkey_len;
     if (!PyArg_ParseTuple(args, "y#|i", &pubkey_raw, &pubkey_len, &hash_algorithm)) return NULL;
 
@@ -195,7 +212,10 @@ PyTypeObject EllipticCurveKey_Type = {
 };
 
 
-PyTypeObject SecretType = {
+static PyObject *
+richcmp(PyObject *obj1, PyObject *obj2, int op);
+
+PyTypeObject Secret_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.Secret",
     .tp_basicsize = sizeof(Secret),
@@ -203,8 +223,11 @@ PyTypeObject SecretType = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "Secure storage for secrets",
     .tp_new = new_secret,
+    .tp_richcompare = richcmp,
+    .tp_as_sequence = &sequence_methods,
 };
 
+RICHCMP(Secret)
 
 static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
@@ -212,7 +235,7 @@ static PyMethodDef module_methods[] = {
 
 static Secret*
 alloc_secret(size_t len) {
-    Secret *self = (Secret*)SecretType.tp_alloc(&SecretType, 0);
+    Secret *self = (Secret*)Secret_Type.tp_alloc(&Secret_Type, 0);
     if (self) {
         self->secret_len = len;
         if (NULL == (self->secret = OPENSSL_malloc(len))) { Py_CLEAR(self); return (Secret*)set_error_from_openssl("Failed to malloc"); }
@@ -226,7 +249,7 @@ init_crypto_library(PyObject *module) {
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     if (PyType_Ready(&EllipticCurveKey_Type) < 0) return false;
     if (PyModule_AddObject(module, "EllipticCurveKey", (PyObject *)&EllipticCurveKey_Type) != 0) return false;
-    if (PyType_Ready(&SecretType) < 0) return false;
+    if (PyType_Ready(&Secret_Type) < 0) return false;
     if (PyModule_AddObject(module, "Secret", (PyObject *)&EllipticCurveKey_Type) != 0) return false;
     if (PyModule_AddIntConstant(module, "X25519", EVP_PKEY_X25519) != 0) return false;
     if (PyModule_AddIntMacro(module, SHA1_HASH) != 0) return false;
