@@ -189,3 +189,24 @@ into which they ssh, without needing to install all of |kitty|.
 
 This applies to creating packages for |kitty| for macOS package managers such as
 Homebrew or MacPorts as well.
+
+
+Building docs
+--------------
+
+|kitty|'s documentation is built via `Sphinx <https://www.sphinx-doc.org/en/master/>`_.
+
+On Ubuntu Linux 22.04, these system packages need to be installed:
+
+* ``python3-sphinx``
+* ``python3-sphinxext-opengraph``
+* ``python3-sphinx-copybutton``
+
+As well as these PyPI (``pip``) packages (e.g. via ``pip install --user``):
+
+* ``sphinx_inline_tabs``
+* ``furo`` (a Sphinx theme)
+
+The command is then::
+
+    make docs
