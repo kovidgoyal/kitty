@@ -88,7 +88,7 @@ elliptic_curve_key_get_private(EllipticCurveKey *self, void UNUSED *closure) {
     if (1 != EVP_PKEY_get_raw_private_key(self->key, NULL, &len)) return set_error_from_openssl("Could not get public key from EVP_PKEY");
     PyObject *ans = PyBytes_FromStringAndSize(NULL, len);
     if (!ans) return NULL;
-    mlock(PyBytes_AS_STRING(ans), len);
+    if (mlock(PyBytes_AS_STRING(ans), len) != 0) { Py_CLEAR(ans); return PyErr_SetFromErrno(PyExc_OSError); }
     if (1 != EVP_PKEY_get_raw_private_key(self->key, (unsigned char*)PyBytes_AS_STRING(ans), &len)) { Py_CLEAR(ans); return set_error_from_openssl("Could not get public key from EVP_PKEY"); }
     return ans;
 
