@@ -79,6 +79,8 @@ Detailed list of changes
 
 - Bash integration: Fix declare not creating global variables in .bashrc (:iss:`5254`)
 
+- Bash integration: Fix the inherit_errexit option being set by shell integration (:iss:`5349`)
+
 - :command:`kitty @ scroll-window` allow scrolling by fractions of a screen
   (:iss:`5294`)
 

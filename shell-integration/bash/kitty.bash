@@ -23,6 +23,7 @@ if [[ -n "$KITTY_BASH_INJECT" ]]; then
         }
     else
         builtin set +o posix
+        builtin shopt -u inherit_errexit  # resetting posix does not clear this
         if [[ -n "$KITTY_BASH_UNEXPORT_HISTFILE" ]]; then
             builtin export -n HISTFILE
             builtin unset KITTY_BASH_UNEXPORT_HISTFILE
