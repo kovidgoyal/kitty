@@ -12,6 +12,7 @@
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/bio.h>
+#include <sys/mman.h>
 
 typedef struct {
     PyObject_HEAD
@@ -72,10 +73,10 @@ static PyObject*
 elliptic_curve_key_get_public(EllipticCurveKey *self, void UNUSED *closure) {
     /* PEM_write_PUBKEY(stdout, pkey); */
     size_t len = 0;
-    if (1 != EVP_PKEY_get_raw_public_key(self->key, NULL, &len)) return set_error_from_openssl("Could not get public key from EVP_KEY");
+    if (1 != EVP_PKEY_get_raw_public_key(self->key, NULL, &len)) return set_error_from_openssl("Could not get public key from EVP_PKEY");
     PyObject *ans = PyBytes_FromStringAndSize(NULL, len);
     if (!ans) return NULL;
-    if (1 != EVP_PKEY_get_raw_public_key(self->key, (unsigned char*)PyBytes_AS_STRING(ans), &len)) return set_error_from_openssl("Could not get public key from EVP_KEY");
+    if (1 != EVP_PKEY_get_raw_public_key(self->key, (unsigned char*)PyBytes_AS_STRING(ans), &len)) { Py_CLEAR(ans); return set_error_from_openssl("Could not get public key from EVP_PKEY"); }
     return ans;
 
 }
@@ -84,10 +85,11 @@ elliptic_curve_key_get_public(EllipticCurveKey *self, void UNUSED *closure) {
 static PyObject*
 elliptic_curve_key_get_private(EllipticCurveKey *self, void UNUSED *closure) {
     size_t len = 0;
-    if (1 != EVP_PKEY_get_raw_private_key(self->key, NULL, &len)) return set_error_from_openssl("Could not get public key from EVP_KEY");
+    if (1 != EVP_PKEY_get_raw_private_key(self->key, NULL, &len)) return set_error_from_openssl("Could not get public key from EVP_PKEY");
     PyObject *ans = PyBytes_FromStringAndSize(NULL, len);
     if (!ans) return NULL;
-    if (1 != EVP_PKEY_get_raw_private_key(self->key, (unsigned char*)PyBytes_AS_STRING(ans), &len)) return set_error_from_openssl("Could not get public key from EVP_KEY");
+    mlock(PyBytes_AS_STRING(ans), len);
+    if (1 != EVP_PKEY_get_raw_private_key(self->key, (unsigned char*)PyBytes_AS_STRING(ans), &len)) { Py_CLEAR(ans); return set_error_from_openssl("Could not get public key from EVP_PKEY"); }
     return ans;
 
 }
