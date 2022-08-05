@@ -54,7 +54,7 @@ def neighbors_for_tall_window(
 
 
 class TallLayoutOpts(LayoutOpts):
-    bias: 50
+    bias: int = 50
     full_size: int = 1
     mirrored: bool = False
 
@@ -77,6 +77,7 @@ class TallLayoutOpts(LayoutOpts):
         b = self.bias / 100
         b = max(0.1, min(b, 0.9))
         return tuple(repeat(b / self.full_size, self.full_size)) + (1.0 - b,)
+
 
 class Tall(Layout):
 
@@ -220,11 +221,6 @@ class Tall(Layout):
         if action_name == 'bias':
             if len(args) == 0:
                 raise ValueError('layout_action bias must contain at least one number between 10 and 90')
-            # Because kitty/options/utils.py:312 sets maxsplit=1, line 315 will always
-            # pass args as a tuple consisting of at most 1 element with all the args despite
-            # it implying the tuple could have more than one element with via [1:]
-            # In case this is by design and I'm missing the reason, have to split out
-            # the rest of the args:
             biases = args[0].split()
             if len(biases) == 1:
                 biases.append("50")

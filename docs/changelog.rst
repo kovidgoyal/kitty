@@ -63,6 +63,9 @@ Detailed list of changes
 - Add a mappable action to toggle the mirrored setting for the tall and fat
   layouts (:pull:`5344`)
 
+- Add a mappable action to switch between predefined bias values for the tall and fat
+  layouts (:pull:`5352`)
+
 - Wayland: Reduce flicker at startup by not using render frames immediately after a resize (:iss:`5235`)
 
 - Linux: Update cursor position after all key presses not just pre-edit text
