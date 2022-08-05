@@ -76,6 +76,12 @@ windows, or toggle the mirrored setting, for example::
    map ctrl+y layout_action mirror true
    map ctrl+n layout_action mirror false
 
+You can also map a key to change the bias by providing a list of percentages
+and it will rotate through the list as you press the key. If you only provide
+one number it'll toggle between that percentage and 50, for example::
+
+   map ctrl+. layout_action bias 50 62 70
+   map ctrl+, layout_action bias 62
 
 The Fat Layout
 ----------------
@@ -104,8 +110,7 @@ on the bottom of the screen instead of the top. The syntax for the options is::
     └─────────┴──────────┴─────────┘
 
 
-This layout also supports ``decrease_num_full_size_windows`` layout action like
-the *Tall* layout, shown above.
+This layout also supports the same layout actions as the *Tall* layout, shown above.
 
 
 The Grid Layout

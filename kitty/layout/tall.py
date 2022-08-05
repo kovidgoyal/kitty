@@ -54,7 +54,7 @@ def neighbors_for_tall_window(
 
 
 class TallLayoutOpts(LayoutOpts):
-    bias: Tuple[float, ...] = ()
+    bias: 50
     full_size: int = 1
     mirrored: bool = False
 
@@ -63,18 +63,20 @@ class TallLayoutOpts(LayoutOpts):
             self.full_size = int(data.get('full_size', 1))
         except Exception:
             self.full_size = 1
-        self.full_size = fs = max(1, min(self.full_size, 100))
+        self.full_size = max(1, min(self.full_size, 100))
         try:
-            b = int(data.get('bias', 50)) / 100
+            self.bias = int(data.get('bias', 50))
         except Exception:
-            b = 0.5
-        b = max(0.1, min(b, 0.9))
-        self.bias = tuple(repeat(b / fs, fs)) + (1.0 - b,)
+            self.bias = 50
         self.mirrored = to_bool(data.get('mirrored', 'false'))
 
     def serialized(self) -> Dict[str, Any]:
         return {'full_size': self.full_size, 'bias': self.bias, 'mirrored': self.mirrored}
 
+    def build_bias_list(self) -> Tuple[float, ...]:
+        b = self.bias / 100
+        b = max(0.1, min(b, 0.9))
+        return tuple(repeat(b / self.full_size, self.full_size)) + (1.0 - b,)
 
 class Tall(Layout):
 
@@ -90,7 +92,7 @@ class Tall(Layout):
         return self.layout_opts.full_size
 
     def remove_all_biases(self) -> bool:
-        self.main_bias: List[float] = list(self.layout_opts.bias)
+        self.main_bias: List[float] = list(self.layout_opts.build_bias_list())
         self.biased_map: Dict[int, float] = {}
         return True
 
@@ -215,6 +217,27 @@ class Tall(Layout):
                     self.layout_opts.mirrored = new_val
                     ok = True
             return ok
+        if action_name == 'bias':
+            if len(args) == 0:
+                raise ValueError('layout_action bias must contain at least one number between 10 and 90')
+            # Because kitty/options/utils.py:312 sets maxsplit=1, line 315 will always
+            # pass args as a tuple consisting of at most 1 element with all the args despite
+            # it implying the tuple could have more than one element with via [1:]
+            # In case this is by design and I'm missing the reason, have to split out
+            # the rest of the args:
+            biases = args[0].split()
+            if len(biases) == 1:
+                biases.append("50")
+            try:
+                i = biases.index(str(self.layout_opts.bias)) + 1
+            except ValueError:
+                i = 0
+            try:
+                self.layout_opts.bias = int(biases[i % len(biases)])
+                self.remove_all_biases()
+                return True
+            except Exception:
+                return False
         return None
 
     def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
