@@ -1413,3 +1413,56 @@ def remove_signal_handlers() -> None:
 
 def getpeereid(fd: int) -> Tuple[int, int]:
     pass
+
+
+X25519: int
+SHA1_HASH: int
+SHA224_HASH: int
+SHA256_HASH: int
+SHA384_HASH: int
+SHA512_HASH: int
+
+
+class Secret:
+    pass
+
+
+class EllipticCurveKey:
+
+    def __init__(
+        self, algorithm: int = 0  # X25519
+    ): pass
+
+    def derive_secret(
+        self, pubkey: bytes, hash_algorithm: int = 0  # SHA256_HASH
+    ) -> Secret: pass
+
+    @property
+    def public(self) -> bytes: ...
+
+    @property
+    def private(self) -> Secret: ...
+
+
+class AES256GCMEncrypt:
+
+    def __init__(self, key: Secret): ...
+
+    def add_authenticated_but_unencrypted_data(self, data: bytes) -> None: ...
+
+    def add_data_to_be_encrypted(self, data: bytes, finished: bool = False) -> bytes: ...
+
+    @property
+    def iv(self) -> bytes: ...
+
+    @property
+    def tag(self) -> bytes: ...
+
+
+class AES256GCMDecrypt:
+
+    def __init__(self, key: Secret, iv: bytes, tag: bytes): ...
+
+    def add_data_to_be_authenticated_but_not_decrypted(self, data: bytes) -> None: ...
+
+    def add_data_to_be_decrypted(self, data: bytes, finished: bool = False) -> bytes: ...
