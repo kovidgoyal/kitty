@@ -371,7 +371,12 @@ new_aes256gcmdecrypt(PyTypeObject *type, PyObject *args, PyObject *kwds UNUSED) 
     if (!(self->ctx = EVP_CIPHER_CTX_new())) { Py_CLEAR(self); return set_error_from_openssl("Failed to allocate decryption context"); }
     if (1 != EVP_DecryptInit_ex(self->ctx, EVP_aes_256_gcm(), NULL, key->secret, iv)) {
         Py_CLEAR(self); return set_error_from_openssl("Failed to initialize encryption context"); }
+    // Ensure tag length is 16 because the OpenSSL verification routines will happily pass even if you set a truncated tag.
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    if (tag_len != EVP_CIPHER_CTX_tag_length(self->ctx)) { PyErr_Format(PyExc_ValueError, "Tag length for AES 256 GCM must be %d", EVP_CIPHER_CTX_tag_length(self->ctx)); return NULL; }
+#else
     if (tag_len != 16) { PyErr_SetString(PyExc_ValueError, "Tag length for AES 256 GCM must be 16"); return NULL; }
+#endif
     if (!EVP_CIPHER_CTX_ctrl(self->ctx, EVP_CTRL_GCM_SET_TAG, tag_len, tag)) { Py_CLEAR(self); return set_error_from_openssl("Failed to set the tag"); }
     return (PyObject*)self;
 }
