@@ -2479,6 +2479,13 @@ void _glfwPlatformSetClipboardString(const char* string)
     [pasteboard setString:@(string) forType:NSPasteboardTypeString];
 }
 
+void _glfwPlatformSetPrimarySelectionString(const char* string) {
+    (void)string;
+    // Apple doesnt have a primary selection
+}
+
+const char* _glfwPlatformGetPrimarySelectionString(void) { return ""; }
+
 const char* _glfwPlatformGetClipboardString(void)
 {
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];

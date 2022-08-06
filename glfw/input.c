@@ -1540,7 +1540,7 @@ GLFWAPI const char* glfwGetClipboardString(GLFWwindow* handle UNUSED)
     return _glfwPlatformGetClipboardString();
 }
 
-#if defined(_GLFW_X11) || defined(_GLFW_WAYLAND)
+#if defined(_GLFW_X11) || defined(_GLFW_WAYLAND) || defined(__APPLE__)
 GLFWAPI void glfwSetPrimarySelectionString(GLFWwindow* handle UNUSED, const char* string)
 {
     assert(string != NULL);
