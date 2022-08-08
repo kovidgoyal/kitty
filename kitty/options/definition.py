@@ -3610,7 +3610,7 @@ You can also create shortcuts to switch to specific :term:`layouts <layout>`::
 
 Similarly, to switch back to the previous layout::
 
-   map ctrl+alt+p last_used_layout
+    map ctrl+alt+p last_used_layout
 
 There is also a :ac:`toggle_layout` action that switches to the named layout or
 back to the previous layout if in the named layout. Useful to temporarily "zoom"

@@ -160,11 +160,11 @@ typedef EGLSurface (EGLAPIENTRY * PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC)(EGLD
 //
 typedef struct _GLFWcontextEGL
 {
-   EGLConfig        config;
-   EGLContext       handle;
-   EGLSurface       surface;
+    EGLConfig        config;
+    EGLContext       handle;
+    EGLSurface       surface;
 
-   void*            client;
+    void*            client;
 
 } _GLFWcontextEGL;
 

@@ -187,11 +187,11 @@ static PyMethodDef module_methods[] = {
 };
 
 static struct PyModuleDef module = {
-   .m_base = PyModuleDef_HEAD_INIT,
-   .m_name = "diff_speedup",   /* name of module */
-   .m_doc = NULL,
-   .m_size = -1,
-   .m_methods = module_methods
+    .m_base = PyModuleDef_HEAD_INIT,
+    .m_name = "diff_speedup",   /* name of module */
+    .m_doc = NULL,
+    .m_size = -1,
+    .m_methods = module_methods
 };
 
 EXPORTED PyMODINIT_FUNC

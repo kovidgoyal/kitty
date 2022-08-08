@@ -56,9 +56,9 @@ A glob pattern that is matched against only the filename of files and directorie
 files and directories are ignored when scanning the filesystem to look for files to diff.
 Can be specified multiple times to use multiple patterns. For example::
 
-   ignore_name .git
-   ignore_name *~
-   ignore_name *.pyc
+    ignore_name .git
+    ignore_name *~
+    ignore_name *.pyc
 ''',
     )
 

@@ -104,8 +104,8 @@ free_loop_data(LoopData *ld) {
 #ifdef HAS_EVENT_FD
     safe_close(ld->wakeup_read_fd, __FILE__, __LINE__);
 #endif
-     ld->wakeup_read_fd = -1;
-     remove_signal_handlers(ld);
+    ld->wakeup_read_fd = -1;
+    remove_signal_handlers(ld);
 }
 
 
