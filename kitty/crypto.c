@@ -132,7 +132,7 @@ new_ec_key(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
     if (NULL == (pctx = EVP_PKEY_CTX_new_id(nid, NULL))) ssl_error("Failed to create context for key generation");
     if(1 != EVP_PKEY_keygen_init(pctx)) ssl_error("Failed to initialize keygen context");
-	if (1 != EVP_PKEY_keygen(pctx, &key)) ssl_error("Failed to generate key");
+    if (1 != EVP_PKEY_keygen(pctx, &key)) ssl_error("Failed to generate key");
 
     self = (EllipticCurveKey *)type->tp_alloc(type, 0);
     if (self) {

@@ -83,8 +83,8 @@ process_settings_dict(DBusMessageIter *array_iter, void(process_setting)(const c
 
 HANDLER(process_desktop_settings)
     cursor_theme_changed = false;
-	DBusMessageIter root, array, item, settings;
-	dbus_message_iter_init(msg, &root);
+    DBusMessageIter root, array, item, settings;
+    dbus_message_iter_init(msg, &root);
 #define die(...) { _glfwInputError(GLFW_PLATFORM_ERROR, __VA_ARGS__); return; }
     if (dbus_message_iter_get_arg_type(&root) != DBUS_TYPE_ARRAY) die("Reply to request for desktop settings is not an array");
     dbus_message_iter_recurse(&root, &array);

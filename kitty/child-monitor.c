@@ -1808,12 +1808,12 @@ random_unix_socket(PyObject *self UNUSED, PyObject *args UNUSED) {
     errno = ENOTSUP;
     return PyErr_SetFromErrno(PyExc_OSError);
 #else
-	int fd, optval = 1;
-	struct sockaddr_un bind_addr = {.sun_family=AF_UNIX};
-	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    int fd, optval = 1;
+    struct sockaddr_un bind_addr = {.sun_family=AF_UNIX};
+    fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0) return PyErr_SetFromErrno(PyExc_OSError);
-	if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &optval, sizeof optval) != 0) goto fail;
-	if (bind(fd, (struct sockaddr *)&bind_addr, sizeof(sa_family_t)) != 0) goto fail;
+    if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &optval, sizeof optval) != 0) goto fail;
+    if (bind(fd, (struct sockaddr *)&bind_addr, sizeof(sa_family_t)) != 0) goto fail;
     return PyLong_FromLong((long)fd);
 fail:
     safe_close(fd, __FILE__, __LINE__);

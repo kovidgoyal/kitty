@@ -252,5 +252,5 @@ static struct PyModuleDef module = {
 
 EXPORTED PyMODINIT_FUNC
 PyInit_rsync(void) {
-	return PyModuleDef_Init(&module);
+    return PyModuleDef_Init(&module);
 }

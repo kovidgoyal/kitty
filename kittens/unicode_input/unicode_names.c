@@ -110,5 +110,5 @@ static struct PyModuleDef module = {
 
 EXPORTED PyMODINIT_FUNC
 PyInit_unicode_names(void) {
-	return PyModuleDef_Init(&module);
+    return PyModuleDef_Init(&module);
 }

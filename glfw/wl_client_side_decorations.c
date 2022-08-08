@@ -31,13 +31,13 @@ static void
 build_blur_kernel(kernel_type *blur_kernel, const size_t size, kernel_type sigma) {
     // 1D Normalized Gaussian
     const kernel_type half = size / (kernel_type)2;
-	kernel_type sum = 0;
-	for (size_t i = 0; i < size; i++) {
-		kernel_type f = (i - half);
-		blur_kernel[i] = (kernel_type)exp(- f * f / sigma);
-		sum += blur_kernel[i];
-	}
-	for (size_t i = 0; i < size; i++) blur_kernel[i] /= sum;
+    kernel_type sum = 0;
+    for (size_t i = 0; i < size; i++) {
+        kernel_type f = (i - half);
+        blur_kernel[i] = (kernel_type)exp(- f * f / sigma);
+        sum += blur_kernel[i];
+    }
+    for (size_t i = 0; i < size; i++) blur_kernel[i] /= sum;
 }
 
 static void
