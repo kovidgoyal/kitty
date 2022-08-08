@@ -386,3 +386,10 @@ GLFWAPI GLFWdrawtextfun glfwSetDrawTextFunction(GLFWdrawtextfun cbfun)
     _GLFW_SWAP_POINTERS(_glfw.callbacks.draw_text, cbfun);
     return cbfun;
 }
+
+GLFWAPI GLFWcurrentselectionfun glfwSetCurrentSelectionCallback(GLFWcurrentselectionfun cbfun)
+{
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(_glfw.callbacks.get_current_selection, cbfun);
+    return cbfun;
+}

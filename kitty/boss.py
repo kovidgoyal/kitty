@@ -1614,6 +1614,12 @@ class Boss:
                 if get_options().copy_on_select:
                     self.copy_to_buffer(get_options().copy_on_select)
 
+    def get_active_selection(self) -> Optional[str]:
+        w = self.active_window
+        if w is not None and not w.destroyed:
+            return w.text_for_selection()
+        return None
+
     @ac('cp', '''
         Copy the selection from the active window to the specified buffer
 

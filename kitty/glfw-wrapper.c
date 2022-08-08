@@ -38,6 +38,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetDrawTextFunction_impl) = dlsym(handle, "glfwSetDrawTextFunction");
     if (glfwSetDrawTextFunction_impl == NULL) fail("Failed to load glfw function glfwSetDrawTextFunction with error: %s", dlerror());
 
+    *(void **) (&glfwSetCurrentSelectionCallback_impl) = dlsym(handle, "glfwSetCurrentSelectionCallback");
+    if (glfwSetCurrentSelectionCallback_impl == NULL) fail("Failed to load glfw function glfwSetCurrentSelectionCallback with error: %s", dlerror());
+
     *(void **) (&glfwTerminate_impl) = dlsym(handle, "glfwTerminate");
     if (glfwTerminate_impl == NULL) fail("Failed to load glfw function glfwTerminate with error: %s", dlerror());
 

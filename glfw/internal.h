@@ -621,6 +621,7 @@ struct _GLFWlibrary
         GLFWjoystickfun joystick;
         GLFWapplicationclosefun application_close;
         GLFWdrawtextfun draw_text;
+        GLFWcurrentselectionfun get_current_selection;
     } callbacks;
 
 

@@ -1716,6 +1716,7 @@ typedef void (* GLFWjoystickfun)(int,int);
 typedef void (* GLFWuserdatafun)(unsigned long long, void*);
 typedef void (* GLFWtickcallback)(void*);
 typedef bool (* GLFWdrawtextfun)(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin);
+typedef const char* (* GLFWcurrentselectionfun)(void);
 
 /*! @brief Video mode type.
  *
@@ -1873,6 +1874,7 @@ GLFWAPI unsigned long long glfwAddTimer(monotonic_t interval, bool repeats, GLFW
 GLFWAPI void glfwUpdateTimer(unsigned long long timer_id, monotonic_t interval, bool enabled);
 GLFWAPI void glfwRemoveTimer(unsigned long long);
 GLFWAPI GLFWdrawtextfun glfwSetDrawTextFunction(GLFWdrawtextfun function);
+GLFWAPI GLFWcurrentselectionfun glfwSetCurrentSelectionCallback(GLFWcurrentselectionfun callback);
 
 /*! @brief Terminates the GLFW library.
  *
