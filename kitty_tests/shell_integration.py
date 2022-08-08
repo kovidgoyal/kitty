@@ -40,6 +40,7 @@ def basic_shell_env(home_dir):
         'KITTY_SHELL_INTEGRATION': 'enabled',
         'KITTY_INSTALLATION_DIR': kitty_base_dir,
         'BASH_SILENCE_DEPRECATION_WARNING': '1',
+        'PYTHONDONTWRITEBYTECODE': '1',
     }
     for x in ('USER', 'LANG'):
         if os.environ.get(x):
