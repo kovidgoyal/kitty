@@ -1540,6 +1540,36 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     debug_key("\n\tdoCommandBySelector: (%s)\n", [NSStringFromSelector(selector) UTF8String]);
 }
 
+- (BOOL)isAccessibilityElement
+{
+    return YES;
+}
+
+- (BOOL)isAccessibilitySelectorAllowed:(SEL)selector
+{
+    if (selector == @selector(accessibilityRole) || selector == @selector(accessibilitySelectedText)) return YES;
+    return NO;
+}
+
+- (NSAccessibilityRole)accessibilityRole
+{
+    return NSAccessibilityTextAreaRole;
+}
+
+- (NSString *)accessibilitySelectedText
+{
+    if (_glfw.callbacks.get_current_selection) {
+        NSString *text = nil;
+        const char *s = _glfw.callbacks.get_current_selection();
+        if (s) {
+            text = [NSString stringWithUTF8String:s];
+            free((void*) s);
+            return text;
+        }
+    }
+    return nil;
+}
+
 @end
 // }}}
 
