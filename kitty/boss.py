@@ -445,7 +445,11 @@ class Boss:
         from .remote_control import handle_cmd, parse_cmd
         response = None
         window = window or None
-        pcmd = parse_cmd(cmd)
+        try:
+            pcmd = parse_cmd(cmd, self.encryption_key)
+        except Exception as e:
+            log_error(f'Failed to parse remote command with error: {e}')
+            return response
         if not pcmd:
             return response
         if self.allow_remote_control == 'y' or peer_id > 0 or getattr(window, 'allow_remote_control', False):
