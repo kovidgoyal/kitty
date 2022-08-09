@@ -464,12 +464,12 @@ application_close_requested_callback(int flags) {
     }
 }
 
-const char*
+static char*
 get_current_selection(void) {
     if (!global_state.boss) return NULL;
     PyObject *ret = PyObject_CallMethod(global_state.boss, "get_active_selection", NULL);
     if (!ret) { PyErr_Print(); return NULL; }
-    const char* ans = NULL;
+    char* ans = NULL;
     if (PyUnicode_Check(ret)) ans = strdup(PyUnicode_AsUTF8(ret));
     Py_DECREF(ret);
     return ans;

@@ -1560,7 +1560,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 {
     NSString *text = nil;
     if (_glfw.callbacks.get_current_selection) {
-        const char *s = _glfw.callbacks.get_current_selection();
+        char *s = _glfw.callbacks.get_current_selection();
         if (s) {
             text = [NSString stringWithUTF8String:s];
             free(s);
