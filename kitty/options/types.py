@@ -400,6 +400,7 @@ option_names = (  # {{{
  'pointer_shape_when_dragging',
  'pointer_shape_when_grabbed',
  'remember_window_size',
+ 'remote_control_password',
  'repaint_delay',
  'resize_debounce_time',
  'resize_draw_strategy',
@@ -609,6 +610,7 @@ class Options:
     kitten_alias: typing.Dict[str, str] = {}
     modify_font: typing.Dict[str, kitty.fonts.FontModification] = {}
     narrow_symbols: typing.Dict[typing.Tuple[int, int], int] = {}
+    remote_control_password: typing.Dict[str, typing.Tuple[str, ...]] = {}
     symbol_map: typing.Dict[typing.Tuple[int, int], str] = {}
     watcher: typing.Dict[str, str] = {}
     map: typing.List[kitty.options.utils.KeyDefinition] = []
@@ -729,6 +731,7 @@ defaults.font_features = {}
 defaults.kitten_alias = {}
 defaults.modify_font = {}
 defaults.narrow_symbols = {}
+defaults.remote_control_password = {}
 defaults.symbol_map = {}
 defaults.watcher = {}
 defaults.map = [

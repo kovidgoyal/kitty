@@ -2687,6 +2687,32 @@ their stdout/stderr/stdin no longer work.
 '''
     )
 
+opt('+remote_control_password', '', option_type='remote_control_password', add_to_default=False,
+    long_text='''
+Allow other programs to control kitty using passwords. This option can be specified multiple
+times to add multiple passwords. If no passwords are present kitty will ask the user for
+permission if a program tries to use remote control with a password. A password can also
+*optionally* be associated with a set of allowed remote control actions. For example::
+
+    remote_control_password "my passphrase" get-colors set-colors focus-window focus-tab
+
+Only the specified actions will be allowed when using this password.
+Glob patterns can be used too, for example::
+
+    remote_control_password "my passphrase" set-tab-* resize-*
+
+To get a list of available actions, run::
+
+    kitty @ -h
+
+Finally, the path to a python module can be specified that provides a function :code:`is_cmd_allowed`
+that is used to check every remote control command. See :ref:`rc_custom_auth` for details. For example::
+
+    remote_control_password "my passphrase" my_rc_command_checker.py
+
+Relative paths are resolved from the kitty configuration directory.
+''')
+
 opt('allow_remote_control', 'no',
     option_type='allow_remote_control',
     long_text='''

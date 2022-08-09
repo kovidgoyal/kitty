@@ -170,7 +170,7 @@ def do_io(to: Optional[str], send: Dict[str, Any], no_response: bool, response_t
 
 cli_msg = (
         'Control {appname} by sending it commands. Set the'
-        ' :opt:`allow_remote_control` option to yes in :file:`kitty.conf` for this'
+        ' :opt:`allow_remote_control` option in :file:`kitty.conf` or use a password, for this'
         ' to work.'
 ).format(appname=appname)
 

@@ -79,24 +79,27 @@ class ToCmdline:
         self.override_env.update(override)
         return self
 
-    def __call__(self, x: str) -> List[str]:
-        return list(
-            map(
-                lambda y: expandvars(
-                    os.path.expanduser(y),
-                    os.environ if self.override_env is None else self.override_env,
-                    fallback_to_os_env=False
-                ),
-                shlex.split(x)
+    def __call__(self, x: str, expand: bool = True) -> List[str]:
+        ans = shlex.split(x)
+        if expand:
+            ans = list(
+                map(
+                    lambda y: expandvars(
+                        os.path.expanduser(y),
+                        os.environ if self.override_env is None else self.override_env,
+                        fallback_to_os_env=False
+                    ),
+                    ans
+                )
             )
-        )
+        return ans
 
 
 to_cmdline_implementation = ToCmdline()
 
 
-def to_cmdline(x: str) -> List[str]:
-    return to_cmdline_implementation(x)
+def to_cmdline(x: str, expand: bool = True) -> List[str]:
+    return to_cmdline_implementation(x, expand)
 
 
 def python_string(text: str) -> str:
