@@ -73,6 +73,7 @@ opened window.
 
 
 --cwd
+completion=type:directory kwds:current,oldest,last_reported
 The working directory for the newly launched child. Use the special value
 :code:`current` to use the working directory of the currently active window.
 The special value :code:`last_reported` uses the last working directory reported

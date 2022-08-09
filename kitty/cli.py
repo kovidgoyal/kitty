@@ -612,7 +612,7 @@ are running a program that does not set titles.
 
 --config -c
 type=list
-completion=type:file ext:conf group:"Config files"
+completion=type:file ext:conf group:"Config files" kwds:none,NONE
 {config_help}
 
 

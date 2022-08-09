@@ -637,6 +637,10 @@ def complete_file_path(ans: Completions, spec: Dict[str, str], prefix: str, only
 def complete_path(ans: Completions, opt: OptionDict, prefix: str) -> None:
     spec = opt['completion']
     t = spec['type']
+    if 'kwds' in spec:
+        kwds = [x for x in spec['kwds'].split(',') if x.startswith(prefix)]
+        if kwds:
+            ans.add_match_group('Keywords', kwds)
     if t == 'file':
         complete_file_path(ans, spec, prefix)
     elif t == 'directory':
