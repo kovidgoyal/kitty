@@ -14,10 +14,9 @@ from kittens.runner import (
 )
 
 from .cli import (
-    OptionDict, OptionSpecSeq, options_for_completion, parse_option_spec,
-    prettify
+    OptionDict, options_for_completion, parse_option_spec, prettify
 )
-from .constants import shell_integration_dir, config_dir
+from .constants import config_dir, shell_integration_dir
 from .fast_data_types import truncate_point_for_length, wcswidth
 from .rc.base import all_command_names, command_for_name
 from .shell import options_for_cmd
@@ -405,6 +404,15 @@ def complete_kitty_cli_arg(ans: Completions, opt: Optional[OptionDict], prefix: 
         complete_basic_option_args(ans, opt, prefix)
 
 
+def basic_option_arg_completer(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
+    prefix = prefix or ''
+    if not opt:
+        if unknown_args.num_of_unknown_args > 0:
+            ans.delegate = unknown_args
+        return
+    complete_basic_option_args(ans, opt, prefix)
+
+
 CompleteArgsFunc = Callable[[Completions, Optional[OptionDict], str, Delegate], None]
 
 
@@ -413,7 +421,7 @@ def complete_alias_map(
     words: Sequence[str],
     new_word: bool,
     option_map: Dict[str, OptionDict],
-    complete_args: Optional[CompleteArgsFunc] = None
+    complete_args: CompleteArgsFunc = basic_option_arg_completer
 ) -> None:
     expecting_arg = False
     opt: Optional[OptionDict] = None
@@ -471,23 +479,21 @@ def complete_cli(
     ans: Completions,
     words: Sequence[str],
     new_word: bool,
-    seq: OptionSpecSeq,
-    complete_args: Optional[CompleteArgsFunc] = None
 ) -> None:
     option_map = {}
-    for opt in seq:
+    for opt in options_for_completion():
         if not isinstance(opt, str):
             for alias in opt['aliases']:
                 option_map[alias] = opt
-    complete_alias_map(ans, words, new_word, option_map, complete_args)
+    complete_alias_map(ans, words, new_word, option_map, complete_kitty_cli_arg)
 
 
 def complete_remote_command(ans: Completions, cmd_name: str, words: Sequence[str], new_word: bool) -> None:
     aliases, alias_map = options_for_cmd(cmd_name)
     if not alias_map:
         return
-    args_completer: Optional[CompleteArgsFunc] = None
     args_completion = command_for_name(cmd_name).args_completion
+    args_completer: CompleteArgsFunc = basic_option_arg_completer
     if args_completion:
         if 'files' in args_completion:
             title, matchers = args_completion['files']
@@ -503,7 +509,7 @@ def complete_launch_wrapper(ans: Completions, words: Sequence[str], new_word: bo
     from kitty.launch import clone_safe_opts
     aliases, alias_map = options_for_cmd('launch')
     alias_map = {k: v for k, v in alias_map.items() if v['dest'] in clone_safe_opts()}
-    args_completer: Optional[CompleteArgsFunc] = None
+    args_completer: CompleteArgsFunc = basic_option_arg_completer
     if allow_files:
         args_completer = remote_files_completer('Files', ('*',))
     complete_alias_map(ans, words, new_word, alias_map, complete_args=args_completer)
@@ -566,8 +572,8 @@ def filter_files_from_completion_spec(spec: Dict[str, str]) -> Callable[['os.Dir
         extensions = frozenset()
 
     if 'mime' in spec:
-        from fnmatch import translate
         import re
+        from fnmatch import translate
         mimes = tuple(re.compile(translate(x)) for x in spec['mime'].split(','))
         from .guess_mime_type import guess_type
     else:
@@ -751,7 +757,7 @@ def complete_kitten(ans: Completions, kitten: str, words: Sequence[str], new_wor
         'icat': complete_icat_args,
         'diff': complete_diff_args,
         'themes': complete_themes_args,
-    }.get(kitten))
+    }.get(kitten, basic_option_arg_completer))
 
 
 def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterable[str], namespaced_entry_points: Iterable[str]) -> Completions:
@@ -767,7 +773,7 @@ def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterabl
     words = words[1:]
     if not words or (len(words) == 1 and not new_word):
         if words and words[0].startswith('--') and '=' in words[0]:
-            complete_cli(ans, words, new_word, options_for_completion(), complete_kitty_cli_arg)
+            complete_cli(ans, words, new_word)
             return ans
         prefix = words[0] if words else ''
         completions_for_first_word(ans, prefix, entry_points, namespaced_entry_points)
@@ -797,7 +803,7 @@ def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterabl
                 else:
                     complete_kitten(ans, words[2], words[3:], new_word)
             elif words[1] == 'open':
-                complete_cli(ans, words[2:], new_word, options_for_completion(), complete_kitty_cli_arg)
+                complete_cli(ans, words[2:], new_word)
         return ans
     if words[0].startswith('+'):
         if len(words) == 1:
@@ -805,7 +811,7 @@ def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterabl
                 if words[0] == '+kitten':
                     ans.add_match_group('Kittens', all_kitten_names())
                 elif words[0] == '+open':
-                    complete_cli(ans, words[1:], new_word, options_for_completion(), complete_kitty_cli_arg)
+                    complete_cli(ans, words[1:], new_word)
             else:
                 prefix = words[0]
                 ans.add_match_group('Entry points', (c for c in namespaced_entry_points if c.startswith(prefix)))
@@ -816,9 +822,9 @@ def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterabl
                 else:
                     complete_kitten(ans, words[1], words[2:], new_word)
             elif words[0] == '+open':
-                complete_cli(ans, words[1:], new_word, options_for_completion(), complete_kitty_cli_arg)
+                complete_cli(ans, words[1:], new_word)
     else:
-        complete_cli(ans, words, new_word, options_for_completion(), complete_kitty_cli_arg)
+        complete_cli(ans, words, new_word)
 
     return ans
 
