@@ -1558,16 +1558,15 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 - (NSString *)accessibilitySelectedText
 {
+    NSString *text = nil;
     if (_glfw.callbacks.get_current_selection) {
-        NSString *text = nil;
         const char *s = _glfw.callbacks.get_current_selection();
         if (s) {
             text = [NSString stringWithUTF8String:s];
-            free((void*) s);
-            return text;
+            free(s);
         }
     }
-    return nil;
+    return text;
 }
 
 @end

@@ -97,6 +97,8 @@ Detailed list of changes
 
 - ssh kitten: Allow completion of ssh options between the destination and command (:iss:`5322`)
 
+- macOS: Fix speaking selected text not working (:iss:`5357`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
