@@ -201,7 +201,6 @@ use the title of the current OS window, if any.
 
 
 --logo
-type=path
 completion=type:file ext:png group:"PNG images" relative:conf
 Path to a PNG image to use as the logo for the newly created window. See
 :opt:`window_logo_path`. Relative paths are resolved from the kitty configuration directory.
