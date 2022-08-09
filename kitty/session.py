@@ -14,7 +14,7 @@ from .options.types import Options
 from .options.utils import resize_window, to_layout_names, window_size
 from .os_window_size import WindowSize, WindowSizeData, WindowSizes
 from .typing import SpecialWindowInstance
-from .utils import log_error, resolved_shell
+from .utils import log_error, resolved_shell, resolve_custom_file
 
 if TYPE_CHECKING:
     from .launch import LaunchSpec
@@ -187,7 +187,7 @@ def create_sessions(
             if args.session == '-':
                 f = sys.stdin
             else:
-                f = open(args.session)
+                f = open(resolve_custom_file(args.session))
             with f:
                 session_data = f.read()
         yield from parse_session(session_data, opts)
