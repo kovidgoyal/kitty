@@ -34,7 +34,7 @@ def format_mods(mods: int) -> str:
 class KeysHandler(Handler):
 
     def initialize(self) -> None:
-        self.cmd.set_window_title('Kitty extended keyboard protocol demo')
+        self.cmd.set_window_title('kitty extended keyboard protocol demo')
         self.cmd.set_cursor_visible(False)
         self.print('Press any keys - Ctrl+C or Ctrl+D will terminate')
 
