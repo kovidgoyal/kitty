@@ -16,6 +16,7 @@ from kittens.runner import (
 from .cli import (
     OptionDict, options_for_completion, parse_option_spec, prettify
 )
+from .remote_control import global_options_spec
 from .constants import config_dir, shell_integration_dir
 from .fast_data_types import truncate_point_for_length, wcswidth
 from .rc.base import all_command_names, command_for_name
@@ -413,7 +414,7 @@ def complete_alias_map(
     words: Sequence[str],
     new_word: bool,
     option_map: Dict[str, OptionDict],
-    complete_args: CompleteArgsFunc = basic_option_arg_completer
+    complete_args: CompleteArgsFunc = basic_option_arg_completer,
 ) -> None:
     expecting_arg = False
     opt: Optional[OptionDict] = None
@@ -425,11 +426,11 @@ def complete_alias_map(
                 if w is not last_word:
                     continue
                 long_opt = option_map.get(prev_word)
-                if long_opt is not None and complete_args is not None:
+                if long_opt is not None:
                     complete_args(ans, long_opt, '', Delegate())
                     return
             if w is last_word and not new_word:
-                if opt is not None and complete_args is not None:
+                if opt is not None:
                     complete_args(ans, opt, w, Delegate())
                 return
             expecting_arg = False
@@ -438,7 +439,7 @@ def complete_alias_map(
             parts = w.split('=', 1)
             if len(parts) == 2:
                 long_opt = option_map.get(parts[0])
-                if long_opt is not None and complete_args is not None:
+                if long_opt is not None:
                     complete_args(ans, long_opt, parts[1], Delegate())
                     ans.add_prefix(f'{parts[0]}=')
                 return
@@ -447,23 +448,20 @@ def complete_alias_map(
             if w.startswith('-'):
                 ans.add_match_group('Options', {k: opt['help'] for k, opt in option_map.items() if k.startswith(last_word)})
             else:
-                if complete_args is not None:
-                    complete_args(ans, None, last_word, Delegate(words, i))
+                complete_args(ans, None, last_word, Delegate(words, i))
             return
         if opt is None:
-            if complete_args is not None:
-                complete_args(ans, None, '' if new_word else last_word, Delegate(words, i, new_word))
+            complete_args(ans, None, '' if new_word else last_word, Delegate(words, i, new_word))
             if w.startswith('--') and '=' in w:
                 continue
             return  # some non-option word encountered
         expecting_arg = not opt.get('type', '').startswith('bool-')
     if expecting_arg:
-        if opt is not None and complete_args is not None:
+        if opt is not None:
             complete_args(ans, opt, '' if new_word else last_word, Delegate())
     else:
         prefix = '' if new_word else last_word
-        if complete_args is not None:
-            complete_args(ans, None, prefix, Delegate())
+        complete_args(ans, None, prefix, Delegate())
         ans.add_match_group('Options', {k: opt['help'] for k, opt in option_map.items() if k.startswith(prefix)})
 
 
@@ -480,11 +478,23 @@ def complete_cli(
     complete_alias_map(ans, words, new_word, option_map, complete_kitty_cli_arg)
 
 
+def global_options_for_remote_cmd() -> Dict[str, OptionDict]:
+    seq, disabled = parse_option_spec(global_options_spec())
+    ans: Dict[str, OptionDict] = {}
+    for opt in seq:
+        if isinstance(opt, str):
+            continue
+        for alias in opt['aliases']:
+            ans[alias] = opt
+    return ans
+
+
 def complete_remote_command(ans: Completions, cmd_name: str, words: Sequence[str], new_word: bool) -> None:
     aliases, alias_map = options_for_cmd(cmd_name)
-    if not alias_map:
+    try:
+        args_completion = command_for_name(cmd_name).args_completion
+    except KeyError:
         return
-    args_completion = command_for_name(cmd_name).args_completion
     args_completer: CompleteArgsFunc = basic_option_arg_completer
     if args_completion:
         if 'files' in args_completion:
@@ -715,6 +725,19 @@ def remote_args_completer(title: str, words: Iterable[str]) -> CompleteArgsFunc:
     return complete_names_for_arg
 
 
+def remote_command_completer(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
+    if opt is None:
+        words = unknown_args.words[unknown_args.pos:]
+        new_word = unknown_args.new_word
+        if not words or (len(words) == 1 and not new_word):
+            prefix = (words or ('',))[0]
+            ans.add_match_group('Remote control commands', {c: '' for c in remote_control_command_names() if c.startswith(prefix)})
+        else:
+            complete_remote_command(ans, words[0], words[1:], new_word)
+    else:
+        basic_option_arg_completer(ans, opt, prefix, unknown_args)
+
+
 def config_file_predicate(filename: str) -> bool:
     return filename.endswith('.conf')
 
@@ -776,11 +799,7 @@ def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterabl
         kitty_cli_opts(ans, prefix)
         return ans
     if words[0] == '@':
-        if len(words) == 1 or (len(words) == 2 and not new_word):
-            prefix = words[1] if len(words) > 1 else ''
-            ans.add_match_group('Remote control commands', {c: '' for c in remote_control_command_names() if c.startswith(prefix)})
-        else:
-            complete_remote_command(ans, words[1], words[2:], new_word)
+        complete_alias_map(ans, words[1:], new_word, global_options_for_remote_cmd(), remote_command_completer)
         return ans
     if words[0].startswith('@'):
         if len(words) == 1 and not new_word:
@@ -788,6 +807,7 @@ def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterabl
             ans.add_match_group('Remote control commands', {f'@{c}': '' for c in remote_control_command_names() if c.startswith(prefix)})
         else:
             complete_remote_command(ans, words[0][1:], words[1:], new_word)
+        return ans
     if words[0] == '+':
         if len(words) == 1 or (len(words) == 2 and not new_word):
             prefix = words[1] if len(words) > 1 else ''
