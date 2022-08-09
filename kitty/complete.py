@@ -17,7 +17,7 @@ from .cli import (
     OptionDict, OptionSpecSeq, options_for_completion, parse_option_spec,
     prettify
 )
-from .constants import shell_integration_dir
+from .constants import shell_integration_dir, config_dir
 from .fast_data_types import truncate_point_for_length, wcswidth
 from .rc.base import all_command_names, command_for_name
 from .shell import options_for_cmd
@@ -395,12 +395,6 @@ def complete_kitty_cli_arg(ans: Completions, opt: Optional[OptionDict], prefix: 
             return x.lower().endswith('.conf')
 
         complete_files_and_dirs(ans, prefix, files_group_name='Config files', predicate=is_conf_file)
-    elif dest == 'session':
-        complete_files_and_dirs(ans, prefix, files_group_name='Session files')
-    elif dest == 'watcher':
-        complete_files_and_dirs(ans, prefix, files_group_name='Watcher files')
-    elif dest == 'directory':
-        complete_dirs(ans, prefix)
     elif dest == 'listen_on':
         if ':' not in prefix:
             k = 'Address type'
@@ -564,9 +558,98 @@ def complete_files_and_dirs(
         ans.add_match_group(files_group_name, files, is_files=True)
 
 
+def filter_files_from_completion_spec(spec: Dict[str, str]) -> Callable[['os.DirEntry[str]', str], bool]:
+
+    if 'ext' in spec:
+        extensions = frozenset(os.extsep + x.lower() for x in spec['ext'].split(','))
+    else:
+        extensions = frozenset()
+
+    if 'mime' in spec:
+        from fnmatch import translate
+        import re
+        mimes = tuple(re.compile(translate(x)) for x in spec['mime'].split(','))
+        from .guess_mime_type import guess_type
+    else:
+        mimes = ()
+
+    if mimes or extensions:
+        def check_file(x: 'os.DirEntry[str]', result: str) -> bool:
+            if extensions:
+                q = result.lower()
+                for ext in extensions:
+                    if q.endswith(ext):
+                        return True
+            if mimes:
+                mq = guess_type(result)
+                if mq:
+                    for mime in mimes:
+                        if mime.match(mq):
+                            return True
+            return False
+    else:
+        def check_file(x: 'os.DirEntry[str]', result: str) -> bool:
+            return True
+
+    return check_file
+
+
+def complete_file_path(ans: Completions, spec: Dict[str, str], prefix: str, only_dirs: bool = False) -> None:
+    prefix = prefix.replace(r'\ ', ' ')
+    relative_to = spec.get('relative', '')
+    if relative_to:
+        if relative_to == 'conf':
+            relative_to = config_dir
+    else:
+        relative_to = os.getcwd()
+    src_dir = relative_to
+    check_against = prefix
+    prefix_result_with = prefix
+    files, dirs = [], []
+    if prefix:
+        expanded_prefix = os.path.expandvars(os.path.expanduser(prefix))
+        check_against = os.path.basename(expanded_prefix)
+        prefix_result_with = os.path.dirname(expanded_prefix).rstrip(os.sep) + os.sep
+        if os.path.isabs(expanded_prefix):
+            src_dir = os.path.dirname(expanded_prefix)
+        elif os.sep in expanded_prefix or (os.altsep and os.altsep in expanded_prefix):
+            src_dir = os.path.join(relative_to, os.path.dirname(expanded_prefix))
+        else:
+            prefix_result_with = ''
+    try:
+        items: Iterable['os.DirEntry[str]'] = os.scandir(src_dir)
+    except OSError:
+        items = ()
+    check_file = filter_files_from_completion_spec(spec)
+    for x in items:
+        if not x.name.startswith(check_against):
+            continue
+        result = prefix_result_with + x.name
+        if x.is_dir():
+            dirs.append(result.rstrip(os.sep) + os.sep)
+        else:
+            if check_file(x, result):
+                files.append(result)
+    if dirs:
+        ans.add_match_group('Directories', dirs, trailing_space=False, is_files=True)
+    if not only_dirs and files:
+        ans.add_match_group(spec.get('group') or 'Files', files, is_files=True)
+
+
+def complete_path(ans: Completions, opt: OptionDict, prefix: str) -> None:
+    spec = opt['completion']
+    t = spec.get('type', 'file')
+    if t == 'file':
+        complete_file_path(ans, spec, prefix)
+    elif t == 'directory':
+        complete_file_path(ans, spec, prefix, only_dirs=True)
+
+
 def complete_basic_option_args(ans: Completions, opt: OptionDict, prefix: str) -> None:
     if opt['choices']:
         ans.add_match_group(f'Choices for {opt["dest"]}', tuple(k for k in opt['choices'] if k.startswith(prefix)))
+    elif opt['type'] == 'path':
+        complete_path(ans, opt, prefix)
 
 
 def complete_dirs(ans: Completions, prefix: str = '') -> None:

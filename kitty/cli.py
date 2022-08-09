@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
+import shlex
 import sys
 from collections import deque
 from typing import (
@@ -26,6 +27,7 @@ class OptionDict(TypedDict):
     type: str
     default: Optional[str]
     condition: bool
+    completion: Dict[str, str]
 
 
 CONFIG_HELP = '''\
@@ -172,7 +174,7 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
     mpat = re.compile('([a-z]+)=(.+)')
     current_cmd: OptionDict = {
         'dest': '', 'aliases': frozenset(), 'help': '', 'choices': frozenset(),
-        'type': '', 'condition': False, 'default': None
+        'type': '', 'condition': False, 'default': None, 'completion': {},
     }
     empty_cmd = current_cmd
 
@@ -189,7 +191,7 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
                 current_cmd = {
                     'dest': parts[0][2:].replace('-', '_'), 'aliases': frozenset(parts), 'help': '',
                     'choices': frozenset(), 'type': '',
-                    'default': None, 'condition': True
+                    'default': None, 'condition': True, 'completion': {}
                 }
                 state = METADATA
                 continue
@@ -212,6 +214,11 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
                         current_cmd['dest'] = v
                     elif k == 'condition':
                         current_cmd['condition'] = bool(eval(v))
+                    elif k == 'completion':
+                        cv = current_cmd['completion'] = {}
+                        for x in shlex.split(v):
+                            ck, vv = x.split(':', 1)
+                            cv[ck] = vv
         elif state is HELP:
             if line:
                 spc = '' if current_cmd['help'].endswith('\n') else ' '
@@ -444,6 +451,8 @@ def as_type_stub(seq: OptionSpecSeq, disabled: OptionSpecSeq, class_name: str, e
                 t = 'typing.Optional[str]'
         elif otype == 'list':
             t = 'typing.Sequence[str]'
+        elif otype == 'path':
+            t = 'str'
         elif otype in ('choice', 'choices'):
             if opt['choices']:
                 t = 'typing.Literal[{}]'.format(','.join(f'{x!r}' for x in opt['choices']))
@@ -525,6 +534,8 @@ class Options:
             if val not in choices:
                 raise SystemExit('{} is not a valid value for the {} option. Valid values are: {}'.format(
                     val, emph(alias), ', '.join(choices)))
+            self.values_map[name] = val
+        elif typ == 'path':
             self.values_map[name] = val
         elif typ in nmap:
             f = nmap[typ]
@@ -616,6 +627,8 @@ Syntax: :italic:`name=value`. For example: :option:`{appname} -o` font_size=20
 
 --directory --working-directory -d
 default=.
+type=path
+completion=type:directory
 Change to the specified directory when launching.
 
 
@@ -626,9 +639,12 @@ Detach from the controlling terminal, if any.
 
 
 --session
+type=path
+completion=ext:session relative:conf group:"Session files"
 Path to a file containing the startup :italic:`session` (tabs, windows, layout,
 programs). Use - to read from STDIN. See the :file:`README` file for details and
-an example.
+an example. Environment variables are expanded, relative paths are resolved relative
+to the kitty configuration directory.
 
 
 --hold
@@ -732,6 +748,8 @@ present in the main font.
 
 
 --watcher
+type=path
+completion=ext:py relative:conf group:"Watcher files"
 This option is deprecated in favor of the :opt:`watcher` option in
 :file:`{conf_name}.conf` and should not be used.
 
