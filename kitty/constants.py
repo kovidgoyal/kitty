@@ -28,6 +28,7 @@ _plat = sys.platform.lower()
 is_macos: bool = 'darwin' in _plat
 is_freebsd: bool = 'freebsd' in _plat
 is_running_from_develop: bool = False
+RC_ENCRYPTION_PROTOCOL_VERSION = '1'
 if getattr(sys, 'frozen', False):
     extensions_dir: str = getattr(sys, 'kitty_run_data')['extensions_dir']
 
