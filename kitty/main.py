@@ -324,7 +324,7 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
     if not cli_opts.listen_on and opts.listen_on.startswith('unix:'):
         cli_opts.listen_on = opts.listen_on
         from_config_file = True
-    if cli_opts.listen_on and opts.allow_remote_control != 'n':
+    if cli_opts.listen_on:
         cli_opts.listen_on = expand_listen_on(cli_opts.listen_on, from_config_file)
         os.environ['KITTY_LISTEN_ON'] = cli_opts.listen_on
     env = opts.env.copy()

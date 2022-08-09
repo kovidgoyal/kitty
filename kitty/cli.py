@@ -684,9 +684,7 @@ also use abstract UNIX sockets, not associated with a file, like this:
 expanded and relative paths are resolved with respect to the temporary
 directory. To control kitty, you can send commands to it with
 :italic:`{appname} @` using the :option:`{appname} @ --to` option to specify
-this address. Unless you enabled :opt:`allow_remote_control` in
-:file:`{conf_name}.conf`, this option will be ignored. Note that if you run
-:italic:`{appname} @` within a kitty window, there is
+this address. Note that if you run :italic:`{appname} @` within a kitty window, there is
 no need to specify the :option:`{appname} @ --to` option as it will
 automatically read from the environment. For UNIX sockets, this can also be
 specified in :file:`{conf_name}.conf`.

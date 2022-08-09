@@ -2739,8 +2739,7 @@ socket. This option accepts only UNIX sockets, such as
 variables are expanded and relative paths are resolved with respect to the
 temporary directory. If :code:`{kitty_pid}` is present, then it is replaced
 by the PID of the kitty process, otherwise the PID of the kitty process is
-appended to the value, with a hyphen. This option is ignored unless you also set
-:opt:`allow_remote_control` to enable remote control. See the help for
+appended to the value, with a hyphen. See the help for
 :option:`kitty --listen-on` for more details. Changing this option by reloading
 the config is not supported.
 '''

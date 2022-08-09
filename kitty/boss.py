@@ -256,7 +256,7 @@ class Boss:
         # we dont allow reloading the config file to change
         # allow_remote_control
         self.allow_remote_control = opts.allow_remote_control
-        if args.listen_on and (self.allow_remote_control in ('y', 'socket-only')):
+        if args.listen_on:
             listen_fd = listen_on(args.listen_on)
         self.prewarm = prewarm
         self.child_monitor = ChildMonitor(
