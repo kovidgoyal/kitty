@@ -660,11 +660,10 @@ def complete_kitten(ans: Completions, kitten: str, words: Sequence[str], new_wor
     options = cd['options']()
     seq = parse_option_spec(options)[0]
     option_map = {}
-    if not new_word:
-        for opt in seq:
-            if not isinstance(opt, str):
-                for alias in opt['aliases']:
-                    option_map[alias] = opt
+    for opt in seq:
+        if not isinstance(opt, str):
+            for alias in opt['aliases']:
+                option_map[alias] = opt
     complete_alias_map(ans, words, new_word, option_map, {
         'icat': complete_icat_args,
         'diff': complete_diff_args,
