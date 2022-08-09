@@ -451,8 +451,6 @@ def as_type_stub(seq: OptionSpecSeq, disabled: OptionSpecSeq, class_name: str, e
                 t = 'typing.Optional[str]'
         elif otype == 'list':
             t = 'typing.Sequence[str]'
-        elif otype == 'path':
-            t = 'str'
         elif otype in ('choice', 'choices'):
             if opt['choices']:
                 t = 'typing.Literal[{}]'.format(','.join(f'{x!r}' for x in opt['choices']))
@@ -535,8 +533,6 @@ class Options:
                 raise SystemExit('{} is not a valid value for the {} option. Valid values are: {}'.format(
                     val, emph(alias), ', '.join(choices)))
             self.values_map[name] = val
-        elif typ == 'path':
-            self.values_map[name] = val
         elif typ in nmap:
             f = nmap[typ]
             try:
@@ -616,6 +612,7 @@ are running a program that does not set titles.
 
 --config -c
 type=list
+completion=type:file ext:conf group:"Config files"
 {config_help}
 
 
@@ -627,7 +624,6 @@ Syntax: :italic:`name=value`. For example: :option:`{appname} -o` font_size=20
 
 --directory --working-directory -d
 default=.
-type=path
 completion=type:directory
 Change to the specified directory when launching.
 
@@ -639,8 +635,7 @@ Detach from the controlling terminal, if any.
 
 
 --session
-type=path
-completion=ext:session relative:conf group:"Session files"
+completion=type:file ext:session relative:conf group:"Session files"
 Path to a file containing the startup :italic:`session` (tabs, windows, layout,
 programs). Use - to read from STDIN. See the :file:`README` file for details and
 an example. Environment variables are expanded, relative paths are resolved relative
@@ -748,8 +743,7 @@ present in the main font.
 
 
 --watcher
-type=path
-completion=ext:py relative:conf group:"Watcher files"
+completion=type:file ext:py relative:conf group:"Watcher files"
 This option is deprecated in favor of the :opt:`watcher` option in
 :file:`{conf_name}.conf` and should not be used.
 

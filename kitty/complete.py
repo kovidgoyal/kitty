@@ -386,14 +386,6 @@ def complete_kitty_cli_arg(ans: Completions, opt: Optional[OptionDict], prefix: 
         from kitty.config import option_names_for_completion
         k = 'Config directives'
         ans.add_match_group(k, {k+'=': '' for k in option_names_for_completion() if k.startswith(prefix)}, trailing_space=False)
-    elif dest == 'config':
-
-        def is_conf_file(x: str) -> bool:
-            if os.path.isdir(x):
-                return True
-            return x.lower().endswith('.conf')
-
-        complete_files_and_dirs(ans, prefix, files_group_name='Config files', predicate=is_conf_file)
     elif dest == 'listen_on':
         if ':' not in prefix:
             k = 'Address type'
@@ -644,7 +636,7 @@ def complete_file_path(ans: Completions, spec: Dict[str, str], prefix: str, only
 
 def complete_path(ans: Completions, opt: OptionDict, prefix: str) -> None:
     spec = opt['completion']
-    t = spec.get('type', 'file')
+    t = spec['type']
     if t == 'file':
         complete_file_path(ans, spec, prefix)
     elif t == 'directory':
@@ -654,7 +646,7 @@ def complete_path(ans: Completions, opt: OptionDict, prefix: str) -> None:
 def complete_basic_option_args(ans: Completions, opt: OptionDict, prefix: str) -> None:
     if opt['choices']:
         ans.add_match_group(f'Choices for {opt["dest"]}', tuple(k for k in opt['choices'] if k.startswith(prefix)))
-    elif opt['type'] == 'path':
+    elif opt['completion'].get('type') in ('file', 'directory'):
         complete_path(ans, opt, prefix)
 
 

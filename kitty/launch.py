@@ -201,7 +201,7 @@ use the title of the current OS window, if any.
 
 --logo
 type=path
-completion=ext:png group:"PNG images" relative:conf
+completion=type:file ext:png group:"PNG images" relative:conf
 Path to a PNG image to use as the logo for the newly created window. See
 :opt:`window_logo_path`. Relative paths are resolved from the kitty configuration directory.
 
@@ -228,6 +228,7 @@ from, or specify them individually, for example: :code:`--color background=white
 
 --watcher -w
 type=list
+completion=type:file ext:py relative:conf group:"Python scripts"
 Path to a Python file. Appropriately named functions in this file will be called
 for various events, such as when the window is resized, focused or closed. See
 the section on watchers in the launch command documentation: :ref:`watchers`.
