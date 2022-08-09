@@ -250,6 +250,7 @@ class Child:
         env['TERM'] = fast_data_types.get_options().term
         env['COLORTERM'] = 'truecolor'
         env['KITTY_PID'] = getpid()
+        env['KITTY_PUBLIC_KEY'] = fast_data_types.get_boss().encryption_public_key
         if not self.is_prewarmed:
             env['KITTY_PREWARM_SOCKET'] = fast_data_types.get_boss().prewarm.socket_env_var()
             env['KITTY_PREWARM_SOCKET_REAL_TTY'] = ' ' * 32

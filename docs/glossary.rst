@@ -135,6 +135,10 @@ Variables that kitty sets when running child programs
    is running. Allows programs to tell kitty to reload its config by sending it
    the SIGUSR1 signal.
 
+.. envvar:: KITTY_PUBLIC_KEY
+
+   A public key that programs can use to communicate securely with kitty using
+   the remote control protocol.
 
 .. envvar:: KITTY_PREWARM_SOCKET
 

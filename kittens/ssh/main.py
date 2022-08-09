@@ -171,6 +171,8 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
         env['KITTY_LOGIN_CWD'] = ssh_opts.cwd
     if ssh_opts.remote_kitty != 'no':
         env['KITTY_REMOTE'] = ssh_opts.remote_kitty
+    if os.environ.get('KITTY_PUBLIC_KEY'):
+        env['KITTY_PUBLIC_KEY'] = os.environ['KITTY_PUBLIC_KEY']
     env_script = serialize_env(literal_env, env, base_env, for_python=compression != 'gz')
     buf = io.BytesIO()
     with tarfile.open(mode=f'w:{compression}', fileobj=buf, encoding='utf-8') as tf:

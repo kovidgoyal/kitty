@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import atexit
+import base64
 import json
 import os
 import re
@@ -22,23 +23,23 @@ from .cli_stub import CLIOptions
 from .conf.utils import BadLine, KeyAction, to_cmdline
 from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
-    appname, cache_dir, clear_handled_signals, config_dir, handled_signals,
-    is_macos, is_wayland, kitty_exe, logo_png_file, supports_primary_selection,
-    website_url
+    RC_ENCRYPTION_PROTOCOL_VERSION, appname, cache_dir, clear_handled_signals,
+    config_dir, handled_signals, is_macos, is_wayland, kitty_exe,
+    logo_png_file, supports_primary_selection, website_url
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
     GLFW_MOD_SUPER, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS,
     IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED, ChildMonitor, Color,
-    KeyEvent, add_timer, apply_options_update, background_opacity_of,
-    change_background_opacity, change_os_window_state, cocoa_set_menubar_title,
-    create_os_window, current_application_quit_request, current_os_window,
-    destroy_global_data, focus_os_window, get_boss, get_clipboard_string,
-    get_options, get_os_window_size, global_font_size,
-    mark_os_window_for_close, os_window_font_size, patch_global_colors,
-    redirect_mouse_handling, ring_bell, safe_pipe,
-    set_application_quit_request, set_background_image, set_boss,
-    set_clipboard_string, set_in_sequence_mode, set_options,
+    EllipticCurveKey, KeyEvent, add_timer, apply_options_update,
+    background_opacity_of, change_background_opacity, change_os_window_state,
+    cocoa_set_menubar_title, create_os_window,
+    current_application_quit_request, current_os_window, destroy_global_data,
+    focus_os_window, get_boss, get_clipboard_string, get_options,
+    get_os_window_size, global_font_size, mark_os_window_for_close,
+    os_window_font_size, patch_global_colors, redirect_mouse_handling,
+    ring_bell, safe_pipe, set_application_quit_request, set_background_image,
+    set_boss, set_clipboard_string, set_in_sequence_mode, set_options,
     set_os_window_size, set_os_window_title, thread_write, toggle_fullscreen,
     toggle_maximized, toggle_secure_input
 )
@@ -234,6 +235,8 @@ class Boss:
     ):
         set_layout_options(opts)
         self.update_check_started = False
+        self.encryption_key = EllipticCurveKey()
+        self.encryption_public_key = f'{RC_ENCRYPTION_PROTOCOL_VERSION}:{base64.b85encode(self.encryption_key.public).decode("ascii")}'
         self.clipboard_buffers: Dict[str, str] = {}
         self.update_check_process: Optional['PopenType[bytes]'] = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
