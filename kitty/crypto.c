@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include "cross-platform-random.h"
 
 #include <openssl/evp.h>
 #include <openssl/ec.h>
@@ -267,7 +268,7 @@ new_aes256gcmencrypt(PyTypeObject *type, PyObject *args, PyObject *kwds UNUSED) 
     if (!self) return NULL;
     if (!(self->ctx = EVP_CIPHER_CTX_new())) { Py_CLEAR(self); return set_error_from_openssl("Failed to allocate encryption context"); }
     if (!(self->iv = PyBytes_FromStringAndSize(NULL, EVP_CIPHER_iv_length(cipher)))) { Py_CLEAR(self); return NULL; }
-    if (1 != RAND_bytes((unsigned char*)PyBytes_AS_STRING(self->iv), PyBytes_GET_SIZE(self->iv))) { Py_CLEAR(self); return NULL; }
+    if (!secure_random_bytes((unsigned char*)PyBytes_AS_STRING(self->iv), PyBytes_GET_SIZE(self->iv))) { Py_CLEAR(self); return NULL; }
     if (!(self->tag = PyBytes_FromStringAndSize(NULL, 0))) { Py_CLEAR(self); return NULL; }
     if (1 != EVP_EncryptInit_ex(self->ctx, EVP_aes_256_gcm(), NULL, key->secret, (const unsigned char*)PyBytes_AS_STRING(self->iv))) {
         Py_CLEAR(self); return set_error_from_openssl("Failed to initialize encryption context"); }
