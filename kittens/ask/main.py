@@ -6,7 +6,7 @@ import re
 import sys
 from contextlib import suppress
 from typing import (
-    TYPE_CHECKING, Callable, Dict, List, NamedTuple, Optional, Tuple
+    TYPE_CHECKING, Callable, Dict, Iterator, List, NamedTuple, Optional, Tuple
 )
 
 from kitty.cli import parse_args
@@ -230,29 +230,30 @@ class Choose(Handler):
     def finalize(self) -> None:
         self.cmd.set_cursor_visible(True)
 
-    def draw_long_text(self, text: str) -> int:
+    def draw_long_text(self, text: str) -> Iterator[str]:
         if not text:
-            self.print('')
-            return 1
-        y = 0
+            yield ''
+            return
         width = self.screen_size.cols - 2
         m = self.prefix_style_pat.match(text)
         prefix = m.group() if m else ''
         while text:
             t, text = truncate_at_space(text, width)
             t = t.strip()
-            self.print(' ' * extra_for(wcswidth(t), width), styled(prefix + t, bold=True), sep='')
-            y += 1
-        return y
+            yield ' ' * extra_for(wcswidth(t), width) + styled(prefix + t, bold=True)
 
     @Handler.atomic_update
     def draw_screen(self) -> None:
         self.cmd.clear_screen()
-        y = max(0, self.screen_size.rows // 2 - 2)
-        self.print(end='\r\n'*y)
+        msg_lines: List[str] = []
         if self.cli_opts.message:
             for line in self.cli_opts.message.splitlines():
-                y += self.draw_long_text(line)
+                msg_lines.extend(self.draw_long_text(line))
+        y = self.screen_size.rows - len(msg_lines)
+        y = max(0, (y // 2) - 2)
+        self.print(end='\r\n'*y)
+        for line in msg_lines:
+            self.print(line)
         if self.screen_size.rows > 2:
             self.print()
             y += 1
@@ -267,7 +268,8 @@ class Choose(Handler):
         current_line_length = 0
         current_line: List[Tuple[str, str]] = []
         lines: List[List[Tuple[str, str]]] = []
-        sep, sep_sz = '  ', 2
+        sep = '  '
+        sep_sz = len(sep) + 2  # for the borders
 
         for choice in choices:
             self.clickable_ranges[choice.letter] = []
@@ -280,7 +282,7 @@ class Choose(Handler):
                 current_line = []
                 current_line_length = 0
             current_line.append((choice.letter, text))
-            current_line_length += sz
+            current_line_length += sz + sep_sz
         if current_line:
             lines.append(current_line)
 
@@ -319,10 +321,12 @@ class Choose(Handler):
             self.print(' ' * offset, line, sep='', end='' if is_last else '\r\n')
             y += 1
 
+        self.cmd.set_line_wrapping(False)
         for boxed_line in lines:
             print_line(top, *boxed_line)
             print_line(middle, *boxed_line)
             print_line(bottom, *boxed_line, is_last=boxed_line is lines[-1])
+        self.cmd.set_line_wrapping(True)
 
     def draw_choice(self, y: int) -> None:
         if y + 3 <= self.screen_size.rows:
