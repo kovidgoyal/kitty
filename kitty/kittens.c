@@ -54,6 +54,7 @@ read_response(int fd, monotonic_t timeout, PyObject *ans) {
         switch(state) {
             case START:
                 if (ch == 0x1b) state = STARTING_ESC;
+                if (ch == 0x03) { PyErr_SetString(PyExc_KeyboardInterrupt, "User pressed Ctrl-c"); return false; }
                 break;
 #define CASE(curr, q, next) case curr: state = ch == q ? next : START; break;
             CASE(STARTING_ESC, 'P', P);

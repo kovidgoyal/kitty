@@ -467,8 +467,15 @@ def main(args: List[str]) -> None:
         original_send_cmd['cancel_async'] = True
         if encrypter is not None:
             send = encrypter(original_send_cmd)
-        do_io(global_opts.to, send, True, 10)
+        try:
+            do_io(global_opts.to, send, True, 10)
+        except KeyboardInterrupt:
+            sys.excepthook = lambda *a: print('Interrupted by user', file=sys.stderr)
+            raise
         raise SystemExit(f'Timed out after {response_timeout} seconds waiting for response from kitty')
+    except KeyboardInterrupt:
+        sys.excepthook = lambda *a: print('Interrupted by user', file=sys.stderr)
+        raise
     if no_response:
         return
     if not response.get('ok'):
