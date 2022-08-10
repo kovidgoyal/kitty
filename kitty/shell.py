@@ -8,9 +8,7 @@ import sys
 import traceback
 from contextlib import suppress
 from functools import lru_cache
-from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple
-)
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
 
 from kittens.tui.operations import set_cursor_shape, set_window_title
 
@@ -23,6 +21,9 @@ from .constants import cache_dir, kitty_face
 from .rc.base import (
     ParsingOfArgsFailed, RemoteCommand, all_command_names, command_for_name,
     display_subcommand_help, parse_subcommand_cli
+)
+from .remote_control import (
+    CommandEncrypter, NoEncryption, create_basic_command, do_io
 )
 from .types import run_once
 
@@ -145,32 +146,24 @@ def print_help(which: Optional[str] = None) -> None:
 
 def run_cmd(
     global_opts: RCOptions, cmd: str, func: RemoteCommand, opts: Any, items: List[str],
-    encrypter: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None
+    encrypter: CommandEncrypter = NoEncryption()
 ) -> None:
-    from .remote_control import (
-        adjust_response_timeout_for_password, create_basic_command, do_io
-    )
     print(end=set_window_title(cmd) + output_prefix, flush=True)
     payload = func.message_to_kitty(global_opts, opts, items)
     no_response = func.no_response
     if hasattr(opts, 'no_response'):
         no_response = opts.no_response
     send = original_send_cmd = create_basic_command(cmd, payload=payload, is_asynchronous=func.is_asynchronous, no_response=no_response)
-    if encrypter is not None:
-        send = encrypter(original_send_cmd)
     response_timeout = func.response_timeout
     if hasattr(opts, 'response_timeout'):
         response_timeout = opts.response_timeout
-    if encrypter is not None:
-        response_timeout = adjust_response_timeout_for_password(response_timeout)
+    response_timeout = encrypter.adjust_response_timeout_for_password(response_timeout)
     try:
-        response = do_io(global_opts.to, send, no_response, response_timeout)
+        response = do_io(global_opts.to, send, no_response, response_timeout, encrypter)
     except TimeoutError:
         original_send_cmd.pop('payload', None)
         original_send_cmd['cancel_async'] = True
-        if encrypter is not None:
-            send = encrypter(original_send_cmd)
-        do_io(global_opts.to, send, True, 10)
+        do_io(global_opts.to, send, True, 10, encrypter)
         print_err(f'Timed out after {response_timeout} seconds waiting for response from kitty')
         return
     if not response.get('ok'):
@@ -182,7 +175,7 @@ def run_cmd(
         print(response['data'])
 
 
-def real_main(global_opts: RCOptions, encrypter: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None) -> None:
+def real_main(global_opts: RCOptions, encrypter: CommandEncrypter = NoEncryption()) -> None:
     init_readline()
     print_help_for_seq.allow_pager = False
     print('Welcome to the kitty shell!')
@@ -259,7 +252,7 @@ def real_main(global_opts: RCOptions, encrypter: Optional[Callable[[Dict[str, An
                 continue
 
 
-def main(global_opts: RCOptions, encrypter: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None) -> None:
+def main(global_opts: RCOptions, encrypter: CommandEncrypter = NoEncryption()) -> None:
     try:
         with Completer():
             real_main(global_opts, encrypter)
