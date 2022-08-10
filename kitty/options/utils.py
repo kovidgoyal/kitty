@@ -675,14 +675,14 @@ def config_or_absolute_path(x: str, env: Optional[Dict[str, str]] = None) -> Opt
     return resolve_abs_or_config_path(x, env)
 
 
-def remote_control_password(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, Tuple[str, ...]]]:
+def remote_control_password(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, FrozenSet[str]]]:
     val = val.strip()
     if val:
         parts = to_cmdline(val, expand=False)
         if len(parts) == 1:
-            yield parts[0], ()
+            yield parts[0], frozenset()
         else:
-            yield parts[0], tuple(parts[1:])
+            yield parts[0], frozenset(parts[1:])
 
 
 def allow_remote_control(x: str) -> str:

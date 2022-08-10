@@ -7,11 +7,12 @@ import os
 import re
 import sys
 from contextlib import suppress
-from functools import partial
+from functools import lru_cache, partial
 from time import monotonic, time_ns
 from types import GeneratorType
 from typing import (
-    Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast, TYPE_CHECKING
+    TYPE_CHECKING, Any, Dict, FrozenSet, Iterable, Iterator, List, Optional,
+    Tuple, Union, cast
 )
 
 from .cli import emph, parse_args
@@ -19,7 +20,7 @@ from .cli_stub import RCOptions
 from .constants import RC_ENCRYPTION_PROTOCOL_VERSION, appname, version
 from .fast_data_types import (
     AES256GCMDecrypt, AES256GCMEncrypt, EllipticCurveKey, get_boss,
-    read_command_response, send_data_to_peer
+    get_options, read_command_response, send_data_to_peer
 )
 from .rc.base import (
     NoResponse, ParsingOfArgsFailed, PayloadGetter, all_command_names,
@@ -53,8 +54,8 @@ def parse_cmd(serialized_cmd: str, encryption_key: EllipticCurveKey) -> Dict[str
         pubkey = pcmd.get('pubkey', '')
         if not pubkey:
             log_error('Ignoring encrypted rc command without a public key')
-        d = AES256GCMDecrypt(encryption_key.derive_secret(base64.b85decode(pubkey)), pcmd['iv'], pcmd['tag'])
-        data = d.add_data_to_be_decrypted(base64.b85decode(pcmd['encrypted']), finished=True)
+        d = AES256GCMDecrypt(encryption_key.derive_secret(base64.b85decode(pubkey)), base64.b85decode(pcmd['iv']), base64.b85decode(pcmd['tag']))
+        data = d.add_data_to_be_decrypted(base64.b85decode(pcmd['encrypted']), True)
         pcmd = json.loads(data)
         if not isinstance(pcmd, dict) or 'version' not in pcmd:
             return {}
@@ -73,30 +74,37 @@ class CMDChecker:
         return False
 
 
+@lru_cache(maxsize=64)
+def is_cmd_allowed_loader(path: str) -> CMDChecker:
+    import runpy
+    try:
+        m = runpy.run_path(path)
+        func: CMDChecker = m['is_cmd_allowed']
+    except Exception as e:
+        log_error(f'Failed to load cmd check function from {path} with error: {e}')
+        func = CMDChecker()
+    return func
+
+
+@lru_cache(maxsize=1024)
+def fnmatch_pattern(pat: str) -> 're.Pattern[str]':
+    from fnmatch import translate
+    return re.compile(translate(pat))
+
+
 class PasswordAuthorizer:
 
-    def __init__(self, password: str, auth_items: Tuple[str, ...]) -> None:
-        from fnmatch import translate
-        import runpy
-        self.password = password
+    def __init__(self, auth_items: FrozenSet[str]) -> None:
         self.command_patterns = []
         self.function_checkers = []
-        self.user_permission: Optional[bool] = None
         for item in auth_items:
             if item.endswith('.py'):
-                path = resolve_custom_file(item)
-                try:
-                    m = runpy.run_path(path)
-                    func: CMDChecker = m['is_cmd_allowed']
-                except Exception as e:
-                    log_error(f'Failed to load cmd check function from {path} with error: {e}')
-                    self.function_checkers.append(CMDChecker())
-                else:
-                    self.function_checkers.append(func)
+                path = os.path.abspath(resolve_custom_file(item))
+                self.function_checkers.append(is_cmd_allowed_loader(path))
             else:
-                self.command_patterns.append(re.compile(translate(item)))
+                self.command_patterns.append(fnmatch_pattern(item))
 
-    def is_cmd_allowed(self, pcmd: Dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: Dict[str, Any]) -> Optional[bool]:
+    def is_cmd_allowed(self, pcmd: Dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: Dict[str, Any]) -> bool:
         cmd_name = pcmd.get('cmd')
         if not cmd_name:
             return False
@@ -108,7 +116,33 @@ class PasswordAuthorizer:
         for f in self.function_checkers:
             if f(pcmd, window, from_socket, extra_data):
                 return True
-        return self.user_permission
+        return False
+
+
+@lru_cache(maxsize=256)
+def password_authorizer(auth_items: FrozenSet[str]) -> PasswordAuthorizer:
+    return PasswordAuthorizer(auth_items)
+
+
+user_password_allowed: Dict[str, bool] = {}
+
+
+def is_cmd_allowed(pcmd: Dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: Dict[str, Any]) -> Optional[bool]:
+    pw = pcmd.get('password', '')
+    if not pw:
+        return False
+    q = user_password_allowed.get(pw)
+    if q is not None:
+        return q
+    auth_items = get_options().remote_control_password.get(pw)
+    if auth_items is None:
+        return None
+    pa = password_authorizer(auth_items)
+    return pa.is_cmd_allowed(pcmd, window, from_socket, extra_data)
+
+
+def set_user_password_allowed(pwd: str, allowed: bool = True) -> None:
+    user_password_allowed[pwd] = allowed
 
 
 def handle_cmd(boss: BossType, window: Optional[WindowType], cmd: Dict[str, Any], peer_id: int) -> Union[Dict[str, Any], None, AsyncResponse]:
@@ -300,7 +334,7 @@ class CommandEncrypter:
         cmd['timestamp'] = time_ns()
         cmd['password'] = self.password
         raw = json.dumps(cmd).encode('utf-8')
-        encrypted = self.encrypter.add_data_to_be_encrypted(raw, finished=True)
+        encrypted = self.encrypter.add_data_to_be_encrypted(raw, True)
         return {
             'version': version, 'iv': encode_as_base85(self.encrypter.iv), 'tag': encode_as_base85(self.encrypter.tag),
             'pubkey': encode_as_base85(self.pubkey), 'encrypted': encode_as_base85(encrypted), 'enc_proto': self.encryption_version
@@ -358,6 +392,8 @@ def get_password(opts: RCOptions) -> str:
         ans = os.environ.get(opts.password_env, '')
     if not ans and opts.use_password == 'always':
         raise SystemExit('No password was found')
+    if ans and len(ans) > 1024:
+        raise SystemExit('Specified password is too long')
     return ans
 
 

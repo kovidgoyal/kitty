@@ -461,6 +461,8 @@ global_watchers = GlobalWatchers()
 
 class Window:
 
+    window_custom_type: str = ''
+
     def __init__(
         self,
         tab: TabType,

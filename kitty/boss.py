@@ -38,10 +38,10 @@ from .fast_data_types import (
     focus_os_window, get_boss, get_clipboard_string, get_options,
     get_os_window_size, global_font_size, mark_os_window_for_close,
     os_window_font_size, patch_global_colors, redirect_mouse_handling,
-    ring_bell, safe_pipe, set_application_quit_request, set_background_image,
-    set_boss, set_clipboard_string, set_in_sequence_mode, set_options,
-    set_os_window_size, set_os_window_title, thread_write, toggle_fullscreen,
-    toggle_maximized, toggle_secure_input
+    ring_bell, safe_pipe, send_data_to_peer, set_application_quit_request,
+    set_background_image, set_boss, set_clipboard_string, set_in_sequence_mode,
+    set_options, set_os_window_size, set_os_window_title, thread_write,
+    toggle_fullscreen, toggle_maximized, toggle_secure_input
 )
 from .key_encoding import get_name_to_functional_number_map
 from .keys import get_shortcut, shortcut_matches
@@ -66,7 +66,6 @@ from .utils import (
     single_instance, startup_notification_handler, which
 )
 from .window import CommandOutput, CwdRequest, Window
-
 
 RCResponse = Union[Dict[str, Any], None, AsyncResponse]
 
@@ -445,7 +444,7 @@ class Boss:
         self.window_id_map[window.id] = window
 
     def _handle_remote_command(self, cmd: str, window: Optional[Window] = None, peer_id: int = 0) -> RCResponse:
-        from .remote_control import parse_cmd
+        from .remote_control import is_cmd_allowed, parse_cmd
         response = None
         window = window or None
         try:
@@ -460,10 +459,61 @@ class Boss:
             getattr(window, 'allow_remote_control', False))
         if allowed_by_channel:
             return self._execute_remote_command(pcmd, window, peer_id)
+        q = is_cmd_allowed(pcmd, window, peer_id > 0, {})
+        if q is True:
+            return self._execute_remote_command(pcmd, window, peer_id)
+        if q is None:
+            if self.ask_if_remote_cmd_is_allowed(pcmd, window, peer_id):
+                return AsyncResponse()
         no_response = pcmd.get('no_response') or False
         if no_response:
             return None
         return {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control to your kitty.conf'}
+
+    def ask_if_remote_cmd_is_allowed(self, pcmd: Dict[str, Any], window: Optional[Window] = None, peer_id: int = 0) -> bool:
+        from kittens.tui.operations import styled
+        in_flight = 0
+        for w in self.window_id_map.values():
+            if w.window_custom_type == 'remote_command_permission_dialog':
+                in_flight += 1
+                if in_flight > 4:
+                    log_error('Denying remote command permission as there are too many existing permission requests')
+                    return False
+        wid = 0 if window is None else window.id
+        overlay_window = self.choose(
+            _('A program wishes to control kitty.\n\n'
+              'Password: {0}\n' 'Action: {1}\n\n'
+              'Note that allowing the password will allow all future actions using the same password, in this kitty instance.'
+              ).format(styled(pcmd['password'], fg='yellow'), styled(pcmd['cmd'], fg='magenta')),
+            partial(self.remote_cmd_permission_received, pcmd, wid, peer_id),
+            't;green:Allow this request', 'p;yellow:Allow this password', 'r;magenta:Deny this request', 'd;red:Deny this password',
+            window=window, default='t'
+        )
+        if overlay_window is None:
+            return False
+        overlay_window.window_custom_type = 'remote_command_permission_dialog'
+        return True
+
+    def remote_cmd_permission_received(self, pcmd: Dict[str, Any], window_id: int, peer_id: int, choice: str) -> None:
+        from .remote_control import (
+            encode_response_for_peer, set_user_password_allowed
+        )
+        if choice in ('r', 'd'):
+            if choice == 'd':
+                set_user_password_allowed(pcmd['password'], False)
+        elif choice in ('t', 'p'):
+            if choice == 'p':
+                set_user_password_allowed(pcmd['password'], True)
+            window = self.window_id_map.get(window_id)
+            response = self._execute_remote_command(pcmd, window, peer_id)
+            if window is not None and response is not None and not isinstance(response, AsyncResponse):
+                window.send_cmd_response(response)
+            if peer_id > 0:
+                if response is None or isinstance(response, AsyncResponse):
+                    data = b''
+                else:
+                    data = encode_response_for_peer(response)
+                send_data_to_peer(peer_id, data)
 
     def _execute_remote_command(self, pcmd: Dict[str, Any], window: Optional[Window] = None, peer_id: int = 0) -> RCResponse:
         from .remote_control import handle_cmd
@@ -681,7 +731,7 @@ class Boss:
         *choices: str,   # The choices, see the help for the ask kitten for format of a choice
         window: Optional[Window] = None,  # the window associated with the confirmation
         default: str = '',  # the default choice when the user presses Enter
-    ) -> None:
+    ) -> Optional[Window]:
         def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
             callback(res.get('response') or '')
         cmd = ['--type=choices', '--message', msg]
@@ -689,7 +739,10 @@ class Boss:
             cmd += ['-d', default]
         for c in choices:
             cmd += ['-c', c]
-        self.run_kitten_with_metadata('ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''})
+        ans = self.run_kitten_with_metadata('ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''})
+        if isinstance(ans, Window):
+            return ans
+        return None
 
     def get_line(
         self, msg: str,  # can contain newlines and ANSI formatting
