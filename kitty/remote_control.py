@@ -261,11 +261,14 @@ class SocketIO:
     def simple_recv(self, timeout: float) -> bytes:
         dcs = re.compile(br'\x1bP@kitty-cmd([^\x1b]+)\x1b\\')
         self.socket.settimeout(timeout)
+        st = monotonic()
         with self.socket.makefile('rb') as src:
             data = src.read()
         m = dcs.search(data)
         if m is None:
-            raise TimeoutError('Timed out while waiting to read cmd response')
+            if monotonic() - st > timeout:
+                raise TimeoutError('Timed out while waiting to read cmd response')
+            raise EOFError('Remote control connection was closed by kitty without any response being received')
         return bytes(m.group(1))
 
 
