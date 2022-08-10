@@ -465,10 +465,13 @@ class Boss:
         if q is None:
             if self.ask_if_remote_cmd_is_allowed(pcmd, window, peer_id):
                 return AsyncResponse()
+        response = {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control to your kitty.conf'}
+        if q is False:
+            response['error'] = 'The user rejected this password or it is disallowed by remote_control_password in kitty.conf'
         no_response = pcmd.get('no_response') or False
         if no_response:
             return None
-        return {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control to your kitty.conf'}
+        return response
 
     def ask_if_remote_cmd_is_allowed(self, pcmd: Dict[str, Any], window: Optional[Window] = None, peer_id: int = 0) -> bool:
         from kittens.tui.operations import styled
@@ -498,22 +501,26 @@ class Boss:
         from .remote_control import (
             encode_response_for_peer, set_user_password_allowed
         )
+        response: RCResponse = None
+        window = self.window_id_map.get(window_id)
         if choice in ('r', 'd'):
             if choice == 'd':
                 set_user_password_allowed(pcmd['password'], False)
+            no_response = pcmd.get('no_response') or False
+            if not no_response:
+                response = {'ok': False, 'error': 'The user rejected this ' + ('request' if choice == 'r' else 'password')}
         elif choice in ('t', 'p'):
             if choice == 'p':
                 set_user_password_allowed(pcmd['password'], True)
-            window = self.window_id_map.get(window_id)
             response = self._execute_remote_command(pcmd, window, peer_id)
-            if window is not None and response is not None and not isinstance(response, AsyncResponse):
-                window.send_cmd_response(response)
-            if peer_id > 0:
-                if response is None or isinstance(response, AsyncResponse):
-                    data = b''
-                else:
-                    data = encode_response_for_peer(response)
-                send_data_to_peer(peer_id, data)
+        if window is not None and response is not None and not isinstance(response, AsyncResponse):
+            window.send_cmd_response(response)
+        if peer_id > 0:
+            if response is None or isinstance(response, AsyncResponse):
+                data = b''
+            else:
+                data = encode_response_for_peer(response)
+            send_data_to_peer(peer_id, data)
 
     def _execute_remote_command(self, pcmd: Dict[str, Any], window: Optional[Window] = None, peer_id: int = 0) -> RCResponse:
         from .remote_control import handle_cmd
