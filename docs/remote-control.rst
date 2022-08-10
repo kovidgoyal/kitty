@@ -40,7 +40,7 @@ window, etc. See :ref:`kitty @ send-text --help <at_send-text>` for details.
 More usefully, you can pipe the output of a command running in one window to
 another window, for example::
 
-    ls | kitty @ send-text --match title:^Output --stdin
+    ls | kitty @ send-text --match 'title:^Output' --stdin
 
 This will show the output of :program:`ls` in the output window instead of the
 current window. You can use this technique to, for example, show the output of
@@ -49,7 +49,7 @@ are endless.
 
 You can even have things you type show up in a different window. Run::
 
-    kitty @ send-text --match title:^Output --stdin
+    kitty @ send-text --match 'title:^Output' --stdin
 
 And type some text, it will show up in the output window, instead of the current
 window. Type :kbd:`Ctrl+D` when you are ready to stop.
@@ -61,7 +61,7 @@ Now, let's open a new tab::
 This will open a new tab running the bash shell with the title "My Tab".
 We can change the title of the tab to "New Title" with::
 
-   kitty @ set-tab-title --match title:^My New Title
+   kitty @ set-tab-title --match 'title:^My' New Title
 
 Let's change the title of the current tab::
 
@@ -69,12 +69,12 @@ Let's change the title of the current tab::
 
 Now lets switch to the newly opened tab::
 
-   kitty @ focus-tab --match title:^New
+   kitty @ focus-tab --match 'title:^New'
 
 Similarly, to focus the previously opened output window (which will also switch
 back to the old tab, automatically)::
 
-   kitty @ focus-window --match title:^Output
+   kitty @ focus-window --match 'title:^Output'
 
 You can get a listing of available tabs and windows, by running::
 
