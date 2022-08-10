@@ -142,7 +142,7 @@ def libcrypto_flags() -> Tuple[List[str], List[str]]:
 
             def key(x: str) -> str:
                 return x.split('@')[-1]
-            openssl_dirs.sort(key=key)
+            openssl_dirs.sort(key=key, reverse=True)
             extra_pc_dir = os.pathsep.join(openssl_dirs)
         cflags = pkg_config('libcrypto', '--cflags-only-I', extra_pc_dir=extra_pc_dir)
     return cflags, pkg_config('libcrypto', '--libs', extra_pc_dir=extra_pc_dir)
