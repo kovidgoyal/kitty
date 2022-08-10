@@ -402,18 +402,22 @@ def get_password(opts: RCOptions) -> str:
         ans = opts.password
     if not ans and opts.password_file:
         if opts.password_file == '-':
-            ans = sys.stdin.read().strip()
-            try:
-                tty_fd = os.open(os.ctermid(), os.O_RDONLY | os.O_CLOEXEC)
-            except OSError:
-                pass
+            if sys.stdin.isatty():
+                from getpass import getpass
+                ans = getpass()
             else:
-                with open(tty_fd, closefd=True):
-                    os.dup2(tty_fd, sys.stdin.fileno())
+                ans = sys.stdin.read().rstrip()
+                try:
+                    tty_fd = os.open(os.ctermid(), os.O_RDONLY | os.O_CLOEXEC)
+                except OSError:
+                    pass
+                else:
+                    with open(tty_fd, closefd=True):
+                        os.dup2(tty_fd, sys.stdin.fileno())
         else:
             try:
                 with open(resolve_custom_file(opts.password_file)) as f:
-                    ans = f.read().strip()
+                    ans = f.read().rstrip()
             except OSError:
                 pass
     if not ans and opts.password_env:
