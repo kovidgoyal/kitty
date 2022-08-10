@@ -135,11 +135,19 @@ def libcrypto_flags() -> Tuple[List[str], List[str]]:
         cflags = pkg_config('libcrypto', '--cflags-only-I', fatal=False)
     except subprocess.CalledProcessError:
         if is_macos:
-            openssl_dirs = glob.glob('/opt/homebrew/opt/openssl@*/lib/pkgconfig') + glob.glob('/usr/local/opt/openssl@*/lib/pkgconfig')
+            import ssl
+            v = ssl.OPENSSL_VERSION_INFO
+            pats = f'{v[0]}.{v[1]}', f'{v[0]}'
+            for pat in pats:
+                q = f'opt/openssl@{pat}/lib/pkgconfig'
+                openssl_dirs = glob.glob(f'/opt/homebrew/{q}') + glob.glob(f'/usr/local/{q}')
+                if openssl_dirs:
+                    break
+            if not openssl_dirs:
+                raise SystemExit(f'Failed to find OpenSSL version {v[0]}.{v[1]} on your system')
 
             def key(x: str) -> str:
                 return x.split('@')[-1]
-            openssl_dirs.sort(key=key, reverse=True)
             extra_pc_dir = os.pathsep.join(openssl_dirs)
         cflags = pkg_config('libcrypto', '--cflags-only-I', extra_pc_dir=extra_pc_dir)
     return cflags, pkg_config('libcrypto', '--libs', extra_pc_dir=extra_pc_dir)
