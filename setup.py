@@ -17,7 +17,6 @@ import tempfile
 import time
 from contextlib import suppress
 from functools import lru_cache, partial
-from itertools import chain
 from pathlib import Path
 from typing import (
     Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple,
@@ -136,9 +135,7 @@ def libcrypto_flags() -> Tuple[List[str], List[str]]:
         cflags = pkg_config('libcrypto', '--cflags-only-I', fatal=False)
     except subprocess.CalledProcessError:
         if is_macos:
-            openssl_dirs = []
-            for x in chain(glob.glob('/opt/homebrew/opt/openssl@*/lib/pkgconfig'), glob.glob('/usr/local/opt/openssl@*/lib/pkgconfig')):
-                openssl_dirs.append(x)
+            openssl_dirs = glob.glob('/opt/homebrew/opt/openssl@*/lib/pkgconfig') + glob.glob('/usr/local/opt/openssl@*/lib/pkgconfig')
 
             def key(x: str) -> str:
                 return x.split('@')[-1]
