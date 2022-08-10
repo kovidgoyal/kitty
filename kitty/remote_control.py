@@ -408,7 +408,8 @@ def get_password(opts: RCOptions) -> str:
             except OSError:
                 pass
             else:
-                os.dup2(tty_fd, sys.stdin.fileno())
+                with open(tty_fd, closefd=True):
+                    os.dup2(tty_fd, sys.stdin.fileno())
         else:
             try:
                 with open(resolve_custom_file(opts.password_file)) as f:
