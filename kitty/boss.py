@@ -466,7 +466,7 @@ class Boss:
             if self.ask_if_remote_cmd_is_allowed(pcmd, window, peer_id):
                 return AsyncResponse()
         response = {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control to your kitty.conf'}
-        if q is False:
+        if q is False and pcmd.get('password'):
             response['error'] = 'The user rejected this password or it is disallowed by remote_control_password in kitty.conf'
         no_response = pcmd.get('no_response') or False
         if no_response:
