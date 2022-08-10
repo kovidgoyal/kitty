@@ -506,6 +506,7 @@ class Boss:
         )
         response: RCResponse = None
         window = self.window_id_map.get(window_id)
+        choice = choice or 'r'
         if choice in ('r', 'd'):
             if choice == 'd':
                 set_user_password_allowed(pcmd['password'], False)
