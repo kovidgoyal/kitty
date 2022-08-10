@@ -485,12 +485,12 @@ class Boss:
         wid = 0 if window is None else window.id
         overlay_window = self.choose(
             _('A program wishes to control kitty.\n\n'
-              'Password: {0}\n' 'Action: {1}\n\n'
+              'Action: {1}\n' 'Password: {0}\n\n'
               'Note that allowing the password will allow all future actions using the same password, in this kitty instance.'
               ).format(styled(pcmd['password'], fg='yellow'), styled(pcmd['cmd'], fg='magenta')),
             partial(self.remote_cmd_permission_received, pcmd, wid, peer_id),
-            't;green:Allow this request', 'p;yellow:Allow this password', 'r;magenta:Deny this request', 'd;red:Deny this password',
-            window=window, default='t'
+            'a;green:Allow this request', 'p;yellow:Allow this password', 'r;magenta:Deny this request', 'd;red:Deny this password',
+            window=window, default='a'
         )
         if overlay_window is None:
             return False
@@ -509,7 +509,7 @@ class Boss:
             no_response = pcmd.get('no_response') or False
             if not no_response:
                 response = {'ok': False, 'error': 'The user rejected this ' + ('request' if choice == 'r' else 'password')}
-        elif choice in ('t', 'p'):
+        elif choice in ('a', 'p'):
             if choice == 'p':
                 set_user_password_allowed(pcmd['password'], True)
             response = self._execute_remote_command(pcmd, window, peer_id)
