@@ -131,19 +131,19 @@ def libcrypto_flags() -> Tuple[List[str], List[str]]:
     # have an ancient broken system OpenSSL, so we need to check for one
     # installed by all the various macOS package managers.
     extra_pc_dir = ''
-    if is_macos:
-        openssl_dirs = []
-        for x in chain(glob.glob('/opt/homebrew/opt/openssl@*/lib/pkgconfig'), glob.glob('/usr/local/opt/openssl@*/lib/pkgconfig')):
-            openssl_dirs.append(x)
-
-        def key(x: str) -> str:
-            return x.split('@')[-1]
-        openssl_dirs.sort(key=key)
-        extra_pc_dir = os.pathsep.join(openssl_dirs)
 
     try:
         cflags = pkg_config('libcrypto', '--cflags-only-I', fatal=False)
     except subprocess.CalledProcessError:
+        if is_macos:
+            openssl_dirs = []
+            for x in chain(glob.glob('/opt/homebrew/opt/openssl@*/lib/pkgconfig'), glob.glob('/usr/local/opt/openssl@*/lib/pkgconfig')):
+                openssl_dirs.append(x)
+
+            def key(x: str) -> str:
+                return x.split('@')[-1]
+            openssl_dirs.sort(key=key)
+            extra_pc_dir = os.pathsep.join(openssl_dirs)
         cflags = pkg_config('libcrypto', '--cflags-only-I', extra_pc_dir=extra_pc_dir)
     return cflags, pkg_config('libcrypto', '--libs', extra_pc_dir=extra_pc_dir)
 
