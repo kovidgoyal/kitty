@@ -145,9 +145,6 @@ def libcrypto_flags() -> Tuple[List[str], List[str]]:
                     break
             if not openssl_dirs:
                 raise SystemExit(f'Failed to find OpenSSL version {v[0]}.{v[1]} on your system')
-
-            def key(x: str) -> str:
-                return x.split('@')[-1]
             extra_pc_dir = os.pathsep.join(openssl_dirs)
         cflags = pkg_config('libcrypto', '--cflags-only-I', extra_pc_dir=extra_pc_dir)
     return cflags, pkg_config('libcrypto', '--libs', extra_pc_dir=extra_pc_dir)
