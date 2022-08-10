@@ -68,6 +68,9 @@ from .utils import (
 from .window import CommandOutput, CwdRequest, Window
 
 
+RCResponse = Union[Dict[str, Any], None, AsyncResponse]
+
+
 class OSWindowDict(TypedDict):
     id: int
     platform_window_id: Optional[int]
@@ -441,8 +444,8 @@ class Boss:
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
 
-    def _handle_remote_command(self, cmd: str, window: Optional[Window] = None, peer_id: int = 0) -> Union[Dict[str, Any], None, AsyncResponse]:
-        from .remote_control import handle_cmd, parse_cmd
+    def _handle_remote_command(self, cmd: str, window: Optional[Window] = None, peer_id: int = 0) -> RCResponse:
+        from .remote_control import parse_cmd
         response = None
         window = window or None
         try:
@@ -452,18 +455,25 @@ class Boss:
             return response
         if not pcmd:
             return response
-        if self.allow_remote_control == 'y' or peer_id > 0 or getattr(window, 'allow_remote_control', False):
-            try:
-                response = handle_cmd(self, window, pcmd, peer_id)
-            except Exception as err:
-                import traceback
-                response = {'ok': False, 'error': str(err)}
-                if not getattr(err, 'hide_traceback', False):
-                    response['tb'] = traceback.format_exc()
-        else:
-            no_response = pcmd.get('no_response') or False
-            if not no_response:
-                response = {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control to your kitty.conf'}
+        allowed_by_channel = (
+            self.allow_remote_control == 'y' or (peer_id > 0 and self.allow_remote_control == 'socket-only') or
+            getattr(window, 'allow_remote_control', False))
+        if allowed_by_channel:
+            return self._execute_remote_command(pcmd, window, peer_id)
+        no_response = pcmd.get('no_response') or False
+        if no_response:
+            return None
+        return {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control to your kitty.conf'}
+
+    def _execute_remote_command(self, pcmd: Dict[str, Any], window: Optional[Window] = None, peer_id: int = 0) -> RCResponse:
+        from .remote_control import handle_cmd
+        try:
+            response = handle_cmd(self, window, pcmd, peer_id)
+        except Exception as err:
+            import traceback
+            response = {'ok': False, 'error': str(err)}
+            if not getattr(err, 'hide_traceback', False):
+                response['tb'] = traceback.format_exc()
         return response
 
     @ac('misc', '''

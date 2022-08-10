@@ -11,7 +11,7 @@ from functools import partial
 from time import monotonic, time_ns
 from types import GeneratorType
 from typing import (
-    Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
+    Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast, TYPE_CHECKING
 )
 
 from .cli import emph, parse_args
@@ -30,6 +30,8 @@ from .typing import BossType, WindowType
 from .utils import TTYIO, log_error, parse_address_spec, resolve_custom_file
 
 active_async_requests: Dict[str, float] = {}
+if TYPE_CHECKING:
+    from .window import Window
 
 
 def encode_response_for_peer(response: Any) -> bytes:
@@ -63,6 +65,50 @@ def parse_cmd(serialized_cmd: str, encryption_key: EllipticCurveKey) -> Dict[str
                 ' Could be an attempt at a replay attack or an incorrect clock on a remote machine.')
             return {}
     return pcmd
+
+
+class CMDChecker:
+
+    def __call__(self, pcmd: Dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: Dict[str, Any]) -> bool:
+        return False
+
+
+class PasswordAuthorizer:
+
+    def __init__(self, password: str, auth_items: Tuple[str, ...]) -> None:
+        from fnmatch import translate
+        import runpy
+        self.password = password
+        self.command_patterns = []
+        self.function_checkers = []
+        self.user_permission: Optional[bool] = None
+        for item in auth_items:
+            if item.endswith('.py'):
+                path = resolve_custom_file(item)
+                try:
+                    m = runpy.run_path(path)
+                    func: CMDChecker = m['is_cmd_allowed']
+                except Exception as e:
+                    log_error(f'Failed to load cmd check function from {path} with error: {e}')
+                    self.function_checkers.append(CMDChecker())
+                else:
+                    self.function_checkers.append(func)
+            else:
+                self.command_patterns.append(re.compile(translate(item)))
+
+    def is_cmd_allowed(self, pcmd: Dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: Dict[str, Any]) -> Optional[bool]:
+        cmd_name = pcmd.get('cmd')
+        if not cmd_name:
+            return False
+        if not self.function_checkers and not self.command_patterns:
+            return True
+        for x in self.command_patterns:
+            if x.match(cmd_name) is not None:
+                return True
+        for f in self.function_checkers:
+            if f(pcmd, window, from_socket, extra_data):
+                return True
+        return self.user_permission
 
 
 def handle_cmd(boss: BossType, window: Optional[WindowType], cmd: Dict[str, Any], peer_id: int) -> Union[Dict[str, Any], None, AsyncResponse]:
