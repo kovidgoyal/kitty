@@ -516,11 +516,10 @@ class Boss:
         if window is not None and response is not None and not isinstance(response, AsyncResponse):
             window.send_cmd_response(response)
         if peer_id > 0:
-            if response is None or isinstance(response, AsyncResponse):
-                data = b''
-            else:
-                data = encode_response_for_peer(response)
-            send_data_to_peer(peer_id, data)
+            if response is None:
+                send_data_to_peer(peer_id, b'')
+            elif not isinstance(response, AsyncResponse):
+                send_data_to_peer(peer_id, encode_response_for_peer(response))
 
     def _execute_remote_command(self, pcmd: Dict[str, Any], window: Optional[Window] = None, peer_id: int = 0) -> RCResponse:
         from .remote_control import handle_cmd

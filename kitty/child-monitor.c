@@ -442,7 +442,7 @@ parse_input(ChildMonitor *self) {
             }
             if (resp) {
                 if (PyBytes_Check(resp)) send_response_to_peer(msg->peer_id, PyBytes_AS_STRING(resp), PyBytes_GET_SIZE(resp));
-                else if (resp == Py_None || resp == Py_True) send_response_to_peer(msg->peer_id, NULL, 0);
+                else if (resp == Py_None) send_response_to_peer(msg->peer_id, NULL, 0);
                 Py_CLEAR(resp);
             } else send_response_to_peer(msg->peer_id, NULL, 0);
         }
@@ -1732,8 +1732,10 @@ send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz) {
                         peer->write.capacity += msg_sz;
                     } else fatal("Out of memory");
                 }
-                if (msg) memcpy(peer->write.data + peer->write.used, msg, msg_sz);
-                peer->write.used += msg_sz;
+                if (msg_sz && msg) {
+                    memcpy(peer->write.data + peer->write.used, msg, msg_sz);
+                    peer->write.used += msg_sz;
+                }
             }
             wakeup = true;
             break;
