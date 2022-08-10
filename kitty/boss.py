@@ -485,12 +485,12 @@ class Boss:
         wid = 0 if window is None else window.id
         overlay_window = self.choose(
             _('A program wishes to control kitty.\n'
-              'Action: {1}\n' 'Password: {0}\n' '{2}'
+              'Action: {1}\n' 'Password: {0}\n\n' '{2}'
               ).format(
                   styled(pcmd['password'], fg='yellow'), styled(pcmd['cmd'], fg='magenta'),
                   '\x1b[m' + styled(_(
                       'Note that allowing the password will allow all future actions using the same password, in this kitty instance.'
-                  ), dim=True)),
+                  ), dim=True, italic=True)),
             partial(self.remote_cmd_permission_received, pcmd, wid, peer_id),
             'a;green:Allow request', 'p;yellow:Allow password', 'r;magenta:Deny request', 'd;red:Deny password',
             window=window, default='a'

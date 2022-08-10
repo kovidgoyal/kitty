@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import re
 import sys
 from contextlib import suppress
 from typing import (
@@ -16,11 +17,12 @@ from kitty.typing import BossType, KeyEventType, TypedDict
 from kitty.utils import ScreenSize
 
 from ..tui.handler import Handler, result_handler
-from ..tui.loop import Loop, MouseEvent
+from ..tui.loop import Loop, MouseEvent, debug
 from ..tui.operations import MouseTracking, alternate_screen, styled
 
 if TYPE_CHECKING:
     import readline
+    debug
 else:
     readline = None
 
@@ -198,6 +200,7 @@ class Choose(Handler):
     mouse_tracking = MouseTracking.buttons_only
 
     def __init__(self, cli_opts: AskCLIOptions) -> None:
+        self.prefix_style_pat = re.compile(r'(?:\x1b\[[^m]*?m)+')
         self.cli_opts = cli_opts
         self.choices: Dict[str, Choice] = {}
         self.clickable_ranges: Dict[str, List[Range]] = {}
@@ -228,12 +231,17 @@ class Choose(Handler):
         self.cmd.set_cursor_visible(True)
 
     def draw_long_text(self, text: str) -> int:
+        if not text:
+            self.print('')
+            return 1
         y = 0
         width = self.screen_size.cols - 2
+        m = self.prefix_style_pat.match(text)
+        prefix = m.group() if m else ''
         while text:
             t, text = truncate_at_space(text, width)
             t = t.strip()
-            self.print(' ' * extra_for(wcswidth(t), width), styled(t, bold=True), sep='')
+            self.print(' ' * extra_for(wcswidth(t), width), styled(prefix + t, bold=True), sep='')
             y += 1
         return y
 
