@@ -228,6 +228,10 @@ def encode_send(send: Any) -> bytes:
     return b'\x1bP' + es + b'\x1b\\'
 
 
+class SocketClosed(EOFError):
+    pass
+
+
 class SocketIO:
 
     def __init__(self, to: str):
@@ -268,7 +272,7 @@ class SocketIO:
         if m is None:
             if monotonic() - st > timeout:
                 raise TimeoutError('Timed out while waiting to read cmd response')
-            raise EOFError('Remote control connection was closed by kitty without any response being received')
+            raise SocketClosed('Remote control connection was closed by kitty without any response being received')
         return bytes(m.group(1))
 
 
@@ -486,10 +490,14 @@ def main(args: List[str]) -> None:
         except KeyboardInterrupt:
             sys.excepthook = lambda *a: print('Interrupted by user', file=sys.stderr)
             raise
+        except SocketClosed as e:
+            raise SystemExit(str(e))
         raise SystemExit(f'Timed out after {response_timeout} seconds waiting for response from kitty')
     except KeyboardInterrupt:
         sys.excepthook = lambda *a: print('Interrupted by user', file=sys.stderr)
         raise
+    except SocketClosed as e:
+        raise SystemExit(str(e))
     if no_response:
         return
     if not response.get('ok'):
