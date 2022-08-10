@@ -17,6 +17,7 @@ import tempfile
 import time
 from contextlib import suppress
 from functools import lru_cache, partial
+from itertools import chain
 from pathlib import Path
 from typing import (
     Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple,
@@ -92,19 +93,27 @@ def error(text: str) -> str:
     return text
 
 
-def pkg_config(pkg: str, *args: str) -> List[str]:
+def pkg_config(pkg: str, *args: str, extra_pc_dir: str = '', fatal: bool = True) -> List[str]:
+    env = os.environ.copy()
+    if extra_pc_dir:
+        pp = env.get('PKG_CONFIG_PATH', '')
+        if pp:
+            pp += os.pathsep
+        env['PKG_CONFIG_PATH'] = f'{pp}{extra_pc_dir}'
+    cmd = [PKGCONFIG, pkg] + list(args)
     try:
         return list(
             filter(
                 None,
                 shlex.split(
-                    subprocess.check_output([PKGCONFIG, pkg] + list(args))
-                    .decode('utf-8')
+                    subprocess.check_output(cmd, env=env, stderr=None if fatal else subprocess.DEVNULL).decode('utf-8')
                 )
             )
         )
     except subprocess.CalledProcessError:
-        raise SystemExit(f'The package {error(pkg)} was not found on your system')
+        if fatal:
+            raise SystemExit(f'The package {error(pkg)} was not found on your system')
+        raise
 
 
 def pkg_version(package: str) -> Tuple[int, int]:
@@ -121,22 +130,22 @@ def libcrypto_flags() -> Tuple[List[str], List[str]]:
     # Apple use their special snowflake TLS libraries and additionally
     # have an ancient broken system OpenSSL, so we need to check for one
     # installed by all the various macOS package managers.
+    extra_pc_dir = ''
+    if is_macos:
+        openssl_dirs = []
+        for x in chain(glob.glob('/opt/homebrew/opt/openssl@*/lib/pkgconfig'), glob.glob('/usr/local/opt/openssl@*/lib/pkgconfig')):
+            openssl_dirs.append(x)
+
+        def key(x: str) -> str:
+            return x.split('@')[-1]
+        openssl_dirs.sort(key=key)
+        extra_pc_dir = os.pathsep.join(openssl_dirs)
+
     try:
-        return pkg_config('libcrypto', '--cflags-only-I'), pkg_config('libcrypto', '--libs')
-    except SystemExit:
-        if not is_macos:
-            raise
-        pp = os.environ.get('PKG_CONFIG_PATH', '')
-        for x in glob.glob('/usr/local/opt/openssl@*/lib/pkgconfig'):
-            try:
-                os.environ['PKG_CONFIG_PATH'] = f'{x}{os.pathsep}{pp}'
-                return pkg_config('libcrypto', '--cflags-only-I'), pkg_config('libcrypto', '--libs')
-            finally:
-                if pp:
-                    os.environ['PKG_CONFIG_PATH'] = pp
-                else:
-                    os.environ.pop('PKG_CONFIG_PATH')
-        raise SystemExit('Failed to find OpenSSL on your system, needed for libcrypto')
+        cflags = pkg_config('libcrypto', '--cflags-only-I', fatal=False)
+    except subprocess.CalledProcessError:
+        cflags = pkg_config('libcrypto', '--cflags-only-I', extra_pc_dir=extra_pc_dir)
+    return cflags, pkg_config('libcrypto', '--libs', extra_pc_dir=extra_pc_dir)
 
 
 def at_least_version(package: str, major: int, minor: int = 0) -> None:
