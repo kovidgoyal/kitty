@@ -51,7 +51,7 @@ time based nonce is used to minimise replay attacks. The original JSON command h
 the fields: ``password`` and ``timestamp`` added. The timestamp is the number
 of nanoseconds since the epoch, excluding leap seconds. Commands with a
 timestamp more than 5 minutes from the current time are rejected. The command is then
-encrypted using AES-256-GCM in AEAD mode, with a secret key that is derived from the ECDH
+encrypted using AES-256-GCM in AEAD mode, with a symmetric key that is derived from the ECDH
 key-pair by running the shared secret through SHA-256 hashing, once. An IV of
 96 bits of CSRNG data is used. The tag for AEAD must be 128 bits long. A new
 command is created that contains the fields::
