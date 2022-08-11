@@ -51,15 +51,19 @@ When using the :opt:`remote_control_password` option communication to the termin
 encrypted to keep the password secure. A public key is used from the
 :envvar:`KITTY_PUBLIC_KEY` environment variable. Currently, only one encryption
 protocol is supported. The protocol number is present in
-:envvar:`KITTY_PUBLIC_KEY` as ``1``. The key data in this environment variable is Base-85 encoded.
-The algorithm used is Elliptic Curve Diffie Helman with the X25519 curve. A
+:envvar:`KITTY_PUBLIC_KEY` as ``1``. The key data in this environment variable is
+`Base-85 <https://github.com/git/git/blob/master/base85.c>`__ encoded.
+The algorithm used is `Elliptic Curve Diffie Helman
+<https://en.wikipedia.org/wiki/Elliptic-curve_Diffie–Hellman>`__ with the
+`X25519 curve <https://en.wikipedia.org/wiki/Curve25519>`__. A
 time based nonce is used to minimise replay attacks. The original JSON command has
 the fields: ``password`` and ``timestamp`` added. The timestamp is the number
 of nanoseconds since the epoch, excluding leap seconds. Commands with a
 timestamp more than 5 minutes from the current time are rejected. The command is then
-encrypted using AES-256-GCM in AEAD mode, with a symmetric key that is derived from the ECDH
-key-pair by running the shared secret through SHA-256 hashing, once. An IV of
-96 bits of CSRNG data is used. The tag for AEAD must be 128 bits long. A new
+encrypted using AES-256-GCM in authenticated encryption mode, with a symmetric key that
+is derived from the ECDH key-pair by running the shared secret through SHA-256 hashing, once.
+An IV of 96 bits of CSPRNG data is used. The tag for authenticated encryption **must** be 128 bits long.
+The tag **must** authenticate only the value of the ``encrypted`` field. A new
 command is created and transmitted that contains the fields:
 
 .. code-block:: json
