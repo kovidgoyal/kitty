@@ -61,6 +61,6 @@ command is created that contains the fields::
     tag: base85 encoded AEAD tag
     pubkey: base85 encoded ECDH public key of sender
     enc_proto: The first field from KITTY_PUBLIC_KEY, currently always ``1``
-    encrypted: The original command encrypted
+    encrypted: The original command encrypted and base85 encoded
 
 .. include:: generated/rc.rst
