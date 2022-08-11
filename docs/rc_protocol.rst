@@ -7,13 +7,15 @@ form::
 
     <ESC>P@kitty-cmd<JSON object><ESC>\
 
-Where ``<ESC>`` is the byte ``0x1b``. The JSON object has the form::
+Where ``<ESC>`` is the byte ``0x1b``. The JSON object has the form:
+
+.. code-block:: json
 
     {
         "cmd": "command name",
-        "version": <kitty version>,
-        "no_response": <Optional Boolean>,
-        "payload": <Optional JSON object>,
+        "version": "<kitty version>",
+        "no_response": "<Optional Boolean>",
+        "payload": "<Optional JSON object>"
     }
 
 The ``version`` above is an array of the form :code:`[0, 14, 2]`. If you are
@@ -54,13 +56,18 @@ timestamp more than 5 minutes from the current time are rejected. The command is
 encrypted using AES-256-GCM in AEAD mode, with a symmetric key that is derived from the ECDH
 key-pair by running the shared secret through SHA-256 hashing, once. An IV of
 96 bits of CSRNG data is used. The tag for AEAD must be 128 bits long. A new
-command is created that contains the fields::
+command is created and transmitted that contains the fields:
 
-    version: copied form the original command
-    iv: base85 encoded IV
-    tag: base85 encoded AEAD tag
-    pubkey: base85 encoded ECDH public key of sender
-    enc_proto: The first field from KITTY_PUBLIC_KEY, currently always ``1``
-    encrypted: The original command encrypted and base85 encoded
+.. code-block:: json
+
+    {
+        "version": "<kitty version>",
+        "iv": "base85 encoded IV",
+        "tag": "base85 encoded AEAD tag",
+        "pubkey": "base85 encoded ECDH public key of sender",
+        "enc_proto": "The first field from KITTY_PUBLIC_KEY, currently always 1",
+        "encrypted": "The original command encrypted and base85 encoded"
+    }
+
 
 .. include:: generated/rc.rst
