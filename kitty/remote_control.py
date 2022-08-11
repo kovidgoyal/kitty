@@ -48,7 +48,7 @@ def parse_cmd(serialized_cmd: str, encryption_key: EllipticCurveKey) -> Dict[str
         return {}
     pcmd.pop('password', None)
     if 'encrypted' in pcmd:
-        if pcmd.get('enc_proto') != RC_ENCRYPTION_PROTOCOL_VERSION:
+        if pcmd.get('enc_proto', '1') != RC_ENCRYPTION_PROTOCOL_VERSION:
             log_error(f'Ignoring encrypted rc command with unsupported protocol: {pcmd.get("enc_proto")}')
             return {}
         pubkey = pcmd.get('pubkey', '')
@@ -353,10 +353,13 @@ class CommandEncrypter:
         cmd['password'] = self.password
         raw = json.dumps(cmd).encode('utf-8')
         encrypted = encrypter.add_data_to_be_encrypted(raw, True)
-        return {
+        ans = {
             'version': version, 'iv': encode_as_base85(encrypter.iv), 'tag': encode_as_base85(encrypter.tag),
-            'pubkey': encode_as_base85(self.pubkey), 'encrypted': encode_as_base85(encrypted), 'enc_proto': self.encryption_version
+            'pubkey': encode_as_base85(self.pubkey), 'encrypted': encode_as_base85(encrypted),
         }
+        if self.encryption_version != '1':
+            ans['enc_proto'] = self.encryption_version
+        return ans
 
     def adjust_response_timeout_for_password(self, response_timeout: float) -> float:
         return max(response_timeout, 120)
