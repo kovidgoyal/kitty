@@ -9,12 +9,15 @@
 #include "internal.h"
 #include "wayland-text-input-unstable-v3-client-protocol.h"
 #include <stdlib.h>
+#include <string.h>
 #define debug(...) if (_glfw.hints.init.debugKeyboard) printf(__VA_ARGS__);
 
 static struct zwp_text_input_v3*                  text_input;
 static struct zwp_text_input_manager_v3*          text_input_manager;
 static char *pending_pre_edit = NULL;
+static char *current_pre_edit = NULL;
 static char *pending_commit   = NULL;
+static int last_cursor_left = 0, last_cursor_top = 0, last_cursor_width = 0, last_cursor_height = 0;
 uint32_t commit_serial = 0;
 
 static void commit(void) {
@@ -90,12 +93,20 @@ text_input_done(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, u
         if (serial > commit_serial) _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: text_input_done serial mismatch, expected=%u got=%u\n", commit_serial, serial);
         return;
     }
-    if (pending_pre_edit) {
-        send_text(pending_pre_edit, GLFW_IME_PREEDIT_CHANGED);
+
+    if ((pending_pre_edit == NULL && current_pre_edit == NULL) ||
+        (pending_pre_edit && current_pre_edit && strcmp(pending_pre_edit, current_pre_edit) == 0)) {
         free(pending_pre_edit); pending_pre_edit = NULL;
     } else {
-        // Clear pre-edit text
-        send_text(NULL, GLFW_IME_WAYLAND_DONE_EVENT);
+        free(current_pre_edit);
+        current_pre_edit = pending_pre_edit;
+        pending_pre_edit = NULL;
+        if (current_pre_edit) {
+            send_text(current_pre_edit, GLFW_IME_PREEDIT_CHANGED);
+        } else {
+            // Clear pre-edit text
+            send_text(NULL, GLFW_IME_WAYLAND_DONE_EVENT);
+        }
     }
     if (pending_commit) {
         send_text(pending_commit, GLFW_IME_COMMIT_TEXT);
@@ -133,6 +144,7 @@ _glfwWaylandDestroyTextInput(void) {
     if (text_input_manager) zwp_text_input_manager_v3_destroy(text_input_manager);
     text_input = NULL; text_input_manager = NULL;
     free(pending_pre_edit); pending_pre_edit = NULL;
+    free(current_pre_edit); current_pre_edit = NULL;
     free(pending_commit); pending_commit = NULL;
 }
 
@@ -146,10 +158,11 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
                 zwp_text_input_v3_enable(text_input);
                 zwp_text_input_v3_set_content_type(text_input, ZWP_TEXT_INPUT_V3_CONTENT_HINT_NONE, ZWP_TEXT_INPUT_V3_CONTENT_PURPOSE_TERMINAL);
             } else {
-                if (pending_pre_edit) {
+                free(pending_pre_edit); pending_pre_edit = NULL;
+                if (current_pre_edit) {
                     // Clear pre-edit text
                     send_text(NULL, GLFW_IME_PREEDIT_CHANGED);
-                    free(pending_pre_edit); pending_pre_edit = NULL;
+                    free(current_pre_edit); current_pre_edit = NULL;
                 }
                 if (pending_commit) {
                     free(pending_commit); pending_commit = NULL;
@@ -161,9 +174,15 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
         case GLFW_IME_UPDATE_CURSOR_POSITION: {
             const int scale = w->wl.scale;
             const int left = ev->cursor.left / scale, top = ev->cursor.top / scale, width = ev->cursor.width / scale, height = ev->cursor.height / scale;
-            debug("\ntext-input: updating cursor position: left=%d top=%d width=%d height=%d\n", left, top, width, height);
-            zwp_text_input_v3_set_cursor_rectangle(text_input, left, top, width, height);
-            commit();
+            if (left != last_cursor_left || top != last_cursor_top || width != last_cursor_width || height != last_cursor_height) {
+                last_cursor_left = left;
+                last_cursor_top = top;
+                last_cursor_width = width;
+                last_cursor_height = height;
+                debug("\ntext-input: updating cursor position: left=%d top=%d width=%d height=%d\n", left, top, width, height);
+                zwp_text_input_v3_set_cursor_rectangle(text_input, left, top, width, height);
+                commit();
+            }
         }
             break;
     }
