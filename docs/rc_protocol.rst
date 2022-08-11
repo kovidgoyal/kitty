@@ -47,7 +47,7 @@ encrypted to keep the password secure. A public key is used from the
 protocol is supported. The protocol number is present in
 :envvar:`KITTY_PUBLIC_KEY` as ``1``. The key data in this environment variable is Base-85 encoded.
 The algorithm used is Elliptic Curve Diffie Helman with the X25519 curve. A
-time based nonce is used to avoid replay attacks. The original JSON command has
+time based nonce is used to minimise replay attacks. The original JSON command has
 the fields: ``password`` and ``timestamp`` added. The timestamp is the number
 of nanoseconds since the epoch, excluding leap seconds. Commands with a
 timestamp more than 5 minutes from the current time are rejected. The command is then
