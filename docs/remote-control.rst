@@ -237,15 +237,26 @@ as shown below:
 
 .. code-block:: py
 
-   def is_cmd_allowed(pcmd, window, from_socket, extra_data):
-       cmd_name = pcmd['cmd']  # the name of the command
-       cmd_payload = pcmd['payload']  # the arguments to the command
-       # examine the cmd_name and cmd_payload and return True to allow
-       # the command or False to disallow it. Return None to have no
-       # effect on the command.
+    def is_cmd_allowed(pcmd, window, from_socket, extra_data):
+        cmd_name = pcmd['cmd']  # the name of the command
+        cmd_payload = pcmd['payload']  # the arguments to the command
+        # examine the cmd_name and cmd_payload and return True to allow
+        # the command or False to disallow it. Return None to have no
+        # effect on the command.
 
-       # The command payload will vary from command to command, see
-       # the rc protocol docs for details.
+        # The command payload will vary from command to command, see
+        # the rc protocol docs for details. Below is an example of
+        # restricting the launch command to allow only running the
+        # default shell.
+
+        if cmd_name != 'launch':
+            return None
+        if cmd_payload.get('args') or cmd_payload.get('env') or cmd_payload.get('copy_cmdline') or cmd_payload.get('copy_env'):
+            return False
+        # prints in this function go to the parent kitty process STDOUT
+        print('Allowing launch command:', cmd_payload)
+        return True
+
 
 .. _rc_mapping:
 
