@@ -70,7 +70,7 @@ def parse_cmd(serialized_cmd: str, encryption_key: EllipticCurveKey) -> Dict[str
 
 class CMDChecker:
 
-    def __call__(self, pcmd: Dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: Dict[str, Any]) -> bool:
+    def __call__(self, pcmd: Dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: Dict[str, Any]) -> Optional[bool]:
         return False
 
 
@@ -114,8 +114,15 @@ class PasswordAuthorizer:
             if x.match(cmd_name) is not None:
                 return True
         for f in self.function_checkers:
-            if f(pcmd, window, from_socket, extra_data):
-                return True
+            try:
+                ret = f(pcmd, window, from_socket, extra_data)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                log_error(f'There was an error using a custom RC auth function, blocking the remote command. Error: {e}')
+                ret = False
+            if ret is not None:
+                return ret
         return False
 
 

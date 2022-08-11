@@ -38,6 +38,8 @@ Detailed list of changes
 0.26.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new option :opt:`remote_control_password` to use fine grained permissions for what can be remote controlled (:disc:`5320`)
+
 - Reduce startup latency by ~30 milliseconds when running kittens and remote control commands inside kitty (:iss:`5159`)
 
 - A new option :opt:`modify_font` to adjust various font metrics like underlines, cell sizes etc. (:pull:`5265`)

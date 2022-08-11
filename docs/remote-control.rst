@@ -17,8 +17,9 @@ Start by running |kitty| as::
 
     kitty -o allow_remote_control=yes -o enabled_layouts=tall
 
-In order for control to work, :opt:`allow_remote_control` must be enabled in
-:file:`kitty.conf`. Here we turn it on explicitly at the command line.
+In order for control to work, :opt:`allow_remote_control` or
+:opt:`remote_control_password` must be enabled in :file:`kitty.conf`. Here we
+turn it on explicitly at the command line.
 
 Now, in the new |kitty| window, enter the command::
 
@@ -92,11 +93,23 @@ As you can see, it is very easy to control |kitty| using the ``kitty @``
 messaging system. This tutorial touches only the surface of what is possible.
 See ``kitty @ --help`` for more details.
 
-Note that in the example's above, ``kitty @`` messaging works only when run
+In the example's above, ``kitty @`` messaging works only when run
 inside a |kitty| window, not anywhere. But, within a |kitty| window it even
 works over SSH. If you want to control |kitty| from programs/scripts not running
-inside a |kitty| window, you have to implement a couple of extra steps. First
-start |kitty| as::
+inside a |kitty| window, see the section on :ref:`using a socket for remote control <rc_via_socket>`
+below.
+
+
+Note that if all you want to do is run a single |kitty| "daemon" and have
+subsequent |kitty| invocations appear as new top-level windows, you can use the
+simpler :option:`kitty --single-instance` option, see ``kitty --help`` for that.
+
+
+.. _rc_via_socket:
+
+Remote control via a socket
+--------------------------------
+First, start |kitty| as::
 
     kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty
 
@@ -106,11 +119,6 @@ Now you can control this instance of |kitty| using the :option:`kitty @ --to`
 command line argument to ``kitty @``. For example::
 
     kitty @ --to unix:/tmp/mykitty ls
-
-
-Note that if all you want to do is run a single |kitty| "daemon" and have
-subsequent |kitty| invocations appear as new top-level windows, you can use the
-simpler :option:`kitty --single-instance` option, see ``kitty --help`` for that.
 
 
 The builtin kitty shell
@@ -147,6 +155,83 @@ other computers (for example, over SSH) or as other users.
    what programs you run in such windows, since they can effectively control
    kitty, as if you were running with :opt:`allow_remote_control` turned on.
 
+
+Fine grained permissions for remote control
+----------------------------------------------
+
+The :opt:`allow_remote_control` option discussed so far is a blunt
+instrument, granting the ability to any program running on your computer
+or even on remote computers via SSH the ability to use remote control.
+
+You can instead define remote control passwords that can be used to grant
+different levels of control to different places. You can even write your
+own script to decide which remote control requests are allowed. This is
+done using the :opt:`remote_control_password` option in :file:`kitty.conf`.
+Let's see some examples:
+
+.. code-block:: conf
+
+   remote_control_password "control colors" get-colors set-colors
+
+Now, using this password, you can, in scripts run the command::
+
+    kitty @ --password="control colors" set-colors background=red
+
+Any script with access to the password can now change colors in kitty using
+remote control, but only that and nothing else. You can even supply the
+password via the :envvar:`KITTY_RC_PASSWORD` environment variable, or the
+file :file:`~/.config/kitty/rc-password` to avoid having to type it repeatedly.
+See :option:`kitty @ --password-file` and :option:`kitty @ --password-env`.
+
+The :opt:`remote_control_password` can be specified multiple times to create
+different passwords with different capabilities. Run the following to get a
+list of all action names::
+
+    kitty @ -h
+
+You can even use glob patterns to match action names, for example:
+
+.. code-block:: conf
+
+   remote_control_password "control colors" *-colors
+
+If no action names are specified, all actions are allowed.
+
+If ``kitty @`` is run with a password that is not present in
+:file:`kitty.conf`, then kitty will interactively prompt the user to allow or
+disallow the remote control request. The user can choose to allow or disallow
+either just that request or all requests using that password. The user's
+decision is remembered for the duration of that kitty instance.
+
+.. _rc_custom_auth:
+
+Customizing authorization with your own program
+____________________________________________________________
+
+If the ability to control access by action names is not fine grained enough,
+you can define your own Python script to examine every remote control command
+and allow/disallow it. To do so create a file in the kitty configuration
+directory, :file:`~/.config/kitty/my_rc_auth.py` and add the following
+to :file:`kitty.conf`:
+
+.. code-block:: conf
+
+    remote_control_password "testing custom auth" my_rc_auth.py
+
+:file:`my_rc_auth.py` should define a :code:`is_cmd_allowed` function
+as shown below:
+
+.. code-block:: py
+
+   def is_cmd_allowed(pcmd, window, from_socket, extra_data):
+       cmd_name = pcmd['cmd']  # the name of the command
+       cmd_payload = pcmd['payload']  # the arguments to the command
+       # examine the cmd_name and cmd_payload and return True to allow
+       # the command or False to disallow it. Return None to have no
+       # effect on the command.
+
+       # The command payload will vary from command to command, see
+       # the rc protocol docs for details.
 
 .. _rc_mapping:
 

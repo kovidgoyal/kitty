@@ -107,6 +107,11 @@ Variables that influence kitty behavior
    Set this to the directory path of the kitty source code and its Python code
    will be loaded from there. Only works with official binary builds.
 
+.. envvar:: KITTY_RC_PASSWORD
+
+   Set this to a pass phrase to use the ``kitty @`` remote control command with
+   :opt:`remote_control_password`.
+
 
 Variables that kitty sets when running child programs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
