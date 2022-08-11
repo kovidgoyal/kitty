@@ -14,13 +14,13 @@ if TYPE_CHECKING:
 
 class ResizeOSWindow(RemoteCommand):
     '''
-    match: Which window to resize
-    self: Boolean indicating whether to close the window the command is run in
-    incremental: Boolean indicating whether to adjust the size incrementally
-    action: One of :code:`resize, toggle-fullscreen` or :code:`toggle-maximized`
-    unit: One of :code:`cells` or :code:`pixels`
-    width: Integer indicating desired window width
-    height: Integer indicating desired window height
+    match/str: Which window to resize
+    self/bool: Boolean indicating whether to close the window the command is run in
+    incremental/bool: Boolean indicating whether to adjust the size incrementally
+    action/choices.resize.toggle-fullscreen.toggle-maximized: One of :code:`resize, toggle-fullscreen` or :code:`toggle-maximized`
+    unit/choices.cells.pixels: One of :code:`cells` or :code:`pixels`
+    width/int: Integer indicating desired window width
+    height/int: Integer indicating desired window height
     '''
 
     short_desc = 'Resize the specified OS Windows'

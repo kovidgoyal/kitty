@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 class SetTabTitle(RemoteCommand):
 
     '''
-    title+: The new title
-    match: Which tab to change the title of
+    title+/str: The new title
+    match/str: Which tab to change the title of
     '''
 
     short_desc = 'Set the tab title'

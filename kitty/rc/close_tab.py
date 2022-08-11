@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 class CloseTab(RemoteCommand):
 
     '''
-    match: Which tab to close
-    self: Boolean indicating whether to close the tab of the window the command is run in
+    match/str: Which tab to close
+    self/bool: Boolean indicating whether to close the tab of the window the command is run in
     '''
 
     short_desc = 'Close the specified tabs'

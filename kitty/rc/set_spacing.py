@@ -40,11 +40,11 @@ def patch_configured_edges(opts: 'Options', s: Dict[str, Optional[float]]) -> No
 class SetSpacing(RemoteCommand):
 
     '''
-    settings+: An object mapping margins/paddings using canonical form {'margin-top': 50, 'padding-left': null} etc
-    match_window: Window to change paddings and margins in
-    match_tab: Tab to change paddings and margins in
-    all: Boolean indicating change paddings and margins everywhere or not
-    configured: Boolean indicating whether to change the configured paddings and margins. Must be True if reset is True
+    settings+/dict.spacing: An object mapping margins/paddings using canonical form {'margin-top': 50, 'padding-left': null} etc
+    match_window/str: Window to change paddings and margins in
+    match_tab/str: Tab to change paddings and margins in
+    all/bool: Boolean indicating change paddings and margins everywhere or not
+    configured/bool: Boolean indicating whether to change the configured paddings and margins. Must be True if reset is True
     '''
 
     short_desc = 'Set window paddings and margins'

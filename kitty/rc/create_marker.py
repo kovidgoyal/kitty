@@ -17,9 +17,9 @@ if TYPE_CHECKING:
 class CreateMarker(RemoteCommand):
 
     '''
-    match: Which window to create the marker in
-    self: Boolean indicating whether to create marker in the window the command is run in
-    marker_spec: A list or arguments that define the marker specification, for example: ['text', '1', 'ERROR']
+    match/str: Which window to create the marker in
+    self/bool: Boolean indicating whether to create marker in the window the command is run in
+    marker_spec/list.str: A list or arguments that define the marker specification, for example: ['text', '1', 'ERROR']
     '''
 
     short_desc = 'Create a marker that highlights specified text'

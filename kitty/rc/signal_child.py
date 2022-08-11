@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 class SignalChild(RemoteCommand):
 
     '''
-    signals: The signals, a list of names, such as :code:`SIGTERM`, :code:`SIGKILL`, :code:`SIGUSR1`, etc.
-    match: Which windows to send the signals to
+    signals/list.str: The signals, a list of names, such as :code:`SIGTERM`, :code:`SIGKILL`, :code:`SIGUSR1`, etc.
+    match/str: Which windows to send the signals to
     '''
 
     short_desc = 'Send a signal to the foreground process in the specified windows'

@@ -15,9 +15,9 @@ if TYPE_CHECKING:
 class Kitten(RemoteCommand):
 
     '''
-    kitten+: The name of the kitten to run
-    args: Arguments to pass to the kitten as a list
-    match: The window to run the kitten over
+    kitten+/str: The name of the kitten to run
+    args/list.str: Arguments to pass to the kitten as a list
+    match/str: The window to run the kitten over
     '''
 
     short_desc = 'Run a kitten'

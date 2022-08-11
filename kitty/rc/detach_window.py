@@ -16,9 +16,9 @@ if TYPE_CHECKING:
 class DetachWindow(RemoteCommand):
 
     '''
-    match: Which window to detach
-    target_tab: Which tab to move the detached window to
-    self: Boolean indicating whether to detach the window the command is run in
+    match/str: Which window to detach
+    target_tab/str: Which tab to move the detached window to
+    self/bool: Boolean indicating whether to detach the window the command is run in
     '''
 
     short_desc = 'Detach the specified windows and place them in a different/new tab'

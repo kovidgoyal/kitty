@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 class FocusWindow(RemoteCommand):
     '''
-    match: The window to focus
+    match/str: The window to focus
     '''
 
     short_desc = 'Focus the specified window'

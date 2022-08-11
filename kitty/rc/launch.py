@@ -22,29 +22,30 @@ if TYPE_CHECKING:
 class Launch(RemoteCommand):
 
     '''
-    args+: The command line to run in the new window, as a list, use an empty list to run the default shell
-    match: The tab to open the new window in
-    window_title: Title for the new window
-    cwd: Working directory for the new window
-    env: List of environment variables of the form NAME=VALUE
-    tab_title: Title for the new tab
-    type: The type of window to open
-    keep_focus: Boolean indicating whether the current window should retain focus or not
-    copy_colors: Boolean indicating whether to copy the colors from the current window
-    copy_cmdline: Boolean indicating whether to copy the cmdline from the current window
-    copy_env: Boolean indicating whether to copy the environ from the current window
-    hold: Boolean indicating whether to keep window open after cmd exits
-    location: Where in the tab to open the new window
-    allow_remote_control: Boolean indicating whether to allow remote control from the new window
-    stdin_source: Where to get stdin for thew process from
-    stdin_add_formatting: Boolean indicating whether to add formatting codes to stdin
-    stdin_add_line_wrap_markers: Boolean indicating whether to add line wrap markers to stdin
-    no_response: Boolean indicating whether to send back the window id
-    marker: Specification for marker for new window, for example: "text 1 ERROR"
-    logo: Path to window logo
-    logo_position: Window logo position as string or empty string to use default
-    logo_alpha: Window logo alpha or -1 to use default
-    self: Boolean, if True use tab the command was run in
+    args+/list.str: The command line to run in the new window, as a list, use an empty list to run the default shell
+    match/str: The tab to open the new window in
+    window_title/str: Title for the new window
+    cwd/str: Working directory for the new window
+    env/list.str: List of environment variables of the form NAME=VALUE
+    tab_title/str: Title for the new tab
+    type/choices.window.tab.os-window.overlay.background.clipboard.primary: The type of window to open
+    keep_focus/bool: Boolean indicating whether the current window should retain focus or not
+    copy_colors/bool: Boolean indicating whether to copy the colors from the current window
+    copy_cmdline/bool: Boolean indicating whether to copy the cmdline from the current window
+    copy_env/bool: Boolean indicating whether to copy the environ from the current window
+    hold/bool: Boolean indicating whether to keep window open after cmd exits
+    location/choices.first.after.before.neighbor.last.vsplit.hsplit.split.default: Where in the tab to open the new window
+    allow_remote_control/bool: Boolean indicating whether to allow remote control from the new window
+    stdin_source/choices.none.@selection.@screen.@screen_scrollback.@alternate.@alternate_scrollback.\
+        @first_cmd_output_on_screen.@last_cmd_output.@last_visited_cmd_output: Where to get stdin for the process from
+    stdin_add_formatting/bool: Boolean indicating whether to add formatting codes to stdin
+    stdin_add_line_wrap_markers/bool: Boolean indicating whether to add line wrap markers to stdin
+    no_response/bool: Boolean indicating whether to send back the window id
+    marker/str: Specification for marker for new window, for example: "text 1 ERROR"
+    logo/str: Path to window logo
+    logo_position/str: Window logo position as string or empty string to use default
+    logo_alpha/float: Window logo alpha or -1 to use default
+    self/bool: Boolean, if True use tab the command was run in
     '''
 
     short_desc = 'Run an arbitrary process in a new window/tab'

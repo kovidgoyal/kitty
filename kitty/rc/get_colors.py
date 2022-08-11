@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 class GetColors(RemoteCommand):
 
     '''
-    match: The window to get the colors for
-    configured: Boolean indicating whether to get configured or current colors
+    match/str: The window to get the colors for
+    configured/bool: Boolean indicating whether to get configured or current colors
     '''
 
     short_desc = 'Get terminal colors'

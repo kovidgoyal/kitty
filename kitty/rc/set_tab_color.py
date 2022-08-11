@@ -38,9 +38,9 @@ def parse_colors(args: ArgsType) -> Dict[str, Optional[int]]:
 class SetTabColor(RemoteCommand):
 
     '''
-    colors+: An object mapping names to colors as 24-bit RGB integers. A color value of null indicates it should be unset.
-    match: Which tab to change the color of
-    self: Boolean indicating whether to use the tab of the window the command is run in
+    colors+/dict.colors: An object mapping names to colors as 24-bit RGB integers. A color value of null indicates it should be unset.
+    match/str: Which tab to change the color of
+    self/bool: Boolean indicating whether to use the tab of the window the command is run in
     '''
 
     short_desc = 'Change the color of the specified tabs in the tab bar'

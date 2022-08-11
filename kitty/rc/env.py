@@ -12,7 +12,7 @@ from .base import (
 class Env(RemoteCommand):
 
     '''
-    env+: Dictionary of environment variables to values. Empty values cause the variable to be removed.
+    env+/dict.str: Dictionary of environment variables to values. Empty values cause the variable to be removed.
     '''
 
     short_desc = 'Change environment variables seen by future children'

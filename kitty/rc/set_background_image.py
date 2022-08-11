@@ -18,15 +18,18 @@ if TYPE_CHECKING:
     from kitty.cli_stub import SetBackgroundImageRCOptions as CLIOptions
 
 
+layout_choices = 'tiled,scaled,mirror-tiled,clamped,configured'
+
+
 class SetBackgroundImage(RemoteCommand):
 
-    '''
-    data+: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image. \
+    f'''
+    data+/image_data: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image. \
     Or the special value - to indicate image must be removed.
-    match: Window to change opacity in
-    layout: The image layout
-    all: Boolean indicating operate on all windows
-    configured: Boolean indicating if the configured value should be changed
+    match/str: Window to change opacity in
+    layout/choices.{layout_choices.replace(",", ".")}: The image layout
+    all/bool: Boolean indicating operate on all windows
+    configured/bool: Boolean indicating if the configured value should be changed
     '''
 
     short_desc = 'Set the background image'
@@ -35,7 +38,7 @@ class SetBackgroundImage(RemoteCommand):
         ' will be used as the background. If you specify the special value :code:`none` then any existing image will'
         ' be removed.'
     )
-    options_spec = '''\
+    options_spec = f'''\
 --all -a
 type=bool-set
 By default, background image is only changed for the currently active OS window. This option will
@@ -49,7 +52,7 @@ Change the configured background image which is used for new OS windows.
 
 --layout
 type=choices
-choices=tiled,scaled,mirror-tiled,clamped,configured
+choices={layout_choices}
 How the image should be displayed. A value of :code:`configured` will use the configured value.
 
 

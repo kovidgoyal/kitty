@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 class LastUsedLayout(RemoteCommand):
     '''
-    match: Which tab to change the layout of
-    all: Boolean to match all tabs
+    match/str: Which tab to change the layout of
+    all/bool: Boolean to match all tabs
     '''
 
     short_desc = 'Switch to the last used layout'

@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 
 class SetFontSize(RemoteCommand):
     '''
-    size+: The new font size in pts (a positive number)
-    all: Boolean whether to change font size in the current window or all windows
-    increment_op: The string ``+`` or ``-`` to interpret size as an increment
+    size+/float: The new font size in pts (a positive number)
+    all/bool: Boolean whether to change font size in the current window or all windows
+    increment_op/choices.+.-: The string ``+`` or ``-`` to interpret size as an increment
     '''
 
     short_desc = 'Set the font size in the active top-level OS window'

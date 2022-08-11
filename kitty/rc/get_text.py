@@ -16,14 +16,15 @@ if TYPE_CHECKING:
 class GetText(RemoteCommand):
 
     '''
-    match: The window to get text from
-    extent: One of :code:`screen`, :code:`first_cmd_output_on_screen`, :code:`last_cmd_output`, \
-            :code:`last_visited_cmd_output`, :code:`all`, or :code:`selection`
-    ansi: Boolean, if True send ANSI formatting codes
-    cursor: Boolean, if True send cursor position/style as ANSI codes
-    wrap_markers: Boolean, if True add wrap markers to output
-    clear_selection: Boolean, if True clear the selection in the matched window
-    self: Boolean, if True use window the command was run in
+    match/str: The window to get text from
+    extent/choices.screen.first_cmd_output_on_screen.last_cmd_output.last_visited_cmd_output.all.selection: \
+        One of :code:`screen`, :code:`first_cmd_output_on_screen`, :code:`last_cmd_output`, \
+        :code:`last_visited_cmd_output`, :code:`all`, or :code:`selection`
+    ansi/bool: Boolean, if True send ANSI formatting codes
+    cursor/bool: Boolean, if True send cursor position/style as ANSI codes
+    wrap_markers/bool: Boolean, if True add wrap markers to output
+    clear_selection/bool: Boolean, if True clear the selection in the matched window
+    self/bool: Boolean, if True use window the command was run in
     '''
 
     short_desc = 'Get text from the specified window'

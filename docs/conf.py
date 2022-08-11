@@ -277,7 +277,7 @@ def write_remote_control_protocol_docs() -> None:  # {{{
     from kitty.rc.base import (
         RemoteCommand, all_command_names, command_for_name
     )
-    field_pat = re.compile(r'\s*([a-zA-Z0-9_+]+)\s*:\s*(.+)')
+    field_pat = re.compile(r'\s*([a-zA-Z0-9_+/]+)\s*:\s*(.+)')
 
     def format_cmd(p: Callable[..., None], name: str, cmd: RemoteCommand) -> None:
         p(name)
@@ -289,7 +289,7 @@ def write_remote_control_protocol_docs() -> None:  # {{{
             if m is None:
                 p(line)
             else:
-                fields.append((m.group(1), m.group(2)))
+                fields.append((m.group(1).split('/')[0], m.group(2)))
         if fields:
             p('\nFields are:\n')
             for (name, desc) in fields:

@@ -20,8 +20,8 @@ def layout_names() -> Iterable[str]:
 class GotoLayout(RemoteCommand):
 
     '''
-    layout+: The new layout name
-    match: Which tab to change the layout of
+    layout+/str: The new layout name
+    match/str: Which tab to change the layout of
     '''
 
     short_desc = 'Set the window layout'

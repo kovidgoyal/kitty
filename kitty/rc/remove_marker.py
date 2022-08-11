@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 class RemoveMarker(RemoteCommand):
 
     '''
-    match: Which window to remove the marker from
-    self: Boolean indicating whether to detach the window the command is run in
+    match/str: Which window to remove the marker from
+    self/bool: Boolean indicating whether to detach the window the command is run in
     '''
 
     short_desc = 'Remove the currently set marker, if any.'

@@ -16,11 +16,11 @@ if TYPE_CHECKING:
 class ScrollWindow(RemoteCommand):
 
     '''
-    amount+: The amount to scroll, a two item list with the first item being \
+    amount+/list.scroll_amount: The amount to scroll, a two item list with the first item being \
              either a number or the keywords, start and end. \
              And the second item being either 'p' for pages or 'l' for lines or 'u'
              for unscrolling by lines.
-    match: The window to scroll
+    match/str: The window to scroll
     '''
 
     short_desc = 'Scroll the specified windows'

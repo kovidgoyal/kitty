@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 class CloseWindow(RemoteCommand):
     '''
-    match: Which window to close
-    self: Boolean indicating whether to close the window the command is run in
+    match/str: Which window to close
+    self/bool: Boolean indicating whether to close the window the command is run in
     '''
 
     short_desc = 'Close the specified windows'

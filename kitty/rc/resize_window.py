@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 
 class ResizeWindow(RemoteCommand):
     '''
-    match: Which window to resize
-    self: Boolean indicating whether to resize the window the command is run in
-    increment: Integer specifying the resize increment
-    axis: One of :code:`horizontal, vertical` or :code:`reset`
+    match/str: Which window to resize
+    self/bool: Boolean indicating whether to resize the window the command is run in
+    increment/int: Integer specifying the resize increment
+    axis/choices.horizontal.vertical.reset: One of :code:`horizontal, vertical` or :code:`reset`
     '''
 
     short_desc = 'Resize the specified windows'

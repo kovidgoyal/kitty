@@ -15,9 +15,9 @@ if TYPE_CHECKING:
 class SetWindowTitle(RemoteCommand):
 
     '''
-    title: The new title
-    match: Which windows to change the title in
-    temporary: Boolean indicating if the change is temporary or permanent
+    title/str: The new title
+    match/str: Which windows to change the title in
+    temporary/bool: Boolean indicating if the change is temporary or permanent
     '''
 
     short_desc = 'Set the window title'

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class FocusTab(RemoteCommand):
 
     '''
-    match: The tab to focus
+    match/str: The tab to focus
     '''
 
     short_desc = 'Focus the specified tab'

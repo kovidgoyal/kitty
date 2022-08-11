@@ -55,12 +55,12 @@ def parse_colors(args: Iterable[str]) -> Dict[str, Optional[int]]:
 class SetColors(RemoteCommand):
 
     '''
-    colors+: An object mapping names to colors as 24-bit RGB integers or null for nullable colors
-    match_window: Window to change colors in
-    match_tab: Tab to change colors in
-    all: Boolean indicating change colors everywhere or not
-    configured: Boolean indicating whether to change the configured colors. Must be True if reset is True
-    reset: Boolean indicating colors should be reset to startup values
+    colors+/dict.colors: An object mapping names to colors as 24-bit RGB integers or null for nullable colors
+    match_window/str: Window to change colors in
+    match_tab/str: Tab to change colors in
+    all/bool: Boolean indicating change colors everywhere or not
+    configured/bool: Boolean indicating whether to change the configured colors. Must be True if reset is True
+    reset/bool: Boolean indicating colors should be reset to startup values
     '''
 
     short_desc = 'Set terminal colors'

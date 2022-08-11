@@ -16,10 +16,10 @@ if TYPE_CHECKING:
 class DisableLigatures(RemoteCommand):
 
     '''
-    strategy+: One of :code:`never`, :code:`always` or :code:`cursor`
-    match_window: Window to change opacity in
-    match_tab: Tab to change opacity in
-    all: Boolean indicating operate on all windows
+    strategy+/choices.never.always.cursor: One of :code:`never`, :code:`always` or :code:`cursor`
+    match_window/str: Window to change opacity in
+    match_tab/str: Tab to change opacity in
+    all/bool: Boolean indicating operate on all windows
     '''
 
     short_desc = 'Control ligature rendering'

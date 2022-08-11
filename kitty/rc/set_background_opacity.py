@@ -17,10 +17,10 @@ if TYPE_CHECKING:
 class SetBackgroundOpacity(RemoteCommand):
 
     '''
-    opacity+: A number between 0.1 and 1
-    match_window: Window to change opacity in
-    match_tab: Tab to change opacity in
-    all: Boolean indicating operate on all windows
+    opacity+/float: A number between 0.1 and 1
+    match_window/str: Window to change opacity in
+    match_tab/str: Tab to change opacity in
+    all/bool: Boolean indicating operate on all windows
     '''
 
     short_desc = 'Set the background opacity'

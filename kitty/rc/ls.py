@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 class LS(RemoteCommand):
     '''
-    all_env_vars: Whether to send all environment variables for every window rather than just differing ones
+    all_env_vars/bool: Whether to send all environment variables for every window rather than just differing ones
     '''
 
     short_desc = 'List all tabs/windows'

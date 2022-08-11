@@ -23,9 +23,9 @@ def layout_names() -> Iterable[str]:
 class SetEnabledLayouts(RemoteCommand):
 
     '''
-    layouts+: The list of layout names
-    match: Which tab to change the layout of
-    configured: Boolean indicating whether to change the configured value
+    layouts+/list.str: The list of layout names
+    match/str: Which tab to change the layout of
+    configured/bool: Boolean indicating whether to change the configured value
     '''
 
     short_desc = 'Set the enabled layouts in tabs'

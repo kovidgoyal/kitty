@@ -15,15 +15,15 @@ if TYPE_CHECKING:
 class NewWindow(RemoteCommand):
 
     '''
-    args+: The command line to run in the new window, as a list, use an empty list to run the default shell
-    match: The tab to open the new window in
-    title: Title for the new window
-    cwd: Working directory for the new window
-    keep_focus: Boolean indicating whether the current window should retain focus or not
-    window_type: One of :code:`kitty` or :code:`os`
-    new_tab: Boolean indicating whether to open a new tab
-    tab_title: Title for the new tab
-    no_response: Boolean indicating whether to send back the window id
+    args+/list.str: The command line to run in the new window, as a list, use an empty list to run the default shell
+    match/str: The tab to open the new window in
+    title/str: Title for the new window
+    cwd/str: Working directory for the new window
+    keep_focus/bool: Boolean indicating whether the current window should retain focus or not
+    window_type/choices.kitty.os: One of :code:`kitty` or :code:`os`
+    new_tab/bool: Boolean indicating whether to open a new tab
+    tab_title/str: Title for the new tab
+    no_response/bool: Boolean indicating whether to send back the window id
     '''
 
     short_desc = 'Open new window'

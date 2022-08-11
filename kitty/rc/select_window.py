@@ -18,11 +18,11 @@ if TYPE_CHECKING:
 class SelectWindow(RemoteCommand):
 
     '''
-    match: The tab to open the new window in
-    self: Boolean, if True use tab the command was run in
-    title: A title for this selection
-    exclude_active: Exclude the currently active window from the list to pick
-    reactivate_prev_tab: Reactivate the previously activated tab when finished
+    match/str: The tab to open the new window in
+    self/bool: Boolean, if True use tab the command was run in
+    title/str: A title for this selection
+    exclude_active/bool: Exclude the currently active window from the list to pick
+    reactivate_prev_tab/bool: Reactivate the previously activated tab when finished
     '''
 
     short_desc = 'Visually select a window in the specified tab'
