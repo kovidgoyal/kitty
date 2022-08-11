@@ -203,6 +203,18 @@ disallow the remote control request. The user can choose to allow or disallow
 either just that request or all requests using that password. The user's
 decision is remembered for the duration of that kitty instance.
 
+.. note::
+   For password based authentication to work over SSH, you must pass the
+   :envvar:`KITTY_PUBLIC_KEY` environment variable to the remote host. The
+   :doc:`ssh kitten <kittens/ssh>` does this for you automatically. When
+   using a password, public key cryptography is used to ensure the password
+   is kept secure. This does mean that using password based authentication
+   is slower as the entire command is encrypted before transmission. This
+   can be noticeable when using a command like ``kitty @ set-background-image``
+   which transmits large amounts of image data. Also, the clock on the remote
+   system must match (within a few minutes) the clock on the local system.
+   kitty uses a time based nonce to minimise the potential for replay attacks.
+
 .. _rc_custom_auth:
 
 Customizing authorization with your own program
