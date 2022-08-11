@@ -143,7 +143,7 @@ Variables that kitty sets when running child programs
 .. envvar:: KITTY_PUBLIC_KEY
 
    A public key that programs can use to communicate securely with kitty using
-   the remote control protocol.
+   the remote control protocol. The format is: :code:`protocol:key data`.
 
 .. envvar:: KITTY_PREWARM_SOCKET
 
