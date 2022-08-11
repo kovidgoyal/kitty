@@ -209,7 +209,7 @@ decision is remembered for the duration of that kitty instance.
    For password based authentication to work over SSH, you must pass the
    :envvar:`KITTY_PUBLIC_KEY` environment variable to the remote host. The
    :doc:`ssh kitten <kittens/ssh>` does this for you automatically. When
-   using a password, public key cryptography is used to ensure the password
+   using a password, :ref:`rc_crypto` is used to ensure the password
    is kept secure. This does mean that using password based authentication
    is slower as the entire command is encrypted before transmission. This
    can be noticeable when using a command like ``kitty @ set-background-image``
