@@ -159,6 +159,8 @@ other computers (for example, over SSH) or as other users.
 Fine grained permissions for remote control
 ----------------------------------------------
 
+.. versionadded:: 0.26.0
+
 The :opt:`allow_remote_control` option discussed so far is a blunt
 instrument, granting the ability to any program running on your computer
 or even on remote computers via SSH the ability to use remote control.

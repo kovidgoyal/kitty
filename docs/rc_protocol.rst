@@ -43,6 +43,8 @@ with the following command line::
 Encrypted communication
 --------------------------
 
+.. versionadded:: 0.26.0
+
 When using the :opt:`remote_control_password` option communication to the terminal is
 encrypted to keep the password secure. A public key is used from the
 :envvar:`KITTY_PUBLIC_KEY` environment variable. Currently, only one encryption
