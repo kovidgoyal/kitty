@@ -3025,7 +3025,7 @@ draw(Screen *self, PyObject *src) {
 }
 
 extern void
-parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, unsigned int *params, PyObject *dump_callback, const char *report_name, Region *region);
+parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, int *params, PyObject *dump_callback, const char *report_name, Region *region);
 
 static PyObject*
 apply_sgr(Screen *self, PyObject *src) {
@@ -3033,7 +3033,7 @@ apply_sgr(Screen *self, PyObject *src) {
     if (PyUnicode_READY(src) != 0) { return PyErr_NoMemory(); }
     Py_UCS4 *buf = PyUnicode_AsUCS4Copy(src);
     if (!buf) return NULL;
-    unsigned int params[MAX_PARAMS] = {0};
+    int params[MAX_PARAMS] = {0};
     parse_sgr(self, buf, PyUnicode_GET_LENGTH(src), params, NULL, "parse_sgr", NULL);
     Py_RETURN_NONE;
 }
