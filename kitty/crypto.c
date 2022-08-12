@@ -371,15 +371,19 @@ new_aes256gcmdecrypt(PyTypeObject *type, PyObject *args, PyObject *kwds UNUSED) 
     if (!PyArg_ParseTuple(args, "O!y#y#", &Secret_Type, &key, &iv, &iv_len, &tag, &tag_len)) return NULL;
     const EVP_CIPHER *cipher = EVP_get_cipherbynid(NID_aes_256_gcm);
     if (key->secret_len != (size_t)EVP_CIPHER_key_length(cipher)) { PyErr_Format(PyExc_ValueError, "The key for AES 256 GCM must be %d bytes long", EVP_CIPHER_key_length(cipher)); return NULL; }
-    if (iv_len != EVP_CIPHER_iv_length(cipher)) { PyErr_Format(PyExc_ValueError, "The iv for AES 256 GCM must be %d bytes long", EVP_CIPHER_iv_length(cipher)); return NULL; }
+    if (iv_len < EVP_CIPHER_iv_length(cipher)) { PyErr_Format(PyExc_ValueError, "The iv for AES 256 GCM must be at least %d bytes long", EVP_CIPHER_iv_length(cipher)); return NULL; }
     AES256GCMDecrypt *self = (AES256GCMDecrypt *)type->tp_alloc(type, 0);
     if (!self) return NULL;
     if (!(self->ctx = EVP_CIPHER_CTX_new())) { Py_CLEAR(self); return set_error_from_openssl("Failed to allocate decryption context"); }
+    if (iv_len > EVP_CIPHER_iv_length(cipher)) {
+        if (!EVP_CIPHER_CTX_ctrl(self->ctx, EVP_CTRL_GCM_SET_IVLEN, iv_len, NULL)) { Py_CLEAR(self); return set_error_from_openssl("Failed to set the IV length"); }
+    }
     if (1 != EVP_DecryptInit_ex(self->ctx, cipher, NULL, key->secret, iv)) {
         Py_CLEAR(self); return set_error_from_openssl("Failed to initialize encryption context"); }
     // Ensure tag length is 16 because the OpenSSL verification routines will happily pass even if you set a truncated tag.
-    if (tag_len != cipher_ctx_tag_length(self->ctx)) { PyErr_Format(PyExc_ValueError, "Tag length for AES 256 GCM must be %d", cipher_ctx_tag_length(self->ctx)); return NULL; }
+    if (tag_len < cipher_ctx_tag_length(self->ctx)) { PyErr_Format(PyExc_ValueError, "Tag length for AES 256 GCM must be at least %d", cipher_ctx_tag_length(self->ctx)); return NULL; }
     if (!EVP_CIPHER_CTX_ctrl(self->ctx, EVP_CTRL_AEAD_SET_TAG, tag_len, tag)) { Py_CLEAR(self); return set_error_from_openssl("Failed to set the tag"); }
+
     return (PyObject*)self;
 }
 
