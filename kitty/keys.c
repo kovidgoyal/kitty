@@ -284,6 +284,7 @@ static PyMethodDef module_methods[] = {
 };
 
 // SingleKey {{{
+typedef uint32_t keybitfield;
 #define KEY_BITS 21
 #define MOD_BITS 10
 #if 1 << (MOD_BITS-1) < GLFW_MOD_KITTY
@@ -291,11 +292,11 @@ static PyMethodDef module_methods[] = {
 #endif
 typedef union Key {
     struct {
-        uint32_t mods : MOD_BITS;
-        uint32_t is_native: 1;
-        uint32_t key : KEY_BITS;
+        keybitfield mods : MOD_BITS;
+        keybitfield is_native: 1;
+        keybitfield key : KEY_BITS;
     };
-    uint32_t val;
+    keybitfield val;
 } Key;
 
 static PyTypeObject SingleKey_Type;
@@ -308,9 +309,9 @@ typedef struct {
 
 static inline void
 SingleKey_set_vals(SingleKey *self, long key, unsigned short mods, int is_native) {
-    if (key >= 0 && key <= BIT_MASK(uint32_t, KEY_BITS)) {
-        uint32_t k = (uint32_t)key;
-        self->key.key = k & BIT_MASK(uint32_t, KEY_BITS);
+    if (key >= 0 && key <= BIT_MASK(keybitfield, KEY_BITS)) {
+        keybitfield k = (keybitfield)key;
+        self->key.key = k & BIT_MASK(keybitfield, KEY_BITS);
     }
     if (!(mods & 1 << (MOD_BITS + 1))) self->key.mods = mods & BIT_MASK(u_int32_t, MOD_BITS);
     if (is_native > -1) self->key.is_native = is_native ? 1 : 0;
