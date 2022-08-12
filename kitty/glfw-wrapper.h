@@ -250,6 +250,7 @@ typedef enum {
  *  GLFW_LOCK_KEY_MODS input mode is set.
  */
 #define GLFW_MOD_NUM_LOCK        0x0080
+#define GLFW_MOD_LAST            GLFW_MOD_NUM_LOCK
 #define GLFW_LOCK_MASK           (GLFW_MOD_NUM_LOCK | GLFW_MOD_CAPS_LOCK)
 
 /*! @} */

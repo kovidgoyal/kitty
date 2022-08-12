@@ -286,12 +286,14 @@ static PyMethodDef module_methods[] = {
 // SingleKey {{{
 #define KEY_BITS 21
 #define MOD_BITS 10
-
+#if 1 << (MOD_BITS-1) < GLFW_MOD_KITTY
+#error "Not enough mod bits"
+#endif
 typedef union Key {
     struct {
-        uint32_t key : KEY_BITS;
         uint32_t mods : MOD_BITS;
         uint32_t is_native: 1;
+        uint32_t key : KEY_BITS;
     };
     uint32_t val;
 } Key;
@@ -316,7 +318,7 @@ SingleKey_new(PyTypeObject *type, PyObject *args, PyObject *kw) {
             uint32_t k = (uint32_t)key;
             self->key.key = k & BIT_MASK(uint32_t, KEY_BITS);
         }
-        self->key.mods = mods;
+        self->key.mods = mods & BIT_MASK(u_int32_t, MOD_BITS);
         if (is_native) self->key.is_native = 1u;
     }
     return (PyObject*)self;

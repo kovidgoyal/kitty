@@ -534,8 +534,8 @@ class TestDataTypes(BaseTest):
         q('a\x1b[12;34:43mbc', 'abc')
 
     def test_SingleKey(self):
-        from kitty.fast_data_types import SingleKey, GLFW_MOD_NUM_LOCK, GLFW_MOD_SHIFT
-        for m in (GLFW_MOD_NUM_LOCK, GLFW_MOD_SHIFT):
+        from kitty.fast_data_types import SingleKey, GLFW_MOD_KITTY, GLFW_MOD_SHIFT
+        for m in (GLFW_MOD_KITTY, GLFW_MOD_SHIFT):
             s = SingleKey(mods=m)
             self.ae(s.mods, m)
         self.ae(tuple(iter(SingleKey())), (0, False, -1))
@@ -545,4 +545,4 @@ class TestDataTypes(BaseTest):
         self.ae(repr(SingleKey(key=23, mods=2)), 'SingleKey(mods=2, key=23)')
         self.ae(repr(SingleKey(key=23)), 'SingleKey(key=23)')
         self.ae(repr(SingleKey(key=23)._replace(mods=2)), 'SingleKey(mods=2, key=23)')
-        self.ae(repr(SingleKey(key=23)._replace(key=-1, mods=2)), 'SingleKey(mods=2)')
+        self.ae(repr(SingleKey(key=23)._replace(key=-1, mods=GLFW_MOD_KITTY)), f'SingleKey(mods={GLFW_MOD_KITTY})')
