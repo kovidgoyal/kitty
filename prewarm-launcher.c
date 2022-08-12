@@ -66,6 +66,16 @@ const static int has_splice = 0;
         memmove((array) + (i), (array) + (i) + 1, sizeof((array)[0]) * ((count) - (i))); \
     }}
 
+// ancient macs (10.15) have no MSG_NOSIGNAL
+#ifndef MSG_NOSIGNAL
+# define MSG_NOSIGNAL 0
+# ifdef SO_NOSIGPIPE
+#  define KITTY_USE_SO_NOSIGPIPE
+# else
+#  error "Cannot block SIGPIPE!"
+# endif
+#endif
+
 typedef struct transfer_buf {
     char *buf;
     size_t sz;
@@ -786,6 +796,12 @@ use_prewarmed_process(int argc, char *argv[], char *envp[]) {
     if (!create_launch_msg(argc, argv)) fail("Failed to create launch message");
     socket_fd = connect_to_socket_synchronously(env_addr);
     if (socket_fd < 0) fail("Failed to connect to prewarm socket");
+#ifdef KITTY_USE_SO_NOSIGPIPE
+    {
+        int val = 1;
+        if (setsockopt(socket_fd, SOL_SOCKET, SO_NOSIGPIPE, (void*)&val, sizeof(val)) != 0) fail("Failed to set SO_NOSIGPIPE");
+    }
+#endif
     from_child_tty.buf = malloc(IO_BUZ_SZ * 2);
     if (!from_child_tty.buf) fail("Out of memory allocating IO buffer");
     to_child_tty.buf = from_child_tty.buf + IO_BUZ_SZ;
