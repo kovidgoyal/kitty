@@ -52,12 +52,11 @@ terminal is encrypted to keep the password secure. A public key is used from
 the :envvar:`KITTY_PUBLIC_KEY` environment variable. Currently, only one
 encryption protocol is supported. The protocol number is present in
 :envvar:`KITTY_PUBLIC_KEY` as ``1``. The key data in this environment variable
-is `Base-85 <https://github.com/git/git/blob/master/base85.c>`__ encoded.  The
-algorithm used is `Elliptic Curve Diffie Helman
-<https://en.wikipedia.org/wiki/Elliptic-curve_Diffie–Hellman>`__ with the
-`X25519 curve <https://en.wikipedia.org/wiki/Curve25519>`__. A time based nonce
-is used to minimise replay attacks. The original JSON command has the fields:
-``password`` and ``timestamp`` added. The timestamp is the number of
+is :rfc:`Base-85 <1924>` encoded.  The algorithm used is `Elliptic Curve Diffie
+Helman <https://en.wikipedia.org/wiki/Elliptic-curve_Diffie–Hellman>`__ with
+the `X25519 curve <https://en.wikipedia.org/wiki/Curve25519>`__. A time based
+nonce is used to minimise replay attacks. The original JSON command has the
+fields: ``password`` and ``timestamp`` added. The timestamp is the number of
 nanoseconds since the epoch, excluding leap seconds. Commands with a timestamp
 more than 5 minutes from the current time are rejected. The command is then
 encrypted using AES-256-GCM in authenticated encryption mode, with a symmetric
