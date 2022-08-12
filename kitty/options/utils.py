@@ -18,7 +18,7 @@ from kitty.conf.utils import (
 )
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
-    CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, Color
+    CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, Color, SingleKey
 )
 from kitty.fonts import (
     FontFeature, FontModification, ModificationType, ModificationUnit,
@@ -29,7 +29,7 @@ from kitty.key_names import (
     get_key_name_lookup
 )
 from kitty.rgb import color_as_int
-from kitty.types import FloatEdges, MouseEvent, SingleKey
+from kitty.types import FloatEdges, MouseEvent
 from kitty.utils import expandvars, log_error, resolve_abs_or_config_path
 
 KeyMap = Dict[SingleKey, str]
@@ -1023,9 +1023,7 @@ class BaseDefinition:
 
 
 def resolve_key_mods(kitty_mod: int, mods: int) -> int:
-    if mods & defines.GLFW_MOD_KITTY:
-        mods = (mods & ~defines.GLFW_MOD_KITTY) | kitty_mod
-    return mods
+    return SingleKey(mods=mods).resolve_kitty_mod(kitty_mod).mods
 
 
 class MouseMapping(BaseDefinition):
@@ -1072,8 +1070,7 @@ class KeyDefinition(BaseDefinition):
 
     def resolve_and_copy(self, kitty_mod: int) -> 'KeyDefinition':
         def r(k: SingleKey) -> SingleKey:
-            mods = resolve_key_mods(kitty_mod, k.mods)
-            return k._replace(mods=mods)
+            return k.resolve_kitty_mod(kitty_mod)
         ans = KeyDefinition(
             self.is_sequence, r(self.trigger), tuple(map(r, self.rest)),
             self.definition

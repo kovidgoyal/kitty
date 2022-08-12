@@ -31,7 +31,7 @@ from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
     GLFW_MOD_SUPER, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS,
     IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED, ChildMonitor, Color,
-    EllipticCurveKey, KeyEvent, add_timer, apply_options_update,
+    EllipticCurveKey, KeyEvent, SingleKey, add_timer, apply_options_update,
     background_opacity_of, change_background_opacity, change_os_window_state,
     cocoa_set_menubar_title, create_os_window,
     current_application_quit_request, current_os_window, destroy_global_data,
@@ -56,7 +56,7 @@ from .session import Session, create_sessions, get_os_window_sizing_data
 from .tabs import (
     SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
 )
-from .types import _T, AsyncResponse, SingleKey, WindowSystemMouseEvent, ac
+from .types import _T, AsyncResponse, WindowSystemMouseEvent, ac
 from .typing import PopenType, TypedDict
 from .utils import (
     cleanup_ssh_control_masters, func_name, get_editor, get_new_os_window_size,

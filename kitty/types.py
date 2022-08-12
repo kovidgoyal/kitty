@@ -5,6 +5,8 @@ from functools import update_wrapper
 from typing import (
     TYPE_CHECKING, Any, Callable, Generic, NamedTuple, Tuple, TypeVar, Union, Iterator, Dict
 )
+if TYPE_CHECKING:
+    from kitty.fast_data_types import SingleKey
 
 _T = TypeVar('_T')
 
@@ -59,36 +61,8 @@ def mod_to_names(mods: int, kitty_mod: int = 0) -> Iterator[str]:
             yield name
 
 
-class SingleKey(NamedTuple):
-    mods: int = 0
-    is_native: bool = False
-    key: int = -1
-
-    def __repr__(self) -> str:
-        kwds = []
-        for i, f in enumerate(self._fields):
-            val = self[i]
-            if val != self._field_defaults[f]:
-                kwds.append(f'{f}={val!r}')
-        return 'SingleKey(' + ', '.join(kwds) + ')'
-
-    def human_repr_with_kitty_mod(self, kitty_mod: int = 0) -> str:
-        from .fast_data_types import glfw_get_key_name
-        names = []
-        names = list(mod_to_names(self.mods, kitty_mod))
-        if self.key > 0:
-            kname = (glfw_get_key_name(0, self.key) if self.is_native else glfw_get_key_name(self.key, 0)) or f'{self.key}'
-            kname = {' ': 'space'}.get(kname, kname)
-            names.append(kname)
-        return '+'.join(names)
-
-    @property
-    def human_repr(self) -> str:
-        return self.human_repr_with_kitty_mod()
-
-
 class Shortcut(NamedTuple):
-    keys: Tuple[SingleKey, ...]
+    keys: Tuple['SingleKey', ...]
     kitty_mod: int = 0
 
     @property

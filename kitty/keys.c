@@ -413,6 +413,18 @@ static PySequenceMethods SingleKey_sequence_methods = {
 };
 
 static PyObject*
+SingleKey_resolve_kitty_mod(SingleKey *self, PyObject *km) {
+    if (!(self->key.mods & GLFW_MOD_KITTY)) { Py_INCREF(self); return (PyObject*)self; }
+    unsigned long kitty_mod = PyLong_AsUnsignedLong(km);
+    if (PyErr_Occurred()) return NULL;
+    SingleKey *ans = (SingleKey*)SingleKey_Type.tp_alloc(&SingleKey_Type, 0);
+    if (!ans) return NULL;
+    ans->key.val = self->key.val;
+    ans->key.mods = (ans->key.mods & ~GLFW_MOD_KITTY) | kitty_mod;
+    return (PyObject*)ans;
+}
+
+static PyObject*
 SingleKey_replace(SingleKey *self, PyObject *args, PyObject *kw) {
     long key = -2; unsigned short mods = 1 << (MOD_BITS + 1); int is_native = -1;
     if (!PyArg_ParseTupleAndKeywords(args, kw, "|Hpl", SingleKey_kwds, &mods, &is_native, &key)) return NULL;
@@ -427,6 +439,7 @@ SingleKey_replace(SingleKey *self, PyObject *args, PyObject *kw) {
 
 static PyMethodDef SingleKey_methods[] = {
     {"_replace", (PyCFunction)(void (*) (void))SingleKey_replace, METH_VARARGS | METH_KEYWORDS, ""},
+    {"resolve_kitty_mod", (PyCFunction)SingleKey_resolve_kitty_mod, METH_O, ""},
     {NULL}  /* Sentinel */
 };
 

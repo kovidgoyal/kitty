@@ -4,12 +4,12 @@ import typing
 from array import array
 from kitty.constants import is_macos
 import kitty.constants
-from kitty.fast_data_types import Color
+from kitty.fast_data_types import Color, SingleKey
 import kitty.fast_data_types
 import kitty.fonts
 from kitty.options.utils import AliasMap, KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap, TabBarMarginHeight
 import kitty.options.utils
-from kitty.types import FloatEdges, SingleKey
+from kitty.types import FloatEdges
 import kitty.types
 
 if typing.TYPE_CHECKING:

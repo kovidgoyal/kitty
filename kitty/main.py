@@ -21,8 +21,8 @@ from .constants import (
     running_in_kitty, website_url
 )
 from .fast_data_types import (
-    GLFW_IBEAM_CURSOR, GLFW_MOD_ALT, GLFW_MOD_SHIFT, create_os_window,
-    free_font_data, glfw_init, glfw_terminate, load_png_data,
+    GLFW_IBEAM_CURSOR, GLFW_MOD_ALT, GLFW_MOD_SHIFT, SingleKey,
+    create_os_window, free_font_data, glfw_init, glfw_terminate, load_png_data,
     set_custom_cursor, set_default_window_icon, set_options
 )
 from .fonts.box_drawing import set_scale
@@ -32,7 +32,6 @@ from .options.utils import DELETE_ENV_VAR
 from .os_window_size import initial_window_size_func
 from .prewarm import PrewarmProcess, fork_prewarm_process
 from .session import create_sessions, get_os_window_sizing_data
-from .types import SingleKey
 from .utils import (
     cleanup_ssh_control_masters, detach, expandvars, log_error,
     single_instance, startup_notification_handler, unix_socket_paths
