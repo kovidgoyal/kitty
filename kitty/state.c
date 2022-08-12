@@ -1239,7 +1239,6 @@ THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
 THREE_ID(detach_window)
 THREE_ID(attach_window)
-PYWRAP1(resolve_key_mods) { int mods, kitty_mod; PA("ii", &kitty_mod, &mods); return PyLong_FromLong(resolve_mods(kitty_mod, mods)); }
 PYWRAP1(add_tab) { return PyLong_FromUnsignedLongLong(add_tab(PyLong_AsUnsignedLongLong(args))); }
 PYWRAP1(add_window) { PyObject *title; id_type a, b; PA("KKO", &a, &b, &title); return PyLong_FromUnsignedLongLong(add_window(a, b, title)); }
 PYWRAP0(current_os_window) { OSWindow *w = current_os_window(); if (!w) Py_RETURN_NONE; return PyLong_FromUnsignedLongLong(w->id); }
@@ -1265,7 +1264,6 @@ static PyMethodDef module_methods[] = {
     MW(mouse_selection, METH_VARARGS),
     MW(set_window_logo, METH_VARARGS),
     MW(set_in_sequence_mode, METH_O),
-    MW(resolve_key_mods, METH_VARARGS),
     MW(handle_for_window_id, METH_VARARGS),
     MW(update_ime_position_for_window, METH_VARARGS),
     MW(pt_to_px, METH_VARARGS),

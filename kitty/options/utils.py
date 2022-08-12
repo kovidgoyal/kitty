@@ -1022,6 +1022,12 @@ class BaseDefinition:
         return f'{self.__class__.__name__}({", ".join(kwds)})'
 
 
+def resolve_key_mods(kitty_mod: int, mods: int) -> int:
+    if mods & defines.GLFW_MOD_KITTY:
+        mods = (mods & ~defines.GLFW_MOD_KITTY) | kitty_mod
+    return mods
+
+
 class MouseMapping(BaseDefinition):
     map_type: str = 'mouse_map'
 
@@ -1040,7 +1046,7 @@ class MouseMapping(BaseDefinition):
 
     def resolve_and_copy(self, kitty_mod: int) -> 'MouseMapping':
         ans = MouseMapping(
-            self.button, defines.resolve_key_mods(kitty_mod, self.mods), self.repeat_count, self.grabbed,
+            self.button, resolve_key_mods(kitty_mod, self.mods), self.repeat_count, self.grabbed,
             self.definition)
         ans.definition_location = self.definition_location
         return ans
@@ -1066,7 +1072,7 @@ class KeyDefinition(BaseDefinition):
 
     def resolve_and_copy(self, kitty_mod: int) -> 'KeyDefinition':
         def r(k: SingleKey) -> SingleKey:
-            mods = defines.resolve_key_mods(kitty_mod, k.mods)
+            mods = resolve_key_mods(kitty_mod, k.mods)
             return k._replace(mods=mods)
         ans = KeyDefinition(
             self.is_sequence, r(self.trigger), tuple(map(r, self.rest)),

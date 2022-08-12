@@ -44,14 +44,6 @@ parse_ms_long_to_monotonic_t(PyObject *val) {
     return ms_to_monotonic_t(PyLong_AsUnsignedLong(val));
 }
 
-static inline int
-resolve_mods(int kitty_mod, int mods) {
-    if (mods & GLFW_MOD_KITTY) {
-        mods = (mods & ~GLFW_MOD_KITTY) | kitty_mod;
-    }
-    return mods;
-}
-
 static WindowTitleIn
 window_title_in(PyObject *title_in) {
     const char *in = PyUnicode_AsUTF8(title_in);

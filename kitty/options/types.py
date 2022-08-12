@@ -736,153 +736,153 @@ defaults.symbol_map = {}
 defaults.watcher = {}
 defaults.map = [
     # copy_to_clipboard
-    KeyDefinition(trigger=SingleKey(mods=1024, key=99), definition='copy_to_clipboard'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=99), definition='copy_to_clipboard'),  # noqa
     # paste_from_clipboard
-    KeyDefinition(trigger=SingleKey(mods=1024, key=118), definition='paste_from_clipboard'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=118), definition='paste_from_clipboard'),  # noqa
     # paste_from_selection
-    KeyDefinition(trigger=SingleKey(mods=1024, key=115), definition='paste_from_selection'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=115), definition='paste_from_selection'),  # noqa
     # paste_from_selection
     KeyDefinition(trigger=SingleKey(mods=1, key=57348), definition='paste_from_selection'),  # noqa
     # pass_selection_to_program
-    KeyDefinition(trigger=SingleKey(mods=1024, key=111), definition='pass_selection_to_program'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=111), definition='pass_selection_to_program'),  # noqa
     # scroll_line_up
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57352), definition='scroll_line_up'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57352), definition='scroll_line_up'),  # noqa
     # scroll_line_up
-    KeyDefinition(trigger=SingleKey(mods=1024, key=107), definition='scroll_line_up'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=107), definition='scroll_line_up'),  # noqa
     # scroll_line_down
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57353), definition='scroll_line_down'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57353), definition='scroll_line_down'),  # noqa
     # scroll_line_down
-    KeyDefinition(trigger=SingleKey(mods=1024, key=106), definition='scroll_line_down'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=106), definition='scroll_line_down'),  # noqa
     # scroll_page_up
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57354), definition='scroll_page_up'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57354), definition='scroll_page_up'),  # noqa
     # scroll_page_down
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57355), definition='scroll_page_down'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57355), definition='scroll_page_down'),  # noqa
     # scroll_home
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57356), definition='scroll_home'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57356), definition='scroll_home'),  # noqa
     # scroll_end
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57357), definition='scroll_end'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57357), definition='scroll_end'),  # noqa
     # scroll_to_previous_prompt
-    KeyDefinition(trigger=SingleKey(mods=1024, key=122), definition='scroll_to_prompt -1'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=122), definition='scroll_to_prompt -1'),  # noqa
     # scroll_to_next_prompt
-    KeyDefinition(trigger=SingleKey(mods=1024, key=120), definition='scroll_to_prompt 1'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=120), definition='scroll_to_prompt 1'),  # noqa
     # show_scrollback
-    KeyDefinition(trigger=SingleKey(mods=1024, key=104), definition='show_scrollback'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=104), definition='show_scrollback'),  # noqa
     # show_last_command_output
-    KeyDefinition(trigger=SingleKey(mods=1024, key=103), definition='show_last_command_output'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=103), definition='show_last_command_output'),  # noqa
     # new_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57345), definition='new_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57345), definition='new_window'),  # noqa
     # new_os_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=110), definition='new_os_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=110), definition='new_os_window'),  # noqa
     # close_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=119), definition='close_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=119), definition='close_window'),  # noqa
     # next_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=93), definition='next_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=93), definition='next_window'),  # noqa
     # previous_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=91), definition='previous_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=91), definition='previous_window'),  # noqa
     # move_window_forward
-    KeyDefinition(trigger=SingleKey(mods=1024, key=102), definition='move_window_forward'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=102), definition='move_window_forward'),  # noqa
     # move_window_backward
-    KeyDefinition(trigger=SingleKey(mods=1024, key=98), definition='move_window_backward'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=98), definition='move_window_backward'),  # noqa
     # move_window_to_top
-    KeyDefinition(trigger=SingleKey(mods=1024, key=96), definition='move_window_to_top'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=96), definition='move_window_to_top'),  # noqa
     # start_resizing_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=114), definition='start_resizing_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=114), definition='start_resizing_window'),  # noqa
     # first_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=49), definition='first_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=49), definition='first_window'),  # noqa
     # second_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=50), definition='second_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=50), definition='second_window'),  # noqa
     # third_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=51), definition='third_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=51), definition='third_window'),  # noqa
     # fourth_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=52), definition='fourth_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=52), definition='fourth_window'),  # noqa
     # fifth_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=53), definition='fifth_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=53), definition='fifth_window'),  # noqa
     # sixth_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=54), definition='sixth_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=54), definition='sixth_window'),  # noqa
     # seventh_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=55), definition='seventh_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=55), definition='seventh_window'),  # noqa
     # eighth_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=56), definition='eighth_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=56), definition='eighth_window'),  # noqa
     # ninth_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57), definition='ninth_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57), definition='ninth_window'),  # noqa
     # tenth_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=48), definition='tenth_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=48), definition='tenth_window'),  # noqa
     # focus_visible_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57370), definition='focus_visible_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57370), definition='focus_visible_window'),  # noqa
     # swap_with_window
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57371), definition='swap_with_window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57371), definition='swap_with_window'),  # noqa
     # next_tab
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57351), definition='next_tab'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57351), definition='next_tab'),  # noqa
     # next_tab
     KeyDefinition(trigger=SingleKey(mods=4, key=57346), definition='next_tab'),  # noqa
     # previous_tab
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57350), definition='previous_tab'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57350), definition='previous_tab'),  # noqa
     # previous_tab
     KeyDefinition(trigger=SingleKey(mods=5, key=57346), definition='previous_tab'),  # noqa
     # new_tab
-    KeyDefinition(trigger=SingleKey(mods=1024, key=116), definition='new_tab'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=116), definition='new_tab'),  # noqa
     # close_tab
-    KeyDefinition(trigger=SingleKey(mods=1024, key=113), definition='close_tab'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=113), definition='close_tab'),  # noqa
     # move_tab_forward
-    KeyDefinition(trigger=SingleKey(mods=1024, key=46), definition='move_tab_forward'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=46), definition='move_tab_forward'),  # noqa
     # move_tab_backward
-    KeyDefinition(trigger=SingleKey(mods=1024, key=44), definition='move_tab_backward'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=44), definition='move_tab_backward'),  # noqa
     # set_tab_title
-    KeyDefinition(trigger=SingleKey(mods=1026, key=116), definition='set_tab_title'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=258, key=116), definition='set_tab_title'),  # noqa
     # next_layout
-    KeyDefinition(trigger=SingleKey(mods=1024, key=108), definition='next_layout'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=108), definition='next_layout'),  # noqa
     # increase_font_size
-    KeyDefinition(trigger=SingleKey(mods=1024, key=61), definition='change_font_size all +2.0'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=61), definition='change_font_size all +2.0'),  # noqa
     # increase_font_size
-    KeyDefinition(trigger=SingleKey(mods=1024, key=43), definition='change_font_size all +2.0'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=43), definition='change_font_size all +2.0'),  # noqa
     # increase_font_size
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57413), definition='change_font_size all +2.0'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57413), definition='change_font_size all +2.0'),  # noqa
     # decrease_font_size
-    KeyDefinition(trigger=SingleKey(mods=1024, key=45), definition='change_font_size all -2.0'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=45), definition='change_font_size all -2.0'),  # noqa
     # decrease_font_size
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57412), definition='change_font_size all -2.0'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57412), definition='change_font_size all -2.0'),  # noqa
     # reset_font_size
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57347), definition='change_font_size all 0'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57347), definition='change_font_size all 0'),  # noqa
     # open_url
-    KeyDefinition(trigger=SingleKey(mods=1024, key=101), definition='open_url_with_hints'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=101), definition='open_url_with_hints'),  # noqa
     # insert_selected_path
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=102),), definition='kitten hints --type path --program -'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=102),), definition='kitten hints --type path --program -'),  # noqa
     # open_selected_path
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(mods=1, key=102),), definition='kitten hints --type path'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(mods=1, key=102),), definition='kitten hints --type path'),  # noqa
     # insert_selected_line
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=108),), definition='kitten hints --type line --program -'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=108),), definition='kitten hints --type line --program -'),  # noqa
     # insert_selected_word
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=119),), definition='kitten hints --type word --program -'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=119),), definition='kitten hints --type word --program -'),  # noqa
     # insert_selected_hash
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=104),), definition='kitten hints --type hash --program -'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=104),), definition='kitten hints --type hash --program -'),  # noqa
     # goto_file_line
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=110),), definition='kitten hints --type linenum'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=110),), definition='kitten hints --type linenum'),  # noqa
     # open_selected_hyperlink
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=112), rest=(SingleKey(key=121),), definition='kitten hints --type hyperlink'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=121),), definition='kitten hints --type hyperlink'),  # noqa
     # toggle_fullscreen
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57374), definition='toggle_fullscreen'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57374), definition='toggle_fullscreen'),  # noqa
     # toggle_maximized
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57373), definition='toggle_maximized'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57373), definition='toggle_maximized'),  # noqa
     # input_unicode_character
-    KeyDefinition(trigger=SingleKey(mods=1024, key=117), definition='kitten unicode_input'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=117), definition='kitten unicode_input'),  # noqa
     # edit_config_file
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57365), definition='edit_config_file'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57365), definition='edit_config_file'),  # noqa
     # kitty_shell
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57344), definition='kitty_shell window'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57344), definition='kitty_shell window'),  # noqa
     # increase_background_opacity
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=97), rest=(SingleKey(key=109),), definition='set_background_opacity +0.1'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=97), rest=(SingleKey(key=109),), definition='set_background_opacity +0.1'),  # noqa
     # decrease_background_opacity
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=97), rest=(SingleKey(key=108),), definition='set_background_opacity -0.1'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=97), rest=(SingleKey(key=108),), definition='set_background_opacity -0.1'),  # noqa
     # full_background_opacity
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=97), rest=(SingleKey(key=49),), definition='set_background_opacity 1'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=97), rest=(SingleKey(key=49),), definition='set_background_opacity 1'),  # noqa
     # reset_background_opacity
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=1024, key=97), rest=(SingleKey(key=100),), definition='set_background_opacity default'),  # noqa
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=97), rest=(SingleKey(key=100),), definition='set_background_opacity default'),  # noqa
     # reset_terminal
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57349), definition='clear_terminal reset active'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57349), definition='clear_terminal reset active'),  # noqa
     # reload_config_file
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57368), definition='load_config_file'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57368), definition='load_config_file'),  # noqa
     # debug_config
-    KeyDefinition(trigger=SingleKey(mods=1024, key=57369), definition='debug_config'),  # noqa
+    KeyDefinition(trigger=SingleKey(mods=256, key=57369), definition='debug_config'),  # noqa
 ]
 if is_macos:
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=99), definition='copy_to_clipboard'))  # noqa

@@ -544,10 +544,6 @@ def get_options() -> Options:
     pass
 
 
-def resolve_key_mods(kitty_mod: int, mods: int) -> int:
-    pass
-
-
 def parse_font_feature(ff: str) -> bytes:
     pass
 
@@ -1469,6 +1465,8 @@ class AES256GCMDecrypt:
 
 
 class SingleKey:
+
+    __slots__ = ()
 
     def __init__(self, mods: int = 0, is_native: object = False, key: int = -1): ...
     def __hash__(self) -> int: ...
