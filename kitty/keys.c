@@ -299,28 +299,29 @@ typedef union Key {
 } Key;
 
 static PyTypeObject SingleKey_Type;
-
+static char *SingleKey_kwds[] = {"mods", "is_native", "key", NULL};
 typedef struct {
     PyObject_HEAD
 
     Key key;
 } SingleKey;
 
+static inline void
+SingleKey_set_vals(SingleKey *self, long key, unsigned short mods, int is_native) {
+    if (key >= 0 && key <= 0x10FFFF) {
+        uint32_t k = (uint32_t)key;
+        self->key.key = k & BIT_MASK(uint32_t, KEY_BITS);
+    }
+    if (!(mods & 1 << (MOD_BITS + 1))) self->key.mods = mods & BIT_MASK(u_int32_t, MOD_BITS);
+    if (is_native > -1) self->key.is_native = is_native ? 1 : 0;
+}
 
 static PyObject *
 SingleKey_new(PyTypeObject *type, PyObject *args, PyObject *kw) {
-    long key = -1; unsigned short mods = 0; int is_native = 0;
-    static char *SingleKey_kwds[] = {"mods", "is_native", "key", NULL};
+    long key = -1; unsigned short mods = 1 << (MOD_BITS + 1); int is_native = -1;
     if (!PyArg_ParseTupleAndKeywords(args, kw, "|Hpl", SingleKey_kwds, &mods, &is_native, &key)) return NULL;
     SingleKey *self = (SingleKey *)type->tp_alloc(type, 0);
-    if (self) {
-        if (key > 0 && key <= 0x10FFFF) {
-            uint32_t k = (uint32_t)key;
-            self->key.key = k & BIT_MASK(uint32_t, KEY_BITS);
-        }
-        self->key.mods = mods & BIT_MASK(u_int32_t, MOD_BITS);
-        if (is_native) self->key.is_native = 1u;
-    }
+    if (self) SingleKey_set_vals(self, key, mods, is_native);
     return (PyObject*)self;
 }
 
@@ -348,8 +349,7 @@ SingleKey_repr(PyObject *s) {
 static PyObject*
 SingleKey_get_key(SingleKey *self, void UNUSED *closure) {
     const unsigned long val = self->key.key;
-    if (val) return PyLong_FromUnsignedLong(val);
-    return PyLong_FromLong(-1);
+    return PyLong_FromUnsignedLong(val);
 }
 
 static PyObject*
@@ -411,26 +411,16 @@ static PySequenceMethods SingleKey_sequence_methods = {
     .sq_item = SingleKey_item,
 };
 
-static bool
-dict_has_key(PyObject *dict, const char *key) {
-    PyObject *k = PyUnicode_FromString(key);
-    if (!k) { PyErr_Print(); return false; }
-    int ret = PyDict_Contains(dict, k);
-    Py_DECREF(k);
-    return ret != 0;
-}
-
 static PyObject*
 SingleKey_replace(SingleKey *self, PyObject *args, PyObject *kw) {
-    SingleKey *r = (SingleKey*)SingleKey_new(&SingleKey_Type, args, kw);
-    if (!r) return NULL;
+    long key = -2; unsigned short mods = 1 << (MOD_BITS + 1); int is_native = -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|Hpl", SingleKey_kwds, &mods, &is_native, &key)) return NULL;
     SingleKey *ans = (SingleKey*)SingleKey_Type.tp_alloc(&SingleKey_Type, 0);
-    if (!ans) { Py_DECREF(r); return NULL; }
-    ans->key.val = self->key.val;
-    if (dict_has_key(kw, "mods")) ans->key.mods = r->key.mods;
-    if (dict_has_key(kw, "is_native")) ans->key.is_native = r->key.is_native;
-    if (dict_has_key(kw, "key")) ans->key.key = r->key.key;
-    Py_DECREF(r);
+    if (ans) {
+        if (key == -1) key = 0;
+        ans->key.val = self->key.val;
+        SingleKey_set_vals(ans, key, mods, is_native);
+    }
     return (PyObject*)ans;
 }
 
