@@ -283,11 +283,155 @@ static PyMethodDef module_methods[] = {
     {0}
 };
 
+// SingleKey {{{
+#define KEY_BITS 21
+#define MOD_BITS 10
+
+typedef union Key {
+    struct {
+        uint32_t key : KEY_BITS;
+        uint32_t mods : MOD_BITS;
+        uint32_t is_native: 1;
+    };
+    uint32_t val;
+} Key;
+
+static PyTypeObject SingleKey_Type;
+
+typedef struct {
+    PyObject_HEAD
+
+    Key key;
+} SingleKey;
+
+static PyObject *
+SingleKey_new(PyTypeObject *type, PyObject *args, PyObject *kw) {
+    static char *kwds[] = {"mods", "is_native", "key", NULL};
+    long key = -1; unsigned short mods = 0; int is_native = 0;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|Hpl", kwds, &mods, &is_native, &key)) return NULL;
+    SingleKey *self = (SingleKey *)type->tp_alloc(type, 0);
+    if (self) {
+        if (key > 0 && key <= 0x10FFFF) {
+            uint32_t k = (uint32_t)key;
+            self->key.key = k & BIT_MASK(uint32_t, KEY_BITS);
+        }
+        self->key.mods = mods;
+        if (is_native) self->key.is_native = 1u;
+    }
+    return (PyObject*)self;
+}
+
+static void
+SingleKey_dealloc(SingleKey* self) {
+    Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+static PyObject*
+SingleKey_repr(PyObject *s) {
+    SingleKey *self = (SingleKey*)s;
+    char buf[128];
+    int pos = 0;
+    pos += PyOS_snprintf(buf + pos, sizeof(buf) - pos, "SingleKey(");
+    unsigned int mods = self->key.mods;
+    if (mods) pos += PyOS_snprintf(buf + pos, sizeof(buf) - pos, "mods=%u, ", mods);
+    if (self->key.is_native) pos += PyOS_snprintf(buf + pos, sizeof(buf) - pos, "is_native=True, ");
+    unsigned long key = self->key.key;
+    if (key) pos += PyOS_snprintf(buf + pos, sizeof(buf) - pos, "key=%lu, ", key);
+    if (buf[pos-1] == ' ') pos -= 2;
+    pos += PyOS_snprintf(buf + pos, sizeof(buf) - pos, ")");
+    return PyUnicode_FromString(buf);
+}
+
+static PyObject*
+SingleKey_get_key(SingleKey *self, void UNUSED *closure) {
+    const unsigned long val = self->key.key;
+    if (val) return PyLong_FromUnsignedLong(val);
+    return PyLong_FromLong(-1);
+}
+
+static PyObject*
+SingleKey_get_mods(SingleKey *self, void UNUSED *closure) {
+    const unsigned long mods = self->key.mods;
+    return PyLong_FromUnsignedLong(mods);
+
+}
+
+static PyObject*
+SingleKey_get_is_native(SingleKey *self, void UNUSED *closure) {
+    if (self->key.is_native) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+static PyGetSetDef SingleKey_getsetters[] = {
+    {"key", (getter)SingleKey_get_key, NULL, "The key as an integer", NULL},
+    {"mods", (getter)SingleKey_get_mods, NULL, "The modifiers as an integer", NULL},
+    {"is_native", (getter)SingleKey_get_is_native, NULL, "A bool", NULL},
+    {NULL}  /* Sentinel */
+};
+
+static Py_hash_t
+SingleKey_hash(PyObject *self) {
+    Py_hash_t ans = ((SingleKey*)self)->key.val;
+    if (ans == -1) ans = -2;
+    return ans;
+}
+
+static PyObject*
+SingleKey_richcompare(PyObject *self, PyObject *other, int op) {
+    if (!PyObject_TypeCheck(other, &SingleKey_Type)) { PyErr_SetString(PyExc_TypeError, "Cannot compare SingleKey to other objects"); return NULL; }
+    SingleKey *a = (SingleKey*)self, *b = (SingleKey*)other;
+    Py_RETURN_RICHCOMPARE(a->key.val, b->key.val, op);
+}
+
+static Py_ssize_t
+SingleKey___len__(PyObject *self UNUSED) {
+    return 3;
+}
+
+static PyObject *
+SingleKey_item(PyObject *o, Py_ssize_t i) {
+    SingleKey *self = (SingleKey*)o;
+    switch(i) {
+        case 0:
+            return SingleKey_get_mods(self, NULL);
+        case 1:
+            return SingleKey_get_is_native(self, NULL);
+        case 2:
+            return SingleKey_get_key(self, NULL);
+    }
+    PyErr_SetString(PyExc_IndexError, "tuple index out of range");
+    return NULL;
+}
+
+static PySequenceMethods SingleKey_sequence_methods = {
+    .sq_length = SingleKey___len__,
+    .sq_item = SingleKey_item,
+};
+
+
+static PyTypeObject SingleKey_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "fast_data_types.SingleKey",
+    .tp_basicsize = sizeof(SingleKey),
+    .tp_dealloc = (destructor)SingleKey_dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_doc = "Compact and fast representation of a single key as defined in the config",
+    .tp_new = SingleKey_new,
+    .tp_hash = SingleKey_hash,
+    .tp_richcompare = SingleKey_richcompare,
+    .tp_as_sequence = &SingleKey_sequence_methods,
+    .tp_repr = SingleKey_repr,
+    /* .tp_methods = methods, */
+    .tp_getset = SingleKey_getsetters,
+}; // }}}
+
+
 bool
 init_keys(PyObject *module) {
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     if (PyType_Ready(&PyKeyEvent_Type) < 0) return false;
     if (PyModule_AddObject(module, "KeyEvent", (PyObject *)&PyKeyEvent_Type) != 0) return 0;
     Py_INCREF(&PyKeyEvent_Type);
+    ADD_TYPE(SingleKey);
     return true;
 }

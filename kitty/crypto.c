@@ -22,11 +22,6 @@
 typedef enum HASH_ALGORITHM { SHA1_HASH, SHA224_HASH, SHA256_HASH, SHA384_HASH, SHA512_HASH } HASH_ALGORITHM;
 static PyObject* Crypto_Exception = NULL;
 
-#define ADD_TYPE(which) \
-    if (PyType_Ready(&which##_Type) < 0) return false; \
-    if (PyModule_AddObject(module, #which, (PyObject *)&which##_Type) != 0) return false; \
-    Py_INCREF(&which##_Type);
-
 static PyObject*
 set_error_from_openssl(const char *prefix) {
     BIO *bio = BIO_new(BIO_s_mem());

@@ -133,6 +133,14 @@ typedef struct ImageAnchorPosition {
 #endif
 #define START_ALLOW_CASE_RANGE IGNORE_PEDANTIC_WARNINGS
 #define END_ALLOW_CASE_RANGE END_IGNORE_PEDANTIC_WARNINGS
+#define BIT_MASK(__TYPE__, __ONE_COUNT__) \
+    ((__TYPE__) (-((__ONE_COUNT__) != 0))) \
+    & (((__TYPE__) -1) >> ((sizeof(__TYPE__) * CHAR_BIT) - (__ONE_COUNT__)))
+#define ADD_TYPE(which) \
+    if (PyType_Ready(&which##_Type) < 0) return false; \
+    if (PyModule_AddObject(module, #which, (PyObject *)&which##_Type) != 0) return false; \
+    Py_INCREF(&which##_Type);
+
 
 typedef enum UTF8State { UTF8_ACCEPT = 0, UTF8_REJECT = 1} UTF8State;
 
