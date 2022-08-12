@@ -304,11 +304,12 @@ typedef struct {
     Key key;
 } SingleKey;
 
+
 static PyObject *
 SingleKey_new(PyTypeObject *type, PyObject *args, PyObject *kw) {
-    static char *kwds[] = {"mods", "is_native", "key", NULL};
     long key = -1; unsigned short mods = 0; int is_native = 0;
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "|Hpl", kwds, &mods, &is_native, &key)) return NULL;
+    static char *SingleKey_kwds[] = {"mods", "is_native", "key", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|Hpl", SingleKey_kwds, &mods, &is_native, &key)) return NULL;
     SingleKey *self = (SingleKey *)type->tp_alloc(type, 0);
     if (self) {
         if (key > 0 && key <= 0x10FFFF) {
@@ -408,6 +409,34 @@ static PySequenceMethods SingleKey_sequence_methods = {
     .sq_item = SingleKey_item,
 };
 
+static bool
+dict_has_key(PyObject *dict, const char *key) {
+    PyObject *k = PyUnicode_FromString(key);
+    if (!k) { PyErr_Print(); return false; }
+    int ret = PyDict_Contains(dict, k);
+    Py_DECREF(k);
+    return ret != 0;
+}
+
+static PyObject*
+SingleKey_replace(SingleKey *self, PyObject *args, PyObject *kw) {
+    SingleKey *r = (SingleKey*)SingleKey_new(&SingleKey_Type, args, kw);
+    if (!r) return NULL;
+    SingleKey *ans = (SingleKey*)SingleKey_Type.tp_alloc(&SingleKey_Type, 0);
+    if (!ans) { Py_DECREF(r); return NULL; }
+    ans->key.val = self->key.val;
+    if (dict_has_key(kw, "mods")) ans->key.mods = r->key.mods;
+    if (dict_has_key(kw, "is_native")) ans->key.is_native = r->key.is_native;
+    if (dict_has_key(kw, "key")) ans->key.key = r->key.key;
+    Py_DECREF(r);
+    return (PyObject*)ans;
+}
+
+static PyMethodDef SingleKey_methods[] = {
+    {"_replace", (PyCFunction)(void (*) (void))SingleKey_replace, METH_VARARGS | METH_KEYWORDS, ""},
+    {NULL}  /* Sentinel */
+};
+
 
 static PyTypeObject SingleKey_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -421,7 +450,7 @@ static PyTypeObject SingleKey_Type = {
     .tp_richcompare = SingleKey_richcompare,
     .tp_as_sequence = &SingleKey_sequence_methods,
     .tp_repr = SingleKey_repr,
-    /* .tp_methods = methods, */
+    .tp_methods = SingleKey_methods,
     .tp_getset = SingleKey_getsetters,
 }; // }}}
 

@@ -538,9 +538,11 @@ class TestDataTypes(BaseTest):
         for m in (GLFW_MOD_NUM_LOCK, GLFW_MOD_SHIFT):
             s = SingleKey(mods=m)
             self.ae(s.mods, m)
-        self.ae(tuple(SingleKey()), (0, False, -1))
+        self.ae(tuple(iter(SingleKey())), (0, False, -1))
         self.ae(tuple(SingleKey(key=0x10ffff, mods=GLFW_MOD_SHIFT, is_native=True)), (GLFW_MOD_SHIFT, True, 0x10ffff))
         self.ae(repr(SingleKey()), 'SingleKey()')
         self.ae(repr(SingleKey(key=23, mods=2, is_native=True)), 'SingleKey(mods=2, is_native=True, key=23)')
         self.ae(repr(SingleKey(key=23, mods=2)), 'SingleKey(mods=2, key=23)')
         self.ae(repr(SingleKey(key=23)), 'SingleKey(key=23)')
+        self.ae(repr(SingleKey(key=23)._replace(mods=2)), 'SingleKey(mods=2, key=23)')
+        self.ae(repr(SingleKey(key=23)._replace(key=-1, mods=2)), 'SingleKey(mods=2)')
