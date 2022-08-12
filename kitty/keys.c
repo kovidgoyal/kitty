@@ -305,6 +305,7 @@ typedef struct {
     PyObject_HEAD
 
     Key key;
+    bool defined_with_kitty_mod;
 } SingleKey;
 
 static inline void
@@ -366,10 +367,18 @@ SingleKey_get_is_native(SingleKey *self, void UNUSED *closure) {
     Py_RETURN_FALSE;
 }
 
+static PyObject*
+SingleKey_defined_with_kitty_mod(SingleKey *self, void UNUSED *closure) {
+    if (self->defined_with_kitty_mod || (self->key.mods & GLFW_MOD_KITTY)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+
 static PyGetSetDef SingleKey_getsetters[] = {
     {"key", (getter)SingleKey_get_key, NULL, "The key as an integer", NULL},
     {"mods", (getter)SingleKey_get_mods, NULL, "The modifiers as an integer", NULL},
     {"is_native", (getter)SingleKey_get_is_native, NULL, "A bool", NULL},
+    {"defined_with_kitty_mod", (getter)SingleKey_defined_with_kitty_mod, NULL, "A bool", NULL},
     {NULL}  /* Sentinel */
 };
 
@@ -421,6 +430,7 @@ SingleKey_resolve_kitty_mod(SingleKey *self, PyObject *km) {
     if (!ans) return NULL;
     ans->key.val = self->key.val;
     ans->key.mods = (ans->key.mods & ~GLFW_MOD_KITTY) | kitty_mod;
+    ans->defined_with_kitty_mod = true;
     return (PyObject*)ans;
 }
 

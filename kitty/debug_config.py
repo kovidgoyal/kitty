@@ -52,29 +52,16 @@ def print_mapping_changes(defns: Dict[str, str], changes: Set[str], text: str, p
             print_event(k, defns[k], print)
 
 
-def compare_shortcut_maps(final: Dict[Shortcut, str], final_kitty_mod: int, initial: Dict[Shortcut, str], initial_kitty_mod: int, print: Print) -> None:
-    # previous_tab uses a definition of ctrl+shift+tab not kitty_mod+tab, but
-    # we cant distinguish these as the information about the original
-    # definition is discarded.
-    ei = {k._replace(kitty_mod=0 if v == 'previous_tab' and k.human_repr.endswith('+tab') else initial_kitty_mod).human_repr: v for k, v in initial.items()}
-    ef = {k._replace(kitty_mod=final_kitty_mod).human_repr: v for k, v in final.items()}
+def compare_maps(final: Dict[AnyEvent, str], final_kitty_mod: int, initial: Dict[AnyEvent, str], initial_kitty_mod: int, print: Print) -> None:
+    ei = {k.human_repr(initial_kitty_mod): v for k, v in initial.items()}
+    ef = {k.human_repr(final_kitty_mod): v for k, v in final.items()}
     added = set(ef) - set(ei)
     removed = set(ei) - set(ef)
     changed = {k for k in set(ef) & set(ei) if ef[k] != ei[k]}
-    print_mapping_changes(ef, added, 'Added shortcuts:', print)
-    print_mapping_changes(ei, removed, 'Removed shortcuts:', print)
-    print_mapping_changes(ef, changed, 'Changed shortcuts:', print)
-
-
-def compare_mouse_maps(final: Dict[MouseEvent, str], final_kitty_mod: int, initial: Dict[MouseEvent, str], initial_kitty_mod: int, print: Print) -> None:
-    ei = {k.human_repr: v for k, v in initial.items()}
-    ef = {k.human_repr: v for k, v in final.items()}
-    added = set(ef) - set(ei)
-    removed = set(ei) - set(ef)
-    changed = {k for k in set(ef) & set(ei) if ef[k] != ei[k]}
-    print_mapping_changes(ef, added, 'Added mouse actions:', print)
-    print_mapping_changes(ei, removed, 'Removed mouse actions:', print)
-    print_mapping_changes(ef, changed, 'Changed mouse actions:', print)
+    which = 'shortcuts' if isinstance(next(iter(initial)), Shortcut) else 'mouse actions'
+    print_mapping_changes(ef, added, f'Added {which}:', print)
+    print_mapping_changes(ei, removed, f'Removed {which}:', print)
+    print_mapping_changes(ef, changed, f'Changed {which}:', print)
 
 
 def flatten_sequence_map(m: SequenceMap) -> ShortcutMap:
@@ -120,14 +107,14 @@ def compare_opts(opts: KittyOpts, print: Print) -> None:
                 else:
                     print(fmt.format(f), str(getattr(opts, f)))
 
-    compare_mouse_maps(opts.mousemap, opts.kitty_mod, default_opts.mousemap, default_opts.kitty_mod, print)
+    compare_maps(opts.mousemap, opts.kitty_mod, default_opts.mousemap, default_opts.kitty_mod, print)
     final_, initial_ = opts.keymap, default_opts.keymap
     final: ShortcutMap = {Shortcut((k,)): v for k, v in final_.items()}
     initial: ShortcutMap = {Shortcut((k,)): v for k, v in initial_.items()}
     final_s, initial_s = map(flatten_sequence_map, (opts.sequence_map, default_opts.sequence_map))
     final.update(final_s)
     initial.update(initial_s)
-    compare_shortcut_maps(final, opts.kitty_mod, initial, default_opts.kitty_mod, print)
+    compare_maps(final, opts.kitty_mod, initial, default_opts.kitty_mod, print)
     if colors:
         print(f'{title("Colors")}:', end='\n\t')
         print('\n\t'.join(sorted(colors)))
