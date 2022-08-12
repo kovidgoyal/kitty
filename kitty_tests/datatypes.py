@@ -2,12 +2,14 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import sys
 import tempfile
 
 from kitty.config import build_ansi_color_table, defaults
 from kitty.fast_data_types import (
-    ColorProfile, Cursor as C, HistoryBuf, LineBuf, Color,
-    parse_input_from_terminal, truncate_point_for_length, wcswidth, wcwidth, strip_csi
+    Color, ColorProfile, Cursor as C, HistoryBuf, LineBuf,
+    parse_input_from_terminal, strip_csi, truncate_point_for_length, wcswidth,
+    wcwidth
 )
 from kitty.rgb import to_color
 from kitty.utils import is_path_in_temp_dir, sanitize_title
@@ -534,12 +536,14 @@ class TestDataTypes(BaseTest):
         q('a\x1b[12;34:43mbc', 'abc')
 
     def test_SingleKey(self):
-        from kitty.fast_data_types import SingleKey, GLFW_MOD_KITTY, GLFW_MOD_SHIFT
+        from kitty.fast_data_types import (
+            GLFW_MOD_KITTY, GLFW_MOD_SHIFT, SingleKey
+        )
         for m in (GLFW_MOD_KITTY, GLFW_MOD_SHIFT):
             s = SingleKey(mods=m)
             self.ae(s.mods, m)
         self.ae(tuple(iter(SingleKey())), (0, False, 0))
-        self.ae(tuple(SingleKey(key=0x10ffff, mods=GLFW_MOD_SHIFT, is_native=True)), (GLFW_MOD_SHIFT, True, 0x10ffff))
+        self.ae(tuple(SingleKey(key=sys.maxunicode, mods=GLFW_MOD_SHIFT, is_native=True)), (GLFW_MOD_SHIFT, True, sys.maxunicode))
         self.ae(repr(SingleKey()), 'SingleKey()')
         self.ae(repr(SingleKey(key=23, mods=2, is_native=True)), 'SingleKey(mods=2, is_native=True, key=23)')
         self.ae(repr(SingleKey(key=23, mods=2)), 'SingleKey(mods=2, key=23)')

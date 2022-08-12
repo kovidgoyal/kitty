@@ -308,7 +308,7 @@ typedef struct {
 
 static inline void
 SingleKey_set_vals(SingleKey *self, long key, unsigned short mods, int is_native) {
-    if (key >= 0 && key <= 0x10FFFF) {
+    if (key >= 0 && key <= BIT_MASK(uint32_t, KEY_BITS)) {
         uint32_t k = (uint32_t)key;
         self->key.key = k & BIT_MASK(uint32_t, KEY_BITS);
     }
