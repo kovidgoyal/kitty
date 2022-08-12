@@ -81,7 +81,7 @@ static PySequenceMethods sequence_methods = {
 static PyObject *
 richcmp(PyObject *obj1, PyObject *obj2, int op);
 
-PyTypeObject Secret_Type = {
+static PyTypeObject Secret_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.Secret",
     .tp_basicsize = sizeof(Secret),
@@ -236,7 +236,7 @@ static PyMethodDef methods[] = {
 };
 
 
-PyTypeObject EllipticCurveKey_Type = {
+static PyTypeObject EllipticCurveKey_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.EllipticCurveKey",
     .tp_basicsize = sizeof(EllipticCurveKey),
@@ -348,7 +348,7 @@ static PyMemberDef aes256gcmencrypt_members[] = {
     {NULL}
 };
 
-PyTypeObject AES256GCMEncrypt_Type = {
+static PyTypeObject AES256GCMEncrypt_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.AES256GCMEncrypt",
     .tp_basicsize = sizeof(AES256GCMEncrypt),
@@ -437,7 +437,7 @@ static PyMethodDef aes256gcmdecrypt_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-PyTypeObject AES256GCMDecrypt_Type = {
+static PyTypeObject AES256GCMDecrypt_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.AES256GCMDecrypt",
     .tp_basicsize = sizeof(AES256GCMDecrypt),
