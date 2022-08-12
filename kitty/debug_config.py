@@ -56,7 +56,7 @@ def compare_shortcut_maps(final: Dict[Shortcut, str], final_kitty_mod: int, init
     # previous_tab uses a definition of ctrl+shift+tab not kitty_mod+tab, but
     # we cant distinguish these as the information about the original
     # definition is discarded.
-    ei = {k._replace(kitty_mod=0 if v == 'previous_tab' and k.keys[0].key == 57346 else initial_kitty_mod).human_repr: v for k, v in initial.items()}
+    ei = {k._replace(kitty_mod=0 if v == 'previous_tab' and k.human_repr.endswith('+tab') else initial_kitty_mod).human_repr: v for k, v in initial.items()}
     ef = {k._replace(kitty_mod=final_kitty_mod).human_repr: v for k, v in final.items()}
     added = set(ef) - set(ei)
     removed = set(ei) - set(ef)
