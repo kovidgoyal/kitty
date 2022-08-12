@@ -550,3 +550,7 @@ class TestDataTypes(BaseTest):
         self.ae(repr(SingleKey(key=23)), 'SingleKey(key=23)')
         self.ae(repr(SingleKey(key=23)._replace(mods=2)), 'SingleKey(mods=2, key=23)')
         self.ae(repr(SingleKey(key=23)._replace(key=-1, mods=GLFW_MOD_KITTY)), f'SingleKey(mods={GLFW_MOD_KITTY})')
+        self.assertEqual(SingleKey(key=1), SingleKey(key=1))
+        self.assertEqual(hash(SingleKey(key=1)), hash(SingleKey(key=1)))
+        self.assertNotEqual(hash(SingleKey(key=1, mods=2)), hash(SingleKey(key=1)))
+        self.assertNotEqual(SingleKey(key=1, mods=2), SingleKey(key=1))
