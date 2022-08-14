@@ -1252,9 +1252,10 @@ def create_minimal_macos_bundle(args: Options, launcher_dir: str) -> None:
     with open(os.path.join(kapp, 'Contents/Info.plist'), 'wb') as f:
         f.write(macos_info_plist())
     build_launcher(args, bin_dir)
-    os.symlink(
-        os.path.join(os.path.relpath(bin_dir, launcher_dir), appname),
-        os.path.join(launcher_dir, appname))
+    kitty_exe = os.path.join(launcher_dir, appname)
+    with suppress(FileNotFoundError):
+        os.remove(kitty_exe)
+    os.symlink(os.path.join(os.path.relpath(bin_dir, launcher_dir), appname), kitty_exe)
     create_macos_app_icon(resources_dir)
 
 
