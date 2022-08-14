@@ -25,6 +25,7 @@ extern void cocoa_set_titlebar_appearance(void *w, unsigned int theme);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
 extern void cocoa_toggle_secure_keyboard_entry(void);
+extern void cocoa_set_uncaught_exception_handler(void);
 extern void cocoa_update_menu_bar_title(PyObject*);
 extern size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz);
 extern monotonic_t cocoa_cursor_blink_interval(void);
@@ -1037,6 +1038,9 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
     const char* path;
     int debug_keyboard = 0, debug_rendering = 0;
     if (!PyArg_ParseTuple(args, "s|pp", &path, &debug_keyboard, &debug_rendering)) return NULL;
+#ifdef __APPLE__
+    cocoa_set_uncaught_exception_handler();
+#endif
     const char* err = load_glfw(path);
     if (err) { PyErr_SetString(PyExc_RuntimeError, err); return NULL; }
     glfwSetErrorCallback(error_callback);

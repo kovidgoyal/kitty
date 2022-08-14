@@ -906,6 +906,17 @@ cocoa_system_beep(const char *path) {
     else NSBeep();
 }
 
+static void
+uncaughtExceptionHandler(NSException *exception) {
+    log_error("Unhandled exception in Cocoa: %s", [[exception description] UTF8String]);
+    log_error("Stack trace:\n%s", [[exception.callStackSymbols description] UTF8String]);
+}
+
+void
+cocoa_set_uncaught_exception_handler(void) {
+    NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
+}
+
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cocoa_set_global_shortcut", (PyCFunction)cocoa_set_global_shortcut, METH_VARARGS, ""},
@@ -915,17 +926,10 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-static void
-uncaughtExceptionHandler(NSException *exception) {
-    log_error("Unhandled exception in Cocoa: %s", [[exception description] UTF8String]);
-    log_error("Stack trace:\n%s", [[exception.callStackSymbols description] UTF8String]);
-}
-
 bool
 init_cocoa(PyObject *module) {
     memset(&global_shortcuts, 0, sizeof(global_shortcuts));
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     register_at_exit_cleanup_func(COCOA_CLEANUP_FUNC, cleanup);
-    NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
     return true;
 }
