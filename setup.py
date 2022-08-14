@@ -904,8 +904,8 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     os.makedirs(launcher_dir, exist_ok=True)
     os.makedirs(build_dir, exist_ok=True)
     objects = []
-    for src in ('launcher.c', 'prewarm-launcher.c'):
-        obj = os.path.join(build_dir, src.replace('.c', '.o'))
+    for src in ('kitty/launcher/launcher.c', 'kitty/launcher/prewarm-launcher.c'):
+        obj = os.path.join(build_dir, src.replace('/', '-').replace('.c', '.o'))
         objects.append(obj)
         cmd = env.cc + cppflags + cflags + ['-c', src, '-o', obj]
         key = CompileKey(src, os.path.basename(obj))
@@ -1365,7 +1365,7 @@ def clean() -> None:
     safe_remove(
         'build', 'compile_commands.json', 'link_commands.json',
         'linux-package', 'kitty.app', 'asan-launcher',
-        'kitty-profile', 'kitty/launcher')
+        'kitty-profile', 'kitty/launcher/kitty')
 
     def excluded(root: str, d: str) -> bool:
         q = os.path.relpath(os.path.join(root, d), base).replace(os.sep, '/')
