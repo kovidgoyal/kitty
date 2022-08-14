@@ -11,6 +11,7 @@
 /link_commands.json
 /glad/out/
 /kitty/launcher/kitty
+/kitty/launcher/kitty.app
 /*.dSYM/
 __pycache__/
 /glfw/wayland-*-client-protocol.[ch]

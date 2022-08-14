@@ -904,7 +904,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     os.makedirs(launcher_dir, exist_ok=True)
     os.makedirs(build_dir, exist_ok=True)
     objects = []
-    for src in ('kitty/launcher/launcher.c', 'kitty/launcher/prewarm-launcher.c'):
+    for src in ('kitty/launcher/main.c', 'kitty/launcher/prewarm.c'):
         obj = os.path.join(build_dir, src.replace('/', '-').replace('.c', '.o'))
         objects.append(obj)
         cmd = env.cc + cppflags + cflags + ['-c', src, '-o', obj]
@@ -1241,19 +1241,20 @@ def create_macos_app_icon(where: str = 'Resources') -> None:
         ]])
 
 
-def create_minimal_macos_bundle(args: Options, where: str) -> None:
-    if os.path.exists(where):
-        shutil.rmtree(where)
-    bin_dir = os.path.join(where, 'kitty.app/Contents/MacOS')
-    resources_dir = os.path.join(where, 'kitty.app/Contents/Resources')
+def create_minimal_macos_bundle(args: Options, launcher_dir: str) -> None:
+    kapp = os.path.join(launcher_dir, 'kitty.app')
+    if os.path.exists(kapp):
+        shutil.rmtree(kapp)
+    bin_dir = os.path.join(kapp, 'Contents/MacOS')
+    resources_dir = os.path.join(kapp, 'Contents/Resources')
     os.makedirs(resources_dir)
     os.makedirs(bin_dir)
-    with open(os.path.join(where, 'kitty.app/Contents/Info.plist'), 'wb') as f:
+    with open(os.path.join(kapp, 'Contents/Info.plist'), 'wb') as f:
         f.write(macos_info_plist())
     build_launcher(args, bin_dir)
     os.symlink(
-        os.path.join(os.path.relpath(bin_dir, where), appname),
-        os.path.join(where, appname))
+        os.path.join(os.path.relpath(bin_dir, launcher_dir), appname),
+        os.path.join(launcher_dir, appname))
     create_macos_app_icon(resources_dir)
 
 
