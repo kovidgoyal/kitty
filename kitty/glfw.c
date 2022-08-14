@@ -1638,11 +1638,12 @@ void cleanup_glfw(void) {
 #endif
 }
 
-// constants {{{
 bool
 init_glfw(PyObject *m) {
     if (PyModule_AddFunctions(m, module_methods) != 0) return false;
     register_at_exit_cleanup_func(GLFW_CLEANUP_FUNC, cleanup_glfw);
+
+// constants {{{
 #define ADDC(n) if(PyModule_AddIntConstant(m, #n, n) != 0) return false;
     ADDC(GLFW_RELEASE);
     ADDC(GLFW_PRESS);
@@ -1884,9 +1885,8 @@ init_glfw(PyObject *m) {
 // ---
     ADDC(GLFW_CONNECTED);
     ADDC(GLFW_DISCONNECTED);
-
-return true;
 #undef ADDC
+// }}}
+
+    return true;
 }
-// }}}
-// }}}
