@@ -357,11 +357,6 @@ def set_locale() -> None:
 def _main() -> None:
     running_in_kitty(True)
 
-    try:
-        set_locale()
-    except Exception:
-        log_error('Failed to set locale, ignoring')
-
     args = sys.argv[1:]
     if is_macos and os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1':
         os.chdir(os.path.expanduser('~'))
@@ -407,6 +402,13 @@ def _main() -> None:
     prewarm = fork_prewarm_process(opts)
     if prewarm is None:
         raise SystemExit(1)
+
+    # set_locale on macOS uses cocoa APIs when LANG is not set, so we have to
+    # call it after the fork
+    try:
+        set_locale()
+    except Exception:
+        log_error('Failed to set locale, ignoring')
     with suppress(AttributeError):  # python compiled without threading
         sys.setswitchinterval(1000.0)  # we have only a single python thread
     init_glfw(opts, cli_opts.debug_keyboard, cli_opts.debug_rendering)
