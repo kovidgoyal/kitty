@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"syscall"
 	"unicode"
@@ -15,6 +16,8 @@ import (
 
 	"kitty"
 )
+
+var RootCmd *cobra.Command
 
 type Winsize struct {
 	Rows    uint16
@@ -78,6 +81,12 @@ var title_fmt = color.New(color.FgBlue, color.Bold).SprintFunc()
 var exe_fmt = color.New(color.FgYellow, color.Bold).SprintFunc()
 var opt_fmt = color.New(color.FgGreen).SprintFunc()
 var italic_fmt = color.New(color.Italic).SprintFunc()
+var bold_fmt = color.New(color.Bold).SprintFunc()
+var code_fmt = color.New(color.FgCyan).SprintFunc()
+var cyan_fmt = color.New(color.FgCyan).SprintFunc()
+var yellow_fmt = color.New(color.FgYellow).SprintFunc()
+var blue_fmt = color.New(color.FgBlue).SprintFunc()
+var green_fmt = color.New(color.FgGreen).SprintFunc()
 
 func cmd_name(cmd *cobra.Command) string {
 	if cmd.Annotations != nil {
@@ -91,22 +100,27 @@ func print_created_by(root *cobra.Command) {
 	fmt.Println(italic_fmt(root.Annotations["exe"]), opt_fmt(root.Version), "created by", title_fmt("Kovid Goyal"))
 }
 
-func print_with_indent(text string, indent string, screen_width int) {
+func print_line_with_indent(text string, indent string, screen_width int) {
 	x := len(indent)
 	fmt.Print(indent)
 	in_sgr := false
-	current_word := ""
+	var current_word strings.Builder
 
 	print_word := func(r rune) {
-		w := runewidth.StringWidth(current_word)
+		w := runewidth.StringWidth(current_word.String())
 		if x+w > screen_width {
 			fmt.Println()
 			fmt.Print(indent)
 			x = len(indent)
-			current_word = strings.TrimSpace(current_word)
+			s := strings.TrimSpace(current_word.String())
+			current_word.Reset()
+			current_word.WriteString(s)
 		}
-		fmt.Print(current_word)
-		current_word = string(r)
+		fmt.Print(current_word.String())
+		current_word.Reset()
+		if r > 0 {
+			current_word.WriteRune(r)
+		}
 		x += w
 	}
 
@@ -115,24 +129,106 @@ func print_with_indent(text string, indent string, screen_width int) {
 			if r == 'm' {
 				in_sgr = false
 			}
+			fmt.Print(string(r))
 			continue
 		}
 		if r == 0x1b {
 			in_sgr = true
+			if current_word.Len() != 0 {
+				print_word(0)
+			}
+			fmt.Print(string(r))
 			continue
 		}
-		if current_word != "" && unicode.IsSpace(r) && r != 0xa0 {
+		if current_word.Len() != 0 && r != 0xa0 && unicode.IsSpace(r) {
 			print_word(r)
 		} else {
-			current_word += string(r)
+			current_word.WriteRune(r)
 		}
 	}
-	if current_word != "" {
-		print_word(' ')
-		fmt.Print(current_word)
+	if current_word.Len() != 0 {
+		print_word(0)
 	}
 	if len(text) > 0 {
 		fmt.Println()
+	}
+}
+
+func ReplaceAllStringSubmatchFunc(re *regexp.Regexp, str string, repl func([]string) string) string {
+	result := ""
+	lastIndex := 0
+
+	for _, v := range re.FindAllSubmatchIndex([]byte(str), -1) {
+		groups := []string{}
+		for i := 0; i < len(v); i += 2 {
+			if v[i] == -1 || v[i+1] == -1 {
+				groups = append(groups, "")
+			} else {
+				groups = append(groups, str[v[i]:v[i+1]])
+			}
+		}
+
+		result += str[lastIndex:v[0]] + repl(groups)
+		lastIndex = v[1]
+	}
+
+	return result + str[lastIndex:]
+}
+
+func website_url(doc string) string {
+	if doc != "" {
+		doc = strings.TrimSuffix(doc, "/")
+		if doc != "" {
+			doc += "/"
+		}
+	}
+	return kitty.WebsiteBaseUrl + doc
+}
+
+var prettify_pat = regexp.MustCompile(":([a-z]+):`([^`]+)`")
+var ref_pat = regexp.MustCompile(`\s*<\S+?>`)
+
+func prettify(text string) string {
+	return ReplaceAllStringSubmatchFunc(prettify_pat, text, func(groups []string) string {
+		val := groups[2]
+		switch groups[1] {
+		case "file", "env", "envvar":
+			return italic_fmt(val)
+		case "doc":
+			return website_url(val)
+		case "ref":
+			return ref_pat.ReplaceAllString(val, ``)
+		case "code":
+			return code_fmt(val)
+		case "option":
+			idx := strings.LastIndex(val, "--")
+			if idx < 0 {
+				idx = strings.Index(val, "-")
+			}
+			if idx > -1 {
+				val = val[idx:]
+			}
+			return bold_fmt(val)
+		case "yellow":
+			return yellow_fmt(val)
+		case "blue":
+			return blue_fmt(val)
+		case "green":
+			return green_fmt(val)
+		case "cyan":
+			return cyan_fmt(val)
+		case "emph":
+			return italic_fmt(val)
+		default:
+			return val
+		}
+
+	})
+}
+
+func print_with_indent(text string, indent string, screen_width int) {
+	for _, line := range strings.Split(prettify(text), "\n") {
+		print_line_with_indent(line, indent, screen_width)
 	}
 }
 
@@ -184,14 +280,14 @@ func show_usage(cmd *cobra.Command) error {
 				fmt.Print(" ", defval)
 			}
 			fmt.Println()
-			if flag.Name == "help" {
-				fmt.Println("   ", "Print this help message")
-				fmt.Println()
-				return
+			msg := flag.Usage
+			switch flag.Name {
+			case "help":
+				msg = "Print this help message"
+			case "version":
+				msg = "Print the version of " + RootCmd.Annotations["exe"] + ": " + italic_fmt(RootCmd.Version)
 			}
-			for _, line := range strings.Split(flag.Usage, "\n") {
-				print_with_indent(line, "    ", screen_width)
-			}
+			print_with_indent(msg, "    ", screen_width)
 			if cmd.Annotations["choices-"+flag.Name] != "" {
 				fmt.Println("    Choices:", strings.Join(strings.Split(cmd.Annotations["choices-"+flag.Name], "\000"), ", "))
 			}
@@ -218,6 +314,7 @@ func CreateCommand(cmd *cobra.Command, exe string) *cobra.Command {
 }
 
 func Init(root *cobra.Command) {
+	RootCmd = root
 	root.Version = kitty.VersionString
 	root.PersistentPreRunE = ValidateChoices
 	root.SetUsageFunc(show_usage)

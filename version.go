@@ -18,9 +18,10 @@ type VersionType struct {
 var VersionString string
 var Version VersionType
 var VCSRevision string
+var WebsiteBaseUrl string
 
 func init() {
-	var verpat = regexp.MustCompile(`Version\((\d+),\s*(\d+),\s*(\d+)\)`)
+	verpat := regexp.MustCompile(`Version\((\d+),\s*(\d+),\s*(\d+)\)`)
 	matches := verpat.FindStringSubmatch(raw)
 	major, err := strconv.Atoi(matches[1])
 	minor, err := strconv.Atoi(matches[2])
@@ -39,6 +40,12 @@ func init() {
 				VCSRevision = bs.Value
 			}
 		}
+	}
+	website_pat := regexp.MustCompile(`website_base_url\s+=\s+['"](.+?)['"]`)
+	matches = website_pat.FindStringSubmatch(raw)
+	WebsiteBaseUrl = matches[1]
+	if matches[1] == "" {
+		panic(fmt.Errorf("Failed to find the website base url"))
 	}
 
 }
