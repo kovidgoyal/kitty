@@ -29,6 +29,7 @@ is_macos: bool = 'darwin' in _plat
 is_freebsd: bool = 'freebsd' in _plat
 is_running_from_develop: bool = False
 RC_ENCRYPTION_PROTOCOL_VERSION = '1'
+website_base_url = 'https://sw.kovidgoyal.net/kitty/'
 if getattr(sys, 'frozen', False):
     extensions_dir: str = getattr(sys, 'kitty_run_data')['extensions_dir']
 
@@ -230,7 +231,7 @@ def read_kitty_resource(name: str, package_name: str = 'kitty') -> bytes:
     return read_binary(package_name, name)
 
 
-def website_url(doc_name: str = '', website: str = 'https://sw.kovidgoyal.net/kitty/') -> str:
+def website_url(doc_name: str = '', website: str = website_base_url) -> str:
     if doc_name:
         base, _, frag = doc_name.partition('#')
         base = base.rstrip('/')

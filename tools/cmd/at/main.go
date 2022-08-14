@@ -20,12 +20,18 @@ func main() {
 		Short: "Control kitty remotely",
 		Long:  "Control kitty by sending it commands. Set the allow_remote_control option in kitty.conf or use a password, for this to work.",
 		Run: func(cmd *cobra.Command, args []string) {
-            cmd.Usage()
-            fmt.Fprintln(os.Stderr, color.RedString("\nNo command specified for " + exe_name))
+			cmd.Usage()
+			fmt.Fprintln(os.Stderr, color.RedString("\nNo command specified for "+exe_name))
 		},
 	}, exe_name)
-	cli.PersistentChoices(root, "use-password", "If no password is available, kitty will usually just send the remote control command without a password. This option can be used to force it to always or never use the supplied password.", "if-available", "always", "never")
 	root.Annotations["options_title"] = "Global options"
+
+	root.PersistentFlags().String("password", "",
+		"A password to use when contacting kitty. This will cause kitty to ask the user"+
+			" for permission to perform the specified action, unless the password has been"+
+			" accepted before or is pre-configured in :file:`kitty.conf`.")
+
+	cli.PersistentChoices(root, "use-password", "If no password is available, kitty will usually just send the remote control command without a password. This option can be used to force it to always or never use the supplied password.", "if-available", "always", "never")
 	cli.Init(root)
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
