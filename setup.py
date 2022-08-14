@@ -1354,6 +1354,14 @@ def package(args: Options, bundle_type: str) -> None:
 # }}}
 
 
+def clean_launcher_dir(launcher_dir: str) -> None:
+    for x in glob.glob(os.path.join(launcher_dir, 'kitty*')):
+        if os.path.isdir(x):
+            shutil.rmtree(x)
+        else:
+            os.remove(x)
+
+
 def clean() -> None:
 
     def safe_remove(*entries: str) -> None:
@@ -1367,7 +1375,8 @@ def clean() -> None:
     safe_remove(
         'build', 'compile_commands.json', 'link_commands.json',
         'linux-package', 'kitty.app', 'asan-launcher',
-        'kitty-profile', 'kitty/launcher/kitty')
+        'kitty-profile')
+    clean_launcher_dir('kitty/launcher')
 
     def excluded(root: str, d: str) -> bool:
         q = os.path.relpath(os.path.join(root, d), base).replace(os.sep, '/')
