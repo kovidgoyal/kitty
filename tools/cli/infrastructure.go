@@ -2,18 +2,20 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 	"unicode"
-	"unsafe"
 
 	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 	runewidth "github.com/mattn/go-runewidth"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/sys/unix"
 
 	"kitty"
 	"kitty/tools/utils"
@@ -21,27 +23,11 @@ import (
 
 var RootCmd *cobra.Command
 
-type Winsize struct {
-	Rows    uint16
-	Cols    uint16
-	Xpixels uint16
-	Ypixels uint16
-}
-
-func GetTTYSize() (Winsize, error) {
-	var ws Winsize
-	f, err := os.OpenFile("/dev/tty", os.O_RDONLY, 0755)
-	if err != nil {
-		return ws, err
+func GetTTYSize() (*unix.Winsize, error) {
+	if (stdout_is_terminal) {
+		return unix.IoctlGetWinsize(int(os.Stdout.Fd()), unix.TIOCGWINSZ)
 	}
-	fd := f.Fd()
-	retCode, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), uintptr(syscall.TIOCGWINSZ), uintptr(unsafe.Pointer(&ws)))
-	f.Close()
-
-	if int(retCode) == -1 {
-		return ws, errno
-	}
-	return ws, nil
+	return nil, fmt.Errorf("STDOUT is not a TTY")
 }
 
 func add_choices(cmd *cobra.Command, flags *pflag.FlagSet, choices []string, name string, usage string) {
@@ -79,6 +65,7 @@ func ValidateChoices(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+var stdout_is_terminal = false
 var title_fmt = color.New(color.FgBlue, color.Bold).SprintFunc()
 var exe_fmt = color.New(color.FgYellow, color.Bold).SprintFunc()
 var opt_fmt = color.New(color.FgGreen).SprintFunc()
@@ -90,27 +77,24 @@ var yellow_fmt = color.New(color.FgYellow).SprintFunc()
 var blue_fmt = color.New(color.FgBlue).SprintFunc()
 var green_fmt = color.New(color.FgGreen).SprintFunc()
 
-func print_created_by(root *cobra.Command) {
-	fmt.Println(italic_fmt(root.Name()), opt_fmt(root.Version), "created by", title_fmt("Kovid Goyal"))
-}
 
-func print_line_with_indent(text string, indent string, screen_width int) {
+func format_line_with_indent(output io.Writer, text string, indent string, screen_width int) {
 	x := len(indent)
-	fmt.Print(indent)
-	in_sgr := false
+	fmt.Fprint(output, indent)
+	in_escape := 0
 	var current_word strings.Builder
 
 	print_word := func(r rune) {
 		w := runewidth.StringWidth(current_word.String())
 		if x+w > screen_width {
-			fmt.Println()
-			fmt.Print(indent)
+			fmt.Fprintln(output)
+			fmt.Fprint(output, indent)
 			x = len(indent)
 			s := strings.TrimSpace(current_word.String())
 			current_word.Reset()
 			current_word.WriteString(s)
 		}
-		fmt.Print(current_word.String())
+		fmt.Fprint(output, current_word.String())
 		current_word.Reset()
 		if r > 0 {
 			current_word.WriteRune(r)
@@ -118,20 +102,24 @@ func print_line_with_indent(text string, indent string, screen_width int) {
 		x += w
 	}
 
-	for _, r := range text {
-		if in_sgr {
-			if r == 'm' {
-				in_sgr = false
+	for i, r := range text {
+		if in_escape > 0 {
+			if (in_escape == 1 && (r == ']' || r == '[')) {
+				in_escape = 2
+				if (r == ']') { in_escape = 3 }
 			}
-			fmt.Print(string(r))
+			if (in_escape == 2 && r == 'm') || (in_escape == 3 && r == '\\' && text[i-1] == 0x1b) {
+				in_escape = 0
+			}
+			fmt.Fprint(output, string(r))
 			continue
 		}
 		if r == 0x1b {
-			in_sgr = true
+			in_escape = 1
 			if current_word.Len() != 0 {
 				print_word(0)
 			}
-			fmt.Print(string(r))
+			fmt.Fprint(output, string(r))
 			continue
 		}
 		if current_word.Len() != 0 && r != 0xa0 && unicode.IsSpace(r) {
@@ -144,7 +132,7 @@ func print_line_with_indent(text string, indent string, screen_width int) {
 		print_word(0)
 	}
 	if len(text) > 0 {
-		fmt.Println()
+		fmt.Fprintln(output)
 	}
 }
 
@@ -182,12 +170,8 @@ func website_url(doc string) string {
 var prettify_pat = regexp.MustCompile(":([a-z]+):`([^`]+)`")
 var ref_pat = regexp.MustCompile(`\s*<\S+?>`)
 
-func is_atty() bool {
-	return italic_fmt("") != ""
-}
-
 func hyperlink_for_path(path string, text string) string {
-	if !is_atty() {
+	if !stdout_is_terminal {
 		return text
 	}
 	path = strings.ReplaceAll(utils.Abspath(path), string(os.PathSeparator), "/")
@@ -207,7 +191,7 @@ func prettify(text string) string {
 		val := groups[2]
 		switch groups[1] {
 		case "file":
-			if val == "kitty.conf" && is_atty() {
+			if val == "kitty.conf" && stdout_is_terminal {
 				path := filepath.Join(utils.ConfigDir(), val)
 				val = hyperlink_for_path(path, val)
 			}
@@ -246,17 +230,18 @@ func prettify(text string) string {
 	})
 }
 
-func print_with_indent(text string, indent string, screen_width int) {
+func format_with_indent(output io.Writer, text string, indent string, screen_width int) {
 	for _, line := range strings.Split(prettify(text), "\n") {
-		print_line_with_indent(line, indent, screen_width)
+		format_line_with_indent(output, line, indent, screen_width)
 	}
 }
 
 func show_usage(cmd *cobra.Command) error {
 	ws, tty_size_err := GetTTYSize()
+	var output strings.Builder
 	screen_width := 80
-	if tty_size_err == nil && ws.Cols < 80 {
-		screen_width = int(ws.Cols)
+	if tty_size_err == nil && ws.Col < 80 {
+		screen_width = int(ws.Col)
 	}
 	use := cmd.Use
 	idx := strings.Index(use, " ")
@@ -268,36 +253,36 @@ func show_usage(cmd *cobra.Command) error {
 		parent_names = append(parent_names, p.Name())
 	})
 	parent_names = append(parent_names, cmd.Name())
-	fmt.Println(title_fmt("Usage")+":", exe_fmt(strings.Join(parent_names, " ")), use)
-	fmt.Println()
+	fmt.Fprintln(&output, title_fmt("Usage")+":", exe_fmt(strings.Join(parent_names, " ")), use)
+	fmt.Fprintln(&output)
 	if len(cmd.Long) > 0 {
-		print_with_indent(cmd.Long, "", screen_width)
+		format_with_indent(&output, cmd.Long, "", screen_width)
 	} else if len(cmd.Short) > 0 {
-		print_with_indent(cmd.Short, "", screen_width)
+		format_with_indent(&output, cmd.Short, "", screen_width)
 	}
 	if cmd.HasAvailableSubCommands() {
-		fmt.Println()
-		fmt.Println(title_fmt("Commands") + ":")
+		fmt.Fprintln(&output)
+		fmt.Fprintln(&output, title_fmt("Commands")+":")
 		for _, child := range cmd.Commands() {
-			fmt.Println(" ", opt_fmt(child.Name()))
-			print_with_indent(child.Short, "    ", screen_width)
+			fmt.Fprintln(&output, " ", opt_fmt(child.Name()))
+			format_with_indent(&output, child.Short, "    ", screen_width)
 		}
-		fmt.Println()
-		print_with_indent("Get help for an individual command by running:", "", screen_width)
-		fmt.Println("   ", cmd.Name(), italic_fmt("command"), "-h")
+		fmt.Fprintln(&output)
+		format_with_indent(&output, "Get help for an individual command by running:", "", screen_width)
+		fmt.Fprintln(&output, "   ", cmd.Name(), italic_fmt("command"), "-h")
 	}
 	if cmd.HasAvailableFlags() {
 		options_title := cmd.Annotations["options_title"]
 		if len(options_title) == 0 {
 			options_title = "Options"
 		}
-		fmt.Println()
-		fmt.Println(title_fmt(options_title) + ":")
+		fmt.Fprintln(&output)
+		fmt.Fprintln(&output, title_fmt(options_title)+":")
 		flag_set := cmd.LocalFlags()
 		flag_set.VisitAll(func(flag *pflag.Flag) {
-			fmt.Print(opt_fmt("  --" + flag.Name))
+			fmt.Fprint(&output, opt_fmt("  --"+flag.Name))
 			if flag.Shorthand != "" {
-				fmt.Print(", ", opt_fmt("-"+flag.Shorthand))
+				fmt.Fprint(&output, ", ", opt_fmt("-"+flag.Shorthand))
 			}
 			defval := ""
 			switch flag.Value.Type() {
@@ -309,9 +294,9 @@ func show_usage(cmd *cobra.Command) error {
 			case "count":
 			}
 			if defval != "" {
-				fmt.Print(" ", defval)
+				fmt.Fprint(&output, " ", defval)
 			}
-			fmt.Println()
+			fmt.Fprintln(&output)
 			msg := flag.Usage
 			switch flag.Name {
 			case "help":
@@ -319,23 +304,24 @@ func show_usage(cmd *cobra.Command) error {
 			case "version":
 				msg = "Print the version of " + RootCmd.Name() + ": " + italic_fmt(RootCmd.Version)
 			}
-			print_with_indent(msg, "    ", screen_width)
+			format_with_indent(&output, msg, "    ", screen_width)
 			if cmd.Annotations["choices-"+flag.Name] != "" {
-				fmt.Println("    Choices:", strings.Join(strings.Split(cmd.Annotations["choices-"+flag.Name], "\000"), ", "))
+				fmt.Fprintln(&output, "    Choices:", strings.Join(strings.Split(cmd.Annotations["choices-"+flag.Name], "\000"), ", "))
 			}
-			fmt.Println()
+			fmt.Fprintln(&output)
 		})
 	}
-	if cmd.HasParent() {
-		cmd.VisitParents(func(cmd *cobra.Command) {
-			if !cmd.HasParent() {
-				print_created_by(cmd)
-			}
-		})
+	fmt.Fprintln(&output, italic_fmt(RootCmd.Name()), opt_fmt(RootCmd.Version), "created by", title_fmt("Kovid Goyal"))
+	output_text := output.String() 
+	if stdout_is_terminal && cmd.Annotations["allow-pager"] != "no" {
+		pager := exec.Command("less", "-iRXF");
+		pager.Stdin = strings.NewReader(output_text)
+		pager.Stdout = os.Stdout
+		pager.Stderr = os.Stderr
+		pager.Run()
 	} else {
-		print_created_by(cmd)
+		print(output_text)
 	}
-
 	return nil
 }
 
@@ -348,12 +334,14 @@ func CreateCommand(cmd *cobra.Command) *cobra.Command {
 }
 
 func SubCommandRequired(cmd *cobra.Command, args []string) {
+	cmd.Annotations["allow-pager"] = "no"
 	cmd.Usage()
 	fmt.Fprintln(os.Stderr, color.RedString("\nNo command specified for "+cmd.Name()))
 	os.Exit(1)
 }
 
 func Init(root *cobra.Command) {
+	stdout_is_terminal = isatty.IsTerminal(os.Stdout.Fd())
 	RootCmd = root
 	root.Version = kitty.VersionString
 	root.PersistentPreRunE = ValidateChoices
