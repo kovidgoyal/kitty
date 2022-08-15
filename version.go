@@ -56,7 +56,7 @@ func init() {
 	if matches[1] == "" {
 		panic(fmt.Errorf("Failed to find the default_pager_for_help"))
 	}
-	text := strings.ReplaceAll("[" + matches[1] + "]", "'", "\"")
+	text := strings.ReplaceAll("["+matches[1]+"]", "'", "\"")
 	err = json.Unmarshal([]byte(text), &DefaultPager)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Failed to unmarshal default pager text:", text)
