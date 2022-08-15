@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
@@ -15,6 +16,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"kitty"
+	"kitty/tools/utils"
 )
 
 var RootCmd *cobra.Command
@@ -180,11 +182,37 @@ func website_url(doc string) string {
 var prettify_pat = regexp.MustCompile(":([a-z]+):`([^`]+)`")
 var ref_pat = regexp.MustCompile(`\s*<\S+?>`)
 
+func is_atty() bool {
+	return italic_fmt("") != ""
+}
+
+func hyperlink_for_path(path string, text string) string {
+	if !is_atty() {
+		return text
+	}
+	path = strings.ReplaceAll(utils.Abspath(path), string(os.PathSeparator), "/")
+	fi, err := os.Stat(path)
+	if err == nil && fi.IsDir() {
+		path = strings.TrimSuffix(path, "/") + "/"
+	}
+	host, err := os.Hostname()
+	if err != nil {
+		host = ""
+	}
+	return "\x1b]8;;file://" + host + path + "\x1b\\" + text + "\x1b]8;;\x1b\\"
+}
+
 func prettify(text string) string {
 	return ReplaceAllStringSubmatchFunc(prettify_pat, text, func(groups []string) string {
 		val := groups[2]
 		switch groups[1] {
-		case "file", "env", "envvar":
+		case "file":
+			if val == "kitty.conf" && is_atty() {
+				path := filepath.Join(utils.ConfigDir(), val)
+				val = hyperlink_for_path(path, val)
+			}
+			return italic_fmt(val)
+		case "env", "envvar":
 			return italic_fmt(val)
 		case "doc":
 			return website_url(val)
@@ -233,7 +261,7 @@ func show_usage(cmd *cobra.Command) error {
 	use := cmd.Use
 	idx := strings.Index(use, " ")
 	if idx > -1 {
-		use = use[idx + 1:]
+		use = use[idx+1:]
 	}
 	var parent_names []string
 	cmd.VisitParents(func(p *cobra.Command) {
@@ -274,7 +302,7 @@ func show_usage(cmd *cobra.Command) error {
 			defval := ""
 			switch flag.Value.Type() {
 			default:
-				if (flag.DefValue != "") {
+				if flag.DefValue != "" {
 					defval = fmt.Sprintf("[=%s]", italic_fmt(flag.DefValue))
 				}
 			case "bool":

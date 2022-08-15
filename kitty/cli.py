@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import re
 import shlex
+import socket
 import sys
 from collections import deque
 from typing import (
@@ -13,7 +15,8 @@ from typing import (
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
 from .constants import (
-    appname, clear_handled_signals, defconf, is_macos, str_version, website_url
+    appname, clear_handled_signals, config_dir, defconf, is_macos, str_version,
+    website_url
 )
 from .fast_data_types import wcswidth
 from .options.types import Options as KittyOpts
@@ -161,8 +164,17 @@ def hyperlink_for_url(url: str, text: str) -> str:
     return text
 
 
+def hyperlink_for_path(path: str, text: str) -> str:
+    path = os.path.abspath(path).replace(os.sep, "/")
+    if os.path.isdir(path):
+        path += path.rstrip("/") + "/"
+    return hyperlink_for_url(f'file://{socket.gethostname()}{path}', text)
+
+
 @role
 def file(x: str) -> str:
+    if x == 'kitty.conf':
+        x = hyperlink_for_path(os.path.join(config_dir, x), x)
     return italic(x)
 
 

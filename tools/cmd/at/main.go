@@ -1,7 +1,6 @@
 package at
 
 import (
-
 	"github.com/spf13/cobra"
 
 	"kitty/tools/cli"
@@ -14,7 +13,7 @@ func EntryPoint(tool_root *cobra.Command) *cobra.Command {
 	var root = cli.CreateCommand(&cobra.Command{
 		Use:   "@ [global options] command [command options] [command args]",
 		Short: "Control kitty remotely",
-		Long:  "Control kitty by sending it commands. Set the allow_remote_control option in kitty.conf or use a password, for this to work.",
+		Long:  "Control kitty by sending it commands. Set the allow_remote_control option in :file:`kitty.conf` or use a password, for this to work.",
 	})
 	root.Annotations["options_title"] = "Global options"
 
