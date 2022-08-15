@@ -46,6 +46,7 @@ Run-time dependencies:
 Build-time dependencies:
 
 * ``gcc`` or ``clang``
+* ``go``
 * ``pkg-config``
 * For building on Linux in addition to the above dependencies you might also
   need to install the following packages, if they are not already installed by
