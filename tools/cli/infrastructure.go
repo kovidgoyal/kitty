@@ -24,7 +24,7 @@ import (
 var RootCmd *cobra.Command
 
 func GetTTYSize() (*unix.Winsize, error) {
-	if (stdout_is_terminal) {
+	if stdout_is_terminal {
 		return unix.IoctlGetWinsize(int(os.Stdout.Fd()), unix.TIOCGWINSZ)
 	}
 	return nil, fmt.Errorf("STDOUT is not a TTY")
@@ -78,7 +78,6 @@ var yellow_fmt = color.New(color.FgYellow).SprintFunc()
 var blue_fmt = color.New(color.FgBlue).SprintFunc()
 var green_fmt = color.New(color.FgGreen).SprintFunc()
 
-
 func format_line_with_indent(output io.Writer, text string, indent string, screen_width int) {
 	x := len(indent)
 	fmt.Fprint(output, indent)
@@ -105,9 +104,11 @@ func format_line_with_indent(output io.Writer, text string, indent string, scree
 
 	for i, r := range text {
 		if in_escape > 0 {
-			if (in_escape == 1 && (r == ']' || r == '[')) {
+			if in_escape == 1 && (r == ']' || r == '[') {
 				in_escape = 2
-				if (r == ']') { in_escape = 3 }
+				if r == ']' {
+					in_escape = 3
+				}
 			}
 			if (in_escape == 2 && r == 'm') || (in_escape == 3 && r == '\\' && text[i-1] == 0x1b) {
 				in_escape = 0
@@ -321,9 +322,9 @@ func show_usage(cmd *cobra.Command) error {
 	} else {
 		fmt.Fprintln(&output, italic_fmt(RootCmd.Name()), opt_fmt(RootCmd.Version), "created by", title_fmt("Kovid Goyal"))
 	}
-	output_text := output.String() 
+	output_text := output.String()
 	if stdout_is_terminal && cmd.Annotations["allow-pager"] != "no" {
-		pager := exec.Command(kitty.DefaultPager[0], kitty.DefaultPager[1:]...);
+		pager := exec.Command(kitty.DefaultPager[0], kitty.DefaultPager[1:]...)
 		pager.Stdin = strings.NewReader(output_text)
 		pager.Stdout = os.Stdout
 		pager.Stderr = os.Stderr
@@ -348,7 +349,7 @@ func UsageAndError(cmd *cobra.Command, err string) {
 }
 
 func SubCommandRequired(cmd *cobra.Command, args []string) {
-	UsageAndError(cmd, "No command specified: " + exe_fmt(full_command_name(cmd)) + err_fmt(" add-a-command-here"))
+	UsageAndError(cmd, "No command specified: "+exe_fmt(full_command_name(cmd))+err_fmt(" add-a-command-here"))
 	os.Exit(1)
 }
 
