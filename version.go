@@ -2,10 +2,13 @@ package kitty
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"runtime/debug"
 	"strconv"
+	"strings"
 )
 
 //go:embed kitty/constants.py
@@ -19,6 +22,7 @@ var VersionString string
 var Version VersionType
 var VCSRevision string
 var WebsiteBaseUrl string
+var DefaultPager []string
 
 func init() {
 	verpat := regexp.MustCompile(`Version\((\d+),\s*(\d+),\s*(\d+)\)`)
@@ -47,5 +51,15 @@ func init() {
 	if matches[1] == "" {
 		panic(fmt.Errorf("Failed to find the website base url"))
 	}
-
+	pager_pat := regexp.MustCompile(`default_pager_for_help\s+=\s+\((.+?)\)`)
+	matches = pager_pat.FindStringSubmatch(raw)
+	if matches[1] == "" {
+		panic(fmt.Errorf("Failed to find the default_pager_for_help"))
+	}
+	text := strings.ReplaceAll("[" + matches[1] + "]", "'", "\"")
+	err = json.Unmarshal([]byte(text), &DefaultPager)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Failed to unmarshal default pager text:", text)
+		panic(err)
+	}
 }

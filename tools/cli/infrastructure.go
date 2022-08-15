@@ -323,7 +323,7 @@ func show_usage(cmd *cobra.Command) error {
 	}
 	output_text := output.String() 
 	if stdout_is_terminal && cmd.Annotations["allow-pager"] != "no" {
-		pager := exec.Command("less", "-iRXF");
+		pager := exec.Command(kitty.DefaultPager[0], kitty.DefaultPager[1:]...);
 		pager.Stdin = strings.NewReader(output_text)
 		pager.Stdout = os.Stdout
 		pager.Stderr = os.Stderr
