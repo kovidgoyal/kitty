@@ -88,16 +88,8 @@ var yellow_fmt = color.New(color.FgYellow).SprintFunc()
 var blue_fmt = color.New(color.FgBlue).SprintFunc()
 var green_fmt = color.New(color.FgGreen).SprintFunc()
 
-func cmd_name(cmd *cobra.Command) string {
-	if cmd.Annotations != nil {
-		parts := strings.Split(cmd.Annotations["exe"], " ")
-		return parts[len(parts)-1]
-	}
-	return cmd.Name()
-}
-
 func print_created_by(root *cobra.Command) {
-	fmt.Println(italic_fmt(root.Annotations["exe"]), opt_fmt(root.Version), "created by", title_fmt("Kovid Goyal"))
+	fmt.Println(italic_fmt(root.Name()), opt_fmt(root.Version), "created by", title_fmt("Kovid Goyal"))
 }
 
 func print_line_with_indent(text string, indent string, screen_width int) {
@@ -238,7 +230,17 @@ func show_usage(cmd *cobra.Command) error {
 	if tty_size_err == nil && ws.Cols < 80 {
 		screen_width = int(ws.Cols)
 	}
-	fmt.Println(title_fmt("Usage")+":", exe_fmt(cmd.Annotations["exe"]), cmd.Use)
+	use := cmd.Use
+	idx := strings.Index(use, " ")
+	if idx > -1 {
+		use = use[idx + 1:]
+	}
+	var parent_names []string
+	cmd.VisitParents(func(p *cobra.Command) {
+		parent_names = append(parent_names, p.Name())
+	})
+	parent_names = append(parent_names, cmd.Name())
+	fmt.Println(title_fmt("Usage")+":", exe_fmt(strings.Join(parent_names, " ")), use)
 	fmt.Println()
 	if len(cmd.Long) > 0 {
 		print_with_indent(cmd.Long, "", screen_width)
@@ -249,12 +251,12 @@ func show_usage(cmd *cobra.Command) error {
 		fmt.Println()
 		fmt.Println(title_fmt("Commands") + ":")
 		for _, child := range cmd.Commands() {
-			fmt.Println(" ", opt_fmt(cmd_name(child)))
+			fmt.Println(" ", opt_fmt(child.Name()))
 			print_with_indent(child.Short, "    ", screen_width)
 		}
 		fmt.Println()
 		print_with_indent("Get help for an individual command by running:", "", screen_width)
-		fmt.Println("   ", cmd.Annotations["exe"], italic_fmt("command"), "-h")
+		fmt.Println("   ", cmd.Name(), italic_fmt("command"), "-h")
 	}
 	if cmd.HasAvailableFlags() {
 		options_title := cmd.Annotations["options_title"]
@@ -272,7 +274,9 @@ func show_usage(cmd *cobra.Command) error {
 			defval := ""
 			switch flag.Value.Type() {
 			default:
-				defval = fmt.Sprintf("[=%s]", italic_fmt(flag.DefValue))
+				if (flag.DefValue != "") {
+					defval = fmt.Sprintf("[=%s]", italic_fmt(flag.DefValue))
+				}
 			case "bool":
 			case "count":
 			}
@@ -285,7 +289,7 @@ func show_usage(cmd *cobra.Command) error {
 			case "help":
 				msg = "Print this help message"
 			case "version":
-				msg = "Print the version of " + RootCmd.Annotations["exe"] + ": " + italic_fmt(RootCmd.Version)
+				msg = "Print the version of " + RootCmd.Name() + ": " + italic_fmt(RootCmd.Version)
 			}
 			print_with_indent(msg, "    ", screen_width)
 			if cmd.Annotations["choices-"+flag.Name] != "" {
@@ -307,10 +311,18 @@ func show_usage(cmd *cobra.Command) error {
 	return nil
 }
 
-func CreateCommand(cmd *cobra.Command, exe string) *cobra.Command {
+func CreateCommand(cmd *cobra.Command) *cobra.Command {
 	cmd.Annotations = make(map[string]string)
-	cmd.Annotations["exe"] = exe
+	if cmd.Run == nil {
+		cmd.Run = SubCommandRequired
+	}
 	return cmd
+}
+
+func SubCommandRequired(cmd *cobra.Command, args []string) {
+	cmd.Usage()
+	fmt.Fprintln(os.Stderr, color.RedString("\nNo command specified for "+cmd.Name()))
+	os.Exit(1)
 }
 
 func Init(root *cobra.Command) {
