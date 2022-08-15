@@ -30,6 +30,7 @@ is_freebsd: bool = 'freebsd' in _plat
 is_running_from_develop: bool = False
 RC_ENCRYPTION_PROTOCOL_VERSION = '1'
 website_base_url = 'https://sw.kovidgoyal.net/kitty/'
+default_pager_for_help = ('less', '-iRXF')
 if getattr(sys, 'frozen', False):
     extensions_dir: str = getattr(sys, 'kitty_run_data')['extensions_dir']
 

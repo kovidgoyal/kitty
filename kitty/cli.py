@@ -16,7 +16,7 @@ from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
 from .constants import (
     appname, clear_handled_signals, config_dir, defconf, is_macos, str_version,
-    website_url
+    website_url, default_pager_for_help
 )
 from .fast_data_types import wcswidth
 from .options.types import Options as KittyOpts
@@ -474,12 +474,16 @@ class PrintHelpForSeq:
         text = '\n'.join(blocks) + '\n\n' + version()
         if print_help_for_seq.allow_pager and sys.stdout.isatty():
             import subprocess
-            p = subprocess.Popen(['less', '-iRXF'], stdin=subprocess.PIPE, preexec_fn=clear_handled_signals)
             try:
-                p.communicate(text.encode('utf-8'))
-            except KeyboardInterrupt:
-                raise SystemExit(1)
-            raise SystemExit(p.wait())
+                p = subprocess.Popen(default_pager_for_help, stdin=subprocess.PIPE, preexec_fn=clear_handled_signals)
+            except FileNotFoundError:
+                print(text)
+            else:
+                try:
+                    p.communicate(text.encode('utf-8'))
+                except KeyboardInterrupt:
+                    raise SystemExit(1)
+                raise SystemExit(p.wait())
         else:
             print(text)
 
