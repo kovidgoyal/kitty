@@ -366,7 +366,6 @@ class Tab:  # {{{
         cwd_from: Optional[CwdRequest] = None,
         cwd: Optional[str] = None,
         env: Optional[Dict[str, str]] = None,
-        allow_remote_control: bool = False,
         is_clone_launch: str = '',
     ) -> Child:
         check_for_suitability = True
@@ -416,7 +415,7 @@ class Tab:  # {{{
         pwid = platform_window_id(self.os_window_id)
         if pwid is not None:
             fenv['WINDOWID'] = str(pwid)
-        ans = Child(cmd, cwd or self.cwd, stdin, fenv, cwd_from, allow_remote_control=allow_remote_control, is_clone_launch=is_clone_launch)
+        ans = Child(cmd, cwd or self.cwd, stdin, fenv, cwd_from, is_clone_launch=is_clone_launch)
         ans.fork()
         return ans
 
@@ -444,13 +443,14 @@ class Tab:  # {{{
         is_clone_launch: str = '',
     ) -> Window:
         child = self.launch_child(
-            use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env, allow_remote_control=allow_remote_control,
+            use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env,
             is_clone_launch=is_clone_launch
         )
         window = Window(
             self, child, self.args, override_title=override_title,
-            copy_colors_from=copy_colors_from, watchers=watchers
+            copy_colors_from=copy_colors_from, watchers=watchers,
         )
+        window.allow_remote_control = allow_remote_control
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
         self._add_window(window, location=location, overlay_for=overlay_for, overlay_behind=overlay_behind)

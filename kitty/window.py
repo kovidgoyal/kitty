@@ -462,6 +462,7 @@ global_watchers = GlobalWatchers()
 class Window:
 
     window_custom_type: str = ''
+    allow_remote_control: bool = False
 
     def __init__(
         self,
@@ -495,7 +496,6 @@ class Window:
         self.default_title = os.path.basename(child.argv[0] or appname)
         self.child_title = self.default_title
         self.title_stack: Deque[str] = deque(maxlen=10)
-        self.allow_remote_control = child.allow_remote_control
         self.id: int = add_window(tab.os_window_id, tab.id, self.title)
         self.margin = EdgeWidths()
         self.padding = EdgeWidths()

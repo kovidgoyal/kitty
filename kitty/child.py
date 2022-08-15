@@ -223,10 +223,8 @@ class Child:
         stdin: Optional[bytes] = None,
         env: Optional[Dict[str, str]] = None,
         cwd_from: Optional['CwdRequest'] = None,
-        allow_remote_control: bool = False,
         is_clone_launch: str = '',
     ):
-        self.allow_remote_control = allow_remote_control
         self.is_clone_launch = is_clone_launch
         self.argv = list(argv)
         if cwd_from:
