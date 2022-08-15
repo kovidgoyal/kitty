@@ -258,7 +258,11 @@ class Boss:
         # we dont allow reloading the config file to change
         # allow_remote_control
         self.allow_remote_control = opts.allow_remote_control
-        if args.listen_on:
+        if self.allow_remote_control in ('y', 'yes', 'true'):
+            self.allow_remote_control = 'y'
+        elif self.allow_remote_control in ('n', 'no', 'false'):
+            self.allow_remote_control = 'n'
+        if args.listen_on and self.allow_remote_control in ('y', 'socket', 'socket-only', 'password'):
             listen_fd = listen_on(args.listen_on)
         self.prewarm = prewarm
         self.child_monitor = ChildMonitor(
@@ -447,6 +451,10 @@ class Boss:
         from .remote_control import is_cmd_allowed, parse_cmd
         response = None
         window = window or None
+        if self.allow_remote_control == 'n':
+            return {'ok': False, 'error': 'Remote control is disabled'}
+        if self.allow_remote_control == 'socket-only' and peer_id == 0:
+            return {'ok': False, 'error': 'Remote control is allowed over a socket only'}
         try:
             pcmd = parse_cmd(cmd, self.encryption_key)
         except Exception as e:
@@ -454,10 +462,10 @@ class Boss:
             return response
         if not pcmd:
             return response
-        allowed_by_channel = (
-            self.allow_remote_control == 'y' or (peer_id > 0 and self.allow_remote_control == 'socket-only') or
-            getattr(window, 'allow_remote_control', False))
-        if allowed_by_channel:
+        allowed_unconditionally = (
+            self.allow_remote_control == 'y' or (peer_id > 0 and self.allow_remote_control in ('socket-only', 'socket')) or
+            (window and window.allow_remote_control))
+        if allowed_unconditionally:
             return self._execute_remote_command(pcmd, window, peer_id)
         q = is_cmd_allowed(pcmd, window, peer_id > 0, {})
         if q is True:

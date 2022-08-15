@@ -14,6 +14,7 @@ import kitty.types
 
 if typing.TYPE_CHECKING:
     choices_for_allow_cloning = typing.Literal['yes', 'y', 'true', 'no', 'n', 'false', 'ask']
+    choices_for_allow_remote_control = typing.Literal['password', 'socket-only', 'socket', 'no', 'n', 'false', 'yes', 'y', 'true']
     choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled', 'clamped']
     choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'hand']
     choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
@@ -30,6 +31,7 @@ if typing.TYPE_CHECKING:
     choices_for_window_logo_position = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
 else:
     choices_for_allow_cloning = str
+    choices_for_allow_remote_control = str
     choices_for_background_image_layout = str
     choices_for_default_pointer_shape = str
     choices_for_linux_display_server = str
@@ -467,7 +469,7 @@ class Options:
     active_tab_title_template: typing.Optional[str] = None
     allow_cloning: choices_for_allow_cloning = 'ask'
     allow_hyperlinks: int = 1
-    allow_remote_control: str = 'n'
+    allow_remote_control: choices_for_allow_remote_control = 'password'
     background: Color = Color(0, 0, 0)
     background_image: typing.Optional[str] = None
     background_image_layout: choices_for_background_image_layout = 'tiled'

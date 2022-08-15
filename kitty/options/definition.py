@@ -2713,35 +2713,50 @@ that is used to check every remote control command. See :ref:`rc_custom_auth` fo
 Relative paths are resolved from the kitty configuration directory.
 ''')
 
-opt('allow_remote_control', 'no',
-    option_type='allow_remote_control',
+opt('allow_remote_control', 'password', choices=('password', 'socket-only', 'socket', 'no', 'n', 'false', 'yes', 'y', 'true'),
     long_text='''
 Allow other programs to control kitty. If you turn this on, other programs can
 control all aspects of kitty, including sending text to kitty windows, opening
 new windows, closing windows, reading the content of windows, etc. Note that
-this even works over SSH connections. You can choose to either allow any program
-running within kitty to control it with :code:`yes`, or only allow programs that
-connect to the socket (specified with the :opt:`listen_on` config option or
-:option:`kitty --listen-on` command line option) with the value
-:code:`socket-only`. The latter is useful if you want to prevent programs
-running on a remote computer over SSH from controlling kitty. Reloading the
-config will not affect this option.
+this even works over SSH connections. The default setting of :code:`password`
+asks the user for confirmation when a remote control command is received.
+The meaning of the various values are:
+
+:code:`password`
+   Remote control requests received over both the TTY device and the socket are
+   confirmed based on passwords, see :opt:`remote_control_password`.
+
+:code:`socket-only`
+   Remote control requests received over a socket are accepted unconditionally.
+   Requests received over the TTY are denied. See :opt:`listen_on`.
+
+:code:`socket`
+   Remote control requests received over a socket are accepted unconditionally.
+   Requests received over the TTY are confirmed based on password.
+
+:code:`no`
+   Remote control is completely disabled.
+
+:code:`yes`
+   Remote control requests are always accepted.
+
 '''
     )
 
 opt('listen_on', 'none',
     long_text='''
-Listen to the specified UNIX socket for remote control connections. Note
-that this will apply to all kitty instances. It can be overridden by the
-:option:`kitty --listen-on` command line option, which supports listening on TCP
-socket. This option accepts only UNIX sockets, such as
+Listen to the specified UNIX socket for remote control connections. Note that
+this will apply to all kitty instances. It can be overridden by the
+:option:`kitty --listen-on` command line option, which also supports listening
+on a TCP socket. This option accepts only UNIX sockets, such as
 :code:`unix:${TEMP}/mykitty` or :code:`unix:@mykitty` (on Linux). Environment
 variables are expanded and relative paths are resolved with respect to the
-temporary directory. If :code:`{kitty_pid}` is present, then it is replaced
-by the PID of the kitty process, otherwise the PID of the kitty process is
-appended to the value, with a hyphen. See the help for
-:option:`kitty --listen-on` for more details. Changing this option by reloading
-the config is not supported.
+temporary directory. If :code:`{kitty_pid}` is present, then it is replaced by
+the PID of the kitty process, otherwise the PID of the kitty process is
+appended to the value, with a hyphen. See the help for :option:`kitty
+--listen-on` for more details. Note that this will be ignored unless :opt:`allow_remote_control`
+is set to either: :code:`yes`, :code:`socket` or :code:`socket-only`.
+Changing this option by reloading the config is not supported.
 '''
     )
 
