@@ -137,7 +137,11 @@ user_password_allowed: Dict[str, bool] = {}
 def is_cmd_allowed(pcmd: Dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: Dict[str, Any]) -> Optional[bool]:
     pw = pcmd.get('password', '')
     if not pw:
-        return False
+        auth_items = get_options().remote_control_password.get('')
+        if auth_items is None:
+            return False
+        pa = password_authorizer(auth_items)
+        return pa.is_cmd_allowed(pcmd, window, from_socket, extra_data)
     q = user_password_allowed.get(pw)
     if q is not None:
         return q

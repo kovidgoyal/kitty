@@ -2705,6 +2705,11 @@ To get a list of available actions, run::
 
     kitty @ -h
 
+A set of actions to be allowed when no password is sent can be specified by using an empty
+password, for example::
+
+    remote_control_password "" *-colors
+
 Finally, the path to a python module can be specified that provides a function :code:`is_cmd_allowed`
 that is used to check every remote control command. See :ref:`rc_custom_auth` for details. For example::
 
