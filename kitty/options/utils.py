@@ -685,12 +685,6 @@ def remote_control_password(val: str, current_val: Dict[str, str]) -> Iterable[T
             yield parts[0], frozenset(parts[1:])
 
 
-def allow_remote_control(x: str) -> str:
-    if x != 'socket-only':
-        x = 'y' if to_bool(x) else 'n'
-    return x
-
-
 def clipboard_control(x: str) -> Tuple[str, ...]:
     return tuple(x.lower().split())
 
