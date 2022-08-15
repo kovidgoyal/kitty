@@ -32,6 +32,7 @@ def install_deps():
     if is_macos:
         items = (x.split()[1].strip('"') for x in open('Brewfile').readlines() if x.strip().startswith('brew '))
         openssl = 'openssl'
+        items.remove('go')  # already installed by ci.yml
         import ssl
         if ssl.OPENSSL_VERSION_INFO[0] == 1:
             openssl += '@1.1'
