@@ -53,6 +53,11 @@ jobs:
               with:
                 python-version: ${{ matrix.pyver }}
 
+            - name: Set up Go
+              uses: actions/setup-go@v3
+              with:
+                go-version: '>=1.19.0'
+
             - name: Build kitty
               run: python .github/workflows/ci.py build
 
@@ -77,6 +82,11 @@ jobs:
               uses: actions/setup-python@v3
               with:
                 python-version: 3.9
+
+            - name: Set up Go
+              uses: actions/setup-go@v3
+              with:
+                go-version: '>=1.19.0'
 
             - name: Install build-only deps
               run: pip install -r docs/requirements.txt flake8 mypy types-requests types-docutils
@@ -113,6 +123,11 @@ jobs:
               with:
                 fetch-depth: 10
 
+            - name: Set up Go
+              uses: actions/setup-go@v3
+              with:
+                go-version: '>=1.19.0'
+
             - name: Build kitty
               run: which python3 && python3 .github/workflows/ci.py build
 
@@ -127,6 +142,11 @@ jobs:
               uses: actions/checkout@master
               with:
                   fetch-depth: 0  # needed for :commit: docs role
+
+            - name: Set up Go
+              uses: actions/setup-go@v3
+              with:
+                go-version: '>=1.19.0'
 
             - name: Build kitty
               run: python3 .github/workflows/ci.py build
