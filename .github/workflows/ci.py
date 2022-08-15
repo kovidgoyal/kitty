@@ -30,7 +30,7 @@ def install_deps():
     print('Installing kitty dependencies...')
     sys.stdout.flush()
     if is_macos:
-        items = (x.split()[1].strip('"') for x in open('Brewfile').readlines() if x.strip().startswith('brew '))
+        items = [x.split()[1].strip('"') for x in open('Brewfile').readlines() if x.strip().startswith('brew ')]
         openssl = 'openssl'
         items.remove('go')  # already installed by ci.yml
         import ssl
