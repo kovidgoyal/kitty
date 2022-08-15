@@ -70,6 +70,7 @@ var title_fmt = color.New(color.FgBlue, color.Bold).SprintFunc()
 var exe_fmt = color.New(color.FgYellow, color.Bold).SprintFunc()
 var opt_fmt = color.New(color.FgGreen).SprintFunc()
 var italic_fmt = color.New(color.Italic).SprintFunc()
+var err_fmt = color.New(color.FgHiRed).SprintFunc()
 var bold_fmt = color.New(color.Bold).SprintFunc()
 var code_fmt = color.New(color.FgCyan).SprintFunc()
 var cyan_fmt = color.New(color.FgCyan).SprintFunc()
@@ -236,6 +237,15 @@ func format_with_indent(output io.Writer, text string, indent string, screen_wid
 	}
 }
 
+func full_command_name(cmd *cobra.Command) string {
+	var parent_names []string
+	cmd.VisitParents(func(p *cobra.Command) {
+		parent_names = append(parent_names, p.Name())
+	})
+	parent_names = append(parent_names, cmd.Name())
+	return strings.Join(parent_names, " ")
+}
+
 func show_usage(cmd *cobra.Command) error {
 	ws, tty_size_err := GetTTYSize()
 	var output strings.Builder
@@ -248,12 +258,7 @@ func show_usage(cmd *cobra.Command) error {
 	if idx > -1 {
 		use = use[idx+1:]
 	}
-	var parent_names []string
-	cmd.VisitParents(func(p *cobra.Command) {
-		parent_names = append(parent_names, p.Name())
-	})
-	parent_names = append(parent_names, cmd.Name())
-	fmt.Fprintln(&output, title_fmt("Usage")+":", exe_fmt(strings.Join(parent_names, " ")), use)
+	fmt.Fprintln(&output, title_fmt("Usage")+":", exe_fmt(full_command_name(cmd)), use)
 	fmt.Fprintln(&output)
 	if len(cmd.Long) > 0 {
 		format_with_indent(&output, cmd.Long, "", screen_width)
@@ -311,7 +316,11 @@ func show_usage(cmd *cobra.Command) error {
 			fmt.Fprintln(&output)
 		})
 	}
-	fmt.Fprintln(&output, italic_fmt(RootCmd.Name()), opt_fmt(RootCmd.Version), "created by", title_fmt("Kovid Goyal"))
+	if cmd.Annotations["usage-suffix"] != "" {
+		fmt.Fprintln(&output, cmd.Annotations["usage-suffix"])
+	} else {
+		fmt.Fprintln(&output, italic_fmt(RootCmd.Name()), opt_fmt(RootCmd.Version), "created by", title_fmt("Kovid Goyal"))
+	}
 	output_text := output.String() 
 	if stdout_is_terminal && cmd.Annotations["allow-pager"] != "no" {
 		pager := exec.Command("less", "-iRXF");
@@ -333,10 +342,13 @@ func CreateCommand(cmd *cobra.Command) *cobra.Command {
 	return cmd
 }
 
-func SubCommandRequired(cmd *cobra.Command, args []string) {
-	cmd.Annotations["allow-pager"] = "no"
+func UsageAndError(cmd *cobra.Command, err string) {
+	cmd.Annotations["usage-suffix"] = err
 	cmd.Usage()
-	fmt.Fprintln(os.Stderr, color.RedString("\nNo command specified for "+cmd.Name()))
+}
+
+func SubCommandRequired(cmd *cobra.Command, args []string) {
+	UsageAndError(cmd, "No command specified: " + exe_fmt(full_command_name(cmd)) + err_fmt(" add-a-command-here"))
 	os.Exit(1)
 }
 
