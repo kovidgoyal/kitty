@@ -10,8 +10,7 @@
 /compile_commands.json
 /link_commands.json
 /glad/out/
-/kitty/launcher/kitty
-/kitty/launcher/kitty.app
+/kitty/launcher/kitty*
 /*.dSYM/
 __pycache__/
 /glfw/wayland-*-client-protocol.[ch]
