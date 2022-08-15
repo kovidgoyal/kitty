@@ -875,6 +875,16 @@ def safe_makedirs(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
+def build_kitty_tool(args: Options, launcher_dir: str = '.') -> None:
+    cmd = ['go', 'build']
+    if not args.debug:
+        cmd += ['-ldflags', '-s -w']
+    cmd += ['-o', os.path.join(launcher_dir, 'kitty-tool'), os.path.abspath('tools/cmd')]
+    cp = subprocess.run(cmd)
+    if cp.returncode != 0:
+        raise SystemExit(cp.returncode)
+
+
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> None:
     werror = '' if args.ignore_compiler_warnings else '-pedantic-errors -Werror'
     cflags = f'-Wall {werror} -fpie'.split()
@@ -1271,6 +1281,7 @@ def create_minimal_macos_bundle(args: Options, launcher_dir: str) -> None:
     with open(os.path.join(kapp, 'Contents/Info.plist'), 'wb') as f:
         f.write(macos_info_plist())
     build_launcher(args, bin_dir)
+    build_kitty_tool(args, launcher_dir=bin_dir)
     kitty_exe = os.path.join(launcher_dir, appname)
     with suppress(FileNotFoundError):
         os.remove(kitty_exe)
@@ -1312,6 +1323,7 @@ def package(args: Options, bundle_type: str) -> None:
         args.compilation_database.build_all()
     else:
         build_launcher(args, launcher_dir, bundle_type)
+    build_kitty_tool(args, launcher_dir=launcher_dir)
     os.makedirs(os.path.join(libdir, 'logo'))
     build_terminfo = runpy.run_path('build-terminfo', run_name='import_build')
     for x in (libdir, os.path.join(ddir, 'share')):
@@ -1637,13 +1649,16 @@ def main() -> None:
                 create_minimal_macos_bundle(args, launcher_dir)
             else:
                 build_launcher(args, launcher_dir=launcher_dir)
+                build_kitty_tool(args, launcher_dir=launcher_dir)
         elif args.action == 'build-launcher':
             init_env_from_args(args, False)
             build_launcher(args, launcher_dir=launcher_dir)
+            build_kitty_tool(args, launcher_dir=launcher_dir)
         elif args.action == 'build-frozen-launcher':
             init_env_from_args(args, False)
             bundle_type = ('macos' if is_macos else 'linux') + '-freeze'
             build_launcher(args, launcher_dir=os.path.join(args.prefix, 'bin'), bundle_type=bundle_type)
+            build_kitty_tool(args, launcher_dir=launcher_dir)
         elif args.action == 'linux-package':
             build(args, native_optimizations=False)
             package(args, bundle_type='linux-package')
@@ -1653,6 +1668,7 @@ def main() -> None:
         elif args.action == 'macos-freeze':
             init_env_from_args(args, native_optimizations=False)
             build_launcher(args, launcher_dir=launcher_dir)
+            build_kitty_tool(args, launcher_dir=launcher_dir)
             build(args, native_optimizations=False, call_init=False)
             package(args, bundle_type='macos-freeze')
         elif args.action == 'kitty.app':
