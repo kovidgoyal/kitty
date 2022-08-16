@@ -14,8 +14,8 @@ from gettext import gettext as _
 from itertools import chain
 from time import monotonic
 from typing import (
-    TYPE_CHECKING, Any, Callable, Deque, Dict, Iterable, List, NamedTuple,
-    Optional, Pattern, Sequence, Tuple, Union
+    TYPE_CHECKING, Any, Callable, Deque, Dict, FrozenSet, Iterable, List,
+    NamedTuple, Optional, Pattern, Sequence, Tuple, Union
 )
 
 from .child import ProcessDesc
@@ -462,7 +462,6 @@ global_watchers = GlobalWatchers()
 class Window:
 
     window_custom_type: str = ''
-    allow_remote_control: bool = False
 
     def __init__(
         self,
@@ -471,7 +470,9 @@ class Window:
         args: CLIOptions,
         override_title: Optional[str] = None,
         copy_colors_from: Optional['Window'] = None,
-        watchers: Optional[Watchers] = None
+        watchers: Optional[Watchers] = None,
+        allow_remote_control: bool = False,
+        remote_control_passwords: Optional[Dict[str, FrozenSet[str]]] = None,
     ):
         if watchers:
             self.watchers = watchers
@@ -518,6 +519,25 @@ class Window:
             self.screen.copy_colors_from(copy_colors_from.screen)
         else:
             setup_colors(self.screen, opts)
+        self.remote_control_passwords = remote_control_passwords
+        self.allow_remote_control = allow_remote_control
+
+    def remote_control_allowed(self, pcmd: Dict[str, Any], extra_data: Dict[str, Any]) -> bool:
+        if not self.allow_remote_control or not self.remote_control_passwords:
+            return False
+        pw = pcmd.get('password', '')
+        auth_items = self.remote_control_passwords.get(pw)
+        if pw == '!':
+            auth_items = None
+        if auth_items is None:
+            if '!' in self.remote_control_passwords:
+                raise PermissionError()
+            return False
+        from .remote_control import password_authorizer
+        pa = password_authorizer(auth_items)
+        if not pa.is_cmd_allowed(pcmd, self, False, extra_data):
+            raise PermissionError()
+        return True
 
     @property
     def file_transmission_control(self) -> 'FileTransmission':
@@ -611,6 +631,7 @@ class Window:
             'default_title': self.default_title,
             'title_stack': list(self.title_stack),
             'allow_remote_control': self.allow_remote_control,
+            'remote_control_passwords': self.remote_control_passwords,
             'cwd': self.child.current_cwd or self.child.cwd,
             'env': self.child.environ,
             'cmdline': self.child.cmdline,

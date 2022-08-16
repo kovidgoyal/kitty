@@ -10,8 +10,8 @@ from contextlib import suppress
 from operator import attrgetter
 from time import monotonic
 from typing import (
-    Any, Deque, Dict, Generator, Iterable, Iterator, List, NamedTuple,
-    Optional, Sequence, Set, Tuple, Union
+    Any, Deque, Dict, FrozenSet, Generator, Iterable, Iterator, List,
+    NamedTuple, Optional, Sequence, Set, Tuple, Union
 )
 
 from .borders import Border, Borders
@@ -441,6 +441,7 @@ class Tab:  # {{{
         watchers: Optional[Watchers] = None,
         overlay_behind: bool = False,
         is_clone_launch: str = '',
+        remote_control_passwords: Optional[Dict[str, FrozenSet[str]]] = None,
     ) -> Window:
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env,
@@ -449,8 +450,8 @@ class Tab:  # {{{
         window = Window(
             self, child, self.args, override_title=override_title,
             copy_colors_from=copy_colors_from, watchers=watchers,
+            allow_remote_control=allow_remote_control, remote_control_passwords=remote_control_passwords
         )
-        window.allow_remote_control = allow_remote_control
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
         self._add_window(window, location=location, overlay_for=overlay_for, overlay_behind=overlay_behind)

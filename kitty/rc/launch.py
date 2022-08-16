@@ -36,6 +36,7 @@ class Launch(RemoteCommand):
     hold/bool: Boolean indicating whether to keep window open after cmd exits
     location/choices.first.after.before.neighbor.last.vsplit.hsplit.split.default: Where in the tab to open the new window
     allow_remote_control/bool: Boolean indicating whether to allow remote control from the new window
+    remote_control_password/list/str: A list of remote control passwords
     stdin_source/choices.none.@selection.@screen.@screen_scrollback.@alternate.@alternate_scrollback.\
         @first_cmd_output_on_screen.@last_cmd_output.@last_visited_cmd_output: Where to get stdin for the process from
     stdin_add_formatting/bool: Boolean indicating whether to add formatting codes to stdin

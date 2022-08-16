@@ -142,6 +142,27 @@ enabled in :file:`kitty.conf`). Note that any program with the right level of
 permissions can still write to the pipes of any other program on the same
 computer and therefore can control kitty. It can, however, be useful to block
 programs running on other computers (for example, over SSH) or as other users.
+See :option:`--remote-control-password` for ways to restrict actions allowed by
+remote control.
+
+
+--remote-control-password
+type=list
+Restrict the actions remote control is allowed to take. This works like
+:opt:`remote_control_password`. You can specify a password and list of actions
+just as for :opt:`remote_control_password`. For example::
+
+    --remote-control-password '"my passphrase" get-* set-colors'
+
+This password will be in effect for this window only.
+Note that any passwords you have defined for :opt:`remote_control_password`
+in :file:`kitty.conf` are also in effect. You can override them by using the same password here.
+You can also disable all :opt:`remote_control_password` global passwords for this window, by using::
+
+    --remote-control-password '!'
+
+This option only takes effect if :option:`--allow-remote-control`
+is also specified. Can be specified multiple times to create multiple passwords.
 
 
 --stdin-source
@@ -320,6 +341,7 @@ def load_watch_modules(watchers: Iterable[str]) -> Optional[Watchers]:
 class LaunchKwds(TypedDict):
 
     allow_remote_control: bool
+    remote_control_passwords: Optional[Dict[str, FrozenSet[str]]]
     cwd_from: Optional[CwdRequest]
     cwd: Optional[str]
     location: Optional[str]
@@ -384,8 +406,16 @@ def launch(
         tm = boss.active_tab_manager
         opts.os_window_title = get_os_window_title(tm.os_window_id) if tm else None
     env = get_env(opts, active_child)
+    remote_control_restrictions: Optional[Dict[str, FrozenSet[str]]] = None
+    if opts.allow_remote_control and opts.remote_control_password:
+        from kitty.options.utils import remote_control_password
+        remote_control_restrictions = {}
+        for rcp in opts.remote_control_password:
+            for pw, rcp_items in remote_control_password(rcp, {}):
+                remote_control_restrictions[pw] = rcp_items
     kw: LaunchKwds = {
         'allow_remote_control': opts.allow_remote_control,
+        'remote_control_passwords': remote_control_restrictions,
         'cwd_from': None,
         'cwd': None,
         'location': None,

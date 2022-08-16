@@ -462,12 +462,16 @@ class Boss:
             return response
         if not pcmd:
             return response
-        allowed_unconditionally = (
-            self.allow_remote_control == 'y' or (peer_id > 0 and self.allow_remote_control in ('socket-only', 'socket')) or
-            (window and window.allow_remote_control))
+        extra_data: Dict[str, Any] = {}
+        try:
+            allowed_unconditionally = (
+                self.allow_remote_control == 'y' or (peer_id > 0 and self.allow_remote_control in ('socket-only', 'socket')) or
+                (window and window.remote_control_allowed(pcmd, extra_data)))
+        except PermissionError:
+            return {'ok': False, 'error': 'Remote control disallowed by window specific password'}
         if allowed_unconditionally:
             return self._execute_remote_command(pcmd, window, peer_id)
-        q = is_cmd_allowed(pcmd, window, peer_id > 0, {})
+        q = is_cmd_allowed(pcmd, window, peer_id > 0, extra_data)
         if q is True:
             return self._execute_remote_command(pcmd, window, peer_id)
         if q is None:

@@ -97,6 +97,7 @@ class PasswordAuthorizer:
     def __init__(self, auth_items: FrozenSet[str]) -> None:
         self.command_patterns = []
         self.function_checkers = []
+        self.name = ''
         for item in auth_items:
             if item.endswith('.py'):
                 path = os.path.abspath(resolve_custom_file(item))
