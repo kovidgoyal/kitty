@@ -19,7 +19,7 @@ func main() {
 
 	cli.Init(root)
 	if err := root.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 }
