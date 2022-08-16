@@ -201,7 +201,7 @@ global_options_spec = partial('''\
 An address for the kitty instance to control. Corresponds to the address given
 to the kitty instance via the :option:`kitty --listen-on` option or the
 :opt:`listen_on` setting in :file:`kitty.conf`. If not specified, the
-environment variable :env:`KITTY_LISTEN_ON` is checked. If that is also not
+environment variable :envvar:`KITTY_LISTEN_ON` is checked. If that is also not
 found, messages are sent to the controlling terminal for this process, i.e.
 they will only work if this process is run within a kitty window.
 

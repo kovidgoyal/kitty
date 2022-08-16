@@ -30,17 +30,17 @@ func GetTTYSize() (*unix.Winsize, error) {
 	return nil, fmt.Errorf("STDOUT is not a TTY")
 }
 
-func add_choices(cmd *cobra.Command, flags *pflag.FlagSet, choices []string, name string, usage string) {
-	flags.String(name, choices[0], usage)
+func add_choices(cmd *cobra.Command, flags *pflag.FlagSet, choices []string, name string, usage string) *string {
 	cmd.Annotations["choices-"+name] = strings.Join(choices, "\000")
+	return flags.String(name, choices[0], usage)
 }
 
-func Choices(cmd *cobra.Command, name string, usage string, choices ...string) {
-	add_choices(cmd, cmd.Flags(), choices, name, usage)
+func Choices(cmd *cobra.Command, name string, usage string, choices ...string) *string {
+	return add_choices(cmd, cmd.Flags(), choices, name, usage)
 }
 
-func PersistentChoices(cmd *cobra.Command, name string, usage string, choices ...string) {
-	add_choices(cmd, cmd.PersistentFlags(), choices, name, usage)
+func PersistentChoices(cmd *cobra.Command, name string, usage string, choices ...string) *string {
+	return add_choices(cmd, cmd.PersistentFlags(), choices, name, usage)
 }
 
 func key_in_slice(vals []string, key string) bool {
@@ -333,43 +333,53 @@ func show_usage(cmd *cobra.Command) error {
 	}
 	output_text := output.String()
 	// fmt.Printf("%#v\n", output_text)
-	if stdout_is_terminal && cmd.Annotations["allow-pager"] != "no" {
+	if cmd.Annotations["use-pager-for-usage"] == "true" && stdout_is_terminal && cmd.Annotations["allow-pager"] != "no" {
 		pager := exec.Command(kitty.DefaultPager[0], kitty.DefaultPager[1:]...)
 		pager.Stdin = strings.NewReader(output_text)
 		pager.Stdout = os.Stdout
 		pager.Stderr = os.Stderr
 		pager.Run()
 	} else {
-		print(output_text)
+		cmd.OutOrStdout().Write([]byte(output_text))
 	}
 	return nil
 }
 
 func CreateCommand(cmd *cobra.Command) *cobra.Command {
 	cmd.Annotations = make(map[string]string)
-	if cmd.Run == nil {
-		cmd.Run = SubCommandRequired
+	if cmd.Run == nil && cmd.RunE == nil {
+		cmd.RunE = func(cmd *cobra.Command, args []string) error {
+			if len(cmd.Commands()) > 0 {
+				return fmt.Errorf("%s. Use %s -h to get a list of available sub-commands", err_fmt("No sub-command specified"), full_command_name(cmd))
+			}
+			return nil
+		}
 	}
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	orig_pre_run := cmd.PersistentPreRunE
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		err := ValidateChoices(cmd, args)
+		if err != nil || orig_pre_run == nil {
+			return err
+		}
+		return orig_pre_run(cmd, args)
+	}
+
 	cmd.PersistentFlags().SortFlags = false
 	cmd.Flags().SortFlags = false
 	return cmd
 }
 
-func UsageAndError(cmd *cobra.Command, err string) {
-	cmd.Annotations["usage-suffix"] = err
-	cmd.Usage()
-}
-
-func SubCommandRequired(cmd *cobra.Command, args []string) {
-	UsageAndError(cmd, "No command specified: "+exe_fmt(full_command_name(cmd))+err_fmt(" add-a-command-here"))
-	os.Exit(1)
+func show_help(cmd *cobra.Command, args []string) {
+	cmd.Annotations["use-pager-for-usage"] = "true"
+	show_usage(cmd)
 }
 
 func Init(root *cobra.Command) {
 	stdout_is_terminal = isatty.IsTerminal(os.Stdout.Fd())
 	RootCmd = root
 	root.Version = kitty.VersionString
-	root.PersistentPreRunE = ValidateChoices
 	root.SetUsageFunc(show_usage)
-	root.SetHelpTemplate("{{.UsageString}}")
+	root.SetHelpFunc(show_help)
 }
