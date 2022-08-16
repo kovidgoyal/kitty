@@ -79,6 +79,10 @@ def kitty_exe() -> str:
     return os.path.join(rpath, 'kitty')
 
 
+def kitty_tool_exe() -> str:
+    return os.path.join(os.path.dirname(kitty_exe()), 'kitty-tool')
+
+
 def _get_config_dir() -> str:
     if 'KITTY_CONFIG_DIRECTORY' in os.environ:
         return os.path.abspath(os.path.expanduser(os.environ['KITTY_CONFIG_DIRECTORY']))
