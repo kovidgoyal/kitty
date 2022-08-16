@@ -95,7 +95,7 @@ jobs:
               run: python -m flake8 --count .
 
             - name: Run gofmt
-              run: unformatted=$(gofmt -s -l tools version.go); [ -n "$unformatted" ] && { echo "$unformatted"; exit 1 }
+              run: sh -c 'unformatted=$(gofmt -s -l tools version.go); [ -z "$unformatted" ] || { echo "$unformatted"; exit 1 }'
 
             - name: Build kitty package
               run: python .github/workflows/ci.py package
