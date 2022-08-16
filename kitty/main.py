@@ -325,7 +325,6 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
         from_config_file = True
     if cli_opts.listen_on:
         cli_opts.listen_on = expand_listen_on(cli_opts.listen_on, from_config_file)
-        os.environ['KITTY_LISTEN_ON'] = cli_opts.listen_on
     env = opts.env.copy()
     ensure_kitty_in_path()
     kitty_path = shutil.which('kitty')

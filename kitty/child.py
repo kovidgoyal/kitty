@@ -241,6 +241,7 @@ class Child:
     def final_env(self) -> Dict[str, str]:
         from kitty.options.utils import DELETE_ENV_VAR
         env = default_env().copy()
+        boss = fast_data_types.get_boss()
         if is_macos and env.get('LC_CTYPE') == 'UTF-8' and not getattr(sys, 'kitty_run_data').get(
                 'lc_ctype_before_python') and not getattr(default_env, 'lc_ctype_set_by_user', False):
             del env['LC_CTYPE']
@@ -248,9 +249,13 @@ class Child:
         env['TERM'] = fast_data_types.get_options().term
         env['COLORTERM'] = 'truecolor'
         env['KITTY_PID'] = getpid()
-        env['KITTY_PUBLIC_KEY'] = fast_data_types.get_boss().encryption_public_key
+        env['KITTY_PUBLIC_KEY'] = boss.encryption_public_key
+        if boss.listening_on:
+            env['KITTY_LISTEN_ON'] = boss.listening_on
+        else:
+            env.pop('KITTY_LISTEN_ON', None)
         if not self.is_prewarmed:
-            env['KITTY_PREWARM_SOCKET'] = fast_data_types.get_boss().prewarm.socket_env_var()
+            env['KITTY_PREWARM_SOCKET'] = boss.prewarm.socket_env_var()
             env['KITTY_PREWARM_SOCKET_REAL_TTY'] = ' ' * 32
         if self.cwd:
             # needed in case cwd is a symlink, in which case shells

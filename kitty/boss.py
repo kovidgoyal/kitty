@@ -262,8 +262,10 @@ class Boss:
             self.allow_remote_control = 'y'
         elif self.allow_remote_control in ('n', 'no', 'false'):
             self.allow_remote_control = 'n'
+        self.listening_on = ''
         if args.listen_on and self.allow_remote_control in ('y', 'socket', 'socket-only', 'password'):
             listen_fd = listen_on(args.listen_on)
+            self.listening_on = args.listen_on
         self.prewarm = prewarm
         self.child_monitor = ChildMonitor(
             self.on_child_death,
