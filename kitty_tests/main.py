@@ -148,10 +148,13 @@ def run_tests() -> None:
             raise SystemExit('No test module named %s found' % args.module)
     go_pkg_args = [f'kitty/{x}' for x in go_packages]
 
+    skip_go = False
     if args.name:
         tests = filter_tests_by_name(tests, *args.name)
         go_filter_spec = create_go_filter(go_pkg_args, *args.name)
+        skip_go = not go_filter_spec
         if not tests._tests and not go_filter_spec:
             raise SystemExit('No test named %s found' % args.name)
     run_cli(tests, args.verbosity)
-    run_go(go_pkg_args, go_filter_spec)
+    if not skip_go:
+        run_go(go_pkg_args, go_filter_spec)
