@@ -254,6 +254,7 @@ class Choose(Handler):
         self.print(end='\r\n'*y)
         for line in msg_lines:
             self.print(line)
+            y += 1
         if self.screen_size.rows > 2:
             self.print()
             y += 1
