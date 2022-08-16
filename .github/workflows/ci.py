@@ -131,7 +131,7 @@ def main():
     elif action == 'test':
         test_kitty()
     elif action == 'gofmt':
-        q = subprocess.check_output('gofmt -s -l tools version.go'.split())
+        q = subprocess.check_output('gofmt -s -l tools'.split())
         if q.strip():
             print(q.decode())
             raise SystemExit(1)
