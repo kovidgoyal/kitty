@@ -907,12 +907,30 @@ def build_kitty_tool(args: Options, launcher_dir: str) -> None:
         ld_flags.append('-s')
         ld_flags.append('-w')
     cmd += ['-ldflags', ' '.join(ld_flags)]
-    cmd += ['-o', os.path.join(launcher_dir, 'kitty-tool'), os.path.abspath('tools/cmd')]
-    if args.verbose:
-        print(shlex.join(cmd))
-    cp = subprocess.run(cmd)
-    if cp.returncode != 0:
-        raise SystemExit(cp.returncode)
+    dest = os.path.join(launcher_dir, 'kitty-tool')
+    src = os.path.abspath('tools/cmd')
+
+    def run_one(dest: str, **env: str) -> None:
+        c = cmd + ['-o', dest, src]
+        if args.verbose:
+            print(shlex.join(c))
+        e = os.environ.copy()
+        e.update(env)
+        cp = subprocess.run(c, env=e)
+        if cp.returncode != 0:
+            raise SystemExit(cp.returncode)
+
+    if args.build_universal_binary:
+        outs = []
+        for arch in ('amd64', 'arm64'):
+            d = dest + f'-{arch}'
+            run_one(d, GOOS='darwin', GOARCH=arch)
+            outs.append(d)
+        subprocess.check_call(['lipo', '-create', '-output', dest] + outs)
+        for x in outs:
+            os.remove(x)
+    else:
+        run_one(dest)
 
 
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> None:
