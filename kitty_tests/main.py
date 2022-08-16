@@ -3,10 +3,13 @@
 
 import importlib
 import os
+import shlex
 import shutil
+import subprocess
+import sys
 import unittest
 from importlib.resources import contents
-from typing import Callable, Generator, NoReturn, Sequence, Set
+from typing import Callable, Generator, List, NoReturn, Sequence, Set
 
 
 def itertests(suite: unittest.TestSuite) -> Generator[unittest.TestCase, None, None]:
@@ -80,24 +83,75 @@ def run_cli(suite: unittest.TestSuite, verbosity: int = 4) -> None:
         raise SystemExit(1)
 
 
+def find_testable_go_packages() -> Set[str]:
+    ans = set()
+    base = os.getcwd()
+    for (dirpath, dirnames, filenames) in os.walk(base):
+        for f in filenames:
+            if f.endswith('_test.go'):
+                q = os.path.relpath(dirpath, base)
+                ans.add(q)
+    return ans
+
+
+def go_exe() -> str:
+    return shutil.which('go') or ''
+
+
+def create_go_filter(packages: List[str], *names: str) -> str:
+    go = go_exe()
+    if not go:
+        return ''
+    all_tests = set()
+    for line in subprocess.check_output('go test -list .'.split() + packages).decode().splitlines():
+        if line.startswith('Test'):
+            all_tests.add(line[4:])
+    tests = set(names) & all_tests
+    return '|'.join(tests)
+
+
+def run_go(packages: List[str], names: str) -> None:
+    go = go_exe()
+    if not go:
+        print('Skipping Go tests as go exe not found', file=sys.stderr)
+        return
+    if not packages:
+        print('Skipping Go tests as go source files not availabe', file=sys.stderr)
+        return
+    cmd = 'go test -v'.split()
+    if names:
+        cmd.extend(('-run', names))
+    cmd += packages
+    print(shlex.join(cmd))
+    os.execl(go, *cmd)
+
+
 def run_tests() -> None:
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'name', nargs='*', default=[],
-        help='The name of the test to run, for e.g. linebuf corresponds to test_linebuf. Can be specified multiple times')
+        help='The name of the test to run, for e.g. linebuf corresponds to test_linebuf. Can be specified multiple times.')
     parser.add_argument('--verbosity', default=4, type=int, help='Test verbosity')
-    parser.add_argument('--module', default='', help='Name of a test module to restrict to. For example: ssh')
+    parser.add_argument('--module', default='', help='Name of a test module to restrict to. For example: ssh.'
+                        ' For Go tests this is the name of a package, for example: tools/cli')
     args = parser.parse_args()
     if args.name and args.name[0] in ('type-check', 'type_check', 'mypy'):
         type_check()
     tests = find_all_tests()
+    go_packages = find_testable_go_packages()
+    go_filter_spec = ''
     if args.module:
         tests = filter_tests_by_module(tests, args.module)
-        if not tests._tests:
+        go_packages &= {args.module}
+        if not tests._tests and not go_packages:
             raise SystemExit('No test module named %s found' % args.module)
+    go_pkg_args = [f'kitty/{x}' for x in go_packages]
+
     if args.name:
         tests = filter_tests_by_name(tests, *args.name)
-        if not tests._tests:
+        go_filter_spec = create_go_filter(go_pkg_args, *args.name)
+        if not tests._tests and not go_filter_spec:
             raise SystemExit('No test named %s found' % args.name)
     run_cli(tests, args.verbosity)
+    run_go(go_pkg_args, go_filter_spec)
