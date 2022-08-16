@@ -523,8 +523,10 @@ class Window:
         self.allow_remote_control = allow_remote_control
 
     def remote_control_allowed(self, pcmd: Dict[str, Any], extra_data: Dict[str, Any]) -> bool:
-        if not self.allow_remote_control or not self.remote_control_passwords:
+        if not self.allow_remote_control:
             return False
+        if not self.remote_control_passwords:
+            return True
         pw = pcmd.get('password', '')
         auth_items = self.remote_control_passwords.get(pw)
         if pw == '!':
