@@ -267,6 +267,8 @@ func show_usage(cmd *cobra.Command) error {
 	idx := strings.Index(use, " ")
 	if idx > -1 {
 		use = use[idx+1:]
+	} else {
+		use = ""
 	}
 	fmt.Fprintln(&output, title_fmt("Usage")+":", exe_fmt(full_command_name(cmd)), use)
 	fmt.Fprintln(&output)
@@ -279,6 +281,9 @@ func show_usage(cmd *cobra.Command) error {
 		fmt.Fprintln(&output)
 		fmt.Fprintln(&output, title_fmt("Commands")+":")
 		for _, child := range cmd.Commands() {
+			if child.Hidden {
+				continue
+			}
 			fmt.Fprintln(&output, " ", opt_fmt(child.Name()))
 			format_with_indent(&output, child.Short, "    ", screen_width)
 		}
@@ -350,7 +355,10 @@ func CreateCommand(cmd *cobra.Command) *cobra.Command {
 	if cmd.Run == nil && cmd.RunE == nil {
 		cmd.RunE = func(cmd *cobra.Command, args []string) error {
 			if len(cmd.Commands()) > 0 {
-				return fmt.Errorf("%s. Use %s -h to get a list of available sub-commands", err_fmt("No sub-command specified"), full_command_name(cmd))
+				if len(args) == 0 {
+					return fmt.Errorf("%s. Use %s -h to get a list of available sub-commands", err_fmt("No sub-command specified"), full_command_name(cmd))
+				}
+				return fmt.Errorf("Not a valid subcommand: %s. Use %s -h to get a list of available sub-commands", err_fmt(args[0]), full_command_name(cmd))
 			}
 			return nil
 		}
@@ -372,7 +380,9 @@ func CreateCommand(cmd *cobra.Command) *cobra.Command {
 }
 
 func show_help(cmd *cobra.Command, args []string) {
-	cmd.Annotations["use-pager-for-usage"] = "true"
+	if cmd.Annotations != nil {
+		cmd.Annotations["use-pager-for-usage"] = "true"
+	}
 	show_usage(cmd)
 }
 
@@ -386,4 +396,5 @@ func Init(root *cobra.Command) {
 	root.Version = vs
 	root.SetUsageFunc(show_usage)
 	root.SetHelpFunc(show_help)
+	root.SetHelpCommand(&cobra.Command{Hidden: true})
 }
