@@ -1607,26 +1607,25 @@ class Boss:
             tab = self._new_tab(SpecialWindow(cmd, **kw))
             if tab is not None:
                 for w in tab:
-                    w.allow_remote_control = True
                     window = w
         elif window_type == 'os_window':
             os_window_id = self._new_os_window(SpecialWindow(cmd, **kw))
             for tab in self.os_window_map[os_window_id]:
                 for w in tab:
-                    w.allow_remote_control = True
                     window = w
         elif window_type == 'overlay':
             tab = self.active_tab
             if aw is not None and tab is not None:
                 kw['overlay_for'] = aw.id
-                window = tab.new_special_window(SpecialWindow(cmd, **kw), allow_remote_control=True)
+                window = tab.new_special_window(SpecialWindow(cmd, **kw))
         else:
             tab = self.active_tab
             if tab is not None:
-                window = tab.new_special_window(SpecialWindow(cmd, **kw), allow_remote_control=True)
+                window = tab.new_special_window(SpecialWindow(cmd, **kw))
 
         path, ext = os.path.splitext(logo_png_file)
         window.set_logo(f'{path}-128{ext}', position='bottom-right', alpha=0.25)
+        window.allow_remote_control = True
 
     def switch_focus_to(self, window_id: int) -> None:
         tab = self.active_tab
