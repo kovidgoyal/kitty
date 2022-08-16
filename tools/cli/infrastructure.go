@@ -377,9 +377,13 @@ func show_help(cmd *cobra.Command, args []string) {
 }
 
 func Init(root *cobra.Command) {
+	vs := kitty.VersionString
+	if kitty.VCSRevision != "" {
+		vs = vs + " (" + kitty.VCSRevision + ")"
+	}
 	stdout_is_terminal = isatty.IsTerminal(os.Stdout.Fd())
 	RootCmd = root
-	root.Version = kitty.VersionString
+	root.Version = vs
 	root.SetUsageFunc(show_usage)
 	root.SetHelpFunc(show_help)
 }
