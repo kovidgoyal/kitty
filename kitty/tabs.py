@@ -367,6 +367,7 @@ class Tab:  # {{{
         cwd: Optional[str] = None,
         env: Optional[Dict[str, str]] = None,
         is_clone_launch: str = '',
+        add_listen_on_env_var: bool = True,
     ) -> Child:
         check_for_suitability = True
         if cmd is None:
@@ -415,7 +416,7 @@ class Tab:  # {{{
         pwid = platform_window_id(self.os_window_id)
         if pwid is not None:
             fenv['WINDOWID'] = str(pwid)
-        ans = Child(cmd, cwd or self.cwd, stdin, fenv, cwd_from, is_clone_launch=is_clone_launch)
+        ans = Child(cmd, cwd or self.cwd, stdin, fenv, cwd_from, is_clone_launch=is_clone_launch, add_listen_on_env_var=add_listen_on_env_var)
         ans.fork()
         return ans
 
@@ -445,7 +446,7 @@ class Tab:  # {{{
     ) -> Window:
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env,
-            is_clone_launch=is_clone_launch
+            is_clone_launch=is_clone_launch, add_listen_on_env_var=not allow_remote_control
         )
         window = Window(
             self, child, self.args, override_title=override_title,

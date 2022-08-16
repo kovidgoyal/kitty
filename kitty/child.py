@@ -224,8 +224,10 @@ class Child:
         env: Optional[Dict[str, str]] = None,
         cwd_from: Optional['CwdRequest'] = None,
         is_clone_launch: str = '',
+        add_listen_on_env_var: bool = True,
     ):
         self.is_clone_launch = is_clone_launch
+        self.add_listen_on_env_var = add_listen_on_env_var
         self.argv = list(argv)
         if cwd_from:
             try:
@@ -250,7 +252,7 @@ class Child:
         env['COLORTERM'] = 'truecolor'
         env['KITTY_PID'] = getpid()
         env['KITTY_PUBLIC_KEY'] = boss.encryption_public_key
-        if boss.listening_on:
+        if self.add_listen_on_env_var and boss.listening_on:
             env['KITTY_LISTEN_ON'] = boss.listening_on
         else:
             env.pop('KITTY_LISTEN_ON', None)
