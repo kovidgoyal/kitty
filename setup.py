@@ -880,15 +880,15 @@ def update_go_generated_files() -> None:
     # update all the various auto-generated go files, if needed
     rc_sources = [x for x in glob.glob('kitty/rc/*.py') if os.path.basename(x) not in ('base.py', '__init__.py')]
     rc_objects = glob.glob('tools/cmd/at/*_generated.go')
-    generated = rc_objects + glob.glob('constants.go')
+    generated = rc_objects + glob.glob('constants_generated.go')
     sources = ['gen-rc-go.py', 'kitty/constants.py', 'setup.py', 'tools/cmd/at/template.go'] + rc_sources
     if generated:
         oldest_generated = min(map(os.path.getmtime, generated))
         newest_source = max(map(os.path.getmtime, sources))
-        if oldest_generated > newest_source and len(rc_sources) == len(rc_objects) and 'constants.go' in generated:
+        if oldest_generated > newest_source and len(rc_sources) == len(rc_objects) and 'constants_generated.go' in generated:
             return
     print('Updating Go generated files...')
-    subprocess.check_call(['./gen-rc-go.py'])
+    subprocess.check_call([os.path.join(base, 'gen-rc-go.py')])
 
 
 def build_kitty_tool(args: Options, launcher_dir: str = '.') -> None:
@@ -1443,7 +1443,7 @@ def clean() -> None:
     safe_remove(
         'build', 'compile_commands.json', 'link_commands.json',
         'linux-package', 'kitty.app', 'asan-launcher',
-        'kitty-profile', 'docs/generated')
+        'kitty-profile', 'docs/generated', 'constants.go')
     clean_launcher_dir('kitty/launcher')
 
     def excluded(root: str, d: str) -> bool:
@@ -1458,7 +1458,7 @@ def clean() -> None:
             dirs.remove(d)
         for f in files:
             ext = f.rpartition('.')[-1]
-            if ext in ('so', 'dylib', 'pyc', 'pyo') or f.endswith('_generated.h'):
+            if ext in ('so', 'dylib', 'pyc', 'pyo') or f.endswith('_generated.h') or f.endswith('_generated.go'):
                 os.unlink(os.path.join(root, f))
     for x in glob.glob('glfw/wayland-*-protocol.[ch]'):
         os.unlink(x)
