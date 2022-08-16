@@ -222,6 +222,8 @@ func prettify(text string) string {
 				val = val[idx:]
 			}
 			return bold_fmt(val)
+		case "opt":
+			return bold_fmt(val)
 		case "yellow":
 			return yellow_fmt(val)
 		case "blue":
@@ -348,6 +350,8 @@ func CreateCommand(cmd *cobra.Command) *cobra.Command {
 	if cmd.Run == nil {
 		cmd.Run = SubCommandRequired
 	}
+	cmd.PersistentFlags().SortFlags = false
+	cmd.Flags().SortFlags = false
 	return cmd
 }
 
