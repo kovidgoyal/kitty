@@ -453,10 +453,12 @@ class Boss:
         from .remote_control import is_cmd_allowed, parse_cmd
         response = None
         window = window or None
-        if self.allow_remote_control == 'n':
-            return {'ok': False, 'error': 'Remote control is disabled'}
-        if self.allow_remote_control == 'socket-only' and peer_id == 0:
-            return {'ok': False, 'error': 'Remote control is allowed over a socket only'}
+        window_has_remote_control = bool(window and window.allow_remote_control)
+        if not window_has_remote_control:
+            if self.allow_remote_control == 'n':
+                return {'ok': False, 'error': 'Remote control is disabled'}
+            if self.allow_remote_control == 'socket-only' and peer_id == 0:
+                return {'ok': False, 'error': 'Remote control is allowed over a socket only'}
         try:
             pcmd = parse_cmd(cmd, self.encryption_key)
         except Exception as e:
