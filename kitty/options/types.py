@@ -612,7 +612,7 @@ class Options:
     kitten_alias: typing.Dict[str, str] = {}
     modify_font: typing.Dict[str, kitty.fonts.FontModification] = {}
     narrow_symbols: typing.Dict[typing.Tuple[int, int], int] = {}
-    remote_control_password: typing.Dict[str, typing.FrozenSet[str]] = {}
+    remote_control_password: typing.Dict[str, typing.Sequence[str]] = {}
     symbol_map: typing.Dict[typing.Tuple[int, int], str] = {}
     watcher: typing.Dict[str, str] = {}
     map: typing.List[kitty.options.utils.KeyDefinition] = []

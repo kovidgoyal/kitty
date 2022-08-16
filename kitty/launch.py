@@ -341,7 +341,7 @@ def load_watch_modules(watchers: Iterable[str]) -> Optional[Watchers]:
 class LaunchKwds(TypedDict):
 
     allow_remote_control: bool
-    remote_control_passwords: Optional[Dict[str, FrozenSet[str]]]
+    remote_control_passwords: Optional[Dict[str, Sequence[str]]]
     cwd_from: Optional[CwdRequest]
     cwd: Optional[str]
     location: Optional[str]
@@ -406,7 +406,7 @@ def launch(
         tm = boss.active_tab_manager
         opts.os_window_title = get_os_window_title(tm.os_window_id) if tm else None
     env = get_env(opts, active_child)
-    remote_control_restrictions: Optional[Dict[str, FrozenSet[str]]] = None
+    remote_control_restrictions: Optional[Dict[str, Sequence[str]]] = None
     if opts.allow_remote_control and opts.remote_control_password:
         from kitty.options.utils import remote_control_password
         remote_control_restrictions = {}

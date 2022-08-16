@@ -10,7 +10,7 @@ from contextlib import suppress
 from operator import attrgetter
 from time import monotonic
 from typing import (
-    Any, Deque, Dict, FrozenSet, Generator, Iterable, Iterator, List,
+    Any, Deque, Dict, Generator, Iterable, Iterator, List,
     NamedTuple, Optional, Sequence, Set, Tuple, Union
 )
 
@@ -442,7 +442,7 @@ class Tab:  # {{{
         watchers: Optional[Watchers] = None,
         overlay_behind: bool = False,
         is_clone_launch: str = '',
-        remote_control_passwords: Optional[Dict[str, FrozenSet[str]]] = None,
+        remote_control_passwords: Optional[Dict[str, Sequence[str]]] = None,
     ) -> Window:
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env,

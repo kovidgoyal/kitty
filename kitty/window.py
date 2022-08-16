@@ -14,8 +14,8 @@ from gettext import gettext as _
 from itertools import chain
 from time import monotonic
 from typing import (
-    TYPE_CHECKING, Any, Callable, Deque, Dict, FrozenSet, Iterable, List,
-    NamedTuple, Optional, Pattern, Sequence, Tuple, Union
+    TYPE_CHECKING, Any, Callable, Deque, Dict, Iterable, List, NamedTuple,
+    Optional, Pattern, Sequence, Tuple, Union
 )
 
 from .child import ProcessDesc
@@ -472,7 +472,7 @@ class Window:
         copy_colors_from: Optional['Window'] = None,
         watchers: Optional[Watchers] = None,
         allow_remote_control: bool = False,
-        remote_control_passwords: Optional[Dict[str, FrozenSet[str]]] = None,
+        remote_control_passwords: Optional[Dict[str, Sequence[str]]] = None,
     ):
         if watchers:
             self.watchers = watchers
