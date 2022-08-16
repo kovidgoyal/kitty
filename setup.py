@@ -1483,6 +1483,7 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
                  'macos-freeze',
                  'build-launcher',
                  'build-frozen-launcher',
+                 'build-frozen-tools',
                  'clean',
                  'export-ci-bundles',
                  'build-dep',
@@ -1689,7 +1690,8 @@ def main() -> None:
             init_env_from_args(args, False)
             bundle_type = ('macos' if is_macos else 'linux') + '-freeze'
             build_launcher(args, launcher_dir=os.path.join(args.prefix, 'bin'), bundle_type=bundle_type)
-            build_kitty_tool(args, launcher_dir=os.path.join(args.prefix, 'bin'))
+        elif args.action == 'build-frozen-tools':
+            build_kitty_tool(args, launcher_dir=args.prefix)
         elif args.action == 'linux-package':
             build(args, native_optimizations=False)
             package(args, bundle_type='linux-package')
@@ -1699,7 +1701,6 @@ def main() -> None:
         elif args.action == 'macos-freeze':
             init_env_from_args(args, native_optimizations=False)
             build_launcher(args, launcher_dir=launcher_dir)
-            build_kitty_tool(args, launcher_dir=launcher_dir)
             build(args, native_optimizations=False, call_init=False)
             package(args, bundle_type='macos-freeze')
         elif args.action == 'kitty.app':

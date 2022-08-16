@@ -238,10 +238,12 @@ def main():
     files = find_binaries(env)
     fix_permissions(files)
     add_ca_certs(env)
+    kitty_exe = os.path.join(env.base, 'bin', 'kitty')
+    iv['build_frozen_tools'](kitty_exe)
     if not args.dont_strip:
         strip_binaries(files)
     if not args.skip_tests:
-        iv['run_tests'](os.path.join(env.base, 'bin', 'kitty'))
+        iv['run_tests'](kitty_exe)
     create_tarfile(env, args.compression_level)
 
 
