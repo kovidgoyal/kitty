@@ -329,7 +329,7 @@ func show_usage(cmd *cobra.Command) error {
 	if cmd.Annotations["usage-suffix"] != "" {
 		fmt.Fprintln(&output, cmd.Annotations["usage-suffix"])
 	} else {
-		fmt.Fprintln(&output, italic_fmt(RootCmd.Name()), opt_fmt(RootCmd.Version), "created by", title_fmt("Kovid Goyal"))
+		fmt.Fprintln(&output, italic_fmt(RootCmd.Name()), opt_fmt(kitty.VersionString), "created by", title_fmt("Kovid Goyal"))
 	}
 	output_text := output.String()
 	// fmt.Printf("%#v\n", output_text)
