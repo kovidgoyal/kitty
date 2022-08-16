@@ -419,7 +419,7 @@ load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, con
             if (fd == -1) ABRT("EBADF", "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
             load_data->loading_completed_successfully = mmap_img_file(self, fd, g->data_sz, g->data_offset);
             safe_close(fd, __FILE__, __LINE__);
-            if (transmission_type == 't') {
+            if (transmission_type == 't' && strstr(fname, "tty-graphics-protocol") != NULL) {
                 if (global_state.boss) { call_boss(safe_delete_temp_file, "s", fname); }
                 else unlink(fname);
             }

@@ -360,7 +360,7 @@ class TestGraphics(BaseTest):
         self.ae(img['data'], random_data)
 
         # Test loading from file
-        f = tempfile.NamedTemporaryFile()
+        f = tempfile.NamedTemporaryFile(prefix='tty-graphics-protocol-')
         f.write(random_data), f.flush()
         sl(f.name, s=24, v=32, t='f', expecting_data=random_data)
         self.assertTrue(os.path.exists(f.name))

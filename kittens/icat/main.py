@@ -353,7 +353,7 @@ def process(path: str, args: IcatCLIOptions, parsed_opts: ParsedOpts, is_tempfil
         else:
             import struct
             use_number = max(1, struct.unpack('@I', os.urandom(4))[0])
-            with NamedTemporaryFile() as f:
+            with NamedTemporaryFile(prefix='tty-graphics-protocol-') as f:
                 prefix = f.name
             frame_data = render_image(
                 path, prefix, m, available_width, available_height, args.scale_up,
@@ -405,7 +405,7 @@ def detect_support(wait_for: float = 10, silent: bool = False) -> bool:
             parse_responses()
             return 1 not in responses or 2 not in responses
 
-        with NamedTemporaryFile() as f:
+        with NamedTemporaryFile(prefix='tty-graphics-protocol') as f:
             f.write(b'abcd')
             f.flush()
             gc = GraphicsCommand()
@@ -472,13 +472,13 @@ def process_single_item(
     file_removed = False
     try:
         if isinstance(item, bytes):
-            with NamedTemporaryFile(prefix='stdin-image-data-', delete=False) as tf:
+            with NamedTemporaryFile(prefix='tty-graphics-protocol-', delete=False) as tf:
                 tf.write(item)
             item = tf.name
             is_tempfile = True
         if url_pat is not None and url_pat.match(item) is not None:
             from urllib.request import urlretrieve
-            with NamedTemporaryFile(prefix='url-image-data-', delete=False) as tf:
+            with NamedTemporaryFile(prefix='tty-graphics-protocol-', delete=False) as tf:
                 try:
                     with socket_timeout(30):
                         urlretrieve(item, filename=tf.name)

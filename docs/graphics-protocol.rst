@@ -237,7 +237,8 @@ Value of `t`          Meaning
                       the terminal emulator should only delete the file if it
                       is in a known temporary directory, such as :file:`/tmp`,
                       :file:`/dev/shm`, :file:`TMPDIR env var if present` and any platform
-                      specific temporary directories.
+                      specific temporary directories and the file has the
+                      string :code:`tty-graphics-protocol` in its full file path.
 ``s``                 A *shared memory object*, which on POSIX systems is a
                       `POSIX shared memory object <https://pubs.opengroup.org/onlinepubs/9699919799/functions/shm_open.html>`_
                       and on Windows is a

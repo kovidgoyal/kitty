@@ -44,6 +44,9 @@ Detailed list of changes
 
 - A new option :opt:`modify_font` to adjust various font metrics like underlines, cell sizes etc. (:pull:`5265`)
 
+- Graphics protocol: Only delete temp files if they have the string
+  :code:`tty-graphics-protocol` in their file paths. This prevents deletion of arbitrary files in :file:`/tmp`.
+
 - Deprecate the ``adjust_baseline``, ``adjust_line_height`` and ``adjust_column_width`` options in favor of :opt:`modify_font`
 
 - Wayland: Fix a regression in the previous release that caused mouse cursor

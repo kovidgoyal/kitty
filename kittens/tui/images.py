@@ -301,7 +301,7 @@ def render_as_single_image(
     remove_alpha: str = '', flip: bool = False, flop: bool = False,
 ) -> Tuple[str, int, int]:
     import tempfile
-    fd, output = tempfile.mkstemp(prefix='icat-', suffix=f'.{m.mode}', dir=tdir)
+    fd, output = tempfile.mkstemp(prefix='tty-graphics-protocol-', suffix=f'.{m.mode}', dir=tdir)
     os.close(fd)
     result = render_image(
         path, output, m, available_width, available_height, scale_up,
