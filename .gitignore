@@ -13,6 +13,7 @@
 /link_commands.json
 /glad/out/
 /kitty/launcher/kitty*
+/tools/cmd/at/*_generated.go
 /*.dSYM/
 __pycache__/
 /glfw/wayland-*-client-protocol.[ch]
