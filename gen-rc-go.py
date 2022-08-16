@@ -17,7 +17,7 @@ def serialize_as_go_string(x: str) -> str:
 
 
 def build_go_code(name: str, cmd: RemoteCommand, opts: Any, template: str) -> str:
-    template = template[len('//go:build exclude'):]
+    template = '\n' + template[len('//go:build exclude'):]
     ans = template.replace('CMD_NAME', name).replace('__FILE__', __file__).replace('CLI_NAME', name.replace('_', '-')).replace(
         'SHORT_DESC', serialize_as_go_string(cmd.short_desc)).replace('LONG_DESC', serialize_as_go_string(cmd.desc.strip()))
     return ans

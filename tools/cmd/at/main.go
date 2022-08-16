@@ -121,6 +121,10 @@ func EntryPoint(tool_root *cobra.Command) *cobra.Command {
 		c := reg_func(at_root_command)
 		at_root_command.AddCommand(c)
 		command_objects[cmd_name] = c
+		alias := *c
+		alias.Use = "@" + alias.Use
+		alias.Hidden = true
+		tool_root.AddCommand(&alias)
 	}
 	return at_root_command
 }
