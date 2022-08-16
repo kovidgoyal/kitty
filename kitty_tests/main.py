@@ -103,7 +103,7 @@ def create_go_filter(packages: List[str], *names: str) -> str:
     if not go:
         return ''
     all_tests = set()
-    for line in subprocess.check_output('go test -list .'.split() + packages).decode().splitlines():
+    for line in subprocess.check_output(f'{go} test -list .'.split() + packages).decode().splitlines():
         if line.startswith('Test'):
             all_tests.add(line[4:])
     tests = set(names) & all_tests
@@ -118,11 +118,11 @@ def run_go(packages: List[str], names: str) -> None:
     if not packages:
         print('Skipping Go tests as go source files not availabe', file=sys.stderr)
         return
-    cmd = 'go test -v'.split()
+    cmd = [go, 'test', '-v']
     if names:
         cmd.extend(('-run', names))
     cmd += packages
-    print(shlex.join(cmd))
+    print(shlex.join(cmd), flush=True)
     os.execl(go, *cmd)
 
 
