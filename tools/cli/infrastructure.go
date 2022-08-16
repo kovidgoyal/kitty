@@ -83,6 +83,7 @@ func format_line_with_indent(output io.Writer, text string, indent string, scree
 	fmt.Fprint(output, indent)
 	in_escape := 0
 	var current_word strings.Builder
+	var escapes strings.Builder
 
 	print_word := func(r rune) {
 		w := runewidth.StringWidth(current_word.String())
@@ -94,8 +95,14 @@ func format_line_with_indent(output io.Writer, text string, indent string, scree
 			current_word.Reset()
 			current_word.WriteString(s)
 		}
-		fmt.Fprint(output, current_word.String())
-		current_word.Reset()
+		if escapes.Len() > 0 {
+			output.Write([]byte(escapes.String()))
+			escapes.Reset()
+		}
+		if current_word.Len() > 0 {
+			output.Write([]byte(current_word.String()))
+			current_word.Reset()
+		}
 		if r > 0 {
 			current_word.WriteRune(r)
 		}
@@ -113,7 +120,7 @@ func format_line_with_indent(output io.Writer, text string, indent string, scree
 			if (in_escape == 2 && r == 'm') || (in_escape == 3 && r == '\\' && text[i-1] == 0x1b) {
 				in_escape = 0
 			}
-			fmt.Fprint(output, string(r))
+			escapes.WriteRune(r)
 			continue
 		}
 		if r == 0x1b {
@@ -121,7 +128,7 @@ func format_line_with_indent(output io.Writer, text string, indent string, scree
 			if current_word.Len() != 0 {
 				print_word(0)
 			}
-			fmt.Fprint(output, string(r))
+			escapes.WriteRune(r)
 			continue
 		}
 		if current_word.Len() != 0 && r != 0xa0 && unicode.IsSpace(r) {
@@ -130,7 +137,7 @@ func format_line_with_indent(output io.Writer, text string, indent string, scree
 			current_word.WriteRune(r)
 		}
 	}
-	if current_word.Len() != 0 {
+	if current_word.Len() != 0 || escapes.Len() != 0 {
 		print_word(0)
 	}
 	if len(text) > 0 {
@@ -323,6 +330,7 @@ func show_usage(cmd *cobra.Command) error {
 		fmt.Fprintln(&output, italic_fmt(RootCmd.Name()), opt_fmt(RootCmd.Version), "created by", title_fmt("Kovid Goyal"))
 	}
 	output_text := output.String()
+	// fmt.Printf("%#v\n", output_text)
 	if stdout_is_terminal && cmd.Annotations["allow-pager"] != "no" {
 		pager := exec.Command(kitty.DefaultPager[0], kitty.DefaultPager[1:]...)
 		pager.Stdin = strings.NewReader(output_text)

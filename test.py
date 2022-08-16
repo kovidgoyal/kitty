@@ -32,6 +32,7 @@ def main() -> None:
     launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
     path = f'{launcher_dir}{os.pathsep}{path}'
     PYTHON_FOR_TYPE_CHECK = shutil.which('python') or shutil.which('python3') or ''
+    gohome = os.path.expanduser('~/go')
     with TemporaryDirectory() as tdir, env_vars(
         PYTHONWARNINGS='error', HOME=tdir, USERPROFILE=tdir, PATH=path,
         XDG_CONFIG_HOME=os.path.join(tdir, '.config'),
@@ -40,6 +41,8 @@ def main() -> None:
         XDG_CACHE_HOME=os.path.join(tdir, '.cache'),
         PYTHON_FOR_TYPE_CHECK=PYTHON_FOR_TYPE_CHECK,
     ):
+        if os.path.isdir(gohome):
+            os.symlink(gohome, os.path.join(tdir, os.path.basename(gohome)))
         m = importlib.import_module('kitty_tests.main')
         getattr(m, 'run_tests')()
 
