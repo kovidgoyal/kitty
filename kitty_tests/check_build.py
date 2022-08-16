@@ -4,6 +4,7 @@
 
 import os
 import stat
+import subprocess
 import sys
 import unittest
 from functools import partial
@@ -14,11 +15,15 @@ from . import BaseTest
 class TestBuild(BaseTest):
 
     def test_exe(self) -> None:
-        from kitty.constants import kitty_exe
+        from kitty.constants import kitty_exe, kitty_tool_exe, str_version
         exe = kitty_exe()
         self.assertTrue(os.access(exe, os.X_OK))
         self.assertTrue(os.path.isfile(exe))
         self.assertIn('kitty', os.path.basename(exe))
+        exe = kitty_tool_exe()
+        self.assertTrue(os.access(exe, os.X_OK))
+        self.assertTrue(os.path.isfile(exe))
+        self.assertIn(str_version, subprocess.check_output([exe, '--version']).decode())
 
     def test_loading_extensions(self) -> None:
         import kitty.fast_data_types as fdt
