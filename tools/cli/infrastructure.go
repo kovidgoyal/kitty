@@ -173,7 +173,7 @@ func website_url(doc string) string {
 			doc += "/"
 		}
 	}
-	return kitty.WebsiteBaseUrl + doc
+	return kitty.WebsiteBaseURL + doc
 }
 
 var prettify_pat = regexp.MustCompile(":([a-z]+):`([^`]+)`")
