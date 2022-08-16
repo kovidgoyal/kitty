@@ -69,9 +69,13 @@ func get_password(password string, password_file string, password_env string, us
 	return ans, nil
 }
 
+var all_commands map[string]func(*cobra.Command) *cobra.Command = make(map[string]func(*cobra.Command) *cobra.Command)
+var command_objects map[string]*cobra.Command = make(map[string]*cobra.Command)
+
 func EntryPoint(tool_root *cobra.Command) *cobra.Command {
+	var at_root_command *cobra.Command
 	var to, password, password_file, password_env, use_password *string
-	var root = cli.CreateCommand(&cobra.Command{
+	at_root_command = cli.CreateCommand(&cobra.Command{
 		Use:   "@ [global options] command [command options] [command args]",
 		Short: "Control kitty remotely",
 		Long:  "Control kitty by sending it commands. Set the allow_remote_control option in :file:`kitty.conf` or use a password, for this to work.",
@@ -87,30 +91,36 @@ func EntryPoint(tool_root *cobra.Command) *cobra.Command {
 			return err
 		},
 	})
-	root.Annotations["options_title"] = "Global options"
+	at_root_command.Annotations["options_title"] = "Global options"
 
-	to = root.PersistentFlags().String("to", "",
+	to = at_root_command.PersistentFlags().String("to", "",
 		"An address for the kitty instance to control. Corresponds to the address given"+
 			" to the kitty instance via the :option:`kitty --listen-on` option or the :opt:`listen_on` setting in :file:`kitty.conf`. If not"+
 			" specified, the environment variable :envvar:`KITTY_LISTEN_ON` is checked. If that"+
 			" is also not found, messages are sent to the controlling terminal for this"+
 			" process, i.e. they will only work if this process is run within a kitty window.")
 
-	password = root.PersistentFlags().String("password", "",
+	password = at_root_command.PersistentFlags().String("password", "",
 		"A password to use when contacting kitty. This will cause kitty to ask the user"+
 			" for permission to perform the specified action, unless the password has been"+
 			" accepted before or is pre-configured in :file:`kitty.conf`.")
 
-	password_file = root.PersistentFlags().String("password-file", "rc-pass",
+	password_file = at_root_command.PersistentFlags().String("password-file", "rc-pass",
 		"A file from which to read the password. Trailing whitespace is ignored. Relative"+
 			" paths are resolved from the kitty configuration directory. Use - to read from STDIN."+
 			" Used if no :option:`--password` is supplied. Defaults to checking for the"+
 			" :file:`rc-pass` file in the kitty configuration directory.")
 
-	password_env = root.PersistentFlags().String("password-env", "KITTY_RC_PASSWORD",
+	password_env = at_root_command.PersistentFlags().String("password-env", "KITTY_RC_PASSWORD",
 		"The name of an environment variable to read the password from."+
 			" Used if no :option:`--password-file` or :option:`--password` is supplied.")
 
-	use_password = cli.PersistentChoices(root, "use-password", "If no password is available, kitty will usually just send the remote control command without a password. This option can be used to force it to always or never use the supplied password.", "if-available", "always", "never")
-	return root
+	use_password = cli.PersistentChoices(at_root_command, "use-password", "If no password is available, kitty will usually just send the remote control command without a password. This option can be used to force it to always or never use the supplied password.", "if-available", "always", "never")
+
+	for cmd_name, reg_func := range all_commands {
+		c := reg_func(at_root_command)
+		at_root_command.AddCommand(c)
+		command_objects[cmd_name] = c
+	}
+	return at_root_command
 }

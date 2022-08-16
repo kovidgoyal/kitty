@@ -250,7 +250,7 @@ func format_with_indent(output io.Writer, text string, indent string, screen_wid
 func full_command_name(cmd *cobra.Command) string {
 	var parent_names []string
 	cmd.VisitParents(func(p *cobra.Command) {
-		parent_names = append(parent_names, p.Name())
+		parent_names = append([]string{p.Name()}, parent_names...)
 	})
 	parent_names = append(parent_names, cmd.Name())
 	return strings.Join(parent_names, " ")
@@ -284,7 +284,7 @@ func show_usage(cmd *cobra.Command) error {
 		}
 		fmt.Fprintln(&output)
 		format_with_indent(&output, "Get help for an individual command by running:", "", screen_width)
-		fmt.Fprintln(&output, "   ", cmd.Name(), italic_fmt("command"), "-h")
+		fmt.Fprintln(&output, "   ", full_command_name(cmd), italic_fmt("command"), "-h")
 	}
 	if cmd.HasAvailableFlags() {
 		options_title := cmd.Annotations["options_title"]
