@@ -110,6 +110,15 @@ The default choice is selected when the user presses the :kbd:`Enter` key.
 --prompt -p
 default="> "
 The prompt to use when inputting a line of text or a password.
+
+
+--unhide-key
+default=u
+The key to be pressed to unhide hidden text
+
+
+--hidden-text-placeholder
+The text in the message to be replaced by hidden text. The hidden text is read via STDIN.
 '''
 
 
@@ -222,6 +231,18 @@ class Choose(Handler):
         self.response_on_accept = cli_opts.default or ''
         if cli_opts.type in ('yesno', 'choices') and self.response_on_accept not in self.allowed:
             self.response_on_accept = 'y' if cli_opts.type == 'yesno' else tuple(self.choices.keys())[0]
+        self.message = cli_opts.message
+        self.hidden_text_start_pos = self.hidden_text_end_pos = -1
+        self.hidden_text = ''
+        self.replacement_text = t = f'Press {styled(self.cli_opts.unhide_key, fg="green")} or click to show'
+        self.replacement_range = Range(-1, -1, -1)
+        if self.message and self.cli_opts.hidden_text_placeholder:
+            self.hidden_text_start_pos = self.message.find(self.cli_opts.hidden_text_placeholder)
+            if self.hidden_text_start_pos > -1:
+                self.hidden_text = sys.stdin.read().rstrip()
+                self.hidden_text_end_pos = self.hidden_text_start_pos + len(t)
+                suffix = self.message[self.hidden_text_start_pos + len(self.cli_opts.hidden_text_placeholder):]
+                self.message = self.message[:self.hidden_text_start_pos] + t + suffix
 
     def initialize(self) -> None:
         self.cmd.set_cursor_visible(False)
@@ -246,13 +267,17 @@ class Choose(Handler):
     def draw_screen(self) -> None:
         self.cmd.clear_screen()
         msg_lines: List[str] = []
-        if self.cli_opts.message:
-            for line in self.cli_opts.message.splitlines():
+        if self.message:
+            for line in self.message.splitlines():
                 msg_lines.extend(self.draw_long_text(line))
         y = self.screen_size.rows - len(msg_lines)
         y = max(0, (y // 2) - 2)
         self.print(end='\r\n'*y)
         for line in msg_lines:
+            if self.replacement_text in line:
+                idx = line.find(self.replacement_text)
+                x = wcswidth(line[:idx])
+                self.replacement_range = Range(x, x + wcswidth(self.replacement_text), y)
             self.print(line)
             y += 1
         if self.screen_size.rows > 2:
@@ -383,6 +408,14 @@ class Choose(Handler):
             self.quit_loop(0)
         elif self.cli_opts.type == 'yesno':
             self.on_interrupt()
+        elif self.hidden_text and text == self.cli_opts.unhide_key:
+            self.unhide()
+
+    def unhide(self) -> None:
+        if self.hidden_text and self.message:
+            self.message = self.message[:self.hidden_text_start_pos] + self.hidden_text + self.message[self.hidden_text_end_pos:]
+            self.hidden_text = ''
+            self.draw_screen()
 
     def on_key(self, key_event: KeyEventType) -> None:
         if key_event.matches('esc'):
@@ -398,6 +431,8 @@ class Choose(Handler):
                     self.response = letter
                     self.quit_loop(0)
                     return
+        if self.hidden_text and self.replacement_range.has_point(ev.cell_x, ev.cell_y):
+            self.unhide()
 
     def on_resize(self, screen_size: ScreenSize) -> None:
         self.screen_size = screen_size
