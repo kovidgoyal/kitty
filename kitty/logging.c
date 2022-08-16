@@ -59,8 +59,15 @@ log_error_string(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+set_use_os_log(PyObject *self UNUSED, PyObject *args) {
+    use_os_log = PyObject_IsTrue(args) ? true : false;
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(log_error_string, METH_VARARGS),
+    METHODB(set_use_os_log, METH_O),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

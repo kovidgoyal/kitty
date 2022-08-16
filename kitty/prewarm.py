@@ -29,7 +29,7 @@ from kitty.entry_points import main as main_entry_point
 from kitty.fast_data_types import (
     CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options, getpeereid,
     install_signal_handlers, read_signals, remove_signal_handlers, safe_pipe,
-    set_options
+    set_options, set_use_os_log
 )
 from kitty.options.types import Options
 from kitty.shm import SharedMemory
@@ -869,6 +869,7 @@ def fork_prewarm_process(opts: Options, use_exec: bool = False) -> Optional[Prew
             p.reload_kitty_config()
         return p
     # child
+    set_use_os_log(False)
     safe_close(stdin_write)
     safe_close(stdout_read)
     safe_close(death_notify_read)
