@@ -171,6 +171,7 @@ class Freeze(object):
         self.add_misc_libraries()
         self.freeze_python()
         self.add_ca_certs()
+        self.build_frozen_tools()
         if not self.dont_strip:
             self.strip_files()
         if not self.skip_tests:
@@ -377,6 +378,10 @@ class Freeze(object):
         for f in walk(pdir):
             if f.endswith('.so') or f.endswith('.dylib'):
                 self.fix_dependencies_in_lib(f)
+
+    @flush
+    def build_frozen_tools(self):
+        iv['build_frozen_tools'](join(self.contents_dir, 'MacOS', 'kitty'))
 
     @flush
     def add_site_packages(self):
