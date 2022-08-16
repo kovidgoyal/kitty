@@ -505,8 +505,9 @@ def run_tool(cmd: Union[str, List[str]], desc: Optional[str] = None) -> None:
         raise SystemExit(ret)
 
 
-def get_vcs_rev_defines(env: Env, src: str) -> List[str]:
-    ans = []
+@lru_cache
+def get_vcs_rev_define() -> str:
+    ans = ''
     if os.path.exists('.git'):
         try:
             rev = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8')
@@ -520,7 +521,7 @@ def get_vcs_rev_defines(env: Env, src: str) -> List[str]:
                 with open(os.path.join(gitloc, 'refs/heads/master')) as f:
                     rev = f.read()
 
-        ans.append(f'KITTY_VCS_REV="{rev.strip()}"')
+        ans = rev.strip()
     return ans
 
 
@@ -528,7 +529,7 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, Optional[List[
     if src == 'kitty/parser_dump.c':
         return 'kitty/parser.c', ['DUMP_COMMANDS']
     if src == 'kitty/data-types.c':
-        return src, get_vcs_rev_defines(env, src)
+        return src, [f'KITTY_VCS_REV="{get_vcs_rev_define()}"']
     with suppress(KeyError):
         return src, env.library_paths[src]
     return src, None
@@ -875,15 +876,34 @@ def safe_makedirs(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
+def update_go_generated_files() -> None:
+    # update all the various auto-generated go files, if needed
+    rc_sources = [x for x in glob.glob('kitty/rc/*.py') if os.path.basename(x) not in ('base.py', '__init__.py')]
+    rc_objects = glob.glob('tools/cmd/at/*_generated.go')
+    generated = rc_objects + glob.glob('constants.go')
+    sources = ['gen-rc-go.py', 'kitty/constants.py', 'setup.py', 'tools/cmd/at/template.go'] + rc_sources
+    if generated:
+        oldest_generated = min(map(os.path.getmtime, generated))
+        newest_source = max(map(os.path.getmtime, sources))
+        if oldest_generated > newest_source and len(rc_sources) == len(rc_objects) and 'constants.go' in generated:
+            return
+    print('Updating Go generated files...')
+    subprocess.check_call(['./gen-rc-go.py'])
+
+
 def build_kitty_tool(args: Options, launcher_dir: str = '.') -> None:
     go = shutil.which('go')
     if not go:
         raise SystemExit('The go tool was not found on this system. Install Go')
+    update_go_generated_files()
     cmd = [go, 'build']
     if args.verbose:
         cmd.append('-v')
+    ld_flags = [f"-X 'kitty.VCSRevision={get_vcs_rev_define()}'"]
     if not args.debug:
-        cmd += ['-ldflags', '-s -w']
+        ld_flags.append('-s')
+        ld_flags.append('-w')
+    cmd += ['-ldflags', ' '.join(ld_flags)]
     cmd += ['-o', os.path.join(launcher_dir, 'kitty-tool'), os.path.abspath('tools/cmd')]
     print(shlex.join(cmd))
     cp = subprocess.run(cmd)
