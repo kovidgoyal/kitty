@@ -336,7 +336,8 @@ def init_env(
     extra_include_dirs: Iterable[str] = (),
     ignore_compiler_warnings: bool = False,
     build_universal_binary: bool = False,
-    extra_library_dirs: Iterable[str] = ()
+    extra_library_dirs: Iterable[str] = (),
+    verbose: bool = True
 ) -> Env:
     native_optimizations = native_optimizations and not sanitize and not debug
     if native_optimizations and is_macos and is_arm:
@@ -344,7 +345,8 @@ def init_env(
         # -march=native is not supported when targeting Apple Silicon
         native_optimizations = False
     cc, ccver = cc_version()
-    print('CC:', cc, ccver)
+    if verbose:
+        print('CC:', cc, ccver)
     stack_protector = first_successful_compile(cc, '-fstack-protector-strong', '-fstack-protector')
     missing_braces = ''
     if ccver < (5, 2) and is_gcc(cc):
@@ -837,7 +839,7 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
         args.debug, args.sanitize, native_optimizations, args.link_time_optimization, args.profile,
         args.egl_library, args.startup_notification_library, args.canberra_library, args.fontconfig_library,
         args.extra_logging, args.extra_include_dirs, args.ignore_compiler_warnings,
-        args.build_universal_binary, args.extra_library_dirs
+        args.build_universal_binary, args.extra_library_dirs, verbose=args.verbose > 0
     )
 
 
@@ -876,7 +878,7 @@ def safe_makedirs(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-def update_go_generated_files() -> None:
+def update_go_generated_files(args: Options, kitty_exe: str) -> None:
     # update all the various auto-generated go files, if needed
     rc_sources = [x for x in glob.glob('kitty/rc/*.py') if os.path.basename(x) not in ('base.py', '__init__.py')]
     rc_objects = glob.glob('tools/cmd/at/*_generated.go')
@@ -887,15 +889,16 @@ def update_go_generated_files() -> None:
         newest_source = max(map(os.path.getmtime, sources))
         if oldest_generated > newest_source and len(rc_sources) == len(rc_objects) and 'constants_generated.go' in generated:
             return
-    print('Updating Go generated files...')
-    subprocess.check_call([os.path.join(base, 'gen-rc-go.py')])
+    if args.verbose:
+        print('Updating Go generated files...')
+    subprocess.check_call([kitty_exe, '+launch', os.path.join(base, 'gen-rc-go.py')])
 
 
-def build_kitty_tool(args: Options, launcher_dir: str = '.') -> None:
+def build_kitty_tool(args: Options, launcher_dir: str) -> None:
     go = shutil.which('go')
     if not go:
         raise SystemExit('The go tool was not found on this system. Install Go')
-    update_go_generated_files()
+    update_go_generated_files(args, os.path.join(launcher_dir, appname))
     cmd = [go, 'build']
     if args.verbose:
         cmd.append('-v')
@@ -905,7 +908,8 @@ def build_kitty_tool(args: Options, launcher_dir: str = '.') -> None:
         ld_flags.append('-w')
     cmd += ['-ldflags', ' '.join(ld_flags)]
     cmd += ['-o', os.path.join(launcher_dir, 'kitty-tool'), os.path.abspath('tools/cmd')]
-    print(shlex.join(cmd))
+    if args.verbose:
+        print(shlex.join(cmd))
     cp = subprocess.run(cmd)
     if cp.returncode != 0:
         raise SystemExit(cp.returncode)
@@ -1349,7 +1353,6 @@ def package(args: Options, bundle_type: str) -> None:
         args.compilation_database.build_all()
     else:
         build_launcher(args, launcher_dir, bundle_type)
-    build_kitty_tool(args, launcher_dir=launcher_dir)
     os.makedirs(os.path.join(libdir, 'logo'))
     build_terminfo = runpy.run_path('build-terminfo', run_name='import_build')
     for x in (libdir, os.path.join(ddir, 'share')):
@@ -1414,6 +1417,8 @@ def package(args: Options, bundle_type: str) -> None:
         for f_ in files:
             path = os.path.join(root, f_)
             os.chmod(path, 0o755 if should_be_executable(path) else 0o644)
+    if not for_freeze:
+        build_kitty_tool(args, launcher_dir=launcher_dir)
     if not is_macos:
         create_linux_bundle_gunk(ddir, args.libdir_name)
 
@@ -1684,7 +1689,7 @@ def main() -> None:
             init_env_from_args(args, False)
             bundle_type = ('macos' if is_macos else 'linux') + '-freeze'
             build_launcher(args, launcher_dir=os.path.join(args.prefix, 'bin'), bundle_type=bundle_type)
-            build_kitty_tool(args, launcher_dir=launcher_dir)
+            build_kitty_tool(args, launcher_dir=os.path.join(args.prefix, 'bin'))
         elif args.action == 'linux-package':
             build(args, native_optimizations=False)
             package(args, bundle_type='linux-package')
