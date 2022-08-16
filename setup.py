@@ -876,12 +876,16 @@ def safe_makedirs(path: str) -> None:
 
 
 def build_kitty_tool(args: Options, launcher_dir: str = '.') -> None:
-    cmd = ['go', 'build']
+    go = shutil.which('go')
+    if not go:
+        raise SystemExit('The go tool was not found on this system. Install Go')
+    cmd = [go, 'build']
     if args.verbose:
         cmd.append('-v')
     if not args.debug:
         cmd += ['-ldflags', '-s -w']
     cmd += ['-o', os.path.join(launcher_dir, 'kitty-tool'), os.path.abspath('tools/cmd')]
+    print(shlex.join(cmd))
     cp = subprocess.run(cmd)
     if cp.returncode != 0:
         raise SystemExit(cp.returncode)
