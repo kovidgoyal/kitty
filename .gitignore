@@ -2,6 +2,7 @@
 *.pyc
 *.pyo
 *_stub.pyi
+*_generated.go
 /.dmypy.json
 /tags
 /build/
