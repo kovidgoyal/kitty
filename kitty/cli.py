@@ -117,7 +117,7 @@ def title(x: str) -> str:
 
 @role
 def opt(text: str) -> str:
-    return text
+    return bold(text)
 
 
 @role
