@@ -516,6 +516,8 @@ def main(args: List[str]) -> None:
     except KeyboardInterrupt:
         sys.excepthook = lambda *a: print('Interrupted by user', file=sys.stderr)
         raise
+    except FileNotFoundError:
+        raise SystemExit(f'No listen on socket found at: {global_opts.to}')
     except SocketClosed as e:
         raise SystemExit(str(e))
     if no_response:
