@@ -499,17 +499,18 @@ class Boss:
                     log_error('Denying remote command permission as there are too many existing permission requests')
                     return False
         wid = 0 if window is None else window.id
+        hidden_text = styled(pcmd['password'], fg='yellow')
         overlay_window = self.choose(
             _('A program wishes to control kitty.\n'
               'Action: {1}\n' 'Password: {0}\n\n' '{2}'
               ).format(
-                  styled(pcmd['password'], fg='yellow'), styled(pcmd['cmd'], fg='magenta'),
+                  hidden_text, styled(pcmd['cmd'], fg='magenta'),
                   '\x1b[m' + styled(_(
                       'Note that allowing the password will allow all future actions using the same password, in this kitty instance.'
                   ), dim=True, italic=True)),
             partial(self.remote_cmd_permission_received, pcmd, wid, peer_id),
             'a;green:Allow request', 'p;yellow:Allow password', 'r;magenta:Deny request', 'd;red:Deny password',
-            window=window, default='a'
+            window=window, default='a', hidden_text=hidden_text
         )
         if overlay_window is None:
             return False
@@ -757,15 +758,25 @@ class Boss:
         *choices: str,   # The choices, see the help for the ask kitten for format of a choice
         window: Optional[Window] = None,  # the window associated with the confirmation
         default: str = '',  # the default choice when the user presses Enter
+        hidden_text: str = '',  # text to hide in the message
+        hidden_text_placeholder: str = 'HIDDEN_TEXT_PLACEHOLDER',  # placeholder text to insert in to message
+        unhide_key: str = 'u',  # key to press to unhide hidden text
     ) -> Optional[Window]:
         def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
             callback(res.get('response') or '')
+        if hidden_text:
+            msg = msg.replace(hidden_text, hidden_text_placeholder)
         cmd = ['--type=choices', '--message', msg]
         if default:
             cmd += ['-d', default]
         for c in choices:
             cmd += ['-c', c]
-        ans = self.run_kitten_with_metadata('ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''})
+        if hidden_text:
+            cmd += ['--hidden-text-placeholder', hidden_text_placeholder, '--unhide-key', unhide_key]
+            input_data = hidden_text
+        else:
+            input_data = None
+        ans = self.run_kitten_with_metadata('ask', cmd, window=window, custom_callback=callback_, input_data=input_data, default_data={'response': ''})
         if isinstance(ans, Window):
             return ans
         return None
