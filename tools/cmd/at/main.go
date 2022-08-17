@@ -1,6 +1,7 @@
 package at
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -11,24 +12,86 @@ import (
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 
+	"kitty"
+	"kitty/tools/base85"
 	"kitty/tools/cli"
 	"kitty/tools/crypto"
+	"kitty/tools/utils"
 )
 
-var encrypt_cmd = crypto.Encrypt_cmd
-
 type GlobalOptions struct {
-	to, password, use_password string
-	to_from_env                bool
+	to_address, password       string
+	to_address_is_from_env_var bool
 }
 
 var global_options GlobalOptions
 
-func get_password(password string, password_file string, password_env string, use_password string) (string, error) {
-	if use_password == "never" {
-		return "", nil
+func get_pubkey(encoded_key string) (encryption_version string, pubkey []byte, err error) {
+	if encoded_key == "" {
+		encoded_key = os.Getenv("KITTY_PUBLIC_KEY")
+		if encoded_key == "" {
+			err = fmt.Errorf("Password usage requested but KITTY_PUBLIC_KEY environment variable is not available")
+			return
+		}
 	}
-	ans := ""
+	encryption_version, encoded_key, found := strings.Cut(encoded_key, ":")
+	if !found {
+		err = fmt.Errorf("KITTY_PUBLIC_KEY environment variable does not have a : in it")
+		return
+	}
+	if encryption_version != kitty.RC_ENCRYPTION_PROTOCOL_VERSION {
+		err = fmt.Errorf("KITTY_PUBLIC_KEY has unknown version, if you are running on a remote system, update kitty on this system")
+		return
+	}
+	pubkey = make([]byte, base85.DecodedLen(len(encoded_key)))
+	n, err := base85.Decode(pubkey, []byte(encoded_key))
+	if err == nil {
+		pubkey = pubkey[:n]
+	}
+	return
+}
+
+func simple_serializer(rc *utils.RemoteControlCmd) (ans []byte, err error) {
+	ans, err = json.Marshal(rc)
+	return
+}
+
+type serializer_func func(rc *utils.RemoteControlCmd) ([]byte, error)
+
+var serializer serializer_func = simple_serializer
+
+func create_serializer(password string, encoded_pubkey string) (ans serializer_func, err error) {
+	if password != "" {
+		encryption_version, pubkey, err := get_pubkey(encoded_pubkey)
+		if err != nil {
+			return nil, err
+		}
+		ans = func(rc *utils.RemoteControlCmd) (ans []byte, err error) {
+			ec, err := crypto.Encrypt_cmd(rc, global_options.password, pubkey, encryption_version)
+			ans, err = json.Marshal(ec)
+			return
+		}
+	}
+	return simple_serializer, nil
+}
+
+func send_rc_command(rc *utils.RemoteControlCmd) (err error) {
+	serializer, err = create_serializer(global_options.password, "")
+	if err != nil {
+		return
+	}
+	d, err := serializer(rc)
+	if err != nil {
+		return
+	}
+	println(string(d))
+	return
+}
+
+func get_password(password string, password_file string, password_env string, use_password string) (ans string, err error) {
+	if use_password == "never" {
+		return
+	}
 	if password != "" {
 		ans = password
 	}
@@ -82,10 +145,9 @@ func EntryPoint(tool_root *cobra.Command) *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if *to == "" {
 				*to = os.Getenv("KITTY_LISTEN_ON")
-				global_options.to_from_env = true
+				global_options.to_address_is_from_env_var = true
 			}
-			global_options.to = *to
-			global_options.use_password = *use_password
+			global_options.to_address = *to
 			q, err := get_password(*password, *password_file, *password_env, *use_password)
 			global_options.password = q
 			return err

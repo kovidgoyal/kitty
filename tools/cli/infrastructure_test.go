@@ -13,6 +13,6 @@ func TestFormatLineWithIndent(t *testing.T) {
 	format_line_with_indent(&output, "testing \x1b[31mstyled\x1b[m", indent, 11)
 	expected := indent + "testing \n" + indent + "\x1b[31mstyled\x1b[m\n"
 	if output.String() != expected {
-		t.Errorf("%#v != %#v", expected, output.String())
+		t.Fatalf("%#v != %#v", expected, output.String())
 	}
 }

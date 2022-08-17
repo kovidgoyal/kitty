@@ -3,10 +3,10 @@ package utils
 type RemoteControlCmd struct {
 	Cmd        string                 `json:"cmd"`
 	Version    [3]int                 `json:"version"`
-	NoResponse bool                   `json:"no_response,omitifempty"`
-	Payload    map[string]interface{} `json:"payload,omitifempty"`
-	Timestamp  int64                  `json:"timestamp,omitifempty"`
-	Password   string                 `json:"password,omitifempty"`
+	NoResponse bool                   `json:"no_response,omitempty"`
+	Payload    map[string]interface{} `json:"payload,omitempty"`
+	Timestamp  int64                  `json:"timestamp,omitempty"`
+	Password   string                 `json:"password,omitempty"`
 }
 
 type EncryptedRemoteControlCmd struct {
@@ -15,4 +15,5 @@ type EncryptedRemoteControlCmd struct {
 	Tag       string `json:"tag"`
 	Pubkey    string `json:"pubkey"`
 	Encrypted string `json:"encrypted"`
+	EncProto  string `json:"enc_proto,omitempty"`
 }
