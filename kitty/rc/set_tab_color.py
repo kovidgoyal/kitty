@@ -37,7 +37,7 @@ def parse_colors(args: ArgsType) -> Dict[str, Optional[int]]:
 
 class SetTabColor(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     colors+/dict.colors: An object mapping names to colors as 24-bit RGB integers. A color value of null indicates it should be unset.
     match/str: Which tab to change the color of
     self/bool: Boolean indicating whether to use the tab of the window the command is run in

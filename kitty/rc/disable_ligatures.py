@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 class DisableLigatures(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     strategy+/choices.never.always.cursor: One of :code:`never`, :code:`always` or :code:`cursor`
     match_window/str: Window to change opacity in
     match_tab/str: Tab to change opacity in

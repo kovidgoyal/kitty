@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class NewWindow(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     args+/list.str: The command line to run in the new window, as a list, use an empty list to run the default shell
     match/str: The tab to open the new window in
     title/str: Title for the new window

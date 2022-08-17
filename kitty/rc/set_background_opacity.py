@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 class SetBackgroundOpacity(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     opacity+/float: A number between 0.1 and 1
     match_window/str: Window to change opacity in
     match_tab/str: Tab to change opacity in

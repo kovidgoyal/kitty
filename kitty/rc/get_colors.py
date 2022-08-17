@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 class GetColors(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     match/str: The window to get the colors for
     configured/bool: Boolean indicating whether to get configured or current colors
     '''

@@ -95,6 +95,40 @@ class Option:
         return ans
 
 
+json_field_types: Dict[str, str] = {
+    'bool': 'bool', 'str': 'string', 'list.str': '[]string', 'dict.str': 'map[string]string', 'float': 'float64', 'int': 'int',
+    'scroll_amount': '[2]interface{}', 'spacing': 'interface{}', 'colors': 'interface{}',
+}
+
+
+def go_field_type(json_field_type: str) -> str:
+    q = json_field_types.get(json_field_type)
+    if q:
+        return q
+    if json_field_type.startswith('choices.'):
+        return 'string'
+    if '.' in json_field_type:
+        p, r = json_field_type.split('.', 1)
+        p = {'list': '[]', 'dict': 'map[string]'}[p]
+        return p + go_field_type(r)
+    raise TypeError(f'Unknown JSON field type: {json_field_type}')
+
+
+class JSONField:
+
+    def __init__(self, line: str) -> None:
+        field_def = line.split(':', 1)[0]
+        self.required = False
+        self.field, self.field_type = field_def.split('/', 1)
+        if self.field.endswith('+'):
+            self.required = True
+            self.field = self.field[:-1]
+        self.struct_field_name = self.field[0].upper() + self.field[1:]
+
+    def go_declaration(self) -> str:
+        return self.struct_field_name + ' ' + go_field_type(self.field_type) + f'`json:"{self.field},omitempty"`'
+
+
 def render_alias_map(alias_map: Dict[str, Tuple[str, ...]]) -> str:
     if not alias_map:
         return ''
@@ -125,6 +159,13 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
             continue
         od.append(f'{o.go_var_name} {o.go_type}')
         ov.append(o.set_flag_value())
+    jd: List[str] = []
+    for line in cmd.protocol_spec.splitlines():
+        line = line.strip()
+        if ':' not in line:
+            continue
+        f = JSONField(line)
+        jd.append(f.go_declaration())
 
     ans = replace(
         template,
@@ -136,6 +177,7 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
         ALIAS_NORMALIZE_CODE=render_alias_map(alias_map),
         OPTIONS_DECLARATION_CODE='\n'.join(od),
         SET_OPTION_VALUES_CODE='\n'.join(ov),
+        JSON_DECLARATION_CODE='\n'.join(jd),
     )
     return ans
 

@@ -18,6 +18,12 @@ type options_CMD_NAME_type struct {
 
 var options_CMD_NAME options_CMD_NAME_type
 
+type CMD_NAME_json_type struct {
+	JSON_DECLARATION_CODE
+}
+
+var CMD_NAME_json CMD_NAME_json_type
+
 func run_CMD_NAME(cmd *cobra.Command, args []string) (err error) {
 	SET_OPTION_VALUES_CODE
 

@@ -19,7 +19,7 @@ def layout_names() -> Iterable[str]:
 
 class GotoLayout(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     layout+/str: The new layout name
     match/str: Which tab to change the layout of
     '''

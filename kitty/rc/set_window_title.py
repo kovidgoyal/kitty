@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class SetWindowTitle(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     title/str: The new title
     match/str: Which windows to change the title in
     temporary/bool: Boolean indicating if the change is temporary or permanent

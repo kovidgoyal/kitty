@@ -11,7 +11,7 @@ from .base import (
 
 class Env(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     env+/dict.str: Dictionary of environment variables to values. Empty values cause the variable to be removed.
     '''
 
