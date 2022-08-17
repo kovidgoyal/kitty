@@ -13,8 +13,13 @@ import (
 
 func run_CMD_NAME(cmd *cobra.Command, args []string) (err error) {
 	rc := utils.RemoteControlCmd{
-		Cmd:     "CLI_NAME",
-		Version: [3]int{0, 20, 0},
+		Cmd:        "CLI_NAME",
+		Version:    [3]int{0, 20, 0},
+		NoResponse: NO_RESPONSE_BASE,
+	}
+	nrv, err := cmd.Flags().GetBool("no-response")
+	if err == nil {
+		rc.NoResponse = nrv
 	}
 	err = send_rc_command(&rc)
 	return
@@ -27,6 +32,7 @@ func setup_CMD_NAME(root *cobra.Command) *cobra.Command {
 		Long:  "LONG_DESC",
 		RunE:  run_CMD_NAME,
 	})
+	ADD_FLAGS_CODE
 
 	return ans
 }

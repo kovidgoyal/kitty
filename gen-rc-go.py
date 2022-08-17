@@ -4,22 +4,49 @@
 import os
 import subprocess
 import sys
-from typing import Any
+from typing import List
 
-from kitty.rc.base import (
-    RemoteCommand, all_command_names, command_for_name, parse_subcommand_cli
-)
 import kitty.constants as kc
+from kitty.cli import OptionSpecSeq, parse_option_spec
+from kitty.rc.base import (
+    RemoteCommand, all_command_names, command_for_name
+)
 
 
 def serialize_as_go_string(x: str) -> str:
     return x.replace('\n', '\\n').replace('"', '\\"')
 
 
-def build_go_code(name: str, cmd: RemoteCommand, opts: Any, template: str) -> str:
+def replace(template: str, **kw: str) -> str:
+    for k, v in kw.items():
+        template = template.replace(k, v)
+    return template
+
+
+def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: str) -> str:
     template = '\n' + template[len('//go:build exclude'):]
-    ans = template.replace('CMD_NAME', name).replace('__FILE__', __file__).replace('CLI_NAME', name.replace('_', '-')).replace(
-        'SHORT_DESC', serialize_as_go_string(cmd.short_desc)).replace('LONG_DESC', serialize_as_go_string(cmd.desc.strip()))
+    NO_RESPONSE_BASE = 'true' if cmd.no_response else 'false'
+    af: List[str] = []
+    a = af.append
+    for x in seq:
+        if isinstance(x, str):
+            continue
+        flags = sorted(x['aliases'], key=len)
+        short = ''
+        if len(flags) > 1 and not flags[0].startswith("--"):
+            short = flags[0][1:]
+        long = flags[-1][2:]
+        if not long:
+            raise SystemExit(f'No long flag for {x} with flags {flags}')
+        usage = serialize_as_go_string(x['help'].strip())
+        if x['type'] == 'bool-set':
+            a(f'add_bool_set(ans, "{long}", "{short}", "{usage}")')
+    ans = replace(
+        template,
+        CMD_NAME=name, __FILE__=__file__, CLI_NAME=name.replace('_', '-'),
+        SHORT_DESC=serialize_as_go_string(cmd.short_desc),
+        LONG_DESC=serialize_as_go_string(cmd.desc.strip()),
+        NO_RESPONSE_BASE=NO_RESPONSE_BASE, ADD_FLAGS_CODE='\n'.join(af))
     return ans
 
 
@@ -48,8 +75,7 @@ var RC_ENCRYPTION_PROTOCOL_VERSION string = "{kc.RC_ENCRYPTION_PROTOCOL_VERSION}
         template = f.read()
     for name in all_command_names():
         cmd = command_for_name(name)
-        args = ['xxx' for i in range((cmd.args_count or 0) + 1)]
-        opts = parse_subcommand_cli(cmd, args)[0]
+        opts = parse_option_spec(cmd.options_spec)[0]
         code = build_go_code(name, cmd, opts, template)
         dest = f'tools/cmd/at/{name}_generated.go'
         if os.path.exists(dest):
