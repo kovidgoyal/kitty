@@ -90,7 +90,7 @@ func create_serializer(password string, encoded_pubkey string) (ans serializer_f
 	return simple_serializer, nil
 }
 
-func send_rc_command(rc *utils.RemoteControlCmd) (err error) {
+func send_rc_command(rc *utils.RemoteControlCmd, timeout float64) (err error) {
 	serializer, err = create_serializer(global_options.password, "")
 	if err != nil {
 		return

@@ -21,7 +21,7 @@ func run_CMD_NAME(cmd *cobra.Command, args []string) (err error) {
 	if err == nil {
 		rc.NoResponse = nrv
 	}
-	err = send_rc_command(&rc)
+	err = send_rc_command(&rc, WAIT_TIMEOUT)
 	return
 }
 

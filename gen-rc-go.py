@@ -34,6 +34,7 @@ class Option:
         self.short, self.long = short, long
         self.usage = serialize_as_go_string(x['help'].strip())
         self.type = x['type']
+        self.dest = x['dest']
 
     def to_flag_definition(self, base: str = 'ans.Flags()') -> str:
         if self.type == 'bool-set':
@@ -53,12 +54,16 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
             continue
         o = Option(x)
         a(o.to_flag_definition())
+        if o.dest == 'no_response':
+            continue
     ans = replace(
         template,
         CMD_NAME=name, __FILE__=__file__, CLI_NAME=name.replace('_', '-'),
         SHORT_DESC=serialize_as_go_string(cmd.short_desc),
         LONG_DESC=serialize_as_go_string(cmd.desc.strip()),
-        NO_RESPONSE_BASE=NO_RESPONSE_BASE, ADD_FLAGS_CODE='\n'.join(af))
+        NO_RESPONSE_BASE=NO_RESPONSE_BASE, ADD_FLAGS_CODE='\n'.join(af),
+        WAIT_TIMEOUT=str(cmd.response_timeout),
+    )
     return ans
 
 
