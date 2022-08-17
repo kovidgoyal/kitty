@@ -21,7 +21,11 @@ def replace(template: str, **kw: str) -> str:
     return template
 
 
-go_type_map = {'bool-set': 'bool', 'int': 'int', 'float': 'float64', '': 'string', 'list': '[]string', 'choices': 'string'}
+go_type_map = {'bool-set': 'bool', 'bool-reset': 'bool', 'int': 'int', 'float': 'float64', '': 'string', 'list': '[]string', 'choices': 'string'}
+go_getter_map = {
+    'bool-set': 'GetBool', 'bool-reset': 'GetBool', 'int': 'GetInt', 'float': 'GetFloat64', '': 'GetString',
+    'list': 'GetStringArray', 'choices': 'GetString'
+}
 
 
 class Option:
@@ -50,10 +54,11 @@ class Option:
             self.go_var_name += '_'
 
     def to_flag_definition(self, base: str = 'ans.Flags()') -> str:
-        if self.type == 'bool-set':
+        if self.type.startswith('bool-'):
+            defval = 'false' if self.type == 'bool-set' else 'true'
             if self.short:
-                return f'{base}.BoolP("{self.long}", "{self.short}", false, "{self.usage}")'
-            return f'{base}.Bool("{self.long}", false, "{self.usage}")'
+                return f'{base}.BoolP("{self.long}", "{self.short}", {defval}, "{self.usage}")'
+            return f'{base}.Bool("{self.long}", {defval}, "{self.usage}")'
         elif not self.type:
             defval = f'''"{serialize_as_go_string(self.default or '')}"'''
             if self.short:
@@ -84,18 +89,7 @@ class Option:
             raise TypeError(f'Unknown type of CLI option: {self.type} for {self.long}')
 
     def set_flag_value(self, cmd: str = 'cmd') -> str:
-        if self.type.startswith('bool-'):
-            func = 'GetBool'
-        elif not self.type or self.type == 'choices':
-            func = 'GetString'
-        elif self.type == 'int':
-            func = 'GetInt'
-        elif self.type == 'float':
-            func = 'GetFloat64'
-        elif self.type == 'list':
-            func = 'GetStringArray'
-        else:
-            raise TypeError(f'Unknown type of CLI option: {self.type} for {self.long}')
+        func = go_getter_map[self.type]
         ans = f'{self.go_var_name}_temp, err := {cmd}.Flags().{func}("{self.long}")\n if err != nil {{ return err }}'
         ans += f'\noptions_{self.cmd_name}.{self.go_var_name} = {self.go_var_name}_temp'
         return ans
