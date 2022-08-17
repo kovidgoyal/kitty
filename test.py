@@ -35,13 +35,15 @@ def main() -> None:
     launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
     if go and go.startswith(current_home):
         path = f'{os.path.dirname(go)}{os.pathsep}{path}'
-    if python and python.startswith(current_home):
-        path = f'{os.path.dirname(python)}{os.pathsep}{path}'
     path = f'{launcher_dir}{os.pathsep}{path}'
     PYTHON_FOR_TYPE_CHECK = shutil.which('python') or shutil.which('python3') or ''
     gohome = os.path.expanduser('~/go')
     if os.environ.get('CI') == 'true':
         print('Using PATH in test environment:', path, flush=True)
+        python = shutil.which('python', path=path) or shutil.which('python3', path=path)
+        print('Python:', python)
+        go = shutil.which('go', path=path)
+        print('Go:', go)
     with TemporaryDirectory() as tdir, env_vars(
         PYTHONWARNINGS='error', HOME=tdir, USERPROFILE=tdir, PATH=path,
         XDG_CONFIG_HOME=os.path.join(tdir, '.config'),
