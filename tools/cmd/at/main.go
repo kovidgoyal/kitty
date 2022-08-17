@@ -152,7 +152,8 @@ var command_objects map[string]*cobra.Command = make(map[string]*cobra.Command)
 
 func EntryPoint(tool_root *cobra.Command) *cobra.Command {
 	var at_root_command *cobra.Command
-	var to, password, password_file, password_env, use_password *string
+	var to, password, password_file, password_env *string
+	var use_password *cli.ChoicesVal
 	at_root_command = cli.CreateCommand(&cobra.Command{
 		Use:   "@ [global options] command [command options] [command args]",
 		Short: "Control kitty remotely",
@@ -163,7 +164,7 @@ func EntryPoint(tool_root *cobra.Command) *cobra.Command {
 				global_options.to_address_is_from_env_var = true
 			}
 			global_options.to_address = *to
-			q, err := get_password(*password, *password_file, *password_env, *use_password)
+			q, err := get_password(*password, *password_file, *password_env, use_password.Choice)
 			global_options.password = q
 			return err
 		},
@@ -192,7 +193,7 @@ func EntryPoint(tool_root *cobra.Command) *cobra.Command {
 		"The name of an environment variable to read the password from."+
 			" Used if no :option:`--password-file` or :option:`--password` is supplied.")
 
-	use_password = cli.PersistentChoices(at_root_command, "use-password", "If no password is available, kitty will usually just send the remote control command without a password. This option can be used to force it to always or never use the supplied password.", "if-available", "always", "never")
+	use_password = cli.Choices(at_root_command.PersistentFlags(), "use-password", "If no password is available, kitty will usually just send the remote control command without a password. This option can be used to force it to always or never use the supplied password.", "if-available", "always", "never")
 
 	for cmd_name, reg_func := range all_commands {
 		c := reg_func(at_root_command)
