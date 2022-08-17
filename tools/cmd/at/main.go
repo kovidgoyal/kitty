@@ -19,6 +19,13 @@ import (
 	"kitty/tools/utils"
 )
 
+func add_bool_set(cmd *cobra.Command, name string, short string, usage string) *bool {
+	if short == "" {
+		return cmd.Flags().Bool(name, false, usage)
+	}
+	return cmd.Flags().BoolP(name, short, false, usage)
+}
+
 type GlobalOptions struct {
 	to_address, password       string
 	to_address_is_from_env_var bool
