@@ -103,7 +103,11 @@ def create_go_filter(packages: List[str], *names: str) -> str:
     if not go:
         return ''
     all_tests = set()
-    for line in subprocess.check_output(f'{go} test -list .'.split() + packages).decode().splitlines():
+    try:
+        lines = subprocess.check_output(f'{go} test -list .'.split() + packages).decode().splitlines()
+    except subprocess.CalledProcessError as e:
+        raise SystemExit(e.returncode)
+    for line in lines:
         if line.startswith('Test'):
             all_tests.add(line[4:])
     tests = set(names) & all_tests

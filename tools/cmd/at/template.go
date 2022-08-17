@@ -24,19 +24,37 @@ type CMD_NAME_json_type struct {
 
 var CMD_NAME_json CMD_NAME_json_type
 
+func create_payload_CMD_NAME(args []string) (payload map[string]interface{}, err error) {
+	return
+}
+
+func create_rc_CMD_NAME(args []string) (*utils.RemoteControlCmd, error) {
+	var err error
+	payload, err := create_payload_CMD_NAME(args)
+	if err != nil {
+		return nil, err
+	}
+	rc := utils.RemoteControlCmd{
+		Cmd:        "CLI_NAME",
+		Version:    ProtocolVersion,
+		NoResponse: NO_RESPONSE_BASE,
+		Payload:    payload,
+	}
+	return &rc, nil
+}
+
 func run_CMD_NAME(cmd *cobra.Command, args []string) (err error) {
 	SET_OPTION_VALUES_CODE
 
-	rc := utils.RemoteControlCmd{
-		Cmd:        "CLI_NAME",
-		Version:    [3]int{0, 20, 0},
-		NoResponse: NO_RESPONSE_BASE,
+	rc, err := create_rc_CMD_NAME(args)
+	if err != nil {
+		return err
 	}
 	nrv, err := cmd.Flags().GetBool("no-response")
 	if err == nil {
 		rc.NoResponse = nrv
 	}
-	err = send_rc_command(&rc, WAIT_TIMEOUT)
+	err = send_rc_command(rc, WAIT_TIMEOUT)
 	return
 }
 

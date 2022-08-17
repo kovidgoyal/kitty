@@ -19,6 +19,8 @@ import (
 	"kitty/tools/utils"
 )
 
+var ProtocolVersion [3]int = [3]int{0, 20, 0}
+
 func add_bool_set(cmd *cobra.Command, name string, short string, usage string) *bool {
 	if short == "" {
 		return cmd.Flags().Bool(name, false, usage)

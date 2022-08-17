@@ -2,10 +2,37 @@ package at
 
 import (
 	"encoding/json"
+	"fmt"
 	"kitty/tools/crypto"
 	"kitty/tools/utils"
 	"testing"
 )
+
+func TestCommandToJSON(t *testing.T) {
+	pv := fmt.Sprint(ProtocolVersion[0], ",", ProtocolVersion[1], ",", ProtocolVersion[2])
+	rc, err := create_rc_ls([]string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	marshal := func(rc *utils.RemoteControlCmd) string {
+		q, err := json.Marshal(rc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(q)
+	}
+
+	test := func(rc *utils.RemoteControlCmd, rest string) {
+		q := marshal(rc)
+		expected := `{"cmd":"` + rc.Cmd + `","version":[` + pv + `]`
+		expected += rest + "}"
+		if q != expected {
+			t.Fatalf("expected != actual: %#v != %#v", expected, q)
+		}
+	}
+	test(rc, "")
+}
 
 func TestRCSerialization(t *testing.T) {
 	serializer, err := create_serializer("", "")
