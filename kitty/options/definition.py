@@ -2718,14 +2718,13 @@ that is used to check every remote control command. See :ref:`rc_custom_auth` fo
 Relative paths are resolved from the kitty configuration directory.
 ''')
 
-opt('allow_remote_control', 'password', choices=('password', 'socket-only', 'socket', 'no', 'n', 'false', 'yes', 'y', 'true'),
+opt('allow_remote_control', 'no', choices=('password', 'socket-only', 'socket', 'no', 'n', 'false', 'yes', 'y', 'true'),
     long_text='''
 Allow other programs to control kitty. If you turn this on, other programs can
 control all aspects of kitty, including sending text to kitty windows, opening
 new windows, closing windows, reading the content of windows, etc. Note that
-this even works over SSH connections. The default setting of :code:`password`
-asks the user for confirmation when a remote control command is received.
-The meaning of the various values are:
+this even works over SSH connections. The default setting of :code:`no`
+prevents any form of remote control. The meaning of the various values are:
 
 :code:`password`
    Remote control requests received over both the TTY device and the socket are

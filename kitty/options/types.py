@@ -469,7 +469,7 @@ class Options:
     active_tab_title_template: typing.Optional[str] = None
     allow_cloning: choices_for_allow_cloning = 'ask'
     allow_hyperlinks: int = 1
-    allow_remote_control: choices_for_allow_remote_control = 'password'
+    allow_remote_control: choices_for_allow_remote_control = 'no'
     background: Color = Color(0, 0, 0)
     background_image: typing.Optional[str] = None
     background_image_layout: choices_for_background_image_layout = 'tiled'
