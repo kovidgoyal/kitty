@@ -402,6 +402,9 @@ func Init(root *cobra.Command) {
 	root.SetHelpFunc(show_help)
 	root.SetHelpCommand(&cobra.Command{Hidden: true})
 	root.CompletionOptions.DisableDefaultCmd = true
+	root.SetGlobalNormalizationFunc(func(fs *pflag.FlagSet, name string) pflag.NormalizedName {
+		return pflag.NormalizedName(strings.ReplaceAll(name, "_", "-"))
+	})
 }
 
 func Execute(root *cobra.Command) error {
