@@ -10,8 +10,6 @@
 #define NEEDS_FOREGROUND
 #endif
 
-// All non-texture inputs are already in linear colorspace from the vertex-shader
-
 #ifdef NEEDS_BACKROUND
 in vec3 background;
 in float draw_bg;
@@ -59,31 +57,6 @@ vec4 vec4_premul(vec3 rgb, float a) {
 vec4 vec4_premul(vec4 rgba) {
     return vec4(rgba.rgb * rgba.a, rgba.a);
 }
-
-// sRGB gamma functions
-vec3 from_linear(vec3 linear) {
-    bvec3 cutoff = lessThan(linear, vec3(0.0031308));
-    vec3 higher = vec3(1.055) * pow(linear, vec3(1.0 / 2.4)) - vec3(0.055);
-    vec3 lower = linear * vec3(12.92);
-
-    return mix(higher, lower, cutoff);
-}
-
-vec3 to_linear(vec3 srgb) {
-    bvec3 cutoff = lessThan(srgb, vec3(0.04045));
-    vec3 higher = pow((srgb + vec3(0.055)) / vec3(1.055), vec3(2.4));
-    vec3 lower = srgb / vec3(12.92);
-
-    return mix(higher, lower, cutoff);
-}
-
-vec4 from_linear(vec4 linear_a) {
-    return vec4(from_linear(linear_a.rgb), linear_a.a);
-}
-
-vec4 to_linear(vec4 srgba) {
-    return vec4(to_linear(srgba.rgb), srgba.a);
-}
 // }}}
 
 
@@ -121,9 +94,7 @@ vec4 to_linear(vec4 srgba) {
 vec4 calculate_foreground() {
     // returns the effective foreground color in pre-multiplied form in linear space
 
-    // TODO: Skip to_linear on texture input if the texture is GL_SRGB_ALPHA
-    // vec4 text_fg = to_linear(texture(sprites, sprite_pos));
-    vec4 text_fg = to_linear(texture(sprites, sprite_pos));
+    vec4 text_fg = texture(sprites, sprite_pos);
     vec3 fg = mix(foreground, text_fg.rgb, colored_sprite);
 
     // Since strike and text are the same color, we simply add the alpha values
