@@ -155,6 +155,9 @@ other computers (for example, over SSH) or as other users.
    what programs you run in such windows, since they can effectively control
    kitty, as if you were running with :opt:`allow_remote_control` turned on.
 
+    You can further restrict what is allowed in these windows by using
+    :option:`kitty @ launch --remote-control-password`.
+
 
 Fine grained permissions for remote control
 ----------------------------------------------
@@ -169,6 +172,7 @@ You can instead define remote control passwords that can be used to grant
 different levels of control to different places. You can even write your
 own script to decide which remote control requests are allowed. This is
 done using the :opt:`remote_control_password` option in :file:`kitty.conf`.
+Set :opt:`allow_remote_control` to :code:`password` to use this feature.
 Let's see some examples:
 
 .. code-block:: conf

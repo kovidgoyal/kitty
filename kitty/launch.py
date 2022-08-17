@@ -163,6 +163,7 @@ You can also disable all :opt:`remote_control_password` global passwords for thi
 
 This option only takes effect if :option:`--allow-remote-control`
 is also specified. Can be specified multiple times to create multiple passwords.
+This option was added to kitty in version 0.26.0
 
 
 --stdin-source
