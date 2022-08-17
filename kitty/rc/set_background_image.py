@@ -53,6 +53,7 @@ Change the configured background image which is used for new OS windows.
 --layout
 type=choices
 choices={layout_choices}
+default=configured
 How the image should be displayed. A value of :code:`configured` will use the configured value.
 
 
