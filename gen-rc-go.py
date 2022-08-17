@@ -42,6 +42,7 @@ var WebsiteBaseURL string = "{kc.website_base_url}"
 var Version VersionType = VersionType{{Major: {kc.version.major}, Minor: {kc.version.minor}, Patch: {kc.version.patch},}}
 var DefaultPager []string = []string{{ {dp} }}
 var VCSRevision string = ""
+var RC_ENCRYPTION_PROTOCOL_VERSION string = "{kc.RC_ENCRYPTION_PROTOCOL_VERSION}"
 ''')
     with open('tools/cmd/at/template.go') as f:
         template = f.read()

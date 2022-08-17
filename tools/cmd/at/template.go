@@ -8,13 +8,24 @@ import (
 	"github.com/spf13/cobra"
 
 	"kitty/tools/cli"
+	"kitty/tools/utils"
 )
+
+func run_CMD_NAME(cmd *cobra.Command, args []string) (err error) {
+	rc := utils.RemoteControlCmd{
+		Cmd:     "CLI_NAME",
+		Version: [3]int{0, 20, 0},
+	}
+	err = send_rc_command(&rc)
+	return
+}
 
 func setup_CMD_NAME(root *cobra.Command) *cobra.Command {
 	ans := cli.CreateCommand(&cobra.Command{
 		Use:   "CLI_NAME [options]",
 		Short: "SHORT_DESC",
 		Long:  "LONG_DESC",
+		RunE:  run_CMD_NAME,
 	})
 
 	return ans
