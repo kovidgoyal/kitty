@@ -12,7 +12,15 @@ import (
 	"kitty/tools/utils"
 )
 
+type options_CMD_NAME_type struct {
+	OPTIONS_DECLARATION_CODE
+}
+
+var options_CMD_NAME options_CMD_NAME_type
+
 func run_CMD_NAME(cmd *cobra.Command, args []string) (err error) {
+	SET_OPTION_VALUES_CODE
+
 	rc := utils.RemoteControlCmd{
 		Cmd:        "CLI_NAME",
 		Version:    [3]int{0, 20, 0},

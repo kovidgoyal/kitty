@@ -26,7 +26,8 @@ go_type_map = {'bool-set': 'bool', 'int': 'int', 'float': 'float64', '': 'string
 
 class Option:
 
-    def __init__(self, x: OptionDict) -> None:
+    def __init__(self, cmd_name: str, x: OptionDict) -> None:
+        self.cmd_name = cmd_name
         flags = sorted(x['aliases'], key=len)
         short = ''
         self.aliases = []
@@ -44,6 +45,9 @@ class Option:
         self.default = x['default']
         self.obj_dict = x
         self.go_type = go_type_map[self.type]
+        self.go_var_name = self.long.replace('-', '_')
+        if self.go_var_name == 'type':
+            self.go_var_name += '_'
 
     def to_flag_definition(self, base: str = 'ans.Flags()') -> str:
         if self.type == 'bool-set':
@@ -79,6 +83,23 @@ class Option:
         else:
             raise TypeError(f'Unknown type of CLI option: {self.type} for {self.long}')
 
+    def set_flag_value(self, cmd: str = 'cmd') -> str:
+        if self.type.startswith('bool-'):
+            func = 'GetBool'
+        elif not self.type or self.type == 'choices':
+            func = 'GetString'
+        elif self.type == 'int':
+            func = 'GetInt'
+        elif self.type == 'float':
+            func = 'GetFloat64'
+        elif self.type == 'list':
+            func = 'GetStringArray'
+        else:
+            raise TypeError(f'Unknown type of CLI option: {self.type} for {self.long}')
+        ans = f'{self.go_var_name}_temp, err := {cmd}.Flags().{func}("{self.long}")\n if err != nil {{ return err }}'
+        ans += f'\noptions_{self.cmd_name}.{self.go_var_name} = {self.go_var_name}_temp'
+        return ans
+
 
 def render_alias_map(alias_map: Dict[str, Tuple[str, ...]]) -> str:
     if not alias_map:
@@ -97,15 +118,19 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
     af: List[str] = []
     a = af.append
     alias_map = {}
+    od: List[str] = []
+    ov: List[str] = []
     for x in seq:
         if isinstance(x, str):
             continue
-        o = Option(x)
+        o = Option(name, x)
         if o.aliases:
             alias_map[o.long] = tuple(o.aliases)
         a(o.to_flag_definition())
         if o.dest == 'no_response':
             continue
+        od.append(f'{o.go_var_name} {o.go_type}')
+        ov.append(o.set_flag_value())
 
     ans = replace(
         template,
@@ -114,7 +139,9 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
         LONG_DESC=serialize_as_go_string(cmd.desc.strip()),
         NO_RESPONSE_BASE=NO_RESPONSE_BASE, ADD_FLAGS_CODE='\n'.join(af),
         WAIT_TIMEOUT=str(cmd.response_timeout),
-        ALIAS_NORMALIZE_CODE=render_alias_map(alias_map)
+        ALIAS_NORMALIZE_CODE=render_alias_map(alias_map),
+        OPTIONS_DECLARATION_CODE='\n'.join(od),
+        SET_OPTION_VALUES_CODE='\n'.join(ov),
     )
     return ans
 
