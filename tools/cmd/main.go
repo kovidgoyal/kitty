@@ -17,7 +17,7 @@ func main() {
 	root.AddCommand(at.EntryPoint(root))
 
 	cli.Init(root)
-	if err := root.Execute(); err != nil {
+	if err := cli.Execute(root); err != nil {
 		cli.PrintError(err)
 		os.Exit(1)
 	}
