@@ -26,6 +26,14 @@ type GlobalOptions struct {
 
 var global_options GlobalOptions
 
+func cut(a string, sep string) (string, string, bool) {
+	idx := strings.Index(a, sep)
+	if idx < 0 {
+		return "", "", false
+	}
+	return a[:idx], a[idx+len(sep):], true
+}
+
 func get_pubkey(encoded_key string) (encryption_version string, pubkey []byte, err error) {
 	if encoded_key == "" {
 		encoded_key = os.Getenv("KITTY_PUBLIC_KEY")
@@ -34,7 +42,7 @@ func get_pubkey(encoded_key string) (encryption_version string, pubkey []byte, e
 			return
 		}
 	}
-	encryption_version, encoded_key, found := strings.Cut(encoded_key, ":")
+	encryption_version, encoded_key, found := cut(encoded_key, ":")
 	if !found {
 		err = fmt.Errorf("KITTY_PUBLIC_KEY environment variable does not have a : in it")
 		return
