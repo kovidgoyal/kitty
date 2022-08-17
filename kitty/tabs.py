@@ -446,7 +446,7 @@ class Tab:  # {{{
     ) -> Window:
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env,
-            is_clone_launch=is_clone_launch, add_listen_on_env_var=not allow_remote_control
+            is_clone_launch=is_clone_launch, add_listen_on_env_var=False if allow_remote_control and remote_control_passwords else True
         )
         window = Window(
             self, child, self.args, override_title=override_title,
