@@ -81,6 +81,10 @@ var blue_fmt = color.New(color.FgBlue).SprintFunc()
 var green_fmt = color.New(color.FgGreen).SprintFunc()
 
 func format_line_with_indent(output io.Writer, text string, indent string, screen_width int) {
+	if strings.TrimSpace(text) == "" {
+		fmt.Fprintln(output, indent)
+		return
+	}
 	x := len(indent)
 	fmt.Fprint(output, indent)
 	in_escape := 0

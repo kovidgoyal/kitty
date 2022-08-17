@@ -5,14 +5,20 @@ import (
 	"testing"
 )
 
-func TestFormatLineWithIndent(t *testing.T) {
+func TestFormatWithIndent(t *testing.T) {
 	var output strings.Builder
+	indent := "__"
+	screen_width := 11
 
-	output.Reset()
-	indent := "  "
-	format_line_with_indent(&output, "testing \x1b[31mstyled\x1b[m", indent, 11)
-	expected := indent + "testing \n" + indent + "\x1b[31mstyled\x1b[m\n"
-	if output.String() != expected {
-		t.Fatalf("%#v != %#v", expected, output.String())
+	run := func(text string, expected ...string) {
+		output.Reset()
+		q := indent + strings.Join(expected, "\n"+indent) + "\n"
+		format_with_indent(&output, text, indent, screen_width)
+		if output.String() != q {
+			t.Fatalf("expected != actual: %#v != %#v", q, output.String())
+		}
 	}
+	run("testing \x1b[31mstyled\x1b[m", "testing ", "\x1b[31mstyled\x1b[m")
+	run("testing\n\ntwo", "testing", "", "two")
+	run("testing\n \ntwo", "testing", "", "two")
 }
