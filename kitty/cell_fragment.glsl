@@ -122,44 +122,51 @@ vec4 calculate_foreground() {
     // returns the effective foreground color in pre-multiplied form in linear space
 
     // TODO: Skip to_linear on texture input if the texture is GL_SRGB_ALPHA
+    // vec4 text_fg = to_linear(texture(sprites, sprite_pos));
     vec4 text_fg = to_linear(texture(sprites, sprite_pos));
     vec3 fg = mix(foreground, text_fg.rgb, colored_sprite);
-    float text_alpha = text_fg.a;
-    float underline_alpha = texture(sprites, underline_pos).a;
-    float strike_alpha = texture(sprites, strike_pos).a;
-    float cursor_alpha = texture(sprites, cursor_pos).a;
 
     // Since strike and text are the same color, we simply add the alpha values
-    float combined_alpha = min(text_alpha + strike_alpha, 1.0f);
+    float combined_alpha = min(text_fg.a + texture(sprites, strike_pos).a, 1.0f);
 
     // Underline color might be different, so alpha blend
-    vec4 ans = alpha_blend_premul(vec4_premul(fg, combined_alpha * effective_text_alpha), vec4_premul(decoration_fg, underline_alpha * effective_text_alpha));
+    vec4 ans = alpha_blend_premul(
+        vec4_premul(fg, combined_alpha * effective_text_alpha),
+        vec4_premul(decoration_fg, texture(sprites, underline_pos).a * effective_text_alpha)
+    );
 
-    return mix(ans, cursor_color_vec, cursor_alpha);
+    return mix(ans, cursor_color_vec, texture(sprites, cursor_pos).a);
 }
 #endif
 
 void main() {
-#ifdef NEEDS_FOREGROUND
+#if defined(SIMPLE)
+    // convert back to sRGB if we are not using GL_FRAMEBUFFER_SRGB since this renders with opaque blending
+    final_color = alpha_blend_premul(
+        calculate_foreground(),
+#ifdef TRANSPARENT
+        vec4_premul(background, bg_alpha)
+#else
+        background
+#endif
+    );
+
+#elif defined(FOREGROUND)
+    // Premultiplied alpha, cannot convert back from linear since the shader result is blended
     final_color = calculate_foreground();
 
-#ifdef NEEDS_BACKROUND
+#elif defined(SPECIAL)
 #ifdef TRANSPARENT
-    final_color = alpha_blend_premul(final_color, vec4_premul(background.rgb, bg_alpha));
+    final_color = vec4_premul(background, bg_alpha);
 #else
-    final_color = alpha_blend_premul(final_color, background.rgb);
-#endif
-#endif
-#else
-    // TODO: Maybe always provide vec4 for background?
-#ifdef TRANSPARENT
-    final_color = vec4(background.rgb, bg_alpha);
-#else
-    final_color = vec4(background.rgb, draw_bg);
-#endif
+    final_color = vec4(background, draw_bg);
 #endif
 
-    // TODO: Disable if we are using GL_FRAMEBUFFER_SRGB
-    // convert back to sRGB if we are not using GL_FRAMEBUFFER_SRGB
-    final_color = from_linear(final_color);
+#elif defined(BACKGROUND)
+#ifdef TRANSPARENT
+    final_color = vec4_premul(background, bg_alpha);
+#else
+    final_color = vec4(background, draw_bg);
+#endif
+#endif
 }
