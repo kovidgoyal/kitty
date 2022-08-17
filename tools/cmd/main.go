@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -19,7 +18,7 @@ func main() {
 
 	cli.Init(root)
 	if err := root.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
+		cli.PrintError(err)
 		os.Exit(1)
 	}
 }

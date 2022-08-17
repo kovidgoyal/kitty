@@ -30,19 +30,6 @@ func GetTTYSize() (*unix.Winsize, error) {
 	return nil, fmt.Errorf("STDOUT is not a TTY")
 }
 
-func add_choices(cmd *cobra.Command, flags *pflag.FlagSet, choices []string, name string, usage string) *string {
-	cmd.Annotations["choices-"+name] = strings.Join(choices, "\000")
-	return flags.String(name, choices[0], usage)
-}
-
-func Choices(cmd *cobra.Command, name string, usage string, choices ...string) *string {
-	return add_choices(cmd, cmd.Flags(), choices, name, usage)
-}
-
-func PersistentChoices(cmd *cobra.Command, name string, usage string, choices ...string) *string {
-	return add_choices(cmd, cmd.PersistentFlags(), choices, name, usage)
-}
-
 func key_in_slice(vals []string, key string) bool {
 	for _, q := range vals {
 		if q == key {
@@ -52,17 +39,32 @@ func key_in_slice(vals []string, key string) bool {
 	return false
 }
 
-func ValidateChoices(cmd *cobra.Command, args []string) error {
-	for key, val := range cmd.Annotations {
-		if strings.HasPrefix(key, "choices-") {
-			allowed := strings.Split(val, "\000")
-			name := key[len("choices-"):]
-			if cval, err := cmd.Flags().GetString(name); err == nil && !key_in_slice(allowed, cval) {
-				return fmt.Errorf("%s: Invalid value: %s. Allowed values are: %s", color.YellowString("--"+name), color.RedString(cval), strings.Join(allowed, ", "))
-			}
-		}
-	}
+type ChoicesVal struct {
+	name, Choice string
+	allowed      []string
+}
+type choicesVal ChoicesVal
+
+func (i *choicesVal) String() string { return ChoicesVal(*i).Choice }
+func (i *choicesVal) Type() string   { return "choices" }
+func (i *choicesVal) Set(s string) error {
+	(*i).Choice = s
 	return nil
+}
+func newChoicesVal(val ChoicesVal, p *ChoicesVal) *choicesVal {
+	*p = val
+	return (*choicesVal)(p)
+}
+
+func add_choices(flags *pflag.FlagSet, p *ChoicesVal, choices []string, name string, usage string) {
+	value := ChoicesVal{Choice: choices[0], allowed: choices}
+	flags.VarP(newChoicesVal(value, p), name, "", usage)
+}
+
+func Choices(flags *pflag.FlagSet, name string, usage string, choices ...string) *ChoicesVal {
+	p := new(ChoicesVal)
+	add_choices(flags, p, choices, name, usage)
+	return p
 }
 
 var stdout_is_terminal = false
@@ -356,24 +358,15 @@ func CreateCommand(cmd *cobra.Command) *cobra.Command {
 		cmd.RunE = func(cmd *cobra.Command, args []string) error {
 			if len(cmd.Commands()) > 0 {
 				if len(args) == 0 {
-					return fmt.Errorf("%s. Use %s -h to get a list of available sub-commands", err_fmt("No sub-command specified"), full_command_name(cmd))
+					return fmt.Errorf("%s. Use %s -h to get a list of available sub-commands", "No sub-command specified", full_command_name(cmd))
 				}
-				return fmt.Errorf("Not a valid subcommand: %s. Use %s -h to get a list of available sub-commands", err_fmt(args[0]), full_command_name(cmd))
+				return fmt.Errorf("Not a valid subcommand: %s. Use %s -h to get a list of available sub-commands", args[0], full_command_name(cmd))
 			}
 			return nil
 		}
 	}
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
-	orig_pre_run := cmd.PersistentPreRunE
-	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		err := ValidateChoices(cmd, args)
-		if err != nil || orig_pre_run == nil {
-			return err
-		}
-		return orig_pre_run(cmd, args)
-	}
-
 	cmd.PersistentFlags().SortFlags = false
 	cmd.Flags().SortFlags = false
 	return cmd
@@ -384,6 +377,10 @@ func show_help(cmd *cobra.Command, args []string) {
 		cmd.Annotations["use-pager-for-usage"] = "true"
 	}
 	show_usage(cmd)
+}
+
+func PrintError(err error) {
+	fmt.Println(err_fmt("Error")+":", err)
 }
 
 func Init(root *cobra.Command) {
