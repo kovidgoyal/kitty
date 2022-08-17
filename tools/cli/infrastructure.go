@@ -362,6 +362,10 @@ func show_usage(cmd *cobra.Command, use_pager bool) error {
 	return nil
 }
 
+func FlagNormalizer(name string) string {
+	return strings.ReplaceAll(name, "_", "-")
+}
+
 func CreateCommand(cmd *cobra.Command) *cobra.Command {
 	cmd.Annotations = make(map[string]string)
 	if cmd.Run == nil && cmd.RunE == nil {
@@ -379,6 +383,10 @@ func CreateCommand(cmd *cobra.Command) *cobra.Command {
 	cmd.SilenceUsage = true
 	cmd.PersistentFlags().SortFlags = false
 	cmd.Flags().SortFlags = false
+	cmd.Flags().SetNormalizeFunc(func(fs *pflag.FlagSet, name string) pflag.NormalizedName {
+		return pflag.NormalizedName(FlagNormalizer(name))
+	})
+	cmd.PersistentFlags().SetNormalizeFunc(cmd.Flags().GetNormalizeFunc())
 	return cmd
 }
 
@@ -402,9 +410,6 @@ func Init(root *cobra.Command) {
 	root.SetHelpFunc(show_help)
 	root.SetHelpCommand(&cobra.Command{Hidden: true})
 	root.CompletionOptions.DisableDefaultCmd = true
-	root.SetGlobalNormalizationFunc(func(fs *pflag.FlagSet, name string) pflag.NormalizedName {
-		return pflag.NormalizedName(strings.ReplaceAll(name, "_", "-"))
-	})
 }
 
 func Execute(root *cobra.Command) error {

@@ -6,6 +6,7 @@ package at
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"kitty/tools/cli"
 	"kitty/tools/utils"
@@ -25,6 +26,12 @@ func run_CMD_NAME(cmd *cobra.Command, args []string) (err error) {
 	return
 }
 
+func aliasNormalizeFunc_CMD_NAME(f *pflag.FlagSet, name string) pflag.NormalizedName {
+	name = cli.FlagNormalizer(name)
+	ALIAS_NORMALIZE_CODE
+	return pflag.NormalizedName(name)
+}
+
 func setup_CMD_NAME(root *cobra.Command) *cobra.Command {
 	ans := cli.CreateCommand(&cobra.Command{
 		Use:   "CLI_NAME [options]",
@@ -33,6 +40,7 @@ func setup_CMD_NAME(root *cobra.Command) *cobra.Command {
 		RunE:  run_CMD_NAME,
 	})
 	ADD_FLAGS_CODE
+	ans.Flags().SetNormalizeFunc(aliasNormalizeFunc_CMD_NAME)
 
 	return ans
 }
