@@ -12,7 +12,7 @@ def generate_srgb_lut():
   lines = []
 
   for i in range(256):
-    values.append("{:1.20f}".format(to_linear(i / 255.0)))
+    values.append("{:1.5f}f".format(to_linear(i / 255.0)))
 
   for i in range(16):
     lines.append(", ".join(values[i * 16:(i + 1) * 16]))
