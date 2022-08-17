@@ -30,7 +30,7 @@ class Option:
             short = flags[0][1:]
         long = flags[-1][2:]
         if not long:
-            raise SystemExit(f'No long flag for {x} with flags {flags}')
+            raise TypeError(f'No long flag for {x} with flags {flags}')
         self.short, self.long = short, long
         self.usage = serialize_as_go_string(x['help'].strip())
         self.type = x['type']
@@ -70,7 +70,7 @@ class Option:
                 return f'cli.ChoicesP({base}, "{self.long}", "{self.short}", "{self.usage}", {cx})'
             return f'cli.Choices({base}, "{self.long}", "{self.usage}", {cx})'
         else:
-            raise KeyError(f'Unknown type of CLI option: {self.type}')
+            raise TypeError(f'Unknown type of CLI option: {self.type} for {self.long}')
 
 
 def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: str) -> str:
