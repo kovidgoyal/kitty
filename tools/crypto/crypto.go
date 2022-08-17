@@ -10,19 +10,11 @@ import (
 	"fmt"
 	"golang.org/x/crypto/curve25519"
 	"kitty/tools/base85"
+	"kitty/tools/utils"
 	"os"
 	"strings"
 	"time"
 )
-
-type Cmd struct {
-	Cmd        string                 `json:"cmd"`
-	Version    [3]int                 `json:"version"`
-	NoResponse bool                   `json:"no_response,omitifempty"`
-	Payload    map[string]interface{} `json:"payload,omitifempty"`
-	Timestamp  int64                  `json:"timestamp,omitifempty"`
-	Password   string                 `json:"password,omitifempty"`
-}
 
 func curve25519_key_pair() (private_key []byte, public_key []byte, err error) {
 	private_key = make([]byte, 32)
@@ -78,15 +70,7 @@ func encrypt(plaintext []byte, alice_public_key []byte) (iv []byte, tag []byte, 
 	return
 }
 
-type EncryptedCmd struct {
-	Version   [3]int `json:"version"`
-	IV        string `json:"iv"`
-	Tag       string `json:"tag"`
-	Pubkey    string `json:"pubkey"`
-	Encrypted string `json:"encrypted"`
-}
-
-func Encrypt_cmd(cmd *Cmd, password string, other_pubkey []byte) (encrypted_cmd EncryptedCmd, err error) {
+func Encrypt_cmd(cmd *utils.RemoteControlCmd, password string, other_pubkey []byte) (encrypted_cmd utils.EncryptedRemoteControlCmd, err error) {
 	if len(other_pubkey) == 0 {
 		raw := os.Getenv("KITTY_PUBLIC_KEY")
 		if len(raw) == 0 {
@@ -109,7 +93,7 @@ func Encrypt_cmd(cmd *Cmd, password string, other_pubkey []byte) (encrypted_cmd 
 		return
 	}
 	iv, tag, ciphertext, pubkey, err := encrypt(plaintext, other_pubkey)
-	encrypted_cmd = EncryptedCmd{
+	encrypted_cmd = utils.EncryptedRemoteControlCmd{
 		Version: cmd.Version, IV: b85_encode(iv), Tag: b85_encode(tag), Pubkey: b85_encode(pubkey), Encrypted: b85_encode(ciphertext)}
 	return
 }
