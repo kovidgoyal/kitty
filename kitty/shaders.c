@@ -31,6 +31,36 @@ static GLint max_texture_size = 0, max_array_texture_layers = 0;
 
 extern GLint texture_internal_format;
 
+// Generated using gen-srgb-lut
+const GLfloat srgb_lut[256] = {
+    0.00000f, 0.00030f, 0.00061f, 0.00091f, 0.00121f, 0.00152f, 0.00182f, 0.00212f, 0.00243f, 0.00273f, 0.00304f, 0.00335f, 0.00368f, 0.00402f, 0.00439f, 0.00478f,
+    0.00518f, 0.00561f, 0.00605f, 0.00651f, 0.00700f, 0.00750f, 0.00802f, 0.00857f, 0.00913f, 0.00972f, 0.01033f, 0.01096f, 0.01161f, 0.01229f, 0.01298f, 0.01370f,
+    0.01444f, 0.01521f, 0.01600f, 0.01681f, 0.01764f, 0.01850f, 0.01938f, 0.02029f, 0.02122f, 0.02217f, 0.02315f, 0.02416f, 0.02519f, 0.02624f, 0.02732f, 0.02843f,
+    0.02956f, 0.03071f, 0.03190f, 0.03310f, 0.03434f, 0.03560f, 0.03689f, 0.03820f, 0.03955f, 0.04092f, 0.04231f, 0.04374f, 0.04519f, 0.04667f, 0.04817f, 0.04971f,
+    0.05127f, 0.05286f, 0.05448f, 0.05613f, 0.05781f, 0.05951f, 0.06125f, 0.06301f, 0.06480f, 0.06663f, 0.06848f, 0.07036f, 0.07227f, 0.07421f, 0.07619f, 0.07819f,
+    0.08022f, 0.08228f, 0.08438f, 0.08650f, 0.08866f, 0.09084f, 0.09306f, 0.09531f, 0.09759f, 0.09990f, 0.10224f, 0.10462f, 0.10702f, 0.10946f, 0.11193f, 0.11444f,
+    0.11697f, 0.11954f, 0.12214f, 0.12477f, 0.12744f, 0.13014f, 0.13287f, 0.13563f, 0.13843f, 0.14126f, 0.14413f, 0.14703f, 0.14996f, 0.15293f, 0.15593f, 0.15896f,
+    0.16203f, 0.16513f, 0.16827f, 0.17144f, 0.17465f, 0.17789f, 0.18116f, 0.18447f, 0.18782f, 0.19120f, 0.19462f, 0.19807f, 0.20156f, 0.20508f, 0.20864f, 0.21223f,
+    0.21586f, 0.21953f, 0.22323f, 0.22697f, 0.23074f, 0.23455f, 0.23840f, 0.24228f, 0.24620f, 0.25016f, 0.25415f, 0.25818f, 0.26225f, 0.26636f, 0.27050f, 0.27468f,
+    0.27889f, 0.28315f, 0.28744f, 0.29177f, 0.29614f, 0.30054f, 0.30499f, 0.30947f, 0.31399f, 0.31855f, 0.32314f, 0.32778f, 0.33245f, 0.33716f, 0.34191f, 0.34670f,
+    0.35153f, 0.35640f, 0.36131f, 0.36625f, 0.37124f, 0.37626f, 0.38133f, 0.38643f, 0.39157f, 0.39676f, 0.40198f, 0.40724f, 0.41254f, 0.41789f, 0.42327f, 0.42869f,
+    0.43415f, 0.43966f, 0.44520f, 0.45079f, 0.45641f, 0.46208f, 0.46778f, 0.47353f, 0.47932f, 0.48515f, 0.49102f, 0.49693f, 0.50289f, 0.50888f, 0.51492f, 0.52100f,
+    0.52712f, 0.53328f, 0.53948f, 0.54572f, 0.55201f, 0.55834f, 0.56471f, 0.57112f, 0.57758f, 0.58408f, 0.59062f, 0.59720f, 0.60383f, 0.61050f, 0.61721f, 0.62396f,
+    0.63076f, 0.63760f, 0.64448f, 0.65141f, 0.65837f, 0.66539f, 0.67244f, 0.67954f, 0.68669f, 0.69387f, 0.70110f, 0.70838f, 0.71569f, 0.72306f, 0.73046f, 0.73791f,
+    0.74540f, 0.75294f, 0.76052f, 0.76815f, 0.77582f, 0.78354f, 0.79130f, 0.79910f, 0.80695f, 0.81485f, 0.82279f, 0.83077f, 0.83880f, 0.84687f, 0.85499f, 0.86316f,
+    0.87137f, 0.87962f, 0.88792f, 0.89627f, 0.90466f, 0.91310f, 0.92158f, 0.93011f, 0.93869f, 0.94731f, 0.95597f, 0.96469f, 0.97345f, 0.98225f, 0.99110f, 1.00000f
+};
+
+GLfloat
+srgb_color(uint8_t color) {
+    return srgb_lut[color];
+}
+
+void
+color_vec3(GLint location, color_type color) {
+	glUniform3f(location, srgb_lut[(color >> 16) & 0xFF], srgb_lut[(color >> 8) & 0xFF], srgb_lut[color & 0xFF]);
+}
+
 SPRITE_MAP_HANDLE
 alloc_sprite_map(unsigned int cell_width, unsigned int cell_height) {
     if (!max_texture_size) {
@@ -181,6 +211,7 @@ typedef struct CellRenderData {
 typedef struct {
     UniformBlock render_data;
     ArrayInformation color_table;
+    ArrayInformation gamma_lut;
     GLint draw_bg_bitfield_location;
 } CellProgramLayout;
 
@@ -203,6 +234,9 @@ init_cell_program(void) {
         cell_program_layouts[i].color_table.size = get_uniform_information(i, "color_table[0]", GL_UNIFORM_SIZE);
         cell_program_layouts[i].color_table.offset = get_uniform_information(i, "color_table[0]", GL_UNIFORM_OFFSET);
         cell_program_layouts[i].color_table.stride = get_uniform_information(i, "color_table[0]", GL_UNIFORM_ARRAY_STRIDE);
+        cell_program_layouts[i].gamma_lut.size = get_uniform_information(i, "gamma_lut[0]", GL_UNIFORM_SIZE);
+        cell_program_layouts[i].gamma_lut.offset = get_uniform_information(i, "gamma_lut[0]", GL_UNIFORM_OFFSET);
+        cell_program_layouts[i].gamma_lut.stride = get_uniform_information(i, "gamma_lut[0]", GL_UNIFORM_ARRAY_STRIDE);
     }
     cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location = get_uniform_location(CELL_BG_PROGRAM, "draw_bg_bitfield");
     // Sanity check to ensure the attribute location binding worked
@@ -288,6 +322,14 @@ pick_cursor_color(Line *line, ColorProfile *color_profile, color_type cell_fg, c
     }
 }
 
+void
+copy_gamma_lut_to_buffer(const GLfloat* lut, GLfloat* buf, int offset, size_t stride) {
+    size_t i;
+    stride = MAX(1u, stride);
+
+    for(i = 0, buf = buf + offset; i < 256; i++, buf += stride) *buf = lut[i];
+}
+
 static void
 cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, const CellRenderData *crd, CursorRenderInfo *cursor, bool inverted, OSWindow *os_window) {
     struct GPUCellRenderData {
@@ -302,6 +344,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer(vao_idx, uniform_buffer, GL_WRITE_ONLY);
     if (UNLIKELY(screen->color_profile->dirty || screen->reload_all_gpu_data)) {
         copy_color_table_to_buffer(screen->color_profile, (GLuint*)rd, cell_program_layouts[CELL_PROGRAM].color_table.offset / sizeof(GLuint), cell_program_layouts[CELL_PROGRAM].color_table.stride / sizeof(GLuint));
+        copy_gamma_lut_to_buffer(srgb_lut, (GLfloat*)rd, cell_program_layouts[CELL_PROGRAM].gamma_lut.offset / sizeof(GLfloat), cell_program_layouts[CELL_PROGRAM].gamma_lut.stride / sizeof(GLfloat));
     }
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name).rgb
     rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg);
@@ -499,9 +542,7 @@ draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen
     gpu_data_for_centered_image(data, screen_width, screen_height, width, height);
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
     glUniform1i(cell_uniform_data.amask_image_loc, GRAPHICS_UNIT);
-#define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
-    glUniform3f(cell_uniform_data.amask_fg_loc, CV3(OPT(foreground)));
-#undef CV3
+    color_vec3(cell_uniform_data.amask_fg_loc, OPT(foreground));
     glUniform1f(cell_uniform_data.amask_premult_loc, os_window->is_semi_transparent ? 1.f : 0.f);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, data);
     glEnable(GL_BLEND);
@@ -537,7 +578,7 @@ draw_tint(bool premult, Screen *screen, const CellRenderData *crd) {
     if (premult) { BLEND_PREMULT } else { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT }
     bind_program(TINT_PROGRAM);
     color_type window_bg = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_bg, screen->color_profile->configured.default_bg).rgb;
-#define C(shift) ((((GLfloat)((window_bg >> shift) & 0xFF)) / 255.0f)) * premult_factor
+#define C(shift) srgb_color((window_bg >> shift) & 0xFF) * premult_factor
     GLfloat premult_factor = premult ? OPT(background_tint) : 1.0f;
     glUniform4f(tint_program_layout.tint_color_location, C(16), C(8), C(0), OPT(background_tint));
 #undef C
@@ -681,9 +722,7 @@ draw_window_number(OSWindow *os_window, Screen *screen, const CellRenderData *cr
     BLEND_PREMULT;
     glUniform1i(cell_uniform_data.amask_image_loc, GRAPHICS_UNIT);
     color_type digit_color = colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg);
-#define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
-    glUniform3f(cell_uniform_data.amask_fg_loc, CV3(digit_color));
-#undef CV3
+    color_vec3(cell_uniform_data.amask_fg_loc, digit_color);
     glUniform1f(cell_uniform_data.amask_premult_loc, 1.f);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, ird);
     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, os_window->gvao_idx, ird, 0, 1);
@@ -700,7 +739,7 @@ draw_visual_bell_flash(GLfloat intensity, const CellRenderData *crd, Screen *scr
 #define COLOR(name, fallback) colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback)
     const color_type flash = !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
 #undef COLOR
-#define C(shift) ((((GLfloat)((flash >> shift) & 0xFF)) / 255.0f) )
+#define C(shift) srgb_color((flash >> shift) & 0xFF)
     const GLfloat r = C(16), g = C(8), b = C(0);
     const GLfloat max_channel = r > g ? (r > b ? r : b) : (g > b ? g : b);
 #undef C
@@ -836,7 +875,7 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
 void
 blank_canvas(float background_opacity, color_type color) {
     // See https://github.com/glfw/glfw/issues/1538 for why we use pre-multiplied alpha
-#define C(shift) ((((GLfloat)((color >> shift) & 0xFF)) / 255.0f) * background_opacity)
+#define C(shift) (srgb_color((color >> shift) & 0xFF) * background_opacity)
     glClearColor(C(16), C(8), C(0), background_opacity);
 #undef C
     glClear(GL_COLOR_BUFFER_BIT);
@@ -939,7 +978,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float
 // }}}
 
 // Borders {{{
-enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_tint_opacity, BORDER_tint_premult, BORDER_default_bg, BORDER_active_border_color, BORDER_inactive_border_color, BORDER_bell_border_color, BORDER_tab_bar_bg, BORDER_tab_bar_margin_color, NUM_BORDER_UNIFORMS };
+enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_tint_opacity, BORDER_tint_premult, BORDER_default_bg, BORDER_active_border_color, BORDER_inactive_border_color, BORDER_bell_border_color, BORDER_tab_bar_bg, BORDER_tab_bar_margin_color, BORDER_gamma_lut, NUM_BORDER_UNIFORMS };
 static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
 
 static void
@@ -955,6 +994,7 @@ init_borders_program(void) {
         SET_LOC(bell_border_color)
         SET_LOC(tab_bar_bg)
         SET_LOC(tab_bar_margin_color)
+        SET_LOC(gamma_lut)
 #undef SET_LOC
 }
 
@@ -995,19 +1035,18 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
             if (borders_buf_address) memcpy(borders_buf_address, rect_buf, sz);
             unmap_vao_buffer(vao_idx, 0);
         }
-#define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
         glUniform1f(border_uniform_locations[BORDER_background_opacity], background_opacity);
         glUniform1f(border_uniform_locations[BORDER_tint_opacity], tint_opacity);
         glUniform1f(border_uniform_locations[BORDER_tint_premult], tint_premult);
-        glUniform3f(border_uniform_locations[BORDER_active_border_color], CV3(OPT(active_border_color)));
-        glUniform3f(border_uniform_locations[BORDER_inactive_border_color], CV3(OPT(inactive_border_color)));
-        glUniform3f(border_uniform_locations[BORDER_bell_border_color], CV3(OPT(bell_border_color)));
-        glUniform3f(border_uniform_locations[BORDER_tab_bar_bg], CV3(OPT(tab_bar_background)));
-        glUniform3f(border_uniform_locations[BORDER_tab_bar_margin_color], CV3(OPT(tab_bar_margin_color)));
+        color_vec3(border_uniform_locations[BORDER_active_border_color], OPT(active_border_color));
+        color_vec3(border_uniform_locations[BORDER_inactive_border_color], OPT(inactive_border_color));
+        color_vec3(border_uniform_locations[BORDER_bell_border_color], OPT(bell_border_color));
+        color_vec3(border_uniform_locations[BORDER_tab_bar_bg], OPT(tab_bar_background));
+        color_vec3(border_uniform_locations[BORDER_tab_bar_margin_color], OPT(tab_bar_margin_color));
         glUniform2ui(border_uniform_locations[BORDER_viewport], viewport_width, viewport_height);
         color_type default_bg = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
-        glUniform3f(border_uniform_locations[BORDER_default_bg], CV3(default_bg));
-#undef CV3
+        color_vec3(border_uniform_locations[BORDER_default_bg], default_bg);
+        glUniform1fv(border_uniform_locations[BORDER_gamma_lut], 256, srgb_lut);
         if (has_bgimage(w)) {
             if (w->is_semi_transparent) { BLEND_PREMULT; }
             else { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT; }

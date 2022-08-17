@@ -8,6 +8,7 @@ uniform vec3 tab_bar_bg;
 uniform vec3 tab_bar_margin_color;
 uniform float background_opacity;
 uniform float tint_opacity, tint_premult;
+uniform float gamma_lut[256];
 in vec4 rect;  // left, top, right, bottom
 in uint rect_color;
 out vec4 color;
@@ -27,7 +28,7 @@ const uvec2 pos_map[] = uvec2[4](
 );
 
 float to_color(uint c) {
-    return float(c & FF) / 255.0;
+    return gamma_lut[c & FF];
 }
 
 #define W(bit_number, which_color) ((float(((1 << bit_number) & rc) >> bit_number)) * which_color)
