@@ -894,7 +894,7 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
     subprocess.check_call([kitty_exe, '+launch', os.path.join(base, 'gen-rc-go.py')])
 
 
-def build_kitty_tool(args: Options, launcher_dir: str) -> None:
+def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False) -> None:
     go = shutil.which('go')
     if not go:
         raise SystemExit('The go tool was not found on this system. Install Go')
@@ -903,6 +903,8 @@ def build_kitty_tool(args: Options, launcher_dir: str) -> None:
     if args.verbose:
         cmd.append('-v')
     ld_flags = [f"-X 'kitty.VCSRevision={get_vcs_rev_define()}'"]
+    if for_freeze:
+        ld_flags.append("-X 'kitty.IsFrozenBuild=true")
     if not args.debug:
         ld_flags.append('-s')
         ld_flags.append('-w')
@@ -1709,7 +1711,7 @@ def main() -> None:
             bundle_type = ('macos' if is_macos else 'linux') + '-freeze'
             build_launcher(args, launcher_dir=os.path.join(args.prefix, 'bin'), bundle_type=bundle_type)
         elif args.action == 'build-frozen-tools':
-            build_kitty_tool(args, launcher_dir=args.prefix)
+            build_kitty_tool(args, launcher_dir=args.prefix, for_freeze=True)
         elif args.action == 'linux-package':
             build(args, native_optimizations=False)
             package(args, bundle_type='linux-package')
