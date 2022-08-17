@@ -258,7 +258,7 @@ func full_command_name(cmd *cobra.Command) string {
 	return strings.Join(parent_names, " ")
 }
 
-func show_usage(cmd *cobra.Command) error {
+func show_usage(cmd *cobra.Command, use_pager bool) error {
 	ws, tty_size_err := GetTTYSize()
 	var output strings.Builder
 	screen_width := 80
@@ -340,7 +340,7 @@ func show_usage(cmd *cobra.Command) error {
 	}
 	output_text := output.String()
 	// fmt.Printf("%#v\n", output_text)
-	if cmd.Annotations["use-pager-for-usage"] == "true" && stdout_is_terminal && cmd.Annotations["allow-pager"] != "no" {
+	if use_pager && stdout_is_terminal && cmd.Annotations["allow-pager"] != "no" {
 		pager := exec.Command(kitty.DefaultPager[0], kitty.DefaultPager[1:]...)
 		pager.Stdin = strings.NewReader(output_text)
 		pager.Stdout = os.Stdout
@@ -358,7 +358,7 @@ func CreateCommand(cmd *cobra.Command) *cobra.Command {
 		cmd.RunE = func(cmd *cobra.Command, args []string) error {
 			if len(cmd.Commands()) > 0 {
 				if len(args) == 0 {
-					return fmt.Errorf("%s. Use %s -h to get a list of available sub-commands", "No sub-command specified", full_command_name(cmd))
+					return fmt.Errorf("No sub-command specified. Use %s -h to get a list of available sub-commands", full_command_name(cmd))
 				}
 				return fmt.Errorf("Not a valid subcommand: %s. Use %s -h to get a list of available sub-commands", args[0], full_command_name(cmd))
 			}
@@ -373,10 +373,7 @@ func CreateCommand(cmd *cobra.Command) *cobra.Command {
 }
 
 func show_help(cmd *cobra.Command, args []string) {
-	if cmd.Annotations != nil {
-		cmd.Annotations["use-pager-for-usage"] = "true"
-	}
-	show_usage(cmd)
+	show_usage(cmd, true)
 }
 
 func PrintError(err error) {
@@ -391,8 +388,12 @@ func Init(root *cobra.Command) {
 	stdout_is_terminal = isatty.IsTerminal(os.Stdout.Fd())
 	RootCmd = root
 	root.Version = vs
-	root.SetUsageFunc(show_usage)
+	root.SetUsageFunc(func(cmd *cobra.Command) error { return show_usage(cmd, false) })
 	root.SetHelpFunc(show_help)
 	root.SetHelpCommand(&cobra.Command{Hidden: true})
 	root.CompletionOptions.DisableDefaultCmd = true
+}
+
+func Execute(root *cobra.Command) error {
+	return root.Execute()
 }
