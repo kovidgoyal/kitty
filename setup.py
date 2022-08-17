@@ -891,7 +891,9 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
             return
     if args.verbose:
         print('Updating Go generated files...')
-    subprocess.check_call([kitty_exe, '+launch', os.path.join(base, 'gen-rc-go.py')])
+    cp = subprocess.run([kitty_exe, '+launch', os.path.join(base, 'gen-rc-go.py')])
+    if cp.returncode != 0:
+        raise SystemExit(cp.returncode)
 
 
 def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False) -> None:
