@@ -70,6 +70,7 @@ var Version VersionType = VersionType{{Major: {kc.version.major}, Minor: {kc.ver
 var DefaultPager []string = []string{{ {dp} }}
 var VCSRevision string = ""
 var RC_ENCRYPTION_PROTOCOL_VERSION string = "{kc.RC_ENCRYPTION_PROTOCOL_VERSION}"
+var IsFrozenBuild bool = false
 ''')
     with open('tools/cmd/at/template.go') as f:
         template = f.read()
