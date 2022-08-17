@@ -35,13 +35,42 @@ class Option:
         self.usage = serialize_as_go_string(x['help'].strip())
         self.type = x['type']
         self.dest = x['dest']
+        self.default = x['default']
+        self.obj_dict = x
 
     def to_flag_definition(self, base: str = 'ans.Flags()') -> str:
         if self.type == 'bool-set':
             if self.short:
                 return f'{base}.BoolP("{self.long}", "{self.short}", false, "{self.usage}")'
             return f'{base}.Bool("{self.long}", false, "{self.usage}")'
-        return ''
+        elif not self.type:
+            defval = f'''"{serialize_as_go_string(self.default or '')}"'''
+            if self.short:
+                return f'{base}.StringP("{self.long}", "{self.short}", {defval}, "{self.usage}")'
+            return f'{base}.String("{self.long}", {defval}, "{self.usage}")'
+        elif self.type == 'int':
+            if self.short:
+                return f'{base}.IntP("{self.long}", "{self.short}", {self.default or 0}, "{self.usage}")'
+            return f'{base}.Int("{self.long}", {self.default or 0}, "{self.usage}")'
+        elif self.type == 'float':
+            if self.short:
+                return f'{base}.Float64P("{self.long}", "{self.short}", {self.default or 0}, "{self.usage}")'
+            return f'{base}.Float64("{self.long}", {self.default or 0}, "{self.usage}")'
+        elif self.type == 'list':
+            defval = f'[]string{{"{serialize_as_go_string(self.default)}"}}' if self.default else '[]string{}'
+            if self.short:
+                return f'{base}.StringArrayP("{self.long}", "{self.short}", {defval}, "{self.usage}")'
+            return f'{base}.StringArray("{self.long}", {defval}, "{self.usage}")'
+        elif self.type == 'choices':
+            choices = sorted(self.obj_dict['choices'])
+            choices.remove(self.default or '')
+            choices.insert(0, self.default or '')
+            cx = ', '.join(f'"{serialize_as_go_string(x)}"' for x in choices)
+            if self.short:
+                return f'cli.ChoicesP({base}, "{self.long}", "{self.short}", "{self.usage}", {cx})'
+            return f'cli.Choices({base}, "{self.long}", "{self.usage}", {cx})'
+        else:
+            raise KeyError(f'Unknown type of CLI option: {self.type}')
 
 
 def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: str) -> str:
@@ -100,9 +129,9 @@ var IsFrozenBuild bool = false
             os.remove(dest)
         with open(dest, 'w') as f:
             f.write(code)
-        cp = subprocess.run('gofmt -s -w tools/cmd/at'.split())
-        if cp.returncode != 0:
-            raise SystemExit(cp.returncode)
+    cp = subprocess.run('gofmt -s -w tools/cmd/at'.split())
+    if cp.returncode != 0:
+        raise SystemExit(cp.returncode)
 
 
 if __name__ == '__main__':

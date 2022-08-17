@@ -277,7 +277,10 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
             else:
                 k, v = m.group(1), m.group(2)
                 if k == 'choices':
-                    current_cmd['choices'] = frozenset(x.strip() for x in v.split(','))
+                    vals = tuple(x.strip() for x in v.split(','))
+                    current_cmd['choices'] = frozenset(vals)
+                    if current_cmd['default'] is None:
+                        current_cmd['default'] = vals[0]
                 else:
                     if k == 'default':
                         current_cmd['default'] = v

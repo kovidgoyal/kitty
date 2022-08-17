@@ -46,7 +46,7 @@ type ChoicesVal struct {
 type choicesVal ChoicesVal
 
 func (i *choicesVal) String() string { return ChoicesVal(*i).Choice }
-func (i *choicesVal) Type() string   { return "choices" }
+func (i *choicesVal) Type() string   { return "string" }
 func (i *choicesVal) Set(s string) error {
 	(*i).Choice = s
 	return nil
@@ -56,14 +56,20 @@ func newChoicesVal(val ChoicesVal, p *ChoicesVal) *choicesVal {
 	return (*choicesVal)(p)
 }
 
-func add_choices(flags *pflag.FlagSet, p *ChoicesVal, choices []string, name string, usage string) {
+func add_choices(flags *pflag.FlagSet, p *ChoicesVal, choices []string, name string, short string, usage string) {
 	value := ChoicesVal{Choice: choices[0], allowed: choices}
-	flags.VarP(newChoicesVal(value, p), name, "", usage)
+	flags.VarP(newChoicesVal(value, p), name, short, usage)
 }
 
 func Choices(flags *pflag.FlagSet, name string, usage string, choices ...string) *ChoicesVal {
 	p := new(ChoicesVal)
-	add_choices(flags, p, choices, name, usage)
+	add_choices(flags, p, choices, name, "", usage)
+	return p
+}
+
+func ChoicesP(flags *pflag.FlagSet, name string, short string, usage string, choices ...string) *ChoicesVal {
+	p := new(ChoicesVal)
+	add_choices(flags, p, choices, name, short, usage)
 	return p
 }
 
