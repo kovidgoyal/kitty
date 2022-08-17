@@ -7,10 +7,8 @@ import sys
 from typing import List
 
 import kitty.constants as kc
-from kitty.cli import OptionSpecSeq, parse_option_spec
-from kitty.rc.base import (
-    RemoteCommand, all_command_names, command_for_name
-)
+from kitty.cli import OptionDict, OptionSpecSeq, parse_option_spec
+from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
 
 
 def serialize_as_go_string(x: str) -> str:
@@ -23,6 +21,28 @@ def replace(template: str, **kw: str) -> str:
     return template
 
 
+class Option:
+
+    def __init__(self, x: OptionDict) -> None:
+        flags = sorted(x['aliases'], key=len)
+        short = ''
+        if len(flags) > 1 and not flags[0].startswith("--"):
+            short = flags[0][1:]
+        long = flags[-1][2:]
+        if not long:
+            raise SystemExit(f'No long flag for {x} with flags {flags}')
+        self.short, self.long = short, long
+        self.usage = serialize_as_go_string(x['help'].strip())
+        self.type = x['type']
+
+    def to_flag_definition(self, base: str = 'ans.Flags()') -> str:
+        if self.type == 'bool-set':
+            if self.short:
+                return f'{base}.BoolP("{self.long}", "{self.short}", false, "{self.usage}")'
+            return f'{base}.Bool("{self.long}", false, "{self.usage}")'
+        return ''
+
+
 def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: str) -> str:
     template = '\n' + template[len('//go:build exclude'):]
     NO_RESPONSE_BASE = 'true' if cmd.no_response else 'false'
@@ -31,16 +51,8 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
     for x in seq:
         if isinstance(x, str):
             continue
-        flags = sorted(x['aliases'], key=len)
-        short = ''
-        if len(flags) > 1 and not flags[0].startswith("--"):
-            short = flags[0][1:]
-        long = flags[-1][2:]
-        if not long:
-            raise SystemExit(f'No long flag for {x} with flags {flags}')
-        usage = serialize_as_go_string(x['help'].strip())
-        if x['type'] == 'bool-set':
-            a(f'add_bool_set(ans, "{long}", "{short}", "{usage}")')
+        o = Option(x)
+        a(o.to_flag_definition())
     ans = replace(
         template,
         CMD_NAME=name, __FILE__=__file__, CLI_NAME=name.replace('_', '-'),
@@ -83,7 +95,9 @@ var IsFrozenBuild bool = false
             os.remove(dest)
         with open(dest, 'w') as f:
             f.write(code)
-        subprocess.check_call('gofmt -s -w tools/cmd/at'.split())
+        cp = subprocess.run('gofmt -s -w tools/cmd/at'.split())
+        if cp.returncode != 0:
+            raise SystemExit(cp.returncode)
 
 
 if __name__ == '__main__':
