@@ -397,4 +397,5 @@ func Init(root *cobra.Command) {
 	root.SetUsageFunc(show_usage)
 	root.SetHelpFunc(show_help)
 	root.SetHelpCommand(&cobra.Command{Hidden: true})
+	root.CompletionOptions.DisableDefaultCmd = true
 }
