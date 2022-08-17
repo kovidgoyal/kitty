@@ -26,6 +26,7 @@ from .typing import BadLineType, TypedDict
 
 class OptionDict(TypedDict):
     dest: str
+    name: str
     aliases: FrozenSet[str]
     help: str
     choices: FrozenSet[str]
@@ -244,7 +245,7 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
     mpat = re.compile('([a-z]+)=(.+)')
     current_cmd: OptionDict = {
         'dest': '', 'aliases': frozenset(), 'help': '', 'choices': frozenset(),
-        'type': '', 'condition': False, 'default': None, 'completion': {},
+        'type': '', 'condition': False, 'default': None, 'completion': {}, 'name': ''
     }
     empty_cmd = current_cmd
 
@@ -261,9 +262,10 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
                 continue
             if line.startswith('--'):
                 parts = line.split(' ')
+                defdest = parts[0][2:].replace('-', '_')
                 current_cmd = {
-                    'dest': parts[0][2:].replace('-', '_'), 'aliases': frozenset(parts), 'help': '',
-                    'choices': frozenset(), 'type': '',
+                    'dest': defdest, 'aliases': frozenset(parts), 'help': '',
+                    'choices': frozenset(), 'type': '', 'name': defdest,
                     'default': None, 'condition': True, 'completion': {}
                 }
                 state = METADATA
