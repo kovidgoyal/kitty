@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class ResizeOSWindow(RemoteCommand):
-    '''
+    protocol_spec = __doc__ = '''
     match/str: Which window to resize
     self/bool: Boolean indicating whether to close the window the command is run in
     incremental/bool: Boolean indicating whether to adjust the size incrementally

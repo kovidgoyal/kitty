@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 class CloseTab(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     match/str: Which tab to close
     no_response/bool: Boolean indicating whether to wait for a response
     self/bool: Boolean indicating whether to close the tab of the window the command is run in

@@ -175,6 +175,7 @@ class RemoteCommand:
     defaults: Optional[Dict[str, Any]] = None
     is_asynchronous: bool = False
     options_class: Type[RCOptions] = RCOptions
+    protocol_spec: str = ''
 
     def __init__(self) -> None:
         self.desc = self.desc or self.short_desc

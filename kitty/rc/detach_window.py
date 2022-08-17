@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 class DetachWindow(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     match/str: Which window to detach
     target_tab/str: Which tab to move the detached window to
     self/bool: Boolean indicating whether to detach the window the command is run in

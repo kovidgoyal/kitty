@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class SetFontSize(RemoteCommand):
-    '''
+    protocol_spec = __doc__ = '''
     size+/float: The new font size in pts (a positive number)
     all/bool: Boolean whether to change font size in the current window or all windows
     increment_op/choices.+.-: The string ``+`` or ``-`` to interpret size as an increment

@@ -22,7 +22,7 @@ def layout_names() -> Iterable[str]:
 
 class SetEnabledLayouts(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     layouts+/list.str: The list of layout names
     match/str: Which tab to change the layout of
     configured/bool: Boolean indicating whether to change the configured value

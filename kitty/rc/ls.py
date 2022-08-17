@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class LS(RemoteCommand):
-    '''
+    protocol_spec = __doc__ = '''
     all_env_vars/bool: Whether to send all environment variables for every window rather than just differing ones
     '''
 

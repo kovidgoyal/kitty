@@ -54,7 +54,7 @@ def parse_colors(args: Iterable[str]) -> Dict[str, Optional[int]]:
 
 class SetColors(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     colors+/dict.colors: An object mapping names to colors as 24-bit RGB integers or null for nullable colors
     match_window/str: Window to change colors in
     match_tab/str: Tab to change colors in

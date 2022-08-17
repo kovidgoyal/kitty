@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 class ScrollWindow(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     amount+/list.scroll_amount: The amount to scroll, a two item list with the first item being \
              either a number or the keywords, start and end. \
              And the second item being either 'p' for pages or 'l' for lines or 'u'

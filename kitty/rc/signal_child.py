@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class SignalChild(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     signals/list.str: The signals, a list of names, such as :code:`SIGTERM`, :code:`SIGKILL`, :code:`SIGUSR1`, etc.
     match/str: Which windows to send the signals to
     no_response/bool: Boolean indicating whether to wait for a response

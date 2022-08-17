@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 class SelectWindow(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     match/str: The tab to open the new window in
     self/bool: Boolean, if True use tab the command was run in
     title/str: A title for this selection

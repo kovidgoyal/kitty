@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class LastUsedLayout(RemoteCommand):
-    '''
+    protocol_spec = __doc__ = '''
     match/str: Which tab to change the layout of
     all/bool: Boolean to match all tabs
     no_response/bool: Boolean indicating whether to wait for a response

@@ -23,8 +23,8 @@ layout_choices = 'tiled,scaled,mirror-tiled,clamped,configured'
 
 class SetBackgroundImage(RemoteCommand):
 
-    f'''
-    data+/image_data: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image. \
+    protocol_spec = __doc__ = '''
+    data+/str: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image. \
     Or the special value - to indicate image must be removed.
     match/str: Window to change opacity in
     layout/choices.{layout_choices.replace(",", ".")}: The image layout

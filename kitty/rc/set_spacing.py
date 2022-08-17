@@ -67,7 +67,7 @@ def parse_spacing_settings(args: Iterable[str]) -> Dict[str, Optional[float]]:
 
 class SetSpacing(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     settings+/dict.spacing: An object mapping margins/paddings using canonical form {'margin-top': 50, 'padding-left': null} etc
     match_window/str: Window to change paddings and margins in
     match_tab/str: Tab to change paddings and margins in

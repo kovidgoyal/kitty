@@ -20,8 +20,8 @@ if TYPE_CHECKING:
 
 
 class SetWindowLogo(RemoteCommand):
-    '''
-    data+/image_data: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image. \
+    protocol_spec = __doc__ = '''
+    data+/str: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image. \
     Or the special value :code:`-` to indicate image must be removed.
     position/str: The logo position as a string, empty string means default
     alpha/float: The logo alpha between :code:`0` and :code:`1`. :code:`-1` means use default

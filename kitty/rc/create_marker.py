@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 class CreateMarker(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     match/str: Which window to create the marker in
     self/bool: Boolean indicating whether to create marker in the window the command is run in
     marker_spec/list.str: A list or arguments that define the marker specification, for example: ['text', '1', 'ERROR']

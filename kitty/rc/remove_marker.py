@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 class RemoveMarker(RemoteCommand):
 
-    '''
+    protocol_spec = __doc__ = '''
     match/str: Which window to remove the marker from
     self/bool: Boolean indicating whether to detach the window the command is run in
     '''

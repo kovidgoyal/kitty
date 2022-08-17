@@ -63,13 +63,13 @@ class FocusChangedSession(SessionAction):
 
 
 class SendText(RemoteCommand):
-    '''
-    data+/send_text: The data being sent. Can be either: text: followed by text or base64: followed by standard base64 encoded bytes
+    protocol_spec = __doc__ = '''
+    data+/str: The data being sent. Can be either: text: followed by text or base64: followed by standard base64 encoded bytes
     match/str: A string indicating the window to send text to
     match_tab/str: A string indicating the tab to send text to
     all/bool: A boolean indicating all windows should be matched.
     exclude_active/bool: A boolean that prevents sending text to the active window
-    session_id/internal: A string that identifies a "broadcast session"
+    session_id/str: A string that identifies a "broadcast session"
     '''
     short_desc = 'Send arbitrary text to specified windows'
     desc = (
