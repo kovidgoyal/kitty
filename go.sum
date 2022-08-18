@@ -13,6 +13,10 @@ github.com/mattn/go-runewidth v0.0.13/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh
 github.com/rivo/uniseg v0.2.0 h1:S1pD9weZBuJdFmowNwbpi7BJ8TNftyUImj/0WQi72jY=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
+github.com/seancfoley/bintree v1.1.0 h1:6J0rj9hLNLIcWSsfYdZ4ZHkMHokaK/PHkak8qyBO/mc=
+github.com/seancfoley/bintree v1.1.0/go.mod h1:CtE6qO6/n9H3V2CAGEC0lpaYr6/OijhNaMG/dt7P70c=
+github.com/seancfoley/ipaddress-go v1.2.1 h1:yEZxnyC6NQEDDPflyQm4KkWozffx1vHWsx+knKBr/n0=
+github.com/seancfoley/ipaddress-go v1.2.1/go.mod h1:/UEVHyrBg1ASVap2ffdY2cq5UMYIX9f3QW3uWSVqpbo=
 github.com/spf13/cobra v1.5.0 h1:X+jTBEBqF0bHN+9cSMgmfuvv2VHJ9ezmFNf9Y/XstYU=
 github.com/spf13/cobra v1.5.0/go.mod h1:dWXEIy2H428czQCjInthrTRUg7yKbok+2Qi/yBIJoUM=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=

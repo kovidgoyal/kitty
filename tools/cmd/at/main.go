@@ -29,19 +29,11 @@ func add_bool_set(cmd *cobra.Command, name string, short string, usage string) *
 }
 
 type GlobalOptions struct {
-	to_address, password       string
-	to_address_is_from_env_var bool
+	to_network, to_address, password string
+	to_address_is_from_env_var       bool
 }
 
 var global_options GlobalOptions
-
-func cut(a string, sep string) (string, string, bool) {
-	idx := strings.Index(a, sep)
-	if idx < 0 {
-		return "", "", false
-	}
-	return a[:idx], a[idx+len(sep):], true
-}
 
 func get_pubkey(encoded_key string) (encryption_version string, pubkey []byte, err error) {
 	if encoded_key == "" {
@@ -51,7 +43,7 @@ func get_pubkey(encoded_key string) (encryption_version string, pubkey []byte, e
 			return
 		}
 	}
-	encryption_version, encoded_key, found := cut(encoded_key, ":")
+	encryption_version, encoded_key, found := utils.Cut(encoded_key, ":")
 	if !found {
 		err = fmt.Errorf("KITTY_PUBLIC_KEY environment variable does not have a : in it")
 		return
@@ -77,23 +69,28 @@ type serializer_func func(rc *utils.RemoteControlCmd) ([]byte, error)
 
 var serializer serializer_func = simple_serializer
 
-func create_serializer(password string, encoded_pubkey string) (ans serializer_func, err error) {
+func create_serializer(password string, encoded_pubkey string, response_timeout float64) (ans serializer_func, timeout float64, err error) {
+	timeout = response_timeout
 	if password != "" {
 		encryption_version, pubkey, err := get_pubkey(encoded_pubkey)
 		if err != nil {
-			return nil, err
+			return nil, timeout, err
 		}
 		ans = func(rc *utils.RemoteControlCmd) (ans []byte, err error) {
 			ec, err := crypto.Encrypt_cmd(rc, global_options.password, pubkey, encryption_version)
 			ans, err = json.Marshal(ec)
 			return
 		}
+		if timeout < 120 {
+			timeout = 120
+		}
+		return ans, timeout, nil
 	}
-	return simple_serializer, nil
+	return simple_serializer, timeout, nil
 }
 
 func send_rc_command(rc *utils.RemoteControlCmd, timeout float64) (err error) {
-	serializer, err = create_serializer(global_options.password, "")
+	serializer, timeout, err = create_serializer(global_options.password, "", timeout)
 	if err != nil {
 		return
 	}
@@ -165,7 +162,14 @@ func EntryPoint(tool_root *cobra.Command) *cobra.Command {
 				*to = os.Getenv("KITTY_LISTEN_ON")
 				global_options.to_address_is_from_env_var = true
 			}
-			global_options.to_address = *to
+			if *to != "" {
+				network, address, err := utils.ParseSocketAddress(*to)
+				if err != nil {
+					return err
+				}
+				global_options.to_network = network
+				global_options.to_address = address
+			}
 			q, err := get_password(*password, *password_file, *password_env, use_password.Choice)
 			global_options.password = q
 			return err

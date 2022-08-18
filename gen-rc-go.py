@@ -155,7 +155,7 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
         if o.aliases:
             alias_map[o.long] = tuple(o.aliases)
         a(o.to_flag_definition())
-        if o.dest == 'no_response':
+        if o.dest in ('no_response', 'response_timeout'):
             continue
         od.append(f'{o.go_var_name} {o.go_type}')
         ov.append(o.set_flag_value())
