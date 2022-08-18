@@ -98,7 +98,9 @@ func send_rc_command(rc *utils.RemoteControlCmd, timeout float64) (err error) {
 	if err != nil {
 		return
 	}
-	println(string(d))
+	r := utils.BytesReader{Data: d}
+
+	println(string(r.Data))
 	return
 }
 

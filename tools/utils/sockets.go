@@ -2,9 +2,10 @@ package utils
 
 import (
 	"fmt"
-	"github.com/seancfoley/ipaddress-go/ipaddr"
 	"runtime"
 	"strings"
+
+	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
 
 func Cut(s string, sep string) (string, string, bool) {
@@ -21,7 +22,7 @@ func ParseSocketAddress(spec string) (network string, addr string, err error) {
 		return
 	}
 	if network == "unix" {
-		if strings.HasSuffix(addr, "@") && runtime.GOOS != "linux" {
+		if strings.HasPrefix(addr, "@") && runtime.GOOS != "linux" {
 			err = fmt.Errorf("Abstract UNIX sockets are only supported on Linux. Cannot use: %s", spec)
 		}
 		return
