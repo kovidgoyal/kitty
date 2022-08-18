@@ -2,18 +2,37 @@ package utils
 
 import (
 	"io"
+	"time"
+)
+
+const (
+	DEFAULT_IO_BUFFER_SIZE = 8192
 )
 
 type BytesReader struct {
 	Data []byte
-	Pos  int64
+}
+
+type Reader interface {
+	ReadWithTimeout(b []byte, timeout time.Duration) (n int, err error)
+	GetBuf() []byte
 }
 
 func (self *BytesReader) Read(b []byte) (n int, err error) {
-	if self.Pos >= int64(len(self.Data)) {
+	if len(self.Data) == 0 {
 		return 0, io.EOF
 	}
-	n = copy(b, self.Data[self.Pos:])
-	self.Pos += int64(n)
+	n = copy(b, self.Data)
+	self.Data = self.Data[n:]
+	return
+}
+
+func (self *BytesReader) ReadWithTimeout(b []byte, timeout time.Duration) (n int, err error) {
+	return self.Read(b)
+}
+
+func (self *BytesReader) GetBuf() (ans []byte) {
+	ans = self.Data
+	self.Data = make([]byte, 0)
 	return
 }

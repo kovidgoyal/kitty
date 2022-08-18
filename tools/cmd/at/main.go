@@ -3,9 +3,10 @@ package at
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
@@ -89,6 +90,36 @@ func create_serializer(password string, encoded_pubkey string, response_timeout 
 	return simple_serializer, timeout, nil
 }
 
+type TTYIO interface {
+	WriteAllWithTimeout(b []byte, d time.Duration) (n int, err error)
+	WriteFromReader(r utils.Reader, read_timeout time.Duration, write_timeout time.Duration) (n int, err error)
+
+	Restore() error
+	Close() error
+}
+
+func do_tty_io(tty TTYIO, input utils.Reader, response_timeout time.Duration) (err error) {
+
+	defer func() {
+		tty.Restore()
+		tty.Close()
+	}()
+
+	_, err = tty.WriteAllWithTimeout([]byte("\x1bP@kitty-cmd"), 2*time.Second)
+	if err != nil {
+		return err
+	}
+	_, err = tty.WriteFromReader(input, 2*time.Second, 2*time.Second)
+	if err != nil {
+		return err
+	}
+	_, err = tty.WriteAllWithTimeout([]byte("\x1b\\"), 2*time.Second)
+	if err != nil {
+		return err
+	}
+	return
+}
+
 func send_rc_command(rc *utils.RemoteControlCmd, timeout float64) (err error) {
 	serializer, timeout, err = create_serializer(global_options.password, "", timeout)
 	if err != nil {
@@ -99,9 +130,15 @@ func send_rc_command(rc *utils.RemoteControlCmd, timeout float64) (err error) {
 		return
 	}
 	r := utils.BytesReader{Data: d}
-
-	println(string(r.Data))
-	return
+	if global_options.to_network == "" {
+		tty, err := utils.OpenControllingTerm(true)
+		if err != nil {
+			return err
+		}
+		return do_tty_io(tty, &r, time.Duration(timeout*1e9))
+	} else {
+		return fmt.Errorf("TODO: Implement socket IO")
+	}
 }
 
 func get_password(password string, password_file string, password_env string, use_password string) (ans string, err error) {
@@ -119,7 +156,7 @@ func get_password(password string, password_file string, password_env string, us
 					ans = string(q)
 				}
 			} else {
-				q, err := ioutil.ReadAll(os.Stdin)
+				q, err := io.ReadAll(os.Stdin)
 				if err != nil {
 					ans = strings.TrimRight(string(q), " \n\t")
 				}
@@ -130,7 +167,7 @@ func get_password(password string, password_file string, password_env string, us
 				}
 			}
 		} else {
-			q, err := ioutil.ReadFile(password_file)
+			q, err := os.ReadFile(password_file)
 			if err != nil {
 				ans = strings.TrimRight(string(q), " \n\t")
 			}
