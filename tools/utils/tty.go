@@ -132,7 +132,7 @@ func (self *Term) SetReadTimeout(d time.Duration) (err error) {
 
 func (self *Term) ReadWithTimeout(b []byte, d time.Duration) (n int, err error) {
 	var read, write, in_err unix.FdSet
-	tv := unix.Timeval(syscall.NsecToTimeval(int64(d)))
+	tv := NsecToTimeval(d)
 	read.Set(self.fd)
 	num_ready, err := unix.Select(self.fd, &read, &write, &in_err, &tv)
 	if err != nil {
@@ -174,6 +174,11 @@ func (t *Term) Write(b []byte) (int, error) {
 	return n, nil
 }
 
+func NsecToTimeval(d time.Duration) unix.Timeval {
+	nv := syscall.NsecToTimeval(int64(d))
+	return unix.Timeval{Sec: nv.Sec, Usec: nv.Usec}
+}
+
 func (self *Term) WriteAllWithTimeout(b []byte, d time.Duration) (n int, err error) {
 	var read, write, in_err unix.FdSet
 	var num_ready int
@@ -182,12 +187,12 @@ func (self *Term) WriteAllWithTimeout(b []byte, d time.Duration) (n int, err err
 		if len(b) == 0 {
 			return
 		}
-		tv := unix.Timeval(syscall.NsecToTimeval(int64(d)))
+		sysnv := NsecToTimeval(d)
 		read.Zero()
 		write.Zero()
 		in_err.Zero()
 		write.Set(self.fd)
-		num_ready, err = unix.Select(self.fd, &read, &write, &in_err, &tv)
+		num_ready, err = unix.Select(self.fd, &read, &write, &in_err, &sysnv)
 		if err != nil {
 			n -= len(b)
 			return
