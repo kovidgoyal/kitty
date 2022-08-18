@@ -121,18 +121,15 @@ Variables that kitty sets when running child programs
    This is only set on macOS. If the country and language from the macOS user
    settings form an invalid locale, it will be set to :code:`en_US.UTF-8`.
 
-
 .. envvar:: PATH
 
    kitty prepends itself to the PATH of its own environment to ensure the
    functions calling :program:`kitty` will work properly.
 
-
 .. envvar:: KITTY_WINDOW_ID
 
    An integer that is the id for the kitty :term:`window` the program is running in.
    Can be used with the :doc:`kitty remote control facility <remote-control>`.
-
 
 .. envvar:: KITTY_PID
 
@@ -150,7 +147,6 @@ Variables that kitty sets when running child programs
    Path to a UNIX domain socket used to avoid Python interpreter startup
    latency when running kittens, or remote control or using kitty +launch or kitty +runpy.
 
-
 .. envvar:: KITTY_PREWARM_SOCKET_REAL_TTY
 
    Path to the the PTY used to run the prewarmed process in when using
@@ -161,27 +157,22 @@ Variables that kitty sets when running child programs
    The id for the :term:`OS Window <os_window>` the program is running in. Only available
    on platforms that have ids for their windows, such as X11 and macOS.
 
-
 .. envvar:: TERM
 
    The name of the terminal, defaults to ``xterm-kitty``. See :opt:`term`.
-
 
 .. envvar:: TERMINFO
 
    Path to a directory containing the kitty terminfo database.
 
-
 .. envvar:: KITTY_INSTALLATION_DIR
 
    Path to the kitty installation directory.
-
 
 .. envvar:: COLORTERM
 
    Set to the value ``truecolor`` to indicate that kitty supports 16 million
    colors.
-
 
 .. envvar:: KITTY_LISTEN_ON
 
@@ -190,13 +181,11 @@ Variables that kitty sets when running child programs
    Contains the path to the socket. Avoid the need to use :option:`kitty @ --to` when
    issuing remote control commands.
 
-
 .. envvar:: KITTY_PIPE_DATA
 
    Set to data describing the layout of the screen when running child
    programs using :option:`launch --stdin-source` with the contents of the
    screen/scrollback piped to them.
-
 
 .. envvar:: KITTY_CHILD_CMDLINE
 
@@ -204,30 +193,25 @@ Variables that kitty sets when running child programs
    window when calling the notification callback program on terminal bell, see
    :opt:`command_on_bell`.
 
-
 .. envvar:: KITTY_COMMON_OPTS
 
    Set with the values of some common kitty options when running
    kittens, so kittens can use them without needing to load :file:`kitty.conf`.
-
 
 .. envvar:: KITTY_SHELL_INTEGRATION
 
    Set when enabling :ref:`shell_integration`. It is automatically removed by
    the shell integration scripts.
 
-
 .. envvar:: ZDOTDIR
 
    Set when enabling :ref:`shell_integration` with :program:`zsh`, allowing
    :program:`zsh` to automatically load the integration script.
 
-
 .. envvar:: XDG_DATA_DIRS
 
    Set when enabling :ref:`shell_integration` with :program:`fish`, allowing
    :program:`fish` to automatically load the integration script.
-
 
 .. envvar:: ENV
 
