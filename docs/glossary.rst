@@ -145,7 +145,8 @@ Variables that kitty sets when running child programs
 .. envvar:: KITTY_PREWARM_SOCKET
 
    Path to a UNIX domain socket used to avoid Python interpreter startup
-   latency when running kittens, or remote control or using kitty +launch or kitty +runpy.
+   latency when running kittens, or remote control or using ``kitty +launch`` or
+   ``kitty +runpy``.
 
 .. envvar:: KITTY_PREWARM_SOCKET_REAL_TTY
 
