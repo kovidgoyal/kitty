@@ -54,7 +54,12 @@ func run_CMD_NAME(cmd *cobra.Command, args []string) (err error) {
 	if err == nil {
 		rc.NoResponse = nrv
 	}
-	err = send_rc_command(rc, WAIT_TIMEOUT)
+	var timeout float64 = WAIT_TIMEOUT
+	rt, err := cmd.Flags().GetFloat64("response-timeout")
+	if err == nil {
+		timeout = rt
+	}
+	err = send_rc_command(rc, timeout)
 	return
 }
 

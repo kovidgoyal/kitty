@@ -35,7 +35,7 @@ func TestCommandToJSON(t *testing.T) {
 }
 
 func TestRCSerialization(t *testing.T) {
-	serializer, err := create_serializer("", "")
+	serializer, _, err := create_serializer("", "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestRCSerialization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	serializer, err = create_serializer("tpw", pubkey)
+	serializer, _, err = create_serializer("tpw", pubkey, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
