@@ -82,7 +82,7 @@ Detailed list of changes
 - ssh kitten: A new option :code:`--symlink-strategy` to control how symlinks
   are copied to the remote machine (:iss:`5249`)
 
-- ssh kitten: Allow pressing Ctrl-C to abort ssh before the connection is
+- ssh kitten: Allow pressing :kbd:`Ctrl+C` to abort ssh before the connection is
   completed (:iss:`5271`)
 
 - Bash integration: Fix declare not creating global variables in .bashrc (:iss:`5254`)

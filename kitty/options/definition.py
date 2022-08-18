@@ -1165,13 +1165,21 @@ well, use something like: :code:`{index}:{title}`. Useful if you have shortcuts
 mapped for :code:`goto_tab N`. If you prefer to see the index as a superscript,
 use :code:`{sup.index}`. All data available is:
 
-* :code:`title` - the current tab title
-* :code:`index` - the tab index useable with :code:`goto_tab N` shortcuts
-* :code:`layout_name` - the current layout name
-* :code:`num_windows` - the number of windows in the tab
-* :code:`num_window_groups` - the number of window groups (not counting overlay windows) in the tab
-* :code:`tab.active_wd` - the working directory of the currently active window in the tab (expensive, requires syscall)
-* :code:`max_title_length` - the maximum title length available
+:code:`title`
+    The current tab title.
+:code:`index`
+    The tab index useable with :ac:`goto_tab N <goto_tab>` shortcuts.
+:code:`layout_name`
+    The current layout name.
+:code:`num_windows`
+    The number of windows in the tab.
+:code:`num_window_groups`
+    The number of window groups (not counting overlay windows) in the tab.
+:code:`tab.active_wd`
+    The working directory of the currently active window in the tab (expensive,
+    requires syscall).
+:code:`max_title_length`
+    The maximum title length available.
 
 Note that formatting is done by Python's string formatting machinery, so you can
 use, for instance, :code:`{layout_name[:2].upper()}` to show only the first two
