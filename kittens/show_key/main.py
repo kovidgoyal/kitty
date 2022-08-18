@@ -45,7 +45,7 @@ def read_keys() -> None:
 
 
 def legacy_main() -> None:
-    print('Press any keys - Ctrl-D will terminate this program', end='\r\n', flush=True)
+    print('Press any keys - Ctrl+D will terminate this program', end='\r\n', flush=True)
     print(styled('UNIX', italic=True, fg='green'), styled('send_text', italic=True, fg='green'), sep='\t\t', end='\r\n')
 
     with raw_mode():
