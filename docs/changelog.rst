@@ -958,7 +958,7 @@ Detailed list of changes
   kitty window title bar
 
 - Fix reading :option:`kitty --session` from ``STDIN`` not working when the
-  :option:`kitty --detach` option is used (:iss:`3523`)
+  :code:`kitty --detach` option is used (:iss:`3523`)
 
 - Special case rendering of the few remaining Powerline box drawing chars
   (:iss:`3535`)
@@ -2410,7 +2410,7 @@ Detailed list of changes
 
 - Fix a regression in 0.12.0 that broke dynamic resizing of layouts (:iss:`860`)
 
-- Wayland: Allow using the :option:`kitty --class` command line flag
+- Wayland: Allow using the :code:`kitty --class` command line flag
   to set the app id (:iss:`862`)
 
 - Add completion of the kitty command for the fish shell (:pull:`829`)
