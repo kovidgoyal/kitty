@@ -56,10 +56,6 @@ particular desktop, but it should work for most major desktop environments.
     # Update the paths to the kitty and its icon in the kitty.desktop file(s)
     sed -i "s|Icon=kitty|Icon=/home/$USER/.local/kitty.app/share/icons/hicolor/256x256/apps/kitty.png|g" ~/.local/share/applications/kitty*.desktop
     sed -i "s|Exec=kitty|Exec=/home/$USER/.local/kitty.app/bin/kitty|g" ~/.local/share/applications/kitty*.desktop
-    # Install the man pages
-    mkdir -p ~/.local/share/man/man1 ~/.local/share/man/man5
-    ln -s ~/.local/kitty.app/share/man/man1/kitty.1 ~/.local/share/man/man1
-    ln -s ~/.local/kitty.app/share/man/man5/kitty.conf.5 ~/.local/share/man/man5
 
 .. note::
     In :file:`kitty-open.desktop`, kitty is registered to handle some supported

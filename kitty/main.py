@@ -318,6 +318,22 @@ def ensure_kitty_in_path() -> None:
                 os.environ['PATH'] = prepend_if_not_present(rpath, env_path)
 
 
+def setup_manpath(env: Dict[str, str]) -> None:
+    # Ensure kitty manpages are available in frozen builds
+    if not getattr(sys, 'frozen', False):
+        return
+    from .constants import local_docs
+    mp = os.environ.get('MANPATH', env.get('MANPATH', ''))
+    d = os.path.dirname
+    kitty_man = os.path.join(d(d(d(local_docs()))), 'man')
+    if not mp:
+        env['MANPATH'] = f'{kitty_man}:'
+    elif mp.startswith(':'):
+        env['MANPATH'] = f':{kitty_man}:{mp}'
+    else:
+        env['MANPATH'] = f'{kitty_man}:{mp}'
+
+
 def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
     from_config_file = False
     if not cli_opts.listen_on and opts.listen_on.startswith('unix:'):
@@ -334,6 +350,7 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
         # the other values mean the user doesn't want a PATH
         if child_path not in ('', DELETE_ENV_VAR) and child_path is not None:
             env['PATH'] = prepend_if_not_present(os.path.dirname(kitty_path), env['PATH'])
+    setup_manpath(env)
     set_default_env(env)
 
 
