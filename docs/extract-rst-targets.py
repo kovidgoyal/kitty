@@ -26,7 +26,7 @@ def main() -> Dict[str, str]:
                 href = os.path.relpath(stream.name, base).replace(os.sep, '/')
                 href = href.rpartition('.')[0] + '/'
                 for explicit_target in find_explicit_targets(raw):
-                    refs[explicit_target] = href + f'#{explicit_target}'
+                    refs[explicit_target] = href + f'#{explicit_target.replace("_", "-")}'
     return {'ref': refs}
 
 
