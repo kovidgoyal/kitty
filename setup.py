@@ -1280,6 +1280,8 @@ def create_macos_bundle_gunk(dest: str) -> None:
     os.mkdir(ddir / 'Contents')
     with open(ddir / 'Contents/Info.plist', 'wb') as fp:
         fp.write(macos_info_plist())
+    copy_man_pages(str(ddir))
+    copy_html_docs(str(ddir))
     os.rename(ddir / 'share', ddir / 'Contents/Resources')
     os.rename(ddir / 'bin', ddir / 'Contents/MacOS')
     os.rename(ddir / 'lib', ddir / 'Contents/Frameworks')

@@ -249,3 +249,22 @@ def clear_handled_signals(*a: Any) -> None:
         signal.pthread_sigmask(signal.SIG_UNBLOCK, handled_signals)
     for s in handled_signals:
         signal.signal(s, signal.SIG_DFL)
+
+
+@run_once
+def local_docs() -> str:
+    d = os.path.dirname
+    base = d(d(kitty_exe()))
+    subdir = os.path.join('doc', 'kitty', 'html')
+    linux_ans = os.path.join(base, 'share', subdir)
+    if getattr(sys, 'frozen', False):
+        if is_macos:
+            return os.path.join(d(d(d(extensions_dir))), subdir)
+        return linux_ans
+    if os.path.isdir(linux_ans):
+        return linux_ans
+    for candidate in ('/usr', '/usr/local', '/opt/homebrew'):
+        q = os.path.join(candidate, 'share', subdir)
+        if os.path.isdir(q):
+            return q
+    return ''

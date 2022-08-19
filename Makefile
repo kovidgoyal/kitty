@@ -35,6 +35,12 @@ profile:
 app:
 	python3 setup.py kitty.app $(VVAL)
 
+linux-package: FORCE
+	rm -rf linux-package
+	python3 setup.py linux-package
+
+FORCE:
+
 man:
 	$(MAKE) -C docs man
 

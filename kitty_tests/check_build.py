@@ -51,13 +51,15 @@ class TestBuild(BaseTest):
 
     def test_filesystem_locations(self) -> None:
         from kitty.constants import (
-            logo_png_file, shell_integration_dir, terminfo_dir
+            local_docs, logo_png_file, shell_integration_dir, terminfo_dir
         )
         zsh = os.path.join(shell_integration_dir, 'zsh')
         self.assertTrue(os.path.isdir(terminfo_dir), f'Terminfo dir: {terminfo_dir}')
         self.assertTrue(os.path.exists(logo_png_file), f'Logo file: {logo_png_file}')
         self.assertTrue(os.path.exists(zsh), f'Shell integration: {zsh}')
         self.assertTrue(os.access(os.path.join(shell_integration_dir, 'ssh', 'askpass.py'), os.X_OK))
+        if getattr(sys, 'frozen', False):
+            self.assertTrue(os.path.isdir(local_docs()), f'Local docs: {local_docs()}')
 
     def test_ca_certificates(self):
         import ssl

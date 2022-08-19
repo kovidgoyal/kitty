@@ -52,7 +52,7 @@ def ref_map() -> Dict[str, Dict[str, str]]:
     return ans
 
 
-def resolve_ref(ref: str) -> str:
+def resolve_ref(ref: str, website_url: Callable[[str], str] = website_url) -> str:
     m = ref_map()
     href = m['ref'].get(ref, '')
     if href:
