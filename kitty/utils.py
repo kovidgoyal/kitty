@@ -1069,3 +1069,18 @@ def safer_fork() -> int:
         import atexit
         atexit._clear()
     return pid
+
+
+def docs_url(which: str = '', local_docs_root: str = '') -> str:
+    from urllib.parse import quote
+    from .constants import local_docs, website_url
+    ld = local_docs_root or local_docs()
+    base, frag = which.partition('#')[::2]
+    if ld:
+        base = base or 'index'
+        url = f'file://{ld}/' + quote(base) + '.html'
+    else:
+        url = website_url(base)
+    if frag:
+        url += '#' + frag
+    return url

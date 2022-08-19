@@ -5,6 +5,7 @@
 import os
 import sys
 import unittest
+from functools import partial
 
 from . import BaseTest
 
@@ -73,6 +74,13 @@ class TestBuild(BaseTest):
             self.skipTest('Pygments is only tested on frozen builds')
         import pygments
         del pygments
+
+    def test_docs_url(self):
+        from kitty.utils import docs_url
+        p = partial(docs_url, local_docs_root='/docs')
+        self.ae(p(), 'file:///docs/index.html')
+        self.ae(p('conf'), 'file:///docs/conf.html')
+        self.ae(p('kittens/ssh#frag'), 'file:///docs/kittens/ssh.html#frag')
 
 
 def main() -> None:

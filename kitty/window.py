@@ -48,8 +48,8 @@ from .terminfo import get_capabilities
 from .types import MouseEvent, WindowGeometry, ac, run_once
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
-    get_primary_selection, kitty_ansi_sanitizer_pat, load_shaders, log_error,
-    open_cmd, open_url, parse_color_set, path_from_osc7_url,
+    docs_url, get_primary_selection, kitty_ansi_sanitizer_pat, load_shaders,
+    log_error, open_cmd, open_url, parse_color_set, path_from_osc7_url,
     resolve_custom_file, resolved_shell, sanitize_title, set_primary_selection
 )
 
@@ -1669,4 +1669,18 @@ class Window:
         if pid is not None:
             for sig in signals:
                 os.kill(pid, sig)
+
+    @ac('misc', '''
+    Display the specified kitty documentation, preferring a local copy, if found.
+
+    For example::
+
+        # show the config docs
+        map F1 show_kitty_doc conf
+        # show the ssh kitten docs
+        map F1 show_kitty_doc kittens/ssh
+    ''')
+    def show_kitty_doc(self, which: str = '') -> None:
+        url = docs_url(which)
+        get_boss().open_url(url)
     # }}}

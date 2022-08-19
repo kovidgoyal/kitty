@@ -44,6 +44,8 @@ Detailed list of changes
 
 - A new option :opt:`modify_font` to adjust various font metrics like underlines, cell sizes etc. (:pull:`5265`)
 
+- A new mappable action :ac:`show_kitty_doc` to display the kitty docs in a browser
+
 - Graphics protocol: Only delete temp files if they have the string
   :code:`tty-graphics-protocol` in their file paths. This prevents deletion of arbitrary files in :file:`/tmp`.
 
