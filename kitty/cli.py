@@ -156,7 +156,9 @@ role_map['envvar'] = role_map['env']
 
 
 def hyperlink_for_url(url: str, text: str) -> str:
-    return f'\x1b]8;;{url}\x1b\\\x1b[4:3;58:5:4m{text}\x1b[4:0;59m\x1b]8;;\x1b\\'
+    if sys.stdout.isatty():
+        return f'\x1b]8;;{url}\x1b\\\x1b[4:3;58:5:4m{text}\x1b[4:0;59m\x1b]8;;\x1b\\'
+    return text
 
 
 @role
