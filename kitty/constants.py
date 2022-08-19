@@ -263,6 +263,10 @@ def local_docs() -> str:
         return linux_ans
     if os.path.isdir(linux_ans):
         return linux_ans
+    if getattr(sys, 'kitty_run_data').get('from_source'):
+        sq = os.path.join(d(base), 'docs', '_build', 'html')
+        if os.path.isdir(sq):
+            return sq
     for candidate in ('/usr', '/usr/local', '/opt/homebrew'):
         q = os.path.join(candidate, 'share', subdir)
         if os.path.isdir(q):
