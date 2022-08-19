@@ -11,6 +11,7 @@ from typing import (
 )
 
 from .cli_stub import CLIOptions
+from .conf.types import ref_map
 from .conf.utils import resolve_config
 from .constants import (
     appname, clear_handled_signals, defconf, is_macos, str_version, website_url
@@ -148,6 +149,10 @@ def env(x: str) -> str:
 role_map['envvar'] = role_map['env']
 
 
+def hyperlink_for_url(url: str, text: str) -> str:
+    return f'\x1b]8;;{url}\x1b\\\x1b[4:3;58:5:4m{text}\x1b[4:0;59m\x1b]8;;\x1b\\'
+
+
 @role
 def file(x: str) -> str:
     return italic(x)
@@ -160,7 +165,12 @@ def doc(x: str) -> str:
 
 @role
 def ref(x: str) -> str:
-    return re.sub(r'\s*<\S+?>', '', x)
+    parts = x.split('<')
+    t = parts[0].strip()
+    q = parts[-1].rstrip('>')
+    if q in ref_map():
+        return hyperlink_for_url(ref_map()[q], t)
+    return t
 
 
 OptionSpecSeq = List[Union[str, OptionDict]]
