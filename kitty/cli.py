@@ -178,6 +178,15 @@ def ref(x: str) -> str:
     return t
 
 
+@role
+def ac(x: str) -> str:
+    t, q = text_and_target(x)
+    url = resolve_ref(q)
+    if url:
+        return hyperlink_for_url(url, t)
+    return t
+
+
 OptionSpecSeq = List[Union[str, OptionDict]]
 
 

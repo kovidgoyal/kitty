@@ -65,7 +65,7 @@ def resolve_ref(ref: str, website_url: Callable[[str], str] = website_url) -> st
     elif ref.startswith('action-group-'):
         href = f'{website_url("generated/actions")}#{ref}'
     elif ref.startswith('action-'):
-        frag = ref.partition('-')[-1]
+        frag = ref.partition('-')[-1].replace('_', '-')
         href = f'{website_url("generated/actions")}#{frag}'
     return href
 
