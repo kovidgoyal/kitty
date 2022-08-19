@@ -70,8 +70,6 @@ Where to launch the child process:
 
 :term:`overlay`
     an overlay window covering the current active window.
-    Note that if the current window already has an overlay,
-    then it will open a new window.
 
 :italic:`background`
     the process will be run in the background, without a window
