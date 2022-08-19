@@ -1074,8 +1074,15 @@ def safer_fork() -> int:
 def docs_url(which: str = '', local_docs_root: str = '') -> str:
     from urllib.parse import quote
     from .constants import local_docs, website_url
+    from .conf.types import resolve_ref
     ld = local_docs_root or local_docs()
     base, frag = which.partition('#')[::2]
+    base = base.strip('/')
+    if frag.startswith('ref='):
+        ref = frag[4:]
+        which = resolve_ref(ref, lambda x: x)
+        base, frag = which.partition('#')[::2]
+        base = base.strip('/')
     if ld:
         base = base or 'index'
         url = f'file://{ld}/' + quote(base) + '.html'

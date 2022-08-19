@@ -11,12 +11,12 @@ from typing import (
 )
 
 from .cli_stub import CLIOptions
-from .conf.types import resolve_ref
 from .conf.utils import resolve_config
 from .constants import (
     appname, clear_handled_signals, defconf, is_macos, str_version, website_url
 )
 from .options.types import Options as KittyOpts
+from .types import run_once
 from .typing import BadLineType, TypedDict
 
 
@@ -171,22 +171,26 @@ def doc(x: str) -> str:
     return website_url(x)
 
 
+@run_once
+def hostname() -> str:
+    import socket
+    return socket.gethostname() or 'localhost'
+
+
+def ref_hyperlink(x: str, prefix: str = '') -> str:
+    t, q = text_and_target(x)
+    url = f'kitty+doc://{hostname()}/#ref={prefix}{q}'
+    return hyperlink_for_url(url, t)
+
+
 @role
 def ref(x: str) -> str:
-    t, q = text_and_target(x)
-    url = resolve_ref(q)
-    if url:
-        return hyperlink_for_url(url, t)
-    return t
+    return ref_hyperlink(x)
 
 
 @role
 def ac(x: str) -> str:
-    t, q = text_and_target(x)
-    url = resolve_ref(q)
-    if url:
-        return hyperlink_for_url(url, t)
-    return t
+    return ref_hyperlink(x, 'action-')
 
 
 OptionSpecSeq = List[Union[str, OptionDict]]

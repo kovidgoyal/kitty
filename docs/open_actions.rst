@@ -64,6 +64,10 @@ some special variables, documented below:
 ``FRAGMENT``
     The fragment (unquoted), if any of the URL or the empty string.
 
+``URL_PATH``
+    The path, query and fragment portions of the URL, without any
+    unquoting.
+
 
 .. note::
    You can use the :opt:`action_alias` option just as in :file:`kitty.conf` to

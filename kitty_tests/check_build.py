@@ -81,6 +81,7 @@ class TestBuild(BaseTest):
         self.ae(p(), 'file:///docs/index.html')
         self.ae(p('conf'), 'file:///docs/conf.html')
         self.ae(p('kittens/ssh#frag'), 'file:///docs/kittens/ssh.html#frag')
+        self.ae(p('#ref=confloc'), 'file:///docs/conf.html#confloc')
 
 
 def main() -> None:

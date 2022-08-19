@@ -75,7 +75,7 @@ def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
         entries.append((tuple(match_criteria), tuple(raw_actions)))
 
     with to_cmdline_implementation.filter_env_vars(
-        'URL', 'FILE_PATH', 'FILE', 'FRAGMENT',
+        'URL', 'FILE_PATH', 'FILE', 'FRAGMENT', 'URL_PATH',
         EDITOR=shlex.join(get_editor()),
         SHELL=shlex.join(resolved_shell(get_options()))
     ):
@@ -97,7 +97,7 @@ def url_matches_criterion(purl: 'ParseResult', url: str, unquoted_path: str, mc:
 
     if mc.type == 'mime':
         import fnmatch
-        mt = guess_type(unquoted_path, allow_filesystem_access=True)
+        mt = guess_type(unquoted_path, allow_filesystem_access=purl.scheme in ('', 'file'))
         if not mt:
             return False
         mt = mt.lower()
@@ -169,10 +169,16 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Iterat
     except Exception:
         return
     path = unquote(purl.path)
+    up = purl.path
+    if purl.query:
+        up += f'?{purl.query}'
+    if purl.fragment:
+        up += f'#{purl.fragment}'
 
     env = {
         'URL': url,
         'FILE_PATH': path,
+        'URL_PATH': up,
         'FILE': posixpath.basename(path),
         'FRAGMENT': unquote(purl.fragment)
     }
@@ -213,6 +219,15 @@ def load_launch_actions() -> Tuple[OpenAction, ...]:
         return ()
     with f:
         return tuple(parse(f))
+
+
+@run_once
+def default_open_actions() -> Tuple[OpenAction, ...]:
+    return tuple(parse('''\
+# Open kitty HTML docs links
+protocol kitty+doc
+action show_kitty_doc $URL_PATH
+    '''.splitlines()))
 
 
 @run_once
@@ -260,7 +275,12 @@ def actions_for_url(url: str, actions_spec: Optional[str] = None) -> Iterator[Ke
         actions = load_open_actions()
     else:
         actions = tuple(parse(actions_spec.splitlines()))
-    yield from actions_for_url_from_list(url, actions)
+    found = False
+    for action in actions_for_url_from_list(url, actions):
+        found = True
+        yield action
+    if not found:
+        yield from actions_for_url_from_list(url, default_open_actions())
 
 
 def actions_for_launch(url: str) -> Iterator[KeyAction]:
