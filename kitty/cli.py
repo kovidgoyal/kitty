@@ -11,7 +11,7 @@ from typing import (
 )
 
 from .cli_stub import CLIOptions
-from .conf.types import ref_map
+from .conf.types import resolve_ref
 from .conf.utils import resolve_config
 from .constants import (
     appname, clear_handled_signals, defconf, is_macos, str_version, website_url
@@ -131,9 +131,15 @@ def code(x: str) -> str:
     return cyan(x)
 
 
+def text_and_target(x: str) -> Tuple[str, str]:
+    parts = x.split('<')
+    return parts[0].strip(), parts[-1].rstrip('>')
+
+
 @role
 def term(x: str) -> str:
-    return italic(x.split('<', 1)[0])
+    t, q = text_and_target(x)
+    return italic(t)
 
 
 @role
@@ -165,11 +171,10 @@ def doc(x: str) -> str:
 
 @role
 def ref(x: str) -> str:
-    parts = x.split('<')
-    t = parts[0].strip()
-    q = parts[-1].rstrip('>')
-    if q in ref_map():
-        return hyperlink_for_url(ref_map()[q], t)
+    t, q = text_and_target(x)
+    url = resolve_ref(q)
+    if url:
+        return hyperlink_for_url(url, t)
     return t
 
 

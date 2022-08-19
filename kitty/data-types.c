@@ -209,10 +209,16 @@ py_getpeereid(PyObject *self UNUSED, PyObject *args) {
     return Py_BuildValue("ii", u, g);
 }
 
+#include "docs_ref_map_generated.h"
 
+static PyObject*
+get_docs_ref_map(PyObject *self UNUSED, PyObject *args UNUSED) {
+    return PyBytes_FromStringAndSize(docs_ref_map, sizeof(docs_ref_map));
+}
 
 static PyMethodDef module_methods[] = {
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
+    {"get_docs_ref_map", (PyCFunction)get_docs_ref_map, METH_NOARGS, ""},
     {"getpeereid", (PyCFunction)py_getpeereid, METH_VARARGS, ""},
     {"wcswidth", (PyCFunction)wcswidth_std, METH_O, ""},
     {"open_tty", open_tty, METH_VARARGS, ""},

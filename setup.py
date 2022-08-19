@@ -14,6 +14,7 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
+import textwrap
 import time
 from contextlib import suppress
 from functools import lru_cache, partial
@@ -839,10 +840,25 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
     )
 
 
+def build_ref_map() -> str:
+    m = runpy.run_path('docs/extract-rst-targets.py')
+    d = m['main']()
+    h = 'static const char docs_ref_map[] = {\n' + textwrap.fill(', '.join(map(str, bytearray(json.dumps(d).encode('utf-8'))))) + '\n};'
+    dest = 'kitty/docs_ref_map_generated.h'
+    q = ''
+    with suppress(FileNotFoundError), open(dest) as f:
+        q = f.read()
+    if q != h:
+        with open(dest, 'w') as f:
+            f.write(h)
+    return dest
+
+
 def build(args: Options, native_optimizations: bool = True, call_init: bool = True) -> None:
     if call_init:
         init_env_from_args(args, native_optimizations)
     sources, headers = find_c_files()
+    headers.append(build_ref_map())
     compile_c_extension(
         kitty_env(), 'kitty/fast_data_types', args.compilation_database, sources, headers
     )
@@ -1375,7 +1391,7 @@ def clean() -> None:
     safe_remove(
         'build', 'compile_commands.json', 'link_commands.json',
         'linux-package', 'kitty.app', 'asan-launcher',
-        'kitty-profile')
+        'kitty-profile', 'docs/generated')
     clean_launcher_dir('kitty/launcher')
 
     def excluded(root: str, d: str) -> bool:

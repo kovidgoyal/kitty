@@ -45,24 +45,29 @@ def expand_opt_references(conf_name: str, text: str) -> str:
 
 
 @run_once
-def ref_map() -> Dict[str, str]:
-    from kitty.actions import get_all_actions
-    ref_map = {
-        'layouts': f'{website_url("overview")}#layouts',
-        'include': f'{website_url("conf")}#include',
-        'watchers': f'{website_url("launch")}#watchers',
-        'sessions': f'{website_url("overview")}#startup-sessions',
-        'functional': f'{website_url("keyboard-protocol")}#functional-key-definitions',
-        'ssh_copy_command': f'{website_url("kittens/ssh")}#ssh-copy-command',
-        'shell_integration': website_url("shell-integration"),
-        'rc_custom_auth': f'{website_url("remote-control")}#rc-custom-auth',
-        'clone_shell': f'{website_url("shell-integration")}#clone-shell',
-        'github_discussions': 'https://github.com/kovidgoyal/kitty/discussions',
-    }
-    for actions in get_all_actions().values():
-        for ac in actions:
-            ref_map[f'action-{ac.name}'] = f'{website_url("actions")}#' + ac.name.replace('_', '-')
-    return ref_map
+def ref_map() -> Dict[str, Dict[str, str]]:
+    import json
+    from ..fast_data_types import get_docs_ref_map
+    ans: Dict[str, Dict[str, str]] = json.loads(get_docs_ref_map())
+    return ans
+
+
+def resolve_ref(ref: str) -> str:
+    m = ref_map()
+    href = m['ref'].get(ref, '')
+    if href:
+        return href
+    if ref.startswith('conf-'):
+        base = 'generated/' + ref.rpartition('-')[0]
+        href = f'{website_url(base)}#{ref}'
+    elif ref.startswith('at_'):
+        href = f'{website_url("generated/cli-kitty-at")}#{ref}'
+    elif ref.startswith('action-group-'):
+        href = f'{website_url("generated/actions")}#{ref}'
+    elif ref.startswith('action-'):
+        frag = ref.partition('-')[-1]
+        href = f'{website_url("generated/actions")}#{frag}'
+    return href
 
 
 def remove_markup(text: str) -> str:
@@ -76,7 +81,10 @@ def remove_markup(text: str) -> str:
     def sub(m: 'Match[str]') -> str:
         if m.group(1) == 'ref':
             t, q = extract(m)
-            return f'{t} <{ref_map()[q]}>'
+            url = resolve_ref(q)
+            if not url:
+                raise KeyError(f'Failed to resolve :ref: {q}')
+            return f'{t} <{url}>'
         if m.group(1) == 'doc':
             t, q = extract(m)
             return f'{t} <{website_url(q.lstrip("/"))}>'
@@ -91,7 +99,7 @@ def remove_markup(text: str) -> str:
             return t
         if m.group(1) == 'disc':
             t, q = extract(m)
-            return f'{t} {ref_map()["github_discussions"]}/{q}'
+            return f'{t} {resolve_ref("github_discussions")}/{q}'
         return str(m.group(2))
 
     return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)
