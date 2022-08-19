@@ -843,7 +843,7 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
 def build_ref_map() -> str:
     m = runpy.run_path('docs/extract-rst-targets.py')
     d = m['main']()
-    h = 'static const char docs_ref_map[] = {\n' + textwrap.fill(', '.join(map(str, bytearray(json.dumps(d).encode('utf-8'))))) + '\n};'
+    h = 'static const char docs_ref_map[] = {\n' + textwrap.fill(', '.join(map(str, bytearray(json.dumps(d).encode('utf-8'))))) + '\n};\n'
     dest = 'kitty/docs_ref_map_generated.h'
     q = ''
     with suppress(FileNotFoundError), open(dest) as f:
