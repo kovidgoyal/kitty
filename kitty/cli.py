@@ -122,13 +122,17 @@ def option(x: str) -> str:
         idx = x.find('-')
     if idx > -1:
         x = x[idx:]
-    parts = map(bold, x.split())
-    return ' '.join(parts)
+    return bold(x.rstrip('>'))
 
 
 @role
 def code(x: str) -> str:
     return cyan(x)
+
+
+@role
+def term(x: str) -> str:
+    return italic(x.split('<', 1)[0])
 
 
 @role
@@ -169,6 +173,7 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
     state = NORMAL
     lines = spec.splitlines()
     prev_line = ''
+    prev_indent = 0
     seq: OptionSpecSeq = []
     disabled: OptionSpecSeq = []
     mpat = re.compile('([a-z]+)=(.+)')
@@ -177,6 +182,9 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
         'type': '', 'condition': False, 'default': None, 'completion': {},
     }
     empty_cmd = current_cmd
+
+    def indent_of_line(x: str) -> int:
+        return len(x) - len(x.lstrip())
 
     for line in lines:
         line = line.rstrip()
@@ -221,9 +229,17 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
                             cv[ck] = vv
         elif state is HELP:
             if line:
+                current_indent = indent_of_line(line)
+                if current_indent > 1:
+                    if prev_indent == 0:
+                        current_cmd['help'] += '\n'
+                    else:
+                        line = line.strip()
+                prev_indent = current_indent
                 spc = '' if current_cmd['help'].endswith('\n') else ' '
                 current_cmd['help'] += spc + line
             else:
+                prev_indent = 0
                 if prev_line:
                     current_cmd['help'] += '\n\n'
                 else:
@@ -355,15 +371,16 @@ class PrintHelpForSeq:
             help_text = opt['help']
             if help_text == '!':
                 continue  # hidden option
-            a('  ' + ', '.join(map(green, sorted(opt['aliases']))))
+            a('  ' + ', '.join(map(green, sorted(opt['aliases'], reverse=True))))
+            defval = opt.get('default')
             if not opt.get('type', '').startswith('bool-'):
-                blocks[-1] += '={}'.format(italic(opt['dest'].upper()))
+                if defval:
+                    dt = '=[{}]'.format(italic(defval))
+                    blocks[-1] += dt
             if opt.get('help'):
-                defval = opt.get('default')
-                t = help_text.replace('%default', str(defval))
-                wa(prettify(t.strip()), indent=4)
-                if defval is not None:
-                    wa(f'Default: {defval}', indent=4)
+                t = help_text.replace('%default', str(defval)).strip()
+                t = t.replace('#placeholder_for_formatting#', '')
+                wa(prettify(t), indent=4)
                 if opt.get('choices'):
                     wa('Choices: {}'.format(', '.join(opt['choices'])), indent=4)
                 a('')
@@ -425,6 +442,7 @@ def seq_as_rst(
         if opt.get('help'):
             defval = opt.get('default')
             t = help_text.replace('%default', str(defval)).strip()
+            t = t.replace('#placeholder_for_formatting#', '')
             a('')
             a(textwrap.indent(prettify_rst(t), ' ' * 4))
             if defval is not None:

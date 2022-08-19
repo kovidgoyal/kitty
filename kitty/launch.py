@@ -57,13 +57,30 @@ of the active window in the tab is used as the tab title. The special value
 type=choices
 default=window
 choices=window,tab,os-window,overlay,background,clipboard,primary
-Where to launch the child process, in a new kitty :code:`window` in the current
-tab, a new :code:`tab`, or a new :code:`os-window` or an :code:`overlay` over
-the current window. Note that if the current window already has an overlay, then
-it will open a new window. The value of :code:`background` means the process
-will be run in the background. The values :code:`clipboard` and :code:`primary`
-are meant to work with :option:`--stdin-source <launch --stdin-source>` to copy
-data to the system clipboard or primary selection.
+Where to launch the child process:
+
+:term:`window`
+    a new :term:`window` in the current tab,
+
+:term:`tab`
+    a new tab in the current :term:`OS Window <os_window>`
+
+:term:`os-window <os_window>`
+    a new operating system window
+
+:term:`overlay`
+    an overlay window covering the current active window.
+    Note that if the current window already has an overlay,
+    then it will open a new window.
+
+:italic:`background`
+    the process will be run in the background, without a window
+
+:italic:`clipboard` and :italic:`primary`
+    are meant to work with :option:`--stdin-source <launch --stdin-source>` to copy
+    data to the system clipboard or primary selection.
+
+#placeholder_for_formatting#
 
 
 --keep-focus --dont-take-focus
@@ -151,14 +168,12 @@ type=list
 Restrict the actions remote control is allowed to take. This works like
 :opt:`remote_control_password`. You can specify a password and list of actions
 just as for :opt:`remote_control_password`. For example::
-
     --remote-control-password '"my passphrase" get-* set-colors'
 
 This password will be in effect for this window only.
 Note that any passwords you have defined for :opt:`remote_control_password`
 in :file:`kitty.conf` are also in effect. You can override them by using the same password here.
 You can also disable all :opt:`remote_control_password` global passwords for this window, by using::
-
     --remote-control-password '!'
 
 This option only takes effect if :option:`--allow-remote-control`
