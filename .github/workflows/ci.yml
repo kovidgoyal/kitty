@@ -123,13 +123,19 @@ jobs:
             - name: Checkout source code
               uses: actions/checkout@master
               with:
-                  fetch-depth: 10
+                  fetch-depth: 0  # needed for :commit: docs role
 
             - name: Build kitty
               run: python3 .github/workflows/ci.py build
 
             - name: Test kitty
               run: python3 .github/workflows/ci.py test
+
+            - name: Install deps for docs
+              run: python3 -m pip install -r docs/requirements.txt
+
+            - name: Builds docs
+              run: make FAIL_WARN=1 docs
 
             - name: Build kitty package
               run: python3 .github/workflows/ci.py package
