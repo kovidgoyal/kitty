@@ -57,6 +57,7 @@ func newChoicesVal(val ChoicesVal, p *ChoicesVal) *choicesVal {
 }
 
 func add_choices(flags *pflag.FlagSet, p *ChoicesVal, choices []string, name string, short string, usage string) {
+	usage = strings.TrimSpace(usage) + "\n" + "Choices: " + strings.Join(choices, ", ")
 	value := ChoicesVal{Choice: choices[0], allowed: choices}
 	flags.VarP(newChoicesVal(value, p), name, short, usage)
 }
@@ -87,8 +88,12 @@ var blue_fmt = color.New(color.FgBlue).SprintFunc()
 var green_fmt = color.New(color.FgGreen).SprintFunc()
 
 func format_line_with_indent(output io.Writer, text string, indent string, screen_width int) {
-	if strings.TrimSpace(text) == "" {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
 		fmt.Fprintln(output, indent)
+		return
+	}
+	if trimmed == "#placeholder_for_formatting#" {
 		return
 	}
 	x := len(indent)
@@ -189,7 +194,27 @@ func website_url(doc string) string {
 }
 
 var prettify_pat = regexp.MustCompile(":([a-z]+):`([^`]+)`")
-var ref_pat = regexp.MustCompile(`\s*<\S+?>`)
+
+func hyperlink_for_url(url string, text string) string {
+	if !stdout_is_terminal {
+		return text
+	}
+	return "\x1b]8;;" + url + "\x1b\\\x1b[4:3;58:5:4m" + text + "\x1b[4:0;59m\x1b]8;;\x1b\\"
+}
+
+var hostname string = "*"
+
+func CachedHostname() string {
+	if hostname == "*" {
+		h, err := os.Hostname()
+		if err != nil {
+			hostname = h
+		} else {
+			hostname = ""
+		}
+	}
+	return hostname
+}
 
 func hyperlink_for_path(path string, text string) string {
 	if !stdout_is_terminal {
@@ -200,11 +225,22 @@ func hyperlink_for_path(path string, text string) string {
 	if err == nil && fi.IsDir() {
 		path = strings.TrimSuffix(path, "/") + "/"
 	}
-	host, err := os.Hostname()
-	if err != nil {
-		host = ""
-	}
-	return "\x1b]8;;file://" + host + path + "\x1b\\" + text + "\x1b]8;;\x1b\\"
+	host := CachedHostname()
+	url := "file://" + host + path
+	return hyperlink_for_url(url, text)
+}
+
+func text_and_target(x string) (text string, target string) {
+	parts := strings.SplitN(x, "<", 2)
+	text = strings.TrimSpace(parts[0])
+	target = strings.TrimRight(parts[len(parts)-1], ">")
+	return
+}
+
+func ref_hyperlink(x string, prefix string) string {
+	text, target := text_and_target(x)
+	url := "kitty+doc://" + CachedHostname() + "/#ref=" + prefix + target
+	return hyperlink_for_url(url, text)
 }
 
 func prettify(text string) string {
@@ -222,7 +258,11 @@ func prettify(text string) string {
 		case "doc":
 			return website_url(val)
 		case "ref":
-			return ref_pat.ReplaceAllString(val, ``)
+			return ref_hyperlink(val, "")
+		case "ac":
+			return ref_hyperlink(val, "action-")
+		case "term":
+			return ref_hyperlink(val, "term-")
 		case "code":
 			return code_fmt(val)
 		case "option":
@@ -317,9 +357,14 @@ func show_usage(cmd *cobra.Command, use_pager bool) error {
 				fmt.Fprint(&output, ", ", opt_fmt("-"+flag.Shorthand))
 			}
 			defval := ""
+			fmt.Println(flag.Value.Type())
 			switch flag.Value.Type() {
 			default:
 				if flag.DefValue != "" {
+					defval = fmt.Sprintf("[=%s]", italic_fmt(flag.DefValue))
+				}
+			case "stringArray":
+				if flag.DefValue != "[]" {
 					defval = fmt.Sprintf("[=%s]", italic_fmt(flag.DefValue))
 				}
 			case "bool":
@@ -337,9 +382,6 @@ func show_usage(cmd *cobra.Command, use_pager bool) error {
 				msg = "Print the version of " + RootCmd.Name() + ": " + italic_fmt(RootCmd.Version)
 			}
 			format_with_indent(&output, msg, "    ", screen_width)
-			if cmd.Annotations["choices-"+flag.Name] != "" {
-				fmt.Fprintln(&output, "    Choices:", strings.Join(strings.Split(cmd.Annotations["choices-"+flag.Name], "\000"), ", "))
-			}
 			fmt.Fprintln(&output)
 		})
 	}
