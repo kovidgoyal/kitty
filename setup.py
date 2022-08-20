@@ -1470,7 +1470,7 @@ def clean() -> None:
     safe_remove(
         'build', 'compile_commands.json', 'link_commands.json',
         'linux-package', 'kitty.app', 'asan-launcher',
-        'kitty-profile', 'docs/generated', 'constants.go')
+        'kitty-profile', 'docs/generated')
     clean_launcher_dir('kitty/launcher')
 
     def excluded(root: str, d: str) -> bool:
