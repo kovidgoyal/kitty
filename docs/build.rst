@@ -87,13 +87,20 @@ You can run |kitty|, as::
 If that works, you can create a symlink to the launcher in :file:`~/bin` or some
 other directory on your PATH so that you can run |kitty| using just ``kitty``.
 
+To have the kitty documentation available locally, run::
+
+    python3 -m pip install -r docs/requirements.txt && make docs
+
 
 Building kitty.app on macOS from source
 -------------------------------------------
 
 Run::
 
+    python3 -m pip install -r docs/requirements.txt && make docs
     make app
+
+Building the docs needs to be done only once.
 
 This :file:`kitty.app` unlike the released one does not include its own copy of
 Python and the other dependencies. So if you ever un-install/upgrade those
@@ -196,17 +203,3 @@ the kitty program expects to find them there.
 
 This applies to creating packages for |kitty| for macOS package managers such as
 Homebrew or MacPorts as well.
-
-
-Building docs
---------------
-
-|kitty|'s documentation is built via `Sphinx <https://www.sphinx-doc.org/en/master/>`_.
-
-To install the dependencies needed for the documentation, run::
-
-    python -m pip docs/requirements.txt
-
-To build the docs, use::
-
-    make docs
