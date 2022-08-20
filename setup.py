@@ -934,24 +934,6 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
 
 
 # Packaging {{{
-
-
-def delete_empty_folders(root: str) -> None:
-
-    deleted = set()
-
-    for current_dir, subdirs, files in os.walk(root, topdown=False):
-
-        still_has_subdirs = any(
-            1 for subdir in subdirs
-            if os.path.join(current_dir, subdir) not in deleted
-        )
-
-        if not any(files) and not still_has_subdirs:
-            os.rmdir(current_dir)
-            deleted.add(current_dir)
-
-
 def copy_man_pages(ddir: str) -> None:
     mandir = os.path.join(ddir, 'share', 'man')
     safe_makedirs(mandir)
@@ -1289,7 +1271,6 @@ def create_minimal_macos_bundle(args: Options, launcher_dir: str) -> None:
         os.remove(kitty_exe)
     os.symlink(os.path.join(os.path.relpath(bin_dir, launcher_dir), appname), kitty_exe)
     create_macos_app_icon(resources_dir)
-    delete_empty_folders(kapp)
 
 
 def create_macos_bundle_gunk(dest: str) -> None:
@@ -1310,7 +1291,6 @@ def create_macos_bundle_gunk(dest: str) -> None:
     os.makedirs(os.path.dirname(in_src_launcher), exist_ok=True)
     os.symlink(os.path.relpath(launcher, os.path.dirname(in_src_launcher)), in_src_launcher)
     create_macos_app_icon(os.path.join(ddir, 'Contents', 'Resources'))
-    delete_empty_folders(dest)
 
 
 def package(args: Options, bundle_type: str) -> None:
