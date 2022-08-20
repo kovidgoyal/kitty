@@ -11,7 +11,7 @@ import (
 	"unicode"
 
 	"github.com/mattn/go-isatty"
-	runewidth "github.com/mattn/go-runewidth"
+	"github.com/mattn/go-runewidth"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/sys/unix"
