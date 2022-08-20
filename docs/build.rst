@@ -23,10 +23,6 @@ following dependencies are installed first.
    should use a version of the source that matches the binary version as closely
    as possible, since the two are tightly coupled.
 
-   You may need to unset the :envvar:`KITTY_PREWARM_SOCKET` environment variable,
-   otherwise your modified code will not be executed, when running some of the
-   ``kitty +`` and ``kitty @`` commands.
-
 
 Dependencies
 ----------------

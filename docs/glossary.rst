@@ -142,17 +142,6 @@ Variables that kitty sets when running child programs
    A public key that programs can use to communicate securely with kitty using
    the remote control protocol. The format is: :code:`protocol:key data`.
 
-.. envvar:: KITTY_PREWARM_SOCKET
-
-   Path to a UNIX domain socket used to avoid Python interpreter startup
-   latency when running kittens, or remote control or using ``kitty +launch`` or
-   ``kitty +runpy``.
-
-.. envvar:: KITTY_PREWARM_SOCKET_REAL_TTY
-
-   Path to the the PTY used to run the prewarmed process in when using
-   :envvar:`KITTY_PREWARM_SOCKET`.
-
 .. envvar:: WINDOWID
 
    The id for the :term:`OS Window <os_window>` the program is running in. Only available

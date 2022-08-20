@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
-import errno
 import fcntl
 import io
 import json
 import os
 import select
 import signal
-import socket
-import struct
 import sys
 import termios
 import time
@@ -27,14 +24,14 @@ from typing import (
 from kitty.constants import kitty_exe, running_in_kitty
 from kitty.entry_points import main as main_entry_point
 from kitty.fast_data_types import (
-    CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options, getpeereid,
-    install_signal_handlers, read_signals, remove_signal_handlers, safe_pipe,
-    set_options, set_use_os_log
+    CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options, install_signal_handlers,
+    read_signals, remove_signal_handlers, safe_pipe, set_options,
+    set_use_os_log
 )
 from kitty.options.types import Options
 from kitty.shm import SharedMemory
 from kitty.types import SignalInfo
-from kitty.utils import log_error, random_unix_socket, safer_fork
+from kitty.utils import log_error, safer_fork
 
 if TYPE_CHECKING:
     from _typeshed import ReadableBuffer, WriteableBuffer
@@ -90,7 +87,6 @@ class PrewarmProcess:
         to_prewarm_stdin: int,
         from_prewarm_stdout: int,
         from_prewarm_death_notify: int,
-        unix_socket_name: str,
     ) -> None:
         self.children: Dict[int, Child] = {}
         self.worker_pid = prewarm_process_pid
@@ -99,10 +95,6 @@ class PrewarmProcess:
         self.read_from_process_fd = from_prewarm_stdout
         self.poll = select.poll()
         self.poll.register(self.read_from_process_fd, select.POLLIN)
-        self.unix_socket_name = unix_socket_name
-
-    def socket_env_var(self) -> str:
-        return f'{os.geteuid()}:{os.getegid()}:{self.unix_socket_name}'
 
     def take_from_worker_fd(self, create_file: bool = False) -> int:
         if create_file:
@@ -375,20 +367,6 @@ def fork(shm_address: str, free_non_child_resources: Callable[[], None]) -> Tupl
     return 0, -1  # type: ignore
 
 
-def verify_socket_creds(conn: socket.socket) -> bool:
-    # needed as abstract unix sockets used on Linux have no permissions and
-    # older BSDs ignore socket file permissions
-    uid, gid = getpeereid(conn.fileno())
-    return uid == os.geteuid() and gid == os.getegid()
-
-
-class SocketChildData:
-    def __init__(self) -> None:
-        self.cwd = self.tty_name = ''
-        self.argv: List[str] = []
-        self.env: Dict[str, str] = {}
-
-
 Funtion = TypeVar('Funtion', bound=Callable[..., Any])
 
 
@@ -421,218 +399,7 @@ interactive_and_job_control_signals = (
 )
 
 
-def fork_socket_child(child_data: SocketChildData, tty_fd: int, stdio_fds: Dict[str, int], free_non_child_resources: Callable[[], None]) -> int:
-    # see https://www.gnu.org/software/libc/manual/html_node/Launching-Jobs.html
-    child_pid = safer_fork()
-    if child_pid:
-        return child_pid
-    # child process
-    eintr_retry(os.setpgid)(0, 0)
-    eintr_retry(os.tcsetpgrp)(tty_fd, eintr_retry(os.getpgid)(0))
-    for x in interactive_and_job_control_signals:
-        signal.signal(x, signal.SIG_DFL)
-    restore_python_signal_handlers()
-    # the std streams fds are closed in free_non_child_resources()
-    for which in ('stdin', 'stdout', 'stderr'):
-        fd = stdio_fds[which] if stdio_fds[which] > -1 else tty_fd
-        safe_dup2(fd, getattr(sys, which).fileno())
-    free_non_child_resources()
-    child_main({'cwd': child_data.cwd, 'env': child_data.env, 'argv': child_data.argv}, prewarm_type='socket')
-
-
-def fork_socket_child_supervisor(conn: socket.socket, free_non_child_resources: Callable[[], None]) -> None:
-    import array
-    global is_zygote
-    if safer_fork():
-        conn.close()
-        return
-    is_zygote = False
-    os.setsid()
-    restore_python_signal_handlers()
-    free_non_child_resources()
-    signal_read_fd = install_signal_handlers(signal.SIGCHLD, signal.SIGUSR1)[0]
-    # See https://www.gnu.org/software/libc/manual/html_node/Initializing-the-Shell.html
-    for x in interactive_and_job_control_signals:
-        signal.signal(x, signal.SIG_IGN)
-    poll = select.poll()
-    poll.register(signal_read_fd, select.POLLIN)
-    from_socket_buf = b''
-    to_socket_buf = b''
-    keep_going = True
-    child_pid = -1
-    socket_fd = conn.fileno()
-    launch_msg_read = False
-    os.set_blocking(socket_fd, False)
-    received_fds: List[int] = []
-    stdio_positions = dict.fromkeys(('stdin', 'stdout', 'stderr'), -1)
-    stdio_fds = dict.fromkeys(('stdin', 'stdout', 'stderr'), -1)
-    winsize = 8
-    exit_after_write = False
-    child_data = SocketChildData()
-
-    def handle_signal(siginfo: SignalInfo) -> None:
-        nonlocal to_socket_buf, exit_after_write, child_pid
-        if siginfo.si_signo != signal.SIGCHLD or siginfo.si_code not in (CLD_KILLED, CLD_EXITED, CLD_STOPPED):
-            return
-        while True:
-            try:
-                pid, status = os.waitpid(-1, os.WNOHANG | os.WUNTRACED)
-            except ChildProcessError:
-                pid = 0
-            if not pid:
-                break
-            if pid != child_pid:
-                continue
-            to_socket_buf += struct.pack('q', status)
-            if not os.WIFSTOPPED(status):
-                exit_after_write = True
-                child_pid = -1
-
-    def write_to_socket() -> None:
-        nonlocal keep_going, to_socket_buf, keep_going
-        buf = memoryview(to_socket_buf)
-        while buf:
-            try:
-                n = os.write(socket_fd, buf)
-            except OSError:
-                n = 0
-            if n == 0:
-                keep_going = False
-                return
-            buf = buf[n:]
-        to_socket_buf = bytes(buf)
-        if exit_after_write and not to_socket_buf:
-            keep_going = False
-
-    def read_winsize() -> None:
-        nonlocal from_socket_buf
-        msg = conn.recv(io.DEFAULT_BUFFER_SIZE)
-        if not msg:
-            return
-        from_socket_buf += msg
-        data = memoryview(from_socket_buf)
-        record = memoryview(b'')
-        while len(data) >= winsize:
-            record, data = data[:winsize], data[winsize:]
-        if record:
-            try:
-                with open(safe_open(os.ctermid(), os.O_RDWR | os.O_CLOEXEC), 'w') as f:
-                    safe_ioctl(f.fileno(), termios.TIOCSWINSZ, record)
-            except OSError:
-                traceback.print_exc()
-        from_socket_buf = bytes(data)
-
-    def read_launch_msg() -> bool:
-        nonlocal keep_going, from_socket_buf, launch_msg_read, winsize
-        try:
-            msg, ancdata, flags, addr = conn.recvmsg(io.DEFAULT_BUFFER_SIZE, 1024)
-        except OSError as e:
-            if e.errno == errno.ENOMEM:
-                # macOS does this when no ancilliary data is present
-                msg, ancdata, flags, addr = conn.recvmsg(io.DEFAULT_BUFFER_SIZE)
-            else:
-                raise
-
-        for cmsg_level, cmsg_type, cmsg_data in ancdata:
-            if cmsg_level == socket.SOL_SOCKET and cmsg_type == socket.SCM_RIGHTS:
-                fds = array.array("i")   # Array of ints
-                # Append data, ignoring any truncated integers at the end.
-                fds.frombytes(cmsg_data[:len(cmsg_data) - (len(cmsg_data) % fds.itemsize)])
-                received_fds.extend(fds)
-
-        if not msg:
-            return False
-        from_socket_buf += msg
-        while (idx := from_socket_buf.find(b'\0')) > -1:
-            line = from_socket_buf[:idx].decode('utf-8')
-            from_socket_buf = from_socket_buf[idx+1:]
-            cmd, _, payload = line.partition(':')
-            if cmd == 'finish':
-                for x in received_fds:
-                    os.set_inheritable(x, True)
-                    os.set_blocking(x, True)
-                for k, pos in stdio_positions.items():
-                    if pos > -1:
-                        stdio_fds[k] = received_fds[pos]
-                del received_fds[:]
-                return True
-            elif cmd == 'cwd':
-                child_data.cwd = payload
-            elif cmd == 'env':
-                k, _, v = payload.partition('=')
-                child_data.env[k] = v
-            elif cmd == 'argv':
-                child_data.argv.append(payload)
-            elif cmd in stdio_positions:
-                stdio_positions[cmd] = int(payload)
-            elif cmd == 'tty_name':
-                child_data.tty_name = payload
-            elif cmd == 'winsize':
-                winsize = int(payload)
-        return False
-
-    def free_non_child_resources2() -> None:
-        for fd in received_fds:
-            safe_close(fd)
-        for k, v in tuple(stdio_fds.items()):
-            if v > -1:
-                safe_close(v)
-                stdio_fds[k] = -1
-        conn.close()
-
-    def launch_child() -> None:
-        nonlocal to_socket_buf, child_pid
-        sys.__stdout__.flush()
-        sys.__stderr__.flush()
-        tty_fd = establish_controlling_tty(child_data.tty_name, closefd=False)
-        child_pid = fork_socket_child(child_data, tty_fd, stdio_fds, free_non_child_resources2)
-        if child_pid:
-            # this is also done in the child process, but we dont
-            # know when, so do it here as well
-            eintr_retry(os.setpgid)(child_pid, child_pid)
-            eintr_retry(os.tcsetpgrp)(tty_fd, child_pid)
-            for fd in stdio_fds.values():
-                if fd > -1:
-                    safe_close(fd)
-            safe_close(tty_fd)
-        else:
-            raise SystemExit('fork_socket_child() returned in the child process')
-        to_socket_buf += struct.pack('q', child_pid)
-
-    def read_from_socket() -> None:
-        nonlocal launch_msg_read
-        if launch_msg_read:
-            read_winsize()
-        else:
-            if read_launch_msg():
-                launch_msg_read = True
-                launch_child()
-
-    try:
-        while keep_going:
-            poll.register(socket_fd, select.POLLIN | (select.POLLOUT if to_socket_buf else 0))
-            for fd, event in poll.poll():
-                if event & error_events:
-                    keep_going = False
-                    break
-                if fd == socket_fd:
-                    if event & select.POLLOUT:
-                        write_to_socket()
-                    if event & select.POLLIN:
-                        read_from_socket()
-                elif fd == signal_read_fd and event & select.POLLIN:
-                    read_signals(signal_read_fd, handle_signal)
-    finally:
-        if child_pid:  # supervisor process
-            with suppress(OSError):
-                conn.shutdown(socket.SHUT_RDWR)
-            with suppress(OSError):
-                conn.close()
-
-    raise SystemExit(0)
-
-
-def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket: socket.socket) -> None:
+def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int) -> None:
     global parent_tty_name
     with suppress(OSError):
         parent_tty_name = os.ttyname(sys.stdout.fileno())
@@ -640,12 +407,9 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
     os.set_blocking(stdin_fd, False)
     os.set_blocking(stdout_fd, False)
     signal_read_fd = install_signal_handlers(signal.SIGCHLD, signal.SIGUSR1)[0]
-    os.set_blocking(unix_socket.fileno(), False)
-    unix_socket.listen(5)
     poll = select.poll()
     poll.register(stdin_fd, select.POLLIN)
     poll.register(signal_read_fd, select.POLLIN)
-    poll.register(unix_socket.fileno(), select.POLLIN)
     input_buf = output_buf = child_death_buf = b''
     child_ready_fds: Dict[int, int] = {}
     child_pid_map: Dict[int, int] = {}
@@ -666,7 +430,6 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
         for fd in get_all_non_child_fds():
             if fd > -1:
                 safe_close(fd)
-        unix_socket.close()
 
     def check_event(event: int, err_msg: str) -> None:
         if event & select.POLLHUP:
@@ -766,15 +529,6 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
 
         read_signals(signal_read_fd, handle_signal)
 
-    def handle_socket_client(event: int) -> None:
-        check_event(event, 'UNIX socket fd listener failed')
-        conn, addr = unix_socket.accept()
-        if not verify_socket_creds(conn):
-            print_error('Connection attempted with invalid credentials ignoring')
-            conn.close()
-            return
-        fork_socket_child_supervisor(conn, free_non_child_resources)
-
     keep_type_checker_happy = True
     try:
         while is_zygote and keep_type_checker_happy:
@@ -791,8 +545,6 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
                     handle_signals(event)
                 elif q == notify_child_death_fd:
                     handle_notify_child_death(event)
-                elif q == unix_socket.fileno():
-                    handle_socket_client(event)
     except (KeyboardInterrupt, EOFError, BrokenPipeError):
         if is_zygote:
             raise SystemExit(1)
@@ -809,33 +561,18 @@ def main(stdin_fd: int, stdout_fd: int, notify_child_death_fd: int, unix_socket:
                     safe_close(fmd)
 
 
-def get_socket_name(unix_socket: socket.socket) -> str:
-    sname = unix_socket.getsockname()
-    if isinstance(sname, bytes):
-        sname = sname.decode('utf-8')
-    assert isinstance(sname, str)
-    if sname.startswith('\0'):
-        sname = '@' + sname[1:]
-    return sname
-
-
-def exec_main(stdin_read: int, stdout_write: int, death_notify_write: int, unix_socket: Optional[socket.socket] = None) -> None:
+def exec_main(stdin_read: int, stdout_write: int, death_notify_write: int) -> None:
     os.setsid()
     os.set_inheritable(stdin_read, False)
     os.set_inheritable(stdout_write, False)
     os.set_inheritable(death_notify_write, False)
     running_in_kitty(False)
-    if unix_socket is None:
-        unix_socket = random_unix_socket()
-        os.write(stdout_write, f'{get_socket_name(unix_socket)}\n'.encode('utf-8'))
     if not sys.stdout.line_buffering:  # happens if the parent kitty instance has stdout not pointing to a terminal
         sys.stdout.reconfigure(line_buffering=True)  # type: ignore
     try:
-        main(stdin_read, stdout_write, death_notify_write, unix_socket)
+        main(stdin_read, stdout_write, death_notify_write)
     finally:
         set_options(None)
-        if is_zygote:
-            unix_socket.close()
 
 
 def fork_prewarm_process(opts: Options, use_exec: bool = False) -> Optional[PrewarmProcess]:
@@ -850,21 +587,15 @@ def fork_prewarm_process(opts: Options, use_exec: bool = False) -> Optional[Prew
         child_pid = tp.pid
         tp.returncode = 0  # prevent a warning when the popen object is deleted with the process still running
         os.set_blocking(stdout_read, True)
-        with open(stdout_read, 'rb', closefd=False) as f:
-            socket_name = f.readline().decode('utf-8').rstrip()
         os.set_blocking(stdout_read, False)
     else:
-        unix_socket = random_unix_socket()
-        socket_name = get_socket_name(unix_socket)
         child_pid = safer_fork()
     if child_pid:
         # master
-        if not use_exec:
-            unix_socket.close()
         safe_close(stdin_read)
         safe_close(stdout_write)
         safe_close(death_notify_write)
-        p = PrewarmProcess(child_pid, stdin_write, stdout_read, death_notify_read, socket_name)
+        p = PrewarmProcess(child_pid, stdin_write, stdout_read, death_notify_read)
         if use_exec:
             p.reload_kitty_config()
         return p
@@ -874,5 +605,5 @@ def fork_prewarm_process(opts: Options, use_exec: bool = False) -> Optional[Prew
     safe_close(stdout_read)
     safe_close(death_notify_read)
     set_options(opts)
-    exec_main(stdin_read, stdout_write, death_notify_write, unix_socket)
+    exec_main(stdin_read, stdout_write, death_notify_write)
     raise SystemExit(0)

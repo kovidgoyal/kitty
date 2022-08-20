@@ -3,7 +3,6 @@
 
 import importlib
 import os
-import sys
 import warnings
 from contextlib import contextmanager
 from tempfile import TemporaryDirectory
@@ -25,9 +24,6 @@ def env_vars(**kw: str) -> Iterator[None]:
 
 
 def main() -> None:
-    if 'prewarmed' in getattr(sys, 'kitty_run_data'):
-        os.environ.pop('KITTY_PREWARM_SOCKET')
-        os.execlp(sys.executable, sys.executable, '+launch', __file__, *sys.argv[1:])
     warnings.simplefilter('error')
     current_home = os.path.expanduser('~') + os.sep
     paths = os.environ.get('PATH', '/usr/local/sbin:/usr/local/bin:/usr/bin').split(os.pathsep)

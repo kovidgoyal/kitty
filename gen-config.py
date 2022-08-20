@@ -2,9 +2,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-import os
 import re
-import sys
 from typing import List
 
 from kitty.conf.generate import write_output
@@ -24,9 +22,6 @@ def patch_color_list(path: str, colors: List[str], name: str, spc: str = '    ')
 
 
 def main() -> None:
-    if 'prewarmed' in getattr(sys, 'kitty_run_data'):
-        os.environ.pop('KITTY_PREWARM_SOCKET')
-        os.execlp(sys.executable, sys.executable, '+launch', __file__, *sys.argv[1:])
     from kitty.options.definition import definition
     write_output('kitty', definition)
     nullable_colors = []

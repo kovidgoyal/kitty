@@ -9,9 +9,8 @@ import signal
 import subprocess
 import tempfile
 import time
-from contextlib import suppress
 
-from kitty.constants import kitty_exe, terminfo_dir
+from kitty.constants import kitty_exe
 from kitty.fast_data_types import (
     CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options, has_sigqueue, install_signal_handlers,
     read_signals, sigqueue
@@ -23,139 +22,6 @@ from . import BaseTest
 class Prewarm(BaseTest):
 
     maxDiff = None
-
-    def test_socket_prewarming(self):
-        from kitty.prewarm import fork_prewarm_process, wait_for_child_death
-        exit_code = 17
-        src = '''\
-def socket_child_main(exit_code=0, initial_print=''):
-    import os, sys, json, signal
-    from kitty.fast_data_types import get_options
-    from kitty.utils import read_screen_size
-
-    def report_screen_size_change(*a):
-        print("Screen size changed:", read_screen_size(fd=sys.stderr.fileno()).cols, file=sys.stderr, flush=True)
-
-    def report_tstp(*a):
-        print("SIGTSTP received", file=sys.stderr, flush=True)
-        raise SystemExit(19)
-
-    signal.signal(signal.SIGWINCH, report_screen_size_change)
-    signal.signal(signal.SIGTSTP, report_tstp)
-
-    if initial_print:
-        print(initial_print, flush=True, file=sys.stderr)
-
-    output = {
-        'test_env': os.environ.get('TEST_ENV_PASS', ''),
-        'cwd': os.path.realpath(os.getcwd()),
-        'font_family': get_options().font_family,
-        'cols': read_screen_size(fd=sys.stderr.fileno()).cols,
-        'stdin_data': sys.stdin.read(),
-        'done': 'hello',
-    }
-    print(json.dumps(output, indent=2), file=sys.stderr, flush=True)
-    print('testing stdout', end='')
-    raise SystemExit(exit_code)
-    ''' + '\n\n'
-        cwd = os.path.realpath(tempfile.gettempdir())
-        opts = self.set_options()
-        opts.config_overrides = 'font_family prewarm',
-        p = fork_prewarm_process(opts, use_exec=True)
-        if p is None:
-            return
-        env = os.environ.copy()
-        env.update({
-            'TEST_ENV_PASS': 'xyz',
-            'KITTY_PREWARM_SOCKET': p.socket_env_var(),
-            'KITTY_PREWARM_SOCKET_REAL_TTY': ' ' * 32,
-            'TERM': 'xterm-kitty',
-            'TERMINFO': terminfo_dir
-        })
-        cols = 117
-
-        def wait_for_death(exit_code, timeout=5):
-            status = wait_for_child_death(pty.child_pid, timeout=timeout)
-            if status is None:
-                os.kill(pty.child_pid, signal.SIGKILL)
-            if status is None:
-                pty.process_input_from_child(0)
-            self.assertIsNotNone(status, f'prewarm wrapper process did not exit. Screen contents: {pty.screen_contents()}')
-            if isinstance(exit_code, signal.Signals):
-                self.assertTrue(os.WIFSIGNALED(status), 'prewarm wrapper did not die with a signal')
-                self.assertEqual(os.WTERMSIG(status), exit_code.value)
-            else:
-                with suppress(AttributeError):
-                    self.assertEqual(os.waitstatus_to_exitcode(status), exit_code, pty.screen_contents())
-
-        if not self.is_ci:  # signal delivery tests are pretty flakey on CI so give up on them
-            with self.subTest(msg='test SIGINT via signal to wrapper'):
-                pty = self.create_pty(
-                    argv=[kitty_exe(), '+runpy', src + 'socket_child_main(initial_print="child ready:")'], cols=cols, env=env, cwd=cwd)
-                pty.wait_till(lambda: 'child ready:' in pty.screen_contents())
-                os.kill(pty.child_pid, signal.SIGINT)
-                pty.wait_till(lambda: 'KeyboardInterrupt' in pty.screen_contents())
-                wait_for_death(signal.SIGINT)
-
-            with self.subTest(msg='test SIGINT via Ctrl-c'):
-                pty = self.create_pty(
-                    argv=[kitty_exe(), '+runpy', src + 'socket_child_main(initial_print="child ready:")'], cols=cols, env=env, cwd=cwd)
-                pty.wait_till(lambda: 'child ready:' in pty.screen_contents())
-                pty.write_to_child('\x03', flush=True)
-                pty.wait_till(lambda: 'KeyboardInterrupt' in pty.screen_contents())
-                wait_for_death(signal.SIGINT)
-
-            with self.subTest(msg='test SIGTSTP via Ctrl-z'):
-                pty = self.create_pty(
-                    argv=[kitty_exe(), '+runpy', src + 'socket_child_main(initial_print="child ready:")'], cols=cols, env=env, cwd=cwd)
-                pty.wait_till(lambda: 'child ready:' in pty.screen_contents())
-                pty.write_to_child('\x1a', flush=True)
-                pty.wait_till(lambda: 'SIGTSTP received' in pty.screen_contents())
-                wait_for_death(19)
-
-            with self.subTest(msg='test SIGWINCH handling'):
-                pty = self.create_pty(
-                    argv=[kitty_exe(), '+runpy', src + 'socket_child_main(initial_print="child ready:")'], cols=cols, env=env, cwd=cwd)
-                pty.wait_till(lambda: 'child ready:' in pty.screen_contents())
-                pty.set_window_size(columns=cols + 3)
-                pty.wait_till(lambda: f'Screen size changed: {cols + 3}' in pty.screen_contents())
-                os.close(pty.master_fd)
-
-        with self.subTest(msg='test env rewrite'):
-            pty = self.create_pty(
-                argv=[kitty_exe(), '+runpy', src + 'socket_child_main(initial_print="child ready:")'], cols=cols, env=env, cwd=cwd)
-            pty.wait_till(lambda: 'child ready:' in pty.screen_contents())
-            from kitty.child import environ_of_process
-            self.assertIn('/', environ_of_process(pty.child_pid).get('KITTY_PREWARM_SOCKET_REAL_TTY', ''))
-            os.close(pty.master_fd)
-
-        with self.subTest(msg='test passing of data via cwd, env vars and stdin/stdout redirection'):
-            stdin_r, stdin_w = os.pipe()
-            os.set_inheritable(stdin_w, False)
-            stdout_r, stdout_w = os.pipe()
-            os.set_inheritable(stdout_r, False)
-            pty = self.create_pty(
-                argv=[kitty_exe(), '+runpy', src + f'socket_child_main({exit_code})'], cols=cols, env=env, cwd=cwd,
-                stdin_fd=stdin_r, stdout_fd=stdout_w)
-            stdin_data = 'testing--stdin-read'
-            with open(stdin_w, 'w') as f:
-                f.write(stdin_data)
-
-            def has_json():
-                s = pty.screen_contents().strip()
-                return 'hello' in s and s.endswith('}')
-
-            pty.wait_till(has_json)
-            wait_for_death(exit_code)
-            output = json.loads(pty.screen_contents().strip())
-            self.assertEqual(output['test_env'], env['TEST_ENV_PASS'])
-            self.assertEqual(output['cwd'], cwd)
-            self.assertEqual(output['font_family'], 'prewarm')
-            self.assertEqual(output['cols'], cols)
-            self.assertEqual(output['stdin_data'], stdin_data)
-            with open(stdout_r) as f:
-                stdout_data = f.read()
-            self.assertEqual(stdout_data, 'testing stdout')
 
     def test_prewarming(self):
         from kitty.prewarm import fork_prewarm_process
