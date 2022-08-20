@@ -10,7 +10,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
 	runewidth "github.com/mattn/go-runewidth"
 	"github.com/spf13/cobra"
@@ -75,17 +74,42 @@ func ChoicesP(flags *pflag.FlagSet, name string, short string, usage string, cho
 }
 
 var stdout_is_terminal = false
-var title_fmt = color.New(color.FgBlue, color.Bold).SprintFunc()
-var exe_fmt = color.New(color.FgYellow, color.Bold).SprintFunc()
-var opt_fmt = color.New(color.FgGreen).SprintFunc()
-var italic_fmt = color.New(color.Italic).SprintFunc()
-var err_fmt = color.New(color.FgHiRed).SprintFunc()
-var bold_fmt = color.New(color.Bold).SprintFunc()
-var code_fmt = color.New(color.FgCyan).SprintFunc()
-var cyan_fmt = color.New(color.FgCyan).SprintFunc()
-var yellow_fmt = color.New(color.FgYellow).SprintFunc()
-var blue_fmt = color.New(color.FgBlue).SprintFunc()
-var green_fmt = color.New(color.FgGreen).SprintFunc()
+
+func surrounder(start int, end int) func(string) string {
+	return func(text string) string {
+		if stdout_is_terminal {
+			return fmt.Sprintf("\033[%dm%s\033[%dm", start, text, end)
+		}
+		return text
+	}
+}
+
+func compose_surrounders(surrounders ...func(string) string) func(string) string {
+	return func(text string) string {
+		if stdout_is_terminal {
+			for _, surrounder := range surrounders {
+				text = surrounder(text)
+			}
+		}
+		return text
+	}
+}
+
+var (
+	emph_fmt       = surrounder(91, 39)
+	cyan_fmt       = surrounder(96, 39)
+	green_fmt      = surrounder(32, 39)
+	blue_fmt       = surrounder(34, 39)
+	bright_red_fmt = surrounder(91, 39)
+	yellow_fmt     = surrounder(93, 39)
+	italic_fmt     = surrounder(3, 23)
+	bold_fmt       = surrounder(1, 22)
+	title_fmt      = compose_surrounders(blue_fmt, bold_fmt)
+	exe_fmt        = compose_surrounders(yellow_fmt, bold_fmt)
+	opt_fmt        = green_fmt
+	err_fmt        = compose_surrounders(bright_red_fmt, bold_fmt)
+	code_fmt       = cyan_fmt
+)
 
 func format_line_with_indent(output io.Writer, text string, indent string, screen_width int) {
 	trimmed := strings.TrimSpace(text)
