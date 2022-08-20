@@ -53,9 +53,10 @@ kitty API to use with kittens
 -------------------------------
 
 Kittens have full access to internal kitty APIs. However these are neither
-entirely stable nor documented. You can instead use the kitty :doc:`Remote
-control API </remote-control>`. Simply call :code:`boss.remote_control`, with
-the same arguments you would pass to ``kitty @ ``. For example:
+entirely stable nor documented. You can instead use the kitty
+:doc:`Remote control API </remote-control>`. Simply call
+:code:`boss.call_remote_control()`, with the same arguments you
+would pass to ``kitty @``. For example:
 
 .. code-block:: python
 
@@ -63,7 +64,7 @@ the same arguments you would pass to ``kitty @ ``. For example:
         # get the kitty window to which to send text
         w = boss.window_id_map.get(target_window_id)
         if w is not None:
-            boss.call_remote_control(w, ('send-text', 'some text'))
+            boss.call_remote_control(w, ('send-text', 'hello world'))
 
 
 
