@@ -123,6 +123,7 @@ The full list of actions that can be mapped to key presses is available
 ==================================  =======================
 Action                              Shortcut
 ==================================  =======================
+Show this help                      :sc:`show_kitty_doc`
 Copy to clipboard                   :sc:`copy_to_clipboard` (also :kbd:`⌘+c` on macOS)
 Paste from clipboard                :sc:`paste_from_clipboard` (also :kbd:`⌘+v` on macOS)
 Paste from selection                :sc:`paste_from_selection`
