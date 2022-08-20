@@ -56,7 +56,7 @@ def resolve_ref(ref: str, website_url: Callable[[str], str] = website_url) -> st
     m = ref_map()
     href = m['ref'].get(ref, '')
     if href:
-        return href
+        return website_url(href)
     if ref.startswith('conf-kitty-'):
         href = f'{website_url("conf")}#{ref}'
     elif ref.startswith('conf-kitten-'):
