@@ -149,7 +149,7 @@ def kbd(x: str) -> str:
 
 @role
 def env(x: str) -> str:
-    return italic(x)
+    return ref_hyperlink(x, 'envvar-')
 
 
 role_map['envvar'] = role_map['env']

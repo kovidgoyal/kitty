@@ -70,8 +70,8 @@ def resolve_ref(ref: str, website_url: Callable[[str], str] = website_url) -> st
     elif ref.startswith('action-'):
         frag = ref.partition('-')[-1].replace('_', '-')
         href = f'actions/#{frag}'
-    elif ref.startswith('term-'):
-        href = 'glossary/#term-' + ref.partition('-')[-1]
+    elif ref.startswith('term-') or ref.startswith('envvar-'):
+        href = 'glossary/#' + ref
     return website_url(href)
 
 
