@@ -133,14 +133,13 @@ def code(x: str) -> str:
 
 
 def text_and_target(x: str) -> Tuple[str, str]:
-    parts = x.split('<')
+    parts = x.split('<', 1)
     return parts[0].strip(), parts[-1].rstrip('>')
 
 
 @role
 def term(x: str) -> str:
-    t, q = text_and_target(x)
-    return italic(t)
+    return ref_hyperlink(x, 'term-')
 
 
 @role

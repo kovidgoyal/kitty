@@ -264,7 +264,7 @@ specified. See :opt:`window_logo_position`.
 type=float
 default=-1
 The amount the window logo should be faded into the background. Only takes
-effect if :option:`--logo` is specified. See :opt:`window_logo_position`.
+effect if :option:`--logo` is specified. See :opt:`window_logo_alpha`.
 
 
 --color
