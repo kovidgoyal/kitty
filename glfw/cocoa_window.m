@@ -29,6 +29,7 @@
 #include "internal.h"
 #include "../kitty/monotonic.h"
 
+#include <Availability.h>
 #include <float.h>
 #include <string.h>
 
@@ -1551,10 +1552,14 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     return NO;
 }
 
+#if (TARGET_OS_OSX && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400)
+
 - (NSAccessibilityRole)accessibilityRole
 {
     return NSAccessibilityTextAreaRole;
 }
+
+#endif
 
 - (NSString *)accessibilitySelectedText
 {
