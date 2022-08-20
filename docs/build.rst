@@ -180,8 +180,11 @@ You should probably split |kitty| into three packages:
 :code:`kitty`
     Installs the main program
 
-This allows users to install the terminfo and shell integration files on servers
-into which they ssh, without needing to install all of |kitty|.
+This allows users to install the terminfo and shell integration files on
+servers into which they ssh, without needing to install all of |kitty|. The
+shell integration files **must** still be present in
+:file:`lib/kitty/shell-integration` when installing the kitty main package as
+the kitty program expects to find them there.
 
 .. note::
    You need a couple of extra dependencies to build linux-package. :file:`tic`
@@ -200,17 +203,10 @@ Building docs
 
 |kitty|'s documentation is built via `Sphinx <https://www.sphinx-doc.org/en/master/>`_.
 
-On Ubuntu Linux 22.04, these system packages need to be installed:
+To install the dependencies needed for the documentation, run::
 
-* ``python3-sphinx``
-* ``python3-sphinxext-opengraph``
-* ``python3-sphinx-copybutton``
+    python -m pip docs/requirements.txt
 
-As well as these PyPI (``pip``) packages (e.g. via ``pip install --user``):
-
-* ``sphinx_inline_tabs``
-* ``furo`` (a Sphinx theme)
-
-The command is then::
+To build the docs, use::
 
     make docs
