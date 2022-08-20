@@ -1071,11 +1071,14 @@ def safer_fork() -> int:
     return pid
 
 
-def docs_url(which: str = '', local_docs_root: str = '') -> str:
+def docs_url(which: str = '', local_docs_root: Optional[str] = '') -> str:
     from urllib.parse import quote
     from .constants import local_docs, website_url
     from .conf.types import resolve_ref
-    ld = local_docs_root or local_docs()
+    if local_docs_root is None:
+        ld = ''
+    else:
+        ld = local_docs_root or local_docs()
     base, frag = which.partition('#')[::2]
     base = base.strip('/')
     if frag.startswith('ref='):

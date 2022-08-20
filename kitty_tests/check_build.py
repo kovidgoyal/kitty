@@ -77,18 +77,23 @@ class TestBuild(BaseTest):
 
     def test_docs_url(self):
         from kitty.utils import docs_url
-        p = partial(docs_url, local_docs_root='/docs')
+        from kitty.constants import website_url
 
-        def t(x, e):
-            self.ae(p(x), 'file:///docs/' + e)
-        t('', 'index.html')
-        t('conf', 'conf.html')
-        t('kittens/ssh#frag', 'kittens/ssh.html#frag')
-        t('#ref=confloc', 'conf.html#confloc')
-        t('#ref=conf-kitty-fonts', 'conf.html#conf-kitty-fonts')
-        t('#ref=conf-kitten-ssh-xxx', 'kittens/ssh.html#conf-kitten-ssh-xxx')
-        t('#ref=at_close_tab', 'remote-control.html#at_close-tab')
-        t('#ref=action-copy', 'actions.html#copy')
+        def run_tests(p, base, suffix='.html'):
+            def t(x, e):
+                self.ae(p(x), base + e)
+            t('', 'index.html' if suffix == '.html' else '')
+            t('conf', f'conf{suffix}')
+            t('kittens/ssh#frag', f'kittens/ssh{suffix}#frag')
+            t('#ref=confloc', f'conf{suffix}#confloc')
+            t('#ref=conf-kitty-fonts', f'conf{suffix}#conf-kitty-fonts')
+            t('#ref=conf-kitten-ssh-xxx', f'kittens/ssh{suffix}#conf-kitten-ssh-xxx')
+            t('#ref=at_close_tab', f'remote-control{suffix}#at_close-tab')
+            t('#ref=action-copy', f'actions{suffix}#copy')
+
+        run_tests(partial(docs_url, local_docs_root='/docs'), 'file:///docs/')
+        w = website_url()
+        run_tests(partial(docs_url, local_docs_root=None), w, '/')
 
 
 def main() -> None:

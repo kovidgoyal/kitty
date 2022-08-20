@@ -230,12 +230,14 @@ def read_kitty_resource(name: str, package_name: str = 'kitty') -> bytes:
     return read_binary(package_name, name)
 
 
-def website_url(doc_name: str = '') -> str:
+def website_url(doc_name: str = '', website: str = 'https://sw.kovidgoyal.net/kitty/') -> str:
     if doc_name:
-        doc_name = doc_name.rstrip('/')
-        if doc_name:
-            doc_name += '/'
-    return f'https://sw.kovidgoyal.net/kitty/{doc_name}'
+        base, _, frag = doc_name.partition('#')
+        base = base.rstrip('/')
+        if base:
+            base += '/'
+        doc_name = base + (f'#{frag}' if frag else '')
+    return website + doc_name
 
 
 handled_signals: Set[int] = set()

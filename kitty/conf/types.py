@@ -56,21 +56,21 @@ def resolve_ref(ref: str, website_url: Callable[[str], str] = website_url) -> st
     m = ref_map()
     href = m['ref'].get(ref, '')
     if href:
-        return website_url(href)
-    if ref.startswith('conf-kitty-'):
-        href = f'{website_url("conf")}#{ref}'
+        pass
+    elif ref.startswith('conf-kitty-'):
+        href = f'conf#{ref}'
     elif ref.startswith('conf-kitten-'):
         parts = ref.split('-')
-        href = website_url("kittens/" + parts[2] + f'#{ref}')
+        href = "kittens/" + parts[2] + f'/#{ref}'
     elif ref.startswith('at_'):
         base = ref.split('_', 1)[1]
-        href = website_url("remote-control/#at_" + base.replace('_', '-'))
+        href = "remote-control/#at_" + base.replace('_', '-')
     elif ref.startswith('action-group-'):
-        href = f'{website_url("actions")}#{ref}'
+        href = f'actions/#{ref}'
     elif ref.startswith('action-'):
         frag = ref.partition('-')[-1].replace('_', '-')
-        href = f'{website_url("actions")}#{frag}'
-    return href
+        href = f'actions/#{frag}'
+    return website_url(href)
 
 
 def remove_markup(text: str) -> str:
