@@ -57,16 +57,19 @@ def resolve_ref(ref: str, website_url: Callable[[str], str] = website_url) -> st
     href = m['ref'].get(ref, '')
     if href:
         return href
-    if ref.startswith('conf-'):
-        base = 'generated/' + ref.rpartition('-')[0]
-        href = f'{website_url(base)}#{ref}'
+    if ref.startswith('conf-kitty-'):
+        href = f'{website_url("conf")}#{ref}'
+    elif ref.startswith('conf-kitten-'):
+        parts = ref.split('-')
+        href = website_url("kittens/" + parts[2] + f'#{ref}')
     elif ref.startswith('at_'):
-        href = f'{website_url("generated/cli-kitty-at")}#{ref}'
+        base = ref.split('_', 1)[1]
+        href = website_url("remote-control/#at_" + base.replace('_', '-'))
     elif ref.startswith('action-group-'):
-        href = f'{website_url("generated/actions")}#{ref}'
+        href = f'{website_url("actions")}#{ref}'
     elif ref.startswith('action-'):
         frag = ref.partition('-')[-1].replace('_', '-')
-        href = f'{website_url("generated/actions")}#{frag}'
+        href = f'{website_url("actions")}#{frag}'
     return href
 
 

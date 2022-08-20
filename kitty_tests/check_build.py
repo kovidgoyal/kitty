@@ -78,10 +78,17 @@ class TestBuild(BaseTest):
     def test_docs_url(self):
         from kitty.utils import docs_url
         p = partial(docs_url, local_docs_root='/docs')
-        self.ae(p(), 'file:///docs/index.html')
-        self.ae(p('conf'), 'file:///docs/conf.html')
-        self.ae(p('kittens/ssh#frag'), 'file:///docs/kittens/ssh.html#frag')
-        self.ae(p('#ref=confloc'), 'file:///docs/conf.html#confloc')
+
+        def t(x, e):
+            self.ae(p(x), 'file:///docs/' + e)
+        t('', 'index.html')
+        t('conf', 'conf.html')
+        t('kittens/ssh#frag', 'kittens/ssh.html#frag')
+        t('#ref=confloc', 'conf.html#confloc')
+        t('#ref=conf-kitty-fonts', 'conf.html#conf-kitty-fonts')
+        t('#ref=conf-kitten-ssh-xxx', 'kittens/ssh.html#conf-kitten-ssh-xxx')
+        t('#ref=at_close_tab', 'remote-control.html#at_close-tab')
+        t('#ref=action-copy', 'actions.html#copy')
 
 
 def main() -> None:
