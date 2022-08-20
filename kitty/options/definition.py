@@ -3806,6 +3806,9 @@ shortcuts. For a full description see :doc:`hints kitten </kittens/hints>`.
 # shortcuts.misc {{{
 agr('shortcuts.misc', 'Miscellaneous')
 
+map('Show documentation',
+    'show_kitty_doc kitty_mod+f1 show_kitty_doc overview')
+
 map('Toggle fullscreen',
     'toggle_fullscreen kitty_mod+f11 toggle_fullscreen',
     )

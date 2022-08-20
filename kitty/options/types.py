@@ -861,6 +861,8 @@ defaults.map = [
     KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=110),), definition='kitten hints --type linenum'),  # noqa
     # open_selected_hyperlink
     KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=121),), definition='kitten hints --type hyperlink'),  # noqa
+    # show_kitty_doc
+    KeyDefinition(trigger=SingleKey(mods=256, key=57364), definition='show_kitty_doc overview'),  # noqa
     # toggle_fullscreen
     KeyDefinition(trigger=SingleKey(mods=256, key=57374), definition='toggle_fullscreen'),  # noqa
     # toggle_maximized
