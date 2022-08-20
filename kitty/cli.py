@@ -15,6 +15,7 @@ from .conf.utils import resolve_config
 from .constants import (
     appname, clear_handled_signals, defconf, is_macos, str_version, website_url
 )
+from .fast_data_types import wcswidth
 from .options.types import Options as KittyOpts
 from .types import run_once
 from .typing import BadLineType, TypedDict
@@ -309,36 +310,56 @@ def version(add_rev: bool = False) -> str:
 
 
 def wrap(text: str, limit: int = 80) -> Iterator[str]:
-    NORMAL, IN_FORMAT = 'NORMAL', 'IN_FORMAT'
-    state = NORMAL
-    last_space_at = None
-    chars_in_line = 0
-    breaks = []
-    for i, ch in enumerate(text):
-        if state is IN_FORMAT:
-            if ch == 'm':
-                state = NORMAL
-            continue
-        if ch == '\033':
-            state = IN_FORMAT
-            continue
-        if ch == ' ':
-            last_space_at = i
-        if chars_in_line < limit:
-            chars_in_line += 1
-            continue
-        if last_space_at is not None:
-            breaks.append(last_space_at)
-            last_space_at = None
-            chars_in_line = i - breaks[-1]
+    if not text.strip():
+        yield ''
+        return
+    in_escape = 0
+    current_line: List[str] = []
+    escapes: List[str] = []
+    current_word: List[str] = []
+    current_line_length = 0
 
-    lines: List[str] = []
-    for b in reversed(breaks):
-        lines.append(text[b:].lstrip())
-        text = text[:b]
-    if text:
-        lines.append(text)
-    return reversed(lines)
+    def print_word(ch: str = '') -> Iterator[str]:
+        nonlocal current_word, current_line, escapes, current_line_length
+        cw = ''.join(current_word)
+        w = wcswidth(cw)
+        if current_line_length + w > limit:
+            yield ''.join(current_line)
+            current_line = []
+            current_line_length = 0
+            cw = cw.strip()
+            current_word = [cw]
+        if escapes:
+            current_line.append(''.join(escapes))
+            escapes = []
+        if current_word:
+            current_line.append(cw)
+            current_line_length += w
+            current_word = []
+        if ch:
+            current_word.append(ch)
+
+    for i, ch in enumerate(text):
+        if in_escape > 0:
+            if in_escape == 1 and ch in '[]':
+                in_escape = 2 if ch == '[' else 3
+            if (in_escape == 2 and ch == 'm') or (in_escape == 3 and ch == '\\' and text[i-1] == '\x1b'):
+                in_escape = 0
+            escapes.append(ch)
+            continue
+        if ch == '\x1b':
+            in_escape = 1
+            if current_word:
+                yield from print_word()
+            escapes.append(ch)
+            continue
+        if current_word and ch.isspace() and ch != '\xa0':
+            yield from print_word(ch)
+        else:
+            current_word.append(ch)
+    yield from print_word()
+    if current_line:
+        yield ''.join(current_line)
 
 
 def get_defaults_from_seq(seq: OptionSpecSeq) -> Dict[str, Any]:
@@ -379,10 +400,7 @@ class PrintHelpForSeq:
             j = '\n' + (' ' * indent)
             lines: List[str] = []
             for ln in text.splitlines():
-                if ln:
-                    lines.extend(wrap(ln, limit=linesz - indent))
-                else:
-                    lines.append('')
+                lines.extend(wrap(ln, limit=linesz - indent))
             a((' ' * leading_indent) + j.join(lines))
 
         usage = '[program-to-run ...]' if usage is None else usage
