@@ -625,7 +625,7 @@ class Window:
         )
 
     def serialize_state(self) -> Dict[str, Any]:
-        return {
+        ans = {
             'version': 1,
             'id': self.id,
             'child_title': self.child_title,
@@ -640,6 +640,9 @@ class Window:
             'margin': self.margin.serialize(),
             'padding': self.padding.serialize(),
         }
+        if self.window_custom_type:
+            ans['window_custom_type'] = self.window_custom_type
+        return ans
 
     @property
     def current_colors(self) -> Dict[str, Optional[int]]:
