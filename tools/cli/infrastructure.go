@@ -254,9 +254,9 @@ func prettify(text string) string {
 			}
 			return italic_fmt(val)
 		case "env", "envvar":
-			return italic_fmt(val)
+			return ref_hyperlink(val, "envvar-")
 		case "doc":
-			return website_url(val)
+			return ref_hyperlink(val, "doc-")
 		case "ref":
 			return ref_hyperlink(val, "")
 		case "ac":
