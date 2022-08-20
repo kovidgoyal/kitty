@@ -12,8 +12,8 @@ from functools import partial
 from gettext import gettext as _
 from time import monotonic
 from typing import (
-    Any, Callable, Container, Dict, Iterable, Iterator, List, Optional, Set,
-    Tuple, Union
+    TYPE_CHECKING, Any, Callable, Container, Dict, Iterable, Iterator, List,
+    Optional, Set, Tuple, Union
 )
 from weakref import WeakValueDictionary
 
@@ -66,6 +66,9 @@ from .utils import (
     single_instance, startup_notification_handler, which
 )
 from .window import CommandOutput, CwdRequest, Window
+
+if TYPE_CHECKING:
+    from .rc.base import ResponseType
 
 RCResponse = Union[Dict[str, Any], None, AsyncResponse]
 
@@ -563,6 +566,14 @@ class Boss:
         See :ref:`rc_mapping` for details.
         ''')
     def remote_control(self, *args: str) -> None:
+        try:
+            self.call_remote_control(self.active_window, args)
+        except (Exception, SystemExit):
+            import traceback
+            tb = traceback.format_exc()
+            self.show_error(_('remote_control mapping failed'), tb)
+
+    def call_remote_control(self, active_window: Optional[Window], args: Tuple[str, ...]) -> 'ResponseType':
         from .rc.base import (
             PayloadGetter, command_for_name, parse_subcommand_cli
         )
@@ -570,21 +581,20 @@ class Boss:
         try:
             global_opts, items = parse_rc_args(['@'] + list(args))
             if not items:
-                return
+                return None
             cmd = items[0]
             c = command_for_name(cmd)
             opts, items = parse_subcommand_cli(c, items)
             payload = c.message_to_kitty(global_opts, opts, items)
-            import types
-            if isinstance(payload, types.GeneratorType):
-                for x in payload:
-                    c.response_from_kitty(self, self.active_window, PayloadGetter(c, x if isinstance(x, dict) else {}))
-            else:
-                c.response_from_kitty(self, self.active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
-        except (Exception, SystemExit):
-            import traceback
-            tb = traceback.format_exc()
-            self.show_error(_('remote_control mapping failed'), tb)
+        except SystemExit as e:
+            raise Exception(str(e)) from e
+        import types
+        if isinstance(payload, types.GeneratorType):
+            for x in payload:
+                c.response_from_kitty(self, active_window, PayloadGetter(c, x if isinstance(x, dict) else {}))
+        else:
+            return c.response_from_kitty(self, active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
+        return None
 
     def peer_message_received(self, msg_bytes: bytes, peer_id: int) -> Union[bytes, bool, None]:
         cmd_prefix = b'\x1bP@kitty-cmd'

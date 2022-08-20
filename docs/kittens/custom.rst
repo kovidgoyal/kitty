@@ -49,6 +49,23 @@ kittens. Look in the `kittens sub-directory
 code for those. Or see below for a list of :ref:`third-party kittens
 <external_kittens>`, that other kitty users have created.
 
+kitty API to use with kittens
+-------------------------------
+
+Kittens have full access to internal kitty APIs. However these are neither
+entirely stable nor documented. You can instead use the kitty :doc:`Remote
+control API </remote-control>`. Simply call :code:`boss.remote_control`, with
+the same arguments you would pass to ``kitty @ ``. For example:
+
+.. code-block:: python
+
+    def handle_result(args: List[str], answer: str, target_window_id: int, boss: Boss) -> None:
+        # get the kitty window to which to send text
+        w = boss.window_id_map.get(target_window_id)
+        if w is not None:
+            boss.call_remote_control(w, ('send-text', 'some text'))
+
+
 
 Passing arguments to kittens
 ------------------------------
