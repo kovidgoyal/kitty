@@ -592,9 +592,8 @@ class Boss:
         if isinstance(payload, types.GeneratorType):
             for x in payload:
                 c.response_from_kitty(self, active_window, PayloadGetter(c, x if isinstance(x, dict) else {}))
-        else:
-            return c.response_from_kitty(self, active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
-        return None
+            return None
+        return c.response_from_kitty(self, active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
 
     def peer_message_received(self, msg_bytes: bytes, peer_id: int) -> Union[bytes, bool, None]:
         cmd_prefix = b'\x1bP@kitty-cmd'
