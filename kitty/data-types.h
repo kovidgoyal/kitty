@@ -172,14 +172,22 @@ typedef struct {
     sprite_index sprite_x, sprite_y, sprite_z;
     CellAttrs attrs;
 } GPUCell;
+#ifdef IS_FREEBSD
+_Static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");
+#else
 static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");
+#endif
 
 typedef struct {
     char_type ch;
     hyperlink_id_type hyperlink_id;
     combining_type cc_idx[3];
 } CPUCell;
+#ifdef IS_FREEBSD
+_Static_assert(sizeof(CPUCell) == 12, "Fix the ordering of CPUCell");
+#else
 static_assert(sizeof(CPUCell) == 12, "Fix the ordering of CPUCell");
+#endif
 
 typedef enum { UNKNOWN_PROMPT_KIND = 0, PROMPT_START = 1, SECONDARY_PROMPT = 2, OUTPUT_START = 3 } PromptKind;
 typedef union LineAttrs {

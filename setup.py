@@ -437,6 +437,8 @@ def kitty_env() -> Env:
     ans = env.copy()
     cflags = ans.cflags
     cflags.append('-pthread')
+    if is_freebsd:
+        cflags.append('-DIS_FREEBSD')
     # We add 4000 to the primary version because vim turns on SGR mouse mode
     # automatically if this version is high enough
     libcrypto_cflags, libcrypto_ldflags = libcrypto_flags()
