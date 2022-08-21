@@ -14,20 +14,13 @@ import (
 	"github.com/mattn/go-runewidth"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"golang.org/x/sys/unix"
+	"golang.org/x/term"
 
 	"kitty"
 	"kitty/tools/utils"
 )
 
 var RootCmd *cobra.Command
-
-func GetTTYSize() (*unix.Winsize, error) {
-	if stdout_is_terminal {
-		return unix.IoctlGetWinsize(int(os.Stdout.Fd()), unix.TIOCGWINSZ)
-	}
-	return nil, fmt.Errorf("STDOUT is not a TTY")
-}
 
 func key_in_slice(vals []string, key string) bool {
 	for _, q := range vals {
@@ -333,12 +326,14 @@ func full_command_name(cmd *cobra.Command) string {
 }
 
 func show_usage(cmd *cobra.Command, use_pager bool) error {
-	ws, tty_size_err := GetTTYSize()
-	var output strings.Builder
 	screen_width := 80
-	if tty_size_err == nil && ws.Col < 80 {
-		screen_width = int(ws.Col)
+	if stdout_is_terminal {
+		screen_width, _, tty_size_err := term.GetSize(int(os.Stdout.Fd()))
+		if tty_size_err != nil || screen_width > 80 {
+			screen_width = 80
+		}
 	}
+	var output strings.Builder
 	use := cmd.Use
 	idx := strings.Index(use, " ")
 	if idx > -1 {
