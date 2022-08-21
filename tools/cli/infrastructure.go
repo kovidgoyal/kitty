@@ -14,7 +14,7 @@ import (
 	"github.com/mattn/go-runewidth"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"golang.org/x/term"
+	"golang.org/x/sys/unix"
 
 	"kitty"
 	"kitty/tools/utils"
@@ -328,9 +328,16 @@ func full_command_name(cmd *cobra.Command) string {
 func show_usage(cmd *cobra.Command, use_pager bool) error {
 	screen_width := 80
 	if stdout_is_terminal {
-		screen_width, _, tty_size_err := term.GetSize(int(os.Stdout.Fd()))
-		if tty_size_err != nil || screen_width > 80 {
-			screen_width = 80
+		var sz *unix.Winsize
+		var tty_size_err error
+		for {
+			sz, tty_size_err = unix.IoctlGetWinsize(int(os.Stdout.Fd()), unix.TIOCGWINSZ)
+			if tty_size_err != unix.EINTR {
+				break
+			}
+		}
+		if tty_size_err == nil && sz.Col < 80 {
+			screen_width = int(sz.Col)
 		}
 	}
 	var output strings.Builder
