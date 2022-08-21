@@ -163,18 +163,36 @@ func (self *Term) SetReadTimeout(d time.Duration) (err error) {
 	return
 }
 
+func Pselect(nfd int, r *unix.FdSet, w *unix.FdSet, e *unix.FdSet, timeout time.Duration, sigmask *unix.Sigset_t) (n int, err error) {
+	deadline := time.Now().Add(timeout)
+	for {
+		t := deadline.Sub(time.Now())
+		if t < 0 {
+			t = 0
+		}
+		ts := NsecToTimespec(t)
+		q, qerr := unix.Pselect(nfd, r, w, w, &ts, sigmask)
+		if qerr == unix.EINTR {
+			if time.Now().After(deadline) {
+				return 0, os.ErrDeadlineExceeded
+			}
+			continue
+		}
+		return q, qerr
+	}
+}
+
 func (self *Term) ReadWithTimeout(b []byte, d time.Duration) (n int, err error) {
-	tv := NsecToTimespec(d)
 	var read, write, in_err unix.FdSet
 	pselect := func() (int, error) {
 		read.Zero()
 		write.Zero()
 		in_err.Zero()
 		read.Set(self.fd)
-		return unix.Pselect(self.fd+1, &read, &write, &in_err, &tv, nil)
+		return Pselect(self.fd+1, &read, &write, &in_err, d, nil)
 	}
 	for {
-		num_ready, qerr := eintr_retry_intret(pselect)
+		num_ready, qerr := pselect()
 		if qerr != nil {
 			err = qerr
 			return
@@ -242,13 +260,12 @@ func (self *Term) WriteAllWithTimeout(b []byte, d time.Duration) (n int, err err
 	var read, write, in_err unix.FdSet
 	var num_ready int
 	n = len(b)
-	sysnv := NsecToTimespec(d)
 	pselect := func() (int, error) {
 		write.Zero()
 		read.Zero()
 		in_err.Zero()
 		write.Set(self.fd)
-		return unix.Pselect(self.fd+1, &read, &write, &in_err, &sysnv, nil)
+		return Pselect(self.fd+1, &read, &write, &in_err, d, nil)
 	}
 	for {
 		if len(b) == 0 {
