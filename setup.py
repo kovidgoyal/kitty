@@ -897,6 +897,8 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
 
 
 def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False) -> None:
+    sys.stdout.flush()
+    sys.stderr.flush()
     go = shutil.which('go')
     if not go:
         raise SystemExit('The go tool was not found on this system. Install Go')
