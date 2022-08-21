@@ -163,25 +163,6 @@ func (self *Term) SetReadTimeout(d time.Duration) (err error) {
 	return
 }
 
-func Pselect(nfd int, r *unix.FdSet, w *unix.FdSet, e *unix.FdSet, timeout time.Duration, sigmask *unix.Sigset_t) (n int, err error) {
-	deadline := time.Now().Add(timeout)
-	for {
-		t := deadline.Sub(time.Now())
-		if t < 0 {
-			t = 0
-		}
-		ts := NsecToTimespec(t)
-		q, qerr := unix.Pselect(nfd, r, w, w, &ts, sigmask)
-		if qerr == unix.EINTR {
-			if time.Now().After(deadline) {
-				return 0, os.ErrDeadlineExceeded
-			}
-			continue
-		}
-		return q, qerr
-	}
-}
-
 func (self *Term) ReadWithTimeout(b []byte, d time.Duration) (n int, err error) {
 	var read, write, in_err unix.FdSet
 	pselect := func() (int, error) {
@@ -189,21 +170,16 @@ func (self *Term) ReadWithTimeout(b []byte, d time.Duration) (n int, err error) 
 		write.Zero()
 		in_err.Zero()
 		read.Set(self.fd)
-		return Pselect(self.fd+1, &read, &write, &in_err, d, nil)
+		return Select(self.fd+1, &read, &write, &in_err, d)
 	}
-	for {
-		num_ready, qerr := pselect()
-		if qerr != nil {
-			err = qerr
-			return
-		}
-		if num_ready == 0 {
-			err = os.ErrDeadlineExceeded
-			return
-		}
-		break
+	num_ready, err := pselect()
+	if err != nil {
+		return
 	}
-
+	if num_ready == 0 {
+		err = os.ErrDeadlineExceeded
+		return
+	}
 	return self.Read(b)
 }
 
@@ -240,6 +216,11 @@ func NsecToTimespec(d time.Duration) unix.Timespec {
 	return unix.Timespec{Sec: nv.Sec, Nsec: nv.Nsec}
 }
 
+func NsecToTimeval(d time.Duration) unix.Timeval {
+	nv := syscall.NsecToTimeval(int64(d))
+	return unix.Timeval{Sec: nv.Sec, Usec: nv.Usec}
+}
+
 func (self *Term) DebugPrintln(a ...interface{}) {
 	msg := []byte(fmt.Sprintln(a...))
 	for i := 0; i < len(msg); i += 256 {
@@ -265,7 +246,7 @@ func (self *Term) WriteAllWithTimeout(b []byte, d time.Duration) (n int, err err
 		read.Zero()
 		in_err.Zero()
 		write.Set(self.fd)
-		return Pselect(self.fd+1, &read, &write, &in_err, d, nil)
+		return Select(self.fd+1, &read, &write, &in_err, d)
 	}
 	for {
 		if len(b) == 0 {
