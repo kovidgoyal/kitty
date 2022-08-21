@@ -302,3 +302,12 @@ func (self *Term) WriteFromReader(r Reader, read_timeout time.Duration, write_ti
 		buf = buf[:0]
 	}
 }
+
+func (self *Term) GetSize() (*unix.Winsize, error) {
+	for {
+		sz, err := unix.IoctlGetWinsize(self.fd, unix.TIOCGWINSZ)
+		if err != unix.EINTR {
+			return sz, err
+		}
+	}
+}
