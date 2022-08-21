@@ -1,13 +1,16 @@
 package utils
 
 import (
+	"encoding/base64"
 	"errors"
-	"github.com/pkg/term/termios"
-	"golang.org/x/sys/unix"
+	"fmt"
 	"io"
 	"os"
 	"syscall"
 	"time"
+
+	"github.com/pkg/term/termios"
+	"golang.org/x/sys/unix"
 )
 
 type Term struct {
@@ -132,9 +135,9 @@ func (self *Term) SetReadTimeout(d time.Duration) (err error) {
 
 func (self *Term) ReadWithTimeout(b []byte, d time.Duration) (n int, err error) {
 	var read, write, in_err unix.FdSet
-	tv := NsecToTimeval(d)
+	tv := NsecToTimespec(d)
 	read.Set(self.fd)
-	num_ready, err := unix.Select(self.fd, &read, &write, &in_err, &tv)
+	num_ready, err := unix.Pselect(self.fd+1, &read, &write, &in_err, &tv, nil)
 	if err != nil {
 		return
 	}
@@ -174,9 +177,25 @@ func (t *Term) Write(b []byte) (int, error) {
 	return n, nil
 }
 
-func NsecToTimeval(d time.Duration) unix.Timeval {
-	nv := syscall.NsecToTimeval(int64(d))
-	return unix.Timeval{Sec: nv.Sec, Usec: nv.Usec}
+func NsecToTimespec(d time.Duration) unix.Timespec {
+	nv := syscall.NsecToTimespec(int64(d))
+	return unix.Timespec{Sec: nv.Sec, Nsec: nv.Nsec}
+}
+
+func (self *Term) DebugPrintln(a ...interface{}) {
+	msg := []byte(fmt.Sprintln(a...))
+	for i := 0; i < len(msg); i += 256 {
+		end := i + 256
+		if end > len(msg) {
+			end = len(msg)
+		}
+		chunk := msg[i:end]
+		encoded := make([]byte, base64.StdEncoding.EncodedLen(len(chunk)))
+		base64.StdEncoding.Encode(encoded, chunk)
+		self.Write([]byte("\x1bP@kitty-print|"))
+		self.Write(encoded)
+		self.Write([]byte("\x1b\\"))
+	}
 }
 
 func (self *Term) WriteAllWithTimeout(b []byte, d time.Duration) (n int, err error) {
@@ -187,12 +206,12 @@ func (self *Term) WriteAllWithTimeout(b []byte, d time.Duration) (n int, err err
 		if len(b) == 0 {
 			return
 		}
-		sysnv := NsecToTimeval(d)
+		sysnv := NsecToTimespec(d)
 		read.Zero()
 		write.Zero()
 		in_err.Zero()
 		write.Set(self.fd)
-		num_ready, err = unix.Select(self.fd, &read, &write, &in_err, &sysnv)
+		num_ready, err = unix.Pselect(self.fd+1, &read, &write, &in_err, &sysnv, nil)
 		if err != nil {
 			n -= len(b)
 			return
@@ -237,6 +256,6 @@ func (self *Term) WriteFromReader(r Reader, read_timeout time.Duration, write_ti
 		if err != nil {
 			return
 		}
-
+		buf = buf[:0]
 	}
 }
