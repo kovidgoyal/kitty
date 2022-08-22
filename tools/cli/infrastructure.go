@@ -433,19 +433,31 @@ func FlagNormalizer(name string) string {
 	return strings.ReplaceAll(name, "_", "-")
 }
 
+func DisallowArgs(cmd *cobra.Command, args []string) error {
+	if cmd.HasSubCommands() {
+		if len(args) == 0 {
+			return fmt.Errorf("No sub-command specified. Use %s -h to get a list of available sub-commands", full_command_name(cmd))
+		}
+		cmd.SuggestionsMinimumDistance = 2
+		suggestions := cmd.SuggestionsFor(args[0])
+		es := "Not a valid subcommand: " + args[0]
+		trailer := fmt.Sprintf("Use %s to get a list of available sub-commands", bold_fmt(full_command_name(cmd)+" -h"))
+		if len(suggestions) > 0 {
+			es += "\nDid you mean?\n"
+			for _, s := range suggestions {
+				es += fmt.Sprintf("\t%s\n", italic_fmt(s))
+			}
+			es += trailer
+		} else {
+			es += ". " + trailer
+		}
+		return fmt.Errorf("%s", es)
+	}
+	return nil
+}
+
 func CreateCommand(cmd *cobra.Command) *cobra.Command {
 	cmd.Annotations = make(map[string]string)
-	if cmd.Run == nil && cmd.RunE == nil {
-		cmd.RunE = func(cmd *cobra.Command, args []string) error {
-			if len(cmd.Commands()) > 0 {
-				if len(args) == 0 {
-					return fmt.Errorf("No sub-command specified. Use %s -h to get a list of available sub-commands", full_command_name(cmd))
-				}
-				return fmt.Errorf("Not a valid subcommand: %s. Use %s -h to get a list of available sub-commands", args[0], full_command_name(cmd))
-			}
-			return nil
-		}
-	}
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
 	cmd.PersistentFlags().SortFlags = false
@@ -454,6 +466,12 @@ func CreateCommand(cmd *cobra.Command) *cobra.Command {
 		return pflag.NormalizedName(FlagNormalizer(name))
 	})
 	cmd.PersistentFlags().SetNormalizeFunc(cmd.Flags().GetNormalizeFunc())
+	if !cmd.Runnable() {
+		cmd.Args = DisallowArgs
+		cmd.RunE = func(cmd *cobra.Command, args []string) error {
+			return nil
+		}
+	}
 	return cmd
 }
 
