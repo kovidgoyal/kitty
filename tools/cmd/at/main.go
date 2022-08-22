@@ -132,7 +132,7 @@ func do_tty_io(tty TTYIO, input utils.Reader, no_response bool, response_timeout
 	buf := make([]byte, 0, utils.DEFAULT_IO_BUFFER_SIZE)
 
 	for !response_received {
-		buf = buf[:0]
+		buf = buf[:cap(buf)]
 		var n int
 		n, err = tty.ReadWithTimeout(buf, response_timeout)
 		if err != nil {
