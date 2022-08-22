@@ -236,6 +236,9 @@ class Option:
         a = ans.append
         if not self.documented:
             return ans
+        if self.long_text:
+            a(render_block(self.long_text))
+            a('')
         if option_group:
             sz = max(len(self.name), max(len(o.name) for o in option_group))
             a(f'{self.name.ljust(sz)} {self.defval_as_string}'.rstrip())
@@ -243,10 +246,7 @@ class Option:
                 a(f'{o.name.ljust(sz)} {o.defval_as_string}'.rstrip())
         else:
             a(f'{self.name} {self.defval_as_string}'.rstrip())
-        if self.long_text:
-            a('')
-            a(render_block(self.long_text))
-            a('')
+        a('')
         return ans
 
     def as_rst(
@@ -300,6 +300,9 @@ class MultiOption:
         ans: List[str] = []
         a = ans.append
         documented = False
+        if self.long_text and documented:
+            a(render_block(self.long_text))
+            a('')
         for k in self.items:
             if k.documented:
                 documented = True
@@ -311,10 +314,7 @@ class MultiOption:
                 if not k.add_to_default and k.defval_as_str:
                     a('')
                     a(f'#: E.g. {self.name} {k.defval_as_str}'.rstrip())
-        if self.long_text and documented:
-            a('')
-            a(render_block(self.long_text))
-            a('')
+        a('')
         return ans
 
     def as_rst(self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]], kitty_mod: str, level: int = 0) -> List[str]:
@@ -357,12 +357,12 @@ class Mapping:
         a = ans.append
         if self.short_text:
             a(render_block(self.short_text.strip())), a('')
+        if self.long_text:
+            a(''), a(render_block(self.long_text.strip(), '#::  '))
         for sc in [self] + action_group:
             if sc.documented:
                 prefix = '' if sc.add_to_default else '#::  E.g. '
-                a(f'{prefix}{sc.setting_name} {sc.parseable_text}')
-        if self.long_text:
-            a(''), a(render_block(self.long_text.strip(), '#::  '))
+                a(f'{sc.parseable_text} {prefix}{sc.setting_name}')
         a('')
         return ans
 
