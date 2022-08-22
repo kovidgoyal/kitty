@@ -21,7 +21,7 @@ func Tcgetattr(fd int, argp *unix.Termios) error {
 }
 
 func Tcsetattr(fd int, action uintptr, argp *unix.Termios) error {
-	var request uintptr
+	var request uint
 	switch action {
 	case TCSANOW:
 		request = TCSETS
@@ -32,5 +32,5 @@ func Tcsetattr(fd int, action uintptr, argp *unix.Termios) error {
 	default:
 		return unix.EINVAL
 	}
-	return unix.IoctlSetTermios(int(fd), uint(request), argp)
+	return unix.IoctlSetTermios(fd, request, argp)
 }

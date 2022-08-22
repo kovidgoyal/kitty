@@ -7,11 +7,11 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func Tcgetattr(fd uintptr, argp *unix.Termios) error {
-	return unix.IoctlSetTermios(int(fd), unix.TIOCGETA, argp)
+func Tcgetattr(fd int, argp *unix.Termios) error {
+	return unix.IoctlSetTermios(fd, unix.TIOCGETA, argp)
 }
 
-func Tcsetattr(fd, opt uintptr, argp *unix.Termios) error {
+func Tcsetattr(fd int, opt uintptr, argp *unix.Termios) error {
 	switch opt {
 	case TCSANOW:
 		opt = unix.TIOCSETA
@@ -22,5 +22,5 @@ func Tcsetattr(fd, opt uintptr, argp *unix.Termios) error {
 	default:
 		return unix.EINVAL
 	}
-	return unix.IoctlSetTermios(int(fd), uint(opt), argp)
+	return unix.IoctlSetTermios(fd, uint(opt), argp)
 }
