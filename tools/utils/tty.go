@@ -88,8 +88,7 @@ func (self *Term) SetRawWhen(when uintptr) (err error) {
 	}
 	new_state := state
 	termios.Cfmakeraw(&new_state)
-	err = self.Tcsetattr(when, &new_state)
-	if err != nil {
+	if err = self.Tcsetattr(when, &new_state); err == nil {
 		self.states = append(self.states, state)
 	}
 	return
@@ -104,8 +103,7 @@ func (self *Term) PopStateWhen(when uintptr) (err error) {
 		return nil
 	}
 	idx := len(self.states) - 1
-	err = self.Tcsetattr(when, &self.states[idx])
-	if err != nil {
+	if err = self.Tcsetattr(when, &self.states[idx]); err == nil {
 		self.states = self.states[:idx]
 	}
 	return
@@ -156,8 +154,7 @@ func (self *Term) SetReadTimeout(d time.Duration) (err error) {
 	}
 	b := a
 	b.Cc[unix.VMIN], b.Cc[unix.VTIME] = get_vmin_and_vtime(d)
-	err = self.Tcsetattr(termios.TCSANOW, &b)
-	if err != nil {
+	if err = self.Tcsetattr(termios.TCSANOW, &b); err == nil {
 		self.states = append(self.states, a)
 	}
 	return
