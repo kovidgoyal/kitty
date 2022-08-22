@@ -59,7 +59,7 @@ func run_CMD_NAME(cmd *cobra.Command, args []string) (err error) {
 	if err == nil {
 		timeout = rt
 	}
-	err = send_rc_command(rc, timeout)
+	err = send_rc_command(rc, timeout, STRING_RESPONSE_IS_ERROR)
 	return
 }
 

@@ -178,6 +178,7 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
         OPTIONS_DECLARATION_CODE='\n'.join(od),
         SET_OPTION_VALUES_CODE='\n'.join(ov),
         JSON_DECLARATION_CODE='\n'.join(jd),
+        STRING_RESPONSE_IS_ERROR='true' if cmd.string_return_is_error else 'false',
     )
     return ans
 

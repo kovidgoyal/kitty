@@ -1,6 +1,7 @@
 package at
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -93,34 +94,87 @@ func create_serializer(password string, encoded_pubkey string, response_timeout 
 type TTYIO interface {
 	WriteAllWithTimeout(b []byte, d time.Duration) (n int, err error)
 	WriteFromReader(r utils.Reader, read_timeout time.Duration, write_timeout time.Duration) (n int, err error)
+	ReadWithTimeout(b []byte, d time.Duration) (n int, err error)
 
 	Restore() error
 	Close() error
 }
 
-func do_tty_io(tty TTYIO, input utils.Reader, response_timeout time.Duration) (err error) {
-
-	defer func() {
-		tty.Restore()
-		tty.Close()
-	}()
+func do_tty_io(tty TTYIO, input utils.Reader, no_response bool, response_timeout time.Duration) (serialized_response []byte, err error) {
 
 	_, err = tty.WriteAllWithTimeout([]byte("\x1bP@kitty-cmd"), 2*time.Second)
 	if err != nil {
-		return err
+		return
 	}
 	_, err = tty.WriteFromReader(input, 2*time.Second, 2*time.Second)
 	if err != nil {
-		return err
+		return
 	}
 	_, err = tty.WriteAllWithTimeout([]byte("\x1b\\"), 2*time.Second)
 	if err != nil {
-		return err
+		return
+	}
+	if no_response {
+		return
+	}
+
+	response_received := false
+	cmd_prefix := []byte("@kitty-cmd")
+
+	handle_dcs := func(b []byte) {
+		if bytes.HasPrefix(b, cmd_prefix) {
+			response_received = true
+		}
+		serialized_response = b[len(cmd_prefix):]
+	}
+
+	var p utils.EscapeCodeParser = utils.EscapeCodeParser{HandleDCS: handle_dcs}
+	buf := make([]byte, 0, utils.DEFAULT_IO_BUFFER_SIZE)
+
+	for !response_received {
+		buf = buf[:0]
+		var n int
+		n, err = tty.ReadWithTimeout(buf, response_timeout)
+		if err != nil {
+			if err == os.ErrDeadlineExceeded {
+				err = fmt.Errorf("Timed out while waiting for a response from kitty")
+			}
+			return
+		}
+		buf = buf[:n]
+		p.Parse(buf)
 	}
 	return
 }
 
-func send_rc_command(rc *utils.RemoteControlCmd, timeout float64) (err error) {
+type ResponseData struct {
+	as_str    string
+	is_string bool
+}
+
+func (self *ResponseData) UnmarshalJSON(data []byte) error {
+	if bytes.HasPrefix(data, []byte("\"")) {
+		self.is_string = true
+		return json.Unmarshal(data, &self.as_str)
+	}
+	if bytes.Equal(data, []byte("true")) {
+		self.as_str = "True"
+	} else if bytes.Equal(data, []byte("false")) {
+		self.as_str = "False"
+	} else {
+		self.as_str = string(data)
+	}
+	return nil
+}
+
+type Response struct {
+	Ok        bool         `json:"ok"`
+	Data      ResponseData `json:"data,omitempty"`
+	Error     string       `json:"error,omitempty"`
+	Traceback string       `json:"tb,omitempty"`
+}
+
+func get_response(rc *utils.RemoteControlCmd, timeout float64) (ans *Response, err error) {
 	serializer, timeout, err = create_serializer(global_options.password, "", timeout)
 	if err != nil {
 		return
@@ -129,16 +183,65 @@ func send_rc_command(rc *utils.RemoteControlCmd, timeout float64) (err error) {
 	if err != nil {
 		return
 	}
-	r := utils.BytesReader{Data: d}
+	var tty TTYIO
 	if global_options.to_network == "" {
-		tty, err := utils.OpenControllingTerm(true)
+		tty, err = utils.OpenControllingTerm(true)
 		if err != nil {
-			return err
+			return
 		}
-		return do_tty_io(tty, &r, time.Duration(timeout*1e9))
 	} else {
-		return fmt.Errorf("TODO: Implement socket IO")
+		err = fmt.Errorf("TODO: Implement socket IO")
+		return
 	}
+	defer func() {
+		tty.Restore()
+		tty.Close()
+	}()
+	r := utils.BytesReader{Data: d}
+	serialized_response, err := do_tty_io(tty, &r, rc.NoResponse, time.Duration(timeout*float64(time.Second)))
+	if err != nil {
+		if err == os.ErrDeadlineExceeded {
+			rc.Payload = nil
+			rc.CancelAsync = true
+			rc.NoResponse = true
+			d, err = serializer(rc)
+			if err != nil {
+				return
+			}
+			_, err = do_tty_io(tty, &r, rc.NoResponse, 0)
+		}
+		return
+	}
+	if len(serialized_response) == 0 {
+		err = fmt.Errorf("Received empty response from kitty")
+		return
+	}
+	var response Response
+	err = json.Unmarshal(serialized_response, &response)
+	if err != nil {
+		err = fmt.Errorf("Invalid response received from kitty, unmarshalling error: %w", err)
+		return
+	}
+	ans = &response
+	return
+}
+
+func send_rc_command(rc *utils.RemoteControlCmd, timeout float64, string_response_is_err bool) (err error) {
+	response, err := get_response(rc, timeout)
+	if err != nil || response == nil {
+		return err
+	}
+	if !response.Ok {
+		if response.Traceback != "" {
+			fmt.Fprintln(os.Stderr, response.Traceback)
+		}
+		return fmt.Errorf("%s", response.Error)
+	}
+	if response.Data.is_string && string_response_is_err {
+		return fmt.Errorf("%s", response.Data.as_str)
+	}
+	fmt.Println(strings.TrimRight(response.Data.as_str, "\n \t"))
+	return
 }
 
 func get_password(password string, password_file string, password_env string, use_password string) (ans string, err error) {
