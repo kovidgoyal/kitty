@@ -92,26 +92,23 @@ func create_serializer(password string, encoded_pubkey string, response_timeout 
 	return simple_serializer, timeout, nil
 }
 
-type TTYIO interface {
+type IOAbstraction interface {
 	WriteAllWithTimeout(b []byte, d time.Duration) (n int, err error)
 	WriteFromReader(r utils.Reader, read_timeout time.Duration, write_timeout time.Duration) (n int, err error)
 	ReadWithTimeout(b []byte, d time.Duration) (n int, err error)
-
-	Restore() error
-	Close() error
 }
 
-func do_tty_io(tty TTYIO, input utils.Reader, no_response bool, response_timeout time.Duration) (serialized_response []byte, err error) {
+func do_io(device IOAbstraction, input utils.Reader, no_response bool, response_timeout time.Duration) (serialized_response []byte, err error) {
 
-	_, err = tty.WriteAllWithTimeout([]byte("\x1bP@kitty-cmd"), 2*time.Second)
+	_, err = device.WriteAllWithTimeout([]byte("\x1bP@kitty-cmd"), 2*time.Second)
 	if err != nil {
 		return
 	}
-	_, err = tty.WriteFromReader(input, 2*time.Second, 2*time.Second)
+	_, err = device.WriteFromReader(input, 2*time.Second, 2*time.Second)
 	if err != nil {
 		return
 	}
-	_, err = tty.WriteAllWithTimeout([]byte("\x1b\\"), 2*time.Second)
+	_, err = device.WriteAllWithTimeout([]byte("\x1b\\"), 2*time.Second)
 	if err != nil {
 		return
 	}
@@ -135,7 +132,7 @@ func do_tty_io(tty TTYIO, input utils.Reader, no_response bool, response_timeout
 	for !response_received {
 		buf = buf[:cap(buf)]
 		var n int
-		n, err = tty.ReadWithTimeout(buf, response_timeout)
+		n, err = device.ReadWithTimeout(buf, response_timeout)
 		if err != nil {
 			if err == os.ErrDeadlineExceeded {
 				err = fmt.Errorf("Timed out while waiting for a response from kitty")
@@ -184,22 +181,24 @@ func get_response(rc *utils.RemoteControlCmd, timeout float64) (ans *Response, e
 	if err != nil {
 		return
 	}
-	var tty TTYIO
+	var device IOAbstraction
 	if global_options.to_network == "" {
-		tty, err = utils.OpenControllingTerm(true)
+		var term *utils.Term
+		term, err = utils.OpenControllingTerm(utils.SetRaw)
 		if err != nil {
 			return
 		}
+		defer func() {
+			term.Restore()
+			term.Close()
+		}()
+		device = term
 	} else {
 		err = fmt.Errorf("TODO: Implement socket IO")
 		return
 	}
-	defer func() {
-		tty.Restore()
-		tty.Close()
-	}()
 	r := utils.BytesReader{Data: d}
-	serialized_response, err := do_tty_io(tty, &r, rc.NoResponse, time.Duration(timeout*float64(time.Second)))
+	serialized_response, err := do_io(device, &r, rc.NoResponse, time.Duration(timeout*float64(time.Second)))
 	if err != nil {
 		if err == os.ErrDeadlineExceeded {
 			rc.Payload = nil
@@ -209,7 +208,7 @@ func get_response(rc *utils.RemoteControlCmd, timeout float64) (ans *Response, e
 			if err != nil {
 				return
 			}
-			_, err = do_tty_io(tty, &r, rc.NoResponse, 0)
+			_, err = do_io(device, &r, rc.NoResponse, 0)
 		}
 		return
 	}

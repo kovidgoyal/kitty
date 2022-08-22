@@ -9,8 +9,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pkg/term/termios"
 	"golang.org/x/sys/unix"
+)
+
+const (
+	TCSANOW   = 0
+	TCSADRAIN = 1
+	TCSAFLUSH = 2
 )
 
 type Term struct {
@@ -39,7 +44,46 @@ func eintr_retry_intret(f func() (int, error)) (int, error) {
 	}
 }
 
-func OpenTerm(name string, in_raw_mode bool) (self *Term, err error) {
+type TermiosOperation func(t *unix.Termios)
+
+func get_vmin_and_vtime(d time.Duration) (uint8, uint8) {
+	if d > 0 {
+		// VTIME is expressed in terms of deciseconds
+		vtimeDeci := d.Milliseconds() / 100
+		// ensure valid range
+		vtime := uint8(clamp(vtimeDeci, 1, 0xff))
+		return 0, vtime
+	}
+	// block indefinitely until we receive at least 1 byte
+	return 1, 0
+}
+
+func SetReadTimeout(d time.Duration) TermiosOperation {
+	vmin, vtime := get_vmin_and_vtime(d)
+	return func(t *unix.Termios) {
+		t.Cc[unix.VMIN] = vmin
+		t.Cc[unix.VTIME] = vtime
+	}
+}
+
+var SetBlockingRead TermiosOperation = SetReadTimeout(0)
+
+var SetRaw TermiosOperation = func(t *unix.Termios) {
+	// This attempts to replicate the behaviour documented for cfmakeraw in
+	// the termios(3) manpage, as Go doesnt wrap cfmakeraw probably because its not in POSIX
+	t.Iflag &^= unix.IGNBRK | unix.BRKINT | unix.PARMRK | unix.ISTRIP | unix.INLCR | unix.IGNCR | unix.ICRNL | unix.IXON
+	t.Oflag &^= unix.OPOST
+	t.Lflag &^= unix.ECHO | unix.ECHONL | unix.ICANON | unix.ISIG | unix.IEXTEN
+	t.Cflag &^= unix.CSIZE | unix.PARENB
+	t.Cflag |= unix.CS8
+	t.Cc[unix.VMIN] = 1
+	t.Cc[unix.VTIME] = 0
+}
+var SetNoEcho TermiosOperation = func(t *unix.Termios) {
+	t.Lflag &^= unix.ECHO
+}
+
+func OpenTerm(name string, operations ...TermiosOperation) (self *Term, err error) {
 	fd, err := eintr_retry_intret(func() (int, error) {
 		return unix.Open(name, unix.O_NOCTTY|unix.O_CLOEXEC|unix.O_NDELAY|unix.O_RDWR, 0666)
 	})
@@ -49,20 +93,18 @@ func OpenTerm(name string, in_raw_mode bool) (self *Term, err error) {
 
 	self = &Term{name: name, fd: fd}
 	err = eintr_retry_noret(func() error { return unix.SetNonblock(self.fd, false) })
-	if err != nil {
-		return
+	if err == nil {
+		err = self.ApplyOperations(TCSANOW, operations...)
 	}
-	if in_raw_mode {
-		err = self.SetRaw()
-		if err != nil {
-			return
-		}
+	if err != nil {
+		self.Close()
+		self = nil
 	}
 	return
 }
 
-func OpenControllingTerm(in_raw_mode bool) (self *Term, err error) {
-	return OpenTerm("/dev/tty", in_raw_mode) // go doesnt have a wrapper for ctermid()
+func OpenControllingTerm(operations ...TermiosOperation) (self *Term, err error) {
+	return OpenTerm("/dev/tty", operations...) // go doesnt have a wrapper for ctermid()
 }
 
 func (self *Term) Fd() int { return self.fd }
@@ -74,28 +116,32 @@ func (self *Term) Close() error {
 }
 
 func (self *Term) Tcgetattr(ans *unix.Termios) error {
-	return eintr_retry_noret(func() error { return termios.Tcgetattr(uintptr(self.fd), ans) })
+	return eintr_retry_noret(func() error { return Tcgetattr(self.fd, ans) })
 }
 
 func (self *Term) Tcsetattr(when uintptr, ans *unix.Termios) error {
-	return eintr_retry_noret(func() error { return termios.Tcsetattr(uintptr(self.fd), when, ans) })
+	return eintr_retry_noret(func() error { return Tcsetattr(self.fd, when, ans) })
 }
 
-func (self *Term) SetRawWhen(when uintptr) (err error) {
+func (self *Term) set_termios_attrs(when uintptr, modify func(*unix.Termios)) (err error) {
 	var state unix.Termios
 	if err = self.Tcgetattr(&state); err != nil {
 		return
 	}
 	new_state := state
-	termios.Cfmakeraw(&new_state)
+	modify(&new_state)
 	if err = self.Tcsetattr(when, &new_state); err == nil {
 		self.states = append(self.states, state)
 	}
 	return
 }
 
-func (self *Term) SetRaw() error {
-	return self.SetRawWhen(termios.TCSANOW)
+func (self *Term) ApplyOperations(when uintptr, operations ...TermiosOperation) (err error) {
+	return self.set_termios_attrs(when, func(t *unix.Termios) {
+		for _, op := range operations {
+			op(t)
+		}
+	})
 }
 
 func (self *Term) PopStateWhen(when uintptr) (err error) {
@@ -110,7 +156,7 @@ func (self *Term) PopStateWhen(when uintptr) (err error) {
 }
 
 func (self *Term) PopState() error {
-	return self.PopStateWhen(termios.TCIOFLUSH)
+	return self.PopStateWhen(TCSAFLUSH)
 }
 
 func (self *Term) RestoreWhen(when uintptr) (err error) {
@@ -122,7 +168,7 @@ func (self *Term) RestoreWhen(when uintptr) (err error) {
 }
 
 func (self *Term) Restore() error {
-	return self.RestoreWhen(termios.TCIOFLUSH)
+	return self.RestoreWhen(TCSAFLUSH)
 }
 
 func clamp(v, lo, hi int64) int64 {
@@ -133,31 +179,6 @@ func clamp(v, lo, hi int64) int64 {
 		return hi
 	}
 	return v
-}
-
-func get_vmin_and_vtime(d time.Duration) (uint8, uint8) {
-	if d > 0 {
-		// VTIME is expressed in terms of deciseconds
-		vtimeDeci := d.Milliseconds() / 100
-		// ensure valid range
-		vtime := uint8(clamp(vtimeDeci, 1, 0xff))
-		return 0, vtime
-	}
-	// block indefinitely until we receive at least 1 byte
-	return 1, 0
-}
-
-func (self *Term) SetReadTimeout(d time.Duration) (err error) {
-	var a unix.Termios
-	if err := self.Tcgetattr(&a); err != nil {
-		return err
-	}
-	b := a
-	b.Cc[unix.VMIN], b.Cc[unix.VTIME] = get_vmin_and_vtime(d)
-	if err = self.Tcsetattr(termios.TCSANOW, &b); err == nil {
-		self.states = append(self.states, a)
-	}
-	return
 }
 
 func (self *Term) ReadWithTimeout(b []byte, d time.Duration) (n int, err error) {
