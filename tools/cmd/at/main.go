@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/sys/unix"
@@ -254,7 +253,7 @@ func get_password(password string, password_file string, password_env string, us
 	}
 	if ans == "" && password_file != "" {
 		if password_file == "-" {
-			if isatty.IsTerminal(os.Stdin.Fd()) {
+			if tty.IsTerminal(os.Stdin.Fd()) {
 				q, err := term.ReadPassword(int(os.Stdin.Fd()))
 				if err != nil {
 					ans = string(q)
