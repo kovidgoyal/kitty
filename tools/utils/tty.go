@@ -180,8 +180,8 @@ func (self *Term) ReadWithTimeout(b []byte, d time.Duration) (n int, err error) 
 	return self.Read(b)
 }
 
-func (t *Term) Read(b []byte) (int, error) {
-	n, e := eintr_retry_intret(func() (int, error) { return unix.Read(t.fd, b) })
+func (self *Term) Read(b []byte) (int, error) {
+	n, e := eintr_retry_intret(func() (int, error) { return unix.Read(self.fd, b) })
 	if n < 0 {
 		n = 0
 	}
@@ -189,13 +189,13 @@ func (t *Term) Read(b []byte) (int, error) {
 		return 0, io.EOF
 	}
 	if e != nil {
-		return n, &os.PathError{Op: "read", Path: t.name, Err: e}
+		return n, &os.PathError{Op: "read", Path: self.name, Err: e}
 	}
 	return n, nil
 }
 
-func (t *Term) Write(b []byte) (int, error) {
-	n, e := eintr_retry_intret(func() (int, error) { return unix.Write(t.fd, b) })
+func (self *Term) Write(b []byte) (int, error) {
+	n, e := eintr_retry_intret(func() (int, error) { return unix.Write(self.fd, b) })
 	if n < 0 {
 		n = 0
 	}
@@ -203,7 +203,7 @@ func (t *Term) Write(b []byte) (int, error) {
 		return n, io.ErrShortWrite
 	}
 	if e != nil {
-		return n, &os.PathError{Op: "write", Path: t.name, Err: e}
+		return n, &os.PathError{Op: "write", Path: self.name, Err: e}
 	}
 	return n, nil
 }
