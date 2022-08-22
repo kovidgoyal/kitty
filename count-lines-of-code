@@ -23,8 +23,14 @@ kittens/diff/options/types.py
 kittens/diff/options/parse.py
 '''
 
+ignored = []
+for line in subprocess.check_output(['git', 'status', '--ignored', '--porcelain']).decode().splitlines():
+    if line.startswith('!! '):
+        ignored.append(line[3:])
+files_to_exclude += '\n'.join(ignored)
+
 p = subprocess.Popen([
-    'cloc', '--exclude-list-file', '/dev/stdin', 'kitty', 'kittens'
+    'cloc', '--exclude-list-file', '/dev/stdin', 'kitty', 'kittens', 'tools',
 ], stdin=subprocess.PIPE)
 p.communicate(files_to_exclude.encode('utf-8'))
 raise SystemExit(p.wait())
