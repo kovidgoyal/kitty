@@ -10,13 +10,13 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/mattn/go-isatty"
 	"github.com/mattn/go-runewidth"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/sys/unix"
 
 	"kitty"
+	"kitty/tools/tty"
 	"kitty/tools/utils"
 )
 
@@ -488,7 +488,7 @@ func Init(root *cobra.Command) {
 	if kitty.VCSRevision != "" {
 		vs = vs + " (" + kitty.VCSRevision + ")"
 	}
-	stdout_is_terminal = isatty.IsTerminal(os.Stdout.Fd())
+	stdout_is_terminal = tty.IsTerminal(os.Stdout.Fd())
 	RootCmd = root
 	root.Version = vs
 	root.SetUsageFunc(func(cmd *cobra.Command) error { return show_usage(cmd, false) })

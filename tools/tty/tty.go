@@ -19,6 +19,12 @@ const (
 	TCSAFLUSH = 2
 )
 
+func IsTerminal(fd uintptr) bool {
+	var t unix.Termios
+	err := Tcgetattr(int(fd), &t)
+	return err == nil
+}
+
 type Term struct {
 	name   string
 	fd     int
