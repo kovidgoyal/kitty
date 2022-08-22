@@ -29,9 +29,9 @@ func TestEscapeCodeParsing(t *testing.T) {
 		d = test_parse_collection{}
 	}
 
-	check_test_result := func() {
+	check_test_result := func(raw string) {
 		if d.actual != d.expected {
-			t.Fatalf("actual != expected: %#v != %#v", string(d.actual), string(d.expected))
+			t.Fatalf("parsing: %#v actual != expected: %#v != %#v", raw, string(d.actual), string(d.expected))
 		}
 	}
 
@@ -39,11 +39,15 @@ func TestEscapeCodeParsing(t *testing.T) {
 		reset_test_parser()
 		d.expected = "\n" + expected
 		test_parser.Parse([]byte(raw))
-		check_test_result()
+		check_test_result(raw)
 	}
 
 	test("\x1b[31m\xc2\x9bm", "CSI: 31m\nCSI: m")
 	test("ab\nc", "CH: a\nCH: b\nCH: \n\nCH: c")
 	test("a\x1b[200m\x1b[mb\x1b[5:3;2;4~", "CH: a\nCSI: 200m\nCSI: m\nCH: b\nCSI: 5:3;2;4~")
+	test("\x1b[200~a\x1b[201m\x1b[201~\x1b[x", "CH: a\nCH: \x1b\nCH: [\nCH: 2\nCH: 0\nCH: 1\nCH: m\nCSI: x")
+	test("a\x1bPb\x1b\x1bc\x1b\\d", "CH: a\nDCS: b\x1bc\nCH: d")
+	test("a\x1b_b\x1b\x1b\x1bc\x1b\\d", "CH: a\nAPC: b\x1b\x1bc\nCH: d")
+	test("\x1b]X\x07\x1b]X\x1b\x07\x1b\\", "OSC: X\nOSC: X\x1b\x07")
 
 }

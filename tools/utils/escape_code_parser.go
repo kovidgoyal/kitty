@@ -1,6 +1,9 @@
 package utils
 
-import "bytes"
+import (
+	"bytes"
+	"fmt"
+)
 
 type parser_state uint8
 type csi_state uint8
@@ -13,6 +16,7 @@ const (
 	esc
 	csi
 	st
+	st_or_bel
 	esc_st
 	c1_st
 	bracketed_paste
@@ -40,7 +44,7 @@ type EscapeCodeParser struct {
 
 	// Whether to send escape code bytes as soon as they are received or to
 	// buffer and send full escape codes
-	Streaming bool
+	streaming bool
 
 	// Callbacks
 	HandleRune func(rune)
@@ -50,6 +54,18 @@ type EscapeCodeParser struct {
 	HandlePM   func([]byte)
 	HandleSOS  func([]byte)
 	HandleAPC  func([]byte)
+}
+
+func (self *EscapeCodeParser) SetStreaming(streaming bool) error {
+	if self.state != normal || len(self.current_buffer) > 0 {
+		return fmt.Errorf("Cannot change streaming state when not in reset state")
+	}
+	self.streaming = streaming
+	return nil
+}
+
+func (self *EscapeCodeParser) IsStreaming() bool {
+	return self.streaming
 }
 
 func (self *EscapeCodeParser) Parse(data []byte) {
@@ -79,7 +95,7 @@ func (self *EscapeCodeParser) Reset() {
 }
 
 func (self *EscapeCodeParser) write_ch(ch byte) {
-	if self.Streaming {
+	if self.streaming {
 		if self.current_callback != nil {
 			var data [1]byte = [1]byte{ch}
 			self.current_callback(data[:])
@@ -186,7 +202,7 @@ func (self *EscapeCodeParser) dispatch_char(ch UTF8State) {
 			dispatch()
 		}
 		return
-	} // end bracketed_paste
+	} // end self.state == bracketed_paste
 
 	switch ch {
 	case 0x1b:
@@ -198,7 +214,7 @@ func (self *EscapeCodeParser) dispatch_char(ch UTF8State) {
 		self.state = csi
 		self.current_callback = self.HandleCSI
 	case 0x9d:
-		self.state = st
+		self.state = st_or_bel
 		self.current_callback = self.HandleOSC
 	case 0x98:
 		self.state = st
@@ -226,7 +242,7 @@ func (self *EscapeCodeParser) dispatch_byte(ch byte) {
 			self.csi_state = parameter
 			self.current_callback = self.HandleCSI
 		case ']':
-			self.state = st
+			self.state = st_or_bel
 			self.current_callback = self.HandleOSC
 		case '^':
 			self.state = st
@@ -257,6 +273,12 @@ func (self *EscapeCodeParser) dispatch_byte(ch byte) {
 				self.dispatch_esc_code()
 			}
 		}
+	case st_or_bel:
+		if ch == 0x7 {
+			self.dispatch_esc_code()
+			return
+		}
+		fallthrough
 	case st:
 		if ch == 0x1b {
 			self.state = esc_st
