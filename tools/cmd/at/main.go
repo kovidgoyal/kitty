@@ -19,6 +19,7 @@ import (
 	"kitty/tools/base85"
 	"kitty/tools/cli"
 	"kitty/tools/crypto"
+	"kitty/tools/tty"
 	"kitty/tools/utils"
 )
 
@@ -183,8 +184,8 @@ func get_response(rc *utils.RemoteControlCmd, timeout float64) (ans *Response, e
 	}
 	var device IOAbstraction
 	if global_options.to_network == "" {
-		var term *utils.Term
-		term, err = utils.OpenControllingTerm(utils.SetRaw)
+		var term *tty.Term
+		term, err = tty.OpenControllingTerm(tty.SetRaw)
 		if err != nil {
 			return
 		}

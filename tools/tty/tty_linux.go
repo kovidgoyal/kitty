@@ -1,4 +1,4 @@
-package utils
+package tty
 
 import "golang.org/x/sys/unix"
 
