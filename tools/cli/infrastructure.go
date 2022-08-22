@@ -483,3 +483,17 @@ func Init(root *cobra.Command) {
 func Execute(root *cobra.Command) error {
 	return root.Execute()
 }
+
+type FlagValGetter struct {
+	Flags *pflag.FlagSet
+	Err   error
+}
+
+func (self *FlagValGetter) String(name string) string {
+	if self.Err != nil {
+		return ""
+	}
+	ans, err := self.Flags.GetString(name)
+	self.Err = err
+	return ans
+}
