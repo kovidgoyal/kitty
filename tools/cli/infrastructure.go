@@ -383,7 +383,6 @@ func show_usage(cmd *cobra.Command, use_pager bool) error {
 				fmt.Fprint(&output, ", ", opt_fmt("-"+flag.Shorthand))
 			}
 			defval := ""
-			fmt.Println(flag.Value.Type())
 			switch flag.Value.Type() {
 			default:
 				if flag.DefValue != "" {
