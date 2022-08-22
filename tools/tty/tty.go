@@ -1,4 +1,4 @@
-package utils
+package tty
 
 import (
 	"encoding/base64"
@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
+
+	"kitty/tools/utils"
 )
 
 const (
@@ -188,7 +189,7 @@ func (self *Term) ReadWithTimeout(b []byte, d time.Duration) (n int, err error) 
 		write.Zero()
 		in_err.Zero()
 		read.Set(self.fd)
-		return Select(self.fd+1, &read, &write, &in_err, d)
+		return utils.Select(self.fd+1, &read, &write, &in_err, d)
 	}
 	num_ready, err := pselect()
 	if err != nil {
@@ -229,16 +230,6 @@ func (self *Term) Write(b []byte) (int, error) {
 	return n, nil
 }
 
-func NsecToTimespec(d time.Duration) unix.Timespec {
-	nv := syscall.NsecToTimespec(int64(d))
-	return unix.Timespec{Sec: nv.Sec, Nsec: nv.Nsec}
-}
-
-func NsecToTimeval(d time.Duration) unix.Timeval {
-	nv := syscall.NsecToTimeval(int64(d))
-	return unix.Timeval{Sec: nv.Sec, Usec: nv.Usec}
-}
-
 func (self *Term) DebugPrintln(a ...interface{}) {
 	msg := []byte(fmt.Sprintln(a...))
 	for i := 0; i < len(msg); i += 256 {
@@ -264,7 +255,7 @@ func (self *Term) WriteAllWithTimeout(b []byte, d time.Duration) (n int, err err
 		read.Zero()
 		in_err.Zero()
 		write.Set(self.fd)
-		return Select(self.fd+1, &read, &write, &in_err, d)
+		return utils.Select(self.fd+1, &read, &write, &in_err, d)
 	}
 	for {
 		if len(b) == 0 {
@@ -297,7 +288,7 @@ func (self *Term) WriteAllWithTimeout(b []byte, d time.Duration) (n int, err err
 	}
 }
 
-func (self *Term) WriteFromReader(r Reader, read_timeout time.Duration, write_timeout time.Duration) (n int, err error) {
+func (self *Term) WriteFromReader(r utils.Reader, read_timeout time.Duration, write_timeout time.Duration) (n int, err error) {
 	buf := r.GetBuf()
 	var rn, wn int
 	var rerr error
