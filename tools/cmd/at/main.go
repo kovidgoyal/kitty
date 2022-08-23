@@ -118,11 +118,12 @@ func do_io(device IOAbstraction, input utils.Reader, no_response bool, response_
 	response_received := false
 	cmd_prefix := []byte("@kitty-cmd")
 
-	handle_dcs := func(b []byte) {
+	handle_dcs := func(b []byte) error {
 		if bytes.HasPrefix(b, cmd_prefix) {
 			response_received = true
 		}
 		serialized_response = b[len(cmd_prefix):]
+		return nil
 	}
 
 	var p utils.EscapeCodeParser = utils.EscapeCodeParser{HandleDCS: handle_dcs}

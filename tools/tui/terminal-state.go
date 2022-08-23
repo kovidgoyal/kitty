@@ -73,9 +73,9 @@ const (
 	FULL_MOUSE_TRACKING
 )
 
-type TerminalState struct {
-	alternate_screen, kitty_keyboard_mode bool
-	mouse_tracking                        MouseTracking
+type TerminalStateOptions struct {
+	alternate_screen, no_kitty_keyboard_mode bool
+	mouse_tracking                           MouseTracking
 }
 
 func set_modes(sb *strings.Builder, modes ...Mode) {
@@ -90,7 +90,7 @@ func reset_modes(sb *strings.Builder, modes ...Mode) {
 	}
 }
 
-func (self *TerminalState) SetStateEscapeCodes() []byte {
+func (self *TerminalStateOptions) SetStateEscapeCodes() []byte {
 	var sb strings.Builder
 	sb.Grow(256)
 	sb.WriteString(S7C1T)
@@ -107,10 +107,10 @@ func (self *TerminalState) SetStateEscapeCodes() []byte {
 		set_modes(&sb, ALTERNATE_SCREEN)
 		sb.WriteString(CLEAR_SCREEN)
 	}
-	if self.kitty_keyboard_mode {
-		sb.WriteString("\033[>31u")
-	} else {
+	if self.no_kitty_keyboard_mode {
 		sb.WriteString("\033[>u")
+	} else {
+		sb.WriteString("\033[>31u")
 	}
 	if self.mouse_tracking != NO_MOUSE_TRACKING {
 		sb.WriteString(MOUSE_SGR_PIXEL_MODE.EscapeCodeToSet())
@@ -126,7 +126,7 @@ func (self *TerminalState) SetStateEscapeCodes() []byte {
 	return []byte(sb.String())
 }
 
-func (self *TerminalState) ResetStateData() []byte {
+func (self *TerminalStateOptions) ResetStateEscapeCodes() []byte {
 	var sb strings.Builder
 	sb.Grow(64)
 	sb.WriteString("\033[<u")
