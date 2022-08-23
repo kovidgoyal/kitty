@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/sys/unix"
-	"golang.org/x/term"
 
 	"kitty"
 	"kitty/tools/base85"
@@ -188,10 +187,7 @@ func get_response(rc *utils.RemoteControlCmd, timeout float64) (ans *Response, e
 		if err != nil {
 			return
 		}
-		defer func() {
-			term.Restore()
-			term.Close()
-		}()
+		defer term.RestoreAndClose()
 		device = term
 	} else {
 		err = fmt.Errorf("TODO: Implement socket IO")
@@ -254,26 +250,32 @@ func get_password(password string, password_file string, password_env string, us
 	if ans == "" && password_file != "" {
 		if password_file == "-" {
 			if tty.IsTerminal(os.Stdin.Fd()) {
-				q, err := term.ReadPassword(int(os.Stdin.Fd()))
-				if err != nil {
+				var q string
+				q, err = tty.ReadPassword("Password: ")
+				if err == nil {
 					ans = string(q)
 				}
 			} else {
-				q, err := io.ReadAll(os.Stdin)
-				if err != nil {
+				var q []byte
+				q, err = io.ReadAll(os.Stdin)
+				if err == nil {
 					ans = strings.TrimRight(string(q), " \n\t")
 				}
-				ttyf, err := os.Open("/dev/tty")
-				if err != nil {
+				ttyf, err := os.Open(tty.Ctermid())
+				if err == nil {
 					err = unix.Dup2(int(ttyf.Fd()), int(os.Stdin.Fd()))
 					ttyf.Close()
 				}
 			}
 		} else {
-			q, err := os.ReadFile(password_file)
-			if err != nil {
+			var q []byte
+			q, err = os.ReadFile(password_file)
+			if err == nil {
 				ans = strings.TrimRight(string(q), " \n\t")
 			}
+		}
+		if err != nil {
+			return
 		}
 	}
 	if ans == "" && password_env != "" {
