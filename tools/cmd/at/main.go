@@ -222,7 +222,11 @@ func get_response(rc *utils.RemoteControlCmd, timeout float64) (ans *Response, e
 	return
 }
 
-func send_rc_command(rc *utils.RemoteControlCmd, timeout float64, string_response_is_err bool) (err error) {
+func send_rc_command(cmd *cobra.Command, rc *utils.RemoteControlCmd, timeout float64, string_response_is_err bool) (err error) {
+	err = setup_global_options(cmd)
+	if err != nil {
+		return err
+	}
 	response, err := get_response(rc, timeout)
 	if err != nil || response == nil {
 		return err
@@ -320,7 +324,7 @@ func add_global_options(fs *pflag.FlagSet) {
 
 }
 
-func setup_global_options(cmd *cobra.Command, args []string) (err error) {
+func setup_global_options(cmd *cobra.Command) (err error) {
 	var v = cli.FlagValGetter{Flags: cmd.Flags()}
 	to := v.String("to")
 	password := v.String("password")
@@ -350,10 +354,9 @@ func setup_global_options(cmd *cobra.Command, args []string) (err error) {
 
 func EntryPoint(tool_root *cobra.Command) *cobra.Command {
 	at_root_command := cli.CreateCommand(&cobra.Command{
-		Use:               "@ [global options] command [command options] [command args]",
-		Short:             "Control kitty remotely",
-		Long:              "Control kitty by sending it commands. Set the allow_remote_control option in :file:`kitty.conf` or use a password, for this to work.",
-		PersistentPreRunE: setup_global_options,
+		Use:   "@ [global options] command [command options] [command args]",
+		Short: "Control kitty remotely",
+		Long:  "Control kitty by sending it commands. Set the allow_remote_control option in :file:`kitty.conf` or use a password, for this to work.",
 	})
 	at_root_command.Annotations["options_title"] = "Global options"
 	add_global_options(at_root_command.PersistentFlags())
@@ -366,7 +369,6 @@ func EntryPoint(tool_root *cobra.Command) *cobra.Command {
 		alias.Use = "@" + alias.Use
 		alias.Hidden = true
 		add_global_options(alias.Flags())
-		alias.PersistentPreRunE = setup_global_options
 		tool_root.AddCommand(&alias)
 	}
 	return at_root_command
