@@ -10,18 +10,19 @@ func TestEscapeCodeParsing(t *testing.T) {
 	}
 	var d test_parse_collection
 
-	add := func(prefix string, b []byte) {
+	add := func(prefix string, b []byte) error {
 		d.actual += "\n" + prefix + ": " + string(b)
+		return nil
 	}
 
 	var test_parser = EscapeCodeParser{
-		HandleCSI:  func(b []byte) { add("CSI", b) },
-		HandleOSC:  func(b []byte) { add("OSC", b) },
-		HandleDCS:  func(b []byte) { add("DCS", b) },
-		HandleSOS:  func(b []byte) { add("SOS", b) },
-		HandlePM:   func(b []byte) { add("PM", b) },
-		HandleAPC:  func(b []byte) { add("APC", b) },
-		HandleRune: func(b rune) { add("CH", []byte(string(b))) },
+		HandleCSI:  func(b []byte) error { return add("CSI", b) },
+		HandleOSC:  func(b []byte) error { return add("OSC", b) },
+		HandleDCS:  func(b []byte) error { return add("DCS", b) },
+		HandleSOS:  func(b []byte) error { return add("SOS", b) },
+		HandlePM:   func(b []byte) error { return add("PM", b) },
+		HandleAPC:  func(b []byte) error { return add("APC", b) },
+		HandleRune: func(b rune) error { return add("CH", []byte(string(b))) },
 	}
 
 	reset_test_parser := func() {
