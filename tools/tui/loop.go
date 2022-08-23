@@ -16,6 +16,8 @@ type Loop struct {
 	escape_code_parser utils.EscapeCodeParser
 	keep_going         bool
 	flush_write_buf    bool
+	death_signal       Signal
+	exit_code          int
 	write_buf          []byte
 }
 
@@ -44,6 +46,29 @@ func (self *Loop) handle_pm(raw []byte) error {
 }
 
 func (self *Loop) handle_rune(raw rune) error {
+	return nil
+}
+
+func (self *Loop) on_SIGINT() error {
+	self.death_signal = SIGINT
+	self.keep_going = false
+	return nil
+}
+
+func (self *Loop) on_SIGTERM() error {
+	self.death_signal = SIGTERM
+	self.keep_going = false
+	return nil
+}
+
+func (self *Loop) on_SIGTSTP() error {
+	return nil
+}
+
+func (self *Loop) on_SIGHUP() error {
+	self.flush_write_buf = false
+	self.death_signal = SIGHUP
+	self.keep_going = false
 	return nil
 }
 
@@ -115,7 +140,10 @@ func (self *Loop) Run() (err error) {
 	}()
 
 	read_buf := make([]byte, utils.DEFAULT_IO_BUFFER_SIZE)
+	signal_buf := make([]byte, 256)
+	self.death_signal = SIGNULL
 	self.escape_code_parser.Reset()
+	self.exit_code = 0
 	for self.keep_going {
 		if len(self.write_buf) > 0 {
 			selector.RegisterWrite(tty_fd)
@@ -130,7 +158,7 @@ func (self *Loop) Run() (err error) {
 			continue
 		}
 		if len(self.write_buf) > 0 && selector.IsReadyToWrite(tty_fd) {
-			err := self.write_to_tty()
+			err = self.write_to_tty()
 			if err != nil {
 				return err
 			}
@@ -145,6 +173,13 @@ func (self *Loop) Run() (err error) {
 				return io.EOF
 			}
 			err = self.escape_code_parser.Parse(read_buf[:num_read])
+			if err != nil {
+				return err
+			}
+		}
+		if selector.IsReadyToRead(int(signal_read_file.Fd())) {
+			signal_buf = signal_buf[:cap(signal_buf)]
+			err = self.read_signals(signal_read_file, signal_buf)
 			if err != nil {
 				return err
 			}

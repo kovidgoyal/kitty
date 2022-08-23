@@ -3,7 +3,6 @@
 package utils
 
 import (
-	"os"
 	"time"
 
 	"golang.org/x/sys/unix"
