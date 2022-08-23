@@ -20,12 +20,6 @@ const (
 	TCSAFLUSH = 2
 )
 
-func IsTerminal(fd uintptr) bool {
-	var t unix.Termios
-	err := Tcgetattr(int(fd), &t)
-	return err == nil
-}
-
 type Term struct {
 	name   string
 	fd     int
@@ -50,6 +44,12 @@ func eintr_retry_intret(f func() (int, error)) (int, error) {
 		}
 		return q, qerr
 	}
+}
+
+func IsTerminal(fd uintptr) bool {
+	var t unix.Termios
+	err := eintr_retry_noret(func() error { return Tcgetattr(int(fd), &t) })
+	return err == nil
 }
 
 type TermiosOperation func(t *unix.Termios)
