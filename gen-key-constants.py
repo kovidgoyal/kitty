@@ -2,8 +2,8 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import string
-from typing import Dict, List, Any
 from pprint import pformat
+from typing import Any, Dict, List, Union
 
 functional_key_defs = '''# {{{
 # kitty                     XKB                         macVK  macU
@@ -248,6 +248,19 @@ def serialize_dict(x: Dict[Any, Any]) -> str:
     return pformat(x, indent=4).replace('{', '{\n ', 1)
 
 
+def serialize_go_dict(x: Union[Dict[str, int], Dict[int, str], Dict[int, int]]) -> str:
+    ans = []
+
+    def s(x: Union[int, str]) -> str:
+        if isinstance(x, int):
+            return str(x)
+        return f'"{x}"'
+
+    for k, v in x.items():
+        ans.append(f'{s(k)}: {s(v)}')
+    return '{' + ', '.join(ans) + '}'
+
+
 def generate_glfw_header() -> None:
     lines = [
         'typedef enum {',
@@ -309,14 +322,18 @@ def generate_functional_table() -> None:
     patch_file('kitty/key_encoding.c', 'special numbers', '\n'.join(enc_lines))
     code_to_name = {v: k.upper() for k, v in name_to_code.items()}
     csi_map = {v: name_to_code[k] for k, v in functional_encoding_overrides.items()}
-    letter_trailer_codes = {
-        v: functional_encoding_overrides.get(k, name_to_code.get(k))
+    letter_trailer_codes: Dict[str, int] = {
+        v: functional_encoding_overrides.get(k, name_to_code.get(k, 0))
         for k, v in different_trailer_functionals.items() if v in 'ABCDEHFPQRSZ'}
     text = f'functional_key_number_to_name_map = {serialize_dict(code_to_name)}'
     text += f'\ncsi_number_to_functional_number_map = {serialize_dict(csi_map)}'
     text += f'\nletter_trailer_to_csi_number_map = {letter_trailer_codes!r}'
     text += f'\ntilde_trailers = {tilde_trailers!r}'
     patch_file('kitty/key_encoding.py', 'csi mapping', text, start_marker='# ', end_marker='')
+    text = f'var functional_key_number_to_name_map = map[int]string{serialize_go_dict(code_to_name)}\n'
+    text += f'\nvar csi_number_to_functional_number_map = map[int]int{serialize_go_dict(csi_map)}\n'
+    text += f'\nvar letter_trailer_to_csi_number_map = map[string]int{serialize_go_dict(letter_trailer_codes)}\n'
+    patch_file('tools/tui/key-encoding.go', 'csi mapping', text, start_marker='// ', end_marker='')
 
 
 def generate_legacy_text_key_maps() -> None:
