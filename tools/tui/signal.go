@@ -94,3 +94,36 @@ func notify_signals(c chan os.Signal, signals ...Signal) func() {
 	signal.Notify(c, s...)
 	return func() { signal.Reset(s...) }
 }
+
+func (self *Loop) read_signals(f *os.File, buf []byte) error {
+	n, err := f.Read(buf)
+	if err != nil {
+		return err
+	}
+	buf = buf[:n]
+	for _, s := range buf {
+		switch Signal(s) {
+		case SIGINT:
+			err := self.on_SIGINT()
+			if err != nil {
+				return err
+			}
+		case SIGTERM:
+			err := self.on_SIGTERM()
+			if err != nil {
+				return err
+			}
+		case SIGHUP:
+			err := self.on_SIGHUP()
+			if err != nil {
+				return err
+			}
+		case SIGTSTP:
+			err := self.on_SIGTSTP()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
