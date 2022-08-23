@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -90,15 +91,17 @@ var SetNoEcho TermiosOperation = func(t *unix.Termios) {
 	t.Lflag &^= unix.ECHO
 }
 
-func OpenTerm(name string, operations ...TermiosOperation) (self *Term, err error) {
-	fd, err := eintr_retry_intret(func() (int, error) {
-		return unix.Open(name, unix.O_NOCTTY|unix.O_CLOEXEC|unix.O_NDELAY|unix.O_RDWR, 0666)
-	})
-	if err != nil {
-		return nil, &os.PathError{Op: "open", Path: name, Err: err}
-	}
+var SetReadPassword TermiosOperation = func(t *unix.Termios) {
+	t.Lflag &^= unix.ECHO
+	t.Lflag |= unix.ISIG
+	t.Lflag &^= unix.ICANON
+	t.Iflag |= unix.ICRNL
+	t.Cc[unix.VMIN] = 1
+	t.Cc[unix.VTIME] = 0
+}
 
-	self = &Term{name: name, fd: fd}
+func WrapTerm(fd int, operations ...TermiosOperation) (self *Term, err error) {
+	self = &Term{name: fmt.Sprintf("<fd: %d>", fd), fd: fd}
 	err = eintr_retry_noret(func() error { return unix.SetNonblock(self.fd, false) })
 	if err == nil {
 		err = self.ApplyOperations(TCSANOW, operations...)
@@ -110,8 +113,22 @@ func OpenTerm(name string, operations ...TermiosOperation) (self *Term, err erro
 	return
 }
 
+func OpenTerm(name string, operations ...TermiosOperation) (self *Term, err error) {
+	fd, err := eintr_retry_intret(func() (int, error) {
+		return unix.Open(name, unix.O_NOCTTY|unix.O_CLOEXEC|unix.O_NDELAY|unix.O_RDWR, 0666)
+	})
+	if err != nil {
+		return nil, &os.PathError{Op: "open", Path: name, Err: err}
+	}
+	self, err = WrapTerm(fd, operations...)
+	if err != nil {
+		self.name = name
+	}
+	return
+}
+
 func OpenControllingTerm(operations ...TermiosOperation) (self *Term, err error) {
-	return OpenTerm("/dev/tty", operations...) // go doesnt have a wrapper for ctermid()
+	return OpenTerm(Ctermid(), operations...)
 }
 
 func (self *Term) Fd() int { return self.fd }
@@ -176,6 +193,11 @@ func (self *Term) RestoreWhen(when uintptr) (err error) {
 
 func (self *Term) Restore() error {
 	return self.RestoreWhen(TCSAFLUSH)
+}
+
+func (self *Term) RestoreAndClose() error {
+	self.Restore()
+	return self.Close()
 }
 
 func clamp(v, lo, hi int64) int64 {
@@ -325,4 +347,79 @@ func (self *Term) GetSize() (*unix.Winsize, error) {
 			return sz, err
 		}
 	}
+}
+
+func (self *Term) read_line(in_password_mode bool) ([]byte, error) {
+	var buf [1]byte
+	var ret []byte
+
+	for {
+		n, err := self.Read(buf[:])
+		if n > 0 {
+			switch buf[0] {
+			case '\b', 0x7f:
+				if len(ret) > 0 {
+					ret = ret[:len(ret)-1]
+					_, err = self.WriteAllWithTimeout([]byte("\x08\x1b[P"), 5*time.Second)
+					if err != nil {
+						return nil, err
+					}
+				}
+			case '\n':
+				if runtime.GOOS != "windows" {
+					return ret, nil
+				}
+				// otherwise ignore \n
+			case '\r':
+				if runtime.GOOS == "windows" {
+					return ret, nil
+				}
+				// otherwise ignore \r
+			default:
+				ret = append(ret, buf[0])
+				_, err = self.WriteAllWithTimeout([]byte("*"), 5*time.Second)
+				if err != nil {
+					return nil, err
+				}
+			}
+			continue
+		}
+		if err != nil {
+			if err == io.EOF && len(ret) > 0 {
+				return ret, nil
+			}
+			return nil, err
+		}
+	}
+}
+
+func (self *Term) ReadLine() ([]byte, error) {
+	return self.read_line(false)
+}
+
+func (self *Term) ReadPassword() (string, error) {
+	pw, err := self.read_line(false)
+	return string(pw), err
+}
+
+// go doesnt have a wrapper for ctermid()
+func Ctermid() string { return "/dev/tty" }
+
+func ReadPassword(prompt string) (string, error) {
+	term, err := OpenControllingTerm(SetReadPassword)
+	if err != nil {
+		return "", err
+	}
+	defer term.RestoreAndClose()
+	if len(prompt) > 0 {
+		_, err = term.WriteAllWithTimeout([]byte(prompt), 5*time.Second)
+		if err != nil {
+			return "", err
+		}
+	}
+	pw, err := term.ReadPassword()
+	if err != nil {
+		return "", err
+	}
+	return pw, nil
 }
