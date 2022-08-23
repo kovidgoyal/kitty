@@ -3,10 +3,10 @@
 
 import os
 import subprocess
-import sys
 from typing import Dict, List, Tuple
 
 import kitty.constants as kc
+from kittens.tui.operations import Mode
 from kitty.cli import OptionDict, OptionSpecSeq, parse_option_spec
 from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
 
@@ -184,9 +184,6 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
 
 
 def main() -> None:
-    if 'prewarmed' in getattr(sys, 'kitty_run_data'):
-        os.environ.pop('KITTY_PREWARM_SOCKET')
-        os.execlp(sys.executable, sys.executable, '+launch', __file__, *sys.argv[1:])
     with open('constants_generated.go', 'w') as f:
         dp = ", ".join(map(lambda x: f'"{serialize_as_go_string(x)}"', kc.default_pager_for_help))
         f.write(f'''\
@@ -197,13 +194,14 @@ package kitty
 type VersionType struct {{
     Major, Minor, Patch int
 }}
-var VersionString string = "{kc.str_version}"
-var WebsiteBaseURL string = "{kc.website_base_url}"
+const VersionString string = "{kc.str_version}"
+const WebsiteBaseURL string = "{kc.website_base_url}"
+const VCSRevision string = ""
+const RC_ENCRYPTION_PROTOCOL_VERSION string = "{kc.RC_ENCRYPTION_PROTOCOL_VERSION}"
+const IsFrozenBuild bool = false
+const HandleTermiosSignals = {Mode.HANDLE_TERMIOS_SIGNALS.value[0]}
 var Version VersionType = VersionType{{Major: {kc.version.major}, Minor: {kc.version.minor}, Patch: {kc.version.patch},}}
 var DefaultPager []string = []string{{ {dp} }}
-var VCSRevision string = ""
-var RC_ENCRYPTION_PROTOCOL_VERSION string = "{kc.RC_ENCRYPTION_PROTOCOL_VERSION}"
-var IsFrozenBuild bool = false
 ''')
     with open('tools/cmd/at/template.go') as f:
         template = f.read()
