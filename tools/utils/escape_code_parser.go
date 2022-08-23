@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bytes"
-	"fmt"
 )
 
 type parser_state uint8
@@ -40,35 +39,19 @@ type EscapeCodeParser struct {
 	csi_state              csi_state
 	current_buffer         []byte
 	bracketed_paste_buffer []UTF8State
-	current_callback       func([]byte)
-
-	// Whether to send escape code bytes as soon as they are received or to
-	// buffer and send full escape codes
-	streaming bool
+	current_callback       func([]byte) error
 
 	// Callbacks
-	HandleRune func(rune)
-	HandleCSI  func([]byte)
-	HandleOSC  func([]byte)
-	HandleDCS  func([]byte)
-	HandlePM   func([]byte)
-	HandleSOS  func([]byte)
-	HandleAPC  func([]byte)
+	HandleRune func(rune) error
+	HandleCSI  func([]byte) error
+	HandleOSC  func([]byte) error
+	HandleDCS  func([]byte) error
+	HandlePM   func([]byte) error
+	HandleSOS  func([]byte) error
+	HandleAPC  func([]byte) error
 }
 
-func (self *EscapeCodeParser) SetStreaming(streaming bool) error {
-	if self.state != normal || len(self.current_buffer) > 0 {
-		return fmt.Errorf("Cannot change streaming state when not in reset state")
-	}
-	self.streaming = streaming
-	return nil
-}
-
-func (self *EscapeCodeParser) IsStreaming() bool {
-	return self.streaming
-}
-
-func (self *EscapeCodeParser) Parse(data []byte) {
+func (self *EscapeCodeParser) Parse(data []byte) error {
 	prev := UTF8_ACCEPT
 	codep := UTF8_ACCEPT
 	for i := 0; i < len(data); i++ {
@@ -76,7 +59,11 @@ func (self *EscapeCodeParser) Parse(data []byte) {
 		case normal, bracketed_paste:
 			switch decode_utf8(&self.utf8_state, &codep, data[i]) {
 			case UTF8_ACCEPT:
-				self.dispatch_char(codep)
+				err := self.dispatch_char(codep)
+				if err != nil {
+					self.Reset()
+					return err
+				}
 			case UTF8_REJECT:
 				self.utf8_state = UTF8_ACCEPT
 				if prev != UTF8_ACCEPT && i > 0 {
@@ -85,9 +72,14 @@ func (self *EscapeCodeParser) Parse(data []byte) {
 			}
 			prev = self.utf8_state
 		default:
-			self.dispatch_byte(data[i])
+			err := self.dispatch_byte(data[i])
+			if err != nil {
+				self.Reset()
+				return err
+			}
 		}
 	}
+	return nil
 }
 
 func (self *EscapeCodeParser) Reset() {
@@ -95,17 +87,7 @@ func (self *EscapeCodeParser) Reset() {
 }
 
 func (self *EscapeCodeParser) write_ch(ch byte) {
-	if self.streaming {
-		if self.current_callback != nil {
-			var data [1]byte = [1]byte{ch}
-			self.current_callback(data[:])
-		}
-		if self.state == csi && len(self.current_buffer) < 4 {
-			self.current_buffer = append(self.current_buffer, ch)
-		}
-	} else {
-		self.current_buffer = append(self.current_buffer, ch)
-	}
+	self.current_buffer = append(self.current_buffer, ch)
 }
 
 func csi_type(ch byte) csi_char_type {
@@ -130,26 +112,29 @@ func (self *EscapeCodeParser) reset_state() {
 	self.csi_state = parameter
 }
 
-func (self *EscapeCodeParser) dispatch_esc_code() {
+func (self *EscapeCodeParser) dispatch_esc_code() error {
 	if self.state == csi && bytes.Equal(self.current_buffer, bracketed_paste_start) {
 		self.reset_state()
 		self.state = bracketed_paste
-		return
+		return nil
 	}
+	var err error
 	if self.current_callback != nil {
-		self.current_callback(self.current_buffer)
+		err = self.current_callback(self.current_buffer)
 	}
 	self.reset_state()
+	return err
 }
 
 func (self *EscapeCodeParser) invalid_escape_code() {
 	self.reset_state()
 }
 
-func (self *EscapeCodeParser) dispatch_rune(ch UTF8State) {
+func (self *EscapeCodeParser) dispatch_rune(ch UTF8State) error {
 	if self.HandleRune != nil {
-		self.HandleRune(rune(ch))
+		return self.HandleRune(rune(ch))
 	}
+	return nil
 }
 
 func (self *EscapeCodeParser) bp_buffer_equals(chars []UTF8State) bool {
@@ -164,44 +149,47 @@ func (self *EscapeCodeParser) bp_buffer_equals(chars []UTF8State) bool {
 	return true
 }
 
-func (self *EscapeCodeParser) dispatch_char(ch UTF8State) {
+func (self *EscapeCodeParser) dispatch_char(ch UTF8State) error {
 	if self.state == bracketed_paste {
-		dispatch := func() {
+		dispatch := func() error {
 			if len(self.bracketed_paste_buffer) > 0 {
 				for _, c := range self.bracketed_paste_buffer {
-					self.dispatch_rune(c)
+					err := self.dispatch_rune(c)
+					if err != nil {
+						return err
+					}
 				}
 				self.bracketed_paste_buffer = self.bracketed_paste_buffer[:0]
 			}
-			self.dispatch_rune(ch)
+			return self.dispatch_rune(ch)
 		}
-		handle_ch := func(chars ...UTF8State) {
+		handle_ch := func(chars ...UTF8State) error {
 			if self.bp_buffer_equals(chars) {
 				self.bracketed_paste_buffer = append(self.bracketed_paste_buffer, ch)
 				if self.bracketed_paste_buffer[len(self.bracketed_paste_buffer)-1] == '~' {
 					self.reset_state()
 				}
+				return nil
 			} else {
-				dispatch()
+				return dispatch()
 			}
 		}
 		switch ch {
 		case 0x1b:
-			handle_ch()
+			return handle_ch()
 		case '[':
-			handle_ch(0x1b)
+			return handle_ch(0x1b)
 		case '2':
-			handle_ch(0x1b, '[')
+			return handle_ch(0x1b, '[')
 		case '0':
-			handle_ch(0x1b, '[', '2')
+			return handle_ch(0x1b, '[', '2')
 		case '1':
-			handle_ch(0x1b, '[', '2', '0')
+			return handle_ch(0x1b, '[', '2', '0')
 		case '~':
-			handle_ch(0x1b, '[', '2', '0', '1')
+			return handle_ch(0x1b, '[', '2', '0', '1')
 		default:
-			dispatch()
+			return dispatch()
 		}
-		return
 	} // end self.state == bracketed_paste
 
 	switch ch {
@@ -226,11 +214,12 @@ func (self *EscapeCodeParser) dispatch_char(ch UTF8State) {
 		self.state = st
 		self.current_callback = self.HandleAPC
 	default:
-		self.dispatch_rune(ch)
+		return self.dispatch_rune(ch)
 	}
+	return nil
 }
 
-func (self *EscapeCodeParser) dispatch_byte(ch byte) {
+func (self *EscapeCodeParser) dispatch_byte(ch byte) error {
 	switch self.state {
 	case esc:
 		switch ch {
@@ -261,7 +250,7 @@ func (self *EscapeCodeParser) dispatch_byte(ch byte) {
 			case intermediate_csi_char:
 				self.csi_state = intermediate
 			case final_csi_char:
-				self.dispatch_esc_code()
+				return self.dispatch_esc_code()
 			case unknown_csi_char:
 				self.invalid_escape_code()
 			}
@@ -270,13 +259,12 @@ func (self *EscapeCodeParser) dispatch_byte(ch byte) {
 			case parameter_csi_char, unknown_csi_char:
 				self.invalid_escape_code()
 			case final_csi_char:
-				self.dispatch_esc_code()
+				return self.dispatch_esc_code()
 			}
 		}
 	case st_or_bel:
 		if ch == 0x7 {
-			self.dispatch_esc_code()
-			return
+			return self.dispatch_esc_code()
 		}
 		fallthrough
 	case st:
@@ -289,7 +277,7 @@ func (self *EscapeCodeParser) dispatch_byte(ch byte) {
 		}
 	case esc_st:
 		if ch == '\\' {
-			self.dispatch_esc_code()
+			return self.dispatch_esc_code()
 		} else {
 			self.state = st
 			self.write_ch(0x1b)
@@ -299,11 +287,12 @@ func (self *EscapeCodeParser) dispatch_byte(ch byte) {
 		}
 	case c1_st:
 		if ch == 0x9c {
-			self.dispatch_esc_code()
+			return self.dispatch_esc_code()
 		} else {
 			self.state = st
 			self.write_ch(0xc2)
 			self.write_ch(ch)
 		}
 	}
+	return nil
 }
