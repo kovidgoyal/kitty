@@ -193,7 +193,7 @@ The :opt:`remote_control_password` can be specified multiple times to create
 different passwords with different capabilities. Run the following to get a
 list of all action names::
 
-    kitty @ -h
+    kitty @ --help
 
 You can even use glob patterns to match action names, for example:
 

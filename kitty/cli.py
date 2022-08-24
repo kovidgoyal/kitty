@@ -779,7 +779,6 @@ Output commands received from child process to STDOUT.
 Replay previously dumped commands. Specify the path to a dump file previously
 created by :option:`{appname} --dump-commands`. You
 can open a new kitty window to replay the commands with::
-
     {appname} sh -c "{appname} --replay-commands /path/to/dump/file; read"
 
 
