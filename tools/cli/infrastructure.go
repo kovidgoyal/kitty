@@ -16,8 +16,8 @@ import (
 
 	"kitty"
 	"kitty/tools/tty"
-	"kitty/tools/tui"
 	"kitty/tools/utils"
+	"kitty/tools/wcswidth"
 )
 
 var RootCmd *cobra.Command
@@ -120,7 +120,7 @@ func format_line_with_indent(output io.Writer, text string, indent string, scree
 	var escapes strings.Builder
 
 	print_word := func(r rune) {
-		w := tui.Wcswidth(current_word.String())
+		w := wcswidth.Stringwidth(current_word.String())
 		if x+w > screen_width {
 			fmt.Fprintln(output)
 			fmt.Fprint(output, indent)

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"kitty/tools/wcswidth"
 )
 
 type KilledBySignal struct {
@@ -25,9 +27,9 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 	loop.OnInitialize = func(loop *Loop) string { return "\r\n" }
 
 	loop.OnText = func(loop *Loop, text string, from_key_event bool, in_bracketed_paste bool) error {
-		old_width := Wcswidth(password)
+		old_width := wcswidth.Stringwidth(password)
 		password += text
-		new_width := Wcswidth(password)
+		new_width := wcswidth.Stringwidth(password)
 		if new_width > old_width {
 			extra := strings.Repeat("*", new_width-old_width)
 			loop.QueueWriteString(extra)
@@ -40,9 +42,9 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 		if event.MatchesPressOrRepeat("backscape") || event.MatchesPressOrRepeat("delete") {
 			event.Handled = true
 			if len(password) > 0 {
-				old_width := Wcswidth(password)
+				old_width := wcswidth.Stringwidth(password)
 				password = password[:len(password)-1]
-				new_width := Wcswidth(password)
+				new_width := wcswidth.Stringwidth(password)
 				delta := new_width - old_width
 				if delta > 0 {
 					if delta > len(shadow) {
