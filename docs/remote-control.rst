@@ -280,7 +280,7 @@ If you wish to ignore errors from the command, prefix the command with an
 ``!``. For example, the following will not return an error when no windows
 are matched::
 
-    map f1 !focus-window --match XXXXXX
+    map f1 remote_control !focus-window --match XXXXXX
 
 .. note:: You do not need :opt:`allow_remote_control` to use these mappings,
    as they are not actual remote programs, but are simply a way to resuse the
