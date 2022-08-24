@@ -59,24 +59,24 @@ default=window
 choices=window,tab,os-window,overlay,background,clipboard,primary
 Where to launch the child process:
 
-:term:`window`
-    a new :term:`window` in the current tab,
+:code:`window`
+    A new :term:`kitty window <window>` in the current tab
 
-:term:`tab`
-    a new tab in the current :term:`OS Window <os_window>`
+:code:`tab`
+    A new :term:`tab` in the current OS window
 
-:term:`os-window <os_window>`
-    a new operating system window
+:code:`os-window <os_window>`
+    A new :term:`operating system window <os_window>`
 
-:term:`overlay`
-    an overlay window covering the current active window.
+:code:`overlay`
+    An :term:`overlay window <overlay>` covering the current active kitty window
 
-:italic:`background`
-    the process will be run in the background, without a window
+:code:`background`
+    The process will be run in the :italic:`background`, without a kitty window.
 
-:italic:`clipboard` and :italic:`primary`
-    are meant to work with :option:`--stdin-source <launch --stdin-source>` to copy
-    data to the system clipboard or primary selection.
+:code:`clipboard`, :code:`primary`
+    These two are meant to work with :option:`--stdin-source <launch --stdin-source>` to copy
+    data to the :italic:`system clipboard` or :italic:`primary selection`.
 
 #placeholder_for_formatting#
 
