@@ -18,6 +18,7 @@ import (
 	"kitty/tools/cli"
 	"kitty/tools/crypto"
 	"kitty/tools/tty"
+	"kitty/tools/tui"
 	"kitty/tools/utils"
 )
 
@@ -255,10 +256,9 @@ func get_password(password string, password_file string, password_env string, us
 	if ans == "" && password_file != "" {
 		if password_file == "-" {
 			if tty.IsTerminal(os.Stdin.Fd()) {
-				var q string
-				q, err = tty.ReadPassword("Password: ")
-				if err == nil {
-					ans = string(q)
+				ans, err = tui.ReadPassword("Password: ", false)
+				if err != nil {
+					return
 				}
 			} else {
 				var q []byte

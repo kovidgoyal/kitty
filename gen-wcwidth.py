@@ -560,10 +560,10 @@ def gen_wcwidth() -> None:
         else:
             p('\treturn 1;\n}')
 
-    with create_header('kitty/wcwidth-std.h') as p, open('tools/tui/wcwidth-std.go', 'w') as gof:
+    with create_header('kitty/wcwidth-std.h') as p, open('tools/wcswidth/std.go', 'w') as gof:
         gop = partial(print, file=gof)
-        gop('package tui\n\n')
-        gop('func Wcwidth(code rune) int {')
+        gop('package wcswidth\n\n')
+        gop('func Runewidth(code rune) int {')
         p('static inline int\nwcwidth_std(int32_t code) {')
         p('\tif (LIKELY(0x20 <= code && code <= 0x7e)) { return 1; }')
         p('\tswitch(code) {')
