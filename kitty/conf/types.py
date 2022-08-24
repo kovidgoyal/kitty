@@ -84,6 +84,8 @@ def resolve_ref(ref: str, website_url: Callable[[str], str] = website_url) -> st
 
 def remove_markup(text: str) -> str:
 
+    imap = {'iss': 'issues-', 'pull': 'pull-', 'disc': 'discussions-'}
+
     def extract(m: 'Match[str]') -> Tuple[str, str]:
         parts = m.group(2).split('<')
         t = parts[0].strip()
@@ -93,12 +95,7 @@ def remove_markup(text: str) -> str:
     def sub(m: 'Match[str]') -> str:
         if m.group(1) in ('ref', 'iss', 'pull', 'disc'):
             t, q = extract(m)
-            if m.group(1) == 'iss':
-                q = f'github-issue-{q}'
-            elif m.group(1) == 'pull':
-                q = f'github-pr-{q}'
-            elif m.group(1) == 'disc':
-                q = f'github-discussion-{q}'
+            q = imap.get(m.group(1), '') + q
             url = resolve_ref(q)
             if not url:
                 raise KeyError(f'Failed to resolve :{m.group(1)}: {q}')
