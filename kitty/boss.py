@@ -561,7 +561,7 @@ class Boss:
 
         For example::
 
-            map F1 remote_control set-spacing margin=30
+            map f1 remote_control set-spacing margin=30
 
         See :ref:`rc_mapping` for details.
         ''')

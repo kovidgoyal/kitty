@@ -168,7 +168,9 @@ def file(x: str) -> str:
 
 @role
 def doc(x: str) -> str:
-    return website_url(x)
+    t, q = text_and_target(x)
+    url = f'kitty+doc://{hostname()}/{q.lstrip("/")}'
+    return hyperlink_for_url(url, t)
 
 
 @run_once
@@ -191,6 +193,21 @@ def ref(x: str) -> str:
 @role
 def ac(x: str) -> str:
     return ref_hyperlink(x, 'action-')
+
+
+@role
+def iss(x: str) -> str:
+    return ref_hyperlink(x, 'github-issue-')
+
+
+@role
+def pull(x: str) -> str:
+    return ref_hyperlink(x, 'github-pr-')
+
+
+@role
+def disc(x: str) -> str:
+    return ref_hyperlink(x, 'github-discussion-')
 
 
 OptionSpecSeq = List[Union[str, OptionDict]]
@@ -779,7 +796,6 @@ Output commands received from child process to STDOUT.
 Replay previously dumped commands. Specify the path to a dump file previously
 created by :option:`{appname} --dump-commands`. You
 can open a new kitty window to replay the commands with::
-
     {appname} sh -c "{appname} --replay-commands /path/to/dump/file; read"
 
 
