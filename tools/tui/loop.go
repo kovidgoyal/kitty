@@ -8,8 +8,32 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"kitty/tools/utils"
 )
+
+func read_ignoring_eintr(fd int, buf []byte) (int, error) {
+	n, err := unix.Read(fd, buf)
+	if err == unix.EINTR {
+		return 0, nil
+	}
+	if n == 0 {
+		return 0, io.EOF
+	}
+	return n, err
+}
+
+func write_ignoring_eintr(fd int, buf []byte) (int, error) {
+	n, err := unix.Write(fd, buf)
+	if err == unix.EINTR {
+		return 0, nil
+	}
+	if n == 0 {
+		return 0, io.EOF
+	}
+	return n, err
+}
 
 type Loop struct {
 	controlling_term   *tty.Term
@@ -228,16 +252,15 @@ func (self *Loop) Run() (err error) {
 		}
 		if selector.IsReadyToRead(tty_fd) {
 			read_buf = read_buf[:cap(read_buf)]
-			num_read, err := self.controlling_term.Read(read_buf)
+			num_read, err := read_ignoring_eintr(tty_fd, read_buf)
 			if err != nil {
 				return err
 			}
-			if num_read == 0 {
-				return io.EOF
-			}
-			err = self.escape_code_parser.Parse(read_buf[:num_read])
-			if err != nil {
-				return err
+			if num_read > 0 {
+				err = self.escape_code_parser.Parse(read_buf[:num_read])
+				if err != nil {
+					return err
+				}
 			}
 		}
 		if selector.IsReadyToRead(int(signal_read_file.Fd())) {
@@ -277,12 +300,12 @@ func (self *Loop) write_to_tty() error {
 	if len(self.write_buf) == 0 || self.controlling_term == nil {
 		return nil
 	}
-	n, err := self.controlling_term.Write(self.write_buf)
+	n, err := write_ignoring_eintr(self.controlling_term.Fd(), self.write_buf)
 	if err != nil {
 		return err
 	}
-	if n == 0 {
-		return io.EOF
+	if n <= 0 {
+		return nil
 	}
 	remainder := self.write_buf[n:]
 	if len(remainder) > 0 {

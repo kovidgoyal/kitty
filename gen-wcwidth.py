@@ -555,7 +555,10 @@ def gen_wcwidth() -> None:
 
         p('\t\tdefault:\n\t\t\treturn 1;')
         p('\t}')
-        p('\treturn 1;\n}')
+        if for_go:
+            p('\t}')
+        else:
+            p('\treturn 1;\n}')
 
     with create_header('kitty/wcwidth-std.h') as p, open('tools/tui/wcwidth-std.go', 'w') as gof:
         gop = partial(print, file=gof)
