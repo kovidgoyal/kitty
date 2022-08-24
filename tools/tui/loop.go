@@ -13,9 +13,9 @@ import (
 	"kitty/tools/utils"
 )
 
-func read_ignoring_eintr(fd int, buf []byte) (int, error) {
+func read_ignoring_temporary_errors(fd int, buf []byte) (int, error) {
 	n, err := unix.Read(fd, buf)
-	if err == unix.EINTR {
+	if err == unix.EINTR || err == unix.EAGAIN || err == unix.EWOULDBLOCK {
 		return 0, nil
 	}
 	if n == 0 {
@@ -24,9 +24,9 @@ func read_ignoring_eintr(fd int, buf []byte) (int, error) {
 	return n, err
 }
 
-func write_ignoring_eintr(fd int, buf []byte) (int, error) {
+func write_ignoring_temporary_errors(fd int, buf []byte) (int, error) {
 	n, err := unix.Write(fd, buf)
-	if err == unix.EINTR {
+	if err == unix.EINTR || err == unix.EAGAIN || err == unix.EWOULDBLOCK {
 		return 0, nil
 	}
 	if n == 0 {
@@ -252,7 +252,7 @@ func (self *Loop) Run() (err error) {
 		}
 		if selector.IsReadyToRead(tty_fd) {
 			read_buf = read_buf[:cap(read_buf)]
-			num_read, err := read_ignoring_eintr(tty_fd, read_buf)
+			num_read, err := read_ignoring_temporary_errors(tty_fd, read_buf)
 			if err != nil {
 				return err
 			}
@@ -300,7 +300,7 @@ func (self *Loop) write_to_tty() error {
 	if len(self.write_buf) == 0 || self.controlling_term == nil {
 		return nil
 	}
-	n, err := write_ignoring_eintr(self.controlling_term.Fd(), self.write_buf)
+	n, err := write_ignoring_temporary_errors(self.controlling_term.Fd(), self.write_buf)
 	if err != nil {
 		return err
 	}
