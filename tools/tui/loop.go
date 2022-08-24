@@ -181,6 +181,12 @@ func (self *Loop) KillIfSignalled() {
 	}
 }
 
+func (self *Loop) DebugPrintln(args ...interface{}) {
+	if self.controlling_term != nil {
+		self.controlling_term.DebugPrintln(args...)
+	}
+}
+
 func (self *Loop) Run() (err error) {
 	signal_read_file, signal_write_file, err := os.Pipe()
 	if err != nil {
