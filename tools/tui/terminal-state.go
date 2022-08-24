@@ -46,8 +46,8 @@ const (
 	HANDLE_TERMIOS_SIGNALS Mode = kitty.HandleTermiosSignals | private
 )
 
-func (self *Mode) escape_code(which string) string {
-	num := *self
+func (self Mode) escape_code(which string) string {
+	num := self
 	priv := ""
 	if num&private > 0 {
 		priv = "?"
@@ -61,7 +61,7 @@ func (self Mode) EscapeCodeToSet() string {
 }
 
 func (self Mode) EscapeCodeToReset() string {
-	return self.escape_code("h")
+	return self.escape_code("l")
 }
 
 type MouseTracking uint8
@@ -100,8 +100,9 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() []byte {
 	sb.WriteString(SAVE_PRIVATE_MODE_VALUES)
 	sb.WriteString(SAVE_COLORS)
 	sb.WriteString(DECSACE_DEFAULT_REGION_SELECT)
-	reset_modes(&sb, IRM, DECKM, DECSCNM, MOUSE_BUTTON_TRACKING, MOUSE_MOTION_TRACKING,
-		MOUSE_MOVE_TRACKING, FOCUS_TRACKING, MOUSE_UTF8_MODE, MOUSE_SGR_MODE, BRACKETED_PASTE)
+	reset_modes(&sb,
+		IRM, DECKM, DECSCNM, BRACKETED_PASTE, FOCUS_TRACKING,
+		MOUSE_BUTTON_TRACKING, MOUSE_MOTION_TRACKING, MOUSE_MOVE_TRACKING, MOUSE_UTF8_MODE, MOUSE_SGR_MODE)
 	set_modes(&sb, DECARM, DECAWM, DECTCEM)
 	if self.alternate_screen {
 		set_modes(&sb, ALTERNATE_SCREEN)
