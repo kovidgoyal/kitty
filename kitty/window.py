@@ -1665,7 +1665,7 @@ class Window:
 
         For example::
 
-            map F1 signal_child SIGTERM
+            map f1 signal_child SIGTERM
         ''')
     def signal_child(self, *signals: int) -> None:
         pid = self.child.pid_for_cwd
@@ -1679,9 +1679,9 @@ class Window:
     For example::
 
         # show the config docs
-        map F1 show_kitty_doc conf
+        map f1 show_kitty_doc conf
         # show the ssh kitten docs
-        map F1 show_kitty_doc kittens/ssh
+        map f1 show_kitty_doc kittens/ssh
     ''')
     def show_kitty_doc(self, which: str = '') -> None:
         url = docs_url(which)
