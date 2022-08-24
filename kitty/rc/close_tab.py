@@ -17,6 +17,7 @@ class CloseTab(RemoteCommand):
 
     '''
     match/str: Which tab to close
+    no_response/bool: Boolean indicating whether to wait for a response
     self/bool: Boolean indicating whether to close the tab of the window the command is run in
     '''
 
@@ -29,6 +30,13 @@ tabs in the currently focused OS window, use::
     kitty @ close-tab --match "not state:focused and state:parent_focused"
 '''
     options_spec = MATCH_TAB_OPTION + '''\n
+--no-response
+type=bool-set
+default=false
+Don't wait for a response indicating the success of the action. Note that
+using this option means that you will not be notified of failures.
+
+
 --self
 type=bool-set
 Close the tab of the window this command is run in, rather than the active tab.
