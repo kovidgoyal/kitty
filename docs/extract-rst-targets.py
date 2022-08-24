@@ -14,7 +14,7 @@ def find_explicit_targets(text: str) -> Iterator[str]:
 
 
 def main() -> Dict[str, str]:
-    refs = {'github_discussions': 'https://github.com/kovidgoyal/kitty/discussions'}
+    refs = {}
     base = os.path.dirname(os.path.abspath(__file__))
     for dirpath, dirnames, filenames in os.walk(base):
         if 'generated' in dirnames:

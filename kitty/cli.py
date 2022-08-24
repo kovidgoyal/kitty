@@ -193,6 +193,21 @@ def ac(x: str) -> str:
     return ref_hyperlink(x, 'action-')
 
 
+@role
+def iss(x: str) -> str:
+    return ref_hyperlink(x, 'github-issue-')
+
+
+@role
+def pull(x: str) -> str:
+    return ref_hyperlink(x, 'github-pr-')
+
+
+@role
+def disc(x: str) -> str:
+    return ref_hyperlink(x, 'github-discussion-')
+
+
 OptionSpecSeq = List[Union[str, OptionDict]]
 
 

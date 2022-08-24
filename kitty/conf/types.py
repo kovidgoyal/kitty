@@ -72,7 +72,18 @@ def resolve_ref(ref: str, website_url: Callable[[str], str] = website_url) -> st
         href = f'actions/#{frag}'
     elif ref.startswith('term-') or ref.startswith('envvar-'):
         href = 'glossary/#' + ref
-    return website_url(href)
+    elif ref.startswith('github-'):
+        href = 'https://github.com/kovidgoyal/kitty'
+        parts = ref.split('-')
+        if parts[1] == 'issue':
+            href = f'{href}/issues/{parts[2]}'
+        elif parts[1] == 'pr':
+            href = f'{href}/pull/{parts[2]}'
+        elif parts[1] == 'discussion':
+            href = f'{href}/discussions/{parts[2]}'
+    if not (href.startswith('https://') or href.startswith('http://')):
+        href = website_url(href)
+    return href
 
 
 def remove_markup(text: str) -> str:
@@ -84,27 +95,28 @@ def remove_markup(text: str) -> str:
         return t, q
 
     def sub(m: 'Match[str]') -> str:
-        if m.group(1) == 'ref':
+        if m.group(1) in ('ref', 'iss', 'pull', 'disc'):
             t, q = extract(m)
+            if m.group(1) == 'iss':
+                q = f'github-issue-{q}'
+            elif m.group(1) == 'pull':
+                q = f'github-pr-{q}'
+            elif m.group(1) == 'disc':
+                q = f'github-discussion-{q}'
             url = resolve_ref(q)
             if not url:
-                raise KeyError(f'Failed to resolve :ref: {q}')
+                raise KeyError(f'Failed to resolve :{m.group(1)}: {q}')
             return f'{t} <{url}>'
         if m.group(1) == 'doc':
             t, q = extract(m)
             return f'{t} <{website_url(q.lstrip("/"))}>'
-        if m.group(1) == 'ac':
-            q = m.group(2).split('<')[-1].rstrip('>')
-            return q
-        if m.group(1) == 'term':
+        if m.group(1) in ('term', 'option'):
             t, _ = extract(m)
             return t
-        if m.group(1) == 'option':
-            t, _ = extract(m)
-            return t
-        if m.group(1) == 'disc':
+        if m.group(1) in ('ac', 'opt'):
             t, q = extract(m)
-            return f'{t} {resolve_ref("github_discussions")}/{q}'
+            return f'{t} {q}' if q and q != t else t
+
         return str(m.group(2))
 
     return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)
