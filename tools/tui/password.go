@@ -24,7 +24,10 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 		return
 	}
 
-	loop.OnInitialize = func(loop *Loop) string { return "\r\n" }
+	loop.OnInitialize = func(loop *Loop) string {
+		loop.QueueWriteString(prompt)
+		return "\r\n"
+	}
 
 	loop.OnText = func(loop *Loop, text string, from_key_event bool, in_bracketed_paste bool) error {
 		old_width := wcswidth.Stringwidth(password)

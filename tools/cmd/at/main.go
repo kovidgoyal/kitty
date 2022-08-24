@@ -256,7 +256,7 @@ func get_password(password string, password_file string, password_env string, us
 	if ans == "" && password_file != "" {
 		if password_file == "-" {
 			if tty.IsTerminal(os.Stdin.Fd()) {
-				ans, err = tui.ReadPassword("Password: ", false)
+				ans, err = tui.ReadPassword("Password: ", true)
 				if err != nil {
 					return
 				}
