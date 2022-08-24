@@ -3,6 +3,7 @@
 
 import os
 import re
+import subprocess
 import sys
 from collections import defaultdict
 from contextlib import contextmanager
@@ -254,9 +255,13 @@ def get_ranges(items: List[int]) -> Generator[Union[int, Tuple[int, int]], None,
             yield a, b
 
 
-def write_case(spec: Union[Tuple[int, ...], int], p: Callable[..., None]) -> None:
+def write_case(spec: Union[Tuple[int, ...], int], p: Callable[..., None], for_go: bool = False) -> None:
     if isinstance(spec, tuple):
-        p('\t\tcase 0x{:x} ... 0x{:x}:'.format(*spec))
+        if for_go:
+            v = ', '.join(f'0x{x:x}' for x in range(spec[0], spec[1] + 1))
+            p(f'\t\tcase {v}:')
+        else:
+            p('\t\tcase 0x{:x} ... 0x{:x}:'.format(*spec))
     else:
         p(f'\t\tcase 0x{spec:x}:')
 
@@ -524,45 +529,61 @@ def gen_names() -> None:
 
 def gen_wcwidth() -> None:
     seen: Set[int] = set()
+    non_printing = class_maps['Cc'] | class_maps['Cf'] | class_maps['Cs']
 
-    def add(p: Callable[..., None], comment: str, chars_: Union[Set[int], FrozenSet[int]], ret: int) -> None:
+    def add(p: Callable[..., None], comment: str, chars_: Union[Set[int], FrozenSet[int]], ret: int, for_go: bool = False) -> None:
         chars = chars_ - seen
         seen.update(chars)
         p(f'\t\t// {comment} ({len(chars)} codepoints)' + ' {{' '{')
         for spec in get_ranges(list(chars)):
-            write_case(spec, p)
+            write_case(spec, p, for_go)
             p(f'\t\t\treturn {ret};')
         p('\t\t// }}}\n')
 
-    with create_header('kitty/wcwidth-std.h') as p:
-        p('static inline int\nwcwidth_std(int32_t code) {')
-        p('\tif (LIKELY(0x20 <= code && code <= 0x7e)) return 1;')
-        p('\tswitch(code) {')
+    def add_all(p: Callable[..., None], for_go: bool = False) -> None:
+        seen.clear()
+        add(p, 'Flags', flag_codepoints, 2, for_go)
+        add(p, 'Marks', marks | {0}, 0, for_go)
+        add(p, 'Non-printing characters', non_printing, -1, for_go)
+        add(p, 'Private use', class_maps['Co'], -3, for_go)
+        add(p, 'Text Presentation', narrow_emoji, 1, for_go)
+        add(p, 'East Asian ambiguous width', ambiguous, -2, for_go)
+        add(p, 'East Asian double width', doublewidth, 2, for_go)
+        add(p, 'Emoji Presentation', wide_emoji, 2, for_go)
 
-        non_printing = class_maps['Cc'] | class_maps['Cf'] | class_maps['Cs']
-        add(p, 'Flags', flag_codepoints, 2)
-        add(p, 'Marks', marks | {0}, 0)
-        add(p, 'Non-printing characters', non_printing, -1)
-        add(p, 'Private use', class_maps['Co'], -3)
-        add(p, 'Text Presentation', narrow_emoji, 1)
-        add(p, 'East Asian ambiguous width', ambiguous, -2)
-        add(p, 'East Asian double width', doublewidth, 2)
-        add(p, 'Emoji Presentation', wide_emoji, 2)
+        add(p, 'Not assigned in the unicode character database', not_assigned, -4, for_go)
 
-        add(p, 'Not assigned in the unicode character database', not_assigned, -4)
-
-        p('\t\tdefault: return 1;')
+        p('\t\tdefault:\n\t\t\treturn 1;')
         p('\t}')
         p('\treturn 1;\n}')
+
+    with create_header('kitty/wcwidth-std.h') as p, open('tools/tui/wcwidth-std.go', 'w') as gof:
+        gop = partial(print, file=gof)
+        gop('package tui\n\n')
+        gop('func Wcwidth(code rune) int {')
+        p('static inline int\nwcwidth_std(int32_t code) {')
+        p('\tif (LIKELY(0x20 <= code && code <= 0x7e)) { return 1; }')
+        p('\tswitch(code) {')
+        gop('\tswitch(code) {')
+        add_all(p)
+        add_all(gop, True)
 
         p('static inline bool\nis_emoji_presentation_base(uint32_t code) {')
+        gop('func IsEmojiPresentationBase(code rune) bool {')
         p('\tswitch(code) {')
+        gop('\tswitch(code) {')
         for spec in get_ranges(list(emoji_presentation_bases)):
             write_case(spec, p)
+            write_case(spec, gop, for_go=True)
             p('\t\t\treturn true;')
+            gop('\t\t\treturn true;')
         p('\t\tdefault: return false;')
         p('\t}')
-        p('\treturn 1;\n}')
+        gop('\t\tdefault:\n\t\t\treturn false')
+        gop('\t}')
+        p('\treturn true;\n}')
+        gop('\n}')
+    subprocess.check_call(['gofmt', '-w', '-s', gof.name])
 
 
 parse_ucd()

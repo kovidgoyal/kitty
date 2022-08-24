@@ -21,6 +21,7 @@ kitty/options/parse.py
 kitty/options/to-c-generated.h
 kittens/diff/options/types.py
 kittens/diff/options/parse.py
+tools/tui/wcwidth-std.go
 '''
 
 ignored = []
