@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional
 
 from .base import (
     MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType,
-    RCOptions, RemoteCommand, ResponseType, Window
+    RCOptions, RemoteCommand, ResponseType, Window, MatchError
 )
 
 if TYPE_CHECKING:
@@ -17,6 +17,7 @@ class CloseWindow(RemoteCommand):
     '''
     match/str: Which window to close
     self/bool: Boolean indicating whether to close the window the command is run in
+    ignore_no_match/bool: Boolean indicating whether no matches should be ignored or return an error
     '''
 
     short_desc = 'Close the specified windows'
@@ -24,14 +25,25 @@ class CloseWindow(RemoteCommand):
 --self
 type=bool-set
 Close the window this command is run in, rather than the active window.
+
+
+--ignore-no-match
+type=bool-set
+Do not return an error if no windows are matched to be closed.
 '''
     argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'match': opts.match, 'self': opts.self}
+        return {'match': opts.match, 'self': opts.self, 'ignore_no_match': opts.ignore_no_match}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        for window in self.windows_for_match_payload(boss, window, payload_get):
+        try:
+            windows = self.windows_for_match_payload(boss, window, payload_get)
+        except MatchError:
+            if payload_get('ignore_no_match'):
+                return None
+            raise
+        for window in windows:
             if window:
                 boss.mark_window_for_close(window)
         return None

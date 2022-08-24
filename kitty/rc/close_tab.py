@@ -5,8 +5,8 @@
 from typing import TYPE_CHECKING, Optional
 
 from .base import (
-    MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions,
-    RemoteCommand, ResponseType, Window
+    MATCH_TAB_OPTION, ArgsType, Boss, MatchError, PayloadGetType, PayloadType,
+    RCOptions, RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -18,6 +18,7 @@ class CloseTab(RemoteCommand):
     '''
     match/str: Which tab to close
     self/bool: Boolean indicating whether to close the tab of the window the command is run in
+    ignore_no_match/bool: Boolean indicating whether no matches should be ignored or return an error
     '''
 
     short_desc = 'Close the specified tabs'
@@ -32,14 +33,25 @@ tabs in the currently focused OS window, use::
 --self
 type=bool-set
 Close the tab of the window this command is run in, rather than the active tab.
+
+
+--ignore-no-match
+type=bool-set
+Do not return an error if no tabs are matched to be closed.
 '''
     argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'match': opts.match, 'self': opts.self}
+        return {'match': opts.match, 'self': opts.self, 'ignore_no_match': opts.ignore_no_match}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        for tab in self.tabs_for_match_payload(boss, window, payload_get):
+        try:
+            tabs = self.tabs_for_match_payload(boss, window, payload_get)
+        except MatchError:
+            if payload_get('ignore_no_match'):
+                return None
+            raise
+        for tab in tabs:
             if tab:
                 boss.close_tab_no_confirm(tab)
         return None

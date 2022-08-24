@@ -106,6 +106,8 @@ Detailed list of changes
 
 - macOS: Fix speaking selected text not working (:iss:`5357`)
 
+- Allow ignoring failure to close windows/tabs via rc commands (:disc:`5406`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
