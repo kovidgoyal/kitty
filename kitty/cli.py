@@ -168,7 +168,9 @@ def file(x: str) -> str:
 
 @role
 def doc(x: str) -> str:
-    return website_url(x)
+    t, q = text_and_target(x)
+    url = f'kitty+doc://{hostname()}/{q.lstrip("/")}'
+    return hyperlink_for_url(url, t)
 
 
 @run_once
