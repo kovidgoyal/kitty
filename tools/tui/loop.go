@@ -19,9 +19,42 @@ type Loop struct {
 	death_signal       Signal
 	exit_code          int
 	write_buf          []byte
+
+	// Callbacks
+	OnKeyEvent func(loop *Loop, event *KeyEvent) error
+	OnText     func(loop *Loop, text string, from_key_event bool, in_bracketed_paste bool) error
 }
 
 func (self *Loop) handle_csi(raw []byte) error {
+	csi := string(raw)
+	ke := KeyEventFromCSI(csi)
+	if ke != nil {
+		return self.handle_key_event(ke)
+	}
+	return nil
+}
+
+func (self *Loop) handle_key_event(ev *KeyEvent) error {
+	if self.OnKeyEvent != nil {
+		err := self.OnKeyEvent(self, ev)
+		if err != nil {
+			return err
+		}
+		if ev.Handled {
+			return nil
+		}
+	}
+	if ev.MatchesPressOrRepeat("ctrl+c") {
+		ev.Handled = true
+		return self.on_SIGINT()
+	}
+	if ev.MatchesPressOrRepeat("ctrl+z") {
+		ev.Handled = true
+		return self.on_SIGTSTP()
+	}
+	if ev.Text != "" && self.OnText != nil {
+		return self.OnText(self, ev.Text, true, false)
+	}
 	return nil
 }
 
@@ -46,6 +79,9 @@ func (self *Loop) handle_pm(raw []byte) error {
 }
 
 func (self *Loop) handle_rune(raw rune) error {
+	if self.OnText != nil {
+		return self.OnText(self, string(raw), false, self.escape_code_parser.InBracketedPaste())
+	}
 	return nil
 }
 
