@@ -257,6 +257,9 @@ def clear_handled_signals(*a: Any) -> None:
 def local_docs() -> str:
     d = os.path.dirname
     base = d(d(kitty_exe()))
+    from_source = getattr(sys, 'kitty_run_data').get('from_source')
+    if is_macos and from_source and '/kitty.app/Contents/' in kitty_exe():
+        base = d(d(d(base)))
     subdir = os.path.join('doc', 'kitty', 'html')
     linux_ans = os.path.join(base, 'share', subdir)
     if getattr(sys, 'frozen', False):
@@ -265,7 +268,7 @@ def local_docs() -> str:
         return linux_ans
     if os.path.isdir(linux_ans):
         return linux_ans
-    if getattr(sys, 'kitty_run_data').get('from_source'):
+    if from_source:
         sq = os.path.join(d(base), 'docs', '_build', 'html')
         if os.path.isdir(sq):
             return sq
