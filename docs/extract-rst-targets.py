@@ -25,7 +25,17 @@ def main() -> Dict[str, str]:
                     raw = stream.read()
                 href = os.path.relpath(stream.name, base).replace(os.sep, '/')
                 href = href.rpartition('.')[0] + '/'
+                first_line = raw.lstrip('\n').partition('\n')[0]
+                first_target_added = False
                 for explicit_target in find_explicit_targets(raw):
+                    # Shorten the reference link to the top of the page.
+                    # Note that anchor links should still be used in HTML docs
+                    # to allow jumping within the same page.
+                    if not first_target_added:
+                        first_target_added = True
+                        if first_line.startswith(f'.. _{explicit_target}:'):
+                            refs[explicit_target] = href
+                            continue
                     refs[explicit_target] = href + f'#{explicit_target.replace("_", "-")}'
     return {'ref': refs}
 
