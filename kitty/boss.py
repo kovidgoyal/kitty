@@ -578,8 +578,13 @@ class Boss:
             PayloadGetter, command_for_name, parse_subcommand_cli
         )
         from .remote_control import parse_rc_args
+        aa = list(args)
+        silent = False
+        if aa and aa[0].startswith('!'):
+            aa[0] = aa[0][1:]
+            silent = True
         try:
-            global_opts, items = parse_rc_args(['@'] + list(args))
+            global_opts, items = parse_rc_args(['@'] + aa)
             if not items:
                 return None
             cmd = items[0]
@@ -589,11 +594,17 @@ class Boss:
         except SystemExit as e:
             raise Exception(str(e)) from e
         import types
-        if isinstance(payload, types.GeneratorType):
-            for x in payload:
-                c.response_from_kitty(self, active_window, PayloadGetter(c, x if isinstance(x, dict) else {}))
-            return None
-        return c.response_from_kitty(self, active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
+        try:
+            if isinstance(payload, types.GeneratorType):
+                for x in payload:
+                    c.response_from_kitty(self, active_window, PayloadGetter(c, x if isinstance(x, dict) else {}))
+                return None
+            return c.response_from_kitty(self, active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
+        except Exception as e:
+            if silent:
+                log_error(f'Failed to run remote_control mapping: {aa} with error: {e}')
+                return None
+            raise
 
     def peer_message_received(self, msg_bytes: bytes, peer_id: int) -> Union[bytes, bool, None]:
         cmd_prefix = b'\x1bP@kitty-cmd'

@@ -276,6 +276,12 @@ Then pressing the :kbd:`F1` key will set the active window margins to
 :code:`30`. The syntax for what follows :ac:`remote_control` is exactly the same
 as the syntax for what follows :code:`kitty @` above.
 
+If you wish to ignore errors from the command, prefix the command with an
+``!``. For example, the following will not return an error when no windows
+are matched::
+
+    map f1 !focus-window --match XXXXXX
+
 .. note:: You do not need :opt:`allow_remote_control` to use these mappings,
    as they are not actual remote programs, but are simply a way to resuse the
    remote control infrastructure via keybings.
