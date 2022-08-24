@@ -43,13 +43,13 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 	}
 
 	loop.OnKeyEvent = func(loop *Loop, event *KeyEvent) error {
-		if event.MatchesPressOrRepeat("backscape") || event.MatchesPressOrRepeat("delete") {
+		if event.MatchesPressOrRepeat("backspace") || event.MatchesPressOrRepeat("delete") {
 			event.Handled = true
 			if len(password) > 0 {
 				old_width := wcswidth.Stringwidth(password)
 				password = password[:len(password)-1]
 				new_width := wcswidth.Stringwidth(password)
-				delta := new_width - old_width
+				delta := old_width - new_width
 				if delta > 0 {
 					if delta > len(shadow) {
 						delta = len(shadow)
