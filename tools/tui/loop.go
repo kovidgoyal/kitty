@@ -35,9 +35,15 @@ func write_ignoring_temporary_errors(fd int, buf []byte) (int, error) {
 	return n, err
 }
 
+type ScreenSize struct {
+	WidthCells, HeightCells, WidthPx, HeightPx, CellWidth, CellHeight uint
+	updated                                                           bool
+}
+
 type Loop struct {
 	controlling_term   *tty.Term
 	terminal_options   TerminalStateOptions
+	screen_size        ScreenSize
 	escape_code_parser utils.EscapeCodeParser
 	keep_going         bool
 	flush_write_buf    bool
@@ -56,6 +62,26 @@ type Loop struct {
 
 	// Called when text is received either from a key event or directly from the terminal
 	OnText func(loop *Loop, text string, from_key_event bool, in_bracketed_paste bool) error
+
+	// Called when the terminal is resize
+	OnResize func(loop *Loop, old_size ScreenSize, new_size ScreenSize) error
+}
+
+func (self *Loop) update_screen_size() error {
+	if self.controlling_term != nil {
+		return fmt.Errorf("No controlling terminal cannot update screen size")
+	}
+	ws, err := self.controlling_term.GetSize()
+	if err != nil {
+		return err
+	}
+	s := &self.screen_size
+	s.updated = true
+	s.HeightCells, s.WidthCells = uint(ws.Row), uint(ws.Col)
+	s.HeightPx, s.WidthPx = uint(ws.Ypixel), uint(ws.Xpixel)
+	s.CellWidth = s.WidthPx / s.WidthCells
+	s.CellHeight = s.HeightPx / s.HeightCells
+	return nil
 }
 
 func (self *Loop) handle_csi(raw []byte) error {
@@ -125,6 +151,19 @@ func (self *Loop) on_SIGINT() error {
 	return nil
 }
 
+func (self *Loop) on_SIGWINCH() error {
+	self.screen_size.updated = false
+	if self.OnResize != nil {
+		old_size := self.screen_size
+		err := self.update_screen_size()
+		if err != nil {
+			return err
+		}
+		return self.OnResize(self, old_size, self.screen_size)
+	}
+	return nil
+}
+
 func (self *Loop) on_SIGTERM() error {
 	self.death_signal = SIGTERM
 	self.keep_going = false
@@ -170,6 +209,14 @@ func (self *Loop) DeathSignalName() string {
 	return ""
 }
 
+func (self *Loop) ScreenSize() (ScreenSize, error) {
+	if self.screen_size.updated {
+		return self.screen_size, nil
+	}
+	err := self.update_screen_size()
+	return self.screen_size, err
+}
+
 func (self *Loop) KillIfSignalled() {
 	switch self.death_signal {
 	case SIGINT:
@@ -198,7 +245,7 @@ func (self *Loop) Run() (err error) {
 	}()
 
 	sigchnl := make(chan os.Signal, 256)
-	reset_signals := notify_signals(sigchnl, SIGINT, SIGTERM, SIGTSTP, SIGHUP)
+	reset_signals := notify_signals(sigchnl, SIGINT, SIGTERM, SIGTSTP, SIGHUP, SIGWINCH)
 	defer reset_signals()
 
 	go func() {

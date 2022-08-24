@@ -10,16 +10,17 @@ import (
 type Signal byte
 
 const (
-	SIGNULL Signal = 0
-	SIGINT  Signal = 1
-	SIGTERM Signal = 2
-	SIGTSTP Signal = 3
-	SIGHUP  Signal = 4
-	SIGTTIN Signal = 5
-	SIGTTOU Signal = 6
-	SIGUSR1 Signal = 7
-	SIGUSR2 Signal = 8
-	SIGALRM Signal = 9
+	SIGNULL  Signal = 0
+	SIGINT   Signal = 1
+	SIGTERM  Signal = 2
+	SIGTSTP  Signal = 3
+	SIGHUP   Signal = 4
+	SIGTTIN  Signal = 5
+	SIGTTOU  Signal = 6
+	SIGUSR1  Signal = 7
+	SIGUSR2  Signal = 8
+	SIGALRM  Signal = 9
+	SIGWINCH Signal = 10
 )
 
 func (self *Signal) String() string {
@@ -44,6 +45,8 @@ func (self *Signal) String() string {
 		return "SIGUSR2"
 	case SIGALRM:
 		return "SIGALRM"
+	case SIGWINCH:
+		return "SIGWINCH"
 	default:
 		return fmt.Sprintf("SIG#%d", *self)
 	}
@@ -69,6 +72,8 @@ func as_signal(which os.Signal) Signal {
 		return SIGUSR2
 	case syscall.SIGALRM:
 		return SIGALRM
+	case syscall.SIGWINCH:
+		return SIGWINCH
 	default:
 		return SIGNULL
 	}
@@ -96,6 +101,8 @@ func as_go_signal(which Signal) os.Signal {
 		return syscall.SIGUSR2
 	case SIGALRM:
 		return syscall.SIGALRM
+	case SIGWINCH:
+		return syscall.SIGWINCH
 	default:
 		return zero_go_signal
 	}
@@ -143,6 +150,11 @@ func (self *Loop) read_signals(f *os.File, buf []byte) error {
 			}
 		case SIGHUP:
 			err := self.on_SIGHUP()
+			if err != nil {
+				return err
+			}
+		case SIGWINCH:
+			err := self.on_SIGWINCH()
 			if err != nil {
 				return err
 			}
