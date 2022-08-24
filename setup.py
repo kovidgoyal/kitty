@@ -903,9 +903,9 @@ def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False)
     if not go:
         raise SystemExit('The go tool was not found on this system. Install Go')
     update_go_generated_files(args, os.path.join(launcher_dir, appname))
-    cmd = [go, 'build']
+    cmd = [go, 'build', '-v']
     if args.verbose:
-        cmd.append('-v')
+        cmd.append('-x')
     ld_flags = [f"-X 'kitty.VCSRevision={get_vcs_rev_define()}'"]
     if for_freeze:
         ld_flags.append("-X 'kitty.IsFrozenBuild=true")

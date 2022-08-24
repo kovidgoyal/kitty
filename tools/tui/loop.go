@@ -46,8 +46,9 @@ type Loop struct {
 	write_buf          []byte
 
 	// Callbacks
-	OnKeyEvent func(loop *Loop, event *KeyEvent) error
-	OnText     func(loop *Loop, text string, from_key_event bool, in_bracketed_paste bool) error
+	OnInitialize func(loop *Loop) string
+	OnKeyEvent   func(loop *Loop, event *KeyEvent) error
+	OnText       func(loop *Loop, text string, from_key_event bool, in_bracketed_paste bool) error
 }
 
 func (self *Loop) handle_csi(raw []byte) error {
@@ -60,6 +61,7 @@ func (self *Loop) handle_csi(raw []byte) error {
 }
 
 func (self *Loop) handle_key_event(ev *KeyEvent) error {
+	// self.controlling_term.DebugPrintln(ev)
 	if self.OnKeyEvent != nil {
 		err := self.OnKeyEvent(self, ev)
 		if err != nil {
@@ -163,11 +165,11 @@ func (self *Loop) DeathSignalName() string {
 func (self *Loop) KillIfSignalled() {
 	switch self.death_signal {
 	case SIGINT:
-		syscall.Kill(-1, syscall.SIGINT)
+		syscall.Kill(os.Getpid(), syscall.SIGINT)
 	case SIGTERM:
-		syscall.Kill(-1, syscall.SIGTERM)
+		syscall.Kill(os.Getpid(), syscall.SIGTERM)
 	case SIGHUP:
-		syscall.Kill(-1, syscall.SIGHUP)
+		syscall.Kill(os.Getpid(), syscall.SIGHUP)
 	}
 }
 
@@ -216,12 +218,19 @@ func (self *Loop) Run() (err error) {
 	self.keep_going = true
 	self.flush_write_buf = true
 	self.queue_write_to_tty(self.terminal_options.SetStateEscapeCodes())
+	finalizer := ""
+	if self.OnInitialize != nil {
+		finalizer = self.OnInitialize(self)
+	}
 
 	defer func() {
 		if self.flush_write_buf {
 			self.flush()
 		}
-		self.write_buf = self.write_buf[:]
+		self.write_buf = self.write_buf[:0]
+		if finalizer != "" {
+			self.queue_write_to_tty([]byte(finalizer))
+		}
 		self.queue_write_to_tty(self.terminal_options.ResetStateEscapeCodes())
 		self.flush()
 	}()

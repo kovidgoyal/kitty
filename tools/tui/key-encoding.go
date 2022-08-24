@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -40,8 +41,50 @@ const (
 	NUM_LOCK  KeyModifiers = 128
 )
 
-func (self *KeyModifiers) WithoutLocks() KeyModifiers {
-	return *self & ^(CAPS_LOCK | NUM_LOCK)
+func (self KeyModifiers) WithoutLocks() KeyModifiers {
+	return self & ^(CAPS_LOCK | NUM_LOCK)
+}
+
+func (self KeyEventType) String() string {
+	switch self {
+	case PRESS:
+		return "PRESS"
+	case REPEAT:
+		return "REPEAT"
+	case RELEASE:
+		return "RELEASE"
+	default:
+		return fmt.Sprintf("KeyEventType:%d", int(self))
+	}
+}
+
+func (self *KeyModifiers) String() string {
+	ans := make([]string, 0)
+	if *self&SHIFT != 0 {
+		ans = append(ans, "shift")
+	}
+	if *self&ALT != 0 {
+		ans = append(ans, "alt")
+	}
+	if *self&CTRL != 0 {
+		ans = append(ans, "ctrl")
+	}
+	if *self&SUPER != 0 {
+		ans = append(ans, "super")
+	}
+	if *self&HYPER != 0 {
+		ans = append(ans, "hyper")
+	}
+	if *self&META != 0 {
+		ans = append(ans, "meta")
+	}
+	if *self&CAPS_LOCK != 0 {
+		ans = append(ans, "caps_lock")
+	}
+	if *self&NUM_LOCK != 0 {
+		ans = append(ans, "num_lock")
+	}
+	return strings.Join(ans, "+")
 }
 
 type KeyEvent struct {
@@ -52,6 +95,24 @@ type KeyEvent struct {
 	AlternateKey string
 	Text         string
 	Handled      bool
+}
+
+func (self *KeyEvent) String() string {
+	key := self.Key
+	if self.Mods > 0 {
+		key = self.Mods.String() + "+" + key
+	}
+	ans := fmt.Sprint(self.Type, "{ ", key, " ")
+	if self.Text != "" {
+		ans += "Text: " + self.Text + " "
+	}
+	if self.ShiftedKey != "" {
+		ans += "ShiftedKey: " + self.ShiftedKey + " "
+	}
+	if self.AlternateKey != "" {
+		ans += "AlternateKey: " + self.AlternateKey + " "
+	}
+	return ans + "}"
 }
 
 func KeyEventFromCSI(csi string) *KeyEvent {
@@ -86,7 +147,7 @@ func KeyEventFromCSI(csi string) *KeyEvent {
 	if len(sections) > 2 {
 		third_section = get_sub_sections(sections[2])
 	}
-	var ans KeyEvent
+	var ans = KeyEvent{Type: PRESS}
 	keynum := first_section[0]
 	if val, ok := letter_trailer_to_csi_number_map[last_char]; ok {
 		keynum = val
@@ -146,6 +207,14 @@ func KeyEventFromCSI(csi string) *KeyEvent {
 type ParsedShortcut struct {
 	Mods    KeyModifiers
 	KeyName string
+}
+
+func (self *ParsedShortcut) String() string {
+	ans := self.KeyName
+	if self.Mods > 0 {
+		ans = self.Mods.String() + "+" + ans
+	}
+	return ans
 }
 
 var parsed_shortcut_cache map[string]ParsedShortcut
