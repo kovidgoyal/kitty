@@ -93,20 +93,21 @@ def remove_markup(text: str) -> str:
         return t, q
 
     def sub(m: 'Match[str]') -> str:
-        if m.group(1) in ('ref', 'iss', 'pull', 'disc'):
+        key = m.group(1)
+        if key in ('ref', 'iss', 'pull', 'disc'):
             t, q = extract(m)
-            q = imap.get(m.group(1), '') + q
+            q = imap.get(key, '') + q
             url = resolve_ref(q)
             if not url:
                 raise KeyError(f'Failed to resolve :{m.group(1)}: {q}')
             return f'{t} <{url}>'
-        if m.group(1) == 'doc':
+        if key == 'doc':
             t, q = extract(m)
             return f'{t} <{website_url(q)}>'
-        if m.group(1) in ('term', 'option'):
+        if key in ('term', 'option'):
             t, _ = extract(m)
             return t
-        if m.group(1) in ('ac', 'opt'):
+        if key in ('ac', 'opt'):
             t, q = extract(m)
             return f'{t} {q}' if q and q != t else t
 
