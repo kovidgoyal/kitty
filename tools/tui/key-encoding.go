@@ -58,30 +58,30 @@ func (self KeyEventType) String() string {
 	}
 }
 
-func (self *KeyModifiers) String() string {
+func (self KeyModifiers) String() string {
 	ans := make([]string, 0)
-	if *self&SHIFT != 0 {
+	if self&SHIFT != 0 {
 		ans = append(ans, "shift")
 	}
-	if *self&ALT != 0 {
+	if self&ALT != 0 {
 		ans = append(ans, "alt")
 	}
-	if *self&CTRL != 0 {
+	if self&CTRL != 0 {
 		ans = append(ans, "ctrl")
 	}
-	if *self&SUPER != 0 {
+	if self&SUPER != 0 {
 		ans = append(ans, "super")
 	}
-	if *self&HYPER != 0 {
+	if self&HYPER != 0 {
 		ans = append(ans, "hyper")
 	}
-	if *self&META != 0 {
+	if self&META != 0 {
 		ans = append(ans, "meta")
 	}
-	if *self&CAPS_LOCK != 0 {
+	if self&CAPS_LOCK != 0 {
 		ans = append(ans, "caps_lock")
 	}
-	if *self&NUM_LOCK != 0 {
+	if self&NUM_LOCK != 0 {
 		ans = append(ans, "num_lock")
 	}
 	return strings.Join(ans, "+")

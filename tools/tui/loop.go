@@ -46,9 +46,16 @@ type Loop struct {
 	write_buf          []byte
 
 	// Callbacks
+
+	// Called when the terminal has been fully setup. Any string returned is sent to
+	// the terminal on shutdown
 	OnInitialize func(loop *Loop) string
-	OnKeyEvent   func(loop *Loop, event *KeyEvent) error
-	OnText       func(loop *Loop, text string, from_key_event bool, in_bracketed_paste bool) error
+
+	// Called when a key event happens
+	OnKeyEvent func(loop *Loop, event *KeyEvent) error
+
+	// Called when text is received either from a key event or directly from the terminal
+	OnText func(loop *Loop, text string, from_key_event bool, in_bracketed_paste bool) error
 }
 
 func (self *Loop) handle_csi(raw []byte) error {
