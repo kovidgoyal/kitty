@@ -237,7 +237,7 @@ def website_url(doc_name: str = '', website: str = 'https://sw.kovidgoyal.net/ki
         if base:
             base += '/'
         doc_name = base + (f'#{frag}' if frag else '')
-    return website + doc_name
+    return website + doc_name.lstrip('/')
 
 
 handled_signals: Set[int] = set()

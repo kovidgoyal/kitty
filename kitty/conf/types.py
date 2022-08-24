@@ -109,7 +109,7 @@ def remove_markup(text: str) -> str:
             return f'{t} <{url}>'
         if m.group(1) == 'doc':
             t, q = extract(m)
-            return f'{t} <{website_url(q.lstrip("/"))}>'
+            return f'{t} <{website_url(q)}>'
         if m.group(1) in ('term', 'option'):
             t, _ = extract(m)
             return t
