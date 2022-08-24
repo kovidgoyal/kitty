@@ -414,9 +414,11 @@ class InvalidSSHArgs(ValueError):
         os.execlp(ssh_exe(), 'ssh')
 
 
+passthrough_args = {f'-{x}' for x in 'NnfGT'}
+
+
 def parse_ssh_args(args: List[str], extra_args: Tuple[str, ...] = ()) -> Tuple[List[str], List[str], bool, Tuple[str, ...]]:
     boolean_ssh_args, other_ssh_args = get_ssh_cli()
-    passthrough_args = {f'-{x}' for x in 'NnfG'}
     ssh_args = []
     server_args: List[str] = []
     expecting_option_val = False
@@ -733,10 +735,13 @@ def main(args: List[str]) -> None:
         ssh_args, server_args, passthrough, found_extra_args = parse_ssh_args(args, extra_args=('--kitten',))
     except InvalidSSHArgs as e:
         e.system_exit()
+    if passthrough:
+        if found_extra_args:
+            raise SystemExit(f'The SSH kitten cannot work with the options: {", ".join(passthrough_args)}')
+        os.execlp(ssh_exe(), 'ssh', *args)
+
     if not os.environ.get('KITTY_WINDOW_ID') or not os.environ.get('KITTY_PID'):
         raise SystemExit('The SSH kitten is meant to run inside a kitty window')
-    if passthrough:
-        raise SystemExit('The SSH kitten is meant for interactive use via SSH only')
     if not sys.stdin.isatty():
         raise SystemExit('The SSH kitten is meant for interactive use only, STDIN must be a terminal')
     try:
