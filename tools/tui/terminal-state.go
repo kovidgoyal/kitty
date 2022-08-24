@@ -25,25 +25,25 @@ const private Mode = 1 << 31
 
 const (
 	LNM                    Mode = 20
-	IRM                         = 4
-	DECKM                       = 1 | private
-	DECSCNM                     = 5 | private
-	DECOM                       = 6 | private
-	DECAWM                      = 7 | private
-	DECARM                      = 8 | private
-	DECTCEM                     = 25 | private
-	MOUSE_BUTTON_TRACKING       = 1000 | private
-	MOUSE_MOTION_TRACKING       = 1002 | private
-	MOUSE_MOVE_TRACKING         = 1003 | private
-	FOCUS_TRACKING              = 1004 | private
-	MOUSE_UTF8_MODE             = 1005 | private
-	MOUSE_SGR_MODE              = 1006 | private
-	MOUSE_URXVT_MODE            = 1015 | private
-	MOUSE_SGR_PIXEL_MODE        = 1016 | private
-	ALTERNATE_SCREEN            = 1049 | private
-	BRACKETED_PASTE             = 2004 | private
-	PENDING_UPDATE              = 2026 | private
-	HANDLE_TERMIOS_SIGNALS      = kitty.HandleTermiosSignals | private
+	IRM                    Mode = 4
+	DECKM                  Mode = 1 | private
+	DECSCNM                Mode = 5 | private
+	DECOM                  Mode = 6 | private
+	DECAWM                 Mode = 7 | private
+	DECARM                 Mode = 8 | private
+	DECTCEM                Mode = 25 | private
+	MOUSE_BUTTON_TRACKING  Mode = 1000 | private
+	MOUSE_MOTION_TRACKING  Mode = 1002 | private
+	MOUSE_MOVE_TRACKING    Mode = 1003 | private
+	FOCUS_TRACKING         Mode = 1004 | private
+	MOUSE_UTF8_MODE        Mode = 1005 | private
+	MOUSE_SGR_MODE         Mode = 1006 | private
+	MOUSE_URXVT_MODE       Mode = 1015 | private
+	MOUSE_SGR_PIXEL_MODE   Mode = 1016 | private
+	ALTERNATE_SCREEN       Mode = 1049 | private
+	BRACKETED_PASTE        Mode = 2004 | private
+	PENDING_UPDATE         Mode = 2026 | private
+	HANDLE_TERMIOS_SIGNALS Mode = kitty.HandleTermiosSignals | private
 )
 
 func (self *Mode) escape_code(which string) string {
@@ -56,11 +56,11 @@ func (self *Mode) escape_code(which string) string {
 	return fmt.Sprintf("\033[%s%d%s", priv, uint32(num), which)
 }
 
-func (self *Mode) EscapeCodeToSet() string {
+func (self Mode) EscapeCodeToSet() string {
 	return self.escape_code("h")
 }
 
-func (self *Mode) EscapeCodeToReset() string {
+func (self Mode) EscapeCodeToReset() string {
 	return self.escape_code("h")
 }
 
