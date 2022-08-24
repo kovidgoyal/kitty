@@ -17,6 +17,7 @@ class SignalChild(RemoteCommand):
     '''
     signals/list.str: The signals, a list of names, such as :code:`SIGTERM`, :code:`SIGKILL`, :code:`SIGUSR1`, etc.
     match/str: Which windows to send the signals to
+    no_response/bool: Boolean indicating whether to wait for a response
     '''
 
     short_desc = 'Send a signal to the foreground process in the specified windows'
@@ -25,10 +26,15 @@ class SignalChild(RemoteCommand):
         ' If you use the :option:`kitty @ signal-child --match` option'
         ' the signal will be sent for all matched windows. By default, only the active'
         ' window is affected. If you do not specify any signals, :code:`SIGINT` is sent by default.'
-        ' You can also map this to a shortcut in :file:`kitty.conf`, for example::\n\n'
+        ' You can also map :ac:`signal_child` to a shortcut in :file:`kitty.conf`, for example::\n\n'
         '    map f1 signal_child SIGTERM'
     )
     options_spec = '''\
+--no-response
+type=bool-set
+default=false
+Don't wait for a response indicating the success of the action. Note that
+using this option means that you will not be notified of failures.
     ''' + '\n\n' + MATCH_WINDOW_OPTION
     argspec = '[SIGNAL_NAME ...]'
 

@@ -21,6 +21,7 @@ class ScrollWindow(RemoteCommand):
              And the second item being either 'p' for pages or 'l' for lines or 'u'
              for unscrolling by lines.
     match/str: The window to scroll
+    no_response/bool: Boolean indicating whether to wait for a response
     '''
 
     short_desc = 'Scroll the specified windows'
@@ -32,7 +33,13 @@ class ScrollWindow(RemoteCommand):
         ' scrollback buffer onto the top of the screen.'
     )
     argspec = 'SCROLL_AMOUNT'
-    options_spec = MATCH_WINDOW_OPTION
+    options_spec = MATCH_WINDOW_OPTION + '''\n
+--no-response
+type=bool-set
+default=false
+Don't wait for a response indicating the success of the action. Note that
+using this option means that you will not be notified of failures.
+'''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) < 1:
