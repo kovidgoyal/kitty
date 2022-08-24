@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,6 +21,33 @@ const (
 	SIGUSR2 Signal = 8
 	SIGALRM Signal = 9
 )
+
+func (self *Signal) String() string {
+	switch *self {
+	case SIGNULL:
+		return "SIGNULL"
+	case SIGINT:
+		return "SIGINT"
+	case SIGTERM:
+		return "SIGTERM"
+	case SIGTSTP:
+		return "SIGTSTP"
+	case SIGHUP:
+		return "SIGHUP"
+	case SIGTTIN:
+		return "SIGTTIN"
+	case SIGTTOU:
+		return "SIGTTOU"
+	case SIGUSR1:
+		return "SIGUSR1"
+	case SIGUSR2:
+		return "SIGUSR2"
+	case SIGALRM:
+		return "SIGALRM"
+	default:
+		return fmt.Sprintf("SIG#%s", *self)
+	}
+}
 
 func as_signal(which os.Signal) Signal {
 	switch which {

@@ -5,6 +5,7 @@ import (
 	"io"
 	"kitty/tools/tty"
 	"os"
+	"syscall"
 	"time"
 
 	"kitty/tools/utils"
@@ -120,6 +121,32 @@ func CreateLoop() (*Loop, error) {
 	return &l, nil
 }
 
+func (self *Loop) UseAlternateScreen() {
+	self.terminal_options.alternate_screen = true
+}
+
+func (self *Loop) MouseTracking(mt MouseTracking) {
+	self.terminal_options.mouse_tracking = mt
+}
+
+func (self *Loop) DeathSignalName() string {
+	if self.death_signal != SIGNULL {
+		return self.death_signal.String()
+	}
+	return ""
+}
+
+func (self *Loop) KillIfSignalled() {
+	switch self.death_signal {
+	case SIGINT:
+		syscall.Kill(-1, syscall.SIGINT)
+	case SIGTERM:
+		syscall.Kill(-1, syscall.SIGTERM)
+	case SIGHUP:
+		syscall.Kill(-1, syscall.SIGHUP)
+	}
+}
+
 func (self *Loop) Run() (err error) {
 	signal_read_file, signal_write_file, err := os.Pipe()
 	if err != nil {
@@ -227,6 +254,23 @@ func (self *Loop) Run() (err error) {
 
 func (self *Loop) queue_write_to_tty(data []byte) {
 	self.write_buf = append(self.write_buf, data...)
+}
+
+func (self *Loop) QueueWriteString(data string) {
+	self.queue_write_to_tty([]byte(data))
+}
+
+func (self *Loop) ExitCode() int {
+	return self.exit_code
+}
+
+func (self *Loop) Beep() {
+	self.QueueWriteString("\a")
+}
+
+func (self *Loop) Quit(exit_code int) {
+	self.exit_code = exit_code
+	self.keep_going = false
 }
 
 func (self *Loop) write_to_tty() error {
