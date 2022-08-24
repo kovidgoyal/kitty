@@ -3,16 +3,18 @@
 
 import os
 import subprocess
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import kitty.constants as kc
 from kittens.tui.operations import Mode
 from kitty.cli import OptionDict, OptionSpecSeq, parse_option_spec
 from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
+from kitty.key_names import functional_key_name_aliases, character_key_name_aliases
+from kitty.key_encoding import config_mod_map
 
 
 def serialize_as_go_string(x: str) -> str:
-    return x.replace('\n', '\\n').replace('"', '\\"')
+    return x.replace('\\', '\\\\').replace('\n', '\\n').replace('"', '\\"')
 
 
 def replace(template: str, **kw: str) -> str:
@@ -183,6 +185,19 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
     return ans
 
 
+def serialize_go_dict(x: Union[Dict[str, int], Dict[int, str], Dict[int, int], Dict[str, str]]) -> str:
+    ans = []
+
+    def s(x: Union[int, str]) -> str:
+        if isinstance(x, int):
+            return str(x)
+        return f'"{serialize_as_go_string(x)}"'
+
+    for k, v in x.items():
+        ans.append(f'{s(k)}: {s(v)}')
+    return '{' + ', '.join(ans) + '}'
+
+
 def main() -> None:
     with open('constants_generated.go', 'w') as f:
         dp = ", ".join(map(lambda x: f'"{serialize_as_go_string(x)}"', kc.default_pager_for_help))
@@ -202,6 +217,9 @@ const IsFrozenBuild bool = false
 const HandleTermiosSignals = {Mode.HANDLE_TERMIOS_SIGNALS.value[0]}
 var Version VersionType = VersionType{{Major: {kc.version.major}, Minor: {kc.version.minor}, Patch: {kc.version.patch},}}
 var DefaultPager []string = []string{{ {dp} }}
+var FunctionalKeyNameAliases = map[string]string{serialize_go_dict(functional_key_name_aliases)}
+var CharacterKeyNameAliases = map[string]string{serialize_go_dict(character_key_name_aliases)}
+var ConfigModMap = map[string]uint16{serialize_go_dict(config_mod_map)}
 ''')
     with open('tools/cmd/at/template.go') as f:
         template = f.read()

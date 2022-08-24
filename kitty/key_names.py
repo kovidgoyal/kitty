@@ -7,7 +7,7 @@ from typing import Callable, Dict, Optional
 
 from .constants import is_macos
 
-functional_key_name_aliases = {
+functional_key_name_aliases: Dict[str, str] = {
     'ESC': 'ESCAPE',
     'PGUP': 'PAGE_UP',
     'PAGEUP': 'PAGE_UP',
