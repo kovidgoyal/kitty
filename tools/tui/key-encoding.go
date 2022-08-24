@@ -217,14 +217,14 @@ func (self *ParsedShortcut) String() string {
 	return ans
 }
 
-var parsed_shortcut_cache map[string]ParsedShortcut
+var parsed_shortcut_cache map[string]*ParsedShortcut
 
 func ParseShortcut(spec string) *ParsedShortcut {
 	if parsed_shortcut_cache == nil {
-		parsed_shortcut_cache = make(map[string]ParsedShortcut, 128)
+		parsed_shortcut_cache = make(map[string]*ParsedShortcut, 128)
 	}
 	if val, ok := parsed_shortcut_cache[spec]; ok {
-		return &val
+		return val
 	}
 	ospec := spec
 	if strings.HasSuffix(spec, "+") {
@@ -243,7 +243,6 @@ func ParseShortcut(spec string) *ParsedShortcut {
 		}
 	}
 	ans := ParsedShortcut{KeyName: key_name}
-	parsed_shortcut_cache[spec] = ans
 	if len(parts) > 1 {
 		for _, q := range parts[:len(parts)-1] {
 			val, ok := kitty.ConfigModMap[strings.ToUpper(q)]
@@ -254,6 +253,7 @@ func ParseShortcut(spec string) *ParsedShortcut {
 			}
 		}
 	}
+	parsed_shortcut_cache[spec] = &ans
 	return &ans
 }
 
