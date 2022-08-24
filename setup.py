@@ -883,7 +883,7 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
     rc_sources = [x for x in glob.glob('kitty/rc/*.py') if os.path.basename(x) not in ('base.py', '__init__.py')]
     rc_objects = glob.glob('tools/cmd/at/*_generated.go')
     generated = rc_objects + glob.glob('constants_generated.go')
-    sources = ['gen-rc-go.py', 'kitty/constants.py', 'setup.py', 'tools/cmd/at/template.go'] + rc_sources
+    sources = ['gen-rc-go.py', 'kitty/constants.py', 'setup.py', 'kitty/docs_ref_map_generated.h', 'tools/cmd/at/template.go'] + rc_sources
     if generated:
         oldest_generated = min(map(os.path.getmtime, generated))
         newest_source = max(map(os.path.getmtime, sources))

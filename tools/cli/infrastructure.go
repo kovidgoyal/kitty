@@ -273,7 +273,20 @@ func prettify(text string) string {
 		case "env", "envvar":
 			return ref_hyperlink(val, "envvar-")
 		case "doc":
+			text, target := text_and_target(val)
+			if text == target {
+				target = strings.Trim(target, "/")
+				if title, ok := kitty.DocTitleMap[target]; ok {
+					val = title + " <" + target + ">"
+				}
+			}
 			return ref_hyperlink(val, "doc-")
+		case "iss":
+			return ref_hyperlink(val, "issues-")
+		case "pull":
+			return ref_hyperlink(val, "pull-")
+		case "disc":
+			return ref_hyperlink(val, "discussions-")
 		case "ref":
 			return ref_hyperlink(val, "")
 		case "ac":

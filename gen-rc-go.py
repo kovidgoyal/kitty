@@ -1,6 +1,7 @@
 #!./kitty/launcher/kitty +launch
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
+import json
 import os
 import subprocess
 from typing import Dict, List, Tuple, Union
@@ -8,9 +9,11 @@ from typing import Dict, List, Tuple, Union
 import kitty.constants as kc
 from kittens.tui.operations import Mode
 from kitty.cli import OptionDict, OptionSpecSeq, parse_option_spec
-from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
-from kitty.key_names import functional_key_name_aliases, character_key_name_aliases
 from kitty.key_encoding import config_mod_map
+from kitty.key_names import (
+    character_key_name_aliases, functional_key_name_aliases
+)
+from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
 
 
 def serialize_as_go_string(x: str) -> str:
@@ -198,7 +201,16 @@ def serialize_go_dict(x: Union[Dict[str, int], Dict[int, str], Dict[int, int], D
     return '{' + ', '.join(ans) + '}'
 
 
+def load_ref_map() -> Dict[str, Dict[str, str]]:
+    with open('kitty/docs_ref_map_generated.h') as f:
+        raw = f.read()
+    raw = raw.split('{', 1)[1].split('}', 1)[0]
+    data = json.loads(bytes(bytearray(json.loads(f'[{raw}]'))))
+    return data  # type: ignore
+
+
 def main() -> None:
+    ref_map = load_ref_map()
     with open('constants_generated.go', 'w') as f:
         dp = ", ".join(map(lambda x: f'"{serialize_as_go_string(x)}"', kc.default_pager_for_help))
         f.write(f'''\
@@ -220,6 +232,8 @@ var DefaultPager []string = []string{{ {dp} }}
 var FunctionalKeyNameAliases = map[string]string{serialize_go_dict(functional_key_name_aliases)}
 var CharacterKeyNameAliases = map[string]string{serialize_go_dict(character_key_name_aliases)}
 var ConfigModMap = map[string]uint16{serialize_go_dict(config_mod_map)}
+var RefMap = map[string]string{serialize_go_dict(ref_map['ref'])}
+var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
 ''')
     with open('tools/cmd/at/template.go') as f:
         template = f.read()
