@@ -45,7 +45,7 @@ func (self *Signal) String() string {
 	case SIGALRM:
 		return "SIGALRM"
 	default:
-		return fmt.Sprintf("SIG#%s", *self)
+		return fmt.Sprintf("SIG#%d", *self)
 	}
 }
 
