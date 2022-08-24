@@ -51,6 +51,7 @@ type KeyEvent struct {
 	ShiftedKey   string
 	AlternateKey string
 	Text         string
+	Handled      bool
 }
 
 func KeyEventFromCSI(csi string) *KeyEvent {

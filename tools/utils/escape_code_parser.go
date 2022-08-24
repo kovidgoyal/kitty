@@ -51,6 +51,8 @@ type EscapeCodeParser struct {
 	HandleAPC  func([]byte) error
 }
 
+func (self *EscapeCodeParser) InBracketedPaste() bool { return self.state == bracketed_paste }
+
 func (self *EscapeCodeParser) Parse(data []byte) error {
 	prev := UTF8_ACCEPT
 	codep := UTF8_ACCEPT
