@@ -90,10 +90,12 @@ class TestBuild(BaseTest):
             t('#ref=conf-kitten-ssh-xxx', f'kittens/ssh{suffix}#conf-kitten-ssh-xxx')
             t('#ref=at_close_tab', f'remote-control{suffix}#at_close-tab')
             t('#ref=action-copy', f'actions{suffix}#copy')
+            t('#ref=doc-/marks', f'marks{suffix}')
 
         run_tests(partial(docs_url, local_docs_root='/docs'), 'file:///docs/')
         w = website_url()
         run_tests(partial(docs_url, local_docs_root=None), w, '/')
+        self.ae(docs_url('#ref=issues-123'), 'https://github.com/kovidgoyal/kitty/issues/123')
 
 
 def main() -> None:

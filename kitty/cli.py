@@ -169,8 +169,13 @@ def file(x: str) -> str:
 @role
 def doc(x: str) -> str:
     t, q = text_and_target(x)
-    url = f'kitty+doc://{hostname()}/{q.lstrip("/")}'
-    return hyperlink_for_url(url, t)
+    if t == q:
+        from .conf.types import ref_map
+        m = ref_map()['doc']
+        q = q.strip('/')
+        if q in m:
+            x = f'{m[q]} <{t}>'
+    return ref_hyperlink(x, 'doc-')
 
 
 @run_once
@@ -197,17 +202,17 @@ def ac(x: str) -> str:
 
 @role
 def iss(x: str) -> str:
-    return ref_hyperlink(x, 'github-issue-')
+    return ref_hyperlink(x, 'issues-')
 
 
 @role
 def pull(x: str) -> str:
-    return ref_hyperlink(x, 'github-pr-')
+    return ref_hyperlink(x, 'pull-')
 
 
 @role
 def disc(x: str) -> str:
-    return ref_hyperlink(x, 'github-discussion-')
+    return ref_hyperlink(x, 'discussions-')
 
 
 OptionSpecSeq = List[Union[str, OptionDict]]

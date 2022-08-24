@@ -6,6 +6,7 @@ import re
 from typing import Dict, Iterator
 
 tgt_pat = re.compile(r'^.. _(\S+?):$', re.MULTILINE)
+title_pat = re.compile('^(.+)\n[-=^#*]{5,}$', re.MULTILINE)
 
 
 def find_explicit_targets(text: str) -> Iterator[str]:
@@ -13,8 +14,15 @@ def find_explicit_targets(text: str) -> Iterator[str]:
         yield m.group(1)
 
 
+def find_page_title(text: str) -> str:
+    for m in title_pat.finditer(text):
+        return m.group(1)
+    return ''
+
+
 def main() -> Dict[str, str]:
     refs = {}
+    docs = {}
     base = os.path.dirname(os.path.abspath(__file__))
     for dirpath, dirnames, filenames in os.walk(base):
         if 'generated' in dirnames:
@@ -25,6 +33,7 @@ def main() -> Dict[str, str]:
                     raw = stream.read()
                 href = os.path.relpath(stream.name, base).replace(os.sep, '/')
                 href = href.rpartition('.')[0] + '/'
+                docs[href.rstrip('/')] = find_page_title(raw)
                 first_line = raw.lstrip('\n').partition('\n')[0]
                 first_target_added = False
                 for explicit_target in find_explicit_targets(raw):
@@ -37,7 +46,7 @@ def main() -> Dict[str, str]:
                             refs[explicit_target] = href
                             continue
                     refs[explicit_target] = href + f'#{explicit_target.replace("_", "-")}'
-    return {'ref': refs}
+    return {'ref': refs, 'doc': docs}
 
 
 if __name__ == '__main__':

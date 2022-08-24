@@ -1084,6 +1084,8 @@ def docs_url(which: str = '', local_docs_root: Optional[str] = '') -> str:
     if frag.startswith('ref='):
         ref = frag[4:]
         which = resolve_ref(ref, lambda x: x)
+        if which.startswith('https://') or which.startswith('http://'):
+            return which
         base, frag = which.partition('#')[::2]
         base = base.strip('/')
     if ld:

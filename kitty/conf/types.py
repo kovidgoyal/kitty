@@ -55,6 +55,7 @@ def ref_map() -> Dict[str, Dict[str, str]]:
 def resolve_ref(ref: str, website_url: Callable[[str], str] = website_url) -> str:
     m = ref_map()
     href = m['ref'].get(ref, '')
+    prefix, rest = ref.partition('-')[::2]
     if href:
         pass
     elif ref.startswith('conf-kitty-'):
@@ -67,20 +68,15 @@ def resolve_ref(ref: str, website_url: Callable[[str], str] = website_url) -> st
         href = "remote-control/#at_" + base.replace('_', '-')
     elif ref.startswith('action-group-'):
         href = f'actions/#{ref}'
-    elif ref.startswith('action-'):
-        frag = ref.partition('-')[-1].replace('_', '-')
-        href = f'actions/#{frag}'
-    elif ref.startswith('term-') or ref.startswith('envvar-'):
+    elif prefix == 'action':
+        href = f'actions/#{rest.replace("_", "-")}'
+    elif prefix in ('term', 'envvar'):
         href = 'glossary/#' + ref
-    elif ref.startswith('github-'):
-        href = 'https://github.com/kovidgoyal/kitty'
-        parts = ref.split('-')
-        if parts[1] == 'issue':
-            href = f'{href}/issues/{parts[2]}'
-        elif parts[1] == 'pr':
-            href = f'{href}/pull/{parts[2]}'
-        elif parts[1] == 'discussion':
-            href = f'{href}/discussions/{parts[2]}'
+    elif prefix == 'doc':
+        href = rest.lstrip('/')
+    elif prefix in ('issues', 'pull', 'discussions'):
+        t, num = ref.partition(':')[::2]
+        href = f'https://github.com/kovidgoyal/kitty/{prefix}/{rest}'
     if not (href.startswith('https://') or href.startswith('http://')):
         href = website_url(href)
     return href
