@@ -68,7 +68,7 @@ func (self *Loop) handle_csi(raw []byte) error {
 }
 
 func (self *Loop) handle_key_event(ev *KeyEvent) error {
-	// self.controlling_term.DebugPrintln(ev)
+	// self.DebugPrintln(ev)
 	if self.OnKeyEvent != nil {
 		err := self.OnKeyEvent(self, ev)
 		if err != nil {
