@@ -209,7 +209,7 @@ func (self *Loop) Run() (err error) {
 		return nil
 	}
 
-	var selector Select
+	selector := CreateSelect(8)
 	selector.RegisterRead(int(signal_read_file.Fd()))
 	selector.RegisterRead(tty_fd)
 
@@ -318,10 +318,10 @@ func (self *Loop) write_to_tty() error {
 }
 
 func (self *Loop) flush() error {
-	var selector Select
 	if self.controlling_term == nil {
 		return nil
 	}
+	selector := CreateSelect(1)
 	selector.RegisterWrite(self.controlling_term.Fd())
 	deadline := time.Now().Add(2 * time.Second)
 	for len(self.write_buf) > 0 {

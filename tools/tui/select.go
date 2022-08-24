@@ -13,6 +13,14 @@ type Select struct {
 	read_fds, write_fds, err_fds map[int]bool
 }
 
+func CreateSelect(expected_number_of_fds int) *Select {
+	var ans Select
+	ans.read_fds = make(map[int]bool, expected_number_of_fds)
+	ans.write_fds = make(map[int]bool, expected_number_of_fds)
+	ans.err_fds = make(map[int]bool, expected_number_of_fds)
+	return &ans
+}
+
 func (self *Select) register(fd int, fdset *map[int]bool) {
 	(*fdset)[fd] = true
 }

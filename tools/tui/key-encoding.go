@@ -151,6 +151,9 @@ type ParsedShortcut struct {
 var parsed_shortcut_cache map[string]ParsedShortcut
 
 func ParseShortcut(spec string) *ParsedShortcut {
+	if parsed_shortcut_cache == nil {
+		parsed_shortcut_cache = make(map[string]ParsedShortcut, 128)
+	}
 	if val, ok := parsed_shortcut_cache[spec]; ok {
 		return &val
 	}
