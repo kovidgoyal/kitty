@@ -10,13 +10,13 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/mattn/go-runewidth"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/sys/unix"
 
 	"kitty"
 	"kitty/tools/tty"
+	"kitty/tools/tui"
 	"kitty/tools/utils"
 )
 
@@ -120,7 +120,7 @@ func format_line_with_indent(output io.Writer, text string, indent string, scree
 	var escapes strings.Builder
 
 	print_word := func(r rune) {
-		w := runewidth.StringWidth(current_word.String())
+		w := tui.Wcswidth(current_word.String())
 		if x+w > screen_width {
 			fmt.Fprintln(output)
 			fmt.Fprint(output, indent)

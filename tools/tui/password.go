@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/mattn/go-runewidth"
 )
 
 type KilledBySignal struct {
@@ -25,9 +23,9 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 	}
 
 	loop.OnText = func(loop *Loop, text string, from_key_event bool, in_bracketed_paste bool) error {
-		old_width := runewidth.StringWidth(password)
+		old_width := Wcswidth(password)
 		password += text
-		new_width := runewidth.StringWidth(password)
+		new_width := Wcswidth(password)
 		if new_width > old_width {
 			extra := strings.Repeat("*", new_width-old_width)
 			loop.QueueWriteString(extra)
@@ -40,9 +38,9 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 		if event.MatchesPressOrRepeat("backscape") || event.MatchesPressOrRepeat("delete") {
 			event.Handled = true
 			if len(password) > 0 {
-				old_width := runewidth.StringWidth(password)
+				old_width := Wcswidth(password)
 				password = password[:len(password)-1]
-				new_width := runewidth.StringWidth(password)
+				new_width := Wcswidth(password)
 				delta := new_width - old_width
 				if delta > 0 {
 					if delta > len(shadow) {
