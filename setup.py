@@ -21,7 +21,7 @@ from functools import lru_cache, partial
 from pathlib import Path
 from typing import (
     Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple,
-    Union
+    Union, cast
 )
 
 from glfw import glfw
@@ -840,9 +840,14 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
     )
 
 
-def build_ref_map() -> str:
+@lru_cache
+def extract_rst_targets() -> Dict[str, Dict[str, str]]:
     m = runpy.run_path('docs/extract-rst-targets.py')
-    d = m['main']()
+    return cast(Dict[str, Dict[str, str]], m['main']())
+
+
+def build_ref_map() -> str:
+    d = extract_rst_targets()
     h = 'static const char docs_ref_map[] = {\n' + textwrap.fill(', '.join(map(str, bytearray(json.dumps(d).encode('utf-8'))))) + '\n};\n'
     dest = 'kitty/docs_ref_map_generated.h'
     q = ''

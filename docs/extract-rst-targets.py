@@ -20,7 +20,7 @@ def find_page_title(text: str) -> str:
     return ''
 
 
-def main() -> Dict[str, str]:
+def main() -> Dict[str, Dict[str, str]]:
     refs = {}
     docs = {}
     base = os.path.dirname(os.path.abspath(__file__))
