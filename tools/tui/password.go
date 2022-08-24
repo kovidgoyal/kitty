@@ -19,6 +19,7 @@ var Canceled = errors.New("Canceled by user")
 
 func ReadPassword(prompt string, kill_if_signaled bool) (password string, err error) {
 	loop, err := CreateLoop()
+	loop.NoAlternateScreen()
 	shadow := ""
 	if err != nil {
 		return

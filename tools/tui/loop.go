@@ -144,6 +144,7 @@ func (self *Loop) on_SIGHUP() error {
 
 func CreateLoop() (*Loop, error) {
 	l := Loop{controlling_term: nil}
+	l.terminal_options.alternate_screen = true
 	l.escape_code_parser.HandleCSI = l.handle_csi
 	l.escape_code_parser.HandleOSC = l.handle_osc
 	l.escape_code_parser.HandleDCS = l.handle_dcs
@@ -154,8 +155,8 @@ func CreateLoop() (*Loop, error) {
 	return &l, nil
 }
 
-func (self *Loop) UseAlternateScreen() {
-	self.terminal_options.alternate_screen = true
+func (self *Loop) NoAlternateScreen() {
+	self.terminal_options.alternate_screen = false
 }
 
 func (self *Loop) MouseTracking(mt MouseTracking) {
