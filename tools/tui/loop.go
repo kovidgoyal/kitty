@@ -5,6 +5,7 @@ import (
 	"io"
 	"kitty/tools/tty"
 	"os"
+	"sort"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -40,6 +41,21 @@ type ScreenSize struct {
 	updated                                                           bool
 }
 
+type TimerId uint64
+type TimerCallback func(loop *Loop, timer_id TimerId) error
+
+type timer struct {
+	interval time.Duration
+	deadline time.Time
+	repeats  bool
+	id       TimerId
+	callback TimerCallback
+}
+
+func (self *timer) update_deadline(now time.Time) {
+	self.deadline = now.Add(self.interval)
+}
+
 type Loop struct {
 	controlling_term   *tty.Term
 	terminal_options   TerminalStateOptions
@@ -50,6 +66,8 @@ type Loop struct {
 	death_signal       Signal
 	exit_code          int
 	write_buf          []byte
+	timers             []*timer
+	timer_id_counter   TimerId
 
 	// Callbacks
 
@@ -182,7 +200,7 @@ func (self *Loop) on_SIGHUP() error {
 }
 
 func CreateLoop() (*Loop, error) {
-	l := Loop{controlling_term: nil}
+	l := Loop{controlling_term: nil, timers: make([]*timer, 0)}
 	l.terminal_options.alternate_screen = true
 	l.escape_code_parser.HandleCSI = l.handle_csi
 	l.escape_code_parser.HandleOSC = l.handle_osc
@@ -192,6 +210,25 @@ func CreateLoop() (*Loop, error) {
 	l.escape_code_parser.HandlePM = l.handle_pm
 	l.escape_code_parser.HandleRune = l.handle_rune
 	return &l, nil
+}
+
+func (self *Loop) AddTimer(interval time.Duration, repeats bool, callback TimerCallback) TimerId {
+	self.timer_id_counter++
+	t := timer{interval: interval, repeats: repeats, callback: callback, id: self.timer_id_counter}
+	t.update_deadline(time.Now())
+	self.timers = append(self.timers, &t)
+	self.sort_timers()
+	return t.id
+}
+
+func (self *Loop) RemoveTimer(id TimerId) bool {
+	for i := 0; i < len(self.timers); i++ {
+		if self.timers[i].id == id {
+			self.timers = append(self.timers[:i], self.timers[i+1:]...)
+			return true
+		}
+	}
+	return false
 }
 
 func (self *Loop) NoAlternateScreen() {
@@ -301,15 +338,29 @@ func (self *Loop) Run() (err error) {
 	self.death_signal = SIGNULL
 	self.escape_code_parser.Reset()
 	self.exit_code = 0
+	num_ready := 0
 	for self.keep_going {
 		if len(self.write_buf) > 0 {
 			selector.RegisterWrite(tty_fd)
 		} else {
 			selector.UnRegisterWrite(tty_fd)
 		}
-		num_ready, err := selector.WaitForever()
-		if err != nil {
-			return fmt.Errorf("Failed to call select() with error: %w", err)
+		if len(self.timers) > 0 {
+			now := time.Now()
+			err = self.dispatch_timers(now)
+			if err != nil {
+				return err
+			}
+			timeout := self.timers[0].deadline.Sub(now)
+			if timeout < 0 {
+				timeout = 0
+			}
+			num_ready, err = selector.Wait(timeout)
+		} else {
+			num_ready, err = selector.WaitForever()
+			if err != nil {
+				return fmt.Errorf("Failed to call select() with error: %w", err)
+			}
 		}
 		if num_ready == 0 {
 			continue
@@ -411,4 +462,40 @@ func (self *Loop) flush() error {
 		}
 	}
 	return nil
+}
+
+func (self *Loop) dispatch_timers(now time.Time) error {
+	updated := false
+	remove := make(map[TimerId]bool, 0)
+	for _, t := range self.timers {
+		if now.After(t.deadline) {
+			err := t.callback(self, t.id)
+			if err != nil {
+				return err
+			}
+			if t.repeats {
+				t.update_deadline(now)
+				updated = true
+			} else {
+				remove[t.id] = true
+			}
+		}
+	}
+	if len(remove) > 0 {
+		timers := make([]*timer, len(self.timers)-len(remove))
+		for _, t := range self.timers {
+			if !remove[t.id] {
+				timers = append(timers, t)
+			}
+		}
+		self.timers = timers
+	}
+	if updated {
+		self.sort_timers()
+	}
+	return nil
+}
+
+func (self *Loop) sort_timers() {
+	sort.SliceStable(self.timers, func(a, b int) bool { return self.timers[a].deadline.Before(self.timers[b].deadline) })
 }
