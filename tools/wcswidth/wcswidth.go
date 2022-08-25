@@ -8,12 +8,12 @@ func IsFlagPair(a rune, b rune) bool {
 	return IsFlagCodepoint(a) && IsFlagCodepoint(b)
 }
 
-type parser_state uint8
+type ecparser_state uint8
 
 type WCWidthIterator struct {
 	prev_ch    rune
 	prev_width int
-	state      parser_state
+	state      ecparser_state
 }
 
 func (self *WCWidthIterator) Reset() {
@@ -25,11 +25,11 @@ func (self *WCWidthIterator) Reset() {
 func (self *WCWidthIterator) Step(ch rune) int {
 	var ans int = 0
 	const (
-		normal            parser_state = 0
-		in_esc            parser_state = 1
-		in_csi            parser_state = 2
-		flag_pair_started parser_state = 3
-		in_st_terminated  parser_state = 4
+		normal            ecparser_state = 0
+		in_esc            ecparser_state = 1
+		in_csi            ecparser_state = 2
+		flag_pair_started ecparser_state = 3
+		in_st_terminated  ecparser_state = 4
 	)
 	switch self.state {
 	case in_csi:

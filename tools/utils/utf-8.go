@@ -26,7 +26,7 @@ const (
 	UTF8_REJECT           = 1
 )
 
-func decode_utf8(state *UTF8State, codep *UTF8State, byte_ byte) UTF8State {
+func DecodeUtf8(state *UTF8State, codep *UTF8State, byte_ byte) UTF8State {
 	typ := UTF8State(utf8_data[byte_])
 	b := UTF8State(byte_)
 
@@ -41,7 +41,7 @@ func decode_utf8(state *UTF8State, codep *UTF8State, byte_ byte) UTF8State {
 	return *state
 }
 
-func encode_utf8(ch UTF8State, dest []byte) int {
+func EncodeUtf8(ch UTF8State, dest []byte) int {
 	if ch < 0x80 {
 		dest[0] = byte(ch)
 		return 1

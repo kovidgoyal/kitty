@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"kitty/tools/utils"
+	"kitty/tools/wcswidth"
 )
 
 func read_ignoring_temporary_errors(fd int, buf []byte) (int, error) {
@@ -43,7 +44,7 @@ type Loop struct {
 	controlling_term   *tty.Term
 	terminal_options   TerminalStateOptions
 	screen_size        ScreenSize
-	escape_code_parser utils.EscapeCodeParser
+	escape_code_parser wcswidth.EscapeCodeParser
 	keep_going         bool
 	flush_write_buf    bool
 	death_signal       Signal
