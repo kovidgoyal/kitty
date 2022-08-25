@@ -12,6 +12,6 @@ func Select(nfd int, r *unix.FdSet, w *unix.FdSet, e *unix.FdSet, timeout time.D
 	if timeout < 0 {
 		return unix.Pselect(nfd, r, w, e, nil, nil)
 	}
-	ts := NsecToTimespec(timeout)
+	ts := unix.NsecToTimespec(int64(timeout))
 	return unix.Pselect(nfd, r, w, e, &ts, nil)
 }

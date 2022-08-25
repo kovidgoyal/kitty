@@ -2,25 +2,12 @@ package utils
 
 import (
 	"io"
-	"syscall"
 	"time"
-
-	"golang.org/x/sys/unix"
 )
 
 const (
 	DEFAULT_IO_BUFFER_SIZE = 8192
 )
-
-func NsecToTimespec(d time.Duration) unix.Timespec {
-	nv := syscall.NsecToTimespec(int64(d))
-	return unix.Timespec{Sec: nv.Sec, Nsec: nv.Nsec}
-}
-
-func NsecToTimeval(d time.Duration) unix.Timeval {
-	nv := syscall.NsecToTimeval(int64(d))
-	return unix.Timeval{Sec: nv.Sec, Usec: nv.Usec}
-}
 
 type BytesReader struct {
 	Data []byte

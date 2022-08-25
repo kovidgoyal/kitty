@@ -5,7 +5,6 @@ import (
 	"io"
 	"kitty/tools/tty"
 	"os"
-	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -220,11 +219,11 @@ func (self *Loop) ScreenSize() (ScreenSize, error) {
 func (self *Loop) KillIfSignalled() {
 	switch self.death_signal {
 	case SIGINT:
-		syscall.Kill(os.Getpid(), syscall.SIGINT)
+		unix.Kill(os.Getpid(), unix.SIGINT)
 	case SIGTERM:
-		syscall.Kill(os.Getpid(), syscall.SIGTERM)
+		unix.Kill(os.Getpid(), unix.SIGTERM)
 	case SIGHUP:
-		syscall.Kill(os.Getpid(), syscall.SIGHUP)
+		unix.Kill(os.Getpid(), unix.SIGHUP)
 	}
 }
 
