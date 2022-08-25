@@ -15,8 +15,8 @@ import (
 	"github.com/spf13/pflag"
 	"golang.org/x/sys/unix"
 
+	"github.com/jamesruan/go-rfc1924/base85"
 	"kitty"
-	"kitty/tools/base85"
 	"kitty/tools/cli"
 	"kitty/tools/crypto"
 	"kitty/tools/tty"
