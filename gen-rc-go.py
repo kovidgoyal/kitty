@@ -177,6 +177,7 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
         CMD_NAME=name, __FILE__=__file__, CLI_NAME=name.replace('_', '-'),
         SHORT_DESC=serialize_as_go_string(cmd.short_desc),
         LONG_DESC=serialize_as_go_string(cmd.desc.strip()),
+        IS_ASYNC='true' if cmd.is_asynchronous else 'false',
         NO_RESPONSE_BASE=NO_RESPONSE_BASE, ADD_FLAGS_CODE='\n'.join(af),
         WAIT_TIMEOUT=str(cmd.response_timeout),
         ALIAS_NORMALIZE_CODE=render_alias_map(alias_map),

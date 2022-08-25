@@ -86,6 +86,9 @@ func (self *ShortUUID) Uuid4() (string, error) {
 
 var HumanUUID *ShortUUID
 
-func init() {
-	HumanUUID = CreateShortUUID(HUMAN_ALPHABET)
+func HumanUUID4() (string, error) {
+	if HumanUUID == nil {
+		HumanUUID = CreateShortUUID(HUMAN_ALPHABET)
+	}
+	return HumanUUID.Uuid4()
 }
