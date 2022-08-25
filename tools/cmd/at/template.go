@@ -7,6 +7,8 @@
 package at
 
 import (
+	"time"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -26,21 +28,15 @@ type CMD_NAME_json_type struct {
 
 var CMD_NAME_json CMD_NAME_json_type
 
-func create_payload_CMD_NAME(args []string) (payload map[string]interface{}, err error) {
+func create_payload_CMD_NAME(io_data *rc_io_data, args []string) (err error) {
 	return
 }
 
 func create_rc_CMD_NAME(args []string) (*utils.RemoteControlCmd, error) {
-	var err error
-	payload, err := create_payload_CMD_NAME(args)
-	if err != nil {
-		return nil, err
-	}
 	rc := utils.RemoteControlCmd{
 		Cmd:        "CLI_NAME",
 		Version:    ProtocolVersion,
 		NoResponse: NO_RESPONSE_BASE,
-		Payload:    payload,
 	}
 	return &rc, nil
 }
@@ -61,7 +57,21 @@ func run_CMD_NAME(cmd *cobra.Command, args []string) (err error) {
 	if err == nil {
 		timeout = rt
 	}
-	err = send_rc_command(cmd, rc, timeout, STRING_RESPONSE_IS_ERROR)
+	io_data := rc_io_data{
+		cmd:                    cmd,
+		rc:                     rc,
+		timeout:                time.Duration(timeout * float64(time.Second)),
+		string_response_is_err: STRING_RESPONSE_IS_ERROR,
+		next_block: func(rc *utils.RemoteControlCmd, serializer serializer_func) ([]byte, error) {
+			return make([]byte, 0), nil
+		},
+	}
+	err = create_payload_CMD_NAME(&io_data, args)
+	if err != nil {
+		return err
+	}
+
+	err = send_rc_command(&io_data)
 	return
 }
 

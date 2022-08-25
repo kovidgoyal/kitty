@@ -37,7 +37,8 @@ func TestCommandToJSON(t *testing.T) {
 }
 
 func TestRCSerialization(t *testing.T) {
-	serializer, _, err := create_serializer("", "", 0)
+	io_data := rc_io_data{}
+	err := create_serializer("", "", &io_data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +47,7 @@ func TestRCSerialization(t *testing.T) {
 		Cmd: "test", Version: ver,
 	}
 	simple := func(expected string) {
-		actual, err := serializer(&rc)
+		actual, err := io_data.serializer(&rc)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -64,11 +65,11 @@ func TestRCSerialization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	serializer, _, err = create_serializer("tpw", pubkey, 0)
+	err = create_serializer("tpw", pubkey, &io_data)
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := serializer(&rc)
+	raw, err := io_data.serializer(&rc)
 	var ec utils.EncryptedRemoteControlCmd
 	err = json.Unmarshal([]byte(raw), &ec)
 	if err != nil {

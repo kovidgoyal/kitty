@@ -22,7 +22,6 @@ import (
 	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/utils"
-	"kitty/tools/wcswidth"
 )
 
 var ProtocolVersion [3]int = [3]int{0, 20, 0}
@@ -75,78 +74,23 @@ type serializer_func func(rc *utils.RemoteControlCmd) ([]byte, error)
 
 var serializer serializer_func = simple_serializer
 
-func create_serializer(password string, encoded_pubkey string, response_timeout float64) (ans serializer_func, timeout float64, err error) {
-	timeout = response_timeout
+func create_serializer(password string, encoded_pubkey string, io_data *rc_io_data) (err error) {
+	io_data.serializer = simple_serializer
 	if password != "" {
 		encryption_version, pubkey, err := get_pubkey(encoded_pubkey)
 		if err != nil {
-			return nil, timeout, err
+			return err
 		}
-		ans = func(rc *utils.RemoteControlCmd) (ans []byte, err error) {
+		io_data.serializer = func(rc *utils.RemoteControlCmd) (ans []byte, err error) {
 			ec, err := crypto.Encrypt_cmd(rc, global_options.password, pubkey, encryption_version)
 			ans, err = json.Marshal(ec)
 			return
 		}
-		if timeout < 120 {
-			timeout = 120
+		if io_data.timeout < 120*time.Second {
+			io_data.timeout = 120 * time.Second
 		}
-		return ans, timeout, nil
 	}
-	return simple_serializer, timeout, nil
-}
-
-type IOAbstraction interface {
-	WriteAllWithTimeout(b []byte, d time.Duration) (n int, err error)
-	WriteFromReader(r utils.Reader, read_timeout time.Duration, write_timeout time.Duration) (n int, err error)
-	ReadWithTimeout(b []byte, d time.Duration) (n int, err error)
-}
-
-func do_io(device IOAbstraction, input utils.Reader, no_response bool, response_timeout time.Duration) (serialized_response []byte, err error) {
-
-	_, err = device.WriteAllWithTimeout([]byte("\x1bP@kitty-cmd"), 2*time.Second)
-	if err != nil {
-		return
-	}
-	_, err = device.WriteFromReader(input, 2*time.Second, 2*time.Second)
-	if err != nil {
-		return
-	}
-	_, err = device.WriteAllWithTimeout([]byte("\x1b\\"), 2*time.Second)
-	if err != nil {
-		return
-	}
-	if no_response {
-		return
-	}
-
-	response_received := false
-	cmd_prefix := []byte("@kitty-cmd")
-
-	handle_dcs := func(b []byte) error {
-		if bytes.HasPrefix(b, cmd_prefix) {
-			response_received = true
-		}
-		serialized_response = b[len(cmd_prefix):]
-		return nil
-	}
-
-	var p = wcswidth.EscapeCodeParser{HandleDCS: handle_dcs}
-	buf := make([]byte, 0, utils.DEFAULT_IO_BUFFER_SIZE)
-
-	for !response_received {
-		buf = buf[:cap(buf)]
-		var n int
-		n, err = device.ReadWithTimeout(buf, response_timeout)
-		if err != nil {
-			if err == os.ErrDeadlineExceeded {
-				err = fmt.Errorf("Timed out while waiting for a response from kitty")
-			}
-			return
-		}
-		buf = buf[:n]
-		p.Parse(buf)
-	}
-	return
+	return nil
 }
 
 type ResponseData struct {
@@ -176,40 +120,24 @@ type Response struct {
 	Traceback string       `json:"tb,omitempty"`
 }
 
-func get_response(rc *utils.RemoteControlCmd, timeout float64) (ans *Response, err error) {
-	serializer, timeout, err = create_serializer(global_options.password, "", timeout)
-	if err != nil {
-		return
-	}
-	d, err := serializer(rc)
-	if err != nil {
-		return
-	}
-	var device IOAbstraction
-	if global_options.to_network == "" {
-		var term *tty.Term
-		term, err = tty.OpenControllingTerm(tty.SetRaw)
-		if err != nil {
-			return
-		}
-		defer term.RestoreAndClose()
-		device = term
-	} else {
-		err = fmt.Errorf("TODO: Implement socket IO")
-		return
-	}
-	r := utils.BytesReader{Data: d}
-	serialized_response, err := do_io(device, &r, rc.NoResponse, time.Duration(timeout*float64(time.Second)))
+type rc_io_data struct {
+	cmd                    *cobra.Command
+	rc                     *utils.RemoteControlCmd
+	serializer             serializer_func
+	next_block             func(rc *utils.RemoteControlCmd, serializer serializer_func) (b []byte, err error)
+	send_keypresses        bool
+	string_response_is_err bool
+	timeout                time.Duration
+}
+
+func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_io_data) (ans *Response, err error) {
+	serialized_response, err := do_io(io_data)
 	if err != nil {
 		if err == os.ErrDeadlineExceeded {
-			rc.Payload = nil
-			rc.CancelAsync = true
-			rc.NoResponse = true
-			d, err = serializer(rc)
-			if err != nil {
-				return
-			}
-			_, err = do_io(device, &r, rc.NoResponse, 0)
+			io_data.rc.Payload = nil
+			io_data.rc.CancelAsync = true
+			io_data.rc.NoResponse = true
+			_, err = do_io(io_data)
 		}
 		return
 	}
@@ -227,12 +155,24 @@ func get_response(rc *utils.RemoteControlCmd, timeout float64) (ans *Response, e
 	return
 }
 
-func send_rc_command(cmd *cobra.Command, rc *utils.RemoteControlCmd, timeout float64, string_response_is_err bool) (err error) {
-	err = setup_global_options(cmd)
+func send_rc_command(io_data *rc_io_data) (err error) {
+	err = setup_global_options(io_data.cmd)
 	if err != nil {
 		return err
 	}
-	response, err := get_response(rc, timeout)
+	err = create_serializer(global_options.password, "", io_data)
+	if err != nil {
+		return
+	}
+	var response *Response
+	if global_options.to_network == "" {
+		response, err = get_response(do_tty_io, io_data)
+		if err != nil {
+			return
+		}
+	} else {
+		return fmt.Errorf("TODO: Implement socket IO")
+	}
 	if err != nil || response == nil {
 		return err
 	}
@@ -242,7 +182,7 @@ func send_rc_command(cmd *cobra.Command, rc *utils.RemoteControlCmd, timeout flo
 		}
 		return fmt.Errorf("%s", response.Error)
 	}
-	if response.Data.is_string && string_response_is_err {
+	if response.Data.is_string && io_data.string_response_is_err {
 		return fmt.Errorf("%s", response.Data.as_str)
 	}
 	fmt.Println(strings.TrimRight(response.Data.as_str, "\n \t"))
