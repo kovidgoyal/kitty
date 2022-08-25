@@ -3,6 +3,7 @@
 package tui
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"kitty/tools/tty"
@@ -75,7 +76,7 @@ type Loop struct {
 
 	// Called when the terminal has been fully setup. Any string returned is sent to
 	// the terminal on shutdown
-	OnInitialize func(loop *Loop) string
+	OnInitialize func(loop *Loop) (string, error)
 
 	// Called when a key event happens
 	OnKeyEvent func(loop *Loop, event *KeyEvent) error
@@ -88,6 +89,12 @@ type Loop struct {
 
 	// Called when writing is done
 	OnWriteComplete func(loop *Loop) error
+
+	// Called when a response to an rc command is received
+	OnRCResponse func(loop *Loop, data []byte) error
+
+	// Called when any input form tty is received
+	OnReceivedData func(loop *Loop, data []byte) error
 }
 
 func (self *Loop) update_screen_size() error {
@@ -146,6 +153,9 @@ func (self *Loop) handle_osc(raw []byte) error {
 }
 
 func (self *Loop) handle_dcs(raw []byte) error {
+	if self.OnRCResponse != nil && bytes.HasPrefix(raw, []byte("@kitty-cmd")) {
+		return self.OnRCResponse(self, raw[len("@kitty-cmd"):])
+	}
 	return nil
 }
 
@@ -327,7 +337,10 @@ func (self *Loop) Run() (err error) {
 	self.queue_write_to_tty(self.terminal_options.SetStateEscapeCodes())
 	finalizer := ""
 	if self.OnInitialize != nil {
-		finalizer = self.OnInitialize(self)
+		finalizer, err = self.OnInitialize(self)
+		if err != nil {
+			return err
+		}
 	}
 
 	defer func() {
@@ -393,6 +406,12 @@ func (self *Loop) Run() (err error) {
 				return err
 			}
 			if num_read > 0 {
+				if self.OnReceivedData != nil {
+					err = self.OnReceivedData(self, read_buf[:num_read])
+					if err != nil {
+						return err
+					}
+				}
 				err = self.escape_code_parser.Parse(read_buf[:num_read])
 				if err != nil {
 					return err
@@ -417,6 +436,10 @@ func (self *Loop) queue_write_to_tty(data []byte) {
 
 func (self *Loop) QueueWriteString(data string) {
 	self.queue_write_to_tty([]byte(data))
+}
+
+func (self *Loop) QueueWriteBytes(data []byte) {
+	self.queue_write_to_tty(data)
 }
 
 func (self *Loop) ExitCode() int {

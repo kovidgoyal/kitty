@@ -63,7 +63,7 @@ func run_CMD_NAME(cmd *cobra.Command, args []string) (err error) {
 		timeout:                time.Duration(timeout * float64(time.Second)),
 		string_response_is_err: STRING_RESPONSE_IS_ERROR,
 		next_block: func(rc *utils.RemoteControlCmd, serializer serializer_func) ([]byte, error) {
-			return make([]byte, 0), nil
+			return serializer(rc)
 		},
 	}
 	err = create_payload_CMD_NAME(&io_data, args)
