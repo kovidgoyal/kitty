@@ -174,6 +174,10 @@ func (self *Loop) on_SIGINT() error {
 	return nil
 }
 
+func (self *Loop) on_SIGPIPE() error {
+	return nil
+}
+
 func (self *Loop) on_SIGWINCH() error {
 	self.screen_size.updated = false
 	if self.OnResize != nil {
@@ -287,7 +291,7 @@ func (self *Loop) Run() (err error) {
 	}()
 
 	sigchnl := make(chan os.Signal, 256)
-	reset_signals := notify_signals(sigchnl, SIGINT, SIGTERM, SIGTSTP, SIGHUP, SIGWINCH)
+	reset_signals := notify_signals(sigchnl, SIGINT, SIGTERM, SIGTSTP, SIGHUP, SIGWINCH, SIGPIPE)
 	defer reset_signals()
 
 	go func() {
