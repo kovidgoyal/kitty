@@ -38,6 +38,13 @@ func create_rc_CMD_NAME(args []string) (*utils.RemoteControlCmd, error) {
 		Version:    ProtocolVersion,
 		NoResponse: NO_RESPONSE_BASE,
 	}
+	if IS_ASYNC {
+		async_id, err := utils.HumanUUID4()
+		if err != nil {
+			return nil, err
+		}
+		rc.Async = async_id
+	}
 	return &rc, nil
 }
 

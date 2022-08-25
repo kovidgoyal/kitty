@@ -191,12 +191,13 @@ func single_rc_sender(rc *utils.RemoteControlCmd, serializer serializer_func) ([
 func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_io_data) (ans *Response, err error) {
 	serialized_response, err := do_io(io_data)
 	if err != nil {
-		if err == os.ErrDeadlineExceeded {
+		if errors.Is(err, os.ErrDeadlineExceeded) {
 			io_data.rc.Payload = nil
 			io_data.rc.CancelAsync = true
 			io_data.rc.NoResponse = true
-			io_data.next_block = single_rc_sender
-			_, err = do_io(io_data)
+			io_data.rc.ResetSingleSent()
+			do_io(io_data)
+			err = fmt.Errorf("Timed out waiting for a response from kitty")
 		}
 		return
 	}
