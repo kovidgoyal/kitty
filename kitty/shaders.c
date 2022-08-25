@@ -342,6 +342,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer(vao_idx, uniform_buffer, GL_WRITE_ONLY);
     if (UNLIKELY(screen->color_profile->dirty || screen->reload_all_gpu_data)) {
         copy_color_table_to_buffer(screen->color_profile, (GLuint*)rd, cell_program_layouts[CELL_PROGRAM].color_table.offset / sizeof(GLuint), cell_program_layouts[CELL_PROGRAM].color_table.stride / sizeof(GLuint));
+        // TODO: Should probably have its own flag to only write the LUT when necessary
         copy_gamma_lut_to_buffer(srgb_lut, (GLfloat*)rd, cell_program_layouts[CELL_PROGRAM].gamma_lut.offset / sizeof(GLfloat), cell_program_layouts[CELL_PROGRAM].gamma_lut.stride / sizeof(GLfloat));
     }
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name).rgb
