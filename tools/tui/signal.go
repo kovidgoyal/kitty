@@ -2,9 +2,9 @@ package tui
 
 import (
 	"fmt"
+	"golang.org/x/sys/unix"
 	"os"
 	"os/signal"
-	"syscall"
 )
 
 type Signal byte
@@ -56,53 +56,53 @@ func as_signal(which os.Signal) Signal {
 	switch which {
 	case os.Interrupt:
 		return SIGINT
-	case syscall.SIGTERM:
+	case unix.SIGTERM:
 		return SIGTERM
-	case syscall.SIGTSTP:
+	case unix.SIGTSTP:
 		return SIGTSTP
-	case syscall.SIGHUP:
+	case unix.SIGHUP:
 		return SIGHUP
-	case syscall.SIGTTIN:
+	case unix.SIGTTIN:
 		return SIGTTIN
-	case syscall.SIGTTOU:
+	case unix.SIGTTOU:
 		return SIGTTOU
-	case syscall.SIGUSR1:
+	case unix.SIGUSR1:
 		return SIGUSR1
-	case syscall.SIGUSR2:
+	case unix.SIGUSR2:
 		return SIGUSR2
-	case syscall.SIGALRM:
+	case unix.SIGALRM:
 		return SIGALRM
-	case syscall.SIGWINCH:
+	case unix.SIGWINCH:
 		return SIGWINCH
 	default:
 		return SIGNULL
 	}
 }
 
-const zero_go_signal = syscall.Signal(0)
+const zero_go_signal = unix.Signal(0)
 
 func as_go_signal(which Signal) os.Signal {
 	switch which {
 	case SIGINT:
 		return os.Interrupt
 	case SIGTERM:
-		return syscall.SIGTERM
+		return unix.SIGTERM
 	case SIGTSTP:
-		return syscall.SIGTSTP
+		return unix.SIGTSTP
 	case SIGHUP:
-		return syscall.SIGHUP
+		return unix.SIGHUP
 	case SIGTTIN:
-		return syscall.SIGTTIN
+		return unix.SIGTTIN
 	case SIGTTOU:
-		return syscall.SIGTTOU
+		return unix.SIGTTOU
 	case SIGUSR1:
-		return syscall.SIGUSR1
+		return unix.SIGUSR1
 	case SIGUSR2:
-		return syscall.SIGUSR2
+		return unix.SIGUSR2
 	case SIGALRM:
-		return syscall.SIGALRM
+		return unix.SIGALRM
 	case SIGWINCH:
-		return syscall.SIGWINCH
+		return unix.SIGWINCH
 	default:
 		return zero_go_signal
 	}
