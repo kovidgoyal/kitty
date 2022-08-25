@@ -5,6 +5,7 @@ package at
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -128,6 +129,34 @@ type rc_io_data struct {
 	send_keypresses        bool
 	string_response_is_err bool
 	timeout                time.Duration
+
+	pending_chunks [][]byte
+}
+
+func (self *rc_io_data) next_chunk(limit_size bool) (chunk []byte, err error) {
+	if len(self.pending_chunks) > 0 {
+		chunk = self.pending_chunks[0]
+		copy(self.pending_chunks, self.pending_chunks[1:])
+		self.pending_chunks = self.pending_chunks[:len(self.pending_chunks)-1]
+		return
+	}
+	block, err := self.next_block(self.rc, self.serializer)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return
+	}
+	err = nil
+	const limit = 2048
+	if !limit_size || len(block) < limit {
+		chunk = block
+		return
+	}
+	chunk = block[:limit]
+	block = block[limit:]
+	for len(block) > 0 {
+		self.pending_chunks = append(self.pending_chunks, block[:limit])
+		block = block[limit:]
+	}
+	return
 }
 
 func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_io_data) (ans *Response, err error) {
@@ -137,6 +166,9 @@ func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_i
 			io_data.rc.Payload = nil
 			io_data.rc.CancelAsync = true
 			io_data.rc.NoResponse = true
+			io_data.next_block = func(rc *utils.RemoteControlCmd, serializer serializer_func) ([]byte, error) {
+				return serializer(rc)
+			}
 			_, err = do_io(io_data)
 		}
 		return

@@ -27,9 +27,9 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 		return
 	}
 
-	loop.OnInitialize = func(loop *Loop) string {
+	loop.OnInitialize = func(loop *Loop) (string, error) {
 		loop.QueueWriteString(prompt)
-		return "\r\n"
+		return "\r\n", nil
 	}
 
 	loop.OnText = func(loop *Loop, text string, from_key_event bool, in_bracketed_paste bool) error {
