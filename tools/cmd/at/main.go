@@ -20,6 +20,7 @@ import (
 	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/utils"
+	"kitty/tools/wcswidth"
 )
 
 var ProtocolVersion [3]int = [3]int{0, 20, 0}
@@ -127,7 +128,7 @@ func do_io(device IOAbstraction, input utils.Reader, no_response bool, response_
 		return nil
 	}
 
-	var p utils.EscapeCodeParser = utils.EscapeCodeParser{HandleDCS: handle_dcs}
+	var p = wcswidth.EscapeCodeParser{HandleDCS: handle_dcs}
 	buf := make([]byte, 0, utils.DEFAULT_IO_BUFFER_SIZE)
 
 	for !response_received {

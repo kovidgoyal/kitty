@@ -1,7 +1,8 @@
-package utils
+package wcswidth
 
 import (
 	"bytes"
+	"kitty/tools/utils"
 )
 
 type parser_state uint8
@@ -35,10 +36,10 @@ const (
 
 type EscapeCodeParser struct {
 	state                  parser_state
-	utf8_state             UTF8State
+	utf8_state             utils.UTF8State
 	csi_state              csi_state
 	current_buffer         []byte
-	bracketed_paste_buffer []UTF8State
+	bracketed_paste_buffer []utils.UTF8State
 	current_callback       func([]byte) error
 
 	// Callbacks
@@ -54,21 +55,21 @@ type EscapeCodeParser struct {
 func (self *EscapeCodeParser) InBracketedPaste() bool { return self.state == bracketed_paste }
 
 func (self *EscapeCodeParser) Parse(data []byte) error {
-	prev := UTF8_ACCEPT
-	codep := UTF8_ACCEPT
+	prev := utils.UTF8_ACCEPT
+	codep := utils.UTF8_ACCEPT
 	for i := 0; i < len(data); i++ {
 		switch self.state {
 		case normal, bracketed_paste:
-			switch decode_utf8(&self.utf8_state, &codep, data[i]) {
-			case UTF8_ACCEPT:
+			switch utils.DecodeUtf8(&self.utf8_state, &codep, data[i]) {
+			case utils.UTF8_ACCEPT:
 				err := self.dispatch_char(codep)
 				if err != nil {
 					self.Reset()
 					return err
 				}
-			case UTF8_REJECT:
-				self.utf8_state = UTF8_ACCEPT
-				if prev != UTF8_ACCEPT && i > 0 {
+			case utils.UTF8_REJECT:
+				self.utf8_state = utils.UTF8_ACCEPT
+				if prev != utils.UTF8_ACCEPT && i > 0 {
 					i = i - 1
 				}
 			}
@@ -109,7 +110,7 @@ func (self *EscapeCodeParser) reset_state() {
 	self.current_buffer = self.current_buffer[:0]
 	self.bracketed_paste_buffer = self.bracketed_paste_buffer[:0]
 	self.state = normal
-	self.utf8_state = UTF8_ACCEPT
+	self.utf8_state = utils.UTF8_ACCEPT
 	self.current_callback = nil
 	self.csi_state = parameter
 }
@@ -132,14 +133,14 @@ func (self *EscapeCodeParser) invalid_escape_code() {
 	self.reset_state()
 }
 
-func (self *EscapeCodeParser) dispatch_rune(ch UTF8State) error {
+func (self *EscapeCodeParser) dispatch_rune(ch utils.UTF8State) error {
 	if self.HandleRune != nil {
 		return self.HandleRune(rune(ch))
 	}
 	return nil
 }
 
-func (self *EscapeCodeParser) bp_buffer_equals(chars []UTF8State) bool {
+func (self *EscapeCodeParser) bp_buffer_equals(chars []utils.UTF8State) bool {
 	if len(self.bracketed_paste_buffer) != len(chars) {
 		return false
 	}
@@ -151,7 +152,7 @@ func (self *EscapeCodeParser) bp_buffer_equals(chars []UTF8State) bool {
 	return true
 }
 
-func (self *EscapeCodeParser) dispatch_char(ch UTF8State) error {
+func (self *EscapeCodeParser) dispatch_char(ch utils.UTF8State) error {
 	if self.state == bracketed_paste {
 		dispatch := func() error {
 			if len(self.bracketed_paste_buffer) > 0 {
@@ -165,7 +166,7 @@ func (self *EscapeCodeParser) dispatch_char(ch UTF8State) error {
 			}
 			return self.dispatch_rune(ch)
 		}
-		handle_ch := func(chars ...UTF8State) error {
+		handle_ch := func(chars ...utils.UTF8State) error {
 			if self.bp_buffer_equals(chars) {
 				self.bracketed_paste_buffer = append(self.bracketed_paste_buffer, ch)
 				if self.bracketed_paste_buffer[len(self.bracketed_paste_buffer)-1] == '~' {
