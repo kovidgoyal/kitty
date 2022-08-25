@@ -3,6 +3,7 @@ module kitty
 go 1.19
 
 require (
+	github.com/jamesruan/go-rfc1924 v0.0.0-20170108144916-2767ca7c638f
 	github.com/seancfoley/ipaddress-go v1.2.1
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5

@@ -9,8 +9,8 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/jamesruan/go-rfc1924/base85"
 	"golang.org/x/crypto/curve25519"
-	"kitty/tools/base85"
 	"kitty/tools/utils"
 	"time"
 )
