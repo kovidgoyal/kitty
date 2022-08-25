@@ -2,6 +2,7 @@ package wcswidth
 
 import (
 	"bytes"
+	"errors"
 	"kitty/tools/utils"
 )
 
@@ -54,6 +55,8 @@ type EscapeCodeParser struct {
 
 func (self *EscapeCodeParser) InBracketedPaste() bool { return self.state == bracketed_paste }
 
+var reparse_byte = errors.New("")
+
 func (self *EscapeCodeParser) Parse(data []byte) error {
 	prev := utils.UTF8_ACCEPT
 	codep := utils.UTF8_ACCEPT
@@ -70,15 +73,18 @@ func (self *EscapeCodeParser) Parse(data []byte) error {
 			case utils.UTF8_REJECT:
 				self.utf8_state = utils.UTF8_ACCEPT
 				if prev != utils.UTF8_ACCEPT && i > 0 {
-					i = i - 1
+					i--
 				}
 			}
 			prev = self.utf8_state
 		default:
 			err := self.dispatch_byte(data[i])
 			if err != nil {
-				self.Reset()
-				return err
+				self.reset_state()
+				if err != reparse_byte {
+					return err
+				}
+				i--
 			}
 		}
 	}
@@ -242,8 +248,9 @@ func (self *EscapeCodeParser) dispatch_byte(ch byte) error {
 		case '_':
 			self.state = st
 			self.current_callback = self.HandleAPC
+		case 'D', 'E', 'H', 'M', 'N', 'O', 'Z', '6', '7', '8', '9', '=', '>', 'F', 'c', 'l', 'm', 'n', 'o', '|', '}', '~':
 		default:
-			self.state = normal
+			return reparse_byte
 		}
 	case csi:
 		self.write_ch(ch)
