@@ -56,7 +56,7 @@ func TestRCSerialization(t *testing.T) {
 			t.Fatalf("Incorrect serialization: %s != %s", expected, as)
 		}
 	}
-	simple(`{"cmd":"test","version":[1,2,3]}`)
+	simple(string(wrap_in_escape_code([]byte(`{"cmd":"test","version":[1,2,3]}`))))
 	pubkey_b, _, err := crypto.KeyPair("1")
 	if err != nil {
 		t.Fatal(err)
@@ -70,6 +70,7 @@ func TestRCSerialization(t *testing.T) {
 		t.Fatal(err)
 	}
 	raw, err := io_data.serializer(&rc)
+	raw = raw[len("\x1bP@kitty-cmd") : len(raw)-2]
 	var ec utils.EncryptedRemoteControlCmd
 	err = json.Unmarshal([]byte(raw), &ec)
 	if err != nil {
