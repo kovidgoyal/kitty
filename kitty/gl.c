@@ -11,9 +11,6 @@
 #include "glfw-wrapper.h"
 #include "state.h"
 
-// TODO: Configurable?
-GLint texture_internal_format = GL_SRGB_ALPHA;
-
 // GL setup and error handling {{{
 static void
 check_for_gl_error(void UNUSED *ret, const char *name, GLADapiproc UNUSED funcptr, int UNUSED len_args, ...) {
@@ -76,7 +73,7 @@ update_surface_size(int w, int h, GLuint offscreen_texture_id) {
     glViewport(0, 0, w, h);
     if (offscreen_texture_id) {
         glBindTexture(GL_TEXTURE_2D, offscreen_texture_id);
-        glTexImage2D(GL_TEXTURE_2D, 0, texture_internal_format, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
     }
 }
 

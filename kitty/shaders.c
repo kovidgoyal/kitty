@@ -29,8 +29,6 @@ typedef struct {
 static const SpriteMap NEW_SPRITE_MAP = { .xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1 };
 static GLint max_texture_size = 0, max_array_texture_layers = 0;
 
-extern GLint texture_internal_format;
-
 // Generated using gen-srgb-lut
 const GLfloat srgb_lut[256] = {
     0.00000f, 0.00030f, 0.00061f, 0.00091f, 0.00121f, 0.00152f, 0.00182f, 0.00212f, 0.00243f, 0.00273f, 0.00304f, 0.00335f, 0.00368f, 0.00402f, 0.00439f, 0.00478f,
@@ -191,7 +189,7 @@ send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei heigh
     }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, r);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, r);
-    glTexImage2D(GL_TEXTURE_2D, 0, texture_internal_format, width, height, 0, is_opaque ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, width, height, 0, is_opaque ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);
 }
 
 // }}}
@@ -647,7 +645,7 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, texture_internal_format, bar_width, bar_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, window->title_bar_data.buf);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, bar_width, bar_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, window->title_bar_data.buf);
     set_cell_uniforms(1.f, false);
     bind_program(GRAPHICS_PROGRAM);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, &data);
@@ -806,7 +804,7 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
         glGenFramebuffers(1, &os_window->offscreen_framebuffer);
         glGenTextures(1, &os_window->offscreen_texture_id);
         glBindTexture(GL_TEXTURE_2D, os_window->offscreen_texture_id);
-        glTexImage2D(GL_TEXTURE_2D, 0, texture_internal_format, os_window->viewport_width, os_window->viewport_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, os_window->viewport_width, os_window->viewport_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
