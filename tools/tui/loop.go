@@ -83,6 +83,9 @@ type Loop struct {
 
 	// Called when the terminal is resize
 	OnResize func(loop *Loop, old_size ScreenSize, new_size ScreenSize) error
+
+	// Called when writing is done
+	OnWriteComplete func(loop *Loop) error
 }
 
 func (self *Loop) update_screen_size() error {
@@ -369,6 +372,12 @@ func (self *Loop) Run() (err error) {
 			err = self.write_to_tty()
 			if err != nil {
 				return err
+			}
+			if self.OnWriteComplete != nil && len(self.write_buf) == 0 {
+				err = self.OnWriteComplete(self)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		if selector.IsReadyToRead(tty_fd) {
