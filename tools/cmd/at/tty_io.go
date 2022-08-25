@@ -74,6 +74,9 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 	}
 
 	err = loop.Run()
+	if err == nil {
+		loop.KillIfSignalled()
+	}
 	return
 
 }
