@@ -241,7 +241,7 @@ var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
         cmd = command_for_name(name)
         opts = parse_option_spec(cmd.options_spec or '\n\n')[0]
         code = build_go_code(name, cmd, opts, template)
-        dest = f'tools/cmd/at/{name}_generated.go'
+        dest = f'tools/cmd/at/cmd_{name}_generated.go'
         if os.path.exists(dest):
             os.remove(dest)
         with open(dest, 'w') as f:
