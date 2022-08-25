@@ -10,7 +10,12 @@ type RemoteControlCmd struct {
 	Timestamp   int64        `json:"timestamp,omitempty"`
 	Password    string       `json:"password,omitempty"`
 	CancelAsync bool         `json:"cancel_async,omitempty"`
+
+	single_sent bool
 }
+
+func (self *RemoteControlCmd) SingleSent() bool { return self.single_sent }
+func (self *RemoteControlCmd) SetSingleSent()   { self.single_sent = true }
 
 type EncryptedRemoteControlCmd struct {
 	Version   [3]int `json:"version"`
