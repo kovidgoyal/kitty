@@ -17,11 +17,14 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 	}
 
 	var last_received_data_at time.Time
+	var check_for_timeout func(loop *tui.Loop, timer_id tui.TimerId) error
 
-	check_for_timeout := func(loop *tui.Loop, timer_id tui.TimerId) error {
-		if time.Now().Sub(last_received_data_at) > io_data.timeout {
+	check_for_timeout = func(loop *tui.Loop, timer_id tui.TimerId) error {
+		time_since_last_received_data := time.Now().Sub(last_received_data_at)
+		if time_since_last_received_data >= io_data.timeout {
 			return os.ErrDeadlineExceeded
 		}
+		loop.AddTimer(io_data.timeout-time_since_last_received_data, false, check_for_timeout)
 		return nil
 	}
 
@@ -30,7 +33,7 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 			loop.Quit(0)
 		}
 		last_received_data_at = time.Now()
-		loop.AddTimer(10*time.Millisecond, true, check_for_timeout)
+		loop.AddTimer(io_data.timeout, false, check_for_timeout)
 	}
 
 	loop.OnReceivedData = func(loop *tui.Loop, data []byte) error {
