@@ -23,6 +23,7 @@ const (
 	SIGUSR2  Signal = 8
 	SIGALRM  Signal = 9
 	SIGWINCH Signal = 10
+	SIGPIPE  Signal = 11
 )
 
 func (self *Signal) String() string {
@@ -49,6 +50,8 @@ func (self *Signal) String() string {
 		return "SIGALRM"
 	case SIGWINCH:
 		return "SIGWINCH"
+	case SIGPIPE:
+		return "SIGPIPE"
 	default:
 		return fmt.Sprintf("SIG#%d", *self)
 	}
@@ -76,6 +79,8 @@ func as_signal(which os.Signal) Signal {
 		return SIGALRM
 	case unix.SIGWINCH:
 		return SIGWINCH
+	case unix.SIGPIPE:
+		return SIGPIPE
 	default:
 		return SIGNULL
 	}
@@ -105,6 +110,8 @@ func as_go_signal(which Signal) os.Signal {
 		return unix.SIGALRM
 	case SIGWINCH:
 		return unix.SIGWINCH
+	case SIGPIPE:
+		return unix.SIGPIPE
 	default:
 		return zero_go_signal
 	}
@@ -157,6 +164,11 @@ func (self *Loop) read_signals(f *os.File, buf []byte) error {
 			}
 		case SIGWINCH:
 			err := self.on_SIGWINCH()
+			if err != nil {
+				return err
+			}
+		case SIGPIPE:
+			err := self.on_SIGPIPE()
 			if err != nil {
 				return err
 			}
