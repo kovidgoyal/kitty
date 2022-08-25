@@ -273,14 +273,20 @@ func (self *Loop) ScreenSize() (ScreenSize, error) {
 	return self.screen_size, err
 }
 
+func kill_self(sig unix.Signal) {
+	unix.Kill(os.Getpid(), sig)
+	// Give the signal time to be delivered
+	time.Sleep(20 * time.Millisecond)
+}
+
 func (self *Loop) KillIfSignalled() {
 	switch self.death_signal {
 	case SIGINT:
-		unix.Kill(os.Getpid(), unix.SIGINT)
+		kill_self(unix.SIGINT)
 	case SIGTERM:
-		unix.Kill(os.Getpid(), unix.SIGTERM)
+		kill_self(unix.SIGTERM)
 	case SIGHUP:
-		unix.Kill(os.Getpid(), unix.SIGHUP)
+		kill_self(unix.SIGHUP)
 	}
 }
 
