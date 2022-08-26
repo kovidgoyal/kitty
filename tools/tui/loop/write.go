@@ -100,12 +100,12 @@ func (self *write_dispatcher) slice(n int) {
 
 func write_to_tty(
 	pipe_r *os.File, term *tty.Term,
-	job_channel <-chan *write_msg, err_channel chan<- error, write_done_channel chan<- IdType, completed_channel chan<- byte,
+	job_channel <-chan *write_msg, err_channel chan<- error, write_done_channel chan<- IdType,
 ) {
 	keep_going := true
 	defer func() {
 		pipe_r.Close()
-		close(completed_channel)
+		close(write_done_channel)
 	}()
 	selector := utils.CreateSelect(2)
 	pipe_fd := int(pipe_r.Fd())
@@ -162,7 +162,7 @@ func write_to_tty(
 	}
 }
 
-func flush_writer(pipe_w *os.File, tty_write_channel chan<- *write_msg, tty_writing_done_channel <-chan byte, pending_writes []*write_msg, timeout time.Duration) {
+func flush_writer(pipe_w *os.File, tty_write_channel chan<- *write_msg, write_done_channel <-chan IdType, pending_writes []*write_msg, timeout time.Duration) {
 	writer_quit := false
 	defer func() {
 		if tty_write_channel != nil {
@@ -171,8 +171,13 @@ func flush_writer(pipe_w *os.File, tty_write_channel chan<- *write_msg, tty_writ
 		}
 		pipe_w.Close()
 		if !writer_quit {
-			<-tty_writing_done_channel
-			writer_quit = true
+			for {
+				_, more := <-write_done_channel
+				if !more {
+					writer_quit = true
+					break
+				}
+			}
 		}
 	}()
 	deadline := time.Now().Add(timeout)
@@ -184,6 +189,11 @@ func flush_writer(pipe_w *os.File, tty_write_channel chan<- *write_msg, tty_writ
 		select {
 		case <-time.After(timeout):
 			return
+		case _, more := <-write_done_channel:
+			if !more {
+				writer_quit = true
+				break
+			}
 		case tty_write_channel <- pending_writes[0]:
 			pending_writes = pending_writes[1:]
 		}
@@ -194,10 +204,15 @@ func flush_writer(pipe_w *os.File, tty_write_channel chan<- *write_msg, tty_writ
 	if timeout <= 0 {
 		return
 	}
-	select {
-	case <-tty_writing_done_channel:
-		writer_quit = true
-	case <-time.After(timeout):
+	for !writer_quit {
+		select {
+		case _, more := <-write_done_channel:
+			if !more {
+				writer_quit = true
+			}
+		case <-time.After(timeout):
+			break
+		}
 	}
 	return
 }
