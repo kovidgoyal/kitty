@@ -5,7 +5,7 @@ import json
 import io
 import os
 import subprocess
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import Dict, Iterator, List, Tuple, Union
 
 import kitty.constants as kc
@@ -21,14 +21,29 @@ from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
 changed: List[str] = []
 
 
+# Utils {{{
 def serialize_as_go_string(x: str) -> str:
     return x.replace('\\', '\\\\').replace('\n', '\\n').replace('"', '\\"')
+
+
+def serialize_go_dict(x: Union[Dict[str, int], Dict[int, str], Dict[int, int], Dict[str, str]]) -> str:
+    ans = []
+
+    def s(x: Union[int, str]) -> str:
+        if isinstance(x, int):
+            return str(x)
+        return f'"{serialize_as_go_string(x)}"'
+
+    for k, v in x.items():
+        ans.append(f'{s(k)}: {s(v)}')
+    return '{' + ', '.join(ans) + '}'
 
 
 def replace(template: str, **kw: str) -> str:
     for k, v in kw.items():
         template = template.replace(k, v)
     return template
+# }}}
 
 
 go_type_map = {'bool-set': 'bool', 'bool-reset': 'bool', 'int': 'int', 'float': 'float64', '': 'string', 'list': '[]string', 'choices': 'string'}
@@ -194,19 +209,7 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
     return ans
 
 
-def serialize_go_dict(x: Union[Dict[str, int], Dict[int, str], Dict[int, int], Dict[str, str]]) -> str:
-    ans = []
-
-    def s(x: Union[int, str]) -> str:
-        if isinstance(x, int):
-            return str(x)
-        return f'"{serialize_as_go_string(x)}"'
-
-    for k, v in x.items():
-        ans.append(f'{s(k)}: {s(v)}')
-    return '{' + ', '.join(ans) + '}'
-
-
+# Constants {{{
 def load_ref_map() -> Dict[str, Dict[str, str]]:
     with open('kitty/docs_ref_map_generated.h') as f:
         raw = f.read()
@@ -239,16 +242,19 @@ var CharacterKeyNameAliases = map[string]string{serialize_go_dict(character_key_
 var ConfigModMap = map[string]uint16{serialize_go_dict(config_mod_map)}
 var RefMap = map[string]string{serialize_go_dict(ref_map['ref'])}
 var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
-'''
+'''  # }}}
 
+
+# Boilerplate {{{
 
 @contextmanager
 def replace_if_needed(path: str) -> Iterator[io.StringIO]:
     buf = io.StringIO()
     yield buf
-    with open(path, 'r') as f:
+    orig = ''
+    with suppress(FileNotFoundError), open(path, 'r') as f:
         orig = f.read()
-        new = buf.getvalue()
+    new = buf.getvalue()
     if orig != new:
         changed.append(path)
         with open(path, 'w') as f:
@@ -280,4 +286,4 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    main()
+    main()  # }}}
