@@ -17,9 +17,10 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 	}
 
 	var last_received_data_at time.Time
-	var check_for_timeout func(loop *tui.Loop, timer_id tui.TimerId) error
+	var final_write_id tui.IdType
+	var check_for_timeout func(loop *tui.Loop, timer_id tui.IdType) error
 
-	check_for_timeout = func(loop *tui.Loop, timer_id tui.TimerId) error {
+	check_for_timeout = func(loop *tui.Loop, timer_id tui.IdType) error {
 		time_since_last_received_data := time.Now().Sub(last_received_data_at)
 		if time_since_last_received_data >= io_data.timeout {
 			return os.ErrDeadlineExceeded
@@ -46,23 +47,25 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 		if err != nil {
 			return "", err
 		}
+		write_id := loop.QueueWriteBytesDangerous(chunk)
 		if len(chunk) == 0 {
-			transition_to_read()
-		} else {
-			loop.QueueWriteBytes(chunk)
+			final_write_id = write_id
 		}
 		return "", nil
 	}
 
-	loop.OnWriteComplete = func(loop *tui.Loop) error {
+	loop.OnWriteComplete = func(loop *tui.Loop, completed_write_id tui.IdType) error {
+		if completed_write_id == final_write_id {
+			transition_to_read()
+			return nil
+		}
 		chunk, err := io_data.next_chunk(true)
 		if err != nil {
 			return err
 		}
+		write_id := loop.QueueWriteBytesDangerous(chunk)
 		if len(chunk) == 0 {
-			transition_to_read()
-		} else {
-			loop.QueueWriteBytes(chunk)
+			final_write_id = write_id
 		}
 		return nil
 	}
