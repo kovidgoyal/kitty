@@ -880,18 +880,9 @@ def safe_makedirs(path: str) -> None:
 
 def update_go_generated_files(args: Options, kitty_exe: str) -> None:
     # update all the various auto-generated go files, if needed
-    rc_sources = [x for x in glob.glob('kitty/rc/*.py') if os.path.basename(x) not in ('base.py', '__init__.py')]
-    rc_objects = glob.glob('tools/cmd/at/*_generated.go')
-    generated = rc_objects + glob.glob('constants_generated.go')
-    sources = ['gen-rc-go.py', 'kitty/constants.py', 'setup.py', 'kitty/docs_ref_map_generated.h', 'tools/cmd/at/template.go'] + rc_sources
-    if generated:
-        oldest_generated = min(map(os.path.getmtime, generated))
-        newest_source = max(map(os.path.getmtime, sources))
-        if oldest_generated > newest_source and len(rc_sources) == len(rc_objects) and 'constants_generated.go' in generated:
-            return
     if args.verbose:
         print('Updating Go generated files...')
-    cp = subprocess.run([kitty_exe, '+launch', os.path.join(base, 'gen-rc-go.py')])
+    cp = subprocess.run([kitty_exe, '+launch', os.path.join(base, 'gen-rc-go.py')], stdout=subprocess.PIPE)
     if cp.returncode != 0:
         raise SystemExit(cp.returncode)
 
