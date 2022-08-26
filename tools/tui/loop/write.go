@@ -57,26 +57,18 @@ func writestring_ignoring_temporary_errors(f *tty.Term, buf string) (int, error)
 	return n, err
 }
 
-func (self *Loop) queue_write_to_tty(data *write_msg) {
+func (self *Loop) flush_pending_writes(tty_write_channel chan<- *write_msg) {
 	for len(self.pending_writes) > 0 {
 		select {
-		case self.tty_write_channel <- self.pending_writes[0]:
+		case tty_write_channel <- self.pending_writes[0]:
 			n := copy(self.pending_writes, self.pending_writes[1:])
 			self.pending_writes = self.pending_writes[:n]
-		default:
-			if data != nil {
-				self.pending_writes = append(self.pending_writes, data)
-			}
-			return
 		}
 	}
-	if data != nil {
-		select {
-		case self.tty_write_channel <- data:
-		default:
-			self.pending_writes = append(self.pending_writes, data)
-		}
-	}
+}
+
+func (self *Loop) add_write_to_pending_queue(data *write_msg) {
+	self.pending_writes = append(self.pending_writes, data)
 }
 
 func create_write_dispatcher(msg *write_msg) *write_dispatcher {

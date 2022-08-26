@@ -32,21 +32,17 @@ func (self *timer) update_deadline(now time.Time) {
 }
 
 type Loop struct {
-	controlling_term                                                   *tty.Term
-	terminal_options                                                   TerminalStateOptions
-	screen_size                                                        ScreenSize
-	escape_code_parser                                                 wcswidth.EscapeCodeParser
-	keep_going                                                         bool
-	death_signal                                                       unix.Signal
-	exit_code                                                          int
-	timers                                                             []*timer
-	timer_id_counter, write_msg_id_counter                             IdType
-	tty_read_channel                                                   chan []byte
-	tty_write_channel                                                  chan *write_msg
-	write_done_channel                                                 chan IdType
-	err_channel                                                        chan error
-	tty_writing_done_channel, tty_reading_done_channel, wakeup_channel chan byte
-	pending_writes                                                     []*write_msg
+	controlling_term                       *tty.Term
+	terminal_options                       TerminalStateOptions
+	screen_size                            ScreenSize
+	escape_code_parser                     wcswidth.EscapeCodeParser
+	keep_going                             bool
+	death_signal                           unix.Signal
+	exit_code                              int
+	timers                                 []*timer
+	timer_id_counter, write_msg_id_counter IdType
+	wakeup_channel                         chan byte
+	pending_writes                         []*write_msg
 
 	// Callbacks
 
@@ -151,7 +147,7 @@ func (self *Loop) WakeupMainThread() {
 func (self *Loop) QueueWriteString(data string) IdType {
 	self.write_msg_id_counter++
 	msg := write_msg{str: data, id: self.write_msg_id_counter}
-	self.queue_write_to_tty(&msg)
+	self.add_write_to_pending_queue(&msg)
 	return msg.id
 }
 
@@ -160,7 +156,7 @@ func (self *Loop) QueueWriteString(data string) IdType {
 func (self *Loop) QueueWriteBytesDangerous(data []byte) IdType {
 	self.write_msg_id_counter++
 	msg := write_msg{bytes: data, id: self.write_msg_id_counter}
-	self.queue_write_to_tty(&msg)
+	self.add_write_to_pending_queue(&msg)
 	return msg.id
 }
 
