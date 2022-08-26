@@ -887,7 +887,7 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
         raise SystemExit(cp.returncode)
 
 
-def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False) -> None:
+def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False) -> str:
     sys.stdout.flush()
     sys.stderr.flush()
     go = shutil.which('go')
@@ -926,6 +926,7 @@ def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False)
             os.remove(x)
     else:
         run_one(dest)
+    return dest
 
 
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> None:
@@ -1351,7 +1352,9 @@ def create_macos_bundle_gunk(dest: str, for_freeze: bool, args: Options) -> str:
     os.symlink(os.path.relpath(kitty_exe, os.path.dirname(in_src_launcher)), in_src_launcher)
     create_macos_app_icon(os.path.join(ddir, 'Contents', 'Resources'))
     if not for_freeze:
-        build_kitty_tool(args, launcher_dir=os.path.dirname(kitty_exe))
+        kitty_tool_exe = build_kitty_tool(args, launcher_dir=os.path.dirname(kitty_exe))
+        os.symlink(os.path.relpath(kitty_tool_exe, os.path.dirname(in_src_launcher)),
+                   os.path.join(os.path.dirname(in_src_launcher), os.path.basename(kitty_tool_exe)))
     return str(kitty_exe)
 
 
