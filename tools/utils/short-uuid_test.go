@@ -8,11 +8,11 @@ import (
 )
 
 func TestShortUUID(t *testing.T) {
-	a, err := HumanUUID4()
+	a, err := HumanRandomId(128)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := HumanUUID4()
+	b, err := HumanRandomId(128)
 	if err != nil {
 		t.Fatal(err)
 	}

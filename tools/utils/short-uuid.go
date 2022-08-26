@@ -3,6 +3,7 @@
 package utils
 
 import (
+	"crypto/rand"
 	"math"
 	"math/big"
 
@@ -70,6 +71,15 @@ func CreateShortUUID(alphabet string) *ShortUUID {
 	return &ans
 }
 
+func (self *ShortUUID) Random(num_bits int64) (string, error) {
+	max := big.NewInt(0).Exp(big.NewInt(2), big.NewInt(num_bits), nil)
+	bi, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		return "", err
+	}
+	return num_to_string(bi, self.alphabet, &self.alphabet_len, self.pad_to_length), nil
+}
+
 func (self *ShortUUID) Uuid4() (string, error) {
 	b, err := uuid.NewRandom()
 	if err != nil {
@@ -91,4 +101,11 @@ func HumanUUID4() (string, error) {
 		HumanUUID = CreateShortUUID(HUMAN_ALPHABET)
 	}
 	return HumanUUID.Uuid4()
+}
+
+func HumanRandomId(num_bits int64) (string, error) {
+	if HumanUUID == nil {
+		HumanUUID = CreateShortUUID(HUMAN_ALPHABET)
+	}
+	return HumanUUID.Random(num_bits)
 }
