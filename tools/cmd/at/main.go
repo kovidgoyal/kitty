@@ -66,47 +66,48 @@ func get_pubkey(encoded_key string) (encryption_version string, pubkey []byte, e
 	return
 }
 
-func wrap_in_escape_code(data []byte) []byte {
-	const prefix = "\x1bP@kitty-cmd"
-	const suffix = "\x1b\\"
-	ans := make([]byte, len(prefix)+len(data)+len(suffix))
-	n := copy(ans, prefix)
-	n += copy(ans[n:], data)
-	copy(ans[n:], suffix)
-	return ans
-}
-
 func simple_serializer(rc *utils.RemoteControlCmd) (ans []byte, err error) {
-	ans, err = json.Marshal(rc)
-	if err != nil {
-		return
-	}
-	ans = wrap_in_escape_code(ans)
-	return
+	return json.Marshal(rc)
 }
 
 type serializer_func func(rc *utils.RemoteControlCmd) ([]byte, error)
 
+type wrapped_serializer struct {
+	state      int
+	serializer serializer_func
+}
+
+func (self *wrapped_serializer) next(rc *utils.RemoteControlCmd) ([]byte, error) {
+	const prefix = "\x1bP@kitty-cmd"
+	const suffix = "\x1b\\"
+	defer func() { self.state++ }()
+	switch self.state {
+	case 0:
+		return []byte(prefix), nil
+	case 1:
+		return self.serializer(rc)
+	case 2:
+		return []byte(suffix), nil
+	default:
+		return make([]byte, 0), nil
+	}
+}
+
 var serializer serializer_func = simple_serializer
 
 func create_serializer(password string, encoded_pubkey string, io_data *rc_io_data) (err error) {
-	io_data.serializer = simple_serializer
+	io_data.serializer.serializer = simple_serializer
 	if password != "" {
 		encryption_version, pubkey, err := get_pubkey(encoded_pubkey)
 		if err != nil {
 			return err
 		}
-		io_data.serializer = func(rc *utils.RemoteControlCmd) (ans []byte, err error) {
+		io_data.serializer.serializer = func(rc *utils.RemoteControlCmd) (ans []byte, err error) {
 			ec, err := crypto.Encrypt_cmd(rc, global_options.password, pubkey, encryption_version)
 			if err != nil {
 				return
 			}
-			ans, err = json.Marshal(ec)
-			if err != nil {
-				return
-			}
-			ans = wrap_in_escape_code(ans)
-			return
+			return json.Marshal(ec)
 		}
 		if io_data.timeout < 120*time.Second {
 			io_data.timeout = 120 * time.Second
@@ -145,8 +146,7 @@ type Response struct {
 type rc_io_data struct {
 	cmd                    *cobra.Command
 	rc                     *utils.RemoteControlCmd
-	serializer             serializer_func
-	next_block             func(rc *utils.RemoteControlCmd, serializer serializer_func) (b []byte, err error)
+	serializer             wrapped_serializer
 	send_keypresses        bool
 	string_response_is_err bool
 	timeout                time.Duration
@@ -161,7 +161,7 @@ func (self *rc_io_data) next_chunk(limit_size bool) (chunk []byte, err error) {
 		self.pending_chunks = self.pending_chunks[:len(self.pending_chunks)-1]
 		return
 	}
-	block, err := self.next_block(self.rc, self.serializer)
+	block, err := self.serializer.next(self.rc)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return
 	}
@@ -180,14 +180,6 @@ func (self *rc_io_data) next_chunk(limit_size bool) (chunk []byte, err error) {
 	return
 }
 
-func single_rc_sender(rc *utils.RemoteControlCmd, serializer serializer_func) ([]byte, error) {
-	if rc.SingleSent() {
-		return make([]byte, 0), nil
-	}
-	rc.SetSingleSent()
-	return serializer(rc)
-}
-
 func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_io_data) (ans *Response, err error) {
 	serialized_response, err := do_io(io_data)
 	if err != nil {
@@ -195,7 +187,7 @@ func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_i
 			io_data.rc.Payload = nil
 			io_data.rc.CancelAsync = true
 			io_data.rc.NoResponse = true
-			io_data.rc.ResetSingleSent()
+			io_data.serializer.state = 0
 			do_io(io_data)
 			err = fmt.Errorf("Timed out waiting for a response from kitty")
 		}
