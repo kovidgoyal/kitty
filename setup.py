@@ -884,8 +884,6 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
         print('Updating Go generated files...', flush=True)
     cp = subprocess.run([kitty_exe, '+launch', os.path.join(base, 'gen-go-code.py')], stdout=subprocess.PIPE)
     if cp.returncode != 0:
-        import traceback
-        traceback.print_stack()
         raise SystemExit(cp.returncode)
 
 
@@ -1381,10 +1379,7 @@ def package(args: Options, bundle_type: str) -> None:
     shutil.copy2('logo/kitty.png', os.path.join(libdir, 'logo'))
     shutil.copy2('logo/beam-cursor.png', os.path.join(libdir, 'logo'))
     shutil.copy2('logo/beam-cursor@2x.png', os.path.join(libdir, 'logo'))
-    try:
-        shutil.copytree('shell-integration', os.path.join(libdir, 'shell-integration'), dirs_exist_ok=True)
-    except TypeError:  # python < 3.8
-        shutil.copytree('shell-integration', os.path.join(libdir, 'shell-integration'))
+    shutil.copytree('shell-integration', os.path.join(libdir, 'shell-integration'), dirs_exist_ok=True)
     allowed_extensions = frozenset('py glsl so'.split())
 
     def src_ignore(parent: str, entries: Iterable[str]) -> List[str]:
@@ -1433,6 +1428,11 @@ def package(args: Options, bundle_type: str) -> None:
             path = os.path.join(root, f_)
             os.chmod(path, 0o755 if should_be_executable(path) else 0o644)
     if not for_freeze:
+        print(111111111, launcher_dir)
+        for path, dirs, files in os.walk(ddir):
+            print (path)
+            for f in files:
+                print (f)
         build_kitty_tool(args, launcher_dir=launcher_dir)
     if not is_macos:
         create_linux_bundle_gunk(ddir, args.libdir_name)
