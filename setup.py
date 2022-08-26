@@ -1332,7 +1332,7 @@ def create_minimal_macos_bundle(args: Options, launcher_dir: str) -> None:
     create_macos_app_icon(resources_dir)
 
 
-def create_macos_bundle_gunk(dest: str) -> None:
+def create_macos_bundle_gunk(dest: str, for_freeze: bool, args: Options) -> str:
     ddir = Path(dest)
     os.mkdir(ddir / 'Contents')
     with open(ddir / 'Contents/Info.plist', 'wb') as fp:
@@ -1343,13 +1343,16 @@ def create_macos_bundle_gunk(dest: str) -> None:
     os.rename(ddir / 'bin', ddir / 'Contents/MacOS')
     os.rename(ddir / 'lib', ddir / 'Contents/Frameworks')
     os.rename(ddir / 'Contents/Frameworks/kitty', ddir / 'Contents/Resources/kitty')
-    launcher = ddir / 'Contents/MacOS/kitty'
+    kitty_exe = ddir / 'Contents/MacOS/kitty'
     in_src_launcher = ddir / 'Contents/Resources/kitty/kitty/launcher/kitty'
     if os.path.exists(in_src_launcher):
         os.remove(in_src_launcher)
     os.makedirs(os.path.dirname(in_src_launcher), exist_ok=True)
-    os.symlink(os.path.relpath(launcher, os.path.dirname(in_src_launcher)), in_src_launcher)
+    os.symlink(os.path.relpath(kitty_exe, os.path.dirname(in_src_launcher)), in_src_launcher)
     create_macos_app_icon(os.path.join(ddir, 'Contents', 'Resources'))
+    if not for_freeze:
+        build_kitty_tool(args, launcher_dir=os.path.dirname(kitty_exe))
+    return str(kitty_exe)
 
 
 def package(args: Options, bundle_type: str) -> None:
@@ -1427,18 +1430,13 @@ def package(args: Options, bundle_type: str) -> None:
         for f_ in files:
             path = os.path.join(root, f_)
             os.chmod(path, 0o755 if should_be_executable(path) else 0o644)
-    if not for_freeze:
-        print(111111111, launcher_dir)
-        for path, dirs, files in os.walk(ddir):
-            print (path)
-            for f in files:
-                print (f)
+    if not for_freeze and not bundle_type.startswith('macos-'):
         build_kitty_tool(args, launcher_dir=launcher_dir)
     if not is_macos:
         create_linux_bundle_gunk(ddir, args.libdir_name)
 
     if bundle_type.startswith('macos-'):
-        create_macos_bundle_gunk(ddir)
+        create_macos_bundle_gunk(ddir, for_freeze, args)
 # }}}
 
 
