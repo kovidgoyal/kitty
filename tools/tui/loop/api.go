@@ -56,7 +56,7 @@ type Loop struct {
 	// Called when text is received either from a key event or directly from the terminal
 	OnText func(text string, from_key_event bool, in_bracketed_paste bool) error
 
-	// Called when the terminal is resize
+	// Called when the terminal is resized
 	OnResize func(old_size ScreenSize, new_size ScreenSize) error
 
 	// Called when writing is done
@@ -65,7 +65,7 @@ type Loop struct {
 	// Called when a response to an rc command is received
 	OnRCResponse func(data []byte) error
 
-	// Called when any input form tty is received
+	// Called when any input from tty is received
 	OnReceivedData func(data []byte) error
 }
 
