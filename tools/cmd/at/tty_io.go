@@ -56,8 +56,10 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 	}
 
 	lp.OnWriteComplete = func(completed_write_id loop.IdType) error {
-		if completed_write_id == final_write_id {
-			transition_to_read()
+		if final_write_id > 0 {
+			if completed_write_id == final_write_id {
+				transition_to_read()
+			}
 			return nil
 		}
 		chunk, err := io_data.next_chunk(true)
