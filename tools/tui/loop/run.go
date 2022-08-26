@@ -196,7 +196,6 @@ func (self *Loop) run() (err error) {
 	tty_read_channel := make(chan []byte)
 	tty_write_channel := make(chan *write_msg, 1) // buffered so there is no race between initial queueing and startup of writer thread
 	write_done_channel := make(chan IdType)
-	tty_writing_done_channel := make(chan byte)
 	tty_reading_done_channel := make(chan byte)
 	self.wakeup_channel = make(chan byte, 256)
 	self.pending_writes = make([]*write_msg, 0, 256)
@@ -231,14 +230,14 @@ func (self *Loop) run() (err error) {
 		}
 		self.QueueWriteBytesDangerous(self.terminal_options.ResetStateEscapeCodes())
 		// flush queued data and wait for it to be written for a timeout, then wait for writer to shutdown
-		flush_writer(w_w, tty_write_channel, tty_writing_done_channel, self.pending_writes, 2*time.Second)
+		flush_writer(w_w, tty_write_channel, write_done_channel, self.pending_writes, 2*time.Second)
 		self.pending_writes = nil
 		// wait for tty reader to exit cleanly
 		for more := true; more; _, more = <-tty_read_channel {
 		}
 	}()
 
-	go write_to_tty(w_r, self.controlling_term, tty_write_channel, err_channel, write_done_channel, tty_writing_done_channel)
+	go write_to_tty(w_r, self.controlling_term, tty_write_channel, err_channel, write_done_channel)
 	go read_from_tty(r_r, self.controlling_term, tty_read_channel, err_channel, tty_reading_done_channel)
 
 	if self.OnInitialize != nil {
