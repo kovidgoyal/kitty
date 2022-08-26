@@ -193,14 +193,14 @@ func (self *Loop) run() (err error) {
 	}
 
 	self.keep_going = true
-	self.tty_read_channel = make(chan []byte)
-	self.tty_write_channel = make(chan *write_msg, 1) // buffered so there is no race between initial queueing and startup of writer thread
-	self.write_done_channel = make(chan IdType)
-	self.tty_writing_done_channel = make(chan byte)
-	self.tty_reading_done_channel = make(chan byte)
+	tty_read_channel := make(chan []byte)
+	tty_write_channel := make(chan *write_msg, 1) // buffered so there is no race between initial queueing and startup of writer thread
+	write_done_channel := make(chan IdType)
+	tty_writing_done_channel := make(chan byte)
+	tty_reading_done_channel := make(chan byte)
 	self.wakeup_channel = make(chan byte, 256)
 	self.pending_writes = make([]*write_msg, 0, 256)
-	self.err_channel = make(chan error, 8)
+	err_channel := make(chan error, 8)
 	self.death_signal = SIGNULL
 	self.escape_code_parser.Reset()
 	self.exit_code = 0
@@ -224,22 +224,22 @@ func (self *Loop) run() (err error) {
 	defer func() {
 		// notify tty reader that we are shutting down
 		r_w.Close()
-		close(self.tty_reading_done_channel)
+		close(tty_reading_done_channel)
 
 		if finalizer != "" {
 			self.QueueWriteString(finalizer)
 		}
 		self.QueueWriteBytesDangerous(self.terminal_options.ResetStateEscapeCodes())
 		// flush queued data and wait for it to be written for a timeout, then wait for writer to shutdown
-		flush_writer(w_w, self.tty_write_channel, self.tty_writing_done_channel, self.pending_writes, 2*time.Second)
+		flush_writer(w_w, tty_write_channel, tty_writing_done_channel, self.pending_writes, 2*time.Second)
 		self.pending_writes = nil
 		// wait for tty reader to exit cleanly
-		for more := true; more; _, more = <-self.tty_read_channel {
+		for more := true; more; _, more = <-tty_read_channel {
 		}
 	}()
 
-	go write_to_tty(w_r, self.controlling_term, self.tty_write_channel, self.err_channel, self.write_done_channel, self.tty_writing_done_channel)
-	go read_from_tty(r_r, self.controlling_term, self.tty_read_channel, self.err_channel, self.tty_reading_done_channel)
+	go write_to_tty(w_r, self.controlling_term, tty_write_channel, err_channel, write_done_channel, tty_writing_done_channel)
+	go read_from_tty(r_r, self.controlling_term, tty_read_channel, err_channel, tty_reading_done_channel)
 
 	if self.OnInitialize != nil {
 		finalizer, err = self.OnInitialize()
@@ -249,7 +249,7 @@ func (self *Loop) run() (err error) {
 	}
 
 	for self.keep_going {
-		self.queue_write_to_tty(nil)
+		self.flush_pending_writes(tty_write_channel)
 		timeout_chan := no_timeout_channel
 		if len(self.timers) > 0 {
 			now := time.Now()
@@ -269,8 +269,8 @@ func (self *Loop) run() (err error) {
 			for len(self.wakeup_channel) > 0 {
 				<-self.wakeup_channel
 			}
-		case msg_id := <-self.write_done_channel:
-			self.queue_write_to_tty(nil)
+		case msg_id := <-write_done_channel:
+			self.flush_pending_writes(tty_write_channel)
 			if self.OnWriteComplete != nil {
 				err = self.OnWriteComplete(msg_id)
 				if err != nil {
@@ -282,7 +282,7 @@ func (self *Loop) run() (err error) {
 			if err != nil {
 				return err
 			}
-		case input_data, more := <-self.tty_read_channel:
+		case input_data, more := <-tty_read_channel:
 			if !more {
 				return io.EOF
 			}
