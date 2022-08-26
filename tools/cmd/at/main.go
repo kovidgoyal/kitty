@@ -70,9 +70,9 @@ func wrap_in_escape_code(data []byte) []byte {
 	const prefix = "\x1bP@kitty-cmd"
 	const suffix = "\x1b\\"
 	ans := make([]byte, len(prefix)+len(data)+len(suffix))
-	n := copy(ans, []byte(prefix))
+	n := copy(ans, prefix)
 	n += copy(ans[n:], data)
-	copy(ans[n:], []byte(suffix))
+	copy(ans[n:], suffix)
 	return ans
 }
 
