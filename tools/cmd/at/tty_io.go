@@ -3,58 +3,59 @@
 package at
 
 import (
-	"kitty/tools/tui"
 	"os"
 	"time"
+
+	"kitty/tools/tui/loop"
 )
 
 func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) {
 	serialized_response = make([]byte, 0)
-	loop, err := tui.CreateLoop()
-	loop.NoAlternateScreen()
+	lp, err := loop.New()
+	lp.NoAlternateScreen()
 	if err != nil {
 		return
 	}
 
 	var last_received_data_at time.Time
-	var final_write_id tui.IdType
-	var check_for_timeout func(loop *tui.Loop, timer_id tui.IdType) error
+	var final_write_id loop.IdType
+	var check_for_timeout func(timer_id loop.IdType) error
 
-	check_for_timeout = func(loop *tui.Loop, timer_id tui.IdType) error {
+	check_for_timeout = func(timer_id loop.IdType) error {
 		time_since_last_received_data := time.Now().Sub(last_received_data_at)
 		if time_since_last_received_data >= io_data.timeout {
 			return os.ErrDeadlineExceeded
 		}
-		loop.AddTimer(io_data.timeout-time_since_last_received_data, false, check_for_timeout)
+		lp.AddTimer(io_data.timeout-time_since_last_received_data, false, check_for_timeout)
 		return nil
 	}
 
 	transition_to_read := func() {
 		if io_data.rc.NoResponse {
-			loop.Quit(0)
+			lp.Quit(0)
 		}
 		last_received_data_at = time.Now()
-		loop.AddTimer(io_data.timeout, false, check_for_timeout)
+		lp.AddTimer(io_data.timeout, false, check_for_timeout)
 	}
 
-	loop.OnReceivedData = func(loop *tui.Loop, data []byte) error {
+	lp.OnReceivedData = func(data []byte) error {
 		last_received_data_at = time.Now()
 		return nil
 	}
 
-	loop.OnInitialize = func(loop *tui.Loop) (string, error) {
+	lp.OnInitialize = func() (string, error) {
 		chunk, err := io_data.next_chunk(true)
 		if err != nil {
 			return "", err
 		}
-		write_id := loop.QueueWriteBytesDangerous(chunk)
+		write_id := lp.QueueWriteBytesDangerous(chunk)
 		if len(chunk) == 0 {
 			final_write_id = write_id
 		}
 		return "", nil
 	}
 
-	loop.OnWriteComplete = func(loop *tui.Loop, completed_write_id tui.IdType) error {
+	lp.OnWriteComplete = func(completed_write_id loop.IdType) error {
 		if completed_write_id == final_write_id {
 			transition_to_read()
 			return nil
@@ -63,22 +64,22 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 		if err != nil {
 			return err
 		}
-		write_id := loop.QueueWriteBytesDangerous(chunk)
+		write_id := lp.QueueWriteBytesDangerous(chunk)
 		if len(chunk) == 0 {
 			final_write_id = write_id
 		}
 		return nil
 	}
 
-	loop.OnRCResponse = func(loop *tui.Loop, raw []byte) error {
+	lp.OnRCResponse = func(raw []byte) error {
 		serialized_response = raw
-		loop.Quit(0)
+		lp.Quit(0)
 		return nil
 	}
 
-	err = loop.Run()
+	err = lp.Run()
 	if err == nil {
-		loop.KillIfSignalled()
+		lp.KillIfSignalled()
 	}
 	return
 
