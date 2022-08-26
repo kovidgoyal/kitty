@@ -223,7 +223,10 @@ func send_rc_command(io_data *rc_io_data) (err error) {
 			return
 		}
 	} else {
-		return fmt.Errorf("TODO: Implement socket IO")
+		response, err = get_response(do_socket_io, io_data)
+		if err != nil {
+			return
+		}
 	}
 	if err != nil || response == nil {
 		return err

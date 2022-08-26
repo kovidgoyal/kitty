@@ -20,7 +20,7 @@ func Cut(s string, sep string) (string, string, bool) {
 func ParseSocketAddress(spec string) (network string, addr string, err error) {
 	network, addr, found := Cut(spec, ":")
 	if !found {
-		err = fmt.Errorf("Invalid socket address: %s", spec)
+		err = fmt.Errorf("Invalid socket address: %s must be prefix by a protocol such as unix:", spec)
 		return
 	}
 	if network == "unix" {
