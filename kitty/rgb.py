@@ -66,7 +66,7 @@ def to_color(raw: str, validate: bool = False) -> Optional[Color]:
     with suppress(Exception):
         if raw.startswith('#'):
             val = parse_sharp(raw[1:])
-        elif raw[:4].lower() == 'rgb:':
+        elif raw.startswith('rgb:'):
             val = parse_rgb(raw[4:])
     if val is None and validate:
         raise ValueError(f'Invalid color name: {raw}')
