@@ -133,8 +133,10 @@ def main():
     elif action == 'gofmt':
         q = subprocess.check_output('gofmt -s -l tools'.split())
         if q.strip():
-            print(q.decode())
-            raise SystemExit(1)
+            q = '\n'.join(filter(lambda x: not x.endswith('_generated.go'), q.decode().strip().splitlines())).strip()
+            if q:
+                print(q)
+                raise SystemExit(1)
     else:
         raise SystemExit(f'Unknown action: {action}')
 

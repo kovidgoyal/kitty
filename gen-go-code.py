@@ -4,13 +4,14 @@
 import json
 import io
 import os
-import subprocess
 from contextlib import contextmanager, suppress
 from typing import Dict, Iterator, List, Tuple, Union
 
 import kitty.constants as kc
 from kittens.tui.operations import Mode
+from kitty.rgb import color_names
 from kitty.cli import OptionDict, OptionSpecSeq, parse_option_spec
+from kitty.options.types import Options
 from kitty.key_encoding import config_mod_map
 from kitty.key_names import (
     character_key_name_aliases, functional_key_name_aliases
@@ -210,6 +211,14 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
 
 
 # Constants {{{
+def generate_color_names() -> str:
+    return 'package style\n\nvar ColorNames = map[string]RGBA{' + '\n'.join(
+        f'\t"{name}": RGBA{{ Red:{val.red}, Green:{val.green}, Blue:{val.blue} }},'
+        for name, val in color_names.items()
+    ) + '\n}' + '\n\nvar ColorTable = [256]uint32{' + ', '.join(
+        f'{x}' for x in Options.color_table) + '}\n'
+
+
 def load_ref_map() -> Dict[str, Dict[str, str]]:
     with open('kitty/docs_ref_map_generated.h') as f:
         raw = f.read()
@@ -273,14 +282,13 @@ def update_at_commands() -> None:
             os.remove(dest)
         with open(dest, 'w') as f:
             f.write(code)
-    cp = subprocess.run('gofmt -s -w tools/cmd/at'.split())
-    if cp.returncode != 0:
-        raise SystemExit(cp.returncode)
 
 
 def main() -> None:
     with replace_if_needed('constants_generated.go') as f:
         f.write(generate_constants())
+    with replace_if_needed('tools/utils/style/color-names_generated.go') as f:
+        f.write(generate_color_names())
     update_at_commands()
     print(json.dumps(changed, indent=2))
 
