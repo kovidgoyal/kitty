@@ -27,7 +27,7 @@ func (self bool_value) as_sgr(start, end string, prefix, suffix []string) ([]str
 			start, end = end, start
 		}
 		prefix = append(prefix, start)
-		suffix = append(suffix, start)
+		suffix = append(suffix, end)
 	}
 	return prefix, suffix
 }
@@ -89,7 +89,7 @@ func (self color_type) as_sgr(number_base int, prefix, suffix []string) ([]strin
 			prefix = append(prefix, fmt.Sprintf("%d:5:%d", number_base+8, num))
 		}
 	} else {
-		prefix = append(prefix, fmt.Sprintf("%d:2:%d", number_base+8, self.val.Red, self.val.Green, self.val.Blue))
+		prefix = append(prefix, fmt.Sprintf("%d:2:%d:%d:%d", number_base+8, self.val.Red, self.val.Green, self.val.Blue))
 	}
 	return prefix, suffix
 }
@@ -230,7 +230,7 @@ func (self *underline_value) from_string(val string) bool {
 	case "dashed":
 		ans = dashed_underline
 	}
-	if ans != nil_underline {
+	if ans == nil_underline {
 		return false
 	}
 	self.is_set = true
@@ -240,9 +240,9 @@ func (self *underline_value) from_string(val string) bool {
 
 func (self underline_value) as_sgr(prefix, suffix []string) ([]string, []string) {
 	if self.is_set {
-		s, e := "0", "0"
+		s, e := "4:0", "4:0"
 		if self.style != no_underline {
-			s = strconv.Itoa(int(self.style))
+			s = "4:" + strconv.Itoa(int(self.style))
 		}
 		prefix = append(prefix, s)
 		suffix = append(suffix, e)
@@ -351,19 +351,4 @@ func suffix_for_spec(spec string) string {
 		sb.WriteString(ec.suffix())
 	}
 	return sb.String()
-}
-
-func Styler(spec string) func(args ...interface{}) string {
-	p := prefix_for_spec(spec)
-	s := suffix_for_spec(spec)
-
-	return func(args ...interface{}) string {
-		body := fmt.Sprint(args...)
-		b := strings.Builder{}
-		b.Grow(len(p) + len(body) + len(s))
-		b.WriteString(p)
-		b.WriteString(body)
-		b.WriteString(s)
-		return b.String()
-	}
 }
