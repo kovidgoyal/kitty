@@ -3,13 +3,19 @@
 
 import importlib
 import os
+import re
 import shlex
 import shutil
 import subprocess
 import sys
 import unittest
 from importlib.resources import contents
-from typing import Callable, Generator, List, NoReturn, Sequence, Set
+from functools import lru_cache
+from io import StringIO
+from threading import Thread
+from typing import (
+    Any, Callable, Dict, Generator, List, NoReturn, Sequence, Set, Tuple
+)
 
 
 def itertests(suite: unittest.TestSuite) -> Generator[unittest.TestCase, None, None]:
@@ -73,27 +79,33 @@ def type_check() -> NoReturn:
     os.execlp(py, py, '-m', 'mypy', '--pretty')
 
 
-def run_cli(suite: unittest.TestSuite, verbosity: int = 4) -> None:
+def run_cli(suite: unittest.TestSuite, verbosity: int = 4) -> bool:
     r = unittest.TextTestRunner
     r.resultclass = unittest.TextTestResult
     runner = r(verbosity=verbosity)
     runner.tb_locals = True  # type: ignore
     result = runner.run(suite)
-    if not result.wasSuccessful():
-        raise SystemExit(1)
+    return result.wasSuccessful()
 
 
-def find_testable_go_packages() -> Set[str]:
+def find_testable_go_packages() -> Tuple[Set[str], Dict[str, List[str]]]:
+    test_functions: Dict[str, List[str]] = {}
     ans = set()
     base = os.getcwd()
+    pat = re.compile(r'^func Test([A-Z]\w+)', re.MULTILINE)
     for (dirpath, dirnames, filenames) in os.walk(base):
         for f in filenames:
             if f.endswith('_test.go'):
                 q = os.path.relpath(dirpath, base)
                 ans.add(q)
-    return ans
+                with open(os.path.join(dirpath, f)) as s:
+                    raw = s.read()
+                for m in pat.finditer(raw):
+                    test_functions.setdefault(m.group(1), []).append(q)
+    return ans, test_functions
 
 
+@lru_cache
 def go_exe() -> str:
     return shutil.which('go') or ''
 
@@ -114,20 +126,30 @@ def create_go_filter(packages: List[str], *names: str) -> str:
     return '|'.join(tests)
 
 
-def run_go(packages: List[str], names: str) -> None:
+def run_go(packages: Set[str], names: str) -> 'subprocess.Popen[bytes]':
     go = go_exe()
-    if not go:
+    go_pkg_args = [f'kitty/{x}' for x in packages]
+    cmd = [go, 'test', '-v']
+    for name in names:
+        cmd.extend(('-run', name))
+    cmd += go_pkg_args
+    print(shlex.join(cmd), flush=True)
+    return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+
+def reduce_go_pkgs(module: str, names: Sequence[str]) -> Set[str]:
+    if not go_exe():
         print('Skipping Go tests as go exe not found', file=sys.stderr)
         return
-    if not packages:
-        print('Skipping Go tests as go source files not availabe', file=sys.stderr)
-        return
-    cmd = [go, 'test', '-v']
+    go_packages, go_functions = find_testable_go_packages()
+    if module:
+        go_packages &= {module}
     if names:
-        cmd.extend(('-run', names))
-    cmd += packages
-    print(shlex.join(cmd), flush=True)
-    os.execl(go, *cmd)
+        pkgs = set()
+        for name in names:
+            pkgs |= set(go_functions.get(name, []))
+        go_packages &= pkgs
+    return go_packages
 
 
 def run_tests() -> None:
@@ -135,30 +157,39 @@ def run_tests() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'name', nargs='*', default=[],
-        help='The name of the test to run, for e.g. linebuf corresponds to test_linebuf. Can be specified multiple times.')
+        help='The name of the test to run, for e.g. linebuf corresponds to test_linebuf. Can be specified multiple times. For go tests Something corresponds to TestSometing.')
     parser.add_argument('--verbosity', default=4, type=int, help='Test verbosity')
     parser.add_argument('--module', default='', help='Name of a test module to restrict to. For example: ssh.'
                         ' For Go tests this is the name of a package, for example: tools/cli')
     args = parser.parse_args()
     if args.name and args.name[0] in ('type-check', 'type_check', 'mypy'):
         type_check()
+    go_pkgs = reduce_go_pkgs(args.module, args.name)
+    if go_pkgs:
+        go_proc = run_go(go_pkgs, args.name)
     tests = find_all_tests()
-    go_packages = find_testable_go_packages()
-    go_filter_spec = ''
+
+    def print_go() -> None:
+        print(go_proc.stdout.read().decode(), end='', flush=True)
+        go_proc.stdout.close()
+        go_proc.wait()
+
     if args.module:
         tests = filter_tests_by_module(tests, args.module)
-        go_packages &= {args.module}
-        if not tests._tests and not go_packages:
+        if not tests._tests:
+            if go_pkgs:
+                print_go()
+                raise SystemExit(go_proc.returncode)
             raise SystemExit('No test module named %s found' % args.module)
-    go_pkg_args = [f'kitty/{x}' for x in go_packages]
 
-    skip_go = False
     if args.name:
         tests = filter_tests_by_name(tests, *args.name)
-        go_filter_spec = create_go_filter(go_pkg_args, *args.name)
-        skip_go = not go_filter_spec
         if not tests._tests and not go_filter_spec:
             raise SystemExit('No test named %s found' % args.name)
-    run_cli(tests, args.verbosity)
-    if not skip_go:
-        run_go(go_pkg_args, go_filter_spec)
+    python_tests_ok = run_cli(tests, args.verbosity)
+    exit_code = 0 if python_tests_ok else 1
+    if go_pkgs:
+        print_go()
+        if exit_code == 0:
+            exit_code = go_proc.returncode
+    raise SystemExit(exit_code)
