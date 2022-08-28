@@ -298,7 +298,6 @@ func (self *sgr_code) update() {
 func parse_spec(spec string) []escape_code {
 	ans := make([]escape_code, 0, 1)
 	sgr := sgr_code{}
-	url := url_code{}
 	sparts, _ := shlex.Split(spec)
 	for _, p := range sparts {
 		parts := strings.SplitN(p, "=", 2)
@@ -326,16 +325,11 @@ func parse_spec(spec string) []escape_code {
 			sgr.underline.from_string(val)
 		case "ucol", "underline_color", "uc":
 			sgr.uc.from_string(val)
-		case "url":
-			url.url = val
 		}
 	}
 	sgr.update()
 	if !sgr.is_empty() {
 		ans = append(ans, &sgr)
-	}
-	if !url.is_empty() {
-		ans = append(ans, &url)
 	}
 	return ans
 }

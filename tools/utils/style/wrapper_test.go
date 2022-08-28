@@ -44,5 +44,9 @@ func TestANSIStyleSprint(t *testing.T) {
 	test("uc=123", "\x1b[58:5:123m", "\x1b[59m")
 	test("uc=1", "\x1b[58:5:1m", "\x1b[59m")
 
-	test("url=123", "\x1b]8;;123\x1b\\", "\x1b]8;;\x1b\\")
+	actual := ctx.UrlFunc("u=curly uc=cyan")("http://moo.com", "___")
+	expected := "\x1b[4:3;58:5:6m\x1b]8;;http://moo.com\x1b\\___\x1b]8;;\x1b\\\x1b[4:0;59m"
+	if actual != expected {
+		t.Fatalf("Formatting URL failed expected != actual: %#v != %#v", expected, actual)
+	}
 }

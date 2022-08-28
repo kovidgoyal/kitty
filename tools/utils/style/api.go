@@ -28,3 +28,24 @@ func (self *Context) SprintFunc(spec string) func(args ...interface{}) string {
 		return b.String()
 	}
 }
+
+func (self *Context) UrlFunc(spec string) func(string, string) string {
+	p := prefix_for_spec(spec)
+	s := suffix_for_spec(spec)
+
+	return func(url string, text string) string {
+		if !self.AllowEscapeCodes {
+			return text
+		}
+		uc := url_code{url: url}
+		up, us := uc.prefix(), uc.suffix()
+		b := strings.Builder{}
+		b.Grow(len(p) + len(up) + len(text) + len(s) + len(us))
+		b.WriteString(p)
+		b.WriteString(up)
+		b.WriteString(text)
+		b.WriteString(us)
+		b.WriteString(s)
+		return b.String()
+	}
+}
