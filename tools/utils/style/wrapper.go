@@ -281,7 +281,7 @@ func (self *sgr_code) update() {
 	p, s = self.dim.as_sgr("2", "22", p, s)
 	p, s = self.underline.as_sgr(p, s)
 	p, s = self.fg.as_sgr(30, p, s)
-	p, s = self.bg.as_sgr(30, p, s)
+	p, s = self.bg.as_sgr(40, p, s)
 	p, s = self.uc.as_sgr(50, p, s)
 	self._prefix = "\x1b[" + strings.Join(p, ";") + "m"
 	self._suffix = "\x1b[" + strings.Join(s, ";") + "m"
