@@ -34,6 +34,19 @@ in float colored_sprite;
 out vec4 final_color;
 
 // Util functions {{{
+
+// Adjusts the alpha value with a gamma curve since most fonts are made for
+// gamma-incorrect rasterization.
+//
+// TODO: Can we do this in the sprites texture?
+float adjust_text_alpha(float alpha) {
+    // Photoshop renders text with antialiased blending in 1.42 gamma:
+    // https://blog.johnnovak.net/2016/09/21/what-every-coder-should-know-about-gamma/
+    // Also widely recommended to use 1.43 or similar gamma:
+    // https://www.puredevsoftware.com/blog/2019/01/22/sub-pixel-gamma-correct-font-rendering/
+    return pow(alpha, 1.0f / 1.42f);
+}
+
 vec4 alpha_blend_premul(vec4 over, vec4 under) {
     // Alpha blend two colors returning the resulting color pre-multiplied by its alpha
     // and its alpha.
@@ -97,16 +110,23 @@ vec4 calculate_foreground() {
     vec4 text_fg = texture(sprites, sprite_pos);
     vec3 fg = mix(foreground, text_fg.rgb, colored_sprite);
 
+    // Blending the antialiased alpha-channel in linear-space makes the font
+    // look too thin, instead adjust it to a gamma curve.
+    float text_alpha = adjust_text_alpha(text_fg.a);
+    float strike_alpha = adjust_text_alpha(texture(sprites, strike_pos).a);
+    float underline_alpha = adjust_text_alpha(texture(sprites, underline_pos).a);
+    float cursor_alpha = adjust_text_alpha(texture(sprites, cursor_pos).a);
+
     // Since strike and text are the same color, we simply add the alpha values
-    float combined_alpha = min(text_fg.a + texture(sprites, strike_pos).a, 1.0f);
+    float combined_alpha = min(text_alpha + strike_alpha, 1.0f);
 
     // Underline color might be different, so alpha blend
     vec4 ans = alpha_blend_premul(
         vec4_premul(fg, combined_alpha * effective_text_alpha),
-        vec4_premul(decoration_fg, texture(sprites, underline_pos).a * effective_text_alpha)
+        vec4_premul(decoration_fg, underline_alpha * effective_text_alpha)
     );
 
-    return alpha_blend_premul(ans, vec4_premul(cursor_color_vec, texture(sprites, cursor_pos).a));
+    return alpha_blend_premul(ans, vec4_premul(cursor_color_vec, cursor_alpha));
 }
 #endif
 
