@@ -65,7 +65,7 @@ def resolve_ref(ref: str, website_url: Callable[[str], str] = website_url) -> st
         href = "kittens/" + parts[2] + f'/#{ref}'
     elif ref.startswith('at_'):
         base = ref.split('_', 1)[1]
-        href = "remote-control/#at_" + base.replace('_', '-')
+        href = "remote-control/#at-" + base.replace('_', '-')
     elif ref.startswith('action-group-'):
         href = f'actions/#{ref}'
     elif prefix == 'action':
