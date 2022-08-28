@@ -41,7 +41,8 @@ func TestANSIStyleSprint(t *testing.T) {
 	test("fg=#123", "\x1b[38:2:17:34:51m", "\x1b[39m")
 	test("fg=rgb:1/2/3", "\x1b[38:2:1:2:3m", "\x1b[39m")
 	test("bg=123", "\x1b[48:5:123m", "\x1b[49m")
-	test("uc=123", "\x1b[58:2:135:255:255m", "\x1b[59m")
+	test("uc=123", "\x1b[58:5:123m", "\x1b[59m")
+	test("uc=1", "\x1b[58:5:1m", "\x1b[59m")
 
 	test("url=123", "\x1b]8;;123\x1b\\", "\x1b]8;;\x1b\\")
 }
