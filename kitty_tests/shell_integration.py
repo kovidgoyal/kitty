@@ -11,7 +11,7 @@ import unittest
 from contextlib import contextmanager
 from functools import lru_cache, partial
 
-from kitty.constants import kitty_base_dir, terminfo_dir
+from kitty.constants import kitty_base_dir, terminfo_dir, shell_integration_dir
 from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from kitty.shell_integration import (
     setup_bash_env, setup_fish_env, setup_zsh_env
@@ -174,10 +174,9 @@ function _set_status_prompt; function fish_prompt; echo -n "$pipestatus $status 
             pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 1)
             self.ae(pty.screen_contents(), q)
 
-            # XDG_DATA_DIRS
-            pty.send_cmd_to_child('set -q XDG_DATA_DIRS; or echo ok')
-            pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 2)
-            self.ae(str(pty.screen.line(1)), 'ok')
+            # shell integration dir must no be in XDG_DATA_DIRS
+            pty.send_cmd_to_child(f'string match -q -- "*{shell_integration_dir}*" "$XDG_DATA_DIRS" || echo "XDD_OK"')
+            pty.wait_till(lambda: 'XDD_OK' in pty.screen_contents())
 
             # CWD reporting
             self.assertTrue(pty.screen.last_reported_cwd.endswith(self.home_dir))
