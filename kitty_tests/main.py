@@ -184,7 +184,7 @@ def run_tests() -> None:
 
     if args.name:
         tests = filter_tests_by_name(tests, *args.name)
-        if not tests._tests and not go_filter_spec:
+        if not tests._tests and not go_pkgs:
             raise SystemExit('No test named %s found' % args.name)
     python_tests_ok = run_cli(tests, args.verbosity)
     exit_code = 0 if python_tests_ok else 1
