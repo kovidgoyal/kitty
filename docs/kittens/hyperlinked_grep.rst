@@ -74,6 +74,10 @@ to :program:`rg`. How to do that varies based on the shell:
 To learn more about kitty's powerful framework for customizing URL click
 actions, see :doc:`here </open_actions>`.
 
+By default, this adds hyperlinks for several parts of ripgrep output: the 
+per-file header, match context lines, and match lines. Passing the 
+`--hyperlink-only-matches` flag will only add hyperlinks to the match lines.
+
 Hopefully, someday this functionality will make it into some `upstream grep
 <https://github.com/BurntSushi/ripgrep/issues/665>`__ program directly removing
 the need for this kitten.
