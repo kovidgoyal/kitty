@@ -89,6 +89,7 @@ class TestBuild(BaseTest):
             t('#ref=conf-kitty-fonts', f'conf{suffix}#conf-kitty-fonts')
             t('#ref=conf-kitten-ssh-xxx', f'kittens/ssh{suffix}#conf-kitten-ssh-xxx')
             t('#ref=at_close_tab', f'remote-control{suffix}#at-close-tab')
+            t('#ref=at-close-tab', f'remote-control{suffix}#at-close-tab')
             t('#ref=action-copy', f'actions{suffix}#copy')
             t('#ref=doc-/marks', f'marks{suffix}')
 
