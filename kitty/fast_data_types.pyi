@@ -990,9 +990,6 @@ def create_test_font_group(sz: float, dpix: float,
 
 class HistoryBuf:
 
-    def as_text(self, callback: Callable[[str], None], as_ansi: bool, insert_wrap_markers: bool) -> None:
-        pass
-
     def pagerhist_as_text(self, upto_output_start: bool = False) -> str:
         pass
 
@@ -1143,6 +1140,7 @@ class Screen:
         pass
     as_text_non_visual = as_text
     as_text_alternate = as_text
+    as_text_for_history_buf = as_text
 
     def cmd_output(self, which: int, callback: Callable[[str], None], as_ansi: bool, insert_wrap_markers: bool) -> bool:
         pass

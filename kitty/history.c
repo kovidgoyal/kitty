@@ -480,13 +480,11 @@ get_line_wrapper(void *x, int y) {
     return &glw->line;
 }
 
-static PyObject*
-as_text(HistoryBuf *self, PyObject *args) {
+PyObject*
+as_text_history_buf(HistoryBuf *self, PyObject *args, ANSIBuf *output) {
     GetLineWrapper glw = {.self=self};
     glw.line.xnum = self->xnum;
-    ANSIBuf output = {0};
-    PyObject *ans = as_text_generic(args, &glw, get_line_wrapper, self->count, &output);
-    free(output.buf);
+    PyObject *ans = as_text_generic(args, &glw, get_line_wrapper, self->count, output);
     return ans;
 }
 
@@ -523,7 +521,6 @@ static PyMethodDef methods[] = {
     METHODB(pagerhist_rewrap, METH_O),
     METHODB(pagerhist_as_text, METH_VARARGS),
     METHODB(pagerhist_as_bytes, METH_VARARGS),
-    METHODB(as_text, METH_VARARGS),
     METHOD(dirty_lines, METH_NOARGS)
     METHOD(push, METH_VARARGS)
     METHOD(rewrap, METH_VARARGS)

@@ -108,6 +108,9 @@ Detailed list of changes
 
 - Allow ignoring failure to close windows/tabs via rc commands (:disc:`5406`)
 
+- Fix hyperlinks not present when fetching text from the history buffer
+  (:iss:`5427`)
+
 
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

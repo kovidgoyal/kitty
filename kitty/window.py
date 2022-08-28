@@ -270,7 +270,7 @@ def as_text(
     if add_history:
         pht = pagerhist(screen, as_ansi, add_wrap_markers)
         h: List[str] = [pht] if pht else []
-        screen.historybuf.as_text(h.append, as_ansi, add_wrap_markers)
+        screen.as_text_for_history_buf(h.append, as_ansi, add_wrap_markers)
         if h:
             if not screen.linebuf.is_continued(0):
                 h[-1] += '\n'

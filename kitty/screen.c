@@ -2745,6 +2745,11 @@ as_text_non_visual(Screen *self, PyObject *args) {
 }
 
 static PyObject*
+as_text_for_history_buf(Screen *self, PyObject *args) {
+    return as_text_history_buf(self->historybuf, args, &self->as_ansi_buf);
+}
+
+static PyObject*
 as_text_generic_wrapper(Screen *self, PyObject *args, get_line_func get_line) {
     return as_text_generic(args, self, get_line, self->lines, &self->as_ansi_buf);
 }
@@ -3975,6 +3980,7 @@ static PyMethodDef methods[] = {
     MND(set_pending_timeout, METH_O)
     MND(as_text, METH_VARARGS)
     MND(as_text_non_visual, METH_VARARGS)
+    MND(as_text_for_history_buf, METH_VARARGS)
     MND(as_text_alternate, METH_VARARGS)
     MND(cmd_output, METH_VARARGS)
     MND(tab, METH_NOARGS)
