@@ -188,6 +188,7 @@ function _set_status_prompt; function fish_prompt; echo -n "$pipestatus $status 
             pty.wait_till(lambda: pty.screen.last_reported_cwd.endswith(self.home_dir))
 
             # completion and prompt marking
+            pty.wait_till(lambda: 'cd -' not in pty.screen_contents().splitlines()[-1])
             pty.send_cmd_to_child('clear')
             pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 1)
             pty.send_cmd_to_child('_test_comp_path')
