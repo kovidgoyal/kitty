@@ -33,7 +33,7 @@ func (self *Context) UrlFunc(spec string) func(string, string) string {
 	p := prefix_for_spec(spec)
 	s := suffix_for_spec(spec)
 
-	return func(url string, text string) string {
+	return func(url, text string) string {
 		if !self.AllowEscapeCodes {
 			return text
 		}
