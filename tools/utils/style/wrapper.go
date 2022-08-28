@@ -79,7 +79,7 @@ func (self color_type) as_sgr(number_base int, prefix, suffix []string) ([]strin
 	suffix = append(suffix, strconv.Itoa(number_base+9))
 	if self.is_numbered {
 		num := int(self.val.Red)
-		if num < 16 {
+		if num < 16 && number_base < 50 {
 			if num > 7 {
 				number_base += 60
 				num -= 8
@@ -149,32 +149,16 @@ var named_colors = map[string]uint8{
 	"intense-black": 8, "intense-red": 9, "intense-green": 10, "intense-yellow": 11, "intense-blue": 12, "intense-magenta": 13, "intense-cyan": 14, "intense-gray": 15, "intense-white": 15,
 }
 
-func ColorNumberAsRGB(n uint8) (ans RGBA) {
-	val := ColorTable[n]
-	ans.Red = uint8((val >> 16) & 0xff)
-	ans.Green = uint8((val >> 8) & 0xff)
-	ans.Blue = uint8(val & 0xff)
-	return
-}
-
-func (self *color_value) from_string(raw string, allow_numbered bool) bool {
+func (self *color_value) from_string(raw string) bool {
 	if n, ok := named_colors[raw]; ok {
 		self.is_set = true
-		if allow_numbered {
-			self.val = color_type{val: RGBA{Red: n}, is_numbered: true}
-		} else {
-			self.val = color_type{val: ColorNumberAsRGB(n)}
-		}
+		self.val = color_type{val: RGBA{Red: n}, is_numbered: true}
 		return true
 	}
 	a, err := strconv.Atoi(raw)
 	if err == nil && 0 <= a && a <= 255 {
 		self.is_set = true
-		if allow_numbered {
-			self.val = color_type{val: RGBA{Red: uint8(a)}, is_numbered: true}
-		} else {
-			self.val = color_type{val: ColorNumberAsRGB(uint8(a))}
-		}
+		self.val = color_type{val: RGBA{Red: uint8(a)}, is_numbered: true}
 		return true
 	}
 	c, err := ParseColor(raw)
@@ -327,9 +311,9 @@ func parse_spec(spec string) []escape_code {
 		}
 		switch key {
 		case "fg":
-			sgr.fg.from_string(val, true)
+			sgr.fg.from_string(val)
 		case "bg":
-			sgr.bg.from_string(val, true)
+			sgr.bg.from_string(val)
 		case "bold", "b":
 			sgr.bold.from_string(val)
 		case "italic", "i":
@@ -341,7 +325,7 @@ func parse_spec(spec string) []escape_code {
 		case "underline", "u":
 			sgr.underline.from_string(val)
 		case "ucol", "underline_color", "uc":
-			sgr.uc.from_string(val, false)
+			sgr.uc.from_string(val)
 		case "url":
 			url.url = val
 		}
