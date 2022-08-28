@@ -9,12 +9,15 @@ import shutil
 import subprocess
 import sys
 import unittest
-from importlib.resources import contents
+from contextlib import contextmanager
 from functools import lru_cache
+from importlib.resources import contents
 from io import StringIO
+from tempfile import TemporaryDirectory
 from threading import Thread
 from typing import (
-    Any, Callable, Dict, Generator, List, NoReturn, Sequence, Set, Tuple
+    Any, Callable, Dict, Generator, Iterator, List, NoReturn, Optional,
+    Sequence, Set, Tuple
 )
 
 
@@ -152,6 +155,35 @@ def reduce_go_pkgs(module: str, names: Sequence[str]) -> Set[str]:
     return go_packages
 
 
+def run_python_tests(args: Any, go_proc: Optional[subprocess.Popen[bytes]] = None) -> None:
+    tests = find_all_tests()
+
+    def print_go() -> None:
+        print(go_proc.stdout.read().decode(), end='', flush=True)
+        go_proc.stdout.close()
+        go_proc.wait()
+
+    if args.module:
+        tests = filter_tests_by_module(tests, args.module)
+        if not tests._tests:
+            if go_proc:
+                print_go()
+                raise SystemExit(go_proc.returncode)
+            raise SystemExit('No test module named %s found' % args.module)
+
+    if args.name:
+        tests = filter_tests_by_name(tests, *args.name)
+        if not tests._tests and not go_proc:
+            raise SystemExit('No test named %s found' % args.name)
+    python_tests_ok = run_cli(tests, args.verbosity)
+    exit_code = 0 if python_tests_ok else 1
+    if go_proc:
+        print_go()
+        if exit_code == 0:
+            exit_code = go_proc.returncode
+    raise SystemExit(exit_code)
+
+
 def run_tests() -> None:
     import argparse
     parser = argparse.ArgumentParser()
@@ -166,30 +198,64 @@ def run_tests() -> None:
         type_check()
     go_pkgs = reduce_go_pkgs(args.module, args.name)
     if go_pkgs:
-        go_proc = run_go(go_pkgs, args.name)
-    tests = find_all_tests()
+        go_proc: Optional[subprocess.Popen[bytes]] = run_go(go_pkgs, args.name)
+    else:
+        go_proc = None
+    with env_for_python_tests():
+        run_python_tests(args, go_proc)
 
-    def print_go() -> None:
-        print(go_proc.stdout.read().decode(), end='', flush=True)
-        go_proc.stdout.close()
-        go_proc.wait()
 
-    if args.module:
-        tests = filter_tests_by_module(tests, args.module)
-        if not tests._tests:
-            if go_pkgs:
-                print_go()
-                raise SystemExit(go_proc.returncode)
-            raise SystemExit('No test module named %s found' % args.module)
+@contextmanager
+def env_vars(**kw: str) -> Iterator[None]:
+    originals = {k: os.environ.get(k) for k in kw}
+    os.environ.update(kw)
+    try:
+        yield
+    finally:
+        for k, v in originals.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
 
-    if args.name:
-        tests = filter_tests_by_name(tests, *args.name)
-        if not tests._tests and not go_pkgs:
-            raise SystemExit('No test named %s found' % args.name)
-    python_tests_ok = run_cli(tests, args.verbosity)
-    exit_code = 0 if python_tests_ok else 1
-    if go_pkgs:
-        print_go()
-        if exit_code == 0:
-            exit_code = go_proc.returncode
-    raise SystemExit(exit_code)
+@contextmanager
+def env_for_python_tests() -> Iterator[None]:
+    gohome = os.path.expanduser('~/go')
+    go = shutil.which('go')
+    python = shutil.which('python') or shutil.which('python3')
+    current_home = os.path.expanduser('~') + os.sep
+    paths = os.environ.get('PATH', '/usr/local/sbin:/usr/local/bin:/usr/bin').split(os.pathsep)
+    path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
+    launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
+    env = dict(
+        PYTHONWARNINGS='error',
+    )
+    if go:
+        if go.startswith(current_home):
+            path = f'{os.path.dirname(go)}{os.pathsep}{path}'
+    path = f'{launcher_dir}{os.pathsep}{path}'
+    if os.environ.get('CI') == 'true':
+        print('Using PATH in test environment:', path, flush=True)
+        python = shutil.which('python', path=path) or shutil.which('python3', path=path)
+        print('Python:', python)
+        go = shutil.which('go', path=path)
+        print('Go:', go)
+
+    with TemporaryDirectory() as tdir, env_vars(
+        HOME=tdir, USERPROFILE=tdir, PATH=path,
+        XDG_CONFIG_HOME=os.path.join(tdir, '.config'),
+        XDG_CONFIG_DIRS=os.path.join(tdir, '.config'),
+        XDG_DATA_DIRS=os.path.join(tdir, '.local', 'xdg'),
+        XDG_CACHE_HOME=os.path.join(tdir, '.cache'),
+        **env
+    ):
+        if os.path.isdir(gohome):
+            os.symlink(gohome, os.path.join(tdir, os.path.basename(gohome)))
+        yield
+
+
+
+def main() -> None:
+    import warnings
+    warnings.simplefilter('error')
+    run_tests()
