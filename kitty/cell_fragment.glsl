@@ -26,7 +26,7 @@ in vec3 underline_pos;
 in vec3 cursor_pos;
 in vec3 strike_pos;
 in vec3 foreground;
-in vec4 cursor_color_vec;
+in vec3 cursor_color_vec;
 in vec3 decoration_fg;
 in float colored_sprite;
 #endif
@@ -106,7 +106,7 @@ vec4 calculate_foreground() {
         vec4_premul(decoration_fg, texture(sprites, underline_pos).a * effective_text_alpha)
     );
 
-    return mix(ans, cursor_color_vec, texture(sprites, cursor_pos).a);
+    return alpha_blend_premul(ans, vec4_premul(cursor_color_vec, texture(sprites, cursor_pos).a));
 }
 #endif
 
