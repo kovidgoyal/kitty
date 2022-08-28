@@ -938,7 +938,7 @@ Detailed list of changes
   scrollback buffer onto the screen. Useful, for example, to restore
   the screen after showing completions below the shell prompt.
 
-- A new remote control command :ref:`at_env` to change the default
+- A new remote control command :ref:`at-env` to change the default
   environment passed to newly created windows (:iss:`3529`)
 
 - Linux: Fix binary kitty builds not able to load fonts in WOFF2 format
@@ -2106,7 +2106,7 @@ Detailed list of changes
 - Allow the user to control the resize debounce time via
   :opt:`resize_debounce_time`.
 
-- Remote control: Make the :ref:`at_set-font-size` command more capable.
+- Remote control: Make the :ref:`at-set-font-size` command more capable.
   It can now increment font size and reset it. It also only acts on the
   active top-level window, by default (:iss:`1581`)
 
@@ -2458,7 +2458,7 @@ Detailed list of changes
   window is not the active window (:iss:`729`)
 
 - Remote control: Allow changing the current window layout with a new
-  :ref:`at_goto-layout` command (:iss:`845`)
+  :ref:`at-goto-layout` command (:iss:`845`)
 
 - Remote control: Allow matching windows by the environment variables of their
   child process as well
