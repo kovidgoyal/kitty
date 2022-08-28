@@ -35,7 +35,7 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.26.0 [future]
+0.26.0 [2022-08-29]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new option :opt:`remote_control_password` to use fine grained permissions for what can be remote controlled (:disc:`5320`)
