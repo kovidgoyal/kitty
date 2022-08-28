@@ -28,7 +28,7 @@ class NewWindow(RemoteCommand):
 
     short_desc = 'Open new window'
     desc = (
-        'DEPRECATED: Use the :ref:`launch <at_launch>` command instead.\n\n'
+        'DEPRECATED: Use the :ref:`launch <at-launch>` command instead.\n\n'
         'Open a new window in the specified tab. If you use the :option:`kitty @ new-window --match` option'
         ' the first matching tab is used. Otherwise the currently active tab is used.'
         ' Prints out the id of the newly opened window'

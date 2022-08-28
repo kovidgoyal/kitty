@@ -2188,7 +2188,7 @@ class Boss:
     @ac('misc', '''
         Change colors in the specified windows
 
-        For details, see :ref:`at_set-colors`. For example::
+        For details, see :ref:`at-set-colors`. For example::
 
             map f5 set_colors --configured /path/to/some/config/file/colors.conf
         ''')

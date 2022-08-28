@@ -132,8 +132,8 @@ You can also define keyboard shortcuts to set colors, for example::
     map f1 set_colors --configured /path/to/some/config/file/colors.conf
 
 Or you can enable :doc:`remote control <remote-control>` for |kitty| and use
-:ref:`at_set-colors`. The shortcut mapping technique has the same syntax as the
-remote control command, for details, see :ref:`at_set-colors`.
+:ref:`at-set-colors`. The shortcut mapping technique has the same syntax as the
+remote control command, for details, see :ref:`at-set-colors`.
 
 To change colors when SSHing into a remote host, use the :opt:`color_scheme
 <kitten-ssh.color_scheme>` setting for the :doc:`ssh kitten <kittens/ssh>`.

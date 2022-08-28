@@ -249,7 +249,7 @@ if you specify a program-to-run you can use the special placeholder
         from kitty.rc.base import cli_params_for
         for cmd_name in sorted(all_command_names()):
             func = command_for_name(cmd_name)
-            p(f'.. _at_{func.name}:\n')
+            p(f'.. _at-{func.name}:\n')
             p('kitty @', func.name)
             p('-' * 120)
             p('.. program::', 'kitty @', func.name)

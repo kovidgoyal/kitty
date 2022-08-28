@@ -36,7 +36,7 @@ This will make ``Hello, World`` show up in the window running the :program:`cat`
 program. The :option:`kitty @ send-text --match` option is very powerful, it
 allows selecting windows by their titles, the command line of the program
 running in the window, the working directory of the program running in the
-window, etc. See :ref:`kitty @ send-text --help <at_send-text>` for details.
+window, etc. See :ref:`kitty @ send-text --help <at-send-text>` for details.
 
 More usefully, you can pipe the output of a command running in one window to
 another window, for example::
