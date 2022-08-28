@@ -272,6 +272,22 @@ func (self sgr_code) is_empty() bool {
 	return self._prefix == ""
 }
 
+type url_code struct {
+	url string
+}
+
+func (self url_code) prefix() string {
+	return fmt.Sprintf("\x1b]8;;%s\x1b\\", self.url)
+}
+
+func (self url_code) suffix() string {
+	return "\x1b]8;;\x1b\\"
+}
+
+func (self url_code) is_empty() bool {
+	return self.url == ""
+}
+
 func (self *sgr_code) update() {
 	p := make([]string, 0, 1)
 	s := make([]string, 0, 1)
@@ -283,13 +299,22 @@ func (self *sgr_code) update() {
 	p, s = self.fg.as_sgr(30, p, s)
 	p, s = self.bg.as_sgr(40, p, s)
 	p, s = self.uc.as_sgr(50, p, s)
-	self._prefix = "\x1b[" + strings.Join(p, ";") + "m"
-	self._suffix = "\x1b[" + strings.Join(s, ";") + "m"
+	if len(p) > 0 {
+		self._prefix = "\x1b[" + strings.Join(p, ";") + "m"
+	} else {
+		self._prefix = ""
+	}
+	if len(s) > 0 {
+		self._suffix = "\x1b[" + strings.Join(s, ";") + "m"
+	} else {
+		self._suffix = ""
+	}
 }
 
 func parse_spec(spec string) []escape_code {
 	ans := make([]escape_code, 0, 1)
 	sgr := sgr_code{}
+	url := url_code{}
 	sparts, _ := shlex.Split(spec)
 	for _, p := range sparts {
 		parts := strings.SplitN(p, "=", 2)
@@ -317,11 +342,16 @@ func parse_spec(spec string) []escape_code {
 			sgr.underline.from_string(val)
 		case "ucol", "underline_color", "uc":
 			sgr.uc.from_string(val, false)
+		case "url":
+			url.url = val
 		}
 	}
 	sgr.update()
 	if !sgr.is_empty() {
 		ans = append(ans, &sgr)
+	}
+	if !url.is_empty() {
+		ans = append(ans, &url)
 	}
 	return ans
 }
