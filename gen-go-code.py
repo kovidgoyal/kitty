@@ -4,13 +4,15 @@
 import io
 import json
 import os
+import sys
 from contextlib import contextmanager, suppress
 from typing import Dict, Iterator, List, Tuple, Union
 
 import kitty.constants as kc
 from kittens.tui.operations import Mode
 from kitty.cli import (
-    GoOption, OptionSpecSeq, parse_option_spec, serialize_as_go_string
+    GoOption, OptionSpecSeq, go_options_for_seq, parse_option_spec,
+    serialize_as_go_string
 )
 from kitty.key_encoding import config_mod_map
 from kitty.key_names import (
@@ -98,24 +100,34 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
     alias_map = {}
     od: List[str] = []
     ov: List[str] = []
-    for x in seq:
-        if isinstance(x, str):
-            continue
-        o = GoOption(name, x)
+    option_map: Dict[str, GoOption] = {}
+    for o in go_options_for_seq(seq):
+        field_dest = o.go_var_name.rstrip('_')
+        option_map[field_dest] = o
         if o.aliases:
             alias_map[o.long] = tuple(o.aliases)
         a(o.to_flag_definition())
         if o.dest in ('no_response', 'response_timeout'):
             continue
         od.append(f'{o.go_var_name} {o.go_type}')
-        ov.append(o.set_flag_value())
+        ov.append(o.set_flag_value(f'options_{name}'))
     jd: List[str] = []
+    json_fields = []
     for line in cmd.protocol_spec.splitlines():
         line = line.strip()
         if ':' not in line:
             continue
         f = JSONField(line)
+        json_fields.append(f)
         jd.append(f.go_declaration())
+    jc: List[str] = []
+    for field in json_fields:
+        if field.field in option_map:
+            o = option_map[field.field]
+            jc.append(f'payload.{field.struct_field_name} = options_{name}.{o.go_var_name}')
+        else:
+            print(f'Cant map field: {field.field} for cmd: {name}', file=sys.stderr)
+            continue
 
     ans = replace(
         template,
@@ -129,6 +141,7 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
         OPTIONS_DECLARATION_CODE='\n'.join(od),
         SET_OPTION_VALUES_CODE='\n'.join(ov),
         JSON_DECLARATION_CODE='\n'.join(jd),
+        JSON_INIT_CODE='\n'.join(jc),
         STRING_RESPONSE_IS_ERROR='true' if cmd.string_return_is_error else 'false',
     )
     return ans

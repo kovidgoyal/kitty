@@ -60,6 +60,7 @@ screen edges).
 
 
 --clear-selection
+type=bool-set
 Clear the selection in the matched window, if any.
 
 

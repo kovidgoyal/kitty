@@ -23,7 +23,6 @@ class NewWindow(RemoteCommand):
     window_type/choices.kitty.os: One of :code:`kitty` or :code:`os`
     new_tab/bool: Boolean indicating whether to open a new tab
     tab_title/str: Title for the new tab
-    no_response/bool: Boolean indicating whether to send back the window id
     '''
 
     short_desc = 'Open new window'

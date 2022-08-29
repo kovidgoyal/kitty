@@ -21,7 +21,6 @@ class ScrollWindow(RemoteCommand):
              And the second item being either 'p' for pages or 'l' for lines or 'u'
              for unscrolling by lines.
     match/str: The window to scroll
-    no_response/bool: Boolean indicating whether to wait for a response
     '''
 
     short_desc = 'Scroll the specified windows'
