@@ -35,7 +35,7 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.26.1 [future]
+0.26.1 [2022-08-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - ssh kitten: Fix executable permission missing from kitty bootstrap script (:iss:`5438`)
