@@ -3,6 +3,7 @@
 
 
 import os
+import stat
 import sys
 import unittest
 from functools import partial
@@ -58,7 +59,15 @@ class TestBuild(BaseTest):
         self.assertTrue(os.path.isdir(terminfo_dir), f'Terminfo dir: {terminfo_dir}')
         self.assertTrue(os.path.exists(logo_png_file), f'Logo file: {logo_png_file}')
         self.assertTrue(os.path.exists(zsh), f'Shell integration: {zsh}')
-        self.assertTrue(os.access(os.path.join(shell_integration_dir, 'ssh', 'askpass.py'), os.X_OK))
+
+        def is_executable(x):
+            mode = os.stat(x).st_mode
+            q = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+            return mode & q == q
+
+        for x in ('kitty', 'askpass.py'):
+            x = os.path.join(shell_integration_dir, 'ssh', x)
+            self.assertTrue(is_executable(x), f'{x} is not executable')
         if getattr(sys, 'frozen', False):
             self.assertTrue(os.path.isdir(local_docs()), f'Local docs: {local_docs()}')
 
@@ -76,8 +85,8 @@ class TestBuild(BaseTest):
         del pygments
 
     def test_docs_url(self):
-        from kitty.utils import docs_url
         from kitty.constants import website_url
+        from kitty.utils import docs_url
 
         def run_tests(p, base, suffix='.html'):
             def t(x, e):

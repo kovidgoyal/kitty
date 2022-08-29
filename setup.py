@@ -1363,10 +1363,19 @@ def package(args: Options, bundle_type: str) -> None:
             f.seek(0), f.truncate(), f.write(raw)
 
     compile_python(libdir)
+
+    def should_be_executable(path: str) -> bool:
+        if path.endswith('.so'):
+            return True
+        q = path.split(os.sep)[-2:]
+        if len(q) == 2 and q[0] == 'ssh' and q[1] in ('askpass.py', 'kitty'):
+            return True
+        return False
+
     for root, dirs, files in os.walk(libdir):
         for f_ in files:
             path = os.path.join(root, f_)
-            os.chmod(path, 0o755 if f_.endswith('.so') or os.path.basename(f_) == 'askpass.py' else 0o644)
+            os.chmod(path, 0o755 if should_be_executable(path) else 0o644)
     if not is_macos:
         create_linux_bundle_gunk(ddir, args.libdir_name)
 
