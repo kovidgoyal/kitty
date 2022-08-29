@@ -26,7 +26,6 @@ class RemoveMarker(RemoteCommand):
 type=bool-set
 Apply marker to the window this command is run in, rather than the active window.
 '''
-    argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'self': opts.self}

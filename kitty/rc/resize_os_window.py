@@ -71,7 +71,6 @@ default=false
 Don't wait for a response indicating the success of the action. Note that
 using this option means that you will not be notified of failures.
 '''
-    argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {

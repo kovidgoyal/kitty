@@ -23,7 +23,6 @@ class FocusWindow(RemoteCommand):
 
     short_desc = 'Focus the specified window'
     desc = 'Focus the specified window, if no window is specified, focus the window this command is run inside.'
-    argspec = ''
     options_spec = MATCH_WINDOW_OPTION + '''\n\n
 --no-response
 type=bool-set
@@ -33,7 +32,7 @@ the command will exit with a success code.
 '''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'match': opts.match, 'no_response': opts.no_response}
+        return {'match': opts.match}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         for window in self.windows_for_match_payload(boss, window, payload_get):

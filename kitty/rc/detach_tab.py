@@ -30,7 +30,6 @@ class DetachTab(RemoteCommand):
 type=bool-set
 Detach the tab this command is run in, rather than the active tab.
 '''
-    argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'target_tab': opts.target_tab, 'self': opts.self}

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -73,20 +74,37 @@ func simple_serializer(rc *utils.RemoteControlCmd) (ans []byte, err error) {
 type serializer_func func(rc *utils.RemoteControlCmd) ([]byte, error)
 
 type wrapped_serializer struct {
-	state      int
-	serializer serializer_func
+	state             int
+	serializer        serializer_func
+	all_payloads_done bool
 }
 
-func (self *wrapped_serializer) next(rc *utils.RemoteControlCmd) ([]byte, error) {
+func (self *wrapped_serializer) next(io_data *rc_io_data) ([]byte, error) {
 	const prefix = "\x1bP@kitty-cmd"
 	const suffix = "\x1b\\"
-	defer func() { self.state++ }()
 	switch self.state {
 	case 0:
+		self.state++
 		return []byte(prefix), nil
 	case 1:
-		return self.serializer(rc)
+		if io_data.multiple_payload_generator != nil {
+			is_last, err := io_data.multiple_payload_generator(io_data)
+			if err != nil {
+				return nil, err
+			}
+			if is_last {
+				self.all_payloads_done = true
+			}
+		} else {
+			self.all_payloads_done = true
+		}
+		return self.serializer(io_data.rc)
 	case 2:
+		if self.all_payloads_done {
+			self.state++
+		} else {
+			self.state = 0
+		}
 		return []byte(suffix), nil
 	default:
 		return make([]byte, 0), nil
@@ -144,12 +162,13 @@ type Response struct {
 }
 
 type rc_io_data struct {
-	cmd                    *cobra.Command
-	rc                     *utils.RemoteControlCmd
-	serializer             wrapped_serializer
-	send_keypresses        bool
-	string_response_is_err bool
-	timeout                time.Duration
+	cmd                        *cobra.Command
+	rc                         *utils.RemoteControlCmd
+	serializer                 wrapped_serializer
+	send_keypresses            bool
+	string_response_is_err     bool
+	timeout                    time.Duration
+	multiple_payload_generator func(io_data *rc_io_data) (bool, error)
 
 	pending_chunks [][]byte
 }
@@ -161,7 +180,7 @@ func (self *rc_io_data) next_chunk(limit_size bool) (chunk []byte, err error) {
 		self.pending_chunks = self.pending_chunks[:len(self.pending_chunks)-1]
 		return
 	}
-	block, err := self.serializer.next(self.rc)
+	block, err := self.serializer.next(self)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return
 	}

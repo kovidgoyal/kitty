@@ -67,7 +67,7 @@ type=bool-set
 If specified the tab containing the window this command is run in is used
 instead of the active tab
     ''' + '\n\n' + launch_options_spec().replace(':option:`launch', ':option:`kitty @ launch')
-    argspec = '[CMD ...]'
+    args = RemoteCommand.Args(spec='[CMD ...]', json_field='args')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         ans = {'args': args or []}

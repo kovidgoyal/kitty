@@ -33,7 +33,7 @@ type=bool-set
 By default, the title will be permanently changed and programs running in the window will not be able to change it
 again. If you want to allow other programs to change it afterwards, use this option.
     ''' + '\n\n' + MATCH_WINDOW_OPTION
-    argspec = '[TITLE ...]'
+    args = RemoteCommand.Args(json_field='title', spec='[TITLE ...]')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         ans = {'match': opts.match, 'temporary': opts.temporary}

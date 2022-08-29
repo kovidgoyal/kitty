@@ -74,7 +74,7 @@ Don't wait for a response giving the id of the newly opened window. Note that
 using this option means that you will not be notified of failures and that
 the id of the new window will not be printed out.
 '''
-    argspec = '[CMD ...]'
+    args = RemoteCommand.Args(spec='[CMD ...]', json_field='args')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         ans = {'args': args or [], 'type': 'window'}

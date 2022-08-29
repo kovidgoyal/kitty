@@ -46,7 +46,6 @@ The special value :code:`reset` will reset the layout to its default configurati
 type=bool-set
 Resize the window this command is run in, rather than the active window.
 '''
-    argspec = ''
     string_return_is_error = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:

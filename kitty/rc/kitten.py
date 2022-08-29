@@ -30,7 +30,7 @@ class Kitten(RemoteCommand):
         ' is printed out to stdout.'
     )
     options_spec = MATCH_WINDOW_OPTION
-    argspec = 'kitten_name'
+    args = RemoteCommand.Args(spec='kitten_name', json_field='kitten', minimum_count=1, first_rest=('kitten', 'args'))
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) < 1:

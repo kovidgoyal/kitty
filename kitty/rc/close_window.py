@@ -38,7 +38,6 @@ Close the window this command is run in, rather than the active window.
 type=bool-set
 Do not return an error if no windows are matched to be closed.
 '''
-    argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'self': opts.self, 'ignore_no_match': opts.ignore_no_match}

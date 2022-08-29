@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class SignalChild(RemoteCommand):
 
     protocol_spec = __doc__ = '''
-    signals/list.str: The signals, a list of names, such as :code:`SIGTERM`, :code:`SIGKILL`, :code:`SIGUSR1`, etc.
+    signals+/list.str: The signals, a list of names, such as :code:`SIGTERM`, :code:`SIGKILL`, :code:`SIGUSR1`, etc.
     match/str: Which windows to send the signals to
     '''
 
@@ -35,7 +35,7 @@ default=false
 Don't wait for a response indicating the success of the action. Note that
 using this option means that you will not be notified of failures.
     ''' + '\n\n' + MATCH_WINDOW_OPTION
-    argspec = '[SIGNAL_NAME ...]'
+    args = RemoteCommand.Args(json_field='signals', spec='[SIGNAL_NAME ...]', value_if_unspecified=('SIGINT',))
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         # defaults to signal the window this command is run in
