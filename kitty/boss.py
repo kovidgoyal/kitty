@@ -1579,10 +1579,17 @@ class Boss:
     def input_unicode_character(self) -> None:
         self.run_kitten_with_metadata('unicode_input')
 
-    @ac('tab', 'Change the title of the active tab')
-    def set_tab_title(self) -> None:
+    @ac(
+        'tab',
+        'Change the title of the active tab interactively, by typing in the new title. If you specify an argument'
+        ' to this action then that is used as the title instead of asking for it.'
+    )
+    def set_tab_title(self, title: str = '') -> None:
         tab = self.active_tab
         if tab:
+            if title:
+                tab.set_title(title)
+                return
             args = [
                 '--name=tab-title', '--message', _('Enter the new title for this tab below.'),
                 '--default', tab.name or tab.title, 'do_set_tab_title', str(tab.id)]
