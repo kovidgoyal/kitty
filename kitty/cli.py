@@ -36,6 +36,84 @@ class OptionDict(TypedDict):
     completion: Dict[str, str]
 
 
+def serialize_as_go_string(x: str) -> str:
+    return x.replace('\\', '\\\\').replace('\n', '\\n').replace('"', '\\"')
+
+
+go_type_map = {'bool-set': 'bool', 'bool-reset': 'bool', 'int': 'int', 'float': 'float64', '': 'string', 'list': '[]string', 'choices': 'string'}
+go_getter_map = {
+    'bool-set': 'GetBool', 'bool-reset': 'GetBool', 'int': 'GetInt', 'float': 'GetFloat64', '': 'GetString',
+    'list': 'GetStringArray', 'choices': 'GetString'
+}
+
+
+class GoOption:
+
+    def __init__(self, cmd_name: str, x: OptionDict) -> None:
+        self.cmd_name = cmd_name
+        flags = sorted(x['aliases'], key=len)
+        short = ''
+        self.aliases = []
+        if len(flags) > 1 and not flags[0].startswith("--"):
+            short = flags[0][1:]
+            del flags[0]
+        self.short, self.long = short, x['name'].replace('_', '-')
+        for f in flags:
+            q = f[2:]
+            if q != self.long:
+                self.aliases.append(q)
+        self.usage = serialize_as_go_string(x['help'].strip())
+        self.type = x['type']
+        self.dest = x['dest']
+        self.default = x['default']
+        self.obj_dict = x
+        self.go_type = go_type_map[self.type]
+        self.go_var_name = self.long.replace('-', '_')
+        if self.go_var_name == 'type':
+            self.go_var_name += '_'
+
+    def to_flag_definition(self, base: str = 'ans.Flags()') -> str:
+        if self.type.startswith('bool-'):
+            defval = 'false' if self.type == 'bool-set' else 'true'
+            if self.short:
+                return f'{base}.BoolP("{self.long}", "{self.short}", {defval}, "{self.usage}")'
+            return f'{base}.Bool("{self.long}", {defval}, "{self.usage}")'
+        elif not self.type:
+            defval = f'''"{serialize_as_go_string(self.default or '')}"'''
+            if self.short:
+                return f'{base}.StringP("{self.long}", "{self.short}", {defval}, "{self.usage}")'
+            return f'{base}.String("{self.long}", {defval}, "{self.usage}")'
+        elif self.type == 'int':
+            if self.short:
+                return f'{base}.IntP("{self.long}", "{self.short}", {self.default or 0}, "{self.usage}")'
+            return f'{base}.Int("{self.long}", {self.default or 0}, "{self.usage}")'
+        elif self.type == 'float':
+            if self.short:
+                return f'{base}.Float64P("{self.long}", "{self.short}", {self.default or 0}, "{self.usage}")'
+            return f'{base}.Float64("{self.long}", {self.default or 0}, "{self.usage}")'
+        elif self.type == 'list':
+            defval = f'[]string{{"{serialize_as_go_string(self.default)}"}}' if self.default else '[]string{}'
+            if self.short:
+                return f'{base}.StringArrayP("{self.long}", "{self.short}", {defval}, "{self.usage}")'
+            return f'{base}.StringArray("{self.long}", {defval}, "{self.usage}")'
+        elif self.type == 'choices':
+            choices = sorted(self.obj_dict['choices'])
+            choices.remove(self.default or '')
+            choices.insert(0, self.default or '')
+            cx = ', '.join(f'"{serialize_as_go_string(x)}"' for x in choices)
+            if self.short:
+                return f'cli.ChoicesP({base}, "{self.long}", "{self.short}", "{self.usage}", {cx})'
+            return f'cli.Choices({base}, "{self.long}", "{self.usage}", {cx})'
+        else:
+            raise TypeError(f'Unknown type of CLI option: {self.type} for {self.long}')
+
+    def set_flag_value(self, cmd: str = 'cmd') -> str:
+        func = go_getter_map[self.type]
+        ans = f'{self.go_var_name}_temp, err := {cmd}.Flags().{func}("{self.long}")\n if err != nil {{ return err }}'
+        ans += f'\noptions_{self.cmd_name}.{self.go_var_name} = {self.go_var_name}_temp'
+        return ans
+
+
 CONFIG_HELP = '''\
 Specify a path to the configuration file(s) to use. All configuration files are
 merged onto the builtin :file:`{conf_name}.conf`, overriding the builtin values.
