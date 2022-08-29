@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 class CloseWindow(RemoteCommand):
     protocol_spec = __doc__ = '''
     match/str: Which window to close
-    no_response/bool: Boolean indicating whether to wait for a response
     self/bool: Boolean indicating whether to close the window the command is run in
     ignore_no_match/bool: Boolean indicating whether no matches should be ignored or return an error
     '''

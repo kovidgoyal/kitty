@@ -49,8 +49,7 @@ go_getter_map = {
 
 class GoOption:
 
-    def __init__(self, cmd_name: str, x: OptionDict) -> None:
-        self.cmd_name = cmd_name
+    def __init__(self, x: OptionDict) -> None:
         flags = sorted(x['aliases'], key=len)
         short = ''
         self.aliases = []
@@ -107,11 +106,17 @@ class GoOption:
         else:
             raise TypeError(f'Unknown type of CLI option: {self.type} for {self.long}')
 
-    def set_flag_value(self, cmd: str = 'cmd') -> str:
+    def set_flag_value(self, struct_name: str, cmd: str = 'cmd') -> str:
         func = go_getter_map[self.type]
         ans = f'{self.go_var_name}_temp, err := {cmd}.Flags().{func}("{self.long}")\n if err != nil {{ return err }}'
-        ans += f'\noptions_{self.cmd_name}.{self.go_var_name} = {self.go_var_name}_temp'
+        ans += f'\n{struct_name}.{self.go_var_name} = {self.go_var_name}_temp'
         return ans
+
+
+def go_options_for_seq(seq: 'OptionSpecSeq') -> Iterator[GoOption]:
+    for x in seq:
+        if not isinstance(x, str):
+            yield GoOption(x)
 
 
 CONFIG_HELP = '''\

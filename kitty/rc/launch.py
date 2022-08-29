@@ -42,7 +42,6 @@ class Launch(RemoteCommand):
     stdin_add_formatting/bool: Boolean indicating whether to add formatting codes to stdin
     stdin_add_line_wrap_markers/bool: Boolean indicating whether to add line wrap markers to stdin
     spacing/list.str: A list of spacing specifications, see the docs for the set-spacing command
-    no_response/bool: Boolean indicating whether to send back the window id
     marker/str: Specification for marker for new window, for example: "text 1 ERROR"
     logo/str: Path to window logo
     logo_position/str: Window logo position as string or empty string to use default

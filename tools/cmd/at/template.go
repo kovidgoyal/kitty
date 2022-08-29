@@ -26,9 +26,10 @@ type CMD_NAME_json_type struct {
 	JSON_DECLARATION_CODE
 }
 
-var CMD_NAME_json CMD_NAME_json_type
-
-func create_payload_CMD_NAME(io_data *rc_io_data, args []string) (err error) {
+func create_payload_CMD_NAME(io_data *rc_io_data, flags *pflag.FlagSet, args []string) (err error) {
+	payload := CMD_NAME_json_type{}
+	JSON_INIT_CODE
+	io_data.rc.Payload = payload
 	return
 }
 
@@ -70,7 +71,7 @@ func run_CMD_NAME(cmd *cobra.Command, args []string) (err error) {
 		timeout:                time.Duration(timeout * float64(time.Second)),
 		string_response_is_err: STRING_RESPONSE_IS_ERROR,
 	}
-	err = create_payload_CMD_NAME(&io_data, args)
+	err = create_payload_CMD_NAME(&io_data, cmd.Flags(), args)
 	if err != nil {
 		return err
 	}
