@@ -1580,14 +1580,25 @@ class Boss:
         self.run_kitten_with_metadata('unicode_input')
 
     @ac(
-        'tab',
-        'Change the title of the active tab interactively, by typing in the new title. If you specify an argument'
-        ' to this action then that is used as the title instead of asking for it.'
+        'tab', '''
+        Change the title of the active tab interactively, by typing in the new title.
+        If you specify an argument to this action then that is used as the title instead of asking for it.
+        Use the empty string ("") to reset the title to default. For example::
+
+            # interactive usage
+            map f1 set_tab_title
+            # set a specific title
+            map f2 set_tab_title some title
+            # reset to default
+            map f3 set_tab_title ""
+        '''
     )
-    def set_tab_title(self, title: str = '') -> None:
+    def set_tab_title(self, title: Optional[str] = None) -> None:
         tab = self.active_tab
         if tab:
-            if title:
+            if title is not None:
+                if title in ('""', "''"):
+                    title = ''
                 tab.set_title(title)
                 return
             args = [
