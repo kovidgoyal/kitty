@@ -42,6 +42,8 @@ Detailed list of changes
 
 - Fix a regression in 0.26.0 that caused kitty to no longer set the ``LANG`` environment variable on macOS (:iss:`5439`)
 
+- Allow specifying a title when using the :ac:`set_tab_title` action (:iss:`5441`)
+
 0.26.0 [2022-08-29]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
