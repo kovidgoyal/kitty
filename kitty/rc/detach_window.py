@@ -36,7 +36,6 @@ class DetachWindow(RemoteCommand):
 type=bool-set
 Detach the window this command is run in, rather than the active window.
 ''')
-    argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'target_tab': opts.target_tab, 'self': opts.self}

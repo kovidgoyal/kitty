@@ -34,7 +34,7 @@ By default, ligatures are only affected in the active window. This option will
 cause ligatures to be changed in all windows.
 
 ''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')
-    argspec = 'STRATEGY'
+    args = RemoteCommand.Args(spec='STRATEGY', count=1, json_field='strategy')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if not args:

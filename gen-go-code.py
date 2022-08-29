@@ -113,12 +113,14 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
         ov.append(o.set_flag_value(f'options_{name}'))
     jd: List[str] = []
     json_fields = []
+    field_types: Dict[str, str] = {}
     for line in cmd.protocol_spec.splitlines():
         line = line.strip()
         if ':' not in line:
             continue
         f = JSONField(line)
         json_fields.append(f)
+        field_types[f.field] = f.field_type
         jd.append(f.go_declaration())
     jc: List[str] = []
     for field in json_fields:
@@ -128,7 +130,16 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
         else:
             print(f'Cant map field: {field.field} for cmd: {name}', file=sys.stderr)
             continue
+    try:
+        jc.extend(cmd.args.as_go_code(name, field_types))
+    except TypeError:
+        print(f'Cant parse args for cmd: {name}', file=sys.stderr)
 
+    print('TODO: test set_window_logo, send_text, env, scroll_window', file=sys.stderr)
+
+    argspec = cmd.args.spec
+    if argspec:
+        argspec = ' ' + argspec
     ans = replace(
         template,
         CMD_NAME=name, __FILE__=__file__, CLI_NAME=name.replace('_', '-'),
@@ -141,7 +152,7 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
         OPTIONS_DECLARATION_CODE='\n'.join(od),
         SET_OPTION_VALUES_CODE='\n'.join(ov),
         JSON_DECLARATION_CODE='\n'.join(jd),
-        JSON_INIT_CODE='\n'.join(jc),
+        JSON_INIT_CODE='\n'.join(jc), ARGSPEC=argspec,
         STRING_RESPONSE_IS_ERROR='true' if cmd.string_return_is_error else 'false',
     )
     return ans

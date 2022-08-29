@@ -7,6 +7,8 @@
 package at
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -15,6 +17,9 @@ import (
 	"kitty/tools/cli"
 	"kitty/tools/utils"
 )
+
+var _ = fmt.Print
+var _ = strings.Join
 
 type options_CMD_NAME_type struct {
 	OPTIONS_DECLARATION_CODE
@@ -88,7 +93,7 @@ func aliasNormalizeFunc_CMD_NAME(f *pflag.FlagSet, name string) pflag.Normalized
 
 func setup_CMD_NAME(root *cobra.Command) *cobra.Command {
 	ans := cli.CreateCommand(&cobra.Command{
-		Use:   "CLI_NAME [options]",
+		Use:   "CLI_NAME [options]" + "ARGSPEC",
 		Short: "SHORT_DESC",
 		Long:  "LONG_DESC",
 		RunE:  run_CMD_NAME,

@@ -68,7 +68,6 @@ Clear the selection in the matched window, if any.
 type=bool-set
 Get text from the window this command is run in, rather than the active window.
 '''
-    argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {

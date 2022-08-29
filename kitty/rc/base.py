@@ -2,9 +2,10 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from contextlib import suppress
+from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List,
-    NoReturn, Optional, Tuple, Type, Union, cast
+    NoReturn, Optional, Set, Tuple, Type, Union, cast
 )
 
 from kitty.cli import get_defaults_from_seq, parse_args, parse_option_spec
@@ -160,27 +161,98 @@ class AsyncResponder:
         send_response_to_client(error=error, peer_id=self.peer_id, window_id=self.window_id, async_id=self.async_id)
 
 
+@dataclass(frozen=True)
+class ArgsHandling:
+
+    json_field: str = ''
+    count: Optional[int] = None
+    spec: str = ''
+    completion: Optional[Dict[str, Tuple[str, Union[Callable[[], Iterable[str]], Tuple[str, ...]]]]] = None
+    value_if_unspecified: Tuple[str, ...] = ()
+    minimum_count: int = -1
+    first_rest: Optional[Tuple[str, str]] = None
+    special_parse: str = ''
+
+    @property
+    def args_count(self) -> Optional[int]:
+        if not self.spec:
+            return 0
+        return self.count
+
+    def as_go_code(self, cmd_name: str, field_types: Dict[str, str], handled_fields: Set[str]) -> Iterator[str]:
+        c = self.args_count
+        if c == 0:
+            yield f'if len(args) != 0 {{ return fmt.Errorf("%s", "Unknown extra argument(s) supplied to {cmd_name}") }}'
+            return
+        if c is not None:
+            yield f'if len(args) != {c} {{ return fmt.Errorf("%s", "Must specify exactly {c} argument(s) for {cmd_name}") }}'
+        if self.value_if_unspecified:
+            yield 'if len(args) == 0 {'
+            for x in self.value_if_unspecified:
+                yield f'args = append(args, "{x}")'
+            yield '}'
+        if self.minimum_count > -1:
+            yield f'if len(args) < {self.minimum_count} {{ return fmt.Errorf("%s", Must specify at least {self.minimum_count} arguments to {cmd_name}) }}'
+        if self.json_field:
+            jf = self.json_field
+            dest = f'payload.{jf.capitalize()}'
+            jt = field_types[jf]
+            if self.first_rest:
+                yield f'payload.{self.first_rest[0].capitalize()} = args[0]'
+                yield f'payload.{self.first_rest[1].capitalize()} = args[1:]'
+                handled_fields.add(self.first_rest[0])
+                handled_fields.add(self.first_rest[1])
+                return
+            handled_fields.add(self.json_field)
+            if self.special_parse:
+                if self.special_parse.startswith('!'):
+                    yield f'io_data.multiple_payload_generator, err = {self.special_parse[1:]}'
+                else:
+                    yield f'{dest}, err = {self.special_parse}'
+                yield 'if err != nil { return err }'
+                return
+            if jt == 'list.str':
+                yield f'{dest} = args'
+                return
+            if jt == 'str':
+                if c == 1:
+                    yield f'{dest} = args[0]'
+                else:
+                    yield f'{dest} = strings.Join(args, " ")'
+                return
+            if jt.startswith('choices.'):
+                yield f'if len(args) != 1 {{ return fmt.Errorf("%s", "Must specify exactly 1 argument for {cmd_name}") }}'
+                choices = ", ".join((f'"{x}"' for x in jt.split('.')[1:]))
+                yield 'switch(args[0]) {'
+                yield f'case {choices}:\n\t{dest} = args[0]'
+                yield f'default: return fmt.Errorf("%s is not a valid choice. Allowed values: %s", args[0], `{choices}`)'
+                yield '}'
+                return
+            if jt == 'dict.str':
+                yield f'{dest} = parse_key_val_args(args)'
+        raise TypeError(f'Unknown args handling for cmd: {cmd_name}')
+
+
 class RemoteCommand:
+    Args = ArgsHandling
 
     name: str = ''
     short_desc: str = ''
     desc: str = ''
-    argspec: str = '...'
+    args: ArgsHandling = ArgsHandling()
     options_spec: Optional[str] = None
     no_response: bool = False
     response_timeout: float = 10.  # seconds
     string_return_is_error: bool = False
-    args_count: Optional[int] = None
-    args_completion: Optional[Dict[str, Tuple[str, Union[Callable[[], Iterable[str]], Tuple[str, ...]]]]] = None
     defaults: Optional[Dict[str, Any]] = None
     is_asynchronous: bool = False
     options_class: Type[RCOptions] = RCOptions
     protocol_spec: str = ''
+    argspec = args_count = args_completion = ArgsHandling()
 
     def __init__(self) -> None:
         self.desc = self.desc or self.short_desc
         self.name = self.__class__.__module__.split('.')[-1].replace('_', '-')
-        self.args_count = 0 if not self.argspec else self.args_count
 
     def fatal(self, msg: str) -> NoReturn:
         if running_in_kitty():
@@ -259,21 +331,21 @@ class RemoteCommand:
 
 
 def cli_params_for(command: RemoteCommand) -> Tuple[Callable[[], str], str, str, str]:
-    return (command.options_spec or '\n').format, command.argspec, command.desc, f'{appname} @ {command.name}'
+    return (command.options_spec or '\n').format, command.args.spec, command.desc, f'{appname} @ {command.name}'
 
 
 def parse_subcommand_cli(command: RemoteCommand, args: ArgsType) -> Tuple[Any, ArgsType]:
     opts, items = parse_args(args[1:], *cli_params_for(command), result_class=command.options_class)
-    if command.args_count is not None and command.args_count != len(items):
-        if command.args_count == 0:
+    if command.args.args_count is not None and command.args.args_count != len(items):
+        if command.args.args_count == 0:
             raise SystemExit(f'Unknown extra argument(s) supplied to {command.name}')
-        raise SystemExit(f'Must specify exactly {command.args_count} argument(s) for {command.name}')
+        raise SystemExit(f'Must specify exactly {command.args.args_count} argument(s) for {command.name}')
     return opts, items
 
 
 def display_subcommand_help(func: RemoteCommand) -> None:
     with suppress(SystemExit):
-        parse_args(['--help'], (func.options_spec or '\n').format, func.argspec, func.desc, func.name)
+        parse_args(['--help'], (func.options_spec or '\n').format, func.args.spec, func.desc, func.name)
 
 
 def command_for_name(cmd_name: str) -> RemoteCommand:

@@ -492,7 +492,7 @@ def global_options_for_remote_cmd() -> Dict[str, OptionDict]:
 def complete_remote_command(ans: Completions, cmd_name: str, words: Sequence[str], new_word: bool) -> None:
     aliases, alias_map = options_for_cmd(cmd_name)
     try:
-        args_completion = command_for_name(cmd_name).args_completion
+        args_completion = command_for_name(cmd_name).args.completion
     except KeyError:
         return
     args_completer: CompleteArgsFunc = basic_option_arg_completer
