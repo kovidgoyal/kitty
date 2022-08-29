@@ -40,6 +40,8 @@ Detailed list of changes
 
 - ssh kitten: Fix executable permission missing from kitty bootstrap script (:iss:`5438`)
 
+- Fix a regression in 0.26.0 that caused kitty to no longer set the ``LANG`` environment variable on macOS (:iss:`5439`)
+
 0.26.0 [2022-08-29]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

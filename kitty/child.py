@@ -168,6 +168,10 @@ def set_default_env(val: Optional[Dict[str, str]] = None) -> None:
     setattr(default_env, 'lc_ctype_set_by_user', has_lctype)
 
 
+def set_LANG_in_default_env(val: str) -> None:
+    default_env()['LANG'] = val
+
+
 def openpty() -> Tuple[int, int]:
     master, slave = os.openpty()  # Note that master and slave are in blocking mode
     os.set_inheritable(slave, True)

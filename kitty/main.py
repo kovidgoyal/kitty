@@ -10,7 +10,7 @@ from typing import Dict, Generator, List, Optional, Sequence, Tuple
 
 from .borders import load_borders_program
 from .boss import Boss
-from .child import set_default_env
+from .child import set_default_env, set_LANG_in_default_env
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
 from .conf.utils import BadLine
@@ -229,6 +229,7 @@ def ensure_macos_locale() -> None:
                 else:
                     log_error(f'Could not set LANG Cocoa returns language as: {lang}')
             os.environ['LANG'] = f'{lang}.UTF-8'
+            set_LANG_in_default_env(os.environ['LANG'])
 
 
 @contextmanager
@@ -368,6 +369,7 @@ def set_locale() -> None:
             except Exception:
                 log_error('Failed to set locale with no LANG')
             os.environ['LANG'] = old_lang
+            set_LANG_in_default_env(old_lang)
 
 
 def _main() -> None:
