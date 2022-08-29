@@ -20,9 +20,28 @@ def write_hyperlink(write: Callable[[bytes], None], url: bytes, line: bytes, fra
 
 
 def main() -> None:
-    write_all_hyperlinks = '--hyperlink-only-matches' not in sys.argv
-    if not write_all_hyperlinks:
-        sys.argv.remove('--hyperlink-only-matches')
+    i = 1
+    all_link_options = ['matching_lines', 'context_lines', 'file_headers']
+    link_options = set()
+    while i < len(sys.argv):
+        if sys.argv[i] == '--kitten':
+            if len(sys.argv) < i + 2 or not sys.argv[i + 1].startswith("hyperlink="):
+                raise SystemExit("--kitten argument must be followed by hyperlink=(all|matching_lines|context_lines|file_headers)")
+            for option in sys.argv[i + 1].split('=')[1].split(','):
+                if option == 'all':
+                    link_options.update(all_link_options)
+                elif option not in all_link_options:
+                    raise SystemExit(f"hyperlink option must be one of all, matching_lines, context_lines, or file_headers, not '{option}'")
+                else:
+                    link_options.add(option)
+            del sys.argv[i:i+2]
+        else:
+            i += 1
+    if len(link_options) == 0: # Default to linking everything if no options given
+        link_options.update(all_link_options)
+    link_file_headers = 'file_headers' in link_options
+    link_context_lines = 'context_lines' in link_options
+    link_matching_lines = 'matching_lines' in link_options
 
     if not sys.stdout.isatty() and '--pretty' not in sys.argv and '-p' not in sys.argv:
         os.execlp('rg', 'rg', *sys.argv[1:])
@@ -49,15 +68,17 @@ def main() -> None:
                 write(b'\n')
             elif in_result:
                 m = num_pat.match(clean_line)
-                if m is not None and (write_all_hyperlinks or m.group(2) == b':'):
-                    write_hyperlink(write, in_result, line, frag=m.group(1))
-                else:
-                    write(line)
+                if m is not None:
+                    is_match_line = m.group(2) == b':'
+                    if (is_match_line and link_matching_lines) or (not is_match_line and link_context_lines):
+                        write_hyperlink(write, in_result, line, frag=m.group(1))
+                        continue
+                write(line)
             else:
                 if line.strip():
                     path = quote_from_bytes(os.path.abspath(clean_line)).encode('utf-8')
                     in_result = b'file://' + hostname + path
-                    if write_all_hyperlinks:
+                    if link_file_headers:
                         write_hyperlink(write, in_result, line)
                         continue
                 write(line)
