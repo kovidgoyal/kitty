@@ -12,9 +12,7 @@ import unittest
 from contextlib import contextmanager
 from functools import lru_cache
 from importlib.resources import contents
-from io import StringIO
 from tempfile import TemporaryDirectory
-from threading import Thread
 from typing import (
     Any, Callable, Dict, Generator, Iterator, List, NoReturn, Optional,
     Sequence, Set, Tuple
@@ -155,7 +153,7 @@ def reduce_go_pkgs(module: str, names: Sequence[str]) -> Set[str]:
     return go_packages
 
 
-def run_python_tests(args: Any, go_proc: Optional[subprocess.Popen[bytes]] = None) -> None:
+def run_python_tests(args: Any, go_proc: 'Optional[subprocess.Popen[bytes]]' = None) -> None:
     tests = find_all_tests()
 
     def print_go() -> None:
@@ -189,7 +187,8 @@ def run_tests() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'name', nargs='*', default=[],
-        help='The name of the test to run, for e.g. linebuf corresponds to test_linebuf. Can be specified multiple times. For go tests Something corresponds to TestSometing.')
+        help='The name of the test to run, for e.g. linebuf corresponds to test_linebuf. Can be specified multiple times.'
+        ' For go tests Something corresponds to TestSometing.')
     parser.add_argument('--verbosity', default=4, type=int, help='Test verbosity')
     parser.add_argument('--module', default='', help='Name of a test module to restrict to. For example: ssh.'
                         ' For Go tests this is the name of a package, for example: tools/cli')
@@ -198,7 +197,7 @@ def run_tests() -> None:
         type_check()
     go_pkgs = reduce_go_pkgs(args.module, args.name)
     if go_pkgs:
-        go_proc: Optional[subprocess.Popen[bytes]] = run_go(go_pkgs, args.name)
+        go_proc: 'Optional[subprocess.Popen[bytes]]' = run_go(go_pkgs, args.name)
     else:
         go_proc = None
     with env_for_python_tests():
@@ -217,6 +216,7 @@ def env_vars(**kw: str) -> Iterator[None]:
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
+
 
 @contextmanager
 def env_for_python_tests() -> Iterator[None]:
@@ -252,7 +252,6 @@ def env_for_python_tests() -> Iterator[None]:
         if os.path.isdir(gohome):
             os.symlink(gohome, os.path.join(tdir, os.path.basename(gohome)))
         yield
-
 
 
 def main() -> None:
