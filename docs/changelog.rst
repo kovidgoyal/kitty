@@ -35,12 +35,11 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.26.2 [2022-08-30]
+0.26.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - hyperlinked_grep kitten: Allow control which parts of rg output are hyperlinked (:pull:`5428`)
 
-- ssh kitten: Fix executable permission missing from kitty bootstrap script (:iss:`5438`)
 0.26.1 [2022-08-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
