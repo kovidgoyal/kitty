@@ -169,7 +169,7 @@ def set_default_env(val: Optional[Dict[str, str]] = None) -> None:
 
 
 def set_LANG_in_default_env(val: str) -> None:
-    default_env()['LANG'] = val
+    default_env().setdefault('LANG', val)
 
 
 def openpty() -> Tuple[int, int]:
