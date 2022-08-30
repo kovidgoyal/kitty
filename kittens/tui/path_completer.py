@@ -3,6 +3,7 @@
 
 
 import os
+import sys
 from typing import Any, Callable, Dict, Generator, Optional, Sequence, Tuple
 
 from kitty.fast_data_types import wcswidth
@@ -145,6 +146,13 @@ class PathCompleter:
         with self:
             return input(self.prompt)
         return ''
+
+
+def get_path(prompt: str = '> ') -> str:
+    rd = getattr(sys, 'kitty_run_data')
+    if 'prewarmed' in rd and 'launched_by_launch_services' in rd:
+        return input(prompt)
+    return PathCompleter(prompt).input()
 
 
 def develop() -> None:

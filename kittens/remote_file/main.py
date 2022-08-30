@@ -273,9 +273,9 @@ def save_as(conn_data: SSHConnectionData, remote_path: str, cli_opts: RemoteFile
     )
     print('Relative paths will be resolved from:', styled(os.getcwd(), fg_intense=True, bold=True))
     print()
-    from ..tui.path_completer import PathCompleter
+    from ..tui.path_completer import get_path
     try:
-        dest = PathCompleter().input()
+        dest = get_path()
     except (KeyboardInterrupt, EOFError):
         return
     if dest:
