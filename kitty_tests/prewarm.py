@@ -28,13 +28,15 @@ class Prewarm(BaseTest):
 
         cwd = tempfile.gettempdir()
         env = {'TEST_ENV_PASS': 'xyz'}
-        cols = 117
+        cols = 317
         stdin_data = 'from_stdin'
         pty = self.create_pty(cols=cols)
         ttyname = os.ttyname(pty.slave_fd)
         opts = get_options()
         opts.config_overrides = 'font_family prewarm',
+        os.environ['SHOULD_NOT_BE_PRESENT'] = '1'
         p = fork_prewarm_process(opts, use_exec=True)
+        del os.environ['SHOULD_NOT_BE_PRESENT']
         if p is None:
             return
         p.take_from_worker_fd(create_file=True)
@@ -44,7 +46,7 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
         'ttyname': os.ttyname(sys.stdout.fileno()),
         'cols': read_screen_size().cols,
         'cwd': os.getcwd(),
-        'env': os.environ.get('TEST_ENV_PASS'),
+        'env': os.environ.copy(),
         'pid': os.getpid(),
         'font_family': get_options().font_family,
         'stdin': sys.stdin.read(),
@@ -59,7 +61,8 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
         self.assertTrue(data['cterm'])
         self.ae(data['ttyname'], ttyname)
         self.ae(os.path.realpath(data['cwd']), os.path.realpath(cwd))
-        self.ae(data['env'], env['TEST_ENV_PASS'])
+        self.ae(data['env']['TEST_ENV_PASS'], env['TEST_ENV_PASS'])
+        self.assertNotIn('SHOULD_NOT_BE_PRESENT', data['env'])
         self.ae(data['font_family'], 'prewarm')
         self.ae(int(p.from_worker.readline()), data['pid'])
 

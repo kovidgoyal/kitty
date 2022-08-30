@@ -181,8 +181,26 @@ spawn(PyObject *self UNUSED, PyObject *args) {
     return PyLong_FromLong(pid);
 }
 
+#ifdef __APPLE__
+#include <crt_externs.h>
+#else
+extern char **environ;
+#endif
+
+static PyObject*
+clearenv_py(PyObject *self UNUSED, PyObject *args UNUSED) {
+#ifdef __APPLE__
+    char **e = *_NSGetEnviron();
+    if (e) *e = NULL;
+#else
+    if (environ) *environ = NULL;
+#endif
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(spawn, METH_VARARGS),
+    {"clearenv", clearenv_py, METH_NOARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

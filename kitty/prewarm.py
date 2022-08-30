@@ -24,9 +24,9 @@ from typing import (
 from kitty.constants import kitty_exe, running_in_kitty
 from kitty.entry_points import main as main_entry_point
 from kitty.fast_data_types import (
-    CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options, install_signal_handlers,
-    read_signals, remove_signal_handlers, safe_pipe, set_options,
-    set_use_os_log
+    CLD_EXITED, CLD_KILLED, CLD_STOPPED, clearenv, get_options,
+    install_signal_handlers, read_signals, remove_signal_handlers, safe_pipe,
+    set_options, set_use_os_log
 )
 from kitty.options.types import Options
 from kitty.shm import SharedMemory
@@ -293,6 +293,13 @@ def child_main(cmd: Dict[str, Any], ready_fd: int = -1, prewarm_type: str = 'dir
     env = cmd.get('env')
     if env is not None:
         os.environ.clear()
+        # os.environ.clear() does not delete all existing env vars from the
+        # libc environ pointer in some circumstances, I havent figured out
+        # which exactly. Presumably there is something that alters the
+        # libc environ pointer?? The environ pointer is used by os.exec and
+        # therefore by subprocess and friends, so we need to ensure it is
+        # cleared.
+        clearenv()
         os.environ.update(env)
     argv = cmd.get('argv')
     if argv:
