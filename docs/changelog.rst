@@ -42,6 +42,8 @@ Detailed list of changes
 
 - Fix regression in 0.26.0 that caused launching kitty without working STDIO handles to result in high CPU usage and prewarming failing (:iss:`5444`)
 
+- macOS: Fix regression in 0.26.0 that caused asking the user for a line of input such as for :ac:`set_tab_title` to not work (:iss:`5447`)
+
 0.26.1 [2022-08-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

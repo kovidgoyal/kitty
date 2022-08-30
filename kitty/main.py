@@ -379,6 +379,7 @@ def _main() -> None:
     if is_macos and os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1':
         os.chdir(os.path.expanduser('~'))
         args = macos_cmdline(args)
+        getattr(sys, 'kitty_run_data')['launched_by_launch_services'] = True
     try:
         cwd_ok = os.path.isdir(os.getcwd())
     except Exception:

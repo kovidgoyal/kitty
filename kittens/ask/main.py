@@ -158,14 +158,17 @@ def extra_for(width: int, screen_width: int) -> int:
 
 class Password(Handler):
 
-    def __init__(self, cli_opts: AskCLIOptions, prompt: str) -> None:
+    def __init__(self, cli_opts: AskCLIOptions, prompt: str, is_password: bool = True, initial_text: str = '') -> None:
         self.cli_opts = cli_opts
         self.prompt = prompt
+        self.initial_text = initial_text
         from kittens.tui.line_edit import LineEdit
-        self.line_edit = LineEdit(is_password=True)
+        self.line_edit = LineEdit(is_password=is_password)
 
     def initialize(self) -> None:
         self.cmd.set_cursor_shape('beam')
+        if self.initial_text:
+            self.line_edit.on_text(self.initial_text, True)
         self.draw_screen()
 
     @Handler.atomic_update
@@ -205,7 +208,7 @@ class Password(Handler):
         return ''
 
 
-class Choose(Handler):
+class Choose(Handler):  # {{{
     mouse_tracking = MouseTracking.buttons_only
 
     def __init__(self, cli_opts: AskCLIOptions) -> None:
@@ -441,6 +444,7 @@ class Choose(Handler):
     def on_interrupt(self) -> None:
         self.quit_loop(1)
     on_eot = on_interrupt
+# }}}
 
 
 def main(args: List[str]) -> Response:
@@ -469,6 +473,15 @@ def main(args: List[str]) -> Response:
     if cli_opts.type == 'password':
         loop = Loop()
         phandler = Password(cli_opts, prompt)
+        loop.loop(phandler)
+        return {'items': items, 'response': phandler.response}
+
+    rd = getattr(sys, 'kitty_run_data')
+    if 'prewarmed' in rd and 'launched_by_launch_services' in rd:
+        # bloody libedit doesnt work in the prewarmed process run from launch
+        # services for reasons I really dont care enough to investigate
+        loop = Loop()
+        phandler = Password(cli_opts, prompt, is_password=False, initial_text=cli_opts.default or '')
         loop.loop(phandler)
         return {'items': items, 'response': phandler.response}
 
