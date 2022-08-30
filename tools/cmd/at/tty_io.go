@@ -44,7 +44,7 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 	}
 
 	lp.OnInitialize = func() (string, error) {
-		chunk, err := io_data.next_chunk(false)
+		chunk, err := io_data.next_chunk()
 		if err != nil {
 			return "", err
 		}
@@ -62,7 +62,7 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 			}
 			return nil
 		}
-		chunk, err := io_data.next_chunk(false)
+		chunk, err := io_data.next_chunk()
 		if err != nil {
 			return err
 		}

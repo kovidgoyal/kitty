@@ -54,7 +54,7 @@ func read_response_from_conn(conn *net.Conn, timeout time.Duration) (serialized_
 func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response []byte, err error) {
 	for {
 		var chunk []byte
-		chunk, err = io_data.next_chunk(false)
+		chunk, err = io_data.next_chunk()
 		if err != nil {
 			return
 		}

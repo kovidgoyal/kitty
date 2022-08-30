@@ -97,6 +97,7 @@ func (self *wrapped_serializer) next(io_data *rc_io_data) ([]byte, error) {
 		} else {
 			self.all_payloads_done = true
 		}
+		self.state++
 		return self.serializer(io_data.rc)
 	case 2:
 		if self.all_payloads_done {
@@ -168,33 +169,15 @@ type rc_io_data struct {
 	string_response_is_err     bool
 	timeout                    time.Duration
 	multiple_payload_generator func(io_data *rc_io_data) (bool, error)
-
-	pending_chunks [][]byte
 }
 
-func (self *rc_io_data) next_chunk(limit_size bool) (chunk []byte, err error) {
-	if len(self.pending_chunks) > 0 {
-		chunk = self.pending_chunks[0]
-		copy(self.pending_chunks, self.pending_chunks[1:])
-		self.pending_chunks = self.pending_chunks[:len(self.pending_chunks)-1]
-		return
-	}
+func (self *rc_io_data) next_chunk() (chunk []byte, err error) {
 	block, err := self.serializer.next(self)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return
 	}
 	err = nil
-	const limit = 2048
-	if !limit_size || len(block) < limit {
-		chunk = block
-		return
-	}
-	chunk = block[:limit]
-	block = block[limit:]
-	for len(block) > 0 {
-		self.pending_chunks = append(self.pending_chunks, block[:limit])
-		block = block[limit:]
-	}
+	chunk = block
 	return
 }
 
