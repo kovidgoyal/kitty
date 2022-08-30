@@ -49,7 +49,7 @@ def replace(template: str, **kw: str) -> str:
 
 json_field_types: Dict[str, str] = {
     'bool': 'bool', 'str': 'string', 'list.str': '[]string', 'dict.str': 'map[string]string', 'float': 'float64', 'int': 'int',
-    'scroll_amount': '[2]interface{}', 'spacing': 'interface{}', 'colors': 'interface{}',
+    'scroll_amount': 'interface{}', 'spacing': 'interface{}', 'colors': 'interface{}',
 }
 
 
@@ -124,10 +124,7 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
         jd.append(f.go_declaration())
     jc: List[str] = []
     handled_fields: Set[str] = set()
-    try:
-        jc.extend(cmd.args.as_go_code(name, field_types, handled_fields))
-    except TypeError:
-        print(f'Cant parse args for cmd: {name}', file=sys.stderr)
+    jc.extend(cmd.args.as_go_code(name, field_types, handled_fields))
 
     for field in json_fields:
         if field.field in option_map:
@@ -137,7 +134,6 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
             pass
         else:
             print(f'Cant map field: {field.field} for cmd: {name}', file=sys.stderr)
-    print('TODO: test set_window_logo, set_window_background, set_font_size, send_text, env, scroll_window', file=sys.stderr)
 
     argspec = cmd.args.spec
     if argspec:
@@ -232,6 +228,7 @@ def update_at_commands() -> None:
             os.remove(dest)
         with open(dest, 'w') as f:
             f.write(code)
+    print('TODO: test set_window_logo, set_window_background, set_font_size, send_text, env, scroll_window', file=sys.stderr)
 
 
 def main() -> None:

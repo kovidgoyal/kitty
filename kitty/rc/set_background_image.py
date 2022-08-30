@@ -63,7 +63,7 @@ default=false
 Don't wait for a response from kitty. This means that even if setting the background image
 failed, the command will exit with a success code.
 ''' + '\n\n' + MATCH_WINDOW_OPTION
-    args = RemoteCommand.Args(spec='PATH_TO_PNG_IMAGE', count=1, special_parse='!read_window_logo(args[0])', completion={
+    args = RemoteCommand.Args(spec='PATH_TO_PNG_IMAGE', count=1, json_field='data', special_parse='!read_window_logo(args[0])', completion={
         'files': ('PNG Images', ('*.png',))})
     images_in_flight: Dict[str, IO[bytes]] = {}
     is_asynchronous = True
