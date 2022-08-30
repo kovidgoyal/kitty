@@ -261,6 +261,7 @@ class RemoteCommand:
     options_class: Type[RCOptions] = RCOptions
     protocol_spec: str = ''
     argspec = args_count = args_completion = ArgsHandling()
+    field_to_option_map: Optional[Dict[str, str]] = None
 
     def __init__(self) -> None:
         self.desc = self.desc or self.short_desc

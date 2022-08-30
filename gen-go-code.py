@@ -126,14 +126,27 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
     handled_fields: Set[str] = set()
     jc.extend(cmd.args.as_go_code(name, field_types, handled_fields))
 
+    unhandled = {}
+    used_options = set()
     for field in json_fields:
-        if field.field in option_map:
-            o = option_map[field.field]
+        oq = (cmd.field_to_option_map or {}).get(field.field, field.field)
+        if oq in option_map:
+            o = option_map[oq]
+            used_options.add(oq)
             jc.append(f'payload.{field.struct_field_name} = options_{name}.{o.go_var_name}')
         elif field.field in handled_fields:
             pass
         else:
-            print(f'Cant map field: {field.field} for cmd: {name}', file=sys.stderr)
+            unhandled[field.field] = field
+    for x in tuple(unhandled):
+        if x == 'match_window' and 'match' in option_map and 'match' not in used_options:
+            used_options.add('match')
+            o = option_map['match']
+            field = unhandled[x]
+            jc.append(f'payload.{field.struct_field_name} = options_{name}.{o.go_var_name}')
+            del unhandled[x]
+    if unhandled:
+        raise SystemExit(f'Cant map fields: {", ".join(unhandled)} for cmd: {name}')
 
     argspec = cmd.args.spec
     if argspec:
@@ -228,7 +241,7 @@ def update_at_commands() -> None:
             os.remove(dest)
         with open(dest, 'w') as f:
             f.write(code)
-    print('TODO: test set_window_logo, set_window_background, set_font_size, send_text, env, scroll_window', file=sys.stderr)
+    print('\x1b[31mTODO\x1b[m: test set_window_logo, set_window_background, set_font_size, send_text, env, scroll_window', file=sys.stderr)
 
 
 def main() -> None:

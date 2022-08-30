@@ -69,6 +69,8 @@ type=bool-set
 Get text from the window this command is run in, rather than the active window.
 '''
 
+    field_to_option_map = {'wrap_markers': 'add_wrap_markers', 'cursor': 'add_cursor'}
+
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {
             'match': opts.match,
