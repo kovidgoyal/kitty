@@ -40,6 +40,8 @@ Detailed list of changes
 
 - hyperlinked_grep kitten: Allow control which parts of rg output are hyperlinked (:pull:`5428`)
 
+- Fix regression in 0.26.0 that caused launching kitty without working STDIO handles to result in high CPU usage and prewarming failing (:iss:`5444`)
+
 0.26.1 [2022-08-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

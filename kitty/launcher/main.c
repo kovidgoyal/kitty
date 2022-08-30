@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <wchar.h>
 #include <Python.h>
+#include <fcntl.h>
 
 #ifndef KITTY_LIB_PATH
 #define KITTY_LIB_PATH "../.."
@@ -268,9 +269,55 @@ read_exe_path(char *exe, size_t buf_sz) {
 }
 #endif // }}}
 
+static bool
+is_valid_fd(int fd)
+{
+    // This is copied from the python source code as we need the exact same semantics
+    // to prevent python from giving us None for sys.stdout and friends.
+#if defined(F_GETFD) && ( \
+        defined(__linux__) || \
+        defined(__APPLE__) || \
+        defined(__wasm__))
+    return fcntl(fd, F_GETFD) >= 0;
+#elif defined(__linux__)
+    int fd2 = dup(fd);
+    if (fd2 >= 0) {
+        close(fd2);
+    }
+    return (fd2 >= 0);
+#else
+    struct stat st;
+    return (fstat(fd, &st) == 0);
+#endif
+}
+
+static bool
+reopen_to_null(const char *mode, FILE *stream) {
+    errno = 0;
+    while (true) {
+        if (freopen("/dev/null", mode, stream) != NULL) return true;
+        if (errno == EINTR) continue;
+        perror("Failed to re-open STDIO handle to /dev/null");
+        return false;
+    }
+}
+
+static bool
+ensure_working_stdio(void) {
+#define C(which, mode) { \
+    int fd = fileno(which); \
+    if (fd < 0) { if (!reopen_to_null(mode, which)) return false; } \
+    else if (!is_valid_fd(fd)) { \
+        close(fd); if (!reopen_to_null(mode, which)) return false; \
+    }}
+    C(stdin, "r") C(stdout, "w") C(stderr, "w")
+    return true;
+#undef C
+}
 
 int main(int argc, char *argv[], char* envp[]) {
     if (argc < 1 || !argv) { fprintf(stderr, "Invalid argc/argv\n"); return 1; }
+    if (!ensure_working_stdio()) return 1;
     char exe[PATH_MAX+1] = {0};
     char exe_dir_buf[PATH_MAX+1] = {0};
     FREE_AFTER_FUNCTION const char *lc_ctype = NULL;

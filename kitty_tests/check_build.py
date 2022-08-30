@@ -107,6 +107,22 @@ class TestBuild(BaseTest):
         run_tests(partial(docs_url, local_docs_root=None), w, '/')
         self.ae(docs_url('#ref=issues-123'), 'https://github.com/kovidgoyal/kitty/issues/123')
 
+    def test_launcher_ensures_stdio(self):
+        from kitty.constants import kitty_exe
+        import subprocess
+        exe = kitty_exe()
+        cp = subprocess.run([exe, '+runpy', '''\
+import os, sys
+if sys.stdin:
+    os.close(sys.stdin.fileno())
+if sys.stdout:
+    os.close(sys.stdout.fileno())
+if sys.stderr:
+    os.close(sys.stderr.fileno())
+os.execlp('kitty', 'kitty', '+runpy', 'import sys; raise SystemExit(1 if sys.stdout is None or sys.stdin is None or sys.stderr is None else 0)')
+'''])
+        self.assertEqual(cp.returncode, 0)
+
 
 def main() -> None:
     tests = unittest.defaultTestLoader.loadTestsFromTestCase(TestBuild)
