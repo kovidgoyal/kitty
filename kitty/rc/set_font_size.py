@@ -28,8 +28,7 @@ class SetFontSize(RemoteCommand):
         ' with a :code:`+` or :code:`-` increments the font size by the specified'
         ' amount.'
     )
-    argspec = 'FONT_SIZE'
-    args_count = 1
+    args = RemoteCommand.Args(spec='FONT_SIZE', count=1, special_parse='+increment_op:parse_set_font_size(args[0], io_data)', json_field='size')
     options_spec = '''\
 --all -a
 type=bool-set

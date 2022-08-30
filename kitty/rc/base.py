@@ -172,6 +172,7 @@ class ArgsHandling:
     minimum_count: int = -1
     first_rest: Optional[Tuple[str, str]] = None
     special_parse: str = ''
+    args_choices: Optional[Callable[[], Iterable[str]]] = None
 
     @property
     def args_count(self) -> Optional[int]:
@@ -193,6 +194,11 @@ class ArgsHandling:
             yield '}'
         if self.minimum_count > -1:
             yield f'if len(args) < {self.minimum_count} {{ return fmt.Errorf("%s", Must specify at least {self.minimum_count} arguments to {cmd_name}) }}'
+        if self.args_choices:
+            achoices = tuple(self.args_choices())
+            yield 'achoices := map[string]bool{' + ' '.join(f'"{x}":true,' for x in achoices) + '}'
+            yield 'for _, a := range args {'
+            yield 'if !achoices[a] { return fmt.Errorf("Not a valid choice: %s. Allowed values are: %s", a, "' + ', '.join(achoices) + '") }'
         if self.json_field:
             jf = self.json_field
             dest = f'payload.{jf.capitalize()}'
@@ -207,6 +213,10 @@ class ArgsHandling:
             if self.special_parse:
                 if self.special_parse.startswith('!'):
                     yield f'io_data.multiple_payload_generator, err = {self.special_parse[1:]}'
+                elif self.special_parse.startswith('+'):
+                    fields, sp = self.special_parse[1:].split(':', 1)
+                    handled_fields.update(set(fields.split(',')))
+                    yield f'err = {sp}'
                 else:
                     yield f'{dest}, err = {self.special_parse}'
                 yield 'if err != nil { return err }'
