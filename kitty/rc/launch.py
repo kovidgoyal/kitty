@@ -47,6 +47,11 @@ class Launch(RemoteCommand):
     logo_position/str: Window logo position as string or empty string to use default
     logo_alpha/float: Window logo alpha or -1 to use default
     self/bool: Boolean, if True use tab the command was run in
+    os_window_title/str: Title for OS Window
+    os_window_name/str: WM_NAME for OS Window
+    os_window_class/str: WM_CLASS for OS Window
+    color/list.str: list of color specifications such as foreground=red
+    watcher/list.str: list of paths to watcher files
     '''
 
     short_desc = 'Run an arbitrary process in a new window/tab'
