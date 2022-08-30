@@ -11,6 +11,7 @@
 #include "charsets.h"
 #include <structmember.h>
 #include "glfw-wrapper.h"
+#include "gl.h"
 #ifndef __APPLE__
 #include "freetype_render_ui_text.h"
 #endif
@@ -856,6 +857,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (is_first_window) {
         gl_init();
     }
+
+    // Will make the GPU automatically apply SRGB alpha on the resulting framebuffer
+    glEnable(GL_FRAMEBUFFER_SRGB);
+
     bool is_semi_transparent = glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER);
     // blank the window once so that there is no initial flash of color
     // changing, in case the background color is not black

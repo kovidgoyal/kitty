@@ -63,8 +63,6 @@ gl_init() {
         if (gl_major < OPENGL_REQUIRED_VERSION_MAJOR || (gl_major == OPENGL_REQUIRED_VERSION_MAJOR && gl_minor < OPENGL_REQUIRED_VERSION_MINOR)) {
             fatal("OpenGL version is %d.%d, version >= 3.3 required for kitty", gl_major, gl_minor);
         }
-        // Will make the GPU automatically apply SRGB alpha on the resulting framebuffer
-        glEnable(GL_FRAMEBUFFER_SRGB);
     }
 }
 
