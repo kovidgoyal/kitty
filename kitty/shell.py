@@ -2,7 +2,6 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-import readline
 import shlex
 import sys
 import traceback
@@ -39,6 +38,7 @@ def match_commands() -> Tuple[str, ...]:
 
 @run_once
 def init_readline() -> None:
+    import readline
     global is_libedit
     with suppress(OSError):
         readline.read_init_file()
@@ -90,6 +90,7 @@ class Completer:
         self.history_path = os.path.join(ddir, 'shell.history')
 
     def complete(self, text: str, state: int) -> Optional[str]:
+        import readline
         if state == 0:
             line = readline.get_line_buffer()
             cmdline = shlex.split(line)
@@ -102,6 +103,7 @@ class Completer:
         return None
 
     def __enter__(self) -> 'Completer':
+        import readline
         with suppress(Exception):
             readline.read_history_file(self.history_path)
         readline.set_completer(self.complete)
@@ -110,6 +112,7 @@ class Completer:
         return self
 
     def __exit__(self, *a: Any) -> None:
+        import readline
         readline.write_history_file(self.history_path)
 
 

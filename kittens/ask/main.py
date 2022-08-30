@@ -476,15 +476,6 @@ def main(args: List[str]) -> Response:
         loop.loop(phandler)
         return {'items': items, 'response': phandler.response}
 
-    rd = getattr(sys, 'kitty_run_data')
-    if 'prewarmed' in rd and 'launched_by_launch_services' in rd:
-        # bloody libedit doesnt work in the prewarmed process run from launch
-        # services for reasons I really dont care enough to investigate
-        loop = Loop()
-        phandler = Password(cli_opts, prompt, is_password=False, initial_text=cli_opts.default or '')
-        loop.loop(phandler)
-        return {'items': items, 'response': phandler.response}
-
     import readline as rl
     readline = rl
     from kitty.shell import init_readline
