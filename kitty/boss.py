@@ -2414,8 +2414,11 @@ class Boss:
     @ac('debug', 'Show the environment variables that the kitty process sees')
     def show_kitty_env_vars(self) -> None:
         w = self.active_window
+        env = os.environ.copy()
+        if is_macos and env.get('LC_CTYPE') == 'UTF-8' and not getattr(sys, 'kitty_run_data').get('lc_ctype_before_python'):
+            del env['LC_CTYPE']
         if w:
-            output = '\n'.join(f'{k}={v}' for k, v in os.environ.items())
+            output = '\n'.join(f'{k}={v}' for k, v in env.items())
             self.display_scrollback(w, output, title=_('Current kitty env vars'), report_cursor=False)
 
     @ac('debug', '''
