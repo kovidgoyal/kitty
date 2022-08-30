@@ -74,13 +74,15 @@ to :program:`rg`. How to do that varies based on the shell:
 To learn more about kitty's powerful framework for customizing URL click
 actions, see :doc:`here </open_actions>`.
 
-By default, this adds hyperlinks for several parts of ripgrep output: the
-per-file header, match context lines, and match lines. You can control which
-items are linked with a :command:`--kitten hyperlink` flag. For example,
+By default, this kitten adds hyperlinks for several parts of ripgrep output:
+the per-file header, match context lines, and match lines. You can control
+which items are linked with a :command:`--kitten hyperlink` flag. For example,
 :command:`--kitten hyperlink=matching_lines` will only add hyperlinks to the
-match lines. :command:`--kitten hyperlink=file_headers,context_lines` will
-link file headers and context lines but not match lines.
-:command:`--kitten hyperlink` may be specified multiple times.
+match lines. :command:`--kitten hyperlink=file_headers,context_lines` will link
+file headers and context lines but not match lines. :command:`--kitten
+hyperlink=none` will cause the command line to be passed to directly to
+:command:`rg` so no hyperlinking will be performed. :command:`--kitten
+hyperlink` may be specified multiple times.
 
 Hopefully, someday this functionality will make it into some `upstream grep
 <https://github.com/BurntSushi/ripgrep/issues/665>`__ program directly removing

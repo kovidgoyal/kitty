@@ -21,29 +21,48 @@ def write_hyperlink(write: Callable[[bytes], None], url: bytes, line: bytes, fra
 
 def main() -> None:
     i = 1
-    all_link_options = ['matching_lines', 'context_lines', 'file_headers']
+    all_link_options = {'matching_lines', 'context_lines', 'file_headers'}
     link_options = set()
+    delegate_to_rg = False
+
+    def parse_link_options(raw: str) -> None:
+        nonlocal delegate_to_rg
+        if not raw:
+            raise SystemExit('Must specify an argument for --kitten option')
+        p, _, s = raw.partition('=')
+        if p != 'hyperlink':
+            raise SystemExit(f'Unknown argument for --kitten: {raw}')
+        for option in s.split(','):
+            if option == 'all':
+                link_options.update(all_link_options)
+                delegate_to_rg = False
+            elif option == 'none':
+                delegate_to_rg = True
+                link_options.clear()
+            elif option not in all_link_options:
+                a = ', '.join(sorted(all_link_options))
+                raise SystemExit(f"hyperlink option must be one of all, none, {a}, not '{option}'")
+            else:
+                link_options.add(option)
+                delegate_to_rg = False
+
     while i < len(sys.argv):
         if sys.argv[i] == '--kitten':
-            if len(sys.argv) < i + 2 or not sys.argv[i + 1].startswith("hyperlink="):
-                raise SystemExit("--kitten argument must be followed by hyperlink=(all|matching_lines|context_lines|file_headers)")
-            for option in sys.argv[i + 1].split('=')[1].split(','):
-                if option == 'all':
-                    link_options.update(all_link_options)
-                elif option not in all_link_options:
-                    raise SystemExit(f"hyperlink option must be one of all, matching_lines, context_lines, or file_headers, not '{option}'")
-                else:
-                    link_options.add(option)
+            next_item = '' if i + 1 >= len(sys.argv) else sys.argv[i + 1]
+            parse_link_options(next_item)
             del sys.argv[i:i+2]
+        elif sys.argv[i].startswith('--kitten='):
+            parse_link_options(sys.argv[i][len('--kitten='):])
+            del sys.argv[i]
         else:
             i += 1
-    if len(link_options) == 0: # Default to linking everything if no options given
+    if not link_options:  # Default to linking everything if no options given
         link_options.update(all_link_options)
     link_file_headers = 'file_headers' in link_options
     link_context_lines = 'context_lines' in link_options
     link_matching_lines = 'matching_lines' in link_options
 
-    if not sys.stdout.isatty() and '--pretty' not in sys.argv and '-p' not in sys.argv:
+    if delegate_to_rg or (not sys.stdout.isatty() and '--pretty' not in sys.argv and '-p' not in sys.argv):
         os.execlp('rg', 'rg', *sys.argv[1:])
     cmdline = ['rg', '--pretty', '--with-filename'] + sys.argv[1:]
     try:
