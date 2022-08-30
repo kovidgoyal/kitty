@@ -70,6 +70,10 @@ func (self *RGBA) parse_rgb_strings(r string, g string, b string) bool {
 	return true
 }
 
+func (self *RGBA) AsRGB() uint32 {
+	return uint32(self.Blue) | (uint32(self.Green) << 8) | (uint32(self.Red) << 16)
+}
+
 type color_type struct {
 	is_numbered bool
 	val         RGBA

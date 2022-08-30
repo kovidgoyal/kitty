@@ -57,7 +57,7 @@ the keyword NONE to revert to using the default colors.
 type=bool-set
 Close the tab this command is run in, rather than the active tab.
 '''
-    argspec = 'COLORS'
+    args = RemoteCommand.Args(spec='COLORS', json_field='colors', minimum_count=1, special_parse='parse_tab_colors(args)')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         try:

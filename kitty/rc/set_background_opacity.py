@@ -37,8 +37,7 @@ By default, background opacity are only changed for the currently active window.
 cause background opacity to be changed in all windows.
 
 ''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')
-    argspec = 'OPACITY'
-    args_count = 1
+    args = RemoteCommand.Args(spec='OPACITY', count=1, json_field='opacity')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         opacity = max(0.1, min(float(args[0]), 1.0))

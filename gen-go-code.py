@@ -6,7 +6,7 @@ import json
 import os
 import sys
 from contextlib import contextmanager, suppress
-from typing import Dict, Iterator, List, Tuple, Union
+from typing import Dict, Iterator, List, Set, Tuple, Union
 
 import kitty.constants as kc
 from kittens.tui.operations import Mode
@@ -123,19 +123,21 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
         field_types[f.field] = f.field_type
         jd.append(f.go_declaration())
     jc: List[str] = []
+    handled_fields: Set[str] = set()
+    try:
+        jc.extend(cmd.args.as_go_code(name, field_types, handled_fields))
+    except TypeError:
+        print(f'Cant parse args for cmd: {name}', file=sys.stderr)
+
     for field in json_fields:
         if field.field in option_map:
             o = option_map[field.field]
             jc.append(f'payload.{field.struct_field_name} = options_{name}.{o.go_var_name}')
+        elif field.field in handled_fields:
+            pass
         else:
             print(f'Cant map field: {field.field} for cmd: {name}', file=sys.stderr)
-            continue
-    try:
-        jc.extend(cmd.args.as_go_code(name, field_types))
-    except TypeError:
-        print(f'Cant parse args for cmd: {name}', file=sys.stderr)
-
-    print('TODO: test set_window_logo, send_text, env, scroll_window', file=sys.stderr)
+    print('TODO: test set_window_logo, set_window_background, set_font_size, send_text, env, scroll_window', file=sys.stderr)
 
     argspec = cmd.args.spec
     if argspec:

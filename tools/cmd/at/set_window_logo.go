@@ -49,6 +49,6 @@ func read_window_logo(path string) (func(io_data *rc_io_data) (bool, error), err
 			return false, err
 		}
 		buf = buf[:n]
-		return n == 0, nil
+		return false, nil
 	}, nil
 }

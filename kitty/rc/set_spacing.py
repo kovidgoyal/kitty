@@ -95,7 +95,7 @@ type=bool-set
 Also change the configured paddings and margins (i.e. the settings kitty will use for new
 windows).
 ''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')
-    argspec = 'MARGIN_OR_PADDING ...'
+    args = RemoteCommand.Args(spec='MARGIN_OR_PADDING ...', minimum_count=1, json_field='settings', special_parse='parse_set_spacing(args)')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if not args:

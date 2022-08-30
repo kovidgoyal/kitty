@@ -41,8 +41,8 @@ type=bool-set
 Change the default enabled layout value so that the new value takes effect for all newly created tabs
 as well.
 '''
-    argspec = 'LAYOUTS'
-    args_completion = {'names': ('Layouts', layout_names)}
+    args = RemoteCommand.Args(
+        spec='LAYOUT ...', minimum_count=1, json_field='layouts', completion={'names': ('Layouts', layout_names)}, args_choices=layout_names)
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) < 1:
