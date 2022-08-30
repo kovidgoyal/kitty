@@ -111,7 +111,7 @@ class TestBuild(BaseTest):
         from kitty.constants import kitty_exe
         import subprocess
         exe = kitty_exe()
-        cp = subprocess.run([exe, '+runpy', '''\
+        cp = subprocess.run([exe, '+runpy', f'''\
 import os, sys
 if sys.stdin:
     os.close(sys.stdin.fileno())
@@ -119,7 +119,7 @@ if sys.stdout:
     os.close(sys.stdout.fileno())
 if sys.stderr:
     os.close(sys.stderr.fileno())
-os.execlp('kitty', 'kitty', '+runpy', 'import sys; raise SystemExit(1 if sys.stdout is None or sys.stdin is None or sys.stderr is None else 0)')
+os.execlp({exe!r}, 'kitty', '+runpy', 'import sys; raise SystemExit(1 if sys.stdout is None or sys.stdin is None or sys.stderr is None else 0)')
 '''])
         self.assertEqual(cp.returncode, 0)
 
