@@ -193,12 +193,13 @@ class ArgsHandling:
                 yield f'args = append(args, "{x}")'
             yield '}'
         if self.minimum_count > -1:
-            yield f'if len(args) < {self.minimum_count} {{ return fmt.Errorf("%s", Must specify at least {self.minimum_count} arguments to {cmd_name}) }}'
+            yield f'if len(args) < {self.minimum_count} {{ return fmt.Errorf("%s", "Must specify at least {self.minimum_count} arguments to {cmd_name}") }}'
         if self.args_choices:
             achoices = tuple(self.args_choices())
             yield 'achoices := map[string]bool{' + ' '.join(f'"{x}":true,' for x in achoices) + '}'
             yield 'for _, a := range args {'
             yield 'if !achoices[a] { return fmt.Errorf("Not a valid choice: %s. Allowed values are: %s", a, "' + ', '.join(achoices) + '") }'
+            yield '}'
         if self.json_field:
             jf = self.json_field
             dest = f'payload.{jf.capitalize()}'
@@ -240,6 +241,7 @@ class ArgsHandling:
                 return
             if jt == 'dict.str':
                 yield f'{dest} = parse_key_val_args(args)'
+                return
         raise TypeError(f'Unknown args handling for cmd: {cmd_name}')
 
 
