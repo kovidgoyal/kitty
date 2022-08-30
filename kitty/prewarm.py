@@ -567,8 +567,9 @@ def exec_main(stdin_read: int, stdout_write: int, death_notify_write: int) -> No
     os.set_inheritable(stdout_write, False)
     os.set_inheritable(death_notify_write, False)
     running_in_kitty(False)
-    if not sys.stdout.line_buffering:  # happens if the parent kitty instance has stdout not pointing to a terminal
-        sys.stdout.reconfigure(line_buffering=True)  # type: ignore
+    for x in (sys.stdout, sys.stdin, sys.stderr):
+        if not x.line_buffering:  # happens if the parent kitty instance has stdout not pointing to a terminal
+            x.reconfigure(line_buffering=True)  # type: ignore
     try:
         main(stdin_read, stdout_write, death_notify_write)
     finally:
