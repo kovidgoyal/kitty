@@ -9,8 +9,9 @@ import (
 
 func (self *Loop) dispatch_timers(now time.Time) error {
 	updated := false
-	remove := make(map[IdType]bool, 0)
-	for _, t := range self.timers {
+	self.timers_temp = self.timers_temp[:0]
+	self.timers_temp = append(self.timers_temp, self.timers...)
+	for i, t := range self.timers_temp {
 		if now.After(t.deadline) {
 			err := t.callback(t.id)
 			if err != nil {
@@ -20,18 +21,9 @@ func (self *Loop) dispatch_timers(now time.Time) error {
 				t.update_deadline(now)
 				updated = true
 			} else {
-				remove[t.id] = true
+				self.timers = append(self.timers[:i], self.timers[i+1:]...)
 			}
 		}
-	}
-	if len(remove) > 0 {
-		timers := make([]*timer, len(self.timers)-len(remove))
-		for _, t := range self.timers {
-			if !remove[t.id] {
-				timers = append(timers, t)
-			}
-		}
-		self.timers = timers
 	}
 	if updated {
 		self.sort_timers()
