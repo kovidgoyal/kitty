@@ -592,6 +592,26 @@ END_ALLOW_CASE_RANGE
 
 static PyObject* box_drawing_function = NULL, *prerender_function = NULL, *descriptor_for_idx = NULL;
 
+// TODO: Use floats?
+double
+contrast_sigmoidal(double x, double contrast, double midpoint) {
+    double g = 1.0 / (1.0 + exp(contrast * (midpoint - x / 255.0)));
+    double c1 = 1.0 / (1.0 + exp(contrast * midpoint));
+    double c2 = 1.0 / (1.0 + exp(contrast * (midpoint - 1.0)));
+    double d = 255.0 * (g - c1) / (c2 - c1);
+
+    return d < 0.0 ? 0 : (d > 255.0 ? 255.0 : d);
+}
+
+uint8_t
+adjust_alpha_mask_contrast(uint8_t l) {
+    // TODO: Configurable?
+    double contrast = 6.0;
+    double midpoint = 10.0;
+
+    return (uint8_t)contrast_sigmoidal((double)l, contrast, 255.0 * midpoint / 100.0);
+}
+
 void
 render_alpha_mask(const uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *dest_rect, size_t src_stride, size_t dest_stride) {
     for (size_t sr = src_rect->top, dr = dest_rect->top; sr < src_rect->bottom && dr < dest_rect->bottom; sr++, dr++) {
@@ -599,7 +619,13 @@ render_alpha_mask(const uint8_t *alpha_mask, pixel* dest, Region *src_rect, Regi
         const uint8_t *s = alpha_mask + src_stride * sr;
         for(size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
             uint8_t src_alpha = d[dc] & 0xff;
-            uint8_t alpha = s[sc];
+
+            // Blending the antialiased alpha-channel in linear-space is
+            // technically correct but makes many fonts look too thin, instead
+            // adjust it to increase contrast to make thin fonts appear thicker
+            // uint8_t alpha = gamma_adjust_text_alpha_int(s[sc]);
+            uint8_t alpha = adjust_alpha_mask_contrast(s[sc]);
+
             d[dc] = 0xffffff00 | MAX(alpha, src_alpha);
         }
     }
