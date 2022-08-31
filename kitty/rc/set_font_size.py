@@ -26,9 +26,10 @@ class SetFontSize(RemoteCommand):
         ' must have the same font size. A value of zero'
         ' resets the font size to default. Prefixing the value'
         ' with a :code:`+` or :code:`-` increments the font size by the specified'
-        ' amount.'
+        ' amount. Use -- before using - to have it not mistaken for a option. For example:'
+        ' kitty @ set-font-size -- -2'
     )
-    args = RemoteCommand.Args(spec='FONT_SIZE', count=1, special_parse='+increment_op:parse_set_font_size(args[0], io_data)', json_field='size')
+    args = RemoteCommand.Args(spec='FONT_SIZE', count=1, special_parse='+increment_op:parse_set_font_size(args[0], &payload)', json_field='size')
     options_spec = '''\
 --all -a
 type=bool-set
