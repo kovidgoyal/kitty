@@ -3,6 +3,8 @@
 package loop
 
 import (
+	"encoding/base64"
+	"fmt"
 	"kitty/tools/tty"
 	"time"
 
@@ -132,7 +134,17 @@ func (self *Loop) KillIfSignalled() {
 
 func (self *Loop) DebugPrintln(args ...interface{}) {
 	if self.controlling_term != nil {
-		self.controlling_term.DebugPrintln(args...)
+		const limit = 2048
+		msg := fmt.Sprintln(args...)
+		for i := 0; i < len(msg); i += limit {
+			end := i + limit
+			if end > len(msg) {
+				end = len(msg)
+			}
+			self.QueueWriteString("\x1bP@kitty-print|")
+			self.QueueWriteString(base64.StdEncoding.EncodeToString([]byte(msg[i:end])))
+			self.QueueWriteString("\x1b\\")
+		}
 	}
 }
 
@@ -146,7 +158,7 @@ func (self *Loop) WakeupMainThread() {
 
 func (self *Loop) QueueWriteString(data string) IdType {
 	self.write_msg_id_counter++
-	msg := write_msg{str: data, id: self.write_msg_id_counter}
+	msg := write_msg{str: data, bytes: nil, id: self.write_msg_id_counter}
 	self.add_write_to_pending_queue(&msg)
 	return msg.id
 }
