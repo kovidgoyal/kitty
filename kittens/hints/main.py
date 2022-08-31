@@ -16,7 +16,7 @@ from typing import (
 from kitty.cli import parse_args
 from kitty.cli_stub import HintsCLIOptions
 from kitty.constants import website_url
-from kitty.fast_data_types import get_options, set_clipboard_string
+from kitty.fast_data_types import get_options, set_clipboard_string, wcswidth
 from kitty.key_encoding import KeyEvent
 from kitty.typing import BossType, KittyCommonOpts
 from kitty.utils import (
@@ -411,8 +411,10 @@ def convert_text(text: str, cols: int) -> str:
             appended = False
             for line in full_line.split('\r'):
                 if line:
-                    escape_codes_len = sum([len(match) for match in kitty_ansi_sanitizer_pat().findall(line)])
-                    lines.append(line.ljust(cols + escape_codes_len, '\0'))
+                    line_sz = wcswidth(line)
+                    if line_sz < cols:
+                        line += '\0' * (cols - line_sz)
+                    lines.append(line)
                     lines.append('\r')
                     appended = True
             if appended:
