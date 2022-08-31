@@ -55,18 +55,42 @@ func read_response_from_conn(conn *net.Conn, timeout time.Duration) (serialized_
 }
 
 func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response []byte, err error) {
+	const (
+		BEFORE_FIRST_ESCAPE_CODE_SENT = iota
+		SENDING
+		WAITING_FOR_RESPONSE
+	)
+	state := BEFORE_FIRST_ESCAPE_CODE_SENT
+
+	wants_streaming := io_data.rc.Stream
 	for {
 		var chunk []byte
-		chunk, _, err = io_data.next_chunk()
+		var one_escape_code_done bool
+		chunk, one_escape_code_done, err = io_data.next_chunk()
 		if err != nil {
 			return
 		}
 		if len(chunk) == 0 {
+			state = WAITING_FOR_RESPONSE
 			break
 		}
 		err = write_all_to_conn(conn, chunk)
 		if err != nil {
 			return
+		}
+		if state == BEFORE_FIRST_ESCAPE_CODE_SENT && one_escape_code_done {
+			if wants_streaming {
+				var streaming_response []byte
+				streaming_response, err = read_response_from_conn(conn, io_data.timeout)
+				if err != nil {
+					return
+				}
+				if !is_stream_response(streaming_response) {
+					err = fmt.Errorf("Did not receive expected streaming response")
+					return
+				}
+			}
+			state = SENDING
 		}
 	}
 	if io_data.rc.NoResponse {
