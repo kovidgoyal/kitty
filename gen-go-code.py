@@ -94,7 +94,7 @@ def render_alias_map(alias_map: Dict[str, Tuple[str, ...]]) -> str:
 
 def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: str) -> str:
     template = '\n' + template[len('//go:build exclude'):]
-    NO_RESPONSE_BASE = 'true' if cmd.no_response else 'false'
+    NO_RESPONSE_BASE = 'false'
     af: List[str] = []
     a = af.append
     alias_map = {}
@@ -169,6 +169,7 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
         JSON_DECLARATION_CODE='\n'.join(jd),
         JSON_INIT_CODE='\n'.join(jc), ARGSPEC=argspec,
         STRING_RESPONSE_IS_ERROR='true' if cmd.string_return_is_error else 'false',
+        STREAM_WANTED='true' if cmd.reads_streaming_data else 'false',
     )
     return ans
 

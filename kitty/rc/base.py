@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
+import tempfile
 from contextlib import suppress
 from dataclasses import dataclass
 from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List,
-    NoReturn, Optional, Set, Tuple, Type, Union, cast
+    TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iterator,
+    List, NoReturn, Optional, Set, Tuple, Type, Union, cast
 )
 
 from kitty.cli import get_defaults_from_seq, parse_args, parse_option_spec
@@ -29,6 +30,16 @@ class NoResponse:
     pass
 
 
+class NamedTemporaryFile:
+    name: str = ''
+
+    def __enter__(self) -> None: ...
+    def __exit__(self, exc: Any, value: Any, tb: Any) -> None: ...
+    def close(self) -> None: ...
+    def write(self, data: bytes) -> None: ...
+    def flush(self) -> None: ...
+
+
 class RemoteControlError(Exception):
     pass
 
@@ -47,6 +58,11 @@ class OpacityError(ValueError):
 
 
 class UnknownLayout(ValueError):
+
+    hide_traceback = True
+
+
+class StreamError(ValueError):
 
     hide_traceback = True
 
@@ -245,6 +261,35 @@ class ArgsHandling:
         raise TypeError(f'Unknown args handling for cmd: {cmd_name}')
 
 
+class StreamInFlight:
+
+    def __init__(self) -> None:
+        self.stream_id = ''
+        self.tempfile: Optional[NamedTemporaryFile] = None
+
+    def handle_data(self, stream_id: str, data: bytes) -> Union[AsyncResponse, NamedTemporaryFile]:
+        from ..remote_control import close_active_stream
+        if stream_id != self.stream_id:
+            close_active_stream(self.stream_id)
+            if self.tempfile is not None:
+                self.tempfile.close()
+                self.tempfile = None
+            self.stream_id = stream_id
+        if self.tempfile is None:
+            t: NamedTemporaryFile = cast(NamedTemporaryFile, tempfile.NamedTemporaryFile(suffix='.png'))
+            self.tempfile = t
+        else:
+            t = self.tempfile
+        if data:
+            t.write(data)
+            return AsyncResponse()
+        close_active_stream(self.stream_id)
+        self.stream_id = ''
+        self.tempfile = None
+        t.flush()
+        return t
+
+
 class RemoteCommand:
     Args = ArgsHandling
 
@@ -253,7 +298,6 @@ class RemoteCommand:
     desc: str = ''
     args: ArgsHandling = ArgsHandling()
     options_spec: Optional[str] = None
-    no_response: bool = False
     response_timeout: float = 10.  # seconds
     string_return_is_error: bool = False
     defaults: Optional[Dict[str, Any]] = None
@@ -262,10 +306,12 @@ class RemoteCommand:
     protocol_spec: str = ''
     argspec = args_count = args_completion = ArgsHandling()
     field_to_option_map: Optional[Dict[str, str]] = None
+    reads_streaming_data: bool = False
 
     def __init__(self) -> None:
         self.desc = self.desc or self.short_desc
         self.name = self.__class__.__module__.split('.')[-1].replace('_', '-')
+        self.stream_in_flight = StreamInFlight()
 
     def fatal(self, msg: str) -> NoReturn:
         if running_in_kitty():
@@ -341,6 +387,12 @@ class RemoteCommand:
 
     def cancel_async_request(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> None:
         pass
+
+    def handle_streamed_data(self, data: bytes, payload_get: PayloadGetType) -> Union[NamedTemporaryFile, AsyncResponse]:
+        stream_id = payload_get('stream_id')
+        if not stream_id or not isinstance(stream_id, str):
+            raise StreamError('No stream_id in rc payload')
+        return self.stream_in_flight.handle_data(stream_id, data)
 
 
 def cli_params_for(command: RemoteCommand) -> Tuple[Callable[[], str], str, str, str]:

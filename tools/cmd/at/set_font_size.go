@@ -16,5 +16,6 @@ func parse_set_font_size(arg string, io_data *rc_io_data) error {
 		return err
 	}
 	payload.Size = val
+	io_data.rc.Payload = payload
 	return nil
 }

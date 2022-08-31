@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -40,6 +41,14 @@ type GlobalOptions struct {
 }
 
 var global_options GlobalOptions
+
+func set_payload_string_field(io_data *rc_io_data, field, data string) {
+	payload_interface := reflect.ValueOf(&io_data.rc.Payload).Elem()
+	struct_in_interface := reflect.New(payload_interface.Elem().Type()).Elem()
+	struct_in_interface.Set(payload_interface.Elem()) // copies the payload to struct_in_interface
+	struct_in_interface.FieldByName(field).SetString(data)
+	payload_interface.Set(struct_in_interface) // copies struct_in_interface back to payload
+}
 
 func get_pubkey(encoded_key string) (encryption_version string, pubkey []byte, err error) {
 	if encoded_key == "" {
@@ -171,7 +180,8 @@ type rc_io_data struct {
 	multiple_payload_generator func(io_data *rc_io_data) (bool, error)
 }
 
-func (self *rc_io_data) next_chunk() (chunk []byte, err error) {
+func (self *rc_io_data) next_chunk() (chunk []byte, one_escape_code_done bool, err error) {
+	one_escape_code_done = self.serializer.state == 2
 	block, err := self.serializer.next(self)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return

@@ -18,9 +18,7 @@ func parse_send_text(io_data *rc_io_data, args []string) error {
 	if len(args) > 0 {
 		text := strings.Join(args, " ")
 		text_gen := func(io_data *rc_io_data) (bool, error) {
-			payload := io_data.rc.Payload.(send_text_json_type)
-			payload.Data = "text:" + text[:2048]
-			io_data.rc.Payload = payload
+			set_payload_data(io_data, "text:"+text[:2048])
 			text = text[2048:]
 			return len(text) == 0, nil
 		}
@@ -38,9 +36,7 @@ func parse_send_text(io_data *rc_io_data, args []string) error {
 			if err != nil && !errors.Is(err, io.EOF) {
 				return false, err
 			}
-			payload := io_data.rc.Payload.(send_text_json_type)
-			payload.Data = "base64:" + base64.StdEncoding.EncodeToString(chunk[:n])
-			io_data.rc.Payload = payload
+			set_payload_data(io_data, "base64:"+base64.StdEncoding.EncodeToString(chunk[:n]))
 			return n == 0, nil
 		}
 		generators = append(generators, file_gen)
@@ -48,9 +44,7 @@ func parse_send_text(io_data *rc_io_data, args []string) error {
 
 	io_data.multiple_payload_generator = func(io_data *rc_io_data) (bool, error) {
 		if len(generators) == 0 {
-			payload := io_data.rc.Payload.(send_text_json_type)
-			payload.Data = "text:"
-			io_data.rc.Payload = payload
+			set_payload_data(io_data, "text:")
 			return true, nil
 		}
 		finished, err := generators[0](io_data)

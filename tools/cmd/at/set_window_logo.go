@@ -11,10 +11,18 @@ import (
 	"strings"
 )
 
+type struct_with_data interface {
+	SetData(data string)
+}
+
+func set_payload_data(io_data *rc_io_data, data string) {
+	set_payload_string_field(io_data, "Data", data)
+}
+
 func read_window_logo(path string) (func(io_data *rc_io_data) (bool, error), error) {
 	if strings.ToLower(path) == "none" {
 		return func(io_data *rc_io_data) (bool, error) {
-			io_data.rc.Payload = "-"
+			set_payload_data(io_data, "-")
 			return true, nil
 		}, nil
 	}
@@ -35,16 +43,20 @@ func read_window_logo(path string) (func(io_data *rc_io_data) (bool, error), err
 		f.Close()
 		return nil, fmt.Errorf("%s is not a PNG image", path)
 	}
+	is_first_call := true
 
 	return func(io_data *rc_io_data) (bool, error) {
-		payload := io_data.rc.Payload.(set_window_logo_json_type)
+		if is_first_call {
+			is_first_call = false
+		} else {
+			io_data.rc.Stream = false
+		}
 		if len(buf) == 0 {
-			payload.Data = ""
-			io_data.rc.Payload = payload
+			set_payload_data(io_data, "")
+			io_data.rc.Stream = false
 			return true, nil
 		}
-		payload.Data = base64.StdEncoding.EncodeToString(buf)
-		io_data.rc.Payload = payload
+		set_payload_data(io_data, base64.StdEncoding.EncodeToString(buf))
 		buf = buf[:cap(buf)]
 		n, err := f.Read(buf)
 		if err != nil && err != io.EOF {
