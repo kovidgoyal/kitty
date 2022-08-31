@@ -87,6 +87,14 @@ type wrapped_serializer struct {
 	all_payloads_done bool
 }
 
+func debug_to_log(args ...interface{}) {
+	f, err := os.OpenFile("/tmp/kdlog", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	if err == nil {
+		fmt.Fprintln(f, args...)
+		f.Close()
+	}
+}
+
 func (self *wrapped_serializer) next(io_data *rc_io_data) ([]byte, error) {
 	const prefix = "\x1bP@kitty-cmd"
 	const suffix = "\x1b\\"
@@ -197,6 +205,7 @@ func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_i
 		if errors.Is(err, os.ErrDeadlineExceeded) {
 			io_data.rc.Payload = nil
 			io_data.rc.CancelAsync = true
+			io_data.multiple_payload_generator = nil
 			io_data.rc.NoResponse = true
 			io_data.serializer.state = 0
 			do_io(io_data)
