@@ -69,7 +69,7 @@ using this option means that you will not be notified of failures.
                         window.screen.reverse_scroll(int(abs(amt)), True)
                     else:
                         unit = 'page' if unit == 'p' else 'line'
-                        if unit == 'page' and not amt.is_integer():
+                        if unit == 'page' and not isinstance(amt, int) and not amt.is_integer():
                             amt = round(window.screen.lines * amt)
                             unit = 'line'
                         direction = 'up' if amt < 0 else 'down'

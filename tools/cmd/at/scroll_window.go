@@ -19,21 +19,21 @@ func parse_scroll_amount(amt string) ([]interface{}, error) {
 		var mult float64 = 1
 		if strings.HasSuffix(amt, "-") && !unscroll {
 			mult = -1
-			q, err := strconv.ParseFloat(strings.TrimRight(amt, "+-plu"), 64)
-			if err != nil {
-				return ans, err
-			}
-			if !pages && q != float64(int(q)) {
-				return ans, fmt.Errorf("The number must be an integer")
-			}
-			ans[0] = q * mult
-			if pages {
-				ans[1] = "p"
-			} else if unscroll {
-				ans[1] = "u"
-			} else {
-				ans[1] = "l"
-			}
+		}
+		q, err := strconv.ParseFloat(strings.TrimRight(amt, "+-plu"), 64)
+		if err != nil {
+			return ans, err
+		}
+		if !pages && q != float64(int(q)) {
+			return ans, fmt.Errorf("The number must be an integer")
+		}
+		ans[0] = q * mult
+		if pages {
+			ans[1] = "p"
+		} else if unscroll {
+			ans[1] = "u"
+		} else {
+			ans[1] = "l"
 		}
 	}
 	return ans, nil
