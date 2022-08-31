@@ -4,15 +4,14 @@
 
 import imghdr
 import os
-import tempfile
 from base64 import standard_b64decode, standard_b64encode
-from typing import IO, TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Optional
 
 from kitty.types import AsyncResponse
 
 from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, CmdGenerator, PayloadGetType,
-    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_WINDOW_OPTION, ArgsType, Boss, CmdGenerator, NamedTemporaryFile,
+    PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -61,8 +60,7 @@ failed, the command will exit with a success code.
 '''
     args = RemoteCommand.Args(spec='PATH_TO_PNG_IMAGE', count=1, json_field='data', special_parse='!read_window_logo(args[0])', completion={
         'files': ('PNG Images', ('*.png',))})
-    images_in_flight: Dict[str, IO[bytes]] = {}
-    is_asynchronous = True
+    reads_streaming_data = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) != 1:
@@ -94,26 +92,22 @@ failed, the command will exit with a success code.
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         data = payload_get('data')
-        img_id = payload_get('async_id')
-        if data != '-':
-            if img_id not in self.images_in_flight:
-                self.images_in_flight[img_id] = tempfile.NamedTemporaryFile(suffix='.png')
-            if data:
-                self.images_in_flight[img_id].write(standard_b64decode(data))
-                return AsyncResponse()
-
-        if data == '-':
-            path = ''
-        else:
-            f = self.images_in_flight.pop(img_id)
-            path = f.name
-            f.flush()
-
         alpha = float(payload_get('alpha', '-1'))
         position = payload_get('position') or ''
-        for window in self.windows_for_match_payload(boss, window, payload_get):
-            if window:
-                window.set_logo(path, position, alpha)
+        if data == '-':
+            path = ''
+            tfile = NamedTemporaryFile()
+        else:
+            q = self.handle_streamed_data(standard_b64decode(data) if data else b'', payload_get)
+            if isinstance(q, AsyncResponse):
+                return q
+            path = q.name
+            tfile = q
+
+        with tfile:
+            for window in self.windows_for_match_payload(boss, window, payload_get):
+                if window:
+                    window.set_logo(path, position, alpha)
         return None
 
 

@@ -3,15 +3,14 @@
 
 import imghdr
 import os
-import tempfile
 from base64 import standard_b64decode, standard_b64encode
-from typing import IO, TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Optional
 
 from kitty.types import AsyncResponse
 
 from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, CmdGenerator, PayloadGetType,
-    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_WINDOW_OPTION, ArgsType, Boss, CmdGenerator, NamedTemporaryFile,
+    PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -65,8 +64,7 @@ failed, the command will exit with a success code.
 ''' + '\n\n' + MATCH_WINDOW_OPTION
     args = RemoteCommand.Args(spec='PATH_TO_PNG_IMAGE', count=1, json_field='data', special_parse='!read_window_logo(args[0])', completion={
         'files': ('PNG Images', ('*.png',))})
-    images_in_flight: Dict[str, IO[bytes]] = {}
-    is_asynchronous = True
+    reads_streaming_data = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) != 1:
@@ -98,34 +96,26 @@ failed, the command will exit with a success code.
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         data = payload_get('data')
-        img_id = payload_get('async_id')
-        if data != '-':
-            if img_id not in self.images_in_flight:
-                self.images_in_flight[img_id] = tempfile.NamedTemporaryFile(suffix='.png')
-            if data:
-                self.images_in_flight[img_id].write(standard_b64decode(data))
-                return AsyncResponse()
-
         windows = self.windows_for_payload(boss, window, payload_get)
         os_windows = tuple({w.os_window_id for w in windows if w})
         layout = payload_get('layout')
         if data == '-':
             path = None
+            tfile = NamedTemporaryFile()
         else:
-            f = self.images_in_flight.pop(img_id)
-            path = f.name
-            f.flush()
+            q = self.handle_streamed_data(standard_b64decode(data) if data else b'', payload_get)
+            if isinstance(q, AsyncResponse):
+                return q
+            path = q.name
+            tfile = q
 
         try:
-            boss.set_background_image(path, os_windows, payload_get('configured'), layout)
+            with tfile:
+                boss.set_background_image(path, os_windows, payload_get('configured'), layout)
         except ValueError as err:
             err.hide_traceback = True  # type: ignore
             raise
         return None
-
-    def cancel_async_request(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> None:
-        async_id = payload_get('async_id')
-        self.images_in_flight.pop(async_id, None)
 
 
 set_background_image = SetBackgroundImage()

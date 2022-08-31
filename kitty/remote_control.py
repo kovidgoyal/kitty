@@ -31,6 +31,7 @@ from .typing import BossType, WindowType
 from .utils import TTYIO, log_error, parse_address_spec, resolve_custom_file
 
 active_async_requests: Dict[str, float] = {}
+active_streams: Dict[str, str] = {}
 if TYPE_CHECKING:
     from .window import Window
 
@@ -136,6 +137,9 @@ user_password_allowed: Dict[str, bool] = {}
 
 
 def is_cmd_allowed(pcmd: Dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: Dict[str, Any]) -> Optional[bool]:
+    sid = pcmd.get('stream_id', '')
+    if sid and active_streams.get(sid, '') == pcmd['cmd']:
+        return True
     pw = pcmd.get('password', '')
     if not pw:
         auth_items = get_options().remote_control_password.get('')
@@ -157,6 +161,10 @@ def set_user_password_allowed(pwd: str, allowed: bool = True) -> None:
     user_password_allowed[pwd] = allowed
 
 
+def close_active_stream(stream_id: str) -> None:
+    active_streams.pop(stream_id, None)
+
+
 def handle_cmd(boss: BossType, window: Optional[WindowType], cmd: Dict[str, Any], peer_id: int) -> Union[Dict[str, Any], None, AsyncResponse]:
     v = cmd['version']
     no_response = cmd.get('no_response', False)
@@ -168,6 +176,16 @@ def handle_cmd(boss: BossType, window: Optional[WindowType], cmd: Dict[str, Any]
     payload = cmd.get('payload') or {}
     payload['peer_id'] = peer_id
     async_id = str(cmd.get('async', ''))
+    stream_id = str(cmd.get('stream_id', ''))
+    stream = bool(cmd.get('stream', False))
+    if (stream or stream_id) and not c.reads_streaming_data:
+        return {'ok': False, 'error': 'Streaming send of data is not supported for this command'}
+    if stream_id:
+        payload['stream_id'] = stream_id
+        active_streams[stream_id] = cmd['cmd']
+        if len(active_streams) > 32:
+            oldest = next(iter(active_streams))
+            del active_streams[oldest]
     if async_id:
         payload['async_id'] = async_id
         if 'cancel_async' in cmd:
@@ -187,11 +205,13 @@ def handle_cmd(boss: BossType, window: Optional[WindowType], cmd: Dict[str, Any]
     if isinstance(ans, NoResponse):
         return None
     if isinstance(ans, AsyncResponse):
+        if stream:
+            return {'ok': True, 'stream': True}
         return ans
     response: Dict[str, Any] = {'ok': True}
     if ans is not None:
         response['data'] = ans
-    if not c.no_response and not no_response:
+    if not no_response:
         return response
     return None
 
@@ -396,8 +416,7 @@ def create_basic_command(name: str, payload: Any = None, no_response: bool = Fal
 
 
 def send_response_to_client(data: Any = None, error: str = '', peer_id: int = 0, window_id: int = 0, async_id: str = '') -> None:
-    ts = active_async_requests.pop(async_id, None)
-    if ts is None:
+    if active_async_requests.pop(async_id, None) is None:
         return
     if error:
         response: Dict[str, Union[bool, int, str]] = {'ok': False, 'error': error}
@@ -481,7 +500,7 @@ def main(args: List[str]) -> None:
         payload = c.message_to_kitty(global_opts, opts, items)
     except ParsingOfArgsFailed as err:
         exit(str(err))
-    no_response = c.no_response
+    no_response = False
     if hasattr(opts, 'no_response'):
         no_response = opts.no_response
     response_timeout = c.response_timeout

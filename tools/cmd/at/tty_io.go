@@ -3,11 +3,26 @@
 package at
 
 import (
+	"encoding/json"
 	"os"
 	"time"
 
 	"kitty/tools/tui/loop"
 )
+
+type stream_response struct {
+	Ok     bool `json:"ok"`
+	Stream bool `json:"stream"`
+}
+
+func is_stream_response(serialized_response []byte) bool {
+	var response stream_response
+	if len(serialized_response) > 32 {
+		return false
+	}
+	err := json.Unmarshal(serialized_response, &response)
+	return err == nil && response.Stream
+}
 
 func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) {
 	serialized_response = make([]byte, 0)
@@ -17,11 +32,21 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 		return
 	}
 
+	const (
+		BEFORE_FIRST_ESCAPE_CODE_SENT = iota
+		WAITING_FOR_STREAMING_RESPONSE
+		SENDING
+		WAITING_FOR_RESPONSE
+	)
+	state := BEFORE_FIRST_ESCAPE_CODE_SENT
 	var last_received_data_at time.Time
-	var final_write_id loop.IdType
 	var check_for_timeout func(timer_id loop.IdType) error
+	wants_streaming := false
 
 	check_for_timeout = func(timer_id loop.IdType) error {
+		if state != WAITING_FOR_RESPONSE && state != WAITING_FOR_STREAMING_RESPONSE {
+			return nil
+		}
 		time_since_last_received_data := time.Now().Sub(last_received_data_at)
 		if time_since_last_received_data >= io_data.timeout {
 			return os.ErrDeadlineExceeded
@@ -31,7 +56,7 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 	}
 
 	transition_to_read := func() {
-		if io_data.rc.NoResponse {
+		if state == WAITING_FOR_RESPONSE && io_data.rc.NoResponse {
 			lp.Quit(0)
 		}
 		last_received_data_at = time.Now()
@@ -44,36 +69,48 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 	}
 
 	lp.OnInitialize = func() (string, error) {
-		chunk, err := io_data.next_chunk()
+		chunk, _, err := io_data.next_chunk()
+		wants_streaming = io_data.rc.Stream
 		if err != nil {
 			return "", err
 		}
-		write_id := lp.QueueWriteBytesDangerous(chunk)
+		lp.QueueWriteBytesDangerous(chunk)
 		if len(chunk) == 0 {
-			final_write_id = write_id
+			state = WAITING_FOR_RESPONSE
+			transition_to_read()
 		}
 		return "", nil
 	}
 
 	lp.OnWriteComplete = func(completed_write_id loop.IdType) error {
-		if final_write_id > 0 {
-			if completed_write_id == final_write_id {
-				transition_to_read()
-			}
+		if state == WAITING_FOR_STREAMING_RESPONSE || state == WAITING_FOR_RESPONSE {
 			return nil
 		}
-		chunk, err := io_data.next_chunk()
+		chunk, one_escape_code_done, err := io_data.next_chunk()
 		if err != nil {
 			return err
 		}
-		write_id := lp.QueueWriteBytesDangerous(chunk)
+		lp.QueueWriteBytesDangerous(chunk)
 		if len(chunk) == 0 {
-			final_write_id = write_id
+			state = WAITING_FOR_RESPONSE
+			transition_to_read()
+		}
+		if one_escape_code_done && state == BEFORE_FIRST_ESCAPE_CODE_SENT {
+			if wants_streaming {
+				state = WAITING_FOR_STREAMING_RESPONSE
+				transition_to_read()
+			} else {
+				state = SENDING
+			}
 		}
 		return nil
 	}
 
 	lp.OnRCResponse = func(raw []byte) error {
+		if state == WAITING_FOR_STREAMING_RESPONSE && is_stream_response(raw) {
+			state = SENDING
+			return lp.OnWriteComplete(0)
+		}
 		serialized_response = raw
 		lp.Quit(0)
 		return nil

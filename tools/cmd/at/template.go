@@ -43,6 +43,14 @@ func create_rc_CMD_NAME(args []string) (*utils.RemoteControlCmd, error) {
 		Cmd:        "CLI_NAME",
 		Version:    ProtocolVersion,
 		NoResponse: NO_RESPONSE_BASE,
+		Stream:     STREAM_WANTED,
+	}
+	if rc.Stream {
+		stream_id, err := utils.HumanRandomId(128)
+		if err != nil {
+			return nil, err
+		}
+		rc.StreamId = stream_id
 	}
 	if IS_ASYNC {
 		async_id, err := utils.HumanRandomId(128)
