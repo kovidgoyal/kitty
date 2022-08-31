@@ -252,13 +252,14 @@ func (self *Term) WriteString(b string) (int, error) {
 func (self *Term) DebugPrintln(a ...interface{}) {
 	msg := []byte(fmt.Sprintln(a...))
 	const limit = 2048
+	encoded := make([]byte, limit*2)
 	for i := 0; i < len(msg); i += limit {
 		end := i + limit
 		if end > len(msg) {
 			end = len(msg)
 		}
 		chunk := msg[i:end]
-		encoded := make([]byte, base64.StdEncoding.EncodedLen(len(chunk)))
+		encoded = encoded[:cap(encoded)]
 		base64.StdEncoding.Encode(encoded, chunk)
 		self.WriteString("\x1bP@kitty-print|")
 		self.Write(encoded)
@@ -277,3 +278,11 @@ func (self *Term) GetSize() (*unix.Winsize, error) {
 
 // go doesnt have a wrapper for ctermid()
 func Ctermid() string { return "/dev/tty" }
+
+func DebugPrintln(a ...interface{}) {
+	term, err := OpenControllingTerm()
+	if err == nil {
+		defer term.Close()
+		term.DebugPrintln(a...)
+	}
+}
