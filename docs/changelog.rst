@@ -46,6 +46,8 @@ Detailed list of changes
 
 - hints kitten: hyperlink matching: Fix hints occasionally matching text on subsequent line as part of hyperlink (:pull:`5450`)
 
+- Fix a regression in 0.26.0 that broke mapping of native keys who key codes did not fit in 21 bits (:iss:`5452`)
+
 0.26.1 [2022-08-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

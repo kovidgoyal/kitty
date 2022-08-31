@@ -284,9 +284,9 @@ static PyMethodDef module_methods[] = {
 };
 
 // SingleKey {{{
-typedef uint32_t keybitfield;
-#define KEY_BITS 21
-#define MOD_BITS 10
+typedef uint64_t keybitfield;
+#define KEY_BITS 51
+#define MOD_BITS 12
 #if 1 << (MOD_BITS-1) < GLFW_MOD_KITTY
 #error "Not enough mod bits"
 #endif
@@ -309,9 +309,9 @@ typedef struct {
 } SingleKey;
 
 static inline void
-SingleKey_set_vals(SingleKey *self, long key, unsigned short mods, int is_native) {
-    if (key >= 0 && (unsigned long)key <= BIT_MASK(keybitfield, KEY_BITS)) {
-        keybitfield k = (keybitfield)(unsigned long)key;
+SingleKey_set_vals(SingleKey *self, long long key, unsigned short mods, int is_native) {
+    if (key >= 0 && (unsigned long long)key <= BIT_MASK(keybitfield, KEY_BITS)) {
+        keybitfield k = (keybitfield)(unsigned long long)key;
         self->key.key = k & BIT_MASK(keybitfield, KEY_BITS);
     }
     if (!(mods & 1 << (MOD_BITS + 1))) self->key.mods = mods & BIT_MASK(u_int32_t, MOD_BITS);
@@ -320,8 +320,8 @@ SingleKey_set_vals(SingleKey *self, long key, unsigned short mods, int is_native
 
 static PyObject *
 SingleKey_new(PyTypeObject *type, PyObject *args, PyObject *kw) {
-    long key = -1; unsigned short mods = 1 << (MOD_BITS + 1); int is_native = -1;
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "|Hpl", SingleKey_kwds, &mods, &is_native, &key)) return NULL;
+    long long key = -1; unsigned short mods = 1 << (MOD_BITS + 1); int is_native = -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|HpL", SingleKey_kwds, &mods, &is_native, &key)) return NULL;
     SingleKey *self = (SingleKey *)type->tp_alloc(type, 0);
     if (self) SingleKey_set_vals(self, key, mods, is_native);
     return (PyObject*)self;
@@ -341,8 +341,8 @@ SingleKey_repr(PyObject *s) {
     unsigned int mods = self->key.mods;
     if (mods) pos += PyOS_snprintf(buf + pos, sizeof(buf) - pos, "mods=%u, ", mods);
     if (self->key.is_native) pos += PyOS_snprintf(buf + pos, sizeof(buf) - pos, "is_native=True, ");
-    unsigned long key = self->key.key;
-    if (key) pos += PyOS_snprintf(buf + pos, sizeof(buf) - pos, "key=%lu, ", key);
+    unsigned long long key = self->key.key;
+    if (key) pos += PyOS_snprintf(buf + pos, sizeof(buf) - pos, "key=%llu, ", key);
     if (buf[pos-1] == ' ') pos -= 2;
     pos += PyOS_snprintf(buf + pos, sizeof(buf) - pos, ")");
     return PyUnicode_FromString(buf);
@@ -350,8 +350,8 @@ SingleKey_repr(PyObject *s) {
 
 static PyObject*
 SingleKey_get_key(SingleKey *self, void UNUSED *closure) {
-    const unsigned long val = self->key.key;
-    return PyLong_FromUnsignedLong(val);
+    const unsigned long long val = self->key.key;
+    return PyLong_FromUnsignedLongLong(val);
 }
 
 static PyObject*
@@ -436,8 +436,8 @@ SingleKey_resolve_kitty_mod(SingleKey *self, PyObject *km) {
 
 static PyObject*
 SingleKey_replace(SingleKey *self, PyObject *args, PyObject *kw) {
-    long key = -2; unsigned short mods = 1 << (MOD_BITS + 1); int is_native = -1;
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "|Hpl", SingleKey_kwds, &mods, &is_native, &key)) return NULL;
+    long long key = -2; unsigned short mods = 1 << (MOD_BITS + 1); int is_native = -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|HpL", SingleKey_kwds, &mods, &is_native, &key)) return NULL;
     SingleKey *ans = (SingleKey*)SingleKey_Type.tp_alloc(&SingleKey_Type, 0);
     if (ans) {
         if (key == -1) key = 0;
