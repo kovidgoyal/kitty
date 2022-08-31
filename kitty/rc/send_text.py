@@ -101,8 +101,6 @@ Path to a file whose contents you wish to send. Note that in this case the file 
 are sent as is, not interpreted for escapes.
 '''
     args = RemoteCommand.Args(spec='[TEXT TO SEND]', json_field='data', special_parse='+session_id:parse_send_text(io_data, args)')
-    is_asynchronous = True
-    reads_streaming_data = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         limit = 1024

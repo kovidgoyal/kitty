@@ -10,16 +10,18 @@ import (
 	"strings"
 )
 
-type generator_function func(io_data *rc_io_data) (bool, error)
-
 func parse_send_text(io_data *rc_io_data, args []string) error {
-	generators := make([]generator_function, 0, 1)
+	generators := make([]func(io_data *rc_io_data) (bool, error), 0, 1)
 
 	if len(args) > 0 {
 		text := strings.Join(args, " ")
 		text_gen := func(io_data *rc_io_data) (bool, error) {
-			set_payload_data(io_data, "text:"+text[:2048])
-			text = text[2048:]
+			limit := len(text)
+			if limit > 2048 {
+				limit = 2048
+			}
+			set_payload_data(io_data, "text:"+text[:limit])
+			text = text[limit:]
 			return len(text) == 0, nil
 		}
 		generators = append(generators, text_gen)

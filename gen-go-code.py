@@ -4,7 +4,6 @@
 import io
 import json
 import os
-import sys
 from contextlib import contextmanager, suppress
 from typing import Dict, Iterator, List, Set, Tuple, Union
 
@@ -246,7 +245,6 @@ def update_at_commands() -> None:
             os.remove(dest)
         with open(dest, 'w') as f:
             f.write(code)
-    print('\x1b[31mTODO\x1b[m: test send_text, env', file=sys.stderr)
 
 
 def main() -> None:
