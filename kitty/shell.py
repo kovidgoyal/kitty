@@ -153,7 +153,7 @@ def run_cmd(
 ) -> None:
     print(end=set_window_title(cmd) + output_prefix, flush=True)
     payload = func.message_to_kitty(global_opts, opts, items)
-    no_response = func.no_response
+    no_response = False
     if hasattr(opts, 'no_response'):
         no_response = opts.no_response
     send = original_send_cmd = create_basic_command(cmd, payload=payload, is_asynchronous=func.is_asynchronous, no_response=no_response)
