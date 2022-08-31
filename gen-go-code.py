@@ -246,7 +246,7 @@ def update_at_commands() -> None:
             os.remove(dest)
         with open(dest, 'w') as f:
             f.write(code)
-    print('\x1b[31mTODO\x1b[m: test set_font_size, send_text, env, scroll_window', file=sys.stderr)
+    print('\x1b[31mTODO\x1b[m: test send_text, env, scroll_window', file=sys.stderr)
 
 
 def main() -> None:
