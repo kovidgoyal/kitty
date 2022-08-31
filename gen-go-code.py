@@ -147,6 +147,10 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
             del unhandled[x]
     if unhandled:
         raise SystemExit(f'Cant map fields: {", ".join(unhandled)} for cmd: {name}')
+    if name != 'send_text':
+        unused_options = set(option_map) - used_options - {'no_response', 'response_timeout'}
+        if unused_options:
+            raise SystemExit(f'Unused options: {", ".join(unused_options)} for command: {name}')
 
     argspec = cmd.args.spec
     if argspec:
@@ -241,7 +245,7 @@ def update_at_commands() -> None:
             os.remove(dest)
         with open(dest, 'w') as f:
             f.write(code)
-    print('\x1b[31mTODO\x1b[m: test set_window_logo, set_window_background, set_font_size, send_text, env, scroll_window', file=sys.stderr)
+    print('\x1b[31mTODO\x1b[m: test set_font_size, send_text, env, scroll_window', file=sys.stderr)
 
 
 def main() -> None:
