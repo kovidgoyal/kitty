@@ -202,7 +202,7 @@ func (self *rc_io_data) next_chunk() (chunk []byte, one_escape_code_done bool, e
 func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_io_data) (ans *Response, err error) {
 	serialized_response, err := do_io(io_data)
 	if err != nil {
-		if errors.Is(err, os.ErrDeadlineExceeded) {
+		if errors.Is(err, os.ErrDeadlineExceeded) && io_data.rc.Async != "" {
 			io_data.rc.Payload = nil
 			io_data.rc.CancelAsync = true
 			io_data.multiple_payload_generator = nil
