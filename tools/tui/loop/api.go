@@ -41,7 +41,7 @@ type Loop struct {
 	keep_going                             bool
 	death_signal                           unix.Signal
 	exit_code                              int
-	timers                                 []*timer
+	timers, timers_temp                    []*timer
 	timer_id_counter, write_msg_id_counter IdType
 	wakeup_channel                         chan byte
 	pending_writes                         []*write_msg
@@ -72,7 +72,7 @@ type Loop struct {
 }
 
 func New() (*Loop, error) {
-	l := Loop{controlling_term: nil}
+	l := Loop{controlling_term: nil, timers_temp: make([]*timer, 4)}
 	l.terminal_options.alternate_screen = true
 	l.escape_code_parser.HandleCSI = l.handle_csi
 	l.escape_code_parser.HandleOSC = l.handle_osc
