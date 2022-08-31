@@ -63,6 +63,8 @@ func (self *Loop) flush_pending_writes(tty_write_channel chan<- *write_msg) {
 		case tty_write_channel <- self.pending_writes[0]:
 			n := copy(self.pending_writes, self.pending_writes[1:])
 			self.pending_writes = self.pending_writes[:n]
+		default:
+			return
 		}
 	}
 }
