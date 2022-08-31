@@ -72,7 +72,7 @@ type Loop struct {
 }
 
 func New() (*Loop, error) {
-	l := Loop{controlling_term: nil, timers: make([]*timer, 0)}
+	l := Loop{controlling_term: nil}
 	l.terminal_options.alternate_screen = true
 	l.escape_code_parser.HandleCSI = l.handle_csi
 	l.escape_code_parser.HandleOSC = l.handle_osc
@@ -84,16 +84,22 @@ func New() (*Loop, error) {
 	return &l, nil
 }
 
-func (self *Loop) AddTimer(interval time.Duration, repeats bool, callback TimerCallback) IdType {
+func (self *Loop) AddTimer(interval time.Duration, repeats bool, callback TimerCallback) (IdType, error) {
+	if self.timers == nil {
+		return 0, fmt.Errorf("Cannot add timers before starting the run loop, add them in OnInitialize instead")
+	}
 	self.timer_id_counter++
 	t := timer{interval: interval, repeats: repeats, callback: callback, id: self.timer_id_counter}
 	t.update_deadline(time.Now())
 	self.timers = append(self.timers, &t)
 	self.sort_timers()
-	return t.id
+	return t.id, nil
 }
 
 func (self *Loop) RemoveTimer(id IdType) bool {
+	if self.timers == nil {
+		return false
+	}
 	for i := 0; i < len(self.timers); i++ {
 		if self.timers[i].id == id {
 			self.timers = append(self.timers[:i], self.timers[i+1:]...)
