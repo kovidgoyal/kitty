@@ -609,7 +609,7 @@ adjust_alpha_mask_contrast(uint8_t l) {
     double contrast = 6.0;
     double midpoint = 10.0;
 
-    return (uint8_t)contrast_sigmoidal((double)l, contrast, 255.0 * midpoint / 100.0);
+    return (uint8_t)contrast_sigmoidal((double)l, contrast, midpoint / 100.0);
 }
 
 void
