@@ -5,6 +5,7 @@ package at
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
 )
+
+var _ = fmt.Print
 
 func write_all_to_conn(conn *net.Conn, data []byte) error {
 	for len(data) > 0 {

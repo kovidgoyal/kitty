@@ -37,12 +37,14 @@ func read_window_logo(path string) (func(io_data *rc_io_data) (bool, error), err
 	}
 
 	return func(io_data *rc_io_data) (bool, error) {
-		var payload set_window_logo_json_type = io_data.rc.Payload.(set_window_logo_json_type)
+		payload := io_data.rc.Payload.(set_window_logo_json_type)
 		if len(buf) == 0 {
 			payload.Data = ""
+			io_data.rc.Payload = payload
 			return true, nil
 		}
 		payload.Data = base64.StdEncoding.EncodeToString(buf)
+		io_data.rc.Payload = payload
 		buf = buf[:cap(buf)]
 		n, err := f.Read(buf)
 		if err != nil && err != io.EOF {
