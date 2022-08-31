@@ -411,7 +411,8 @@ def convert_text(text: str, cols: int) -> str:
             appended = False
             for line in full_line.split('\r'):
                 if line:
-                    lines.append(line.ljust(cols, '\0'))
+                    escape_codes_len = sum([len(match) for match in kitty_ansi_sanitizer_pat().findall(line)])
+                    lines.append(line.ljust(cols + escape_codes_len, '\0'))
                     lines.append('\r')
                     appended = True
             if appended:

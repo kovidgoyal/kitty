@@ -10,13 +10,14 @@ class TestHints(BaseTest):
     def test_url_hints(self):
         from kittens.hints.main import (
             Mark, convert_text, functions_for, linenum_marks,
-            linenum_process_result, mark, parse_hints_args
+            linenum_process_result, mark, parse_hints_args, process_escape_codes
         )
         args = parse_hints_args([])[0]
         pattern, post_processors = functions_for(args)
 
         def create_marks(text, cols=20, mark=mark):
             text = convert_text(text, cols)
+            text, _ = process_escape_codes(text)
             return tuple(mark(pattern, post_processors, text, args))
 
         def t(text, url, cols=20):
@@ -32,6 +33,8 @@ class TestHints(BaseTest):
         t(f'link:{u}[xxx]', u)
         t(f'`xyz <{u}>`_.', u)
         t(f'<a href="{u}">moo', u)
+        t('\x1b[mhttp://test.me/1234\n\x1b[mx', 'http://test.me/1234')
+        t('\x1b[mhttp://test.me/12345\r\x1b[m6\n\x1b[mx', 'http://test.me/123456')
 
         def m(text, path, line, cols=20):
 
