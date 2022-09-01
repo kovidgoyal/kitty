@@ -75,7 +75,6 @@ func (self *Loop) handle_csi(raw []byte) error {
 }
 
 func (self *Loop) handle_key_event(ev *KeyEvent) error {
-	self.DebugPrintln(ev)
 	if self.OnKeyEvent != nil {
 		err := self.OnKeyEvent(ev)
 		if err != nil {
@@ -177,14 +176,6 @@ func (self *Loop) on_SIGTERM() error {
 	return nil
 }
 
-func (self *Loop) on_SIGTSTP() error {
-	signal.Reset(unix.SIGTSTP)
-	unix.Kill(os.Getpid(), unix.SIGTSTP)
-	time.Sleep(20 * time.Millisecond)
-	signal.Notify(self.signal_channel, unix.SIGTSTP)
-	return nil
-}
-
 func (self *Loop) on_SIGHUP() error {
 	self.death_signal = unix.SIGHUP
 	self.keep_going = false
@@ -192,9 +183,9 @@ func (self *Loop) on_SIGHUP() error {
 }
 
 func (self *Loop) run() (err error) {
-	self.signal_channel = make(chan os.Signal, 256)
+	signal_channel := make(chan os.Signal, 256)
 	handled_signals := []os.Signal{unix.SIGINT, unix.SIGTERM, unix.SIGTSTP, unix.SIGHUP, unix.SIGWINCH, unix.SIGPIPE}
-	signal.Notify(self.signal_channel, handled_signals...)
+	signal.Notify(signal_channel, handled_signals...)
 	defer signal.Reset(handled_signals...)
 
 	controlling_term, err := tty.OpenControllingTerm()
@@ -203,10 +194,10 @@ func (self *Loop) run() (err error) {
 	}
 	self.controlling_term = controlling_term
 	defer func() {
-		self.controlling_term.RestoreAndClose()
+		controlling_term.RestoreAndClose()
 		self.controlling_term = nil
 	}()
-	err = self.controlling_term.ApplyOperations(tty.TCSANOW, tty.SetRaw)
+	err = controlling_term.ApplyOperations(tty.TCSANOW, tty.SetRaw)
 	if err != nil {
 		return nil
 	}
@@ -239,6 +230,7 @@ func (self *Loop) run() (err error) {
 		return err
 	}
 	self.QueueWriteBytesDangerous(self.terminal_options.SetStateEscapeCodes())
+	needs_reset_escape_codes := true
 
 	defer func() {
 		// notify tty reader that we are shutting down
@@ -248,7 +240,9 @@ func (self *Loop) run() (err error) {
 		if finalizer != "" {
 			self.QueueWriteString(finalizer)
 		}
-		self.QueueWriteBytesDangerous(self.terminal_options.ResetStateEscapeCodes())
+		if needs_reset_escape_codes {
+			self.QueueWriteBytesDangerous(self.terminal_options.ResetStateEscapeCodes())
+		}
 		// flush queued data and wait for it to be written for a timeout, then wait for writer to shutdown
 		flush_writer(w_w, tty_write_channel, write_done_channel, self.pending_writes, 2*time.Second)
 		self.pending_writes = nil
@@ -257,14 +251,41 @@ func (self *Loop) run() (err error) {
 		}
 	}()
 
-	go write_to_tty(w_r, self.controlling_term, tty_write_channel, err_channel, write_done_channel)
-	go read_from_tty(r_r, self.controlling_term, tty_read_channel, err_channel, tty_reading_done_channel)
+	go write_to_tty(w_r, controlling_term, tty_write_channel, err_channel, write_done_channel)
+	go read_from_tty(r_r, controlling_term, tty_read_channel, err_channel, tty_reading_done_channel)
 
 	if self.OnInitialize != nil {
 		finalizer, err = self.OnInitialize()
 		if err != nil {
 			return err
 		}
+	}
+
+	self.on_SIGTSTP = func() error {
+		write_id := self.QueueWriteBytesDangerous(self.terminal_options.ResetStateEscapeCodes())
+		needs_reset_escape_codes = false
+		err := self.wait_for_write_to_complete(write_id, tty_write_channel, write_done_channel, 2*time.Second)
+		if err != nil {
+			return err
+		}
+		err = controlling_term.SuspendAndRun(func() error {
+			unix.Kill(os.Getpid(), unix.SIGSTOP)
+			time.Sleep(20 * time.Millisecond)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		write_id = self.QueueWriteBytesDangerous(self.terminal_options.SetStateEscapeCodes())
+		needs_reset_escape_codes = true
+		err = self.wait_for_write_to_complete(write_id, tty_write_channel, write_done_channel, 2*time.Second)
+		if err != nil {
+			return err
+		}
+		if self.OnResumeFromStop != nil {
+			return self.OnResumeFromStop()
+		}
+		return nil
 	}
 
 	for self.keep_going {
@@ -296,7 +317,7 @@ func (self *Loop) run() (err error) {
 					return err
 				}
 			}
-		case s := <-self.signal_channel:
+		case s := <-signal_channel:
 			err = self.on_signal(s.(unix.Signal))
 			if err != nil {
 				return err

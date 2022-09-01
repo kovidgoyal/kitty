@@ -79,6 +79,11 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 		return nil
 	}
 
+	lp.OnResumeFromStop = func() error {
+		lp.QueueWriteString("\r" + prompt + shadow)
+		return nil
+	}
+
 	err = lp.Run()
 	if err != nil {
 		return

@@ -69,6 +69,31 @@ func (self *Loop) flush_pending_writes(tty_write_channel chan<- *write_msg) {
 	}
 }
 
+func (self *Loop) wait_for_write_to_complete(sentinel IdType, tty_write_channel chan<- *write_msg, write_done_channel <-chan IdType, timeout time.Duration) error {
+	for len(self.pending_writes) > 0 {
+		select {
+		case tty_write_channel <- self.pending_writes[0]:
+			self.pending_writes = self.pending_writes[1:]
+		case write_id, more := <-write_done_channel:
+			if write_id == sentinel {
+				return nil
+			}
+			if self.OnWriteComplete != nil {
+				err := self.OnWriteComplete(write_id)
+				if err != nil {
+					return err
+				}
+			}
+			if !more {
+				return fmt.Errorf("The write_done_channel was unexpectedly closed")
+			}
+		case <-time.After(timeout):
+			return os.ErrDeadlineExceeded
+		}
+	}
+	return nil
+}
+
 func (self *Loop) add_write_to_pending_queue(data *write_msg) {
 	self.pending_writes = append(self.pending_writes, data)
 }
@@ -183,7 +208,7 @@ func flush_writer(pipe_w *os.File, tty_write_channel chan<- *write_msg, write_do
 		}
 	}()
 	deadline := time.Now().Add(timeout)
-	for len(pending_writes) > 0 {
+	for len(pending_writes) > 0 && !writer_quit {
 		timeout = deadline.Sub(time.Now())
 		if timeout <= 0 {
 			return
@@ -213,7 +238,7 @@ func flush_writer(pipe_w *os.File, tty_write_channel chan<- *write_msg, write_do
 				writer_quit = true
 			}
 		case <-time.After(timeout):
-			break
+			return
 		}
 	}
 	return
