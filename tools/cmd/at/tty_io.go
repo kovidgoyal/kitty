@@ -46,6 +46,9 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 		if state != WAITING_FOR_RESPONSE && state != WAITING_FOR_STREAMING_RESPONSE {
 			return nil
 		}
+		if io_data.on_key_event != nil {
+			return nil
+		}
 		time_since_last_received_data := time.Now().Sub(last_received_data_at)
 		if time_since_last_received_data >= io_data.timeout {
 			return os.ErrDeadlineExceeded
@@ -77,6 +80,9 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 		chunk, err := io_data.next_chunk()
 		wants_streaming = io_data.rc.Stream
 		if err != nil {
+			if err == waiting_on_stdin {
+				return "", nil
+			}
 			return "", err
 		}
 		queue_escape_code(chunk)
@@ -93,6 +99,9 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 		}
 		chunk, err := io_data.next_chunk()
 		if err != nil {
+			if err == waiting_on_stdin {
+				return nil
+			}
 			return err
 		}
 		queue_escape_code(chunk)
@@ -109,6 +118,29 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 			}
 		}
 		return nil
+	}
+
+	lp.OnKeyEvent = func(event *loop.KeyEvent) error {
+		if io_data.on_key_event == nil {
+			return nil
+		}
+		err := io_data.on_key_event(lp, event)
+		if err == end_reading_from_stdin {
+			lp.Quit(0)
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		chunk, err := io_data.next_chunk()
+		if err != nil {
+			if err == waiting_on_stdin {
+				return nil
+			}
+			return err
+		}
+		queue_escape_code(chunk)
+		return err
 	}
 
 	lp.OnRCResponse = func(raw []byte) error {
