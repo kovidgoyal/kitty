@@ -26,8 +26,7 @@ func is_stream_response(serialized_response []byte) bool {
 
 func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) {
 	serialized_response = make([]byte, 0)
-	lp, err := loop.New()
-	lp.NoAlternateScreen()
+	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors)
 	if err != nil {
 		return
 	}
