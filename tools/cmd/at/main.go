@@ -17,16 +17,18 @@ import (
 	"github.com/spf13/pflag"
 	"golang.org/x/sys/unix"
 
-	"github.com/jamesruan/go-rfc1924/base85"
 	"kitty"
 	"kitty/tools/cli"
 	"kitty/tools/crypto"
 	"kitty/tools/tty"
 	"kitty/tools/tui"
+	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+
+	"github.com/jamesruan/go-rfc1924/base85"
 )
 
-var ProtocolVersion [3]int = [3]int{0, 20, 0}
+var ProtocolVersion [3]int = [3]int{0, 26, 0}
 
 func add_bool_set(cmd *cobra.Command, name string, short string, usage string) *bool {
 	if short == "" {
@@ -143,7 +145,7 @@ type rc_io_data struct {
 	cmd                        *cobra.Command
 	rc                         *utils.RemoteControlCmd
 	serializer                 serializer_func
-	send_keypresses            bool
+	on_key_event               func(lp *loop.Loop, ke *loop.KeyEvent) error
 	string_response_is_err     bool
 	timeout                    time.Duration
 	multiple_payload_generator func(io_data *rc_io_data) (bool, error)
@@ -184,6 +186,11 @@ func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_i
 		return
 	}
 	if len(serialized_response) == 0 {
+		if io_data.rc.NoResponse {
+			res := Response{Ok: true}
+			ans = &res
+			return
+		}
 		err = fmt.Errorf("Received empty response from kitty")
 		return
 	}

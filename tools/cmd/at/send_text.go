@@ -6,11 +6,16 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
+	"kitty/tools/tui/loop"
 	"os"
 	"strings"
 )
 
+var end_reading_from_stdin = errors.New("end reading from STDIN")
+var waiting_on_stdin = errors.New("wait for key events from STDIN")
+
 func parse_send_text(io_data *rc_io_data, args []string) error {
+	io_data.rc.NoResponse = true
 	generators := make([]func(io_data *rc_io_data) (bool, error), 0, 1)
 
 	if len(args) > 0 {
@@ -42,6 +47,39 @@ func parse_send_text(io_data *rc_io_data, args []string) error {
 			return n == 0, nil
 		}
 		generators = append(generators, file_gen)
+	}
+
+	if options_send_text.stdin {
+		pending_key_events := make([]string, 0, 1)
+
+		io_data.on_key_event = func(lp *loop.Loop, ke *loop.KeyEvent) error {
+			ke.Handled = true
+			if ke.MatchesPressOrRepeat("ctrl+d") {
+				return end_reading_from_stdin
+			}
+			bs := "kitty-key:" + base64.StdEncoding.EncodeToString([]byte(ke.AsCSI()))
+			pending_key_events = append(pending_key_events, bs)
+			if ke.Text != "" {
+				lp.QueueWriteString(ke.Text)
+			} else if ke.MatchesPressOrRepeat("backspace") {
+				lp.QueueWriteString("\x08\x1b[P")
+			}
+			return nil
+		}
+
+		key_gen := func(io_data *rc_io_data) (bool, error) {
+			if len(pending_key_events) > 0 {
+				payload := io_data.rc.Payload.(send_text_json_type)
+				payload.Exclude_active = true
+				io_data.rc.Payload = payload
+				set_payload_data(io_data, pending_key_events[0])
+				pending_key_events = pending_key_events[1:]
+				return false, nil
+			}
+			return false, waiting_on_stdin
+		}
+		generators = append(generators, key_gen)
+
 	}
 
 	io_data.multiple_payload_generator = func(io_data *rc_io_data) (bool, error) {
