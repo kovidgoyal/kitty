@@ -333,7 +333,9 @@ def generate_functional_table() -> None:
     text = f'var functional_key_number_to_name_map = map[int]string{serialize_go_dict(code_to_name)}\n'
     text += f'\nvar csi_number_to_functional_number_map = map[int]int{serialize_go_dict(csi_map)}\n'
     text += f'\nvar letter_trailer_to_csi_number_map = map[string]int{serialize_go_dict(letter_trailer_codes)}\n'
-    patch_file('tools/tui/key-encoding.go', 'csi mapping', text, start_marker='// ', end_marker='')
+    tt = ', '.join(f'{x}:true' for x in tilde_trailers)
+    text += f'\nvar tilde_trailers = map[int]bool{{ {tt} }}'
+    patch_file('tools/tui/loop/key-encoding.go', 'csi mapping', text, start_marker='// ', end_marker='')
 
 
 def generate_legacy_text_key_maps() -> None:

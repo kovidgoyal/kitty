@@ -47,7 +47,7 @@ func TestRCSerialization(t *testing.T) {
 		Cmd: "test", Version: ver,
 	}
 	simple := func(expected string) {
-		actual, err := io_data.serializer.serializer(&rc)
+		actual, err := io_data.serializer(&rc)
 		if err != nil {
 			t.Fatal(err)
 		}

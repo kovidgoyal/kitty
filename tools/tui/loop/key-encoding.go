@@ -18,10 +18,14 @@ var csi_number_to_functional_number_map = map[int]int{2: 57348, 3: 57349, 5: 573
 
 var letter_trailer_to_csi_number_map = map[string]int{"A": 57352, "B": 57353, "C": 57351, "D": 57350, "E": 57427, "F": 8, "H": 7, "P": 11, "Q": 12, "R": 13, "S": 14}
 
+var tilde_trailers = map[int]bool{57348: true, 57349: true, 57354: true, 57355: true, 57368: true, 57369: true, 57370: true, 57371: true, 57372: true, 57373: true, 57374: true, 57375: true}
+
 // end csi mapping
 // }}}
 
 var name_to_functional_number_map map[string]int
+var functional_to_csi_number_map map[int]int
+var csi_number_to_letter_trailer_map map[int]string
 
 type KeyEventType uint8
 type KeyModifiers uint16
@@ -285,9 +289,96 @@ func (self *KeyEvent) MatchesRelease(spec string) bool {
 	return self.MatchesParsedShortcut(ParseShortcut(spec), RELEASE)
 }
 
+func (self *KeyEvent) AsCSI() string {
+	key := csi_number_for_name(self.Key)
+	shifted_key := csi_number_for_name(self.ShiftedKey)
+	alternate_key := csi_number_for_name(self.AlternateKey)
+	trailer, found := csi_number_to_letter_trailer_map[key]
+	if !found {
+		trailer = "u"
+	}
+	if self.Key == "ENTER" {
+		trailer = "u"
+	}
+	if trailer != "u" {
+		key = 1
+	}
+	ans := strings.Builder{}
+	ans.Grow(32)
+	ans.WriteString("\033[")
+	if key != 1 || self.Mods != 0 || shifted_key != 0 || alternate_key != 0 || self.Text != "" {
+		ans.WriteString(fmt.Sprint(key))
+	}
+	if shifted_key != 0 || alternate_key != 0 {
+		ans.WriteString(":")
+		if shifted_key != 0 {
+			ans.WriteString(fmt.Sprint(shifted_key))
+		}
+		if alternate_key != 0 {
+			ans.WriteString(fmt.Sprint(":", alternate_key))
+		}
+	}
+	action := 1
+	switch self.Type {
+	case REPEAT:
+		action = 2
+	case RELEASE:
+		action = 3
+	}
+	if self.Mods != 0 || action > 1 || self.Text != "" {
+		m := uint(self.Mods)
+		if action > 1 || m != 0 {
+			ans.WriteString(fmt.Sprintf(";%d", m+1))
+			if action > 1 {
+				ans.WriteString(fmt.Sprintf(":%d", action))
+			}
+		} else if self.Text != "" {
+			ans.WriteString(";")
+		}
+	}
+	if self.Text != "" {
+		runes := []rune(self.Text)
+		codes := make([]string, len(runes))
+		for i, r := range runes {
+			codes[i] = strconv.Itoa(int(r))
+		}
+		ans.WriteString(";")
+		ans.WriteString(strings.Join(codes, ":"))
+	}
+	fn, found := name_to_functional_number_map[self.Key]
+	if found && tilde_trailers[fn] {
+		trailer = "~"
+	}
+	ans.WriteString(trailer)
+	return ans.String()
+}
+
+func csi_number_for_name(key_name string) int {
+	if key_name == "" {
+		return 0
+	}
+	fn, ok := name_to_functional_number_map[key_name]
+	if !ok {
+		return int(rune(key_name[0]))
+	}
+	ans, ok := functional_to_csi_number_map[fn]
+	if ok {
+		return ans
+	}
+	return fn
+}
+
 func init() {
 	name_to_functional_number_map = make(map[string]int, len(functional_key_number_to_name_map))
 	for k, v := range functional_key_number_to_name_map {
 		name_to_functional_number_map[v] = k
+	}
+	functional_to_csi_number_map = make(map[int]int, len(csi_number_to_functional_number_map))
+	for k, v := range csi_number_to_functional_number_map {
+		functional_to_csi_number_map[v] = k
+	}
+	csi_number_to_letter_trailer_map = make(map[int]string, len(letter_trailer_to_csi_number_map))
+	for k, v := range letter_trailer_to_csi_number_map {
+		csi_number_to_letter_trailer_map[v] = k
 	}
 }
