@@ -27,7 +27,8 @@ class SetBackgroundOpacity(RemoteCommand):
     desc = (
         'Set the background opacity for the specified windows. This will only work if you have turned on'
         ' :opt:`dynamic_background_opacity` in :file:`kitty.conf`. The background opacity affects all kitty windows in a'
-        ' single OS window. For example: :code:`kitty @ set-background-opacity 0.5`'
+        ' single OS window. For example::\n\n'
+        '    kitty @ set-background-opacity 0.5'
     )
     options_spec = '''\
 --all -a

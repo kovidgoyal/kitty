@@ -165,12 +165,14 @@ type=list
 Restrict the actions remote control is allowed to take. This works like
 :opt:`remote_control_password`. You can specify a password and list of actions
 just as for :opt:`remote_control_password`. For example::
+
     --remote-control-password '"my passphrase" get-* set-colors'
 
 This password will be in effect for this window only.
 Note that any passwords you have defined for :opt:`remote_control_password`
 in :file:`kitty.conf` are also in effect. You can override them by using the same password here.
 You can also disable all :opt:`remote_control_password` global passwords for this window, by using::
+
     --remote-control-password '!'
 
 This option only takes effect if :option:`--allow-remote-control`
@@ -271,8 +273,9 @@ effect if :option:`--logo` is specified. See :opt:`window_logo_alpha`.
 type=list
 Change colors in the newly launched window. You can either specify a path to a
 :file:`.conf` file with the same syntax as :file:`kitty.conf` to read the colors
-from, or specify them individually, for example: :code:`--color background=white
---color foreground=red`.
+from, or specify them individually, for example::
+
+    --color background=white --color foreground=red
 
 
 --watcher -w
