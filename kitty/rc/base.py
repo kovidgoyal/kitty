@@ -6,7 +6,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iterator,
-    List, NoReturn, Optional, Set, Tuple, Type, Union, cast
+    List, NoReturn, Optional, Set, Tuple, Type, Union, cast, Mapping
 )
 
 from kitty.cli import get_defaults_from_seq, parse_args, parse_option_spec
@@ -88,6 +88,7 @@ CmdGenerator = Iterator[CmdReturnType]
 PayloadType = Optional[Union[CmdReturnType, CmdGenerator]]
 PayloadGetType = PayloadGetter
 ArgsType = List[str]
+ImageCompletion: Dict[str, Tuple[str, Tuple[str, ...]]] = {'files': ('Images', ('*.png', '*.jpg', '*.jpeg', '*.webp', '*.gif', '*.bmp', '*.tiff'))}
 
 
 MATCH_WINDOW_OPTION = '''\
@@ -183,7 +184,7 @@ class ArgsHandling:
     json_field: str = ''
     count: Optional[int] = None
     spec: str = ''
-    completion: Optional[Dict[str, Tuple[str, Union[Callable[[], Iterable[str]], Tuple[str, ...]]]]] = None
+    completion: Optional[Mapping[str, Tuple[str, Union[Callable[[], Iterable[str]], Tuple[str, ...]]]]] = None
     value_if_unspecified: Tuple[str, ...] = ()
     minimum_count: int = -1
     first_rest: Optional[Tuple[str, str]] = None
