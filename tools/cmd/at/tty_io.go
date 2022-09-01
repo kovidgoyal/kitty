@@ -67,13 +67,19 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 		return nil
 	}
 
+	queue_escape_code := func(data []byte) {
+		lp.QueueWriteString(cmd_escape_code_prefix)
+		lp.QueueWriteBytesDangerous(data)
+		lp.QueueWriteString(cmd_escape_code_suffix)
+	}
+
 	lp.OnInitialize = func() (string, error) {
-		chunk, _, err := io_data.next_chunk()
+		chunk, err := io_data.next_chunk()
 		wants_streaming = io_data.rc.Stream
 		if err != nil {
 			return "", err
 		}
-		lp.QueueWriteBytesDangerous(chunk)
+		queue_escape_code(chunk)
 		if len(chunk) == 0 {
 			state = WAITING_FOR_RESPONSE
 			transition_to_read()
@@ -85,16 +91,16 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 		if state == WAITING_FOR_STREAMING_RESPONSE || state == WAITING_FOR_RESPONSE {
 			return nil
 		}
-		chunk, one_escape_code_done, err := io_data.next_chunk()
+		chunk, err := io_data.next_chunk()
 		if err != nil {
 			return err
 		}
-		lp.QueueWriteBytesDangerous(chunk)
+		queue_escape_code(chunk)
 		if len(chunk) == 0 {
 			state = WAITING_FOR_RESPONSE
 			transition_to_read()
 		}
-		if one_escape_code_done && state == BEFORE_FIRST_ESCAPE_CODE_SENT {
+		if state == BEFORE_FIRST_ESCAPE_CODE_SENT {
 			if wants_streaming {
 				state = WAITING_FOR_STREAMING_RESPONSE
 				transition_to_read()
