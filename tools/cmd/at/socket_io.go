@@ -30,6 +30,17 @@ func write_all_to_conn(conn *net.Conn, data []byte) error {
 	return nil
 }
 
+func write_many_to_conn(conn *net.Conn, datums ...[]byte) error {
+	for len(datums) > 0 {
+		err := write_all_to_conn(conn, datums[0])
+		if err != nil {
+			return err
+		}
+		datums = datums[1:]
+	}
+	return nil
+}
+
 func read_response_from_conn(conn *net.Conn, timeout time.Duration) (serialized_response []byte, err error) {
 	p := wcswidth.EscapeCodeParser{}
 	keep_going := true
@@ -54,6 +65,9 @@ func read_response_from_conn(conn *net.Conn, timeout time.Duration) (serialized_
 	return
 }
 
+const cmd_escape_code_prefix = "\x1bP@kitty-cmd"
+const cmd_escape_code_suffix = "\x1b\\"
+
 func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response []byte, err error) {
 	const (
 		BEFORE_FIRST_ESCAPE_CODE_SENT = iota
@@ -65,8 +79,7 @@ func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response 
 	wants_streaming := io_data.rc.Stream
 	for {
 		var chunk []byte
-		var one_escape_code_done bool
-		chunk, one_escape_code_done, err = io_data.next_chunk()
+		chunk, err = io_data.next_chunk()
 		if err != nil {
 			return
 		}
@@ -74,11 +87,11 @@ func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response 
 			state = WAITING_FOR_RESPONSE
 			break
 		}
-		err = write_all_to_conn(conn, chunk)
+		err = write_many_to_conn(conn, []byte(cmd_escape_code_prefix), chunk, []byte(cmd_escape_code_suffix))
 		if err != nil {
 			return
 		}
-		if state == BEFORE_FIRST_ESCAPE_CODE_SENT && one_escape_code_done {
+		if state == BEFORE_FIRST_ESCAPE_CODE_SENT {
 			if wants_streaming {
 				var streaming_response []byte
 				streaming_response, err = read_response_from_conn(conn, io_data.timeout)

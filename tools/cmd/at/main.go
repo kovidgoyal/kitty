@@ -81,12 +81,6 @@ func simple_serializer(rc *utils.RemoteControlCmd) (ans []byte, err error) {
 
 type serializer_func func(rc *utils.RemoteControlCmd) ([]byte, error)
 
-type wrapped_serializer struct {
-	state             int
-	serializer        serializer_func
-	all_payloads_done bool
-}
-
 func debug_to_log(args ...interface{}) {
 	f, err := os.OpenFile("/tmp/kdlog", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err == nil {
@@ -95,49 +89,16 @@ func debug_to_log(args ...interface{}) {
 	}
 }
 
-func (self *wrapped_serializer) next(io_data *rc_io_data) ([]byte, error) {
-	const prefix = "\x1bP@kitty-cmd"
-	const suffix = "\x1b\\"
-	switch self.state {
-	case 0:
-		self.state++
-		return []byte(prefix), nil
-	case 1:
-		if io_data.multiple_payload_generator != nil {
-			is_last, err := io_data.multiple_payload_generator(io_data)
-			if err != nil {
-				return nil, err
-			}
-			if is_last {
-				self.all_payloads_done = true
-			}
-		} else {
-			self.all_payloads_done = true
-		}
-		self.state++
-		return self.serializer(io_data.rc)
-	case 2:
-		if self.all_payloads_done {
-			self.state++
-		} else {
-			self.state = 0
-		}
-		return []byte(suffix), nil
-	default:
-		return make([]byte, 0), nil
-	}
-}
-
 var serializer serializer_func = simple_serializer
 
 func create_serializer(password string, encoded_pubkey string, io_data *rc_io_data) (err error) {
-	io_data.serializer.serializer = simple_serializer
+	io_data.serializer = simple_serializer
 	if password != "" {
 		encryption_version, pubkey, err := get_pubkey(encoded_pubkey)
 		if err != nil {
 			return err
 		}
-		io_data.serializer.serializer = func(rc *utils.RemoteControlCmd) (ans []byte, err error) {
+		io_data.serializer = func(rc *utils.RemoteControlCmd) (ans []byte, err error) {
 			ec, err := crypto.Encrypt_cmd(rc, global_options.password, pubkey, encryption_version)
 			if err != nil {
 				return
@@ -181,22 +142,31 @@ type Response struct {
 type rc_io_data struct {
 	cmd                        *cobra.Command
 	rc                         *utils.RemoteControlCmd
-	serializer                 wrapped_serializer
+	serializer                 serializer_func
 	send_keypresses            bool
 	string_response_is_err     bool
 	timeout                    time.Duration
 	multiple_payload_generator func(io_data *rc_io_data) (bool, error)
+
+	chunks_done bool
 }
 
-func (self *rc_io_data) next_chunk() (chunk []byte, one_escape_code_done bool, err error) {
-	one_escape_code_done = self.serializer.state == 2
-	block, err := self.serializer.next(self)
-	if err != nil && !errors.Is(err, io.EOF) {
-		return
+func (self *rc_io_data) next_chunk() (chunk []byte, err error) {
+	if self.chunks_done {
+		return make([]byte, 0), nil
 	}
-	err = nil
-	chunk = block
-	return
+	if self.multiple_payload_generator != nil {
+		is_last, err := self.multiple_payload_generator(self)
+		if err != nil {
+			return nil, err
+		}
+		if is_last {
+			self.chunks_done = true
+		}
+		return self.serializer(self.rc)
+	}
+	self.chunks_done = true
+	return self.serializer(self.rc)
 }
 
 func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_io_data) (ans *Response, err error) {
@@ -207,7 +177,7 @@ func get_response(do_io func(io_data *rc_io_data) ([]byte, error), io_data *rc_i
 			io_data.rc.CancelAsync = true
 			io_data.multiple_payload_generator = nil
 			io_data.rc.NoResponse = true
-			io_data.serializer.state = 0
+			io_data.chunks_done = false
 			do_io(io_data)
 			err = fmt.Errorf("Timed out waiting for a response from kitty")
 		}
