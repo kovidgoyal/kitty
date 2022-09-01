@@ -3,12 +3,20 @@
 package at
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	"image/png"
 	"io"
-	"net/http"
 	"os"
 	"strings"
+
+	_ "golang.org/x/image/bmp"
+	_ "golang.org/x/image/tiff"
+	_ "golang.org/x/image/webp"
 )
 
 type struct_with_data interface {
@@ -31,19 +39,31 @@ func read_window_logo(path string) (func(io_data *rc_io_data) (bool, error), err
 	if err != nil {
 		return nil, err
 	}
-	buf := make([]byte, 2048)
-	n, err := f.Read(buf)
-	if err != nil && err != io.EOF {
-		f.Close()
-		return nil, err
+	var image_data_stream io.Reader
+	image_data_stream = f
+	config, format, ierr := image.DecodeConfig(f)
+	if ierr != nil {
+		return nil, fmt.Errorf("%s is not a supported image format", path)
 	}
-	buf = buf[:n]
+	f.Seek(0, 0)
 
-	if http.DetectContentType(buf) != "image/png" {
+	if format != "png" {
+		f.Seek(0, 0)
+		img, _, err := image.Decode(f)
+		if err != nil {
+			f.Close()
+		}
 		f.Close()
-		return nil, fmt.Errorf("%s is not a PNG image", path)
+		b := bytes.Buffer{}
+		b.Grow(config.Height * config.Width * 4)
+		err = png.Encode(&b, img)
+		if err != nil {
+			return nil, err
+		}
+		image_data_stream = &b
 	}
 	is_first_call := true
+	buf := make([]byte, 2048)
 
 	return func(io_data *rc_io_data) (bool, error) {
 		if is_first_call {
@@ -51,18 +71,16 @@ func read_window_logo(path string) (func(io_data *rc_io_data) (bool, error), err
 		} else {
 			io_data.rc.Stream = false
 		}
-		if len(buf) == 0 {
-			set_payload_data(io_data, "")
-			io_data.rc.Stream = false
-			return true, nil
-		}
-		set_payload_data(io_data, base64.StdEncoding.EncodeToString(buf))
 		buf = buf[:cap(buf)]
-		n, err := f.Read(buf)
+		n, err := image_data_stream.Read(buf)
 		if err != nil && err != io.EOF {
 			return false, err
 		}
 		buf = buf[:n]
+		set_payload_data(io_data, base64.StdEncoding.EncodeToString(buf))
+		if err == io.EOF {
+			return true, nil
+		}
 		return false, nil
 	}, nil
 }

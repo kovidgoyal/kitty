@@ -9,8 +9,9 @@ from typing import TYPE_CHECKING, Optional
 from kitty.types import AsyncResponse
 
 from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, CmdGenerator, NamedTemporaryFile,
-    PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_WINDOW_OPTION, ArgsType, Boss, CmdGenerator, ImageCompletion,
+    NamedTemporaryFile, PayloadGetType, PayloadType, RCOptions, RemoteCommand,
+    ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -62,8 +63,8 @@ default=false
 Don't wait for a response from kitty. This means that even if setting the background image
 failed, the command will exit with a success code.
 ''' + '\n\n' + MATCH_WINDOW_OPTION
-    args = RemoteCommand.Args(spec='PATH_TO_PNG_IMAGE', count=1, json_field='data', special_parse='!read_window_logo(args[0])', completion={
-        'files': ('PNG Images', ('*.png',))})
+    args = RemoteCommand.Args(spec='PATH_TO_PNG_IMAGE', count=1, json_field='data', special_parse='!read_window_logo(args[0])',
+                              completion=ImageCompletion)
     reads_streaming_data = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
