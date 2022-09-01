@@ -10,6 +10,7 @@ import (
 	"net"
 	"time"
 
+	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
 )
@@ -68,6 +69,41 @@ func read_response_from_conn(conn *net.Conn, timeout time.Duration) (serialized_
 const cmd_escape_code_prefix = "\x1bP@kitty-cmd"
 const cmd_escape_code_suffix = "\x1b\\"
 
+func run_stdin_echo_loop(conn *net.Conn, io_data *rc_io_data) (err error) {
+	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors)
+	if err != nil {
+		return
+	}
+	lp.OnKeyEvent = func(event *loop.KeyEvent) error {
+		event.Handled = true
+		err = io_data.on_key_event(lp, event)
+		if err != nil {
+			if err == end_reading_from_stdin {
+				lp.Quit(0)
+				return nil
+			}
+			return err
+		}
+		chunk, err := io_data.next_chunk()
+		if err != nil {
+			if err == waiting_on_stdin {
+				return nil
+			}
+			return err
+		}
+		err = write_many_to_conn(conn, []byte(cmd_escape_code_prefix), chunk, []byte(cmd_escape_code_suffix))
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	err = lp.Run()
+	if err == nil {
+		lp.KillIfSignalled()
+	}
+	return err
+}
+
 func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response []byte, err error) {
 	const (
 		BEFORE_FIRST_ESCAPE_CODE_SENT = iota
@@ -81,6 +117,10 @@ func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response 
 		var chunk []byte
 		chunk, err = io_data.next_chunk()
 		if err != nil {
+			if err == waiting_on_stdin {
+				err := run_stdin_echo_loop(conn, io_data)
+				return make([]byte, 0), err
+			}
 			return
 		}
 		if len(chunk) == 0 {
