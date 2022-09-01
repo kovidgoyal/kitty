@@ -76,8 +76,8 @@ const (
 )
 
 type TerminalStateOptions struct {
-	alternate_screen, no_kitty_keyboard_mode bool
-	mouse_tracking                           MouseTracking
+	alternate_screen, kitty_keyboard_mode, restore_colors bool
+	mouse_tracking                                        MouseTracking
 }
 
 func set_modes(sb *strings.Builder, modes ...Mode) {
@@ -100,7 +100,9 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() []byte {
 		sb.WriteString(SAVE_CURSOR)
 	}
 	sb.WriteString(SAVE_PRIVATE_MODE_VALUES)
-	sb.WriteString(SAVE_COLORS)
+	if self.restore_colors {
+		sb.WriteString(SAVE_COLORS)
+	}
 	sb.WriteString(DECSACE_DEFAULT_REGION_SELECT)
 	reset_modes(&sb,
 		IRM, DECKM, DECSCNM, BRACKETED_PASTE, FOCUS_TRACKING,
@@ -110,10 +112,10 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() []byte {
 		set_modes(&sb, ALTERNATE_SCREEN)
 		sb.WriteString(CLEAR_SCREEN)
 	}
-	if self.no_kitty_keyboard_mode {
-		sb.WriteString("\033[>u")
-	} else {
+	if self.kitty_keyboard_mode {
 		sb.WriteString("\033[>31u")
+	} else {
+		sb.WriteString("\033[>u")
 	}
 	if self.mouse_tracking != NO_MOUSE_TRACKING {
 		sb.WriteString(MOUSE_SGR_PIXEL_MODE.EscapeCodeToSet())
@@ -139,7 +141,9 @@ func (self *TerminalStateOptions) ResetStateEscapeCodes() []byte {
 		sb.WriteString(SAVE_CURSOR)
 	}
 	sb.WriteString(RESTORE_PRIVATE_MODE_VALUES)
-	sb.WriteString(RESTORE_CURSOR)
+	if self.restore_colors {
+		sb.WriteString(RESTORE_CURSOR)
+	}
 	sb.WriteString(RESTORE_COLORS)
 	return []byte(sb.String())
 }

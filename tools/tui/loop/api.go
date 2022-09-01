@@ -71,9 +71,10 @@ type Loop struct {
 	OnReceivedData func(data []byte) error
 }
 
-func New() (*Loop, error) {
+func New(options ...func(self *Loop)) (*Loop, error) {
 	l := Loop{controlling_term: nil, timers_temp: make([]*timer, 4)}
 	l.terminal_options.alternate_screen = true
+	l.terminal_options.restore_colors = true
 	l.escape_code_parser.HandleCSI = l.handle_csi
 	l.escape_code_parser.HandleOSC = l.handle_osc
 	l.escape_code_parser.HandleDCS = l.handle_dcs
@@ -81,6 +82,9 @@ func New() (*Loop, error) {
 	l.escape_code_parser.HandleSOS = l.handle_sos
 	l.escape_code_parser.HandlePM = l.handle_pm
 	l.escape_code_parser.HandleRune = l.handle_rune
+	for _, f := range options {
+		f(&l)
+	}
 	return &l, nil
 }
 
@@ -109,12 +113,31 @@ func (self *Loop) RemoveTimer(id IdType) bool {
 	return false
 }
 
-func (self *Loop) NoAlternateScreen() {
+func (self *Loop) NoAlternateScreen() *Loop {
+	self.terminal_options.alternate_screen = false
+	return self
+}
+
+func NoAlternateScreen(self *Loop) {
 	self.terminal_options.alternate_screen = false
 }
 
-func (self *Loop) MouseTracking(mt MouseTracking) {
+func (self *Loop) MouseTrackingMode(mt MouseTracking) *Loop {
 	self.terminal_options.mouse_tracking = mt
+	return self
+}
+
+func MouseTrackingMode(self *Loop, mt MouseTracking) {
+	self.terminal_options.mouse_tracking = mt
+}
+
+func (self *Loop) NoRestoreColors() *Loop {
+	self.terminal_options.restore_colors = false
+	return self
+}
+
+func NoRestoreColors(self *Loop) {
+	self.terminal_options.restore_colors = false
 }
 
 func (self *Loop) DeathSignalName() string {

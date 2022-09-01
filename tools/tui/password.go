@@ -21,8 +21,7 @@ func (self *KilledBySignal) Error() string { return self.Msg }
 var Canceled = errors.New("Canceled by user")
 
 func ReadPassword(prompt string, kill_if_signaled bool) (password string, err error) {
-	lp, err := loop.New()
-	lp.NoAlternateScreen()
+	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors)
 	shadow := ""
 	if err != nil {
 		return
