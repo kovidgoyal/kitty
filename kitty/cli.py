@@ -293,7 +293,7 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
             else:
                 prev_indent = 0
                 if prev_line:
-                    current_cmd['help'] += '\n\n'
+                    current_cmd['help'] += '\n' if current_cmd['help'].endswith('::') else '\n\n'
                 else:
                     state = NORMAL
                     (seq if current_cmd.get('condition', True) else disabled).append(current_cmd)
@@ -429,6 +429,8 @@ class PrintHelpForSeq:
         a('{}: {} {}{}'.format(title('Usage'), bold(yellow(appname)), optstring, usage))
         a('')
         message = message or default_msg
+        # replace rst literal code block syntax
+        message = message.replace('::\n\n', ':\n\n')
         wa(prettify(message))
         a('')
         if seq:
@@ -448,6 +450,8 @@ class PrintHelpForSeq:
                     blocks[-1] += dt
             if opt.get('help'):
                 t = help_text.replace('%default', str(defval)).strip()
+                # replace rst literal code block syntax
+                t = t.replace('::\n\n', ':\n\n')
                 t = t.replace('#placeholder_for_formatting#', '')
                 wa(prettify(t), indent=4)
                 if opt.get('choices'):
@@ -801,6 +805,7 @@ Output commands received from child process to STDOUT.
 Replay previously dumped commands. Specify the path to a dump file previously
 created by :option:`{appname} --dump-commands`. You
 can open a new kitty window to replay the commands with::
+
     {appname} sh -c "{appname} --replay-commands /path/to/dump/file; read"
 
 

@@ -68,7 +68,8 @@ class SetColors(RemoteCommand):
         'Set the terminal colors for the specified windows/tabs (defaults to active window).'
         ' You can either specify the path to a conf file'
         ' (in the same format as :file:`kitty.conf`) to read the colors from or you can specify individual colors,'
-        ' for example: :code:`kitty @ set-colors foreground=red background=white`'
+        ' for example::\n\n'
+        '    kitty @ set-colors foreground=red background=white'
     )
     options_spec = '''\
 --all -a
