@@ -59,7 +59,8 @@ default=false
 Don't wait for a response from kitty. This means that even if setting the image
 failed, the command will exit with a success code.
 '''
-    args = RemoteCommand.Args(spec='PATH_TO_PNG_IMAGE', count=1, json_field='data', special_parse='!read_window_logo(args[0])', completion=ImageCompletion)
+    args = RemoteCommand.Args(spec='PATH_TO_PNG_IMAGE', count=1, json_field='data', special_parse='!read_window_logo(io_data, args[0])',
+                              completion=ImageCompletion)
     reads_streaming_data = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
