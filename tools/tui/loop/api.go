@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"kitty/tools/tty"
+	"os"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -44,6 +45,7 @@ type Loop struct {
 	timers, timers_temp                    []*timer
 	timer_id_counter, write_msg_id_counter IdType
 	wakeup_channel                         chan byte
+	signal_channel                         chan os.Signal
 	pending_writes                         []*write_msg
 
 	// Callbacks
@@ -72,45 +74,19 @@ type Loop struct {
 }
 
 func New(options ...func(self *Loop)) (*Loop, error) {
-	l := Loop{controlling_term: nil, timers_temp: make([]*timer, 4)}
-	l.terminal_options.alternate_screen = true
-	l.terminal_options.restore_colors = true
-	l.escape_code_parser.HandleCSI = l.handle_csi
-	l.escape_code_parser.HandleOSC = l.handle_osc
-	l.escape_code_parser.HandleDCS = l.handle_dcs
-	l.escape_code_parser.HandleAPC = l.handle_apc
-	l.escape_code_parser.HandleSOS = l.handle_sos
-	l.escape_code_parser.HandlePM = l.handle_pm
-	l.escape_code_parser.HandleRune = l.handle_rune
+	l := new_loop()
 	for _, f := range options {
-		f(&l)
+		f(l)
 	}
-	return &l, nil
+	return l, nil
 }
 
 func (self *Loop) AddTimer(interval time.Duration, repeats bool, callback TimerCallback) (IdType, error) {
-	if self.timers == nil {
-		return 0, fmt.Errorf("Cannot add timers before starting the run loop, add them in OnInitialize instead")
-	}
-	self.timer_id_counter++
-	t := timer{interval: interval, repeats: repeats, callback: callback, id: self.timer_id_counter}
-	t.update_deadline(time.Now())
-	self.timers = append(self.timers, &t)
-	self.sort_timers()
-	return t.id, nil
+	return self.add_timer(interval, repeats, callback)
 }
 
 func (self *Loop) RemoveTimer(id IdType) bool {
-	if self.timers == nil {
-		return false
-	}
-	for i := 0; i < len(self.timers); i++ {
-		if self.timers[i].id == id {
-			self.timers = append(self.timers[:i], self.timers[i+1:]...)
-			return true
-		}
-	}
-	return false
+	return self.remove_timer(id)
 }
 
 func (self *Loop) NoAlternateScreen() *Loop {

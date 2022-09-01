@@ -19,6 +19,21 @@ import (
 
 var SIGNULL unix.Signal
 
+func new_loop() *Loop {
+	l := Loop{controlling_term: nil, timers_temp: make([]*timer, 4)}
+	l.terminal_options.alternate_screen = true
+	l.terminal_options.restore_colors = true
+	l.terminal_options.kitty_keyboard_mode = true
+	l.escape_code_parser.HandleCSI = l.handle_csi
+	l.escape_code_parser.HandleOSC = l.handle_osc
+	l.escape_code_parser.HandleDCS = l.handle_dcs
+	l.escape_code_parser.HandleAPC = l.handle_apc
+	l.escape_code_parser.HandleSOS = l.handle_sos
+	l.escape_code_parser.HandlePM = l.handle_pm
+	l.escape_code_parser.HandleRune = l.handle_rune
+	return &l
+}
+
 func is_temporary_error(err error) bool {
 	return errors.Is(err, unix.EINTR) || errors.Is(err, unix.EAGAIN) || errors.Is(err, unix.EWOULDBLOCK) || errors.Is(err, io.ErrShortWrite)
 }
@@ -60,7 +75,7 @@ func (self *Loop) handle_csi(raw []byte) error {
 }
 
 func (self *Loop) handle_key_event(ev *KeyEvent) error {
-	// self.DebugPrintln(ev)
+	self.DebugPrintln(ev)
 	if self.OnKeyEvent != nil {
 		err := self.OnKeyEvent(ev)
 		if err != nil {
@@ -163,6 +178,10 @@ func (self *Loop) on_SIGTERM() error {
 }
 
 func (self *Loop) on_SIGTSTP() error {
+	signal.Reset(unix.SIGTSTP)
+	unix.Kill(os.Getpid(), unix.SIGTSTP)
+	time.Sleep(20 * time.Millisecond)
+	signal.Notify(self.signal_channel, unix.SIGTSTP)
 	return nil
 }
 
@@ -173,9 +192,9 @@ func (self *Loop) on_SIGHUP() error {
 }
 
 func (self *Loop) run() (err error) {
-	sigchnl := make(chan os.Signal, 256)
+	self.signal_channel = make(chan os.Signal, 256)
 	handled_signals := []os.Signal{unix.SIGINT, unix.SIGTERM, unix.SIGTSTP, unix.SIGHUP, unix.SIGWINCH, unix.SIGPIPE}
-	signal.Notify(sigchnl, handled_signals...)
+	signal.Notify(self.signal_channel, handled_signals...)
 	defer signal.Reset(handled_signals...)
 
 	controlling_term, err := tty.OpenControllingTerm()
@@ -277,7 +296,7 @@ func (self *Loop) run() (err error) {
 					return err
 				}
 			}
-		case s := <-sigchnl:
+		case s := <-self.signal_channel:
 			err = self.on_signal(s.(unix.Signal))
 			if err != nil {
 				return err
