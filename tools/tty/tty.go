@@ -4,7 +4,9 @@ package tty
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -207,6 +209,22 @@ func (self *Term) RestoreAndClose() error {
 	return self.Close()
 }
 
+func (self *Term) SuspendAndRun(callback func() error) error {
+	var state unix.Termios
+	err := self.Tcgetattr(&state)
+	if err != nil {
+		return err
+	}
+	if len(self.states) > 0 {
+		err := self.Tcsetattr(TCSANOW, &self.states[0])
+		if err != nil {
+			return err
+		}
+	}
+	defer self.Tcsetattr(TCSANOW, &state)
+	return callback()
+}
+
 func clamp(v, lo, hi int64) int64 {
 	if v < lo {
 		return lo
@@ -243,6 +261,17 @@ func (self *Term) Read(b []byte) (int, error) {
 
 func (self *Term) Write(b []byte) (int, error) {
 	return self.os_file.Write(b)
+}
+
+func (self *Term) WriteAll(b []byte) error {
+	for len(b) > 0 {
+		n, err := self.os_file.Write(b)
+		if err != nil && !errors.Is(err, io.ErrShortWrite) {
+			return err
+		}
+		b = b[n:]
+	}
+	return nil
 }
 
 func (self *Term) WriteString(b string) (int, error) {

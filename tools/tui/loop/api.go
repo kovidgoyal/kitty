@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"kitty/tools/tty"
-	"os"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -45,8 +44,8 @@ type Loop struct {
 	timers, timers_temp                    []*timer
 	timer_id_counter, write_msg_id_counter IdType
 	wakeup_channel                         chan byte
-	signal_channel                         chan os.Signal
 	pending_writes                         []*write_msg
+	on_SIGTSTP                             func() error
 
 	// Callbacks
 
@@ -71,6 +70,9 @@ type Loop struct {
 
 	// Called when any input from tty is received
 	OnReceivedData func(data []byte) error
+
+	// Called when resuming from a SIGTSTP or Ctrl-z
+	OnResumeFromStop func() error
 }
 
 func New(options ...func(self *Loop)) (*Loop, error) {
