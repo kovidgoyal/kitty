@@ -69,7 +69,7 @@ func TestRCSerialization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := io_data.serializer.serializer(&rc)
+	raw, err := io_data.serializer(&rc)
 	var ec utils.EncryptedRemoteControlCmd
 	err = json.Unmarshal([]byte(raw), &ec)
 	if err != nil {
