@@ -27,8 +27,9 @@ func set_payload_data(io_data *rc_io_data, data string) {
 	set_payload_string_field(io_data, "Data", data)
 }
 
-func read_window_logo(path string) (func(io_data *rc_io_data) (bool, error), error) {
+func read_window_logo(io_data *rc_io_data, path string) (func(io_data *rc_io_data) (bool, error), error) {
 	if strings.ToLower(path) == "none" {
+		io_data.rc.Stream = false
 		return func(io_data *rc_io_data) (bool, error) {
 			set_payload_data(io_data, "-")
 			return true, nil
