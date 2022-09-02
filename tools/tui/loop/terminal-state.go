@@ -92,7 +92,7 @@ func reset_modes(sb *strings.Builder, modes ...Mode) {
 	}
 }
 
-func (self *TerminalStateOptions) SetStateEscapeCodes() []byte {
+func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 	var sb strings.Builder
 	sb.Grow(256)
 	sb.WriteString(S7C1T)
@@ -128,10 +128,10 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() []byte {
 			sb.WriteString(MOUSE_MOVE_TRACKING.EscapeCodeToSet())
 		}
 	}
-	return []byte(sb.String())
+	return sb.String()
 }
 
-func (self *TerminalStateOptions) ResetStateEscapeCodes() []byte {
+func (self *TerminalStateOptions) ResetStateEscapeCodes() string {
 	var sb strings.Builder
 	sb.Grow(64)
 	sb.WriteString("\033[<u")
@@ -145,5 +145,5 @@ func (self *TerminalStateOptions) ResetStateEscapeCodes() []byte {
 		sb.WriteString(RESTORE_CURSOR)
 	}
 	sb.WriteString(RESTORE_COLORS)
-	return []byte(sb.String())
+	return sb.String()
 }

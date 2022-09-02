@@ -172,7 +172,7 @@ func (self *Loop) QueueWriteString(data string) IdType {
 
 // This is dangerous as it is upto the calling code
 // to ensure the data in the underlying array does not change
-func (self *Loop) QueueWriteBytesDangerous(data []byte) IdType {
+func (self *Loop) UnsafeQueueWriteBytes(data []byte) IdType {
 	self.write_msg_id_counter++
 	msg := write_msg{bytes: data, id: self.write_msg_id_counter}
 	self.add_write_to_pending_queue(&msg)
@@ -182,7 +182,7 @@ func (self *Loop) QueueWriteBytesDangerous(data []byte) IdType {
 func (self *Loop) QueueWriteBytesCopy(data []byte) IdType {
 	d := make([]byte, len(data))
 	copy(d, data)
-	return self.QueueWriteBytesDangerous(d)
+	return self.UnsafeQueueWriteBytes(d)
 }
 
 func (self *Loop) ExitCode() int {
