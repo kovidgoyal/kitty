@@ -187,6 +187,7 @@ def hostname() -> str:
 def ref_hyperlink(x: str, prefix: str = '') -> str:
     t, q = text_and_target(x)
     url = f'kitty+doc://{hostname()}/#ref={prefix}{q}'
+    t = re.sub(r':([a-z]+):`([^`]+)`', r'\2', t)
     return hyperlink_for_url(url, t)
 
 
