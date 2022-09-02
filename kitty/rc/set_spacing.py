@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING, Dict, Optional, List
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional
 
 from .base import (
     MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType,
@@ -35,6 +35,34 @@ def patch_configured_edges(opts: 'Options', s: Dict[str, Optional[float]]) -> No
         q = f'window_{which}_width'
         new_edges = getattr(opts, q)._replace(**{edge: val})
         setattr(opts, q, new_edges)
+
+
+def parse_spacing_settings(args: Iterable[str]) -> Dict[str, Optional[float]]:
+    mapper: Dict[str, List[str]] = {}
+    for q in ('margin', 'padding'):
+        mapper[q] = f'{q}-left {q}-top {q}-right {q}-bottom'.split()
+        mapper[f'{q}-h'] = mapper[f'{q}-horizontal'] = f'{q}-left {q}-right'.split()
+        mapper[f'{q}-v'] = mapper[f'{q}-vertical'] = f'{q}-top {q}-bottom'.split()
+        for edge in ('left', 'top', 'right', 'bottom'):
+            mapper[f'{q}-{edge}'] = [f'{q}-{edge}']
+    settings: Dict[str, Optional[float]] = {}
+    for spec in args:
+        parts = spec.split('=', 1)
+        if len(parts) != 2:
+            raise ValueError(f'{spec} is not a valid setting')
+        which = mapper.get(parts[0].lower())
+        if not which:
+            raise ValueError(f'{parts[0]} is not a valid edge specification')
+        if parts[1].lower() == 'default':
+            val = None
+        else:
+            try:
+                val = float(parts[1])
+            except Exception:
+                raise ValueError(f'{parts[1]} is not a number')
+        for q in which:
+            settings[q] = val
+    return settings
 
 
 class SetSpacing(RemoteCommand):
@@ -70,32 +98,12 @@ windows).
     argspec = 'MARGIN_OR_PADDING ...'
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        settings: Dict[str, Optional[float]] = {}
-        mapper: Dict[str, List[str]] = {}
-        for q in ('margin', 'padding'):
-            mapper[q] = f'{q}-left {q}-top {q}-right {q}-bottom'.split()
-            mapper[f'{q}-h'] = mapper[f'{q}-horizontal'] = f'{q}-left {q}-right'.split()
-            mapper[f'{q}-v'] = mapper[f'{q}-vertical'] = f'{q}-top {q}-bottom'.split()
-            for edge in ('left', 'top', 'right', 'bottom'):
-                mapper[f'{q}-{edge}'] = [f'{q}-{edge}']
         if not args:
             self.fatal('At least one setting must be specified')
-        for spec in args:
-            parts = spec.split('=', 1)
-            if len(parts) != 2:
-                self.fatal(f'{spec} is not a valid setting')
-            which = mapper.get(parts[0].lower())
-            if not which:
-                self.fatal(f'{parts[0]} is not a valid edge specification')
-            if parts[1].lower() == 'default':
-                val = None
-            else:
-                try:
-                    val = float(parts[1])
-                except Exception:
-                    self.fatal(f'{parts[1]} is not a number')
-            for q in which:
-                settings[q] = val
+        try:
+            settings = parse_spacing_settings(args)
+        except Exception as e:
+            self.fatal(str(e))
         ans = {
             'match_window': opts.match, 'match_tab': opts.match_tab,
             'all': opts.all, 'configured': opts.configured,

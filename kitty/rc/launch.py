@@ -41,6 +41,7 @@ class Launch(RemoteCommand):
         @first_cmd_output_on_screen.@last_cmd_output.@last_visited_cmd_output: Where to get stdin for the process from
     stdin_add_formatting/bool: Boolean indicating whether to add formatting codes to stdin
     stdin_add_line_wrap_markers/bool: Boolean indicating whether to add line wrap markers to stdin
+    spacing/list.str: A list of spacing specifications, see the docs for the set-spacing command
     no_response/bool: Boolean indicating whether to send back the window id
     marker/str: Specification for marker for new window, for example: "text 1 ERROR"
     logo/str: Path to window logo

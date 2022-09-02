@@ -42,6 +42,8 @@ Detailed list of changes
 
 - Fix regression in 0.26.0 that caused launching kitty without working STDIO handles to result in high CPU usage and prewarming failing (:iss:`5444`)
 
+- :doc:`/launch`: Allow setting the margin and padding for the newly created window (:iss:`5463`)
+
 - macOS: Fix regression in 0.26.0 that caused asking the user for a line of input such as for :ac:`set_tab_title` to not work (:iss:`5447`)
 
 - hints kitten: hyperlink matching: Fix hints occasionally matching text on subsequent line as part of hyperlink (:pull:`5450`)

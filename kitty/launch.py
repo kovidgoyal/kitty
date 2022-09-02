@@ -278,6 +278,14 @@ from, or specify them individually, for example::
     --color background=white --color foreground=red
 
 
+--spacing
+type=list
+Set the margin and padding for the newly created window.
+For example: :code:`margin=20` or :code:`padding-left=10` or :code:`margin-h=30`. The shorthand form sets
+all values, the :code:`*-h` and :code:`*-v` variants set horizontal and vertical values.
+Can be specified multiple times.
+
+
 --watcher -w
 type=list
 completion=type:file ext:py relative:conf group:"Python scripts"
@@ -457,6 +465,10 @@ def launch(
         'overlay_for': None,
         'stdin': None
     }
+    spacing = {}
+    if opts.spacing:
+        from .rc.set_spacing import parse_spacing_settings, patch_window_edges
+        spacing = parse_spacing_settings(opts.spacing)
     if opts.cwd:
         if opts.cwd == 'current':
             if active:
@@ -552,6 +564,9 @@ def launch(
         if tab is not None:
             watchers = load_watch_modules(opts.watcher)
             new_window: Window = tab.new_window(env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, **kw)
+            if spacing:
+                patch_window_edges(new_window, spacing)
+                tab.relayout()
             if opts.color:
                 apply_colors(new_window, opts.color)
             if opts.keep_focus and active:
