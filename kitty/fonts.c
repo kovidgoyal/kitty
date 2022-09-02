@@ -627,8 +627,8 @@ apply_contrast(double x, double contrast, double midpoint, double c1, double c2)
 
 void
 render_alpha_mask(const uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *dest_rect, size_t src_stride, size_t dest_stride) {
-    double contrast = 2.2;
-    double midpoint = 15 / 100.0;
+    double contrast = OPT(font_contrast);
+    double midpoint = OPT(font_contrast_midpoint) / 100.0;
     // Precompute scaling-constants
     double c1 = 1.0 / (1.0 + exp(contrast * midpoint));
     double c2 = 1.0 / (1.0 + exp(contrast * (midpoint - 1.0)));

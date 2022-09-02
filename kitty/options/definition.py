@@ -213,6 +213,24 @@ by the same amount. Increasing the baseline raises glyphs inside the cell and de
 Decreasing the cell size might cause rendering artifacts, so use with care.
 ''')
 
+opt('font_contrast', '0.0', ctype='double',
+    option_type='float',
+    add_to_default=False,
+    long_text='''
+Contrast curve intensity applied to the font alpha channel. A value greater than zero applies a curve
+increasing the opacity of the semi-transparent pixels in the rendered font, increasing apparent font
+thickness. The greater the value, the more intense the contrast.
+''')
+
+opt('font_contrast_midpoint', '50.0', ctype='double',
+    option_type='float',
+    add_to_default=False,
+    long_text='''
+Midpoint for the applied font contrast curve in percent. A lower value will increase the opacity of
+more of the semi-transparent pixels of the font and make it look thicker, while a higher value will
+decrease it making it look thinner.
+''')
+
 opt('box_drawing_scale', '0.001, 1, 1.5, 2',
     option_type='box_drawing_scale',
     long_text='''
