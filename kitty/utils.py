@@ -269,7 +269,8 @@ def command_for_open(program: Union[str, List[str]] = 'default') -> List[str]:
     return cmd
 
 
-def open_cmd(cmd: Union[Iterable[str], List[str]], arg: Union[None, Iterable[str], str] = None, cwd: Optional[str] = None) -> 'PopenType[bytes]':
+def open_cmd(cmd: Union[Iterable[str], List[str]], arg: Union[None, Iterable[str], str] = None,
+             cwd: Optional[str] = None, extra_env: Optional[Dict[str, str]] = None) -> 'PopenType[bytes]':
     import subprocess
     if arg is not None:
         cmd = list(cmd)
@@ -277,13 +278,17 @@ def open_cmd(cmd: Union[Iterable[str], List[str]], arg: Union[None, Iterable[str
             cmd.append(arg)
         else:
             cmd.extend(arg)
+    env: Optional[Dict[str, str]] = None
+    if extra_env:
+        env = os.environ.copy()
+        env.update(extra_env)
     return subprocess.Popen(
         tuple(cmd), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=cwd or None,
-        preexec_fn=clear_handled_signals)
+        preexec_fn=clear_handled_signals, env=env)
 
 
-def open_url(url: str, program: Union[str, List[str]] = 'default', cwd: Optional[str] = None) -> 'PopenType[bytes]':
-    return open_cmd(command_for_open(program), url, cwd=cwd)
+def open_url(url: str, program: Union[str, List[str]] = 'default', cwd: Optional[str] = None, extra_env: Optional[Dict[str, str]] = None) -> 'PopenType[bytes]':
+    return open_cmd(command_for_open(program), url, cwd=cwd, extra_env=extra_env)
 
 
 def detach(fork: bool = True, setsid: bool = True, redirect: bool = True) -> None:

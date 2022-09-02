@@ -1702,7 +1702,10 @@ class Boss:
                 if actions:
                     self.drain_actions(actions)
         if not found_action:
-            open_url(url, program or get_options().open_url_with, cwd=cwd)
+            extra_env = {}
+            if self.listening_on:
+                extra_env['KITTY_LISTEN_ON'] = self.listening_on
+            open_url(url, program or get_options().open_url_with, cwd=cwd, extra_env=extra_env)
 
     @ac('misc', 'Click a URL using the keyboard')
     def open_url_with_hints(self) -> None:
