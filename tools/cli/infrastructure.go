@@ -239,6 +239,9 @@ func text_and_target(x string) (text string, target string) {
 func ref_hyperlink(x string, prefix string) string {
 	text, target := text_and_target(x)
 	url := "kitty+doc://" + CachedHostname() + "/#ref=" + prefix + target
+	text = ReplaceAllStringSubmatchFunc(prettify_pat, text, func(groups []string) string {
+		return groups[2]
+	})
 	return hyperlink_for_url(url, text)
 }
 
