@@ -1,6 +1,6 @@
 // License: GPLv3 Copyright: 2022, Kovid Goyal, <kovid at kovidgoyal.net>
 
-package cli
+package style
 
 import (
 	"strings"
@@ -15,7 +15,7 @@ func TestFormatWithIndent(t *testing.T) {
 	run := func(text string, expected ...string) {
 		output.Reset()
 		q := indent + strings.Join(expected, "\n"+indent) + "\n"
-		format_with_indent(&output, text, indent, screen_width)
+		WrapText(text, &output, indent, screen_width)
 		if output.String() != q {
 			t.Fatalf("expected != actual: %#v != %#v", q, output.String())
 		}
