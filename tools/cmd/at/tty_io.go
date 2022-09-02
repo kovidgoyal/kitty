@@ -72,7 +72,7 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 
 	queue_escape_code := func(data []byte) {
 		lp.QueueWriteString(cmd_escape_code_prefix)
-		lp.QueueWriteBytesDangerous(data)
+		lp.UnsafeQueueWriteBytes(data)
 		lp.QueueWriteString(cmd_escape_code_suffix)
 	}
 
