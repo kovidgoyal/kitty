@@ -592,39 +592,56 @@ END_ALLOW_CASE_RANGE
 
 static PyObject* box_drawing_function = NULL, *prerender_function = NULL, *descriptor_for_idx = NULL;
 
-// TODO: Use floats?
+// Adjusts the alpha value with a contrast curve since most fonts are made for
+// gamma-incorrect rasterization, making them look too thin.
+//
+// Just using a gamma-curve will make the text look slightly washed out or
+// blurry even if it increases the apparent size of the glyphs, so we use a
+// sigmoidal contrast curve based on the following equation:
+//
+//   1 / (1 + e^(C * (M - x)))
+//
+// The curve above needs to be scaled back to the range (0,0) -> (1,1) using
+// the following constants:
+//
+//  c1 = 1.0 / (1.0 + e ^ (C * M))
+//  c2 = 1.0 / (1.0 + e ^ (C * (M - 1.0)))
+//
+// References:
+//
+//  * Photoshop renders text with antialiased blending in 1.42 gamma:
+//    https://blog.johnnovak.net/2016/09/21/what-every-coder-should-know-about-gamma/
+//  * Also widely recommended to use 1.43 or similar gamma for rendering text:
+//    https://www.puredevsoftware.com/blog/2019/01/22/sub-pixel-gamma-correct-font-rendering/
+//  * QT5 uses a gamma value of 1.7 when rendering text in X11:
+//    https://www.mail-archive.com/freetype@nongnu.org/msg05609.html
+//  * Fundamentals of Image Processing by Hany Farid
+//    https://www.cs.swarthmore.edu/~turnbull/cs97/f09/paper/Farid_ImageProcessing.pdf
 double
-contrast_sigmoidal(double x, double contrast, double midpoint) {
-    double g = 1.0 / (1.0 + exp(contrast * (midpoint - x / 255.0)));
-    double c1 = 1.0 / (1.0 + exp(contrast * midpoint));
-    double c2 = 1.0 / (1.0 + exp(contrast * (midpoint - 1.0)));
-    double d = 255.0 * (g - c1) / (c2 - c1);
+apply_contrast(double x, double contrast, double midpoint, double c1, double c2) {
+    double g = 1.0 / (1.0 + exp(contrast * (midpoint - (double)x / 255.0)));
+    double y = 255.0 * (g - c1) / (c2 - c1);
 
-    return d < 0.0 ? 0 : (d > 255.0 ? 255.0 : d);
-}
-
-uint8_t
-adjust_alpha_mask_contrast(uint8_t l) {
-    // TODO: Configurable?
-    double contrast = 6.0;
-    double midpoint = 10.0;
-
-    return (uint8_t)contrast_sigmoidal((double)l, contrast, midpoint / 100.0);
+    return y < 0.0 ? 0 : (y > 255.0 ? 255.0 : y);
 }
 
 void
 render_alpha_mask(const uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *dest_rect, size_t src_stride, size_t dest_stride) {
+    double contrast = 2.2;
+    double midpoint = 15 / 100.0;
+    // Precompute scaling-constants
+    double c1 = 1.0 / (1.0 + exp(contrast * midpoint));
+    double c2 = 1.0 / (1.0 + exp(contrast * (midpoint - 1.0)));
+
     for (size_t sr = src_rect->top, dr = dest_rect->top; sr < src_rect->bottom && dr < dest_rect->bottom; sr++, dr++) {
         pixel *d = dest + dest_stride * dr;
         const uint8_t *s = alpha_mask + src_stride * sr;
         for(size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
             uint8_t src_alpha = d[dc] & 0xff;
-
             // Blending the antialiased alpha-channel in linear-space is
             // technically correct but makes many fonts look too thin, instead
             // adjust it to increase contrast to make thin fonts appear thicker
-            // uint8_t alpha = gamma_adjust_text_alpha_int(s[sc]);
-            uint8_t alpha = adjust_alpha_mask_contrast(s[sc]);
+            uint8_t alpha = contrast > 0.01 ? (uint8_t)apply_contrast((double)s[sc], contrast, midpoint, c1, c2) : s[sc];
 
             d[dc] = 0xffffff00 | MAX(alpha, src_alpha);
         }
