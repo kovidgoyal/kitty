@@ -59,6 +59,10 @@ func (self *EscapeCodeParser) InBracketedPaste() bool { return self.state == bra
 
 var reparse_byte = errors.New("")
 
+func (self *EscapeCodeParser) ParseString(s string) error {
+	return self.Parse(utils.UnsafeStringToBytes(s))
+}
+
 func (self *EscapeCodeParser) Parse(data []byte) error {
 	prev := utils.UTF8_ACCEPT
 	codep := utils.UTF8_ACCEPT
