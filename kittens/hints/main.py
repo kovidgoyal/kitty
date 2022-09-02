@@ -539,12 +539,27 @@ OPTIONS = r'''
 --program
 type=list
 What program to use to open matched text. Defaults to the default open program
-for the operating system. Use a value of :code:`-` to paste the match into the
-terminal window instead. A value of :code:`@` will copy the match to the
-clipboard. A value of :code:`*` will copy the match to the primary selection
-(on systems that support primary selections). A value of :code:`default` will
-run the default open program. Can be specified multiple times to run multiple
-programs.
+for the operating system. Various special values are supported:
+
+:code:`-`
+    paste the match into the terminal window.
+
+:code:`@`
+    copy the match to the clipboard
+
+:code:`*`
+    copy the match to the primary selection (on systems that support primary selections)
+
+:code:`default`
+    run the default open program.
+
+:code:`launch`
+    run :doc:`launch` to open the program in a new kitty tab, window, overlay, etc.
+    For example::
+
+        --program "launch --type=tab vim"
+
+Can be specified multiple times to run multiple programs.
 
 
 --type
@@ -806,6 +821,7 @@ def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, 
         elif program == '*':
             set_primary_selection(joined_text())
         else:
+            from kitty.conf.utils import to_cmdline
             cwd = data['cwd']
             program = get_options().open_url_with if program == 'default' else program
             if text_type == 'hyperlink':
@@ -814,12 +830,20 @@ def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, 
                     if w is not None:
                         w.open_url(m, hyperlink_id=1, cwd=cwd)
             else:
+                launch_args = []
+                if isinstance(program, str) and program.startswith('launch '):
+                    launch_args = to_cmdline(program)
+                    launch_args.insert(1, '--cwd=' + cwd)
                 for m, groupdict in zip(matches, groupdicts):
                     if groupdict:
                         m = []
                         for k, v in groupdict.items():
                             m.append('{}={}'.format(k, v or ''))
-                    boss.open_url(m, program, cwd=cwd)
+                    if launch_args:
+                        w = boss.window_id_map.get(target_window_id)
+                        boss.call_remote_control(active_window=w, args=tuple(launch_args + ([m] if isinstance(m, str) else m)))
+                    else:
+                        boss.open_url(m, program, cwd=cwd)
 
 
 if __name__ == '__main__':
