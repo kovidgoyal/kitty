@@ -94,17 +94,13 @@ vec4 vec4_premul(vec4 rgba) {
 #ifdef NEEDS_FOREGROUND
 vec4 calculate_foreground() {
     // returns the effective foreground color in pre-multiplied form in linear space
-
     vec4 text_fg = texture(sprites, sprite_pos);
     vec3 fg = mix(foreground, text_fg.rgb, colored_sprite);
-
-    float strike_alpha = texture(sprites, strike_pos).a;
     float underline_alpha = texture(sprites, underline_pos).a;
+    float strike_alpha = texture(sprites, strike_pos).a;
     float cursor_alpha = texture(sprites, cursor_pos).a;
-
     // Since strike and text are the same color, we simply add the alpha values
     float combined_alpha = min(text_fg.a + strike_alpha, 1.0f);
-
     // Underline color might be different, so alpha blend
     vec4 ans = alpha_blend_premul(
         vec4_premul(fg, combined_alpha * effective_text_alpha),
