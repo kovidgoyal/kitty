@@ -32,15 +32,18 @@ func (self bool_value) as_sgr(start, end string, prefix, suffix []string) ([]str
 	return prefix, suffix
 }
 
+func (self *bool_value) set_val(val bool) {
+	self.is_set = true
+	self.val = val
+}
+
 func (self *bool_value) from_string(raw string) bool {
 	switch strings.ToLower(raw) {
 	case "y", "yes", "true", "1":
-		self.is_set = true
-		self.val = true
+		self.set_val(true)
 		return true
 	case "n", "no", "false", "0":
-		self.is_set = true
-		self.val = false
+		self.set_val(false)
 		return true
 	default:
 		return false
@@ -241,9 +244,9 @@ func (self underline_value) as_sgr(prefix, suffix []string) ([]string, []string)
 // }}}
 
 type sgr_code struct {
-	bold, italic, reverse, dim bool_value
-	fg, bg, uc                 color_value
-	underline                  underline_value
+	bold, italic, reverse, dim, strikethrough bool_value
+	fg, bg, uc                                color_value
+	underline                                 underline_value
 
 	_prefix, _suffix string
 }
@@ -280,9 +283,10 @@ func (self *sgr_code) update() {
 	p := make([]string, 0, 1)
 	s := make([]string, 0, 1)
 	p, s = self.bold.as_sgr("1", "22", p, s)
+	p, s = self.dim.as_sgr("2", "22", p, s)
 	p, s = self.italic.as_sgr("3", "23", p, s)
 	p, s = self.reverse.as_sgr("7", "27", p, s)
-	p, s = self.dim.as_sgr("2", "22", p, s)
+	p, s = self.strikethrough.as_sgr("9", "29", p, s)
 	p, s = self.underline.as_sgr(p, s)
 	p, s = self.fg.as_sgr(30, p, s)
 	p, s = self.bg.as_sgr(40, p, s)
@@ -327,6 +331,8 @@ func parse_spec(spec string) []escape_code {
 			sgr.dim.from_string(val)
 		case "underline", "u":
 			sgr.underline.from_string(val)
+		case "strikethrough", "s":
+			sgr.strikethrough.from_string(val)
 		case "ucol", "underline_color", "uc":
 			sgr.uc.from_string(val)
 		}
