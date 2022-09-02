@@ -554,7 +554,7 @@ for the operating system. Various special values are supported:
     run the default open program.
 
 :code:`launch`
-    run :doc:`launch` to open the program in a new kitty tab, window, overlay, etc.
+    run :doc:`/launch` to open the program in a new kitty tab, window, overlay, etc.
     For example::
 
         --program "launch --type=tab vim"
