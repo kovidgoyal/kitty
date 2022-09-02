@@ -582,7 +582,7 @@ def clone_safe_opts() -> FrozenSet[str]:
     return frozenset((
         'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'env', 'hold',
         'location', 'os_window_class', 'os_window_name', 'os_window_title',
-        'logo', 'logo_position', 'logo_alpha', 'color'
+        'logo', 'logo_position', 'logo_alpha', 'color', 'spacing',
     ))
 
 
