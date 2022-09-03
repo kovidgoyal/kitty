@@ -254,7 +254,14 @@ type line_builder struct {
 func (self *line_builder) reset() string {
 	ans := self.buf.String()
 	if len(ans) > self.last_text_pos {
-		ans = ans[:self.last_text_pos]
+		prefix := ans[:self.last_text_pos]
+		suffix := ans[self.last_text_pos:]
+		prefix = strings.TrimRightFunc(prefix, unicode.IsSpace)
+		if len(prefix) != self.last_text_pos {
+			ans = prefix + suffix
+		}
+	} else {
+		ans = strings.TrimRightFunc(ans, unicode.IsSpace)
 	}
 	sz := self.buf.Len()
 	self.buf.Reset()
@@ -316,7 +323,6 @@ func (self *wrapper) newline_prefix() {
 
 func (self *wrapper) end_current_line() {
 	line := self.current_line.reset()
-	line = strings.TrimRightFunc(line, unicode.IsSpace)
 	if strings.HasSuffix(line, self.indent) && wcswidth.Stringwidth(line) == self.indent_width {
 		line = line[:len(line)-len(self.indent)]
 	}
