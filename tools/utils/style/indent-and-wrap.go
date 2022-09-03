@@ -301,6 +301,76 @@ func (self *line_builder) add_escape_code2(prefix string, body []byte, suffix st
 	self.buf.WriteString(suffix)
 }
 
+type escape_code_ struct {
+	prefix, suffix string
+	body           []byte
+}
+
+type word_builder struct {
+	buf                 strings.Builder
+	escape_codes        []escape_code_
+	text_start_position int
+}
+
+func (self *word_builder) reset() string {
+	ans := self.buf.String()
+	sz := self.buf.Len()
+	if sz < 64 {
+		sz = 64
+	}
+	self.buf.Reset()
+	self.buf.Grow(sz)
+	self.escape_codes = self.escape_codes[:0]
+	self.text_start_position = 0
+	return ans
+}
+
+func (self *word_builder) is_empty() bool {
+	return self.buf.Len() == 0
+}
+
+func (self *word_builder) width() int {
+	return wcswidth.Stringwidth(self.buf.String())
+}
+
+func (self *word_builder) add_escape_code(prefix string, body []byte, suffix string) {
+	e := escape_code_{prefix: prefix, body: body, suffix: suffix}
+	self.escape_codes = append(self.escape_codes, e)
+	self.buf.WriteString(prefix)
+	self.buf.Write(body)
+	self.buf.WriteString(suffix)
+}
+
+func (self *word_builder) has_text() bool { return self.text_start_position != 0 }
+
+func (self *word_builder) trim_leading_spaces() {
+	if self.buf.Len() == 0 {
+		return
+	}
+	s := self.buf.String()
+	var before, after string
+	if self.text_start_position != 0 {
+		before, after = s[:self.text_start_position-1], s[self.text_start_position-1:]
+	} else {
+		after = s
+	}
+	q := strings.TrimLeftFunc(after, unicode.IsSpace)
+	if q != after {
+		self.buf.Reset()
+		self.buf.Grow(len(before) + len(q))
+		self.buf.WriteString(before)
+		self.buf.WriteString(q)
+		self.text_start_position = len(before) + 1
+	}
+}
+
+func (self *word_builder) add_rune(ch rune) {
+	self.buf.WriteRune(ch)
+	if self.text_start_position == 0 {
+		self.text_start_position = self.buf.Len()
+	}
+}
+
 type wrapper struct {
 	ep                  wcswidth.EscapeCodeParser
 	indent              string
@@ -308,7 +378,7 @@ type wrapper struct {
 
 	sgr                     sgr_state
 	hyperlink               hyperlink_state
-	current_word            strings.Builder
+	current_word            word_builder
 	current_line            line_builder
 	lines                   []string
 	ignore_lines_containing []string
@@ -341,40 +411,42 @@ func (self *wrapper) end_current_line() {
 }
 
 func (self *wrapper) print_word() {
-	w := wcswidth.Stringwidth(self.current_word.String())
+	w := self.current_word.width()
 	if !self.current_line.has_space_for_width(w, self.width) {
 		self.end_current_line()
-		s := strings.TrimSpace(self.current_word.String())
-		self.current_word.Reset()
-		self.current_word.WriteString(s)
-		w = wcswidth.Stringwidth(s)
+		self.current_word.trim_leading_spaces()
+		w = self.current_word.width()
 	}
-	self.current_line.add_word(self.current_word.String(), w)
-	self.current_word.Reset()
+	for _, e := range self.current_word.escape_codes {
+		if e.suffix != "" {
+			self.hyperlink.apply_osc(utils.UnsafeBytesToString(e.body))
+		} else {
+			self.sgr.apply_csi(utils.UnsafeBytesToString(e.body))
+		}
+	}
+	self.current_line.add_word(self.current_word.reset(), w)
 }
 
 func (self *wrapper) handle_rune(ch rune) error {
 	if ch == '\n' {
 		self.print_word()
 		self.end_current_line()
-	} else if self.current_word.Len() != 0 && ch != 0xa0 && unicode.IsSpace(ch) {
+	} else if self.current_word.has_text() && ch != 0xa0 && unicode.IsSpace(ch) {
 		self.print_word()
 		self.current_line.add_char(ch)
 	} else {
-		self.current_word.WriteRune(ch)
+		self.current_word.add_rune(ch)
 	}
 	return nil
 }
 
 func (self *wrapper) handle_csi(raw []byte) error {
-	self.sgr.apply_csi(utils.UnsafeBytesToString(raw))
-	self.current_line.add_escape_code2("\x1b[", raw, "")
+	self.current_word.add_escape_code("\x1b[", raw, "")
 	return nil
 }
 
 func (self *wrapper) handle_osc(raw []byte) error {
-	self.hyperlink.apply_osc(utils.UnsafeBytesToString(raw))
-	self.current_line.add_escape_code2("\x1b]", raw, "\x1b\\")
+	self.current_word.add_escape_code("\x1b]", raw, "\x1b\\")
 	return nil
 }
 
@@ -383,11 +455,11 @@ func (self *wrapper) wrap_text(text string) string {
 		return text
 	}
 	self.current_line.reset()
-	self.current_word.Reset()
+	self.current_word.reset()
 	self.lines = self.lines[:0]
 	self.current_line.add_word(self.indent, self.indent_width)
 	self.ep.ParseString(text)
-	if self.current_word.Len() > 0 {
+	if !self.current_word.is_empty() {
 		self.print_word()
 	}
 	self.end_current_line()
@@ -406,6 +478,7 @@ func new_wrapper(indent string, width int) *wrapper {
 	ans.ep.HandleCSI = ans.handle_csi
 	ans.ep.HandleOSC = ans.handle_osc
 	ans.lines = make([]string, 0, 32)
+	ans.current_word.escape_codes = make([]escape_code_, 0, 8)
 	return &ans
 }
 
