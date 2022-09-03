@@ -306,11 +306,12 @@ type wrapper struct {
 	indent              string
 	width, indent_width int
 
-	sgr          sgr_state
-	hyperlink    hyperlink_state
-	current_word strings.Builder
-	current_line line_builder
-	lines        []string
+	sgr                     sgr_state
+	hyperlink               hyperlink_state
+	current_word            strings.Builder
+	current_line            line_builder
+	lines                   []string
+	ignore_lines_containing []string
 }
 
 func (self *wrapper) newline_prefix() {
@@ -321,12 +322,21 @@ func (self *wrapper) newline_prefix() {
 	self.current_line.add_escape_code(self.hyperlink.as_escape_codes(false))
 }
 
+func (self *wrapper) append_line(line string) {
+	for _, q := range self.ignore_lines_containing {
+		if strings.Contains(line, q) {
+			return
+		}
+	}
+	self.lines = append(self.lines, line)
+}
+
 func (self *wrapper) end_current_line() {
 	line := self.current_line.reset()
 	if strings.HasSuffix(line, self.indent) && wcswidth.Stringwidth(line) == self.indent_width {
 		line = line[:len(line)-len(self.indent)]
 	}
-	self.lines = append(self.lines, line)
+	self.append_line(line)
 	self.newline_prefix()
 }
 
@@ -386,7 +396,7 @@ func (self *wrapper) wrap_text(text string) string {
 	if last_line == self.current_line.reset() {
 		last_line = ""
 	}
-	self.lines = append(self.lines, last_line)
+	self.append_line(last_line)
 	return strings.Join(self.lines, "\n")
 }
 
@@ -399,7 +409,8 @@ func new_wrapper(indent string, width int) *wrapper {
 	return &ans
 }
 
-func WrapText(text string, indent string, width int) string {
+func WrapText(text string, indent string, width int, ignore_lines_containing ...string) string {
 	w := new_wrapper(indent, width)
+	w.ignore_lines_containing = ignore_lines_containing
 	return w.wrap_text(text)
 }
