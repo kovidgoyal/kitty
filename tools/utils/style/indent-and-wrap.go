@@ -8,7 +8,6 @@ import (
 	"strings"
 	"unicode"
 
-	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
 )
 
@@ -302,8 +301,7 @@ func (self *line_builder) add_escape_code2(prefix string, body []byte, suffix st
 }
 
 type escape_code_ struct {
-	prefix, suffix string
-	body           []byte
+	prefix, body, suffix string
 }
 
 type word_builder struct {
@@ -334,7 +332,7 @@ func (self *word_builder) width() int {
 }
 
 func (self *word_builder) add_escape_code(prefix string, body []byte, suffix string) {
-	e := escape_code_{prefix: prefix, body: body, suffix: suffix}
+	e := escape_code_{prefix: prefix, body: string(body), suffix: suffix}
 	self.escape_codes = append(self.escape_codes, e)
 	self.buf.WriteString(prefix)
 	self.buf.Write(body)
@@ -419,9 +417,9 @@ func (self *wrapper) print_word() {
 	}
 	for _, e := range self.current_word.escape_codes {
 		if e.suffix != "" {
-			self.hyperlink.apply_osc(utils.UnsafeBytesToString(e.body))
+			self.hyperlink.apply_osc(e.body)
 		} else {
-			self.sgr.apply_csi(utils.UnsafeBytesToString(e.body))
+			self.sgr.apply_csi(e.body)
 		}
 	}
 	self.current_line.add_word(self.current_word.reset(), w)

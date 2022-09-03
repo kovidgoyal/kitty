@@ -232,7 +232,9 @@ func prettify(text string) string {
 }
 
 func format_with_indent(output io.Writer, text string, indent string, screen_width int) {
-	io.WriteString(output, style.WrapText(prettify(text), indent, screen_width, "#placeholder_for_formatting#"))
+	text = prettify(text)
+	indented := style.WrapText(text, indent, screen_width, "#placeholder_for_formatting#")
+	io.WriteString(output, indented)
 }
 
 func full_command_name(cmd *cobra.Command) string {
