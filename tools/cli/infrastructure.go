@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"unicode"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -20,7 +19,6 @@ import (
 	"kitty/tools/tty"
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
-	"kitty/tools/wcswidth"
 )
 
 var RootCmd *cobra.Command
@@ -88,81 +86,6 @@ var (
 	code_fmt       = cyan_fmt
 	url_fmt        = fmt_ctx.UrlFunc("u=curly uc=cyan")
 )
-
-func format_line_with_indent(output io.Writer, text string, indent string, screen_width int) {
-	trimmed := strings.TrimSpace(text)
-	if trimmed == "" {
-		fmt.Fprintln(output, indent)
-		return
-	}
-	if trimmed == "#placeholder_for_formatting#" {
-		return
-	}
-	x := len(indent)
-	fmt.Fprint(output, indent)
-	in_escape := 0
-	var current_word strings.Builder
-	var escapes strings.Builder
-
-	print_word := func(r rune) {
-		w := wcswidth.Stringwidth(current_word.String())
-		if x+w > screen_width {
-			fmt.Fprintln(output)
-			fmt.Fprint(output, indent)
-			x = len(indent)
-			s := strings.TrimSpace(current_word.String())
-			current_word.Reset()
-			current_word.WriteString(s)
-		}
-		if escapes.Len() > 0 {
-			output.Write([]byte(escapes.String()))
-			escapes.Reset()
-		}
-		if current_word.Len() > 0 {
-			output.Write([]byte(current_word.String()))
-			current_word.Reset()
-		}
-		if r > 0 {
-			current_word.WriteRune(r)
-		}
-		x += w
-	}
-
-	for i, r := range text {
-		if in_escape > 0 {
-			if in_escape == 1 && (r == ']' || r == '[') {
-				in_escape = 2
-				if r == ']' {
-					in_escape = 3
-				}
-			}
-			if (in_escape == 2 && r == 'm') || (in_escape == 3 && r == '\\' && text[i-1] == 0x1b) {
-				in_escape = 0
-			}
-			escapes.WriteRune(r)
-			continue
-		}
-		if r == 0x1b {
-			in_escape = 1
-			if current_word.Len() != 0 {
-				print_word(0)
-			}
-			escapes.WriteRune(r)
-			continue
-		}
-		if current_word.Len() != 0 && r != 0xa0 && unicode.IsSpace(r) {
-			print_word(r)
-		} else {
-			current_word.WriteRune(r)
-		}
-	}
-	if current_word.Len() != 0 || escapes.Len() != 0 {
-		print_word(0)
-	}
-	if len(text) > 0 {
-		fmt.Fprintln(output)
-	}
-}
 
 func ReplaceAllStringSubmatchFunc(re *regexp.Regexp, str string, repl func([]string) string) string {
 	result := ""
@@ -309,9 +232,7 @@ func prettify(text string) string {
 }
 
 func format_with_indent(output io.Writer, text string, indent string, screen_width int) {
-	for _, line := range strings.Split(prettify(text), "\n") {
-		format_line_with_indent(output, line, indent, screen_width)
-	}
+	io.WriteString(output, style.WrapText(prettify(text), indent, screen_width, "#placeholder_for_formatting#"))
 }
 
 func full_command_name(cmd *cobra.Command) string {
