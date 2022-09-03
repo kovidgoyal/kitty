@@ -32,7 +32,12 @@ Glossary
       top of an existing kitty window, entirely covering it. Overlays are used
       throughout kitty, for example, to display the :ref:`the scrollback buffer <scrollback>`,
       to display :doc:`hints </kittens/hints>`, for :doc:`unicode input
-      </kittens/unicode_input>` etc.
+      </kittens/unicode_input>` etc. Normal overlays are meant for short
+      duration popups and so are not considered the :italic:`active window`
+      when determining the current working directory or getting input text for
+      kittens, launch commands, etc. To create an overlay considered as a
+      :italic:`main window` use the :code:`overlay-main` argument to
+      :doc:`launch`.
 
    hyperlinks
       Terminals can have hyperlinks, just like the internet. In kitty you can

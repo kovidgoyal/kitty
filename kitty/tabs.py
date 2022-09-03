@@ -211,7 +211,7 @@ class Tab:  # {{{
 
     @property
     def active_window_for_cwd(self) -> Optional[Window]:
-        return self.windows.active_group_base
+        return self.windows.active_group_main
 
     @property
     def title(self) -> str:

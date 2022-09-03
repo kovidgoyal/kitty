@@ -7,7 +7,7 @@ from contextlib import suppress
 from itertools import count
 from typing import Any, Deque, Dict, Iterator, List, Optional, Tuple, Union
 
-from .types import WindowGeometry
+from .types import OverlayType, WindowGeometry
 from .typing import EdgeLiteral, TabType, WindowType
 
 WindowOrId = Union[WindowType, int]
@@ -54,7 +54,10 @@ class WindowGroup:
         return False
 
     @property
-    def base_window_id(self) -> int:
+    def main_window_id(self) -> int:
+        for w in reversed(self.windows):
+            if w.overlay_type is OverlayType.main:
+                return w.id
         return self.windows[0].id if self.windows else 0
 
     @property
@@ -298,9 +301,9 @@ class WindowList:
         return None
 
     @property
-    def active_group_base(self) -> Optional[WindowType]:
+    def active_group_main(self) -> Optional[WindowType]:
         with suppress(Exception):
-            return self.id_map[self.groups[self.active_group_idx].base_window_id]
+            return self.id_map[self.groups[self.active_group_idx].main_window_id]
         return None
 
     def set_active_window_group_for(self, x: WindowOrId, for_keep_focus: Optional[WindowType] = None) -> None:

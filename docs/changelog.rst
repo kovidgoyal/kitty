@@ -38,6 +38,8 @@ Detailed list of changes
 0.26.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Allow creating :code:`overlay-main` windows, which are treated as the active window unlike normal overlays (:iss:`5392`)
+
 - hyperlinked_grep kitten: Allow control over which parts of rg output are hyperlinked (:pull:`5428`)
 
 - Fix regression in 0.26.0 that caused launching kitty without working STDIO handles to result in high CPU usage and prewarming failing (:iss:`5444`)

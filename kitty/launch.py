@@ -21,7 +21,7 @@ from .fast_data_types import (
 )
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
-from .types import run_once
+from .types import OverlayType, run_once
 from .utils import (
     get_editor, log_error, resolve_custom_file, set_primary_selection, which
 )
@@ -56,7 +56,7 @@ of the active window in the tab is used as the tab title. The special value
 --type
 type=choices
 default=window
-choices=window,tab,os-window,overlay,background,clipboard,primary
+choices=window,tab,os-window,overlay,overlay-main,background,clipboard,primary
 Where to launch the child process:
 
 :code:`window`
@@ -70,6 +70,13 @@ Where to launch the child process:
 
 :code:`overlay`
     An :term:`overlay window <overlay>` covering the current active kitty window
+
+:code:`overlay-main`
+    An :term:`overlay window <overlay>` covering the current active kitty window.
+    Unlike a plain overlay window, this window is considered as a :italic:`main`
+    window which means it is used as the active window for getting the current working
+    directory, the input text for kittens, launch commands, etc. Useful if this overlay is
+    intended to run for a long time as a primary window.
 
 :code:`background`
     The process will be run in the :italic:`background`, without a kitty window.
@@ -539,7 +546,7 @@ def launch(
         kw['cmd'] = final_cmd
     if force_window_launch and opts.type not in non_window_launch_types:
         opts.type = 'window'
-    if opts.type == 'overlay' and active:
+    if opts.type in ('overlay', 'overlay-main') and active:
         kw['overlay_for'] = active.id
     if opts.type == 'background':
         cmd = kw['cmd']
@@ -573,6 +580,8 @@ def launch(
                 boss.set_active_window(active, switch_os_window_if_needed=True, for_keep_focus=True)
             if opts.logo:
                 new_window.set_logo(opts.logo, opts.logo_position or '', opts.logo_alpha)
+            if opts.type == 'overlay-main':
+                new_window.overlay_type = OverlayType.main
             return new_window
     return None
 

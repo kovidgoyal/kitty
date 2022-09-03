@@ -45,7 +45,7 @@ from .notify import NotificationCommand, handle_notification_cmd
 from .options.types import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .types import MouseEvent, WindowGeometry, ac, run_once
+from .types import MouseEvent, OverlayType, WindowGeometry, ac, run_once
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     docs_url, get_primary_selection, kitty_ansi_sanitizer_pat, load_shaders,
@@ -462,6 +462,7 @@ global_watchers = GlobalWatchers()
 class Window:
 
     window_custom_type: str = ''
+    overlay_type = OverlayType.transient
 
     def __init__(
         self,
@@ -642,6 +643,8 @@ class Window:
         }
         if self.window_custom_type:
             ans['window_custom_type'] = self.window_custom_type
+        if self.overlay_type is not OverlayType.transient:
+            ans['overlay_type'] = self.overlay_type.value
         return ans
 
     @property

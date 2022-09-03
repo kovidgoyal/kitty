@@ -1,14 +1,22 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
+from enum import Enum
 from functools import update_wrapper
 from typing import (
-    TYPE_CHECKING, Any, Callable, Generic, NamedTuple, Tuple, TypeVar, Union, Iterator, Dict
+    TYPE_CHECKING, Any, Callable, Dict, Generic, Iterator, NamedTuple, Tuple,
+    TypeVar, Union
 )
+
 if TYPE_CHECKING:
     from kitty.fast_data_types import SingleKey
 
 _T = TypeVar('_T')
+
+
+class OverlayType(Enum):
+    transient: str = 'transient'
+    main: str = 'main'
 
 
 class ParsedShortcut(NamedTuple):
@@ -160,11 +168,11 @@ def run_once(f: Callable[[], _T]) -> 'RunOnce[_T]':
 
 @run_once
 def modmap() -> Dict[str, int]:
+    from .constants import is_macos
     from .fast_data_types import (
         GLFW_MOD_ALT, GLFW_MOD_CAPS_LOCK, GLFW_MOD_CONTROL, GLFW_MOD_HYPER,
         GLFW_MOD_META, GLFW_MOD_NUM_LOCK, GLFW_MOD_SHIFT, GLFW_MOD_SUPER
     )
-    from .constants import is_macos
 
     return {'ctrl': GLFW_MOD_CONTROL, 'shift': GLFW_MOD_SHIFT, ('opt' if is_macos else 'alt'): GLFW_MOD_ALT,
             ('cmd' if is_macos else 'super'): GLFW_MOD_SUPER, 'hyper': GLFW_MOD_HYPER, 'meta': GLFW_MOD_META,
