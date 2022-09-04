@@ -45,7 +45,6 @@ class Handler:
     mouse_tracking = MouseTracking.none
     terminal_io_ended = False
     overlay_ready_report_needed = False
-    perform_default_key_actions = True  # ctrl-c/ctrl-d will call on_interrupt and on_eot
 
     def _initialize(
         self,
@@ -122,10 +121,21 @@ class Handler:
         self._tui_loop.quit(1)
 
     def on_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
+        ' Override this method and perform_default_key_action() to handle all key events '
         if key_event.text:
             self.on_text(key_event.text, in_bracketed_paste)
         else:
             self.on_key(key_event)
+
+    def perform_default_key_action(self, key_event: KeyEventType) -> bool:
+        ' Override in sub-class if you want to handle these key events yourself '
+        if key_event.matches('ctrl+c'):
+            self.on_interrupt()
+            return True
+        if key_event.matches('ctrl+d'):
+            self.on_eot()
+            return True
+        return False
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
         pass

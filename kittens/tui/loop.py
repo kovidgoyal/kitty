@@ -330,14 +330,8 @@ class Loop:
             except Exception:
                 pass
             else:
-                if self.handler.perform_default_key_actions:
-                    if k.matches('ctrl+c'):
-                        self.handler.on_interrupt()
-                        return
-                    if k.matches('ctrl+d'):
-                        self.handler.on_eot()
-                        return
-                self.handler.on_key_event(k)
+                if not self.handler.perform_default_key_action(k):
+                    self.handler.on_key_event(k)
 
     def _on_pm(self, pm: str) -> None:
         pass
