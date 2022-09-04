@@ -45,6 +45,7 @@ class Handler:
     mouse_tracking = MouseTracking.none
     terminal_io_ended = False
     overlay_ready_report_needed = False
+    perform_default_key_actions = True  # ctrl-c/ctrl-d will call on_interrupt and on_eot
 
     def _initialize(
         self,
