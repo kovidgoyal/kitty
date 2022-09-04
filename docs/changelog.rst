@@ -54,6 +54,8 @@ Detailed list of changes
 
 - Fix a regression in 0.26.0 that broke mapping of native keys who key codes did not fit in 21 bits (:iss:`5452`)
 
+- Wayland: Fix remembering window size not accurate when client side decorations are present
+
 0.26.1 [2022-08-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

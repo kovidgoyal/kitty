@@ -974,7 +974,7 @@ process_pending_resizes(monotonic_t now) {
 
 static void
 close_os_window(ChildMonitor *self, OSWindow *os_window) {
-    int w = os_window->window_width, h = os_window->window_height;
+    int w = os_window->content_area_width, h = os_window->content_area_height;
     if (os_window->before_fullscreen.is_set && is_os_window_fullscreen(os_window)) {
         w = os_window->before_fullscreen.w; h = os_window->before_fullscreen.h;
     }

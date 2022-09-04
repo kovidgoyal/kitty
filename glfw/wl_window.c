@@ -998,7 +998,7 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
     if (window->decorated && !window->monitor && !window->wl.decorations.serverSide)
     {
         if (top)
-            *top = window->wl.decorations.metrics.top;
+            *top = window->wl.decorations.metrics.top - window->wl.decorations.metrics.visible_titlebar_height;
         if (left)
             *left = window->wl.decorations.metrics.width;
         if (right)
