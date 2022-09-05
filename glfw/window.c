@@ -71,7 +71,7 @@ void _glfwInputWindowFocus(_GLFWwindow* window, bool focused)
         _glfw.focusedWindowId = window->id;
 }
 
-_GLFWwindow* _glfwFocusedWindow() {
+_GLFWwindow* _glfwFocusedWindow(void) {
     if (_glfw.focusedWindowId) {
         _GLFWwindow *w = _glfw.windowListHead;
         while (w) {
