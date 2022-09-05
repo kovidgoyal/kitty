@@ -25,10 +25,11 @@ def bash_ok():
     v = shutil.which('bash')
     if not v:
         return False
-    o = subprocess.check_output([v, '-c', 'echo "${BASH_VERSINFO[0]}"']).decode('utf-8').strip()
-    if not o or int(o) < 5:
+    o = subprocess.check_output([v, '-c', 'echo "${BASH_VERSINFO[0]}\n${BASH_VERSINFO[4]}"']).decode('utf-8').strip()
+    if not o:
         return False
-    return True
+    (major_ver, relstatus) = o.split(maxsplit=2)
+    return int(major_ver) >= 5 and relstatus == 'release'
 
 
 def basic_shell_env(home_dir):
@@ -240,7 +241,7 @@ function _set_status_prompt; function fish_prompt; echo -n "$pipestatus $status 
 
             pty.send_cmd_to_child('exit')
 
-    @unittest.skipUnless(bash_ok(), 'bash not installed or too old')
+    @unittest.skipUnless(bash_ok(), 'bash not installed, too old, or debug build')
     def test_bash_integration(self):
         ps1 = 'prompt> '
         with self.run_shell(
