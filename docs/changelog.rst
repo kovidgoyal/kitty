@@ -35,24 +35,24 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.26.2 [future]
+0.26.2 [2022-09-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow creating :code:`overlay-main` windows, which are treated as the active window unlike normal overlays (:iss:`5392`)
 
-- hyperlinked_grep kitten: Allow control over which parts of rg output are hyperlinked (:pull:`5428`)
+- hints kitten: Allow using :doc:`launch` as the program to run, to open the result in a new kitty tab/window/etc. (:iss:`5462`)
+
+- hyperlinked_grep kitten: Allow control over which parts of ``rg`` output are hyperlinked (:pull:`5428`)
 
 - Fix regression in 0.26.0 that caused launching kitty without working STDIO handles to result in high CPU usage and prewarming failing (:iss:`5444`)
 
-- :doc:`/launch`: Allow setting the margin and padding for the newly created window (:iss:`5463`)
+- :doc:`/launch`: Allow setting the margin and padding for newly created windows (:iss:`5463`)
 
 - macOS: Fix regression in 0.26.0 that caused asking the user for a line of input such as for :ac:`set_tab_title` to not work (:iss:`5447`)
 
 - hints kitten: hyperlink matching: Fix hints occasionally matching text on subsequent line as part of hyperlink (:pull:`5450`)
 
-- hints kitten: Allow using :doc:`launch` as the program to run, to open the result in a new kitty tab/window/etc. (:iss:`5462`)
-
-- Fix a regression in 0.26.0 that broke mapping of native keys who key codes did not fit in 21 bits (:iss:`5452`)
+- Fix a regression in 0.26.0 that broke mapping of native keys whose key codes did not fit in 21 bits (:iss:`5452`)
 
 - Wayland: Fix remembering window size not accurate when client side decorations are present
 
