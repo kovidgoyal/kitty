@@ -41,7 +41,7 @@ from .fast_data_types import (
     update_window_title, update_window_visibility, wakeup_main_loop
 )
 from .keys import keyboard_mode_name, mod_mask
-from .notify import NotificationCommand, handle_notification_cmd
+from .notify import NotificationCommand, handle_notification_cmd, sanitize_identifier_pat
 from .options.types import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
@@ -1001,6 +1001,7 @@ class Window:
         self.screen.send_escape_code_to_child(OSC, f'{code};rgb:{r:04x}/{g:04x}/{b:04x}')
 
     def report_notification_activated(self, identifier: str) -> None:
+        identifier = sanitize_identifier_pat().sub('', identifier)
         self.screen.send_escape_code_to_child(OSC, f'99;i={identifier};')
 
     def set_dynamic_color(self, code: int, value: Union[str, bytes]) -> None:

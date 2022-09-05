@@ -56,6 +56,10 @@ Detailed list of changes
 
 - Wayland: Fix remembering window size not accurate when client side decorations are present
 
+- Fix an issue where notification identifiers were not sanitized leading to
+  code execution if the user clicked on a notification popup from a malicious
+  source. Thanks to Carter Sande for discovering this vulnerability.
+
 0.26.1 [2022-08-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

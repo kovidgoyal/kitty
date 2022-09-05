@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 # License: GPLv3 Copyright: 2019, Kovid Goyal <kovid at kovidgoyal.net>
 
+import re
 from base64 import standard_b64decode
 from collections import OrderedDict
 from itertools import count
-from typing import Dict, Optional, Callable
+from typing import Callable, Dict, Optional
 
 from .constants import is_macos, logo_png_file
 from .fast_data_types import get_boss
+from .types import run_once
 from .utils import log_error
 
 NotifyImplementation = Callable[[str, str, str], None]
@@ -92,6 +94,11 @@ def parse_osc_777(raw: str) -> NotificationCommand:
     return ans
 
 
+@run_once
+def sanitize_identifier_pat() -> 're.Pattern[str]':
+    return re.compile(r'[^a-zA-Z0-9-_+.]+')
+
+
 def parse_osc_99(raw: str) -> NotificationCommand:
     cmd = NotificationCommand()
     metadata, payload = raw.partition(';')[::2]
@@ -107,7 +114,7 @@ def parse_osc_99(raw: str) -> NotificationCommand:
             if k == 'p':
                 payload_type = v
             elif k == 'i':
-                cmd.identifier = v
+                cmd.identifier = sanitize_identifier_pat().sub('', v)
             elif k == 'e':
                 payload_is_encoded = v == '1'
             elif k == 'd':
