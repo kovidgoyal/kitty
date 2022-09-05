@@ -3,18 +3,21 @@
 package completion
 
 type Match struct {
-	word        string
-	description string
+	Word        string
+	FullForm    string
+	Description string
 }
 
 type MatchGroup struct {
 	Title                    string
 	NoTrailingSpace, IsFiles bool
-	Matches                  []Match
+	Matches                  []*Match
+	WordPrefix               string
 }
 
 type Completions struct {
-	Groups MatchGroup
+	Groups     []*MatchGroup
+	WordPrefix string
 
 	current_cmd *command
 }
@@ -30,9 +33,14 @@ type option struct {
 }
 
 type command struct {
-	options                []option
-	subcommands            []command
-	subcommands_title      string
+	name        string
+	description string
+
+	options []option
+
+	subcommands       []command
+	subcommands_title string
+
 	completion_for_arg     completion_func
 	stop_processing_at_arg int
 }
