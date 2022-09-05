@@ -25,8 +25,8 @@ def bash_ok():
     v = shutil.which('bash')
     if not v:
         return False
-    o = subprocess.check_output([v, '-c', 'echo "${BASH_VERSION}"']).decode('utf-8').strip()
-    if not o or int(o[0]) < 5:
+    o = subprocess.check_output([v, '-c', 'echo "${BASH_VERSINFO[0]}"']).decode('utf-8').strip()
+    if not o or int(o) < 5:
         return False
     return True
 
