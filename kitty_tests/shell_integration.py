@@ -25,10 +25,10 @@ def bash_ok():
     v = shutil.which('bash')
     if not v:
         return False
-    o = subprocess.check_output([v, '-c', 'echo "${BASH_VERSINFO[0]}\n${BASH_VERSINFO[4]}"']).decode('utf-8').strip()
+    o = subprocess.check_output([v, '-c', 'echo "${BASH_VERSINFO[0]}\n${BASH_VERSINFO[4]}"']).decode('utf-8').splitlines()
     if not o:
         return False
-    (major_ver, relstatus) = o.split(maxsplit=2)
+    major_ver, relstatus = o[0], o[-1]
     return int(major_ver) >= 5 and relstatus == 'release'
 
 
