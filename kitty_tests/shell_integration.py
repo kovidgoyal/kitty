@@ -368,4 +368,4 @@ PS1="{ps1}"
             pty.send_cmd_to_child('clone-in-kitty')
             pty.wait_till(lambda: len(pty.callbacks.clone_cmds) == 1)
             env = pty.callbacks.clone_cmds[0].env
-            self.ae(env.get('ES'), 'a\n `b` c\n$d')
+            self.ae(env.get('ES'), 'a\n `b` c\n$d', f'Screen contents: {pty.screen_contents()!r}')
