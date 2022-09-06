@@ -9,6 +9,7 @@ import (
 
 	"kitty/tools/cli"
 	"kitty/tools/cmd/at"
+	"kitty/tools/completion"
 )
 
 func main() {
@@ -17,6 +18,8 @@ func main() {
 		Short: "Fast, statically compiled implementations for various kitty command-line tools",
 	})
 	root.AddCommand(at.EntryPoint(root))
+
+	root.AddCommand(completion.EntryPoint(root))
 
 	cli.Init(root)
 	if err := cli.Execute(root); err != nil {
