@@ -12,29 +12,36 @@ func (self *Completions) add_group(group *MatchGroup) {
 	}
 }
 
-func (self *command) find_option(name_including_leading_dash string) *option {
-	q := strings.TrimLeft(name_including_leading_dash, "-")
-	for _, opt := range self.options {
-		for _, alias := range opt.aliases {
+func (self *Command) find_option(name_including_leading_dash string) *Option {
+	var q string
+	if strings.HasPrefix(name_including_leading_dash, "--") {
+		q = name_including_leading_dash[2:]
+	} else if strings.HasPrefix(name_including_leading_dash, "-") {
+		q = name_including_leading_dash[len(name_including_leading_dash)-1:]
+	} else {
+		q = name_including_leading_dash
+	}
+	for _, opt := range self.Options {
+		for _, alias := range opt.Aliases {
 			if alias == q {
-				return &opt
+				return opt
 			}
 		}
 	}
 	return nil
 }
 
-func (self *Completions) add_options_group(options []option, word string) {
+func (self *Completions) add_options_group(options []*Option, word string) {
 	group := MatchGroup{Title: "Options"}
 	group.Matches = make([]*Match, 0, 8)
 	seen_flags := make(map[string]bool)
 	if strings.HasPrefix(word, "--") {
 		prefix := word[2:]
 		for _, opt := range options {
-			for _, q := range opt.aliases {
+			for _, q := range opt.Aliases {
 				if len(q) > 1 && strings.HasPrefix(q, prefix) {
 					seen_flags[q] = true
-					group.Matches = append(group.Matches, &Match{Word: "--" + q, Description: opt.description})
+					group.Matches = append(group.Matches, &Match{Word: "--" + q, Description: opt.Description})
 				}
 			}
 		}
@@ -48,10 +55,10 @@ func (self *Completions) add_options_group(options []option, word string) {
 		}
 		group.WordPrefix = word
 		for _, opt := range options {
-			for _, q := range opt.aliases {
+			for _, q := range opt.Aliases {
 				if len(q) == 1 && !seen_flags[q] {
 					seen_flags[q] = true
-					group.Matches = append(group.Matches, &Match{Word: q, FullForm: "-" + q, Description: opt.description})
+					group.Matches = append(group.Matches, &Match{Word: q, FullForm: "-" + q, Description: opt.Description})
 				}
 			}
 		}
@@ -59,11 +66,11 @@ func (self *Completions) add_options_group(options []option, word string) {
 	self.add_group(&group)
 }
 
-func complete_word(word string, completions *Completions, only_args_allowed bool, expecting_arg_for *option, arg_num int) {
-	cmd := Completions.current_cmd
+func complete_word(word string, completions *Completions, only_args_allowed bool, expecting_arg_for *Option, arg_num int) {
+	cmd := completions.current_cmd
 	if expecting_arg_for != nil {
-		if expecting_arg_for.completion_for_arg != nil {
-			expecting_arg_for.completion_for_arg(completions, word)
+		if expecting_arg_for.Completion_for_arg != nil {
+			expecting_arg_for.Completion_for_arg(completions, word)
 		}
 		return
 	}
@@ -72,27 +79,27 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 			idx := strings.Index(word, "=")
 			option := cmd.find_option(word[:idx])
 			if option != nil {
-				if option.completion_for_arg != nil {
+				if option.Completion_for_arg != nil {
 					completions.WordPrefix = word[:idx+1]
-					option.completion_for_arg(completions, word[idx+1:])
+					option.Completion_for_arg(completions, word[idx+1:])
 				}
 			}
 		} else {
-			completions.add_options_group(cmd.options, word)
+			completions.add_options_group(cmd.Options, word)
 		}
 		return
 	}
-	if arg_num == 1 && len(cmd.subcommands) > 0 {
-		for _, sc := range cmd.subcommands {
-			if strings.HasPrefix(sc.name, word) {
-				title := cmd.subcommands_title
+	if arg_num == 1 && len(cmd.Subcommands) > 0 {
+		for _, sc := range cmd.Subcommands {
+			if strings.HasPrefix(sc.Name, word) {
+				title := cmd.Subcommands_title
 				if title == "" {
 					title = "Sub-commands"
 				}
 				group := MatchGroup{Title: title}
-				group.Matches = make([]*Match, 0, len(cmd.subcommands))
-				if strings.HasPrefix(sc, word) {
-					group.Matches = append(group.Matches, &Match{Word: sc.name, Description: sc.description})
+				group.Matches = make([]*Match, 0, len(cmd.Subcommands))
+				if strings.HasPrefix(sc.Name, word) {
+					group.Matches = append(group.Matches, &Match{Word: sc.Name, Description: sc.Description})
 				}
 				completions.add_group(&group)
 			}
@@ -100,20 +107,29 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 		return
 	}
 
-	if cmd.completion_for_arg != nil {
-		cmd.completion_for_arg(completions, word)
+	if cmd.Completion_for_arg != nil {
+		cmd.Completion_for_arg(completions, word)
 	}
 	return
 }
 
-func parse_args(cmd *command, words []string, completions *Completions) {
+func (self *Command) find_subcommand(name string) *Command {
+	for _, sc := range self.Subcommands {
+		if sc.Name == name {
+			return sc
+		}
+	}
+	return nil
+}
+
+func (cmd *Command) parse_args(words []string, completions *Completions) {
 	completions.current_cmd = cmd
 	if len(words) == 0 {
 		complete_word("", completions, false, nil, 0)
 		return
 	}
 
-	var expecting_arg_for *option
+	var expecting_arg_for *Option
 	only_args_allowed := false
 	arg_num := 0
 
@@ -135,14 +151,17 @@ func parse_args(cmd *command, words []string, completions *Completions) {
 				continue
 			}
 			if !only_args_allowed && strings.HasPrefix(word, "-") {
-				// TODO:
-				// handle single letter multiple options -abcd
-				// handle standalone --long-opt
-				// handle long opt ends with =
-				// handle long opt containing =
+				idx := strings.Index(word, "=")
+				if idx > -1 {
+					continue
+				}
+				option := cmd.find_option(word[:idx])
+				if option != nil {
+					expecting_arg_for = option
+				}
 				continue
 			}
-			if len(cmd.subcommands) > 0 && arg_num == 1 {
+			if len(cmd.Subcommands) > 0 && arg_num == 1 {
 				sc := cmd.find_subcommand(word)
 				if sc == nil {
 					only_args_allowed = true
@@ -152,7 +171,7 @@ func parse_args(cmd *command, words []string, completions *Completions) {
 				cmd = sc
 				arg_num = 0
 				only_args_allowed = false
-			} else if cmd.stop_processing_at_arg > 0 && arg_num >= cmd.stop_processing_at_arg {
+			} else if cmd.Stop_processing_at_arg > 0 && arg_num >= cmd.Stop_processing_at_arg {
 				return
 			} else {
 				only_args_allowed = true
