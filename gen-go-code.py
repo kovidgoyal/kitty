@@ -3,7 +3,6 @@
 
 import io
 import json
-import os
 from contextlib import contextmanager, suppress
 from typing import Dict, Iterator, List, Set, Tuple, Union
 
@@ -46,6 +45,7 @@ def replace(template: str, **kw: str) -> str:
 # }}}
 
 
+# rc command wrappers {{{
 json_field_types: Dict[str, str] = {
     'bool': 'bool', 'str': 'string', 'list.str': '[]string', 'dict.str': 'map[string]string', 'float': 'float64', 'int': 'int',
     'scroll_amount': 'interface{}', 'spacing': 'interface{}', 'colors': 'interface{}',
@@ -91,7 +91,7 @@ def render_alias_map(alias_map: Dict[str, Tuple[str, ...]]) -> str:
     return amap
 
 
-def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: str) -> str:
+def go_code_for_remote_command(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: str) -> str:
     template = '\n' + template[len('//go:build exclude'):]
     NO_RESPONSE_BASE = 'false'
     af: List[str] = []
@@ -171,6 +171,7 @@ def build_go_code(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: s
         STREAM_WANTED='true' if cmd.reads_streaming_data else 'false',
     )
     return ans
+# }}}
 
 
 # Constants {{{
@@ -239,12 +240,14 @@ def update_at_commands() -> None:
     for name in all_command_names():
         cmd = command_for_name(name)
         opts = parse_option_spec(cmd.options_spec or '\n\n')[0]
-        code = build_go_code(name, cmd, opts, template)
+        code = go_code_for_remote_command(name, cmd, opts, template)
         dest = f'tools/cmd/at/cmd_{name}_generated.go'
-        if os.path.exists(dest):
-            os.remove(dest)
-        with open(dest, 'w') as f:
+        with replace_if_needed(dest) as f:
             f.write(code)
+
+
+def update_completion() -> None:
+    pass
 
 
 def main() -> None:
@@ -252,6 +255,7 @@ def main() -> None:
         f.write(generate_constants())
     with replace_if_needed('tools/utils/style/color-names_generated.go') as f:
         f.write(generate_color_names())
+    update_completion()
     update_at_commands()
     print(json.dumps(changed, indent=2))
 
