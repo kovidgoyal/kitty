@@ -65,7 +65,7 @@ func main(args []string) error {
 	completions := GetCompletions(argv)
 	output, err := output_serializer(completions, shell_state)
 	if err == nil {
-		os.Stdout.Write(output)
+		_, err = os.Stdout.Write(output)
 	}
 	return err
 }
