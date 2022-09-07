@@ -10,6 +10,7 @@
 #include "screen.h"
 #include "glfw-wrapper.h"
 #include "control-codes.h"
+#include <sys/types.h>
 #include <structmember.h>
 
 // python KeyEvent object {{{
