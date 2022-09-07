@@ -15,6 +15,7 @@
 #endif
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #include <wchar.h>
 #include <Python.h>
 #include <fcntl.h>

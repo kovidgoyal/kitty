@@ -314,7 +314,7 @@ SingleKey_set_vals(SingleKey *self, long long key, unsigned short mods, int is_n
         keybitfield k = (keybitfield)(unsigned long long)key;
         self->key.key = k & BIT_MASK(keybitfield, KEY_BITS);
     }
-    if (!(mods & 1 << (MOD_BITS + 1))) self->key.mods = mods & BIT_MASK(u_int32_t, MOD_BITS);
+    if (!(mods & 1 << (MOD_BITS + 1))) self->key.mods = mods & BIT_MASK(uint32_t, MOD_BITS);
     if (is_native > -1) self->key.is_native = is_native ? 1 : 0;
 }
 
