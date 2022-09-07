@@ -365,11 +365,8 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetGamepadState_impl) = dlsym(handle, "glfwGetGamepadState");
     if (glfwGetGamepadState_impl == NULL) fail("Failed to load glfw function glfwGetGamepadState with error: %s", dlerror());
 
-    *(void **) (&glfwSetClipboardString_impl) = dlsym(handle, "glfwSetClipboardString");
-    if (glfwSetClipboardString_impl == NULL) fail("Failed to load glfw function glfwSetClipboardString with error: %s", dlerror());
-
-    *(void **) (&glfwGetClipboardString_impl) = dlsym(handle, "glfwGetClipboardString");
-    if (glfwGetClipboardString_impl == NULL) fail("Failed to load glfw function glfwGetClipboardString with error: %s", dlerror());
+    *(void **) (&glfwSetClipboardDataTypes_impl) = dlsym(handle, "glfwSetClipboardDataTypes");
+    if (glfwSetClipboardDataTypes_impl == NULL) fail("Failed to load glfw function glfwSetClipboardDataTypes with error: %s", dlerror());
 
     *(void **) (&glfwGetTime_impl) = dlsym(handle, "glfwGetTime");
     if (glfwGetTime_impl == NULL) fail("Failed to load glfw function glfwGetTime with error: %s", dlerror());

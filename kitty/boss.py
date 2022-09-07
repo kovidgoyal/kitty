@@ -20,6 +20,7 @@ from weakref import WeakValueDictionary
 from .child import cached_process_data, default_env, set_default_env
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
+from .clipboard import Clipboard, get_primary_selection, set_primary_selection, get_clipboard_string, set_clipboard_string
 from .conf.utils import BadLine, KeyAction, to_cmdline
 from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
@@ -29,19 +30,19 @@ from .constants import (
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
-    GLFW_MOD_SUPER, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS,
+    GLFW_MOD_SUPER, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, GLFW_PRIMARY_SELECTION,
     IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED, ChildMonitor, Color,
     EllipticCurveKey, KeyEvent, SingleKey, add_timer, apply_options_update,
     background_opacity_of, change_background_opacity, change_os_window_state,
     cocoa_set_menubar_title, create_os_window,
     current_application_quit_request, current_os_window, destroy_global_data,
-    focus_os_window, get_boss, get_clipboard_string, get_options,
-    get_os_window_size, global_font_size, mark_os_window_for_close,
-    os_window_font_size, patch_global_colors, redirect_mouse_handling,
-    ring_bell, safe_pipe, send_data_to_peer, set_application_quit_request,
-    set_background_image, set_boss, set_clipboard_string, set_in_sequence_mode,
-    set_options, set_os_window_size, set_os_window_title, thread_write,
-    toggle_fullscreen, toggle_maximized, toggle_secure_input
+    focus_os_window, get_boss, get_options, get_os_window_size,
+    global_font_size, mark_os_window_for_close, os_window_font_size,
+    patch_global_colors, redirect_mouse_handling, ring_bell, safe_pipe,
+    send_data_to_peer, set_application_quit_request, set_background_image,
+    set_boss, set_in_sequence_mode, set_options, set_os_window_size,
+    set_os_window_title, thread_write, toggle_fullscreen, toggle_maximized,
+    toggle_secure_input
 )
 from .key_encoding import get_name_to_functional_number_map
 from .keys import get_shortcut, shortcut_matches
@@ -60,10 +61,9 @@ from .types import _T, AsyncResponse, WindowSystemMouseEvent, ac
 from .typing import PopenType, TypedDict
 from .utils import (
     cleanup_ssh_control_masters, func_name, get_editor, get_new_os_window_size,
-    get_primary_selection, is_path_in_temp_dir, less_version, log_error,
-    macos_version, open_url, parse_address_spec, parse_uri_list,
-    platform_window_id, remove_socket_file, safe_print, set_primary_selection,
-    single_instance, startup_notification_handler, which
+    is_path_in_temp_dir, less_version, log_error, macos_version, open_url,
+    parse_address_spec, parse_uri_list, platform_window_id, remove_socket_file,
+    safe_print, single_instance, startup_notification_handler, which
 )
 from .window import CommandOutput, CwdRequest, Window
 
@@ -239,6 +239,8 @@ class Boss:
         prewarm: PrewarmProcess,
     ):
         set_layout_options(opts)
+        self.clipboard = Clipboard()
+        self.primary_selection = Clipboard(GLFW_PRIMARY_SELECTION)
         self.update_check_started = False
         self.encryption_key = EllipticCurveKey()
         self.encryption_public_key = f'{RC_ENCRYPTION_PROTOCOL_VERSION}:{base64.b85encode(self.encryption_key.public).decode("ascii")}'

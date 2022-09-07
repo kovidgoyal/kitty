@@ -207,6 +207,16 @@ typedef struct _GLFWwindowX11
 
 } _GLFWwindowX11;
 
+typedef struct MimeAtom {
+        Atom atom;
+        const char* mime;
+} MimeAtom;
+
+typedef struct AtomArray {
+    MimeAtom *array;
+    size_t sz, capacity;
+} AtomArray;
+
 // X11-specific global data
 //
 typedef struct _GLFWlibraryX11
@@ -225,10 +235,6 @@ typedef struct _GLFWlibraryX11
     XContext        context;
     // Most recent error code received by X error handler
     int             errorCode;
-    // Primary selection string (while the primary selection is owned)
-    char*           primarySelectionString;
-    // Clipboard string (while the selection is owned)
-    char*           clipboardString;
     // Where to place the cursor when re-enabled
     double          restoreCursorPosX, restoreCursorPosY;
     // The window whose disabled cursor mode is active
@@ -291,6 +297,8 @@ typedef struct _GLFWlibraryX11
 
     // XRM database atom
     Atom            RESOURCE_MANAGER;
+    // Atoms for MIME types
+    AtomArray mime_atoms, clipboard_atoms, primary_atoms;
 
     struct {
         bool        available;

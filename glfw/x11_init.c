@@ -680,8 +680,14 @@ void _glfwPlatformTerminate(void)
 
     glfw_xkb_release(&_glfw.x11.xkb);
     glfw_dbus_terminate(&_glfw.x11.dbus);
-    free(_glfw.x11.primarySelectionString);
-    free(_glfw.x11.clipboardString);
+    if (_glfw.x11.mime_atoms.array) {
+        for (size_t i = 0; i < _glfw.x11.mime_atoms.sz; i++) {
+            free((void*)_glfw.x11.mime_atoms.array[i].mime);
+        }
+        free(_glfw.x11.mime_atoms.array);
+    }
+    if (_glfw.x11.clipboard_atoms.array) { free(_glfw.x11.clipboard_atoms.array); }
+    if (_glfw.x11.primary_atoms.array) { free(_glfw.x11.primary_atoms.array); }
 
     if (_glfw.x11.display)
     {

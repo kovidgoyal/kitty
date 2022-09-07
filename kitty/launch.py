@@ -14,17 +14,15 @@ from .boss import Boss
 from .child import Child
 from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
+from .clipboard import set_clipboard_string, set_primary_selection
 from .constants import kitty_exe, shell_path
 from .fast_data_types import (
-    add_timer, get_boss, get_options, get_os_window_title,
-    patch_color_profiles, set_clipboard_string
+    add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
 )
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import OverlayType, run_once
-from .utils import (
-    get_editor, log_error, resolve_custom_file, set_primary_selection, which
-)
+from .utils import get_editor, log_error, resolve_custom_file, which
 from .window import CwdRequest, CwdRequestType, Watchers, Window
 
 try:

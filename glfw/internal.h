@@ -34,6 +34,9 @@
 #endif
 
 #define arraysz(x) (sizeof(x)/sizeof(x[0]))
+#define MAX(x, y) __extension__ ({ \
+    __typeof__ (x) a = (x); __typeof__ (y) b = (y); \
+        a > b ? a : b;})
 
 #if defined(GLFW_INCLUDE_GLCOREARB) || \
     defined(GLFW_INCLUDE_ES1)       || \
@@ -561,6 +564,13 @@ struct _GLFWmutex
     _GLFW_PLATFORM_MUTEX_STATE;
 };
 
+typedef struct _GLFWClipboardData {
+    const char** mime_types;
+    size_t num_mime_types;
+    GLFWclipboarditerfun get_data;
+    GLFWClipboardType ctype;
+} _GLFWClipboardData;
+
 // Library global data
 //
 struct _GLFWlibrary
@@ -574,6 +584,8 @@ struct _GLFWlibrary
         _GLFWctxconfig  context;
         int             refreshRate;
     } hints;
+
+    _GLFWClipboardData primary, clipboard;
 
     _GLFWerror*         errorListHead;
     _GLFWcursor*        cursorListHead;
@@ -674,12 +686,9 @@ void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode);
 bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp);
 void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp);
 
-void _glfwPlatformSetClipboardString(const char* string);
+void _glfwPlatformSetClipboard(GLFWClipboardType t);
 const char* _glfwPlatformGetClipboardString(void);
-#if defined(_GLFW_X11) || defined(_GLFW_WAYLAND) || defined(__APPLE__)
-void _glfwPlatformSetPrimarySelectionString(const char* string);
 const char* _glfwPlatformGetPrimarySelectionString(void);
-#endif
 
 bool _glfwPlatformInitJoysticks(void);
 void _glfwPlatformTerminateJoysticks(void);
@@ -855,3 +864,5 @@ void _glfwPlatformUpdateTimer(unsigned long long timer_id, monotonic_t interval,
 void _glfwPlatformRemoveTimer(unsigned long long timer_id);
 
 char* _glfw_strdup(const char* source);
+
+void _glfw_free_clipboard_data(_GLFWClipboardData *cd);

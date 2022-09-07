@@ -19,8 +19,7 @@ from typing import (
 
 from .constants import (
     appname, clear_handled_signals, config_dir, is_macos, is_wayland,
-    read_kitty_resource, runtime_dir, shell_path, ssh_control_master_template,
-    supports_primary_selection
+    read_kitty_resource, runtime_dir, shell_path, ssh_control_master_template
 )
 from .fast_data_types import Color, open_tty
 from .rgb import to_color
@@ -228,20 +227,6 @@ def fit_image(width: int, height: int, pwidth: int, pheight: int) -> Tuple[int, 
         width, height = floor(corrf * width), pheight
 
     return int(width), int(height)
-
-
-def set_primary_selection(text: Union[str, bytes]) -> None:
-    if not supports_primary_selection:
-        return  # There is no primary selection
-    from kitty.fast_data_types import set_primary_selection as s
-    s(text)
-
-
-def get_primary_selection() -> str:
-    if not supports_primary_selection:
-        return ''  # There is no primary selection
-    from kitty.fast_data_types import get_primary_selection as g
-    return (g() or b'').decode('utf-8', 'replace')
 
 
 def base64_encode(

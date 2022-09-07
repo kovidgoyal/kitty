@@ -15,13 +15,14 @@ from typing import (
 
 from kitty.cli import parse_args
 from kitty.cli_stub import HintsCLIOptions
+from kitty.clipboard import set_clipboard_string, set_primary_selection
 from kitty.constants import website_url
-from kitty.fast_data_types import get_options, set_clipboard_string, wcswidth
+from kitty.fast_data_types import get_options, wcswidth
 from kitty.key_encoding import KeyEvent
 from kitty.typing import BossType, KittyCommonOpts
 from kitty.utils import (
     ScreenSize, kitty_ansi_sanitizer_pat, resolve_custom_file,
-    screen_size_function, set_primary_selection
+    screen_size_function
 )
 
 from ..tui.handler import Handler, result_handler

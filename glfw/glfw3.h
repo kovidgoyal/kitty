@@ -1718,6 +1718,17 @@ typedef void (* GLFWuserdatafun)(unsigned long long, void*);
 typedef void (* GLFWtickcallback)(void*);
 typedef bool (* GLFWdrawtextfun)(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin);
 typedef char* (* GLFWcurrentselectionfun)(void);
+typedef void (* GLFWclipboarddatafreefun)(void* data);
+typedef struct GLFWDataChunk {
+    const char *data;
+    size_t sz;
+    GLFWclipboarddatafreefun free;
+    void *iter, *free_data;
+} GLFWDataChunk;
+typedef enum {
+    GLFW_CLIPBOARD, GLFW_PRIMARY_SELECTION
+} GLFWClipboardType;
+typedef GLFWDataChunk (* GLFWclipboarditerfun)(const char *mime_type, void *iter, GLFWClipboardType ctype);
 
 /*! @brief Video mode type.
  *
@@ -5245,39 +5256,7 @@ GLFWAPI int glfwGetGamepadState(int jid, GLFWgamepadstate* state);
  *
  *  @ingroup input
  */
-GLFWAPI void glfwSetClipboardString(GLFWwindow* window, const char* string);
-
-/*! @brief Returns the contents of the clipboard as a string.
- *
- *  This function returns the contents of the system clipboard, if it contains
- *  or is convertible to a UTF-8 encoded string.  If the clipboard is empty or
- *  if its contents cannot be converted, `NULL` is returned and a @ref
- *  GLFW_FORMAT_UNAVAILABLE error is generated.
- *
- *  @param[in] window Deprecated.  Any valid window or `NULL`.
- *  @return The contents of the clipboard as a UTF-8 encoded string, or `NULL`
- *  if an [error](@ref error_handling) occurred.
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
- *  GLFW_PLATFORM_ERROR.
- *
- *  @remark @wayland Clipboard is currently unimplemented.
- *
- *  @pointer_lifetime The returned string is allocated and freed by GLFW.  You
- *  should not free it yourself.  It is valid until the next call to @ref
- *  glfwGetClipboardString or @ref glfwSetClipboardString, or until the library
- *  is terminated.
- *
- *  @thread_safety This function must only be called from the main thread.
- *
- *  @sa @ref clipboard
- *  @sa @ref glfwSetClipboardString
- *
- *  @since Added in version 3.0.
- *
- *  @ingroup input
- */
-GLFWAPI const char* glfwGetClipboardString(GLFWwindow* window);
+GLFWAPI void glfwSetClipboardDataTypes(GLFWClipboardType clipboard_type, const char* const *mime_types, size_t num_mime_types, GLFWclipboarditerfun get_iter);
 
 /*! @brief Returns the GLFW time.
  *

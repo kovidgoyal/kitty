@@ -68,6 +68,8 @@ static void terminate(void)
     int i;
 
     memset(&_glfw.callbacks, 0, sizeof(_glfw.callbacks));
+    _glfw_free_clipboard_data(&_glfw.clipboard);
+    _glfw_free_clipboard_data(&_glfw.primary);
 
     while (_glfw.windowListHead)
         glfwDestroyWindow((GLFWwindow*) _glfw.windowListHead);

@@ -716,19 +716,60 @@ static bool createNativeWindow(_GLFWwindow* window,
     return true;
 }
 
+static size_t
+get_clipboard_data(const _GLFWClipboardData *cd, const char *mime, char **data) {
+    *data = NULL;
+    GLFWDataChunk chunk = cd->get_data(mime, NULL, cd->ctype);
+    char *buf = NULL;
+    size_t sz = 0, cap = 0;
+    void *iter = chunk.iter;
+    if (!iter) return 0;
+    while (true) {
+        chunk = cd->get_data(mime, iter, cd->ctype);
+        if (!chunk.sz) break;
+        if (cap < sz + chunk.sz) {
+            cap = MAX(cap * 2, sz + 4 * chunk.sz);
+            buf = realloc(buf, cap);
+        }
+        memcpy(buf + sz, chunk.data, chunk.sz);
+        sz += chunk.sz;
+        if (chunk.free) chunk.free((void*)chunk.free_data);
+    }
+    *data = buf;
+    cd->get_data(NULL, iter, cd->ctype);
+    return sz;
+}
+
+static void
+get_atom_names(const Atom *atoms, int count, char **atom_names) {
+    _glfwGrabErrorHandlerX11();
+    XGetAtomNames(_glfw.x11.display, (Atom*)atoms, count, atom_names);
+    _glfwReleaseErrorHandlerX11();
+    if (_glfw.x11.errorCode != Success) {
+        for (int i = 0; i < count; i++) {
+            _glfwGrabErrorHandlerX11();
+            atom_names[i] = XGetAtomName(_glfw.x11.display, atoms[i]);
+            _glfwReleaseErrorHandlerX11();
+            if (_glfw.x11.errorCode != Success) atom_names[i] = NULL;
+        }
+    }
+}
+
+
 // Set the specified property to the selection converted to the requested target
 //
 static Atom writeTargetToProperty(const XSelectionRequestEvent* request)
 {
-    int i;
-    char* selectionString = NULL;
-    const Atom formats[] = { _glfw.x11.UTF8_STRING, XA_STRING };
-    const int formatCount = sizeof(formats) / sizeof(formats[0]);
+    const AtomArray *aa;
+    const _GLFWClipboardData *cd;
 
-    if (request->selection == _glfw.x11.PRIMARY)
-        selectionString = _glfw.x11.primarySelectionString;
-    else
-        selectionString = _glfw.x11.clipboardString;
+    if (request->selection == _glfw.x11.PRIMARY) {
+        aa = &_glfw.x11.primary_atoms;
+        cd = &_glfw.primary;
+    } else {
+        aa = &_glfw.x11.clipboard_atoms;
+        cd = &_glfw.clipboard;
+    }
 
     if (request->property == None)
     {
@@ -741,11 +782,10 @@ static Atom writeTargetToProperty(const XSelectionRequestEvent* request)
     {
         // The list of supported targets was requested
 
-        const Atom targets[] = { _glfw.x11.TARGETS,
-                                 _glfw.x11.MULTIPLE,
-                                 _glfw.x11.UTF8_STRING,
-                                 XA_STRING };
-
+        Atom *targets = calloc(aa->sz + 2, sizeof(Atom));
+        targets[0] = _glfw.x11.TARGETS;
+        targets[1] = _glfw.x11.MULTIPLE;
+        for (size_t i = 0; i < aa->sz; i++) targets[i+2] = aa->array[i].atom;
         XChangeProperty(_glfw.x11.display,
                         request->requestor,
                         request->property,
@@ -753,8 +793,8 @@ static Atom writeTargetToProperty(const XSelectionRequestEvent* request)
                         32,
                         PropModeReplace,
                         (unsigned char*) targets,
-                        sizeof(targets) / sizeof(targets[0]));
-
+                        aa->sz + 2);
+        free(targets);
         return request->property;
     }
 
@@ -763,7 +803,7 @@ static Atom writeTargetToProperty(const XSelectionRequestEvent* request)
         // Multiple conversions were requested
 
         Atom* targets;
-        unsigned long i, count;
+        size_t i, j, count;
 
         count = _glfwGetWindowPropertyX11(request->requestor,
                                           request->property,
@@ -772,24 +812,25 @@ static Atom writeTargetToProperty(const XSelectionRequestEvent* request)
 
         for (i = 0;  i < count;  i += 2)
         {
-            int j;
-
-            for (j = 0;  j < formatCount;  j++)
+            for (j = 0;  j < aa->sz;  j++)
             {
-                if (targets[i] == formats[j])
+                if (targets[i] == aa->array[j].atom)
                     break;
             }
 
-            if (j < formatCount)
+            if (j < aa->sz)
             {
-                if (selectionString) XChangeProperty(_glfw.x11.display,
+                char *data = NULL; size_t sz = get_clipboard_data(cd, aa->array[j].mime, &data);
+
+                if (data && sz) XChangeProperty(_glfw.x11.display,
                                 request->requestor,
                                 targets[i + 1],
                                 targets[i],
                                 8,
                                 PropModeReplace,
-                                (unsigned char *) selectionString,
-                                strlen(selectionString));
+                                (unsigned char *) data,
+                                sz);
+                free(data);
             }
             else
                 targets[i + 1] = None;
@@ -828,20 +869,22 @@ static Atom writeTargetToProperty(const XSelectionRequestEvent* request)
 
     // Conversion to a data target was requested
 
-    for (i = 0;  i < formatCount;  i++)
+    for (size_t i = 0;  i < aa->sz;  i++)
     {
-        if (request->target == formats[i])
+        if (request->target == aa->array[i].atom)
         {
             // The requested target is one we support
 
-            if (selectionString) XChangeProperty(_glfw.x11.display,
+            char *data = NULL; size_t sz = get_clipboard_data(cd, aa->array[i].mime, &data);
+            if (data && sz) XChangeProperty(_glfw.x11.display,
                             request->requestor,
                             request->property,
                             request->target,
                             8,
                             PropModeReplace,
-                            (unsigned char *) selectionString,
-                            strlen(selectionString));
+                            (unsigned char *) data,
+                            sz);
+            free(data);
 
             return request->property;
         }
@@ -856,13 +899,11 @@ static void handleSelectionClear(XEvent* event)
 {
     if (event->xselectionclear.selection == _glfw.x11.PRIMARY)
     {
-        free(_glfw.x11.primarySelectionString);
-        _glfw.x11.primarySelectionString = NULL;
+        _glfw_free_clipboard_data(&_glfw.primary);
     }
     else
     {
-        free(_glfw.x11.clipboardString);
-        _glfw.x11.clipboardString = NULL;
+        _glfw_free_clipboard_data(&_glfw.clipboard);
     }
 }
 
@@ -883,25 +924,19 @@ static void handleSelectionRequest(XEvent* event)
 
 static const char* getSelectionString(Atom selection)
 {
-    char** selectionString = NULL;
+    char* selectionString = NULL;
     const Atom targets[] = { _glfw.x11.UTF8_STRING, XA_STRING };
     const size_t targetCount = sizeof(targets) / sizeof(targets[0]);
-
-    if (selection == _glfw.x11.PRIMARY)
-        selectionString = &_glfw.x11.primarySelectionString;
-    else
-        selectionString = &_glfw.x11.clipboardString;
 
     if (XGetSelectionOwner(_glfw.x11.display, selection) ==
         _glfw.x11.helperWindowHandle)
     {
         // Instead of doing a large number of X round-trips just to put this
         // string into a window property and then read it back, just return it
-        return *selectionString;
+        _GLFWClipboardData *cd = selection == _glfw.x11.PRIMARY ? &_glfw.primary : &_glfw.clipboard;
+        char *data = NULL; size_t sz = get_clipboard_data(cd, "text/plain", &data);
+        if (data && sz) return data;
     }
-
-    free(*selectionString);
-    *selectionString = NULL;
 
     for (size_t i = 0;  i < targetCount;  i++)
     {
@@ -998,11 +1033,11 @@ static const char* getSelectionString(Atom selection)
                 {
                     if (targets[i] == XA_STRING)
                     {
-                        *selectionString = convertLatin1toUTF8(string);
+                        selectionString = convertLatin1toUTF8(string);
                         free(string);
                     }
                     else
-                        *selectionString = string;
+                        selectionString = string;
 
                     break;
                 }
@@ -1011,24 +1046,24 @@ static const char* getSelectionString(Atom selection)
         else if (actualType == targets[i])
         {
             if (targets[i] == XA_STRING)
-                *selectionString = convertLatin1toUTF8(data);
+                selectionString = convertLatin1toUTF8(data);
             else
-                *selectionString = _glfw_strdup(data);
+                selectionString = _glfw_strdup(data);
         }
 
         XFree(data);
 
-        if (*selectionString)
+        if (selectionString)
             break;
     }
 
-    if (!*selectionString)
+    if (!selectionString)
     {
         _glfwInputError(GLFW_FORMAT_UNAVAILABLE,
                         "X11: Failed to convert selection to string");
     }
 
-    return *selectionString;
+    return selectionString;
 }
 
 // Make the specified window and its video mode active on its monitor
@@ -1094,21 +1129,6 @@ static void onConfigChange(void)
         {
             _glfwInputWindowContentScale(window, xscale, yscale);
             window = window->next;
-        }
-    }
-}
-
-static void
-get_atom_names(Atom *atoms, int count, char **atom_names) {
-    _glfwGrabErrorHandlerX11();
-    XGetAtomNames(_glfw.x11.display, atoms, count, atom_names);
-    _glfwReleaseErrorHandlerX11();
-    if (_glfw.x11.errorCode != Success) {
-        for (int i = 0; i < count; i++) {
-            _glfwGrabErrorHandlerX11();
-            atom_names[i] = XGetAtomName(_glfw.x11.display, atoms[i]);
-            _glfwReleaseErrorHandlerX11();
-            if (_glfw.x11.errorCode != Success) atom_names[i] = NULL;
         }
     }
 }
@@ -2849,46 +2869,54 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor UNUSED)
     }
 }
 
-void _glfwPlatformSetClipboardString(const char* string)
-{
-    char* copy = _glfw_strdup(string);
-    free(_glfw.x11.clipboardString);
-    _glfw.x11.clipboardString = copy;
+static MimeAtom atom_for_mime(const char *mime) {
+    for (size_t i = 0; i < _glfw.x11.mime_atoms.sz; i++) {
+        MimeAtom ma = _glfw.x11.mime_atoms.array[i];
+        if (strcmp(ma.mime, mime) == 0) {
+            return ma;
+        }
+    }
+    MimeAtom ma = {.mime=_glfw_strdup(mime), .atom=XInternAtom(_glfw.x11.display, mime, 0)};
+    if (_glfw.x11.mime_atoms.capacity < _glfw.x11.mime_atoms.sz + 1) {
+        _glfw.x11.mime_atoms.capacity += 32;
+        _glfw.x11.mime_atoms.array = realloc(_glfw.x11.mime_atoms.array, _glfw.x11.mime_atoms.capacity);
+    }
+    _glfw.x11.mime_atoms.array[_glfw.x11.mime_atoms.sz++] = ma;
+    return ma;
+}
 
-    XSetSelectionOwner(_glfw.x11.display,
-                       _glfw.x11.CLIPBOARD,
-                       _glfw.x11.helperWindowHandle,
-                       CurrentTime);
-
-    if (XGetSelectionOwner(_glfw.x11.display, _glfw.x11.CLIPBOARD) !=
-        _glfw.x11.helperWindowHandle)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "X11: Failed to become owner of clipboard selection");
+void _glfwPlatformSetClipboard(GLFWClipboardType t) {
+    Atom which = None;
+    _GLFWClipboardData *cd = NULL;
+    AtomArray *aa = NULL;
+    switch (t) {
+        case GLFW_CLIPBOARD: which = _glfw.x11.CLIPBOARD; cd = &_glfw.clipboard; aa = &_glfw.x11.clipboard_atoms; break;
+        case GLFW_PRIMARY_SELECTION: which = _glfw.x11.PRIMARY; cd = &_glfw.primary; aa = &_glfw.x11.primary_atoms; break;
+    }
+    XSetSelectionOwner(_glfw.x11.display, which, _glfw.x11.helperWindowHandle, CurrentTime);
+    if (XGetSelectionOwner(_glfw.x11.display, which) != _glfw.x11.helperWindowHandle) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to become owner of clipboard selection");
+    }
+    if (aa->capacity < cd->num_mime_types + 32) {
+        aa->capacity = cd->num_mime_types + 32;
+        aa->array = malloc(sizeof(aa->array[0]) * aa->capacity);
+    }
+    aa->sz = 0;
+    for (size_t i = 0; i < cd->num_mime_types; i++) {
+        MimeAtom *a = aa->array + aa->sz++;
+        if (strcmp(cd->mime_types[i], "text/plain") == 0) {
+            a->atom = XA_ATOM; a->mime = "text/plain";
+            a = aa->array + aa->sz++;
+            a->atom = _glfw.x11.UTF8_STRING; a->mime = "text/plain";
+        } else {
+            *a = atom_for_mime(cd->mime_types[i]);
+        }
     }
 }
 
 const char* _glfwPlatformGetClipboardString(void)
 {
     return getSelectionString(_glfw.x11.CLIPBOARD);
-}
-
-void _glfwPlatformSetPrimarySelectionString(const char* string)
-{
-    free(_glfw.x11.primarySelectionString);
-    _glfw.x11.primarySelectionString = _glfw_strdup(string);
-
-    XSetSelectionOwner(_glfw.x11.display,
-                       _glfw.x11.PRIMARY,
-                       _glfw.x11.helperWindowHandle,
-                       CurrentTime);
-
-    if (XGetSelectionOwner(_glfw.x11.display, _glfw.x11.PRIMARY) !=
-        _glfw.x11.helperWindowHandle)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "X11: Failed to become owner of primary selection");
-    }
 }
 
 const char* _glfwPlatformGetPrimarySelectionString(void)

@@ -1,7 +1,7 @@
 import termios
 from ctypes import Array, c_ubyte
 from typing import (
-    Any, AnyStr, Callable, Dict, List, NewType, Optional, Tuple, TypedDict,
+    Any, Callable, Dict, List, NewType, Optional, Tuple, TypedDict,
     Union, Iterator
 )
 
@@ -13,6 +13,8 @@ from kitty.options.types import Options
 from kitty.types import SignalInfo
 
 # Constants {{{
+GLFW_PRIMARY_SELECTION: int
+GLFW_CLIPBOARD: int
 CLD_KILLED: int
 CLD_STOPPED: int
 CLD_CONTINUED: int
@@ -304,14 +306,6 @@ def log_error_string(s: str) -> None:
     pass
 
 
-def set_primary_selection(x: Union[bytes, str]) -> None:
-    pass
-
-
-def get_primary_selection() -> Optional[bytes]:
-    pass
-
-
 def redirect_std_streams(devnull: str) -> None:
     pass
 
@@ -597,10 +591,6 @@ def set_in_sequence_mode(yes: bool) -> None:
     pass
 
 
-def set_clipboard_string(data: AnyStr) -> None:
-    pass
-
-
 def set_background_image(
     path: Optional[str],
     os_window_ids: Tuple[int, ...],
@@ -761,10 +751,6 @@ def current_application_quit_request() -> int:
 
 
 def global_font_size(val: float = -1.) -> float:
-    pass
-
-
-def get_clipboard_string() -> str:
     pass
 
 
@@ -1486,3 +1472,4 @@ class SingleKey:
 def set_use_os_log(yes: bool) -> None: ...
 def get_docs_ref_map() -> bytes: ...
 def clearenv() -> None: ...
+def set_clipboard_data_types(ct: int, mime_types: Tuple[str, ...]) -> None: ...

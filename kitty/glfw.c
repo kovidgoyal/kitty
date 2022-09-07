@@ -1263,13 +1263,6 @@ toggle_secure_input(PYNOARG) {
     Py_RETURN_NONE;
 }
 
-static PyObject*
-get_clipboard_string(PYNOARG) {
-    OSWindow *w = current_os_window();
-    if (w) return Py_BuildValue("s", glfwGetClipboardString(w->handle));
-    return Py_BuildValue("s", "");
-}
-
 static void
 ring_audio_bell(void) {
     static monotonic_t last_bell_at = -1;
@@ -1296,16 +1289,6 @@ get_content_scale_for_window(PYNOARG) {
     float xscale, yscale;
     glfwGetWindowContentScale(w->handle, &xscale, &yscale);
     return Py_BuildValue("ff", xscale, yscale);
-}
-
-static PyObject*
-set_clipboard_string(PyObject UNUSED *self, PyObject *args) {
-    char *title;
-    Py_ssize_t sz;
-    if(!PyArg_ParseTuple(args, "s#", &title, &sz)) return NULL;
-    OSWindow *w = current_os_window();
-    if (w) glfwSetClipboardString(w->handle, title);
-    Py_RETURN_NONE;
 }
 
 static OSWindow*
@@ -1439,28 +1422,6 @@ cocoa_window_id(PyObject UNUSED *self, PyObject *os_wid) {
     PyErr_SetString(PyExc_RuntimeError, "cocoa_window_id() is only supported on Mac");
     return NULL;
 #endif
-}
-
-static PyObject*
-get_primary_selection(PYNOARG) {
-    if (glfwGetPrimarySelectionString) {
-        OSWindow *w = current_os_window();
-        if (w) return Py_BuildValue("y", glfwGetPrimarySelectionString(w->handle));
-    } else log_error("Failed to load glfwGetPrimarySelectionString");
-    Py_RETURN_NONE;
-}
-
-static PyObject*
-set_primary_selection(PyObject UNUSED *self, PyObject *args) {
-    char *text;
-    Py_ssize_t sz;
-    if (!PyArg_ParseTuple(args, "s#", &text, &sz)) return NULL;
-    if (glfwSetPrimarySelectionString) {
-        OSWindow *w = current_os_window();
-        if (w) glfwSetPrimarySelectionString(w->handle, text);
-    }
-    else log_error("Failed to load glfwSetPrimarySelectionString");
-    Py_RETURN_NONE;
 }
 
 static PyObject*
@@ -1618,26 +1579,73 @@ set_ignore_os_keyboard_processing(bool enabled) {
     glfwSetIgnoreOSKeyboardProcessing(enabled);
 }
 
+static void
+decref_pyobj(void *x) {
+    Py_XDECREF(x);
+}
+
+static GLFWDataChunk
+get_clipboard_data(const char *mime_type, void *iter, GLFWClipboardType ct) {
+    GLFWDataChunk ans = {.iter=iter, .free=decref_pyobj};
+    if (global_state.boss == NULL) return ans;
+    if (iter == NULL) {
+        PyObject *c = PyObject_GetAttrString(global_state.boss, ct == GLFW_PRIMARY_SELECTION ? "primary_selection" : "clipboard");
+        if (c == NULL) {
+            PyErr_Print();
+            return ans;
+        }
+        PyObject *i = PyObject_CallFunction(c, "s", mime_type);
+        Py_DECREF(c);
+        if (!i) {
+            PyErr_Print();
+            return ans;
+        }
+        ans.iter = i;
+        return ans;
+    }
+    if (mime_type == NULL) {
+        Py_XDECREF(iter);
+        return ans;
+    }
+
+    PyObject *ret = PyObject_CallFunctionObjArgs(iter, NULL);
+    if (ret == NULL) return ans;
+    ans.data = PyBytes_AS_STRING(ret);
+    ans.sz = PyBytes_GET_SIZE(ret);
+    ans.free_data = ret;
+    return ans;
+}
+
+static PyObject*
+set_clipboard_data_types(PyObject *self UNUSED, PyObject *args) {
+    PyObject *mta;
+    int ctype;
+    if (!PyArg_ParseTuple(args, "iO!", &ctype, &PyTuple_Type, &mta)) return NULL;
+    const char **mime_types = calloc(PyTuple_GET_SIZE(mta), sizeof(char*));
+    if (!mime_types) return PyErr_NoMemory();
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(mta); i++) mime_types[i] = PyUnicode_AsUTF8(PyTuple_GET_ITEM(mta, i));
+    glfwSetClipboardDataTypes(ctype, mime_types, PyTuple_GET_SIZE(mta), get_clipboard_data);
+    free(mime_types);
+    Py_RETURN_NONE;
+}
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
     METHODB(set_custom_cursor, METH_VARARGS),
     {"create_os_window", (PyCFunction)(void (*) (void))(create_os_window), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(set_default_window_icon, METH_VARARGS),
-    METHODB(get_clipboard_string, METH_NOARGS),
+    METHODB(set_clipboard_data_types, METH_VARARGS),
     METHODB(toggle_secure_input, METH_NOARGS),
     METHODB(get_content_scale_for_window, METH_NOARGS),
     METHODB(ring_bell, METH_NOARGS),
-    METHODB(set_clipboard_string, METH_VARARGS),
     METHODB(toggle_fullscreen, METH_VARARGS),
     METHODB(toggle_maximized, METH_VARARGS),
     METHODB(change_os_window_state, METH_VARARGS),
     METHODB(glfw_window_hint, METH_VARARGS),
-    METHODB(get_primary_selection, METH_NOARGS),
     METHODB(x11_display, METH_NOARGS),
     METHODB(get_click_interval, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
-    METHODB(set_primary_selection, METH_VARARGS),
     METHODB(strip_csi, METH_O),
 #ifndef __APPLE__
     METHODB(dbus_send_notification, METH_VARARGS),
@@ -1672,6 +1680,7 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_REPEAT);
     ADDC(true); ADDC(false);
     ADDC(GLFW_IBEAM_CURSOR); ADDC(GLFW_HAND_CURSOR); ADDC(GLFW_ARROW_CURSOR);
+    ADDC(GLFW_PRIMARY_SELECTION); ADDC(GLFW_CLIPBOARD);
 
     /* start glfw functional keys (auto generated by gen-key-constants.py do not edit) */
     ADDC(GLFW_FKEY_ESCAPE);

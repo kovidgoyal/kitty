@@ -1456,6 +1456,17 @@ typedef void (* GLFWuserdatafun)(unsigned long long, void*);
 typedef void (* GLFWtickcallback)(void*);
 typedef bool (* GLFWdrawtextfun)(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin);
 typedef char* (* GLFWcurrentselectionfun)(void);
+typedef void (* GLFWclipboarddatafreefun)(void* data);
+typedef struct GLFWDataChunk {
+    const char *data;
+    size_t sz;
+    GLFWclipboarddatafreefun free;
+    void *iter, *free_data;
+} GLFWDataChunk;
+typedef enum {
+    GLFW_CLIPBOARD, GLFW_PRIMARY_SELECTION
+} GLFWClipboardType;
+typedef GLFWDataChunk (* GLFWclipboarditerfun)(const char *mime_type, void *iter, GLFWClipboardType ctype);
 
 /*! @brief Video mode type.
  *
@@ -2081,13 +2092,9 @@ typedef int (*glfwGetGamepadState_func)(int, GLFWgamepadstate*);
 GFW_EXTERN glfwGetGamepadState_func glfwGetGamepadState_impl;
 #define glfwGetGamepadState glfwGetGamepadState_impl
 
-typedef void (*glfwSetClipboardString_func)(GLFWwindow*, const char*);
-GFW_EXTERN glfwSetClipboardString_func glfwSetClipboardString_impl;
-#define glfwSetClipboardString glfwSetClipboardString_impl
-
-typedef const char* (*glfwGetClipboardString_func)(GLFWwindow*);
-GFW_EXTERN glfwGetClipboardString_func glfwGetClipboardString_impl;
-#define glfwGetClipboardString glfwGetClipboardString_impl
+typedef void (*glfwSetClipboardDataTypes_func)(GLFWClipboardType, const char* const*, size_t, GLFWclipboarditerfun);
+GFW_EXTERN glfwSetClipboardDataTypes_func glfwSetClipboardDataTypes_impl;
+#define glfwSetClipboardDataTypes glfwSetClipboardDataTypes_impl
 
 typedef monotonic_t (*glfwGetTime_func)(void);
 GFW_EXTERN glfwGetTime_func glfwGetTime_impl;
