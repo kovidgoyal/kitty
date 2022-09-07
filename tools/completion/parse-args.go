@@ -70,7 +70,7 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 	cmd := completions.current_cmd
 	if expecting_arg_for != nil {
 		if expecting_arg_for.Completion_for_arg != nil {
-			expecting_arg_for.Completion_for_arg(completions, word)
+			expecting_arg_for.Completion_for_arg(completions, word, arg_num)
 		}
 		return
 	}
@@ -81,7 +81,7 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 			if option != nil {
 				if option.Completion_for_arg != nil {
 					completions.WordPrefix = word[:idx+1]
-					option.Completion_for_arg(completions, word[idx+1:])
+					option.Completion_for_arg(completions, word[idx+1:], arg_num)
 				}
 			}
 		} else {
@@ -89,18 +89,19 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 		}
 		return
 	}
-	if arg_num == 1 && len(cmd.Subcommands) > 0 {
-		for _, sc := range cmd.Subcommands {
-			if strings.HasPrefix(sc.Name, word) {
-				title := cmd.Subcommands_title
-				if title == "" {
-					title = "Sub-commands"
-				}
-				group := MatchGroup{Title: title}
-				group.Matches = make([]*Match, 0, len(cmd.Subcommands))
+	if arg_num == 1 && cmd.has_subcommands() {
+		for _, cg := range cmd.Groups {
+			group := MatchGroup{Title: cg.Title}
+			if group.Title == "" {
+				group.Title = "Sub-commands"
+			}
+			group.Matches = make([]*Match, 0, len(cg.Commands))
+			for _, sc := range cg.Commands {
 				if strings.HasPrefix(sc.Name, word) {
 					group.Matches = append(group.Matches, &Match{Word: sc.Name, Description: sc.Description})
 				}
+			}
+			if len(group.Matches) > 0 {
 				completions.add_group(&group)
 			}
 		}
@@ -108,18 +109,9 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 	}
 
 	if cmd.Completion_for_arg != nil {
-		cmd.Completion_for_arg(completions, word)
+		cmd.Completion_for_arg(completions, word, arg_num)
 	}
 	return
-}
-
-func (self *Command) find_subcommand(name string) *Command {
-	for _, sc := range self.Subcommands {
-		if sc.Name == name {
-			return sc
-		}
-	}
-	return nil
 }
 
 func (cmd *Command) parse_args(words []string, completions *Completions) {
@@ -156,13 +148,13 @@ func (cmd *Command) parse_args(words []string, completions *Completions) {
 					continue
 				}
 				option := cmd.find_option(word[:idx])
-				if option != nil {
+				if option != nil && option.Has_following_arg {
 					expecting_arg_for = option
 				}
 				continue
 			}
-			if len(cmd.Subcommands) > 0 && arg_num == 1 {
-				sc := cmd.find_subcommand(word)
+			if cmd.has_subcommands() && arg_num == 1 {
+				sc := cmd.find_subcommand_with_name(word)
 				if sc == nil {
 					only_args_allowed = true
 					continue

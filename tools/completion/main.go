@@ -35,6 +35,8 @@ func init() {
 	output_serializers["json"] = json_output_serializer
 }
 
+var registered_exes = make(map[string]func(root *Command))
+
 func main(args []string) error {
 	output_type := "json"
 	if len(args) > 0 {
@@ -62,7 +64,12 @@ func main(args []string) error {
 	if err != nil {
 		return err
 	}
-	completions := GetCompletions(argv)
+	var root = Command{Options: make([]*Option, 0), Groups: make([]*CommandGroup, 0, 8)}
+	for _, re := range registered_exes {
+		re(&root)
+	}
+
+	completions := root.GetCompletions(argv)
 	output, err := output_serializer(completions, shell_state)
 	if err == nil {
 		_, err = os.Stdout.Write(output)

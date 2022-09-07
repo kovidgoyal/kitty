@@ -3,6 +3,7 @@
 
 import io
 import json
+import sys
 from contextlib import contextmanager, suppress
 from typing import Dict, Iterator, List, Set, Tuple, Union
 
@@ -43,6 +44,17 @@ def replace(template: str, **kw: str) -> str:
         template = template.replace(k, v)
     return template
 # }}}
+
+
+def generate_completions_for_kitty() -> None:
+    from kitty.entry_points import entry_points, namespaced_entry_points
+    print('package completion\n')
+    print('func kitty(root *Command) {')
+    print('k := root.add_command("kitty")')
+    print('}')
+    print('func init() {')
+    print('registered_exes["kitty"] = kitty')
+    print('}')
 
 
 # rc command wrappers {{{
@@ -247,7 +259,13 @@ def update_at_commands() -> None:
 
 
 def update_completion() -> None:
-    pass
+    orig = sys.stdout
+    try:
+        with replace_if_needed('tools/completion/kitty_generated.go') as f:
+            sys.stdout = f
+            generate_completions_for_kitty()
+    finally:
+        sys.stdout = orig
 
 
 def main() -> None:
