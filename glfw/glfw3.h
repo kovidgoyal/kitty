@@ -1729,6 +1729,7 @@ typedef enum {
     GLFW_CLIPBOARD, GLFW_PRIMARY_SELECTION
 } GLFWClipboardType;
 typedef GLFWDataChunk (* GLFWclipboarditerfun)(const char *mime_type, void *iter, GLFWClipboardType ctype);
+typedef bool (* GLFWclipboardwritedatafun)(void *object, const char *data, size_t sz);
 
 /*! @brief Video mode type.
  *
@@ -5231,32 +5232,8 @@ GLFWAPI const char* glfwGetGamepadName(int jid);
  */
 GLFWAPI int glfwGetGamepadState(int jid, GLFWgamepadstate* state);
 
-/*! @brief Sets the clipboard to the specified string.
- *
- *  This function sets the system clipboard to the specified, UTF-8 encoded
- *  string.
- *
- *  @param[in] window Deprecated.  Any valid window or `NULL`.
- *  @param[in] string A UTF-8 encoded string.
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
- *  GLFW_PLATFORM_ERROR.
- *
- *  @remark @wayland Clipboard is currently unimplemented.
- *
- *  @pointer_lifetime The specified string is copied before this function
- *  returns.
- *
- *  @thread_safety This function must only be called from the main thread.
- *
- *  @sa @ref clipboard
- *  @sa @ref glfwGetClipboardString
- *
- *  @since Added in version 3.0.
- *
- *  @ingroup input
- */
 GLFWAPI void glfwSetClipboardDataTypes(GLFWClipboardType clipboard_type, const char* const *mime_types, size_t num_mime_types, GLFWclipboarditerfun get_iter);
+GLFWAPI void glfwGetClipboard(GLFWClipboardType clipboard_type, const char* mime_type, GLFWclipboardwritedatafun write_data, void *object);
 
 /*! @brief Returns the GLFW time.
  *

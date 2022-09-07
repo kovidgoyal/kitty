@@ -922,28 +922,28 @@ static void handleSelectionRequest(XEvent* event)
     XSendEvent(_glfw.x11.display, request->requestor, False, 0, &reply);
 }
 
-static const char* getSelectionString(Atom selection)
+static void
+getSelectionString(Atom selection, const char *mime_type, Atom *targets, size_t num_targets, GLFWclipboardwritedatafun write_data, void *object)
 {
-    char* selectionString = NULL;
-    const Atom targets[] = { _glfw.x11.UTF8_STRING, XA_STRING };
-    const size_t targetCount = sizeof(targets) / sizeof(targets[0]);
-
+#define XFREE(x) { if (x) XFree(x); x = NULL; }
     if (XGetSelectionOwner(_glfw.x11.display, selection) ==
         _glfw.x11.helperWindowHandle)
     {
         // Instead of doing a large number of X round-trips just to put this
         // string into a window property and then read it back, just return it
         _GLFWClipboardData *cd = selection == _glfw.x11.PRIMARY ? &_glfw.primary : &_glfw.clipboard;
-        char *data = NULL; size_t sz = get_clipboard_data(cd, "text/plain", &data);
-        if (data && sz) return data;
+        char *data = NULL; size_t sz = get_clipboard_data(cd, mime_type, &data);
+        write_data(object, data, sz); free(data);
+        return;
     }
 
-    for (size_t i = 0;  i < targetCount;  i++)
+    bool found = false;
+    for (size_t i = 0; !found && i < num_targets; i++)
     {
-        char* data;
-        Atom actualType;
-        int actualFormat;
-        unsigned long itemCount, bytesAfter;
+        char* data = NULL;
+        Atom actualType = None;
+        int actualFormat = 0;
+        unsigned long itemCount = 0, bytesAfter = 0;
         monotonic_t start = glfwGetTime();
         XEvent notification, dummy;
 
@@ -960,8 +960,7 @@ static const char* getSelectionString(Atom selection)
                                        &notification))
         {
             monotonic_t time = glfwGetTime();
-            if (time - start > s_to_monotonic_t(2ll))
-                return "";
+            if (time - start > s_to_monotonic_t(2ll)) return;
             waitForX11Event(s_to_monotonic_t(2ll) - (time - start));
         }
 
@@ -988,9 +987,6 @@ static const char* getSelectionString(Atom selection)
 
         if (actualType == _glfw.x11.INCR)
         {
-            size_t size = 1;
-            char* string = NULL;
-
             for (;;)
             {
                 start = glfwGetTime();
@@ -1001,13 +997,12 @@ static const char* getSelectionString(Atom selection)
                 {
                     monotonic_t time = glfwGetTime();
                     if (time - start > s_to_monotonic_t(2ll)) {
-                        free(string);
-                        return "";
+                        return;
                     }
                     waitForX11Event(s_to_monotonic_t(2ll) - (time - start));
                 }
 
-                XFree(data);
+                XFREE(data);
                 XGetWindowProperty(_glfw.x11.display,
                                    notification.xselection.requestor,
                                    notification.xselection.property,
@@ -1023,47 +1018,37 @@ static const char* getSelectionString(Atom selection)
 
                 if (itemCount)
                 {
-                    size += itemCount;
-                    string = realloc(string, size);
-                    string[size - itemCount - 1] = '\0';
-                    strcat(string, data);
-                }
-
-                if (!itemCount)
-                {
-                    if (targets[i] == XA_STRING)
-                    {
-                        selectionString = convertLatin1toUTF8(string);
-                        free(string);
+                    const char *string = data;
+                    if (targets[i] == XA_STRING) {
+                        string = convertLatin1toUTF8(data);
+                        itemCount = strlen(string);
                     }
-                    else
-                        selectionString = string;
+                    bool ok = write_data(object, string, itemCount);
+                    if (string != data) free((void*)string);
+                    if (!ok) { XFREE(data); break; }
+                } else { found = true; break; }
 
-                    break;
-                }
             }
         }
         else if (actualType == targets[i])
         {
-            if (targets[i] == XA_STRING)
-                selectionString = convertLatin1toUTF8(data);
-            else
-                selectionString = _glfw_strdup(data);
+            if (targets[i] == XA_STRING) {
+                const char *string = convertLatin1toUTF8(data);
+                write_data(object, string, strlen(string)); free((void*)string);
+            } else write_data(object, data, itemCount);
+            found = true;
         }
 
-        XFree(data);
+        XFREE(data);
 
-        if (selectionString)
-            break;
     }
 
-    if (!selectionString)
+    if (!found)
     {
         _glfwInputError(GLFW_FORMAT_UNAVAILABLE,
                         "X11: Failed to convert selection to string");
     }
-
-    return selectionString;
+#undef XFREE
 }
 
 // Make the specified window and its video mode active on its monitor
@@ -2914,14 +2899,18 @@ void _glfwPlatformSetClipboard(GLFWClipboardType t) {
     }
 }
 
-const char* _glfwPlatformGetClipboardString(void)
-{
-    return getSelectionString(_glfw.x11.CLIPBOARD);
-}
-
-const char* _glfwPlatformGetPrimarySelectionString(void)
-{
-    return getSelectionString(_glfw.x11.PRIMARY);
+void
+_glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_type, GLFWclipboardwritedatafun write_data, void *object) {
+    // TODO: Handle NULL mime_type
+    Atom atoms[2], which = clipboard_type == GLFW_PRIMARY_SELECTION ? _glfw.x11.PRIMARY : _glfw.x11.CLIPBOARD;
+    size_t count = 1;
+    if (strcmp(mime_type, "text/plain") == 0) {
+        atoms[0] = _glfw.x11.UTF8_STRING;
+        atoms[count++] = XA_STRING;
+    } else {
+        atoms[0] = atom_for_mime(mime_type).atom;
+    }
+    getSelectionString(which, mime_type, atoms, count, write_data, object);
 }
 
 EGLenum _glfwPlatformGetEGLPlatform(EGLint** attribs)

@@ -2,10 +2,10 @@
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
 import io
-from typing import IO, Callable, Dict, Union
+from typing import IO, Callable, Dict, Union, List
 
 from .constants import supports_primary_selection
-from .fast_data_types import GLFW_CLIPBOARD, get_boss, set_clipboard_data_types
+from .fast_data_types import GLFW_CLIPBOARD, get_boss, set_clipboard_data_types, get_clipboard_mime
 
 DataType = Union[bytes, 'IO[bytes]']
 
@@ -26,7 +26,12 @@ class Clipboard:
             set_clipboard_data_types(self.clipboard_type, tuple(self.data))
 
     def get_text(self) -> str:
-        raise NotImplementedError('TODO: Implement this')
+        parts: List[bytes] = []
+        self.get_mime("text/plain", parts.append)
+        return b''.join(parts).decode('utf-8', 'replace')
+
+    def get_mime(self, mime: str, output: Callable[[bytes], None]) -> None:
+        get_clipboard_mime(self.clipboard_type, mime, output)
 
     def __call__(self, mime: str) -> Callable[[], bytes]:
         data = self.data.get(mime, b'')

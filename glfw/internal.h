@@ -687,8 +687,7 @@ bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp);
 void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp);
 
 void _glfwPlatformSetClipboard(GLFWClipboardType t);
-const char* _glfwPlatformGetClipboardString(void);
-const char* _glfwPlatformGetPrimarySelectionString(void);
+void _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_type, GLFWclipboardwritedatafun write_data, void *object);
 
 bool _glfwPlatformInitJoysticks(void);
 void _glfwPlatformTerminateJoysticks(void);

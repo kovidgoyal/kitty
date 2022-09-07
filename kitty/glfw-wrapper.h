@@ -1467,6 +1467,7 @@ typedef enum {
     GLFW_CLIPBOARD, GLFW_PRIMARY_SELECTION
 } GLFWClipboardType;
 typedef GLFWDataChunk (* GLFWclipboarditerfun)(const char *mime_type, void *iter, GLFWClipboardType ctype);
+typedef bool (* GLFWclipboardwritedatafun)(void *object, const char *data, size_t sz);
 
 /*! @brief Video mode type.
  *
@@ -2095,6 +2096,10 @@ GFW_EXTERN glfwGetGamepadState_func glfwGetGamepadState_impl;
 typedef void (*glfwSetClipboardDataTypes_func)(GLFWClipboardType, const char* const*, size_t, GLFWclipboarditerfun);
 GFW_EXTERN glfwSetClipboardDataTypes_func glfwSetClipboardDataTypes_impl;
 #define glfwSetClipboardDataTypes glfwSetClipboardDataTypes_impl
+
+typedef void (*glfwGetClipboard_func)(GLFWClipboardType, const char*, GLFWclipboardwritedatafun, void*);
+GFW_EXTERN glfwGetClipboard_func glfwGetClipboard_impl;
+#define glfwGetClipboard glfwGetClipboard_impl
 
 typedef monotonic_t (*glfwGetTime_func)(void);
 GFW_EXTERN glfwGetTime_func glfwGetTime_impl;

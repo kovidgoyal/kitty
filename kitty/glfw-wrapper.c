@@ -368,6 +368,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetClipboardDataTypes_impl) = dlsym(handle, "glfwSetClipboardDataTypes");
     if (glfwSetClipboardDataTypes_impl == NULL) fail("Failed to load glfw function glfwSetClipboardDataTypes with error: %s", dlerror());
 
+    *(void **) (&glfwGetClipboard_impl) = dlsym(handle, "glfwGetClipboard");
+    if (glfwGetClipboard_impl == NULL) fail("Failed to load glfw function glfwGetClipboard with error: %s", dlerror());
+
     *(void **) (&glfwGetTime_impl) = dlsym(handle, "glfwGetTime");
     if (glfwGetTime_impl == NULL) fail("Failed to load glfw function glfwGetTime with error: %s", dlerror());
 

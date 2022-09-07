@@ -1590,16 +1590,10 @@ get_clipboard_data(const char *mime_type, void *iter, GLFWClipboardType ct) {
     if (global_state.boss == NULL) return ans;
     if (iter == NULL) {
         PyObject *c = PyObject_GetAttrString(global_state.boss, ct == GLFW_PRIMARY_SELECTION ? "primary_selection" : "clipboard");
-        if (c == NULL) {
-            PyErr_Print();
-            return ans;
-        }
+        if (c == NULL) { return ans; }
         PyObject *i = PyObject_CallFunction(c, "s", mime_type);
         Py_DECREF(c);
-        if (!i) {
-            PyErr_Print();
-            return ans;
-        }
+        if (!i) { return ans; }
         ans.iter = i;
         return ans;
     }
@@ -1621,14 +1615,36 @@ set_clipboard_data_types(PyObject *self UNUSED, PyObject *args) {
     PyObject *mta;
     int ctype;
     if (!PyArg_ParseTuple(args, "iO!", &ctype, &PyTuple_Type, &mta)) return NULL;
-    const char **mime_types = calloc(PyTuple_GET_SIZE(mta), sizeof(char*));
-    if (!mime_types) return PyErr_NoMemory();
-    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(mta); i++) mime_types[i] = PyUnicode_AsUTF8(PyTuple_GET_ITEM(mta, i));
-    glfwSetClipboardDataTypes(ctype, mime_types, PyTuple_GET_SIZE(mta), get_clipboard_data);
-    free(mime_types);
+    if (glfwSetClipboardDataTypes) {
+        const char **mime_types = calloc(PyTuple_GET_SIZE(mta), sizeof(char*));
+        if (!mime_types) return PyErr_NoMemory();
+        for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(mta); i++) mime_types[i] = PyUnicode_AsUTF8(PyTuple_GET_ITEM(mta, i));
+        glfwSetClipboardDataTypes(ctype, mime_types, PyTuple_GET_SIZE(mta), get_clipboard_data);
+        free(mime_types);
+    } else log_error("GLFW not initialized cannot set clipboard data");
+    if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }
 
+static bool
+write_clipboard_data(void *callback, const char *data, size_t sz) {
+    Py_ssize_t z = sz;
+    PyObject *ret = PyObject_CallFunction(callback, "y#", data, z);
+    bool ok = false;
+    if (ret != NULL) { ok = true; Py_DECREF(ret); }
+    return ok;
+}
+
+static PyObject*
+get_clipboard_mime(PyObject *self UNUSED, PyObject *args) {
+    int ctype;
+    const char *mime;
+    PyObject *callback;
+    if (!PyArg_ParseTuple(args, "izO", &ctype, &mime, &callback)) return NULL;
+    glfwGetClipboard(ctype, mime, write_clipboard_data, callback);
+    if (PyErr_Occurred()) return NULL;
+    Py_RETURN_NONE;
+}
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
@@ -1636,6 +1652,7 @@ static PyMethodDef module_methods[] = {
     {"create_os_window", (PyCFunction)(void (*) (void))(create_os_window), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(set_default_window_icon, METH_VARARGS),
     METHODB(set_clipboard_data_types, METH_VARARGS),
+    METHODB(get_clipboard_mime, METH_VARARGS),
     METHODB(toggle_secure_input, METH_NOARGS),
     METHODB(get_content_scale_for_window, METH_NOARGS),
     METHODB(ring_bell, METH_NOARGS),

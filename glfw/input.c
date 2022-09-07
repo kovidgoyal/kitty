@@ -1534,6 +1534,11 @@ void _glfw_free_clipboard_data(_GLFWClipboardData *cd) {
     memset(cd, 0, sizeof(cd[0]));
 }
 
+GLFWAPI void glfwGetClipboard(GLFWClipboardType clipboard_type, const char* mime_type, GLFWclipboardwritedatafun write_data, void *object) {
+    _GLFW_REQUIRE_INIT();
+    _glfwPlatformGetClipboard(clipboard_type, mime_type, write_data, object);
+}
+
 GLFWAPI void glfwSetClipboardDataTypes(GLFWClipboardType clipboard_type, const char* const *mime_types, size_t num_mime_types, GLFWclipboarditerfun get_data) {
     assert(mime_types != NULL);
     assert(get_data != NULL);
@@ -1551,20 +1556,6 @@ GLFWAPI void glfwSetClipboardDataTypes(GLFWClipboardType clipboard_type, const c
     for (size_t i = 0; i < cd->num_mime_types; i++) cd->mime_types[i] = _glfw_strdup(mime_types[i]);
     _glfwPlatformSetClipboard(clipboard_type);
 }
-
-GLFWAPI const char* glfwGetClipboardString(GLFWwindow* handle UNUSED)
-{
-    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
-    return _glfwPlatformGetClipboardString();
-}
-
-#if defined(_GLFW_X11) || defined(_GLFW_WAYLAND) || defined(__APPLE__)
-GLFWAPI const char* glfwGetPrimarySelectionString(GLFWwindow* handle UNUSED)
-{
-    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
-    return _glfwPlatformGetPrimarySelectionString();
-}
-#endif
 
 GLFWAPI monotonic_t glfwGetTime(void)
 {
