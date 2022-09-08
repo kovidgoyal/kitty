@@ -923,7 +923,7 @@ static void handleSelectionRequest(XEvent* event)
 }
 
 static void
-getSelectionString(Atom selection, const char *mime_type, Atom *targets, size_t num_targets, GLFWclipboardwritedatafun write_data, void *object)
+getSelectionString(Atom selection, const char *mime_type, Atom *targets, size_t num_targets, GLFWclipboardwritedatafun write_data, void *object, bool report_not_found)
 {
 #define XFREE(x) { if (x) XFree(x); x = NULL; }
     if (XGetSelectionOwner(_glfw.x11.display, selection) ==
@@ -1054,10 +1054,10 @@ getSelectionString(Atom selection, const char *mime_type, Atom *targets, size_t 
 
     }
 
-    if (!found)
+    if (!found && report_not_found)
     {
         _glfwInputError(GLFW_FORMAT_UNAVAILABLE,
-                        "X11: Failed to convert selection to string");
+                        "X11: Failed to convert selection to data from clipboard");
     }
 #undef XFREE
 }
@@ -2923,7 +2923,7 @@ write_chunk(void *object, const char *data, size_t sz) {
 static void
 get_available_mime_types(Atom which_clipboard, GLFWclipboardwritedatafun write_data, void *object) {
     chunked_writer cw = {0};
-    getSelectionString(which_clipboard, NULL, &_glfw.x11.TARGETS, 1, write_chunk, &cw);
+    getSelectionString(which_clipboard, NULL, &_glfw.x11.TARGETS, 1, write_chunk, &cw, false);
     size_t count = 0;
     bool ok = true;
     if (cw.buf) {
@@ -2934,34 +2934,30 @@ get_available_mime_types(Atom which_clipboard, GLFWclipboardwritedatafun write_d
         for (size_t i = 0; i < count; i++) {
             if (atoms[i] != _glfw.x11.UTF8_STRING && atoms[i] != XA_STRING) {
                 if (ok) ok = write_data(object, names[i], strlen(names[i]));
+            } else {
+                ok = write_data(object, "text/plain", strlen("text/plain"));
             }
             XFree(names[i]);
         }
         free(cw.buf);
         free(names);
     }
-    if (!count && ok) {
-        // if no atoms then we assume text/plain is available, for compatibility with broken clients
-        ok = write_data(object, "text/plain", strlen("text/plain"));
-    }
-
 }
 
 void
 _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_type, GLFWclipboardwritedatafun write_data, void *object) {
-    Atom atoms[2], which = clipboard_type == GLFW_PRIMARY_SELECTION ? _glfw.x11.PRIMARY : _glfw.x11.CLIPBOARD;
+    Atom atoms[4], which = clipboard_type == GLFW_PRIMARY_SELECTION ? _glfw.x11.PRIMARY : _glfw.x11.CLIPBOARD;
     if (mime_type == NULL) {
         get_available_mime_types(which, write_data, object);
         return;
     }
-    size_t count = 1;
+    size_t count = 0;
+    atoms[count++] = atom_for_mime(mime_type).atom;
     if (strcmp(mime_type, "text/plain") == 0) {
-        atoms[0] = _glfw.x11.UTF8_STRING;
+        atoms[count++] = _glfw.x11.UTF8_STRING;
         atoms[count++] = XA_STRING;
-    } else {
-        atoms[0] = atom_for_mime(mime_type).atom;
     }
-    getSelectionString(which, mime_type, atoms, count, write_data, object);
+    getSelectionString(which, mime_type, atoms, count, write_data, object, true);
 }
 
 EGLenum _glfwPlatformGetEGLPlatform(EGLint** attribs)
