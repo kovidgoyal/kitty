@@ -929,6 +929,13 @@ getSelectionString(Atom selection, const char *mime_type, Atom *targets, size_t 
     if (XGetSelectionOwner(_glfw.x11.display, selection) ==
         _glfw.x11.helperWindowHandle)
     {
+        if (mime_type == NULL) {
+            AtomArray *aa = selection == _glfw.x11.PRIMARY ? &_glfw.x11.primary_atoms : &_glfw.x11.clipboard_atoms;
+            for (size_t i = 0; i < aa->sz; i++) {
+                if (!write_data(object, (char*)&aa->array[i].atom, sizeof(Atom))) break;
+            }
+            return;
+        }
         // Instead of doing a large number of X round-trips just to put this
         // string into a window property and then read it back, just return it
         _GLFWClipboardData *cd = selection == _glfw.x11.PRIMARY ? &_glfw.primary : &_glfw.clipboard;
@@ -1037,6 +1044,10 @@ getSelectionString(Atom selection, const char *mime_type, Atom *targets, size_t 
                 write_data(object, string, strlen(string)); free((void*)string);
             } else write_data(object, data, itemCount);
             found = true;
+        }
+        else if (actualType == XA_ATOM && targets[i] == _glfw.x11.TARGETS) {
+            found = true;
+            write_data(object, data, itemCount);
         }
 
         XFREE(data);
@@ -2889,20 +2900,60 @@ void _glfwPlatformSetClipboard(GLFWClipboardType t) {
     aa->sz = 0;
     for (size_t i = 0; i < cd->num_mime_types; i++) {
         MimeAtom *a = aa->array + aa->sz++;
-        if (strcmp(cd->mime_types[i], "text/plain") == 0) {
-            a->atom = XA_ATOM; a->mime = "text/plain";
-            a = aa->array + aa->sz++;
-            a->atom = _glfw.x11.UTF8_STRING; a->mime = "text/plain";
-        } else {
-            *a = atom_for_mime(cd->mime_types[i]);
-        }
+        *a = atom_for_mime(cd->mime_types[i]);
     }
+}
+
+typedef struct chunked_writer {
+    char *buf; size_t sz, cap;
+} chunked_writer;
+
+static bool
+write_chunk(void *object, const char *data, size_t sz) {
+    chunked_writer *cw = object;
+    if (cw->cap < cw->sz + sz) {
+        cw->cap = MAX(cw->cap * 2, cw->sz + 8*sz);
+        cw->buf = realloc(cw->buf, cw->cap);
+    }
+    memcpy(cw->buf + cw->sz, data, sz);
+    cw->sz += sz;
+    return true;
+}
+
+static void
+get_available_mime_types(Atom which_clipboard, GLFWclipboardwritedatafun write_data, void *object) {
+    chunked_writer cw = {0};
+    getSelectionString(which_clipboard, NULL, &_glfw.x11.TARGETS, 1, write_chunk, &cw);
+    size_t count = 0;
+    bool ok = true;
+    if (cw.buf) {
+        Atom *atoms = (Atom*)cw.buf;
+        count = cw.sz / sizeof(Atom);
+        char **names = calloc(count, sizeof(char*));
+        get_atom_names(atoms, count, names);
+        for (size_t i = 0; i < count; i++) {
+            if (atoms[i] != _glfw.x11.UTF8_STRING && atoms[i] != XA_STRING) {
+                if (ok) ok = write_data(object, names[i], strlen(names[i]));
+            }
+            XFree(names[i]);
+        }
+        free(cw.buf);
+        free(names);
+    }
+    if (!count && ok) {
+        // if no atoms then we assume text/plain is available, for compatibility with broken clients
+        ok = write_data(object, "text/plain", strlen("text/plain"));
+    }
+
 }
 
 void
 _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_type, GLFWclipboardwritedatafun write_data, void *object) {
-    // TODO: Handle NULL mime_type
     Atom atoms[2], which = clipboard_type == GLFW_PRIMARY_SELECTION ? _glfw.x11.PRIMARY : _glfw.x11.CLIPBOARD;
+    if (mime_type == NULL) {
+        get_available_mime_types(which, write_data, object);
+        return;
+    }
     size_t count = 1;
     if (strcmp(mime_type, "text/plain") == 0) {
         atoms[0] = _glfw.x11.UTF8_STRING;

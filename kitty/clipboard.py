@@ -2,10 +2,13 @@
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
 import io
-from typing import IO, Callable, Dict, Union, List
+from typing import IO, Callable, Dict, List, Tuple, Union
 
+from .conf.utils import uniq
 from .constants import supports_primary_selection
-from .fast_data_types import GLFW_CLIPBOARD, get_boss, set_clipboard_data_types, get_clipboard_mime
+from .fast_data_types import (
+    GLFW_CLIPBOARD, get_boss, get_clipboard_mime, set_clipboard_data_types
+)
 
 DataType = Union[bytes, 'IO[bytes]']
 
@@ -31,7 +34,15 @@ class Clipboard:
         return b''.join(parts).decode('utf-8', 'replace')
 
     def get_mime(self, mime: str, output: Callable[[bytes], None]) -> None:
-        get_clipboard_mime(self.clipboard_type, mime, output)
+        if self.enabled:
+            get_clipboard_mime(self.clipboard_type, mime, output)
+
+    def get_available_mime_types_for_paste(self) -> Tuple[str, ...]:
+        if self.enabled:
+            parts: List[bytes] = []
+            get_clipboard_mime(self.clipboard_type, None, parts.append)
+            return tuple(x.decode('utf-8', 'replace') for x in uniq(parts))
+        return ()
 
     def __call__(self, mime: str) -> Callable[[], bytes]:
         data = self.data.get(mime, b'')
