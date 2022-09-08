@@ -288,6 +288,7 @@ class Boss:
                 cocoa_set_notification_activated_callback
             )
             cocoa_set_notification_activated_callback(notification_activated)
+        print(111111111, self.clipboard.get_available_mime_types_for_paste())
 
     def update_keymap(self) -> None:
         self.keymap = get_options().keymap.copy()

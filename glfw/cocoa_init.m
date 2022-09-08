@@ -992,8 +992,6 @@ void _glfwPlatformTerminate(void)
         _glfw.ns.appleSettings = nil;
     }
 
-    free(_glfw.ns.clipboardString);
-
     _glfwTerminateNSGL();
     if (global_shortcuts != nil) { [global_shortcuts release]; global_shortcuts = nil; }
 

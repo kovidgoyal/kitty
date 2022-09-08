@@ -30,6 +30,8 @@
 #include "../kitty/monotonic.h"
 
 #include <Availability.h>
+#import <CoreServices/CoreServices.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <float.h>
 #include <string.h>
 
@@ -2506,54 +2508,50 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
     return made_fullscreen;
 }
 
-void _glfwPlatformSetClipboardString(const char* string)
-{
+// Clipboard {{{
+
+static void
+list_clipboard_mimetypes(GLFWclipboardwritedatafun write_data, void *object) {
+#define w(x) { if (ok) ok = write_data(object, x, strlen(x)); }
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
-    [pasteboard declareTypes:@[NSPasteboardTypeString] owner:nil];
-    [pasteboard setString:@(string) forType:NSPasteboardTypeString];
-}
-
-void _glfwPlatformSetPrimarySelectionString(const char* string) {
-    (void)string;
-    // Apple doesnt have a primary selection
-}
-
-const char* _glfwPlatformGetPrimarySelectionString(void) { return ""; }
-
-const char* _glfwPlatformGetClipboardString(void)
-{
-    NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
-    free(_glfw.ns.clipboardString); _glfw.ns.clipboardString = NULL;
-
     NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
-    NSArray* objs = [pasteboard readObjectsForClasses:@[[NSURL class], [NSString class]] options:options];
-    if (objs) {
-        const NSUInteger count = [objs count];
-        if (count) {
-            NSMutableString *path_list = [NSMutableString stringWithCapacity:4096];  // auto-released
-            NSMutableString *text_list = [NSMutableString stringWithCapacity:4096];  // auto-released
-            for (NSUInteger i = 0;  i < count;  i++) {
-                id obj = objs[i];
-                if ([obj isKindOfClass:[NSURL class]]) {
-                    NSURL *url = (NSURL*)obj;
-                    if (url.fileURL && url.fileSystemRepresentation) {
-                        if ([path_list length] > 0) [path_list appendString:@("\n")];
-                        [path_list appendString:@(url.fileSystemRepresentation)];
+    BOOL has_file_urls = [pasteboard canReadObjectForClasses:@[[NSURL class]] options:options];
+    BOOL has_strings = [pasteboard canReadObjectForClasses:@[[NSString class]] options:nil];
+    /* NSLog(@"has_file_urls: %d has_strings: %d", has_file_urls, has_strings); */
+    bool ok = true;
+    if (has_strings) w("text/plain");
+    if (has_file_urls) w("text/local-path-list");
+    if (@available(macOS 11.0, *)) {
+        for (NSPasteboardItem * item in pasteboard.pasteboardItems) {
+            for (NSPasteboardType type in item.types) {
+                /* NSLog(@"%@", type); */
+                UTType *ut = [UTType typeWithIdentifier:type];
+                if (ut != nil) {
+                    /* NSLog(@"ut: %@ mt: %@ tags: %@", ut, ut.preferredMIMEType, ut.tags); */
+                    if (ut.preferredMIMEType != nil && ![ut.preferredMIMEType hasPrefix:@"text/plain"]) {
+                        w([ut.preferredMIMEType UTF8String]);
                     }
-                } else if ([obj isKindOfClass:[NSString class]]) {
-                    if ([text_list length] > 0) [text_list appendString:@("\n")];
-                    [text_list appendString:obj];
                 }
             }
-            const char *text = NULL;
-            if (path_list.length > 0) text = [path_list UTF8String];
-            else if (text_list.length > 0) text = [text_list UTF8String];
-            if (text) _glfw.ns.clipboardString = _glfw_strdup(text);
         }
     }
-    if (!_glfw.ns.clipboardString) _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Failed to retrieve object from pasteboard");
-    return _glfw.ns.clipboardString;
+#undef w
 }
+
+void
+_glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_type, GLFWclipboardwritedatafun write_data, void *object) {
+    if (clipboard_type != GLFW_CLIPBOARD) return;
+    (void)mime_type; (void) write_data; (void) object;
+    if (mime_type == NULL) {
+        list_clipboard_mimetypes(write_data, object);
+        return;
+    }
+}
+
+void _glfwPlatformSetClipboard(GLFWClipboardType t) {
+    if (t != GLFW_CLIPBOARD) return;
+}
+// }}}
 
 EGLenum _glfwPlatformGetEGLPlatform(EGLint** attribs)
 {

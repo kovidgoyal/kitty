@@ -183,7 +183,6 @@ typedef struct _GLFWlibraryNS
 
     char                keyName[64];
     char                text[256];
-    char*               clipboardString;
     CGPoint             cascadePoint;
     // Where to place the cursor when re-enabled
     double              restoreCursorPosX, restoreCursorPosY;
