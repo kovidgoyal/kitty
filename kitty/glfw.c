@@ -1629,6 +1629,10 @@ set_clipboard_data_types(PyObject *self UNUSED, PyObject *args) {
 static bool
 write_clipboard_data(void *callback, const char *data, size_t sz) {
     Py_ssize_t z = sz;
+    if (data == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "is_self_offer");
+        return false;
+    }
     PyObject *ret = PyObject_CallFunction(callback, "y#", data, z);
     bool ok = false;
     if (ret != NULL) { ok = true; Py_DECREF(ret); }

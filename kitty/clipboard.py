@@ -35,12 +35,30 @@ class Clipboard:
 
     def get_mime(self, mime: str, output: Callable[[bytes], None]) -> None:
         if self.enabled:
-            get_clipboard_mime(self.clipboard_type, mime, output)
+            try:
+                get_clipboard_mime(self.clipboard_type, mime, output)
+            except RuntimeError as err:
+                if str(err) != 'is_self_offer':
+                    raise
+                data = self.data.get(mime, b'')
+                if isinstance(data, bytes):
+                    output(data)
+                else:
+                    data.seek(0, 0)
+                    q = b' '
+                    while q:
+                        q = data.read(io.DEFAULT_BUFFER_SIZE)
+                        output(q)
 
     def get_available_mime_types_for_paste(self) -> Tuple[str, ...]:
         if self.enabled:
             parts: List[bytes] = []
-            get_clipboard_mime(self.clipboard_type, None, parts.append)
+            try:
+                get_clipboard_mime(self.clipboard_type, None, parts.append)
+            except RuntimeError as err:
+                if str(err) != 'is_self_offer':
+                    raise
+                return tuple(self.data)
             return tuple(x.decode('utf-8', 'replace') for x in uniq(parts))
         return ()
 

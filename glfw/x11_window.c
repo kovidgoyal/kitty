@@ -923,27 +923,13 @@ static void handleSelectionRequest(XEvent* event)
 }
 
 static void
-getSelectionString(Atom selection, const char *mime_type, Atom *targets, size_t num_targets, GLFWclipboardwritedatafun write_data, void *object, bool report_not_found)
+getSelectionString(Atom selection, Atom *targets, size_t num_targets, GLFWclipboardwritedatafun write_data, void *object, bool report_not_found)
 {
 #define XFREE(x) { if (x) XFree(x); x = NULL; }
-    if (XGetSelectionOwner(_glfw.x11.display, selection) ==
-        _glfw.x11.helperWindowHandle)
-    {
-        if (mime_type == NULL) {
-            AtomArray *aa = selection == _glfw.x11.PRIMARY ? &_glfw.x11.primary_atoms : &_glfw.x11.clipboard_atoms;
-            for (size_t i = 0; i < aa->sz; i++) {
-                if (!write_data(object, (char*)&aa->array[i].atom, sizeof(Atom))) break;
-            }
-            return;
-        }
-        // Instead of doing a large number of X round-trips just to put this
-        // string into a window property and then read it back, just return it
-        _GLFWClipboardData *cd = selection == _glfw.x11.PRIMARY ? &_glfw.primary : &_glfw.clipboard;
-        char *data = NULL; size_t sz = get_clipboard_data(cd, mime_type, &data);
-        write_data(object, data, sz); free(data);
+    if (XGetSelectionOwner(_glfw.x11.display, selection) == _glfw.x11.helperWindowHandle) {
+        write_data(object, NULL, 1);
         return;
     }
-
     bool found = false;
     for (size_t i = 0; !found && i < num_targets; i++)
     {
@@ -2928,7 +2914,7 @@ write_chunk(void *object, const char *data, size_t sz) {
 static void
 get_available_mime_types(Atom which_clipboard, GLFWclipboardwritedatafun write_data, void *object) {
     chunked_writer cw = {0};
-    getSelectionString(which_clipboard, NULL, &_glfw.x11.TARGETS, 1, write_chunk, &cw, false);
+    getSelectionString(which_clipboard, &_glfw.x11.TARGETS, 1, write_chunk, &cw, false);
     size_t count = 0;
     bool ok = true;
     if (cw.buf) {
@@ -2964,7 +2950,7 @@ _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_typ
         atoms[count++] = _glfw.x11.UTF8_STRING;
         atoms[count++] = XA_STRING;
     }
-    getSelectionString(which, mime_type, atoms, count, write_data, object, true);
+    getSelectionString(which, atoms, count, write_data, object, true);
 }
 
 EGLenum _glfwPlatformGetEGLPlatform(EGLint** attribs)
