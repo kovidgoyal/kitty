@@ -317,11 +317,8 @@ typedef struct _GLFWlibraryWayland
     } egl;
 
     EventLoopData eventLoopData;
-    char* pasteString;
-    char* clipboardString;
     size_t dataOffersCounter;
     _GLFWWaylandDataOffer dataOffers[8];
-    char* primarySelectionString;
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data

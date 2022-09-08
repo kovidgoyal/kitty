@@ -926,6 +926,8 @@ void _glfwPlatformTerminate(void)
         zwp_idle_inhibit_manager_v1_destroy(_glfw.wl.idleInhibitManager);
     if (_glfw.wl.dataSourceForClipboard)
         wl_data_source_destroy(_glfw.wl.dataSourceForClipboard);
+    if (_glfw.wl.dataSourceForPrimarySelection)
+        zwp_primary_selection_source_v1_destroy(_glfw.wl.dataSourceForPrimarySelection);
     for (size_t doi=0; doi < arraysz(_glfw.wl.dataOffers); doi++) {
         if (_glfw.wl.dataOffers[doi].id) {
             destroy_data_offer(&_glfw.wl.dataOffers[doi]);
@@ -947,10 +949,6 @@ void _glfwPlatformTerminate(void)
         wl_display_disconnect(_glfw.wl.display);
     }
     finalizePollData(&_glfw.wl.eventLoopData);
-    free(_glfw.wl.clipboardString); _glfw.wl.clipboardString = NULL;
-    free(_glfw.wl.primarySelectionString); _glfw.wl.primarySelectionString = NULL;
-    free(_glfw.wl.pasteString); _glfw.wl.pasteString = NULL;
-
 }
 
 const char* _glfwPlatformGetVersionString(void)

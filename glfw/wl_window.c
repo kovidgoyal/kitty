@@ -1447,52 +1447,67 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
     }
 }
 
-static void send_text(char *text, int fd)
-{
-    if (text) {
-        size_t len = strlen(text), pos = 0;
-        monotonic_t start = glfwGetTime();
-        while (pos < len && glfwGetTime() - start < s_to_monotonic_t(2ll)) {
-            ssize_t ret = write(fd, text + pos, len - pos);
-            if (ret < 0) {
-                if (errno == EAGAIN || errno == EINTR) continue;
-                _glfwInputError(GLFW_PLATFORM_ERROR,
-                    "Wayland: Could not copy writing to destination fd failed with error: %s", strerror(errno));
-                break;
-            }
-            if (ret > 0) {
-                start = glfwGetTime();
-                pos += ret;
-            }
+static bool
+write_all(int fd, const char *data, size_t sz) {
+    monotonic_t start = glfwGetTime();
+    size_t pos = 0;
+    while (pos < sz && glfwGetTime() - start < s_to_monotonic_t(2ll)) {
+        ssize_t ret = write(fd, data + pos, sz - pos);
+        if (ret < 0) {
+            if (errno == EAGAIN || errno == EINTR) continue;
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                "Wayland: Could not copy writing to destination fd failed with error: %s", strerror(errno));
+            return false;
+        }
+        if (ret > 0) {
+            start = glfwGetTime();
+            pos += ret;
         }
     }
+    return pos >= sz;
+}
+
+static void
+send_clipboard_data(const _GLFWClipboardData *cd, const char *mime, int fd) {
+    if (strcmp(mime, "text/plain;charset=utf-8") == 0 || strcmp(mime, "UTF8_STRING") == 0 || strcmp(mime, "TEXT") == 0 || strcmp(mime, "STRING") == 0) mime = "text/plain";
+    GLFWDataChunk chunk = cd->get_data(mime, NULL, cd->ctype);
+    void *iter = chunk.iter;
+    if (!iter) return;
+    bool keep_going = true;
+    while (keep_going) {
+        chunk = cd->get_data(mime, iter, cd->ctype);
+        if (!chunk.sz) break;
+        if (!write_all(fd, chunk.data, chunk.sz)) keep_going = false;
+        if (chunk.free) chunk.free((void*)chunk.free_data);
+    }
+    cd->get_data(NULL, iter, cd->ctype);
+}
+
+static void _glfwSendClipboardText(void *data UNUSED, struct wl_data_source *data_source UNUSED, const char *mime_type, int fd) {
+    send_clipboard_data(&_glfw.clipboard, mime_type, fd);
     close(fd);
 }
 
-static void _glfwSendClipboardText(void *data UNUSED, struct wl_data_source *data_source UNUSED, const char *mime_type UNUSED, int fd) {
-    send_text(_glfw.wl.clipboardString, fd);
-}
-
 static void _glfwSendPrimarySelectionText(void *data UNUSED, struct zwp_primary_selection_source_v1 *primary_selection_source UNUSED,
-        const char *mime_type UNUSED, int fd) {
-    send_text(_glfw.wl.primarySelectionString, fd);
+        const char *mime_type, int fd) {
+    send_clipboard_data(&_glfw.primary, mime_type, fd);
+    close(fd);
 }
 
-static char* read_offer_string(int data_pipe, size_t *data_sz) {
+static void
+read_offer(int data_pipe, GLFWclipboardwritedatafun write_data, void *object) {
     wl_display_flush(_glfw.wl.display);
-    size_t capacity = 0;
-    char *buf = NULL;
-    *data_sz = 0;
     struct pollfd fds;
     fds.fd = data_pipe;
     fds.events = POLLIN;
     monotonic_t start = glfwGetTime();
 #define bail(...) { \
     _glfwInputError(GLFW_PLATFORM_ERROR, __VA_ARGS__); \
-    free(buf); buf = NULL; \
     close(data_pipe); \
-    return NULL; \
+    return; \
 }
+
+    char buf[8192];
 
     while (glfwGetTime() - start < s_to_monotonic_t(2ll)) {
         int ret = poll(&fds, 1, 2000);
@@ -1503,34 +1518,65 @@ static char* read_offer_string(int data_pipe, size_t *data_sz) {
         if (!ret) {
             bail("Wayland: Failed to read clipboard data from pipe (timed out)");
         }
-        if (capacity <= *data_sz || capacity - *data_sz <= 64) {
-            capacity += 4096;
-            buf = realloc(buf, capacity);
-            if (!buf) {
-                bail("Wayland: Failed to allocate memory to read clipboard data");
-            }
-        }
-        ret = read(data_pipe, buf + *data_sz, capacity - *data_sz - 1);
+        ret = read(data_pipe, buf, sizeof(buf));
         if (ret == -1) {
             if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) continue;
             bail("Wayland: Failed to read clipboard data from pipe with error: %s", strerror(errno));
         }
-        if (ret == 0) { close(data_pipe); buf[*data_sz] = 0; return buf; }
-        *data_sz += ret;
+        if (ret == 0) { close(data_pipe); return; }
+        if (!write_data(object, buf, ret)) bail("Wayland: call to write_data() failed with data from data offer");
         start = glfwGetTime();
     }
     bail("Wayland: Failed to read clipboard data from pipe (timed out)");
 #undef bail
-
 }
 
-static char* read_primary_selection_offer(struct zwp_primary_selection_offer_v1 *primary_selection_offer, const char *mime) {
+
+typedef struct chunked_writer {
+    char *buf; size_t sz, cap;
+} chunked_writer;
+
+static bool
+write_chunk(void *object, const char *data, size_t sz) {
+    chunked_writer *cw = object;
+    if (cw->cap < cw->sz + sz) {
+        cw->cap = MAX(cw->cap * 2, cw->sz + 8*sz);
+        cw->buf = realloc(cw->buf, cw->cap);
+    }
+    memcpy(cw->buf + cw->sz, data, sz);
+    cw->sz += sz;
+    return true;
+}
+
+
+static char*
+read_offer_string(int data_pipe, size_t *sz) {
+    chunked_writer cw = {0};
+    read_offer(data_pipe, write_chunk, &cw);
+    if (cw.buf) {
+        *sz = cw.sz;
+        return cw.buf;
+    }
+    *sz = 0;
+    return NULL;
+}
+
+static void
+read_clipboard_data_offer(struct wl_data_offer *data_offer, const char *mime, GLFWclipboardwritedatafun write_data, void *object) {
     int pipefd[2];
-    if (pipe2(pipefd, O_CLOEXEC) != 0) return NULL;
+    if (pipe2(pipefd, O_CLOEXEC) != 0) return;
+    wl_data_offer_receive(data_offer, mime, pipefd[1]);
+    close(pipefd[1]);
+    read_offer(pipefd[0], write_data, object);
+}
+
+static void
+read_primary_selection_offer(struct zwp_primary_selection_offer_v1 *primary_selection_offer, const char *mime, GLFWclipboardwritedatafun write_data, void *object) {
+    int pipefd[2];
+    if (pipe2(pipefd, O_CLOEXEC) != 0) return;
     zwp_primary_selection_offer_v1_receive(primary_selection_offer, mime, pipefd[1]);
     close(pipefd[1]);
-    size_t sz = 0;
-    return read_offer_string(pipefd[0], &sz);
+    read_offer(pipefd[0], write_data, object);
 }
 
 static char* read_data_offer(struct wl_data_offer *data_offer, const char *mime, size_t *sz) {
@@ -1542,24 +1588,24 @@ static char* read_data_offer(struct wl_data_offer *data_offer, const char *mime,
 }
 
 static void data_source_canceled(void *data UNUSED, struct wl_data_source *wl_data_source) {
-    if (_glfw.wl.dataSourceForClipboard == wl_data_source)
+    if (_glfw.wl.dataSourceForClipboard == wl_data_source) {
         _glfw.wl.dataSourceForClipboard = NULL;
+        _glfw_free_clipboard_data(&_glfw.clipboard);
+    }
     wl_data_source_destroy(wl_data_source);
 }
 
 static void primary_selection_source_canceled(void *data UNUSED, struct zwp_primary_selection_source_v1 *primary_selection_source) {
-    if (_glfw.wl.dataSourceForPrimarySelection == primary_selection_source)
+    if (_glfw.wl.dataSourceForPrimarySelection == primary_selection_source) {
         _glfw.wl.dataSourceForPrimarySelection = NULL;
+        _glfw_free_clipboard_data(&_glfw.primary);
+    }
     zwp_primary_selection_source_v1_destroy(primary_selection_source);
-}
-
-static void data_source_target(void *data UNUSED, struct wl_data_source *wl_data_source UNUSED, const char* mime UNUSED) {
 }
 
 static const struct wl_data_source_listener data_source_listener = {
     .send = _glfwSendClipboardText,
     .cancelled = data_source_canceled,
-    .target = data_source_target,
 };
 
 static const struct zwp_primary_selection_source_v1_listener primary_selection_source_listener = {
@@ -1836,30 +1882,69 @@ static bool _glfwEnsureDataDevice(void) {
     return true;
 }
 
-void _glfwPlatformSetClipboardString(const char* string)
-{
-    if (!_glfwEnsureDataDevice()) return;
-    free(_glfw.wl.clipboardString);
-    _glfw.wl.clipboardString = _glfw_strdup(string);
-    if (_glfw.wl.dataSourceForClipboard)
-        wl_data_source_destroy(_glfw.wl.dataSourceForClipboard);
-    _glfw.wl.dataSourceForClipboard = wl_data_device_manager_create_data_source(_glfw.wl.dataDeviceManager);
-    if (!_glfw.wl.dataSourceForClipboard)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Wayland: Cannot copy failed to create data source");
-        return;
+typedef void(*add_offer_func)(void*, const char *mime);
+
+
+void
+_glfwPlatformSetClipboard(GLFWClipboardType t) {
+    _GLFWClipboardData *cd = NULL;
+    void *data_source;
+    add_offer_func f;
+    if (t == GLFW_CLIPBOARD) {
+        if (!_glfwEnsureDataDevice()) return;
+        cd = &_glfw.clipboard;
+        f = (add_offer_func)wl_data_source_offer;
+        if (_glfw.wl.dataSourceForClipboard) wl_data_source_destroy(_glfw.wl.dataSourceForClipboard);
+        _glfw.wl.dataSourceForClipboard = wl_data_device_manager_create_data_source(_glfw.wl.dataDeviceManager);
+        if (!_glfw.wl.dataSourceForClipboard)
+        {
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                            "Wayland: Cannot copy failed to create data source");
+            return;
+        }
+        wl_data_source_add_listener(_glfw.wl.dataSourceForClipboard, &data_source_listener, NULL);
+        data_source = _glfw.wl.dataSourceForClipboard;
+    } else {
+        if (!_glfw.wl.primarySelectionDevice) {
+            static bool warned_about_primary_selection_device = false;
+            if (!warned_about_primary_selection_device) {
+                _glfwInputError(GLFW_PLATFORM_ERROR,
+                                "Wayland: Cannot copy no primary selection device available");
+                warned_about_primary_selection_device = true;
+            }
+            return;
+        }
+        cd = &_glfw.primary;
+        f = (add_offer_func)zwp_primary_selection_source_v1_offer;
+        if (_glfw.wl.dataSourceForPrimarySelection) zwp_primary_selection_source_v1_destroy(_glfw.wl.dataSourceForPrimarySelection);
+        _glfw.wl.dataSourceForPrimarySelection = zwp_primary_selection_device_manager_v1_create_source(_glfw.wl.primarySelectionDeviceManager);
+        if (!_glfw.wl.dataSourceForPrimarySelection)
+        {
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                            "Wayland: Cannot copy failed to create primary selection source");
+            return;
+        }
+        zwp_primary_selection_source_v1_add_listener(_glfw.wl.dataSourceForPrimarySelection, &primary_selection_source_listener, NULL);
+        data_source = _glfw.wl.dataSourceForPrimarySelection;
     }
-    wl_data_source_add_listener(_glfw.wl.dataSourceForClipboard, &data_source_listener, NULL);
-    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, clipboard_mime());
-    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "text/plain");
-    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "text/plain;charset=utf-8");
-    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "TEXT");
-    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "STRING");
-    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "UTF8_STRING");
+    f(data_source, clipboard_mime());
+    for (size_t i = 0; i < cd->num_mime_types; i++) {
+        if (strcmp(cd->mime_types[i], "text/plain") == 0) {
+            f(data_source, "TEXT");
+            f(data_source, "STRING");
+            f(data_source, "UTF8_STRING");
+            f(data_source, "text/plain;charset=utf-8");
+        }
+        f(data_source, cd->mime_types[i]);
+    }
     struct wl_callback *callback = wl_display_sync(_glfw.wl.display);
-    static const struct wl_callback_listener clipboard_copy_callback_listener = {.done = clipboard_copy_callback_done};
-    wl_callback_add_listener(callback, &clipboard_copy_callback_listener, _glfw.wl.dataSourceForClipboard);
+    if (t == GLFW_CLIPBOARD) {
+        static const struct wl_callback_listener clipboard_copy_callback_listener = {.done = clipboard_copy_callback_done};
+        wl_callback_add_listener(callback, &clipboard_copy_callback_listener, _glfw.wl.dataSourceForClipboard);
+    } else {
+        static const struct wl_callback_listener primary_selection_copy_callback_listener = {.done = primary_selection_copy_callback_done};
+        wl_callback_add_listener(callback, &primary_selection_copy_callback_listener, _glfw.wl.dataSourceForPrimarySelection);
+    }
 }
 
 static bool
@@ -1877,81 +1962,47 @@ plain_text_mime_for_offer(const _GLFWWaylandDataOffer *d) {
     A("text/plain");
     A("UTF8_STRING");
     A("STRING");
+    A("TEXT");
 #undef A
     return NULL;
 }
 
-const char* _glfwPlatformGetClipboardString(void)
-{
+void
+_glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_type, GLFWclipboardwritedatafun write_data, void *object) {
+    _GLFWWaylandOfferType offer_type = clipboard_type == GLFW_PRIMARY_SELECTION ? PRIMARY_SELECTION : CLIPBOARD;
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         _GLFWWaylandDataOffer *d = _glfw.wl.dataOffers + i;
-        if (d->id && d->offer_type == CLIPBOARD) {
-            if (d->is_self_offer) return _glfw.wl.clipboardString;
-            const char *mime = plain_text_mime_for_offer(d);
-            if (mime) {
-                free(_glfw.wl.pasteString);
-                size_t sz = 0;
-                _glfw.wl.pasteString = read_data_offer(d->id, mime, &sz);
-                return _glfw.wl.pasteString;
+        if (d->id && d->offer_type == offer_type) {
+            if (d->is_self_offer) {
+                write_data(object, NULL, 1);
+                return;
             }
-        }
-    }
-    return NULL;
-}
-
-void _glfwPlatformSetPrimarySelectionString(const char* string)
-{
-    if (!_glfw.wl.primarySelectionDevice) {
-        static bool warned_about_primary_selection_device = false;
-        if (!warned_about_primary_selection_device) {
-            _glfwInputError(GLFW_PLATFORM_ERROR,
-                            "Wayland: Cannot copy no primary selection device available");
-            warned_about_primary_selection_device = true;
-        }
-        return;
-    }
-    if (_glfw.wl.primarySelectionString == string) return;
-    free(_glfw.wl.primarySelectionString);
-    _glfw.wl.primarySelectionString = _glfw_strdup(string);
-
-    if (_glfw.wl.dataSourceForPrimarySelection)
-        zwp_primary_selection_source_v1_destroy(_glfw.wl.dataSourceForPrimarySelection);
-    _glfw.wl.dataSourceForPrimarySelection = zwp_primary_selection_device_manager_v1_create_source(_glfw.wl.primarySelectionDeviceManager);
-    if (!_glfw.wl.dataSourceForPrimarySelection)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Wayland: Cannot copy failed to create primary selection source");
-        return;
-    }
-    zwp_primary_selection_source_v1_add_listener(_glfw.wl.dataSourceForPrimarySelection, &primary_selection_source_listener, NULL);
-    zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, clipboard_mime());
-    zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, "text/plain");
-    zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, "text/plain;charset=utf-8");
-    zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, "TEXT");
-    zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, "STRING");
-    zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, "UTF8_STRING");
-    struct wl_callback *callback = wl_display_sync(_glfw.wl.display);
-    static const struct wl_callback_listener primary_selection_copy_callback_listener = {.done = primary_selection_copy_callback_done};
-    wl_callback_add_listener(callback, &primary_selection_copy_callback_listener, _glfw.wl.dataSourceForPrimarySelection);
-}
-
-const char* _glfwPlatformGetPrimarySelectionString(void)
-{
-    if (_glfw.wl.dataSourceForPrimarySelection != NULL) return _glfw.wl.primarySelectionString;
-
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        _GLFWWaylandDataOffer *d = _glfw.wl.dataOffers + i;
-        if (d->id && d->is_primary && d->offer_type == PRIMARY_SELECTION) {
-            if (d->is_self_offer) return _glfw.wl.primarySelectionString;
-            const char *mime = plain_text_mime_for_offer(d);
-            if (mime) {
-                free(_glfw.wl.pasteString);
-                _glfw.wl.pasteString = read_primary_selection_offer(d->id, mime);
-                return _glfw.wl.pasteString;
+            if (mime_type == NULL) {
+                bool ok = true;
+                for (size_t o = 0; o < d->mimes_count; o++) {
+                    const char *q = d->mimes[o];
+                    if (strchr(d->mimes[0], '/')) {
+                        if (strcmp(q, clipboard_mime()) == 0) continue;
+                        if (strcmp(q, "text/plain;charset=utf-8") == 0) q = "text/plain";
+                    } else {
+                        if (strcmp(q, "UTF8_STRING") == 0 || strcmp(q, "STRING") == 0 || strcmp(q, "TEXT") == 0) q = "text/plain";
+                    }
+                    if (ok) ok = write_data(object, q, strlen(q));
+                }
+                return;
             }
+            if (strcmp(mime_type, "text/plain") == 0) {
+                mime_type = plain_text_mime_for_offer(d);
+                if (!mime_type) return;
+            }
+            if (d->is_primary) {
+                read_primary_selection_offer(d->id, mime_type, write_data, object);
+            } else {
+                read_clipboard_data_offer(d->id, mime_type, write_data, object);
+            }
+            break;
         }
     }
-    return NULL;
 }
 
 EGLenum _glfwPlatformGetEGLPlatform(EGLint** attribs UNUSED)
