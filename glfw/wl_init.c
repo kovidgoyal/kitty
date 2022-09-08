@@ -144,8 +144,12 @@ static void setCursor(GLFWCursorShape shape, _GLFWwindow* window)
     if (!image)
         return;
     if (image->width % scale || image->height % scale) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "WARNING: Cursor image size: %dx%d is not a multiple of window scale: %d. This will"
-                " cause some compositors such as GNOME to crash. See https://github.com/kovidgoyal/kitty/issues/4878", image->width, image->height, scale);
+        static uint32_t warned_width = 0, warned_height = 0;
+        if (warned_width != image->width || warned_height != image->height) {
+            _glfwInputError(GLFW_PLATFORM_ERROR, "WARNING: Cursor image size: %dx%d is not a multiple of window scale: %d. This will"
+                    " cause some compositors such as GNOME to crash. See https://github.com/kovidgoyal/kitty/issues/4878", image->width, image->height, scale);
+            warned_width = image->width; warned_height = image->height;
+        }
     }
 
     buffer = wl_cursor_image_get_buffer(image);
