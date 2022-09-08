@@ -793,7 +793,7 @@ static Atom writeTargetToProperty(const XSelectionRequestEvent* request)
                         32,
                         PropModeReplace,
                         (unsigned char*) targets,
-                        aa->sz + 2);
+                        sizeof(targets[0]) * (aa->sz + 2));
         free(targets);
         return request->property;
     }
@@ -2901,6 +2901,11 @@ void _glfwPlatformSetClipboard(GLFWClipboardType t) {
     for (size_t i = 0; i < cd->num_mime_types; i++) {
         MimeAtom *a = aa->array + aa->sz++;
         *a = atom_for_mime(cd->mime_types[i]);
+        if (strcmp(cd->mime_types[i], "text/plain") == 0) {
+            a = aa->array + aa->sz++;
+            a->atom = _glfw.x11.UTF8_STRING;
+            a->mime = "text/plain";
+        }
     }
 }
 
@@ -2932,10 +2937,12 @@ get_available_mime_types(Atom which_clipboard, GLFWclipboardwritedatafun write_d
         char **names = calloc(count, sizeof(char*));
         get_atom_names(atoms, count, names);
         for (size_t i = 0; i < count; i++) {
-            if (atoms[i] != _glfw.x11.UTF8_STRING && atoms[i] != XA_STRING) {
+            if (strchr(names[i], '/')) {
                 if (ok) ok = write_data(object, names[i], strlen(names[i]));
             } else {
-                ok = write_data(object, "text/plain", strlen("text/plain"));
+                if (atoms[i] == _glfw.x11.UTF8_STRING || atoms[i] == XA_STRING) {
+                    if (ok) ok = write_data(object, "text/plain", strlen("text/plain"));
+                }
             }
             XFree(names[i]);
         }
