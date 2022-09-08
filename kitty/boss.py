@@ -766,11 +766,19 @@ class Boss:
         confirm_on_cancel: bool = False,  # on closing window
         confirm_on_accept: bool = True,  # on pressing enter
     ) -> None:
+        result: bool = False
+
         def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
-            callback(res.get('response') == 'y', *args)
+            nonlocal result
+            result = res.get('response') == 'y'
+
+        def on_popup_overlay_removal(wid: int, boss: Boss) -> None:
+            callback(result, *args)
+
         self.run_kitten_with_metadata(
             'ask', ['--type=yesno', '--message', msg, '--default', 'y' if confirm_on_accept else 'n'],
-            window=window, custom_callback=callback_, default_data={'response': 'y' if confirm_on_cancel else 'n'})
+            window=window, custom_callback=callback_, action_on_removal=on_popup_overlay_removal,
+            default_data={'response': 'y' if confirm_on_cancel else 'n'})
 
     def choose(
         self, msg: str,  # can contain newlines and ANSI formatting
@@ -819,10 +827,19 @@ class Boss:
         prompt: str = '> ',
         is_password: bool = False
     ) -> None:
+        result: str = ''
+
         def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
-            callback(res.get('response') or '')
+            nonlocal result
+            result = res.get('response') or ''
+
+        def on_popup_overlay_removal(wid: int, boss: Boss) -> None:
+            callback(result)
+
         cmd = ['--type', 'password' if is_password else 'line', '--message', msg, '--prompt', prompt]
-        self.run_kitten_with_metadata('ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''})
+        self.run_kitten_with_metadata(
+            'ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''}, action_on_removal=on_popup_overlay_removal
+        )
 
     def confirm_tab_close(self, tab: Tab) -> None:
         x = get_options().confirm_os_window_close
