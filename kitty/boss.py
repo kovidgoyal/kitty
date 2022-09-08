@@ -782,8 +782,12 @@ class Boss:
         hidden_text_placeholder: str = 'HIDDEN_TEXT_PLACEHOLDER',  # placeholder text to insert in to message
         unhide_key: str = 'u',  # key to press to unhide hidden text
     ) -> Optional[Window]:
+        result: str = ''
+
         def callback_(res: Dict[str, Any], x: int, boss: Boss) -> None:
-            callback(res.get('response') or '')
+            nonlocal result
+            result = res.get('response') or ''
+
         if hidden_text:
             msg = msg.replace(hidden_text, hidden_text_placeholder)
         cmd = ['--type=choices', '--message', msg]
@@ -796,7 +800,14 @@ class Boss:
             input_data = hidden_text
         else:
             input_data = None
-        ans = self.run_kitten_with_metadata('ask', cmd, window=window, custom_callback=callback_, input_data=input_data, default_data={'response': ''})
+
+        def on_popup_overlay_removal(wid: int, boss: Boss) -> None:
+            callback(result)
+
+        ans = self.run_kitten_with_metadata(
+            'ask', cmd, window=window, custom_callback=callback_, input_data=input_data, default_data={'response': ''},
+            action_on_removal=on_popup_overlay_removal
+        )
         if isinstance(ans, Window):
             return ans
         return None
