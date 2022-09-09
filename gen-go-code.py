@@ -4,13 +4,14 @@
 import io
 import json
 import sys
+from functools import lru_cache
 from contextlib import contextmanager, suppress
 from typing import Dict, Iterator, List, Set, Tuple, Union
 
 import kitty.constants as kc
 from kittens.tui.operations import Mode
 from kitty.cli import (
-    GoOption, OptionSpecSeq, go_options_for_seq, parse_option_spec,
+    GoOption, go_options_for_seq, parse_option_spec,
     serialize_as_go_string
 )
 from kitty.key_encoding import config_mod_map
@@ -46,11 +47,23 @@ def replace(template: str, **kw: str) -> str:
 # }}}
 
 
+def generate_completion_for_rc(name: str) -> None:
+    cmd = command_for_name(name)
+    if cmd.short_desc:
+        print(f'{name}.Description = "{serialize_as_go_string(cmd.short_desc)}"')
+
+
 def generate_completions_for_kitty() -> None:
-    from kitty.entry_points import entry_points, namespaced_entry_points
     print('package completion\n')
     print('func kitty(root *Command) {')
-    print('k := root.add_command("kitty")')
+    print('k := root.add_command("kitty", "")')
+    print('at := k.add_command("@", "Remote control")')
+    print('at.Description = "Control kitty using commands"')
+    for go_name in all_command_names():
+        name = go_name.replace('_', '-')
+        print(f'{go_name} := at.add_command("{name}", "")')
+        generate_completion_for_rc(go_name)
+        print(f'k.add_clone("@{name}", "Remote control", {go_name})')
     print('}')
     print('func init() {')
     print('registered_exes["kitty"] = kitty')
@@ -103,7 +116,7 @@ def render_alias_map(alias_map: Dict[str, Tuple[str, ...]]) -> str:
     return amap
 
 
-def go_code_for_remote_command(name: str, cmd: RemoteCommand, seq: OptionSpecSeq, template: str) -> str:
+def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> str:
     template = '\n' + template[len('//go:build exclude'):]
     NO_RESPONSE_BASE = 'false'
     af: List[str] = []
@@ -112,7 +125,7 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, seq: OptionSpecSeq
     od: List[str] = []
     ov: List[str] = []
     option_map: Dict[str, GoOption] = {}
-    for o in go_options_for_seq(seq):
+    for o in rc_command_options(name):
         field_dest = o.go_var_name.rstrip('_')
         option_map[field_dest] = o
         if o.aliases:
@@ -246,13 +259,18 @@ def replace_if_needed(path: str) -> Iterator[io.StringIO]:
             f.write(new)
 
 
+@lru_cache(maxsize=256)
+def rc_command_options(name: str) -> Tuple[GoOption, ...]:
+    cmd = command_for_name(name)
+    return tuple(go_options_for_seq(parse_option_spec(cmd.options_spec or '\n\n')[0]))
+
+
 def update_at_commands() -> None:
     with open('tools/cmd/at/template.go') as f:
         template = f.read()
     for name in all_command_names():
         cmd = command_for_name(name)
-        opts = parse_option_spec(cmd.options_spec or '\n\n')[0]
-        code = go_code_for_remote_command(name, cmd, opts, template)
+        code = go_code_for_remote_command(name, cmd, template)
         dest = f'tools/cmd/at/cmd_{name}_generated.go'
         with replace_if_needed(dest) as f:
             f.write(code)
