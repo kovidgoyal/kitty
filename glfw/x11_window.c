@@ -822,7 +822,7 @@ static Atom writeTargetToProperty(const XSelectionRequestEvent* request)
             {
                 char *data = NULL; size_t sz = get_clipboard_data(cd, aa->array[j].mime, &data);
 
-                if (data && sz) XChangeProperty(_glfw.x11.display,
+                if (data) XChangeProperty(_glfw.x11.display,
                                 request->requestor,
                                 targets[i + 1],
                                 targets[i],
@@ -876,7 +876,7 @@ static Atom writeTargetToProperty(const XSelectionRequestEvent* request)
             // The requested target is one we support
 
             char *data = NULL; size_t sz = get_clipboard_data(cd, aa->array[i].mime, &data);
-            if (data && sz) XChangeProperty(_glfw.x11.display,
+            if (data) XChangeProperty(_glfw.x11.display,
                             request->requestor,
                             request->property,
                             request->target,

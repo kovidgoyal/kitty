@@ -2538,18 +2538,91 @@ list_clipboard_mimetypes(GLFWclipboardwritedatafun write_data, void *object) {
 #undef w
 }
 
+static void
+get_text_plain(GLFWclipboardwritedatafun write_data, void *object) {
+    NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+    NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
+    NSArray* objs = [pasteboard readObjectsForClasses:@[[NSURL class], [NSString class]] options:options];
+    bool found = false;
+    if (objs) {
+        const NSUInteger count = [objs count];
+        if (count) {
+            NSMutableString *path_list = [NSMutableString stringWithCapacity:4096];  // auto-released
+            NSMutableString *text_list = [NSMutableString stringWithCapacity:4096];  // auto-released
+            for (NSUInteger i = 0;  i < count;  i++) {
+                id obj = objs[i];
+                if ([obj isKindOfClass:[NSURL class]]) {
+                    NSURL *url = (NSURL*)obj;
+                    if (url.fileURL && url.fileSystemRepresentation) {
+                        if ([path_list length] > 0) [path_list appendString:@("\n")];
+                        [path_list appendString:@(url.fileSystemRepresentation)];
+                    }
+                } else if ([obj isKindOfClass:[NSString class]]) {
+                    if ([text_list length] > 0) [text_list appendString:@("\n")];
+                    [text_list appendString:obj];
+                }
+            }
+            const char *text = NULL;
+            if (path_list.length > 0) text = [path_list UTF8String];
+            else if (text_list.length > 0) text = [text_list UTF8String];
+            if (text) {
+                found = true;
+                write_data(object, text, strlen(text));
+            }
+        }
+    }
+    if (!found) _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Failed to retrieve text/plain from pasteboard");
+}
+
 void
 _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_type, GLFWclipboardwritedatafun write_data, void *object) {
     if (clipboard_type != GLFW_CLIPBOARD) return;
-    (void)mime_type; (void) write_data; (void) object;
     if (mime_type == NULL) {
         list_clipboard_mimetypes(write_data, object);
         return;
     }
+    if (strcmp(mime_type, "text/plain") == 0) {
+        get_text_plain(write_data, object);
+        return;
+    }
 }
 
-void _glfwPlatformSetClipboard(GLFWClipboardType t) {
+static NSMutableData*
+get_clipboard_data(const _GLFWClipboardData *cd, const char *mime) {
+    NSMutableData *ans = [NSMutableData dataWithCapacity:8192];
+    if (ans == nil) return nil;
+    GLFWDataChunk chunk = cd->get_data(mime, NULL, cd->ctype);
+    void *iter = chunk.iter;
+    if (!iter) return ans;
+    while (true) {
+        chunk = cd->get_data(mime, iter, cd->ctype);
+        if (!chunk.sz) break;
+        [ans appendBytes:chunk.data length:chunk.sz];
+        if (chunk.free) chunk.free((void*)chunk.free_data);
+    }
+    cd->get_data(NULL, iter, cd->ctype);
+    return ans;
+}
+
+
+void
+_glfwPlatformSetClipboard(GLFWClipboardType t) {
     if (t != GLFW_CLIPBOARD) return;
+    NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+    if (@available(macOS 11.0, *)) {
+    } else {
+        for (size_t i = 0; i < _glfw.clipboard.num_mime_types; i++) {
+            const char *mime = _glfw.clipboard.mime_types[i];
+            if (strcmp(mime, "text/plain") == 0) {
+                NSMutableData *data = get_clipboard_data(&_glfw.clipboard, mime);  // auto-released
+                if (data != nil) {
+                    [pasteboard declareTypes:@[NSPasteboardTypeString] owner:nil];
+                    [pasteboard setData:data forType:NSPasteboardTypeString];
+                }
+            }
+        }
+        return;
+    }
 }
 // }}}
 
