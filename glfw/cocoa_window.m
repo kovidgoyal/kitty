@@ -2510,22 +2510,22 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
 
 // Clipboard {{{
 
+#define UTI_ROUNDTRIP_PREFIX @"uti-is-typical-apple-nih."
+
 static NSString*
 mime_to_uti(const char *mime) {
     if (strcmp(mime, "text/plain") == 0) return NSPasteboardTypeString;
     if (@available(macOS 11.0, *)) {
         UTType *t = [UTType typeWithMIMEType:@(mime)];  // auto-released
-        if (t != nil) return t.identifier;
+        if (t != nil && ![t.identifier hasPrefix:@"dyn."]) return t.identifier;
     }
-    return [NSString stringWithFormat:@"%s.%s", "uti-is-typical-apple-nih", mime];
+    return [NSString stringWithFormat:@"%@%s", UTI_ROUNDTRIP_PREFIX, mime];  // auto-released
 }
 
 static const char*
 uti_to_mime(NSString *uti) {
     if ([uti isEqualToString:NSPasteboardTypeString]) return "text/plain";
-#define prefix @"uti-is-typical-apple-nih."
-    if ([uti hasPrefix:prefix]) return [[uti substringFromIndex:[prefix length]] UTF8String];
-#undef prefix
+    if ([uti hasPrefix:UTI_ROUNDTRIP_PREFIX]) return [[uti substringFromIndex:[UTI_ROUNDTRIP_PREFIX length]] UTF8String];
     if (@available(macOS 11.0, *)) {
         UTType *t = [UTType typeWithIdentifier:uti];  // auto-released
         if (t.preferredMIMEType != nil) return [t.preferredMIMEType UTF8String];
@@ -2605,9 +2605,12 @@ _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_typ
         return;
     }
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+    /* NSLog(@"mime: %s uti: %@", mime_type, mime_to_uti(mime_type)); */
     NSPasteboardType t = [pasteboard availableTypeFromArray:@[mime_to_uti(mime_type)]];
+    /* NSLog(@"available type: %@", t); */
     if (t != nil) {
-        NSData *data = [pasteboard dataForType:t];
+        NSData *data = [pasteboard dataForType:t];  // auto-released
+        /* NSLog(@"data: %@", data); */
         if (data != nil && data.length > 0) {
             write_data(object, data.bytes, data.length);
         }
@@ -2643,6 +2646,7 @@ _glfwPlatformSetClipboard(GLFWClipboardType t) {
     [pasteboard declareTypes:ptypes owner:nil];
     for (size_t i = 0; i < _glfw.clipboard.num_mime_types; i++) {
         NSMutableData *data = get_clipboard_data(&_glfw.clipboard, _glfw.clipboard.mime_types[i]);  // auto-released
+        /* NSLog(@"putting data: %@ for: %s with UTI: %@", data, _glfw.clipboard.mime_types[i], ptypes[i]); */
         if (data != nil) [pasteboard setData:data forType:ptypes[i]];
     }
 }
