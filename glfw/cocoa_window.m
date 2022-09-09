@@ -2566,27 +2566,27 @@ get_text_plain(GLFWclipboardwritedatafun write_data, void *object) {
     if (objs) {
         const NSUInteger count = [objs count];
         if (count) {
-            NSMutableString *path_list = [NSMutableString stringWithCapacity:4096];  // auto-released
-            NSMutableString *text_list = [NSMutableString stringWithCapacity:4096];  // auto-released
+            NSMutableData *path_list = [NSMutableData dataWithCapacity:4096];  // auto-released
+            NSMutableData *text_list = [NSMutableData dataWithCapacity:4096];  // auto-released
             for (NSUInteger i = 0;  i < count;  i++) {
                 id obj = objs[i];
                 if ([obj isKindOfClass:[NSURL class]]) {
                     NSURL *url = (NSURL*)obj;
                     if (url.fileURL && url.fileSystemRepresentation) {
-                        if ([path_list length] > 0) [path_list appendString:@("\n")];
-                        [path_list appendString:@(url.fileSystemRepresentation)];
+                        if ([path_list length] > 0) [path_list appendBytes:"\n" length:1];
+                        [path_list appendBytes:url.fileSystemRepresentation length:strlen(url.fileSystemRepresentation)];
                     }
                 } else if ([obj isKindOfClass:[NSString class]]) {
-                    if ([text_list length] > 0) [text_list appendString:@("\n")];
-                    [text_list appendString:obj];
+                    if ([text_list length] > 0) [text_list appendBytes:"\n" length:1];
+                    [text_list appendData:[obj dataUsingEncoding:NSUTF8StringEncoding]];
                 }
             }
-            const char *text = NULL;
-            if (path_list.length > 0) text = [path_list UTF8String];
-            else if (text_list.length > 0) text = [text_list UTF8String];
+            const NSMutableData *text = nil;
+            if (path_list.length > 0) text = path_list;
+            else if (text_list.length > 0) text = text_list;
             if (text) {
                 found = true;
-                write_data(object, text, strlen(text));
+                write_data(object, text.mutableBytes, text.length);
             }
         }
     }
