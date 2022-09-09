@@ -49,10 +49,31 @@ type Command struct {
 	Stop_processing_at_arg int
 }
 
-func (self *Command) add_command(name string) *Command {
+func (self *Command) add_group(name string) *CommandGroup {
+	for _, g := range self.Groups {
+		if g.Title == name {
+			return g
+		}
+	}
+	g := CommandGroup{Title: name, Commands: make([]*Command, 0, 8)}
+	self.Groups = append(self.Groups, &g)
+	return &g
+}
+
+func (self *Command) add_command(name string, group_title string) *Command {
 	ans := Command{Name: name}
 	ans.Options = make([]*Option, 0, 8)
 	ans.Groups = make([]*CommandGroup, 0, 2)
+	g := self.add_group(group_title)
+	g.Commands = append(g.Commands, &ans)
+	return &ans
+}
+
+func (self *Command) add_clone(name string, group_title string, clone_of *Command) *Command {
+	ans := *clone_of
+	ans.Name = name
+	g := self.add_group(group_title)
+	g.Commands = append(g.Commands, &ans)
 	return &ans
 }
 
