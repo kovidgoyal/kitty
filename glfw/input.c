@@ -1551,9 +1551,13 @@ GLFWAPI void glfwSetClipboardDataTypes(GLFWClipboardType clipboard_type, const c
     _glfw_free_clipboard_data(cd);
     cd->get_data = get_data;
     cd->mime_types = calloc(num_mime_types, sizeof(char*));
-    cd->num_mime_types = num_mime_types;
+    cd->num_mime_types = 0;
     cd->ctype = clipboard_type;
-    for (size_t i = 0; i < cd->num_mime_types; i++) cd->mime_types[i] = _glfw_strdup(mime_types[i]);
+    for (size_t i = 0; i < num_mime_types; i++) {
+        if (mime_types[i]) {
+            cd->mime_types[cd->num_mime_types++] = _glfw_strdup(mime_types[i]);
+        }
+    }
     _glfwPlatformSetClipboard(clipboard_type);
 }
 

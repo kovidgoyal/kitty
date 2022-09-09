@@ -21,11 +21,13 @@ class Clipboard:
         self.enabled = self.clipboard_type == GLFW_CLIPBOARD or supports_primary_selection
 
     def set_text(self, x: Union[str, bytes]) -> None:
-        if self.enabled:
-            self.data.clear()
-            if isinstance(x, str):
-                x = x.encode('utf-8')
-            self.data['text/plain'] = x
+        if isinstance(x, str):
+            x = x.encode('utf-8')
+        self.set_mime({'text/plain': x})
+
+    def set_mime(self, data: Dict[str, DataType]) -> None:
+        if self.enabled and isinstance(data, dict):
+            self.data = data
             set_clipboard_data_types(self.clipboard_type, tuple(self.data))
 
     def get_text(self) -> str:
