@@ -14,18 +14,18 @@ import (
 	"kitty/tools/utils"
 )
 
-func json_input_parser(data []byte, shell_state map[string]string) ([]string, error) {
-	ans := make([]string, 0, 32)
+func json_input_parser(data []byte, shell_state map[string]string) ([][]string, error) {
+	ans := make([][]string, 0, 32)
 	err := json.Unmarshal(data, &ans)
 	return ans, err
 }
 
-func json_output_serializer(completions *Completions, shell_state map[string]string) ([]byte, error) {
+func json_output_serializer(completions []*Completions, shell_state map[string]string) ([]byte, error) {
 	return json.Marshal(completions)
 }
 
-type parser_func func(data []byte, shell_state map[string]string) ([]string, error)
-type serializer_func func(completions *Completions, shell_state map[string]string) ([]byte, error)
+type parser_func func(data []byte, shell_state map[string]string) ([][]string, error)
+type serializer_func func(completions []*Completions, shell_state map[string]string) ([]byte, error)
 
 var input_parsers = make(map[string]parser_func, 4)
 var output_serializers = make(map[string]serializer_func, 4)
@@ -60,7 +60,7 @@ func main(args []string) error {
 	if err != nil {
 		return err
 	}
-	argv, err := input_parser(data, shell_state)
+	all_argv, err := input_parser(data, shell_state)
 	if err != nil {
 		return err
 	}
@@ -69,8 +69,11 @@ func main(args []string) error {
 		re(&root)
 	}
 
-	completions := root.GetCompletions(argv)
-	output, err := output_serializer(completions, shell_state)
+	all_completions := make([]*Completions, 0, 1)
+	for _, argv := range all_argv {
+		all_completions = append(all_completions, root.GetCompletions(argv))
+	}
+	output, err := output_serializer(all_completions, shell_state)
 	if err == nil {
 		_, err = os.Stdout.Write(output)
 	}
