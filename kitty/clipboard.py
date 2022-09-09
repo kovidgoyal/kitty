@@ -7,7 +7,8 @@ from typing import IO, Callable, Dict, List, Tuple, Union
 from .conf.utils import uniq
 from .constants import supports_primary_selection
 from .fast_data_types import (
-    GLFW_CLIPBOARD, get_boss, get_clipboard_mime, set_clipboard_data_types
+    GLFW_CLIPBOARD, GLFW_PRIMARY_SELECTION, get_boss, get_clipboard_mime,
+    set_clipboard_data_types
 )
 
 DataType = Union[bytes, 'IO[bytes]']
@@ -51,6 +52,11 @@ class Clipboard:
                     while q:
                         q = data.read(io.DEFAULT_BUFFER_SIZE)
                         output(q)
+
+    def get_mime_data(self, mime: str) -> bytes:
+        ans: List[bytes] = []
+        self.get_mime(mime, ans.append)
+        return b''.join(ans)
 
     def get_available_mime_types_for_paste(self) -> Tuple[str, ...]:
         if self.enabled:
@@ -97,3 +103,17 @@ def set_primary_selection(x: Union[str, bytes]) -> None:
 
 def get_primary_selection() -> str:
     return get_boss().primary_selection.get_text()
+
+
+def develop() -> Tuple[Clipboard, Clipboard]:
+    from .constants import is_macos, detect_if_wayland_ok
+    from .fast_data_types import set_boss
+    from .main import init_glfw_module
+    glfw_module = 'cocoa' if is_macos else ('wayland' if detect_if_wayland_ok() else 'x11')
+
+    class Boss:
+        clipboard = Clipboard()
+        primary_selection = Clipboard(GLFW_PRIMARY_SELECTION)
+    init_glfw_module(glfw_module)
+    set_boss(Boss())  # type: ignore
+    return Boss.clipboard, Boss.primary_selection
