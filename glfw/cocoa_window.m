@@ -2510,6 +2510,29 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
 
 // Clipboard {{{
 
+static NSString*
+mime_to_uti(const char *mime) {
+    if (strcmp(mime, "text/plain") == 0) return NSPasteboardTypeString;
+    if (@available(macOS 11.0, *)) {
+        UTType *t = [UTType typeWithMIMEType:@(mime)];  // auto-released
+        if (t != nil) return t.identifier;
+    }
+    return [NSString stringWithFormat:@"%s.%s", "uti-is-typical-apple-nih", mime];
+}
+
+static const char*
+uti_to_mime(NSString *uti) {
+    if ([uti isEqualToString:NSPasteboardTypeString]) return "text/plain";
+#define prefix @"uti-is-typical-apple-nih."
+    if ([uti hasPrefix:prefix]) return [[uti substringFromIndex:[prefix length]] UTF8String];
+#undef prefix
+    if (@available(macOS 11.0, *)) {
+        UTType *t = [UTType typeWithIdentifier:uti];  // auto-released
+        if (t.preferredMIMEType != nil) return [t.preferredMIMEType UTF8String];
+    }
+    return "";
+}
+
 static void
 list_clipboard_mimetypes(GLFWclipboardwritedatafun write_data, void *object) {
 #define w(x) { if (ok) ok = write_data(object, x, strlen(x)); }
@@ -2521,17 +2544,13 @@ list_clipboard_mimetypes(GLFWclipboardwritedatafun write_data, void *object) {
     bool ok = true;
     if (has_strings) w("text/plain");
     if (has_file_urls) w("text/local-path-list");
-    if (@available(macOS 11.0, *)) {
-        for (NSPasteboardItem * item in pasteboard.pasteboardItems) {
-            for (NSPasteboardType type in item.types) {
-                /* NSLog(@"%@", type); */
-                UTType *ut = [UTType typeWithIdentifier:type];
-                if (ut != nil) {
-                    /* NSLog(@"ut: %@ mt: %@ tags: %@", ut, ut.preferredMIMEType, ut.tags); */
-                    if (ut.preferredMIMEType != nil && ![ut.preferredMIMEType hasPrefix:@"text/plain"]) {
-                        w([ut.preferredMIMEType UTF8String]);
-                    }
-                }
+    for (NSPasteboardItem * item in pasteboard.pasteboardItems) {
+        for (NSPasteboardType type in item.types) {
+            /* NSLog(@"%@", type); */
+            const char *mime = uti_to_mime(type);
+            if (mime && mime[0] && ![@(mime) hasPrefix:@"text/plain"]) {
+                /* NSLog(@"ut: %@ mt: %@ tags: %@", ut, ut.preferredMIMEType, ut.tags); */
+                w(mime);
             }
         }
     }
@@ -2585,6 +2604,14 @@ _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_typ
         get_text_plain(write_data, object);
         return;
     }
+    NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+    NSPasteboardType t = [pasteboard availableTypeFromArray:@[mime_to_uti(mime_type)]];
+    if (t != nil) {
+        NSData *data = [pasteboard dataForType:t];
+        if (data != nil && data.length > 0) {
+            write_data(object, data.bytes, data.length);
+        }
+    }
 }
 
 static NSMutableData*
@@ -2609,19 +2636,14 @@ void
 _glfwPlatformSetClipboard(GLFWClipboardType t) {
     if (t != GLFW_CLIPBOARD) return;
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
-    if (@available(macOS 11.0, *)) {
-    } else {
-        for (size_t i = 0; i < _glfw.clipboard.num_mime_types; i++) {
-            const char *mime = _glfw.clipboard.mime_types[i];
-            if (strcmp(mime, "text/plain") == 0) {
-                NSMutableData *data = get_clipboard_data(&_glfw.clipboard, mime);  // auto-released
-                if (data != nil) {
-                    [pasteboard declareTypes:@[NSPasteboardTypeString] owner:nil];
-                    [pasteboard setData:data forType:NSPasteboardTypeString];
-                }
-            }
-        }
-        return;
+    NSMutableArray<NSPasteboardType> *ptypes = [NSMutableArray arrayWithCapacity:_glfw.clipboard.num_mime_types];  // auto-released
+    for (size_t i = 0; i < _glfw.clipboard.num_mime_types; i++) {
+        [ptypes addObject:mime_to_uti(_glfw.clipboard.mime_types[i])];
+    }
+    [pasteboard declareTypes:ptypes owner:nil];
+    for (size_t i = 0; i < _glfw.clipboard.num_mime_types; i++) {
+        NSMutableData *data = get_clipboard_data(&_glfw.clipboard, _glfw.clipboard.mime_types[i]);  // auto-released
+        if (data != nil) [pasteboard setData:data forType:ptypes[i]];
     }
 }
 // }}}
