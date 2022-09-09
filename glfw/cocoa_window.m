@@ -2517,7 +2517,7 @@ mime_to_uti(const char *mime) {
     if (strcmp(mime, "text/plain") == 0) return NSPasteboardTypeString;
     if (@available(macOS 11.0, *)) {
         UTType *t = [UTType typeWithMIMEType:@(mime)];  // auto-released
-        if (t != nil && ![t.identifier hasPrefix:@"dyn."]) return t.identifier;
+        if (t != nil && !t.dynamic) return t.identifier;
     }
     return [NSString stringWithFormat:@"%@%s", UTI_ROUNDTRIP_PREFIX, mime];  // auto-released
 }
