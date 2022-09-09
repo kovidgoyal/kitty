@@ -35,6 +35,11 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
+0.27.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Allow passing null bytes through the system clipboard (:iss:`5483`)
+
 0.26.2 [2022-09-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
