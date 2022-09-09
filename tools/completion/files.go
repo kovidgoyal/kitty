@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -53,4 +55,22 @@ func complete_files(prefix string, callback CompleteFilesCallback) error {
 	})
 
 	return nil
+}
+
+func complete_executables_in_path(prefix string, paths ...string) []string {
+	ans := make([]string, 0, 1024)
+	if len(paths) == 0 {
+		paths = filepath.SplitList(os.Getenv("PATH"))
+	}
+	for _, dir := range paths {
+		entries, err := os.ReadDir(dir)
+		if err == nil {
+			for _, e := range entries {
+				if strings.HasPrefix(e.Name(), prefix) && !e.IsDir() && unix.Access(filepath.Join(dir, e.Name()), unix.X_OK) == nil {
+					ans = append(ans, e.Name())
+				}
+			}
+		}
+	}
+	return ans
 }
