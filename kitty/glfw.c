@@ -312,6 +312,14 @@ dpi_change_callback(GLFWwindow *w, float x_scale UNUSED, float y_scale UNUSED) {
     window->live_resize.last_resize_event_at = monotonic();
     global_state.callback_os_window = NULL;
     request_tick_callback();
+    if (global_state.is_wayland) {
+        // because of the stupidity of Wayland design, the GLFW wayland backend
+        // will need to swap buffers immediately after a scale change to ensure
+        // the buffer size is a multiple of the scale. So blank the new buffer to
+        // ensure we dont leak any unintialized pixels to the screen. The OpenGL viewport
+        // will already have been resized to its new size in framebuffer_size_callback
+        blank_os_window(window);
+    }
 }
 
 static void

@@ -199,7 +199,7 @@ static bool checkScaleChange(_GLFWwindow* window)
 }
 
 // Makes the surface considered as XRGB instead of ARGB.
-static void setOpaqueRegion(_GLFWwindow* window)
+static void setOpaqueRegion(_GLFWwindow* window, bool commit_surface)
 {
     struct wl_region* region;
 
@@ -209,8 +209,20 @@ static void setOpaqueRegion(_GLFWwindow* window)
 
     wl_region_add(region, 0, 0, window->wl.width, window->wl.height);
     wl_surface_set_opaque_region(window->wl.surface, region);
-    wl_surface_commit(window->wl.surface);
+    if (commit_surface) wl_surface_commit(window->wl.surface);
     wl_region_destroy(region);
+}
+
+static void
+swap_buffers(_GLFWwindow *window) {
+    // this will attach the buffer to the surface,
+    // the client is responsible for clearing the buffer to an appropriate blank
+    window->swaps_disallowed = false;
+    GLFWwindow *current = glfwGetCurrentContext();
+    bool context_is_current = ((_GLFWwindow*)current)->id == window->id;
+    if (!context_is_current) glfwMakeContextCurrent((GLFWwindow*)window);
+    window->context.swapBuffers(window);
+    if (!context_is_current) glfwMakeContextCurrent(current);
 }
 
 
@@ -221,7 +233,7 @@ resizeFramebuffer(_GLFWwindow* window) {
     int scaledHeight = window->wl.height * scale;
     debug("Resizing framebuffer to: %dx%d at scale: %d\n", window->wl.width, window->wl.height, scale);
     wl_egl_window_resize(window->wl.native, scaledWidth, scaledHeight, 0, 0);
-    if (!window->wl.transparent) setOpaqueRegion(window);
+    if (!window->wl.transparent) setOpaqueRegion(window, false);
     _glfwInputFramebufferSize(window, scaledWidth, scaledHeight);
 }
 
@@ -236,9 +248,9 @@ clipboard_mime(void) {
 }
 
 static bool
-dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height) {
+dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height, bool *scale_changed) {
     bool size_changed = width != window->wl.width || height != window->wl.height;
-    bool scale_changed = checkScaleChange(window);
+    *scale_changed = checkScaleChange(window);
 
     if (size_changed) {
         _glfwInputWindowSize(window, width, height);
@@ -246,7 +258,7 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
         resizeFramebuffer(window);
     }
 
-    if (scale_changed) {
+    if (*scale_changed) {
         debug("Scale changed to %d in dispatchChangesAfterConfigure\n", window->wl.scale);
         if (!size_changed) resizeFramebuffer(window);
         _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
@@ -254,7 +266,7 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
 
     _glfwInputWindowDamage(window);
 
-    return size_changed || scale_changed;
+    return size_changed || *scale_changed;
 }
 
 static void
@@ -383,7 +395,7 @@ static bool createSurface(_GLFWwindow* window,
     window->wl.scale = 1;
 
     if (!window->wl.transparent)
-        setOpaqueRegion(window);
+        setOpaqueRegion(window, false);
 
     return true;
 }
@@ -498,14 +510,7 @@ static void xdgSurfaceHandleConfigure(void* data,
         int height = window->wl.pending.height;
         if (!window->wl.surface_configured_once) {
             window->wl.surface_configured_once = true;
-            // this will attach the buffer to the surface, the client is responsible for clearing the buffer to an appropriate blank
-            window->swaps_disallowed = false;
-            GLFWwindow *current = glfwGetCurrentContext();
-            bool context_is_current = ((_GLFWwindow*)current)->id == window->id;
-            if (!context_is_current) glfwMakeContextCurrent(data);
-            window->context.swapBuffers(window);
-            if (!context_is_current) glfwMakeContextCurrent(current);
-
+            swap_buffers(window);
             if (!width && !height && !new_states && !window->wl.decorations.serverSide && getenv("XAUTHORITY") && strstr(getenv("XAUTHORITY"), "mutter")) {
                 // https://github.com/kovidgoyal/kitty/issues/4802
                 debug("Ignoring first empty surface configure event on mutter.\n");
@@ -534,10 +539,11 @@ static void xdgSurfaceHandleConfigure(void* data,
     }
 
     bool resized = false;
+    bool scale_changed = false;
     if (window->wl.pending_state) {
         int width = window->wl.pending.width, height = window->wl.pending.height;
         set_csd_window_geometry(window, &width, &height);
-        resized = dispatchChangesAfterConfigure(window, width, height);
+        resized = dispatchChangesAfterConfigure(window, width, height, &scale_changed);
         if (window->wl.decorations.serverSide) {
             free_csd_surfaces(window);
         } else {
@@ -547,6 +553,10 @@ static void xdgSurfaceHandleConfigure(void* data,
     }
 
     inform_compositor_of_window_geometry(window, "configure");
+
+    // we need to swap buffers here to ensure the buffer attached to the surface is a multiple
+    // of the new scale. See https://github.com/kovidgoyal/kitty/issues/5467
+    if (scale_changed) swap_buffers(window);
 
     // if a resize happened there will be a commit at the next render frame so
     // dont commit here, GNOME doesnt like it and its not really needed anyway
