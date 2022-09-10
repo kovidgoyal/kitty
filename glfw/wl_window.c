@@ -368,6 +368,8 @@ static bool createSurface(_GLFWwindow* window,
 
     wl_surface_set_user_data(window->wl.surface, window);
 
+
+    debug("Creating window at size: %dx%d and scale 1\n", wndconfig->width, wndconfig->height);
     window->wl.native = wl_egl_window_create(window->wl.surface,
                                              wndconfig->width,
                                              wndconfig->height);
