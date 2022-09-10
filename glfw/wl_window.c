@@ -498,7 +498,11 @@ static void xdgSurfaceHandleConfigure(void* data,
             window->wl.surface_configured_once = true;
             // this will attach the buffer to the surface, the client is responsible for clearing the buffer to an appropriate blank
             window->swaps_disallowed = false;
+            GLFWwindow *current = glfwGetCurrentContext();
+            bool context_is_current = ((_GLFWwindow*)current)->id == window->id;
+            if (!context_is_current) glfwMakeContextCurrent(data);
             window->context.swapBuffers(window);
+            if (!context_is_current) glfwMakeContextCurrent(current);
 
             if (!width && !height && !new_states && !window->wl.decorations.serverSide && getenv("XAUTHORITY") && strstr(getenv("XAUTHORITY"), "mutter")) {
                 // https://github.com/kovidgoyal/kitty/issues/4802
