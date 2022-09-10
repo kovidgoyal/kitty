@@ -44,6 +44,8 @@ Detailed list of changes
 
 - Sessions: Allow controlling which OS Window is active via the ``focus_os_window`` directive
 
+- Wayland: Fix for bug in NVIDIA drivers that prevents transparency working (:iss:`5479`)
+
 0.26.2 [2022-09-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -600,8 +600,11 @@ bool _glfwCreateContextEGL(_GLFWwindow* window,
         if (_glfw.egl.KHR_gl_colorspace)
             setAttrib(EGL_GL_COLORSPACE_KHR, EGL_GL_COLORSPACE_SRGB_KHR);
     }
-    if (_glfw.egl.EXT_present_opaque)
-        setAttrib(EGL_PRESENT_OPAQUE_EXT, !fbconfig->transparent);
+    // Disabled because it prevents transparency from working on NVIDIA drivers under Wayland
+    // https://github.com/kovidgoyal/kitty/issues/5479
+    // We anyway dont use the alpha bits for anything.
+    /* if (_glfw.egl.EXT_present_opaque) */
+    /*     setAttrib(EGL_PRESENT_OPAQUE_EXT, !fbconfig->transparent); */
 
     setAttrib(EGL_NONE, EGL_NONE);
 
