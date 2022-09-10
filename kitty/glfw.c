@@ -1373,10 +1373,10 @@ wakeup_main_loop() {
 bool
 should_os_window_be_rendered(OSWindow* w) {
     return (
-            glfwGetWindowAttrib(w->handle, GLFW_ICONIFIED) ||
-            !glfwGetWindowAttrib(w->handle, GLFW_VISIBLE) ||
-            glfwGetWindowAttrib(w->handle, GLFW_OCCLUDED) ||
-            !glfwAreSwapsAllowed(w->handle)
+            glfwGetWindowAttrib(w->handle, GLFW_ICONIFIED)
+            || !glfwGetWindowAttrib(w->handle, GLFW_VISIBLE)
+            || glfwGetWindowAttrib(w->handle, GLFW_OCCLUDED)
+            || !glfwAreSwapsAllowed(w->handle)
        ) ? false : true;
 }
 
