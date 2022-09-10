@@ -46,6 +46,9 @@ Detailed list of changes
 
 - Wayland: Fix for bug in NVIDIA drivers that prevents transparency working (:iss:`5479`)
 
+- Wayland: Fix for a bug that could cause kitty to become non-responsive when
+  using multiple OS windows in a single instance on some compositors (:iss:`5495`)
+
 0.26.2 [2022-09-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
