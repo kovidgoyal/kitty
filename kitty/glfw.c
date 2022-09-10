@@ -641,6 +641,7 @@ set_os_window_size(OSWindow *os_window, int x, int y) {
 
 static void
 get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xdpi, double *ydpi) {
+    // if you change this function also change createSurface() in wl_window.c
     *xscale = 1; *yscale = 1;
     if (w) glfwGetWindowContentScale(w, xscale, yscale);
     else {
@@ -841,6 +842,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (!global_state.is_wayland) {
         // On Wayland windows dont get a content scale until they receive an enterEvent anyway
         // which won't happen until the event loop ticks, so using a temp window is useless.
+        // The glfw backend assigns new windows a scale matching the primary monitor or 1 if
+        // no monitor has yet been reported. This is mimiced by get_window_content_scale() when
+        // using a null window, so we will match. Lets hope neither of these two change their algorithms
+        // in the future.
         temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context);
         if (temp_window == NULL) { fatal("Failed to create GLFW temp window! This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL 3.3 drivers."); }
     }

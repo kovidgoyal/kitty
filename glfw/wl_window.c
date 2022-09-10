@@ -380,11 +380,22 @@ static bool createSurface(_GLFWwindow* window,
 
     wl_surface_set_user_data(window->wl.surface, window);
 
+    // If we already have been notified of the primary monitor scale, assume
+    // the window will be created on it and so avoid a rescale roundtrip in the common
+    // case of the window being shown on the primary monitor or all monitors having the same scale.
+    // If you change this also change get_window_content_scale() in the kitty code.
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    float xscale = 1.0, yscale = 1.0;
+    int scale = 1;
+    if (monitor) {
+        glfwGetMonitorContentScale(monitor, &xscale, &yscale);
+        // see wl_monitor.c xscale is always == yscale
+        if (xscale <= 0.0001 || xscale != xscale || xscale >= 24) xscale = 1.0;
+        if (xscale > 1) scale = (int)xscale;
+    }
 
-    debug("Creating window at size: %dx%d and scale 1\n", wndconfig->width, wndconfig->height);
-    window->wl.native = wl_egl_window_create(window->wl.surface,
-                                             wndconfig->width,
-                                             wndconfig->height);
+    debug("Creating window at size: %dx%d and scale %d\n", wndconfig->width, wndconfig->height, scale);
+    window->wl.native = wl_egl_window_create(window->wl.surface, wndconfig->width * scale, wndconfig->height * scale);
     if (!window->wl.native)
         return false;
 
@@ -392,11 +403,13 @@ static bool createSurface(_GLFWwindow* window,
     window->wl.height = wndconfig->height;
     window->wl.user_requested_content_size.width = wndconfig->width;
     window->wl.user_requested_content_size.height = wndconfig->height;
-    window->wl.scale = 1;
+
+    window->wl.scale = scale;
 
     if (!window->wl.transparent)
         setOpaqueRegion(window, false);
 
+    wl_surface_set_buffer_scale(window->wl.surface, scale);
     return true;
 }
 
