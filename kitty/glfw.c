@@ -856,7 +856,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     // changing, in case the background color is not black
     blank_canvas(is_semi_transparent ? OPT(background_opacity) : 1.0f, OPT(background));
 #ifndef __APPLE__
-    if (is_first_window) glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
+    glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
 #endif
     // On Wayland the initial swap is allowed only after the first XDG configure event
     if (glfwAreSwapsAllowed(glfw_window)) glfwSwapBuffers(glfw_window);
