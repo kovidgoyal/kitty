@@ -40,6 +40,8 @@ Detailed list of changes
 
 - Allow passing null bytes through the system clipboard (:iss:`5483`)
 
+- ssh kitten: Fix :envvar:`KITTY_PUBLIC_KEY` not being encoded properly when transmitting (:iss:`5496`)
+
 0.26.2 [2022-09-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
