@@ -262,7 +262,7 @@ void get_os_window_size(OSWindow *os_window, int *w, int *h, int *fw, int *fh);
 void get_os_window_content_scale(OSWindow *os_window, double *xdpi, double *ydpi, float *xscale, float *yscale);
 void update_os_window_references(void);
 void mark_os_window_for_close(OSWindow* w, CloseRequest cr);
-void update_os_window_viewport(OSWindow *window, bool);
+void update_os_window_viewport(OSWindow *window, bool notify_boss);
 bool should_os_window_be_rendered(OSWindow* w);
 void wakeup_main_loop(void);
 void swap_window_buffers(OSWindow *w);
