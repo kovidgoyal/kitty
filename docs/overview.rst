@@ -163,8 +163,10 @@ option in :file:`kitty.conf`. For example:
     launch sh
     # Resize the current window (see the resize_window action for details)
     resize_window wider 2
-    # Make the current window the active (focused) window
+    # Make the current window the active (focused) window in its tab
     focus
+    # Make the current OS Window the globally active window (not supported on Wayland)
+    focus_os_window
     launch emacs
 
 .. note::

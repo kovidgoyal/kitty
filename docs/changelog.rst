@@ -42,6 +42,8 @@ Detailed list of changes
 
 - ssh kitten: Fix :envvar:`KITTY_PUBLIC_KEY` not being encoded properly when transmitting (:iss:`5496`)
 
+- Sessions: Allow controlling which OS Window is active via the ``focus_os_window`` directive
+
 0.26.2 [2022-09-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

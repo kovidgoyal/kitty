@@ -60,6 +60,7 @@ class Session:
         self.default_title = default_title
         self.os_window_size: Optional[WindowSizes] = None
         self.os_window_class: Optional[str] = None
+        self.focus_os_window: bool = False
 
     def add_tab(self, opts: Options, name: str = '') -> None:
         if self.tabs and not self.tabs[-1].windows:
@@ -146,6 +147,8 @@ def parse_session(raw: str, opts: Options) -> Generator[Session, None, None]:
                 ans.add_window(rest)
             elif cmd == 'focus':
                 ans.focus()
+            elif cmd == 'focus_os_window':
+                ans.focus_os_window = True
             elif cmd == 'enabled_layouts':
                 ans.set_enabled_layouts(rest)
             elif cmd == 'cd':

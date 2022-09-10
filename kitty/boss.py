@@ -296,14 +296,19 @@ class Boss:
 
     def startup_first_child(self, os_window_id: Optional[int], startup_sessions: Iterable[Session] = ()) -> None:
         si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
+        focused_os_window = 0
         for startup_session in si:
-            self.add_os_window(startup_session, os_window_id=os_window_id)
+            wid = self.add_os_window(startup_session, os_window_id=os_window_id)
+            if startup_session.focus_os_window:
+                focused_os_window = wid
             os_window_id = None
             if self.args.start_as != 'normal':
                 if self.args.start_as == 'fullscreen':
                     self.toggle_fullscreen()
                 else:
                     change_os_window_state(self.args.start_as)
+        if focused_os_window > 0:
+            focus_os_window(focused_os_window, True)
 
     def add_os_window(
         self,
@@ -637,14 +642,19 @@ class Boss:
                 args.session = PreReadSession(data['stdin'])
             if not os.path.isabs(args.directory):
                 args.directory = os.path.join(data['cwd'], args.directory)
+            focused_os_window = 0
             for session in create_sessions(opts, args, respect_cwd=True):
                 os_window_id = self.add_os_window(
                     session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id,
                     override_title=args.title or None)
+                if session.focus_os_window:
+                    focused_os_window = os_window_id
                 if opts.background_opacity != get_options().background_opacity:
                     self._set_os_window_background_opacity(os_window_id, opts.background_opacity)
                 if data.get('notify_on_os_window_death'):
                     self.os_window_death_actions[os_window_id] = partial(self.notify_on_os_window_death, data['notify_on_os_window_death'])
+            if focused_os_window > 0:
+                focus_os_window(focused_os_window, True)
         else:
             log_error('Unknown message received from peer, ignoring')
         return None
