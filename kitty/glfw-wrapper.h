@@ -1454,6 +1454,7 @@ typedef void (* GLFWjoystickfun)(int,int);
 
 typedef void (* GLFWuserdatafun)(unsigned long long, void*);
 typedef void (* GLFWtickcallback)(void*);
+typedef void (* GLFWactivationcallback)(GLFWwindow *window, const char *token, void *data);
 typedef bool (* GLFWdrawtextfun)(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin);
 typedef char* (* GLFWcurrentselectionfun)(void);
 typedef void (* GLFWclipboarddatafreefun)(void* data);
@@ -2204,6 +2205,10 @@ GFW_EXTERN glfwGetNativeKeyForName_func glfwGetNativeKeyForName_impl;
 typedef void (*glfwRequestWaylandFrameEvent_func)(GLFWwindow*, unsigned long long, GLFWwaylandframecallbackfunc);
 GFW_EXTERN glfwRequestWaylandFrameEvent_func glfwRequestWaylandFrameEvent_impl;
 #define glfwRequestWaylandFrameEvent glfwRequestWaylandFrameEvent_impl
+
+typedef void (*glfwWaylandActivateWindow_func)(GLFWwindow*, const char*);
+GFW_EXTERN glfwWaylandActivateWindow_func glfwWaylandActivateWindow_impl;
+#define glfwWaylandActivateWindow glfwWaylandActivateWindow_impl
 
 typedef bool (*glfwWaylandSetTitlebarColor_func)(GLFWwindow*, uint32_t, bool);
 GFW_EXTERN glfwWaylandSetTitlebarColor_func glfwWaylandSetTitlebarColor_impl;

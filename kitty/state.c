@@ -822,9 +822,10 @@ PYWRAP0(current_application_quit_request) {
 PYWRAP1(focus_os_window) {
     id_type os_window_id;
     int also_raise = 1;
-    PA("K|p", &os_window_id, &also_raise);
+    const char *activation_token = NULL;
+    PA("K|pz", &os_window_id, &also_raise, &activation_token);
     WITH_OS_WINDOW(os_window_id)
-        if (!os_window->is_focused) focus_os_window(os_window, also_raise);
+        if (!os_window->is_focused || (activation_token && activation_token[0])) focus_os_window(os_window, also_raise, activation_token);
         Py_RETURN_TRUE;
     END_WITH_OS_WINDOW
     Py_RETURN_FALSE;

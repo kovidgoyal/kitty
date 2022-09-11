@@ -148,6 +148,7 @@ def process_env() -> Dict[str, str]:
     ssl_env_var = getattr(sys, 'kitty_ssl_env_var', None)
     if ssl_env_var is not None:
         ans.pop(ssl_env_var, None)
+    ans.pop('XDG_ACTIVATION_TOKEN', None)
     return ans
 
 

@@ -296,7 +296,8 @@ class Boss:
 
     def startup_first_child(self, os_window_id: Optional[int], startup_sessions: Iterable[Session] = ()) -> None:
         si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
-        focused_os_window = 0
+        focused_os_window = wid = 0
+        token = os.environ.pop('XDG_ACTIVATION_TOKEN', '')
         for startup_session in si:
             wid = self.add_os_window(startup_session, os_window_id=os_window_id)
             if startup_session.focus_os_window:
@@ -308,7 +309,9 @@ class Boss:
                 else:
                     change_os_window_state(self.args.start_as)
         if focused_os_window > 0:
-            focus_os_window(focused_os_window, True)
+            focus_os_window(focused_os_window, True, token)
+        elif token and is_wayland() and wid:
+            focus_os_window(wid, True, token)
 
     def add_os_window(
         self,
@@ -630,6 +633,7 @@ class Boss:
         if isinstance(data, dict) and data.get('cmd') == 'new_instance':
             from .cli_stub import CLIOptions
             startup_id = data.get('startup_id')
+            activation_token = data.get('activation_token', '')
             args, rest = parse_args(data['args'][1:], result_class=CLIOptions)
             cmdline_args_for_open = data.get('cmdline_args_for_open')
             if cmdline_args_for_open:
@@ -642,7 +646,7 @@ class Boss:
                 args.session = PreReadSession(data['stdin'])
             if not os.path.isabs(args.directory):
                 args.directory = os.path.join(data['cwd'], args.directory)
-            focused_os_window = 0
+            focused_os_window = os_window_id = 0
             for session in create_sessions(opts, args, respect_cwd=True):
                 os_window_id = self.add_os_window(
                     session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id,
@@ -654,7 +658,9 @@ class Boss:
                 if data.get('notify_on_os_window_death'):
                     self.os_window_death_actions[os_window_id] = partial(self.notify_on_os_window_death, data['notify_on_os_window_death'])
             if focused_os_window > 0:
-                focus_os_window(focused_os_window, True)
+                focus_os_window(focused_os_window, True, activation_token or '')
+            elif activation_token and is_wayland() and os_window_id:
+                focus_os_window(os_window_id, True, activation_token or '')
         else:
             log_error('Unknown message received from peer, ignoring')
         return None

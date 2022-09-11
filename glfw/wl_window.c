@@ -2217,6 +2217,12 @@ GLFWAPI struct wl_surface* glfwGetWaylandWindow(GLFWwindow* handle)
     return window->wl.surface;
 }
 
+GLFWAPI void glfwWaylandActivateWindow(GLFWwindow* handle, const char *activation_token) {
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    _GLFW_REQUIRE_INIT();
+    if (activation_token && activation_token[0]) xdg_activation_v1_activate(_glfw.wl.xdg_activation_v1, activation_token, window->wl.surface);
+}
+
 GLFWAPI int glfwGetNativeKeyForName(const char* keyName, bool caseSensitive) {
     return glfw_xkb_keysym_from_name(keyName, caseSensitive);
 }

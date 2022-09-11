@@ -449,6 +449,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwRequestWaylandFrameEvent_impl) = dlsym(handle, "glfwRequestWaylandFrameEvent");
     if (glfwRequestWaylandFrameEvent_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwWaylandActivateWindow_impl) = dlsym(handle, "glfwWaylandActivateWindow");
+    if (glfwWaylandActivateWindow_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwWaylandSetTitlebarColor_impl) = dlsym(handle, "glfwWaylandSetTitlebarColor");
     if (glfwWaylandSetTitlebarColor_impl == NULL) dlerror(); // clear error indicator
 

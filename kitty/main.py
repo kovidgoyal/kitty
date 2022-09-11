@@ -61,7 +61,7 @@ def talk_to_instance(args: CLIOptions) -> None:
     if args.session == '-':
         stdin = sys.stdin.read()
     data = {'cmd': 'new_instance', 'args': tuple(sys.argv), 'cmdline_args_for_open': getattr(sys, 'cmdline_args_for_open', []),
-            'startup_id': os.environ.get('DESKTOP_STARTUP_ID'),
+            'startup_id': os.environ.get('DESKTOP_STARTUP_ID'), 'activation_token': os.environ.get('XDG_ACTIVATION_TOKEN'),
             'cwd': os.getcwd(), 'stdin': stdin}
     notify_socket = None
     if args.wait_for_single_instance_window_close:

@@ -1037,13 +1037,17 @@ destroy_os_window(OSWindow *w) {
 }
 
 void
-focus_os_window(OSWindow *w, bool also_raise) {
+focus_os_window(OSWindow *w, bool also_raise, const char *activation_token) {
     if (w->handle) {
 #ifdef __APPLE__
         if (!also_raise) cocoa_focus_window(glfwGetCocoaWindow(w->handle));
         else glfwFocusWindow(w->handle);
+        (void)activation_token;
 #else
-        (void)also_raise;
+        if (global_state.is_wayland && activation_token && activation_token[0] && also_raise) {
+            glfwWaylandActivateWindow(w->handle, activation_token);
+            return;
+        }
         glfwFocusWindow(w->handle);
 #endif
     }

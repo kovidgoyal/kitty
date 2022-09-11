@@ -653,7 +653,7 @@ enter_event() {
     // On cocoa there is no way to configure the window manager to
     // focus windows on mouse enter, so we do it ourselves
     if (OPT(focus_follows_mouse) && !global_state.callback_os_window->is_focused) {
-        focus_os_window(global_state.callback_os_window, false);
+        focus_os_window(global_state.callback_os_window, false, NULL);
     }
 #endif
 }
