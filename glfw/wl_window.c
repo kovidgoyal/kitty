@@ -1160,12 +1160,17 @@ request_attention(GLFWwindow *window, const char *token, void *data UNUSED) {
     if (window && token && token[0]) xdg_activation_v1_activate(_glfw.wl.xdg_activation_v1, token, ((_GLFWwindow*)window)->wl.surface);
 }
 
-void _glfwPlatformRequestWindowAttention(_GLFWwindow* window) {
+static bool
+has_activation_in_flight(_GLFWwindow* window, GLFWactivationcallback callback) {
     for (size_t i = 0; i < _glfw.wl.activation_requests.sz; i++) {
         glfw_wl_xdg_activation_request *r = _glfw.wl.activation_requests.array + i;
-        if (r->window_id == window->id && r->callback == request_attention) return;
+        if (r->window_id == window->id && r->callback == callback) return true;
     }
-    get_activation_token(window, 0, request_attention, NULL);
+    return false;
+}
+
+void _glfwPlatformRequestWindowAttention(_GLFWwindow* window) {
+    if (!has_activation_in_flight(window, request_attention)) get_activation_token(window, 0, request_attention, NULL);
 }
 
 int _glfwPlatformWindowBell(_GLFWwindow* window UNUSED)
@@ -1174,10 +1179,21 @@ int _glfwPlatformWindowBell(_GLFWwindow* window UNUSED)
     return false;
 }
 
+static void
+focus_window(GLFWwindow *window, const char *token, void *data UNUSED) {
+    if (!window) return;
+    if (token && token[0]) xdg_activation_v1_activate(_glfw.wl.xdg_activation_v1, token, ((_GLFWwindow*)window)->wl.surface);
+    else {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Window focus request via xdg-activation protocol was denied by the compositor. Use a better compositor.");
+    }
+}
+
 void _glfwPlatformFocusWindow(_GLFWwindow* window UNUSED)
 {
-    _glfwInputError(GLFW_FEATURE_UNAVAILABLE,
-                    "Wayland: The platform does not support setting the input focus");
+    // Attempt to focus the window by using the activation protocol, whether it works
+    // is entirely compositor dependent and as we all know Wayland and its ecosystem is
+    // the product of morons.
+    if (_glfw.wl.input_serial && !has_activation_in_flight(window, focus_window)) get_activation_token(window, _glfw.wl.input_serial, focus_window, NULL);
 }
 
 void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,

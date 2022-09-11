@@ -293,7 +293,7 @@ typedef struct _GLFWlibraryWayland
 
     struct wl_surface*          cursorSurface;
     GLFWCursorShape             cursorPreviousShape;
-    uint32_t                    serial;
+    uint32_t                    serial, input_serial;
 
     int32_t                     keyboardRepeatRate;
     monotonic_t                 keyboardRepeatDelay;

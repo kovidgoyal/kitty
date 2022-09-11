@@ -99,7 +99,7 @@ static void pointerHandleEnter(void* data UNUSED,
             return;
     }
     window->wl.decorations.focus = focus;
-    _glfw.wl.serial = serial;
+    _glfw.wl.serial = serial; _glfw.wl.input_serial = serial;
     _glfw.wl.pointerFocus = window;
 
     window->wl.hovered = true;
@@ -311,7 +311,7 @@ static void pointerHandleButton(void* data UNUSED,
     if (window->wl.decorations.focus != CENTRAL_WINDOW)
         return;
 
-    _glfw.wl.serial = serial;
+    _glfw.wl.serial = serial; _glfw.wl.input_serial = serial;
 
     /* Makes left, right and middle 0, 1 and 2. Overall order follows evdev
      * codes. */
@@ -463,7 +463,7 @@ static void keyboardHandleEnter(void* data UNUSED,
             return;
     }
 
-    _glfw.wl.serial = serial;
+    _glfw.wl.serial = serial; _glfw.wl.input_serial = serial;
     _glfw.wl.keyboardFocusId = window->id;
     _glfwInputWindowFocus(window, true);
     uint32_t* key;
@@ -516,7 +516,7 @@ static void keyboardHandleKey(void* data UNUSED,
         return;
     int action = state == WL_KEYBOARD_KEY_STATE_PRESSED ? GLFW_PRESS : GLFW_RELEASE;
 
-    _glfw.wl.serial = serial;
+    _glfw.wl.serial = serial; _glfw.wl.input_serial = serial;
     glfw_xkb_handle_key_event(window, &_glfw.wl.xkb, key, action);
 
     if (action == GLFW_PRESS && _glfw.wl.keyboardRepeatRate > 0 && glfw_xkb_should_repeat(&_glfw.wl.xkb, key))
@@ -539,7 +539,7 @@ static void keyboardHandleModifiers(void* data UNUSED,
                                     uint32_t modsLocked,
                                     uint32_t group)
 {
-    _glfw.wl.serial = serial;
+    _glfw.wl.serial = serial; _glfw.wl.input_serial = serial;
     glfw_xkb_update_modifiers(&_glfw.wl.xkb, modsDepressed, modsLatched, modsLocked, 0, 0, group);
 }
 
