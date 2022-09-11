@@ -719,6 +719,9 @@ static void registryHandleGlobal(void* data UNUSED,
             _glfwSetupWaylandPrimarySelectionDevice();
         }
     }
+    else if (strstr(interface, "xdg_activation_v1") != 0) {
+        _glfw.wl.xdg_activation_v1 = wl_registry_bind(registry, name, &xdg_activation_v1_interface, 1);
+    }
 
 }
 
@@ -882,6 +885,14 @@ int _glfwPlatformInit(void)
 
 void _glfwPlatformTerminate(void)
 {
+    if (_glfw.wl.activation_requests.array) {
+        for (size_t i=0; i < _glfw.wl.activation_requests.sz; i++) {
+            glfw_wl_xdg_activation_request *r = _glfw.wl.activation_requests.array + i;
+            if (r->callback) r->callback(NULL, NULL, r->callback_data);
+            xdg_activation_token_v1_destroy(r->token);
+        }
+        free(_glfw.wl.activation_requests.array);
+    }
     _glfwTerminateEGL();
     if (_glfw.wl.egl.handle)
     {
@@ -941,6 +952,8 @@ void _glfwPlatformTerminate(void)
         zwp_primary_selection_device_v1_destroy(_glfw.wl.primarySelectionDevice);
     if (_glfw.wl.primarySelectionDeviceManager)
         zwp_primary_selection_device_manager_v1_destroy(_glfw.wl.primarySelectionDeviceManager);
+    if (_glfw.wl.xdg_activation_v1)
+        xdg_activation_v1_destroy(_glfw.wl.xdg_activation_v1);
     if (_glfw.wl.registry)
         wl_registry_destroy(_glfw.wl.registry);
     if (_glfw.wl.display)

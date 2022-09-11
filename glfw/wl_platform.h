@@ -58,7 +58,9 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-pointer-constraints-unstable-v1-client-protocol.h"
 #include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
 #include "wayland-primary-selection-unstable-v1-client-protocol.h"
+#include "wayland-primary-selection-unstable-v1-client-protocol.h"
 #include "wl_text_input.h"
+#include "wayland-xdg-activation-v1-client-protocol.h"
 
 #define _glfw_dlopen(name) dlopen(name, RTLD_LAZY | RTLD_LOCAL)
 #define _glfw_dlclose(handle) dlclose(handle)
@@ -123,6 +125,14 @@ typedef enum WaylandWindowState {
     TOPLEVEL_STATE_TILED_TOP = 64,
     TOPLEVEL_STATE_TILED_BOTTOM = 128,
 } WaylandWindowState;
+
+typedef struct glfw_wl_xdg_activation_request {
+    GLFWid window_id;
+    GLFWactivationcallback callback;
+    void *callback_data;
+    uintptr_t request_id;
+    void *token;
+} glfw_wl_xdg_activation_request;
 
 
 static const WaylandWindowState TOPLEVEL_STATE_DOCKED = TOPLEVEL_STATE_MAXIMIZED | TOPLEVEL_STATE_FULLSCREEN | TOPLEVEL_STATE_TILED_TOP | TOPLEVEL_STATE_TILED_LEFT | TOPLEVEL_STATE_TILED_RIGHT | TOPLEVEL_STATE_TILED_BOTTOM;
@@ -276,6 +286,7 @@ typedef struct _GLFWlibraryWayland
     struct zwp_primary_selection_device_manager_v1* primarySelectionDeviceManager;
     struct zwp_primary_selection_device_v1*    primarySelectionDevice;
     struct zwp_primary_selection_source_v1*    dataSourceForPrimarySelection;
+    struct xdg_activation_v1* xdg_activation_v1;
 
     int                         compositorVersion;
     int                         seatVersion;
@@ -315,6 +326,11 @@ typedef struct _GLFWlibraryWayland
         PFN_wl_egl_window_destroy window_destroy;
         PFN_wl_egl_window_resize window_resize;
     } egl;
+
+    struct {
+        glfw_wl_xdg_activation_request *array;
+        size_t capacity, sz;
+    } activation_requests;
 
     EventLoopData eventLoopData;
     size_t dataOffersCounter;

@@ -44,6 +44,59 @@
 
 #define debug(...) if (_glfw.hints.init.debugRendering) fprintf(stderr, __VA_ARGS__);
 
+static void
+activation_token_done(void *data, struct xdg_activation_token_v1 *xdg_token, const char *token) {
+    for (size_t i = 0; i < _glfw.wl.activation_requests.sz; i++) {
+        glfw_wl_xdg_activation_request *r = _glfw.wl.activation_requests.array + i;
+        if (r->request_id == (uintptr_t)data) {
+            _GLFWwindow *window = _glfwWindowForId(r->window_id);
+            if (r->callback) r->callback((GLFWwindow*)window, token, r->callback_data);
+            remove_i_from_array(_glfw.wl.activation_requests.array, i, _glfw.wl.activation_requests.sz);
+            break;
+        }
+    }
+    xdg_activation_token_v1_destroy(xdg_token);
+}
+
+
+static const struct
+xdg_activation_token_v1_listener activation_token_listener = {
+    .done = &activation_token_done,
+};
+
+
+static bool
+get_activation_token(
+    _GLFWwindow *window, uint32_t serial, GLFWactivationcallback cb, void *cb_data
+) {
+#define fail(msg) { _glfwInputError(GLFW_PLATFORM_ERROR, msg); if (cb) cb((GLFWwindow*)window, NULL, cb_data); return false; }
+    if (_glfw.wl.xdg_activation_v1 == NULL) fail("Wayland: activation requests not supported by this Wayland compositor");
+    struct xdg_activation_token_v1 *token = xdg_activation_v1_get_activation_token(_glfw.wl.xdg_activation_v1);
+    if (token == NULL) fail("Wayland: failed to create activation request token");
+    if (_glfw.wl.activation_requests.capacity < _glfw.wl.activation_requests.sz + 1) {
+        _glfw.wl.activation_requests.capacity = MAX(64u, _glfw.wl.activation_requests.capacity * 2);
+        _glfw.wl.activation_requests.array = realloc(_glfw.wl.activation_requests.array, _glfw.wl.activation_requests.capacity);
+        if (!_glfw.wl.activation_requests.array) {
+            _glfw.wl.activation_requests.capacity = 0;
+            fail("Wayland: Out of memory while allocation activation request");
+        }
+    }
+    glfw_wl_xdg_activation_request *r = _glfw.wl.activation_requests.array + _glfw.wl.activation_requests.sz++;
+    memset(r, 0, sizeof(*r));
+    static uintptr_t rq = 0;
+    r->window_id = window->id;
+    r->callback = cb; r->callback_data = cb_data;
+    r->request_id = ++rq; r->token = token;
+    if (serial != 0)
+        xdg_activation_token_v1_set_serial(token, serial, _glfw.wl.seat);
+
+    xdg_activation_token_v1_set_surface(token, window->wl.surface);
+    xdg_activation_token_v1_add_listener(token, &activation_token_listener, (void*)r->request_id);
+    xdg_activation_token_v1_commit(token);
+    return true;
+#undef fail
+}
+
 static struct wl_buffer* createShmBuffer(const GLFWimage* image, bool is_opaque, bool init_data)
 {
     struct wl_shm_pool* pool;
@@ -1102,27 +1155,22 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
     window->wl.visible = false;
 }
 
-void _glfwPlatformRequestWindowAttention(_GLFWwindow* window UNUSED)
-{
-    // TODO
-    static bool notified = false;
-    if (!notified) {
-        _glfwInputError(GLFW_FEATURE_UNIMPLEMENTED,
-                        "Wayland: Window attention request not implemented yet");
-        notified = true;
+static void
+request_attention(GLFWwindow *window, const char *token, void *data UNUSED) {
+    if (window && token && token[0]) xdg_activation_v1_activate(_glfw.wl.xdg_activation_v1, token, ((_GLFWwindow*)window)->wl.surface);
+}
+
+void _glfwPlatformRequestWindowAttention(_GLFWwindow* window) {
+    for (size_t i = 0; i < _glfw.wl.activation_requests.sz; i++) {
+        glfw_wl_xdg_activation_request *r = _glfw.wl.activation_requests.array + i;
+        if (r->window_id == window->id && r->callback == request_attention) return;
     }
+    get_activation_token(window, 0, request_attention, NULL);
 }
 
 int _glfwPlatformWindowBell(_GLFWwindow* window UNUSED)
 {
     // TODO: Use an actual Wayland API to implement this when one becomes available
-    static char tty[L_ctermid + 1];
-    int fd = open(ctermid(tty), O_WRONLY | O_CLOEXEC);
-    if (fd > -1) {
-        int ret = write(fd, "\x07", 1) == 1 ? true : false;
-        close(fd);
-        return ret;
-    }
     return false;
 }
 

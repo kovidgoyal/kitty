@@ -38,6 +38,8 @@ Detailed list of changes
 0.27.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Wayland: Mark windows in which a bell as urgent on compositors that support the xdg-activation protocol
+
 - Allow passing null bytes through the system clipboard (:iss:`5483`)
 
 - ssh kitten: Fix :envvar:`KITTY_PUBLIC_KEY` not being encoded properly when transmitting (:iss:`5496`)
@@ -50,6 +52,7 @@ Detailed list of changes
   using multiple OS windows in a single instance on some compositors (:iss:`5495`)
 
 - Wayland: Fix for a bug preventing kitty from starting on Hyprland when using a non-unit scale (:iss:`5467`)
+
 
 0.26.2 [2022-09-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
