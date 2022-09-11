@@ -2,7 +2,6 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-import re
 from contextlib import suppress
 from fnmatch import fnmatch
 from functools import lru_cache
@@ -12,6 +11,7 @@ from typing import (
 )
 
 from kitty.guess_mime_type import guess_type
+from kitty.utils import control_codes_pat
 
 if TYPE_CHECKING:
     from .highlight import DiffHighlight  # noqa
@@ -161,12 +161,9 @@ def collect_files(collection: Collection, left: str, right: str) -> None:
         collection.add_add(right_path_map[name])
 
 
-sanitize_pat = re.compile('[\x00-\x09\x0b-\x1f\x7f\x80-\x9f]')
-
-
 def sanitize(text: str) -> str:
     ntext = text.replace('\r\n', '⏎\n')
-    return sanitize_pat.sub('░', ntext)
+    return control_codes_pat().sub('░', ntext)
 
 
 @lru_cache(maxsize=1024)
