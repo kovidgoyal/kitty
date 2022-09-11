@@ -577,11 +577,6 @@ static void xdgSurfaceHandleConfigure(void* data,
         if (!window->wl.surface_configured_once) {
             window->wl.surface_configured_once = true;
             swap_buffers(window);
-            if (!width && !height && !new_states && !window->wl.decorations.serverSide && getenv("XAUTHORITY") && strstr(getenv("XAUTHORITY"), "mutter")) {
-                // https://github.com/kovidgoyal/kitty/issues/4802
-                debug("Ignoring first empty surface configure event on mutter.\n");
-                return;
-            }
         }
 
         if (new_states != window->wl.current.toplevel_states ||
