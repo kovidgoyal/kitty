@@ -271,6 +271,7 @@ void hide_mouse(OSWindow *w);
 bool is_mouse_hidden(OSWindow *w);
 void destroy_os_window(OSWindow *w);
 void focus_os_window(OSWindow *w, bool also_raise, const char *activation_token);
+void run_with_activation_token_in_os_window(OSWindow *w, PyObject *callback);
 void set_os_window_title(OSWindow *w, const char *title);
 OSWindow* os_window_for_kitty_window(id_type);
 OSWindow* add_os_window(void);

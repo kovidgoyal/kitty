@@ -20,7 +20,10 @@ from weakref import WeakValueDictionary
 from .child import cached_process_data, default_env, set_default_env
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
-from .clipboard import Clipboard, get_primary_selection, set_primary_selection, get_clipboard_string, set_clipboard_string
+from .clipboard import (
+    Clipboard, get_clipboard_string, get_primary_selection,
+    set_clipboard_string, set_primary_selection
+)
 from .conf.utils import BadLine, KeyAction, to_cmdline
 from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
@@ -38,11 +41,11 @@ from .fast_data_types import (
     current_application_quit_request, current_os_window, destroy_global_data,
     focus_os_window, get_boss, get_options, get_os_window_size,
     global_font_size, mark_os_window_for_close, os_window_font_size,
-    patch_global_colors, redirect_mouse_handling, ring_bell, safe_pipe,
-    send_data_to_peer, set_application_quit_request, set_background_image,
-    set_boss, set_in_sequence_mode, set_options, set_os_window_size,
-    set_os_window_title, thread_write, toggle_fullscreen, toggle_maximized,
-    toggle_secure_input
+    patch_global_colors, redirect_mouse_handling, ring_bell,
+    run_with_activation_token, safe_pipe, send_data_to_peer,
+    set_application_quit_request, set_background_image, set_boss,
+    set_in_sequence_mode, set_options, set_os_window_size, set_os_window_title,
+    thread_write, toggle_fullscreen, toggle_maximized, toggle_secure_input
 )
 from .key_encoding import get_name_to_functional_number_map
 from .keys import get_shortcut, shortcut_matches
@@ -1751,7 +1754,16 @@ class Boss:
             extra_env = {}
             if self.listening_on:
                 extra_env['KITTY_LISTEN_ON'] = self.listening_on
-            open_url(url, program or get_options().open_url_with, cwd=cwd, extra_env=extra_env)
+
+            def doit(activation_token: str = '') -> None:
+                if activation_token:
+                    extra_env['XDG_ACTIVATION_TOKEN'] = activation_token
+                open_url(url, program or get_options().open_url_with, cwd=cwd, extra_env=extra_env)
+
+            if is_wayland():
+                run_with_activation_token(doit)
+            else:
+                doit()
 
     @ac('misc', 'Click a URL using the keyboard')
     def open_url_with_hints(self) -> None:
@@ -1945,18 +1957,28 @@ class Boss:
             with suppress(Exception):
                 cwd = cwd_from.cwd_of_child
 
-        if stdin:
-            r, w = safe_pipe(False)
-            try:
-                subprocess.Popen(cmd, env=env, stdin=r, cwd=cwd, preexec_fn=clear_handled_signals)
-            except Exception:
-                os.close(w)
+        def doit(activation_token: str = '') -> None:
+            nonlocal env
+            if activation_token:
+                if env is None:
+                    env = default_env().copy()
+                env['XDG_ACTIVATION_TOKEN'] = activation_token
+            if stdin:
+                r, w = safe_pipe(False)
+                try:
+                    subprocess.Popen(cmd, env=env, stdin=r, cwd=cwd, preexec_fn=clear_handled_signals)
+                except Exception:
+                    os.close(w)
+                else:
+                    thread_write(w, stdin)
+                finally:
+                    os.close(r)
             else:
-                thread_write(w, stdin)
-            finally:
-                os.close(r)
+                subprocess.Popen(cmd, env=env, cwd=cwd, preexec_fn=clear_handled_signals)
+        if is_wayland():
+            run_with_activation_token(doit)
         else:
-            subprocess.Popen(cmd, env=env, cwd=cwd, preexec_fn=clear_handled_signals)
+            doit()
 
     def pipe(self, source: str, dest: str, exe: str, *args: str) -> Optional[Window]:
         cmd = [exe] + list(args)

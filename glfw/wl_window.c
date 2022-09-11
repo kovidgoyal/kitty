@@ -2223,6 +2223,12 @@ GLFWAPI void glfwWaylandActivateWindow(GLFWwindow* handle, const char *activatio
     if (activation_token && activation_token[0]) xdg_activation_v1_activate(_glfw.wl.xdg_activation_v1, activation_token, window->wl.surface);
 }
 
+GLFWAPI void glfwWaylandRunWithActivationToken(GLFWwindow *handle, GLFWactivationcallback cb, void *cb_data) {
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    _GLFW_REQUIRE_INIT();
+    get_activation_token(window, _glfw.wl.input_serial, cb, cb_data);
+}
+
 GLFWAPI int glfwGetNativeKeyForName(const char* keyName, bool caseSensitive) {
     return glfw_xkb_keysym_from_name(keyName, caseSensitive);
 }

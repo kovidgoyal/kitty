@@ -53,6 +53,8 @@ Detailed list of changes
 
 - Wayland: Fix for a bug preventing kitty from starting on Hyprland when using a non-unit scale (:iss:`5467`)
 
+- Wayland: Generate a XDG_ACTIVATION_TOKEN when opening URLs or running programs in the background via the launch action
+
 
 0.26.2 [2022-09-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

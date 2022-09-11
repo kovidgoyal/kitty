@@ -1317,6 +1317,26 @@ find_os_window(id_type os_window_id) {
     return NULL;
 }
 
+static void
+activation_token_callback(GLFWwindow *window UNUSED, const char *token, void *data) {
+    if (!token || !token[0]) {
+        token = "";
+        log_error("Wayland: Did not get activation token from compositor. Use a better compositor.");
+    }
+    PyObject *ret = PyObject_CallFunction(data, "s", token);
+    if (ret == NULL) PyErr_Print();
+    else Py_DECREF(ret);
+    Py_CLEAR(data);
+}
+
+void
+run_with_activation_token_in_os_window(OSWindow *w, PyObject *callback) {
+    if (global_state.is_wayland) {
+        Py_INCREF(callback);
+        glfwWaylandRunWithActivationToken(w->handle, activation_token_callback, callback);
+    }
+}
+
 static PyObject*
 toggle_fullscreen(PyObject UNUSED *self, PyObject *args) {
     id_type os_window_id = 0;

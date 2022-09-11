@@ -2210,6 +2210,10 @@ typedef void (*glfwWaylandActivateWindow_func)(GLFWwindow*, const char*);
 GFW_EXTERN glfwWaylandActivateWindow_func glfwWaylandActivateWindow_impl;
 #define glfwWaylandActivateWindow glfwWaylandActivateWindow_impl
 
+typedef void (*glfwWaylandRunWithActivationToken_func)(GLFWwindow*, GLFWactivationcallback, void*);
+GFW_EXTERN glfwWaylandRunWithActivationToken_func glfwWaylandRunWithActivationToken_impl;
+#define glfwWaylandRunWithActivationToken glfwWaylandRunWithActivationToken_impl
+
 typedef bool (*glfwWaylandSetTitlebarColor_func)(GLFWwindow*, uint32_t, bool);
 GFW_EXTERN glfwWaylandSetTitlebarColor_func glfwWaylandSetTitlebarColor_impl;
 #define glfwWaylandSetTitlebarColor glfwWaylandSetTitlebarColor_impl

@@ -831,6 +831,17 @@ PYWRAP1(focus_os_window) {
     Py_RETURN_FALSE;
 }
 
+PYWRAP1(run_with_activation_token) {
+    for (size_t o = 0; o < global_state.num_os_windows; o++) {
+        OSWindow *os_window = global_state.os_windows + o;
+        if (os_window->is_focused) {
+            run_with_activation_token_in_os_window(os_window, args);
+            break;
+        }
+    }
+    Py_RETURN_NONE;
+}
+
 PYWRAP1(set_titlebar_color) {
     id_type os_window_id;
     unsigned int color;
@@ -1292,6 +1303,7 @@ static PyMethodDef module_methods[] = {
     MW(set_titlebar_color, METH_VARARGS),
     MW(focus_os_window, METH_VARARGS),
     MW(mark_tab_bar_dirty, METH_O),
+    MW(run_with_activation_token, METH_O),
     MW(change_background_opacity, METH_VARARGS),
     MW(background_opacity_of, METH_O),
     MW(update_window_visibility, METH_VARARGS),
