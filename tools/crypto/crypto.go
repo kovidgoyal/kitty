@@ -1,4 +1,5 @@
 // License: GPLv3 Copyright: 2022, Kovid Goyal, <kovid at kovidgoyal.net>
+// TODO: Move to crypto/ecdh with go >= 1.20
 
 package crypto
 
