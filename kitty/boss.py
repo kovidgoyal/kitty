@@ -1522,9 +1522,7 @@ class Boss:
     @ac('misc', 'Edit the kitty.conf config file in your favorite text editor')
     def edit_config_file(self, *a: Any) -> None:
         confpath = prepare_config_file_for_editing()
-        # On macOS vim fails to handle SIGWINCH if it occurs early, so add a
-        # small delay.
-        cmd = [kitty_exe(), '+runpy', 'import os, sys, time; time.sleep(0.05); os.execvp(sys.argv[1], sys.argv[1:])'] + get_editor(get_options()) + [confpath]
+        cmd = [kitty_exe(), '+edit'] + get_editor(get_options()) + [confpath]
         self.new_os_window(*cmd)
 
     def run_kitten_with_metadata(
