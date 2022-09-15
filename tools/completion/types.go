@@ -2,6 +2,8 @@
 
 package completion
 
+import "strings"
+
 type Match struct {
 	Word        string `json:"word,omitempty"`
 	FullForm    string `json:"full_form,omitempty"`
@@ -16,14 +18,28 @@ type MatchGroup struct {
 	WordPrefix      string   `json:"word_prefix,omitempty"`
 }
 
+func (self *MatchGroup) add_match(word string, description ...string) *Match {
+	ans := Match{Word: word, Description: strings.Join(description, " ")}
+	self.Matches = append(self.Matches, &ans)
+	return &ans
+}
+
 type Completions struct {
 	Groups     []*MatchGroup `json:"groups,omitempty"`
 	WordPrefix string        `json:"word_prefix,omitempty"`
 
-	current_cmd *Command
+	current_cmd      *Command
+	all_words        []string // all words passed to parse_args()
+	current_word_idx int      // index of current word in all_words
 }
 
-type completion_func func(completions *Completions, partial_word string, arg_num int)
+func (self *Completions) add_match_group(title string) *MatchGroup {
+	ans := MatchGroup{Title: title, Matches: make([]*Match, 0, 8)}
+	self.Groups = append(self.Groups, &ans)
+	return &ans
+}
+
+type completion_func func(completions *Completions, word string, arg_num int)
 
 type Option struct {
 	Name               string
@@ -45,8 +61,9 @@ type Command struct {
 	Options []*Option
 	Groups  []*CommandGroup
 
-	Completion_for_arg     completion_func
-	Stop_processing_at_arg int
+	Completion_for_arg              completion_func
+	Stop_processing_at_arg          int
+	First_arg_may_not_be_subcommand bool
 }
 
 func (self *Command) add_group(name string) *CommandGroup {
@@ -110,5 +127,12 @@ func (self *Command) GetCompletions(argv []string) *Completions {
 			cmd.parse_args(argv[1:], &ans)
 		}
 	}
+	non_empty_groups := make([]*MatchGroup, 0, len(ans.Groups))
+	for _, gr := range ans.Groups {
+		if len(gr.Matches) > 0 {
+			non_empty_groups = append(non_empty_groups, gr)
+		}
+	}
+	ans.Groups = non_empty_groups
 	return &ans
 }
