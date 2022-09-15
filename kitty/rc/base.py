@@ -197,6 +197,26 @@ class ArgsHandling:
             return 0
         return self.count
 
+    def as_go_completion_code(self, go_name: str) -> Iterator[str]:
+        from ..cli import serialize_as_go_string
+        c = self.args_count
+        if c is not None:
+            yield f'{go_name}.Stop_processing_at_arg = {c}'
+        if self.completion:
+            for k, v in self.completion.items():
+                if k == 'files':
+                    title, pats = v
+                    assert isinstance(pats, tuple)
+                    gpats = (f'"{serialize_as_go_string(x)}"' for x in pats)
+                    yield f'{go_name}.Completion_for_arg = fnmatch_completer("{serialize_as_go_string(title)}", {", ".join(gpats)})'
+                elif k == 'names':
+                    title, gen = v
+                    assert callable(gen)
+                    gpats = (f'"{serialize_as_go_string(x)}"' for x in gen())
+                    yield f'{go_name}.Completion_for_arg = names_completer("{serialize_as_go_string(title)}", {", ".join(gpats)})'
+                else:
+                    raise KeyError(f'Unknown args completion type: {k}')
+
     def as_go_code(self, cmd_name: str, field_types: Dict[str, str], handled_fields: Set[str]) -> Iterator[str]:
         c = self.args_count
         if c == 0:

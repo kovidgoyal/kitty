@@ -51,6 +51,8 @@ def generate_completion_for_rc(name: str) -> None:
     cmd = command_for_name(name)
     if cmd.short_desc:
         print(f'{name}.Description = "{serialize_as_go_string(cmd.short_desc)}"')
+    for x in cmd.args.as_go_completion_code(name):
+        print(x)
 
 
 def generate_completions_for_kitty() -> None:
