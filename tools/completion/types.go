@@ -136,3 +136,14 @@ func (self *Command) GetCompletions(argv []string) *Completions {
 	ans.Groups = non_empty_groups
 	return &ans
 }
+
+func names_completer(title string, names ...string) completion_func {
+	return func(completions *Completions, word string, arg_num int) {
+		mg := completions.add_match_group(title)
+		for _, q := range names {
+			if strings.HasPrefix(q, word) {
+				mg.add_match(q)
+			}
+		}
+	}
+}

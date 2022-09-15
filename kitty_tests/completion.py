@@ -83,9 +83,9 @@ def completion(self: TestCompletion, tdir: str):
     make_file('bin/exe1', 0o700)
     make_file('bin/exe-not1')
     make_file('exe2', 0o700)
-    make_file('exe-not2')
+    make_file('exe-not2.jpeg')
     make_file('sub/exe3', 0o700)
-    make_file('sub/exe-not3')
+    make_file('sub/exe-not3.png')
 
     add('kitty x', all_words())
     add('kitty e', all_words('exe1'))
@@ -95,6 +95,13 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty ~', all_words('~/exe3'))
     add('kitty ~/', all_words('~/exe3'))
     add('kitty ~/e', all_words('~/exe3'))
+
+    add('kitty @ goto-layout ', has_words('tall', 'fat'))
+    add('kitty @ goto-layout spli', all_words('splits'))
+    add('kitty @ goto-layout f f', all_words())
+    add('kitty @ set-window-logo ', all_words('exe-not2.jpeg', 'sub/exe-not3.png'))
+    add('kitty @ set-window-logo e', all_words('exe-not2.jpeg'))
+    add('kitty @ set-window-logo e e', all_words())
 
     for cmd, tests, result in zip(all_cmds, all_tests, run_tool()):
         self.current_cmd = cmd

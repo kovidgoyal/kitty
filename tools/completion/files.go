@@ -78,3 +78,36 @@ func complete_executables_in_path(prefix string, paths ...string) []string {
 	}
 	return ans
 }
+
+func complete_by_fnmatch(prefix string, patterns []string) []string {
+	ans := make([]string, 0, 1024)
+	complete_files(prefix, func(completion_candidate, abspath string, d fs.DirEntry) error {
+		q := strings.ToLower(filepath.Base(abspath))
+		for _, pat := range patterns {
+			matched, err := filepath.Match(pat, q)
+			if err == nil && matched {
+				ans = append(ans, completion_candidate)
+			}
+		}
+		return nil
+	})
+	return ans
+}
+
+func fnmatch_completer(title string, patterns ...string) completion_func {
+	lpats := make([]string, 0, len(patterns))
+	for _, p := range patterns {
+		lpats = append(lpats, strings.ToLower(p))
+	}
+
+	return func(completions *Completions, word string, arg_num int) {
+		q := complete_by_fnmatch(word, lpats)
+		if len(q) > 0 {
+			mg := completions.add_match_group(title)
+			mg.IsFiles = true
+			for _, c := range q {
+				mg.add_match(c)
+			}
+		}
+	}
+}
