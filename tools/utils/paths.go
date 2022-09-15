@@ -134,7 +134,7 @@ func (self *transformed_walker) walk(dirpath string) error {
 		}
 		// we cant use filepath.Join here as it calls Clean() which can alter dirpath if it contains .. or . etc.
 		path_based_on_original_dir := dirpath
-		if !strings.HasSuffix(dirpath, sep) {
+		if !strings.HasSuffix(dirpath, sep) && dirpath != "" {
 			path_based_on_original_dir += sep
 		}
 		path_based_on_original_dir += rpath

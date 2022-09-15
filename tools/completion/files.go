@@ -28,10 +28,13 @@ func absolutize_path(path string) string {
 type CompleteFilesCallback func(completion_candidate, abspath string, d fs.DirEntry) error
 
 func complete_files(prefix string, callback CompleteFilesCallback) error {
-	abspath := absolutize_path(prefix)
 	base := prefix
-	if s, err := os.Stat(abspath); err != nil || !s.IsDir() {
-		base = filepath.Dir(prefix)
+	if base != "~" && base != "./" {
+		if strings.Contains(base, string(os.PathSeparator)) {
+			base = filepath.Dir(base)
+		} else {
+			base = ""
+		}
 	}
 	num := 0
 	utils.WalkWithSymlink(base, func(path, abspath string, d fs.DirEntry, err error) error {
@@ -43,8 +46,11 @@ func complete_files(prefix string, callback CompleteFilesCallback) error {
 			return nil
 		}
 		completion_candidate := path
-		if strings.HasPrefix(completion_candidate, prefix) && completion_candidate != prefix {
+		if strings.HasPrefix(completion_candidate, prefix) {
 			return callback(completion_candidate, abspath, d)
+		}
+		if d.IsDir() {
+			return fs.SkipDir
 		}
 		return nil
 	}, absolutize_path)

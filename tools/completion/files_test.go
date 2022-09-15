@@ -54,7 +54,11 @@ func TestCompleteFiles(t *testing.T) {
 	test_abs_candidates := func(prefix string, expected ...string) {
 		e := make([]string, len(expected))
 		for i, x := range expected {
-			e[i] = filepath.Join(tdir, x)
+			if filepath.IsAbs(x) {
+				e[i] = x
+			} else {
+				e[i] = filepath.Join(tdir, x)
+			}
 		}
 		test_candidates(prefix, e...)
 	}
@@ -71,7 +75,7 @@ func TestCompleteFiles(t *testing.T) {
 	test_cwd_prefix("t", "two.txt")
 	test_cwd_prefix("x")
 
-	test_abs_candidates(tdir, "one.txt", "two.txt", "odir", "odir/three.txt", "odir/four.txt")
+	test_abs_candidates(tdir, tdir, "one.txt", "two.txt", "odir", "odir/three.txt", "odir/four.txt")
 	test_abs_candidates(filepath.Join(tdir, "o"), "one.txt", "odir", "odir/three.txt", "odir/four.txt")
 
 	test_candidates("", "one.txt", "two.txt", "odir", "odir/three.txt", "odir/four.txt")
