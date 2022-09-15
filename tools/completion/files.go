@@ -43,7 +43,7 @@ func complete_files(prefix string, callback CompleteFilesCallback) error {
 			return nil
 		}
 		completion_candidate := path
-		if strings.HasPrefix(completion_candidate, prefix) {
+		if strings.HasPrefix(completion_candidate, prefix) && completion_candidate != prefix {
 			return callback(completion_candidate, abspath, d)
 		}
 		return nil
