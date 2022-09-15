@@ -887,7 +887,7 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
         raise SystemExit(cp.returncode)
 
 
-def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False) -> str:
+def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False, build_static: bool = False) -> str:
     sys.stdout.flush()
     sys.stderr.flush()
     go = shutil.which('go')
@@ -911,6 +911,8 @@ def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False)
             print(shlex.join(c))
         e = os.environ.copy()
         e.update(env)
+        if build_static:
+            e['CGO_ENABLED'] = '0'
         cp = subprocess.run(c, env=e)
         if cp.returncode != 0:
             raise SystemExit(cp.returncode)
