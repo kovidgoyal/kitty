@@ -23,7 +23,7 @@ func complete_kitty(completions *Completions, word string, arg_num int) {
 		}
 	}
 
-	if len(word) > 0 && (filepath.IsAbs(word) || strings.HasPrefix(word, "./")) {
+	if len(word) > 0 && (filepath.IsAbs(word) || strings.HasPrefix(word, "./") || strings.HasPrefix(word, "~")) {
 		mg := completions.add_match_group("Executables")
 		mg.IsFiles = true
 

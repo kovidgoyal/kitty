@@ -5,6 +5,7 @@ package completion
 import (
 	"fmt"
 	"io/fs"
+	"kitty/tools/utils"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +16,7 @@ import (
 var _ = fmt.Print
 
 type CompleteFilesCallback func(completion_candidate, abspath string, d fs.DirEntry) error
-type Walk_callback func(path string, d fs.DirEntry, err error) error
+type Walk_callback func(path, abspath string, d fs.DirEntry, err error) error
 
 func transform_symlink(path string) string {
 	if q, err := filepath.EvalSymlinks(path); err == nil {
@@ -40,6 +41,8 @@ type transformed_walker struct {
 	needs_recurse_func func(string, fs.DirEntry) bool
 }
 
+var sep = string(os.PathSeparator)
+
 func (self *transformed_walker) walk(dirpath string) error {
 	resolved_path := self.transform_func(dirpath)
 	if self.seen[resolved_path] {
@@ -56,11 +59,16 @@ func (self *transformed_walker) walk(dirpath string) error {
 		if err != nil {
 			return err
 		}
-		path_based_on_original_dir := filepath.Join(dirpath, rpath)
+		// we cant use filepath.Join here as it calls Clean() which can alter dirpath if it contains .. or . etc.
+		path_based_on_original_dir := dirpath
+		if !strings.HasSuffix(dirpath, sep) {
+			path_based_on_original_dir += sep
+		}
+		path_based_on_original_dir += rpath
 		if self.needs_recurse_func(path, d) {
 			err = self.walk(path_based_on_original_dir)
 		} else {
-			err = self.real_callback(path_based_on_original_dir, d, err)
+			err = self.real_callback(path_based_on_original_dir, path, d, err)
 		}
 		return err
 	}
@@ -70,31 +78,36 @@ func (self *transformed_walker) walk(dirpath string) error {
 
 // Walk, recursing into symlinks that point to directories. Ignores directories
 // that could not be read.
-func WalkWithSymlink(dirpath string, callback Walk_callback) error {
+func WalkWithSymlink(dirpath string, callback Walk_callback, transformers ...func(string) string) error {
+
+	transform := func(path string) string {
+		for _, t := range transformers {
+			path = t(path)
+		}
+		return transform_symlink(path)
+	}
 	sw := transformed_walker{
-		seen: make(map[string]bool), real_callback: callback, transform_func: transform_symlink, needs_recurse_func: needs_symlink_recurse}
+		seen: make(map[string]bool), real_callback: callback, transform_func: transform, needs_recurse_func: needs_symlink_recurse}
 	return sw.walk(dirpath)
 }
 
+func absolutize_path(path string) string {
+	path = utils.Expanduser(path)
+	q, err := filepath.Abs(path)
+	if err == nil {
+		path = q
+	}
+	return path
+}
+
 func complete_files(prefix string, callback CompleteFilesCallback) error {
-	base := "."
-	has_cwd_prefix := strings.HasPrefix(prefix, "./")
-	is_abs_path := filepath.IsAbs(prefix)
-	wd := ""
-	if is_abs_path {
-		base = prefix
-		if s, err := os.Stat(prefix); err != nil || !s.IsDir() {
-			base = filepath.Dir(prefix)
-		}
-	} else {
-		var qe error
-		wd, qe = os.Getwd()
-		if qe != nil {
-			wd = ""
-		}
+	abspath := absolutize_path(prefix)
+	base := prefix
+	if s, err := os.Stat(abspath); err != nil || !s.IsDir() {
+		base = filepath.Dir(prefix)
 	}
 	num := 0
-	WalkWithSymlink(base, func(path string, d fs.DirEntry, err error) error {
+	WalkWithSymlink(base, func(path, abspath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return fs.SkipDir
 		}
@@ -103,18 +116,11 @@ func complete_files(prefix string, callback CompleteFilesCallback) error {
 			return nil
 		}
 		completion_candidate := path
-		abspath := path
-		if !is_abs_path {
-			abspath = filepath.Join(wd, path)
-			if has_cwd_prefix {
-				completion_candidate = "./" + completion_candidate
-			}
-		}
 		if strings.HasPrefix(completion_candidate, prefix) {
 			return callback(completion_candidate, abspath, d)
 		}
 		return nil
-	})
+	}, absolutize_path)
 
 	return nil
 }

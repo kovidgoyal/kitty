@@ -61,6 +61,7 @@ def completion(self: TestCompletion, tdir: str):
     def run_tool():
         env = os.environ.copy()
         env['PATH'] = os.path.join(tdir, 'bin')
+        env['HOME'] = os.path.join(tdir, 'sub')
         cp = subprocess.run(
             [kitty_tool(), '__complete__', 'json'],
             check=True, stdout=subprocess.PIPE, cwd=tdir, input=json.dumps(all_argv).encode(), env=env
@@ -91,6 +92,9 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty ./', all_words('./bin', './bin/exe1', './sub', './exe2', './sub/exe3'))
     add('kitty ./e', all_words('./exe2'))
     add('kitty ./s', all_words('./sub', './sub/exe3'))
+    add('kitty ~', all_words('~/exe3'))
+    add('kitty ~/', all_words('~/exe3'))
+    add('kitty ~/e', all_words('~/exe3'))
 
     for cmd, tests, result in zip(all_cmds, all_tests, run_tool()):
         self.current_cmd = cmd
