@@ -3,8 +3,11 @@
 package completion
 
 import (
+	"fmt"
 	"strings"
 )
+
+var _ = fmt.Print
 
 func (self *Completions) add_group(group *MatchGroup) {
 	if len(group.Matches) > 0 {
@@ -58,7 +61,7 @@ func (self *Completions) add_options_group(options []*Option, word string) {
 			for _, q := range opt.Aliases {
 				if len(q) == 1 && !seen_flags[q] {
 					seen_flags[q] = true
-					group.Matches = append(group.Matches, &Match{Word: q, FullForm: "-" + q, Description: opt.Description})
+					group.add_match(q, opt.Description).FullForm = "-" + q
 				}
 			}
 		}
@@ -91,19 +94,18 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 	}
 	if arg_num == 1 && cmd.has_subcommands() {
 		for _, cg := range cmd.Groups {
-			group := MatchGroup{Title: cg.Title}
+			group := completions.add_match_group(cg.Title)
 			if group.Title == "" {
 				group.Title = "Sub-commands"
 			}
-			group.Matches = make([]*Match, 0, len(cg.Commands))
 			for _, sc := range cg.Commands {
 				if strings.HasPrefix(sc.Name, word) {
-					group.Matches = append(group.Matches, &Match{Word: sc.Name, Description: sc.Description})
+					group.add_match(sc.Name, sc.Description)
 				}
 			}
-			if len(group.Matches) > 0 {
-				completions.add_group(&group)
-			}
+		}
+		if cmd.First_arg_may_not_be_subcommand && cmd.Completion_for_arg != nil {
+			cmd.Completion_for_arg(completions, word, arg_num)
 		}
 		return
 	}
@@ -120,6 +122,7 @@ func (cmd *Command) parse_args(words []string, completions *Completions) {
 		complete_word("", completions, false, nil, 0)
 		return
 	}
+	completions.all_words = words
 
 	var expecting_arg_for *Option
 	only_args_allowed := false
@@ -127,8 +130,9 @@ func (cmd *Command) parse_args(words []string, completions *Completions) {
 
 	for i, word := range words {
 		cmd = completions.current_cmd
+		completions.current_word_idx = i
 		is_last_word := i == len(words)-1
-		if expecting_arg_for == nil && word != "--" {
+		if expecting_arg_for == nil && !strings.HasPrefix(word, "-") {
 			arg_num++
 		}
 		if is_last_word {

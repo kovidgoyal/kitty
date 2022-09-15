@@ -3,6 +3,7 @@
 
 
 import json
+import os
 import shlex
 import subprocess
 import tempfile
@@ -15,13 +16,14 @@ from . import BaseTest
 class TestCompletion(BaseTest):
 
     def test_completion(self):
-        completion(self)
+        with tempfile.TemporaryDirectory() as tdir:
+            completion(self, tdir)
 
 
 def has_words(*words):
     def t(self, result):
         q = set(words)
-        for group in result['groups']:
+        for group in result.get('groups', ()):
             for m in group['matches']:
                 if m['word'] in words:
                     q.discard(m['word'])
@@ -29,7 +31,19 @@ def has_words(*words):
     return t
 
 
-def completion(self: TestCompletion):
+def all_words(*words):
+    def t(self, result):
+        expected = set(words)
+        actual = set()
+
+        for group in result.get('groups', ()):
+            for m in group['matches']:
+                actual.add(m['word'])
+        self.assertEqual(expected, actual, f'Command line: {self.current_cmd!r}')
+    return t
+
+
+def completion(self: TestCompletion, tdir: str):
     all_cmds = []
     all_argv = []
     all_tests = []
@@ -45,15 +59,38 @@ def completion(self: TestCompletion):
         all_tests.append(tests)
 
     def run_tool():
-        with tempfile.TemporaryDirectory() as tdir:
-            return json.loads(subprocess.run(
-                [kitty_tool(), '__complete__', 'json'],
-                check=True, stdout=subprocess.PIPE, cwd=tdir, input=json.dumps(all_argv).encode()
-            ).stdout)
+        env = os.environ.copy()
+        env['PATH'] = os.path.join(tdir, 'bin')
+        cp = subprocess.run(
+            [kitty_tool(), '__complete__', 'json'],
+            check=True, stdout=subprocess.PIPE, cwd=tdir, input=json.dumps(all_argv).encode(), env=env
+        )
+        self.assertEqual(cp.returncode, 0, f'kitty-tool __complete__ failed with exit code: {cp.returncode}')
+        return json.loads(cp.stdout)
 
     add('kitty ', has_words('@', '@ls'))
     add('kitty @ l', has_words('ls', 'last-used-layout', 'launch'))
     add('kitty @l', has_words('@ls', '@last-used-layout', '@launch'))
+
+    def make_file(path, mode=None):
+        with open(os.path.join(tdir, path), mode='x') as f:
+            if mode is not None:
+                os.chmod(f.fileno(), mode)
+
+    os.mkdir(os.path.join(tdir, 'bin'))
+    os.mkdir(os.path.join(tdir, 'sub'))
+    make_file('bin/exe1', 0o700)
+    make_file('bin/exe-not1')
+    make_file('exe2', 0o700)
+    make_file('exe-not2')
+    make_file('sub/exe3', 0o700)
+    make_file('sub/exe-not3')
+
+    add('kitty x', all_words())
+    add('kitty e', all_words('exe1'))
+    add('kitty ./', all_words('./bin', './bin/exe1', './sub', './exe2', './sub/exe3'))
+    add('kitty ./e', all_words('./exe2'))
+    add('kitty ./s', all_words('./sub', './sub/exe3'))
 
     for cmd, tests, result in zip(all_cmds, all_tests, run_tool()):
         self.current_cmd = cmd

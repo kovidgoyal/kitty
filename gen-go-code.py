@@ -57,6 +57,8 @@ def generate_completions_for_kitty() -> None:
     print('package completion\n')
     print('func kitty(root *Command) {')
     print('k := root.add_command("kitty", "")')
+    print('k.First_arg_may_not_be_subcommand = true')
+    print('k.Completion_for_arg = complete_kitty')
     print('at := k.add_command("@", "Remote control")')
     print('at.Description = "Control kitty using commands"')
     for go_name in all_command_names():
