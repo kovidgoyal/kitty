@@ -29,9 +29,12 @@ type CompleteFilesCallback func(completion_candidate, abspath string, d fs.DirEn
 
 func complete_files(prefix string, callback CompleteFilesCallback) error {
 	base := prefix
-	if base != "~" && base != "./" {
-		if strings.Contains(base, string(os.PathSeparator)) {
-			base = filepath.Dir(base)
+	if base != "~" && base != "./" && base != "/" {
+		// cant use filepath.Dir() as it calls filepath.Clean() which
+		// can cause base to no longer match prefix
+		idx := strings.LastIndex(base, string(os.PathSeparator))
+		if idx > 0 {
+			base = base[:idx]
 		} else {
 			base = ""
 		}
