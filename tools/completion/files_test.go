@@ -44,7 +44,7 @@ func TestCompleteFiles(t *testing.T) {
 			if _, err := os.Stat(entry.abspath); err != nil {
 				t.Fatalf("Abspath does not exist: %#v", entry.abspath)
 			}
-		})
+		}, "")
 		sort.Strings(actual)
 		if !reflect.DeepEqual(expected, actual) {
 			t.Fatalf("Did not get expected completion candidates for prefix: %#v\nExpected: %#v\nActual:   %#v", prefix, expected, actual)

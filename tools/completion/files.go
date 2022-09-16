@@ -30,7 +30,14 @@ type FileEntry struct {
 	is_dir, is_symlink, is_empty_dir    bool
 }
 
-func complete_files(prefix string, callback func(*FileEntry)) error {
+func complete_files(prefix string, callback func(*FileEntry), cwd string) error {
+	if cwd == "" {
+		var err error
+		cwd, err = os.Getwd()
+		if err != nil {
+			return err
+		}
+	}
 	location := absolutize_path(prefix)
 	base_dir := ""
 	joinable_prefix := ""
@@ -48,7 +55,7 @@ func complete_files(prefix string, callback func(*FileEntry)) error {
 		base_dir = location
 		joinable_prefix = "~/"
 	case "":
-		base_dir = "."
+		base_dir = cwd
 		joinable_prefix = ""
 	default:
 		if strings.HasSuffix(prefix, utils.Sep) {
@@ -63,7 +70,10 @@ func complete_files(prefix string, callback func(*FileEntry)) error {
 		}
 	}
 	if base_dir == "" {
-		base_dir = "."
+		base_dir = cwd
+	}
+	if !strings.HasPrefix(base_dir, "~") && !filepath.IsAbs(base_dir) {
+		base_dir = filepath.Join(cwd, base_dir)
 	}
 	// fmt.Printf("prefix=%#v base_dir=%#v joinable_prefix=%#v\n", prefix, base_dir, joinable_prefix)
 	entries, err := os.ReadDir(base_dir)
@@ -167,7 +177,7 @@ func complete_by_fnmatch(prefix string, patterns []string) []string {
 		if matches(q) {
 			ans = append(ans, entry.completion_candidate)
 		}
-	})
+	}, "")
 	return ans
 }
 
