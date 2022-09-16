@@ -121,6 +121,9 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty -1 ', does_not_have_words('@ls', '@'))
     add('kitty --directory ', all_words('bin/', 'sub/'))
     add('kitty -1d ', all_words('bin/', 'sub/'))
+    add('kitty -1d', all_words('-1d'))
+    add('kitty --directory=', all_words('--directory=bin/', '--directory=sub/'))
+    add('kitty --start-as=m', all_words('--start-as=minimized', '--start-as=maximized'))
 
     for cmd, tests, result in zip(all_cmds, all_tests, run_tool()):
         self.current_cmd = cmd

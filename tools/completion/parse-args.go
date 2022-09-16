@@ -91,8 +91,8 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 			option := cmd.find_option(word[:idx])
 			if option != nil {
 				if option.Completion_for_arg != nil {
-					completions.WordPrefix = word[:idx+1]
 					option.Completion_for_arg(completions, word[idx+1:], arg_num)
+					completions.add_prefix_to_all_matches(word[:idx+1])
 				}
 			}
 		} else {
