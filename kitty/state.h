@@ -85,7 +85,7 @@ typedef struct {
     long macos_menubar_title_max_length;
     int macos_colorspace;
     double font_contrast;
-    double font_contrast_midpoint;
+    int font_contrast_whitepoint;
     struct {
         float val; AdjustmentUnit unit;
     } underline_position, underline_thickness, strikethrough_position, strikethrough_thickness, cell_width, cell_height, baseline;

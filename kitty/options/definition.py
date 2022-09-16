@@ -217,18 +217,18 @@ opt('font_contrast', '0.0', ctype='double',
     option_type='float',
     add_to_default=False,
     long_text='''
-Contrast curve intensity applied to the font alpha channel. A value greater than zero applies a curve
-increasing the opacity of the semi-transparent pixels in the rendered font, increasing apparent font
-thickness. The greater the value, the more intense the contrast.
+Contrast curve intensity applied to the font alpha channel. A value greater than zero applies a
+curve increasing the opacity of the semi-transparent pixels in the rendered font, increasing
+apparent font thickness. The greater the value, the more intense the contrast.
 ''')
 
-opt('font_contrast_midpoint', '50.0', ctype='double',
-    option_type='float',
+opt('font_contrast_whitepoint', '255', ctype='uint',
+    option_type='positive_int',
     add_to_default=False,
     long_text='''
-Midpoint for the applied font contrast curve in percent. A lower value will increase the opacity of
-more of the semi-transparent pixels of the font and make it look thicker, while a higher value will
-decrease it making it look thinner.
+Whitepoint for the applied font contrast curve in 8-bit color intensity(1-255). A smaller value will
+increase the opacity of more of the semi-transparent pixels of the font and make it look thicker,
+while a bigger value will decrease it making it look thinner.
 ''')
 
 opt('box_drawing_scale', '0.001, 1, 1.5, 2',

@@ -597,15 +597,18 @@ static PyObject* box_drawing_function = NULL, *prerender_function = NULL, *descr
 //
 // Just using a gamma-curve will make the text look slightly washed out or
 // blurry even if it increases the apparent size of the glyphs, so we use a
-// sigmoidal contrast curve based on the following equation:
+// contrast curve which increases both midpoint brightness as well as saturating
+// at the extreme.
 //
-//   1 / (1 + e^(C * (M - x)))
+// Plotting the gamma-inversed values of Terminal.app compared to gamma-inversed
+// values of Kitty with a black on white colorscheme we can see that the shape of
+// the resulting contrast is similar to sqrt(x), so we use this with adjustable
+// constants:
 //
-// The curve above needs to be scaled back to the range (0,0) -> (1,1) using
-// the following constants:
+// y = M * x + C * sqrt(x)
+// M = (255 - C * sqrt(W)) / W
 //
-//  c1 = 1.0 / (1.0 + e ^ (C * M))
-//  c2 = 1.0 / (1.0 + e ^ (C * (M - 1.0)))
+// where C is the contrast factor and W is the saturating whitepoint.
 //
 // References:
 //
@@ -617,21 +620,18 @@ static PyObject* box_drawing_function = NULL, *prerender_function = NULL, *descr
 //    https://www.mail-archive.com/freetype@nongnu.org/msg05609.html
 //  * Fundamentals of Image Processing by Hany Farid
 //    https://www.cs.swarthmore.edu/~turnbull/cs97/f09/paper/Farid_ImageProcessing.pdf
-double
-apply_contrast(double x, double contrast, double midpoint, double c1, double c2) {
-    double g = 1.0 / (1.0 + exp(contrast * (midpoint - (double)x / 255.0)));
-    double y = 255.0 * (g - c1) / (c2 - c1);
+uint8_t
+apply_contrast(double x, double contrast, double offset) {
+    double y = offset * x + contrast * pow(x, 1 / 2.0);
 
-    return y < 0.0 ? 0 : (y > 255.0 ? 255.0 : y);
+    return (uint8_t)round(fmax(fmin(y, 255.0), 0.0));
 }
 
 void
 render_alpha_mask(const uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *dest_rect, size_t src_stride, size_t dest_stride) {
-    double contrast = OPT(font_contrast);
-    double midpoint = OPT(font_contrast_midpoint) / 100.0;
-    // Precompute scaling-constants
-    double c1 = 1.0 / (1.0 + exp(contrast * midpoint));
-    double c2 = 1.0 / (1.0 + exp(contrast * (midpoint - 1.0)));
+    double contrast = fmax(OPT(font_contrast), 0.0);
+    uint8_t whitepoint = (uint8_t)round(fmin(fmax(OPT(font_contrast_whitepoint), 1.0), 255.0));
+    double offset = (255.0 - pow((double)whitepoint, 1 / 2.0) * contrast) / (double)whitepoint;
 
     for (size_t sr = src_rect->top, dr = dest_rect->top; sr < src_rect->bottom && dr < dest_rect->bottom; sr++, dr++) {
         pixel *d = dest + dest_stride * dr;
@@ -641,7 +641,7 @@ render_alpha_mask(const uint8_t *alpha_mask, pixel* dest, Region *src_rect, Regi
             // Blending the antialiased alpha-channel in linear-space is
             // technically correct but makes many fonts look too thin, instead
             // adjust it to increase contrast to make thin fonts appear thicker
-            uint8_t alpha = contrast > 0.01 ? (uint8_t)apply_contrast((double)s[sc], contrast, midpoint, c1, c2) : s[sc];
+            uint8_t alpha = contrast > 0.01 ? apply_contrast((double)s[sc], contrast, offset) : s[sc];
 
             d[dc] = 0xffffff00 | MAX(alpha, src_alpha);
         }

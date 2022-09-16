@@ -71,15 +71,15 @@ convert_from_opts_font_contrast(PyObject *py_opts, Options *opts) {
 }
 
 static void
-convert_from_python_font_contrast_midpoint(PyObject *val, Options *opts) {
-    opts->font_contrast_midpoint = PyFloat_AsDouble(val);
+convert_from_python_font_contrast_whitepoint(PyObject *val, Options *opts) {
+    opts->font_contrast_whitepoint = PyLong_AsUnsignedLong(val);
 }
 
 static void
-convert_from_opts_font_contrast_midpoint(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "font_contrast_midpoint");
+convert_from_opts_font_contrast_whitepoint(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "font_contrast_whitepoint");
     if (ret == NULL) return;
-    convert_from_python_font_contrast_midpoint(ret, opts);
+    convert_from_python_font_contrast_whitepoint(ret, opts);
     Py_DECREF(ret);
 }
 
@@ -1044,7 +1044,7 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     if (PyErr_Occurred()) return false;
     convert_from_opts_font_contrast(py_opts, opts);
     if (PyErr_Occurred()) return false;
-    convert_from_opts_font_contrast_midpoint(py_opts, opts);
+    convert_from_opts_font_contrast_whitepoint(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_cursor_shape(py_opts, opts);
     if (PyErr_Occurred()) return false;

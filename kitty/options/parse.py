@@ -970,8 +970,8 @@ class Parser:
     def font_contrast(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['font_contrast'] = float(val)
 
-    def font_contrast_midpoint(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['font_contrast_midpoint'] = float(val)
+    def font_contrast_whitepoint(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['font_contrast_whitepoint'] = positive_int(val)
 
     def font_family(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['font_family'] = str(val)

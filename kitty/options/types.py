@@ -356,7 +356,7 @@ option_names = (  # {{{
  'file_transfer_confirmation_bypass',
  'focus_follows_mouse',
  'font_contrast',
- 'font_contrast_midpoint',
+ 'font_contrast_whitepoint',
  'font_family',
  'font_features',
  'font_size',
@@ -513,7 +513,7 @@ class Options:
     file_transfer_confirmation_bypass: str = ''
     focus_follows_mouse: bool = False
     font_contrast: float = 0.0
-    font_contrast_midpoint: float = 50.0
+    font_contrast_whitepoint: int = 255
     font_family: str = 'monospace'
     font_size: float = 11.0
     force_ltr: bool = False
