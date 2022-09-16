@@ -121,19 +121,51 @@ func complete_executables_in_path(prefix string, paths ...string) []string {
 	return ans
 }
 
+func is_dir_or_symlink_to_dir(entry os.DirEntry, path string) bool {
+	if entry.IsDir() {
+		return true
+	}
+	if entry.Type()&os.ModeSymlink == os.ModeSymlink {
+		p, err := filepath.EvalSymlinks(path)
+		if err == nil {
+			s, err := os.Stat(p)
+			if err == nil && s.IsDir() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func complete_by_fnmatch(prefix string, patterns []string) []string {
 	ans := make([]string, 0, 1024)
+
+	matches := func(name string) bool {
+		for _, pat := range patterns {
+			matched, err := filepath.Match(pat, name)
+			if err == nil && matched {
+				return true
+			}
+		}
+		return false
+	}
+
 	complete_files(prefix, func(entry *FileEntry) {
 		if entry.is_dir && !entry.is_empty_dir {
-			ans = append(ans, entry.completion_candidate)
+			entries, err := os.ReadDir(entry.abspath)
+			if err == nil {
+				for _, e := range entries {
+					if matches(e.Name()) || is_dir_or_symlink_to_dir(e, filepath.Join(entry.abspath, e.Name())) {
+						ans = append(ans, entry.completion_candidate)
+						return
+					}
+				}
+			}
 			return
 		}
 		q := strings.ToLower(entry.name)
-		for _, pat := range patterns {
-			matched, err := filepath.Match(pat, q)
-			if err == nil && matched {
-				ans = append(ans, entry.completion_candidate)
-			}
+		if matches(q) {
+			ans = append(ans, entry.completion_candidate)
 		}
 	})
 	return ans
