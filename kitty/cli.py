@@ -55,12 +55,10 @@ class GoOption:
         self.aliases = []
         if len(flags) > 1 and not flags[0].startswith("--"):
             short = flags[0][1:]
-            del flags[0]
         self.short, self.long = short, x['name'].replace('_', '-')
         for f in flags:
-            q = f[2:]
-            if q != self.long:
-                self.aliases.append(q)
+            q = f[2:] if f.startswith('--') else f[1:]
+            self.aliases.append(q)
         self.usage = serialize_as_go_string(x['help'].strip())
         self.type = x['type']
         self.dest = x['dest']
@@ -96,9 +94,7 @@ class GoOption:
                 return f'{base}.StringArrayP("{self.long}", "{self.short}", {defval}, "{self.usage}")'
             return f'{base}.StringArray("{self.long}", {defval}, "{self.usage}")'
         elif self.type == 'choices':
-            choices = sorted(self.obj_dict['choices'])
-            choices.remove(self.default or '')
-            choices.insert(0, self.default or '')
+            choices = self.sorted_choices
             cx = ', '.join(f'"{serialize_as_go_string(x)}"' for x in choices)
             if self.short:
                 return f'cli.ChoicesP({base}, "{self.long}", "{self.short}", "{self.usage}", {cx})'
@@ -111,6 +107,25 @@ class GoOption:
         ans = f'{self.go_var_name}_temp, err := {cmd}.Flags().{func}("{self.long}")\n if err != nil {{ return err }}'
         ans += f'\n{struct_name}.{self.go_var_name} = {self.go_var_name}_temp'
         return ans
+
+    @property
+    def sorted_choices(self) -> List[str]:
+        choices = sorted(self.obj_dict['choices'])
+        choices.remove(self.default or '')
+        choices.insert(0, self.default or '')
+        return choices
+
+    def as_completion_option(self, command_name: str) -> str:
+        ans = f'{command_name}.add_option(&' 'Option{Name: ' f'"{serialize_as_go_string(self.long)}", '
+        ans += f'Description: "{self.usage}", '
+        aliases = (f'"{serialize_as_go_string(x)}"' for x in self.aliases)
+        ans += 'Aliases: []string{' f'{", ".join(aliases)}' '}, '
+        if self.go_type != 'bool':
+            ans += 'Has_following_arg: true, '
+        if self.type == 'choices':
+            cx = ', '.join(f'"{serialize_as_go_string(x)}"' for x in self.sorted_choices)
+            ans += f'Completion_for_arg: names_completer("Choices for {self.long}", {cx}),'
+        return ans + '})'
 
 
 def go_options_for_seq(seq: 'OptionSpecSeq') -> Iterator[GoOption]:

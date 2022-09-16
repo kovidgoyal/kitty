@@ -4,10 +4,12 @@ package completion
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
 var _ = fmt.Print
+var _ = os.Getenv
 
 func (self *Completions) add_group(group *MatchGroup) {
 	if len(group.Matches) > 0 {
@@ -35,38 +37,44 @@ func (self *Command) find_option(name_including_leading_dash string) *Option {
 }
 
 func (self *Completions) add_options_group(options []*Option, word string) {
-	group := MatchGroup{Title: "Options"}
-	group.Matches = make([]*Match, 0, 8)
-	seen_flags := make(map[string]bool)
+	group := self.add_match_group("Options")
 	if strings.HasPrefix(word, "--") {
+		if word == "--" {
+			group.Matches = append(group.Matches, &Match{Word: "--", Description: "End of options"})
+		}
 		prefix := word[2:]
 		for _, opt := range options {
 			for _, q := range opt.Aliases {
 				if len(q) > 1 && strings.HasPrefix(q, prefix) {
-					seen_flags[q] = true
 					group.Matches = append(group.Matches, &Match{Word: "--" + q, Description: opt.Description})
+					break
 				}
 			}
 		}
 	} else {
 		if word == "-" {
-			group.Matches = append(group.Matches, &Match{Word: "--"})
-		} else {
-			for _, letter := range []rune(word[1:]) {
-				seen_flags[string(letter)] = true
+			group.Matches = append(group.Matches, &Match{Word: "--", Description: "End of options"})
+			for _, opt := range options {
+				for _, q := range opt.Aliases {
+					if len(q) == 1 {
+						group.add_match("-"+q, opt.Description)
+						break
+					}
+				}
 			}
-		}
-		group.WordPrefix = word
-		for _, opt := range options {
-			for _, q := range opt.Aliases {
-				if len(q) == 1 && !seen_flags[q] {
-					seen_flags[q] = true
-					group.add_match(q, opt.Description).FullForm = "-" + q
+		} else {
+			runes := []rune(word)
+			last_letter := string(runes[len(runes)-1])
+			for _, opt := range options {
+				for _, q := range opt.Aliases {
+					if q == last_letter {
+						group.add_match(word, opt.Description)
+						return
+					}
 				}
 			}
 		}
 	}
-	self.add_group(&group)
 }
 
 func complete_word(word string, completions *Completions, only_args_allowed bool, expecting_arg_for *Option, arg_num int) {
@@ -147,13 +155,11 @@ func (cmd *Command) parse_args(words []string, completions *Completions) {
 				continue
 			}
 			if !only_args_allowed && strings.HasPrefix(word, "-") {
-				idx := strings.Index(word, "=")
-				if idx > -1 {
-					continue
-				}
-				option := cmd.find_option(word[:idx])
-				if option != nil && option.Has_following_arg {
-					expecting_arg_for = option
+				if !strings.Contains(word, "=") {
+					option := cmd.find_option(word)
+					if option != nil && option.Has_following_arg {
+						expecting_arg_for = option
+					}
 				}
 				continue
 			}
