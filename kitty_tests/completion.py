@@ -20,25 +20,34 @@ class TestCompletion(BaseTest):
             completion(self, tdir)
 
 
+def get_all_words(result):
+    all_words = set()
+    for group in result.get('groups', ()):
+        for m in group['matches']:
+            all_words.add(m['word'])
+    return all_words
+
+
 def has_words(*words):
     def t(self, result):
         q = set(words)
-        for group in result.get('groups', ()):
-            for m in group['matches']:
-                if m['word'] in words:
-                    q.discard(m['word'])
-        self.assertFalse(q, f'Command line: {self.current_cmd!r}')
+        missing = q - get_all_words(result)
+        self.assertFalse(missing, f'Words missing. Command line: {self.current_cmd!r}')
+    return t
+
+
+def does_not_have_words(*words):
+    def t(self, result):
+        q = set(words)
+        all_words = get_all_words(result)
+        self.assertFalse(q & all_words, f'Words unexpectedly present. Command line: {self.current_cmd!r}')
     return t
 
 
 def all_words(*words):
     def t(self, result):
         expected = set(words)
-        actual = set()
-
-        for group in result.get('groups', ()):
-            for m in group['matches']:
-                actual.add(m['word'])
+        actual = get_all_words(result)
         self.assertEqual(expected, actual, f'Command line: {self.current_cmd!r}')
     return t
 
@@ -102,6 +111,13 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty @ set-window-logo ', all_words('exe-not2.jpeg', 'sub/'))
     add('kitty @ set-window-logo e', all_words('exe-not2.jpeg'))
     add('kitty @ set-window-logo e e', all_words())
+
+    add('kitty -', has_words('-c', '-1', '--'), does_not_have_words('--config', '--single-instance'))
+    add('kitty -c', all_words('-c'))
+    add('kitty --', has_words('--config', '--single-instance', '--'))
+    add('kitty --c', has_words('--config', '--class'))
+    add('kitty --start-as', all_words('--start-as'))
+    add('kitty --start-as ', all_words('minimized', 'maximized', 'fullscreen', 'normal'))
 
     for cmd, tests, result in zip(all_cmds, all_tests, run_tool()):
         self.current_cmd = cmd

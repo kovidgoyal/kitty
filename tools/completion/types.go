@@ -6,7 +6,6 @@ import "strings"
 
 type Match struct {
 	Word        string `json:"word,omitempty"`
-	FullForm    string `json:"full_form,omitempty"`
 	Description string `json:"description,omitempty"`
 }
 
@@ -121,6 +120,10 @@ func (self *Command) has_subcommands() bool {
 		}
 	}
 	return false
+}
+
+func (self *Command) add_option(opt *Option) {
+	self.Options = append(self.Options, opt)
 }
 
 func (self *Command) GetCompletions(argv []string) *Completions {
