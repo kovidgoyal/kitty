@@ -7,6 +7,7 @@ import shlex
 import socket
 import sys
 from collections import deque
+from enum import Enum, auto
 from typing import (
     Any, Callable, Dict, FrozenSet, Iterator, List, Match, Optional, Sequence,
     Tuple, Type, TypeVar, Union, cast
@@ -15,13 +16,62 @@ from typing import (
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
 from .constants import (
-    appname, clear_handled_signals, config_dir, defconf, is_macos, str_version,
-    website_url, default_pager_for_help
+    appname, clear_handled_signals, config_dir, default_pager_for_help,
+    defconf, is_macos, str_version, website_url
 )
 from .fast_data_types import wcswidth
 from .options.types import Options as KittyOpts
 from .types import run_once
 from .typing import BadLineType, TypedDict
+
+
+class CompletionType(Enum):
+    file = auto()
+    directory = auto()
+    keyword = auto()
+    none = auto()
+
+
+class CompletionRelativeTo(Enum):
+    cwd = auto()
+    config_dir = auto()
+
+
+class CompletionSpec:
+
+    type: CompletionType = CompletionType.none
+    kwds: Sequence[str] = ()
+    extensions: Sequence[str] = ()
+    mime_patterns: Sequence[str] = ()
+    group: str = ''
+    relative_to: CompletionRelativeTo = CompletionRelativeTo.cwd
+
+    @staticmethod
+    def from_string(raw: str) -> 'CompletionSpec':
+        self = CompletionSpec()
+        for x in shlex.split(raw):
+            ck, vv = x.split(':', 1)
+            if ck == 'type':
+                self.type = getattr(CompletionType, vv)
+            elif ck == 'kwds':
+                self.kwds = tuple(vv.split(','))
+            elif ck == 'ext':
+                self.extensions = tuple(vv.split(','))
+            elif ck == 'group':
+                self.group = vv
+            elif ck == 'mime':
+                self.mime_patterns = tuple(vv.split(','))
+            elif ck == 'relative':
+                if vv == 'conf':
+                    self.relative_to = CompletionRelativeTo.config_dir
+                else:
+                    raise ValueError(f'Unknown completion relative to value: {vv}')
+            else:
+                raise KeyError(f'Unknown completion property: {ck}')
+        return self
+
+    def as_go_code(self, go_name: str) -> Iterator[str]:
+        pass
 
 
 class OptionDict(TypedDict):
@@ -33,7 +83,7 @@ class OptionDict(TypedDict):
     type: str
     default: Optional[str]
     condition: bool
-    completion: Dict[str, str]
+    completion: CompletionSpec
 
 
 def serialize_as_go_string(x: str) -> str:
@@ -343,7 +393,7 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
     mpat = re.compile('([a-z]+)=(.+)')
     current_cmd: OptionDict = {
         'dest': '', 'aliases': frozenset(), 'help': '', 'choices': frozenset(),
-        'type': '', 'condition': False, 'default': None, 'completion': {}, 'name': ''
+        'type': '', 'condition': False, 'default': None, 'completion': CompletionSpec(), 'name': ''
     }
     empty_cmd = current_cmd
 
@@ -364,7 +414,7 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
                 current_cmd = {
                     'dest': defdest, 'aliases': frozenset(parts), 'help': '',
                     'choices': frozenset(), 'type': '', 'name': defdest,
-                    'default': None, 'condition': True, 'completion': {}
+                    'default': None, 'condition': True, 'completion': CompletionSpec(),
                 }
                 state = METADATA
                 continue
@@ -391,10 +441,7 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
                     elif k == 'condition':
                         current_cmd['condition'] = bool(eval(v))
                     elif k == 'completion':
-                        cv = current_cmd['completion'] = {}
-                        for x in shlex.split(v):
-                            ck, vv = x.split(':', 1)
-                            cv[ck] = vv
+                        current_cmd['completion'] = CompletionSpec.from_string(v)
         elif state is HELP:
             if line:
                 current_indent = indent_of_line(line)

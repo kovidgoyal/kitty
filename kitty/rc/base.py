@@ -6,10 +6,10 @@ from contextlib import suppress
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iterator,
-    List, NoReturn, Optional, Set, Tuple, Type, Union, cast, Mapping
+    List, NoReturn, Optional, Set, Tuple, Type, Union, cast
 )
 
-from kitty.cli import get_defaults_from_seq, parse_args, parse_option_spec
+from kitty.cli import get_defaults_from_seq, parse_args, parse_option_spec, CompletionSpec
 from kitty.cli_stub import RCOptions as R
 from kitty.constants import appname, list_kitty_resources, running_in_kitty
 from kitty.types import AsyncResponse
@@ -88,7 +88,8 @@ CmdGenerator = Iterator[CmdReturnType]
 PayloadType = Optional[Union[CmdReturnType, CmdGenerator]]
 PayloadGetType = PayloadGetter
 ArgsType = List[str]
-ImageCompletion: Dict[str, Tuple[str, Tuple[str, ...]]] = {'files': ('Images', ('*.png', '*.jpg', '*.jpeg', '*.webp', '*.gif', '*.bmp', '*.tiff'))}
+ImageCompletion = CompletionSpec.from_string('type:file group:"Images"')
+ImageCompletion.extensions = 'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'tiff'
 
 
 MATCH_WINDOW_OPTION = '''\
@@ -184,7 +185,7 @@ class ArgsHandling:
     json_field: str = ''
     count: Optional[int] = None
     spec: str = ''
-    completion: Optional[Mapping[str, Tuple[str, Union[Callable[[], Iterable[str]], Tuple[str, ...]]]]] = None
+    completion: CompletionSpec = CompletionSpec()
     value_if_unspecified: Tuple[str, ...] = ()
     minimum_count: int = -1
     first_rest: Optional[Tuple[str, str]] = None
@@ -198,24 +199,11 @@ class ArgsHandling:
         return self.count
 
     def as_go_completion_code(self, go_name: str) -> Iterator[str]:
-        from ..cli import serialize_as_go_string
         c = self.args_count
         if c is not None:
             yield f'{go_name}.Stop_processing_at_arg = {c}'
         if self.completion:
-            for k, v in self.completion.items():
-                if k == 'files':
-                    title, pats = v
-                    assert isinstance(pats, tuple)
-                    gpats = (f'"{serialize_as_go_string(x)}"' for x in pats)
-                    yield f'{go_name}.Completion_for_arg = fnmatch_completer("{serialize_as_go_string(title)}", {", ".join(gpats)})'
-                elif k == 'names':
-                    title, gen = v
-                    assert callable(gen)
-                    gpats = (f'"{serialize_as_go_string(x)}"' for x in gen())
-                    yield f'{go_name}.Completion_for_arg = names_completer("{serialize_as_go_string(title)}", {", ".join(gpats)})'
-                else:
-                    raise KeyError(f'Unknown args completion type: {k}')
+            yield from self.completion.as_go_code(go_name)
 
     def as_go_code(self, cmd_name: str, field_types: Dict[str, str], handled_fields: Set[str]) -> Iterator[str]:
         c = self.args_count
@@ -313,6 +301,7 @@ class StreamInFlight:
 
 class RemoteCommand:
     Args = ArgsHandling
+    CompletionSpec = CompletionSpec
 
     name: str = ''
     short_desc: str = ''
