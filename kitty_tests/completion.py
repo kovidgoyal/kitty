@@ -115,7 +115,7 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty -', has_words('-c', '-1', '--'), does_not_have_words('--config', '--single-instance'))
     add('kitty -c', all_words('-c'))
     add('kitty --', has_words('--config', '--single-instance', '--'))
-    add('kitty --c', has_words('--config', '--class'))
+    add('kitty --s', has_words('--session', '--start-as'))
     add('kitty --start-as', all_words('--start-as'))
     add('kitty --start-as ', all_words('minimized', 'maximized', 'fullscreen', 'normal'))
 
