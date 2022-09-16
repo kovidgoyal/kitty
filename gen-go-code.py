@@ -53,6 +53,8 @@ def generate_completion_for_rc(name: str) -> None:
         print(f'{name}.Description = "{serialize_as_go_string(cmd.short_desc)}"')
     for x in cmd.args.as_go_completion_code(name):
         print(x)
+    for opt in rc_command_options(name):
+        print(opt.as_completion_option(name))
 
 
 def generate_completions_for_kitty() -> None:

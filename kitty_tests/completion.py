@@ -71,6 +71,7 @@ def completion(self: TestCompletion, tdir: str):
         env = os.environ.copy()
         env['PATH'] = os.path.join(tdir, 'bin')
         env['HOME'] = os.path.join(tdir, 'sub')
+        env['KITTY_CONFIG_DIRECTORY'] = os.path.join(tdir, 'sub')
         cp = subprocess.run(
             [kitty_tool(), '__complete__', 'json'],
             check=True, stdout=subprocess.PIPE, cwd=tdir, input=json.dumps(all_argv).encode(), env=env
@@ -124,6 +125,11 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty -1d', all_words('-1d'))
     add('kitty --directory=', all_words('--directory=bin/', '--directory=sub/'))
     add('kitty --start-as=m', all_words('--start-as=minimized', '--start-as=maximized'))
+    add('kitty @launch --ty', has_words('--type'))
+    add('kitty @launch --type ', has_words('window', 'background', 'overlay'))
+    add('kitty @launch --cwd ', has_words('current', 'oldest', 'last_reported'))
+    add('kitty @launch --logo ', all_words('exe-not3.png'))
+    add('kitty @launch --logo ~', all_words('~/exe-not3.png'))
 
     for cmd, tests, result in zip(all_cmds, all_tests, run_tool()):
         self.current_cmd = cmd
