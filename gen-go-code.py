@@ -66,6 +66,11 @@ def generate_completions_for_kitty() -> None:
     print('k.Subcommand_must_be_first = true')
     for opt in go_options_for_seq(parse_option_spec()[0]):
         print(opt.as_completion_option('k'))
+    from kitty.config import option_names_for_completion
+    conf_names = ', '.join((f'"{serialize_as_go_string(x)}"' for x in option_names_for_completion()))
+    print(f'k.find_option("-o").Completion_for_arg = complete_kitty_override("Config directives", []string{{{conf_names}}})')
+    print('k.find_option("--listen-on").Completion_for_arg = complete_kitty_listen_on')
+
     print('plus := k.add_command("+", "Entry point")')
     print('plus.Description = "Various special purpose tools and kittens"')
 

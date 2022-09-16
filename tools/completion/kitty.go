@@ -48,6 +48,31 @@ func complete_kitty(completions *Completions, word string, arg_num int) {
 	}
 }
 
+func complete_kitty_override(title string, names []string) completion_func {
+	return func(completions *Completions, word string, arg_num int) {
+		mg := completions.add_match_group(title)
+		for _, q := range names {
+			if strings.HasPrefix(q, word) {
+				mg.add_match(q + "=")
+			}
+		}
+	}
+}
+
+func complete_kitty_listen_on(completions *Completions, word string, arg_num int) {
+	if !strings.Contains(word, ":") {
+		mg := completions.add_match_group("Address family")
+		for _, q := range []string{"unix:", "tcp:"} {
+			if strings.HasPrefix(q, word) {
+				mg.add_match(q)
+			}
+		}
+	} else if strings.HasPrefix(word, "unix:") && !strings.HasPrefix(word, "unix:@") {
+		fnmatch_completer("UNIX sockets", CWD, "*")(completions, word[len("unix:"):], arg_num)
+		completions.add_prefix_to_all_matches("unix:")
+	}
+}
+
 func complete_plus_launch(completions *Completions, word string, arg_num int) {
 	if arg_num == 1 {
 		fnmatch_completer("Python scripts", CWD, "*.py")(completions, word, arg_num)
