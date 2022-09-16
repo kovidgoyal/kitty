@@ -68,6 +68,7 @@ type Command struct {
 	Completion_for_arg              completion_func
 	Stop_processing_at_arg          int
 	First_arg_may_not_be_subcommand bool
+	Subcommand_must_be_first        bool
 }
 
 func (self *Command) add_group(name string) *CommandGroup {
@@ -120,6 +121,13 @@ func (self *Command) has_subcommands() bool {
 		}
 	}
 	return false
+}
+
+func (self *Command) sub_command_allowed_at(completions *Completions, arg_num int) bool {
+	if self.Subcommand_must_be_first {
+		return arg_num == 1 && completions.current_word_idx == 0
+	}
+	return arg_num == 1
 }
 
 func (self *Command) add_option(opt *Option) {

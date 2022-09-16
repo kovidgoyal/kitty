@@ -100,7 +100,7 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 		}
 		return
 	}
-	if arg_num == 1 && cmd.has_subcommands() {
+	if cmd.has_subcommands() && cmd.sub_command_allowed_at(completions, arg_num) {
 		for _, cg := range cmd.Groups {
 			group := completions.add_match_group(cg.Title)
 			if group.Title == "" {
@@ -163,7 +163,7 @@ func (cmd *Command) parse_args(words []string, completions *Completions) {
 				}
 				continue
 			}
-			if cmd.has_subcommands() && arg_num == 1 {
+			if cmd.has_subcommands() && cmd.sub_command_allowed_at(completions, arg_num) {
 				sc := cmd.find_subcommand_with_name(word)
 				if sc == nil {
 					only_args_allowed = true

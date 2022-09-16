@@ -8,6 +8,7 @@ import socket
 import sys
 from collections import deque
 from enum import Enum, auto
+from dataclasses import dataclass
 from typing import (
     Any, Callable, Dict, FrozenSet, Iterator, List, Match, Optional, Sequence,
     Tuple, Type, TypeVar, Union, cast
@@ -37,6 +38,7 @@ class CompletionRelativeTo(Enum):
     config_dir = auto()
 
 
+@dataclass
 class CompletionSpec:
 
     type: CompletionType = CompletionType.none
@@ -70,7 +72,7 @@ class CompletionSpec:
                 raise KeyError(f'Unknown completion property: {ck}')
         return self
 
-    def as_go_code(self, go_name: str) -> Iterator[str]:
+    def as_go_code(self, go_name: str, sep: str = ' = ') -> Iterator[str]:
         completers = []
         if self.kwds:
             kwds = (f'"{serialize_as_go_string(x)}"' for x in self.kwds)
@@ -84,10 +86,15 @@ class CompletionSpec:
                 completers.append(f'fnmatch_completer("{g}", {relative_to}, ' + ', '.join(pats) + ')')
             if self.mime_patterns:
                 completers.append(f'mimepat_completer("{g}", {relative_to}, ' + ', '.join(f'"{p}"' for p in self.mime_patterns) + ')')
+        if self.type is CompletionType.directory:
+            g = serialize_as_go_string(self.group or 'Directories')
+            completers.append(f'directory_completer("{g}", {relative_to})')
+        if go_name:
+            go_name += '.'
         if len(completers) > 1:
-            yield f'{go_name}.Completion_for_arg = chain_completers(' + ', '.join(completers) + ')'
+            yield f'{go_name}Completion_for_arg{sep}chain_completers(' + ', '.join(completers) + ')'
         elif completers:
-            yield f'{go_name}.Completion_for_arg = {completers[0]}'
+            yield f'{go_name}Completion_for_arg{sep}{completers[0]}'
 
 
 class OptionDict(TypedDict):
@@ -191,6 +198,8 @@ class GoOption:
         if self.type == 'choices':
             cx = ', '.join(f'"{serialize_as_go_string(x)}"' for x in self.sorted_choices)
             ans += f'Completion_for_arg: names_completer("Choices for {self.long}", {cx}),'
+        elif self.obj_dict['completion'].type is not CompletionType.none:
+            ans += ''.join(self.obj_dict['completion'].as_go_code('', ': ')) + ','
         return ans + '})'
 
 
