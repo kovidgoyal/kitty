@@ -99,7 +99,7 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty @ goto-layout ', has_words('tall', 'fat'))
     add('kitty @ goto-layout spli', all_words('splits'))
     add('kitty @ goto-layout f f', all_words())
-    add('kitty @ set-window-logo ', all_words('exe-not2.jpeg', 'sub/', 'bin/'))
+    add('kitty @ set-window-logo ', all_words('exe-not2.jpeg', 'sub/'))
     add('kitty @ set-window-logo e', all_words('exe-not2.jpeg'))
     add('kitty @ set-window-logo e e', all_words())
 
