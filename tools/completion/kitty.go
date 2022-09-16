@@ -47,3 +47,28 @@ func complete_kitty(completions *Completions, word string, arg_num int) {
 		}, "")
 	}
 }
+
+func complete_plus_launch(completions *Completions, word string, arg_num int) {
+	if arg_num == 1 {
+		fnmatch_completer("Python scripts", CWD, "*.py")(completions, word, arg_num)
+		if strings.HasPrefix(word, ":") {
+			exes := complete_executables_in_path(word[1:])
+			mg := completions.add_match_group("Python scripts in PATH")
+			for _, exe := range exes {
+				mg.add_match(":" + exe)
+			}
+		}
+	} else {
+		fnmatch_completer("Files", CWD, "*")(completions, word, arg_num)
+	}
+}
+
+func complete_plus_runpy(completions *Completions, word string, arg_num int) {
+	if arg_num > 1 {
+		fnmatch_completer("Files", CWD, "*")(completions, word, arg_num)
+	}
+}
+
+func complete_plus_open(completions *Completions, word string, arg_num int) {
+	fnmatch_completer("Files", CWD, "*")(completions, word, arg_num)
+}
