@@ -155,3 +155,11 @@ func names_completer(title string, names ...string) completion_func {
 		}
 	}
 }
+
+func chain_completers(completers ...completion_func) completion_func {
+	return func(completions *Completions, word string, arg_num int) {
+		for _, f := range completers {
+			f(completions, word, arg_num)
+		}
+	}
+}
