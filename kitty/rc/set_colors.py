@@ -89,8 +89,8 @@ type=bool-set
 Restore all colors to the values they had at kitty startup. Note that if you specify
 this option, any color arguments are ignored and :option:`kitty @ set-colors --configured` and :option:`kitty @ set-colors --all` are implied.
 ''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')
-    args = RemoteCommand.Args(spec='COLOR_OR_FILE ...', json_field='colors', special_parse='parse_colors_and_files(args)', completion={
-        'files': ('CONF files', ('*.conf',))})
+    args = RemoteCommand.Args(spec='COLOR_OR_FILE ...', json_field='colors', special_parse='parse_colors_and_files(args)',
+                              completion=RemoteCommand.CompletionSpec.from_string('type:file group:"CONF files", ext:conf'))
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         final_colors: Dict[str, Optional[int]] = {}

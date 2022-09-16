@@ -30,7 +30,10 @@ class GotoLayout(RemoteCommand):
         ' You can use special match value :code:`all` to set the layout in all tabs.'
     )
     options_spec = MATCH_TAB_OPTION
-    args = RemoteCommand.Args(spec='LAYOUT_NAME', count=1, completion={'names': ('Layouts', layout_names)}, json_field='layout', args_choices=layout_names)
+    args = RemoteCommand.Args(
+        spec='LAYOUT_NAME', count=1, json_field='layout',
+        completion=RemoteCommand.CompletionSpec.from_string('type:keyword group:"Layout" kwds:' + ','.join(layout_names())),
+        args_choices=layout_names)
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) != 1:
