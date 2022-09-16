@@ -41,6 +41,6 @@ func complete_kitty(completions *Completions, word string, arg_num int) {
 			} else if unix.Access(entry.abspath, unix.X_OK) == nil {
 				mg.add_match(entry.completion_candidate)
 			}
-		})
+		}, "")
 	}
 }
