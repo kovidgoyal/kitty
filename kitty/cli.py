@@ -71,7 +71,23 @@ class CompletionSpec:
         return self
 
     def as_go_code(self, go_name: str) -> Iterator[str]:
-        pass
+        completers = []
+        if self.kwds:
+            kwds = (f'"{serialize_as_go_string(x)}"' for x in self.kwds)
+            g = (self.group if self.type is CompletionType.keyword else '') or "Keywords"
+            completers.append(f'names_completer("{serialize_as_go_string(g)}", ' + ', '.join(kwds) + ')')
+        relative_to = 'CONFIG' if self.relative_to is CompletionRelativeTo.config_dir else 'CWD'
+        if self.type is CompletionType.file:
+            g = serialize_as_go_string(self.group or 'Files')
+            if self.extensions:
+                pats = (f'"*.{ext}"' for ext in self.extensions)
+                completers.append(f'fnmatch_completer("{g}", {relative_to}, ' + ', '.join(pats) + ')')
+            if self.mime_patterns:
+                completers.append(f'mimepat_completer("{g}", {relative_to}, ' + ', '.join(f'"{p}"' for p in self.mime_patterns) + ')')
+        if len(completers) > 1:
+            yield f'{go_name}.Completion_for_arg = chain_completers(' + ', '.join(completers) + ')'
+        elif completers:
+            yield f'{go_name}.Completion_for_arg = {completers[0]}'
 
 
 class OptionDict(TypedDict):

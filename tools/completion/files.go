@@ -4,6 +4,7 @@ package completion
 
 import (
 	"fmt"
+	"mime"
 	"os"
 	"path/filepath"
 	"strings"
@@ -147,25 +148,14 @@ func is_dir_or_symlink_to_dir(entry os.DirEntry, path string) bool {
 	return false
 }
 
-func complete_by_fnmatch(prefix string, patterns []string) []string {
+func fname_based_completer(prefix, cwd string, is_match func(string) bool) []string {
 	ans := make([]string, 0, 1024)
-
-	matches := func(name string) bool {
-		for _, pat := range patterns {
-			matched, err := filepath.Match(pat, name)
-			if err == nil && matched {
-				return true
-			}
-		}
-		return false
-	}
-
 	complete_files(prefix, func(entry *FileEntry) {
 		if entry.is_dir && !entry.is_empty_dir {
 			entries, err := os.ReadDir(entry.abspath)
 			if err == nil {
 				for _, e := range entries {
-					if matches(e.Name()) || is_dir_or_symlink_to_dir(e, filepath.Join(entry.abspath, e.Name())) {
+					if is_match(e.Name()) || is_dir_or_symlink_to_dir(e, filepath.Join(entry.abspath, e.Name())) {
 						ans = append(ans, entry.completion_candidate)
 						return
 					}
@@ -174,21 +164,75 @@ func complete_by_fnmatch(prefix string, patterns []string) []string {
 			return
 		}
 		q := strings.ToLower(entry.name)
-		if matches(q) {
+		if is_match(q) {
 			ans = append(ans, entry.completion_candidate)
 		}
-	}, "")
+	}, cwd)
 	return ans
+
 }
 
-func fnmatch_completer(title string, patterns ...string) completion_func {
+func complete_by_fnmatch(prefix, cwd string, patterns []string) []string {
+	return fname_based_completer(prefix, cwd, func(name string) bool {
+		for _, pat := range patterns {
+			matched, err := filepath.Match(pat, name)
+			if err == nil && matched {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+func complete_by_mimepat(prefix, cwd string, patterns []string) []string {
+	return fname_based_completer(prefix, cwd, func(name string) bool {
+		idx := strings.Index(name, ".")
+		if idx < 1 {
+			return false
+		}
+		ext := name[idx:]
+		mt := mime.TypeByExtension(ext)
+		if mt == "" {
+			ext = filepath.Ext(name)
+			mt = mime.TypeByExtension(ext)
+		}
+		if mt == "" {
+			return false
+		}
+		for _, pat := range patterns {
+			matched, err := filepath.Match(pat, mt)
+			if err == nil && matched {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+type relative_to int
+
+const (
+	CWD relative_to = iota
+	CONFIG
+)
+
+func get_cwd_for_completion(relative_to relative_to) string {
+	switch relative_to {
+	case CONFIG:
+		return utils.ConfigDir()
+	}
+	return ""
+}
+
+func make_completer(title string, relative_to relative_to, patterns []string, f func(string, string, []string) []string) completion_func {
 	lpats := make([]string, 0, len(patterns))
 	for _, p := range patterns {
 		lpats = append(lpats, strings.ToLower(p))
 	}
+	cwd := get_cwd_for_completion(relative_to)
 
 	return func(completions *Completions, word string, arg_num int) {
-		q := complete_by_fnmatch(word, lpats)
+		q := f(word, cwd, lpats)
 		if len(q) > 0 {
 			mg := completions.add_match_group(title)
 			mg.IsFiles = true
@@ -197,4 +241,12 @@ func fnmatch_completer(title string, patterns ...string) completion_func {
 			}
 		}
 	}
+}
+
+func fnmatch_completer(title string, relative_to relative_to, patterns ...string) completion_func {
+	return make_completer(title, relative_to, patterns, complete_by_fnmatch)
+}
+
+func mimepat_completer(title string, relative_to relative_to, patterns ...string) completion_func {
+	return make_completer(title, relative_to, patterns, complete_by_mimepat)
 }
