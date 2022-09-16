@@ -34,6 +34,11 @@ type Completions struct {
 }
 
 func (self *Completions) add_match_group(title string) *MatchGroup {
+	for _, q := range self.Groups {
+		if q.Title == title {
+			return q
+		}
+	}
 	ans := MatchGroup{Title: title, Matches: make([]*Match, 0, 8)}
 	self.Groups = append(self.Groups, &ans)
 	return &ans

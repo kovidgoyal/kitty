@@ -4,7 +4,6 @@ package completion
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,21 +26,21 @@ func complete_kitty(completions *Completions, word string, arg_num int) {
 		mg := completions.add_match_group("Executables")
 		mg.IsFiles = true
 
-		complete_files(word, func(q, abspath string, d fs.DirEntry) error {
-			if d.IsDir() {
+		complete_files(word, func(entry *FileEntry) {
+			if entry.is_dir && !entry.is_empty_dir {
 				// only allow directories that have sub-dirs or executable files in them
-				entries, err := os.ReadDir(abspath)
+				entries, err := os.ReadDir(entry.abspath)
 				if err == nil {
 					for _, x := range entries {
-						if x.IsDir() || unix.Access(filepath.Join(abspath, x.Name()), unix.X_OK) == nil {
-							mg.add_match(q)
+						if x.IsDir() || unix.Access(filepath.Join(entry.abspath, x.Name()), unix.X_OK) == nil {
+							mg.add_match(entry.completion_candidate)
+							break
 						}
 					}
 				}
-			} else if unix.Access(abspath, unix.X_OK) == nil {
-				mg.add_match(q)
+			} else if unix.Access(entry.abspath, unix.X_OK) == nil {
+				mg.add_match(entry.completion_candidate)
 			}
-			return nil
 		})
 	}
 }
