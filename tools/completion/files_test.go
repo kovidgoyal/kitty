@@ -4,7 +4,7 @@ package completion
 
 import (
 	"fmt"
-	"io/fs"
+	"kitty/tools/utils"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 )
+
+var _ = fmt.Print
 
 func TestCompleteFiles(t *testing.T) {
 	tdir := t.TempDir()
@@ -37,13 +39,11 @@ func TestCompleteFiles(t *testing.T) {
 		}
 		sort.Strings(expected)
 		actual := make([]string, 0, len(expected))
-		complete_files(prefix, func(completion_candidate string, abspath string, d fs.DirEntry) error {
-			actual = append(actual, completion_candidate)
-			if _, err := os.Stat(abspath); err != nil {
-				t.Fatalf("Abspath does not exist: %#v", abspath)
-				return fmt.Errorf("abspath does not exist")
+		complete_files(prefix, func(entry *FileEntry) {
+			actual = append(actual, entry.completion_candidate)
+			if _, err := os.Stat(entry.abspath); err != nil {
+				t.Fatalf("Abspath does not exist: %#v", entry.abspath)
 			}
-			return nil
 		})
 		sort.Strings(actual)
 		if !reflect.DeepEqual(expected, actual) {
@@ -58,6 +58,9 @@ func TestCompleteFiles(t *testing.T) {
 				e[i] = x
 			} else {
 				e[i] = filepath.Join(tdir, x)
+				if strings.HasSuffix(x, utils.Sep) {
+					e[i] += utils.Sep
+				}
 			}
 		}
 		test_candidates(prefix, e...)
@@ -71,17 +74,17 @@ func TestCompleteFiles(t *testing.T) {
 		test_candidates("./"+prefix, e...)
 	}
 
-	test_cwd_prefix("", "one.txt", "two.txt", "odir", "odir/three.txt", "odir/four.txt")
+	test_cwd_prefix("", "one.txt", "two.txt", "odir/")
 	test_cwd_prefix("t", "two.txt")
 	test_cwd_prefix("x")
 
-	test_abs_candidates(tdir, tdir, "one.txt", "two.txt", "odir", "odir/three.txt", "odir/four.txt")
-	test_abs_candidates(filepath.Join(tdir, "o"), "one.txt", "odir", "odir/three.txt", "odir/four.txt")
+	test_abs_candidates(tdir+utils.Sep, "one.txt", "two.txt", "odir/")
+	test_abs_candidates(filepath.Join(tdir, "o"), "one.txt", "odir/")
 
-	test_candidates("", "one.txt", "two.txt", "odir", "odir/three.txt", "odir/four.txt")
+	test_candidates("", "one.txt", "two.txt", "odir/")
 	test_candidates("t", "two.txt")
-	test_candidates("o", "one.txt", "odir", "odir/three.txt", "odir/four.txt")
-	test_candidates("odir", "odir", "odir/three.txt", "odir/four.txt")
+	test_candidates("o", "one.txt", "odir/")
+	test_candidates("odir", "odir/")
 	test_candidates("odir/", "odir/three.txt", "odir/four.txt")
 	test_candidates("odir/f", "odir/four.txt")
 	test_candidates("x")

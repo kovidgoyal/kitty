@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+var Sep = string(os.PathSeparator)
+
 func Expanduser(path string) string {
 	if !strings.HasPrefix(path, "~") {
 		return path
@@ -28,7 +30,7 @@ func Expanduser(path string) string {
 	if path == "~" {
 		return home
 	}
-	path = strings.ReplaceAll(path, string(os.PathSeparator), "/")
+	path = strings.ReplaceAll(path, Sep, "/")
 	parts := strings.Split(path, "/")
 	if parts[0] == "~" {
 		parts[0] = home
@@ -41,7 +43,7 @@ func Expanduser(path string) string {
 			}
 		}
 	}
-	return strings.Join(parts, string(os.PathSeparator))
+	return strings.Join(parts, Sep)
 }
 
 func Abspath(path string) string {
@@ -114,8 +116,6 @@ type transformed_walker struct {
 	needs_recurse_func func(string, fs.DirEntry) bool
 }
 
-var sep = string(os.PathSeparator)
-
 func (self *transformed_walker) walk(dirpath string) error {
 	resolved_path := self.transform_func(dirpath)
 	if self.seen[resolved_path] {
@@ -134,8 +134,8 @@ func (self *transformed_walker) walk(dirpath string) error {
 		}
 		// we cant use filepath.Join here as it calls Clean() which can alter dirpath if it contains .. or . etc.
 		path_based_on_original_dir := dirpath
-		if !strings.HasSuffix(dirpath, sep) && dirpath != "" {
-			path_based_on_original_dir += sep
+		if !strings.HasSuffix(dirpath, Sep) && dirpath != "" {
+			path_based_on_original_dir += Sep
 		}
 		path_based_on_original_dir += rpath
 		if self.needs_recurse_func(path, d) {

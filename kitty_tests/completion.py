@@ -89,9 +89,9 @@ def completion(self: TestCompletion, tdir: str):
 
     add('kitty x', all_words())
     add('kitty e', all_words('exe1'))
-    add('kitty ./', all_words('./bin', './bin/exe1', './sub', './exe2', './sub/exe3'))
+    add('kitty ./', all_words('./bin/', './sub/', './exe2'))
     add('kitty ./e', all_words('./exe2'))
-    add('kitty ./s', all_words('./sub', './sub/exe3'))
+    add('kitty ./s', all_words('./sub/'))
     add('kitty ~', all_words('~/exe3'))
     add('kitty ~/', all_words('~/exe3'))
     add('kitty ~/e', all_words('~/exe3'))
@@ -99,7 +99,7 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty @ goto-layout ', has_words('tall', 'fat'))
     add('kitty @ goto-layout spli', all_words('splits'))
     add('kitty @ goto-layout f f', all_words())
-    add('kitty @ set-window-logo ', all_words('exe-not2.jpeg', 'sub/exe-not3.png'))
+    add('kitty @ set-window-logo ', all_words('exe-not2.jpeg', 'sub/', 'bin/'))
     add('kitty @ set-window-logo e', all_words('exe-not2.jpeg'))
     add('kitty @ set-window-logo e e', all_words())
 
