@@ -66,6 +66,22 @@ def generate_completions_for_kitty() -> None:
     print('k.Subcommand_must_be_first = true')
     for opt in go_options_for_seq(parse_option_spec()[0]):
         print(opt.as_completion_option('k'))
+    print('plus := k.add_command("+", "Entry point")')
+    print('plus.Description = "Various special purpose tools and kittens"')
+
+    print('plus_launch := plus.add_command("launch", "Launch Python script")')
+    print('plus_launch.Completion_for_arg = complete_plus_launch')
+    print('k.add_clone("+launch", "Launch Python scripts", plus_launch)')
+
+    print('plus_runpy := plus.add_command("runpy", "Run python code")')
+    print('plus_runpy.Completion_for_arg = complete_plus_runpy')
+    print('k.add_clone("+runpy", "Run Python code", plus_runpy)')
+
+    print('plus_open := plus.add_command("open", "Open files and URLs")')
+    print('plus_open.Completion_for_arg = complete_plus_open')
+    print('plus_open.clone_options_from(k)')
+    print('k.add_clone("+open", "Open files and URLs", plus_open)')
+
     print('at := k.add_command("@", "Remote control")')
     print('at.Description = "Control kitty using commands"')
     for go_name in all_command_names():

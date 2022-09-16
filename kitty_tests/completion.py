@@ -79,7 +79,7 @@ def completion(self: TestCompletion, tdir: str):
         self.assertEqual(cp.returncode, 0, f'kitty-tool __complete__ failed with exit code: {cp.returncode}')
         return json.loads(cp.stdout)
 
-    add('kitty ', has_words('@', '@ls'))
+    add('kitty ', has_words('@', '@ls', '+', '+open'))
     add('kitty @ l', has_words('ls', 'last-used-layout', 'launch'))
     add('kitty @l', has_words('@ls', '@last-used-layout', '@launch'))
 
@@ -112,6 +112,8 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty @ set-window-logo ', all_words('exe-not2.jpeg', 'sub/'))
     add('kitty @ set-window-logo e', all_words('exe-not2.jpeg'))
     add('kitty @ set-window-logo e e', all_words())
+    add('kitty +ope', has_words('+open'))
+    add('kitty +open -', has_words('-1', '-T'))
 
     add('kitty -', has_words('-c', '-1', '--'), does_not_have_words('--config', '--single-instance'))
     add('kitty -c', all_words('-c'))

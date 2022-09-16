@@ -22,6 +22,12 @@ func (self *MatchGroup) add_match(word string, description ...string) *Match {
 	return &ans
 }
 
+func (self *MatchGroup) add_prefix_to_all_matches(prefix string) {
+	for _, m := range self.Matches {
+		m.Word = prefix + m.Word
+	}
+}
+
 type Completions struct {
 	Groups []*MatchGroup `json:"groups,omitempty"`
 
@@ -32,9 +38,7 @@ type Completions struct {
 
 func (self *Completions) add_prefix_to_all_matches(prefix string) {
 	for _, mg := range self.Groups {
-		for _, m := range mg.Matches {
-			m.Word = prefix + m.Word
-		}
+		mg.add_prefix_to_all_matches(prefix)
 	}
 }
 
@@ -75,6 +79,12 @@ type Command struct {
 	Stop_processing_at_arg          int
 	First_arg_may_not_be_subcommand bool
 	Subcommand_must_be_first        bool
+}
+
+func (self *Command) clone_options_from(other *Command) {
+	for _, opt := range other.Options {
+		self.Options = append(self.Options, opt)
+	}
 }
 
 func (self *Command) add_group(name string) *CommandGroup {
