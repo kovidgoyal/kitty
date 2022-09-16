@@ -14,7 +14,6 @@ type MatchGroup struct {
 	NoTrailingSpace bool     `json:"no_trailing_space,omitempty"`
 	IsFiles         bool     `json:"is_files,omitempty"`
 	Matches         []*Match `json:"matches,omitempty"`
-	WordPrefix      string   `json:"word_prefix,omitempty"`
 }
 
 func (self *MatchGroup) add_match(word string, description ...string) *Match {
@@ -24,12 +23,19 @@ func (self *MatchGroup) add_match(word string, description ...string) *Match {
 }
 
 type Completions struct {
-	Groups     []*MatchGroup `json:"groups,omitempty"`
-	WordPrefix string        `json:"word_prefix,omitempty"`
+	Groups []*MatchGroup `json:"groups,omitempty"`
 
 	current_cmd      *Command
 	all_words        []string // all words passed to parse_args()
 	current_word_idx int      // index of current word in all_words
+}
+
+func (self *Completions) add_prefix_to_all_matches(prefix string) {
+	for _, mg := range self.Groups {
+		for _, m := range mg.Matches {
+			m.Word = prefix + m.Word
+		}
+	}
 }
 
 func (self *Completions) add_match_group(title string) *MatchGroup {
