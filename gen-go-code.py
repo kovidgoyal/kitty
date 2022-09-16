@@ -61,6 +61,7 @@ def generate_completions_for_kitty() -> None:
     print('k := root.add_command("kitty", "")')
     print('k.First_arg_may_not_be_subcommand = true')
     print('k.Completion_for_arg = complete_kitty')
+    print('k.Subcommand_must_be_first = true')
     for opt in go_options_for_seq(parse_option_spec()[0]):
         print(opt.as_completion_option('k'))
     print('at := k.add_command("@", "Remote control")')

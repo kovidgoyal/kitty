@@ -14,6 +14,9 @@ import (
 var _ = fmt.Print
 
 func complete_kitty(completions *Completions, word string, arg_num int) {
+	if arg_num > 1 {
+		return
+	}
 	exes := complete_executables_in_path(word)
 	if len(exes) > 0 {
 		mg := completions.add_match_group("Executables in PATH")

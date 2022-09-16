@@ -250,3 +250,20 @@ func fnmatch_completer(title string, relative_to relative_to, patterns ...string
 func mimepat_completer(title string, relative_to relative_to, patterns ...string) completion_func {
 	return make_completer(title, relative_to, patterns, complete_by_mimepat)
 }
+
+func directory_completer(title string, relative_to relative_to) completion_func {
+	if title == "" {
+		title = "Directories"
+	}
+	cwd := get_cwd_for_completion(relative_to)
+
+	return func(completions *Completions, word string, arg_num int) {
+		mg := completions.add_match_group(title)
+		mg.IsFiles = true
+		complete_files(word, func(entry *FileEntry) {
+			if entry.mode.IsDir() {
+				mg.add_match(entry.completion_candidate)
+			}
+		}, cwd)
+	}
+}
