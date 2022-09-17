@@ -57,6 +57,8 @@ Detailed list of changes
 
 - Fix a regression that caused kitty not to restore SIGPIPE after python nukes it when launching children. Affects bash which does not sanitize its signal mask. (:iss:`5500`)
 
+- Fix a use-after-free when handling fake mouse clicks and the action causes windows to be removed/re-allocated (:iss:`5506`)
+
 
 0.26.2 [2022-09-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
