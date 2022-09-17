@@ -141,6 +141,17 @@ encode_mouse_scroll(Window *w, int button, int mods) {
 
 // }}}
 
+static Window*
+window_for_id(id_type window_id) {
+    Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+    for (unsigned int i = 0; i < t->num_windows; i++) {
+        Window *w = t->windows + i;
+        if (w->id == window_id) return w;
+    }
+    return NULL;
+}
+
+
 static bool
 dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabbed) {
     bool handled = false;
@@ -492,8 +503,10 @@ send_pending_click_to_window(Window *w, void *data) {
     ) {
         MousePosition current_pos = w->mouse_pos;
         w->mouse_pos = pc->mouse_pos;
+        id_type wid = w->id;
         dispatch_mouse_event(w, pc->button, pc->count, pc->modifiers, pc->grabbed);
-        w->mouse_pos = current_pos;
+        w = window_for_id(wid);
+        if (w) w->mouse_pos = current_pos;
     }
 #undef press
 }
@@ -579,16 +592,6 @@ mouse_in_region(Region *r) {
     if (global_state.callback_os_window->mouse_y < r->top || global_state.callback_os_window->mouse_y > r->bottom) return false;
     if (global_state.callback_os_window->mouse_x < r->left || global_state.callback_os_window->mouse_x > r->right) return false;
     return true;
-}
-
-static Window*
-window_for_id(id_type window_id) {
-    Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
-    for (unsigned int i = 0; i < t->num_windows; i++) {
-        Window *w = t->windows + i;
-        if (w->id == window_id) return w;
-    }
-    return NULL;
 }
 
 static Window*
