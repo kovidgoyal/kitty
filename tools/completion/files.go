@@ -185,7 +185,17 @@ func complete_by_fnmatch(prefix, cwd string, patterns []string) []string {
 }
 
 func complete_by_mimepat(prefix, cwd string, patterns []string) []string {
+	all_allowed := false
+	for _, p := range patterns {
+		if p == "*" {
+			all_allowed = true
+			break
+		}
+	}
 	return fname_based_completer(prefix, cwd, func(name string) bool {
+		if all_allowed {
+			return true
+		}
 		idx := strings.Index(name, ".")
 		if idx < 1 {
 			return false

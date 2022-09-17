@@ -31,9 +31,10 @@ func (self *MatchGroup) add_prefix_to_all_matches(prefix string) {
 type Completions struct {
 	Groups []*MatchGroup `json:"groups,omitempty"`
 
-	current_cmd      *Command
-	all_words        []string // all words passed to parse_args()
-	current_word_idx int      // index of current word in all_words
+	current_cmd                *Command
+	all_words                  []string // all words passed to parse_args()
+	current_word_idx           int      // index of current word in all_words
+	current_word_idx_in_parent int      // index of current word in parents command line 1 for first word after parent
 }
 
 func (self *Completions) add_prefix_to_all_matches(prefix string) {
@@ -141,7 +142,7 @@ func (self *Command) has_subcommands() bool {
 
 func (self *Command) sub_command_allowed_at(completions *Completions, arg_num int) bool {
 	if self.Subcommand_must_be_first {
-		return arg_num == 1 && completions.current_word_idx == 0
+		return arg_num == 1 && completions.current_word_idx_in_parent == 1
 	}
 	return arg_num == 1
 }

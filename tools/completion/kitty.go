@@ -3,8 +3,12 @@
 package completion
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"kitty/tools/utils"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -96,4 +100,21 @@ func complete_plus_runpy(completions *Completions, word string, arg_num int) {
 
 func complete_plus_open(completions *Completions, word string, arg_num int) {
 	fnmatch_completer("Files", CWD, "*")(completions, word, arg_num)
+}
+
+func complete_themes(completions *Completions, word string, arg_num int) {
+	kitty, err := utils.KittyExe()
+	if err == nil {
+		out, err := exec.Command(kitty, "+runpy", "from kittens.themes.collection import *; print_theme_names()").Output()
+		if err == nil {
+			mg := completions.add_match_group("Themes")
+			scanner := bufio.NewScanner(bytes.NewReader(out))
+			for scanner.Scan() {
+				theme_name := strings.TrimSpace(scanner.Text())
+				if theme_name != "" && strings.HasPrefix(theme_name, word) {
+					mg.add_match(theme_name)
+				}
+			}
+		}
+	}
 }

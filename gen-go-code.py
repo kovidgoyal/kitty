@@ -57,6 +57,23 @@ def generate_completion_for_rc(name: str) -> None:
         print(opt.as_completion_option(name))
 
 
+def generate_kittens_completion() -> None:
+    from kittens.runner import all_kitten_names, get_kitten_cli_docs
+    for kitten in all_kitten_names():
+        kn = 'kitten_' + kitten
+        print(f'{kn} := plus_kitten.add_command("{kitten}", "Kittens")')
+        kcd = get_kitten_cli_docs(kitten)
+        if kcd:
+            ospec = kcd['options']
+            for opt in go_options_for_seq(parse_option_spec(ospec())[0]):
+                print(opt.as_completion_option(kn))
+            ac = kcd.get('args_completion')
+            if ac is not None:
+                print(''.join(ac.as_go_code(kn)))
+        else:
+            print(f'{kn}.Description = ""')
+
+
 def generate_completions_for_kitty() -> None:
     print('package completion\n')
     print('func kitty(root *Command) {')
@@ -71,21 +88,26 @@ def generate_completions_for_kitty() -> None:
     print(f'k.find_option("-o").Completion_for_arg = complete_kitty_override("Config directives", []string{{{conf_names}}})')
     print('k.find_option("--listen-on").Completion_for_arg = complete_kitty_listen_on')
 
-    print('plus := k.add_command("+", "Entry point")')
+    print('plus := k.add_command("+", "Entry points")')
     print('plus.Description = "Various special purpose tools and kittens"')
 
-    print('plus_launch := plus.add_command("launch", "Launch Python script")')
+    print('plus_launch := plus.add_command("launch", "Entry points")')
     print('plus_launch.Completion_for_arg = complete_plus_launch')
     print('k.add_clone("+launch", "Launch Python scripts", plus_launch)')
 
-    print('plus_runpy := plus.add_command("runpy", "Run python code")')
+    print('plus_runpy := plus.add_command("runpy", "Entry points")')
     print('plus_runpy.Completion_for_arg = complete_plus_runpy')
     print('k.add_clone("+runpy", "Run Python code", plus_runpy)')
 
-    print('plus_open := plus.add_command("open", "Open files and URLs")')
+    print('plus_open := plus.add_command("open", "Entry points")')
     print('plus_open.Completion_for_arg = complete_plus_open')
     print('plus_open.clone_options_from(k)')
     print('k.add_clone("+open", "Open files and URLs", plus_open)')
+
+    print('plus_kitten := plus.add_command("kitten", "Kittens")')
+    print('plus_kitten.Subcommand_must_be_first = true')
+    generate_kittens_completion()
+    print('k.add_clone("+kitten", "Kittens", plus_kitten)')
 
     print('at := k.add_command("@", "Remote control")')
     print('at.Description = "Control kitty using commands"')

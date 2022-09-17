@@ -8,17 +8,20 @@ import os
 import re
 import shutil
 import signal
+import sys
 import tempfile
 import zipfile
 from contextlib import suppress
-from typing import Any, Callable, Dict, Iterator, Match, Optional, Tuple, Union, Type
+from typing import (
+    Any, Callable, Dict, Iterator, Match, Optional, Tuple, Type, Union
+)
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from kitty.config import atomic_save, parse_config
 from kitty.constants import cache_dir, config_dir
-from kitty.options.types import Options as KittyOptions
 from kitty.fast_data_types import Color
+from kitty.options.types import Options as KittyOptions
 from kitty.utils import reload_conf_in_all_kitties
 
 from ..choose.match import match
@@ -647,3 +650,13 @@ def load_themes(cache_age: float = 1., ignore_no_cache: bool = False) -> Themes:
     ans.load_from_dir(os.path.join(config_dir, 'themes'))
     ans.index_map = tuple(ans.themes)
     return ans
+
+
+def print_theme_names() -> None:
+    found = False
+    for theme in load_themes(cache_age=-1, ignore_no_cache=True):
+        print(theme.name)
+        found = True
+    if not found:
+        print('Default')
+    sys.stdout.flush()

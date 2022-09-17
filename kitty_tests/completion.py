@@ -136,6 +136,14 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty @launch --logo ', all_words('exe-not3.png'))
     add('kitty @launch --logo ~', all_words('~/exe-not3.png'))
 
+    add('kitty + ', has_words('launch', 'kitten'))
+    add('kitty + kitten ', has_words('icat', 'diff'))
+    add('kitty +kitten icat ', has_words('sub/', 'exe-not2.jpeg'))
+    add('kitty + kitten icat --pr', has_words('--print-window-size'))
+    add('kitty + kitten diff ', has_words('exe-not2.jpeg'))
+    add('kitty + kitten themes --', has_words('--cache-age'))
+    add('kitty + kitten themes D', has_words('Default'))
+
     for cmd, tests, result in zip(all_cmds, all_tests, run_tool()):
         self.current_cmd = cmd
         for test in tests:

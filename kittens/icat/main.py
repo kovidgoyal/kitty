@@ -15,7 +15,7 @@ from typing import (
     Dict, Generator, List, NamedTuple, Optional, Pattern, Tuple, Union
 )
 
-from kitty.cli import parse_args
+from kitty.cli import parse_args, CompletionSpec
 from kitty.cli_stub import IcatCLIOptions
 from kitty.constants import appname
 from kitty.guess_mime_type import guess_type
@@ -622,3 +622,4 @@ elif __name__ == '__doc__':
     cd['usage'] = usage
     cd['options'] = options_spec
     cd['help_text'] = help_text
+    cd['args_completion'] = CompletionSpec.from_string('type:file mime:image/* group:Images')

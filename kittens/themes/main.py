@@ -11,12 +11,12 @@ from typing import (
     Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 )
 
-from kitty.cli import create_default_opts, parse_args
+from kitty.cli import CompletionSpec, create_default_opts, parse_args
 from kitty.cli_stub import ThemesCLIOptions
 from kitty.config import cached_values_for
-from kitty.options.types import Options as KittyOptions
 from kitty.constants import config_dir
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
+from kitty.options.types import Options as KittyOptions
 from kitty.rgb import color_as_sharp, color_from_int
 from kitty.typing import KeyEventType
 from kitty.utils import ScreenSize
@@ -616,3 +616,4 @@ elif __name__ == '__doc__':
     cd['usage'] = usage
     cd['options'] = OPTIONS
     cd['help_text'] = help_text
+    cd['args_completion'] = CompletionSpec.from_string('type:special group:complete_themes')

@@ -17,7 +17,7 @@ from typing import (
     Any, DefaultDict, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 )
 
-from kitty.cli import CONFIG_HELP, parse_args
+from kitty.cli import CONFIG_HELP, parse_args, CompletionSpec
 from kitty.cli_stub import DiffCLIOptions
 from kitty.conf.utils import KeyAction
 from kitty.constants import appname
@@ -577,6 +577,7 @@ number set in :file:`diff.conf`.
 
 --config
 type=list
+completion=type:file ext:conf group:"Config files" kwds:none,NONE
 {config_help}
 
 
@@ -687,6 +688,7 @@ elif __name__ == '__doc__':
     cd['usage'] = usage
     cd['options'] = OPTIONS
     cd['help_text'] = help_text
+    cd['args_completion'] = CompletionSpec.from_string('type:file mime:text/* mime:image/* group:"Text and image files"')
 elif __name__ == '__conf__':
     from .options.definition import definition
     sys.options_definition = definition  # type: ignore

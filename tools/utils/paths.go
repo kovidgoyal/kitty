@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"golang.org/x/sys/unix"
 )
 
 var Sep = string(os.PathSeparator)
@@ -55,6 +57,15 @@ func Abspath(path string) string {
 }
 
 var config_dir string
+
+func KittyExe() (string, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	ans := filepath.Join(filepath.Dir(exe), "kitty")
+	return ans, unix.Access(ans, unix.X_OK)
+}
 
 func ConfigDir() string {
 	if config_dir != "" {
