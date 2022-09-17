@@ -124,7 +124,7 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 	return
 }
 
-func (cmd *Command) parse_args(words []string, completions *Completions) {
+func default_parse_args(cmd *Command, words []string, completions *Completions) {
 	completions.current_cmd = cmd
 	if len(words) == 0 {
 		complete_word("", completions, false, nil, 0)

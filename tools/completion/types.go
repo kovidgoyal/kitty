@@ -80,6 +80,8 @@ type Command struct {
 	Stop_processing_at_arg          int
 	First_arg_may_not_be_subcommand bool
 	Subcommand_must_be_first        bool
+
+	Parse_args func(*Command, []string, *Completions)
 }
 
 func (self *Command) clone_options_from(other *Command) {
@@ -157,7 +159,11 @@ func (self *Command) GetCompletions(argv []string) *Completions {
 		exe := argv[0]
 		cmd := self.find_subcommand_with_name(exe)
 		if cmd != nil {
-			cmd.parse_args(argv[1:], &ans)
+			if cmd.Parse_args != nil {
+				cmd.Parse_args(cmd, argv[1:], &ans)
+			} else {
+				default_parse_args(cmd, argv[1:], &ans)
+			}
 		}
 	}
 	non_empty_groups := make([]*MatchGroup, 0, len(ans.Groups))
