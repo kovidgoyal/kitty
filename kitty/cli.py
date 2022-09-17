@@ -30,6 +30,7 @@ class CompletionType(Enum):
     file = auto()
     directory = auto()
     keyword = auto()
+    special = auto()
     none = auto()
 
 
@@ -89,6 +90,8 @@ class CompletionSpec:
         if self.type is CompletionType.directory:
             g = serialize_as_go_string(self.group or 'Directories')
             completers.append(f'directory_completer("{g}", {relative_to})')
+        if self.type is CompletionType.special:
+            completers.append(self.group)
         if go_name:
             go_name += '.'
         if len(completers) > 1:
@@ -113,7 +116,9 @@ def serialize_as_go_string(x: str) -> str:
     return x.replace('\\', '\\\\').replace('\n', '\\n').replace('"', '\\"')
 
 
-go_type_map = {'bool-set': 'bool', 'bool-reset': 'bool', 'int': 'int', 'float': 'float64', '': 'string', 'list': '[]string', 'choices': 'string'}
+go_type_map = {
+    'bool-set': 'bool', 'bool-reset': 'bool', 'int': 'int', 'float': 'float64',
+    '': 'string', 'list': '[]string', 'choices': 'string', 'str': 'string'}
 go_getter_map = {
     'bool-set': 'GetBool', 'bool-reset': 'GetBool', 'int': 'GetInt', 'float': 'GetFloat64', '': 'GetString',
     'list': 'GetStringArray', 'choices': 'GetString'
@@ -460,6 +465,8 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
                     if k == 'default':
                         current_cmd['default'] = v
                     elif k == 'type':
+                        if v == 'choice':
+                            v = 'choices'
                         current_cmd['type'] = v
                     elif k == 'dest':
                         current_cmd['dest'] = v

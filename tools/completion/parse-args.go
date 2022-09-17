@@ -139,6 +139,7 @@ func (cmd *Command) parse_args(words []string, completions *Completions) {
 	for i, word := range words {
 		cmd = completions.current_cmd
 		completions.current_word_idx = i
+		completions.current_word_idx_in_parent++
 		is_last_word := i == len(words)-1
 		if expecting_arg_for == nil && !strings.HasPrefix(word, "-") {
 			arg_num++
@@ -172,6 +173,7 @@ func (cmd *Command) parse_args(words []string, completions *Completions) {
 				completions.current_cmd = sc
 				cmd = sc
 				arg_num = 0
+				completions.current_word_idx_in_parent = 0
 				only_args_allowed = false
 			} else if cmd.Stop_processing_at_arg > 0 && arg_num >= cmd.Stop_processing_at_arg {
 				return
