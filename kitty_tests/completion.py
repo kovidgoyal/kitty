@@ -144,6 +144,10 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty + kitten themes --', has_words('--cache-age'))
     add('kitty + kitten themes D', has_words('Default'))
 
+    add('clone-in-kitty --ty', has_words('--type'))
+    make_file('editable.txt')
+    add('edit-in-kitty ', has_words('editable.txt'))
+
     for cmd, tests, result in zip(all_cmds, all_tests, run_tool()):
         self.current_cmd = cmd
         for test in tests:
