@@ -12,7 +12,8 @@ from typing import Dict, Iterator, List, Set, Tuple, Union
 import kitty.constants as kc
 from kittens.tui.operations import Mode
 from kitty.cli import (
-    GoOption, go_options_for_seq, parse_option_spec, serialize_as_go_string
+    CompletionSpec, GoOption, go_options_for_seq, parse_option_spec,
+    serialize_as_go_string
 )
 from kitty.key_encoding import config_mod_map
 from kitty.key_names import (
@@ -74,9 +75,21 @@ def generate_kittens_completion() -> None:
             print(f'{kn}.Description = ""')
 
 
+def completion_for_launch_wrappers(*names: str) -> None:
+    from kitty.launch import clone_safe_opts, options_spec
+    opts = tuple(go_options_for_seq(parse_option_spec(options_spec())[0]))
+    allowed = clone_safe_opts()
+    for o in opts:
+        if o.dest in allowed:
+            for name in names:
+                print(o.as_completion_option(name))
+
+
 def generate_completions_for_kitty() -> None:
     print('package completion\n')
     print('func kitty(root *Command) {')
+
+    # The kitty exe
     print('k := root.add_command("kitty", "")')
     print('k.First_arg_may_not_be_subcommand = true')
     print('k.Completion_for_arg = complete_kitty')
@@ -88,6 +101,7 @@ def generate_completions_for_kitty() -> None:
     print(f'k.find_option("-o").Completion_for_arg = complete_kitty_override("Config directives", []string{{{conf_names}}})')
     print('k.find_option("--listen-on").Completion_for_arg = complete_kitty_listen_on')
 
+    # kitty +
     print('plus := k.add_command("+", "Entry points")')
     print('plus.Description = "Various special purpose tools and kittens"')
 
@@ -104,11 +118,13 @@ def generate_completions_for_kitty() -> None:
     print('plus_open.clone_options_from(k)')
     print('k.add_clone("+open", "Open files and URLs", plus_open)')
 
+    # kitty +kitten
     print('plus_kitten := plus.add_command("kitten", "Kittens")')
     print('plus_kitten.Subcommand_must_be_first = true')
     generate_kittens_completion()
     print('k.add_clone("+kitten", "Kittens", plus_kitten)')
 
+    # kitten @
     print('at := k.add_command("@", "Remote control")')
     print('at.Description = "Control kitty using commands"')
     for go_name in all_command_names():
@@ -116,6 +132,13 @@ def generate_completions_for_kitty() -> None:
         print(f'{go_name} := at.add_command("{name}", "")')
         generate_completion_for_rc(go_name)
         print(f'k.add_clone("@{name}", "Remote control", {go_name})')
+
+    # clone-in-kitty, edit-in-kitty
+    print('cik := root.add_command("clone-in-kitty", "")')
+    print('eik := root.add_command("edit-in-kitty", "")')
+    completion_for_launch_wrappers('cik', 'eik')
+    print(''.join(CompletionSpec.from_string('type:file mime:text/* group:"Text files"').as_go_code('eik')))
+
     print('}')
     print('func init() {')
     print('registered_exes["kitty"] = kitty')
