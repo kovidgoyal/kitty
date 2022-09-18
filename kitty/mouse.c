@@ -143,12 +143,14 @@ encode_mouse_scroll(Window *w, int button, int mods) {
 
 static Window*
 window_for_id(id_type window_id) {
-    Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
-    for (unsigned int i = 0; i < t->num_windows; i++) {
-        Window *w = t->windows + i;
-        if (w->id == window_id) return w;
+    if (global_state.callback_os_window && global_state.callback_os_window->tabs) {
+        Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+        for (unsigned int i = 0; i < t->num_windows; i++) {
+            Window *w = t->windows + i;
+            if (w->id == window_id) return w;
+        }
     }
-    return NULL;
+    return window_for_window_id(window_id);
 }
 
 
