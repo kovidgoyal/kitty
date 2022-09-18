@@ -7,8 +7,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -16,8 +14,8 @@ import (
 	"golang.org/x/sys/unix"
 
 	"kitty"
+	"kitty/tools/cli/markup"
 	"kitty/tools/tty"
-	"kitty/tools/utils"
 	"kitty/tools/utils/style"
 )
 
@@ -67,172 +65,10 @@ func ChoicesP(flags *pflag.FlagSet, name string, short string, usage string, cho
 	return p
 }
 
-var stdout_is_terminal = false
-
-var (
-	fmt_ctx        = style.Context{}
-	cyan_fmt       = fmt_ctx.SprintFunc("fg=bright-cyan")
-	green_fmt      = fmt_ctx.SprintFunc("fg=green")
-	blue_fmt       = fmt_ctx.SprintFunc("fg=blue")
-	bright_red_fmt = fmt_ctx.SprintFunc("fg=bright-red")
-	yellow_fmt     = fmt_ctx.SprintFunc("fg=bright-yellow")
-	italic_fmt     = fmt_ctx.SprintFunc("italic")
-	bold_fmt       = fmt_ctx.SprintFunc("bold")
-	title_fmt      = fmt_ctx.SprintFunc("bold fg=blue")
-	exe_fmt        = fmt_ctx.SprintFunc("bold fg=bright-yellow")
-	opt_fmt        = green_fmt
-	emph_fmt       = bright_red_fmt
-	err_fmt        = fmt_ctx.SprintFunc("bold fg=bright-red")
-	code_fmt       = cyan_fmt
-	url_fmt        = fmt_ctx.UrlFunc("u=curly uc=cyan")
-)
-
-func ReplaceAllStringSubmatchFunc(re *regexp.Regexp, str string, repl func([]string) string) string {
-	result := ""
-	lastIndex := 0
-
-	for _, v := range re.FindAllSubmatchIndex([]byte(str), -1) {
-		groups := []string{}
-		for i := 0; i < len(v); i += 2 {
-			if v[i] == -1 || v[i+1] == -1 {
-				groups = append(groups, "")
-			} else {
-				groups = append(groups, str[v[i]:v[i+1]])
-			}
-		}
-
-		result += str[lastIndex:v[0]] + repl(groups)
-		lastIndex = v[1]
-	}
-
-	return result + str[lastIndex:]
-}
-
-func website_url(doc string) string {
-	if doc != "" {
-		doc = strings.TrimSuffix(doc, "/")
-		if doc != "" {
-			doc += "/"
-		}
-	}
-	return kitty.WebsiteBaseURL + doc
-}
-
-var prettify_pat = regexp.MustCompile(":([a-z]+):`([^`]+)`")
-
-func hyperlink_for_url(url string, text string) string {
-	return url_fmt(url, text)
-}
-
-var hostname string = "*"
-
-func CachedHostname() string {
-	if hostname == "*" {
-		h, err := os.Hostname()
-		if err != nil {
-			hostname = h
-		} else {
-			hostname = ""
-		}
-	}
-	return hostname
-}
-
-func hyperlink_for_path(path string, text string) string {
-	if !fmt_ctx.AllowEscapeCodes {
-		return text
-	}
-	path = strings.ReplaceAll(utils.Abspath(path), string(os.PathSeparator), "/")
-	fi, err := os.Stat(path)
-	if err == nil && fi.IsDir() {
-		path = strings.TrimSuffix(path, "/") + "/"
-	}
-	host := CachedHostname()
-	url := "file://" + host + path
-	return hyperlink_for_url(url, text)
-}
-
-func text_and_target(x string) (text string, target string) {
-	parts := strings.SplitN(x, "<", 2)
-	text = strings.TrimSpace(parts[0])
-	target = strings.TrimRight(parts[len(parts)-1], ">")
-	return
-}
-
-func ref_hyperlink(x string, prefix string) string {
-	text, target := text_and_target(x)
-	url := "kitty+doc://" + CachedHostname() + "/#ref=" + prefix + target
-	text = ReplaceAllStringSubmatchFunc(prettify_pat, text, func(groups []string) string {
-		return groups[2]
-	})
-	return hyperlink_for_url(url, text)
-}
-
-func prettify(text string) string {
-	return ReplaceAllStringSubmatchFunc(prettify_pat, text, func(groups []string) string {
-		val := groups[2]
-		switch groups[1] {
-		case "file":
-			if val == "kitty.conf" && stdout_is_terminal {
-				path := filepath.Join(utils.ConfigDir(), val)
-				val = hyperlink_for_path(path, val)
-			}
-			return italic_fmt(val)
-		case "env", "envvar":
-			return ref_hyperlink(val, "envvar-")
-		case "doc":
-			text, target := text_and_target(val)
-			if text == target {
-				target = strings.Trim(target, "/")
-				if title, ok := kitty.DocTitleMap[target]; ok {
-					val = title + " <" + target + ">"
-				}
-			}
-			return ref_hyperlink(val, "doc-")
-		case "iss":
-			return ref_hyperlink(val, "issues-")
-		case "pull":
-			return ref_hyperlink(val, "pull-")
-		case "disc":
-			return ref_hyperlink(val, "discussions-")
-		case "ref":
-			return ref_hyperlink(val, "")
-		case "ac":
-			return ref_hyperlink(val, "action-")
-		case "term":
-			return ref_hyperlink(val, "term-")
-		case "code":
-			return code_fmt(val)
-		case "option":
-			idx := strings.LastIndex(val, "--")
-			if idx < 0 {
-				idx = strings.Index(val, "-")
-			}
-			if idx > -1 {
-				val = val[idx:]
-			}
-			return bold_fmt(val)
-		case "opt":
-			return bold_fmt(val)
-		case "yellow":
-			return yellow_fmt(val)
-		case "blue":
-			return blue_fmt(val)
-		case "green":
-			return green_fmt(val)
-		case "cyan":
-			return cyan_fmt(val)
-		case "emph":
-			return italic_fmt(val)
-		default:
-			return val
-		}
-
-	})
-}
+var formatter *markup.Context
 
 func format_with_indent(output io.Writer, text string, indent string, screen_width int) {
-	text = prettify(text)
+	text = formatter.Prettify(text)
 	indented := style.WrapText(text, indent, screen_width, "#placeholder_for_formatting#")
 	io.WriteString(output, indented)
 }
@@ -248,7 +84,7 @@ func full_command_name(cmd *cobra.Command) string {
 
 func show_usage(cmd *cobra.Command, use_pager bool) error {
 	screen_width := 80
-	if stdout_is_terminal {
+	if formatter.EscapeCodesAllowed() {
 		var sz *unix.Winsize
 		var tty_size_err error
 		for {
@@ -269,7 +105,7 @@ func show_usage(cmd *cobra.Command, use_pager bool) error {
 	} else {
 		use = ""
 	}
-	fmt.Fprintln(&output, title_fmt("Usage")+":", exe_fmt(full_command_name(cmd)), use)
+	fmt.Fprintln(&output, formatter.Title("Usage")+":", formatter.Exe(full_command_name(cmd)), use)
 	fmt.Fprintln(&output)
 	if len(cmd.Long) > 0 {
 		format_with_indent(&output, cmd.Long, "", screen_width)
@@ -278,17 +114,17 @@ func show_usage(cmd *cobra.Command, use_pager bool) error {
 	}
 	if cmd.HasAvailableSubCommands() {
 		fmt.Fprintln(&output)
-		fmt.Fprintln(&output, title_fmt("Commands")+":")
+		fmt.Fprintln(&output, formatter.Title("Commands")+":")
 		for _, child := range cmd.Commands() {
 			if child.Hidden {
 				continue
 			}
-			fmt.Fprintln(&output, " ", opt_fmt(child.Name()))
+			fmt.Fprintln(&output, " ", formatter.Opt(child.Name()))
 			format_with_indent(&output, child.Short, "    ", screen_width)
 		}
 		fmt.Fprintln(&output)
 		format_with_indent(&output, "Get help for an individual command by running:", "", screen_width)
-		fmt.Fprintln(&output, "   ", full_command_name(cmd), italic_fmt("command"), "-h")
+		fmt.Fprintln(&output, "   ", full_command_name(cmd), formatter.Italic("command"), "-h")
 	}
 	if cmd.HasAvailableFlags() {
 		options_title := cmd.Annotations["options_title"]
@@ -296,22 +132,22 @@ func show_usage(cmd *cobra.Command, use_pager bool) error {
 			options_title = "Options"
 		}
 		fmt.Fprintln(&output)
-		fmt.Fprintln(&output, title_fmt(options_title)+":")
+		fmt.Fprintln(&output, formatter.Title(options_title)+":")
 		flag_set := cmd.LocalFlags()
 		flag_set.VisitAll(func(flag *pflag.Flag) {
-			fmt.Fprint(&output, opt_fmt("  --"+flag.Name))
+			fmt.Fprint(&output, formatter.Opt("  --"+flag.Name))
 			if flag.Shorthand != "" {
-				fmt.Fprint(&output, ", ", opt_fmt("-"+flag.Shorthand))
+				fmt.Fprint(&output, ", ", formatter.Opt("-"+flag.Shorthand))
 			}
 			defval := ""
 			switch flag.Value.Type() {
 			default:
 				if flag.DefValue != "" {
-					defval = fmt.Sprintf("[=%s]", italic_fmt(flag.DefValue))
+					defval = fmt.Sprintf("[=%s]", formatter.Italic(flag.DefValue))
 				}
 			case "stringArray":
 				if flag.DefValue != "[]" {
-					defval = fmt.Sprintf("[=%s]", italic_fmt(flag.DefValue))
+					defval = fmt.Sprintf("[=%s]", formatter.Italic(flag.DefValue))
 				}
 			case "bool":
 			case "count":
@@ -325,7 +161,7 @@ func show_usage(cmd *cobra.Command, use_pager bool) error {
 			case "help":
 				msg = "Print this help message"
 			case "version":
-				msg = "Print the version of " + RootCmd.Name() + ": " + italic_fmt(RootCmd.Version)
+				msg = "Print the version of " + RootCmd.Name() + ": " + formatter.Italic(RootCmd.Version)
 			}
 			format_with_indent(&output, msg, "    ", screen_width)
 			fmt.Fprintln(&output)
@@ -334,11 +170,11 @@ func show_usage(cmd *cobra.Command, use_pager bool) error {
 	if cmd.Annotations["usage-suffix"] != "" {
 		fmt.Fprintln(&output, cmd.Annotations["usage-suffix"])
 	} else {
-		fmt.Fprintln(&output, italic_fmt(RootCmd.Name()), opt_fmt(kitty.VersionString), "created by", title_fmt("Kovid Goyal"))
+		fmt.Fprintln(&output, formatter.Italic(RootCmd.Name()), formatter.Opt(kitty.VersionString), "created by", formatter.Title("Kovid Goyal"))
 	}
 	output_text := output.String()
 	// fmt.Printf("%#v\n", output_text)
-	if use_pager && stdout_is_terminal && cmd.Annotations["allow-pager"] != "no" {
+	if use_pager && formatter.EscapeCodesAllowed() && cmd.Annotations["allow-pager"] != "no" {
 		pager := exec.Command(kitty.DefaultPager[0], kitty.DefaultPager[1:]...)
 		pager.Stdin = strings.NewReader(output_text)
 		pager.Stdout = os.Stdout
@@ -362,11 +198,11 @@ func DisallowArgs(cmd *cobra.Command, args []string) error {
 		cmd.SuggestionsMinimumDistance = 2
 		suggestions := cmd.SuggestionsFor(args[0])
 		es := "Not a valid subcommand: " + args[0]
-		trailer := fmt.Sprintf("Use %s to get a list of available sub-commands", bold_fmt(full_command_name(cmd)+" -h"))
+		trailer := fmt.Sprintf("Use %s to get a list of available sub-commands", formatter.Bold(full_command_name(cmd)+" -h"))
 		if len(suggestions) > 0 {
 			es += "\nDid you mean?\n"
 			for _, s := range suggestions {
-				es += fmt.Sprintf("\t%s\n", italic_fmt(s))
+				es += fmt.Sprintf("\t%s\n", formatter.Italic(s))
 			}
 			es += trailer
 		} else {
@@ -401,7 +237,7 @@ func show_help(cmd *cobra.Command, args []string) {
 }
 
 func PrintError(err error) {
-	fmt.Println(err_fmt("Error")+":", err)
+	fmt.Println(formatter.Err("Error")+":", err)
 }
 
 func Init(root *cobra.Command) {
@@ -409,8 +245,7 @@ func Init(root *cobra.Command) {
 	if kitty.VCSRevision != "" {
 		vs = vs + " (" + kitty.VCSRevision + ")"
 	}
-	stdout_is_terminal = tty.IsTerminal(os.Stdout.Fd())
-	fmt_ctx.AllowEscapeCodes = stdout_is_terminal
+	formatter = markup.New(tty.IsTerminal(os.Stdout.Fd()))
 	RootCmd = root
 	root.Version = vs
 	root.SetUsageFunc(func(cmd *cobra.Command) error { return show_usage(cmd, false) })
