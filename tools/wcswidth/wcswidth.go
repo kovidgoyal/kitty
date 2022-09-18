@@ -2,6 +2,8 @@
 
 package wcswidth
 
+import "kitty/tools/utils"
+
 func IsFlagCodepoint(ch rune) bool {
 	return 0x1F1E6 <= ch && ch <= 0x1F1FF
 }
@@ -89,5 +91,5 @@ func (self *WCWidthIterator) Parse(b []byte) (ans int) {
 
 func Stringwidth(text string) int {
 	w := CreateWCWidthIterator()
-	return w.Parse([]byte(text))
+	return w.Parse(utils.UnsafeStringToBytes(text))
 }
