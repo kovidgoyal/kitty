@@ -37,4 +37,25 @@ func TestWCSWidth(t *testing.T) {
 	// Flags individually and together
 	wcwidth("\U0001f1ee\U0001f1f3", 2, 2)
 	wcswidth("\U0001f1ee\U0001f1f3", 2)
+
+	truncate := func(text string, length int, expected string, expected_width int) {
+		actual, actual_width := TruncateToVisualLengthWithWidth(text, length)
+		if actual != expected {
+			t.Fatalf("Failed to truncate \"%s\" to %d\nExpected: %#v\nActual:   %#v", text, length, expected, actual)
+		}
+		if actual_width != expected_width {
+			t.Fatalf("Failed to truncate with width \"%s\" to %d\nExpected: %d\nActual:   %d", text, length, expected_width, actual_width)
+		}
+	}
+	truncate("abc", 4, "abc", 3)
+	truncate("abc", 3, "abc", 3)
+	truncate("abc", 2, "ab", 2)
+	truncate("abc", 0, "", 0)
+	truncate("a🌷", 2, "a", 1)
+	truncate("a🌷", 3, "a🌷", 3)
+	truncate("a🌷b", 3, "a🌷", 3)
+	truncate("a🌷b", 4, "a🌷b", 4)
+	truncate("a🌷\ufe0e", 2, "a🌷\ufe0e", 2)
+	truncate("a🌷\ufe0eb", 3, "a🌷\ufe0eb", 3)
+	truncate("a\x1b[31mb", 2, "a\x1b[31mb", 2)
 }

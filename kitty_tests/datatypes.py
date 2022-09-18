@@ -398,8 +398,9 @@ class TestDataTypes(BaseTest):
         self.ae(tpl('a\U0001f337', 2), 1)
         self.ae(tpl('a\U0001f337', 3), 2)
         self.ae(tpl('a\U0001f337b', 4), 3)
-        self.ae(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
         self.ae(tpl('a\x1b[31mbc', 2), 7)
+
+        self.ae(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
 
         def tp(*data, leftover='', text='', csi='', apc='', ibp=False):
             text_r, csi_r, apc_r, rest = [], [], [], []
