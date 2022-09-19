@@ -52,6 +52,19 @@ def all_words(*words):
     return t
 
 
+def is_delegate(num_to_remove: int = 0, command: str = ''):
+    q = {}
+    if num_to_remove:
+        q['num_to_remove'] = num_to_remove
+    if command:
+        q['command'] = command
+
+    def t(self, result):
+        d = result['delegate']
+        self.assertEqual(d, q)
+    return t
+
+
 def completion(self: TestCompletion, tdir: str):
     all_cmds = []
     all_argv = []
@@ -147,6 +160,10 @@ def completion(self: TestCompletion, tdir: str):
     add('clone-in-kitty --ty', has_words('--type'))
     make_file('editable.txt')
     add('edit-in-kitty ', has_words('editable.txt'))
+
+    add('kitty bash ', is_delegate(1, 'bash'))
+    add('kitty -1 bash ', is_delegate(2, 'bash'))
+    add('kitty -1 bash --n', is_delegate(2, 'bash'))
 
     for cmd, tests, result in zip(all_cmds, all_tests, run_tool()):
         self.current_cmd = cmd

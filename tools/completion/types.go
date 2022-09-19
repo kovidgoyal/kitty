@@ -72,8 +72,14 @@ func (self *MatchGroup) longest_common_prefix() string {
 	}, true)
 }
 
+type Delegate struct {
+	NumToRemove int    `json:"num_to_remove,omitempty"`
+	Command     string `json:"command,omitempty"`
+}
+
 type Completions struct {
-	Groups []*MatchGroup `json:"groups,omitempty"`
+	Groups   []*MatchGroup `json:"groups,omitempty"`
+	Delegate Delegate      `json:"delegate,omitempty"`
 
 	current_cmd                *Command
 	all_words                  []string // all words passed to parse_args()
@@ -126,6 +132,10 @@ type Command struct {
 	Subcommand_must_be_first        bool
 
 	Parse_args func(*Command, []string, *Completions)
+
+	// index in Completions.all_words of the first non-option argument to this command.
+	// A value of zero means no arg was found while parsing.
+	index_of_first_arg int
 }
 
 func (self *Command) clone_options_from(other *Command) {
