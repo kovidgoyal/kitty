@@ -76,7 +76,6 @@ func fmt_desc(word, desc string, max_word_len int, f *markup.Context, screen_wid
 }
 
 func serialize(completions *Completions, f *markup.Context, screen_width int) ([]byte, error) {
-	cmd := strings.Builder{}
 	output := strings.Builder{}
 	if completions.Delegate.NumToRemove > 0 {
 		for i := 0; i < completions.Delegate.NumToRemove; i++ {
@@ -87,6 +86,7 @@ func serialize(completions *Completions, f *markup.Context, screen_width int) ([
 		return []byte(output.String()), nil
 	}
 	for _, mg := range completions.Groups {
+		cmd := strings.Builder{}
 		cmd.WriteString("compadd -U -J ")
 		cmd.WriteString(utils.QuoteStringForSH(mg.Title))
 		cmd.WriteString(" -X ")
@@ -118,6 +118,7 @@ func serialize(completions *Completions, f *markup.Context, screen_width int) ([
 		}
 		fmt.Fprintln(&output, cmd.String(), ";")
 	}
+	// debugf("%#v", output.String())
 	return []byte(output.String()), nil
 }
 
