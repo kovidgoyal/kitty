@@ -11,8 +11,17 @@ import (
 	"github.com/spf13/cobra"
 
 	"kitty/tools/cli"
+	"kitty/tools/tty"
 	"kitty/tools/utils"
 )
+
+func debug(args ...interface{}) {
+	tty.DebugPrintln(args...)
+}
+
+func debugf(format string, args ...interface{}) {
+	debug(fmt.Sprintf(format, args...))
+}
 
 func json_input_parser(data []byte, shell_state map[string]string) ([][]string, error) {
 	ans := make([][]string, 0, 32)
