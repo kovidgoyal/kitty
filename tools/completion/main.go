@@ -43,7 +43,11 @@ func main(args []string) error {
 		output_type = args[0]
 		args = args[1:]
 	}
-	shell_state := make(map[string]string, len(args))
+	n := len(args)
+	if n < 1 {
+		n = 1
+	}
+	shell_state := make(map[string]string, n)
 	for _, arg := range args {
 		k, v, found := utils.Cut(arg, "=")
 		if !found {
