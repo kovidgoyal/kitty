@@ -215,7 +215,7 @@ _ksi_main() {
             builtin local limit
             # Send all words up to the word the cursor is currently on
             builtin let limit=1+$COMP_CWORD
-            src=$(builtin printf "%s\n" "${COMP_WORDS[@]:0:$limit}" | builtin command kitty +complete bash)
+            src=$(builtin printf "%s\n" "${COMP_WORDS[@]:0:$limit}" | builtin command kitty-tool __complete__ bash)
             if [[ $? == 0 ]]; then
                 builtin eval "${src}"
             fi

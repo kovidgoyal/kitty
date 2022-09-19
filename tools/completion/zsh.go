@@ -15,6 +15,21 @@ import (
 
 var _ = fmt.Print
 
+func shell_input_parser(data []byte, shell_state map[string]string) ([][]string, error) {
+	raw := string(data)
+	new_word := strings.HasSuffix(raw, "\n\n")
+	raw = strings.TrimRight(raw, "\n \t")
+	scanner := bufio.NewScanner(strings.NewReader(raw))
+	words := make([]string, 0, 32)
+	for scanner.Scan() {
+		words = append(words, scanner.Text())
+	}
+	if new_word {
+		words = append(words, "")
+	}
+	return [][]string{words}, nil
+}
+
 func zsh_input_parser(data []byte, shell_state map[string]string) ([][]string, error) {
 	matcher := shell_state["_matcher"]
 	q := ""
@@ -32,18 +47,7 @@ func zsh_input_parser(data []byte, shell_state map[string]string) ([][]string, e
 		// these matcher types break completion, so just abort in this case.
 		return nil, fmt.Errorf("ZSH anchor based matching active, cannot complete")
 	}
-	raw := string(data)
-	new_word := strings.HasSuffix(raw, "\n\n")
-	raw = strings.TrimRight(raw, "\n \t")
-	scanner := bufio.NewScanner(strings.NewReader(raw))
-	words := make([]string, 0, 32)
-	for scanner.Scan() {
-		words = append(words, scanner.Text())
-	}
-	if new_word {
-		words = append(words, "")
-	}
-	return [][]string{words}, nil
+	return shell_input_parser(data, shell_state)
 }
 
 func fmt_desc(word, desc string, max_word_len int, f *markup.Context, screen_width int) string {
