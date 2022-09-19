@@ -183,6 +183,10 @@ func default_parse_args(cmd *Command, words []string, completions *Completions) 
 				arg_num = 0
 				completions.current_word_idx_in_parent = 0
 				only_args_allowed = false
+				if cmd.Parse_args != nil {
+					cmd.Parse_args(cmd, words[i+1:], completions)
+					return
+				}
 			} else if cmd.Stop_processing_at_arg > 0 && arg_num >= cmd.Stop_processing_at_arg {
 				return
 			} else {

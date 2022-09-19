@@ -155,6 +155,14 @@ def get_kitten_cli_docs(kitten: str) -> Any:
         return ans
 
 
+def get_kitten_wrapper_of(kitten: str) -> str:
+    setattr(sys, 'cli_docs', {})
+    run_kitten(kitten, run_name='__wrapper_of__')
+    ans = getattr(sys, 'cli_docs')
+    delattr(sys, 'cli_docs')
+    return ans.get('wrapper_of') or ''
+
+
 def get_kitten_completer(kitten: str) -> Any:
     run_kitten(kitten, run_name='__completer__')
     ans = getattr(sys, 'kitten_completer', None)

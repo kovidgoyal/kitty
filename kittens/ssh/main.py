@@ -754,9 +754,9 @@ def main(args: List[str]) -> None:
 
 if __name__ == '__main__':
     main(sys.argv)
-elif __name__ == '__completer__':
-    from .completion import complete
-    setattr(sys, 'kitten_completer', complete)
+elif __name__ == '__wrapper_of__':
+    cd = sys.cli_docs  # type: ignore
+    cd['wrapper_of'] = 'ssh'
 elif __name__ == '__conf__':
     from .options.definition import definition
     sys.options_definition = definition  # type: ignore

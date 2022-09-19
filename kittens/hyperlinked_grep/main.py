@@ -112,3 +112,6 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+elif __name__ == '__wrapper_of__':
+    cd = sys.cli_docs  # type: ignore
+    cd['wrapper_of'] = 'rg'

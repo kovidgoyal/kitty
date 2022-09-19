@@ -122,3 +122,10 @@ func complete_themes(completions *Completions, word string, arg_num int) {
 		}
 	}
 }
+
+func completion_for_wrapper(wrapped_cmd string) func(*Command, []string, *Completions) {
+	return func(cmd *Command, args []string, completions *Completions) {
+		completions.Delegate.NumToRemove = completions.current_word_idx + 1
+		completions.Delegate.Command = wrapped_cmd
+	}
+}
