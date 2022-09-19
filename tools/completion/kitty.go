@@ -19,6 +19,8 @@ var _ = fmt.Print
 
 func complete_kitty(completions *Completions, word string, arg_num int) {
 	if arg_num > 1 {
+		completions.Delegate.NumToRemove = completions.current_cmd.index_of_first_arg + 1 // +1 because the first word is not present in all_words
+		completions.Delegate.Command = completions.all_words[completions.current_cmd.index_of_first_arg]
 		return
 	}
 	exes := complete_executables_in_path(word)

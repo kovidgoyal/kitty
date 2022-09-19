@@ -146,8 +146,11 @@ func default_parse_args(cmd *Command, words []string, completions *Completions) 
 		completions.current_word_idx = i
 		completions.current_word_idx_in_parent++
 		is_last_word := i == len(words)-1
-		if expecting_arg_for == nil && !strings.HasPrefix(word, "-") {
+		if only_args_allowed || (expecting_arg_for == nil && !strings.HasPrefix(word, "-")) {
 			arg_num++
+			if arg_num == 1 {
+				cmd.index_of_first_arg = completions.current_word_idx
+			}
 		}
 		if is_last_word {
 			complete_word(word, completions, only_args_allowed, expecting_arg_for, arg_num)
