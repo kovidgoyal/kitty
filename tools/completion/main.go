@@ -38,6 +38,7 @@ type serializer_func func(completions []*Completions, shell_state map[string]str
 
 var input_parsers = make(map[string]parser_func, 4)
 var output_serializers = make(map[string]serializer_func, 4)
+var init_completions = make(map[string]func(*Completions), 4)
 
 func init() {
 	input_parsers["json"] = json_input_parser
@@ -84,7 +85,7 @@ func main(args []string) error {
 
 	all_completions := make([]*Completions, 0, 1)
 	for _, argv := range all_argv {
-		all_completions = append(all_completions, root.GetCompletions(argv))
+		all_completions = append(all_completions, root.GetCompletions(argv, init_completions[output_type]))
 	}
 	output, err := output_serializer(all_completions, shell_state)
 	if err == nil {

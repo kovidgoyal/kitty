@@ -153,9 +153,15 @@ func default_parse_args(cmd *Command, words []string, completions *Completions) 
 			}
 		}
 		if is_last_word {
+			if completions.split_on_equals && word == "=" {
+				word = ""
+			}
 			complete_word(word, completions, only_args_allowed, expecting_arg_for, arg_num)
 		} else {
 			if expecting_arg_for != nil {
+				if completions.split_on_equals && word == "=" {
+					continue
+				}
 				expecting_arg_for = nil
 				continue
 			}
