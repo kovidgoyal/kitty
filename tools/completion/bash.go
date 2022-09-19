@@ -13,21 +13,33 @@ var _ = fmt.Print
 
 func bash_output_serializer(completions []*Completions, shell_state map[string]string) ([]byte, error) {
 	output := strings.Builder{}
-	f := func(format string, args ...interface{}) { fmt.Fprintf(&output, format, args...) }
+	f := func(format string, args ...interface{}) { fmt.Fprintf(&output, format+"\n", args...) }
 	n := completions[0].Delegate.NumToRemove
 	if n > 0 {
 		n--
-		f("COMP_WORDS[%d]=%s\n", n, utils.QuoteStringForSH(completions[0].Delegate.Command))
-		f("_command_offset %d\n", n)
+		f("compopt +o nospace")
+		f("COMP_WORDS[%d]=%s", n, utils.QuoteStringForSH(completions[0].Delegate.Command))
+		f("_command_offset %d", n)
 	} else {
 		for _, mg := range completions[0].Groups {
 			mg.remove_common_prefix()
-			for _, m := range mg.Matches {
-				w := m.Word
-				if !mg.NoTrailingSpace {
-					w += " "
+			if mg.NoTrailingSpace {
+				f("compopt -o nospace")
+			} else {
+				f("compopt +o nospace")
+			}
+			if mg.IsFiles {
+				f("compopt -o filenames")
+				for _, m := range mg.Matches {
+					if strings.HasSuffix(m.Word, utils.Sep) {
+						m.Word = m.Word[:len(m.Word)-1]
+					}
 				}
-				f("COMPREPLY+=(%s)\n", utils.QuoteStringForSH(w))
+			} else {
+				f("compopt +o filenames")
+			}
+			for _, m := range mg.Matches {
+				f("COMPREPLY+=(%s)", utils.QuoteStringForSH(m.Word))
 			}
 		}
 	}
