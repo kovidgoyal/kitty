@@ -164,6 +164,8 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty bash ', is_delegate(1, 'bash'))
     add('kitty -1 bash ', is_delegate(2, 'bash'))
     add('kitty -1 bash --n', is_delegate(2, 'bash'))
+    add('kitty @launch --type tab bash --n', is_delegate(4, 'bash'))
+    add('kitty @launch e', all_words('exe1'))
 
     for cmd, tests, result in zip(all_cmds, all_tests, run_tool()):
         self.current_cmd = cmd
