@@ -74,6 +74,7 @@ func main(args []string) error {
 	if err != nil {
 		return err
 	}
+	// debugf("%#v", string(data))
 	all_argv, err := input_parser(data, shell_state)
 	if err != nil {
 		return err
