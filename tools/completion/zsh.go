@@ -68,7 +68,6 @@ func fmt_desc(word, desc string, max_word_len int, f *markup.Context, screen_wid
 	if wcswidth.Stringwidth(desc) > max_desc_len {
 		desc = wcswidth.TruncateToVisualLength(desc, max_desc_len-2) + "…"
 	}
-
 	if multiline {
 		return word + "\n  " + desc
 	}
@@ -131,12 +130,9 @@ func zsh_output_serializer(completions []*Completions, shell_state map[string]st
 		ctty.Close()
 		if err == nil {
 			screen_width = int(sz.Col)
-			f = markup.New(true)
 		}
 	}
-	if f == nil {
-		f = markup.New(false)
-	}
+	f = markup.New(false) // ZSH freaks out if there are escape codes in the description strings
 	return serialize(completions[0], f, screen_width)
 }
 
