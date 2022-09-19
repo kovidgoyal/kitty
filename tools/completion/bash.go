@@ -16,7 +16,6 @@ func bash_output_serializer(completions []*Completions, shell_state map[string]s
 	f := func(format string, args ...interface{}) { fmt.Fprintf(&output, format+"\n", args...) }
 	n := completions[0].Delegate.NumToRemove
 	if n > 0 {
-		n--
 		f("compopt +o nospace")
 		f("COMP_WORDS[%d]=%s", n, utils.QuoteStringForSH(completions[0].Delegate.Command))
 		f("_command_offset %d", n)
