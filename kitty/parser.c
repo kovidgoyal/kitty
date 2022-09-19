@@ -609,12 +609,12 @@ parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, int *params, PyObject
                     case COLOR:
                     case COLOR1:
                     case COLOR3:
-                        REPORT_ERROR("Invalid SGR code containing disallowed character: %s", utf8(buf[i]));
+                        REPORT_ERROR("Invalid SGR code containing disallowed character: %s (U+%x)", utf8(buf[i]), buf[i]);
                         return;
                 }
                 break;
             default:
-                REPORT_ERROR("Invalid SGR code containing disallowed character: %s", utf8(buf[i]));
+                REPORT_ERROR("Invalid SGR code containing disallowed character: %s (U+%x)", utf8(buf[i]), buf[i]);
                 return;
         }
     }
