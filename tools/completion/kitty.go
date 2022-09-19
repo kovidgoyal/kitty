@@ -55,6 +55,7 @@ func complete_kitty(completions *Completions, word string, arg_num int) {
 func complete_kitty_override(title string, names []string) completion_func {
 	return func(completions *Completions, word string, arg_num int) {
 		mg := completions.add_match_group(title)
+		mg.NoTrailingSpace = true
 		for _, q := range names {
 			if strings.HasPrefix(q, word) {
 				mg.add_match(q + "=")
@@ -66,6 +67,7 @@ func complete_kitty_override(title string, names []string) completion_func {
 func complete_kitty_listen_on(completions *Completions, word string, arg_num int) {
 	if !strings.Contains(word, ":") {
 		mg := completions.add_match_group("Address family")
+		mg.NoTrailingSpace = true
 		for _, q := range []string{"unix:", "tcp:"} {
 			if strings.HasPrefix(q, word) {
 				mg.add_match(q)

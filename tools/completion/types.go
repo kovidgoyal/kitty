@@ -2,7 +2,11 @@
 
 package completion
 
-import "strings"
+import (
+	"kitty/tools/utils"
+	"kitty/tools/wcswidth"
+	"strings"
+)
 
 type Match struct {
 	Word        string `json:"word,omitempty"`
@@ -26,6 +30,46 @@ func (self *MatchGroup) add_prefix_to_all_matches(prefix string) {
 	for _, m := range self.Matches {
 		m.Word = prefix + m.Word
 	}
+}
+
+func (self *MatchGroup) remove_prefix_from_all_matches(prefix string) {
+	for _, m := range self.Matches {
+		m.Word = m.Word[len(prefix):]
+	}
+}
+
+func (self *MatchGroup) has_descriptions() bool {
+	for _, m := range self.Matches {
+		if m.Description != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func (self *MatchGroup) max_visual_word_length(limit int) int {
+	ans := 0
+	for _, m := range self.Matches {
+		if q := wcswidth.Stringwidth(m.Word); q > ans {
+			ans = q
+			if ans > limit {
+				return limit
+			}
+		}
+	}
+	return ans
+}
+
+func (self *MatchGroup) longest_common_prefix() string {
+	limit := len(self.Matches)
+	i := 0
+	return utils.LongestCommon(func() (string, bool) {
+		if i < limit {
+			i++
+			return self.Matches[i-1].Word, false
+		}
+		return "", true
+	}, true)
 }
 
 type Completions struct {

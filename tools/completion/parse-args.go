@@ -55,11 +55,16 @@ func (self *Completions) add_options_group(options []*Option, word string) {
 		if word == "-" {
 			group.Matches = append(group.Matches, &Match{Word: "--", Description: "End of options"})
 			for _, opt := range options {
+				has_single_letter_alias := false
 				for _, q := range opt.Aliases {
 					if len(q) == 1 {
 						group.add_match("-"+q, opt.Description)
+						has_single_letter_alias = true
 						break
 					}
+				}
+				if !has_single_letter_alias {
+					group.add_match("--"+opt.Aliases[0], opt.Description)
 				}
 			}
 		} else {

@@ -269,6 +269,7 @@ func directory_completer(title string, relative_to relative_to) completion_func 
 
 	return func(completions *Completions, word string, arg_num int) {
 		mg := completions.add_match_group(title)
+		mg.NoTrailingSpace = true
 		mg.IsFiles = true
 		complete_files(word, func(entry *FileEntry) {
 			if entry.mode.IsDir() {
