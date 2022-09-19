@@ -9,7 +9,6 @@ import (
 	"kitty/tools/tty"
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
-	"path/filepath"
 	"strings"
 )
 
@@ -97,23 +96,11 @@ func serialize(completions *Completions, f *markup.Context, screen_width int) ([
 		}
 		if mg.IsFiles {
 			cmd.WriteString(" -f")
-			if len(mg.Matches) > 1 {
-				lcp := mg.longest_common_prefix()
-				if strings.Contains(lcp, utils.Sep) {
-					lcp = strings.TrimRight(filepath.Dir(lcp), utils.Sep) + utils.Sep
-					cmd.WriteString(" -p ")
-					cmd.WriteString(utils.QuoteStringForSH(lcp))
-					mg.remove_prefix_from_all_matches(lcp)
-				}
-			}
-		} else if len(mg.Matches) > 1 && strings.HasPrefix(mg.Matches[0].Word, "--") && strings.Contains(mg.Matches[0].Word, "=") {
-			lcp, _, _ := utils.Cut(mg.longest_common_prefix(), "=")
-			lcp += "="
-			if len(lcp) > 3 {
-				cmd.WriteString(" -p ")
-				cmd.WriteString(utils.QuoteStringForSH(lcp))
-				mg.remove_prefix_from_all_matches(lcp)
-			}
+		}
+		lcp := mg.remove_common_prefix()
+		if lcp != "" {
+			cmd.WriteString(" -p ")
+			cmd.WriteString(utils.QuoteStringForSH(lcp))
 		}
 		if mg.has_descriptions() {
 			fmt.Fprintln(&output, "compdescriptions=(")

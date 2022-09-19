@@ -14,6 +14,7 @@ var _ = fmt.Print
 func bash_output_serializer(completions []*Completions, shell_state map[string]string) ([]byte, error) {
 	output := strings.Builder{}
 	for _, mg := range completions[0].Groups {
+		mg.remove_common_prefix()
 		for _, m := range mg.Matches {
 			fmt.Fprintln(&output, "COMPREPLY+=("+utils.QuoteStringForSH(m.Word)+")")
 		}
