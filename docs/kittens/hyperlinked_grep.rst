@@ -43,34 +43,6 @@ You can now run searches with::
 
     hg some-search-term
 
-If you want to enable completion, for the kitten, you can delegate completion
-to :program:`rg`. How to do that varies based on the shell:
-
-
-.. tab:: zsh
-
-    Instead of using an alias, create a simple wrapper script named
-    :program:`hg` somewhere in your :envvar:`PATH`:
-
-    .. code-block:: sh
-
-        #!/bin/sh
-        exec kitty +kitten hyperlinked_grep "$@"
-
-    Then, add the following to :file:`.zshrc`::
-
-        compdef _rg hg
-
-.. tab:: fish
-
-    You can combine both the aliasing/wrapping and pointing fish to ripgrep's
-    autocompletion with a fish wrapper function in your :file:`config.fish`
-    or :file:`~/.config/fish/functions/hg.fish`:
-
-    .. code-block:: fish
-
-        function hg --wraps rg; kitty +kitten hyperlinked_grep $argv; end
-
 To learn more about kitty's powerful framework for customizing URL click
 actions, see :doc:`here </open_actions>`.
 
