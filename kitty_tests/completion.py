@@ -111,7 +111,7 @@ def completion(self: TestCompletion, tdir: str):
     make_file('sub/exe-not3.png')
 
     add('kitty x', all_words())
-    add('kitty e', all_words('exe1'))
+    add('kitty e', all_words('exe1', 'exe2'))
     add('kitty ./', all_words('./bin/', './sub/', './exe2'))
     add('kitty ./e', all_words('./exe2'))
     add('kitty ./s', all_words('./sub/'))
@@ -166,7 +166,7 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty -1 bash ', is_delegate(2, 'bash'))
     add('kitty -1 bash --n', is_delegate(2, 'bash'))
     add('kitty @launch --type tab bash --n', is_delegate(4, 'bash'))
-    add('kitty @launch e', all_words('exe1'))
+    add('kitty @launch e', all_words('exe1', 'exe2'))
 
     for cmd, tests, result in zip(all_cmds, all_tests, run_tool()):
         self.current_cmd = cmd
