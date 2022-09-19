@@ -5,6 +5,7 @@ package completion
 import (
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
+	"path/filepath"
 	"strings"
 )
 
@@ -18,6 +19,27 @@ type MatchGroup struct {
 	NoTrailingSpace bool     `json:"no_trailing_space,omitempty"`
 	IsFiles         bool     `json:"is_files,omitempty"`
 	Matches         []*Match `json:"matches,omitempty"`
+}
+
+func (self *MatchGroup) remove_common_prefix() string {
+	if self.IsFiles {
+		if len(self.Matches) > 1 {
+			lcp := self.longest_common_prefix()
+			if strings.Contains(lcp, utils.Sep) {
+				lcp = strings.TrimRight(filepath.Dir(lcp), utils.Sep) + utils.Sep
+				self.remove_prefix_from_all_matches(lcp)
+				return lcp
+			}
+		}
+	} else if len(self.Matches) > 1 && strings.HasPrefix(self.Matches[0].Word, "--") && strings.Contains(self.Matches[0].Word, "=") {
+		lcp, _, _ := utils.Cut(self.longest_common_prefix(), "=")
+		lcp += "="
+		if len(lcp) > 3 {
+			self.remove_prefix_from_all_matches(lcp)
+			return lcp
+		}
+	}
+	return ""
 }
 
 func (self *MatchGroup) add_match(word string, description ...string) *Match {
