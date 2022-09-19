@@ -156,6 +156,7 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty + kitten diff ', has_words('exe-not2.jpeg'))
     add('kitty + kitten themes --', has_words('--cache-age'))
     add('kitty + kitten themes D', has_words('Default'))
+    add('kitty + kitten hyperlinked_grep ', is_delegate(3, 'rg'))
 
     add('clone-in-kitty --ty', has_words('--type'))
     make_file('editable.txt')

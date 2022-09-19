@@ -59,10 +59,14 @@ def generate_completion_for_rc(name: str) -> None:
 
 
 def generate_kittens_completion() -> None:
-    from kittens.runner import all_kitten_names, get_kitten_cli_docs
-    for kitten in all_kitten_names():
+    from kittens.runner import all_kitten_names, get_kitten_cli_docs, get_kitten_wrapper_of
+    for kitten in sorted(all_kitten_names()):
         kn = 'kitten_' + kitten
         print(f'{kn} := plus_kitten.add_command("{kitten}", "Kittens")')
+        wof = get_kitten_wrapper_of(kitten)
+        if wof:
+            print(f'{kn}.Parse_args = completion_for_wrapper("{serialize_as_go_string(wof)}")')
+            continue
         kcd = get_kitten_cli_docs(kitten)
         if kcd:
             ospec = kcd['options']
@@ -127,7 +131,7 @@ def generate_completions_for_kitty() -> None:
     # kitten @
     print('at := k.add_command("@", "Remote control")')
     print('at.Description = "Control kitty using commands"')
-    for go_name in all_command_names():
+    for go_name in sorted(all_command_names()):
         name = go_name.replace('_', '-')
         print(f'{go_name} := at.add_command("{name}", "")')
         generate_completion_for_rc(go_name)
