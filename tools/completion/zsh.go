@@ -81,41 +81,43 @@ func serialize(completions *Completions, f *markup.Context, screen_width int) ([
 			fmt.Fprintln(&output, "shift words")
 			fmt.Fprintln(&output, "(( CURRENT-- ))")
 		}
-		fmt.Fprintln(&output, "_normal -p ", utils.QuoteStringForSH(completions.Delegate.Command))
-		return []byte(output.String()), nil
-	}
-	for _, mg := range completions.Groups {
-		cmd := strings.Builder{}
-		cmd.WriteString("compadd -U -J ")
-		cmd.WriteString(utils.QuoteStringForSH(mg.Title))
-		cmd.WriteString(" -X ")
-		cmd.WriteString(utils.QuoteStringForSH("%B" + mg.Title + "%b"))
-		if mg.NoTrailingSpace {
-			cmd.WriteString(" -S ''")
-		}
-		if mg.IsFiles {
-			cmd.WriteString(" -f")
-		}
-		lcp := mg.remove_common_prefix()
-		if lcp != "" {
-			cmd.WriteString(" -p ")
-			cmd.WriteString(utils.QuoteStringForSH(lcp))
-		}
-		if mg.has_descriptions() {
-			fmt.Fprintln(&output, "compdescriptions=(")
-			limit := mg.max_visual_word_length(16)
-			for _, m := range mg.Matches {
-				fmt.Fprintln(&output, utils.QuoteStringForSH(fmt_desc(m.Word, m.Description, limit, f, screen_width)))
+		service := utils.QuoteStringForSH(completions.Delegate.Command)
+		fmt.Fprintln(&output, "words[1]="+service)
+		fmt.Fprintln(&output, "_normal -p", service)
+	} else {
+		for _, mg := range completions.Groups {
+			cmd := strings.Builder{}
+			cmd.WriteString("compadd -U -J ")
+			cmd.WriteString(utils.QuoteStringForSH(mg.Title))
+			cmd.WriteString(" -X ")
+			cmd.WriteString(utils.QuoteStringForSH("%B" + mg.Title + "%b"))
+			if mg.NoTrailingSpace {
+				cmd.WriteString(" -S ''")
 			}
-			fmt.Fprintln(&output, ")")
-			cmd.WriteString(" -l -d compdescriptions")
+			if mg.IsFiles {
+				cmd.WriteString(" -f")
+			}
+			lcp := mg.remove_common_prefix()
+			if lcp != "" {
+				cmd.WriteString(" -p ")
+				cmd.WriteString(utils.QuoteStringForSH(lcp))
+			}
+			if mg.has_descriptions() {
+				fmt.Fprintln(&output, "compdescriptions=(")
+				limit := mg.max_visual_word_length(16)
+				for _, m := range mg.Matches {
+					fmt.Fprintln(&output, utils.QuoteStringForSH(fmt_desc(m.Word, m.Description, limit, f, screen_width)))
+				}
+				fmt.Fprintln(&output, ")")
+				cmd.WriteString(" -l -d compdescriptions")
+			}
+			cmd.WriteString(" --")
+			for _, m := range mg.Matches {
+				cmd.WriteString(" ")
+				cmd.WriteString(utils.QuoteStringForSH(m.Word))
+			}
+			fmt.Fprintln(&output, cmd.String(), ";")
 		}
-		cmd.WriteString(" --")
-		for _, m := range mg.Matches {
-			cmd.WriteString(" ")
-			cmd.WriteString(utils.QuoteStringForSH(m.Word))
-		}
-		fmt.Fprintln(&output, cmd.String(), ";")
 	}
 	// debugf("%#v", output.String())
 	return []byte(output.String()), nil

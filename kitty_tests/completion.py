@@ -166,6 +166,7 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty -1 bash ', is_delegate(2, 'bash'))
     add('kitty -1 bash --n', is_delegate(2, 'bash'))
     add('kitty @launch --type tab bash --n', is_delegate(4, 'bash'))
+    add('kitty +kitten hyperlinked_grep --s', is_delegate(2, 'rg'))
     add('kitty @launch e', all_words('exe1', 'exe2'))
 
     for cmd, tests, result in zip(all_cmds, all_tests, run_tool()):
