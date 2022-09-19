@@ -16,7 +16,11 @@ func bash_output_serializer(completions []*Completions, shell_state map[string]s
 	for _, mg := range completions[0].Groups {
 		mg.remove_common_prefix()
 		for _, m := range mg.Matches {
-			fmt.Fprintln(&output, "COMPREPLY+=("+utils.QuoteStringForSH(m.Word)+")")
+			w := m.Word
+			if !mg.NoTrailingSpace {
+				w += " "
+			}
+			fmt.Fprintln(&output, "COMPREPLY+=("+utils.QuoteStringForSH(w)+")")
 		}
 	}
 	return []byte(output.String()), nil
