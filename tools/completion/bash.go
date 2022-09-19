@@ -22,7 +22,12 @@ func bash_output_serializer(completions []*Completions, shell_state map[string]s
 	return []byte(output.String()), nil
 }
 
+func bash_init_completions(completions *Completions) {
+	completions.split_on_equals = true
+}
+
 func init() {
 	input_parsers["bash"] = shell_input_parser
 	output_serializers["bash"] = bash_output_serializer
+	init_completions["bash"] = bash_init_completions
 }

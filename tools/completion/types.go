@@ -107,6 +107,8 @@ type Completions struct {
 	all_words                  []string // all words passed to parse_args()
 	current_word_idx           int      // index of current word in all_words
 	current_word_idx_in_parent int      // index of current word in parents command line 1 for first word after parent
+
+	split_on_equals bool // true if the cmdline is split on = (BASH does this because readline does this)
 }
 
 func (self *Completions) add_prefix_to_all_matches(prefix string) {
@@ -229,8 +231,11 @@ func (self *Command) add_option(opt *Option) {
 	self.Options = append(self.Options, opt)
 }
 
-func (self *Command) GetCompletions(argv []string) *Completions {
+func (self *Command) GetCompletions(argv []string, init_completions func(*Completions)) *Completions {
 	ans := Completions{Groups: make([]*MatchGroup, 0, 4)}
+	if init_completions != nil {
+		init_completions(&ans)
+	}
 	if len(argv) > 0 {
 		exe := argv[0]
 		cmd := self.find_subcommand_with_name(exe)
