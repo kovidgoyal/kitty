@@ -36,7 +36,7 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 		return nil
 	}
 
-	for len(self.args) > 0 {
+	for len(self.Args) > 0 {
 		arg := consume_arg()
 
 		if expecting_arg_for == nil {
@@ -67,7 +67,7 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 				}
 			} else {
 				// handle non option arg
-				if self.AllowOptionsAfterArgs <= len(self.args) {
+				if self.AllowOptionsAfterArgs <= len(self.Args) {
 					options_allowed = false
 				}
 				if self.HasSubCommands() {
@@ -80,7 +80,7 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 						return sc.parse_args(ctx, args_to_parse)
 					}
 				}
-				self.args = append(self.args, arg)
+				self.Args = append(self.Args, arg)
 			}
 		} else {
 			// handle option value
