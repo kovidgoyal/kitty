@@ -4,6 +4,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -132,22 +133,48 @@ type CommandGroup struct {
 	Title       string
 }
 
+func (self *CommandGroup) Clone(parent *Command) *CommandGroup {
+	ans := CommandGroup{Title: self.Title, SubCommands: make([]*Command, 0, len(self.SubCommands))}
+	for i, o := range self.SubCommands {
+		self.SubCommands[i] = o.Clone(parent)
+	}
+	return &ans
+}
+
 func (self *CommandGroup) AddSubCommand(parent *Command, name string) (*Command, error) {
 	for _, c := range self.SubCommands {
 		if c.Name == name {
 			return nil, fmt.Errorf("A subcommand with the name %#v already exists in the parent command: %#v", name, parent.Name)
 		}
 	}
-	ans := Command{
-		Name:   name,
-		Parent: parent,
-	}
-	return &ans, nil
+	ans := NewRootCommand()
+	ans.Parent = parent
+	self.SubCommands = append(self.SubCommands, ans)
+	return ans, nil
 }
 
-type OptionGroup struct {
+func (self *CommandGroup) FindSubCommand(name string) *Command {
+	for _, c := range self.SubCommands {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
+}
+
+type OptionGroup struct { // {{{
 	Options []*Option
 	Title   string
+}
+
+func (self *OptionGroup) Clone(parent *Command) *OptionGroup {
+	ans := OptionGroup{Title: self.Title, Options: make([]*Option, 0, len(self.Options))}
+	for i, o := range self.Options {
+		c := *o
+		c.Parent = parent
+		self.Options[i] = &c
+	}
+	return &ans
 }
 
 func (self *OptionGroup) AddOption(parent *Command, items ...string) (*Option, error) {
@@ -169,25 +196,53 @@ func (self *OptionGroup) FindOption(name_with_hyphens string) *Option {
 	return nil
 }
 
+// }}}
+
 type Command struct {
-	Name             string
-	Usage, HelpText  string
-	Hidden           bool
+	Name                  string
+	Usage, HelpText       string
+	Hidden                bool
+	AllowOptionsAfterArgs int
+	SubCommandIsOptional  bool
+
 	SubCommandGroups []*CommandGroup
 	OptionGroups     []*OptionGroup
 	Parent           *Command
 
-	AllowOptionsAfterArgs int
-	SubCommandIsOptional  bool
+	Args []string
+}
 
-	args []string
+func (self *Command) Clone(parent *Command) *Command {
+	ans := *self
+	ans.Args = make([]string, 0, 8)
+	ans.Parent = parent
+	ans.SubCommandGroups = make([]*CommandGroup, 0, len(self.SubCommandGroups))
+	ans.OptionGroups = make([]*OptionGroup, 0, len(self.OptionGroups))
+
+	for i, o := range self.OptionGroups {
+		ans.OptionGroups[i] = o.Clone(&ans)
+	}
+	for i, g := range self.SubCommandGroups {
+		ans.SubCommandGroups[i] = g.Clone(&ans)
+	}
+	return &ans
+}
+
+func (self *Command) AddClone(group string, src *Command) (*Command, error) {
+	c := src.Clone(self)
+	g := self.AddSubCommandGroup(group)
+	if g.FindSubCommand(c.Name) != nil {
+		return nil, fmt.Errorf("A sub command with the name: %s already exists in %s", c.Name, self.Name)
+	}
+	g.SubCommands = append(g.SubCommands, c)
+	return c, nil
 }
 
 func NewRootCommand() *Command {
 	ans := Command{
 		SubCommandGroups: make([]*CommandGroup, 0, 8),
 		OptionGroups:     make([]*OptionGroup, 0, 8),
-		args:             make([]string, 0, 8),
+		Args:             make([]string, 0, 8),
 	}
 	return &ans
 }
@@ -207,6 +262,18 @@ func (self *Command) AddSubCommand(group string, name string) (*Command, error) 
 	return self.AddSubCommandGroup(group).AddSubCommand(self, name)
 }
 
+func (self *Command) ParseArgs(args []string) (*Command, error) {
+	if args == nil {
+		args = os.Args
+	}
+	ctx := Context{SeenCommands: make([]*Command, 0, 4)}
+	err := self.parse_args(&ctx, args[1:])
+	if err != nil {
+		return nil, err
+	}
+	return ctx.SeenCommands[len(ctx.SeenCommands)-1], nil
+}
+
 func (self *Command) HasSubCommands() bool {
 	for _, g := range self.SubCommandGroups {
 		if len(g.SubCommands) > 0 {
@@ -218,10 +285,9 @@ func (self *Command) HasSubCommands() bool {
 
 func (self *Command) FindSubCommand(name string) *Command {
 	for _, g := range self.SubCommandGroups {
-		for _, c := range g.SubCommands {
-			if c.Name == name {
-				return c
-			}
+		c := g.FindSubCommand(name)
+		if c != nil {
+			return c
 		}
 	}
 	return nil
