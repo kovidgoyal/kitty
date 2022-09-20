@@ -5,6 +5,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -44,10 +45,12 @@ type Option struct {
 	Hidden     bool
 	Depth      int
 	HelpText   string
+	IsList     bool
 	Parent     *Command
 
 	values_from_cmdline        []string
 	parsed_values_from_cmdline []interface{}
+	parsed_default             interface{}
 	seen_option                string
 }
 
@@ -75,6 +78,55 @@ func (self *ParseError) Error() string { return self.Message }
 
 func NormalizeOptionName(name string) string {
 	return strings.ReplaceAll(strings.TrimLeft(name, "-"), "_", "-")
+}
+
+func (self *Option) parsed_value() interface{} {
+	if len(self.values_from_cmdline) == 0 {
+		return self.parsed_default
+	}
+	switch self.OptionType {
+	case CountOption:
+		return len(self.parsed_values_from_cmdline)
+	case StringOption:
+		if self.IsList {
+			return self.parsed_values_from_cmdline
+		}
+		fallthrough
+	default:
+		return self.parsed_values_from_cmdline[len(self.parsed_values_from_cmdline)-1]
+	}
+}
+
+func (self *Option) parse_value(val string) (interface{}, error) {
+	switch self.OptionType {
+	case BoolOption:
+		switch val {
+		case "true":
+			return true, nil
+		case "false":
+			return false, nil
+		default:
+			return nil, &ParseError{Option: self, Message: fmt.Sprintf(":yellow:`%s` is not a valid value for :bold:`%s`.", val, self.seen_option)}
+		}
+	case StringOption:
+		return val, nil
+	case IntegerOption, CountOption:
+		pval, err := strconv.ParseInt(val, 0, 0)
+		if err != nil {
+			return nil, &ParseError{Option: self, Message: fmt.Sprintf(
+				":yellow:`%s` is not a valid number for :bold:`%s`. Only integers in decimal, hexadecimal, binary or octal notation are accepted.", val, self.seen_option)}
+		}
+		return pval, nil
+	case FloatOption:
+		pval, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, &ParseError{Option: self, Message: fmt.Sprintf(
+				":yellow:`%s` is not a valid number for :bold:`%s`. Only floats in decimal and hexadecimal notation are accepted.", val, self.seen_option)}
+		}
+		return pval, nil
+	default:
+		return nil, &ParseError{Option: self, Message: fmt.Sprintf("Unknown option type for %s", self.Name)}
+	}
 }
 
 func (self *Option) add_value(val string) error {
@@ -105,19 +157,10 @@ func (self *Option) add_value(val string) error {
 		}
 		self.values_from_cmdline = append(self.values_from_cmdline, val)
 		self.parsed_values_from_cmdline = append(self.parsed_values_from_cmdline, val)
-	case IntegerOption:
-		pval, err := strconv.ParseInt(val, 0, 0)
+	case IntegerOption, FloatOption:
+		pval, err := self.parse_value(val)
 		if err != nil {
-			return &ParseError{Option: self, Message: fmt.Sprintf(
-				":yellow:`%s` is not a valid number for :bold:`%s`. Only integers in decimal, hexadecimal, binary or octal notation are accepted.", val, self.seen_option)}
-		}
-		self.values_from_cmdline = append(self.values_from_cmdline, val)
-		self.parsed_values_from_cmdline = append(self.parsed_values_from_cmdline, pval)
-	case FloatOption:
-		pval, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return &ParseError{Option: self, Message: fmt.Sprintf(
-				":yellow:`%s` is not a valid number for :bold:`%s`. Only floats in decimal and hexadecimal notation are accepted.", val, self.seen_option)}
+			return err
 		}
 		self.values_from_cmdline = append(self.values_from_cmdline, val)
 		self.parsed_values_from_cmdline = append(self.parsed_values_from_cmdline, pval)
@@ -332,4 +375,70 @@ func (self *Command) FindOption(name_with_hyphens string) *Option {
 
 type Context struct {
 	SeenCommands []*Command
+}
+
+func (self *Command) GetOptionValues(pointer_to_options_struct interface{}) error {
+	m := make(map[string]*Option, 128)
+	for _, g := range self.OptionGroups {
+		for _, o := range g.Options {
+			field_name := strings.ReplaceAll(strings.ToUpper(o.Name[:1]+o.Name[1:]), "-", "_")
+			m[field_name] = o
+		}
+	}
+	val := reflect.ValueOf(pointer_to_options_struct).Elem()
+	if val.Kind() != reflect.Struct {
+		return fmt.Errorf("Need a pointer to a struct to set option values on")
+	}
+	for i := 0; i < val.NumField(); i++ {
+		f := val.Field(i)
+		field_name := val.Type().Field(i).Name
+		if strings.ToUpper(field_name[:1]) != field_name[:1] || !f.CanSet() {
+			continue
+		}
+		opt := m[field_name]
+		if opt == nil {
+			return fmt.Errorf("No option with the name: %s", field_name)
+		}
+		switch opt.OptionType {
+		case IntegerOption, CountOption:
+			if f.Kind() != reflect.Int {
+				return fmt.Errorf("The field: %s must be an integer", field_name)
+			}
+			v := int64(opt.parsed_value().(int))
+			if f.OverflowInt(v) {
+				return fmt.Errorf("The value: %d is too large for the integer type used for the option: %s", v, field_name)
+			}
+			f.SetInt(v)
+		case FloatOption:
+			if f.Kind() != reflect.Float64 {
+				return fmt.Errorf("The field: %s must be a float64", field_name)
+			}
+			v := opt.parsed_value().(float64)
+			if f.OverflowFloat(v) {
+				return fmt.Errorf("The value: %f is too large for the integer type used for the option: %s", v, field_name)
+			}
+			f.SetFloat(v)
+		case BoolOption:
+			if f.Kind() != reflect.Bool {
+				return fmt.Errorf("The field: %s must be a boolean", field_name)
+			}
+			v := opt.parsed_value().(bool)
+			f.SetBool(v)
+		case StringOption:
+			if opt.IsList {
+				if f.Kind() != reflect.Slice {
+					return fmt.Errorf("The field: %s must be a slice", field_name)
+				}
+				v := opt.parsed_value().([]string)
+				f.Set(reflect.ValueOf(v))
+			} else {
+				if f.Kind() != reflect.String {
+					return fmt.Errorf("The field: %s must be a string", field_name)
+				}
+				v := opt.parsed_value().(string)
+				f.SetString(v)
+			}
+		}
+	}
+	return nil
 }

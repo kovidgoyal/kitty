@@ -25,13 +25,16 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 			return &ParseError{Message: fmt.Sprintf("Unknown option: :yellow:`%s`", opt_str)}
 		}
 		opt.seen_option = opt_str
+		needs_arg := opt.needs_argument()
 		if has_val {
-			if !opt.needs_argument() {
+			if !needs_arg {
 				return &ParseError{Message: fmt.Sprintf("The option: :yellow:`%s` does not take values", opt_str)}
 			}
 			return opt.add_value(opt_val)
-		} else if opt.needs_argument() {
+		} else if needs_arg {
 			expecting_arg_for = opt
+		} else {
+			opt.add_value("")
 		}
 		return nil
 	}

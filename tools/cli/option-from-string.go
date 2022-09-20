@@ -12,8 +12,6 @@ import (
 
 var _ = fmt.Print
 
-// OptionFromString {{{
-
 /*
 Create an [Option] from a string. Syntax is::
 
@@ -36,7 +34,10 @@ func OptionFromString(entries ...string) (*Option, error) {
 	if mpat == nil {
 		mpat = regexp.MustCompile("^([a-z]+)=(.+)")
 	}
-	ans := Option{}
+	ans := Option{
+		values_from_cmdline:        make([]string, 0, 1),
+		parsed_values_from_cmdline: make([]interface{}, 0, 1),
+	}
 	scanner := bufio.NewScanner(strings.NewReader(strings.Join(entries, "\n")))
 	in_help := false
 	prev_indent := 0
@@ -45,6 +46,12 @@ func OptionFromString(entries ...string) (*Option, error) {
 
 	indent_of_line := func(x string) int {
 		return len(x) - len(strings.TrimLeft(x, " \n\t\v\f"))
+	}
+
+	set_default := func(x string) {
+		if ans.Default == "" {
+			ans.Default = x
+		}
 	}
 
 	for scanner.Scan() {
@@ -117,18 +124,26 @@ func OptionFromString(entries ...string) (*Option, error) {
 					ans.OptionType = StringOption
 				case "int":
 					ans.OptionType = IntegerOption
+					set_default("0")
 				case "float":
 					ans.OptionType = FloatOption
+					set_default("0")
 				case "count":
 					ans.OptionType = CountOption
+					set_default("0")
 				case "bool-set":
 					ans.OptionType = BoolOption
+					set_default("false")
 				case "bool-reset":
 					ans.OptionType = BoolOption
+					set_default("true")
 					for _, a := range ans.Aliases {
 						a.IsUnset = true
 					}
-				case "list", "str", "string":
+				case "list":
+					ans.IsList = true
+					fallthrough
+				case "str", "string":
 					ans.OptionType = StringOption
 				default:
 					return nil, fmt.Errorf("Unknown option type: %s", v)
@@ -138,5 +153,13 @@ func OptionFromString(entries ...string) (*Option, error) {
 	}
 	ans.HelpText = help.String()
 	ans.Hidden = ans.HelpText == "!"
+	pval, err := ans.parse_value(ans.Default)
+	if err != nil {
+		return nil, err
+	}
+	ans.parsed_default = pval
+	if ans.IsList {
+		ans.parsed_default = []string{}
+	}
 	return &ans, nil
-} // }}}
+}
