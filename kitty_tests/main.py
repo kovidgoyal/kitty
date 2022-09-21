@@ -7,15 +7,14 @@ import re
 import shlex
 import shutil
 import subprocess
-import sys
 import unittest
 from contextlib import contextmanager
 from functools import lru_cache
 from importlib.resources import contents
 from tempfile import TemporaryDirectory
 from typing import (
-    Any, Callable, Dict, Generator, Iterator, List, NoReturn, Optional,
-    Sequence, Set, Tuple
+    Any, Callable, Dict, Generator, Iterator, List, NoReturn, Optional, Sequence, Set,
+    Tuple,
 )
 
 
@@ -115,22 +114,6 @@ def go_exe() -> str:
     return shutil.which('go') or ''
 
 
-def create_go_filter(packages: List[str], *names: str) -> str:
-    go = go_exe()
-    if not go:
-        return ''
-    all_tests = set()
-    try:
-        lines = subprocess.check_output(f'{go} test -list .'.split() + packages).decode().splitlines()
-    except subprocess.CalledProcessError as e:
-        raise SystemExit(e.returncode)
-    for line in lines:
-        if line.startswith('Test'):
-            all_tests.add(line[4:])
-    tests = set(names) & all_tests
-    return '|'.join(tests)
-
-
 def run_go(packages: Set[str], names: str) -> 'subprocess.Popen[bytes]':
     go = go_exe()
     go_pkg_args = [f'kitty/{x}' for x in packages]
@@ -144,8 +127,7 @@ def run_go(packages: Set[str], names: str) -> 'subprocess.Popen[bytes]':
 
 def reduce_go_pkgs(module: str, names: Sequence[str]) -> Set[str]:
     if not go_exe():
-        print('Skipping Go tests as go exe not found', file=sys.stderr)
-        return set()
+        raise SystemExit('go executable not found, current path: ' + repr(os.environ.get('PATH', '')))
     go_packages, go_functions = find_testable_go_packages()
     if module:
         go_packages &= {module}
@@ -188,7 +170,7 @@ def run_python_tests(args: Any, go_proc: 'Optional[subprocess.Popen[bytes]]' = N
     raise SystemExit(exit_code)
 
 
-def run_tests() -> None:
+def run_tests(report_env: bool = False) -> None:
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -213,7 +195,7 @@ def run_tests() -> None:
         go_proc: 'Optional[subprocess.Popen[bytes]]' = run_go(go_pkgs, args.name)
     else:
         go_proc = None
-    with env_for_python_tests():
+    with env_for_python_tests(report_env):
         run_python_tests(args, go_proc)
 
 
@@ -232,27 +214,18 @@ def env_vars(**kw: str) -> Iterator[None]:
 
 
 @contextmanager
-def env_for_python_tests() -> Iterator[None]:
+def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
     gohome = os.path.expanduser('~/go')
-    go = shutil.which('go')
     python = shutil.which('python') or shutil.which('python3')
     current_home = os.path.expanduser('~') + os.sep
     paths = os.environ.get('PATH', '/usr/local/sbin:/usr/local/bin:/usr/bin').split(os.pathsep)
     path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
     launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
-    env = dict(
-        PYTHONWARNINGS='error',
-    )
-    if go:
-        if go.startswith(current_home):
-            path = f'{os.path.dirname(go)}{os.pathsep}{path}'
     path = f'{launcher_dir}{os.pathsep}{path}'
-    if os.environ.get('CI') == 'true':
-        print('Using PATH in test environment:', path, flush=True)
+    if os.environ.get('CI') == 'true' or report_env:
+        print('Using PATH in test environment:', path)
         python = shutil.which('python', path=path) or shutil.which('python3', path=path)
         print('Python:', python)
-        go = shutil.which('go', path=path)
-        print('Go:', go)
 
     with TemporaryDirectory() as tdir, env_vars(
         HOME=tdir,
@@ -262,7 +235,7 @@ def env_for_python_tests() -> Iterator[None]:
         XDG_CONFIG_DIRS=os.path.join(tdir, '.config'),
         XDG_DATA_DIRS=os.path.join(tdir, '.local', 'xdg'),
         XDG_CACHE_HOME=os.path.join(tdir, '.cache'),
-        **env,
+        PYTHONWARNINGS='error',
     ):
         if os.path.isdir(gohome):
             os.symlink(gohome, os.path.join(tdir, os.path.basename(gohome)))
