@@ -53,7 +53,12 @@ func (self *UnboundedCache[K, V]) MustGetOrCreate(key K, create func(key K) V) V
 
 var pat_cache = NewUnboundedCache[string, *regexp.Regexp]()
 
-func ReplaceAll(pat, str string, repl func(full_match string, groupdict map[string]string) string) string {
+type SubMatch struct {
+	Text       string
+	Start, End int
+}
+
+func ReplaceAll(pat, str string, repl func(full_match string, groupdict map[string]SubMatch) string) string {
 	cpat := pat_cache.MustGetOrCreate(pat, regexp.MustCompile)
 	result := strings.Builder{}
 	result.Grow(len(str) + 256)
@@ -63,14 +68,14 @@ func ReplaceAll(pat, str string, repl func(full_match string, groupdict map[stri
 	for _, v := range matches {
 		match_start, match_end := v[0], v[1]
 		full_match := str[match_start:match_end]
-		groupdict := make(map[string]string, len(names))
+		groupdict := make(map[string]SubMatch, len(names))
 		for i, name := range names {
 			if i == 0 {
 				continue
 			}
 			idx := 2 * i
 			if v[idx] > -1 && v[idx+1] > -1 {
-				groupdict[name] = str[v[idx]:v[idx+1]]
+				groupdict[name] = SubMatch{Text: str[v[idx]:v[idx+1]], Start: v[idx] - match_start, End: v[idx+1] - match_start}
 			}
 		}
 		result.WriteString(str[last_index:match_start])

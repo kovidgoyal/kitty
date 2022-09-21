@@ -51,9 +51,9 @@ func New(allow_escape_codes bool) *Context {
 
 func replace_all_rst_roles(str string, repl func(rst_format_match) string) string {
 	var m rst_format_match
-	rf := func(full_match string, groupdict map[string]string) string {
-		m.payload = groupdict["payload"]
-		m.role = groupdict["role"]
+	rf := func(full_match string, groupdict map[string]utils.SubMatch) string {
+		m.payload = groupdict["payload"].Text
+		m.role = groupdict["role"].Text
 		return repl(m)
 	}
 	return utils.ReplaceAll(":(?P<role>[a-z]+):(?:(?:`(?P<payload>[^`]+)`)|(?:'(?P<payload>[^']+)'))", str, rf)
