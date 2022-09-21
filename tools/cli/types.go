@@ -69,8 +69,6 @@ func (self *Option) HasAlias(name_without_hyphens string, is_short bool) bool {
 	return false
 }
 
-var mpat *regexp.Regexp
-
 type ParseError struct {
 	Option  *Option
 	Message string
