@@ -50,38 +50,41 @@ func New(allow_escape_codes bool) *Context {
 	return &ans
 }
 
-func ReplaceAllStringSubmatchFunc(re *regexp.Regexp, str string, repl func([]string) string) string {
-	result := ""
-	lastIndex := 0
+func replace_all_rst_roles(str string, repl func(rst_format_match) string) string {
+	result := strings.Builder{}
+	result.Grow(len(str) + 256)
+	last_index := 0
 
-	for _, v := range re.FindAllSubmatchIndex([]byte(str), -1) {
-		groups := []string{}
-		for i := 0; i < len(v); i += 2 {
-			if v[i] == -1 || v[i+1] == -1 {
-				groups = append(groups, "")
-			} else {
-				groups = append(groups, str[v[i]:v[i+1]])
-			}
+	matches := prettify_pat().FindAllStringSubmatchIndex(str, -1)
+	for _, v := range matches {
+		match_start, match_end := v[0], v[1]
+		m := rst_format_match{}
+		if v[2] > -1 && v[3] > -1 {
+			m.role = str[v[2]:v[3]]
+		}
+		if v[4] > -1 && v[5] > -1 {
+			m.payload = str[v[4]:v[5]]
+		} else if v[6] > -1 && v[7] > -1 {
+			m.payload = str[v[6]:v[7]]
 		}
 
-		result += str[lastIndex:v[0]] + repl(groups)
-		lastIndex = v[1]
+		result.WriteString(str[last_index:match_start])
+		result.WriteString(repl(m))
+		last_index = match_end
 	}
 
-	return result + str[lastIndex:]
+	result.WriteString(str[last_index:])
+	return result.String()
 }
 
-func website_url(doc string) string {
-	if doc != "" {
-		doc = strings.TrimSuffix(doc, "/")
-		if doc != "" {
-			doc += "/"
-		}
+var _prettify_pat *regexp.Regexp
+
+func prettify_pat() *regexp.Regexp {
+	if _prettify_pat == nil {
+		_prettify_pat = regexp.MustCompile(":([a-z]+):(?:(?:`([^`]+)`)|(?:'([^']+)'))")
 	}
-	return kitty.WebsiteBaseURL + doc
+	return _prettify_pat
 }
-
-var prettify_pat = regexp.MustCompile(":([a-z]+):`([^`]+)`")
 
 func (self *Context) hyperlink_for_url(url string, text string) string {
 	return self.Url(url, text)
@@ -108,19 +111,23 @@ func text_and_target(x string) (text string, target string) {
 	return
 }
 
+type rst_format_match struct {
+	role, payload string
+}
+
 func (self *Context) ref_hyperlink(x string, prefix string) string {
 	text, target := text_and_target(x)
 	url := "kitty+doc://" + utils.CachedHostname() + "/#ref=" + prefix + target
-	text = ReplaceAllStringSubmatchFunc(prettify_pat, text, func(groups []string) string {
-		return groups[2]
+	text = replace_all_rst_roles(text, func(group rst_format_match) string {
+		return group.payload
 	})
 	return self.hyperlink_for_url(url, text)
 }
 
 func (self *Context) Prettify(text string) string {
-	return ReplaceAllStringSubmatchFunc(prettify_pat, text, func(groups []string) string {
-		val := groups[2]
-		switch groups[1] {
+	return replace_all_rst_roles(text, func(group rst_format_match) string {
+		val := group.payload
+		switch group.role {
 		case "file":
 			if val == "kitty.conf" && self.fmt_ctx.AllowEscapeCodes {
 				path := filepath.Join(utils.ConfigDir(), val)
