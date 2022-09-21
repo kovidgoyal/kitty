@@ -3,6 +3,7 @@
 package utils
 
 import (
+	"bufio"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -17,4 +18,47 @@ func Capitalize(x string) string {
 	s, sz := utf8.DecodeRuneInString(x)
 	cr := strings.ToUpper(string(s))
 	return cr + x[sz:]
+}
+
+type ScanLines struct {
+	entries []string
+
+	scanner *bufio.Scanner
+}
+
+func NewScanLines(entries ...string) *ScanLines {
+	return &ScanLines{entries: entries}
+}
+
+func (self *ScanLines) Scan() bool {
+	if self.scanner == nil {
+		if len(self.entries) == 0 {
+			return false
+		}
+		self.scanner = bufio.NewScanner(strings.NewReader(self.entries[0]))
+		self.entries = self.entries[1:]
+		return self.Scan()
+	} else {
+		if self.scanner.Scan() {
+			return true
+		}
+		self.scanner = nil
+		return self.Scan()
+	}
+}
+
+func (self *ScanLines) Text() string {
+	if self.scanner == nil {
+		return ""
+	}
+	return self.scanner.Text()
+}
+
+func Splitlines(x string) []string {
+	ans := make([]string, 0, 8)
+	scanner := bufio.NewScanner(strings.NewReader(x))
+	for scanner.Scan() {
+		ans = append(ans, scanner.Text())
+	}
+	return ans
 }

@@ -3,12 +3,13 @@
 package cli
 
 import (
-	"bufio"
 	"fmt"
-	"kitty/tools/utils"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -41,6 +42,51 @@ the specified depth.
 Set the help text to "!" to have an option hidden.
 */
 func OptionFromString(entries ...string) (*Option, error) {
+	return option_from_string(map[string]string{}, entries...)
+}
+
+func OptionsFromStruct(pointer_to_options_struct interface{}) ([]*Option, error) {
+	val := reflect.ValueOf(pointer_to_options_struct).Elem()
+	if val.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("Need a pointer to a struct to set option values on")
+	}
+	ans := make([]*Option, 0, val.NumField())
+	for i := 0; i < val.NumField(); i++ {
+		f := val.Field(i)
+		field_name := val.Type().Field(i).Name
+		tag := val.Type().Field(i).Tag
+		if utils.Capitalize(field_name) != field_name || !f.CanSet() {
+			continue
+		}
+		typ := "str"
+		switch f.Kind() {
+		case reflect.Slice:
+			typ = "list"
+		case reflect.Int:
+			typ = "int"
+		case reflect.Float64:
+			typ = "float"
+		case reflect.Bool:
+			typ = "bool-set"
+		}
+		overrides := map[string]string{"dest": field_name, "type": typ}
+		opt, err := option_from_string(overrides, string(tag))
+		if err != nil {
+			return nil, err
+		}
+		ans = append(ans, opt)
+	}
+
+	return ans, nil
+}
+
+type multi_scan struct {
+	entries []string
+}
+
+var mpat *regexp.Regexp
+
+func option_from_string(overrides map[string]string, entries ...string) (*Option, error) {
 	if mpat == nil {
 		mpat = regexp.MustCompile("^([a-z]+)=(.+)")
 	}
@@ -48,7 +94,7 @@ func OptionFromString(entries ...string) (*Option, error) {
 		values_from_cmdline:        make([]string, 0, 1),
 		parsed_values_from_cmdline: make([]interface{}, 0, 1),
 	}
-	scanner := bufio.NewScanner(strings.NewReader(strings.Join(entries, "\n")))
+	scanner := utils.NewScanLines(entries...)
 	in_help := false
 	prev_indent := 0
 	help := strings.Builder{}
@@ -66,12 +112,55 @@ func OptionFromString(entries ...string) (*Option, error) {
 		}
 	}
 
+	set_type := func(v string) error {
+		switch v {
+		case "choice", "choices":
+			ans.OptionType = StringOption
+		case "int":
+			ans.OptionType = IntegerOption
+			set_default("0")
+		case "float":
+			ans.OptionType = FloatOption
+			set_default("0")
+		case "count":
+			ans.OptionType = CountOption
+			set_default("0")
+		case "bool-set":
+			ans.OptionType = BoolOption
+			set_default("false")
+		case "bool-reset":
+			ans.OptionType = BoolOption
+			set_default("true")
+			for _, a := range ans.Aliases {
+				a.IsUnset = true
+			}
+		case "list":
+			ans.IsList = true
+			fallthrough
+		case "str", "string":
+			ans.OptionType = StringOption
+		default:
+			return fmt.Errorf("Unknown option type: %s", v)
+		}
+		return nil
+	}
+
+	if dq, found := overrides["type"]; found {
+		err := set_type(dq)
+		if err != nil {
+			return nil, err
+		}
+	}
 	for scanner.Scan() {
 		line := scanner.Text()
 		if ans.Aliases == nil {
 			if strings.HasPrefix(line, "--") {
 				parts := strings.Split(line, " ")
-				ans.Name = camel_case_dest(parts[0])
+				if dq, found := overrides["dest"]; found {
+					ans.Name = camel_case_dest(dq)
+				} else {
+					ans.Name = camel_case_dest(parts[0])
+				}
 				ans.Aliases = make([]Alias, 0, len(parts))
 				for i, x := range parts {
 					ans.Aliases[i] = Alias{NameWithoutHyphens: strings.TrimLeft(x, "-"), IsShort: !strings.HasPrefix(x, "--")}
@@ -120,7 +209,11 @@ func OptionFromString(entries ...string) (*Option, error) {
 			case "default":
 				ans.Default = v
 			case "dest":
-				ans.Name = camel_case_dest(v)
+				if dq, found := overrides["dest"]; found {
+					ans.Name = camel_case_dest(dq)
+				} else {
+					ans.Name = camel_case_dest(v)
+				}
 			case "depth":
 				depth, err := strconv.ParseInt(v, 0, 0)
 				if err != nil {
@@ -131,34 +224,9 @@ func OptionFromString(entries ...string) (*Option, error) {
 			default:
 				return nil, fmt.Errorf("Unknown option metadata key: %s", k)
 			case "type":
-				switch v {
-				case "choice", "choices":
-					ans.OptionType = StringOption
-				case "int":
-					ans.OptionType = IntegerOption
-					set_default("0")
-				case "float":
-					ans.OptionType = FloatOption
-					set_default("0")
-				case "count":
-					ans.OptionType = CountOption
-					set_default("0")
-				case "bool-set":
-					ans.OptionType = BoolOption
-					set_default("false")
-				case "bool-reset":
-					ans.OptionType = BoolOption
-					set_default("true")
-					for _, a := range ans.Aliases {
-						a.IsUnset = true
-					}
-				case "list":
-					ans.IsList = true
-					fallthrough
-				case "str", "string":
-					ans.OptionType = StringOption
-				default:
-					return nil, fmt.Errorf("Unknown option type: %s", v)
+				err := set_type(v)
+				if err != nil {
+					return nil, err
 				}
 			}
 		}
@@ -172,6 +240,12 @@ func OptionFromString(entries ...string) (*Option, error) {
 	ans.parsed_default = pval
 	if ans.IsList {
 		ans.parsed_default = []string{}
+	}
+	if ans.Aliases == nil || len(ans.Aliases) == 0 {
+		return nil, fmt.Errorf("No --aliases specified for option")
+	}
+	if ans.Name == "" {
+		return nil, fmt.Errorf("No dest specified for option")
 	}
 	return &ans, nil
 }
