@@ -241,7 +241,7 @@ func (self *OptionGroup) FindOption(name_with_hyphens string) *Option {
 // }}}
 
 type Command struct {
-	Name                  string
+	Name, ExeName         string
 	Usage, HelpText       string
 	Hidden                bool
 	AllowOptionsAfterArgs int
@@ -357,7 +357,19 @@ func (self *Command) Root(args []string) *Command {
 	return p
 }
 
-func (self *Command) CommandStringForUsage(args []string) (*Command, error) {
+func (self *Command) CommandStringForUsage(args []string) string {
+	names := make([]string, 0, 8)
+	p := self
+	for p != nil {
+		if p.Name != "" {
+			names = append(names, p.Name)
+		} else if p.ExeName != "" {
+			names = append(names, p.Name)
+		}
+		p = p.Parent
+	}
+	utils.Reverse(names)
+	return strings.Join(names, " ")
 }
 
 func (self *Command) ParseArgs(args []string) (*Command, error) {
@@ -375,9 +387,7 @@ func (self *Command) ParseArgs(args []string) (*Command, error) {
 		return nil, &ParseError{Message: "At least one arg must be supplied"}
 	}
 	ctx := Context{SeenCommands: make([]*Command, 0, 4)}
-	if self.Name == "" {
-		self.Name = args[0]
-	}
+	self.ExeName = args[0]
 	err = self.parse_args(&ctx, args[1:])
 	if err != nil {
 		return nil, err
