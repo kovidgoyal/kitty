@@ -13,7 +13,7 @@ var _ = fmt.Print
 
 func bash_output_serializer(completions []*Completions, shell_state map[string]string) ([]byte, error) {
 	output := strings.Builder{}
-	f := func(format string, args ...interface{}) { fmt.Fprintf(&output, format+"\n", args...) }
+	f := func(format string, args ...any) { fmt.Fprintf(&output, format+"\n", args...) }
 	n := completions[0].Delegate.NumToRemove
 	if n > 0 {
 		f("compopt +o nospace")

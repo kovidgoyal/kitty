@@ -3,16 +3,16 @@
 package utils
 
 type RemoteControlCmd struct {
-	Cmd         string      `json:"cmd"`
-	Version     [3]int      `json:"version"`
-	NoResponse  bool        `json:"no_response,omitempty"`
-	Timestamp   int64       `json:"timestamp,omitempty"`
-	Password    string      `json:"password,omitempty"`
-	Async       string      `json:"async,omitempty"`
-	CancelAsync bool        `json:"cancel_async,omitempty"`
-	Stream      bool        `json:"stream,omitempty"`
-	StreamId    string      `json:"stream_id,omitempty"`
-	Payload     interface{} `json:"payload,omitempty"`
+	Cmd         string `json:"cmd"`
+	Version     [3]int `json:"version"`
+	NoResponse  bool   `json:"no_response,omitempty"`
+	Timestamp   int64  `json:"timestamp,omitempty"`
+	Password    string `json:"password,omitempty"`
+	Async       string `json:"async,omitempty"`
+	CancelAsync bool   `json:"cancel_async,omitempty"`
+	Stream      bool   `json:"stream,omitempty"`
+	StreamId    string `json:"stream_id,omitempty"`
+	Payload     any    `json:"payload,omitempty"`
 }
 
 type EncryptedRemoteControlCmd struct {

@@ -139,7 +139,7 @@ func (self *Loop) KillIfSignalled() {
 	}
 }
 
-func (self *Loop) DebugPrintln(args ...interface{}) {
+func (self *Loop) DebugPrintln(args ...any) {
 	if self.controlling_term != nil {
 		const limit = 2048
 		msg := fmt.Sprintln(args...)

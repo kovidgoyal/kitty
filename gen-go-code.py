@@ -152,7 +152,7 @@ def generate_completions_for_kitty() -> None:
 # rc command wrappers {{{
 json_field_types: Dict[str, str] = {
     'bool': 'bool', 'str': 'string', 'list.str': '[]string', 'dict.str': 'map[string]string', 'float': 'float64', 'int': 'int',
-    'scroll_amount': 'interface{}', 'spacing': 'interface{}', 'colors': 'interface{}',
+    'scroll_amount': 'any', 'spacing': 'any', 'colors': 'any',
 }
 
 

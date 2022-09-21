@@ -83,7 +83,7 @@ func simple_serializer(rc *utils.RemoteControlCmd) (ans []byte, err error) {
 
 type serializer_func func(rc *utils.RemoteControlCmd) ([]byte, error)
 
-func debug_to_log(args ...interface{}) {
+func debug_to_log(args ...any) {
 	f, err := os.OpenFile("/tmp/kdlog", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err == nil {
 		fmt.Fprintln(f, args...)

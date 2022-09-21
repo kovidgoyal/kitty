@@ -11,11 +11,11 @@ type Context struct {
 	AllowEscapeCodes bool
 }
 
-func (self *Context) SprintFunc(spec string) func(args ...interface{}) string {
+func (self *Context) SprintFunc(spec string) func(args ...any) string {
 	p := prefix_for_spec(spec)
 	s := suffix_for_spec(spec)
 
-	return func(args ...interface{}) string {
+	return func(args ...any) string {
 		body := fmt.Sprint(args...)
 		if !self.AllowEscapeCodes {
 			return body

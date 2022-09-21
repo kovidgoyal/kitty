@@ -26,7 +26,7 @@ var nullable_colors = map[string]bool{
 	// NULLABLE_COLORS_END
 }
 
-func set_color_in_color_map(key, val string, ans map[string]interface{}, check_nullable, skip_nullable bool) error {
+func set_color_in_color_map(key, val string, ans map[string]any, check_nullable, skip_nullable bool) error {
 	if val == "none" {
 		if check_nullable && !nullable_colors[key] {
 			if skip_nullable {
@@ -45,8 +45,8 @@ func set_color_in_color_map(key, val string, ans map[string]interface{}, check_n
 	return nil
 }
 
-func parse_colors_and_files(args []string) (map[string]interface{}, error) {
-	ans := make(map[string]interface{}, len(args))
+func parse_colors_and_files(args []string) (map[string]any, error) {
+	ans := make(map[string]any, len(args))
 	for _, arg := range args {
 		key, val, found := utils.Cut(strings.ToLower(arg), "=")
 		if found {

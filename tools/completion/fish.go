@@ -14,7 +14,7 @@ var _ = fmt.Print
 
 func fish_output_serializer(completions []*Completions, shell_state map[string]string) ([]byte, error) {
 	output := strings.Builder{}
-	f := func(format string, args ...interface{}) { fmt.Fprintf(&output, format+"\n", args...) }
+	f := func(format string, args ...any) { fmt.Fprintf(&output, format+"\n", args...) }
 	n := completions[0].Delegate.NumToRemove
 	fm := markup.New(false) // fish freaks out if there are escape codes in the description strings
 	if n > 0 {
