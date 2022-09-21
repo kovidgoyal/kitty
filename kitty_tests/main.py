@@ -59,6 +59,7 @@ def filter_tests_by_name(suite: unittest.TestSuite, *names: str) -> unittest.Tes
 
     def q(test: unittest.TestCase) -> bool:
         return test._testMethodName in names_
+
     return filter_tests(suite, q)
 
 
@@ -68,13 +69,16 @@ def filter_tests_by_module(suite: unittest.TestSuite, *names: str) -> unittest.T
     def q(test: unittest.TestCase) -> bool:
         m = test.__class__.__module__.rpartition('.')[-1]
         return m in names_
+
     return filter_tests(suite, q)
 
 
 def type_check() -> NoReturn:
     from kitty.cli_stub import generate_stub  # type:ignore
+
     generate_stub()
     from kittens.tui.operations_stub import generate_stub  # type: ignore
+
     generate_stub()
     py = os.environ.get('PYTHON_FOR_TYPE_CHECK') or shutil.which('python') or shutil.which('python3')
     os.execlp(py, py, '-m', 'mypy', '--pretty')
@@ -179,19 +183,28 @@ def run_python_tests(args: Any, go_proc: 'Optional[subprocess.Popen[bytes]]' = N
         print_go()
         if exit_code == 0:
             exit_code = go_proc.returncode
+    if exit_code != 0:
+        print("\x1b[31mError\x1b[39m: Some tests failed!")
     raise SystemExit(exit_code)
 
 
 def run_tests() -> None:
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'name', nargs='*', default=[],
+        'name',
+        nargs='*',
+        default=[],
         help='The name of the test to run, for e.g. linebuf corresponds to test_linebuf. Can be specified multiple times.'
-        ' For go tests Something corresponds to TestSometing.')
+        ' For go tests Something corresponds to TestSometing.',
+    )
     parser.add_argument('--verbosity', default=4, type=int, help='Test verbosity')
-    parser.add_argument('--module', default='', help='Name of a test module to restrict to. For example: ssh.'
-                        ' For Go tests this is the name of a package, for example: tools/cli')
+    parser.add_argument(
+        '--module',
+        default='',
+        help='Name of a test module to restrict to. For example: ssh.' ' For Go tests this is the name of a package, for example: tools/cli',
+    )
     args = parser.parse_args()
     if args.name and args.name[0] in ('type-check', 'type_check', 'mypy'):
         type_check()
@@ -242,12 +255,14 @@ def env_for_python_tests() -> Iterator[None]:
         print('Go:', go)
 
     with TemporaryDirectory() as tdir, env_vars(
-        HOME=tdir, USERPROFILE=tdir, PATH=path,
+        HOME=tdir,
+        USERPROFILE=tdir,
+        PATH=path,
         XDG_CONFIG_HOME=os.path.join(tdir, '.config'),
         XDG_CONFIG_DIRS=os.path.join(tdir, '.config'),
         XDG_DATA_DIRS=os.path.join(tdir, '.local', 'xdg'),
         XDG_CACHE_HOME=os.path.join(tdir, '.cache'),
-        **env
+        **env,
     ):
         if os.path.isdir(gohome):
             os.symlink(gohome, os.path.join(tdir, os.path.basename(gohome)))
@@ -256,5 +271,6 @@ def env_for_python_tests() -> Iterator[None]:
 
 def main() -> None:
     import warnings
+
     warnings.simplefilter('error')
     run_tests()
