@@ -6,52 +6,11 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
 )
 
 var _ = fmt.Print
 
-type UnboundedCache[K comparable, V any] struct {
-	data map[K]V
-	lock sync.RWMutex
-}
-
-func NewUnboundedCache[K comparable, V any]() *UnboundedCache[K, V] {
-	ans := UnboundedCache[K, V]{data: map[K]V{}}
-	return &ans
-}
-
-func (self *UnboundedCache[K, V]) GetOrCreate(key K, create func(key K) (V, error)) (V, error) {
-	self.lock.RLock()
-	ans, found := self.data[key]
-	self.lock.RUnlock()
-	if found {
-		return ans, nil
-	}
-	ans, err := create(key)
-	if err == nil {
-		self.lock.Lock()
-		self.data[key] = ans
-		self.lock.Unlock()
-	}
-	return ans, err
-}
-
-func (self *UnboundedCache[K, V]) MustGetOrCreate(key K, create func(key K) V) V {
-	self.lock.RLock()
-	ans, found := self.data[key]
-	self.lock.RUnlock()
-	if found {
-		return ans
-	}
-	ans = create(key)
-	self.lock.Lock()
-	self.data[key] = ans
-	self.lock.Unlock()
-	return ans
-}
-
-var pat_cache = NewUnboundedCache[string, *regexp.Regexp]()
+var pat_cache = NewLRUCache[string, *regexp.Regexp](128)
 
 type SubMatch struct {
 	Text       string
