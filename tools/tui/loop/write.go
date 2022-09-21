@@ -209,7 +209,7 @@ func flush_writer(pipe_w *os.File, tty_write_channel chan<- *write_msg, write_do
 	}()
 	deadline := time.Now().Add(timeout)
 	for len(pending_writes) > 0 && !writer_quit {
-		timeout = deadline.Sub(time.Now())
+		timeout = time.Until(deadline)
 		if timeout <= 0 {
 			return
 		}
@@ -219,7 +219,6 @@ func flush_writer(pipe_w *os.File, tty_write_channel chan<- *write_msg, write_do
 		case _, more := <-write_done_channel:
 			if !more {
 				writer_quit = true
-				break
 			}
 		case tty_write_channel <- pending_writes[0]:
 			pending_writes = pending_writes[1:]
@@ -227,7 +226,7 @@ func flush_writer(pipe_w *os.File, tty_write_channel chan<- *write_msg, write_do
 	}
 	close(tty_write_channel)
 	tty_write_channel = nil
-	timeout = deadline.Sub(time.Now())
+	timeout = time.Until(deadline)
 	if timeout <= 0 {
 		return
 	}
@@ -241,5 +240,4 @@ func flush_writer(pipe_w *os.File, tty_write_channel chan<- *write_msg, write_do
 			return
 		}
 	}
-	return
 }
