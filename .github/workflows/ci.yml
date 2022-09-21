@@ -108,6 +108,9 @@ jobs:
           - name: Run mypy
             run: which python && python -m mypy --version && ./test.py mypy
 
+          - name: Run go vet
+            run: go version && go vet ./...
+
           - name: Build man page
             run: make FAIL_WARN=1 man
 
