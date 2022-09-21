@@ -11,19 +11,50 @@ import (
 
 var _ = fmt.Print
 
-var pat_cache = map[string]*regexp.Regexp{}
-var pat_cache_lock = sync.RWMutex{}
+type UnboundedCache[K comparable, V any] struct {
+	data map[K]V
+	lock sync.RWMutex
+}
+
+func NewUnboundedCache[K comparable, V any]() *UnboundedCache[K, V] {
+	ans := UnboundedCache[K, V]{data: map[K]V{}}
+	return &ans
+}
+
+func (self *UnboundedCache[K, V]) GetOrCreate(key K, create func(key K) (V, error)) (V, error) {
+	self.lock.RLock()
+	ans, found := self.data[key]
+	self.lock.RUnlock()
+	if found {
+		return ans, nil
+	}
+	ans, err := create(key)
+	if err == nil {
+		self.lock.Lock()
+		self.data[key] = ans
+		self.lock.Unlock()
+	}
+	return ans, err
+}
+
+func (self *UnboundedCache[K, V]) MustGetOrCreate(key K, create func(key K) V) V {
+	self.lock.RLock()
+	ans, found := self.data[key]
+	self.lock.RUnlock()
+	if found {
+		return ans
+	}
+	ans = create(key)
+	self.lock.Lock()
+	self.data[key] = ans
+	self.lock.Unlock()
+	return ans
+}
+
+var pat_cache = NewUnboundedCache[string, *regexp.Regexp]()
 
 func ReplaceAll(pat, str string, repl func(full_match string, groupdict map[string]string) string) string {
-	pat_cache_lock.RLock()
-	cpat := pat_cache[pat]
-	pat_cache_lock.RUnlock()
-	if cpat == nil {
-		cpat = regexp.MustCompile(pat)
-		pat_cache_lock.Lock()
-		pat_cache[pat] = cpat
-		pat_cache_lock.Unlock()
-	}
+	cpat := pat_cache.MustGetOrCreate(pat, regexp.MustCompile)
 	result := strings.Builder{}
 	result.Grow(len(str) + 256)
 	last_index := 0
