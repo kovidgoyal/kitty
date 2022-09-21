@@ -74,6 +74,9 @@ func OptionsFromStruct(pointer_to_options_struct interface{}) ([]*Option, error)
 		if err != nil {
 			return nil, err
 		}
+		if opt.OptionType == CountOption && f.Kind() != reflect.Int {
+			return nil, fmt.Errorf("The field %s is of count type but in the options struct it does not have type int", field_name)
+		}
 		ans = append(ans, opt)
 	}
 
