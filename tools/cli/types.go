@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -425,8 +424,8 @@ func (self *Command) GetOptionValues(pointer_to_options_struct interface{}) erro
 			f.SetBool(v)
 		case StringOption:
 			if opt.IsList {
-				if f.Kind() != reflect.Slice {
-					return fmt.Errorf("The field: %s must be a slice", field_name)
+				if !is_string_slice(f) {
+					return fmt.Errorf("The field: %s must be a []string", field_name)
 				}
 				v := opt.parsed_value().([]string)
 				f.Set(reflect.ValueOf(v))
