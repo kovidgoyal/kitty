@@ -304,12 +304,81 @@ func (self *Command) AddSubCommand(group string, name string) (*Command, error) 
 	return self.AddSubCommandGroup(group).AddSubCommand(self, name)
 }
 
+func (self *Command) Validate() error {
+	seen_sc := make(map[string]bool)
+	for _, g := range self.SubCommandGroups {
+		for _, sc := range g.SubCommands {
+			if seen_sc[sc.Name] {
+				return &ParseError{Message: fmt.Sprintf("The sub-command :yellow:`%s` occurs twice inside %s", sc.Name, self.Name)}
+			}
+			seen_sc[sc.Name] = true
+			err := sc.Validate()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	seen_flags := make(map[string]bool)
+	seen_dests := make(map[string]bool)
+	for _, g := range self.OptionGroups {
+		for _, o := range g.Options {
+			if seen_dests[o.Name] {
+				return &ParseError{Message: fmt.Sprintf("The option :yellow:`%s` occurs twice inside %s", o.Name, self.Name)}
+			}
+			for _, a := range o.Aliases {
+				q := a.String()
+				if seen_flags[q] {
+					return &ParseError{Message: fmt.Sprintf("The option :yellow:`%s` occurs twice inside %s", q, self.Name)}
+				}
+				seen_flags[q] = true
+			}
+		}
+	}
+	if !seen_dests["Help"] {
+		if seen_flags["-h"] || seen_flags["--help"] {
+			return &ParseError{Message: fmt.Sprintf("The --help or -h flags are assigned to an option other than Help in %s", self.Name)}
+		}
+		self.AddOption(fmt.Sprintf(`
+--help -h
+type: bool-set
+Show help for this command
+`))
+
+	}
+
+	return nil
+}
+
+func (self *Command) Root(args []string) *Command {
+	p := self
+	for p.Parent != nil {
+		p = p.Parent
+	}
+	return p
+}
+
+func (self *Command) CommandStringForUsage(args []string) (*Command, error) {
+}
+
 func (self *Command) ParseArgs(args []string) (*Command, error) {
+	if self.Parent != nil {
+		return nil, &ParseError{Message: "ParseArgs() must be called on the Root command"}
+	}
+	err := self.Validate()
+	if err != nil {
+		return nil, err
+	}
 	if args == nil {
 		args = os.Args
 	}
+	if len(args) < 1 {
+		return nil, &ParseError{Message: "At least one arg must be supplied"}
+	}
 	ctx := Context{SeenCommands: make([]*Command, 0, 4)}
-	err := self.parse_args(&ctx, args[1:])
+	if self.Name == "" {
+		self.Name = args[0]
+	}
+	err = self.parse_args(&ctx, args[1:])
 	if err != nil {
 		return nil, err
 	}
