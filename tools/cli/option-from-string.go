@@ -5,6 +5,7 @@ package cli
 import (
 	"bufio"
 	"fmt"
+	"kitty/tools/utils"
 	"regexp"
 	"strconv"
 	"strings"
@@ -12,19 +13,28 @@ import (
 
 var _ = fmt.Print
 
+func camel_case_dest(x string) string {
+	x = strings.ReplaceAll(strings.ReplaceAll(x, "-", "_"), ",", "")
+	parts := strings.Split(x, "_")
+	for i, p := range parts {
+		parts[i] = utils.Capitalize(p)
+	}
+	return strings.Join(parts, "")
+}
+
 /*
-Create an [Option] from a string. Syntax is::
+Create an [Option] from a string. Syntax is:
 
 	--option-name, --option-alias, -s
 	type: string
 	dest: destination
 	choices: choice1, choice2, choice 3
 	depth: 0
-	Help text on multiple lines. Indented lines are peserved as indented blocks. Blank lines
+	Help text on multiple lines. Indented lines are preserved as indented blocks. Blank lines
 	are preserved as blank lines. #placeholder_for_formatting# is replaced by the empty string.
 
 Available types are: string, str, list, int, float, count, bool-set, bool-reset, choices
-The default dest is the first --option-name which must be a long option.
+The default dest is the first --option-name which must be a long option. The destination is automatically CamelCased from snake_case.
 If choices are specified type is set to choices automatically.
 If depth is negative option is added to all subcommands. If depth is positive option is added to sub-commands upto
 the specified depth.
@@ -43,14 +53,16 @@ func OptionFromString(entries ...string) (*Option, error) {
 	prev_indent := 0
 	help := strings.Builder{}
 	help.Grow(2048)
+	default_was_set := false
 
 	indent_of_line := func(x string) int {
 		return len(x) - len(strings.TrimLeft(x, " \n\t\v\f"))
 	}
 
 	set_default := func(x string) {
-		if ans.Default == "" {
+		if !default_was_set {
 			ans.Default = x
+			default_was_set = true
 		}
 	}
 
@@ -59,7 +71,7 @@ func OptionFromString(entries ...string) (*Option, error) {
 		if ans.Aliases == nil {
 			if strings.HasPrefix(line, "--") {
 				parts := strings.Split(line, " ")
-				ans.Name = strings.ReplaceAll(parts[0], "-", "_")
+				ans.Name = camel_case_dest(parts[0])
 				ans.Aliases = make([]Alias, 0, len(parts))
 				for i, x := range parts {
 					ans.Aliases[i] = Alias{NameWithoutHyphens: strings.TrimLeft(x, "-"), IsShort: !strings.HasPrefix(x, "--")}
@@ -108,7 +120,7 @@ func OptionFromString(entries ...string) (*Option, error) {
 			case "default":
 				ans.Default = v
 			case "dest":
-				ans.Name = v
+				ans.Name = camel_case_dest(v)
 			case "depth":
 				depth, err := strconv.ParseInt(v, 0, 0)
 				if err != nil {

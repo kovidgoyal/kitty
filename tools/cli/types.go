@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -381,8 +383,7 @@ func (self *Command) GetOptionValues(pointer_to_options_struct interface{}) erro
 	m := make(map[string]*Option, 128)
 	for _, g := range self.OptionGroups {
 		for _, o := range g.Options {
-			field_name := strings.ReplaceAll(strings.ToUpper(o.Name[:1]+o.Name[1:]), "-", "_")
-			m[field_name] = o
+			m[o.Name] = o
 		}
 	}
 	val := reflect.ValueOf(pointer_to_options_struct).Elem()
@@ -392,7 +393,7 @@ func (self *Command) GetOptionValues(pointer_to_options_struct interface{}) erro
 	for i := 0; i < val.NumField(); i++ {
 		f := val.Field(i)
 		field_name := val.Type().Field(i).Name
-		if strings.ToUpper(field_name[:1]) != field_name[:1] || !f.CanSet() {
+		if utils.Capitalize(field_name) != field_name || !f.CanSet() {
 			continue
 		}
 		opt := m[field_name]
