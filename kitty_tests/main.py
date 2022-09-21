@@ -145,7 +145,7 @@ def run_go(packages: Set[str], names: str) -> 'subprocess.Popen[bytes]':
 def reduce_go_pkgs(module: str, names: Sequence[str]) -> Set[str]:
     if not go_exe():
         print('Skipping Go tests as go exe not found', file=sys.stderr)
-        return
+        return set()
     go_packages, go_functions = find_testable_go_packages()
     if module:
         go_packages &= {module}
