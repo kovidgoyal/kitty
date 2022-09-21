@@ -17,8 +17,16 @@ type SubMatch struct {
 	Start, End int
 }
 
+func Compile(pat string) (*regexp.Regexp, error) {
+	return pat_cache.GetOrCreate(pat, regexp.Compile)
+}
+
+func MustCompile(pat string) *regexp.Regexp {
+	return pat_cache.MustGetOrCreate(pat, regexp.MustCompile)
+}
+
 func ReplaceAll(pat, str string, repl func(full_match string, groupdict map[string]SubMatch) string) string {
-	cpat := pat_cache.MustGetOrCreate(pat, regexp.MustCompile)
+	cpat := MustCompile(pat)
 	result := strings.Builder{}
 	result.Grow(len(str) + 256)
 	last_index := 0

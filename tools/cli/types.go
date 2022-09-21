@@ -14,6 +14,7 @@ import (
 
 var _ = fmt.Print
 
+// Option {{{
 type OptionType int
 
 const (
@@ -35,6 +36,16 @@ func (self *Alias) String() string {
 		return "-" + self.NameWithoutHyphens
 	}
 	return "--" + self.NameWithoutHyphens
+}
+
+type OptionSpec struct {
+	Name    string
+	Type    string
+	Dest    string
+	Choices string
+	Depth   int
+	Default string
+	Help    string
 }
 
 type Option struct {
@@ -170,6 +181,9 @@ func (self *Option) add_value(val string) error {
 	return nil
 }
 
+// }}}
+
+// Groups {{{
 type CommandGroup struct {
 	SubCommands []*Command
 	Title       string
@@ -204,17 +218,7 @@ func (self *CommandGroup) FindSubCommand(name string) *Command {
 	return nil
 }
 
-type OptionSpec struct {
-	Name    string
-	Type    string
-	Dest    string
-	Choices string
-	Depth   int
-	Default string
-	Help    string
-}
-
-type OptionGroup struct { // {{{
+type OptionGroup struct {
 	Options []*Option
 	Title   string
 }
@@ -258,7 +262,7 @@ func (self *OptionGroup) FindOption(name_with_hyphens string) *Option {
 
 // }}}
 
-type Command struct {
+type Command struct { // {{{
 	Name, ExeName         string
 	Usage, HelpText       string
 	Hidden                bool
@@ -542,3 +546,5 @@ func (self *Command) GetOptionValues(pointer_to_options_struct any) error {
 	}
 	return nil
 }
+
+// }}}
