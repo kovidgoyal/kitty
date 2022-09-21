@@ -108,7 +108,6 @@ func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response 
 	const (
 		BEFORE_FIRST_ESCAPE_CODE_SENT = iota
 		SENDING
-		WAITING_FOR_RESPONSE
 	)
 	state := BEFORE_FIRST_ESCAPE_CODE_SENT
 
@@ -124,7 +123,6 @@ func simple_socket_io(conn *net.Conn, io_data *rc_io_data) (serialized_response 
 			return
 		}
 		if len(chunk) == 0 {
-			state = WAITING_FOR_RESPONSE
 			break
 		}
 		err = write_many_to_conn(conn, []byte(cmd_escape_code_prefix), chunk, []byte(cmd_escape_code_suffix))

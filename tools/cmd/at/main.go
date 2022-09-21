@@ -263,7 +263,7 @@ func get_password(password string, password_file string, password_env string, us
 				}
 				ttyf, err := os.Open(tty.Ctermid())
 				if err == nil {
-					err = unix.Dup2(int(ttyf.Fd()), int(os.Stdin.Fd()))
+					err = unix.Dup2(int(ttyf.Fd()), int(os.Stdin.Fd())) //nolint ineffassign err is returned indicating duping failed
 					ttyf.Close()
 				}
 			}
