@@ -897,7 +897,7 @@ def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False,
     cmd = [go, 'build', '-v']
     ld_flags = [f"-X 'kitty.VCSRevision={get_vcs_rev_define()}'"]
     if for_freeze:
-        ld_flags.append("-X 'kitty.IsFrozenBuild=true")
+        ld_flags.append("-X 'kitty.IsFrozenBuild=true'")
     if not args.debug:
         ld_flags.append('-s')
         ld_flags.append('-w')
