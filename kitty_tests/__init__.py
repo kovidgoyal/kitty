@@ -203,13 +203,13 @@ class PTY:
         self, argv=None, rows=25, columns=80, scrollback=100, cell_width=10, cell_height=20,
         cwd=None, env=None, stdin_fd=None, stdout_fd=None
     ):
+        self.is_child = False
         if isinstance(argv, str):
             argv = shlex.split(argv)
         self.write_buf = b''
         if argv is None:
             from kitty.child import openpty
             self.master_fd, self.slave_fd = openpty()
-            self.is_child = False
         else:
             self.child_pid, self.master_fd = fork()
             self.is_child = self.child_pid == CHILD
@@ -249,11 +249,12 @@ class PTY:
 
     def __del__(self):
         if not self.is_child:
-            os.close(self.master_fd)
+            if hasattr(self, 'master_fd'):
+                os.close(self.master_fd)
+                del self.master_fd
             if hasattr(self, 'slave_fd'):
                 os.close(self.slave_fd)
                 del self.slave_fd
-            del self.master_fd
 
     def write_to_child(self, data, flush=False):
         if isinstance(data, str):
