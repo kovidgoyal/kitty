@@ -4,6 +4,7 @@ package utils
 
 import (
 	"fmt"
+	"sort"
 )
 
 var _ = fmt.Print
@@ -20,4 +21,12 @@ func Reversed[T any](s []T) []T {
 		ans[len(s)-1-i] = x
 	}
 	return ans
+}
+
+func Sort[T any](s []T, less func(a, b T) bool) {
+	sort.Slice(s, func(i, j int) bool { return less(s[i], s[j]) })
+}
+
+func StableSort[T any](s []T, less func(a, b T) bool) {
+	sort.SliceStable(s, func(i, j int) bool { return less(s[i], s[j]) })
 }
