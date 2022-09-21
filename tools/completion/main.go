@@ -15,11 +15,11 @@ import (
 	"kitty/tools/utils"
 )
 
-func debug(args ...interface{}) {
+func debug(args ...any) {
 	tty.DebugPrintln(args...)
 }
 
-func debugf(format string, args ...interface{}) {
+func debugf(format string, args ...any) {
 	debug(fmt.Sprintf(format, args...))
 }
 

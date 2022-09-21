@@ -50,8 +50,8 @@ type Option struct {
 	Parent     *Command
 
 	values_from_cmdline        []string
-	parsed_values_from_cmdline []interface{}
-	parsed_default             interface{}
+	parsed_values_from_cmdline []any
+	parsed_default             any
 	seen_option                string
 }
 
@@ -79,7 +79,7 @@ func NormalizeOptionName(name string) string {
 	return strings.ReplaceAll(strings.TrimLeft(name, "-"), "_", "-")
 }
 
-func (self *Option) parsed_value() interface{} {
+func (self *Option) parsed_value() any {
 	if len(self.values_from_cmdline) == 0 {
 		return self.parsed_default
 	}
@@ -96,7 +96,7 @@ func (self *Option) parsed_value() interface{} {
 	}
 }
 
-func (self *Option) parse_value(val string) (interface{}, error) {
+func (self *Option) parse_value(val string) (any, error) {
 	switch self.OptionType {
 	case BoolOption:
 		switch val {
@@ -455,7 +455,7 @@ type Context struct {
 	SeenCommands []*Command
 }
 
-func (self *Command) GetOptionValues(pointer_to_options_struct interface{}) error {
+func (self *Command) GetOptionValues(pointer_to_options_struct any) error {
 	m := make(map[string]*Option, 128)
 	for _, g := range self.OptionGroups {
 		for _, o := range g.Options {

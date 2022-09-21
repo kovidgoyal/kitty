@@ -52,7 +52,7 @@ func is_string_slice(f reflect.Value) bool {
 	return f.Type().Elem().Kind() == reflect.String
 }
 
-func OptionsFromStruct(pointer_to_options_struct interface{}) ([]*Option, error) {
+func OptionsFromStruct(pointer_to_options_struct any) ([]*Option, error) {
 	val := reflect.ValueOf(pointer_to_options_struct).Elem()
 	if val.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("Need a pointer to a struct to set option values on")
@@ -105,7 +105,7 @@ func option_from_string(overrides map[string]string, entries ...string) (*Option
 	}
 	ans := Option{
 		values_from_cmdline:        make([]string, 0, 1),
-		parsed_values_from_cmdline: make([]interface{}, 0, 1),
+		parsed_values_from_cmdline: make([]any, 0, 1),
 	}
 	scanner := utils.NewScanLines(entries...)
 	in_help := false

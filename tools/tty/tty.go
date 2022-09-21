@@ -278,7 +278,7 @@ func (self *Term) WriteString(b string) (int, error) {
 	return self.os_file.WriteString(b)
 }
 
-func (self *Term) DebugPrintln(a ...interface{}) {
+func (self *Term) DebugPrintln(a ...any) {
 	msg := []byte(fmt.Sprintln(a...))
 	const limit = 2048
 	encoded := make([]byte, limit*2)
@@ -308,7 +308,7 @@ func (self *Term) GetSize() (*unix.Winsize, error) {
 // go doesnt have a wrapper for ctermid()
 func Ctermid() string { return "/dev/tty" }
 
-func DebugPrintln(a ...interface{}) {
+func DebugPrintln(a ...any) {
 	term, err := OpenControllingTerm()
 	if err == nil {
 		defer term.Close()

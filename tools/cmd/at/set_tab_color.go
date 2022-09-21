@@ -11,8 +11,8 @@ import (
 
 var valid_color_names = map[string]bool{"active_fg": true, "active_bg": true, "inactive_fg": true, "inactive_bg": true}
 
-func parse_tab_colors(args []string) (map[string]interface{}, error) {
-	ans := make(map[string]interface{}, len(args))
+func parse_tab_colors(args []string) (map[string]any, error) {
+	ans := make(map[string]any, len(args))
 	for _, arg := range args {
 		key, val, found := utils.Cut(strings.ToLower(arg), "=")
 		if !found {

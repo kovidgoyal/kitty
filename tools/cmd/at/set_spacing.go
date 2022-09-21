@@ -10,8 +10,8 @@ import (
 	"kitty/tools/utils"
 )
 
-func parse_set_spacing(args []string) (map[string]interface{}, error) {
-	ans := make(map[string]interface{}, len(args))
+func parse_set_spacing(args []string) (map[string]any, error) {
+	ans := make(map[string]any, len(args))
 	mapper := make(map[string][]string, 32)
 	types := [2]string{"margin", "padding"}
 	for _, q := range types {

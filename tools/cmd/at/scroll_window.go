@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-func parse_scroll_amount(amt string) ([]interface{}, error) {
-	var ans = make([]interface{}, 2)
+func parse_scroll_amount(amt string) ([]any, error) {
+	var ans = make([]any, 2)
 	if amt == "start" || amt == "end" {
 		ans[0] = amt
 		ans[1] = nil
