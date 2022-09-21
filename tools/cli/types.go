@@ -368,8 +368,7 @@ func (self *Command) CommandStringForUsage(args []string) string {
 		}
 		p = p.Parent
 	}
-	utils.Reverse(names)
-	return strings.Join(names, " ")
+	return strings.Join(utils.Reverse(names), " ")
 }
 
 func (self *Command) ParseArgs(args []string) (*Command, error) {
