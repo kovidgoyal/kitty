@@ -99,51 +99,52 @@ type multi_scan struct {
 
 var mpat *regexp.Regexp
 
-func option_from_string(overrides map[string]string, entries ...string) (*Option, error) {
-	if mpat == nil {
-		mpat = regexp.MustCompile("^([a-z]+)=(.+)")
-	}
+func option_from_spec(spec OptionSpec) (*Option, error) {
 	ans := Option{
+		Help:                       spec.Help,
 		values_from_cmdline:        make([]string, 0, 1),
 		parsed_values_from_cmdline: make([]any, 0, 1),
 	}
-	scanner := utils.NewScanLines(entries...)
-	in_help := false
-	prev_indent := 0
-	help := strings.Builder{}
-	help.Grow(2048)
-	default_was_set := false
-
-	indent_of_line := func(x string) int {
-		return len(x) - len(strings.TrimLeft(x, " \n\t\v\f"))
+	parts := strings.Split(spec.Name, " ")
+	ans.Name = camel_case_dest(parts[0])
+	ans.Aliases = make([]Alias, 0, len(parts))
+	for i, x := range parts {
+		ans.Aliases[i] = Alias{NameWithoutHyphens: strings.TrimLeft(x, "-"), IsShort: !strings.HasPrefix(x, "--")}
 	}
-
-	set_default := func(x string) {
-		if !default_was_set {
-			ans.Default = x
-			default_was_set = true
+	if spec.Dest != "" {
+		ans.Name = spec.Dest
+	}
+	ans.Depth = spec.Depth
+	if spec.Choices != "" {
+		parts := strings.Split(spec.Choices, ",")
+		ans.Choices = make(map[string]bool, len(parts))
+		ans.OptionType = StringOption
+		for i, x := range parts {
+			x = strings.TrimSpace(x)
+			ans.Choices[x] = true
+			if i == 0 && ans.Default == "" {
+				ans.Default = x
+			}
 		}
-	}
-
-	set_type := func(v string) error {
-		switch v {
+	} else {
+		switch spec.Type {
 		case "choice", "choices":
 			ans.OptionType = StringOption
 		case "int":
 			ans.OptionType = IntegerOption
-			set_default("0")
+			ans.Default = "0"
 		case "float":
 			ans.OptionType = FloatOption
-			set_default("0")
+			ans.Default = "0"
 		case "count":
 			ans.OptionType = CountOption
-			set_default("0")
+			ans.Default = "0"
 		case "bool-set":
 			ans.OptionType = BoolOption
-			set_default("false")
+			ans.Default = "false"
 		case "bool-reset":
 			ans.OptionType = BoolOption
-			set_default("true")
+			ans.Default = "true"
 			for _, a := range ans.Aliases {
 				a.IsUnset = true
 			}
@@ -153,99 +154,14 @@ func option_from_string(overrides map[string]string, entries ...string) (*Option
 		case "str", "string":
 			ans.OptionType = StringOption
 		default:
-			return fmt.Errorf("Unknown option type: %s", v)
-		}
-		return nil
-	}
-
-	if dq, found := overrides["type"]; found {
-		err := set_type(dq)
-		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Unknown option type: %s", spec.Type)
 		}
 	}
-	for scanner.Scan() {
-		line := scanner.Text()
-		if ans.Aliases == nil {
-			if strings.HasPrefix(line, "--") {
-				parts := strings.Split(line, " ")
-				if dq, found := overrides["dest"]; found {
-					ans.Name = camel_case_dest(dq)
-				} else {
-					ans.Name = camel_case_dest(parts[0])
-				}
-				ans.Aliases = make([]Alias, 0, len(parts))
-				for i, x := range parts {
-					ans.Aliases[i] = Alias{NameWithoutHyphens: strings.TrimLeft(x, "-"), IsShort: !strings.HasPrefix(x, "--")}
-				}
-			}
-		} else if in_help {
-			if line != "" {
-				current_indent := indent_of_line(line)
-				if current_indent > 1 {
-					if prev_indent == 0 {
-						help.WriteString("\n")
-					} else {
-						line = strings.TrimSpace(line)
-					}
-				}
-				prev_indent = current_indent
-				if !strings.HasSuffix(help.String(), "\n") {
-					help.WriteString(" ")
-				}
-				help.WriteString(line)
-			} else {
-				prev_indent = 0
-				help.WriteString("\n")
-				if !strings.HasSuffix(help.String(), "::") {
-					help.WriteString("\n")
-				}
-			}
-		} else {
-			matches := mpat.FindStringSubmatch(line)
-			if matches == nil {
-				continue
-			}
-			k, v := matches[1], matches[2]
-			switch k {
-			case "choices":
-				parts := strings.Split(v, ",")
-				ans.Choices = make(map[string]bool, len(parts))
-				ans.OptionType = StringOption
-				for i, x := range parts {
-					x = strings.TrimSpace(x)
-					ans.Choices[x] = true
-					if i == 0 && ans.Default == "" {
-						ans.Default = x
-					}
-				}
-			case "default":
-				ans.Default = v
-			case "dest":
-				if dq, found := overrides["dest"]; found {
-					ans.Name = camel_case_dest(dq)
-				} else {
-					ans.Name = camel_case_dest(v)
-				}
-			case "depth":
-				depth, err := strconv.ParseInt(v, 0, 0)
-				if err != nil {
-					return nil, err
-				}
-				ans.Depth = int(depth)
-			case "condition", "completion":
-			default:
-				return nil, fmt.Errorf("Unknown option metadata key: %s", k)
-			case "type":
-				err := set_type(v)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
+	if spec.Default != "" {
+		ans.Default = spec.Default
 	}
-	ans.HelpText = help.String()
-	ans.Hidden = ans.HelpText == "!"
+	ans.Help = spec.Help
+	ans.Hidden = spec.Help == "!"
 	pval, err := ans.parse_value(ans.Default)
 	if err != nil {
 		return nil, err
@@ -261,4 +177,97 @@ func option_from_string(overrides map[string]string, entries ...string) (*Option
 		return nil, fmt.Errorf("No dest specified for option")
 	}
 	return &ans, nil
+}
+
+func indent_of_line(x string) int {
+	return len(x) - len(strings.TrimLeft(x, " \n\t\v\f"))
+}
+
+func prepare_help_text_for_display(raw string) string {
+	help := strings.Builder{}
+	help.Grow(len(raw) + 256)
+	prev_indent := 0
+	for _, line := range utils.Splitlines(raw) {
+		if line != "" {
+			current_indent := indent_of_line(line)
+			if current_indent > 1 {
+				if prev_indent == 0 {
+					help.WriteString("\n")
+				} else {
+					line = strings.TrimSpace(line)
+				}
+			}
+			prev_indent = current_indent
+			if !strings.HasSuffix(help.String(), "\n") {
+				help.WriteString(" ")
+			}
+			help.WriteString(line)
+		} else {
+			prev_indent = 0
+			help.WriteString("\n")
+			if !strings.HasSuffix(help.String(), "::") {
+				help.WriteString("\n")
+			}
+		}
+	}
+	return help.String()
+}
+
+func option_from_string(overrides map[string]string, entries ...string) (*Option, error) {
+	if mpat == nil {
+		mpat = regexp.MustCompile("^([a-z]+)=(.+)")
+	}
+	spec := OptionSpec{}
+	scanner := utils.NewScanLines(entries...)
+	in_help := false
+	help := strings.Builder{}
+	help.Grow(2048)
+
+	if dq, found := overrides["type"]; found {
+		spec.Type = dq
+	}
+	if dq, found := overrides["dest"]; found {
+		spec.Dest = dq
+	}
+	for scanner.Scan() {
+		line := scanner.Text()
+		if spec.Name == "" {
+			if strings.HasPrefix(line, "--") {
+				spec.Name = line
+			}
+		} else if in_help {
+			spec.Help += line + "\n"
+		} else {
+			line = strings.TrimSpace(line)
+			matches := mpat.FindStringSubmatch(line)
+			if matches == nil {
+				continue
+			}
+			k, v := matches[1], matches[2]
+			switch k {
+			case "choices":
+				spec.Choices = v
+			case "default":
+				if overrides["default"] == "" {
+					spec.Default = v
+				}
+			case "dest":
+				if overrides["dest"] == "" {
+					spec.Dest = v
+				}
+			case "depth":
+				depth, err := strconv.ParseInt(v, 0, 0)
+				if err != nil {
+					return nil, err
+				}
+				spec.Depth = int(depth)
+			case "condition", "completion":
+			default:
+				return nil, fmt.Errorf("Unknown option metadata key: %s", k)
+			case "type":
+				spec.Type = v
+			}
+		}
+	}
+	return option_from_spec(spec)
 }
