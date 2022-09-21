@@ -5,6 +5,7 @@ env:
     ASAN_OPTIONS: leak_check_at_exit=0
     LC_ALL: en_US.UTF-8
     LANG: en_US.UTF-8
+    GO_INSTALL_VERSION: ">=1.18.0"
 
 permissions:
   contents: read # to fetch code (actions/checkout)
@@ -44,20 +45,26 @@ jobs:
                       cc: gcc
 
         steps:
-            - name: Checkout source code
-              uses: actions/checkout@v3
-              with:
-                fetch-depth: 10
-            - name: Set up Python ${{ matrix.pyver }}
-              uses: actions/setup-python@v3
-              with:
-                python-version: ${{ matrix.pyver }}
+          - name: Checkout source code
+            uses: actions/checkout@v3
+            with:
+              fetch-depth: 10
 
-            - name: Build kitty
-              run: python .github/workflows/ci.py build
+          - name: Set up Python ${{ matrix.pyver }}
+            uses: actions/setup-python@v3
+            with:
+              python-version: ${{ matrix.pyver }}
 
-            - name: Test kitty
-              run: python .github/workflows/ci.py test
+          - name: Install Go
+            uses: actions/setup-go@v3
+            with:
+              go-version: ${{ env.GO_INSTALL_VERSION }}
+
+          - name: Build kitty
+            run: python .github/workflows/ci.py build
+
+          - name: Test kitty
+            run: python .github/workflows/ci.py test
 
     linux-package:
         name: Linux package
@@ -65,42 +72,47 @@ jobs:
         env:
             CFLAGS: -funsigned-char
         steps:
-            - name: Checkout source code
-              uses: actions/checkout@v3
-              with:
-                fetch-depth: 0  # needed for :commit: docs role
+          - name: Checkout source code
+            uses: actions/checkout@v3
+            with:
+              fetch-depth: 0  # needed for :commit: docs role
 
-            - name: Test for trailing whitespace
-              run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst *.go .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
+          - name: Test for trailing whitespace
+            run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst *.go .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
 
-            - name: Set up Python
-              uses: actions/setup-python@v3
-              with:
-                python-version: 3.9
+          - name: Set up Python
+            uses: actions/setup-python@v3
+            with:
+              python-version: 3.9
 
-            - name: Install build-only deps
-              run: python -m pip install -r docs/requirements.txt flake8 mypy types-requests types-docutils
+          - name: Install Go
+            uses: actions/setup-go@v3
+            with:
+              go-version: ${{ env.GO_INSTALL_VERSION }}
 
-            - name: Run pyflakes
-              run: python -m flake8 --count .
+          - name: Install build-only deps
+            run: python -m pip install -r docs/requirements.txt flake8 mypy types-requests types-docutils
 
-            - name: Run gofmt
-              run: go version && python .github/workflows/ci.py gofmt
+          - name: Run pyflakes
+            run: python -m flake8 --count .
 
-            - name: Build kitty package
-              run: python .github/workflows/ci.py package
+          - name: Run gofmt
+            run: go version && python .github/workflows/ci.py gofmt
 
-            - name: Build kitty
-              run: python setup.py build --debug
+          - name: Build kitty package
+            run: python .github/workflows/ci.py package
 
-            - name: Run mypy
-              run: which python && python -m mypy --version && ./test.py mypy
+          - name: Build kitty
+            run: python setup.py build --debug
 
-            - name: Build man page
-              run: make FAIL_WARN=1 man
+          - name: Run mypy
+            run: which python && python -m mypy --version && ./test.py mypy
 
-            - name: Build HTML docs
-              run: make FAIL_WARN=1 html
+          - name: Build man page
+            run: make FAIL_WARN=1 man
+
+          - name: Build HTML docs
+            run: make FAIL_WARN=1 html
 
     bundle:
         name: Bundle test (${{ matrix.os }})
@@ -111,37 +123,47 @@ jobs:
         env:
             KITTY_BUNDLE: 1
         steps:
-            - name: Checkout source code
-              uses: actions/checkout@master
-              with:
-                fetch-depth: 10
+          - name: Checkout source code
+            uses: actions/checkout@master
+            with:
+              fetch-depth: 10
 
-            - name: Build kitty
-              run: which python3 && python3 .github/workflows/ci.py build
+          - name: Install Go
+            uses: actions/setup-go@v3
+            with:
+              go-version: ${{ env.GO_INSTALL_VERSION }}
 
-            - name: Test kitty
-              run: python3 .github/workflows/ci.py test
+          - name: Build kitty
+            run: which python3 && python3 .github/workflows/ci.py build
+
+          - name: Test kitty
+            run: python3 .github/workflows/ci.py test
 
     brew:
         name: macOS Brew
         runs-on: macos-latest
         steps:
-            - name: Checkout source code
-              uses: actions/checkout@master
-              with:
-                  fetch-depth: 0  # needed for :commit: docs role
+          - name: Checkout source code
+            uses: actions/checkout@master
+            with:
+              fetch-depth: 0  # needed for :commit: docs role
 
-            - name: Build kitty
-              run: python3 .github/workflows/ci.py build
+          - name: Install Go
+            uses: actions/setup-go@v3
+            with:
+              go-version: ${{ env.GO_INSTALL_VERSION }}
 
-            - name: Test kitty
-              run: python3 .github/workflows/ci.py test
+          - name: Build kitty
+            run: python3 .github/workflows/ci.py build
 
-            - name: Install deps for docs
-              run: python3 -m pip install -r docs/requirements.txt
+          - name: Test kitty
+            run: python3 .github/workflows/ci.py test
 
-            - name: Builds docs
-              run: make FAIL_WARN=1 docs
+          - name: Install deps for docs
+            run: python3 -m pip install -r docs/requirements.txt
 
-            - name: Build kitty package
-              run: python3 .github/workflows/ci.py package
+          - name: Builds docs
+            run: make FAIL_WARN=1 docs
+
+          - name: Build kitty package
+            run: python3 .github/workflows/ci.py package
