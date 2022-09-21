@@ -63,15 +63,17 @@ def build_frozen_launcher(extra_include_dirs):
 
 def run_tests(kitty_exe):
     with tempfile.TemporaryDirectory() as tdir:
-        env = {
+        uenv = {
             'KITTY_CONFIG_DIRECTORY': os.path.join(tdir, 'conf'),
             'KITTY_CACHE_DIRECTORY': os.path.join(tdir, 'cache')
         }
-        [os.mkdir(x) for x in env.values()]
-        cmd = [kitty_exe, '+runpy', 'from kitty_tests.main import run_tests; run_tests()']
+        [os.mkdir(x) for x in uenv.values()]
+        env = os.environ.copy()
+        env.update(uenv)
+        cmd = [kitty_exe, '+runpy', 'from kitty_tests.main import run_tests; run_tests(report_env=True)']
         print(*map(shlex.quote, cmd), flush=True)
-        if subprocess.call(cmd, env=env) != 0:
-            print('Checking of kitty build failed', file=sys.stderr)
+        if subprocess.call(cmd, env=env, cwd=build_frozen_launcher.writeable_src_dir) != 0:
+            print('Checking of kitty build failed, in directory:', build_frozen_launcher.writeable_src_dir, file=sys.stderr)
             os.chdir(os.path.dirname(kitty_exe))
             run_shell()
             raise SystemExit('Checking of kitty build failed')
