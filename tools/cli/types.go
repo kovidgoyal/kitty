@@ -45,7 +45,7 @@ type Option struct {
 	OptionType OptionType
 	Hidden     bool
 	Depth      int
-	HelpText   string
+	Help       string
 	IsList     bool
 	Parent     *Command
 
@@ -204,6 +204,16 @@ func (self *CommandGroup) FindSubCommand(name string) *Command {
 	return nil
 }
 
+type OptionSpec struct {
+	Name    string
+	Type    string
+	Dest    string
+	Choices string
+	Depth   int
+	Default string
+	Help    string
+}
+
 type OptionGroup struct { // {{{
 	Options []*Option
 	Title   string
@@ -219,7 +229,15 @@ func (self *OptionGroup) Clone(parent *Command) *OptionGroup {
 	return &ans
 }
 
-func (self *OptionGroup) AddOption(parent *Command, items ...string) (*Option, error) {
+func (self *OptionGroup) AddOption(parent *Command, spec OptionSpec) (*Option, error) {
+	ans, err := option_from_spec(spec)
+	if err == nil {
+		ans.Parent = parent
+	}
+	return ans, err
+}
+
+func (self *OptionGroup) AddOptionFromString(parent *Command, items ...string) (*Option, error) {
 	ans, err := OptionFromString(items...)
 	if err == nil {
 		ans.Parent = parent
@@ -338,12 +356,10 @@ func (self *Command) Validate() error {
 		if seen_flags["-h"] || seen_flags["--help"] {
 			return &ParseError{Message: fmt.Sprintf("The --help or -h flags are assigned to an option other than Help in %s", self.Name)}
 		}
-		self.AddOption(fmt.Sprintf(`
---help -h
-type: bool-set
-Show help for this command
-`))
-
+		_, err := self.Add(OptionSpec{Name: "--help -h", Type: "bool-set", Help: "Show help for this command"})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -424,12 +440,20 @@ func (self *Command) AddOptionGroup(title string) *OptionGroup {
 	return &ans
 }
 
-func (self *Command) AddOption(items ...string) (*Option, error) {
-	return self.AddOptionGroup("").AddOption(self, items...)
+func (self *Command) AddOptionFromString(items ...string) (*Option, error) {
+	return self.AddOptionGroup("").AddOptionFromString(self, items...)
 }
 
-func (self *Command) AddOptionToGroup(group string, items ...string) (*Option, error) {
-	return self.AddOptionGroup(group).AddOption(self, items...)
+func (self *Command) Add(s OptionSpec) (*Option, error) {
+	return self.AddOptionGroup("").AddOption(self, s)
+}
+
+func (self *Command) AddOptionToGroupFromString(group string, items ...string) (*Option, error) {
+	return self.AddOptionGroup(group).AddOptionFromString(self, items...)
+}
+
+func (self *Command) AddToGroup(group string, s OptionSpec) (*Option, error) {
+	return self.AddOptionGroup(group).AddOption(self, s)
 }
 
 func (self *Command) FindOption(name_with_hyphens string) *Option {
