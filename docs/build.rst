@@ -46,7 +46,7 @@ Run-time dependencies:
 Build-time dependencies:
 
 * ``gcc`` or ``clang``
-* ``go >= 1.17`` (see :file:`go.mod` for go packages used during building)
+* ``go >= 1.18`` (see :file:`go.mod` for go packages used during building)
 * ``pkg-config``
 * For building on Linux in addition to the above dependencies you might also
   need to install the following packages, if they are not already installed by
