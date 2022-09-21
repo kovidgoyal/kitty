@@ -230,7 +230,7 @@ func (self *hyperlink_state) apply_osc(raw string) {
 	self.url = parts[2]
 }
 
-func (self hyperlink_state) reset() {
+func (self *hyperlink_state) reset() {
 	self.id = ""
 	self.url = ""
 }

@@ -93,7 +93,6 @@ func read_from_tty(pipe_r *os.File, term *tty.Term, results_channel chan<- []byt
 		case results_channel <- send:
 		case <-quit_channel:
 			keep_going = false
-			break
 		}
 	}
 }

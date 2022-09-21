@@ -25,7 +25,7 @@ var utf8_data []uint8 = []uint8{
 
 const (
 	UTF8_ACCEPT UTF8State = 0
-	UTF8_REJECT           = 1
+	UTF8_REJECT UTF8State = 1
 )
 
 func DecodeUtf8(state *UTF8State, codep *UTF8State, byte_ byte) UTF8State {
