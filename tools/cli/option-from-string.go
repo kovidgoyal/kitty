@@ -45,6 +45,13 @@ func OptionFromString(entries ...string) (*Option, error) {
 	return option_from_string(map[string]string{}, entries...)
 }
 
+func is_string_slice(f reflect.Value) bool {
+	if f.Kind() != reflect.Slice {
+		return false
+	}
+	return f.Type().Elem().Kind() == reflect.String
+}
+
 func OptionsFromStruct(pointer_to_options_struct interface{}) ([]*Option, error) {
 	val := reflect.ValueOf(pointer_to_options_struct).Elem()
 	if val.Kind() != reflect.Struct {
@@ -61,6 +68,9 @@ func OptionsFromStruct(pointer_to_options_struct interface{}) ([]*Option, error)
 		typ := "str"
 		switch f.Kind() {
 		case reflect.Slice:
+			if !is_string_slice(f) {
+				return nil, fmt.Errorf("The field %s is not a slice of strings", field_name)
+			}
 			typ = "list"
 		case reflect.Int:
 			typ = "int"
