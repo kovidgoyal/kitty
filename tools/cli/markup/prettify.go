@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"kitty"
@@ -51,39 +50,13 @@ func New(allow_escape_codes bool) *Context {
 }
 
 func replace_all_rst_roles(str string, repl func(rst_format_match) string) string {
-	result := strings.Builder{}
-	result.Grow(len(str) + 256)
-	last_index := 0
-
-	matches := prettify_pat().FindAllStringSubmatchIndex(str, -1)
-	for _, v := range matches {
-		match_start, match_end := v[0], v[1]
-		m := rst_format_match{}
-		if v[2] > -1 && v[3] > -1 {
-			m.role = str[v[2]:v[3]]
-		}
-		if v[4] > -1 && v[5] > -1 {
-			m.payload = str[v[4]:v[5]]
-		} else if v[6] > -1 && v[7] > -1 {
-			m.payload = str[v[6]:v[7]]
-		}
-
-		result.WriteString(str[last_index:match_start])
-		result.WriteString(repl(m))
-		last_index = match_end
+	var m rst_format_match
+	rf := func(full_match string, groupdict map[string]string) string {
+		m.payload = groupdict["payload"]
+		m.role = groupdict["role"]
+		return repl(m)
 	}
-
-	result.WriteString(str[last_index:])
-	return result.String()
-}
-
-var _prettify_pat *regexp.Regexp
-
-func prettify_pat() *regexp.Regexp {
-	if _prettify_pat == nil {
-		_prettify_pat = regexp.MustCompile(":([a-z]+):(?:(?:`([^`]+)`)|(?:'([^']+)'))")
-	}
-	return _prettify_pat
+	return utils.ReplaceAll(":(?P<role>[a-z]+):(?:(?:`(?P<payload>[^`]+)`)|(?:'(?P<payload>[^']+)'))", str, rf)
 }
 
 func (self *Context) hyperlink_for_url(url string, text string) string {
