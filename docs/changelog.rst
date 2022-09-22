@@ -35,10 +35,10 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.27.0 [future]
+0.26.3 [2022-09-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Wayland: Mark windows in which a bell as urgent on compositors that support the xdg-activation protocol
+- Wayland: Mark windows in which a bell occurs as urgent on compositors that support the xdg-activation protocol
 
 - Allow passing null bytes through the system clipboard (:iss:`5483`)
 
