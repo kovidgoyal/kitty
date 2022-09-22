@@ -4,7 +4,6 @@ go 1.19
 
 require (
 	github.com/ALTree/bigfloat v0.0.0-20220102081255-38c8b72a9924
-	github.com/gammazero/deque v0.2.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/google/uuid v1.3.0
 	github.com/jamesruan/go-rfc1924 v0.0.0-20170108144916-2767ca7c638f

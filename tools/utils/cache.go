@@ -3,10 +3,9 @@
 package utils
 
 import (
+	"container/list"
 	"fmt"
 	"sync"
-
-	"github.com/gammazero/deque"
 )
 
 var _ = fmt.Print
@@ -15,11 +14,11 @@ type LRUCache[K comparable, V any] struct {
 	data     map[K]V
 	lock     sync.RWMutex
 	max_size int
-	lru      deque.Deque[K]
+	lru      *list.List
 }
 
 func NewLRUCache[K comparable, V any](max_size int) *LRUCache[K, V] {
-	ans := LRUCache[K, V]{data: map[K]V{}, max_size: max_size}
+	ans := LRUCache[K, V]{data: map[K]V{}, max_size: max_size, lru: list.New()}
 	return &ans
 }
 
@@ -36,8 +35,8 @@ func (self *LRUCache[K, V]) GetOrCreate(key K, create func(key K) (V, error)) (V
 		self.data[key] = ans
 		self.lru.PushFront(key)
 		if self.max_size > 0 && self.lru.Len() > self.max_size {
-			k := self.lru.PopBack()
-			delete(self.data, k)
+			k := self.lru.Remove(self.lru.Back())
+			delete(self.data, k.(K))
 		}
 		self.lock.Unlock()
 	}
