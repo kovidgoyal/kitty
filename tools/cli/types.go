@@ -189,6 +189,15 @@ type CommandGroup struct {
 	Title       string
 }
 
+func (self *CommandGroup) HasVisibleSubCommands() bool {
+	for _, c := range self.SubCommands {
+		if !c.Hidden {
+			return true
+		}
+	}
+	return false
+}
+
 func (self *CommandGroup) Clone(parent *Command) *CommandGroup {
 	ans := CommandGroup{Title: self.Title, SubCommands: make([]*Command, 0, len(self.SubCommands))}
 	for i, o := range self.SubCommands {
@@ -263,17 +272,24 @@ func (self *OptionGroup) FindOption(name_with_hyphens string) *Option {
 // }}}
 
 type Command struct { // {{{
-	Name, ExeName         string
-	Usage, HelpText       string
-	Hidden                bool
+	Name                              string
+	Usage, ShortDescription, HelpText string
+	Hidden                            bool
+
+	// Number of non-option arguments after which to stop parsing options. 0 means no options after the first non-option arg.
 	AllowOptionsAfterArgs int
-	SubCommandIsOptional  bool
+	// If true does not fail if the first non-option arg is not a sub-command
+	SubCommandIsOptional bool
 
 	SubCommandGroups []*CommandGroup
 	OptionGroups     []*OptionGroup
 	Parent           *Command
 
 	Args []string
+	Run  func(cmd *Command, args []string) (int, error)
+
+	option_map map[string]*Option
+	exe_name   string
 }
 
 func (self *Command) Clone(parent *Command) *Command {
@@ -356,13 +372,25 @@ func (self *Command) Validate() error {
 			}
 		}
 	}
-	if !seen_dests["Help"] {
-		if seen_flags["-h"] || seen_flags["--help"] {
-			return &ParseError{Message: fmt.Sprintf("The --help or -h flags are assigned to an option other than Help in %s", self.Name)}
+	if self.Parent != nil {
+		if !seen_dests["Help"] {
+			if seen_flags["-h"] || seen_flags["--help"] {
+				return &ParseError{Message: fmt.Sprintf("The --help or -h flags are assigned to an option other than Help in %s", self.Name)}
+			}
+			_, err := self.Add(OptionSpec{Name: "--help -h", Type: "bool-set", Help: "Show help for this command"})
+			if err != nil {
+				return err
+			}
 		}
-		_, err := self.Add(OptionSpec{Name: "--help -h", Type: "bool-set", Help: "Show help for this command"})
-		if err != nil {
-			return err
+
+		if self.Parent.Parent == nil && !seen_dests["Version"] {
+			if seen_flags["--version"] {
+				return &ParseError{Message: fmt.Sprintf("The --version flag is assigned to an option other than Version in %s", self.Name)}
+			}
+			_, err := self.Add(OptionSpec{Name: "--version", Type: "bool-set", Help: "Show version"})
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -377,13 +405,13 @@ func (self *Command) Root(args []string) *Command {
 	return p
 }
 
-func (self *Command) CommandStringForUsage(args []string) string {
+func (self *Command) CommandStringForUsage() string {
 	names := make([]string, 0, 8)
 	p := self
 	for p != nil {
 		if p.Name != "" {
 			names = append(names, p.Name)
-		} else if p.ExeName != "" {
+		} else if p.exe_name != "" {
 			names = append(names, p.Name)
 		}
 		p = p.Parent
@@ -406,10 +434,16 @@ func (self *Command) ParseArgs(args []string) (*Command, error) {
 		return nil, &ParseError{Message: "At least one arg must be supplied"}
 	}
 	ctx := Context{SeenCommands: make([]*Command, 0, 4)}
-	self.ExeName = args[0]
+	self.exe_name = args[0]
 	err = self.parse_args(&ctx, args[1:])
 	if err != nil {
 		return nil, err
+	}
+	self.option_map = make(map[string]*Option, 128)
+	for _, g := range self.OptionGroups {
+		for _, o := range g.Options {
+			self.option_map[o.Name] = o
+		}
 	}
 	return ctx.SeenCommands[len(ctx.SeenCommands)-1], nil
 }
@@ -421,6 +455,51 @@ func (self *Command) HasSubCommands() bool {
 		}
 	}
 	return false
+}
+
+func (self *Command) HasVisibleSubCommands() bool {
+	for _, g := range self.SubCommandGroups {
+		if g.HasVisibleSubCommands() {
+			return true
+		}
+	}
+	return false
+}
+
+func (self *Command) GetVisibleOptions() ([]string, map[string][]*Option) {
+	group_titles := make([]string, 0, len(self.OptionGroups))
+	gmap := make(map[string][]*Option)
+
+	add_options := func(group_title string, opts []*Option) {
+		if len(opts) == 0 {
+			return
+		}
+		x := gmap[group_title]
+		if x == nil {
+			group_titles = append(group_titles, group_title)
+			gmap[group_title] = opts
+		} else {
+			gmap[group_title] = append(x, opts...)
+		}
+	}
+
+	depth := 0
+	process_cmd := func(cmd *Command) {
+		for _, g := range cmd.OptionGroups {
+			gopts := make([]*Option, 0, len(g.Options))
+			for _, o := range g.Options {
+				if !o.Hidden && o.Depth >= depth {
+					gopts = append(gopts, o)
+				}
+			}
+			add_options(g.Title, gopts)
+		}
+	}
+	for p := self; p != nil; p = p.Parent {
+		process_cmd(p)
+		depth++
+	}
+	return group_titles, gmap
 }
 
 func (self *Command) FindSubCommand(name string) *Command {
@@ -483,12 +562,6 @@ type Context struct {
 }
 
 func (self *Command) GetOptionValues(pointer_to_options_struct any) error {
-	m := make(map[string]*Option, 128)
-	for _, g := range self.OptionGroups {
-		for _, o := range g.Options {
-			m[o.Name] = o
-		}
-	}
 	val := reflect.ValueOf(pointer_to_options_struct).Elem()
 	if val.Kind() != reflect.Struct {
 		return fmt.Errorf("Need a pointer to a struct to set option values on")
@@ -499,7 +572,7 @@ func (self *Command) GetOptionValues(pointer_to_options_struct any) error {
 		if utils.Capitalize(field_name) != field_name || !f.CanSet() {
 			continue
 		}
-		opt := m[field_name]
+		opt := self.option_map[field_name]
 		if opt == nil {
 			return fmt.Errorf("No option with the name: %s", field_name)
 		}
@@ -545,6 +618,40 @@ func (self *Command) GetOptionValues(pointer_to_options_struct any) error {
 		}
 	}
 	return nil
+}
+
+func (self *Command) Exec(args ...string) {
+	root := self
+	for root.Parent != nil {
+		root = root.Parent
+	}
+	if len(args) == 0 {
+		args = os.Args
+	}
+	cmd, err := root.ParseArgs(args)
+	if err != nil {
+		ShowError(err)
+		os.Exit(1)
+	}
+	help_opt := cmd.option_map["Help"]
+	version_opt := cmd.option_map["Version"]
+	exit_code := 0
+	if help_opt != nil && help_opt.parsed_value().(bool) {
+		cmd.ShowHelp()
+		os.Exit(exit_code)
+	} else if version_opt != nil && version_opt.parsed_value().(bool) {
+		cmd.ShowVersion()
+		os.Exit(exit_code)
+	} else if cmd.Run != nil {
+		exit_code, err = cmd.Run(cmd, cmd.Args)
+		if err != nil {
+			PrintError(err)
+			if exit_code == 0 {
+				exit_code = 1
+			}
+		}
+	}
+	os.Exit(exit_code)
 }
 
 // }}}

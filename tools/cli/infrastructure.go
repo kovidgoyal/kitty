@@ -4,7 +4,6 @@ package cli
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -16,7 +15,6 @@ import (
 	"kitty"
 	"kitty/tools/cli/markup"
 	"kitty/tools/tty"
-	"kitty/tools/utils/style"
 )
 
 var RootCmd *cobra.Command
@@ -66,12 +64,6 @@ func ChoicesP(flags *pflag.FlagSet, name string, short string, usage string, cho
 }
 
 var formatter *markup.Context
-
-func format_with_indent(output io.Writer, text string, indent string, screen_width int) {
-	text = formatter.Prettify(text)
-	indented := style.WrapText(text, indent, screen_width, "#placeholder_for_formatting#")
-	io.WriteString(output, indented)
-}
 
 func full_command_name(cmd *cobra.Command) string {
 	var parent_names []string
