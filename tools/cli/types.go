@@ -108,7 +108,11 @@ func (self *Option) parsed_value() any {
 		return len(self.parsed_values_from_cmdline)
 	case StringOption:
 		if self.IsList {
-			return self.parsed_values_from_cmdline
+			ans := make([]string, len(self.parsed_values_from_cmdline))
+			for i, x := range self.parsed_values_from_cmdline {
+				ans[i] = x.(string)
+			}
+			return ans
 		}
 		fallthrough
 	default:
