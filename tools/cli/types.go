@@ -69,6 +69,12 @@ type Option struct {
 	seen_option                string
 }
 
+func (self *Option) reset() {
+	self.values_from_cmdline = self.values_from_cmdline[:0]
+	self.parsed_values_from_cmdline = self.parsed_values_from_cmdline[:0]
+	self.seen_option = ""
+}
+
 func (self *Option) needs_argument() bool {
 	return self.OptionType != BoolOption && self.OptionType != CountOption
 }
@@ -129,7 +135,7 @@ func (self *Option) parse_value(val string) (any, error) {
 			return nil, &ParseError{Option: self, Message: fmt.Sprintf(
 				":yellow:`%s` is not a valid number for :bold:`%s`. Only integers in decimal, hexadecimal, binary or octal notation are accepted.", val, self.seen_option)}
 		}
-		return pval, nil
+		return int(pval), nil
 	case FloatOption:
 		pval, err := strconv.ParseFloat(val, 64)
 		if err != nil {
@@ -286,7 +292,6 @@ type Command struct { // {{{
 	Run  func(cmd *Command, args []string) (int, error)
 
 	option_map map[string]*Option
-	exe_name   string
 }
 
 func (self *Command) Clone(parent *Command) *Command {
@@ -355,40 +360,45 @@ func (self *Command) Validate() error {
 		}
 	}
 	seen_flags := make(map[string]bool)
-	seen_dests := make(map[string]bool)
-	for _, g := range self.OptionGroups {
-		for _, o := range g.Options {
-			if seen_dests[o.Name] {
-				return &ParseError{Message: fmt.Sprintf("The option :yellow:`%s` occurs twice inside %s", o.Name, self.Name)}
-			}
-			seen_dests[o.Name] = true
-			for _, a := range o.Aliases {
-				q := a.String()
-				if seen_flags[q] {
-					return &ParseError{Message: fmt.Sprintf("The option :yellow:`%s` occurs twice inside %s", q, self.Name)}
-				}
-				seen_flags[q] = true
-			}
+
+	self.option_map = make(map[string]*Option, 128)
+	validate_options := func(opt *Option) error {
+		if self.option_map[opt.Name] != nil {
+			return &ParseError{Message: fmt.Sprintf("The option :yellow:`%s` occurs twice inside %s", opt.Name, self.Name)}
 		}
+		for _, a := range opt.Aliases {
+			q := a.String()
+			if seen_flags[q] {
+				return &ParseError{Message: fmt.Sprintf("The option :yellow:`%s` occurs twice inside %s", q, self.Name)}
+			}
+			seen_flags[q] = true
+		}
+		self.option_map[opt.Name] = opt
+		return nil
 	}
-	if !seen_dests["Help"] {
+	err := self.VisitAllOptions(validate_options)
+	if err != nil {
+		return err
+	}
+
+	if self.option_map["Help"] == nil {
 		if seen_flags["-h"] || seen_flags["--help"] {
 			return &ParseError{Message: fmt.Sprintf("The --help or -h flags are assigned to an option other than Help in %s", self.Name)}
 		}
-		self.Add(OptionSpec{Name: "--help -h", Type: "bool-set", Help: "Show help for this command"})
+		self.option_map["Help"] = self.Add(OptionSpec{Name: "--help -h", Type: "bool-set", Help: "Show help for this command"})
 	}
 
-	if self.Parent == nil && !seen_dests["Version"] {
+	if self.Parent == nil && self.option_map["Version"] == nil {
 		if seen_flags["--version"] {
 			return &ParseError{Message: fmt.Sprintf("The --version flag is assigned to an option other than Version in %s", self.Name)}
 		}
-		self.Add(OptionSpec{Name: "--version", Type: "bool-set", Help: "Show version"})
+		self.option_map["Version"] = self.Add(OptionSpec{Name: "--version", Type: "bool-set", Help: "Show version"})
 	}
 
 	return nil
 }
 
-func (self *Command) Root(args []string) *Command {
+func (self *Command) Root() *Command {
 	p := self
 	for p.Parent != nil {
 		p = p.Parent
@@ -402,8 +412,6 @@ func (self *Command) CommandStringForUsage() string {
 	for p != nil {
 		if p.Name != "" {
 			names = append(names, p.Name)
-		} else if p.exe_name != "" {
-			names = append(names, p.Name)
 		}
 		p = p.Parent
 	}
@@ -411,8 +419,7 @@ func (self *Command) CommandStringForUsage() string {
 }
 
 func (self *Command) ParseArgs(args []string) (*Command, error) {
-	if self.Parent != nil {
-		return nil, &ParseError{Message: "ParseArgs() must be called on the Root command"}
+	for ; self.Parent != nil; self = self.Parent {
 	}
 	err := self.Validate()
 	if err != nil {
@@ -425,18 +432,26 @@ func (self *Command) ParseArgs(args []string) (*Command, error) {
 		return nil, &ParseError{Message: "At least one arg must be supplied"}
 	}
 	ctx := Context{SeenCommands: make([]*Command, 0, 4)}
-	self.exe_name = args[0]
 	err = self.parse_args(&ctx, args[1:])
 	if err != nil {
 		return nil, err
 	}
-	self.option_map = make(map[string]*Option, 128)
-	for _, g := range self.OptionGroups {
-		for _, o := range g.Options {
-			self.option_map[o.Name] = o
+	return ctx.SeenCommands[len(ctx.SeenCommands)-1], nil
+}
+
+func (self *Command) ResetAfterParseArgs() {
+	for _, g := range self.SubCommandGroups {
+		for _, sc := range g.SubCommands {
+			sc.ResetAfterParseArgs()
 		}
 	}
-	return ctx.SeenCommands[len(ctx.SeenCommands)-1], nil
+
+	for _, g := range self.OptionGroups {
+		for _, o := range g.Options {
+			o.reset()
+		}
+	}
+	self.Args = make([]string, 0, 8)
 }
 
 func (self *Command) HasSubCommands() bool {
@@ -455,6 +470,31 @@ func (self *Command) HasVisibleSubCommands() bool {
 		}
 	}
 	return false
+}
+
+func (self *Command) VisitAllOptions(callback func(*Option) error) error {
+	depth := 0
+	iter_opts := func(cmd *Command) error {
+		for _, g := range cmd.OptionGroups {
+			for _, o := range g.Options {
+				if o.Depth >= depth {
+					err := callback(o)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return nil
+	}
+	for p := self; p != nil; p = p.Parent {
+		err := iter_opts(p)
+		if err != nil {
+			return err
+		}
+		depth++
+	}
+	return nil
 }
 
 func (self *Command) GetVisibleOptions() ([]string, map[string][]*Option) {
@@ -634,13 +674,13 @@ func (self *Command) Exec(args ...string) {
 		os.Exit(1)
 	}
 	help_opt := cmd.option_map["Help"]
-	version_opt := cmd.option_map["Version"]
+	version_opt := root.option_map["Version"]
 	exit_code := 0
 	if help_opt != nil && help_opt.parsed_value().(bool) {
 		cmd.ShowHelp()
 		os.Exit(exit_code)
 	} else if version_opt != nil && version_opt.parsed_value().(bool) {
-		cmd.ShowVersion()
+		root.ShowVersion()
 		os.Exit(exit_code)
 	} else if cmd.Run != nil {
 		exit_code, err = cmd.Run(cmd, cmd.Args)
