@@ -8,8 +8,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/spf13/cobra"
-
 	"kitty/tools/cli"
 	"kitty/tools/tty"
 	"kitty/tools/utils"
@@ -95,15 +93,13 @@ func main(args []string) error {
 	return err
 }
 
-func EntryPoint(tool_root *cobra.Command) *cobra.Command {
-	complete_command := cli.CreateCommand(&cobra.Command{
-		Use:    "__complete__ output_type [shell state...]",
-		Short:  "Generate completions for kitty commands",
-		Long:   "Generate completion candidates for kitty commands. The command line is read from STDIN. output_type can be one of the supported  shells or 'json' for JSON output.",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return main(args)
-		},
-	})
-	return complete_command
+func EntryPoint(tool_root *cli.Command) {
+	c := tool_root.AddSubCommand("", "__complete__")
+	c.Usage = "output_type [shell state...]"
+	c.Hidden = true
+	c.ShortDescription = "Generate completions for kitty commands"
+	c.HelpText = "Generate completion candidates for kitty commands. The command line is read from STDIN. output_type can be one of the supported  shells or 'json' for JSON output."
+	c.Run = func(cmd *cli.Command, args []string) (ret int, err error) {
+		return ret, main(args)
+	}
 }

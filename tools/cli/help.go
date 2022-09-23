@@ -41,8 +41,8 @@ func (self *Command) FormatSubCommands(output io.Writer, formatter *markup.Conte
 		if !g.HasVisibleSubCommands() {
 			continue
 		}
-		fmt.Fprintln(output)
 		if g.Title != "" {
+			fmt.Fprintln(output)
 			fmt.Fprintln(output, formatter.Title(g.Title))
 		}
 		for _, c := range g.SubCommands {
@@ -57,6 +57,7 @@ func (self *Command) FormatSubCommands(output io.Writer, formatter *markup.Conte
 }
 
 func (self *Option) FormatOption(output io.Writer, formatter *markup.Context, screen_width int) {
+	fmt.Fprint(output, "  ")
 	for i, a := range self.Aliases {
 		fmt.Fprint(output, formatter.Opt(a.String()))
 		if i != len(self.Aliases)-1 {
@@ -102,7 +103,11 @@ func (self *Command) ShowHelp() {
 	fmt.Fprintln(&output, formatter.Title("Usage")+":", formatter.Exe(strings.TrimSpace(self.CommandStringForUsage())),
 		strings.TrimSpace(formatter.Prettify(self.Usage)))
 	fmt.Fprintln(&output)
-	format_with_indent(&output, formatter.Prettify(prepare_help_text_for_display(self.HelpText)), "", screen_width)
+	if self.HelpText != "" {
+		format_with_indent(&output, formatter.Prettify(prepare_help_text_for_display(self.HelpText)), "", screen_width)
+	} else if self.ShortDescription != "" {
+		format_with_indent(&output, formatter.Prettify(self.ShortDescription), "", screen_width)
+	}
 
 	if self.HasVisibleSubCommands() {
 		fmt.Fprintln(&output)
@@ -118,8 +123,8 @@ func (self *Command) ShowHelp() {
 		fmt.Fprintln(&output)
 		fmt.Fprintln(&output, formatter.Title("Options")+":")
 		for _, title := range group_titles {
-			fmt.Fprintln(&output)
 			if title != "" {
+				fmt.Fprintln(&output)
 				fmt.Fprintln(&output, formatter.Title(title))
 			}
 			for _, opt := range gmap[title] {

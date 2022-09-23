@@ -10,7 +10,7 @@ import (
 var _ = fmt.Print
 
 func (self *Command) parse_args(ctx *Context, args []string) error {
-	args_to_parse := make([]string, 0, len(args))
+	args_to_parse := make([]string, len(args))
 	copy(args_to_parse, args)
 	ctx.SeenCommands = append(ctx.SeenCommands, self)
 
@@ -39,7 +39,7 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 		return nil
 	}
 
-	for len(self.Args) > 0 {
+	for len(args_to_parse) > 0 {
 		arg := consume_arg()
 
 		if expecting_arg_for == nil {
@@ -49,10 +49,10 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 					options_allowed = false
 					continue
 				}
-				opt_str := ""
+				opt_str := arg
 				opt_val := ""
 				has_val := false
-				if strings.HasPrefix(opt_str, "--") || len(opt_str) == 2 {
+				if strings.HasPrefix(opt_str, "--") {
 					parts := strings.SplitN(arg, "=", 2)
 					if len(parts) > 1 {
 						has_val = true

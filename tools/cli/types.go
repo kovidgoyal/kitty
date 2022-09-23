@@ -5,6 +5,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -206,16 +207,12 @@ func (self *CommandGroup) Clone(parent *Command) *CommandGroup {
 	return &ans
 }
 
-func (self *CommandGroup) AddSubCommand(parent *Command, name string) (*Command, error) {
-	for _, c := range self.SubCommands {
-		if c.Name == name {
-			return nil, fmt.Errorf("A subcommand with the name %#v already exists in the parent command: %#v", name, parent.Name)
-		}
-	}
+func (self *CommandGroup) AddSubCommand(parent *Command, name string) *Command {
 	ans := NewRootCommand()
 	ans.Parent = parent
+	ans.Name = name
 	self.SubCommands = append(self.SubCommands, ans)
-	return ans, nil
+	return ans
 }
 
 func (self *CommandGroup) FindSubCommand(name string) *Command {
@@ -246,6 +243,7 @@ func (self *OptionGroup) AddOption(parent *Command, spec OptionSpec) (*Option, e
 	ans, err := option_from_spec(spec)
 	if err == nil {
 		ans.Parent = parent
+		self.Options = append(self.Options, ans)
 	}
 	return ans, err
 }
@@ -254,6 +252,7 @@ func (self *OptionGroup) AddOptionFromString(parent *Command, items ...string) (
 	ans, err := OptionFromString(items...)
 	if err == nil {
 		ans.Parent = parent
+		self.Options = append(self.Options, ans)
 	}
 	return ans, err
 }
@@ -320,6 +319,7 @@ func (self *Command) AddClone(group string, src *Command) (*Command, error) {
 
 func NewRootCommand() *Command {
 	ans := Command{
+		Name:             filepath.Base(os.Args[0]),
 		SubCommandGroups: make([]*CommandGroup, 0, 8),
 		OptionGroups:     make([]*OptionGroup, 0, 8),
 		Args:             make([]string, 0, 8),
@@ -338,7 +338,7 @@ func (self *Command) AddSubCommandGroup(title string) *CommandGroup {
 	return &ans
 }
 
-func (self *Command) AddSubCommand(group string, name string) (*Command, error) {
+func (self *Command) AddSubCommand(group string, name string) *Command {
 	return self.AddSubCommandGroup(group).AddSubCommand(self, name)
 }
 
@@ -363,6 +363,7 @@ func (self *Command) Validate() error {
 			if seen_dests[o.Name] {
 				return &ParseError{Message: fmt.Sprintf("The option :yellow:`%s` occurs twice inside %s", o.Name, self.Name)}
 			}
+			seen_dests[o.Name] = true
 			for _, a := range o.Aliases {
 				q := a.String()
 				if seen_flags[q] {
@@ -372,25 +373,23 @@ func (self *Command) Validate() error {
 			}
 		}
 	}
-	if self.Parent != nil {
-		if !seen_dests["Help"] {
-			if seen_flags["-h"] || seen_flags["--help"] {
-				return &ParseError{Message: fmt.Sprintf("The --help or -h flags are assigned to an option other than Help in %s", self.Name)}
-			}
-			_, err := self.Add(OptionSpec{Name: "--help -h", Type: "bool-set", Help: "Show help for this command"})
-			if err != nil {
-				return err
-			}
+	if !seen_dests["Help"] {
+		if seen_flags["-h"] || seen_flags["--help"] {
+			return &ParseError{Message: fmt.Sprintf("The --help or -h flags are assigned to an option other than Help in %s", self.Name)}
 		}
+		_, err := self.Add(OptionSpec{Name: "--help -h", Type: "bool-set", Help: "Show help for this command"})
+		if err != nil {
+			return err
+		}
+	}
 
-		if self.Parent.Parent == nil && !seen_dests["Version"] {
-			if seen_flags["--version"] {
-				return &ParseError{Message: fmt.Sprintf("The --version flag is assigned to an option other than Version in %s", self.Name)}
-			}
-			_, err := self.Add(OptionSpec{Name: "--version", Type: "bool-set", Help: "Show version"})
-			if err != nil {
-				return err
-			}
+	if self.Parent == nil && !seen_dests["Version"] {
+		if seen_flags["--version"] {
+			return &ParseError{Message: fmt.Sprintf("The --version flag is assigned to an option other than Version in %s", self.Name)}
+		}
+		_, err := self.Add(OptionSpec{Name: "--version", Type: "bool-set", Help: "Show version"})
+		if err != nil {
+			return err
 		}
 	}
 
