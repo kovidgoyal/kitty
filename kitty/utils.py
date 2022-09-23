@@ -1086,3 +1086,13 @@ def docs_url(which: str = '', local_docs_root: Optional[str] = '') -> str:
     if frag:
         url += '#' + frag
     return url
+
+
+def sanitize_for_bracketed_paste(text: bytes) -> bytes:
+    pat = re.compile(b'(?:(?:\033\\[)|(?:\x9b))201~')
+    while True:
+        new_text = pat.sub(text, b'')
+        if new_text == text:
+            break
+        text = new_text
+    return text

@@ -14,39 +14,37 @@ from gettext import gettext as _
 from itertools import chain
 from time import monotonic
 from typing import (
-    TYPE_CHECKING, Any, Callable, Deque, Dict, Iterable, List, NamedTuple,
-    Optional, Pattern, Sequence, Tuple, Union
+    TYPE_CHECKING, Any, Callable, Deque, Dict, Iterable, List, NamedTuple, Optional,
+    Pattern, Sequence, Tuple, Union,
 )
 
 from .child import ProcessDesc
 from .cli_stub import CLIOptions
 from .clipboard import (
     get_clipboard_string, get_primary_selection, set_clipboard_string,
-    set_primary_selection
+    set_primary_selection,
 )
 from .config import build_ansi_color_table
 from .constants import (
-    appname, clear_handled_signals, config_dir, is_macos, wakeup_io_loop
+    appname, clear_handled_signals, config_dir, is_macos, wakeup_io_loop,
 )
 from .fast_data_types import (
-    BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
-    CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK,
-    CURSOR_UNDERLINE, DCS, DECORATION, DECORATION_MASK, DIM, GLFW_MOD_CONTROL,
-    GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
-    MARK, MARK_MASK, NO_CURSOR_SHAPE, NUM_UNDERLINE_STYLES, OSC, REVERSE,
-    SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, STRIKETHROUGH, TINT_PROGRAM, Color,
-    KeyEvent, Screen, add_timer, add_window, cell_size_for_window,
-    click_mouse_cmd_output, click_mouse_url, compile_program,
-    current_os_window, encode_key_for_tty, get_boss, get_click_interval,
-    get_options, init_cell_program, mark_os_window_dirty, mouse_selection,
-    move_cursor_to_mouse_if_in_prompt, pt_to_px, set_titlebar_color,
-    set_window_logo, set_window_padding, set_window_render_data,
-    update_ime_position_for_window, update_window_title,
-    update_window_visibility, wakeup_main_loop
+    BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM, CELL_PROGRAM,
+    CELL_SPECIAL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DCS, DECORATION,
+    DECORATION_MASK, DIM, GLFW_MOD_CONTROL, GRAPHICS_ALPHA_MASK_PROGRAM,
+    GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM, MARK, MARK_MASK, NO_CURSOR_SHAPE,
+    NUM_UNDERLINE_STYLES, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
+    STRIKETHROUGH, TINT_PROGRAM, Color, KeyEvent, Screen, add_timer, add_window,
+    cell_size_for_window, click_mouse_cmd_output, click_mouse_url, compile_program,
+    current_os_window, encode_key_for_tty, get_boss, get_click_interval, get_options,
+    init_cell_program, mark_os_window_dirty, mouse_selection,
+    move_cursor_to_mouse_if_in_prompt, pt_to_px, set_titlebar_color, set_window_logo,
+    set_window_padding, set_window_render_data, update_ime_position_for_window,
+    update_window_title, update_window_visibility, wakeup_main_loop,
 )
 from .keys import keyboard_mode_name, mod_mask
 from .notify import (
-    NotificationCommand, handle_notification_cmd, sanitize_identifier_pat
+    NotificationCommand, handle_notification_cmd, sanitize_identifier_pat,
 )
 from .options.types import Options
 from .rgb import to_color
@@ -54,9 +52,9 @@ from .terminfo import get_capabilities
 from .types import MouseEvent, OverlayType, WindowGeometry, ac, run_once
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
-    docs_url, kitty_ansi_sanitizer_pat, load_shaders, log_error, open_cmd,
-    open_url, parse_color_set, path_from_osc7_url, resolve_custom_file,
-    resolved_shell, sanitize_title
+    docs_url, kitty_ansi_sanitizer_pat, load_shaders, log_error, open_cmd, open_url,
+    parse_color_set, path_from_osc7_url, resolve_custom_file, resolved_shell,
+    sanitize_for_bracketed_paste, sanitize_title,
 )
 
 MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]]]]
@@ -1463,11 +1461,7 @@ class Window:
             if isinstance(text, str):
                 text = text.encode('utf-8')
             if self.screen.in_bracketed_paste_mode:
-                while True:
-                    new_text = text.replace(b'\033[201~', b'').replace(b'\x9b201~', b'')
-                    if len(text) == len(new_text):
-                        break
-                    text = new_text
+                text = sanitize_for_bracketed_paste(text)
             else:
                 # Workaround for broken editors like nano that cannot handle
                 # newlines in pasted text see https://github.com/kovidgoyal/kitty/issues/994
