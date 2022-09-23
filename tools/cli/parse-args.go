@@ -19,13 +19,16 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 
 	consume_arg := func() string { ans := args_to_parse[0]; args_to_parse = args_to_parse[1:]; return ans }
 
-	handle_option := func(opt_str string, has_val bool, opt_val string) error {
+	handle_option := func(opt_str string, has_val bool, opt_val string, val_not_allowed bool) error {
 		opt := self.FindOption(opt_str)
 		if opt == nil {
 			return &ParseError{Message: fmt.Sprintf("Unknown option: :yellow:`%s`", opt_str)}
 		}
 		opt.seen_option = opt_str
 		needs_arg := opt.needs_argument()
+		if needs_arg && val_not_allowed {
+			return &ParseError{Message: fmt.Sprintf("The option : :yellow:`%s` must be followed by a value not another option", opt_str)}
+		}
 		if has_val {
 			if !needs_arg {
 				return &ParseError{Message: fmt.Sprintf("The option: :yellow:`%s` does not take values", opt_str)}
@@ -59,10 +62,14 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 						opt_val = parts[1]
 					}
 					opt_str = parts[0]
-					handle_option(opt_str, has_val, opt_val)
+					err := handle_option(opt_str, has_val, opt_val, false)
+					if err != nil {
+						return err
+					}
 				} else {
-					for _, sl := range opt_str[1:] {
-						err := handle_option("-"+string(sl), false, "")
+					runes := []rune(opt_str[1:])
+					for i, sl := range runes {
+						err := handle_option("-"+string(sl), false, "", i < len(runes)-1)
 						if err != nil {
 							return err
 						}

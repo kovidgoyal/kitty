@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"kitty/tools/utils"
+
+	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print
@@ -52,7 +54,7 @@ type OptionSpec struct {
 type Option struct {
 	Name       string
 	Aliases    []Alias
-	Choices    map[string]bool
+	Choices    []string
 	Default    string
 	OptionType OptionType
 	Hidden     bool
@@ -157,13 +159,9 @@ func (self *Option) add_value(val string) error {
 			}
 		}
 	case StringOption:
-		if self.Choices != nil && !self.Choices[val] {
-			c := make([]string, len(self.Choices))
-			for k := range self.Choices {
-				c = append(c, k)
-			}
+		if self.Choices != nil && !slices.Contains(self.Choices, val) {
 			return &ParseError{Option: self, Message: fmt.Sprintf(":yellow:`%s` is not a valid value for :bold:`%s`. Valid values: %s",
-				val, self.seen_option, strings.Join(c, ", "),
+				val, self.seen_option, strings.Join(self.Choices, ", "),
 			)}
 		}
 		self.values_from_cmdline = append(self.values_from_cmdline, val)
@@ -377,20 +375,14 @@ func (self *Command) Validate() error {
 		if seen_flags["-h"] || seen_flags["--help"] {
 			return &ParseError{Message: fmt.Sprintf("The --help or -h flags are assigned to an option other than Help in %s", self.Name)}
 		}
-		_, err := self.Add(OptionSpec{Name: "--help -h", Type: "bool-set", Help: "Show help for this command"})
-		if err != nil {
-			return err
-		}
+		self.Add(OptionSpec{Name: "--help -h", Type: "bool-set", Help: "Show help for this command"})
 	}
 
 	if self.Parent == nil && !seen_dests["Version"] {
 		if seen_flags["--version"] {
 			return &ParseError{Message: fmt.Sprintf("The --version flag is assigned to an option other than Version in %s", self.Name)}
 		}
-		_, err := self.Add(OptionSpec{Name: "--version", Type: "bool-set", Help: "Show version"})
-		if err != nil {
-			return err
-		}
+		self.Add(OptionSpec{Name: "--version", Type: "bool-set", Help: "Show version"})
 	}
 
 	return nil
@@ -522,20 +514,29 @@ func (self *Command) AddOptionGroup(title string) *OptionGroup {
 	return &ans
 }
 
-func (self *Command) AddOptionFromString(items ...string) (*Option, error) {
-	return self.AddOptionGroup("").AddOptionFromString(self, items...)
+func (self *Command) AddOptionToGroupFromString(group string, items ...string) *Option {
+	ans, err := self.AddOptionGroup(group).AddOptionFromString(self, items...)
+	if err != nil {
+		panic(err)
+	}
+	return ans
+
 }
 
-func (self *Command) Add(s OptionSpec) (*Option, error) {
-	return self.AddOptionGroup("").AddOption(self, s)
+func (self *Command) AddToGroup(group string, s OptionSpec) *Option {
+	ans, err := self.AddOptionGroup(group).AddOption(self, s)
+	if err != nil {
+		panic(err)
+	}
+	return ans
 }
 
-func (self *Command) AddOptionToGroupFromString(group string, items ...string) (*Option, error) {
-	return self.AddOptionGroup(group).AddOptionFromString(self, items...)
+func (self *Command) AddOptionFromString(items ...string) *Option {
+	return self.AddOptionToGroupFromString("", items...)
 }
 
-func (self *Command) AddToGroup(group string, s OptionSpec) (*Option, error) {
-	return self.AddOptionGroup(group).AddOption(self, s)
+func (self *Command) Add(s OptionSpec) *Option {
+	return self.AddToGroup("", s)
 }
 
 func (self *Command) FindOption(name_with_hyphens string) *Option {
