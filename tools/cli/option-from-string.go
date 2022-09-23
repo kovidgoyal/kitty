@@ -117,14 +117,17 @@ func option_from_spec(spec OptionSpec) (*Option, error) {
 	ans.Depth = spec.Depth
 	if spec.Choices != "" {
 		parts := strings.Split(spec.Choices, ",")
-		ans.Choices = make(map[string]bool, len(parts))
-		ans.OptionType = StringOption
-		for i, x := range parts {
-			x = strings.TrimSpace(x)
-			ans.Choices[x] = true
-			if i == 0 && ans.Default == "" {
-				ans.Default = x
+		if len(parts) == 1 {
+			parts = strings.Split(spec.Choices, " ")
+		} else {
+			for i, x := range parts {
+				parts[i] = strings.TrimSpace(x)
 			}
+		}
+		ans.Choices = parts
+		ans.OptionType = StringOption
+		if ans.Default == "" {
+			ans.Default = parts[0]
 		}
 	} else {
 		switch spec.Type {
@@ -151,7 +154,7 @@ func option_from_spec(spec OptionSpec) (*Option, error) {
 		case "list":
 			ans.IsList = true
 			fallthrough
-		case "str", "string":
+		case "str", "string", "":
 			ans.OptionType = StringOption
 		default:
 			return nil, fmt.Errorf("Unknown option type: %s", spec.Type)
