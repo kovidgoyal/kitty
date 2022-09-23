@@ -6,6 +6,9 @@ env:
     LC_ALL: en_US.UTF-8
     LANG: en_US.UTF-8
 
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
 jobs:
     linux:
         name: Linux (python=${{ matrix.pyver }} cc=${{ matrix.cc }} sanitize=${{ matrix.sanitize }})
