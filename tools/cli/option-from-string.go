@@ -107,7 +107,7 @@ func option_from_spec(spec OptionSpec) (*Option, error) {
 	}
 	parts := strings.Split(spec.Name, " ")
 	ans.Name = camel_case_dest(parts[0])
-	ans.Aliases = make([]Alias, 0, len(parts))
+	ans.Aliases = make([]Alias, len(parts))
 	for i, x := range parts {
 		ans.Aliases[i] = Alias{NameWithoutHyphens: strings.TrimLeft(x, "-"), IsShort: !strings.HasPrefix(x, "--")}
 	}
@@ -198,7 +198,7 @@ func prepare_help_text_for_display(raw string) string {
 				}
 			}
 			prev_indent = current_indent
-			if !strings.HasSuffix(help.String(), "\n") {
+			if help.Len() > 0 && !strings.HasSuffix(help.String(), "\n") {
 				help.WriteString(" ")
 			}
 			help.WriteString(line)
