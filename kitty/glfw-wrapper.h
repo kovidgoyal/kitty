@@ -2230,7 +2230,7 @@ typedef int (*glfwSetX11LaunchCommand_func)(GLFWwindow*, char**, int);
 GFW_EXTERN glfwSetX11LaunchCommand_func glfwSetX11LaunchCommand_impl;
 #define glfwSetX11LaunchCommand glfwSetX11LaunchCommand_impl
 
-typedef void (*glfwSetX11WindowAsDock_func)(int32_t);
+typedef void (*glfwSetX11WindowAsDock_func)(int32_t, int);
 GFW_EXTERN glfwSetX11WindowAsDock_func glfwSetX11WindowAsDock_impl;
 #define glfwSetX11WindowAsDock glfwSetX11WindowAsDock_impl
 
