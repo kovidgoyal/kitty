@@ -566,3 +566,4 @@ class TestDataTypes(BaseTest):
             q = sanitize_for_bracketed_paste(x.encode('utf-8'))
             self.assertNotIn(b'\x1b[201~', q)
             self.assertNotIn('\x9b201~'.encode('utf-8'), q)
+            self.assertIn(b'ab', q)
