@@ -1686,6 +1686,16 @@ get_clipboard_mime(PyObject *self UNUSED, PyObject *args) {
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }
+
+static PyObject*
+make_x11_window_a_dock_window(PyObject *self UNUSED, PyObject *args UNUSED) {
+    int x11_window_id;
+    if (!PyArg_ParseTuple(args, "i", &x11_window_id)) return NULL;
+    if (!glfwSetX11WindowAsDock) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetX11Window"); return NULL; }
+    glfwSetX11WindowAsDock(x11_window_id);
+    Py_RETURN_NONE;
+}
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
@@ -1704,6 +1714,7 @@ static PyMethodDef module_methods[] = {
     METHODB(x11_display, METH_NOARGS),
     METHODB(get_click_interval, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
+    METHODB(make_x11_window_a_dock_window, METH_VARARGS),
     METHODB(strip_csi, METH_O),
 #ifndef __APPLE__
     METHODB(dbus_send_notification, METH_VARARGS),

@@ -11,6 +11,7 @@ from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
 from kitty.constants import appname, is_macos
 from kitty.os_window_size import WindowSizeData
+from kitty.fast_data_types import make_x11_window_a_dock_window
 
 OPTIONS = r'''
 --lines
@@ -111,10 +112,7 @@ window_width = window_height = 0
 
 
 def setup_x11_window(win_id: int) -> None:
-    call_xprop(
-            '-id', str(win_id), '-format', '_NET_WM_WINDOW_TYPE', '32a',
-            '-set', '_NET_WM_WINDOW_TYPE', '_NET_WM_WINDOW_TYPE_DOCK'
-    )
+    make_x11_window_a_dock_window(win_id)
     func = globals()[f'create_{args.edge}_strut']
     func(win_id, window_width, window_height)
 

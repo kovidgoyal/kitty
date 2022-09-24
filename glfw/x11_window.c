@@ -3197,3 +3197,11 @@ GLFWAPI int glfwSetX11LaunchCommand(GLFWwindow *handle, char **argv, int argc)
     _GLFWwindow* window = (_GLFWwindow*) handle;
     return XSetCommand(_glfw.x11.display, window->x11.handle, argv, argc);
 }
+
+GLFWAPI void glfwSetX11WindowAsDock(int32_t x11_window_id) {
+    _GLFW_REQUIRE_INIT();
+    Atom type = _glfw.x11.NET_WM_WINDOW_TYPE_DOCK;
+    XChangeProperty(_glfw.x11.display, x11_window_id,
+                    _glfw.x11.NET_WM_WINDOW_TYPE, XA_ATOM, 32,
+                    PropModeReplace, (unsigned char*) &type, 1);
+}

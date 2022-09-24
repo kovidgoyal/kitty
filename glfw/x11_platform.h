@@ -253,6 +253,7 @@ typedef struct _GLFWlibraryX11
     Atom            NET_WM_PING;
     Atom            NET_WM_WINDOW_TYPE;
     Atom            NET_WM_WINDOW_TYPE_NORMAL;
+    Atom            NET_WM_WINDOW_TYPE_DOCK;
     Atom            NET_WM_STATE;
     Atom            NET_WM_STATE_ABOVE;
     Atom            NET_WM_STATE_FULLSCREEN;

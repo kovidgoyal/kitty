@@ -137,6 +137,8 @@ static void detectEWMH(void)
         getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_WINDOW_TYPE");
     _glfw.x11.NET_WM_WINDOW_TYPE_NORMAL =
         getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_WINDOW_TYPE_NORMAL");
+    _glfw.x11.NET_WM_WINDOW_TYPE_DOCK =
+        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_WINDOW_TYPE_DOCK");
     _glfw.x11.NET_WORKAREA =
         getAtomIfSupported(supportedAtoms, atomCount, "_NET_WORKAREA");
     _glfw.x11.NET_CURRENT_DESKTOP =
