@@ -17,6 +17,7 @@ class LastUsedLayout(RemoteCommand):
     '''
     match/str: Which tab to change the layout of
     all/bool: Boolean to match all tabs
+    no_response/bool: Boolean indicating whether to wait for a response
     '''
 
     short_desc = 'Switch to the last used layout'
@@ -37,7 +38,7 @@ the command will exit with a success code.
 ''' + '\n\n\n' + MATCH_TAB_OPTION
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'match': opts.match, 'all': opts.all}
+        return {'match': opts.match, 'all': opts.all, 'no_response': opts.no_response}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         for tab in self.tabs_for_match_payload(boss, window, payload_get):
