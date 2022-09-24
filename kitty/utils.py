@@ -1089,7 +1089,7 @@ def docs_url(which: str = '', local_docs_root: Optional[str] = '') -> str:
 
 
 def sanitize_for_bracketed_paste(text: bytes) -> bytes:
-    pat = re.compile(b'(?:(?:\033\\[)|(?:\x9b))201~')
+    pat = re.compile(b'(?:(?:\033\\\x5b)|(?:\x9b))201~')
     while True:
         new_text = pat.sub(b'', text)
         if new_text == text:
