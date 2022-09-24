@@ -2945,10 +2945,16 @@ _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_typ
         return;
     }
     size_t count = 0;
-    atoms[count++] = atom_for_mime(mime_type).atom;
     if (strcmp(mime_type, "text/plain") == 0) {
+        // we need to do this because GTK/GNOME is developed by morons
+        // they convert text/plain to DOS line endings
+        // https://gitlab.gnome.org/GNOME/gtk/-/issues/2307
+        atoms[count++] = atom_for_mime("text/plain;charset=utf-8").atom;
         atoms[count++] = _glfw.x11.UTF8_STRING;
+        atoms[count++] = atom_for_mime("text/plain").atom;
         atoms[count++] = XA_STRING;
+    } else {
+        atoms[count++] = atom_for_mime(mime_type).atom;
     }
     getSelectionString(which, atoms, count, write_data, object, true);
 }
