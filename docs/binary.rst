@@ -85,7 +85,7 @@ Customizing the installation
 
   .. code-block:: sh
 
-     _kitty_install_cmd \\
+     _kitty_install_cmd \
          installer=nightly
 
   If you want to install it in parallel to the released kitty specify a
@@ -93,14 +93,14 @@ Customizing the installation
 
   .. code-block:: sh
 
-     _kitty_install_cmd \\
+     _kitty_install_cmd \
          installer=nightly dest=/some/other/location
 
 * You can specify a different install location, with ``dest``:
 
   .. code-block:: sh
 
-     _kitty_install_cmd \\
+     _kitty_install_cmd \
          dest=/some/other/location
 
 * You can tell the installer not to launch |kitty| after installing it with
@@ -108,14 +108,14 @@ Customizing the installation
 
   .. code-block:: sh
 
-     _kitty_install_cmd \\
+     _kitty_install_cmd \
          launch=n
 
 * You can use a previously downloaded dmg/tarball, with ``installer``:
 
   .. code-block:: sh
 
-     _kitty_install_cmd \\
+     _kitty_install_cmd \
          installer=/path/to/dmg or tarball
 
 
