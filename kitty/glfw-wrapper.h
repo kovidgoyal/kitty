@@ -2234,4 +2234,8 @@ typedef void (*glfwSetX11WindowAsDock_func)(int32_t);
 GFW_EXTERN glfwSetX11WindowAsDock_func glfwSetX11WindowAsDock_impl;
 #define glfwSetX11WindowAsDock glfwSetX11WindowAsDock_impl
 
+typedef void (*glfwSetX11WindowStrut_func)(int32_t, uint32_t[12]);
+GFW_EXTERN glfwSetX11WindowStrut_func glfwSetX11WindowStrut_impl;
+#define glfwSetX11WindowStrut glfwSetX11WindowStrut_impl
+
 const char* load_glfw(const char* path);

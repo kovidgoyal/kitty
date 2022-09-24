@@ -172,6 +172,8 @@ class Arg:
         while self.name.startswith('*'):
             self.name = self.name[1:]
             self.type = self.type + '*'
+        if '[' in self.name:
+            self.type += '[' + self.name.partition('[')[-1]
 
     def __repr__(self) -> str:
         return f'Arg({self.type}, {self.name})'
@@ -253,6 +255,7 @@ const char *action_text, int32_t timeout, GLFWDBusnotificationcreatedfun callbac
     void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler)
     int glfwSetX11LaunchCommand(GLFWwindow *handle, char **argv, int argc)
     void glfwSetX11WindowAsDock(int32_t x11_window_id)
+    void glfwSetX11WindowStrut(int32_t x11_window_id, uint32_t dimensions[12])
 '''.splitlines():
         if line:
             functions.append(Function(line.strip(), check_fail=False))

@@ -269,6 +269,7 @@ typedef struct _GLFWlibraryX11
     Atom            NET_ACTIVE_WINDOW;
     Atom            NET_FRAME_EXTENTS;
     Atom            NET_REQUEST_FRAME_EXTENTS;
+    Atom            NET_WM_STRUT_PARTIAL;
     Atom            MOTIF_WM_HINTS;
 
     // Xdnd (drag and drop) atoms

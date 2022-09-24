@@ -2,8 +2,6 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-import shutil
-import subprocess
 import sys
 from typing import Any, Callable, Dict, List, Tuple
 
@@ -66,14 +64,7 @@ def parse_panel_args(args: List[str]) -> Tuple[PanelCLIOptions, List[str]]:
     return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten panel', result_class=PanelCLIOptions)
 
 
-def call_xprop(*cmd: str, silent: bool = False) -> None:
-    cmd_ = ['xprop'] + list(cmd)
-    try:
-        cp = subprocess.run(cmd_, stdout=subprocess.DEVNULL if silent else None)
-    except FileNotFoundError:
-        raise SystemExit('You must have the xprop program installed')
-    if cp.returncode != 0:
-        raise SystemExit(cp.returncode)
+Strut = Tuple[int, int, int, int, int, int, int, int, int, int, int, int]
 
 
 def create_strut(
@@ -81,40 +72,33 @@ def create_strut(
     left: int = 0, right: int = 0, top: int = 0, bottom: int = 0, left_start_y: int = 0, left_end_y: int = 0,
     right_start_y: int = 0, right_end_y: int = 0, top_start_x: int = 0, top_end_x: int = 0,
     bottom_start_x: int = 0, bottom_end_x: int = 0
-) -> None:
-    call_xprop(
-            '-id',
-            str(int(win_id)), '-format', '_NET_WM_STRUT_PARTIAL', '32cccccccccccc',
-            '-set', '_NET_WM_STRUT_PARTIAL',
-            f'{left},{right},{top},{bottom},'
-            f'{left_start_y},{left_end_y},{right_start_y},{right_end_y},'
-            f'{top_start_x},{top_end_x},{bottom_start_x},{bottom_end_x}'
-    )
+) -> Strut:
+    return left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x
 
 
-def create_top_strut(win_id: int, width: int, height: int) -> None:
-    create_strut(win_id, top=height, top_end_x=width)
+def create_top_strut(win_id: int, width: int, height: int) -> Strut:
+    return create_strut(win_id, top=height, top_end_x=width)
 
 
-def create_bottom_strut(win_id: int, width: int, height: int) -> None:
-    create_strut(win_id, bottom=height, bottom_end_x=width)
+def create_bottom_strut(win_id: int, width: int, height: int) -> Strut:
+    return create_strut(win_id, bottom=height, bottom_end_x=width)
 
 
-def create_left_strut(win_id: int, width: int, height: int) -> None:
-    create_strut(win_id, left=width, left_end_y=height)
+def create_left_strut(win_id: int, width: int, height: int) -> Strut:
+    return create_strut(win_id, left=width, left_end_y=height)
 
 
-def create_right_strut(win_id: int, width: int, height: int) -> None:
-    create_strut(win_id, right=width, right_end_y=height)
+def create_right_strut(win_id: int, width: int, height: int) -> Strut:
+    return create_strut(win_id, right=width, right_end_y=height)
 
 
 window_width = window_height = 0
 
 
 def setup_x11_window(win_id: int) -> None:
-    make_x11_window_a_dock_window(win_id)
     func = globals()[f'create_{args.edge}_strut']
-    func(win_id, window_width, window_height)
+    strut = func(win_id, window_width, window_height)
+    make_x11_window_a_dock_window(win_id, strut)
 
 
 def initial_window_size_func(opts: WindowSizeData, cached_values: Dict[str, Any]) -> Callable[[int, int, float, float, float, float], Tuple[int, int]]:
@@ -138,8 +122,6 @@ def main(sys_args: List[str]) -> None:
     global args
     if is_macos or not os.environ.get('DISPLAY'):
         raise SystemExit('Currently the panel kitten is supported only on X11 desktops')
-    if not shutil.which('xprop'):
-        raise SystemExit('The xprop program is required for the panel kitten')
     args, items = parse_panel_args(sys_args[1:])
     if not items:
         raise SystemExit('You must specify the program to run')

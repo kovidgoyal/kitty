@@ -3205,3 +3205,10 @@ GLFWAPI void glfwSetX11WindowAsDock(int32_t x11_window_id) {
                     _glfw.x11.NET_WM_WINDOW_TYPE, XA_ATOM, 32,
                     PropModeReplace, (unsigned char*) &type, 1);
 }
+
+GLFWAPI void glfwSetX11WindowStrut(int32_t x11_window_id, uint32_t dimensions[12]) {
+    _GLFW_REQUIRE_INIT();
+    XChangeProperty(_glfw.x11.display, x11_window_id,
+                    _glfw.x11.NET_WM_STRUT_PARTIAL, XA_CARDINAL, 32,
+                    PropModeReplace, (unsigned char*) dimensions, 12);
+}

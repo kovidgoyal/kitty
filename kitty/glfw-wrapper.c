@@ -470,6 +470,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetX11WindowAsDock_impl) = dlsym(handle, "glfwSetX11WindowAsDock");
     if (glfwSetX11WindowAsDock_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwSetX11WindowStrut_impl) = dlsym(handle, "glfwSetX11WindowStrut");
+    if (glfwSetX11WindowStrut_impl == NULL) dlerror(); // clear error indicator
+
     return NULL;
 }
 

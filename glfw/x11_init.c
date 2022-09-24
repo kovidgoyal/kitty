@@ -149,6 +149,8 @@ static void detectEWMH(void)
         getAtomIfSupported(supportedAtoms, atomCount, "_NET_FRAME_EXTENTS");
     _glfw.x11.NET_REQUEST_FRAME_EXTENTS =
         getAtomIfSupported(supportedAtoms, atomCount, "_NET_REQUEST_FRAME_EXTENTS");
+    _glfw.x11.NET_WM_STRUT_PARTIAL =
+        getAtomIfSupported(supportedAtoms, atomCount, "_NET_WM_STRUT_PARTIAL");
 
     XFree(supportedAtoms);
 }
