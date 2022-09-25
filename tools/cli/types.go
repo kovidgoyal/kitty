@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"kitty/tools/cli/completion"
 	"kitty/tools/utils"
 
 	"golang.org/x/exp/slices"
@@ -42,26 +43,28 @@ func (self *Alias) String() string {
 }
 
 type OptionSpec struct {
-	Name    string
-	Type    string
-	Dest    string
-	Choices string
-	Depth   int
-	Default string
-	Help    string
+	Name           string
+	Type           string
+	Dest           string
+	Choices        string
+	Depth          int
+	Default        string
+	Help           string
+	CompletionFunc *completion.CompletionFunc
 }
 
 type Option struct {
-	Name       string
-	Aliases    []Alias
-	Choices    []string
-	Default    string
-	OptionType OptionType
-	Hidden     bool
-	Depth      int
-	Help       string
-	IsList     bool
-	Parent     *Command
+	Name           string
+	Aliases        []Alias
+	Choices        []string
+	Default        string
+	OptionType     OptionType
+	Hidden         bool
+	Depth          int
+	Help           string
+	IsList         bool
+	Parent         *Command
+	CompletionFunc *completion.CompletionFunc
 
 	values_from_cmdline        []string
 	parsed_values_from_cmdline []any
@@ -241,6 +244,7 @@ func (self *OptionGroup) Clone(parent *Command) *OptionGroup {
 	ans := OptionGroup{Title: self.Title, Options: make([]*Option, len(self.Options))}
 	for i, o := range self.Options {
 		c := *o
+		c.init_option()
 		c.Parent = parent
 		ans.Options[i] = &c
 	}

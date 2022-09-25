@@ -99,12 +99,15 @@ type multi_scan struct {
 
 var mpat *regexp.Regexp
 
+func (self *Option) init_option() {
+	self.values_from_cmdline = make([]string, 0, 1)
+	self.parsed_values_from_cmdline = make([]any, 0, 1)
+}
 func option_from_spec(spec OptionSpec) (*Option, error) {
 	ans := Option{
-		Help:                       spec.Help,
-		values_from_cmdline:        make([]string, 0, 1),
-		parsed_values_from_cmdline: make([]any, 0, 1),
+		Help: spec.Help,
 	}
+	ans.init_option()
 	parts := strings.Split(spec.Name, " ")
 	ans.Name = camel_case_dest(parts[0])
 	ans.Aliases = make([]Alias, len(parts))
@@ -173,6 +176,7 @@ func option_from_spec(spec OptionSpec) (*Option, error) {
 	if ans.IsList {
 		ans.parsed_default = []string{}
 	}
+	ans.CompletionFunc = spec.CompletionFunc
 	if ans.Aliases == nil || len(ans.Aliases) == 0 {
 		return nil, fmt.Errorf("No --aliases specified for option")
 	}

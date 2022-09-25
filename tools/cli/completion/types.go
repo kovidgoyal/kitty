@@ -128,14 +128,14 @@ func (self *Completions) add_match_group(title string) *MatchGroup {
 	return &ans
 }
 
-type completion_func func(completions *Completions, word string, arg_num int)
+type CompletionFunc func(completions *Completions, word string, arg_num int)
 
 type Option struct {
 	Name               string
 	Aliases            []string
 	Description        string
 	Has_following_arg  bool
-	Completion_for_arg completion_func
+	Completion_for_arg CompletionFunc
 }
 
 type CommandGroup struct {
@@ -150,7 +150,7 @@ type Command struct {
 	Options []*Option
 	Groups  []*CommandGroup
 
-	Completion_for_arg              completion_func
+	Completion_for_arg              CompletionFunc
 	Stop_processing_at_arg          int
 	First_arg_may_not_be_subcommand bool
 	Subcommand_must_be_first        bool
@@ -257,7 +257,7 @@ func (self *Command) GetCompletions(argv []string, init_completions func(*Comple
 	return &ans
 }
 
-func names_completer(title string, names ...string) completion_func {
+func names_completer(title string, names ...string) CompletionFunc {
 	return func(completions *Completions, word string, arg_num int) {
 		mg := completions.add_match_group(title)
 		for _, q := range names {
@@ -268,7 +268,7 @@ func names_completer(title string, names ...string) completion_func {
 	}
 }
 
-func chain_completers(completers ...completion_func) completion_func {
+func chain_completers(completers ...CompletionFunc) CompletionFunc {
 	return func(completions *Completions, word string, arg_num int) {
 		for _, f := range completers {
 			f(completions, word, arg_num)

@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 
-	"kitty/tools/cli"
 	"kitty/tools/tty"
 	"kitty/tools/utils"
 )
@@ -45,7 +44,7 @@ func init() {
 
 var registered_exes = make(map[string]func(root *Command))
 
-func main(args []string) error {
+func Main(args []string) error {
 	output_type := "json"
 	if len(args) > 0 {
 		output_type = args[0]
@@ -91,16 +90,4 @@ func main(args []string) error {
 		_, err = os.Stdout.Write(output)
 	}
 	return err
-}
-
-func EntryPoint(tool_root *cli.Command) {
-	tool_root.AddSubCommand(&cli.Command{
-		Name: "__complete__", Hidden: true,
-		Usage:            "output_type [shell state...]",
-		ShortDescription: "Generate completions for kitty commands",
-		HelpText:         "Generate completion candidates for kitty commands. The command line is read from STDIN. output_type can be one of the supported  shells or 'json' for JSON output.",
-		Run: func(cmd *cli.Command, args []string) (ret int, err error) {
-			return ret, main(args)
-		},
-	})
 }

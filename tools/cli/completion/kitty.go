@@ -54,7 +54,7 @@ func complete_kitty(completions *Completions, word string, arg_num int) {
 	}
 }
 
-func complete_kitty_override(title string, names []string) completion_func {
+func complete_kitty_override(title string, names []string) CompletionFunc {
 	return func(completions *Completions, word string, arg_num int) {
 		mg := completions.add_match_group(title)
 		mg.NoTrailingSpace = true
