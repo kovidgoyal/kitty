@@ -734,10 +734,6 @@ def cocoa_set_url_handler(url_scheme: str, bundle_id: Optional[str] = None) -> N
     pass
 
 
-def cocoa_app_has_custom_icon(app_path: Optional[str] = None) -> bool:
-    pass
-
-
 def cocoa_set_app_icon(icon_path: str, app_path: Optional[str] = None) -> None:
     pass
 

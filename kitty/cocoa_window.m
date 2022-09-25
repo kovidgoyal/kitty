@@ -863,39 +863,6 @@ cocoa_set_url_handler(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject*
-cocoa_app_has_custom_icon(PyObject UNUSED *self, PyObject *args) {
-    @autoreleasepool {
-
-    const char *app_path = NULL;
-    if (!PyArg_ParseTuple(args, "|z", &app_path)) return NULL;
-    NSString *bundle_path;
-    if (app_path && app_path[0] != '\0') bundle_path = [NSString stringWithUTF8String:app_path];
-    else bundle_path = [[NSBundle mainBundle] bundlePath];
-    if (!bundle_path || bundle_path.length == 0) bundle_path = @"/Applications/kitty.app";
-
-    // These APIs have been marked as deprecated.
-    // However support for NSURLCustomIconKey has never been implemented by Apple (so far, macOS 12.5.x and below).
-    // so the following NSImage icon_image will be nil even if a custom icon is set:
-    //   [[NSURL fileURLWithPath:bundle_path] getResourceValue:&icon_image forKey:NSURLCustomIconKey error:nil]
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    FSRef ref;
-    FSCatalogInfo catalog_info;
-    OSStatus err = FSPathMakeRef((const UInt8 *)[bundle_path fileSystemRepresentation], &ref, NULL);
-    if (err == noErr) {
-        err = FSGetCatalogInfo(&ref, kFSCatInfoFinderInfo, &catalog_info, NULL, NULL, NULL);
-        if (err == noErr) {
-            FileInfo *file_info = (FileInfo *)(&catalog_info.finderInfo);
-            if ((file_info->finderFlags & kHasCustomIcon) != 0) Py_RETURN_TRUE;
-        }
-    }
-#pragma clang diagnostic pop
-    Py_RETURN_FALSE;
-
-    } // autoreleasepool
-}
-
-static PyObject*
 cocoa_set_app_icon(PyObject UNUSED *self, PyObject *args) {
     @autoreleasepool {
 
@@ -1015,7 +982,6 @@ static PyMethodDef module_methods[] = {
     {"cocoa_send_notification", (PyCFunction)cocoa_send_notification, METH_VARARGS, ""},
     {"cocoa_set_notification_activated_callback", (PyCFunction)set_notification_activated_callback, METH_O, ""},
     {"cocoa_set_url_handler", (PyCFunction)cocoa_set_url_handler, METH_VARARGS, ""},
-    {"cocoa_app_has_custom_icon", (PyCFunction)cocoa_app_has_custom_icon, METH_VARARGS, ""},
     {"cocoa_set_app_icon", (PyCFunction)cocoa_set_app_icon, METH_VARARGS, ""},
     {"cocoa_set_dock_icon", (PyCFunction)cocoa_set_dock_icon, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */

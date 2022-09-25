@@ -16,14 +16,13 @@ from .cli_stub import CLIOptions
 from .conf.utils import BadLine
 from .config import cached_values_for
 from .constants import (
-    appname, beam_cursor_data_file, clear_handled_signals, config_dir,
-    glfw_path, is_macos, is_wayland, kitty_exe, logo_png_file,
-    running_in_kitty, website_url
+    appname, beam_cursor_data_file, clear_handled_signals, config_dir, glfw_path,
+    is_macos, is_wayland, kitty_exe, logo_png_file, running_in_kitty, website_url,
 )
 from .fast_data_types import (
-    GLFW_IBEAM_CURSOR, GLFW_MOD_ALT, GLFW_MOD_SHIFT, SingleKey,
-    create_os_window, free_font_data, glfw_init, glfw_terminate, load_png_data,
-    set_custom_cursor, set_default_window_icon, set_options
+    GLFW_IBEAM_CURSOR, GLFW_MOD_ALT, GLFW_MOD_SHIFT, SingleKey, create_os_window,
+    free_font_data, glfw_init, glfw_terminate, load_png_data, set_custom_cursor,
+    set_default_window_icon, set_options,
 )
 from .fonts.box_drawing import set_scale
 from .fonts.render import set_font_family
@@ -33,8 +32,8 @@ from .os_window_size import initial_window_size_func
 from .prewarm import PrewarmProcess, fork_prewarm_process
 from .session import create_sessions, get_os_window_sizing_data
 from .utils import (
-    cleanup_ssh_control_masters, detach, expandvars, log_error,
-    single_instance, startup_notification_handler, unix_socket_paths
+    cleanup_ssh_control_masters, detach, expandvars, log_error, single_instance,
+    startup_notification_handler, unix_socket_paths,
 )
 from .window import load_shader_programs
 
@@ -135,17 +134,29 @@ def get_macos_shortcut_for(
     return ans
 
 
+def safe_mtime(path: str) -> Optional[float]:
+    with suppress(OSError):
+        return os.path.getmtime(path)
+    return None
+
+
 def set_macos_app_custom_icon() -> None:
     for name in ('kitty.app.icns', 'kitty.app.png'):
         icon_path = os.path.join(config_dir, name)
-        if os.path.exists(icon_path):
-            from .fast_data_types import cocoa_app_has_custom_icon, cocoa_set_app_icon, cocoa_set_dock_icon
-            if not cocoa_app_has_custom_icon():
+        custom_icon_mtime = safe_mtime(icon_path)
+        if custom_icon_mtime is not None:
+            from .fast_data_types import cocoa_set_app_icon, cocoa_set_dock_icon
+            krd = getattr(sys, 'kitty_run_data')
+            bundle_path = os.path.dirname(os.path.dirname(krd.get('bundle_exe_dir')))
+            icon_sentinel = os.path.join(bundle_path, 'Icon\r')
+            sentinel_mtime = safe_mtime(icon_sentinel)
+            if sentinel_mtime is None or sentinel_mtime < custom_icon_mtime:
                 cocoa_set_app_icon(icon_path)
-                # kitty dock icon doesn't refresh automatically, so set it explicitly
-                # This has the drawback that the dock icon reverts to the original icon after exiting the application,
-                # even if the custom icon has been successfully updated, until the next launch.
-                cocoa_set_dock_icon(icon_path)
+            # macOS Dock does not reload icons until it is restarted, so we set
+            # the application icon here. This will revert when kitty quits, but
+            # cant be helped since there appears to be no way to get the dock
+            # to reload short of killing it.
+            cocoa_set_dock_icon(icon_path)
             break
 
 
@@ -225,7 +236,7 @@ class AppRunner:
             free_font_data()  # must free font data before glfw/freetype/fontconfig/opengl etc are finalized
             if is_macos:
                 from kitty.fast_data_types import (
-                    cocoa_set_notification_activated_callback
+                    cocoa_set_notification_activated_callback,
                 )
                 cocoa_set_notification_activated_callback(None)
 

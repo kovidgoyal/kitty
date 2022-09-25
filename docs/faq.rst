@@ -289,12 +289,16 @@ homepage:
 
 On macOS you can put :file:`kitty.app.icns` or :file:`kitty.app.png` in the
 :ref:`kitty configuration directory <confloc>`, and this icon will be applied
-automatically at startup if the :file:`kitty.app` bundle has no custom icon. This is
-convenient because updates under macOS replace the entire :file:`kitty.app` bundle
-and the custom icon will be removed as well. To automatically update a new icon
-at startup, you need to remove the custom icon on :file:`kitty.app` first.
+automatically at startup. Unfortunately, Apple's Dock does not change its
+cached icon so the custom icon will revert when kitty is quit. Run the
+following to force the Dock to update its cached icons:
 
-You can set custom icon via CLI, which can be used in shell scripts:
+.. code-block:: sh
+
+    rm /var/folders/*/*/*/com.apple.dock.iconcache; killall Dock
+
+If you prefer not to keep a custom icon in the kitty config folder, you can
+also set it with the following command:
 
 .. code-block:: sh
 
@@ -308,9 +312,11 @@ You can also change the icon manually by following the steps:
 
 #. Find :file:`kitty.app` in the Applications folder, select it and press :kbd:`⌘+I`
 #. Drag :file:`kitty.icns` onto the application icon in the kitty info pane
-#. Delete the icon cache and restart Dock::
+#. Delete the icon cache and restart Dock:
 
-    $ rm /var/folders/*/*/*/com.apple.dock.iconcache; killall Dock
+.. code-block:: sh
+
+    rm /var/folders/*/*/*/com.apple.dock.iconcache; killall Dock
 
 
 How do I map key presses in kitty to different keys in the terminal program?
