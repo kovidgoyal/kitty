@@ -72,6 +72,11 @@ def filter_tests_by_module(suite: unittest.TestSuite, *names: str) -> unittest.T
     return filter_tests(suite, q)
 
 
+@lru_cache
+def python_for_type_check() -> str:
+    return shutil.which('python') or shutil.which('python3') or 'python'
+
+
 def type_check() -> NoReturn:
     from kitty.cli_stub import generate_stub  # type:ignore
 
@@ -79,7 +84,7 @@ def type_check() -> NoReturn:
     from kittens.tui.operations_stub import generate_stub  # type: ignore
 
     generate_stub()
-    py = os.environ.get('PYTHON_FOR_TYPE_CHECK') or shutil.which('python') or shutil.which('python3')
+    py = python_for_type_check()
     os.execlp(py, py, '-m', 'mypy', '--pretty')
 
 
@@ -216,16 +221,15 @@ def env_vars(**kw: str) -> Iterator[None]:
 @contextmanager
 def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
     gohome = os.path.expanduser('~/go')
-    python = shutil.which('python') or shutil.which('python3')
     current_home = os.path.expanduser('~') + os.sep
     paths = os.environ.get('PATH', '/usr/local/sbin:/usr/local/bin:/usr/bin').split(os.pathsep)
     path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
     launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
     path = f'{launcher_dir}{os.pathsep}{path}'
+    python_for_type_check()
     if os.environ.get('CI') == 'true' or report_env:
         print('Using PATH in test environment:', path)
-        python = shutil.which('python', path=path) or shutil.which('python3', path=path)
-        print('Python:', python)
+        print('Python:', python_for_type_check())
 
     with TemporaryDirectory() as tdir, env_vars(
         HOME=tdir,
