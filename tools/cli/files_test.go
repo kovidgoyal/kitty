@@ -1,6 +1,6 @@
 // License: GPLv3 Copyright: 2022, Kovid Goyal, <kovid at kovidgoyal.net>
 
-package completion
+package cli
 
 import (
 	"fmt"
@@ -112,7 +112,7 @@ func TestCompleteExecutables(t *testing.T) {
 		if expected == nil {
 			expected = make([]string, 0)
 		}
-		actual := complete_executables_in_path(prefix)
+		actual := CompleteExecutablesInPath(prefix)
 		sort.Strings(expected)
 		sort.Strings(actual)
 		if !reflect.DeepEqual(expected, actual) {

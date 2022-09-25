@@ -73,12 +73,12 @@ class CompletionSpec:
                 raise KeyError(f'Unknown completion property: {ck}')
         return self
 
-    def as_go_code(self, go_name: str, sep: str = ' = ') -> Iterator[str]:
+    def as_go_code(self, go_name: str, sep: str = ': ') -> Iterator[str]:
         completers = []
         if self.kwds:
             kwds = (f'"{serialize_as_go_string(x)}"' for x in self.kwds)
             g = (self.group if self.type is CompletionType.keyword else '') or "Keywords"
-            completers.append(f'names_completer("{serialize_as_go_string(g)}", ' + ', '.join(kwds) + ')')
+            completers.append(f'NamesCompleter("{serialize_as_go_string(g)}", ' + ', '.join(kwds) + ')')
         relative_to = 'CONFIG' if self.relative_to is CompletionRelativeTo.config_dir else 'CWD'
         if self.type is CompletionType.file:
             g = serialize_as_go_string(self.group or 'Files')
@@ -95,9 +95,9 @@ class CompletionSpec:
         if go_name:
             go_name += '.'
         if len(completers) > 1:
-            yield f'{go_name}Completion_for_arg{sep}chain_completers(' + ', '.join(completers) + ')'
+            yield f'{go_name}{sep}chain_completers(' + ', '.join(completers) + ')'
         elif completers:
-            yield f'{go_name}Completion_for_arg{sep}{completers[0]}'
+            yield f'{go_name}{sep}{completers[0]}'
 
 
 class OptionDict(TypedDict):
@@ -159,7 +159,11 @@ class GoOption:
         '''
         if self.type in ('choice', 'choices'):
             c = ', '.join(self.sorted_choices)
+            cx = ', '.join(f'"{serialize_as_go_string(x)}"' for x in self.sorted_choices)
             ans += f'\nChoices: "{serialize_as_go_string(c)}",\n'
+            ans += f'\nCompleter: NamesCompleter("Choices for {self.long}", {cx}),'
+        elif self.obj_dict['completion'].type is not CompletionType.none:
+            ans += ''.join(self.obj_dict['completion'].as_go_code('Completer', ': ')) + ','
         if depth > 0:
             ans += f'\nDepth: {depth},\n'
         if self.default:
@@ -172,20 +176,6 @@ class GoOption:
         choices.remove(self.default or '')
         choices.insert(0, self.default or '')
         return choices
-
-    def as_completion_option(self, command_name: str) -> str:
-        ans = f'{command_name}.add_option(&' 'Option{Name: ' f'"{serialize_as_go_string(self.long)}", '
-        ans += f'Description: "{self.help_text}", '
-        aliases = (f'"{serialize_as_go_string(x)}"' for x in self.aliases)
-        ans += 'Aliases: []string{' f'{", ".join(aliases)}' '}, '
-        if self.go_type != 'bool':
-            ans += 'Has_following_arg: true, '
-        if self.type in ('choices', 'choice'):
-            cx = ', '.join(f'"{serialize_as_go_string(x)}"' for x in self.sorted_choices)
-            ans += f'Completion_for_arg: names_completer("Choices for {self.long}", {cx}),'
-        elif self.obj_dict['completion'].type is not CompletionType.none:
-            ans += ''.join(self.obj_dict['completion'].as_go_code('', ': ')) + ','
-        return ans + '})'
 
 
 def go_options_for_seq(seq: 'OptionSpecSeq') -> Iterator[GoOption]:

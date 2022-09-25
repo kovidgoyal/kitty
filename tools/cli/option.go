@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"golang.org/x/exp/slices"
-
-	"kitty/tools/cli/completion"
 )
 
 var _ = fmt.Print
@@ -38,28 +36,28 @@ func (self *Alias) String() string {
 }
 
 type OptionSpec struct {
-	Name           string
-	Type           string
-	Dest           string
-	Choices        string
-	Depth          int
-	Default        string
-	Help           string
-	CompletionFunc *completion.CompletionFunc
+	Name      string
+	Type      string
+	Dest      string
+	Choices   string
+	Depth     int
+	Default   string
+	Help      string
+	Completer CompletionFunc
 }
 
 type Option struct {
-	Name           string
-	Aliases        []Alias
-	Choices        []string
-	Default        string
-	OptionType     OptionType
-	Hidden         bool
-	Depth          int
-	Help           string
-	IsList         bool
-	Parent         *Command
-	CompletionFunc *completion.CompletionFunc
+	Name       string
+	Aliases    []Alias
+	Choices    []string
+	Default    string
+	OptionType OptionType
+	Hidden     bool
+	Depth      int
+	Help       string
+	IsList     bool
+	Parent     *Command
+	Completer  CompletionFunc
 
 	values_from_cmdline        []string
 	parsed_values_from_cmdline []any

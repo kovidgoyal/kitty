@@ -1,6 +1,6 @@
 // License: GPLv3 Copyright: 2022, Kovid Goyal, <kovid at kovidgoyal.net>
 
-package completion
+package cli
 
 import (
 	"fmt"
@@ -114,7 +114,7 @@ func complete_files(prefix string, callback func(*FileEntry), cwd string) error 
 	return nil
 }
 
-func complete_executables_in_path(prefix string, paths ...string) []string {
+func CompleteExecutablesInPath(prefix string, paths ...string) []string {
 	ans := make([]string, 0, 1024)
 	if len(paths) == 0 {
 		paths = filepath.SplitList(os.Getenv("PATH"))
@@ -253,15 +253,15 @@ func make_completer(title string, relative_to relative_to, patterns []string, f 
 	}
 }
 
-func fnmatch_completer(title string, relative_to relative_to, patterns ...string) CompletionFunc {
+func FnmatchCompleter(title string, relative_to relative_to, patterns ...string) CompletionFunc {
 	return make_completer(title, relative_to, patterns, complete_by_fnmatch)
 }
 
-func mimepat_completer(title string, relative_to relative_to, patterns ...string) CompletionFunc {
+func MimepatCompleter(title string, relative_to relative_to, patterns ...string) CompletionFunc {
 	return make_completer(title, relative_to, patterns, complete_by_mimepat)
 }
 
-func directory_completer(title string, relative_to relative_to) CompletionFunc {
+func DirectoryCompleter(title string, relative_to relative_to) CompletionFunc {
 	if title == "" {
 		title = "Directories"
 	}

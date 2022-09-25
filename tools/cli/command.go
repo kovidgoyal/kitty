@@ -23,8 +23,16 @@ type Command struct {
 	AllowOptionsAfterArgs int
 	// If true does not fail if the first non-option arg is not a sub-command
 	SubCommandIsOptional bool
+	// If true subcommands are ignored unless they are the first non-option argument
+	SubCommandMustBeFirst bool
 	// The entry point for this command
 	Run func(cmd *Command, args []string) (int, error)
+	// The completer for args
+	ArgCompleter CompletionFunc
+	// Stop completion processing at this arg num
+	StopCompletingAtArg int
+	// Specialised arg aprsing
+	ParseArgsForCompletion func(cmd *Command, args []string, completions *Completions)
 
 	SubCommandGroups []*CommandGroup
 	OptionGroups     []*OptionGroup
@@ -32,7 +40,8 @@ type Command struct {
 
 	Args []string
 
-	option_map map[string]*Option
+	option_map         map[string]*Option
+	index_of_first_arg int
 }
 
 func (self *Command) Clone(parent *Command) *Command {
@@ -41,6 +50,7 @@ func (self *Command) Clone(parent *Command) *Command {
 	ans.Parent = parent
 	ans.SubCommandGroups = make([]*CommandGroup, len(self.SubCommandGroups))
 	ans.OptionGroups = make([]*OptionGroup, len(self.OptionGroups))
+	ans.option_map = nil
 
 	for i, o := range self.OptionGroups {
 		ans.OptionGroups[i] = o.Clone(&ans)
@@ -63,6 +73,7 @@ func init_cmd(c *Command) {
 	c.SubCommandGroups = make([]*CommandGroup, 0, 8)
 	c.OptionGroups = make([]*OptionGroup, 0, 8)
 	c.Args = make([]string, 0, 8)
+	c.option_map = nil
 }
 
 func NewRootCommand() *Command {
@@ -242,6 +253,12 @@ func (self *Command) VisitAllOptions(callback func(*Option) error) error {
 		depth++
 	}
 	return nil
+}
+
+func (self *Command) AllOptions() []*Option {
+	ans := make([]*Option, 0, 64)
+	self.VisitAllOptions(func(o *Option) error { ans = append(ans, o); return nil })
+	return ans
 }
 
 func (self *Command) GetVisibleOptions() ([]string, map[string][]*Option) {
@@ -452,4 +469,30 @@ func (self *Command) Exec(args ...string) {
 		}
 	}
 	os.Exit(exit_code)
+}
+
+func (self *Command) GetCompletions(argv []string, init_completions func(*Completions)) *Completions {
+	ans := Completions{Groups: make([]*MatchGroup, 0, 4)}
+	if init_completions != nil {
+		init_completions(&ans)
+	}
+	if len(argv) > 0 {
+		exe := argv[0]
+		cmd := self.FindSubCommand(exe)
+		if cmd != nil {
+			if cmd.ParseArgsForCompletion != nil {
+				cmd.ParseArgsForCompletion(cmd, argv[1:], &ans)
+			} else {
+				completion_parse_args(cmd, argv[1:], &ans)
+			}
+		}
+	}
+	non_empty_groups := make([]*MatchGroup, 0, len(ans.Groups))
+	for _, gr := range ans.Groups {
+		if len(gr.Matches) > 0 {
+			non_empty_groups = append(non_empty_groups, gr)
+		}
+	}
+	ans.Groups = non_empty_groups
+	return &ans
 }
