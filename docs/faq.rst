@@ -287,7 +287,24 @@ homepage:
    :target: https://github.com/samholmes/whiskers
    :width: 256
 
-On macOS you can change the icon by following the steps:
+On macOS you can put :file:`kitty.app.icns` or :file:`kitty.app.png` in the
+:ref:`kitty configuration directory <confloc>`, and this icon will be applied
+automatically at startup if the app bundle has no custom icon. This is
+convenient because app updates under macOS will replace the entire app bundle
+and the custom icon will be removed as well. To automatically update a new icon
+at startup, you need to remove the custom icon on :file:`kitty.app` first.
+
+You can set custom icon via CLI, which can be used in shell scripts:
+
+.. code-block:: sh
+
+    # Set kitty.icns as the icon for currently running kitty
+    kitty +runpy 'from kitty.fast_data_types import cocoa_set_app_icon; import sys; cocoa_set_app_icon(*sys.argv[1:]); print("OK")' kitty.icns
+
+    # Set the icon for app bundle specified by the path
+    kitty +runpy 'from kitty.fast_data_types import cocoa_set_app_icon; import sys; cocoa_set_app_icon(*sys.argv[1:]); print("OK")' /path/to/icon.png /Applications/kitty.app
+
+You can also change the icon manually by following the steps:
 
 #. Find :file:`kitty.app` in the Applications folder, select it and press :kbd:`⌘+I`
 #. Drag :file:`kitty.icns` onto the application icon in the kitty info pane

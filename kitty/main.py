@@ -135,6 +135,20 @@ def get_macos_shortcut_for(
     return ans
 
 
+def set_macos_app_custom_icon() -> None:
+    for name in ('kitty.app.icns', 'kitty.app.png'):
+        icon_path = os.path.join(config_dir, name)
+        if os.path.exists(icon_path):
+            from .fast_data_types import cocoa_app_has_custom_icon, cocoa_set_app_icon, cocoa_set_dock_icon
+            if not cocoa_app_has_custom_icon():
+                cocoa_set_app_icon(icon_path)
+                # kitty dock icon doesn't refresh automatically, so set it explicitly
+                # This has the drawback that the dock icon reverts to the original icon after exiting the application,
+                # even if the custom icon has been successfully updated, until the next launch.
+                cocoa_set_dock_icon(icon_path)
+            break
+
+
 def set_x11_window_icon() -> None:
     # max icon size on X11 64bits is 128x128
     path, ext = os.path.splitext(logo_png_file)
@@ -167,8 +181,11 @@ def _run_app(opts: Options, args: CLIOptions, prewarm: PrewarmProcess, bad_lines
         val = get_macos_shortcut_for(func_map, f'open_url {website_url()}', lookup_name='open_kitty_website')
         if val is not None:
             global_shortcuts['open_kitty_website'] = val
-    if is_macos and opts.macos_custom_beam_cursor:
-        set_custom_ibeam_cursor()
+
+        if opts.macos_custom_beam_cursor:
+            set_custom_ibeam_cursor()
+        set_macos_app_custom_icon()
+
     if not is_wayland() and not is_macos:  # no window icons on wayland
         set_x11_window_icon()
     with cached_values_for(run_app.cached_values_name) as cached_values:

@@ -40,6 +40,8 @@ Detailed list of changes
 
 - X11: Fix a regression in the previous release that caused pasting from GTK based applications to have extra newlines (:iss:`5528`)
 
+- macOS: Allow to set custom app icon automatically (:pull:`5464`)
+
 0.26.3 [2022-09-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
