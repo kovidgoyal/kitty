@@ -95,10 +95,7 @@ def generate_completions_for_kitty() -> None:
     print('func kitty(root *Command) {')
 
     # The kitty exe
-    print('k := root.add_command("kitty", "")')
-    print('k.First_arg_may_not_be_subcommand = true')
-    print('k.Completion_for_arg = complete_kitty')
-    print('k.Subcommand_must_be_first = true')
+    print('k := root.AddSubCommand(&Command{Name:"kitty", SubCommandIsOptional: true, ArgCompleter: complete_kitty, SubCommandMustBeFirst: true })')
     for opt in go_options_for_seq(parse_option_spec()[0]):
         print(opt.as_completion_option('k'))
     from kitty.config import option_names_for_completion
@@ -361,7 +358,7 @@ func add_rc_global_opts(cmd *cli.Command) {{
 def update_completion() -> None:
     orig = sys.stdout
     try:
-        with replace_if_needed('tools/cli/completion/kitty_generated.go') as f:
+        with replace_if_needed('tools/cli/completion-kitty_generated.go') as f:
             sys.stdout = f
             generate_completions_for_kitty()
     finally:

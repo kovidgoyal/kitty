@@ -201,7 +201,7 @@ class ArgsHandling:
     def as_go_completion_code(self, go_name: str) -> Iterator[str]:
         c = self.args_count
         if c is not None:
-            yield f'{go_name}.Stop_processing_at_arg = {c}'
+            yield f'{go_name}.StopCompletingAtArg = {c}'
         if self.completion:
             yield from self.completion.as_go_code(go_name)
 

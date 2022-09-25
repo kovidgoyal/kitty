@@ -176,7 +176,7 @@ func option_from_spec(spec OptionSpec) (*Option, error) {
 	if ans.IsList {
 		ans.parsed_default = []string{}
 	}
-	ans.CompletionFunc = spec.CompletionFunc
+	ans.Completer = spec.Completer
 	if ans.Aliases == nil || len(ans.Aliases) == 0 {
 		return nil, fmt.Errorf("No --aliases specified for option")
 	}

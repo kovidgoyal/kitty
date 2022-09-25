@@ -1,6 +1,6 @@
 // License: GPLv3 Copyright: 2022, Kovid Goyal, <kovid at kovidgoyal.net>
 
-package completion
+package cli
 
 import (
 	"encoding/json"
@@ -76,9 +76,9 @@ func Main(args []string) error {
 	if err != nil {
 		return err
 	}
-	var root = Command{Options: make([]*Option, 0), Groups: make([]*CommandGroup, 0, 8)}
+	var root = NewRootCommand()
 	for _, re := range registered_exes {
-		re(&root)
+		re(root)
 	}
 
 	all_completions := make([]*Completions, 0, 1)
