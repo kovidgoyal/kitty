@@ -68,7 +68,7 @@ func TestCLIParsing(t *testing.T) {
 
 	root := NewRootCommand()
 	root.Add(OptionSpec{Name: "--from-parent -p", Type: "count", Depth: 1})
-	child1 := root.AddSubCommand("", "child1")
+	child1 := root.AddSubCommand(&Command{Name: "child1"})
 	child1.Add(OptionSpec{Name: "--choices", Choices: "a b c"})
 	child1.Add(OptionSpec{Name: "--simple-string -s"})
 	child1.Add(OptionSpec{Name: "--set-me", Type: "bool-set"})
@@ -76,7 +76,7 @@ func TestCLIParsing(t *testing.T) {
 	child1.Add(OptionSpec{Name: "--float", Type: "float"})
 	child1.Add(OptionSpec{Name: "--list", Type: "list"})
 	child1.SubCommandIsOptional = true
-	gc1 := child1.AddSubCommand("", "gc1")
+	gc1 := child1.AddSubCommand(&Command{Name: "gc1"})
 
 	rt(
 		child1, "test --from-parent child1 -ps ss --choices b --from-parent one two",

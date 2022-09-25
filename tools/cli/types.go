@@ -279,7 +279,7 @@ func (self *OptionGroup) FindOption(name_with_hyphens string) *Option {
 // }}}
 
 type Command struct { // {{{
-	Name                              string
+	Name, Group                       string
 	Usage, ShortDescription, HelpText string
 	Hidden                            bool
 
@@ -287,13 +287,14 @@ type Command struct { // {{{
 	AllowOptionsAfterArgs int
 	// If true does not fail if the first non-option arg is not a sub-command
 	SubCommandIsOptional bool
+	// The entry point for this command
+	Run func(cmd *Command, args []string) (int, error)
 
 	SubCommandGroups []*CommandGroup
 	OptionGroups     []*OptionGroup
 	Parent           *Command
 
 	Args []string
-	Run  func(cmd *Command, args []string) (int, error)
 
 	option_map map[string]*Option
 }
@@ -317,17 +318,22 @@ func (self *Command) Clone(parent *Command) *Command {
 func (self *Command) AddClone(group string, src *Command) *Command {
 	c := src.Clone(self)
 	g := self.AddSubCommandGroup(group)
+	c.Group = g.Title
 	g.SubCommands = append(g.SubCommands, c)
 	return c
 }
 
+func init_cmd(c *Command) {
+	c.SubCommandGroups = make([]*CommandGroup, 0, 8)
+	c.OptionGroups = make([]*OptionGroup, 0, 8)
+	c.Args = make([]string, 0, 8)
+}
+
 func NewRootCommand() *Command {
 	ans := Command{
-		Name:             filepath.Base(os.Args[0]),
-		SubCommandGroups: make([]*CommandGroup, 0, 8),
-		OptionGroups:     make([]*OptionGroup, 0, 8),
-		Args:             make([]string, 0, 8),
+		Name: filepath.Base(os.Args[0]),
 	}
+	init_cmd(&ans)
 	return &ans
 }
 
@@ -342,8 +348,12 @@ func (self *Command) AddSubCommandGroup(title string) *CommandGroup {
 	return &ans
 }
 
-func (self *Command) AddSubCommand(group string, name string) *Command {
-	return self.AddSubCommandGroup(group).AddSubCommand(self, name)
+func (self *Command) AddSubCommand(ans *Command) *Command {
+	g := self.AddSubCommandGroup(ans.Group)
+	g.SubCommands = append(g.SubCommands, ans)
+	init_cmd(ans)
+	ans.Parent = self
+	return ans
 }
 
 func (self *Command) Validate() error {
