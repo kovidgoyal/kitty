@@ -289,8 +289,8 @@ homepage:
 
 On macOS you can put :file:`kitty.app.icns` or :file:`kitty.app.png` in the
 :ref:`kitty configuration directory <confloc>`, and this icon will be applied
-automatically at startup if the app bundle has no custom icon. This is
-convenient because app updates under macOS will replace the entire app bundle
+automatically at startup if the :file:`kitty.app` bundle has no custom icon. This is
+convenient because updates under macOS replace the entire :file:`kitty.app` bundle
 and the custom icon will be removed as well. To automatically update a new icon
 at startup, you need to remove the custom icon on :file:`kitty.app` first.
 
