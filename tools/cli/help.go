@@ -25,9 +25,13 @@ func ShowError(err error) {
 	fmt.Fprintln(os.Stderr, formatter.Err("Error")+":", msg)
 }
 
+func (self *Command) version_string(formatter *markup.Context) string {
+	return fmt.Sprintln(formatter.Italic(self.CommandStringForUsage()), formatter.Opt(kitty.VersionString), "created by", formatter.Title("Kovid Goyal"))
+}
+
 func (self *Command) ShowVersion() {
 	formatter := markup.New(tty.IsTerminal(os.Stdout.Fd()))
-	fmt.Fprintln(os.Stdout, formatter.Italic(self.CommandStringForUsage()), formatter.Opt(kitty.VersionString), "created by", formatter.Title("Kovid Goyal"))
+	fmt.Fprint(os.Stdout, self.version_string(formatter))
 }
 
 func format_with_indent(output io.Writer, text string, indent string, screen_width int) {
@@ -112,7 +116,6 @@ func (self *Command) ShowHelp() {
 	}
 
 	if self.HasVisibleSubCommands() {
-		fmt.Fprintln(&output)
 		self.FormatSubCommands(&output, formatter, screen_width)
 		fmt.Fprintln(&output)
 		format_with_indent(&output, "Get help for an individual command by running:", "", screen_width)
@@ -134,6 +137,7 @@ func (self *Command) ShowHelp() {
 			}
 		}
 	}
+	output.WriteString(self.version_string(formatter))
 	output_text := output.String()
 	// fmt.Printf("%#v\n", output_text)
 	if formatter.EscapeCodesAllowed() {
