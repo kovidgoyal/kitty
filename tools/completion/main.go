@@ -94,12 +94,13 @@ func main(args []string) error {
 }
 
 func EntryPoint(tool_root *cli.Command) {
-	c := tool_root.AddSubCommand("", "__complete__")
-	c.Usage = "output_type [shell state...]"
-	c.Hidden = true
-	c.ShortDescription = "Generate completions for kitty commands"
-	c.HelpText = "Generate completion candidates for kitty commands. The command line is read from STDIN. output_type can be one of the supported  shells or 'json' for JSON output."
-	c.Run = func(cmd *cli.Command, args []string) (ret int, err error) {
-		return ret, main(args)
-	}
+	tool_root.AddSubCommand(&cli.Command{
+		Name: "__complete__", Hidden: true,
+		Usage:            "output_type [shell state...]",
+		ShortDescription: "Generate completions for kitty commands",
+		HelpText:         "Generate completion candidates for kitty commands. The command line is read from STDIN. output_type can be one of the supported  shells or 'json' for JSON output.",
+		Run: func(cmd *cli.Command, args []string) (ret int, err error) {
+			return ret, main(args)
+		},
+	})
 }

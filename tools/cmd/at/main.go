@@ -311,10 +311,12 @@ func setup_global_options(cmd *cli.Command) (err error) {
 }
 
 func EntryPoint(tool_root *cli.Command) *cli.Command {
-	at_root_command := tool_root.AddSubCommand("", "@")
-	at_root_command.Usage = "[global options] [sub-command] [sub-command options] [sub-command args]"
-	at_root_command.ShortDescription = "Control kitty remotely"
-	at_root_command.HelpText = "Control kitty by sending it commands. Set the allow_remote_control option in :file:`kitty.conf` for this to work. When run without any sub-commands this will start an interactive shell to control kitty."
+	at_root_command := tool_root.AddSubCommand(&cli.Command{
+		Name:             "@",
+		Usage:            "[global options] [sub-command] [sub-command options] [sub-command args]",
+		ShortDescription: "Control kitty remotely",
+		HelpText:         "Control kitty by sending it commands. Set the allow_remote_control option in :file:`kitty.conf` for this to work. When run without any sub-commands this will start an interactive shell to control kitty.",
+	})
 	add_rc_global_opts(at_root_command)
 
 	global_options_group := at_root_command.OptionGroups[0]
