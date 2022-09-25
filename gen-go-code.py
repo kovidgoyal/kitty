@@ -361,7 +361,7 @@ func add_rc_global_opts(cmd *cli.Command) {{
 def update_completion() -> None:
     orig = sys.stdout
     try:
-        with replace_if_needed('tools/completion/kitty_generated.go') as f:
+        with replace_if_needed('tools/cli/completion/kitty_generated.go') as f:
             sys.stdout = f
             generate_completions_for_kitty()
     finally:

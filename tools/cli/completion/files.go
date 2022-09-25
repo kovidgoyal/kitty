@@ -234,7 +234,7 @@ func get_cwd_for_completion(relative_to relative_to) string {
 	return ""
 }
 
-func make_completer(title string, relative_to relative_to, patterns []string, f func(string, string, []string) []string) completion_func {
+func make_completer(title string, relative_to relative_to, patterns []string, f func(string, string, []string) []string) CompletionFunc {
 	lpats := make([]string, 0, len(patterns))
 	for _, p := range patterns {
 		lpats = append(lpats, strings.ToLower(p))
@@ -253,15 +253,15 @@ func make_completer(title string, relative_to relative_to, patterns []string, f 
 	}
 }
 
-func fnmatch_completer(title string, relative_to relative_to, patterns ...string) completion_func {
+func fnmatch_completer(title string, relative_to relative_to, patterns ...string) CompletionFunc {
 	return make_completer(title, relative_to, patterns, complete_by_fnmatch)
 }
 
-func mimepat_completer(title string, relative_to relative_to, patterns ...string) completion_func {
+func mimepat_completer(title string, relative_to relative_to, patterns ...string) CompletionFunc {
 	return make_completer(title, relative_to, patterns, complete_by_mimepat)
 }
 
-func directory_completer(title string, relative_to relative_to) completion_func {
+func directory_completer(title string, relative_to relative_to) CompletionFunc {
 	if title == "" {
 		title = "Directories"
 	}
