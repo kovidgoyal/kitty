@@ -25,7 +25,7 @@ class LS(RemoteCommand):
         'List all windows. The list is returned as JSON tree. The top-level is a list of'
         f' operating system {appname} windows. Each OS window has an :italic:`id` and a list'
         ' of :italic:`tabs`. Each tab has its own :italic:`id`, a :italic:`title` and a list of :italic:`windows`.'
-        ' Each window has an :italic:`id`, :italic:`title`, :italic:`current working directory`, :italic:`process id (PID)`, '
+        ' Each window has an :italic:`id`, :italic:`title`, :italic:`current working directory`, :italic:`process id (PID)`,'
         ' :italic:`command-line` and :italic:`environment` of the process running in the window. Additionally, when'
         ' running the command inside a kitty window, that window can be identified by the :italic:`is_self` parameter.\n\n'
         'You can use these criteria to select windows/tabs for the other commands.'

@@ -13,14 +13,13 @@ import kitty.constants as kc
 from kittens.tui.operations import Mode
 from kitty.cli import (
     CompletionSpec, GoOption, go_options_for_seq, parse_option_spec,
-    serialize_as_go_string
+    serialize_as_go_string,
 )
 from kitty.key_encoding import config_mod_map
-from kitty.key_names import (
-    character_key_name_aliases, functional_key_name_aliases
-)
+from kitty.key_names import character_key_name_aliases, functional_key_name_aliases
 from kitty.options.types import Options
 from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
+from kitty.remote_control import global_options_spec
 from kitty.rgb import color_names
 
 changed: List[str] = []
@@ -59,7 +58,9 @@ def generate_completion_for_rc(name: str) -> None:
 
 
 def generate_kittens_completion() -> None:
-    from kittens.runner import all_kitten_names, get_kitten_cli_docs, get_kitten_wrapper_of
+    from kittens.runner import (
+        all_kitten_names, get_kitten_cli_docs, get_kitten_wrapper_of,
+    )
     for kitten in sorted(all_kitten_names()):
         kn = 'kitten_' + kitten
         print(f'{kn} := plus_kitten.add_command("{kitten}", "Kittens")')
@@ -84,7 +85,7 @@ def completion_for_launch_wrappers(*names: str) -> None:
     opts = tuple(go_options_for_seq(parse_option_spec(options_spec())[0]))
     allowed = clone_safe_opts()
     for o in opts:
-        if o.dest in allowed:
+        if o.obj_dict['name'] in allowed:
             for name in names:
                 print(o.as_completion_option(name))
 
@@ -184,36 +185,19 @@ class JSONField:
         return self.struct_field_name + ' ' + go_field_type(self.field_type) + f'`json:"{self.field},omitempty"`'
 
 
-def render_alias_map(alias_map: Dict[str, Tuple[str, ...]]) -> str:
-    if not alias_map:
-        return ''
-    amap = 'switch name {\n'
-    for name, aliases in alias_map.items():
-        for alias in aliases:
-            amap += f'\ncase "{alias}":\nname = "{name}"\n'
-    amap += '}'
-    return amap
-
-
 def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> str:
     template = '\n' + template[len('//go:build exclude'):]
     NO_RESPONSE_BASE = 'false'
     af: List[str] = []
     a = af.append
-    alias_map = {}
     od: List[str] = []
-    ov: List[str] = []
     option_map: Dict[str, GoOption] = {}
     for o in rc_command_options(name):
-        field_dest = o.go_var_name.rstrip('_')
-        option_map[field_dest] = o
-        if o.aliases:
-            alias_map[o.long] = tuple(o.aliases)
-        a(o.to_flag_definition())
-        if o.dest in ('no_response', 'response_timeout'):
+        option_map[o.go_var_name] = o
+        a(o.as_option('ans'))
+        if o.go_var_name in ('NoResponse', 'ResponseTimeout'):
             continue
-        od.append(f'{o.go_var_name} {o.go_type}')
-        ov.append(o.set_flag_value(f'options_{name}'))
+        od.append(o.struct_declaration())
     jd: List[str] = []
     json_fields = []
     field_types: Dict[str, str] = {}
@@ -233,6 +217,7 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
     used_options = set()
     for field in json_fields:
         oq = (cmd.field_to_option_map or {}).get(field.field, field.field)
+        oq = ''.join(x.capitalize() for x in oq.split('_'))
         if oq in option_map:
             o = option_map[oq]
             used_options.add(oq)
@@ -242,16 +227,16 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
         else:
             unhandled[field.field] = field
     for x in tuple(unhandled):
-        if x == 'match_window' and 'match' in option_map and 'match' not in used_options:
-            used_options.add('match')
-            o = option_map['match']
+        if x == 'match_window' and 'Match' in option_map and 'Match' not in used_options:
+            used_options.add('Match')
+            o = option_map['Match']
             field = unhandled[x]
             jc.append(f'payload.{field.struct_field_name} = options_{name}.{o.go_var_name}')
             del unhandled[x]
     if unhandled:
         raise SystemExit(f'Cant map fields: {", ".join(unhandled)} for cmd: {name}')
     if name != 'send_text':
-        unused_options = set(option_map) - used_options - {'no_response', 'response_timeout'}
+        unused_options = set(option_map) - used_options - {'NoResponse', 'ResponseTimeout'}
         if unused_options:
             raise SystemExit(f'Unused options: {", ".join(unused_options)} for command: {name}')
 
@@ -266,9 +251,7 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
         IS_ASYNC='true' if cmd.is_asynchronous else 'false',
         NO_RESPONSE_BASE=NO_RESPONSE_BASE, ADD_FLAGS_CODE='\n'.join(af),
         WAIT_TIMEOUT=str(cmd.response_timeout),
-        ALIAS_NORMALIZE_CODE=render_alias_map(alias_map),
         OPTIONS_DECLARATION_CODE='\n'.join(od),
-        SET_OPTION_VALUES_CODE='\n'.join(ov),
         JSON_DECLARATION_CODE='\n'.join(jd),
         JSON_INIT_CODE='\n'.join(jc), ARGSPEC=argspec,
         STRING_RESPONSE_IS_ERROR='true' if cmd.string_return_is_error else 'false',
@@ -352,6 +335,27 @@ def update_at_commands() -> None:
         dest = f'tools/cmd/at/cmd_{name}_generated.go'
         with replace_if_needed(dest) as f:
             f.write(code)
+    struct_def = []
+    opt_def = []
+    for o in go_options_for_seq(parse_option_spec(global_options_spec())[0]):
+        struct_def.append(o.struct_declaration())
+        opt_def.append(o.as_option(depth=1, group="Global options"))
+    sdef = '\n'.join(struct_def)
+    odef = '\n'.join(opt_def)
+    code = f'''
+package at
+import "kitty/tools/cli"
+type rc_global_options struct {{
+{sdef}
+}}
+var rc_global_opts rc_global_options
+
+func add_rc_global_opts(cmd *cli.Command) {{
+{odef}
+}}
+'''
+    with replace_if_needed('tools/cmd/at/global_opts_generated.go') as f:
+        f.write(code)
 
 
 def update_completion() -> None:

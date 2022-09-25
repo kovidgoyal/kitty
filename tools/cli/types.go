@@ -238,11 +238,11 @@ type OptionGroup struct {
 }
 
 func (self *OptionGroup) Clone(parent *Command) *OptionGroup {
-	ans := OptionGroup{Title: self.Title, Options: make([]*Option, 0, len(self.Options))}
+	ans := OptionGroup{Title: self.Title, Options: make([]*Option, len(self.Options))}
 	for i, o := range self.Options {
 		c := *o
 		c.Parent = parent
-		self.Options[i] = &c
+		ans.Options[i] = &c
 	}
 	return &ans
 }
@@ -302,8 +302,8 @@ func (self *Command) Clone(parent *Command) *Command {
 	ans := *self
 	ans.Args = make([]string, 0, 8)
 	ans.Parent = parent
-	ans.SubCommandGroups = make([]*CommandGroup, 0, len(self.SubCommandGroups))
-	ans.OptionGroups = make([]*OptionGroup, 0, len(self.OptionGroups))
+	ans.SubCommandGroups = make([]*CommandGroup, len(self.SubCommandGroups))
+	ans.OptionGroups = make([]*OptionGroup, len(self.OptionGroups))
 
 	for i, o := range self.OptionGroups {
 		ans.OptionGroups[i] = o.Clone(&ans)
@@ -314,14 +314,11 @@ func (self *Command) Clone(parent *Command) *Command {
 	return &ans
 }
 
-func (self *Command) AddClone(group string, src *Command) (*Command, error) {
+func (self *Command) AddClone(group string, src *Command) *Command {
 	c := src.Clone(self)
 	g := self.AddSubCommandGroup(group)
-	if g.FindSubCommand(c.Name) != nil {
-		return nil, fmt.Errorf("A sub command with the name: %s already exists in %s", c.Name, self.Name)
-	}
 	g.SubCommands = append(g.SubCommands, c)
-	return c, nil
+	return c
 }
 
 func NewRootCommand() *Command {
@@ -605,6 +602,19 @@ type Context struct {
 	SeenCommands []*Command
 }
 
+func GetOptionValue[T any](self *Command, name string) (ans T, err error) {
+	opt := self.option_map[name]
+	if opt == nil {
+		err = fmt.Errorf("No option with the name: %s", name)
+		return
+	}
+	ans, ok := opt.parsed_value().(T)
+	if !ok {
+		err = fmt.Errorf("The option %s is not of the correct type", name)
+	}
+	return
+}
+
 func (self *Command) GetOptionValues(pointer_to_options_struct any) error {
 	val := reflect.ValueOf(pointer_to_options_struct).Elem()
 	if val.Kind() != reflect.Struct {
@@ -689,7 +699,7 @@ func (self *Command) Exec(args ...string) {
 	} else if cmd.Run != nil {
 		exit_code, err = cmd.Run(cmd, cmd.Args)
 		if err != nil {
-			PrintError(err)
+			ShowError(err)
 			if exit_code == 0 {
 				exit_code = 1
 			}

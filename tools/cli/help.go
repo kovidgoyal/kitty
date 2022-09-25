@@ -31,7 +31,6 @@ func (self *Command) ShowVersion() {
 }
 
 func format_with_indent(output io.Writer, text string, indent string, screen_width int) {
-	text = formatter.Prettify(text)
 	indented := style.WrapText(text, indent, screen_width, "#placeholder_for_formatting#")
 	io.WriteString(output, indented)
 }
@@ -41,10 +40,12 @@ func (self *Command) FormatSubCommands(output io.Writer, formatter *markup.Conte
 		if !g.HasVisibleSubCommands() {
 			continue
 		}
-		if g.Title != "" {
-			fmt.Fprintln(output)
-			fmt.Fprintln(output, formatter.Title(g.Title))
+		title := g.Title
+		if title == "" {
+			title = "Commands"
 		}
+		fmt.Fprintln(output)
+		fmt.Fprintln(output, formatter.Title(title)+":")
 		for _, c := range g.SubCommands {
 			if c.Hidden {
 				continue
@@ -64,22 +65,23 @@ func (self *Option) FormatOption(output io.Writer, formatter *markup.Context, sc
 			fmt.Fprint(output, ", ")
 		}
 	}
-	defval := ""
+	defval := self.Default
 	switch self.OptionType {
-	case BoolOption:
-	default:
-		defval = self.Default
-		fallthrough
 	case StringOption:
 		if self.IsList {
 			defval = ""
 		}
+	case BoolOption, CountOption:
+		defval = ""
 	}
 	if defval != "" {
 		fmt.Fprintf(output, " [=%s]", formatter.Italic(defval))
 	}
 	fmt.Fprintln(output)
 	format_with_indent(output, formatter.Prettify(prepare_help_text_for_display(self.Help)), "    ", screen_width)
+	if self.Choices != nil {
+		format_with_indent(output, "Choices: "+strings.Join(self.Choices, ", "), "    ", screen_width)
+	}
 }
 
 func (self *Command) ShowHelp() {
@@ -111,7 +113,6 @@ func (self *Command) ShowHelp() {
 
 	if self.HasVisibleSubCommands() {
 		fmt.Fprintln(&output)
-		fmt.Fprintln(&output, formatter.Title("Commands")+":")
 		self.FormatSubCommands(&output, formatter, screen_width)
 		fmt.Fprintln(&output)
 		format_with_indent(&output, "Get help for an individual command by running:", "", screen_width)
@@ -121,12 +122,12 @@ func (self *Command) ShowHelp() {
 	group_titles, gmap := self.GetVisibleOptions()
 	if len(group_titles) > 0 {
 		fmt.Fprintln(&output)
-		fmt.Fprintln(&output, formatter.Title("Options")+":")
 		for _, title := range group_titles {
-			if title != "" {
-				fmt.Fprintln(&output)
-				fmt.Fprintln(&output, formatter.Title(title))
+			ptitle := title
+			if title == "" {
+				ptitle = "Options"
 			}
+			fmt.Fprintln(&output, formatter.Title(ptitle)+":")
 			for _, opt := range gmap[title] {
 				opt.FormatOption(&output, formatter, screen_width)
 				fmt.Fprintln(&output)

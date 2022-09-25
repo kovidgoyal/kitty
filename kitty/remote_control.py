@@ -252,7 +252,7 @@ Used if no :option:`kitty @ --password` is supplied. Defaults to checking for th
 default=KITTY_RC_PASSWORD
 The name of an environment variable to read the password from.
 Used if no :option:`kitty @ --password-file` is supplied. Defaults
-to checking the :envvar:`KITTY_RC_PASSWORD`.
+to checking the environment variable :envvar:`KITTY_RC_PASSWORD`.
 
 
 --use-password
