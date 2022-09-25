@@ -17,7 +17,6 @@ class FocusTab(RemoteCommand):
 
     protocol_spec = __doc__ = '''
     match/str: The tab to focus
-    no_response/bool: Boolean indicating whether to wait for a response
     '''
 
     short_desc = 'Focus the specified tab'
