@@ -730,7 +730,19 @@ def cocoa_get_lang() -> Optional[str]:
     pass
 
 
-def cocoa_set_url_handler(url_scheme: str, bundle_id: Optional[str]) -> None:
+def cocoa_set_url_handler(url_scheme: str, bundle_id: Optional[str] = None) -> None:
+    pass
+
+
+def cocoa_app_has_custom_icon(app_path: Optional[str] = None) -> bool:
+    pass
+
+
+def cocoa_set_app_icon(icon_path: str, app_path: Optional[str] = None) -> None:
+    pass
+
+
+def cocoa_set_dock_icon(icon_path: str) -> None:
     pass
 
 
