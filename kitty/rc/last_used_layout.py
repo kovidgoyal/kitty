@@ -17,7 +17,6 @@ class LastUsedLayout(RemoteCommand):
     protocol_spec = __doc__ = '''
     match/str: Which tab to change the layout of
     all/bool: Boolean to match all tabs
-    no_response/bool: Boolean indicating whether to wait for a response
     '''
 
     short_desc = 'Switch to the last used layout'
