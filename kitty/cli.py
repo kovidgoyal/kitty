@@ -119,10 +119,6 @@ def serialize_as_go_string(x: str) -> str:
 go_type_map = {
     'bool-set': 'bool', 'bool-reset': 'bool', 'int': 'int', 'float': 'float64',
     '': 'string', 'list': '[]string', 'choices': 'string', 'str': 'string'}
-go_getter_map = {
-    'bool-set': 'GetBool', 'bool-reset': 'GetBool', 'int': 'GetInt', 'float': 'GetFloat64', '': 'GetString',
-    'list': 'GetStringArray', 'choices': 'GetString'
-}
 
 
 class GoOption:
@@ -137,54 +133,38 @@ class GoOption:
         for f in flags:
             q = f[2:] if f.startswith('--') else f[1:]
             self.aliases.append(q)
-        self.usage = serialize_as_go_string(x['help'].strip())
         self.type = x['type']
-        self.dest = x['dest']
+        if x['choices']:
+            self.type = 'choices'
         self.default = x['default']
         self.obj_dict = x
         self.go_type = go_type_map[self.type]
-        self.go_var_name = self.long.replace('-', '_')
-        if self.go_var_name == 'type':
-            self.go_var_name += '_'
-
-    def to_flag_definition(self, base: str = 'ans.Flags()') -> str:
-        if self.type.startswith('bool-'):
-            defval = 'false' if self.type == 'bool-set' else 'true'
-            if self.short:
-                return f'{base}.BoolP("{self.long}", "{self.short}", {defval}, "{self.usage}")'
-            return f'{base}.Bool("{self.long}", {defval}, "{self.usage}")'
-        elif not self.type:
-            defval = f'''"{serialize_as_go_string(self.default or '')}"'''
-            if self.short:
-                return f'{base}.StringP("{self.long}", "{self.short}", {defval}, "{self.usage}")'
-            return f'{base}.String("{self.long}", {defval}, "{self.usage}")'
-        elif self.type == 'int':
-            if self.short:
-                return f'{base}.IntP("{self.long}", "{self.short}", {self.default or 0}, "{self.usage}")'
-            return f'{base}.Int("{self.long}", {self.default or 0}, "{self.usage}")'
-        elif self.type == 'float':
-            if self.short:
-                return f'{base}.Float64P("{self.long}", "{self.short}", {self.default or 0}, "{self.usage}")'
-            return f'{base}.Float64("{self.long}", {self.default or 0}, "{self.usage}")'
-        elif self.type == 'list':
-            defval = f'[]string{{"{serialize_as_go_string(self.default)}"}}' if self.default else '[]string{}'
-            if self.short:
-                return f'{base}.StringArrayP("{self.long}", "{self.short}", {defval}, "{self.usage}")'
-            return f'{base}.StringArray("{self.long}", {defval}, "{self.usage}")'
-        elif self.type == 'choices':
-            choices = self.sorted_choices
-            cx = ', '.join(f'"{serialize_as_go_string(x)}"' for x in choices)
-            if self.short:
-                return f'cli.ChoicesP({base}, "{self.long}", "{self.short}", "{self.usage}", {cx})'
-            return f'cli.Choices({base}, "{self.long}", "{self.usage}", {cx})'
+        if x['dest']:
+            self.go_var_name = ''.join(x.capitalize() for x in x['dest'].replace('-', '_').split('_'))
         else:
-            raise TypeError(f'Unknown type of CLI option: {self.type} for {self.long}')
+            self.go_var_name = ''.join(x.capitalize() for x in self.long.replace('-', '_').split('_'))
+        self.help_text = serialize_as_go_string(self.obj_dict['help'].strip())
 
-    def set_flag_value(self, struct_name: str, cmd: str = 'cmd') -> str:
-        func = go_getter_map[self.type]
-        ans = f'{self.go_var_name}_temp, err := {cmd}.Flags().{func}("{self.long}")\n if err != nil {{ return err }}'
-        ans += f'\n{struct_name}.{self.go_var_name} = {self.go_var_name}_temp'
-        return ans
+    def struct_declaration(self) -> str:
+        return f'{self.go_var_name} {self.go_type}'
+
+    def as_option(self, cmd_name: str = 'cmd', depth: int = 0, group: str = '') -> str:
+        add = f'AddToGroup("{serialize_as_go_string(group)}", ' if group else 'Add('
+        aliases = ' '.join(self.obj_dict['aliases'])
+        ans = f'''{cmd_name}.{add}cli.OptionSpec{{
+            Name: "{serialize_as_go_string(aliases)}",
+            Type: "{self.type}",
+            Dest: "{serialize_as_go_string(self.go_var_name)}",
+            Help: "{self.help_text}",
+        '''
+        if self.type in ('choice', 'choices'):
+            c = ', '.join(self.sorted_choices)
+            ans += f'\nChoices: "{serialize_as_go_string(c)}",\n'
+        if depth > 0:
+            ans += f'\nDepth: {depth},\n'
+        if self.default:
+            ans += f'\nDefault: "{serialize_as_go_string(self.default)}",\n'
+        return ans + '})'
 
     @property
     def sorted_choices(self) -> List[str]:
@@ -195,12 +175,12 @@ class GoOption:
 
     def as_completion_option(self, command_name: str) -> str:
         ans = f'{command_name}.add_option(&' 'Option{Name: ' f'"{serialize_as_go_string(self.long)}", '
-        ans += f'Description: "{self.usage}", '
+        ans += f'Description: "{self.help_text}", '
         aliases = (f'"{serialize_as_go_string(x)}"' for x in self.aliases)
         ans += 'Aliases: []string{' f'{", ".join(aliases)}' '}, '
         if self.go_type != 'bool':
             ans += 'Has_following_arg: true, '
-        if self.type == 'choices':
+        if self.type in ('choices', 'choice'):
             cx = ', '.join(f'"{serialize_as_go_string(x)}"' for x in self.sorted_choices)
             ans += f'Completion_for_arg: names_completer("Choices for {self.long}", {cx}),'
         elif self.obj_dict['completion'].type is not CompletionType.none:

@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"golang.org/x/sys/unix"
 
 	"kitty"
@@ -29,13 +27,6 @@ import (
 )
 
 var ProtocolVersion [3]int = [3]int{0, 26, 0}
-
-func add_bool_set(cmd *cobra.Command, name string, short string, usage string) *bool {
-	if short == "" {
-		return cmd.Flags().Bool(name, false, usage)
-	}
-	return cmd.Flags().BoolP(name, short, false, usage)
-}
 
 type GlobalOptions struct {
 	to_network, to_address, password string
@@ -142,7 +133,7 @@ type Response struct {
 }
 
 type rc_io_data struct {
-	cmd                        *cobra.Command
+	cmd                        *cli.Command
 	rc                         *utils.RemoteControlCmd
 	serializer                 serializer_func
 	on_key_event               func(lp *loop.Loop, ke *loop.KeyEvent) error
@@ -294,82 +285,46 @@ func get_password(password string, password_file string, password_env string, us
 	return ans, nil
 }
 
-var all_commands map[string]func(*cobra.Command) *cobra.Command = make(map[string]func(*cobra.Command) *cobra.Command)
-var command_objects map[string]*cobra.Command = make(map[string]*cobra.Command)
+var all_commands map[string]func(*cli.Command) *cli.Command = make(map[string]func(*cli.Command) *cli.Command)
 
-func add_global_options(fs *pflag.FlagSet) {
-	fs.String("to", "",
-		"An address for the kitty instance to control. Corresponds to the address given"+
-			" to the kitty instance via the :option:`kitty --listen-on` option or the :opt:`listen_on` setting in :file:`kitty.conf`. If not"+
-			" specified, the environment variable :envvar:`KITTY_LISTEN_ON` is checked. If that"+
-			" is also not found, messages are sent to the controlling terminal for this"+
-			" process, i.e. they will only work if this process is run within a kitty window.")
-
-	fs.String("password", "",
-		"A password to use when contacting kitty. This will cause kitty to ask the user"+
-			" for permission to perform the specified action, unless the password has been"+
-			" accepted before or is pre-configured in :file:`kitty.conf`.")
-
-	fs.String("password-file", "rc-pass",
-		"A file from which to read the password. Trailing whitespace is ignored. Relative"+
-			" paths are resolved from the kitty configuration directory. Use - to read from STDIN."+
-			" Used if no :option:`--password` is supplied. Defaults to checking for the"+
-			" :file:`rc-pass` file in the kitty configuration directory.")
-
-	fs.String("password-env", "KITTY_RC_PASSWORD",
-		"The name of an environment variable to read the password from."+
-			" Used if no :option:`--password-file` or :option:`--password` is supplied.")
-
-	cli.Choices(fs, "use-password", "If no password is available, kitty will usually just send the remote control command without a password. This option can be used to force it to always or never use the supplied password.", "if-available", "always", "never")
-
-}
-
-func setup_global_options(cmd *cobra.Command) (err error) {
-	var v = cli.FlagValGetter{Flags: cmd.Flags()}
-	to := v.String("to")
-	password := v.String("password")
-	password_file := v.String("password-file")
-	password_env := v.String("password-env")
-	use_password := v.String("use-password")
-	if v.Err != nil {
-		return v.Err
+func setup_global_options(cmd *cli.Command) (err error) {
+	err = cmd.GetOptionValues(&rc_global_opts)
+	if err != nil {
+		return err
 	}
-	if to == "" {
-		to = os.Getenv("KITTY_LISTEN_ON")
+	if rc_global_opts.To == "" {
+		rc_global_opts.To = os.Getenv("KITTY_LISTEN_ON")
 		global_options.to_address_is_from_env_var = true
 	}
-	if to != "" {
-		network, address, err := utils.ParseSocketAddress(to)
+	if rc_global_opts.To != "" {
+		network, address, err := utils.ParseSocketAddress(rc_global_opts.To)
 		if err != nil {
 			return err
 		}
 		global_options.to_network = network
 		global_options.to_address = address
 	}
-	q, err := get_password(password, password_file, password_env, use_password)
+	q, err := get_password(rc_global_opts.Password, rc_global_opts.PasswordFile, rc_global_opts.PasswordEnv, rc_global_opts.UsePassword)
 	global_options.password = q
 	return err
 
 }
 
-func EntryPoint(tool_root *cobra.Command) *cobra.Command {
-	at_root_command := cli.CreateCommand(&cobra.Command{
-		Use:   "@ [global options] command [command options] [command args]",
-		Short: "Control kitty remotely",
-		Long:  "Control kitty by sending it commands. Set the allow_remote_control option in :file:`kitty.conf` or use a password, for this to work.",
-	})
-	at_root_command.Annotations["options_title"] = "Global options"
-	add_global_options(at_root_command.PersistentFlags())
+func EntryPoint(tool_root *cli.Command) *cli.Command {
+	at_root_command := tool_root.AddSubCommand("", "@")
+	at_root_command.Usage = "[global options] [sub-command] [sub-command options] [sub-command args]"
+	at_root_command.ShortDescription = "Control kitty remotely"
+	at_root_command.HelpText = "Control kitty by sending it commands. Set the allow_remote_control option in :file:`kitty.conf` for this to work. When run without any sub-commands this will start an interactive shell to control kitty."
+	add_rc_global_opts(at_root_command)
 
-	for cmd_name, reg_func := range all_commands {
+	global_options_group := at_root_command.OptionGroups[0]
+
+	for _, reg_func := range all_commands {
 		c := reg_func(at_root_command)
-		at_root_command.AddCommand(c)
-		command_objects[cmd_name] = c
-		alias := *c
-		alias.Use = "@" + alias.Use
-		alias.Hidden = true
-		add_global_options(alias.Flags())
-		tool_root.AddCommand(&alias)
+		clone := tool_root.AddClone("", c)
+		clone.Name = "@" + c.Name
+		clone.Hidden = true
+		clone.OptionGroups = append(clone.OptionGroups, global_options_group.Clone(clone))
 	}
 	return at_root_command
 }

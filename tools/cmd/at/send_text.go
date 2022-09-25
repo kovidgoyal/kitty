@@ -32,8 +32,8 @@ func parse_send_text(io_data *rc_io_data, args []string) error {
 		generators = append(generators, text_gen)
 	}
 
-	if options_send_text.from_file != "" {
-		f, err := os.Open(options_send_text.from_file)
+	if options_send_text.FromFile != "" {
+		f, err := os.Open(options_send_text.FromFile)
 		if err != nil {
 			return err
 		}
@@ -49,7 +49,7 @@ func parse_send_text(io_data *rc_io_data, args []string) error {
 		generators = append(generators, file_gen)
 	}
 
-	if options_send_text.stdin {
+	if options_send_text.Stdin {
 		pending_key_events := make([]string, 0, 1)
 
 		io_data.on_key_event = func(lp *loop.Loop, ke *loop.KeyEvent) error {
