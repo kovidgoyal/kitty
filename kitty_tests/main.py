@@ -66,7 +66,7 @@ def type_check() -> NoReturn:
     generate_stub()
     from kittens.tui.operations_stub import generate_stub  # type: ignore
     generate_stub()
-    py = shutil.which('python') or shutil.which('python3')
+    py = os.environ.get('PYTHON_FOR_TYPE_CHECK') or shutil.which('python') or shutil.which('python3')
     os.execlp(py, py, '-m', 'mypy', '--pretty')
 
 

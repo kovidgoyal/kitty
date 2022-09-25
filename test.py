@@ -3,6 +3,7 @@
 
 import importlib
 import os
+import shutil
 import warnings
 from contextlib import contextmanager
 from tempfile import TemporaryDirectory
@@ -30,13 +31,14 @@ def main() -> None:
     path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
     launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
     path = f'{launcher_dir}{os.pathsep}{path}'
+    PYTHON_FOR_TYPE_CHECK = shutil.which('python') or shutil.which('python3') or ''
     with TemporaryDirectory() as tdir, env_vars(
         PYTHONWARNINGS='error', HOME=tdir, USERPROFILE=tdir, PATH=path,
         XDG_CONFIG_HOME=os.path.join(tdir, '.config'),
         XDG_CONFIG_DIRS=os.path.join(tdir, '.config'),
         XDG_DATA_DIRS=os.path.join(tdir, '.local', 'xdg'),
         XDG_CACHE_HOME=os.path.join(tdir, '.cache'),
-        KITTY_PREWARM_SOCKET='',
+        PYTHON_FOR_TYPE_CHECK=PYTHON_FOR_TYPE_CHECK,
     ):
         m = importlib.import_module('kitty_tests.main')
         getattr(m, 'run_tests')()
