@@ -58,6 +58,7 @@ def generate_kittens_completion() -> None:
         wof = get_kitten_wrapper_of(kitten)
         if wof:
             print(f'{kn}.ArgCompleter = cli.CompletionForWrapper("{serialize_as_go_string(wof)}")')
+            print(f'{kn}.OnlyArgsAllowed = true')
             continue
         kcd = get_kitten_cli_docs(kitten)
         if kcd:

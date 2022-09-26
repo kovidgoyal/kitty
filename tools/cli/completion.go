@@ -155,7 +155,7 @@ func ChainCompleters(completers ...CompletionFunc) CompletionFunc {
 
 func CompletionForWrapper(wrapped_cmd string) func(completions *Completions, word string, arg_num int) {
 	return func(completions *Completions, word string, arg_num int) {
-		completions.Delegate.NumToRemove = completions.CurrentWordIdx + 1
+		completions.Delegate.NumToRemove = completions.CurrentWordIdx
 		completions.Delegate.Command = wrapped_cmd
 	}
 }
