@@ -113,7 +113,7 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 				}
 			}
 		}
-		if !cmd.SubCommandMustBeFirst && cmd.ArgCompleter != nil {
+		if cmd.SubCommandIsOptional && cmd.ArgCompleter != nil {
 			cmd.ArgCompleter(completions, word, arg_num)
 		}
 		return

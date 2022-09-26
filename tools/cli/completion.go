@@ -107,10 +107,10 @@ type Completions struct {
 	Groups   []*MatchGroup `json:"groups,omitempty"`
 	Delegate Delegate      `json:"delegate,omitempty"`
 
-	CurrentCmd             *Command
-	AllWords               []string // all words passed to parse_args()
-	CurrentWordIdx         int      // index of current word in all_words
-	CurrentWordIdxInParent int      // index of current word in parents command line 1 for first word after parent
+	CurrentCmd             *Command `json:"-"`
+	AllWords               []string `json:"-"` // all words passed to parse_args()
+	CurrentWordIdx         int      `json:"-"` // index of current word in all_words
+	CurrentWordIdxInParent int      `json:"-"` // index of current word in parents command line 1 for first word after parent
 
 	split_on_equals bool // true if the cmdline is split on = (BASH does this because readline does this)
 }

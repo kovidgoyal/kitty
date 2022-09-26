@@ -91,6 +91,7 @@ func GenerateCompletions(args []string) error {
 	all_completions := make([]*Completions, 0, 1)
 	for _, argv := range all_argv {
 		all_completions = append(all_completions, root.GetCompletions(argv, init_completions[output_type]))
+		root.ResetAfterParseArgs()
 	}
 	output, err := output_serializer(all_completions, shell_state)
 	if err == nil {
