@@ -221,6 +221,11 @@ def load_launch_actions() -> Tuple[OpenAction, ...]:
         return tuple(parse(f))
 
 
+def clear_caches() -> None:
+    load_open_actions.clear_cached()
+    load_launch_actions.clear_cached()
+
+
 @run_once
 def default_open_actions() -> Tuple[OpenAction, ...]:
     return tuple(parse('''\
