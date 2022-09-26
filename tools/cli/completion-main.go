@@ -42,9 +42,16 @@ func init() {
 	output_serializers["json"] = json_output_serializer
 }
 
-var registered_exes = make(map[string]func(root *Command))
+var registered_exes []func(root *Command)
 
-func Main(args []string) error {
+func RegisterExeForCompletion(x func(root *Command)) {
+	if registered_exes == nil {
+		registered_exes = make([]func(root *Command), 0, 4)
+	}
+	registered_exes = append(registered_exes, x)
+}
+
+func GenerateCompletions(args []string) error {
 	output_type := "json"
 	if len(args) > 0 {
 		output_type = args[0]

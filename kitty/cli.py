@@ -78,24 +78,22 @@ class CompletionSpec:
         if self.kwds:
             kwds = (f'"{serialize_as_go_string(x)}"' for x in self.kwds)
             g = (self.group if self.type is CompletionType.keyword else '') or "Keywords"
-            completers.append(f'NamesCompleter("{serialize_as_go_string(g)}", ' + ', '.join(kwds) + ')')
+            completers.append(f'cli.NamesCompleter("{serialize_as_go_string(g)}", ' + ', '.join(kwds) + ')')
         relative_to = 'CONFIG' if self.relative_to is CompletionRelativeTo.config_dir else 'CWD'
         if self.type is CompletionType.file:
             g = serialize_as_go_string(self.group or 'Files')
             if self.extensions:
                 pats = (f'"*.{ext}"' for ext in self.extensions)
-                completers.append(f'fnmatch_completer("{g}", {relative_to}, ' + ', '.join(pats) + ')')
+                completers.append(f'cli.FnmatchCompleter("{g}", cli.{relative_to}, ' + ', '.join(pats) + ')')
             if self.mime_patterns:
-                completers.append(f'mimepat_completer("{g}", {relative_to}, ' + ', '.join(f'"{p}"' for p in self.mime_patterns) + ')')
+                completers.append(f'cli.MimepatCompleter("{g}", cli.{relative_to}, ' + ', '.join(f'"{p}"' for p in self.mime_patterns) + ')')
         if self.type is CompletionType.directory:
             g = serialize_as_go_string(self.group or 'Directories')
-            completers.append(f'directory_completer("{g}", {relative_to})')
+            completers.append(f'cli.DirectoryCompleter("{g}", cli.{relative_to})')
         if self.type is CompletionType.special:
             completers.append(self.group)
-        if go_name:
-            go_name += '.'
         if len(completers) > 1:
-            yield f'{go_name}{sep}chain_completers(' + ', '.join(completers) + ')'
+            yield f'{go_name}{sep}cli.ChainCompleters(' + ', '.join(completers) + ')'
         elif completers:
             yield f'{go_name}{sep}{completers[0]}'
 
@@ -161,7 +159,7 @@ class GoOption:
             c = ', '.join(self.sorted_choices)
             cx = ', '.join(f'"{serialize_as_go_string(x)}"' for x in self.sorted_choices)
             ans += f'\nChoices: "{serialize_as_go_string(c)}",\n'
-            ans += f'\nCompleter: NamesCompleter("Choices for {self.long}", {cx}),'
+            ans += f'\nCompleter: cli.NamesCompleter("Choices for {self.long}", {cx}),'
         elif self.obj_dict['completion'].type is not CompletionType.none:
             ans += ''.join(self.obj_dict['completion'].as_go_code('Completer', ': ')) + ','
         if depth > 0:
@@ -878,6 +876,7 @@ completion=type:file ext:conf group:"Config files" kwds:none,NONE
 
 --override -o
 type=list
+completion=type:special group:complete_kitty_override
 Override individual configuration options, can be specified multiple times.
 Syntax: :italic:`name=value`. For example: :option:`{appname} -o` font_size=20
 
@@ -936,6 +935,7 @@ regardless of this option.
 
 
 --listen-on
+completion=type:special group:complete_kitty_listen_on
 Listen on the specified socket address for control messages. For example,
 :option:`{appname} --listen-on`=unix:/tmp/mykitty or :option:`{appname}
 --listen-on`=tcp:localhost:12345. On Linux systems, you can also use abstract

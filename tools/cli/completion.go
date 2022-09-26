@@ -46,13 +46,13 @@ func (self *MatchGroup) remove_common_prefix() string {
 	return ""
 }
 
-func (self *MatchGroup) add_match(word string, description ...string) *Match {
+func (self *MatchGroup) AddMatch(word string, description ...string) *Match {
 	ans := Match{Word: word, Description: strings.Join(description, " ")}
 	self.Matches = append(self.Matches, &ans)
 	return &ans
 }
 
-func (self *MatchGroup) add_prefix_to_all_matches(prefix string) {
+func (self *MatchGroup) AddPrefixToAllMatches(prefix string) {
 	for _, m := range self.Matches {
 		m.Word = prefix + m.Word
 	}
@@ -107,21 +107,21 @@ type Completions struct {
 	Groups   []*MatchGroup `json:"groups,omitempty"`
 	Delegate Delegate      `json:"delegate,omitempty"`
 
-	current_cmd                *Command
-	all_words                  []string // all words passed to parse_args()
-	current_word_idx           int      // index of current word in all_words
-	current_word_idx_in_parent int      // index of current word in parents command line 1 for first word after parent
+	CurrentCmd             *Command
+	AllWords               []string // all words passed to parse_args()
+	CurrentWordIdx         int      // index of current word in all_words
+	CurrentWordIdxInParent int      // index of current word in parents command line 1 for first word after parent
 
 	split_on_equals bool // true if the cmdline is split on = (BASH does this because readline does this)
 }
 
-func (self *Completions) add_prefix_to_all_matches(prefix string) {
+func (self *Completions) AddPrefixToAllMatches(prefix string) {
 	for _, mg := range self.Groups {
-		mg.add_prefix_to_all_matches(prefix)
+		mg.AddPrefixToAllMatches(prefix)
 	}
 }
 
-func (self *Completions) add_match_group(title string) *MatchGroup {
+func (self *Completions) AddMatchGroup(title string) *MatchGroup {
 	for _, q := range self.Groups {
 		if q.Title == title {
 			return q
@@ -136,10 +136,10 @@ type CompletionFunc func(completions *Completions, word string, arg_num int)
 
 func NamesCompleter(title string, names ...string) CompletionFunc {
 	return func(completions *Completions, word string, arg_num int) {
-		mg := completions.add_match_group(title)
+		mg := completions.AddMatchGroup(title)
 		for _, q := range names {
 			if strings.HasPrefix(q, word) {
-				mg.add_match(q)
+				mg.AddMatch(q)
 			}
 		}
 	}
@@ -150,5 +150,12 @@ func ChainCompleters(completers ...CompletionFunc) CompletionFunc {
 		for _, f := range completers {
 			f(completions, word, arg_num)
 		}
+	}
+}
+
+func CompletionForWrapper(wrapped_cmd string) func(completions *Completions, word string, arg_num int) {
+	return func(completions *Completions, word string, arg_num int) {
+		completions.Delegate.NumToRemove = completions.CurrentWordIdx + 1
+		completions.Delegate.Command = wrapped_cmd
 	}
 }

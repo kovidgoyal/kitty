@@ -40,8 +40,8 @@ type Command struct {
 
 	Args []string
 
-	option_map         map[string]*Option
-	index_of_first_arg int
+	option_map      map[string]*Option
+	IndexOfFirstArg int
 }
 
 func (self *Command) Clone(parent *Command) *Command {

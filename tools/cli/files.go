@@ -26,12 +26,12 @@ func absolutize_path(path string) string {
 }
 
 type FileEntry struct {
-	name, completion_candidate, abspath string
-	mode                                os.FileMode
-	is_dir, is_symlink, is_empty_dir    bool
+	Name, CompletionCandidate, Abspath string
+	Mode                               os.FileMode
+	IsDir, IsSymlink, IsEmptyDir       bool
 }
 
-func complete_files(prefix string, callback func(*FileEntry), cwd string) error {
+func CompleteFiles(prefix string, callback func(*FileEntry), cwd string) error {
 	if cwd == "" {
 		var err error
 		cwd, err = os.Getwd()
@@ -90,24 +90,24 @@ func complete_files(prefix string, callback func(*FileEntry), cwd string) error 
 		abspath := filepath.Join(base_dir, entry.Name())
 		dir_to_check := ""
 		data := FileEntry{
-			name: entry.Name(), abspath: abspath, mode: entry.Type(), is_dir: entry.IsDir(),
-			is_symlink: entry.Type()&os.ModeSymlink == os.ModeSymlink, completion_candidate: q}
-		if data.is_symlink {
+			Name: entry.Name(), Abspath: abspath, Mode: entry.Type(), IsDir: entry.IsDir(),
+			IsSymlink: entry.Type()&os.ModeSymlink == os.ModeSymlink, CompletionCandidate: q}
+		if data.IsSymlink {
 			target, err := filepath.EvalSymlinks(abspath)
 			if err == nil && target != base_dir {
 				td, err := os.Stat(target)
 				if err == nil && td.IsDir() {
 					dir_to_check = target
-					data.is_dir = true
+					data.IsDir = true
 				}
 			}
 		}
 		if dir_to_check != "" {
 			subentries, err := os.ReadDir(dir_to_check)
-			data.is_empty_dir = err != nil || len(subentries) == 0
+			data.IsEmptyDir = err != nil || len(subentries) == 0
 		}
-		if data.is_dir {
-			data.completion_candidate += utils.Sep
+		if data.IsDir {
+			data.CompletionCandidate += utils.Sep
 		}
 		callback(&data)
 	}
@@ -150,22 +150,22 @@ func is_dir_or_symlink_to_dir(entry os.DirEntry, path string) bool {
 
 func fname_based_completer(prefix, cwd string, is_match func(string) bool) []string {
 	ans := make([]string, 0, 1024)
-	complete_files(prefix, func(entry *FileEntry) {
-		if entry.is_dir && !entry.is_empty_dir {
-			entries, err := os.ReadDir(entry.abspath)
+	CompleteFiles(prefix, func(entry *FileEntry) {
+		if entry.IsDir && !entry.IsEmptyDir {
+			entries, err := os.ReadDir(entry.Abspath)
 			if err == nil {
 				for _, e := range entries {
-					if is_match(e.Name()) || is_dir_or_symlink_to_dir(e, filepath.Join(entry.abspath, e.Name())) {
-						ans = append(ans, entry.completion_candidate)
+					if is_match(e.Name()) || is_dir_or_symlink_to_dir(e, filepath.Join(entry.Abspath, e.Name())) {
+						ans = append(ans, entry.CompletionCandidate)
 						return
 					}
 				}
 			}
 			return
 		}
-		q := strings.ToLower(entry.name)
+		q := strings.ToLower(entry.Name)
 		if is_match(q) {
-			ans = append(ans, entry.completion_candidate)
+			ans = append(ans, entry.CompletionCandidate)
 		}
 	}, cwd)
 	return ans
@@ -244,12 +244,49 @@ func make_completer(title string, relative_to relative_to, patterns []string, f 
 	return func(completions *Completions, word string, arg_num int) {
 		q := f(word, cwd, lpats)
 		if len(q) > 0 {
-			mg := completions.add_match_group(title)
+			mg := completions.AddMatchGroup(title)
 			mg.IsFiles = true
 			for _, c := range q {
-				mg.add_match(c)
+				mg.AddMatch(c)
 			}
 		}
+	}
+}
+
+func CompleteExecutableFirstArg(completions *Completions, word string, arg_num int) {
+	if arg_num > 1 {
+		completions.Delegate.NumToRemove = completions.CurrentCmd.IndexOfFirstArg + 1 // +1 because the first word is not present in all_words
+		completions.Delegate.Command = completions.AllWords[completions.CurrentCmd.IndexOfFirstArg]
+		return
+	}
+	exes := CompleteExecutablesInPath(word)
+	if len(exes) > 0 {
+		mg := completions.AddMatchGroup("Executables in PATH")
+		for _, exe := range exes {
+			mg.AddMatch(exe)
+		}
+	}
+
+	if len(word) > 0 {
+		mg := completions.AddMatchGroup("Executables")
+		mg.IsFiles = true
+
+		CompleteFiles(word, func(entry *FileEntry) {
+			if entry.IsDir && !entry.IsEmptyDir {
+				// only allow directories that have sub-dirs or executable files in them
+				entries, err := os.ReadDir(entry.Abspath)
+				if err == nil {
+					for _, x := range entries {
+						if x.IsDir() || unix.Access(filepath.Join(entry.Abspath, x.Name()), unix.X_OK) == nil {
+							mg.AddMatch(entry.CompletionCandidate)
+							break
+						}
+					}
+				}
+			} else if unix.Access(entry.Abspath, unix.X_OK) == nil {
+				mg.AddMatch(entry.CompletionCandidate)
+			}
+		}, "")
 	}
 }
 
@@ -268,12 +305,12 @@ func DirectoryCompleter(title string, relative_to relative_to) CompletionFunc {
 	cwd := get_cwd_for_completion(relative_to)
 
 	return func(completions *Completions, word string, arg_num int) {
-		mg := completions.add_match_group(title)
+		mg := completions.AddMatchGroup(title)
 		mg.NoTrailingSpace = true
 		mg.IsFiles = true
-		complete_files(word, func(entry *FileEntry) {
-			if entry.mode.IsDir() {
-				mg.add_match(entry.completion_candidate)
+		CompleteFiles(word, func(entry *FileEntry) {
+			if entry.Mode.IsDir() {
+				mg.AddMatch(entry.CompletionCandidate)
 			}
 		}, cwd)
 	}

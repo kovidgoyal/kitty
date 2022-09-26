@@ -47,37 +47,27 @@ def replace(template: str, **kw: str) -> str:
 # }}}
 
 
-def generate_completion_for_rc(name: str) -> None:
-    cmd = command_for_name(name)
-    if cmd.short_desc:
-        print(f'{name}.Description = "{serialize_as_go_string(cmd.short_desc)}"')
-    for x in cmd.args.as_go_completion_code(name):
-        print(x)
-    for opt in rc_command_options(name):
-        print(opt.as_completion_option(name))
-
-
 def generate_kittens_completion() -> None:
     from kittens.runner import (
         all_kitten_names, get_kitten_cli_docs, get_kitten_wrapper_of,
     )
     for kitten in sorted(all_kitten_names()):
         kn = 'kitten_' + kitten
-        print(f'{kn} := plus_kitten.add_command("{kitten}", "Kittens")')
+        print(f'{kn} := plus_kitten.AddSubCommand(&cli.Command{{Name:"{kitten}", Group: "Kittens"}})')
         wof = get_kitten_wrapper_of(kitten)
         if wof:
-            print(f'{kn}.Parse_args = completion_for_wrapper("{serialize_as_go_string(wof)}")')
+            print(f'{kn}.ArgCompleter = cli.CompletionForWrapper("{serialize_as_go_string(wof)}")')
             continue
         kcd = get_kitten_cli_docs(kitten)
         if kcd:
             ospec = kcd['options']
             for opt in go_options_for_seq(parse_option_spec(ospec())[0]):
-                print(opt.as_completion_option(kn))
+                print(opt.as_option(kn))
             ac = kcd.get('args_completion')
             if ac is not None:
-                print(''.join(ac.as_go_code(kn)))
+                print(''.join(ac.as_go_code(kn + '.ArgCompleter', ' = ')))
         else:
-            print(f'{kn}.Description = ""')
+            print(f'{kn}.HelpText = ""')
 
 
 def completion_for_launch_wrappers(*names: str) -> None:
@@ -87,63 +77,57 @@ def completion_for_launch_wrappers(*names: str) -> None:
     for o in opts:
         if o.obj_dict['name'] in allowed:
             for name in names:
-                print(o.as_completion_option(name))
+                print(o.as_option(name))
 
 
 def generate_completions_for_kitty() -> None:
+    from kitty.config import option_names_for_completion
     print('package completion\n')
-    print('func kitty(root *Command) {')
+    print('import "kitty/tools/cli"')
+    print('import "kitty/tools/cmd/at"')
+    conf_names = ', '.join((f'"{serialize_as_go_string(x)}"' for x in option_names_for_completion()))
+    print('var kitty_option_names_for_completion = []string{' + conf_names + '}')
+
+    print('func kitty(root *cli.Command) {')
 
     # The kitty exe
-    print('k := root.AddSubCommand(&Command{Name:"kitty", SubCommandIsOptional: true, ArgCompleter: complete_kitty, SubCommandMustBeFirst: true })')
+    print('k := root.AddSubCommand(&cli.Command{'
+          'Name:"kitty", SubCommandIsOptional: true, ArgCompleter: cli.CompleteExecutableFirstArg, SubCommandMustBeFirst: true })')
     for opt in go_options_for_seq(parse_option_spec()[0]):
-        print(opt.as_completion_option('k'))
-    from kitty.config import option_names_for_completion
-    conf_names = ', '.join((f'"{serialize_as_go_string(x)}"' for x in option_names_for_completion()))
-    print(f'k.find_option("-o").Completion_for_arg = complete_kitty_override("Config directives", []string{{{conf_names}}})')
-    print('k.find_option("--listen-on").Completion_for_arg = complete_kitty_listen_on')
+        print(opt.as_option('k'))
 
     # kitty +
-    print('plus := k.add_command("+", "Entry points")')
-    print('plus.Description = "Various special purpose tools and kittens"')
+    print('plus := k.AddSubCommand(&cli.Command{Name:"+", Group:"Entry points", ShortDescription: "Various special purpose tools and kittens"})')
 
-    print('plus_launch := plus.add_command("launch", "Entry points")')
-    print('plus_launch.Completion_for_arg = complete_plus_launch')
-    print('k.add_clone("+launch", "Launch Python scripts", plus_launch)')
+    print('plus_launch := plus.AddSubCommand(&cli.Command{'
+          'Name:"launch", Group:"Entry points", ShortDescription: "Launch Python scripts", ArgCompleter: complete_plus_launch})')
+    print('k.AddClone("", plus_launch).Name = "+launch"')
 
-    print('plus_runpy := plus.add_command("runpy", "Entry points")')
-    print('plus_runpy.Completion_for_arg = complete_plus_runpy')
-    print('k.add_clone("+runpy", "Run Python code", plus_runpy)')
+    print('plus_runpy := plus.AddSubCommand(&cli.Command{'
+          'Name: "runpy", Group:"Entry points", ArgCompleter: complete_plus_runpy, ShortDescription: "Run Python code"})')
+    print('k.AddClone("", plus_runpy).Name = "+runpy"')
 
-    print('plus_open := plus.add_command("open", "Entry points")')
-    print('plus_open.Completion_for_arg = complete_plus_open')
-    print('plus_open.clone_options_from(k)')
-    print('k.add_clone("+open", "Open files and URLs", plus_open)')
+    print('plus_open := plus.AddSubCommand(&cli.Command{'
+          'Name:"open", Group:"Entry points", ArgCompleter: complete_plus_open, ShortDescription: "Open files and URLs"})')
+    print('k.AddClone("", plus_open).Name = "+open"')
 
     # kitty +kitten
-    print('plus_kitten := plus.add_command("kitten", "Kittens")')
-    print('plus_kitten.Subcommand_must_be_first = true')
+    print('plus_kitten := plus.AddSubCommand(&cli.Command{Name:"kitten", Group:"Kittens", SubCommandMustBeFirst: true})')
     generate_kittens_completion()
-    print('k.add_clone("+kitten", "Kittens", plus_kitten)')
+    print('k.AddClone("", plus_kitten).Name = "+kitten"')
 
-    # kitten @
-    print('at := k.add_command("@", "Remote control")')
-    print('at.Description = "Control kitty using commands"')
-    for go_name in sorted(all_command_names()):
-        name = go_name.replace('_', '-')
-        print(f'{go_name} := at.add_command("{name}", "")')
-        generate_completion_for_rc(go_name)
-        print(f'k.add_clone("@{name}", "Remote control", {go_name})')
+    # @
+    print('at.EntryPoint(k)')
 
     # clone-in-kitty, edit-in-kitty
-    print('cik := root.add_command("clone-in-kitty", "")')
-    print('eik := root.add_command("edit-in-kitty", "")')
+    print('cik := root.AddSubCommand(&cli.Command{Name:"clone-in-kitty"})')
+    print('eik := root.AddSubCommand(&cli.Command{Name:"edit-in-kitty"})')
     completion_for_launch_wrappers('cik', 'eik')
-    print(''.join(CompletionSpec.from_string('type:file mime:text/* group:"Text files"').as_go_code('eik')))
+    print(''.join(CompletionSpec.from_string('type:file mime:text/* group:"Text files"').as_go_code('eik.ArgCompleter', ' = ')))
 
     print('}')
     print('func init() {')
-    print('registered_exes["kitty"] = kitty')
+    print('cli.RegisterExeForCompletion(kitty)')
     print('}')
 
 
@@ -187,6 +171,7 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
     NO_RESPONSE_BASE = 'false'
     af: List[str] = []
     a = af.append
+    af.extend(cmd.args.as_go_completion_code('ans'))
     od: List[str] = []
     option_map: Dict[str, GoOption] = {}
     for o in rc_command_options(name):
@@ -358,7 +343,7 @@ func add_rc_global_opts(cmd *cli.Command) {{
 def update_completion() -> None:
     orig = sys.stdout
     try:
-        with replace_if_needed('tools/cli/completion-kitty_generated.go') as f:
+        with replace_if_needed('tools/cmd/completion/kitty_generated.go') as f:
             sys.stdout = f
             generate_completions_for_kitty()
     finally:
