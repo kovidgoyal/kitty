@@ -39,10 +39,10 @@ func TestCompleteFiles(t *testing.T) {
 		}
 		sort.Strings(expected)
 		actual := make([]string, 0, len(expected))
-		complete_files(prefix, func(entry *FileEntry) {
-			actual = append(actual, entry.completion_candidate)
-			if _, err := os.Stat(entry.abspath); err != nil {
-				t.Fatalf("Abspath does not exist: %#v", entry.abspath)
+		CompleteFiles(prefix, func(entry *FileEntry) {
+			actual = append(actual, entry.CompletionCandidate)
+			if _, err := os.Stat(entry.Abspath); err != nil {
+				t.Fatalf("Abspath does not exist: %#v", entry.Abspath)
 			}
 		}, "")
 		sort.Strings(actual)

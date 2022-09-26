@@ -18,7 +18,6 @@ from ..tui.operations import (
 
 OPTIONS = r'''
 --get-clipboard
-default=False
 type=bool-set
 Output the current contents of the clipboard to STDOUT. Note that by default
 kitty will prompt for permission to access the clipboard. Can be controlled
@@ -26,14 +25,12 @@ by :opt:`clipboard_control`.
 
 
 --use-primary
-default=False
 type=bool-set
 Use the primary selection rather than the clipboard on systems that support it,
 such as X11.
 
 
 --wait-for-completion
-default=False
 type=bool-set
 Wait till the copy to clipboard is complete before exiting. Useful if running
 the kitten in a dedicated, ephemeral window.

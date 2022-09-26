@@ -203,7 +203,7 @@ class ArgsHandling:
         if c is not None:
             yield f'{go_name}.StopCompletingAtArg = {c}'
         if self.completion:
-            yield from self.completion.as_go_code(go_name)
+            yield from self.completion.as_go_code(go_name + '.ArgCompleter', ' = ')
 
     def as_go_code(self, cmd_name: str, field_types: Dict[str, str], handled_fields: Set[str]) -> Iterator[str]:
         c = self.args_count

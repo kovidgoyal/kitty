@@ -18,7 +18,7 @@ func (self *Completions) add_group(group *MatchGroup) {
 }
 
 func (self *Completions) add_options_group(options []*Option, word string) {
-	group := self.add_match_group("Options")
+	group := self.AddMatchGroup("Options")
 	if strings.HasPrefix(word, "--") {
 		if word == "--" {
 			group.Matches = append(group.Matches, &Match{Word: "--", Description: "End of options"})
@@ -38,7 +38,7 @@ func (self *Completions) add_options_group(options []*Option, word string) {
 				has_single_letter_alias := false
 				for _, q := range opt.Aliases {
 					if q.IsShort {
-						group.add_match("-"+q.NameWithoutHyphens, opt.Help)
+						group.AddMatch("-"+q.NameWithoutHyphens, opt.Help)
 						has_single_letter_alias = true
 						break
 					}
@@ -46,7 +46,7 @@ func (self *Completions) add_options_group(options []*Option, word string) {
 				if !has_single_letter_alias {
 					for _, q := range opt.Aliases {
 						if !q.IsShort {
-							group.add_match(q.String(), opt.Help)
+							group.AddMatch(q.String(), opt.Help)
 							break
 						}
 					}
@@ -58,7 +58,7 @@ func (self *Completions) add_options_group(options []*Option, word string) {
 			for _, opt := range options {
 				for _, q := range opt.Aliases {
 					if q.IsShort && q.NameWithoutHyphens == last_letter {
-						group.add_match(word, opt.Help)
+						group.AddMatch(word, opt.Help)
 						return
 					}
 				}
@@ -69,13 +69,13 @@ func (self *Completions) add_options_group(options []*Option, word string) {
 
 func (self *Command) sub_command_allowed_at(completions *Completions, arg_num int) bool {
 	if self.SubCommandMustBeFirst {
-		return arg_num == 1 && completions.current_word_idx_in_parent == 1
+		return arg_num == 1 && completions.CurrentWordIdxInParent == 1
 	}
 	return arg_num == 1
 }
 
 func complete_word(word string, completions *Completions, only_args_allowed bool, expecting_arg_for *Option, arg_num int) {
-	cmd := completions.current_cmd
+	cmd := completions.CurrentCmd
 	if expecting_arg_for != nil {
 		if expecting_arg_for.Completer != nil {
 			expecting_arg_for.Completer(completions, word, arg_num)
@@ -89,7 +89,7 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 			if option != nil {
 				if option.Completer != nil {
 					option.Completer(completions, word[idx+1:], arg_num)
-					completions.add_prefix_to_all_matches(word[:idx+1])
+					completions.AddPrefixToAllMatches(word[:idx+1])
 				}
 			}
 		} else {
@@ -99,13 +99,17 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 	}
 	if cmd.HasVisibleSubCommands() && cmd.sub_command_allowed_at(completions, arg_num) {
 		for _, cg := range cmd.SubCommandGroups {
-			group := completions.add_match_group(cg.Title)
+			group := completions.AddMatchGroup(cg.Title)
 			if group.Title == "" {
 				group.Title = "Sub-commands"
 			}
 			for _, sc := range cg.SubCommands {
 				if strings.HasPrefix(sc.Name, word) {
-					group.add_match(sc.Name, sc.HelpText)
+					t := sc.ShortDescription
+					if t == "" {
+						t = sc.HelpText
+					}
+					group.AddMatch(sc.Name, t)
 				}
 			}
 		}
@@ -122,21 +126,21 @@ func complete_word(word string, completions *Completions, only_args_allowed bool
 }
 
 func completion_parse_args(cmd *Command, words []string, completions *Completions) {
-	completions.current_cmd = cmd
+	completions.CurrentCmd = cmd
 	if len(words) == 0 {
 		complete_word("", completions, false, nil, 0)
 		return
 	}
-	completions.all_words = words
+	completions.AllWords = words
 
 	var expecting_arg_for *Option
 	only_args_allowed := false
 	arg_num := 0
 
 	for i, word := range words {
-		cmd = completions.current_cmd
-		completions.current_word_idx = i
-		completions.current_word_idx_in_parent++
+		cmd = completions.CurrentCmd
+		completions.CurrentWordIdx = i
+		completions.CurrentWordIdxInParent++
 		is_last_word := i == len(words)-1
 		is_option_equal := completions.split_on_equals && word == "=" && expecting_arg_for != nil
 		if only_args_allowed || (expecting_arg_for == nil && !strings.HasPrefix(word, "-")) {
@@ -144,7 +148,7 @@ func completion_parse_args(cmd *Command, words []string, completions *Completion
 				arg_num++
 			}
 			if arg_num == 1 {
-				cmd.index_of_first_arg = completions.current_word_idx
+				cmd.IndexOfFirstArg = completions.CurrentWordIdx
 			}
 		}
 		if is_last_word {
@@ -179,10 +183,10 @@ func completion_parse_args(cmd *Command, words []string, completions *Completion
 					only_args_allowed = true
 					continue
 				}
-				completions.current_cmd = sc
+				completions.CurrentCmd = sc
 				cmd = sc
 				arg_num = 0
-				completions.current_word_idx_in_parent = 0
+				completions.CurrentWordIdxInParent = 0
 				only_args_allowed = false
 				if cmd.ParseArgsForCompletion != nil {
 					cmd.ParseArgsForCompletion(cmd, words[i+1:], completions)
