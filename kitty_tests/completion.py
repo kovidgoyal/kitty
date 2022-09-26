@@ -61,7 +61,7 @@ def is_delegate(num_to_remove: int = 0, command: str = ''):
 
     def t(self, result):
         d = result['delegate']
-        self.assertEqual(d, q)
+        self.assertEqual(d, q, f'Command line: {self.current_cmd!r}')
     return t
 
 
@@ -157,6 +157,7 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty + kitten themes --', has_words('--cache-age'))
     add('kitty + kitten themes D', has_words('Default'))
     add('kitty + kitten hyperlinked_grep ', is_delegate(3, 'rg'))
+    add('kitty +kitten hyperlinked_grep ', is_delegate(2, 'rg'))
 
     add('clone-in-kitty --ty', has_words('--type'))
     make_file('editable.txt')

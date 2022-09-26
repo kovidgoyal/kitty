@@ -31,6 +31,8 @@ type Command struct {
 	ArgCompleter CompletionFunc
 	// Stop completion processing at this arg num
 	StopCompletingAtArg int
+	// Consider all args as non-options args
+	OnlyArgsAllowed bool
 	// Specialised arg aprsing
 	ParseArgsForCompletion func(cmd *Command, args []string, completions *Completions)
 
