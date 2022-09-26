@@ -209,6 +209,8 @@ func (self *Command) ResetAfterParseArgs() {
 			o.reset()
 		}
 	}
+	self.option_map = nil
+	self.IndexOfFirstArg = 0
 	self.Args = make([]string, 0, 8)
 }
 

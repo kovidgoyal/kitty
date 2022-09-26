@@ -47,6 +47,7 @@ def replace(template: str, **kw: str) -> str:
 # }}}
 
 
+# Completions {{{
 def generate_kittens_completion() -> None:
     from kittens.runner import (
         all_kitten_names, get_kitten_cli_docs, get_kitten_wrapper_of,
@@ -109,6 +110,7 @@ def generate_completions_for_kitty() -> None:
 
     print('plus_open := plus.AddSubCommand(&cli.Command{'
           'Name:"open", Group:"Entry points", ArgCompleter: complete_plus_open, ShortDescription: "Open files and URLs"})')
+    print('for _, og := range k.OptionGroups { plus_open.OptionGroups = append(plus_open.OptionGroups, og.Clone(plus_open)) }')
     print('k.AddClone("", plus_open).Name = "+open"')
 
     # kitty +kitten
@@ -129,6 +131,7 @@ def generate_completions_for_kitty() -> None:
     print('func init() {')
     print('cli.RegisterExeForCompletion(kitty)')
     print('}')
+# }}}
 
 
 # rc command wrappers {{{

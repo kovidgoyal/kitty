@@ -95,7 +95,7 @@ func run_CMD_NAME(cmd *cli.Command, args []string) (return_code int, err error) 
 
 func setup_CMD_NAME(parent *cli.Command) *cli.Command {
 	ans := parent.AddSubCommand(&cli.Command{
-		Name:             "CMD_NAME",
+		Name:             "CLI_NAME",
 		Usage:            "ARGSPEC",
 		ShortDescription: "SHORT_DESC",
 		HelpText:         "LONG_DESC",

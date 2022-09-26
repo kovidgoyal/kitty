@@ -24,9 +24,9 @@ func (self *CommandGroup) HasVisibleSubCommands() bool {
 }
 
 func (self *CommandGroup) Clone(parent *Command) *CommandGroup {
-	ans := CommandGroup{Title: self.Title, SubCommands: make([]*Command, 0, len(self.SubCommands))}
+	ans := CommandGroup{Title: self.Title, SubCommands: make([]*Command, len(self.SubCommands))}
 	for i, o := range self.SubCommands {
-		self.SubCommands[i] = o.Clone(parent)
+		ans.SubCommands[i] = o.Clone(parent)
 	}
 	return &ans
 }
