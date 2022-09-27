@@ -285,7 +285,11 @@ func get_password(password string, password_file string, password_env string, us
 	return ans, nil
 }
 
-var all_commands map[string]func(*cli.Command) *cli.Command = make(map[string]func(*cli.Command) *cli.Command)
+var all_commands []func(*cli.Command) *cli.Command = make([]func(*cli.Command) *cli.Command, 0, 64)
+
+func register_at_cmd(f func(*cli.Command) *cli.Command) {
+	all_commands = append(all_commands, f)
+}
 
 func setup_global_options(cmd *cli.Command) (err error) {
 	err = cmd.GetOptionValues(&rc_global_opts)

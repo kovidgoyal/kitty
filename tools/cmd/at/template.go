@@ -106,5 +106,5 @@ func setup_CMD_NAME(parent *cli.Command) *cli.Command {
 }
 
 func init() {
-	all_commands["CMD_NAME"] = setup_CMD_NAME
+	register_at_cmd(setup_CMD_NAME)
 }
