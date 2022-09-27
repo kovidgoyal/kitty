@@ -5,27 +5,44 @@
 # in kitty, when using the spawn launcher.
 
 
+import os
 from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import util  # type: ignore
+from multiprocessing import util
 from multiprocessing import context, get_all_start_methods, get_context, spawn
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, Sequence, Optional, Tuple, Union,  TYPE_CHECKING
 
 from .constants import kitty_exe
 
 orig_spawn_passfds = util.spawnv_passfds
 orig_executable = spawn.get_executable()
 
+if TYPE_CHECKING:
+    from pickle import PickleBuffer
+    from array import array
+    from mmap import mmap
+    from ctypes import _CData
+    from typing import SupportsInt, SupportsIndex, Protocol
 
-def spawnv_passfds(path: str, args: List[str], passfds: List[int]) -> Any:
+    class SupportsTrunc(Protocol):
+        def __trunc__(self) -> int: ...
+
+    ArgsType = Sequence[
+        Union[str, Union[bytes, Union[bytearray, memoryview, array[Any], mmap, _CData, PickleBuffer]], SupportsInt, SupportsIndex, SupportsTrunc]
+    ]
+else:
+    ArgsType = Sequence[str]
+
+
+def spawnv_passfds(path: bytes, args: ArgsType, passfds: Sequence[int]) -> int:
     if '-c' in args:
         idx = args.index('-c')
-        patched_args = [spawn.get_executable(), '+runpy'] + args[idx + 1:]
+        patched_args = [spawn.get_executable(), '+runpy'] + list(args)[idx + 1:]
     else:
         idx = args.index('--multiprocessing-fork')
         prog = 'from multiprocessing.spawn import spawn_main; spawn_main(%s)'
-        prog %= ', '.join(item for item in args[idx+1:])
+        prog %= ', '.join(str(item) for item in args[idx+1:])
         patched_args = [spawn.get_executable(), '+runpy', prog]
-    return orig_spawn_passfds(kitty_exe(), patched_args, passfds)
+    return orig_spawn_passfds(os.fsencode(kitty_exe()), patched_args, passfds)
 
 
 def monkey_patch_multiprocessing() -> None:
