@@ -38,6 +38,8 @@ Detailed list of changes
 0.26.4 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Update to Unicode 15.0 (:pull:`5542`)
+
 - macOS: Allow changing the kitty icon by placing a custom icon in the kitty config folder (:pull:`5464`)
 
 - X11: Fix a regression in the previous release that caused pasting from GTK based applications to have extra newlines (:iss:`5528`)

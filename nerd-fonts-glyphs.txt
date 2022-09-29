@@ -1,3 +1,411 @@
+ea60 cod add
+ea61 cod lightbulb
+ea62 cod repo
+ea63 cod repo forked
+ea64 cod git pull request
+ea65 cod record keys
+ea66 cod tag
+ea67 cod person
+ea68 cod source control
+ea69 cod mirror
+ea6a cod star empty
+ea6b cod comment
+ea6c cod warning
+ea6d cod search
+ea6e cod sign out
+ea6f cod sign in
+ea70 cod eye
+ea71 cod circle filled
+ea72 cod primitive square
+ea73 cod edit
+ea74 cod info
+ea75 cod lock
+ea76 cod close
+ea77 cod sync
+ea78 cod desktop download
+ea79 cod beaker
+ea7a cod vm
+ea7b cod file
+ea7c cod ellipsis
+ea7d cod reply
+ea7e cod organization
+ea7f cod new file
+ea80 cod new folder
+ea81 cod trash
+ea82 cod history
+ea83 cod folder
+ea84 cod github
+ea85 cod terminal
+ea86 cod symbol event
+ea87 cod error
+ea88 cod symbol variable
+ea8a cod symbol array
+ea8b cod symbol namespace
+ea8c cod symbol method
+ea8f cod symbol boolean
+ea90 cod symbol numeric
+ea91 cod symbol structure
+ea92 cod symbol parameter
+ea93 cod symbol key
+ea94 cod go to file
+ea95 cod symbol enum
+ea96 cod symbol ruler
+ea97 cod activate breakpoints
+ea98 cod archive
+ea99 cod arrow both
+ea9a cod arrow down
+ea9b cod arrow left
+ea9c cod arrow right
+ea9d cod arrow small down
+ea9e cod arrow small left
+ea9f cod arrow small right
+eaa0 cod arrow small up
+eaa1 cod arrow up
+eaa2 cod bell
+eaa3 cod bold
+eaa4 cod book
+eaa5 cod bookmark
+eaa6 cod debug breakpoint conditional unverified
+eaa7 cod debug breakpoint conditional
+eaa8 cod debug breakpoint data unverified
+eaa9 cod debug breakpoint data
+eaaa cod debug breakpoint log unverified
+eaab cod debug breakpoint log
+eaac cod briefcase
+eaad cod broadcast
+eaae cod browser
+eaaf cod bug
+eab0 cod calendar
+eab1 cod case sensitive
+eab2 cod check
+eab3 cod checklist
+eab4 cod chevron down
+eab5 cod chevron left
+eab6 cod chevron right
+eab7 cod chevron up
+eab8 cod chrome close
+eab9 cod chrome maximize
+eaba cod chrome minimize
+eabb cod chrome restore
+eabc cod circle
+eabd cod circle slash
+eabe cod circuit board
+eabf cod clear all
+eac0 cod clippy
+eac1 cod close all
+eac2 cod cloud download
+eac3 cod cloud upload
+eac4 cod code
+eac5 cod collapse all
+eac6 cod color mode
+eac7 cod comment discussion
+eac9 cod credit card
+eacc cod dash
+eacd cod dashboard
+eace cod database
+eacf cod debug continue
+ead0 cod debug disconnect
+ead1 cod debug pause
+ead2 cod debug restart
+ead3 cod debug start
+ead4 cod debug step into
+ead5 cod debug step out
+ead6 cod debug step over
+ead7 cod debug stop
+ead8 cod debug
+ead9 cod device camera video
+eada cod device camera
+eadb cod device mobile
+eadc cod diff added
+eadd cod diff ignored
+eade cod diff modified
+eadf cod diff removed
+eae0 cod diff renamed
+eae1 cod diff
+eae2 cod discard
+eae3 cod editor layout
+eae4 cod empty window
+eae5 cod exclude
+eae6 cod extensions
+eae7 cod eye closed
+eae8 cod file binary
+eae9 cod file code
+eaea cod file media
+eaeb cod file pdf
+eaec cod file submodule
+eaed cod file symlink directory
+eaee cod file symlink file
+eaef cod file zip
+eaf0 cod files
+eaf1 cod filter
+eaf2 cod flame
+eaf3 cod fold down
+eaf4 cod fold up
+eaf5 cod fold
+eaf6 cod folder active
+eaf7 cod folder opened
+eaf8 cod gear
+eaf9 cod gift
+eafa cod gist secret
+eafc cod git commit
+eafd cod git compare
+eafe cod git merge
+eaff cod github action
+eb00 cod github alt
+eb01 cod globe
+eb02 cod grabber
+eb03 cod graph
+eb04 cod gripper
+eb05 cod heart
+eb06 cod home
+eb07 cod horizontal rule
+eb08 cod hubot
+eb09 cod inbox
+eb0b cod issue reopened
+eb0c cod issues
+eb0d cod italic
+eb0e cod jersey
+eb0f cod json
+eb10 cod kebab vertical
+eb11 cod key
+eb12 cod law
+eb13 cod lightbulb autofix
+eb14 cod link external
+eb15 cod link
+eb16 cod list ordered
+eb17 cod list unordered
+eb18 cod live share
+eb19 cod loading
+eb1a cod location
+eb1b cod mail read
+eb1c cod mail
+eb1d cod markdown
+eb1e cod megaphone
+eb1f cod mention
+eb20 cod milestone
+eb21 cod mortar board
+eb22 cod move
+eb23 cod multiple windows
+eb24 cod mute
+eb25 cod no newline
+eb26 cod note
+eb27 cod octoface
+eb28 cod open preview
+eb29 cod package
+eb2a cod paintcan
+eb2b cod pin
+eb2c cod play
+eb2d cod plug
+eb2e cod preserve case
+eb2f cod preview
+eb30 cod project
+eb31 cod pulse
+eb32 cod question
+eb33 cod quote
+eb34 cod radio tower
+eb35 cod reactions
+eb36 cod references
+eb37 cod refresh
+eb38 cod regex
+eb39 cod remote explorer
+eb3a cod remote
+eb3b cod remove
+eb3c cod replace all
+eb3d cod replace
+eb3e cod repo clone
+eb3f cod repo force push
+eb40 cod repo pull
+eb41 cod repo push
+eb42 cod report
+eb43 cod request changes
+eb44 cod rocket
+eb45 cod root folder opened
+eb46 cod root folder
+eb47 cod rss
+eb48 cod ruby
+eb49 cod save all
+eb4a cod save as
+eb4b cod save
+eb4c cod screen full
+eb4d cod screen normal
+eb4e cod search stop
+eb50 cod server
+eb51 cod settings gear
+eb52 cod settings
+eb53 cod shield
+eb54 cod smiley
+eb55 cod sort precedence
+eb56 cod split horizontal
+eb57 cod split vertical
+eb58 cod squirrel
+eb59 cod star full
+eb5a cod star half
+eb5b cod symbol class
+eb5c cod symbol color
+eb5d cod symbol constant
+eb5e cod symbol enum member
+eb5f cod symbol field
+eb60 cod symbol file
+eb61 cod symbol interface
+eb62 cod symbol keyword
+eb63 cod symbol misc
+eb64 cod symbol operator
+eb65 cod symbol property
+eb66 cod symbol snippet
+eb67 cod tasklist
+eb68 cod telescope
+eb69 cod text size
+eb6a cod three bars
+eb6b cod thumbsdown
+eb6c cod thumbsup
+eb6d cod tools
+eb6e cod triangle down
+eb6f cod triangle left
+eb70 cod triangle right
+eb71 cod triangle up
+eb72 cod twitter
+eb73 cod unfold
+eb74 cod unlock
+eb75 cod unmute
+eb76 cod unverified
+eb77 cod verified
+eb78 cod versions
+eb79 cod vm active
+eb7a cod vm outline
+eb7b cod vm running
+eb7c cod watch
+eb7d cod whitespace
+eb7e cod whole word
+eb7f cod window
+eb80 cod word wrap
+eb81 cod zoom in
+eb82 cod zoom out
+eb83 cod list filter
+eb84 cod list flat
+eb85 cod list selection
+eb86 cod list tree
+eb87 cod debug breakpoint function unverified
+eb88 cod debug breakpoint function
+eb89 cod debug stackframe active
+eb8a cod circle small filled
+eb8b cod debug stackframe
+eb8c cod debug breakpoint unsupported
+eb8d cod symbol string
+eb8e cod debug reverse continue
+eb8f cod debug step back
+eb90 cod debug restart frame
+eb91 cod debug alt
+eb92 cod call incoming
+eb93 cod call outgoing
+eb94 cod menu
+eb95 cod expand all
+eb96 cod feedback
+eb97 cod group by ref type
+eb98 cod ungroup by ref type
+eb99 cod account
+eb9a cod bell dot
+eb9b cod debug console
+eb9c cod library
+eb9d cod output
+eb9e cod run all
+eb9f cod sync ignored
+eba0 cod pinned
+eba1 cod github inverted
+eba2 cod server process
+eba3 cod server environment
+eba4 cod pass
+eba5 cod stop circle
+eba6 cod play circle
+eba7 cod record
+eba8 cod debug alt small
+eba9 cod vm connect
+ebaa cod cloud
+ebab cod merge
+ebac cod export
+ebad cod graph left
+ebae cod magnet
+ebaf cod notebook
+ebb0 cod redo
+ebb1 cod check all
+ebb2 cod pinned dirty
+ebb3 cod pass filled
+ebb4 cod circle large filled
+ebb5 cod circle large
+ebb6 cod combine
+ebb7 cod table
+ebb8 cod variable group
+ebb9 cod type hierarchy
+ebba cod type hierarchy sub
+ebbb cod type hierarchy super
+ebbc cod git pull request create
+ebbd cod run above
+ebbe cod run below
+ebbf cod notebook template
+ebc0 cod debug rerun
+ebc1 cod workspace trusted
+ebc2 cod workspace untrusted
+ebc3 cod workspace unknown
+ebc4 cod terminal cmd
+ebc5 cod terminal debian
+ebc6 cod terminal linux
+ebc7 cod terminal powershell
+ebc8 cod terminal tmux
+ebc9 cod terminal ubuntu
+ebca cod terminal bash
+ebcb cod arrow swap
+ebcc cod copy
+ebcd cod person add
+ebce cod filter filled
+ebcf cod wand
+ebd0 cod debug line by line
+ebd1 cod inspect
+ebd2 cod layers
+ebd3 cod layers dot
+ebd4 cod layers active
+ebd5 cod compass
+ebd6 cod compass dot
+ebd7 cod compass active
+ebd8 cod azure
+ebd9 cod issue draft
+ebda cod git pull request closed
+ebdb cod git pull request draft
+ebdc cod debug all
+ebdd cod debug coverage
+ebde cod run errors
+ebdf cod folder library
+ebe0 cod debug continue small
+ebe1 cod beaker stop
+ebe2 cod graph line
+ebe3 cod graph scatter
+ebe4 cod pie chart
+ebe5 cod bracket dot
+ebe6 cod bracket error
+ebe7 cod lock small
+ebe8 cod azure devops
+ebe9 cod verified filled
+ebea cod newline
+ebeb cod layout
+e5fa custom folder npm
+e5fb custom folder git branch
+e5fc custom folder config
+e5fd custom folder github
+e5fe custom folder open
+e5ff custom folder
+e61d custom cpp
+e61e custom c
+e626 custom go
+e629 custom msdos
+e62a custom windows
+e62b custom vim
+e62c custom elm
+e62d custom elixir
+e62e custom electron
+e62f custom crystal
+e630 custom purescript
+e631 custom puppet
+e632 custom emacs
+e633 custom orgmode
+e634 custom kotlin
 e700 dev bing small
 e701 dev css tricks
 e702 dev git
@@ -189,176 +597,6 @@ e7bb dev redhat
 e7bc dev scriptcs
 e7c4 dev sqllite
 e7c5 dev vim
-e200 fae smaller
-e201 fae snowing
-e202 fae soda
-e203 fae sofa
-e204 fae soup
-e205 fae spermatozoon
-e206 fae spin double
-e207 fae stomach
-e208 fae storm
-e209 fae telescope
-e20a fae thermometer
-e20b fae thermometer high
-e20c fae thermometer low
-e20d fae thin close
-e20e fae toilet
-e20f fae tools
-e210 fae tooth
-e211 fae uterus
-e212 fae w3c
-e213 fae walking
-e214 fae virus
-e215 fae telegram circle
-e216 fae slash
-e217 fae telegram
-e218 fae shirt
-e219 fae tacos
-e21a fae sushi
-e21b fae triangle ruler
-e21c fae tree
-e21d fae sun cloud
-e21e fae ruby o
-e21f fae ruler
-e220 fae umbrella
-e221 fae medicine
-e222 fae microscope
-e223 fae milk bottle
-e224 fae minimize
-e225 fae molecule
-e226 fae moon cloud
-e227 fae mushroom
-e228 fae mustache
-e229 fae mysql
-e22a fae nintendo
-e22b fae palette color
-e22c fae pi
-e22d fae pizza
-e22e fae planet
-e22f fae plant
-e230 fae playstation
-e231 fae poison
-e232 fae popcorn
-e233 fae popsicle
-e234 fae pulse
-e235 fae python
-e236 fae quora circle
-e237 fae quora square
-e238 fae radioactive
-e239 fae raining
-e23a fae real heart
-e23b fae refrigerator
-e23c fae restore
-e23d fae ring
-e23e fae ruby
-e23f fae fingerprint
-e240 fae floppy
-e241 fae footprint
-e242 fae freecodecamp
-e243 fae galaxy
-e244 fae galery
-e245 fae glass
-e246 fae google drive
-e247 fae google play
-e248 fae gps
-e249 fae grav
-e24a fae guitar
-e24b fae gut
-e24c fae halter
-e24d fae hamburger
-e24e fae hat
-e24f fae hexagon
-e250 fae high heel
-e251 fae hotdog
-e252 fae ice cream
-e253 fae id card
-e254 fae imdb
-e255 fae infinity
-e256 fae java
-e257 fae layers
-e258 fae lips
-e259 fae lipstick
-e25a fae liver
-e25b fae lung
-e25c fae makeup brushes
-e25d fae maximize
-e25e fae wallet
-e25f fae chess horse
-e260 fae chess king
-e261 fae chess pawn
-e262 fae chess queen
-e263 fae chess tower
-e264 fae cheese
-e265 fae chilli
-e266 fae chip
-e267 fae cicling
-e268 fae cloud
-e269 fae cockroach
-e26a fae coffe beans
-e26b fae coins
-e26c fae comb
-e26d fae comet
-e26e fae crown
-e26f fae cup coffe
-e270 fae dice
-e271 fae disco
-e272 fae dna
-e273 fae donut
-e274 fae dress
-e275 fae drop
-e276 fae ello
-e277 fae envelope open
-e278 fae envelope open o
-e279 fae equal
-e27a fae equal bigger
-e27b fae feedly
-e27c fae file export
-e27d fae file import
-e27e fae wind
-e27f fae atom
-e280 fae bacteria
-e281 fae banana
-e282 fae bath
-e283 fae bed
-e284 fae benzene
-e285 fae bigger
-e286 fae biohazard
-e287 fae blogger circle
-e288 fae blogger square
-e289 fae bones
-e28a fae book open
-e28b fae book open o
-e28c fae brain
-e28d fae bread
-e28e fae butterfly
-e28f fae carot
-e290 fae cc by
-e291 fae cc cc
-e292 fae cc nc
-e293 fae cc nc eu
-e294 fae cc nc jp
-e295 fae cc nd
-e296 fae cc remix
-e297 fae cc sa
-e298 fae cc share
-e299 fae cc zero
-e29a fae checklist o
-e29b fae cherry
-e29c fae chess bishop
-e29d fae xbox
-e29e fae apple fruit
-e29f fae chicken thigh
-e2a0 fae gift card
-e2a1 fae injection
-e2a2 fae isle
-e2a3 fae lollipop
-e2a4 fae loyalty card
-e2a5 fae meat
-e2a6 fae mountains
-e2a7 fae orange
-e2a8 fae peach
-e2a9 fae pear
 f000 fa glass
 f001 fa music
 f002 fa search
@@ -415,7 +653,7 @@ f037 fa align center
 f038 fa align right
 f039 fa align justify
 f03a fa list
-f03b fa outdent
+f03b fa dedent outdent
 f03c fa indent
 f03d fa video camera
 f03e fa picture o image photo
@@ -554,12 +792,13 @@ f0d8 fa caret up
 f0d9 fa caret left
 f0da fa caret right
 f0db fa columns
-f0dc fa sort
-f0dd fa sort desc
-f0de fa sort asc
+f0dc fa sort unsorted
+f0dd fa sort desc down
+f0de fa sort asc up
 f0e0 fa envelope
 f0e1 fa linkedin
 f0e2 fa undo rotate left
+f0e3 fa gavel legal
 f0e4 fa tachometer dashboard
 f0e5 fa comment o
 f0e6 fa comments o
@@ -603,7 +842,7 @@ f10d fa quote left
 f10e fa quote right
 f110 fa spinner
 f111 fa circle
-f112 fa reply
+f112 fa mail reply
 f113 fa github alt
 f114 fa folder o
 f115 fa folder open o
@@ -616,7 +855,7 @@ f11d fa flag o
 f11e fa flag checkered
 f120 fa terminal
 f121 fa code
-f122 fa reply all
+f122 fa mail reply all
 f123 fa star half o
 f124 fa location arrow
 f125 fa crop
@@ -857,7 +1096,7 @@ f21e fa heartbeat
 f221 fa venus
 f222 fa mars
 f223 fa mercury
-f224 fa transgender
+f224 fa intersex transgender
 f225 fa transgender alt
 f226 fa venus double
 f227 fa mars double
@@ -924,7 +1163,7 @@ f268 fa chrome
 f269 fa firefox
 f26a fa opera
 f26b fa internet explorer
-f26c fa television
+f26c fa television tv
 f26d fa contao
 f26e fa 500px
 f270 fa amazon
@@ -990,7 +1229,7 @@ f2ae fa pied piper
 f2b0 fa first order
 f2b1 fa yoast
 f2b2 fa themeisle
-f2b3 fa google plus official
+f2b3 fa google plus
 f2b4 fa font awesome
 f2b5 fa handshake o
 f2b6 fa envelope open
@@ -1020,8 +1259,8 @@ f2ce fa podcast
 f2d0 fa window maximize
 f2d1 fa window minimize
 f2d2 fa window restore
-f2d3 fa window close
-f2d4 fa window close o
+f2d3 fa window close times rectangle
+f2d4 fa window close o times rectangle
 f2d5 fa bandcamp
 f2d6 fa grav
 f2d7 fa etsy
@@ -1033,11 +1272,182 @@ f2dc fa snowflake o
 f2dd fa superpowers
 f2de fa wpexplorer
 f2e0 fa meetup
+e200 fae smaller
+e201 fae snowing
+e202 fae soda
+e203 fae sofa
+e204 fae soup
+e205 fae spermatozoon
+e206 fae spin double
+e207 fae stomach
+e208 fae storm
+e209 fae telescope
+e20a fae thermometer
+e20b fae thermometer high
+e20c fae thermometer low
+e20d fae thin close
+e20e fae toilet
+e20f fae tools
+e210 fae tooth
+e211 fae uterus
+e212 fae w3c
+e213 fae walking
+e214 fae virus
+e215 fae telegram circle
+e216 fae slash
+e217 fae telegram
+e218 fae shirt
+e219 fae tacos
+e21a fae sushi
+e21b fae triangle ruler
+e21c fae tree
+e21d fae sun cloud
+e21e fae ruby o
+e21f fae ruler
+e220 fae umbrella
+e221 fae medicine
+e222 fae microscope
+e223 fae milk bottle
+e224 fae minimize
+e225 fae molecule
+e226 fae moon cloud
+e227 fae mushroom
+e228 fae mustache
+e229 fae mysql
+e22a fae nintendo
+e22b fae palette color
+e22c fae pi
+e22d fae pizza
+e22e fae planet
+e22f fae plant
+e230 fae playstation
+e231 fae poison
+e232 fae popcorn
+e233 fae popsicle
+e234 fae pulse
+e235 fae python
+e236 fae quora circle
+e237 fae quora square
+e238 fae radioactive
+e239 fae raining
+e23a fae real heart
+e23b fae refrigerator
+e23c fae restore
+e23d fae ring
+e23e fae ruby
+e23f fae fingerprint
+e240 fae floppy
+e241 fae footprint
+e242 fae freecodecamp
+e243 fae galaxy
+e244 fae galery
+e245 fae glass
+e246 fae google drive
+e247 fae google play
+e248 fae gps
+e249 fae grav
+e24a fae guitar
+e24b fae gut
+e24c fae halter
+e24d fae hamburger
+e24e fae hat
+e24f fae hexagon
+e250 fae high heel
+e251 fae hotdog
+e252 fae ice cream
+e253 fae id card
+e254 fae imdb
+e255 fae infinity
+e256 fae java
+e257 fae layers
+e258 fae lips
+e259 fae lipstick
+e25a fae liver
+e25b fae lung
+e25c fae makeup brushes
+e25d fae maximize
+e25e fae wallet
+e25f fae chess horse
+e260 fae chess king
+e261 fae chess pawn
+e262 fae chess queen
+e263 fae chess tower
+e264 fae cheese
+e265 fae chilli
+e266 fae chip
+e267 fae cicling
+e268 fae cloud
+e269 fae cockroach
+e26a fae coffe beans
+e26b fae coins
+e26c fae comb
+e26d fae comet
+e26e fae crown
+e26f fae cup coffe
+e270 fae dice
+e271 fae disco
+e272 fae dna
+e273 fae donut
+e274 fae dress
+e275 fae drop
+e276 fae ello
+e277 fae envelope open
+e278 fae envelope open o
+e279 fae equal
+e27a fae equal bigger
+e27b fae feedly
+e27c fae file export
+e27d fae file import
+e27e fae wind
+e27f fae atom
+e280 fae bacteria
+e281 fae banana
+e282 fae bath
+e283 fae bed
+e284 fae benzene
+e285 fae bigger
+e286 fae biohazard
+e287 fae blogger circle
+e288 fae blogger square
+e289 fae bones
+e28a fae book open
+e28b fae book open o
+e28c fae brain
+e28d fae bread
+e28e fae butterfly
+e28f fae carot
+e290 fae cc by
+e291 fae cc cc
+e292 fae cc nc
+e293 fae cc nc eu
+e294 fae cc nc jp
+e295 fae cc nd
+e296 fae cc remix
+e297 fae cc sa
+e298 fae cc share
+e299 fae cc zero
+e29a fae checklist o
+e29b fae cherry
+e29c fae chess bishop
+e29d fae xbox
+e29e fae apple fruit
+e29f fae chicken thigh
+e2a0 fae gift card
+e2a1 fae injection
+e2a2 fae isle
+e2a3 fae lollipop
+e2a4 fae loyalty card
+e2a5 fae meat
+e2a6 fae mountains
+e2a7 fae orange
+e2a8 fae peach
+e2a9 fae pear
 23fb iec power
 23fc iec toggle power
 23fd iec power on
 23fe iec sleep mode
 2b58 iec power off
+e621 indent line dotted guide
 f300 linux alpine
 f301 linux aosc
 f302 linux apple
@@ -1067,281 +1477,25 @@ f319 linux slackware inverse
 f31a linux tux
 f31b linux ubuntu
 f31c linux ubuntu inverse
-2665 oct heart
-26a1 oct zap
-f400 oct light bulb
-f401 oct repo
-f402 oct repo forked
-f403 oct repo push
-f404 oct repo pull
-f405 oct book
-f406 oct octoface
-f407 oct git pull request
-f408 oct mark github
-f409 oct cloud download
-f40a oct cloud upload
-f40b oct keyboard
-f40c oct gist
-f40d oct file code
-f40e oct file text
-f40f oct file media
-f410 oct file zip
-f411 oct file pdf
-f412 oct tag
-f413 oct file directory
-f414 oct file submodule
-f415 oct person
-f416 oct jersey
-f417 oct git commit
-f418 oct git branch
-f419 oct git merge
-f41a oct mirror
-f41b oct issue opened
-f41c oct issue reopened
-f41d oct issue closed
-f41e oct star
-f41f oct comment
-f420 oct question
-f421 oct alert
-f422 oct search
-f423 oct gear
-f424 oct radio tower
-f425 oct tools
-f426 oct sign out
-f427 oct rocket
-f428 oct rss
-f429 oct clippy
-f42a oct sign in
-f42b oct organization
-f42c oct device mobile
-f42d oct unfold
-f42e oct check
-f42f oct mail
-f430 oct mail read
-f431 oct arrow up
-f432 oct arrow right
-f433 oct arrow down
-f434 oct arrow left
-f435 oct pin
-f436 oct gift
-f437 oct graph
-f438 oct triangle left
-f439 oct credit card
-f43a oct clock
-f43b oct ruby
-f43c oct broadcast
-f43d oct key
-f43e oct repo force push
-f43f oct repo clone
-f440 oct diff
-f441 oct eye
-f442 oct comment discussion
-f443 oct mail reply
-f444 oct primitive dot
-f445 oct primitive square
-f446 oct device camera
-f447 oct device camera video
-f448 oct pencil
-f449 oct info
-f44a oct triangle right
-f44b oct triangle down
-f44c oct link
-f44d oct plus
-f44e oct three bars
-f44f oct code
-f450 oct location
-f451 oct list unordered
-f452 oct list ordered
-f453 oct quote
-f454 oct versions
-f455 oct calendar
-f456 oct lock
-f457 oct diff added
-f458 oct diff removed
-f459 oct diff modified
-f45a oct diff renamed
-f45b oct horizontal rule
-f45c oct arrow small right
-f45d oct milestone
-f45e oct checklist
-f45f oct megaphone
-f460 oct chevron right
-f461 oct bookmark
-f462 oct settings
-f463 oct dashboard
-f464 oct history
-f465 oct link external
-f466 oct mute
-f467 oct x
-f468 oct circle slash
-f469 oct pulse
-f46a oct sync
-f46b oct telescope
-f46c oct gist secret
-f46d oct home
-f46e oct stop
-f46f oct bug
-f470 oct logo github
-f471 oct file binary
-f472 oct database
-f473 oct server
-f474 oct diff ignored
-f475 oct ellipsis
-f476 oct no newline
-f477 oct hubot
-f478 oct arrow small up
-f479 oct arrow small down
-f47a oct arrow small left
-f47b oct chevron up
-f47c oct chevron down
-f47d oct chevron left
-f47e oct triangle up
-f47f oct git compare
-f480 oct logo gist
-f481 oct file symlink file
-f482 oct file symlink directory
-f483 oct squirrel
-f484 oct globe
-f485 oct unmute
-f486 oct mention
-f487 oct package
-f488 oct browser
-f489 oct terminal
-f48a oct markdown
-f48b oct dash
-f48c oct fold
-f48d oct inbox
-f48e oct trashcan
-f48f oct paintcan
-f490 oct flame
-f491 oct briefcase
-f492 oct plug
-f493 oct circuit board
-f494 oct mortar board
-f495 oct law
-f496 oct thumbsup
-f497 oct thumbsdown
-f498 oct desktop download
-f499 oct beaker
-f49a oct bell
-f49b oct watch
-f49c oct shield
-f49d oct bold
-f49e oct text size
-f49f oct italic
-f4a0 oct tasklist
-f4a1 oct verified
-f4a2 oct smiley
-f4a3 oct unverified
-f4a4 oct ellipses
-f4a5 oct file
-f4a6 oct grabber
-f4a7 oct plus small
-f4a8 oct reply
-f4a9 oct device desktop
-e0a0 pl branch
-e0a1 pl line number
-e0a2 pl hostname readonly
-e0a3 ple column number
-e0b0 pl left hard divider
-e0b1 pl left soft divider
-e0b2 pl right hard divider
-e0b3 pl right soft divider
-e0b4 ple right half circle thick
-e0b5 ple right half circle thin
-e0b6 ple left half circle thick
-e0b7 ple left half circle thin
-e0b8 ple lower left triangle
-e0b9 ple backslash separator
-e0ba ple lower right triangle
-e0bb ple forwardslash separator
-e0bc ple upper left triangle
-e0bd ple forwardslash separator redundant
-e0be ple upper right triangle
-e0bf ple backslash separator redundant
-e0c0 ple flame thick
-e0c1 ple flame thin
-e0c2 ple flame thick mirrored
-e0c3 ple flame thin mirrored
-e0c4 ple pixelated squares small
-e0c5 ple pixelated squares small mirrored
-e0c6 ple pixelated squares big
-e0c7 ple pixelated squares big mirrored
-e0c8 ple ice waveform
-e0ca ple ice waveform mirrored
-e0cc ple honeycomb
-e0cd ple honeycomb outline
-e0ce ple lego separator
-e0cf ple lego separator thin
-e0d0 ple lego block facing
-e0d1 ple lego block sideways
-e0d2 ple trapezoid top bottom
-e0d4 ple trapezoid top bottom mirrored
-e000 pom clean code
-e001 pom pomodoro done
-e002 pom pomodoro estimated
-e003 pom pomodoro ticking
-e004 pom pomodoro squashed
-e005 pom short pause
-e006 pom long pause
-e007 pom away
-e008 pom pair programming
-e009 pom internal interruption
-e00a pom external interruption
-e5fa custom folder npm
-e5fb custom folder git
-e5fc custom folder config
-e5fd custom folder github
-e5fe custom folder open
-e5ff custom folder
-e600 seti stylus
-e601 seti project
-e602 seti play arrow
-e603 seti sass
-e604 seti rails
-e605 seti ruby
-e606 seti python
-e607 seti heroku
-e608 seti php
-e609 seti markdown
-e60a seti license
-e60b seti json
-e60c seti javascript
-e60d seti image
-e60e seti html
-e60f seti mustache
-e610 seti gulp
-e611 seti grunt
-e612 seti default text
-e613 seti folder
-e614 seti css
-e615 seti config
-e616 seti npm
-e617 seti home
-e618 seti ejs
-e619 seti xml
-e61a seti bower
-e61b seti coffee
-e61c seti twig
-e61d custom cpp
-e61e custom c
-e61f seti haskell
-e620 seti lua
-e621 indent line dotted guide
-e622 seti karma
-e623 seti favicon
-e624 seti julia
-e625 seti react
-e626 custom go
-e627 seti go
-e628 seti typescript
-e629 custom msdos
-e62a custom windows
-e62b custom vim
-e62c custom elm
-e62d custom elixir
-e62e custom electron
-e62f custom crystal
+f31d linux almalinux
+f31e linux archlabs
+f31f linux artix
+f320 linux budgie
+f321 linux deepin
+f322 linux endeavour
+f323 linux ferris
+f324 linux flathub
+f325 linux gnu guix
+f326 linux illumos
+f327 linux kali linux
+f328 linux openbsd
+f329 linux parrot
+f32a linux pop os
+f32b linux rocky linux
+f32c linux snappy
+f32d linux solus
+f32e linux void
+f32f linux zorin
 f500 mdi vector square
 f501 mdi access point
 f502 mdi access point network
@@ -3461,6 +3615,264 @@ fd43 mdi xamarin
 fd44 mdi xamarin outline
 fd45 mdi youtube creator studio
 fd46 mdi youtube gaming
+2665 oct heart
+26a1 oct zap
+f400 oct light bulb
+f401 oct repo
+f402 oct repo forked
+f403 oct repo push
+f404 oct repo pull
+f405 oct book
+f406 oct octoface
+f407 oct git pull request
+f408 oct mark github
+f409 oct cloud download
+f40a oct cloud upload
+f40b oct keyboard
+f40c oct gist
+f40d oct file code
+f40e oct file text
+f40f oct file media
+f410 oct file zip
+f411 oct file pdf
+f412 oct tag
+f413 oct file directory
+f414 oct file submodule
+f415 oct person
+f416 oct jersey
+f417 oct git commit
+f418 oct git branch
+f419 oct git merge
+f41a oct mirror
+f41b oct issue opened
+f41c oct issue reopened
+f41d oct issue closed
+f41e oct star
+f41f oct comment
+f420 oct question
+f421 oct alert
+f422 oct search
+f423 oct gear
+f424 oct radio tower
+f425 oct tools
+f426 oct sign out
+f427 oct rocket
+f428 oct rss
+f429 oct clippy
+f42a oct sign in
+f42b oct organization
+f42c oct device mobile
+f42d oct unfold
+f42e oct check
+f42f oct mail
+f430 oct mail read
+f431 oct arrow up
+f432 oct arrow right
+f433 oct arrow down
+f434 oct arrow left
+f435 oct pin
+f436 oct gift
+f437 oct graph
+f438 oct triangle left
+f439 oct credit card
+f43a oct clock
+f43b oct ruby
+f43c oct broadcast
+f43d oct key
+f43e oct repo force push
+f43f oct repo clone
+f440 oct diff
+f441 oct eye
+f442 oct comment discussion
+f443 oct mail reply
+f444 oct primitive dot
+f445 oct primitive square
+f446 oct device camera
+f447 oct device camera video
+f448 oct pencil
+f449 oct info
+f44a oct triangle right
+f44b oct triangle down
+f44c oct link
+f44d oct plus
+f44e oct three bars
+f44f oct code
+f450 oct location
+f451 oct list unordered
+f452 oct list ordered
+f453 oct quote
+f454 oct versions
+f455 oct calendar
+f456 oct lock
+f457 oct diff added
+f458 oct diff removed
+f459 oct diff modified
+f45a oct diff renamed
+f45b oct horizontal rule
+f45c oct arrow small right
+f45d oct milestone
+f45e oct checklist
+f45f oct megaphone
+f460 oct chevron right
+f461 oct bookmark
+f462 oct settings
+f463 oct dashboard
+f464 oct history
+f465 oct link external
+f466 oct mute
+f467 oct x
+f468 oct circle slash
+f469 oct pulse
+f46a oct sync
+f46b oct telescope
+f46c oct gist secret
+f46d oct home
+f46e oct stop
+f46f oct bug
+f470 oct logo github
+f471 oct file binary
+f472 oct database
+f473 oct server
+f474 oct diff ignored
+f475 oct ellipsis
+f476 oct no newline
+f477 oct hubot
+f478 oct arrow small up
+f479 oct arrow small down
+f47a oct arrow small left
+f47b oct chevron up
+f47c oct chevron down
+f47d oct chevron left
+f47e oct triangle up
+f47f oct git compare
+f480 oct logo gist
+f481 oct file symlink file
+f482 oct file symlink directory
+f483 oct squirrel
+f484 oct globe
+f485 oct unmute
+f486 oct mention
+f487 oct package
+f488 oct browser
+f489 oct terminal
+f48a oct markdown
+f48b oct dash
+f48c oct fold
+f48d oct inbox
+f48e oct trashcan
+f48f oct paintcan
+f490 oct flame
+f491 oct briefcase
+f492 oct plug
+f493 oct circuit board
+f494 oct mortar board
+f495 oct law
+f496 oct thumbsup
+f497 oct thumbsdown
+f498 oct desktop download
+f499 oct beaker
+f49a oct bell
+f49b oct watch
+f49c oct shield
+f49d oct bold
+f49e oct text size
+f49f oct italic
+f4a0 oct tasklist
+f4a1 oct verified
+f4a2 oct smiley
+f4a3 oct unverified
+f4a4 oct ellipses
+f4a5 oct file
+f4a6 oct grabber
+f4a7 oct plus small
+f4a8 oct reply
+f4a9 oct device desktop
+e0a0 pl branch
+e0a1 pl line number
+e0a2 pl hostname readonly
+e0b0 pl left hard divider
+e0b1 pl left soft divider
+e0b2 pl right hard divider
+e0b3 pl right soft divider
+e0a3 ple column number
+e0b4 ple right half circle thick
+e0b5 ple right half circle thin
+e0b6 ple left half circle thick
+e0b7 ple left half circle thin
+e0b8 ple lower left triangle
+e0b9 ple backslash separator
+e0ba ple lower right triangle
+e0bb ple forwardslash separator
+e0bc ple upper left triangle
+e0bd ple forwardslash separator redundant
+e0be ple upper right triangle
+e0bf ple backslash separator redundant
+e0c0 ple flame thick
+e0c1 ple flame thin
+e0c2 ple flame thick mirrored
+e0c3 ple flame thin mirrored
+e0c4 ple pixelated squares small
+e0c5 ple pixelated squares small mirrored
+e0c6 ple pixelated squares big
+e0c7 ple pixelated squares big mirrored
+e0c8 ple ice waveform
+e0ca ple ice waveform mirrored
+e0cc ple honeycomb
+e0cd ple honeycomb outline
+e0ce ple lego separator
+e0cf ple lego separator thin
+e0d0 ple lego block facing
+e0d1 ple lego block sideways
+e0d2 ple trapezoid top bottom
+e0d4 ple trapezoid top bottom mirrored
+e000 pom clean code
+e001 pom pomodoro done
+e002 pom pomodoro estimated
+e003 pom pomodoro ticking
+e004 pom pomodoro squashed
+e005 pom short pause
+e006 pom long pause
+e007 pom away
+e008 pom pair programming
+e009 pom internal interruption
+e00a pom external interruption
+e600 seti stylus
+e601 seti project
+e602 seti play arrow
+e603 seti sass
+e604 seti rails
+e605 seti ruby
+e606 seti python
+e607 seti heroku
+e608 seti php
+e609 seti markdown
+e60a seti license
+e60b seti json less
+e60c seti javascript
+e60d seti image
+e60e seti html
+e60f seti mustache
+e610 seti gulp
+e611 seti grunt
+e612 seti text
+e613 seti folder
+e614 seti css
+e615 seti config
+e616 seti npm
+e617 seti home
+e618 seti ejs
+e619 seti xml
+e61a seti bower
+e61b seti coffee cjsx
+e61c seti twig
+e61f seti haskell
+e620 seti lua
+e622 seti karma
+e623 seti favicon
+e624 seti julia
+e625 seti react
+e627 seti go
+e628 seti typescript
 e300 weather day cloudy gusts
 e301 weather day cloudy windy
 e302 weather day cloudy

@@ -1,4 +1,4 @@
-// unicode data, built from the unicode standard on: 2022-01-05
+// unicode data, built from the unicode standard on: 2022-09-29
 // see gen-wcwidth.py
 #pragma once
 #include "data-types.h"
@@ -739,13 +739,13 @@ is_symbol(char_type code) {
 			return true;
 		case 0x1f300 ... 0x1f6d7:
 			return true;
-		case 0x1f6dd ... 0x1f6ec:
+		case 0x1f6dc ... 0x1f6ec:
 			return true;
 		case 0x1f6f0 ... 0x1f6fc:
 			return true;
-		case 0x1f700 ... 0x1f773:
+		case 0x1f700 ... 0x1f776:
 			return true;
-		case 0x1f780 ... 0x1f7d8:
+		case 0x1f77b ... 0x1f7d9:
 			return true;
 		case 0x1f7e0 ... 0x1f7eb:
 			return true;
@@ -767,23 +767,19 @@ is_symbol(char_type code) {
 			return true;
 		case 0x1fa60 ... 0x1fa6d:
 			return true;
-		case 0x1fa70 ... 0x1fa74:
+		case 0x1fa70 ... 0x1fa7c:
 			return true;
-		case 0x1fa78 ... 0x1fa7c:
+		case 0x1fa80 ... 0x1fa88:
 			return true;
-		case 0x1fa80 ... 0x1fa86:
+		case 0x1fa90 ... 0x1fabd:
 			return true;
-		case 0x1fa90 ... 0x1faac:
+		case 0x1fabf ... 0x1fac5:
 			return true;
-		case 0x1fab0 ... 0x1faba:
+		case 0x1face ... 0x1fadb:
 			return true;
-		case 0x1fac0 ... 0x1fac5:
+		case 0x1fae0 ... 0x1fae8:
 			return true;
-		case 0x1fad0 ... 0x1fad9:
-			return true;
-		case 0x1fae0 ... 0x1fae7:
-			return true;
-		case 0x1faf0 ... 0x1faf6:
+		case 0x1faf0 ... 0x1faf8:
 			return true;
 		case 0x1fb00 ... 0x1fb92:
 			return true;
