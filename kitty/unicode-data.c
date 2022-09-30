@@ -1,4 +1,4 @@
-// unicode data, built from the unicode standard on: 2022-09-29
+// unicode data, built from the unicode standard on: 2022-09-30
 // see gen-wcwidth.py
 #include "data-types.h"
 
