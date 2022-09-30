@@ -86,6 +86,7 @@ def generate_completions_for_kitty() -> None:
     from kitty.config import option_names_for_completion
     print('package completion\n')
     print('import "kitty/tools/cli"')
+    print('import "kitty/tools/cmd/tool"')
     print('import "kitty/tools/cmd/at"')
     conf_names = ', '.join((f'"{serialize_as_go_string(x)}"' for x in option_names_for_completion()))
     print('var kitty_option_names_for_completion = []string{' + conf_names + '}')
@@ -96,6 +97,7 @@ def generate_completions_for_kitty() -> None:
     print('k := root.AddSubCommand(&cli.Command{'
           'Name:"kitty", SubCommandIsOptional: true, ArgCompleter: cli.CompleteExecutableFirstArg, SubCommandMustBeFirst: true })')
     print('kt := root.AddSubCommand(&cli.Command{Name:"kitty-tool", SubCommandMustBeFirst: true })')
+    print('tool.KittyToolEntryPoints(kt)')
     for opt in go_options_for_seq(parse_option_spec()[0]):
         print(opt.as_option('k'))
 
@@ -122,7 +124,6 @@ def generate_completions_for_kitty() -> None:
 
     # @
     print('at.EntryPoint(k)')
-    print('at.EntryPoint(kt)')
 
     # clone-in-kitty, edit-in-kitty
     print('cik := root.AddSubCommand(&cli.Command{Name:"clone-in-kitty"})')
