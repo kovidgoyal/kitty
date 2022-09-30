@@ -223,6 +223,7 @@ _ksi_main() {
         builtin complete -F _ksi_completions kitty
         builtin complete -F _ksi_completions edit-in-kitty
         builtin complete -F _ksi_completions clone-in-kitty
+        builtin complete -F _ksi_completions kitty-tool
     fi
 
     # wrap our prompt additions in markers we can use to remove them using

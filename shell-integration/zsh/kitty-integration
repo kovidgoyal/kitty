@@ -108,6 +108,7 @@ _ksi_deferred_init() {
             compdef _kitty kitty
             compdef _kitty edit-in-kitty
             compdef _kitty clone-in-kitty
+            compdef _kitty kitty-tool
         fi
 
         # If compdef is not set, compinit has not run yet. In this case we must
