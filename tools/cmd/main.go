@@ -4,8 +4,8 @@ package main
 
 import (
 	"kitty/tools/cli"
-	"kitty/tools/cmd/at"
 	"kitty/tools/cmd/completion"
+	"kitty/tools/cmd/tool"
 )
 
 func main() {
@@ -13,9 +13,7 @@ func main() {
 	root.ShortDescription = "Fast, statically compiled implementations for various kitty command-line tools"
 	root.Usage = "command [command options] [command args]"
 
-	// @
-	at.EntryPoint(root)
-	// __complete__
+	tool.KittyToolEntryPoints(root)
 	completion.EntryPoint(root)
 
 	root.Exec()
