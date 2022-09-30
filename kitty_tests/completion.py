@@ -148,7 +148,8 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty @launch --cwd ', has_words('current', 'oldest', 'last_reported'))
     add('kitty @launch --logo ', all_words('exe-not3.png'))
     add('kitty @launch --logo ~', all_words('~/exe-not3.png'))
-    add('kitty-tool ', has_words('@', '@ls'))
+    add('kitty-tool ', has_words('@'))
+    add('kitty-tool ', does_not_have_words('__complete__'))
     add('kitty-tool @launch --ty', has_words('--type'))
 
     add('kitty + ', has_words('launch', 'kitten'))
