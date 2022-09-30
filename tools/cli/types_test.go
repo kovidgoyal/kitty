@@ -85,8 +85,9 @@ func TestCLIParsing(t *testing.T) {
 	)
 	rt(child1, "test child1", &options{})
 	rt(child1, "test child1 --set-me --simple-string=foo one", &options{SimpleString: "foo", SetMe: true}, "one")
+	rt(child1, "test child1 --set-me --simp=foo one", &options{SimpleString: "foo", SetMe: true}, "one")
 	rt(child1, "test child1 --set-me --simple-string= one", &options{SetMe: true}, "one")
-	rt(child1, "test child1 --int -3 --simple-string -s --float=3.3", &options{SimpleString: "-s", Int: -3, Float: 3.3})
+	rt(child1, "test child1 --int -3 --simple-s -s --float=3.3", &options{SimpleString: "-s", Int: -3, Float: 3.3})
 	rt(child1, "test child1 --list -3 -p --list one", &options{FromParent: 1, List: []string{"-3", "one"}})
 	rt(gc1, "test -p child1 -p gc1 xxx", &empty_options{}, "xxx")
 
