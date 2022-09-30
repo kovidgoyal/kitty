@@ -101,6 +101,10 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 					}
 					if !self.SubCommandIsOptional {
 						if len(possible_cmds) == 0 {
+							possibles := self.SuggestionsForCommand(arg, 2)
+							if len(possibles) > 0 {
+								return &ParseError{Message: fmt.Sprintf("Unknown subcommand: :yellow:`%s`. Did you mean:\n\t%s", arg, strings.Join(possibles, "\n\t"))}
+							}
 							return &ParseError{Message: fmt.Sprintf(":yellow:`%s` is not a known subcommand for :emph:`%s`. Use --help to get a list of valid subcommands.", arg, self.Name)}
 						}
 						cn := make([]string, len(possible_cmds))

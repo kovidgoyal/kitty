@@ -301,6 +301,31 @@ func (self *Command) GetVisibleOptions() ([]string, map[string][]*Option) {
 	return group_titles, gmap
 }
 
+func sort_levenshtein_matches(q string, matches []string) {
+	utils.StableSort(matches, func(a, b string) bool {
+		la, lb := utils.LevenshteinDistance(a, q, true), utils.LevenshteinDistance(b, q, true)
+		if la != lb {
+			return la < lb
+		}
+		return a < b
+	})
+
+}
+
+func (self *Command) SuggestionsForCommand(name string, max_distance int /* good default is 2 */) []string {
+	ans := make([]string, 0, 8)
+	q := strings.ToLower(name)
+	for _, g := range self.SubCommandGroups {
+		for _, sc := range g.SubCommands {
+			if utils.LevenshteinDistance(sc.Name, q, true) <= max_distance {
+				ans = append(ans, sc.Name)
+			}
+		}
+	}
+	sort_levenshtein_matches(q, ans)
+	return ans
+}
+
 func (self *Command) SuggestionsForOption(name_with_hyphens string, max_distance int /* good default is 2 */) []string {
 	ans := make([]string, 0, 8)
 	q := strings.ToLower(name_with_hyphens)
@@ -313,13 +338,7 @@ func (self *Command) SuggestionsForOption(name_with_hyphens string, max_distance
 		}
 		return nil
 	})
-	utils.StableSort(ans, func(a, b string) bool {
-		la, lb := utils.LevenshteinDistance(a, q, true), utils.LevenshteinDistance(b, q, true)
-		if la != lb {
-			return la < lb
-		}
-		return a < b
-	})
+	sort_levenshtein_matches(q, ans)
 	return ans
 }
 
