@@ -95,6 +95,7 @@ def generate_completions_for_kitty() -> None:
     # The kitty exe
     print('k := root.AddSubCommand(&cli.Command{'
           'Name:"kitty", SubCommandIsOptional: true, ArgCompleter: cli.CompleteExecutableFirstArg, SubCommandMustBeFirst: true })')
+    print('kt := root.AddSubCommand(&cli.Command{Name:"kitty-tool", SubCommandMustBeFirst: true })')
     for opt in go_options_for_seq(parse_option_spec()[0]):
         print(opt.as_option('k'))
 
@@ -121,6 +122,7 @@ def generate_completions_for_kitty() -> None:
 
     # @
     print('at.EntryPoint(k)')
+    print('at.EntryPoint(kt)')
 
     # clone-in-kitty, edit-in-kitty
     print('cik := root.AddSubCommand(&cli.Command{Name:"clone-in-kitty"})')
