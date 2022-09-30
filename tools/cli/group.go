@@ -48,6 +48,15 @@ func (self *CommandGroup) FindSubCommand(name string) *Command {
 	return nil
 }
 
+func (self *CommandGroup) FindSubCommands(prefix string, matches []*Command) []*Command {
+	for _, c := range self.SubCommands {
+		if strings.HasPrefix(c.Name, prefix) {
+			matches = append(matches, c)
+		}
+	}
+	return matches
+}
+
 type OptionGroup struct {
 	Options []*Option
 	Title   string
