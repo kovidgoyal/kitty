@@ -333,6 +333,18 @@ func (self *Command) FindSubCommand(name string) *Command {
 	return nil
 }
 
+func (self *Command) FindSubCommands(prefix string) []*Command {
+	c := self.FindSubCommand(prefix)
+	if c != nil {
+		return []*Command{c}
+	}
+	ans := make([]*Command, 0, 4)
+	for _, g := range self.SubCommandGroups {
+		ans = g.FindSubCommands(prefix, ans)
+	}
+	return ans
+}
+
 func (self *Command) AddOptionGroup(title string) *OptionGroup {
 	for _, g := range self.OptionGroups {
 		if g.Title == title {

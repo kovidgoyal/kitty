@@ -95,13 +95,20 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 					options_allowed = false
 				}
 				if self.HasSubCommands() {
-					sc := self.FindSubCommand(arg)
-					if sc == nil {
-						if !self.SubCommandIsOptional {
+					possible_cmds := self.FindSubCommands(arg)
+					if len(possible_cmds) == 1 {
+						return possible_cmds[0].parse_args(ctx, args_to_parse)
+					}
+					if !self.SubCommandIsOptional {
+						if len(possible_cmds) == 0 {
 							return &ParseError{Message: fmt.Sprintf(":yellow:`%s` is not a known subcommand for :emph:`%s`. Use --help to get a list of valid subcommands.", arg, self.Name)}
 						}
-					} else {
-						return sc.parse_args(ctx, args_to_parse)
+						cn := make([]string, len(possible_cmds))
+						for i, x := range possible_cmds {
+							cn[i] = x.Name
+						}
+						return &ParseError{Message: fmt.Sprintf(
+							":yellow:`%s` is not a known subcommand for :emph:`%s`. Did you mean:\n\t%s", arg, self.Name, strings.Join(cn, "\n\t"))}
 					}
 				}
 				self.Args = append(self.Args, arg)
