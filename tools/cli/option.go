@@ -75,6 +75,15 @@ func (self *Option) needs_argument() bool {
 	return self.OptionType != BoolOption && self.OptionType != CountOption
 }
 
+func (self *Option) MatchingAlias(prefix_without_hyphens string, is_short bool) string {
+	for _, a := range self.Aliases {
+		if a.IsShort == is_short && strings.HasPrefix(a.NameWithoutHyphens, prefix_without_hyphens) {
+			return a.String()
+		}
+	}
+	return ""
+}
+
 func (self *Option) HasAlias(name_without_hyphens string, is_short bool) bool {
 	for _, a := range self.Aliases {
 		if a.IsShort == is_short && a.NameWithoutHyphens == name_without_hyphens {

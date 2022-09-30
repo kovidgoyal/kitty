@@ -82,6 +82,19 @@ func (self *OptionGroup) AddOptionFromString(parent *Command, items ...string) (
 	return ans, err
 }
 
+func (self *OptionGroup) FindOptions(prefix_with_hyphens string) []*Option {
+	is_short := !strings.HasPrefix(prefix_with_hyphens, "--")
+	option_name := NormalizeOptionName(prefix_with_hyphens)
+	ans := make([]*Option, 0, 4)
+	for _, q := range self.Options {
+		if q.MatchingAlias(option_name, is_short) != "" {
+			ans = append(ans, q)
+		}
+	}
+	return ans
+
+}
+
 func (self *OptionGroup) FindOption(name_with_hyphens string) *Option {
 	is_short := !strings.HasPrefix(name_with_hyphens, "--")
 	option_name := NormalizeOptionName(name_with_hyphens)

@@ -347,6 +347,30 @@ func (self *Command) Add(s OptionSpec) *Option {
 	return self.AddToGroup("", s)
 }
 
+func (self *Command) FindOptions(name_with_hyphens string) []*Option {
+	ans := make([]*Option, 0, 4)
+	for _, g := range self.OptionGroups {
+		x := g.FindOptions(name_with_hyphens)
+		if x != nil {
+			ans = append(ans, x...)
+		}
+	}
+	depth := 0
+	for p := self.Parent; p != nil; p = p.Parent {
+		depth++
+		x := p.FindOptions(name_with_hyphens)
+		if x != nil {
+			for _, po := range x {
+				if po.Depth >= depth {
+					ans = append(ans, po)
+				}
+			}
+		}
+	}
+	return ans
+
+}
+
 func (self *Command) FindOption(name_with_hyphens string) *Option {
 	for _, g := range self.OptionGroups {
 		q := g.FindOption(name_with_hyphens)

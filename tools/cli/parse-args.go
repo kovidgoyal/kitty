@@ -20,9 +20,19 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 	consume_arg := func() string { ans := args_to_parse[0]; args_to_parse = args_to_parse[1:]; return ans }
 
 	handle_option := func(opt_str string, has_val bool, opt_val string, val_not_allowed bool) error {
-		opt := self.FindOption(opt_str)
-		if opt == nil {
+		possible_options := self.FindOptions(opt_str)
+		var opt *Option
+		if len(possible_options) == 1 {
+			opt = possible_options[0]
+			opt_str = opt.MatchingAlias(NormalizeOptionName(opt_str), !strings.HasPrefix(opt_str, "--"))
+		} else if len(possible_options) == 0 {
 			return &ParseError{Message: fmt.Sprintf("Unknown option: :yellow:`%s`", opt_str)}
+		} else {
+			ambi := make([]string, len(possible_options))
+			for i, o := range possible_options {
+				ambi[i] = o.MatchingAlias(NormalizeOptionName(opt_str), !strings.HasPrefix(opt_str, "--"))
+			}
+			return &ParseError{Message: fmt.Sprintf("Ambiguous option: :yellow:`%s` could be any of: %s", opt_str, strings.Join(ambi, ", "))}
 		}
 		opt.seen_option = opt_str
 		needs_arg := opt.needs_argument()
