@@ -26,6 +26,10 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 			opt = possible_options[0]
 			opt_str = opt.MatchingAlias(NormalizeOptionName(opt_str), !strings.HasPrefix(opt_str, "--"))
 		} else if len(possible_options) == 0 {
+			possibles := self.SuggestionsForOption(opt_str, 2)
+			if len(possibles) > 0 {
+				return &ParseError{Message: fmt.Sprintf("Unknown option: :yellow:`%s`. Did you mean:\n\t%s", opt_str, strings.Join(possibles, "\n\t"))}
+			}
 			return &ParseError{Message: fmt.Sprintf("Unknown option: :yellow:`%s`", opt_str)}
 		} else {
 			ambi := make([]string, len(possible_options))

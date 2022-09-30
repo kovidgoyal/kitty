@@ -301,6 +301,28 @@ func (self *Command) GetVisibleOptions() ([]string, map[string][]*Option) {
 	return group_titles, gmap
 }
 
+func (self *Command) SuggestionsForOption(name_with_hyphens string, max_distance int /* good default is 2 */) []string {
+	ans := make([]string, 0, 8)
+	q := strings.ToLower(name_with_hyphens)
+	self.VisitAllOptions(func(opt *Option) error {
+		for _, a := range opt.Aliases {
+			as := a.String()
+			if utils.LevenshteinDistance(as, q, true) <= max_distance {
+				ans = append(ans, as)
+			}
+		}
+		return nil
+	})
+	utils.StableSort(ans, func(a, b string) bool {
+		la, lb := utils.LevenshteinDistance(a, q, true), utils.LevenshteinDistance(b, q, true)
+		if la != lb {
+			return la < lb
+		}
+		return a < b
+	})
+	return ans
+}
+
 func (self *Command) FindSubCommand(name string) *Command {
 	for _, g := range self.SubCommandGroups {
 		c := g.FindSubCommand(name)
