@@ -589,7 +589,8 @@ class TabBar:
             end = self.draw_func(self.draw_data, s, t, before, max_tab_length, i + 1, t is last_tab, ed)
             s.cursor.bg = s.cursor.fg = 0
             cell_ranges.append((before, end))
-            if not ed.for_layout and s.cursor.x > s.columns - max_tab_length and t is not last_tab:
+            if not ed.for_layout and t is not last_tab and s.cursor.x > s.columns - max_tab_lengths[i+1]:
+                # Stop if there is no space for next tab
                 s.cursor.x = s.columns - 2
                 s.cursor.bg = as_rgb(color_as_int(self.draw_data.default_bg))
                 s.cursor.fg = as_rgb(0xff0000)
