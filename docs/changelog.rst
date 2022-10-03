@@ -44,6 +44,8 @@ Detailed list of changes
 
 - X11: Fix a regression in the previous release that caused pasting from GTK based applications to have extra newlines (:iss:`5528`)
 
+- Tab bar: Improve empty space management when some tabs have short titles, allocate the saved space to the active tab (:iss:`5548`)
+
 
 0.26.3 [2022-09-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

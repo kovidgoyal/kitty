@@ -5,7 +5,7 @@ import os
 from functools import lru_cache, partial, wraps
 from string import Formatter as StringFormatter
 from typing import (
-    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
+    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union,
 )
 
 from .borders import Border, BorderColor
@@ -13,7 +13,7 @@ from .config import build_ansi_color_table
 from .constants import config_dir
 from .fast_data_types import (
     DECAWM, Color, Region, Screen, cell_size_for_window, get_boss, get_options,
-    pt_to_px, set_tab_bar_render_data, viewport_for_window
+    pt_to_px, set_tab_bar_render_data, viewport_for_window,
 )
 from .rgb import alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
@@ -151,6 +151,7 @@ class SupSub:
 class ExtraData:
     prev_tab: Optional[TabBarData] = None
     next_tab: Optional[TabBarData] = None
+    for_layout: bool = False
 
 
 def draw_attributed_string(title: str, screen: Screen) -> None:
@@ -435,6 +436,7 @@ class TabBar:
         self.num_tabs = 1
         self.data_buffer_size = 0
         self.blank_rects: Tuple[Border, ...] = ()
+        self.cell_ranges: List[Tuple[int, int]] = []
         self.laid_out_once = False
         self.apply_options()
 
@@ -571,31 +573,66 @@ class TabBar:
         if not self.laid_out_once:
             return
         s = self.screen
-        s.cursor.x = 0
-        s.erase_in_line(2, False)
-        max_title_length = max(1, (self.screen.columns // max(1, len(data))) - 1)
-        cr = []
         last_tab = data[-1] if data else None
         ed = ExtraData()
 
-        for i, t in enumerate(data):
+        def draw_tab(i: int, tab: TabBarData, cell_ranges: List[Tuple[int, int]], max_tab_length: int, check_overflow: bool = True) -> None:
             ed.prev_tab = data[i - 1] if i > 0 else None
             ed.next_tab = data[i + 1] if i + 1 < len(data) else None
             s.cursor.bg = as_rgb(self.draw_data.tab_bg(t))
             s.cursor.fg = as_rgb(self.draw_data.tab_fg(t))
             s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
             before = s.cursor.x
-            end = self.draw_func(self.draw_data, s, t, before, max_title_length, i + 1, t is last_tab, ed)
+            end = self.draw_func(self.draw_data, s, t, before, max_tab_length, i + 1, t is last_tab, ed)
             s.cursor.bg = s.cursor.fg = 0
-            cr.append((before, end))
-            if s.cursor.x > s.columns - max_title_length and t is not last_tab:
+            cell_ranges.append((before, end))
+            if check_overflow and s.cursor.x > s.columns - max_tab_length and t is not last_tab:
                 s.cursor.x = s.columns - 2
                 s.cursor.bg = as_rgb(color_as_int(self.draw_data.default_bg))
                 s.cursor.fg = as_rgb(0xff0000)
                 s.draw(' …')
+                raise StopIteration()
+
+        unconstrained_tab_length = max(1, s.columns - 2)
+        ideal_tab_lengths = [i for i in range(len(data))]
+        default_max_tab_length = max(1, (s.columns // max(1, len(data))) - 1)
+        max_tab_lengths = [default_max_tab_length for _ in range(len(data))]
+        active_idx = 0
+        extra = 0
+        ed.for_layout = True
+        for i, t in enumerate(data):
+            s.cursor.x = 0
+            draw_tab(i, t, [], unconstrained_tab_length, check_overflow=False)
+            ideal_tab_lengths[i] = tl = max(1, s.cursor.x)
+            if t.is_active:
+                active_idx = i
+            if tl < default_max_tab_length:
+                max_tab_lengths[i] = tl
+                extra += default_max_tab_length - tl
+        if extra > 0:
+            if ideal_tab_lengths[active_idx] > max_tab_lengths[active_idx]:
+                d = min(extra, ideal_tab_lengths[active_idx] - max_tab_lengths[active_idx])
+                max_tab_lengths[active_idx] += d
+                extra -= d
+            if extra > 0:
+                over_achievers = tuple(i for i in range(len(data)) if ideal_tab_lengths[i] > max_tab_lengths[i])
+                if over_achievers:
+                    amt_per_over_achiever = extra // len(over_achievers)
+                    if amt_per_over_achiever > 0:
+                        for i in over_achievers:
+                            max_tab_lengths[i] += amt_per_over_achiever
+
+        s.cursor.x = 0
+        s.erase_in_line(2, False)
+        cr: List[Tuple[int, int]] = []
+        ed.for_layout = False
+        for i, t in enumerate(data):
+            try:
+                draw_tab(i, t, cr, max_tab_lengths[i])
+            except StopIteration:
                 break
-        s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
         self.cell_ranges = cr
+        s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
         self.align()
 
     def align_with_factor(self, factor: int = 1) -> None:
