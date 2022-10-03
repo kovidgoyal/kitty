@@ -517,12 +517,12 @@ has_bgimage(OSWindow *w) {
 
 static void
 draw_tint(bool premult, Screen *screen, const CellRenderData *crd) {
+    // On GNOME+Wayland this causes ghosting while rendering. Yet another GNOME bug, does not occur under KDE, Hyprland or Sway.
     bind_program(TINT_PROGRAM);
     color_type window_bg = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_bg, screen->color_profile->configured.default_bg).rgb;
-#define C(shift) ((((GLfloat)((window_bg >> shift) & 0xFF)) / 255.0f))
-    float alpha = OPT(background_tint);
-    if (premult) glUniform4f(tint_program_layout.tint_color_location, C(16) * alpha, C(8) * alpha, C(0) * alpha, alpha);
-    else glUniform4f(tint_program_layout.tint_color_location, C(16), C(8), C(0), alpha);
+#define C(shift) ((((GLfloat)((window_bg >> shift) & 0xFF)) / 255.0f)) * premult_factor
+    GLfloat premult_factor = premult ? OPT(background_tint) : 1.0f;
+    glUniform4f(tint_program_layout.tint_color_location, C(16), C(8), C(0), OPT(background_tint));
 #undef C
     glUniform4f(tint_program_layout.edges_location, crd->gl.xstart, crd->gl.ystart - crd->gl.height, crd->gl.xstart + crd->gl.width, crd->gl.ystart);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
