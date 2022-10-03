@@ -242,7 +242,7 @@ DrawTabFunc = Callable[[DrawData, Screen, TabBarData, int, int, int, bool, Extra
 
 def draw_tab_with_slant(
     draw_data: DrawData, screen: Screen, tab: TabBarData,
-    before: int, max_title_length: int, index: int, is_last: bool,
+    before: int, max_tab_length: int, index: int, is_last: bool,
     extra_data: ExtraData
 ) -> int:
     orig_fg = screen.cursor.fg
@@ -257,20 +257,20 @@ def draw_tab_with_slant(
         screen.cursor.bg = tab_bg
         screen.cursor.fg = orig_fg
 
-    max_title_length += 1
-    if max_title_length <= 1:
+    max_tab_length += 1
+    if max_tab_length <= 1:
         screen.draw('…')
-    elif max_title_length == 2:
+    elif max_tab_length == 2:
         screen.draw('…|')
-    elif max_title_length < 6:
+    elif max_tab_length < 6:
         draw_sep(left_sep)
-        screen.draw((' ' if max_title_length == 5 else '') + '…' + (' ' if max_title_length >= 4 else ''))
+        screen.draw((' ' if max_tab_length == 5 else '') + '…' + (' ' if max_tab_length >= 4 else ''))
         draw_sep(right_sep)
     else:
         draw_sep(left_sep)
         screen.draw(' ')
-        draw_title(draw_data, screen, tab, index, max_title_length)
-        extra = screen.cursor.x - before - max_title_length
+        draw_title(draw_data, screen, tab, index, max_tab_length)
+        extra = screen.cursor.x - before - max_tab_length
         if extra >= 0:
             screen.cursor.x -= extra + 3
             screen.draw('…')
@@ -285,15 +285,15 @@ def draw_tab_with_slant(
 
 def draw_tab_with_separator(
     draw_data: DrawData, screen: Screen, tab: TabBarData,
-    before: int, max_title_length: int, index: int, is_last: bool,
+    before: int, max_tab_length: int, index: int, is_last: bool,
     extra_data: ExtraData
 ) -> int:
     if draw_data.leading_spaces:
         screen.draw(' ' * draw_data.leading_spaces)
-    draw_title(draw_data, screen, tab, index, max_title_length)
-    trailing_spaces = min(max_title_length - 1, draw_data.trailing_spaces)
-    max_title_length -= trailing_spaces
-    extra = screen.cursor.x - before - max_title_length
+    draw_title(draw_data, screen, tab, index, max_tab_length)
+    trailing_spaces = min(max_tab_length - 1, draw_data.trailing_spaces)
+    max_tab_length -= trailing_spaces
+    extra = screen.cursor.x - before - max_tab_length
     if extra > 0:
         screen.cursor.x -= extra + 1
         screen.draw('…')
@@ -311,7 +311,7 @@ def draw_tab_with_separator(
 
 def draw_tab_with_fade(
     draw_data: DrawData, screen: Screen, tab: TabBarData,
-    before: int, max_title_length: int, index: int, is_last: bool,
+    before: int, max_tab_length: int, index: int, is_last: bool,
     extra_data: ExtraData
 ) -> int:
     orig_bg = screen.cursor.bg
@@ -321,12 +321,12 @@ def draw_tab_with_fade(
         screen.cursor.bg = bg
         screen.draw(' ')
     screen.cursor.bg = orig_bg
-    draw_title(draw_data, screen, tab, index, max(0, max_title_length - 8))
-    extra = screen.cursor.x - before - max_title_length
+    draw_title(draw_data, screen, tab, index, max(0, max_tab_length - 8))
+    extra = screen.cursor.x - before - max_tab_length
     if extra > 0:
         screen.cursor.x = before
-        draw_title(draw_data, screen, tab, index, max(0, max_title_length - 4))
-        extra = screen.cursor.x - before - max_title_length
+        draw_title(draw_data, screen, tab, index, max(0, max_tab_length - 4))
+        extra = screen.cursor.x - before - max_tab_length
         if extra > 0:
             screen.cursor.x -= extra + 1
             screen.draw('…')
@@ -350,7 +350,7 @@ powerline_symbols: Dict[PowerlineStyle, Tuple[str, str]] = {
 
 def draw_tab_with_powerline(
     draw_data: DrawData, screen: Screen, tab: TabBarData,
-    before: int, max_title_length: int, index: int, is_last: bool,
+    before: int, max_tab_length: int, index: int, is_last: bool,
     extra_data: ExtraData
 ) -> int:
     tab_bg = screen.cursor.bg
@@ -373,11 +373,11 @@ def draw_tab_with_powerline(
         start_draw = 1
 
     screen.cursor.bg = tab_bg
-    if min_title_length >= max_title_length:
+    if min_title_length >= max_tab_length:
         screen.draw('…')
     else:
-        draw_title(draw_data, screen, tab, index, max_title_length)
-        extra = screen.cursor.x + start_draw - before - max_title_length
+        draw_title(draw_data, screen, tab, index, max_tab_length)
+        extra = screen.cursor.x + start_draw - before - max_tab_length
         if extra > 0 and extra + 1 < screen.cursor.x:
             screen.cursor.x -= extra + 1
             screen.draw('…')
@@ -420,14 +420,14 @@ def load_custom_draw_tab() -> DrawTabFunc:
     @wraps(func)
     def draw_tab(
         draw_data: DrawData, screen: Screen, tab: TabBarData,
-        before: int, max_title_length: int, index: int, is_last: bool,
+        before: int, max_tab_length: int, index: int, is_last: bool,
         extra_data: ExtraData
     ) -> int:
         try:
-            return func(draw_data, screen, tab, before, max_title_length, index, is_last, extra_data)
+            return func(draw_data, screen, tab, before, max_tab_length, index, is_last, extra_data)
         except Exception as e:
             log_error(f'Custom draw tab function failed with error: {e}')
-            return draw_tab_with_fade(draw_data, screen, tab, before, max_title_length, index, is_last, extra_data)
+            return draw_tab_with_fade(draw_data, screen, tab, before, max_tab_length, index, is_last, extra_data)
 
     return draw_tab
 
