@@ -151,6 +151,9 @@ class SupSub:
 class ExtraData:
     prev_tab: Optional[TabBarData] = None
     next_tab: Optional[TabBarData] = None
+    # true if the draw_tab function is called just for layout. In such cases,
+    # if drawing is expensive the draw_tab function should avoid drawing and
+    # just move the cursor to its final position, as if drawing was performed.
     for_layout: bool = False
 
 
