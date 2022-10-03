@@ -46,6 +46,8 @@ Detailed list of changes
 
 - Tab bar: Improve empty space management when some tabs have short titles, allocate the saved space to the active tab (:iss:`5548`)
 
+- Fix :opt:`background_tint` not applying to window margins and padding (:iss:`3933`)
+
 
 0.26.3 [2022-09-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

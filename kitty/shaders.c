@@ -707,7 +707,7 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
         glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 3);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
     } else if (OPT(background_tint) > 0) {
-        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
+        BLEND_ONTO_OPAQUE;
         draw_tint(false, screen, crd);
         BLEND_ONTO_OPAQUE;
     }
@@ -924,7 +924,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float
 // }}}
 
 // Borders {{{
-enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_default_bg, BORDER_active_border_color, BORDER_inactive_border_color, BORDER_bell_border_color, BORDER_tab_bar_bg, BORDER_tab_bar_margin_color, NUM_BORDER_UNIFORMS };
+enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_tint_opacity, BORDER_tint_premult, BORDER_default_bg, BORDER_active_border_color, BORDER_inactive_border_color, BORDER_bell_border_color, BORDER_tab_bar_bg, BORDER_tab_bar_margin_color, NUM_BORDER_UNIFORMS };
 static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
 
 static void
@@ -932,6 +932,8 @@ init_borders_program(void) {
 #define SET_LOC(which) border_uniform_locations[BORDER_##which] = get_uniform_location(BORDERS_PROGRAM, #which);
         SET_LOC(viewport)
         SET_LOC(background_opacity)
+        SET_LOC(tint_opacity)
+        SET_LOC(tint_premult)
         SET_LOC(default_bg)
         SET_LOC(active_border_color)
         SET_LOC(inactive_border_color)
@@ -956,12 +958,17 @@ create_border_vao(void) {
 
 void
 draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
-
+    float background_opacity = w->is_semi_transparent ? w->background_opacity: 1.0f;
+    float tint_opacity = background_opacity;
+    float tint_premult = background_opacity;
     if (has_bgimage(w)) {
         glEnable(GL_BLEND);
         BLEND_ONTO_OPAQUE;
         draw_bg(w);
         BLEND_ONTO_OPAQUE;
+        background_opacity = 1.0f;
+        tint_opacity = OPT(background_tint);
+        tint_premult = 1.0f;
     }
 
     if (num_border_rects) {
@@ -974,7 +981,9 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
             unmap_vao_buffer(vao_idx, 0);
         }
 #define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
-        glUniform1f(border_uniform_locations[BORDER_background_opacity], w->is_semi_transparent ? w->background_opacity: 1.0f);
+        glUniform1f(border_uniform_locations[BORDER_background_opacity], background_opacity);
+        glUniform1f(border_uniform_locations[BORDER_tint_opacity], tint_opacity);
+        glUniform1f(border_uniform_locations[BORDER_tint_premult], tint_premult);
         glUniform3f(border_uniform_locations[BORDER_active_border_color], CV3(OPT(active_border_color)));
         glUniform3f(border_uniform_locations[BORDER_inactive_border_color], CV3(OPT(inactive_border_color)));
         glUniform3f(border_uniform_locations[BORDER_bell_border_color], CV3(OPT(bell_border_color)));

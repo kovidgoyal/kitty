@@ -1310,11 +1310,10 @@ this option by reloading the config is not supported.
 opt('background_tint', '0.0',
     option_type='unit_float', ctype='float',
     long_text='''
-How much to tint the background image by the background color. The tint is
-applied only under the text area, not margin/borders. This option makes it
-easier to read the text. Tinting is done using the current background color for
-each window. This option applies only if :opt:`background_opacity` is set and
-transparent windows are supported or :opt:`background_image` is set.
+How much to tint the background image by the background color.  This option
+makes it easier to read the text. Tinting is done using the current background
+color for each window. This option applies only if :opt:`background_opacity` is
+set and transparent windows are supported or :opt:`background_image` is set.
 '''
     )
 

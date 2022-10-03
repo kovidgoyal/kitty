@@ -86,7 +86,7 @@ class Borders:
         draw_minimal_borders = opts.draw_minimal_borders and max(opts.window_margin_width) < 1
         add_borders_rect(self.os_window_id, self.tab_id, 0, 0, 0, 0, BorderColor.default_bg)
         has_background_image = os_window_has_background_image(self.os_window_id)
-        if not has_background_image:
+        if not has_background_image or opts.background_tint > 0.0:
             for br in current_layout.blank_rects:
                 add_borders_rect(self.os_window_id, self.tab_id, *br, BorderColor.default_bg)
             for tbr in tab_bar_rects:
