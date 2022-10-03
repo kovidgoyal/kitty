@@ -425,7 +425,7 @@ draw_bg(OSWindow *w) {
     glUniform1i(bgimage_program_layout.image_location, BGIMAGE_UNIT);
     glUniform1f(bgimage_program_layout.opacity_location, OPT(background_opacity));
     glUniform4f(bgimage_program_layout.sizes_location,
-        (GLfloat)w->window_width, (GLfloat)w->window_height, (GLfloat)w->bgimage->width, (GLfloat)w->bgimage->height);
+        (GLfloat)w->viewport_width, (GLfloat)w->viewport_height, (GLfloat)w->bgimage->width, (GLfloat)w->bgimage->height);
     glUniform1f(bgimage_program_layout.premult_location, w->is_semi_transparent ? 1.f : 0.f);
     GLfloat tiled = 0.f;;
     switch (OPT(background_image_layout)) {

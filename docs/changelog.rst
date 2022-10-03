@@ -48,6 +48,8 @@ Detailed list of changes
 
 - Fix :opt:`background_tint` not applying to window margins and padding (:iss:`3933`)
 
+- Wayland: Fix background image scaling using tiled mode on high DPI screens
+
 
 0.26.3 [2022-09-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
