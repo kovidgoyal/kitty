@@ -687,16 +687,9 @@ render_os_window(OSWindow *os_window, unsigned int active_window_id, color_type 
     if (os_window->clear_count++ < 3) blank_os_window(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
     BorderRects *br = &tab->border_rects;
-    bool static_live_resize_in_progress = os_window->live_resize.in_progress && OPT(resize_draw_strategy) == RESIZE_DRAW_STATIC;
     float x_ratio = 1, y_ratio = 1;
-    if (static_live_resize_in_progress) {
-        x_ratio = (float) os_window->viewport_width / (float) os_window->live_resize.width;
-        y_ratio = (float) os_window->viewport_height / (float) os_window->live_resize.height;
-    }
-    if (!static_live_resize_in_progress) {
-        draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
-        br->is_dirty = false;
-    }
+    draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
+    br->is_dirty = false;
     if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, 0, &TD, x_ratio, y_ratio, os_window, true, false, NULL);
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
