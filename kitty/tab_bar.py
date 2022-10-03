@@ -579,7 +579,7 @@ class TabBar:
         last_tab = data[-1] if data else None
         ed = ExtraData()
 
-        def draw_tab(i: int, tab: TabBarData, cell_ranges: List[Tuple[int, int]], max_tab_length: int, check_overflow: bool = True) -> None:
+        def draw_tab(i: int, tab: TabBarData, cell_ranges: List[Tuple[int, int]], max_tab_length: int) -> None:
             ed.prev_tab = data[i - 1] if i > 0 else None
             ed.next_tab = data[i + 1] if i + 1 < len(data) else None
             s.cursor.bg = as_rgb(self.draw_data.tab_bg(t))
@@ -589,7 +589,7 @@ class TabBar:
             end = self.draw_func(self.draw_data, s, t, before, max_tab_length, i + 1, t is last_tab, ed)
             s.cursor.bg = s.cursor.fg = 0
             cell_ranges.append((before, end))
-            if check_overflow and s.cursor.x > s.columns - max_tab_length and t is not last_tab:
+            if not ed.for_layout and s.cursor.x > s.columns - max_tab_length and t is not last_tab:
                 s.cursor.x = s.columns - 2
                 s.cursor.bg = as_rgb(color_as_int(self.draw_data.default_bg))
                 s.cursor.fg = as_rgb(0xff0000)
@@ -605,7 +605,7 @@ class TabBar:
         ed.for_layout = True
         for i, t in enumerate(data):
             s.cursor.x = 0
-            draw_tab(i, t, [], unconstrained_tab_length, check_overflow=False)
+            draw_tab(i, t, [], unconstrained_tab_length)
             ideal_tab_lengths[i] = tl = max(1, s.cursor.x)
             if t.is_active:
                 active_idx = i
