@@ -148,7 +148,7 @@ class GoOption:
 
     def as_option(self, cmd_name: str = 'cmd', depth: int = 0, group: str = '') -> str:
         add = f'AddToGroup("{serialize_as_go_string(group)}", ' if group else 'Add('
-        aliases = ' '.join(self.obj_dict['aliases'])
+        aliases = ' '.join(sorted(self.obj_dict['aliases']))
         ans = f'''{cmd_name}.{add}cli.OptionSpec{{
             Name: "{serialize_as_go_string(aliases)}",
             Type: "{self.type}",
