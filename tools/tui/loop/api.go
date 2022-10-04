@@ -193,6 +193,40 @@ func (self *Loop) Beep() {
 	self.QueueWriteString("\a")
 }
 
+func (self *Loop) StartAtomicUpdate() {
+	self.QueueWriteString(PENDING_UPDATE.EscapeCodeToSet())
+}
+
+func (self *Loop) EndAtomicUpdate() {
+	self.QueueWriteString(PENDING_UPDATE.EscapeCodeToReset())
+}
+
+func (self *Loop) SetCursorShape(shape CursorShapes, blink bool) {
+	self.QueueWriteString(CursorShape(shape, blink))
+}
+
+func (self *Loop) MoveCursorHorizontally(amt int) {
+	suffix := "C"
+	if amt < 0 {
+		suffix = "D"
+		amt *= -1
+	}
+	self.QueueWriteString(fmt.Sprintf("\x1b[%d%s", amt, suffix))
+}
+
+func (self *Loop) MoveCursorVertically(amt int) {
+	suffix := "B"
+	if amt < 0 {
+		suffix = "A"
+		amt *= -1
+	}
+	self.QueueWriteString(fmt.Sprintf("\x1b[%d%s", amt, suffix))
+}
+
+func (self *Loop) ClearToEndOfScreen() {
+	self.QueueWriteString("\x1b[J")
+}
+
 func (self *Loop) Quit(exit_code int) {
 	self.exit_code = exit_code
 	self.keep_going = false

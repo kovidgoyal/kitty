@@ -8,6 +8,7 @@ import (
 	"kitty/tools/cli"
 	"kitty/tools/cli/markup"
 	"kitty/tools/tui/loop"
+	"kitty/tools/tui/readline"
 )
 
 var _ = fmt.Print
@@ -21,9 +22,16 @@ func shell_loop(kill_if_signaled bool) (int, error) {
 	if err != nil {
 		return 1, err
 	}
+	rl := readline.New(lp, readline.RlInit{Prompt: prompt})
+
 	lp.OnInitialize = func() (string, error) {
-		lp.QueueWriteString(prompt)
+		rl.Start()
 		return "\r\n", nil
+	}
+
+	lp.OnResumeFromStop = func() error {
+		rl.Start()
+		return nil
 	}
 
 	err = lp.Run()
