@@ -184,7 +184,7 @@ typedef struct {
 static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
 static ssize_t blit_vertex_array;
 typedef struct {
-    GLint image_location, tiled_location, sizes_location, opacity_location, premult_location;
+    GLint image_location, tiled_location, sizes_location, positions_location, opacity_location, premult_location;
 } BGImageProgramLayout;
 static BGImageProgramLayout bgimage_program_layout = {0};
 typedef struct {
@@ -212,6 +212,7 @@ init_cell_program(void) {
     bgimage_program_layout.image_location = get_uniform_location(BGIMAGE_PROGRAM, "image");
     bgimage_program_layout.opacity_location = get_uniform_location(BGIMAGE_PROGRAM, "opacity");
     bgimage_program_layout.sizes_location = get_uniform_location(BGIMAGE_PROGRAM, "sizes");
+    bgimage_program_layout.positions_location = get_uniform_location(BGIMAGE_PROGRAM, "positions");
     bgimage_program_layout.tiled_location = get_uniform_location(BGIMAGE_PROGRAM, "tiled");
     bgimage_program_layout.premult_location = get_uniform_location(BGIMAGE_PROGRAM, "premult");
     tint_program_layout.tint_color_location = get_uniform_location(TINT_PROGRAM, "tint_color");
@@ -428,13 +429,26 @@ draw_bg(OSWindow *w) {
         (GLfloat)w->viewport_width, (GLfloat)w->viewport_height, (GLfloat)w->bgimage->width, (GLfloat)w->bgimage->height);
     glUniform1f(bgimage_program_layout.premult_location, w->is_semi_transparent ? 1.f : 0.f);
     GLfloat tiled = 0.f;;
+    GLfloat left = -1.0, top = 1.0, right = 1.0, bottom = -1.0;
     switch (OPT(background_image_layout)) {
         case TILING: case MIRRORED: case CLAMPED:
             tiled = 1.f; break;
         case SCALED:
             tiled = 0.f; break;
+        case CENTER_CLAMPED:
+            tiled = 1.f;
+            if (w->viewport_width > (int)w->bgimage->width) {
+                GLfloat frac = (w->viewport_width - w->bgimage->width) / (GLfloat)w->viewport_width;
+                left += frac; right += frac;
+            }
+            if (w->viewport_height > (int)w->bgimage->height) {
+                GLfloat frac = (w->viewport_height - w->bgimage->height) / (GLfloat)w->viewport_height;
+                top -= frac; bottom -= frac;
+            }
+            break;
     }
     glUniform1f(bgimage_program_layout.tiled_location, tiled);
+    glUniform4f(bgimage_program_layout.positions_location, left, top, right, bottom);
     glActiveTexture(GL_TEXTURE0 + BGIMAGE_UNIT);
     glBindTexture(GL_TEXTURE_2D, w->bgimage->texture_id);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);

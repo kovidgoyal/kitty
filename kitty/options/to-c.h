@@ -64,7 +64,9 @@ bglayout(PyObject *layout_name) {
         case 't': return TILING;
         case 'm': return MIRRORED;
         case 's': return SCALED;
-        case 'c': return CLAMPED;
+        case 'c': {
+            return name[1] == 'l' ? CLAMPED : CENTER_CLAMPED;
+        }
         default: break;
     }
     return TILING;

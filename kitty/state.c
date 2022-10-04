@@ -134,15 +134,14 @@ window_for_window_id(id_type kitty_window_id) {
 
 static void
 send_bgimage_to_gpu(BackgroundImageLayout layout, BackgroundImage *bgimage) {
-    RepeatStrategy r;
+    RepeatStrategy r = REPEAT_DEFAULT;
     switch (layout) {
         case SCALED:
-        case CLAMPED:
+        case CLAMPED: case CENTER_CLAMPED:
             r = REPEAT_CLAMP; break;
         case MIRRORED:
             r = REPEAT_MIRROR; break;
         case TILING:
-        default:
             r = REPEAT_DEFAULT; break;
     }
     bgimage->texture_id = 0;

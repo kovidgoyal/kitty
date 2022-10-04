@@ -1285,10 +1285,10 @@ opt('background_image', 'none',
     )
 
 opt('background_image_layout', 'tiled',
-    choices=('mirror-tiled', 'scaled', 'tiled', 'clamped'), ctype='bglayout',
+    choices=('mirror-tiled', 'scaled', 'tiled', 'clamped', 'centered'), ctype='bglayout',
     long_text='''
 Whether to tile, scale or clamp the background image. The value can be one of
-:code:`tiled`, :code:`mirror-tiled`, :code:`scaled`, :code:`clamped`.
+:code:`tiled`, :code:`mirror-tiled`, :code:`scaled`, :code:`clamped` or :code:`centered`.
 '''
     )
 
