@@ -227,6 +227,14 @@ func (self *Loop) ClearToEndOfScreen() {
 	self.QueueWriteString("\x1b[J")
 }
 
+func (self *Loop) StartBracketedPaste() {
+	self.QueueWriteString(BRACKETED_PASTE.EscapeCodeToSet())
+}
+
+func (self *Loop) EndBracketedPaste() {
+	self.QueueWriteString(BRACKETED_PASTE.EscapeCodeToReset())
+}
+
 func (self *Loop) Quit(exit_code int) {
 	self.exit_code = exit_code
 	self.keep_going = false
