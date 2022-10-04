@@ -320,6 +320,7 @@ func EntryPoint(tool_root *cli.Command) *cli.Command {
 		Usage:            "[global options] [sub-command] [sub-command options] [sub-command args]",
 		ShortDescription: "Control kitty remotely",
 		HelpText:         "Control kitty by sending it commands. Set the allow_remote_control option in :file:`kitty.conf` for this to work. When run without any sub-commands this will start an interactive shell to control kitty.",
+		Run:              shell_main,
 	})
 	add_rc_global_opts(at_root_command)
 
