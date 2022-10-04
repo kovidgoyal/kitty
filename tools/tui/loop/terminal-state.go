@@ -21,6 +21,14 @@ const (
 	CLEAR_SCREEN                  = "\033[H\033[2J"
 )
 
+type CursorShapes uint
+
+const (
+	BLOCK_CURSOR     CursorShapes = 1
+	UNDERLINE_CURSOR CursorShapes = 3
+	BAR_CURSOR       CursorShapes = 5
+)
+
 type Mode uint32
 
 const private Mode = 1 << 31
@@ -146,4 +154,11 @@ func (self *TerminalStateOptions) ResetStateEscapeCodes() string {
 	}
 	sb.WriteString(RESTORE_COLORS)
 	return sb.String()
+}
+
+func CursorShape(shape CursorShapes, blink bool) string {
+	if !blink {
+		shape += 1
+	}
+	return fmt.Sprintf("\x1b[%d q", shape)
 }
