@@ -34,6 +34,24 @@ func shell_loop(kill_if_signaled bool) (int, error) {
 		return nil
 	}
 
+	lp.OnResize = func(old_size loop.ScreenSize, new_size loop.ScreenSize) error {
+		rl.Redraw()
+		return nil
+	}
+
+	lp.OnKeyEvent = func(event *loop.KeyEvent) error {
+		err := rl.OnKeyEvent(event)
+		if err != nil {
+			return err
+		}
+		if event.Handled {
+			return nil
+		}
+		return nil
+	}
+
+	lp.OnText = rl.OnText
+
 	err = lp.Run()
 	if err != nil {
 		return 1, err

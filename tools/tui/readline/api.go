@@ -59,6 +59,7 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 
 func (self *Readline) Start() {
 	self.loop.SetCursorShape(loop.BAR_CURSOR, true)
+	self.loop.StartBracketedPaste()
 	self.Redraw()
 }
 
@@ -73,9 +74,19 @@ func (self *Readline) RedrawNonAtomic() {
 }
 
 func (self *Readline) End() {
+	self.loop.EndBracketedPaste()
 	self.loop.QueueWriteString("\r\n")
 	self.loop.SetCursorShape(loop.BLOCK_CURSOR, true)
 	if self.mark_prompts {
 		self.loop.QueueWriteString(PROMPT_MARK + "C" + ST)
 	}
+}
+
+func (self *Readline) OnKeyEvent(event *loop.KeyEvent) error {
+	return self.handle_key_event(event)
+}
+
+func (self *Readline) OnText(text string, from_key_event bool, in_bracketed_paste bool) error {
+	self.add_text(text)
+	return nil
 }
