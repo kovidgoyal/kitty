@@ -793,7 +793,7 @@ static Atom writeTargetToProperty(const XSelectionRequestEvent* request)
                         32,
                         PropModeReplace,
                         (unsigned char*) targets,
-                        sizeof(targets[0]) * (aa->sz + 2));
+                        aa->sz + 2);
         free(targets);
         return request->property;
     }
@@ -2881,7 +2881,7 @@ void _glfwPlatformSetClipboard(GLFWClipboardType t) {
     }
     if (aa->capacity < cd->num_mime_types + 32) {
         aa->capacity = cd->num_mime_types + 32;
-        aa->array = malloc(sizeof(aa->array[0]) * aa->capacity);
+        aa->array = reallocarray(aa->array, aa->capacity, sizeof(aa->array[0]));
     }
     aa->sz = 0;
     for (size_t i = 0; i < cd->num_mime_types; i++) {
