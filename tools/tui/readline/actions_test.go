@@ -37,5 +37,18 @@ func TestAddText(t *testing.T) {
 	}
 
 	dt("test", nil, "test", "", "test")
+	dt("1234\n", nil, "1234\n", "", "1234\n")
+	dt("abcd", func(rl *Readline) {
+		rl.cursor_pos_in_line = 2
+		rl.add_text("12")
+	}, "ab12", "cd", "ab12cd")
+	dt("abcd", func(rl *Readline) {
+		rl.cursor_pos_in_line = 2
+		rl.add_text("12\n34")
+	}, "ab12\n34", "cd", "ab12\n34cd")
+	dt("abcd\nxyz", func(rl *Readline) {
+		rl.cursor_pos_in_line = 2
+		rl.add_text("12\n34")
+	}, "abcd\nxy12\n34", "z", "abcd\nxy12\n34z")
 
 }
