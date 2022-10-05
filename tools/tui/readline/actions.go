@@ -56,9 +56,9 @@ func (self *Readline) add_text(text string) {
 	}
 	has_trailing_newline := strings.HasSuffix(text, "\n")
 
-	add_line_break := func() {
-		new_lines = append(new_lines, "")
-		self.cursor_pos_in_line = 0
+	add_line_break := func(line string) {
+		new_lines = append(new_lines, line)
+		self.cursor_pos_in_line = len(line)
 		self.cursor_line += 1
 	}
 	cline := self.lines[self.cursor_line]
@@ -69,17 +69,21 @@ func (self *Readline) add_text(text string) {
 	}
 	for i, line := range utils.Splitlines(text) {
 		if i > 0 {
-			add_line_break()
-			new_lines = append(new_lines, line)
-			self.cursor_pos_in_line = len(line)
+			add_line_break(line)
 		} else {
 			line := before_first_line + line
 			self.cursor_pos_in_line = len(line)
-			line += after_first_line
+			new_lines = append(new_lines, line)
 		}
 	}
 	if has_trailing_newline {
-		add_line_break()
+		add_line_break("")
+	}
+	if after_first_line != "" {
+		if len(new_lines) == 0 {
+			new_lines = append(new_lines, "")
+		}
+		new_lines[len(new_lines)-1] += after_first_line
 	}
 	if len(lines_after) > 0 {
 		new_lines = append(new_lines, lines_after...)
