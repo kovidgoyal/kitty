@@ -11,6 +11,42 @@ import (
 
 var _ = fmt.Print
 
+func (self *Readline) text_upto_cursor_pos() string {
+	buf := strings.Builder{}
+	buf.Grow(1024)
+	for i, line := range self.lines {
+		if i == self.cursor_line {
+			buf.WriteString(line[:self.cursor_pos_in_line])
+			break
+		} else {
+			buf.WriteString(line)
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String()
+}
+
+func (self *Readline) text_after_cursor_pos() string {
+	buf := strings.Builder{}
+	buf.Grow(1024)
+	for i, line := range self.lines {
+		if i == self.cursor_line {
+			buf.WriteString(line[self.cursor_pos_in_line:])
+			buf.WriteString("\n")
+		} else if i > self.cursor_line {
+			buf.WriteString(line)
+			buf.WriteString("\n")
+		}
+	}
+	ans := buf.String()
+	ans = ans[:len(ans)-1]
+	return ans
+}
+
+func (self *Readline) all_text() string {
+	return strings.Join(self.lines, "\n")
+}
+
 func (self *Readline) add_text(text string) {
 	new_lines := make([]string, 0, len(self.lines)+4)
 	new_lines = append(new_lines, self.lines[:self.cursor_line]...)
