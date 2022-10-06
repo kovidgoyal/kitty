@@ -21,6 +21,15 @@ type RlInit struct {
 	DontMarkPrompts         bool
 }
 
+type Position struct {
+	X int
+	Y int
+}
+
+func (self Position) Less(other Position) bool {
+	return self.Y < other.Y || (self.Y == other.Y && self.X < other.X)
+}
+
 type Readline struct {
 	prompt                  string
 	prompt_len              int
@@ -29,14 +38,12 @@ type Readline struct {
 	mark_prompts            bool
 	loop                    *loop.Loop
 
-	// The number of lines after the initial line
+	// The number of lines after the initial line on the screen
 	cursor_y int
 	// Input lines
 	lines []string
-	// The line the cursor is at currently
-	cursor_line int
-	// The offset into the text of the cursor line
-	cursor_pos_in_line int
+	// The cursor position in the text
+	cursor Position
 }
 
 func New(loop *loop.Loop, r RlInit) *Readline {

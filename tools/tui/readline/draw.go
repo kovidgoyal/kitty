@@ -46,13 +46,13 @@ func (self *Readline) redraw() {
 			p = self.continuation_prompt
 		}
 		num_lines := self.write_line_with_prompt(line, p, int(screen_size.WidthCells))
-		if i == self.cursor_line {
+		if i == self.cursor.Y {
 			line_with_cursor = y
 		}
 		y += num_lines
 	}
 	self.loop.MoveCursorVertically(-y + line_with_cursor)
-	line := self.lines[self.cursor_line]
-	line_with_cursor += self.move_cursor_to_text_position(wcswidth.Stringwidth(line[:self.cursor_pos_in_line]), int(screen_size.WidthCells))
+	line := self.lines[self.cursor.Y]
+	line_with_cursor += self.move_cursor_to_text_position(wcswidth.Stringwidth(line[:self.cursor.X]), int(screen_size.WidthCells))
 	self.cursor_y = line_with_cursor
 }
