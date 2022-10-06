@@ -120,3 +120,43 @@ func (self *Readline) move_cursor_left(amt uint, traverse_line_breaks bool) uint
 	}
 	return amt_moved
 }
+
+func (self *Readline) move_cursor_right(amt uint, traverse_line_breaks bool) uint {
+	var amt_moved uint
+	for ; amt > 0; amt -= 1 {
+		line := self.lines[self.cursor_line]
+		if self.cursor_pos_in_line >= len(line) {
+			if !traverse_line_breaks || self.cursor_line == len(self.lines)-1 {
+				return amt_moved
+			}
+			self.cursor_line += 1
+			self.cursor_pos_in_line = 0
+			amt_moved += 1
+			continue
+		}
+		// This is an extremely inefficient algorithm but it does not matter since
+		// lines are not large.
+		before_runes := []rune(line[:self.cursor_pos_in_line])
+		after_runes := []rune(line[self.cursor_pos_in_line:])
+		orig_width := wcswidth.Stringwidth(line[:self.cursor_pos_in_line])
+		current_width := orig_width
+		for current_width == orig_width && len(after_runes) > 0 {
+			before_runes = append(before_runes, after_runes[0])
+			current_width = wcswidth.Stringwidth(string(before_runes))
+			after_runes = after_runes[1:]
+		}
+		// soak up any more runes that dont affect width
+		for len(after_runes) > 0 {
+			q := append(before_runes, after_runes[0])
+			w := wcswidth.Stringwidth(string(q))
+			if w != current_width {
+				break
+			}
+			after_runes = after_runes[1:]
+			before_runes = q
+		}
+		self.cursor_pos_in_line = len(string(before_runes))
+		amt_moved += 1
+	}
+	return amt_moved
+}
