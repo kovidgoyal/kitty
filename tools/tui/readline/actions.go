@@ -258,3 +258,25 @@ func (self *Readline) erase_chars_after_cursor(amt uint, traverse_line_breaks bo
 	self.erase_between(pos, self.cursor)
 	return num
 }
+
+func (self *Readline) perform_action(ac Action, repeat_count uint) bool {
+	switch ac {
+	case ActionBackspace:
+		return self.erase_chars_before_cursor(repeat_count, true) > 0
+	case ActionDelete:
+		return self.erase_chars_after_cursor(repeat_count, true) > 0
+	case ActionMoveToStartOfLine:
+		return self.move_to_start_of_line()
+	case ActionMoveToEndOfLine:
+		return self.move_to_end_of_line()
+	case ActionMoveToStartOfDocument:
+		return self.move_to_start()
+	case ActionMoveToEndOfDocument:
+		return self.move_to_end()
+	case ActionCursorLeft:
+		return self.move_cursor_left(repeat_count, true) > 0
+	case ActionCursorRight:
+		return self.move_cursor_right(repeat_count, true) > 0
+	}
+	return false
+}
