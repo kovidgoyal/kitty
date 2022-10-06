@@ -30,6 +30,20 @@ func (self Position) Less(other Position) bool {
 	return self.Y < other.Y || (self.Y == other.Y && self.X < other.X)
 }
 
+type Action uint
+
+const (
+	ActionNil Action = iota
+	ActionBackspace
+	ActionDelete
+	ActionMoveToStartOfLine
+	ActionMoveToEndOfLine
+	ActionMoveToStartOfDocument
+	ActionMoveToEndOfDocument
+	ActionCursorLeft
+	ActionCursorRight
+)
+
 type Readline struct {
 	prompt                  string
 	prompt_len              int
@@ -96,4 +110,8 @@ func (self *Readline) OnKeyEvent(event *loop.KeyEvent) error {
 func (self *Readline) OnText(text string, from_key_event bool, in_bracketed_paste bool) error {
 	self.add_text(text)
 	return nil
+}
+
+func (self *Readline) PerformAction(ac Action, repeat_count uint) bool {
+	return self.perform_action(ac, repeat_count)
 }
