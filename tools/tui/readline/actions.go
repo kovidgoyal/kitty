@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"kitty/tools/utils"
+	"kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print
@@ -89,4 +90,33 @@ func (self *Readline) add_text(text string) {
 		new_lines = append(new_lines, lines_after...)
 	}
 	self.lines = new_lines
+}
+
+func (self *Readline) move_cursor_left(amt uint, traverse_line_breaks bool) uint {
+	var amt_moved uint
+	for ; amt > 0; amt -= 1 {
+		if self.cursor_pos_in_line == 0 {
+			if !traverse_line_breaks || self.cursor_line == 0 {
+				return amt_moved
+			}
+			self.cursor_line -= 1
+			self.cursor_pos_in_line = len(self.lines[self.cursor_pos_in_line])
+			amt_moved += 1
+			continue
+		}
+		// This is an extremely inefficient algorithm but it does not matter since
+		// lines are not large.
+		line := self.lines[self.cursor_line]
+		runes := []rune(line[:self.cursor_pos_in_line])
+		orig_width := wcswidth.Stringwidth(line[:self.cursor_pos_in_line])
+		current_width := orig_width
+		for current_width == orig_width && len(runes) > 0 {
+			runes = runes[:len(runes)-1]
+			s := string(runes)
+			current_width = wcswidth.Stringwidth(s)
+		}
+		self.cursor_pos_in_line = len(string(runes))
+		amt_moved += 1
+	}
+	return amt_moved
 }
