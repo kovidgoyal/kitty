@@ -104,7 +104,12 @@ func (self *Readline) End() {
 }
 
 func (self *Readline) OnKeyEvent(event *loop.KeyEvent) error {
-	return self.handle_key_event(event)
+	err := self.handle_key_event(event)
+	if err == ErrCouldNotPerformAction {
+		err = nil
+		self.loop.Beep()
+	}
+	return err
 }
 
 func (self *Readline) OnText(text string, from_key_event bool, in_bracketed_paste bool) error {
