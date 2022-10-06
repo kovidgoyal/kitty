@@ -83,7 +83,31 @@ func TestCursorMovement(t *testing.T) {
 	dt("one😀", func(rl *Readline) {
 		left(rl, 1, 1, false)
 	}, "one", "😀")
-	dt("oneä", func(rl *Readline) {
+	dt("oneà", func(rl *Readline) {
 		left(rl, 1, 1, false)
-	}, "one", "ä")
+	}, "one", "à")
+
+	right := func(rl *Readline, amt uint, moved_amt uint, traverse_line_breaks bool) {
+		rl.cursor_line = 0
+		rl.cursor_pos_in_line = 0
+		actual := rl.move_cursor_right(amt, traverse_line_breaks)
+		if actual != moved_amt {
+			t.Fatalf("Failed to move cursor by %#v\nactual != expected: %#v != %#v", amt, actual, moved_amt)
+		}
+	}
+	dt("one\ntwo", func(rl *Readline) {
+		right(rl, 2, 2, false)
+	}, "on", "e\ntwo")
+	dt("one\ntwo", func(rl *Readline) {
+		right(rl, 4, 3, false)
+	}, "one", "\ntwo")
+	dt("one\ntwo", func(rl *Readline) {
+		right(rl, 4, 4, true)
+	}, "one\n", "two")
+	dt("😀one", func(rl *Readline) {
+		right(rl, 1, 1, false)
+	}, "😀", "one")
+	dt("àb", func(rl *Readline) {
+		right(rl, 1, 1, false)
+	}, "à", "b")
 }
