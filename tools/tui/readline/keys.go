@@ -3,6 +3,7 @@
 package readline
 
 import (
+	"errors"
 	"fmt"
 
 	"kitty/tools/tui/loop"
@@ -30,6 +31,8 @@ func action_for_key_event(event *loop.KeyEvent, shortcuts map[string]Action) Act
 	return ActionNil
 }
 
+var ErrCouldNotPerformAction = errors.New("Could not perform the specified action")
+
 func (self *Readline) handle_key_event(event *loop.KeyEvent) error {
 	if event.Text != "" {
 		return nil
@@ -37,7 +40,9 @@ func (self *Readline) handle_key_event(event *loop.KeyEvent) error {
 	ac := action_for_key_event(event, default_shortcuts)
 	if ac != ActionNil {
 		event.Handled = true
-		self.perform_action(ac, 1)
+		if !self.perform_action(ac, 1) {
+			return ErrCouldNotPerformAction
+		}
 	}
 	return nil
 }
