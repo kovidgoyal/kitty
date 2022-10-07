@@ -450,8 +450,5 @@ set_titlebar_color(_GLFWwindow *window, uint32_t color, bool use_system_color) {
         decs.use_custom_titlebar_color = use_custom_color;
         decs.titlebar_color = color;
     }
-    if (window->decorated && decs.top.surface) {
-        update_title_bar(window);
-        damage_csd(top, decs.top.buffer.front);
-    }
+    change_csd_title(window);
 }

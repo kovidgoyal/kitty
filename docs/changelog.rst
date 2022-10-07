@@ -50,6 +50,8 @@ Detailed list of changes
 
 - Wayland: Fix background image scaling using tiled mode on high DPI screens
 
+- Wayland: Fix an abort when changing background colors with :opt:`wayland_titlebar_color` set to ``background`` (:iss:`5562`)
+
 - Update to Unicode 15.0 (:pull:`5542`)
 
 
