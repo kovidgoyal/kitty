@@ -154,9 +154,14 @@ func KeyEventFromCSI(csi string) *KeyEvent {
 		third_section = get_sub_sections(sections[2])
 	}
 	var ans = KeyEvent{Type: PRESS}
-	keynum := first_section[0]
+	var keynum int
 	if val, ok := letter_trailer_to_csi_number_map[last_char]; ok {
 		keynum = val
+	} else {
+		if len(first_section) == 0 {
+			return nil
+		}
+		keynum = first_section[0]
 	}
 
 	key_name := func(keynum int) string {
