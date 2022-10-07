@@ -210,21 +210,25 @@ func (self *Loop) SetCursorShape(shape CursorShapes, blink bool) {
 }
 
 func (self *Loop) MoveCursorHorizontally(amt int) {
-	suffix := "C"
-	if amt < 0 {
-		suffix = "D"
-		amt *= -1
+	if amt != 0 {
+		suffix := "C"
+		if amt < 0 {
+			suffix = "D"
+			amt *= -1
+		}
+		self.QueueWriteString(fmt.Sprintf("\x1b[%d%s", amt, suffix))
 	}
-	self.QueueWriteString(fmt.Sprintf("\x1b[%d%s", amt, suffix))
 }
 
 func (self *Loop) MoveCursorVertically(amt int) {
-	suffix := "B"
-	if amt < 0 {
-		suffix = "A"
-		amt *= -1
+	if amt != 0 {
+		suffix := "B"
+		if amt < 0 {
+			suffix = "A"
+			amt *= -1
+		}
+		self.QueueWriteString(fmt.Sprintf("\x1b[%d%s", amt, suffix))
 	}
-	self.QueueWriteString(fmt.Sprintf("\x1b[%d%s", amt, suffix))
 }
 
 func (self *Loop) ClearToEndOfScreen() {
