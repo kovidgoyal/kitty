@@ -13,13 +13,23 @@ var _ = fmt.Print
 
 var default_shortcuts = map[string]Action{
 	"backspace": ActionBackspace,
+	"ctrl+h":    ActionBackspace,
 	"delete":    ActionDelete,
-	"home":      ActionMoveToStartOfLine,
-	"end":       ActionMoveToEndOfLine,
+	"ctrl+d":    ActionDelete,
+
+	"home":   ActionMoveToStartOfLine,
+	"ctrl+a": ActionMoveToStartOfLine,
+
+	"end":    ActionMoveToEndOfLine,
+	"ctrl+e": ActionMoveToEndOfLine,
+
 	"ctrl+home": ActionMoveToStartOfDocument,
 	"ctrl+end":  ActionMoveToEndOfDocument,
-	"left":      ActionCursorLeft,
-	"right":     ActionCursorRight,
+
+	"left":   ActionCursorLeft,
+	"ctrl+b": ActionCursorLeft,
+	"right":  ActionCursorRight,
+	"ctrl+f": ActionCursorRight,
 }
 
 func action_for_key_event(event *loop.KeyEvent, shortcuts map[string]Action) Action {
