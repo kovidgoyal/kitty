@@ -54,14 +54,11 @@ func (self *Selector) UnRegisterError(fd int) {
 }
 
 func (self *Selector) Wait(timeout time.Duration) (num_ready int, err error) {
-	self.read_set.Zero()
-	self.write_set.Zero()
-	self.err_set.Zero()
 	max_fd_num := 0
 
-	init_set := func(s *unix.FdSet, m *map[int]bool) {
+	init_set := func(s *unix.FdSet, m map[int]bool) {
 		s.Zero()
-		for fd, enabled := range *m {
+		for fd, enabled := range m {
 			if fd > -1 && enabled {
 				if max_fd_num < fd {
 					max_fd_num = fd
@@ -70,11 +67,14 @@ func (self *Selector) Wait(timeout time.Duration) (num_ready int, err error) {
 			}
 		}
 	}
-	init_set(&self.read_set, &self.read_fds)
-	init_set(&self.write_set, &self.write_fds)
-	init_set(&self.err_set, &self.err_fds)
+	init_set(&self.read_set, self.read_fds)
+	init_set(&self.write_set, self.write_fds)
+	init_set(&self.err_set, self.err_fds)
 	num_ready, err = Select(max_fd_num+1, &self.read_set, &self.write_set, &self.err_set, timeout)
 	if err == unix.EINTR {
+		self.read_set.Zero()
+		self.write_set.Zero()
+		self.err_set.Zero()
 		return 0, nil
 	}
 	return
