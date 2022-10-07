@@ -49,7 +49,7 @@ func (self *Loop) print_stack() {
 }
 
 func (self *Loop) update_screen_size() error {
-	if self.controlling_term != nil {
+	if self.controlling_term == nil {
 		return fmt.Errorf("No controlling terminal cannot update screen size")
 	}
 	ws, err := self.controlling_term.GetSize()
@@ -237,6 +237,9 @@ func (self *Loop) run() (err error) {
 		r_w.Close()
 		close(tty_reading_done_channel)
 
+		if self.OnFinalize != nil {
+			finalizer += self.OnFinalize()
+		}
 		if finalizer != "" {
 			self.QueueWriteString(finalizer)
 		}
