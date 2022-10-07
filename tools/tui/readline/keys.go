@@ -15,7 +15,6 @@ var default_shortcuts = map[string]Action{
 	"backspace": ActionBackspace,
 	"ctrl+h":    ActionBackspace,
 	"delete":    ActionDelete,
-	"ctrl+d":    ActionDelete,
 
 	"home":   ActionMoveToStartOfLine,
 	"ctrl+a": ActionMoveToStartOfLine,
@@ -30,6 +29,9 @@ var default_shortcuts = map[string]Action{
 	"ctrl+b": ActionCursorLeft,
 	"right":  ActionCursorRight,
 	"ctrl+f": ActionCursorRight,
+
+	"ctrl+d": ActionEndInput,
+	"enter":  ActionAcceptInput,
 }
 
 func action_for_key_event(event *loop.KeyEvent, shortcuts map[string]Action) Action {
@@ -42,6 +44,7 @@ func action_for_key_event(event *loop.KeyEvent, shortcuts map[string]Action) Act
 }
 
 var ErrCouldNotPerformAction = errors.New("Could not perform the specified action")
+var ErrAcceptInput = errors.New("Accept input")
 
 func (self *Readline) handle_key_event(event *loop.KeyEvent) error {
 	if event.Text != "" {
@@ -50,9 +53,7 @@ func (self *Readline) handle_key_event(event *loop.KeyEvent) error {
 	ac := action_for_key_event(event, default_shortcuts)
 	if ac != ActionNil {
 		event.Handled = true
-		if !self.perform_action(ac, 1) {
-			return ErrCouldNotPerformAction
-		}
+		return self.perform_action(ac, 1)
 	}
 	return nil
 }

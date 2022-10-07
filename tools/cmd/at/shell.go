@@ -3,7 +3,13 @@
 package at
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	"github.com/google/shlex"
 
 	"kitty/tools/cli"
 	"kitty/tools/cli/markup"
@@ -17,17 +23,20 @@ var formatter *markup.Context
 
 const prompt = "🐱 "
 
-func shell_loop(kill_if_signaled bool) (int, error) {
+var ErrExec = errors.New("Execute command")
+
+func shell_loop(rl *readline.Readline, kill_if_signaled bool) (int, error) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors)
 	if err != nil {
 		return 1, err
 	}
-	rl := readline.New(lp, readline.RlInit{Prompt: prompt})
+	rl.ChangeLoopAndResetText(lp)
 
 	lp.OnInitialize = func() (string, error) {
 		rl.Start()
-		return "\r\n", nil
+		return "", nil
 	}
+	lp.OnFinalize = func() string { rl.End(); return "" }
 
 	lp.OnResumeFromStop = func() error {
 		rl.Start()
@@ -42,6 +51,17 @@ func shell_loop(kill_if_signaled bool) (int, error) {
 	lp.OnKeyEvent = func(event *loop.KeyEvent) error {
 		err := rl.OnKeyEvent(event)
 		if err != nil {
+			if err == io.EOF {
+				lp.Quit(0)
+				return nil
+			}
+			if err == readline.ErrAcceptInput {
+				if strings.HasSuffix(rl.TextBeforeCursor(), "\\") && strings.HasPrefix(rl.TextAfterCursor(), "\n") {
+					rl.OnText("\n", false, false)
+					return nil
+				}
+				return ErrExec
+			}
 			return err
 		}
 		if event.Handled {
@@ -67,9 +87,39 @@ func shell_loop(kill_if_signaled bool) (int, error) {
 	return 0, nil
 }
 
+func exec_command(cmdline string) bool {
+	parsed_cmdline, err := shlex.Split(cmdline)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Could not parse cmdline:", err)
+		return true
+	}
+	if len(parsed_cmdline) == 0 {
+		return true
+	}
+	switch parsed_cmdline[0] {
+	case "exit":
+		return false
+	}
+	return true
+}
+
 func shell_main(cmd *cli.Command, args []string) (int, error) {
 	formatter = markup.New(true)
 	fmt.Println("Welcome to the kitty shell!")
 	fmt.Println("Use", formatter.Green("help"), "for assistance or", formatter.Green("exit"), "to quit.")
-	return shell_loop(true)
+	rl := readline.New(nil, readline.RlInit{Prompt: prompt})
+	for {
+		rc, err := shell_loop(rl, true)
+		if err != nil {
+			if err == ErrExec {
+				cmdline := rl.AllText()
+				cmdline = strings.ReplaceAll(cmdline, "\\\n", "")
+				if !exec_command(cmdline) {
+					return 0, nil
+				}
+				continue
+			}
+		}
+		return rc, err
+	}
 }

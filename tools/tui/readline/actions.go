@@ -4,6 +4,7 @@ package readline
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"kitty/tools/utils"
@@ -259,24 +260,52 @@ func (self *Readline) erase_chars_after_cursor(amt uint, traverse_line_breaks bo
 	return num
 }
 
-func (self *Readline) perform_action(ac Action, repeat_count uint) bool {
+func (self *Readline) next_word_char_pos(traverse_line_breaks bool) int {
+	return 0
+}
+
+func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 	switch ac {
 	case ActionBackspace:
-		return self.erase_chars_before_cursor(repeat_count, true) > 0
+		if self.erase_chars_before_cursor(repeat_count, true) > 0 {
+			return nil
+		}
 	case ActionDelete:
-		return self.erase_chars_after_cursor(repeat_count, true) > 0
+		if self.erase_chars_after_cursor(repeat_count, true) > 0 {
+			return nil
+		}
 	case ActionMoveToStartOfLine:
-		return self.move_to_start_of_line()
+		if self.move_to_start_of_line() {
+			return nil
+		}
 	case ActionMoveToEndOfLine:
-		return self.move_to_end_of_line()
+		if self.move_to_end_of_line() {
+			return nil
+		}
 	case ActionMoveToStartOfDocument:
-		return self.move_to_start()
+		if self.move_to_start() {
+			return nil
+		}
 	case ActionMoveToEndOfDocument:
-		return self.move_to_end()
+		if self.move_to_end() {
+			return nil
+		}
 	case ActionCursorLeft:
-		return self.move_cursor_left(repeat_count, true) > 0
+		if self.move_cursor_left(repeat_count, true) > 0 {
+			return nil
+		}
 	case ActionCursorRight:
-		return self.move_cursor_right(repeat_count, true) > 0
+		if self.move_cursor_right(repeat_count, true) > 0 {
+			return nil
+		}
+	case ActionEndInput:
+		line := self.lines[self.cursor.Y]
+		if line == "" {
+			return io.EOF
+		}
+		return self.perform_action(ActionAcceptInput, 1)
+	case ActionAcceptInput:
+		return ErrAcceptInput
 	}
-	return false
+	return ErrCouldNotPerformAction
 }

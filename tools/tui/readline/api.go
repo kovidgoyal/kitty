@@ -42,6 +42,8 @@ const (
 	ActionMoveToEndOfDocument
 	ActionCursorLeft
 	ActionCursorRight
+	ActionEndInput
+	ActionAcceptInput
 )
 
 type Readline struct {
@@ -78,10 +80,30 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 	return ans
 }
 
+func (self *Readline) ChangeLoopAndResetText(lp *loop.Loop) {
+	self.loop = lp
+	self.lines = []string{""}
+	self.cursor = Position{}
+	self.cursor_y = 0
+}
+
 func (self *Readline) Start() {
 	self.loop.SetCursorShape(loop.BAR_CURSOR, true)
 	self.loop.StartBracketedPaste()
 	self.Redraw()
+}
+
+func (self *Readline) End() {
+	self.loop.SetCursorShape(loop.BLOCK_CURSOR, true)
+	self.loop.EndBracketedPaste()
+	self.loop.QueueWriteString("\r\n")
+	if self.mark_prompts {
+		self.loop.QueueWriteString(PROMPT_MARK + "C" + ST)
+	}
+}
+
+func MarkOutputStart() string {
+	return PROMPT_MARK + "C" + ST
 }
 
 func (self *Readline) Redraw() {
@@ -92,15 +114,6 @@ func (self *Readline) Redraw() {
 
 func (self *Readline) RedrawNonAtomic() {
 	self.redraw()
-}
-
-func (self *Readline) End() {
-	self.loop.EndBracketedPaste()
-	self.loop.QueueWriteString("\r\n")
-	self.loop.SetCursorShape(loop.BLOCK_CURSOR, true)
-	if self.mark_prompts {
-		self.loop.QueueWriteString(PROMPT_MARK + "C" + ST)
-	}
 }
 
 func (self *Readline) OnKeyEvent(event *loop.KeyEvent) error {
@@ -117,6 +130,14 @@ func (self *Readline) OnText(text string, from_key_event bool, in_bracketed_past
 	return nil
 }
 
-func (self *Readline) PerformAction(ac Action, repeat_count uint) bool {
-	return self.perform_action(ac, repeat_count)
+func (self *Readline) TextBeforeCursor() string {
+	return self.text_upto_cursor_pos()
+}
+
+func (self *Readline) TextAfterCursor() string {
+	return self.text_after_cursor_pos()
+}
+
+func (self *Readline) AllText() string {
+	return self.all_text()
 }
