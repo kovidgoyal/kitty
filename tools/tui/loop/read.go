@@ -3,6 +3,7 @@
 package loop
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -11,6 +12,8 @@ import (
 	"kitty/tools/tty"
 	"kitty/tools/utils"
 )
+
+var _ = fmt.Print
 
 func (self *Loop) dispatch_input_data(data []byte) error {
 	if self.OnReceivedData != nil {
