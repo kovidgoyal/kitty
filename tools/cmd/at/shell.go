@@ -56,8 +56,9 @@ func shell_loop(rl *readline.Readline, kill_if_signaled bool) (int, error) {
 				return nil
 			}
 			if err == readline.ErrAcceptInput {
-				if strings.HasSuffix(rl.TextBeforeCursor(), "\\") && strings.HasPrefix(rl.TextAfterCursor(), "\n") {
+				if strings.HasSuffix(rl.TextBeforeCursor(), "\\") && rl.CursorAtEndOfLine() {
 					rl.OnText("\n", false, false)
+					rl.Redraw()
 					return nil
 				}
 				return ErrExec

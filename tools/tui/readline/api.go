@@ -73,6 +73,7 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 			ans.continuation_prompt = "> "
 		}
 	}
+	ans.continuation_prompt_len = wcswidth.Stringwidth(ans.continuation_prompt)
 	if ans.mark_prompts {
 		ans.prompt = PROMPT_MARK + "A" + ST + ans.prompt
 		ans.continuation_prompt = PROMPT_MARK + "A;k=s" + ST + ans.continuation_prompt
@@ -140,4 +141,8 @@ func (self *Readline) TextAfterCursor() string {
 
 func (self *Readline) AllText() string {
 	return self.all_text()
+}
+
+func (self *Readline) CursorAtEndOfLine() bool {
+	return self.cursor.X >= len(self.lines[self.cursor.Y])
 }
