@@ -53,6 +53,10 @@ type Loop struct {
 	// the terminal on shutdown
 	OnInitialize func() (string, error)
 
+	// Called just before the loop shuts down. Any returned string is written to the terminal before
+	// shutdown
+	OnFinalize func() string
+
 	// Called when a key event happens
 	OnKeyEvent func(event *KeyEvent) error
 
