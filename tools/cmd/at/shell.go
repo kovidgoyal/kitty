@@ -65,12 +65,19 @@ func shell_loop(rl *readline.Readline, kill_if_signaled bool) (int, error) {
 			return err
 		}
 		if event.Handled {
+			rl.Redraw()
 			return nil
 		}
 		return nil
 	}
 
-	lp.OnText = rl.OnText
+	lp.OnText = func(text string, from_key_event, in_bracketed_paste bool) error {
+		err := rl.OnText(text, from_key_event, in_bracketed_paste)
+		if err == nil {
+			rl.Redraw()
+		}
+		return err
+	}
 
 	err = lp.Run()
 	if err != nil {

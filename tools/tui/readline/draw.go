@@ -53,6 +53,10 @@ func (self *Readline) redraw() {
 	}
 	self.loop.MoveCursorVertically(-y + line_with_cursor)
 	line := self.lines[self.cursor.Y]
-	line_with_cursor += self.move_cursor_to_text_position(wcswidth.Stringwidth(line[:self.cursor.X]), int(screen_size.WidthCells))
+	plen := self.prompt_len
+	if self.cursor.Y > 0 {
+		plen = self.continuation_prompt_len
+	}
+	line_with_cursor += self.move_cursor_to_text_position(plen+wcswidth.Stringwidth(line[:self.cursor.X]), int(screen_size.WidthCells))
 	self.cursor_y = line_with_cursor
 }
