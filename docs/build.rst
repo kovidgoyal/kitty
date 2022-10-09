@@ -160,7 +160,7 @@ While |kitty| does use Python, it is not a traditional Python package, so please
 do not install it in site-packages.
 Instead run::
 
-    python3 setup.py linux-package
+    make linux-package
 
 This will install |kitty| into the directory :file:`linux-package`. You can run
 |kitty| with :file:`linux-package/bin/kitty`. All the files needed to run kitty
