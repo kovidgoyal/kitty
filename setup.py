@@ -29,7 +29,7 @@ from glfw.glfw import Command, CompileKey
 
 if sys.version_info[:2] < (3, 8):
     raise SystemExit('kitty requires python >= 3.8')
-base = os.path.dirname(os.path.abspath(__file__))
+src_base = os.path.dirname(os.path.abspath(__file__))
 
 verbose = False
 build_dir = 'build'
@@ -567,7 +567,7 @@ def dependecies_for(src: str, obj: str, all_headers: Iterable[str]) -> Iterable[
             )
             for path in files:
                 path = os.path.abspath(path)
-                if path.startswith(base):
+                if path.startswith(src_base):
                     yield path
 
 
@@ -692,12 +692,12 @@ class CompilationDatabase:
         for key in set(cdb) - self.all_keys:
             del cdb[key]
         compilation_database = [
-            {'file': c.key.src, 'arguments': c.cmd, 'directory': base, 'output': c.key.dest} for c in self.compile_commands if c.key is not None
+            {'file': c.key.src, 'arguments': c.cmd, 'directory': src_base, 'output': c.key.dest} for c in self.compile_commands if c.key is not None
         ]
         with open(self.dbpath, 'w') as f:
             json.dump(compilation_database, f, indent=2, sort_keys=True)
         with open(self.linkdbpath, 'w') as f:
-            json.dump([{'output': c.key, 'arguments': c.cmd, 'directory': base} for c in self.link_commands], f, indent=2, sort_keys=True)
+            json.dump([{'output': c.key, 'arguments': c.cmd, 'directory': src_base} for c in self.link_commands], f, indent=2, sort_keys=True)
 
 
 def compile_c_extension(
@@ -879,7 +879,7 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
     # update all the various auto-generated go files, if needed
     if args.verbose:
         print('Updating Go generated files...', flush=True)
-    cp = subprocess.run([kitty_exe, '+launch', os.path.join(base, 'gen-go-code.py')], stdout=subprocess.PIPE)
+    cp = subprocess.run([kitty_exe, '+launch', os.path.join(src_base, 'gen-go-code.py')], stdout=subprocess.PIPE)
     if cp.returncode != 0:
         raise SystemExit(cp.returncode)
 
@@ -1467,10 +1467,10 @@ def clean() -> None:
     clean_launcher_dir('kitty/launcher')
 
     def excluded(root: str, d: str) -> bool:
-        q = os.path.relpath(os.path.join(root, d), base).replace(os.sep, '/')
+        q = os.path.relpath(os.path.join(root, d), src_base).replace(os.sep, '/')
         return q in ('.git', 'bypy/b')
 
-    for root, dirs, files in os.walk(base, topdown=True):
+    for root, dirs, files in os.walk(src_base, topdown=True):
         dirs[:] = [d for d in dirs if not excluded(root, d)]
         remove_dirs = {d for d in dirs if d == '__pycache__' or d.endswith('.dSYM')}
         for d in remove_dirs:
@@ -1679,14 +1679,15 @@ def main() -> None:
         args.build_universal_binary = False
     verbose = args.verbose > 0
     args.prefix = os.path.abspath(args.prefix)
-    os.chdir(base)
+    os.chdir(src_base)
+    launcher_dir = 'kitty/launcher'
+
     if args.action == 'test':
-        texe = os.path.abspath('kitty/launcher/kitty')
+        texe = os.path.abspath(os.path.join(launcher_dir, 'kitty'))
         os.execl(texe, texe, '+launch', 'test.py')
     if args.action == 'clean':
         clean()
         return
-    launcher_dir = 'kitty/launcher'
 
     with CompilationDatabase(args.incremental) as cdb:
         args.compilation_database = cdb
