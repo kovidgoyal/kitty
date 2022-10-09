@@ -30,8 +30,6 @@ from glfw.glfw import Command, CompileKey
 if sys.version_info[:2] < (3, 8):
     raise SystemExit('kitty requires python >= 3.8')
 base = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, base)
-del sys.path[0]
 
 verbose = False
 build_dir = 'build'
@@ -484,8 +482,7 @@ def kitty_env() -> Env:
     if '-lz' not in ans.ldpaths:
         ans.ldpaths.append('-lz')
 
-    with suppress(FileExistsError):
-        os.mkdir(build_dir)
+    os.makedirs(build_dir, exist_ok=True)
     return ans
 
 
