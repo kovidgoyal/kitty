@@ -61,6 +61,7 @@ type Loop struct {
 	OnKeyEvent func(event *KeyEvent) error
 
 	// Called when text is received either from a key event or directly from the terminal
+	// Called with an empty string when bracketed paste ends
 	OnText func(text string, from_key_event bool, in_bracketed_paste bool) error
 
 	// Called when the terminal is resized
