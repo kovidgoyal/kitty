@@ -25,6 +25,9 @@ from kitty.rgb import color_names
 
 changed: List[str] = []
 
+base_dir = sys.argv[1] or os.getcwd()
+kitty_dir = os.path.join(base_dir, 'kitty')
+
 
 # Utils {{{
 
@@ -261,7 +264,7 @@ def generate_color_names() -> str:
 
 
 def load_ref_map() -> Dict[str, Dict[str, str]]:
-    with open('kitty/docs_ref_map_generated.h') as f:
+    with open(os.path.join(kitty_dir, 'docs_ref_map_generated.h')) as f:
         raw = f.read()
     raw = raw.split('{', 1)[1].split('}', 1)[0]
     data = json.loads(bytes(bytearray(json.loads(f'[{raw}]'))))
@@ -297,6 +300,8 @@ var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
 
 @contextmanager
 def replace_if_needed(path: str, show_diff: bool = False) -> Iterator[io.StringIO]:
+    path = os.path.join(base_dir, path)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     buf = io.StringIO()
     yield buf
     orig = ''

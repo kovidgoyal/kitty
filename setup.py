@@ -32,8 +32,25 @@ if sys.version_info[:2] < (3, 8):
 src_base = os.path.dirname(os.path.abspath(__file__))
 
 verbose = False
-build_dir = 'build'
-constants = os.path.join('kitty', 'constants.py')
+
+build_base = os.getcwd()
+build_dir = os.path.join(build_base, 'build')
+os.makedirs(build_dir, exist_ok=True)
+kitty_dir = os.path.join(build_base, 'kitty')
+os.makedirs(kitty_dir, exist_ok=True)
+tools_dir = os.path.join(build_base, 'tools')
+
+# when doing an out-of-tree build,
+# to support building go source with generated (out-of-tree) go source,
+# we need to copy in-tree (src_base) go source to out-of-tree (build_base) directory
+if not os.path.exists(tools_dir):
+    shutil.copytree(os.path.join(src_base, 'tools'), tools_dir)
+if not os.path.exists(os.path.join(build_base, 'go.mod')):
+    shutil.copy(os.path.join(src_base, 'go.mod'), build_base)
+if not os.path.exists(os.path.join(build_base, 'go.sum')):
+    shutil.copy(os.path.join(src_base, 'go.sum'), build_base)
+
+constants = os.path.join(src_base, 'kitty', 'constants.py')
 with open(constants, 'rb') as f:
     constants = f.read().decode('utf-8')
 appname = re.search(r"^appname: str = '([^']+)'", constants, re.MULTILINE).group(1)  # type: ignore
@@ -68,7 +85,7 @@ class Options(argparse.Namespace):
     profile: bool = False
     libdir_name: str = 'lib'
     extra_logging: List[str] = []
-    extra_include_dirs: List[str] = []
+    extra_include_dirs: List[str] = [kitty_dir]
     extra_library_dirs: List[str] = []
     link_time_optimization: bool = 'KITTY_NO_LTO' not in os.environ
     update_check_interval: float = 24.0
@@ -482,7 +499,6 @@ def kitty_env() -> Env:
     if '-lz' not in ans.ldpaths:
         ans.ldpaths.append('-lz')
 
-    os.makedirs(build_dir, exist_ok=True)
     return ans
 
 
@@ -849,7 +865,7 @@ def extract_rst_targets() -> Dict[str, Dict[str, str]]:
 def build_ref_map() -> str:
     d = extract_rst_targets()
     h = 'static const char docs_ref_map[] = {\n' + textwrap.fill(', '.join(map(str, bytearray(json.dumps(d).encode('utf-8'))))) + '\n};\n'
-    dest = 'kitty/docs_ref_map_generated.h'
+    dest = os.path.join(kitty_dir, 'docs_ref_map_generated.h')
     q = ''
     with suppress(FileNotFoundError), open(dest) as f:
         q = f.read()
@@ -879,7 +895,7 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
     # update all the various auto-generated go files, if needed
     if args.verbose:
         print('Updating Go generated files...', flush=True)
-    cp = subprocess.run([kitty_exe, '+launch', os.path.join(src_base, 'gen-go-code.py')], stdout=subprocess.PIPE)
+    cp = subprocess.run([kitty_exe, '+launch', os.path.join(src_base, 'gen-go-code.py'), build_base], stdout=subprocess.PIPE)
     if cp.returncode != 0:
         raise SystemExit(cp.returncode)
 
@@ -900,7 +916,7 @@ def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False,
         ld_flags.append('-w')
     cmd += ['-ldflags', ' '.join(ld_flags)]
     dest = os.path.join(launcher_dir, 'kitty-tool')
-    src = os.path.abspath('tools/cmd')
+    src = os.path.join(tools_dir, 'cmd')
 
     def run_one(dest: str, **env: str) -> None:
         c = cmd + ['-o', dest, src]
@@ -910,7 +926,7 @@ def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False,
         e.update(env)
         if build_static:
             e['CGO_ENABLED'] = '0'
-        cp = subprocess.run(c, env=e)
+        cp = subprocess.run(c, env=e, cwd=build_base)
         if cp.returncode != 0:
             raise SystemExit(cp.returncode)
 
@@ -1464,7 +1480,7 @@ def clean() -> None:
         'build', 'compile_commands.json', 'link_commands.json',
         'linux-package', 'kitty.app', 'asan-launcher',
         'kitty-profile', 'docs/generated')
-    clean_launcher_dir('kitty/launcher')
+    clean_launcher_dir(os.path.join(kitty_dir, 'launcher'))
 
     def excluded(root: str, d: str) -> bool:
         q = os.path.relpath(os.path.join(root, d), src_base).replace(os.sep, '/')
@@ -1680,7 +1696,7 @@ def main() -> None:
     verbose = args.verbose > 0
     args.prefix = os.path.abspath(args.prefix)
     os.chdir(src_base)
-    launcher_dir = 'kitty/launcher'
+    launcher_dir = os.path.join(kitty_dir, 'launcher')
 
     if args.action == 'test':
         texe = os.path.abspath(os.path.join(launcher_dir, 'kitty'))
