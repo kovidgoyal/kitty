@@ -34,8 +34,8 @@ sys.path.insert(0, base)
 del sys.path[0]
 
 verbose = False
-build_dir = 'build'
-constants = os.path.join('kitty', 'constants.py')
+build_dir = os.path.join(os.getcwd(), 'build')
+constants = os.path.join(base, 'kitty', 'constants.py')
 with open(constants, 'rb') as f:
     constants = f.read().decode('utf-8')
 appname = re.search(r"^appname: str = '([^']+)'", constants, re.MULTILINE).group(1)  # type: ignore
@@ -1406,7 +1406,7 @@ def clean() -> None:
         'build', 'compile_commands.json', 'link_commands.json',
         'linux-package', 'kitty.app', 'asan-launcher',
         'kitty-profile', 'docs/generated')
-    clean_launcher_dir('kitty/launcher')
+    clean_launcher_dir(os.path.join(build_dir, 'kitty/launcher'))
 
     def excluded(root: str, d: str) -> bool:
         q = os.path.relpath(os.path.join(root, d), base).replace(os.sep, '/')
@@ -1622,12 +1622,12 @@ def main() -> None:
     args.prefix = os.path.abspath(args.prefix)
     os.chdir(base)
     if args.action == 'test':
-        texe = os.path.abspath('kitty/launcher/kitty')
+        texe = os.path.join(build_dir, 'kitty/launcher/kitty')
         os.execl(texe, texe, '+launch', 'test.py')
     if args.action == 'clean':
         clean()
         return
-    launcher_dir = 'kitty/launcher'
+    launcher_dir = os.path.join(build_dir, 'kitty/launcher')
 
     with CompilationDatabase(args.incremental) as cdb:
         args.compilation_database = cdb
