@@ -4,6 +4,7 @@ package readline
 
 import (
 	"fmt"
+	"strings"
 
 	"kitty/tools/tui/loop"
 	"kitty/tools/wcswidth"
@@ -59,7 +60,8 @@ type Readline struct {
 	// Input lines
 	lines []string
 	// The cursor position in the text
-	cursor Position
+	cursor                 Position
+	bracketed_paste_buffer strings.Builder
 }
 
 func New(loop *loop.Loop, r RlInit) *Readline {
@@ -127,6 +129,15 @@ func (self *Readline) OnKeyEvent(event *loop.KeyEvent) error {
 }
 
 func (self *Readline) OnText(text string, from_key_event bool, in_bracketed_paste bool) error {
+	if in_bracketed_paste {
+		self.bracketed_paste_buffer.WriteString(text)
+		return nil
+	}
+	if self.bracketed_paste_buffer.Len() > 0 {
+		self.bracketed_paste_buffer.WriteString(text)
+		text = self.bracketed_paste_buffer.String()
+		self.bracketed_paste_buffer.Reset()
+	}
 	self.add_text(text)
 	return nil
 }

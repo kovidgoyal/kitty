@@ -31,6 +31,7 @@ func new_loop() *Loop {
 	l.escape_code_parser.HandleSOS = l.handle_sos
 	l.escape_code_parser.HandlePM = l.handle_pm
 	l.escape_code_parser.HandleRune = l.handle_rune
+	l.escape_code_parser.HandleEndOfBracketedPaste = l.handle_end_of_bracketed_paste
 	return &l
 }
 
@@ -126,6 +127,12 @@ func (self *Loop) handle_rune(raw rune) error {
 		return self.OnText(string(raw), false, self.escape_code_parser.InBracketedPaste())
 	}
 	return nil
+}
+
+func (self *Loop) handle_end_of_bracketed_paste() {
+	if self.OnText != nil {
+		self.OnText("", false, false)
+	}
 }
 
 func (self *Loop) on_signal(s unix.Signal) error {
