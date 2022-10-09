@@ -9,55 +9,57 @@ ifdef FAIL_WARN
 export FAIL_WARN
 endif
 
-all:
-	python3 setup.py $(VVAL)
+THIS_MAKEFILE_DIR=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 
-test:
-	python3 setup.py $(VVAL) test
+all: setup.py
+	python3 $< $(VVAL)
 
-clean:
-	python3 setup.py $(VVAL) clean
+test: setup.py
+	python3 $< $(VVAL) test
+
+clean: setup.py
+	python3 $< $(VVAL) clean
 
 # A debug build
-debug:
-	python3 setup.py build $(VVAL) --debug
+debug: setup.py
+	python3 $< build $(VVAL) --debug
 
-debug-event-loop:
-	python3 setup.py build $(VVAL) --debug --extra-logging=event-loop
+debug-event-loop: setup.py
+	python3 $< build $(VVAL) --debug --extra-logging=event-loop
 
 # Build with the ASAN and UBSAN sanitizers
-asan:
-	python3 setup.py build $(VVAL) --debug --sanitize
+asan: setup.py
+	python3 $< build $(VVAL) --debug --sanitize
 
-profile:
-	python3 setup.py build $(VVAL) --profile
+profile: setup.py
+	python3 $< build $(VVAL) --profile
 
-app:
-	python3 setup.py kitty.app $(VVAL)
+app: setup.py
+	python3 $< kitty.app $(VVAL)
 
-linux-package: FORCE
-	rm -rf linux-package
-	python3 setup.py linux-package
+linux-package: setup.py FORCE
+	rm -rf $(CURDIR)/linux-package
+	python3 $< linux-package
 
 FORCE:
 
 man:
-	$(MAKE) -C docs man
+	$(MAKE) -C $(THIS_MAKEFILE_DIR)docs man BUILDDIR=$(CURDIR)/docs/_build
 
 html:
-	$(MAKE) -C docs html
+	$(MAKE) -C $(THIS_MAKEFILE_DIR)docs html BUILDDIR=$(CURDIR)/docs/_build
 
 dirhtml:
-	$(MAKE) -C docs dirhtml
+	$(MAKE) -C $(THIS_MAKEFILE_DIR)docs dirhtml BUILDDIR=$(CURDIR)/docs/_build
 
 linkcheck:
-	$(MAKE) -C docs linkcheck
+	$(MAKE) -C $(THIS_MAKEFILE_DIR)docs linkcheck BUILDDIR=$(CURDIR)/docs/_build
 
-website:
-	./publish.py --only website
+website: publish.py
+	$< --only website
 
 docs: man html
 
 
 develop-docs:
-	$(MAKE) -C docs develop-docs
+	$(MAKE) -C $(THIS_MAKEFILE_DIR)docs develop-docs BUILDDIR=$(CURDIR)/docs/_build

@@ -34,8 +34,13 @@ sys.path.insert(0, base)
 del sys.path[0]
 
 verbose = False
-build_dir = 'build'
-constants = os.path.join('kitty', 'constants.py')
+base_dir = os.getcwd()
+build_dir = os.path.join(base_dir, 'build')
+kitty_dir = os.path.join(base_dir, 'kitty')
+with suppress(FileExistsError):
+    os.mkdir(build_dir)
+    os.mkdir(kitty_dir)
+constants = os.path.join(base, 'kitty', 'constants.py')
 with open(constants, 'rb') as f:
     constants = f.read().decode('utf-8')
 appname = re.search(r"^appname: str = '([^']+)'", constants, re.MULTILINE).group(1)  # type: ignore
@@ -70,7 +75,7 @@ class Options(argparse.Namespace):
     profile: bool = False
     libdir_name: str = 'lib'
     extra_logging: List[str] = []
-    extra_include_dirs: List[str] = []
+    extra_include_dirs: List[str] = [kitty_dir]
     extra_library_dirs: List[str] = []
     link_time_optimization: bool = 'KITTY_NO_LTO' not in os.environ
     update_check_interval: float = 24.0
@@ -482,8 +487,6 @@ def kitty_env() -> Env:
     if '-lz' not in ans.ldpaths:
         ans.ldpaths.append('-lz')
 
-    with suppress(FileExistsError):
-        os.mkdir(build_dir)
     return ans
 
 
@@ -849,7 +852,7 @@ def extract_rst_targets() -> Dict[str, Dict[str, str]]:
 def build_ref_map() -> str:
     d = extract_rst_targets()
     h = 'static const char docs_ref_map[] = {\n' + textwrap.fill(', '.join(map(str, bytearray(json.dumps(d).encode('utf-8'))))) + '\n};\n'
-    dest = 'kitty/docs_ref_map_generated.h'
+    dest = os.path.join(kitty_dir, 'docs_ref_map_generated.h')
     q = ''
     with suppress(FileNotFoundError), open(dest) as f:
         q = f.read()
@@ -1406,7 +1409,7 @@ def clean() -> None:
         'build', 'compile_commands.json', 'link_commands.json',
         'linux-package', 'kitty.app', 'asan-launcher',
         'kitty-profile', 'docs/generated')
-    clean_launcher_dir('kitty/launcher')
+    clean_launcher_dir(os.path.join(kitty_dir, 'launcher'))
 
     def excluded(root: str, d: str) -> bool:
         q = os.path.relpath(os.path.join(root, d), base).replace(os.sep, '/')
@@ -1622,12 +1625,12 @@ def main() -> None:
     args.prefix = os.path.abspath(args.prefix)
     os.chdir(base)
     if args.action == 'test':
-        texe = os.path.abspath('kitty/launcher/kitty')
+        texe = os.path.join(kitty_dir, 'launcher/kitty')
         os.execl(texe, texe, '+launch', 'test.py')
     if args.action == 'clean':
         clean()
         return
-    launcher_dir = 'kitty/launcher'
+    launcher_dir = os.path.join(kitty_dir, 'launcher')
 
     with CompilationDatabase(args.incremental) as cdb:
         args.compilation_database = cdb
