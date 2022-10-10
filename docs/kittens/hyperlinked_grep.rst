@@ -17,12 +17,12 @@ following contents:
     # by the hyperlink_grep kitten and nothing else so far.
     protocol file
     fragment_matches [0-9]+
-    action launch --type=overlay vim +${FRAGMENT} ${FILE_PATH}
+    action launch --type=overlay --cwd=current vim +${FRAGMENT} ${FILE_PATH}
 
     # Open text files without fragments in the editor
     protocol file
     mime text/*
-    action launch --type=overlay ${EDITOR} ${FILE_PATH}
+    action launch --type=overlay --cwd=current ${EDITOR} ${FILE_PATH}
 
 Now, run a search with::
 
