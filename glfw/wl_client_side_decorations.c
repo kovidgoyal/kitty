@@ -104,9 +104,10 @@ init_buffer_pair(_GLFWWaylandBufferPair *pair, size_t width, size_t height, unsi
 
 static bool
 window_has_buffer(_GLFWwindow *window, struct wl_buffer *q) {
-#define Q(which) decs.which.buffer.a == q || decs.which.buffer.b == q
-    return Q(left) || Q(top) || Q(right) || Q(bottom);
+#define Q(which) if (decs.which.buffer.a == q) { decs.which.buffer.a_needs_to_be_destroyed = false; return true; } if (decs.which.buffer.b == q) { decs.which.buffer.b_needs_to_be_destroyed = false; return true; }
+    Q(left); Q(top); Q(right); Q(bottom);
 #undef Q
+    return false;
 }
 
 static void
@@ -122,10 +123,12 @@ static void
 alloc_buffer_pair(uintptr_t window_id, _GLFWWaylandBufferPair *pair, struct wl_shm_pool *pool, uint8_t *data, size_t *offset) {
     pair->data.a = data + *offset;
     pair->a = wl_shm_pool_create_buffer(pool, *offset, pair->width, pair->height, pair->stride, WL_SHM_FORMAT_ARGB8888);
+    pair->a_needs_to_be_destroyed = true;
     wl_buffer_add_listener(pair->a, &handle_buffer_events, (void*)window_id);
     *offset += pair->size_in_bytes;
     pair->data.b = data + *offset;
     pair->b = wl_shm_pool_create_buffer(pool, *offset, pair->width, pair->height, pair->stride, WL_SHM_FORMAT_ARGB8888);
+    pair->b_needs_to_be_destroyed = true;
     wl_buffer_add_listener(pair->b, &handle_buffer_events, (void*)window_id);
     *offset += pair->size_in_bytes;
     pair->front = pair->a; pair->back = pair->b;
@@ -331,6 +334,8 @@ free_csd_surfaces(_GLFWwindow *window) {
 static void
 free_csd_buffers(_GLFWwindow *window) {
 #define d(which) { \
+    if (decs.which.buffer.a_needs_to_be_destroyed && decs.which.buffer.a) wl_buffer_destroy(decs.which.buffer.a); \
+    if (decs.which.buffer.b_needs_to_be_destroyed && decs.which.buffer.b) wl_buffer_destroy(decs.which.buffer.b); \
     memset(&decs.which.buffer, 0, sizeof(_GLFWWaylandBufferPair)); \
 }
     d(left); d(top); d(right); d(bottom);
@@ -353,9 +358,10 @@ create_csd_surfaces(_GLFWwindow *window, _GLFWWaylandCSDEdge *s) {
 }
 
 #define damage_csd(which, xbuffer) \
-    wl_surface_attach(decs.which.surface, xbuffer, 0, 0); \
+    wl_surface_attach(decs.which.surface, (xbuffer), 0, 0); \
     wl_surface_damage(decs.which.surface, 0, 0, decs.which.buffer.width, decs.which.buffer.height); \
-    wl_surface_commit(decs.which.surface)
+    wl_surface_commit(decs.which.surface); \
+    if (decs.which.buffer.a == (xbuffer)) { decs.which.buffer.a_needs_to_be_destroyed = false; } else { decs.which.buffer.b_needs_to_be_destroyed = false; }
 
 bool
 ensure_csd_resources(_GLFWwindow *window) {

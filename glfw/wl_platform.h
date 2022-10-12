@@ -104,6 +104,7 @@ typedef struct _GLFWWaylandBufferPair {
     struct { uint8_t *a, *b, *front, *back; } data;
     bool has_pending_update;
     size_t size_in_bytes, width, height, stride;
+    bool a_needs_to_be_destroyed, b_needs_to_be_destroyed;
 } _GLFWWaylandBufferPair;
 
 typedef struct _GLFWWaylandCSDEdge {

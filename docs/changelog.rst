@@ -54,6 +54,8 @@ Detailed list of changes
 
 - Update to Unicode 15.0 (:pull:`5542`)
 
+- GNOME Wayland: Fix a memory leak in gnome-shell when using client side decorations
+
 
 0.26.3 [2022-09-22]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
