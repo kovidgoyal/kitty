@@ -89,6 +89,10 @@ func (self *Option) FormatOption(output io.Writer, formatter *markup.Context, sc
 }
 
 func (self *Command) ShowHelp() {
+	self.ShowHelpWithCommandString(strings.TrimSpace(self.CommandStringForUsage()))
+}
+
+func (self *Command) ShowHelpWithCommandString(cs string) {
 	formatter := markup.New(tty.IsTerminal(os.Stdout.Fd()))
 	screen_width := 80
 	if formatter.EscapeCodesAllowed() {
@@ -106,8 +110,7 @@ func (self *Command) ShowHelp() {
 	}
 	var output strings.Builder
 
-	fmt.Fprintln(&output, formatter.Title("Usage")+":", formatter.Exe(strings.TrimSpace(self.CommandStringForUsage())),
-		strings.TrimSpace(formatter.Prettify(self.Usage)))
+	fmt.Fprintln(&output, formatter.Title("Usage")+":", formatter.Exe(cs), strings.TrimSpace(formatter.Prettify(self.Usage)))
 	fmt.Fprintln(&output)
 	if self.HelpText != "" {
 		format_with_indent(&output, formatter.Prettify(prepare_help_text_for_display(self.HelpText)), "", screen_width)

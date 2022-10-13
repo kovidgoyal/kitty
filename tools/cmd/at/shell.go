@@ -95,6 +95,21 @@ func shell_loop(rl *readline.Readline, kill_if_signaled bool) (int, error) {
 	return 0, nil
 }
 
+func print_basic_help() {
+	fmt.Println("Control kitty by sending it commands.")
+	fmt.Println()
+	fmt.Println(formatter.Title("Commands") + ":")
+	r := EntryPoint(cli.NewRootCommand())
+	for _, g := range r.SubCommandGroups {
+		for _, sc := range g.SubCommands {
+			fmt.Println(" ", formatter.Green(sc.Name))
+			fmt.Println("   ", sc.ShortDescription)
+		}
+	}
+	fmt.Println(" ", formatter.Green("exit"))
+	fmt.Println("   ", "Exit this shell")
+}
+
 func exec_command(cmdline string) bool {
 	parsed_cmdline, err := shlex.Split(cmdline)
 	if err != nil {
@@ -107,6 +122,26 @@ func exec_command(cmdline string) bool {
 	switch parsed_cmdline[0] {
 	case "exit":
 		return false
+	case "help":
+		if len(parsed_cmdline) == 1 {
+			print_basic_help()
+			return true
+		}
+		switch parsed_cmdline[1] {
+		case "exit":
+			fmt.Println("Exit this shell")
+		case "help":
+			fmt.Println("Show help")
+		default:
+			r := EntryPoint(cli.NewRootCommand())
+			sc := r.FindSubCommand(parsed_cmdline[1])
+			if sc == nil {
+				fmt.Fprintln(os.Stderr, "No command named", formatter.BrightRed(parsed_cmdline[1]), ". Type help for a list of commands")
+			} else {
+				sc.ShowHelpWithCommandString(sc.Name)
+			}
+		}
+		return true
 	}
 	return true
 }
