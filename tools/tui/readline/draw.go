@@ -13,7 +13,11 @@ func (self *Readline) write_line_with_prompt(line, prompt string, screen_width i
 	self.loop.QueueWriteString(prompt)
 	self.loop.QueueWriteString(line)
 	w := wcswidth.Stringwidth(prompt) + wcswidth.Stringwidth(line)
-	return w / screen_width
+	num_lines := w / screen_width
+	if w%screen_width == 0 {
+		num_lines--
+	}
+	return num_lines
 }
 
 func (self *Readline) move_cursor_to_text_position(pos, screen_width int) int {
@@ -26,18 +30,21 @@ func (self *Readline) move_cursor_to_text_position(pos, screen_width int) int {
 }
 
 func (self *Readline) redraw() {
-	if self.cursor_y > 0 {
-		self.loop.MoveCursorVertically(-self.cursor_y)
-	}
-	self.loop.QueueWriteString("\r")
-	self.loop.ClearToEndOfScreen()
-	line_with_cursor := 0
 	screen_size, err := self.loop.ScreenSize()
 	if err != nil {
 		screen_size.WidthCells = 80
 		screen_size.HeightCells = 24
 	}
 	screen_width := int(screen_size.WidthCells)
+	if screen_width < 4 {
+		return
+	}
+	if self.cursor_y > 0 {
+		self.loop.MoveCursorVertically(-self.cursor_y)
+	}
+	self.loop.QueueWriteString("\r")
+	self.loop.ClearToEndOfScreen()
+	line_with_cursor := 0
 	y := 0
 	for i, line := range self.lines {
 		p := self.prompt
