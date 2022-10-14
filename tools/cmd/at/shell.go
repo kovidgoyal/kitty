@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/google/shlex"
@@ -142,6 +143,22 @@ func exec_command(cmdline string) bool {
 			}
 		}
 		return true
+	default:
+		exe, err := os.Executable()
+		if err != nil {
+			exe, err = exec.LookPath("kitty-tool")
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Could not find the kitty-tool executable")
+				return false
+			}
+		}
+		cmdline := []string{"kitty-tool", "@"}
+		cmdline = append(cmdline, parsed_cmdline...)
+		cmd := exec.Cmd{Path: exe, Args: cmdline, Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr}
+		err = cmd.Run()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
 	}
 	return true
 }
