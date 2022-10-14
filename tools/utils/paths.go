@@ -102,6 +102,28 @@ func ConfigDir() string {
 	return config_dir
 }
 
+var cache_dir string
+
+func CacheDir() string {
+	if cache_dir != "" {
+		return cache_dir
+	}
+	candidate := ""
+	if edir := os.Getenv("KITTY_CACHE_DIRECTORY"); edir != "" {
+		candidate = Abspath(Expanduser(edir))
+	} else if runtime.GOOS == "darwin" {
+		candidate = Expanduser("~/Library/Caches/kitty")
+	} else {
+		candidate = os.Getenv("XDG_CACHE_HOME")
+		if candidate == "" {
+			candidate = "~/.cache"
+		}
+		candidate = filepath.Join(Expanduser(candidate), "kitty")
+	}
+	os.MkdirAll(candidate, 0o755)
+	return candidate
+}
+
 type Walk_callback func(path, abspath string, d fs.DirEntry, err error) error
 
 func transform_symlink(path string) string {

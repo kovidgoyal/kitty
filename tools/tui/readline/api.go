@@ -17,6 +17,8 @@ const PROMPT_MARK = "\x1b]133;"
 
 type RlInit struct {
 	Prompt                  string
+	HistoryPath             string
+	HistoryCount            int
 	ContinuationPrompt      string
 	EmptyContinuationPrompt bool
 	DontMarkPrompts         bool
@@ -54,6 +56,7 @@ type Readline struct {
 	continuation_prompt_len int
 	mark_prompts            bool
 	loop                    *loop.Loop
+	history                 *History
 
 	// The number of lines after the initial line on the screen
 	cursor_y int
@@ -65,9 +68,13 @@ type Readline struct {
 }
 
 func New(loop *loop.Loop, r RlInit) *Readline {
+	hc := r.HistoryCount
+	if hc == 0 {
+		hc = 8192
+	}
 	ans := &Readline{
 		prompt: r.Prompt, prompt_len: wcswidth.Stringwidth(r.Prompt), mark_prompts: !r.DontMarkPrompts,
-		loop: loop, lines: []string{""},
+		loop: loop, lines: []string{""}, history: NewHistory(r.HistoryPath, hc),
 	}
 	if r.ContinuationPrompt != "" || !r.EmptyContinuationPrompt {
 		ans.continuation_prompt = r.ContinuationPrompt
@@ -81,6 +88,14 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 		ans.continuation_prompt = PROMPT_MARK + "A;k=s" + ST + ans.continuation_prompt
 	}
 	return ans
+}
+
+func (self *Readline) Shutdown() {
+	self.history.Shutdown()
+}
+
+func (self *Readline) AddHistoryItem(hi HistoryItem) {
+	self.history.add_item(hi)
 }
 
 func (self *Readline) ChangeLoopAndResetText(lp *loop.Loop) {
