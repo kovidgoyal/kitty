@@ -1093,7 +1093,9 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                 } else IF_SIMPLE_PREFIX("edit|", handle_remote_edit)
 #undef IF_SIMPLE_PREFIX
                 } else {
-                    REPORT_ERROR("Unrecognized DCS @ code: 0x%x", screen->parser_buf[1]);
+                    PyObject *tp = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf, screen->parser_buf_pos);
+                    REPORT_ERROR("Unrecognized DCS @ code: %s", tp ? PyUnicode_AsUTF8(tp) : "could not read");
+                    Py_XDECREF(tp);
                 }
             }
             break;
