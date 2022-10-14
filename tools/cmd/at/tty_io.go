@@ -85,10 +85,11 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 			}
 			return "", err
 		}
-		queue_escape_code(chunk)
 		if len(chunk) == 0 {
 			state = WAITING_FOR_RESPONSE
 			transition_to_read()
+		} else {
+			queue_escape_code(chunk)
 		}
 		return "", nil
 	}
@@ -104,10 +105,11 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 			}
 			return err
 		}
-		queue_escape_code(chunk)
 		if len(chunk) == 0 {
 			state = WAITING_FOR_RESPONSE
 			transition_to_read()
+		} else {
+			queue_escape_code(chunk)
 		}
 		if state == BEFORE_FIRST_ESCAPE_CODE_SENT {
 			if wants_streaming {
