@@ -1696,11 +1696,13 @@ class Boss:
 
     @ac('misc', 'Run the kitty shell to control kitty with commands')
     def kitty_shell(self, window_type: str = 'window') -> None:
-        kw: Dict[str, Any] = {}
+        kw: Dict[str, Any] = dict(env={})
         cmd = [kitty_exe(), '@']
         aw = self.active_window
         if aw is not None:
-            kw['env'] = {'KITTY_SHELL_ACTIVE_WINDOW_ID': str(aw.id)}
+            kw['env']['KITTY_SHELL_ACTIVE_WINDOW_ID'] = str(aw.id)
+        if self.active_tab is not None:
+            kw['env']['KITTY_SHELL_ACTIVE_TAB_ID'] = str(self.active_tab.id)
         if window_type == 'tab':
             tab = self._new_tab(SpecialWindow(cmd, **kw))
             if tab is not None:
