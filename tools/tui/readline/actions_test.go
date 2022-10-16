@@ -70,7 +70,7 @@ func TestGetScreenLines(t *testing.T) {
 			actual[i] = *x
 		}
 		if diff := cmp.Diff(expected, actual); diff != "" {
-			t.Fatalf("Did not get expected screen lines for: %#v\n%s", rl.AllText(), diff)
+			t.Fatalf("Did not get expected screen lines for: %#v and cursor: %+v\n%s", rl.AllText(), rl.cursor, diff)
 		}
 	}
 	tsl(ScreenLine{PromptLen: 3, CursorCell: 3})
@@ -82,6 +82,43 @@ func TestGetScreenLines(t *testing.T) {
 	tsl(
 		ScreenLine{PromptLen: 3, CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
 		ScreenLine{OffsetInParentLine: 7},
+	)
+	rl.add_text("89")
+	tsl(
+		ScreenLine{PromptLen: 3, CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
+		ScreenLine{OffsetInParentLine: 7, Text: "89", CursorCell: 2, TextLengthInCells: 2, CursorTextPos: 2},
+	)
+	rl.ResetText()
+	rl.add_text("123\n456abcdeXYZ")
+	tsl(
+		ScreenLine{PromptLen: 3, CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
+		ScreenLine{ParentLineNumber: 1, PromptLen: 2, Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
+		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: 3, CursorTextPos: 3, Text: "XYZ"},
+	)
+	rl.cursor = Position{X: 2}
+	tsl(
+		ScreenLine{PromptLen: 3, CursorCell: 5, Text: "123", CursorTextPos: 2, TextLengthInCells: 3},
+		ScreenLine{ParentLineNumber: 1, PromptLen: 2, Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
+		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: -1, CursorTextPos: -1, Text: "XYZ"},
+	)
+	rl.cursor = Position{X: 2, Y: 1}
+	tsl(
+		ScreenLine{PromptLen: 3, CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
+		ScreenLine{ParentLineNumber: 1, PromptLen: 2, Text: "456abcde", TextLengthInCells: 8, CursorCell: 4, CursorTextPos: 2},
+		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: -1, CursorTextPos: -1, Text: "XYZ"},
+	)
+	rl.cursor = Position{X: 8, Y: 1}
+	tsl(
+		ScreenLine{PromptLen: 3, CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
+		ScreenLine{ParentLineNumber: 1, PromptLen: 2, Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
+		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: 0, CursorTextPos: 0, Text: "XYZ"},
+	)
+	rl.ResetText()
+	rl.add_text("1234567\nabc")
+	rl.cursor = Position{X: 7}
+	tsl(
+		ScreenLine{PromptLen: 3, CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
+		ScreenLine{ParentLineNumber: 1, PromptLen: 2, Text: "abc", CursorCell: 2, TextLengthInCells: 3, CursorTextPos: 0},
 	)
 }
 

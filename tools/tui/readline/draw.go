@@ -36,6 +36,7 @@ func (self *Readline) get_screen_lines() []*ScreenLine {
 	}
 	ans := make([]*ScreenLine, 0, len(self.lines))
 	found_cursor := false
+	cursor_at_start_of_next_line := false
 	for i, line := range self.lines {
 		plen := self.prompt_len
 		if i > 0 {
@@ -50,20 +51,28 @@ func (self *Readline) get_screen_lines() []*ScreenLine {
 				PromptLen: plen, TextLengthInCells: width,
 				CursorCell: -1, Text: l, CursorTextPos: -1,
 			}
+			if cursor_at_start_of_next_line {
+				cursor_at_start_of_next_line = false
+				sl.CursorCell = plen
+				sl.CursorTextPos = 0
+			}
 			ans = append(ans, &sl)
 			if has_cursor && !found_cursor && offset <= self.cursor.X && self.cursor.X <= offset+len(l) {
 				found_cursor = true
 				ctpos := self.cursor.X - offset
 				ccell := plen + wcswidth.Stringwidth(l[:ctpos])
 				if ccell >= self.screen_width {
-					ans = append(ans, &ScreenLine{OffsetInParentLine: len(line)})
+					if offset+len(l) < len(line) || i < len(self.lines)-1 {
+						cursor_at_start_of_next_line = true
+					} else {
+						ans = append(ans, &ScreenLine{ParentLineNumber: i, OffsetInParentLine: len(line)})
+					}
 				} else {
 					sl.CursorTextPos = ctpos
 					sl.CursorCell = ccell
 				}
 			}
 			plen = 0
-			is_first = false
 			offset += len(l)
 		}
 	}

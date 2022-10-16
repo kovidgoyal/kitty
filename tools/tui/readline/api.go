@@ -105,11 +105,15 @@ func (self *Readline) AddHistoryItem(hi HistoryItem) {
 	self.history.add_item(hi)
 }
 
-func (self *Readline) ChangeLoopAndResetText(lp *loop.Loop) {
-	self.loop = lp
+func (self *Readline) ResetText() {
 	self.lines = []string{""}
 	self.cursor = Position{}
 	self.cursor_y = 0
+}
+
+func (self *Readline) ChangeLoopAndResetText(lp *loop.Loop) {
+	self.loop = lp
+	self.ResetText()
 }
 
 func (self *Readline) Start() {
