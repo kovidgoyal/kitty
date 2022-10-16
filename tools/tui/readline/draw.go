@@ -9,26 +9,6 @@ import (
 
 var _ = fmt.Print
 
-func (self *Readline) write_line_with_prompt(line, prompt string, screen_width int) int {
-	self.loop.QueueWriteString(prompt)
-	self.loop.QueueWriteString(line)
-	w := wcswidth.Stringwidth(prompt) + wcswidth.Stringwidth(line)
-	num_lines := w / screen_width
-	if w%screen_width == 0 {
-		num_lines--
-	}
-	return num_lines
-}
-
-func (self *Readline) move_cursor_to_text_position(pos, screen_width int) int {
-	num_of_lines := pos / screen_width
-	self.loop.MoveCursorVertically(num_of_lines)
-	self.loop.QueueWriteString("\r")
-	x := pos % screen_width
-	self.loop.MoveCursorHorizontally(x)
-	return num_of_lines
-}
-
 func (self *Readline) update_current_screen_size() {
 	screen_size, err := self.loop.ScreenSize()
 	if err != nil {
@@ -44,6 +24,52 @@ func (self *Readline) update_current_screen_size() {
 	self.screen_width = int(screen_size.WidthCells)
 }
 
+type ScreenLine struct {
+	ParentLineNumber, OffsetInParentLine, PromptLen int
+	TextLengthInCells, CursorCell, CursorTextPos    int
+	Text                                            string
+}
+
+func (self *Readline) get_screen_lines() []*ScreenLine {
+	if self.screen_width == 0 {
+		self.update_current_screen_size()
+	}
+	ans := make([]*ScreenLine, 0, len(self.lines))
+	found_cursor := false
+	for i, line := range self.lines {
+		plen := self.prompt_len
+		if i > 0 {
+			plen = self.continuation_prompt_len
+		}
+		offset := 0
+		has_cursor := i == self.cursor.Y
+		for is_first := true; is_first || offset < len(line); is_first = false {
+			l, width := wcswidth.TruncateToVisualLengthWithWidth(line[offset:], self.screen_width-plen)
+			sl := ScreenLine{
+				ParentLineNumber: i, OffsetInParentLine: offset,
+				PromptLen: plen, TextLengthInCells: width,
+				CursorCell: -1, Text: l, CursorTextPos: -1,
+			}
+			ans = append(ans, &sl)
+			if has_cursor && !found_cursor && offset <= self.cursor.X && self.cursor.X <= offset+len(l) {
+				found_cursor = true
+				ctpos := self.cursor.X - offset
+				ccell := plen + wcswidth.Stringwidth(l[:ctpos])
+				if ccell >= self.screen_width {
+					ans = append(ans, &ScreenLine{OffsetInParentLine: len(line)})
+				} else {
+					sl.CursorTextPos = ctpos
+					sl.CursorCell = ccell
+				}
+			}
+			plen = 0
+			is_first = false
+			offset += len(l)
+		}
+	}
+	return ans
+}
+
 func (self *Readline) redraw() {
 	if self.screen_width == 0 {
 		self.update_current_screen_size()
@@ -56,26 +82,36 @@ func (self *Readline) redraw() {
 	}
 	self.loop.QueueWriteString("\r")
 	self.loop.ClearToEndOfScreen()
-	line_with_cursor := 0
-	y := 0
-	for i, line := range self.lines {
-		p := self.prompt
+	cursor_x := -1
+	cursor_y := 0
+	move_cursor_up_by := 0
+	self.loop.AllowLineWrapping(false)
+	for i, sl := range self.get_screen_lines() {
+		self.loop.QueueWriteString("\r")
 		if i > 0 {
-			y += 1
-			self.loop.QueueWriteString("\r\n")
-			p = self.continuation_prompt
+			self.loop.QueueWriteString("\n")
 		}
-		if i == self.cursor.Y {
-			line_with_cursor = y
+		if sl.PromptLen > 0 {
+			if i == 0 {
+				self.loop.QueueWriteString(self.prompt)
+			} else {
+				self.loop.QueueWriteString(self.continuation_prompt)
+			}
 		}
-		y += self.write_line_with_prompt(line, p, self.screen_width)
+		self.loop.QueueWriteString(sl.Text)
+		if sl.CursorCell > -1 {
+			cursor_x = sl.CursorCell
+		} else if cursor_x > -1 {
+			move_cursor_up_by++
+		}
+		cursor_y++
 	}
-	self.loop.MoveCursorVertically(-y + line_with_cursor)
-	line := self.lines[self.cursor.Y]
-	plen := self.prompt_len
-	if self.cursor.Y > 0 {
-		plen = self.continuation_prompt_len
+	self.loop.AllowLineWrapping(true)
+	self.loop.MoveCursorVertically(-move_cursor_up_by)
+	self.loop.QueueWriteString("\r")
+	self.loop.MoveCursorHorizontally(cursor_x)
+	self.cursor_y = 0
+	if cursor_y > 0 {
+		self.cursor_y = cursor_y - 1
 	}
-	line_with_cursor += self.move_cursor_to_text_position(plen+wcswidth.Stringwidth(line[:self.cursor.X]), self.screen_width)
-	self.cursor_y = line_with_cursor
 }

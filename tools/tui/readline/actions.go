@@ -162,6 +162,33 @@ func (self *Readline) move_cursor_right(amt uint, traverse_line_breaks bool) uin
 	return amt_moved
 }
 
+func move_up_one_line(self *Readline) bool {
+	return false
+}
+
+func (self *Readline) move_cursor_up(amt uint) uint {
+	ans := uint(0)
+	if self.screen_width == 0 {
+		self.update_current_screen_size()
+	}
+	for ans < amt {
+		if move_up_one_line(self) {
+			ans++
+		} else {
+			break
+		}
+	}
+	return ans
+}
+
+func (self *Readline) move_cursor_down(amt uint) uint {
+	ans := uint(0)
+	if self.screen_width == 0 {
+		self.update_current_screen_size()
+	}
+	return ans
+}
+
 func (self *Readline) move_to_start_of_line() bool {
 	if self.cursor.X > 0 {
 		self.cursor.X = 0
@@ -306,6 +333,31 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 		return self.perform_action(ActionAcceptInput, 1)
 	case ActionAcceptInput:
 		return ErrAcceptInput
+	case ActionCursorUp:
+		if self.move_cursor_up(repeat_count) > 0 {
+			return nil
+		}
+	case ActionCursorDown:
+		if self.move_cursor_down(repeat_count) > 0 {
+			return nil
+		}
+	case ActionHistoryPreviousOrCursorUp:
+		if self.cursor.Y == 0 {
+			r := self.perform_action(ActionHistoryPrevious, repeat_count)
+			if r == nil {
+				return nil
+			}
+		}
+		return self.perform_action(ActionCursorUp, repeat_count)
+	case ActionHistoryNextOrCursorDown:
+		if self.cursor.Y == 0 {
+			r := self.perform_action(ActionHistoryNext, repeat_count)
+			if r == nil {
+				return nil
+			}
+		}
+		return self.perform_action(ActionCursorDown, repeat_count)
+
 	}
 	return ErrCouldNotPerformAction
 }

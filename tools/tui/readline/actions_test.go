@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"kitty/tools/tui/loop"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 var _ = fmt.Print
@@ -54,6 +56,33 @@ func TestAddText(t *testing.T) {
 		rl.cursor.X = 2
 		rl.add_text("12\n34")
 	}, "abcd\nxy12\n34", "z", "abcd\nxy12\n34z")
+}
+
+func TestGetScreenLines(t *testing.T) {
+	lp, _ := loop.New()
+	rl := New(lp, RlInit{Prompt: "$$ "})
+	rl.screen_width = 10
+
+	tsl := func(expected ...ScreenLine) {
+		q := rl.get_screen_lines()
+		actual := make([]ScreenLine, len(q))
+		for i, x := range q {
+			actual[i] = *x
+		}
+		if diff := cmp.Diff(expected, actual); diff != "" {
+			t.Fatalf("Did not get expected screen lines for: %#v\n%s", rl.AllText(), diff)
+		}
+	}
+	tsl(ScreenLine{PromptLen: 3, CursorCell: 3})
+	rl.add_text("123")
+	tsl(ScreenLine{PromptLen: 3, CursorCell: 6, Text: "123", CursorTextPos: 3, TextLengthInCells: 3})
+	rl.add_text("456")
+	tsl(ScreenLine{PromptLen: 3, CursorCell: 9, Text: "123456", CursorTextPos: 6, TextLengthInCells: 6})
+	rl.add_text("7")
+	tsl(
+		ScreenLine{PromptLen: 3, CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
+		ScreenLine{OffsetInParentLine: 7},
+	)
 }
 
 func TestCursorMovement(t *testing.T) {

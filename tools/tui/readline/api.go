@@ -47,6 +47,12 @@ const (
 	ActionCursorRight
 	ActionEndInput
 	ActionAcceptInput
+	ActionCursorUp
+	ActionHistoryPreviousOrCursorUp
+	ActionCursorDown
+	ActionHistoryNextOrCursorDown
+	ActionHistoryNext
+	ActionHistoryPrevious
 )
 
 type Readline struct {

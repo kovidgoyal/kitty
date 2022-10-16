@@ -244,6 +244,14 @@ func (self *Loop) EndBracketedPaste() {
 	self.QueueWriteString(BRACKETED_PASTE.EscapeCodeToReset())
 }
 
+func (self *Loop) AllowLineWrapping(allow bool) {
+	if allow {
+		self.QueueWriteString(DECAWM.EscapeCodeToSet())
+	} else {
+		self.QueueWriteString(DECAWM.EscapeCodeToReset())
+	}
+}
+
 func (self *Loop) Quit(exit_code int) {
 	self.exit_code = exit_code
 	self.keep_going = false
