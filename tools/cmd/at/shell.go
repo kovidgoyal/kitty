@@ -182,6 +182,15 @@ func shell_main(cmd *cli.Command, args []string) (int, error) {
 	formatter = markup.New(true)
 	fmt.Println("Welcome to the kitty shell!")
 	fmt.Println("Use", formatter.Green("help"), "for assistance or", formatter.Green("exit"), "to quit.")
+	if atwid := os.Getenv("KITTY_SHELL_ACTIVE_WINDOW_ID"); atwid != "" {
+		amsg := "Previously active window id: " + atwid
+		os.Unsetenv("KITTY_SHELL_ACTIVE_WINDOW_ID")
+		if attid := os.Getenv("KITTY_SHELL_ACTIVE_TAB_ID"); attid != "" {
+			os.Unsetenv("KITTY_SHELL_ACTIVE_TAB_ID")
+			amsg += " and tab id: " + attid
+		}
+		fmt.Println(amsg)
+	}
 	rl := readline.New(nil, readline.RlInit{Prompt: prompt, HistoryPath: filepath.Join(utils.CacheDir(), "shell.history.json")})
 	defer func() {
 		rl.Shutdown()
