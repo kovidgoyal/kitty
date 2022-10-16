@@ -158,7 +158,12 @@ def run_python_tests(args: Any, go_proc: 'Optional[subprocess.Popen[bytes]]' = N
     tests = find_all_tests()
 
     def print_go() -> None:
-        print(go_proc.stdout.read().decode(), end='', flush=True)
+        try:
+            print(go_proc.stdout.read().decode(), end='', flush=True)
+        except KeyboardInterrupt:
+            go_proc.terminate()
+            if go_proc.wait(0.1) is None:
+                go_proc.kill()
         go_proc.stdout.close()
         go_proc.wait()
 
