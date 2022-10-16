@@ -29,13 +29,23 @@ func (self *Readline) move_cursor_to_text_position(pos, screen_width int) int {
 	return num_of_lines
 }
 
-func (self *Readline) redraw() {
+func (self *Readline) current_screen_size() (int, int) {
 	screen_size, err := self.loop.ScreenSize()
 	if err != nil {
 		screen_size.WidthCells = 80
 		screen_size.HeightCells = 24
 	}
-	screen_width := int(screen_size.WidthCells)
+	if screen_size.WidthCells < 1 {
+		screen_size.WidthCells = 1
+	}
+	if screen_size.HeightCells < 1 {
+		screen_size.HeightCells = 1
+	}
+	return int(screen_size.WidthCells), int(screen_size.HeightCells)
+}
+
+func (self *Readline) redraw() {
+	screen_width, _ := self.current_screen_size()
 	if screen_width < 4 {
 		return
 	}
