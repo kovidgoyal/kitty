@@ -566,7 +566,7 @@ class Splits(Layout):
                 ans['one'] = p.one
             if isinstance(p.two, Pair):
                 ans['two'] = add_pair(p.two)
-            elif p.one is not None:
+            elif p.two is not None:
                 ans['two'] = p.two
             return ans
 
