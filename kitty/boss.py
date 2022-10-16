@@ -1700,7 +1700,11 @@ class Boss:
         cmd = [kitty_exe(), '@']
         aw = self.active_window
         if aw is not None:
-            kw['env'] = {'KITTY_SHELL_ACTIVE_WINDOW_ID': str(aw.id)}
+            env = {'KITTY_SHELL_ACTIVE_WINDOW_ID': str(aw.id)}
+            at = self.active_tab
+            if at is not None:
+                env['KITTY_SHELL_ACTIVE_TAB_ID'] = str(at.id)
+            kw['env'] = env
         if window_type == 'tab':
             tab = self._new_tab(SpecialWindow(cmd, **kw))
             if tab is not None:

@@ -185,7 +185,11 @@ def real_main(global_opts: RCOptions, encrypter: CommandEncrypter = NoEncryption
     print('Use {} for assistance or {} to quit'.format(green('help'), green('exit')))
     awid = os.environ.pop('KITTY_SHELL_ACTIVE_WINDOW_ID', None)
     if awid is not None:
-        print(f'The ID of the previously active window is: {awid}')
+        atid = os.environ.pop('KITTY_SHELL_ACTIVE_TAB_ID', None)
+        am = f'Previously active window id: {awid}'
+        if atid is not None:
+            am += f' and tab id: {atid}'
+        print(am)
 
     pre_prompt = set_window_title('The kitty shell') + set_cursor_shape('bar')
     pre_prompt += f'\x1b]133;A;redraw={0 if is_libedit else 1}\x1b\\'
