@@ -59,7 +59,8 @@ type Readline struct {
 	history                 *History
 
 	// The number of lines after the initial line on the screen
-	cursor_y int
+	cursor_y     int
+	screen_width int
 	// Input lines
 	lines []string
 	// The cursor position in the text
@@ -171,4 +172,13 @@ func (self *Readline) AllText() string {
 
 func (self *Readline) CursorAtEndOfLine() bool {
 	return self.cursor.X >= len(self.lines[self.cursor.Y])
+}
+
+func (self *Readline) OnResize(old_size loop.ScreenSize, new_size loop.ScreenSize) error {
+	self.screen_width = int(new_size.CellWidth)
+	if self.screen_width < 1 {
+		self.screen_width = 1
+	}
+	self.Redraw()
+	return nil
 }

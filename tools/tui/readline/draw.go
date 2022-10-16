@@ -29,7 +29,7 @@ func (self *Readline) move_cursor_to_text_position(pos, screen_width int) int {
 	return num_of_lines
 }
 
-func (self *Readline) current_screen_size() (int, int) {
+func (self *Readline) update_current_screen_size() {
 	screen_size, err := self.loop.ScreenSize()
 	if err != nil {
 		screen_size.WidthCells = 80
@@ -41,12 +41,14 @@ func (self *Readline) current_screen_size() (int, int) {
 	if screen_size.HeightCells < 1 {
 		screen_size.HeightCells = 1
 	}
-	return int(screen_size.WidthCells), int(screen_size.HeightCells)
+	self.screen_width = int(screen_size.WidthCells)
 }
 
 func (self *Readline) redraw() {
-	screen_width, _ := self.current_screen_size()
-	if screen_width < 4 {
+	if self.screen_width == 0 {
+		self.update_current_screen_size()
+	}
+	if self.screen_width < 4 {
 		return
 	}
 	if self.cursor_y > 0 {
@@ -66,7 +68,7 @@ func (self *Readline) redraw() {
 		if i == self.cursor.Y {
 			line_with_cursor = y
 		}
-		y += self.write_line_with_prompt(line, p, screen_width)
+		y += self.write_line_with_prompt(line, p, self.screen_width)
 	}
 	self.loop.MoveCursorVertically(-y + line_with_cursor)
 	line := self.lines[self.cursor.Y]
@@ -74,6 +76,6 @@ func (self *Readline) redraw() {
 	if self.cursor.Y > 0 {
 		plen = self.continuation_prompt_len
 	}
-	line_with_cursor += self.move_cursor_to_text_position(plen+wcswidth.Stringwidth(line[:self.cursor.X]), screen_width)
+	line_with_cursor += self.move_cursor_to_text_position(plen+wcswidth.Stringwidth(line[:self.cursor.X]), self.screen_width)
 	self.cursor_y = line_with_cursor
 }
