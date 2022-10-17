@@ -162,21 +162,31 @@ func (self *Readline) move_cursor_right(amt uint, traverse_line_breaks bool) uin
 	return amt_moved
 }
 
-func move_up_one_line(self *Readline) bool {
-	return false
+func (self *Readline) move_cursor_to_target_line(source_line, target_line *ScreenLine) {
+	if source_line != target_line {
+		visual_distance_into_text := source_line.CursorCell - source_line.PromptLen
+		self.cursor.Y = target_line.ParentLineNumber
+		tp := wcswidth.TruncateToVisualLength(target_line.Text, visual_distance_into_text)
+		self.cursor.X = target_line.OffsetInParentLine + len(tp)
+	}
 }
 
-func (self *Readline) move_cursor_up(amt uint) uint {
-	ans := uint(0)
+func (self *Readline) move_cursor_vertically(amt int) (ans int) {
 	if self.screen_width == 0 {
 		self.update_current_screen_size()
 	}
-	for ans < amt {
-		if move_up_one_line(self) {
-			ans++
-		} else {
+	screen_lines := self.get_screen_lines()
+	cursor_line_num := 0
+	for i, sl := range screen_lines {
+		if sl.CursorCell > -1 {
+			cursor_line_num = i
 			break
 		}
+	}
+	target_line_num := (cursor_line_num + amt + len(screen_lines)) % len(screen_lines)
+	ans = target_line_num - cursor_line_num
+	if ans != 0 {
+		self.move_cursor_to_target_line(screen_lines[cursor_line_num], screen_lines[target_line_num])
 	}
 	return ans
 }
@@ -334,11 +344,11 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 	case ActionAcceptInput:
 		return ErrAcceptInput
 	case ActionCursorUp:
-		if self.move_cursor_up(repeat_count) > 0 {
+		if self.move_cursor_vertically(-int(repeat_count)) != 0 {
 			return nil
 		}
 	case ActionCursorDown:
-		if self.move_cursor_down(repeat_count) > 0 {
+		if self.move_cursor_vertically(int(repeat_count)) != 0 {
 			return nil
 		}
 	case ActionHistoryPreviousOrCursorUp:
