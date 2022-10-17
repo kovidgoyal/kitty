@@ -35,7 +35,7 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.26.4 [future]
+0.26.4 [2022-10-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: Allow changing the kitty icon by placing a custom icon in the kitty config folder (:pull:`5464`)
