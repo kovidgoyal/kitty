@@ -53,3 +53,23 @@ func StableSortWithKey[T any, C constraints.Ordered](s []T, key func(a T) C) []T
 	sort.SliceStable(s, func(i, j int) bool { return mem[i] < mem[j] })
 	return s
 }
+
+func Max[T constraints.Ordered](a T, items ...T) (ans T) {
+	ans = a
+	for _, q := range items {
+		if q > ans {
+			ans = q
+		}
+	}
+	return ans
+}
+
+func Min[T constraints.Ordered](a T, items ...T) (ans T) {
+	ans = a
+	for _, q := range items {
+		if q < ans {
+			ans = q
+		}
+	}
+	return ans
+}

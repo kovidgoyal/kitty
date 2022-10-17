@@ -176,6 +176,31 @@ func TestCursorMovement(t *testing.T) {
 	dt("àb", func(rl *Readline) {
 		right(rl, 1, 1, false)
 	}, "à", "b")
+
+	lp, _ := loop.New()
+	rl := New(lp, RlInit{Prompt: "$$ "})
+	rl.screen_width = 10
+
+	vert := func(amt int, moved_amt int, text_upto_cursor_pos string, initials ...Position) {
+		initial := Position{}
+		if len(initials) > 0 {
+			initial = initials[0]
+		}
+		rl.cursor = initial
+		actual := rl.move_cursor_vertically(amt)
+		if actual != moved_amt {
+			t.Fatalf("Failed to move cursor by %#v for: %#v \nactual != expected: %#v != %#v", amt, rl.AllText(), actual, moved_amt)
+		}
+		if diff := cmp.Diff(text_upto_cursor_pos, rl.text_upto_cursor_pos()); diff != "" {
+			t.Fatalf("Did not get expected screen lines for: %#v and cursor: %+v\n%s", rl.AllText(), initial, diff)
+		}
+	}
+
+	rl.ResetText()
+	rl.add_text("1234567xy\nabcd\n123")
+	vert(-1, -1, "1234567xy\nabc", Position{X: 3, Y: 2})
+	vert(-2, -2, "1234567xy", Position{X: 3, Y: 2})
+	vert(-30, -3, "123", Position{X: 3, Y: 2})
 }
 
 func TestEraseChars(t *testing.T) {

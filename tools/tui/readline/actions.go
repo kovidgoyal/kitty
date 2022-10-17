@@ -183,7 +183,7 @@ func (self *Readline) move_cursor_vertically(amt int) (ans int) {
 			break
 		}
 	}
-	target_line_num := (cursor_line_num + amt + len(screen_lines)) % len(screen_lines)
+	target_line_num := utils.Min(utils.Max(0, cursor_line_num+amt), len(screen_lines)-1)
 	ans = target_line_num - cursor_line_num
 	if ans != 0 {
 		self.move_cursor_to_target_line(screen_lines[cursor_line_num], screen_lines[target_line_num])
