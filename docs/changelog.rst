@@ -40,6 +40,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that caused a :opt:`resize_draw_strategy` of ``static`` to not work (:iss:`5601`)
 
+- Wayland KDE: Fix abort when pasting into Firefox (:iss:`5603`)
+
 0.26.4 [2022-10-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

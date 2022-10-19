@@ -1691,9 +1691,18 @@ static void primary_selection_source_canceled(void *data UNUSED, struct zwp_prim
     zwp_primary_selection_source_v1_destroy(primary_selection_source);
 }
 
+// KWin aborts if we don't define these even though they are not used for copy/paste
+static void dummy_data_source_target(void* data UNUSED, struct wl_data_source* wl_data_source UNUSED, const char* mime_type UNUSED) {
+}
+
+static void dummy_data_source_action(void* data UNUSED, struct wl_data_source* wl_data_source UNUSED, uint dnd_action UNUSED) {
+}
+
 static const struct wl_data_source_listener data_source_listener = {
     .send = _glfwSendClipboardText,
     .cancelled = data_source_canceled,
+    .target = dummy_data_source_target,
+    .action = dummy_data_source_action,
 };
 
 static const struct zwp_primary_selection_source_v1_listener primary_selection_source_listener = {
