@@ -981,7 +981,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         BLEND_ONTO_OPAQUE;
         background_opacity = 1.0f;
         tint_opacity = OPT(background_tint);
-        tint_premult = 1.0f;
+        tint_premult = w->is_semi_transparent ? OPT(background_tint) : 1.0f;
     }
 
     if (num_border_rects) {
@@ -1006,7 +1006,10 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         color_type default_bg = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
         glUniform3f(border_uniform_locations[BORDER_default_bg], CV3(default_bg));
 #undef CV3
-        if (!w->is_semi_transparent && has_bgimage(w)) { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT }
+        if (has_bgimage(w)) {
+            if (w->is_semi_transparent) { BLEND_PREMULT; }
+            else { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT; }
+        }
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
         unbind_vertex_array();
         unbind_program();
