@@ -42,6 +42,8 @@ Detailed list of changes
 
 - Wayland KDE: Fix abort when pasting into Firefox (:iss:`5603`)
 
+- Wayland GNOME: Fix ghosting when using :opt:`background_tint` (:iss:`5605`)
+
 0.26.4 [2022-10-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

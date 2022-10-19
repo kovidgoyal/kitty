@@ -12,6 +12,7 @@
 #include "window_logo.h"
 
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
+#define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
 #define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
 
 enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, NUM_PROGRAMS };
@@ -531,8 +532,7 @@ has_bgimage(OSWindow *w) {
 
 static void
 draw_tint(bool premult, Screen *screen, const CellRenderData *crd) {
-    // On GNOME+Wayland this causes ghosting while rendering. Yet another GNOME bug, does not occur under KDE, Hyprland or Sway.
-    if (premult) { BLEND_PREMULT; } else { BLEND_ONTO_OPAQUE; }
+    if (premult) { BLEND_PREMULT } else { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT }
     bind_program(TINT_PROGRAM);
     color_type window_bg = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_bg, screen->color_profile->configured.default_bg).rgb;
 #define C(shift) ((((GLfloat)((window_bg >> shift) & 0xFF)) / 255.0f)) * premult_factor
@@ -1006,6 +1006,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         color_type default_bg = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
         glUniform3f(border_uniform_locations[BORDER_default_bg], CV3(default_bg));
 #undef CV3
+        if (!w->is_semi_transparent && has_bgimage(w)) { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT }
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
         unbind_vertex_array();
         unbind_program();
