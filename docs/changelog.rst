@@ -38,6 +38,8 @@ Detailed list of changes
 0.26.5 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- ssh kitten: Allow using absolute paths for the location of transferred data (:iss:`5607`)
+
 - Fix a regression in the previous release that caused a :opt:`resize_draw_strategy` of ``static`` to not work (:iss:`5601`)
 
 - Wayland KDE: Fix abort when pasting into Firefox (:iss:`5603`)

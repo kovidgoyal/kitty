@@ -40,10 +40,9 @@ shell or a :program:`python` executable. If the default :program:`sh` is not
 available or broken, using an alternate interpreter can be useful.
 ''')
 
-opt('remote_dir', '.local/share/kitty-ssh-kitten', option_type='relative_dir', long_text='''
+opt('remote_dir', '.local/share/kitty-ssh-kitten', long_text='''
 The location on the remote host where the files needed for this kitten are
-installed. The location is relative to the HOME directory. Absolute paths or
-paths that resolve to a location outside the HOME are not allowed.
+installed. Relative paths are resolved with respect to :code:`$HOME`.
 ''')
 
 opt('+copy', '', option_type='copy', add_to_default=False, long_text=f'''

@@ -103,7 +103,10 @@ untar_and_read_env() {
     . "$tdir/bootstrap-utils.sh"
     . "$tdir/data.sh"
     [ -z "$KITTY_SSH_KITTEN_DATA_DIR" ] && die "Failed to read SSH data from tty"
-    data_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR"
+    case "$KITTY_SSH_KITTEN_DATA_DIR" in
+        /*) data_dir="$KITTY_SSH_KITTEN_DATA_DIR" ;;
+        *) data_dir="$HOME/$KITTY_SSH_KITTEN_DATA_DIR"
+    esac
     shell_integration_dir="$data_dir/shell-integration"
     unset KITTY_SSH_KITTEN_DATA_DIR
     login_shell="$KITTY_LOGIN_SHELL"

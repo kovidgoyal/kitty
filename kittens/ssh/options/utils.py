@@ -1,22 +1,11 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
-import posixpath
 from typing import Any, Dict, Iterable, Optional, Tuple
 
 from ..copy import CopyInstruction, parse_copy_instructions
 
 DELETE_ENV_VAR = '_delete_this_env_var_'
-
-
-def relative_dir(val: str) -> str:
-    if posixpath.isabs(val):
-        raise ValueError(f'Absolute paths not allowed. {val} is invalid.')
-    base = '/ffjdg'
-    q = posixpath.normpath(posixpath.join(base, val))
-    if q == base or not q.startswith(base):
-        raise ValueError(f'Paths that escape their parent dir are not allowed. {val} is not valid')
-    return posixpath.normpath(val)
 
 
 def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:
