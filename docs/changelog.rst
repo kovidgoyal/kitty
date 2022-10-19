@@ -35,6 +35,11 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
+0.26.5 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fix a regression in the previous release that caused a :opt:`resize_draw_strategy` of ``static`` to not work (:iss:`5601`)
+
 0.26.4 [2022-10-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
