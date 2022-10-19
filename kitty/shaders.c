@@ -532,6 +532,7 @@ has_bgimage(OSWindow *w) {
 static void
 draw_tint(bool premult, Screen *screen, const CellRenderData *crd) {
     // On GNOME+Wayland this causes ghosting while rendering. Yet another GNOME bug, does not occur under KDE, Hyprland or Sway.
+    if (premult) { BLEND_PREMULT; } else { BLEND_ONTO_OPAQUE; }
     bind_program(TINT_PROGRAM);
     color_type window_bg = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_bg, screen->color_profile->configured.default_bg).rgb;
 #define C(shift) ((((GLfloat)((window_bg >> shift) & 0xFF)) / 255.0f)) * premult_factor
@@ -721,7 +722,6 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
         glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 3);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
     } else if (OPT(background_tint) > 0) {
-        BLEND_ONTO_OPAQUE;
         draw_tint(false, screen, crd);
         BLEND_ONTO_OPAQUE;
     }
@@ -758,7 +758,6 @@ static void
 draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *os_window, const CellRenderData *crd, const WindowLogoRenderData *wl) {
     if (OPT(background_tint) > 0.f) {
         glEnable(GL_BLEND);
-        BLEND_PREMULT;
         draw_tint(true, screen, crd);
         glDisable(GL_BLEND);
     }
