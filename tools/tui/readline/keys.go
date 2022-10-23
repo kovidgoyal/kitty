@@ -25,6 +25,11 @@ var default_shortcuts = map[string]Action{
 	"ctrl+home": ActionMoveToStartOfDocument,
 	"ctrl+end":  ActionMoveToEndOfDocument,
 
+	"alt+f":      ActionMoveToEndOfWord,
+	"ctrl+right": ActionMoveToEndOfWord,
+	"ctrl+left":  ActionMoveToStartOfWord,
+	"alt+b":      ActionMoveToStartOfWord,
+
 	"left":   ActionCursorLeft,
 	"ctrl+b": ActionCursorLeft,
 	"right":  ActionCursorRight,

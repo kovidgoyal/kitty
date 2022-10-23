@@ -43,6 +43,8 @@ const (
 	ActionMoveToEndOfLine
 	ActionMoveToStartOfDocument
 	ActionMoveToEndOfDocument
+	ActionMoveToEndOfWord
+	ActionMoveToStartOfWord
 	ActionCursorLeft
 	ActionCursorRight
 	ActionEndInput

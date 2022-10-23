@@ -201,6 +201,56 @@ func TestCursorMovement(t *testing.T) {
 	vert(-1, -1, "1234567xy\nabc", Position{X: 3, Y: 2})
 	vert(-2, -2, "1234567xy", Position{X: 3, Y: 2})
 	vert(-30, -3, "123", Position{X: 3, Y: 2})
+
+	rl.ResetText()
+	rl.add_text("o\u0300ne  two three\nfour five")
+
+	wf := func(amt uint, expected_amt uint, text_before_cursor string) {
+		pos := rl.cursor
+		actual_amt := rl.move_to_end_of_word(amt, true)
+		if actual_amt != expected_amt {
+			t.Fatalf("Failed to move to word end, expected amt (%d) != actual amt (%d)", expected_amt, actual_amt)
+		}
+		if diff := cmp.Diff(text_before_cursor, rl.TextBeforeCursor()); diff != "" {
+			t.Fatalf("Did not get expected text before cursor for: %#v and cursor: %+v\n%s", rl.AllText(), pos, diff)
+		}
+	}
+	rl.cursor = Position{}
+	wf(1, 1, "òne")
+	wf(1, 1, "òne  two")
+	wf(1, 1, "òne  two three")
+	wf(1, 1, "òne  two three\nfour")
+	wf(1, 1, "òne  two three\nfour five")
+	wf(1, 0, "òne  two three\nfour five")
+	rl.cursor = Position{}
+	wf(5, 5, "òne  two three\nfour five")
+	rl.cursor = Position{X: 5}
+	wf(1, 1, "òne  two")
+
+	wb := func(amt uint, expected_amt uint, text_before_cursor string) {
+		pos := rl.cursor
+		actual_amt := rl.move_to_start_of_word(amt, true)
+		if actual_amt != expected_amt {
+			t.Fatalf("Failed to move to word end, expected amt (%d) != actual amt (%d)", expected_amt, actual_amt)
+		}
+		if diff := cmp.Diff(text_before_cursor, rl.TextBeforeCursor()); diff != "" {
+			t.Fatalf("Did not get expected text before cursor for: %#v and cursor: %+v\n%s", rl.AllText(), pos, diff)
+		}
+	}
+	rl.cursor = Position{X: 2}
+	wb(1, 1, "")
+	rl.cursor = Position{X: 8, Y: 1}
+	wb(1, 1, "òne  two three\nfour ")
+	wb(1, 1, "òne  two three\n")
+	wb(1, 1, "òne  two ")
+	wb(1, 1, "òne  ")
+	wb(1, 1, "")
+	wb(1, 0, "")
+	rl.cursor = Position{X: 8, Y: 1}
+	wb(5, 5, "")
+	rl.cursor = Position{X: 5}
+	wb(1, 1, "")
+
 }
 
 func TestEraseChars(t *testing.T) {

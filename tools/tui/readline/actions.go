@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode"
 
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
@@ -18,7 +19,7 @@ func (self *Readline) text_upto_cursor_pos() string {
 	buf.Grow(1024)
 	for i, line := range self.lines {
 		if i == self.cursor.Y {
-			buf.WriteString(line[:self.cursor.X])
+			buf.WriteString(line[:utils.Min(len(line), self.cursor.X)])
 			break
 		} else {
 			buf.WriteString(line)
@@ -297,8 +298,91 @@ func (self *Readline) erase_chars_after_cursor(amt uint, traverse_line_breaks bo
 	return num
 }
 
-func (self *Readline) next_word_char_pos(traverse_line_breaks bool) int {
-	return 0
+func has_word_chars(text string) bool {
+	for _, ch := range text {
+		if unicode.IsLetter(ch) || unicode.IsDigit(ch) {
+			return true
+		}
+	}
+	return false
+}
+
+func (self *Readline) move_to_end_of_word(amt uint, traverse_line_breaks bool) (num_of_words_moved uint) {
+	if amt == 0 {
+		return 0
+	}
+	line := self.lines[self.cursor.Y]
+	in_word := false
+	ci := wcswidth.NewCellIterator(line[self.cursor.X:])
+	sz := 0
+
+	for ci.Forward() {
+		current_is_word_char := has_word_chars(ci.Current())
+		plen := sz
+		sz += len(ci.Current())
+		if current_is_word_char {
+			in_word = true
+		} else if in_word {
+			self.cursor.X += plen
+			amt--
+			num_of_words_moved++
+			if amt == 0 {
+				return
+			}
+			in_word = false
+		}
+	}
+	if self.move_to_end_of_line() {
+		amt--
+		num_of_words_moved++
+	}
+	if amt > 0 {
+		if traverse_line_breaks && self.cursor.Y < len(self.lines)-1 {
+			self.cursor.Y++
+			self.cursor.X = 0
+			num_of_words_moved += self.move_to_end_of_word(amt, traverse_line_breaks)
+		}
+	}
+	return
+}
+
+func (self *Readline) move_to_start_of_word(amt uint, traverse_line_breaks bool) (num_of_words_moved uint) {
+	if amt == 0 {
+		return 0
+	}
+	line := self.lines[self.cursor.Y]
+	in_word := false
+	ci := wcswidth.NewCellIterator(line[:self.cursor.X]).GotoEnd()
+	sz := 0
+
+	for ci.Backward() {
+		current_is_word_char := has_word_chars(ci.Current())
+		plen := sz
+		sz += len(ci.Current())
+		if current_is_word_char {
+			in_word = true
+		} else if in_word {
+			self.cursor.X -= plen
+			amt--
+			num_of_words_moved++
+			if amt == 0 {
+				return
+			}
+			in_word = false
+		}
+	}
+	if self.move_to_start_of_line() {
+		amt--
+		num_of_words_moved++
+	}
+	if amt > 0 {
+		if traverse_line_breaks && self.cursor.Y > 0 {
+			self.cursor.Y--
+			self.cursor.X = len(self.lines[self.cursor.Y])
+			num_of_words_moved += self.move_to_start_of_word(amt, traverse_line_breaks)
+		}
+	}
+	return
 }
 
 func (self *Readline) perform_action(ac Action, repeat_count uint) error {
@@ -317,6 +401,14 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 		}
 	case ActionMoveToEndOfLine:
 		if self.move_to_end_of_line() {
+			return nil
+		}
+	case ActionMoveToEndOfWord:
+		if self.move_to_end_of_word(repeat_count, true) > 0 {
+			return nil
+		}
+	case ActionMoveToStartOfWord:
+		if self.move_to_start_of_word(repeat_count, true) > 0 {
 			return nil
 		}
 	case ActionMoveToStartOfDocument:
