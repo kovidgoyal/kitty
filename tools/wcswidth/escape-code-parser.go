@@ -4,9 +4,11 @@ package wcswidth
 
 import (
 	"bytes"
-	"errors"
+	"fmt"
 	"kitty/tools/utils"
 )
+
+var _ = fmt.Print
 
 type parser_state uint8
 type csi_state uint8
@@ -39,11 +41,13 @@ const (
 
 type EscapeCodeParser struct {
 	state                  parser_state
-	utf8_state             utils.UTF8State
+	utf8_state, utf8_codep utils.UTF8State
 	csi_state              csi_state
 	current_buffer         []byte
 	bracketed_paste_buffer []utils.UTF8State
 	current_callback       func([]byte) error
+
+	ReplaceInvalidUtf8Bytes bool
 
 	// Callbacks
 	HandleRune                func(rune) error
@@ -58,41 +62,49 @@ type EscapeCodeParser struct {
 
 func (self *EscapeCodeParser) InBracketedPaste() bool { return self.state == bracketed_paste }
 
-var reparse_byte = errors.New("")
-
 func (self *EscapeCodeParser) ParseString(s string) error {
 	return self.Parse(utils.UnsafeStringToBytes(s))
 }
 
-func (self *EscapeCodeParser) Parse(data []byte) error {
-	prev := utils.UTF8_ACCEPT
-	codep := utils.UTF8_ACCEPT
-	for i := 0; i < len(data); i++ {
-		switch self.state {
-		case normal, bracketed_paste:
-			switch utils.DecodeUtf8(&self.utf8_state, &codep, data[i]) {
-			case utils.UTF8_ACCEPT:
-				err := self.dispatch_char(codep)
-				if err != nil {
-					self.Reset()
-					return err
-				}
-			case utils.UTF8_REJECT:
-				self.utf8_state = utils.UTF8_ACCEPT
-				if prev != utils.UTF8_ACCEPT && i > 0 {
-					i--
-				}
-			}
-			prev = self.utf8_state
-		default:
-			err := self.dispatch_byte(data[i])
+func (self *EscapeCodeParser) ParseByte(b byte) error {
+	switch self.state {
+	case normal, bracketed_paste:
+		prev_utf8_state := self.utf8_state
+		switch utils.DecodeUtf8(&self.utf8_state, &self.utf8_codep, b) {
+		case utils.UTF8_ACCEPT:
+			err := self.dispatch_char(self.utf8_codep)
 			if err != nil {
 				self.reset_state()
-				if err != reparse_byte {
+				return err
+			}
+		case utils.UTF8_REJECT:
+			self.utf8_state = utils.UTF8_ACCEPT
+			if prev_utf8_state != utils.UTF8_ACCEPT {
+				// reparse this byte with state set to UTF8_ACCEPT
+				return self.ParseByte(b)
+			}
+			if self.ReplaceInvalidUtf8Bytes {
+				err := self.dispatch_char(utils.UTF8State(0xfffd))
+				if err != nil {
 					return err
 				}
-				i--
 			}
+		}
+	default:
+		err := self.dispatch_byte(b)
+		if err != nil {
+			self.reset_state()
+			return err
+		}
+	}
+	return nil
+}
+
+func (self *EscapeCodeParser) Parse(data []byte) error {
+	for _, b := range data {
+		err := self.ParseByte(b)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -124,6 +136,7 @@ func (self *EscapeCodeParser) reset_state() {
 	self.bracketed_paste_buffer = self.bracketed_paste_buffer[:0]
 	self.state = normal
 	self.utf8_state = utils.UTF8_ACCEPT
+	self.utf8_codep = utils.UTF8_ACCEPT
 	self.current_callback = nil
 	self.csi_state = parameter
 }
@@ -260,7 +273,9 @@ func (self *EscapeCodeParser) dispatch_byte(ch byte) error {
 			self.current_callback = self.HandleAPC
 		case 'D', 'E', 'H', 'M', 'N', 'O', 'Z', '6', '7', '8', '9', '=', '>', 'F', 'c', 'l', 'm', 'n', 'o', '|', '}', '~':
 		default:
-			return reparse_byte
+			// we drop this dangling Esc and reparse the byte after the esc
+			self.reset_state()
+			return self.ParseByte(ch)
 		}
 	case csi:
 		self.write_ch(ch)

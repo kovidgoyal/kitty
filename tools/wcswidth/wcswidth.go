@@ -2,7 +2,13 @@
 
 package wcswidth
 
-import "kitty/tools/utils"
+import (
+	"fmt"
+
+	"kitty/tools/utils"
+)
+
+var _ = fmt.Print
 
 func IsFlagCodepoint(ch rune) bool {
 	return 0x1F1E6 <= ch && ch <= 0x1F1FF
@@ -19,6 +25,7 @@ type WCWidthIterator struct {
 	prev_width, current_width int
 	parser                    EscapeCodeParser
 	state                     ecparser_state
+	rune_count                uint
 }
 
 func CreateWCWidthIterator() *WCWidthIterator {
@@ -31,10 +38,12 @@ func (self *WCWidthIterator) Reset() {
 	self.prev_ch = 0
 	self.prev_width = 0
 	self.current_width = 0
+	self.rune_count = 0
 	self.parser.Reset()
 }
 
 func (self *WCWidthIterator) handle_rune(ch rune) error {
+	self.rune_count += 1
 	const (
 		normal            ecparser_state = 0
 		flag_pair_started ecparser_state = 3
@@ -81,6 +90,11 @@ func (self *WCWidthIterator) handle_rune(ch rune) error {
 	}
 	self.prev_ch = ch
 	return nil
+}
+
+func (self *WCWidthIterator) ParseByte(b byte) (ans int) {
+	self.parser.ParseByte(b)
+	return self.current_width
 }
 
 func (self *WCWidthIterator) Parse(b []byte) (ans int) {
