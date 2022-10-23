@@ -34,7 +34,7 @@ func (self *Readline) text_after_cursor_pos() string {
 	buf.Grow(1024)
 	for i, line := range self.lines {
 		if i == self.cursor.Y {
-			buf.WriteString(line[self.cursor.X:])
+			buf.WriteString(line[utils.Min(len(line), self.cursor.X):])
 			buf.WriteString("\n")
 		} else if i > self.cursor.Y {
 			buf.WriteString(line)
@@ -94,38 +94,27 @@ func (self *Readline) add_text(text string) {
 	self.lines = new_lines
 }
 
-func (self *Readline) move_cursor_left(amt uint, traverse_line_breaks bool) uint {
-	var amt_moved uint
-	for ; amt > 0; amt -= 1 {
+func (self *Readline) move_cursor_left(amt uint, traverse_line_breaks bool) (amt_moved uint) {
+	for amt_moved < amt {
 		if self.cursor.X == 0 {
 			if !traverse_line_breaks || self.cursor.Y == 0 {
 				return amt_moved
 			}
 			self.cursor.Y -= 1
 			self.cursor.X = len(self.lines[self.cursor.Y])
-			amt_moved += 1
+			amt_moved++
 			continue
 		}
-		// This is an extremely inefficient algorithm but it does not matter since
-		// lines are not large.
 		line := self.lines[self.cursor.Y]
-		runes := []rune(line[:self.cursor.X])
-		orig_width := wcswidth.Stringwidth(line[:self.cursor.X])
-		current_width := orig_width
-		for current_width == orig_width && len(runes) > 0 {
-			runes = runes[:len(runes)-1]
-			s := string(runes)
-			current_width = wcswidth.Stringwidth(s)
+		for ci := wcswidth.NewCellIterator(line[:self.cursor.X]).GotoEnd(); amt_moved < amt && ci.Backward(); amt_moved++ {
+			self.cursor.X -= len(ci.Current())
 		}
-		self.cursor.X = len(string(runes))
-		amt_moved += 1
 	}
 	return amt_moved
 }
 
-func (self *Readline) move_cursor_right(amt uint, traverse_line_breaks bool) uint {
-	var amt_moved uint
-	for ; amt > 0; amt -= 1 {
+func (self *Readline) move_cursor_right(amt uint, traverse_line_breaks bool) (amt_moved uint) {
+	for amt_moved < amt {
 		line := self.lines[self.cursor.Y]
 		if self.cursor.X >= len(line) {
 			if !traverse_line_breaks || self.cursor.Y == len(self.lines)-1 {
@@ -133,32 +122,13 @@ func (self *Readline) move_cursor_right(amt uint, traverse_line_breaks bool) uin
 			}
 			self.cursor.Y += 1
 			self.cursor.X = 0
-			amt_moved += 1
+			amt_moved++
 			continue
 		}
-		// This is an extremely inefficient algorithm but it does not matter since
-		// lines are not large.
-		before_runes := []rune(line[:self.cursor.X])
-		after_runes := []rune(line[self.cursor.X:])
-		orig_width := wcswidth.Stringwidth(line[:self.cursor.X])
-		current_width := orig_width
-		for current_width == orig_width && len(after_runes) > 0 {
-			before_runes = append(before_runes, after_runes[0])
-			current_width = wcswidth.Stringwidth(string(before_runes))
-			after_runes = after_runes[1:]
+
+		for ci := wcswidth.NewCellIterator(line[self.cursor.X:]); amt_moved < amt && ci.Forward(); amt_moved++ {
+			self.cursor.X += len(ci.Current())
 		}
-		// soak up any more runes that dont affect width
-		for len(after_runes) > 0 {
-			q := append(before_runes, after_runes[0])
-			w := wcswidth.Stringwidth(string(q))
-			if w != current_width {
-				break
-			}
-			after_runes = after_runes[1:]
-			before_runes = q
-		}
-		self.cursor.X = len(string(before_runes))
-		amt_moved += 1
 	}
 	return amt_moved
 }

@@ -158,7 +158,7 @@ func TestCursorMovement(t *testing.T) {
 		rl.cursor.X = 0
 		actual := rl.move_cursor_right(amt, traverse_line_breaks)
 		if actual != moved_amt {
-			t.Fatalf("Failed to move cursor by %#v\nactual != expected: %#v != %#v", amt, actual, moved_amt)
+			t.Fatalf("Failed to move cursor by %d\nactual != expected: %d != %d", amt, actual, moved_amt)
 		}
 	}
 	dt("one\ntwo", func(rl *Readline) {
