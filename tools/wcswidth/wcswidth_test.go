@@ -4,6 +4,8 @@ package wcswidth
 
 import (
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestWCSWidth(t *testing.T) {
@@ -58,4 +60,54 @@ func TestWCSWidth(t *testing.T) {
 	truncate("a🌷\ufe0e", 2, "a🌷\ufe0e", 2)
 	truncate("a🌷\ufe0eb", 3, "a🌷\ufe0eb", 3)
 	truncate("a\x1b[31mb", 2, "a\x1b[31mb", 2)
+}
+
+func TestCellIterator(t *testing.T) {
+	f := func(text string, expected ...string) {
+		ci := NewCellIterator(text)
+		actual := make([]string, 0, len(expected))
+		for ci.Forward() {
+			actual = append(actual, ci.Current())
+		}
+		if diff := cmp.Diff(expected, actual); diff != "" {
+			t.Fatalf("Failed forward iteration for string: %#v\n%s", text, diff)
+		}
+	}
+
+	f("abc", "a", "b", "c")
+	f("a🌷ò", "a", "🌷", "ò")
+	f("a🌷\ufe0eò", "a", "🌷\ufe0e", "ò")
+	f("òne", "ò", "n", "e")
+
+	r := func(text string, expected ...string) {
+		ci := NewCellIterator(text).GotoEnd()
+		actual := make([]string, 0, len(expected))
+		for ci.Backward() {
+			actual = append(actual, ci.Current())
+		}
+		if diff := cmp.Diff(expected, actual); diff != "" {
+			t.Fatalf("Failed reverse iteration for string: %#v\n%s", text, diff)
+		}
+	}
+
+	r("abc", "c", "b", "a")
+	r("a🌷ò", "ò", "🌷", "a")
+	r("òne", "e", "n", "ò")
+
+	ci := NewCellIterator("123")
+	ci.Forward()
+	ci.Forward()
+	ci.Forward()
+	ci.Backward()
+	if ci.Current() != "2" {
+		t.Fatalf("switching to backward failed, %#v != %#v", "2", ci.Current())
+	}
+	ci.Backward()
+	if ci.Current() != "1" {
+		t.Fatalf("switching to backward failed, %#v != %#v", "1", ci.Current())
+	}
+	ci.Forward()
+	if ci.Current() != "2" {
+		t.Fatalf("switching to forward failed, %#v != %#v", "2", ci.Current())
+	}
 }
