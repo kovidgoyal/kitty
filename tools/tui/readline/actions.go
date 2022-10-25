@@ -207,12 +207,14 @@ func (self *Readline) move_to_end() bool {
 	return true
 }
 
-func (self *Readline) erase_between(start, end Position) {
+func (self *Readline) erase_between(start, end Position) string {
 	if end.Less(start) {
 		start, end = end, start
 	}
+	buf := strings.Builder{}
 	if start.Y == end.Y {
 		line := self.lines[start.Y]
+		buf.WriteString(line[start.X:end.X])
 		self.lines[start.Y] = line[:start.X] + line[end.X:]
 		if self.cursor.Y == start.Y && self.cursor.X >= start.X {
 			if self.cursor.X < end.X {
@@ -221,7 +223,7 @@ func (self *Readline) erase_between(start, end Position) {
 				self.cursor.X -= end.X - start.X
 			}
 		}
-		return
+		return buf.String()
 	}
 	lines := make([]string, 0, len(self.lines))
 	for i, line := range self.lines {
@@ -229,11 +231,13 @@ func (self *Readline) erase_between(start, end Position) {
 			lines = append(lines, line)
 		} else if i == start.Y {
 			lines = append(lines, line[:start.X])
+			buf.WriteString(line[start.X:])
 			if self.cursor.Y == i && self.cursor.X > start.X {
 				self.cursor.X = start.X
 			}
 		} else if i == end.Y {
 			lines[len(lines)-1] += line[end.X:]
+			buf.WriteString(line[:end.X])
 			if i == self.cursor.Y {
 				self.cursor.Y = start.Y
 				if self.cursor.X < end.X {
@@ -242,11 +246,16 @@ func (self *Readline) erase_between(start, end Position) {
 					self.cursor.X -= end.X - start.X
 				}
 			}
-		} else if i == self.cursor.Y {
-			self.cursor = start
+		} else {
+			if i == self.cursor.Y {
+				self.cursor = start
+			}
+			buf.WriteString(line)
+			buf.WriteString("\n")
 		}
 	}
 	self.lines = lines
+	return buf.String()
 }
 
 func (self *Readline) erase_chars_before_cursor(amt uint, traverse_line_breaks bool) uint {
@@ -278,7 +287,7 @@ func has_word_chars(text string) bool {
 	return false
 }
 
-func (self *Readline) move_to_end_of_word(amt uint, traverse_line_breaks bool) (num_of_words_moved uint) {
+func (self *Readline) move_to_end_of_word(amt uint, traverse_line_breaks bool, is_part_of_word func(string) bool) (num_of_words_moved uint) {
 	if amt == 0 {
 		return 0
 	}
@@ -288,7 +297,7 @@ func (self *Readline) move_to_end_of_word(amt uint, traverse_line_breaks bool) (
 	sz := 0
 
 	for ci.Forward() {
-		current_is_word_char := has_word_chars(ci.Current())
+		current_is_word_char := is_part_of_word(ci.Current())
 		plen := sz
 		sz += len(ci.Current())
 		if current_is_word_char {
@@ -311,13 +320,13 @@ func (self *Readline) move_to_end_of_word(amt uint, traverse_line_breaks bool) (
 		if traverse_line_breaks && self.cursor.Y < len(self.lines)-1 {
 			self.cursor.Y++
 			self.cursor.X = 0
-			num_of_words_moved += self.move_to_end_of_word(amt, traverse_line_breaks)
+			num_of_words_moved += self.move_to_end_of_word(amt, traverse_line_breaks, is_part_of_word)
 		}
 	}
 	return
 }
 
-func (self *Readline) move_to_start_of_word(amt uint, traverse_line_breaks bool) (num_of_words_moved uint) {
+func (self *Readline) move_to_start_of_word(amt uint, traverse_line_breaks bool, is_part_of_word func(string) bool) (num_of_words_moved uint) {
 	if amt == 0 {
 		return 0
 	}
@@ -327,7 +336,7 @@ func (self *Readline) move_to_start_of_word(amt uint, traverse_line_breaks bool)
 	sz := 0
 
 	for ci.Backward() {
-		current_is_word_char := has_word_chars(ci.Current())
+		current_is_word_char := is_part_of_word(ci.Current())
 		plen := sz
 		sz += len(ci.Current())
 		if current_is_word_char {
@@ -350,7 +359,7 @@ func (self *Readline) move_to_start_of_word(amt uint, traverse_line_breaks bool)
 		if traverse_line_breaks && self.cursor.Y > 0 {
 			self.cursor.Y--
 			self.cursor.X = len(self.lines[self.cursor.Y])
-			num_of_words_moved += self.move_to_start_of_word(amt, traverse_line_breaks)
+			num_of_words_moved += self.move_to_start_of_word(amt, traverse_line_breaks, has_word_chars)
 		}
 	}
 	return
@@ -385,6 +394,42 @@ func (self *Readline) kill_to_start_of_line() bool {
 	return true
 }
 
+func (self *Readline) kill_next_word(amt uint, traverse_line_breaks bool) (num_killed uint) {
+	before := self.cursor
+	num_killed = self.move_to_end_of_word(amt, traverse_line_breaks, has_word_chars)
+	if num_killed > 0 {
+		self.kill_text(self.erase_between(before, self.cursor))
+	}
+	return num_killed
+}
+
+func (self *Readline) kill_previous_word(amt uint, traverse_line_breaks bool) (num_killed uint) {
+	before := self.cursor
+	num_killed = self.move_to_start_of_word(amt, traverse_line_breaks, has_word_chars)
+	if num_killed > 0 {
+		self.kill_text(self.erase_between(self.cursor, before))
+	}
+	return num_killed
+}
+
+func has_no_space_chars(text string) bool {
+	for _, r := range text {
+		if unicode.IsSpace(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func (self *Readline) kill_previous_space_delimited_word(amt uint, traverse_line_breaks bool) (num_killed uint) {
+	before := self.cursor
+	num_killed = self.move_to_start_of_word(amt, traverse_line_breaks, has_no_space_chars)
+	if num_killed > 0 {
+		self.kill_text(self.erase_between(self.cursor, before))
+	}
+	return num_killed
+}
+
 func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 	defer func() { self.last_action = ac }()
 	switch ac {
@@ -405,11 +450,11 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 			return nil
 		}
 	case ActionMoveToEndOfWord:
-		if self.move_to_end_of_word(repeat_count, true) > 0 {
+		if self.move_to_end_of_word(repeat_count, true, has_word_chars) > 0 {
 			return nil
 		}
 	case ActionMoveToStartOfWord:
-		if self.move_to_start_of_word(repeat_count, true) > 0 {
+		if self.move_to_start_of_word(repeat_count, true, has_word_chars) > 0 {
 			return nil
 		}
 	case ActionMoveToStartOfDocument:
@@ -472,6 +517,18 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 		}
 	case ActionKillToStartOfLine:
 		if self.kill_to_start_of_line() {
+			return nil
+		}
+	case ActionKillNextWord:
+		if self.kill_next_word(repeat_count, true) > 0 {
+			return nil
+		}
+	case ActionKillPreviousWord:
+		if self.kill_previous_word(repeat_count, true) > 0 {
+			return nil
+		}
+	case ActionKillPreviousSpaceDelimitedWord:
+		if self.kill_previous_space_delimited_word(repeat_count, true) > 0 {
 			return nil
 		}
 	}

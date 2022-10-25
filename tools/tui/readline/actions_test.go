@@ -207,7 +207,7 @@ func TestCursorMovement(t *testing.T) {
 
 	wf := func(amt uint, expected_amt uint, text_before_cursor string) {
 		pos := rl.cursor
-		actual_amt := rl.move_to_end_of_word(amt, true)
+		actual_amt := rl.move_to_end_of_word(amt, true, has_word_chars)
 		if actual_amt != expected_amt {
 			t.Fatalf("Failed to move to word end, expected amt (%d) != actual amt (%d)", expected_amt, actual_amt)
 		}
@@ -229,7 +229,7 @@ func TestCursorMovement(t *testing.T) {
 
 	wb := func(amt uint, expected_amt uint, text_before_cursor string) {
 		pos := rl.cursor
-		actual_amt := rl.move_to_start_of_word(amt, true)
+		actual_amt := rl.move_to_start_of_word(amt, true, has_word_chars)
 		if actual_amt != expected_amt {
 			t.Fatalf("Failed to move to word end, expected amt (%d) != actual amt (%d)", expected_amt, actual_amt)
 		}

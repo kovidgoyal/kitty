@@ -62,6 +62,9 @@ const (
 	ActionStartKillActions
 	ActionKillToEndOfLine
 	ActionKillToStartOfLine
+	ActionKillNextWord
+	ActionKillPreviousWord
+	ActionKillPreviousSpaceDelimitedWord
 	ActionEndKillActions
 )
 
