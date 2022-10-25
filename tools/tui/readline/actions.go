@@ -51,6 +51,7 @@ func (self *Readline) all_text() string {
 }
 
 func (self *Readline) add_text(text string) {
+	defer func() { self.last_action = ActionAddText }()
 	new_lines := make([]string, 0, len(self.lines)+4)
 	new_lines = append(new_lines, self.lines[:self.cursor.Y]...)
 	var lines_after []string
@@ -355,7 +356,37 @@ func (self *Readline) move_to_start_of_word(amt uint, traverse_line_breaks bool)
 	return
 }
 
+func (self *Readline) kill_text(text string) {
+	if ActionStartKillActions < self.last_action && self.last_action < ActionEndKillActions {
+		self.kill_ring.append_to_existing_item(text)
+	} else {
+		self.kill_ring.add_new_item(text)
+	}
+}
+
+func (self *Readline) kill_to_end_of_line() bool {
+	line := self.lines[self.cursor.Y]
+	if self.cursor.X >= len(line) {
+		return false
+	}
+	self.lines[self.cursor.Y] = line[:self.cursor.X]
+	self.kill_text(line[self.cursor.X:])
+	return true
+}
+
+func (self *Readline) kill_to_start_of_line() bool {
+	line := self.lines[self.cursor.Y]
+	if self.cursor.X <= 0 {
+		return false
+	}
+	self.lines[self.cursor.Y] = line[self.cursor.X:]
+	self.kill_text(line[:self.cursor.X])
+	self.cursor.X = 0
+	return true
+}
+
 func (self *Readline) perform_action(ac Action, repeat_count uint) error {
+	defer func() { self.last_action = ac }()
 	switch ac {
 	case ActionBackspace:
 		if self.erase_chars_before_cursor(repeat_count, true) > 0 {
@@ -435,6 +466,14 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 		self.RedrawNonAtomic()
 		self.loop.EndAtomicUpdate()
 		return nil
+	case ActionKillToEndOfLine:
+		if self.kill_to_end_of_line() {
+			return nil
+		}
+	case ActionKillToStartOfLine:
+		if self.kill_to_start_of_line() {
+			return nil
+		}
 	}
 	return ErrCouldNotPerformAction
 }

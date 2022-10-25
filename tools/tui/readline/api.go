@@ -3,6 +3,7 @@
 package readline
 
 import (
+	"container/list"
 	"fmt"
 	"strings"
 
@@ -56,7 +57,48 @@ const (
 	ActionHistoryNext
 	ActionHistoryPrevious
 	ActionClearScreen
+	ActionAddText
+
+	ActionStartKillActions
+	ActionKillToEndOfLine
+	ActionKillToStartOfLine
+	ActionEndKillActions
 )
+
+type kill_ring struct {
+	items *list.List
+}
+
+func (self *kill_ring) append_to_existing_item(text string) {
+	e := self.items.Front()
+	if e == nil {
+		self.add_new_item(text)
+	}
+	e.Value = e.Value.(string) + text
+}
+
+func (self *kill_ring) add_new_item(text string) {
+	if text != "" {
+		self.items.PushFront(text)
+	}
+}
+
+func (self *kill_ring) yank() string {
+	e := self.items.Front()
+	if e == nil {
+		return ""
+	}
+	return e.Value.(string)
+}
+
+func (self *kill_ring) pop_yank() string {
+	e := self.items.Front()
+	if e == nil {
+		return ""
+	}
+	self.items.MoveToBack(e)
+	return self.yank()
+}
 
 type Readline struct {
 	prompt                  string
@@ -66,6 +108,7 @@ type Readline struct {
 	mark_prompts            bool
 	loop                    *loop.Loop
 	history                 *History
+	kill_ring               kill_ring
 
 	// The number of lines after the initial line on the screen
 	cursor_y     int
@@ -75,6 +118,7 @@ type Readline struct {
 	// The cursor position in the text
 	cursor                 Position
 	bracketed_paste_buffer strings.Builder
+	last_action            Action
 }
 
 func New(loop *loop.Loop, r RlInit) *Readline {
@@ -84,7 +128,7 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 	}
 	ans := &Readline{
 		prompt: r.Prompt, prompt_len: wcswidth.Stringwidth(r.Prompt), mark_prompts: !r.DontMarkPrompts,
-		loop: loop, lines: []string{""}, history: NewHistory(r.HistoryPath, hc),
+		loop: loop, lines: []string{""}, history: NewHistory(r.HistoryPath, hc), kill_ring: kill_ring{items: list.New().Init()},
 	}
 	if r.ContinuationPrompt != "" || !r.EmptyContinuationPrompt {
 		ans.continuation_prompt = r.ContinuationPrompt
@@ -112,6 +156,7 @@ func (self *Readline) ResetText() {
 	self.lines = []string{""}
 	self.cursor = Position{}
 	self.cursor_y = 0
+	self.last_action = ActionNil
 }
 
 func (self *Readline) ChangeLoopAndResetText(lp *loop.Loop) {

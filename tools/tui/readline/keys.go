@@ -39,6 +39,10 @@ var default_shortcuts = map[string]Action{
 
 	"ctrl+d": ActionEndInput,
 	"enter":  ActionAcceptInput,
+
+	"ctrl+k": ActionKillToEndOfLine,
+	"ctrl+x": ActionKillToStartOfLine,
+	"ctrl+u": ActionKillToStartOfLine,
 }
 
 func action_for_key_event(event *loop.KeyEvent, shortcuts map[string]Action) Action {
