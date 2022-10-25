@@ -35,6 +35,8 @@ var default_shortcuts = map[string]Action{
 	"right":  ActionCursorRight,
 	"ctrl+f": ActionCursorRight,
 
+	"ctrl+l": ActionClearScreen,
+
 	"ctrl+d": ActionEndInput,
 	"enter":  ActionAcceptInput,
 }

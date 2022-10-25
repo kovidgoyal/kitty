@@ -55,6 +55,7 @@ const (
 	ActionHistoryNextOrCursorDown
 	ActionHistoryNext
 	ActionHistoryPrevious
+	ActionClearScreen
 )
 
 type Readline struct {

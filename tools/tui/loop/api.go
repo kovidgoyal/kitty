@@ -252,6 +252,10 @@ func (self *Loop) AllowLineWrapping(allow bool) {
 	}
 }
 
+func (self *Loop) ClearScreen() {
+	self.QueueWriteString("\x1b[H\x1b[2J")
+}
+
 func (self *Loop) Quit(exit_code int) {
 	self.exit_code = exit_code
 	self.keep_going = false

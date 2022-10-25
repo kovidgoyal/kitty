@@ -429,7 +429,12 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 			}
 		}
 		return self.perform_action(ActionCursorDown, repeat_count)
-
+	case ActionClearScreen:
+		self.loop.StartAtomicUpdate()
+		self.loop.ClearScreen()
+		self.RedrawNonAtomic()
+		self.loop.EndAtomicUpdate()
+		return nil
 	}
 	return ErrCouldNotPerformAction
 }
