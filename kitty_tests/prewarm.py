@@ -50,7 +50,7 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
         'pid': os.getpid(),
         'font_family': get_options().font_family,
         'stdin': sys.stdin.read(),
-        }, indent=2), "ALL_OUTPUT_PRESENT", sep="")"""], cwd=cwd, env=env, stdin_data=stdin_data)
+        }, indent=2), "ALL_OUTPUT_PRESENT", sep="")"""], cwd=cwd, env=env, stdin_data=stdin_data, timeout=15.0)
         self.assertFalse(pty.screen_contents().strip())
         p.mark_child_as_ready(child.child_id)
         pty.wait_till(lambda: 'ALL_OUTPUT_PRESENT' in pty.screen_contents())
