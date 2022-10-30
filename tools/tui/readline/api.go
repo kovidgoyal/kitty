@@ -66,6 +66,9 @@ const (
 	ActionKillPreviousWord
 	ActionKillPreviousSpaceDelimitedWord
 	ActionEndKillActions
+
+	ActionYank
+	ActionPopYank
 )
 
 type kill_ring struct {
@@ -119,7 +122,10 @@ type Readline struct {
 	// Input lines
 	lines []string
 	// The cursor position in the text
-	cursor                 Position
+	cursor           Position
+	last_yank_extent struct {
+		start, end Position
+	}
 	bracketed_paste_buffer strings.Builder
 	last_action            Action
 }
@@ -216,6 +222,7 @@ func (self *Readline) OnText(text string, from_key_event bool, in_bracketed_past
 		self.bracketed_paste_buffer.Reset()
 	}
 	self.add_text(text)
+	self.last_action = ActionAddText
 	return nil
 }
 

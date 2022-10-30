@@ -46,6 +46,8 @@ var default_shortcuts = map[string]Action{
 	"alt+d":         ActionKillNextWord,
 	"alt+backspace": ActionKillPreviousWord,
 	"ctrl+w":        ActionKillPreviousSpaceDelimitedWord,
+	"ctrl+y":        ActionYank,
+	"alt+y":         ActionPopYank,
 }
 
 func action_for_key_event(event *loop.KeyEvent, shortcuts map[string]Action) Action {

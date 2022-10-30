@@ -51,7 +51,6 @@ func (self *Readline) all_text() string {
 }
 
 func (self *Readline) add_text(text string) {
-	defer func() { self.last_action = ActionAddText }()
 	new_lines := make([]string, 0, len(self.lines)+4)
 	new_lines = append(new_lines, self.lines[:self.cursor.Y]...)
 	var lines_after []string
@@ -430,6 +429,40 @@ func (self *Readline) kill_previous_space_delimited_word(amt uint, traverse_line
 	return num_killed
 }
 
+func (self *Readline) ensure_position_in_bounds(pos *Position) *Position {
+	pos.Y = utils.Max(0, utils.Min(pos.Y, len(self.lines)-1))
+	line := self.lines[pos.Y]
+	pos.X = utils.Max(0, utils.Min(pos.X, len(line)))
+	return pos
+}
+
+func (self *Readline) yank(repeat_count uint, pop bool) bool {
+	if pop && self.last_action != ActionYank && self.last_action != ActionPopYank {
+		return false
+	}
+	text := ""
+	if pop {
+		text = self.kill_ring.pop_yank()
+	} else {
+		text = self.kill_ring.yank()
+	}
+	if text == "" {
+		return false
+	}
+	before := self.cursor
+	if pop {
+		self.ensure_position_in_bounds(&self.last_yank_extent.start)
+		self.ensure_position_in_bounds(&self.last_yank_extent.end)
+		self.erase_between(self.last_yank_extent.start, self.last_yank_extent.end)
+		self.cursor = self.last_yank_extent.start
+		before = self.cursor
+	}
+	self.add_text(text)
+	self.last_yank_extent.start = before
+	self.last_yank_extent.end = self.cursor
+	return true
+}
+
 func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 	defer func() { self.last_action = ac }()
 	switch ac {
@@ -529,6 +562,14 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 		}
 	case ActionKillPreviousSpaceDelimitedWord:
 		if self.kill_previous_space_delimited_word(repeat_count, true) > 0 {
+			return nil
+		}
+	case ActionYank:
+		if self.yank(repeat_count, false) {
+			return nil
+		}
+	case ActionPopYank:
+		if self.yank(repeat_count, true) {
 			return nil
 		}
 	}
