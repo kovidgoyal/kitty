@@ -5,6 +5,9 @@
 static const combining_type VS15 = 1364, VS16 = 1365;
 // END_KNOWN_MARKS
 
+// Converts row/column diacritics to numbers.
+int diacritic_to_num(char_type ch);
+
 bool is_combining_char(char_type ch);
 bool is_ignored_char(char_type ch);
 bool is_word_char(char_type ch);

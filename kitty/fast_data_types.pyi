@@ -21,6 +21,7 @@ from kitty.options.types import Options
 from kitty.types import SignalInfo
 
 # Constants {{{
+IMAGE_PLACEHOLDER_CHAR: int
 GLFW_PRIMARY_SELECTION: int
 GLFW_CLIPBOARD: int
 CLD_KILLED: int

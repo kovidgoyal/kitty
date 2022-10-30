@@ -53,6 +53,11 @@ linebuf_mark_line_clean(LineBuf *self, index_type y) {
 }
 
 void
+linebuf_set_line_has_image_placeholders(LineBuf *self, index_type y, bool val) {
+    self->line_attrs[y].has_image_placeholders = val;
+}
+
+void
 linebuf_clear_attrs_and_dirty(LineBuf *self, index_type y) {
     self->line_attrs[y].val = 0;
     self->line_attrs[y].has_dirty_text = true;

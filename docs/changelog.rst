@@ -146,6 +146,8 @@ Detailed list of changes
 
 - macOS: Export kitty selected text to the system for use with services that accept it (patch by Sertaç Ö. Yıldız)
 
+- Image placement using Unicode placeholders (:pull:`5664`)
+
 
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

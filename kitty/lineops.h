@@ -112,6 +112,7 @@ void linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *, index_type *, H
 void linebuf_mark_line_dirty(LineBuf *self, index_type y);
 void linebuf_clear_attrs_and_dirty(LineBuf *self, index_type y);
 void linebuf_mark_line_clean(LineBuf *self, index_type y);
+void linebuf_set_line_has_image_placeholders(LineBuf *self, index_type y, bool val);
 unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y);
 void linebuf_set_last_char_as_continuation(LineBuf *self, index_type y, bool continued);
 bool linebuf_line_ends_with_continuation(LineBuf *self, index_type y);
@@ -124,6 +125,7 @@ bool history_buf_endswith_wrap(HistoryBuf *self);
 CPUCell* historybuf_cpu_cells(HistoryBuf *self, index_type num);
 void historybuf_mark_line_clean(HistoryBuf *self, index_type y);
 void historybuf_mark_line_dirty(HistoryBuf *self, index_type y);
+void historybuf_set_line_has_image_placeholders(HistoryBuf *self, index_type y, bool val);
 void historybuf_refresh_sprite_positions(HistoryBuf *self);
 void historybuf_clear(HistoryBuf *self);
 void mark_text_in_line(PyObject *marker, Line *line);

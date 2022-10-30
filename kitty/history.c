@@ -202,6 +202,11 @@ historybuf_mark_line_dirty(HistoryBuf *self, index_type y) {
 }
 
 void
+historybuf_set_line_has_image_placeholders(HistoryBuf *self, index_type y, bool val) {
+    attrptr(self, index_of(self, y))->has_image_placeholders = val;
+}
+
+void
 historybuf_clear(HistoryBuf *self) {
     pagerhist_clear(self);
     self->count = 0;
