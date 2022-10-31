@@ -46,6 +46,8 @@ Detailed list of changes
 
 - Wayland GNOME: Fix ghosting when using :opt:`background_tint` (:iss:`5605`)
 
+- Fix cursor position at x=0 changing to x=1 on resize (:iss:`5635`)
+
 0.26.4 [2022-10-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

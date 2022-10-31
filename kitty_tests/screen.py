@@ -332,6 +332,17 @@ class TestScreen(BaseTest):
         s.resize(s.lines - 1, s.columns)
         self.ae(x_before, s.cursor.x)
 
+    def test_cursor_position_after_resize(self):
+        # test x position remains the same after resize
+        s = self.create_screen()
+        s.draw('abc')
+        b = s.cursor.x
+        s.resize(7, s.columns)
+        self.assertEqual(s.cursor.x, b)
+        s.cursor.x = 0
+        s.resize(5, s.columns)
+        self.assertEqual(s.cursor.x, 0)
+
     def test_scrollback_fill_after_resize(self):
         def prepare_screen(content=()):
             ans = self.create_screen(options={'scrollback_fill_enlarged_window': True})

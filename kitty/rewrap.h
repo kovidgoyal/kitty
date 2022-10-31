@@ -81,7 +81,7 @@ rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf
             for (TrackCursor *t = track; !t->is_sentinel; t++) {
                 if (t->is_tracked_line && src_x <= t->x && t->x < src_x + num) {
                     t->y = dest_y;
-                    t->x = dest_x + (t->x - src_x + 1);
+                    t->x = dest_x + (t->x - src_x + (t->x > 0));
                 }
             }
             src_x += num; dest_x += num;

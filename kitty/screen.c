@@ -368,6 +368,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     if (n == NULL) return false;
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
     if (is_main) setup_cursor(cursor);
+    /* printf("old_cursor: (%u, %u) new_cursor: (%u, %u) beyond_content: %d\n", self->cursor->x, self->cursor->y, cursor.after.x, cursor.after.y, cursor.is_beyond_content); */
     setup_cursor(main_saved_cursor);
     grman_resize(self->main_grman, self->lines, lines, self->columns, columns);
 
@@ -396,7 +397,6 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     clear_selection(&self->selections);
     clear_selection(&self->url_ranges);
     self->last_visited_prompt.is_set = false;
-    /* printf("old_cursor: (%u, %u) new_cursor: (%u, %u) beyond_content: %d\n", self->cursor->x, self->cursor->y, cursor_x, cursor_y, cursor_is_beyond_content); */
 #define S(c, w) c->x = MIN(w.after.x, self->columns - 1); c->y = MIN(w.after.y, self->lines - 1);
     S(self->cursor, cursor);
     S((&(self->main_savepoint.cursor)), main_saved_cursor);
