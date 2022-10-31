@@ -326,6 +326,7 @@ bool _glfwInitEGL(void)
     glfw_dlsym(_glfw.egl.SwapBuffers, _glfw.egl.handle, "eglSwapBuffers");
     glfw_dlsym(_glfw.egl.SwapInterval, _glfw.egl.handle, "eglSwapInterval");
     glfw_dlsym(_glfw.egl.QueryString, _glfw.egl.handle, "eglQueryString");
+    glfw_dlsym(_glfw.egl.QuerySurface, _glfw.egl.handle, "eglQuerySurface");
     glfw_dlsym(_glfw.egl.GetProcAddress, _glfw.egl.handle, "eglGetProcAddress");
 
     if (!_glfw.egl.GetConfigAttrib ||
