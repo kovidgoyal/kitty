@@ -275,18 +275,6 @@ static void setOpaqueRegion(_GLFWwindow* window, bool commit_surface)
     wl_region_destroy(region);
 }
 
-static void
-swap_buffers(_GLFWwindow *window) {
-    // this will attach the buffer to the surface,
-    // the client is responsible for clearing the buffer to an appropriate blank
-    window->swaps_disallowed = false;
-    GLFWwindow *current = glfwGetCurrentContext();
-    bool context_is_current = ((_GLFWwindow*)current)->id == window->id;
-    if (!context_is_current) glfwMakeContextCurrent((GLFWwindow*)window);
-    window->context.swapBuffers(window);
-    if (!context_is_current) glfwMakeContextCurrent(current);
-}
-
 
 static void
 resizeFramebuffer(_GLFWwindow* window) {
@@ -604,8 +592,9 @@ static void xdgSurfaceHandleConfigure(void* data,
         int width = window->wl.pending.width;
         int height = window->wl.pending.height;
         if (!window->wl.surface_configured_once) {
+            window->swaps_disallowed = false;
+            window->wl.waiting_for_swap_to_commit = true;
             window->wl.surface_configured_once = true;
-            swap_buffers(window);
         }
 
         if (new_states != window->wl.current.toplevel_states ||
@@ -628,11 +617,10 @@ static void xdgSurfaceHandleConfigure(void* data,
         window->wl.current.decoration_mode = mode;
     }
 
-    bool resized = false;
     if (window->wl.pending_state) {
         int width = window->wl.pending.width, height = window->wl.pending.height;
         set_csd_window_geometry(window, &width, &height);
-        resized = dispatchChangesAfterConfigure(window, width, height);
+        bool resized = dispatchChangesAfterConfigure(window, width, height);
         if (window->wl.decorations.serverSide) {
             free_csd_surfaces(window);
         } else {
