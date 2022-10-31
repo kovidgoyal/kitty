@@ -332,8 +332,6 @@ class TestScreen(BaseTest):
         s.resize(s.lines - 1, s.columns)
         self.ae(x_before, s.cursor.x)
 
-    def test_cursor_position_after_resize(self):
-        # test x position remains the same after resize
         s = self.create_screen()
         s.draw('abc')
         b = s.cursor.x
