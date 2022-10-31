@@ -48,6 +48,8 @@ Detailed list of changes
 
 - Fix cursor position at x=0 changing to x=1 on resize (:iss:`5635`)
 
+- Wayland GNOME: Fix incorrect window size when in some circumstances when switching between windows with window decorations disabled (:iss:`4802`)
+
 0.26.4 [2022-10-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -251,6 +251,15 @@ static bool checkScaleChange(_GLFWwindow* window)
     return false;
 }
 
+static void
+commit_window_surface_if_safe(_GLFWwindow *window) {
+    // we only commit if the buffer attached to the surface is the correct size,
+    // which means that at least one frame is drawn after resizeFramebuffer()
+    if (!window->wl.waiting_for_swap_to_commit) {
+        wl_surface_commit(window->wl.surface);
+    }
+}
+
 // Makes the surface considered as XRGB instead of ARGB.
 static void setOpaqueRegion(_GLFWwindow* window, bool commit_surface)
 {
@@ -262,7 +271,7 @@ static void setOpaqueRegion(_GLFWwindow* window, bool commit_surface)
 
     wl_region_add(region, 0, 0, window->wl.width, window->wl.height);
     wl_surface_set_opaque_region(window->wl.surface, region);
-    if (commit_surface) wl_surface_commit(window->wl.surface);
+    if (commit_surface) commit_window_surface_if_safe(window);
     wl_region_destroy(region);
 }
 
@@ -287,9 +296,20 @@ resizeFramebuffer(_GLFWwindow* window) {
     debug("Resizing framebuffer to: %dx%d at scale: %d\n", window->wl.width, window->wl.height, scale);
     wl_egl_window_resize(window->wl.native, scaledWidth, scaledHeight, 0, 0);
     if (!window->wl.transparent) setOpaqueRegion(window, false);
+    window->wl.waiting_for_swap_to_commit = true;
     _glfwInputFramebufferSize(window, scaledWidth, scaledHeight);
 }
 
+void
+_glfwWaylandAfterBufferSwap(_GLFWwindow* window) {
+    if (window->wl.waiting_for_swap_to_commit) {
+        debug("Waiting for swap to commit: swap has happened\n");
+        window->wl.waiting_for_swap_to_commit = false;
+        // this is not really needed, since I think eglSwapBuffers() calls wl_surface_commit()
+        // but lets be safe. See https://gitlab.freedesktop.org/mesa/mesa/-/blob/main/src/egl/drivers/dri2/platform_wayland.c#L1510
+        wl_surface_commit(window->wl.surface);
+    }
+}
 
 static const char*
 clipboard_mime(void) {
@@ -301,9 +321,9 @@ clipboard_mime(void) {
 }
 
 static bool
-dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height, bool *scale_changed) {
+dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height) {
     bool size_changed = width != window->wl.width || height != window->wl.height;
-    *scale_changed = checkScaleChange(window);
+    bool scale_changed = checkScaleChange(window);
 
     if (size_changed) {
         _glfwInputWindowSize(window, width, height);
@@ -311,7 +331,7 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
         resizeFramebuffer(window);
     }
 
-    if (*scale_changed) {
+    if (scale_changed) {
         debug("Scale changed to %d in dispatchChangesAfterConfigure\n", window->wl.scale);
         if (!size_changed) resizeFramebuffer(window);
         _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
@@ -319,7 +339,7 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
 
     _glfwInputWindowDamage(window);
 
-    return size_changed || *scale_changed;
+    return size_changed || scale_changed;
 }
 
 static void
@@ -600,11 +620,10 @@ static void xdgSurfaceHandleConfigure(void* data,
     }
 
     bool resized = false;
-    bool scale_changed = false;
     if (window->wl.pending_state) {
         int width = window->wl.pending.width, height = window->wl.pending.height;
         set_csd_window_geometry(window, &width, &height);
-        resized = dispatchChangesAfterConfigure(window, width, height, &scale_changed);
+        resized = dispatchChangesAfterConfigure(window, width, height);
         if (window->wl.decorations.serverSide) {
             free_csd_surfaces(window);
         } else {
@@ -614,14 +633,7 @@ static void xdgSurfaceHandleConfigure(void* data,
     }
 
     inform_compositor_of_window_geometry(window, "configure");
-
-    // we need to swap buffers here to ensure the buffer attached to the surface is a multiple
-    // of the new scale. See https://github.com/kovidgoyal/kitty/issues/5467
-    if (scale_changed) swap_buffers(window);
-
-    // if a resize happened there will be a commit at the next render frame so
-    // dont commit here, GNOME doesnt like it and its not really needed anyway
-    if (!resized) wl_surface_commit(window->wl.surface);
+    commit_window_surface_if_safe(window);
     window->wl.pending_state = 0;
 }
 
@@ -1021,7 +1033,7 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
         window->wl.width = w; window->wl.height = h;
         resizeFramebuffer(window);
         ensure_csd_resources(window);
-        wl_surface_commit(window->wl.surface);
+        commit_window_surface_if_safe(window);
         inform_compositor_of_window_geometry(window, "SetWindowSize");
     }
 }
@@ -1038,7 +1050,7 @@ void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window,
             maxwidth = maxheight = 0;
         xdg_toplevel_set_min_size(window->wl.xdg.toplevel, minwidth, minheight);
         xdg_toplevel_set_max_size(window->wl.xdg.toplevel, maxwidth, maxheight);
-        wl_surface_commit(window->wl.surface);
+        commit_window_surface_if_safe(window);
     }
 }
 
@@ -1273,7 +1285,7 @@ void _glfwPlatformSetWindowMousePassthrough(_GLFWwindow* window, bool enabled)
     }
     else
         wl_surface_set_input_region(window->wl.surface, 0);
-    wl_surface_commit(window->wl.surface);
+    commit_window_surface_if_safe(window);
 }
 
 float _glfwPlatformGetWindowOpacity(_GLFWwindow* window UNUSED)
@@ -1337,7 +1349,7 @@ void _glfwPlatformSetCursorPos(_GLFWwindow* window, double x, double y)
         zwp_locked_pointer_v1_set_cursor_position_hint(
             window->wl.pointerLock.lockedPointer,
             wl_fixed_from_double(x), wl_fixed_from_double(y));
-        wl_surface_commit(window->wl.surface);
+        commit_window_surface_if_safe(window);
     }
 }
 
@@ -2241,12 +2253,19 @@ GLFWAPI void glfwRequestWaylandFrameEvent(GLFWwindow *handle, unsigned long long
     _GLFWwindow* window = (_GLFWwindow*) handle;
     static const struct wl_callback_listener frame_listener = { .done = frame_handle_redraw };
     if (window->wl.frameCallbackData.current_wl_callback) wl_callback_destroy(window->wl.frameCallbackData.current_wl_callback);
-    window->wl.frameCallbackData.id = id;
-    window->wl.frameCallbackData.callback = callback;
-    window->wl.frameCallbackData.current_wl_callback = wl_surface_frame(window->wl.surface);
-    if (window->wl.frameCallbackData.current_wl_callback) {
-        wl_callback_add_listener(window->wl.frameCallbackData.current_wl_callback, &frame_listener, window);
-        wl_surface_commit(window->wl.surface);
+    if (window->wl.waiting_for_swap_to_commit) {
+        callback(id);
+        window->wl.frameCallbackData.id = 0;
+        window->wl.frameCallbackData.callback = NULL;
+        window->wl.frameCallbackData.current_wl_callback = NULL;
+    } else {
+        window->wl.frameCallbackData.id = id;
+        window->wl.frameCallbackData.callback = callback;
+        window->wl.frameCallbackData.current_wl_callback = wl_surface_frame(window->wl.surface);
+        if (window->wl.frameCallbackData.current_wl_callback) {
+            wl_callback_add_listener(window->wl.frameCallbackData.current_wl_callback, &frame_listener, window);
+            commit_window_surface_if_safe(window);
+        }
     }
 }
 

@@ -478,6 +478,9 @@ GLFWAPI void glfwSwapBuffers(GLFWwindow* handle)
     }
 
     window->context.swapBuffers(window);
+#ifdef _GLFW_WAYLAND
+    _glfwWaylandAfterBufferSwap(window);
+#endif
 }
 
 GLFWAPI void glfwSwapInterval(int interval)

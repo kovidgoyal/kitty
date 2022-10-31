@@ -152,6 +152,7 @@ typedef struct _GLFWwindowWayland
     bool                        hovered;
     bool                        transparent;
     struct wl_surface*          surface;
+    bool                        waiting_for_swap_to_commit;
     struct wl_egl_window*       native;
     struct wl_callback*         callback;
 
@@ -369,6 +370,7 @@ typedef struct _GLFWcursorWayland
 
 
 void _glfwAddOutputWayland(uint32_t name, uint32_t version);
+void _glfwWaylandAfterBufferSwap(_GLFWwindow *window);
 void _glfwSetupWaylandDataDevice(void);
 void _glfwSetupWaylandPrimarySelectionDevice(void);
 void animateCursorImage(id_type timer_id, void *data);
