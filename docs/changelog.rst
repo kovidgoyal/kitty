@@ -50,6 +50,8 @@ Detailed list of changes
 
 - Wayland GNOME: Fix incorrect window size in some circumstances when switching between windows with window decorations disabled (:iss:`4802`)
 
+- Wayland: Fix high CPU usage when using some input methods (:pull:`5369`)
+
 0.26.4 [2022-10-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
