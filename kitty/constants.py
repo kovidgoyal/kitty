@@ -6,7 +6,7 @@ import os
 import pwd
 import sys
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Iterable, NamedTuple, Optional, Set
+from typing import TYPE_CHECKING, Any, Iterator, NamedTuple, Optional, Set
 
 from .types import run_once
 
@@ -219,15 +219,24 @@ def running_in_kitty(set_val: Optional[bool] = None) -> bool:
     return bool(getattr(running_in_kitty, 'ans', False))
 
 
-def list_kitty_resources(package: str = 'kitty') -> Iterable[str]:
-    from importlib.resources import contents
-    return contents(package)
+def list_kitty_resources(package: str = 'kitty') -> Iterator[str]:
+    try:
+        from importlib.resources import files
+    except ImportError:
+        from importlib.resources import contents
+        return iter(contents(package))
+    else:
+        return (path.name for path in files(package).iterdir())
 
 
 def read_kitty_resource(name: str, package_name: str = 'kitty') -> bytes:
-    from importlib.resources import read_binary
-
-    return read_binary(package_name, name)
+    try:
+        from importlib.resources import files
+    except ImportError:
+        from importlib.resources import read_binary
+        return read_binary(package_name, name)
+    else:
+        return (files(package_name) / name).read_bytes()
 
 
 def website_url(doc_name: str = '', website: str = 'https://sw.kovidgoyal.net/kitty/') -> str:

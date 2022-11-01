@@ -5,8 +5,12 @@ import importlib
 import os
 import shutil
 import unittest
-from importlib.resources import contents
-from typing import Callable, Generator, NoReturn, Sequence, Set
+from importlib.resources import files
+from typing import Callable, Generator, NoReturn, Sequence, Set, Iterator
+
+
+def contents(package: str) -> Iterator[str]:
+    return (path.name for path in files(package).iterdir())
 
 
 def itertests(suite: unittest.TestSuite) -> Generator[unittest.TestCase, None, None]:
