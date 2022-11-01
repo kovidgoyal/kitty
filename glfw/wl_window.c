@@ -588,9 +588,12 @@ static void xdgSurfaceHandleConfigure(void* data,
                                       struct xdg_surface* surface,
                                       uint32_t serial)
 {
-    // The poorly documented pattern Wayland requires ack the configure,
-    // set the window geometry attach a new buffer of the correct size to the surface
-    // and only then commit the surface. buffer is attached only by eglSwapBuffers,
+    // The poorly documented pattern Wayland requires is:
+    // 1) ack the configure,
+    // 2) set the window geometry
+    // 3) attach a new buffer of the correct size to the surface
+    // 4) only then commit the surface.
+    // buffer is attached only by eglSwapBuffers,
     // so we set a flag to not commit the surface till the next swapbuffers. Note that
     // wl_egl_window_resize() does not actually resize the buffer until the next draw call
     // or buffer state query.
