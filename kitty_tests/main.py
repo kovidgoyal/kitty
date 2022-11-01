@@ -5,11 +5,15 @@ import importlib
 import os
 import shutil
 import unittest
-from importlib.resources import files
 from typing import Callable, Generator, NoReturn, Sequence, Set, Iterator
 
 
 def contents(package: str) -> Iterator[str]:
+    try:
+        from importlib.resources import files
+    except ImportError:
+        from importlib.resources import contents
+        return iter(contents(package))
     return (path.name for path in files(package).iterdir())
 
 
