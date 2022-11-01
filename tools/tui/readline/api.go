@@ -106,6 +106,10 @@ func (self *kill_ring) pop_yank() string {
 	return self.yank()
 }
 
+func (self *kill_ring) clear() {
+	self.items = self.items.Init()
+}
+
 type Readline struct {
 	prompt                  string
 	prompt_len              int

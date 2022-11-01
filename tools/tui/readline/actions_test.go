@@ -3,6 +3,7 @@
 package readline
 
 import (
+	"container/list"
 	"fmt"
 	"kitty/tools/tui/loop"
 	"testing"
@@ -251,6 +252,60 @@ func TestCursorMovement(t *testing.T) {
 	rl.cursor = Position{X: 5}
 	wb(1, 1, "")
 
+}
+
+func TestYanking(t *testing.T) {
+	lp, _ := loop.New()
+	rl := New(lp, RlInit{Prompt: "$$ "})
+
+	as_slice := func(l *list.List) []string {
+		ans := make([]string, 0, l.Len())
+		for e := l.Front(); e != nil; e = e.Next() {
+			ans = append(ans, e.Value.(string))
+		}
+		return ans
+	}
+
+	assert_items := func(expected ...string) {
+		if diff := cmp.Diff(expected, as_slice(rl.kill_ring.items)); diff != "" {
+			t.Fatalf("kill ring items not as expected\n%s", diff)
+		}
+	}
+	assert_text := func(expected string) {
+		if diff := cmp.Diff(expected, rl.all_text()); diff != "" {
+			t.Fatalf("text not as expected:\n%s", diff)
+		}
+	}
+
+	rl.add_text("1 2 3\none two three")
+	rl.perform_action(ActionKillToStartOfLine, 1)
+	assert_items("one two three")
+	rl.perform_action(ActionCursorUp, 1)
+	rl.perform_action(ActionKillToEndOfLine, 1)
+	assert_items("1 2 3", "one two three")
+	rl.perform_action(ActionYank, 1)
+	assert_text("1 2 3\n")
+	rl.perform_action(ActionYank, 1)
+	assert_text("1 2 31 2 3\n")
+	rl.perform_action(ActionPopYank, 1)
+	assert_text("1 2 3one two three\n")
+	rl.perform_action(ActionPopYank, 1)
+	assert_text("1 2 31 2 3\n")
+
+	rl.ResetText()
+	rl.kill_ring.clear()
+	rl.add_text("one two three")
+	rl.perform_action(ActionMoveToStartOfLine, 1)
+	rl.perform_action(ActionKillNextWord, 1)
+	assert_items("one")
+	assert_text(" two three")
+	rl.perform_action(ActionKillNextWord, 1)
+	assert_items("one two")
+	assert_text(" three")
+	rl.perform_action(ActionCursorRight, 1)
+	rl.perform_action(ActionKillNextWord, 1)
+	assert_items("three", "one two")
+	assert_text(" ")
 }
 
 func TestEraseChars(t *testing.T) {
