@@ -16,8 +16,9 @@ var _ = fmt.Print
 
 type HistoryItem struct {
 	Cmd       string        `json:"cmd"`
+	Cwd       string        `json:"cwd,omitempty"`
 	Timestamp time.Time     `json:"timestamp"`
-	Duration  time.Duration `json:"duration"`
+	Duration  time.Duration `json:"duration,omitempty"`
 	ExitCode  int           `json:"exit_code"`
 }
 
