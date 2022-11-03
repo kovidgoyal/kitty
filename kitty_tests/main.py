@@ -7,6 +7,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 import unittest
 from contextlib import contextmanager
 from functools import lru_cache

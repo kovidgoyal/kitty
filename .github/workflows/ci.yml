@@ -80,17 +80,10 @@ jobs:
           - name: Test for trailing whitespace
             run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst *.go .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
 
-<<<<<<< HEAD
-            - name: Set up Python
-              uses: actions/setup-python@v3
-              with:
-                python-version: "3.10"
-=======
           - name: Set up Python
             uses: actions/setup-python@v3
             with:
-              python-version: 3.9
->>>>>>> 359bf535d (Install Go 1.18 on CI)
+              python-version: "3.10"
 
           - name: Install Go
             uses: actions/setup-go@v3
