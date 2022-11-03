@@ -3,7 +3,7 @@
 
 import tempfile
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iterator,
     List, NoReturn, Optional, Set, Tuple, Type, Union, cast
@@ -185,7 +185,7 @@ class ArgsHandling:
     json_field: str = ''
     count: Optional[int] = None
     spec: str = ''
-    completion: CompletionSpec = CompletionSpec()
+    completion: CompletionSpec = field(default_factory=CompletionSpec)
     value_if_unspecified: Tuple[str, ...] = ()
     minimum_count: int = -1
     first_rest: Optional[Tuple[str, str]] = None
