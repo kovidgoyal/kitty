@@ -138,6 +138,7 @@ def compile_match_query(exp: str, is_simple: bool = True) -> MatchPatternType:
 class WindowDict(TypedDict):
     id: int
     is_focused: bool
+    is_active_window: bool
     title: str
     pid: Optional[int]
     cwd: str
@@ -614,10 +615,11 @@ class Window:
     def __repr__(self) -> str:
         return f'Window(title={self.title}, id={self.id})'
 
-    def as_dict(self, is_focused: bool = False, is_self: bool = False) -> WindowDict:
+    def as_dict(self, is_focused: bool = False, is_self: bool = False, is_active_window: bool = False) -> WindowDict:
         return dict(
             id=self.id,
             is_focused=is_focused,
+            is_active_window=is_active_window,
             title=self.title,
             pid=self.child.pid,
             cwd=self.child.current_cwd or self.child.cwd,

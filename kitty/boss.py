@@ -37,7 +37,7 @@ from .fast_data_types import (
     IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED, ChildMonitor, Color,
     EllipticCurveKey, KeyEvent, SingleKey, add_timer, apply_options_update,
     background_opacity_of, change_background_opacity, change_os_window_state,
-    cocoa_set_menubar_title, create_os_window,
+    cocoa_set_menubar_title, create_os_window, last_focused_os_window_id,
     current_application_quit_request, current_os_window, destroy_global_data,
     focus_os_window, get_boss, get_options, get_os_window_size,
     global_font_size, mark_os_window_for_close, os_window_font_size,
@@ -351,7 +351,7 @@ class Boss:
                 yield {
                     'id': os_window_id,
                     'platform_window_id': platform_window_id(os_window_id),
-                    'is_focused': tm is active_tab_manager,
+                    'is_focused': tm is active_tab_manager and os_window_id == last_focused_os_window_id(),
                     'tabs': list(tm.list_tabs(active_tab, active_window, self_window)),
                     'wm_class': tm.wm_class,
                     'wm_name': tm.wm_name
