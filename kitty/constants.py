@@ -221,6 +221,8 @@ def running_in_kitty(set_val: Optional[bool] = None) -> bool:
 
 def list_kitty_resources(package: str = 'kitty') -> Iterator[str]:
     try:
+        if sys.version_info[:2] < (3, 10):
+            raise ImportError('importlib.resources.files() doesnt work with frozen builds on python 3.9')
         from importlib.resources import files
     except ImportError:
         from importlib.resources import contents
@@ -231,6 +233,8 @@ def list_kitty_resources(package: str = 'kitty') -> Iterator[str]:
 
 def read_kitty_resource(name: str, package_name: str = 'kitty') -> bytes:
     try:
+        if sys.version_info[:2] < (3, 10):
+            raise ImportError('importlib.resources.files() doesnt work with frozen builds on python 3.9')
         from importlib.resources import files
     except ImportError:
         from importlib.resources import read_binary

@@ -4,12 +4,15 @@
 import importlib
 import os
 import shutil
+import sys
 import unittest
-from typing import Callable, Generator, NoReturn, Sequence, Set, Iterator
+from typing import Callable, Generator, Iterator, NoReturn, Sequence, Set
 
 
 def contents(package: str) -> Iterator[str]:
     try:
+        if sys.version_info[:2] < (3, 10):
+            raise ImportError('importlib.resources.files() doesnt work with frozen builds on python 3.9')
         from importlib.resources import files
     except ImportError:
         from importlib.resources import contents
