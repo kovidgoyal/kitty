@@ -167,6 +167,12 @@ define a few extra key bindings in :file:`kitty.conf`::
     map shift+right move_window right
     map shift+down move_window down
 
+    # Move the active window to the indicated screen edge
+    map ctrl+shift+up layout_action move_to_screen_edge top
+    map ctrl+shift+left layout_action move_to_screen_edge left
+    map ctrl+shift+right layout_action move_to_screen_edge right
+    map ctrl+shift+down layout_action move_to_screen_edge bottom
+
     # Switch focus to the neighboring window in the indicated direction
     map ctrl+left neighboring_window left
     map ctrl+right neighboring_window right

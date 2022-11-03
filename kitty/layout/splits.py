@@ -414,6 +414,16 @@ class Splits(Layout):
     def pairs_root(self, root: Pair) -> None:
         self._pairs_root = root
 
+    def remove_windows(self, *windows_to_remove: int) -> None:
+        root = self.pairs_root
+        for pair in root.self_and_descendants():
+            pair.remove_windows(windows_to_remove)
+        root.collapse_redundant_pairs()
+        if root.one is None or root.two is None:
+            q = root.one or root.two
+            if isinstance(q, Pair):
+                self.pairs_root = q
+
     def do_layout(self, all_windows: WindowList) -> None:
         groups = tuple(all_windows.iter_all_layoutable_groups())
         window_count = len(groups)
@@ -421,15 +431,8 @@ class Splits(Layout):
         all_present_window_ids = frozenset(w.id for w in groups)
         already_placed_window_ids = frozenset(root.all_window_ids())
         windows_to_remove = already_placed_window_ids - all_present_window_ids
-
         if windows_to_remove:
-            for pair in root.self_and_descendants():
-                pair.remove_windows(windows_to_remove)
-            root.collapse_redundant_pairs()
-            if root.one is None or root.two is None:
-                q = root.one or root.two
-                if isinstance(q, Pair):
-                    root = self.pairs_root = q
+            self.remove_windows(*windows_to_remove)
         id_window_map = {w.id: w for w in groups}
         id_idx_map = {w.id: i for i, w in enumerate(groups)}
         windows_to_add = all_present_window_ids - already_placed_window_ids
@@ -552,6 +555,23 @@ class Splits(Layout):
                     if swap:
                         pair.one, pair.two = pair.two, pair.one
                     return True
+        elif action_name == 'move_to_screen_edge':
+            args = args or ('left',)
+            which = args[0]
+            horizontal = which in ('left', 'right')
+            wg = all_windows.active_group
+            if wg is not None:
+                self.remove_windows(wg.id)
+                new_root = Pair(horizontal)
+                if which in ('left', 'top'):
+                    new_root.balanced_add(wg.id)
+                    new_root.two = self.pairs_root
+                else:
+                    new_root.one = self.pairs_root
+                    new_root.two = wg.id
+                self.pairs_root = new_root
+                return True
+
         return None
 
     def layout_state(self) -> Dict[str, Any]:

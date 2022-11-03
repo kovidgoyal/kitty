@@ -38,6 +38,8 @@ Detailed list of changes
 0.26.5 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Splits layout: Add a new mappable action to move the active window to the screen edge (:iss:`5643`)
+
 - ssh kitten: Allow using absolute paths for the location of transferred data (:iss:`5607`)
 
 - Fix a regression in the previous release that caused a :opt:`resize_draw_strategy` of ``static`` to not work (:iss:`5601`)
