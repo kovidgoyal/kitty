@@ -37,7 +37,7 @@ from .fast_data_types import (
     STRIKETHROUGH, TINT_PROGRAM, Color, KeyEvent, Screen, add_timer, add_window,
     cell_size_for_window, click_mouse_cmd_output, click_mouse_url, compile_program,
     current_os_window, encode_key_for_tty, get_boss, get_click_interval, get_options,
-    init_cell_program, mark_os_window_dirty, mouse_selection,
+    init_cell_program, mark_os_window_dirty, mouse_selection, last_focused_os_window_id,
     move_cursor_to_mouse_if_in_prompt, pt_to_px, set_titlebar_color, set_window_logo,
     set_window_padding, set_window_render_data, update_ime_position_for_window,
     update_window_title, update_window_visibility, wakeup_main_loop,
@@ -707,7 +707,7 @@ class Window:
             if query == 'active':
                 return active_tab is not None and self is active_tab.active_window
             if query == 'focused':
-                return active_tab is not None and self is active_tab.active_window and current_os_window() == self.os_window_id
+                return active_tab is not None and self is active_tab.active_window and last_focused_os_window_id() == self.os_window_id
             if query == 'needs_attention':
                 return self.needs_attention
             if query == 'parent_active':

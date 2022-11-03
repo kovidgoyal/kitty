@@ -96,13 +96,26 @@ pt_to_px(double pt, id_type os_window_id) {
 
 
 OSWindow*
-current_os_window() {
+current_os_window(void) {
     if (global_state.callback_os_window) return global_state.callback_os_window;
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         if (global_state.os_windows[i].is_focused) return global_state.os_windows + i;
     }
     return global_state.os_windows;
 }
+
+static id_type
+last_focused_os_window_id(void) {
+    id_type ans = 0, max_fc_count = 0;
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = &global_state.os_windows[i];
+        if (w->last_focused_counter > max_fc_count) {
+            ans = w->id; max_fc_count = w->last_focused_counter;
+        }
+    }
+    return ans;
+}
+
 
 OSWindow*
 os_window_for_kitty_window(id_type kitty_window_id) {
@@ -664,6 +677,11 @@ PYWRAP1(update_ime_position_for_window) {
 PYWRAP0(next_window_id) {
     return PyLong_FromUnsignedLongLong(global_state.window_id_counter + 1);
 }
+
+PYWRAP0(last_focused_os_window_id) {
+    return PyLong_FromUnsignedLongLong(last_focused_os_window_id());
+}
+
 
 PYWRAP1(handle_for_window_id) {
     id_type os_window_id;
@@ -1266,6 +1284,7 @@ KK5I(add_borders_rect)
 static PyMethodDef module_methods[] = {
     MW(current_os_window, METH_NOARGS),
     MW(next_window_id, METH_NOARGS),
+    MW(last_focused_os_window_id, METH_NOARGS),
     MW(set_options, METH_VARARGS),
     MW(get_options, METH_NOARGS),
     MW(click_mouse_url, METH_VARARGS),
