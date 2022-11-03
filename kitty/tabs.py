@@ -10,8 +10,8 @@ from contextlib import suppress
 from operator import attrgetter
 from time import monotonic
 from typing import (
-    Any, Deque, Dict, Generator, Iterable, Iterator, List,
-    NamedTuple, Optional, Sequence, Set, Tuple, Union
+    Any, Deque, Dict, Generator, Iterable, Iterator, List, NamedTuple, Optional,
+    Sequence, Set, Tuple, Union,
 )
 
 from .borders import Border, Borders
@@ -19,11 +19,11 @@ from .child import Child
 from .cli_stub import CLIOptions
 from .constants import appname, kitty_exe
 from .fast_data_types import (
-    GLFW_MOUSE_BUTTON_LEFT, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE,
-    add_tab, attach_window, current_os_window, detach_window, get_boss,
-    get_click_interval, get_options, mark_tab_bar_dirty, next_window_id,
-    remove_tab, remove_window, ring_bell, set_active_tab, set_active_window,
-    swap_tabs, sync_os_window_title
+    GLFW_MOUSE_BUTTON_LEFT, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE, add_tab,
+    attach_window, current_os_window, detach_window, get_boss, get_click_interval,
+    get_options, last_focused_os_window_id, mark_tab_bar_dirty, next_window_id,
+    remove_tab, remove_window, ring_bell, set_active_tab, set_active_window, swap_tabs,
+    sync_os_window_title,
 )
 from .layout.base import Layout
 from .layout.interface import create_layout_object_for, evict_cached_layouts
@@ -726,7 +726,7 @@ class Tab:  # {{{
             if query == 'active':
                 return active_tab_manager is not None and self is active_tab_manager.active_tab
             if query == 'focused':
-                return active_tab_manager is not None and self is active_tab_manager.active_tab and self.os_window_id == current_os_window()
+                return active_tab_manager is not None and self is active_tab_manager.active_tab and self.os_window_id == last_focused_os_window_id()
             if query == 'needs_attention':
                 for w in self:
                     if w.needs_attention:
