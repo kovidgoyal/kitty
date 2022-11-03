@@ -81,7 +81,7 @@ def test_spawn() -> None:
         q = ctx.Queue()
         p = ctx.Process(target=q.put, args=('hello',))
         p.start()
-        x = q.get(timeout=2)
+        x = q.get(timeout=8)
         assert x == 'hello'
         p.join()
     finally:

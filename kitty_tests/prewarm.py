@@ -140,7 +140,7 @@ import os, json; from kitty.utils import *; from kitty.fast_data_types import ge
             # macOS does not send SIGCHLD when child is continued
             # https://stackoverflow.com/questions/48487935/sigchld-is-sent-on-sigcont-on-linux-but-not-on-macos
             p.stdin.close()
-            p.wait(1)
+            p.wait(3)
             for fd, event in poll.poll(0):
                 read_signals(signal_read_fd, lambda si: None)
         finally:
