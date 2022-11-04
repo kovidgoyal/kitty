@@ -759,7 +759,7 @@ class Tab:  # {{{
         self.windows = WindowList(self)
 
     def __repr__(self) -> str:
-        return f'Tab(title={self.effective_title}, id={hex(id(self))})'
+        return f'Tab(title={self.effective_title}, id={self.id})'
 
     def make_active(self) -> None:
         tm = self.tab_manager_ref()
