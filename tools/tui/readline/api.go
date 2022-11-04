@@ -56,6 +56,8 @@ const (
 	ActionHistoryNextOrCursorDown
 	ActionHistoryNext
 	ActionHistoryPrevious
+	ActionHistoryFirst
+	ActionHistoryLast
 	ActionClearScreen
 	ActionAddText
 
@@ -132,6 +134,7 @@ type Readline struct {
 	}
 	bracketed_paste_buffer strings.Builder
 	last_action            Action
+	history_matches        *HistoryMatches
 }
 
 func New(loop *loop.Loop, r RlInit) *Readline {

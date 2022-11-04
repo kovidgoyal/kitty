@@ -121,7 +121,7 @@ func exec_command(rl *readline.Readline, cmdline string) bool {
 		return true
 	}
 	cwd, _ := os.Getwd()
-	hi := readline.HistoryItem{Timestamp: time.Now(), Cmd: cmdline, ExitCode: -1, Cwd: cwd}
+	hi := readline.HistoryItem{Timestamp: time.Now(), Cmd: rl.AllText(), ExitCode: -1, Cwd: cwd}
 	switch parsed_cmdline[0] {
 	case "exit":
 		hi.ExitCode = 0

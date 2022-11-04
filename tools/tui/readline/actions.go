@@ -463,6 +463,62 @@ func (self *Readline) yank(repeat_count uint, pop bool) bool {
 	return true
 }
 
+func (self *Readline) apply_history_text(text string) {
+	self.lines = utils.Splitlines(text)
+}
+
+func (self *Readline) history_first() bool {
+	prefix := self.text_upto_cursor_pos()
+	if self.history_matches == nil || self.history_matches.prefix != prefix {
+		return false
+	}
+	item := self.history_matches.first()
+	if item == nil {
+		return false
+	}
+	self.apply_history_text(item.Cmd)
+	return true
+}
+
+func (self *Readline) history_last() bool {
+	prefix := self.text_upto_cursor_pos()
+	if self.history_matches == nil || self.history_matches.prefix != prefix {
+		return false
+	}
+	item := self.history_matches.last()
+	if item == nil {
+		return false
+	}
+	self.apply_history_text(item.Cmd)
+	return true
+}
+
+func (self *Readline) history_prev(repeat_count uint) bool {
+	prefix := self.text_upto_cursor_pos()
+	if self.history_matches == nil || self.history_matches.prefix != prefix {
+		self.history_matches = self.history.FindPrefixMatches(prefix, self.AllText())
+	}
+	item := self.history_matches.previous(repeat_count)
+	if item == nil {
+		return false
+	}
+	self.apply_history_text(item.Cmd)
+	return true
+}
+
+func (self *Readline) history_next(repeat_count uint) bool {
+	prefix := self.text_upto_cursor_pos()
+	if self.history_matches == nil || self.history_matches.prefix != prefix {
+		return false
+	}
+	item := self.history_matches.next(repeat_count)
+	if item == nil {
+		return false
+	}
+	self.apply_history_text(item.Cmd)
+	return true
+}
+
 func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 	defer func() { self.last_action = ac }()
 	switch ac {
@@ -523,21 +579,31 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 			return nil
 		}
 	case ActionHistoryPreviousOrCursorUp:
-		if self.cursor.Y == 0 {
-			r := self.perform_action(ActionHistoryPrevious, repeat_count)
-			if r == nil {
-				return nil
-			}
+		if self.perform_action(ActionCursorUp, repeat_count) != nil {
+			return self.perform_action(ActionHistoryPrevious, repeat_count)
 		}
-		return self.perform_action(ActionCursorUp, repeat_count)
+		return nil
 	case ActionHistoryNextOrCursorDown:
-		if self.cursor.Y == 0 {
-			r := self.perform_action(ActionHistoryNext, repeat_count)
-			if r == nil {
-				return nil
-			}
+		if self.perform_action(ActionCursorDown, repeat_count) != nil {
+			return self.perform_action(ActionHistoryNext, repeat_count)
 		}
-		return self.perform_action(ActionCursorDown, repeat_count)
+		return nil
+	case ActionHistoryFirst:
+		if self.history_first() {
+			return nil
+		}
+	case ActionHistoryPrevious:
+		if self.history_prev(repeat_count) {
+			return nil
+		}
+	case ActionHistoryNext:
+		if self.history_next(repeat_count) {
+			return nil
+		}
+	case ActionHistoryLast:
+		if self.history_last() {
+			return nil
+		}
 	case ActionClearScreen:
 		self.loop.StartAtomicUpdate()
 		self.loop.ClearScreen()
