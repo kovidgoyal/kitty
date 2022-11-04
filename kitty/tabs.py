@@ -20,10 +20,10 @@ from .cli_stub import CLIOptions
 from .constants import appname, kitty_exe
 from .fast_data_types import (
     GLFW_MOUSE_BUTTON_LEFT, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE, add_tab,
-    attach_window, current_os_window, detach_window, get_boss, get_click_interval,
-    get_options, last_focused_os_window_id, mark_tab_bar_dirty, next_window_id,
-    remove_tab, remove_window, ring_bell, set_active_tab, set_active_window, swap_tabs,
-    sync_os_window_title,
+    attach_window, current_focused_os_window_id, detach_window, get_boss,
+    get_click_interval, get_options, last_focused_os_window_id, mark_tab_bar_dirty,
+    next_window_id, remove_tab, remove_window, ring_bell, set_active_tab,
+    set_active_window, swap_tabs, sync_os_window_title,
 )
 from .layout.base import Layout
 from .layout.interface import create_layout_object_for, evict_cached_layouts
@@ -701,7 +701,10 @@ class Tab:  # {{{
 
     def list_windows(self, active_window: Optional[Window], self_window: Optional[Window] = None) -> Generator[WindowDict, None, None]:
         for w in self:
-            yield w.as_dict(is_focused=w is active_window and w.os_window_id == last_focused_os_window_id(), is_self=w is self_window)
+            yield w.as_dict(
+                is_active_window=w is active_window,
+                is_focused=w.os_window_id == current_focused_os_window_id() and w is active_window,
+                is_self=w is self_window)
 
     def matches_query(self, field: str, query: str, active_tab_manager: Optional['TabManager'] = None) -> bool:
         if field == 'title':
@@ -725,7 +728,8 @@ class Tab:  # {{{
             return False
         if field == 'state':
             if query == 'active':
-                return active_tab_manager is not None and self is active_tab_manager.active_tab
+                tm = self.tab_manager_ref()
+                return tm is not None and self is tm.active_tab
             if query == 'focused':
                 return active_tab_manager is not None and self is active_tab_manager.active_tab and self.os_window_id == last_focused_os_window_id()
             if query == 'needs_attention':
@@ -735,7 +739,7 @@ class Tab:  # {{{
             if query == 'parent_active':
                 return active_tab_manager is not None and self.tab_manager_ref() is active_tab_manager
             if query == 'parent_focused':
-                return active_tab_manager is not None and self.tab_manager_ref() is active_tab_manager and self.os_window_id == current_os_window()
+                return active_tab_manager is not None and self.tab_manager_ref() is active_tab_manager and self.os_window_id == last_focused_os_window_id()
             return False
         return False
 
@@ -939,7 +943,7 @@ class TabManager:  # {{{
         for tab in self:
             yield {
                 'id': tab.id,
-                'is_focused': tab is active_tab and tab.os_window_id == last_focused_os_window_id(),
+                'is_focused': tab is active_tab and tab.os_window_id == current_focused_os_window_id(),
                 'is_active_tab': tab is active_tab,
                 'title': tab.name or tab.title,
                 'layout': str(tab.current_layout.name),

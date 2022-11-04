@@ -54,7 +54,7 @@ Detailed list of changes
 
 - Wayland: Fix high CPU usage when using some input methods (:pull:`5369`)
 
-- Remote control: When matching window by `state:focused` match the window belonging to the OS window that was last focused (:iss:`5602`)
+- Remote control: When matching window by `state:focused` and no window currently has keyboard focus, match the window belonging to the OS window that was last focused (:iss:`5602`)
 
 0.26.4 [2022-10-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -790,6 +790,10 @@ def last_focused_os_window_id() -> int:
     pass
 
 
+def current_focused_os_window_id() -> int:
+    pass
+
+
 def cocoa_set_menubar_title(title: str) -> None:
     pass
 

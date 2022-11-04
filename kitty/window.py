@@ -707,15 +707,20 @@ class Window:
             return False
         if field == 'state':
             if query == 'active':
-                return active_tab is not None and self is active_tab.active_window
+                tab = self.tabref()
+                return tab is not None and tab.active_window is self
             if query == 'focused':
                 return active_tab is not None and self is active_tab.active_window and last_focused_os_window_id() == self.os_window_id
             if query == 'needs_attention':
                 return self.needs_attention
             if query == 'parent_active':
-                return active_tab is not None and self.tabref() is active_tab
+                tab = self.tabref()
+                if tab is not None:
+                    tm = tab.tab_manager_ref()
+                    return tm is not None and tm.active_tab is tab
+                return False
             if query == 'parent_focused':
-                return active_tab is not None and self.tabref() is active_tab and current_os_window() == self.os_window_id
+                return active_tab is not None and self.tabref() is active_tab and last_focused_os_window_id() == self.os_window_id
             return False
         pat = compile_match_query(query, field != 'env')
         return self.matches(field, pat)

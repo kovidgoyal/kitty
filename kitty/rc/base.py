@@ -100,7 +100,7 @@ or a name and value, for example, :code:`env:MY_ENV_VAR=2`.
 The field :code:`state` matches on the state of the window. Supported states are:
 :code:`active`, :code:`focused`, :code:`needs_attention`, :code:`parent_active` and :code:`parent_focused`.
 Active windows are the windows that are active in their parent tab. There is only one focused window and it is the
-window to which keyboard events are delivered.
+window to which keyboard events are delivered. If no window is focused, the last focused window is matched.
 
 Note that you can use the :ref:`kitty @ ls <at-ls>` command to get a list of windows.
 '''
@@ -134,7 +134,7 @@ variables are matched.
 The field :code:`state` matches on the state of the tab. Supported states are:
 :code:`active`, :code:`focused`, :code:`needs_attention`, :code:`parent_active` and :code:`parent_focused`.
 Active tabs are the tabs that are active in their parent OS window. There is only one focused tab
-and it is the tab to which keyboard events are delivered.
+and it is the tab to which keyboard events are delivered. If no tab is focused, the last focused tab is matched.
 
 Note that you can use the :ref:`kitty @ ls <at-ls>` command to get a list of tabs.
 '''

@@ -12,8 +12,8 @@ from functools import partial
 from gettext import gettext as _
 from time import monotonic
 from typing import (
-    TYPE_CHECKING, Any, Callable, Container, Dict, Iterable, Iterator, List,
-    Optional, Set, Tuple, Union
+    TYPE_CHECKING, Any, Callable, Container, Dict, Iterable, Iterator, List, Optional,
+    Set, Tuple, Union,
 )
 from weakref import WeakValueDictionary
 
@@ -21,15 +21,15 @@ from .child import cached_process_data, default_env, set_default_env
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
 from .clipboard import (
-    Clipboard, get_clipboard_string, get_primary_selection,
-    set_clipboard_string, set_primary_selection
+    Clipboard, get_clipboard_string, get_primary_selection, set_clipboard_string,
+    set_primary_selection,
 )
 from .conf.utils import BadLine, KeyAction, to_cmdline
 from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
     RC_ENCRYPTION_PROTOCOL_VERSION, appname, cache_dir, clear_handled_signals,
-    config_dir, handled_signals, is_macos, is_wayland, kitty_exe,
-    logo_png_file, supports_primary_selection, website_url
+    config_dir, handled_signals, is_macos, is_wayland, kitty_exe, logo_png_file,
+    supports_primary_selection, website_url,
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
@@ -37,15 +37,15 @@ from .fast_data_types import (
     IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED, ChildMonitor, Color,
     EllipticCurveKey, KeyEvent, SingleKey, add_timer, apply_options_update,
     background_opacity_of, change_background_opacity, change_os_window_state,
-    cocoa_set_menubar_title, create_os_window, last_focused_os_window_id,
-    current_application_quit_request, current_os_window, destroy_global_data,
-    focus_os_window, get_boss, get_options, get_os_window_size,
-    global_font_size, mark_os_window_for_close, os_window_font_size,
-    patch_global_colors, redirect_mouse_handling, ring_bell,
-    run_with_activation_token, safe_pipe, send_data_to_peer,
-    set_application_quit_request, set_background_image, set_boss,
-    set_in_sequence_mode, set_options, set_os_window_size, set_os_window_title,
-    thread_write, toggle_fullscreen, toggle_maximized, toggle_secure_input
+    cocoa_set_menubar_title, create_os_window, current_application_quit_request,
+    current_focused_os_window_id, current_os_window, destroy_global_data,
+    focus_os_window, get_boss, get_options, get_os_window_size, global_font_size,
+    last_focused_os_window_id, mark_os_window_for_close, os_window_font_size,
+    patch_global_colors, redirect_mouse_handling, ring_bell, run_with_activation_token,
+    safe_pipe, send_data_to_peer, set_application_quit_request, set_background_image,
+    set_boss, set_in_sequence_mode, set_options, set_os_window_size,
+    set_os_window_title, thread_write, toggle_fullscreen, toggle_maximized,
+    toggle_secure_input,
 )
 from .key_encoding import get_name_to_functional_number_map
 from .keys import get_shortcut, shortcut_matches
@@ -57,16 +57,14 @@ from .os_window_size import initial_window_size_func
 from .prewarm import PrewarmProcess
 from .rgb import color_from_int
 from .session import Session, create_sessions, get_os_window_sizing_data
-from .tabs import (
-    SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
-)
+from .tabs import SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
 from .types import _T, AsyncResponse, WindowSystemMouseEvent, ac
 from .typing import PopenType, TypedDict
 from .utils import (
     cleanup_ssh_control_masters, func_name, get_editor, get_new_os_window_size,
     is_path_in_temp_dir, less_version, log_error, macos_version, open_url,
     parse_address_spec, parse_uri_list, platform_window_id, remove_socket_file,
-    safe_print, single_instance, startup_notification_handler, which
+    safe_print, single_instance, startup_notification_handler, which,
 )
 from .window import CommandOutput, CwdRequest, Window
 
@@ -80,6 +78,8 @@ class OSWindowDict(TypedDict):
     id: int
     platform_window_id: Optional[int]
     is_focused: bool
+    is_active: bool
+    last_focused: bool
     tabs: List[TabDict]
     wm_class: str
     wm_name: str
@@ -287,9 +287,7 @@ class Boss:
         self.mouse_handler: Optional[Callable[[WindowSystemMouseEvent], None]] = None
         self.update_keymap()
         if is_macos:
-            from .fast_data_types import (
-                cocoa_set_notification_activated_callback
-            )
+            from .fast_data_types import cocoa_set_notification_activated_callback
             cocoa_set_notification_activated_callback(notification_activated)
 
     def update_keymap(self) -> None:
@@ -351,7 +349,9 @@ class Boss:
                 yield {
                     'id': os_window_id,
                     'platform_window_id': platform_window_id(os_window_id),
-                    'is_focused': tm is active_tab_manager and os_window_id == last_focused_os_window_id(),
+                    'is_active': tm is active_tab_manager,
+                    'is_focused': current_focused_os_window_id() == os_window_id,
+                    'last_focused': os_window_id == last_focused_os_window_id(),
                     'tabs': list(tm.list_tabs(active_tab, active_window, self_window)),
                     'wm_class': tm.wm_class,
                     'wm_name': tm.wm_name
@@ -377,6 +377,10 @@ class Boss:
             return
         from .search_query_parser import search
         tab = self.active_tab
+        if current_focused_os_window_id() <= 0:
+            tm = self.os_window_map.get(last_focused_os_window_id())
+            if tm is not None:
+                tab = tm.active_tab
 
         def get_matches(location: str, query: str, candidates: Set[int]) -> Set[int]:
             return {wid for wid in candidates if self.window_id_map[wid].matches_query(location, query, tab)}
@@ -398,6 +402,8 @@ class Boss:
             return self.all_tabs
         from .search_query_parser import search
         tm = self.active_tab_manager
+        if current_focused_os_window_id() <= 0:
+            tm = self.os_window_map.get(last_focused_os_window_id()) or tm
         tim = {t.id: t for t in self.all_tabs}
 
         def get_matches(location: str, query: str, candidates: Set[int]) -> Set[int]:
@@ -534,9 +540,7 @@ class Boss:
         return True
 
     def remote_cmd_permission_received(self, pcmd: Dict[str, Any], window_id: int, peer_id: int, choice: str) -> None:
-        from .remote_control import (
-            encode_response_for_peer, set_user_password_allowed
-        )
+        from .remote_control import encode_response_for_peer, set_user_password_allowed
         response: RCResponse = None
         window = self.window_id_map.get(window_id)
         choice = choice or 'r'
@@ -587,9 +591,7 @@ class Boss:
             self.show_error(_('remote_control mapping failed'), tb)
 
     def call_remote_control(self, active_window: Optional[Window], args: Tuple[str, ...]) -> 'ResponseType':
-        from .rc.base import (
-            PayloadGetter, command_for_name, parse_subcommand_cli
-        )
+        from .rc.base import PayloadGetter, command_for_name, parse_subcommand_cli
         from .remote_control import parse_rc_args
         aa = list(args)
         silent = False
@@ -2248,9 +2250,7 @@ class Boss:
                     log_error(f'Failed to process update check data {raw!r}, with error: {e}')
 
     def dbus_notification_callback(self, activated: bool, a: int, b: Union[int, str]) -> None:
-        from .notify import (
-            dbus_notification_activated, dbus_notification_created
-        )
+        from .notify import dbus_notification_activated, dbus_notification_created
         if activated:
             assert isinstance(b, str)
             dbus_notification_activated(a, b)
@@ -2284,9 +2284,7 @@ class Boss:
             map f5 set_colors --configured /path/to/some/config/file/colors.conf
         ''')
     def set_colors(self, *args: str) -> None:
-        from kitty.rc.base import (
-            PayloadGetter, command_for_name, parse_subcommand_cli
-        )
+        from kitty.rc.base import PayloadGetter, command_for_name, parse_subcommand_cli
         from kitty.remote_control import parse_rc_args
         c = command_for_name('set_colors')
         try:
