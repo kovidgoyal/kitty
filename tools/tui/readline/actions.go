@@ -42,7 +42,9 @@ func (self *Readline) text_after_cursor_pos() string {
 		}
 	}
 	ans := buf.String()
-	ans = ans[:len(ans)-1]
+	if ans != "" {
+		ans = ans[:len(ans)-1]
+	}
 	return ans
 }
 
@@ -465,6 +467,9 @@ func (self *Readline) yank(repeat_count uint, pop bool) bool {
 
 func (self *Readline) apply_history_text(text string) {
 	self.lines = utils.Splitlines(text)
+	if len(self.lines) == 0 {
+		self.lines = []string{""}
+	}
 }
 
 func (self *Readline) history_first() bool {

@@ -159,6 +159,7 @@ func NewHistory(path string, max_items int) *History {
 func (self *History) FindPrefixMatches(prefix, current_command string) *HistoryMatches {
 	ans := HistoryMatches{items: make([]HistoryItem, 0, len(self.items)+1), prefix: prefix}
 	if prefix == "" {
+		ans.items = ans.items[:len(self.items)]
 		copy(ans.items, self.items)
 	} else {
 		for _, x := range self.items {

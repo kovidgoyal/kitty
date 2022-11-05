@@ -373,3 +373,51 @@ func TestEraseChars(t *testing.T) {
 		rl.erase_between(Position{X: 1}, Position{X: 2, Y: 2})
 	}, "", "oree")
 }
+
+func TestHistory(t *testing.T) {
+	lp, _ := loop.New()
+	rl := New(lp, RlInit{Prompt: "$$ "})
+
+	add_item := func(x string) {
+		rl.history.AddItem(x, 0)
+	}
+	add_item("a one")
+	add_item("a two")
+	add_item("b three")
+	add_item("b four")
+
+	test := func(ac Action, before_cursor, after_cursor string) {
+		rl.perform_action(ac, 1)
+		if diff := cmp.Diff(before_cursor, rl.text_upto_cursor_pos()); diff != "" {
+			t.Fatalf("The text before the cursor was not as expected for action: %#v\n%s", ac, diff)
+		}
+		if diff := cmp.Diff(after_cursor, rl.text_after_cursor_pos()); diff != "" {
+			t.Fatalf("The text after the cursor was not as expected for action: %#v\n%s", ac, diff)
+		}
+	}
+
+	test(ActionHistoryPrevious, "", "b four")
+	test(ActionHistoryPrevious, "", "b three")
+	test(ActionHistoryPrevious, "", "a two")
+	test(ActionHistoryPrevious, "", "a one")
+	test(ActionHistoryPrevious, "", "a one")
+	test(ActionHistoryNext, "", "a two")
+	test(ActionHistoryNext, "", "b three")
+	test(ActionHistoryNext, "", "b four")
+	test(ActionHistoryNext, "", "")
+	test(ActionHistoryNext, "", "")
+
+	test(ActionHistoryPrevious, "", "b four")
+	test(ActionHistoryPrevious, "", "b three")
+	test(ActionHistoryNext, "", "b four")
+
+	rl.ResetText()
+	rl.add_text("a")
+	test(ActionHistoryPrevious, "a", " two")
+	test(ActionHistoryPrevious, "a", " one")
+	test(ActionHistoryPrevious, "a", " one")
+	test(ActionHistoryNext, "a", " two")
+	test(ActionHistoryNext, "a", "")
+	test(ActionHistoryNext, "a", "")
+
+}
