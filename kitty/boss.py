@@ -227,7 +227,7 @@ class VisualSelect:
             t = tm.tab_for_id(self.prev_tab_id)
             if t is not tm.active_tab and t is not None:
                 tm.set_active_tab(t)
-        if current_os_window() != self.prev_os_window_id and self.prev_os_window_id is not None:
+        if current_focused_os_window_id() != self.prev_os_window_id and self.prev_os_window_id is not None:
             focus_os_window(self.prev_os_window_id, True)
 
 
@@ -429,7 +429,7 @@ class Boss:
                         if tab is not self.active_tab:
                             tm.set_active_tab(tab, for_keep_focus=window.tabref() if for_keep_focus else None)
                         tab.set_active_window(w, for_keep_focus=window if for_keep_focus else None)
-                        if switch_os_window_if_needed and current_os_window() != os_window_id:
+                        if switch_os_window_if_needed and current_focused_os_window_id() != os_window_id:
                             focus_os_window(os_window_id, True)
                         return os_window_id
         return None
