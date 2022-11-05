@@ -699,7 +699,8 @@ class Tab:  # {{{
     def move_window_backward(self) -> None:
         self.move_window(-1)
 
-    def list_windows(self, active_window: Optional[Window], self_window: Optional[Window] = None) -> Generator[WindowDict, None, None]:
+    def list_windows(self, self_window: Optional[Window] = None) -> Generator[WindowDict, None, None]:
+        active_window = self.active_window
         for w in self:
             yield w.as_dict(
                 is_active_window=w is active_window,
@@ -939,7 +940,8 @@ class TabManager:  # {{{
     def __len__(self) -> int:
         return len(self.tabs)
 
-    def list_tabs(self, active_tab: Optional[Tab], active_window: Optional[Window], self_window: Optional[Window] = None) -> Generator[TabDict, None, None]:
+    def list_tabs(self, self_window: Optional[Window] = None) -> Generator[TabDict, None, None]:
+        active_tab = self.active_tab
         for tab in self:
             yield {
                 'id': tab.id,
@@ -950,7 +952,7 @@ class TabManager:  # {{{
                 'layout_state': tab.current_layout.layout_state(),
                 'layout_opts': tab.current_layout.layout_opts.serialized(),
                 'enabled_layouts': tab.enabled_layouts,
-                'windows': list(tab.list_windows(active_window, self_window)),
+                'windows': list(tab.list_windows(self_window)),
                 'active_window_history': list(tab.windows.active_window_history),
             }
 

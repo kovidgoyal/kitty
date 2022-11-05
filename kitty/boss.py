@@ -343,7 +343,6 @@ class Boss:
 
     def list_os_windows(self, self_window: Optional[Window] = None) -> Iterator[OSWindowDict]:
         with cached_process_data():
-            active_tab, active_window = self.active_tab, self.active_window
             active_tab_manager = self.active_tab_manager
             for os_window_id, tm in self.os_window_map.items():
                 yield {
@@ -352,7 +351,7 @@ class Boss:
                     'is_active': tm is active_tab_manager,
                     'is_focused': current_focused_os_window_id() == os_window_id,
                     'last_focused': os_window_id == last_focused_os_window_id(),
-                    'tabs': list(tm.list_tabs(active_tab, active_window, self_window)),
+                    'tabs': list(tm.list_tabs(self_window)),
                     'wm_class': tm.wm_class,
                     'wm_name': tm.wm_name
                 }
@@ -1090,8 +1089,14 @@ class Boss:
 
     @property
     def active_tab_manager(self) -> Optional[TabManager]:
-        os_window_id = current_os_window()
-        return None if os_window_id is None else self.os_window_map.get(os_window_id)
+        os_window_id = current_focused_os_window_id()
+        if os_window_id <= 0:
+            os_window_id = last_focused_os_window_id()
+        if os_window_id <= 0:
+            q = current_os_window()
+            if q is not None:
+                os_window_id = q
+        return self.os_window_map.get(os_window_id)
 
     @property
     def active_tab(self) -> Optional[Tab]:

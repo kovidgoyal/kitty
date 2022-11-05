@@ -36,11 +36,12 @@ from .fast_data_types import (
     NUM_UNDERLINE_STYLES, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
     STRIKETHROUGH, TINT_PROGRAM, Color, KeyEvent, Screen, add_timer, add_window,
     cell_size_for_window, click_mouse_cmd_output, click_mouse_url, compile_program,
-    current_os_window, encode_key_for_tty, get_boss, get_click_interval, get_options,
-    init_cell_program, mark_os_window_dirty, mouse_selection, last_focused_os_window_id,
-    move_cursor_to_mouse_if_in_prompt, pt_to_px, set_titlebar_color, set_window_logo,
-    set_window_padding, set_window_render_data, update_ime_position_for_window,
-    update_window_title, update_window_visibility, wakeup_main_loop,
+    current_focused_os_window_id, encode_key_for_tty, get_boss, get_click_interval,
+    get_options, init_cell_program, last_focused_os_window_id, mark_os_window_dirty,
+    mouse_selection, move_cursor_to_mouse_if_in_prompt, pt_to_px, set_titlebar_color,
+    set_window_logo, set_window_padding, set_window_render_data,
+    update_ime_position_for_window, update_window_title, update_window_visibility,
+    wakeup_main_loop,
 )
 from .keys import keyboard_mode_name, mod_mask
 from .notify import (
@@ -926,7 +927,7 @@ class Window:
                 tab = self.tabref()
                 if tab is not None:
                     tab.relayout_borders()
-        elif self.os_window_id == current_os_window():
+        elif self.os_window_id == current_focused_os_window_id():
             # Cancel IME composition after loses focus
             update_ime_position_for_window(self.id, False, -1)
 
@@ -1361,7 +1362,7 @@ class Window:
         self.destroyed = True
         del self.kitten_result_processors
         if hasattr(self, 'screen'):
-            if self.is_active and self.os_window_id == current_os_window():
+            if self.is_active and self.os_window_id == current_focused_os_window_id():
                 # Cancel IME composition when window is destroyed
                 update_ime_position_for_window(self.id, False, -1)
             # Remove cycles so that screen is de-allocated immediately
