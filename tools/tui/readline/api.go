@@ -60,6 +60,7 @@ const (
 	ActionHistoryLast
 	ActionClearScreen
 	ActionAddText
+	ActionAbortCurrentLine
 
 	ActionStartKillActions
 	ActionKillToEndOfLine

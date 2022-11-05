@@ -584,12 +584,12 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 			return nil
 		}
 	case ActionHistoryPreviousOrCursorUp:
-		if self.perform_action(ActionCursorUp, repeat_count) != nil {
+		if self.perform_action(ActionCursorUp, repeat_count) == ErrCouldNotPerformAction {
 			return self.perform_action(ActionHistoryPrevious, repeat_count)
 		}
 		return nil
 	case ActionHistoryNextOrCursorDown:
-		if self.perform_action(ActionCursorDown, repeat_count) != nil {
+		if self.perform_action(ActionCursorDown, repeat_count) == ErrCouldNotPerformAction {
 			return self.perform_action(ActionHistoryNext, repeat_count)
 		}
 		return nil
@@ -643,6 +643,10 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 		if self.yank(repeat_count, true) {
 			return nil
 		}
+	case ActionAbortCurrentLine:
+		self.loop.QueueWriteString("\r\n")
+		self.ResetText()
+		return nil
 	}
 	return ErrCouldNotPerformAction
 }

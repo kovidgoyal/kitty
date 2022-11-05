@@ -49,10 +49,14 @@ var default_shortcuts = map[string]Action{
 	"ctrl+y":        ActionYank,
 	"alt+y":         ActionPopYank,
 
+	"up":     ActionHistoryPreviousOrCursorUp,
+	"down":   ActionHistoryNextOrCursorDown,
 	"ctrl+p": ActionHistoryPrevious,
 	"ctrl+n": ActionHistoryNext,
 	"alt+<":  ActionHistoryFirst,
 	"alt+>":  ActionHistoryLast,
+
+	"ctrl+c": ActionAbortCurrentLine,
 }
 
 func action_for_key_event(event *loop.KeyEvent, shortcuts map[string]Action) Action {
