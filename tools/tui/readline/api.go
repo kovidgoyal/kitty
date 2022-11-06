@@ -203,6 +203,7 @@ func (self *Readline) ResetText() {
 	self.cursor = Position{}
 	self.cursor_y = 0
 	self.last_action = ActionNil
+	self.keyboard_state = KeyboardState{}
 }
 
 func (self *Readline) ChangeLoopAndResetText(lp *loop.Loop) {

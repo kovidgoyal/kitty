@@ -19,7 +19,7 @@ type ShortcutMap struct {
 }
 
 type KeyboardState struct {
-	shortcut_maps            []*ShortcutMap
+	active_shortcut_maps     []*ShortcutMap
 	current_pending_keys     []string
 	current_numeric_argument string
 }
@@ -164,13 +164,13 @@ func (self *Readline) dispatch_key_action(ac Action) error {
 }
 
 func (self *Readline) handle_key_event(event *loop.KeyEvent) error {
-	if len(self.keyboard_state.shortcut_maps) == 0 {
-		self.keyboard_state.shortcut_maps = []*ShortcutMap{default_shortcuts()}
-	}
 	if event.Text != "" {
 		return nil
 	}
-	sm := self.keyboard_state.shortcut_maps[len(self.keyboard_state.shortcut_maps)-1]
+	sm := default_shortcuts()
+	if len(self.keyboard_state.active_shortcut_maps) > 0 {
+		sm = self.keyboard_state.active_shortcut_maps[len(self.keyboard_state.active_shortcut_maps)-1]
+	}
 	for _, pk := range self.keyboard_state.current_pending_keys {
 		sm = sm.children[pk]
 	}
