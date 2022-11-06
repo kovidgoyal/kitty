@@ -25,12 +25,22 @@ func (self *Readline) update_current_screen_size() {
 }
 
 type ScreenLine struct {
-	ParentLineNumber, OffsetInParentLine, PromptLen int
-	TextLengthInCells, CursorCell, CursorTextPos    int
-	Text                                            string
+	ParentLineNumber, OffsetInParentLine         int
+	Prompt                                       Prompt
+	TextLengthInCells, CursorCell, CursorTextPos int
+	Text                                         string
+}
+
+func (self *Readline) format_arg_prompt(cna string) string {
+	return fmt.Sprintf("(arg: %s) ", self.fmt_ctx.Yellow(cna))
 }
 
 func (self *Readline) prompt_for_line_number(i int) Prompt {
+	is_line_with_cursor := i == self.cursor.Y
+	if is_line_with_cursor && self.keyboard_state.current_numeric_argument != "" {
+		text := self.format_arg_prompt(self.keyboard_state.current_numeric_argument)
+		return Prompt{Text: text, Length: wcswidth.Stringwidth(text)}
+	}
 	if i == 0 {
 		return self.prompt
 	}
@@ -45,26 +55,26 @@ func (self *Readline) get_screen_lines() []*ScreenLine {
 	found_cursor := false
 	cursor_at_start_of_next_line := false
 	for i, line := range self.lines {
-		plen := self.prompt_for_line_number(i).length
+		prompt := self.prompt_for_line_number(i)
 		offset := 0
 		has_cursor := i == self.cursor.Y
 		for is_first := true; is_first || offset < len(line); is_first = false {
-			l, width := wcswidth.TruncateToVisualLengthWithWidth(line[offset:], self.screen_width-plen)
+			l, width := wcswidth.TruncateToVisualLengthWithWidth(line[offset:], self.screen_width-prompt.Length)
 			sl := ScreenLine{
 				ParentLineNumber: i, OffsetInParentLine: offset,
-				PromptLen: plen, TextLengthInCells: width,
+				Prompt: prompt, TextLengthInCells: width,
 				CursorCell: -1, Text: l, CursorTextPos: -1,
 			}
 			if cursor_at_start_of_next_line {
 				cursor_at_start_of_next_line = false
-				sl.CursorCell = plen
+				sl.CursorCell = prompt.Length
 				sl.CursorTextPos = 0
 			}
 			ans = append(ans, &sl)
 			if has_cursor && !found_cursor && offset <= self.cursor.X && self.cursor.X <= offset+len(l) {
 				found_cursor = true
 				ctpos := self.cursor.X - offset
-				ccell := plen + wcswidth.Stringwidth(l[:ctpos])
+				ccell := prompt.Length + wcswidth.Stringwidth(l[:ctpos])
 				if ccell >= self.screen_width {
 					if offset+len(l) < len(line) || i < len(self.lines)-1 {
 						cursor_at_start_of_next_line = true
@@ -76,7 +86,7 @@ func (self *Readline) get_screen_lines() []*ScreenLine {
 					sl.CursorCell = ccell
 				}
 			}
-			plen = 0
+			prompt = Prompt{}
 			offset += len(l)
 		}
 	}
@@ -104,8 +114,8 @@ func (self *Readline) redraw() {
 		if i > 0 {
 			self.loop.QueueWriteString("\n")
 		}
-		if sl.PromptLen > 0 {
-			self.loop.QueueWriteString(self.prompt_for_line_number(i).text)
+		if sl.Prompt.Length > 0 {
+			self.loop.QueueWriteString(self.prompt_for_line_number(i).Text)
 		}
 		self.loop.QueueWriteString(sl.Text)
 		if sl.CursorCell > -1 {

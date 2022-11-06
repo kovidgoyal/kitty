@@ -137,7 +137,7 @@ func (self *Readline) move_cursor_right(amt uint, traverse_line_breaks bool) (am
 
 func (self *Readline) move_cursor_to_target_line(source_line, target_line *ScreenLine) {
 	if source_line != target_line {
-		visual_distance_into_text := source_line.CursorCell - source_line.PromptLen
+		visual_distance_into_text := source_line.CursorCell - source_line.Prompt.Length
 		self.cursor.Y = target_line.ParentLineNumber
 		tp := wcswidth.TruncateToVisualLength(target_line.Text, visual_distance_into_text)
 		self.cursor.X = target_line.OffsetInParentLine + len(tp)
@@ -646,6 +646,11 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 	case ActionAbortCurrentLine:
 		self.loop.QueueWriteString("\r\n")
 		self.ResetText()
+		return nil
+	case ActionAddText:
+		text := strings.Repeat(self.text_to_be_added, int(repeat_count))
+		self.text_to_be_added = ""
+		self.add_text(text)
 		return nil
 	}
 	return ErrCouldNotPerformAction

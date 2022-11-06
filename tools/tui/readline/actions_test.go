@@ -6,6 +6,8 @@ import (
 	"container/list"
 	"fmt"
 	"kitty/tools/tui/loop"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -64,6 +66,13 @@ func TestGetScreenLines(t *testing.T) {
 	rl := New(lp, RlInit{Prompt: "$$ "})
 	rl.screen_width = 10
 
+	p := func(primary bool) Prompt {
+		if primary {
+			return rl.prompt
+		}
+		return rl.continuation_prompt
+	}
+
 	tsl := func(expected ...ScreenLine) {
 		q := rl.get_screen_lines()
 		actual := make([]ScreenLine, len(q))
@@ -74,52 +83,52 @@ func TestGetScreenLines(t *testing.T) {
 			t.Fatalf("Did not get expected screen lines for: %#v and cursor: %+v\n%s", rl.AllText(), rl.cursor, diff)
 		}
 	}
-	tsl(ScreenLine{PromptLen: 3, CursorCell: 3})
+	tsl(ScreenLine{Prompt: p(true), CursorCell: 3})
 	rl.add_text("123")
-	tsl(ScreenLine{PromptLen: 3, CursorCell: 6, Text: "123", CursorTextPos: 3, TextLengthInCells: 3})
+	tsl(ScreenLine{Prompt: p(true), CursorCell: 6, Text: "123", CursorTextPos: 3, TextLengthInCells: 3})
 	rl.add_text("456")
-	tsl(ScreenLine{PromptLen: 3, CursorCell: 9, Text: "123456", CursorTextPos: 6, TextLengthInCells: 6})
+	tsl(ScreenLine{Prompt: p(true), CursorCell: 9, Text: "123456", CursorTextPos: 6, TextLengthInCells: 6})
 	rl.add_text("7")
 	tsl(
-		ScreenLine{PromptLen: 3, CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
+		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
 		ScreenLine{OffsetInParentLine: 7},
 	)
 	rl.add_text("89")
 	tsl(
-		ScreenLine{PromptLen: 3, CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
+		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
 		ScreenLine{OffsetInParentLine: 7, Text: "89", CursorCell: 2, TextLengthInCells: 2, CursorTextPos: 2},
 	)
 	rl.ResetText()
 	rl.add_text("123\n456abcdeXYZ")
 	tsl(
-		ScreenLine{PromptLen: 3, CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
-		ScreenLine{ParentLineNumber: 1, PromptLen: 2, Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
+		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
+		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
 		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: 3, CursorTextPos: 3, Text: "XYZ"},
 	)
 	rl.cursor = Position{X: 2}
 	tsl(
-		ScreenLine{PromptLen: 3, CursorCell: 5, Text: "123", CursorTextPos: 2, TextLengthInCells: 3},
-		ScreenLine{ParentLineNumber: 1, PromptLen: 2, Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
+		ScreenLine{Prompt: p(true), CursorCell: 5, Text: "123", CursorTextPos: 2, TextLengthInCells: 3},
+		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
 		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: -1, CursorTextPos: -1, Text: "XYZ"},
 	)
 	rl.cursor = Position{X: 2, Y: 1}
 	tsl(
-		ScreenLine{PromptLen: 3, CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
-		ScreenLine{ParentLineNumber: 1, PromptLen: 2, Text: "456abcde", TextLengthInCells: 8, CursorCell: 4, CursorTextPos: 2},
+		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
+		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: 4, CursorTextPos: 2},
 		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: -1, CursorTextPos: -1, Text: "XYZ"},
 	)
 	rl.cursor = Position{X: 8, Y: 1}
 	tsl(
-		ScreenLine{PromptLen: 3, CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
-		ScreenLine{ParentLineNumber: 1, PromptLen: 2, Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
+		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
+		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
 		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: 0, CursorTextPos: 0, Text: "XYZ"},
 	)
 	rl.ResetText()
 	rl.add_text("1234567\nabc")
 	rl.cursor = Position{X: 7}
 	tsl(
-		ScreenLine{PromptLen: 3, CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
-		ScreenLine{ParentLineNumber: 1, PromptLen: 2, Text: "abc", CursorCell: 2, TextLengthInCells: 3, CursorTextPos: 0},
+		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
+		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "abc", CursorCell: 2, TextLengthInCells: 3, CursorTextPos: 0},
 	)
 }
 
@@ -372,6 +381,51 @@ func TestEraseChars(t *testing.T) {
 		rl.cursor = Position{X: 0, Y: 0}
 		rl.erase_between(Position{X: 1}, Position{X: 2, Y: 2})
 	}, "", "oree")
+}
+
+func TestNumberArgument(t *testing.T) {
+	lp, _ := loop.New()
+	rl := New(lp, RlInit{Prompt: "$$ "})
+	test := func(ac Action, before_cursor, after_cursor string) {
+		rl.dispatch_key_action(ac)
+		if diff := cmp.Diff(before_cursor, rl.text_upto_cursor_pos()); diff != "" {
+			t.Fatalf("The text before the cursor was not as expected for action: %#v\n%s", ac, diff)
+		}
+		if diff := cmp.Diff(after_cursor, rl.text_after_cursor_pos()); diff != "" {
+			t.Fatalf("The text after the cursor was not as expected for action: %#v\n%s", ac, diff)
+		}
+	}
+	sw := func(num int) {
+		q := rl.format_arg_prompt(strconv.Itoa(num))
+		for _, sl := range rl.get_screen_lines() {
+			if num <= 0 && !strings.Contains(sl.Prompt.Text, "$$") {
+				t.Fatalf("arg prompt unexpectedly present for: %#v", rl.AllText())
+			}
+			if num > 0 && !strings.Contains(sl.Prompt.Text, q) {
+				t.Fatalf("arg prompt unexpectedly not present for: %#v prompt: %#v", rl.AllText(), sl.Prompt.Text)
+			}
+		}
+	}
+
+	sw(0)
+	rl.dispatch_key_action(ActionNumericArgumentDigit1)
+	sw(1)
+	rl.dispatch_key_action(ActionNumericArgumentDigit0)
+	sw(10)
+	rl.text_to_be_added = "x"
+	test(ActionAddText, "xxxxxxxxxx", "")
+	sw(0)
+	test(ActionNumericArgumentDigit0, "xxxxxxxxxx0", "")
+	sw(0)
+	rl.dispatch_key_action(ActionNumericArgumentDigit1)
+	test(ActionNumericArgumentDigitMinus, "xxxxxxxxxx0-", "")
+	sw(0)
+	rl.dispatch_key_action(ActionNumericArgumentDigit1)
+	sw(1)
+	rl.dispatch_key_action(ActionNumericArgumentDigit1)
+	sw(11)
+	test(ActionCursorLeft, "x", "xxxxxxxxx0-")
+	sw(0)
 }
 
 func TestHistory(t *testing.T) {

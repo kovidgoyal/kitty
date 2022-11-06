@@ -73,6 +73,18 @@ const (
 
 	ActionYank
 	ActionPopYank
+
+	ActionNumericArgumentDigit0
+	ActionNumericArgumentDigit1
+	ActionNumericArgumentDigit2
+	ActionNumericArgumentDigit3
+	ActionNumericArgumentDigit4
+	ActionNumericArgumentDigit5
+	ActionNumericArgumentDigit6
+	ActionNumericArgumentDigit7
+	ActionNumericArgumentDigit8
+	ActionNumericArgumentDigit9
+	ActionNumericArgumentDigitMinus
 )
 
 type kill_ring struct {
@@ -115,8 +127,8 @@ func (self *kill_ring) clear() {
 }
 
 type Prompt struct {
-	text   string
-	length int
+	Text   string
+	Length int
 }
 
 type Readline struct {
@@ -140,6 +152,9 @@ type Readline struct {
 	bracketed_paste_buffer strings.Builder
 	last_action            Action
 	history_matches        *HistoryMatches
+	keyboard_state         KeyboardState
+	fmt_ctx                *markup.Context
+	text_to_be_added       string
 }
 
 func New(loop *loop.Loop, r RlInit) *Readline {
@@ -147,10 +162,9 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 	if hc == 0 {
 		hc = 8192
 	}
-	c := markup.New(true)
 	ans := &Readline{
-		mark_prompts: !r.DontMarkPrompts,
-		loop:         loop, lines: []string{""}, history: NewHistory(r.HistoryPath, hc), kill_ring: kill_ring{items: list.New().Init()},
+		mark_prompts: !r.DontMarkPrompts, fmt_ctx: markup.New(true),
+		loop: loop, lines: []string{""}, history: NewHistory(r.HistoryPath, hc), kill_ring: kill_ring{items: list.New().Init()},
 	}
 	make_prompt := func(text string, is_secondary bool) Prompt {
 		if ans.mark_prompts {
@@ -160,19 +174,19 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 			}
 			text = m + ST + text
 		}
-		return Prompt{text: text, length: wcswidth.Stringwidth(text)}
+		return Prompt{Text: text, Length: wcswidth.Stringwidth(text)}
 	}
 	ans.prompt = make_prompt(r.Prompt, false)
 	t := ""
 	if r.ContinuationPrompt != "" || !r.EmptyContinuationPrompt {
 		t = r.ContinuationPrompt
 		if t == "" {
-			t = c.Yellow(">") + " "
+			t = ans.fmt_ctx.Yellow(">") + " "
 		}
 	}
 	ans.continuation_prompt = make_prompt(t, true)
-	ans.reverse_search_prompt = make_prompt(c.Blue("?")+": ", false)
-	ans.forward_search_prompt = make_prompt(c.Cyan("/")+": ", false)
+	ans.reverse_search_prompt = make_prompt(ans.fmt_ctx.Blue("?")+": ", false)
+	ans.forward_search_prompt = make_prompt(ans.fmt_ctx.Cyan("/")+": ", false)
 	return ans
 }
 
@@ -244,9 +258,8 @@ func (self *Readline) OnText(text string, from_key_event bool, in_bracketed_past
 		text = self.bracketed_paste_buffer.String()
 		self.bracketed_paste_buffer.Reset()
 	}
-	self.add_text(text)
-	self.last_action = ActionAddText
-	return nil
+	self.text_to_be_added = text
+	return self.dispatch_key_action(ActionAddText)
 }
 
 func (self *Readline) TextBeforeCursor() string {
