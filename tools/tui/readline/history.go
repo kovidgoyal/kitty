@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"kitty/tools/utils"
+	"kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print
@@ -27,6 +28,16 @@ type HistoryMatches struct {
 	items       []HistoryItem
 	prefix      string
 	current_idx int
+}
+
+type HistorySearch struct {
+	query           string
+	tokens          []string
+	items           []*HistoryItem
+	current_idx     int
+	backwards       bool
+	original_lines  []string
+	original_cursor Position
 }
 
 type History struct {
@@ -124,7 +135,7 @@ func (self *History) Read() {
 	}
 	var items []HistoryItem
 	err = json.Unmarshal(data, &items)
-	if err != nil {
+	if err == nil {
 		self.merge_items(items...)
 	}
 }
@@ -197,4 +208,118 @@ func (self *HistoryMatches) next(num uint) (ans *HistoryItem) {
 		ans = &self.items[self.current_idx]
 	}
 	return
+}
+
+func (self *Readline) create_history_search(backwards bool, num uint) {
+	self.history_search = &HistorySearch{backwards: backwards, original_lines: self.lines, original_cursor: self.cursor}
+	self.markup_history_search()
+}
+
+func (self *Readline) end_history_search(accept bool) {
+	self.cursor = Position{}
+	if accept && self.history_search.current_idx < len(self.history_search.items) {
+		self.lines = utils.Splitlines(self.history_search.items[self.history_search.current_idx].Cmd)
+		self.cursor.Y = len(self.lines) - 1
+		self.cursor.X = len(self.lines[self.cursor.Y])
+	} else {
+		self.lines = self.history_search.original_lines
+		self.cursor = self.history_search.original_cursor
+	}
+	self.cursor = *self.ensure_position_in_bounds(&self.cursor)
+}
+
+func (self *Readline) markup_history_search() {
+	if len(self.history_search.items) == 0 {
+		if len(self.history_search.tokens) == 0 {
+			self.lines = []string{""}
+		} else {
+			self.lines = []string{"No matches for: " + self.fmt_ctx.BrightRed(self.history_search.query)}
+		}
+		self.cursor = Position{X: wcswidth.Stringwidth(self.lines[0])}
+		return
+	}
+	lines := utils.Splitlines(self.history_search.items[self.history_search.current_idx].Cmd)
+	cursor := Position{Y: len(lines)}
+	for _, tok := range self.history_search.tokens {
+		for i, line := range lines {
+			if idx := strings.Index(line, tok); idx > -1 {
+				lines[i] = line[:idx] + self.fmt_ctx.Green(tok) + line[idx+len(tok):]
+				q := Position{Y: i, X: idx}
+				if q.Less(cursor) {
+					cursor = q
+				}
+				break
+			}
+		}
+	}
+	self.lines = lines
+	self.cursor = *self.ensure_position_in_bounds(&cursor)
+}
+
+func (self *Readline) add_text_to_history_search(text string) {
+	self.history_search.query += text
+	self.history_search.tokens = strings.Split(self.history_search.query, " ")
+	var current_item *HistoryItem
+	if len(self.history_search.items) > 0 {
+		current_item = self.history_search.items[self.history_search.current_idx]
+	}
+	items := make([]*HistoryItem, len(self.history.items))
+	for i, x := range self.history.items {
+		items[i] = &x
+	}
+	for _, token := range self.history_search.tokens {
+		matches := make([]*HistoryItem, 0, len(items))
+		for _, item := range items {
+			if strings.Contains(item.Cmd, token) {
+				matches = append(matches, item)
+			}
+		}
+		items = matches
+	}
+	self.history_search.items = items
+	idx := -1
+	for i, item := range self.history_search.items {
+		if item == current_item {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		idx = len(self.history_search.items) - 1
+	}
+	self.history_search.current_idx = utils.Max(0, idx)
+	self.markup_history_search()
+}
+
+func (self *Readline) next_history_search(backwards bool, num uint) bool {
+	ni := self.history_search.current_idx
+	self.history_search.backwards = backwards
+	if len(self.history_search.items) == 0 {
+		return false
+	}
+	if backwards {
+		ni = utils.Max(0, ni-int(num))
+	} else {
+		ni = utils.Min(ni+int(num), len(self.history_search.items)-1)
+	}
+	if ni == self.history_search.current_idx {
+		return false
+	}
+	self.history_search.current_idx = ni
+	self.markup_history_search()
+	return true
+}
+
+func (self *Readline) history_search_prompt() string {
+	ans := "↑"
+	if !self.history_search.backwards {
+		ans = "↓"
+	}
+	failed := len(self.history_search.tokens) > 0 && len(self.history_search.items) == 0
+	if failed {
+		ans = self.fmt_ctx.BrightRed(ans)
+	} else {
+		ans = self.fmt_ctx.Green(ans)
+	}
+	return fmt.Sprintf("history %s: ", ans)
 }

@@ -38,10 +38,12 @@ func (self *Readline) format_arg_prompt(cna string) string {
 func (self *Readline) prompt_for_line_number(i int) Prompt {
 	is_line_with_cursor := i == self.cursor.Y
 	if is_line_with_cursor && self.keyboard_state.current_numeric_argument != "" {
-		text := self.format_arg_prompt(self.keyboard_state.current_numeric_argument)
-		return Prompt{Text: text, Length: wcswidth.Stringwidth(text)}
+		return self.make_prompt(self.format_arg_prompt(self.keyboard_state.current_numeric_argument), i > 0)
 	}
 	if i == 0 {
+		if self.history_search != nil {
+			return self.make_prompt(self.history_search_prompt(), i > 0)
+		}
 		return self.prompt
 	}
 	return self.continuation_prompt

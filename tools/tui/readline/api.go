@@ -59,6 +59,8 @@ const (
 	ActionHistoryPrevious
 	ActionHistoryFirst
 	ActionHistoryLast
+	ActionHistoryIncrementalSearchBackwards
+	ActionHistoryIncrementalSearchForwards
 	ActionClearScreen
 	ActionAddText
 	ActionAbortCurrentLine
@@ -132,7 +134,7 @@ type Prompt struct {
 }
 
 type Readline struct {
-	prompt, continuation_prompt, reverse_search_prompt, forward_search_prompt Prompt
+	prompt, continuation_prompt Prompt
 
 	mark_prompts bool
 	loop         *loop.Loop
@@ -152,9 +154,21 @@ type Readline struct {
 	bracketed_paste_buffer strings.Builder
 	last_action            Action
 	history_matches        *HistoryMatches
+	history_search         *HistorySearch
 	keyboard_state         KeyboardState
 	fmt_ctx                *markup.Context
 	text_to_be_added       string
+}
+
+func (self *Readline) make_prompt(text string, is_secondary bool) Prompt {
+	if self.mark_prompts {
+		m := PROMPT_MARK + "A"
+		if is_secondary {
+			m += ";k=s"
+		}
+		text = m + ST + text
+	}
+	return Prompt{Text: text, Length: wcswidth.Stringwidth(text)}
 }
 
 func New(loop *loop.Loop, r RlInit) *Readline {
@@ -166,17 +180,7 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 		mark_prompts: !r.DontMarkPrompts, fmt_ctx: markup.New(true),
 		loop: loop, lines: []string{""}, history: NewHistory(r.HistoryPath, hc), kill_ring: kill_ring{items: list.New().Init()},
 	}
-	make_prompt := func(text string, is_secondary bool) Prompt {
-		if ans.mark_prompts {
-			m := PROMPT_MARK + "A"
-			if is_secondary {
-				m += ";k=s"
-			}
-			text = m + ST + text
-		}
-		return Prompt{Text: text, Length: wcswidth.Stringwidth(text)}
-	}
-	ans.prompt = make_prompt(r.Prompt, false)
+	ans.prompt = ans.make_prompt(r.Prompt, false)
 	t := ""
 	if r.ContinuationPrompt != "" || !r.EmptyContinuationPrompt {
 		t = r.ContinuationPrompt
@@ -184,9 +188,7 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 			t = ans.fmt_ctx.Yellow(">") + " "
 		}
 	}
-	ans.continuation_prompt = make_prompt(t, true)
-	ans.reverse_search_prompt = make_prompt(ans.fmt_ctx.Blue("?")+": ", false)
-	ans.forward_search_prompt = make_prompt(ans.fmt_ctx.Cyan("/")+": ", false)
+	ans.continuation_prompt = ans.make_prompt(t, true)
 	return ans
 }
 

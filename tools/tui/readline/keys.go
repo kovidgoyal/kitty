@@ -79,6 +79,7 @@ func default_shortcuts() *ShortcutMap {
 
 		sm.add(ActionClearScreen, "ctrl+l")
 		sm.add(ActionAbortCurrentLine, "ctrl+c")
+		sm.add(ActionAbortCurrentLine, "ctrl+g")
 
 		sm.add(ActionEndInput, "ctrl+d")
 		sm.add(ActionAcceptInput, "enter")
@@ -98,6 +99,10 @@ func default_shortcuts() *ShortcutMap {
 		sm.add(ActionHistoryNext, "ctrl+n")
 		sm.add(ActionHistoryFirst, "alt+<")
 		sm.add(ActionHistoryLast, "alt+>")
+		sm.add(ActionHistoryIncrementalSearchBackwards, "ctrl+r")
+		sm.add(ActionHistoryIncrementalSearchBackwards, "ctrl+?")
+		sm.add(ActionHistoryIncrementalSearchForwards, "ctrl+s")
+		sm.add(ActionHistoryIncrementalSearchForwards, "ctrl+/")
 
 		sm.add(ActionNumericArgumentDigit0, "alt+0")
 		sm.add(ActionNumericArgumentDigit1, "alt+1")
@@ -148,6 +153,9 @@ func (self *Readline) handle_numeric_arg(ac Action) {
 func (self *Readline) dispatch_key_action(ac Action) error {
 	self.keyboard_state.current_pending_keys = nil
 	if ActionNumericArgumentDigit0 <= ac && ac <= ActionNumericArgumentDigitMinus {
+		if self.history_search != nil {
+			return ErrCouldNotPerformAction
+		}
 		self.handle_numeric_arg(ac)
 		return nil
 	}

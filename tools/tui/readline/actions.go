@@ -647,10 +647,30 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 		self.loop.QueueWriteString("\r\n")
 		self.ResetText()
 		return nil
+	case ActionHistoryIncrementalSearchForwards:
+		if self.history_search == nil {
+			self.create_history_search(false, repeat_count)
+			return nil
+		}
+		if self.next_history_search(false, repeat_count) {
+			return nil
+		}
+	case ActionHistoryIncrementalSearchBackwards:
+		if self.history_search == nil {
+			self.create_history_search(true, repeat_count)
+			return nil
+		}
+		if self.next_history_search(true, repeat_count) {
+			return nil
+		}
 	case ActionAddText:
 		text := strings.Repeat(self.text_to_be_added, int(repeat_count))
 		self.text_to_be_added = ""
-		self.add_text(text)
+		if self.history_search != nil {
+			self.add_text_to_history_search(text)
+		} else {
+			self.add_text(text)
+		}
 		return nil
 	}
 	return ErrCouldNotPerformAction
