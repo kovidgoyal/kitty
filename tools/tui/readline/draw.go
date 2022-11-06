@@ -30,6 +30,13 @@ type ScreenLine struct {
 	Text                                            string
 }
 
+func (self *Readline) prompt_for_line_number(i int) Prompt {
+	if i == 0 {
+		return self.prompt
+	}
+	return self.continuation_prompt
+}
+
 func (self *Readline) get_screen_lines() []*ScreenLine {
 	if self.screen_width == 0 {
 		self.update_current_screen_size()
@@ -38,10 +45,7 @@ func (self *Readline) get_screen_lines() []*ScreenLine {
 	found_cursor := false
 	cursor_at_start_of_next_line := false
 	for i, line := range self.lines {
-		plen := self.prompt_len
-		if i > 0 {
-			plen = self.continuation_prompt_len
-		}
+		plen := self.prompt_for_line_number(i).length
 		offset := 0
 		has_cursor := i == self.cursor.Y
 		for is_first := true; is_first || offset < len(line); is_first = false {
@@ -101,11 +105,7 @@ func (self *Readline) redraw() {
 			self.loop.QueueWriteString("\n")
 		}
 		if sl.PromptLen > 0 {
-			if i == 0 {
-				self.loop.QueueWriteString(self.prompt)
-			} else {
-				self.loop.QueueWriteString(self.continuation_prompt)
-			}
+			self.loop.QueueWriteString(self.prompt_for_line_number(i).text)
 		}
 		self.loop.QueueWriteString(sl.Text)
 		if sl.CursorCell > -1 {

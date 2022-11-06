@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"kitty/tools/cli/markup"
 	"kitty/tools/tui/loop"
 	"kitty/tools/wcswidth"
 )
@@ -113,15 +114,18 @@ func (self *kill_ring) clear() {
 	self.items = self.items.Init()
 }
 
+type Prompt struct {
+	text   string
+	length int
+}
+
 type Readline struct {
-	prompt                  string
-	prompt_len              int
-	continuation_prompt     string
-	continuation_prompt_len int
-	mark_prompts            bool
-	loop                    *loop.Loop
-	history                 *History
-	kill_ring               kill_ring
+	prompt, continuation_prompt, reverse_search_prompt, forward_search_prompt Prompt
+
+	mark_prompts bool
+	loop         *loop.Loop
+	history      *History
+	kill_ring    kill_ring
 
 	// The number of lines after the initial line on the screen
 	cursor_y     int
@@ -143,21 +147,32 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 	if hc == 0 {
 		hc = 8192
 	}
+	c := markup.New(true)
 	ans := &Readline{
-		prompt: r.Prompt, prompt_len: wcswidth.Stringwidth(r.Prompt), mark_prompts: !r.DontMarkPrompts,
-		loop: loop, lines: []string{""}, history: NewHistory(r.HistoryPath, hc), kill_ring: kill_ring{items: list.New().Init()},
+		mark_prompts: !r.DontMarkPrompts,
+		loop:         loop, lines: []string{""}, history: NewHistory(r.HistoryPath, hc), kill_ring: kill_ring{items: list.New().Init()},
 	}
+	make_prompt := func(text string, is_secondary bool) Prompt {
+		if ans.mark_prompts {
+			m := PROMPT_MARK + "A"
+			if is_secondary {
+				m += ";k=s"
+			}
+			text = m + ST + text
+		}
+		return Prompt{text: text, length: wcswidth.Stringwidth(text)}
+	}
+	ans.prompt = make_prompt(r.Prompt, false)
+	t := ""
 	if r.ContinuationPrompt != "" || !r.EmptyContinuationPrompt {
-		ans.continuation_prompt = r.ContinuationPrompt
-		if ans.continuation_prompt == "" {
-			ans.continuation_prompt = "> "
+		t = r.ContinuationPrompt
+		if t == "" {
+			t = c.Yellow(">") + " "
 		}
 	}
-	ans.continuation_prompt_len = wcswidth.Stringwidth(ans.continuation_prompt)
-	if ans.mark_prompts {
-		ans.prompt = PROMPT_MARK + "A" + ST + ans.prompt
-		ans.continuation_prompt = PROMPT_MARK + "A;k=s" + ST + ans.continuation_prompt
-	}
+	ans.continuation_prompt = make_prompt(t, true)
+	ans.reverse_search_prompt = make_prompt(c.Blue("?")+": ", false)
+	ans.forward_search_prompt = make_prompt(c.Cyan("/")+": ", false)
 	return ans
 }
 
