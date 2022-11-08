@@ -297,8 +297,8 @@ func (self *Readline) add_text_to_history_search(text string) {
 		self.history_search.items = []*HistoryItem{}
 	} else {
 		items := make([]*HistoryItem, len(self.history.items))
-		for i, x := range self.history.items {
-			items[i] = &x
+		for i := range self.history.items {
+			items[i] = &self.history.items[i]
 		}
 		for _, token := range self.history_search.tokens {
 			matches := make([]*HistoryItem, 0, len(items))
@@ -319,7 +319,11 @@ func (self *Readline) add_text_to_history_search(text string) {
 		}
 	}
 	if idx == -1 {
-		idx = len(self.history_search.items) - 1
+		if self.history_search.backwards {
+			idx = len(self.history_search.items) - 1
+		} else {
+			idx = 0
+		}
 	}
 	self.history_search.current_idx = utils.Max(0, idx)
 	self.markup_history_search()

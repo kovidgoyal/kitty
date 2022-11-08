@@ -474,4 +474,41 @@ func TestHistory(t *testing.T) {
 	test(ActionHistoryNext, "a", "")
 	test(ActionHistoryNext, "a", "")
 
+	ah := func(before_cursor, after_cursor string) {
+		ab := rl.text_upto_cursor_pos()
+		aa := rl.text_after_cursor_pos()
+		if diff := cmp.Diff(before_cursor, ab); diff != "" {
+			t.Fatalf("Text before cursor not as expected:\n%s", diff)
+		}
+		if diff := cmp.Diff(after_cursor, aa); diff != "" {
+			t.Fatalf("Text before cursor not as expected:\n%s", diff)
+		}
+	}
+	add_item("xyz1")
+	add_item("xyz2")
+	add_item("xyz11")
+	rl.perform_action(ActionHistoryIncrementalSearchBackwards, 1)
+	ah("", "")
+
+	rl.text_to_be_added = "z"
+	rl.perform_action(ActionAddText, 1)
+	ah("xy", "z11")
+	rl.text_to_be_added = "2"
+	rl.perform_action(ActionAddText, 1)
+	ah("xy", "z2")
+	rl.text_to_be_added = "m"
+	rl.perform_action(ActionAddText, 1)
+	ah("No matches for: z2m", "")
+	rl.perform_action(ActionBackspace, 1)
+	ah("xy", "z2")
+	rl.perform_action(ActionBackspace, 1)
+	ah("xy", "z2")
+	rl.perform_action(ActionHistoryIncrementalSearchBackwards, 1)
+	ah("xy", "z1")
+	rl.perform_action(ActionHistoryIncrementalSearchBackwards, 1)
+	ah("xy", "z1")
+	rl.perform_action(ActionHistoryIncrementalSearchForwards, 1)
+	ah("xy", "z2")
+	rl.perform_action(ActionTerminateHistorySearchAndRestore, 1)
+	ah("a", "")
 }
