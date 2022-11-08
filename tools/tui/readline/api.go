@@ -43,6 +43,7 @@ type Action uint
 
 const (
 	ActionNil Action = iota
+	ActionIgnored
 	ActionBackspace
 	ActionDelete
 	ActionMoveToStartOfLine

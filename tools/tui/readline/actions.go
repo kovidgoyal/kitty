@@ -465,209 +465,175 @@ func (self *Readline) yank(repeat_count uint, pop bool) bool {
 	return true
 }
 
-func (self *Readline) apply_history_text(text string) {
-	self.input_state.lines = utils.Splitlines(text)
-	if len(self.input_state.lines) == 0 {
-		self.input_state.lines = []string{""}
-	}
-}
-
 func (self *Readline) history_first() bool {
-	prefix := self.text_upto_cursor_pos()
-	if self.history_matches == nil || self.history_matches.prefix != prefix {
-		return false
-	}
-	item := self.history_matches.first()
-	if item == nil {
-		return false
-	}
-	self.apply_history_text(item.Cmd)
-	return true
+	self.create_history_matches()
+	return self.history_matches.first(self)
 }
 
 func (self *Readline) history_last() bool {
-	prefix := self.text_upto_cursor_pos()
-	if self.history_matches == nil || self.history_matches.prefix != prefix {
-		return false
-	}
-	item := self.history_matches.last()
-	if item == nil {
-		return false
-	}
-	self.apply_history_text(item.Cmd)
-	return true
+	self.create_history_matches()
+	return self.history_matches.last(self)
 }
 
 func (self *Readline) history_prev(repeat_count uint) bool {
-	prefix := self.text_upto_cursor_pos()
-	if self.history_matches == nil || self.history_matches.prefix != prefix {
-		self.history_matches = self.history.FindPrefixMatches(prefix, self.AllText())
-	}
-	item := self.history_matches.previous(repeat_count)
-	if item == nil {
-		return false
-	}
-	self.apply_history_text(item.Cmd)
-	return true
+	self.create_history_matches()
+	return self.history_matches.previous(repeat_count, self)
 }
 
 func (self *Readline) history_next(repeat_count uint) bool {
-	prefix := self.text_upto_cursor_pos()
-	if self.history_matches == nil || self.history_matches.prefix != prefix {
-		return false
-	}
-	item := self.history_matches.next(repeat_count)
-	if item == nil {
-		return false
-	}
-	self.apply_history_text(item.Cmd)
-	return true
+	self.create_history_matches()
+	return self.history_matches.next(repeat_count, self)
 }
 
-func (self *Readline) perform_action(ac Action, repeat_count uint) error {
-	defer func() { self.last_action = ac }()
+func (self *Readline) _perform_action(ac Action, repeat_count uint) (err error, dont_set_last_action bool) {
 	switch ac {
 	case ActionBackspace:
 		if self.history_search != nil {
 			if self.remove_text_from_history_search(repeat_count) > 0 {
-				return nil
+				return
 			}
 		} else {
 			if self.erase_chars_before_cursor(repeat_count, true) > 0 {
-				return nil
+				return
 			}
 		}
 	case ActionDelete:
 		if self.erase_chars_after_cursor(repeat_count, true) > 0 {
-			return nil
+			return
 		}
 	case ActionMoveToStartOfLine:
 		if self.move_to_start_of_line() {
-			return nil
+			return
 		}
 	case ActionMoveToEndOfLine:
 		if self.move_to_end_of_line() {
-			return nil
+			return
 		}
 	case ActionMoveToEndOfWord:
 		if self.move_to_end_of_word(repeat_count, true, has_word_chars) > 0 {
-			return nil
+			return
 		}
 	case ActionMoveToStartOfWord:
 		if self.move_to_start_of_word(repeat_count, true, has_word_chars) > 0 {
-			return nil
+			return
 		}
 	case ActionMoveToStartOfDocument:
 		if self.move_to_start() {
-			return nil
+			return
 		}
 	case ActionMoveToEndOfDocument:
 		if self.move_to_end() {
-			return nil
+			return
 		}
 	case ActionCursorLeft:
 		if self.move_cursor_left(repeat_count, true) > 0 {
-			return nil
+			return
 		}
 	case ActionCursorRight:
 		if self.move_cursor_right(repeat_count, true) > 0 {
-			return nil
+			return
 		}
 	case ActionEndInput:
 		line := self.input_state.lines[self.input_state.cursor.Y]
 		if line == "" {
-			return io.EOF
+			err = io.EOF
+
+		} else {
+			err = self.perform_action(ActionAcceptInput, 1)
 		}
-		return self.perform_action(ActionAcceptInput, 1)
+		return
 	case ActionAcceptInput:
-		return ErrAcceptInput
+		err = ErrAcceptInput
+		return
 	case ActionCursorUp:
 		if self.move_cursor_vertically(-int(repeat_count)) != 0 {
-			return nil
+			return
 		}
 	case ActionCursorDown:
 		if self.move_cursor_vertically(int(repeat_count)) != 0 {
-			return nil
+			return
 		}
 	case ActionHistoryPreviousOrCursorUp:
+		dont_set_last_action = true
 		if self.perform_action(ActionCursorUp, repeat_count) == ErrCouldNotPerformAction {
-			return self.perform_action(ActionHistoryPrevious, repeat_count)
+			err = self.perform_action(ActionHistoryPrevious, repeat_count)
 		}
-		return nil
+		return
 	case ActionHistoryNextOrCursorDown:
+		dont_set_last_action = true
 		if self.perform_action(ActionCursorDown, repeat_count) == ErrCouldNotPerformAction {
-			return self.perform_action(ActionHistoryNext, repeat_count)
+			err = self.perform_action(ActionHistoryNext, repeat_count)
 		}
-		return nil
+		return
 	case ActionHistoryFirst:
 		if self.history_first() {
-			return nil
+			return
 		}
 	case ActionHistoryPrevious:
 		if self.history_prev(repeat_count) {
-			return nil
+			return
 		}
 	case ActionHistoryNext:
 		if self.history_next(repeat_count) {
-			return nil
+			return
 		}
 	case ActionHistoryLast:
 		if self.history_last() {
-			return nil
+			return
 		}
 	case ActionClearScreen:
 		self.loop.StartAtomicUpdate()
 		self.loop.ClearScreen()
 		self.RedrawNonAtomic()
 		self.loop.EndAtomicUpdate()
-		return nil
+		return
 	case ActionKillToEndOfLine:
 		if self.kill_to_end_of_line() {
-			return nil
+			return
 		}
 	case ActionKillToStartOfLine:
 		if self.kill_to_start_of_line() {
-			return nil
+			return
 		}
 	case ActionKillNextWord:
 		if self.kill_next_word(repeat_count, true) > 0 {
-			return nil
+			return
 		}
 	case ActionKillPreviousWord:
 		if self.kill_previous_word(repeat_count, true) > 0 {
-			return nil
+			return
 		}
 	case ActionKillPreviousSpaceDelimitedWord:
 		if self.kill_previous_space_delimited_word(repeat_count, true) > 0 {
-			return nil
+			return
 		}
 	case ActionYank:
 		if self.yank(repeat_count, false) {
-			return nil
+			return
 		}
 	case ActionPopYank:
 		if self.yank(repeat_count, true) {
-			return nil
+			return
 		}
 	case ActionAbortCurrentLine:
 		self.loop.QueueWriteString("\r\n")
 		self.ResetText()
-		return nil
+		return
 	case ActionHistoryIncrementalSearchForwards:
 		if self.history_search == nil {
 			self.create_history_search(false, repeat_count)
-			return nil
+			return
 		}
 		if self.next_history_search(false, repeat_count) {
-			return nil
+			return
 		}
 	case ActionHistoryIncrementalSearchBackwards:
 		if self.history_search == nil {
 			self.create_history_search(true, repeat_count)
-			return nil
+			return
 		}
 		if self.next_history_search(true, repeat_count) {
-			return nil
+			return
 		}
 	case ActionAddText:
 		text := strings.Repeat(self.text_to_be_added, int(repeat_count))
@@ -677,17 +643,26 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 		} else {
 			self.add_text(text)
 		}
-		return nil
+		return
 	case ActionTerminateHistorySearchAndRestore:
 		if self.history_search != nil {
 			self.end_history_search(false)
-			return nil
+			return
 		}
 	case ActionTerminateHistorySearchAndApply:
 		if self.history_search != nil {
 			self.end_history_search(true)
-			return nil
+			return
 		}
 	}
-	return ErrCouldNotPerformAction
+	err = ErrCouldNotPerformAction
+	return
+}
+
+func (self *Readline) perform_action(ac Action, repeat_count uint) error {
+	err, dont_set_last_action := self._perform_action(ac, repeat_count)
+	if err == nil && !dont_set_last_action {
+		self.last_action = ac
+	}
+	return err
 }

@@ -27,9 +27,10 @@ type HistoryItem struct {
 }
 
 type HistoryMatches struct {
-	items       []HistoryItem
-	prefix      string
-	current_idx int
+	items                []HistoryItem
+	prefix               string
+	current_idx          int
+	original_input_state InputState
 }
 
 type HistorySearch struct {
@@ -168,8 +169,8 @@ func NewHistory(path string, max_items int) *History {
 	return &ans
 }
 
-func (self *History) FindPrefixMatches(prefix, current_command string) *HistoryMatches {
-	ans := HistoryMatches{items: make([]HistoryItem, 0, len(self.items)+1), prefix: prefix}
+func (self *History) find_prefix_matches(prefix, current_command string, input_state InputState) *HistoryMatches {
+	ans := HistoryMatches{items: make([]HistoryItem, 0, len(self.items)+1), prefix: prefix, original_input_state: input_state}
 	if prefix == "" {
 		ans.items = ans.items[:len(self.items)]
 		copy(ans.items, self.items)
@@ -185,30 +186,65 @@ func (self *History) FindPrefixMatches(prefix, current_command string) *HistoryM
 	return &ans
 }
 
-func (self *HistoryMatches) first() (ans *HistoryItem) {
+func (self *Readline) create_history_matches() {
+	if self.last_action_was_history_movement() && self.history_matches != nil {
+		return
+	}
+	prefix := self.text_upto_cursor_pos()
+	self.history_matches = self.history.find_prefix_matches(prefix, self.AllText(), self.input_state.copy())
+}
+
+func (self *Readline) last_action_was_history_movement() bool {
+	switch self.last_action {
+	case ActionHistoryLast, ActionHistoryFirst, ActionHistoryNext, ActionHistoryPrevious:
+		return true
+	default:
+		return false
+	}
+}
+
+func (self *HistoryMatches) apply(rl *Readline) bool {
+	if self.current_idx >= len(self.items) || self.current_idx < 0 {
+		return false
+	}
+	if self.current_idx == len(self.items)-1 {
+		rl.input_state = self.original_input_state.copy()
+	} else {
+		item := self.items[self.current_idx]
+		rl.input_state.lines = utils.Splitlines(item.Cmd)
+		if len(rl.input_state.lines) == 0 {
+			rl.input_state.lines = []string{""}
+		}
+		idx := len(rl.input_state.lines) - 1
+		rl.input_state.cursor = Position{Y: idx, X: len(rl.input_state.lines[idx])}
+	}
+	return true
+}
+
+func (self *HistoryMatches) first(rl *Readline) bool {
 	self.current_idx = 0
-	return &self.items[self.current_idx]
+	return self.apply(rl)
 }
 
-func (self *HistoryMatches) last() (ans *HistoryItem) {
-	self.current_idx = len(self.items) - 1
-	return &self.items[self.current_idx]
+func (self *HistoryMatches) last(rl *Readline) bool {
+	self.current_idx = utils.Max(0, len(self.items)-1)
+	return self.apply(rl)
 }
 
-func (self *HistoryMatches) previous(num uint) (ans *HistoryItem) {
+func (self *HistoryMatches) previous(num uint, rl *Readline) bool {
 	if self.current_idx > 0 {
 		self.current_idx = utils.Max(0, self.current_idx-int(num))
-		ans = &self.items[self.current_idx]
+		return self.apply(rl)
 	}
-	return
+	return false
 }
 
-func (self *HistoryMatches) next(num uint) (ans *HistoryItem) {
+func (self *HistoryMatches) next(num uint, rl *Readline) bool {
 	if self.current_idx+1 < len(self.items) {
 		self.current_idx = utils.Min(len(self.items)-1, self.current_idx+int(num))
-		ans = &self.items[self.current_idx]
+		return self.apply(rl)
 	}
-	return
+	return false
 }
 
 func (self *Readline) create_history_search(backwards bool, num uint) {
