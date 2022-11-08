@@ -17,6 +17,8 @@ var _ = fmt.Print
 const ST = "\x1b\\"
 const PROMPT_MARK = "\x1b]133;"
 
+type SyntaxHighlightFunction func(text string, x, y int) string
+
 type RlInit struct {
 	Prompt                  string
 	HistoryPath             string
@@ -24,6 +26,7 @@ type RlInit struct {
 	ContinuationPrompt      string
 	EmptyContinuationPrompt bool
 	DontMarkPrompts         bool
+	SyntaxHighlighter       SyntaxHighlightFunction
 }
 
 type Position struct {
@@ -35,6 +38,7 @@ func (self Position) Less(other Position) bool {
 	return self.Y < other.Y || (self.Y == other.Y && self.X < other.X)
 }
 
+// Actions {{{
 type Action uint
 
 const (
@@ -61,6 +65,8 @@ const (
 	ActionHistoryLast
 	ActionHistoryIncrementalSearchBackwards
 	ActionHistoryIncrementalSearchForwards
+	ActionTerminateHistorySearchAndApply
+	ActionTerminateHistorySearchAndRestore
 	ActionClearScreen
 	ActionAddText
 	ActionAbortCurrentLine
@@ -88,6 +94,8 @@ const (
 	ActionNumericArgumentDigit9
 	ActionNumericArgumentDigitMinus
 )
+
+// }}}
 
 type kill_ring struct {
 	items *list.List
@@ -133,6 +141,28 @@ type Prompt struct {
 	Length int
 }
 
+type InputState struct {
+	// Input lines
+	lines []string
+	// The cursor position in the text
+	cursor Position
+}
+
+func (self InputState) copy() InputState {
+	ans := self
+	l := make([]string, len(self.lines))
+	copy(l, self.lines)
+	ans.lines = l
+	return ans
+}
+
+type syntax_highlighted struct {
+	lines                  []string
+	src_for_last_highlight string
+	highlighter            SyntaxHighlightFunction
+	last_highlighter_name  string
+}
+
 type Readline struct {
 	prompt, continuation_prompt Prompt
 
@@ -141,13 +171,10 @@ type Readline struct {
 	history      *History
 	kill_ring    kill_ring
 
+	input_state InputState
 	// The number of lines after the initial line on the screen
-	cursor_y     int
-	screen_width int
-	// Input lines
-	lines []string
-	// The cursor position in the text
-	cursor           Position
+	cursor_y         int
+	screen_width     int
 	last_yank_extent struct {
 		start, end Position
 	}
@@ -158,6 +185,7 @@ type Readline struct {
 	keyboard_state         KeyboardState
 	fmt_ctx                *markup.Context
 	text_to_be_added       string
+	syntax_highlighted     syntax_highlighted
 }
 
 func (self *Readline) make_prompt(text string, is_secondary bool) Prompt {
@@ -178,7 +206,9 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 	}
 	ans := &Readline{
 		mark_prompts: !r.DontMarkPrompts, fmt_ctx: markup.New(true),
-		loop: loop, lines: []string{""}, history: NewHistory(r.HistoryPath, hc), kill_ring: kill_ring{items: list.New().Init()},
+		loop: loop, input_state: InputState{lines: []string{""}}, history: NewHistory(r.HistoryPath, hc),
+		syntax_highlighted: syntax_highlighted{highlighter: r.SyntaxHighlighter},
+		kill_ring:          kill_ring{items: list.New().Init()},
 	}
 	ans.prompt = ans.make_prompt(r.Prompt, false)
 	t := ""
@@ -201,11 +231,10 @@ func (self *Readline) AddHistoryItem(hi HistoryItem) {
 }
 
 func (self *Readline) ResetText() {
-	self.lines = []string{""}
-	self.cursor = Position{}
-	self.cursor_y = 0
+	self.input_state = InputState{lines: []string{""}}
 	self.last_action = ActionNil
 	self.keyboard_state = KeyboardState{}
+	self.history_search = nil
 }
 
 func (self *Readline) ChangeLoopAndResetText(lp *loop.Loop) {
@@ -278,7 +307,7 @@ func (self *Readline) AllText() string {
 }
 
 func (self *Readline) CursorAtEndOfLine() bool {
-	return self.cursor.X >= len(self.lines[self.cursor.Y])
+	return self.input_state.cursor.X >= len(self.input_state.lines[self.input_state.cursor.Y])
 }
 
 func (self *Readline) OnResize(old_size loop.ScreenSize, new_size loop.ScreenSize) error {

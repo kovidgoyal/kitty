@@ -121,17 +121,68 @@ func default_shortcuts() *ShortcutMap {
 	return _default_shortcuts
 }
 
-func (self *Readline) action_for_key_event(event *loop.KeyEvent, shortcuts map[string]Action) Action {
-	for sc, ac := range shortcuts {
-		if event.MatchesPressOrRepeat(sc) {
-			return ac
-		}
+var _history_search_shortcuts *ShortcutMap
+
+func history_search_shortcuts() *ShortcutMap {
+	if _history_search_shortcuts == nil {
+		sm := ShortcutMap{leaves: make(map[string]Action, 32), children: map[string]*ShortcutMap{}}
+		sm.add(ActionBackspace, "backspace")
+		sm.add(ActionBackspace, "ctrl+h")
+
+		sm.add(ActionTerminateHistorySearchAndRestore, "home")
+		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+a")
+
+		sm.add(ActionTerminateHistorySearchAndRestore, "end")
+		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+e")
+
+		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+home")
+		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+end")
+
+		sm.add(ActionTerminateHistorySearchAndRestore, "alt+f")
+		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+right")
+		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+left")
+		sm.add(ActionTerminateHistorySearchAndRestore, "alt+b")
+
+		sm.add(ActionTerminateHistorySearchAndRestore, "left")
+		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+b")
+		sm.add(ActionTerminateHistorySearchAndRestore, "right")
+		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+f")
+		sm.add(ActionTerminateHistorySearchAndRestore, "up")
+		sm.add(ActionTerminateHistorySearchAndRestore, "down")
+
+		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+c")
+		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+g")
+		sm.add(ActionTerminateHistorySearchAndRestore, "escape")
+
+		sm.add(ActionTerminateHistorySearchAndApply, "ctrl+d")
+		sm.add(ActionTerminateHistorySearchAndApply, "enter")
+		sm.add(ActionTerminateHistorySearchAndApply, "ctrl+j")
+
+		_history_search_shortcuts = &sm
 	}
-	return ActionNil
+	return _history_search_shortcuts
 }
 
 var ErrCouldNotPerformAction = errors.New("Could not perform the specified action")
 var ErrAcceptInput = errors.New("Accept input")
+
+func (self *Readline) push_keyboard_map(m *ShortcutMap) {
+	maps := self.keyboard_state.active_shortcut_maps
+	self.keyboard_state = KeyboardState{}
+	if maps == nil {
+		maps = make([]*ShortcutMap, 0, 2)
+	}
+	self.keyboard_state.active_shortcut_maps = append(maps, m)
+}
+
+func (self *Readline) pop_keyboard_map() {
+	maps := self.keyboard_state.active_shortcut_maps
+	self.keyboard_state = KeyboardState{}
+	if len(maps) > 0 {
+		maps = maps[:len(maps)-1]
+		self.keyboard_state.active_shortcut_maps = maps
+	}
+}
 
 func (self *Readline) handle_numeric_arg(ac Action) {
 	t := "-"

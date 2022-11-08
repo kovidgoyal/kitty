@@ -48,15 +48,15 @@ func TestAddText(t *testing.T) {
 	dt("test", nil, "test", "", "test")
 	dt("1234\n", nil, "1234\n", "", "1234\n")
 	dt("abcd", func(rl *Readline) {
-		rl.cursor.X = 2
+		rl.input_state.cursor.X = 2
 		rl.add_text("12")
 	}, "ab12", "cd", "ab12cd")
 	dt("abcd", func(rl *Readline) {
-		rl.cursor.X = 2
+		rl.input_state.cursor.X = 2
 		rl.add_text("12\n34")
 	}, "ab12\n34", "cd", "ab12\n34cd")
 	dt("abcd\nxyz", func(rl *Readline) {
-		rl.cursor.X = 2
+		rl.input_state.cursor.X = 2
 		rl.add_text("12\n34")
 	}, "abcd\nxy12\n34", "z", "abcd\nxy12\n34z")
 }
@@ -80,7 +80,7 @@ func TestGetScreenLines(t *testing.T) {
 			actual[i] = *x
 		}
 		if diff := cmp.Diff(expected, actual); diff != "" {
-			t.Fatalf("Did not get expected screen lines for: %#v and cursor: %+v\n%s", rl.AllText(), rl.cursor, diff)
+			t.Fatalf("Did not get expected screen lines for: %#v and cursor: %+v\n%s", rl.AllText(), rl.input_state.cursor, diff)
 		}
 	}
 	tsl(ScreenLine{Prompt: p(true), CursorCell: 3})
@@ -105,19 +105,19 @@ func TestGetScreenLines(t *testing.T) {
 		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
 		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: 3, CursorTextPos: 3, Text: "XYZ"},
 	)
-	rl.cursor = Position{X: 2}
+	rl.input_state.cursor = Position{X: 2}
 	tsl(
 		ScreenLine{Prompt: p(true), CursorCell: 5, Text: "123", CursorTextPos: 2, TextLengthInCells: 3},
 		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
 		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: -1, CursorTextPos: -1, Text: "XYZ"},
 	)
-	rl.cursor = Position{X: 2, Y: 1}
+	rl.input_state.cursor = Position{X: 2, Y: 1}
 	tsl(
 		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
 		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: 4, CursorTextPos: 2},
 		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: -1, CursorTextPos: -1, Text: "XYZ"},
 	)
-	rl.cursor = Position{X: 8, Y: 1}
+	rl.input_state.cursor = Position{X: 8, Y: 1}
 	tsl(
 		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
 		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
@@ -125,7 +125,7 @@ func TestGetScreenLines(t *testing.T) {
 	)
 	rl.ResetText()
 	rl.add_text("1234567\nabc")
-	rl.cursor = Position{X: 7}
+	rl.input_state.cursor = Position{X: 7}
 	tsl(
 		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
 		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "abc", CursorCell: 2, TextLengthInCells: 3, CursorTextPos: 0},
@@ -164,8 +164,8 @@ func TestCursorMovement(t *testing.T) {
 	}, "one", "à")
 
 	right := func(rl *Readline, amt uint, moved_amt uint, traverse_line_breaks bool) {
-		rl.cursor.Y = 0
-		rl.cursor.X = 0
+		rl.input_state.cursor.Y = 0
+		rl.input_state.cursor.X = 0
 		actual := rl.move_cursor_right(amt, traverse_line_breaks)
 		if actual != moved_amt {
 			t.Fatalf("Failed to move cursor by %d\nactual != expected: %d != %d", amt, actual, moved_amt)
@@ -196,7 +196,7 @@ func TestCursorMovement(t *testing.T) {
 		if len(initials) > 0 {
 			initial = initials[0]
 		}
-		rl.cursor = initial
+		rl.input_state.cursor = initial
 		actual := rl.move_cursor_vertically(amt)
 		if actual != moved_amt {
 			t.Fatalf("Failed to move cursor by %#v for: %#v \nactual != expected: %#v != %#v", amt, rl.AllText(), actual, moved_amt)
@@ -216,7 +216,7 @@ func TestCursorMovement(t *testing.T) {
 	rl.add_text("o\u0300ne  two three\nfour five")
 
 	wf := func(amt uint, expected_amt uint, text_before_cursor string) {
-		pos := rl.cursor
+		pos := rl.input_state.cursor
 		actual_amt := rl.move_to_end_of_word(amt, true, has_word_chars)
 		if actual_amt != expected_amt {
 			t.Fatalf("Failed to move to word end, expected amt (%d) != actual amt (%d)", expected_amt, actual_amt)
@@ -225,20 +225,20 @@ func TestCursorMovement(t *testing.T) {
 			t.Fatalf("Did not get expected text before cursor for: %#v and cursor: %+v\n%s", rl.AllText(), pos, diff)
 		}
 	}
-	rl.cursor = Position{}
+	rl.input_state.cursor = Position{}
 	wf(1, 1, "òne")
 	wf(1, 1, "òne  two")
 	wf(1, 1, "òne  two three")
 	wf(1, 1, "òne  two three\nfour")
 	wf(1, 1, "òne  two three\nfour five")
 	wf(1, 0, "òne  two three\nfour five")
-	rl.cursor = Position{}
+	rl.input_state.cursor = Position{}
 	wf(5, 5, "òne  two three\nfour five")
-	rl.cursor = Position{X: 5}
+	rl.input_state.cursor = Position{X: 5}
 	wf(1, 1, "òne  two")
 
 	wb := func(amt uint, expected_amt uint, text_before_cursor string) {
-		pos := rl.cursor
+		pos := rl.input_state.cursor
 		actual_amt := rl.move_to_start_of_word(amt, true, has_word_chars)
 		if actual_amt != expected_amt {
 			t.Fatalf("Failed to move to word end, expected amt (%d) != actual amt (%d)", expected_amt, actual_amt)
@@ -247,18 +247,18 @@ func TestCursorMovement(t *testing.T) {
 			t.Fatalf("Did not get expected text before cursor for: %#v and cursor: %+v\n%s", rl.AllText(), pos, diff)
 		}
 	}
-	rl.cursor = Position{X: 2}
+	rl.input_state.cursor = Position{X: 2}
 	wb(1, 1, "")
-	rl.cursor = Position{X: 8, Y: 1}
+	rl.input_state.cursor = Position{X: 8, Y: 1}
 	wb(1, 1, "òne  two three\nfour ")
 	wb(1, 1, "òne  two three\n")
 	wb(1, 1, "òne  two ")
 	wb(1, 1, "òne  ")
 	wb(1, 1, "")
 	wb(1, 0, "")
-	rl.cursor = Position{X: 8, Y: 1}
+	rl.input_state.cursor = Position{X: 8, Y: 1}
 	wb(5, 5, "")
-	rl.cursor = Position{X: 5}
+	rl.input_state.cursor = Position{X: 5}
 	wb(1, 1, "")
 
 }
@@ -330,11 +330,11 @@ func TestEraseChars(t *testing.T) {
 		backspace(rl, 2, 2, false)
 	}, "one\nt", "")
 	dt("one\ntwo", func(rl *Readline) {
-		rl.cursor.X = 1
+		rl.input_state.cursor.X = 1
 		backspace(rl, 2, 1, false)
 	}, "one\n", "wo")
 	dt("one\ntwo", func(rl *Readline) {
-		rl.cursor.X = 1
+		rl.input_state.cursor.X = 1
 		backspace(rl, 2, 2, true)
 	}, "one", "wo")
 	dt("a😀", func(rl *Readline) {
@@ -345,8 +345,8 @@ func TestEraseChars(t *testing.T) {
 	}, "b", "")
 
 	del := func(rl *Readline, amt uint, erased_amt uint, traverse_line_breaks bool) {
-		rl.cursor.Y = 0
-		rl.cursor.X = 0
+		rl.input_state.cursor.Y = 0
+		rl.input_state.cursor.X = 0
 		actual := rl.erase_chars_after_cursor(amt, traverse_line_breaks)
 		if actual != erased_amt {
 			t.Fatalf("Failed to move cursor by %#v\nactual != expected: %d != %d", amt, actual, erased_amt)
@@ -366,19 +366,19 @@ func TestEraseChars(t *testing.T) {
 		rl.erase_between(Position{X: 1}, Position{X: 2, Y: 2})
 	}, "oree", "")
 	dt("one\ntwo\nthree", func(rl *Readline) {
-		rl.cursor.X = 1
+		rl.input_state.cursor.X = 1
 		rl.erase_between(Position{X: 1}, Position{X: 2, Y: 2})
 	}, "o", "ree")
 	dt("one\ntwo\nthree", func(rl *Readline) {
-		rl.cursor = Position{X: 1, Y: 1}
+		rl.input_state.cursor = Position{X: 1, Y: 1}
 		rl.erase_between(Position{X: 1}, Position{X: 2, Y: 2})
 	}, "o", "ree")
 	dt("one\ntwo\nthree", func(rl *Readline) {
-		rl.cursor = Position{X: 1, Y: 0}
+		rl.input_state.cursor = Position{X: 1, Y: 0}
 		rl.erase_between(Position{X: 1}, Position{X: 2, Y: 2})
 	}, "o", "ree")
 	dt("one\ntwo\nthree", func(rl *Readline) {
-		rl.cursor = Position{X: 0, Y: 0}
+		rl.input_state.cursor = Position{X: 0, Y: 0}
 		rl.erase_between(Position{X: 1}, Position{X: 2, Y: 2})
 	}, "", "oree")
 }

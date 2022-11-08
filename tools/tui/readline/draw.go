@@ -4,7 +4,9 @@ package readline
 
 import (
 	"fmt"
+	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
+	"strings"
 )
 
 var _ = fmt.Print
@@ -36,7 +38,7 @@ func (self *Readline) format_arg_prompt(cna string) string {
 }
 
 func (self *Readline) prompt_for_line_number(i int) Prompt {
-	is_line_with_cursor := i == self.cursor.Y
+	is_line_with_cursor := i == self.input_state.cursor.Y
 	if is_line_with_cursor && self.keyboard_state.current_numeric_argument != "" {
 		return self.make_prompt(self.format_arg_prompt(self.keyboard_state.current_numeric_argument), i > 0)
 	}
@@ -49,17 +51,48 @@ func (self *Readline) prompt_for_line_number(i int) Prompt {
 	return self.continuation_prompt
 }
 
+func (self *Readline) apply_syntax_highlighting() (lines []string, cursor Position) {
+	highlighter := self.syntax_highlighted.highlighter
+	highlighter_name := "default"
+	if self.history_search != nil {
+		highlighter = self.history_search_highlighter
+		highlighter_name = "## history ##"
+	}
+	if highlighter == nil {
+		return self.input_state.lines, self.input_state.cursor
+	}
+	src := strings.Join(self.input_state.lines, "\n")
+	if len(self.syntax_highlighted.lines) > 0 && self.syntax_highlighted.last_highlighter_name == highlighter_name && self.syntax_highlighted.src_for_last_highlight == src {
+		lines = self.syntax_highlighted.lines
+	} else {
+		if src == "" {
+			lines = []string{""}
+		} else {
+			text := highlighter(src, self.input_state.cursor.X, self.input_state.cursor.Y)
+			lines = utils.Splitlines(text)
+			for len(lines) < len(self.input_state.lines) {
+				lines = append(lines, "syntax highlighter malfunctioned")
+			}
+		}
+	}
+	line := lines[self.input_state.cursor.Y]
+	w := wcswidth.Stringwidth(self.input_state.lines[self.input_state.cursor.Y][:self.input_state.cursor.X])
+	x := len(wcswidth.TruncateToVisualLength(line, w))
+	return lines, Position{X: x, Y: self.input_state.cursor.Y}
+}
+
 func (self *Readline) get_screen_lines() []*ScreenLine {
 	if self.screen_width == 0 {
 		self.update_current_screen_size()
 	}
-	ans := make([]*ScreenLine, 0, len(self.lines))
+	lines, cursor := self.apply_syntax_highlighting()
+	ans := make([]*ScreenLine, 0, len(lines))
 	found_cursor := false
 	cursor_at_start_of_next_line := false
-	for i, line := range self.lines {
+	for i, line := range lines {
 		prompt := self.prompt_for_line_number(i)
 		offset := 0
-		has_cursor := i == self.cursor.Y
+		has_cursor := i == cursor.Y
 		for is_first := true; is_first || offset < len(line); is_first = false {
 			l, width := wcswidth.TruncateToVisualLengthWithWidth(line[offset:], self.screen_width-prompt.Length)
 			sl := ScreenLine{
@@ -73,12 +106,12 @@ func (self *Readline) get_screen_lines() []*ScreenLine {
 				sl.CursorTextPos = 0
 			}
 			ans = append(ans, &sl)
-			if has_cursor && !found_cursor && offset <= self.cursor.X && self.cursor.X <= offset+len(l) {
+			if has_cursor && !found_cursor && offset <= cursor.X && cursor.X <= offset+len(l) {
 				found_cursor = true
-				ctpos := self.cursor.X - offset
+				ctpos := cursor.X - offset
 				ccell := prompt.Length + wcswidth.Stringwidth(l[:ctpos])
 				if ccell >= self.screen_width {
-					if offset+len(l) < len(line) || i < len(self.lines)-1 {
+					if offset+len(l) < len(line) || i < len(lines)-1 {
 						cursor_at_start_of_next_line = true
 					} else {
 						ans = append(ans, &ScreenLine{ParentLineNumber: i, OffsetInParentLine: len(line)})

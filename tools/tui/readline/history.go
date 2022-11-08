@@ -12,6 +12,8 @@ import (
 
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
+
+	"github.com/google/shlex"
 )
 
 var _ = fmt.Print
@@ -31,13 +33,12 @@ type HistoryMatches struct {
 }
 
 type HistorySearch struct {
-	query           string
-	tokens          []string
-	items           []*HistoryItem
-	current_idx     int
-	backwards       bool
-	original_lines  []string
-	original_cursor Position
+	query                string
+	tokens               []string
+	items                []*HistoryItem
+	current_idx          int
+	backwards            bool
+	original_input_state InputState
 }
 
 type History struct {
@@ -211,31 +212,32 @@ func (self *HistoryMatches) next(num uint) (ans *HistoryItem) {
 }
 
 func (self *Readline) create_history_search(backwards bool, num uint) {
-	self.history_search = &HistorySearch{backwards: backwards, original_lines: self.lines, original_cursor: self.cursor}
+	self.history_search = &HistorySearch{backwards: backwards, original_input_state: self.input_state.copy()}
+	self.push_keyboard_map(history_search_shortcuts())
 	self.markup_history_search()
 }
 
 func (self *Readline) end_history_search(accept bool) {
-	self.cursor = Position{}
 	if accept && self.history_search.current_idx < len(self.history_search.items) {
-		self.lines = utils.Splitlines(self.history_search.items[self.history_search.current_idx].Cmd)
-		self.cursor.Y = len(self.lines) - 1
-		self.cursor.X = len(self.lines[self.cursor.Y])
+		self.input_state.lines = utils.Splitlines(self.history_search.items[self.history_search.current_idx].Cmd)
+		self.input_state.cursor.Y = len(self.input_state.lines) - 1
+		self.input_state.cursor.X = len(self.input_state.lines[self.input_state.cursor.Y])
 	} else {
-		self.lines = self.history_search.original_lines
-		self.cursor = self.history_search.original_cursor
+		self.input_state = self.history_search.original_input_state
 	}
-	self.cursor = *self.ensure_position_in_bounds(&self.cursor)
+	self.input_state.cursor = *self.ensure_position_in_bounds(&self.input_state.cursor)
+	self.pop_keyboard_map()
+	self.history_search = nil
 }
 
 func (self *Readline) markup_history_search() {
 	if len(self.history_search.items) == 0 {
 		if len(self.history_search.tokens) == 0 {
-			self.lines = []string{""}
+			self.input_state.lines = []string{""}
 		} else {
-			self.lines = []string{"No matches for: " + self.fmt_ctx.BrightRed(self.history_search.query)}
+			self.input_state.lines = []string{"No matches for: " + self.history_search.query}
 		}
-		self.cursor = Position{X: wcswidth.Stringwidth(self.lines[0])}
+		self.input_state.cursor = Position{X: wcswidth.Stringwidth(self.input_state.lines[0])}
 		return
 	}
 	lines := utils.Splitlines(self.history_search.items[self.history_search.current_idx].Cmd)
@@ -243,7 +245,6 @@ func (self *Readline) markup_history_search() {
 	for _, tok := range self.history_search.tokens {
 		for i, line := range lines {
 			if idx := strings.Index(line, tok); idx > -1 {
-				lines[i] = line[:idx] + self.fmt_ctx.Green(tok) + line[idx+len(tok):]
 				q := Position{Y: i, X: idx}
 				if q.Less(cursor) {
 					cursor = q
@@ -252,31 +253,64 @@ func (self *Readline) markup_history_search() {
 			}
 		}
 	}
-	self.lines = lines
-	self.cursor = *self.ensure_position_in_bounds(&cursor)
+	self.input_state.lines = lines
+	self.input_state.cursor = *self.ensure_position_in_bounds(&cursor)
+}
+
+func (self *Readline) remove_text_from_history_search(num uint) uint {
+	l := len(self.history_search.query)
+	nl := utils.Max(0, l-int(num))
+	self.history_search.query = self.history_search.query[:nl]
+	num_removed := uint(l - nl)
+	self.add_text_to_history_search("") // update the search results
+	return num_removed
+}
+
+func (self *Readline) history_search_highlighter(text string, x, y int) string {
+	if len(self.history_search.items) == 0 {
+		return text
+	}
+	lines := utils.Splitlines(text)
+	for _, tok := range self.history_search.tokens {
+		for i, line := range lines {
+			if idx := strings.Index(line, tok); idx > -1 {
+				lines[i] = line[:idx] + self.fmt_ctx.Green(tok) + line[idx+len(tok):]
+				break
+			}
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (self *Readline) add_text_to_history_search(text string) {
 	self.history_search.query += text
-	self.history_search.tokens = strings.Split(self.history_search.query, " ")
+	tokens, err := shlex.Split(self.history_search.query)
+	if err != nil {
+		tokens = strings.Split(self.history_search.query, " ")
+	}
+	self.history_search.tokens = tokens
 	var current_item *HistoryItem
 	if len(self.history_search.items) > 0 {
 		current_item = self.history_search.items[self.history_search.current_idx]
 	}
-	items := make([]*HistoryItem, len(self.history.items))
-	for i, x := range self.history.items {
-		items[i] = &x
-	}
-	for _, token := range self.history_search.tokens {
-		matches := make([]*HistoryItem, 0, len(items))
-		for _, item := range items {
-			if strings.Contains(item.Cmd, token) {
-				matches = append(matches, item)
-			}
+	if len(self.history_search.tokens) == 0 {
+		self.history_search.items = []*HistoryItem{}
+	} else {
+		items := make([]*HistoryItem, len(self.history.items))
+		for i, x := range self.history.items {
+			items[i] = &x
 		}
-		items = matches
+		for _, token := range self.history_search.tokens {
+			matches := make([]*HistoryItem, 0, len(items))
+			for _, item := range items {
+				if strings.Contains(item.Cmd, token) {
+					matches = append(matches, item)
+				}
+			}
+			items = matches
+		}
+		self.history_search.items = items
 	}
-	self.history_search.items = items
 	idx := -1
 	for i, item := range self.history_search.items {
 		if item == current_item {
