@@ -17,7 +17,7 @@ var _ = fmt.Print
 const ST = "\x1b\\"
 const PROMPT_MARK = "\x1b]133;"
 
-type SyntaxHighlightFunction func(text string, x, y int) string
+type SyntaxHighlightFunction = func(text string, x, y int) string
 
 type RlInit struct {
 	Prompt                  string

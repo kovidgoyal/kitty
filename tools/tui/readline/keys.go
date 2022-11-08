@@ -6,17 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"kitty/tools/tui/loop"
+	"kitty/tools/tui/shortcuts"
 )
 
 var _ = fmt.Print
 
-type ShortcutMap struct {
-	leaves   map[string]Action
-	children map[string]*ShortcutMap
-}
+type ShortcutMap = shortcuts.ShortcutMap[Action]
 
 type KeyboardState struct {
 	active_shortcut_maps     []*ShortcutMap
@@ -24,141 +21,116 @@ type KeyboardState struct {
 	current_numeric_argument string
 }
 
-func (self *ShortcutMap) add(ac Action, base string, keys ...string) error {
-	items := []string{base}
-	items = append(items, keys...)
-	sm := self
-	for i, key := range items {
-		if i == len(items)-1 {
-			if sm.children[key] != nil {
-				return fmt.Errorf("The shortcut %s conflicts with another multi-key shortcut", strings.Join(items, " > "))
-			}
-			sm.leaves[key] = ac
-		} else {
-			if _, found := sm.leaves[key]; found {
-				return fmt.Errorf("The shortcut %s conflicts with another multi-key shortcut", strings.Join(items, " > "))
-			}
-			q := sm.children[key]
-			if q == nil {
-				q = &ShortcutMap{leaves: map[string]Action{}, children: map[string]*ShortcutMap{}}
-				sm.children[key] = q
-			}
-			sm = q
-		}
-	}
-	return nil
-}
-
 var _default_shortcuts *ShortcutMap
 
 func default_shortcuts() *ShortcutMap {
 	if _default_shortcuts == nil {
-		sm := ShortcutMap{leaves: make(map[string]Action, 32), children: map[string]*ShortcutMap{}}
-		sm.add(ActionBackspace, "backspace")
-		sm.add(ActionBackspace, "ctrl+h")
-		sm.add(ActionDelete, "delete")
+		sm := shortcuts.New[Action]()
+		sm.AddOrPanic(ActionBackspace, "backspace")
+		sm.AddOrPanic(ActionBackspace, "ctrl+h")
+		sm.AddOrPanic(ActionDelete, "delete")
 
-		sm.add(ActionMoveToStartOfLine, "home")
-		sm.add(ActionMoveToStartOfLine, "ctrl+a")
+		sm.AddOrPanic(ActionMoveToStartOfLine, "home")
+		sm.AddOrPanic(ActionMoveToStartOfLine, "ctrl+a")
 
-		sm.add(ActionMoveToEndOfLine, "end")
-		sm.add(ActionMoveToEndOfLine, "ctrl+e")
+		sm.AddOrPanic(ActionMoveToEndOfLine, "end")
+		sm.AddOrPanic(ActionMoveToEndOfLine, "ctrl+e")
 
-		sm.add(ActionMoveToStartOfDocument, "ctrl+home")
-		sm.add(ActionMoveToEndOfDocument, "ctrl+end")
+		sm.AddOrPanic(ActionMoveToStartOfDocument, "ctrl+home")
+		sm.AddOrPanic(ActionMoveToEndOfDocument, "ctrl+end")
 
-		sm.add(ActionMoveToEndOfWord, "alt+f")
-		sm.add(ActionMoveToEndOfWord, "ctrl+right")
-		sm.add(ActionMoveToStartOfWord, "ctrl+left")
-		sm.add(ActionMoveToStartOfWord, "alt+b")
+		sm.AddOrPanic(ActionMoveToEndOfWord, "alt+f")
+		sm.AddOrPanic(ActionMoveToEndOfWord, "ctrl+right")
+		sm.AddOrPanic(ActionMoveToStartOfWord, "ctrl+left")
+		sm.AddOrPanic(ActionMoveToStartOfWord, "alt+b")
 
-		sm.add(ActionCursorLeft, "left")
-		sm.add(ActionCursorLeft, "ctrl+b")
-		sm.add(ActionCursorRight, "right")
-		sm.add(ActionCursorRight, "ctrl+f")
+		sm.AddOrPanic(ActionCursorLeft, "left")
+		sm.AddOrPanic(ActionCursorLeft, "ctrl+b")
+		sm.AddOrPanic(ActionCursorRight, "right")
+		sm.AddOrPanic(ActionCursorRight, "ctrl+f")
 
-		sm.add(ActionClearScreen, "ctrl+l")
-		sm.add(ActionAbortCurrentLine, "ctrl+c")
-		sm.add(ActionAbortCurrentLine, "ctrl+g")
+		sm.AddOrPanic(ActionClearScreen, "ctrl+l")
+		sm.AddOrPanic(ActionAbortCurrentLine, "ctrl+c")
+		sm.AddOrPanic(ActionAbortCurrentLine, "ctrl+g")
 
-		sm.add(ActionEndInput, "ctrl+d")
-		sm.add(ActionAcceptInput, "enter")
+		sm.AddOrPanic(ActionEndInput, "ctrl+d")
+		sm.AddOrPanic(ActionAcceptInput, "enter")
 
-		sm.add(ActionKillToEndOfLine, "ctrl+k")
-		sm.add(ActionKillToStartOfLine, "ctrl+x")
-		sm.add(ActionKillToStartOfLine, "ctrl+u")
-		sm.add(ActionKillNextWord, "alt+d")
-		sm.add(ActionKillPreviousWord, "alt+backspace")
-		sm.add(ActionKillPreviousSpaceDelimitedWord, "ctrl+w")
-		sm.add(ActionYank, "ctrl+y")
-		sm.add(ActionPopYank, "alt+y")
+		sm.AddOrPanic(ActionKillToEndOfLine, "ctrl+k")
+		sm.AddOrPanic(ActionKillToStartOfLine, "ctrl+x")
+		sm.AddOrPanic(ActionKillToStartOfLine, "ctrl+u")
+		sm.AddOrPanic(ActionKillNextWord, "alt+d")
+		sm.AddOrPanic(ActionKillPreviousWord, "alt+backspace")
+		sm.AddOrPanic(ActionKillPreviousSpaceDelimitedWord, "ctrl+w")
+		sm.AddOrPanic(ActionYank, "ctrl+y")
+		sm.AddOrPanic(ActionPopYank, "alt+y")
 
-		sm.add(ActionHistoryPreviousOrCursorUp, "up")
-		sm.add(ActionHistoryNextOrCursorDown, "down")
-		sm.add(ActionHistoryPrevious, "ctrl+p")
-		sm.add(ActionHistoryNext, "ctrl+n")
-		sm.add(ActionHistoryFirst, "alt+<")
-		sm.add(ActionHistoryLast, "alt+>")
-		sm.add(ActionHistoryIncrementalSearchBackwards, "ctrl+r")
-		sm.add(ActionHistoryIncrementalSearchBackwards, "ctrl+?")
-		sm.add(ActionHistoryIncrementalSearchForwards, "ctrl+s")
-		sm.add(ActionHistoryIncrementalSearchForwards, "ctrl+/")
+		sm.AddOrPanic(ActionHistoryPreviousOrCursorUp, "up")
+		sm.AddOrPanic(ActionHistoryNextOrCursorDown, "down")
+		sm.AddOrPanic(ActionHistoryPrevious, "ctrl+p")
+		sm.AddOrPanic(ActionHistoryNext, "ctrl+n")
+		sm.AddOrPanic(ActionHistoryFirst, "alt+<")
+		sm.AddOrPanic(ActionHistoryLast, "alt+>")
+		sm.AddOrPanic(ActionHistoryIncrementalSearchBackwards, "ctrl+r")
+		sm.AddOrPanic(ActionHistoryIncrementalSearchBackwards, "ctrl+?")
+		sm.AddOrPanic(ActionHistoryIncrementalSearchForwards, "ctrl+s")
+		sm.AddOrPanic(ActionHistoryIncrementalSearchForwards, "ctrl+/")
 
-		sm.add(ActionNumericArgumentDigit0, "alt+0")
-		sm.add(ActionNumericArgumentDigit1, "alt+1")
-		sm.add(ActionNumericArgumentDigit2, "alt+2")
-		sm.add(ActionNumericArgumentDigit3, "alt+3")
-		sm.add(ActionNumericArgumentDigit4, "alt+4")
-		sm.add(ActionNumericArgumentDigit5, "alt+5")
-		sm.add(ActionNumericArgumentDigit6, "alt+6")
-		sm.add(ActionNumericArgumentDigit7, "alt+7")
-		sm.add(ActionNumericArgumentDigit8, "alt+8")
-		sm.add(ActionNumericArgumentDigit9, "alt+9")
-		sm.add(ActionNumericArgumentDigitMinus, "alt+-")
+		sm.AddOrPanic(ActionNumericArgumentDigit0, "alt+0")
+		sm.AddOrPanic(ActionNumericArgumentDigit1, "alt+1")
+		sm.AddOrPanic(ActionNumericArgumentDigit2, "alt+2")
+		sm.AddOrPanic(ActionNumericArgumentDigit3, "alt+3")
+		sm.AddOrPanic(ActionNumericArgumentDigit4, "alt+4")
+		sm.AddOrPanic(ActionNumericArgumentDigit5, "alt+5")
+		sm.AddOrPanic(ActionNumericArgumentDigit6, "alt+6")
+		sm.AddOrPanic(ActionNumericArgumentDigit7, "alt+7")
+		sm.AddOrPanic(ActionNumericArgumentDigit8, "alt+8")
+		sm.AddOrPanic(ActionNumericArgumentDigit9, "alt+9")
+		sm.AddOrPanic(ActionNumericArgumentDigitMinus, "alt+-")
 
-		_default_shortcuts = &sm
+		_default_shortcuts = sm
 	}
 	return _default_shortcuts
 }
 
-var _history_search_shortcuts *ShortcutMap
+var _history_search_shortcuts *shortcuts.ShortcutMap[Action]
 
-func history_search_shortcuts() *ShortcutMap {
+func history_search_shortcuts() *shortcuts.ShortcutMap[Action] {
 	if _history_search_shortcuts == nil {
-		sm := ShortcutMap{leaves: make(map[string]Action, 32), children: map[string]*ShortcutMap{}}
-		sm.add(ActionBackspace, "backspace")
-		sm.add(ActionBackspace, "ctrl+h")
+		sm := shortcuts.New[Action]()
+		sm.AddOrPanic(ActionBackspace, "backspace")
+		sm.AddOrPanic(ActionBackspace, "ctrl+h")
 
-		sm.add(ActionTerminateHistorySearchAndRestore, "home")
-		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+a")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "home")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "ctrl+a")
 
-		sm.add(ActionTerminateHistorySearchAndRestore, "end")
-		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+e")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "end")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "ctrl+e")
 
-		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+home")
-		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+end")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "ctrl+home")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "ctrl+end")
 
-		sm.add(ActionTerminateHistorySearchAndRestore, "alt+f")
-		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+right")
-		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+left")
-		sm.add(ActionTerminateHistorySearchAndRestore, "alt+b")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "alt+f")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "ctrl+right")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "ctrl+left")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "alt+b")
 
-		sm.add(ActionTerminateHistorySearchAndRestore, "left")
-		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+b")
-		sm.add(ActionTerminateHistorySearchAndRestore, "right")
-		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+f")
-		sm.add(ActionTerminateHistorySearchAndRestore, "up")
-		sm.add(ActionTerminateHistorySearchAndRestore, "down")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "left")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "ctrl+b")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "right")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "ctrl+f")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "up")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "down")
 
-		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+c")
-		sm.add(ActionTerminateHistorySearchAndRestore, "ctrl+g")
-		sm.add(ActionTerminateHistorySearchAndRestore, "escape")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "ctrl+c")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "ctrl+g")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndRestore, "escape")
 
-		sm.add(ActionTerminateHistorySearchAndApply, "ctrl+d")
-		sm.add(ActionTerminateHistorySearchAndApply, "enter")
-		sm.add(ActionTerminateHistorySearchAndApply, "ctrl+j")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndApply, "ctrl+d")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndApply, "enter")
+		sm.AddOrPanic(ActionTerminateHistorySearchAndApply, "ctrl+j")
 
-		_history_search_shortcuts = &sm
+		_history_search_shortcuts = sm
 	}
 	return _history_search_shortcuts
 }
@@ -230,21 +202,16 @@ func (self *Readline) handle_key_event(event *loop.KeyEvent) error {
 	if len(self.keyboard_state.active_shortcut_maps) > 0 {
 		sm = self.keyboard_state.active_shortcut_maps[len(self.keyboard_state.active_shortcut_maps)-1]
 	}
-	for _, pk := range self.keyboard_state.current_pending_keys {
-		sm = sm.children[pk]
-	}
-	for k := range sm.children {
-		if event.MatchesPressOrRepeat(k) {
-			event.Handled = true
-			if self.keyboard_state.current_pending_keys == nil {
-				self.keyboard_state.current_pending_keys = []string{}
-			}
-			self.keyboard_state.current_pending_keys = append(self.keyboard_state.current_pending_keys, k)
-			return nil
+	ac, pending := sm.ResolveKeyEvent(event, self.keyboard_state.current_pending_keys...)
+	if pending != "" {
+		event.Handled = true
+		if self.keyboard_state.current_pending_keys == nil {
+			self.keyboard_state.current_pending_keys = []string{}
 		}
-	}
-	for k, ac := range sm.leaves {
-		if event.MatchesPressOrRepeat(k) {
+		self.keyboard_state.current_pending_keys = append(self.keyboard_state.current_pending_keys, pending)
+	} else {
+		self.keyboard_state.current_pending_keys = nil
+		if ac != ActionNil {
 			event.Handled = true
 			return self.dispatch_key_action(ac)
 		}
