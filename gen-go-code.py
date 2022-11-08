@@ -363,9 +363,26 @@ def update_completion() -> None:
         sys.stdout = orig
 
 
-def generate_readline_actions() -> str:
+def define_enum(package_name: str, type_name: str, items: str, underlying_type: str = 'uint') -> str:
     actions = []
-    for x in '''\
+    for x in items.splitlines():
+        x = x.strip()
+        if x:
+            actions.append(x)
+    ans = [f'package {package_name}', 'import "strconv"', f'type {type_name} {underlying_type}', 'const (']
+    stringer = [f'func (ac {type_name}) String() string ''{', 'switch(ac) {']
+    for i, ac in enumerate(actions):
+        stringer.append(f'case {ac}: return "{ac}"')
+        if i == 0:
+            ac = ac + f' {type_name} = iota'
+        ans.append(ac)
+    ans.append(')')
+    stringer.append('}\nreturn strconv.Itoa(int(ac)) }')
+    return '\n'.join(ans + stringer)
+
+
+def generate_readline_actions() -> str:
+    return define_enum('readline', 'Action', '''\
         ActionNil
 
         ActionBackspace
@@ -417,20 +434,7 @@ def generate_readline_actions() -> str:
         ActionNumericArgumentDigit8
         ActionNumericArgumentDigit9
         ActionNumericArgumentDigitMinus
-    '''.splitlines():
-        x = x.strip()
-        if x:
-            actions.append(x)
-    ans = ['package readline', 'import "strconv"', 'type Action uint', 'const (']
-    stringer = ['func (ac Action) String() string {', 'switch(ac) {']
-    for i, ac in enumerate(actions):
-        stringer.append(f'case {ac}: return "{ac}"')
-        if i == 0:
-            ac = ac + ' Action = iota'
-        ans.append(ac)
-    ans.append(')')
-    stringer.append('}\nreturn strconv.Itoa(int(ac)) }')
-    return '\n'.join(ans + stringer)
+    ''')
 
 
 def main() -> None:
