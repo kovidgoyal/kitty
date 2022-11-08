@@ -363,11 +363,83 @@ def update_completion() -> None:
         sys.stdout = orig
 
 
+def generate_readline_actions() -> str:
+    actions = []
+    for x in '''\
+        ActionNil
+
+        ActionBackspace
+        ActionDelete
+        ActionMoveToStartOfLine
+        ActionMoveToEndOfLine
+        ActionMoveToStartOfDocument
+        ActionMoveToEndOfDocument
+        ActionMoveToEndOfWord
+        ActionMoveToStartOfWord
+        ActionCursorLeft
+        ActionCursorRight
+        ActionEndInput
+        ActionAcceptInput
+        ActionCursorUp
+        ActionHistoryPreviousOrCursorUp
+        ActionCursorDown
+        ActionHistoryNextOrCursorDown
+        ActionHistoryNext
+        ActionHistoryPrevious
+        ActionHistoryFirst
+        ActionHistoryLast
+        ActionHistoryIncrementalSearchBackwards
+        ActionHistoryIncrementalSearchForwards
+        ActionTerminateHistorySearchAndApply
+        ActionTerminateHistorySearchAndRestore
+        ActionClearScreen
+        ActionAddText
+        ActionAbortCurrentLine
+
+        ActionStartKillActions
+        ActionKillToEndOfLine
+        ActionKillToStartOfLine
+        ActionKillNextWord
+        ActionKillPreviousWord
+        ActionKillPreviousSpaceDelimitedWord
+        ActionEndKillActions
+        ActionYank
+        ActionPopYank
+
+        ActionNumericArgumentDigit0
+        ActionNumericArgumentDigit1
+        ActionNumericArgumentDigit2
+        ActionNumericArgumentDigit3
+        ActionNumericArgumentDigit4
+        ActionNumericArgumentDigit5
+        ActionNumericArgumentDigit6
+        ActionNumericArgumentDigit7
+        ActionNumericArgumentDigit8
+        ActionNumericArgumentDigit9
+        ActionNumericArgumentDigitMinus
+    '''.splitlines():
+        x = x.strip()
+        if x:
+            actions.append(x)
+    ans = ['package readline', 'import "strconv"', 'type Action uint', 'const (']
+    stringer = ['func (ac Action) String() string {', 'switch(ac) {']
+    for i, ac in enumerate(actions):
+        stringer.append(f'case {ac}: return "{ac}"')
+        if i == 0:
+            ac = ac + ' Action = iota'
+        ans.append(ac)
+    ans.append(')')
+    stringer.append('}\nreturn strconv.Itoa(int(ac)) }')
+    return '\n'.join(ans + stringer)
+
+
 def main() -> None:
     with replace_if_needed('constants_generated.go') as f:
         f.write(generate_constants())
     with replace_if_needed('tools/utils/style/color-names_generated.go') as f:
         f.write(generate_color_names())
+    with replace_if_needed('tools/tui/readline/actions_generated.go') as f:
+        f.write(generate_readline_actions())
     update_completion()
     update_at_commands()
     print(json.dumps(changed, indent=2))

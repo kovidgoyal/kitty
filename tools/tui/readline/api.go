@@ -38,66 +38,6 @@ func (self Position) Less(other Position) bool {
 	return self.Y < other.Y || (self.Y == other.Y && self.X < other.X)
 }
 
-// Actions {{{
-type Action uint
-
-const (
-	ActionNil Action = iota
-	ActionIgnored
-	ActionBackspace
-	ActionDelete
-	ActionMoveToStartOfLine
-	ActionMoveToEndOfLine
-	ActionMoveToStartOfDocument
-	ActionMoveToEndOfDocument
-	ActionMoveToEndOfWord
-	ActionMoveToStartOfWord
-	ActionCursorLeft
-	ActionCursorRight
-	ActionEndInput
-	ActionAcceptInput
-	ActionCursorUp
-	ActionHistoryPreviousOrCursorUp
-	ActionCursorDown
-	ActionHistoryNextOrCursorDown
-	ActionHistoryNext
-	ActionHistoryPrevious
-	ActionHistoryFirst
-	ActionHistoryLast
-	ActionHistoryIncrementalSearchBackwards
-	ActionHistoryIncrementalSearchForwards
-	ActionTerminateHistorySearchAndApply
-	ActionTerminateHistorySearchAndRestore
-	ActionClearScreen
-	ActionAddText
-	ActionAbortCurrentLine
-
-	ActionStartKillActions
-	ActionKillToEndOfLine
-	ActionKillToStartOfLine
-	ActionKillNextWord
-	ActionKillPreviousWord
-	ActionKillPreviousSpaceDelimitedWord
-	ActionEndKillActions
-
-	ActionYank
-	ActionPopYank
-
-	ActionNumericArgumentDigit0
-	ActionNumericArgumentDigit1
-	ActionNumericArgumentDigit2
-	ActionNumericArgumentDigit3
-	ActionNumericArgumentDigit4
-	ActionNumericArgumentDigit5
-	ActionNumericArgumentDigit6
-	ActionNumericArgumentDigit7
-	ActionNumericArgumentDigit8
-	ActionNumericArgumentDigit9
-	ActionNumericArgumentDigitMinus
-)
-
-// }}}
-
 type kill_ring struct {
 	items *list.List
 }
