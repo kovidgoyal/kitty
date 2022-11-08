@@ -36,7 +36,7 @@ def calc_grid_size(n: int) -> Tuple[int, int, int, int]:
 
 class Grid(Layout):
 
-    name = 'grid'
+    name: str = 'grid'
     no_minimal_window_borders = True
 
     def remove_all_biases(self) -> bool:

@@ -506,17 +506,17 @@ def parse_address_spec(spec: str) -> Tuple[AddressFamily, Union[Tuple[str, int],
 def write_all(fd: int, data: Union[str, bytes], block_until_written: bool = True) -> None:
     if isinstance(data, str):
         data = data.encode('utf-8')
-    data = memoryview(data)
-    while data:
+    mvd = memoryview(data)
+    while len(mvd) > 0:
         try:
-            n = os.write(fd, data)
+            n = os.write(fd, mvd)
         except BlockingIOError:
             if not block_until_written:
                 raise
             continue
         if not n:
             break
-        data = data[n:]
+        mvd = mvd[n:]
 
 
 class TTYIO:

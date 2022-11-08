@@ -47,10 +47,10 @@ class SearchTreeNode:
         return self(universal_set, get_matches)
 
     def __call__(self, candidates: Set[T], get_matches: GetMatches[T]) -> Set[T]:
-        ...
+        return set()
 
     def iter_token_nodes(self) -> Iterator['TokenNode']:
-        ...
+        return iter(())
 
 
 class OrNode(SearchTreeNode):

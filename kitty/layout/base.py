@@ -192,7 +192,7 @@ def safe_increment_bias(old_val: float, increment: float) -> float:
 
 def normalize_biases(biases: List[float]) -> List[float]:
     s = sum(biases)
-    if s == 1:
+    if s == 1.0:
         return biases
     return [x/s for x in biases]
 
@@ -212,7 +212,7 @@ def distribute_indexed_bias(base_bias: Sequence[float], index_bias_map: Dict[int
 
 class Layout:
 
-    name: Optional[str] = None
+    name: str = ''
     needs_window_borders = True
     must_draw_borders = False  # can be overridden to customize behavior from kittens
     layout_opts = LayoutOpts({})
