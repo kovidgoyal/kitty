@@ -202,11 +202,11 @@ var ErrUnclosedSingleQuote error = errors.New("EOF found when expecting closing 
 func (t *Tokenizer) scanStream() (*Token, error) {
 	state := startState
 	var tokenType TokenType
-	var value []rune
 	var nextRune rune
 	var nextRuneType runeTokenClass
 	var err error
 	var sz int
+	value := strings.Builder{}
 
 	unread_rune := func() {
 		t.redo_rune.sz = sz
@@ -244,7 +244,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 				case spaceRuneClass:
 					{
 						tokenType = SpaceToken
-						value = append(value, nextRune)
+						value.WriteRune(nextRune)
 						state = inSpaceState
 					}
 				case escapingQuoteRuneClass:
@@ -265,7 +265,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 				default:
 					{
 						tokenType = WordToken
-						value = append(value, nextRune)
+						value.WriteRune(nextRune)
 						state = inWordState
 					}
 				}
@@ -275,13 +275,13 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 				switch nextRuneType {
 				case spaceRuneClass:
 					{
-						value = append(value, nextRune)
+						value.WriteRune(nextRune)
 					}
 				default:
 					{
 						token := &Token{
 							tokenType: tokenType,
-							value:     string(value)}
+							value:     value.String()}
 						unread_rune()
 						return token, err
 					}
@@ -294,14 +294,14 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 					{
 						token := &Token{
 							tokenType: tokenType,
-							value:     string(value)}
+							value:     value.String()}
 						return token, err
 					}
 				case spaceRuneClass:
 					{
 						token := &Token{
 							tokenType: tokenType,
-							value:     string(value)}
+							value:     value.String()}
 						unread_rune()
 						return token, err
 					}
@@ -319,7 +319,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 					}
 				default:
 					{
-						value = append(value, nextRune)
+						value.WriteRune(nextRune)
 					}
 				}
 			}
@@ -331,13 +331,13 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 						err = ErrTrailingEscape
 						token := &Token{
 							tokenType: tokenType,
-							value:     string(value)}
+							value:     value.String()}
 						return token, err
 					}
 				default:
 					{
 						state = inWordState
-						value = append(value, nextRune)
+						value.WriteRune(nextRune)
 					}
 				}
 			}
@@ -349,13 +349,13 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 						err = ErrTrailingQuoteEscape
 						token := &Token{
 							tokenType: tokenType,
-							value:     string(value)}
+							value:     value.String()}
 						return token, err
 					}
 				default:
 					{
 						state = quotingEscapingState
-						value = append(value, nextRune)
+						value.WriteRune(nextRune)
 					}
 				}
 			}
@@ -367,7 +367,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 						err = ErrUnclosedDoubleQuote
 						token := &Token{
 							tokenType: tokenType,
-							value:     string(value)}
+							value:     value.String()}
 						return token, err
 					}
 				case escapingQuoteRuneClass:
@@ -380,7 +380,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 					}
 				default:
 					{
-						value = append(value, nextRune)
+						value.WriteRune(nextRune)
 					}
 				}
 			}
@@ -392,7 +392,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 						err = ErrUnclosedSingleQuote
 						token := &Token{
 							tokenType: tokenType,
-							value:     string(value)}
+							value:     value.String()}
 						return token, err
 					}
 				case nonEscapingQuoteRuneClass:
@@ -401,7 +401,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 					}
 				default:
 					{
-						value = append(value, nextRune)
+						value.WriteRune(nextRune)
 					}
 				}
 			}
