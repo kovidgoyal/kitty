@@ -19,6 +19,8 @@ package shlex
 import (
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 var (
@@ -44,31 +46,32 @@ func TestClassifier(t *testing.T) {
 func TestTokenizer(t *testing.T) {
 	testInput := testString
 	expectedTokens := []*Token{
-		{WordToken, "one"},
-		{SpaceToken, " "},
-		{WordToken, "two"},
-		{SpaceToken, " "},
-		{WordToken, "three four"},
-		{SpaceToken, " "},
-		{WordToken, "five \"six\""},
-		{SpaceToken, " "},
-		{WordToken, "seven#eight"},
-		{SpaceToken, " "},
-		{WordToken, "#"},
-		{SpaceToken, " "},
-		{WordToken, "nine"},
-		{SpaceToken, " "},
-		{WordToken, "#"},
-		{SpaceToken, " "},
-		{WordToken, "ten"},
-		{SpaceToken, " "},
-		{WordToken, "eleven"},
-		{SpaceToken, " "},
-		{WordToken, "twelve\\"},
-		{SpaceToken, " "},
-		{WordToken, "thirteen=13"},
-		{SpaceToken, " "},
-		{WordToken, "fourteen/14"}}
+		{WordToken, "one", 0},
+		{SpaceToken, " ", 3},
+		{WordToken, "two", 4},
+		{SpaceToken, " ", 7},
+		{WordToken, "three four", 8},
+		{SpaceToken, " ", 20},
+		{WordToken, "five \"six\"", 21},
+		{SpaceToken, " ", 35},
+		{WordToken, "seven#eight", 36},
+		{SpaceToken, " ", 47},
+		{WordToken, "#", 48},
+		{SpaceToken, " ", 49},
+		{WordToken, "nine", 50},
+		{SpaceToken, " ", 54},
+		{WordToken, "#", 55},
+		{SpaceToken, " ", 56},
+		{WordToken, "ten", 57},
+		{SpaceToken, " ", 60},
+		{WordToken, "eleven", 61},
+		{SpaceToken, " ", 67},
+		{WordToken, "twelve\\", 68},
+		{SpaceToken, " ", 77},
+		{WordToken, "thirteen=13", 78},
+		{SpaceToken, " ", 89},
+		{WordToken, "fourteen/14", 90},
+	}
 
 	tokenizer := NewTokenizer(strings.NewReader(testInput))
 	for i, want := range expectedTokens {
@@ -76,8 +79,8 @@ func TestTokenizer(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		if !got.Equal(want) {
-			t.Errorf("Tokenizer.Next()[%v] of %q -> %#v. Want: %#v", i, testString, got, want)
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Fatalf("Tokenizer.Next()[%v] of: %s:\n%s", i, testString, diff)
 		}
 	}
 }

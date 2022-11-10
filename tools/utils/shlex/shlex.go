@@ -56,21 +56,9 @@ type lexerState int
 
 // Token is a (type, value) pair representing a lexographical token.
 type Token struct {
-	tokenType TokenType
-	value     string
-}
-
-// Equal reports whether tokens a, and b, are equal.
-// Two tokens are equal if both their types and values are equal. A nil token can
-// never be equal to another token.
-func (a *Token) Equal(b *Token) bool {
-	if a == nil || b == nil {
-		return false
-	}
-	if a.tokenType != b.tokenType {
-		return false
-	}
-	return a.value == b.value
+	Type  TokenType
+	Value string
+	Pos   int64
 }
 
 // Named classes of UTF-8 runes
@@ -161,13 +149,13 @@ func (l *Lexer) Next() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		switch token.tokenType {
+		switch token.Type {
 		case WordToken:
-			return token.value, nil
+			return token.Value, nil
 		case SpaceToken:
 			// skip spaces
 		default:
-			return "", fmt.Errorf("Unknown token type: %v", token.tokenType)
+			return "", fmt.Errorf("Unknown token type: %s", token.Type)
 		}
 	}
 }
@@ -207,12 +195,17 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 	var err error
 	var sz int
 	value := strings.Builder{}
+	pos_at_start := t.pos
 
 	unread_rune := func() {
 		t.redo_rune.sz = sz
 		t.redo_rune.char = nextRune
 		t.redo_rune.rune_type = nextRuneType
 		t.pos -= int64(sz)
+	}
+
+	token := func() *Token {
+		return &Token{tokenType, value.String(), pos_at_start}
 	}
 
 	for {
@@ -279,11 +272,8 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 					}
 				default:
 					{
-						token := &Token{
-							tokenType: tokenType,
-							value:     value.String()}
 						unread_rune()
-						return token, err
+						return token(), err
 					}
 				}
 			}
@@ -292,18 +282,12 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 				switch nextRuneType {
 				case eofRuneClass:
 					{
-						token := &Token{
-							tokenType: tokenType,
-							value:     value.String()}
-						return token, err
+						return token(), err
 					}
 				case spaceRuneClass:
 					{
-						token := &Token{
-							tokenType: tokenType,
-							value:     value.String()}
 						unread_rune()
-						return token, err
+						return token(), err
 					}
 				case escapingQuoteRuneClass:
 					{
@@ -329,10 +313,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 				case eofRuneClass:
 					{
 						err = ErrTrailingEscape
-						token := &Token{
-							tokenType: tokenType,
-							value:     value.String()}
-						return token, err
+						return token(), err
 					}
 				default:
 					{
@@ -347,10 +328,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 				case eofRuneClass:
 					{
 						err = ErrTrailingQuoteEscape
-						token := &Token{
-							tokenType: tokenType,
-							value:     value.String()}
-						return token, err
+						return token(), err
 					}
 				default:
 					{
@@ -365,10 +343,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 				case eofRuneClass:
 					{
 						err = ErrUnclosedDoubleQuote
-						token := &Token{
-							tokenType: tokenType,
-							value:     value.String()}
-						return token, err
+						return token(), err
 					}
 				case escapingQuoteRuneClass:
 					{
@@ -390,10 +365,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 				case eofRuneClass:
 					{
 						err = ErrUnclosedSingleQuote
-						token := &Token{
-							tokenType: tokenType,
-							value:     value.String()}
-						return token, err
+						return token(), err
 					}
 				case nonEscapingQuoteRuneClass:
 					{
