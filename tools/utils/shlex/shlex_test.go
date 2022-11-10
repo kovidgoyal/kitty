@@ -43,20 +43,20 @@ func TestClassifier(t *testing.T) {
 }
 
 func TestTokenizer(t *testing.T) {
-	testInput := strings.NewReader(testString)
+	testInput := testString
 	expectedTokens := []*Token{
-		&Token{WordToken, "one"},
-		&Token{WordToken, "two"},
-		&Token{WordToken, "three four"},
-		&Token{WordToken, "five \"six\""},
-		&Token{WordToken, "seven#eight"},
-		&Token{CommentToken, " nine # ten"},
-		&Token{WordToken, "eleven"},
-		&Token{WordToken, "twelve\\"},
-		&Token{WordToken, "thirteen=13"},
-		&Token{WordToken, "fourteen/14"}}
+		{WordToken, "one"},
+		{WordToken, "two"},
+		{WordToken, "three four"},
+		{WordToken, "five \"six\""},
+		{WordToken, "seven#eight"},
+		{CommentToken, " nine # ten"},
+		{WordToken, "eleven"},
+		{WordToken, "twelve\\"},
+		{WordToken, "thirteen=13"},
+		{WordToken, "fourteen/14"}}
 
-	tokenizer := NewTokenizer(testInput)
+	tokenizer := NewTokenizer(strings.NewReader(testInput))
 	for i, want := range expectedTokens {
 		got, err := tokenizer.Next()
 		if err != nil {
@@ -69,10 +69,10 @@ func TestTokenizer(t *testing.T) {
 }
 
 func TestLexer(t *testing.T) {
-	testInput := strings.NewReader(testString)
+	testInput := testString
 	expectedStrings := []string{"one", "two", "three four", "five \"six\"", "seven#eight", "eleven", "twelve\\", "thirteen=13", "fourteen/14"}
 
-	lexer := NewLexer(testInput)
+	lexer := NewLexer(strings.NewReader(testInput))
 	for i, want := range expectedStrings {
 		got, err := lexer.Next()
 		if err != nil {

@@ -20,27 +20,26 @@ shell-style rules for quoting and commenting.
 
 The basic use case uses the default ASCII lexer to split a string into sub-strings:
 
-  shlex.Split("one \"two three\" four") -> []string{"one", "two three", "four"}
+	shlex.Split("one \"two three\" four") -> []string{"one", "two three", "four"}
 
 To process a stream of strings:
 
-  l := NewLexer(os.Stdin)
-  for ; token, err := l.Next(); err != nil {
-  	// process token
-  }
+	l := NewLexer(os.Stdin)
+	for ; token, err := l.Next(); err != nil {
+		// process token
+	}
 
 To access the raw token stream (which includes tokens for comments):
 
-  t := NewTokenizer(os.Stdin)
-  for ; token, err := t.Next(); err != nil {
-	// process token
-  }
-
+	  t := NewTokenizer(os.Stdin)
+	  for ; token, err := t.Next(); err != nil {
+		// process token
+	  }
 */
 package shlex
 
 import (
-	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -142,9 +141,9 @@ func (t tokenClassifier) ClassifyRune(runeVal rune) runeTokenClass {
 type Lexer Tokenizer
 
 // NewLexer creates a new lexer from an input stream.
-func NewLexer(r io.Reader) *Lexer {
+func NewLexer(x io.RuneReader) *Lexer {
 
-	return (*Lexer)(NewTokenizer(r))
+	return (*Lexer)(NewTokenizer(x))
 }
 
 // Next returns the next word, or an error. If there are no more words,
@@ -168,18 +167,23 @@ func (l *Lexer) Next() (string, error) {
 
 // Tokenizer turns an input stream into a sequence of typed tokens
 type Tokenizer struct {
-	input      bufio.Reader
+	input      io.RuneReader
 	classifier tokenClassifier
+	pos        int64
 }
 
 // NewTokenizer creates a new tokenizer from an input stream.
-func NewTokenizer(r io.Reader) *Tokenizer {
-	input := bufio.NewReader(r)
+func NewTokenizer(input io.RuneReader) *Tokenizer {
 	classifier := newDefaultClassifier()
 	return &Tokenizer{
-		input:      *input,
+		input:      input,
 		classifier: classifier}
 }
+
+var ErrTrailingEscape error = errors.New("EOF found after escape character")
+var ErrTrailingQuoteEscape error = errors.New("EOF found after escape character for double quote")
+var ErrUnclosedDoubleQuote error = errors.New("EOF found when expecting closing double quote")
+var ErrUnclosedSingleQuote error = errors.New("EOF found when expecting closing single quote")
 
 // scanStream scans the stream for the next token using the internal state machine.
 // It will panic if it encounters a rune which it does not know how to handle.
@@ -190,9 +194,10 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 	var nextRune rune
 	var nextRuneType runeTokenClass
 	var err error
+	var sz int
 
 	for {
-		nextRune, _, err = t.input.ReadRune()
+		nextRune, sz, err = t.input.ReadRune()
 		nextRuneType = t.classifier.ClassifyRune(nextRune)
 
 		if err == io.EOF {
@@ -201,6 +206,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 		} else if err != nil {
 			return nil, err
 		}
+		t.pos += int64(sz)
 
 		switch state {
 		case startState: // no runes read yet
@@ -281,7 +287,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 				switch nextRuneType {
 				case eofRuneClass:
 					{
-						err = fmt.Errorf("EOF found after escape character")
+						err = ErrTrailingEscape
 						token := &Token{
 							tokenType: tokenType,
 							value:     string(value)}
@@ -299,7 +305,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 				switch nextRuneType {
 				case eofRuneClass:
 					{
-						err = fmt.Errorf("EOF found after escape character")
+						err = ErrTrailingQuoteEscape
 						token := &Token{
 							tokenType: tokenType,
 							value:     string(value)}
@@ -317,7 +323,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 				switch nextRuneType {
 				case eofRuneClass:
 					{
-						err = fmt.Errorf("EOF found when expecting closing quote")
+						err = ErrUnclosedDoubleQuote
 						token := &Token{
 							tokenType: tokenType,
 							value:     string(value)}
@@ -342,7 +348,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 				switch nextRuneType {
 				case eofRuneClass:
 					{
-						err = fmt.Errorf("EOF found when expecting closing quote")
+						err = ErrUnclosedSingleQuote
 						token := &Token{
 							tokenType: tokenType,
 							value:     string(value)}
@@ -397,6 +403,11 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 // Next returns the next token in the stream.
 func (t *Tokenizer) Next() (*Token, error) {
 	return t.scanStream()
+}
+
+// Pos returns the current position in the string as a byte offset
+func (t *Tokenizer) Pos() int64 {
+	return t.pos
 }
 
 // Split partitions a string into a slice of strings.
