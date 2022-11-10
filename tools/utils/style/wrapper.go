@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/shlex"
+	"kitty/tools/utils/shlex"
 )
 
 type escape_code interface {

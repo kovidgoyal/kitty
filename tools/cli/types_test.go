@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/shlex"
+	"kitty/tools/utils/shlex"
 )
 
 var _ = fmt.Print

@@ -12,13 +12,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/shlex"
-
 	"kitty/tools/cli"
 	"kitty/tools/cli/markup"
 	"kitty/tools/tui/loop"
 	"kitty/tools/tui/readline"
 	"kitty/tools/utils"
+	"kitty/tools/utils/shlex"
 )
 
 var _ = fmt.Print

@@ -11,9 +11,8 @@ import (
 	"time"
 
 	"kitty/tools/utils"
+	"kitty/tools/utils/shlex"
 	"kitty/tools/wcswidth"
-
-	"github.com/google/shlex"
 )
 
 var _ = fmt.Print
