@@ -46,14 +46,23 @@ func TestTokenizer(t *testing.T) {
 	testInput := testString
 	expectedTokens := []*Token{
 		{WordToken, "one"},
+		{SpaceToken, " "},
 		{WordToken, "two"},
+		{SpaceToken, " "},
 		{WordToken, "three four"},
+		{SpaceToken, " "},
 		{WordToken, "five \"six\""},
+		{SpaceToken, " "},
 		{WordToken, "seven#eight"},
+		{SpaceToken, " "},
 		{CommentToken, " nine # ten"},
+		{SpaceToken, " "},
 		{WordToken, "eleven"},
+		{SpaceToken, " "},
 		{WordToken, "twelve\\"},
+		{SpaceToken, " "},
 		{WordToken, "thirteen=13"},
+		{SpaceToken, " "},
 		{WordToken, "fourteen/14"}}
 
 	tokenizer := NewTokenizer(strings.NewReader(testInput))
@@ -63,7 +72,7 @@ func TestTokenizer(t *testing.T) {
 			t.Error(err)
 		}
 		if !got.Equal(want) {
-			t.Errorf("Tokenizer.Next()[%v] of %q -> %v. Want: %v", i, testString, got, want)
+			t.Errorf("Tokenizer.Next()[%v] of %q -> %#v. Want: %#v", i, testString, got, want)
 		}
 	}
 }

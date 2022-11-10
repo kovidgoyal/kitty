@@ -101,10 +101,24 @@ const (
 	CommentToken
 )
 
+func (t TokenType) String() string {
+	switch t {
+	default:
+		return "UnknownToken"
+	case WordToken:
+		return "WordToken"
+	case SpaceToken:
+		return "SpaceToken"
+	case CommentToken:
+		return "CommentToken"
+	}
+}
+
 // Lexer state machine states
 const (
 	startState           lexerState = iota // no runes have been seen
 	inWordState                            // processing regular runes in a word
+	inSpaceState                           // processing runes in a space
 	escapingState                          // we have just consumed an escape rune; the next rune is literal
 	escapingQuotedState                    // we have just consumed an escape rune within a quoted string
 	quotingEscapingState                   // we are within a quoted string that supports escaping ("...")
@@ -157,8 +171,8 @@ func (l *Lexer) Next() (string, error) {
 		switch token.tokenType {
 		case WordToken:
 			return token.value, nil
-		case CommentToken:
-			// skip comments
+		case CommentToken, SpaceToken:
+			// skip comments and spaces
 		default:
 			return "", fmt.Errorf("Unknown token type: %v", token.tokenType)
 		}
@@ -170,6 +184,11 @@ type Tokenizer struct {
 	input      io.RuneReader
 	classifier tokenClassifier
 	pos        int64
+	redo_rune  struct {
+		char      rune
+		sz        int
+		rune_type runeTokenClass
+	}
 }
 
 // NewTokenizer creates a new tokenizer from an input stream.
@@ -196,9 +215,22 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 	var err error
 	var sz int
 
+	unread_rune := func() {
+		t.redo_rune.sz = sz
+		t.redo_rune.char = nextRune
+		t.redo_rune.rune_type = nextRuneType
+		t.pos -= int64(sz)
+	}
+
 	for {
-		nextRune, sz, err = t.input.ReadRune()
-		nextRuneType = t.classifier.ClassifyRune(nextRune)
+		if t.redo_rune.sz > 0 {
+			nextRune, sz = t.redo_rune.char, t.redo_rune.sz
+			nextRuneType = t.redo_rune.rune_type
+			t.redo_rune.sz = 0
+		} else {
+			nextRune, sz, err = t.input.ReadRune()
+			nextRuneType = t.classifier.ClassifyRune(nextRune)
+		}
 
 		if err == io.EOF {
 			nextRuneType = eofRuneClass
@@ -218,6 +250,9 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 					}
 				case spaceRuneClass:
 					{
+						tokenType = SpaceToken
+						value = append(value, nextRune)
+						state = inSpaceState
 					}
 				case escapingQuoteRuneClass:
 					{
@@ -247,6 +282,23 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 					}
 				}
 			}
+		case inSpaceState: // in a sequence of spaces separating words
+			{
+				switch nextRuneType {
+				case spaceRuneClass:
+					{
+						value = append(value, nextRune)
+					}
+				default:
+					{
+						token := &Token{
+							tokenType: tokenType,
+							value:     string(value)}
+						unread_rune()
+						return token, err
+					}
+				}
+			}
 		case inWordState: // in a regular word
 			{
 				switch nextRuneType {
@@ -262,6 +314,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 						token := &Token{
 							tokenType: tokenType,
 							value:     string(value)}
+						unread_rune()
 						return token, err
 					}
 				case escapingQuoteRuneClass:
