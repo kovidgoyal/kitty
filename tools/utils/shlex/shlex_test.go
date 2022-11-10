@@ -24,7 +24,7 @@ import (
 var (
 	// one two "three four" "five \"six\"" seven#eight # nine # ten
 	// eleven 'twelve\'
-	testString = "one two \"three four\" \"five \\\"six\\\"\" seven#eight # nine # ten\n eleven 'twelve\\' thirteen=13 fourteen/14"
+	testString = "one two \"three four\" \"five \\\"six\\\"\" seven#eight # nine # ten eleven 'twelve\\' thirteen=13 fourteen/14"
 )
 
 func TestClassifier(t *testing.T) {
@@ -32,8 +32,7 @@ func TestClassifier(t *testing.T) {
 	tests := map[rune]runeTokenClass{
 		' ':  spaceRuneClass,
 		'"':  escapingQuoteRuneClass,
-		'\'': nonEscapingQuoteRuneClass,
-		'#':  commentRuneClass}
+		'\'': nonEscapingQuoteRuneClass}
 	for runeChar, want := range tests {
 		got := classifier.ClassifyRune(runeChar)
 		if got != want {
@@ -55,7 +54,13 @@ func TestTokenizer(t *testing.T) {
 		{SpaceToken, " "},
 		{WordToken, "seven#eight"},
 		{SpaceToken, " "},
-		{CommentToken, " nine # ten"},
+		{WordToken, "#"},
+		{SpaceToken, " "},
+		{WordToken, "nine"},
+		{SpaceToken, " "},
+		{WordToken, "#"},
+		{SpaceToken, " "},
+		{WordToken, "ten"},
 		{SpaceToken, " "},
 		{WordToken, "eleven"},
 		{SpaceToken, " "},
@@ -79,7 +84,7 @@ func TestTokenizer(t *testing.T) {
 
 func TestLexer(t *testing.T) {
 	testInput := testString
-	expectedStrings := []string{"one", "two", "three four", "five \"six\"", "seven#eight", "eleven", "twelve\\", "thirteen=13", "fourteen/14"}
+	expectedStrings := []string{"one", "two", "three four", "five \"six\"", "seven#eight", "#", "nine", "#", "ten", "eleven", "twelve\\", "thirteen=13", "fourteen/14"}
 
 	lexer := NewLexer(strings.NewReader(testInput))
 	for i, want := range expectedStrings {
@@ -94,7 +99,7 @@ func TestLexer(t *testing.T) {
 }
 
 func TestSplit(t *testing.T) {
-	want := []string{"one", "two", "three four", "five \"six\"", "seven#eight", "eleven", "twelve\\", "thirteen=13", "fourteen/14"}
+	want := []string{"one", "two", "three four", "five \"six\"", "seven#eight", "#", "nine", "#", "ten", "eleven", "twelve\\", "thirteen=13", "fourteen/14"}
 	got, err := Split(testString)
 	if err != nil {
 		t.Error(err)

@@ -16,7 +16,7 @@ limitations under the License.
 
 /*
 Package shlex implements a simple lexer which splits input in to tokens using
-shell-style rules for quoting and commenting.
+shell-style rules for quoting.
 
 The basic use case uses the default ASCII lexer to split a string into sub-strings:
 
@@ -29,7 +29,7 @@ To process a stream of strings:
 		// process token
 	}
 
-To access the raw token stream (which includes tokens for comments):
+To access the raw token stream (which includes tokens for spaces):
 
 	  t := NewTokenizer(os.Stdin)
 	  for ; token, err := t.Next(); err != nil {
@@ -45,7 +45,7 @@ import (
 	"strings"
 )
 
-// TokenType is a top-level token classification: A word, space, comment, unknown.
+// TokenType is a top-level token classification: A word, space, unknown.
 type TokenType int
 
 // runeTokenClass is the type of a UTF-8 character classification: A quote, space, escape.
@@ -79,7 +79,6 @@ const (
 	escapingQuoteRunes    = `"`
 	nonEscapingQuoteRunes = "'"
 	escapeRunes           = `\`
-	commentRunes          = "#"
 )
 
 // Classes of rune token
@@ -89,7 +88,6 @@ const (
 	escapingQuoteRuneClass
 	nonEscapingQuoteRuneClass
 	escapeRuneClass
-	commentRuneClass
 	eofRuneClass
 )
 
@@ -98,7 +96,6 @@ const (
 	UnknownToken TokenType = iota
 	WordToken
 	SpaceToken
-	CommentToken
 )
 
 func (t TokenType) String() string {
@@ -109,8 +106,6 @@ func (t TokenType) String() string {
 		return "WordToken"
 	case SpaceToken:
 		return "SpaceToken"
-	case CommentToken:
-		return "CommentToken"
 	}
 }
 
@@ -123,7 +118,6 @@ const (
 	escapingQuotedState                    // we have just consumed an escape rune within a quoted string
 	quotingEscapingState                   // we are within a quoted string that supports escaping ("...")
 	quotingState                           // we are within a string that does not support escaping ('...')
-	commentState                           // we are within a comment (everything following an unquoted or unescaped #
 )
 
 // tokenClassifier is used for classifying rune characters.
@@ -142,7 +136,6 @@ func newDefaultClassifier() tokenClassifier {
 	t.addRuneClass(escapingQuoteRunes, escapingQuoteRuneClass)
 	t.addRuneClass(nonEscapingQuoteRunes, nonEscapingQuoteRuneClass)
 	t.addRuneClass(escapeRunes, escapeRuneClass)
-	t.addRuneClass(commentRunes, commentRuneClass)
 	return t
 }
 
@@ -151,7 +144,7 @@ func (t tokenClassifier) ClassifyRune(runeVal rune) runeTokenClass {
 	return t[runeVal]
 }
 
-// Lexer turns an input stream into a sequence of tokens. Whitespace and comments are skipped.
+// Lexer turns an input stream into a sequence of tokens. Whitespace is skipped.
 type Lexer Tokenizer
 
 // NewLexer creates a new lexer from an input stream.
@@ -171,8 +164,8 @@ func (l *Lexer) Next() (string, error) {
 		switch token.tokenType {
 		case WordToken:
 			return token.value, nil
-		case CommentToken, SpaceToken:
-			// skip comments and spaces
+		case SpaceToken:
+			// skip spaces
 		default:
 			return "", fmt.Errorf("Unknown token type: %v", token.tokenType)
 		}
@@ -268,11 +261,6 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 					{
 						tokenType = WordToken
 						state = escapingState
-					}
-				case commentRuneClass:
-					{
-						tokenType = CommentToken
-						state = commentState
 					}
 				default:
 					{
@@ -410,34 +398,6 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 				case nonEscapingQuoteRuneClass:
 					{
 						state = inWordState
-					}
-				default:
-					{
-						value = append(value, nextRune)
-					}
-				}
-			}
-		case commentState: // in a comment
-			{
-				switch nextRuneType {
-				case eofRuneClass:
-					{
-						token := &Token{
-							tokenType: tokenType,
-							value:     string(value)}
-						return token, err
-					}
-				case spaceRuneClass:
-					{
-						if nextRune == '\n' {
-							state = startState
-							token := &Token{
-								tokenType: tokenType,
-								value:     string(value)}
-							return token, err
-						} else {
-							value = append(value, nextRune)
-						}
 					}
 				default:
 					{
