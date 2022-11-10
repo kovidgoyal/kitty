@@ -383,7 +383,7 @@ input_context_created(DBusMessage *msg, const char* errmsg, void *data) {
     enum Capabilities caps = IBUS_CAP_FOCUS | IBUS_CAP_PREEDIT_TEXT;
     if (!glfw_dbus_call_method_no_reply(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "SetCapabilities", DBUS_TYPE_UINT32, &caps, DBUS_TYPE_INVALID)) return;
     ibus->ok = true;
-    glfw_ibus_set_focused(ibus, false);
+    glfw_ibus_set_focused(ibus, _glfwFocusedWindow() != NULL);
     glfw_ibus_set_cursor_geometry(ibus, 0, 0, 0, 0);
     debug("Connected to IBUS daemon for IME input management\n");
 }
