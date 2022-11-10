@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"kitty/tools/cli"
 	"kitty/tools/cli/markup"
 	"kitty/tools/tui/loop"
 	"kitty/tools/wcswidth"
@@ -18,6 +19,7 @@ const ST = "\x1b\\"
 const PROMPT_MARK = "\x1b]133;"
 
 type SyntaxHighlightFunction = func(text string, x, y int) string
+type CompleterFunction = func(before_cursor, after_cursor string) *cli.Completions
 
 type RlInit struct {
 	Prompt                  string
@@ -27,6 +29,7 @@ type RlInit struct {
 	EmptyContinuationPrompt bool
 	DontMarkPrompts         bool
 	SyntaxHighlighter       SyntaxHighlightFunction
+	Completer               CompleterFunction
 }
 
 type Position struct {
@@ -127,6 +130,7 @@ type Readline struct {
 	fmt_ctx                *markup.Context
 	text_to_be_added       string
 	syntax_highlighted     syntax_highlighted
+	completions            completions
 }
 
 func (self *Readline) make_prompt(text string, is_secondary bool) Prompt {
@@ -149,6 +153,7 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 		mark_prompts: !r.DontMarkPrompts, fmt_ctx: markup.New(true),
 		loop: loop, input_state: InputState{lines: []string{""}}, history: NewHistory(r.HistoryPath, hc),
 		syntax_highlighted: syntax_highlighted{highlighter: r.SyntaxHighlighter},
+		completions:        completions{completer: r.Completer},
 		kill_ring:          kill_ring{items: list.New().Init()},
 	}
 	ans.prompt = ans.make_prompt(r.Prompt, false)

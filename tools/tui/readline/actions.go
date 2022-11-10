@@ -654,6 +654,14 @@ func (self *Readline) _perform_action(ac Action, repeat_count uint) (err error, 
 			self.end_history_search(true)
 			return
 		}
+	case ActionCompleteForward:
+		if self.complete(true, repeat_count) {
+			return
+		}
+	case ActionCompleteBackward:
+		if self.complete(false, repeat_count) {
+			return
+		}
 	}
 	err = ErrCouldNotPerformAction
 	return

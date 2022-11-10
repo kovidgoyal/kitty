@@ -434,6 +434,9 @@ def generate_readline_actions() -> str:
         ActionNumericArgumentDigit8
         ActionNumericArgumentDigit9
         ActionNumericArgumentDigitMinus
+
+        ActionCompleteForward
+        ActionCompleteBackward
     ''')
 
 

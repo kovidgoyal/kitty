@@ -176,6 +176,15 @@ func exec_command(rl *readline.Readline, cmdline string) bool {
 	return true
 }
 
+func completions(before_cursor, after_cursor string) *cli.Completions {
+	text := "kitty @ " + before_cursor
+	argv, err := shlex.Split(text)
+	if err != nil {
+		return nil
+	}
+	return cli.CompletionsForArgv(argv)
+}
+
 func shell_main(cmd *cli.Command, args []string) (int, error) {
 	formatter = markup.New(true)
 	fmt.Println("Welcome to the kitty shell!")
@@ -189,7 +198,7 @@ func shell_main(cmd *cli.Command, args []string) (int, error) {
 		}
 		fmt.Println(amsg)
 	}
-	rl := readline.New(nil, readline.RlInit{Prompt: prompt, HistoryPath: filepath.Join(utils.CacheDir(), "shell.history.json")})
+	rl := readline.New(nil, readline.RlInit{Prompt: prompt, Completer: completions, HistoryPath: filepath.Join(utils.CacheDir(), "shell.history.json")})
 	defer func() {
 		rl.Shutdown()
 	}()
