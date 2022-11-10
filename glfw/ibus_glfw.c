@@ -388,7 +388,7 @@ input_context_created(DBusMessage *msg, const char* errmsg, void *data) {
     debug("Connected to IBUS daemon for IME input management\n");
 }
 
-bool
+static bool
 setup_connection(_GLFWIBUSData *ibus) {
     const char *client_name = "GLFW_Application";
     const char *address_file_name = get_ibus_address_file_name();
