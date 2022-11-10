@@ -1,20 +1,4 @@
 /*
-Copyright 2012 Google Inc. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-/*
 Package shlex implements a simple lexer which splits input in to tokens using
 shell-style rules for quoting.
 
@@ -37,6 +21,10 @@ To access the raw token stream (which includes tokens for spaces):
 	  }
 */
 package shlex
+
+// Based on https://pkg.go.dev/github.com/google/shlex with many improvements
+// Relicensed to GPLv3 since all my additions.changes are GPLv3 which makes the
+// original work with was APL2 also GPLv3
 
 import (
 	"errors"
@@ -408,5 +396,35 @@ func Split(s string) ([]string, error) {
 			return subStrings, err
 		}
 		subStrings = append(subStrings, word)
+	}
+}
+
+// SplitForCompletion partitions a string into a slice of strings. It differs from Split in being
+// more relaxed about errors and also adding an empty string at the end if s ends with a SpaceToken.
+func SplitForCompletion(s string) (argv []string, position_of_last_arg int) {
+	t := NewTokenizer(strings.NewReader(s))
+	argv = make([]string, 0, len(s)/4)
+	token := &Token{}
+	for {
+		ntoken, err := t.Next()
+		if err == io.EOF {
+			if token.Type == SpaceToken {
+				argv = append(argv, "")
+				token.Pos += int64(len(token.Value))
+			}
+			return argv, int(token.Pos)
+		}
+		if ntoken == nil {
+			return []string{}, -1
+		}
+		switch ntoken.Type {
+		case WordToken:
+			argv = append(argv, ntoken.Value)
+		case SpaceToken:
+			// skip spaces
+		default:
+			return []string{}, -1
+		}
+		token = ntoken
 	}
 }

@@ -116,3 +116,20 @@ func TestSplit(t *testing.T) {
 		}
 	}
 }
+
+func TestSplitForCompletion(t *testing.T) {
+	test := func(cmdline string, last_arg_pos int, expected ...string) {
+		actual, actual_pos := SplitForCompletion(cmdline)
+		if diff := cmp.Diff(expected, actual); diff != "" {
+			t.Fatalf("Failed to split: %s\n%s", cmdline, diff)
+		}
+		if last_arg_pos != actual_pos {
+			t.Fatalf("Failed to split: %s\n Last arg pos: %d != %d", cmdline, last_arg_pos, actual_pos)
+		}
+	}
+	test("a b", 2, "a", "b")
+	test("a b ", 4, "a", "b", "")
+	test("a b  ", 5, "a", "b", "")
+	test(`a "b c"`, 2, "a", "b c")
+	test(`a "b c`, 2, "a", "b c")
+}
