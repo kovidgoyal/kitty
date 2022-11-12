@@ -5,7 +5,9 @@ package readline
 import (
 	"container/list"
 	"fmt"
+	"kitty/tools/cli"
 	"kitty/tools/tui/loop"
+	"kitty/tools/utils/shlex"
 	"strconv"
 	"strings"
 	"testing"
@@ -481,7 +483,7 @@ func TestHistory(t *testing.T) {
 			t.Fatalf("Text before cursor not as expected:\n%s", diff)
 		}
 		if diff := cmp.Diff(after_cursor, aa); diff != "" {
-			t.Fatalf("Text before cursor not as expected:\n%s", diff)
+			t.Fatalf("Text after cursor not as expected:\n%s", diff)
 		}
 	}
 	add_item("xyz1")
@@ -511,4 +513,49 @@ func TestHistory(t *testing.T) {
 	ah("xy", "z2")
 	rl.perform_action(ActionTerminateHistorySearchAndRestore, 1)
 	ah("a", "")
+}
+
+func TestReadlineCompletion(t *testing.T) {
+	lp, _ := loop.New()
+
+	completer := func(before_cursor, after_cursor string) (ans *cli.Completions) {
+		root := cli.NewRootCommand()
+		c := root.AddSubCommand(&cli.Command{Name: "test-completion"})
+		c.AddSubCommand(&cli.Command{Name: "a1"})
+		c.AddSubCommand(&cli.Command{Name: "a11"})
+		c.AddSubCommand(&cli.Command{Name: "a2"})
+		prefix := c.Name + " "
+		text := prefix + before_cursor
+		argv, position_of_last_arg := shlex.SplitForCompletion(text)
+		if len(argv) == 0 || position_of_last_arg < len(prefix) {
+			return
+		}
+		ans = root.GetCompletions(argv, nil)
+		ans.CurrentWordIdx = position_of_last_arg - len(prefix)
+		return
+
+	}
+	rl := New(lp, RlInit{Prompt: "$$ ", Completer: completer})
+
+	ah := func(before_cursor, after_cursor string) {
+		ab := rl.text_upto_cursor_pos()
+		aa := rl.text_after_cursor_pos()
+		if diff := cmp.Diff(before_cursor, ab); diff != "" {
+			t.Fatalf("Text before cursor not as expected:\n%s", diff)
+		}
+		if diff := cmp.Diff(after_cursor, aa); diff != "" {
+			t.Fatalf("Text after cursor not as expected:\n%s", diff)
+		}
+	}
+	rl.add_text("a")
+	rl.perform_action(ActionCompleteForward, 1)
+	ah("a", "")
+	rl.perform_action(ActionCompleteForward, 1)
+	ah("a1 ", "")
+	rl.perform_action(ActionCompleteForward, 1)
+	ah("a11 ", "")
+	rl.perform_action(ActionCompleteForward, 1)
+	ah("a2 ", "")
+	rl.perform_action(ActionCompleteBackward, 1)
+	ah("a11 ", "")
 }

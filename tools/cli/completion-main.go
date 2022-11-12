@@ -51,14 +51,6 @@ func RegisterExeForCompletion(x func(root *Command)) {
 	registered_exes = append(registered_exes, x)
 }
 
-func CompletionsForArgv(argv []string) *Completions {
-	var root = NewRootCommand()
-	for _, re := range registered_exes {
-		re(root)
-	}
-	return root.GetCompletions(argv, init_completions["json"])
-}
-
 func GenerateCompletions(args []string) error {
 	output_type := "json"
 	if len(args) > 0 {

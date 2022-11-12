@@ -175,13 +175,19 @@ func exec_command(rl *readline.Readline, cmdline string) bool {
 	return true
 }
 
-func completions(before_cursor, after_cursor string) *cli.Completions {
-	text := "kitty @ " + before_cursor
-	argv, err := shlex.Split(text)
-	if err != nil {
-		return nil
+func completions(before_cursor, after_cursor string) (ans *cli.Completions) {
+	const prefix = "kitty @ "
+	text := prefix + before_cursor
+	argv, position_of_last_arg := shlex.SplitForCompletion(text)
+	if len(argv) == 0 || position_of_last_arg < len(prefix) {
+		return
 	}
-	return cli.CompletionsForArgv(argv)
+	root := cli.NewRootCommand()
+	c := root.AddSubCommand(&cli.Command{Name: "kitty-tool"})
+	EntryPoint(c)
+	ans = root.GetCompletions(argv, nil)
+	ans.CurrentWordIdx = position_of_last_arg - len(prefix)
+	return
 }
 
 func shell_main(cmd *cli.Command, args []string) (int, error) {

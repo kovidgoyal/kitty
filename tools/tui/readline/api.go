@@ -181,6 +181,7 @@ func (self *Readline) ResetText() {
 	self.last_action = ActionNil
 	self.keyboard_state = KeyboardState{}
 	self.history_search = nil
+	self.completions.current = completion{}
 	self.cursor_y = 0
 }
 
