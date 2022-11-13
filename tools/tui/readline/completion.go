@@ -4,9 +4,11 @@ package readline
 
 import (
 	"fmt"
+	"strings"
 
 	"kitty/tools/cli"
 	"kitty/tools/utils"
+	"kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print
@@ -16,6 +18,9 @@ type completion struct {
 	results                       *cli.Completions
 	results_displayed, forwards   bool
 	num_of_matches, current_match int
+	rendered_at_screen_width      int
+	rendered_lines                []string
+	last_rendered_above           bool
 }
 
 func (self *completion) initialize() {
@@ -64,22 +69,28 @@ func (self *Readline) complete(forwards bool, repeat_count uint) bool {
 		return false
 	}
 	if self.last_action == ActionCompleteForward || self.last_action == ActionCompleteBackward {
+		if c.current.num_of_matches == 0 {
+			return false
+		}
 		delta := -1
 		if forwards {
 			delta = 1
 		}
+		repeat_count %= uint(c.current.num_of_matches)
 		delta *= int(repeat_count)
 		c.current.current_match = (c.current.current_match + delta + c.current.num_of_matches) % c.current.num_of_matches
 		repeat_count = 0
 	} else {
 		before, after := self.text_upto_cursor_pos(), self.text_after_cursor_pos()
-		if before == "" {
-			return false
-		}
 		c.current = completion{before_cursor: before, after_cursor: after, forwards: forwards, results: c.completer(before, after)}
 		c.current.initialize()
 		if repeat_count > 0 {
 			repeat_count--
+		}
+		if c.current.current_match != 0 {
+			if self.loop != nil {
+				self.loop.Beep()
+			}
 		}
 	}
 	c.current.forwards = forwards
@@ -106,4 +117,159 @@ func (self *Readline) complete(forwards bool, repeat_count uint) bool {
 		self.complete(forwards, repeat_count)
 	}
 	return true
+}
+
+func (self *Readline) screen_lines_for_match_group_with_descriptions(g *cli.MatchGroup, lines []string) []string {
+	maxw := 0
+	lengths := make(map[string]int)
+	for _, m := range g.Matches {
+		l := wcswidth.Stringwidth(m.Word)
+		lengths[m.Word] = l
+		if l > maxw {
+			maxw = l
+		}
+	}
+	for _, m := range g.Matches {
+		p := m.Word + strings.Repeat(" ", maxw-lengths[m.Word])
+		line, _, _ := utils.Cut(strings.TrimSpace(m.Description), "\n")
+		line = p + " - " + self.fmt_ctx.Prettify(line)
+		truncated := wcswidth.TruncateToVisualLength(line, self.screen_width-1) + "\x1b[m"
+		if len(truncated) < len(line) {
+			line = truncated + "…"
+		}
+		lines = append(lines, line)
+	}
+	return lines
+}
+
+type cell struct {
+	text   string
+	length int
+}
+
+func (self cell) whitespace(desired_length int) string {
+	return strings.Repeat(" ", desired_length-self.length)
+}
+
+type column struct {
+	cells   []cell
+	length  int
+	is_last bool
+}
+
+func (self *column) update_length() int {
+	self.length = 0
+	for _, c := range self.cells {
+		if c.length > self.length {
+			self.length = c.length
+		}
+	}
+	if !self.is_last {
+		self.length++
+	}
+	return self.length
+}
+
+func layout_words_in_table(words []string, lengths map[string]int, num_cols int) ([]column, int) {
+	cols := make([]column, num_cols)
+	for i, col := range cols {
+		col.cells = make([]cell, 0, len(words))
+		if i == len(cols)-1 {
+			col.is_last = true
+		}
+	}
+	r, c := 0, 0
+	for _, word := range words {
+		cols[r].cells = append(cols[r].cells, cell{word, lengths[word]})
+		c++
+		if c > num_cols {
+			c = 0
+			r++
+		}
+	}
+	total_length := 0
+	for i, col := range cols {
+		total_length += col.update_length()
+		for i > 0 && len(col.cells) < len(cols[i-1].cells) {
+			col.cells = append(col.cells, cell{})
+		}
+	}
+	return cols, total_length
+}
+
+func (self *Readline) screen_lines_for_match_group_without_descriptions(g *cli.MatchGroup, lines []string) []string {
+	words := make([]string, len(g.Matches))
+	lengths := make(map[string]int, len(words))
+	max_length := 0
+	for i, m := range g.Matches {
+		words[i] = m.Word
+		l := wcswidth.Stringwidth(words[i])
+		lengths[words[i]] = l
+		if l > max_length {
+			max_length = l
+		}
+	}
+	var ans []column
+	ncols := utils.Max(1, self.screen_width/(max_length+1))
+	for {
+		cols, total_length := layout_words_in_table(words, lengths, ncols)
+		if total_length > self.screen_width {
+			break
+		}
+		ans = cols
+		ncols++
+	}
+	if ans == nil {
+		for _, w := range words {
+			if lengths[w] > self.screen_width {
+				lines = append(lines, wcswidth.TruncateToVisualLength(w, self.screen_width))
+			} else {
+				lines = append(lines, w)
+			}
+		}
+	} else {
+		for r := 0; r < len(ans[0].cells); r++ {
+			w := strings.Builder{}
+			w.Grow(self.screen_width)
+			for c := 0; c < len(ans); c++ {
+				cell := ans[c].cells[r]
+				w.WriteString(cell.text)
+				if !ans[c].is_last {
+					w.WriteString(cell.whitespace(ans[r].length))
+				}
+			}
+			lines = append(lines, w.String())
+		}
+	}
+	return lines
+}
+
+func (self *Readline) completion_screen_lines() ([]string, bool) {
+	if self.completions.current.results == nil || self.completions.current.num_of_matches < 2 {
+		return []string{}, false
+	}
+	if len(self.completions.current.rendered_lines) > 0 && self.completions.current.rendered_at_screen_width == self.screen_width {
+		return self.completions.current.rendered_lines, true
+	}
+	lines := make([]string, 0, self.completions.current.num_of_matches)
+	for _, g := range self.completions.current.results.Groups {
+		if g.Title != "" {
+			lines = append(lines, self.fmt_ctx.Title(g.Title))
+		}
+		has_descriptions := false
+		for _, m := range g.Matches {
+			if m.Description != "" {
+				has_descriptions = true
+				break
+			}
+		}
+		if has_descriptions {
+			lines = self.screen_lines_for_match_group_with_descriptions(g, lines)
+		} else {
+			lines = self.screen_lines_for_match_group_without_descriptions(g, lines)
+		}
+	}
+	self.completions.current.rendered_lines = lines
+	self.completions.current.rendered_at_screen_width = self.screen_width
+	return lines, false
 }

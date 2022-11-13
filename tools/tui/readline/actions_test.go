@@ -17,10 +17,17 @@ import (
 
 var _ = fmt.Print
 
+func new_rl() *Readline {
+	lp, _ := loop.New()
+	rl := New(lp, RlInit{Prompt: "$$ "})
+	rl.screen_width = 10
+	rl.screen_height = 100
+	return rl
+}
+
 func test_func(t *testing.T) func(string, func(*Readline), ...string) *Readline {
 	return func(initial string, prepare func(rl *Readline), expected ...string) *Readline {
-		lp, _ := loop.New()
-		rl := New(lp, RlInit{})
+		rl := new_rl()
 		rl.add_text(initial)
 		if prepare != nil {
 			prepare(rl)
@@ -64,9 +71,7 @@ func TestAddText(t *testing.T) {
 }
 
 func TestGetScreenLines(t *testing.T) {
-	lp, _ := loop.New()
-	rl := New(lp, RlInit{Prompt: "$$ "})
-	rl.screen_width = 10
+	rl := new_rl()
 
 	p := func(primary bool) Prompt {
 		if primary {
@@ -189,9 +194,7 @@ func TestCursorMovement(t *testing.T) {
 		right(rl, 1, 1, false)
 	}, "à", "b")
 
-	lp, _ := loop.New()
-	rl := New(lp, RlInit{Prompt: "$$ "})
-	rl.screen_width = 10
+	rl := new_rl()
 
 	vert := func(amt int, moved_amt int, text_upto_cursor_pos string, initials ...Position) {
 		initial := Position{}
@@ -266,8 +269,7 @@ func TestCursorMovement(t *testing.T) {
 }
 
 func TestYanking(t *testing.T) {
-	lp, _ := loop.New()
-	rl := New(lp, RlInit{Prompt: "$$ "})
+	rl := new_rl()
 
 	as_slice := func(l *list.List) []string {
 		ans := make([]string, 0, l.Len())
@@ -386,8 +388,9 @@ func TestEraseChars(t *testing.T) {
 }
 
 func TestNumberArgument(t *testing.T) {
-	lp, _ := loop.New()
-	rl := New(lp, RlInit{Prompt: "$$ "})
+	rl := new_rl()
+	rl.screen_width = 100
+
 	test := func(ac Action, before_cursor, after_cursor string) {
 		rl.dispatch_key_action(ac)
 		if diff := cmp.Diff(before_cursor, rl.text_upto_cursor_pos()); diff != "" {
@@ -431,8 +434,7 @@ func TestNumberArgument(t *testing.T) {
 }
 
 func TestHistory(t *testing.T) {
-	lp, _ := loop.New()
-	rl := New(lp, RlInit{Prompt: "$$ "})
+	rl := new_rl()
 
 	add_item := func(x string) {
 		rl.history.AddItem(x, 0)
@@ -516,8 +518,6 @@ func TestHistory(t *testing.T) {
 }
 
 func TestReadlineCompletion(t *testing.T) {
-	lp, _ := loop.New()
-
 	completer := func(before_cursor, after_cursor string) (ans *cli.Completions) {
 		root := cli.NewRootCommand()
 		c := root.AddSubCommand(&cli.Command{Name: "test-completion"})
@@ -535,7 +535,8 @@ func TestReadlineCompletion(t *testing.T) {
 		return
 
 	}
-	rl := New(lp, RlInit{Prompt: "$$ ", Completer: completer})
+	rl := new_rl()
+	rl.completions.completer = completer
 
 	ah := func(before_cursor, after_cursor string) {
 		ab := rl.text_upto_cursor_pos()

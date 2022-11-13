@@ -4,6 +4,7 @@ package readline
 
 import (
 	"fmt"
+	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
 	"strings"
@@ -12,18 +13,20 @@ import (
 var _ = fmt.Print
 
 func (self *Readline) update_current_screen_size() {
-	screen_size, err := self.loop.ScreenSize()
-	if err != nil {
+	var screen_size loop.ScreenSize
+	var err error
+	if self.loop != nil {
+		screen_size, err = self.loop.ScreenSize()
+		if err != nil {
+			screen_size.WidthCells = 80
+			screen_size.HeightCells = 24
+		}
+	} else {
 		screen_size.WidthCells = 80
 		screen_size.HeightCells = 24
 	}
-	if screen_size.WidthCells < 1 {
-		screen_size.WidthCells = 1
-	}
-	if screen_size.HeightCells < 1 {
-		screen_size.HeightCells = 1
-	}
-	self.screen_width = int(screen_size.WidthCells)
+	self.screen_width = utils.Max(1, int(screen_size.WidthCells))
+	self.screen_height = utils.Max(1, int(screen_size.HeightCells))
 }
 
 type ScreenLine struct {
@@ -82,7 +85,7 @@ func (self *Readline) apply_syntax_highlighting() (lines []string, cursor Positi
 }
 
 func (self *Readline) get_screen_lines() []*ScreenLine {
-	if self.screen_width == 0 {
+	if self.screen_width == 0 || self.screen_height == 0 {
 		self.update_current_screen_size()
 	}
 	lines, cursor := self.apply_syntax_highlighting()
@@ -129,7 +132,7 @@ func (self *Readline) get_screen_lines() []*ScreenLine {
 }
 
 func (self *Readline) redraw() {
-	if self.screen_width == 0 {
+	if self.screen_width == 0 || self.screen_height == 0 {
 		self.update_current_screen_size()
 	}
 	if self.screen_width < 4 {
@@ -140,11 +143,38 @@ func (self *Readline) redraw() {
 	}
 	self.loop.QueueWriteString("\r")
 	self.loop.ClearToEndOfScreen()
+	prompt_lines := self.get_screen_lines()
+	csl, csl_cached := self.completion_screen_lines()
+	render_completion_above := len(csl)+len(prompt_lines) > self.screen_height
+	completion_needs_render := len(csl) > 0 && (!render_completion_above || !self.completions.current.last_rendered_above || !csl_cached)
 	cursor_x := -1
 	cursor_y := 0
 	move_cursor_up_by := 0
+
+	render_completion_lines := func() int {
+		if completion_needs_render {
+			if render_completion_above {
+				self.loop.QueueWriteString("\r")
+			} else {
+				self.loop.QueueWriteString("\r\n")
+			}
+			for i, cl := range csl {
+				self.loop.QueueWriteString(cl)
+				if i < len(csl)-1 || render_completion_above {
+					self.loop.QueueWriteString("\n\r")
+				}
+
+			}
+			return len(csl)
+		}
+		return 0
+	}
+
 	self.loop.AllowLineWrapping(false)
-	for i, sl := range self.get_screen_lines() {
+	if render_completion_above {
+		render_completion_lines()
+	}
+	for i, sl := range prompt_lines {
 		self.loop.QueueWriteString("\r")
 		if i > 0 {
 			self.loop.QueueWriteString("\n")
@@ -159,6 +189,9 @@ func (self *Readline) redraw() {
 			move_cursor_up_by++
 		}
 		cursor_y++
+	}
+	if !render_completion_above {
+		move_cursor_up_by += render_completion_lines()
 	}
 	self.loop.AllowLineWrapping(true)
 	self.loop.MoveCursorVertically(-move_cursor_up_by)

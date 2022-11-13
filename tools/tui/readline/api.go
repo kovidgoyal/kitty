@@ -117,9 +117,9 @@ type Readline struct {
 
 	input_state InputState
 	// The number of lines after the initial line on the screen
-	cursor_y         int
-	screen_width     int
-	last_yank_extent struct {
+	cursor_y                    int
+	screen_width, screen_height int
+	last_yank_extent            struct {
 		start, end Position
 	}
 	bracketed_paste_buffer strings.Builder
@@ -259,10 +259,7 @@ func (self *Readline) CursorAtEndOfLine() bool {
 }
 
 func (self *Readline) OnResize(old_size loop.ScreenSize, new_size loop.ScreenSize) error {
-	self.screen_width = int(new_size.CellWidth)
-	if self.screen_width < 1 {
-		self.screen_width = 1
-	}
+	self.screen_width, self.screen_height = 0, 0
 	self.Redraw()
 	return nil
 }

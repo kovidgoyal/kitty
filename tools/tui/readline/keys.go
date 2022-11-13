@@ -88,6 +88,8 @@ func default_shortcuts() *ShortcutMap {
 		sm.AddOrPanic(ActionNumericArgumentDigit9, "alt+9")
 		sm.AddOrPanic(ActionNumericArgumentDigitMinus, "alt+-")
 
+		sm.AddOrPanic(ActionCompleteForward, "Tab")
+		sm.AddOrPanic(ActionCompleteBackward, "Shift+Tab")
 		_default_shortcuts = sm
 	}
 	return _default_shortcuts

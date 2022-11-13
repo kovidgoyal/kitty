@@ -61,6 +61,7 @@ func shell_loop(rl *readline.Readline, kill_if_signaled bool) (int, error) {
 					rl.Redraw()
 					return nil
 				}
+				lp.ClearToEndOfScreen()
 				return ErrExec
 			}
 			return err
@@ -176,7 +177,7 @@ func exec_command(rl *readline.Readline, cmdline string) bool {
 }
 
 func completions(before_cursor, after_cursor string) (ans *cli.Completions) {
-	const prefix = "kitty @ "
+	const prefix = "kitty-tool @ "
 	text := prefix + before_cursor
 	argv, position_of_last_arg := shlex.SplitForCompletion(text)
 	if len(argv) == 0 || position_of_last_arg < len(prefix) {
