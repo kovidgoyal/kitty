@@ -148,7 +148,7 @@ type cell struct {
 }
 
 func (self cell) whitespace(desired_length int) string {
-	return strings.Repeat(" ", desired_length-self.length)
+	return strings.Repeat(" ", utils.Max(0, desired_length-self.length))
 }
 
 type column struct {
@@ -178,21 +178,20 @@ func layout_words_in_table(words []string, lengths map[string]int, num_cols int)
 			col.is_last = true
 		}
 	}
-	r, c := 0, 0
+	c := 0
 	for _, word := range words {
-		cols[r].cells = append(cols[r].cells, cell{word, lengths[word]})
+		cols[c].cells = append(cols[c].cells, cell{word, lengths[word]})
 		c++
-		if c > num_cols {
+		if c >= num_cols {
 			c = 0
-			r++
 		}
 	}
 	total_length := 0
-	for i, col := range cols {
-		total_length += col.update_length()
-		for i > 0 && len(col.cells) < len(cols[i-1].cells) {
-			col.cells = append(col.cells, cell{})
+	for i := range cols {
+		if d := len(cols[0].cells) - len(cols[i].cells); d > 0 {
+			cols[i].cells = append(cols[i].cells, make([]cell, d)...)
 		}
+		total_length += cols[i].update_length()
 	}
 	return cols, total_length
 }
@@ -235,7 +234,7 @@ func (self *Readline) screen_lines_for_match_group_without_descriptions(g *cli.M
 				cell := ans[c].cells[r]
 				w.WriteString(cell.text)
 				if !ans[c].is_last {
-					w.WriteString(cell.whitespace(ans[r].length))
+					w.WriteString(cell.whitespace(ans[c].length))
 				}
 			}
 			lines = append(lines, w.String())
