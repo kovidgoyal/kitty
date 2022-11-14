@@ -49,16 +49,18 @@ func zsh_input_parser(data []byte, shell_state map[string]string) ([][]string, e
 	return shell_input_parser(data, shell_state)
 }
 
-func fmt_desc(word, desc string, max_word_len int, f *markup.Context, screen_width int) string {
+func (self *Match) FormatForCompletionList(max_word_len int, f *markup.Context, screen_width int) string {
+	word := self.Word
+	desc := self.Description
 	if desc == "" {
 		return word
 	}
+	word_len := wcswidth.Stringwidth(word)
 	line, _, _ := utils.Cut(strings.TrimSpace(desc), "\n")
 	desc = f.Prettify(line)
 
 	multiline := false
 	max_desc_len := screen_width - 2
-	word_len := wcswidth.Stringwidth(word)
 	if word_len > max_word_len {
 		multiline = true
 	} else {
@@ -66,10 +68,10 @@ func fmt_desc(word, desc string, max_word_len int, f *markup.Context, screen_wid
 		max_desc_len = screen_width - max_word_len - 3
 	}
 	if wcswidth.Stringwidth(desc) > max_desc_len {
-		desc = wcswidth.TruncateToVisualLength(desc, max_desc_len-2) + "…"
+		desc = wcswidth.TruncateToVisualLength(desc, max_desc_len-2) + "\x1b[m…"
 	}
 	if multiline {
-		return word + "\n  " + desc
+		return word + "\n" + strings.Repeat(" ", max_word_len+2) + desc
 	}
 	return word + "  " + desc
 }
@@ -106,7 +108,7 @@ func serialize(completions *Completions, f *markup.Context, screen_width int) ([
 				fmt.Fprintln(&output, "compdescriptions=(")
 				limit := mg.max_visual_word_length(16)
 				for _, m := range mg.Matches {
-					fmt.Fprintln(&output, utils.QuoteStringForSH(fmt_desc(m.Word, m.Description, limit, f, screen_width)))
+					fmt.Fprintln(&output, utils.QuoteStringForSH(m.FormatForCompletionList(limit, f, screen_width)))
 				}
 				fmt.Fprintln(&output, ")")
 				cmd.WriteString(" -l -d compdescriptions")

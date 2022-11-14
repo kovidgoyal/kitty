@@ -671,6 +671,9 @@ func (self *Readline) perform_action(ac Action, repeat_count uint) error {
 	err, dont_set_last_action := self._perform_action(ac, repeat_count)
 	if err == nil && !dont_set_last_action {
 		self.last_action = ac
+		if self.completions.current.results != nil && ac != ActionCompleteForward && ac != ActionCompleteBackward {
+			self.completions.current = completion{}
+		}
 	}
 	return err
 }

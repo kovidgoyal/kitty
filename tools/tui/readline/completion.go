@@ -121,23 +121,18 @@ func (self *Readline) complete(forwards bool, repeat_count uint) bool {
 
 func (self *Readline) screen_lines_for_match_group_with_descriptions(g *cli.MatchGroup, lines []string) []string {
 	maxw := 0
-	lengths := make(map[string]int)
 	for _, m := range g.Matches {
 		l := wcswidth.Stringwidth(m.Word)
-		lengths[m.Word] = l
+		if l > 16 {
+			maxw = 16
+			break
+		}
 		if l > maxw {
 			maxw = l
 		}
 	}
 	for _, m := range g.Matches {
-		p := m.Word + strings.Repeat(" ", maxw-lengths[m.Word])
-		line, _, _ := utils.Cut(strings.TrimSpace(m.Description), "\n")
-		line = p + " - " + self.fmt_ctx.Prettify(line)
-		truncated := wcswidth.TruncateToVisualLength(line, self.screen_width-1) + "\x1b[m"
-		if len(truncated) < len(line) {
-			line = truncated + "…"
-		}
-		lines = append(lines, line)
+		lines = append(lines, utils.Splitlines(m.FormatForCompletionList(maxw, self.fmt_ctx, self.screen_width))...)
 	}
 	return lines
 }
