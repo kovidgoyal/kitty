@@ -6,7 +6,10 @@
  */
 
 #include "data-types.h"
+#include "safe-wrappers.h"
 #include "cleanup.h"
+#include "loop-utils.h"
+#include "threading.h"
 #include <dlfcn.h>
 
 #define FUNC(name, restype, ...) typedef restype (*name##_func)(__VA_ARGS__); static name##_func name = NULL
@@ -144,19 +147,95 @@ load_libcanberra(void) {
     }
 }
 
+typedef struct {
+    char *which_sound, *event_id, *media_role;
+    bool is_path;
+} CanberraEvent;
+
+static pthread_t canberra_thread;
+static int canberra_pipe_r = -1, canberra_pipe_w = -1;
+static pthread_mutex_t canberra_lock;
+static CanberraEvent current_sound = {0};
+
+static void
+free_canberra_event_fields(CanberraEvent *e) {
+    free(e->which_sound); e->which_sound = NULL;
+    free(e->event_id); e->event_id = NULL;
+    free(e->media_role); e->media_role = NULL;
+}
+
+static void
+play_current_sound(void) {
+    CanberraEvent e;
+    pthread_mutex_lock(&canberra_lock);
+    e = current_sound;
+    current_sound = (const CanberraEvent){ 0 };
+    pthread_mutex_unlock(&canberra_lock);
+    if (e.which_sound && e.event_id && e.media_role) {
+        const char *which_type = e.is_path ? "media.filename" : "event.id";
+        ca_context_play(
+            canberra_ctx, 0,
+            which_type, e.which_sound,
+            "event.description", e.event_id,
+            "media.role", e.media_role,
+            "canberra.cache-control", "permanent",
+            NULL
+        );
+        free_canberra_event_fields(&e);
+    }
+}
+
+static void
+queue_canberra_sound(const char *which_sound, const char *event_id, bool is_path, const char *media_role) {
+    pthread_mutex_lock(&canberra_lock);
+    current_sound.which_sound = strdup(which_sound);
+    current_sound.event_id = strdup(event_id);
+    current_sound.media_role = strdup(media_role);
+    current_sound.is_path = is_path;
+    pthread_mutex_unlock(&canberra_lock);
+    while (true) {
+        ssize_t ret = write(canberra_pipe_w, "w", 1);
+        if (ret < 0) {
+            if (errno == EINTR) continue;
+            log_error("Failed to write to canberra wakeup fd with error: %s", strerror(errno));
+        }
+        break;
+    }
+}
+
+static void*
+canberra_play_loop(void *x UNUSED) {
+    // canberra hangs on misconfigured systems. We dont want kitty to hang so use a thread.
+    // For example: https://github.com/kovidgoyal/kitty/issues/5646
+    static char buf[16];
+    set_thread_name("LinuxAudioSucks");
+    while (true) {
+        int ret = read(canberra_pipe_r, buf, sizeof(buf));
+        if (ret < 0) {
+            if (errno == EINTR || errno == EAGAIN) continue;
+            break;
+        }
+        play_current_sound();
+    }
+    safe_close(canberra_pipe_r, __FILE__, __LINE__);
+    return NULL;
+}
+
 void
 play_canberra_sound(const char *which_sound, const char *event_id, bool is_path, const char *media_role) {
     load_libcanberra();
     if (libcanberra_handle == NULL || canberra_ctx == NULL) return;
-    const char *which_type = is_path ? "media.filename" : "event.id";
-    ca_context_play(
-        canberra_ctx, 0,
-        which_type, which_sound,
-        "event.description", event_id,
-        "media.role", media_role,
-        "canberra.cache-control", "permanent",
-        NULL
-    );
+    int ret;
+    if (canberra_pipe_r == -1) {
+        int fds[2];
+        if ((ret = pthread_mutex_init(&canberra_lock, NULL)) != 0) return;
+        if (!self_pipe(fds, false)) return;
+        canberra_pipe_r = fds[0]; canberra_pipe_w = fds[1];
+        int flags = fcntl(canberra_pipe_w, F_GETFL);
+        fcntl(canberra_pipe_w, F_SETFL, flags | O_NONBLOCK);
+        if ((ret = pthread_create(&canberra_thread, NULL, canberra_play_loop, NULL)) != 0) return;
+    }
+    queue_canberra_sound(which_sound, event_id, is_path, media_role);
 }
 
 static PyObject*
@@ -172,6 +251,12 @@ static void
 finalize(void) {
     if (libsn_handle) dlclose(libsn_handle);
     libsn_handle = NULL;
+    if (canberra_pipe_w > -1) {
+        pthread_mutex_lock(&canberra_lock);
+        free_canberra_event_fields(&current_sound);
+        pthread_mutex_unlock(&canberra_lock);
+        safe_close(canberra_pipe_w, __FILE__, __LINE__);
+    }
     if (canberra_ctx) ca_context_destroy(canberra_ctx);
     canberra_ctx = NULL;
     if (libcanberra_handle) dlclose(libcanberra_handle);
