@@ -12,6 +12,10 @@ func main() {
 	root := cli.NewRootCommand()
 	root.ShortDescription = "Fast, statically compiled implementations for various kitty command-line tools"
 	root.Usage = "command [command options] [command args]"
+	root.Run = func(cmd *cli.Command, args []string) (int, error) {
+		cmd.ShowHelp()
+		return 0, nil
+	}
 
 	tool.KittyToolEntryPoints(root)
 	completion.EntryPoint(root)
