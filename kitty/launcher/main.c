@@ -316,6 +316,21 @@ ensure_working_stdio(void) {
 #undef C
 }
 
+static void
+delegate_to_kitty_tool_if_possible(int argc, char *argv[], char* exe_dir) {
+    if (argc > 1 && argv[1][0] == '@') {
+        char exe[PATH_MAX+1] = {0};
+        snprintf(exe, PATH_MAX, "%s/kitty-tool", exe_dir);
+        char **newargv = malloc(sizeof(char*) * (argc + 1));
+        memcpy(newargv, argv, sizeof(char*) * argc);
+        newargv[argc] = 0;
+        errno = 0;
+        execv(exe, argv);
+        fprintf(stderr, "Failed to execute kitty-tool (%s) with error: %s\n", exe, strerror(errno));
+        exit(1);
+    }
+}
+
 int main(int argc, char *argv[], char* envp[]) {
     if (argc < 1 || !argv) { fprintf(stderr, "Invalid argc/argv\n"); return 1; }
     if (!ensure_working_stdio()) return 1;
@@ -329,6 +344,7 @@ int main(int argc, char *argv[], char* envp[]) {
     if (!read_exe_path(exe, sizeof(exe))) return 1;
     strncpy(exe_dir_buf, exe, sizeof(exe_dir_buf));
     char *exe_dir = dirname(exe_dir_buf);
+    delegate_to_kitty_tool_if_possible(argc, argv, exe_dir);
     int num, ret=0;
     char lib[PATH_MAX+1] = {0};
     num = snprintf(lib, PATH_MAX, "%s/%s", exe_dir, KITTY_LIB_PATH);
