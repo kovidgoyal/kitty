@@ -35,6 +35,13 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
+0.27.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- A new statically compiled, standalone executable, ``kitty-tool`` (written in Go)
+  that can be used on all UNIX-like servers for remote control (``kitty-tool @``)
+  and eventually viewing images and other kittens.
+
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
