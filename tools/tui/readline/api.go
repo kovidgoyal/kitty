@@ -173,7 +173,7 @@ func (self *Readline) Shutdown() {
 }
 
 func (self *Readline) AddHistoryItem(hi HistoryItem) {
-	self.history.add_item(hi)
+	self.history.merge_items(hi)
 }
 
 func (self *Readline) ResetText() {
