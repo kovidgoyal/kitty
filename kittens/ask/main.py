@@ -6,13 +6,14 @@ import re
 import sys
 from contextlib import suppress
 from typing import (
-    TYPE_CHECKING, Callable, Dict, Iterator, List, NamedTuple, Optional, Tuple
+    TYPE_CHECKING, Callable, Dict, Iterator, List, NamedTuple, Optional, Tuple,
 )
 
 from kitty.cli import parse_args
 from kitty.cli_stub import AskCLIOptions
 from kitty.constants import cache_dir
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
+from kitty.types import run_once
 from kitty.typing import BossType, KeyEventType, TypedDict
 from kitty.utils import ScreenSize
 
@@ -447,6 +448,17 @@ class Choose(Handler):  # {{{
 # }}}
 
 
+@run_once
+def init_readline() -> None:
+    import readline
+    with suppress(OSError):
+        readline.read_init_file()
+    if 'libedit' in readline.__doc__:
+        readline.parse_and_bind("bind ^I rl_complete")
+    else:
+        readline.parse_and_bind('tab: complete')
+
+
 def main(args: List[str]) -> Response:
     # For some reason importing readline in a key handler in the main kitty process
     # causes a crash of the python interpreter, probably because of some global
@@ -478,7 +490,6 @@ def main(args: List[str]) -> Response:
 
     import readline as rl
     readline = rl
-    from kitty.shell import init_readline
     init_readline()
     response = None
 

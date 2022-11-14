@@ -11,21 +11,18 @@ from functools import lru_cache, partial
 from time import monotonic, time_ns
 from types import GeneratorType
 from typing import (
-    TYPE_CHECKING, Any, Dict, FrozenSet, Iterable, Iterator, List, Optional,
-    Tuple, Union, cast
+    TYPE_CHECKING, Any, Dict, FrozenSet, Iterable, Iterator, List, Optional, Tuple,
+    Union, cast,
 )
 
-from .cli import emph, parse_args
+from .cli import parse_args
 from .cli_stub import RCOptions
 from .constants import RC_ENCRYPTION_PROTOCOL_VERSION, appname, version
 from .fast_data_types import (
-    AES256GCMDecrypt, AES256GCMEncrypt, EllipticCurveKey, get_boss,
-    get_options, read_command_response, send_data_to_peer
+    AES256GCMDecrypt, AES256GCMEncrypt, EllipticCurveKey, get_boss, get_options,
+    read_command_response, send_data_to_peer,
 )
-from .rc.base import (
-    NoResponse, ParsingOfArgsFailed, PayloadGetter, all_command_names,
-    command_for_name, parse_subcommand_cli
-)
+from .rc.base import NoResponse, PayloadGetter, all_command_names, command_for_name
 from .types import AsyncResponse
 from .typing import BossType, WindowType
 from .utils import TTYIO, log_error, parse_address_spec, resolve_custom_file
@@ -481,81 +478,3 @@ def get_pubkey() -> Tuple[str, bytes]:
         raise SystemExit('KITTY_PUBLIC_KEY has unknown version, if you are running on a remote system, update kitty on this system')
     from base64 import b85decode
     return version, b85decode(pubkey)
-
-
-def main(args: List[str]) -> None:
-    global_opts, items = parse_rc_args(args)
-    password = get_password(global_opts)
-    if password:
-        encryption_version, pubkey = get_pubkey()
-        encrypter = CommandEncrypter(pubkey, encryption_version, password)
-    else:
-        encrypter = NoEncryption()
-
-    if not items:
-        from kitty.shell import main as smain
-        smain(global_opts, encrypter)
-        return
-    cmd = items[0]
-    try:
-        c = command_for_name(cmd)
-    except KeyError:
-        raise SystemExit('{} is not a known command. Known commands are: {}'.format(
-            emph(cmd), ', '.join(x.replace('_', '-') for x in all_command_names())))
-    opts, items = parse_subcommand_cli(c, items)
-    try:
-        payload = c.message_to_kitty(global_opts, opts, items)
-    except ParsingOfArgsFailed as err:
-        exit(str(err))
-    no_response = False
-    if hasattr(opts, 'no_response'):
-        no_response = opts.no_response
-    response_timeout = c.response_timeout
-    if hasattr(opts, 'response_timeout'):
-        response_timeout = opts.response_timeout
-    response_timeout = encrypter.adjust_response_timeout_for_password(response_timeout)
-    send = create_basic_command(cmd, payload=payload, no_response=no_response, is_asynchronous=c.is_asynchronous)
-    listen_on_from_env = False
-    if not global_opts.to and 'KITTY_LISTEN_ON' in os.environ:
-        global_opts.to = os.environ['KITTY_LISTEN_ON']
-        listen_on_from_env = False
-    if global_opts.to:
-        try:
-            parse_address_spec(global_opts.to)
-        except Exception:
-            msg = f'Invalid listen on address: {global_opts.to}'
-            if listen_on_from_env:
-                msg += '. The KITTY_LISTEN_ON environment variable is set incorrectly'
-            exit(msg)
-    import socket
-    try:
-        response = do_io(global_opts.to, send, no_response, response_timeout, encrypter)
-    except (TimeoutError, socket.timeout):
-        send.pop('payload', None)
-        send['cancel_async'] = True
-        try:
-            do_io(global_opts.to, send, True, 10, encrypter)
-        except KeyboardInterrupt:
-            sys.excepthook = lambda *a: print('Interrupted by user', file=sys.stderr)
-            raise
-        except SocketClosed as e:
-            raise SystemExit(str(e))
-        raise SystemExit(f'Timed out after {response_timeout} seconds waiting for response from kitty')
-    except KeyboardInterrupt:
-        sys.excepthook = lambda *a: print('Interrupted by user', file=sys.stderr)
-        raise
-    except FileNotFoundError:
-        raise SystemExit(f'No listen on socket found at: {global_opts.to}')
-    except SocketClosed as e:
-        raise SystemExit(str(e))
-    if no_response:
-        return
-    if not response.get('ok'):
-        if response.get('tb'):
-            print(response['tb'], file=sys.stderr)
-        raise SystemExit(response['error'])
-    data = response.get('data')
-    if data is not None:
-        if c.string_return_is_error and isinstance(data, str):
-            raise SystemExit(data)
-        print(data)

@@ -227,7 +227,6 @@ def prewarm() -> None:
     for kitten in all_kitten_names():
         with suppress(Exception):
             import_module(f'kittens.{kitten}.main')
-    import_module('kitty.complete')
 
 
 class MemoryViewReadWrapperBytes(io.BufferedIOBase):

@@ -18,11 +18,6 @@ def list_fonts(args: List[str]) -> None:
     list_main(args)
 
 
-def remote_control(args: List[str]) -> None:
-    from kitty.remote_control import main as rc_main
-    rc_main(args)
-
-
 def runpy(args: List[str]) -> None:
     if len(args) < 2:
         raise SystemExit('Usage: kitty +runpy "some python code"')
@@ -44,11 +39,6 @@ def hold(args: List[str]) -> None:
     from kitty.utils import hold_till_enter
     hold_till_enter()
     raise SystemExit(ret)
-
-
-def complete(args: List[str]) -> None:
-    from kitty.complete import main as complete_main
-    complete_main(args[1:], entry_points, namespaced_entry_points)
 
 
 def open_urls(args: List[str]) -> None:
@@ -159,12 +149,10 @@ entry_points = {
     'icat': icat,
     'list-fonts': list_fonts,
 
-    '@': remote_control,
     '+': namespaced,
 }
 namespaced_entry_points = {k: v for k, v in entry_points.items() if k[0] not in '+@'}
 namespaced_entry_points['hold'] = hold
-namespaced_entry_points['complete'] = complete
 namespaced_entry_points['runpy'] = runpy
 namespaced_entry_points['launch'] = launch
 namespaced_entry_points['open'] = open_urls
@@ -195,9 +183,7 @@ def main() -> None:
     first_arg = '' if len(sys.argv) < 2 else sys.argv[1]
     func = entry_points.get(first_arg)
     if func is None:
-        if first_arg.startswith('@'):
-            remote_control(['@', first_arg[1:]] + sys.argv[2:])
-        elif first_arg.startswith('+'):
+        if first_arg.startswith('+'):
             namespaced(['+', first_arg[1:]] + sys.argv[2:])
         else:
             from kitty.main import main as kitty_main
