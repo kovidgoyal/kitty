@@ -138,7 +138,7 @@ func (self *Context) Prettify(text string) string {
 				idx = strings.Index(val, "-")
 			}
 			if idx > -1 {
-				val = val[idx:]
+				val = strings.TrimSuffix(val[idx:], ">")
 			}
 			return self.Bold(val)
 		case "opt":
