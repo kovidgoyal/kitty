@@ -22,6 +22,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+    - name: Install Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: "1.18"
+
     - name: Checkout repository
       uses: actions/checkout@v3
       with:
@@ -31,7 +37,7 @@ jobs:
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v1
+      uses: github/codeql-action/init@v2
       with:
         languages: python, c
         setup-python-dependencies: false
