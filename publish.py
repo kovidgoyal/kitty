@@ -3,6 +3,7 @@
 
 import argparse
 import datetime
+import glob
 import io
 import json
 import mimetypes
@@ -79,6 +80,7 @@ def run_build(args: Any) -> None:
         call(f'python ../bypy linux --arch {x} shutdown', echo=True)
     cmd = 'python ../bypy macos program --sign-installers --notarize'
     run_with_retry(cmd)
+    call('./setup.py build-static-binaries')
 
 
 def run_tag(args: Any) -> None:
@@ -393,6 +395,14 @@ def files_for_upload() -> Dict[str, str]:
             raise SystemExit(f'The installer {path} does not exist')
         files[path] = desc
         signatures[path] = f'GPG signature for {desc}'
+    b = len(files)
+    for path in glob.glob('build/static/kitty-tool-*'):
+        path = os.path.abspath(path)
+        files[path] = 'Static kitty-tool executable'
+        signatures[path] = 'GPG signature for static kitty-tool executable'
+    if len(files) == b:
+        raise SystemExit('No static binaries found')
+
     files[f'build/kitty-{version}.tar.xz'] = 'Source code'
     files[f'build/kitty-{version}.tar.xz.sig'] = 'Source code GPG signature'
     for path, desc in signatures.items():

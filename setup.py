@@ -64,7 +64,7 @@ class Options(argparse.Namespace):
     verbose: int = 0
     sanitize: bool = False
     prefix: str = './linux-package'
-    dir_for_static_binaries: str = ''
+    dir_for_static_binaries: str = 'build/static'
     incremental: bool = True
     profile: bool = False
     libdir_name: str = 'lib'
