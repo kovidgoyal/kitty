@@ -64,6 +64,7 @@ class Options(argparse.Namespace):
     verbose: int = 0
     sanitize: bool = False
     prefix: str = './linux-package'
+    dir_for_static_binaries: str = ''
     incremental: bool = True
     profile: bool = False
     libdir_name: str = 'lib'
@@ -884,13 +885,17 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
         raise SystemExit(cp.returncode)
 
 
-def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False, build_static: bool = False) -> str:
+def build_kitty_tool(
+    args: Options, launcher_dir: str, destination_dir: str = '', for_freeze: bool = False,
+    for_platform: Optional[Tuple[str, str]] = None
+) -> str:
     sys.stdout.flush()
     sys.stderr.flush()
     go = shutil.which('go')
     if not go:
         raise SystemExit('The go tool was not found on this system. Install Go')
-    update_go_generated_files(args, os.path.join(launcher_dir, appname))
+    if not for_platform:
+        update_go_generated_files(args, os.path.join(launcher_dir, appname))
     cmd = [go, 'build', '-v']
     ld_flags = [f"-X 'kitty.VCSRevision={get_vcs_rev_define()}'"]
     if for_freeze:
@@ -899,7 +904,9 @@ def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False,
         ld_flags.append('-s')
         ld_flags.append('-w')
     cmd += ['-ldflags', ' '.join(ld_flags)]
-    dest = os.path.join(launcher_dir, 'kitty-tool')
+    dest = os.path.join(destination_dir or launcher_dir, 'kitty-tool')
+    if for_platform:
+        dest += f'-{for_platform[0]}-{for_platform[1]}'
     src = os.path.abspath('tools/cmd')
 
     def run_one(dest: str, **env: str) -> None:
@@ -908,13 +915,15 @@ def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False,
             print(shlex.join(c))
         e = os.environ.copy()
         e.update(env)
-        if build_static:
+        if for_platform:
             e['CGO_ENABLED'] = '0'
+            e['GOOS'] = for_platform[0]
+            e['GOARCH'] = for_platform[1]
         cp = subprocess.run(c, env=e)
         if cp.returncode != 0:
             raise SystemExit(cp.returncode)
 
-    if args.build_universal_binary:
+    if args.build_universal_binary and not for_platform:
         outs = []
         for arch in ('amd64', 'arm64'):
             d = dest + f'-{arch}'
@@ -926,6 +935,17 @@ def build_kitty_tool(args: Options, launcher_dir: str, for_freeze: bool = False,
     else:
         run_one(dest)
     return dest
+
+
+def build_static_binaries(args: Options, launcher_dir: str) -> None:
+    arches = 'amd64', 'arm64'
+    for os_, arches_ in {
+        'darwin': arches, 'linux': arches, 'freebsd': arches, 'netbsd': arches, 'openbsd': arches,
+        'dragonfly': ('amd64',),
+    }.items():
+        for arch in arches_:
+            print('Cross compiling static kitty-tool for:', os_, arch)
+            build_kitty_tool(args, launcher_dir, args.dir_for_static_binaries, for_platform=(os_, arch))
 
 
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> None:
@@ -1503,6 +1523,7 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
                  'clean',
                  'export-ci-bundles',
                  'build-dep',
+                 'build-static-binaries',
                  ),
         help='Action to perform (default is build)'
     )
@@ -1528,6 +1549,11 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         '--prefix',
         default=Options.prefix,
         help='Where to create the linux package'
+    )
+    p.add_argument(
+        '--dir-for-static-binaries',
+        default=Options.dir_for_static_binaries,
+        help='Where to create the static kitty-tool binaries'
     )
     p.add_argument(
         '--full',
@@ -1731,6 +1757,8 @@ def main() -> None:
             cmd = [sys.executable, '../bypy', 'export', 'download.calibre-ebook.com:/srv/download/ci/kitty']
             subprocess.check_call(cmd + ['linux'])
             subprocess.check_call(cmd + ['macos'])
+        elif args.action == 'build-static-binaries':
+            build_static_binaries(args, launcher_dir)
 
 
 if __name__ == '__main__':
