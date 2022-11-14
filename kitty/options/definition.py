@@ -871,7 +871,7 @@ opt('draw_minimal_borders', 'yes',
     option_type='to_bool',
     long_text='''
 Draw only the minimum borders needed. This means that only the borders that
-separate the inactive window from a neighbor are drawn. Note that setting a
+separate the window from a neighbor are drawn. Note that setting a
 non-zero :opt:`window_margin_width` overrides this and causes all borders to be
 drawn.
 '''
