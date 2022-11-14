@@ -547,6 +547,11 @@ func TestReadlineCompletion(t *testing.T) {
 		if diff := cmp.Diff(after_cursor, aa); diff != "" {
 			t.Fatalf("Text after cursor not as expected:\n%s", diff)
 		}
+		actual, _ := rl.completion_screen_lines()
+		expected := []string{"a1 a11 a2 "}
+		if diff := cmp.Diff(expected, actual[1:]); diff != "" {
+			t.Fatalf("Completion screen lines not as expected:\n%s", diff)
+		}
 	}
 	rl.add_text("a")
 	rl.perform_action(ActionCompleteForward, 1)
