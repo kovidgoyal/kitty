@@ -45,6 +45,8 @@ Detailed list of changes
 - Speed up the ``kitty @`` executable by ~10x reducing the time for typical
   remote control commands from ~50ms to ~5ms
 
+- Allow using the cwd of the original process for :option:`launch --cwd` (:iss:`5672`)
+
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

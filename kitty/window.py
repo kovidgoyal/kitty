@@ -69,6 +69,7 @@ class CwdRequestType(Enum):
     current: int = auto()
     last_reported: int = auto()
     oldest: int = auto()
+    root: int = auto()
 
 
 class CwdRequest:
@@ -92,6 +93,8 @@ class CwdRequest:
         reported_cwd = path_from_osc7_url(window.screen.last_reported_cwd) if window.screen.last_reported_cwd else ''
         if reported_cwd and not window.child_is_remote and (self.request_type is CwdRequestType.last_reported or window.at_prompt):
             return reported_cwd
+        if self.request_type is CwdRequestType.root:
+            return window.child.current_cwd or ''
         return window.get_cwd_of_child(oldest=self.request_type is CwdRequestType.oldest) or ''
 
     def modify_argv_for_launch_with_cwd(self, argv: List[str]) -> str:
@@ -99,7 +102,7 @@ class CwdRequest:
         if not window:
             return ''
         reported_cwd = path_from_osc7_url(window.screen.last_reported_cwd) if window.screen.last_reported_cwd else ''
-        if reported_cwd:
+        if reported_cwd and (self.request_type is not CwdRequestType.root or window.root_in_foreground_processes):
             # First check if we are running ssh kitten, and trying to open the configured login shell
             if argv[0] == resolved_shell(get_options())[0]:
                 ssh_kitten_cmdline = window.ssh_kitten_cmdline()
@@ -1388,6 +1391,14 @@ class Window:
     @property
     def cwd_of_child(self) -> Optional[str]:
         return self.get_cwd_of_child()
+
+    @property
+    def root_in_foreground_processes(self) -> bool:
+        q = self.child.pid
+        for p in self.child.foreground_processes:
+            if p['pid'] == q:
+                return True
+        return False
 
     @property
     def child_is_remote(self) -> bool:
