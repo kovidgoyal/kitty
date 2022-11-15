@@ -105,6 +105,9 @@ jobs:
           - name: Build kitty
             run: python setup.py build --debug
 
+          - name: Build static kitty-tool
+            run: python setup.py build-static-binaries
+
           - name: Run mypy
             run: which python && python -m mypy --version && ./test.py mypy
 
