@@ -319,6 +319,12 @@ func (self *Loop) run() (err error) {
 			for len(self.wakeup_channel) > 0 {
 				<-self.wakeup_channel
 			}
+			if self.OnWakeup != nil {
+				err = self.OnWakeup()
+				if err != nil {
+					return err
+				}
+			}
 		case msg_id := <-write_done_channel:
 			self.flush_pending_writes(tty_write_channel)
 			if self.OnWriteComplete != nil {

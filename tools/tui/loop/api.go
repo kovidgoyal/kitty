@@ -78,6 +78,9 @@ type Loop struct {
 
 	// Called when resuming from a SIGTSTP or Ctrl-z
 	OnResumeFromStop func() error
+
+	// Called when main loop is woken up
+	OnWakeup func() error
 }
 
 func New(options ...func(self *Loop)) (*Loop, error) {
