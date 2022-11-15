@@ -282,6 +282,7 @@ const WebsiteBaseURL string = "{kc.website_base_url}"
 const VCSRevision string = ""
 const RC_ENCRYPTION_PROTOCOL_VERSION string = "{kc.RC_ENCRYPTION_PROTOCOL_VERSION}"
 const IsFrozenBuild bool = false
+const IsStandaloneBuild bool = false
 const HandleTermiosSignals = {Mode.HANDLE_TERMIOS_SIGNALS.value[0]}
 var Version VersionType = VersionType{{Major: {kc.version.major}, Minor: {kc.version.minor}, Patch: {kc.version.patch},}}
 var DefaultPager []string = []string{{ {dp} }}
