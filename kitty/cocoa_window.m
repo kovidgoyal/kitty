@@ -872,20 +872,29 @@ cocoa_set_app_icon(PyObject UNUSED *self, PyObject *args) {
         PyErr_SetString(PyExc_TypeError, "Empty icon file path");
         return NULL;
     }
-
     NSString *custom_icon_path = [NSString stringWithUTF8String:icon_path];
-    NSString *bundle_path = @"";
-    if (!app_path) {
-        bundle_path = [[NSBundle mainBundle] bundlePath];
-        if (!bundle_path || bundle_path.length == 0) bundle_path = @"/Applications/kitty.app";
-    } else if (app_path[0] != '\0') {
-        bundle_path = [NSString stringWithUTF8String:app_path];
-    }
     if (![[NSFileManager defaultManager] fileExistsAtPath:custom_icon_path]) {
         PyErr_Format(PyExc_FileNotFoundError, "Icon file not found: %s", [custom_icon_path UTF8String]);
         return NULL;
     }
-    if (![[NSFileManager defaultManager] fileExistsAtPath:bundle_path]) {
+
+    NSString *bundle_path = @"";
+    if (!app_path) {
+        bundle_path = [[NSBundle mainBundle] bundlePath];
+        if (!bundle_path || bundle_path.length == 0) bundle_path = @"/Applications/kitty.app";
+        // When compiled from source and run from the launcher folder the bundle path should be `kitty.app` in it
+        if (![bundle_path hasSuffix:@".app"]) {
+            NSString *launcher_app_path = [bundle_path stringByAppendingPathComponent:@"kitty.app"];
+            bundle_path = @"";
+            BOOL is_dir;
+            if ([[NSFileManager defaultManager] fileExistsAtPath:launcher_app_path isDirectory:&is_dir] && is_dir && [[NSWorkspace sharedWorkspace] isFilePackageAtPath:launcher_app_path]) {
+                bundle_path = launcher_app_path;
+            }
+        }
+    } else if (app_path[0] != '\0') {
+        bundle_path = [NSString stringWithUTF8String:app_path];
+    }
+    if (!bundle_path || bundle_path.length == 0 || ![[NSFileManager defaultManager] fileExistsAtPath:bundle_path]) {
         PyErr_Format(PyExc_FileNotFoundError, "Application bundle not found: %s", [bundle_path UTF8String]);
         return NULL;
     }

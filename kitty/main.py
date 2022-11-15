@@ -151,7 +151,11 @@ def set_macos_app_custom_icon() -> None:
             icon_sentinel = os.path.join(bundle_path, 'Icon\r')
             sentinel_mtime = safe_mtime(icon_sentinel)
             if sentinel_mtime is None or sentinel_mtime < custom_icon_mtime:
-                cocoa_set_app_icon(icon_path)
+                try:
+                    cocoa_set_app_icon(icon_path, bundle_path)
+                except (FileNotFoundError, OSError) as e:
+                    log_error(str(e))
+                    log_error('Failed to set custom app icon, ignoring')
             # macOS Dock does not reload icons until it is restarted, so we set
             # the application icon here. This will revert when kitty quits, but
             # cant be helped since there appears to be no way to get the dock
