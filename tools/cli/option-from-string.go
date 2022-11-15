@@ -31,6 +31,7 @@ Create an [Option] from a string. Syntax is:
 	dest: destination
 	choices: choice1, choice2, choice 3
 	depth: 0
+	default: something
 	Help text on multiple lines. Indented lines are preserved as indented blocks. Blank lines
 	are preserved as blank lines. #placeholder_for_formatting# is replaced by the empty string.
 
