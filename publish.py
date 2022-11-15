@@ -398,8 +398,9 @@ def files_for_upload() -> Dict[str, str]:
     b = len(files)
     for path in glob.glob('build/static/kitty-tool-*'):
         path = os.path.abspath(path)
-        files[path] = 'Static kitty-tool executable'
-        signatures[path] = 'GPG signature for static kitty-tool executable'
+        exe_name = os.path.basename(path)
+        files[path] = f'Static {exe_name} executable'
+        signatures[path] = f'GPG signature for static {exe_name} executable'
     if len(files) == b:
         raise SystemExit('No static binaries found')
 
