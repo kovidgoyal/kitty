@@ -42,6 +42,9 @@ Detailed list of changes
   that can be used on all UNIX-like servers for remote control (``kitty-tool @``)
   and eventually viewing images and other kittens.
 
+- Speed up the ``kitty @`` executable by ~10x reducing the time for typical
+  remote control commands from ~50ms to ~5ms
+
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
