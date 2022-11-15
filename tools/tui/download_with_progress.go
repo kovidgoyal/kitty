@@ -23,7 +23,7 @@ type dl_data struct {
 }
 
 func render_progress(done, total uint64, screen_width uint) string {
-	return fmt.Sprintln(1111111, done, total)
+	return fmt.Sprint(1111111, done, total)
 }
 
 func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err error) {
@@ -41,10 +41,11 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 
 	report_progress := func(done, total uint64) error {
 		dl_data.mutex.Lock()
-		defer dl_data.mutex.Unlock()
 		dl_data.done = done
 		dl_data.total = total
-		if dl_data.canceled_by_user {
+		canceled := dl_data.canceled_by_user
+		dl_data.mutex.Unlock()
+		if canceled {
 			return Canceled
 		}
 		lp.WakeupMainThread()
@@ -57,20 +58,21 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 		dl_data.mutex.Unlock()
 		err := utils.DownloadToFile(destpath, url, report_progress, register_temp_file_path)
 		dl_data.mutex.Lock()
-		defer dl_data.mutex.Unlock()
 		dl_data.download_finished = true
 		if err != Canceled && err != nil {
 			dl_data.error_from_download = err
-			lp.WakeupMainThread()
 		}
+		dl_data.mutex.Unlock()
+		lp.WakeupMainThread()
 	}
 
 	redraw := func() {
 		lp.QueueWriteString("\r")
 		lp.ClearToEndOfLine()
 		dl_data.mutex.Lock()
-		defer dl_data.mutex.Unlock()
-		if dl_data.done+dl_data.total == 0 {
+		done, total := dl_data.done, dl_data.total
+		dl_data.mutex.Unlock()
+		if done+total == 0 {
 			lp.QueueWriteString("Waiting for download to start...")
 		} else {
 			sz, err := lp.ScreenSize()
@@ -78,7 +80,7 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 			if err != nil {
 				w = 80
 			}
-			lp.QueueWriteString(render_progress(dl_data.done, dl_data.total, w))
+			lp.QueueWriteString(render_progress(done, total, w))
 		}
 	}
 
@@ -97,11 +99,16 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 		return nil
 	}
 	lp.OnWakeup = func() error {
-		lp.DebugPrintln("11111111111111")
 		dl_data.mutex.Lock()
-		defer dl_data.mutex.Unlock()
-		if dl_data.error_from_download != nil {
+		err := dl_data.error_from_download
+		finished := dl_data.download_finished
+		dl_data.mutex.Unlock()
+		if err != nil {
 			return dl_data.error_from_download
+		}
+		if finished {
+			lp.Quit(0)
+			return nil
 		}
 		redraw()
 		return nil
@@ -110,9 +117,9 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 		if event.MatchesPressOrRepeat("ctrl+c") || event.MatchesPressOrRepeat("esc") {
 			event.Handled = true
 			dl_data.mutex.Lock()
-			defer dl_data.mutex.Unlock()
 			dl_data.canceled_by_user = true
-			lp.Quit(1)
+			dl_data.mutex.Unlock()
+			return Canceled
 		}
 		return nil
 	}

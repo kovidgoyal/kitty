@@ -40,7 +40,7 @@ func DownloadToWriter(url string, dest io.Writer, progress_callback ReportFunc) 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("The server responded with the HTTP error %d (%s)", resp.StatusCode, resp.Status)
+		return fmt.Errorf("The server responded with the HTTP error: %s", resp.Status)
 	}
 	wc := write_counter{report: progress_callback}
 	cl, err := strconv.Atoi(resp.Header.Get("Content-Length"))
