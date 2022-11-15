@@ -75,11 +75,11 @@ def run_build(args: Any) -> None:
             call(cmd, echo=True)
 
     for x in ('64', '32', 'arm64'):
-        cmd = f'python ../bypy linux --arch {x} program'
-        run_with_retry(cmd)
-        call(f'python ../bypy linux --arch {x} shutdown', echo=True)
-    cmd = 'python ../bypy macos program --sign-installers --notarize'
-    run_with_retry(cmd)
+        prefix = f'python ../bypy linux --arch {x} '
+        run_with_retry(prefix + 'program')
+        call(prefix + 'shutdown', echo=True)
+    run_with_retry('python ../bypy macos program --sign-installers --notarize')
+    call('python ../bypy macos shutdown', echo=True)
     call('./setup.py build-static-binaries')
 
 
