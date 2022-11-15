@@ -94,7 +94,7 @@ class CwdRequest:
         if reported_cwd and not window.child_is_remote and (self.request_type is CwdRequestType.last_reported or window.at_prompt):
             return reported_cwd
         if self.request_type is CwdRequestType.root:
-            return window.child.current_cwd or ''
+            return window.get_cwd_of_root_child() or ''
         return window.get_cwd_of_child(oldest=self.request_type is CwdRequestType.oldest) or ''
 
     def modify_argv_for_launch_with_cwd(self, argv: List[str]) -> str:
@@ -1387,6 +1387,9 @@ class Window:
 
     def get_cwd_of_child(self, oldest: bool = False) -> Optional[str]:
         return self.child.get_foreground_cwd(oldest) or self.child.current_cwd
+
+    def get_cwd_of_root_child(self) -> Optional[str]:
+        return self.child.current_cwd
 
     @property
     def cwd_of_child(self) -> Optional[str]:
