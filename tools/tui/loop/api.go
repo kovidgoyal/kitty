@@ -117,6 +117,15 @@ func MouseTrackingMode(self *Loop, mt MouseTracking) {
 	self.terminal_options.mouse_tracking = mt
 }
 
+func NoMouseTracking(self *Loop) {
+	self.terminal_options.mouse_tracking = NO_MOUSE_TRACKING
+}
+
+func (self *Loop) NoMouseTracking() *Loop {
+	self.terminal_options.mouse_tracking = NO_MOUSE_TRACKING
+	return self
+}
+
 func (self *Loop) NoRestoreColors() *Loop {
 	self.terminal_options.restore_colors = false
 	return self
@@ -167,8 +176,13 @@ func (self *Loop) Run() (err error) {
 	return self.run()
 }
 
-func (self *Loop) WakeupMainThread() {
-	self.wakeup_channel <- 1
+func (self *Loop) WakeupMainThread() bool {
+	select {
+	case self.wakeup_channel <- 1:
+		return true
+	default:
+		return false
+	}
 }
 
 func (self *Loop) QueueWriteString(data string) IdType {
@@ -237,6 +251,10 @@ func (self *Loop) MoveCursorVertically(amt int) {
 
 func (self *Loop) ClearToEndOfScreen() {
 	self.QueueWriteString("\x1b[J")
+}
+
+func (self *Loop) ClearToEndOfLine() {
+	self.QueueWriteString("\x1b[K")
 }
 
 func (self *Loop) StartBracketedPaste() {
