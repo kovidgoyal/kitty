@@ -1,0 +1,88 @@
+#!/bin/sh
+# Copyright (C) 2018 Kovid Goyal <kovid at kovidgoyal.net>
+#
+# Distributed under terms of the GPLv3 license.
+
+{ \unalias command; \unset -f command; } >/dev/null 2>&1
+
+
+die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; exit 1; }
+
+exec_kitty() {
+    [ -n "$kitty_exe" ] && exec "$kitty_exe" "$@"
+    die "Failed to execute kitty"
+}
+
+script_path="$(command readlink -f "$0" 2> /dev/null)"
+[ $? = 0 ] || script_path="$0"
+script_dir="$(command dirname "$script_path")"
+install_dir="$(command dirname "$script_dir")/install-tool"
+remote_kitty_version_file="$script_dir/../version"
+local_kitty_version_file="$install_dir/installed-kitty-tool-version"
+kitty_exe="$install_dir/kitty-tool"
+local_kitty_version=""
+
+[ -f "$kitty_exe" -a -x "$kitty_exe" ] && exec_kitty "$@"
+
+# Use kitty-tool from the downloaded kitty installation, if available.
+embed_exe="$(command dirname "$script_dir")/install/bin/kitty-tool"
+[ -f "$embed_exe" -a -x "$embed_exe" ] && {
+    kitty_exe="$embed_exe"
+    exec_kitty "$@"
+}
+
+case "$(command uname)" in
+    'Linux') OS="linux";;
+    'Darwin') OS="darwin";;
+    'FreeBSD') OS="freebsd";;
+    'NetBSD') OS="netbsd";;
+    'OpenBSD') OS="openbsd";;
+    'DragonFlyBSD') OS="dragonfly";;
+    *) die "kitty-tool pre-built binaries are not available for the $(command uname) operating system";;
+esac
+
+if command -v curl 2> /dev/null > /dev/null; then
+    fetch() {
+        command curl -fL "$1"
+    }
+    fetch_quiet() {
+        command curl -fsSL "$1"
+    }
+elif command -v wget 2> /dev/null > /dev/null; then
+    fetch() {
+        command wget -O- "$1"
+    }
+    fetch_quiet() {
+        command wget --quiet -O- "$1"
+    }
+else
+    die "Neither curl nor wget available, cannot download kitty-tool"
+fi
+
+case "$(command uname -m)" in
+    x86_64) arch="amd64";;
+    aarch64*) arch="arm64";;
+    armv8*) arch="arm64";;
+    *) die "Unknown CPU architecture $(command uname -m)";;
+esac
+
+release_version=$(fetch_quiet "https://sw.kovidgoyal.net/kitty/current-version.txt")
+[ $? -ne 0 -o -z "$release_version" ] && {
+    [ -n "$local_kitty_version" ] && exec_kitty "$@"
+    die "Could not get kitty latest release version"
+}
+
+url="https://github.com/kovidgoyal/kitty/releases/download/v$release_version/kitty-tool-$OS-$arch"
+
+printf "\033[33mkitty-tool needs to be installed\033[m\n\n"
+command mkdir -p "$install_dir"
+printf "Downloading kitty-tool from: \033[32m%s\033[m\n\n" "$url"
+download_dest="$(mktemp "$kitty_exe.XXXXXXXXXX")"
+fetch "$url" > "$download_dest" || {
+    rm -f "$download_dest"
+    die "Failed to download kitty-tool"
+}
+chmod 755 "$download_dest"
+mv "$download_dest" "$kitty_exe"
+command "$kitty_exe" --version | cut -d" " -f2 > "$local_kitty_version_file"
+exec_kitty "$@"
