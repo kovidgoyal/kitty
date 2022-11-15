@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"kitty/tools/cli"
 	"kitty/tools/cmd/at"
+	"kitty/tools/cmd/update_self"
 )
 
 var _ = fmt.Print
@@ -13,5 +14,6 @@ var _ = fmt.Print
 func KittyToolEntryPoints(root *cli.Command) {
 	// @
 	at.EntryPoint(root)
-
+	// update-self
+	update_self.EntryPoint(root)
 }
