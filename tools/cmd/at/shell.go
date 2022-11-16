@@ -113,7 +113,7 @@ func show_basic_help() {
 	cli.ShowHelpInPager(output.String())
 }
 
-func exec_command(rl *readline.Readline, cmdline string) bool {
+func exec_command(at_root_command *cli.Command, rl *readline.Readline, cmdline string) bool {
 	parsed_cmdline, err := shlex.Split(cmdline)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Could not parse cmdline:", err)
@@ -142,17 +142,21 @@ func exec_command(rl *readline.Readline, cmdline string) bool {
 		case "help":
 			fmt.Println("Show help")
 		default:
-			r := EntryPoint(cli.NewRootCommand())
-			sc := r.FindSubCommand(parsed_cmdline[1])
+			sc := at_root_command.FindSubCommand(parsed_cmdline[1])
 			if sc == nil {
 				hi.ExitCode = 1
-				fmt.Fprintln(os.Stderr, "No command named", formatter.BrightRed(parsed_cmdline[1]), ". Type help for a list of commands")
+				fmt.Fprintln(os.Stderr, "No command named", formatter.BrightRed(parsed_cmdline[1])+". Type help for a list of commands")
 			} else {
 				sc.ShowHelpWithCommandString(sc.Name)
 			}
 		}
 		return true
 	default:
+		if at_root_command.FindSubCommand(parsed_cmdline[0]) == nil {
+			hi.ExitCode = 1
+			fmt.Fprintln(os.Stderr, "No command named", formatter.BrightRed(parsed_cmdline[0])+". Type help for a list of commands")
+			return true
+		}
 		exe, err := os.Executable()
 		if err != nil {
 			exe, err = exec.LookPath("kitty-tool")
@@ -217,7 +221,7 @@ func shell_main(cmd *cli.Command, args []string) (int, error) {
 			if err == ErrExec {
 				cmdline := rl.AllText()
 				cmdline = strings.ReplaceAll(cmdline, "\\\n", "")
-				if !exec_command(rl, cmdline) {
+				if !exec_command(cmd, rl, cmdline) {
 					return 0, nil
 				}
 				continue
