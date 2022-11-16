@@ -186,6 +186,7 @@ func completions(before_cursor, after_cursor string) (ans *cli.Completions) {
 	root := cli.NewRootCommand()
 	c := root.AddSubCommand(&cli.Command{Name: "kitty-tool"})
 	EntryPoint(c)
+	root.Validate()
 	ans = root.GetCompletions(argv, nil)
 	ans.CurrentWordIdx = position_of_last_arg - len(prefix)
 	return

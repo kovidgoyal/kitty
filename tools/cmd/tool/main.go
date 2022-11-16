@@ -12,6 +12,8 @@ import (
 var _ = fmt.Print
 
 func KittyToolEntryPoints(root *cli.Command) {
+	root.Add(cli.OptionSpec{
+		Name: "--version", Type: "bool-set", Help: "The current kitty version."})
 	// @
 	at.EntryPoint(root)
 	// update-self
