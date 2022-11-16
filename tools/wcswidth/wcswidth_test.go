@@ -36,6 +36,7 @@ func TestWCSWidth(t *testing.T) {
 	wcswidth("\U0001F1E6\U0001F1E8a", 3)
 	wcswidth("\U0001F1E6\U0001F1E8\U0001F1E6", 4)
 	wcswidth("a\u00adb", 2)
+	wcswidth("a\x1b[22b", 23)
 	// Flags individually and together
 	wcwidth("\U0001f1ee\U0001f1f3", 2, 2)
 	wcswidth("\U0001f1ee\U0001f1f3", 2)

@@ -4,6 +4,7 @@ package wcswidth
 
 import (
 	"fmt"
+	"strconv"
 
 	"kitty/tools/utils"
 )
@@ -31,6 +32,7 @@ type WCWidthIterator struct {
 func CreateWCWidthIterator() *WCWidthIterator {
 	var ans WCWidthIterator
 	ans.parser.HandleRune = ans.handle_rune
+	ans.parser.HandleCSI = ans.handle_csi
 	return &ans
 }
 
@@ -40,6 +42,22 @@ func (self *WCWidthIterator) Reset() {
 	self.current_width = 0
 	self.rune_count = 0
 	self.parser.Reset()
+}
+
+func (self *WCWidthIterator) handle_csi(csi []byte) error {
+	if len(csi) > 1 && csi[len(csi)-1] == 'b' {
+		num_string := utils.UnsafeBytesToString(csi[:len(csi)-1])
+		n, err := strconv.Atoi(num_string)
+		if err == nil && n > 0 {
+			for i := 0; i < n; i++ {
+				err = self.handle_rune(self.prev_ch)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (self *WCWidthIterator) handle_rune(ch rune) error {
