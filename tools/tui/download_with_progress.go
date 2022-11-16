@@ -5,6 +5,7 @@ package tui
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -56,13 +57,15 @@ func render_progress(rd *render_data) string {
 	}
 	now := time.Now()
 	duration := now.Sub(rd.started_at)
-	rate := float64(rd.done) / float64(duration*time.Second)
+	rate := float64(rd.done) / float64(duration)
 	frac := float64(rd.done) / float64(rd.total)
 	bytes_left := rd.total - rd.done
-	time_left := time.Duration(float64(bytes_left)/rate) * time.Second
+	time_left := time.Duration(float64(bytes_left) / rate)
+	speed := rate * float64(time.Second)
 	before := rd.spinner.Tick()
-	after := fmt.Sprintf(" %d%% %s/s %s", int(frac*100), humanize.Bytes(uint64(rate)), format_time(time_left))
-	available_width := rd.screen_width - len("T  100% 1000MB 11:11:11")
+	after := fmt.Sprintf(" %d%% %s/s %s", int(frac*100), strings.ReplaceAll(humanize.Bytes(uint64(speed)), " ", ""), format_time(time_left))
+	available_width := rd.screen_width - len("T  100% 1000 MB/s 11:11:11")
+	// fmt.Println("\r\n", frac, available_width)
 	progress_bar := ""
 	if available_width > 10 {
 		progress_bar = " " + RenderProgressBar(frac, available_width)
@@ -112,6 +115,12 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 	}
 
 	redraw := func() {
+		lp.StartAtomicUpdate()
+		lp.AllowLineWrapping(false)
+		defer func() {
+			lp.AllowLineWrapping(true)
+			lp.EndAtomicUpdate()
+		}()
 		lp.QueueWriteString("\r")
 		lp.ClearToEndOfLine()
 		dl_data.mutex.Lock()

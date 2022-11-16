@@ -47,10 +47,12 @@ func RenderProgressBar(frac float64, width int) string {
 	}
 	ans := fc.Blue(filled)
 	unfilled := ""
+	ul := 0
 	if width > fl && needs_break {
 		unfilled = "🬇"
+		ul = 1
 	}
-	filler := width - fl - len(unfilled)
+	filler := width - fl - ul
 	if filler > 0 {
 		unfilled += RepeatChar("🬋", filler)
 	}
