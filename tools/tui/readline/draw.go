@@ -107,6 +107,7 @@ func (self *Readline) get_screen_lines() []*ScreenLine {
 				cursor_at_start_of_next_line = false
 				sl.CursorCell = prompt.Length
 				sl.CursorTextPos = 0
+				found_cursor = true
 			}
 			ans = append(ans, &sl)
 			if has_cursor && !found_cursor && offset <= cursor.X && cursor.X <= offset+len(l) {
@@ -198,6 +199,7 @@ func (self *Readline) redraw() {
 	self.loop.QueueWriteString("\r")
 	self.loop.MoveCursorHorizontally(cursor_x)
 	self.cursor_y = 0
+	cursor_y -= move_cursor_up_by
 	if cursor_y > 0 {
 		self.cursor_y = cursor_y - 1
 	}
