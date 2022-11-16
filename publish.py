@@ -397,6 +397,8 @@ def files_for_upload() -> Dict[str, str]:
         signatures[path] = f'GPG signature for {desc}'
     b = len(files)
     for path in glob.glob('build/static/kitty-tool-*'):
+        if path.endswith('.sig'):
+            continue
         path = os.path.abspath(path)
         exe_name = os.path.basename(path)
         files[path] = f'Static {exe_name} executable'
