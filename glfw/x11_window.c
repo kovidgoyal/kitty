@@ -3198,12 +3198,16 @@ GLFWAPI int glfwSetX11LaunchCommand(GLFWwindow *handle, char **argv, int argc)
     return XSetCommand(_glfw.x11.display, window->x11.handle, argv, argc);
 }
 
-GLFWAPI void glfwSetX11WindowAsDock(int32_t x11_window_id) {
+GLFWAPI void glfwSetX11WindowAsDock(int32_t x11_window_id, int override_redirect) {
     _GLFW_REQUIRE_INIT();
     Atom type = _glfw.x11.NET_WM_WINDOW_TYPE_DOCK;
+    XSetWindowAttributes attributes;
+    attributes.override_redirect = override_redirect;
     XChangeProperty(_glfw.x11.display, x11_window_id,
                     _glfw.x11.NET_WM_WINDOW_TYPE, XA_ATOM, 32,
                     PropModeReplace, (unsigned char*) &type, 1);
+    XChangeWindowAttributes(_glfw.x11.display, x11_window_id,
+                            CWOverrideRedirect, &attributes);
 }
 
 GLFWAPI void glfwSetX11WindowStrut(int32_t x11_window_id, uint32_t dimensions[12]) {

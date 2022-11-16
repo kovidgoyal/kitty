@@ -52,6 +52,12 @@ Set the class part of the :italic:`WM_CLASS` window property. On Wayland, it set
 --name
 condition=not is_macos
 Set the name part of the :italic:`WM_CLASS` property (defaults to using the value from :option:`{appname} --class`)
+
+
+--redirect
+type=bool
+condition=not is_macos
+Hint window manager to skip managing the panel.
 '''.format(appname=appname).format
 
 
@@ -93,12 +99,12 @@ def create_right_strut(win_id: int, width: int, height: int) -> Strut:
 
 
 window_width = window_height = 0
-
+override_redirect = False
 
 def setup_x11_window(win_id: int) -> None:
     func = globals()[f'create_{args.edge}_strut']
     strut = func(win_id, window_width, window_height)
-    make_x11_window_a_dock_window(win_id, strut)
+    make_x11_window_a_dock_window(win_id, strut, override_redirect)
 
 
 def initial_window_size_func(opts: WindowSizeData, cached_values: Dict[str, Any]) -> Callable[[int, int, float, float, float, float], Tuple[int, int]]:
@@ -131,6 +137,8 @@ def main(sys_args: List[str]) -> None:
     sys.argv.extend(('--class', args.cls))
     if args.name:
         sys.argv.extend(('--name', args.name))
+    if args.redirect:
+        override_redirect = True
     for override in args.override:
         sys.argv.extend(('--override', override))
     sys.argv.extend(items)

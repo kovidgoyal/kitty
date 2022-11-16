@@ -1683,13 +1683,14 @@ static PyObject*
 make_x11_window_a_dock_window(PyObject *self UNUSED, PyObject *args UNUSED) {
     int x11_window_id;
     PyObject *dims;
-    if (!PyArg_ParseTuple(args, "iO!", &x11_window_id, &PyTuple_Type, &dims)) return NULL;
+    bool override_redirect;
+    if (!PyArg_ParseTuple(args, "iO!p", &x11_window_id, &PyTuple_Type, &dims, &override_redirect)) return NULL;
     if (PyTuple_GET_SIZE(dims) != 12 ) { PyErr_SetString(PyExc_TypeError, "dimesions must be a tuple of length 12"); return NULL; }
-    if (!glfwSetX11WindowAsDock) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetX11Window"); return NULL; }
+    if (!glfwSetX11WindowAsDock) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwSetX11WindowAsDock"); return NULL; }
     uint32_t dimensions[12];
     for (Py_ssize_t i = 0; i < 12; i++) dimensions[i] = PyLong_AsUnsignedLong(PyTuple_GET_ITEM(dims, i));
     if (PyErr_Occurred()) return NULL;
-    glfwSetX11WindowAsDock(x11_window_id);
+    glfwSetX11WindowAsDock(x11_window_id, override_redirect);
     glfwSetX11WindowStrut(x11_window_id, dimensions);
     Py_RETURN_NONE;
 }
