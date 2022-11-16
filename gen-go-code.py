@@ -12,6 +12,7 @@ from typing import Dict, Iterator, List, Set, Tuple, Union
 
 import kitty.constants as kc
 from kittens.tui.operations import Mode
+from kittens.tui.spinners import spinners
 from kitty.cli import (
     CompletionSpec, GoOption, go_options_for_seq, parse_option_spec,
     serialize_as_go_string,
@@ -252,6 +253,28 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
 
 
 # Constants {{{
+
+def generate_spinners() -> str:
+    ans = ['package tui', 'import "time"', 'func NewSpinner(name string) *Spinner {', 'var ans *Spinner', 'switch name {']
+    a = ans.append
+    for name, spinner in spinners.items():
+        a(f'case "{serialize_as_go_string(name)}":')
+        a('ans = &Spinner{')
+        a(f'Name: "{serialize_as_go_string(name)}",')
+        a(f'interval: {spinner["interval"]},')
+        frames = ', '.join(f'"{serialize_as_go_string(x)}"' for x in spinner['frames'])
+        a(f'frames: []string{{{frames}}},')
+        a('}')
+    a('}')
+    a('if ans != nil {')
+    a('ans.interval *= time.Millisecond')
+    a('ans.current_frame = -1')
+    a('ans.last_change_at = time.Now().Add(-ans.interval)')
+    a('}')
+    a('return ans}')
+    return '\n'.join(ans)
+
+
 def generate_color_names() -> str:
     return 'package style\n\nvar ColorNames = map[string]RGBA{' + '\n'.join(
         f'\t"{name}": RGBA{{ Red:{val.red}, Green:{val.green}, Blue:{val.blue} }},'
@@ -448,6 +471,8 @@ def main() -> None:
         f.write(generate_color_names())
     with replace_if_needed('tools/tui/readline/actions_generated.go') as f:
         f.write(generate_readline_actions())
+    with replace_if_needed('tools/tui/spinners_generated.go') as f:
+        f.write(generate_spinners())
     update_completion()
     update_at_commands()
     print(json.dumps(changed, indent=2))
