@@ -5,6 +5,7 @@ package wcswidth
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"kitty/tools/utils"
 )
@@ -124,4 +125,17 @@ func (self *WCWidthIterator) Parse(b []byte) (ans int) {
 func Stringwidth(text string) int {
 	w := CreateWCWidthIterator()
 	return w.Parse(utils.UnsafeStringToBytes(text))
+}
+
+func StripEscapeCodes(text string) string {
+	out := strings.Builder{}
+	out.Grow(len(text))
+
+	p := EscapeCodeParser{}
+	p.HandleRune = func(ch rune) error {
+		out.WriteRune(ch)
+		return nil
+	}
+	p.ParseString(text)
+	return out.String()
 }

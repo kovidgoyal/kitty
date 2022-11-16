@@ -60,12 +60,11 @@ func (self *Match) FormatForCompletionList(max_word_len int, f *markup.Context, 
 	desc = f.Prettify(line)
 
 	multiline := false
-	max_desc_len := screen_width - 2
+	max_desc_len := screen_width - max_word_len - 3
 	if word_len > max_word_len {
 		multiline = true
 	} else {
 		word += strings.Repeat(" ", max_word_len-word_len)
-		max_desc_len = screen_width - max_word_len - 3
 	}
 	if wcswidth.Stringwidth(desc) > max_desc_len {
 		desc = wcswidth.TruncateToVisualLength(desc, max_desc_len-2) + "\x1b[m…"
@@ -108,7 +107,7 @@ func serialize(completions *Completions, f *markup.Context, screen_width int) ([
 				fmt.Fprintln(&output, "compdescriptions=(")
 				limit := mg.max_visual_word_length(16)
 				for _, m := range mg.Matches {
-					fmt.Fprintln(&output, utils.QuoteStringForSH(m.FormatForCompletionList(limit, f, screen_width)))
+					fmt.Fprintln(&output, utils.QuoteStringForSH(wcswidth.StripEscapeCodes(m.FormatForCompletionList(limit, f, screen_width))))
 				}
 				fmt.Fprintln(&output, ")")
 				cmd.WriteString(" -l -d compdescriptions")
