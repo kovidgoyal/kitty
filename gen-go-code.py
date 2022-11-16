@@ -113,7 +113,7 @@ def generate_completions_for_kitty() -> None:
 
     # kitty +list-fonts
     print('plus_list_fonts := plus.AddSubCommand(&cli.Command{'
-          'Name:"list-fonts", Group:"Entry points", ShortDescription: "List monospace fonts"})')
+          'Name:"list-fonts", Group:"Entry points", ShortDescription: "List all available monospaced fonts"})')
     print('k.AddClone("", plus_list_fonts).Name = "+list-fonts"')
 
     # kitty +runpy
