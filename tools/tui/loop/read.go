@@ -7,8 +7,6 @@ import (
 	"io"
 	"os"
 
-	"golang.org/x/sys/unix"
-
 	"kitty/tools/tty"
 	"kitty/tools/utils"
 )
@@ -31,7 +29,7 @@ func (self *Loop) dispatch_input_data(data []byte) error {
 
 func read_ignoring_temporary_errors(f *tty.Term, buf []byte) (int, error) {
 	n, err := f.Read(buf)
-	if err == unix.EINTR || err == unix.EAGAIN || err == unix.EWOULDBLOCK {
+	if is_temporary_error(err) {
 		return 0, nil
 	}
 	if n == 0 {
