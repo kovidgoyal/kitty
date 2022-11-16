@@ -85,7 +85,7 @@ func read_from_tty(pipe_r *os.File, term *tty.Term, results_channel chan<- []byt
 			keep_going = false
 			break
 		}
-		if n == 0 {
+		if n == 0 { // temporary error
 			continue
 		}
 		send := buf[:n]
