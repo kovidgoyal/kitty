@@ -927,8 +927,9 @@ compose(const ComposeData d, uint8_t *under_data, const uint8_t *over_data) {
 #define ROW_ITER for (unsigned y = 0; y + d.over_offset_y < d.under_height && y < d.over_height; y++) { \
         uint8_t *under_row = under_data + (y + d.over_offset_y) * d.under_px_sz * d.under_width + d.under_px_sz * d.over_offset_x; \
         const uint8_t *over_row = over_data + y * d.over_px_sz * d.over_width;
+#define END_ITER }
     if (can_copy_rows) {
-        ROW_ITER memcpy(under_row, over_row, (size_t)d.over_px_sz * min_row_sz);}
+        ROW_ITER memcpy(under_row, over_row, (size_t)d.over_px_sz * min_row_sz); END_ITER
         return;
     }
 #define PIX_ITER for (unsigned x = 0; x < min_row_sz; x++) { \
@@ -938,6 +939,7 @@ compose(const ComposeData d, uint8_t *under_data, const uint8_t *over_data) {
 #undef COPY_RGB
 #undef PIX_ITER
 #undef ROW_ITER
+#undef END_ITER
 }
 
 static CoalescedFrameData
