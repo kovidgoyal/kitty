@@ -4,10 +4,13 @@ package tui
 
 import (
 	"fmt"
-	"kitty/tools/tui/loop"
-	"kitty/tools/utils"
 	"os"
 	"sync"
+	"time"
+
+	"kitty/tools/tui/loop"
+	"kitty/tools/utils"
+	"kitty/tools/utils/humanize"
 )
 
 var _ = fmt.Print
@@ -22,8 +25,49 @@ type dl_data struct {
 	temp_file_path      string
 }
 
-func render_progress(done, total uint64, screen_width uint) string {
-	return fmt.Sprint(1111111, done, total)
+type render_data struct {
+	done, total  uint64
+	screen_width int
+	spinner      *Spinner
+	started_at   time.Time
+}
+
+func render_without_total(rd *render_data) string {
+	return fmt.Sprint(rd.spinner.Tick(), humanize.Bytes(rd.done), " downloaded so far. Started %s", humanize.Time(rd.started_at))
+}
+
+func format_time(d time.Duration) string {
+	d = d.Round(time.Second)
+	ans := ""
+	if d.Hours() > 1 {
+		h := d / time.Hour
+		d -= h * time.Hour
+		ans += fmt.Sprintf("%02d:", h)
+	}
+	m := d / time.Minute
+	d -= m * time.Minute
+	s := d / time.Second
+	return fmt.Sprintf("%s%02d:%02d", ans, m, s)
+}
+
+func render_progress(rd *render_data) string {
+	if rd.total == 0 {
+		return render_without_total(rd)
+	}
+	now := time.Now()
+	duration := now.Sub(rd.started_at)
+	rate := float64(rd.done) / float64(duration*time.Second)
+	frac := float64(rd.done) / float64(rd.total)
+	bytes_left := rd.total - rd.done
+	time_left := time.Duration(float64(bytes_left)/rate) * time.Second
+	before := rd.spinner.Tick()
+	after := fmt.Sprintf(" %d%% %s/s %s", int(frac*100), humanize.Bytes(uint64(rate)), format_time(time_left))
+	available_width := rd.screen_width - len("T  100% 1000MB 11:11:11")
+	progress_bar := ""
+	if available_width > 10 {
+		progress_bar = " " + RenderProgressBar(frac, available_width)
+	}
+	return before + progress_bar + after
 }
 
 func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err error) {
@@ -32,6 +76,7 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 		return
 	}
 	dl_data := dl_data{}
+	rd := render_data{spinner: NewSpinner("dots"), started_at: time.Now()}
 
 	register_temp_file_path := func(path string) {
 		dl_data.mutex.Lock()
@@ -70,9 +115,9 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 		lp.QueueWriteString("\r")
 		lp.ClearToEndOfLine()
 		dl_data.mutex.Lock()
-		done, total := dl_data.done, dl_data.total
+		rd.done, rd.total = dl_data.done, dl_data.total
 		dl_data.mutex.Unlock()
-		if done+total == 0 {
+		if rd.done+rd.total == 0 {
 			lp.QueueWriteString("Waiting for download to start...")
 		} else {
 			sz, err := lp.ScreenSize()
@@ -80,7 +125,8 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 			if err != nil {
 				w = 80
 			}
-			lp.QueueWriteString(render_progress(done, total, w))
+			rd.screen_width = int(w)
+			lp.QueueWriteString(render_progress(&rd))
 		}
 	}
 
@@ -124,6 +170,11 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 		return nil
 	}
 
+	on_timer_tick := func(timer_id loop.IdType) error {
+		return lp.OnWakeup()
+	}
+
+	lp.AddTimer(rd.spinner.interval, true, on_timer_tick)
 	err = lp.Run()
 	dl_data.mutex.Lock()
 	if dl_data.temp_file_path != "" && !dl_data.download_finished {
