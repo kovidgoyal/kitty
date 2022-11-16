@@ -92,6 +92,14 @@ func (self *Command) ShowHelp() {
 	self.ShowHelpWithCommandString(strings.TrimSpace(self.CommandStringForUsage()))
 }
 
+func ShowHelpInPager(text string) {
+	pager := exec.Command(kitty.DefaultPager[0], kitty.DefaultPager[1:]...)
+	pager.Stdin = strings.NewReader(text)
+	pager.Stdout = os.Stdout
+	pager.Stderr = os.Stderr
+	pager.Run()
+}
+
 func (self *Command) ShowHelpWithCommandString(cs string) {
 	formatter := markup.New(tty.IsTerminal(os.Stdout.Fd()))
 	screen_width := 80
@@ -144,12 +152,8 @@ func (self *Command) ShowHelpWithCommandString(cs string) {
 	output_text := output.String()
 	// fmt.Printf("%#v\n", output_text)
 	if formatter.EscapeCodesAllowed() {
-		pager := exec.Command(kitty.DefaultPager[0], kitty.DefaultPager[1:]...)
-		pager.Stdin = strings.NewReader(output_text)
-		pager.Stdout = os.Stdout
-		pager.Stderr = os.Stderr
-		pager.Run()
+		ShowHelpInPager(output_text)
 	} else {
-		os.Stdout.Write([]byte(output_text))
+		os.Stdout.WriteString(output_text)
 	}
 }

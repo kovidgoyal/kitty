@@ -96,19 +96,21 @@ func shell_loop(rl *readline.Readline, kill_if_signaled bool) (int, error) {
 	return 0, nil
 }
 
-func print_basic_help() {
-	fmt.Println("Control kitty by sending it commands.")
-	fmt.Println()
-	fmt.Println(formatter.Title("Commands") + ":")
+func show_basic_help() {
+	output := strings.Builder{}
+	fmt.Fprintln(&output, "Control kitty by sending it commands.")
+	fmt.Fprintln(&output)
+	fmt.Fprintln(&output, formatter.Title("Commands")+":")
 	r := EntryPoint(cli.NewRootCommand())
 	for _, g := range r.SubCommandGroups {
 		for _, sc := range g.SubCommands {
-			fmt.Println(" ", formatter.Green(sc.Name))
-			fmt.Println("   ", sc.ShortDescription)
+			fmt.Fprintln(&output, " ", formatter.Green(sc.Name))
+			fmt.Fprintln(&output, "   ", sc.ShortDescription)
 		}
 	}
-	fmt.Println(" ", formatter.Green("exit"))
-	fmt.Println("   ", "Exit this shell")
+	fmt.Fprintln(&output, " ", formatter.Green("exit"))
+	fmt.Fprintln(&output, "   ", "Exit this shell")
+	cli.ShowHelpInPager(output.String())
 }
 
 func exec_command(rl *readline.Readline, cmdline string) bool {
@@ -131,7 +133,7 @@ func exec_command(rl *readline.Readline, cmdline string) bool {
 		hi.ExitCode = 0
 		defer rl.AddHistoryItem(hi)
 		if len(parsed_cmdline) == 1 {
-			print_basic_help()
+			show_basic_help()
 			return true
 		}
 		switch parsed_cmdline[1] {
