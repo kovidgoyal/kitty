@@ -4,6 +4,7 @@ package update_self
 
 import (
 	"fmt"
+	"kitty"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -12,6 +13,8 @@ import (
 	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/utils"
+
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -37,6 +40,9 @@ func update_self(version string) (err error) {
 	exe, err = filepath.EvalSymlinks(exe)
 	if err != nil {
 		return err
+	}
+	if !kitty.IsStandaloneBuild {
+		return fmt.Errorf("This is not a standalone kitty-tool executable. You must update all of kitty instead.")
 	}
 	rv := "v" + version
 	if version == "nightly" {
@@ -68,7 +74,8 @@ func update_self(version string) (err error) {
 			return err
 		}
 	}
-	return
+	fmt.Print("Updated to: ")
+	return unix.Exec(exe, []string{"kitty-tool", "--version"}, os.Environ())
 }
 
 func EntryPoint(root *cli.Command) {
