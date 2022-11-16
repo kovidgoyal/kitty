@@ -106,14 +106,22 @@ def generate_completions_for_kitty() -> None:
     # kitty +
     print('plus := k.AddSubCommand(&cli.Command{Name:"+", Group:"Entry points", ShortDescription: "Various special purpose tools and kittens"})')
 
+    # kitty +launch
     print('plus_launch := plus.AddSubCommand(&cli.Command{'
           'Name:"launch", Group:"Entry points", ShortDescription: "Launch Python scripts", ArgCompleter: complete_plus_launch})')
     print('k.AddClone("", plus_launch).Name = "+launch"')
 
+    # kitty +list-fonts
+    print('plus_list_fonts := plus.AddSubCommand(&cli.Command{'
+          'Name:"list-fonts", Group:"Entry points", ShortDescription: "List monospace fonts"})')
+    print('k.AddClone("", plus_list_fonts).Name = "+list-fonts"')
+
+    # kitty +runpy
     print('plus_runpy := plus.AddSubCommand(&cli.Command{'
           'Name: "runpy", Group:"Entry points", ArgCompleter: complete_plus_runpy, ShortDescription: "Run Python code"})')
     print('k.AddClone("", plus_runpy).Name = "+runpy"')
 
+    # kitty +open
     print('plus_open := plus.AddSubCommand(&cli.Command{'
           'Name:"open", Group:"Entry points", ArgCompleter: complete_plus_open, ShortDescription: "Open files and URLs"})')
     print('for _, og := range k.OptionGroups { plus_open.OptionGroups = append(plus_open.OptionGroups, og.Clone(plus_open)) }')
