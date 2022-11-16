@@ -333,6 +333,8 @@ func (self *Loop) run() (err error) {
 					return err
 				}
 			}
+		case rwerr := <-err_channel:
+			return fmt.Errorf("Failed doing I/O with terminal: %w", rwerr)
 		case s := <-signal_channel:
 			err = self.on_signal(s.(unix.Signal))
 			if err != nil {
@@ -340,7 +342,12 @@ func (self *Loop) run() (err error) {
 			}
 		case input_data, more := <-tty_read_channel:
 			if !more {
-				return io.EOF
+				select {
+				case rwerr := <-err_channel:
+					return fmt.Errorf("Failed to read from terminal: %w", rwerr)
+				default:
+					return fmt.Errorf("Failed to read from terminal: %w", io.EOF)
+				}
 			}
 			err := self.dispatch_input_data(input_data)
 			if err != nil {
