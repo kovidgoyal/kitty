@@ -163,8 +163,6 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty +kitten hyperlinked_grep ', is_delegate(2, 'rg'))
 
     add('clone-in-kitty --ty', has_words('--type'))
-    make_file('editable.txt')
-    add('edit-in-kitty ', has_words('editable.txt'))
 
     add('kitty bash ', is_delegate(1, 'bash'))
     add('kitty -1 bash ', is_delegate(2, 'bash'))

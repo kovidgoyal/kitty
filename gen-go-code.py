@@ -144,9 +144,7 @@ def generate_completions_for_kitty() -> None:
 
     # clone-in-kitty, edit-in-kitty
     print('cik := root.AddSubCommand(&cli.Command{Name:"clone-in-kitty"})')
-    print('eik := root.AddSubCommand(&cli.Command{Name:"edit-in-kitty"})')
-    completion_for_launch_wrappers('cik', 'eik')
-    print(''.join(CompletionSpec.from_string('type:file mime:text/* group:"Text files"').as_go_code('eik.ArgCompleter', ' = ')))
+    completion_for_launch_wrappers('cik')
 
     print('}')
     print('func init() {')

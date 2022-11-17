@@ -209,6 +209,7 @@ _ksi_main() {
         _ksi_prompt[ps0]+="\[\e]133;C\a\]"
     fi
 
+    alias edit-in-kitty="kitty-tool edit-in-kitty"
     if [[ "${_ksi_prompt[complete]}" == "y" ]]; then
         _ksi_completions() {
             builtin local src
@@ -346,82 +347,6 @@ clone-in-kitty() {
     _ksi_transmit_data "$data" "clone" "save_history"
 }
 
-edit-in-kitty() {
-    builtin local data=""
-    builtin local ed_filename=""
-    builtin local usage="Usage: edit-in-kitty [OPTIONS] FILE"
-    data="cwd=$(builtin printf "%s" "$PWD" | builtin command base64)"
-    while :; do
-        case "$1" in
-            "") break;;
-            -h|--help)
-                builtin printf "%s\n\n%s\n\n%s\n" "$usage" "Edit the specified file in a kitty overlay window. Works over SSH as well." "For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#edit-file"
-                return
-                ;;
-            *) data="$data,a=$(builtin printf "%s" "$1" | builtin command base64)"; ed_filename="$1";;
-        esac
-        shift
-    done
-    [ -z "$ed_filename" ] && {
-        builtin echo "$usage" > /dev/stderr
-        return 1
-    }
-    [ -r "$ed_filename" -a -w "$ed_filename" ] || {
-        builtin echo "$ed_filename is not readable and writable" > /dev/stderr
-        return 1
-    }
-    [ ! -f "$ed_filename" ] && {
-        builtin echo "$ed_filename is not a file" > /dev/stderr
-        return 1
-    }
-    builtin local stat_result=""
-    stat_result=$(builtin command stat -L --format '%d:%i:%s' "$ed_filename" 2> /dev/null)
-    [ $? != 0 ] && stat_result=$(builtin command stat -L -f '%d:%i:%z' "$ed_filename" 2> /dev/null)
-    [ -z "$stat_result" ] && { builtin echo "Failed to stat the file: $ed_filename" > /dev/stderr; return 1; }
-    data="$data,file_inode=$stat_result"
-    builtin local file_size=$(builtin echo "$stat_result" | builtin command cut -d: -f3)
-    [ "$file_size" -gt $((8 * 1024 * 1024)) ] && { builtin echo "File is too large for performant editing"; return 1; }
-    data="$data,file_data=$(builtin command base64 < "$ed_filename")"
-    _ksi_transmit_data "$data" "edit"
-    data=""
-    builtin echo "Waiting for editing to be completed..."
-    _ksi_wait_for_complete() {
-        builtin local started="n"
-        builtin local line=""
-        builtin local old_tty_settings=$(builtin command stty -g)
-        builtin command stty "-echo"
-        builtin trap -- "builtin command stty '$old_tty_settings'" RETURN
-        builtin trap -- "builtin command stty '$old_tty_settings'; _ksi_transmit_data 'abort_signaled=interrupt' 'edit'; builtin exit 1;" SIGINT SIGTERM
-        while :; do
-            started="n"
-            while IFS= builtin read -r line; do
-                if [ "$started" = "y" ]; then
-                    [ "$line" = "UPDATE" ] && break
-                    [ "$line" = "DONE" ] && { started="done"; break; }
-                    builtin printf "%s\n" "$line" > /dev/stderr
-                    return 1
-                else
-                    [ "$line" = "KITTY_DATA_START" ] && started="y"
-                fi
-            done
-            [ "$started" = "n" ] && continue
-            data=""
-            while IFS= builtin read -r line; do
-                [ "$line" = "KITTY_DATA_END" ] && break
-                data="$data$line"
-            done
-            [ -n "$data" -a "$started" != "done" ] && {
-                builtin echo "Updating $ed_filename..."
-                builtin printf "%s" "$data" | builtin command base64 -d > "$ed_filename"
-            }
-            [ "$started" = "done" ] && break
-        done
-    }
-    $(_ksi_wait_for_complete > /dev/tty)
-    builtin local rc=$?
-    builtin unset -f _ksi_wait_for_complete
-    return $rc
-}
       ;;
 esac
 

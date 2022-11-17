@@ -106,7 +106,6 @@ _ksi_deferred_init() {
             builtin unset "functions[_kitty]"
             builtin autoload -Uz -- $comp_dir/_kitty
             compdef _kitty kitty
-            compdef _kitty edit-in-kitty
             compdef _kitty clone-in-kitty
             compdef _kitty kitty-tool
         fi
@@ -383,6 +382,8 @@ _ksi_deferred_init() {
     fi
     builtin unset KITTY_IS_CLONE_LAUNCH KITTY_CLONE_SOURCE_STRATEGIES
 
+    alias edit-in-kitty="kitty-tool edit-in-kitty"
+
     # Unfunction _ksi_deferred_init to save memory. Don't unfunction
     # kitty-integration though because decent public functions aren't supposed to
     # to unfunction themselves when invoked. Unfunctioning is done by calling code.
@@ -427,74 +428,4 @@ clone-in-kitty() {
     done
     data="$data,env=$(builtin printf "%s" "$env" | builtin command base64)"
     _ksi_transmit_data "$data" "clone" "save_history"
-}
-
-edit-in-kitty() {
-    builtin local data=""
-    builtin local ed_filename=""
-    builtin local usage="Usage: edit-in-kitty [OPTIONS] FILE"
-    data="cwd=$(builtin printf "%s" "$PWD" | builtin command base64)"
-    while :; do
-        case "$1" in
-            "") break;;
-            -h|--help)
-                builtin printf "%s\n\n%s\n\n%s\n" "$usage" "Edit the specified file in a kitty overlay window. Works over SSH as well." "For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#edit-file"
-                return
-                ;;
-            *) data="$data,a=$(builtin printf "%s" "$1" | builtin command base64)"; ed_filename="$1";;
-        esac
-        shift
-    done
-    [ -z "$ed_filename" ] && {
-        builtin echo "$usage" > /dev/stderr
-        return 1
-    }
-    [ -r "$ed_filename" -a -w "$ed_filename" ] || {
-        builtin echo "$ed_filename is not readable and writable" > /dev/stderr
-        return 1
-    }
-    [ ! -f "$ed_filename" ] && {
-        builtin echo "$ed_filename is not a file" > /dev/stderr
-        return 1
-    }
-    builtin zmodload -F zsh/stat b:zstat
-    builtin typeset -A stat_result
-    builtin zstat -H stat_result "$ed_filename" || { builtin echo "Failed to stat the file: $ed_filename" > /dev/stderr; return 1; }
-    [ "${stat_result[size]}" -gt $((8 * 1024 * 1024)) ] && { builtin echo "File is too large for performant editing"; return 1; }
-    data="$data,file_inode=${stat_result[device]}:${stat_result[inode]}:${stat_result[size]}"
-    data="$data,file_data=$(builtin command base64 < "$ed_filename")"
-    _ksi_transmit_data "$data" "edit"
-    data=""
-    builtin echo "Waiting for editing to be completed..."
-    builtin local started="n"
-    builtin local line=""
-    builtin set -o localoptions -o localtraps
-    builtin local old_tty_settings=$(builtin command stty -g)
-    builtin command stty "-echo"
-    builtin trap "builtin command stty '$old_tty_settings'" EXIT
-    builtin trap "builtin command stty '$old_tty_settings'; _ksi_transmit_data 'abort_signaled=interrupt' 'edit'; return 1;" INT TERM
-    while :; do
-        started="n"
-        while IFS= builtin read -r line; do
-            if [ "$started" = "y" ]; then
-                [ "$line" = "UPDATE" ] && break;
-                [ "$line" = "DONE" ] && { started="done"; break; }
-                builtin printf "%s\n" "$line" > /dev/stderr
-                return 1
-            else
-                [ "$line" = "KITTY_DATA_START" ] && started="y"
-            fi
-        done
-        [ "$started" = "n" ] && continue
-        data=""
-        while IFS= builtin read -r line; do
-            [ "$line" = "KITTY_DATA_END" ] && break
-            data="$data$line"
-        done
-        [ -n "$data" -a "$started" != "done" ] && {
-            builtin echo "Updating $ed_filename..."
-            builtin printf "%s" "$data" | builtin command base64 -d > "$ed_filename"
-        }
-        [ "$started" = "done" ] && break
-    done
 }

@@ -47,6 +47,8 @@ Detailed list of changes
 
 - Allow using the cwd of the original process for :option:`launch --cwd` (:iss:`5672`)
 
+- Implement :ref:`edit-in-kitty <edit_file>` using the new ``kitty-tool`` static executable (:iss:`5546`, :iss:`5630`)
+
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
