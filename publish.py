@@ -301,9 +301,19 @@ class GitHub(Base):  # {{{
                 r = self.requests.delete(asset_url.format(existing_assets[fname]))
                 if r.status_code not in (204, 404):
                     self.fail(r, f'Failed to delete {fname} from GitHub')
-            r = self.do_upload(upload_url, path, desc, fname)
-            if r.status_code != 201:
-                self.fail(r, f'Failed to upload file: {fname}')
+            num_tries = 4
+            for i in range(1, num_tries+1):
+                try:
+                    r = self.do_upload(upload_url, path, desc, fname)
+                except Exception:
+                    if i >= num_tries:
+                        raise
+                else:
+                    if r.status_code == 201:
+                        break
+                    if i >= num_tries:
+                        self.fail(r, f'Failed to upload file: {fname}')
+                time.sleep(1)
             self.patch(asset_url.format(r.json()['id']), f'Failed to set label for {fname}', name=fname, label=desc)
 
     def clean_older_releases(self, releases: Iterable[Dict[str, Any]]) -> None:
