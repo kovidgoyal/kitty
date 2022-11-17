@@ -268,11 +268,12 @@ class Option:
             return ans
         mopts = [self] + option_group
         a('.. opt:: ' + ', '.join(f'{conf_name}.{mo.name}' for mo in mopts))
-        a('.. code-block:: conf')
-        a('')
-        sz = max(len(x.name) for x in mopts)
-        for mo in mopts:
-            a(('    {:%ds} {}' % sz).format(mo.name, mo.defval_as_string))
+        if any(mo.defval_as_string for mo in mopts):
+            a('.. code-block:: conf')
+            a('')
+            sz = max(len(x.name) for x in mopts)
+            for mo in mopts:
+                a(('    {:%ds} {}' % sz).format(mo.name, mo.defval_as_string))
         a('')
         if self.long_text:
             a(expand_opt_references(conf_name, self.long_text))
@@ -330,11 +331,12 @@ class MultiOption:
         ans: List[str] = []
         a = ans.append
         a(f'.. opt:: {conf_name}.{self.name}')
-        a('.. code-block:: conf')
-        a('')
-        for k in self.items:
-            if k.documented:
-                a(f'    {self.name:s} {k.defval_as_str}'.rstrip())
+        if any(k.defval_as_str for k in self.items):
+            a('.. code-block:: conf')
+            a('')
+            for k in self.items:
+                if k.documented:
+                    a(f'    {self.name:s} {k.defval_as_str}'.rstrip())
         a('')
         if self.long_text:
             a(expand_opt_references(conf_name, self.long_text))
