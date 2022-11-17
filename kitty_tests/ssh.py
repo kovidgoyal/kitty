@@ -237,7 +237,7 @@ copy --exclude */w.* d1
                         pty = self.check_bootstrap(sh, tdir, ok_login_shell, val)
                         num_lines = len(pty.screen_contents().splitlines())
                         pty.send_cmd_to_child('echo "$TERM=fruity"')
-                        pty.wait_till(lambda: 'kitty=fruity' in pty.screen_contents())
+                        pty.wait_till(lambda: 'kitty=fruity' in pty.screen_contents(), timeout=30)
                         pty.wait_till(lambda: len(pty.screen_contents().splitlines()) >= num_lines + 2)
                         self.assertEqual(pty.screen.cursor.shape, 0)
                         self.assertNotIn(b'\x1b]133;', pty.received_bytes)
