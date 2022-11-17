@@ -8,7 +8,7 @@ import subprocess
 import sys
 from contextlib import contextmanager, suppress
 from functools import lru_cache
-from typing import Dict, Iterator, List, Set, Tuple, Union
+from typing import Dict, Iterator, List, Set, Tuple, Union, Sequence
 
 import kitty.constants as kc
 from kittens.tui.operations import Mode
@@ -74,14 +74,21 @@ def generate_kittens_completion() -> None:
             print(f'{kn}.HelpText = ""')
 
 
-def completion_for_launch_wrappers(*names: str) -> None:
+@lru_cache
+def clone_safe_launch_opts() -> Sequence[GoOption]:
     from kitty.launch import clone_safe_opts, options_spec
-    opts = tuple(go_options_for_seq(parse_option_spec(options_spec())[0]))
+    ans = []
     allowed = clone_safe_opts()
-    for o in opts:
+    for o in go_options_for_seq(parse_option_spec(options_spec())[0]):
         if o.obj_dict['name'] in allowed:
-            for name in names:
-                print(o.as_option(name))
+            ans.append(o)
+    return tuple(ans)
+
+
+def completion_for_launch_wrappers(*names: str) -> None:
+    for o in clone_safe_launch_opts():
+        for name in names:
+            print(o.as_option(name))
 
 
 def generate_completions_for_kitty() -> None:
@@ -391,6 +398,14 @@ def update_completion() -> None:
         with replace_if_needed('tools/cmd/completion/kitty_generated.go') as f:
             sys.stdout = f
             generate_completions_for_kitty()
+        with replace_if_needed('tools/cmd/edit_in_kitty/launch_generated.go') as f:
+            sys.stdout = f
+            print('package edit_in_kitty')
+            print('import "kitty/tools/cli"')
+            print('func AddCloneSafeOpts(cmd *cli.Command) {')
+            completion_for_launch_wrappers('cmd')
+            print(''.join(CompletionSpec.from_string('type:file mime:text/* group:"Text files"').as_go_code('cmd.ArgCompleter', ' = ')))
+            print('}')
     finally:
         sys.stdout = orig
 

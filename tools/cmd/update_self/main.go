@@ -78,7 +78,7 @@ func update_self(version string) (err error) {
 	return unix.Exec(exe, []string{"kitty-tool", "--version"}, os.Environ())
 }
 
-func EntryPoint(root *cli.Command) {
+func EntryPoint(root *cli.Command) *cli.Command {
 	sc := root.AddSubCommand(&cli.Command{
 		Name:             "update-self",
 		Usage:            "update-self [options ...]",
@@ -101,4 +101,5 @@ func EntryPoint(root *cli.Command) {
 		Default: "latest",
 		Help:    "The version to fetch. The special words :code:`latest` and :code:`nightly` fetch the latest stable and nightly release respectively. Other values can be, for example: 0.27.1.",
 	})
+	return sc
 }

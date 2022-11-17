@@ -672,9 +672,10 @@ class EditCmd:
         self.file_data = b''
         self.file_inode = -1, -1
         self.file_size = -1
+        self.version = 0
         self.source_window_id = self.editor_window_id = -1
         self.abort_signaled = ''
-        simple = 'file_inode', 'file_data', 'abort_signaled'
+        simple = 'file_inode', 'file_data', 'abort_signaled', 'version'
         for k, v in parse_message(msg, simple):
             if k == 'file_inode':
                 q = map(int, v.split(':'))
@@ -685,10 +686,14 @@ class EditCmd:
             elif k == 'file_data':
                 import base64
                 self.file_data = base64.standard_b64decode(v)
+            elif k == 'version':
+                self.version = int(v)
             else:
                 setattr(self, k, v)
         if self.abort_signaled:
             return
+        if self.version > 0:
+            raise ValueError(f'Unsupported version received in edit protocol: {self.version}')
         self.opts, extra_args = parse_opts_for_clone(['--type=overlay'] + self.args)
         self.file_spec = extra_args.pop()
         self.line_number = 0

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"kitty/tools/cli"
 	"kitty/tools/cmd/at"
+	"kitty/tools/cmd/edit_in_kitty"
 	"kitty/tools/cmd/update_self"
 )
 
@@ -18,4 +19,6 @@ func KittyToolEntryPoints(root *cli.Command) {
 	at.EntryPoint(root)
 	// update-self
 	update_self.EntryPoint(root)
+	// edit-in-kitty
+	edit_in_kitty.EntryPoint(root)
 }
