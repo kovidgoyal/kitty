@@ -279,6 +279,7 @@ class GitHub(Base):  # {{{
         )
 
     def __call__(self) -> None:
+        # See https://docs.github.com/en/rest/releases/assets#upload-a-release-asset
         # self.clean_older_releases(releases)
         release = self.create_release()
         upload_url = release['upload_url'].partition('{')[0]
@@ -313,8 +314,12 @@ class GitHub(Base):  # {{{
                         break
                     if i >= num_tries:
                         self.fail(r, f'Failed to upload file: {fname}')
+                    self.print_failed_response_details(r, 'Failed to upload retrying in a short while...')
+                    if r.status_code == 502:
+                        dr = self.requests.delete(asset_url.format(r.json()['id']))
+                        if r.status_code not in (204, 404):
+                            self.fail(dr, 'Failed to delete partial upload')
                 time.sleep(1)
-            self.patch(asset_url.format(r.json()['id']), f'Failed to set label for {fname}', name=fname, label=desc)
 
     def clean_older_releases(self, releases: Iterable[Dict[str, Any]]) -> None:
         for release in releases:
@@ -338,13 +343,16 @@ class GitHub(Base):  # {{{
                     'Content-Type': mime_type,
                     'Content-Length': str(f._total)
                 },
-                params={'name': fname},
+                params={'name': fname, 'label': desc},
                 data=cast(IO[bytes], f))
 
-    def fail(self, r: requests.Response, msg: str) -> None:
+    def print_failed_response_details(self, r: requests.Response, msg: str) -> None:
         print(msg, f' Status Code: {r.status_code}', file=sys.stderr)
         print('JSON from response:', file=sys.stderr)
         pprint.pprint(dict(r.json()), stream=sys.stderr)
+
+    def fail(self, r: requests.Response, msg: str) -> None:
+        self.print_failed_response_details(r, msg)
         raise SystemExit(1)
 
     def already_exists(self, r: requests.Response) -> bool:
