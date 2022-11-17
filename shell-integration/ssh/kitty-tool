@@ -83,12 +83,12 @@ url="https://github.com/kovidgoyal/kitty/releases/download/$release_version/kitt
 printf "\033[33mkitty-tool needs to be installed\033[m\n\n"
 command mkdir -p "$install_dir"
 printf "Downloading kitty-tool from: \033[32m%s\033[m\n\n" "$url"
-download_dest="$(mktemp "$kitty_exe.XXXXXXXXXX")"
+download_dest="$(command mktemp "$kitty_exe.XXXXXXXXXX")"
 fetch "$url" > "$download_dest" || {
-    rm -f "$download_dest"
+    command rm -f "$download_dest"
     die "Failed to download kitty-tool"
 }
-chmod 755 "$download_dest"
-mv "$download_dest" "$kitty_exe"
+command chmod 755 "$download_dest"
+command mv "$download_dest" "$kitty_exe"
 command "$kitty_exe" --version | cut -d" " -f2 > "$local_kitty_version_file"
 exec_kitty "$@"
