@@ -45,7 +45,7 @@ def get_data(fname: str, folder: str = 'UCD') -> Iterable[str]:
             yield line
 
 
-def unicode_version():
+def unicode_version() -> Tuple[int, int, int]:
     for line in get_data("ReadMe.txt"):
         m = re.search(r'Version\s+(\d+)\.(\d+)\.(\d+)', line)
         if m is not None:
