@@ -235,6 +235,10 @@ class Tab:  # {{{
         w = self.active_window
         return w.get_cwd_of_child(oldest) if w else None
 
+    def get_exe_of_active_window(self, oldest: bool = False) -> Optional[str]:
+        w = self.active_window
+        return w.get_exe_of_child(oldest) if w else None
+
     def set_title(self, title: str) -> None:
         self.name = title or ''
         self.mark_tab_bar_dirty()

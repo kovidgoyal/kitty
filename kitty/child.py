@@ -444,6 +444,15 @@ class Child:
                 return cwd_of_process(pid) or None
         return None
 
+    def get_foreground_exe(self, oldest: bool = False) -> Optional[str]:
+        with suppress(Exception):
+            pid = self.get_pid_for_cwd(oldest)
+            if pid is not None:
+                c = cmdline_of_pid(pid)
+                if c:
+                    return c[0]
+        return None
+
     @property
     def foreground_cwd(self) -> Optional[str]:
         return self.get_foreground_cwd()

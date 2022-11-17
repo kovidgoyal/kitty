@@ -1391,6 +1391,9 @@ class Window:
     def get_cwd_of_root_child(self) -> Optional[str]:
         return self.child.current_cwd
 
+    def get_exe_of_child(self, oldest: bool = False) -> str:
+        return self.child.get_foreground_exe(oldest) or self.child.argv[0]
+
     @property
     def cwd_of_child(self) -> Optional[str]:
         return self.get_cwd_of_child()

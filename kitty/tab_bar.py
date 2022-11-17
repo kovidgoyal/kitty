@@ -188,6 +188,21 @@ class TabAccessor:
         tab = get_boss().tab_for_id(self.tab_id)
         return (tab.get_cwd_of_active_window() if tab else '') or ''
 
+    @property
+    def active_oldest_wd(self) -> str:
+        tab = get_boss().tab_for_id(self.tab_id)
+        return (tab.get_cwd_of_active_window(oldest=True) if tab else '') or ''
+
+    @property
+    def active_exe(self) -> str:
+        tab = get_boss().tab_for_id(self.tab_id)
+        return os.path.basename((tab.get_exe_of_active_window() if tab else '') or '')
+
+    @property
+    def active_oldest_exe(self) -> str:
+        tab = get_boss().tab_for_id(self.tab_id)
+        return os.path.basename((tab.get_exe_of_active_window(oldest=True) if tab else '') or '')
+
 
 safe_builtins = {
     'max': max, 'min': min, 'str': str, 'repr': repr, 'abs': abs, 'len': len, 're': re,
