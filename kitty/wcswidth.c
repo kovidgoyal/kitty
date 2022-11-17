@@ -142,3 +142,8 @@ wcswidth_std(PyObject UNUSED *self, PyObject *str) {
     }
     return PyLong_FromSize_t(ans);
 }
+
+PyObject*
+unicode_database_version(PyObject *self UNUSED, PyObject *args UNUSED) {
+    return Py_BuildValue("iii", UNICODE_MAJOR_VERSION, UNICODE_MINOR_VERSION, UNICODE_PATCH_VERSION);
+}

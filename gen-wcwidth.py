@@ -45,6 +45,14 @@ def get_data(fname: str, folder: str = 'UCD') -> Iterable[str]:
             yield line
 
 
+def unicode_version():
+    for line in get_data("ReadMe.txt"):
+        m = re.search(r'Version\s+(\d+)\.(\d+)\.(\d+)', line)
+        if m is not None:
+            return int(m.group(1)), int(m.group(2)), int(m.group(3))
+    raise ValueError('Could not find Unicode Version')
+
+
 # Map of class names to set of codepoints in class
 class_maps: Dict[str, Set[int]] = {}
 all_symbols: Set[int] = set()
@@ -586,6 +594,11 @@ def gen_wcwidth() -> None:
         gop('\t}')
         p('\treturn true;\n}')
         gop('\n}')
+        uv = unicode_version()
+        p(f'#define UNICODE_MAJOR_VERSION {uv[0]}')
+        p(f'#define UNICODE_MINOR_VERSION {uv[1]}')
+        p(f'#define UNICODE_PATCH_VERSION {uv[2]}')
+        gop('var UnicodeDatabaseVersion [3]int = [3]int{' f'{uv[0]}, {uv[1]}, {uv[2]}' + '}')
     subprocess.check_call(['gofmt', '-w', '-s', gof.name])
 
 

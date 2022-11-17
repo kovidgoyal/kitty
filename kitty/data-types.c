@@ -221,6 +221,7 @@ static PyMethodDef module_methods[] = {
     {"get_docs_ref_map", (PyCFunction)get_docs_ref_map, METH_NOARGS, ""},
     {"getpeereid", (PyCFunction)py_getpeereid, METH_VARARGS, ""},
     {"wcswidth", (PyCFunction)wcswidth_std, METH_O, ""},
+    {"unicode_database_version", (PyCFunction)unicode_database_version, METH_NOARGS, ""},
     {"open_tty", open_tty, METH_VARARGS, ""},
     {"normal_tty", normal_tty, METH_VARARGS, ""},
     {"raw_tty", raw_tty, METH_VARARGS, ""},

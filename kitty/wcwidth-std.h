@@ -1,4 +1,4 @@
-// unicode data, built from the unicode standard on: 2022-09-30
+// unicode data, built from the unicode standard on: 2022-11-17
 // see gen-wcwidth.py
 #pragma once
 #include "data-types.h"
@@ -3250,5 +3250,8 @@ is_emoji_presentation_base(uint32_t code) {
 	}
 	return true;
 }
+#define UNICODE_MAJOR_VERSION 15
+#define UNICODE_MINOR_VERSION 0
+#define UNICODE_PATCH_VERSION 0
 
 END_ALLOW_CASE_RANGE
