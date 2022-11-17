@@ -331,11 +331,21 @@ class MultiOption:
         ans: List[str] = []
         a = ans.append
         a(f'.. opt:: {conf_name}.{self.name}')
-        if any(k.defval_as_str for k in self.items):
-            a('.. code-block:: conf')
-            a('')
-            for k in self.items:
-                if k.documented:
+        documented = tuple(x for x in self.items if x.documented)
+        if any(k.defval_as_str for k in documented):
+            defaults = tuple(x for x in documented if x.add_to_default)
+            if defaults:
+                a('.. code-block:: conf')
+                a('')
+                for k in defaults:
+                    a(f'    {self.name:s} {k.defval_as_str}'.rstrip())
+            else:
+                a('')
+                a('Has no default values. Example values are shown below:')
+                a('')
+                a('.. code-block:: conf')
+                a('')
+                for k in self.items:
                     a(f'    {self.name:s} {k.defval_as_str}'.rstrip())
         a('')
         if self.long_text:
