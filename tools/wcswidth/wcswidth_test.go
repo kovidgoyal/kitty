@@ -61,6 +61,8 @@ func TestWCSWidth(t *testing.T) {
 	truncate("a🌷\ufe0e", 2, "a🌷\ufe0e", 2)
 	truncate("a🌷\ufe0eb", 3, "a🌷\ufe0eb", 3)
 	truncate("a\x1b[31mb", 2, "a\x1b[31mb", 2)
+	truncate("a\x1b[7bb", 2, "a", 1)
+	truncate("a\x1b[3bbc", 5, "a\x1b[3bb", 5)
 }
 
 func TestCellIterator(t *testing.T) {

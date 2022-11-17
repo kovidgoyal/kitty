@@ -5,6 +5,8 @@ package wcswidth
 import (
 	"errors"
 	"fmt"
+	"strconv"
+
 	"kitty/tools/utils"
 )
 
@@ -25,8 +27,21 @@ type truncate_iterator struct {
 	limit_exceeded_at *truncate_error
 }
 
-func (self *truncate_iterator) handle_csi(body []byte) error {
-	self.pos += len(body) + 2
+func (self *truncate_iterator) handle_csi(csi []byte) error {
+	if len(csi) > 1 && csi[len(csi)-1] == 'b' { // repeat previous char escape code
+		num_string := utils.UnsafeBytesToString(csi[:len(csi)-1])
+		n, err := strconv.Atoi(num_string)
+		if err == nil && n > 0 {
+			width_before_repeat := self.w.current_width
+			for ; n > 0; n-- {
+				self.w.handle_rune(self.w.prev_ch)
+				if self.w.current_width > self.limit {
+					return &truncate_error{pos: self.pos, width: width_before_repeat}
+				}
+			}
+		}
+	}
+	self.pos += len(csi) + 2
 	return nil
 }
 
