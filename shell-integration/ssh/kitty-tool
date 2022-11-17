@@ -72,7 +72,13 @@ release_version=$(fetch_quiet "https://sw.kovidgoyal.net/kitty/current-version.t
     die "Could not get kitty latest release version"
 }
 
-url="https://github.com/kovidgoyal/kitty/releases/download/v$release_version/kitty-tool-$OS-$arch"
+release_version="v$release_version"
+# no kitty-tool available till 0.27.0
+case "$release_version" in
+    v0.26.*) release_version="nightly";;
+esac
+
+url="https://github.com/kovidgoyal/kitty/releases/download/$release_version/kitty-tool-$OS-$arch"
 
 printf "\033[33mkitty-tool needs to be installed\033[m\n\n"
 command mkdir -p "$install_dir"
