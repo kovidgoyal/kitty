@@ -448,9 +448,9 @@ func (self *wrapper) handle_osc(raw []byte) error {
 	return nil
 }
 
-func (self *wrapper) wrap_text(text string) string {
+func (self *wrapper) wrap_text(text string) []string {
 	if text == "" {
-		return text
+		return []string{""}
 	}
 	self.current_line.reset()
 	self.current_word.reset()
@@ -467,7 +467,7 @@ func (self *wrapper) wrap_text(text string) string {
 		last_line = ""
 	}
 	self.append_line(last_line)
-	return strings.Join(self.lines, "\n")
+	return self.lines
 }
 
 func new_wrapper(indent string, width int) *wrapper {
@@ -480,8 +480,12 @@ func new_wrapper(indent string, width int) *wrapper {
 	return &ans
 }
 
-func WrapText(text string, indent string, width int, ignore_lines_containing ...string) string {
+func WrapTextAsLines(text string, indent string, width int, ignore_lines_containing ...string) []string {
 	w := new_wrapper(indent, width)
 	w.ignore_lines_containing = ignore_lines_containing
 	return w.wrap_text(text)
+}
+
+func WrapText(text string, indent string, width int, ignore_lines_containing ...string) string {
+	return strings.Join(WrapTextAsLines(text, indent, width, ignore_lines_containing...), "\n")
 }
