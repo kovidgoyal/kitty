@@ -347,9 +347,14 @@ class GitHub(Base):  # {{{
                 data=cast(IO[bytes], f))
 
     def print_failed_response_details(self, r: requests.Response, msg: str) -> None:
-        print(msg, f' Status Code: {r.status_code}', file=sys.stderr)
-        print('JSON from response:', file=sys.stderr)
-        pprint.pprint(dict(r.json()), stream=sys.stderr)
+        print(msg, f' Status Code: {r.status_code} {r.reason}', file=sys.stderr)
+        try:
+            jr = dict(r.json())
+        except Exception:
+            pass
+        else:
+            print('JSON from response:', file=sys.stderr)
+            pprint.pprint(jr, stream=sys.stderr)
 
     def fail(self, r: requests.Response, msg: str) -> None:
         self.print_failed_response_details(r, msg)
