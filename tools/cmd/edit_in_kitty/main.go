@@ -164,7 +164,7 @@ func edit_loop(data_to_send string, kill_if_signaled bool, on_data OnDataCallbac
 	return
 }
 
-func edit_in_kitty(path string) (err error) {
+func edit_in_kitty(path string, opts *Options) (err error) {
 	read_file, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("Failed to open %s for reading with error: %w", path, err)
@@ -175,7 +175,7 @@ func edit_in_kitty(path string) (err error) {
 	if err != nil {
 		return fmt.Errorf("Failed to stat %s with error: %w", path, err)
 	}
-	if s.Size > 8*1024*1024 {
+	if s.Size > int64(opts.MaxFileSize)*1024*1024 {
 		return fmt.Errorf("File size %s is too large for performant editing", humanize.Bytes(uint64(s.Size)))
 	}
 
@@ -228,6 +228,10 @@ func edit_in_kitty(path string) (err error) {
 	return
 }
 
+type Options struct {
+	MaxFileSize int
+}
+
 func EntryPoint(parent *cli.Command) *cli.Command {
 	sc := parent.AddSubCommand(&cli.Command{
 		Name:             "edit-in-kitty",
@@ -244,10 +248,21 @@ func EntryPoint(parent *cli.Command) *cli.Command {
 				fmt.Fprintln(os.Stderr, "Usage:", cmd.Usage)
 				return 1, fmt.Errorf("Only one file to edit must be specified")
 			}
-			err = edit_in_kitty(args[0])
+			var opts Options
+			err = cmd.GetOptionValues(&opts)
+			if err != nil {
+				return 1, err
+			}
+			err = edit_in_kitty(args[0], &opts)
 			return 0, err
 		},
 	})
 	AddCloneSafeOpts(sc)
+	sc.Add(cli.OptionSpec{
+		Name:    "--max-file-size",
+		Default: "8",
+		Type:    "int",
+		Help:    "The maximum allowed size (in MB) of files to edit. Since the file data has to be base64 encoded and transmitted over the tty device, overly large files will not perform well.",
+	})
 	return sc
 }
