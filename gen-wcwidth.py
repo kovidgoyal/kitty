@@ -7,7 +7,6 @@ import subprocess
 import sys
 from collections import defaultdict
 from contextlib import contextmanager
-from datetime import date
 from functools import partial
 from html.entities import html5
 from itertools import groupby
