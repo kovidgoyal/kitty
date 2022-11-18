@@ -7,14 +7,13 @@ import subprocess
 import sys
 from collections import defaultdict
 from contextlib import contextmanager
-from datetime import date
-from functools import partial
+from functools import lru_cache, partial
 from html.entities import html5
 from itertools import groupby
 from operator import itemgetter
 from typing import (
-    Callable, DefaultDict, Dict, FrozenSet, Generator, Iterable, List,
-    Optional, Set, Tuple, Union
+    Callable, DefaultDict, Dict, FrozenSet, Generator, Iterable, List, Optional, Set,
+    Tuple, Union,
 )
 from urllib.request import urlopen
 
@@ -45,6 +44,7 @@ def get_data(fname: str, folder: str = 'UCD') -> Iterable[str]:
             yield line
 
 
+@lru_cache(maxsize=2)
 def unicode_version() -> Tuple[int, int, int]:
     for line in get_data("ReadMe.txt"):
         m = re.search(r'Version\s+(\d+)\.(\d+)\.(\d+)', line)
