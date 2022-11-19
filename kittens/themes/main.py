@@ -180,7 +180,7 @@ class ThemesHandler(Handler):
         self.cmd.save_colors()
         self.cmd.set_line_wrapping(False)
         self.cmd.set_window_title('Choose a theme for kitty')
-        self.cmd.set_cursor_shape('bar')
+        self.cmd.set_cursor_shape('beam')
 
     def initialize(self) -> None:
         self.init_terminal_state()
