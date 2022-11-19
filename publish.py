@@ -291,20 +291,14 @@ class GitHub(Base):  # {{{
             if r.status_code not in (204, 404):
                 self.fail(r, f'Failed to delete {fname} from GitHub')
 
-        if self.is_nightly:
-            for fname in existing_assets:
-                self.info(f'Deleting {fname} from GitHub with id: {existing_assets[fname]}')
-                delete_asset(existing_assets[fname])
-            self.update_nightly_description(release['id'])
-        for path, desc in self.files.items():
-            self.info('')
+        def upload_with_retries(path: str, desc: str, num_tries: int = 4, sleep_time: float = 5.0) -> None:
             fname = os.path.basename(path)
             if self.is_nightly:
                 fname = fname.replace(version, 'nightly')
             if fname in existing_assets:
                 self.info(f'Deleting {fname} from GitHub with id: {existing_assets[fname]}')
                 delete_asset(existing_assets[fname])
-            num_tries = 4
+                del existing_assets[fname]
             for i in range(1, num_tries+1):
                 try:
                     r = self.do_upload(upload_url, path, desc, fname)
@@ -323,7 +317,17 @@ class GitHub(Base):  # {{{
                     asset_id = r.json()['id']
                     self.info(f'Deleting {fname} from GitHub with id: {asset_id}')
                     delete_asset(asset_id)
-                time.sleep(5)
+                time.sleep(sleep_time)
+
+        if self.is_nightly:
+            for fname in existing_assets:
+                self.info(f'Deleting {fname} from GitHub with id: {existing_assets[fname]}')
+                delete_asset(existing_assets[fname])
+                del existing_assets[fname]
+            self.update_nightly_description(release['id'])
+        for path, desc in self.files.items():
+            self.info('')
+            upload_with_retries(path, desc)
 
     def clean_older_releases(self, releases: Iterable[Dict[str, Any]]) -> None:
         for release in releases:
