@@ -285,12 +285,16 @@ class GitHub(Base):  # {{{
         upload_url = release['upload_url'].partition('{')[0]
         asset_url = f'{self.url_base}/assets/{{}}'
         existing_assets = self.existing_assets(release['id'])
+
+        def delete_asset(asset_id: str) -> None:
+            r = self.requests.delete(asset_url.format(asset_id))
+            if r.status_code not in (204, 404):
+                self.fail(r, f'Failed to delete {fname} from GitHub')
+
         if self.is_nightly:
             for fname in existing_assets:
-                self.info(f'Deleting {fname} from GitHub')
-                r = self.requests.delete(asset_url.format(existing_assets[fname]))
-                if r.status_code not in (204, 404):
-                    self.fail(r, f'Failed to delete {fname} from GitHub')
+                self.info(f'Deleting {fname} from GitHub with id: {existing_assets[fname]}')
+                delete_asset(existing_assets[fname])
             self.update_nightly_description(release['id'])
         for path, desc in self.files.items():
             self.info('')
@@ -299,9 +303,7 @@ class GitHub(Base):  # {{{
                 fname = fname.replace(version, 'nightly')
             if fname in existing_assets:
                 self.info(f'Deleting {fname} from GitHub with id: {existing_assets[fname]}')
-                r = self.requests.delete(asset_url.format(existing_assets[fname]))
-                if r.status_code not in (204, 404):
-                    self.fail(r, f'Failed to delete {fname} from GitHub')
+                delete_asset(existing_assets[fname])
             num_tries = 4
             for i in range(1, num_tries+1):
                 try:
@@ -309,17 +311,19 @@ class GitHub(Base):  # {{{
                 except Exception:
                     if i >= num_tries:
                         raise
+                    import traceback
+                    traceback.print_exc()
+                    print('Failed to upload retrying in a short while...', file=sys.stderr)
                 else:
                     if r.status_code == 201:
                         break
                     if i >= num_tries:
                         self.fail(r, f'Failed to upload file: {fname}')
                     self.print_failed_response_details(r, 'Failed to upload retrying in a short while...')
-                    if r.status_code == 502:
-                        dr = self.requests.delete(asset_url.format(r.json()['id']))
-                        if r.status_code not in (204, 404):
-                            self.fail(dr, 'Failed to delete partial upload')
-                time.sleep(1)
+                    asset_id = r.json()['id']
+                    self.info(f'Deleting {fname} from GitHub with id: {asset_id}')
+                    delete_asset(asset_id)
+                time.sleep(5)
 
     def clean_older_releases(self, releases: Iterable[Dict[str, Any]]) -> None:
         for release in releases:
