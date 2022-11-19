@@ -37,7 +37,7 @@ srgb_color(uint8_t color) {
 
 void
 color_vec3(GLint location, color_type color) {
-	glUniform3f(location, srgb_lut[(color >> 16) & 0xFF], srgb_lut[(color >> 8) & 0xFF], srgb_lut[color & 0xFF]);
+    glUniform3f(location, srgb_lut[(color >> 16) & 0xFF], srgb_lut[(color >> 8) & 0xFF], srgb_lut[color & 0xFF]);
 }
 
 SPRITE_MAP_HANDLE
