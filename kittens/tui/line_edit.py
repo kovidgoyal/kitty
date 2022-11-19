@@ -53,7 +53,7 @@ class LineEdit:
             write('\r')
             if cursor_pos:
                 write(move_cursor_by(cursor_pos, 'right'))
-            write(set_cursor_shape('bar'))
+            write(set_cursor_shape('beam'))
 
     def add_text(self, text: str) -> None:
         if self.current_input:

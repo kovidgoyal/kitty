@@ -141,7 +141,7 @@ def move_cursor_by(amt: int, direction: str) -> str:
 
 @cmd
 def set_cursor_shape(shape: str = 'block', blink: bool = True) -> str:
-    val = {'block': 1, 'underline': 3, 'bar': 5}.get(shape, 1)
+    val = {'block': 1, 'underline': 3, 'beam': 5}.get(shape, 1)
     if not blink:
         val += 1
     return f'\033[{val} q'
