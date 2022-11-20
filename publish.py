@@ -255,7 +255,7 @@ class GitHub(Base):  # {{{
         self.is_nightly = self.current_tag_name == 'nightly'
         self.requests = s = requests.Session()
         s.auth = (self.username, self.password)
-        s.headers.update({'Accept': 'application/vnd.github.v3+json'})
+        s.headers.update({'Accept': 'application/vnd.github+json'})
         self.url_base = f'{self.API}/repos/{self.username}/{self.reponame}/releases'
 
     def patch(self, url: str, fail_msg: str, **data: Any) -> None:
