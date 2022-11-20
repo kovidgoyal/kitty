@@ -320,7 +320,7 @@ class GitHub(Base):  # {{{
                 time.sleep(sleep_time)
 
         if self.is_nightly:
-            for fname in existing_assets:
+            for fname in tuple(existing_assets):
                 self.info(f'Deleting {fname} from GitHub with id: {existing_assets[fname]}')
                 delete_asset(existing_assets[fname])
                 del existing_assets[fname]
