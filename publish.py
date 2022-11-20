@@ -285,6 +285,7 @@ class GitHub(Base):  # {{{
         upload_url = release['upload_url'].partition('{')[0]
         asset_url = f'{self.url_base}/assets/{{}}'
         existing_assets = self.existing_assets(release['id'])
+        original_existing_assets = existing_assets.copy()
 
         def delete_asset(asset_id: str) -> None:
             r = self.requests.delete(asset_url.format(asset_id))
@@ -317,10 +318,9 @@ class GitHub(Base):  # {{{
                     try:
                         asset_id = r.json()['id']
                     except Exception:
-                        pass
-                    else:
-                        self.info(f'Deleting {fname} from GitHub with id: {asset_id}')
-                        delete_asset(asset_id)
+                        asset_id = original_existing_assets[fname]
+                    self.info(f'Deleting {fname} from GitHub with id: {asset_id}')
+                    delete_asset(asset_id)
                 time.sleep(sleep_time)
 
         if self.is_nightly:
