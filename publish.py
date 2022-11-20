@@ -291,7 +291,7 @@ class GitHub(Base):  # {{{
             if r.status_code not in (204, 404):
                 self.fail(r, f'Failed to delete {fname} from GitHub')
 
-        def upload_with_retries(path: str, desc: str, num_tries: int = 4, sleep_time: float = 5.0) -> None:
+        def upload_with_retries(path: str, desc: str, num_tries: int = 4, sleep_time: float = 10.0) -> None:
             fname = os.path.basename(path)
             if self.is_nightly:
                 fname = fname.replace(version, 'nightly')
@@ -314,9 +314,13 @@ class GitHub(Base):  # {{{
                     if i >= num_tries:
                         self.fail(r, f'Failed to upload file: {fname}')
                     self.print_failed_response_details(r, 'Failed to upload retrying in a short while...')
-                    asset_id = r.json()['id']
-                    self.info(f'Deleting {fname} from GitHub with id: {asset_id}')
-                    delete_asset(asset_id)
+                    try:
+                        asset_id = r.json()['id']
+                    except Exception:
+                        pass
+                    else:
+                        self.info(f'Deleting {fname} from GitHub with id: {asset_id}')
+                        delete_asset(asset_id)
                 time.sleep(sleep_time)
 
         if self.is_nightly:
@@ -355,7 +359,7 @@ class GitHub(Base):  # {{{
                 data=cast(IO[bytes], f))
 
     def print_failed_response_details(self, r: requests.Response, msg: str) -> None:
-        print(msg, f' Status Code: {r.status_code} {r.reason}', file=sys.stderr)
+        print(msg, f'\nStatus Code: {r.status_code} {r.reason}', file=sys.stderr)
         try:
             jr = dict(r.json())
         except Exception:
