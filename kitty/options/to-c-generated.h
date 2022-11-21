@@ -773,6 +773,19 @@ convert_from_opts_background_tint(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_background_tint_gaps(PyObject *val, Options *opts) {
+    opts->background_tint_gaps = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_background_tint_gaps(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "background_tint_gaps");
+    if (ret == NULL) return;
+    convert_from_python_background_tint_gaps(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_dim_opacity(PyObject *val, Options *opts) {
     opts->dim_opacity = PyFloat_AsFloat(val);
 }
@@ -1125,6 +1138,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_dynamic_background_opacity(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_background_tint(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_background_tint_gaps(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_dim_opacity(py_opts, opts);
     if (PyErr_Occurred()) return false;

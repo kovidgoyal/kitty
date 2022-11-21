@@ -52,7 +52,7 @@ typedef struct {
     BackgroundImageLayout background_image_layout;
     ImageAnchorPosition window_logo_position;
     bool background_image_linear;
-    float background_tint, window_logo_alpha;
+    float background_tint, background_tint_gaps, window_logo_alpha;
 
     bool dynamic_background_opacity;
     float inactive_text_alpha;
