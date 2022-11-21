@@ -49,6 +49,9 @@ Detailed list of changes
 
 - Implement :ref:`edit-in-kitty <edit_file>` using the new ``kitty-tool`` static executable (:iss:`5546`, :iss:`5630`)
 
+- Add an option :opt:`background_tint_gaps` to control background image tinting for window gaps (:iss:`5596`)
+
+
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

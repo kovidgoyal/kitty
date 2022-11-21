@@ -980,7 +980,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         draw_bg(w);
         BLEND_ONTO_OPAQUE;
         background_opacity = 1.0f;
-        tint_opacity = OPT(background_tint);
+        tint_opacity = OPT(background_tint) * OPT(background_tint_gaps);
         tint_premult = w->is_semi_transparent ? OPT(background_tint) : 1.0f;
     }
 

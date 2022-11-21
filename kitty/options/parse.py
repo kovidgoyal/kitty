@@ -84,6 +84,9 @@ class Parser:
     def background_tint(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['background_tint'] = unit_float(val)
 
+    def background_tint_gaps(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['background_tint_gaps'] = unit_float(val)
+
     def bell_border_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['bell_border_color'] = to_color(val)
 

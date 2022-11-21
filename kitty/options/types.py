@@ -63,6 +63,7 @@ option_names = (  # {{{
  'background_image_linear',
  'background_opacity',
  'background_tint',
+ 'background_tint_gaps',
  'bell_border_color',
  'bell_on_tab',
  'bell_path',
@@ -476,6 +477,7 @@ class Options:
     background_image_linear: bool = False
     background_opacity: float = 1.0
     background_tint: float = 0
+    background_tint_gaps: float = 1.0
     bell_border_color: Color = Color(255, 90, 0)
     bell_on_tab: str = '🔔 '
     bell_path: typing.Optional[str] = None
