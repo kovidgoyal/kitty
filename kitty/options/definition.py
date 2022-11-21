@@ -1324,7 +1324,9 @@ opt('background_tint_gaps', '1.0',
     option_type='unit_float', ctype='float',
     long_text='''
 How much to tint the background image at the window gaps by the background
-color, after applying :opt:`background_tint`.
+color, after applying :opt:`background_tint`. Since this is multiplicative
+with :opt:`background_tint`, it can be used to lighten the tint over the window
+gaps for a *separated* look.
 '''
     )
 
