@@ -132,7 +132,7 @@ func (self *Completions) AddMatchGroup(title string) *MatchGroup {
 	return &ans
 }
 
-type CompletionFunc func(completions *Completions, word string, arg_num int)
+type CompletionFunc = func(completions *Completions, word string, arg_num int)
 
 func NamesCompleter(title string, names ...string) CompletionFunc {
 	return func(completions *Completions, word string, arg_num int) {

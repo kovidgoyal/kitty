@@ -244,9 +244,25 @@ func make_completer(title string, relative_to relative_to, patterns []string, f 
 	return func(completions *Completions, word string, arg_num int) {
 		q := f(word, cwd, lpats)
 		if len(q) > 0 {
+			dirs, files := make([]string, 0, len(q)), make([]string, 0, len(q))
+			for _, x := range q {
+				if strings.HasSuffix(x, "/") {
+					dirs = append(dirs, x)
+				} else {
+					files = append(files, x)
+				}
+			}
+			if len(dirs) > 0 {
+				mg := completions.AddMatchGroup("Directories")
+				mg.IsFiles = true
+				mg.NoTrailingSpace = true
+				for _, c := range dirs {
+					mg.AddMatch(c)
+				}
+			}
 			mg := completions.AddMatchGroup(title)
 			mg.IsFiles = true
-			for _, c := range q {
+			for _, c := range files {
 				mg.AddMatch(c)
 			}
 		}
