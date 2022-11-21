@@ -73,6 +73,7 @@ Detailed list of changes
 
 - Remote control: When matching window by `state:focused` and no window currently has keyboard focus, match the window belonging to the OS window that was last focused (:iss:`5602`)
 
+
 0.26.4 [2022-10-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -145,6 +146,7 @@ Detailed list of changes
   code execution if the user clicked on a notification popup from a malicious
   source. Thanks to Carter Sande for discovering this vulnerability.
 
+
 0.26.1 [2022-08-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -153,6 +155,7 @@ Detailed list of changes
 - Fix a regression in 0.26.0 that caused kitty to no longer set the ``LANG`` environment variable on macOS (:iss:`5439`)
 
 - Allow specifying a title when using the :ac:`set_tab_title` action (:iss:`5441`)
+
 
 0.26.0 [2022-08-29]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1640,6 +1643,7 @@ Detailed list of changes
 
 - Fix :option:`--title` not being applied at window creation time (:iss:`2570`)
 
+
 0.17.2 [2020-03-29]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1824,6 +1828,7 @@ Detailed list of changes
 - When windows are semi-transparent and all contain graphics, correctly render
   them. (:iss:`2310`)
 
+
 0.15.1 [2019-12-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1931,6 +1936,7 @@ Detailed list of changes
   spacing=100 (:iss:`1968`)
 
 - Use selection foreground color for underlines as well (:iss:`1982`)
+
 
 0.14.4 [2019-08-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2238,6 +2244,7 @@ Detailed list of changes
 - Mouse selection: When extending by word, fix extending selection to non-word
   characters not working well (:iss:`1616`)
 
+
 0.13.3 [2019-01-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2330,6 +2337,7 @@ Detailed list of changes
 
 - Fix resizing window smaller and then restoring causing some wrapped lines to not
   be properly unwrapped (:iss:`1206`)
+
 
 0.13.0 [2018-12-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2428,6 +2436,7 @@ Detailed list of changes
 - Fix hover detection of URLs not working when hovering over the first colon
   and slash characters in short URLs (:iss:`1201`)
 
+
 0.12.3 [2018-09-29]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2504,6 +2513,7 @@ Detailed list of changes
 - Fix using :opt:`focus_follows_mouse` causing text selection with the
   mouse to malfunction when using multiple kitty windows (:iss:`1002`)
 
+
 0.12.1 [2018-09-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2546,6 +2556,7 @@ Detailed list of changes
 
 - macOS: Diff kitten: Fix syntax highlighting not working because of
   a bug in the 0.12.0 macOS package
+
 
 0.12.0 [2018-09-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3057,6 +3068,7 @@ Detailed list of changes
 
 - Fix a crash when getting the contents of the scrollback buffer as text
 
+
 0.8.1 [2018-03-09]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -3133,6 +3145,7 @@ Detailed list of changes
 
 - Browsing the scrollback buffer now happens in an overlay window instead of a
   new window/tab.
+
 
 0.7.1 [2018-01-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
