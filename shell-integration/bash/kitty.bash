@@ -332,7 +332,8 @@ _ksi_transmit_data() {
 }
 
 clone-in-kitty() {
-    builtin local data="shell=bash,pid=$$,cwd=$(builtin printf "%s" "$PWD" | builtin command base64),envfmt=bash,env=$(builtin export | builtin command base64)"
+    builtin local bv="${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]}"
+    builtin local data="shell=bash,pid=$$,bash_version=$bv,cwd=$(builtin printf "%s" "$PWD" | builtin command base64),envfmt=bash,env=$(builtin export | builtin command base64)"
     while :; do
         case "$1" in
             "") break;;

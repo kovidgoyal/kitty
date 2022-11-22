@@ -606,39 +606,6 @@ def parse_opts_for_clone(args: List[str]) -> Tuple[LaunchCLIOptions, List[str]]:
     return default_opts, unsafe_args
 
 
-def parse_bash_env(text: str) -> Dict[str, str]:
-    # See https://www.gnu.org/software/bash/manual/html_node/Double-Quotes.html
-    ans = {}
-    pos = 0
-    escapes = r'"\$`'
-    while pos < len(text):
-        idx = text.find('="', pos)
-        if idx < 0:
-            break
-        i = text.rfind(' ', 0, idx)
-        if i < 0:
-            break
-        key = text[i+1:idx]
-        pos = idx + 2
-        buf: List[str] = []
-        a = buf.append
-        while pos < len(text):
-            ch = text[pos]
-            pos += 1
-            if ch == '\\':
-                if text[pos] in escapes:
-                    a(text[pos])
-                    pos += 1
-                    continue
-                a(ch)
-            elif ch == '"':
-                break
-            else:
-                a(ch)
-        ans[key] = ''.join(buf)
-    return ans
-
-
 def parse_null_env(text: str) -> Dict[str, str]:
     ans = {}
     for line in text.split('\0'):
@@ -782,12 +749,13 @@ class CloneCmd:
         self.shell = ''
         self.envfmt = 'default'
         self.pid = -1
+        self.bash_version = ''
         self.history = ''
         self.parse_message(msg)
         self.opts = parse_opts_for_clone(self.args)[0]
 
     def parse_message(self, msg: str) -> None:
-        simple = 'pid', 'envfmt', 'shell'
+        simple = 'pid', 'envfmt', 'shell', 'bash_version'
         for k, v in parse_message(msg, simple):
             if k in simple:
                 if k == 'pid':
@@ -797,7 +765,11 @@ class CloneCmd:
             elif k == 'a':
                 self.args.append(v)
             elif k == 'env':
-                env = parse_bash_env(v) if self.envfmt == 'bash' else parse_null_env(v)
+                if self.envfmt == 'bash':
+                    from .bash import parse_bash_env
+                    env = parse_bash_env(v, self.bash_version)
+                else:
+                    env = parse_null_env(v)
                 self.env = {k: v for k, v in env.items() if k not in {
                     'HOME', 'LOGNAME', 'USER', 'PWD',
                     # some people export these. We want the shell rc files to recreate them

@@ -51,6 +51,8 @@ Detailed list of changes
 
 - Add an option :opt:`background_tint_gaps` to control background image tinting for window gaps (:iss:`5596`)
 
+- Bash integration: Fix ``clone-in-kitty`` not working on bash >= 5.2 if environment variable values contain newlines or other special characters (:iss:`5629`)
+
 
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

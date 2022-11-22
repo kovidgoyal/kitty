@@ -16,6 +16,7 @@ from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from kitty.shell_integration import (
     setup_bash_env, setup_fish_env, setup_zsh_env
 )
+from kitty.bash import decode_ansi_c_quoted_string
 
 from . import BaseTest
 
@@ -364,9 +365,21 @@ PS1="{ps1}"
         run_test('bash -l .bashrc', 'profile', rc='echo ok;read', wait_string='ok', assert_not_in=True)
         run_test('bash -il -- .bashrc', 'profile', rc='echo ok;read', wait_string='ok')
 
-        with self.run_shell(shell='bash', setup_env=partial(setup_env, set()), cmd='bash', rc=f'''PS1="{ps1}"\nexport ES=$'a\n `b` c\n$d' ''') as pty:
+        with self.run_shell(shell='bash', setup_env=partial(setup_env, set()), cmd='bash',
+                            rc=f'''PS1="{ps1}"\nexport ES=$'a\n `b` c\n$d'\nexport ES2="XXX" ''') as pty:
             pty.callbacks.clear()
             pty.send_cmd_to_child('clone-in-kitty')
             pty.wait_till(lambda: len(pty.callbacks.clone_cmds) == 1)
             env = pty.callbacks.clone_cmds[0].env
             self.ae(env.get('ES'), 'a\n `b` c\n$d', f'Screen contents: {pty.screen_contents()!r}')
+            self.ae(env.get('ES2'), 'XXX', f'Screen contents: {pty.screen_contents()!r}')
+        for q, e in {
+            'a': 'a',
+            r'a\ab': 'a\ab',
+            r'a\x7z': 'a\x07z',
+            r'a\7b': 'a\007b',
+            r'a\U1f345x': 'a🍅x',
+            r'a\c b': 'a\0b',
+        }.items():
+            q = q + "'"
+            self.ae(decode_ansi_c_quoted_string(q, 0)[0], e, f'Failed to decode: {q!r}')
