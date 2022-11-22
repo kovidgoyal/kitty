@@ -10,7 +10,7 @@ import sys
 from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
-from time import monotonic
+from time import monotonic, sleep
 from typing import (
     TYPE_CHECKING, Any, Callable, Container, Dict, Iterable, Iterator, List, Optional,
     Set, Tuple, Union,
@@ -1773,6 +1773,10 @@ class Boss:
                 run_with_activation_token(doit)
             else:
                 doit()
+
+    @ac('misc', 'Sleep for the specified time period')
+    def sleep(self, sleep_time: float) -> None:
+        sleep(sleep_time)
 
     @ac('misc', 'Click a URL using the keyboard')
     def open_url_with_hints(self) -> None:

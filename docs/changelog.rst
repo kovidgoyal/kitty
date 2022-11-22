@@ -53,6 +53,8 @@ Detailed list of changes
 
 - Bash integration: Fix ``clone-in-kitty`` not working on bash >= 5.2 if environment variable values contain newlines or other special characters (:iss:`5629`)
 
+- A new :ac:`sleep` action useful in combine based mappings to make kitty sleep before executing the next action
+
 
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

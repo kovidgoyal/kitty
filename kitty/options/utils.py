@@ -293,6 +293,15 @@ def single_integer_arg(func: str, rest: str) -> FuncArgsType:
     return func, [num]
 
 
+@func_with_args('sleep')
+def sleep(func: str, sleep_time: str) -> FuncArgsType:
+    mult = 1
+    if sleep_time[-1] in 'shmd':
+        mult = {'s': 1, 'm': 60, 'h': 3600, 'd': 24 * 3600}[sleep_time[-1]]
+        sleep_time = sleep_time[:-1]
+    return func, [abs(float(sleep_time)) * mult]
+
+
 @func_with_args('disable_ligatures_in')
 def disable_ligatures_in(func: str, rest: str) -> FuncArgsType:
     parts = rest.split(maxsplit=1)
