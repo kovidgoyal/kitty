@@ -296,6 +296,7 @@ def single_integer_arg(func: str, rest: str) -> FuncArgsType:
 @func_with_args('sleep')
 def sleep(func: str, sleep_time: str) -> FuncArgsType:
     mult = 1
+    sleep_time = sleep_time or '1'
     if sleep_time[-1] in 'shmd':
         mult = {'s': 1, 'm': 60, 'h': 3600, 'd': 24 * 3600}[sleep_time[-1]]
         sleep_time = sleep_time[:-1]

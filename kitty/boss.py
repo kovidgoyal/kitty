@@ -1774,8 +1774,8 @@ class Boss:
             else:
                 doit()
 
-    @ac('misc', 'Sleep for the specified time period')
-    def sleep(self, sleep_time: float) -> None:
+    @ac('misc', 'Sleep for the specified time period. Suffix can be s for seconds, m, for minutes, h for hours and d for days. The time can be fractional.')
+    def sleep(self, sleep_time: float = 1.0) -> None:
         sleep(sleep_time)
 
     @ac('misc', 'Click a URL using the keyboard')
