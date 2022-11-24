@@ -40,7 +40,8 @@ In addition to kitty, this protocol is also implemented in:
   <https://github.com/dankamongmen/notcurses/issues/2131>`__
 * The `crossterm library
   <https://github.com/crossterm-rs/crossterm/pull/688>`__
-* The `neovim text editor <https://github.com/neovim/neovim/pull/18181>`__
+* The `Vim text editor <https://github.com/vim/vim/commit/63a2e360cca2c70ab0a85d14771d3259d4b3aafa>`__
+* The `Neovim text editor <https://github.com/neovim/neovim/pull/18181>`__
 * The `kakoune text editor <https://github.com/mawww/kakoune/issues/4103>`__
 * The `dte text editor <https://gitlab.com/craigbarnes/dte/-/issues/138>`__
 
