@@ -228,7 +228,9 @@ func send_rc_command(io_data *rc_io_data) (err error) {
 	if response.Data.is_string && io_data.string_response_is_err {
 		return fmt.Errorf("%s", response.Data.as_str)
 	}
-	fmt.Println(strings.TrimRight(response.Data.as_str, "\n \t"))
+	if response.Data.as_str != "" {
+		fmt.Println(strings.TrimRight(response.Data.as_str, "\n \t"))
+	}
 	return
 }
 
