@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"kitty"
 	"kitty/tools/utils"
@@ -48,6 +49,28 @@ func New(allow_escape_codes bool) *Context {
 	ans.Url = fmt_ctx.UrlFunc("u=curly uc=cyan")
 
 	return &ans
+}
+
+func remove_backslash_escapes(text string) string {
+	// see https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#escaping-mechanism
+	out := strings.Builder{}
+	prev_was_slash := false
+	out.Grow(len(text))
+	for _, ch := range text {
+		if prev_was_slash {
+			if !unicode.IsSpace(ch) {
+				out.WriteRune(ch)
+			}
+			prev_was_slash = false
+		} else {
+			if ch == '\\' {
+				prev_was_slash = true
+			} else {
+				out.WriteRune(ch)
+			}
+		}
+	}
+	return out.String()
 }
 
 func replace_all_rst_roles(str string, repl func(rst_format_match) string) string {
@@ -132,7 +155,7 @@ func (self *Context) Prettify(text string) string {
 		case "term":
 			return self.ref_hyperlink(val, "term-")
 		case "code":
-			return self.Code(val)
+			return self.Code(remove_backslash_escapes(val))
 		case "option":
 			idx := strings.LastIndex(val, "--")
 			if idx < 0 {
