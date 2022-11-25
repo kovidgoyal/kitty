@@ -134,9 +134,10 @@ are sent as is, not interpreted for escapes.
                     yield ret
 
         def chunks(text: str) -> CmdGenerator:
-            data = parse_send_text_bytes(text).decode('utf-8')
+            data = parse_send_text_bytes(text)
             while data:
-                ret['data'] = f'text:{data[:limit]}'
+                b = base64.standard_b64encode(data[:limit]).decode("ascii")
+                ret['data'] = f'base64:{b}'
                 yield ret
                 data = data[limit:]
 
