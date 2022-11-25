@@ -67,7 +67,7 @@ def shlex_parse(func: str, rest: str) -> FuncArgsType:
 
 
 def parse_send_text_bytes(text: str) -> bytes:
-    return python_string(text).encode('utf-8')
+    return defines.expand_ansi_c_escapes(text).encode('utf-8')
 
 
 @func_with_args('send_text')
@@ -204,7 +204,7 @@ def paste_from_buffer(func: str, rest: str) -> FuncArgsType:
 def paste_parse(func: str, rest: str) -> FuncArgsType:
     text = ''
     try:
-        text = python_string(rest)
+        text = defines.expand_ansi_c_escapes(rest)
     except Exception:
         log_error('Ignoring invalid paste string: ' + rest)
     return func, [text]

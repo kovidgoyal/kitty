@@ -74,8 +74,9 @@ class SendText(RemoteCommand):
     short_desc = 'Send arbitrary text to specified windows'
     desc = (
         'Send arbitrary text to specified windows. The text follows Python'
-        ' escaping rules. So you can use escapes like :code:`\\\\x1b` to send control codes'
-        ' and :code:`\\\\u21fa` to send unicode characters. If you use the :option:`kitty @ send-text --match` option'
+        ' escaping rules. So you can use :link:`escapes <https://www.gnu.org/software/bash/manual/html_node/ANSI_002dC-Quoting.html>`'
+        ' like :code:`\\\\x1b` to send control codes'
+        ' and :code:`\\\\u21fa` to send Unicode characters. If you use the :option:`kitty @ send-text --match` option'
         ' the text will be sent to all matched windows. By default, text is sent to'
         ' only the currently active window.'
     )

@@ -1547,7 +1547,7 @@ class Window:
     def show_last_non_empty_command_output(self) -> None:
         self.show_cmd_output(CommandOutput.last_non_empty, 'Last non-empty command output')
 
-    @ac('cp', 'Paste the specified text into the current window')
+    @ac('cp', 'Paste the specified text into the current window. ANSI C escapes are decoded.')
     def paste(self, text: str) -> None:
         self.paste_with_actions(text)
 
