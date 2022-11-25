@@ -27,7 +27,7 @@ line.
 
 .. _include:
 
-You can include secondary config files via the :code:`include` directive.  If
+You can include secondary config files via the :code:`include` directive. If
 you use a relative path for :code:`include`, it is resolved with respect to the
 location of the current config file. Note that environment variables are
 expanded, so :code:`${USER}.conf` becomes :file:`name.conf` if
