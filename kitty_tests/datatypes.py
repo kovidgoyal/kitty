@@ -586,6 +586,7 @@ class TestDataTypes(BaseTest):
             r'a\128b': 'a\0128b',
             r'a\u1234e': 'a\u1234e',
             r'a\U1f1eez': 'a\U0001f1eez',
+            r'a\x1\\':    "a\x01\\",
         }.items():
             actual = expand_ansi_c_escapes(src)
             self.ae(expected, actual)

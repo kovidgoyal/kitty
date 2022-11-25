@@ -261,11 +261,11 @@ expand_ansi_c_escapes(PyObject *self UNUSED, PyObject *src) {
             case CONTROL_CHAR: w(ch & 0x1f); state = NORMAL; break;
             case HEX_DIGIT: {
                 if (hex_digit_idx < max_num_hex_digits && (('0' <= ch && ch <= '9') || ('a' <= ch && ch <= 'f') || ('A' <= ch && ch <= 'F'))) add_digit(16)
-                else { write_digits(16); w(ch); }
+                else { write_digits(16); idx--; }
             }; break;
             case OCT_DIGIT: {
                 if ('0' <= ch && ch <= '7' && hex_digit_idx < max_num_hex_digits) add_digit(16)
-                else { write_digits(8); w(ch); }
+                else { write_digits(8); idx--; }
             }; break;
             case PREV_ESC: {
                 state = NORMAL;
