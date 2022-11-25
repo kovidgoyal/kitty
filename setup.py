@@ -860,11 +860,37 @@ def build_ref_map() -> str:
     return dest
 
 
+@lru_cache
+def wrapped_kittens() -> Sequence[str]:
+    with open('shell-integration/ssh/kitty') as f:
+        for line in f:
+            if line.startswith('    wrapped_kittens="'):
+                val = line.strip().partition('"')[2][:-1]
+                return tuple(sorted(filter(None, val.split())))
+    raise Exception('Failed to read wrapped kittens from kitty wrapper script')
+
+
+def build_wrapped_kittens() -> str:
+    h = 'static const char* wrapped_kitten_names[] = {\n'
+    h += ', '.join(f'"{x}"' for x in wrapped_kittens())
+    h += ', NULL'
+    h += '\n};\n'
+    dest = 'kitty/wrapped_kitten_names_generated.h'
+    q = ''
+    with suppress(FileNotFoundError), open(dest) as f:
+        q = f.read()
+    if q != h:
+        with open(dest, 'w') as f:
+            f.write(h)
+    return dest
+
+
 def build(args: Options, native_optimizations: bool = True, call_init: bool = True) -> None:
     if call_init:
         init_env_from_args(args, native_optimizations)
     sources, headers = find_c_files()
     headers.append(build_ref_map())
+    headers.append(build_wrapped_kittens())
     compile_c_extension(
         kitty_env(), 'kitty/fast_data_types', args.compilation_database, sources, headers
     )

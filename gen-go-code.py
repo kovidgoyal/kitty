@@ -8,7 +8,7 @@ import subprocess
 import sys
 from contextlib import contextmanager, suppress
 from functools import lru_cache
-from typing import Dict, Iterator, List, Set, Tuple, Union, Sequence
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
 
 import kitty.constants as kc
 from kittens.tui.operations import Mode
@@ -50,10 +50,24 @@ def replace(template: str, **kw: str) -> str:
 
 
 # Completions {{{
+
+@lru_cache
+def kitten_cli_docs(kitten: str) -> Any:
+    from kittens.runner import get_kitten_cli_docs
+    return get_kitten_cli_docs(kitten)
+
+
+@lru_cache
+def go_options_for_kitten(kitten: str) -> Tuple[Sequence[GoOption], Optional[CompletionSpec]]:
+    kcd = kitten_cli_docs(kitten)
+    if kcd:
+        ospec = kcd['options']
+        return (tuple(go_options_for_seq(parse_option_spec(ospec())[0])), kcd.get('args_completion'))
+    return (), None
+
+
 def generate_kittens_completion() -> None:
-    from kittens.runner import (
-        all_kitten_names, get_kitten_cli_docs, get_kitten_wrapper_of,
-    )
+    from kittens.runner import all_kitten_names, get_kitten_wrapper_of
     for kitten in sorted(all_kitten_names()):
         kn = 'kitten_' + kitten
         print(f'{kn} := plus_kitten.AddSubCommand(&cli.Command{{Name:"{kitten}", Group: "Kittens"}})')
@@ -62,12 +76,10 @@ def generate_kittens_completion() -> None:
             print(f'{kn}.ArgCompleter = cli.CompletionForWrapper("{serialize_as_go_string(wof)}")')
             print(f'{kn}.OnlyArgsAllowed = true')
             continue
-        kcd = get_kitten_cli_docs(kitten)
-        if kcd:
-            ospec = kcd['options']
-            for opt in go_options_for_seq(parse_option_spec(ospec())[0]):
+        gopts, ac = go_options_for_kitten(kitten)
+        if gopts or ac:
+            for opt in gopts:
                 print(opt.as_option(kn))
-            ac = kcd.get('args_completion')
             if ac is not None:
                 print(''.join(ac.as_go_code(kn + '.ArgCompleter', ' = ')))
         else:
@@ -265,6 +277,48 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
 # }}}
 
 
+# kittens {{{
+
+@lru_cache
+def wrapped_kittens() -> Sequence[str]:
+    with open('shell-integration/ssh/kitty') as f:
+        for line in f:
+            if line.startswith('    wrapped_kittens="'):
+                val = line.strip().partition('"')[2][:-1]
+                return tuple(sorted(filter(None, val.split())))
+    raise Exception('Failed to read wrapped kittens from kitty wrapper script')
+
+
+def kitten_clis() -> None:
+    for kitten in wrapped_kittens():
+        with replace_if_needed(f'tools/cmd/{kitten}/cli_generated.go'):
+            kcd = kitten_cli_docs(kitten)
+            has_underscore = '_' in kitten
+            print(f'package {kitten}')
+            print('import "kitty/tools/cli"')
+            print('func create_cmd(root *cli.Command, run_func cli.RunFunc) {')
+            print('ans := root.AddSubCommand(&cli.Command{')
+            print(f'Name: "{kitten}",')
+            print(f'ShortDescription: "{serialize_as_go_string(kcd["short_desc"])}",')
+            print(f'Usage: "{serialize_as_go_string(kcd["usage"])}",')
+            print(f'HelpText: "{serialize_as_go_string(kcd["help_text"])}",')
+            print('Run: run_func,')
+            if has_underscore:
+                print('Hidden: true,')
+            print('})')
+            gopts, ac = go_options_for_kitten(kitten)
+            for opt in gopts:
+                print(opt.as_option('ans'))
+            if ac is not None:
+                print(''.join(ac.as_go_code('ans.ArgCompleter', ' = ')))
+            if has_underscore:
+                print("clone := root.AddClone(ans.Group, ans)")
+                print('clone.Hidden = false')
+                print(f'clone.Name = "{serialize_as_go_string(kitten.replace("_", "-"))}"')
+            print('}')
+# }}}
+
+
 # Constants {{{
 
 def generate_spinners() -> str:
@@ -335,7 +389,12 @@ var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
 @contextmanager
 def replace_if_needed(path: str, show_diff: bool = False) -> Iterator[io.StringIO]:
     buf = io.StringIO()
-    yield buf
+    origb = sys.stdout
+    sys.stdout = buf
+    try:
+        yield buf
+    finally:
+        sys.stdout = origb
     orig = ''
     with suppress(FileNotFoundError), open(path, 'r') as f:
         orig = f.read()
@@ -391,21 +450,15 @@ func add_rc_global_opts(cmd *cli.Command) {{
 
 
 def update_completion() -> None:
-    orig = sys.stdout
-    try:
-        with replace_if_needed('tools/cmd/completion/kitty_generated.go') as f:
-            sys.stdout = f
-            generate_completions_for_kitty()
-        with replace_if_needed('tools/cmd/edit_in_kitty/launch_generated.go') as f:
-            sys.stdout = f
-            print('package edit_in_kitty')
-            print('import "kitty/tools/cli"')
-            print('func AddCloneSafeOpts(cmd *cli.Command) {')
-            completion_for_launch_wrappers('cmd')
-            print(''.join(CompletionSpec.from_string('type:file mime:text/* group:"Text files"').as_go_code('cmd.ArgCompleter', ' = ')))
-            print('}')
-    finally:
-        sys.stdout = orig
+    with replace_if_needed('tools/cmd/completion/kitty_generated.go'):
+        generate_completions_for_kitty()
+    with replace_if_needed('tools/cmd/edit_in_kitty/launch_generated.go'):
+        print('package edit_in_kitty')
+        print('import "kitty/tools/cli"')
+        print('func AddCloneSafeOpts(cmd *cli.Command) {')
+        completion_for_launch_wrappers('cmd')
+        print(''.join(CompletionSpec.from_string('type:file mime:text/* group:"Text files"').as_go_code('cmd.ArgCompleter', ' = ')))
+        print('}')
 
 
 def define_enum(package_name: str, type_name: str, items: str, underlying_type: str = 'uint') -> str:
@@ -496,6 +549,7 @@ def main() -> None:
         f.write(generate_spinners())
     update_completion()
     update_at_commands()
+    kitten_clis()
     print(json.dumps(changed, indent=2))
 
 

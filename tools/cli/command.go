@@ -14,6 +14,8 @@ import (
 
 var _ = fmt.Print
 
+type RunFunc = func(cmd *Command, args []string) (int, error)
+
 type Command struct {
 	Name, Group                       string
 	Usage, ShortDescription, HelpText string
@@ -26,7 +28,7 @@ type Command struct {
 	// If true subcommands are ignored unless they are the first non-option argument
 	SubCommandMustBeFirst bool
 	// The entry point for this command
-	Run func(cmd *Command, args []string) (int, error)
+	Run RunFunc
 	// The completer for args
 	ArgCompleter CompletionFunc
 	// Stop completion processing at this arg num

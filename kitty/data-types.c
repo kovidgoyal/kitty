@@ -216,6 +216,23 @@ get_docs_ref_map(PyObject *self UNUSED, PyObject *args UNUSED) {
     return PyBytes_FromStringAndSize(docs_ref_map, sizeof(docs_ref_map));
 }
 
+#include "wrapped_kitten_names_generated.h"
+
+static PyObject*
+wrapped_kittens(PyObject *self UNUSED, PyObject *args UNUSED) {
+    PyObject *ans = PyFrozenSet_New(NULL);
+    if (ans != NULL) {
+        for (int i = 0; wrapped_kitten_names[i] != NULL; i++) {
+            PyObject *n = PyUnicode_FromString(wrapped_kitten_names[i]);
+            if (n == NULL) break;
+            if (PySet_Add(ans, n) != 0) { Py_DECREF(n); break; }
+            Py_DECREF(n);
+        }
+    }
+    if (PyErr_Occurred()) { Py_CLEAR(ans); }
+    return ans;
+}
+
 static PyMethodDef module_methods[] = {
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"get_docs_ref_map", (PyCFunction)get_docs_ref_map, METH_NOARGS, ""},
@@ -234,6 +251,7 @@ static PyMethodDef module_methods[] = {
     {"locale_is_valid", (PyCFunction)locale_is_valid, METH_VARARGS, ""},
     {"shm_open", (PyCFunction)py_shm_open, METH_VARARGS, ""},
     {"shm_unlink", (PyCFunction)py_shm_unlink, METH_VARARGS, ""},
+    {"wrapped_kitten_names", (PyCFunction)wrapped_kittens, METH_NOARGS, ""},
 #ifdef __APPLE__
     METHODB(user_cache_dir, METH_NOARGS),
     METHODB(process_group_map, METH_NOARGS),

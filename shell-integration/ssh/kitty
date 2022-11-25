@@ -22,6 +22,21 @@ exec_kitty() {
     die "Failed to execute kitty"
 }
 
+
+is_wrapped_kitten() {
+    wrapped_kittens="clipboard"
+    [ -n "$1" ] && {
+        case " $wrapped_kittens " in
+            *" $1 "*) printf "%s" "$1" ;;
+        esac
+    }
+}
+
+test "(" "$1" = "+kitten" -a -n "$(is_wrapped_kitten "$2")" ")" -o "(" "$1" = "+" -a "$2" = "kitten" -a "$(is_wrapped_kitten "$3")" ")" && {
+    if [ "$1" = "+kitten" ]; then shift "1"; else shift "2"; fi
+    exec kitty-tool "$@"
+}
+
 lock_dir=""
 script_path="$(command readlink -f "$0" 2> /dev/null)"
 [ $? = 0 ] || script_path="$0"

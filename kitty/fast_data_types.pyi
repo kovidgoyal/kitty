@@ -1,8 +1,8 @@
 import termios
 from ctypes import Array, c_ubyte
 from typing import (
-    Any, Callable, Dict, List, NewType, Optional, Tuple, TypedDict,
-    Union, Iterator
+    Any, Callable, Dict, FrozenSet, Iterator, List, NewType, Optional, Tuple, TypedDict,
+    Union,
 )
 
 from kitty.boss import Boss
@@ -1493,3 +1493,4 @@ def get_clipboard_mime(ct: int, mime: Optional[str], callback: Callable[[bytes],
 def run_with_activation_token(func: Callable[[str], None]) -> None: ...
 def make_x11_window_a_dock_window(x11_window_id: int, strut: Tuple[int, int, int, int, int, int, int, int, int, int, int, int]) -> None: ...
 def unicode_database_version() -> Tuple[int, int, int]: ...
+def wrapped_kittens() -> FrozenSet[str]: ...
