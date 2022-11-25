@@ -233,8 +233,77 @@ wrapped_kittens(PyObject *self UNUSED, PyObject *args UNUSED) {
     return ans;
 }
 
+static PyObject*
+expand_ansi_c_escapes(PyObject *self UNUSED, PyObject *src) {
+    enum { NORMAL, PREV_ESC, HEX_DIGIT, OCT_DIGIT, CONTROL_CHAR } state = NORMAL;
+    if (PyUnicode_READY(src) != 0) return NULL;
+    int max_num_hex_digits = 0, hex_digit_idx = 0;
+    char hex_digits[16];
+    Py_ssize_t idx = 0, dest_idx = 0;
+    PyObject *dest = PyUnicode_New(PyUnicode_GET_LENGTH(src)*2, 1114111);
+    if (dest == NULL) return NULL;
+    const int kind = PyUnicode_KIND(src), dest_kind = PyUnicode_KIND(dest);
+    const void *data = PyUnicode_DATA(src), *dest_data = PyUnicode_DATA(dest);
+#define w(ch) { PyUnicode_WRITE(dest_kind, dest_data, dest_idx, ch); dest_idx++; }
+#define write_digits(base) { hex_digits[hex_digit_idx] = 0; if (hex_digit_idx > 0) w(strtol(hex_digits, NULL, base)); hex_digit_idx = 0; state = NORMAL; }
+#define add_digit(base) { hex_digits[hex_digit_idx++] = ch; if (idx >= PyUnicode_GET_LENGTH(src)) write_digits(base); }
+    START_ALLOW_CASE_RANGE
+    while (idx < PyUnicode_GET_LENGTH(src)) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, idx); idx++;
+        switch(state) {
+            case NORMAL: {
+                if (ch == '\\' && idx < PyUnicode_GET_LENGTH(src)) {
+                    state = PREV_ESC;
+                    continue;
+                }
+                w(ch);
+            } break;
+            case CONTROL_CHAR: w(ch & 0x1f); state = NORMAL; break;
+            case HEX_DIGIT: {
+                if (hex_digit_idx < max_num_hex_digits && (('0' <= ch && ch <= '9') || ('a' <= ch && ch <= 'f') || ('A' <= ch && ch <= 'F'))) add_digit(16)
+                else { write_digits(16); w(ch); }
+            }; break;
+            case OCT_DIGIT: {
+                if ('0' <= ch && ch <= '7' && hex_digit_idx < max_num_hex_digits) add_digit(16)
+                else { write_digits(8); w(ch); }
+            }; break;
+            case PREV_ESC: {
+                state = NORMAL;
+                switch(ch) {
+                    default: w('\\'); w(ch); break;
+                    case 'a': w(7); break;
+                    case 'b': w(8); break;
+                    case 'c': if (idx < PyUnicode_GET_LENGTH(src)) {state = CONTROL_CHAR;} else {w('\\'); w(ch);}; break;
+                    case 'e': case 'E': w(27); break;
+                    case 'f': w(12); break;
+                    case 'n': w(10); break;
+                    case 'r': w(13); break;
+                    case 't': w(9); break;
+                    case 'v': w(11); break;
+                    case 'x': max_num_hex_digits = 2; hex_digit_idx = 0; state = HEX_DIGIT; break;
+                    case 'u': max_num_hex_digits = 4; hex_digit_idx = 0; state = HEX_DIGIT; break;
+                    case 'U': max_num_hex_digits = 8; hex_digit_idx = 0; state = HEX_DIGIT; break;
+                    case '0' ... '7': max_num_hex_digits = 3; hex_digits[0] = ch; hex_digit_idx = 1; state = OCT_DIGIT; break;
+                    case '\\': w('\\'); break;
+                    case '?': w('?'); break;
+                    case '"': w('"'); break;
+                    case '\'': w('\''); break;
+                }
+            } break;
+        }
+    }
+#undef add_digit
+#undef write_digits
+#undef w
+    END_ALLOW_CASE_RANGE
+    PyObject *ans = PyUnicode_FromKindAndData(dest_kind, dest_data, dest_idx);
+    Py_DECREF(dest);
+    return ans;
+}
+
 static PyMethodDef module_methods[] = {
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
+    {"expand_ansi_c_escapes", (PyCFunction)expand_ansi_c_escapes, METH_O, ""},
     {"get_docs_ref_map", (PyCFunction)get_docs_ref_map, METH_NOARGS, ""},
     {"getpeereid", (PyCFunction)py_getpeereid, METH_VARARGS, ""},
     {"wcswidth", (PyCFunction)wcswidth_std, METH_O, ""},

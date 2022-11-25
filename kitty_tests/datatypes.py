@@ -9,7 +9,7 @@ from kitty.config import build_ansi_color_table, defaults
 from kitty.fast_data_types import (
     Color, ColorProfile, Cursor as C, HistoryBuf, LineBuf,
     parse_input_from_terminal, strip_csi, truncate_point_for_length, wcswidth,
-    wcwidth
+    wcwidth, expand_ansi_c_escapes
 )
 from kitty.rgb import to_color
 from kitty.utils import is_path_in_temp_dir, sanitize_title
@@ -568,3 +568,24 @@ class TestDataTypes(BaseTest):
             self.assertNotIn(b'\x1b[201~', q)
             self.assertNotIn('\x9b201~'.encode('utf-8'), q)
             self.assertIn(b'ab', q)
+
+    def test_expand_ansi_c_escapes(self):
+        for src, expected in {
+            'abc': 'abc',
+            r'a\ab': 'a\ab',
+            r'a\eb': 'a\x1bb',
+            r'a\r\nb': 'a\r\nb',
+            r'a\c b': 'a\0b',
+            r'a\c': 'a\\c',
+            r'a\x1bb': 'a\x1bb',
+            r'a\x1b': 'a\x1b',
+            r'a\x1': 'a\x01',
+            r'a\x1g': 'a\x01g',
+            r'a\z\"': 'a\\z"',
+            r'a\123b': 'a\123b',
+            r'a\128b': 'a\0128b',
+            r'a\u1234e': 'a\u1234e',
+            r'a\U1f1eez': 'a\U0001f1eez',
+        }.items():
+            actual = expand_ansi_c_escapes(src)
+            self.ae(expected, actual)

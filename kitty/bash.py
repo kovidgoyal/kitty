@@ -26,8 +26,6 @@ def ctrl_mask_char(ch: str) -> str:
         o = ord(ch)
     except Exception:
         return ch
-    if o > 127:
-        return ch
     return chr(o & 0b0011111)
 
 
