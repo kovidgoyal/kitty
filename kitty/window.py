@@ -853,11 +853,8 @@ class Window:
                 return
             if (not purl.scheme or purl.scheme == 'file'):
                 if purl.netloc:
-                    from socket import gethostname
-                    try:
-                        hostname = gethostname()
-                    except Exception:
-                        hostname = ''
+                    from .utils import get_hostname
+                    hostname = get_hostname()
                     remote_hostname = purl.netloc.partition(':')[0]
                     if remote_hostname and remote_hostname != hostname and remote_hostname != 'localhost':
                         self.handle_remote_file(purl.netloc, unquote(purl.path))
