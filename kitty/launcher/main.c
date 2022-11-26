@@ -316,19 +316,32 @@ ensure_working_stdio(void) {
 #undef C
 }
 
+static bool
+is_wrapped_kitten(const char *arg) {
+    char buf[64];
+    snprintf(buf, sizeof(buf)-1, " %s ", arg);
+    return strstr(" " WRAPPED_KITTENS " ", buf);
+}
+
+static void
+exec_kitty_tool(int argc, char *argv[], char *exe_dir) {
+    char exe[PATH_MAX+1] = {0};
+    snprintf(exe, PATH_MAX, "%s/kitty-tool", exe_dir);
+    char **newargv = malloc(sizeof(char*) * (argc + 1));
+    memcpy(newargv, argv, sizeof(char*) * argc);
+    newargv[argc] = 0;
+    newargv[0] = "kitty-tool";
+    errno = 0;
+    execv(exe, argv);
+    fprintf(stderr, "Failed to execute kitty-tool (%s) with error: %s\n", exe, strerror(errno));
+    exit(1);
+}
+
 static void
 delegate_to_kitty_tool_if_possible(int argc, char *argv[], char* exe_dir) {
-    if (argc > 1 && argv[1][0] == '@') {
-        char exe[PATH_MAX+1] = {0};
-        snprintf(exe, PATH_MAX, "%s/kitty-tool", exe_dir);
-        char **newargv = malloc(sizeof(char*) * (argc + 1));
-        memcpy(newargv, argv, sizeof(char*) * argc);
-        newargv[argc] = 0;
-        errno = 0;
-        execv(exe, argv);
-        fprintf(stderr, "Failed to execute kitty-tool (%s) with error: %s\n", exe, strerror(errno));
-        exit(1);
-    }
+    if (argc > 1 && argv[1][0] == '@') exec_kitty_tool(argc, argv, exe_dir);
+    if (argc > 2 && strcmp(argv[1], "+kitten") == 0 && is_wrapped_kitten(argv[2])) exec_kitty_tool(argc - 1, argv + 1, exe_dir);
+    if (argc > 3 && strcmp(argv[1], "+") == 0 && strcmp(argv[2], "kitten") == 0 && is_wrapped_kitten(argv[3])) exec_kitty_tool(argc - 2, argv + 2, exe_dir);
 }
 
 int main(int argc, char *argv[], char* envp[]) {

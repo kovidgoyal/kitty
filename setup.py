@@ -529,8 +529,7 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, Optional[List[
     if src == 'kitty/parser_dump.c':
         return 'kitty/parser.c', ['DUMP_COMMANDS']
     if src == 'kitty/data-types.c':
-        wk = ' '.join(wrapped_kittens())
-        return src, [f'KITTY_VCS_REV="{get_vcs_rev_define()}"', f'WRAPPED_KITTENS="{wk}"']
+        return src, [f'KITTY_VCS_REV="{get_vcs_rev_define()}"', f'WRAPPED_KITTENS="{wrapped_kittens()}"']
     try:
         return src, env.library_paths[src]
     except KeyError:
@@ -863,12 +862,12 @@ def build_ref_map() -> str:
 
 
 @lru_cache
-def wrapped_kittens() -> Sequence[str]:
+def wrapped_kittens() -> str:
     with open('shell-integration/ssh/kitty') as f:
         for line in f:
             if line.startswith('    wrapped_kittens="'):
                 val = line.strip().partition('"')[2][:-1]
-                return tuple(sorted(filter(None, val.split())))
+                return ' '.join(sorted(filter(None, val.split())))
     raise Exception('Failed to read wrapped kittens from kitty wrapper script')
 
 
@@ -965,7 +964,7 @@ def build_static_binaries(args: Options, launcher_dir: str) -> None:
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> None:
     werror = '' if args.ignore_compiler_warnings else '-pedantic-errors -Werror'
     cflags = f'-Wall {werror} -fpie'.split()
-    cppflags = []
+    cppflags = [define(f'WRAPPED_KITTENS=" {wrapped_kittens()} "')]
     libs: List[str] = []
     ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
     if args.profile or args.sanitize:
