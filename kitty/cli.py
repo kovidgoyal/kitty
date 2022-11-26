@@ -4,7 +4,6 @@
 import os
 import re
 import shlex
-import socket
 import sys
 from collections import deque
 from enum import Enum, auto
@@ -305,6 +304,12 @@ def env(x: str) -> str:
 role_map['envvar'] = role_map['env']
 
 
+@run_once
+def hostname() -> str:
+    from .utils import get_hostname
+    return get_hostname(fallback='localhost')
+
+
 def hyperlink_for_url(url: str, text: str) -> str:
     if sys.stdout.isatty():
         return f'\x1b]8;;{url}\x1b\\\x1b[4:3;58:5:4m{text}\x1b[4:0;59m\x1b]8;;\x1b\\'
@@ -315,7 +320,7 @@ def hyperlink_for_path(path: str, text: str) -> str:
     path = os.path.abspath(path).replace(os.sep, "/")
     if os.path.isdir(path):
         path += path.rstrip("/") + "/"
-    return hyperlink_for_url(f'file://{socket.gethostname()}{path}', text)
+    return hyperlink_for_url(f'file://{hostname()}{path}', text)
 
 
 @role
@@ -335,12 +340,6 @@ def doc(x: str) -> str:
         if q in m:
             x = f'{m[q]} <{t}>'
     return ref_hyperlink(x, 'doc-')
-
-
-@run_once
-def hostname() -> str:
-    import socket
-    return socket.gethostname() or 'localhost'
 
 
 def ref_hyperlink(x: str, prefix: str = '') -> str:

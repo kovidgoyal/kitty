@@ -4,11 +4,12 @@
 import os
 import re
 import signal
-import socket
 import subprocess
 import sys
 from typing import Callable, cast
 from urllib.parse import quote_from_bytes
+
+from kitty.utils import get_hostname
 
 
 def write_hyperlink(write: Callable[[bytes], None], url: bytes, line: bytes, frag: bytes = b'') -> None:
@@ -76,7 +77,7 @@ def main() -> None:
     num_pat = re.compile(br'^(\d+)([:-])')
 
     in_result: bytes = b''
-    hostname = socket.gethostname().encode('utf-8')
+    hostname = get_hostname().encode('utf-8')
 
     try:
         for line in p.stdout:

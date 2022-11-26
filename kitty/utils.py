@@ -595,6 +595,14 @@ def natsort_ints(iterable: Iterable[str]) -> List[str]:
     return sorted(iterable, key=alphanum_key)
 
 
+def get_hostname(fallback: str = '') -> str:
+    import socket
+    try:
+        return socket.gethostname() or fallback
+    except Exception:
+        return fallback
+
+
 def resolve_editor_cmd(editor: str, shell_env: Mapping[str, str]) -> Optional[str]:
     import shlex
     editor_cmd = shlex.split(editor)
