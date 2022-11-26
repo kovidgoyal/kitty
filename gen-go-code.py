@@ -292,23 +292,29 @@ def wrapped_kittens() -> Sequence[str]:
 def kitten_clis() -> None:
     for kitten in wrapped_kittens():
         with replace_if_needed(f'tools/cmd/{kitten}/cli_generated.go'):
+            od = []
             kcd = kitten_cli_docs(kitten)
             has_underscore = '_' in kitten
             print(f'package {kitten}')
             print('import "kitty/tools/cli"')
-            print('func create_cmd(root *cli.Command, run_func cli.RunFunc) {')
+            print('func create_cmd(root *cli.Command, run_func func(*cli.Command, *Options, []string)(int, error)) {')
             print('ans := root.AddSubCommand(&cli.Command{')
             print(f'Name: "{kitten}",')
             print(f'ShortDescription: "{serialize_as_go_string(kcd["short_desc"])}",')
             print(f'Usage: "{serialize_as_go_string(kcd["usage"])}",')
             print(f'HelpText: "{serialize_as_go_string(kcd["help_text"])}",')
-            print('Run: run_func,')
+            print('Run: func(cmd *cli.Command, args []string) (int, error) {')
+            print('opts := Options{}')
+            print('err := cmd.GetOptionValues(&opts)')
+            print('if err != nil { return 1, err }')
+            print('return run_func(cmd, &opts, args)},')
             if has_underscore:
                 print('Hidden: true,')
             print('})')
             gopts, ac = go_options_for_kitten(kitten)
             for opt in gopts:
                 print(opt.as_option('ans'))
+                od.append(opt.struct_declaration())
             if ac is not None:
                 print(''.join(ac.as_go_code('ans.ArgCompleter', ' = ')))
             if has_underscore:
@@ -316,6 +322,10 @@ def kitten_clis() -> None:
                 print('clone.Hidden = false')
                 print(f'clone.Name = "{serialize_as_go_string(kitten.replace("_", "-"))}"')
             print('}')
+            print('type Options struct {')
+            print('\n'.join(od))
+            print('}')
+
 # }}}
 
 

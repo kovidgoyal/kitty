@@ -20,6 +20,16 @@ type ScreenSize struct {
 
 type IdType uint64
 type TimerCallback func(timer_id IdType) error
+type EscapeCodeType int
+
+const (
+	CSI EscapeCodeType = iota
+	DCS
+	OSC
+	APC
+	SOS
+	PM
+)
 
 type timer struct {
 	interval time.Duration
@@ -46,6 +56,8 @@ type Loop struct {
 	wakeup_channel                         chan byte
 	pending_writes                         []*write_msg
 	on_SIGTSTP                             func() error
+
+	// Send strings to this channel to queue writes in a thread safe way
 
 	// Callbacks
 
@@ -75,6 +87,9 @@ type Loop struct {
 
 	// Called when any input from tty is received
 	OnReceivedData func(data []byte) error
+
+	// Called when an escape code is received that is not handled by any other handler
+	OnEscapeCode func(EscapeCodeType, []byte) error
 
 	// Called when resuming from a SIGTSTP or Ctrl-z
 	OnResumeFromStop func() error

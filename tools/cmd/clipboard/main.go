@@ -4,13 +4,16 @@ package clipboard
 
 import (
 	"fmt"
+
 	"kitty/tools/cli"
 )
 
-var _ = fmt.Print
+func clipboard_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
+	if len(args) > 0 {
+		return 1, fmt.Errorf("Unrecognized extra command line arguments")
+	}
 
-func clipboard_main(cmd *cli.Command, args []string) (int, error) {
-	return 0, nil
+	return 0, run_plain_text_loop(opts)
 }
 
 func EntryPoint(parent *cli.Command) {

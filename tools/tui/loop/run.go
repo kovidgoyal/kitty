@@ -72,6 +72,9 @@ func (self *Loop) handle_csi(raw []byte) error {
 	if ke != nil {
 		return self.handle_key_event(ke)
 	}
+	if self.OnEscapeCode != nil {
+		return self.OnEscapeCode(CSI, raw)
+	}
 	return nil
 }
 
@@ -100,6 +103,9 @@ func (self *Loop) handle_key_event(ev *KeyEvent) error {
 }
 
 func (self *Loop) handle_osc(raw []byte) error {
+	if self.OnEscapeCode != nil {
+		return self.OnEscapeCode(OSC, raw)
+	}
 	return nil
 }
 
@@ -107,18 +113,30 @@ func (self *Loop) handle_dcs(raw []byte) error {
 	if self.OnRCResponse != nil && bytes.HasPrefix(raw, []byte("@kitty-cmd")) {
 		return self.OnRCResponse(raw[len("@kitty-cmd"):])
 	}
+	if self.OnEscapeCode != nil {
+		return self.OnEscapeCode(DCS, raw)
+	}
 	return nil
 }
 
 func (self *Loop) handle_apc(raw []byte) error {
+	if self.OnEscapeCode != nil {
+		return self.OnEscapeCode(APC, raw)
+	}
 	return nil
 }
 
 func (self *Loop) handle_sos(raw []byte) error {
+	if self.OnEscapeCode != nil {
+		return self.OnEscapeCode(SOS, raw)
+	}
 	return nil
 }
 
 func (self *Loop) handle_pm(raw []byte) error {
+	if self.OnEscapeCode != nil {
+		return self.OnEscapeCode(PM, raw)
+	}
 	return nil
 }
 
