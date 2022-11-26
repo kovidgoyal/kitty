@@ -112,6 +112,11 @@ type rst_format_match struct {
 	role, payload string
 }
 
+func (self *Context) link(x string) string {
+	text, url := text_and_target(x)
+	return self.hyperlink_for_url(url, text)
+}
+
 func (self *Context) ref_hyperlink(x string, prefix string) string {
 	text, target := text_and_target(x)
 	url := "kitty+doc://" + utils.CachedHostname() + "/#ref=" + prefix + target
@@ -156,6 +161,8 @@ func (self *Context) Prettify(text string) string {
 			return self.ref_hyperlink(val, "term-")
 		case "code":
 			return self.Code(remove_backslash_escapes(val))
+		case "link":
+			return self.link(val)
 		case "option":
 			idx := strings.LastIndex(val, "--")
 			if idx < 0 {
