@@ -216,21 +216,14 @@ get_docs_ref_map(PyObject *self UNUSED, PyObject *args UNUSED) {
     return PyBytes_FromStringAndSize(docs_ref_map, sizeof(docs_ref_map));
 }
 
-#include "wrapped_kitten_names_generated.h"
-
 static PyObject*
 wrapped_kittens(PyObject *self UNUSED, PyObject *args UNUSED) {
-    PyObject *ans = PyFrozenSet_New(NULL);
-    if (ans != NULL) {
-        for (int i = 0; wrapped_kitten_names[i] != NULL; i++) {
-            PyObject *n = PyUnicode_FromString(wrapped_kitten_names[i]);
-            if (n == NULL) break;
-            if (PySet_Add(ans, n) != 0) { Py_DECREF(n); break; }
-            Py_DECREF(n);
-        }
-    }
-    if (PyErr_Occurred()) { Py_CLEAR(ans); }
-    return ans;
+    const char *wrapped_kitten_names = WRAPPED_KITTENS;
+    PyObject *ans = PyUnicode_FromString(wrapped_kitten_names);
+    if (ans == NULL) return NULL;
+    PyObject *s = PyUnicode_Split(ans, NULL, -1);
+    Py_DECREF(ans);
+    return s;
 }
 
 static PyObject*

@@ -529,10 +529,12 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, Optional[List[
     if src == 'kitty/parser_dump.c':
         return 'kitty/parser.c', ['DUMP_COMMANDS']
     if src == 'kitty/data-types.c':
-        return src, [f'KITTY_VCS_REV="{get_vcs_rev_define()}"']
-    with suppress(KeyError):
+        wk = ' '.join(wrapped_kittens())
+        return src, [f'KITTY_VCS_REV="{get_vcs_rev_define()}"', f'WRAPPED_KITTENS="{wk}"']
+    try:
         return src, env.library_paths[src]
-    return src, None
+    except KeyError:
+        return src, None
 
 
 def newer(dest: str, *sources: str) -> bool:
@@ -870,27 +872,11 @@ def wrapped_kittens() -> Sequence[str]:
     raise Exception('Failed to read wrapped kittens from kitty wrapper script')
 
 
-def build_wrapped_kittens() -> str:
-    h = 'static const char* wrapped_kitten_names[] = {\n'
-    h += ', '.join(f'"{x}"' for x in wrapped_kittens())
-    h += ', NULL'
-    h += '\n};\n'
-    dest = 'kitty/wrapped_kitten_names_generated.h'
-    q = ''
-    with suppress(FileNotFoundError), open(dest) as f:
-        q = f.read()
-    if q != h:
-        with open(dest, 'w') as f:
-            f.write(h)
-    return dest
-
-
 def build(args: Options, native_optimizations: bool = True, call_init: bool = True) -> None:
     if call_init:
         init_env_from_args(args, native_optimizations)
     sources, headers = find_c_files()
     headers.append(build_ref_map())
-    headers.append(build_wrapped_kittens())
     compile_c_extension(
         kitty_env(), 'kitty/fast_data_types', args.compilation_database, sources, headers
     )
