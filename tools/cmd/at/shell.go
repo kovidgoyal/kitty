@@ -61,6 +61,8 @@ func shell_loop(rl *readline.Readline, kill_if_signaled bool) (int, error) {
 					rl.Redraw()
 					return nil
 				}
+				rl.MoveCursorToEnd()
+				rl.Redraw()
 				lp.ClearToEndOfScreen()
 				return ErrExec
 			}

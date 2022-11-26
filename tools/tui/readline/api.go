@@ -254,6 +254,10 @@ func (self *Readline) AllText() string {
 	return self.all_text()
 }
 
+func (self *Readline) MoveCursorToEnd() bool {
+	return self.move_to_end()
+}
+
 func (self *Readline) CursorAtEndOfLine() bool {
 	return self.input_state.cursor.X >= len(self.input_state.lines[self.input_state.cursor.Y])
 }
