@@ -3969,7 +3969,7 @@ when pressing specified shortcut keys. For example::
 
 This will send "Special text" when you press the :kbd:`Ctrl+Alt+A` key
 combination. The text to be sent decodes :link:`ANSI C escapes <https://www.gnu.org/software/bash/manual/html_node/ANSI_002dC-Quoting.html>`
-so you can use escapes like :code:`\\\\x1b` to send control codes or :code:`\\\\u21fb` to send
+so you can use escapes like :code:`\\\\e` to send control codes or :code:`\\\\u21fb` to send
 Unicode characters (or you can just input the Unicode characters directly as
 UTF-8 text). You can use ``kitty +kitten show_key`` to get the key escape
 codes you want to emulate.
