@@ -230,6 +230,10 @@ _ksi_deferred_init() {
     if (( ! opt[(Ie)no-cwd] )); then
         _ksi_report_pwd() { builtin print -nu $_ksi_fd '\e]7;kitty-shell-cwd://'"$HOST""$PWD"'\a'; }
         chpwd_functions=(${chpwd_functions[@]} "_ksi_report_pwd")
+        # An executed program could change cwd and report the changed cwd, so also report cwd at each new prompt
+        # as in this case chpwd_functions is insufficient. chpwd_functions is still needed for things like: cd x && something
+        functions[_ksi_precmd]+="
+            _ksi_report_pwd"
         _ksi_report_pwd
     fi
 
