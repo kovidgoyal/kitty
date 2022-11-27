@@ -100,7 +100,8 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         # This function name is from fish and will override the builtin one, which is enabled by default for kitty in fish 3.5.0+.
         # We provide this to ensure that fish 3.2.0 and above will work.
         # https://github.com/fish-shell/fish-shell/blob/3.2.0/share/functions/__fish_config_interactive.fish#L275
-        function __update_cwd_osc --on-variable PWD -d "Report PWD changes to kitty"
+        # An executed program could change cwd and report the changed cwd, so also report cwd at each new prompt
+        function __update_cwd_osc --on-variable PWD --on-event fish_prompt -d "Report PWD changes to kitty"
             status is-command-substitution
             or echo -en "\e]7;kitty-shell-cwd://$hostname$PWD\a"
         end
