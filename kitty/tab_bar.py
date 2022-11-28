@@ -514,6 +514,7 @@ class TabBar:
             self.align = self.align_with_factor
         else:
             self.align = lambda: None
+        self.max_tab_length = opts.tab_max_length
 
     def patch_colors(self, spec: Dict[str, Optional[int]]) -> None:
         opts = get_options()
@@ -616,6 +617,8 @@ class TabBar:
         unconstrained_tab_length = max(1, s.columns - 2)
         ideal_tab_lengths = [i for i in range(len(data))]
         default_max_tab_length = max(1, (s.columns // max(1, len(data))) - 1)
+        if self.max_tab_length >= 1:
+            default_max_tab_length = min(self.max_tab_length, default_max_tab_length)
         max_tab_lengths = [default_max_tab_length for _ in range(len(data))]
         active_idx = 0
         extra = 0
