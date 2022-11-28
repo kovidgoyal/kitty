@@ -2876,7 +2876,7 @@ also :opt:`clipboard_max_size`.
 '''
     )
 
-opt('clipboard_max_size', '64',
+opt('clipboard_max_size', '512',
     option_type='positive_float',
     long_text='''
 The maximum size (in MB) of data from programs running in kitty that will be

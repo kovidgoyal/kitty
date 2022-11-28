@@ -1280,6 +1280,7 @@ class Window:
     def destroy(self) -> None:
         self.call_watchers(self.watchers.on_close, {})
         self.destroyed = True
+        self.clipboard_request_manager.close()
         del self.kitten_result_processors
         if hasattr(self, 'screen'):
             if self.is_active and self.os_window_id == current_focused_os_window_id():
