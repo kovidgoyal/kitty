@@ -142,7 +142,7 @@ class ProtocolType(Enum):
 
 
 class ReadRequest(NamedTuple):
-    clipboard_type: ClipboardType = ClipboardType.clipboard
+    is_primary_selection: bool = False
     mime_types: Sequence[str] = ('text/plain',)
     id: str = ''
     protocol_type: ProtocolType = ProtocolType.osc_52
@@ -162,10 +162,10 @@ class MimePos(NamedTuple):
 class WriteRequest:
 
     def __init__(
-        self, clipboard_type: ClipboardType = ClipboardType.clipboard, protocol_type: ProtocolType = ProtocolType.osc_52,
+        self, is_primary_selection: bool = False, protocol_type: ProtocolType = ProtocolType.osc_52,
         rollover_size: int = 16 * 1024 * 1024, max_size: int = -1,
     ) -> None:
-        self.clipboard_type = clipboard_type
+        self.is_primary_selection = is_primary_selection
         self.protocol_type = protocol_type
         self.max_size_exceeded = False
         self.tempfile = SpooledTemporaryFile(max_size=rollover_size)
@@ -243,12 +243,12 @@ class ClipboardRequestManager:
     def parse_osc_52(self, data: str, is_partial: bool = False) -> None:
         where, text = data.partition(';')[::2]
         if text == '?':
-            rr = ReadRequest(clipboard_type=ClipboardType.from_osc52_where_field(where))
+            rr = ReadRequest(is_primary_selection=ClipboardType.from_osc52_where_field(where) is ClipboardType.primary_selection)
             self.handle_read_request(rr)
         else:
             wr = self.in_flight_write_request
             if wr is None:
-                wr = self.in_flight_write_request = WriteRequest(ClipboardType.from_osc52_where_field(where))
+                wr = self.in_flight_write_request = WriteRequest(ClipboardType.from_osc52_where_field(where) is ClipboardType.primary_selection)
             wr.add_base64_data(text)
             if is_partial:
                 return
@@ -257,7 +257,7 @@ class ClipboardRequestManager:
 
     def handle_write_request(self, wr: WriteRequest) -> None:
         wr.flush_base64_data()
-        q = 'write-clipboard' if wr.clipboard_type is ClipboardType.clipboard else 'write-primary'
+        q = 'write-primary' if wr.is_primary_selection else 'write-clipboard'
         allowed = q in get_options().clipboard_control
         self.fulfill_write_request(wr, allowed)
 
@@ -266,14 +266,14 @@ class ClipboardRequestManager:
             self.fulfill_legacy_write_request(wr, allowed)
 
     def fulfill_legacy_write_request(self, wr: WriteRequest, allowed: bool = True) -> None:
-        cp = get_boss().primary_selection if wr.clipboard_type is ClipboardType.primary_selection else get_boss().clipboard
+        cp = get_boss().primary_selection if wr.is_primary_selection else get_boss().clipboard
         w = get_boss().window_id_map.get(self.window_id)
         if w is not None and cp.enabled and allowed:
             cp.set_text(wr.data_for('text/plain'))
 
     def handle_read_request(self, rr: ReadRequest) -> None:
         cc = get_options().clipboard_control
-        if rr.clipboard_type is ClipboardType.primary_selection:
+        if rr.is_primary_selection:
             ask_for_permission = 'read-primary-ask' in cc
             allowed = 'read-primary' in cc
         else:
@@ -293,13 +293,13 @@ class ClipboardRequestManager:
             self.fulfill_legacy_read_request(rr, False)
 
     def fulfill_legacy_read_request(self, rr: ReadRequest, allowed: bool = True) -> None:
-        cp = get_boss().primary_selection if rr.clipboard_type is ClipboardType.primary_selection else get_boss().clipboard
+        cp = get_boss().primary_selection if rr.is_primary_selection else get_boss().clipboard
         w = get_boss().window_id_map.get(self.window_id)
         if w is not None:
             text = ''
             if cp.enabled and allowed:
                 text = cp.get_text()
-            loc = 'c' if rr.clipboard_type is ClipboardType.clipboard else 'p'
+            loc = 'p' if rr.is_primary_selection else 'c'
             w.screen.send_escape_code_to_child(OSC, encode_osc52(loc, text))
 
     def ask_to_read_clipboard(self, rr: ReadRequest) -> None:
