@@ -55,6 +55,8 @@ Detailed list of changes
 
 - A new :ac:`sleep` action useful in combine based mappings to make kitty sleep before executing the next action
 
+- Wayland GNOME: Workaround for latest mutter release breaking full screen for semi-transparent kitty windows (:iss:`5677`)
+
 
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

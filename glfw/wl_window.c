@@ -621,7 +621,7 @@ static void xdgSurfaceHandleConfigure(void* data,
         int width = window->wl.pending.width, height = window->wl.pending.height;
         set_csd_window_geometry(window, &width, &height);
         bool resized = dispatchChangesAfterConfigure(window, width, height);
-        if (window->wl.decorations.serverSide) {
+        if (window->wl.decorations.serverSide || window->monitor || window->wl.current.toplevel_states & TOPLEVEL_STATE_FULLSCREEN) {
             free_csd_surfaces(window);
         } else {
             ensure_csd_resources(window);
