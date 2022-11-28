@@ -195,13 +195,13 @@ class WriteRequest:
             else:
                 self.current_leftover_bytes = memoryview(bytes(self.current_leftover_bytes) + data)
         else:
-            data = memoryview(data)
             extra = len(data) % 4
             if extra > 0:
-                self.current_leftover_bytes = data[-extra:]
-                data = data[:-extra]
-                if len(data) > 0:
-                    self.write_base64_data(data)
+                mv = memoryview(data)
+                self.current_leftover_bytes = mv[-extra:]
+                mv = mv[:-extra]
+                if len(mv) > 0:
+                    self.write_base64_data(mv)
             else:
                 self.write_base64_data(data)
 
