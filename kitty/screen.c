@@ -1989,7 +1989,8 @@ set_dynamic_color(Screen *self, unsigned int code, PyObject *color) {
 
 void
 clipboard_control(Screen *self, int code, PyObject *data) {
-    CALLBACK("clipboard_control", "OO", data, code == -52 ? Py_True: Py_False);
+    if (code == 52 || code == -52) { CALLBACK("clipboard_control", "OO", data, code == -52 ? Py_True: Py_False); }
+    else { CALLBACK("clipboard_control", "OO", data, Py_None);}
 }
 
 void

@@ -20,10 +20,7 @@ from typing import (
 
 from .child import ProcessDesc
 from .cli_stub import CLIOptions
-from .clipboard import (
-    get_clipboard_string, get_primary_selection, set_clipboard_string,
-    set_primary_selection,
-)
+from .clipboard import ClipboardRequestManager, set_clipboard_string
 from .config import build_ansi_color_table
 from .constants import (
     appname, clear_handled_signals, config_dir, is_macos, wakeup_io_loop,
@@ -508,6 +505,7 @@ class Window:
         self.child_title = self.default_title
         self.title_stack: Deque[str] = deque(maxlen=10)
         self.id: int = add_window(tab.os_window_id, tab.id, self.title)
+        self.clipboard_request_manager = ClipboardRequestManager(self.id)
         self.margin = EdgeWidths()
         self.padding = EdgeWidths()
         self.kitten_result: Optional[Dict[str, Any]] = None
@@ -516,7 +514,6 @@ class Window:
         self.tab_id = tab.id
         self.os_window_id = tab.os_window_id
         self.tabref: Callable[[], Optional[TabType]] = weakref.ref(tab)
-        self.clipboard_pending: Optional[ClipboardPending] = None
         self.destroyed = False
         self.geometry: WindowGeometry = WindowGeometry(0, 0, 0, 0, 0, 0)
         self.needs_layout = True
@@ -1172,86 +1169,9 @@ class Window:
     def file_transmission(self, data: str) -> None:
         self.file_transmission_control.handle_serialized_command(data)
 
-    def clipboard_control(self, data: str, is_partial: bool = False) -> None:
-        where, text = data.partition(';')[::2]
-        if is_partial:
-            if self.clipboard_pending is None:
-                self.clipboard_pending = ClipboardPending(where, text)
-            else:
-                self.clipboard_pending = self.clipboard_pending._replace(data=self.clipboard_pending[1] + text)
-                limit = get_options().clipboard_max_size
-                if limit and len(self.clipboard_pending.data) > limit * 1024 * 1024:
-                    log_error('Discarding part of too large OSC 52 paste request')
-                    self.clipboard_pending = self.clipboard_pending._replace(data='', truncated=True)
-            return
-
-        if not where:
-            if self.clipboard_pending is not None:
-                text = self.clipboard_pending.data + text
-                where = self.clipboard_pending.where
-                try:
-                    if self.clipboard_pending.truncated:
-                        return
-                finally:
-                    self.clipboard_pending = None
-            else:
-                where = 's0'
-        cc = get_options().clipboard_control
-        if text == '?':
-            response = None
-            if 's' in where or 'c' in where:
-                if 'read-clipboard-ask' in cc:
-                    return self.ask_to_read_clipboard(False)
-                response = get_clipboard_string() if 'read-clipboard' in cc else ''
-                loc = 'c'
-            elif 'p' in where:
-                if 'read-primary-ask' in cc:
-                    return self.ask_to_read_clipboard(True)
-                response = get_primary_selection() if 'read-primary' in cc else ''
-                loc = 'p'
-            response = response or ''
-            self.send_osc52(loc, response or '')
-
-        else:
-            from base64 import standard_b64decode
-            try:
-                text = standard_b64decode(text).decode('utf-8')
-            except Exception:
-                text = ''
-
-            if 's' in where or 'c' in where:
-                if 'write-clipboard' in cc:
-                    set_clipboard_string(text)
-            if 'p' in where:
-                if 'write-primary' in cc:
-                    set_primary_selection(text)
-        self.clipboard_pending = None
-
-    def send_osc52(self, loc: str, response: str) -> None:
-        from base64 import standard_b64encode
-        self.screen.send_escape_code_to_child(OSC, '52;{};{}'.format(
-            loc, standard_b64encode(response.encode('utf-8')).decode('ascii')))
-
-    def ask_to_read_clipboard(self, primary: bool = False) -> None:
-        if self.current_clipboard_read_ask is not None:
-            self.current_clipboard_read_ask = primary
-            return
-        self.current_clipboard_read_ask = primary
-        get_boss().confirm(_(
-            'A program running in this window wants to read from the system clipboard.'
-            ' Allow it do so, once?'),
-            self.handle_clipboard_confirmation, window=self,
-        )
-
-    def handle_clipboard_confirmation(self, confirmed: bool) -> None:
-        try:
-            loc = 'p' if self.current_clipboard_read_ask else 'c'
-            response = ''
-            if confirmed:
-                response = get_primary_selection() if self.current_clipboard_read_ask else get_clipboard_string()
-            self.send_osc52(loc, response)
-        finally:
-            self.current_clipboard_read_ask = None
+    def clipboard_control(self, data: str, is_partial: Optional[bool] = False) -> None:
+        if is_partial is not None:
+            self.clipboard_request_manager.parse_osc_52(data, is_partial)
 
     def manipulate_title_stack(self, pop: bool, title: str, icon: Any) -> None:
         if title:
