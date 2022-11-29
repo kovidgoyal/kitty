@@ -347,8 +347,8 @@ class ClipboardRequestManager:
         for mime in rr.mime_types:
             current_mime = mime
             if mime == TARGETS_MIME:
-                w.screen.send_escape_code_to_child(
-                    OSC, rr.encode_response(payload=' '.join(cp.get_available_mime_types_for_paste()).encode('utf-8'), mime=current_mime))
+                payload = ' '.join(cp.get_available_mime_types_for_paste()).encode('utf-8')
+                w.screen.send_escape_code_to_child(OSC, rr.encode_response(payload=payload, mime=current_mime))
                 continue
             try:
                 cp.get_mime(mime, write_chunks)

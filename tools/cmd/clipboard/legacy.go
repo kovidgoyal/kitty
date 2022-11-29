@@ -162,7 +162,7 @@ func run_plain_text_loop(opts *Options) (err error) {
 			event.Handled = true
 			esc_count++
 			if esc_count < 2 {
-				key := "esc"
+				key := "Esc"
 				if event.MatchesPressOrRepeat("ctrl+c") {
 					key = "Ctrl+C"
 				}
