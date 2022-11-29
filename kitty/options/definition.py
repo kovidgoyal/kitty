@@ -1065,13 +1065,6 @@ margin between the tab bar and the contents of the current tab.
 '''
     )
 
-opt('tab_title_max_length', '0', option_type='positive_int',
-    long_text='''
-The maximum number of characters a tab title can have.
-A value of zero means that no limit is applied.
-'''
-    )
-
 opt('tab_bar_style', 'fade',
     choices=('fade', 'hidden', 'powerline', 'separator', 'slant', 'custom'), ctype='!tab_bar_style',
     long_text='''
@@ -1159,6 +1152,13 @@ Some text or a Unicode symbol to show on the tab if a window in the tab that
 does not have focus has some activity. If you want to use leading or trailing
 spaces, surround the text with quotes. See :opt:`tab_title_template` for how
 this is rendered.
+'''
+    )
+
+opt('tab_title_max_length', '0', option_type='positive_int',
+    long_text='''
+The maximum number of cells that can be used to render a tab. A value of zero
+means that no limit is applied.
 '''
     )
 
