@@ -6,7 +6,7 @@ from enum import Enum, IntEnum
 from gettext import gettext as _
 from tempfile import SpooledTemporaryFile
 from typing import (
-    IO, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union,
+    IO, Callable, Dict, List, NamedTuple, Optional, Tuple, Union,
 )
 
 from .conf.utils import uniq
@@ -145,7 +145,7 @@ class ProtocolType(Enum):
 
 class ReadRequest(NamedTuple):
     is_primary_selection: bool = False
-    mime_types: Sequence[str] = ('text/plain',)
+    mime_types: Tuple[str, ...] = ('text/plain',)
     id: str = ''
     protocol_type: ProtocolType = ProtocolType.osc_52
 
@@ -271,7 +271,7 @@ class ClipboardRequestManager:
         if typ == 'read':
             rr = ReadRequest(
                 is_primary_selection=m.get('loc', '') == 'primary',
-                mime_types=payload.split(),
+                mime_types=tuple(payload.split()),
                 protocol_type=ProtocolType.osc_5522, id=sanitize_id(m.get('id', ''))
             )
             self.handle_read_request(rr)
