@@ -53,6 +53,7 @@ class DrawData(NamedTuple):
     tab_activity_symbol: str
     powerline_style: PowerlineStyle
     tab_bar_edge: EdgeLiteral
+    max_tab_title_length: int
 
     def tab_fg(self, tab: TabBarData) -> int:
         if tab.is_active:
@@ -285,6 +286,8 @@ def draw_tab_with_slant(
     else:
         draw_sep(left_sep)
         screen.draw(' ')
+        if draw_data.max_tab_title_length > 0:
+            max_tab_length = min(draw_data.max_tab_title_length, max_tab_length)
         draw_title(draw_data, screen, tab, index, max_tab_length)
         extra = screen.cursor.x - before - max_tab_length
         if extra >= 0:
@@ -306,6 +309,8 @@ def draw_tab_with_separator(
 ) -> int:
     if draw_data.leading_spaces:
         screen.draw(' ' * draw_data.leading_spaces)
+    if draw_data.max_tab_title_length > 0:
+        max_tab_length = min(draw_data.max_tab_title_length, max_tab_length)
     draw_title(draw_data, screen, tab, index, max_tab_length)
     trailing_spaces = min(max_tab_length - 1, draw_data.trailing_spaces)
     max_tab_length -= trailing_spaces
@@ -337,6 +342,8 @@ def draw_tab_with_fade(
         screen.cursor.bg = bg
         screen.draw(' ')
     screen.cursor.bg = orig_bg
+    if draw_data.max_tab_title_length > 0:
+        max_tab_length = min(draw_data.max_tab_title_length, max_tab_length)
     draw_title(draw_data, screen, tab, index, max(0, max_tab_length - 8))
     extra = screen.cursor.x - before - max_tab_length
     if extra > 0:
@@ -389,6 +396,8 @@ def draw_tab_with_powerline(
         start_draw = 1
 
     screen.cursor.bg = tab_bg
+    if draw_data.max_tab_title_length > 0:
+        max_tab_length = min(draw_data.max_tab_title_length, max_tab_length)
     if min_title_length >= max_tab_length:
         screen.draw('…')
     else:
@@ -495,7 +504,8 @@ class TabBar:
             opts.active_tab_title_template,
             opts.tab_activity_symbol,
             opts.tab_powerline_style,
-            'top' if opts.tab_bar_edge == 1 else 'bottom'
+            'top' if opts.tab_bar_edge == 1 else 'bottom',
+            opts.tab_title_max_length,
         )
         ts = opts.tab_bar_style
         if ts == 'separator':
@@ -514,7 +524,6 @@ class TabBar:
             self.align = self.align_with_factor
         else:
             self.align = lambda: None
-        self.max_tab_length = opts.tab_max_length
 
     def patch_colors(self, spec: Dict[str, Optional[int]]) -> None:
         opts = get_options()
@@ -617,8 +626,6 @@ class TabBar:
         unconstrained_tab_length = max(1, s.columns - 2)
         ideal_tab_lengths = [i for i in range(len(data))]
         default_max_tab_length = max(1, (s.columns // max(1, len(data))) - 1)
-        if self.max_tab_length >= 1:
-            default_max_tab_length = min(self.max_tab_length, default_max_tab_length)
         max_tab_lengths = [default_max_tab_length for _ in range(len(data))]
         active_idx = 0
         extra = 0

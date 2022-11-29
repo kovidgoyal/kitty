@@ -433,10 +433,10 @@ option_names = (  # {{{
  'tab_bar_min_tabs',
  'tab_bar_style',
  'tab_fade',
- 'tab_max_length',
  'tab_powerline_style',
  'tab_separator',
  'tab_switch_strategy',
+ 'tab_title_max_length',
  'tab_title_template',
  'term',
  'touch_scroll_multiplier',
@@ -489,7 +489,7 @@ class Options:
     clear_all_shortcuts: bool = False
     click_interval: float = -1.0
     clipboard_control: typing.Tuple[str, ...] = ('write-clipboard', 'write-primary', 'read-clipboard-ask', 'read-primary-ask')
-    clipboard_max_size: float = 64.0
+    clipboard_max_size: float = 512.0
     clone_source_strategies: typing.FrozenSet[str] = frozenset({'conda', 'env_var', 'path', 'venv'})
     close_on_child_death: bool = False
     command_on_bell: typing.List[str] = ['none']
@@ -582,10 +582,10 @@ class Options:
     tab_bar_min_tabs: int = 2
     tab_bar_style: choices_for_tab_bar_style = 'fade'
     tab_fade: typing.Tuple[float, ...] = (0.25, 0.5, 0.75, 1.0)
-    tab_max_length: int = 0
     tab_powerline_style: choices_for_tab_powerline_style = 'angled'
     tab_separator: str = ' ┇'
     tab_switch_strategy: choices_for_tab_switch_strategy = 'previous'
+    tab_title_max_length: int = 0
     tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{title}'
     term: str = 'xterm-kitty'
     touch_scroll_multiplier: float = 1.0

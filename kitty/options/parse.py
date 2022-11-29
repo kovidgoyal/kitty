@@ -1246,9 +1246,6 @@ class Parser:
     def tab_fade(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['tab_fade'] = tab_fade(val)
 
-    def tab_max_length(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['tab_max_length'] = positive_int(val)
-
     def tab_powerline_style(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_tab_powerline_style:
@@ -1267,6 +1264,9 @@ class Parser:
         ans["tab_switch_strategy"] = val
 
     choices_for_tab_switch_strategy = frozenset(('last', 'left', 'previous', 'right'))
+
+    def tab_title_max_length(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['tab_title_max_length'] = positive_int(val)
 
     def tab_title_template(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['tab_title_template'] = tab_title_template(val)

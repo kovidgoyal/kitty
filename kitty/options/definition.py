@@ -1065,7 +1065,7 @@ margin between the tab bar and the contents of the current tab.
 '''
     )
 
-opt('tab_max_length', '0', option_type='positive_int',
+opt('tab_title_max_length', '0', option_type='positive_int',
     long_text='''
 The maximum number of characters a tab title can have.
 A value of zero means that no limit is applied.
