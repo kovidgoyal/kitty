@@ -1170,7 +1170,9 @@ class Window:
         self.file_transmission_control.handle_serialized_command(data)
 
     def clipboard_control(self, data: str, is_partial: Optional[bool] = False) -> None:
-        if is_partial is not None:
+        if is_partial is None:
+            self.clipboard_request_manager.parse_osc_5522(data)
+        else:
             self.clipboard_request_manager.parse_osc_52(data, is_partial)
 
     def manipulate_title_stack(self, pop: bool, title: str, icon: Any) -> None:

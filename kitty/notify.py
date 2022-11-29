@@ -99,6 +99,10 @@ def sanitize_identifier_pat() -> 're.Pattern[str]':
     return re.compile(r'[^a-zA-Z0-9-_+.]+')
 
 
+def sanitize_id(v: str) -> str:
+    return sanitize_identifier_pat().sub('', v)
+
+
 def parse_osc_99(raw: str) -> NotificationCommand:
     cmd = NotificationCommand()
     metadata, payload = raw.partition(';')[::2]
@@ -114,7 +118,7 @@ def parse_osc_99(raw: str) -> NotificationCommand:
             if k == 'p':
                 payload_type = v
             elif k == 'i':
-                cmd.identifier = sanitize_identifier_pat().sub('', v)
+                cmd.identifier = sanitize_id(v)
             elif k == 'e':
                 payload_is_encoded = v == '1'
             elif k == 'd':
