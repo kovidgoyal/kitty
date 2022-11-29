@@ -224,7 +224,12 @@ on_key_input(GLFWkeyevent *ev) {
         schedule_write_to_child(w->id, 1, encoded_key, size);
         if (OPT(debug_keyboard)) {
             debug("sent encoded key to child: ");
-            for (int ki = 0; ki < size; ki++) { debug("0x%x ", encoded_key[ki]); }
+            for (int ki = 0; ki < size; ki++) {
+                if (encoded_key[ki] == 27) { debug("^[ "); }
+                else if (encoded_key[ki] == ' ') { debug("SPC "); }
+                else if (isprint(encoded_key[ki])) { debug("%c ", encoded_key[ki]); }
+                else { debug("0x%x ", encoded_key[ki]); }
+            }
             debug("\n");
         }
     } else {
