@@ -18,6 +18,7 @@ from .fast_data_types import (
 from .utils import log_error
 
 DataType = Union[bytes, 'IO[bytes]']
+TARGETS_MIME = '.'
 
 
 class ClipboardType(IntEnum):
@@ -329,6 +330,9 @@ class ClipboardRequestManager:
         if not cp.enabled:
             w.screen.send_escape_code_to_child(OSC, rr.encode_response(status='EINVAL'))
             return
+        if not allowed:
+            w.screen.send_escape_code_to_child(OSC, rr.encode_response(status='EPERM'))
+            return
         w.screen.send_escape_code_to_child(OSC, rr.encode_response(status='OK'))
 
         current_mime = ''
@@ -342,7 +346,7 @@ class ClipboardRequestManager:
 
         for mime in rr.mime_types:
             current_mime = mime
-            if mime == '.':
+            if mime == TARGETS_MIME:
                 w.screen.send_escape_code_to_child(
                     OSC, rr.encode_response(payload=' '.join(cp.get_available_mime_types_for_paste()).encode('utf-8'), mime=current_mime))
                 continue
@@ -370,6 +374,9 @@ class ClipboardRequestManager:
             w.screen.send_escape_code_to_child(OSC, encode_osc52(loc, text))
 
     def ask_to_read_clipboard(self, rr: ReadRequest) -> None:
+        if rr.mime_types == (TARGETS_MIME,):
+            self.fulfill_read_request(rr, True)
+            return
         if self.currently_asking_permission_for is not None:
             self.reject_read_request(rr)
             return
@@ -378,7 +385,7 @@ class ClipboardRequestManager:
             self.currently_asking_permission_for = rr
             get_boss().confirm(_(
                 'A program running in this window wants to read from the system clipboard.'
-                ' Allow it do so, once?'),
+                ' Allow it to do so, once?'),
                 self.handle_clipboard_confirmation, window=w,
             )
 
