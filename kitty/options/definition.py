@@ -1065,6 +1065,12 @@ margin between the tab bar and the contents of the current tab.
 '''
     )
 
+opt('tab_max_length', '0', option_type='positive_int',
+    long_text='''
+The maximum number of characters a tab title can have.
+A value of zero means that no limit is applied.
+'''
+    )
 
 opt('tab_bar_style', 'fade',
     choices=('fade', 'hidden', 'powerline', 'separator', 'slant', 'custom'), ctype='!tab_bar_style',

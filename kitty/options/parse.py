@@ -1246,6 +1246,9 @@ class Parser:
     def tab_fade(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['tab_fade'] = tab_fade(val)
 
+    def tab_max_length(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['tab_max_length'] = positive_int(val)
+
     def tab_powerline_style(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_tab_powerline_style:
