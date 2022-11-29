@@ -57,7 +57,7 @@ Detailed list of changes
 
 - Wayland GNOME: Workaround for latest mutter release breaking full screen for semi-transparent kitty windows (:iss:`5677`)
 
-- A new option :opt:`tab_title_max_length` to limit the length of tab titles
+- A new option :opt:`tab_title_max_length` to limit the length of tab (:iss:`5718`)
 
 
 0.26.5 [2022-11-07]
