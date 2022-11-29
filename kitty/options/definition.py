@@ -1157,7 +1157,7 @@ this is rendered.
 
 opt('tab_title_max_length', '0', option_type='positive_int',
     long_text='''
-The maximum number of cells that can be used to render a tab. A value of zero
+The maximum number of cells that can be used to render the text in a tab. A value of zero
 means that no limit is applied.
 '''
     )

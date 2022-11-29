@@ -220,6 +220,8 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int,
         'title': tab.title,
         'tab': ta,
     }
+    if draw_data.max_tab_title_length > 0:
+        max_title_length = min(max_title_length, draw_data.max_tab_title_length)
     ColorFormatter.draw_data = draw_data
     ColorFormatter.tab_data = tab
     eval_locals = {
@@ -251,7 +253,13 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int,
     except Exception as e:
         report_template_failure(template, str(e))
         title = tab.title
+    before_draw = screen.cursor.x
     draw_attributed_string(title, screen)
+    if draw_data.max_tab_title_length > 0:
+        x_limit = before_draw + draw_data.max_tab_title_length
+        if screen.cursor.x > x_limit:
+            screen.cursor.x = x_limit - 1
+            screen.draw('…')
 
 
 DrawTabFunc = Callable[[DrawData, Screen, TabBarData, int, int, int, bool, ExtraData], int]
@@ -286,8 +294,6 @@ def draw_tab_with_slant(
     else:
         draw_sep(left_sep)
         screen.draw(' ')
-        if draw_data.max_tab_title_length > 0:
-            max_tab_length = min(draw_data.max_tab_title_length, max_tab_length)
         draw_title(draw_data, screen, tab, index, max_tab_length)
         extra = screen.cursor.x - before - max_tab_length
         if extra >= 0:
@@ -309,8 +315,6 @@ def draw_tab_with_separator(
 ) -> int:
     if draw_data.leading_spaces:
         screen.draw(' ' * draw_data.leading_spaces)
-    if draw_data.max_tab_title_length > 0:
-        max_tab_length = min(draw_data.max_tab_title_length, max_tab_length)
     draw_title(draw_data, screen, tab, index, max_tab_length)
     trailing_spaces = min(max_tab_length - 1, draw_data.trailing_spaces)
     max_tab_length -= trailing_spaces
@@ -342,8 +346,6 @@ def draw_tab_with_fade(
         screen.cursor.bg = bg
         screen.draw(' ')
     screen.cursor.bg = orig_bg
-    if draw_data.max_tab_title_length > 0:
-        max_tab_length = min(draw_data.max_tab_title_length, max_tab_length)
     draw_title(draw_data, screen, tab, index, max(0, max_tab_length - 8))
     extra = screen.cursor.x - before - max_tab_length
     if extra > 0:
@@ -396,8 +398,6 @@ def draw_tab_with_powerline(
         start_draw = 1
 
     screen.cursor.bg = tab_bg
-    if draw_data.max_tab_title_length > 0:
-        max_tab_length = min(draw_data.max_tab_title_length, max_tab_length)
     if min_title_length >= max_tab_length:
         screen.draw('…')
     else:
