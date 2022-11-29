@@ -216,13 +216,17 @@ on_key_input(GLFWkeyevent *ev) {
     int size = encode_glfw_key_event(ev, screen->modes.mDECCKM, screen_current_key_encoding_flags(screen), encoded_key);
     if (size == SEND_TEXT_TO_CHILD) {
         schedule_write_to_child(w->id, 1, text, strlen(text));
-        debug("sent key as text to child\n");
+        debug("sent key as text to child: %s\n", text);
     } else if (size > 0) {
         if (size == 1 && screen->modes.mHANDLE_TERMIOS_SIGNALS) {
             if (screen_send_signal_for_key(screen, *encoded_key)) return;
         }
         schedule_write_to_child(w->id, 1, encoded_key, size);
-        debug("sent encoded key to child\n");
+        if (OPT(debug_keyboard)) {
+            debug("sent encoded key to child: ");
+            for (int ki = 0; ki < size; ki++) { debug("0x%x ", encoded_key[ki]); }
+            debug("\n");
+        }
     } else {
         debug("ignoring as keyboard mode does not support encoding this event\n");
     }
