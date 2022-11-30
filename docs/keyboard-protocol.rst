@@ -61,7 +61,7 @@ without too many changes, do the following:
    that are easy to parse unambiguously.
 #. Emit the escape sequence ``CSI < u`` at application exit if using the main
    screen or just before leaving alternate screen mode if using the alternate screen,
-   to restore the previously used keyboard mode.
+   to restore whatever the keyboard mode was before step 1.
 
 Key events will all be delivered to your application either as plain UTF-8
 text, or using the following escape codes, for those keys that do not produce
