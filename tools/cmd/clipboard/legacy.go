@@ -43,86 +43,60 @@ func run_plain_text_loop(opts *Options) (err error) {
 	if err != nil {
 		return
 	}
-	stdin_chan := make(chan string, 1)
-	err_chan := make(chan error, 1)
 	dest := "c"
 	if opts.UsePrimary {
 		dest = "p"
 	}
+	stdin_is_tty := tty.IsTerminal(os.Stdin.Fd())
+	var buf [8192]byte
 
 	send_to_loop := func(data string) {
-		select {
-		case stdin_chan <- data:
-			lp.WakeupMainThread()
-			return
-		default:
-			lp.WakeupMainThread()
-		}
-		stdin_chan <- data
+		lp.QueueWriteString(data)
 	}
-
-	read_from_stdin := func() {
-		if !tty.IsTerminal(os.Stdin.Fd()) {
-			var buf [8192]byte
-			enc := base64.NewEncoder(base64.StdEncoding, &base64_streaming_enc{send_to_loop})
-			header_written := false
-			for {
-				n, err := os.Stdin.Read(buf[:])
-				if err != nil {
-					if errors.Is(err, io.EOF) {
-						enc.Close()
-						send_to_loop("\a")
-						close(stdin_chan)
-						os.Stdin.Close()
-						break
-					}
-					err_chan <- fmt.Errorf("Failed to read from STDIN with error: %w", err)
-					lp.WakeupMainThread()
-					break
-				}
-				if n > 0 {
-					if !header_written {
-						header_written = true
-						send_to_loop(fmt.Sprintf("\x1b]52;%s;", dest))
-					}
-					enc.Write(buf[:n])
-				}
-			}
-		} else {
-			close(stdin_chan)
-			lp.WakeupMainThread()
-		}
-	}
-
+	enc := base64.NewEncoder(base64.StdEncoding, &base64_streaming_enc{send_to_loop})
 	transmitting := true
 
-	lp.OnWakeup = func() error {
-		for transmitting {
-			select {
-			case p, more := <-stdin_chan:
-				if more {
-					lp.QueueWriteString(p)
-				} else {
-					transmitting = false
-					if opts.GetClipboard {
-						lp.QueueWriteString(encode_read_from_clipboard(opts.UsePrimary))
-					} else if opts.WaitForCompletion {
-						lp.QueueWriteString("\x1bP+q544e\x1b\\")
-					} else {
-						lp.Quit(0)
-					}
-				}
-			case err := <-err_chan:
-				return err
-			default:
+	after_read_from_stdin := func() {
+		transmitting = false
+		if opts.GetClipboard {
+			lp.QueueWriteString(encode_read_from_clipboard(opts.UsePrimary))
+		} else if opts.WaitForCompletion {
+			lp.QueueWriteString("\x1bP+q544e\x1b\\")
+		} else {
+			lp.Quit(0)
+		}
+	}
+
+	read_from_stdin := func() error {
+		n, err := os.Stdin.Read(buf[:])
+		if n > 0 {
+			enc.Write(buf[:n])
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				enc.Close()
+				send_to_loop("\x1b\\")
+				os.Stdin.Close()
+				after_read_from_stdin()
 				return nil
 			}
+			return fmt.Errorf("Failed to read from STDIN with error: %w", err)
 		}
+		lp.WakeupMainThread()
 		return nil
 	}
 
+	lp.OnWakeup = func() error {
+		return read_from_stdin()
+	}
+
 	lp.OnInitialize = func() (string, error) {
-		go read_from_stdin()
+		if !stdin_is_tty {
+			send_to_loop(fmt.Sprintf("\x1b]52;%s;", dest))
+			read_from_stdin()
+		} else {
+			after_read_from_stdin()
+		}
 		return "", nil
 	}
 
