@@ -977,25 +977,9 @@ def sanitize_control_codes(text: str, replace_with: str = '') -> str:
 
 
 def hold_till_enter() -> None:
-    import select
-    import termios
-
-    from kittens.tui.operations import init_state, set_cursor_visible
-    fd, original_termios = open_tty()
-    msg = '\n\r\x1b[1;32mPress Enter or Esc to exit\x1b[m'
-    write_all(fd, msg)
-    write_all(fd, init_state(alternate_screen=False, kitty_keyboard_mode=False) + set_cursor_visible(False))
-    with no_echo(fd):
-        termios.tcdrain(fd)
-        while True:
-            rd = select.select([fd], [], [])[0]
-            if not rd:
-                break
-            q = os.read(fd, 1)
-            if q in b'\n\r\x1b':
-                break
-            if q in b'\x03\x04':
-                write_all(fd, msg)
+    from .constants import kitty_tool_exe
+    import subprocess
+    subprocess.Popen([kitty_tool_exe(), '__hold_till_enter__']).wait()
 
 
 def cleanup_ssh_control_masters() -> None:
