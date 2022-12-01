@@ -98,3 +98,15 @@ func Keys[M ~map[K]V, K comparable, V any](m M) []K {
 	}
 	return r
 }
+
+// Values returns the values of the map m.
+// The values will be an indeterminate order.
+func Values[M ~map[K]V, K comparable, V any](m M) []V {
+	r := make([]V, len(m))
+	i := 0
+	for _, v := range m {
+		r[i] = v
+		i++
+	}
+	return r
+}
