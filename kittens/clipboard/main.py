@@ -4,17 +4,25 @@
 import sys
 
 OPTIONS = r'''
---get-clipboard
+--get-clipboard -g
 type=bool-set
 Output the current contents of the clipboard to STDOUT. Note that by default
 kitty will prompt for permission to access the clipboard. Can be controlled
 by :opt:`clipboard_control`.
 
 
---use-primary
+--use-primary -p
 type=bool-set
 Use the primary selection rather than the clipboard on systems that support it,
-such as X11.
+such as Linux.
+
+
+--mime -m
+type=list
+The mimetype of the specified file. Useful when the auto-detected mimetype is
+likely to be incorrect or the filename has no extension and therefore no mimetype
+can be detected. If more than one file is specified, this option should be specified multiple
+times, once for each specified file.
 
 
 --wait-for-completion

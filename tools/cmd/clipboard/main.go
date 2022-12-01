@@ -3,8 +3,21 @@
 package clipboard
 
 import (
+	"os"
+
 	"kitty/tools/cli"
 )
+
+func run_mime_loop(opts *Options, args []string) (err error) {
+	cwd, err = os.Getwd()
+	if err != nil {
+		return err
+	}
+	if opts.GetClipboard {
+		return run_get_loop(opts, args)
+	}
+	return run_set_loop(opts, args)
+}
 
 func clipboard_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if len(args) > 0 {

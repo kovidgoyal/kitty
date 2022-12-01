@@ -257,8 +257,9 @@ class ClipboardRequestManager:
         self.in_flight_write_request: Optional[WriteRequest] = None
 
     def parse_osc_5522(self, data: str) -> None:
+        import base64
         from .notify import sanitize_id
-        metadata, _, payload = data.partition(';')
+        metadata, _, epayload = data.partition(';')
         m: Dict[str, str] = {}
         for record in metadata.split(':'):
             try:
@@ -268,10 +269,11 @@ class ClipboardRequestManager:
                 return
             m[k] = v
         typ = m.get('type', '')
+        payload = base64.standard_b64decode(epayload)
         if typ == 'read':
             rr = ReadRequest(
                 is_primary_selection=m.get('loc', '') == 'primary',
-                mime_types=tuple(payload.split()),
+                mime_types=tuple(payload.decode('utf-8').split()),
                 protocol_type=ProtocolType.osc_5522, id=sanitize_id(m.get('id', ''))
             )
             self.handle_read_request(rr)

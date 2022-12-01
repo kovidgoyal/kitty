@@ -73,3 +73,28 @@ func Min[T constraints.Ordered](a T, items ...T) (ans T) {
 	}
 	return ans
 }
+
+func Index[T comparable](haystack []T, needle T) int {
+	for i, x := range haystack {
+		if x == needle {
+			return i
+		}
+	}
+	return -1
+}
+
+func Contains[T comparable](haystack []T, needle T) bool {
+	return Index(haystack, needle) > -1
+}
+
+// Keys returns the keys of the map m.
+// The keys will be an indeterminate order.
+func Keys[M ~map[K]V, K comparable, V any](m M) []K {
+	r := make([]K, len(m))
+	i := 0
+	for k := range m {
+		r[i] = k
+		i++
+	}
+	return r
+}
