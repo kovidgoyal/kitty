@@ -354,6 +354,8 @@ def decode_key_event(csi: str, csi_type: str) -> KeyEvent:
 def csi_number_for_name(key_name: str) -> int:
     if not key_name:
         return 0
+    if key_name in ('F3', 'ENTER'):
+        return 13
     fn = get_name_to_functional_number_map().get(key_name)
     if fn is None:
         return ord(key_name)

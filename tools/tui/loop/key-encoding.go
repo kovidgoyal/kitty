@@ -362,6 +362,9 @@ func csi_number_for_name(key_name string) int {
 	if key_name == "" {
 		return 0
 	}
+	if key_name == "F3" || key_name == "ENTER" {
+		return 13
+	}
 	fn, ok := name_to_functional_number_map[key_name]
 	if !ok {
 		return int(rune(key_name[0]))
