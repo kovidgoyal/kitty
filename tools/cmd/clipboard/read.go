@@ -183,6 +183,17 @@ func encode(metadata map[string]string, payload string) string {
 	return ans.String()
 }
 
+func error_from_status(status string) error {
+	switch status {
+	case "ENOCLIPBOARD":
+		return fmt.Errorf("no primary selection available on this system")
+	case "EPERM":
+		return fmt.Errorf("permission denied")
+	default:
+		return fmt.Errorf("%s", status)
+	}
+}
+
 func run_get_loop(opts *Options, args []string) (err error) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking)
 	if err != nil {
@@ -271,7 +282,7 @@ func run_get_loop(opts *Options, args []string) (err error) {
 				}
 				lp.QueueWriteString(encode(map[string]string{"type": "read"}, strings.Join(utils.Keys(requested_mimes), " ")))
 			default:
-				return fmt.Errorf("Failed to read list of available data types in the clipboard with error: %s", metadata["status"])
+				return fmt.Errorf("Failed to read list of available data types in the clipboard with error: %w", error_from_status(metadata["status"]))
 			}
 		} else {
 			switch metadata["status"] {
@@ -308,7 +319,7 @@ func run_get_loop(opts *Options, args []string) (err error) {
 				}
 				lp.Quit(0)
 			default:
-				return fmt.Errorf("Failed to read data from the clipboard with error: %s", metadata["status"])
+				return fmt.Errorf("Failed to read data from the clipboard with error: %w", error_from_status(metadata["status"]))
 			}
 		}
 		return
