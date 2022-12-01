@@ -7,16 +7,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	"image/png"
 	"io"
 	"os"
 	"strings"
 
-	_ "golang.org/x/image/bmp"
-	_ "golang.org/x/image/tiff"
-	_ "golang.org/x/image/webp"
+	"kitty/tools/utils/images"
 )
 
 type struct_with_data interface {
@@ -57,7 +52,7 @@ func read_window_logo(io_data *rc_io_data, path string) (func(io_data *rc_io_dat
 		f.Close()
 		b := bytes.Buffer{}
 		b.Grow(config.Height * config.Width * 4)
-		err = png.Encode(&b, img)
+		err = images.Encode(&b, img, "image/png")
 		if err != nil {
 			return nil, err
 		}

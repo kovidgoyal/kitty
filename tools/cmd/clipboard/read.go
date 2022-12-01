@@ -7,9 +7,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
-	"image/gif"
-	"image/jpeg"
-	"image/png"
 	"mime"
 	"os"
 	"path/filepath"
@@ -19,24 +16,13 @@ import (
 	"kitty/tools/tty"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
-
-	"golang.org/x/image/bmp"
-	"golang.org/x/image/tiff"
-	_ "golang.org/x/image/webp"
+	"kitty/tools/utils/images"
 )
 
 var _ = fmt.Print
 var cwd string
 
 const OSC_NUMBER = "5522"
-
-var decodable_image_types = map[string]bool{
-	"image/jpeg": true, "image/png": true, "image/bmp": true, "image/tiff": true, "image/webp": true, "image/gif": true,
-}
-
-var encodable_image_types = map[string]bool{
-	"image/jpeg": true, "image/png": true, "image/bmp": true, "image/tiff": true, "image/gif": true,
-}
 
 type Output struct {
 	arg                    string
@@ -114,20 +100,7 @@ func (self *Output) write_image(img image.Image) (err error) {
 			os.Remove(output.Name())
 		}
 	}()
-	switch self.mime_type {
-	case "image/png":
-		return png.Encode(output, img)
-	case "image/jpeg":
-		return jpeg.Encode(output, img, nil)
-	case "image/bmp":
-		return bmp.Encode(output, img)
-	case "image/gif":
-		return gif.Encode(output, img, nil)
-	case "image/tiff":
-		return tiff.Encode(output, img, nil)
-	}
-	err = fmt.Errorf("Unsupported output image MIME type %s", self.mime_type)
-	return
+	return images.Encode(output, img, self.mime_type)
 }
 
 func (self *Output) commit() {
@@ -167,9 +140,9 @@ func (self *Output) assign_mime_type(available_mimes []string) (err error) {
 		self.remote_mime_type = "."
 		return
 	}
-	if encodable_image_types[self.mime_type] {
+	if images.EncodableImageTypes[self.mime_type] {
 		for _, mt := range available_mimes {
-			if decodable_image_types[mt] {
+			if images.DecodableImageTypes[mt] {
 				self.remote_mime_type = mt
 				self.image_needs_conversion = true
 				return
