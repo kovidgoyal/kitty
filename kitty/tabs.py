@@ -17,7 +17,7 @@ from typing import (
 from .borders import Border, Borders
 from .child import Child
 from .cli_stub import CLIOptions
-from .constants import appname, kitty_exe
+from .constants import appname, kitty_tool_exe
 from .fast_data_types import (
     GLFW_MOUSE_BUTTON_LEFT, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE, add_tab,
     attach_window, current_focused_os_window_id, detach_window, get_boss,
@@ -413,7 +413,7 @@ class Tab:  # {{{
                                     cmd[:0] = shlex.split(line)
                                 else:
                                     cmd[:0] = [resolved_shell(get_options())[0]]
-                                cmd[:0] = [kitty_exe(), '+hold']
+                                cmd[:0] = [kitty_tool_exe(), '__hold_till_enter__']
         fenv: Dict[str, str] = {}
         if env:
             fenv.update(env)

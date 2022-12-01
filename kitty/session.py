@@ -8,7 +8,7 @@ from typing import (
 )
 
 from .cli_stub import CLIOptions
-from .constants import kitty_exe
+from .constants import kitty_tool_exe
 from .layout.interface import all_layouts
 from .options.types import Options
 from .options.utils import resize_window, to_layout_names, window_size
@@ -211,7 +211,7 @@ def create_sessions(
     if special_window is None:
         cmd = args.args if args and args.args else resolved_shell(opts)
         if args and args.hold:
-            cmd = [kitty_exe(), '+hold'] + cmd
+            cmd = [kitty_tool_exe(), '__hold_till_enter__'] + cmd
         from kitty.tabs import SpecialWindow
         cwd: Optional[str] = args.directory if respect_cwd and args else None
         special_window = SpecialWindow(cmd, cwd_from=cwd_from, cwd=cwd)

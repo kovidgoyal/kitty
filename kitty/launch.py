@@ -15,7 +15,7 @@ from .child import Child
 from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .clipboard import set_clipboard_string, set_primary_selection
-from .constants import kitty_exe, shell_path
+from .constants import kitty_tool_exe, shell_path
 from .fast_data_types import (
     add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
 )
@@ -565,7 +565,7 @@ def launch(
     else:
         if opts.hold:
             cmd = kw['cmd'] or [shell_path]
-            kw['cmd'] = [kitty_exe(), '+hold'] + cmd
+            kw['cmd'] = [kitty_tool_exe(), '__hold_till_enter__'] + cmd
         if force_target_tab:
             tab = target_tab
         else:

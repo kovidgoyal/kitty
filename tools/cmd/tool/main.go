@@ -10,6 +10,7 @@ import (
 	"kitty/tools/cmd/clipboard"
 	"kitty/tools/cmd/edit_in_kitty"
 	"kitty/tools/cmd/update_self"
+	"kitty/tools/tui"
 )
 
 var _ = fmt.Print
@@ -25,4 +26,14 @@ func KittyToolEntryPoints(root *cli.Command) {
 	edit_in_kitty.EntryPoint(root)
 	// clipboard
 	clipboard.EntryPoint(root)
+	// __hold_till_enter__
+	root.AddSubCommand(&cli.Command{
+		Name:            "__hold_till_enter__",
+		Hidden:          true,
+		OnlyArgsAllowed: true,
+		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
+			tui.ExecAndHoldTillEnter(args)
+			return
+		},
+	})
 }

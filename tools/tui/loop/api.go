@@ -242,6 +242,14 @@ func (self *Loop) SetCursorShape(shape CursorShapes, blink bool) {
 	self.QueueWriteString(CursorShape(shape, blink))
 }
 
+func (self *Loop) SetCursorVisible(visible bool) {
+	if visible {
+		self.QueueWriteString(DECTCEM.EscapeCodeToSet())
+	} else {
+		self.QueueWriteString(DECTCEM.EscapeCodeToReset())
+	}
+}
+
 func (self *Loop) MoveCursorHorizontally(amt int) {
 	if amt != 0 {
 		suffix := "C"

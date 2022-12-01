@@ -26,19 +26,9 @@ def runpy(args: List[str]) -> None:
 
 
 def hold(args: List[str]) -> None:
-    import subprocess
-    ret = 1
-    try:
-        ret = subprocess.Popen(args[1:]).wait()
-    except KeyboardInterrupt:
-        pass
-    except FileNotFoundError:
-        print(f'Could not find {args[1]!r} to execute', file=sys.stderr)
-    except Exception as e:
-        print(e, file=sys.stderr)
-    from kitty.utils import hold_till_enter
-    hold_till_enter()
-    raise SystemExit(ret)
+    from kitty.constants import kitty_tool_exe
+    args = ['kitty-tool', '__hold_till_enter__'] + args[1:]
+    os.execvp(kitty_tool_exe(), args)
 
 
 def open_urls(args: List[str]) -> None:
