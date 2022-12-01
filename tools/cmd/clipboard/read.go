@@ -121,6 +121,15 @@ func (self *Output) commit() {
 	} else {
 		self.dest.Close()
 		if !self.is_stream {
+			f, err := os.Create(self.arg)
+			if err == nil {
+				fi, err := f.Stat()
+				if err == nil {
+					self.dest.Chmod(fi.Mode().Perm())
+				}
+				f.Close()
+				os.Remove(f.Name())
+			}
 			self.err = os.Rename(self.dest.Name(), self.arg)
 			if self.err != nil {
 				os.Remove(self.dest.Name())
