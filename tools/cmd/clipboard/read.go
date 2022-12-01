@@ -121,7 +121,7 @@ func (self *Output) commit() {
 	} else {
 		self.dest.Close()
 		if !self.is_stream {
-			f, err := os.Create(self.arg)
+			f, err := os.OpenFile(self.arg, os.O_CREATE|os.O_RDONLY, 0666)
 			if err == nil {
 				fi, err := f.Stat()
 				if err == nil {
