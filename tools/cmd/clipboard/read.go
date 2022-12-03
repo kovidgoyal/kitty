@@ -139,14 +139,22 @@ func (self *Output) commit() {
 	self.dest = nil
 }
 
-func (self *Output) assign_mime_type(available_mimes []string) (err error) {
+func (self *Output) assign_mime_type(available_mimes []string, aliases map[string][]string) (err error) {
+	if self.mime_type == "." {
+		self.remote_mime_type = "."
+		return
+	}
 	if utils.Contains(available_mimes, self.mime_type) {
 		self.remote_mime_type = self.mime_type
 		return
 	}
-	if self.mime_type == "." {
-		self.remote_mime_type = "."
-		return
+	if len(aliases[self.mime_type]) > 0 {
+		for _, alias := range aliases[self.mime_type] {
+			if utils.Contains(available_mimes, alias) {
+				self.remote_mime_type = alias
+				return
+			}
+		}
 	}
 	if images.EncodableImageTypes[self.mime_type] {
 		for _, mt := range available_mimes {
@@ -242,6 +250,19 @@ func parse_escape_code(etype loop.EscapeCodeType, data []byte) (metadata map[str
 	return
 }
 
+func parse_aliases(raw []string) (map[string][]string, error) {
+	ans := make(map[string][]string, len(raw))
+	for _, x := range raw {
+		k, v, found := utils.Cut(x, "=")
+		if !found {
+			return nil, fmt.Errorf("%s is not valid MIME alias specification", x)
+		}
+		ans[k] = append(ans[k], v)
+		ans[v] = append(ans[v], k)
+	}
+	return ans, nil
+}
+
 func run_get_loop(opts *Options, args []string) (err error) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking)
 	if err != nil {
@@ -253,6 +274,10 @@ func run_get_loop(opts *Options, args []string) (err error) {
 	requested_mimes := make(map[string]*Output)
 	reading_available_mimes := true
 	outputs := make([]*Output, len(args))
+	aliases, merr := parse_aliases(opts.Alias)
+	if merr != nil {
+		return merr
+	}
 
 	for i, arg := range args {
 		outputs[i] = &Output{arg: arg, arg_is_stream: arg == "/dev/stdout" || arg == "/dev/stderr", ext: filepath.Ext(arg)}
@@ -301,7 +326,7 @@ func run_get_loop(opts *Options, args []string) (err error) {
 					return fmt.Errorf("The clipboard is empty")
 				}
 				for _, o := range outputs {
-					err = o.assign_mime_type(available_mimes)
+					err = o.assign_mime_type(available_mimes, aliases)
 					if err != nil {
 						return err
 					}

@@ -239,6 +239,7 @@ class WriteRequest:
         self.currently_writing_mime = ''
         self.current_leftover_bytes = memoryview(b'')
         self.max_size = (get_options().clipboard_max_size * 1024 * 1024) if max_size < 0 else max_size
+        self.aliases: Dict[str, str] = {}
         self.commited = False
 
     def encode_response(self, status: str = 'OK') -> bytes:
@@ -254,6 +255,10 @@ class WriteRequest:
         self.commited = True
         cp = get_boss().primary_selection if self.is_primary_selection else get_boss().clipboard
         if cp.enabled:
+            for alias, src in self.aliases.items():
+                pos = self.mime_map.get(src)
+                if pos is not None:
+                    self.mime_map[alias] = pos
             x = {mime: self.tempfile.create_chunker(pos.start, pos.size) for mime, pos in self.mime_map.items()}
             cp.set_mime(x)
 
@@ -346,6 +351,13 @@ class ClipboardRequestManager:
                 protocol_type=ProtocolType.osc_5522, id=sanitize_id(m.get('id', ''))
             )
             self.handle_write_request(self.in_flight_write_request)
+        elif typ == 'walias':
+            wr = self.in_flight_write_request
+            mime = m.get('mime', '')
+            if mime and wr is not None:
+                aliases = base64.standard_b64decode(epayload).decode('utf-8').split()
+                for alias in aliases:
+                    wr.aliases[alias] = mime
         elif typ == 'wdata':
             wr = self.in_flight_write_request
             w = get_boss().window_id_map.get(self.window_id)

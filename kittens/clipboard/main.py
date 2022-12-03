@@ -25,6 +25,16 @@ can be detected. If more than one file is specified, this option should be speci
 times, once for each specified file.
 
 
+--alias -a
+type=list
+Specify aliases for MIME types. Aliased MIME types are considered equivalent.
+When copying to clipboard both the original and alias are made available on the
+clipboard. When copying from clipboard if the original is not found, the alias
+is used, as a fallback. Can be specified multiple times to create multiple
+aliases. For example: :code:`--alias text/plain=text/x-rst` makes :code:`text/plain` an alias
+of :code:`text/rst`. Aliases are not used in filter mode.
+
+
 --wait-for-completion
 type=bool-set
 Wait till the copy to clipboard is complete before exiting. Useful if running

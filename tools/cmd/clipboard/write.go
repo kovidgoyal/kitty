@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
@@ -23,13 +24,17 @@ type Input struct {
 	mime_type string
 }
 
-func write_loop(inputs []*Input) (err error) {
+func write_loop(inputs []*Input, opts *Options) (err error) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking)
 	if err != nil {
 		return err
 	}
 	var waiting_for_write loop.IdType
 	var buf [4096]byte
+	aliases, aerr := parse_aliases(opts.Alias)
+	if aerr != nil {
+		return aerr
+	}
 
 	lp.OnInitialize = func() (string, error) {
 		waiting_for_write = lp.QueueWriteString(encode(map[string]string{"type": "write"}, ""))
@@ -47,6 +52,9 @@ func write_loop(inputs []*Input) (err error) {
 		}
 		if err != nil {
 			if errors.Is(err, io.EOF) {
+				if len(aliases[i.mime_type]) > 0 {
+					lp.QueueWriteString(encode(map[string]string{"type": "walias", "mime": i.mime_type}, strings.Join(aliases[i.mime_type], " ")))
+				}
 				inputs = inputs[1:]
 				if len(inputs) == 0 {
 					lp.QueueWriteString(encode(map[string]string{"type": "wdata"}, ""))
@@ -151,5 +159,5 @@ func run_set_loop(opts *Options, args []string) (err error) {
 		}
 		to_process[i] = inputs[i]
 	}
-	return write_loop(to_process)
+	return write_loop(to_process, opts)
 }
