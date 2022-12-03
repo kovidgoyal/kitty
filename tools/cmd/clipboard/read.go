@@ -287,14 +287,19 @@ func run_get_loop(opts *Options, args []string) (err error) {
 					if err != nil {
 						return err
 					}
-					requested_mimes[o.remote_mime_type] = o
 					if o.remote_mime_type == "." {
 						o.started = true
 						o.add_data(utils.UnsafeStringToBytes(strings.Join(available_mimes, "\n")))
 						o.all_data_received = true
+					} else {
+						requested_mimes[o.remote_mime_type] = o
 					}
 				}
-				lp.QueueWriteString(encode(map[string]string{"type": "read"}, strings.Join(utils.Keys(requested_mimes), " ")))
+				if len(requested_mimes) > 0 {
+					lp.QueueWriteString(encode(map[string]string{"type": "read"}, strings.Join(utils.Keys(requested_mimes), " ")))
+				} else {
+					lp.Quit(0)
+				}
 			default:
 				return fmt.Errorf("Failed to read list of available data types in the clipboard with error: %w", error_from_status(metadata["status"]))
 			}
