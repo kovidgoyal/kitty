@@ -1033,7 +1033,7 @@ getSelectionString(Atom selection, Atom *targets, size_t num_targets, GLFWclipbo
         }
         else if (actualType == XA_ATOM && targets[i] == _glfw.x11.TARGETS) {
             found = true;
-            write_data(object, data, itemCount);
+            write_data(object, data, sizeof(Atom) * itemCount);
         }
 
         XFREE(data);
