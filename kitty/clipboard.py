@@ -320,8 +320,8 @@ class ClipboardRequestManager:
                 return
             m[k] = v
         typ = m.get('type', '')
-        payload = base64.standard_b64decode(epayload)
         if typ == 'read':
+            payload = base64.standard_b64decode(epayload)
             rr = ReadRequest(
                 is_primary_selection=m.get('loc', '') == 'primary',
                 mime_types=tuple(payload.decode('utf-8').split()),
@@ -329,18 +329,11 @@ class ClipboardRequestManager:
             )
             self.handle_read_request(rr)
         elif typ == 'write':
-            wr = self.in_flight_write_request
-            if wr is None:
-                wr = self.in_flight_write_request = WriteRequest(
-                    is_primary_selection=m.get('loc', '') == 'primary',
-                    protocol_type=ProtocolType.osc_5522, id=sanitize_id(m.get('id', ''))
-                )
-                self.handle_write_request(wr)
-            else:
-                w = get_boss().window_id_map.get(self.window_id)
-                if w is not None:
-                    w.screen.send_escape_code_to_child(OSC, wr.encode_response(status='EBUSY'))
-
+            self.in_flight_write_request = WriteRequest(
+                is_primary_selection=m.get('loc', '') == 'primary',
+                protocol_type=ProtocolType.osc_5522, id=sanitize_id(m.get('id', ''))
+            )
+            self.handle_write_request(self.in_flight_write_request)
         elif typ == 'wdata':
             wr = self.in_flight_write_request
             w = get_boss().window_id_map.get(self.window_id)
@@ -349,7 +342,7 @@ class ClipboardRequestManager:
             mime = m.get('mime', '')
             if mime:
                 try:
-                    wr.add_base64_data(payload, mime)
+                    wr.add_base64_data(epayload, mime)
                 except OSError:
                     if w is not None:
                         w.screen.send_escape_code_to_child(OSC, wr.encode_response(status='EIO'))
@@ -364,6 +357,8 @@ class ClipboardRequestManager:
                 wr.flush_base64_data()
                 wr.commit()
                 self.in_flight_write_request = None
+                if w is not None:
+                    w.screen.send_escape_code_to_child(OSC, wr.encode_response(status='DONE'))
 
     def parse_osc_52(self, data: str, is_partial: bool = False) -> None:
         where, text = data.partition(';')[::2]
@@ -395,7 +390,7 @@ class ClipboardRequestManager:
         if not allowed or not cp.enabled:
             self.in_flight_write_request = None
             if w is not None:
-                w.screen.send_escape_code_to_child(OSC, wr.encode_response(status='EPERM' if not allowed else 'ENOCLIPBOARD'))
+                w.screen.send_escape_code_to_child(OSC, wr.encode_response(status='EPERM' if not allowed else 'ENOSYS'))
 
     def fulfill_legacy_write_request(self, wr: WriteRequest, allowed: bool = True) -> None:
         cp = get_boss().primary_selection if wr.is_primary_selection else get_boss().clipboard
@@ -424,7 +419,7 @@ class ClipboardRequestManager:
             return
         cp = get_boss().primary_selection if rr.is_primary_selection else get_boss().clipboard
         if not cp.enabled:
-            w.screen.send_escape_code_to_child(OSC, rr.encode_response(status='ENOCLIPBOARD'))
+            w.screen.send_escape_code_to_child(OSC, rr.encode_response(status='ENOSYS'))
             return
         if not allowed:
             w.screen.send_escape_code_to_child(OSC, rr.encode_response(status='EPERM'))

@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
-	"mime"
 	"os"
 	"path/filepath"
 	"strings"
@@ -161,7 +160,7 @@ func (self *Output) assign_mime_type(available_mimes []string) (err error) {
 	return fmt.Errorf("The MIME type %s for %s not available on the clipboard", self.mime_type, self.arg)
 }
 
-func encode(metadata map[string]string, payload string) string {
+func encode_bytes(metadata map[string]string, payload []byte) string {
 	ans := strings.Builder{}
 	ans.Grow(2048)
 	ans.WriteString("\x1b]")
@@ -177,15 +176,19 @@ func encode(metadata map[string]string, payload string) string {
 	}
 	if len(payload) > 0 {
 		ans.WriteString(";")
-		ans.WriteString(base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(payload)))
+		ans.WriteString(base64.StdEncoding.EncodeToString(payload))
 	}
 	ans.WriteString("\x1b\\")
 	return ans.String()
 }
 
+func encode(metadata map[string]string, payload string) string {
+	return encode_bytes(metadata, utils.UnsafeStringToBytes(payload))
+}
+
 func error_from_status(status string) error {
 	switch status {
-	case "ENOCLIPBOARD":
+	case "ENOSYS":
 		return fmt.Errorf("no primary selection available on this system")
 	case "EPERM":
 		return fmt.Errorf("permission denied")
@@ -194,10 +197,37 @@ func error_from_status(status string) error {
 	}
 }
 
+func parse_escape_code(etype loop.EscapeCodeType, data []byte) (metadata map[string]string, payload []byte, err error) {
+	if etype != loop.OSC || !bytes.HasPrefix(data, utils.UnsafeStringToBytes(OSC_NUMBER+";")) {
+		return
+	}
+	parts := bytes.SplitN(data, utils.UnsafeStringToBytes(";"), 3)
+	metadata = make(map[string]string)
+	if len(parts) > 2 && len(parts[2]) > 0 {
+		payload, err = base64.StdEncoding.DecodeString(utils.UnsafeBytesToString(parts[2]))
+		if err != nil {
+			err = fmt.Errorf("Received OSC %s packet from terminal with invalid base64 encoded payload", OSC_NUMBER)
+			return
+		}
+	}
+	if len(parts) > 1 {
+		for _, record := range bytes.Split(parts[1], utils.UnsafeStringToBytes(":")) {
+			rp := bytes.SplitN(record, utils.UnsafeStringToBytes("="), 2)
+			v := ""
+			if len(rp) == 2 {
+				v = string(rp[1])
+			}
+			metadata[string(rp[0])] = v
+		}
+	}
+
+	return
+}
+
 func run_get_loop(opts *Options, args []string) (err error) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking)
 	if err != nil {
-		return
+		return err
 	}
 	var available_mimes []string
 	var wg sync.WaitGroup
@@ -214,7 +244,7 @@ func run_get_loop(opts *Options, args []string) (err error) {
 			if outputs[i].arg_is_stream {
 				outputs[i].mime_type = "text/plain"
 			} else {
-				outputs[i].mime_type = mime.TypeByExtension(outputs[i].ext)
+				outputs[i].mime_type = utils.GuessMimeType(outputs[i].arg)
 			}
 		}
 		if outputs[i].mime_type == "" {
@@ -235,28 +265,12 @@ func run_get_loop(opts *Options, args []string) (err error) {
 	}
 
 	lp.OnEscapeCode = func(etype loop.EscapeCodeType, data []byte) (err error) {
-		if etype != loop.OSC || !bytes.HasPrefix(data, utils.UnsafeStringToBytes(OSC_NUMBER+";")) {
-			return
+		metadata, payload, err := parse_escape_code(etype, data)
+		if err != nil {
+			return err
 		}
-		parts := bytes.SplitN(data, utils.UnsafeStringToBytes(";"), 3)
-		metadata := make(map[string]string)
-		var payload []byte
-		if len(parts) > 2 && len(parts[2]) > 0 {
-			payload, err = base64.StdEncoding.DecodeString(utils.UnsafeBytesToString(parts[2]))
-			if err != nil {
-				err = fmt.Errorf("Received OSC %s packet from terminal with invalid base64 encoded payload", OSC_NUMBER)
-				return
-			}
-		}
-		if len(parts) > 1 {
-			for _, record := range bytes.Split(parts[1], utils.UnsafeStringToBytes(":")) {
-				rp := bytes.SplitN(record, utils.UnsafeStringToBytes("="), 2)
-				v := ""
-				if len(rp) == 2 {
-					v = string(rp[1])
-				}
-				metadata[string(rp[0])] = v
-			}
+		if metadata == nil {
+			return nil
 		}
 		if reading_available_mimes {
 			switch metadata["status"] {
