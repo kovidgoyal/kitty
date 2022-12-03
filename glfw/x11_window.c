@@ -2861,7 +2861,7 @@ static MimeAtom atom_for_mime(const char *mime) {
     MimeAtom ma = {.mime=_glfw_strdup(mime), .atom=XInternAtom(_glfw.x11.display, mime, 0)};
     if (_glfw.x11.mime_atoms.capacity < _glfw.x11.mime_atoms.sz + 1) {
         _glfw.x11.mime_atoms.capacity += 32;
-        _glfw.x11.mime_atoms.array = realloc(_glfw.x11.mime_atoms.array, _glfw.x11.mime_atoms.capacity);
+        _glfw.x11.mime_atoms.array = realloc(_glfw.x11.mime_atoms.array, _glfw.x11.mime_atoms.capacity * sizeof(_glfw.x11.mime_atoms.array[0]));
     }
     _glfw.x11.mime_atoms.array[_glfw.x11.mime_atoms.sz++] = ma;
     return ma;
