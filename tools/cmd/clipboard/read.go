@@ -156,6 +156,12 @@ func (self *Output) assign_mime_type(available_mimes []string, aliases map[strin
 			}
 		}
 	}
+	for _, mt := range available_mimes {
+		if matched, _ := filepath.Match(self.mime_type, mt); matched {
+			self.remote_mime_type = mt
+			return
+		}
+	}
 	if images.EncodableImageTypes[self.mime_type] {
 		for _, mt := range available_mimes {
 			if images.DecodableImageTypes[mt] {

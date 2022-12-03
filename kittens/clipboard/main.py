@@ -22,7 +22,9 @@ type=list
 The mimetype of the specified file. Useful when the auto-detected mimetype is
 likely to be incorrect or the filename has no extension and therefore no mimetype
 can be detected. If more than one file is specified, this option should be specified multiple
-times, once for each specified file.
+times, once for each specified file. When copying data from the clipboard, you can use wildcards
+to match MIME types. For example: :code:`--mime 'text/*'` will match any textual MIME type
+available on the clipboard, usually the first matching MIME type is copied.
 
 
 --alias -a
