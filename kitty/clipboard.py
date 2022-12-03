@@ -180,6 +180,18 @@ class ProtocolType(Enum):
     osc_5522 = 5522
 
 
+def encode_mime(x: str) -> str:
+    import base64
+    return base64.standard_b64encode(x.encode('utf-8')).decode('ascii')
+
+
+def decode_metadata_value(k: str, x: str) -> str:
+    if k == 'mime':
+        import base64
+        x = base64.standard_b64decode(x).decode('utf-8')
+    return x
+
+
 class ReadRequest(NamedTuple):
     is_primary_selection: bool = False
     mime_types: Tuple[str, ...] = ('text/plain',)
@@ -193,7 +205,7 @@ class ReadRequest(NamedTuple):
         if self.id:
             ans += f':id={self.id}'
         if mime:
-            ans += f':mime={mime}'
+            ans += f':mime={encode_mime(mime)}'
         a = ans.encode('ascii')
         if payload:
             import base64
@@ -318,7 +330,7 @@ class ClipboardRequestManager:
             except Exception:
                 log_error('Malformed OSC 5522: metadata is not key=value pairs')
                 return
-            m[k] = v
+            m[k] = decode_metadata_value(k, v)
         typ = m.get('type', '')
         if typ == 'read':
             payload = base64.standard_b64decode(epayload)

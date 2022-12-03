@@ -160,6 +160,23 @@ func (self *Output) assign_mime_type(available_mimes []string) (err error) {
 	return fmt.Errorf("The MIME type %s for %s not available on the clipboard", self.mime_type, self.arg)
 }
 
+func escape_metadata_value(k, x string) (ans string) {
+	if k == "mime" {
+		x = base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(x))
+	}
+	return x
+}
+
+func unescape_metadata_value(k, x string) (ans string) {
+	if k == "mime" {
+		b, err := base64.StdEncoding.DecodeString(x)
+		if err == nil {
+			x = string(b)
+		}
+	}
+	return x
+}
+
 func encode_bytes(metadata map[string]string, payload []byte) string {
 	ans := strings.Builder{}
 	ans.Grow(2048)
@@ -172,7 +189,7 @@ func encode_bytes(metadata map[string]string, payload []byte) string {
 		}
 		ans.WriteString(k)
 		ans.WriteString("=")
-		ans.WriteString(v)
+		ans.WriteString(escape_metadata_value(k, v))
 	}
 	if len(payload) > 0 {
 		ans.WriteString(";")
@@ -217,7 +234,8 @@ func parse_escape_code(etype loop.EscapeCodeType, data []byte) (metadata map[str
 			if len(rp) == 2 {
 				v = string(rp[1])
 			}
-			metadata[string(rp[0])] = v
+			k := string(rp[0])
+			metadata[k] = unescape_metadata_value(k, v)
 		}
 	}
 
