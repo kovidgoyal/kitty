@@ -891,7 +891,10 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
     # update all the various auto-generated go files, if needed
     if args.verbose:
         print('Updating Go generated files...', flush=True)
-    cp = subprocess.run([kitty_exe, '+launch', os.path.join(src_base, 'gen-go-code.py')], stdout=subprocess.PIPE)
+
+    env = os.environ.copy()
+    env['ASAN_OPTIONS'] = 'detect_leaks=0'
+    cp = subprocess.run([kitty_exe, '+launch', os.path.join(src_base, 'gen-go-code.py')], stdout=subprocess.PIPE, env=env)
     if cp.returncode != 0:
         raise SystemExit(cp.returncode)
 
