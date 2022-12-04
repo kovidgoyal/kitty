@@ -937,7 +937,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float
 // }}}
 
 // Borders {{{
-enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_tint_opacity, BORDER_tint_premult, BORDER_default_bg, BORDER_active_border_color, BORDER_inactive_border_color, BORDER_bell_border_color, BORDER_tab_bar_bg, BORDER_tab_bar_margin_color, NUM_BORDER_UNIFORMS };
+enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_tint_opacity, BORDER_tint_premult, BORDER_colors, NUM_BORDER_UNIFORMS };
 static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
 
 static void
@@ -947,12 +947,7 @@ init_borders_program(void) {
         SET_LOC(background_opacity)
         SET_LOC(tint_opacity)
         SET_LOC(tint_premult)
-        SET_LOC(default_bg)
-        SET_LOC(active_border_color)
-        SET_LOC(inactive_border_color)
-        SET_LOC(bell_border_color)
-        SET_LOC(tab_bar_bg)
-        SET_LOC(tab_bar_margin_color)
+        SET_LOC(colors)
 #undef SET_LOC
 }
 
@@ -993,19 +988,17 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
             if (borders_buf_address) memcpy(borders_buf_address, rect_buf, sz);
             unmap_vao_buffer(vao_idx, 0);
         }
-#define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
+        color_type default_bg = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
+        GLuint colors[9] = {
+            default_bg, OPT(active_border_color), OPT(inactive_border_color), 0,
+            OPT(bell_border_color), OPT(tab_bar_background), OPT(tab_bar_margin_color),
+            w->tab_bar_edge_color.left, w->tab_bar_edge_color.right
+        };
+        glUniform1uiv(border_uniform_locations[BORDER_colors], arraysz(colors), colors);
         glUniform1f(border_uniform_locations[BORDER_background_opacity], background_opacity);
         glUniform1f(border_uniform_locations[BORDER_tint_opacity], tint_opacity);
         glUniform1f(border_uniform_locations[BORDER_tint_premult], tint_premult);
-        glUniform3f(border_uniform_locations[BORDER_active_border_color], CV3(OPT(active_border_color)));
-        glUniform3f(border_uniform_locations[BORDER_inactive_border_color], CV3(OPT(inactive_border_color)));
-        glUniform3f(border_uniform_locations[BORDER_bell_border_color], CV3(OPT(bell_border_color)));
-        glUniform3f(border_uniform_locations[BORDER_tab_bar_bg], CV3(OPT(tab_bar_background)));
-        glUniform3f(border_uniform_locations[BORDER_tab_bar_margin_color], CV3(OPT(tab_bar_margin_color)));
         glUniform2ui(border_uniform_locations[BORDER_viewport], viewport_width, viewport_height);
-        color_type default_bg = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
-        glUniform3f(border_uniform_locations[BORDER_default_bg], CV3(default_bg));
-#undef CV3
         if (has_bgimage(w)) {
             if (w->is_semi_transparent) { BLEND_PREMULT; }
             else { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT; }
