@@ -14,7 +14,7 @@ from .config import build_ansi_color_table
 from .constants import config_dir
 from .fast_data_types import (
     DECAWM, Color, Region, Screen, cell_size_for_window, get_boss, get_options,
-    pt_to_px, set_tab_bar_render_data, viewport_for_window,
+    pt_to_px, set_tab_bar_render_data, update_tab_bar_edge_colors, viewport_for_window,
 )
 from .rgb import alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
@@ -664,6 +664,7 @@ class TabBar:
         self.cell_ranges = cr
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
         self.align()
+        update_tab_bar_edge_colors(self.os_window_id)
 
     def align_with_factor(self, factor: int = 1) -> None:
         if not self.cell_ranges:

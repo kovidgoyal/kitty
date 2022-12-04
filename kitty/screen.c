@@ -3972,11 +3972,11 @@ effective_cell_edge_color(char_type ch, color_type fg, color_type bg, bool is_le
     END_ALLOW_CASE_RANGE
 }
 
-static PyObject*
-line_edge_colors(Screen *self, PyObject *a UNUSED) {
+bool
+get_line_edge_colors(Screen *self, color_type *left, color_type *right) {
     // Return the color at the left and right edges of the line with the cursor on it
     Line *line = range_line_(self, self->cursor->y);
-    if (!line) { PyErr_SetString(PyExc_IndexError, "Line number out of range"); return NULL; }
+    if (!line) return false;
     color_type left_cell_fg = 0, left_cell_bg = 0, right_cell_bg = 0, right_cell_fg = 0;
     index_type cell_color_x = 0;
     char_type left_char = line_get_char(line, cell_color_x);
@@ -3984,9 +3984,16 @@ line_edge_colors(Screen *self, PyObject *a UNUSED) {
     if (line->xnum > 0) cell_color_x = line->xnum - 1;
     char_type right_char = line_get_char(line, cell_color_x);
     colors_for_cell(line, self->color_profile, &cell_color_x, &right_cell_fg, &right_cell_bg);
-    unsigned long left = effective_cell_edge_color(left_char, left_cell_fg, left_cell_bg, true);
-    unsigned long right = effective_cell_edge_color(right_char, right_cell_fg, right_cell_bg, false);
-    return Py_BuildValue("kk", left, right);
+    *left = effective_cell_edge_color(left_char, left_cell_fg, left_cell_bg, true);
+    *right = effective_cell_edge_color(right_char, right_cell_fg, right_cell_bg, false);
+    return true;
+}
+
+static PyObject*
+line_edge_colors(Screen *self, PyObject *a UNUSED) {
+    color_type left, right;
+    if (!get_line_edge_colors(self, &left, &right)) { PyErr_SetString(PyExc_IndexError, "Line number out of range"); return NULL; }
+    return Py_BuildValue("kk", (unsigned long)left, (unsigned long)right);
 }
 
 

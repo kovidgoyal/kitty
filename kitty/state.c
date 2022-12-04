@@ -1124,6 +1124,17 @@ PYWRAP1(patch_global_colors) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(update_tab_bar_edge_colors) {
+    id_type os_window_id;
+    PA("K", &os_window_id);
+    WITH_OS_WINDOW(os_window_id)
+        if (os_window->tab_bar_render_data.screen) {
+            if (get_line_edge_colors(os_window->tab_bar_render_data.screen, &os_window->tab_bar_edge_color.left, &os_window->tab_bar_edge_color.right)) { Py_RETURN_TRUE; }
+        }
+    END_WITH_OS_WINDOW
+    Py_RETURN_FALSE;
+}
+
 static PyObject*
 pyset_background_image(PyObject *self UNUSED, PyObject *args) {
     const char *path;
@@ -1348,6 +1359,7 @@ static PyMethodDef module_methods[] = {
     MW(os_window_font_size, METH_VARARGS),
     MW(set_os_window_size, METH_VARARGS),
     MW(get_os_window_size, METH_VARARGS),
+    MW(update_tab_bar_edge_colors, METH_VARARGS),
     MW(set_boss, METH_O),
     MW(get_boss, METH_NOARGS),
     MW(apply_options_update, METH_NOARGS),
