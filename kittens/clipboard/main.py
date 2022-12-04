@@ -40,18 +40,39 @@ of :code:`text/rst`. Aliases are not used in filter mode.
 --wait-for-completion
 type=bool-set
 Wait till the copy to clipboard is complete before exiting. Useful if running
-the kitten in a dedicated, ephemeral window.
+the kitten in a dedicated, ephemeral window. Only needed in filter mode.
 '''.format
 help_text = '''\
 Read or write to the system clipboard.
 
-To set the clipboard text, pipe in the new text on STDIN. Use the
-:option:`--get-clipboard` option to output the current clipboard contents to
-:file:`stdout`. Note that reading the clipboard will cause a permission
+This kitten operates most simply in :italic:`filter mode`.
+To set the clipboard text, pipe in the new text on :file:`STDIN`. Use the
+:option:`--get-clipboard` option to output the current clipboard text content to
+:file:`STDOUT`. Note that copying from the clipboard will cause a permission
 popup, see :opt:`clipboard_control` for details.
+
+For more control, specify filename arguments. Then, different MIME types can be copied to/from
+the clipboard. Some examples:
+
+.. code:: sh
+
+    # Copy an image to the clipboard:
+    kitty +kitten clipboard picture.png
+
+    # Copy an image and some text to the clipboard:
+    kitty +kitten clipboard picture.jpg text.txt
+
+    # Copy text from STDIN and an image to the clipboard:
+    echo hello | kitty +kitten clipboard picture.png /dev/stdin
+
+    # Copy any raster image available on the clipboard to a PNG file:
+    kitty +kitten clipboard -g picture.png
+
+    # Copy an image to a file and text to STDOUT:
+    kitty +kitten clipboard -g picture.png /dev/stdout
 '''
 
-usage = ''
+usage = '[files to copy to/from]'
 if __name__ == '__main__':
     raise SystemExit('This should be run as kitty-tool clipboard')
 elif __name__ == '__doc__':

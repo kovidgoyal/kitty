@@ -195,27 +195,64 @@ func prepare_help_text_for_display(raw string) string {
 	help := strings.Builder{}
 	help.Grow(len(raw) + 256)
 	prev_indent := 0
-	for _, line := range utils.Splitlines(raw) {
-		if line != "" {
-			current_indent := indent_of_line(line)
-			if current_indent > 1 {
-				if prev_indent == 0 {
-					help.WriteString("\n")
-				} else {
-					line = strings.TrimSpace(line)
-				}
-			}
-			prev_indent = current_indent
-			if help.Len() > 0 && !strings.HasSuffix(help.String(), "\n") {
-				help.WriteString(" ")
-			}
-			help.WriteString(line)
-		} else {
-			prev_indent = 0
-			help.WriteString("\n")
-			if !strings.HasSuffix(help.String(), "::") {
+	in_code_block := false
+	lines := utils.Splitlines(raw)
+
+	handle_non_empty_line := func(i int, line string) int {
+		if strings.HasPrefix(line, ".. code::") {
+			in_code_block = true
+			return i + 1
+		}
+		current_indent := indent_of_line(line)
+		if current_indent > 1 {
+			if prev_indent == 0 {
 				help.WriteString("\n")
+			} else {
+				line = strings.TrimSpace(line)
 			}
+		}
+		prev_indent = current_indent
+		if help.Len() > 0 && !strings.HasSuffix(help.String(), "\n") {
+			help.WriteString(" ")
+		}
+		help.WriteString(line)
+		return i
+	}
+
+	handle_empty_line := func(i int, line string) int {
+		prev_indent = 0
+		help.WriteString("\n")
+		if !strings.HasSuffix(help.String(), "::") {
+			help.WriteString("\n")
+		}
+		return i
+	}
+
+	handle_code_block_line := func(i int, line string) int {
+		if line == "" {
+			help.WriteString("\n")
+			return i
+		}
+		current_indent := indent_of_line(line)
+		if current_indent == 0 {
+			in_code_block = false
+			return handle_non_empty_line(i, line)
+		}
+		help.WriteString(line[4:])
+		help.WriteString("\n")
+		return i
+	}
+
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+		if in_code_block {
+			i = handle_code_block_line(i, line)
+			continue
+		}
+		if line != "" {
+			i = handle_non_empty_line(i, line)
+		} else {
+			i = handle_empty_line(i, line)
 		}
 	}
 	return help.String()

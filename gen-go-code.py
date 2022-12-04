@@ -301,7 +301,8 @@ def kitten_clis() -> None:
             print('ans := root.AddSubCommand(&cli.Command{')
             print(f'Name: "{kitten}",')
             print(f'ShortDescription: "{serialize_as_go_string(kcd["short_desc"])}",')
-            print(f'Usage: "{serialize_as_go_string(kcd["usage"])}",')
+            if kcd['usage']:
+                print(f'Usage: "[options] {serialize_as_go_string(kcd["usage"])}",')
             print(f'HelpText: "{serialize_as_go_string(kcd["help_text"])}",')
             print('Run: func(cmd *cli.Command, args []string) (int, error) {')
             print('opts := Options{}')
