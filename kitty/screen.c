@@ -3977,7 +3977,7 @@ get_line_edge_colors(Screen *self, color_type *left, color_type *right) {
     // Return the color at the left and right edges of the line with the cursor on it
     Line *line = range_line_(self, self->cursor->y);
     if (!line) return false;
-    color_type left_cell_fg = 0, left_cell_bg = 0, right_cell_bg = 0, right_cell_fg = 0;
+    color_type left_cell_fg = OPT(foreground), left_cell_bg = OPT(background), right_cell_bg = OPT(background), right_cell_fg = OPT(foreground);
     index_type cell_color_x = 0;
     char_type left_char = line_get_char(line, cell_color_x);
     colors_for_cell(line, self->color_profile, &cell_color_x, &left_cell_fg, &left_cell_bg);
