@@ -3948,10 +3948,53 @@ cursor_at_prompt(Screen *self, PyObject *args UNUSED) {
     Py_RETURN_FALSE;
 }
 
+static color_type
+effective_cell_edge_color(char_type ch, color_type fg, color_type bg, bool is_left_edge) {
+    START_ALLOW_CASE_RANGE
+    if (ch == 0x2588) return fg; // full block
+    if (is_left_edge) {
+        switch (ch) {
+            case 0x2589 ... 0x258f: // left eighth blocks
+            case 0xe0b0: case 0xe0b4: case 0xe0b8: case 0xe0bc:  // powerline blocks
+            case 0x1fb6a: // 🭪
+                return fg;
+        }
+    } else {
+        switch (ch) {
+            case 0x2590:  // right half block
+            case 0x1fb87 ... 0x1fb8b:  // eighth right blocks
+            case 0xe0b2: case 0xe0b6: case 0xe0ba: case 0xe0be:
+            case 0x1fb68: // 🭨
+                return fg;
+        }
+    }
+    return bg;
+    END_ALLOW_CASE_RANGE
+}
+
+static PyObject*
+line_edge_colors(Screen *self, PyObject *a UNUSED) {
+    // Return the color at the left and right edges of the line with the cursor on it
+    Line *line = range_line_(self, self->cursor->y);
+    if (!line) { PyErr_SetString(PyExc_IndexError, "Line number out of range"); return NULL; }
+    color_type left_cell_fg = 0, left_cell_bg = 0, right_cell_bg = 0, right_cell_fg = 0;
+    index_type cell_color_x = 0;
+    char_type left_char = line_get_char(line, cell_color_x);
+    colors_for_cell(line, self->color_profile, &cell_color_x, &left_cell_fg, &left_cell_bg);
+    if (line->xnum > 0) cell_color_x = line->xnum - 1;
+    char_type right_char = line_get_char(line, cell_color_x);
+    colors_for_cell(line, self->color_profile, &cell_color_x, &right_cell_fg, &right_cell_bg);
+    unsigned long left = effective_cell_edge_color(left_char, left_cell_fg, left_cell_bg, true);
+    unsigned long right = effective_cell_edge_color(right_char, right_cell_fg, right_cell_bg, false);
+    return Py_BuildValue("kk", left, right);
+}
+
+
 #define MND(name, args) {#name, (PyCFunction)name, args, #name},
 #define MODEFUNC(name) MND(name, METH_NOARGS) MND(set_##name, METH_O)
 
 static PyMethodDef methods[] = {
+    MND(line_edge_colors, METH_NOARGS)
     MND(line, METH_O)
     MND(dump_lines_with_attrs, METH_O)
     MND(cursor_at_prompt, METH_NOARGS)

@@ -1170,6 +1170,9 @@ class Screen:
     def insert_characters(self, num: int) -> None:
         pass
 
+    def line_edge_colors(self) -> Tuple[int, int]:
+        pass
+
 
 def set_tab_bar_render_data(
     os_window_id: int, screen: Screen, left: int, top: int, right: int, bottom: int
