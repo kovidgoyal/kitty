@@ -59,6 +59,8 @@ Detailed list of changes
 
 - A new option :opt:`tab_title_max_length` to limit the length of tab (:iss:`5718`)
 
+- When drawing the tab bar have the default left and right margins drawn in a color matching the neighboring tab (:iss:`5719`)
+
 
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

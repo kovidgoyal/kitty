@@ -1248,7 +1248,8 @@ opt('tab_bar_margin_color', 'none',
     option_type='to_color_or_none', ctype='color_or_none_as_int',
     long_text='''
 Color for the tab bar margin area. Defaults to using the terminal background
-color.
+color for margins above and below the tab bar. For side margins the default color
+is chosen to match the background color of the neighboring tab.
 '''
     )
 egr()  # }}}
