@@ -7,13 +7,14 @@ import shlex
 import sys
 from contextlib import contextmanager
 from typing import (
-    Any, Callable, Dict, Generator, Generic, Iterable, Iterator, List,
-    NamedTuple, Optional, Sequence, Set, Tuple, TypeVar, Union
+    Any, Callable, Dict, Generator, Generic, Iterable, Iterator, List, NamedTuple,
+    Optional, Sequence, Set, Tuple, TypeVar, Union,
 )
 
+from ..constants import _plat, is_macos
 from ..fast_data_types import Color
 from ..rgb import to_color as as_color
-from ..types import ConvertibleToNumbers, ParsedShortcut
+from ..types import ConvertibleToNumbers, ParsedShortcut, run_once
 from ..typing import Protocol
 from ..utils import expandvars, log_error
 
@@ -159,6 +160,17 @@ class CurrentlyParsing:
 currently_parsing = CurrentlyParsing()
 
 
+@run_once
+def os_name() -> str:
+    if is_macos:
+        return 'macos'
+    if 'bsd' in _plat:
+        return 'bsd'
+    if 'linux' in _plat:
+        return 'linux'
+    return 'unknown'
+
+
 class NamedLineIterator:
 
     def __init__(self, name: str, lines: Iterator[str]):
@@ -185,7 +197,7 @@ def parse_line(
         return
     key, val = m.groups()
     if key in ('include', 'globinclude', 'envinclude'):
-        val = os.path.expandvars(os.path.expanduser(val.strip()))
+        val = expandvars(os.path.expanduser(val.strip()), {'KITTY_OS': os_name()})
         if key == 'globinclude':
             from pathlib import Path
             vals = tuple(map(lambda x: str(os.fspath(x)), sorted(Path(base_path_for_includes).glob(val))))

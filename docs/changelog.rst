@@ -61,6 +61,7 @@ Detailed list of changes
 
 - When drawing the tab bar have the default left and right margins drawn in a color matching the neighboring tab (:iss:`5719`)
 
+- When using the :code:`include` directive in :file:`kitty.conf` make the environment variable :envvar:`KITTY_OS` available for OS specific config.
 
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

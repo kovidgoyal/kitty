@@ -212,3 +212,8 @@ Variables that kitty sets when running child programs
 
    Set when enabling :ref:`shell_integration` with :program:`bash`, allowing
    :program:`bash` to automatically load the integration script.
+
+.. envvar:: KITTY_OS
+
+   Set when using the include directive in kitty.conf. Can take values:
+   ``linux``, ``macos``, ``darwin``.

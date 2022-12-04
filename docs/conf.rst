@@ -31,7 +31,9 @@ You can include secondary config files via the :code:`include` directive. If
 you use a relative path for :code:`include`, it is resolved with respect to the
 location of the current config file. Note that environment variables are
 expanded, so :code:`${USER}.conf` becomes :file:`name.conf` if
-:code:`USER=name`. Also, you can use :code:`globinclude` to include files
+:code:`USER=name`. A special environment variable :envvar:`KITTY_OS` is available,
+to detect the operating system. It is ``linux``, ``macos`` or ``bsd``.
+Also, you can use :code:`globinclude` to include files
 matching a shell glob pattern and :code:`envinclude` to include configuration
 from environment variables. For example::
 
