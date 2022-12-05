@@ -206,7 +206,12 @@ def parse_line(
             for x in os.environ:
                 if fnmatchcase(x, val):
                     with currently_parsing.set_file(f'<env var: {x}>'):
-                        _parse(NamedLineIterator(base_path_for_includes, iter(os.environ[x].splitlines())), parse_conf_item, ans, accumulate_bad_lines)
+                        _parse(
+                            NamedLineIterator(os.path.join(base_path_for_includes, ''), iter(os.environ[x].splitlines())),
+                            parse_conf_item,
+                            ans,
+                            accumulate_bad_lines
+                        )
             return
         else:
             if not os.path.isabs(val):
@@ -240,7 +245,7 @@ def _parse(
 ) -> None:
     name = getattr(lines, 'name', None)
     if name:
-        base_path_for_includes = os.path.dirname(os.path.abspath(name))
+        base_path_for_includes = os.path.abspath(name) if name.endswith(os.path.sep) else os.path.dirname(os.path.abspath(name))
     else:
         from ..constants import config_dir
         base_path_for_includes = config_dir
