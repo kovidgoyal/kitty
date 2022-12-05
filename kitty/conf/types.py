@@ -113,6 +113,8 @@ def remove_markup(text: str) -> str:
         if key in ('ac', 'opt'):
             t, q = extract(m)
             return f'{t} {q}' if q and q != t else t
+        if key == 'code':
+            return m.group(2).replace('\\\\', '\\')
 
         return str(m.group(2))
 

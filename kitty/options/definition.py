@@ -3991,8 +3991,8 @@ keyboard protocol. The special value :code:`all` means all of them.
 Some more examples::
 
     # Output a word and move the cursor to the start of the line (like typing and pressing Home)
-    map ctrl+alt+a send_text normal Word\\x1b[H
-    map ctrl+alt+a send_text application Word\\x1bOH
+    map ctrl+alt+a send_text normal Word\\e[H
+    map ctrl+alt+a send_text application Word\\eOH
     # Run a command at a shell prompt (like typing the command and pressing Enter)
     map ctrl+alt+a send_text normal,application some command with arguments\\r
 '''
