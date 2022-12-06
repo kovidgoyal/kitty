@@ -36,8 +36,19 @@ func write_loop(inputs []*Input, opts *Options) (err error) {
 		return aerr
 	}
 
+	make_metadata := func(ptype, mime string) map[string]string {
+		ans := map[string]string{"type": ptype}
+		if opts.UsePrimary {
+			ans["loc"] = "primary"
+		}
+		if mime != "" {
+			ans["mime"] = mime
+		}
+		return ans
+	}
+
 	lp.OnInitialize = func() (string, error) {
-		waiting_for_write = lp.QueueWriteString(encode(map[string]string{"type": "write"}, ""))
+		waiting_for_write = lp.QueueWriteString(encode(make_metadata("write", ""), ""))
 		return "", nil
 	}
 
@@ -48,16 +59,16 @@ func write_loop(inputs []*Input, opts *Options) (err error) {
 		i := inputs[0]
 		n, err := i.src.Read(buf[:])
 		if n > 0 {
-			waiting_for_write = lp.QueueWriteString(encode_bytes(map[string]string{"type": "wdata", "mime": i.mime_type}, buf[:n]))
+			waiting_for_write = lp.QueueWriteString(encode_bytes(make_metadata("wdata", i.mime_type), buf[:n]))
 		}
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				if len(aliases[i.mime_type]) > 0 {
-					lp.QueueWriteString(encode(map[string]string{"type": "walias", "mime": i.mime_type}, strings.Join(aliases[i.mime_type], " ")))
+					lp.QueueWriteString(encode(make_metadata("walias", i.mime_type), strings.Join(aliases[i.mime_type], " ")))
 				}
 				inputs = inputs[1:]
 				if len(inputs) == 0 {
-					lp.QueueWriteString(encode(map[string]string{"type": "wdata"}, ""))
+					lp.QueueWriteString(encode(make_metadata("wdata", ""), ""))
 					waiting_for_write = 0
 				}
 				return lp.OnWriteComplete(waiting_for_write)

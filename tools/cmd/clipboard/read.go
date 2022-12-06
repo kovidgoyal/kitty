@@ -308,8 +308,13 @@ func run_get_loop(opts *Options, args []string) (err error) {
 		}
 	}()
 
+	basic_metadata := map[string]string{"type": "read"}
+	if opts.UsePrimary {
+		basic_metadata["loc"] = "primary"
+	}
+
 	lp.OnInitialize = func() (string, error) {
-		lp.QueueWriteString(encode(map[string]string{"type": "read"}, "."))
+		lp.QueueWriteString(encode(basic_metadata, "."))
 		return "", nil
 	}
 
@@ -345,7 +350,7 @@ func run_get_loop(opts *Options, args []string) (err error) {
 					}
 				}
 				if len(requested_mimes) > 0 {
-					lp.QueueWriteString(encode(map[string]string{"type": "read"}, strings.Join(utils.Keys(requested_mimes), " ")))
+					lp.QueueWriteString(encode(basic_metadata, strings.Join(utils.Keys(requested_mimes), " ")))
 				} else {
 					lp.Quit(0)
 				}
