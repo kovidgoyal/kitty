@@ -32,3 +32,4 @@ please do so by opening issues in the `GitHub bug tracker
    unscroll
    color-stack
    deccara
+   clipboard

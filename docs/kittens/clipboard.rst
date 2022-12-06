@@ -43,8 +43,14 @@ data types. Best illustrated with some examples::
     # Copy an image to a file and text to STDOUT:
     kitty +kitten clipboard -g picture.png /dev/stdout
 
+    # List the formats available on the system clipboard
+    kitty +kitten clipboard -g -m . /dev/stdout
+
 Normally, the kitten guesses MIME types based on the file names. To control the
 MIME types precisely, use the :option:`--mime <kitty +kitten clipboard --mime>` option.
+
+This kitten uses a new protocol developed by kitty to function, for details,
+see :doc:`/clipboard`.
 
 .. program:: kitty +kitten clipboard
 

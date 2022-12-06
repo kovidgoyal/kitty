@@ -24,7 +24,8 @@ likely to be incorrect or the filename has no extension and therefore no mimetyp
 can be detected. If more than one file is specified, this option should be specified multiple
 times, once for each specified file. When copying data from the clipboard, you can use wildcards
 to match MIME types. For example: :code:`--mime 'text/*'` will match any textual MIME type
-available on the clipboard, usually the first matching MIME type is copied.
+available on the clipboard, usually the first matching MIME type is copied. The special MIME
+type :code:`.` will return the list of available MIME types currently on the system clipboard.
 
 
 --alias -a
@@ -70,6 +71,9 @@ the clipboard. Some examples:
 
     # Copy an image to a file and text to STDOUT:
     kitty +kitten clipboard -g picture.png /dev/stdout
+
+    # List the formats available on the system clipboard
+    kitty +kitten clipboard -g -m . /dev/stdout
 '''
 
 usage = '[files to copy to/from]'
