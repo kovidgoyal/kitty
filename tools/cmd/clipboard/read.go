@@ -223,6 +223,8 @@ func error_from_status(status string) error {
 		return fmt.Errorf("no primary selection available on this system")
 	case "EPERM":
 		return fmt.Errorf("permission denied")
+	case "EBUSY":
+		return fmt.Errorf("a temporary error occurred, try again later.")
 	default:
 		return fmt.Errorf("%s", status)
 	}

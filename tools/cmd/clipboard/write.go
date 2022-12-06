@@ -102,6 +102,8 @@ func write_loop(inputs []*Input, opts *Options) (err error) {
 				return fmt.Errorf("Could not write to primary selection as the system does not support it")
 			case "EPERM":
 				return fmt.Errorf("Could not write to clipboard as permission was denied")
+			case "EBUSY":
+				return fmt.Errorf("Could not write to clipboard, a temporary error occurred, try again later.")
 			default:
 				return fmt.Errorf("Could not write to clipboard unknowns status returned from terminal: %#v", metadata["status"])
 			}
