@@ -103,7 +103,6 @@ def init_glfw_module(glfw_module: str, debug_keyboard: bool = False, debug_rende
 
 
 def init_glfw(opts: Options, debug_keyboard: bool = False, debug_rendering: bool = False) -> str:
-    mask_kitty_signals_process_wide()
     glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland(opts) else 'x11')
     init_glfw_module(glfw_module, debug_keyboard, debug_rendering)
     return glfw_module
@@ -464,6 +463,11 @@ def _main() -> None:
         log_error('Failed to set locale, ignoring')
     with suppress(AttributeError):  # python compiled without threading
         sys.setswitchinterval(1000.0)  # we have only a single python thread
+
+    # mask the signals now as on some platforms the display backend starts
+    # threads. These threads must not handle the masked signals, to ensure
+    # kitty can handle them. See https://github.com/kovidgoyal/kitty/issues/4636
+    mask_kitty_signals_process_wide()
     init_glfw(opts, cli_opts.debug_keyboard, cli_opts.debug_rendering)
     if cli_opts.watcher:
         from .window import global_watchers

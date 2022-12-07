@@ -124,10 +124,6 @@ set_maximum_wait(monotonic_t val) {
 
 static void
 mask_variadic_signals(int sentinel, ...) {
-    // only need to mask signals when using SIGNAL_FD as signal actions are inherited by threads
-    // and only on Linux do we have reports of signals not being handled presumably because libwayland starts
-    // a thread behind our backs. See https://github.com/kovidgoyal/kitty/issues/4636
-#ifdef HAS_SIGNAL_FD
     sigset_t signals;
     sigemptyset(&signals);
     va_list valist;
@@ -138,9 +134,17 @@ mask_variadic_signals(int sentinel, ...) {
         sigaddset(&signals, sig);
     }
     va_end(valist);
+#ifdef HAS_SIGNAL_FD
     sigprocmask(SIG_BLOCK, &signals, NULL);
 #else
-    (void)sentinel;
+    struct sigaction act = {.sa_handler=SIG_IGN, .sa_flags=SA_RESTART, .sa_mask = signals};
+    va_start(valist, sentinel);
+    while (true) {
+        int sig = va_arg(valist, int);
+        if (sig == sentinel) break;
+        sigaction(sig, &act, NULL);
+    }
+    va_end(valist);
 #endif
 }
 

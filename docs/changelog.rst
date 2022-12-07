@@ -65,6 +65,8 @@ Detailed list of changes
 
 - When using the :code:`include` directive in :file:`kitty.conf` make the environment variable :envvar:`KITTY_OS` available for OS specific config
 
+- Wayland: Fix signal handling not working with some GPU drivers (:iss:`4636`)
+
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
