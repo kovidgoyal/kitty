@@ -42,7 +42,7 @@ Detailed list of changes
   that can be used on all UNIX-like servers for remote control (``kitty-tool @``)
   and eventually viewing images (``icat``) and other kittens.
 
-- :doc:`<clipboard kitten /kittens/clipboard>`: Allow copying arbitrary data types to/from the clipboard, not just plain text
+- :doc:`clipboard kitten </kittens/clipboard>`: Allow copying arbitrary data types to/from the clipboard, not just plain text
 
 - Speed up the ``kitty @`` executable by ~10x reducing the time for typical
   remote control commands from ~50ms to ~5ms
