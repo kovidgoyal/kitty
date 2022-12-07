@@ -139,6 +139,8 @@ mask_variadic_signals(int sentinel, ...) {
     }
     va_end(valist);
     sigprocmask(SIG_BLOCK, &signals, NULL);
+#else
+    (void)sentinel;
 #endif
 }
 
