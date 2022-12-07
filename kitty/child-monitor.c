@@ -120,6 +120,34 @@ set_maximum_wait(monotonic_t val) {
     if (val >= 0 && (val < maximum_wait || maximum_wait < 0)) maximum_wait = val;
 }
 
+#define KITTY_HANDLED_SIGNALS SIGINT, SIGHUP, SIGTERM, SIGCHLD, SIGUSR1, SIGUSR2, 0
+
+static void
+mask_variadic_signals(int sentinel, ...) {
+    // only need to mask signals when using SIGNAL_FD as signal actions are inherited by threads
+    // and only on Linux do we have reports of signals not being handled presumably because libwayland starts
+    // a thread behind our backs. See https://github.com/kovidgoyal/kitty/issues/4636
+#ifdef HAS_SIGNAL_FD
+    sigset_t signals;
+    sigemptyset(&signals);
+    va_list valist;
+    va_start(valist, sentinel);
+    while (true) {
+        int sig = va_arg(valist, int);
+        if (sig == sentinel) break;
+        sigaddset(&signals, sig);
+    }
+    va_end(valist);
+    sigprocmask(SIG_BLOCK, &signals, NULL);
+#endif
+}
+
+static PyObject*
+mask_kitty_signals_process_wide(PyObject *self UNUSED, PyObject *a UNUSED) {
+    mask_variadic_signals(0, KITTY_HANDLED_SIGNALS);
+    Py_RETURN_NONE;
+}
+
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
@@ -138,7 +166,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         return NULL;
     }
     self = (ChildMonitor *)type->tp_alloc(type, 0);
-    if (!init_loop_data(&self->io_loop_data, SIGINT, SIGHUP, SIGTERM, SIGCHLD, SIGUSR1, SIGUSR2, 0)) return PyErr_SetFromErrno(PyExc_OSError);
+    if (!init_loop_data(&self->io_loop_data, KITTY_HANDLED_SIGNALS)) return PyErr_SetFromErrno(PyExc_OSError);
     self->talk_fd = talk_fd;
     self->listen_fd = listen_fd;
     self->prewarm_fd = prewarm_fd;
@@ -1829,6 +1857,7 @@ static PyMethodDef module_methods[] = {
     METHODB(monitor_pid, METH_VARARGS),
     METHODB(send_data_to_peer, METH_VARARGS),
     METHODB(cocoa_set_menubar_title, METH_VARARGS),
+    METHODB(mask_kitty_signals_process_wide, METH_NOARGS),
     {"sigqueue", (PyCFunction)sig_queue, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };

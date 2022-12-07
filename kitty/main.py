@@ -21,8 +21,9 @@ from .constants import (
 )
 from .fast_data_types import (
     GLFW_IBEAM_CURSOR, GLFW_MOD_ALT, GLFW_MOD_SHIFT, SingleKey, create_os_window,
-    free_font_data, glfw_init, glfw_terminate, load_png_data, set_custom_cursor,
-    set_default_window_icon, set_options,
+    free_font_data, glfw_init, glfw_terminate, load_png_data,
+    mask_kitty_signals_process_wide, set_custom_cursor, set_default_window_icon,
+    set_options,
 )
 from .fonts.box_drawing import set_scale
 from .fonts.render import set_font_family
@@ -102,6 +103,7 @@ def init_glfw_module(glfw_module: str, debug_keyboard: bool = False, debug_rende
 
 
 def init_glfw(opts: Options, debug_keyboard: bool = False, debug_rendering: bool = False) -> str:
+    mask_kitty_signals_process_wide()
     glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland(opts) else 'x11')
     init_glfw_module(glfw_module, debug_keyboard, debug_rendering)
     return glfw_module
