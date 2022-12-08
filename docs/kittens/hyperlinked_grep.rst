@@ -48,13 +48,13 @@ actions, see :doc:`here </open_actions>`.
 
 By default, this kitten adds hyperlinks for several parts of ripgrep output:
 the per-file header, match context lines, and match lines. You can control
-which items are linked with a :command:`--kitten hyperlink` flag. For example,
-:command:`--kitten hyperlink=matching_lines` will only add hyperlinks to the
-match lines. :command:`--kitten hyperlink=file_headers,context_lines` will link
-file headers and context lines but not match lines. :command:`--kitten
+which items are linked with a :code:`--kitten hyperlink` flag. For example,
+:code:`--kitten hyperlink=matching_lines` will only add hyperlinks to the
+match lines. :code:`--kitten hyperlink=file_headers,context_lines` will link
+file headers and context lines but not match lines. :code:`--kitten
 hyperlink=none` will cause the command line to be passed to directly to
-:command:`rg` so no hyperlinking will be performed. :command:`--kitten
-hyperlink` may be specified multiple times.
+:command:`rg` so no hyperlinking will be performed. :code:`--kitten hyperlink`
+may be specified multiple times.
 
 Hopefully, someday this functionality will make it into some `upstream grep
 <https://github.com/BurntSushi/ripgrep/issues/665>`__ program directly removing
@@ -65,3 +65,9 @@ the need for this kitten.
    While you can pass any of ripgrep's comand line options to the kitten and
    they will be forwarded to :program:`rg`, do not use options that change the
    output formatting as the kitten works by parsing the output from ripgrep.
+   The unsupported options are: :code:`--context-separator`,
+   :code:`--field-context-separator`, :code:`--field-match-separator`,
+   :code:`--json`, :code:`-I --no-filename`, :code:`--no-heading`,
+   :code:`-0 --null`, :code:`--null-data`, :code:`--path-separator`.
+   If you specify options via configuration file, then any changes to the
+   default output format will not be supported, not just the ones listed above.
