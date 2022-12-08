@@ -117,6 +117,29 @@ explicitly set a UTF-8 locale, like::
     export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 
+I cannot use the key combination X in program Y?
+-------------------------------------------------------
+
+First, run::
+
+    kitty +kitten show_key -m kitty
+
+Press the key combination X. If the kitten reports the key press
+that means kitty is correctly sending the key press to terminal programs.
+You need to report the issue to the developer of the terminal program. Most
+likely they have not added support for :doc:`/keyboard-protocol`.
+
+If the kitten does not report it, it means that the key is bound to some action
+in kitty. You can unbind it in :file:`kitty.conf` with:
+
+.. code-block:: conf
+
+   map X no_op
+
+Here X will the keys you press on the keyboard. So for example
+:kbd:`ctrl+shift+1`.
+
+
 How do I change the colors in a running kitty instance?
 ------------------------------------------------------------
 
