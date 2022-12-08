@@ -48,7 +48,7 @@ def parse_options(argv: List[str]) -> argparse.Namespace:
         default=sys.stdout.isatty(),
         action='store_true',
     )
-    p.add_argument('--kitten', action='append')
+    p.add_argument('--kitten', action='append', default=[])
     args, _ = p.parse_known_args(argv)
     return args
 
