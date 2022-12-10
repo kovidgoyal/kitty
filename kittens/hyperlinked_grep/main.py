@@ -116,9 +116,6 @@ def main() -> None:
         raise SystemExit('Could not find the rg executable in your PATH. Is ripgrep installed?')
     assert p.stdout is not None
 
-    def get_quoted_path(x: bytes) -> bytes:
-        return quote_from_bytes(os.path.abspath(x)).encode('utf-8')
-
     write: Callable[[bytes], None] = cast(Callable[[bytes], None], sys.stdout.buffer.write)
     sgr_pat = re.compile(br'\x1b\[.*?m')
     osc_pat = re.compile(b'\x1b\\].*?\x1b\\\\')
@@ -131,6 +128,9 @@ def main() -> None:
     in_stats = False
     in_result: bytes = b''
     hostname = get_hostname().encode('utf-8')
+
+    def get_quoted_url(file_path: bytes) -> bytes:
+        return b'file://' + hostname + quote_from_bytes(os.path.abspath(file_path)).encode('utf-8')
 
     try:
         for line in p.stdout:
@@ -158,20 +158,20 @@ def main() -> None:
                     elif args.count or args.count_matches:
                         m = path_with_count_pat.match(clean_line)
                         if m is not None and link_file_headers:
-                            write_hyperlink(write, b'file://' + hostname + get_quoted_path(m.group(1)), line)
+                            write_hyperlink(write, get_quoted_url(m.group(1)), line)
                             continue
                     elif args.files or args.files_with_matches or args.files_without_match:
                         if link_file_headers:
-                            write_hyperlink(write, get_quoted_path(clean_line), line)
+                            write_hyperlink(write, get_quoted_url(clean_line), line)
                             continue
                     elif args.vimgrep or args.no_heading:
                         # When the vimgrep option is present, it will take precedence.
                         m = vimgrep_pat.match(clean_line) if args.vimgrep else path_with_linenum_pat.match(clean_line)
                         if m is not None and (link_file_headers or link_matching_lines):
-                            write_hyperlink(write, b'file://' + hostname + get_quoted_path(m.group(1)), line, frag=m.group(2))
+                            write_hyperlink(write, get_quoted_url(m.group(1)), line, frag=m.group(2))
                             continue
                     else:
-                        in_result = b'file://' + hostname + get_quoted_path(clean_line)
+                        in_result = get_quoted_url(clean_line)
                         if link_file_headers:
                             write_hyperlink(write, in_result, line)
                             continue
