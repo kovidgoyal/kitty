@@ -103,7 +103,8 @@ Where :italic:`field` can be one of: :code:`id`, :code:`title`, :code:`pid`, :co
 The special value :code:`all` matches all windows.
 
 For numeric fields: :code:`id`, :code:`pid`, :code:`num` and :code:`recent`, the expression is interpreted as
-a number, not a regular expression.
+a number, not a regular expression. Negative values for :code:`id` match from the highest id number down, in particular,
+-1 is the most recently created window.
 
 The field :code:`num` refers to the window position in the current tab, starting from zero and counting clockwise (this
 is the same as the order in which the windows are reported by the :ref:`kitty @ ls <at-ls>` command).
@@ -134,7 +135,8 @@ Where :italic:`field` can be one of: :code:`id`, :code:`index`, :code:`title`, :
 The special value :code:`all` matches all tabs.
 
 For numeric fields: :code:`id`, :code:`index`, :code:`window_id`, :code:`pid` and :code:`recent`, the
-expression is interpreted as a number, not a regular expression.
+expression is interpreted as a number, not a regular expression. Negative values for :code:`id`/:code:`window_id` match
+from the highest id number down, in particular, -1 is the most recently created tab/window.
 
 When using :code:`title` or :code:`id`, first a matching tab is looked for, and if not found a matching window is looked
 for, and the tab for that window is used.

@@ -67,6 +67,8 @@ Detailed list of changes
 
 - Wayland: Fix signal handling not working with some GPU drivers (:iss:`4636`)
 
+- Remote control: When matching windows allow using negative id numbers to match recently created windows (:iss:`5753`)
+
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

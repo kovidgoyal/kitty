@@ -379,8 +379,16 @@ class Boss:
             tm = self.os_window_map.get(last_focused_os_window_id())
             if tm is not None:
                 tab = tm.active_tab
+        window_id_limit = max(self.window_id_map, default=-1) + 1
 
         def get_matches(location: str, query: str, candidates: Set[int]) -> Set[int]:
+            if location == 'id' and query.startswith('-'):
+                try:
+                    q = int(query)
+                except Exception:
+                    return set()
+                if q < 0:
+                    query = str(window_id_limit + q)
             return {wid for wid in candidates if self.window_id_map[wid].matches_query(location, query, tab)}
 
         for wid in search(match, (
@@ -403,8 +411,18 @@ class Boss:
         if current_focused_os_window_id() <= 0:
             tm = self.os_window_map.get(last_focused_os_window_id()) or tm
         tim = {t.id: t for t in self.all_tabs}
+        tab_id_limit = max(tim, default=-1) + 1
+        window_id_limit = max(self.window_id_map, default=-1) + 1
 
         def get_matches(location: str, query: str, candidates: Set[int]) -> Set[int]:
+            if location in ('id', 'window_id') and query.startswith('-'):
+                try:
+                    q = int(query)
+                except Exception:
+                    return set()
+                if q < 0:
+                    limit = tab_id_limit if location == 'id' else window_id_limit
+                    query = str(limit + q)
             return {wid for wid in candidates if tim[wid].matches_query(location, query, tm)}
 
         found = False
