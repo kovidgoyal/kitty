@@ -67,7 +67,7 @@ the need for this kitten.
    output formatting as the kitten works by parsing the output from ripgrep.
    The unsupported options are: :code:`--context-separator`,
    :code:`--field-context-separator`, :code:`--field-match-separator`,
-   :code:`--json`, :code:`-I --no-filename`, :code:`--no-heading`,
-   :code:`-0 --null`, :code:`--null-data`, :code:`--path-separator`.
-   If you specify options via configuration file, then any changes to the
-   default output format will not be supported, not just the ones listed above.
+   :code:`--json`, :code:`-I --no-filename`, :code:`-0 --null`,
+   :code:`--null-data`, :code:`--path-separator`. If you specify options via
+   configuration file, then any changes to the default output format will not be
+   supported, not just the ones listed.
