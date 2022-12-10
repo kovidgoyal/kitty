@@ -136,7 +136,7 @@ in kitty. You can unbind it in :file:`kitty.conf` with:
 
    map X no_op
 
-Here X will the keys you press on the keyboard. So for example
+Here X is the keys you press on the keyboard. So for example
 :kbd:`ctrl+shift+1`.
 
 
