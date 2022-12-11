@@ -13,4 +13,5 @@ class UTMPTest(BaseTest):
             expected = subprocess.check_output(['who']).decode('utf-8').count('\n')
         except FileNotFoundError:
             self.skipTest('No who executable cannot verify num_users')
-        self.ae(num_users(), expected)
+        else:
+            self.ae(num_users(), expected)
