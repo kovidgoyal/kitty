@@ -28,7 +28,7 @@ class SetTabTitle(RemoteCommand):
         ' title of the currently active window in the tab is used.'
     )
     options_spec = MATCH_TAB_OPTION
-    args = RemoteCommand.Args(spec='TITLE ...', json_field='title')
+    args = RemoteCommand.Args(spec='TITLE ...', json_field='title', special_parse='expand_ansi_c_escapes_in_args(args...)')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'title': ' '.join(args), 'match': opts.match}

@@ -22,6 +22,7 @@ import (
 	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"kitty/tools/utils/shlex"
 
 	"github.com/jamesruan/go-rfc1924/base85"
 )
@@ -34,6 +35,13 @@ type GlobalOptions struct {
 }
 
 var global_options GlobalOptions
+
+func expand_ansi_c_escapes_in_args(args ...string) (string, error) {
+	for i, x := range args {
+		args[i] = shlex.ExpandANSICEscapes(x)
+	}
+	return strings.Join(args, " "), nil
+}
 
 func set_payload_string_field(io_data *rc_io_data, field, data string) {
 	payload_interface := reflect.ValueOf(&io_data.rc.Payload).Elem()
