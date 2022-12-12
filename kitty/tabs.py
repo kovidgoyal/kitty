@@ -46,7 +46,7 @@ class TabMouseEvent(NamedTuple):
 class TabDict(TypedDict):
     id: int
     is_focused: bool
-    is_active_tab: bool
+    is_active: bool
     title: str
     layout: str
     layout_state: Dict[str, Any]
@@ -707,7 +707,7 @@ class Tab:  # {{{
         active_window = self.active_window
         for w in self:
             yield w.as_dict(
-                is_active_window=w is active_window,
+                is_active=w is active_window,
                 is_focused=w.os_window_id == current_focused_os_window_id() and w is active_window,
                 is_self=w is self_window)
 
@@ -950,7 +950,7 @@ class TabManager:  # {{{
             yield {
                 'id': tab.id,
                 'is_focused': tab is active_tab and tab.os_window_id == current_focused_os_window_id(),
-                'is_active_tab': tab is active_tab,
+                'is_active': tab is active_tab,
                 'title': tab.name or tab.title,
                 'layout': str(tab.current_layout.name),
                 'layout_state': tab.current_layout.layout_state(),
