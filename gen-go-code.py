@@ -167,7 +167,7 @@ def generate_completions_for_kitty() -> None:
 
 # rc command wrappers {{{
 json_field_types: Dict[str, str] = {
-    'bool': 'bool', 'str': 'string', 'list.str': '[]string', 'dict.str': 'map[string]string', 'float': 'float64', 'int': 'int',
+    'bool': 'bool', 'str': 'escaped_string', 'list.str': '[]string', 'dict.str': 'map[string]string', 'float': 'float64', 'int': 'int',
     'scroll_amount': 'any', 'spacing': 'any', 'colors': 'any',
 }
 
@@ -237,7 +237,10 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
         if oq in option_map:
             o = option_map[oq]
             used_options.add(oq)
-            jc.append(f'payload.{field.struct_field_name} = options_{name}.{o.go_var_name}')
+            if field.field_type == 'str':
+                jc.append(f'payload.{field.struct_field_name} = escaped_string(options_{name}.{o.go_var_name})')
+            else:
+                jc.append(f'payload.{field.struct_field_name} = options_{name}.{o.go_var_name}')
         elif field.field in handled_fields:
             pass
         else:
@@ -247,7 +250,10 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
             used_options.add('Match')
             o = option_map['Match']
             field = unhandled[x]
-            jc.append(f'payload.{field.struct_field_name} = options_{name}.{o.go_var_name}')
+            if field.field_type == 'str':
+                jc.append(f'payload.{field.struct_field_name} = escaped_string(options_{name}.{o.go_var_name})')
+            else:
+                jc.append(f'payload.{field.struct_field_name} = options_{name}.{o.go_var_name}')
             del unhandled[x]
     if unhandled:
         raise SystemExit(f'Cant map fields: {", ".join(unhandled)} for cmd: {name}')

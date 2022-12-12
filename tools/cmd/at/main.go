@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"unicode/utf16"
 
 	"golang.org/x/sys/unix"
 
@@ -27,6 +28,8 @@ import (
 	"github.com/jamesruan/go-rfc1924/base85"
 )
 
+const lowerhex = "0123456789abcdef"
+
 var ProtocolVersion [3]int = [3]int{0, 26, 0}
 
 type GlobalOptions struct {
@@ -36,11 +39,11 @@ type GlobalOptions struct {
 
 var global_options GlobalOptions
 
-func expand_ansi_c_escapes_in_args(args ...string) (string, error) {
+func expand_ansi_c_escapes_in_args(args ...string) (escaped_string, error) {
 	for i, x := range args {
 		args[i] = shlex.ExpandANSICEscapes(x)
 	}
-	return strings.Join(args, " "), nil
+	return escaped_string(strings.Join(args, " ")), nil
 }
 
 func set_payload_string_field(io_data *rc_io_data, field, data string) {
@@ -74,6 +77,48 @@ func get_pubkey(encoded_key string) (encryption_version string, pubkey []byte, e
 		pubkey = pubkey[:n]
 	}
 	return
+}
+
+type escaped_string string
+
+func (s escaped_string) MarshalJSON() ([]byte, error) {
+	// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON
+	// we additionally escape all non-ascii chars so they can be safely transmitted inside an escape code
+	src := utf16.Encode([]rune(s))
+	buf := make([]byte, 0, len(src)+128)
+	a := func(x ...byte) {
+		buf = append(buf, x...)
+	}
+	a('"')
+	for _, r := range src {
+		if ' ' <= r && r <= 126 {
+			buf = append(buf, byte(r))
+			continue
+		}
+		switch r {
+		case '\n':
+			a('\\', 'n')
+		case '\t':
+			a('\\', 't')
+		case '\r':
+			a('\\', 'r')
+		case '\f':
+			a('\\', 'f')
+		case '\b':
+			a('\\', 'b')
+		case '\\':
+			a('\\', '\\')
+		case '"':
+			a('\\', '"')
+		default:
+			a('\\', 'u')
+			for s := 12; s >= 0; s -= 4 {
+				a(lowerhex[r>>uint(s)&0xF])
+			}
+		}
+	}
+	a('"')
+	return buf, nil
 }
 
 func simple_serializer(rc *utils.RemoteControlCmd) (ans []byte, err error) {

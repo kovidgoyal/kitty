@@ -10,6 +10,25 @@ import (
 	"testing"
 )
 
+func TestEncodeJSON(t *testing.T) {
+	tests := map[string]string{
+		"a b\nc\td\a": `a b\nc\td\u0007`,
+		"•":           `\u2022`,
+		"\U0001f123":  `\ud83c\udd23`,
+	}
+	var s escaped_string
+	for x, expected := range tests {
+		s = escaped_string(x)
+		expected = `"` + expected + `"`
+		actualb, _ := s.MarshalJSON()
+		actual := string(actualb)
+		if expected != actual {
+			t.Fatalf("Failed for %#v\n%#v != %#v", x, expected, actual)
+		}
+	}
+
+}
+
 func TestCommandToJSON(t *testing.T) {
 	pv := fmt.Sprint(ProtocolVersion[0], ",", ProtocolVersion[1], ",", ProtocolVersion[2])
 	rc, err := create_rc_ls([]string{})

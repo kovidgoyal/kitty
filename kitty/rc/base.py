@@ -232,7 +232,7 @@ class ArgsHandling:
             dest = f'payload.{jf.capitalize()}'
             jt = field_types[jf]
             if self.first_rest:
-                yield f'payload.{self.first_rest[0].capitalize()} = args[0]'
+                yield f'payload.{self.first_rest[0].capitalize()} = escaped_string(args[0])'
                 yield f'payload.{self.first_rest[1].capitalize()} = args[1:]'
                 handled_fields.add(self.first_rest[0])
                 handled_fields.add(self.first_rest[1])
@@ -254,9 +254,9 @@ class ArgsHandling:
                 return
             if jt == 'str':
                 if c == 1:
-                    yield f'{dest} = args[0]'
+                    yield f'{dest} = escaped_string(args[0])'
                 else:
-                    yield f'{dest} = strings.Join(args, " ")'
+                    yield f'{dest} = escaped_string(strings.Join(args, " "))'
                 return
             if jt.startswith('choices.'):
                 yield f'if len(args) != 1 {{ return fmt.Errorf("%s", "Must specify exactly 1 argument for {cmd_name}") }}'
