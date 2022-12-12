@@ -75,7 +75,7 @@ get_activation_token(
     if (token == NULL) fail("Wayland: failed to create activation request token");
     if (_glfw.wl.activation_requests.capacity < _glfw.wl.activation_requests.sz + 1) {
         _glfw.wl.activation_requests.capacity = MAX(64u, _glfw.wl.activation_requests.capacity * 2);
-        _glfw.wl.activation_requests.array = realloc(_glfw.wl.activation_requests.array, _glfw.wl.activation_requests.capacity);
+        _glfw.wl.activation_requests.array = realloc(_glfw.wl.activation_requests.array, _glfw.wl.activation_requests.capacity * sizeof(_glfw.wl.activation_requests.array[0]));
         if (!_glfw.wl.activation_requests.array) {
             _glfw.wl.activation_requests.capacity = 0;
             fail("Wayland: Out of memory while allocation activation request");
