@@ -233,7 +233,7 @@ class ArgsHandling:
             jt = field_types[jf]
             if self.first_rest:
                 yield f'payload.{self.first_rest[0].capitalize()} = escaped_string(args[0])'
-                yield f'payload.{self.first_rest[1].capitalize()} = args[1:]'
+                yield f'payload.{self.first_rest[1].capitalize()} = escape_list_of_strings(args[1:])'
                 handled_fields.add(self.first_rest[0])
                 handled_fields.add(self.first_rest[1])
                 return
@@ -250,7 +250,7 @@ class ArgsHandling:
                 yield 'if err != nil { return err }'
                 return
             if jt == 'list.str':
-                yield f'{dest} = args'
+                yield f'{dest} = escape_list_of_strings(args)'
                 return
             if jt == 'str':
                 if c == 1:

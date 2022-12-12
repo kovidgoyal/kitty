@@ -46,6 +46,22 @@ func expand_ansi_c_escapes_in_args(args ...string) (escaped_string, error) {
 	return escaped_string(strings.Join(args, " ")), nil
 }
 
+func escape_list_of_strings(args []string) []escaped_string {
+	ans := make([]escaped_string, len(args))
+	for i, x := range args {
+		ans[i] = escaped_string(x)
+	}
+	return ans
+}
+
+func escape_dict_of_strings(args map[string]string) map[escaped_string]escaped_string {
+	ans := make(map[escaped_string]escaped_string, len(args))
+	for k, v := range args {
+		ans[escaped_string(k)] = escaped_string(v)
+	}
+	return ans
+}
+
 func set_payload_string_field(io_data *rc_io_data, field, data string) {
 	payload_interface := reflect.ValueOf(&io_data.rc.Payload).Elem()
 	struct_in_interface := reflect.New(payload_interface.Elem().Type()).Elem()

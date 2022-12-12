@@ -6,14 +6,14 @@ import (
 	"kitty/tools/utils"
 )
 
-func parse_key_val_args(args []string) map[string]string {
-	ans := make(map[string]string, len(args))
+func parse_key_val_args(args []string) map[escaped_string]escaped_string {
+	ans := make(map[escaped_string]escaped_string, len(args))
 	for _, arg := range args {
 		key, value, found := utils.Cut(arg, "=")
 		if found {
-			ans[key] = value
+			ans[escaped_string(key)] = escaped_string(value)
 		} else {
-			ans[key+"="] = ""
+			ans[escaped_string(key+"=")] = ""
 		}
 	}
 	return ans

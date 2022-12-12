@@ -167,7 +167,7 @@ def generate_completions_for_kitty() -> None:
 
 # rc command wrappers {{{
 json_field_types: Dict[str, str] = {
-    'bool': 'bool', 'str': 'escaped_string', 'list.str': '[]string', 'dict.str': 'map[string]string', 'float': 'float64', 'int': 'int',
+    'bool': 'bool', 'str': 'escaped_string', 'list.str': '[]escaped_string', 'dict.str': 'map[escaped_string]escaped_string', 'float': 'float64', 'int': 'int',
     'scroll_amount': 'any', 'spacing': 'any', 'colors': 'any',
 }
 
@@ -239,6 +239,10 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
             used_options.add(oq)
             if field.field_type == 'str':
                 jc.append(f'payload.{field.struct_field_name} = escaped_string(options_{name}.{o.go_var_name})')
+            elif field.field_type == 'list.str':
+                jc.append(f'payload.{field.struct_field_name} = escape_list_of_strings(options_{name}.{o.go_var_name})')
+            elif field.field_type == 'dict.str':
+                jc.append(f'payload.{field.struct_field_name} = escape_dict_of_strings(options_{name}.{o.go_var_name})')
             else:
                 jc.append(f'payload.{field.struct_field_name} = options_{name}.{o.go_var_name}')
         elif field.field in handled_fields:
