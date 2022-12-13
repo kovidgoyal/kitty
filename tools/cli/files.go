@@ -150,7 +150,7 @@ func is_dir_or_symlink_to_dir(entry os.DirEntry, path string) bool {
 
 func fname_based_completer(prefix, cwd string, is_match func(string) bool) []string {
 	ans := make([]string, 0, 1024)
-	CompleteFiles(prefix, func(entry *FileEntry) {
+	_ = CompleteFiles(prefix, func(entry *FileEntry) {
 		if entry.IsDir && !entry.IsEmptyDir {
 			entries, err := os.ReadDir(entry.Abspath)
 			if err == nil {
@@ -287,7 +287,7 @@ func CompleteExecutableFirstArg(completions *Completions, word string, arg_num i
 		mg := completions.AddMatchGroup("Executables")
 		mg.IsFiles = true
 
-		CompleteFiles(word, func(entry *FileEntry) {
+		_ = CompleteFiles(word, func(entry *FileEntry) {
 			if entry.IsDir && !entry.IsEmptyDir {
 				// only allow directories that have sub-dirs or executable files in them
 				entries, err := os.ReadDir(entry.Abspath)
@@ -324,7 +324,7 @@ func DirectoryCompleter(title string, relative_to relative_to) CompletionFunc {
 		mg := completions.AddMatchGroup(title)
 		mg.NoTrailingSpace = true
 		mg.IsFiles = true
-		CompleteFiles(word, func(entry *FileEntry) {
+		_ = CompleteFiles(word, func(entry *FileEntry) {
 			if entry.Mode.IsDir() {
 				mg.AddMatch(entry.CompletionCandidate)
 			}

@@ -263,7 +263,7 @@ func (self *Command) VisitAllOptions(callback func(*Option) error) error {
 
 func (self *Command) AllOptions() []*Option {
 	ans := make([]*Option, 0, 64)
-	self.VisitAllOptions(func(o *Option) error { ans = append(ans, o); return nil })
+	_ = self.VisitAllOptions(func(o *Option) error { ans = append(ans, o); return nil })
 	return ans
 }
 
@@ -331,7 +331,7 @@ func (self *Command) SuggestionsForCommand(name string, max_distance int /* good
 func (self *Command) SuggestionsForOption(name_with_hyphens string, max_distance int /* good default is 2 */) []string {
 	ans := make([]string, 0, 8)
 	q := strings.ToLower(name_with_hyphens)
-	self.VisitAllOptions(func(opt *Option) error {
+	_ = self.VisitAllOptions(func(opt *Option) error {
 		for _, a := range opt.Aliases {
 			as := a.String()
 			if utils.LevenshteinDistance(as, q, true) <= max_distance {
