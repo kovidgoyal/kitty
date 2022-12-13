@@ -14,7 +14,7 @@ func TestEncodeJSON(t *testing.T) {
 	tests := map[string]string{
 		"a b\nc\td\a": `a b\nc\td\u0007`,
 		"•":           `\u2022`,
-		`a"b`:         `a\"b`,
+		`a"b\c`:       `a\"b\\c`,
 		"\U0001f123":  `\ud83c\udd23`,
 	}
 	var s escaped_string
