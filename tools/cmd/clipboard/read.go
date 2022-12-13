@@ -302,6 +302,7 @@ func run_get_loop(opts *Options, args []string) (err error) {
 			return fmt.Errorf("Could not detect the MIME type for: %s use --mime to specify it manually", arg)
 		}
 	}
+
 	defer func() {
 		for _, o := range outputs {
 			if o.dest != nil {

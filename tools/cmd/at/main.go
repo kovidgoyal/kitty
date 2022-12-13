@@ -108,6 +108,9 @@ func (s escaped_string) MarshalJSON() ([]byte, error) {
 	a('"')
 	for _, r := range src {
 		if ' ' <= r && r <= 126 {
+			if r == '\\' || r == '"' {
+				buf = append(buf, '\\')
+			}
 			buf = append(buf, byte(r))
 			continue
 		}
@@ -122,10 +125,6 @@ func (s escaped_string) MarshalJSON() ([]byte, error) {
 			a('\\', 'f')
 		case '\b':
 			a('\\', 'b')
-		case '\\':
-			a('\\', '\\')
-		case '"':
-			a('\\', '"')
 		default:
 			a('\\', 'u')
 			for s := 12; s >= 0; s -= 4 {
