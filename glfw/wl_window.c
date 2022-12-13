@@ -1638,7 +1638,7 @@ write_chunk(void *object, const char *data, size_t sz) {
     chunked_writer *cw = object;
     if (cw->cap < cw->sz + sz) {
         cw->cap = MAX(cw->cap * 2, cw->sz + 8*sz);
-        cw->buf = realloc(cw->buf, cw->cap);
+        cw->buf = realloc(cw->buf, cw->cap * sizeof(cw->buf[0]));
     }
     memcpy(cw->buf + cw->sz, data, sz);
     cw->sz += sz;
