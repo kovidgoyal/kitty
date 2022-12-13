@@ -548,8 +548,11 @@ def launch(
         kw['cmd'] = final_cmd
     if force_window_launch and opts.type not in non_window_launch_types:
         opts.type = 'window'
-    if opts.type in ('overlay', 'overlay-main') and active:
-        kw['overlay_for'] = active.id
+    base_for_overlay = active
+    if target_tab:
+        base_for_overlay = target_tab.active_window
+    if opts.type in ('overlay', 'overlay-main') and base_for_overlay:
+        kw['overlay_for'] = base_for_overlay.id
     if opts.type == 'background':
         cmd = kw['cmd']
         if not cmd:
