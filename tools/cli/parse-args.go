@@ -35,8 +35,14 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 			ambi := make([]string, len(possible_options))
 			for i, o := range possible_options {
 				ambi[i] = o.MatchingAlias(NormalizeOptionName(opt_str), !strings.HasPrefix(opt_str, "--"))
+				if ambi[i] == opt_str {
+					opt = o
+					break
+				}
 			}
-			return &ParseError{Message: fmt.Sprintf("Ambiguous option: :yellow:`%s` could be any of: %s", opt_str, strings.Join(ambi, ", "))}
+			if opt == nil {
+				return &ParseError{Message: fmt.Sprintf("Ambiguous option: :yellow:`%s` could be any of: %s", opt_str, strings.Join(ambi, ", "))}
+			}
 		}
 		opt.seen_option = opt_str
 		needs_arg := opt.needs_argument()
