@@ -359,7 +359,8 @@ class Tab:  # {{{
     def layout_action(self, action_name: str, args: Sequence[str]) -> None:
         ret = self.current_layout.layout_action(action_name, args, self.windows)
         if ret is None:
-            ring_bell()
+            if get_options().enable_audio_bell:
+                ring_bell()
             return
         self.relayout()
 
