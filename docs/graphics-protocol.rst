@@ -28,15 +28,14 @@ alpha-blending and text over graphics.
 Some programs and libraries that use the kitty graphics protocol:
 
 * `termpdf.py <https://github.com/dsanson/termpdf.py>`_ - a terminal PDF/DJVU/CBR viewer
-* `ranger <https://github.com/ranger/ranger>`_ - a terminal file manager, with
-  image previews, see this `PR <https://github.com/ranger/ranger/pull/1077>`_
+* `ranger <https://github.com/ranger/ranger>`_ - a terminal file manager, with image previews
 * :doc:`kitty-diff <kittens/diff>` - a side-by-side terminal diff program with support for images
 * `tpix <https://github.com/jesvedberg/tpix>`_ - a statically compiled binary that can be used to display images and easily installed on remote servers without root access
+* `mpv <https://github.com/mpv-player/mpv/pull/11002>`_ - A video player that
 * `pixcat <https://github.com/mirukana/pixcat>`_ - a third party CLI and python library that wraps the graphics protocol
 * `neofetch <https://github.com/dylanaraps/neofetch>`_ - A command line system
   information tool
 * `viu <https://github.com/atanunq/viu>`_ - a terminal image viewer
-* `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
 * `ctx.graphics <https://ctx.graphics/>`_ - Library for drawing graphics
 * `timg <https://github.com/hzeller/timg>`_ - a terminal image and video viewer
 * `notcurses <https://github.com/dankamongmen/notcurses>`_ - C library for terminal graphics with bindings for C++, Rust and Python
@@ -44,6 +43,7 @@ Some programs and libraries that use the kitty graphics protocol:
 * `chafa <https://github.com/hpjansson/chafa>`_  - a terminal image viewer
 * `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_  - view images inside nvim
 * `term-image <https://github.com/AnonymouX47/term-image>`_  - A Python library, CLI and TUI to display and browse images in the terminal
+* `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
 
 Other terminals that have implemented the graphics protocol:
 

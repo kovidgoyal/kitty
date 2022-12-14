@@ -80,6 +80,12 @@ base application that uses kitty's graphics protocol for images.
 A text mode WWW browser that supports kitty's graphics protocol to display
 images.
 
+.. _tool_mpv:
+
+`mpv <https://github.com/mpv-player/mpv/pull/11002>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A video player that can play videos in the terminal.
+
 .. _tool_timg:
 
 `timg <https://github.com/hzeller/timg>`_
