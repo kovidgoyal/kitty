@@ -2072,6 +2072,9 @@ class Boss:
         if not self.os_window_map:
             self.add_os_window()
         tm = self.active_tab_manager
+        if tm is None and not self.os_window_map:
+            os_window_id = self.add_os_window()
+            tm = self.os_window_map.get(os_window_id)
         if tm is not None:
             return tm.new_tab(special_window=special_window, cwd_from=cwd_from, as_neighbor=as_neighbor)
         return None
