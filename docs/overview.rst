@@ -85,7 +85,7 @@ Extending kitty
 ------------------
 
 kitty has a powerful framework for scripting. You can create small terminal
-programs called :doc:`kittens <kittens_intro>`. These can used to add features
+programs called :doc:`kittens <kittens_intro>`. These can be used to add features
 to kitty, for example, :doc:`editing remote files <kittens/remote_file>` or
 :doc:`inputting Unicode characters <kittens/unicode_input>`. They can also be
 used to create programs that leverage kitty's powerful features, for example,
