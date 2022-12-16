@@ -443,7 +443,7 @@ class TestDataTypes(BaseTest):
         c.update_ansi_color_table(build_ansi_color_table())
         for i in range(8):
             col = getattr(defaults, f'color{i}')
-            self.assertEqual(c.as_color(i << 8 | 1), col)
+            self.ae(c.as_color(i << 8 | 1), col)
         self.ae(c.as_color(255 << 8 | 1), Color(0xee, 0xee, 0xee))
 
     def test_historybuf(self):

@@ -265,7 +265,10 @@ as_color(ColorProfile *self, PyObject *val) {
             Py_RETURN_NONE;
     }
     Color *ans = PyObject_New(Color, &Color_Type);
-    if (ans) ans->color.rgb = col;
+    if (ans) {
+        ans->color.val = 0;
+        ans->color.rgb = col;
+    }
     return (PyObject*)ans;
 }
 
