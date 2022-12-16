@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"kitty/tools/tui/loop"
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -420,6 +421,8 @@ type GraphicsCommand struct {
 	i, I, p uint32
 
 	z int32
+
+	response_message string
 }
 
 func (self *GraphicsCommand) WriteMetadata(o io.StringWriter) (err error) {
@@ -605,6 +608,157 @@ func (self *GraphicsCommand) Set(key byte, value any) error {
 	return nil
 }
 
+func set_val[T any](loc *T, parser func(string) (T, error), value string) (err error) {
+	var temp T
+	temp, err = parser(value)
+	if err == nil {
+		*loc = temp
+	}
+	return err
+}
+
+func set_uval(loc *uint64, value string) (err error) {
+	var temp uint64
+	temp, err = strconv.ParseUint(value, 10, 64)
+	if err == nil {
+		*loc = temp
+	}
+	return err
+}
+
+func set_u32val(loc *uint32, value string) (err error) {
+	var temp uint64
+	temp, err = strconv.ParseUint(value, 10, 64)
+	if err == nil {
+		*loc = uint32(temp)
+	}
+	return err
+}
+
+func set_i32val(loc *int32, value string) (err error) {
+	var temp int64
+	temp, err = strconv.ParseInt(value, 10, 64)
+	if err == nil {
+		*loc = int32(temp)
+	}
+	return err
+}
+
+func (self *GraphicsCommand) SetString(key byte, value string) (err error) {
+	switch key {
+	case 'a':
+		err = set_val(&self.a, GRT_a_from_string, value)
+	case 'q':
+		err = set_val(&self.q, GRT_q_from_string, value)
+	case 'f':
+		err = set_val(&self.f, GRT_f_from_string, value)
+	case 't':
+		err = set_val(&self.t, GRT_t_from_string, value)
+	case 'o':
+		err = set_val(&self.o, GRT_o_from_string, value)
+	case 'm':
+		err = set_val(&self.m, GRT_m_from_string, value)
+	case 'C':
+		err = set_val(&self.C, GRT_C_from_string, value)
+	case 'd':
+		err = set_val(&self.d, GRT_d_from_string, value)
+	case 's':
+		err = set_uval(&self.s, value)
+	case 'v':
+		err = set_uval(&self.v, value)
+	case 'S':
+		err = set_uval(&self.S, value)
+	case 'O':
+		err = set_uval(&self.O, value)
+	case 'x':
+		err = set_uval(&self.x, value)
+	case 'y':
+		err = set_uval(&self.y, value)
+	case 'w':
+		err = set_uval(&self.w, value)
+	case 'h':
+		err = set_uval(&self.h, value)
+	case 'X':
+		err = set_uval(&self.X, value)
+	case 'Y':
+		err = set_uval(&self.Y, value)
+	case 'c':
+		err = set_uval(&self.c, value)
+	case 'r':
+		err = set_uval(&self.r, value)
+	case 'i':
+		err = set_u32val(&self.i, value)
+	case 'I':
+		err = set_u32val(&self.I, value)
+	case 'p':
+		err = set_u32val(&self.p, value)
+	case 'z':
+		err = set_i32val(&self.z, value)
+	default:
+		return fmt.Errorf("Unknown key: %c", key)
+	}
+	return
+}
+
+func GraphicsCommandFromAPCPayload(raw []byte) *GraphicsCommand {
+	const (
+		expecting_key int = iota
+		expecting_equals
+		expecting_value
+	)
+	state := expecting_key
+	var current_key byte
+	var value_start_at int
+	var payload_start_at int = -1
+	var gc GraphicsCommand
+
+	add_key := func(pos int) {
+		gc.SetString(current_key, utils.UnsafeBytesToString(raw[value_start_at:pos]))
+	}
+
+	for pos, ch := range raw {
+		if ch == ';' {
+			if state == expecting_value {
+				add_key(pos)
+			}
+			payload_start_at = pos + 1
+			break
+		}
+		switch state {
+		case expecting_key:
+			current_key = ch
+			state = expecting_equals
+		case expecting_equals:
+			if ch == '=' {
+				state = expecting_value
+				value_start_at = pos + 1
+			} else {
+				state = expecting_key
+			}
+		case expecting_value:
+			if ch == ',' {
+				add_key(pos)
+				state = expecting_key
+			}
+		}
+	}
+	if payload_start_at > -1 {
+		payload := raw[payload_start_at:]
+		if len(payload) > 0 {
+			gc.response_message = string(payload)
+		}
+	}
+	return &gc
+}
+
+func GraphicsCommandFromAPC(raw []byte) *GraphicsCommand {
+	if len(raw) < 1 || raw[0] != 'G' {
+		return nil
+	}
+	return GraphicsCommandFromAPCPayload(raw[1:])
+}
+
+// Getters and Setters {{{
 func (self *GraphicsCommand) Action() GRT_a {
 	return self.a
 }
@@ -953,3 +1107,9 @@ func (self *GraphicsCommand) SetAnimationControl(z uint) *GraphicsCommand {
 	self.s = uint64(z)
 	return self
 }
+
+func (self *GraphicsCommand) ResponseMessage() string {
+	return self.response_message
+}
+
+// }}}
