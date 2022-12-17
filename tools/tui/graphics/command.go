@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
@@ -16,6 +17,7 @@ import (
 
 var _ = fmt.Print
 
+// Enums {{{
 type GRT_a int
 
 const (
@@ -406,6 +408,8 @@ func GRT_d_from_string(a string) (ans GRT_d, err error) {
 	return
 }
 
+// }}}
+
 type GraphicsCommand struct {
 	a GRT_a
 	q GRT_q
@@ -425,19 +429,13 @@ type GraphicsCommand struct {
 	response_message string
 }
 
-func (self *GraphicsCommand) WriteMetadata(o io.StringWriter) (err error) {
+func (self *GraphicsCommand) serialize_non_default_fields() (ans []string) {
 	var null GraphicsCommand
-	is_first := true
-	cfmt := "%c=%v"
+	ans = make([]string, 0, 16)
 
 	write_key := func(k byte, val, defval any) {
-		if val == defval || err != nil {
-			return
-		}
-		_, err = o.WriteString(fmt.Sprintf(cfmt, k, val))
-		if is_first {
-			is_first = false
-			cfmt = "," + cfmt
+		if val != defval {
+			ans = append(ans, fmt.Sprintf("%c=%v", k, val))
 		}
 	}
 
@@ -469,7 +467,16 @@ func (self *GraphicsCommand) WriteMetadata(o io.StringWriter) (err error) {
 
 	write_key('z', self.z, null.z)
 	return
+}
 
+func (self GraphicsCommand) String() string {
+	return "GraphicsCommand(" + strings.Join(self.serialize_non_default_fields(), ", ") + ")"
+}
+
+func (self *GraphicsCommand) WriteMetadata(o io.StringWriter) (err error) {
+	items := self.serialize_non_default_fields()
+	_, err = o.WriteString(strings.Join(items, ","))
+	return
 }
 
 func (self *GraphicsCommand) serialize_to(buf io.StringWriter, chunk string) (err error) {
