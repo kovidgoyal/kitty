@@ -618,8 +618,7 @@ func set_val[T any](loc *T, parser func(string) (T, error), value string) (err e
 }
 
 func set_uval(loc *uint64, value string) (err error) {
-	var temp uint64
-	temp, err = strconv.ParseUint(value, 10, 64)
+	temp, err := strconv.ParseUint(value, 10, 64)
 	if err == nil {
 		*loc = temp
 	}
@@ -627,8 +626,7 @@ func set_uval(loc *uint64, value string) (err error) {
 }
 
 func set_u32val(loc *uint32, value string) (err error) {
-	var temp uint64
-	temp, err = strconv.ParseUint(value, 10, 64)
+	temp, err := strconv.ParseUint(value, 10, 32)
 	if err == nil {
 		*loc = uint32(temp)
 	}
@@ -636,8 +634,7 @@ func set_u32val(loc *uint32, value string) (err error) {
 }
 
 func set_i32val(loc *int32, value string) (err error) {
-	var temp int64
-	temp, err = strconv.ParseInt(value, 10, 64)
+	temp, err := strconv.ParseInt(value, 10, 32)
 	if err == nil {
 		*loc = int32(temp)
 	}
