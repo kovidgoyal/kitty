@@ -547,67 +547,6 @@ func (self *GraphicsCommand) WriteWithPayloadToLoop(lp *loop.Loop, payload []byt
 	return self.WriteWithPayloadTo(&w, payload)
 }
 
-func (self *GraphicsCommand) Set(key byte, value any) error {
-	var ok bool
-	re := func() error { return fmt.Errorf("Not a valid value for %c: %#v", key, value) }
-	switch key {
-	case 'a':
-		self.a, ok = value.(GRT_a)
-	case 'q':
-		self.q, ok = value.(GRT_q)
-	case 'f':
-		self.f, ok = value.(GRT_f)
-	case 't':
-		self.t, ok = value.(GRT_t)
-	case 'o':
-		self.o, ok = value.(GRT_o)
-	case 'm':
-		self.m, ok = value.(GRT_m)
-	case 'C':
-		self.C, ok = value.(GRT_C)
-	case 'd':
-		self.d, ok = value.(GRT_d)
-	case 's':
-		self.s, ok = value.(uint64)
-	case 'v':
-		self.v, ok = value.(uint64)
-	case 'S':
-		self.S, ok = value.(uint64)
-	case 'O':
-		self.O, ok = value.(uint64)
-	case 'x':
-		self.x, ok = value.(uint64)
-	case 'y':
-		self.y, ok = value.(uint64)
-	case 'w':
-		self.w, ok = value.(uint64)
-	case 'h':
-		self.h, ok = value.(uint64)
-	case 'X':
-		self.X, ok = value.(uint64)
-	case 'Y':
-		self.Y, ok = value.(uint64)
-	case 'c':
-		self.c, ok = value.(uint64)
-	case 'r':
-		self.r, ok = value.(uint64)
-	case 'i':
-		self.i, ok = value.(uint32)
-	case 'I':
-		self.I, ok = value.(uint32)
-	case 'p':
-		self.p, ok = value.(uint32)
-	case 'z':
-		self.z, ok = value.(int32)
-	default:
-		return fmt.Errorf("Unknown key: %c", key)
-	}
-	if !ok {
-		return re()
-	}
-	return nil
-}
-
 func set_val[T any](loc *T, parser func(string) (T, error), value string) (err error) {
 	var temp T
 	temp, err = parser(value)
