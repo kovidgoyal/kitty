@@ -510,6 +510,13 @@ func compress_with_zlib(data []byte) []byte {
 	return b.Bytes()
 }
 
+func (self *GraphicsCommand) AsAPC(payload []byte) string {
+	buf := strings.Builder{}
+	buf.Grow(1024)
+	self.WriteWithPayloadTo(&buf, payload)
+	return buf.String()
+}
+
 func (self *GraphicsCommand) WriteWithPayloadTo(o io.StringWriter, payload []byte) (err error) {
 	const compression_threshold = 1024
 	if len(payload) == 0 {
@@ -526,16 +533,23 @@ func (self *GraphicsCommand) WriteWithPayloadTo(o io.StringWriter, payload []byt
 	}
 	gc.SetDataSize(uint64(len(payload)))
 	data := base64.StdEncoding.EncodeToString(payload)
-	for len(data) > 0 && err != nil {
-		chunk := data[:4096]
-		data = data[4096:]
+	for len(data) > 0 && err == nil {
+		chunk := data
+		if len(data) > 4096 {
+			chunk = data[:4096]
+			data = data[4096:]
+		} else {
+			data = ""
+		}
 		if len(data) > 0 {
 			gc.m = GRT_more_more
 		} else {
 			gc.m = GRT_more_nomore
 		}
 		err = gc.serialize_to(o, chunk)
-		gc = GraphicsCommand{}
+		if gc.DataSize() > 0 {
+			gc = GraphicsCommand{}
+		}
 	}
 	return
 }
@@ -664,6 +678,7 @@ func GraphicsCommandFromAPCPayload(raw []byte) *GraphicsCommand {
 			if state == expecting_value {
 				add_key(pos)
 			}
+			state = expecting_key
 			payload_start_at = pos + 1
 			break
 		}
@@ -684,6 +699,9 @@ func GraphicsCommandFromAPCPayload(raw []byte) *GraphicsCommand {
 				state = expecting_key
 			}
 		}
+	}
+	if state == expecting_value {
+		add_key(len(raw))
 	}
 	if payload_start_at > -1 {
 		payload := raw[payload_start_at:]
