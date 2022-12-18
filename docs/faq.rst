@@ -29,7 +29,8 @@ Using a color theme with a background color does not work well in vim?
 
 First make sure you have not changed the :envvar:`TERM` environment variable, it
 should be ``xterm-kitty``. vim uses *background color erase* even if the
-terminfo file does not contain the ``bce`` capability. This is a bug in vim. You
+terminfo file does not contain the ``bce`` capability. This is a
+`bug in vim <https://github.com/vim/vim/issues/11716>`__. You
 can work around it by adding the following to your vimrc::
 
     let &t_ut=''
