@@ -4002,13 +4002,5 @@ map('Open kitty Website',
     f'open_kitty_website shift+cmd+/ open_url {website_url()}',
     only='macos',
     )
-map('Move right one word',
-    'move_right_one_word alt+right send_text normal,application \\x1bf',
-    only='macos'
-    )
-map('Move left one word',
-    'move_left_one_word alt+left send_text normal,application \\x1bb',
-    only='macos'
-    )
 egr()  # }}}
 egr()  # }}}

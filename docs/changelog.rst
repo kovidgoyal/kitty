@@ -69,7 +69,7 @@ Detailed list of changes
 
 - Remote control: When matching windows allow using negative id numbers to match recently created windows (:iss:`5753`)
 
-- macOS: Bind :kbd:`option+left` and :kbd:`option+right` to :kbd:`alt+b` and :kbd:`alt+f`. This mimics the default bindings in Terminal.app (:iss:`5793`)
+- ZSH Integration: Bind :kbd:`alt+left` and :kbd:`alt+right` to move by word if not already bound. This mimics the default bindings in Terminal.app (:iss:`5793`)
 
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
