@@ -76,13 +76,14 @@ Remove all images currently displayed on the screen.
 
 --transfer-mode
 type=choices
-choices=detect,file,stream
+choices=detect,file,stream,memory
 default=detect
 Which mechanism to use to transfer images to the terminal. The default is to
-auto-detect. :italic:`file` means to use a temporary file and :italic:`stream`
-means to send the data via terminal escape codes. Note that if you use the
-:italic:`file` transfer mode and you are connecting over a remote session then
-image display will not work.
+auto-detect. :italic:`file` means to use a temporary file, :italic:`memory` means
+to use shared memory, :italic:`stream` means to send the data via terminal
+escape codes. Note that if you use the :italic:`file` or :italic:`memory` transfer
+modes and you are connecting over a remote session then image display will not
+work.
 
 
 --detect-support
@@ -622,4 +623,5 @@ elif __name__ == '__doc__':
     cd['usage'] = usage
     cd['options'] = options_spec
     cd['help_text'] = help_text
+    cd['short_desc'] = 'Display images in the terminal'
     cd['args_completion'] = CompletionSpec.from_string('type:file mime:image/* group:Images')

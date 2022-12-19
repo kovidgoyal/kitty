@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 
@@ -16,6 +17,10 @@ import (
 )
 
 var _ = fmt.Print
+
+func MakeTemp() (*os.File, error) {
+	return os.CreateTemp("", "tty-graphics-protocol-*")
+}
 
 // Enums {{{
 type GRT_a int
