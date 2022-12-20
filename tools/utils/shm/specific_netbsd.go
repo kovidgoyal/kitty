@@ -9,4 +9,7 @@ import (
 var _ = fmt.Print
 
 const SHM_DIR = "/var/shm"
-const SHM_NAME_MAX = 1023
+
+func modify_pattern(pattern string) string {
+	return pattern
+}

@@ -1,5 +1,5 @@
 // License: GPLv3 Copyright: 2022, Kovid Goyal, <kovid at kovidgoyal.net>
-//go:build linux || netbsd
+//go:build linux || netbsd || openbsd || dragonfly
 
 package shm
 
@@ -12,6 +12,7 @@ import (
 var _ = fmt.Print
 
 func create_temp(pattern string, size uint64) (MMap, error) {
+	pattern = modify_pattern(pattern)
 	ans, err := os.CreateTemp(SHM_DIR, pattern)
 	if err != nil {
 		return nil, err
