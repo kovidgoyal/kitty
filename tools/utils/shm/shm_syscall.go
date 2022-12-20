@@ -31,7 +31,7 @@ func BytePtrFromString(s string) *byte {
 func shm_unlink(name string) (err error) {
 	bname := BytePtrFromString(name)
 	for {
-		_, _, errno := unix.Syscall(unix.SYS_SHM_OPEN, uintptr(unsafe.Pointer(bname)), 0, 0)
+		_, _, errno := unix.Syscall(unix.SYS_SHM_UNLINK, uintptr(unsafe.Pointer(bname)), 0, 0)
 		if errno != unix.EINTR {
 			if errno != 0 {
 				err = fmt.Errorf("shm_unlink() failed with error: %w", errno)
@@ -67,14 +67,14 @@ type syscall_based_mmap struct {
 	unlinked bool
 }
 
-func syscall_mmap(f *os.File, size uint64, access ProtectionFlags, truncate bool) (MMap, error) {
+func syscall_mmap(f *os.File, size uint64, access AccessFlags, truncate bool) (MMap, error) {
 	if truncate {
 		err := truncate_or_unlink(f, size)
 		if err != nil {
 			return nil, fmt.Errorf("truncate failed with error: %w", err)
 		}
 	}
-	region, err := mmap(int(size), access, false, int(f.Fd()), 0)
+	region, err := mmap(int(size), access, int(f.Fd()), 0)
 	if err != nil {
 		f.Close()
 		os.Remove(f.Name())
@@ -91,10 +91,13 @@ func (self *syscall_based_mmap) Slice() []byte {
 	return self.region
 }
 
-func (self *syscall_based_mmap) Close() error {
-	err := self.f.Close()
-	self.region = nil
-	return err
+func (self *syscall_based_mmap) Close() (err error) {
+	if self.region != nil {
+		self.f.Close()
+		munmap(self.region)
+		self.region = nil
+	}
+	return
 }
 
 func (self *syscall_based_mmap) Unlink() (err error) {
@@ -104,6 +107,8 @@ func (self *syscall_based_mmap) Unlink() (err error) {
 	self.unlinked = true
 	return shm_unlink(self.Name())
 }
+
+func (self *syscall_based_mmap) IsFilesystemBacked() bool { return false }
 
 func create_temp(pattern string, size uint64) (ans MMap, err error) {
 	var prefix, suffix string
@@ -126,7 +131,7 @@ func create_temp(pattern string, size uint64) (ans MMap, err error) {
 		if err != nil && (errors.Is(err, fs.ErrExist) || errors.Unwrap(err) == unix.EEXIST) {
 			try += 1
 			if try > 10000 {
-				return nil, &os.PathError{Op: "createtemp", Path: prefix + "*" + suffix, Err: ErrExist}
+				return nil, &os.PathError{Op: "createtemp", Path: prefix + "*" + suffix, Err: fs.ErrExist}
 			}
 			continue
 		}
@@ -135,18 +140,13 @@ func create_temp(pattern string, size uint64) (ans MMap, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return syscall_mmap(f, size, RDWR, true)
+	return syscall_mmap(f, size, WRITE, true)
 }
 
-func Open(name string) (MMap, error) {
+func Open(name string, size uint64) (MMap, error) {
 	ans, err := shm_open(name, os.O_RDONLY, 0)
 	if err != nil {
 		return nil, err
 	}
-	s, err := os.Stat(name)
-	if err != nil {
-		ans.Close()
-		return nil, err
-	}
-	return syscall_mmap(ans, uint64(s.Size()), READ, false)
+	return syscall_mmap(ans, size, READ, false)
 }

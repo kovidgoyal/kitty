@@ -23,9 +23,12 @@ func TestSHM(t *testing.T) {
 	}
 
 	copy(mm.Slice(), data)
-	mm.Close()
+	err = mm.Close()
+	if err != nil {
+		t.Fatalf("Failed to close with error: %v", err)
+	}
 
-	g, err := Open(mm.Name())
+	g, err := Open(mm.Name(), uint64(len(data)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,11 +36,22 @@ func TestSHM(t *testing.T) {
 	if !reflect.DeepEqual(data, data2) {
 		t.Fatalf("Could not read back written data: Written data length: %d Read data length: %d", len(data), len(data2))
 	}
-	g.Close()
-	g.Unlink()
-	_, err = os.Stat(mm.Name())
-	if !errors.Is(err, fs.ErrNotExist) {
-		t.Fatalf("Unlinking %s did not work", mm.Name())
+	err = g.Close()
+	if err != nil {
+		t.Fatalf("Failed to close with error: %v", err)
 	}
-
+	err = g.Unlink()
+	if err != nil {
+		t.Fatalf("Failed to unlink with error: %v", err)
+	}
+	g, err = Open(mm.Name(), uint64(len(data)))
+	if err == nil {
+		t.Fatalf("Unlinking failed could re-open the SHM data. Data equal: %v Data length: %d", reflect.DeepEqual(g.Slice(), data), len(g.Slice()))
+	}
+	if mm.IsFilesystemBacked() {
+		_, err = os.Stat(mm.Name())
+		if !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("Unlinking %s did not work", mm.Name())
+		}
+	}
 }

@@ -16,10 +16,10 @@ func create_temp(pattern string, size uint64) (MMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	return file_mmap(ans, size, RDWR, true)
+	return file_mmap(ans, size, WRITE, true)
 }
 
-func Open(name string) (MMap, error) {
+func Open(name string, size uint64) (MMap, error) {
 	if !filepath.IsAbs(name) {
 		name = filepath.Join(SHM_DIR, name)
 	}
@@ -27,10 +27,5 @@ func Open(name string) (MMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	s, err := os.Stat(name)
-	if err != nil {
-		ans.Close()
-		return nil, err
-	}
-	return file_mmap(ans, uint64(s.Size()), READ, false)
+	return file_mmap(ans, size, READ, false)
 }

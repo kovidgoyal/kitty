@@ -51,33 +51,26 @@ type MMap interface {
 	Unlink() error
 	Slice() []byte
 	Name() string
+	IsFilesystemBacked() bool
 }
 
-type ProtectionFlags int
+type AccessFlags int
 
 const (
-	READ ProtectionFlags = iota
+	READ AccessFlags = iota
+	WRITE
 	COPY
-	RDWR
-	EXEC
-	ANON
 )
 
-func mmap(sz int, inprot ProtectionFlags, anonymous bool, fd int, off int64) ([]byte, error) {
+func mmap(sz int, access AccessFlags, fd int, off int64) ([]byte, error) {
 	flags := unix.MAP_SHARED
 	prot := unix.PROT_READ
-	switch {
-	case inprot&COPY != 0:
+	switch access {
+	case COPY:
 		prot |= unix.PROT_WRITE
 		flags = unix.MAP_PRIVATE
-	case inprot&RDWR != 0:
+	case WRITE:
 		prot |= unix.PROT_WRITE
-	}
-	if inprot&EXEC != 0 {
-		prot |= unix.PROT_EXEC
-	}
-	if anonymous {
-		flags |= unix.MAP_ANON
 	}
 
 	b, err := unix.Mmap(fd, off, sz, prot, flags)
@@ -87,20 +80,24 @@ func mmap(sz int, inprot ProtectionFlags, anonymous bool, fd int, off int64) ([]
 	return b, nil
 }
 
+func munmap(s []byte) error {
+	return unix.Munmap(s)
+}
+
 type file_based_mmap struct {
 	f        *os.File
 	region   []byte
 	unlinked bool
 }
 
-func file_mmap(f *os.File, size uint64, access ProtectionFlags, truncate bool) (MMap, error) {
+func file_mmap(f *os.File, size uint64, access AccessFlags, truncate bool) (MMap, error) {
 	if truncate {
 		err := truncate_or_unlink(f, size)
 		if err != nil {
 			return nil, err
 		}
 	}
-	region, err := mmap(int(size), access, false, int(f.Fd()), 0)
+	region, err := mmap(int(size), access, int(f.Fd()), 0)
 	if err != nil {
 		f.Close()
 		os.Remove(f.Name())
@@ -117,9 +114,12 @@ func (self *file_based_mmap) Slice() []byte {
 	return self.region
 }
 
-func (self *file_based_mmap) Close() error {
-	err := self.f.Close()
-	self.region = nil
+func (self *file_based_mmap) Close() (err error) {
+	if self.region != nil {
+		self.f.Close()
+		err = munmap(self.region)
+		self.region = nil
+	}
 	return err
 }
 
@@ -130,6 +130,8 @@ func (self *file_based_mmap) Unlink() (err error) {
 	self.unlinked = true
 	return os.Remove(self.f.Name())
 }
+
+func (self *file_based_mmap) IsFilesystemBacked() bool { return true }
 
 func CreateTemp(pattern string, size uint64) (MMap, error) {
 	return create_temp(pattern, size)
