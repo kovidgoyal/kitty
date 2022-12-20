@@ -236,12 +236,30 @@ PENDING(reload_config, RELOAD_CONFIG)
 PENDING(toggle_macos_secure_keyboard_entry, TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY)
 PENDING(toggle_fullscreen, TOGGLE_FULLSCREEN)
 PENDING(open_kitty_website, OPEN_KITTY_WEBSITE)
+PENDING(hide_macos_app, HIDE)
+PENDING(hide_macos_other_apps, HIDE_OTHERS)
+PENDING(minimize_macos_window, MINIMIZE)
+PENDING(quit, QUIT)
 
 - (BOOL)validateMenuItem:(NSMenuItem *)item {
     if (item.action == @selector(toggle_macos_secure_keyboard_entry:)) {
         item.state = [SecureKeyboardEntryController sharedInstance].isDesired ? NSControlStateValueOn : NSControlStateValueOff;
     } else if (item.action == @selector(toggle_fullscreen:)) {
         item.title = ([NSApp currentSystemPresentationOptions] & NSApplicationPresentationFullScreen) ? @"Exit Full Screen" : @"Enter Full Screen";
+        if (![NSApp keyWindow]) return NO;
+    } else if (item.action == @selector(minimize_macos_window:)) {
+        NSWindow *window = [NSApp keyWindow];
+        if (!window || window.miniaturized || [NSApp currentSystemPresentationOptions] & NSApplicationPresentationFullScreen) return NO;
+    } else if (item.action == @selector(close_os_window:) ||
+        item.action == @selector(close_tab:) ||
+        item.action == @selector(close_window:) ||
+        item.action == @selector(reset_terminal:) ||
+        item.action == @selector(clear_terminal_and_scrollback:) ||
+        item.action == @selector(previous_tab:) ||
+        item.action == @selector(next_tab:) ||
+        item.action == @selector(detach_tab:))
+    {
+        if (![NSApp keyWindow]) return NO;
     }
     return YES;
 }
@@ -272,6 +290,7 @@ typedef struct {
     GlobalShortcut new_os_window, close_os_window, close_tab, edit_config_file, reload_config;
     GlobalShortcut previous_tab, next_tab, new_tab, new_window, close_window, reset_terminal, clear_terminal_and_scrollback;
     GlobalShortcut toggle_macos_secure_keyboard_entry, toggle_fullscreen, open_kitty_website;
+    GlobalShortcut hide_macos_app, hide_macos_other_apps, minimize_macos_window, quit;
 } GlobalShortcuts;
 static GlobalShortcuts global_shortcuts;
 
@@ -287,6 +306,7 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
     else Q(new_tab); else Q(next_tab); else Q(previous_tab);
     else Q(new_window); else Q(close_window); else Q(reset_terminal); else Q(clear_terminal_and_scrollback); else Q(reload_config);
     else Q(toggle_macos_secure_keyboard_entry); else Q(toggle_fullscreen); else Q(open_kitty_website);
+    else Q(hide_macos_app); else Q(hide_macos_other_apps); else Q(minimize_macos_window); else Q(quit);
 #undef Q
     if (gs == NULL) { PyErr_SetString(PyExc_KeyError, "Unknown shortcut name"); return NULL; }
     int cocoa_mods;
@@ -574,13 +594,8 @@ cocoa_create_global_menu(void) {
     [servicesMenu release];
     [appMenu addItem:[NSMenuItem separatorItem]];
 
-    [appMenu addItemWithTitle:[NSString stringWithFormat:@"Hide %@", app_name]
-                       action:@selector(hide:)
-                keyEquivalent:@"h"];
-    [[appMenu addItemWithTitle:@"Hide Others"
-                        action:@selector(hideOtherApplications:)
-                 keyEquivalent:@"h"]
-        setKeyEquivalentModifierMask:NSEventModifierFlagOption | NSEventModifierFlagCommand];
+    MENU_ITEM(appMenu, ([NSString stringWithFormat:@"Hide %@", app_name]), hide_macos_app);
+    MENU_ITEM(appMenu, @"Hide Others", hide_macos_other_apps);
     [appMenu addItemWithTitle:@"Show All"
                        action:@selector(unhideAllApplications:)
                 keyEquivalent:@""];
@@ -589,9 +604,7 @@ cocoa_create_global_menu(void) {
     MENU_ITEM(appMenu, @"Secure Keyboard Entry", toggle_macos_secure_keyboard_entry);
     [appMenu addItem:[NSMenuItem separatorItem]];
 
-    [appMenu addItemWithTitle:[NSString stringWithFormat:@"Quit %@", app_name]
-                       action:@selector(terminate:)
-                keyEquivalent:@"q"];
+    MENU_ITEM(appMenu, ([NSString stringWithFormat:@"Quit %@", app_name]), quit);
     [appMenu release];
 
     NSMenuItem* shellMenuItem =
@@ -619,9 +632,7 @@ cocoa_create_global_menu(void) {
     NSMenu* windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
     [windowMenuItem setSubmenu:windowMenu];
 
-    [windowMenu addItemWithTitle:@"Minimize"
-                          action:@selector(performMiniaturize:)
-                   keyEquivalent:@"m"];
+    MENU_ITEM(windowMenu, @"Minimize", minimize_macos_window);
     [windowMenu addItemWithTitle:@"Zoom"
                           action:@selector(performZoom:)
                    keyEquivalent:@""];
@@ -721,6 +732,22 @@ cocoa_toggle_secure_keyboard_entry(void) {
     SecureKeyboardEntryController *k = [SecureKeyboardEntryController sharedInstance];
     [k toggle];
     [[NSUserDefaults standardUserDefaults] setBool:k.isDesired forKey:@"SecureKeyboardEntry"];
+}
+
+void
+cocoa_hide(void) {
+    [[NSApplication sharedApplication] performSelectorOnMainThread:@selector(hide:) withObject:nil waitUntilDone:NO];
+}
+
+void
+cocoa_hide_others(void) {
+    [[NSApplication sharedApplication] performSelectorOnMainThread:@selector(hideOtherApplications:) withObject:nil waitUntilDone:NO];
+}
+
+void
+cocoa_minimize(void *w) {
+    NSWindow *window = (NSWindow*)w;
+    if (window && !window.miniaturized) [window performSelectorOnMainThread:@selector(performMiniaturize:) withObject:nil waitUntilDone:NO];
 }
 
 void

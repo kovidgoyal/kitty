@@ -71,6 +71,9 @@ Detailed list of changes
 
 - ZSH Integration: Bind :kbd:`alt+left` and :kbd:`alt+right` to move by word if not already bound. This mimics the default bindings in Terminal.app (:iss:`5793`)
 
+- macOS: Allow to customize :sc:`Hide <hide_macos_app>`, :sc:`Hide Others <hide_macos_other_apps>`, :sc:`Minimize <minimize_macos_window>`, and :sc:`Quit <quit>` global menu shortcuts. Note that :opt:`clear_all_shortcuts` will remove these shortcuts now (:iss:`948`)
+
+
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
