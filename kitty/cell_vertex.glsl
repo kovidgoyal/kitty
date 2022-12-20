@@ -1,4 +1,6 @@
 #version GLSL_VERSION
+#extension GL_ARB_explicit_attrib_location : require
+
 #define {WHICH_PROGRAM}
 #define NOT_TRANSPARENT
 #define DECORATION_SHIFT {DECORATION_SHIFT}

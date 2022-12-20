@@ -306,7 +306,7 @@ add_located_attribute_to_vao(ssize_t vao_idx, GLint aloc, GLint size, GLenum dat
             break;
     }
     if (divisor) {
-        glVertexAttribDivisor(aloc, divisor);
+        glVertexAttribDivisorARB(aloc, divisor);
     }
     unbind_buffer(buf);
 }

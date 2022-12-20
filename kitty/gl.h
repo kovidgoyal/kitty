@@ -9,8 +9,6 @@
 #include "data-types.h"
 #include "gl-wrapper.h"
 
-#define GLSL_VERSION (OPENGL_REQUIRED_VERSION_MAJOR * 100 + OPENGL_REQUIRED_VERSION_MINOR * 10)
-
 typedef struct {
     GLint size, index;
 } UniformBlock;
