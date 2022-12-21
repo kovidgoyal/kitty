@@ -741,6 +741,18 @@ def cocoa_set_dock_icon(icon_path: str) -> None:
     pass
 
 
+def cocoa_hide_app() -> None:
+    pass
+
+
+def cocoa_hide_other_apps() -> None:
+    pass
+
+
+def cocoa_minimize_os_window(os_window_id: Optional[int] = None) -> None:
+    pass
+
+
 def locale_is_valid(name: str) -> bool:
     pass
 

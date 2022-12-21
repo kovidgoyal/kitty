@@ -33,18 +33,21 @@ from .constants import (
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
-    GLFW_MOD_SUPER, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, IMPERATIVE_CLOSE_REQUESTED,
-    NO_CLOSE_REQUESTED, ChildMonitor, Color, EllipticCurveKey, KeyEvent, SingleKey,
-    add_timer, apply_options_update, background_opacity_of, change_background_opacity,
-    change_os_window_state, cocoa_set_menubar_title, create_os_window,
-    current_application_quit_request, current_focused_os_window_id, current_os_window,
-    destroy_global_data, focus_os_window, get_boss, get_options, get_os_window_size,
-    global_font_size, last_focused_os_window_id, mark_os_window_for_close,
-    os_window_font_size, patch_global_colors, redirect_mouse_handling, ring_bell,
+    GLFW_MOD_SUPER, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS,
+    IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED, ChildMonitor, Color,
+    EllipticCurveKey, KeyEvent, SingleKey, add_timer, apply_options_update,
+    background_opacity_of, change_background_opacity, change_os_window_state,
+    cocoa_hide_app, cocoa_hide_other_apps, cocoa_minimize_os_window,
+    cocoa_set_menubar_title, create_os_window,
+    current_application_quit_request, current_focused_os_window_id,
+    current_os_window, destroy_global_data, focus_os_window, get_boss,
+    get_options, get_os_window_size, global_font_size,
+    last_focused_os_window_id, mark_os_window_for_close, os_window_font_size,
+    patch_global_colors, redirect_mouse_handling, ring_bell,
     run_with_activation_token, safe_pipe, send_data_to_peer,
-    set_application_quit_request, set_background_image, set_boss, set_in_sequence_mode,
-    set_options, set_os_window_size, set_os_window_title, thread_write,
-    toggle_fullscreen, toggle_maximized, toggle_secure_input,
+    set_application_quit_request, set_background_image, set_boss,
+    set_in_sequence_mode, set_options, set_os_window_size, set_os_window_title,
+    thread_write, toggle_fullscreen, toggle_maximized, toggle_secure_input,
 )
 from .key_encoding import get_name_to_functional_number_map
 from .keys import get_shortcut, shortcut_matches
@@ -925,6 +928,20 @@ class Boss:
     @ac('misc', 'Toggle macOS secure keyboard entry')
     def toggle_macos_secure_keyboard_entry(self) -> None:
         toggle_secure_input()
+
+    @ac('misc', 'Hide macOS kitty application')
+    def hide_macos_app(self) -> None:
+        cocoa_hide_app()
+
+    @ac('misc', 'Hide macOS other applications')
+    def hide_macos_other_apps(self) -> None:
+        cocoa_hide_other_apps()
+
+    @ac('misc', 'Minimize macOS window')
+    def minimize_macos_window(self) -> None:
+        osw_id = current_os_window()
+        if osw_id is not None:
+            cocoa_minimize_os_window(osw_id)
 
     def start(self, first_os_window_id: int, startup_sessions: Iterable[Session]) -> None:
         if not getattr(self, 'io_thread_started', False):

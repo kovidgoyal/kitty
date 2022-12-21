@@ -4002,5 +4002,25 @@ map('Open kitty Website',
     f'open_kitty_website shift+cmd+/ open_url {website_url()}',
     only='macos',
     )
+
+map('Hide macOS kitty application',
+    'hide_macos_app cmd+h hide_macos_app',
+    only='macos',
+    )
+
+map('Hide macOS other applications',
+    'hide_macos_other_apps opt+cmd+h hide_macos_other_apps',
+    only='macos',
+    )
+
+map('Minimize macOS window',
+    'minimize_macos_window cmd+m minimize_macos_window',
+    only='macos',
+    )
+
+map('Quit kitty',
+    'quit cmd+q quit',
+    only='macos',
+    )
 egr()  # }}}
 egr()  # }}}

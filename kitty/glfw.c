@@ -25,6 +25,9 @@ extern void cocoa_set_titlebar_appearance(void *w, unsigned int theme);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
 extern void cocoa_toggle_secure_keyboard_entry(void);
+extern void cocoa_hide(void);
+extern void cocoa_hide_others(void);
+extern void cocoa_minimize(void *w);
 extern void cocoa_set_uncaught_exception_handler(void);
 extern void cocoa_update_menu_bar_title(PyObject*);
 extern size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz);
@@ -1272,6 +1275,22 @@ toggle_secure_input(PYNOARG) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+cocoa_hide_app(PYNOARG) {
+#ifdef __APPLE__
+    cocoa_hide();
+#endif
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+cocoa_hide_other_apps(PYNOARG) {
+#ifdef __APPLE__
+    cocoa_hide_others();
+#endif
+    Py_RETURN_NONE;
+}
+
 static void
 ring_audio_bell(void) {
     static monotonic_t last_bell_at = -1;
@@ -1347,6 +1366,24 @@ toggle_maximized(PyObject UNUSED *self, PyObject *args) {
     if (!w) Py_RETURN_NONE;
     if (toggle_maximized_for_os_window(w)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
+}
+
+static PyObject*
+cocoa_minimize_os_window(PyObject UNUSED *self, PyObject *args) {
+    id_type os_window_id = 0;
+    if (!PyArg_ParseTuple(args, "|K", &os_window_id)) return NULL;
+#ifdef __APPLE__
+    OSWindow *w = os_window_id ? find_os_window(os_window_id) : current_os_window();
+    if (!w || !w->handle) Py_RETURN_NONE;
+    if (!glfwGetCocoaWindow) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetCocoaWindow"); return NULL; }
+    void *window = glfwGetCocoaWindow(w->handle);
+    if (!window) Py_RETURN_NONE;
+    cocoa_minimize(window);
+#else
+    PyErr_SetString(PyExc_RuntimeError, "cocoa_minimize_os_window() is only supported on macOS");
+    return NULL;
+#endif
+    Py_RETURN_NONE;
 }
 
 static PyObject*
@@ -1718,6 +1755,9 @@ static PyMethodDef module_methods[] = {
     METHODB(dbus_send_notification, METH_VARARGS),
 #endif
     METHODB(cocoa_window_id, METH_O),
+    METHODB(cocoa_hide_app, METH_NOARGS),
+    METHODB(cocoa_hide_other_apps, METH_NOARGS),
+    METHODB(cocoa_minimize_os_window, METH_VARARGS),
     {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""},
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""},
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""},

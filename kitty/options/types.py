@@ -937,6 +937,10 @@ if is_macos:
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=12, key=44), definition='load_config_file'))  # noqa
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=44), definition='debug_config'))  # noqa
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=47), definition='open_url https://sw.kovidgoyal.net/kitty/'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=104), definition='hide_macos_app'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=104), definition='hide_macos_other_apps'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=109), definition='minimize_macos_window'))  # noqa
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=113), definition='quit'))  # noqa
 defaults.mouse_map = [
     # click_url_or_select
     MouseMapping(repeat_count=-2, definition='mouse_handle_click selection link prompt'),  # noqa
