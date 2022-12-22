@@ -48,8 +48,8 @@ func TestSHM(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Unlinking failed could re-open the SHM data. Data equal: %v Data length: %d", reflect.DeepEqual(g.Slice(), data), len(g.Slice()))
 	}
-	if mm.IsFilesystemBacked() {
-		_, err = os.Stat(mm.Name())
+	if mm.IsFileSystemBacked() {
+		_, err = os.Stat(mm.FileSystemName())
 		if !errors.Is(err, fs.ErrNotExist) {
 			t.Fatalf("Unlinking %s did not work", mm.Name())
 		}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -51,7 +52,8 @@ type MMap interface {
 	Unlink() error
 	Slice() []byte
 	Name() string
-	IsFilesystemBacked() bool
+	IsFileSystemBacked() bool
+	FileSystemName() string
 }
 
 type AccessFlags int
@@ -107,6 +109,10 @@ func file_mmap(f *os.File, size uint64, access AccessFlags, truncate bool) (MMap
 }
 
 func (self *file_based_mmap) Name() string {
+	return filepath.Base(self.f.Name())
+}
+
+func (self *file_based_mmap) FileSystemName() string {
 	return self.f.Name()
 }
 
@@ -131,7 +137,7 @@ func (self *file_based_mmap) Unlink() (err error) {
 	return os.Remove(self.f.Name())
 }
 
-func (self *file_based_mmap) IsFilesystemBacked() bool { return true }
+func (self *file_based_mmap) IsFileSystemBacked() bool { return true }
 
 func CreateTemp(pattern string, size uint64) (MMap, error) {
 	return create_temp(pattern, size)

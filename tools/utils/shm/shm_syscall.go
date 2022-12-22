@@ -108,7 +108,8 @@ func (self *syscall_based_mmap) Unlink() (err error) {
 	return shm_unlink(self.Name())
 }
 
-func (self *syscall_based_mmap) IsFilesystemBacked() bool { return false }
+func (self *syscall_based_mmap) IsFileSystemBacked() bool { return false }
+func (self *syscall_based_mmap) FileSystemName() string   { return "" }
 
 func create_temp(pattern string, size uint64) (ans MMap, err error) {
 	var prefix, suffix string
