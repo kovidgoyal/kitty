@@ -122,7 +122,7 @@ string_capabilities = {
     'cub1': r'^H',  # BS (backspace)
     # Move cursor down specified number of lines
     'cud': r'\E[%p1%dB',
-    'cud1': r'\E[B',  # We dont use newline here because man terminfo says cud1 must not alter text, see https://github.com/kovidgoyal/kitty/issues/5766
+    'cud1': r'^J',  # LF (line-feed \n)
     # Move cursor to the right by the specified amount
     'cuf': r'\E[%p1%dC',
     'cuf1': r'\E[C',
