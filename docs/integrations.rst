@@ -82,7 +82,7 @@ images.
 
 .. _tool_mpv:
 
-`mpv <https://github.com/mpv-player/mpv/pull/11002>`_
+`mpv <https://github.com/mpv-player/mpv/commit/874e28f4a41a916bb567a882063dd2589e9234e1>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A video player that can play videos in the terminal.
 
