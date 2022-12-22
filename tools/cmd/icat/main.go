@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"kitty/tools/cli"
 	"kitty/tools/tty"
@@ -47,9 +48,17 @@ func print_error(format string, args ...any) {
 	}
 }
 
+func on_detect_timeout(timer_id loop.IdType) error {
+	if query_in_flight {
+		return fmt.Errorf("Timed out waiting for a response form the terminal")
+	}
+	return nil
+}
+
 func on_initialize() (string, error) {
 	var iid uint32
 	query_in_flight = true
+	lp.AddTimer(time.Duration(opts.DetectionTimeout*float64(time.Second)), false, on_detect_timeout)
 	g := func(t graphics.GRT_t, payload string) uint32 {
 		iid += 1
 		g1 := &graphics.GraphicsCommand{}
