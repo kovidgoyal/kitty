@@ -2,8 +2,8 @@
     {
         "name": "zlib",
         "unix": {
-            "filename": "zlib-1.2.11.tar.xz",
-            "hash": "sha256:4ff941449631ace0d4d203e3483be9dbc9da454084111f97ea0a2114e19bf066",
+            "filename": "zlib-1.2.13.tar.xz",
+            "hash": "sha256:d14c38e313afc35a9a8760dadf26042f51ea0f5d154b0630a31da0540107fb98",
             "urls": ["https://zlib.net/{filename}"]
         }
     },
