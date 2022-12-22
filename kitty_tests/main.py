@@ -255,6 +255,7 @@ def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
         XDG_CONFIG_DIRS=os.path.join(tdir, '.config'),
         XDG_DATA_DIRS=os.path.join(tdir, '.local', 'xdg'),
         XDG_CACHE_HOME=os.path.join(tdir, '.cache'),
+        XDG_RUNTIME_DIR=os.path.join(tdir, '.cache', 'run'),
         PYTHONWARNINGS='error',
     ):
         if os.path.isdir(gohome):
