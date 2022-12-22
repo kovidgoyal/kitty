@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -85,59 +84,6 @@ func mmap(sz int, access AccessFlags, fd int, off int64) ([]byte, error) {
 func munmap(s []byte) error {
 	return unix.Munmap(s)
 }
-
-type file_based_mmap struct {
-	f        *os.File
-	region   []byte
-	unlinked bool
-}
-
-func file_mmap(f *os.File, size uint64, access AccessFlags, truncate bool) (MMap, error) {
-	if truncate {
-		err := truncate_or_unlink(f, size)
-		if err != nil {
-			return nil, err
-		}
-	}
-	region, err := mmap(int(size), access, int(f.Fd()), 0)
-	if err != nil {
-		f.Close()
-		os.Remove(f.Name())
-		return nil, err
-	}
-	return &file_based_mmap{f: f, region: region}, nil
-}
-
-func (self *file_based_mmap) Name() string {
-	return filepath.Base(self.f.Name())
-}
-
-func (self *file_based_mmap) FileSystemName() string {
-	return self.f.Name()
-}
-
-func (self *file_based_mmap) Slice() []byte {
-	return self.region
-}
-
-func (self *file_based_mmap) Close() (err error) {
-	if self.region != nil {
-		self.f.Close()
-		err = munmap(self.region)
-		self.region = nil
-	}
-	return err
-}
-
-func (self *file_based_mmap) Unlink() (err error) {
-	if self.unlinked {
-		return nil
-	}
-	self.unlinked = true
-	return os.Remove(self.f.Name())
-}
-
-func (self *file_based_mmap) IsFileSystemBacked() bool { return true }
 
 func CreateTemp(pattern string, size uint64) (MMap, error) {
 	return create_temp(pattern, size)

@@ -9,7 +9,3 @@ import (
 var _ = fmt.Print
 
 const SHM_DIR = "/dev/shm"
-
-func modify_pattern(pattern string) string {
-	return pattern
-}

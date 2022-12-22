@@ -10,7 +10,3 @@ var _ = fmt.Print
 
 // https://www.dragonflybsd.org/cgi/web-man?command=shm_open&section=3
 const SHM_DIR = "/var/run/shm"
-
-func modify_pattern(pattern string) string {
-	return pattern
-}
