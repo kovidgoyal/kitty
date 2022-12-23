@@ -53,11 +53,6 @@ linebuf_mark_line_clean(LineBuf *self, index_type y) {
 }
 
 void
-linebuf_mark_line_as_not_continued(LineBuf *self, index_type y) {
-    self->line_attrs[y].continued = false;
-}
-
-void
 linebuf_clear_attrs_and_dirty(LineBuf *self, index_type y) {
     self->line_attrs[y].val = 0;
     self->line_attrs[y].has_dirty_text = true;

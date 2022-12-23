@@ -317,7 +317,7 @@ found:
     // so when resizing, simply blank all lines after the current
     // prompt and trust the shell to redraw them.
     for (; y < (int)self->main_linebuf->ynum; y++) {
-        linebuf_mark_line_as_not_continued(self->main_linebuf, y);
+        self->main_linebuf->line_attrs[y].continued = false;
         linebuf_clear_line(self->main_linebuf, y, false);
         linebuf_init_line(self->main_linebuf, y);
         if (y <= (int)self->cursor->y) {
@@ -1368,7 +1368,7 @@ screen_linefeed(Screen *self) {
     bool in_margins = cursor_within_margins(self);
     screen_index(self);
     if (self->modes.mLNM) screen_carriage_return(self);
-    if (self->cursor->y < self->lines) linebuf_mark_line_as_not_continued(self->linebuf, self->cursor->y);
+    if (self->cursor->y < self->lines) self->linebuf->line_attrs[self->cursor->y].continued = false;
     screen_ensure_bounds(self, false, in_margins);
 }
 
