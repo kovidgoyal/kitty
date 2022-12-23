@@ -301,9 +301,17 @@ typedef uint64_t keybitfield;
 #endif
 typedef union Key {
     struct {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
         keybitfield mods : MOD_BITS;
         keybitfield is_native: 1;
         keybitfield key : KEY_BITS;
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        keybitfield key : KEY_BITS;
+        keybitfield is_native: 1;
+        keybitfield mods : MOD_BITS;
+#else
+#error "Unsupported endianness"
+#endif
     };
     keybitfield val;
 } Key;
