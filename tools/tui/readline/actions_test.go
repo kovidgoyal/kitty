@@ -90,52 +90,52 @@ func TestGetScreenLines(t *testing.T) {
 			t.Fatalf("Did not get expected screen lines for: %#v and cursor: %+v\n%s", rl.AllText(), rl.input_state.cursor, diff)
 		}
 	}
-	tsl(ScreenLine{Prompt: p(true), CursorCell: 3})
+	tsl(ScreenLine{Prompt: p(true), CursorCell: 3, AfterLineBreak: true})
 	rl.add_text("123")
-	tsl(ScreenLine{Prompt: p(true), CursorCell: 6, Text: "123", CursorTextPos: 3, TextLengthInCells: 3})
+	tsl(ScreenLine{Prompt: p(true), CursorCell: 6, Text: "123", CursorTextPos: 3, TextLengthInCells: 3, AfterLineBreak: true})
 	rl.add_text("456")
-	tsl(ScreenLine{Prompt: p(true), CursorCell: 9, Text: "123456", CursorTextPos: 6, TextLengthInCells: 6})
+	tsl(ScreenLine{Prompt: p(true), CursorCell: 9, Text: "123456", CursorTextPos: 6, TextLengthInCells: 6, AfterLineBreak: true})
 	rl.add_text("7")
 	tsl(
-		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
+		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7, AfterLineBreak: true},
 		ScreenLine{OffsetInParentLine: 7},
 	)
 	rl.add_text("89")
 	tsl(
-		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
+		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7, AfterLineBreak: true},
 		ScreenLine{OffsetInParentLine: 7, Text: "89", CursorCell: 2, TextLengthInCells: 2, CursorTextPos: 2},
 	)
 	rl.ResetText()
 	rl.add_text("123\n456abcdeXYZ")
 	tsl(
-		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
-		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
+		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3, AfterLineBreak: true},
+		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1, AfterLineBreak: true},
 		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: 3, CursorTextPos: 3, Text: "XYZ"},
 	)
 	rl.input_state.cursor = Position{X: 2}
 	tsl(
-		ScreenLine{Prompt: p(true), CursorCell: 5, Text: "123", CursorTextPos: 2, TextLengthInCells: 3},
-		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
+		ScreenLine{Prompt: p(true), CursorCell: 5, Text: "123", CursorTextPos: 2, TextLengthInCells: 3, AfterLineBreak: true},
+		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1, AfterLineBreak: true},
 		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: -1, CursorTextPos: -1, Text: "XYZ"},
 	)
 	rl.input_state.cursor = Position{X: 2, Y: 1}
 	tsl(
-		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
-		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: 4, CursorTextPos: 2},
+		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3, AfterLineBreak: true},
+		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: 4, CursorTextPos: 2, AfterLineBreak: true},
 		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: -1, CursorTextPos: -1, Text: "XYZ"},
 	)
 	rl.input_state.cursor = Position{X: 8, Y: 1}
 	tsl(
-		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3},
-		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1},
+		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "123", CursorTextPos: -1, TextLengthInCells: 3, AfterLineBreak: true},
+		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "456abcde", TextLengthInCells: 8, CursorCell: -1, CursorTextPos: -1, AfterLineBreak: true},
 		ScreenLine{OffsetInParentLine: 8, ParentLineNumber: 1, TextLengthInCells: 3, CursorCell: 0, CursorTextPos: 0, Text: "XYZ"},
 	)
 	rl.ResetText()
 	rl.add_text("1234567\nabc")
 	rl.input_state.cursor = Position{X: 7}
 	tsl(
-		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7},
-		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "abc", CursorCell: 2, TextLengthInCells: 3, CursorTextPos: 0},
+		ScreenLine{Prompt: p(true), CursorCell: -1, Text: "1234567", CursorTextPos: -1, TextLengthInCells: 7, AfterLineBreak: true},
+		ScreenLine{ParentLineNumber: 1, Prompt: p(false), Text: "abc", CursorCell: 2, TextLengthInCells: 3, CursorTextPos: 0, AfterLineBreak: true},
 	)
 }
 

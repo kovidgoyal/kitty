@@ -34,6 +34,7 @@ type ScreenLine struct {
 	Prompt                                       Prompt
 	TextLengthInCells, CursorCell, CursorTextPos int
 	Text                                         string
+	AfterLineBreak                               bool
 }
 
 func (self *Readline) format_arg_prompt(cna string) string {
@@ -101,7 +102,7 @@ func (self *Readline) get_screen_lines() []*ScreenLine {
 			sl := ScreenLine{
 				ParentLineNumber: i, OffsetInParentLine: offset,
 				Prompt: prompt, TextLengthInCells: width,
-				CursorCell: -1, Text: l, CursorTextPos: -1,
+				CursorCell: -1, Text: l, CursorTextPos: -1, AfterLineBreak: is_first,
 			}
 			if cursor_at_start_of_next_line {
 				cursor_at_start_of_next_line = false
@@ -148,7 +149,7 @@ func (self *Readline) redraw() {
 	csl, csl_cached := self.completion_screen_lines()
 	render_completion_above := len(csl)+len(prompt_lines) > self.screen_height
 	completion_needs_render := len(csl) > 0 && (!render_completion_above || !self.completions.current.last_rendered_above || !csl_cached)
-	cursor_x := -1
+	final_cursor_x := -1
 	cursor_y := 0
 	move_cursor_up_by := 0
 
@@ -175,32 +176,53 @@ func (self *Readline) redraw() {
 	if render_completion_above {
 		render_completion_lines()
 	}
+	self.loop.AllowLineWrapping(true)
+	self.loop.QueueWriteString("\r")
+	text_length := 0
+
 	for i, sl := range prompt_lines {
-		self.loop.QueueWriteString("\r")
-		if i > 0 {
-			self.loop.QueueWriteString("\n")
+		cursor_moved_down := false
+		if i > 0 && sl.AfterLineBreak {
+			self.loop.QueueWriteString("\r\n")
+			cursor_moved_down = true
+			text_length = 0
 		}
 		if sl.Prompt.Length > 0 {
-			self.loop.QueueWriteString(self.prompt_for_line_number(i).Text)
+			p := self.prompt_for_line_number(i)
+			self.loop.QueueWriteString(p.Text)
+			text_length += p.Length
 		}
 		self.loop.QueueWriteString(sl.Text)
-		if sl.CursorCell > -1 {
-			cursor_x = sl.CursorCell
-		} else if cursor_x > -1 {
-			move_cursor_up_by++
+		text_length += sl.TextLengthInCells
+		if text_length == self.screen_width && sl.Text == "" && i == len(prompt_lines)-1 {
+			self.loop.QueueWriteString("\r\n")
+			cursor_moved_down = true
+			text_length = 0
 		}
-		cursor_y++
+		if text_length > self.screen_width {
+			cursor_moved_down = true
+			text_length -= self.screen_width
+		}
+		if sl.CursorCell > -1 {
+			final_cursor_x = sl.CursorCell
+		} else if final_cursor_x > -1 {
+			if cursor_moved_down {
+				move_cursor_up_by++
+			}
+		}
+		if cursor_moved_down {
+			cursor_y++
+		}
 	}
 	if !render_completion_above {
 		move_cursor_up_by += render_completion_lines()
 	}
-	self.loop.AllowLineWrapping(true)
 	self.loop.MoveCursorVertically(-move_cursor_up_by)
 	self.loop.QueueWriteString("\r")
-	self.loop.MoveCursorHorizontally(cursor_x)
+	self.loop.MoveCursorHorizontally(final_cursor_x)
 	self.cursor_y = 0
 	cursor_y -= move_cursor_up_by
 	if cursor_y > 0 {
-		self.cursor_y = cursor_y - 1
+		self.cursor_y = cursor_y
 	}
 }
