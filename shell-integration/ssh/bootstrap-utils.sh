@@ -25,7 +25,14 @@ compile_terminfo() {
 
     if [ -e "/usr/share/misc/terminfo.cdb" ]; then
         # NetBSD requires this file, see https://github.com/kovidgoyal/kitty/issues/4622
-        command ln -sf "../../.terminfo.cdb" "$1/$tname/x/xterm-kitty"
+        # Also compile terminfo using tic installed via pkgsrc,
+        # so that programs that depend on the new version of ncurses automatically fall back to this one.
+        if [ -x "/usr/pkg/bin/tic" ]; then
+            /usr/pkg/bin/tic -x -o "$1/$tname" "$1/.terminfo/kitty.terminfo" 2>/dev/null
+        fi
+        if [ ! -e "$1/$tname/x/xterm-kitty" ]; then
+            command ln -sf "../../.terminfo.cdb" "$1/$tname/x/xterm-kitty"
+        fi
         tname=".terminfo.cdb"
     fi
 
