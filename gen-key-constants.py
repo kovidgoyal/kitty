@@ -130,7 +130,7 @@ functional_encoding_overrides = {
 }
 different_trailer_functionals = {
     'up': 'A', 'down': 'B', 'right': 'C', 'left': 'D', 'kp_begin': 'E', 'end': 'F', 'home': 'H',
-    'f1': 'P', 'f2': 'Q', 'f3': 'R', 'f4': 'S', 'enter': 'u', 'tab': 'u',
+    'f1': 'P', 'f2': 'Q', 'f3': '~', 'f4': 'S', 'enter': 'u', 'tab': 'u',
     'backspace': 'u', 'escape': 'u'
 }
 

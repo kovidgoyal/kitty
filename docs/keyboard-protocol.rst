@@ -68,7 +68,7 @@ text, or using the following escape codes, for those keys that do not produce
 text (``CSI`` is the bytes ``0x1b 0x5b``)::
 
     CSI number ; modifiers [u~]
-    CSI 1; modifiers [ABCDEFHPQRS]
+    CSI 1; modifiers [ABCDEFHPQS]
     0x0d - for the Enter key
     0x7f or 0x08 - for Backspace
     0x09 - for Tab
@@ -83,7 +83,7 @@ The second form is used for a few functional keys, such as the :kbd:`Home`,
 :kbd:`End`, :kbd:`Arrow` keys and :kbd:`F1` ... :kbd:`F4`, they are enumerated in
 the :ref:`functional` table below.  Note that if no modifiers are present the
 parameters are omitted entirely giving an escape code of the form ``CSI
-[ABCDEFHPQRS]``.
+[ABCDEFHPQS]``.
 
 If you want support for more advanced features such as repeat and release
 events, alternate keys for shortcut matching et cetera, these can be turned on
@@ -314,7 +314,7 @@ With this flag turned on, all key events that do not generate text are
 represented in one of the following two forms::
 
     CSI number; modifier u
-    CSI 1; modifier [~ABCDEFHPQRS]
+    CSI 1; modifier [~ABCDEFHPQS]
 
 This makes it very easy to parse key events in an application. In particular,
 :kbd:`ctrl+c` will no longer generate the ``SIGINT`` signal, but instead be
@@ -405,7 +405,7 @@ Legacy functional keys
 These keys are encoded using three schemes::
 
     CSI number ; modifier ~
-    CSI 1 ; modifier {ABCDEFHPQRS}
+    CSI 1 ; modifier {ABCDEFHPQS}
     SS3 {ABCDEFHPQRS}
 
 In the above, if there are no modifiers, the modifier parameter is omitted.
@@ -533,7 +533,7 @@ compatibility reasons.
    "NUM_LOCK", "``57360 u``", "PRINT_SCREEN", "``57361 u``"
    "PAUSE", "``57362 u``", "MENU", "``57363 u``"
    "F1", "``1 P or 11 ~``", "F2", "``1 Q or 12 ~``"
-   "F3", "``1 R or 13 ~``", "F4", "``1 S or 14 ~``"
+   "F3", "``13 ~``", "F4", "``1 S or 14 ~``"
    "F5", "``15 ~``", "F6", "``17 ~``"
    "F7", "``18 ~``", "F8", "``19 ~``"
    "F9", "``20 ~``", "F10", "``21 ~``"
@@ -582,8 +582,14 @@ compatibility reasons.
 .. end functional key table
 .. }}}
 
-Note that the escape codes above of the form ``CSI 1 letter`` will omit the
-``1`` if there are no modifiers, since ``1`` is the default value.
+.. note::
+    The escape codes above of the form ``CSI 1 letter`` will omit the
+    ``1`` if there are no modifiers, since ``1`` is the default value.
+
+.. note::
+   The original version of this specification allowed F3 to be encoded as both
+   CSI R and CSI ~. However, CSI R conflicts with the Cursor Position Report,
+   so it was removed.
 
 .. _ctrl_mapping:
 

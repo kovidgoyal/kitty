@@ -47,6 +47,8 @@ Detailed list of changes
 - Speed up the ``kitty @`` executable by ~10x reducing the time for typical
   remote control commands from ~50ms to ~5ms
 
+- Keyboard protocol: Remove ``CSI R`` from the allowed encodings of the :kbd:`F3` key as it conflicts with the *Cursor Position Report* escape code (:disc:`5813`)
+
 - Allow using the cwd of the original process for :option:`launch --cwd` (:iss:`5672`)
 
 - Implement :ref:`edit-in-kitty <edit_file>` using the new ``kitty-tool`` static executable (:iss:`5546`, :iss:`5630`)

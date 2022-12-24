@@ -222,7 +222,7 @@ encode_function_key(const KeyEvent *ev, char *output) {
         case GLFW_FKEY_END: S(1, 'F');
         case GLFW_FKEY_F1: S(1, 'P');
         case GLFW_FKEY_F2: S(1, 'Q');
-        case GLFW_FKEY_F3: S(1, 'R');
+        case GLFW_FKEY_F3: S(13, '~');
         case GLFW_FKEY_F4: S(1, 'S');
         case GLFW_FKEY_F5: S(15, '~');
         case GLFW_FKEY_F6: S(17, '~');
