@@ -18,7 +18,8 @@ var csi_number_to_functional_number_map = map[int]int{2: 57348, 3: 57349, 5: 573
 
 var letter_trailer_to_csi_number_map = map[string]int{"A": 57352, "B": 57353, "C": 57351, "D": 57350, "E": 57427, "F": 8, "H": 7, "P": 11, "Q": 12, "S": 14}
 
-var tilde_trailers = map[int]bool{ 57348:true, 57349:true, 57354:true, 57355:true, 57366:true, 57368:true, 57369:true, 57370:true, 57371:true, 57372:true, 57373:true, 57374:true, 57375:true }
+var tilde_trailers = map[int]bool{57348: true, 57349: true, 57354: true, 57355: true, 57366: true, 57368: true, 57369: true, 57370: true, 57371: true, 57372: true, 57373: true, 57374: true, 57375: true}
+
 // end csi mapping
 // }}}
 
