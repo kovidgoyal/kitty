@@ -1421,12 +1421,12 @@ scroll_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixel
 
 static bool
 ref_within_region(const ImageRef *ref, index_type margin_top, index_type margin_bottom) {
-    return ref->start_row >= (int32_t)margin_top && ref->start_row + ref->effective_num_rows <= margin_bottom;
+    return ref->start_row >= (int32_t)margin_top && ref->start_row + (int32_t)ref->effective_num_rows - 1 <= (int32_t)margin_bottom;
 }
 
 static bool
 ref_outside_region(const ImageRef *ref, index_type margin_top, index_type margin_bottom) {
-    return ref->start_row + ref->effective_num_rows <= margin_top || ref->start_row > (int32_t)margin_bottom;
+    return ref->start_row + (int32_t)ref->effective_num_rows <= (int32_t)margin_top || ref->start_row > (int32_t)margin_bottom;
 }
 
 static bool
@@ -1446,9 +1446,9 @@ scroll_filter_margins_func(ImageRef* ref, Image* img, const void* data, CellPixe
             ref->effective_num_rows -= clipped_rows;
             update_src_rect(ref, img);
             ref->start_row += clipped_rows;
-        } else if (ref->start_row + ref->effective_num_rows > d->margin_bottom) {
+        } else if (ref->start_row + (int32_t)ref->effective_num_rows - 1 > (int32_t)d->margin_bottom) {
             // image moved down
-            clipped_rows = ref->start_row + ref->effective_num_rows - d->margin_bottom;
+            clipped_rows = ref->start_row + ref->effective_num_rows - 1 - d->margin_bottom;
             clip_amt = cell.height * clipped_rows;
             if (ref->src_height <= clip_amt) return true;
             ref->src_height -= clip_amt;
