@@ -38,7 +38,7 @@
  *  1) type of each element, TYPE,
  *  2) address of the beginning of the array, of type TYPE*,
  *  3) number of elements in the array, and
- *  4) comparision routine.
+ *  4) comparison routine.
  * Array pointer and number of elements are referenced only once.
  * This is similar to a call
  *  qsort(BASE,NELT,sizeof(TYPE),ISLT)
