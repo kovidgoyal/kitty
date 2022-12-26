@@ -563,7 +563,7 @@ class TestGraphics(BaseTest):
         self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0})
         while s.cursor.y != 1:
             s.reverse_index()
-        s.reverse_index()
+        s.reverse_index(), s.reverse_index()
         self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.5})
         s.reverse_index()
         self.ae(s.grman.image_count, 2)
