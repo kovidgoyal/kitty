@@ -20,11 +20,10 @@ from . import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
 def create_lbuf(*lines):
     maxw = max(map(len, lines))
     ans = LineBuf(len(lines), maxw)
-    prev_full_length = False
     for i, l0 in enumerate(lines):
         ans.line(i).set_text(l0, 0, len(l0), C())
-        ans.set_continued(i, prev_full_length)
-        prev_full_length = len(l0) == maxw
+        if i > 0:
+            ans.set_continued(i, len(lines[i-1]) == maxw)
     return ans
 
 
@@ -73,9 +72,9 @@ class TestDataTypes(BaseTest):
                 self.assertFalse(c.reverse)
                 self.assertTrue(c.bold)
         self.assertFalse(old.is_continued(0))
-        old.set_continued(0, True)
-        self.assertTrue(old.is_continued(0))
-        self.assertFalse(old.is_continued(1))
+        old.set_continued(1, True)
+        self.assertTrue(old.is_continued(1))
+        self.assertFalse(old.is_continued(0))
 
         lb = filled_line_buf(5, 5, filled_cursor())
         lb2 = LineBuf(5, 5)
@@ -518,7 +517,7 @@ class TestDataTypes(BaseTest):
         self.ae(l2.as_ansi(), '\x1b[1;2;3;7;9;34;48:2:1:2:3;58:5:5m' '1'
                 '\x1b[22;23;27;29;39;49;59m' '0000')
         lb = filled_line_buf()
-        for i in range(lb.ynum):
+        for i in range(1, lb.ynum + 1):
             lb.set_continued(i, True)
         a = []
         lb.as_ansi(a.append)

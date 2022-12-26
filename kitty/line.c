@@ -229,10 +229,9 @@ cell_as_utf8_for_fallback(CPUCell *cell, char *buf) {
 
 
 PyObject*
-unicode_in_range(const Line *self, const index_type start, const index_type limit, const bool include_cc, const char leading_char, const bool skip_zero_cells) {
+unicode_in_range(const Line *self, const index_type start, const index_type limit, const bool include_cc, const bool add_trailing_newline, const bool skip_zero_cells) {
     size_t n = 0;
     static Py_UCS4 buf[4096];
-    if (leading_char) buf[n++] = leading_char;
     char_type previous_width = 0;
     for(index_type i = start; i < limit && n < arraysz(buf) - 2 - arraysz(self->cpu_cells->cc_idx); i++) {
         char_type ch = self->cpu_cells[i].ch;
@@ -252,12 +251,15 @@ unicode_in_range(const Line *self, const index_type start, const index_type limi
         }
         previous_width = self->gpu_cells[i].attrs.width;
     }
+    if (add_trailing_newline && !self->gpu_cells[self->xnum-1].attrs.next_char_was_wrapped && n < arraysz(buf)) {
+        buf[n++] = '\n';
+    }
     return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
 }
 
 PyObject *
 line_as_unicode(Line* self, bool skip_zero_cells) {
-    return unicode_in_range(self, 0, xlimit_for_line(self), true, 0, skip_zero_cells);
+    return unicode_in_range(self, 0, xlimit_for_line(self), true, false, skip_zero_cells);
 }
 
 static PyObject*
@@ -401,11 +403,10 @@ as_ansi(Line* self, PyObject *a UNUSED) {
 }
 
 static PyObject*
-is_continued(Line* self, PyObject *a UNUSED) {
-#define is_continued_doc "Return the line's continued flag"
-    PyObject *ans = self->attrs.continued ? Py_True : Py_False;
-    Py_INCREF(ans);
-    return ans;
+last_char_has_wrapped_flag(Line* self, PyObject *a UNUSED) {
+#define last_char_has_wrapped_flag_doc "Return True if the last cell of this line has the wrapped flags set"
+    if (self->gpu_cells[self->xnum - 1].attrs.next_char_was_wrapped) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
 }
 
 static PyObject*
@@ -839,7 +840,7 @@ mark_text_in_line(PyObject *marker, Line *line) {
 }
 
 PyObject*
-as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, ANSIBuf *ansibuf) {
+as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, ANSIBuf *ansibuf, bool add_trailing_newline) {
 #define APPEND(x) { PyObject* retval = PyObject_CallFunctionObjArgs(callback, x, NULL); if (!retval) return NULL; Py_DECREF(retval); }
 #define APPEND_AND_DECREF(x) { if (x == NULL) { if (PyErr_Occurred()) return NULL; Py_RETURN_NONE; } PyObject* retval = PyObject_CallFunctionObjArgs(callback, x, NULL); Py_CLEAR(x); if (!retval) return NULL; Py_DECREF(retval); }
     PyObject *callback;
@@ -852,10 +853,11 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
     if (nl == NULL || cr == NULL || sgr_reset == NULL) return NULL;
     const GPUCell *prev_cell = NULL;
     ansibuf->active_hyperlink_id = 0;
+    bool need_newline = false;
     for (index_type y = 0; y < lines; y++) {
         Line *line = get_line(container, y);
         if (!line) { if (PyErr_Occurred()) return NULL; break; }
-        if (!line->attrs.continued && y > 0) APPEND(nl);
+        if (need_newline) APPEND(nl);
         if (as_ansi) {
             // less has a bug where it resets colors when it sees a \r, so work
             // around it by resetting SGR at the start of every line. This is
@@ -871,7 +873,9 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
         }
         APPEND_AND_DECREF(t);
         if (insert_wrap_markers) APPEND(cr);
+        need_newline = !line->gpu_cells[line->xnum-1].attrs.next_char_was_wrapped;
     }
+    if (need_newline && add_trailing_newline) APPEND(nl);
     if (ansibuf->active_hyperlink_id) {
         ansibuf->active_hyperlink_id = 0;
         t = PyUnicode_FromString("\x1b]8;;\x1b\\");
@@ -919,7 +923,7 @@ static PyMethodDef methods[] = {
     METHOD(set_char, METH_VARARGS)
     METHOD(set_attribute, METH_VARARGS)
     METHOD(as_ansi, METH_NOARGS)
-    METHOD(is_continued, METH_NOARGS)
+    METHOD(last_char_has_wrapped_flag, METH_NOARGS)
     METHOD(hyperlink_ids, METH_NOARGS)
     METHOD(width, METH_O)
     METHOD(url_start_at, METH_O)

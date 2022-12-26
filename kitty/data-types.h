@@ -158,6 +158,7 @@ typedef union CellAttrs {
         uint16_t strike : 1;
         uint16_t dim : 1;
         uint16_t mark : 2;
+        uint16_t next_char_was_wrapped : 1;
     };
     uint16_t val;
 } CellAttrs;
@@ -165,7 +166,7 @@ typedef union CellAttrs {
 #define WIDTH_MASK (3u)
 #define DECORATION_MASK (7u)
 #define NUM_UNDERLINE_STYLES (5u)
-#define SGR_MASK (~(((CellAttrs){.width=WIDTH_MASK, .mark=MARK_MASK}).val))
+#define SGR_MASK (~(((CellAttrs){.width=WIDTH_MASK, .mark=MARK_MASK, .next_char_was_wrapped=1}).val))
 
 typedef struct {
     color_type fg, bg, decoration_fg;
@@ -184,7 +185,7 @@ static_assert(sizeof(CPUCell) == 12, "Fix the ordering of CPUCell");
 typedef enum { UNKNOWN_PROMPT_KIND = 0, PROMPT_START = 1, SECONDARY_PROMPT = 2, OUTPUT_START = 3 } PromptKind;
 typedef union LineAttrs {
     struct {
-        uint8_t continued : 1;
+        uint8_t is_continued : 1;
         uint8_t has_dirty_text : 1;
         PromptKind prompt_kind : 2;
     };

@@ -164,11 +164,26 @@ init_line(HistoryBuf *self, index_type num, Line *l) {
     l->cpu_cells = cpu_lineptr(self, num);
     l->gpu_cells = gpu_lineptr(self, num);
     l->attrs = *attrptr(self, num);
+    if (num > 0) {
+        l->attrs.is_continued = gpu_lineptr(self, num - 1)[self->xnum-1].attrs.next_char_was_wrapped;
+    } else {
+        l->attrs.is_continued = false;
+        size_t sz;
+        if (self->pagerhist && self->pagerhist->ringbuf && (sz = ringbuf_bytes_used(self->pagerhist->ringbuf)) > 0) {
+            size_t pos = ringbuf_findchr(self->pagerhist->ringbuf, '\n', sz - 1);
+            if (pos >= sz) l->attrs.is_continued = true;  // ringbuf does not end with a newline
+        }
+    }
 }
 
 void
 historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
     init_line(self, index_of(self, lnum), l);
+}
+
+bool
+history_buf_endswith_wrap(HistoryBuf *self) {
+    return gpu_lineptr(self, index_of(self, 0))[self->xnum-1].attrs.next_char_was_wrapped;
 }
 
 CPUCell*
@@ -243,9 +258,13 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     Line l = {.xnum=self->xnum};
     init_line(self, self->start_of_data, &l);
     line_as_ansi(&l, as_ansi_buf, &prev_cell, 0, l.xnum, 0);
-    if (ringbuf_bytes_used(ph->ringbuf) && !l.attrs.continued) pagerhist_write_bytes(ph, (const uint8_t*)"\n", 1);
     pagerhist_write_bytes(ph, (const uint8_t*)"\x1b[m", 3);
-    if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) pagerhist_write_bytes(ph, (const uint8_t*)"\r", 1);
+    if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) {
+        char line_end[2]; size_t num = 0;
+        line_end[num++] = '\r';
+        if (!l.gpu_cells[l.xnum - 1].attrs.next_char_was_wrapped) line_end[num++] = '\n';
+        pagerhist_write_bytes(ph, (const uint8_t*)line_end, num);
+    }
 }
 
 static index_type
@@ -273,6 +292,13 @@ historybuf_pop_line(HistoryBuf *self, Line *line) {
     init_line(self, idx, line);
     self->count--;
     return true;
+}
+
+static void
+history_buf_set_last_char_as_continuation(HistoryBuf *self, index_type y, bool wrapped) {
+    if (self->count > 0) {
+        gpu_lineptr(self, index_of(self, y))[self->xnum-1].attrs.next_char_was_wrapped = wrapped;
+    }
 }
 
 static PyObject*
@@ -321,13 +347,10 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
     ANSIBuf output = {0};
     for(unsigned int i = 0; i < self->count; i++) {
         init_line(self, i, &l);
-        if (i < self->count - 1) {
-            l.attrs.continued = attrptr(self, index_of(self, i + 1))->continued;
-        } else l.attrs.continued = false;
         line_as_ansi(&l, &output, &prev_cell, 0, l.xnum, 0);
-        if (!l.attrs.continued) {
+        if (!l.gpu_cells[l.xnum - 1].attrs.next_char_was_wrapped) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
-            output.buf[output.len++] = 10; // 10 = \n
+            output.buf[output.len++] = '\n';
         }
         PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
         if (ans == NULL) { PyErr_NoMemory(); goto end; }
@@ -438,14 +461,11 @@ pagerhist_as_bytes(HistoryBuf *self, PyObject *args) {
     pagerhist_ensure_start_is_valid_utf8(ph);
     if (ph->rewrap_needed) pagerhist_rewrap_to(self, self->xnum);
 
-    Line l = {.xnum=self->xnum}; get_line(self, 0, &l);
     size_t sz = ringbuf_bytes_used(ph->ringbuf);
-    if (!l.attrs.continued) sz += 1;
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
     if (!ans) return NULL;
     uint8_t *buf = (uint8_t*)PyBytes_AS_STRING(ans);
     ringbuf_memcpy_from(buf, ph->ringbuf, sz);
-    if (!l.attrs.continued) buf[sz-1] = '\n';
     if (upto_output_start) {
         const uint8_t *p = reverse_find(buf, sz, (const uint8_t*)"\x1b]133;C\x1b\\");
         if (p) {
@@ -484,7 +504,7 @@ PyObject*
 as_text_history_buf(HistoryBuf *self, PyObject *args, ANSIBuf *output) {
     GetLineWrapper glw = {.self=self};
     glw.line.xnum = self->xnum;
-    PyObject *ans = as_text_generic(args, &glw, get_line_wrapper, self->count, output);
+    PyObject *ans = as_text_generic(args, &glw, get_line_wrapper, self->count, output, true);
     return ans;
 }
 
@@ -560,9 +580,7 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns, unsigned 
 
 #define init_src_line(src_y) init_line(src, map_src_index(src_y), src->line);
 
-#define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? (attrptr(src, map_src_index(src_y + 1))->continued) : false)
-
-#define next_dest_line(cont) { LineAttrs *lap = attrptr(dest, historybuf_push(dest, as_ansi_buf)); *lap = src->line->attrs; if (cont) lap->continued = true; dest->line->attrs.continued = cont; }
+#define next_dest_line(cont) { history_buf_set_last_char_as_continuation(dest, 0, cont); LineAttrs *lap = attrptr(dest, historybuf_push(dest, as_ansi_buf)); *lap = src->line->attrs; }
 
 #define first_dest_line next_dest_line(false);
 

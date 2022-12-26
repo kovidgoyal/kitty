@@ -317,7 +317,6 @@ found:
     // so when resizing, simply blank all lines after the current
     // prompt and trust the shell to redraw them.
     for (; y < (int)self->main_linebuf->ynum; y++) {
-        self->main_linebuf->line_attrs[y].continued = false;
         linebuf_clear_line(self->main_linebuf, y, false);
         linebuf_init_line(self->main_linebuf, y);
         if (y <= (int)self->cursor->y) {
@@ -506,9 +505,9 @@ move_widened_char(Screen *self, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type
     line_clear_text(self->linebuf->line, xpos, 1, BLANK_CHAR);
 
     if (self->modes.mDECAWM) {  // overflow goes onto next line
+        linebuf_set_last_char_as_continuation(self->linebuf, self->cursor->y, true);
         screen_carriage_return(self);
         screen_linefeed(self);
-        self->linebuf->line_attrs[self->cursor->y].continued = true;
         linebuf_init_line(self->linebuf, self->cursor->y);
         dest_cpu = self->linebuf->line->cpu_cells;
         dest_gpu = self->linebuf->line->gpu_cells;
@@ -680,9 +679,9 @@ draw_codepoint(Screen *self, char_type och, bool from_input_stream) {
     if (from_input_stream) self->last_graphic_char = ch;
     if (UNLIKELY(self->columns - self->cursor->x < (unsigned int)char_width)) {
         if (self->modes.mDECAWM) {
+            linebuf_set_last_char_as_continuation(self->linebuf, self->cursor->y, true);
             screen_carriage_return(self);
             screen_linefeed(self);
-            self->linebuf->line_attrs[self->cursor->y].continued = true;
         } else {
             self->cursor->x = self->columns - char_width;
         }
@@ -740,7 +739,7 @@ get_overlay_text(Screen *self) {
     if (ol.ynum >= self->lines || ol.xnum >= self->columns || !ol.xnum) return NULL;
     Line *line = range_line_(self, ol.ynum);
     if (!line) return NULL;
-    return unicode_in_range(line, ol.xstart, ol.xstart + ol.xnum, true, 0, true);
+    return unicode_in_range(line, ol.xstart, ol.xstart + ol.xnum, true, false, true);
 #undef ol
 }
 
@@ -1368,7 +1367,6 @@ screen_linefeed(Screen *self) {
     bool in_margins = cursor_within_margins(self);
     screen_index(self);
     if (self->modes.mLNM) screen_carriage_return(self);
-    if (self->cursor->y < self->lines) self->linebuf->line_attrs[self->cursor->y].continued = false;
     screen_ensure_bounds(self, false, in_margins);
 }
 
@@ -1674,6 +1672,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             linebuf_init_line(self->linebuf, i);
             if (private) {
                 line_clear_text(self->linebuf->line, 0, self->columns, BLANK_CHAR);
+                linebuf_set_last_char_as_continuation(self->linebuf, i, false);
             } else {
                 line_apply_cursor(self->linebuf->line, self->cursor, 0, self->columns, true);
             }
@@ -2313,6 +2312,15 @@ num_lines_between_selection_boundaries(const SelectionBoundary *a, const Selecti
 typedef Line*(linefunc_t)(Screen*, int);
 
 static Line*
+init_line(Screen *self, index_type y) {
+    linebuf_init_line(self->linebuf, y);
+    if (y == 0 && self->linebuf == self->main_linebuf) {
+        if (history_buf_endswith_wrap(self->historybuf)) self->linebuf->line->attrs.is_continued = true;
+    }
+    return self->linebuf->line;
+}
+
+static Line*
 visual_line_(Screen *self, int y_) {
     index_type y = MAX(0, y_);
     if (self->scrolled_by) {
@@ -2322,8 +2330,7 @@ visual_line_(Screen *self, int y_) {
         }
         y -= self->scrolled_by;
     }
-    linebuf_init_line(self->linebuf, y);
-    return self->linebuf->line;
+    return init_line(self, y);
 }
 
 static Line*
@@ -2332,8 +2339,7 @@ range_line_(Screen *self, int y) {
         historybuf_init_line(self->historybuf, -(y + 1), self->historybuf->line);
         return self->historybuf->line;
     }
-    linebuf_init_line(self->linebuf, y);
-    return self->linebuf->line;
+    return init_line(self, y);
 }
 
 static Line*
@@ -2512,7 +2518,6 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     for (int i = 0, y = idata.y; y < limit; y++, i++) {
         Line *line = range_line_(self, y);
         XRange xr = xrange_for_iteration(&idata, y, line);
-        char leading_char = (i > 0 && insert_newlines && !line->attrs.continued) ? '\n' : 0;
         index_type x_limit = xr.x_limit;
         if (strip_trailing_whitespace) {
             index_type new_limit = limit_without_trailing_whitespace(line, x_limit);
@@ -2526,7 +2531,7 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
                 }
             }
         }
-        PyObject *text = unicode_in_range(line, xr.x, x_limit, true, leading_char, false);
+        PyObject *text = unicode_in_range(line, xr.x, x_limit, true, insert_newlines && y != limit-1, false);
         if (text == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); }
         PyTuple_SET_ITEM(ans, i, text);
     }
@@ -2544,12 +2549,12 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     ANSIBuf output = {0};
     const GPUCell *prev_cell = NULL;
     bool has_escape_codes = false;
+    bool need_newline = false;
     for (int i = 0, y = idata.y; y < limit; y++, i++) {
         Line *line = range_line_(self, y);
         XRange xr = xrange_for_iteration(&idata, y, line);
         output.len = 0;
-        char_type prefix_char = 0;
-        if (i > 0 && insert_newlines && !line->attrs.continued)  prefix_char = '\n';
+        char_type prefix_char = need_newline ? '\n' : 0;
         index_type x_limit = xr.x_limit;
         if (strip_trailing_whitespace) {
             index_type new_limit = limit_without_trailing_whitespace(line, x_limit);
@@ -2562,6 +2567,7 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
             }
         }
         if (line_as_ansi(line, &output, &prev_cell, xr.x, x_limit, prefix_char)) has_escape_codes = true;
+        need_newline = insert_newlines && !line->gpu_cells[line->xnum-1].attrs.next_char_was_wrapped;
         PyObject *t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
         if (!t) return NULL;
         PyTuple_SET_ITEM(ans, i, t);
@@ -2792,12 +2798,12 @@ static Line* get_range_line(void *x, int y) { return range_line_(x, y); }
 
 static PyObject*
 as_text(Screen *self, PyObject *args) {
-    return as_text_generic(args, self, get_visual_line, self->lines, &self->as_ansi_buf);
+    return as_text_generic(args, self, get_visual_line, self->lines, &self->as_ansi_buf, false);
 }
 
 static PyObject*
 as_text_non_visual(Screen *self, PyObject *args) {
-    return as_text_generic(args, self, get_range_line, self->lines, &self->as_ansi_buf);
+    return as_text_generic(args, self, get_range_line, self->lines, &self->as_ansi_buf, false);
 }
 
 static PyObject*
@@ -2807,7 +2813,7 @@ as_text_for_history_buf(Screen *self, PyObject *args) {
 
 static PyObject*
 as_text_generic_wrapper(Screen *self, PyObject *args, get_line_func get_line) {
-    return as_text_generic(args, self, get_line, self->lines, &self->as_ansi_buf);
+    return as_text_generic(args, self, get_line, self->lines, &self->as_ansi_buf, false);
 }
 
 static PyObject*
@@ -2849,7 +2855,7 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
             found_prompt = true;
             // change direction to downwards to find command output
             direction = 1;
-        } else if (line && line->attrs.prompt_kind == OUTPUT_START && !line->attrs.continued) {
+        } else if (line && line->attrs.prompt_kind == OUTPUT_START && !line->attrs.is_continued) {
             found_output = true; start = y1;
             found_prompt = true;
             // keep finding the first output start upwards
@@ -2863,14 +2869,14 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
         // find upwards: find prompt after the output, and the first output
         while (y1 >= upward_limit) {
             line = checked_range_line(self, y1);
-            if (line && line->attrs.prompt_kind == PROMPT_START && !line->attrs.continued) {
+            if (line && line->attrs.prompt_kind == PROMPT_START && !line->attrs.is_continued) {
                 if (direction == 0) {
                     // find around: stop at prompt start
                     start = y1 + 1;
                     break;
                 }
                 found_next_prompt = true; end = y1;
-            } else if (line && line->attrs.prompt_kind == OUTPUT_START && !line->attrs.continued) {
+            } else if (line && line->attrs.prompt_kind == OUTPUT_START && !line->attrs.is_continued) {
                 start = y1;
                 break;
             }
@@ -2941,7 +2947,7 @@ cmd_output(Screen *self, PyObject *args) {
             bool reached_upper_limit = false;
             while (!found && !reached_upper_limit) {
                 line = checked_range_line(self, y);
-                if (!line || (line->attrs.prompt_kind == OUTPUT_START && !line->attrs.continued)) {
+                if (!line || (line->attrs.prompt_kind == OUTPUT_START && !line->attrs.is_continued)) {
                     int start = line ? y : y + 1; reached_upper_limit = !line;
                     int y2 = start; unsigned int num_lines = 0;
                     bool found_content = false;
@@ -2964,7 +2970,7 @@ cmd_output(Screen *self, PyObject *args) {
             return NULL;
     }
     if (found) {
-        DECREF_AFTER_FUNCTION PyObject *ret = as_text_generic(as_text_args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf);
+        DECREF_AFTER_FUNCTION PyObject *ret = as_text_generic(as_text_args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf, false);
         if (!ret) return NULL;
     }
     if (oo.reached_upper_limit && self->linebuf == self->main_linebuf && OPT(scrollback_pager_history_size) > 0) Py_RETURN_TRUE;
@@ -3364,7 +3370,7 @@ screen_selection_range_for_word(Screen *self, const index_type x, const index_ty
     start = x; end = x;
     while(true) {
         while(start > 0 && is_ok(start - 1, false)) start--;
-        if (start > 0 || !line->attrs.continued || *y1 == 0) break;
+        if (start > 0 || !line->attrs.is_continued || *y1 == 0) break;
         line = visual_line_(self, *y1 - 1);
         if (!is_ok(self->columns - 1, false)) break;
         (*y1)--; start = self->columns - 1;
@@ -3374,7 +3380,7 @@ screen_selection_range_for_word(Screen *self, const index_type x, const index_ty
         while(end < self->columns - 1 && is_ok(end + 1, true)) end++;
         if (end < self->columns - 1 || *y2 >= self->lines - 1) break;
         line = visual_line_(self, *y2 + 1);
-        if (!line->attrs.continued || !is_ok(0, true)) break;
+        if (!line->attrs.is_continued || !is_ok(0, true)) break;
         (*y2)++; end = 0;
     }
     *s = start; *e = end;
@@ -3542,7 +3548,7 @@ screen_mark_hyperlink(Screen *self, index_type x, index_type y) {
 
 static index_type
 continue_line_upwards(Screen *self, index_type top_line, SelectionBoundary *start, SelectionBoundary *end) {
-    while (top_line > 0 && visual_line_(self, top_line)->attrs.continued) {
+    while (top_line > 0 && visual_line_(self, top_line)->attrs.is_continued) {
         if (!screen_selection_range_for_line(self, top_line - 1, &start->x, &end->x)) break;
         top_line--;
     }
@@ -3551,7 +3557,7 @@ continue_line_upwards(Screen *self, index_type top_line, SelectionBoundary *star
 
 static index_type
 continue_line_downwards(Screen *self, index_type bottom_line, SelectionBoundary *start, SelectionBoundary *end) {
-    while (bottom_line < self->lines - 1 && visual_line_(self, bottom_line + 1)->attrs.continued) {
+    while (bottom_line < self->lines - 1 && visual_line_(self, bottom_line + 1)->attrs.is_continued) {
         if (!screen_selection_range_for_line(self, bottom_line + 1, &start->x, &end->x)) break;
         bottom_line++;
     }
@@ -3971,7 +3977,7 @@ dump_lines_with_attrs(Screen *self, PyObject *accum) {
                 PyObject_CallFunction(accum, "s", "\x1b[33moutput \x1b[39m");
                 break;
         }
-        if (line->attrs.continued) PyObject_CallFunction(accum, "s", "continued ");
+        if (line->attrs.is_continued) PyObject_CallFunction(accum, "s", "continued ");
         if (line->attrs.has_dirty_text) PyObject_CallFunction(accum, "s", "dirty ");
         PyObject_CallFunction(accum, "s", "\n");
         t = line_as_unicode(line, false);

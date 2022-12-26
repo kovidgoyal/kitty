@@ -278,8 +278,6 @@ def as_text(
         h: List[str] = [pht] if pht else []
         screen.as_text_for_history_buf(h.append, as_ansi, add_wrap_markers)
         if h:
-            if not screen.linebuf.is_continued(0):
-                h[-1] += '\n'
             if as_ansi:
                 h[-1] += '\x1b[m'
         ans = ''.join(chain(h, lines))

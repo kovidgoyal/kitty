@@ -210,22 +210,23 @@ class TestScreen(BaseTest):
             s.reset_dirty()
             s.cursor.x, s.cursor.y = 2, 1
             s.cursor.bold = True
+            self.ae(continuations(s), (True, True, True, True, False))
 
         def all_lines(s):
             return tuple(str(s.line(i)) for i in range(s.lines))
 
         def continuations(s):
-            return tuple(s.line(i).is_continued() for i in range(s.lines))
+            return tuple(s.line(i).last_char_has_wrapped_flag() for i in range(s.lines))
 
         init()
         s.erase_in_display(0)
         self.ae(all_lines(s), ('12345', '12', '', '', ''))
-        self.ae(continuations(s), (False, True, False, False, False))
+        self.ae(continuations(s), (True, False, False, False, False))
 
         init()
         s.erase_in_display(1)
         self.ae(all_lines(s), ('', '   45', '12345', '12345', '12345'))
-        self.ae(continuations(s), (False, False, True, True, True))
+        self.ae(continuations(s), (False, True, True, True, False))
 
         init()
         s.erase_in_display(2)
@@ -547,16 +548,20 @@ class TestScreen(BaseTest):
             s.draw(str(i) * s.columns)
         s.start_selection(0, 0)
         s.update_selection(4, 4)
-        expected = ('55555', '\n66666', '\n77777', '\n88888', '\n99999')
-        self.ae(s.text_for_selection(), expected)
+
+        def ts(*args):
+            return ''.join(s.text_for_selection(*args))
+
+        expected = ''.join(('55555', '\n66666', '\n77777', '\n88888', '\n99999'))
+        self.ae(ts(), expected)
         s.scroll(2, True)
-        self.ae(s.text_for_selection(), expected)
+        self.ae(ts(), expected)
         s.reset()
         s.draw('ab   cd')
         s.start_selection(0, 0)
         s.update_selection(1, 3)
-        self.ae(s.text_for_selection(), ('ab   ', 'cd'))
-        self.ae(s.text_for_selection(False, True), ('ab', 'cd'))
+        self.ae(ts(), ''.join(('ab   ', 'cd')))
+        self.ae(ts(False, True), ''.join(('ab', 'cd')))
         s.reset()
         s.draw('ab        cd')
         s.start_selection(0, 0)
@@ -630,6 +635,22 @@ class TestScreen(BaseTest):
         s.draw('bcdef')
         self.ae(as_text(s, True), '\x1b[ma\x1b]8;;moo\x1b\\bcde\x1b[mf\n\n\n\x1b]8;;\x1b\\')
 
+    def test_wrapping_serialization(self):
+        from kitty.window import as_text
+        s = self.create_screen(cols=2, lines=2, scrollback=2, options={'scrollback_pager_history_size': 128})
+        s.draw('aabbccddeeff')
+        self.ae(as_text(s, add_history=True), 'aabbccddeeff')
+        self.assertNotIn('\n', as_text(s, add_history=True, as_ansi=True))
+        s = self.create_screen(cols=2, lines=2, scrollback=2, options={'scrollback_pager_history_size': 128})
+        s.draw('1'), s.carriage_return(), s.linefeed()
+        s.draw('2'), s.carriage_return(), s.linefeed()
+        s.draw('3'), s.carriage_return(), s.linefeed()
+        s.draw('4'), s.carriage_return(), s.linefeed()
+        s.draw('5'), s.carriage_return(), s.linefeed()
+        s.draw('6'), s.carriage_return(), s.linefeed()
+        s.draw('7')
+        self.ae(as_text(s, add_history=True), '1\n2\n3\n4\n5\n6\n7')
+
     def test_pagerhist(self):
         hsz = 8
         s = self.create_screen(cols=2, lines=2, scrollback=2, options={'scrollback_pager_history_size': hsz})
@@ -666,17 +687,17 @@ class TestScreen(BaseTest):
         s = self.create_screen(options={'scrollback_pager_history_size': 2048})
         text = '\x1b[msoft\r\x1b[mbreak\nnext😼cat'
         w(text)
-        self.ae(contents(), text + '\n')
+        self.ae(contents(), text)
         s.historybuf.pagerhist_rewrap(2)
-        self.ae(contents(), '\x1b[mso\rft\x1b[m\rbr\rea\rk\nne\rxt\r😼\rca\rt\n')
+        self.ae(contents(), '\x1b[mso\rft\x1b[m\rbr\rea\rk\nne\rxt\r😼\rca\rt')
 
         s = self.create_screen(options={'scrollback_pager_history_size': 8})
         w('😼')
-        self.ae(contents(), '😼\n')
+        self.ae(contents(), '😼')
         w('abcd')
-        self.ae(contents(), '😼abcd\n')
+        self.ae(contents(), '😼abcd')
         w('e')
-        self.ae(contents(), 'abcde\n')
+        self.ae(contents(), 'abcde')
 
     def test_user_marking(self):
 

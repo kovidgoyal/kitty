@@ -15,14 +15,15 @@
 #define init_src_line(src_y) linebuf_init_line(src, src_y);
 #endif
 
-#define set_dest_line_attrs(dest_y, continued_) dest->line_attrs[dest_y] = src->line->attrs; if (continued_) dest->line_attrs[dest_y].continued = true; src->line->attrs.prompt_kind = UNKNOWN_PROMPT_KIND;
+#define set_dest_line_attrs(dest_y) dest->line_attrs[dest_y] = src->line->attrs; src->line->attrs.prompt_kind = UNKNOWN_PROMPT_KIND;
 
 #ifndef first_dest_line
-#define first_dest_line linebuf_init_line(dest, 0); set_dest_line_attrs(0, false)
+#define first_dest_line linebuf_init_line(dest, 0); set_dest_line_attrs(0)
 #endif
 
 #ifndef next_dest_line
 #define next_dest_line(continued) \
+    linebuf_set_last_char_as_continuation(dest, dest_y, continued); \
     if (dest_y >= dest->ynum - 1) { \
         linebuf_index(dest, 0, dest->ynum - 1); \
         if (historybuf != NULL) { \
@@ -33,11 +34,11 @@
         linebuf_clear_line(dest, dest->ynum - 1, true); \
     } else dest_y++; \
     linebuf_init_line(dest, dest_y); \
-    set_dest_line_attrs(dest_y, continued);
+    set_dest_line_attrs(dest_y);
 #endif
 
 #ifndef is_src_line_continued
-#define is_src_line_continued(src_y) (src_y + 1 < src->ynum ? (src->line_attrs[src_y + 1].continued) : false)
+#define is_src_line_continued() (src->line->gpu_cells[src->xnum-1].attrs.next_char_was_wrapped)
 #endif
 
 static inline void
@@ -54,7 +55,7 @@ typedef struct TrackCursor {
 
 static void
 rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf UNUSED *historybuf, TrackCursor *track, ANSIBuf *as_ansi_buf) {
-    bool src_line_is_continued = false, is_first_line = true;
+    bool is_first_line = true;
     index_type src_y = 0, src_x = 0, dest_x = 0, dest_y = 0, num = 0, src_x_limit = 0;
     TrackCursor tc_end = {.is_sentinel = true };
     if (!track) track = &tc_end;
@@ -62,11 +63,13 @@ rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf
     do {
         for (TrackCursor *t = track; !t->is_sentinel; t++) t->is_tracked_line = src_y == t->y;
         init_src_line(src_y);
-        src_line_is_continued = is_src_line_continued(src_y);
+        const bool src_line_is_continued = is_src_line_continued();
         src_x_limit = src->xnum;
         if (!src_line_is_continued) {
             // Trim trailing blanks since there is a hard line break at the end of this line
             while(src_x_limit && (src->line->cpu_cells[src_x_limit - 1].ch) == BLANK_CHAR) src_x_limit--;
+        } else {
+            src->line->gpu_cells[src->xnum-1].attrs.next_char_was_wrapped = false;
         }
         for (TrackCursor *t = track; !t->is_sentinel; t++) {
             if (t->is_tracked_line && t->x >= src_x_limit) t->x = MAX(1u, src_x_limit) - 1;

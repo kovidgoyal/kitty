@@ -130,6 +130,7 @@ linebuf_init_line(LineBuf *self, index_type idx) {
     self->line->ynum = idx;
     self->line->xnum = self->xnum;
     self->line->attrs = self->line_attrs[idx];
+    self->line->attrs.is_continued = idx > 0 ? gpu_lineptr(self, self->line_map[idx - 1])[self->xnum - 1].attrs.next_char_was_wrapped : false;
     init_line(self, self->line, self->line_map[idx]);
 }
 
@@ -150,6 +151,19 @@ unsigned int
 linebuf_char_width_at(LineBuf *self, index_type x, index_type y) {
     return gpu_lineptr(self, self->line_map[y])[x].attrs.width;
 }
+
+bool
+linebuf_line_ends_with_continuation(LineBuf *self, index_type y) {
+    return y < self->ynum ? gpu_lineptr(self, self->line_map[y])[self->xnum - 1].attrs.next_char_was_wrapped : false;
+}
+
+void
+linebuf_set_last_char_as_continuation(LineBuf *self, index_type y, bool continued) {
+    if (y < self->ynum) {
+        gpu_lineptr(self, self->line_map[y])[self->xnum - 1].attrs.next_char_was_wrapped = continued;
+    }
+}
+
 
 static PyObject*
 set_attribute(LineBuf *self, PyObject *args) {
@@ -172,8 +186,8 @@ set_continued(LineBuf *self, PyObject *args) {
     unsigned int y;
     int val;
     if (!PyArg_ParseTuple(args, "Ip", &y, &val)) return NULL;
-    if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds."); return NULL; }
-    self->line_attrs[y].continued = val;
+    if (y > self->ynum || y < 1) { PyErr_SetString(PyExc_ValueError, "Out of bounds."); return NULL; }
+    linebuf_set_last_char_as_continuation(self, y-1, val);
     Py_RETURN_NONE;
 }
 
@@ -316,7 +330,7 @@ is_continued(LineBuf *self, PyObject *val) {
 #define is_continued_doc "is_continued(y) -> Whether the line y is continued or not"
     unsigned long y = PyLong_AsUnsignedLong(val);
     if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds."); return NULL; }
-    if (self->line_attrs[y].continued) { Py_RETURN_TRUE; }
+    if (y > 0 && linebuf_line_ends_with_continuation(self, y-1)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 
@@ -334,7 +348,6 @@ linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned i
             self->line_map[i] = self->line_map[i - num];
             self->line_attrs[i] = self->line_attrs[i - num];
         }
-        if (y + num < self->ynum) self->line_attrs[y + num].continued = false;
         for (i = 0; i < num; i++) {
             self->line_map[y + i] = self->scratch[ylimit - num + i];
         }
@@ -369,7 +382,6 @@ linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bot
         self->line_map[i] = self->line_map[i + num];
         self->line_attrs[i] = self->line_attrs[i + num];
     }
-    self->line_attrs[y].continued = false;
     for (i = 0; i < num; i++) {
         self->line_map[ylimit - num + i] = self->scratch[y + i];
     }
@@ -414,10 +426,10 @@ as_ansi(LineBuf *self, PyObject *callback) {
     } while(ylimit > 0);
 
     for(index_type i = 0; i <= ylimit; i++) {
-        l.attrs.continued = self->line_attrs[(i + 1 < self->ynum) ? i+1 : i].continued;
+        bool output_newline = !linebuf_line_ends_with_continuation(self, i);
         init_line(self, (&l), self->line_map[i]);
         line_as_ansi(&l, &output, &prev_cell, 0, l.xnum, 0);
-        if (!l.attrs.continued) {
+        if (output_newline) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
             output.buf[output.len++] = 10; // 10 = \n
         }
@@ -444,7 +456,7 @@ get_line(void *x, int y) {
 static PyObject*
 as_text(LineBuf *self, PyObject *args) {
     ANSIBuf output = {0};
-    PyObject* ans = as_text_generic(args, self, get_line, self->ynum, &output);
+    PyObject* ans = as_text_generic(args, self, get_line, self->ynum, &output, false);
     free(output.buf);
     return ans;
 }
