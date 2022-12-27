@@ -41,7 +41,9 @@ func default_shortcuts() *ShortcutMap {
 
 		sm.AddOrPanic(ActionMoveToEndOfWord, "alt+f")
 		sm.AddOrPanic(ActionMoveToEndOfWord, "ctrl+right")
+		sm.AddOrPanic(ActionMoveToEndOfWord, "alt+right")
 		sm.AddOrPanic(ActionMoveToStartOfWord, "ctrl+left")
+		sm.AddOrPanic(ActionMoveToStartOfWord, "alt+left")
 		sm.AddOrPanic(ActionMoveToStartOfWord, "alt+b")
 
 		sm.AddOrPanic(ActionCursorLeft, "left")
