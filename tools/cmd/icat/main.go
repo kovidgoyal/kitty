@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"kitty/tools/cli"
@@ -14,12 +16,21 @@ import (
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"kitty/tools/utils/shm"
+	"kitty/tools/utils/style"
 )
 
 var _ = fmt.Print
 
+type Place struct {
+	width, height, left, top int
+}
+
 var opts *Options
 var lp *loop.Loop
+var place *Place
+var z_index int32
+var remove_alpha *style.RGBA
+var flip, flop bool
 
 type transfer_mode int
 
@@ -37,6 +48,75 @@ var direct_query_id, file_query_id, memory_query_id uint32
 var stderr_is_tty bool
 var query_in_flight bool
 var stream_response string
+
+func parse_mirror() (err error) {
+	flip = opts.Mirror == "both" || opts.Mirror == "vertical"
+	flop = opts.Mirror == "both" || opts.Mirror == "horizontal"
+	return
+}
+
+func parse_background() (err error) {
+	if opts.Background == "" {
+		return nil
+	}
+	col, err := style.ParseColor(opts.Background)
+	if err != nil {
+		return fmt.Errorf("Invalid value for --background: %w", err)
+	}
+	remove_alpha = &col
+	return
+}
+
+func parse_z_index() (err error) {
+	val := opts.ZIndex
+	var origin int32
+	if strings.HasPrefix(val, "--") {
+		origin = -1073741824
+		val = val[1:]
+	}
+	i, err := strconv.ParseInt(val, 10, 32)
+	if err != nil {
+		return fmt.Errorf("Invalid value for --z-index with error: %w", err)
+	}
+	z_index = int32(i) + origin
+	return
+}
+
+func parse_place() (err error) {
+	if opts.Place == "" {
+		return nil
+	}
+	area, pos, found := utils.Cut(opts.Place, "@")
+	if !found {
+		return fmt.Errorf("Invalid --place specification: %s", opts.Place)
+	}
+	w, h, found := utils.Cut(area, "x")
+	if !found {
+		return fmt.Errorf("Invalid --place specification: %s", opts.Place)
+	}
+	l, t, found := utils.Cut(pos, "x")
+	if !found {
+		return fmt.Errorf("Invalid --place specification: %s", opts.Place)
+	}
+	place = &Place{}
+	place.width, err = strconv.Atoi(w)
+	if err != nil {
+		return err
+	}
+	place.height, err = strconv.Atoi(h)
+	if err != nil {
+		return err
+	}
+	place.left, err = strconv.Atoi(l)
+	if err != nil {
+		return err
+	}
+	place.top, err = strconv.Atoi(t)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func print_error(format string, args ...any) {
 	if lp == nil || !stderr_is_tty {
@@ -108,6 +188,11 @@ func on_query_finished() (err error) {
 	if transfer_by_stream != supported {
 		return fmt.Errorf("This terminal emulator does not support the graphics protocol, use a terminal emulator such as kitty that does support it")
 	}
+	if opts.Clear {
+		cc := &graphics.GraphicsCommand{}
+		cc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_visible)
+		cc.WriteWithPayloadToLoop(lp, nil)
+	}
 	if opts.DetectSupport {
 		switch {
 		case transfer_by_memory == supported:
@@ -174,6 +259,22 @@ func on_finalize() string {
 
 func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	opts = o
+	err = parse_place()
+	if err != nil {
+		return 1, err
+	}
+	err = parse_z_index()
+	if err != nil {
+		return 1, err
+	}
+	err = parse_background()
+	if err != nil {
+		return 1, err
+	}
+	err = parse_mirror()
+	if err != nil {
+		return 1, err
+	}
 	stderr_is_tty = tty.IsTerminal(os.Stderr.Fd())
 	if opts.PrintWindowSize {
 		t, err := tty.OpenControllingTerm()
