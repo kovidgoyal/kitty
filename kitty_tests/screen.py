@@ -658,6 +658,15 @@ class TestScreen(BaseTest):
         s.carriage_return(), s.linefeed()
         self.ae(as_text(s, add_history=True), 'aabb')
 
+        s = self.create_screen(cols=2, lines=2, scrollback=2, options={'scrollback_pager_history_size': 128})
+        s.draw('a'), s.carriage_return(), s.linefeed()
+        s.cursor.y = 0
+        s.draw('aabb')
+        self.ae(as_text(s), 'aabb')
+        s = self.create_screen(cols=2, lines=2, scrollback=2, options={'scrollback_pager_history_size': 128})
+        s.draw('a😀')
+        self.ae(as_text(s), 'a😀')
+
     def test_pagerhist(self):
         hsz = 8
         s = self.create_screen(cols=2, lines=2, scrollback=2, options={'scrollback_pager_history_size': hsz})
