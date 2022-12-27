@@ -641,6 +641,7 @@ class TestScreen(BaseTest):
         s.draw('aabbccddeeff')
         self.ae(as_text(s, add_history=True), 'aabbccddeeff')
         self.assertNotIn('\n', as_text(s, add_history=True, as_ansi=True))
+
         s = self.create_screen(cols=2, lines=2, scrollback=2, options={'scrollback_pager_history_size': 128})
         s.draw('1'), s.carriage_return(), s.linefeed()
         s.draw('2'), s.carriage_return(), s.linefeed()
@@ -650,6 +651,12 @@ class TestScreen(BaseTest):
         s.draw('6'), s.carriage_return(), s.linefeed()
         s.draw('7')
         self.ae(as_text(s, add_history=True), '1\n2\n3\n4\n5\n6\n7')
+
+        s = self.create_screen(cols=2, lines=2, scrollback=2, options={'scrollback_pager_history_size': 128})
+        s.draw('aabb')
+        s.cursor.y = 0
+        s.carriage_return(), s.linefeed()
+        self.ae(as_text(s, add_history=True), 'aabb')
 
     def test_pagerhist(self):
         hsz = 8
