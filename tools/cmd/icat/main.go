@@ -12,6 +12,7 @@ import (
 
 	"kitty/tools/cli"
 	"kitty/tools/tty"
+	"kitty/tools/tui"
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
@@ -307,6 +308,9 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		fmt.Println("Killed by signal: ", ds)
 		lp.KillIfSignalled()
 		return
+	}
+	if opts.Hold {
+		tui.HoldTillEnter(false)
 	}
 	return 0, nil
 }
