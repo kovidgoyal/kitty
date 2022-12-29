@@ -8,7 +8,7 @@ import os
 import re
 import sys
 from contextlib import suppress
-from functools import lru_cache, partial
+from functools import partial
 from gettext import gettext as _
 from time import monotonic, sleep
 from typing import (
@@ -64,7 +64,7 @@ from .utils import (
     cleanup_ssh_control_masters, func_name, get_editor, get_new_os_window_size,
     is_path_in_temp_dir, less_version, log_error, macos_version, open_url,
     parse_address_spec, parse_uri_list, platform_window_id, remove_socket_file,
-    safe_print, single_instance, startup_notification_handler, which,
+    safe_print, single_instance, startup_notification_handler, which, sanitize_url_for_dispay_to_user
 )
 from .window import CommandOutput, CwdRequest, Window
 
@@ -2603,7 +2603,5 @@ class Boss:
         pass
     mouse_discard_event = discard_event
 
-    @lru_cache(maxsize=64)
     def sanitize_url_for_dispay_to_user(self, url: str) -> str:
-        # TODO: Use punycode, remove percent encoding, etc.
-        return url
+        return sanitize_url_for_dispay_to_user(url)

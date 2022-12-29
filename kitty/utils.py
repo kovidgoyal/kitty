@@ -1088,3 +1088,18 @@ def sanitize_for_bracketed_paste(text: bytes) -> bytes:
             break
         text = new_text
     return text
+
+
+@lru_cache(maxsize=64)
+def sanitize_url_for_dispay_to_user(url: str) -> str:
+    from urllib.parse import urlparse, urlunparse, unquote
+    try:
+        purl = urlparse(url)
+        if purl.netloc:
+            purl = purl._replace(netloc=purl.netloc.encode('idna').decode('ascii'))
+        if purl.path:
+            purl = purl._replace(path=unquote(purl.path))
+        url = urlunparse(purl)
+    except Exception:
+        url = 'Unpareseable URL: ' + url
+    return url

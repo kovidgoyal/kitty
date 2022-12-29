@@ -12,7 +12,7 @@ from kitty.fast_data_types import (
     wcwidth, expand_ansi_c_escapes
 )
 from kitty.rgb import to_color
-from kitty.utils import is_path_in_temp_dir, sanitize_title
+from kitty.utils import is_path_in_temp_dir, sanitize_title, sanitize_url_for_dispay_to_user
 
 from . import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
 
@@ -436,6 +436,8 @@ class TestDataTypes(BaseTest):
                 self.assertTrue(is_path_in_temp_dir(os.path.join(prefix, path)))
         for path in ('/home/xy/d.png', '/tmp/../home/x.jpg'):
             self.assertFalse(is_path_in_temp_dir(os.path.join(path)))
+        self.ae(sanitize_url_for_dispay_to_user(
+            'h://a\u0430b.com/El%20Ni%C3%B1o/'), 'h://xn--ab-7kc.com/El Niño/')
 
     def test_color_profile(self):
         c = ColorProfile()
