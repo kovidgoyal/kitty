@@ -1136,6 +1136,9 @@ class Parser:
 
     choices_for_pointer_shape_when_grabbed = frozenset(('arrow', 'beam', 'hand'))
 
+    def preview_hyperlinks(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['preview_hyperlinks'] = to_bool(val)
+
     def remember_window_size(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['remember_window_size'] = to_bool(val)
 

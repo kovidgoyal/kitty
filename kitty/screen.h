@@ -150,6 +150,7 @@ typedef struct {
         bool is_set;
     } last_visited_prompt;
     PyObject *last_reported_cwd;
+    bool mouse_on_url;
 } Screen;
 
 
@@ -249,6 +250,7 @@ void set_active_hyperlink(Screen*, char*, char*);
 hyperlink_id_type screen_mark_hyperlink(Screen*, index_type, index_type);
 void screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload);
 bool screen_open_url(Screen*);
+const char* screen_current_hyperlink(Screen*, hyperlink_id_type*);
 bool screen_set_last_visited_prompt(Screen*, index_type);
 bool screen_select_cmd_output(Screen*, index_type);
 void screen_dirty_sprite_positions(Screen *self);

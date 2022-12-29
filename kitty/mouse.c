@@ -340,8 +340,13 @@ handle_mouse_movement_in_kitty(Window *w, int button, bool mouse_cell_changed) {
 
 static void
 detect_url(Screen *screen, unsigned int x, unsigned int y) {
-    if (screen_detect_url(screen, x, y)) mouse_cursor_shape = HAND;
-    else set_mouse_cursor_for_screen(screen);
+    if (screen_detect_url(screen, x, y)) {
+      mouse_cursor_shape = HAND;
+      screen->mouse_on_url = true;
+    } else {
+      set_mouse_cursor_for_screen(screen);
+      screen->mouse_on_url = false;
+    }
 }
 
 static bool

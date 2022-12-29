@@ -2636,17 +2636,24 @@ error:
     return NULL;
 }
 
+const char* screen_current_hyperlink(Screen* self, hyperlink_id_type* hyperlink_id) {
+    if (!self->url_ranges.count) return NULL;
+    hyperlink_id_type hid = hyperlink_id_for_range(self, self->url_ranges.items);
+    if (hid) {
+        *hyperlink_id = hid;
+        return get_hyperlink_for_id(self->hyperlink_pool, hid, true);
+    }
+    return NULL;
+}
 
 bool
 screen_open_url(Screen *self) {
     if (!self->url_ranges.count) return false;
-    hyperlink_id_type hid = hyperlink_id_for_range(self, self->url_ranges.items);
-    if (hid) {
-        const char *url = get_hyperlink_for_id(self->hyperlink_pool, hid, true);
-        if (url) {
-            CALLBACK("open_url", "sH", url, hid);
-            return true;
-        }
+    hyperlink_id_type hid;
+    const char* url = screen_current_hyperlink(self, &hid);
+    if (url) {
+        CALLBACK("open_url", "sH", url, hid);
+        return true;
     }
     PyObject *text = current_url_text(self, NULL);
     if (!text) {

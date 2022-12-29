@@ -615,6 +615,64 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
     return height_gl;
 }
 
+static GLfloat
+render_hyperlink_preview(OSWindow *os_window, Screen *screen, const CellRenderData* crd, Window *window) {
+    // Render the currently hovering OSC8 hyperlink URL at top or bottom of the window.
+    hyperlink_id_type hid;
+    const char* url = screen_current_hyperlink(screen, &hid);
+    if (!url) return 0;
+
+    unsigned bar_height = os_window->fonts_data->cell_height + 2;
+    GLfloat left = os_window->viewport_width * (crd->gl.xstart + 1.f) / 2.f;
+    GLfloat right = left + os_window->viewport_width * crd->gl.width / 2.f;
+    if (!bar_height || right <= left) return 0;
+    unsigned bar_width = (unsigned)ceilf(right - left);
+
+    if (!window->hyperlink_bar_data.buf || window->hyperlink_bar_data.width != bar_width || window->hyperlink_bar_data.height != bar_height) {
+        free(window->hyperlink_bar_data.buf);
+        window->hyperlink_bar_data.buf = malloc((size_t)4 * bar_width * bar_height);
+        if (!window->hyperlink_bar_data.buf) return 0;
+        window->hyperlink_bar_data.height = bar_height;
+        window->hyperlink_bar_data.width = bar_width;
+    }
+    static char title[2048] = {0};
+    if (window->hyperlink_bar_data.last_drawn_hid != hid) {
+        snprintf(title, arraysz(title), " %s", url);
+#define RGBCOL(which, fallback) ( 0xff000000 | colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.which, screen->color_profile->configured.which, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback))
+        if (!draw_window_title(os_window, title, RGBCOL(highlight_fg, default_fg), RGBCOL(highlight_bg, default_bg), window->hyperlink_bar_data.buf, bar_width, bar_height)) return 0;
+#undef RGBCOL
+        window->hyperlink_bar_data.last_drawn_hid = hid;
+    }
+    static ImageRenderData data = {.group_count=1};
+    GLfloat height_gl = gl_size(bar_height, os_window->viewport_height);
+    // Determine whether to draw at bottom (default) or top of window.
+    bool bottom = true;
+    if (screen_is_cursor_visible(screen) && screen->cursor->y == screen->lines - 1)
+      bottom = false;
+    GLfloat xstart = crd->gl.xstart,
+            ystart = bottom ? crd->gl.ystart - crd->gl.height + height_gl : crd->gl.ystart,
+            width = crd->gl.width;
+    xstart = clamp_position_to_nearest_pixel(xstart, os_window->viewport_width);
+    ystart = clamp_position_to_nearest_pixel(ystart, os_window->viewport_height);
+    gpu_data_for_image(&data, xstart, ystart, xstart + width, ystart - height_gl);
+    if (!data.texture_id) { glGenTextures(1, &data.texture_id); }
+    glBindTexture(GL_TEXTURE_2D, data.texture_id);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bar_width, bar_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, window->hyperlink_bar_data.buf);
+    set_cell_uniforms(1.f, false);
+    bind_program(GRAPHICS_PROGRAM);
+    send_graphics_data_to_gpu(1, os_window->gvao_idx, &data);
+    glEnable(GL_BLEND);
+    if (os_window->is_semi_transparent) { BLEND_PREMULT; } else { BLEND_ONTO_OPAQUE; }
+    draw_graphics(GRAPHICS_PROGRAM, 0, os_window->gvao_idx, &data, 0, 1);
+    glDisable(GL_BLEND);
+    return height_gl;
+}
+
 static void
 draw_window_logo(ssize_t vao_idx, OSWindow *os_window, const WindowLogoRenderData *wl, const CellRenderData *crd) {
     if (os_window->live_resize.in_progress) return;
@@ -933,6 +991,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float
     }
 
     if (window && screen->display_window_char) draw_window_number(os_window, screen, &crd, window);
+    if (OPT(preview_hyperlinks) && window && screen->mouse_on_url) render_hyperlink_preview(os_window, screen, &crd, window);
 }
 // }}}
 

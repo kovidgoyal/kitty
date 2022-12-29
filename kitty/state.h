@@ -67,6 +67,7 @@ typedef struct {
     bool window_alert_on_bell;
     bool debug_keyboard;
     bool allow_hyperlinks;
+    bool preview_hyperlinks;
     monotonic_t resize_debounce_time;
     MouseShape pointer_shape_when_grabbed;
     MouseShape default_pointer_shape;
@@ -147,6 +148,11 @@ typedef struct {
         uint8_t *buf;
         PyObject *last_drawn_title_object_id;
     } title_bar_data;
+    struct {
+        unsigned width, height;
+        uint8_t *buf;
+        hyperlink_id_type last_drawn_hid;
+    } hyperlink_bar_data;
 } Window;
 
 typedef struct {

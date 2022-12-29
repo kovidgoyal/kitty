@@ -2913,6 +2913,14 @@ link when clicked.
 '''
     )
 
+opt('preview_hyperlinks', 'yes',
+    option_type='to_bool', ctype='bool',
+    long_text='''
+Preview the URL of :term:`hyperlink <hyperlinks>` escape sequences (OSC 8)
+when mouse hovers on the link.
+'''
+    )
+
 opt('shell_integration', 'enabled',
     option_type='shell_integration',
     long_text='''
