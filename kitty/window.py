@@ -52,7 +52,7 @@ from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     docs_url, kitty_ansi_sanitizer_pat, load_shaders, log_error, open_cmd, open_url,
     parse_color_set, path_from_osc7_url, resolve_custom_file, resolved_shell,
-    sanitize_for_bracketed_paste, sanitize_title,
+    sanitize_for_bracketed_paste, sanitize_title, sanitize_url_for_dispay_to_user,
 )
 
 MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]]]]
@@ -858,7 +858,7 @@ class Window:
             if opts.allow_hyperlinks & 0b10:
                 from kittens.tui.operations import styled
                 get_boss().choose(
-                    'What would you like to do with this URL:\n' + styled(unquote(url), fg='yellow'),
+                    'What would you like to do with this URL:\n' + styled(sanitize_url_for_dispay_to_user(url), fg='yellow'),
                     partial(self.hyperlink_open_confirmed, url, cwd),
                     'o:Open', 'c:Copy to clipboard', 'n;red:Nothing', default='o',
                     window=self,
