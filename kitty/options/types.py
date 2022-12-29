@@ -418,6 +418,7 @@ option_names = (  # {{{
  'selection_foreground',
  'shell',
  'shell_integration',
+ 'show_hyperlink_targets',
  'single_window_margin_width',
  'startup_session',
  'strip_trailing_spaces',
@@ -568,6 +569,7 @@ class Options:
     selection_foreground: typing.Optional[kitty.fast_data_types.Color] = Color(0, 0, 0)
     shell: str = '.'
     shell_integration: typing.FrozenSet[str] = frozenset({'enabled'})
+    show_hyperlink_targets: bool = True
     single_window_margin_width: FloatEdges = FloatEdges(left=-1.0, top=-1.0, right=-1.0, bottom=-1.0)
     startup_session: typing.Optional[str] = None
     strip_trailing_spaces: choices_for_strip_trailing_spaces = 'never'

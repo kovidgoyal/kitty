@@ -87,6 +87,7 @@ typedef struct {
     struct {
         float val; AdjustmentUnit unit;
     } underline_position, underline_thickness, strikethrough_position, strikethrough_thickness, cell_width, cell_height, baseline;
+    bool show_hyperlink_targets;
 } Options;
 
 typedef struct WindowLogoRenderData {
@@ -126,6 +127,14 @@ typedef struct MousePosition {
     bool in_left_half_of_cell;
 } MousePosition;
 
+typedef struct WindowBarData {
+    unsigned width, height;
+    uint8_t *buf;
+    PyObject *last_drawn_title_object_id;
+    hyperlink_id_type hyperlink_id_for_title_object;
+    bool needs_render;
+} WindowBarData;
+
 typedef struct {
     id_type id;
     bool visible, cursor_visible_at_last_render;
@@ -142,11 +151,7 @@ typedef struct {
     ClickQueue click_queues[8];
     monotonic_t last_drag_scroll_at;
     uint32_t last_special_key_pressed;
-    struct {
-        unsigned width, height;
-        uint8_t *buf;
-        PyObject *last_drawn_title_object_id;
-    } title_bar_data;
+    WindowBarData title_bar_data, url_target_bar_data;
 } Window;
 
 typedef struct {

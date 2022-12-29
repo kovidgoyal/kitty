@@ -432,6 +432,10 @@ mouse cursor. By default, all characters that are legal in URLs are allowed.
 '''
     )
 
+opt('show_hyperlink_targets', 'yes', option_type='to_bool', ctype='bool', long_text='''
+When the mouse hovers over a terminal hyperlink, show the actual URL that will be
+activated when the hyperlink is clicked.''')
+
 opt('copy_on_select', 'no',
     option_type='copy_on_select',
     long_text='''

@@ -340,8 +340,16 @@ handle_mouse_movement_in_kitty(Window *w, int button, bool mouse_cell_changed) {
 
 static void
 detect_url(Screen *screen, unsigned int x, unsigned int y) {
-    if (screen_detect_url(screen, x, y)) mouse_cursor_shape = HAND;
-    else set_mouse_cursor_for_screen(screen);
+    int hid = screen_detect_url(screen, x, y);
+    screen->current_hyperlink_under_mouse.id = 0;
+    if (hid != 0) {
+        mouse_cursor_shape = HAND;
+        if (hid > 0) {
+            screen->current_hyperlink_under_mouse.id = (hyperlink_id_type)hid;
+            screen->current_hyperlink_under_mouse.x = x;
+            screen->current_hyperlink_under_mouse.y = y;
+        }
+    } else set_mouse_cursor_for_screen(screen);
 }
 
 static bool

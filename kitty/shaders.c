@@ -571,32 +571,38 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
 }
 
 static GLfloat
-render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, GLfloat ystart, GLfloat width, Window *window, GLfloat left, GLfloat right) {
+render_a_bar(OSWindow *os_window, Screen *screen, const CellRenderData *crd, WindowBarData *bar, PyObject *title, bool along_bottom) {
+    GLfloat left = os_window->viewport_width * (crd->gl.xstart + 1.f) / 2.f;
+    GLfloat right = left + os_window->viewport_width * crd->gl.width / 2.f;
     unsigned bar_height = os_window->fonts_data->cell_height + 2;
     if (!bar_height || right <= left) return 0;
     unsigned bar_width = (unsigned)ceilf(right - left);
-    if (!window->title_bar_data.buf || window->title_bar_data.width != bar_width || window->title_bar_data.height != bar_height) {
-        free(window->title_bar_data.buf);
-        Py_CLEAR(window->title_bar_data.last_drawn_title_object_id);
-        window->title_bar_data.buf = malloc((size_t)4 * bar_width * bar_height);
-        if (!window->title_bar_data.buf) return 0;
-        window->title_bar_data.height = bar_height;
-        window->title_bar_data.width = bar_width;
+    if (!bar->buf || bar->width != bar_width || bar->height != bar_height) {
+        free(bar->buf);
+        bar->buf = malloc((size_t)4 * bar_width * bar_height);
+        if (!bar->buf) return 0;
+        bar->height = bar_height;
+        bar->width = bar_width;
+        bar->needs_render = true;
     }
-    static char title[2048] = {0};
-    if (window->title_bar_data.last_drawn_title_object_id != window->title) {
-        snprintf(title, arraysz(title), " %s", PyUnicode_AsUTF8(window->title));
+
+    if (bar->last_drawn_title_object_id != title || bar->needs_render) {
+        static char titlebuf[2048] = {0};
+        if (!title) return 0;
+        snprintf(titlebuf, arraysz(titlebuf), " %s", PyUnicode_AsUTF8(title));
 #define RGBCOL(which, fallback) ( 0xff000000 | colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.which, screen->color_profile->configured.which, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback))
-        if (!draw_window_title(os_window, title, RGBCOL(highlight_fg, default_fg), RGBCOL(highlight_bg, default_bg), window->title_bar_data.buf, bar_width, bar_height)) return 0;
+        if (!draw_window_title(os_window, titlebuf, RGBCOL(highlight_fg, default_fg), RGBCOL(highlight_bg, default_bg), bar->buf, bar_width, bar_height)) return 0;
 #undef RGBCOL
-        window->title_bar_data.last_drawn_title_object_id = window->title;
-        Py_INCREF(window->title_bar_data.last_drawn_title_object_id);
+        bar->last_drawn_title_object_id = title;
+        Py_INCREF(bar->last_drawn_title_object_id);
     }
     static ImageRenderData data = {.group_count=1};
-    xstart = clamp_position_to_nearest_pixel(xstart, os_window->viewport_width);
-    ystart = clamp_position_to_nearest_pixel(ystart, os_window->viewport_height);
+    GLfloat xstart, ystart;
+    xstart = clamp_position_to_nearest_pixel(crd->gl.xstart, os_window->viewport_width);
     GLfloat height_gl = gl_size(bar_height, os_window->viewport_height);
-    gpu_data_for_image(&data, xstart, ystart, xstart + width, ystart - height_gl);
+    if (along_bottom) ystart = crd->gl.ystart - crd->gl.height + height_gl;
+    else ystart = clamp_position_to_nearest_pixel(crd->gl.ystart, os_window->viewport_height);
+    gpu_data_for_image(&data, xstart, ystart, xstart + crd->gl.width, ystart - height_gl);
     if (!data.texture_id) { glGenTextures(1, &data.texture_id); }
     glBindTexture(GL_TEXTURE_2D, data.texture_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -604,7 +610,7 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bar_width, bar_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, window->title_bar_data.buf);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bar_width, bar_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bar->buf);
     set_cell_uniforms(1.f, false);
     bind_program(GRAPHICS_PROGRAM);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, &data);
@@ -613,6 +619,25 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
     draw_graphics(GRAPHICS_PROGRAM, 0, os_window->gvao_idx, &data, 0, 1);
     glDisable(GL_BLEND);
     return height_gl;
+}
+
+static void
+draw_hyperlink_target(OSWindow *os_window, Screen *screen, const CellRenderData *crd, Window *window) {
+    WindowBarData *bd = &window->url_target_bar_data;
+    if (bd->hyperlink_id_for_title_object != screen->current_hyperlink_under_mouse.id) {
+        bd->hyperlink_id_for_title_object = screen->current_hyperlink_under_mouse.id;
+        Py_CLEAR(bd->last_drawn_title_object_id);
+        const char *url = get_hyperlink_for_id(screen->hyperlink_pool, bd->hyperlink_id_for_title_object, true);
+        if (url == NULL) url = "";
+        PyObject *h = PyObject_CallMethod(global_state.boss, "sanitize_url_for_dispay_to_user", "s", url);
+        if (h == NULL) { PyErr_Print(); return; }
+        bd->last_drawn_title_object_id = h;
+        Py_INCREF(bd->last_drawn_title_object_id);
+        bd->needs_render = true;
+    }
+    if (bd->last_drawn_title_object_id == NULL) return;
+    const bool along_bottom = screen->lines < 3 || screen->current_hyperlink_under_mouse.y < screen->lines - 2;
+    render_a_bar(os_window, screen, crd, &window->title_bar_data, bd->last_drawn_title_object_id, along_bottom);
 }
 
 static void
@@ -642,7 +667,7 @@ draw_window_number(OSWindow *os_window, Screen *screen, const CellRenderData *cr
     GLfloat title_bar_height = 0;
     size_t requested_height = (size_t)(os_window->viewport_height * crd->gl.height / 2.f);
     if (window->title && PyUnicode_Check(window->title) && (requested_height > (os_window->fonts_data->cell_height + 1) * 2)) {
-        title_bar_height = render_window_title(os_window, screen, crd->gl.xstart, crd->gl.ystart, crd->gl.width, window, left, right);
+        title_bar_height = render_a_bar(os_window, screen, crd, &window->title_bar_data, window->title, false);
     }
     GLfloat ystart = crd->gl.ystart, height = crd->gl.height, xstart = crd->gl.xstart, width = crd->gl.width;
     if (title_bar_height > 0) {
@@ -933,6 +958,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float
     }
 
     if (window && screen->display_window_char) draw_window_number(os_window, screen, &crd, window);
+    if (OPT(show_hyperlink_targets) && window && screen->current_hyperlink_under_mouse.id) draw_hyperlink_target(os_window, screen, &crd, window);
 }
 // }}}
 

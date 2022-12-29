@@ -47,6 +47,8 @@ Detailed list of changes
 - Speed up the ``kitty @`` executable by ~10x reducing the time for typical
   remote control commands from ~50ms to ~5ms
 
+- Show the target of terminal hyperlinks when hovering over them with the mouse controlled by :opt:`show_hyperlink_targets` (:pull:`5830`)
+
 - Keyboard protocol: Remove ``CSI R`` from the allowed encodings of the :kbd:`F3` key as it conflicts with the *Cursor Position Report* escape code (:disc:`5813`)
 
 - Allow using the cwd of the original process for :option:`launch --cwd` (:iss:`5672`)
