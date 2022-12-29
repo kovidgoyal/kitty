@@ -287,9 +287,12 @@ class GitHub(Base):  # {{{
         existing_assets = self.existing_assets(release['id'])
 
         def delete_asset(asset_id: str) -> None:
-            r = self.requests.delete(asset_url.format(asset_id))
-            if r.status_code not in (204, 404):
-                self.fail(r, f'Failed to delete {fname} from GitHub')
+            for i in range(5):
+                r = self.requests.delete(asset_url.format(asset_id))
+                if r.status_code in (204, 404):
+                    return
+                time.sleep(1)
+            self.fail(r, f'Failed to delete {fname} from GitHub')
 
         def upload_with_retries(path: str, desc: str, num_tries: int = 4, sleep_time: float = 10.0) -> None:
             fname = os.path.basename(path)
