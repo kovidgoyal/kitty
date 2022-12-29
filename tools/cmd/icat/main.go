@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"kitty/tools/cli"
@@ -49,6 +51,10 @@ var direct_query_id, file_query_id, memory_query_id uint32
 var stderr_is_tty bool
 var query_in_flight bool
 var stream_response string
+var files_channel chan input_arg
+var num_of_items int
+var keep_going *atomic.Bool
+var screen_size loop.ScreenSize
 
 func parse_mirror() (err error) {
 	flip = opts.Mirror == "both" || opts.Mirror == "vertical"
@@ -155,6 +161,15 @@ func on_initialize() (string, error) {
 	if sz.WidthPx == 0 || sz.HeightPx == 0 {
 		return "", fmt.Errorf("Terminal does not support reporting screen sizes via the TIOCGWINSZ ioctl")
 	}
+	keep_going.Store(true)
+	screen_size = sz
+	if !opts.DetectSupport && num_of_items > 0 {
+		num_workers := utils.Max(1, utils.Min(num_of_items, runtime.NumCPU()))
+		for i := 0; i < num_workers; i++ {
+			go run_worker()
+		}
+	}
+
 	direct_query_id = g(graphics.GRT_transmission_direct, "123")
 	tf, err := graphics.MakeTemp()
 	if err == nil {
@@ -298,8 +313,22 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	lp.OnInitialize = on_initialize
 	lp.OnFinalize = on_finalize
 	lp.OnEscapeCode = on_escape_code
+	items, err := process_dirs(args...)
+	if err != nil {
+		return 1, err
+	}
+	if opts.Place != "" && len(items) > 1 {
+		return 1, fmt.Errorf("The --place option can only be used with a single image, not %d", len(items))
+	}
+	files_channel = make(chan input_arg, len(items))
+	for _, ia := range items {
+		files_channel <- ia
+	}
+	num_of_items = len(items)
+	keep_going = &atomic.Bool{}
 
 	err = lp.Run()
+	keep_going.Store(false)
 	if err != nil {
 		return
 	}
