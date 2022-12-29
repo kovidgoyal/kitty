@@ -593,6 +593,7 @@ render_a_bar(OSWindow *os_window, Screen *screen, const CellRenderData *crd, Win
 #define RGBCOL(which, fallback) ( 0xff000000 | colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.which, screen->color_profile->configured.which, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback))
         if (!draw_window_title(os_window, titlebuf, RGBCOL(highlight_fg, default_fg), RGBCOL(highlight_bg, default_bg), bar->buf, bar_width, bar_height)) return 0;
 #undef RGBCOL
+        Py_CLEAR(bar->last_drawn_title_object_id);
         bar->last_drawn_title_object_id = title;
         Py_INCREF(bar->last_drawn_title_object_id);
     }
@@ -637,7 +638,9 @@ draw_hyperlink_target(OSWindow *os_window, Screen *screen, const CellRenderData 
     }
     if (bd->last_drawn_title_object_id == NULL) return;
     const bool along_bottom = screen->lines < 3 || screen->current_hyperlink_under_mouse.y < screen->lines - 2;
+    Py_INCREF(bd->last_drawn_title_object_id);
     render_a_bar(os_window, screen, crd, &window->title_bar_data, bd->last_drawn_title_object_id, along_bottom);
+    Py_DECREF(bd->last_drawn_title_object_id);
 }
 
 static void
