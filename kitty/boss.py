@@ -505,6 +505,18 @@ class Boss:
             return response
         if not pcmd:
             return response
+        self_window: Optional[Window] = None
+        if window is not None:
+            self_window = window
+        else:
+            try:
+                swid = int(pcmd.get('kitty_window_id', 0))
+            except Exception:
+                pass
+            else:
+                if swid > 0:
+                    self_window = self.window_id_map.get(swid)
+
         extra_data: Dict[str, Any] = {}
         try:
             allowed_unconditionally = (
@@ -513,12 +525,12 @@ class Boss:
         except PermissionError:
             return {'ok': False, 'error': 'Remote control disallowed by window specific password'}
         if allowed_unconditionally:
-            return self._execute_remote_command(pcmd, window, peer_id)
+            return self._execute_remote_command(pcmd, window, peer_id, self_window)
         q = is_cmd_allowed(pcmd, window, peer_id > 0, extra_data)
         if q is True:
-            return self._execute_remote_command(pcmd, window, peer_id)
+            return self._execute_remote_command(pcmd, window, peer_id, self_window)
         if q is None:
-            if self.ask_if_remote_cmd_is_allowed(pcmd, window, peer_id):
+            if self.ask_if_remote_cmd_is_allowed(pcmd, window, peer_id, self_window):
                 return AsyncResponse()
         response = {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control to your kitty.conf'}
         if q is False and pcmd.get('password'):
@@ -528,7 +540,9 @@ class Boss:
             return None
         return response
 
-    def ask_if_remote_cmd_is_allowed(self, pcmd: Dict[str, Any], window: Optional[Window] = None, peer_id: int = 0) -> bool:
+    def ask_if_remote_cmd_is_allowed(
+        self, pcmd: Dict[str, Any], window: Optional[Window] = None, peer_id: int = 0, self_window: Optional[Window] = None
+    ) -> bool:
         from kittens.tui.operations import styled
         in_flight = 0
         for w in self.window_id_map.values():
@@ -547,7 +561,7 @@ class Boss:
                   '\x1b[m' + styled(_(
                       'Note that allowing the password will allow all future actions using the same password, in this kitty instance.'
                   ), dim=True, italic=True)),
-            partial(self.remote_cmd_permission_received, pcmd, wid, peer_id),
+            partial(self.remote_cmd_permission_received, pcmd, wid, peer_id, self_window),
             'a;green:Allow request', 'p;yellow:Allow password', 'r;magenta:Deny request', 'd;red:Deny password',
             window=window, default='a', hidden_text=hidden_text
         )
@@ -556,7 +570,7 @@ class Boss:
         overlay_window.window_custom_type = 'remote_command_permission_dialog'
         return True
 
-    def remote_cmd_permission_received(self, pcmd: Dict[str, Any], window_id: int, peer_id: int, choice: str) -> None:
+    def remote_cmd_permission_received(self, pcmd: Dict[str, Any], window_id: int, peer_id: int, self_window: Optional[Window], choice: str) -> None:
         from .remote_control import encode_response_for_peer, set_user_password_allowed
         response: RCResponse = None
         window = self.window_id_map.get(window_id)
@@ -570,7 +584,7 @@ class Boss:
         elif choice in ('a', 'p'):
             if choice == 'p':
                 set_user_password_allowed(pcmd['password'], True)
-            response = self._execute_remote_command(pcmd, window, peer_id)
+            response = self._execute_remote_command(pcmd, window, peer_id, self_window)
         if window is not None and response is not None and not isinstance(response, AsyncResponse):
             window.send_cmd_response(response)
         if peer_id > 0:
@@ -579,10 +593,12 @@ class Boss:
             elif not isinstance(response, AsyncResponse):
                 send_data_to_peer(peer_id, encode_response_for_peer(response))
 
-    def _execute_remote_command(self, pcmd: Dict[str, Any], window: Optional[Window] = None, peer_id: int = 0) -> RCResponse:
+    def _execute_remote_command(
+        self, pcmd: Dict[str, Any], window: Optional[Window] = None, peer_id: int = 0, self_window: Optional[Window] = None
+    ) -> RCResponse:
         from .remote_control import handle_cmd
         try:
-            response = handle_cmd(self, window, pcmd, peer_id)
+            response = handle_cmd(self, window, pcmd, peer_id, self_window)
         except Exception as err:
             import traceback
             response = {'ok': False, 'error': str(err)}

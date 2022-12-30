@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf16"
@@ -267,6 +268,10 @@ func send_rc_command(io_data *rc_io_data) (err error) {
 	err = setup_global_options(io_data.cmd)
 	if err != nil {
 		return err
+	}
+	wid, err := strconv.Atoi(os.Getenv("KITTY_WINDOW_ID"))
+	if err == nil && wid > 0 {
+		io_data.rc.KittyWindowId = uint(wid)
 	}
 	err = create_serializer(global_options.password, "", io_data)
 	if err != nil {

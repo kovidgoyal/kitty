@@ -169,7 +169,9 @@ def close_active_stream(stream_id: str) -> None:
     active_streams.pop(stream_id, None)
 
 
-def handle_cmd(boss: BossType, window: Optional[WindowType], cmd: Dict[str, Any], peer_id: int) -> Union[Dict[str, Any], None, AsyncResponse]:
+def handle_cmd(
+    boss: BossType, window: Optional[WindowType], cmd: Dict[str, Any], peer_id: int, self_window: Optional[WindowType]
+) -> Union[Dict[str, Any], None, AsyncResponse]:
     v = cmd['version']
     no_response = cmd.get('no_response', False)
     if tuple(v)[:2] > version[:2]:
@@ -194,14 +196,14 @@ def handle_cmd(boss: BossType, window: Optional[WindowType], cmd: Dict[str, Any]
         payload['async_id'] = async_id
         if 'cancel_async' in cmd:
             active_async_requests.pop(async_id, None)
-            c.cancel_async_request(boss, window, PayloadGetter(c, payload))
+            c.cancel_async_request(boss, self_window or window, PayloadGetter(c, payload))
             return None
         active_async_requests[async_id] = monotonic()
         if len(active_async_requests) > 32:
             oldest = next(iter(active_async_requests))
             del active_async_requests[oldest]
     try:
-        ans = c.response_from_kitty(boss, window, PayloadGetter(c, payload))
+        ans = c.response_from_kitty(boss, self_window or window, PayloadGetter(c, payload))
     except Exception:
         if no_response:  # don't report errors if --no-response was used
             return None

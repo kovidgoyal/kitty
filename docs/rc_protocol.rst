@@ -15,6 +15,7 @@ Where ``<ESC>`` is the byte ``0x1b``. The JSON object has the form:
         "cmd": "command name",
         "version": "<kitty version>",
         "no_response": "<Optional Boolean>",
+        "kitty_window_id": "<Optional value of the KITTY_WINDOW_ID env var>",
         "payload": "<Optional JSON object>"
     }
 
