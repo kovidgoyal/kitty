@@ -1574,7 +1574,8 @@ class Window:
 
     @ac('sc', 'Scroll prompt to the bottom of the screen, filling in extra lines from the scrollback buffer')
     def scroll_prompt_to_bottom(self) -> None:
-        self.screen.scroll_prompt_to_bottom()
+        if self.screen.is_main_linebuf():
+            self.screen.scroll_prompt_to_bottom()
 
     @ac('mk', 'Toggle the current marker on/off')
     def toggle_marker(self, ftype: str, spec: Union[str, Tuple[Tuple[int, str], ...]], flags: int) -> None:
