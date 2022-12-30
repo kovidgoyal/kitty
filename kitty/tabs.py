@@ -496,6 +496,14 @@ class Tab:  # {{{
     def move_window_to_top_of_group(self, window: Window) -> bool:
         return self.windows.move_window_to_top_of_group(window)
 
+    def overlay_parent(self, window: Window) -> Optional[Window]:
+        prev: Optional[Window] = None
+        for x in self.windows.windows_in_group_of(window):
+            if x is window:
+                break
+            prev = x
+        return prev
+
     def remove_window(self, window: Window, destroy: bool = True) -> None:
         self.windows.remove_window(window)
         if destroy:

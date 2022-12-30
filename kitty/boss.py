@@ -370,7 +370,7 @@ class Boss:
         for tab in self.all_tabs:
             yield from tab
 
-    def match_windows(self, match: str) -> Iterator[Window]:
+    def match_windows(self, match: str, self_window: Optional['Window'] = None) -> Iterator[Window]:
         if match == 'all':
             yield from self.all_windows
             return
@@ -390,7 +390,7 @@ class Boss:
                     return set()
                 if q < 0:
                     query = str(window_id_limit + q)
-            return {wid for wid in candidates if self.window_id_map[wid].matches_query(location, query, tab)}
+            return {wid for wid in candidates if self.window_id_map[wid].matches_query(location, query, tab, self_window)}
 
         for wid in search(match, (
                 'id', 'title', 'pid', 'cwd', 'cmdline', 'num', 'env', 'recent', 'state'

@@ -653,6 +653,13 @@ class Window:
         return ans
 
     @property
+    def overlay_parent(self) -> Optional['Window']:
+        tab = self.tabref()
+        if tab is None:
+            return None
+        return tab.overlay_parent(self)
+
+    @property
     def current_colors(self) -> Dict[str, Optional[int]]:
         return self.screen.color_profile.as_dict()
 
@@ -692,7 +699,7 @@ class Window:
             return False
         return False
 
-    def matches_query(self, field: str, query: str, active_tab: Optional[TabType] = None) -> bool:
+    def matches_query(self, field: str, query: str, active_tab: Optional[TabType] = None, self_window: Optional['Window'] = None) -> bool:
         if field in ('num', 'recent'):
             if active_tab is not None:
                 try:
@@ -720,6 +727,10 @@ class Window:
                 return False
             if query == 'parent_focused':
                 return active_tab is not None and self.tabref() is active_tab and last_focused_os_window_id() == self.os_window_id
+            if query == 'self':
+                return self is self_window
+            if query == 'overlay_parent':
+                return self_window is not None and self is self_window.overlay_parent
             return False
         pat = compile_match_query(query, field != 'env')
         return self.matches(field, pat)

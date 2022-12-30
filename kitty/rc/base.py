@@ -117,10 +117,16 @@ active window, one being the previously active window and so on.
 When using the :code:`env` field to match on environment variables, you can specify only the environment variable name
 or a name and value, for example, :code:`env:MY_ENV_VAR=2`.
 
-The field :code:`state` matches on the state of the window. Supported states are:
-:code:`active`, :code:`focused`, :code:`needs_attention`, :code:`parent_active` and :code:`parent_focused`.
-Active windows are the windows that are active in their parent tab. There is only one focused window and it is the
-window to which keyboard events are delivered. If no window is focused, the last focused window is matched.
+The field :code:`state` matches on the state of the window. Supported states
+are: :code:`active`, :code:`focused`, :code:`needs_attention`,
+:code:`parent_active`, :code:`parent_focused`, :code:`self`,
+:code:`overlay_parent`.  Active windows are the windows that are active in
+their parent tab. There is only one focused window and it is the window to
+which keyboard events are delivered. If no window is focused, the last focused
+window is matched. The value :code:`self` matches the window in which the
+remote control command is run. The value :code:`overlay_parent` matches the
+window that is under the :code:`self` window, when the self window is an
+overlay.
 
 Note that you can use the :ref:`kitty @ ls <at-ls>` command to get a list of windows.
 '''
@@ -341,13 +347,14 @@ class RemoteCommand:
         if payload_get('all'):
             windows = list(boss.all_windows)
         else:
+            self_window = window
             if payload_get('self') in (None, True):
                 window = window or boss.active_window
             else:
                 window = boss.active_window or window
             windows = [window] if window else []
             if payload_get('match'):
-                windows = list(boss.match_windows(payload_get('match')))
+                windows = list(boss.match_windows(payload_get('match'), self_window))
                 if not windows:
                     raise MatchError(payload_get('match'))
         return windows
