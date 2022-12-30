@@ -1517,35 +1517,47 @@ class Window:
     def clear_selection(self) -> None:
         self.screen.clear_selection()
 
-    @ac('sc', 'Scroll up by one line')
-    def scroll_line_up(self) -> None:
+    @ac('sc', 'Scroll up by one line when in main screen')
+    def scroll_line_up(self) -> Optional[bool]:
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_LINE, True)
+            return None
+        return True
 
-    @ac('sc', 'Scroll down by one line')
-    def scroll_line_down(self) -> None:
+    @ac('sc', 'Scroll down by one line when in main screen')
+    def scroll_line_down(self) -> Optional[bool]:
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_LINE, False)
+            return None
+        return True
 
-    @ac('sc', 'Scroll up by one page')
-    def scroll_page_up(self) -> None:
+    @ac('sc', 'Scroll up by one page when in main screen')
+    def scroll_page_up(self) -> Optional[bool]:
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_PAGE, True)
+            return None
+        return True
 
-    @ac('sc', 'Scroll down by one page')
-    def scroll_page_down(self) -> None:
+    @ac('sc', 'Scroll down by one page when in main screen')
+    def scroll_page_down(self) -> Optional[bool]:
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_PAGE, False)
+            return None
+        return True
 
-    @ac('sc', 'Scroll to the top of the scrollback buffer')
-    def scroll_home(self) -> None:
+    @ac('sc', 'Scroll to the top of the scrollback buffer when in main screen')
+    def scroll_home(self) -> Optional[bool]:
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_FULL, True)
+            return None
+        return True
 
-    @ac('sc', 'Scroll to the bottom of the scrollback buffer')
-    def scroll_end(self) -> None:
+    @ac('sc', 'Scroll to the bottom of the scrollback buffer when in main screen')
+    def scroll_end(self) -> Optional[bool]:
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_FULL, False)
+            return None
+        return True
 
     @ac('sc', '''
         Scroll to the previous/next shell command prompt
@@ -1559,23 +1571,29 @@ class Window:
             map ctrl+n scroll_to_prompt 1   # jump to next
             map ctrl+o scroll_to_prompt 0   # jump to last visited
         ''')
-    def scroll_to_prompt(self, num_of_prompts: int = -1) -> None:
+    def scroll_to_prompt(self, num_of_prompts: int = -1) -> Optional[bool]:
         if self.screen.is_main_linebuf():
             self.screen.scroll_to_prompt(num_of_prompts)
+            return None
+        return True
 
-    @ac('sc', 'Scroll prompt to the top of the screen, filling screen with empty lines')
-    def scroll_prompt_to_top(self, clear_scrollback: bool = False) -> None:
+    @ac('sc', 'Scroll prompt to the top of the screen, filling screen with empty lines, when in main screen')
+    def scroll_prompt_to_top(self, clear_scrollback: bool = False) -> Optional[bool]:
         if self.screen.is_main_linebuf():
             self.screen.scroll_until_cursor_prompt()
             if clear_scrollback:
                 self.screen.clear_scrollback()
             elif self.screen.scrolled_by > 0:
                 self.screen.scroll(SCROLL_FULL, False)
+            return None
+        return True
 
-    @ac('sc', 'Scroll prompt to the bottom of the screen, filling in extra lines from the scrollback buffer')
-    def scroll_prompt_to_bottom(self) -> None:
+    @ac('sc', 'Scroll prompt to the bottom of the screen, filling in extra lines from the scrollback buffer, when in main screen')
+    def scroll_prompt_to_bottom(self) -> Optional[bool]:
         if self.screen.is_main_linebuf():
             self.screen.scroll_prompt_to_bottom()
+            return None
+        return True
 
     @ac('mk', 'Toggle the current marker on/off')
     def toggle_marker(self, ftype: str, spec: Union[str, Tuple[Tuple[int, str], ...]], flags: int) -> None:

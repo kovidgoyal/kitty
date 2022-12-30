@@ -27,6 +27,11 @@ Browse scrollback in less   :sc:`show_scrollback`
 Browse last cmd output      :sc:`show_last_command_output` (see :ref:`shell_integration`)
 =========================   =======================
 
+The scroll actions only take effect when the terminal is in the main screen.
+When the alternate screen is active (for example when using a full screen
+program like an editor) the key events are instead passed to program running in the
+terminal.
+
 Tabs
 ~~~~~~~~~~~
 

@@ -53,6 +53,8 @@ Detailed list of changes
 
 - Allow using the cwd of the original process for :option:`launch --cwd` (:iss:`5672`)
 
+- Pass key events mapped to scroll actions to the program running in the terminal when the terminal is in alternate screen mode (:iss:`5839`)
+
 - Implement :ref:`edit-in-kitty <edit_file>` using the new ``kitty-tool`` static executable (:iss:`5546`, :iss:`5630`)
 
 - Add an option :opt:`background_tint_gaps` to control background image tinting for window gaps (:iss:`5596`)
