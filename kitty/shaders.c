@@ -630,17 +630,16 @@ draw_hyperlink_target(OSWindow *os_window, Screen *screen, const CellRenderData 
         Py_CLEAR(bd->last_drawn_title_object_id);
         const char *url = get_hyperlink_for_id(screen->hyperlink_pool, bd->hyperlink_id_for_title_object, true);
         if (url == NULL) url = "";
-        PyObject *h = PyObject_CallMethod(global_state.boss, "sanitize_url_for_dispay_to_user", "s", url);
-        if (h == NULL) { PyErr_Print(); return; }
-        bd->last_drawn_title_object_id = h;
-        Py_INCREF(bd->last_drawn_title_object_id);
+        bd->last_drawn_title_object_id = PyObject_CallMethod(global_state.boss, "sanitize_url_for_dispay_to_user", "s", url);
+        if (bd->last_drawn_title_object_id == NULL) { PyErr_Print(); return; }
         bd->needs_render = true;
     }
     if (bd->last_drawn_title_object_id == NULL) return;
     const bool along_bottom = screen->lines < 3 || screen->current_hyperlink_under_mouse.y < screen->lines - 2;
-    Py_INCREF(bd->last_drawn_title_object_id);
+    PyObject *ref = bd->last_drawn_title_object_id;
+    Py_INCREF(ref);
     render_a_bar(os_window, screen, crd, &window->title_bar_data, bd->last_drawn_title_object_id, along_bottom);
-    Py_DECREF(bd->last_drawn_title_object_id);
+    Py_DECREF(ref);
 }
 
 static void
