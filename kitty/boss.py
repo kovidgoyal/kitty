@@ -254,6 +254,8 @@ class Boss:
         self.current_visual_select: Optional[VisualSelect] = None
         self.startup_cursor_text_color = opts.cursor_text_color
         self.pending_sequences: Optional[SubSequenceMap] = None
+        # A list of events received so far that are potentially part of a sequence keybinding.
+        self.current_sequence: List[KeyEvent] = []
         self.default_pending_action: str = ''
         self.cached_values = cached_values
         self.os_window_map: Dict[int, TabManager] = {}
@@ -1168,6 +1170,7 @@ class Boss:
             sequences = get_shortcut(get_options().sequence_map, ev)
             if sequences and not isinstance(sequences, str):
                 self.set_pending_sequences(sequences)
+                self.current_sequence = [ev]
                 return True
             if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
@@ -1177,6 +1180,7 @@ class Boss:
 
     def clear_pending_sequences(self) -> None:
         self.pending_sequences = None
+        self.current_sequence = []
         self.default_pending_action = ''
         set_in_sequence_mode(False)
 
@@ -1185,6 +1189,8 @@ class Boss:
             set_in_sequence_mode(False)
             return
 
+        if len(self.current_sequence):
+            self.current_sequence.append(ev)
         remaining = {}
         matched_action = None
         for seq, key_action in self.pending_sequences.items():
@@ -1199,9 +1205,15 @@ class Boss:
             self.pending_sequences = remaining
         else:
             matched_action = matched_action or self.default_pending_action
-            self.clear_pending_sequences()
-            if matched_action is not None:
+            if matched_action is not None and matched_action != '':
+                self.clear_pending_sequences()
                 self.combine(matched_action)
+            else:
+                w = self.active_window
+                if w is not None:
+                    for ev in self.current_sequence:
+                        w.write_to_child(w.encoded_key(ev))
+                self.clear_pending_sequences()
 
     def cancel_current_visual_select(self) -> None:
         if self.current_visual_select:
