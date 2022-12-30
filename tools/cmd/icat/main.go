@@ -52,6 +52,7 @@ var stderr_is_tty bool
 var query_in_flight bool
 var stream_response string
 var files_channel chan input_arg
+var output_channel chan *image_data
 var num_of_items int
 var keep_going *atomic.Bool
 var screen_size loop.ScreenSize
@@ -273,6 +274,10 @@ func on_finalize() string {
 	return ""
 }
 
+func on_wakeup() error {
+	return nil
+}
+
 func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	opts = o
 	err = parse_place()
@@ -313,6 +318,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	lp.OnInitialize = on_initialize
 	lp.OnFinalize = on_finalize
 	lp.OnEscapeCode = on_escape_code
+	lp.OnWakeup = on_wakeup
 	items, err := process_dirs(args...)
 	if err != nil {
 		return 1, err
@@ -325,6 +331,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		files_channel <- ia
 	}
 	num_of_items = len(items)
+	output_channel = make(chan *image_data, 1)
 	keep_going = &atomic.Bool{}
 
 	err = lp.Run()

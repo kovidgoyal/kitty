@@ -113,8 +113,50 @@ func process_dirs(args ...string) (results []input_arg, err error) {
 	return results, nil
 }
 
-type opened_input interface {
-	io.ReadSeekCloser
+type opened_input struct {
+	file           io.ReadSeekCloser
+	name_to_unlink string
+}
+
+func (self *opened_input) Rewind() {
+	if self.file != nil {
+		self.file.Seek(0, io.SeekStart)
+	}
+}
+
+func (self *opened_input) Release() {
+	if self.file != nil {
+		self.file.Close()
+		self.file = nil
+	}
+	if self.name_to_unlink != "" {
+		os.Remove(self.name_to_unlink)
+		self.name_to_unlink = ""
+	}
+}
+
+type image_data struct {
+	canvas_width, canvas_height       int
+	format_uppercase                  string
+	available_width, available_height int
+	needs_scaling, needs_conversion   bool
+}
+
+func set_basic_metadata(imgd *image_data) {
+	imgd.available_width = int(screen_size.WidthPx)
+	imgd.available_height = 10 * imgd.canvas_height
+	if place != nil {
+		imgd.available_width = place.width * int(screen_size.CellWidth)
+		imgd.available_height = place.height * int(screen_size.CellHeight)
+	}
+	imgd.needs_scaling = imgd.canvas_width > imgd.available_width || imgd.canvas_height > imgd.available_height
+	imgd.needs_scaling = imgd.needs_scaling || opts.ScaleUp
+	imgd.needs_conversion = imgd.needs_scaling || remove_alpha != nil || flip || flop || imgd.format_uppercase != "PNG"
+}
+
+func send_output(imgd *image_data) {
+	output_channel <- imgd
+	lp.WakeupMainThread()
 }
 
 func process_arg(arg input_arg) {
@@ -137,25 +179,42 @@ func process_arg(arg input_arg) {
 			report_error(arg.value, "Could not download", err)
 			return
 		}
-		f = &BytesBuf{data: dest.Bytes()}
+		f.file = &BytesBuf{data: dest.Bytes()}
 	} else if arg.value == "" {
 		stdin, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			report_error("<stdin>", "Could not read from", err)
 			return
 		}
-		f = &BytesBuf{data: stdin}
+		f.file = &BytesBuf{data: stdin}
 	} else {
 		q, err := os.Open(arg.value)
 		if err != nil {
 			report_error(arg.value, "Could not open", err)
 			return
 		}
-		f = q
+		f.file = q
 	}
-	defer f.Close()
-	c, format, err := image.DecodeConfig(f)
-	f.Seek(0, io.SeekStart)
+	defer f.Release()
+	c, format, err := image.DecodeConfig(f.file)
+	f.Rewind()
+	imgd := image_data{}
+	if err != nil {
+		report_error(arg.value, "Unknown image format", err)
+		return
+	}
+	if !keep_going.Load() {
+		return
+	}
+	imgd.canvas_width = c.Width
+	imgd.canvas_height = c.Height
+	imgd.format_uppercase = strings.ToUpper(format)
+	set_basic_metadata(&imgd)
+	if !imgd.needs_conversion {
+		make_output_from_input(&imgd, &f)
+		send_output(&imgd)
+		return
+	}
 
 }
 
