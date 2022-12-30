@@ -33,7 +33,7 @@ from .constants import (
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
-    GLFW_MOD_SUPER, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, IMPERATIVE_CLOSE_REQUESTED,
+    GLFW_MOD_SUPER, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, GLFW_RELEASE, IMPERATIVE_CLOSE_REQUESTED,
     NO_CLOSE_REQUESTED, ChildMonitor, Color, EllipticCurveKey, KeyEvent, SingleKey,
     add_timer, apply_options_update, background_opacity_of, change_background_opacity,
     change_os_window_state, cocoa_hide_app, cocoa_hide_other_apps,
@@ -1184,13 +1184,18 @@ class Boss:
         self.default_pending_action = ''
         set_in_sequence_mode(False)
 
-    def process_sequence(self, ev: KeyEvent) -> None:
+    def process_sequence(self, ev: KeyEvent) -> bool:
+        # Process an event as part of a sequence. Returns whether the key
+        # is consumed as part of a kitty sequence keybinding.
         if not self.pending_sequences:
             set_in_sequence_mode(False)
-            return
+            return False
 
         if len(self.current_sequence):
             self.current_sequence.append(ev)
+        if ev.action == GLFW_RELEASE:
+            return True
+        # For a press/repeat event, try matching with kitty bindings:
         remaining = {}
         matched_action = None
         for seq, key_action in self.pending_sequences.items():
@@ -1203,17 +1208,20 @@ class Boss:
 
         if remaining:
             self.pending_sequences = remaining
+            return True
         else:
             matched_action = matched_action or self.default_pending_action
             if matched_action is not None and matched_action != '':
                 self.clear_pending_sequences()
                 self.combine(matched_action)
+                return True
             else:
                 w = self.active_window
                 if w is not None:
                     for ev in self.current_sequence:
                         w.write_to_child(w.encoded_key(ev))
                 self.clear_pending_sequences()
+                return False
 
     def cancel_current_visual_select(self) -> None:
         if self.current_visual_select:

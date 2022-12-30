@@ -167,14 +167,20 @@ on_key_input(GLFWkeyevent *ev) {
     PyObject *ke = NULL;
 #define create_key_event() { ke = convert_glfw_key_event_to_python(ev); if (!ke) { PyErr_Print(); return; } }
     if (global_state.in_sequence_mode) {
-        debug("in sequence mode, handling as shortcut\n");
-        if (
-            action != GLFW_RELEASE && !is_modifier_key(key)
-        ) {
-            w->last_special_key_pressed = key;
+        debug("in sequence mode, handling as a potential shortcut\n");
+        if (!is_modifier_key(key)) {
             create_key_event();
-            call_boss(process_sequence, "O", ke);
+            PyObject *ret = PyObject_CallMethod(
+                global_state.boss, "process_sequence", "O", ke);
             Py_CLEAR(ke);
+            if (ret == NULL) { PyErr_Print(); }
+            else {
+              bool consumed = ret == Py_True;
+              Py_DECREF(ret);
+              if (consumed && action != GLFW_RELEASE && w) {
+                w->last_special_key_pressed = key;
+              }
+            }
         }
         return;
     }
