@@ -69,7 +69,7 @@ func is_http_url(arg string) bool {
 
 func process_dirs(args ...string) (results []input_arg, err error) {
 	results = make([]input_arg, 0, 64)
-	if opts.Stdin != "no" && (opts.Stdin == "yes" || tty.IsTerminal(os.Stdin.Fd())) {
+	if opts.Stdin != "no" && (opts.Stdin == "yes" || !tty.IsTerminal(os.Stdin.Fd())) {
 		results = append(results, input_arg{arg: "/dev/stdin"})
 	}
 	for _, arg := range args {
@@ -140,6 +140,13 @@ type image_data struct {
 	format_uppercase                  string
 	available_width, available_height int
 	needs_scaling, needs_conversion   bool
+	filename                          string
+	in_memory_bytes                   []byte
+	filename_is_temporary             bool
+
+	// for error reporting
+	err         error
+	source_name string
 }
 
 func set_basic_metadata(imgd *image_data) {
@@ -157,6 +164,24 @@ func set_basic_metadata(imgd *image_data) {
 func send_output(imgd *image_data) {
 	output_channel <- imgd
 	lp.WakeupMainThread()
+}
+
+func report_error(source_name, msg string, err error) {
+	imgd := image_data{source_name: source_name, err: fmt.Errorf("%s: %w", msg, err)}
+	send_output(&imgd)
+}
+
+func make_output_from_input(imgd *image_data, f *opened_input) {
+	bb, ok := f.file.(*BytesBuf)
+	if ok {
+		imgd.in_memory_bytes = bb.data
+	} else {
+		imgd.filename = f.file.(*os.File).Name()
+		if f.name_to_unlink != "" {
+			imgd.filename_is_temporary = true
+			f.name_to_unlink = ""
+		}
+	}
 }
 
 func process_arg(arg input_arg) {
@@ -198,7 +223,7 @@ func process_arg(arg input_arg) {
 	defer f.Release()
 	c, format, err := image.DecodeConfig(f.file)
 	f.Rewind()
-	imgd := image_data{}
+	imgd := image_data{source_name: arg.value}
 	if err != nil {
 		report_error(arg.value, "Unknown image format", err)
 		return

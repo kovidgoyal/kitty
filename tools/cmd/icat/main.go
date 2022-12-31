@@ -64,7 +64,7 @@ func parse_mirror() (err error) {
 }
 
 func parse_background() (err error) {
-	if opts.Background == "" {
+	if opts.Background == "" || opts.Background == "none" {
 		return nil
 	}
 	col, err := style.ParseColor(opts.Background)
@@ -219,8 +219,11 @@ func on_query_finished() (err error) {
 		default:
 			print_error("stream")
 		}
-		lp.Quit(0)
+		quit_loop()
 		return
+	}
+	if num_of_items <= 0 {
+		quit_loop()
 	}
 	return
 }
@@ -274,7 +277,34 @@ func on_finalize() string {
 	return ""
 }
 
+var errors_occurred bool = false
+
+func quit_loop() {
+	if errors_occurred {
+		lp.Quit(1)
+	} else {
+		lp.Quit(0)
+	}
+}
+
 func on_wakeup() error {
+	have_more := true
+	for have_more {
+		select {
+		case imgd := <-output_channel:
+			num_of_items--
+			if imgd.err != nil {
+				print_error("Failed to process \x1b[31m%s\x1b[39m: %v\r\n", imgd.source_name, imgd.err)
+				continue
+			}
+			lp.QueueWriteString("Processed " + imgd.source_name + "\r\n")
+		default:
+			have_more = false
+		}
+	}
+	if num_of_items <= 0 && !query_in_flight {
+		quit_loop()
+	}
 	return nil
 }
 

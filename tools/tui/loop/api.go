@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"kitty/tools/tty"
+	"strings"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -169,6 +170,16 @@ func (self *Loop) KillIfSignalled() {
 	if self.death_signal != SIGNULL {
 		kill_self(self.death_signal)
 	}
+}
+
+func (self *Loop) Println(args ...any) {
+	self.QueueWriteString(fmt.Sprint(args...))
+	self.QueueWriteString("\r\n")
+}
+
+func (self *Loop) Printf(format string, args ...any) {
+	format = strings.ReplaceAll(format, "\n", "\r\n")
+	self.QueueWriteString(fmt.Sprintf(format, args...))
 }
 
 func (self *Loop) DebugPrintln(args ...any) {
