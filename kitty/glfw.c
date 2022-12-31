@@ -1257,32 +1257,6 @@ glfw_get_key_name(PyObject UNUSED *self, PyObject *args) {
 }
 
 
-bool
-is_modifier_key(const uint32_t key) {
-    START_ALLOW_CASE_RANGE
-    switch (key) {
-        case GLFW_FKEY_LEFT_SHIFT ... GLFW_FKEY_ISO_LEVEL5_SHIFT:
-        case GLFW_FKEY_CAPS_LOCK:
-        case GLFW_FKEY_SCROLL_LOCK:
-        case GLFW_FKEY_NUM_LOCK:
-            return true;
-        default:
-            return false;
-    }
-    END_ALLOW_CASE_RANGE
-}
-
-
-static PyObject*
-glfw_is_modifier_key(PyObject UNUSED *self, PyObject *args) {
-  uint32_t key;
-  if (!PyArg_ParseTuple(args, "I", &key)) return NULL;
-  PyObject *ans = is_modifier_key(key) ? Py_True : Py_False;
-  Py_INCREF(ans);
-  return ans;
-}
-
-
 static PyObject*
 glfw_window_hint(PyObject UNUSED *self, PyObject *args) {
     int key, val;
@@ -1789,7 +1763,6 @@ static PyMethodDef module_methods[] = {
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""},
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""},
     {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""},
-    METHODB(glfw_is_modifier_key, METH_VARARGS),
     {"glfw_primary_monitor_size", (PyCFunction)primary_monitor_size, METH_NOARGS, ""},
     {"glfw_primary_monitor_content_scale", (PyCFunction)primary_monitor_content_scale, METH_NOARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */

@@ -18,6 +18,5 @@
 int
 encode_glfw_key_event(const GLFWkeyevent *e, const bool cursor_key_mode, const unsigned flags, char *output);
 
-// Defined in glfw.c
-extern bool
+bool
 is_modifier_key(const uint32_t key);

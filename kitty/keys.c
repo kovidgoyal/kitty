@@ -30,6 +30,21 @@ new(PyTypeObject *type UNUSED, PyObject *args, PyObject *kw) {
     return convert_glfw_key_event_to_python(&ev);
 }
 
+bool
+is_modifier_key(const uint32_t key) {
+    START_ALLOW_CASE_RANGE
+    switch (key) {
+        case GLFW_FKEY_LEFT_SHIFT ... GLFW_FKEY_ISO_LEVEL5_SHIFT:
+        case GLFW_FKEY_CAPS_LOCK:
+        case GLFW_FKEY_SCROLL_LOCK:
+        case GLFW_FKEY_NUM_LOCK:
+            return true;
+        default:
+            return false;
+    }
+    END_ALLOW_CASE_RANGE
+}
+
 static void
 dealloc(PyKeyEvent* self) {
     Py_CLEAR(self->key); Py_CLEAR(self->shifted_key); Py_CLEAR(self->alternate_key);
@@ -164,22 +179,20 @@ on_key_input(GLFWkeyevent *ev) {
             debug("invalid state, ignoring\n");
             return;
     }
-    PyObject *ke = NULL;
-#define create_key_event() { ke = convert_glfw_key_event_to_python(ev); if (!ke) { PyErr_Print(); return; } }
+    bool dispatch_ok = true, consumed = false;
+#define dispatch_key_event(name) { \
+    PyObject *ke = NULL, *ret = NULL; \
+    ke = convert_glfw_key_event_to_python(ev); if (!ke) { PyErr_Print(); return; }; \
+    ret = PyObject_CallMethod(global_state.boss, #name, "O", ke); Py_CLEAR(ke); \
+    if (ret == NULL) { PyErr_Print(); dispatch_ok = false; } \
+    else { consumed = ret == Py_True; Py_CLEAR(ret); } \
+    w = window_for_window_id(active_window_id); \
+}
     if (global_state.in_sequence_mode) {
         debug("in sequence mode, handling as a potential shortcut\n");
-        create_key_event();
-        PyObject *ret = PyObject_CallMethod(
-            global_state.boss, "process_sequence", "O", ke);
-        Py_CLEAR(ke);
-        // the shortcut could have created a new window or closed the
-        // window, rendering the pointer no longer valid
-        w = window_for_window_id(active_window_id);
-        if (ret == NULL) { PyErr_Print(); }
-        else {
-          bool consumed = ret == Py_True;
-          Py_DECREF(ret);
-          if (consumed && action != GLFW_RELEASE && w) {
+        dispatch_key_event(process_sequence);
+        if (dispatch_ok) {
+          if (consumed && action != GLFW_RELEASE && w && !is_modifier_key(key)) {
             w->last_special_key_pressed = key;
           }
         }
@@ -187,18 +200,9 @@ on_key_input(GLFWkeyevent *ev) {
     }
 
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-        create_key_event();
         w->last_special_key_pressed = 0;
-        PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_possible_special_key", "O", ke);
-        Py_CLEAR(ke);
-        bool consumed = false;
-        // the shortcut could have created a new window or closed the
-        // window, rendering the pointer no longer valid
-        w = window_for_window_id(active_window_id);
-        if (ret == NULL) { PyErr_Print(); }
-        else {
-            consumed = ret == Py_True;
-            Py_DECREF(ret);
+        dispatch_key_event(dispatch_possible_special_key);
+        if (dispatch_ok) {
             if (consumed) {
                 debug("handled as shortcut\n");
                 if (w) w->last_special_key_pressed = key;
@@ -211,7 +215,7 @@ on_key_input(GLFWkeyevent *ev) {
         debug("ignoring release event for previous press that was handled as shortcut\n");
         return;
     }
-#undef create_key_event
+#undef dispatch_key_event
     if (action == GLFW_REPEAT && !screen->modes.mDECARM) {
         debug("discarding repeat key event as DECARM is off\n");
         return;
@@ -293,9 +297,18 @@ pyencode_key_for_tty(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     return PyUnicode_FromStringAndSize(output, MAX(0, num));
 }
 
+static PyObject*
+pyis_modifier_key(PyObject *self UNUSED, PyObject *a) {
+    unsigned long key = PyLong_AsUnsignedLong(a);
+    if (PyErr_Occurred()) return NULL;
+    if (is_modifier_key(key)) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
+}
+
 static PyMethodDef module_methods[] = {
     M(key_for_native_key_name, METH_VARARGS),
     M(encode_key_for_tty, METH_VARARGS | METH_KEYWORDS),
+    M(is_modifier_key, METH_O),
     {0}
 };
 
