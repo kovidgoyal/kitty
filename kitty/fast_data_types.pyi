@@ -313,6 +313,10 @@ def glfw_get_key_name(key: int, native_key: int) -> Optional[str]:
     pass
 
 
+def glfw_is_modifier_key(key: int) -> bool:
+    pass
+
+
 StartupCtx = NewType('StartupCtx', int)
 Display = NewType('Display', int)
 
