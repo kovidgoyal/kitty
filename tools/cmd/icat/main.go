@@ -131,6 +131,8 @@ func print_error(format string, args ...any) {
 		fmt.Fprintf(os.Stderr, format, args...)
 		fmt.Fprintln(os.Stderr)
 	} else {
+		lp.QueueWriteString("\r")
+		lp.ClearToEndOfLine()
 		lp.QueueWriteString(fmt.Sprintf(format, args...))
 		lp.QueueWriteString("\r\n")
 	}
@@ -304,6 +306,21 @@ func on_wakeup() error {
 	}
 	if num_of_items <= 0 && !query_in_flight {
 		quit_loop()
+	}
+	return nil
+}
+
+func on_key_event(event *loop.KeyEvent) error {
+	if event.MatchesPressOrRepeat("ctrl+c") {
+		event.Handled = true
+		if query_in_flight {
+			print_error("Waiting for response from terminal, aborting now could lead to corruption")
+			return nil
+		}
+		return fmt.Errorf("Aborted by user")
+	}
+	if event.MatchesPressOrRepeat("ctrl+z") {
+		event.Handled = true
 	}
 	return nil
 }
