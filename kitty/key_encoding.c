@@ -31,21 +31,6 @@ typedef struct {
     KeyAction action;
 } EncodingData;
 
-bool
-is_modifier_key(const uint32_t key) {
-    START_ALLOW_CASE_RANGE
-    switch (key) {
-        case GLFW_FKEY_LEFT_SHIFT ... GLFW_FKEY_ISO_LEVEL5_SHIFT:
-        case GLFW_FKEY_CAPS_LOCK:
-        case GLFW_FKEY_SCROLL_LOCK:
-        case GLFW_FKEY_NUM_LOCK:
-            return true;
-        default:
-            return false;
-    }
-    END_ALLOW_CASE_RANGE
-}
-
 static void
 convert_glfw_mods(int mods, KeyEvent *ev, const unsigned key_encoding_flags) {
     if (!key_encoding_flags) mods &= ~GLFW_LOCK_MASK;

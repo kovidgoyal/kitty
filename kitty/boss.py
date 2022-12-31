@@ -33,14 +33,14 @@ from .constants import (
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
-    GLFW_MOD_SUPER, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, IMPERATIVE_CLOSE_REQUESTED,
+    GLFW_MOD_SUPER, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, GLFW_RELEASE, IMPERATIVE_CLOSE_REQUESTED,
     NO_CLOSE_REQUESTED, ChildMonitor, Color, EllipticCurveKey, KeyEvent, SingleKey,
     add_timer, apply_options_update, background_opacity_of, change_background_opacity,
     change_os_window_state, cocoa_hide_app, cocoa_hide_other_apps,
     cocoa_minimize_os_window, cocoa_set_menubar_title, create_os_window,
     current_application_quit_request, current_focused_os_window_id, current_os_window,
     destroy_global_data, focus_os_window, get_boss, get_options, get_os_window_size,
-    global_font_size, last_focused_os_window_id, mark_os_window_for_close,
+    glfw_is_modifier_key, global_font_size, last_focused_os_window_id, mark_os_window_for_close,
     os_window_font_size, patch_global_colors, redirect_mouse_handling, ring_bell,
     run_with_activation_token, safe_pipe, send_data_to_peer,
     set_application_quit_request, set_background_image, set_boss, set_in_sequence_mode,
@@ -254,6 +254,8 @@ class Boss:
         self.current_visual_select: Optional[VisualSelect] = None
         self.startup_cursor_text_color = opts.cursor_text_color
         self.pending_sequences: Optional[SubSequenceMap] = None
+        # A list of events received so far that are potentially part of a sequence keybinding.
+        self.current_sequence: List[KeyEvent] = []
         self.default_pending_action: str = ''
         self.cached_values = cached_values
         self.os_window_map: Dict[int, TabManager] = {}
@@ -1168,6 +1170,7 @@ class Boss:
             sequences = get_shortcut(get_options().sequence_map, ev)
             if sequences and not isinstance(sequences, str):
                 self.set_pending_sequences(sequences)
+                self.current_sequence = [ev]
                 return True
             if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
@@ -1177,14 +1180,23 @@ class Boss:
 
     def clear_pending_sequences(self) -> None:
         self.pending_sequences = None
+        self.current_sequence = []
         self.default_pending_action = ''
         set_in_sequence_mode(False)
 
-    def process_sequence(self, ev: KeyEvent) -> None:
+    def process_sequence(self, ev: KeyEvent) -> bool:
+        # Process an event as part of a sequence. Returns whether the key
+        # is consumed as part of a kitty sequence keybinding.
         if not self.pending_sequences:
             set_in_sequence_mode(False)
-            return
+            return False
 
+        if len(self.current_sequence):
+            self.current_sequence.append(ev)
+        if ev.action == GLFW_RELEASE or glfw_is_modifier_key(ev.key):
+            return True
+        # For a press/repeat event that's not a modifier, try matching with
+        # kitty bindings:
         remaining = {}
         matched_action = None
         for seq, key_action in self.pending_sequences.items():
@@ -1197,11 +1209,20 @@ class Boss:
 
         if remaining:
             self.pending_sequences = remaining
+            return True
         else:
             matched_action = matched_action or self.default_pending_action
-            self.clear_pending_sequences()
-            if matched_action is not None:
+            if matched_action is not None and matched_action != '':
+                self.clear_pending_sequences()
                 self.combine(matched_action)
+                return True
+            else:
+                w = self.active_window
+                if w is not None:
+                    for ev in self.current_sequence:
+                        w.write_to_child(w.encoded_key(ev))
+                self.clear_pending_sequences()
+                return False
 
     def cancel_current_visual_select(self) -> None:
         if self.current_visual_select:
