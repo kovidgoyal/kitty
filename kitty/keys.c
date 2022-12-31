@@ -172,6 +172,9 @@ on_key_input(GLFWkeyevent *ev) {
         PyObject *ret = PyObject_CallMethod(
             global_state.boss, "process_sequence", "O", ke);
         Py_CLEAR(ke);
+        // the shortcut could have created a new window or closed the
+        // window, rendering the pointer no longer valid
+        w = window_for_window_id(active_window_id);
         if (ret == NULL) { PyErr_Print(); }
         else {
           bool consumed = ret == Py_True;
