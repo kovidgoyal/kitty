@@ -426,3 +426,14 @@ def decode_key_event_as_window_system_key(text: str) -> Optional[WindowSystemKey
     except Exception:
         return None
     return k.as_window_system_event()
+
+
+# The same as `bool is_modifier_key(key)` in key_encoding.c
+def is_modifier_key(key: int) -> bool:
+    if defines.GLFW_FKEY_LEFT_SHIFT <= key <= defines.GLFW_FKEY_ISO_LEVEL5_SHIFT:
+        return True
+    if key == defines.GLFW_FKEY_CAPS_LOCK or \
+            key == defines.GLFW_FKEY_SCROLL_LOCK or \
+            key == defines.GLFW_FKEY_NUM_LOCK:
+        return True
+    return False

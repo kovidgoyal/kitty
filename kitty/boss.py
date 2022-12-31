@@ -47,7 +47,7 @@ from .fast_data_types import (
     set_options, set_os_window_size, set_os_window_title, thread_write,
     toggle_fullscreen, toggle_maximized, toggle_secure_input,
 )
-from .key_encoding import get_name_to_functional_number_map
+from .key_encoding import get_name_to_functional_number_map, is_modifier_key
 from .keys import get_shortcut, shortcut_matches
 from .layout.base import set_layout_options
 from .notify import notification_activated
@@ -1193,9 +1193,10 @@ class Boss:
 
         if len(self.current_sequence):
             self.current_sequence.append(ev)
-        if ev.action == GLFW_RELEASE:
+        if ev.action == GLFW_RELEASE or is_modifier_key(ev.key):
             return True
-        # For a press/repeat event, try matching with kitty bindings:
+        # For a press/repeat event that's not a modifier, try matching with
+        # kitty bindings:
         remaining = {}
         matched_action = None
         for seq, key_action in self.pending_sequences.items():
