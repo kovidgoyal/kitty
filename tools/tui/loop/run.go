@@ -325,9 +325,12 @@ func (self *Loop) run() (err error) {
 			if err != nil {
 				return err
 			}
-			timeout := self.timers[0].deadline.Sub(now)
-			if timeout < 0 {
-				timeout = 0
+			var timeout time.Duration
+			if len(self.timers) > 0 {
+				timeout = self.timers[0].deadline.Sub(now)
+				if timeout < 0 {
+					timeout = 0
+				}
 			}
 			timeout_chan = time.After(timeout)
 		}
