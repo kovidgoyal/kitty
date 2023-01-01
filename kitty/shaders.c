@@ -960,7 +960,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float
     }
 
     if (window && screen->display_window_char) draw_window_number(os_window, screen, &crd, window);
-    if (OPT(show_hyperlink_targets) && window && screen->current_hyperlink_under_mouse.id) draw_hyperlink_target(os_window, screen, &crd, window);
+    if (OPT(show_hyperlink_targets) && window && screen->current_hyperlink_under_mouse.id && !is_mouse_hidden(os_window)) draw_hyperlink_target(os_window, screen, &crd, window);
 }
 // }}}
 
