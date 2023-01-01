@@ -547,7 +547,6 @@ func (self *GraphicsCommand) WriteWithPayloadTo(o io.StringWriter, payload []byt
 		gc.SetCompression(GRT_compression_zlib)
 		payload = compressed
 	}
-	gc.SetDataSize(uint64(len(payload)))
 	data := base64.StdEncoding.EncodeToString(payload)
 	for len(data) > 0 && err == nil {
 		chunk := data

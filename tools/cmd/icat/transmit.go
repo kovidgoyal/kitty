@@ -17,9 +17,9 @@ import (
 
 var _ = fmt.Print
 
-func gc_for_image(imgd *image_data, data_size, frame_num int, frame *image_frame) *graphics.GraphicsCommand {
+func gc_for_image(imgd *image_data, frame_num int, frame *image_frame) *graphics.GraphicsCommand {
 	gc := graphics.GraphicsCommand{}
-	gc.SetDataSize(uint64(data_size)).SetAction(graphics.GRT_action_transmit_and_display)
+	gc.SetAction(graphics.GRT_action_transmit_and_display)
 	gc.SetDataWidth(uint64(frame.width)).SetDataHeight(uint64(frame.height))
 	gc.SetQuiet(graphics.GRT_quiet_silent)
 	if z_index != 0 {
@@ -41,7 +41,6 @@ func gc_for_image(imgd *image_data, data_size, frame_num int, frame *image_frame
 }
 
 func transmit_shm(imgd *image_data, frame_num int, frame *image_frame) (err error) {
-	var data_size int
 	var mmap shm.MMap
 	if frame.in_memory_bytes == nil {
 		f, err := os.Open(frame.filename)
@@ -68,16 +67,14 @@ func transmit_shm(imgd *image_data, frame_num int, frame *image_frame) (err erro
 				return fmt.Errorf("Failed to read data from image output data file: %w", err)
 			}
 		}
-		data_size = len(mmap.Slice()) - len(dest)
 	} else {
 		mmap, err = shm.CreateTemp("icat-*", uint64(len(frame.in_memory_bytes)))
 		if err != nil {
 			return fmt.Errorf("Failed to create a SHM file for transmission: %w", err)
 		}
 		defer mmap.Close()
-		data_size = copy(mmap.Slice(), frame.in_memory_bytes)
 	}
-	gc := gc_for_image(imgd, data_size, frame_num, frame)
+	gc := gc_for_image(imgd, frame_num, frame)
 	gc.SetTransmission(graphics.GRT_transmission_sharedmem)
 	gc.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(mmap.Name()))
 
@@ -85,7 +82,6 @@ func transmit_shm(imgd *image_data, frame_num int, frame *image_frame) (err erro
 }
 
 func transmit_file(imgd *image_data, frame_num int, frame *image_frame) (err error) {
-	var data_size int
 	is_temp := false
 	fname := ""
 	if frame.in_memory_bytes == nil {
@@ -95,13 +91,7 @@ func transmit_file(imgd *image_data, frame_num int, frame *image_frame) (err err
 			return fmt.Errorf("Failed to convert image data output file: %s to absolute path with error: %w", frame.filename, err)
 		}
 		frame.filename = "" // so it isnt deleted in cleanup
-		s, err := os.Stat(fname)
-		if err != nil {
-			return fmt.Errorf("Failed to stat() image data output file: %s with error: %w", fname, err)
-		}
-		data_size = int(s.Size())
 	} else {
-		data_size = len(frame.in_memory_bytes)
 		f, err := graphics.CreateTempInRAM()
 		if err != nil {
 			return fmt.Errorf("Failed to create a temp file for image data transmission: %w", err)
@@ -114,7 +104,7 @@ func transmit_file(imgd *image_data, frame_num int, frame *image_frame) (err err
 		is_temp = true
 		fname = f.Name()
 	}
-	gc := gc_for_image(imgd, data_size, frame_num, frame)
+	gc := gc_for_image(imgd, frame_num, frame)
 	if is_temp {
 		gc.SetTransmission(graphics.GRT_transmission_tempfile)
 	} else {
@@ -137,7 +127,8 @@ func transmit_stream(imgd *image_data, frame_num int, frame *image_frame) (err e
 			return fmt.Errorf("Failed to read data from image output data file: %w", err)
 		}
 	}
-	gc := gc_for_image(imgd, len(data), frame_num, frame)
+	gc := gc_for_image(imgd, frame_num, frame)
+	gc.SetDataSize(uint64(len(data))) // needed in case compression is used
 	gc.WriteWithPayloadToLoop(lp, data)
 	return nil
 }
