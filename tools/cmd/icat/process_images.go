@@ -16,6 +16,7 @@ import (
 
 	"kitty/tools/tty"
 	"kitty/tools/utils"
+	"kitty/tools/utils/shm"
 )
 
 var _ = fmt.Print
@@ -137,6 +138,7 @@ func (self *opened_input) Release() {
 
 type image_frame struct {
 	filename              string
+	shm                   shm.MMap
 	in_memory_bytes       []byte
 	filename_is_temporary bool
 	width, height         int
@@ -156,15 +158,16 @@ type image_data struct {
 }
 
 func set_basic_metadata(imgd *image_data) {
-	imgd.frames = make([]*image_frame, 0, 32)
+	if imgd.frames == nil {
+		imgd.frames = make([]*image_frame, 0, 32)
+	}
 	imgd.available_width = int(screen_size.WidthPx)
 	imgd.available_height = 10 * imgd.canvas_height
 	if place != nil {
 		imgd.available_width = place.width * int(screen_size.CellWidth)
 		imgd.available_height = place.height * int(screen_size.CellHeight)
 	}
-	imgd.needs_scaling = imgd.canvas_width > imgd.available_width || imgd.canvas_height > imgd.available_height
-	imgd.needs_scaling = imgd.needs_scaling || opts.ScaleUp
+	imgd.needs_scaling = imgd.canvas_width > imgd.available_width || imgd.canvas_height > imgd.available_height || opts.ScaleUp
 	imgd.needs_conversion = imgd.needs_scaling || remove_alpha != nil || flip || flop || imgd.format_uppercase != "PNG"
 }
 

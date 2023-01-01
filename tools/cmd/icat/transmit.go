@@ -55,7 +55,6 @@ func transmit_shm(imgd *image_data, frame_num int, frame *image_frame) (err erro
 		if err != nil {
 			return fmt.Errorf("Failed to create a SHM file for transmission: %w", err)
 		}
-		defer mmap.Close()
 		dest := mmap.Slice()
 		for len(dest) > 0 {
 			n, err := f.Read(dest)
@@ -69,18 +68,23 @@ func transmit_shm(imgd *image_data, frame_num int, frame *image_frame) (err erro
 			}
 		}
 	} else {
-		data_size = int64(len(frame.in_memory_bytes))
-		mmap, err = shm.CreateTemp("icat-*", uint64(data_size))
-		if err != nil {
-			return fmt.Errorf("Failed to create a SHM file for transmission: %w", err)
+		if frame.shm == nil {
+			data_size = int64(len(frame.in_memory_bytes))
+			mmap, err = shm.CreateTemp("icat-*", uint64(data_size))
+			if err != nil {
+				return fmt.Errorf("Failed to create a SHM file for transmission: %w", err)
+			}
+			copy(mmap.Slice(), frame.in_memory_bytes)
+		} else {
+			mmap = frame.shm
+			frame.shm = nil
 		}
-		defer mmap.Close()
-		copy(mmap.Slice(), frame.in_memory_bytes)
 	}
 	gc := gc_for_image(imgd, frame_num, frame)
 	gc.SetTransmission(graphics.GRT_transmission_sharedmem)
 	gc.SetDataSize(uint64(data_size))
 	gc.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(mmap.Name()))
+	mmap.Close()
 
 	return nil
 }
@@ -97,18 +101,24 @@ func transmit_file(imgd *image_data, frame_num int, frame *image_frame) (err err
 		}
 		frame.filename = "" // so it isnt deleted in cleanup
 	} else {
-		f, err := graphics.CreateTempInRAM()
-		if err != nil {
-			return fmt.Errorf("Failed to create a temp file for image data transmission: %w", err)
-		}
-		data_size = len(frame.in_memory_bytes)
-		_, err = bytes.NewBuffer(frame.in_memory_bytes).WriteTo(f)
-		f.Close()
-		if err != nil {
-			return fmt.Errorf("Failed to write image data to temp file for transmission: %w", err)
-		}
 		is_temp = true
-		fname = f.Name()
+		if frame.shm != nil && frame.shm.FileSystemName() != "" {
+			fname = frame.shm.FileSystemName()
+			frame.shm.Close()
+			frame.shm = nil
+		} else {
+			f, err := graphics.CreateTempInRAM()
+			if err != nil {
+				return fmt.Errorf("Failed to create a temp file for image data transmission: %w", err)
+			}
+			data_size = len(frame.in_memory_bytes)
+			_, err = bytes.NewBuffer(frame.in_memory_bytes).WriteTo(f)
+			f.Close()
+			if err != nil {
+				return fmt.Errorf("Failed to write image data to temp file for transmission: %w", err)
+			}
+			fname = f.Name()
+		}
 	}
 	gc := gc_for_image(imgd, frame_num, frame)
 	if is_temp {
@@ -147,6 +157,11 @@ func transmit_image(imgd *image_data) {
 			if frame.filename_is_temporary && frame.filename != "" {
 				os.Remove(frame.filename)
 				frame.filename = ""
+			}
+			if frame.shm != nil {
+				frame.shm.Unlink()
+				frame.shm.Close()
+				frame.shm = nil
 			}
 			frame.in_memory_bytes = nil
 		}

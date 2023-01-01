@@ -110,3 +110,27 @@ func Values[M ~map[K]V, K comparable, V any](m M) []V {
 	}
 	return r
 }
+
+func Memset[T any](dest []T, pattern ...T) []T {
+	if len(pattern) == 0 {
+		var zero T
+		switch any(zero).(type) {
+		case byte: // special case this as the compiler can generate efficient code for memset of a byte slice to zero
+			bd := any(dest).([]byte)
+			for i := range bd {
+				bd[i] = 0
+			}
+		default:
+			for i := range dest {
+				dest[i] = zero
+			}
+		}
+		return dest
+	}
+	bp := copy(dest, pattern)
+	for bp < len(dest) {
+		copy(dest[bp:], dest[:bp])
+		bp *= 2
+	}
+	return dest
+}
