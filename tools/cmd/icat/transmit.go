@@ -73,6 +73,7 @@ func transmit_shm(imgd *image_data, frame_num int, frame *image_frame) (err erro
 			return fmt.Errorf("Failed to create a SHM file for transmission: %w", err)
 		}
 		defer mmap.Close()
+		copy(mmap.Slice(), frame.in_memory_bytes)
 	}
 	gc := gc_for_image(imgd, frame_num, frame)
 	gc.SetTransmission(graphics.GRT_transmission_sharedmem)
