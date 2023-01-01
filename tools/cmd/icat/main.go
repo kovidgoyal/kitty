@@ -147,6 +147,22 @@ func on_detect_timeout(timer_id loop.IdType) error {
 
 func on_initialize() (string, error) {
 	var iid uint32
+	sz, err := lp.ScreenSize()
+	if err != nil {
+		return "", fmt.Errorf("Failed to query terminal for screen size with error: %w", err)
+	}
+	if sz.WidthPx == 0 || sz.HeightPx == 0 {
+		return "", fmt.Errorf("Terminal does not support reporting screen sizes in pixels, use a terminal such as kitty, WezTerm, Konsole, etc. that does.")
+	}
+	if opts.Clear {
+		cc := &graphics.GraphicsCommand{}
+		cc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_visible)
+		cc.WriteWithPayloadToLoop(lp, nil)
+	}
+	if opts.TransferMode != "detect" {
+		return "", nil
+	}
+
 	query_in_flight = true
 	lp.AddTimer(time.Duration(opts.DetectionTimeout*float64(time.Second)), false, on_detect_timeout)
 	g := func(t graphics.GRT_t, payload string) uint32 {
@@ -156,13 +172,6 @@ func on_initialize() (string, error) {
 			graphics.GRT_format_rgb).SetDataSize(uint64(len(payload)))
 		g1.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(payload))
 		return iid
-	}
-	sz, err := lp.ScreenSize()
-	if err != nil {
-		return "", fmt.Errorf("Failed to query terminal for screen size with error: %w", err)
-	}
-	if sz.WidthPx == 0 || sz.HeightPx == 0 {
-		return "", fmt.Errorf("Terminal does not support reporting screen sizes via the TIOCGWINSZ ioctl")
 	}
 	keep_going.Store(true)
 	screen_size = sz
@@ -207,11 +216,6 @@ func on_query_finished() (err error) {
 	if transfer_by_stream != supported {
 		return fmt.Errorf("This terminal emulator does not support the graphics protocol, use a terminal emulator such as kitty that does support it")
 	}
-	if opts.Clear {
-		cc := &graphics.GraphicsCommand{}
-		cc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_visible)
-		cc.WriteWithPayloadToLoop(lp, nil)
-	}
 	if opts.DetectSupport {
 		switch {
 		case transfer_by_memory == supported:
@@ -224,10 +228,7 @@ func on_query_finished() (err error) {
 		quit_loop()
 		return
 	}
-	if num_of_items <= 0 {
-		quit_loop()
-	}
-	return
+	return on_wakeup()
 }
 
 func on_query_response(g *graphics.GraphicsCommand) (err error) {
@@ -290,6 +291,9 @@ func quit_loop() {
 }
 
 func on_wakeup() error {
+	if query_in_flight {
+		return nil
+	}
 	have_more := true
 	for have_more {
 		select {
@@ -297,9 +301,9 @@ func on_wakeup() error {
 			num_of_items--
 			if imgd.err != nil {
 				print_error("Failed to process \x1b[31m%s\x1b[39m: %v\r\n", imgd.source_name, imgd.err)
-				continue
+			} else {
+				transmit_image(imgd)
 			}
-			lp.QueueWriteString("Processed " + imgd.source_name + "\r\n")
 		default:
 			have_more = false
 		}

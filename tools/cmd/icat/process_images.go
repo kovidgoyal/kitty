@@ -135,14 +135,19 @@ func (self *opened_input) Release() {
 	}
 }
 
+type image_frame struct {
+	filename              string
+	in_memory_bytes       []byte
+	filename_is_temporary bool
+	width, height         int
+}
+
 type image_data struct {
 	canvas_width, canvas_height       int
 	format_uppercase                  string
 	available_width, available_height int
 	needs_scaling, needs_conversion   bool
-	filename                          string
-	in_memory_bytes                   []byte
-	filename_is_temporary             bool
+	frames                            []image_frame
 
 	// for error reporting
 	err         error
@@ -150,6 +155,7 @@ type image_data struct {
 }
 
 func set_basic_metadata(imgd *image_data) {
+	imgd.frames = make([]image_frame, 0, 32)
 	imgd.available_width = int(screen_size.WidthPx)
 	imgd.available_height = 10 * imgd.canvas_height
 	if place != nil {
@@ -173,12 +179,15 @@ func report_error(source_name, msg string, err error) {
 
 func make_output_from_input(imgd *image_data, f *opened_input) {
 	bb, ok := f.file.(*BytesBuf)
+	frame := &imgd.frames[0]
+	frame.width = imgd.canvas_width
+	frame.height = imgd.canvas_height
 	if ok {
-		imgd.in_memory_bytes = bb.data
+		frame.in_memory_bytes = bb.data
 	} else {
-		imgd.filename = f.file.(*os.File).Name()
+		frame.filename = f.file.(*os.File).Name()
 		if f.name_to_unlink != "" {
-			imgd.filename_is_temporary = true
+			frame.filename_is_temporary = true
 			f.name_to_unlink = ""
 		}
 	}
