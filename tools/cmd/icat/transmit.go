@@ -42,15 +42,16 @@ func gc_for_image(imgd *image_data, frame_num int, frame *image_frame) *graphics
 
 func transmit_shm(imgd *image_data, frame_num int, frame *image_frame) (err error) {
 	var mmap shm.MMap
+	var data_size int64
 	if frame.in_memory_bytes == nil {
 		f, err := os.Open(frame.filename)
 		if err != nil {
 			return fmt.Errorf("Failed to open image data output file: %s with error: %w", frame.filename, err)
 		}
 		defer f.Close()
-		sz, _ := f.Seek(0, io.SeekEnd)
+		data_size, _ = f.Seek(0, io.SeekEnd)
 		f.Seek(0, io.SeekStart)
-		mmap, err = shm.CreateTemp("icat-*", uint64(sz))
+		mmap, err = shm.CreateTemp("icat-*", uint64(data_size))
 		if err != nil {
 			return fmt.Errorf("Failed to create a SHM file for transmission: %w", err)
 		}
@@ -68,7 +69,8 @@ func transmit_shm(imgd *image_data, frame_num int, frame *image_frame) (err erro
 			}
 		}
 	} else {
-		mmap, err = shm.CreateTemp("icat-*", uint64(len(frame.in_memory_bytes)))
+		data_size = int64(len(frame.in_memory_bytes))
+		mmap, err = shm.CreateTemp("icat-*", uint64(data_size))
 		if err != nil {
 			return fmt.Errorf("Failed to create a SHM file for transmission: %w", err)
 		}
@@ -77,6 +79,7 @@ func transmit_shm(imgd *image_data, frame_num int, frame *image_frame) (err erro
 	}
 	gc := gc_for_image(imgd, frame_num, frame)
 	gc.SetTransmission(graphics.GRT_transmission_sharedmem)
+	gc.SetDataSize(uint64(data_size))
 	gc.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(mmap.Name()))
 
 	return nil
@@ -85,6 +88,7 @@ func transmit_shm(imgd *image_data, frame_num int, frame *image_frame) (err erro
 func transmit_file(imgd *image_data, frame_num int, frame *image_frame) (err error) {
 	is_temp := false
 	fname := ""
+	var data_size int
 	if frame.in_memory_bytes == nil {
 		is_temp = frame.filename_is_temporary
 		fname, err = filepath.Abs(frame.filename)
@@ -97,6 +101,7 @@ func transmit_file(imgd *image_data, frame_num int, frame *image_frame) (err err
 		if err != nil {
 			return fmt.Errorf("Failed to create a temp file for image data transmission: %w", err)
 		}
+		data_size = len(frame.in_memory_bytes)
 		_, err = bytes.NewBuffer(frame.in_memory_bytes).WriteTo(f)
 		f.Close()
 		if err != nil {
@@ -110,6 +115,9 @@ func transmit_file(imgd *image_data, frame_num int, frame *image_frame) (err err
 		gc.SetTransmission(graphics.GRT_transmission_tempfile)
 	} else {
 		gc.SetTransmission(graphics.GRT_transmission_file)
+	}
+	if data_size > 0 {
+		gc.SetDataSize(uint64(data_size))
 	}
 	gc.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(fname))
 	return nil
@@ -129,7 +137,6 @@ func transmit_stream(imgd *image_data, frame_num int, frame *image_frame) (err e
 		}
 	}
 	gc := gc_for_image(imgd, frame_num, frame)
-	gc.SetDataSize(uint64(len(data))) // needed in case compression is used
 	gc.WriteWithPayloadToLoop(lp, data)
 	return nil
 }
