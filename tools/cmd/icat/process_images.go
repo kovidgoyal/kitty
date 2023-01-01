@@ -251,7 +251,7 @@ func process_arg(arg input_arg) {
 		send_output(&imgd)
 		return
 	}
-	err = render_image_with_go(imgd, &f)
+	err = render_image_with_go(&imgd, &f)
 	if err != nil {
 		report_error(arg.value, "Could not render image to RGB", err)
 		return
