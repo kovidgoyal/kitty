@@ -14,12 +14,23 @@ import (
 
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"kitty/tools/utils/shm"
 )
 
 var _ = fmt.Print
 
-func MakeTemp() (*os.File, error) {
+func CreateTemp() (*os.File, error) {
 	return os.CreateTemp("", "tty-graphics-protocol-*")
+}
+
+func CreateTempInRAM() (*os.File, error) {
+	if shm.SHM_DIR != "" {
+		f, err := os.CreateTemp(shm.SHM_DIR, "tty-graphics-protocol-*")
+		if err == nil {
+			return f, err
+		}
+	}
+	return CreateTemp()
 }
 
 // Enums {{{
@@ -523,7 +534,7 @@ func (self *GraphicsCommand) AsAPC(payload []byte) string {
 }
 
 func (self *GraphicsCommand) WriteWithPayloadTo(o io.StringWriter, payload []byte) (err error) {
-	const compression_threshold = 1024
+	const compression_threshold = 2048
 	if len(payload) == 0 {
 		return self.serialize_to(o, "")
 	}

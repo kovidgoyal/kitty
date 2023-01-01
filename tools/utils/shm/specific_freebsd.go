@@ -4,3 +4,4 @@ package shm
 
 const SHM_NAME_MAX = 1023
 const SHM_REQUIRED_PREFIX = "/"
+const SHM_DIR = ""

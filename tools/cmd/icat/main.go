@@ -159,11 +159,6 @@ func on_initialize() (string, error) {
 		cc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_visible)
 		cc.WriteWithPayloadToLoop(lp, nil)
 	}
-	if opts.TransferMode != "detect" {
-		return "", nil
-	}
-
-	query_in_flight = true
 	lp.AddTimer(time.Duration(opts.DetectionTimeout*float64(time.Second)), false, on_detect_timeout)
 	g := func(t graphics.GRT_t, payload string) uint32 {
 		iid += 1
@@ -181,9 +176,13 @@ func on_initialize() (string, error) {
 			go run_worker()
 		}
 	}
+	if opts.TransferMode != "detect" {
+		return "", nil
+	}
 
+	query_in_flight = true
 	direct_query_id = g(graphics.GRT_transmission_direct, "123")
-	tf, err := graphics.MakeTemp()
+	tf, err := graphics.CreateTempInRAM()
 	if err == nil {
 		file_query_id = g(graphics.GRT_transmission_tempfile, tf.Name())
 		temp_files_to_delete = append(temp_files_to_delete, tf.Name())
@@ -397,6 +396,10 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		return
 	}
 	if opts.Hold {
+		fmt.Print("\r")
+		if opts.Place != "" {
+			fmt.Println()
+		}
 		tui.HoldTillEnter(false)
 	}
 	return 0, nil

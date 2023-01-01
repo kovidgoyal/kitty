@@ -147,7 +147,8 @@ type image_data struct {
 	format_uppercase                  string
 	available_width, available_height int
 	needs_scaling, needs_conversion   bool
-	frames                            []image_frame
+	frames                            []*image_frame
+	image_number                      uint32
 
 	// for error reporting
 	err         error
@@ -155,7 +156,7 @@ type image_data struct {
 }
 
 func set_basic_metadata(imgd *image_data) {
-	imgd.frames = make([]image_frame, 0, 32)
+	imgd.frames = make([]*image_frame, 0, 32)
 	imgd.available_width = int(screen_size.WidthPx)
 	imgd.available_height = 10 * imgd.canvas_height
 	if place != nil {
@@ -179,7 +180,8 @@ func report_error(source_name, msg string, err error) {
 
 func make_output_from_input(imgd *image_data, f *opened_input) {
 	bb, ok := f.file.(*BytesBuf)
-	frame := &imgd.frames[0]
+	frame := image_frame{}
+	imgd.frames = append(imgd.frames, &frame)
 	frame.width = imgd.canvas_width
 	frame.height = imgd.canvas_height
 	if ok {
