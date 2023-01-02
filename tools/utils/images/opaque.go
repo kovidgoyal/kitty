@@ -33,6 +33,8 @@ func IsOpaque(img image.Image) bool {
 		return img.(*image.Paletted).Opaque()
 	case *image.Uniform:
 		return img.(*image.Uniform).Opaque()
+	case *image.YCbCr:
+		return img.(*image.YCbCr).Opaque()
 	case *NRGB:
 		return img.(*NRGB).Opaque()
 	}

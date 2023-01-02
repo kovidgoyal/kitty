@@ -399,7 +399,7 @@ func (s *scanner_rgb) scan(x1, y1, x2, y2 int, dst []uint8) {
 	}
 }
 
-func paste_nrgb_onto_opaque(background *image.NRGBA, img image.Image, pos image.Point, bgcol *NRGBColor) {
+func paste_nrgb_onto_opaque(background *NRGB, img image.Image, pos image.Point, bgcol *NRGBColor) {
 	bg := NRGBColor{}
 	if bgcol != nil {
 		bg = *bgcol
@@ -407,4 +407,12 @@ func paste_nrgb_onto_opaque(background *image.NRGBA, img image.Image, pos image.
 	}
 	src := newScannerRGB(img, bg)
 	run_paste(src, background, pos, func(dst []byte) {})
+}
+
+func NewNRGB(r image.Rectangle) *NRGB {
+	return &NRGB{
+		Pix:    make([]uint8, 3*r.Dx()*r.Dy()),
+		Stride: 3 * r.Dx(),
+		Rect:   r,
+	}
 }

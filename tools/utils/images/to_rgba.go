@@ -330,7 +330,7 @@ type Scanner interface {
 	bounds() image.Rectangle
 }
 
-func run_paste(src Scanner, background *image.NRGBA, pos image.Point, postprocess func([]byte)) {
+func run_paste(src Scanner, background image.Image, pos image.Point, postprocess func([]byte)) {
 	pos = pos.Sub(background.Bounds().Min)
 	pasteRect := image.Rectangle{Min: pos, Max: pos.Add(src.bounds().Size())}
 	interRect := pasteRect.Intersect(background.Bounds())
@@ -338,15 +338,29 @@ func run_paste(src Scanner, background *image.NRGBA, pos image.Point, postproces
 		return
 	}
 	bytes_per_pixel := src.bytes_per_pixel()
+	var stride int
+	var pix []uint8
+	switch v := background.(type) {
+	case *image.NRGBA:
+		i := background.(*image.NRGBA)
+		stride = i.Stride
+		pix = i.Pix
+	case *NRGB:
+		i := background.(*NRGB)
+		stride = i.Stride
+		pix = i.Pix
+	default:
+		panic(fmt.Sprintf("Unsupported image type: %v", v))
+	}
 	parallel(interRect.Min.Y, interRect.Max.Y, func(ys <-chan int) {
 		for y := range ys {
 			x1 := interRect.Min.X - pasteRect.Min.X
 			x2 := interRect.Max.X - pasteRect.Min.X
 			y1 := y - pasteRect.Min.Y
 			y2 := y1 + 1
-			i1 := y*background.Stride + interRect.Min.X*bytes_per_pixel
+			i1 := y*stride + interRect.Min.X*bytes_per_pixel
 			i2 := i1 + interRect.Dx()*bytes_per_pixel
-			dst := background.Pix[i1:i2]
+			dst := pix[i1:i2]
 			src.scan(x1, y1, x2, y2, dst)
 			postprocess(dst)
 		}
@@ -381,7 +395,7 @@ func Paste(background image.Image, img image.Image, pos image.Point, opaque_bg *
 	case *image.NRGBA:
 		paste_nrgba_onto_opaque(background.(*image.NRGBA), img, pos, opaque_bg)
 	case *NRGB:
-		paste_nrgb_onto_opaque(background.(*image.NRGBA), img, pos, opaque_bg)
+		paste_nrgb_onto_opaque(background.(*NRGB), img, pos, opaque_bg)
 	default:
 		panic("Unsupported background image type")
 	}
