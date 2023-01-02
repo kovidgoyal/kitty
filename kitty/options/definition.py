@@ -820,8 +820,8 @@ agr('window', 'Window layout')
 opt('remember_window_size', 'yes',
     option_type='to_bool',
     long_text='''
-If enabled, the window size will be remembered so that new instances of kitty
-will have the same size as the previous instance. If disabled, the window will
+If enabled, the :term:`OS Window <os_window>` size will be remembered so that new instances of kitty
+will have the same size as the previous instance. If disabled, the :term:`OS Window <os_window>` will
 initially have size configured by initial_window_width/height, in pixels. You
 can use a suffix of "c" on the width/height values to have them interpreted as
 number of cells instead of pixels.
