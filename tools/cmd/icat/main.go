@@ -5,7 +5,6 @@ package icat
 import (
 	"errors"
 	"fmt"
-	"image/color"
 	"os"
 	"runtime"
 	"strconv"
@@ -19,6 +18,7 @@ import (
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"kitty/tools/utils/images"
 	"kitty/tools/utils/shm"
 	"kitty/tools/utils/style"
 )
@@ -33,7 +33,7 @@ var opts *Options
 var lp *loop.Loop
 var place *Place
 var z_index int32
-var remove_alpha *color.NRGBA
+var remove_alpha *images.NRGBColor
 var flip, flop bool
 
 type transfer_mode int
@@ -72,7 +72,7 @@ func parse_background() (err error) {
 	if err != nil {
 		return fmt.Errorf("Invalid value for --background: %w", err)
 	}
-	remove_alpha = &color.NRGBA{col.Red, col.Green, col.Blue, 255}
+	remove_alpha = &images.NRGBColor{col.Red, col.Green, col.Blue}
 	return
 }
 
