@@ -5,7 +5,9 @@ package icat
 import (
 	"fmt"
 	"image"
+	"image/gif"
 	"kitty/tools/tui/graphics"
+	"kitty/tools/utils"
 	"kitty/tools/utils/images"
 	"kitty/tools/utils/shm"
 
@@ -14,7 +16,7 @@ import (
 
 var _ = fmt.Print
 
-func add_frame(imgd *image_data, img image.Image, is_opaque bool) {
+func add_frame(imgd *image_data, img image.Image, is_opaque bool) *image_frame {
 	if flip {
 		img = imaging.FlipV(img)
 	}
@@ -22,7 +24,7 @@ func add_frame(imgd *image_data, img image.Image, is_opaque bool) {
 		img = imaging.FlipH(img)
 	}
 	b := img.Bounds()
-	f := image_frame{width: b.Dx(), height: b.Dy()}
+	f := image_frame{width: b.Dx(), height: b.Dy(), number: len(imgd.frames), left: b.Min.X, top: b.Min.Y}
 	dest_rect := image.Rect(0, 0, f.width, f.height)
 	var final_img image.Image
 
@@ -53,6 +55,7 @@ func add_frame(imgd *image_data, img image.Image, is_opaque bool) {
 	}
 	images.PasteCenter(final_img, img, remove_alpha)
 	imgd.frames = append(imgd.frames, &f)
+	return &f
 }
 
 func load_one_frame_image(imgd *image_data, src *opened_input) (img image.Image, is_opaque bool, err error) {
@@ -78,10 +81,49 @@ func load_one_frame_image(imgd *image_data, src *opened_input) (img image.Image,
 	return
 }
 
+func add_gif_frames(imgd *image_data, gf *gif.GIF) error {
+	max_gap := utils.Max(0, gf.Delay...)
+	min_gap := 0
+	if max_gap <= 0 {
+		min_gap = 1
+	}
+
+	min_gap *= 1
+	anchor_frame := 1
+	for i, img := range gf.Image {
+		frame := add_frame(imgd, img, img.Opaque())
+		frame.delay_ms = utils.Max(min_gap, gf.Delay[i]) * 10
+		if frame.delay_ms == 0 {
+			frame.delay_ms = -1
+		}
+		if i > 0 {
+			switch gf.Disposal[i] {
+			case gif.DisposalNone:
+				frame.compose_onto = frame.number - 1
+				anchor_frame = frame.number
+			case gif.DisposalBackground:
+				// see https://github.com/golang/go/issues/20694
+				anchor_frame = frame.number
+			case gif.DisposalPrevious:
+				frame.compose_onto = anchor_frame
+			}
+		}
+	}
+	return nil
+}
+
 func render_image_with_go(imgd *image_data, src *opened_input) (err error) {
-	switch imgd.format_uppercase {
-	case "GIF":
-		return fmt.Errorf("TODO: implement GIF decoding")
+	switch {
+	case imgd.format_uppercase == "GIF" && opts.Loop != 0:
+		gif_frames, err := gif.DecodeAll(src.file)
+		src.Rewind()
+		if err != nil {
+			return fmt.Errorf("Failed to decode GIF file with error: %w", err)
+		}
+		err = add_gif_frames(imgd, gif_frames)
+		if err != nil {
+			return err
+		}
 	default:
 		img, is_opaque, err := load_one_frame_image(imgd, src)
 		if err != nil {

@@ -21,19 +21,31 @@ var _ = fmt.Print
 
 func gc_for_image(imgd *image_data, frame_num int, frame *image_frame) *graphics.GraphicsCommand {
 	gc := graphics.GraphicsCommand{}
-	gc.SetAction(graphics.GRT_action_transmit_and_display)
 	gc.SetDataWidth(uint64(frame.width)).SetDataHeight(uint64(frame.height))
 	gc.SetQuiet(graphics.GRT_quiet_silent)
-	if frame_num == 0 && imgd.cell_x_offset > 0 {
-		gc.SetXOffset(uint64(imgd.cell_x_offset))
-	}
-	if z_index != 0 {
-		gc.SetZIndex(z_index)
-	}
+	gc.SetFormat(frame.transmission_format)
 	if imgd.image_number != 0 {
 		gc.SetImageNumber(imgd.image_number)
 	}
-	gc.SetFormat(frame.transmission_format)
+	if frame_num == 0 {
+		gc.SetAction(graphics.GRT_action_transmit_and_display)
+		if imgd.cell_x_offset > 0 {
+			gc.SetXOffset(uint64(imgd.cell_x_offset))
+		}
+		if z_index != 0 {
+			gc.SetZIndex(z_index)
+		}
+	} else {
+		gc.SetAction(graphics.GRT_action_frame)
+		gc.SetGap(int32(frame.delay_ms))
+		if frame.compose_onto > 0 {
+			gc.SetOverlaidFrame(uint64(frame.compose_onto))
+		} else {
+			bg := (uint32(frame.disposal_background.R) << 24) | (uint32(frame.disposal_background.G) << 16) | (uint32(frame.disposal_background.B) << 8) | uint32(frame.disposal_background.A)
+			gc.SetBackgroundColor(bg)
+		}
+		gc.SetLeftEdge(uint64(frame.left)).SetTopEdge(uint64(frame.top))
+	}
 	return &gc
 }
 
@@ -222,7 +234,9 @@ func transmit_image(imgd *image_data) {
 		f = transmit_stream
 	}
 	if len(imgd.frames) > 1 {
-		imgd.image_number = rand.Uint32()
+		for imgd.image_number == 0 {
+			imgd.image_number = rand.Uint32()
+		}
 	}
 	place_cursor(imgd)
 	lp.QueueWriteString("\r")
@@ -232,11 +246,38 @@ func transmit_image(imgd *image_data) {
 	if imgd.move_to.x > 0 {
 		lp.MoveCursorTo(imgd.move_to.x, imgd.move_to.y)
 	}
+	frame_control_cmd := graphics.GraphicsCommand{}
+	frame_control_cmd.SetAction(graphics.GRT_action_animate).SetImageNumber(imgd.image_number)
+
 	for frame_num, frame := range imgd.frames {
 		err := f(imgd, frame_num, frame)
 		if err != nil {
-			print_error("Failed to transmit %s with error: %v", imgd.source_name, err)
+			print_error("\rFailed to transmit %s with error: %v", imgd.source_name, err)
+			return
 		}
+		switch frame_num {
+		case 0:
+			// set gap for the first frame and number of loops for the animation
+			c := frame_control_cmd
+			c.SetTargetFrame(uint64(frame.number))
+			c.SetGap(int32(frame.delay_ms))
+			switch {
+			case opts.Loop < 0:
+				c.SetNumberOfLoops(1)
+			case opts.Loop > 0:
+				c.SetNumberOfLoops(uint64(opts.Loop) + 1)
+			}
+			c.WriteWithPayloadToLoop(lp, nil)
+		case 1:
+			c := frame_control_cmd
+			c.SetAnimationControl(2) // set animation to loading mode
+			c.WriteWithPayloadToLoop(lp, nil)
+		}
+	}
+	if len(imgd.frames) > 1 {
+		c := frame_control_cmd
+		c.SetAnimationControl(3) // set animation to normal mode
+		c.WriteWithPayloadToLoop(lp, nil)
 	}
 	if imgd.move_to.x == 0 {
 		lp.Println() // ensure cursor is on new line

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"image/color"
 	"io"
 	"io/fs"
 	"net/http"
@@ -138,12 +139,16 @@ func (self *opened_input) Release() {
 }
 
 type image_frame struct {
-	filename              string
-	shm                   shm.MMap
-	in_memory_bytes       []byte
-	filename_is_temporary bool
-	width, height         int
-	transmission_format   graphics.GRT_f
+	filename                 string
+	shm                      shm.MMap
+	in_memory_bytes          []byte
+	filename_is_temporary    bool
+	width, height, left, top int
+	transmission_format      graphics.GRT_f
+	compose_onto             int
+	number                   int
+	disposal_background      color.NRGBA
+	delay_ms                 int
 }
 
 type image_data struct {
