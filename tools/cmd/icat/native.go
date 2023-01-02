@@ -5,7 +5,7 @@ package icat
 import (
 	"fmt"
 	"image"
-	"kitty/tools/utils"
+	"kitty/tools/utils/images"
 	"kitty/tools/utils/shm"
 
 	"github.com/disintegration/imaging"
@@ -22,29 +22,20 @@ func add_frame(imgd *image_data, img image.Image) {
 	}
 	b := img.Bounds()
 	f := image_frame{width: b.Dx(), height: b.Dy()}
-	has_non_black_background := remove_alpha != nil && (remove_alpha.R != 0 || remove_alpha.G != 0 || remove_alpha.B != 0)
+	dest_rect := image.Rect(0, 0, f.width, f.height)
 	var rgba *image.NRGBA
 	m, err := shm.CreateTemp("icat-*", uint64(f.width*f.height*4))
 	if err != nil {
-		if has_non_black_background {
-			rgba = imaging.New(b.Dx(), b.Dy(), remove_alpha)
-		} else {
-			rgba = image.NewNRGBA(image.Rect(0, 0, f.width, f.height))
-		}
+		rgba = image.NewNRGBA(dest_rect)
 	} else {
 		rgba = &image.NRGBA{
 			Pix:    m.Slice(),
 			Stride: 4 * f.width,
-			Rect:   image.Rect(0, 0, f.width, f.height),
+			Rect:   dest_rect,
 		}
 		f.shm = m
-		if has_non_black_background {
-			utils.Memset(m.Slice(), remove_alpha.R, remove_alpha.G, remove_alpha.B, remove_alpha.A)
-		} else {
-			utils.Memset(m.Slice())
-		}
 	}
-	imaging.PasteCenter(rgba, img)
+	images.PasteCenter(rgba, img, remove_alpha)
 	imgd.format_uppercase = "RGBA"
 	f.in_memory_bytes = rgba.Pix
 	imgd.frames = append(imgd.frames, &f)
