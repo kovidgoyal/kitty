@@ -5,6 +5,7 @@ package icat
 import (
 	"fmt"
 	"image"
+	"kitty/tools/tui/graphics"
 	"kitty/tools/utils/images"
 	"kitty/tools/utils/shm"
 
@@ -34,7 +35,7 @@ func add_frame(imgd *image_data, img image.Image, is_opaque bool) {
 			rgb = &images.NRGB{Pix: m.Slice(), Stride: 3 * f.width, Rect: dest_rect}
 			f.shm = m
 		}
-		f.transmission_format_uppercase = "RGB"
+		f.transmission_format = graphics.GRT_format_rgb
 		f.in_memory_bytes = rgb.Pix
 		final_img = rgb
 	} else {
@@ -46,7 +47,7 @@ func add_frame(imgd *image_data, img image.Image, is_opaque bool) {
 			rgba = &image.NRGBA{Pix: m.Slice(), Stride: 4 * f.width, Rect: dest_rect}
 			f.shm = m
 		}
-		f.transmission_format_uppercase = "RGBA"
+		f.transmission_format = graphics.GRT_format_rgba
 		f.in_memory_bytes = rgba.Pix
 		final_img = rgba
 	}

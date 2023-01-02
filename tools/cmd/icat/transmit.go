@@ -7,13 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"kitty/tools/tui/graphics"
-	"kitty/tools/utils"
-	"kitty/tools/utils/shm"
 	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
+
+	"kitty/tools/tui/graphics"
+	"kitty/tools/utils"
+	"kitty/tools/utils/shm"
 )
 
 var _ = fmt.Print
@@ -32,17 +33,7 @@ func gc_for_image(imgd *image_data, frame_num int, frame *image_frame) *graphics
 	if imgd.image_number != 0 {
 		gc.SetImageNumber(imgd.image_number)
 	}
-	switch frame.transmission_format_uppercase {
-	case "PNG":
-		gc.SetFormat(graphics.GRT_format_png)
-	case "RGB":
-		gc.SetFormat(graphics.GRT_format_rgb)
-	case "RGBA":
-		gc.SetFormat(graphics.GRT_format_rgba)
-	default:
-		panic(fmt.Sprintf("Unknown transmission format: %s", frame.transmission_format_uppercase))
-	}
-
+	gc.SetFormat(frame.transmission_format)
 	return &gc
 }
 
