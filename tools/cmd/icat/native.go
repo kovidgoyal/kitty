@@ -24,7 +24,7 @@ func add_frame(imgd *image_data, img image.Image, is_opaque bool) *image_frame {
 		img = imaging.FlipH(img)
 	}
 	b := img.Bounds()
-	f := image_frame{width: b.Dx(), height: b.Dy(), number: len(imgd.frames), left: b.Min.X, top: b.Min.Y}
+	f := image_frame{width: b.Dx(), height: b.Dy(), number: len(imgd.frames) + 1, left: b.Min.X, top: b.Min.Y}
 	dest_rect := image.Rect(0, 0, f.width, f.height)
 	var final_img image.Image
 
