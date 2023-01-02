@@ -137,11 +137,12 @@ func (self *opened_input) Release() {
 }
 
 type image_frame struct {
-	filename              string
-	shm                   shm.MMap
-	in_memory_bytes       []byte
-	filename_is_temporary bool
-	width, height         int
+	filename                      string
+	shm                           shm.MMap
+	in_memory_bytes               []byte
+	filename_is_temporary         bool
+	width, height                 int
+	transmission_format_uppercase string
 }
 
 type image_data struct {
@@ -190,6 +191,7 @@ func make_output_from_input(imgd *image_data, f *opened_input) {
 	imgd.frames = append(imgd.frames, &frame)
 	frame.width = imgd.canvas_width
 	frame.height = imgd.canvas_height
+	frame.transmission_format_uppercase = imgd.format_uppercase
 	if ok {
 		frame.in_memory_bytes = bb.data
 	} else {
