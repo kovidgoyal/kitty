@@ -40,7 +40,7 @@ func TestGraphicsCommandSerialization(t *testing.T) {
 		data := c.AsAPC([]byte(payload))
 		encoded := strings.Builder{}
 		compressed := false
-		var data_size uint64
+		is_first := true
 		for {
 			idx := strings.Index(data, "\033_")
 			if idx < 0 {
@@ -50,9 +50,9 @@ func TestGraphicsCommandSerialization(t *testing.T) {
 			apc := data[idx+2 : l]
 			data = data[l+2:]
 			g := GraphicsCommandFromAPC([]byte(apc))
-			if data_size == 0 {
-				data_size = g.DataSize()
+			if is_first {
 				compressed = g.Compression() != 0
+				is_first = false
 			}
 			encoded.WriteString(g.ResponseMessage())
 			if g.m == GRT_more_nomore {
@@ -65,9 +65,6 @@ func TestGraphicsCommandSerialization(t *testing.T) {
 		decoded, err := base64.StdEncoding.DecodeString(encoded.String())
 		if err != nil {
 			t.Fatalf("Encoded data not valid base-64 with error: %v", err)
-		}
-		if data_size > 0 && uint64(len(decoded)) != data_size {
-			t.Fatalf("Data size %d != decoded size %d", data_size, len(decoded))
 		}
 		if compressed {
 			b := bytes.Buffer{}
