@@ -72,7 +72,7 @@ func parse_background() (err error) {
 	if err != nil {
 		return fmt.Errorf("Invalid value for --background: %w", err)
 	}
-	remove_alpha = &images.NRGBColor{col.Red, col.Green, col.Blue}
+	remove_alpha = &images.NRGBColor{R: col.Red, G: col.Green, B: col.Blue}
 	return
 }
 
