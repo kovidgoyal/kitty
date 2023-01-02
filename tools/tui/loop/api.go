@@ -261,6 +261,12 @@ func (self *Loop) SetCursorVisible(visible bool) {
 	}
 }
 
+func (self *Loop) MoveCursorTo(x, y int) {
+	if x > 0 && y > 0 {
+		self.QueueWriteString(fmt.Sprintf("\x1b[%d;%dH", y, x))
+	}
+}
+
 func (self *Loop) MoveCursorHorizontally(amt int) {
 	if amt != 0 {
 		suffix := "C"

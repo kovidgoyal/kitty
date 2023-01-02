@@ -10,6 +10,7 @@ import (
 	"kitty/tools/tui/graphics"
 	"kitty/tools/utils"
 	"kitty/tools/utils/shm"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -22,6 +23,9 @@ func gc_for_image(imgd *image_data, frame_num int, frame *image_frame) *graphics
 	gc.SetAction(graphics.GRT_action_transmit_and_display)
 	gc.SetDataWidth(uint64(frame.width)).SetDataHeight(uint64(frame.height))
 	gc.SetQuiet(graphics.GRT_quiet_silent)
+	if frame_num == 0 && imgd.cell_x_offset > 0 {
+		gc.SetXOffset(uint64(imgd.cell_x_offset))
+	}
 	if z_index != 0 {
 		gc.SetZIndex(z_index)
 	}
@@ -151,6 +155,44 @@ func transmit_stream(imgd *image_data, frame_num int, frame *image_frame) (err e
 	return nil
 }
 
+func calculate_in_cell_x_offset(width, cell_width int) int {
+	extra_pixels := width % cell_width
+	if extra_pixels == 0 {
+		return 0
+	}
+	switch opts.Align {
+	case "left":
+		return 0
+	case "right":
+		return cell_width - extra_pixels
+	default:
+		return (cell_width - extra_pixels) / 2
+	}
+}
+
+func place_cursor(imgd *image_data) {
+	cw := int(screen_size.CellWidth)
+	imgd.cell_x_offset = calculate_in_cell_x_offset(imgd.canvas_width, cw)
+	num_of_cells_needed := int(math.Ceil(float64(imgd.canvas_width) / float64(cw)))
+	if place == nil {
+		switch opts.Align {
+		case "center":
+			imgd.move_x_by = (int(screen_size.WidthCells) - num_of_cells_needed) / 2
+		case "right":
+			imgd.move_x_by = (int(screen_size.WidthCells) - num_of_cells_needed)
+		}
+	} else {
+		imgd.move_to.x = place.left + 1
+		imgd.move_to.y = place.top + 1
+		switch opts.Align {
+		case "center":
+			imgd.move_to.x += (place.width - num_of_cells_needed) / 2
+		case "right":
+			imgd.move_to.x += (place.width - num_of_cells_needed)
+		}
+	}
+}
+
 func transmit_image(imgd *image_data) {
 	defer func() {
 		for _, frame := range imgd.frames {
@@ -189,10 +231,21 @@ func transmit_image(imgd *image_data) {
 	if len(imgd.frames) > 1 {
 		imgd.image_number = rand.Uint32()
 	}
+	place_cursor(imgd)
+	lp.QueueWriteString("\r")
+	if imgd.move_x_by > 0 {
+		lp.MoveCursorHorizontally(imgd.move_x_by)
+	}
+	if imgd.move_to.x > 0 {
+		lp.MoveCursorTo(imgd.move_to.x, imgd.move_to.y)
+	}
 	for frame_num, frame := range imgd.frames {
 		err := f(imgd, frame_num, frame)
 		if err != nil {
 			print_error("Failed to transmit %s with error: %v", imgd.source_name, err)
 		}
+	}
+	if imgd.move_to.x == 0 {
+		lp.Println() // ensure cursor is on new line
 	}
 }

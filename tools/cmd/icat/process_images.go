@@ -151,6 +151,9 @@ type image_data struct {
 	needs_scaling, needs_conversion   bool
 	frames                            []*image_frame
 	image_number                      uint32
+	cell_x_offset                     int
+	move_x_by                         int
+	move_to                           struct{ x, y int }
 
 	// for error reporting
 	err         error

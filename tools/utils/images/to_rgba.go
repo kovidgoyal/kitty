@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math"
 	"runtime"
 	"sync"
 )
@@ -389,4 +390,21 @@ func PasteCenter(background image.Image, img image.Image, opaque_bg *color.NRGBA
 	y0 := centerY - img.Bounds().Dy()/2
 
 	Paste(background, img, image.Pt(x0, y0), opaque_bg)
+}
+
+func FitImage(width, height, pwidth, pheight int) (final_width int, final_height int) {
+	if height > pheight {
+		corrf := float64(pheight) / float64(height)
+		width, height = int(math.Floor(corrf*float64(width))), pheight
+	}
+	if width > pwidth {
+		corrf := float64(pwidth) / float64(width)
+		width, height = pwidth, int(math.Floor(corrf*float64(height)))
+	}
+	if height > pheight {
+		corrf := float64(pheight) / float64(height)
+		width, height = int(math.Floor(corrf*float64(width))), pheight
+	}
+
+	return width, height
 }

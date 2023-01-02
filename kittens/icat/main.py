@@ -46,7 +46,9 @@ Choose where on the screen to display the image. The image will be scaled to fit
 into the specified rectangle. The syntax for specifying rectangles is
 <:italic:`width`>x<:italic:`height`>@<:italic:`left`>x<:italic:`top`>.
 All measurements are in cells (i.e. cursor positions) with the origin
-:italic:`(0, 0)` at the top-left corner of the screen.
+:italic:`(0, 0)` at the top-left corner of the screen. Note that the :option:`--align`
+option will horizontally align the image within this rectangle. By default, the image
+is horizontally centered within the rectangle.
 
 
 --scale-up

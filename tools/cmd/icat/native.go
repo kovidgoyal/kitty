@@ -50,6 +50,15 @@ func load_one_frame_image(imgd *image_data, src *opened_input) (image.Image, err
 		imgd.canvas_height = img.Bounds().Dy()
 		set_basic_metadata(imgd)
 	}
+	if imgd.needs_scaling {
+		if imgd.canvas_width < imgd.available_width && opts.ScaleUp && place != nil {
+			r := float64(imgd.available_width) / float64(imgd.canvas_width)
+			imgd.canvas_width, imgd.canvas_height = imgd.available_width, int(r*float64(imgd.canvas_height))
+		}
+		imgd.canvas_width, imgd.canvas_height = images.FitImage(imgd.canvas_width, imgd.canvas_height, imgd.available_width, imgd.available_height)
+		img = imaging.Resize(img, imgd.canvas_width, imgd.canvas_height, imaging.Lanczos)
+		imgd.needs_scaling = false
+	}
 	return img, err
 }
 
