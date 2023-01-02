@@ -148,6 +148,9 @@ type scanner_rgb struct {
 	opaque_base_uint []uint8
 }
 
+func (s scanner_rgb) bytes_per_pixel() int    { return 3 }
+func (s scanner_rgb) bounds() image.Rectangle { return s.image.Bounds() }
+
 func blend(dest []uint8, base []float64, r, g, b, a uint8) {
 	alpha := float64(a) / 255.0
 	dest[0] = uint8(alpha*float64(r) + (1.0-alpha)*base[0])
@@ -394,4 +397,14 @@ func (s *scanner_rgb) scan(x1, y1, x2, y2 int, dst []uint8) {
 			}
 		}
 	}
+}
+
+func paste_nrgb_onto_opaque(background *image.NRGBA, img image.Image, pos image.Point, bgcol *NRGBColor) {
+	bg := NRGBColor{}
+	if bgcol != nil {
+		bg = *bgcol
+
+	}
+	src := newScannerRGB(img, bg)
+	run_paste(src, background, pos, func(dst []byte) {})
 }

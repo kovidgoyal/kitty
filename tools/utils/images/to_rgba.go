@@ -48,6 +48,9 @@ type scanner struct {
 	palette []color.NRGBA
 }
 
+func (s scanner) bytes_per_pixel() int    { return 4 }
+func (s scanner) bounds() image.Rectangle { return s.image.Bounds() }
+
 func newScanner(img image.Image) *scanner {
 	s := &scanner{
 		image: img,
@@ -321,14 +324,20 @@ func (s *scanner) scan(x1, y1, x2, y2 int, dst []uint8) {
 	}
 }
 
-func run_paste(bytes_per_pixel int, background *image.NRGBA, img image.Image, pos image.Point, postprocess func([]byte)) {
+type Scanner interface {
+	scan(x1, y1, x2, y2 int, dst []uint8)
+	bytes_per_pixel() int
+	bounds() image.Rectangle
+}
+
+func run_paste(src Scanner, background *image.NRGBA, pos image.Point, postprocess func([]byte)) {
 	pos = pos.Sub(background.Bounds().Min)
-	pasteRect := image.Rectangle{Min: pos, Max: pos.Add(img.Bounds().Size())}
+	pasteRect := image.Rectangle{Min: pos, Max: pos.Add(src.bounds().Size())}
 	interRect := pasteRect.Intersect(background.Bounds())
 	if interRect.Empty() {
 		return
 	}
-	src := newScanner(img)
+	bytes_per_pixel := src.bytes_per_pixel()
 	parallel(interRect.Min.Y, interRect.Max.Y, func(ys <-chan int) {
 		for y := range ys {
 			x1 := interRect.Min.X - pasteRect.Min.X
@@ -345,13 +354,14 @@ func run_paste(bytes_per_pixel int, background *image.NRGBA, img image.Image, po
 
 }
 
-func paste_nrgba_onto_opaque(background *image.NRGBA, img image.Image, pos image.Point, bgcol *color.NRGBA) {
+func paste_nrgba_onto_opaque(background *image.NRGBA, img image.Image, pos image.Point, bgcol *NRGBColor) {
+	src := newScanner(img)
 	if bgcol == nil {
-		run_paste(4, background, img, pos, func([]byte) {})
+		run_paste(src, background, pos, func([]byte) {})
 		return
 	}
 	bg := [3]float64{float64(bgcol.R), float64(bgcol.G), float64(bgcol.B)}
-	run_paste(4, background, img, pos, func(dst []byte) {
+	run_paste(src, background, pos, func(dst []byte) {
 		for len(dst) > 0 {
 			a := float64(dst[3]) / 255.0
 			for i := range dst[:3] {
@@ -366,17 +376,19 @@ func paste_nrgba_onto_opaque(background *image.NRGBA, img image.Image, pos image
 }
 
 // Paste pastes the img image to the background image at the specified position. Optionally composing onto the specified opaque color.
-func Paste(background image.Image, img image.Image, pos image.Point, opaque_bg *color.NRGBA) {
+func Paste(background image.Image, img image.Image, pos image.Point, opaque_bg *NRGBColor) {
 	switch background.(type) {
 	case *image.NRGBA:
 		paste_nrgba_onto_opaque(background.(*image.NRGBA), img, pos, opaque_bg)
+	case *NRGB:
+		paste_nrgb_onto_opaque(background.(*image.NRGBA), img, pos, opaque_bg)
 	default:
 		panic("Unsupported background image type")
 	}
 }
 
 // PasteCenter pastes the img image to the center of the background image. Optionally composing onto the specified opaque color.
-func PasteCenter(background image.Image, img image.Image, opaque_bg *color.NRGBA) {
+func PasteCenter(background image.Image, img image.Image, opaque_bg *NRGBColor) {
 	bgBounds := background.Bounds()
 	bgW := bgBounds.Dx()
 	bgH := bgBounds.Dy()
