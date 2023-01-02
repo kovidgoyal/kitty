@@ -169,8 +169,13 @@ func newScannerRGB(img image.Image, opaque_base NRGBColor) *scanner_rgb {
 		d := make([]uint8, 3)
 		for i := 0; i < len(img.Palette); i++ {
 			r, g, b, a := img.Palette[i].RGBA()
-			blend(d, s.opaque_base, uint8((r*0xffff/a)>>8), uint8((g*0xffff/a)>>8), uint8((b*0xffff/a)>>8), uint8(a>>8))
-			s.palette[i] = NRGBColor{d[0], d[1], d[2]}
+			switch a {
+			case 0:
+				s.palette[i] = opaque_base
+			default:
+				blend(d, s.opaque_base, uint8((r*0xffff/a)>>8), uint8((g*0xffff/a)>>8), uint8((b*0xffff/a)>>8), uint8(a>>8))
+				s.palette[i] = NRGBColor{d[0], d[1], d[2]}
+			}
 		}
 	}
 	return s
