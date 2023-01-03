@@ -203,6 +203,29 @@ func make_temp_dir() (ans string, err error) {
 	return os.MkdirTemp("", shm_template)
 }
 
+func check_resize(frame *image_frame) error {
+	// ImageMagick sometimes generates RGBA images smaller than the specified
+	// size. See https://github.com/kovidgoyal/kitty/issues/276 for examples
+	s, err := os.Stat(frame.filename)
+	if err != nil {
+		return err
+	}
+	sz := int(s.Size())
+	bytes_per_pixel := 4
+	if frame.transmission_format == graphics.GRT_format_rgb {
+		bytes_per_pixel = 3
+	}
+	expected_size := bytes_per_pixel * frame.width * frame.height
+	if sz < expected_size {
+		missing := expected_size - sz
+		if missing%(bytes_per_pixel*frame.width) != 0 {
+			return fmt.Errorf("ImageMagick failed to resize correctly. It generated %d < %d of data (w=%d h=%d bpp=%d)", sz, expected_size, frame.width, frame.height, bytes_per_pixel)
+		}
+		frame.height -= missing / (bytes_per_pixel * frame.width)
+	}
+	return nil
+}
+
 func Render(path string, ro *RenderOptions, frames []IdentifyRecord) (ans []*image_frame, err error) {
 	find_exe_lock.Do(find_magick_exe)
 	cmd := []string{"convert"}
@@ -210,6 +233,17 @@ func Render(path string, ro *RenderOptions, frames []IdentifyRecord) (ans []*ima
 		cmd = []string{magick_exe, cmd[0]}
 	}
 	ans = make([]*image_frame, 0, len(frames))
+	defer func() {
+		if err != nil && ans != nil {
+			for _, frame := range ans {
+				if frame.filename_is_temporary {
+					os.Remove(frame.filename)
+				}
+			}
+			ans = nil
+		}
+	}()
+
 	if ro.RemoveAlpha != nil {
 		cmd = append(cmd, "-background", ro.RemoveAlpha.AsSharp(), "-alpha", "remove")
 	} else {
@@ -244,7 +278,8 @@ func Render(path string, ro *RenderOptions, frames []IdentifyRecord) (ans []*ima
 	}
 	tdir, err := make_temp_dir()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create temporary directory to hold ImageMagick output with error: %w", err)
+		err = fmt.Errorf("Failed to create temporary directory to hold ImageMagick output with error: %w", err)
+		return
 	}
 	defer os.RemoveAll(tdir)
 	mode := "rgba"
@@ -258,19 +293,10 @@ func Render(path string, ro *RenderOptions, frames []IdentifyRecord) (ans []*ima
 	}
 	entries, err := os.ReadDir(tdir)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to read temp dir used to store ImageMagick output with error: %w", err)
+		err = fmt.Errorf("Failed to read temp dir used to store ImageMagick output with error: %w", err)
+		return
 	}
 	base_dir := filepath.Dir(tdir)
-	defer func() {
-		if err != nil && ans != nil {
-			for _, frame := range ans {
-				if frame.filename_is_temporary {
-					os.Remove(frame.filename)
-				}
-			}
-			ans = nil
-		}
-	}()
 	gaps := make([]int, len(frames))
 	for i, frame := range frames {
 		gaps[i] = frame.Gap
@@ -280,41 +306,70 @@ func Render(path string, ro *RenderOptions, frames []IdentifyRecord) (ans []*ima
 		fname := entry.Name()
 		p, _, _ := utils.Cut(fname, ".")
 		parts := strings.Split(p, "-")
-		if len(parts) < 1 {
+		if len(parts) < 5 {
 			continue
 		}
 		index, cerr := strconv.Atoi(parts[len(parts)-1])
 		if cerr != nil || index < 0 || index >= len(frames) {
 			continue
 		}
+		width, cerr := strconv.Atoi(parts[1])
+		if cerr != nil {
+			continue
+		}
+		height, cerr := strconv.Atoi(parts[2])
+		if cerr != nil {
+			continue
+		}
+		_, pos, found := utils.Cut(parts[3], "+")
+		if !found {
+			continue
+		}
+		px, py, found := utils.Cut(pos, "+")
+		if !found {
+			continue
+		}
+		x, cerr := strconv.Atoi(px)
+		if cerr != nil {
+			continue
+		}
+		y, cerr := strconv.Atoi(py)
+		if cerr != nil {
+			continue
+		}
 		identify_data := frames[index]
-		df, err := os.CreateTemp(base_dir, graphics.TempTemplate+"."+mode)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to create a temporary file in %s with error: %w", base_dir, err)
+		df, cerr := os.CreateTemp(base_dir, graphics.TempTemplate+"."+mode)
+		if cerr != nil {
+			err = fmt.Errorf("Failed to create a temporary file in %s with error: %w", base_dir, cerr)
+			return
 		}
 		err = os.Rename(filepath.Join(tdir, fname), df.Name())
 		if err != nil {
-			return nil, fmt.Errorf("Failed to rename a temporary file in %s with error: %w", tdir, err)
+			err = fmt.Errorf("Failed to rename a temporary file in %s with error: %w", tdir, err)
+			return
 		}
 		df.Close()
 		frame := image_frame{
-			number: index + 1, width: identify_data.Width, height: identify_data.Height,
-			left: identify_data.Canvas.Left, top: identify_data.Canvas.Top,
+			number: index + 1, width: width, height: height, left: x, top: y,
 			transmission_format: identify_data.Mode, filename_is_temporary: true,
 			filename: df.Name(),
 		}
 		frame.set_delay(identify_data.Gap, min_gap)
+		err = check_resize(&frame)
+		if err != nil {
+			return
+		}
 		ans = append(ans, &frame)
 	}
 	if len(ans) < len(frames) {
-		return nil, fmt.Errorf("Failed to render %d out of %d frames", len(frames)-len(ans), len(frames))
+		err = fmt.Errorf("Failed to render %d out of %d frames", len(frames)-len(ans), len(frames))
+		return
 	}
 	ans = utils.Sort(ans, func(a, b *image_frame) bool { return a.number < b.number })
 	anchor_frame := 1
 	for i, frame := range ans {
 		anchor_frame = frame.set_disposal(anchor_frame, byte(frames[i].Disposal))
 	}
-
 	return
 }
 
