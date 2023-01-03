@@ -27,7 +27,7 @@ func resize_frame(imgd *image_data, img image.Image) (image.Image, image.Rectang
 	return img, image.Rect(newleft, newtop, newleft+new_width, newtop+new_height)
 }
 
-func add_frame(imgd *image_data, img image.Image) *image_frame {
+func add_frame(ctx *images.Context, imgd *image_data, img image.Image) *image_frame {
 	is_opaque := false
 	if imgd.format_uppercase == "JPEG" {
 		// special cased because EXIF orientation could have already changed this image to an NRGBA making IsOpaque() very slow
@@ -71,16 +71,16 @@ func add_frame(imgd *image_data, img image.Image) *image_frame {
 		f.in_memory_bytes = rgba.Pix
 		final_img = rgba
 	}
-	images.PasteCenter(final_img, img, remove_alpha)
+	ctx.PasteCenter(final_img, img, remove_alpha)
 	imgd.frames = append(imgd.frames, &f)
 	if flip {
-		images.FlipPixelsV(bytes_per_pixel, f.width, f.height, f.in_memory_bytes)
+		ctx.FlipPixelsV(bytes_per_pixel, f.width, f.height, f.in_memory_bytes)
 		if f.height < imgd.canvas_height {
 			f.top = (2*imgd.canvas_height - f.height - f.top) % imgd.canvas_height
 		}
 	}
 	if flop {
-		images.FlipPixelsH(bytes_per_pixel, f.width, f.height, f.in_memory_bytes)
+		ctx.FlipPixelsH(bytes_per_pixel, f.width, f.height, f.in_memory_bytes)
 		if f.width < imgd.canvas_width {
 			f.left = (2*imgd.canvas_width - f.width - f.left) % imgd.canvas_width
 		}
@@ -104,7 +104,7 @@ func scale_image(imgd *image_data) {
 	}
 }
 
-func load_one_frame_image(imgd *image_data, src *opened_input) (img image.Image, err error) {
+func load_one_frame_image(ctx *images.Context, imgd *image_data, src *opened_input) (img image.Image, err error) {
 	img, err = imaging.Decode(src.file, imaging.AutoOrientation(true))
 	src.Rewind()
 	if err != nil {
@@ -118,7 +118,7 @@ func load_one_frame_image(imgd *image_data, src *opened_input) (img image.Image,
 	return
 }
 
-func add_gif_frames(imgd *image_data, gf *gif.GIF) error {
+func add_gif_frames(ctx *images.Context, imgd *image_data, gf *gif.GIF) error {
 	// Some broken GIF images have all zero gaps, browsers with their usual
 	// idiot ideas render these with a default 100ms gap https://bugzilla.mozilla.org/show_bug.cgi?id=125137
 	// Browsers actually force a 100ms gap at any zero gap frame, but that
@@ -133,7 +133,7 @@ func add_gif_frames(imgd *image_data, gf *gif.GIF) error {
 	scale_image(imgd)
 	anchor_frame := 1
 	for i, paletted_img := range gf.Image {
-		frame := add_frame(imgd, paletted_img)
+		frame := add_frame(ctx, imgd, paletted_img)
 		frame.delay_ms = utils.Max(min_gap, gf.Delay[i]) * 10
 		if frame.delay_ms == 0 {
 			frame.delay_ms = -1
@@ -155,6 +155,7 @@ func add_gif_frames(imgd *image_data, gf *gif.GIF) error {
 }
 
 func render_image_with_go(imgd *image_data, src *opened_input) (err error) {
+	ctx := images.Context{}
 	switch {
 	case imgd.format_uppercase == "GIF" && opts.Loop != 0:
 		gif_frames, err := gif.DecodeAll(src.file)
@@ -162,16 +163,16 @@ func render_image_with_go(imgd *image_data, src *opened_input) (err error) {
 		if err != nil {
 			return fmt.Errorf("Failed to decode GIF file with error: %w", err)
 		}
-		err = add_gif_frames(imgd, gif_frames)
+		err = add_gif_frames(&ctx, imgd, gif_frames)
 		if err != nil {
 			return err
 		}
 	default:
-		img, err := load_one_frame_image(imgd, src)
+		img, err := load_one_frame_image(&ctx, imgd, src)
 		if err != nil {
 			return err
 		}
-		add_frame(imgd, img)
+		add_frame(&ctx, imgd, img)
 	}
 	return nil
 }

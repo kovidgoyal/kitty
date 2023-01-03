@@ -7,40 +7,9 @@ import (
 	"image"
 	"image/color"
 	"math"
-	"runtime"
-	"sync"
 )
 
 var _ = fmt.Print
-
-// parallel processes the data in separate goroutines.
-func parallel(start, stop int, fn func(<-chan int)) {
-	count := stop - start
-	if count < 1 {
-		return
-	}
-
-	procs := runtime.GOMAXPROCS(0)
-	if procs > count {
-		procs = count
-	}
-
-	c := make(chan int, count)
-	for i := start; i < stop; i++ {
-		c <- i
-	}
-	close(c)
-
-	var wg sync.WaitGroup
-	for i := 0; i < procs; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			fn(c)
-		}()
-	}
-	wg.Wait()
-}
 
 type scanner struct {
 	image   image.Image
@@ -330,7 +299,7 @@ type Scanner interface {
 	bounds() image.Rectangle
 }
 
-func run_paste(src Scanner, background image.Image, pos image.Point, postprocess func([]byte)) {
+func (self *Context) run_paste(src Scanner, background image.Image, pos image.Point, postprocess func([]byte)) {
 	pos = pos.Sub(background.Bounds().Min)
 	pasteRect := image.Rectangle{Min: pos, Max: pos.Add(src.bounds().Size())}
 	interRect := pasteRect.Intersect(background.Bounds())
@@ -352,7 +321,7 @@ func run_paste(src Scanner, background image.Image, pos image.Point, postprocess
 	default:
 		panic(fmt.Sprintf("Unsupported image type: %v", v))
 	}
-	parallel(interRect.Min.Y, interRect.Max.Y, func(ys <-chan int) {
+	self.Parallel(interRect.Min.Y, interRect.Max.Y, func(ys <-chan int) {
 		for y := range ys {
 			x1 := interRect.Min.X - pasteRect.Min.X
 			x2 := interRect.Max.X - pasteRect.Min.X
@@ -368,14 +337,14 @@ func run_paste(src Scanner, background image.Image, pos image.Point, postprocess
 
 }
 
-func paste_nrgba_onto_opaque(background *image.NRGBA, img image.Image, pos image.Point, bgcol *NRGBColor) {
+func (self *Context) paste_nrgba_onto_opaque(background *image.NRGBA, img image.Image, pos image.Point, bgcol *NRGBColor) {
 	src := newScanner(img)
 	if bgcol == nil {
-		run_paste(src, background, pos, func([]byte) {})
+		self.run_paste(src, background, pos, func([]byte) {})
 		return
 	}
 	bg := [3]float64{float64(bgcol.R), float64(bgcol.G), float64(bgcol.B)}
-	run_paste(src, background, pos, func(dst []byte) {
+	self.run_paste(src, background, pos, func(dst []byte) {
 		for len(dst) > 0 {
 			a := float64(dst[3]) / 255.0
 			for i := range dst[:3] {
@@ -390,19 +359,19 @@ func paste_nrgba_onto_opaque(background *image.NRGBA, img image.Image, pos image
 }
 
 // Paste pastes the img image to the background image at the specified position. Optionally composing onto the specified opaque color.
-func Paste(background image.Image, img image.Image, pos image.Point, opaque_bg *NRGBColor) {
+func (self *Context) Paste(background image.Image, img image.Image, pos image.Point, opaque_bg *NRGBColor) {
 	switch background.(type) {
 	case *image.NRGBA:
-		paste_nrgba_onto_opaque(background.(*image.NRGBA), img, pos, opaque_bg)
+		self.paste_nrgba_onto_opaque(background.(*image.NRGBA), img, pos, opaque_bg)
 	case *NRGB:
-		paste_nrgb_onto_opaque(background.(*NRGB), img, pos, opaque_bg)
+		self.paste_nrgb_onto_opaque(background.(*NRGB), img, pos, opaque_bg)
 	default:
 		panic("Unsupported background image type")
 	}
 }
 
 // PasteCenter pastes the img image to the center of the background image. Optionally composing onto the specified opaque color.
-func PasteCenter(background image.Image, img image.Image, opaque_bg *NRGBColor) {
+func (self *Context) PasteCenter(background image.Image, img image.Image, opaque_bg *NRGBColor) {
 	bgBounds := background.Bounds()
 	bgW := bgBounds.Dx()
 	bgH := bgBounds.Dy()
@@ -415,7 +384,7 @@ func PasteCenter(background image.Image, img image.Image, opaque_bg *NRGBColor) 
 	x0 := centerX - img.Bounds().Dx()/2
 	y0 := centerY - img.Bounds().Dy()/2
 
-	Paste(background, img, image.Pt(x0, y0), opaque_bg)
+	self.Paste(background, img, image.Pt(x0, y0), opaque_bg)
 }
 
 func FitImage(width, height, pwidth, pheight int) (final_width int, final_height int) {

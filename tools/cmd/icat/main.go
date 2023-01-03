@@ -172,7 +172,7 @@ func on_initialize() (string, error) {
 	keep_going.Store(true)
 	screen_size = sz
 	if !opts.DetectSupport && num_of_items > 0 {
-		num_workers := utils.Max(1, utils.Min(num_of_items, runtime.GOMAXPROCS(0)))
+		num_workers := utils.Max(1, utils.Min(num_of_items, runtime.NumCPU()))
 		for i := 0; i < num_workers; i++ {
 			go run_worker()
 		}
