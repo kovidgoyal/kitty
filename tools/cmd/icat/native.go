@@ -82,10 +82,15 @@ func load_one_frame_image(imgd *image_data, src *opened_input) (img image.Image,
 }
 
 func add_gif_frames(imgd *image_data, gf *gif.GIF) error {
+	// Some broken GIF images have all zero gaps, browsers with their usual
+	// idiot ideas render these with a default 100ms gap https://bugzilla.mozilla.org/show_bug.cgi?id=125137
+	// Browsers actually force a 100ms gap at any zero gap frame, but that
+	// just means it is impossible to deliberately use zero gap frames for
+	// sophisticated blending, so we dont do that.
 	max_gap := utils.Max(0, gf.Delay...)
 	min_gap := 0
 	if max_gap <= 0 {
-		min_gap = 1
+		min_gap = 10
 	}
 
 	min_gap *= 1
