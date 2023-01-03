@@ -253,11 +253,14 @@ func process_arg(arg input_arg) {
 	c, format, err := image.DecodeConfig(f.file)
 	f.Rewind()
 	imgd := image_data{source_name: arg.value}
-	if err != nil {
-		report_error(arg.value, "Unknown image format", err)
+	if !keep_going.Load() {
 		return
 	}
-	if !keep_going.Load() {
+	if err != nil {
+		err = render_image_with_magick(&imgd, &f)
+		if err != nil {
+			report_error(arg.value, "ImageMagick failed", err)
+		}
 		return
 	}
 	imgd.canvas_width = c.Width
