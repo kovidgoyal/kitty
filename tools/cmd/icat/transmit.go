@@ -248,6 +248,7 @@ func transmit_image(imgd *image_data) {
 	}
 	frame_control_cmd := graphics.GraphicsCommand{}
 	frame_control_cmd.SetAction(graphics.GRT_action_animate).SetImageNumber(imgd.image_number)
+	is_animated := len(imgd.frames) > 1
 
 	for frame_num, frame := range imgd.frames {
 		err := f(imgd, frame_num, frame)
@@ -255,26 +256,28 @@ func transmit_image(imgd *image_data) {
 			print_error("\rFailed to transmit %s with error: %v", imgd.source_name, err)
 			return
 		}
-		switch frame_num {
-		case 0:
-			// set gap for the first frame and number of loops for the animation
-			c := frame_control_cmd
-			c.SetTargetFrame(uint64(frame.number))
-			c.SetGap(int32(frame.delay_ms))
-			switch {
-			case opts.Loop < 0:
-				c.SetNumberOfLoops(1)
-			case opts.Loop > 0:
-				c.SetNumberOfLoops(uint64(opts.Loop) + 1)
+		if is_animated {
+			switch frame_num {
+			case 0:
+				// set gap for the first frame and number of loops for the animation
+				c := frame_control_cmd
+				c.SetTargetFrame(uint64(frame.number))
+				c.SetGap(int32(frame.delay_ms))
+				switch {
+				case opts.Loop < 0:
+					c.SetNumberOfLoops(1)
+				case opts.Loop > 0:
+					c.SetNumberOfLoops(uint64(opts.Loop) + 1)
+				}
+				c.WriteWithPayloadToLoop(lp, nil)
+			case 1:
+				c := frame_control_cmd
+				c.SetAnimationControl(2) // set animation to loading mode
+				c.WriteWithPayloadToLoop(lp, nil)
 			}
-			c.WriteWithPayloadToLoop(lp, nil)
-		case 1:
-			c := frame_control_cmd
-			c.SetAnimationControl(2) // set animation to loading mode
-			c.WriteWithPayloadToLoop(lp, nil)
 		}
 	}
-	if len(imgd.frames) > 1 {
+	if is_animated {
 		c := frame_control_cmd
 		c.SetAnimationControl(3) // set animation to normal mode
 		c.WriteWithPayloadToLoop(lp, nil)
