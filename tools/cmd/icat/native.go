@@ -16,14 +16,29 @@ import (
 
 var _ = fmt.Print
 
-func add_frame(imgd *image_data, img image.Image, is_opaque bool) *image_frame {
+func resize_frame(imgd *image_data, img image.Image) (image.Image, image.Rectangle) {
+	b := img.Bounds()
+	left, top, width, height := b.Min.X, b.Min.Y, b.Dx(), b.Dy()
+	new_width := int(imgd.scaled_frac.x * float64(width))
+	new_height := int(imgd.scaled_frac.y * float64(height))
+	img = imaging.Resize(img, new_width, new_height, imaging.Lanczos)
+	newleft := int(imgd.scaled_frac.x * float64(left))
+	newtop := int(imgd.scaled_frac.y * float64(top))
+	return img, image.Rect(newleft, newtop, newleft+new_width, newtop+new_height)
+}
+
+func add_frame(imgd *image_data, img image.Image) *image_frame {
+	is_opaque := images.IsOpaque(img)
+	b := img.Bounds()
+	if imgd.scaled_frac.x != 0 {
+		img, b = resize_frame(imgd, img)
+	}
 	if flip {
 		img = imaging.FlipV(img)
 	}
 	if flop {
 		img = imaging.FlipH(img)
 	}
-	b := img.Bounds()
 	f := image_frame{width: b.Dx(), height: b.Dy(), number: len(imgd.frames) + 1, left: b.Min.X, top: b.Min.Y}
 	dest_rect := image.Rect(0, 0, f.width, f.height)
 	var final_img image.Image
@@ -58,7 +73,21 @@ func add_frame(imgd *image_data, img image.Image, is_opaque bool) *image_frame {
 	return &f
 }
 
-func load_one_frame_image(imgd *image_data, src *opened_input) (img image.Image, is_opaque bool, err error) {
+func scale_image(imgd *image_data) {
+	if imgd.needs_scaling {
+		width, height := imgd.canvas_width, imgd.canvas_height
+		if imgd.canvas_width < imgd.available_width && opts.ScaleUp && place != nil {
+			r := float64(imgd.available_width) / float64(imgd.canvas_width)
+			imgd.canvas_width, imgd.canvas_height = imgd.available_width, int(r*float64(imgd.canvas_height))
+		}
+		imgd.canvas_width, imgd.canvas_height = images.FitImage(imgd.canvas_width, imgd.canvas_height, imgd.available_width, imgd.available_height)
+		imgd.needs_scaling = false
+		imgd.scaled_frac.x = float64(imgd.canvas_width) / float64(width)
+		imgd.scaled_frac.y = float64(imgd.canvas_height) / float64(height)
+	}
+}
+
+func load_one_frame_image(imgd *image_data, src *opened_input) (img image.Image, err error) {
 	img, err = imaging.Decode(src.file, imaging.AutoOrientation(true))
 	src.Rewind()
 	if err != nil {
@@ -68,16 +97,7 @@ func load_one_frame_image(imgd *image_data, src *opened_input) (img image.Image,
 	imgd.canvas_width = img.Bounds().Dx()
 	imgd.canvas_height = img.Bounds().Dy()
 	set_basic_metadata(imgd)
-	is_opaque = images.IsOpaque(img)
-	if imgd.needs_scaling {
-		if imgd.canvas_width < imgd.available_width && opts.ScaleUp && place != nil {
-			r := float64(imgd.available_width) / float64(imgd.canvas_width)
-			imgd.canvas_width, imgd.canvas_height = imgd.available_width, int(r*float64(imgd.canvas_height))
-		}
-		imgd.canvas_width, imgd.canvas_height = images.FitImage(imgd.canvas_width, imgd.canvas_height, imgd.available_width, imgd.available_height)
-		img = imaging.Resize(img, imgd.canvas_width, imgd.canvas_height, imaging.Lanczos)
-		imgd.needs_scaling = false
-	}
+	scale_image(imgd)
 	return
 }
 
@@ -92,11 +112,11 @@ func add_gif_frames(imgd *image_data, gf *gif.GIF) error {
 	if max_gap <= 0 {
 		min_gap = 10
 	}
-
 	min_gap *= 1
+	scale_image(imgd)
 	anchor_frame := 1
-	for i, img := range gf.Image {
-		frame := add_frame(imgd, img, img.Opaque())
+	for i, paletted_img := range gf.Image {
+		frame := add_frame(imgd, paletted_img)
 		frame.delay_ms = utils.Max(min_gap, gf.Delay[i]) * 10
 		if frame.delay_ms == 0 {
 			frame.delay_ms = -1
@@ -130,11 +150,11 @@ func render_image_with_go(imgd *image_data, src *opened_input) (err error) {
 			return err
 		}
 	default:
-		img, is_opaque, err := load_one_frame_image(imgd, src)
+		img, err := load_one_frame_image(imgd, src)
 		if err != nil {
 			return err
 		}
-		add_frame(imgd, img, is_opaque)
+		add_frame(imgd, img)
 	}
 	return nil
 }

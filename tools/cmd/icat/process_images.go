@@ -156,6 +156,7 @@ type image_data struct {
 	format_uppercase                  string
 	available_width, available_height int
 	needs_scaling, needs_conversion   bool
+	scaled_frac                       struct{ x, y float64 }
 	frames                            []*image_frame
 	image_number                      uint32
 	cell_x_offset                     int
