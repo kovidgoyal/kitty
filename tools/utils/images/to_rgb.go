@@ -14,6 +14,10 @@ type NRGBColor struct {
 	R, G, B uint8
 }
 
+func (c NRGBColor) AsSharp() string {
+	return fmt.Sprintf("#%02X%02X%02X", c.R, c.G, c.B)
+}
+
 func (c NRGBColor) RGBA() (r, g, b, a uint32) {
 	r = uint32(c.R)
 	r |= r << 8

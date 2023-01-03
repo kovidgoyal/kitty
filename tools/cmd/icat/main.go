@@ -134,8 +134,9 @@ func print_error(format string, args ...any) {
 	} else {
 		lp.QueueWriteString("\r")
 		lp.ClearToEndOfLine()
-		lp.QueueWriteString(fmt.Sprintf(format, args...))
-		lp.QueueWriteString("\r\n")
+		for _, line := range utils.Splitlines(fmt.Sprintf(format, args...)) {
+			lp.Println(line)
+		}
 	}
 }
 

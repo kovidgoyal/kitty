@@ -19,13 +19,15 @@ import (
 
 var _ = fmt.Print
 
+const TempTemplate = "kitty-tty-graphics-protocol-*"
+
 func CreateTemp() (*os.File, error) {
-	return os.CreateTemp("", "tty-graphics-protocol-*")
+	return os.CreateTemp("", TempTemplate)
 }
 
 func CreateTempInRAM() (*os.File, error) {
 	if shm.SHM_DIR != "" {
-		f, err := os.CreateTemp(shm.SHM_DIR, "tty-graphics-protocol-*")
+		f, err := os.CreateTemp(shm.SHM_DIR, TempTemplate)
 		if err == nil {
 			return f, err
 		}

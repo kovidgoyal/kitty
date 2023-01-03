@@ -27,6 +27,8 @@ func resize_frame(imgd *image_data, img image.Image) (image.Image, image.Rectang
 	return img, image.Rect(newleft, newtop, newleft+new_width, newtop+new_height)
 }
 
+const shm_template = "kitty-icat-*"
+
 func add_frame(ctx *images.Context, imgd *image_data, img image.Image) *image_frame {
 	is_opaque := false
 	if imgd.format_uppercase == "JPEG" {
@@ -42,7 +44,6 @@ func add_frame(ctx *images.Context, imgd *image_data, img image.Image) *image_fr
 	f := image_frame{width: b.Dx(), height: b.Dy(), number: len(imgd.frames) + 1, left: b.Min.X, top: b.Min.Y}
 	dest_rect := image.Rect(0, 0, f.width, f.height)
 	var final_img image.Image
-	const shm_template = "kitty-icat-*"
 	bytes_per_pixel := 4
 
 	if is_opaque || remove_alpha != nil {
@@ -88,7 +89,7 @@ func add_frame(ctx *images.Context, imgd *image_data, img image.Image) *image_fr
 	return &f
 }
 
-func scale_image(imgd *image_data) {
+func scale_image(imgd *image_data) bool {
 	if imgd.needs_scaling {
 		width, height := imgd.canvas_width, imgd.canvas_height
 		if imgd.canvas_width < imgd.available_width && opts.ScaleUp && place != nil {
@@ -101,7 +102,9 @@ func scale_image(imgd *image_data) {
 		imgd.scaled_frac.y = float64(newh) / float64(height)
 		imgd.canvas_width = int(imgd.scaled_frac.x * float64(width))
 		imgd.canvas_height = int(imgd.scaled_frac.y * float64(height))
+		return true
 	}
+	return false
 }
 
 func load_one_frame_image(ctx *images.Context, imgd *image_data, src *opened_input) (img image.Image, err error) {
@@ -118,38 +121,51 @@ func load_one_frame_image(ctx *images.Context, imgd *image_data, src *opened_inp
 	return
 }
 
-func add_gif_frames(ctx *images.Context, imgd *image_data, gf *gif.GIF) error {
+func calc_min_gap(gaps []int) int {
 	// Some broken GIF images have all zero gaps, browsers with their usual
 	// idiot ideas render these with a default 100ms gap https://bugzilla.mozilla.org/show_bug.cgi?id=125137
 	// Browsers actually force a 100ms gap at any zero gap frame, but that
 	// just means it is impossible to deliberately use zero gap frames for
 	// sophisticated blending, so we dont do that.
-	max_gap := utils.Max(0, gf.Delay...)
+	max_gap := utils.Max(0, gaps...)
 	min_gap := 0
 	if max_gap <= 0 {
 		min_gap = 10
 	}
-	min_gap *= 1
+	return min_gap
+}
+
+func (frame *image_frame) set_disposal(anchor_frame int, disposal byte) int {
+	if frame.number > 1 {
+		switch disposal {
+		case gif.DisposalNone:
+			frame.compose_onto = frame.number - 1
+			anchor_frame = frame.number
+		case gif.DisposalBackground:
+			// see https://github.com/golang/go/issues/20694
+			anchor_frame = frame.number
+		case gif.DisposalPrevious:
+			frame.compose_onto = anchor_frame
+		}
+	}
+	return anchor_frame
+}
+
+func (frame *image_frame) set_delay(gap, min_gap int) {
+	frame.delay_ms = utils.Max(min_gap, gap) * 10
+	if frame.delay_ms == 0 {
+		frame.delay_ms = -1
+	}
+}
+
+func add_gif_frames(ctx *images.Context, imgd *image_data, gf *gif.GIF) error {
+	min_gap := calc_min_gap(gf.Delay)
 	scale_image(imgd)
 	anchor_frame := 1
 	for i, paletted_img := range gf.Image {
 		frame := add_frame(ctx, imgd, paletted_img)
-		frame.delay_ms = utils.Max(min_gap, gf.Delay[i]) * 10
-		if frame.delay_ms == 0 {
-			frame.delay_ms = -1
-		}
-		if i > 0 {
-			switch gf.Disposal[i] {
-			case gif.DisposalNone:
-				frame.compose_onto = frame.number - 1
-				anchor_frame = frame.number
-			case gif.DisposalBackground:
-				// see https://github.com/golang/go/issues/20694
-				anchor_frame = frame.number
-			case gif.DisposalPrevious:
-				frame.compose_onto = anchor_frame
-			}
-		}
+		frame.set_delay(gf.Delay[i], min_gap)
+		anchor_frame = frame.set_disposal(anchor_frame, gf.Disposal[i])
 	}
 	return nil
 }

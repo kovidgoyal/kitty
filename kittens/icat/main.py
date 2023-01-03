@@ -120,7 +120,17 @@ not a terminal, but you can turn it off or on explicitly, if needed.
 
 --silent
 type=bool-set
-Do not print out anything to STDOUT during operation.
+Not used, present for legacy compatibility.
+
+
+--engine
+type=choices
+choices=auto,builtin,magick
+default=auto
+The engine used for decoding and processing of images. The default is to use
+the most appropriate engine.  The :code:`builtin` engine uses Go's native
+imaging libraries. The :code:`magick` engine uses ImageMagick which requires
+it to be installed on the system.
 
 
 --z-index -z

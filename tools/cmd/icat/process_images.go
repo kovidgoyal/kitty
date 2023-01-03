@@ -138,6 +138,28 @@ func (self *opened_input) Release() {
 	}
 }
 
+func (self *opened_input) PutOnFilesystem() (err error) {
+	if self.name_to_unlink != "" {
+		return
+	}
+	f, err := graphics.CreateTempInRAM()
+	if err != nil {
+		return fmt.Errorf("Failed to create a temporary file to store input data with error: %w", err)
+	}
+	self.Rewind()
+	_, err = io.Copy(f, self.file)
+	if err != nil {
+		f.Close()
+		return fmt.Errorf("Failed to copy input data to temporary file with error: %w", err)
+	}
+	self.Release()
+	self.file = f
+	self.name_to_unlink = f.Name()
+	return
+}
+
+func (self *opened_input) FileSystemName() string { return self.name_to_unlink }
+
 type image_frame struct {
 	filename                 string
 	shm                      shm.MMap
@@ -250,31 +272,42 @@ func process_arg(arg input_arg) {
 		f.file = q
 	}
 	defer f.Release()
-	c, format, err := image.DecodeConfig(f.file)
-	f.Rewind()
+	can_use_go := false
+	var c image.Config
+	var format string
+	var err error
 	imgd := image_data{source_name: arg.value}
+	if opts.Engine == "auto" || opts.Engine == "native" {
+		c, format, err = image.DecodeConfig(f.file)
+		f.Rewind()
+		can_use_go = err == nil
+	}
 	if !keep_going.Load() {
 		return
 	}
-	if err != nil {
+	if can_use_go {
+		imgd.canvas_width = c.Width
+		imgd.canvas_height = c.Height
+		imgd.format_uppercase = strings.ToUpper(format)
+		set_basic_metadata(&imgd)
+		if !imgd.needs_conversion {
+			make_output_from_input(&imgd, &f)
+			send_output(&imgd)
+			return
+		}
+		err = render_image_with_go(&imgd, &f)
+		if err != nil {
+			report_error(arg.value, "Could not render image to RGB", err)
+			return
+		}
+	} else {
 		err = render_image_with_magick(&imgd, &f)
 		if err != nil {
 			report_error(arg.value, "ImageMagick failed", err)
+			return
 		}
-		return
 	}
-	imgd.canvas_width = c.Width
-	imgd.canvas_height = c.Height
-	imgd.format_uppercase = strings.ToUpper(format)
-	set_basic_metadata(&imgd)
-	if !imgd.needs_conversion {
-		make_output_from_input(&imgd, &f)
-		send_output(&imgd)
-		return
-	}
-	err = render_image_with_go(&imgd, &f)
-	if err != nil {
-		report_error(arg.value, "Could not render image to RGB", err)
+	if !keep_going.Load() {
 		return
 	}
 	send_output(&imgd)
