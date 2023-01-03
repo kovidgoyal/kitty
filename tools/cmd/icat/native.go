@@ -28,7 +28,13 @@ func resize_frame(imgd *image_data, img image.Image) (image.Image, image.Rectang
 }
 
 func add_frame(imgd *image_data, img image.Image) *image_frame {
-	is_opaque := images.IsOpaque(img)
+	is_opaque := false
+	if imgd.format_uppercase == "JPEG" {
+		// special cased because EXIF orientation could have already changed this image to an NRGBA making IsOpaque() very slow
+		is_opaque = true
+	} else {
+		is_opaque = images.IsOpaque(img)
+	}
 	b := img.Bounds()
 	if imgd.scaled_frac.x != 0 {
 		img, b = resize_frame(imgd, img)
