@@ -1252,7 +1252,7 @@ handle_animation_control_command(GraphicsManager *self, bool *is_dirty, const Gr
         if (img->animation_state == ANIMATION_STOPPED) {
             img->current_loop = 0;
         } else {
-            if (old_state == ANIMATION_STOPPED) img->current_frame_shown_at = monotonic();
+            if (old_state == ANIMATION_STOPPED) { img->current_frame_shown_at = monotonic(); img->is_drawn = true; }
             self->has_images_needing_animation = true;
             global_state.check_for_active_animated_images = true;
         }
