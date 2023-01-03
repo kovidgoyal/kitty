@@ -33,23 +33,20 @@ func add_frame(imgd *image_data, img image.Image) *image_frame {
 	if imgd.scaled_frac.x != 0 {
 		img, b = resize_frame(imgd, img)
 	}
-	if flip {
-		img = imaging.FlipV(img)
-	}
-	if flop {
-		img = imaging.FlipH(img)
-	}
 	f := image_frame{width: b.Dx(), height: b.Dy(), number: len(imgd.frames) + 1, left: b.Min.X, top: b.Min.Y}
 	dest_rect := image.Rect(0, 0, f.width, f.height)
 	var final_img image.Image
+	const shm_template = "kitty-icat-*"
+	bytes_per_pixel := 4
 
 	if is_opaque || remove_alpha != nil {
 		var rgb *images.NRGB
-		m, err := shm.CreateTemp("icat-*", uint64(f.width*f.height*3))
+		bytes_per_pixel = 3
+		m, err := shm.CreateTemp(shm_template, uint64(f.width*f.height*bytes_per_pixel))
 		if err != nil {
 			rgb = images.NewNRGB(dest_rect)
 		} else {
-			rgb = &images.NRGB{Pix: m.Slice(), Stride: 3 * f.width, Rect: dest_rect}
+			rgb = &images.NRGB{Pix: m.Slice(), Stride: bytes_per_pixel * f.width, Rect: dest_rect}
 			f.shm = m
 		}
 		f.transmission_format = graphics.GRT_format_rgb
@@ -57,11 +54,11 @@ func add_frame(imgd *image_data, img image.Image) *image_frame {
 		final_img = rgb
 	} else {
 		var rgba *image.NRGBA
-		m, err := shm.CreateTemp("icat-*", uint64(f.width*f.height*4))
+		m, err := shm.CreateTemp(shm_template, uint64(f.width*f.height*bytes_per_pixel))
 		if err != nil {
 			rgba = image.NewNRGBA(dest_rect)
 		} else {
-			rgba = &image.NRGBA{Pix: m.Slice(), Stride: 4 * f.width, Rect: dest_rect}
+			rgba = &image.NRGBA{Pix: m.Slice(), Stride: bytes_per_pixel * f.width, Rect: dest_rect}
 			f.shm = m
 		}
 		f.transmission_format = graphics.GRT_format_rgba
@@ -70,6 +67,18 @@ func add_frame(imgd *image_data, img image.Image) *image_frame {
 	}
 	images.PasteCenter(final_img, img, remove_alpha)
 	imgd.frames = append(imgd.frames, &f)
+	if flip {
+		images.FlipPixelsV(bytes_per_pixel, f.width, f.height, f.in_memory_bytes)
+		if f.height < imgd.canvas_height {
+			f.top = (2*imgd.canvas_height - f.height - f.top) % imgd.canvas_height
+		}
+	}
+	if flop {
+		images.FlipPixelsH(bytes_per_pixel, f.width, f.height, f.in_memory_bytes)
+		if f.width < imgd.canvas_width {
+			f.left = (2*imgd.canvas_width - f.width - f.left) % imgd.canvas_width
+		}
+	}
 	return &f
 }
 
@@ -80,10 +89,12 @@ func scale_image(imgd *image_data) {
 			r := float64(imgd.available_width) / float64(imgd.canvas_width)
 			imgd.canvas_width, imgd.canvas_height = imgd.available_width, int(r*float64(imgd.canvas_height))
 		}
-		imgd.canvas_width, imgd.canvas_height = images.FitImage(imgd.canvas_width, imgd.canvas_height, imgd.available_width, imgd.available_height)
+		neww, newh := images.FitImage(imgd.canvas_width, imgd.canvas_height, imgd.available_width, imgd.available_height)
 		imgd.needs_scaling = false
-		imgd.scaled_frac.x = float64(imgd.canvas_width) / float64(width)
-		imgd.scaled_frac.y = float64(imgd.canvas_height) / float64(height)
+		imgd.scaled_frac.x = float64(neww) / float64(width)
+		imgd.scaled_frac.y = float64(newh) / float64(height)
+		imgd.canvas_width = int(imgd.scaled_frac.x * float64(width))
+		imgd.canvas_height = int(imgd.scaled_frac.y * float64(height))
 	}
 }
 
