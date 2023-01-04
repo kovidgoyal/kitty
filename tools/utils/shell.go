@@ -24,3 +24,18 @@ func QuoteStringForFish(x string) string {
 	x = strings.ReplaceAll(x, "'", "\\'")
 	return "'" + x + "'"
 }
+
+// Escapes common shell meta characters
+func EscapeSHMetaCharacters(x string) string {
+	const metachars = "\\|&;<>()$'\" \n\t"
+	ans := strings.Builder{}
+	ans.Grow(len(x) + 32)
+	for _, ch := range x {
+		switch ch {
+		case '\\', '|', '&', ';', '<', '>', '(', ')', '$', '\'', '"', ' ', '\n', '\t':
+			ans.WriteRune('\\')
+		}
+		ans.WriteRune(ch)
+	}
+	return ans.String()
+}

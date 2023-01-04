@@ -89,7 +89,12 @@ func serialize(completions *Completions, f *markup.Context, screen_width int) ([
 	} else {
 		for _, mg := range completions.Groups {
 			cmd := strings.Builder{}
-			cmd.WriteString("compadd -U -J ")
+			escape_ourselves := mg.IsFiles // zsh quoting quotes a leading ~/ in filenames which is wrong
+			cmd.WriteString("compadd -U ")
+			if escape_ourselves {
+				cmd.WriteString("-Q ")
+			}
+			cmd.WriteString("-J ")
 			cmd.WriteString(utils.QuoteStringForSH(mg.Title))
 			cmd.WriteString(" -X ")
 			cmd.WriteString(utils.QuoteStringForSH("%B" + mg.Title + "%b"))
@@ -116,7 +121,11 @@ func serialize(completions *Completions, f *markup.Context, screen_width int) ([
 			cmd.WriteString(" --")
 			for _, m := range mg.Matches {
 				cmd.WriteString(" ")
-				cmd.WriteString(utils.QuoteStringForSH(m.Word))
+				w := m.Word
+				if escape_ourselves {
+					w = utils.EscapeSHMetaCharacters(m.Word)
+				}
+				cmd.WriteString(utils.QuoteStringForSH(w))
 			}
 			fmt.Fprintln(&output, cmd.String(), ";")
 		}
