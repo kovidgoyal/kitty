@@ -80,8 +80,10 @@ usage = '[files to copy to/from]'
 if __name__ == '__main__':
     raise SystemExit('This should be run as kitty-tool clipboard')
 elif __name__ == '__doc__':
+    from kitty.cli import CompletionSpec
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
     cd['options'] = OPTIONS
     cd['help_text'] = help_text
     cd['short_desc'] = 'Copy/paste with the system clipboard, even over SSH'
+    cd['args_completion'] = CompletionSpec.from_string('type:file mime:* group:Files')
