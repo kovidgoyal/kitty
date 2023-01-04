@@ -251,6 +251,7 @@ def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
         HOME=tdir,
         USERPROFILE=tdir,
         PATH=path,
+        TERM='xterm-kitty',
         XDG_CONFIG_HOME=os.path.join(tdir, '.config'),
         XDG_CONFIG_DIRS=os.path.join(tdir, '.config'),
         XDG_DATA_DIRS=os.path.join(tdir, '.local', 'xdg'),
