@@ -27,7 +27,6 @@ func QuoteStringForFish(x string) string {
 
 // Escapes common shell meta characters
 func EscapeSHMetaCharacters(x string) string {
-	const metachars = "\\|&;<>()$'\" \n\t"
 	ans := strings.Builder{}
 	ans.Grow(len(x) + 32)
 	for _, ch := range x {
