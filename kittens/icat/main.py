@@ -48,7 +48,8 @@ into the specified rectangle. The syntax for specifying rectangles is
 All measurements are in cells (i.e. cursor positions) with the origin
 :italic:`(0, 0)` at the top-left corner of the screen. Note that the :option:`--align`
 option will horizontally align the image within this rectangle. By default, the image
-is horizontally centered within the rectangle.
+is horizontally centered within the rectangle. Using place will cause the cursor to
+be positioned at the top left corner of the image, instead of on the line after the image.
 
 
 --scale-up

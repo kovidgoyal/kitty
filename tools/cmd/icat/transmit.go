@@ -35,6 +35,9 @@ func gc_for_image(imgd *image_data, frame_num int, frame *image_frame) *graphics
 		if z_index != 0 {
 			gc.SetZIndex(z_index)
 		}
+		if place != nil {
+			gc.SetCursorMovement(graphics.GRT_cursor_static)
+		}
 	} else {
 		gc.SetAction(graphics.GRT_action_frame)
 		gc.SetGap(int32(frame.delay_ms))
