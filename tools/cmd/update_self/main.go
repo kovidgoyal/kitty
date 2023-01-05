@@ -23,14 +23,6 @@ type Options struct {
 	FetchVersion string
 }
 
-func fetch_latest_version() (string, error) {
-	b, err := utils.DownloadAsSlice("https://sw.kovidgoyal.net/kitty/current-version.txt", nil)
-	if err != nil {
-		return "", fmt.Errorf("Failed to fetch the latest available kitty version: %w", err)
-	}
-	return string(b), nil
-}
-
 func update_self(version string) (err error) {
 	exe := ""
 	exe, err = os.Executable()
@@ -48,19 +40,17 @@ func update_self(version string) (err error) {
 	if version == "nightly" {
 		rv = version
 	}
+	url_base := fmt.Sprintf("https://github.com/kovidgoyal/kitty/releases/download/%s", rv)
 	if version == "latest" {
-		rv, err = fetch_latest_version()
-		if err != nil {
-			return
-		}
+		url_base = "https://github.com/kovidgoyal/kitty/releases/latest/download"
 	}
+	url := fmt.Sprintf("%s/kitty-tool-%s-%s", url_base, runtime.GOOS, runtime.GOARCH)
 	dest, err := os.CreateTemp(filepath.Dir(exe), "kitty-tool.")
 	if err != nil {
 		return err
 	}
 	defer func() { os.Remove(dest.Name()) }()
 
-	url := fmt.Sprintf("https://github.com/kovidgoyal/kitty/releases/download/%s/kitty-tool-%s-%s", rv, runtime.GOOS, runtime.GOARCH)
 	if !tty.IsTerminal(os.Stdout.Fd()) {
 		fmt.Println("Downloading:", url)
 		err = utils.DownloadToFile(exe, url, nil, nil)
