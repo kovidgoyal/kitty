@@ -635,7 +635,7 @@ draw_hyperlink_target(OSWindow *os_window, Screen *screen, const CellRenderData 
         bd->needs_render = true;
     }
     if (bd->last_drawn_title_object_id == NULL) return;
-    const bool along_bottom = screen->lines < 3 || screen->current_hyperlink_under_mouse.y < screen->lines - 2;
+    const bool along_bottom = screen->current_hyperlink_under_mouse.y < 3;
     PyObject *ref = bd->last_drawn_title_object_id;
     Py_INCREF(ref);
     render_a_bar(os_window, screen, crd, &window->title_bar_data, bd->last_drawn_title_object_id, along_bottom);
