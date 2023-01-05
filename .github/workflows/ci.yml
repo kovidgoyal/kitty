@@ -5,7 +5,7 @@ env:
     ASAN_OPTIONS: leak_check_at_exit=0
     LC_ALL: en_US.UTF-8
     LANG: en_US.UTF-8
-    GO_INSTALL_VERSION: ">=1.18.0"
+    GO_INSTALL_VERSION: ">=1.19.0"
 
 permissions:
   contents: read # to fetch code (actions/checkout)
