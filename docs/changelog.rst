@@ -39,13 +39,17 @@ Detailed list of changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new statically compiled, standalone executable, ``kitty-tool`` (written in Go)
-  that can be used on all UNIX-like servers for remote control (``kitty-tool @``)
-  and eventually viewing images (``icat``) and other kittens.
+  that can be used on all UNIX-like servers for remote control (``kitty-tool @``),
+  viewing images (``icat``), manipulating the clipboard, etc.
 
 - :doc:`clipboard kitten </kittens/clipboard>`: Allow copying arbitrary data types to/from the clipboard, not just plain text
 
 - Speed up the ``kitty @`` executable by ~10x reducing the time for typical
   remote control commands from ~50ms to ~5ms
+
+- icat kitten: Speed up by using POSIX shared memory when possible to transfer
+  image data to the terminal. Also support common image formats
+  GIF/PNG/JPEG/WEBP/TIFF/BMP out of the box without needing ImageMagick.
 
 - Option :opt:`show_hyperlink_targets` to show the target of terminal hyperlinks when hovering over them with the mouse (:pull:`5830`)
 

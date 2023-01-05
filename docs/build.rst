@@ -39,7 +39,7 @@ Run-time dependencies:
 * ``freetype`` (not needed on macOS)
 * ``fontconfig`` (not needed on macOS)
 * ``libcanberra`` (not needed on macOS)
-* ``ImageMagick`` (optional, needed to use the ``kitty +kitten icat`` tool to display images in the terminal)
+* ``ImageMagick`` (optional, needed to display uncommon image formats in the terminal)
 * ``pygments`` (optional, needed for syntax highlighting in ``kitty +kitten diff``)
 
 

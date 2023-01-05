@@ -481,17 +481,28 @@ def shape_string(
         return test_shape(line, path)
 
 
+def show(outfile: str, width: int, height: int, fmt: int) -> None:
+    import os
+    from kittens.tui.images import GraphicsCommand
+    from base64 import standard_b64encode
+    cmd = GraphicsCommand()
+    cmd.a = 'T'
+    cmd.f = fmt
+    cmd.s = width
+    cmd.v = height
+    cmd.t = 't'
+    sys.stdout.flush()
+    sys.stdout.buffer.write(cmd.serialize(standard_b64encode(os.path.abspath(outfile).encode())))
+    sys.stdout.buffer.flush()
+
+
 def display_bitmap(rgb_data: bytes, width: int, height: int) -> None:
     from tempfile import NamedTemporaryFile
-
-    from kittens.icat.main import detect_support, show
-    if not hasattr(display_bitmap, 'detected') and not detect_support():
-        raise SystemExit('Your terminal does not support the graphics protocol')
     setattr(display_bitmap, 'detected', True)
     with NamedTemporaryFile(suffix='.rgba', delete=False) as f:
         f.write(rgb_data)
     assert len(rgb_data) == 4 * width * height
-    show(f.name, width, height, 0, 32, align='left')
+    show(f.name, width, height, 32)
 
 
 def test_render_string(
