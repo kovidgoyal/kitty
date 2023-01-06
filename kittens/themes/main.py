@@ -549,6 +549,13 @@ When running non-interactively, dump the specified theme to STDOUT
 instead of changing kitty.conf.
 
 
+--update-current
+type=bool-set
+default=false
+When running non-interactively, update `current-theme.conf` but do not
+change kitty.conf.
+
+
 --config-file-name
 default=kitty.conf
 The name or path to the config file to edit. Relative paths are interpreted
@@ -577,7 +584,7 @@ def non_interactive(cli_opts: ThemesCLIOptions, theme_name: str) -> None:
     if cli_opts.dump_theme:
         print(theme.raw)
         return
-    theme.save_in_conf(config_dir, cli_opts.reload_in, cli_opts.config_file_name)
+    theme.save_in_conf(config_dir, cli_opts.reload_in, cli_opts.config_file_name, not cli_opts.update_current)
 
 
 def main(args: List[str]) -> None:

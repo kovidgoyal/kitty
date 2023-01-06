@@ -530,20 +530,21 @@ class Theme:
     def save_in_dir(self, dirpath: str) -> None:
         atomic_save(self.raw.encode('utf-8'), os.path.join(dirpath, f'{self.name}.conf'))
 
-    def save_in_conf(self, confdir: str, reload_in: str, config_file_name: str = 'kitty.conf') -> None:
+    def save_in_conf(self, confdir: str, reload_in: str, config_file_name: str = 'kitty.conf', modify_conf: bool=True) -> None:
         os.makedirs(confdir, exist_ok=True)
         atomic_save(self.raw.encode('utf-8'), os.path.join(confdir, 'current-theme.conf'))
-        confpath = os.path.realpath(os.path.join(confdir, config_file_name))
-        try:
-            with open(confpath) as f:
-                raw = f.read()
-        except FileNotFoundError:
-            raw = ''
-        nraw = patch_conf(raw, self.name)
-        if raw:
-            with open(f'{confpath}.bak', 'w') as f:
-                f.write(raw)
-        atomic_save(nraw.encode('utf-8'), confpath)
+        if modify_conf:
+            confpath = os.path.realpath(os.path.join(confdir, config_file_name))
+            try:
+                with open(confpath) as f:
+                    raw = f.read()
+            except FileNotFoundError:
+                raw = ''
+            nraw = patch_conf(raw, self.name)
+            if raw:
+                with open(f'{confpath}.bak', 'w') as f:
+                    f.write(raw)
+            atomic_save(nraw.encode('utf-8'), confpath)
         if reload_in == 'parent':
             if 'KITTY_PID' in os.environ:
                 os.kill(int(os.environ['KITTY_PID']), signal.SIGUSR1)
