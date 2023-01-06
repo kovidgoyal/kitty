@@ -14,16 +14,16 @@ from enum import Enum, auto
 from functools import partial
 from gettext import gettext as _
 from typing import (
-    Any, DefaultDict, Dict, Iterable, Iterator, List, Optional, Tuple, Union
+    Any, DefaultDict, Dict, Iterable, Iterator, List, Optional, Tuple, Union,
 )
 
-from kitty.cli import CONFIG_HELP, parse_args, CompletionSpec
+from kitty.cli import CONFIG_HELP, CompletionSpec, parse_args
 from kitty.cli_stub import DiffCLIOptions
 from kitty.conf.utils import KeyAction
 from kitty.constants import appname
 from kitty.fast_data_types import wcswidth
 from kitty.key_encoding import EventType, KeyEvent
-from kitty.utils import ScreenSize
+from kitty.utils import ScreenSize, extract_all_from_tarfile_safely
 
 from ..tui.handler import Handler
 from ..tui.images import ImageManager, Placement
@@ -32,21 +32,21 @@ from ..tui.loop import Loop
 from ..tui.operations import styled
 from . import global_data
 from .collect import (
-    Collection, add_remote_dir, create_collection, data_for_path,
-    lines_for_path, sanitize, set_highlight_data
+    Collection, add_remote_dir, create_collection, data_for_path, lines_for_path,
+    sanitize, set_highlight_data,
 )
 from .config import init_config
 from .options.types import Options as DiffOptions
 from .patch import Differ, Patch, set_diff_command, worker_processes
 from .render import (
-    ImagePlacement, ImageSupportWarning, Line, LineRef, Reference, render_diff
+    ImagePlacement, ImageSupportWarning, Line, LineRef, Reference, render_diff,
 )
 from .search import BadRegex, Search
 
 try:
     from .highlight import (
         DiffHighlight, get_highlight_processes, highlight_collection,
-        initialize_highlighter
+        initialize_highlighter,
     )
     has_highlighter = True
     DiffHighlight
@@ -630,26 +630,7 @@ def get_ssh_file(hostname: str, rpath: str) -> str:
         raise SystemExit(p.returncode)
     with tarfile.open(fileobj=io.BytesIO(raw), mode='r:') as tf:
         members = tf.getmembers()
-        def is_within_directory(directory, target):
-            
-            abs_directory = os.path.abspath(directory)
-            abs_target = os.path.abspath(target)
-        
-            prefix = os.path.commonprefix([abs_directory, abs_target])
-            
-            return prefix == abs_directory
-        
-        def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
-        
-            for member in tar.getmembers():
-                member_path = os.path.join(path, member.name)
-                if not is_within_directory(path, member_path):
-                    raise Exception("Attempted Path Traversal in Tar File")
-        
-            tar.extractall(path, members, numeric_owner) 
-            
-        
-        safe_extract(tf, tdir)
+        extract_all_from_tarfile_safely(tf, tdir)
         if len(members) == 1:
             for root, dirs, files in os.walk(tdir):
                 if files:

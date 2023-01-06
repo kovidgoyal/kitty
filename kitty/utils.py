@@ -29,6 +29,7 @@ from .typing import AddressFamily, PopenType, Socket, StartupCtx
 if TYPE_CHECKING:
     from .fast_data_types import OSWindowSize
     from .options.types import Options
+    import tarfile
 else:
     Options = object
 
@@ -1103,3 +1104,21 @@ def sanitize_url_for_dispay_to_user(url: str) -> str:
     except Exception:
         url = 'Unpareseable URL: ' + url
     return url
+
+
+def extract_all_from_tarfile_safely(tf: 'tarfile.TarFile', dest: str) -> None:
+
+    def is_within_directory(directory: str, target: str) -> bool:
+        abs_directory = os.path.abspath(directory)
+        abs_target = os.path.abspath(target)
+        prefix = os.path.commonprefix((abs_directory, abs_target))
+        return prefix == abs_directory
+
+    def safe_extract(tar: 'tarfile.TarFile', path: str = ".", numeric_owner: bool = False) -> None:
+        for member in tar.getmembers():
+            member_path = os.path.join(path, member.name)
+            if not is_within_directory(path, member_path):
+                raise ValueError(f'Attempted path traversal in tar file: {member.name}')
+        tar.extractall(path, tar.getmembers(), numeric_owner=numeric_owner)
+
+    safe_extract(tf, dest)
