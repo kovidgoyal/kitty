@@ -47,8 +47,6 @@ var transfer_by_file, transfer_by_memory, transfer_by_stream transfer_mode
 
 var temp_files_to_delete []string
 var shm_files_to_delete []shm.MMap
-var stderr_is_tty bool
-var stream_response string
 var files_channel chan input_arg
 var output_channel chan *image_data
 var num_of_items int
@@ -165,7 +163,6 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
-	stderr_is_tty = tty.IsTerminal(os.Stderr.Fd())
 	t, err := tty.OpenControllingTerm()
 	if err != nil {
 		return 1, fmt.Errorf("Failed to open controlling terminal with error: %w", err)
@@ -220,6 +217,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 			return 1, err
 		}
 		if !direct {
+			keep_going.Store(false)
 			return 1, fmt.Errorf("This terminal does not support the graphics protocol use a terminal such as kitty, WezTerm or Konsole that does")
 		}
 		if memory {
