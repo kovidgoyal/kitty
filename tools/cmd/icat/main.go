@@ -197,7 +197,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		}
 		if !direct {
 			keep_going.Store(false)
-			return 1, fmt.Errorf("This terminal does not support the graphics protocol use a terminal such as kitty, WezTerm or Konsole that does")
+			return 1, fmt.Errorf("This terminal does not support the graphics protocol use a terminal such as kitty, WezTerm or Konsole that does. If you are running inside a terminal multiplexer such as tmux or screen that might be interfering as well.")
 		}
 		if memory {
 			transfer_by_memory = supported
