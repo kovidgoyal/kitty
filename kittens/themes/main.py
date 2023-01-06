@@ -553,8 +553,8 @@ instead of changing kitty.conf.
 default=kitty.conf
 The name or path to the config file to edit. Relative paths are interpreted
 with respect to the kitty config directory. By default the kitty config file,
-kitty.conf is edited. This is most useful if you add :code:`include current-theme.conf`
-to your kitty.conf and then have the kitten operate only on :file:`current-theme.conf`,
+kitty.conf is edited. This is most useful if you add :code:`include themes.conf`
+to your kitty.conf and then have the kitten operate only on :file:`themes.conf`,
 allowing :code:`kitty.conf` to remain unchanged.
 '''.format
 
