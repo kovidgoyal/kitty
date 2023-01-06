@@ -194,19 +194,14 @@ func set_basic_metadata(imgd *image_data) {
 	if imgd.frames == nil {
 		imgd.frames = make([]*image_frame, 0, 32)
 	}
-	imgd.available_width = int(screen_size.WidthPx)
+	imgd.available_width = int(screen_size.Xpixel)
 	imgd.available_height = 10 * imgd.canvas_height
 	if place != nil {
-		imgd.available_width = place.width * int(screen_size.CellWidth)
-		imgd.available_height = place.height * int(screen_size.CellHeight)
+		imgd.available_width = place.width * int(screen_size.Xpixel) / int(screen_size.Col)
+		imgd.available_height = place.height * int(screen_size.Ypixel) / int(screen_size.Row)
 	}
 	imgd.needs_scaling = imgd.canvas_width > imgd.available_width || imgd.canvas_height > imgd.available_height || opts.ScaleUp
 	imgd.needs_conversion = imgd.needs_scaling || remove_alpha != nil || flip || flop || imgd.format_uppercase != "PNG"
-}
-
-func send_output(imgd *image_data) {
-	output_channel <- imgd
-	lp.WakeupMainThread()
 }
 
 func report_error(source_name, msg string, err error) {

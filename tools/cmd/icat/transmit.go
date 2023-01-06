@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	"kitty/tools/tui/graphics"
+	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"kitty/tools/utils/shm"
 )
@@ -95,7 +96,7 @@ func transmit_shm(imgd *image_data, frame_num int, frame *image_frame) (err erro
 	gc := gc_for_image(imgd, frame_num, frame)
 	gc.SetTransmission(graphics.GRT_transmission_sharedmem)
 	gc.SetDataSize(uint64(data_size))
-	gc.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(mmap.Name()))
+	gc.WriteWithPayloadTo(os.Stdout, utils.UnsafeStringToBytes(mmap.Name()))
 	mmap.Close()
 
 	return nil
@@ -141,7 +142,7 @@ func transmit_file(imgd *image_data, frame_num int, frame *image_frame) (err err
 	if data_size > 0 {
 		gc.SetDataSize(uint64(data_size))
 	}
-	gc.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(fname))
+	gc.WriteWithPayloadTo(os.Stdout, utils.UnsafeStringToBytes(fname))
 	return nil
 }
 
@@ -159,7 +160,7 @@ func transmit_stream(imgd *image_data, frame_num int, frame *image_frame) (err e
 		}
 	}
 	gc := gc_for_image(imgd, frame_num, frame)
-	gc.WriteWithPayloadToLoop(lp, data)
+	gc.WriteWithPayloadTo(os.Stdout, data)
 	return nil
 }
 
@@ -179,15 +180,15 @@ func calculate_in_cell_x_offset(width, cell_width int) int {
 }
 
 func place_cursor(imgd *image_data) {
-	cw := int(screen_size.CellWidth)
+	cw := int(screen_size.Xpixel) / int(int(screen_size.Col))
 	imgd.cell_x_offset = calculate_in_cell_x_offset(imgd.canvas_width, cw)
 	num_of_cells_needed := int(math.Ceil(float64(imgd.canvas_width) / float64(cw)))
 	if place == nil {
 		switch opts.Align {
 		case "center":
-			imgd.move_x_by = (int(screen_size.WidthCells) - num_of_cells_needed) / 2
+			imgd.move_x_by = (int(screen_size.Col) - num_of_cells_needed) / 2
 		case "right":
-			imgd.move_x_by = (int(screen_size.WidthCells) - num_of_cells_needed)
+			imgd.move_x_by = (int(screen_size.Col) - num_of_cells_needed)
 		}
 	} else {
 		imgd.move_to.x = place.left + 1
@@ -242,12 +243,12 @@ func transmit_image(imgd *image_data) {
 		}
 	}
 	place_cursor(imgd)
-	lp.QueueWriteString("\r")
+	fmt.Print("\r")
 	if imgd.move_x_by > 0 {
-		lp.MoveCursorHorizontally(imgd.move_x_by)
+		fmt.Printf("\x1b[%dC", imgd.move_x_by)
 	}
 	if imgd.move_to.x > 0 {
-		lp.MoveCursorTo(imgd.move_to.x, imgd.move_to.y)
+		fmt.Printf(loop.MoveCursorToTemplate, imgd.move_to.y, imgd.move_to.x)
 	}
 	frame_control_cmd := graphics.GraphicsCommand{}
 	frame_control_cmd.SetAction(graphics.GRT_action_animate).SetImageNumber(imgd.image_number)
@@ -272,20 +273,20 @@ func transmit_image(imgd *image_data) {
 				case opts.Loop > 0:
 					c.SetNumberOfLoops(uint64(opts.Loop) + 1)
 				}
-				c.WriteWithPayloadToLoop(lp, nil)
+				c.WriteWithPayloadTo(os.Stdout, nil)
 			case 1:
 				c := frame_control_cmd
 				c.SetAnimationControl(2) // set animation to loading mode
-				c.WriteWithPayloadToLoop(lp, nil)
+				c.WriteWithPayloadTo(os.Stdout, nil)
 			}
 		}
 	}
 	if is_animated {
 		c := frame_control_cmd
 		c.SetAnimationControl(3) // set animation to normal mode
-		c.WriteWithPayloadToLoop(lp, nil)
+		c.WriteWithPayloadTo(os.Stdout, nil)
 	}
 	if imgd.move_to.x == 0 {
-		lp.Println() // ensure cursor is on new line
+		fmt.Println() // ensure cursor is on new line
 	}
 }
