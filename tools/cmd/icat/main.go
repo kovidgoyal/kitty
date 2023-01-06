@@ -17,7 +17,6 @@ import (
 	"kitty/tools/tui/graphics"
 	"kitty/tools/utils"
 	"kitty/tools/utils/images"
-	"kitty/tools/utils/shm"
 	"kitty/tools/utils/style"
 
 	"golang.org/x/sys/unix"
@@ -45,8 +44,6 @@ const (
 
 var transfer_by_file, transfer_by_memory, transfer_by_stream transfer_mode
 
-var temp_files_to_delete []string
-var shm_files_to_delete []shm.MMap
 var files_channel chan input_arg
 var output_channel chan *image_data
 var num_of_items int
@@ -131,20 +128,6 @@ func print_error(format string, args ...any) {
 	fmt.Fprintln(os.Stderr)
 }
 
-func on_finalize() string {
-	if len(temp_files_to_delete) > 0 && transfer_by_file != supported {
-		for _, name := range temp_files_to_delete {
-			os.Remove(name)
-		}
-	}
-	if len(shm_files_to_delete) > 0 && transfer_by_memory != supported {
-		for _, name := range shm_files_to_delete {
-			name.Unlink()
-		}
-	}
-	return ""
-}
-
 func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	opts = o
 	err = parse_place()
@@ -185,8 +168,6 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		return 1, fmt.Errorf("Terminal does not support reporting screen sizes in pixels, use a terminal such as kitty, WezTerm, Konsole, etc. that does.")
 	}
 
-	temp_files_to_delete = make([]string, 0, 8)
-	shm_files_to_delete = make([]shm.MMap, 0, 8)
 	items, err := process_dirs(args...)
 	if err != nil {
 		return 1, err
@@ -208,8 +189,6 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 			go run_worker()
 		}
 	}
-
-	defer on_finalize()
 
 	if opts.TransferMode == "detect" || opts.DetectSupport {
 		memory, files, direct, err := DetectSupport(time.Duration(opts.DetectionTimeout * float64(time.Second)))

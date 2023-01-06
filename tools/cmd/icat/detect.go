@@ -17,6 +17,8 @@ import (
 var _ = fmt.Print
 
 func DetectSupport(timeout time.Duration) (memory, files, direct bool, err error) {
+	temp_files_to_delete := make([]string, 0, 8)
+	shm_files_to_delete := make([]shm.MMap, 0, 8)
 	var direct_query_id, file_query_id, memory_query_id uint32
 	lp, e := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking)
 	if e != nil {
@@ -26,6 +28,19 @@ func DetectSupport(timeout time.Duration) (memory, files, direct bool, err error
 	print_error := func(format string, args ...any) {
 		lp.Println(fmt.Sprintf(format, args...))
 	}
+
+	defer func() {
+		if len(temp_files_to_delete) > 0 && transfer_by_file != supported {
+			for _, name := range temp_files_to_delete {
+				os.Remove(name)
+			}
+		}
+		if len(shm_files_to_delete) > 0 && transfer_by_memory != supported {
+			for _, name := range shm_files_to_delete {
+				name.Unlink()
+			}
+		}
+	}()
 
 	lp.OnInitialize = func() (string, error) {
 		var iid uint32
