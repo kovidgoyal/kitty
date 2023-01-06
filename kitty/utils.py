@@ -1107,6 +1107,7 @@ def sanitize_url_for_dispay_to_user(url: str) -> str:
 
 
 def extract_all_from_tarfile_safely(tf: 'tarfile.TarFile', dest: str) -> None:
+    # Ensure that all extracted items are within dest
 
     def is_within_directory(directory: str, target: str) -> bool:
         abs_directory = os.path.abspath(directory)
