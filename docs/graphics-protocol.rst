@@ -88,6 +88,17 @@ code to demonstrate its use
             'number of rows: {} number of columns: {}'
             'screen width: {} screen height: {}').format(*buf))
 
+.. tab:: Go
+
+    .. code-block:: go
+
+        import "golang.org/x/sys/unix"
+        fd, err := unix.Open(fd, unix.O_NOCTTY|unix.O_CLOEXEC|unix.O_NDELAY|unix.O_RDWR, 0666)
+		sz, err := unix.IoctlGetWinsize(fd, unix.TIOCGWINSZ)
+        fmt.Println("rows: %v columns: %v width: %v height %v", sz.Row, sz.Col, sz.Xpixel, sz.Ypixel)
+
+
+
 Note that some terminals return ``0`` for the width and height values. Such
 terminals should be modified to return the correct values.  Examples of
 terminals that return correct values: ``kitty, xterm``
