@@ -559,6 +559,16 @@ class TabBar:
                 self.draw_data = self.draw_data._replace(inactive_fg=ifg)
         self.screen.color_profile.set_configured_colors(fg, bg)
 
+    @property
+    def current_colors(self) -> Dict[str, Color]:
+        return {
+            'active_tab_foreground': self.draw_data.active_fg,
+            'inactive_tab_foreground': self.draw_data.inactive_fg,
+            'active_tab_background': self.draw_data.active_bg,
+            'inactive_tab_background': self.draw_data.inactive_bg,
+            'tab_bar_background': self.draw_data.default_bg,
+        }
+
     def update_blank_rects(self, central: Region, tab_bar: Region, vw: int, vh: int) -> None:
         opts = get_options()
         blank_rects: List[Border] = []
