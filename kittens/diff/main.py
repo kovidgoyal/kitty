@@ -229,8 +229,8 @@ class DiffHandler(Handler):
         self.diff_lines: Tuple[Line, ...] = tuple(render_diff(self.collection, self.diff_map, self.args, self.screen_size.cols, self.image_manager))
         self.margin_size = render_diff.margin_size
         self.ref_path_map: DefaultDict[str, List[Tuple[int, Reference]]] = defaultdict(list)
-        for i, l in enumerate(self.diff_lines):
-            self.ref_path_map[l.ref.path].append((i, l.ref))
+        for i, dl in enumerate(self.diff_lines):
+            self.ref_path_map[dl.ref.path].append((i, dl.ref))
         self.max_scroll_pos = len(self.diff_lines) - self.num_lines
         if self.current_search is not None:
             self.current_search(self.diff_lines, self.margin_size, self.screen_size.cols)

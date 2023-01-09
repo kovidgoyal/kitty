@@ -14,6 +14,10 @@ is_openbsd = 'openbsd' in _plat
 base = os.path.dirname(os.path.abspath(__file__))
 
 
+def null_func() -> None:
+    return None
+
+
 class CompileKey(NamedTuple):
     src: str
     dest: str
@@ -23,7 +27,7 @@ class Command(NamedTuple):
     desc: str
     cmd: Sequence[str]
     is_newer_func: Callable[[], bool]
-    on_success: Callable[[], None] = lambda: None
+    on_success: Callable[[], None] = null_func
     key: Optional[CompileKey] = None
     keyfile: Optional[str] = None
 

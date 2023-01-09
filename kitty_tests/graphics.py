@@ -289,21 +289,21 @@ class TestGraphics(BaseTest):
         self.assertEqual(dc.num_cached_in_ram(), 0)
 
     def test_suppressing_gr_command_responses(self):
-        s, g, l, sl = load_helpers(self)
-        self.ae(l('abcd', s=10, v=10, q=1), 'ENODATA:Insufficient image data: 4 < 400')
-        self.ae(l('abcd', s=10, v=10, q=2), None)
-        self.assertIsNone(l('abcd', s=1, v=1, a='q', q=1))
+        s, g, pl, sl = load_helpers(self)
+        self.ae(pl('abcd', s=10, v=10, q=1), 'ENODATA:Insufficient image data: 4 < 400')
+        self.ae(pl('abcd', s=10, v=10, q=2), None)
+        self.assertIsNone(pl('abcd', s=1, v=1, a='q', q=1))
         # Test chunked load
-        self.assertIsNone(l('abcd', s=2, v=2, m=1, q=1))
-        self.assertIsNone(l('efgh', m=1))
-        self.assertIsNone(l('ijkl', m=1))
-        self.assertIsNone(l('mnop', m=0))
+        self.assertIsNone(pl('abcd', s=2, v=2, m=1, q=1))
+        self.assertIsNone(pl('efgh', m=1))
+        self.assertIsNone(pl('ijkl', m=1))
+        self.assertIsNone(pl('mnop', m=0))
 
         # errors
-        self.assertIsNone(l('abcd', s=2, v=2, m=1, q=1))
-        self.ae(l('mnop', m=0), 'ENODATA:Insufficient image data: 8 < 16')
-        self.assertIsNone(l('abcd', s=2, v=2, m=1, q=2))
-        self.assertIsNone(l('mnop', m=0))
+        self.assertIsNone(pl('abcd', s=2, v=2, m=1, q=1))
+        self.ae(pl('mnop', m=0), 'ENODATA:Insufficient image data: 8 < 16')
+        self.assertIsNone(pl('abcd', s=2, v=2, m=1, q=2))
+        self.assertIsNone(pl('mnop', m=0))
 
         # frames
         s = self.create_screen()
@@ -320,11 +320,11 @@ class TestGraphics(BaseTest):
         self.assertIsNone(li(payload='2' * 12))
 
     def test_load_images(self):
-        s, g, l, sl = load_helpers(self)
+        s, g, pl, sl = load_helpers(self)
         self.assertEqual(g.disk_cache.total_size, 0)
 
         # Test load query
-        self.ae(l('abcd', s=1, v=1, a='q'), 'OK')
+        self.ae(pl('abcd', s=1, v=1, a='q'), 'OK')
         self.ae(g.image_count, 0)
 
         # Test simple load
@@ -334,10 +334,10 @@ class TestGraphics(BaseTest):
             self.ae(bool(img['is_4byte_aligned']), f == 32)
 
         # Test chunked load
-        self.assertIsNone(l('abcd', s=2, v=2, m=1))
-        self.assertIsNone(l('efgh', m=1))
-        self.assertIsNone(l('ijkl', m=1))
-        self.ae(l('mnop', m=0), 'OK')
+        self.assertIsNone(pl('abcd', s=2, v=2, m=1))
+        self.assertIsNone(pl('efgh', m=1))
+        self.assertIsNone(pl('ijkl', m=1))
+        self.ae(pl('mnop', m=0), 'OK')
         img = g.image_for_client_id(1)
         self.ae(img['data'], b'abcdefghijklmnop')
 
@@ -354,8 +354,8 @@ class TestGraphics(BaseTest):
 
         # Test chunked + compressed
         b = len(compressed_random_data) // 2
-        self.assertIsNone(l(compressed_random_data[:b], s=24, v=32, o='z', m=1))
-        self.ae(l(compressed_random_data[b:], m=0), 'OK')
+        self.assertIsNone(pl(compressed_random_data[:b], s=24, v=32, o='z', m=1))
+        self.ae(pl(compressed_random_data[b:], m=0), 'OK')
         img = g.image_for_client_id(1)
         self.ae(img['data'], random_data)
 
@@ -382,7 +382,7 @@ class TestGraphics(BaseTest):
 
     @unittest.skipIf(Image is None, 'PIL not available, skipping PNG tests')
     def test_load_png(self):
-        s, g, l, sl = load_helpers(self)
+        s, g, pl, sl = load_helpers(self)
         w, h = 5, 3
         rgba_data = byte_block(w * h * 4)
         img = Image.frombytes('RGBA', (w, h), rgba_data)
@@ -407,7 +407,7 @@ class TestGraphics(BaseTest):
             data = png(m)
         sl(data, f=100, expecting_data=rgba_data)
 
-        self.ae(l(b'a' * 20, f=100, S=20).partition(':')[0], 'EBADPNG')
+        self.ae(pl(b'a' * 20, f=100, S=20).partition(':')[0], 'EBADPNG')
         s.reset()
         self.assertEqual(g.disk_cache.total_size, 0)
 
@@ -416,7 +416,7 @@ class TestGraphics(BaseTest):
         png_data = standard_b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==')
         expected = b'\x00\xff\xff\x7f'
         self.ae(load_png_data(png_data), (expected, 1, 1))
-        s, g, l, sl = load_helpers(self)
+        s, g, pl, sl = load_helpers(self)
         sl(png_data, f=100, expecting_data=expected)
         # test error handling for loading bad png data
         self.assertRaisesRegex(ValueError, '[EBADPNG]', load_png_data, b'dsfsdfsfsfd')
