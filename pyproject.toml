@@ -1,0 +1,22 @@
+[tool.mypy]
+files = 'kitty,kittens,glfw,*.py,docs/conf.py,shell-integration/ssh/askpass.py'
+no_implicit_optional = true
+sqlite_cache = true
+cache_fine_grained = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_untyped_decorators = true
+disallow_untyped_calls = true
+disallow_incomplete_defs = true
+strict = true
+no_implicit_reexport = true
+
+[tool.ruff]
+line-length = 160
+target-version = 'py38'
+select = ['E', 'F']

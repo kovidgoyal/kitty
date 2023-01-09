@@ -1,9 +1,9 @@
 " Scan the following dirs recursively for tags
-let g:project_tags_dirs = ['kitty', 'kittens']
+let g:project_tags_dirs = ['kitty', 'kittens', 'tools']
 if exists('g:ale_linters')
-    let g:ale_linters['python'] = ['mypy', 'flake8']
+    let g:ale_linters['python'] = ['mypy', 'ruff']
 else
-    let g:ale_linters = {'python': ['mypy', 'flake8']}
+    let g:ale_linters = {'python': ['mypy', 'ruff']}
 endif
 let g:ale_python_mypy_executable = './mypy-editor-integration'
 let g:ycm_python_binary_path = 'python3'
