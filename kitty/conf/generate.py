@@ -345,6 +345,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
     a = preamble.append
 
     def output_imports(imports: Set[Tuple[str, str]], add_module_imports: bool = True) -> None:
+        a('# isort: skip_file')
         a('import typing')
         seen_mods = {'typing'}
         mmap: Dict[str, List[str]] = {}
