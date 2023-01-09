@@ -31,6 +31,7 @@ class Broadcast(Handler):
 
     def __init__(self, opts: BroadcastCLIOptions, initial_strings: List[str]) -> None:
         self.opts = opts
+        self.hide_input = False
         self.initial_strings = initial_strings
         self.payload = {'exclude_active': True, 'data': '', 'match': opts.match, 'match_tab': opts.match_tab, 'session_id': uuid4()}
         self.line_edit = LineEdit()
@@ -40,7 +41,7 @@ class Broadcast(Handler):
 
     def initialize(self) -> None:
         self.write_broadcast_session()
-        self.print('Type the text to broadcast below, press', styled('Ctrl+Esc', fg='yellow'), 'to quit:')
+        self.print('Type the text to broadcast below, press', styled(self.opts.end_session, fg='yellow'), 'to quit:')
         for x in self.initial_strings:
             self.write_broadcast_text(x)
         self.write(SAVE_CURSOR)
@@ -56,7 +57,8 @@ class Broadcast(Handler):
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
         self.write_broadcast_text(text)
-        self.line_edit.on_text(text, in_bracketed_paste)
+        if not self.hide_input:
+            self.line_edit.on_text(text, in_bracketed_paste)
         self.commit_line()
 
     def on_interrupt(self) -> None:
@@ -68,21 +70,32 @@ class Broadcast(Handler):
         self.write_broadcast_text('\x04')
 
     def on_key(self, key_event: KeyEventType) -> None:
-        if self.line_edit.on_key(key_event):
+        if key_event.matches(self.opts.hide_input_toggle):
+            self.hide_input ^= True
+            self.cmd.set_cursor_visible(not self.hide_input)
+            if self.hide_input:
+                self.end_line()
+                self.print('Input hidden, press', styled(self.opts.hide_input_toggle, fg='yellow'), 'to unhide:')
+                self.end_line()
+            return
+        if key_event.matches(self.opts.end_session):
+            self.quit_loop(0)
+            return
+        if not self.hide_input and self.line_edit.on_key(key_event):
             self.commit_line()
         if key_event.matches('enter'):
             self.write_broadcast_text('\r')
-            self.print('')
-            self.line_edit.clear()
-            self.write(SAVE_CURSOR)
-            return
-        if key_event.matches('ctrl+esc'):
-            self.quit_loop(0)
+            self.end_line()
             return
 
         ek = encode_key_event(key_event)
         ek = standard_b64encode(ek.encode('utf-8')).decode('ascii')
         self.write_broadcast_data('kitty-key:' + ek)
+
+    def end_line(self) -> None:
+        self.print('')
+        self.line_edit.clear()
+        self.write(SAVE_CURSOR)
 
     def write_broadcast_text(self, text: str) -> None:
         self.write_broadcast_data('base64:' + standard_b64encode(text.encode('utf-8')).decode('ascii'))
@@ -98,7 +111,19 @@ class Broadcast(Handler):
         self.write(session_command(self.payload, start))
 
 
-OPTIONS = (MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')).format
+OPTIONS = ('''
+--hide-input-toggle
+default=Ctrl+Alt+Esc
+Key to press that will toggle hiding of the input in the broadcast window itself.
+Useful while typing a password, prevents the password from being visible on the screen.
+
+
+--end-session
+default=Ctrl+Esc
+Key to press to end the broadcast session.
+
+
+''' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')).format
 help_text = 'Broadcast typed text to kitty windows. By default text is sent to all windows, unless one of the matching options is specified'
 usage = '[initial text to send ...]'
 

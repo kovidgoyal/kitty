@@ -85,6 +85,8 @@ Detailed list of changes
 
 - When a multi-key sequence does not match any action, send all key events to the child program (:pull:`5841`)
 
+- broadcast kitten: Allow pressing a key to stop echoing of input into the broadcast window itself (:disc:`5868`)
+
 
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
