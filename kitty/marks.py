@@ -3,7 +3,7 @@
 
 import re
 from ctypes import POINTER, c_uint, c_void_p, cast
-from typing import Callable, Generator, Iterable, Pattern, Tuple, Union, Sequence
+from typing import Callable, Generator, Iterable, Pattern, Sequence, Tuple, Union
 
 from .utils import resolve_custom_file
 

@@ -6,9 +6,7 @@ from contextlib import suppress
 from fnmatch import fnmatch
 from functools import lru_cache
 from hashlib import md5
-from typing import (
-    TYPE_CHECKING, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
-)
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
 
 from kitty.guess_mime_type import guess_type
 from kitty.utils import control_codes_pat

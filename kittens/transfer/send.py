@@ -9,17 +9,11 @@ from collections import deque
 from enum import auto
 from itertools import count
 from time import monotonic
-from typing import (
-    IO, Callable, Deque, Dict, Iterable, Iterator, List, Optional, Sequence,
-    Set, Tuple, Union
-)
+from typing import IO, Callable, Deque, Dict, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, Union
 
 from kitty.cli_stub import TransferCLIOptions
 from kitty.fast_data_types import FILE_TRANSFER_CODE, wcswidth
-from kitty.file_transmission import (
-    Action, Compression, FileTransmissionCommand, FileType, NameReprEnum,
-    TransmissionType, encode_bypass, split_for_transfer
-)
+from kitty.file_transmission import Action, Compression, FileTransmissionCommand, FileType, NameReprEnum, TransmissionType, encode_bypass, split_for_transfer
 from kitty.typing import KeyEventType, ScreenSize
 from kitty.utils import sanitize_control_codes
 
@@ -30,9 +24,16 @@ from ..tui.spinners import Spinner
 from ..tui.utils import human_size
 from .librsync import LoadSignature, delta_for_file
 from .utils import (
-    IdentityCompressor, ZlibCompressor, abspath, expand_home, home_path,
-    print_rsync_stats, random_id, render_progress_in_width, safe_divide,
-    should_be_compressed
+    IdentityCompressor,
+    ZlibCompressor,
+    abspath,
+    expand_home,
+    home_path,
+    print_rsync_stats,
+    random_id,
+    render_progress_in_width,
+    safe_divide,
+    should_be_compressed,
 )
 
 debug

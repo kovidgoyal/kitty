@@ -5,7 +5,7 @@ import re
 import sys
 from binascii import hexlify, unhexlify
 from contextlib import suppress
-from typing import Dict, Iterable, List, Type, Optional
+from typing import Dict, Iterable, List, Optional, Type
 
 from kitty.cli import parse_args
 from kitty.cli_stub import QueryTerminalCLIOptions

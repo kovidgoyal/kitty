@@ -5,8 +5,9 @@
 import os
 from contextlib import contextmanager
 
-from . import BaseTest
 from kitty.utils import get_editor
+
+from . import BaseTest
 
 
 @contextmanager
@@ -25,7 +26,7 @@ def patch_env(**kw):
 class TestOpenActions(BaseTest):
 
     def test_parsing_of_open_actions(self):
-        from kitty.open_actions import actions_for_url, KeyAction
+        from kitty.open_actions import KeyAction, actions_for_url
         self.set_options()
         spec = '''
 protocol file

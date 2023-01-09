@@ -14,7 +14,10 @@ import kitty.constants as kc
 from kittens.tui.operations import Mode
 from kittens.tui.spinners import spinners
 from kitty.cli import (
-    CompletionSpec, GoOption, go_options_for_seq, parse_option_spec,
+    CompletionSpec,
+    GoOption,
+    go_options_for_seq,
+    parse_option_spec,
     serialize_as_go_string,
 )
 from kitty.key_encoding import config_mod_map

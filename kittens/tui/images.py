@@ -9,17 +9,11 @@ from collections import defaultdict, deque
 from contextlib import suppress
 from enum import IntEnum
 from itertools import count
-from typing import (
-    Any, Callable, ClassVar, DefaultDict, Deque, Dict, Generic, Iterator, List,
-    Optional, Sequence, Tuple, Type, TypeVar, Union, cast
-)
+from typing import Any, Callable, ClassVar, DefaultDict, Deque, Dict, Generic, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Union, cast
 
 from kitty.conf.utils import positive_float, positive_int
 from kitty.fast_data_types import create_canvas
-from kitty.typing import (
-    GRT_C, CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t,
-    HandlerType
-)
+from kitty.typing import GRT_C, CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t, HandlerType
 from kitty.utils import ScreenSize, fit_image, which
 
 from .operations import cursor

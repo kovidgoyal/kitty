@@ -57,9 +57,7 @@ class TestBuild(BaseTest):
         self.assertGreater(len(names), 8)
 
     def test_filesystem_locations(self) -> None:
-        from kitty.constants import (
-            local_docs, logo_png_file, shell_integration_dir, terminfo_dir
-        )
+        from kitty.constants import local_docs, logo_png_file, shell_integration_dir, terminfo_dir
         zsh = os.path.join(shell_integration_dir, 'zsh')
         self.assertTrue(os.path.isdir(terminfo_dir), f'Terminfo dir: {terminfo_dir}')
         self.assertTrue(os.path.exists(logo_png_file), f'Logo file: {logo_png_file}')
@@ -113,8 +111,9 @@ class TestBuild(BaseTest):
         self.ae(docs_url('#ref=issues-123'), 'https://github.com/kovidgoyal/kitty/issues/123')
 
     def test_launcher_ensures_stdio(self):
-        from kitty.constants import kitty_exe
         import subprocess
+
+        from kitty.constants import kitty_exe
         exe = kitty_exe()
         cp = subprocess.run([exe, '+runpy', f'''\
 import os, sys

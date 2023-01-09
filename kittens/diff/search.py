@@ -5,9 +5,9 @@ import re
 from typing import TYPE_CHECKING, Callable, Dict, Iterable, List, Tuple
 
 from kitty.fast_data_types import wcswidth
-from .options.types import Options as DiffOptions
 
 from ..tui.operations import styled
+from .options.types import Options as DiffOptions
 
 if TYPE_CHECKING:
     from .render import Line

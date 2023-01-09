@@ -5,9 +5,17 @@
 from typing import TYPE_CHECKING, Optional
 
 from .base import (
-    MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, OpacityError,
-    PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType,
-    Window
+    MATCH_TAB_OPTION,
+    MATCH_WINDOW_OPTION,
+    ArgsType,
+    Boss,
+    OpacityError,
+    PayloadGetType,
+    PayloadType,
+    RCOptions,
+    RemoteCommand,
+    ResponseType,
+    Window,
 )
 
 if TYPE_CHECKING:

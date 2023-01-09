@@ -5,10 +5,7 @@ import os
 import tempfile
 from typing import IO, TYPE_CHECKING, Iterator, Union
 
-from .rsync import (
-    IO_BUFFER_SIZE, RsyncError, begin_create_delta, begin_create_signature,
-    begin_load_signature, begin_patch, build_hash_table, iter_job
-)
+from .rsync import IO_BUFFER_SIZE, RsyncError, begin_create_delta, begin_create_signature, begin_load_signature, begin_patch, build_hash_table, iter_job
 
 if TYPE_CHECKING:
     from .rsync import JobCapsule, SignatureCapsule

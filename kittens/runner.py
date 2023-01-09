@@ -93,8 +93,8 @@ def launch(args: List[str]) -> None:
     finally:
         sys.stdin = sys.__stdin__
     if result is not None:
-        import json
         import base64
+        import json
         data = base64.b85encode(json.dumps(result).encode('utf-8'))
         sys.stdout.buffer.write(b'\x1bP@kitty-kitten-result|')
         sys.stdout.buffer.write(data)

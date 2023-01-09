@@ -3,6 +3,7 @@
 
 import sys
 import unittest
+
 from . import BaseTest
 
 _plat = sys.platform.lower()
@@ -42,6 +43,7 @@ class TestGLFW(BaseTest):
     @unittest.skipIf(is_macos, 'Skipping test on macOS because glfw-cocoa.so is not built with backend_utils')
     def test_utf_8_strndup(self):
         import ctypes
+
         from kitty.constants import glfw_path
 
         backend_utils = glfw_path('x11')

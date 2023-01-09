@@ -10,10 +10,7 @@ import termios
 import time
 import tty
 from contextlib import contextmanager
-from ctypes import (
-    CDLL, POINTER, byref, c_char_p, c_int, c_size_t, c_void_p,
-    create_string_buffer
-)
+from ctypes import CDLL, POINTER, byref, c_char_p, c_int, c_size_t, c_void_p, create_string_buffer
 from ctypes.util import find_library
 
 _plat = sys.platform.lower()

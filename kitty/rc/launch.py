@@ -5,15 +5,11 @@
 from typing import TYPE_CHECKING, Optional
 
 from kitty.cli_stub import LaunchCLIOptions
-from kitty.launch import (
-    launch as do_launch, options_spec as launch_options_spec,
-    parse_launch_args
-)
+from kitty.launch import launch as do_launch
+from kitty.launch import options_spec as launch_options_spec
+from kitty.launch import parse_launch_args
 
-from .base import (
-    MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions,
-    RemoteCommand, ResponseType, Window
-)
+from .base import MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
 if TYPE_CHECKING:
     from kitty.cli_stub import LaunchRCOptions as CLIOptions

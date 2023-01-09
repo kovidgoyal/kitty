@@ -22,27 +22,16 @@ from base64 import standard_b64decode, standard_b64encode
 from contextlib import contextmanager, suppress
 from getpass import getuser
 from select import select
-from typing import (
-    Any, Callable, Dict, Iterator, List, NoReturn, Optional, Sequence, Set,
-    Tuple, Union, cast
-)
+from typing import Any, Callable, Dict, Iterator, List, NoReturn, Optional, Sequence, Set, Tuple, Union, cast
 
-from kitty.constants import (
-    cache_dir, runtime_dir, shell_integration_dir, ssh_control_master_template,
-    str_version, terminfo_dir
-)
+from kitty.constants import cache_dir, runtime_dir, shell_integration_dir, ssh_control_master_template, str_version, terminfo_dir
 from kitty.shell_integration import as_str_literal
 from kitty.shm import SharedMemory
 from kitty.types import run_once
-from kitty.utils import (
-    SSHConnectionData, expandvars, resolve_abs_or_config_path,
-    set_echo as turn_off_echo
-)
+from kitty.utils import SSHConnectionData, expandvars, resolve_abs_or_config_path
+from kitty.utils import set_echo as turn_off_echo
 
-from ..tui.operations import (
-    RESTORE_PRIVATE_MODE_VALUES, SAVE_PRIVATE_MODE_VALUES, Mode,
-    restore_colors, save_colors, set_mode
-)
+from ..tui.operations import RESTORE_PRIVATE_MODE_VALUES, SAVE_PRIVATE_MODE_VALUES, Mode, restore_colors, save_colors, set_mode
 from ..tui.utils import kitty_opts, running_in_tmux
 from .config import init_config
 from .copy import CopyInstruction
@@ -624,9 +613,7 @@ def drain_potential_tty_garbage(p: 'subprocess.Popen[bytes]', data_request: str)
 def change_colors(color_scheme: str) -> bool:
     if not color_scheme:
         return False
-    from kittens.themes.collection import (
-        NoCacheFound, load_themes, text_as_opts
-    )
+    from kittens.themes.collection import NoCacheFound, load_themes, text_as_opts
     from kittens.themes.main import colors_as_escape_codes
     if color_scheme.endswith('.conf'):
         conf_file = resolve_abs_or_config_path(color_scheme)

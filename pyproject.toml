@@ -19,4 +19,9 @@ no_implicit_reexport = true
 [tool.ruff]
 line-length = 160
 target-version = 'py38'
-select = ['E', 'F']
+select = ['E', 'F', 'I']
+
+[tool.black]
+line-length = 160
+target-version = ['py38']
+skip-string-normalization = true

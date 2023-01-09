@@ -10,12 +10,8 @@ import subprocess
 import tarfile
 import time
 
-from bypy.constants import (
-    OUTPUT_DIR, PREFIX, is64bit, python_major_minor_version
-)
-from bypy.freeze import (
-    extract_extension_modules, freeze_python, path_to_freeze_dir
-)
+from bypy.constants import OUTPUT_DIR, PREFIX, is64bit, python_major_minor_version
+from bypy.freeze import extract_extension_modules, freeze_python, path_to_freeze_dir
 from bypy.utils import get_dll_path, mkdtemp, py_compile, walk
 
 j = os.path.join

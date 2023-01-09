@@ -7,11 +7,20 @@ from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from kitty.cli import emph
 from kitty.config import parse_config
-from kitty.fast_data_types import patch_color_profiles, Color
+from kitty.fast_data_types import Color, patch_color_profiles
 
 from .base import (
-    MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, ParsingOfArgsFailed,
-    PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_TAB_OPTION,
+    MATCH_WINDOW_OPTION,
+    ArgsType,
+    Boss,
+    ParsingOfArgsFailed,
+    PayloadGetType,
+    PayloadType,
+    RCOptions,
+    RemoteCommand,
+    ResponseType,
+    Window,
 )
 
 if TYPE_CHECKING:

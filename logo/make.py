@@ -3,8 +3,8 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-import subprocess
 import shutil
+import subprocess
 
 base = os.path.dirname(os.path.abspath(__file__))
 unframed_src = os.path.join(base, 'kitty.svg')

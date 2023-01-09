@@ -19,10 +19,7 @@ import time
 from contextlib import suppress
 from functools import lru_cache, partial
 from pathlib import Path
-from typing import (
-    Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple,
-    Union, cast
-)
+from typing import Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple, Union, cast
 
 from glfw import glfw
 from glfw.glfw import Command, CompileKey

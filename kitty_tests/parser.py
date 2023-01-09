@@ -7,10 +7,7 @@ from binascii import hexlify
 from functools import partial
 
 from kitty.fast_data_types import CURSOR_BLOCK, parse_bytes, parse_bytes_dump
-from kitty.notify import (
-    NotificationCommand, handle_notification_cmd, notification_activated,
-    reset_registry
-)
+from kitty.notify import NotificationCommand, handle_notification_cmd, notification_activated, reset_registry
 
 from . import BaseTest
 

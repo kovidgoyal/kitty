@@ -6,20 +6,17 @@ import os
 import posixpath
 import shlex
 from contextlib import suppress
-from typing import (
-    Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, cast
-)
+from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, cast
 from urllib.parse import ParseResult, unquote, urlparse
 
 from .conf.utils import KeyAction, to_cmdline_implementation
 from .constants import config_dir
+from .fast_data_types import get_options
 from .guess_mime_type import guess_type
 from .options.utils import ActionAlias, resolve_aliases_and_parse_actions
 from .types import run_once
 from .typing import MatchType
 from .utils import expandvars, get_editor, log_error, resolved_shell
-from .fast_data_types import get_options
-
 
 if not hasattr(shlex, 'join'):
     shlex.join = lambda a: ' '.join(map(shlex.quote, a))

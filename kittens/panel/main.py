@@ -8,8 +8,8 @@ from typing import Any, Callable, Dict, List, Tuple
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
 from kitty.constants import appname, is_macos
-from kitty.os_window_size import WindowSizeData
 from kitty.fast_data_types import make_x11_window_a_dock_window
+from kitty.os_window_size import WindowSizeData
 
 OPTIONS = r'''
 --lines
@@ -134,7 +134,8 @@ def main(sys_args: List[str]) -> None:
     for override in args.override:
         sys.argv.extend(('--override', override))
     sys.argv.extend(items)
-    from kitty.main import main as real_main, run_app
+    from kitty.main import main as real_main
+    from kitty.main import run_app
     run_app.cached_values_name = 'panel'
     run_app.first_window_callback = setup_x11_window
     run_app.initial_window_size_func = initial_window_size_func

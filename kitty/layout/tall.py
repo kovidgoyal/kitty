@@ -10,10 +10,7 @@ from kitty.types import Edges
 from kitty.typing import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .base import (
-    BorderLine, Layout, LayoutData, LayoutDimension, LayoutOpts, NeighborsMap,
-    lgd, normalize_biases, safe_increment_bias
-)
+from .base import BorderLine, Layout, LayoutData, LayoutDimension, LayoutOpts, NeighborsMap, lgd, normalize_biases, safe_increment_bias
 from .vertical import borders
 
 

@@ -4,9 +4,7 @@
 from functools import partial
 
 import kitty.fast_data_types as defines
-from kitty.key_encoding import (
-    EventType, KeyEvent, decode_key_event, encode_key_event
-)
+from kitty.key_encoding import EventType, KeyEvent, decode_key_event, encode_key_event
 
 from . import BaseTest
 

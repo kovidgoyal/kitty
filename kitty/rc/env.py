@@ -3,10 +3,7 @@
 
 from typing import Any, Optional
 
-from .base import (
-    ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand,
-    ResponseType, Window
-)
+from .base import ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
 
 class Env(RemoteCommand):

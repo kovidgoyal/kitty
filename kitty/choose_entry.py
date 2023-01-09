@@ -2,8 +2,7 @@
 # License: GPLv3 Copyright: 2019, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
-
-from typing import List, Generator, Any, Type
+from typing import Any, Generator, List, Type
 
 from .cli_stub import HintsCLIOptions
 from .typing import MarkType

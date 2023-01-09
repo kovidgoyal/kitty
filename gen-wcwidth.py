@@ -12,8 +12,17 @@ from html.entities import html5
 from itertools import groupby
 from operator import itemgetter
 from typing import (
-    Callable, DefaultDict, Dict, FrozenSet, Generator, Iterable, List, Optional, Set,
-    Tuple, Union,
+    Callable,
+    DefaultDict,
+    Dict,
+    FrozenSet,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
 )
 from urllib.request import urlopen
 

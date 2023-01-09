@@ -4,19 +4,14 @@
 from functools import lru_cache
 from itertools import repeat
 from math import ceil, floor
-from typing import (
-    Any, Callable, Dict, Generator, List, Optional, Sequence, Set, Tuple
-)
+from typing import Any, Callable, Dict, Generator, List, Optional, Sequence, Set, Tuple
 
 from kitty.borders import BorderColor
 from kitty.types import Edges
 from kitty.typing import WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .base import (
-    BorderLine, Layout, LayoutData, LayoutDimension, ListOfWindows,
-    NeighborsMap, layout_dimension, lgd
-)
+from .base import BorderLine, Layout, LayoutData, LayoutDimension, ListOfWindows, NeighborsMap, layout_dimension, lgd
 from .tall import neighbors_for_tall_window
 
 

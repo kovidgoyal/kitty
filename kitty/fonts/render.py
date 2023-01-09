@@ -5,35 +5,35 @@ import ctypes
 import sys
 from functools import partial
 from math import ceil, cos, floor, pi
-from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, Generator, List, Optional, Tuple,
-    Union, cast
-)
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
-    Screen, create_test_font_group, get_fallback_font, set_font_data,
-    set_options, set_send_sprite_to_gpu, sprite_map_set_limits,
-    test_render_line, test_shape, NUM_UNDERLINE_STYLES
+    NUM_UNDERLINE_STYLES,
+    Screen,
+    create_test_font_group,
+    get_fallback_font,
+    set_font_data,
+    set_options,
+    set_send_sprite_to_gpu,
+    sprite_map_set_limits,
+    test_render_line,
+    test_shape,
 )
-from kitty.fonts.box_drawing import (
-    BufType, distribute_dots, render_box_char, render_missing_glyph
-)
+from kitty.fonts.box_drawing import BufType, distribute_dots, render_box_char, render_missing_glyph
 from kitty.options.types import Options, defaults
-from kitty.typing import CoreTextFont, FontConfigPattern
 from kitty.types import _T
+from kitty.typing import CoreTextFont, FontConfigPattern
 from kitty.utils import log_error
 
 if is_macos:
-    from .core_text import (
-        find_font_features, font_for_family as font_for_family_macos,
-        get_font_files as get_font_files_coretext
-    )
+    from .core_text import find_font_features
+    from .core_text import font_for_family as font_for_family_macos
+    from .core_text import get_font_files as get_font_files_coretext
 else:
-    from .fontconfig import (
-        find_font_features, font_for_family as font_for_family_fontconfig,
-        get_font_files as get_font_files_fontconfig
-    )
+    from .fontconfig import find_font_features
+    from .fontconfig import font_for_family as font_for_family_fontconfig
+    from .fontconfig import get_font_files as get_font_files_fontconfig
 
 FontObject = Union[CoreTextFont, FontConfigPattern]
 current_faces: List[Tuple[FontObject, bool, bool]] = []
@@ -483,8 +483,9 @@ def shape_string(
 
 def show(outfile: str, width: int, height: int, fmt: int) -> None:
     import os
-    from kittens.tui.images import GraphicsCommand
     from base64 import standard_b64encode
+
+    from kittens.tui.images import GraphicsCommand
     cmd = GraphicsCommand()
     cmd.a = 'T'
     cmd.f = fmt

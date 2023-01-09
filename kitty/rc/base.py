@@ -4,12 +4,9 @@
 import tempfile
 from contextlib import suppress
 from dataclasses import dataclass, field
-from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iterator,
-    List, NoReturn, Optional, Set, Tuple, Type, Union, cast
-)
+from typing import TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Set, Tuple, Type, Union, cast
 
-from kitty.cli import get_defaults_from_seq, parse_args, parse_option_spec, CompletionSpec
+from kitty.cli import CompletionSpec, get_defaults_from_seq, parse_args, parse_option_spec
 from kitty.cli_stub import RCOptions as R
 from kitty.constants import appname, list_kitty_resources, running_in_kitty
 from kitty.types import AsyncResponse

@@ -6,9 +6,9 @@ import os
 import sys
 from typing import List
 
+from kittens.tui.operations import raw_mode, styled
 from kitty.cli import parse_args
 from kitty.cli_stub import ShowKeyCLIOptions
-from kittens.tui.operations import raw_mode, styled
 
 ctrl_keys = '@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_'
 

@@ -63,6 +63,7 @@ def launch(args: List[str]) -> None:
 
 def edit(args: List[str]) -> None:
     import shutil
+
     from .constants import is_macos
     if is_macos:
         # On macOS vim fails to handle SIGWINCH if it occurs early, so add a small delay.

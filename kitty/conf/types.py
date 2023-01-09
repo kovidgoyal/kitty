@@ -7,10 +7,7 @@ import textwrap
 import typing
 from functools import lru_cache
 from importlib import import_module
-from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Match, Optional, Set, Tuple,
-    Union, cast
-)
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Match, Optional, Set, Tuple, Union, cast
 
 import kitty.conf.utils as generic_parsers
 from kitty.constants import website_url
@@ -47,6 +44,7 @@ def expand_opt_references(conf_name: str, text: str) -> str:
 @run_once
 def ref_map() -> Dict[str, Dict[str, str]]:
     import json
+
     from ..fast_data_types import get_docs_ref_map
     ans: Dict[str, Dict[str, str]] = json.loads(get_docs_ref_map())
     return ans

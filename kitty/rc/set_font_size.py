@@ -3,10 +3,7 @@
 
 from typing import TYPE_CHECKING, Optional
 
-from .base import (
-    ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand,
-    ResponseType, Window
-)
+from .base import ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
 if TYPE_CHECKING:
     from kitty.cli_stub import SetFontSizeRCOptions as CLIOptions

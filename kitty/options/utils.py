@@ -5,29 +5,27 @@
 import re
 import sys
 from functools import lru_cache
-from typing import (
-    Any, Callable, Container, Dict, FrozenSet, Iterable, Iterator, List,
-    NamedTuple, Optional, Sequence, Tuple, Union
-)
+from typing import Any, Callable, Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple, Union
 
 import kitty.fast_data_types as defines
 from kitty.conf.utils import (
-    CurrentlyParsing, KeyAction, KeyFuncWrapper, currently_parsing,
-    positive_float, positive_int, python_string, to_bool, to_cmdline, to_color,
-    uniq, unit_float
+    CurrentlyParsing,
+    KeyAction,
+    KeyFuncWrapper,
+    currently_parsing,
+    positive_float,
+    positive_int,
+    python_string,
+    to_bool,
+    to_cmdline,
+    to_color,
+    uniq,
+    unit_float,
 )
 from kitty.constants import is_macos
-from kitty.fast_data_types import (
-    CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, Color, SingleKey
-)
-from kitty.fonts import (
-    FontFeature, FontModification, ModificationType, ModificationUnit,
-    ModificationValue
-)
-from kitty.key_names import (
-    character_key_name_aliases, functional_key_name_aliases,
-    get_key_name_lookup
-)
+from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, Color, SingleKey
+from kitty.fonts import FontFeature, FontModification, ModificationType, ModificationUnit, ModificationValue
+from kitty.key_names import character_key_name_aliases, functional_key_name_aliases, get_key_name_lookup
 from kitty.rgb import color_as_int
 from kitty.types import FloatEdges, MouseEvent
 from kitty.utils import expandvars, log_error, resolve_abs_or_config_path

@@ -12,14 +12,18 @@ import sys
 from contextlib import contextmanager, suppress
 from functools import lru_cache
 from time import monotonic
-from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, Iterator, List,
-    Mapping, Match, NamedTuple, Optional, Pattern, Tuple, Union, cast
-)
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, Iterator, List, Mapping, Match, NamedTuple, Optional, Pattern, Tuple, Union, cast
 
 from .constants import (
-    appname, clear_handled_signals, config_dir, is_macos, is_wayland,
-    read_kitty_resource, runtime_dir, shell_path, ssh_control_master_template
+    appname,
+    clear_handled_signals,
+    config_dir,
+    is_macos,
+    is_wayland,
+    read_kitty_resource,
+    runtime_dir,
+    shell_path,
+    ssh_control_master_template,
 )
 from .fast_data_types import Color, open_tty
 from .rgb import to_color
@@ -27,9 +31,10 @@ from .types import run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
 
 if TYPE_CHECKING:
+    import tarfile
+
     from .fast_data_types import OSWindowSize
     from .options.types import Options
-    import tarfile
 else:
     Options = object
 
@@ -978,8 +983,9 @@ def sanitize_control_codes(text: str, replace_with: str = '') -> str:
 
 
 def hold_till_enter() -> None:
-    from .constants import kitty_tool_exe
     import subprocess
+
+    from .constants import kitty_tool_exe
     subprocess.Popen([kitty_tool_exe(), '__hold_till_enter__']).wait()
 
 
@@ -1056,8 +1062,9 @@ def safer_fork() -> int:
 
 def docs_url(which: str = '', local_docs_root: Optional[str] = '') -> str:
     from urllib.parse import quote
-    from .constants import local_docs, website_url
+
     from .conf.types import resolve_ref
+    from .constants import local_docs, website_url
     if local_docs_root is None:
         ld = ''
     else:
@@ -1093,7 +1100,7 @@ def sanitize_for_bracketed_paste(text: bytes) -> bytes:
 
 @lru_cache(maxsize=64)
 def sanitize_url_for_dispay_to_user(url: str) -> str:
-    from urllib.parse import urlparse, urlunparse, unquote
+    from urllib.parse import unquote, urlparse, urlunparse
     try:
         purl = urlparse(url)
         if purl.netloc:

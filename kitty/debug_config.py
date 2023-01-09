@@ -15,11 +15,10 @@ from typing import IO, Callable, Dict, Iterator, Optional, Set, TypeVar
 from kittens.tui.operations import colored, styled
 
 from .cli import version
-from .constants import (
-    extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
-)
+from .constants import extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
 from .fast_data_types import Color, num_users
-from .options.types import Options as KittyOpts, defaults
+from .options.types import Options as KittyOpts
+from .options.types import defaults
 from .options.utils import SequenceMap
 from .rgb import color_as_sharp
 from .types import MouseEvent, Shortcut, mod_to_names

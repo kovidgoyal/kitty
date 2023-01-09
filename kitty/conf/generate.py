@@ -7,9 +7,7 @@ import os
 import pprint
 import re
 import textwrap
-from typing import (
-    Any, Callable, Dict, Iterator, List, Set, Tuple, Union, get_type_hints
-)
+from typing import Any, Callable, Dict, Iterator, List, Set, Tuple, Union, get_type_hints
 
 from kitty.conf.types import Definition, MultiOption, Option, unset
 from kitty.types import _T

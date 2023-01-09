@@ -14,9 +14,16 @@ from typing import IO, Deque, Dict, Iterator, List, Optional, Union
 from kitty.cli_stub import TransferCLIOptions
 from kitty.fast_data_types import FILE_TRANSFER_CODE, wcswidth
 from kitty.file_transmission import (
-    Action, Compression, FileTransmissionCommand, FileType,
-    IdentityDecompressor, NameReprEnum, TransmissionType, ZlibDecompressor,
-    encode_bypass, split_for_transfer
+    Action,
+    Compression,
+    FileTransmissionCommand,
+    FileType,
+    IdentityDecompressor,
+    NameReprEnum,
+    TransmissionType,
+    ZlibDecompressor,
+    encode_bypass,
+    split_for_transfer,
 )
 from kitty.typing import KeyEventType, ScreenSize
 from kitty.utils import sanitize_control_codes
@@ -28,10 +35,7 @@ from ..tui.spinners import Spinner
 from ..tui.utils import human_size
 from .librsync import PatchFile, signature_of_file
 from .send import Transfer
-from .utils import (
-    expand_home, print_rsync_stats, random_id, render_progress_in_width,
-    safe_divide, should_be_compressed
-)
+from .utils import expand_home, print_rsync_stats, random_id, render_progress_in_width, safe_divide, should_be_compressed
 
 debug
 file_counter = count(1)

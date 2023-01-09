@@ -6,13 +6,11 @@ import glob
 import os
 import shutil
 import tempfile
-from functools import lru_cache
 from contextlib import suppress
+from functools import lru_cache
 
 from kittens.ssh.config import load_config
-from kittens.ssh.main import (
-    bootstrap_script, get_connection_data, wrap_bootstrap_script
-)
+from kittens.ssh.main import bootstrap_script, get_connection_data, wrap_bootstrap_script
 from kittens.ssh.options.types import Options as SSHOptions
 from kittens.ssh.options.utils import DELETE_ENV_VAR
 from kittens.transfer.utils import set_paths

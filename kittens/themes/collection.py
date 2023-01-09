@@ -12,9 +12,7 @@ import sys
 import tempfile
 import zipfile
 from contextlib import suppress
-from typing import (
-    Any, Callable, Dict, Iterator, Match, Optional, Tuple, Type, Union
-)
+from typing import Any, Callable, Dict, Iterator, Match, Optional, Tuple, Type, Union
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 

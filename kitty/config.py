@@ -7,13 +7,11 @@ from contextlib import contextmanager, suppress
 from functools import partial
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
 
-from .conf.utils import BadLine, load_config as _load_config, parse_config_base
+from .conf.utils import BadLine, parse_config_base
+from .conf.utils import load_config as _load_config
 from .constants import cache_dir, defconf
 from .options.types import Options, defaults, option_names
-from .options.utils import (
-    KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap,
-    build_action_aliases
-)
+from .options.utils import KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap, build_action_aliases
 from .typing import TypedDict
 from .utils import log_error
 

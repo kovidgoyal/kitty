@@ -4,9 +4,13 @@
 from functools import partial
 
 from kitty.fast_data_types import (
-    GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOUSE_BUTTON_LEFT,
-    GLFW_MOUSE_BUTTON_RIGHT, create_mock_window, mock_mouse_selection,
-    send_mock_mouse_event_to_window
+    GLFW_MOD_ALT,
+    GLFW_MOD_CONTROL,
+    GLFW_MOUSE_BUTTON_LEFT,
+    GLFW_MOUSE_BUTTON_RIGHT,
+    create_mock_window,
+    mock_mouse_selection,
+    send_mock_mouse_event_to_window,
 )
 
 from . import BaseTest

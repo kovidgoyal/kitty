@@ -7,10 +7,7 @@ from kitty.fast_data_types import Color
 from kitty.rgb import color_as_sharp, color_from_int
 from kitty.utils import natsort_ints
 
-from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType,
-    RCOptions, RemoteCommand, ResponseType, Window
-)
+from .base import MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
 if TYPE_CHECKING:
     from kitty.cli_stub import GetColorsRCOptions as CLIOptions

@@ -5,13 +5,13 @@ import os
 from typing import Any, Dict, Iterable, Optional
 
 from kitty.cli_stub import DiffCLIOptions
-from kitty.conf.utils import (
-    load_config as _load_config, parse_config_base, resolve_config
-)
+from kitty.conf.utils import load_config as _load_config
+from kitty.conf.utils import parse_config_base, resolve_config
 from kitty.constants import config_dir
 from kitty.rgb import color_as_sgr
 
-from .options.types import Options as DiffOptions, defaults
+from .options.types import Options as DiffOptions
+from .options.types import defaults
 
 formats: Dict[str, str] = {
     'title': '',
@@ -41,9 +41,7 @@ defconf = os.path.join(config_dir, 'diff.conf')
 
 
 def load_config(*paths: str, overrides: Optional[Iterable[str]] = None) -> DiffOptions:
-    from .options.parse import (
-        create_result_dict, merge_result_dicts, parse_conf_item
-    )
+    from .options.parse import create_result_dict, merge_result_dicts, parse_conf_item
 
     def parse_config(lines: Iterable[str]) -> Dict[str, Any]:
         ans: Dict[str, Any] = create_result_dict()

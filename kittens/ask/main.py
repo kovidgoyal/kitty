@@ -6,7 +6,14 @@ import re
 import sys
 from contextlib import suppress
 from typing import (
-    TYPE_CHECKING, Callable, Dict, Iterator, List, NamedTuple, Optional, Tuple,
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
 )
 
 from kitty.cli import parse_args

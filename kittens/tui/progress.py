@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from .operations import styled, repeat
+from .operations import repeat, styled
 
 
 def render_progress_bar(frac: float, width: int = 80) -> str:

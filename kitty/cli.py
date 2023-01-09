@@ -6,19 +6,13 @@ import re
 import shlex
 import sys
 from collections import deque
-from enum import Enum, auto
 from dataclasses import dataclass
-from typing import (
-    Any, Callable, Dict, FrozenSet, Iterator, List, Match, Optional, Sequence,
-    Tuple, Type, TypeVar, Union, cast
-)
+from enum import Enum, auto
+from typing import Any, Callable, Dict, FrozenSet, Iterator, List, Match, Optional, Sequence, Tuple, Type, TypeVar, Union, cast
 
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
-from .constants import (
-    appname, clear_handled_signals, config_dir, default_pager_for_help,
-    defconf, is_macos, str_version, website_url
-)
+from .constants import appname, clear_handled_signals, config_dir, default_pager_for_help, defconf, is_macos, str_version, website_url
 from .fast_data_types import wcswidth
 from .options.types import Options as KittyOpts
 from .types import run_once

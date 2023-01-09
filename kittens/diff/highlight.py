@@ -5,9 +5,7 @@ import concurrent
 import os
 import re
 from concurrent.futures import ProcessPoolExecutor
-from typing import (
-    IO, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
-)
+from typing import IO, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 
 from pygments import highlight  # type: ignore
 from pygments.formatter import Formatter  # type: ignore

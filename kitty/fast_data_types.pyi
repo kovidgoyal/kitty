@@ -1,7 +1,16 @@
 import termios
 from ctypes import Array, c_ubyte
 from typing import (
-    Any, Callable, Dict, Iterator, List, NewType, Optional, Tuple, TypedDict, Union,
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    NewType,
+    Optional,
+    Tuple,
+    TypedDict,
+    Union,
 )
 
 from kitty.boss import Boss

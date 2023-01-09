@@ -11,9 +11,8 @@ import sys
 import tempfile
 from contextlib import suppress
 
-from bypy.constants import (
-    LIBDIR, PREFIX, PYTHON, SRC as KITTY_DIR, ismacos, worker_env
-)
+from bypy.constants import LIBDIR, PREFIX, PYTHON, ismacos, worker_env
+from bypy.constants import SRC as KITTY_DIR
 from bypy.utils import run_shell, walk
 
 

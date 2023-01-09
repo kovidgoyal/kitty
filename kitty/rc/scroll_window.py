@@ -4,10 +4,7 @@
 
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
-from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions,
-    RemoteCommand, ResponseType, Window
-)
+from .base import MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
 if TYPE_CHECKING:
     from kitty.cli_stub import ScrollWindowRCOptions as CLIOptions

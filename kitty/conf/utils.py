@@ -7,8 +7,21 @@ import shlex
 import sys
 from contextlib import contextmanager
 from typing import (
-    Any, Callable, Dict, Generator, Generic, Iterable, Iterator, List, NamedTuple,
-    Optional, Sequence, Set, Tuple, TypeVar, Union,
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
 )
 
 from ..constants import _plat, is_macos

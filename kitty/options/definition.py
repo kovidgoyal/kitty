@@ -4,9 +4,9 @@
 # After editing this file run ./gen-config.py to apply the changes
 
 import string
+
 from kitty.conf.types import Action, Definition
 from kitty.constants import website_url
-
 
 definition = Definition(
     'kitty',

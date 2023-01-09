@@ -2,9 +2,9 @@
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from . import BaseTest
-
 from kitty.clipboard import WriteRequest
+
+from . import BaseTest
 
 
 class TestClipboard(BaseTest):

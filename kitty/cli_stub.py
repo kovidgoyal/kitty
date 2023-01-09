@@ -17,7 +17,7 @@ ThemesCLIOptions = TransferCLIOptions = CopyCLIOptions = CLIOptions
 
 
 def generate_stub() -> None:
-    from .cli import parse_option_spec, as_type_stub
+    from .cli import as_type_stub, parse_option_spec
     from .conf.utils import save_type_stub
     text = 'import typing\n\n\n'
 

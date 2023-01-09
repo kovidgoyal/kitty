@@ -33,6 +33,7 @@ def real_main(args: List[str]) -> None:
     print(error_message, flush=True)
     if data.get('tb'):
         import select
+
         from kittens.tui.operations import init_state, set_cursor_visible
         fd, original_termios = open_tty()
         msg = '\n\r\x1b[1;32mPress e to see detailed traceback or any other key to exit\x1b[m'

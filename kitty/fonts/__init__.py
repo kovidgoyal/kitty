@@ -1,5 +1,5 @@
 try:
-    from typing import TypedDict, NamedTuple
+    from typing import NamedTuple, TypedDict
 except ImportError:
     TypedDict = dict
 from enum import Enum, IntEnum, auto

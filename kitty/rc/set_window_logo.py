@@ -10,9 +10,18 @@ from typing import TYPE_CHECKING, Optional
 from kitty.types import AsyncResponse
 
 from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, CmdGenerator, ImageCompletion,
-    NamedTemporaryFile, PayloadGetType, PayloadType, RCOptions, RemoteCommand,
-    ResponseType, Window
+    MATCH_WINDOW_OPTION,
+    ArgsType,
+    Boss,
+    CmdGenerator,
+    ImageCompletion,
+    NamedTemporaryFile,
+    PayloadGetType,
+    PayloadType,
+    RCOptions,
+    RemoteCommand,
+    ResponseType,
+    Window,
 )
 
 if TYPE_CHECKING:

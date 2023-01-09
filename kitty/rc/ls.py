@@ -6,10 +6,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
 
 from kitty.constants import appname
 
-from .base import (
-    ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand,
-    ResponseType, Window
-)
+from .base import ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
 if TYPE_CHECKING:
     from kitty.cli_stub import LSRCOptions as CLIOptions

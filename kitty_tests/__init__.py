@@ -15,9 +15,7 @@ from pty import CHILD, STDIN_FILENO, STDOUT_FILENO, fork
 from unittest import TestCase
 
 from kitty.config import finalize_keys, finalize_mouse_mappings
-from kitty.fast_data_types import (
-    Cursor, HistoryBuf, LineBuf, Screen, get_options, parse_bytes, set_options
-)
+from kitty.fast_data_types import Cursor, HistoryBuf, LineBuf, Screen, get_options, parse_bytes, set_options
 from kitty.options.parse import merge_result_dicts
 from kitty.options.types import Options, defaults
 from kitty.types import MouseEvent

@@ -16,17 +16,10 @@ from functools import partial
 from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional
 
 from kitty.constants import is_macos
-from kitty.fast_data_types import (
-    FILE_TRANSFER_CODE, close_tty, normal_tty, open_tty,
-    parse_input_from_terminal, raw_tty
-)
-from kitty.key_encoding import (
-    ALT, CTRL, SHIFT, backspace_key, decode_key_event, enter_key
-)
+from kitty.fast_data_types import FILE_TRANSFER_CODE, close_tty, normal_tty, open_tty, parse_input_from_terminal, raw_tty
+from kitty.key_encoding import ALT, CTRL, SHIFT, backspace_key, decode_key_event, enter_key
 from kitty.typing import ImageManagerType, KeyEventType, Protocol
-from kitty.utils import (
-    ScreenSize, ScreenSizeGetter, screen_size_function, write_all
-)
+from kitty.utils import ScreenSize, ScreenSizeGetter, screen_size_function, write_all
 
 from .handler import Handler
 from .operations import MouseTracking, init_state, reset_state

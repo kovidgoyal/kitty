@@ -5,17 +5,11 @@ import os
 import sys
 from collections import defaultdict
 from contextlib import contextmanager, suppress
-from typing import (
-    TYPE_CHECKING, DefaultDict, Dict, Generator, List, Optional, Sequence,
-    Tuple
-)
+from typing import TYPE_CHECKING, DefaultDict, Dict, Generator, List, Optional, Sequence, Tuple
 
 import kitty.fast_data_types as fast_data_types
 
-from .constants import (
-    handled_signals, is_freebsd, is_macos, kitty_base_dir, shell_path,
-    terminfo_dir
-)
+from .constants import handled_signals, is_freebsd, is_macos, kitty_base_dir, shell_path, terminfo_dir
 from .types import run_once
 from .utils import log_error, which
 
@@ -28,11 +22,10 @@ if TYPE_CHECKING:
 
 
 if is_macos:
-    from kitty.fast_data_types import (
-        cmdline_of_process as cmdline_, cwd_of_process as _cwd,
-        environ_of_process as _environ_of_process,
-        process_group_map as _process_group_map
-    )
+    from kitty.fast_data_types import cmdline_of_process as cmdline_
+    from kitty.fast_data_types import cwd_of_process as _cwd
+    from kitty.fast_data_types import environ_of_process as _environ_of_process
+    from kitty.fast_data_types import process_group_map as _process_group_map
 
     def cwd_of_process(pid: int) -> str:
         return os.path.realpath(_cwd(pid))

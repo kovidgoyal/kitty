@@ -3,7 +3,6 @@
 
 from typing import Tuple
 
-
 BossType = ChildType = TabType = WindowType = ScreenType = None
 BadLineType = SequenceMap = KeyActionType = AliasMap = None
 AddressFamily = PopenType = Socket = StartupCtx = None

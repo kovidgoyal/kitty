@@ -6,15 +6,32 @@ import re
 from functools import lru_cache, partial, wraps
 from string import Formatter as StringFormatter
 from typing import (
-    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union,
+    Any,
+    Callable,
+    Dict,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
 )
 
 from .borders import Border, BorderColor
 from .config import build_ansi_color_table
 from .constants import config_dir
 from .fast_data_types import (
-    DECAWM, Color, Region, Screen, cell_size_for_window, get_boss, get_options,
-    pt_to_px, set_tab_bar_render_data, update_tab_bar_edge_colors, viewport_for_window,
+    DECAWM,
+    Color,
+    Region,
+    Screen,
+    cell_size_for_window,
+    get_boss,
+    get_options,
+    pt_to_px,
+    set_tab_bar_render_data,
+    update_tab_bar_edge_colors,
+    viewport_for_window,
 )
 from .rgb import alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once

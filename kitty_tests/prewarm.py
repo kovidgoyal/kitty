@@ -11,10 +11,7 @@ import tempfile
 import time
 
 from kitty.constants import kitty_exe
-from kitty.fast_data_types import (
-    CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options, has_sigqueue, install_signal_handlers,
-    read_signals, sigqueue
-)
+from kitty.fast_data_types import CLD_EXITED, CLD_KILLED, CLD_STOPPED, get_options, has_sigqueue, install_signal_handlers, read_signals, sigqueue
 
 from . import BaseTest
 

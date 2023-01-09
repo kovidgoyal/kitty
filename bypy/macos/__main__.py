@@ -13,16 +13,9 @@ import tempfile
 import zipfile
 
 from bypy.constants import PREFIX, PYTHON, SW, python_major_minor_version
-from bypy.freeze import (
-    extract_extension_modules, freeze_python, path_to_freeze_dir
-)
-from bypy.macos_sign import (
-    codesign, create_entitlements_file, make_certificate_useable, notarize_app,
-    verify_signature
-)
-from bypy.utils import (
-    current_dir, mkdtemp, py_compile, run_shell, timeit, walk
-)
+from bypy.freeze import extract_extension_modules, freeze_python, path_to_freeze_dir
+from bypy.macos_sign import codesign, create_entitlements_file, make_certificate_useable, notarize_app, verify_signature
+from bypy.utils import current_dir, mkdtemp, py_compile, run_shell, timeit, walk
 
 iv = globals()['init_env']
 kitty_constants = iv['kitty_constants']

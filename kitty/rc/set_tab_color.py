@@ -6,10 +6,7 @@ from typing import TYPE_CHECKING, Dict, Optional
 
 from kitty.rgb import to_color
 
-from .base import (
-    MATCH_TAB_OPTION, ArgsType, Boss, ParsingOfArgsFailed, PayloadGetType,
-    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
-)
+from .base import MATCH_TAB_OPTION, ArgsType, Boss, ParsingOfArgsFailed, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
 if TYPE_CHECKING:
     from kitty.cli_stub import SetTabColorRCOptions as CLIOptions

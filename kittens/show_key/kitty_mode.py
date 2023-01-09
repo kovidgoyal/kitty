@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
-from kitty.key_encoding import (
-    ALT, CAPS_LOCK, CTRL, HYPER, META, NUM_LOCK, PRESS, RELEASE, REPEAT, SHIFT,
-    SUPER, KeyEvent, encode_key_event
-)
-
 from kittens.tui.handler import Handler
 from kittens.tui.loop import Loop
+from kitty.key_encoding import ALT, CAPS_LOCK, CTRL, HYPER, META, NUM_LOCK, PRESS, RELEASE, REPEAT, SHIFT, SUPER, KeyEvent, encode_key_event
 
 mod_names = {
     SHIFT: 'Shift',

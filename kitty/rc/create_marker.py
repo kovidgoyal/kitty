@@ -5,10 +5,7 @@ from typing import TYPE_CHECKING, Optional
 
 from kitty.options.utils import parse_marker_spec
 
-from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType,
-    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
-)
+from .base import MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
 if TYPE_CHECKING:
     from kitty.cli_stub import CreateMarkerRCOptions as CLIOptions

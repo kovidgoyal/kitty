@@ -18,9 +18,7 @@ from typing import Any, Callable, Dict, Iterable, List, Tuple
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
 from pygments.lexer import RegexLexer, bygroups  # type: ignore
-from pygments.token import (  # type: ignore
-    Comment, Keyword, Literal, Name, Number, String, Whitespace
-)
+from pygments.token import Comment, Keyword, Literal, Name, Number, String, Whitespace  # type: ignore
 from sphinx import addnodes, version_info
 from sphinx.util.logging import getLogger
 
@@ -215,10 +213,10 @@ def commit_role(
 
 # CLI docs {{{
 def write_cli_docs(all_kitten_names: Iterable[str]) -> None:
-    from kitty.cli import option_spec_as_rst
-    from kitty.launch import options_spec as launch_options_spec
     from kittens.ssh.copy import option_text
     from kittens.ssh.options.definition import copy_message
+    from kitty.cli import option_spec_as_rst
+    from kitty.launch import options_spec as launch_options_spec
     with open('generated/ssh-copy.rst', 'w') as f:
         f.write(option_spec_as_rst(
             appname='copy', ospec=option_text, heading_char='^',
@@ -280,9 +278,7 @@ if you specify a program-to-run you can use the special placeholder
 
 
 def write_remote_control_protocol_docs() -> None:  # {{{
-    from kitty.rc.base import (
-        RemoteCommand, all_command_names, command_for_name
-    )
+    from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
     field_pat = re.compile(r'\s*([^:]+?)\s*:\s*(.+)')
 
     def format_cmd(p: Callable[..., None], name: str, cmd: RemoteCommand) -> None:

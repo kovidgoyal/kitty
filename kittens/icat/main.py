@@ -137,6 +137,7 @@ if __name__ == '__main__':
     raise SystemExit('This should be run as kitty-tool icat')
 elif __name__ == '__doc__':
     import sys
+
     from kitty.cli import CompletionSpec
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage

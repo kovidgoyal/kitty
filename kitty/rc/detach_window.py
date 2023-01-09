@@ -3,11 +3,7 @@
 
 from typing import TYPE_CHECKING, Optional, Union
 
-from .base import (
-    MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError,
-    PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType,
-    Window
-)
+from .base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
 if TYPE_CHECKING:
     from kitty.cli_stub import DetachWindowRCOptions as CLIOptions

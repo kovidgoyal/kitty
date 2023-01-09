@@ -11,7 +11,6 @@ import sys
 from contextlib import suppress
 from typing import Any
 
-
 CSI = '\x1b['
 OSC = '\x1b]'
 

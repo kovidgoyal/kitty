@@ -11,16 +11,30 @@ from functools import lru_cache, partial
 from time import monotonic, time_ns
 from types import GeneratorType
 from typing import (
-    TYPE_CHECKING, Any, Dict, FrozenSet, Iterable, Iterator, List, Optional, Tuple,
-    Union, cast,
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    FrozenSet,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    cast,
 )
 
 from .cli import parse_args
 from .cli_stub import RCOptions
 from .constants import RC_ENCRYPTION_PROTOCOL_VERSION, appname, version
 from .fast_data_types import (
-    AES256GCMDecrypt, AES256GCMEncrypt, EllipticCurveKey, get_boss, get_options,
-    read_command_response, send_data_to_peer,
+    AES256GCMDecrypt,
+    AES256GCMEncrypt,
+    EllipticCurveKey,
+    get_boss,
+    get_options,
+    read_command_response,
+    send_data_to_peer,
 )
 from .rc.base import NoResponse, PayloadGetter, all_command_names, command_for_name
 from .types import AsyncResponse

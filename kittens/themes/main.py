@@ -7,9 +7,7 @@ import sys
 import traceback
 from enum import Enum, auto
 from gettext import gettext as _
-from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union
-)
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 from kitty.cli import CompletionSpec, create_default_opts, parse_args
 from kitty.cli_stub import ThemesCLIOptions

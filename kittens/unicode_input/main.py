@@ -7,10 +7,7 @@ import sys
 from contextlib import suppress
 from functools import lru_cache
 from gettext import gettext as _
-from typing import (
-    Any, Dict, FrozenSet, Generator, Iterable, List, Optional, Sequence, Tuple,
-    Union
-)
+from typing import Any, Dict, FrozenSet, Generator, Iterable, List, Optional, Sequence, Tuple, Union
 
 from kitty.cli import parse_args
 from kitty.cli_stub import UnicodeCLIOptions
@@ -24,10 +21,7 @@ from kitty.utils import ScreenSize, get_editor
 from ..tui.handler import Handler, result_handler
 from ..tui.line_edit import LineEdit
 from ..tui.loop import Loop
-from ..tui.operations import (
-    clear_screen, colored, cursor, faint, set_line_wrapping, set_window_title,
-    sgr, styled
-)
+from ..tui.operations import clear_screen, colored, cursor, faint, set_line_wrapping, set_window_title, sgr, styled
 from ..tui.utils import report_unhandled_error
 
 HEX, NAME, EMOTICONS, FAVORITES = 'HEX', 'NAME', 'EMOTICONS', 'FAVORITES'

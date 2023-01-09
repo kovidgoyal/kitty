@@ -5,9 +5,7 @@
 
 from typing import Any, Container, Dict, Iterable, Tuple, Union
 
-from kitty.conf.utils import (
-    KeyFuncWrapper, KittensKeyDefinition, parse_kittens_key
-)
+from kitty.conf.utils import KeyFuncWrapper, KittensKeyDefinition, parse_kittens_key
 
 ReturnType = Tuple[str, Any]
 func_with_args = KeyFuncWrapper[ReturnType]()

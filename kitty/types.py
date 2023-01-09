@@ -3,10 +3,7 @@
 
 from enum import Enum
 from functools import update_wrapper
-from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, Generic, Iterator, NamedTuple, Tuple,
-    TypeVar, Union
-)
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, Iterator, NamedTuple, Tuple, TypeVar, Union
 
 if TYPE_CHECKING:
     from kitty.fast_data_types import SingleKey
@@ -170,8 +167,14 @@ def run_once(f: Callable[[], _T]) -> 'RunOnce[_T]':
 def modmap() -> Dict[str, int]:
     from .constants import is_macos
     from .fast_data_types import (
-        GLFW_MOD_ALT, GLFW_MOD_CAPS_LOCK, GLFW_MOD_CONTROL, GLFW_MOD_HYPER,
-        GLFW_MOD_META, GLFW_MOD_NUM_LOCK, GLFW_MOD_SHIFT, GLFW_MOD_SUPER
+        GLFW_MOD_ALT,
+        GLFW_MOD_CAPS_LOCK,
+        GLFW_MOD_CONTROL,
+        GLFW_MOD_HYPER,
+        GLFW_MOD_META,
+        GLFW_MOD_NUM_LOCK,
+        GLFW_MOD_SHIFT,
+        GLFW_MOD_SUPER,
     )
 
     return {'ctrl': GLFW_MOD_CONTROL, 'shift': GLFW_MOD_SHIFT, ('opt' if is_macos else 'alt'): GLFW_MOD_ALT,

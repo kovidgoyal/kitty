@@ -1,12 +1,9 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING, Optional, Iterable
+from typing import TYPE_CHECKING, Iterable, Optional
 
-from .base import (
-    MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions,
-    RemoteCommand, ResponseType, UnknownLayout, Window
-)
+from .base import MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, UnknownLayout, Window
 
 if TYPE_CHECKING:
     from kitty.cli_stub import GotoLayoutRCOptions as CLIOptions

@@ -12,7 +12,6 @@ from kitty.cli_stub import TransferCLIOptions
 from .receive import receive_main
 from .send import send_main
 
-
 usage = 'source_files_or_directories destination_path'
 help_text = 'Transfer files over the TTY device'
 

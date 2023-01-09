@@ -10,8 +10,19 @@ from contextlib import suppress
 from operator import attrgetter
 from time import monotonic
 from typing import (
-    Any, Deque, Dict, Generator, Iterable, Iterator, List, NamedTuple, Optional,
-    Sequence, Set, Tuple, Union,
+    Any,
+    Deque,
+    Dict,
+    Generator,
+    Iterable,
+    Iterator,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
 )
 
 from .borders import Border, Borders
@@ -19,11 +30,27 @@ from .child import Child
 from .cli_stub import CLIOptions
 from .constants import appname, kitty_tool_exe
 from .fast_data_types import (
-    GLFW_MOUSE_BUTTON_LEFT, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE, add_tab,
-    attach_window, current_focused_os_window_id, detach_window, get_boss,
-    get_click_interval, get_options, last_focused_os_window_id, mark_tab_bar_dirty,
-    next_window_id, remove_tab, remove_window, ring_bell, set_active_tab,
-    set_active_window, swap_tabs, sync_os_window_title,
+    GLFW_MOUSE_BUTTON_LEFT,
+    GLFW_MOUSE_BUTTON_MIDDLE,
+    GLFW_PRESS,
+    GLFW_RELEASE,
+    add_tab,
+    attach_window,
+    current_focused_os_window_id,
+    detach_window,
+    get_boss,
+    get_click_interval,
+    get_options,
+    last_focused_os_window_id,
+    mark_tab_bar_dirty,
+    next_window_id,
+    remove_tab,
+    remove_window,
+    ring_bell,
+    set_active_tab,
+    set_active_window,
+    swap_tabs,
+    sync_os_window_title,
 )
 from .layout.base import Layout
 from .layout.interface import create_layout_object_for, evict_cached_layouts

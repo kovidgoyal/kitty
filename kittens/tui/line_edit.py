@@ -6,9 +6,7 @@ from typing import Callable, Tuple
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 from kitty.key_encoding import EventType, KeyEvent
 
-from .operations import (
-    RESTORE_CURSOR, SAVE_CURSOR, move_cursor_by, set_cursor_shape
-)
+from .operations import RESTORE_CURSOR, SAVE_CURSOR, move_cursor_by, set_cursor_shape
 
 
 class LineEdit:

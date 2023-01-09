@@ -9,9 +9,7 @@ from typing import IO, Any, Callable, Dict, Generator, Optional, TypeVar, Union
 
 from kitty.fast_data_types import Color
 from kitty.rgb import color_as_sharp, to_color
-from kitty.typing import (
-    GraphicsCommandType, HandlerType, ScreenSize, UnderlineLiteral
-)
+from kitty.typing import GraphicsCommandType, HandlerType, ScreenSize, UnderlineLiteral
 
 from .operations_stub import CMD
 

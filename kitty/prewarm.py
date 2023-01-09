@@ -16,17 +16,22 @@ from contextlib import suppress
 from dataclasses import dataclass
 from importlib import import_module
 from itertools import count
-from typing import (
-    IO, TYPE_CHECKING, Any, Callable, Dict, Iterator, List, NoReturn, Optional,
-    Tuple, TypeVar, Union, cast
-)
+from typing import IO, TYPE_CHECKING, Any, Callable, Dict, Iterator, List, NoReturn, Optional, Tuple, TypeVar, Union, cast
 
 from kitty.constants import kitty_exe, running_in_kitty
 from kitty.entry_points import main as main_entry_point
 from kitty.fast_data_types import (
-    CLD_EXITED, CLD_KILLED, CLD_STOPPED, clearenv, get_options,
-    install_signal_handlers, read_signals, remove_signal_handlers, safe_pipe,
-    set_options, set_use_os_log
+    CLD_EXITED,
+    CLD_KILLED,
+    CLD_STOPPED,
+    clearenv,
+    get_options,
+    install_signal_handlers,
+    read_signals,
+    remove_signal_handlers,
+    safe_pipe,
+    set_options,
+    set_use_os_log,
 )
 from kitty.options.types import Options
 from kitty.shm import SharedMemory

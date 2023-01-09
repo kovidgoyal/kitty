@@ -16,16 +16,11 @@ from kitty.cli import parse_args
 from kitty.cli_stub import RemoteFileCLIOptions
 from kitty.constants import cache_dir
 from kitty.typing import BossType
-from kitty.utils import (
-    SSHConnectionData, command_for_open, get_editor, open_cmd
-)
+from kitty.utils import SSHConnectionData, command_for_open, get_editor, open_cmd
 
 from ..tui.handler import result_handler
-from ..tui.operations import (
-    faint, raw_mode, reset_terminal, styled
-)
+from ..tui.operations import faint, raw_mode, reset_terminal, styled
 from ..tui.utils import get_key_press
-
 
 is_ssh_kitten_sentinel = '!#*&$#($ssh-kitten)(##$'
 

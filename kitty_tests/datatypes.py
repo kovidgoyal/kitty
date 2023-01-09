@@ -7,10 +7,18 @@ import tempfile
 
 from kitty.config import build_ansi_color_table, defaults
 from kitty.fast_data_types import (
-    Color, ColorProfile, Cursor as C, HistoryBuf, LineBuf,
-    parse_input_from_terminal, strip_csi, truncate_point_for_length, wcswidth,
-    wcwidth, expand_ansi_c_escapes
+    Color,
+    ColorProfile,
+    HistoryBuf,
+    LineBuf,
+    expand_ansi_c_escapes,
+    parse_input_from_terminal,
+    strip_csi,
+    truncate_point_for_length,
+    wcswidth,
+    wcwidth,
 )
+from kitty.fast_data_types import Cursor as C
 from kitty.rgb import to_color
 from kitty.utils import is_path_in_temp_dir, sanitize_title, sanitize_url_for_dispay_to_user
 
@@ -538,9 +546,7 @@ class TestDataTypes(BaseTest):
         q('a\x1b[12;34:43mbc', 'abc')
 
     def test_single_key(self):
-        from kitty.fast_data_types import (
-            GLFW_MOD_KITTY, GLFW_MOD_SHIFT, SingleKey
-        )
+        from kitty.fast_data_types import GLFW_MOD_KITTY, GLFW_MOD_SHIFT, SingleKey
         for m in (GLFW_MOD_KITTY, GLFW_MOD_SHIFT):
             s = SingleKey(mods=m)
             self.ae(s.mods, m)

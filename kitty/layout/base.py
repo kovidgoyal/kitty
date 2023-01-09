@@ -3,15 +3,10 @@
 
 from functools import partial
 from itertools import repeat
-from typing import (
-    Any, Dict, Generator, Iterable, Iterator, List, NamedTuple, Optional,
-    Sequence, Tuple, Union
-)
+from typing import Any, Dict, Generator, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple, Union
 
 from kitty.borders import BorderColor
-from kitty.fast_data_types import (
-    Region, set_active_window, viewport_for_window
-)
+from kitty.fast_data_types import Region, set_active_window, viewport_for_window
 from kitty.options.types import Options
 from kitty.types import Edges, WindowGeometry
 from kitty.typing import TypedDict, WindowType

@@ -14,20 +14,11 @@ from functools import partial
 from gettext import gettext as _
 from itertools import count
 from time import monotonic
-from typing import (
-    IO, Any, Callable, DefaultDict, Deque, Dict, Iterable, Iterator, List,
-    Optional, Tuple, Union, cast
-)
+from typing import IO, Any, Callable, DefaultDict, Deque, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 
-from kittens.transfer.librsync import (
-    LoadSignature, PatchFile, delta_for_file, signature_of_file
-)
-from kittens.transfer.utils import (
-    IdentityCompressor, ZlibCompressor, abspath, expand_home, home_path
-)
-from kitty.fast_data_types import (
-    FILE_TRANSFER_CODE, OSC, add_timer, get_boss, get_options
-)
+from kittens.transfer.librsync import LoadSignature, PatchFile, delta_for_file, signature_of_file
+from kittens.transfer.utils import IdentityCompressor, ZlibCompressor, abspath, expand_home, home_path
+from kitty.fast_data_types import FILE_TRANSFER_CODE, OSC, add_timer, get_boss, get_options
 from kitty.types import run_once
 
 from .utils import log_error, sanitize_control_codes

@@ -16,13 +16,31 @@ from .cli_stub import CLIOptions
 from .conf.utils import BadLine
 from .config import cached_values_for
 from .constants import (
-    appname, beam_cursor_data_file, clear_handled_signals, config_dir, glfw_path,
-    is_macos, is_wayland, kitty_exe, logo_png_file, running_in_kitty, website_url,
+    appname,
+    beam_cursor_data_file,
+    clear_handled_signals,
+    config_dir,
+    glfw_path,
+    is_macos,
+    is_wayland,
+    kitty_exe,
+    logo_png_file,
+    running_in_kitty,
+    website_url,
 )
 from .fast_data_types import (
-    GLFW_IBEAM_CURSOR, GLFW_MOD_ALT, GLFW_MOD_SHIFT, SingleKey, create_os_window,
-    free_font_data, glfw_init, glfw_terminate, load_png_data,
-    mask_kitty_signals_process_wide, set_custom_cursor, set_default_window_icon,
+    GLFW_IBEAM_CURSOR,
+    GLFW_MOD_ALT,
+    GLFW_MOD_SHIFT,
+    SingleKey,
+    create_os_window,
+    free_font_data,
+    glfw_init,
+    glfw_terminate,
+    load_png_data,
+    mask_kitty_signals_process_wide,
+    set_custom_cursor,
+    set_default_window_icon,
     set_options,
 )
 from .fonts.box_drawing import set_scale
@@ -33,8 +51,13 @@ from .os_window_size import initial_window_size_func
 from .prewarm import PrewarmProcess, fork_prewarm_process
 from .session import create_sessions, get_os_window_sizing_data
 from .utils import (
-    cleanup_ssh_control_masters, detach, expandvars, log_error, single_instance,
-    startup_notification_handler, unix_socket_paths,
+    cleanup_ssh_control_masters,
+    detach,
+    expandvars,
+    log_error,
+    single_instance,
+    startup_notification_handler,
+    unix_socket_paths,
 )
 from .window import load_shader_programs
 

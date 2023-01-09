@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-from time import clock_gettime, CLOCK_MONOTONIC, sleep
+import sys
 from argparse import ArgumentParser
 from random import Random
 from string import printable
-import sys
+from time import CLOCK_MONOTONIC, clock_gettime, sleep
 
 
 def main():

@@ -4,10 +4,7 @@ import re
 from enum import Enum
 from functools import lru_cache
 from gettext import gettext as _
-from typing import (
-    Callable, Iterator, List, NamedTuple, Optional, Sequence, Set, Tuple,
-    TypeVar, Union
-)
+from typing import Callable, Iterator, List, NamedTuple, Optional, Sequence, Set, Tuple, TypeVar, Union
 
 
 class ParseException(Exception):

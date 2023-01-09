@@ -1,34 +1,41 @@
 from asyncio import AbstractEventLoop as AbstractEventLoop
-from socket import AddressFamily as AddressFamily, socket as Socket
-from subprocess import CompletedProcess as CompletedProcess, Popen as PopenType
-from typing import Literal, Protocol as Protocol, TypedDict as TypedDict
+from socket import AddressFamily as AddressFamily
+from socket import socket as Socket
+from subprocess import CompletedProcess as CompletedProcess
+from subprocess import Popen as PopenType
+from typing import Literal
+from typing import Protocol as Protocol
+from typing import TypedDict as TypedDict
 
 from kittens.hints.main import Mark as MarkType
 from kittens.tui.handler import Handler as HandlerType
-from kittens.tui.images import (
-    GraphicsCommand as GraphicsCommandType, ImageManager as ImageManagerType
-)
-from kittens.tui.loop import (
-    Debug as Debug, Loop as LoopType, MouseButton as MouseButton,
-    MouseEvent as MouseEvent, TermManager as TermManagerType
-)
+from kittens.tui.images import GraphicsCommand as GraphicsCommandType
+from kittens.tui.images import ImageManager as ImageManagerType
+from kittens.tui.loop import Debug as Debug
+from kittens.tui.loop import Loop as LoopType
+from kittens.tui.loop import MouseButton as MouseButton
+from kittens.tui.loop import MouseEvent as MouseEvent
+from kittens.tui.loop import TermManager as TermManagerType
 
 from .boss import Boss as BossType
 from .child import Child as ChildType
-from .conf.utils import BadLine as BadLineType, KeyAction as KeyActionType
+from .conf.utils import BadLine as BadLineType
+from .conf.utils import KeyAction as KeyActionType
 from .config import KittyCommonOpts
-from .fast_data_types import (
-    CoreTextFont as CoreTextFont, FontConfigPattern as FontConfigPattern,
-    Screen as ScreenType, StartupCtx as StartupCtx
-)
+from .fast_data_types import CoreTextFont as CoreTextFont
+from .fast_data_types import FontConfigPattern as FontConfigPattern
+from .fast_data_types import Screen as ScreenType
+from .fast_data_types import StartupCtx as StartupCtx
 from .key_encoding import KeyEvent as KeyEventType
 from .layout.base import Layout as LayoutType
-from .options.utils import KeyMap as KeyMap, SequenceMap as SequenceMap, AliasMap as AliasMap
+from .options.utils import AliasMap as AliasMap
+from .options.utils import KeyMap as KeyMap
+from .options.utils import SequenceMap as SequenceMap
 from .rc.base import RemoteCommand as RemoteCommandType
-from .session import Session as SessionType, Tab as SessionTab
-from .tabs import (
-    SpecialWindowInstance as SpecialWindowInstance, Tab as TabType
-)
+from .session import Session as SessionType
+from .session import Tab as SessionTab
+from .tabs import SpecialWindowInstance as SpecialWindowInstance
+from .tabs import Tab as TabType
 from .utils import ScreenSize as ScreenSize
 from .window import Window as WindowType
 

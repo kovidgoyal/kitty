@@ -6,7 +6,6 @@
 
 from kitty.conf.types import Action, Definition
 
-
 definition = Definition(
     'kittens.diff',
     Action('map', 'parse_map', {'key_definitions': 'kitty.conf.utils.KittensKeyMap'}, ['kitty.types.ParsedShortcut', 'kitty.conf.utils.KeyAction']),

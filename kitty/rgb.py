@@ -4,6 +4,7 @@
 import re
 from contextlib import suppress
 from typing import Optional
+
 from .fast_data_types import Color
 
 

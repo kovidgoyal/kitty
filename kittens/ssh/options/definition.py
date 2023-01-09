@@ -6,7 +6,6 @@
 
 from kitty.conf.types import Definition
 
-
 copy_message = '''\
 Copy files and directories from local to remote hosts. The specified files are
 assumed to be relative to the HOME directory and copied to the HOME on the

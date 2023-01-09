@@ -5,14 +5,24 @@ import base64
 import sys
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 
-from kitty.fast_data_types import KeyEvent as WindowSystemKeyEvent, get_boss
+from kitty.fast_data_types import KeyEvent as WindowSystemKeyEvent
+from kitty.fast_data_types import get_boss
 from kitty.key_encoding import decode_key_event_as_window_system_key
 from kitty.options.utils import parse_send_text_bytes
 
 from .base import (
-    MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, CmdGenerator,
-    MatchError, PayloadGetType, PayloadType, RCOptions, RemoteCommand,
-    ResponseType, Window
+    MATCH_TAB_OPTION,
+    MATCH_WINDOW_OPTION,
+    ArgsType,
+    Boss,
+    CmdGenerator,
+    MatchError,
+    PayloadGetType,
+    PayloadType,
+    RCOptions,
+    RemoteCommand,
+    ResponseType,
+    Window,
 )
 
 if TYPE_CHECKING:

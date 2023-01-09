@@ -10,9 +10,7 @@ from . import BaseTest
 class TestCrypto(BaseTest):
 
     def test_elliptic_curve_data_exchange(self):
-        from kitty.fast_data_types import (
-            AES256GCMDecrypt, AES256GCMEncrypt, CryptoError, EllipticCurveKey
-        )
+        from kitty.fast_data_types import AES256GCMDecrypt, AES256GCMEncrypt, CryptoError, EllipticCurveKey
         alice = EllipticCurveKey()
         bob = EllipticCurveKey()
         alice_secret = alice.derive_secret(bob.public)

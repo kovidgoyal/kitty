@@ -6,9 +6,7 @@ import glob
 import os
 import shlex
 import uuid
-from typing import (
-    Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple
-)
+from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple
 
 from kitty.cli import parse_args
 from kitty.cli_stub import CopyCLIOptions

@@ -13,10 +13,7 @@ from kitty.types import run_once
 from kitty.utils import ScreenSize
 
 from ..tui.images import ImageManager, can_display_images
-from .collect import (
-    Collection, Segment, data_for_path, highlights_for_path, is_image,
-    lines_for_path, path_name_map, sanitize
-)
+from .collect import Collection, Segment, data_for_path, highlights_for_path, is_image, lines_for_path, path_name_map, sanitize
 from .config import formats
 from .diff_speedup import split_with_highlights as _split_with_highlights
 from .patch import Chunk, Hunk, Patch

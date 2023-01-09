@@ -6,12 +6,12 @@ import fnmatch
 import os
 from typing import Any, Dict, Iterable, Optional
 
-from kitty.conf.utils import (
-    load_config as _load_config, parse_config_base, resolve_config
-)
+from kitty.conf.utils import load_config as _load_config
+from kitty.conf.utils import parse_config_base, resolve_config
 from kitty.constants import config_dir
 
-from .options.types import Options as SSHOptions, defaults
+from .options.types import Options as SSHOptions
+from .options.types import defaults
 
 SYSTEM_CONF = '/etc/xdg/kitty/ssh.conf'
 defconf = os.path.join(config_dir, 'ssh.conf')
@@ -28,12 +28,8 @@ def host_matches(mpat: str, hostname: str, username: str) -> bool:
 
 
 def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, hostname: str = '!', username: str = '') -> SSHOptions:
-    from .options.parse import (
-        create_result_dict, merge_result_dicts, parse_conf_item
-    )
-    from .options.utils import (
-        first_seen_positions, get_per_hosts_dict, init_results_dict
-    )
+    from .options.parse import create_result_dict, merge_result_dicts, parse_conf_item
+    from .options.utils import first_seen_positions, get_per_hosts_dict, init_results_dict
 
     def merge_dicts(base: Dict[str, Any], vals: Dict[str, Any]) -> Dict[str, Any]:
         base_phd = get_per_hosts_dict(base)

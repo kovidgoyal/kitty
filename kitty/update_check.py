@@ -9,9 +9,7 @@ from typing import Dict, NamedTuple, Optional, Tuple
 from urllib.request import urlopen
 
 from .config import atomic_save
-from .constants import (
-    Version, cache_dir, clear_handled_signals, kitty_exe, version, website_url
-)
+from .constants import Version, cache_dir, clear_handled_signals, kitty_exe, version, website_url
 from .fast_data_types import add_timer, get_boss, monitor_pid
 from .notify import notify
 from .utils import log_error, open_url

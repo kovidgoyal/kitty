@@ -6,10 +6,7 @@ from typing import TYPE_CHECKING, Optional
 
 from kitty.fast_data_types import focus_os_window
 
-from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType,
-    RCOptions, RemoteCommand, ResponseType, Window
-)
+from .base import MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
 if TYPE_CHECKING:
     from kitty.cli_stub import FocusWindowRCOptions as CLIOptions

@@ -14,7 +14,15 @@ from enum import Enum, auto
 from functools import partial
 from gettext import gettext as _
 from typing import (
-    Any, DefaultDict, Dict, Iterable, Iterator, List, Optional, Tuple, Union,
+    Any,
+    DefaultDict,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Union,
 )
 
 from kitty.cli import CONFIG_HELP, CompletionSpec, parse_args
@@ -32,20 +40,32 @@ from ..tui.loop import Loop
 from ..tui.operations import styled
 from . import global_data
 from .collect import (
-    Collection, add_remote_dir, create_collection, data_for_path, lines_for_path,
-    sanitize, set_highlight_data,
+    Collection,
+    add_remote_dir,
+    create_collection,
+    data_for_path,
+    lines_for_path,
+    sanitize,
+    set_highlight_data,
 )
 from .config import init_config
 from .options.types import Options as DiffOptions
 from .patch import Differ, Patch, set_diff_command, worker_processes
 from .render import (
-    ImagePlacement, ImageSupportWarning, Line, LineRef, Reference, render_diff,
+    ImagePlacement,
+    ImageSupportWarning,
+    Line,
+    LineRef,
+    Reference,
+    render_diff,
 )
 from .search import BadRegex, Search
 
 try:
     from .highlight import (
-        DiffHighlight, get_highlight_processes, highlight_collection,
+        DiffHighlight,
+        get_highlight_processes,
+        highlight_collection,
         initialize_highlighter,
     )
     has_highlighter = True

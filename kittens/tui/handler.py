@@ -6,16 +6,21 @@ from collections import deque
 from contextlib import suppress
 from time import monotonic
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING, Any, Callable, ContextManager, Deque, Dict, NamedTuple,
-    Optional, Sequence, Type, Union, cast
-)
+from typing import TYPE_CHECKING, Any, Callable, ContextManager, Deque, Dict, NamedTuple, Optional, Sequence, Type, Union, cast
 
 from kitty.types import DecoratedFunc, ParsedShortcut
 from kitty.typing import (
-    AbstractEventLoop, BossType, Debug, ImageManagerType, KeyActionType,
-    KeyEventType, LoopType, MouseButton, MouseEvent, ScreenSize,
-    TermManagerType
+    AbstractEventLoop,
+    BossType,
+    Debug,
+    ImageManagerType,
+    KeyActionType,
+    KeyEventType,
+    LoopType,
+    MouseButton,
+    MouseEvent,
+    ScreenSize,
+    TermManagerType,
 )
 
 from .operations import MouseTracking, pending_update

@@ -7,9 +7,8 @@
 
 import os
 from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import util
-from multiprocessing import context, get_all_start_methods, get_context, spawn
-from typing import Any, Callable, Sequence, Optional, Tuple, Union,  TYPE_CHECKING
+from multiprocessing import context, get_all_start_methods, get_context, spawn, util
+from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence, Tuple, Union
 
 from .constants import kitty_exe
 
@@ -17,11 +16,11 @@ orig_spawn_passfds = util.spawnv_passfds
 orig_executable = spawn.get_executable()
 
 if TYPE_CHECKING:
-    from pickle import PickleBuffer
     from array import array
-    from mmap import mmap
     from ctypes import _CData
-    from typing import SupportsInt, SupportsIndex, Protocol
+    from mmap import mmap
+    from pickle import PickleBuffer
+    from typing import Protocol, SupportsIndex, SupportsInt
 
     class SupportsTrunc(Protocol):
         def __trunc__(self) -> int: ...

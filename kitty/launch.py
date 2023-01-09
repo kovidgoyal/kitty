@@ -5,10 +5,7 @@
 import os
 import shutil
 from contextlib import suppress
-from typing import (
-    Any, Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple,
-    Optional, Sequence, Tuple
-)
+from typing import Any, Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple
 
 from .boss import Boss
 from .child import Child
@@ -16,9 +13,7 @@ from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .clipboard import set_clipboard_string, set_primary_selection
 from .constants import kitty_tool_exe, shell_path
-from .fast_data_types import (
-    add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
-)
+from .fast_data_types import add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import OverlayType, run_once
@@ -833,9 +828,7 @@ def clone_and_launch(msg: str, window: Window) -> None:
     is_clone_launch = serialize_env(c.shell, env_to_serialize)
     ssh_kitten_cmdline = window.ssh_kitten_cmdline()
     if ssh_kitten_cmdline:
-        from kittens.ssh.utils import (
-            patch_cmdline, set_cwd_in_cmdline, set_env_in_cmdline
-        )
+        from kittens.ssh.utils import patch_cmdline, set_cwd_in_cmdline, set_env_in_cmdline
         cmdline = ssh_kitten_cmdline
         if c.opts.cwd:
             set_cwd_in_cmdline(c.opts.cwd, cmdline)

@@ -6,15 +6,23 @@ from functools import lru_cache
 from typing import Dict, Generator, List, Optional, Tuple, cast
 
 from kitty.fast_data_types import (
-    FC_DUAL, FC_MONO, FC_SLANT_ITALIC, FC_SLANT_ROMAN, FC_WEIGHT_BOLD,
-    FC_WEIGHT_REGULAR, FC_WIDTH_NORMAL, fc_list, fc_match as fc_match_impl,
-    fc_match_postscript_name, parse_font_feature
+    FC_DUAL,
+    FC_MONO,
+    FC_SLANT_ITALIC,
+    FC_SLANT_ROMAN,
+    FC_WEIGHT_BOLD,
+    FC_WEIGHT_REGULAR,
+    FC_WIDTH_NORMAL,
+    fc_list,
+    fc_match_postscript_name,
+    parse_font_feature,
 )
+from kitty.fast_data_types import fc_match as fc_match_impl
 from kitty.options.types import Options
 from kitty.typing import FontConfigPattern
 from kitty.utils import log_error
 
-from . import ListedFont, FontFeature
+from . import FontFeature, ListedFont
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',

@@ -11,12 +11,10 @@ import unittest
 from contextlib import contextmanager
 from functools import lru_cache, partial
 
-from kitty.constants import kitty_base_dir, terminfo_dir, shell_integration_dir
-from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
-from kitty.shell_integration import (
-    setup_bash_env, setup_fish_env, setup_zsh_env
-)
 from kitty.bash import decode_ansi_c_quoted_string
+from kitty.constants import kitty_base_dir, shell_integration_dir, terminfo_dir
+from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
+from kitty.shell_integration import setup_bash_env, setup_fish_env, setup_zsh_env
 
 from . import BaseTest
 

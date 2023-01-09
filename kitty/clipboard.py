@@ -11,8 +11,13 @@ from typing import IO, Callable, Dict, List, Mapping, NamedTuple, Optional, Tupl
 from .conf.utils import uniq
 from .constants import supports_primary_selection
 from .fast_data_types import (
-    GLFW_CLIPBOARD, GLFW_PRIMARY_SELECTION, OSC, get_boss, get_clipboard_mime,
-    get_options, set_clipboard_data_types,
+    GLFW_CLIPBOARD,
+    GLFW_PRIMARY_SELECTION,
+    OSC,
+    get_boss,
+    get_clipboard_mime,
+    get_options,
+    set_clipboard_data_types,
 )
 from .utils import log_error
 

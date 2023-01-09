@@ -9,14 +9,9 @@ import unittest
 from functools import partial
 
 from kitty.constants import is_macos, read_kitty_resource
-from kitty.fast_data_types import (
-    DECAWM, get_fallback_font, sprite_map_set_layout, sprite_map_set_limits,
-    test_render_line, test_sprite_position_for, wcwidth
-)
+from kitty.fast_data_types import DECAWM, get_fallback_font, sprite_map_set_layout, sprite_map_set_limits, test_render_line, test_sprite_position_for, wcwidth
 from kitty.fonts.box_drawing import box_chars
-from kitty.fonts.render import (
-    coalesce_symbol_maps, render_string, setup_for_testing, shape_string
-)
+from kitty.fonts.render import coalesce_symbol_maps, render_string, setup_for_testing, shape_string
 
 from . import BaseTest
 

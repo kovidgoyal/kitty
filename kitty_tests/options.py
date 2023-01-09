@@ -2,10 +2,11 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from . import BaseTest
-from kitty.utils import log_error
-from kitty.options.utils import DELETE_ENV_VAR
 from kitty.fast_data_types import Color
+from kitty.options.utils import DELETE_ENV_VAR
+from kitty.utils import log_error
+
+from . import BaseTest
 
 
 class TestConfParsing(BaseTest):
@@ -20,10 +21,10 @@ class TestConfParsing(BaseTest):
         super().tearDown()
 
     def test_conf_parsing(self):
-        from kitty.config import load_config, defaults
+        from kitty.config import defaults, load_config
         from kitty.constants import is_macos
+        from kitty.fonts import FontModification, ModificationType, ModificationUnit, ModificationValue
         from kitty.options.utils import to_modifiers
-        from kitty.fonts import FontModification, ModificationType, ModificationValue, ModificationUnit
         bad_lines = []
 
         def p(*lines, bad_line_num=0):

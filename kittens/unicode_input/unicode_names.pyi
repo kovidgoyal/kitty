@@ -1,5 +1,4 @@
-from typing import Tuple, FrozenSet, Optional
-
+from typing import FrozenSet, Optional, Tuple
 
 def all_words() -> Tuple[str, ...]:
     pass

@@ -1,20 +1,14 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import (
-    Any, Collection, Dict, Generator, List, NamedTuple, Optional, Sequence, Tuple,
-    Union
-)
+from typing import Any, Collection, Dict, Generator, List, NamedTuple, Optional, Sequence, Tuple, Union
 
 from kitty.borders import BorderColor
 from kitty.types import Edges, WindowGeometry
 from kitty.typing import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .base import (
-    BorderLine, Layout, LayoutOpts, NeighborsMap, blank_rects_for_window, lgd,
-    window_geometry_from_layouts
-)
+from .base import BorderLine, Layout, LayoutOpts, NeighborsMap, blank_rects_for_window, lgd, window_geometry_from_layouts
 
 
 class Extent(NamedTuple):
