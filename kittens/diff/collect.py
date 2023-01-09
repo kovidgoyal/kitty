@@ -12,7 +12,7 @@ from kitty.guess_mime_type import guess_type
 from kitty.utils import control_codes_pat
 
 if TYPE_CHECKING:
-    from .highlight import DiffHighlight  # noqa
+    from .highlight import DiffHighlight
 
 
 path_name_map: Dict[str, str] = {}

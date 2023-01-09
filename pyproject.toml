@@ -19,7 +19,10 @@ no_implicit_reexport = true
 [tool.ruff]
 line-length = 160
 target-version = 'py38'
-select = ['E', 'F', 'I']
+select = ['E', 'F', 'I', 'RUF100']
+
+[tool.ruff.per-file-ignores]
+"kitty/options/types.py" = ["E501"]
 
 [tool.black]
 line-length = 160

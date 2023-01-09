@@ -498,7 +498,7 @@ def gen_names() -> None:
 
         # The trie
         p('typedef struct { uint32_t children_offset; uint32_t match_offset; } word_trie;\n')
-        all_trie_nodes: List['TrieNode'] = []  # noqa
+        all_trie_nodes: List['TrieNode'] = []
 
         class TrieNode:
 

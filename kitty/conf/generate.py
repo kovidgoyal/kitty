@@ -128,8 +128,6 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
             defval = 'frozenset({' + ', '.join(repr(x) for x in sorted(defval_as_obj)) + '})'
         else:
             defval = repr(defval_as_obj)
-        if len(defval) > 100:
-            defval += ' # noqa'
         if option.macos_defval is not unset:
             md = repr(func(option.macos_defval))
             defval = f'{md} if is_macos else {defval}'
@@ -291,7 +289,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
             else:
                 for val in func(text):
                     a(f'    # {sc.name}')
-                    a(f'    {val!r},  # noqa')
+                    a(f'    {val!r}, ')
         a(']')
         if only:
             imports.add(('kitty.constants', 'is_macos'))
@@ -300,7 +298,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
                 a(f'if {cond}:')
                 for (text, parser_func) in items:
                     for val in parser_func(text):
-                        a(f'    defaults.{aname}.append({val!r})  # noqa')
+                        a(f'    defaults.{aname}.append({val!r})')
 
     t('')
     t('')

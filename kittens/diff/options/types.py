@@ -122,53 +122,53 @@ defaults = Options()
 defaults.ignore_name = {}
 defaults.map = [
     # quit
-    (ParsedShortcut(mods=0, key_name='q'), KeyAction('quit')),  # noqa
+    (ParsedShortcut(mods=0, key_name='q'), KeyAction('quit')), 
     # quit
-    (ParsedShortcut(mods=0, key_name='ESCAPE'), KeyAction('quit')),  # noqa
+    (ParsedShortcut(mods=0, key_name='ESCAPE'), KeyAction('quit')), 
     # scroll_down
-    (ParsedShortcut(mods=0, key_name='j'), KeyAction('scroll_by', (1,))),  # noqa
+    (ParsedShortcut(mods=0, key_name='j'), KeyAction('scroll_by', (1,))), 
     # scroll_down
-    (ParsedShortcut(mods=0, key_name='DOWN'), KeyAction('scroll_by', (1,))),  # noqa
+    (ParsedShortcut(mods=0, key_name='DOWN'), KeyAction('scroll_by', (1,))), 
     # scroll_up
-    (ParsedShortcut(mods=0, key_name='k'), KeyAction('scroll_by', (-1,))),  # noqa
+    (ParsedShortcut(mods=0, key_name='k'), KeyAction('scroll_by', (-1,))), 
     # scroll_up
-    (ParsedShortcut(mods=0, key_name='UP'), KeyAction('scroll_by', (-1,))),  # noqa
+    (ParsedShortcut(mods=0, key_name='UP'), KeyAction('scroll_by', (-1,))), 
     # scroll_top
-    (ParsedShortcut(mods=0, key_name='HOME'), KeyAction('scroll_to', ('start',))),  # noqa
+    (ParsedShortcut(mods=0, key_name='HOME'), KeyAction('scroll_to', ('start',))), 
     # scroll_bottom
-    (ParsedShortcut(mods=0, key_name='END'), KeyAction('scroll_to', ('end',))),  # noqa
+    (ParsedShortcut(mods=0, key_name='END'), KeyAction('scroll_to', ('end',))), 
     # scroll_page_down
-    (ParsedShortcut(mods=0, key_name='PAGE_DOWN'), KeyAction('scroll_to', ('next-page',))),  # noqa
+    (ParsedShortcut(mods=0, key_name='PAGE_DOWN'), KeyAction('scroll_to', ('next-page',))), 
     # scroll_page_down
-    (ParsedShortcut(mods=0, key_name=' '), KeyAction('scroll_to', ('next-page',))),  # noqa
+    (ParsedShortcut(mods=0, key_name=' '), KeyAction('scroll_to', ('next-page',))), 
     # scroll_page_up
-    (ParsedShortcut(mods=0, key_name='PAGE_UP'), KeyAction('scroll_to', ('prev-page',))),  # noqa
+    (ParsedShortcut(mods=0, key_name='PAGE_UP'), KeyAction('scroll_to', ('prev-page',))), 
     # next_change
-    (ParsedShortcut(mods=0, key_name='n'), KeyAction('scroll_to', ('next-change',))),  # noqa
+    (ParsedShortcut(mods=0, key_name='n'), KeyAction('scroll_to', ('next-change',))), 
     # prev_change
-    (ParsedShortcut(mods=0, key_name='p'), KeyAction('scroll_to', ('prev-change',))),  # noqa
+    (ParsedShortcut(mods=0, key_name='p'), KeyAction('scroll_to', ('prev-change',))), 
     # all_context
-    (ParsedShortcut(mods=0, key_name='a'), KeyAction('change_context', ('all',))),  # noqa
+    (ParsedShortcut(mods=0, key_name='a'), KeyAction('change_context', ('all',))), 
     # default_context
-    (ParsedShortcut(mods=0, key_name='='), KeyAction('change_context', ('default',))),  # noqa
+    (ParsedShortcut(mods=0, key_name='='), KeyAction('change_context', ('default',))), 
     # increase_context
-    (ParsedShortcut(mods=0, key_name='+'), KeyAction('change_context', (5,))),  # noqa
+    (ParsedShortcut(mods=0, key_name='+'), KeyAction('change_context', (5,))), 
     # decrease_context
-    (ParsedShortcut(mods=0, key_name='-'), KeyAction('change_context', (-5,))),  # noqa
+    (ParsedShortcut(mods=0, key_name='-'), KeyAction('change_context', (-5,))), 
     # search_forward
-    (ParsedShortcut(mods=0, key_name='/'), KeyAction('start_search', (True, False))),  # noqa
+    (ParsedShortcut(mods=0, key_name='/'), KeyAction('start_search', (True, False))), 
     # search_backward
-    (ParsedShortcut(mods=0, key_name='?'), KeyAction('start_search', (True, True))),  # noqa
+    (ParsedShortcut(mods=0, key_name='?'), KeyAction('start_search', (True, True))), 
     # next_match
-    (ParsedShortcut(mods=0, key_name='.'), KeyAction('scroll_to', ('next-match',))),  # noqa
+    (ParsedShortcut(mods=0, key_name='.'), KeyAction('scroll_to', ('next-match',))), 
     # next_match
-    (ParsedShortcut(mods=0, key_name='>'), KeyAction('scroll_to', ('next-match',))),  # noqa
+    (ParsedShortcut(mods=0, key_name='>'), KeyAction('scroll_to', ('next-match',))), 
     # prev_match
-    (ParsedShortcut(mods=0, key_name=','), KeyAction('scroll_to', ('prev-match',))),  # noqa
+    (ParsedShortcut(mods=0, key_name=','), KeyAction('scroll_to', ('prev-match',))), 
     # prev_match
-    (ParsedShortcut(mods=0, key_name='<'), KeyAction('scroll_to', ('prev-match',))),  # noqa
+    (ParsedShortcut(mods=0, key_name='<'), KeyAction('scroll_to', ('prev-match',))), 
     # search_forward_simple
-    (ParsedShortcut(mods=0, key_name='f'), KeyAction('start_search', (False, False))),  # noqa
+    (ParsedShortcut(mods=0, key_name='f'), KeyAction('start_search', (False, False))), 
     # search_backward_simple
-    (ParsedShortcut(mods=0, key_name='b'), KeyAction('start_search', (False, True))),  # noqa
+    (ParsedShortcut(mods=0, key_name='b'), KeyAction('start_search', (False, True))), 
 ]

@@ -135,7 +135,7 @@ class IssueData:
             self.tty_name = format_tty_name(os.ctermid())
         except OSError:
             self.tty_name = '(none)'
-        self.l = self.tty_name  # noqa
+        self.l = self.tty_name
         self.baud_rate = 0
         if sys.stdin.isatty():
             with suppress(OSError):
