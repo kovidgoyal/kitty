@@ -3845,19 +3845,34 @@ marked_cells(Screen *self, PyObject *o UNUSED) {
 }
 
 static PyObject*
-paste(Screen *self, PyObject *bytes) {
-    if (!PyBytes_Check(bytes)) { PyErr_SetString(PyExc_TypeError, "Must paste() bytes"); return NULL; }
-    if (self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, CSI, BRACKETED_PASTE_START);
-    write_to_child(self, PyBytes_AS_STRING(bytes), PyBytes_GET_SIZE(bytes));
-    if (self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, CSI, BRACKETED_PASTE_END);
+paste_(Screen *self, PyObject *bytes, bool allow_bracketed_paste) {
+    const char *data; Py_ssize_t sz;
+    if (PyBytes_Check(bytes)) {
+        data = PyBytes_AS_STRING(bytes); sz = PyBytes_GET_SIZE(bytes);
+    } else if (PyMemoryView_Check(bytes)) {
+        DECREF_AFTER_FUNCTION PyObject *mv = PyMemoryView_GetContiguous(bytes, PyBUF_READ, PyBUF_C_CONTIGUOUS);
+        if (mv == NULL) return NULL;
+        Py_buffer *buf = PyMemoryView_GET_BUFFER(mv);
+        data = buf->buf;
+        sz = buf->len;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Must paste() bytes"); return NULL;
+    }
+    if (allow_bracketed_paste && self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, CSI, BRACKETED_PASTE_START);
+    write_to_child(self, data, sz);
+    if (allow_bracketed_paste && self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, CSI, BRACKETED_PASTE_END);
     Py_RETURN_NONE;
+}
+
+
+static PyObject*
+paste(Screen *self, PyObject *bytes) {
+    return paste_(self, bytes, true);
 }
 
 static PyObject*
 paste_bytes(Screen *self, PyObject *bytes) {
-    if (!PyBytes_Check(bytes)) { PyErr_SetString(PyExc_TypeError, "Must paste() bytes"); return NULL; }
-    write_to_child(self, PyBytes_AS_STRING(bytes), PyBytes_GET_SIZE(bytes));
-    Py_RETURN_NONE;
+    return paste_(self, bytes, false);
 }
 
 static PyObject*
