@@ -1,12 +1,11 @@
 " Scan the following dirs recursively for tags
 let g:project_tags_dirs = ['kitty', 'kittens', 'tools']
 if exists('g:ale_linters')
-    let g:ale_linters['python'] = ['mypy', 'ruff']
+    let g:ale_linters['python'] = ['mypy', 'ruff --no-update-check']
 else
-    let g:ale_linters = {'python': ['mypy', 'ruff']}
+    let g:ale_linters = {'python': ['mypy', 'ruff --no-update-check']}
 endif
 let g:ale_python_mypy_executable = './mypy-editor-integration'
-let g:ycm_python_binary_path = 'python3'
 set wildignore+==template.py
 set wildignore+=tags
 set expandtab
