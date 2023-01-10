@@ -13,7 +13,7 @@ import tempfile
 import zipfile
 from contextlib import suppress
 from typing import Any, Callable, Dict, Iterator, Match, Optional, Tuple, Type, Union
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from kitty.config import atomic_save, parse_config
@@ -643,6 +643,8 @@ def load_themes(cache_age: float = 1., ignore_no_cache: bool = False) -> Themes:
     except NoCacheFound:
         if not ignore_no_cache:
             raise
+    except URLError:
+        print("Cannot update themes, please check your internet connection", file=sys.stderr)
     else:
         ans.load_from_zip(fetched)
     ans.load_from_dir(os.path.join(config_dir, 'themes'))
