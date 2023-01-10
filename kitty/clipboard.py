@@ -275,17 +275,10 @@ class WriteRequest:
         if not self.currently_writing_mime:
             self.mime_map[mime] = MimePos(self.tempfile.tell(), -1)
             self.currently_writing_mime = mime
-        if len(self.current_leftover_bytes) > 0:
-            extra = 4 - len(self.current_leftover_bytes)
-            if len(data) >= extra:
-                self.write_base64_data(memoryview(bytes(self.current_leftover_bytes) + data[:extra]))
-                self.current_leftover_bytes = memoryview(b'')
-                data = memoryview(data)[extra:]
-                if len(data) > 0:
-                    self.write_base64_data(data)
-            else:
-                self.current_leftover_bytes = memoryview(bytes(self.current_leftover_bytes) + data)
-        else:
+
+        def write_saving_leftover_bytes(data: bytes) -> None:
+            if len(data) == 0:
+                return
             extra = len(data) % 4
             if extra > 0:
                 mv = memoryview(data)
@@ -295,6 +288,18 @@ class WriteRequest:
                     self.write_base64_data(mv)
             else:
                 self.write_base64_data(data)
+
+        if len(self.current_leftover_bytes) > 0:
+            extra = 4 - len(self.current_leftover_bytes)
+            if len(data) >= extra:
+                self.write_base64_data(memoryview(bytes(self.current_leftover_bytes) + data[:extra]))
+                self.current_leftover_bytes = memoryview(b'')
+                data = memoryview(data)[extra:]
+                write_saving_leftover_bytes(data)
+            else:
+                self.current_leftover_bytes = memoryview(bytes(self.current_leftover_bytes) + data)
+        else:
+            write_saving_leftover_bytes(data)
 
     def flush_base64_data(self) -> None:
         if self.currently_writing_mime:
