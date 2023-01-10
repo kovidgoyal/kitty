@@ -279,8 +279,10 @@ class WriteRequest:
             extra = 4 - len(self.current_leftover_bytes)
             if len(data) >= extra:
                 self.write_base64_data(memoryview(bytes(self.current_leftover_bytes) + data[:extra]))
-                data = memoryview(data)[extra:]
                 self.current_leftover_bytes = memoryview(b'')
+                data = memoryview(data)[extra:]
+                if len(data) > 0:
+                    self.write_base64_data(data)
             else:
                 self.current_leftover_bytes = memoryview(bytes(self.current_leftover_bytes) + data)
         else:
