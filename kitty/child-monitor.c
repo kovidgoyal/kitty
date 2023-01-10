@@ -1388,7 +1388,8 @@ reap_children(ChildMonitor *self, bool enable_close_on_child_death) {
     }
 }
 
-static inline void
+#ifdef KITTY_PRINT_BYTES_SENT_TO_CHILD
+static void
 print_text(const unsigned char *text, ssize_t sz) {
     for (ssize_t i = 0; i < sz; i++) {
         unsigned char ch = text[i];
@@ -1398,6 +1399,7 @@ print_text(const unsigned char *text, ssize_t sz) {
         } else fprintf(stderr, "\\x%02x", ch);
     }
 }
+#endif
 
 
 static void
