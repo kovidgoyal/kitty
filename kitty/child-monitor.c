@@ -1388,6 +1388,18 @@ reap_children(ChildMonitor *self, bool enable_close_on_child_death) {
     }
 }
 
+static inline void
+print_text(const unsigned char *text, ssize_t sz) {
+    for (ssize_t i = 0; i < sz; i++) {
+        unsigned char ch = text[i];
+        if (32 <= ch && ch <= 127) {
+            if (ch == '\\') fprintf(stderr, "%c", ch);
+            fprintf(stderr, "%c", ch);
+        } else fprintf(stderr, "\\x%02x", ch);
+    }
+}
+
+
 static void
 write_to_child(int fd, Screen *screen) {
     size_t written = 0;
@@ -1395,7 +1407,15 @@ write_to_child(int fd, Screen *screen) {
     screen_mutex(lock, write);
     while (written < screen->write_buf_used) {
         ret = write(fd, screen->write_buf + written, screen->write_buf_used - written);
-        if (ret > 0) { written += ret; }
+#ifdef KITTY_PRINT_BYTES_SENT_TO_CHILD
+        fprintf(stderr, "Wrote: %zd bytes: ", ret);
+#endif
+        if (ret > 0) {
+#ifdef KITTY_PRINT_BYTES_SENT_TO_CHILD
+            print_text(screen->write_buf + written, ret);
+#endif
+            written += ret;
+        }
         else if (ret == 0) {
             // could mean anything, ignore
             break;
@@ -1405,6 +1425,9 @@ write_to_child(int fd, Screen *screen) {
             perror("Call to write() to child fd failed, discarding data.");
             written = screen->write_buf_used;
         }
+#ifdef KITTY_PRINT_BYTES_SENT_TO_CHILD
+        fprintf(stderr, "\n");
+#endif
     }
     if (written) {
         screen->write_buf_used -= written;
