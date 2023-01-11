@@ -233,8 +233,11 @@ class ThemesHandler(Handler):
             self.redraw_after_category_change()
 
         def fetch() -> None:
+            from urllib.error import URLError
             try:
                 themes: Union[Themes, str] = load_themes(self.cli_opts.cache_age)
+            except URLError as e:
+                themes = f'Could not download themes, check your internet connection. Error: {e}'
             except Exception:
                 themes = format_traceback('Failed to download themes')
             self.asyncio_loop.call_soon_threadsafe(fetching_done, themes)
