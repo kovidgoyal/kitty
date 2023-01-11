@@ -1393,7 +1393,7 @@ static void
 print_text(const unsigned char *text, ssize_t sz) {
     for (ssize_t i = 0; i < sz; i++) {
         unsigned char ch = text[i];
-        if (32 <= ch && ch <= 127) {
+        if (32 <= ch && ch < 127) {
             if (ch == '\\') fprintf(stderr, "%c", ch);
             fprintf(stderr, "%c", ch);
         } else fprintf(stderr, "\\x%02x", ch);
