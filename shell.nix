@@ -4,7 +4,7 @@ with pkgs;
 let
   inherit (lib) optional optionals;
   inherit (xorg) libX11 libXrandr libXinerama libXcursor libXi libXext;
-  inherit (darwin.apple_sdk.frameworks) Cocoa CoreGraphics Foundation IOKit Kernel OpenGL;
+  inherit (darwin.apple_sdk.frameworks) Cocoa CoreGraphics Foundation IOKit Kernel OpenGL UniformTypeIdentifiers;
   harfbuzzWithCoreText = harfbuzz.override { withCoreText = stdenv.isDarwin; };
 in
 with python3Packages;
@@ -21,6 +21,7 @@ mkShell rec {
     IOKit
     Kernel
     OpenGL
+    UniformTypeIdentifiers
     libpng
     python3
     zlib
