@@ -249,16 +249,8 @@ def add_dline(buf: CBufType, cell_width: int, position: int, thickness: int, cel
 
 def add_curl(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
     max_x, max_y = cell_width - 1, cell_height - 1
-    xfactor = 2.0 * pi / max_x
-    thickness = max(1, thickness)
-    if thickness < 3:
-        half_height = thickness
-        thickness -= 1
-    elif thickness == 3:
-        half_height = thickness = 2
-    else:
-        half_height = thickness // 2
-        thickness -= 2
+    xfactor = 4.0 * pi / max_x
+    thickness = half_height = max(1, cell_height // 21)
 
     def add_intensity(x: int, y: int, val: int) -> None:
         y += position
