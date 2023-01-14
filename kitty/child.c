@@ -154,7 +154,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             // Report the failure and exec a shell instead, so that we are not left
             // with a forked but not exec'ed process
             write_to_stderr("Failed to launch child: ");
-            write_to_stderr(argv[0]);
+            write_to_stderr(exe);
             write_to_stderr("\nWith error: ");
             write_to_stderr(strerror(errno));
             write_to_stderr("\nPress Enter to exit.\n");
