@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, DefaultDict, Dict, Generator, List, Optional, 
 
 import kitty.fast_data_types as fast_data_types
 
-from .constants import handled_signals, is_freebsd, is_macos, kitty_base_dir, shell_path, terminfo_dir
+from .constants import handled_signals, is_freebsd, is_macos, kitten_exe, kitty_base_dir, shell_path, terminfo_dir
 from .types import run_once
 from .utils import log_error, which
 
@@ -320,7 +320,7 @@ class Child:
         else:
             pid = fast_data_types.spawn(
                 self.final_exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
-                ready_read_fd, ready_write_fd, tuple(handled_signals))
+                ready_read_fd, ready_write_fd, tuple(handled_signals), kitten_exe())
         os.close(slave)
         self.pid = pid
         self.child_fd = master
