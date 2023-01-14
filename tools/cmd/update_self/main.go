@@ -27,14 +27,14 @@ func update_self(version string) (err error) {
 	exe := ""
 	exe, err = os.Executable()
 	if err != nil {
-		return fmt.Errorf("Failed to determine path to kitty-tool: %w", err)
+		return fmt.Errorf("Failed to determine path to kitten: %w", err)
 	}
 	exe, err = filepath.EvalSymlinks(exe)
 	if err != nil {
 		return err
 	}
 	if !kitty.IsStandaloneBuild {
-		return fmt.Errorf("This is not a standalone kitty-tool executable. You must update all of kitty instead.")
+		return fmt.Errorf("This is not a standalone kitten executable. You must update all of kitty instead.")
 	}
 	rv := "v" + version
 	if version == "nightly" {
@@ -44,8 +44,8 @@ func update_self(version string) (err error) {
 	if version == "latest" {
 		url_base = "https://github.com/kovidgoyal/kitty/releases/latest/download"
 	}
-	url := fmt.Sprintf("%s/kitty-tool-%s-%s", url_base, runtime.GOOS, runtime.GOARCH)
-	dest, err := os.CreateTemp(filepath.Dir(exe), "kitty-tool.")
+	url := fmt.Sprintf("%s/kitten-%s-%s", url_base, runtime.GOOS, runtime.GOARCH)
+	dest, err := os.CreateTemp(filepath.Dir(exe), "kitten.")
 	if err != nil {
 		return err
 	}
@@ -65,15 +65,15 @@ func update_self(version string) (err error) {
 		}
 	}
 	fmt.Print("Updated to: ")
-	return unix.Exec(exe, []string{"kitty-tool", "--version"}, os.Environ())
+	return unix.Exec(exe, []string{"kitten", "--version"}, os.Environ())
 }
 
 func EntryPoint(root *cli.Command) *cli.Command {
 	sc := root.AddSubCommand(&cli.Command{
 		Name:             "update-self",
 		Usage:            "update-self [options ...]",
-		ShortDescription: "Update this kitty-tool binary",
-		HelpText:         "Update this kitty-tool binary in place to the latest available version.",
+		ShortDescription: "Update this kitten binary",
+		HelpText:         "Update this kitten binary in place to the latest available version.",
 		Run: func(cmd *cli.Command, args []string) (ret int, err error) {
 			if len(args) != 0 {
 				return 1, fmt.Errorf("No command line arguments are allowed")

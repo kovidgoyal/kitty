@@ -305,12 +305,12 @@ The remote control protocol
 
 If you wish to develop your own client to talk to |kitty|, you can use the
 :doc:`remote control protocol specification <rc_protocol>`. Note that there
-is a statically compiled, standalone executable, ``kitty-tool`` available that
+is a statically compiled, standalone executable, ``kitten`` available that
 can be used as a remote control client on any UNIX like computer. This can be
 downloaded and used directly from the `kitty releases
 <https://github.com/kovidgoyal/kitty/releases>`__ page::
 
-    kitty-tool @ --help
+    kitten @ --help
 
 
 .. _search_syntax:

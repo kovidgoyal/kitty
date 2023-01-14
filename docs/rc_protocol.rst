@@ -41,11 +41,11 @@ with the following command line::
 
     echo -en '\eP@kitty-cmd{"cmd":"ls","version":[0,14,2]}\e\\' | socat - unix:/tmp/test | awk '{ print substr($0, 13, length($0) - 14) }' | jq -c '.data | fromjson' | jq .
 
-There is also the statically compiled stand-alone executable ``kitty-tool``
+There is also the statically compiled stand-alone executable ``kitten``
 that can be used for this, available from the `kitty releases
 <https://github.com/kovidgoyal/kitty/releases>`__ page::
 
-    kitty-tool @ --help
+    kitten @ --help
 
 .. _rc_crypto:
 

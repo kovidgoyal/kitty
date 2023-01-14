@@ -134,7 +134,7 @@ usage = 'image-file-or-url-or-directory ...'
 
 
 if __name__ == '__main__':
-    raise SystemExit('This should be run as kitty-tool icat')
+    raise SystemExit('This should be run as kitten icat')
 elif __name__ == '__doc__':
     import sys
 

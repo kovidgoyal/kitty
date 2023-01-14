@@ -896,7 +896,7 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
         raise SystemExit(cp.returncode)
 
 
-def build_kitty_tool(
+def build_static_kittens(
     args: Options, launcher_dir: str, destination_dir: str = '', for_freeze: bool = False,
     for_platform: Optional[Tuple[str, str]] = None
 ) -> str:
@@ -917,7 +917,7 @@ def build_kitty_tool(
         ld_flags.append('-s')
         ld_flags.append('-w')
     cmd += ['-ldflags', ' '.join(ld_flags)]
-    dest = os.path.join(destination_dir or launcher_dir, 'kitty-tool')
+    dest = os.path.join(destination_dir or launcher_dir, 'kitten')
     if for_platform:
         dest += f'-{for_platform[0]}-{for_platform[1]}'
     src = os.path.abspath('tools/cmd')
@@ -957,8 +957,8 @@ def build_static_binaries(args: Options, launcher_dir: str) -> None:
         'dragonfly': ('amd64',),
     }.items():
         for arch in arches_:
-            print('Cross compiling static kitty-tool for:', os_, arch)
-            build_kitty_tool(args, launcher_dir, args.dir_for_static_binaries, for_platform=(os_, arch))
+            print('Cross compiling static kitten for:', os_, arch)
+            build_static_kittens(args, launcher_dir, args.dir_for_static_binaries, for_platform=(os_, arch))
 
 
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> None:
@@ -1357,7 +1357,7 @@ def create_minimal_macos_bundle(args: Options, launcher_dir: str) -> None:
     with open(os.path.join(kapp, 'Contents/Info.plist'), 'wb') as f:
         f.write(macos_info_plist())
     build_launcher(args, bin_dir)
-    build_kitty_tool(args, launcher_dir=bin_dir)
+    build_static_kittens(args, launcher_dir=bin_dir)
     kitty_exe = os.path.join(launcher_dir, appname)
     with suppress(FileNotFoundError):
         os.remove(kitty_exe)
@@ -1384,9 +1384,9 @@ def create_macos_bundle_gunk(dest: str, for_freeze: bool, args: Options) -> str:
     os.symlink(os.path.relpath(kitty_exe, os.path.dirname(in_src_launcher)), in_src_launcher)
     create_macos_app_icon(os.path.join(ddir, 'Contents', 'Resources'))
     if not for_freeze:
-        kitty_tool_exe = build_kitty_tool(args, launcher_dir=os.path.dirname(kitty_exe))
-        os.symlink(os.path.relpath(kitty_tool_exe, os.path.dirname(in_src_launcher)),
-                   os.path.join(os.path.dirname(in_src_launcher), os.path.basename(kitty_tool_exe)))
+        kitten_exe = build_static_kittens(args, launcher_dir=os.path.dirname(kitty_exe))
+        os.symlink(os.path.relpath(kitten_exe, os.path.dirname(in_src_launcher)),
+                   os.path.join(os.path.dirname(in_src_launcher), os.path.basename(kitten_exe)))
     return str(kitty_exe)
 
 
@@ -1457,7 +1457,7 @@ def package(args: Options, bundle_type: str) -> None:
         if path.endswith('.so'):
             return True
         q = path.split(os.sep)[-2:]
-        if len(q) == 2 and q[0] == 'ssh' and q[1] in ('askpass.py', 'kitty', 'kitty-tool'):
+        if len(q) == 2 and q[0] == 'ssh' and q[1] in ('askpass.py', 'kitty', 'kitten'):
             return True
         return False
 
@@ -1466,7 +1466,7 @@ def package(args: Options, bundle_type: str) -> None:
             path = os.path.join(root, f_)
             os.chmod(path, 0o755 if should_be_executable(path) else 0o644)
     if not for_freeze and not bundle_type.startswith('macos-'):
-        build_kitty_tool(args, launcher_dir=launcher_dir)
+        build_static_kittens(args, launcher_dir=launcher_dir)
     if not is_macos:
         create_linux_bundle_gunk(ddir, args.libdir_name)
 
@@ -1476,7 +1476,7 @@ def package(args: Options, bundle_type: str) -> None:
 
 
 def clean_launcher_dir(launcher_dir: str) -> None:
-    for x in glob.glob(os.path.join(launcher_dir, 'kitty*')):
+    for x in glob.glob(os.path.join(launcher_dir, 'kitt*')):
         if os.path.isdir(x):
             shutil.rmtree(x)
         else:
@@ -1566,7 +1566,7 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
     p.add_argument(
         '--dir-for-static-binaries',
         default=Options.dir_for_static_binaries,
-        help='Where to create the static kitty-tool binaries'
+        help='Where to create the static kitten binary'
     )
     p.add_argument(
         '--full',
@@ -1737,17 +1737,17 @@ def main() -> None:
                 create_minimal_macos_bundle(args, launcher_dir)
             else:
                 build_launcher(args, launcher_dir=launcher_dir)
-                build_kitty_tool(args, launcher_dir=launcher_dir)
+                build_static_kittens(args, launcher_dir=launcher_dir)
         elif args.action == 'build-launcher':
             init_env_from_args(args, False)
             build_launcher(args, launcher_dir=launcher_dir)
-            build_kitty_tool(args, launcher_dir=launcher_dir)
+            build_static_kittens(args, launcher_dir=launcher_dir)
         elif args.action == 'build-frozen-launcher':
             init_env_from_args(args, False)
             bundle_type = ('macos' if is_macos else 'linux') + '-freeze'
             build_launcher(args, launcher_dir=os.path.join(args.prefix, 'bin'), bundle_type=bundle_type)
         elif args.action == 'build-frozen-tools':
-            build_kitty_tool(args, launcher_dir=args.prefix, for_freeze=True)
+            build_static_kittens(args, launcher_dir=args.prefix, for_freeze=True)
         elif args.action == 'linux-package':
             build(args, native_optimizations=False)
             package(args, bundle_type='linux-package')

@@ -156,8 +156,8 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     end
 end
 
-function edit-in-kitty --wraps "kitty-tool edit-in-kitty"
-    kitty-tool edit-in-kitty $argv
+function edit-in-kitty --wraps "kitten edit-in-kitty"
+    kitten edit-in-kitty $argv
 end
 
 function __ksi_transmit_data -d "Transmit data to kitty using chunked DCS escapes"

@@ -38,9 +38,9 @@ Detailed list of changes
 0.27.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A new statically compiled, standalone executable, ``kitty-tool`` (written in Go)
-  that can be used on all UNIX-like servers for remote control (``kitty-tool @``),
-  viewing images (``icat``), manipulating the clipboard, etc.
+- A new statically compiled, standalone executable, ``kitten`` (written in Go)
+  that can be used on all UNIX-like servers for remote control (``kitten @``),
+  viewing images (``kitten icat``), manipulating the clipboard (``kitten clipboard``), etc.
 
 - :doc:`clipboard kitten </kittens/clipboard>`: Allow copying arbitrary data types to/from the clipboard, not just plain text
 
@@ -59,7 +59,7 @@ Detailed list of changes
 
 - Pass key events mapped to scroll actions to the program running in the terminal when the terminal is in alternate screen mode (:iss:`5839`)
 
-- Implement :ref:`edit-in-kitty <edit_file>` using the new ``kitty-tool`` static executable (:iss:`5546`, :iss:`5630`)
+- Implement :ref:`edit-in-kitty <edit_file>` using the new ``kitten`` static executable (:iss:`5546`, :iss:`5630`)
 
 - Add an option :opt:`background_tint_gaps` to control background image tinting for window gaps (:iss:`5596`)
 

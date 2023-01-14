@@ -143,7 +143,7 @@ copy --exclude */w.* d1
                 self.ae(contents, {
                     'g.1', 'g.2', f'{tname}/kitty.terminfo', 'simple-file', 'd1/d2/x', 'd1/y', 'a/sfa', 's1', 's2',
                     '.local/share/kitty-ssh-kitten/kitty/version', '.local/share/kitty-ssh-kitten/kitty/bin/kitty',
-                    '.local/share/kitty-ssh-kitten/kitty/bin/kitty-tool'
+                    '.local/share/kitty-ssh-kitten/kitty/bin/kitten'
                 })
                 self.ae(len(glob.glob(f'{remote_home}/{tname}/*/xterm-kitty')), 2)
 

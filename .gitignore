@@ -12,7 +12,7 @@
 /compile_commands.json
 /link_commands.json
 /glad/out/
-/kitty/launcher/kitty*
+/kitty/launcher/kitt*
 /tools/cmd/at/*_generated.go
 *_generated.go
 /*.dSYM/

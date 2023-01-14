@@ -437,7 +437,7 @@ def files_for_upload() -> Dict[str, str]:
         files[path] = desc
         signatures[path] = f'GPG signature for {desc}'
     b = len(files)
-    for path in glob.glob('build/static/kitty-tool-*'):
+    for path in glob.glob('build/static/kitten-*'):
         if path.endswith('.sig'):
             continue
         path = os.path.abspath(path)

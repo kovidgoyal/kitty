@@ -985,8 +985,8 @@ def sanitize_control_codes(text: str, replace_with: str = '') -> str:
 def hold_till_enter() -> None:
     import subprocess
 
-    from .constants import kitty_tool_exe
-    subprocess.Popen([kitty_tool_exe(), '__hold_till_enter__']).wait()
+    from .constants import kitten_exe
+    subprocess.Popen([kitten_exe(), '__hold_till_enter__']).wait()
 
 
 def cleanup_ssh_control_masters() -> None:

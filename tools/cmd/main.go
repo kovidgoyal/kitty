@@ -10,7 +10,7 @@ import (
 
 func main() {
 	root := cli.NewRootCommand()
-	root.ShortDescription = "Fast, statically compiled implementations for various kitty command-line tools"
+	root.ShortDescription = "Fast, statically compiled implementations for various kittens (command line tools for use with kitty)"
 	root.Usage = "command [command options] [command args]"
 	root.Run = func(cmd *cli.Command, args []string) (int, error) {
 		cmd.ShowHelp()

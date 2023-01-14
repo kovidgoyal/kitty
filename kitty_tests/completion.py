@@ -8,7 +8,7 @@ import shlex
 import subprocess
 import tempfile
 
-from kitty.constants import kitty_tool_exe as kitty_tool
+from kitty.constants import kitten_exe as kitten
 
 from . import BaseTest
 
@@ -86,10 +86,10 @@ def completion(self: TestCompletion, tdir: str):
         env['HOME'] = os.path.join(tdir, 'sub')
         env['KITTY_CONFIG_DIRECTORY'] = os.path.join(tdir, 'sub')
         cp = subprocess.run(
-            [kitty_tool(), '__complete__', 'json'],
+            [kitten(), '__complete__', 'json'],
             check=True, stdout=subprocess.PIPE, cwd=tdir, input=json.dumps(all_argv).encode(), env=env
         )
-        self.assertEqual(cp.returncode, 0, f'kitty-tool __complete__ failed with exit code: {cp.returncode}')
+        self.assertEqual(cp.returncode, 0, f'kitten __complete__ failed with exit code: {cp.returncode}')
         return json.loads(cp.stdout)
 
     add('kitty ', has_words('@', '@ls', '+', '+open'))
@@ -148,9 +148,9 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty @launch --cwd ', has_words('current', 'oldest', 'last_reported'))
     add('kitty @launch --logo ', all_words('exe-not3.png'))
     add('kitty @launch --logo ~', all_words('~/exe-not3.png'))
-    add('kitty-tool ', has_words('@'))
-    add('kitty-tool ', does_not_have_words('__complete__'))
-    add('kitty-tool @launch --ty', has_words('--type'))
+    add('kitten ', has_words('@'))
+    add('kitten ', does_not_have_words('__complete__'))
+    add('kitten @launch --ty', has_words('--type'))
 
     add('kitty + ', has_words('launch', 'kitten'))
     add('kitty + kitten ', has_words('icat', 'diff'))
