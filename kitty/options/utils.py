@@ -509,6 +509,21 @@ def scrollback_pager_history_size(x: str) -> int:
     return min(ans, 4096 * 1024 * 1024 - 1)
 
 
+def undercurl_style(x: str) -> Tuple[str, str]:
+    splits = x.split("-")
+    if len(splits) != 2:
+        raise ValueError(
+            'Invalid undercurl style: {} allowed styles are of the form (thin|thick)-(sparse|dense)'
+            .format(x)
+        )
+    [width, density] = splits
+    if width != 'thin' and width != 'thick':
+        raise ValueError('Invalid undercurl thickness: {} allowed values are thick and thin'.format(width))
+    if density != 'sparse' and density != 'dense':
+        raise ValueError('Invalid undercurl density: {} allowed values are sparse and dense'.format(density))
+    return (width, density)
+    
+
 # "single" for backwards compat
 url_style_map = {'none': 0, 'single': 1, 'straight': 1, 'double': 2, 'curly': 3, 'dotted': 4, 'dashed': 5}
 

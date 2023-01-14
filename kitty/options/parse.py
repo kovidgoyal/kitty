@@ -17,8 +17,8 @@ from kitty.options.utils import (
     scrollback_lines, scrollback_pager_history_size, shell_integration, store_multiple, symbol_map,
     tab_activity_symbol, tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade,
     tab_font_style, tab_separator, tab_title_template, titlebar_color, to_cursor_shape, to_font_size,
-    to_layout_names, to_modifiers, url_prefixes, url_style, visual_window_select_characters,
-    window_border_width, window_size
+    to_layout_names, to_modifiers, undercurl_style, url_prefixes, url_style,
+    visual_window_select_characters, window_border_width, window_size
 )
 
 
@@ -1280,6 +1280,9 @@ class Parser:
 
     def touch_scroll_multiplier(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['touch_scroll_multiplier'] = float(val)
+
+    def undercurl_style(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['undercurl_style'] = undercurl_style(val)
 
     def update_check_interval(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['update_check_interval'] = float(val)
