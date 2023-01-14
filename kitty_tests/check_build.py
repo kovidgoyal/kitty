@@ -15,7 +15,7 @@ from . import BaseTest
 class TestBuild(BaseTest):
 
     def test_exe(self) -> None:
-        from kitty.constants import kitty_exe, kitten_exe, str_version
+        from kitty.constants import kitten_exe, kitty_exe, str_version
         exe = kitty_exe()
         self.assertTrue(os.access(exe, os.X_OK))
         self.assertTrue(os.path.isfile(exe))

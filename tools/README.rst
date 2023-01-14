@@ -1,3 +1,3 @@
-This folder contains various small command line utilities compiled statically
-for doing things like kitty remote control or icat on machines where the full
-kitty is not available.
+This folder contains "kittens", that is, various small command line utilities
+compiled statically for doing things like kitty remote control, icat etc. These
+are often re-implementations of earlier kittens that were written in Python.
