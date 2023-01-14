@@ -751,7 +751,7 @@ struct SaveOverlayLine {
 
 static void
 save_overlay_line(struct SaveOverlayLine *sol) {
-    if (sol->screen->overlay_line.is_active && screen_is_cursor_visible(sol->screen)) {
+    if (sol->screen->overlay_line.is_active) {
         sol->overlay_text = get_overlay_text(sol->screen);
         deactivate_overlay_line(sol->screen);
     }
