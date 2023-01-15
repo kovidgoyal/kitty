@@ -6,6 +6,10 @@ else
     let g:ale_linters = {'python': ['mypy', 'ruff --no-update-check']}
 endif
 let g:ale_python_mypy_executable = './mypy-editor-integration'
+let g:ale_fixers = {
+\       "python": ["ruff"],
+\}
+autocmd FileType python noremap \i :ALEFix<CR>
 set wildignore+==template.py
 set wildignore+=tags
 set expandtab
