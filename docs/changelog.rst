@@ -87,6 +87,8 @@ Detailed list of changes
 
 - broadcast kitten: Allow pressing a key to stop echoing of input into the broadcast window itself (:disc:`5868`)
 
+- When reporting unused activity in a window, ignore activity that occurs soon after a window resize (:iss:`5881`)
+
 
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

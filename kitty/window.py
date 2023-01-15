@@ -555,6 +555,7 @@ class Window:
         else:
             self.watchers = global_watchers().copy()
         self.last_focused_at = 0.
+        self.last_resized_at = 0.
         self.started_at = monotonic()
         self.current_remote_data: List[str] = []
         self.current_mouse_event_button = 0
@@ -831,6 +832,7 @@ class Window:
         update_ime_position = False
         if current_pty_size != self.last_reported_pty_size:
             get_boss().child_monitor.resize_pty(self.id, *current_pty_size)
+            self.last_resized_at = monotonic()
             if not self.pty_resized_once:
                 self.pty_resized_once = True
                 self.child.mark_terminal_ready()
@@ -1023,9 +1025,12 @@ class Window:
     def has_activity_since_last_focus(self) -> bool:
         return self.screen.has_activity_since_last_focus()
 
-    def on_activity_since_last_focus(self) -> None:
-        if get_options().tab_activity_symbol:
+    def on_activity_since_last_focus(self) -> bool:
+        if get_options().tab_activity_symbol and (monotonic() - self.last_resized_at) > 0.5:
+            # Ignore activity soon after a resize as the child program is probably redrawing the screen
             get_boss().on_activity_since_last_focus(self)
+            return True
+        return False
 
     def on_bell(self) -> None:
         cb = get_options().command_on_bell
