@@ -507,15 +507,6 @@ def scrollback_lines(x: str) -> int:
 def scrollback_pager_history_size(x: str) -> int:
     ans = int(max(0, float(x)) * 1024 * 1024)
     return min(ans, 4096 * 1024 * 1024 - 1)
-
-
-def undercurl_style(x: str) -> Tuple[str, str]:
-    width, density = x.partition("-")[::2]
-    if width not in ('thin', 'thick'):
-        raise ValueError(f'Invalid undercurl thickness: {width!r} allowed values are thick and thin')
-    if density not in ('sparse', 'dense'):
-        raise ValueError(f'Invalid undercurl density: {density!r} allowed values are sparse and dense')
-    return width, density
     
 
 # "single" for backwards compat

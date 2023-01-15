@@ -224,7 +224,7 @@ lines.
     )
 
 opt('undercurl_style', 'thin-sparse',
-    option_type='undercurl_style',
+    choices=('thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense'),
     long_text='''
 The style with which undercurl is rendered. This option takes the form 
 :code:`(thin|thick)-(sparse|dense)`. Thin and thick control the thickness of the 
