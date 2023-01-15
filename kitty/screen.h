@@ -72,6 +72,11 @@ typedef struct {
     GPUCell *gpu_cells;
     bool is_active;
     index_type xstart, ynum, xnum;
+
+    struct {
+      PyObject *overlay_text;
+      const char *func_name;
+    } save;
 } OverlayLine;
 
 typedef struct {
