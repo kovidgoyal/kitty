@@ -747,31 +747,34 @@ get_overlay_text(Screen *self) {
 #undef ol
 }
 
-struct SaveOverlayLine {
-    PyObject *overlay_text;
-    Screen *screen;
-    const char *func_name;
-};
-
 static void
-save_overlay_line(struct SaveOverlayLine *sol) {
-    if (sol->screen->overlay_line.is_active && screen_is_cursor_visible(sol->screen)) {
-        sol->overlay_text = get_overlay_text(sol->screen);
-        deactivate_overlay_line(sol->screen);
+save_overlay_line(Screen *self, const char* func_name) {
+    if (self->overlay_line.is_active && screen_is_cursor_visible(self)) {
+        if (self->overlay_line.save.overlay_text) {
+          Py_DECREF(self->overlay_line.save.overlay_text);
+        }
+        self->overlay_line.save.overlay_text = get_overlay_text(self);
+        self->overlay_line.save.func_name = func_name;
+        deactivate_overlay_line(self);
     }
 }
 
 static void
-restore_overlay_line(struct SaveOverlayLine *sol) {
-    if (sol->overlay_text) {
-        debug("Received input from child (%s) while overlay active. Overlay contents: %s\n", sol->func_name, PyUnicode_AsUTF8(sol->overlay_text));
-        screen_draw_overlay_text(sol->screen, PyUnicode_AsUTF8(sol->overlay_text));
-        Py_DECREF(sol->overlay_text);
-        update_ime_position_for_window(sol->screen->window_id, false, 0);
+restore_overlay_line(Screen *self) {
+    if (self->overlay_line.save.overlay_text) {
+        debug("Received input from child (%s) while overlay active. Overlay contents: %s\n", self->overlay_line.save.func_name, PyUnicode_AsUTF8(self->overlay_line.save.overlay_text));
+        screen_draw_overlay_text(self, PyUnicode_AsUTF8(self->overlay_line.save.overlay_text));
+        Py_DECREF(self->overlay_line.save.overlay_text);
+        self->overlay_line.save.overlay_text = NULL;
+        update_ime_position_for_window(self->window_id, false, 0);
     }
 }
 
-#define MOVE_OVERLAY_LINE_WITH_CURSOR struct SaveOverlayLine __attribute__ ((__cleanup__(restore_overlay_line))) _sol_ = {.screen=self,.func_name=__func__}; save_overlay_line(&_sol_);
+static void restore_overlay_line_from_cleanup(Screen **self) {
+  restore_overlay_line(*self);
+}
+
+#define MOVE_OVERLAY_LINE_WITH_CURSOR Screen __attribute__ ((__cleanup__(restore_overlay_line_from_cleanup))) *_sol_ = self; save_overlay_line(_sol_, __func__);
 
 void
 screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
@@ -1003,6 +1006,12 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             self->modes.mDECCKM = val;
             break;
         case DECTCEM:
+            if(!val) {
+              save_overlay_line(self,  __func__);
+            }
+            else {
+              restore_overlay_line(self);
+            }
             self->modes.mDECTCEM = val;
             break;
         case DECSCNM:
