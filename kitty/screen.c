@@ -155,6 +155,7 @@ screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self, true, true);
     if (self->overlay_line.is_active) deactivate_overlay_line(self);
     Py_CLEAR(self->last_reported_cwd);
+    Py_CLEAR(self->overlay_line.save.overlay_text);
     self->render_unfocused_cursor = false;
     memset(self->main_key_encoding_flags, 0, sizeof(self->main_key_encoding_flags));
     memset(self->alt_key_encoding_flags, 0, sizeof(self->alt_key_encoding_flags));
@@ -457,6 +458,7 @@ dealloc(Screen* self) {
     Py_CLEAR(self->marker);
     PyMem_Free(self->overlay_line.cpu_cells);
     PyMem_Free(self->overlay_line.gpu_cells);
+    Py_CLEAR(self->overlay_line.save.overlay_text);
     PyMem_Free(self->main_tabstops);
     free(self->pending_mode.buf);
     free(self->selections.items);
@@ -750,9 +752,7 @@ get_overlay_text(Screen *self) {
 static void
 save_overlay_line(Screen *self, const char* func_name) {
     if (self->overlay_line.is_active && screen_is_cursor_visible(self)) {
-        if (self->overlay_line.save.overlay_text) {
-          Py_DECREF(self->overlay_line.save.overlay_text);
-        }
+        Py_XDECREF(self->overlay_line.save.overlay_text);
         self->overlay_line.save.overlay_text = get_overlay_text(self);
         self->overlay_line.save.func_name = func_name;
         deactivate_overlay_line(self);
@@ -764,8 +764,7 @@ restore_overlay_line(Screen *self) {
     if (self->overlay_line.save.overlay_text) {
         debug("Received input from child (%s) while overlay active. Overlay contents: %s\n", self->overlay_line.save.func_name, PyUnicode_AsUTF8(self->overlay_line.save.overlay_text));
         screen_draw_overlay_text(self, PyUnicode_AsUTF8(self->overlay_line.save.overlay_text));
-        Py_DECREF(self->overlay_line.save.overlay_text);
-        self->overlay_line.save.overlay_text = NULL;
+        Py_CLEAR(self->overlay_line.save.overlay_text);
         update_ime_position_for_window(self->window_id, false, 0);
     }
 }
