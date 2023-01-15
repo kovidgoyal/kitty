@@ -1313,6 +1313,7 @@ def spawn(
     ready_read_fd: int,
     ready_write_fd: int,
     handled_signals: Tuple[int, ...],
+    kitten_exe: str,
 ) -> int:
     pass
 

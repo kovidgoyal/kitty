@@ -107,7 +107,7 @@ _ksi_deferred_init() {
             builtin autoload -Uz -- $comp_dir/_kitty
             compdef _kitty kitty
             compdef _kitty clone-in-kitty
-            compdef _kitty kitty-tool
+            compdef _kitty kitten
         fi
 
         # If compdef is not set, compinit has not run yet. In this case we must
@@ -386,7 +386,7 @@ _ksi_deferred_init() {
     fi
     builtin unset KITTY_IS_CLONE_LAUNCH KITTY_CLONE_SOURCE_STRATEGIES
 
-    alias edit-in-kitty="kitty-tool edit-in-kitty"
+    alias edit-in-kitty="kitten edit-in-kitty"
 
     # Map alt+left/right to move by word if not already mapped. This is expected behavior on macOS and I am tired
     # of answering questions about it.

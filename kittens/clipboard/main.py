@@ -78,7 +78,7 @@ the clipboard. Some examples:
 
 usage = '[files to copy to/from]'
 if __name__ == '__main__':
-    raise SystemExit('This should be run as kitty-tool clipboard')
+    raise SystemExit('This should be run as kitten clipboard')
 elif __name__ == '__doc__':
     from kitty.cli import CompletionSpec
     cd = sys.cli_docs  # type: ignore

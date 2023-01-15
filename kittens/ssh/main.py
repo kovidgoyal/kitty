@@ -182,7 +182,7 @@ def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: st
             arcname = 'home/' + rd + '/kitty'
             add_data_as_file(tf, arcname + '/version', str_version.encode('ascii'))
             tf.add(shell_integration_dir + '/ssh/kitty', arcname=arcname + '/bin/kitty', filter=normalize_tarinfo)
-            tf.add(shell_integration_dir + '/ssh/kitty-tool', arcname=arcname + '/bin/kitty-tool', filter=normalize_tarinfo)
+            tf.add(shell_integration_dir + '/ssh/kitten', arcname=arcname + '/bin/kitten', filter=normalize_tarinfo)
         tf.add(f'{terminfo_dir}/kitty.terminfo', arcname='home/.terminfo/kitty.terminfo', filter=normalize_tarinfo)
         tf.add(glob.glob(f'{terminfo_dir}/*/xterm-kitty')[0], arcname='home/.terminfo/x/xterm-kitty', filter=normalize_tarinfo)
     return buf.getvalue()

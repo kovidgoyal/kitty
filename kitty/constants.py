@@ -79,8 +79,8 @@ def kitty_exe() -> str:
     return os.path.join(rpath, 'kitty')
 
 
-def kitty_tool_exe() -> str:
-    return os.path.join(os.path.dirname(kitty_exe()), 'kitty-tool')
+def kitten_exe() -> str:
+    return os.path.join(os.path.dirname(kitty_exe()), 'kitten')
 
 
 def _get_config_dir() -> str:

@@ -324,24 +324,24 @@ is_wrapped_kitten(const char *arg) {
 }
 
 static void
-exec_kitty_tool(int argc, char *argv[], char *exe_dir) {
+exec_kitten(int argc, char *argv[], char *exe_dir) {
     char exe[PATH_MAX+1] = {0};
-    snprintf(exe, PATH_MAX, "%s/kitty-tool", exe_dir);
+    snprintf(exe, PATH_MAX, "%s/kitten", exe_dir);
     char **newargv = malloc(sizeof(char*) * (argc + 1));
     memcpy(newargv, argv, sizeof(char*) * argc);
     newargv[argc] = 0;
-    newargv[0] = "kitty-tool";
+    newargv[0] = "kitten";
     errno = 0;
     execv(exe, argv);
-    fprintf(stderr, "Failed to execute kitty-tool (%s) with error: %s\n", exe, strerror(errno));
+    fprintf(stderr, "Failed to execute kitten (%s) with error: %s\n", exe, strerror(errno));
     exit(1);
 }
 
 static void
-delegate_to_kitty_tool_if_possible(int argc, char *argv[], char* exe_dir) {
-    if (argc > 1 && argv[1][0] == '@') exec_kitty_tool(argc, argv, exe_dir);
-    if (argc > 2 && strcmp(argv[1], "+kitten") == 0 && is_wrapped_kitten(argv[2])) exec_kitty_tool(argc - 1, argv + 1, exe_dir);
-    if (argc > 3 && strcmp(argv[1], "+") == 0 && strcmp(argv[2], "kitten") == 0 && is_wrapped_kitten(argv[3])) exec_kitty_tool(argc - 2, argv + 2, exe_dir);
+delegate_to_kitten_if_possible(int argc, char *argv[], char* exe_dir) {
+    if (argc > 1 && argv[1][0] == '@') exec_kitten(argc, argv, exe_dir);
+    if (argc > 2 && strcmp(argv[1], "+kitten") == 0 && is_wrapped_kitten(argv[2])) exec_kitten(argc - 1, argv + 1, exe_dir);
+    if (argc > 3 && strcmp(argv[1], "+") == 0 && strcmp(argv[2], "kitten") == 0 && is_wrapped_kitten(argv[3])) exec_kitten(argc - 2, argv + 2, exe_dir);
 }
 
 int main(int argc, char *argv[], char* envp[]) {
@@ -357,7 +357,7 @@ int main(int argc, char *argv[], char* envp[]) {
     if (!read_exe_path(exe, sizeof(exe))) return 1;
     strncpy(exe_dir_buf, exe, sizeof(exe_dir_buf));
     char *exe_dir = dirname(exe_dir_buf);
-    delegate_to_kitty_tool_if_possible(argc, argv, exe_dir);
+    delegate_to_kitten_if_possible(argc, argv, exe_dir);
     int num, ret=0;
     char lib[PATH_MAX+1] = {0};
     num = snprintf(lib, PATH_MAX, "%s/%s", exe_dir, KITTY_LIB_PATH);

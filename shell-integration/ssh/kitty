@@ -34,7 +34,7 @@ is_wrapped_kitten() {
 
 test "(" "$1" = "+kitten" -a -n "$(is_wrapped_kitten "$2")" ")" -o "(" "$1" = "+" -a "$2" = "kitten" -a "$(is_wrapped_kitten "$3")" ")" && {
     if [ "$1" = "+kitten" ]; then shift "1"; else shift "2"; fi
-    exec kitty-tool "$@"
+    exec kitten "$@"
 }
 
 lock_dir=""

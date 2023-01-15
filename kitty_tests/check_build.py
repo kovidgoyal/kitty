@@ -15,12 +15,12 @@ from . import BaseTest
 class TestBuild(BaseTest):
 
     def test_exe(self) -> None:
-        from kitty.constants import kitty_exe, kitty_tool_exe, str_version
+        from kitty.constants import kitten_exe, kitty_exe, str_version
         exe = kitty_exe()
         self.assertTrue(os.access(exe, os.X_OK))
         self.assertTrue(os.path.isfile(exe))
         self.assertIn('kitty', os.path.basename(exe))
-        exe = kitty_tool_exe()
+        exe = kitten_exe()
         self.assertTrue(os.access(exe, os.X_OK))
         self.assertTrue(os.path.isfile(exe))
         self.assertIn(str_version, subprocess.check_output([exe, '--version']).decode())
@@ -68,7 +68,7 @@ class TestBuild(BaseTest):
             q = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
             return mode & q == q
 
-        for x in ('kitty', 'kitty-tool', 'askpass.py'):
+        for x in ('kitty', 'kitten', 'askpass.py'):
             x = os.path.join(shell_integration_dir, 'ssh', x)
             self.assertTrue(is_executable(x), f'{x} is not executable')
         if getattr(sys, 'frozen', False):

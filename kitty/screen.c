@@ -658,9 +658,13 @@ draw_combining_char(Screen *self, char_type ch) {
 static void
 draw_codepoint(Screen *self, char_type och, bool from_input_stream) {
     if (is_ignored_char(och)) return;
-    if (!self->has_activity_since_last_focus && !self->has_focus) {
-        self->has_activity_since_last_focus = true;
-        CALLBACK("on_activity_since_last_focus", NULL);
+    if (!self->has_activity_since_last_focus && !self->has_focus && self->callbacks != Py_None) {
+        PyObject *ret = PyObject_CallMethod(self->callbacks, "on_activity_since_last_focus", NULL);
+        if (ret == NULL) PyErr_Print();
+        else {
+            if (ret == Py_True) self->has_activity_since_last_focus = true;
+            Py_DECREF(ret);
+        }
     }
     uint32_t ch = och < 256 ? self->g_charset[och] : och;
     if (UNLIKELY(is_combining_char(ch))) {

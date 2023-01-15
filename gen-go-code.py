@@ -120,7 +120,7 @@ def generate_completions_for_kitty() -> None:
     # The kitty exe
     print('k := root.AddSubCommand(&cli.Command{'
           'Name:"kitty", SubCommandIsOptional: true, ArgCompleter: cli.CompleteExecutableFirstArg, SubCommandMustBeFirst: true })')
-    print('kt := root.AddSubCommand(&cli.Command{Name:"kitty-tool", SubCommandMustBeFirst: true })')
+    print('kt := root.AddSubCommand(&cli.Command{Name:"kitten", SubCommandMustBeFirst: true })')
     print('tool.KittyToolEntryPoints(kt)')
     for opt in go_options_for_seq(parse_option_spec()[0]):
         print(opt.as_option('k'))

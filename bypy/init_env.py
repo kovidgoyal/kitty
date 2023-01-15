@@ -81,10 +81,10 @@ def run_tests(kitty_exe):
 def build_frozen_tools(kitty_exe):
     cmd = SETUP_CMD + ['--prefix', os.path.dirname(kitty_exe)] + ['build-frozen-tools']
     if run(*cmd, cwd=build_frozen_launcher.writeable_src_dir) != 0:
-        print('Building of frozen kitty-tool failed', file=sys.stderr)
+        print('Building of frozen kitten failed', file=sys.stderr)
         os.chdir(KITTY_DIR)
         run_shell()
-        raise SystemExit('Building of kitty-tool launcher failed')
+        raise SystemExit('Building of kitten launcher failed')
 
 
 def sanitize_source_folder(path: str) -> None:

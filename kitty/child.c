@@ -81,8 +81,9 @@ static PyObject*
 spawn(PyObject *self UNUSED, PyObject *args) {
     PyObject *argv_p, *env_p, *handled_signals_p;
     int master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd;
+    const char *kitten_exe;
     char *cwd, *exe;
-    if (!PyArg_ParseTuple(args, "ssO!O!iiiiiiO!", &exe, &cwd, &PyTuple_Type, &argv_p, &PyTuple_Type, &env_p, &master, &slave, &stdin_read_fd, &stdin_write_fd, &ready_read_fd, &ready_write_fd, &PyTuple_Type, &handled_signals_p)) return NULL;
+    if (!PyArg_ParseTuple(args, "ssO!O!iiiiiiO!s", &exe, &cwd, &PyTuple_Type, &argv_p, &PyTuple_Type, &env_p, &master, &slave, &stdin_read_fd, &stdin_write_fd, &ready_read_fd, &ready_write_fd, &PyTuple_Type, &handled_signals_p, &kitten_exe)) return NULL;
     char name[2048] = {0};
     if (ttyname_r(slave, name, sizeof(name) - 1) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
     char **argv = serialize_string_tuple(argv_p);
@@ -151,14 +152,14 @@ spawn(PyObject *self UNUSED, PyObject *args) {
 
             environ = env;
             execvp(exe, argv);
-            // Report the failure and exec a shell instead, so that we are not left
+            // Report the failure and exec kitten instead, so that we are not left
             // with a forked but not exec'ed process
             write_to_stderr("Failed to launch child: ");
-            write_to_stderr(argv[0]);
+            write_to_stderr(exe);
             write_to_stderr("\nWith error: ");
             write_to_stderr(strerror(errno));
-            write_to_stderr("\nPress Enter to exit.\n");
-            execlp("sh", "sh", "-c", "read w", NULL);
+            write_to_stderr("\n");
+            execlp(kitten_exe, "kitten", "__hold_till_enter__", NULL);
             exit(EXIT_FAILURE);
             break;
         }

@@ -106,9 +106,9 @@ def do_sign(app_dir):
             codesign(fw)
             items = set(os.listdir('.')) - fw
             codesign(expand_dirs(items))
-        # Sign kitty-tool
+        # Sign kitten
         with current_dir('MacOS'):
-            codesign('kitty-tool')
+            codesign('kitten')
 
     # Now sign the main app
     codesign(app_dir)

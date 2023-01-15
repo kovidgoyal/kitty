@@ -161,13 +161,13 @@ func exec_command(at_root_command *cli.Command, rl *readline.Readline, cmdline s
 		}
 		exe, err := os.Executable()
 		if err != nil {
-			exe, err = exec.LookPath("kitty-tool")
+			exe, err = exec.LookPath("kitten")
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "Could not find the kitty-tool executable")
+				fmt.Fprintln(os.Stderr, "Could not find the kitten executable")
 				return false
 			}
 		}
-		cmdline := []string{"kitty-tool", "@"}
+		cmdline := []string{"kitten", "@"}
 		cmdline = append(cmdline, parsed_cmdline...)
 		cmd := exec.Cmd{Path: exe, Args: cmdline, Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr}
 		err = cmd.Run()
@@ -185,14 +185,14 @@ func exec_command(at_root_command *cli.Command, rl *readline.Readline, cmdline s
 }
 
 func completions(before_cursor, after_cursor string) (ans *cli.Completions) {
-	const prefix = "kitty-tool @ "
+	const prefix = "kitten @ "
 	text := prefix + before_cursor
 	argv, position_of_last_arg := shlex.SplitForCompletion(text)
 	if len(argv) == 0 || position_of_last_arg < len(prefix) {
 		return
 	}
 	root := cli.NewRootCommand()
-	c := root.AddSubCommand(&cli.Command{Name: "kitty-tool"})
+	c := root.AddSubCommand(&cli.Command{Name: "kitten"})
 	EntryPoint(c)
 	root.Validate()
 	ans = root.GetCompletions(argv, nil)

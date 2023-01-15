@@ -18,14 +18,14 @@ script_path="$(command readlink -f "$0" 2> /dev/null)"
 script_dir="$(command dirname "$script_path")"
 install_dir="$(command dirname "$script_dir")/install-tool"
 remote_kitty_version_file="$script_dir/../version"
-local_kitty_version_file="$install_dir/installed-kitty-tool-version"
-kitty_exe="$install_dir/kitty-tool"
+local_kitty_version_file="$install_dir/installed-kitten-version"
+kitty_exe="$install_dir/kitten"
 local_kitty_version=""
 
 [ -f "$kitty_exe" -a -x "$kitty_exe" ] && exec_kitty "$@"
 
-# Use kitty-tool from the downloaded kitty installation, if available.
-embed_exe="$(command dirname "$script_dir")/install/bin/kitty-tool"
+# Use kitten from the downloaded kitty installation, if available.
+embed_exe="$(command dirname "$script_dir")/install/bin/kitten"
 [ -f "$embed_exe" -a -x "$embed_exe" ] && {
     kitty_exe="$embed_exe"
     exec_kitty "$@"
@@ -38,7 +38,7 @@ case "$(command uname)" in
     'NetBSD') OS="netbsd";;
     'OpenBSD') OS="openbsd";;
     'DragonFlyBSD') OS="dragonfly";;
-    *) die "kitty-tool pre-built binaries are not available for the $(command uname) operating system";;
+    *) die "kitten pre-built binaries are not available for the $(command uname) operating system";;
 esac
 
 if command -v curl 2> /dev/null > /dev/null; then
@@ -56,13 +56,14 @@ elif command -v wget 2> /dev/null > /dev/null; then
         command wget --quiet -O- "$1"
     }
 else
-    die "Neither curl nor wget available, cannot download kitty-tool"
+    die "Neither curl nor wget available, cannot download kitten"
 fi
 
 case "$(command uname -m)" in
     x86_64) arch="amd64";;
     aarch64*) arch="arm64";;
     armv8*) arch="arm64";;
+    arm) arch="arm";;
     *) die "Unknown CPU architecture $(command uname -m)";;
 esac
 
@@ -73,20 +74,20 @@ release_version=$(fetch_quiet "https://sw.kovidgoyal.net/kitty/current-version.t
 }
 
 release_version="v$release_version"
-# no kitty-tool available till 0.27.0
+# no kitten available till 0.27.0
 case "$release_version" in
     v0.26.*) release_version="nightly";;
 esac
 
-url="https://github.com/kovidgoyal/kitty/releases/download/$release_version/kitty-tool-$OS-$arch"
+url="https://github.com/kovidgoyal/kitty/releases/download/$release_version/kitten-$OS-$arch"
 
-printf "\033[33mkitty-tool needs to be installed\033[m\n\n"
+printf "\033[33mkitten needs to be installed\033[m\n\n"
 command mkdir -p "$install_dir"
-printf "Downloading kitty-tool from: \033[32m%s\033[m\n\n" "$url"
+printf "Downloading kitten from: \033[32m%s\033[m\n\n" "$url"
 download_dest="$(command mktemp "$kitty_exe.XXXXXXXXXX")"
 fetch "$url" > "$download_dest" || {
     command rm -f "$download_dest"
-    die "Failed to download kitty-tool"
+    die "Failed to download kitten"
 }
 command chmod 755 "$download_dest"
 command mv "$download_dest" "$kitty_exe"

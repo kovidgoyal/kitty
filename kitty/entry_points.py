@@ -26,9 +26,9 @@ def runpy(args: List[str]) -> None:
 
 
 def hold(args: List[str]) -> None:
-    from kitty.constants import kitty_tool_exe
-    args = ['kitty-tool', '__hold_till_enter__'] + args[1:]
-    os.execvp(kitty_tool_exe(), args)
+    from kitty.constants import kitten_exe
+    args = ['kitten', '__hold_till_enter__'] + args[1:]
+    os.execvp(kitten_exe(), args)
 
 
 def open_urls(args: List[str]) -> None:

@@ -209,14 +209,14 @@ _ksi_main() {
         _ksi_prompt[ps0]+="\[\e]133;C\a\]"
     fi
 
-    alias edit-in-kitty="kitty-tool edit-in-kitty"
+    alias edit-in-kitty="kitten edit-in-kitty"
     if [[ "${_ksi_prompt[complete]}" == "y" ]]; then
         _ksi_completions() {
             builtin local src
             builtin local limit
             # Send all words up to the word the cursor is currently on
             builtin let limit=1+$COMP_CWORD
-            src=$(builtin printf "%s\n" "${COMP_WORDS[@]:0:$limit}" | builtin command kitty-tool __complete__ bash)
+            src=$(builtin printf "%s\n" "${COMP_WORDS[@]:0:$limit}" | builtin command kitten __complete__ bash)
             if [[ $? == 0 ]]; then
                 builtin eval "${src}"
             fi
@@ -224,7 +224,7 @@ _ksi_main() {
         builtin complete -F _ksi_completions kitty
         builtin complete -F _ksi_completions edit-in-kitty
         builtin complete -F _ksi_completions clone-in-kitty
-        builtin complete -F _ksi_completions kitty-tool
+        builtin complete -F _ksi_completions kitten
     fi
 
     # wrap our prompt additions in markers we can use to remove them using
