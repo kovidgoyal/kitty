@@ -206,7 +206,7 @@ def set_font_family(opts: Optional[Options] = None, override_font_size: Optional
     if debug_font_matching:
         dump_faces(ftypes, indices)
     set_font_data(
-        render_box_drawing, lambda *a: prerender_function(*a, opts), descriptor_for_idx,
+        render_box_drawing, prerender_function, descriptor_for_idx,
         indices['bold'], indices['italic'], indices['bi'], num_symbol_fonts,
         sm, sz, font_features, ns
     )
@@ -247,8 +247,9 @@ def add_dline(buf: CBufType, cell_width: int, position: int, thickness: int, cel
         ctypes.memset(ctypes.addressof(buf) + (cell_width * y), 255, cell_width)
 
 
-def add_curl(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int, opts: Options) -> None:
-    (thickness_opt, density_opt) = opts.undercurl_style
+def add_curl(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
+    from kitty.fast_data_types import get_options
+    (thickness_opt, density_opt) = get_options().undercurl_style
 
     max_x, max_y = cell_width - 1, cell_height - 1
     xfactor = (2.0 if density_opt == 'sparse' else 4.0) * pi / max_x
@@ -310,8 +311,7 @@ def render_special(
     strikethrough_position: int = 0,
     strikethrough_thickness: int = 0,
     dpi_x: float = 96.,
-    dpi_y: float = 96.,
-    opts: Options = None
+    dpi_y: float = 96.
 ) -> CBufType:
     underline_position = min(underline_position, cell_height - sum(divmod(underline_thickness, 2)))
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
@@ -333,7 +333,7 @@ def render_special(
         t = underline_thickness
         if underline > 1:
             t = max(1, min(cell_height - underline_position - 1, t))
-        dl([add_line, add_line, add_dline, lambda *a: add_curl(*a, opts), add_dots, add_dashes][underline], underline_position, t, cell_height)
+        dl([add_line, add_line, add_dline, add_curl, add_dots, add_dashes][underline], underline_position, t, cell_height)
     if strikethrough:
         dl(add_line, strikethrough_position, strikethrough_thickness, cell_height)
 
@@ -391,15 +391,14 @@ def prerender_function(
     cursor_beam_thickness: float,
     cursor_underline_thickness: float,
     dpi_x: float,
-    dpi_y: float,
-    opts: Options
+    dpi_y: float
 ) -> Tuple[Tuple[int, ...], Tuple[CBufType, ...]]:
     # Pre-render the special underline, strikethrough and missing and cursor cells
     f = partial(
         render_special, cell_width=cell_width, cell_height=cell_height, baseline=baseline,
         underline_position=underline_position, underline_thickness=underline_thickness,
         strikethrough_position=strikethrough_position, strikethrough_thickness=strikethrough_thickness,
-        dpi_x=dpi_x, dpi_y=dpi_y, opts=opts
+        dpi_x=dpi_x, dpi_y=dpi_y
     )
     c = partial(
         render_cursor, cursor_beam_thickness=cursor_beam_thickness,
