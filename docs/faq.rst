@@ -135,6 +135,12 @@ command to apply your change (on the server)::
 
     cap_mkdb /usr/share/misc/termcap
 
+For terminfo to work with :program:`sudo` on the server, you'll need to either
+install the Linux distribution's |kitty-terminfo| package on the server, or copy
+:file:`~/.terminfo/x/xterm-kitty` to the server's system path::
+
+    sudo cp ~/.terminfo/x/xterm-kitty /usr/share/terminfo/x/
+
 
 Keys such as arrow keys, backspace, delete, home/end, etc. do not work when using su or sudo?
 -------------------------------------------------------------------------------------------------
