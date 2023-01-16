@@ -92,14 +92,17 @@ These settings must be placed **before** setting the ``colorscheme``. It is
 also important that the value of the vim ``term`` variable is not changed
 after these settings.
 
-I get errors about the terminal being unknown or opening the terminal failing when SSHing into a different computer?
------------------------------------------------------------------------------------------------------------------------
+I get errors about the terminal being unknown or opening the terminal failing or functional keys like arrow keys don't work?
+-------------------------------------------------------------------------------------------------------------------------------
 
-This happens because the |kitty| terminfo files are not available on the server.
-You can ssh in using the following command which will automatically copy the
-terminfo files to the server::
+These issues all have the same root cause: the kitty terminfo files not being
+available. The most common way this happens is SSHing into a computer that does
+not have the kitty terminfo files. The simplest fix for that is running::
 
     kitty +kitten ssh myserver
+
+It will automatically copy over the terminfo files and also magically enable
+:doc:`shell integration </shell-integration>` on the remote machine.
 
 This :doc:`ssh kitten <kittens/ssh>` takes all the same command line arguments
 as :program:`ssh`, you can alias it to something small in your shell's rc files
@@ -107,63 +110,32 @@ to avoid having to type it each time::
 
     alias s="kitty +kitten ssh"
 
-If the ssh kitten fails, use the following one-liner instead (it is slower as it
-needs to ssh into the server twice, but will work with most servers)::
+If this does not work, see :ref:`manual_terminfo_copy` for alternative ways to
+get the kitty terminfo files onto a remote computer.
 
-    infocmp -a xterm-kitty | ssh myserver tic -x -o \~/.terminfo /dev/stdin
+The next most common reason for this is if you are running commands as root
+using :program:`sudo` or :program:`su`. These programs often filter the
+:envvar:`TERMINFO` environment variable which is what points to the kitty
+terminfo files.
 
-If you are behind a proxy (like Balabit) that prevents this, or :program:`tic`
-comes with macOS that does not support reading from STDIN, you must redirect the
-first command to a file, copy that to the server and run :program:`tic`
-manually. If you connect to a server, embedded or Android system that doesn't
-have :program:`tic`, copy over your local file terminfo to the other system as
-:file:`~/.terminfo/x/xterm-kitty`.
+First, make sure the :envvar:`TERM` is set to ``xterm-kitty`` in the sudo
+environment. By default, it should be automatically copied over.
 
-Really, the correct solution for this is to convince the OpenSSH maintainers to
-have :program:`ssh` do this automatically, if possible, when connecting to a
-server, so that all terminals work transparently.
+If you are using a well maintained Linux distribution, it will have a
+``kitty-terminfo`` package that you can simply install to make the kitty
+terminfo files available system-wide. Then the problem will no longer occur.
 
-If the server is running FreeBSD, or another system that relies on termcap
-rather than terminfo, you will need to convert the terminfo file on your local
-machine by running (on local machine with |kitty|)::
-
-    infocmp -CrT0 xterm-kitty
-
-The output of this command is the termcap description, which should be appended
-to :file:`/usr/share/misc/termcap` on the remote server. Then run the following
-command to apply your change (on the server)::
-
-    cap_mkdb /usr/share/misc/termcap
-
-
-Keys such as arrow keys, backspace, delete, home/end, etc. do not work when using su or sudo?
--------------------------------------------------------------------------------------------------
-
-Make sure the :envvar:`TERM` environment variable, is ``xterm-kitty``.  And
-either the :envvar:`TERMINFO` environment variable points to a directory
-containing :file:`x/xterm-kitty` or that file is under :file:`~/.terminfo/x/`.
-
-For macOS, you may also need to put that file under :file:`~/.terminfo/78/`::
-
-    mkdir -p ~/.terminfo/{78,x}
-    ln -snf ../x/xterm-kitty ~/.terminfo/78/xterm-kitty
-    tic -x -o ~/.terminfo "$KITTY_INSTALLATION_DIR/terminfo/kitty.terminfo"
-
-Note that :program:`sudo` might remove :envvar:`TERMINFO`. Then setting it at
-the shell prompt can be too late, because command line editing may not be
-reinitialized. In that case you can either ask :program:`sudo` to set it or if
-that is not supported, insert an :program:`env` command before starting the
-shell, or, if not possible, after sudo start another shell providing the right
-terminfo path::
-
-    sudo … TERMINFO=$HOME/.terminfo bash -i
-    sudo … env TERMINFO=$HOME/.terminfo bash -i
-    TERMINFO=/home/ORIGINALUSER/.terminfo exec bash -i
-
-You can configure :program:`sudo` to preserve :envvar:`TERMINFO` by running
-``sudo visudo`` and adding the following line::
+Alternately, you can configure :program:`sudo` to preserve :envvar:`TERMINFO`
+by running ``sudo visudo`` and adding the following line::
 
     Defaults env_keep += "TERM TERMINFO"
+
+If none of these are suitable for you, you can run sudo as follows::
+
+    sudo TERMINFO="$TERMINFO" -s -H
+
+This will start a new root shell with the correct :envvar:`TERMINFO` value from your
+current environment copied over.
 
 If you have double width characters in your prompt, you may also need to
 explicitly set a UTF-8 locale, like::

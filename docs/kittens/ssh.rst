@@ -162,3 +162,42 @@ The copy command
 --------------------
 
 .. include:: /generated/ssh-copy.rst
+
+
+.. _manual_terminfo_copy:
+
+Copying terminfo files manually
+-------------------------------------
+
+Sometimes, the ssh kitten can fail, or maybe you dont like to use it. In such
+cases, the terminfo files can be copied over manually to a server with the
+following one liner::
+
+    infocmp -a xterm-kitty | ssh myserver tic -x -o \~/.terminfo /dev/stdin
+
+If you are behind a proxy (like Balabit) that prevents this, or you are SSHing
+into macOS where the :program:`tic` does not support reading from :file:`STDIN`,
+you must redirect the first command to a file, copy that to the server and run :program:`tic`
+manually. If you connect to a server, embedded, or Android system that doesn't
+have :program:`tic`, copy over your local file terminfo to the other system as
+:file:`~/.terminfo/x/xterm-kitty`.
+
+If the server is running a relatively modern Linux distribution and you have
+root access to it, you could simply install the ``kitty-terminfo`` package on
+the server to make the terminfo files available.
+
+Really, the correct solution for this is to convince the OpenSSH maintainers to
+have :program:`ssh` do this automatically, if possible, when connecting to a
+server, so that all terminals work transparently.
+
+If the server is running FreeBSD, or another system that relies on termcap
+rather than terminfo, you will need to convert the terminfo file on your local
+machine by running (on local machine with |kitty|)::
+
+    infocmp -CrT0 xterm-kitty
+
+The output of this command is the termcap description, which should be appended
+to :file:`/usr/share/misc/termcap` on the remote server. Then run the following
+command to apply your change (on the server)::
+
+    cap_mkdb /usr/share/misc/termcap
