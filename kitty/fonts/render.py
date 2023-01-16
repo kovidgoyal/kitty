@@ -13,6 +13,7 @@ from kitty.fast_data_types import (
     Screen,
     create_test_font_group,
     get_fallback_font,
+    get_options,
     set_font_data,
     set_options,
     set_send_sprite_to_gpu,
@@ -249,16 +250,15 @@ def add_dline(buf: CBufType, cell_width: int, position: int, thickness: int, cel
 
 def add_curl(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
     max_x, max_y = cell_width - 1, cell_height - 1
-    xfactor = 2.0 * pi / max_x
-    thickness = max(1, thickness)
-    if thickness < 3:
-        half_height = thickness
-        thickness -= 1
-    elif thickness == 3:
-        half_height = thickness = 2
+    opts = get_options()
+    xfactor = (4.0 if 'dense' in opts.undercurl_style else 2.0) * pi / max_x
+
+    max_height = cell_height - (position - thickness // 2)  # descender from the font
+    half_height = max(1, max_height // 4)
+    if 'thick' in opts.undercurl_style:
+        thickness = max(half_height, thickness)
     else:
-        half_height = thickness // 2
-        thickness -= 2
+        thickness = max(1, thickness) - (1 if thickness < 3 else 2)
 
     def add_intensity(x: int, y: int, val: int) -> None:
         y += position

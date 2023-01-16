@@ -29,6 +29,7 @@ if typing.TYPE_CHECKING:
     choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separator', 'slant', 'custom']
     choices_for_tab_powerline_style = typing.Literal['angled', 'round', 'slanted']
     choices_for_tab_switch_strategy = typing.Literal['last', 'left', 'previous', 'right']
+    choices_for_undercurl_style = typing.Literal['thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense']
     choices_for_window_logo_position = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
 else:
     choices_for_allow_cloning = str
@@ -46,6 +47,7 @@ else:
     choices_for_tab_bar_style = str
     choices_for_tab_powerline_style = str
     choices_for_tab_switch_strategy = str
+    choices_for_undercurl_style = str
     choices_for_window_logo_position = str
 
 option_names = (  # {{{
@@ -442,6 +444,7 @@ option_names = (  # {{{
  'tab_title_template',
  'term',
  'touch_scroll_multiplier',
+ 'undercurl_style',
  'update_check_interval',
  'url_color',
  'url_excluded_characters',
@@ -592,6 +595,7 @@ class Options:
     tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{title}'
     term: str = 'xterm-kitty'
     touch_scroll_multiplier: float = 1.0
+    undercurl_style: choices_for_undercurl_style = 'thin-sparse'
     update_check_interval: float = 24.0
     url_color: Color = Color(0, 135, 189)
     url_excluded_characters: str = ''

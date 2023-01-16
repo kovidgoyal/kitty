@@ -1281,6 +1281,14 @@ class Parser:
     def touch_scroll_multiplier(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['touch_scroll_multiplier'] = float(val)
 
+    def undercurl_style(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_undercurl_style:
+            raise ValueError(f"The value {val} is not a valid choice for undercurl_style")
+        ans["undercurl_style"] = val
+
+    choices_for_undercurl_style = frozenset(('thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense'))
+
     def update_check_interval(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['update_check_interval'] = float(val)
 

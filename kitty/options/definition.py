@@ -222,6 +222,16 @@ There must be four values corresponding to thin, normal, thick, and very thick
 lines.
 '''
     )
+
+opt('undercurl_style', 'thin-sparse',
+    choices=('thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense'),
+    long_text='''
+The style with which undercurls are rendered. This option takes the form
+:code:`(thin|thick)-(sparse|dense)`. Thin and thick control the thickness of the
+undercurl. Sparse and dense control how often the curl oscillates. With sparse
+the curl will peak once per character, with dense twice.
+'''
+    )
 egr()  # }}}
 
 
