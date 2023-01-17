@@ -412,7 +412,7 @@ class UnicodeInput(Handler):
             if self.mode is HEX:
                 writeln(faint(_('Type {} followed by the index for the recent entries below').format(INDEX_CHAR)))
             elif self.mode is NAME:
-                writeln(faint(_('Use Tab or the arrow keys to choose a character from below')))
+                writeln(faint(_('Use Tab or the arrow keys to browse characters below. Type space+period to select by index.')))
             elif self.mode is FAVORITES:
                 writeln(faint(_('Press F12 to edit the list of favorites')))
             self.table_at = y
