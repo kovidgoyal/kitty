@@ -1,12 +1,11 @@
 // License: GPLv3 Copyright: 2022, Kovid Goyal, <kovid at kovidgoyal.net>
+//go:build !go1.20
 
 package utils
 
 import (
 	"unsafe"
 )
-
-// TODO: Convert these to use the safer stdlib unsafe functions added in Go 1.20
 
 // stringHeader is the runtime representation of a string.
 // It should be identical to reflect.StringHeader
