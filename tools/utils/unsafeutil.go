@@ -6,6 +6,8 @@ import (
 	"unsafe"
 )
 
+// TODO: Convert these to use the safer stdlib unsafe functions added in Go 1.20
+
 // stringHeader is the runtime representation of a string.
 // It should be identical to reflect.StringHeader
 type stringHeader struct {
