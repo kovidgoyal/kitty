@@ -486,7 +486,8 @@ class Boss:
 
     def match_tabs(self, match: str) -> Iterator[Tab]:
         if match == 'all':
-            return self.all_tabs
+            yield from self.all_tabs
+            return
         from .search_query_parser import search
         tm = self.active_tab_manager
         if current_focused_os_window_id() <= 0:
