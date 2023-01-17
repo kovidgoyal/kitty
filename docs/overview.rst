@@ -154,7 +154,7 @@ option in :file:`kitty.conf`. An example, showing all available commands:
     launch zsh
 
     # Create a new OS window
-    # Any definitions specifed before the first new_os_window will apply to first OS window.
+    # Any definitions specified before the first new_os_window will apply to first OS window.
     new_os_window
     # Set new window size to 80x24 cells
     os_window_size 80c 24c
