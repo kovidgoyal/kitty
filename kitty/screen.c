@@ -2227,10 +2227,11 @@ get_line_edge_colors(Screen *self, color_type *left, color_type *right) {
     color_type left_cell_fg = OPT(foreground), left_cell_bg = OPT(background), right_cell_bg = OPT(background), right_cell_fg = OPT(foreground);
     index_type cell_color_x = 0;
     char_type left_char = line_get_char(line, cell_color_x);
-    colors_for_cell(line, self->color_profile, &cell_color_x, &left_cell_fg, &left_cell_bg);
+    bool reversed = false;
+    colors_for_cell(line, self->color_profile, &cell_color_x, &left_cell_fg, &left_cell_bg, &reversed);
     if (line->xnum > 0) cell_color_x = line->xnum - 1;
     char_type right_char = line_get_char(line, cell_color_x);
-    colors_for_cell(line, self->color_profile, &cell_color_x, &right_cell_fg, &right_cell_bg);
+    colors_for_cell(line, self->color_profile, &cell_color_x, &right_cell_fg, &right_cell_bg, &reversed);
     *left = effective_cell_edge_color(left_char, left_cell_fg, left_cell_bg, true);
     *right = effective_cell_edge_color(right_char, right_cell_fg, right_cell_bg, false);
     return true;

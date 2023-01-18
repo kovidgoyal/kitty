@@ -626,11 +626,17 @@ resolve_color(ColorProfile *cp, color_type val, color_type defval) {
 }
 
 bool
-colors_for_cell(Line *self, ColorProfile *cp, index_type *x, color_type *fg, color_type *bg) {
+colors_for_cell(Line *self, ColorProfile *cp, index_type *x, color_type *fg, color_type *bg, bool *reversed) {
     if (*x >= self->xnum) return false;
     if (*x > 0 && !self->gpu_cells[*x].attrs.width && self->gpu_cells[*x-1].attrs.width == 2) (*x)--;
     *fg = resolve_color(cp, self->gpu_cells[*x].fg, *fg);
     *bg = resolve_color(cp, self->gpu_cells[*x].bg, *bg);
+    if (self->gpu_cells[*x].attrs.reverse) {
+        color_type t = *fg;
+        *fg = *bg;
+        *bg = t;
+        *reversed = true;
+    }
     return true;
 }
 

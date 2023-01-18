@@ -332,9 +332,10 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
         color_type cell_fg = rd->default_fg, cell_bg = rd->default_bg;
         index_type cell_color_x = screen->cursor->x;
         bool cursor_ok = screen->cursor->x < screen->columns && screen->cursor->y < screen->lines;
+        bool reversed = false;
         if (cursor_ok) {
             linebuf_init_line(screen->linebuf, screen->cursor->y);
-            colors_for_cell(screen->linebuf->line, screen->color_profile, &cell_color_x, &cell_fg, &cell_bg);
+            colors_for_cell(screen->linebuf->line, screen->color_profile, &cell_color_x, &cell_fg, &cell_bg, &reversed);
         }
         if (screen->color_profile->overridden.cursor_color.type == COLOR_IS_INDEX || screen->color_profile->overridden.cursor_color.type == COLOR_IS_RGB) {
             // since the program is controlling the cursor color we hope it has chosen one

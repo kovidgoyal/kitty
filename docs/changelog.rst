@@ -91,6 +91,8 @@ Detailed list of changes
 
 - When reporting unused activity in a window, ignore activity that occurs soon after a window resize (:iss:`5881`)
 
+- Fix using :opt:`cursor` = ``none`` not working on text that has reverse video (:iss:`5897`)
+
 
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
