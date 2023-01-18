@@ -15,6 +15,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"kitty/tools/tty"
+	"kitty/tools/utils"
 )
 
 var SIGNULL unix.Signal
@@ -110,7 +111,7 @@ func (self *Loop) handle_osc(raw []byte) error {
 }
 
 func (self *Loop) handle_dcs(raw []byte) error {
-	if self.OnRCResponse != nil && bytes.HasPrefix(raw, []byte("@kitty-cmd")) {
+	if self.OnRCResponse != nil && bytes.HasPrefix(raw, utils.UnsafeStringToBytes("@kitty-cmd")) {
 		return self.OnRCResponse(raw[len("@kitty-cmd"):])
 	}
 	if self.OnEscapeCode != nil {
