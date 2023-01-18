@@ -71,7 +71,7 @@ func read_from_tty(pipe_r *os.File, term *tty.Term, results_channel chan<- []byt
 
 	buf := make([]byte, bufsize)
 	for keep_going {
-		if len(buf) == 0 {
+		if len(buf) < 64 {
 			buf = make([]byte, bufsize)
 		}
 		if wait_for_read_available(); !keep_going {
