@@ -1247,7 +1247,7 @@ class ChildMonitor:
     def add_child(self, id: int, pid: int, fd: int, screen: Screen) -> None:
         pass
 
-    def mark_for_close(self, window_id: int) -> None:
+    def mark_for_close(self, window_id: int) -> bool:
         pass
 
     def start(self) -> None:

@@ -506,17 +506,30 @@ parse_input(ChildMonitor *self) {
     return input_read;
 }
 
-static void
+static bool
 mark_child_for_close(ChildMonitor *self, id_type window_id) {
+    bool found = false;
     children_mutex(lock);
     for (size_t i = 0; i < self->count; i++) {
         if (children[i].id == window_id) {
             children[i].needs_removal = true;
+            found = true;
             break;
         }
     }
+    if (!found) {
+        for (size_t i = 0; i < add_queue_count; i++) {
+            if (add_queue[i].id == window_id) {
+                add_queue[i].needs_removal = true;
+                found = true;
+                break;
+            }
+        }
+
+    }
     children_mutex(unlock);
     wakeup_io_loop(self, false);
+    return found;
 }
 
 
@@ -525,8 +538,8 @@ mark_for_close(ChildMonitor *self, PyObject *args) {
 #define mark_for_close_doc "Mark a child to be removed from the child monitor"
     id_type window_id;
     if (!PyArg_ParseTuple(args, "K", &window_id)) return NULL;
-    mark_child_for_close(self, window_id);
-    Py_RETURN_NONE;
+    if (mark_child_for_close(self, window_id)) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
 }
 
 static bool
