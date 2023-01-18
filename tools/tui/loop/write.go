@@ -141,11 +141,16 @@ func write_to_tty(
 	selector.RegisterWrite(tty_fd)
 
 	wait_for_write_available := func() {
-		_, err := selector.WaitForever()
-		if err != nil {
-			err_channel <- err
-			keep_going = false
-			return
+		for {
+			n, err := selector.WaitForever()
+			if err != nil {
+				err_channel <- err
+				keep_going = false
+				return
+			}
+			if n > 0 {
+				break
+			}
 		}
 		if selector.IsReadyToWrite(tty_fd) {
 			return
