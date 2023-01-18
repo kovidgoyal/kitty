@@ -54,11 +54,16 @@ func read_from_tty(pipe_r *os.File, term *tty.Term, results_channel chan<- []byt
 	const bufsize = 2 * utils.DEFAULT_IO_BUFFER_SIZE
 
 	wait_for_read_available := func() {
-		_, err := selector.WaitForever()
-		if err != nil {
-			err_channel <- err
-			keep_going = false
-			return
+		for {
+			n, err := selector.WaitForever()
+			if err != nil {
+				err_channel <- err
+				keep_going = false
+				return
+			}
+			if n > 0 {
+				break
+			}
 		}
 		if selector.IsReadyToRead(pipe_fd) {
 			keep_going = false
