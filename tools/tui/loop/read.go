@@ -67,10 +67,6 @@ func read_from_tty(pipe_r *os.File, term *tty.Term, results_channel chan<- []byt
 		}
 		if selector.IsReadyToRead(pipe_fd) {
 			keep_going = false
-			return
-		}
-		if selector.IsReadyToRead(tty_fd) {
-			return
 		}
 	}
 

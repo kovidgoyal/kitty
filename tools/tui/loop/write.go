@@ -152,9 +152,6 @@ func write_to_tty(
 				break
 			}
 		}
-		if selector.IsReadyToWrite(tty_fd) {
-			return
-		}
 		if selector.IsReadyToRead(pipe_fd) {
 			keep_going = false
 		}
