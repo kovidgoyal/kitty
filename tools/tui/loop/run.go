@@ -276,7 +276,7 @@ func (self *Loop) run() (err error) {
 		flush_writer(w_w, tty_write_channel, write_done_channel, self.pending_writes, 2*time.Second)
 		self.pending_writes = nil
 		// wait for tty reader to exit cleanly
-		for more := true; more; _, more = <-tty_read_channel {
+		for range tty_read_channel {
 		}
 	}()
 
