@@ -54,7 +54,7 @@ Do not return an error if no tabs are matched to be closed.
             if payload_get('ignore_no_match'):
                 return None
             raise
-        for tab in tabs:
+        for tab in tuple(tabs):
             if tab:
                 boss.close_tab_no_confirm(tab)
         return None

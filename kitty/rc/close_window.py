@@ -46,7 +46,7 @@ Do not return an error if no windows are matched to be closed.
             if payload_get('ignore_no_match'):
                 return None
             raise
-        for window in windows:
+        for window in tuple(windows):
             if window:
                 boss.mark_window_for_close(window)
         return None
