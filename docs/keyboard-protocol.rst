@@ -682,3 +682,31 @@ specification.
 * Handwaves that :kbd:`ctrl` *tends to* mask with ``0x1f``. In actual fact it
   does this only for some keys. The action of :kbd:`ctrl` is not specified and
   varies between terminals, historically because of different keyboard layouts.
+
+
+Why xterm's modifyOtherKeys should not be used
+---------------------------------------------------
+
+* Does not support release events
+
+* Does not fix the issue of :kbd:`Esc` key presses not being distinguishable from
+  escape codes.
+
+* Does not fix the issue of some keypresses generating identical bytes and thus
+  being indistinguishable
+
+* There is no robust way to query it or manage its state from a program running
+  in the terminal.
+
+* No support for shifted key.
+
+* No support for alternate keyboard layouts
+
+* No support for modifiers beyond the basic four
+
+* No support for lock keys like Num lock and Caps lock
+
+* Is completely unspecified the most discussion of it available anywhere is
+  here: https://invisible-island.net/xterm/modified-keys.html
+  And it contains no specification of what numbers to assign to what function
+  keys beyond running a Perl script on an X11 system!!
