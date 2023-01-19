@@ -698,15 +698,15 @@ Why xterm's modifyOtherKeys should not be used
 * There is no robust way to query it or manage its state from a program running
   in the terminal.
 
-* No support for shifted key.
+* No support for shifted keys.
 
-* No support for alternate keyboard layouts
+* No support for alternate keyboard layouts.
 
-* No support for modifiers beyond the basic four
+* No support for modifiers beyond the basic four.
 
-* No support for lock keys like Num lock and Caps lock
+* No support for lock keys like Num lock and Caps lock.
 
-* Is completely unspecified the most discussion of it available anywhere is
+* Is completely unspecified. The most discussion of it available anywhere is
   here: https://invisible-island.net/xterm/modified-keys.html
   And it contains no specification of what numbers to assign to what function
   keys beyond running a Perl script on an X11 system!!
