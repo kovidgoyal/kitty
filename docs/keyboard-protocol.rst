@@ -707,6 +707,6 @@ Why xterm's modifyOtherKeys should not be used
 * No support for lock keys like Num lock and Caps lock.
 
 * Is completely unspecified. The most discussion of it available anywhere is
-  here: https://invisible-island.net/xterm/modified-keys.html
+  `here <https://invisible-island.net/xterm/modified-keys.html>`__
   And it contains no specification of what numbers to assign to what function
   keys beyond running a Perl script on an X11 system!!
