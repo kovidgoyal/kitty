@@ -294,7 +294,7 @@ class GitHub(Base):  # {{{
                 time.sleep(1)
             self.fail(r, f'Failed to delete {fname} from GitHub')
 
-        def upload_with_retries(path: str, desc: str, num_tries: int = 4, sleep_time: float = 10.0) -> None:
+        def upload_with_retries(path: str, desc: str, num_tries: int = 8, sleep_time: float = 60.0) -> None:
             fname = os.path.basename(path)
             if self.is_nightly:
                 fname = fname.replace(version, 'nightly')
@@ -305,12 +305,10 @@ class GitHub(Base):  # {{{
             for i in range(1, num_tries+1):
                 try:
                     r = self.do_upload(upload_url, path, desc, fname)
-                except Exception:
+                except Exception as e:
                     if i >= num_tries:
                         raise
-                    import traceback
-                    traceback.print_exc()
-                    print('Failed to upload retrying in a short while...', file=sys.stderr)
+                    print('Failed to upload with error:', e, 'retrying in a short while...', file=sys.stderr)
                 else:
                     if r.status_code == 201:
                         break
