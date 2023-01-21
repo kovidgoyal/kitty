@@ -20,7 +20,7 @@ import tempfile
 import time
 from contextlib import contextmanager, suppress
 from http.client import HTTPResponse, HTTPSConnection
-from typing import IO, Any, Callable, Dict, Generator, Iterable, Optional, Tuple, Union, cast
+from typing import Any, Callable, Dict, Generator, Iterable, Optional, Tuple, Union
 from urllib.parse import urlencode, urlparse
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -222,23 +222,7 @@ class ReadFileWithProgressReporting(io.FileIO):  # {{{
 # }}}
 
 
-class Base:  # {{{
-
-    def info(self, *args: Any, **kwargs: Any) -> None:
-        print(*args, **kwargs)
-        sys.stdout.flush()
-
-    def warn(self, *args: Any, **kwargs: Any) -> None:
-        print('\n' + '_' * 20, 'WARNING', '_' * 20)
-        print(*args, **kwargs)
-        print('_' * 50)
-        sys.stdout.flush()
-
-
-# }}}
-
-
-class GitHub(Base):  # {{{
+class GitHub:  # {{{
 
     API = 'https://api.github.com'
 
@@ -257,6 +241,12 @@ class GitHub(Base):  # {{{
         self.is_nightly = self.current_tag_name == 'nightly'
         self.auth = 'Basic ' + base64.standard_b64encode((self.username + ':' + self.password).encode()).decode()
         self.url_base = f'{self.API}/repos/{self.username}/{self.reponame}/releases'
+
+    def info(self, *args: Any) -> None:
+        print(*args, flush=True)
+
+    def error(self, *args: Any) -> None:
+        print(*args, flush=True, file=sys.stderr)
 
     def make_request(
         self, url: str, data: Optional[Dict[str, Any]] = None, method:str = 'GET',
@@ -294,7 +284,6 @@ class GitHub(Base):  # {{{
         params: Optional[Dict[str, str]] = None,
         failure_callback: Callable[[HTTPResponse], None] = lambda r: None,
     ) -> Any:
-        rdata: Optional[Union[Dict[str, str], io.FileIO]] = None
         for i in range(num_tries):
             if upload_path:
                 conn = self.make_request(url, method='POST', upload_data=ReadFileWithProgressReporting(upload_path), params=params)
@@ -304,19 +293,17 @@ class GitHub(Base):  # {{{
                 with contextlib.closing(conn):
                     r = conn.getresponse()
                     if r.status in success_codes:
-                        if return_data:
-                            return json.loads(r.read())
-                        return {}
+                        return json.loads(r.read()) if return_data else None
                     if i == num_tries -1 :
                         self.fail(r, failure_msg)
                     else:
                         self.print_failed_response_details(r, failure_msg)
                         failure_callback(r)
             except Exception as e:
-                print(failure_msg, 'with error:', e, file=sys.stderr)
-            print(f'Retrying after {sleep_between_tries} seconds', file=sys.stderr)
+                self.error(failure_msg, 'with error:', e)
+            self.error(f'Retrying after {sleep_between_tries} seconds')
             time.sleep(sleep_between_tries)
-        return {}
+        return None
 
     def patch(self, url: str, fail_msg: str, **data: str) -> None:
         self.make_request_with_retries(url, data, method='PATCH', failure_msg=fail_msg)
@@ -354,8 +341,7 @@ class GitHub(Base):  # {{{
                 fname = fname.replace(version, 'nightly')
             if fname in existing_assets:
                 self.info(f'Deleting {fname} from GitHub with id: {existing_assets[fname]}')
-                delete_asset(existing_assets[fname])
-                del existing_assets[fname]
+                delete_asset(existing_assets.pop(fname))
             params = {'name': fname, 'label': desc}
 
             def handle_failure(r: HTTPResponse) -> None:
@@ -379,8 +365,7 @@ class GitHub(Base):  # {{{
         if self.is_nightly:
             for fname in tuple(existing_assets):
                 self.info(f'Deleting {fname} from GitHub with id: {existing_assets[fname]}')
-                delete_asset(existing_assets[fname])
-                del existing_assets[fname]
+                delete_asset(existing_assets.pop(fname))
             self.update_nightly_description(release['id'])
         for path, desc in self.files.items():
             self.info('')
@@ -388,22 +373,20 @@ class GitHub(Base):  # {{{
 
     def clean_older_releases(self, releases: Iterable[Dict[str, Any]]) -> None:
         for release in releases:
-            if release.get(
-                    'assets',
-                    None) and release['tag_name'] != self.current_tag_name:
+            if release.get('assets') and release['tag_name'] != self.current_tag_name:
                 self.info(f'\nDeleting old released installers from: {release["tag_name"]}')
                 for asset in release['assets']:
                     self.delete_asset(
                         f'{self.url_base}/assets/{asset["id"]}', asset['name'])
 
     def print_failed_response_details(self, r: HTTPResponse, msg: str) -> None:
-        print(msg, f'\nStatus Code: {r.status} {r.reason}', file=sys.stderr)
+        self.error(msg, f'\nStatus Code: {r.status} {r.reason}')
         try:
             jr = json.loads(r.read())
         except Exception:
             pass
         else:
-            print('JSON from response:', file=sys.stderr)
+            self.error('JSON from response:')
             pprint.pprint(jr, stream=sys.stderr)
 
     def fail(self, r: HTTPResponse, msg: str) -> None:
