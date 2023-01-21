@@ -103,6 +103,9 @@ func create_temp(pattern string, size uint64) (ans MMap, err error) {
 				}
 				continue
 			}
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil, &ErrNotSupported{err: err}
+			}
 			return
 		}
 		break
@@ -113,6 +116,9 @@ func create_temp(pattern string, size uint64) (ans MMap, err error) {
 func Open(name string, size uint64) (MMap, error) {
 	ans, err := os.OpenFile(file_path_from_name(name), os.O_RDONLY, 0)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, &ErrNotSupported{err: err}
+		}
 		return nil, err
 	}
 	return file_mmap(ans, size, READ, false, name)
