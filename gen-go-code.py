@@ -562,6 +562,17 @@ def generate_readline_actions() -> str:
     ''')
 
 
+def generate_mimetypes() -> str:
+    import mimetypes
+    if not mimetypes.inited:
+        mimetypes.init()
+    ans = ['package utils', 'import "sync"', 'var only_once sync.Once', 'var builtin_types_map map[string]string', 'func set_builtins() {', 'builtin_types_map = map[string]string{',]
+    for k, v in mimetypes.types_map.items():
+        ans.append(f'  "{serialize_as_go_string(k)}": "{serialize_as_go_string(v)}",')
+    ans.append('}}')
+    return '\n'.join(ans)
+
+
 def main() -> None:
     with replace_if_needed('constants_generated.go') as f:
         f.write(generate_constants())
@@ -571,6 +582,8 @@ def main() -> None:
         f.write(generate_readline_actions())
     with replace_if_needed('tools/tui/spinners_generated.go') as f:
         f.write(generate_spinners())
+    with replace_if_needed('tools/utils/mimetypes_generated.go') as f:
+        f.write(generate_mimetypes())
     update_completion()
     update_at_commands()
     kitten_clis()
