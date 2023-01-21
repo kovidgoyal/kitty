@@ -117,7 +117,9 @@ func Open(name string, size uint64) (MMap, error) {
 	ans, err := os.OpenFile(file_path_from_name(name), os.O_RDONLY, 0)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return nil, &ErrNotSupported{err: err}
+			if _, serr := os.Stat(SHM_DIR); serr != nil && errors.Is(serr, fs.ErrNotExist) {
+				return nil, &ErrNotSupported{err: serr}
+			}
 		}
 		return nil, err
 	}
