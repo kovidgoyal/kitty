@@ -566,7 +566,8 @@ def generate_mimetypes() -> str:
     import mimetypes
     if not mimetypes.inited:
         mimetypes.init()
-    ans = ['package utils', 'import "sync"', 'var only_once sync.Once', 'var builtin_types_map map[string]string', 'func set_builtins() {', 'builtin_types_map = map[string]string{',]
+    ans = ['package utils', 'import "sync"', 'var only_once sync.Once', 'var builtin_types_map map[string]string',
+           'func set_builtins() {', 'builtin_types_map = map[string]string{',]
     for k, v in mimetypes.types_map.items():
         ans.append(f'  "{serialize_as_go_string(k)}": "{serialize_as_go_string(v)}",')
     ans.append('}}')
