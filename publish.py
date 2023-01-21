@@ -2,6 +2,8 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
+import base64
+import contextlib
 import datetime
 import glob
 import io
@@ -17,9 +19,9 @@ import sys
 import tempfile
 import time
 from contextlib import contextmanager, suppress
-from typing import IO, Any, Dict, Generator, Iterable, Optional, cast
-
-import requests
+from http.client import HTTPResponse, HTTPSConnection
+from typing import IO, Any, Callable, Dict, Generator, Iterable, Optional, Tuple, Union, cast
+from urllib.parse import urlencode, urlparse
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 docs_dir = os.path.abspath('docs')
@@ -253,20 +255,71 @@ class GitHub(Base):  # {{{
             files, reponame, version, username, password, replace)
         self.current_tag_name = self.version if self.version == 'nightly' else f'v{self.version}'
         self.is_nightly = self.current_tag_name == 'nightly'
-        self.requests = s = requests.Session()
-        s.auth = (self.username, self.password)
-        s.headers.update({'Accept': 'application/vnd.github+json'})
+        self.auth = 'Basic ' + base64.standard_b64encode((self.username + ':' + self.password).encode()).decode()
         self.url_base = f'{self.API}/repos/{self.username}/{self.reponame}/releases'
 
-    def patch(self, url: str, fail_msg: str, **data: Any) -> None:
-        rdata = json.dumps(data)
-        try:
-            r = self.requests.patch(url, data=rdata)
-        except Exception:
-            time.sleep(15)
-            r = self.requests.patch(url, data=rdata)
-        if r.status_code != 200:
-            self.fail(r, fail_msg)
+    def make_request(
+        self, url: str, data: Optional[Dict[str, Any]] = None, method:str = 'GET',
+        upload_data: Optional[ReadFileWithProgressReporting] = None,
+        params: Optional[Dict[str, str]] = None,
+    ) -> HTTPSConnection:
+        headers={
+            'Authorization': self.auth,
+            'Accept':  'application/vnd.github+json',
+        }
+        if params:
+            url += '?' + urlencode(params)
+        rdata: Optional[Union[bytes, io.FileIO]] = None
+        if data is not None:
+            rdata = json.dumps(data).encode('utf-8')
+            headers['Content-Type'] = 'application/json'
+            headers['Content-Length'] = str(len(rdata))
+        elif upload_data is not None:
+            rdata = upload_data
+            mime_type = mimetypes.guess_type(os.path.basename(str(upload_data.name)))[0] or 'application/octet-stream'
+            headers['Content-Type'] = mime_type
+            headers['Content-Length'] = str(upload_data._total)
+        purl = urlparse(url)
+        conn = HTTPSConnection(purl.netloc, timeout=60)
+        conn.request(method, url, body=rdata, headers=headers)
+        return conn
+
+    def make_request_with_retries(
+        self, url: str, data: Optional[Dict[str, str]] = None, method:str = 'GET',
+        num_tries: int = 2, sleep_between_tries: float = 15,
+        success_codes: Tuple[int, ...] = (200,),
+        failure_msg: str = 'Request failed',
+        return_data: bool = False,
+        upload_path: str = '',
+        params: Optional[Dict[str, str]] = None,
+        failure_callback: Callable[[HTTPResponse], None] = lambda r: None,
+    ) -> Any:
+        rdata: Optional[Union[Dict[str, str], io.FileIO]] = None
+        for i in range(num_tries):
+            if upload_path:
+                conn = self.make_request(url, method='POST', upload_data=ReadFileWithProgressReporting(upload_path), params=params)
+            else:
+                conn = self.make_request(url, data, method, params=params)
+            try:
+                with contextlib.closing(conn):
+                    r = conn.getresponse()
+                    if r.status in success_codes:
+                        if return_data:
+                            return json.loads(r.read())
+                        return {}
+                    if i == num_tries -1 :
+                        self.fail(r, failure_msg)
+                    else:
+                        self.print_failed_response_details(r, failure_msg)
+                        failure_callback(r)
+            except Exception as e:
+                print(failure_msg, 'with error:', e, file=sys.stderr)
+            print(f'Retrying after {sleep_between_tries} seconds', file=sys.stderr)
+            time.sleep(sleep_between_tries)
+        return {}
+
+    def patch(self, url: str, fail_msg: str, **data: str) -> None:
+        self.make_request_with_retries(url, data, method='PATCH', failure_msg=fail_msg)
 
     def update_nightly_description(self, release_id: int) -> None:
         url = f'{self.url_base}/{release_id}'
@@ -278,6 +331,12 @@ class GitHub(Base):  # {{{
             ' For how to install nightly builds, see: https://sw.kovidgoyal.net/kitty/binary/#customizing-the-installation'
         )
 
+    def delete_asset(self, url: str, fname: str) -> None:
+        self.make_request_with_retries(
+            url, method='DELETE', num_tries=5, sleep_between_tries=2,
+            success_codes=(204, 404),
+            failure_msg=f'Failed to delete {fname} from GitHub')
+
     def __call__(self) -> None:
         # See https://docs.github.com/en/rest/releases/assets#upload-a-release-asset
         # self.clean_older_releases(releases)
@@ -287,12 +346,7 @@ class GitHub(Base):  # {{{
         existing_assets = self.existing_assets(release['id'])
 
         def delete_asset(asset_id: str) -> None:
-            for i in range(5):
-                r = self.requests.delete(asset_url.format(asset_id))
-                if r.status_code in (204, 404):
-                    return
-                time.sleep(1)
-            self.fail(r, f'Failed to delete {fname} from GitHub')
+            self.delete_asset(asset_url.format(asset_id), fname)
 
         def upload_with_retries(path: str, desc: str, num_tries: int = 8, sleep_time: float = 60.0) -> None:
             fname = os.path.basename(path)
@@ -302,30 +356,25 @@ class GitHub(Base):  # {{{
                 self.info(f'Deleting {fname} from GitHub with id: {existing_assets[fname]}')
                 delete_asset(existing_assets[fname])
                 del existing_assets[fname]
-            for i in range(1, num_tries+1):
+            params = {'name': fname, 'label': desc}
+
+            def handle_failure(r: HTTPResponse) -> None:
                 try:
-                    r = self.do_upload(upload_url, path, desc, fname)
-                except Exception as e:
-                    if i >= num_tries:
-                        raise
-                    print('Failed to upload with error:', e, 'retrying in a short while...', file=sys.stderr)
-                else:
-                    if r.status_code == 201:
-                        break
-                    if i >= num_tries:
-                        self.fail(r, f'Failed to upload file: {fname}')
-                    self.print_failed_response_details(r, 'Failed to upload retrying in a short while...')
+                    asset_id = json.loads(r.read())['id']
+                except Exception:
                     try:
-                        asset_id = r.json()['id']
-                    except Exception:
-                        try:
-                            asset_id = self.existing_assets(release['id'])[fname]
-                        except KeyError:
-                            asset_id = 0
-                    if asset_id:
-                        self.info(f'Deleting {fname} from GitHub with id: {asset_id}')
-                        delete_asset(asset_id)
-                time.sleep(sleep_time)
+                        asset_id = self.existing_assets(release['id'])[fname]
+                    except KeyError:
+                        asset_id = 0
+                if asset_id:
+                    self.info(f'Deleting {fname} from GitHub with id: {asset_id}')
+                    delete_asset(asset_id)
+
+
+            self.make_request_with_retries(
+                upload_url, upload_path=path, params=params, num_tries=num_tries, sleep_between_tries=sleep_time,
+                failure_msg=f'Failed to upload file: {fname}', success_codes=(201,), failure_callback=handle_failure
+            )
 
         if self.is_nightly:
             for fname in tuple(existing_assets):
@@ -344,73 +393,53 @@ class GitHub(Base):  # {{{
                     None) and release['tag_name'] != self.current_tag_name:
                 self.info(f'\nDeleting old released installers from: {release["tag_name"]}')
                 for asset in release['assets']:
-                    r = self.requests.delete(
-                        f'{self.url_base}/assets/{asset["id"]}')
-                    if r.status_code != 204:
-                        self.fail(r, f'Failed to delete obsolete asset: {asset["name"]} for release: {release["tag_name"]}')
+                    self.delete_asset(
+                        f'{self.url_base}/assets/{asset["id"]}', asset['name'])
 
-    def do_upload(self, url: str, path: str, desc: str, fname: str) -> requests.Response:
-        mime_type = mimetypes.guess_type(fname)[0] or 'application/octet-stream'
-        self.info(f'Uploading to GitHub: {fname} ({mime_type})')
-        with ReadFileWithProgressReporting(path) as f:
-            return self.requests.post(
-                url,
-                headers={
-                    'Content-Type': mime_type,
-                    'Content-Length': str(f._total)
-                },
-                params={'name': fname, 'label': desc},
-                data=cast(IO[bytes], f))
-
-    def print_failed_response_details(self, r: requests.Response, msg: str) -> None:
-        print(msg, f'\nStatus Code: {r.status_code} {r.reason}', file=sys.stderr)
+    def print_failed_response_details(self, r: HTTPResponse, msg: str) -> None:
+        print(msg, f'\nStatus Code: {r.status} {r.reason}', file=sys.stderr)
         try:
-            jr = dict(r.json())
+            jr = json.loads(r.read())
         except Exception:
             pass
         else:
             print('JSON from response:', file=sys.stderr)
             pprint.pprint(jr, stream=sys.stderr)
 
-    def fail(self, r: requests.Response, msg: str) -> None:
+    def fail(self, r: HTTPResponse, msg: str) -> None:
         self.print_failed_response_details(r, msg)
         raise SystemExit(1)
 
-    def already_exists(self, r: requests.Response) -> bool:
-        error_code = r.json().get('errors', [{}])[0].get('code', None)
-        return bool(error_code == 'already_exists')
-
     def existing_assets(self, release_id: str) -> Dict[str, str]:
         url = f'{self.url_base}/{release_id}/assets'
-        r = self.requests.get(url)
-        if r.status_code != 200:
-            self.fail(r, 'Failed to get assets for release')
-        return {asset['name']: asset['id'] for asset in r.json()}
+        d = self.make_request_with_retries(url, failure_msg='Failed to get assets for release', return_data=True)
+        return {asset['name']: asset['id'] for asset in d}
 
     def create_release(self) -> Dict[str, Any]:
         ' Create a release on GitHub or if it already exists, return the existing release '
         # Check for existing release
         url = f'{self.url_base}/tags/{self.current_tag_name}'
-        r = self.requests.get(url)
-        if r.status_code == 200:
-            return dict(r.json())
+        with contextlib.closing(self.make_request(url)) as conn:
+            r = conn.getresponse()
+            if r.status == 200:
+                return {str(k): v for k, v in json.loads(r.read()).items()}
         if self.is_nightly:
             raise SystemExit('No existing nightly release found on GitHub')
-        r = self.requests.post(
-            self.url_base,
-            data=json.dumps({
-                'tag_name': self.current_tag_name,
-                'target_commitish': 'master',
-                'name': f'version {self.version}',
-                'body': f'Release version {self.version}.'
-                ' For changelog, see https://sw.kovidgoyal.net/kitty/changelog/#detailed-list-of-changes'
-                ' GPG key used for signing tarballs is: https://calibre-ebook.com/signatures/kovid.gpg',
-                'draft': False,
-                'prerelease': False
-            }))
-        if r.status_code != 201:
-            self.fail(r, f'Failed to create release for version: {self.version}')
-        return dict(r.json())
+        data = {
+            'tag_name': self.current_tag_name,
+            'target_commitish': 'master',
+            'name': f'version {self.version}',
+            'body': f'Release version {self.version}.'
+            ' For changelog, see https://sw.kovidgoyal.net/kitty/changelog/#detailed-list-of-changes'
+            ' GPG key used for signing tarballs is: https://calibre-ebook.com/signatures/kovid.gpg',
+            'draft': False,
+            'prerelease': False
+        }
+        with contextlib.closing(self.make_request(self.url_base, method='POST', data=data)) as conn:
+            r = conn.getresponse()
+            if r.status != 201:
+                self.fail(r, f'Failed to create release for version: {self.version}')
+            return {str(k): v for k, v in json.loads(r.read()).items()}
 # }}}
 
 
