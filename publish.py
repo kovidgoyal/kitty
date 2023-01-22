@@ -239,7 +239,7 @@ class GitHub:  # {{{
             files, reponame, version, username, password, replace)
         self.current_tag_name = self.version if self.version == 'nightly' else f'v{self.version}'
         self.is_nightly = self.current_tag_name == 'nightly'
-        self.auth = 'Basic ' + base64.standard_b64encode((self.username + ':' + self.password).encode()).decode()
+        self.auth = 'Basic ' + base64.standard_b64encode(f'{self.username}:{self.password}'.encode()).decode()
         self.url_base = f'{self.API}/repos/{self.username}/{self.reponame}/releases'
 
     def info(self, *args: Any) -> None:
@@ -255,7 +255,8 @@ class GitHub:  # {{{
     ) -> HTTPSConnection:
         headers={
             'Authorization': self.auth,
-            'Accept':  'application/vnd.github+json',
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'kitty',
         }
         if params:
             url += '?' + urlencode(params)
@@ -285,11 +286,11 @@ class GitHub:  # {{{
         failure_callback: Callable[[HTTPResponse], None] = lambda r: None,
     ) -> Any:
         for i in range(num_tries):
-            if upload_path:
-                conn = self.make_request(url, method='POST', upload_data=ReadFileWithProgressReporting(upload_path), params=params)
-            else:
-                conn = self.make_request(url, data, method, params=params)
             try:
+                if upload_path:
+                    conn = self.make_request(url, method='POST', upload_data=ReadFileWithProgressReporting(upload_path), params=params)
+                else:
+                    conn = self.make_request(url, data, method, params=params)
                 with contextlib.closing(conn):
                     r = conn.getresponse()
                     if r.status in success_codes:
@@ -407,7 +408,7 @@ class GitHub:  # {{{
             if r.status == 200:
                 return {str(k): v for k, v in json.loads(r.read()).items()}
         if self.is_nightly:
-            raise SystemExit('No existing nightly release found on GitHub')
+            self.fail(r, 'No existing nightly release found on GitHub')
         data = {
             'tag_name': self.current_tag_name,
             'target_commitish': 'master',
