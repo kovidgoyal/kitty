@@ -23,8 +23,8 @@ The title for the error message.
 
 
 def real_main(args: List[str]) -> None:
-    msg = 'Show an error message'
-    cli_opts, items = parse_args(args[1:], OPTIONS, '', msg, 'hints', result_class=ErrorCLIOptions)
+    msg = 'Show an error message. For internal use by kitty.'
+    cli_opts, items = parse_args(args[1:], OPTIONS, '', msg, 'show_error', result_class=ErrorCLIOptions)
     data = json.loads(sys.stdin.buffer.read())
     error_message = data['msg']
     if cli_opts.title:

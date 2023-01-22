@@ -229,7 +229,7 @@ Result = Optional[str]
 
 
 def main(args: List[str]) -> Result:
-    msg = 'Ask the user what to do with the remote file'
+    msg = 'Ask the user what to do with the remote file. For internal use by kitty, do not run it directly.'
     try:
         cli_opts, items = parse_args(args[1:], option_text, '', msg, 'kitty remote_file', result_class=RemoteFileCLIOptions)
     except SystemExit as e:
