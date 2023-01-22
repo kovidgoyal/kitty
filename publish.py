@@ -202,17 +202,17 @@ class ReadFileWithProgressReporting(io.FileIO):  # {{{
         def write(*args: str) -> None:
             print(*args, end='')
 
-        frac = float(self.tell()) / self._total
+        frac = int(self.tell() * 100 / self._total)
         mb_pos = self.tell() / float(1024**2)
         mb_tot = self._total / float(1024**2)
         kb_pos = self.tell() / 1024.0
         kb_rate = kb_pos / (time.monotonic() - self.start_time)
         bit_rate = kb_rate * 1024
         eta = int((self._total - self.tell()) / bit_rate) + 1
-        eta_m, eta_s = eta / 60, eta % 60
+        eta_m, eta_s = divmod(eta, 60)
         if sys.stdout.isatty():
             write(
-                f'\r\033[K\033[?7h {frac:%} {mb_pos:.1f}/{mb_tot:.1f}MB {kb_rate:.1f} KB/sec {eta_m} minutes, {eta_s} seconds left\033[?7l')
+                f'\r\033[K\033[?7h {frac}% {mb_pos:.1f}/{mb_tot:.1f}MB {kb_rate:.1f} KB/sec {eta_m} minutes, {eta_s} seconds left\033[?7l')
         if self.tell() >= self._total:
             t = int(time.monotonic() - self.start_time) + 1
             print(f'\nUpload took {t//60} minutes and {t%60} seconds at {kb_rate:.1f} KB/sec')
