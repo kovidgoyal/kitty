@@ -473,7 +473,7 @@ def main(args: List[str]) -> Response:
     global readline
     msg = 'Ask the user for input'
     try:
-        cli_opts, items = parse_args(args[1:], option_text, '', msg, 'kitty ask', result_class=AskCLIOptions)
+        cli_opts, items = parse_args(args[1:], option_text, '', msg, 'kitty +kitten ask', result_class=AskCLIOptions)
     except SystemExit as e:
         if e.code != 0:
             print(e.args[0])
