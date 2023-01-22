@@ -24,7 +24,9 @@ The title for the error message.
 
 def real_main(args: List[str]) -> None:
     msg = 'Show an error message. For internal use by kitty.'
-    cli_opts, items = parse_args(args[1:], OPTIONS, '', msg, 'show_error', result_class=ErrorCLIOptions)
+    cli_opts, items = parse_args(args[1:], OPTIONS, '', msg, 'kitty +kitten show_error', result_class=ErrorCLIOptions)
+    if sys.stdin.isatty():
+        raise SystemExit('Input data for this kitten must be piped as JSON to STDIN')
     data = json.loads(sys.stdin.buffer.read())
     error_message = data['msg']
     if cli_opts.title:
