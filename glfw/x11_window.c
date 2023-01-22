@@ -2897,17 +2897,20 @@ void _glfwPlatformSetClipboard(GLFWClipboardType t) {
 
 typedef struct chunked_writer {
     char *buf; size_t sz, cap;
+    bool is_self_offer;
 } chunked_writer;
 
 static bool
 write_chunk(void *object, const char *data, size_t sz) {
     chunked_writer *cw = object;
-    if (cw->cap < cw->sz + sz) {
-        cw->cap = MAX(cw->cap * 2, cw->sz + 8*sz);
-        cw->buf = realloc(cw->buf, cw->cap * sizeof(cw->buf[0]));
-    }
-    memcpy(cw->buf + cw->sz, data, sz);
-    cw->sz += sz;
+    if (data) {
+        if (cw->cap < cw->sz + sz) {
+            cw->cap = MAX(cw->cap * 2, cw->sz + 8*sz);
+            cw->buf = realloc(cw->buf, cw->cap * sizeof(cw->buf[0]));
+        }
+        memcpy(cw->buf + cw->sz, data, sz);
+        cw->sz += sz;
+    } else if (sz == 1) cw->is_self_offer = true;
     return true;
 }
 
@@ -2915,6 +2918,10 @@ static void
 get_available_mime_types(Atom which_clipboard, GLFWclipboardwritedatafun write_data, void *object) {
     chunked_writer cw = {0};
     getSelectionString(which_clipboard, &_glfw.x11.TARGETS, 1, write_chunk, &cw, false);
+    if (cw.is_self_offer) {
+        write_data(object, NULL, 1);
+        return;
+    }
     size_t count = 0;
     bool ok = true;
     if (cw.buf) {
