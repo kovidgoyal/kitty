@@ -527,4 +527,5 @@ def handle_result(args: List[str], data: Response, target_window_id: int, boss: 
 if __name__ == '__main__':
     ans = main(sys.argv)
     if ans:
-        print(ans)
+        import json
+        print(json.dumps(ans))
