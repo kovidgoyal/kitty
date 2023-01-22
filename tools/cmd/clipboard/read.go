@@ -171,6 +171,14 @@ func (self *Output) assign_mime_type(available_mimes []string, aliases map[strin
 			}
 		}
 	}
+	if strings.HasPrefix(self.mime_type, "text/") {
+		for _, mt := range available_mimes {
+			if mt == "text/plain" {
+				self.remote_mime_type = mt
+				return
+			}
+		}
+	}
 	return fmt.Errorf("The MIME type %s for %s not available on the clipboard", self.mime_type, self.arg)
 }
 

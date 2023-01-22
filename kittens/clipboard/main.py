@@ -35,7 +35,9 @@ When copying to clipboard both the original and alias are made available on the
 clipboard. When copying from clipboard if the original is not found, the alias
 is used, as a fallback. Can be specified multiple times to create multiple
 aliases. For example: :code:`--alias text/plain=text/x-rst` makes :code:`text/plain` an alias
-of :code:`text/rst`. Aliases are not used in filter mode.
+of :code:`text/rst`. Aliases are not used in filter mode. An alias for
+:code:`text/plain` is automatically created if :code:`text/plain` is not present in the input data, but some
+other :code:`text/*` MIME is present.
 
 
 --wait-for-completion
