@@ -475,6 +475,8 @@ class ClipboardRequestManager:
             current_mime = mime
             if mime == TARGETS_MIME:
                 payload = ' '.join(cp.get_available_mime_types_for_paste()).encode('utf-8')
+                if payload:
+                    payload += b'\n'
                 w.screen.send_escape_code_to_child(OSC, rr.encode_response(payload=payload, mime=current_mime))
                 continue
             try:
