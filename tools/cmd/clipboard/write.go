@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"kitty/tools/tui/loop"
@@ -17,11 +18,24 @@ import (
 var _ = fmt.Print
 
 type Input struct {
-	src       *os.File
-	arg       string
-	ext       string
-	is_stream bool
-	mime_type string
+	src              *os.File
+	arg              string
+	ext              string
+	is_stream        bool
+	mime_type        string
+	extra_mime_types []string
+}
+
+func (self *Input) has_mime_matching(pat *regexp.Regexp) bool {
+	if pat.MatchString(self.mime_type) {
+		return true
+	}
+	for _, i := range self.extra_mime_types {
+		if pat.MatchString(i) {
+			return true
+		}
+	}
+	return false
 }
 
 func write_loop(inputs []*Input, opts *Options) (err error) {
@@ -34,6 +48,27 @@ func write_loop(inputs []*Input, opts *Options) (err error) {
 	aliases, aerr := parse_aliases(opts.Alias)
 	if aerr != nil {
 		return aerr
+	}
+	num_text_mimes := 0
+	has_text_plain := false
+	text_pat := regexp.MustCompile("text/.+")
+	text_plain_pat := regexp.MustCompile("text/plain")
+	for _, i := range inputs {
+		i.extra_mime_types = aliases[i.mime_type]
+		if i.has_mime_matching(text_pat) {
+			num_text_mimes++
+			if !has_text_plain && i.has_mime_matching(text_plain_pat) {
+				has_text_plain = true
+			}
+		}
+	}
+	if num_text_mimes > 0 && !has_text_plain {
+		for _, i := range inputs {
+			if i.has_mime_matching(text_pat) {
+				i.extra_mime_types = append(i.extra_mime_types, "text/plain")
+				break
+			}
+		}
 	}
 
 	make_metadata := func(ptype, mime string) map[string]string {
@@ -63,8 +98,8 @@ func write_loop(inputs []*Input, opts *Options) (err error) {
 		}
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				if len(aliases[i.mime_type]) > 0 {
-					lp.QueueWriteString(encode(make_metadata("walias", i.mime_type), strings.Join(aliases[i.mime_type], " ")))
+				if len(i.extra_mime_types) > 0 {
+					lp.QueueWriteString(encode(make_metadata("walias", i.mime_type), strings.Join(i.extra_mime_types, " ")))
 				}
 				inputs = inputs[1:]
 				if len(inputs) == 0 {
