@@ -124,6 +124,15 @@ func NoAlternateScreen(self *Loop) {
 	self.terminal_options.alternate_screen = false
 }
 
+func (self *Loop) OnlyDisambiguateKeys() *Loop {
+	self.terminal_options.kitty_keyboard_mode = 0b1
+	return self
+}
+
+func OnlyDisambiguateKeys(self *Loop) {
+	self.terminal_options.kitty_keyboard_mode = 0b1
+}
+
 func (self *Loop) MouseTrackingMode(mt MouseTracking) *Loop {
 	self.terminal_options.mouse_tracking = mt
 	return self

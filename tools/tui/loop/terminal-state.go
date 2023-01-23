@@ -84,8 +84,9 @@ const (
 )
 
 type TerminalStateOptions struct {
-	alternate_screen, kitty_keyboard_mode, restore_colors bool
-	mouse_tracking                                        MouseTracking
+	alternate_screen, restore_colors bool
+	mouse_tracking                   MouseTracking
+	kitty_keyboard_mode              int
 }
 
 func set_modes(sb *strings.Builder, modes ...Mode) {
@@ -120,8 +121,8 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 		set_modes(&sb, ALTERNATE_SCREEN)
 		sb.WriteString(CLEAR_SCREEN)
 	}
-	if self.kitty_keyboard_mode {
-		sb.WriteString("\033[>31u")
+	if self.kitty_keyboard_mode > 0 {
+		sb.WriteString(fmt.Sprintf("\033[>%du", self.kitty_keyboard_mode))
 	} else {
 		sb.WriteString("\033[>u")
 	}
