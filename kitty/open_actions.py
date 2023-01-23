@@ -74,7 +74,7 @@ def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
     with to_cmdline_implementation.filter_env_vars(
         'URL', 'FILE_PATH', 'FILE', 'FRAGMENT', 'URL_PATH',
         EDITOR=shlex.join(get_editor()),
-        SHELL=shlex.join(resolved_shell(get_options()))
+        SHELL=resolved_shell(get_options())[0]
     ):
         for (mc, action_defns) in entries:
             actions: List[KeyAction] = []
@@ -234,12 +234,11 @@ action show_kitty_doc $URL_PATH
 
 @run_once
 def default_launch_actions() -> Tuple[OpenAction, ...]:
-    SHELL = resolved_shell(get_options())
-    return tuple(parse(f'''\
+    return tuple(parse('''\
 # Open script files
 protocol file
 ext sh,command,tool
-action launch --hold --type=os-window kitty +shebang $FILE_PATH {SHELL}
+action launch --hold --type=os-window kitty +shebang $FILE_PATH $SHELL
 
 # Open shell specific script files
 protocol file
