@@ -973,7 +973,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float
 // }}}
 
 // Borders {{{
-enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_tint_opacity, BORDER_tint_premult, BORDER_colors, NUM_BORDER_UNIFORMS };
+enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_tint_opacity, BORDER_tint_premult, BORDER_colors, BORDER_gamma_lut, NUM_BORDER_UNIFORMS };
 static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
 
 static void
@@ -984,6 +984,7 @@ init_borders_program(void) {
         SET_LOC(tint_opacity)
         SET_LOC(tint_premult)
         SET_LOC(colors)
+        SET_LOC(gamma_lut)
 #undef SET_LOC
 }
 
@@ -1035,6 +1036,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         glUniform1f(border_uniform_locations[BORDER_tint_opacity], tint_opacity);
         glUniform1f(border_uniform_locations[BORDER_tint_premult], tint_premult);
         glUniform2ui(border_uniform_locations[BORDER_viewport], viewport_width, viewport_height);
+        glUniform1fv(border_uniform_locations[BORDER_gamma_lut], 256, srgb_lut);
         if (has_bgimage(w)) {
             if (w->is_semi_transparent) { BLEND_PREMULT; }
             else { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT; }

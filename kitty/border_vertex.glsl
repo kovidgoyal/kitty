@@ -3,6 +3,7 @@ uniform uvec2 viewport;
 uniform uint colors[9];
 uniform float background_opacity;
 uniform float tint_opacity, tint_premult;
+uniform float gamma_lut[256];
 in vec4 rect;  // left, top, right, bottom
 in uint rect_color;
 out vec4 color;
@@ -22,7 +23,7 @@ const uvec2 pos_map[] = uvec2[4](
 );
 
 float to_color(uint c) {
-    return float(c & FF) / 255.0;
+    return gamma_lut[c & FF];
 }
 
 float is_integer_value(uint c, float x) {
