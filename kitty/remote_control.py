@@ -253,7 +253,7 @@ accepted before or is pre-configured in :file:`kitty.conf`.
 
 
 --password-file
-completion=type:file relative:conf kwds:-
+completion=type:file mime:* relative:conf kwds:-
 default=rc-pass
 A file from which to read the password. Trailing whitespace is ignored. Relative
 paths are resolved from the kitty configuration directory. Use - to read from STDIN.
