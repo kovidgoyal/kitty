@@ -760,9 +760,11 @@ class Boss:
                 return None
             args.args = rest
             opts = create_opts(args)
-            if args.session == '-':
+            if data['session_data']:
                 from .session import PreReadSession
-                args.session = PreReadSession(data['stdin'])
+                args.session = PreReadSession(data['session_data'], data['environ'])
+            else:
+                args.session = ''
             if not os.path.isabs(args.directory):
                 args.directory = os.path.join(data['cwd'], args.directory)
             focused_os_window = os_window_id = 0

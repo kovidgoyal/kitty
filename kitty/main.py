@@ -80,12 +80,16 @@ def set_custom_ibeam_cursor() -> None:
 def talk_to_instance(args: CLIOptions) -> None:
     import json
     import socket
-    stdin = ''
+    session_data = ''
     if args.session == '-':
-        stdin = sys.stdin.read()
+        session_data = sys.stdin.read()
+    elif args.session:
+        with open(args.session) as f:
+            session_data = f.read()
+
     data = {'cmd': 'new_instance', 'args': tuple(sys.argv), 'cmdline_args_for_open': getattr(sys, 'cmdline_args_for_open', []),
             'startup_id': os.environ.get('DESKTOP_STARTUP_ID'), 'activation_token': os.environ.get('XDG_ACTIVATION_TOKEN'),
-            'cwd': os.getcwd(), 'stdin': stdin}
+            'cwd': os.getcwd(), 'session_data': session_data, 'environ': dict(os.environ)}
     notify_socket = None
     if args.wait_for_single_instance_window_close:
         address = f'\0{appname}-os-window-close-notify-{os.getpid()}-{os.geteuid()}'
@@ -461,7 +465,7 @@ def _main() -> None:
     if cli_opts.detach:
         if cli_opts.session == '-':
             from .session import PreReadSession
-            cli_opts.session = PreReadSession(sys.stdin.read())
+            cli_opts.session = PreReadSession(sys.stdin.read(), os.environ)
         detach()
     if cli_opts.replay_commands:
         from kitty.client import main as client_main

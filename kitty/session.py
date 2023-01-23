@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import shlex
 import sys
-from typing import TYPE_CHECKING, Generator, Iterator, List, Optional, Tuple, Union
+from contextlib import suppress
+from functools import partial
+from typing import TYPE_CHECKING, Callable, Generator, Iterator, List, Mapping, Optional, Tuple, Union
 
 from .cli_stub import CLIOptions
 from .constants import kitten_exe
@@ -12,7 +15,7 @@ from .options.types import Options
 from .options.utils import resize_window, to_layout_names, window_size
 from .os_window_size import WindowSize, WindowSizeData, WindowSizes
 from .typing import SpecialWindowInstance
-from .utils import log_error, resolve_custom_file, resolved_shell
+from .utils import expandvars, log_error, resolve_custom_file, resolved_shell
 
 if TYPE_CHECKING:
     from .launch import LaunchSpec
@@ -73,11 +76,22 @@ class Session:
             raise ValueError(f'{val} is not a valid layout')
         self.tabs[-1].layout = val
 
-    def add_window(self, cmd: Union[None, str, List[str]]) -> None:
+    def add_window(self, cmd: Union[None, str, List[str]], expand: Callable[[str], str] = lambda x: x) -> None:
         from .launch import parse_launch_args
+        needs_expandvars = False
         if isinstance(cmd, str):
+            needs_expandvars = True
             cmd = shlex.split(cmd)
         spec = parse_launch_args(cmd)
+        if needs_expandvars:
+            assert isinstance(cmd, list)
+            limit = len(cmd)
+            if len(spec.args):
+                with suppress(ValueError):
+                    limit = cmd.index(spec.args[0])
+            cmd = [(expand(x) if i < limit else x) for i, x in enumerate(cmd)]
+            spec = parse_launch_args(cmd)
+
         t = self.tabs[-1]
         if t.next_title and not spec.opts.window_title:
             spec.opts.window_title = t.next_title
@@ -113,7 +127,7 @@ class Session:
         self.tabs[-1].cwd = val
 
 
-def parse_session(raw: str, opts: Options) -> Generator[Session, None, None]:
+def parse_session(raw: str, opts: Options, environ: Optional[Mapping[str, str]] = None) -> Generator[Session, None, None]:
 
     def finalize_session(ans: Session) -> Session:
         from .tabs import SpecialWindow
@@ -122,6 +136,9 @@ def parse_session(raw: str, opts: Options) -> Generator[Session, None, None]:
                 t.windows.append(WindowSpec(SpecialWindow(cmd=resolved_shell(opts))))
         return ans
 
+    if environ is None:
+        environ = os.environ
+    expand = partial(expandvars, env=environ, fallback_to_os_env=False)
     ans = Session()
     ans.add_tab(opts)
     for line in raw.splitlines():
@@ -133,6 +150,8 @@ def parse_session(raw: str, opts: Options) -> Generator[Session, None, None]:
             else:
                 cmd, rest = parts
             cmd, rest = cmd.strip(), rest.strip()
+            if cmd != 'launch':
+                rest = expand(rest)
             if cmd == 'new_tab':
                 ans.add_tab(opts, rest)
             elif cmd == 'new_os_window':
@@ -142,7 +161,7 @@ def parse_session(raw: str, opts: Options) -> Generator[Session, None, None]:
             elif cmd == 'layout':
                 ans.set_layout(rest)
             elif cmd == 'launch':
-                ans.add_window(rest)
+                ans.add_window(rest, expand)
             elif cmd == 'focus':
                 ans.focus()
             elif cmd == 'focus_os_window':
@@ -167,9 +186,10 @@ def parse_session(raw: str, opts: Options) -> Generator[Session, None, None]:
 
 class PreReadSession(str):
 
-    def __new__(cls, val: str) -> 'PreReadSession':
+    def __new__(cls, val: str, associated_environ: Mapping[str, str]) -> 'PreReadSession':
         ans: PreReadSession = str.__new__(cls, val)
         ans.pre_read = True  # type: ignore
+        ans.associated_environ = associated_environ  # type: ignore
         return ans
 
 
@@ -179,11 +199,13 @@ def create_sessions(
     special_window: Optional['SpecialWindowInstance'] = None,
     cwd_from: Optional['CwdRequest'] = None,
     respect_cwd: bool = False,
-    default_session: Optional[str] = None
+    default_session: Optional[str] = None,
 ) -> Iterator[Session]:
     if args and args.session:
+        environ: Optional[Mapping[str, str]] = None
         if isinstance(args.session, PreReadSession):
             session_data = '' + str(args.session)
+            environ = args.session.associated_environ  # type: ignore
         else:
             if args.session == '-':
                 f = sys.stdin
@@ -191,7 +213,7 @@ def create_sessions(
                 f = open(resolve_custom_file(args.session))
             with f:
                 session_data = f.read()
-        yield from parse_session(session_data, opts)
+        yield from parse_session(session_data, opts, environ=environ)
         return
     if default_session and default_session != 'none':
         try:

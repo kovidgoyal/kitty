@@ -890,8 +890,8 @@ Detach from the controlling terminal, if any.
 completion=type:file ext:session relative:conf group:"Session files"
 Path to a file containing the startup :italic:`session` (tabs, windows, layout,
 programs). Use - to read from STDIN. See the :file:`README` file for details and
-an example. Environment variables are expanded, relative paths are resolved relative
-to the kitty configuration directory.
+an example. Environment variables in the file name are expanded,
+relative paths are resolved relative to the kitty configuration directory.
 
 
 --hold
