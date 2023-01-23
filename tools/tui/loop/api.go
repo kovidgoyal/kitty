@@ -133,6 +133,15 @@ func OnlyDisambiguateKeys(self *Loop) {
 	self.terminal_options.kitty_keyboard_mode = 0b1
 }
 
+func (self *Loop) FullKeyboardProtocol() *Loop {
+	self.terminal_options.kitty_keyboard_mode = 0b11111
+	return self
+}
+
+func FullKeyboardProtocol(self *Loop) {
+	self.terminal_options.kitty_keyboard_mode = 0b11111
+}
+
 func (self *Loop) MouseTrackingMode(mt MouseTracking) *Loop {
 	self.terminal_options.mouse_tracking = mt
 	return self
