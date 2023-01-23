@@ -75,7 +75,7 @@ func (self *Selector) Wait(timeout time.Duration) (num_ready int, err error) {
 		self.read_set.Zero()
 		self.write_set.Zero()
 		self.err_set.Zero()
-		return 0, nil
+		return 0, err
 	}
 	return
 }

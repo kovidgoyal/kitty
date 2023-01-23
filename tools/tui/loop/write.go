@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"kitty/tools/tty"
 	"kitty/tools/utils"
 )
@@ -143,7 +145,7 @@ func write_to_tty(
 	wait_for_write_available := func() {
 		for {
 			n, err := selector.WaitForever()
-			if err != nil {
+			if err != nil && err != unix.EINTR {
 				err_channel <- err
 				keep_going = false
 				return

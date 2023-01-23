@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 
+	"golang.org/x/sys/unix"
+
 	"kitty/tools/tty"
 	"kitty/tools/utils"
 )
@@ -56,7 +58,7 @@ func read_from_tty(pipe_r *os.File, term *tty.Term, results_channel chan<- []byt
 	wait_for_read_available := func() {
 		for {
 			n, err := selector.WaitForever()
-			if err != nil {
+			if err != nil && err != unix.EINTR {
 				err_channel <- err
 				keep_going = false
 				return
