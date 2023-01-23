@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, DefaultDict, Dict, Generator, List, Optional, 
 
 import kitty.fast_data_types as fast_data_types
 
-from .constants import handled_signals, is_freebsd, is_macos, kitten_exe, kitty_base_dir, shell_path, terminfo_dir
+from .constants import handled_signals, is_freebsd, is_macos, kitten_exe, kitty_base_dir, shell_path, terminfo_dir, wrapped_kitten_names
 from .types import run_once
 from .utils import log_error, which
 
@@ -185,16 +185,31 @@ class ProcessDesc(TypedDict):
     cmdline: Optional[Sequence[str]]
 
 
-def is_prewarmable(argv: Sequence[str]) -> bool:
+def is_prewarmable(argv: List[str]) -> Tuple[bool, List[str]]:
     if len(argv) < 3 or os.path.basename(argv[0]) != 'kitty':
-        return False
-    if argv[1][:1] not in '@+':
-        return False
-    if argv[1][0] == '@':
-        return True
+        return False, argv
+    if argv[1][:1] != '+':
+        return False, argv
+    sw = ''
     if argv[1] == '+':
-        return argv[2] != 'open'
-    return argv[1] != '+open'
+        which = argv[2]
+        if len(argv) > 3:
+            sw = argv[3]
+    else:
+        which = argv[1][1:]
+        if len(argv) > 2:
+            sw = argv[2]
+    if which == 'open':
+        return False, argv
+    if which == 'kitten' and sw in wrapped_kitten_names():
+        argv = list(argv)
+        argv[0] = kitten_exe()
+        if argv[1] == '+':
+            del argv[1:3]
+        else:
+            del argv[1]
+        return False, argv
+    return True, argv
 
 
 @run_once
@@ -281,7 +296,7 @@ class Child:
         self.forked = True
         master, slave = openpty()
         stdin, self.stdin = self.stdin, None
-        self.is_prewarmed = is_prewarmable(self.argv)
+        self.is_prewarmed, self.argv = is_prewarmable(self.argv)
         if not self.is_prewarmed:
             ready_read_fd, ready_write_fd = os.pipe()
             os.set_inheritable(ready_write_fd, False)

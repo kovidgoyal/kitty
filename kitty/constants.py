@@ -6,7 +6,7 @@ import os
 import pwd
 import sys
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Iterator, NamedTuple, Optional, Set
+from typing import TYPE_CHECKING, Any, FrozenSet, Iterator, NamedTuple, Optional, Set
 
 from .types import run_once
 
@@ -296,3 +296,9 @@ def local_docs() -> str:
         if os.path.isdir(q):
             return q
     return ''
+
+
+@run_once
+def wrapped_kitten_names() -> FrozenSet[str]:
+    import kitty.fast_data_types as f
+    return frozenset(f.wrapped_kitten_names())
