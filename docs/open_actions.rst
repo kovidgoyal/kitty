@@ -68,6 +68,13 @@ some special variables, documented below:
     The path, query and fragment portions of the URL, without any
     unquoting.
 
+``EDITOR``
+    The terminal based text editor. The configured :opt:`editor` in
+    :file:`kitty.conf` is preferred.
+
+``SHELL``
+    The path to the shell. The configured :opt:`shell` in :file:`kitty.conf` is
+    preferred, without arguments.
 
 .. note::
    You can use the :opt:`action_alias` option just as in :file:`kitty.conf` to
