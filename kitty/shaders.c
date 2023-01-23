@@ -570,6 +570,10 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         S(CELL_PROGRAM, dim_opacity, OPT(dim_opacity), 1f); S(CELL_FG_PROGRAM, dim_opacity, OPT(dim_opacity), 1f);
         S(CELL_BG_PROGRAM, defaultbg, OPT(background), 1f);
 #undef S
+#define SV(prog, name, num, val, type) { bind_program(prog); glUniform##type(glGetUniformLocation(program_id(prog), #name), num, val); }
+        SV(CELL_PROGRAM, gamma_lut, 256, srgb_lut, 1fv); SV(CELL_FG_PROGRAM, gamma_lut, 256, srgb_lut, 1fv);
+        SV(CELL_BG_PROGRAM, gamma_lut, 256, srgb_lut, 1fv); SV(CELL_SPECIAL_PROGRAM, gamma_lut, 256, srgb_lut, 1fv);
+#undef SV
         cell_uniform_data.constants_set = true;
     }
     if (current_inactive_text_alpha != cell_uniform_data.prev_inactive_text_alpha || force) {
