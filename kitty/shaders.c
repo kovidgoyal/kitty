@@ -10,6 +10,7 @@
 #include "colors.h"
 #include <stddef.h>
 #include "window_logo.h"
+#include "srgb_gamma.h"
 
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
 #define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
@@ -28,6 +29,16 @@ typedef struct {
 
 static const SpriteMap NEW_SPRITE_MAP = { .xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1 };
 static GLint max_texture_size = 0, max_array_texture_layers = 0;
+
+GLfloat
+srgb_color(uint8_t color) {
+    return srgb_lut[color];
+}
+
+void
+color_vec3(GLint location, color_type color) {
+    glUniform3f(location, srgb_lut[(color >> 16) & 0xFF], srgb_lut[(color >> 8) & 0xFF], srgb_lut[color & 0xFF]);
+}
 
 SPRITE_MAP_HANDLE
 alloc_sprite_map(unsigned int cell_width, unsigned int cell_height) {
@@ -498,9 +509,7 @@ draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen
     gpu_data_for_centered_image(data, screen_width, screen_height, width, height);
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
     glUniform1i(cell_uniform_data.amask_image_loc, GRAPHICS_UNIT);
-#define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
-    glUniform3f(cell_uniform_data.amask_fg_loc, CV3(OPT(foreground)));
-#undef CV3
+    color_vec3(cell_uniform_data.amask_fg_loc, OPT(foreground));
     glUniform1f(cell_uniform_data.amask_premult_loc, os_window->is_semi_transparent ? 1.f : 0.f);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, data);
     glEnable(GL_BLEND);
@@ -536,7 +545,7 @@ draw_tint(bool premult, Screen *screen, const CellRenderData *crd) {
     if (premult) { BLEND_PREMULT } else { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT }
     bind_program(TINT_PROGRAM);
     color_type window_bg = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_bg, screen->color_profile->configured.default_bg).rgb;
-#define C(shift) ((((GLfloat)((window_bg >> shift) & 0xFF)) / 255.0f)) * premult_factor
+#define C(shift) srgb_color((window_bg >> shift) & 0xFF) * premult_factor
     GLfloat premult_factor = premult ? OPT(background_tint) : 1.0f;
     glUniform4f(tint_program_layout.tint_color_location, C(16), C(8), C(0), OPT(background_tint));
 #undef C
@@ -707,9 +716,7 @@ draw_window_number(OSWindow *os_window, Screen *screen, const CellRenderData *cr
     BLEND_PREMULT;
     glUniform1i(cell_uniform_data.amask_image_loc, GRAPHICS_UNIT);
     color_type digit_color = colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg);
-#define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
-    glUniform3f(cell_uniform_data.amask_fg_loc, CV3(digit_color));
-#undef CV3
+    color_vec3(cell_uniform_data.amask_fg_loc, digit_color);
     glUniform1f(cell_uniform_data.amask_premult_loc, 1.f);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, ird);
     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, os_window->gvao_idx, ird, 0, 1);
@@ -726,7 +733,7 @@ draw_visual_bell_flash(GLfloat intensity, const CellRenderData *crd, Screen *scr
 #define COLOR(name, fallback) colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback)
     const color_type flash = !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
 #undef COLOR
-#define C(shift) ((((GLfloat)((flash >> shift) & 0xFF)) / 255.0f) )
+#define C(shift) srgb_color((flash >> shift) & 0xFF)
     const GLfloat r = C(16), g = C(8), b = C(0);
     const GLfloat max_channel = r > g ? (r > b ? r : b) : (g > b ? g : b);
 #undef C
@@ -862,7 +869,7 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
 void
 blank_canvas(float background_opacity, color_type color) {
     // See https://github.com/glfw/glfw/issues/1538 for why we use pre-multiplied alpha
-#define C(shift) ((((GLfloat)((color >> shift) & 0xFF)) / 255.0f) * background_opacity)
+#define C(shift) srgb_color((color >> shift) & 0xFF)
     glClearColor(C(16), C(8), C(0), background_opacity);
 #undef C
     glClear(GL_COLOR_BUFFER_BIT);
