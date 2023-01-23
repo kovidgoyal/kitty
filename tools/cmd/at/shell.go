@@ -194,6 +194,17 @@ func completions(before_cursor, after_cursor string) (ans *cli.Completions) {
 	root := cli.NewRootCommand()
 	c := root.AddSubCommand(&cli.Command{Name: "kitten"})
 	EntryPoint(c)
+	a := c.FindSubCommand("@")
+
+	add_sc := func(cmd, desc string) {
+		var x *cli.Command
+		if x = a.FindSubCommand(cmd); x == nil {
+			x = a.AddSubCommand(&cli.Command{Name: cmd})
+		}
+		x.ShortDescription = desc
+	}
+	add_sc("help", "Show help")
+	add_sc("exit", "Exit the kitty shell")
 	root.Validate()
 	ans = root.GetCompletions(argv, nil)
 	ans.CurrentWordIdx = position_of_last_arg - len(prefix)
