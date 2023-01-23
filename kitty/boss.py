@@ -122,7 +122,7 @@ from .prewarm import PrewarmProcess
 from .rgb import color_from_int
 from .session import Session, create_sessions, get_os_window_sizing_data
 from .tabs import SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
-from .types import _T, AsyncResponse, WindowSystemMouseEvent, ac
+from .types import _T, AsyncResponse, SingleInstanceData, WindowSystemMouseEvent, ac
 from .typing import PopenType, TypedDict
 from .utils import (
     cleanup_ssh_control_masters,
@@ -748,12 +748,12 @@ class Boss:
             from kitty.remote_control import encode_response_for_peer
             return encode_response_for_peer(response)
 
-        data = json.loads(msg_bytes.decode('utf-8'))
+        data:SingleInstanceData = json.loads(msg_bytes.decode('utf-8'))
         if isinstance(data, dict) and data.get('cmd') == 'new_instance':
             from .cli_stub import CLIOptions
-            startup_id = data.get('startup_id')
-            activation_token = data.get('activation_token', '')
-            args, rest = parse_args(data['args'][1:], result_class=CLIOptions)
+            startup_id = data['environ'].get('DESKTOP_STARTUP_ID', '')
+            activation_token = data['environ'].get('XDG_ACTIVATION_TOKEN', '')
+            args, rest = parse_args(list(data['args'][1:]), result_class=CLIOptions)
             cmdline_args_for_open = data.get('cmdline_args_for_open')
             if cmdline_args_for_open:
                 self.launch_urls(*cmdline_args_for_open, no_replace_window=True)
@@ -779,9 +779,9 @@ class Boss:
                 if data.get('notify_on_os_window_death'):
                     self.os_window_death_actions[os_window_id] = partial(self.notify_on_os_window_death, data['notify_on_os_window_death'])
             if focused_os_window > 0:
-                focus_os_window(focused_os_window, True, activation_token or '')
+                focus_os_window(focused_os_window, True, activation_token)
             elif activation_token and is_wayland() and os_window_id:
-                focus_os_window(os_window_id, True, activation_token or '')
+                focus_os_window(os_window_id, True, activation_token)
         else:
             log_error('Unknown message received from peer, ignoring')
         return None
