@@ -75,11 +75,16 @@ class CompletionSpec:
         relative_to = 'CONFIG' if self.relative_to is CompletionRelativeTo.config_dir else 'CWD'
         if self.type is CompletionType.file:
             g = serialize_as_go_string(self.group or 'Files')
+            added = False
             if self.extensions:
+                added = True
                 pats = (f'"*.{ext}"' for ext in self.extensions)
                 completers.append(f'cli.FnmatchCompleter("{g}", cli.{relative_to}, ' + ', '.join(pats) + ')')
             if self.mime_patterns:
+                added = True
                 completers.append(f'cli.MimepatCompleter("{g}", cli.{relative_to}, ' + ', '.join(f'"{p}"' for p in self.mime_patterns) + ')')
+            if not added:
+                completers.append(f'cli.FnmatchCompleter("{g}", cli.{relative_to}, "*")')
         if self.type is CompletionType.directory:
             g = serialize_as_go_string(self.group or 'Directories')
             completers.append(f'cli.DirectoryCompleter("{g}", cli.{relative_to})')
