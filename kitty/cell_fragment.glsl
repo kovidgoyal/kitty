@@ -34,32 +34,36 @@ in float colored_sprite;
 out vec4 final_color;
 
 // Util functions {{{
-vec4 alpha_blend(vec3 over, float over_alpha, vec3 under, float under_alpha) {
+vec4 alpha_blend(vec4 over, vec4 under) {
     // Alpha blend two colors returning the resulting color pre-multiplied by its alpha
     // and its alpha.
     // See https://en.wikipedia.org/wiki/Alpha_compositing
-    float alpha = mix(under_alpha, 1.0f, over_alpha);
-    vec3 combined_color = mix(under * under_alpha, over, over_alpha);
+    float alpha = mix(under.a, 1.0f, over.a);
+    vec3 combined_color = mix(under.rgb * under.a, over.rgb, over.a);
     return vec4(combined_color, alpha);
 }
 
-vec3 premul_blend(vec3 over, float over_alpha, vec3 under) {
-    return over + (1.0f - over_alpha) * under;
-}
-
-vec4 alpha_blend_premul(vec3 over, float over_alpha, vec3 under, float under_alpha) {
+vec4 alpha_blend_premul(vec4 over, vec4 under) {
     // Same as alpha_blend() except that it assumes over and under are both premultiplied.
-    float alpha = mix(under_alpha, 1.0f, over_alpha);
-    return vec4(premul_blend(over, over_alpha, under), alpha);
+    float inv_over_alpha = 1.0f - over.a;
+    float alpha = over.a + under.a * inv_over_alpha;
+    return vec4(over.rgb + under.rgb * inv_over_alpha, alpha);
 }
 
-vec4 blend_onto_opaque_premul(vec3 over, float over_alpha, vec3 under) {
+vec4 alpha_blend_premul(vec4 over, vec3 under) {
     // same as alpha_blend_premul with under_alpha = 1 outputs a blended color
     // with alpha 1 which is effectively pre-multiplied since alpha is 1
-    return vec4(premul_blend(over, over_alpha, under), 1.0);
+    float inv_over_alpha = 1.0f - over.a;
+    return vec4(over.rgb + under.rgb * inv_over_alpha, 1.0);
 }
 
+vec4 vec4_premul(vec3 rgb, float a) {
+    return vec4(rgb * a, a);
+}
 
+vec4 vec4_premul(vec4 rgba) {
+    return vec4(rgba.rgb * rgba.a, rgba.a);
+}
 // }}}
 
 
@@ -105,7 +109,7 @@ vec4 calculate_foreground() {
     // Since strike and text are the same color, we simply add the alpha values
     float combined_alpha = min(text_alpha + strike_alpha, 1.0f);
     // Underline color might be different, so alpha blend
-    vec4 ans = alpha_blend(fg, combined_alpha * effective_text_alpha, decoration_fg, underline_alpha * effective_text_alpha);
+    vec4 ans = alpha_blend(vec4(fg, combined_alpha * effective_text_alpha), vec4(decoration_fg, underline_alpha * effective_text_alpha));
     return mix(ans, cursor_color_vec, cursor_alpha);
 }
 #endif
@@ -114,25 +118,25 @@ void main() {
 #ifdef SIMPLE
     vec4 fg = calculate_foreground();
 #ifdef TRANSPARENT
-    final_color = alpha_blend_premul(fg.rgb, fg.a, background.rgb * bg_alpha, bg_alpha);
+    final_color = alpha_blend_premul(fg, vec4_premul(background, bg_alpha));
 #else
-    final_color = blend_onto_opaque_premul(fg.rgb, fg.a, background.rgb);
+    final_color = alpha_blend_premul(fg, background);
 #endif
 #endif
 
 #ifdef SPECIAL
 #ifdef TRANSPARENT
-    final_color = vec4(background.rgb * bg_alpha, bg_alpha);
+    final_color = vec4_premul(background, bg_alpha);
 #else
-    final_color = vec4(background.rgb, bg_alpha);
+    final_color = vec4(background, bg_alpha);
 #endif
 #endif
 
 #ifdef BACKGROUND
 #if defined(TRANSPARENT)
-    final_color = vec4(background.rgb * bg_alpha, bg_alpha);
+    final_color = vec4_premul(background, bg_alpha);
 #else
-    final_color = vec4(background.rgb, draw_bg);
+    final_color = vec4(background, draw_bg);
 #endif
 #endif
 
