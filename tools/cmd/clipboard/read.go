@@ -171,7 +171,7 @@ func (self *Output) assign_mime_type(available_mimes []string, aliases map[strin
 			}
 		}
 	}
-	if strings.HasPrefix(self.mime_type, "text/") {
+	if is_textual_mime(self.mime_type) {
 		for _, mt := range available_mimes {
 			if mt == "text/plain" {
 				self.remote_mime_type = mt

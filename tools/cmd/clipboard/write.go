@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"kitty/tools/tui/loop"
@@ -26,12 +25,20 @@ type Input struct {
 	extra_mime_types []string
 }
 
-func (self *Input) has_mime_matching(pat *regexp.Regexp) bool {
-	if pat.MatchString(self.mime_type) {
+func is_textual_mime(x string) bool {
+	return strings.HasPrefix(x, "text/")
+}
+
+func is_text_plain_mime(x string) bool {
+	return x == "text/plain"
+}
+
+func (self *Input) has_mime_matching(predicate func(string) bool) bool {
+	if predicate(self.mime_type) {
 		return true
 	}
 	for _, i := range self.extra_mime_types {
-		if pat.MatchString(i) {
+		if predicate(i) {
 			return true
 		}
 	}
@@ -51,20 +58,18 @@ func write_loop(inputs []*Input, opts *Options) (err error) {
 	}
 	num_text_mimes := 0
 	has_text_plain := false
-	text_pat := regexp.MustCompile("text/.+")
-	text_plain_pat := regexp.MustCompile("text/plain")
 	for _, i := range inputs {
 		i.extra_mime_types = aliases[i.mime_type]
-		if i.has_mime_matching(text_pat) {
+		if i.has_mime_matching(is_textual_mime) {
 			num_text_mimes++
-			if !has_text_plain && i.has_mime_matching(text_plain_pat) {
+			if !has_text_plain && i.has_mime_matching(is_text_plain_mime) {
 				has_text_plain = true
 			}
 		}
 	}
 	if num_text_mimes > 0 && !has_text_plain {
 		for _, i := range inputs {
-			if i.has_mime_matching(text_pat) {
+			if i.has_mime_matching(is_textual_mime) {
 				i.extra_mime_types = append(i.extra_mime_types, "text/plain")
 				break
 			}
