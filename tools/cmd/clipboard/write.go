@@ -25,8 +25,17 @@ type Input struct {
 	extra_mime_types []string
 }
 
+var known_textual_mimes = map[string]bool{
+	"application/x-sh":          true,
+	"application/x-csh":         true,
+	"application/x-shellscript": true,
+	"application/json":          true,
+	"application/rss+xml":       true,
+	"application/xhtml+xml":     true,
+}
+
 func is_textual_mime(x string) bool {
-	return strings.HasPrefix(x, "text/")
+	return strings.HasPrefix(x, "text/") || known_textual_mimes[x]
 }
 
 func is_text_plain_mime(x string) bool {
