@@ -20,13 +20,13 @@ from kitty.cli import (
     parse_option_spec,
     serialize_as_go_string,
 )
+from kitty.guess_mime_type import text_mimes
 from kitty.key_encoding import config_mod_map
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases
 from kitty.options.types import Options
 from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
 from kitty.remote_control import global_options_spec
 from kitty.rgb import color_names
-from kitty.guess_mime_type import text_mimes
 
 changed: List[str] = []
 
