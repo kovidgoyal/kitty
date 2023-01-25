@@ -30,6 +30,10 @@ var known_textual_mimes = map[string]bool{
 	"application/x-csh":         true,
 	"application/x-shellscript": true,
 	"application/json":          true,
+	"application/x-yaml":        true,
+	"application/yaml":          true,
+	"application/x-toml":        true,
+	"application/toml":          true,
 	"application/rss+xml":       true,
 	"application/xhtml+xml":     true,
 }
