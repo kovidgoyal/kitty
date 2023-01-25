@@ -83,7 +83,7 @@ def create_shared_memory(data: Any, prefix: str) -> str:
 
     from kitty.shm import SharedMemory
     db = json.dumps(data).encode('utf-8')
-    with SharedMemory(size=len(db) + SharedMemory.num_bytes_for_size, mode=stat.S_IREAD, prefix=prefix) as shm:
+    with SharedMemory(size=len(db) + SharedMemory.num_bytes_for_size, prefix=prefix) as shm:
         shm.write_data_with_size(db)
         shm.flush()
         atexit.register(shm.unlink)

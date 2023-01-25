@@ -95,6 +95,8 @@ Detailed list of changes
 
 - Fix using :opt:`cursor` = ``none`` not working on text that has reverse video (:iss:`5897`)
 
+- Fix ssh kitten not working on FreeBSD (:iss:`5928`)
+
 
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
