@@ -21,7 +21,20 @@ known_extensions = {
 }
 
 
-text_mimes = ('application/javascript', 'application/x-sh', 'application/x-shellscript', 'application/json')
+text_mimes = (
+    'application/x-sh',
+    'application/x-csh',
+    'application/x-shellscript',
+    'application/javascript',
+    'application/json',
+    'application/xml',
+    'application/x-yaml',
+    'application/yaml',
+    'application/x-toml',
+    'application/toml',
+    'application/rss+xml',
+    'application/xhtml+xml',
+)
 
 
 def is_rc_file(path: str) -> bool:
