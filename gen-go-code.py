@@ -26,6 +26,7 @@ from kitty.options.types import Options
 from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
 from kitty.remote_control import global_options_spec
 from kitty.rgb import color_names
+from kitty.guess_mime_type import text_mimes
 
 changed: List[str] = []
 
@@ -574,6 +575,14 @@ def generate_mimetypes() -> str:
     return '\n'.join(ans)
 
 
+def generate_textual_mimetypes() -> str:
+    ans = ['package utils', 'var KnownTextualMimes = map[string]bool{',]
+    for k in text_mimes:
+        ans.append(f'  "{serialize_as_go_string(k)}": true,')
+    ans.append('}')
+    return '\n'.join(ans)
+
+
 def main() -> None:
     with replace_if_needed('constants_generated.go') as f:
         f.write(generate_constants())
@@ -585,6 +594,9 @@ def main() -> None:
         f.write(generate_spinners())
     with replace_if_needed('tools/utils/mimetypes_generated.go') as f:
         f.write(generate_mimetypes())
+    with replace_if_needed('tools/utils/mimetypes_textual_generated.go') as f:
+        f.write(generate_textual_mimetypes())
+
     update_completion()
     update_at_commands()
     kitten_clis()
