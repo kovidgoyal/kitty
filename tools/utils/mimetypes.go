@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io/fs"
 	"mime"
 	"os"
 	"path/filepath"
@@ -47,7 +48,7 @@ func load_mime_file(filename string, mime_map map[string]string) error {
 func load_user_mime_maps() {
 	conf_path := filepath.Join(ConfigDir(), "mime.types")
 	err := load_mime_file(conf_path, user_defined_mime_map)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		fmt.Fprintln(os.Stderr, "Failed to parse", conf_path, "for MIME types with error:", err)
 	}
 }
