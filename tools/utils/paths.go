@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	"golang.org/x/sys/unix"
 )
@@ -56,21 +57,26 @@ func Abspath(path string) string {
 	return path
 }
 
-var config_dir string
+var config_dir, kitty_exe, cache_dir string
+var kitty_exe_err error
+var config_dir_once, kitty_exe_once, cache_dir_once sync.Once
 
-func KittyExe() (string, error) {
+func find_kitty_exe() {
 	exe, err := os.Executable()
-	if err != nil {
-		return "", err
+	if err == nil {
+		kitty_exe = filepath.Join(filepath.Dir(exe), "kitty")
+		kitty_exe_err = unix.Access(kitty_exe, unix.X_OK)
+	} else {
+		kitty_exe_err = err
 	}
-	ans := filepath.Join(filepath.Dir(exe), "kitty")
-	return ans, unix.Access(ans, unix.X_OK)
 }
 
-func ConfigDir() string {
-	if config_dir != "" {
-		return config_dir
-	}
+func KittyExe() (string, error) {
+	kitty_exe_once.Do(find_kitty_exe)
+	return kitty_exe, kitty_exe_err
+}
+
+func find_config_dir() {
 	if os.Getenv("KITTY_CONFIG_DIRECTORY") != "" {
 		config_dir = Abspath(Expanduser(os.Getenv("KITTY_CONFIG_DIRECTORY")))
 	} else {
@@ -98,16 +104,14 @@ func ConfigDir() string {
 			}
 		}
 	}
+}
 
+func ConfigDir() string {
+	config_dir_once.Do(find_config_dir)
 	return config_dir
 }
 
-var cache_dir string
-
-func CacheDir() string {
-	if cache_dir != "" {
-		return cache_dir
-	}
+func find_cache_dir() {
 	candidate := ""
 	if edir := os.Getenv("KITTY_CACHE_DIRECTORY"); edir != "" {
 		candidate = Abspath(Expanduser(edir))
@@ -121,7 +125,12 @@ func CacheDir() string {
 		candidate = filepath.Join(Expanduser(candidate), "kitty")
 	}
 	os.MkdirAll(candidate, 0o755)
-	return candidate
+	cache_dir = candidate
+}
+
+func CacheDir() string {
+	cache_dir_once.Do(find_cache_dir)
+	return cache_dir
 }
 
 type Walk_callback func(path, abspath string, d fs.DirEntry, err error) error
