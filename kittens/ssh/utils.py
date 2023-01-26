@@ -79,7 +79,6 @@ def set_cwd_in_cmdline(cwd: str, argv: List[str]) -> None:
 def create_shared_memory(data: Any, prefix: str) -> str:
     import atexit
     import json
-    import stat
 
     from kitty.shm import SharedMemory
     db = json.dumps(data).encode('utf-8')
