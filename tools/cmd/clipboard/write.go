@@ -17,7 +17,7 @@ import (
 var _ = fmt.Print
 
 type Input struct {
-	src              *os.File
+	src              io.Reader
 	arg              string
 	ext              string
 	is_stream        bool
@@ -189,17 +189,28 @@ func run_set_loop(opts *Options, args []string) (err error) {
 	defer func() {
 		for _, i := range inputs {
 			if i.src != nil {
-				i.src.Close()
+				rc, ok := i.src.(io.Closer)
+				if ok {
+					rc.Close()
+				}
 			}
 		}
 	}()
 
 	for i, arg := range args {
-		f, err := os.Open(arg)
-		if err != nil {
-			return fmt.Errorf("Failed to open %s with error: %w", arg, err)
+		if arg == "/dev/stdin" {
+			f, _, err := preread_stdin()
+			if err != nil {
+				return err
+			}
+			inputs[i] = &Input{arg: arg, src: f, is_stream: true}
+		} else {
+			f, err := os.Open(arg)
+			if err != nil {
+				return fmt.Errorf("Failed to open %s with error: %w", arg, err)
+			}
+			inputs[i] = &Input{arg: arg, src: f, ext: filepath.Ext(arg)}
 		}
-		inputs[i] = &Input{arg: arg, src: f, ext: filepath.Ext(arg), is_stream: arg == "/dev/stdin"}
 		if i < len(opts.Mime) {
 			inputs[i].mime_type = opts.Mime[i]
 		} else if inputs[i].is_stream {
@@ -211,6 +222,8 @@ func run_set_loop(opts *Options, args []string) (err error) {
 			return fmt.Errorf("Could not guess MIME type for %s use the --mime option to specify a MIME type", arg)
 		}
 		to_process[i] = inputs[i]
+		if to_process[i].is_stream {
+		}
 	}
 	return write_loop(to_process, opts)
 }
