@@ -495,6 +495,8 @@ def main(args: List[str]) -> Response:
         loop.loop(phandler)
         return {'items': items, 'response': phandler.response}
 
+    # we do this file descriptor dance to get readline to work even when STDOUT
+    # is redirected
     orig_stdout = os.dup(sys.stdout.fileno())
     try:
         with open(os.ctermid(), 'r') as tty:
