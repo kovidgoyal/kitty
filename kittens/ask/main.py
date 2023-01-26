@@ -495,16 +495,20 @@ def main(args: List[str]) -> Response:
         loop.loop(phandler)
         return {'items': items, 'response': phandler.response}
 
-    import readline as rl
-    readline = rl
-    init_readline()
-    response = None
+    orig_stdout = os.dup(sys.stdout.fileno())
+    try:
+        with open(os.ctermid(), 'r') as tty:
+            os.dup2(tty.fileno(), sys.stdin.fileno())
+        with open(os.ctermid(), 'w') as tty:
+            os.dup2(tty.fileno(), sys.stdout.fileno())
+        import readline as rl
+        readline = rl
+        init_readline()
+        response = None
 
-    with alternate_screen(), HistoryCompleter(cli_opts.name):
-        if cli_opts.message:
-            print(styled(cli_opts.message, bold=True))
-
-        with suppress(KeyboardInterrupt, EOFError):
+        with alternate_screen(), HistoryCompleter(cli_opts.name), suppress(KeyboardInterrupt, EOFError):
+            if cli_opts.message:
+                print(styled(cli_opts.message, bold=True))
             if cli_opts.default:
                 def prefill_text() -> None:
                     readline.insert_text(cli_opts.default or '')
@@ -514,6 +518,10 @@ def main(args: List[str]) -> Response:
                 readline.set_pre_input_hook()
             else:
                 response = input(prompt)
+        sys.stdout.flush()
+        os.dup2(orig_stdout, sys.stdout.fileno())
+    finally:
+        os.close(orig_stdout)
     return {'items': items, 'response': response}
 
 

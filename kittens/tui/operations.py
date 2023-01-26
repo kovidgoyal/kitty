@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import sys
 from contextlib import contextmanager
 from enum import Enum, auto
 from functools import wraps
-from typing import IO, Any, Callable, Dict, Generator, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, Generator, Optional, TypeVar, Union
 
 from kitty.fast_data_types import Color
 from kitty.rgb import color_as_sharp, to_color
@@ -348,13 +349,13 @@ def cursor(write: Callable[[str], None]) -> Generator[None, None, None]:
 
 
 @contextmanager
-def alternate_screen(f: Optional[IO[str]] = None) -> Generator[None, None, None]:
-    f = f or sys.stdout
-    print(set_mode(Mode.ALTERNATE_SCREEN), end='', file=f)
-    try:
-        yield
-    finally:
-        print(reset_mode(Mode.ALTERNATE_SCREEN), end='', file=f)
+def alternate_screen() -> Generator[None, None, None]:
+    with open(os.ctermid(), 'w') as f:
+        print(set_mode(Mode.ALTERNATE_SCREEN), end='', file=f, flush=True)
+        try:
+            yield
+        finally:
+            print(reset_mode(Mode.ALTERNATE_SCREEN), end='', file=f, flush=True)
 
 
 @contextmanager
