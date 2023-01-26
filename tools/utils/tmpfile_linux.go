@@ -24,7 +24,11 @@ func CreateAnonymousTemp(dir string) (*os.File, error) {
 		return os.NewFile(uintptr(fd), path), nil
 	}
 	if err == unix.ENOENT {
-		return nil, err
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: dir,
+			Err:  err,
+		}
 	}
 	f, err := os.CreateTemp(dir, "")
 	if err != nil {
