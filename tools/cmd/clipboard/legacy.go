@@ -63,40 +63,51 @@ func read_all_with_max_size(r io.Reader, max_size int) ([]byte, error) {
 	}
 }
 
-func run_plain_text_loop(opts *Options) (err error) {
-	stdin_is_tty := tty.IsTerminal(os.Stdin.Fd())
+func preread_stdin() (data_src io.Reader, tempfile *os.File, err error) {
+	// we pre-read STDIN because otherwise if the output of a command is being piped in
+	// and that command itself transmits on the tty we will break. For example
+	// kitten @ ls | kitten clipboard
 	var stdin_data []byte
-	var data_src io.Reader
-	var tempfile *os.File
-	if !stdin_is_tty {
-		// we pre-read STDIN because otherwise if the output of a command is being piped in
-		// and that command itself transmits on the tty we will break. For example
-		// kitten @ ls | kitten clipboard
-		stdin_data, err = read_all_with_max_size(os.Stdin, 2*1024*1024)
-		if err == nil {
-			os.Stdin.Close()
-		} else if err != ErrTooMuchPipedData {
-			return fmt.Errorf("Failed to read from STDIN pipe with error: %w", err)
-		}
+	stdin_data, err = read_all_with_max_size(os.Stdin, 2*1024*1024)
+	if err == nil {
+		os.Stdin.Close()
+	} else if err != ErrTooMuchPipedData {
+		os.Stdin.Close()
+		err = fmt.Errorf("Failed to read from STDIN pipe with error: %w", err)
+		return
 	}
 	if err == ErrTooMuchPipedData {
 		tempfile, err = utils.CreateAnonymousTemp("")
 		if err != nil {
-			return fmt.Errorf("Failed to create a temporary from STDIN pipe with error: %w", err)
+			return nil, nil, fmt.Errorf("Failed to create a temporary from STDIN pipe with error: %w", err)
 		}
-		defer tempfile.Close()
 		tempfile.Write(stdin_data)
 		_, err = io.Copy(tempfile, os.Stdin)
-		if err != nil {
-			return fmt.Errorf("Failed to copy data from STDIN pipe to temp file with error: %w", err)
-		}
 		os.Stdin.Close()
+		if err != nil {
+			return nil, nil, fmt.Errorf("Failed to copy data from STDIN pipe to temp file with error: %w", err)
+		}
 		tempfile.Seek(0, os.SEEK_SET)
 		data_src = tempfile
 	} else if stdin_data != nil {
 		data_src = bytes.NewBuffer(stdin_data)
 	}
+	return
+}
 
+func run_plain_text_loop(opts *Options) (err error) {
+	stdin_is_tty := tty.IsTerminal(os.Stdin.Fd())
+	var data_src io.Reader
+	var tempfile *os.File
+	if !stdin_is_tty {
+		data_src, tempfile, err = preread_stdin()
+		if err != nil {
+			return err
+		}
+		if tempfile != nil {
+			defer tempfile.Close()
+		}
+	}
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking)
 	if err != nil {
 		return
