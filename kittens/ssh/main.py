@@ -50,6 +50,9 @@ def read_data_from_shared_memory(shm_name: str) -> Any:
         shm.unlink()
         if shm.stats.st_uid != os.geteuid() or shm.stats.st_gid != os.getegid():
             raise ValueError('Incorrect owner on pwfile')
+        mode = stat.S_IMODE(shm.stats.st_mode)
+        if mode != stat.S_IREAD | stat.S_IWRITE:
+            raise ValueError('Incorrect permissions on pwfile')
         return json.loads(shm.read_data_with_size())
 
 
