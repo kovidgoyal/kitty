@@ -98,25 +98,68 @@ vec4 vec4_premul(vec4 rgba) {
  *  to the appropriate rendering pass from above.
  */
 #ifdef NEEDS_FOREGROUND
-vec4 calculate_foreground() {
-    // returns the effective foreground color in pre-multiplied form
+// sRGB luminance values
+const vec3 Y = vec3(0.2126, 0.7152, 0.0722);
+
+float linear2srgb(float x) {
+    // Approximation of linear-to-sRGB conversion
+    return pow(x, 1.0 / 2.2);
+}
+
+float srgb2linear(float x) {
+    // Approximation of sRGB-to-linear conversion
+    return pow(x, 2.2);
+}
+
+float clamp(float x) {
+    // Clamp value to suitable output range
+    return max(min(x, 1.0f), 0.0f);
+}
+
+vec4 foreground_contrast_incorrect(vec4 over, vec3 under) {
+    // Simulation of gamma-incorrect blending
+    float underL = dot(under, Y);
+    float overL = dot(over.rgb, Y);
+    // This is the original gamma-incorrect rendering, it is the solution of the following equation:
+    //
+    // linear2srgb(over * overA2 + under * (1 - overA2)) = linear2srgb(over) * over.a + linear2srgb(under) * (1 - over.a)
+    // ^ gamma correct blending with new alpha             ^ gamma incorrect blending with old alpha
+    over.a = clamp((srgb2linear(linear2srgb(overL) * over.a + linear2srgb(underL) * (1.0f - over.a)) - underL) / (overL - underL));
+    return over;
+}
+
+vec4 foreground_color() {
     vec4 text_fg = texture(sprites, sprite_pos);
-    vec3 fg = mix(foreground, text_fg.rgb, colored_sprite);
-    float text_alpha = text_fg.a;
+    return vec4(mix(foreground, text_fg.rgb, colored_sprite), text_fg.a);
+}
+
+vec4 foreground_with_decorations(vec4 text_fg) {
     float underline_alpha = texture(sprites, underline_pos).a;
     float strike_alpha = texture(sprites, strike_pos).a;
     float cursor_alpha = texture(sprites, cursor_pos).a;
     // Since strike and text are the same color, we simply add the alpha values
-    float combined_alpha = min(text_alpha + strike_alpha, 1.0f);
+    float combined_alpha = min(text_fg.a + strike_alpha, 1.0f);
     // Underline color might be different, so alpha blend
-    vec4 ans = alpha_blend(vec4(fg, combined_alpha * effective_text_alpha), vec4(decoration_fg, underline_alpha * effective_text_alpha));
+    vec4 ans = alpha_blend(vec4(text_fg.rgb, combined_alpha * effective_text_alpha), vec4(decoration_fg, underline_alpha * effective_text_alpha));
     return mix(ans, cursor_color_vec, cursor_alpha);
 }
+
+vec4 calculate_foreground() {
+    // returns the effective foreground color in pre-multiplied form
+    vec4 text_fg = foreground_color();
+    return foreground_with_decorations(text_fg);
+}
+vec4 calculate_foreground(vec3 bg) {
+    vec4 text_fg = foreground_color();
+    text_fg = foreground_contrast_incorrect(text_fg, bg);
+    return foreground_with_decorations(text_fg);
+}
+
 #endif
 
 void main() {
 #ifdef SIMPLE
-    vec4 fg = calculate_foreground();
+    vec4 fg = calculate_foreground(background);
 #ifdef TRANSPARENT
     final_color = alpha_blend_premul(fg, vec4_premul(background, bg_alpha));
 #else
