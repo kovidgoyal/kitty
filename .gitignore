@@ -9,8 +9,6 @@
 /build/
 /linux-package/
 /kitty.app/
-/compile_commands.json
-/link_commands.json
 /glad/out/
 /kitty/launcher/kitt*
 /tools/cmd/at/*_generated.go
@@ -22,5 +20,6 @@ __pycache__/
 /docs/generated/
 /.mypy_cache
 .DS_Store
+.cache
 bypy/b
 bypy/virtual-machines.conf

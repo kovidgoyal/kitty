@@ -667,7 +667,7 @@ class CompilationDatabase:
 
     def __enter__(self) -> 'CompilationDatabase':
         self.all_keys: Set[CompileKey] = set()
-        self.dbpath = os.path.abspath('compile_commands.json')
+        self.dbpath = os.path.abspath(os.path.join('build', 'compile_commands.json'))
         self.linkdbpath = os.path.join(os.path.dirname(self.dbpath), 'link_commands.json')
         try:
             with open(self.dbpath) as f:

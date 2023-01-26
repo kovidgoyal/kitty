@@ -40,7 +40,7 @@
 #include <xlocale.h>
 
 static PyObject*
-user_cache_dir() {
+user_cache_dir(void) {
     static char buf[1024];
     if (!confstr(_CS_DARWIN_USER_CACHE_DIR, buf, sizeof(buf) - 1)) return PyErr_SetFromErrno(PyExc_OSError);
     return PyUnicode_FromString(buf);
