@@ -2768,23 +2768,22 @@ this even works over SSH connections. The default setting of :code:`no`
 prevents any form of remote control. The meaning of the various values are:
 
 :code:`password`
-   Remote control requests received over both the TTY device and the socket are
-   confirmed based on passwords, see :opt:`remote_control_password`.
+    Remote control requests received over both the TTY device and the socket are
+    confirmed based on passwords, see :opt:`remote_control_password`.
 
 :code:`socket-only`
-   Remote control requests received over a socket are accepted unconditionally.
-   Requests received over the TTY are denied. See :opt:`listen_on`.
+    Remote control requests received over a socket are accepted unconditionally.
+    Requests received over the TTY are denied. See :opt:`listen_on`.
 
 :code:`socket`
-   Remote control requests received over a socket are accepted unconditionally.
-   Requests received over the TTY are confirmed based on password.
+    Remote control requests received over a socket are accepted unconditionally.
+    Requests received over the TTY are confirmed based on password.
 
 :code:`no`
-   Remote control is completely disabled.
+    Remote control is completely disabled.
 
 :code:`yes`
-   Remote control requests are always accepted.
-
+    Remote control requests are always accepted.
 '''
     )
 
