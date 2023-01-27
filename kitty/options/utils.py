@@ -329,13 +329,13 @@ def parse_marker_spec(ftype: str, parts: Sequence[str]) -> Tuple[str, Union[str,
         if ftype.startswith('i'):
             flags |= re.IGNORECASE
         if not parts or len(parts) % 2 != 0:
-            raise ValueError('No color specified in marker: {}'.format(' '.join(parts)))
+            raise ValueError('Mark group number and text/regex are not specified in pairs: {}'.format(' '.join(parts)))
         ans = []
         for i in range(0, len(parts), 2):
             try:
                 color = max(1, min(int(parts[i]), 3))
             except Exception:
-                raise ValueError(f'color {parts[i]} in marker specification is not an integer')
+                raise ValueError(f'Mark group in marker specification is not an integer: {parts[i]}')
             sspec = parts[i + 1]
             if 'regex' not in ftype:
                 sspec = re.escape(sspec)
