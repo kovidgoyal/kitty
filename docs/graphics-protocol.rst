@@ -94,7 +94,7 @@ code to demonstrate its use
 
         import "golang.org/x/sys/unix"
         fd, err := unix.Open(fd, unix.O_NOCTTY|unix.O_CLOEXEC|unix.O_NDELAY|unix.O_RDWR, 0666)
-		sz, err := unix.IoctlGetWinsize(fd, unix.TIOCGWINSZ)
+        sz, err := unix.IoctlGetWinsize(fd, unix.TIOCGWINSZ)
         fmt.Println("rows: %v columns: %v width: %v height %v", sz.Row, sz.Col, sz.Xpixel, sz.Ypixel)
 
 
