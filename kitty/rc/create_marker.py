@@ -29,7 +29,7 @@ class CreateMarker(RemoteCommand):
 type=bool-set
 Apply marker to the window this command is run in, rather than the active window.
 '''
-    args = RemoteCommand.Args(spec='MARKER SPECIFICATION', json_field='marker_spec', minimum_count=2)
+    args = RemoteCommand.Args(spec='MARKER SPECIFICATION', json_field='marker_spec', minimum_count=3)
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) < 2:
