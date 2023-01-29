@@ -1617,7 +1617,16 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     }
     if (text && [text length] > 0) {
         // Terminal.app inserts the output, do the same
-        [self insertText:text replacementRange:NSMakeRange(0, [markedText length])];
+        const char *utf8 = polymorphic_string_as_utf8(text);
+        if ([self hasMarkedText]) {
+            [self unmarkText];
+            debug_key("Clearing pre-edit because insertText called from readSelectionFromPasteboard\n");
+            GLFWkeyevent glfw_keyevent = {.ime_state = GLFW_IME_PREEDIT_CHANGED};
+            _glfwInputKeyboard(window, &glfw_keyevent);
+        }
+        debug_key("Sending text received in readSelectionFromPasteboard as key event\n");
+        GLFWkeyevent glfw_keyevent = {.text=utf8};
+        _glfwInputKeyboard(window, &glfw_keyevent);
         return YES;
     }
     return NO;
