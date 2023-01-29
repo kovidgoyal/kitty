@@ -112,47 +112,71 @@ kitty.
 A minimal example
 ------------------
 
-Some minimal python code to display PNG images in kitty, using the most basic
+Some minimal code to display PNG images in kitty, using the most basic
 features of the graphics protocol:
 
-.. code-block:: python
+.. tab:: Bash
 
-    import sys
-    from base64 import standard_b64encode
+    .. code-block:: sh
+
+        #!/bin/bash
+        transmit_png() {
+            data=$(base64 "$1")
+            data="${data//[[:space:]]}"
+            builtin local pos=0
+            builtin local chunk_size=4096
+            while [ $pos -lt ${#data} ]; do
+                builtin printf "\e_G"
+                [ $pos = "0" ] && printf "a=T,f=100,"
+                builtin local chunk="${data:$pos:$chunk_size}"
+                pos=$(($pos+$chunk_size))
+                [ $pos -lt ${#data} ] && builtin printf "m=1"
+                [ ${#chunk} -gt 0 ] && builtin printf ";%s" "${chunk}"
+                builtin printf "\e\\"
+            done
+        }
+
+        transmit_png "$1"
+
+.. tab:: Python
+
+    .. code-block:: python
+
+        #!/usr/bin/python
+        import sys
+        from base64 import standard_b64encode
+
+        def serialize_gr_command(**cmd):
+            payload = cmd.pop('payload', None)
+            cmd = ','.join(f'{k}={v}' for k, v in cmd.items())
+            ans = []
+            w = ans.append
+            w(b'\033_G'), w(cmd.encode('ascii'))
+            if payload:
+                w(b';')
+                w(payload)
+            w(b'\033\\')
+            return b''.join(ans)
+
+        def write_chunked(**cmd):
+            data = standard_b64encode(cmd.pop('data'))
+            while data:
+                chunk, data = data[:4096], data[4096:]
+                m = 1 if data else 0
+                sys.stdout.buffer.write(serialize_gr_command(payload=chunk, m=m,
+                                                            **cmd))
+                sys.stdout.flush()
+                cmd.clear()
+
+        with open(sys.argv[-1], 'rb') as f:
+            write_chunked(a='T', f=100, data=f.read())
 
 
-    def serialize_gr_command(**cmd):
-        payload = cmd.pop('payload', None)
-        cmd = ','.join(f'{k}={v}' for k, v in cmd.items())
-        ans = []
-        w = ans.append
-        w(b'\033_G'), w(cmd.encode('ascii'))
-        if payload:
-            w(b';')
-            w(payload)
-        w(b'\033\\')
-        return b''.join(ans)
-
-
-    def write_chunked(**cmd):
-        data = standard_b64encode(cmd.pop('data'))
-        while data:
-            chunk, data = data[:4096], data[4096:]
-            m = 1 if data else 0
-            sys.stdout.buffer.write(serialize_gr_command(payload=chunk, m=m,
-                                                        **cmd))
-            sys.stdout.flush()
-            cmd.clear()
-
-
-    with open(sys.argv[-1], 'rb') as f:
-        write_chunked(a='T', f=100, data=f.read())
-
-
-Save this script as :file:`png.py`, then you can use it to display any PNG
+Save this script as :file:`send-png`, then you can use it to display any PNG
 file in kitty as::
 
-   python png.py file.png
+    chmod +x send-png
+    ./send-png file.png
 
 
 The graphics escape code
