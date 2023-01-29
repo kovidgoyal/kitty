@@ -97,6 +97,8 @@ Detailed list of changes
 
 - Fix ssh kitten not working on FreeBSD (:iss:`5928`)
 
+- macOS: Export kitty selected text to the system for use with services that accept it (patch by Sertaç Ö. Yıldız)
+
 
 0.26.5 [2022-11-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

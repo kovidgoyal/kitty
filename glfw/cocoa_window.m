@@ -1576,6 +1576,53 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     return text;
 }
 
+// <https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/SysServices/Articles/using.html>
+
+// Support services receiving "public.utf8-plain-text" and "NSStringPboardType"
+- (id)validRequestorForSendType:(NSString *)sendType returnType:(NSString *)returnType
+{
+    if ([sendType isEqual:NSPasteboardTypeString] || [sendType isEqual:@"NSStringPboardType"]) {
+        return self;
+    }
+    return nil;
+}
+
+// Selected text as input to be sent to Services
+- (BOOL)writeSelectionToPasteboard:(NSPasteboard *)pboard types:(NSArray *)types
+{
+    NSString *text = [self accessibilitySelectedText];
+    if (text && [text length] > 0) {
+        if ([types containsObject:NSPasteboardTypeString] == YES) {
+            [pboard declareTypes:@[NSPasteboardTypeString] owner:self];
+            return [pboard setString:text forType:NSPasteboardTypeString];
+        } else if ([types containsObject:@"NSStringPboardType"] == YES) {
+            [pboard declareTypes:@[@"NSStringPboardType"] owner:self];
+            return [pboard setString:text forType:NSPasteboardTypeString];
+        }
+    }
+    return NO;
+}
+
+// Service output to be handled
+- (BOOL)readSelectionFromPasteboard:(NSPasteboard *)pboard
+{
+    NSString* text = nil;
+    NSArray *types = [pboard types];
+    if ([types containsObject:NSPasteboardTypeString] == YES) {
+        text = [pboard stringForType:NSPasteboardTypeString]; // public.utf8-plain-text
+    } else if ([types containsObject:@"NSStringPboardType"] == YES) {
+        text = [pboard stringForType:@"NSStringPboardType"]; // for older services (need re-encode?)
+    } else {
+        return NO;
+    }
+    if (text && [text length] > 0) {
+        // Terminal.app inserts the output, do the same
+        [self insertText:text replacementRange:NSMakeRange(0, [markedText length])];
+        return YES;
+    }
+    return NO;
+}
+
 @end
 // }}}
 
