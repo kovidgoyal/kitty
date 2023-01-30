@@ -284,7 +284,8 @@ type=list
 Set the margin and padding for the newly created window.
 For example: :code:`margin=20` or :code:`padding-left=10` or :code:`margin-h=30`. The shorthand form sets
 all values, the :code:`*-h` and :code:`*-v` variants set horizontal and vertical values.
-Can be specified multiple times.
+Can be specified multiple times. Note that this is ignored for overlay windows as these use the settings
+from the base window.
 
 
 --watcher -w
