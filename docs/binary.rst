@@ -22,7 +22,8 @@ simply re-run the command.
 .. warning::
    **Do not** copy the kitty binary out of the installation folder. If you want
    to add it to your :envvar:`PATH`, create a symlink in :file:`~/.local/bin` or
-   :file:`/usr/bin` or wherever.
+   :file:`/usr/bin` or wherever. You should create a symlink for the :file:`kitten`
+   binary as well.
 
 
 Manually installing
