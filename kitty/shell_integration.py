@@ -7,7 +7,7 @@ import subprocess
 from contextlib import suppress
 from typing import Callable, Dict, List, Optional
 
-from .constants import shell_integration_dir
+from .constants import kitten_exe, shell_integration_dir
 from .fast_data_types import get_options
 from .options.types import Options, defaults
 from .utils import log_error, which
@@ -221,6 +221,7 @@ def modify_shell_environ(opts: Options, env: Dict[str, str], argv: List[str]) ->
     if shell is None or not ksi:
         return
     env['KITTY_SHELL_INTEGRATION'] = ksi
+    env['KITTY_KITTEN_EXE'] = kitten_exe()
     if not shell_integration_allows_rc_modification(opts):
         return
     f = ENV_MODIFIERS.get(shell)

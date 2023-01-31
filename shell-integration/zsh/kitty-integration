@@ -386,7 +386,9 @@ _ksi_deferred_init() {
     fi
     builtin unset KITTY_IS_CLONE_LAUNCH KITTY_CLONE_SOURCE_STRATEGIES
 
-    alias edit-in-kitty="kitten edit-in-kitty"
+    [[ -z "${KITTY_KITTEN_EXE}" ]] && KITTY_KITTEN_EXE="kitten"
+    alias edit-in-kitty="${KITTY_KITTEN_EXE} edit-in-kitty"
+    builtin unset KITTY_KITTEN_EXE
 
     # Map alt+left/right to move by word if not already mapped. This is expected behavior on macOS and I am tired
     # of answering questions about it.
