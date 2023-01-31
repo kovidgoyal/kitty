@@ -67,19 +67,7 @@ case "$(command uname -m)" in
     *) die "Unknown CPU architecture $(command uname -m)";;
 esac
 
-release_version=$(fetch_quiet "https://sw.kovidgoyal.net/kitty/current-version.txt")
-[ $? -ne 0 -o -z "$release_version" ] && {
-    [ -n "$local_kitty_version" ] && exec_kitty "$@"
-    die "Could not get kitty latest release version"
-}
-
-release_version="v$release_version"
-# no kitten available till 0.27.0
-case "$release_version" in
-    v0.26.*) release_version="nightly";;
-esac
-
-url="https://github.com/kovidgoyal/kitty/releases/download/$release_version/kitten-$OS-$arch"
+url="https://github.com/kovidgoyal/kitty/releases/latest/download/kitten-$OS-$arch"
 
 printf "\033[33mkitten needs to be installed\033[m\n\n"
 command mkdir -p "$install_dir"
