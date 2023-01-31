@@ -261,8 +261,6 @@ def exec_with_shell_integration():
 
 def install_kitty_bootstrap():
     kitty_remote = os.environ.pop('KITTY_REMOTE', '')
-    if os.uname().sysname not in ('Linux', 'Darwin'):
-        return
     kitty_exists = shutil.which('kitty')
     if kitty_remote == 'yes' or (kitty_remote == 'if-needed' and not kitty_exists):
         kitty_dir = os.path.join(data_dir, 'kitty', 'bin')

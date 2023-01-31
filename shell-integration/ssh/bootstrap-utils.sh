@@ -177,11 +177,6 @@ fi' > "$sh_script"
 }
 
 install_kitty_bootstrap() {
-    case "$(command uname)" in
-        Linux) ;;
-        Darwin) ;;
-        *) return ;;
-    esac
     kitty_exists="n"
     command -v kitty 2> /dev/null > /dev/null && kitty_exists="y"
     if [ "$kitty_remote" = "yes" -o "$kitty_remote-$kitty_exists" = "if-needed-n" ]; then
