@@ -888,7 +888,7 @@ Change to the specified directory when launching.
 --detach
 type=bool-set
 condition=not is_macos
-Detach from the controlling terminal, if any.
+Detach from the controlling terminal, if any. Not available on macOS.
 
 
 --session
