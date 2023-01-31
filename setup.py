@@ -953,7 +953,7 @@ def build_static_kittens(
 def build_static_binaries(args: Options, launcher_dir: str) -> None:
     arches = 'amd64', 'arm64'
     for os_, arches_ in {
-        'darwin': arches, 'linux': arches + ('arm',), 'freebsd': arches, 'netbsd': arches, 'openbsd': arches,
+        'darwin': arches, 'linux': arches + ('arm', '386'), 'freebsd': arches, 'netbsd': arches, 'openbsd': arches,
         'dragonfly': ('amd64',),
     }.items():
         for arch in arches_:

@@ -64,6 +64,8 @@ case "$(command uname -m)" in
     aarch64*) arch="arm64";;
     armv8*) arch="arm64";;
     arm) arch="arm";;
+    i386) arch="386";;
+    i686) arch="386";;
     *) die "Unknown CPU architecture $(command uname -m)";;
 esac
 
