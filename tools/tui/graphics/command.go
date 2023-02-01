@@ -551,6 +551,7 @@ func (self *GraphicsCommand) WriteWithPayloadTo(o io.StringWriter, payload []byt
 		payload = compressed
 	}
 	data := base64.StdEncoding.EncodeToString(payload)
+	is_first := true
 	for len(data) > 0 && err == nil {
 		chunk := data
 		if len(data) > 4096 {
@@ -565,9 +566,10 @@ func (self *GraphicsCommand) WriteWithPayloadTo(o io.StringWriter, payload []byt
 			gc.m = GRT_more_nomore
 		}
 		err = gc.serialize_to(o, chunk)
-		if gc.DataSize() > 0 {
+		if !is_first {
 			gc = GraphicsCommand{}
 		}
+		is_first = false
 	}
 	return
 }

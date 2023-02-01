@@ -43,6 +43,9 @@ Detailed list of changes
 - Fix a regression causing the ``edit-in-kitty`` command not working if :file:`kitten` is not added
   to PATH (:iss:`5956`)
 
+- icat kitten: Fix a regression that broke display of animated GIFs over SSH
+  (:iss:`5958`)
+
 0.27.0 [2023-01-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
