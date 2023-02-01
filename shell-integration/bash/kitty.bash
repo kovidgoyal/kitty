@@ -209,7 +209,7 @@ _ksi_main() {
         _ksi_prompt[ps0]+="\[\e]133;C\a\]"
     fi
 
-    alias edit-in-kitty="kitten edit-in-kitty"
+    builtin alias edit-in-kitty="kitten edit-in-kitty"
 
     if [[ "${_ksi_prompt[complete]}" == "y" ]]; then
         _ksi_completions() {
