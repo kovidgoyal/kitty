@@ -71,7 +71,7 @@ func update_self(version string) (err error) {
 func EntryPoint(root *cli.Command) *cli.Command {
 	sc := root.AddSubCommand(&cli.Command{
 		Name:             "update-self",
-		Usage:            "update-self [options ...]",
+		Usage:            "[options]",
 		ShortDescription: "Update this kitten binary",
 		HelpText:         "Update this kitten binary in place to the latest available version.",
 		Run: func(cmd *cli.Command, args []string) (ret int, err error) {
@@ -89,7 +89,7 @@ func EntryPoint(root *cli.Command) *cli.Command {
 	sc.Add(cli.OptionSpec{
 		Name:    "--fetch-version",
 		Default: "latest",
-		Help:    "The version to fetch. The special words :code:`latest` and :code:`nightly` fetch the latest stable and nightly release respectively. Other values can be, for example: 0.27.1.",
+		Help:    fmt.Sprintf("The version to fetch. The special words :code:`latest` and :code:`nightly` fetch the latest stable and nightly release respectively. Other values can be, for example: :code:`%s`.", kitty.VersionString),
 	})
 	return sc
 }

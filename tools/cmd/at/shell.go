@@ -110,6 +110,8 @@ func show_basic_help() {
 			fmt.Fprintln(&output, "   ", sc.ShortDescription)
 		}
 	}
+	fmt.Fprintln(&output, " ", formatter.Green("help"))
+	fmt.Fprintln(&output, "   ", "Show this help")
 	fmt.Fprintln(&output, " ", formatter.Green("exit"))
 	fmt.Fprintln(&output, "   ", "Exit this shell")
 	cli.ShowHelpInPager(output.String())
