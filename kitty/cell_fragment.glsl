@@ -20,6 +20,9 @@ in float bg_alpha;
 
 #ifdef NEEDS_FOREGROUND
 uniform sampler2DArray sprites;
+uniform int text_old_gamma;
+uniform float text_contrast;
+uniform float text_gamma_adjustment;
 in float effective_text_alpha;
 in vec3 sprite_pos;
 in vec3 underline_pos;
@@ -100,6 +103,8 @@ vec4 vec4_premul(vec4 rgba) {
 #ifdef NEEDS_FOREGROUND
 // sRGB luminance values
 const vec3 Y = vec3(0.2126, 0.7152, 0.0722);
+// Scaling factor for the extra text-alpha adjustment for luminance-difference.
+const float text_gamma_scaling = 0.5;
 
 float linear2srgb(float x) {
     // Approximation of linear-to-sRGB conversion
@@ -114,6 +119,15 @@ float srgb2linear(float x) {
 float clamp(float x) {
     // Clamp value to suitable output range
     return max(min(x, 1.0f), 0.0f);
+}
+
+vec4 foreground_contrast(vec4 over, vec3 under) {
+    float underL = dot(under, Y);
+    float overL = dot(over.rgb, Y);
+    // Apply additional gamma-adjustment scaled by the luminance difference, the darker the foreground the more adjustment we apply.
+    // A multiplicative contrast is also available to increase sasturation.
+    over.a = clamp(mix(over.a, pow(over.a, text_gamma_adjustment), (1 - overL + underL) * text_gamma_scaling) * text_contrast);
+    return over;
 }
 
 vec4 foreground_contrast_incorrect(vec4 over, vec3 under) {
@@ -150,8 +164,10 @@ vec4 calculate_foreground() {
     return foreground_with_decorations(text_fg);
 }
 vec4 calculate_foreground(vec3 bg) {
+    // When rendering on a background we can adjust the alpha channel contrast
+    // to improve legibility based on the source and destination colors
     vec4 text_fg = foreground_color();
-    text_fg = foreground_contrast_incorrect(text_fg, bg);
+    text_fg = mix(foreground_contrast(text_fg, bg), foreground_contrast_incorrect(text_fg, bg), text_old_gamma);
     return foreground_with_decorations(text_fg);
 }
 
