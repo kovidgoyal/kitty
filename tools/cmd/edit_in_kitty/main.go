@@ -235,7 +235,7 @@ type Options struct {
 func EntryPoint(parent *cli.Command) *cli.Command {
 	sc := parent.AddSubCommand(&cli.Command{
 		Name:             "edit-in-kitty",
-		Usage:            "edit-in-kitty [options] file-to-edit",
+		Usage:            "[options] file-to-edit",
 		ShortDescription: "Edit a file in a kitty overlay window",
 		HelpText: "Edit the specified file in a kitty overlay window. Works over SSH as well.\n\n" +
 			"For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#edit-file",

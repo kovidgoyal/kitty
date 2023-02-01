@@ -71,7 +71,7 @@ func update_self(version string) (err error) {
 func EntryPoint(root *cli.Command) *cli.Command {
 	sc := root.AddSubCommand(&cli.Command{
 		Name:             "update-self",
-		Usage:            "update-self [options ...]",
+		Usage:            "[options]",
 		ShortDescription: "Update this kitten binary",
 		HelpText:         "Update this kitten binary in place to the latest available version.",
 		Run: func(cmd *cli.Command, args []string) (ret int, err error) {
