@@ -23,6 +23,7 @@ from .constants import (
     glfw_path,
     is_macos,
     is_wayland,
+    kitten_exe,
     kitty_exe,
     logo_png_file,
     running_in_kitty,
@@ -382,6 +383,15 @@ def ensure_kitty_in_path() -> None:
                 os.environ['PATH'] = prepend_if_not_present(rpath, env_path)
 
 
+def ensure_kitten_in_path() -> None:
+    correct_kitten = kitten_exe()
+    existing = shutil.which('kitten')
+    if existing and safe_samefile(existing, correct_kitten):
+        return
+    env_path = os.environ.get('PATH', '')
+    os.environ['PATH'] = prepend_if_not_present(os.path.dirname(correct_kitten), env_path)
+
+
 def setup_manpath(env: Dict[str, str]) -> None:
     # Ensure kitty manpages are available in frozen builds
     if not getattr(sys, 'frozen', False):
@@ -407,6 +417,7 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
         cli_opts.listen_on = expand_listen_on(cli_opts.listen_on, from_config_file)
     env = opts.env.copy()
     ensure_kitty_in_path()
+    ensure_kitten_in_path()
     kitty_path = shutil.which('kitty')
     if kitty_path:
         child_path = env.get('PATH')

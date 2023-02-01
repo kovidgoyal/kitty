@@ -40,6 +40,9 @@ Detailed list of changes
 
 - Fix :opt:`modify_font` not working for strikethrough position (:iss:`5946`)
 
+- Fix a regression causing the ``edit-in-kitty`` command not working if :file:`kitten` is not added
+  to PATH (:iss:`5956`)
+
 0.27.0 [2023-01-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
