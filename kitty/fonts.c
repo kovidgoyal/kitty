@@ -387,7 +387,7 @@ calc_cell_metrics(FontGroup *fg) {
         int adjustment = baseline - baseline_before;
         baseline = adjust_ypos(baseline_before, cell_height, adjustment);
         underline_position = adjust_ypos(underline_position, cell_height, adjustment);
-        strikethrough_position = adjust_ypos(underline_position, cell_height, adjustment);
+        strikethrough_position = adjust_ypos(strikethrough_position, cell_height, adjustment);
     }
 
     underline_position = MIN(cell_height - 1, underline_position);

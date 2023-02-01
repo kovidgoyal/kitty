@@ -35,6 +35,11 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
+0.27.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fix :opt:`modify_font` not working for strikethrough position (:iss:`5946`)
+
 0.27.0 [2023-01-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
