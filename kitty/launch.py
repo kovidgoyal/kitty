@@ -58,7 +58,7 @@ Where to launch the child process:
 :code:`tab`
     A new :term:`tab` in the current OS window
 
-:code:`os-window <os_window>`
+:code:`os-window`
     A new :term:`operating system window <os_window>`
 
 :code:`overlay`
