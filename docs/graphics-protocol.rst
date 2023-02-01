@@ -332,7 +332,7 @@ sequence of escape codes to the terminal emulator::
 Note that only the first escape code needs to have the full set of control
 codes such as width, height, format, etc. Subsequent chunks **must** have only
 the ``m`` and optionally ``q`` keys. When sending animation frame data, subsequent
-chunks must also specify the ``a=f`` key. The client **must** finish sending
+chunks **must** also specify the ``a=f`` key. The client **must** finish sending
 all chunks for a single image before sending any other graphics related escape
 codes. Note that the cursor position used to display the image **must** be the
 position when the final chunk is received. Finally, terminals must not display
