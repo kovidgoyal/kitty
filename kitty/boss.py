@@ -1985,6 +1985,12 @@ class Boss:
             return w.text_for_selection()
         return None
 
+    def has_active_selection(self) -> bool:
+        w = self.active_window
+        if w is not None and not w.destroyed:
+            return w.has_selection()
+        return False
+
     @ac('cp', '''
         Copy the selection from the active window to the specified buffer
 

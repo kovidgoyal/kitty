@@ -496,6 +496,16 @@ get_current_selection(void) {
     return ans;
 }
 
+static bool
+has_current_selection(void) {
+    if (!global_state.boss) return false;
+    PyObject *ret = PyObject_CallMethod(global_state.boss, "has_active_selection", NULL);
+    if (!ret) { PyErr_Print(); return false; }
+    bool ans = ret == Py_True;
+    Py_DECREF(ret);
+    return ans;
+}
+
 
 static void get_window_dpi(GLFWwindow *w, double *x, double *y);
 
@@ -800,6 +810,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         if (OPT(hide_window_decorations) & 1) glfwWindowHint(GLFW_DECORATED, false);
         glfwSetApplicationCloseCallback(application_close_requested_callback);
         glfwSetCurrentSelectionCallback(get_current_selection);
+        glfwSetHasCurrentSelectionCallback(has_current_selection);
 #ifdef __APPLE__
         cocoa_set_activation_policy(OPT(macos_hide_from_tasks));
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);

@@ -634,6 +634,7 @@ struct _GLFWlibrary
         GLFWapplicationclosefun application_close;
         GLFWdrawtextfun draw_text;
         GLFWcurrentselectionfun get_current_selection;
+        GLFWhascurrentselectionfun has_current_selection;
     } callbacks;
 
 

@@ -1354,6 +1354,9 @@ class Window:
         lines = self.screen.text_for_selection(as_ansi, strip_trailing_spaces)
         return ''.join(lines)
 
+    def has_selection(self) -> bool:
+        return self.screen.has_selection()
+
     def call_watchers(self, which: Iterable[Watcher], data: Dict[str, Any]) -> None:
         boss = get_boss()
         for w in which:

@@ -1585,8 +1585,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
         (!sendType || [sendType isEqual:NSPasteboardTypeString] || [sendType isEqual:@"NSStringPboardType"]) &&
         (!returnType || [returnType isEqual:NSPasteboardTypeString] || [returnType isEqual:@"NSStringPboardType"])
     ) {
-        NSString *text = [self accessibilitySelectedText];
-        if (text && text.length > 0) return self;
+        if (_glfw.callbacks.has_current_selection && _glfw.callbacks.has_current_selection()) return self;
     }
     return [super validRequestorForSendType:sendType returnType:returnType];
 }
@@ -1594,17 +1593,21 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 // Selected text as input to be sent to Services
 - (BOOL)writeSelectionToPasteboard:(NSPasteboard *)pboard types:(NSArray *)types
 {
-    NSString *text = [self accessibilitySelectedText];
-    if (text && [text length] > 0) {
+    if (!_glfw.callbacks.get_current_selection) return NO;
+    char *text = _glfw.callbacks.get_current_selection();
+    if (!text) return NO;
+    BOOL ans = NO;
+    if (text[0]) {
         if ([types containsObject:NSPasteboardTypeString] == YES) {
             [pboard declareTypes:@[NSPasteboardTypeString] owner:self];
-            return [pboard setString:text forType:NSPasteboardTypeString];
+            ans = [pboard setString:@(text) forType:NSPasteboardTypeString];
         } else if ([types containsObject:@"NSStringPboardType"] == YES) {
             [pboard declareTypes:@[@"NSStringPboardType"] owner:self];
-            return [pboard setString:text forType:NSPasteboardTypeString];
+            ans = [pboard setString:@(text) forType:NSPasteboardTypeString];
         }
+        free(text);
     }
-    return NO;
+    return ans;
 }
 
 // Service output to be handled

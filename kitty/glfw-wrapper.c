@@ -41,6 +41,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetCurrentSelectionCallback_impl) = dlsym(handle, "glfwSetCurrentSelectionCallback");
     if (glfwSetCurrentSelectionCallback_impl == NULL) fail("Failed to load glfw function glfwSetCurrentSelectionCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetHasCurrentSelectionCallback_impl) = dlsym(handle, "glfwSetHasCurrentSelectionCallback");
+    if (glfwSetHasCurrentSelectionCallback_impl == NULL) fail("Failed to load glfw function glfwSetHasCurrentSelectionCallback with error: %s", dlerror());
+
     *(void **) (&glfwTerminate_impl) = dlsym(handle, "glfwTerminate");
     if (glfwTerminate_impl == NULL) fail("Failed to load glfw function glfwTerminate with error: %s", dlerror());
 

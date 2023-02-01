@@ -1719,6 +1719,7 @@ typedef void (* GLFWtickcallback)(void*);
 typedef void (* GLFWactivationcallback)(GLFWwindow *window, const char *token, void *data);
 typedef bool (* GLFWdrawtextfun)(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin);
 typedef char* (* GLFWcurrentselectionfun)(void);
+typedef bool (* GLFWhascurrentselectionfun)(void);
 typedef void (* GLFWclipboarddatafreefun)(void* data);
 typedef struct GLFWDataChunk {
     const char *data;
@@ -1889,6 +1890,7 @@ GLFWAPI void glfwUpdateTimer(unsigned long long timer_id, monotonic_t interval, 
 GLFWAPI void glfwRemoveTimer(unsigned long long);
 GLFWAPI GLFWdrawtextfun glfwSetDrawTextFunction(GLFWdrawtextfun function);
 GLFWAPI GLFWcurrentselectionfun glfwSetCurrentSelectionCallback(GLFWcurrentselectionfun callback);
+GLFWAPI GLFWhascurrentselectionfun glfwSetHasCurrentSelectionCallback(GLFWhascurrentselectionfun callback);
 
 /*! @brief Terminates the GLFW library.
  *

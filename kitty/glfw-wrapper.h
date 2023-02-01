@@ -1457,6 +1457,7 @@ typedef void (* GLFWtickcallback)(void*);
 typedef void (* GLFWactivationcallback)(GLFWwindow *window, const char *token, void *data);
 typedef bool (* GLFWdrawtextfun)(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin);
 typedef char* (* GLFWcurrentselectionfun)(void);
+typedef bool (* GLFWhascurrentselectionfun)(void);
 typedef void (* GLFWclipboarddatafreefun)(void* data);
 typedef struct GLFWDataChunk {
     const char *data;
@@ -1661,6 +1662,10 @@ GFW_EXTERN glfwSetDrawTextFunction_func glfwSetDrawTextFunction_impl;
 typedef GLFWcurrentselectionfun (*glfwSetCurrentSelectionCallback_func)(GLFWcurrentselectionfun);
 GFW_EXTERN glfwSetCurrentSelectionCallback_func glfwSetCurrentSelectionCallback_impl;
 #define glfwSetCurrentSelectionCallback glfwSetCurrentSelectionCallback_impl
+
+typedef GLFWhascurrentselectionfun (*glfwSetHasCurrentSelectionCallback_func)(GLFWhascurrentselectionfun);
+GFW_EXTERN glfwSetHasCurrentSelectionCallback_func glfwSetHasCurrentSelectionCallback_impl;
+#define glfwSetHasCurrentSelectionCallback glfwSetHasCurrentSelectionCallback_impl
 
 typedef void (*glfwTerminate_func)(void);
 GFW_EXTERN glfwTerminate_func glfwTerminate_impl;
