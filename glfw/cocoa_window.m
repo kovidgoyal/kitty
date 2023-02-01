@@ -1581,10 +1581,14 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 // Support services receiving "public.utf8-plain-text" and "NSStringPboardType"
 - (id)validRequestorForSendType:(NSString *)sendType returnType:(NSString *)returnType
 {
-    if ([sendType isEqual:NSPasteboardTypeString] || [sendType isEqual:@"NSStringPboardType"]) {
-        return self;
+    if (
+        (!sendType || [sendType isEqual:NSPasteboardTypeString] || [sendType isEqual:@"NSStringPboardType"]) &&
+        (!returnType || [returnType isEqual:NSPasteboardTypeString] || [returnType isEqual:@"NSStringPboardType"])
+    ) {
+        NSString *text = [self accessibilitySelectedText];
+        if (text && text.length > 0) return self;
     }
-    return nil;
+    return [super validRequestorForSendType:sendType returnType:returnType];
 }
 
 // Selected text as input to be sent to Services
