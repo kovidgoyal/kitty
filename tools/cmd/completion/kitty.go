@@ -87,7 +87,7 @@ func EntryPoint(tool_root *cli.Command) {
 		Name: "__complete__", Hidden: true,
 		Usage:            "output_type [shell state...]",
 		ShortDescription: "Generate completions for kitty commands",
-		HelpText:         "Generate completion candidates for kitty commands. The command line is read from STDIN. output_type can be one of the supported  shells or 'json' for JSON output.",
+		HelpText:         "Generate completion candidates for kitty commands. The command line is read from STDIN. output_type can be one of the supported shells or :code:`json` for JSON output.",
 		Run: func(cmd *cli.Command, args []string) (ret int, err error) {
 			return ret, cli.GenerateCompletions(args)
 		},
