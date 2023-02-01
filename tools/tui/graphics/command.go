@@ -566,6 +566,9 @@ func (self *GraphicsCommand) WriteWithPayloadTo(o io.StringWriter, payload []byt
 			gc.m = GRT_more_nomore
 		}
 		err = gc.serialize_to(o, chunk)
+		if err != nil {
+			return err
+		}
 		if !is_first {
 			gc = GraphicsCommand{}
 		}
