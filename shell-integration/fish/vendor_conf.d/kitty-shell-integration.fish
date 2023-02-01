@@ -156,7 +156,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
     end
 end
 
-function edit-in-kitty --wraps "kitten edit-in-kitty"
+function edit-in-kitty --wraps "kitten edit-in-kitty" -d "Edit the specified file in a kitty overlay window with your locally installed editor"
     kitten edit-in-kitty $argv
 end
 

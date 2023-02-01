@@ -79,6 +79,7 @@ def kitty_exe() -> str:
     return os.path.join(rpath, 'kitty')
 
 
+@run_once
 def kitten_exe() -> str:
     return os.path.join(os.path.dirname(kitty_exe()), 'kitten')
 
