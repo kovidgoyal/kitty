@@ -1632,7 +1632,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
             _glfwInputKeyboard(window, &glfw_keyevent);
         }
         debug_key("Sending text received in readSelectionFromPasteboard as key event\n");
-        GLFWkeyevent glfw_keyevent = {.text=utf8};
+        GLFWkeyevent glfw_keyevent = {.text=utf8, .ime_state=GLFW_IME_COMMIT_TEXT};
         _glfwInputKeyboard(window, &glfw_keyevent);
         return YES;
     }
