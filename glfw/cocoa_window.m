@@ -1603,7 +1603,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
             ans = [pboard setString:@(text) forType:NSPasteboardTypeString];
         } else if ([types containsObject:@"NSStringPboardType"] == YES) {
             [pboard declareTypes:@[@"NSStringPboardType"] owner:self];
-            ans = [pboard setString:@(text) forType:NSPasteboardTypeString];
+            ans = [pboard setString:@(text) forType:@"NSStringPboardType"];
         }
         free(text);
     }
