@@ -3,9 +3,11 @@
 package shm
 
 import (
+	"crypto/rand"
+	"encoding/base32"
 	"errors"
 	"fmt"
-	"math/rand"
+	not_rand "math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -42,8 +44,12 @@ func prefix_and_suffix(pattern string) (prefix, suffix string, err error) {
 }
 
 func next_random() string {
-	num := rand.Uint32()
-	return strconv.FormatUint(uint64(num), 16)
+	b := make([]byte, 8)
+	_, err := rand.Read(b)
+	if err != nil {
+		return strconv.FormatUint(uint64(not_rand.Uint32()), 16)
+	}
+	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)
 }
 
 type MMap interface {

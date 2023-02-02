@@ -3,10 +3,10 @@
 package shm
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io/fs"
-	"math/rand"
 	"os"
 	"reflect"
 	"testing"

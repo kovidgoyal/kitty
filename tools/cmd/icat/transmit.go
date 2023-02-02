@@ -4,11 +4,13 @@ package icat
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"math"
-	"math/rand"
+	not_rand "math/rand"
 	"os"
 	"path/filepath"
 
@@ -202,6 +204,19 @@ func place_cursor(imgd *image_data) {
 	}
 }
 
+func next_random() (ans uint32) {
+	for ans == 0 {
+		b := make([]byte, 4)
+		_, err := rand.Read(b)
+		if err == nil {
+			ans = binary.LittleEndian.Uint32(b[:])
+		} else {
+			ans = not_rand.Uint32()
+		}
+	}
+	return ans
+}
+
 func transmit_image(imgd *image_data) {
 	defer func() {
 		for _, frame := range imgd.frames {
@@ -239,7 +254,7 @@ func transmit_image(imgd *image_data) {
 	}
 	if len(imgd.frames) > 1 {
 		for imgd.image_number == 0 {
-			imgd.image_number = rand.Uint32()
+			imgd.image_number = next_random()
 		}
 	}
 	place_cursor(imgd)
