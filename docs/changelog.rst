@@ -46,6 +46,8 @@ Detailed list of changes
 - icat kitten: Fix a regression that broke display of animated GIFs over SSH
   (:iss:`5958`)
 
+- Wayland GNOME: Fix for ibus not working when using XWayland (:iss:`5967`)
+
 0.27.0 [2023-01-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

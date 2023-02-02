@@ -283,29 +283,35 @@ static const char*
 get_ibus_address_file_name(void) {
     const char *addr;
     static char ans[PATH_MAX];
+    static char display[64] = {0};
     addr = getenv("IBUS_ADDRESS");
     int offset = 0;
     if (addr && addr[0]) {
         memcpy(ans, addr, GLFW_MIN(strlen(addr), sizeof(ans)));
         return ans;
     }
-
-    const char *de = getenv("DISPLAY");
-    if (!de || !de[0]) de = ":0.0";
-    char *display = _glfw_strdup(de);
-    const char *host = display;
-    char *disp_num  = strrchr(display, ':');
-    char *screen_num = strrchr(display, '.');
-
-    if (!disp_num) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Could not get IBUS address file name as DISPLAY env var has no colon");
-        free(display);
-        return NULL;
+    const char* disp_num = NULL;
+    const char *host = "unix";
+    // See https://github.com/ibus/ibus/commit/8ce25208c3f4adfd290a032c6aa739d2b7580eb1 for why we need this dance.
+    const char *de = getenv("WAYLAND_DISPLAY");
+    if (de) {
+        disp_num = de;
+    } else {
+        const char *de = getenv("DISPLAY");
+        if (!de || !de[0]) de = ":0.0";
+        strncpy(display, de, sizeof(display) - 1);
+        char *dnum = strrchr(display, ':');
+        if (!dnum) {
+            _glfwInputError(GLFW_PLATFORM_ERROR, "Could not get IBUS address file name as DISPLAY env var has no colon");
+            return NULL;
+        }
+        char *screen_num = strrchr(display, '.');
+        *dnum = 0;
+        dnum++;
+        if (screen_num) *screen_num = 0;
+        if (*display) host = display;
+        disp_num = dnum;
     }
-    *disp_num = 0;
-    disp_num++;
-    if (screen_num) *screen_num = 0;
-    if (!*host) host = "unix";
 
     memset(ans, 0, sizeof(ans));
     const char *conf_env = getenv("XDG_CONFIG_HOME");
@@ -315,7 +321,6 @@ get_ibus_address_file_name(void) {
         conf_env = getenv("HOME");
         if (!conf_env || !conf_env[0]) {
             _glfwInputError(GLFW_PLATFORM_ERROR, "Could not get IBUS address file name as no HOME env var is set");
-            free(display);
             return NULL;
         }
         offset = snprintf(ans, sizeof(ans), "%s/.config", conf_env);
@@ -323,7 +328,6 @@ get_ibus_address_file_name(void) {
     char *key = dbus_get_local_machine_id();
     snprintf(ans + offset, sizeof(ans) - offset, "/ibus/bus/%s-%s-%s", key, host, disp_num);
     dbus_free(key);
-    free(display);
     return ans;
 }
 
