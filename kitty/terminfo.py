@@ -284,11 +284,18 @@ string_capabilities = {
 }
 
 string_capabilities.update({
-    f'kf{offset + n}':
-        encode_keystring(modify_key_bytes(b'\033' + value, mod))
-    for offset, mod in {0: 0, 12: 2, 24: 5, 36: 6, 48: 3, 60: 4}.items()
+    f'kf{n}':
+        encode_keystring(modify_key_bytes(b'\033' + value, 0))
     for n, value in zip(range(1, 13),
                         b'OP OQ OR OS [15~ [17~ [18~ [19~ [20~ [21~ [23~ [24~'.split())
+})
+
+string_capabilities.update({
+    f'kf{offset + n}':
+        encode_keystring(modify_key_bytes(b'\033' + value, mod))
+    for offset, mod in {12: 2, 24: 5, 36: 6, 48: 3, 60: 4}.items()
+    for n, value in zip(range(1, 13),
+                        b'OP OQ [13~ OS [15~ [17~ [18~ [19~ [20~ [21~ [23~ [24~'.split())
     if offset + n < 64
 })
 
