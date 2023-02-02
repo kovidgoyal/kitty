@@ -48,6 +48,8 @@ Detailed list of changes
 
 - Wayland GNOME: Fix for ibus not working when using XWayland (:iss:`5967`)
 
+- Fix regression in previous release that caused incorrect entries in terminfo for the modifer+F3 key combinations (:pull:`5970`)
+
 0.27.0 [2023-01-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
