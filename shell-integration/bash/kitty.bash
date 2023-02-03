@@ -13,7 +13,7 @@ if [[ -n "$KITTY_BASH_INJECT" ]]; then
     if [[ -z "$KITTY_BASH_ETC_LOCATION" ]]; then KITTY_BASH_ETC_LOCATION="/etc"; fi
 
     _ksi_sourceable() {
-        [[ -f "$1" && -r "$1" ]] && return 0; return 1;
+        [[ -f "$1" && -r "$1" ]] && builtin return 0; builtin return 1;
     }
 
     if [[ "$kitty_bash_inject" == *"posix"* ]]; then
@@ -273,8 +273,8 @@ _ksi_main() {
         builtin local venv="${VIRTUAL_ENV}/bin/activate"
         builtin local sourced=""
         _ksi_s_is_ok() {
-            [[ -z "$sourced" && "$KITTY_CLONE_SOURCE_STRATEGIES" == *",$1,"* ]] && return 0
-            return 1
+            [[ -z "$sourced" && "$KITTY_CLONE_SOURCE_STRATEGIES" == *",$1,"* ]] && builtin return 0
+            builtin return 1
         }
 
         if _ksi_s_is_ok "venv" && [ -n "${VIRTUAL_ENV}" -a -r "$venv" ]; then
@@ -340,7 +340,7 @@ clone-in-kitty() {
             "") break;;
             -h|--help)
                 builtin printf "%s\n\n%s\n" "Clone the current bash session into a new kitty window." "For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#clone-shell"
-                return
+                builtin return
                 ;;
             *) data="$data,a=$(builtin printf "%s" "$1" | builtin command base64)";;
         esac
