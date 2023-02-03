@@ -30,9 +30,11 @@ func json_output_serializer(completions []*Completions, shell_state map[string]s
 	return json.Marshal(completions)
 }
 
+type completion_script_func func(commands []string) ([]byte, error)
 type parser_func func(data []byte, shell_state map[string]string) ([][]string, error)
 type serializer_func func(completions []*Completions, shell_state map[string]string) ([]byte, error)
 
+var completion_scripts = make(map[string]completion_script_func, 4)
 var input_parsers = make(map[string]parser_func, 4)
 var output_serializers = make(map[string]serializer_func, 4)
 var init_completions = make(map[string]func(*Completions), 4)
@@ -60,6 +62,22 @@ func GenerateCompletions(args []string) error {
 	n := len(args)
 	if n < 1 {
 		n = 1
+	}
+	if output_type == "setup" {
+		if len(args) == 0 {
+			return fmt.Errorf("The shell needs to be specified")
+		}
+		shell_name := args[0]
+		args = args[1:]
+		completion_script := completion_scripts[shell_name]
+		if completion_script == nil {
+			return fmt.Errorf("Unsupported shell: %s", shell_name)
+		}
+		output, err := completion_script(args)
+		if err == nil {
+			_, err = os.Stdout.Write(output)
+		}
+		return err
 	}
 	shell_state := make(map[string]string, n)
 	for _, arg := range args {

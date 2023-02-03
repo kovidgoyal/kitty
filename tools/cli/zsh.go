@@ -15,6 +15,26 @@ import (
 
 var _ = fmt.Print
 
+func zsh_completion_script(commands []string) ([]byte, error) {
+	script := `#compdef kitty
+
+_kitty() {
+    (( ${+commands[kitten]} )) || builtin return
+    builtin local src cmd=${(F)words:0:$CURRENT}
+    # Send all words up to the word the cursor is currently on.
+    src=$(builtin command kitten __complete__ zsh "_matcher=$_matcher" <<<$cmd) || builtin return
+    builtin eval "$src"
+}
+
+if (( $+functions[compdef] )); then
+    compdef _kitty kitty
+    compdef _kitty clone-in-kitty
+    compdef _kitty kitten
+fi
+`
+	return []byte(script), nil
+}
+
 func shell_input_parser(data []byte, shell_state map[string]string) ([][]string, error) {
 	raw := string(data)
 	new_word := strings.HasSuffix(raw, "\n\n")
@@ -150,6 +170,7 @@ func zsh_output_serializer(completions []*Completions, shell_state map[string]st
 }
 
 func init() {
+	completion_scripts["zsh"] = zsh_completion_script
 	input_parsers["zsh"] = zsh_input_parser
 	output_serializers["zsh"] = zsh_output_serializer
 }

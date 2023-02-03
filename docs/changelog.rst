@@ -50,6 +50,9 @@ Detailed list of changes
 
 - Fix regression in previous release that caused incorrect entries in terminfo for the modifer+F3 key combinations (:pull:`5970`)
 
+- Bring back the deprecated and removed ``kitty +complete`` and delegate it to :program:`kitten` for backward compatibility (:pull:`5977`)
+
+
 0.27.0 [2023-01-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

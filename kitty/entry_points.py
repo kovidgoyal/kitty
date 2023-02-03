@@ -31,6 +31,17 @@ def hold(args: List[str]) -> None:
     os.execvp(kitten_exe(), args)
 
 
+def complete(args: List[str]) -> None:
+    # Delegate to kitten to maintain backward compatibility
+    if len(args) < 2 or args[1] not in ('setup', 'zsh', 'fish2', 'bash'):
+        raise SystemExit(1)
+    if args[1] == 'fish2':
+        args[1:1] = ['fish', '_legacy_completion=fish2']
+    from kitty.constants import kitten_exe
+    args = ['kitten', '__complete__'] + args[1:]
+    os.execvp(kitten_exe(), args)
+
+
 def open_urls(args: List[str]) -> None:
     setattr(sys, 'cmdline_args_for_open', True)
     sys.argv = ['kitty'] + args[1:]
@@ -144,6 +155,7 @@ entry_points = {
 }
 namespaced_entry_points = {k: v for k, v in entry_points.items() if k[0] not in '+@'}
 namespaced_entry_points['hold'] = hold
+namespaced_entry_points['complete'] = complete
 namespaced_entry_points['runpy'] = runpy
 namespaced_entry_points['launch'] = launch
 namespaced_entry_points['open'] = open_urls
