@@ -15,8 +15,8 @@ import (
 
 var _ = fmt.Print
 
-func zsh_completion_script(commands []string) ([]byte, error) {
-	script := `#compdef kitty
+func zsh_completion_script(commands []string) (string, error) {
+	return `#compdef kitty
 
 _kitty() {
     (( ${+commands[kitten]} )) || builtin return
@@ -31,8 +31,7 @@ if (( $+functions[compdef] )); then
     compdef _kitty clone-in-kitty
     compdef _kitty kitten
 fi
-`
-	return []byte(script), nil
+`, nil
 }
 
 func shell_input_parser(data []byte, shell_state map[string]string) ([][]string, error) {

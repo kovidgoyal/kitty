@@ -11,8 +11,8 @@ import (
 
 var _ = fmt.Print
 
-func bash_completion_script(commands []string) ([]byte, error) {
-	script := `_ksi_completions() {
+func bash_completion_script(commands []string) (string, error) {
+	return `_ksi_completions() {
     builtin local src
     builtin local limit
     # Send all words up to the word the cursor is currently on
@@ -27,8 +27,7 @@ builtin complete -F _ksi_completions kitty
 builtin complete -F _ksi_completions edit-in-kitty
 builtin complete -F _ksi_completions clone-in-kitty
 builtin complete -F _ksi_completions kitten
-`
-	return []byte(script), nil
+`, nil
 }
 
 func bash_output_serializer(completions []*Completions, shell_state map[string]string) ([]byte, error) {

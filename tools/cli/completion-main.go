@@ -30,7 +30,7 @@ func json_output_serializer(completions []*Completions, shell_state map[string]s
 	return json.Marshal(completions)
 }
 
-type completion_script_func func(commands []string) ([]byte, error)
+type completion_script_func func(commands []string) (string, error)
 type parser_func func(data []byte, shell_state map[string]string) ([][]string, error)
 type serializer_func func(completions []*Completions, shell_state map[string]string) ([]byte, error)
 
@@ -65,7 +65,7 @@ func GenerateCompletions(args []string) error {
 	}
 	if output_type == "setup" {
 		if len(args) == 0 {
-			return fmt.Errorf("The shell needs to be specified")
+			return fmt.Errorf("The shell must be specified")
 		}
 		shell_name := args[0]
 		args = args[1:]
@@ -75,7 +75,7 @@ func GenerateCompletions(args []string) error {
 		}
 		output, err := completion_script(args)
 		if err == nil {
-			_, err = os.Stdout.Write(output)
+			_, err = os.Stdout.WriteString(output)
 		}
 		return err
 	}

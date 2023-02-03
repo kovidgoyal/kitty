@@ -12,7 +12,7 @@ import (
 
 var _ = fmt.Print
 
-func fish_completion_script(commands []string) ([]byte, error) {
+func fish_completion_script(commands []string) (string, error) {
 	// One command in fish requires one completion script.
 	// Usage: kitten __complete__ setup fish [kitty|kitten|clone-in-kitty]
 	all_commands := map[string]bool{
@@ -21,9 +21,7 @@ func fish_completion_script(commands []string) ([]byte, error) {
 		"kitten":         true,
 	}
 	if len(commands) == 0 {
-		for cmd, _ := range all_commands {
-			commands = append(commands, cmd)
-		}
+		commands = append(commands, utils.Keys(all_commands)...)
 	}
 	script := strings.Builder{}
 	script.WriteString(`function __ksi_completions
@@ -40,10 +38,10 @@ end
 			// Reserved for `setup SHELL [KEY=VALUE ...]`, not used now.
 			continue
 		} else {
-			return nil, fmt.Errorf("No fish completion script for command: %s", cmd)
+			return "", fmt.Errorf("No fish completion script for command: %s", cmd)
 		}
 	}
-	return []byte(script.String()), nil
+	return script.String(), nil
 }
 
 func fish_output_serializer(completions []*Completions, shell_state map[string]string) ([]byte, error) {
