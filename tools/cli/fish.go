@@ -21,7 +21,7 @@ func fish_completion_script(commands []string) ([]byte, error) {
 		"kitten":         true,
 	}
 	if len(commands) == 0 {
-		for cmd, _ := range all_commands {
+		for cmd := range all_commands {
 			commands = append(commands, cmd)
 		}
 	}
