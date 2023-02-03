@@ -21,6 +21,5 @@ func UnsafeStringToBytes(s string) (b []byte) {
 // If you modify b, then s will also be modified. This violates the
 // property that strings are immutable.
 func UnsafeBytesToString(b []byte) (s string) {
-	unsafe.String(unsafe.SliceData(b), len(b))
-	return s
+	return unsafe.String(unsafe.SliceData(b), len(b))
 }
