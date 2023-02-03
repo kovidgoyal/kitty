@@ -11,6 +11,26 @@ import (
 
 var _ = fmt.Print
 
+func bash_completion_script(commands []string) ([]byte, error) {
+	script := `_ksi_completions() {
+    builtin local src
+    builtin local limit
+    # Send all words up to the word the cursor is currently on
+    builtin let limit=1+$COMP_CWORD
+    src=$(builtin printf "%s\n" "${COMP_WORDS[@]:0:$limit}" | builtin command kitten __complete__ bash)
+    if [[ $? == 0 ]]; then
+        builtin eval "${src}"
+    fi
+}
+
+builtin complete -F _ksi_completions kitty
+builtin complete -F _ksi_completions edit-in-kitty
+builtin complete -F _ksi_completions clone-in-kitty
+builtin complete -F _ksi_completions kitten
+`
+	return []byte(script), nil
+}
+
 func bash_output_serializer(completions []*Completions, shell_state map[string]string) ([]byte, error) {
 	output := strings.Builder{}
 	f := func(format string, args ...any) { fmt.Fprintf(&output, format+"\n", args...) }
@@ -51,6 +71,7 @@ func bash_init_completions(completions *Completions) {
 }
 
 func init() {
+	completion_scripts["bash"] = bash_completion_script
 	input_parsers["bash"] = shell_input_parser
 	output_serializers["bash"] = bash_output_serializer
 	init_completions["bash"] = bash_init_completions
