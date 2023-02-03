@@ -6,27 +6,39 @@ package crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/ecdh"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"github.com/jamesruan/go-rfc1924/base85"
-	"golang.org/x/crypto/curve25519"
 	"kitty/tools/utils"
 	"time"
 )
 
 func curve25519_key_pair() (private_key []byte, public_key []byte, err error) {
-	private_key = make([]byte, 32)
-	_, err = rand.Read(private_key)
+	curve := ecdh.X25519()
+	privkey, err := curve.GenerateKey(rand.Reader)
 	if err == nil {
-		public_key, err = curve25519.X25519(private_key[:], curve25519.Basepoint)
+		pubkey := privkey.PublicKey()
+		return privkey.Bytes(), pubkey.Bytes(), nil
 	}
-	return
+	return nil, nil, err
 }
 
 func curve25519_derive_shared_secret(private_key []byte, public_key []byte) (secret []byte, err error) {
-	secret, err = curve25519.X25519(private_key[:], public_key[:])
+	prkey, err := ecdh.X25519().NewPrivateKey(private_key)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid X25519 private key: %w", err)
+	}
+	pubkey, err := ecdh.X25519().NewPublicKey(public_key)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid X25519 public key: %w", err)
+	}
+	secret, err = prkey.ECDH(pubkey)
+	if err != nil {
+		err = fmt.Errorf("Failed to perform ECDH shared secret derivation: %w", err)
+	}
 	return
 }
 
