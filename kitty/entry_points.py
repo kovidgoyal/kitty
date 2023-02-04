@@ -37,6 +37,8 @@ def complete(args: List[str]) -> None:
         raise SystemExit(1)
     if args[1] == 'fish2':
         args[1:1] = ['fish', '_legacy_completion=fish2']
+    elif len(args) >= 3 and args [1:3] == ['setup', 'fish2']:
+        args[2] = 'fish'
     from kitty.constants import kitten_exe
     args = ['kitten', '__complete__'] + args[1:]
     os.execvp(kitten_exe(), args)
