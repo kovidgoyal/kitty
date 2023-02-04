@@ -36,6 +36,7 @@ var ProtocolVersion [3]int = [3]int{0, 26, 0}
 type GlobalOptions struct {
 	to_network, to_address, password string
 	to_address_is_from_env_var       bool
+	already_setup                    bool
 }
 
 var global_options GlobalOptions
@@ -367,6 +368,9 @@ func register_at_cmd(f func(*cli.Command) *cli.Command) {
 }
 
 func setup_global_options(cmd *cli.Command) (err error) {
+	if global_options.already_setup {
+		return nil
+	}
 	err = cmd.GetOptionValues(&rc_global_opts)
 	if err != nil {
 		return err
@@ -385,6 +389,7 @@ func setup_global_options(cmd *cli.Command) (err error) {
 	}
 	q, err := get_password(rc_global_opts.Password, rc_global_opts.PasswordFile, rc_global_opts.PasswordEnv, rc_global_opts.UsePassword)
 	global_options.password = q
+	global_options.already_setup = true
 	return err
 
 }

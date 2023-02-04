@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -161,26 +160,12 @@ func exec_command(at_root_command *cli.Command, rl *readline.Readline, cmdline s
 			fmt.Fprintln(os.Stderr, "No command named", formatter.BrightRed(parsed_cmdline[0])+". Type help for a list of commands")
 			return true
 		}
-		exe, err := os.Executable()
-		if err != nil {
-			exe, err = exec.LookPath("kitten")
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "Could not find the kitten executable")
-				return false
-			}
-		}
 		cmdline := []string{"kitten", "@"}
 		cmdline = append(cmdline, parsed_cmdline...)
-		cmd := exec.Cmd{Path: exe, Args: cmdline, Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr}
-		err = cmd.Run()
+		root := cli.NewRootCommand()
+		EntryPoint(root)
+		hi.ExitCode = root.ExecArgs(cmdline)
 		hi.Duration = time.Now().Sub(hi.Timestamp)
-		hi.ExitCode = 0
-		if err != nil {
-			if exitError, ok := err.(*exec.ExitError); ok {
-				hi.ExitCode = exitError.ExitCode()
-			}
-			fmt.Fprintln(os.Stderr, err)
-		}
 		rl.AddHistoryItem(hi)
 	}
 	return true
@@ -214,6 +199,10 @@ func completions(before_cursor, after_cursor string) (ans *cli.Completions) {
 }
 
 func shell_main(cmd *cli.Command, args []string) (int, error) {
+	err := setup_global_options(cmd)
+	if err != nil {
+		return 1, err
+	}
 	formatter = markup.New(true)
 	fmt.Println("Welcome to the kitty shell!")
 	fmt.Println("Use", formatter.Green("help"), "for assistance or", formatter.Green("exit"), "to quit.")

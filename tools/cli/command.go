@@ -520,28 +520,24 @@ func (self *Command) GetOptionValues(pointer_to_options_struct any) error {
 	return nil
 }
 
-func (self *Command) Exec(args ...string) {
+func (self *Command) ExecArgs(args []string) (exit_code int) {
 	root := self
 	for root.Parent != nil {
 		root = root.Parent
 	}
-	if len(args) == 0 {
-		args = os.Args
-	}
 	cmd, err := root.ParseArgs(args)
 	if err != nil {
 		ShowError(err)
-		os.Exit(1)
+		return 1
 	}
 	help_opt := cmd.option_map["Help"]
 	version_opt := root.option_map["Version"]
-	exit_code := 0
 	if help_opt != nil && help_opt.parsed_value().(bool) {
 		cmd.ShowHelp()
-		os.Exit(exit_code)
+		return
 	} else if version_opt != nil && version_opt.parsed_value().(bool) {
 		root.ShowVersion()
-		os.Exit(exit_code)
+		return
 	} else if cmd.Run != nil {
 		exit_code, err = cmd.Run(cmd, cmd.Args)
 		if err != nil {
@@ -551,7 +547,14 @@ func (self *Command) Exec(args ...string) {
 			}
 		}
 	}
-	os.Exit(exit_code)
+	return
+}
+
+func (self *Command) Exec(args ...string) {
+	if len(args) == 0 {
+		args = os.Args
+	}
+	os.Exit(self.ExecArgs(args))
 }
 
 func (self *Command) GetCompletions(argv []string, init_completions func(*Completions)) *Completions {
