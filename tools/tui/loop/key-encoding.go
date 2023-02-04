@@ -93,6 +93,10 @@ func (self KeyModifiers) String() string {
 	return strings.Join(ans, "+")
 }
 
+func (self KeyModifiers) HasCapsLock() bool {
+	return self&CAPS_LOCK != 0
+}
+
 type KeyEvent struct {
 	Type         KeyEventType
 	Mods         KeyModifiers
@@ -119,6 +123,10 @@ func (self *KeyEvent) String() string {
 		ans += "AlternateKey: " + self.AlternateKey + " "
 	}
 	return ans + "}"
+}
+
+func (self *KeyEvent) HasCapsLock() bool {
+	return self.Mods.HasCapsLock()
 }
 
 func KeyEventFromCSI(csi string) *KeyEvent {

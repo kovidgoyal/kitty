@@ -26,10 +26,28 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 	if err != nil {
 		return
 	}
+	capspress_was_locked := false
+	has_caps_lock := false
+
+	redraw_prompt := func() {
+		text := prompt + shadow
+		lp.QueueWriteString("\r")
+		lp.ClearToEndOfLine()
+		if has_caps_lock {
+			lp.QueueWriteString("\x1b[31m[CapsLock on!]\x1b[39m ")
+		}
+		lp.QueueWriteString(text)
+	}
 
 	lp.OnInitialize = func() (string, error) {
 		lp.QueueWriteString(prompt)
-		return "\r\n", nil
+		lp.SetCursorShape(loop.BAR_CURSOR, true)
+		return "", nil
+	}
+
+	lp.OnFinalize = func() string {
+		lp.SetCursorShape(loop.BLOCK_CURSOR, true)
+		return "\r\n"
 	}
 
 	lp.OnText = func(text string, from_key_event bool, in_bracketed_paste bool) error {
@@ -45,6 +63,22 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 	}
 
 	lp.OnKeyEvent = func(event *loop.KeyEvent) error {
+		has_caps := false
+		if strings.ToLower(event.Key) == "caps_lock" {
+			if event.Type == loop.RELEASE {
+				has_caps = !capspress_was_locked
+				capspress_was_locked = false
+			} else {
+				capspress_was_locked = event.HasCapsLock()
+				has_caps = true
+			}
+		} else {
+			has_caps = event.HasCapsLock()
+		}
+		if has_caps_lock != has_caps {
+			has_caps_lock = has_caps
+			redraw_prompt()
+		}
 		if event.MatchesPressOrRepeat("backspace") || event.MatchesPressOrRepeat("delete") {
 			event.Handled = true
 			if len(password) > 0 {
@@ -80,7 +114,7 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 	}
 
 	lp.OnResumeFromStop = func() error {
-		lp.QueueWriteString("\r" + prompt + shadow)
+		redraw_prompt()
 		return nil
 	}
 
