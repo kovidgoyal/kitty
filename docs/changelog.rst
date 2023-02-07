@@ -35,7 +35,7 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.27.1 [future]
+0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fix :opt:`modify_font` not working for strikethrough position (:iss:`5946`)
@@ -43,14 +43,15 @@ Detailed list of changes
 - Fix a regression causing the ``edit-in-kitty`` command not working if :file:`kitten` is not added
   to PATH (:iss:`5956`)
 
-- icat kitten: Fix a regression that broke display of animated GIFs over SSH
-  (:iss:`5958`)
+- icat kitten: Fix a regression that broke display of animated GIFs over SSH (:iss:`5958`)
 
 - Wayland GNOME: Fix for ibus not working when using XWayland (:iss:`5967`)
 
-- Fix regression in previous release that caused incorrect entries in terminfo for the modifer+F3 key combinations (:pull:`5970`)
+- Fix regression in previous release that caused incorrect entries in terminfo for modifier+F3 key combinations (:pull:`5970`)
 
 - Bring back the deprecated and removed ``kitty +complete`` and delegate it to :program:`kitten` for backward compatibility (:pull:`5977`)
+
+- Bump the version of Go needed to build kitty to ``1.20`` so we can use the Go stdlib ecdh package for crypto.
 
 
 0.27.0 [2023-01-31]
