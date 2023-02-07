@@ -65,6 +65,10 @@ extensions = [
 
 # URL for OpenGraph tags
 ogp_site_url = website_url()
+# disabled because of: https://github.com/wpilibsuite/sphinxext-opengraph/issues/96
+ogp_social_cards = {
+    "enable": False
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
