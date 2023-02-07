@@ -36,7 +36,7 @@ FontMap = Dict[str, Dict[str, List[FontConfigPattern]]]
 def create_font_map(all_fonts: Tuple[FontConfigPattern, ...]) -> FontMap:
     ans: FontMap = {'family_map': {}, 'ps_map': {}, 'full_map': {}}
     for x in all_fonts:
-        if 'path' not in x:
+        if not x.get('path'):
             continue
         f = (x.get('family') or '').lower()
         full = (x.get('full_name') or '').lower()

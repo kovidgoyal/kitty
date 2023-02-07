@@ -136,8 +136,8 @@ class Clipboard:
 
     def __call__(self, mime: str) -> Callable[[], bytes]:
         data = self.data.get(mime, b'')
-        if isinstance(data, str):  # type: ignore
-            data = data.encode('utf-8')  # type: ignore
+        if isinstance(data, str):
+            data = data.encode('utf-8')
         if isinstance(data, bytes):
             def chunker() -> bytes:
                 nonlocal data
