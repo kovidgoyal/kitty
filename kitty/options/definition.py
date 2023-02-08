@@ -250,8 +250,8 @@ setting will make the text appear thicker while decreasing the value will make i
 can compensate for some fonts looking too-thin when using the gamma-correct alpha blending.
 
 The result is scaled based on the luminance difference between the background and the foreground.
-Dark text on light backgrounds receive the full impact of the curve while light text on dark
-backgrounds are affected very little. Valid values are 0.01 and above. For macOS like text rendering,
+Dark text on light backgrounds receives the full impact of the curve while light text on dark
+backgrounds is affected very little. Valid values are 0.01 and above. For macOS like text rendering,
 a value of ~1.7 usually works well.
 '''
     )
