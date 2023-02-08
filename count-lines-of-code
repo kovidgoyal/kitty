@@ -2,34 +2,17 @@
 
 import subprocess
 
-files_to_exclude = '''\
-kitty/wcwidth-std.h
-kitty/charsets.c
-kitty/unicode-data.c
-kitty/key_encoding.py
-kitty/rgb.py
-kitty/gl.h
-kitty/gl-wrapper.h
-kitty/gl-wrapper.c
-kitty/srgb_gamma.c
-kitty/glfw-wrapper.h
-kitty/glfw-wrapper.c
-kitty/emoji.h
-kittens/unicode_input/names.h
-kitty/parse-graphics-command.h
-kitty/options/types.py
-kitty/options/parse.py
-kitty/options/to-c-generated.h
-kittens/diff/options/types.py
-kittens/diff/options/parse.py
-tools/wcswidth/std.go
-'''
-
 ignored = []
 for line in subprocess.check_output(['git', 'status', '--ignored', '--porcelain']).decode().splitlines():
     if line.startswith('!! '):
         ignored.append(line[3:])
-files_to_exclude += '\n'.join(ignored)
+files_to_exclude = '\n'.join(ignored)
+
+cp = subprocess.run(['git', 'check-attr', 'linguist-generated', '--stdin'],
+                    check=True, stdout=subprocess.PIPE, input=subprocess.check_output([ 'git', 'ls-files']))
+for line in cp.stdout.decode().splitlines():
+    if line.endswith(' true'):
+        files_to_exclude += '\n' + line.split(':')[0]
 
 p = subprocess.Popen([
     'cloc', '--exclude-list-file', '/dev/stdin', 'kitty', 'kittens', 'tools',
