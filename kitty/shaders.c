@@ -10,6 +10,7 @@
 #include "colors.h"
 #include <stddef.h>
 #include "window_logo.h"
+#include "srgb_gamma.h"
 
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
 #define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
@@ -28,6 +29,16 @@ typedef struct {
 
 static const SpriteMap NEW_SPRITE_MAP = { .xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1 };
 static GLint max_texture_size = 0, max_array_texture_layers = 0;
+
+GLfloat
+srgb_color(uint8_t color) {
+    return srgb_lut[color];
+}
+
+void
+color_vec3(GLint location, color_type color) {
+    glUniform3f(location, srgb_lut[(color >> 16) & 0xFF], srgb_lut[(color >> 8) & 0xFF], srgb_lut[color & 0xFF]);
+}
 
 SPRITE_MAP_HANDLE
 alloc_sprite_map(unsigned int cell_width, unsigned int cell_height) {
@@ -102,7 +113,7 @@ realloc_sprite_texture(FONTS_DATA_HANDLE fg) {
     znum = z + 1;
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
     width = xnum * sprite_map->cell_width; height = ynum * sprite_map->cell_height;
-    glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGBA8, width, height, znum);
+    glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_SRGB8_ALPHA8, width, height, znum);
     if (sprite_map->texture_id) {
         // need to re-alloc
         src_ynum = MAX(1, sprite_map->last_ynum);
@@ -159,7 +170,7 @@ send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei heigh
     }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, r);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, r);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, is_opaque ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, width, height, 0, is_opaque ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);
 }
 
 // }}}
@@ -498,9 +509,7 @@ draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen
     gpu_data_for_centered_image(data, screen_width, screen_height, width, height);
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
     glUniform1i(cell_uniform_data.amask_image_loc, GRAPHICS_UNIT);
-#define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
-    glUniform3f(cell_uniform_data.amask_fg_loc, CV3(OPT(foreground)));
-#undef CV3
+    color_vec3(cell_uniform_data.amask_fg_loc, OPT(foreground));
     glUniform1f(cell_uniform_data.amask_premult_loc, os_window->is_semi_transparent ? 1.f : 0.f);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, data);
     glEnable(GL_BLEND);
@@ -536,7 +545,7 @@ draw_tint(bool premult, Screen *screen, const CellRenderData *crd) {
     if (premult) { BLEND_PREMULT } else { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT }
     bind_program(TINT_PROGRAM);
     color_type window_bg = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_bg, screen->color_profile->configured.default_bg).rgb;
-#define C(shift) ((((GLfloat)((window_bg >> shift) & 0xFF)) / 255.0f)) * premult_factor
+#define C(shift) srgb_color((window_bg >> shift) & 0xFF) * premult_factor
     GLfloat premult_factor = premult ? OPT(background_tint) : 1.0f;
     glUniform4f(tint_program_layout.tint_color_location, C(16), C(8), C(0), OPT(background_tint));
 #undef C
@@ -560,7 +569,17 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         S(CELL_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i); S(CELL_FG_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i);
         S(CELL_PROGRAM, dim_opacity, OPT(dim_opacity), 1f); S(CELL_FG_PROGRAM, dim_opacity, OPT(dim_opacity), 1f);
         S(CELL_BG_PROGRAM, defaultbg, OPT(background), 1f);
+        int text_old_gamma = OPT(text_old_gamma) ? 1 : 0;
+        S(CELL_PROGRAM, text_old_gamma, text_old_gamma, 1i); S(CELL_FG_PROGRAM, text_old_gamma, text_old_gamma, 1i);
+        float text_contrast = 1.0f + OPT(text_contrast) * 0.01f;
+        S(CELL_PROGRAM, text_contrast, text_contrast, 1f); S(CELL_FG_PROGRAM, text_contrast, text_contrast, 1f);
+        float text_gamma_adjustment = OPT(text_gamma_adjustment) < 0.01f ? 1.0f : 1.0f / OPT(text_gamma_adjustment);
+        S(CELL_PROGRAM, text_gamma_adjustment, text_gamma_adjustment, 1f); S(CELL_FG_PROGRAM, text_gamma_adjustment, text_gamma_adjustment, 1f);
 #undef S
+#define SV(prog, name, num, val, type) { bind_program(prog); glUniform##type(glGetUniformLocation(program_id(prog), #name), num, val); }
+        SV(CELL_PROGRAM, gamma_lut, 256, srgb_lut, 1fv); SV(CELL_FG_PROGRAM, gamma_lut, 256, srgb_lut, 1fv);
+        SV(CELL_BG_PROGRAM, gamma_lut, 256, srgb_lut, 1fv); SV(CELL_SPECIAL_PROGRAM, gamma_lut, 256, srgb_lut, 1fv);
+#undef SV
         cell_uniform_data.constants_set = true;
     }
     if (current_inactive_text_alpha != cell_uniform_data.prev_inactive_text_alpha || force) {
@@ -612,7 +631,7 @@ render_a_bar(OSWindow *os_window, Screen *screen, const CellRenderData *crd, Win
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bar_width, bar_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bar->buf);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, bar_width, bar_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bar->buf);
     set_cell_uniforms(1.f, false);
     bind_program(GRAPHICS_PROGRAM);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, &data);
@@ -707,9 +726,7 @@ draw_window_number(OSWindow *os_window, Screen *screen, const CellRenderData *cr
     BLEND_PREMULT;
     glUniform1i(cell_uniform_data.amask_image_loc, GRAPHICS_UNIT);
     color_type digit_color = colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg);
-#define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
-    glUniform3f(cell_uniform_data.amask_fg_loc, CV3(digit_color));
-#undef CV3
+    color_vec3(cell_uniform_data.amask_fg_loc, digit_color);
     glUniform1f(cell_uniform_data.amask_premult_loc, 1.f);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, ird);
     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, os_window->gvao_idx, ird, 0, 1);
@@ -726,7 +743,7 @@ draw_visual_bell_flash(GLfloat intensity, const CellRenderData *crd, Screen *scr
 #define COLOR(name, fallback) colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback)
     const color_type flash = !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
 #undef COLOR
-#define C(shift) ((((GLfloat)((flash >> shift) & 0xFF)) / 255.0f) )
+#define C(shift) srgb_color((flash >> shift) & 0xFF)
     const GLfloat r = C(16), g = C(8), b = C(0);
     const GLfloat max_channel = r > g ? (r > b ? r : b) : (g > b ? g : b);
 #undef C
@@ -793,7 +810,7 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
         glGenFramebuffers(1, &os_window->offscreen_framebuffer);
         glGenTextures(1, &os_window->offscreen_texture_id);
         glBindTexture(GL_TEXTURE_2D, os_window->offscreen_texture_id);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, os_window->viewport_width, os_window->viewport_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, os_window->viewport_width, os_window->viewport_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -862,7 +879,7 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
 void
 blank_canvas(float background_opacity, color_type color) {
     // See https://github.com/glfw/glfw/issues/1538 for why we use pre-multiplied alpha
-#define C(shift) ((((GLfloat)((color >> shift) & 0xFF)) / 255.0f) * background_opacity)
+#define C(shift) srgb_color((color >> shift) & 0xFF)
     glClearColor(C(16), C(8), C(0), background_opacity);
 #undef C
     glClear(GL_COLOR_BUFFER_BIT);
@@ -966,7 +983,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float
 // }}}
 
 // Borders {{{
-enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_tint_opacity, BORDER_tint_premult, BORDER_colors, NUM_BORDER_UNIFORMS };
+enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_tint_opacity, BORDER_tint_premult, BORDER_colors, BORDER_gamma_lut, NUM_BORDER_UNIFORMS };
 static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
 
 static void
@@ -977,6 +994,7 @@ init_borders_program(void) {
         SET_LOC(tint_opacity)
         SET_LOC(tint_premult)
         SET_LOC(colors)
+        SET_LOC(gamma_lut)
 #undef SET_LOC
 }
 
@@ -1028,6 +1046,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         glUniform1f(border_uniform_locations[BORDER_tint_opacity], tint_opacity);
         glUniform1f(border_uniform_locations[BORDER_tint_premult], tint_premult);
         glUniform2ui(border_uniform_locations[BORDER_viewport], viewport_width, viewport_height);
+        glUniform1fv(border_uniform_locations[BORDER_gamma_lut], 256, srgb_lut);
         if (has_bgimage(w)) {
             if (w->is_semi_transparent) { BLEND_PREMULT; }
             else { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT; }

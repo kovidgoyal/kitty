@@ -443,6 +443,9 @@ option_names = (  # {{{
  'tab_title_max_length',
  'tab_title_template',
  'term',
+ 'text_contrast',
+ 'text_gamma_adjustment',
+ 'text_old_gamma',
  'touch_scroll_multiplier',
  'undercurl_style',
  'update_check_interval',
@@ -594,6 +597,9 @@ class Options:
     tab_title_max_length: int = 0
     tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{title}'
     term: str = 'xterm-kitty'
+    text_contrast: float = 0
+    text_gamma_adjustment: float = 1.0
+    text_old_gamma: bool = False
     touch_scroll_multiplier: float = 1.0
     undercurl_style: choices_for_undercurl_style = 'thin-sparse'
     update_check_interval: float = 24.0

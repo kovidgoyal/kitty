@@ -29,6 +29,7 @@ uniform uint draw_bg_bitfield;
 layout(location=0) in uvec3 colors;
 layout(location=1) in uvec4 sprite_coords;
 layout(location=2) in uint is_selected;
+uniform float gamma_lut[256];
 
 
 const int fg_index_map[] = int[3](0, 1, 0);
@@ -87,7 +88,7 @@ vec3 color_to_vec(uint c) {
     r = (c >> 16) & BYTE_MASK;
     g = (c >> 8) & BYTE_MASK;
     b = c & BYTE_MASK;
-    return vec3(float(r) / 255.0, float(g) / 255.0, float(b) / 255.0);
+    return vec3(gamma_lut[r], gamma_lut[g], gamma_lut[b]);
 }
 
 uint resolve_color(uint c, uint defval) {

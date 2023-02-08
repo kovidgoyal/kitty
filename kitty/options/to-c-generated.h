@@ -58,6 +58,45 @@ convert_from_opts_modify_font(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_text_old_gamma(PyObject *val, Options *opts) {
+    opts->text_old_gamma = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_text_old_gamma(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "text_old_gamma");
+    if (ret == NULL) return;
+    convert_from_python_text_old_gamma(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_text_gamma_adjustment(PyObject *val, Options *opts) {
+    opts->text_gamma_adjustment = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_text_gamma_adjustment(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "text_gamma_adjustment");
+    if (ret == NULL) return;
+    convert_from_python_text_gamma_adjustment(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_text_contrast(PyObject *val, Options *opts) {
+    opts->text_contrast = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_text_contrast(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "text_contrast");
+    if (ret == NULL) return;
+    convert_from_python_text_contrast(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_cursor_shape(PyObject *val, Options *opts) {
     opts->cursor_shape = PyLong_AsLong(val);
 }
@@ -1041,6 +1080,12 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_disable_ligatures(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_modify_font(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_text_old_gamma(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_text_gamma_adjustment(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_text_contrast(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_cursor_shape(py_opts, opts);
     if (PyErr_Occurred()) return false;
