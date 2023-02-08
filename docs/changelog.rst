@@ -44,6 +44,8 @@ Detailed list of changes
 
 - launch: When using ``--cwd=current`` for a remote system support running non shell commands as well (:disc:`5987`)
 
+- When changing the cursor text color via escape codes or remote control to a fixed color, do not reset cursor_text_color (:iss:`5994`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

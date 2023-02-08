@@ -348,11 +348,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
             linebuf_init_line(screen->linebuf, screen->cursor->y);
             colors_for_cell(screen->linebuf->line, screen->color_profile, &cell_color_x, &cell_fg, &cell_bg, &reversed);
         }
-        if (screen->color_profile->overridden.cursor_color.type == COLOR_IS_INDEX || screen->color_profile->overridden.cursor_color.type == COLOR_IS_RGB) {
-            // since the program is controlling the cursor color we hope it has chosen one
-            // that has good contrast with the text color of the cell
-            rd->cursor_fg = cell_fg; rd->cursor_bg = COLOR(cursor_color);
-        } else if (IS_SPECIAL_COLOR(cursor_color)) {
+        if (IS_SPECIAL_COLOR(cursor_color)) {
             if (cursor_ok) pick_cursor_color(screen->linebuf->line, screen->color_profile, cell_fg, cell_bg, cell_color_x, &rd->cursor_fg, &rd->cursor_bg, rd->default_fg, rd->default_bg);
             else { rd->cursor_fg = rd->default_bg; rd->cursor_bg = rd->default_fg; }
             if (cell_bg == cell_fg) {
