@@ -236,8 +236,8 @@ the curl will peak once per character, with dense twice.
 opt('text_old_gamma', 'no',
     option_type='to_bool', ctype='bool',
     long_text='''
-If to simulate the old gamma-incorrect blending for the text alpha-channel, this
-will make some text appear like the strokes are uneven. Dark text on bright backgrounds
+Revert to using the old (pre 0.28) gamma correction algorithm when rendering text.
+This will make some text appear like the strokes are uneven. Dark text on bright backgrounds
 will also look thicker while lighter text on darker backgrounds will look thinner.
 '''
     )
@@ -245,26 +245,22 @@ will also look thicker while lighter text on darker backgrounds will look thinne
 opt('text_gamma_adjustment', '1.0',
     option_type='positive_float', ctype='float',
     long_text='''
-This setting adjusts the thickness of darker text on lighter backgrounds. Increasing the value
+Adjust the thickness of darker text on lighter backgrounds. Increasing the value
 setting will make the text appear thicker while decreasing the value will make it thinner. It
 can compensate for some fonts looking too-thin when using the gamma-correct alpha blending.
 
 The result is scaled based on the luminance difference between the background and the foreground.
 Dark text on light backgrounds receive the full impact of the curve while light text on dark
-backgrounds are affected very little.
-
-Range: >=0.01
-MacOS: 1.7
+backgrounds are affected very little. Valid values are 0.01 and above. For macOS like text rendering,
+a value of ~1.7 usually works well.
 '''
     )
 
 opt('text_contrast', '0',
     option_type='positive_float', ctype='float',
     long_text='''
-Additional multiplicative text contrast as a percentage, will saturate and cause jagged edges if set too high.
-
-Range: >=0.0
-MacOS: 30
+Increase text contrast further. This will cause jagged edges due to over saturation if set too high.
+The value is a percentage from 0 to 100. For macOS like text rendering, a value of 30 usually works well.
 '''
     )
 egr()  # }}}

@@ -30,12 +30,12 @@ typedef struct {
 static const SpriteMap NEW_SPRITE_MAP = { .xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1 };
 static GLint max_texture_size = 0, max_array_texture_layers = 0;
 
-GLfloat
+static GLfloat
 srgb_color(uint8_t color) {
     return srgb_lut[color];
 }
 
-void
+static void
 color_vec3(GLint location, color_type color) {
     glUniform3f(location, srgb_lut[(color >> 16) & 0xFF], srgb_lut[(color >> 8) & 0xFF], srgb_lut[color & 0xFF]);
 }
@@ -234,7 +234,7 @@ init_cell_program(void) {
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer };
 
 ssize_t
-create_cell_vao() {
+create_cell_vao(void) {
     ssize_t vao_idx = create_vao();
 #define A(name, size, dtype, offset, stride) \
     add_attribute_to_vao(CELL_PROGRAM, vao_idx, #name, \
@@ -257,7 +257,7 @@ create_cell_vao() {
 }
 
 ssize_t
-create_graphics_vao() {
+create_graphics_vao(void) {
     ssize_t vao_idx = create_vao();
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
     add_attribute_to_vao(GRAPHICS_PROGRAM, vao_idx, "src", 4, GL_FLOAT, 0, NULL, 0);
