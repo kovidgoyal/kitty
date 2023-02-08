@@ -233,36 +233,30 @@ the curl will peak once per character, with dense twice.
 '''
     )
 
-opt('text_old_gamma', 'no',
-    option_type='to_bool', ctype='bool',
-    long_text='''
-Revert to using the old (pre 0.28) gamma correction algorithm when rendering text.
-This will make some text appear like the strokes are uneven. Dark text on bright backgrounds
-will also look thicker while lighter text on darker backgrounds will look thinner.
-'''
-    )
+opt('text_composition_strategy', 'platform', ctype='!text_composition_strategy', long_text='''
+Control how kitty composites text glyphs onto the background color.
+The default value of :code:`platform` tries for text rendering as
+close to "native" for the platform kitty is running on as possible.
 
-opt('text_gamma_adjustment', '1.0',
-    option_type='positive_float', ctype='float',
-    long_text='''
-Adjust the thickness of darker text on lighter backgrounds. Increasing the value
-setting will make the text appear thicker while decreasing the value will make it thinner. It
-can compensate for some fonts looking too-thin when using the gamma-correct alpha blending.
+A value of :code:`legacy` uses the old (pre kitty 0.28) strategy for how glyphs
+are composited. This will make dark text on light backgrounds look thicker and
+light text on dark backgrounds thinner. It might also make some text appear like
+the strokes are uneven.
 
+You can fine tune the actual contrast curve used for glyph composition
+by specifying two space separated numbers for this setting.
+
+The first number is the gamma adjustment, which
+controls the thickness of dark text on light backgrounds. Increasing the value will make text appear thicker.
+The default value for this is 1.0 on Linux and 1.7 on macOS. Valid values are 0.01 and above.
 The result is scaled based on the luminance difference between the background and the foreground.
 Dark text on light backgrounds receives the full impact of the curve while light text on dark
-backgrounds is affected very little. Valid values are 0.01 and above. For macOS like text rendering,
-a value of ~1.7 usually works well.
-'''
-    )
+backgrounds is affected very little.
 
-opt('text_contrast', '0',
-    option_type='positive_float', ctype='float',
-    long_text='''
-Increase text contrast further. This will cause jagged edges due to over saturation if set too high.
-The value is a percentage from 0 to 100. For macOS like text rendering, a value of 30 usually works well.
-'''
-    )
+The second number is an additional multiplicative contrast. It is percentage ranging from 0 to 100.
+The default value is zero On Linux and 30 on macOS.
+''')
+
 egr()  # }}}
 
 

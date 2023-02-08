@@ -38,7 +38,7 @@ Detailed list of changes
 0.28.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Text rendering: Use sRGB correct linear gamma blending for nicer font rendering and better color accuracy with transparent windows. See the options :opt:`text_old_gamma`, :opt:`text_gamma_adjustment` and :opt:`text_contrast`  (:pull:`5969`)
+- Text rendering: Use sRGB correct linear gamma blending for nicer font rendering and better color accuracy with transparent windows. See the option :opt:`text_composition_strategy` for details. (:pull:`5969`)
 
 
 0.27.1 [2023-02-07]

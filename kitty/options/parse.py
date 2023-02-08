@@ -1278,14 +1278,8 @@ class Parser:
     def term(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['term'] = str(val)
 
-    def text_contrast(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['text_contrast'] = positive_float(val)
-
-    def text_gamma_adjustment(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['text_gamma_adjustment'] = positive_float(val)
-
-    def text_old_gamma(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['text_old_gamma'] = to_bool(val)
+    def text_composition_strategy(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['text_composition_strategy'] = str(val)
 
     def touch_scroll_multiplier(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['touch_scroll_multiplier'] = float(val)
