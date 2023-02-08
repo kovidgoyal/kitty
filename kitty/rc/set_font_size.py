@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 class SetFontSize(RemoteCommand):
     protocol_spec = __doc__ = '''
-    size+/float: The new font size in pts (a positive number)
+    size+/float: The new font size in pts (a positive number). If absent is assumed to be zero which means reset to default.
     all/bool: Boolean whether to change font size in the current window or all windows
     increment_op/choices.+.-: The string ``+`` or ``-`` to interpret size as an increment
     '''
@@ -45,7 +45,7 @@ the font size for any newly created OS Windows in the future.
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         boss.change_font_size(
             payload_get('all'),
-            payload_get('increment_op'), payload_get('size'))
+            payload_get('increment_op'), payload_get('size') or 0)
         return None
 
 

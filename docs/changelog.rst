@@ -40,6 +40,8 @@ Detailed list of changes
 
 - Text rendering: Use sRGB correct linear gamma blending for nicer font rendering and better color accuracy with transparent windows. See the option :opt:`text_composition_strategy` for details. (:pull:`5969`)
 
+- Fix a regression in 0.27.0 that broke kitty @ set-font-size 0 (:iss:`5992`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
