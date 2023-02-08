@@ -22,7 +22,7 @@ from base64 import standard_b64decode, standard_b64encode
 from contextlib import contextmanager, suppress
 from getpass import getuser
 from select import select
-from typing import Any, Callable, Dict, Iterator, List, NoReturn, Optional, Sequence, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, Iterator, List, NoReturn, Optional, Sequence, Tuple, Union, cast
 
 from kitty.constants import cache_dir, runtime_dir, shell_integration_dir, ssh_control_master_template, str_version, terminfo_dir
 from kitty.shell_integration import as_str_literal
@@ -37,7 +37,7 @@ from .config import init_config
 from .copy import CopyInstruction
 from .options.types import Options as SSHOptions
 from .options.utils import DELETE_ENV_VAR
-from .utils import create_shared_memory, ssh_options
+from .utils import create_shared_memory, get_ssh_cli, is_extra_arg, passthrough_args
 
 
 @run_once
@@ -291,25 +291,6 @@ def bootstrap_script(
     return prepare_script(ans, sd, script_type), replacements, shm_name
 
 
-def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
-    other_ssh_args: Set[str] = set()
-    boolean_ssh_args: Set[str] = set()
-    for k, v in ssh_options().items():
-        k = f'-{k}'
-        if v:
-            other_ssh_args.add(k)
-        else:
-            boolean_ssh_args.add(k)
-    return boolean_ssh_args, other_ssh_args
-
-
-def is_extra_arg(arg: str, extra_args: Tuple[str, ...]) -> str:
-    for x in extra_args:
-        if arg == x or arg.startswith(f'{x}='):
-            return x
-    return ''
-
-
 def get_connection_data(args: List[str], cwd: str = '', extra_args: Tuple[str, ...] = ()) -> Optional[SSHConnectionData]:
     boolean_ssh_args, other_ssh_args = get_ssh_cli()
     port: Optional[int] = None
@@ -403,9 +384,6 @@ class InvalidSSHArgs(ValueError):
         if self.err_msg:
             print(self.err_msg, file=sys.stderr)
         os.execlp(ssh_exe(), 'ssh')
-
-
-passthrough_args = {f'-{x}' for x in 'NnfGT'}
 
 
 def parse_ssh_args(args: List[str], extra_args: Tuple[str, ...] = ()) -> Tuple[List[str], List[str], bool, Tuple[str, ...]]:
