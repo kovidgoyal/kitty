@@ -11,6 +11,7 @@ kitty/rgb.py
 kitty/gl.h
 kitty/gl-wrapper.h
 kitty/gl-wrapper.c
+kitty/srgb_gamma.c
 kitty/glfw-wrapper.h
 kitty/glfw-wrapper.c
 kitty/emoji.h
