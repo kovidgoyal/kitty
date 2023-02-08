@@ -144,6 +144,7 @@ class CwdRequest:
     def __init__(self, window: Optional['Window'] = None, request_type: CwdRequestType = CwdRequestType.current) -> None:
         self.window_id = -1 if window is None else window.id
         self.request_type = request_type
+        self.rc_from_window_id = 0
 
     def __bool__(self) -> bool:
         return self.window_id > -1
@@ -170,14 +171,15 @@ class CwdRequest:
             return ''
         reported_cwd = path_from_osc7_url(window.screen.last_reported_cwd) if window.screen.last_reported_cwd else ''
         if reported_cwd and (self.request_type is not CwdRequestType.root or window.root_in_foreground_processes):
-            # First check if we are running ssh kitten, and trying to open the configured login shell
-            if argv[0] == resolved_shell(get_options())[0]:
-                ssh_kitten_cmdline = window.ssh_kitten_cmdline()
-                if ssh_kitten_cmdline:
-                    from kittens.ssh.utils import set_cwd_in_cmdline
-                    argv[:] = ssh_kitten_cmdline
-                    set_cwd_in_cmdline(reported_cwd, argv)
-                    return ''
+            ssh_kitten_cmdline = window.ssh_kitten_cmdline()
+            if ssh_kitten_cmdline:
+                run_shell = argv[0] == resolved_shell(get_options())[0]
+                server_args = [] if run_shell else list(argv)
+                from kittens.ssh.utils import set_cwd_in_cmdline, set_server_args_in_cmdline
+                argv[:] = ssh_kitten_cmdline
+                set_cwd_in_cmdline(reported_cwd, argv)
+                set_server_args_in_cmdline(server_args, argv, allocate_tty=not run_shell)
+                return ''
             if not window.child_is_remote and (self.request_type is CwdRequestType.last_reported or window.at_prompt):
                 return reported_cwd
         return window.get_cwd_of_child(oldest=self.request_type is CwdRequestType.oldest) or ''

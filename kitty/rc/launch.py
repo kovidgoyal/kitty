@@ -91,7 +91,7 @@ instead of the active tab
             target_tab = tabs[0]
         elif payload_get('type') not in ('background', 'os-window', 'tab', 'window'):
             return None
-        w = do_launch(boss, opts, payload_get('args') or [], target_tab=target_tab)
+        w = do_launch(boss, opts, payload_get('args') or [], target_tab=target_tab, rc_from_window=window)
         return None if payload_get('no_response') else str(getattr(w, 'id', 0))
 
 

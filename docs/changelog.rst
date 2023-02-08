@@ -42,6 +42,8 @@ Detailed list of changes
 
 - Fix a regression in 0.27.0 that broke kitty @ set-font-size 0 (:iss:`5992`)
 
+- launch: When using ``--cwd=current`` for a remote system support running non shell commands as well (:disc:`5987`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

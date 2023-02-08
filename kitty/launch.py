@@ -432,6 +432,7 @@ def launch(
     force_target_tab: bool = False,
     active: Optional[Window] = None,
     is_clone_launch: str = '',
+    rc_from_window: Optional[Window] = None,
 ) -> Optional[Window]:
     active = active or boss.active_window_for_cwd
     if active:
@@ -486,6 +487,8 @@ def launch(
                 kw['cwd_from'] = CwdRequest(active, CwdRequestType.root)
         else:
             kw['cwd'] = opts.cwd
+        if kw['cwd_from'] is not None and rc_from_window is not None:
+            kw['cwd_from'].rc_from_window_id = rc_from_window.id
     if opts.location != 'default':
         kw['location'] = opts.location
     if opts.copy_colors and active:
@@ -538,9 +541,10 @@ def launch(
                         elif x == '@last-line-on-screen':
                             x = str(screen.visual_line(screen.lines - 1) or '')
             final_cmd.append(x)
-        exe = which(final_cmd[0])
-        if exe:
-            final_cmd[0] = exe
+        if rc_from_window is None and final_cmd:
+            exe = which(final_cmd[0])
+            if exe:
+                final_cmd[0] = exe
         kw['cmd'] = final_cmd
     if force_window_launch and opts.type not in non_window_launch_types:
         opts.type = 'window'

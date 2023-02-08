@@ -121,7 +121,11 @@ def is_extra_arg(arg: str, extra_args: Tuple[str, ...]) -> str:
 passthrough_args = {f'-{x}' for x in 'NnfGT'}
 
 
-def set_server_args_in_cmdline(server_args: List[str], argv: List[str], extra_args: Tuple[str, ...] = ('--kitten',)) -> None:
+def set_server_args_in_cmdline(
+    server_args: List[str], argv: List[str],
+    extra_args: Tuple[str, ...] = ('--kitten',),
+    allocate_tty: bool = False
+) -> None:
     boolean_ssh_args, other_ssh_args = get_ssh_cli()
     ssh_args = []
     expecting_option_val = False
@@ -136,6 +140,8 @@ def set_server_args_in_cmdline(server_args: List[str], argv: List[str], extra_ar
         if argument.startswith('-') and not expecting_option_val:
             if argument == '--':
                 del ans[i+2:]
+                if allocate_tty and ans[i-1] != '-t':
+                    ans.insert(i, '-t')
                 break
             if extra_args:
                 matching_ex = is_extra_arg(argument, extra_args)
@@ -173,5 +179,7 @@ def set_server_args_in_cmdline(server_args: List[str], argv: List[str], extra_ar
             expecting_option_val = False
             continue
         del ans[i+1:]
+        if allocate_tty and ans[i] != '-t':
+            ans.insert(i, '-t')
         break
     argv[:] = ans + server_args
