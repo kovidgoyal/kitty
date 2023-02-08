@@ -93,7 +93,7 @@ vec4 vec4_premul(vec4 rgba) {
  *        7) Draw the images that are supposed to be above text again in the graphics shader
  *
  *    2b) Transparent bg with images
- *        First everything is rendered into a framebuffer, and then the framebauffer is blended onto
+ *        First everything is rendered into a framebuffer, and then the framebuffer is blended onto
  *        the screen. The framebuffer is needed because it allows access to the background color pixels
  *        to blend with the image pixels. The steps are basically the same as for 2a.
  *
@@ -116,17 +116,17 @@ float srgb2linear(float x) {
     return pow(x, 2.2);
 }
 
-float clamp(float x) {
+float clamp_to_unit_float(float x) {
     // Clamp value to suitable output range
-    return max(min(x, 1.0f), 0.0f);
+    return clamp(x, 0.0f, 1.0f);
 }
 
 vec4 foreground_contrast(vec4 over, vec3 under) {
     float underL = dot(under, Y);
     float overL = dot(over.rgb, Y);
     // Apply additional gamma-adjustment scaled by the luminance difference, the darker the foreground the more adjustment we apply.
-    // A multiplicative contrast is also available to increase sasturation.
-    over.a = clamp(mix(over.a, pow(over.a, text_gamma_adjustment), (1 - overL + underL) * text_gamma_scaling) * text_contrast);
+    // A multiplicative contrast is also available to increase saturation.
+    over.a = clamp_to_unit_float(mix(over.a, pow(over.a, text_gamma_adjustment), (1 - overL + underL) * text_gamma_scaling) * text_contrast);
     return over;
 }
 
@@ -138,7 +138,7 @@ vec4 foreground_contrast_incorrect(vec4 over, vec3 under) {
     //
     // linear2srgb(over * overA2 + under * (1 - overA2)) = linear2srgb(over) * over.a + linear2srgb(under) * (1 - over.a)
     // ^ gamma correct blending with new alpha             ^ gamma incorrect blending with old alpha
-    over.a = clamp((srgb2linear(linear2srgb(overL) * over.a + linear2srgb(underL) * (1.0f - over.a)) - underL) / (overL - underL));
+    over.a = clamp_to_unit_float((srgb2linear(linear2srgb(overL) * over.a + linear2srgb(underL) * (1.0f - over.a)) - underL) / (overL - underL));
     return over;
 }
 
