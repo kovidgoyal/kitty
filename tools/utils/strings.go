@@ -54,8 +54,12 @@ func (self *ScanLines) Text() string {
 	return self.scanner.Text()
 }
 
-func Splitlines(x string) []string {
-	ans := make([]string, 0, 8)
+func Splitlines(x string, expected_number_of_lines ...int) (ans []string) {
+	if len(expected_number_of_lines) > 0 {
+		ans = make([]string, 0, expected_number_of_lines[0])
+	} else {
+		ans = make([]string, 0, 8)
+	}
 	scanner := bufio.NewScanner(strings.NewReader(x))
 	for scanner.Scan() {
 		ans = append(ans, scanner.Text())
