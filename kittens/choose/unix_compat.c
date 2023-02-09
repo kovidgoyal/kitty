@@ -19,7 +19,7 @@
 #endif
 
 int
-cpu_count() {
+cpu_count(void) {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
