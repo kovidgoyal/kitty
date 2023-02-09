@@ -277,7 +277,7 @@ is_emoji(char_type code) {
 			return true;
 		case 0x1f6d5 ... 0x1f6d7:
 			return true;
-		case 0x1f6dd ... 0x1f6e5:
+		case 0x1f6dc ... 0x1f6e5:
 			return true;
 		case 0x1f6e9:
 			return true;
@@ -297,23 +297,19 @@ is_emoji(char_type code) {
 			return true;
 		case 0x1f947 ... 0x1f9ff:
 			return true;
-		case 0x1fa70 ... 0x1fa74:
+		case 0x1fa70 ... 0x1fa7c:
 			return true;
-		case 0x1fa78 ... 0x1fa7c:
+		case 0x1fa80 ... 0x1fa88:
 			return true;
-		case 0x1fa80 ... 0x1fa86:
+		case 0x1fa90 ... 0x1fabd:
 			return true;
-		case 0x1fa90 ... 0x1faac:
+		case 0x1fabf ... 0x1fac5:
 			return true;
-		case 0x1fab0 ... 0x1faba:
+		case 0x1face ... 0x1fadb:
 			return true;
-		case 0x1fac0 ... 0x1fac5:
+		case 0x1fae0 ... 0x1fae8:
 			return true;
-		case 0x1fad0 ... 0x1fad9:
-			return true;
-		case 0x1fae0 ... 0x1fae7:
-			return true;
-		case 0x1faf0 ... 0x1faf6:
+		case 0x1faf0 ... 0x1faf8:
 			return true;
 		default: return false;
 	}
