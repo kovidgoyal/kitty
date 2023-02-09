@@ -3097,7 +3097,8 @@ opt('macos_thicken_font', '0',
 Draw an extra border around the font with the given width, to increase
 legibility at small font sizes on macOS. For example, a value of :code:`0.75`
 will result in rendering that looks similar to sub-pixel antialiasing at common
-font sizes.
+font sizes. Note that in modern kitty, this option is obsolete (although still supported).
+Consider using :opt:`text_composition_strategy` instead.
 '''
     )
 
