@@ -954,7 +954,7 @@ PyTypeObject Line_Type = {
     .tp_new = new
 };
 
-Line *alloc_line() {
+Line *alloc_line(void) {
     Line *ans = (Line*)PyType_GenericAlloc(&Line_Type, 0);
     ans->needs_free = 0;
     return ans;
