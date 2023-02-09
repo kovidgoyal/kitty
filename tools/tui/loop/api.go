@@ -195,11 +195,11 @@ func (self *Loop) Println(args ...any) {
 	self.QueueWriteString("\r\n")
 }
 
-func (self *Loop) SaveCursor() {
+func (self *Loop) SaveCursorPosition() {
 	self.QueueWriteString("\x1b7")
 }
 
-func (self *Loop) RestoreCursor() {
+func (self *Loop) RestoreCursorPosition() {
 	self.QueueWriteString("\x1b8")
 }
 
@@ -339,6 +339,12 @@ func (self *Loop) AllowLineWrapping(allow bool) {
 	} else {
 		self.QueueWriteString(DECAWM.EscapeCodeToReset())
 	}
+}
+
+func (self *Loop) SetWindowTitle(title string) {
+	title = strings.ReplaceAll(title, "\033", "")
+	title = strings.ReplaceAll(title, "\x9c", "")
+	self.QueueWriteString("\033]2;" + title + "\033\\")
 }
 
 func (self *Loop) ClearScreen() {

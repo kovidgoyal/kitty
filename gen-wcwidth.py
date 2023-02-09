@@ -444,104 +444,22 @@ def gen_ucd() -> None:
 
 
 def gen_names() -> None:
-    with create_header('kittens/unicode_input/names.h') as p:
-        mark_to_cp = list(sorted(name_map))
-        cp_to_mark = {cp: m for m, cp in enumerate(mark_to_cp)}
-        # Mapping of mark to codepoint name
-        p(f'static const char* name_map[{len(mark_to_cp)}] = {{' ' // {{{')
-        for cp in mark_to_cp:
-            w = name_map[cp].replace('"', '\\"')
-            p(f'\t"{w}",')
-        p("}; // }}}\n")
-
-        # Mapping of mark to codepoint
-        p(f'static const char_type mark_to_cp[{len(mark_to_cp)}] = {{' ' // {{{')
-        p(', '.join(map(str, mark_to_cp)))
-        p('}; // }}}\n')
-
-        # Function to get mark number for codepoint
-        p('static char_type mark_for_codepoint(char_type c) {')
-        codepoint_to_mark_map(p, mark_to_cp)
-        p('}\n')
-        p('static inline const char* name_for_codepoint(char_type cp) {')
-        p('\tchar_type m = mark_for_codepoint(cp); if (m == 0) return NULL;')
-        p('\treturn name_map[m];')
-        p('}\n')
-
-        # Array of all words
-        word_map = tuple(sorted(word_search_map))
-        word_rmap = {w: i for i, w in enumerate(word_map)}
-        p(f'static const char* all_words_map[{len(word_map)}] = {{' ' // {{{')
-        cwords = (w.replace('"', '\\"') for w in word_map)
-        p(', '.join(f'"{w}"' for w in cwords))
-        p('}; // }}}\n')
-
-        # Array of sets of marks for each word
-        word_to_marks = {word_rmap[w]: frozenset(map(cp_to_mark.__getitem__, cps)) for w, cps in word_search_map.items()}
-        all_mark_groups = frozenset(word_to_marks.values())
-        array = [0]
-        mg_to_offset = {}
-        for mg in all_mark_groups:
-            mg_to_offset[mg] = len(array)
-            array.append(len(mg))
-            array.extend(sorted(mg))
-        p(f'static const char_type mark_groups[{len(array)}] = {{' ' // {{{')
-        p(', '.join(map(str, array)))
-        p('}; // }}}\n')
-        offsets_array = []
-        for wi, w in enumerate(word_map):
-            mg = word_to_marks[wi]
-            offsets_array.append(mg_to_offset[mg])
-        p(f'static const char_type mark_to_offset[{len(offsets_array)}] = {{' ' // {{{')
-        p(', '.join(map(str, offsets_array)))
-        p('}; // }}}\n')
-
-        # The trie
-        p('typedef struct { uint32_t children_offset; uint32_t match_offset; } word_trie;\n')
-        all_trie_nodes: List['TrieNode'] = []
-
-        class TrieNode:
-
-            def __init__(self) -> None:
-                self.match_offset = 0
-                self.children_offset = 0
-                self.children: Dict[int, int] = {}
-
-            def add_letter(self, letter: int) -> int:
-                if letter not in self.children:
-                    self.children[letter] = len(all_trie_nodes)
-                    all_trie_nodes.append(TrieNode())
-                return self.children[letter]
-
-            def __str__(self) -> str:
-                return f'{{ .children_offset={self.children_offset}, .match_offset={self.match_offset} }}'
-
-        root = TrieNode()
-        all_trie_nodes.append(root)
-
-        def add_word(word_idx: int, word: str) -> None:
-            parent = root
-            for letter in map(ord, word):
-                idx = parent.add_letter(letter)
-                parent = all_trie_nodes[idx]
-            parent.match_offset = offsets_array[word_idx]
-
-        for i, word in enumerate(word_map):
-            add_word(i, word)
-        children_array = [0]
-        for node in all_trie_nodes:
-            if node.children:
-                node.children_offset = len(children_array)
-                children_array.append(len(node.children))
-                for letter, child_offset in node.children.items():
-                    children_array.append((child_offset << 8) | (letter & 0xff))
-
-        p(f'static const word_trie all_trie_nodes[{len(all_trie_nodes)}] = {{' ' // {{{')
-        p(',\n'.join(map(str, all_trie_nodes)))
-        p('\n}; // }}}\n')
-        p(f'static const uint32_t children_array[{len(children_array)}] = {{' ' // {{{')
-        p(', '.join(map(str, children_array)))
-        p('}; // }}}\n')
+    aliases_map: Dict[int, Set[str]] = {}
+    for word, codepoints in word_search_map.items():
+        for cp in codepoints:
+            aliases_map.setdefault(cp, set()).add(word)
+    if len(name_map) > 0xffff:
+        raise Exception('Too many named codepoints')
+    with open('tools/unicode_names/names.txt', 'w') as f:
+        print(len(name_map), len(word_search_map), file=f)
+        for cp in sorted(name_map):
+            name = name_map[cp]
+            words = name.lower().split()
+            aliases = aliases_map.get(cp, set()) - set(words)
+            end = '\n'
+            if aliases:
+                end = '\t' + ' '.join(sorted(aliases)) + end
+            print(cp, *words, end=end, file=f)
 
 
 def gen_wcwidth() -> None:

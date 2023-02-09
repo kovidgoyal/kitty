@@ -4,11 +4,13 @@
 import io
 import json
 import os
+import struct
 import subprocess
 import sys
+import zlib
 from contextlib import contextmanager, suppress
 from functools import lru_cache
-from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
+from typing import Any, BinaryIO, Dict, Iterator, List, Optional, Sequence, Set, TextIO, Tuple, Union
 
 import kitty.constants as kc
 from kittens.tui.operations import Mode
@@ -29,6 +31,19 @@ from kitty.remote_control import global_options_spec
 from kitty.rgb import color_names
 
 changed: List[str] = []
+
+
+def newer(dest: str, *sources: str) -> bool:
+    try:
+        dtime = os.path.getmtime(dest)
+    except OSError:
+        return True
+    for s in sources:
+        with suppress(FileNotFoundError):
+            if os.path.getmtime(s) >= dtime:
+                return True
+    return False
+
 
 
 # Utils {{{
@@ -583,6 +598,25 @@ def generate_textual_mimetypes() -> str:
     return '\n'.join(ans)
 
 
+def generate_unicode_names(src: TextIO, dest: BinaryIO) -> None:
+    num_names, num_of_words = map(int, next(src).split())
+    gob = io.BytesIO()
+    gob.write(struct.pack('<II', num_names, num_of_words))
+    for line in src:
+        line = line.strip()
+        if line:
+            a, aliases = line.partition('\t')[::2]
+            cp, name = a.partition(' ')[::2]
+            ename = name.encode()
+            record = struct.pack('<IH', int(cp), len(ename)) + ename
+            if aliases:
+                record += aliases.encode()
+            gob.write(struct.pack('<H', len(record)) + record)
+    data = gob.getvalue()
+    dest.write(struct.pack('<I', len(data)))
+    dest.write(zlib.compress(data, zlib.Z_BEST_COMPRESSION))
+
+
 def main() -> None:
     with replace_if_needed('constants_generated.go') as f:
         f.write(generate_constants())
@@ -596,6 +630,9 @@ def main() -> None:
         f.write(generate_mimetypes())
     with replace_if_needed('tools/utils/mimetypes_textual_generated.go') as f:
         f.write(generate_textual_mimetypes())
+    if newer('tools/unicode_names/data_generated.bin', 'tools/unicode_names/names.txt'):
+        with open('tools/unicode_names/data_generated.bin', 'wb') as dest, open('tools/unicode_names/names.txt') as src:
+            generate_unicode_names(src, dest)
 
     update_completion()
     update_at_commands()

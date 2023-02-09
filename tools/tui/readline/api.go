@@ -168,6 +168,10 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 	return ans
 }
 
+func (self *Readline) SetPrompt(prompt string) {
+	self.prompt = self.make_prompt(prompt, false)
+}
+
 func (self *Readline) Shutdown() {
 	self.history.Shutdown()
 }

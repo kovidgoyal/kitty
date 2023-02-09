@@ -589,11 +589,10 @@ def handle_result(args: List[str], current_char: str, target_window_id: int, bos
 
 
 if __name__ == '__main__':
-    ans = main(sys.argv)
-    if ans:
-        print(ans)
+    raise SystemExit('This should be run as kitten unicode_input')
 elif __name__ == '__doc__':
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
     cd['options'] = OPTIONS
     cd['help_text'] = help_text
+    cd['short_desc'] = 'Browse and select unicode characters by name'

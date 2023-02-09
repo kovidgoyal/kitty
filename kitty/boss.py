@@ -49,6 +49,7 @@ from .constants import (
     handled_signals,
     is_macos,
     is_wayland,
+    kitten_exe,
     kitty_exe,
     logo_png_file,
     supports_primary_selection,
@@ -110,6 +111,7 @@ from .fast_data_types import (
     toggle_fullscreen,
     toggle_maximized,
     toggle_secure_input,
+    wrapped_kitten_names,
 )
 from .key_encoding import get_name_to_functional_number_map
 from .keys import get_shortcut, shortcut_matches
@@ -1730,17 +1732,23 @@ class Boss:
                     if sel:
                         x = sel
                 final_args.append(x)
+            env = {
+                'KITTY_COMMON_OPTS': json.dumps(copts),
+                'KITTY_CHILD_PID': str(w.child.pid),
+                'OVERLAID_WINDOW_LINES': str(w.screen.lines),
+                'OVERLAID_WINDOW_COLS': str(w.screen.columns),
+            }
+            if kitten in wrapped_kitten_names():
+                cmd = [kitten_exe(), kitten]
+                env['KITTEN_RUNNING_AS_UI'] = '1'
+            else:
+                cmd = [kitty_exe(), '+runpy', 'from kittens.runner import main; main()']
+                env['PYTHONWARNINGS'] = 'ignore'
             overlay_window = tab.new_special_window(
                 SpecialWindow(
-                    [kitty_exe(), '+runpy', 'from kittens.runner import main; main()'] + final_args,
+                    cmd + final_args,
                     stdin=data,
-                    env={
-                        'KITTY_COMMON_OPTS': json.dumps(copts),
-                        'KITTY_CHILD_PID': str(w.child.pid),
-                        'PYTHONWARNINGS': 'ignore',
-                        'OVERLAID_WINDOW_LINES': str(w.screen.lines),
-                        'OVERLAID_WINDOW_COLS': str(w.screen.columns),
-                    },
+                    env=env,
                     cwd=w.cwd_of_child,
                     overlay_for=w.id,
                     overlay_behind=end_kitten.has_ready_notification,
