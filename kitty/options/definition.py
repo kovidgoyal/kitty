@@ -189,28 +189,31 @@ You can do this with e.g.::
 '''
     )
 
-opt('+modify_font', '', ctype='!modify_font',
-    option_type='modify_font',
+opt('+modify_font', '',
+    option_type='modify_font', ctype='!modify_font',
     add_to_default=False,
     long_text='''
-Modify font characteristics such as the position or thickness of the underline and strikethrough.
-The modifications can have the suffix :code:`px` for pixels or :code:`%` for percentage of original value.
-No suffix means use pts. For example::
+Modify font characteristics such as the position or thickness of the underline
+and strikethrough. The modifications can have the suffix :code:`px` for pixels
+or :code:`%` for percentage of original value. No suffix means use pts.
+For example::
 
     modify_font underline_position -2
     modify_font underline_thickness 150%
     modify_font strikethrough_position 2px
 
-Additionally, you can modify the size of the cell in which each font glyph is rendered and the baseline
-at which the glyph is placed in the cell. For example::
+Additionally, you can modify the size of the cell in which each font glyph is
+rendered and the baseline at which the glyph is placed in the cell.
+For example::
 
     modify_font cell_width 80%
     modify_font cell_height -2px
     modify_font baseline 3
 
-Note that modifying the baseline will automatically adjust the underline and strikethrough positions
-by the same amount. Increasing the baseline raises glyphs inside the cell and decreasing it lowers them.
-Decreasing the cell size might cause rendering artifacts, so use with care.
+Note that modifying the baseline will automatically adjust the underline and
+strikethrough positions by the same amount. Increasing the baseline raises
+glyphs inside the cell and decreasing it lowers them. Decreasing the cell size
+might cause rendering artifacts, so use with care.
 ''')
 
 opt('box_drawing_scale', '0.001, 1, 1.5, 2',
@@ -233,10 +236,12 @@ the curl will peak once per character, with dense twice.
 '''
     )
 
-opt('text_composition_strategy', 'platform', ctype='!text_composition_strategy', long_text='''
-Control how kitty composites text glyphs onto the background color.
-The default value of :code:`platform` tries for text rendering as
-close to "native" for the platform kitty is running on as possible.
+opt('text_composition_strategy', 'platform',
+    ctype='!text_composition_strategy',
+    long_text='''
+Control how kitty composites text glyphs onto the background color. The default
+value of :code:`platform` tries for text rendering as close to "native" for
+the platform kitty is running on as possible.
 
 A value of :code:`legacy` uses the old (pre kitty 0.28) strategy for how glyphs
 are composited. This will make dark text on light backgrounds look thicker and
@@ -246,15 +251,18 @@ the strokes are uneven.
 You can fine tune the actual contrast curve used for glyph composition
 by specifying two space separated numbers for this setting.
 
-The first number is the gamma adjustment, which
-controls the thickness of dark text on light backgrounds. Increasing the value will make text appear thicker.
-The default value for this is 1.0 on Linux and 1.7 on macOS. Valid values are 0.01 and above.
-The result is scaled based on the luminance difference between the background and the foreground.
-Dark text on light backgrounds receives the full impact of the curve while light text on dark
-backgrounds is affected very little.
+The first number is the gamma adjustment, which controls the thickness of dark
+text on light backgrounds. Increasing the value will make text appear thicker.
+The default value for this is :code:`1.0` on Linux and :code:`1.7` on macOS.
+Valid values are 0.01 and above.
+The result is scaled based on the luminance difference between the background
+and the foreground.
+Dark text on light backgrounds receives the full impact of the curve while light
+text on dark backgrounds is affected very little.
 
-The second number is an additional multiplicative contrast. It is percentage ranging from 0 to 100.
-The default value is zero On Linux and 30 on macOS.
+The second number is an additional multiplicative contrast. It is percentage
+ranging from 0 to 100. The default value is :code:`0` on Linux and :code:`30`
+on macOS.
 ''')
 
 egr()  # }}}
@@ -264,7 +272,8 @@ egr()  # }}}
 agr('cursor', 'Cursor customization')
 
 opt('cursor', '#cccccc',
-    option_type='to_color_or_none', long_text='''
+    option_type='to_color_or_none',
+    long_text='''
 Default cursor color. If set to the special value :code:`none` the cursor will
 be rendered with a "reverse video" effect. It's color will be the color of the
 text in the cell it is over and the text will be rendered with the background
@@ -437,9 +446,10 @@ opt('url_style', 'curly',
 opt('open_url_with', 'default',
     option_type='to_cmdline',
     long_text='''
-The program to open clicked URLs. The special value :code:`default` with first look for any URL handlers defined via
-the :doc:`open_actions` facility and if non are found, it will use the Operating System's
-default URL handler (:program:`open` on macOS and :program:`xdg-open` on Linux).
+The program to open clicked URLs. The special value :code:`default` with first
+look for any URL handlers defined via the :doc:`open_actions` facility and if
+non are found, it will use the Operating System's default URL handler
+(:program:`open` on macOS and :program:`xdg-open` on Linux).
 '''
     )
 
@@ -467,9 +477,12 @@ mouse cursor. By default, all characters that are legal in URLs are allowed.
 '''
     )
 
-opt('show_hyperlink_targets', 'no', option_type='to_bool', ctype='bool', long_text='''
-When the mouse hovers over a terminal hyperlink, show the actual URL that will be
-activated when the hyperlink is clicked.''')
+opt('show_hyperlink_targets', 'no',
+    option_type='to_bool', ctype='bool',
+    long_text='''
+When the mouse hovers over a terminal hyperlink, show the actual URL that will
+be activated when the hyperlink is clicked.
+''')
 
 opt('copy_on_select', 'no',
     option_type='copy_on_select',
@@ -491,8 +504,8 @@ clipboard.
 '''
     )
 
-opt(
-    'paste_actions', 'quote-urls-at-prompt', option_type='paste_actions',
+opt('paste_actions', 'quote-urls-at-prompt',
+    option_type='paste_actions',
     long_text='''
 A comma separated list of actions to take when pasting text into the terminal.
 The supported paste actions are:
@@ -855,11 +868,12 @@ agr('window', 'Window layout')
 opt('remember_window_size', 'yes',
     option_type='to_bool',
     long_text='''
-If enabled, the :term:`OS Window <os_window>` size will be remembered so that new instances of kitty
-will have the same size as the previous instance. If disabled, the :term:`OS Window <os_window>` will
-initially have size configured by initial_window_width/height, in pixels. You
-can use a suffix of "c" on the width/height values to have them interpreted as
-number of cells instead of pixels.
+If enabled, the :term:`OS Window <os_window>` size will be remembered so that
+new instances of kitty will have the same size as the previous instance.
+If disabled, the :term:`OS Window <os_window>` will initially have size
+configured by initial_window_width/height, in pixels. You can use a suffix of
+"c" on the width/height values to have them interpreted as number of cells
+instead of pixels.
 '''
     )
 
@@ -1006,7 +1020,8 @@ Individual windows can be configured to have different logos either using the
     )
 
 opt('window_logo_position', 'bottom-right',
-    choices=('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'), ctype='bganchor',
+    choices=('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'),
+    ctype='bganchor',
     long_text='''
 Where to position the window logo in the window. The value can be one of:
 :code:`top-left`, :code:`top`, :code:`top-right`, :code:`left`, :code:`center`,
@@ -1105,7 +1120,8 @@ margin between the tab bar and the contents of the current tab.
     )
 
 opt('tab_bar_style', 'fade',
-    choices=('fade', 'hidden', 'powerline', 'separator', 'slant', 'custom'), ctype='!tab_bar_style',
+    choices=('fade', 'hidden', 'powerline', 'separator', 'slant', 'custom'),
+    ctype='!tab_bar_style',
     long_text='''
 The tab bar style, can be one of:
 
@@ -1127,13 +1143,14 @@ The tab bar style, can be one of:
     :disc:`this discussion <4447>`
     for examples from kitty users.
 :code:`hidden`
-    The tab bar is hidden. If you use this, you might want to create a mapping
-    for the :ac:`select_tab` action which presents you with a list of tabs and
-    allows for easy switching to a tab.
+    The tab bar is hidden. If you use this, you might want to create
+    a mapping for the :ac:`select_tab` action which presents you with a list of
+    tabs and allows for easy switching to a tab.
 '''
     )
 
-opt('tab_bar_align', 'left', choices=('left', 'center', 'right'),
+opt('tab_bar_align', 'left',
+    choices=('left', 'center', 'right'),
     long_text='''
 The horizontal alignment of the tab bar, can be one of: :code:`left`,
 :code:`center`, :code:`right`.
@@ -1194,10 +1211,11 @@ this is rendered.
 '''
     )
 
-opt('tab_title_max_length', '0', option_type='positive_int',
+opt('tab_title_max_length', '0',
+    option_type='positive_int',
     long_text='''
-The maximum number of cells that can be used to render the text in a tab. A value of zero
-means that no limit is applied.
+The maximum number of cells that can be used to render the text in a tab.
+A value of zero means that no limit is applied.
 '''
     )
 
@@ -1221,11 +1239,13 @@ use :code:`{sup.index}`. All data available is:
 :code:`num_window_groups`
     The number of window groups (not counting overlay windows) in the tab.
 :code:`tab.active_wd`
-    The working directory of the currently active window in the tab (expensive,
-    requires syscall). Use :code:`active_oldest_wd` to get the directory of the oldest foreground process rather than the newest.
+    The working directory of the currently active window in the tab
+    (expensive, requires syscall). Use :code:`active_oldest_wd` to get
+    the directory of the oldest foreground process rather than the newest.
 :code:`tab.active_exe`
-    The name of the executable running in the foreground of the currently active window in the tab (expensive,
-    requires syscall). Use :code:`active_oldest_exe` for the oldest foreground process.
+    The name of the executable running in the foreground of the currently
+    active window in the tab (expensive, requires syscall). Use
+    :code:`active_oldest_exe` for the oldest foreground process.
 :code:`max_title_length`
     The maximum title length available.
 
@@ -1287,8 +1307,8 @@ opt('tab_bar_margin_color', 'none',
     option_type='to_color_or_none', ctype='color_or_none_as_int',
     long_text='''
 Color for the tab bar margin area. Defaults to using the terminal background
-color for margins above and below the tab bar. For side margins the default color
-is chosen to match the background color of the neighboring tab.
+color for margins above and below the tab bar. For side margins the default
+color is chosen to match the background color of the neighboring tab.
 '''
     )
 egr()  # }}}
@@ -1334,7 +1354,8 @@ opt('background_image', 'none',
     )
 
 opt('background_image_layout', 'tiled',
-    choices=('mirror-tiled', 'scaled', 'tiled', 'clamped', 'centered'), ctype='bglayout',
+    choices=('mirror-tiled', 'scaled', 'tiled', 'clamped', 'centered'),
+    ctype='bglayout',
     long_text='''
 Whether to tile, scale or clamp the background image. The value can be one of
 :code:`tiled`, :code:`mirror-tiled`, :code:`scaled`, :code:`clamped` or :code:`centered`.
@@ -2753,12 +2774,15 @@ their stdout/stderr/stdin no longer work.
 '''
     )
 
-opt('+remote_control_password', '', option_type='remote_control_password', add_to_default=False,
+opt('+remote_control_password', '',
+    option_type='remote_control_password',
+    add_to_default=False,
     long_text='''
-Allow other programs to control kitty using passwords. This option can be specified multiple
-times to add multiple passwords. If no passwords are present kitty will ask the user for
-permission if a program tries to use remote control with a password. A password can also
-*optionally* be associated with a set of allowed remote control actions. For example::
+Allow other programs to control kitty using passwords. This option can be
+specified multiple times to add multiple passwords. If no passwords are present
+kitty will ask the user for permission if a program tries to use remote control
+with a password. A password can also *optionally* be associated with a set of
+allowed remote control actions. For example::
 
     remote_control_password "my passphrase" get-colors set-colors focus-window focus-tab
 
@@ -2771,20 +2795,23 @@ To get a list of available actions, run::
 
     kitty @ --help
 
-A set of actions to be allowed when no password is sent can be specified by using an empty
-password, for example::
+A set of actions to be allowed when no password is sent can be specified by
+using an empty password. For example::
 
     remote_control_password "" *-colors
 
-Finally, the path to a python module can be specified that provides a function :code:`is_cmd_allowed`
-that is used to check every remote control command. See :ref:`rc_custom_auth` for details. For example::
+Finally, the path to a python module can be specified that provides a function
+:code:`is_cmd_allowed` that is used to check every remote control command.
+For example::
 
     remote_control_password "my passphrase" my_rc_command_checker.py
 
 Relative paths are resolved from the kitty configuration directory.
+See :ref:`rc_custom_auth` for details.
 ''')
 
-opt('allow_remote_control', 'no', choices=('password', 'socket-only', 'socket', 'no', 'n', 'false', 'yes', 'y', 'true'),
+opt('allow_remote_control', 'no',
+    choices=('password', 'socket-only', 'socket', 'no', 'n', 'false', 'yes', 'y', 'true'),
     long_text='''
 Allow other programs to control kitty. If you turn this on, other programs can
 control all aspects of kitty, including sending text to kitty windows, opening
@@ -2793,16 +2820,18 @@ this even works over SSH connections. The default setting of :code:`no`
 prevents any form of remote control. The meaning of the various values are:
 
 :code:`password`
-    Remote control requests received over both the TTY device and the socket are
-    confirmed based on passwords, see :opt:`remote_control_password`.
+    Remote control requests received over both the TTY device and the socket
+    are confirmed based on passwords, see :opt:`remote_control_password`.
 
 :code:`socket-only`
-    Remote control requests received over a socket are accepted unconditionally.
-    Requests received over the TTY are denied. See :opt:`listen_on`.
+    Remote control requests received over a socket are accepted
+    unconditionally. Requests received over the TTY are denied.
+    See :opt:`listen_on`.
 
 :code:`socket`
-    Remote control requests received over a socket are accepted unconditionally.
-    Requests received over the TTY are confirmed based on password.
+    Remote control requests received over a socket are accepted
+    unconditionally. Requests received over the TTY are confirmed based on
+    password.
 
 :code:`no`
     Remote control is completely disabled.
@@ -2823,8 +2852,9 @@ variables are expanded and relative paths are resolved with respect to the
 temporary directory. If :code:`{kitty_pid}` is present, then it is replaced by
 the PID of the kitty process, otherwise the PID of the kitty process is
 appended to the value, with a hyphen. See the help for :option:`kitty
---listen-on` for more details. Note that this will be ignored unless :opt:`allow_remote_control`
-is set to either: :code:`yes`, :code:`socket` or :code:`socket-only`.
+--listen-on` for more details. Note that this will be ignored unless
+:opt:`allow_remote_control` is set to either: :code:`yes`, :code:`socket` or
+:code:`socket-only`.
 Changing this option by reloading the config is not supported.
 '''
     )
@@ -3097,8 +3127,8 @@ opt('macos_thicken_font', '0',
 Draw an extra border around the font with the given width, to increase
 legibility at small font sizes on macOS. For example, a value of :code:`0.75`
 will result in rendering that looks similar to sub-pixel antialiasing at common
-font sizes. Note that in modern kitty, this option is obsolete (although still supported).
-Consider using :opt:`text_composition_strategy` instead.
+font sizes. Note that in modern kitty, this option is obsolete (although still
+supported). Consider using :opt:`text_composition_strategy` instead.
 '''
     )
 
@@ -3141,14 +3171,16 @@ dual GPU machines. Changing this option by reloading the config is not supported
 '''
     )
 
-opt('macos_colorspace', 'srgb', choices=('srgb', 'default', 'displayp3'), ctype='macos_colorspace',
+opt('macos_colorspace', 'srgb',
+    choices=('srgb', 'default', 'displayp3'), ctype='macos_colorspace',
     long_text='''
-The colorspace in which to interpret terminal colors. The default of :code:`srgb` will
-cause colors to match those seen in web browsers. The value of :code:`default` will
-use whatever the native colorspace of the display is. The value of :code:`displayp3`
-will use Apple's special snowflake display P3 color space, which will result in over
-saturated (brighter) colors with some color shift. Reloading configuration will change this
-value only for newly created OS windows.
+The colorspace in which to interpret terminal colors. The default of
+:code:`srgb` will cause colors to match those seen in web browsers. The value of
+:code:`default` will use whatever the native colorspace of the display is.
+The value of :code:`displayp3` will use Apple's special snowflake display P3
+color space, which will result in over saturated (brighter) colors with some
+color shift. Reloading configuration will change this value only for newly
+created OS windows.
 ''')
 
 

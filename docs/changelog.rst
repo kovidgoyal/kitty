@@ -38,13 +38,13 @@ Detailed list of changes
 0.28.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Text rendering: Use sRGB correct linear gamma blending for nicer font rendering and better color accuracy with transparent windows. See the option :opt:`text_composition_strategy` for details. (:pull:`5969`)
+- Text rendering: Use sRGB correct linear gamma blending for nicer font rendering and better color accuracy with transparent windows. See the option :opt:`text_composition_strategy` for details. The obsolete :opt:`macos_thicken_font` will make the font too thick and needs to be removed manually if it is configured. (:pull:`5969`)
 
 - Fix a regression in 0.27.0 that broke kitty @ set-font-size 0 (:iss:`5992`)
 
 - launch: When using ``--cwd=current`` for a remote system support running non shell commands as well (:disc:`5987`)
 
-- When changing the cursor text color via escape codes or remote control to a fixed color, do not reset cursor_text_color (:iss:`5994`)
+- When changing the cursor color via escape codes or remote control to a fixed color, do not reset cursor_text_color (:iss:`5994`)
 
 - Input Method Extensions: Fix incorrect rendering of IME in-progress text in some situations (:pull:`6002`)
 
