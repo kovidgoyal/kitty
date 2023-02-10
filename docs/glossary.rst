@@ -45,6 +45,12 @@ Glossary
       hyperlink, based on the type of link and its URL. See also `Hyperlinks in terminal
       emulators <https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda>`__.
 
+   kittens
+      Small, independent statically compiled command line programs that are designed to run
+      inside kitty windows and provide it with lots of powerful and flexible
+      features such as viewing images, connecting conveniently to remote
+      computers, transferring files, inputting unicode characters, etc.
+
 .. _env_vars:
 
 Environment variables

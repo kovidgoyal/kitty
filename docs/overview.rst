@@ -10,8 +10,9 @@ configuration is a simple, human editable, single file for easy reproducibility
 (I like to store configuration in source control).
 
 The code in |kitty| is designed to be simple, modular and hackable. It is
-written in a mix of C (for performance sensitive parts) and Python (for easy
-hackability of the UI). It does not depend on any large and complex UI toolkit,
+written in a mix of C (for performance sensitive parts), Python (for easy
+extensibility and flexibility of the UI) and Go (for the command line
+:term:`kittens`).  It does not depend on any large and complex UI toolkit,
 using only OpenGL for rendering everything.
 
 Finally, |kitty| is designed from the ground up to support all modern terminal
