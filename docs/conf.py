@@ -508,7 +508,7 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
 
         conf_name = re.sub(r'^kitten-', '', name) + '.conf'
         with open(f'generated/conf/{conf_name}', 'w', encoding='utf-8') as f:
-            text = '\n'.join(definition.as_conf())
+            text = '\n'.join(definition.as_conf(commented=True))
             print(text, file=f)
 
     from kitty.options.definition import definition
