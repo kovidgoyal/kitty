@@ -48,6 +48,8 @@ Detailed list of changes
 
 - Input Method Extensions: Fix incorrect rendering of IME in-progress text in some situations (:pull:`6002`)
 
+- Linux: Reduce minimum required OpenGL version from 3.3 to 3.1 + extensions (:iss:`2790`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
