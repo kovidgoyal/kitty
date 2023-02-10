@@ -74,8 +74,8 @@ typedef struct {
     index_type xstart, ynum, xnum;
 
     struct {
-      PyObject *overlay_text;
-      const char *func_name;
+        PyObject *overlay_text;
+        const char *func_name;
     } save;
 } OverlayLine;
 
