@@ -24,6 +24,7 @@ func AtomicWriteFile(path string, data []byte, perm os.FileMode) (err error) {
 					f.Close()
 					if !removed {
 						os.Remove(f.Name())
+						removed = true
 					}
 				}()
 				_, err = f.Write(data)

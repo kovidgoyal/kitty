@@ -31,7 +31,7 @@ func (self *CachedValues[T]) Load() T {
 func (self *CachedValues[T]) Save() {
 	raw, err := json.Marshal(self.Opts)
 	if err == nil {
-		os.WriteFile(self.Path(), raw, 0600)
+		AtomicUpdateFile(self.Path(), raw, 0o600)
 	}
 }
 
