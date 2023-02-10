@@ -44,7 +44,7 @@ Detailed list of changes
 
 - launch: When using ``--cwd=current`` for a remote system support running non shell commands as well (:disc:`5987`)
 
-- When changing the cursor text color via escape codes or remote control to a fixed color, do not reset cursor_text_color (:iss:`5994`)
+- When changing the cursor color via escape codes or remote control to a fixed color, do not reset cursor_text_color (:iss:`5994`)
 
 - Input Method Extensions: Fix incorrect rendering of IME in-progress text in some situations (:pull:`6002`)
 
