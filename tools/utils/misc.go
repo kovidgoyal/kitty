@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"golang.org/x/exp/constraints"
+	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print
@@ -22,6 +23,36 @@ func Reversed[T any](s []T) []T {
 	ans := make([]T, len(s))
 	for i, x := range s {
 		ans[len(s)-1-i] = x
+	}
+	return ans
+}
+
+func Remove[T comparable](s []T, q T) []T {
+	idx := slices.Index(s, q)
+	if idx > -1 {
+		return slices.Delete(s, idx, idx+1)
+	}
+	return s
+}
+
+func RemoveAll[T comparable](s []T, q T) []T {
+	ans := s
+	for {
+		idx := slices.Index(ans, q)
+		if idx < 0 {
+			break
+		}
+		ans = slices.Delete(ans, idx, idx+1)
+	}
+	return ans
+}
+
+func Filter[T any](s []T, f func(x T) bool) []T {
+	ans := make([]T, 0, len(s))
+	for _, x := range s {
+		if f(x) {
+			ans = append(ans, x)
+		}
 	}
 	return ans
 }
