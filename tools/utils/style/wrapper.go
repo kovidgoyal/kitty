@@ -327,7 +327,7 @@ func parse_spec(spec string) []escape_code {
 			sgr.italic.from_string(val)
 		case "reverse":
 			sgr.reverse.from_string(val)
-		case "dim":
+		case "dim", "faint":
 			sgr.dim.from_string(val)
 		case "underline", "u":
 			sgr.underline.from_string(val)
