@@ -38,7 +38,7 @@ Detailed list of changes
 0.28.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Text rendering: Use sRGB correct linear gamma blending for nicer font rendering and better color accuracy with transparent windows. See the option :opt:`text_composition_strategy` for details. (:pull:`5969`)
+- Text rendering: Use sRGB correct linear gamma blending for nicer font rendering and better color accuracy with transparent windows. See the option :opt:`text_composition_strategy` for details. The obsolete :opt:`macos_thicken_font` will make the font too thick and needs to be removed manually if it is configured. (:pull:`5969`)
 
 - Fix a regression in 0.27.0 that broke kitty @ set-font-size 0 (:iss:`5992`)
 
