@@ -46,6 +46,8 @@ Detailed list of changes
 
 - When changing the cursor text color via escape codes or remote control to a fixed color, do not reset cursor_text_color (:iss:`5994`)
 
+- Input Method Extensions: Fix incorrect rendering of IME in-progress text in some situations (:pull:`6002`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
