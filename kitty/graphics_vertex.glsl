@@ -1,4 +1,5 @@
 #version GLSL_VERSION
+#extension GL_ARB_explicit_attrib_location : require
 
 // Have to use fixed locations here as all variants of the program share the same VAO
 layout(location=0) in vec4 src;

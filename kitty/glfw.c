@@ -803,7 +803,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (is_first_window) {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MAJOR);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_REQUIRED_VERSION_MINOR);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
         // We don't use depth and stencil buffers
         glfwWindowHint(GLFW_DEPTH_BITS, 0);
