@@ -248,20 +248,20 @@ are composited. This will make dark text on light backgrounds look thicker and
 light text on dark backgrounds thinner. It might also make some text appear like
 the strokes are uneven.
 
-You can fine tune the actual contrast curve used for glyph composition
-by specifying two space separated numbers for this setting.
+You can fine tune the actual contrast curve used for glyph composition by
+specifying two space separated numbers for this setting.
 
 The first number is the gamma adjustment, which controls the thickness of dark
 text on light backgrounds. Increasing the value will make text appear thicker.
 The default value for this is :code:`1.0` on Linux and :code:`1.7` on macOS.
-Valid values are :code:`0.01` and above. The result is scaled based on the luminance
-difference between the background and the foreground.  Dark text on light
-backgrounds receives the full impact of the curve while light text on dark
+Valid values are :code:`0.01` and above. The result is scaled based on the
+luminance difference between the background and the foreground. Dark text on
+light backgrounds receives the full impact of the curve while light text on dark
 backgrounds is affected very little.
 
 The second number is an additional multiplicative contrast. It is percentage
-ranging from 0 to 100. The default value is :code:`0` on Linux and :code:`30`
-on macOS.
+ranging from :code:`0` to :code:`100`. The default value is :code:`0` on Linux
+and :code:`30` on macOS.
 ''')
 
 egr()  # }}}
