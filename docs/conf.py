@@ -106,8 +106,17 @@ rst_prolog = '''
 '''.replace('VERSION', str_version)
 smartquotes_action = 'qe'  # educate quotes and ellipses but not dashes
 
+def go_version(go_mod_path: str) -> str:  # {{{
+    with open(go_mod_path) as f:
+        for line in f:
+            if line.startswith('go '):
+                return line.strip().split()[1]
+    raise SystemExit(f'No Go version in {go_mod_path}')
+# }}}
+
 string_replacements = {
     '_kitty_install_cmd': 'curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin',
+    '_build_go_version': go_version('../go.mod'),
 }
 
 

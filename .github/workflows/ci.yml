@@ -5,7 +5,6 @@ env:
     ASAN_OPTIONS: leak_check_at_exit=0
     LC_ALL: en_US.UTF-8
     LANG: en_US.UTF-8
-    GO_INSTALL_VERSION: ">=1.20.0"
 
 permissions:
   contents: read # to fetch code (actions/checkout)
@@ -58,7 +57,7 @@ jobs:
           - name: Install Go
             uses: actions/setup-go@v3
             with:
-              go-version: ${{ env.GO_INSTALL_VERSION }}
+              go-version-file: go.mod
 
           - name: Build kitty
             run: python .github/workflows/ci.py build
@@ -88,7 +87,7 @@ jobs:
           - name: Install Go
             uses: actions/setup-go@v3
             with:
-              go-version: ${{ env.GO_INSTALL_VERSION }}
+              go-version-file: go.mod
 
           - name: Install build-only deps
             run: python -m pip install -r docs/requirements.txt ruff mypy types-requests types-docutils
@@ -137,7 +136,7 @@ jobs:
           - name: Install Go
             uses: actions/setup-go@v3
             with:
-              go-version: ${{ env.GO_INSTALL_VERSION }}
+              go-version-file: go.mod
 
           - name: Build kitty
             run: which python3 && python3 .github/workflows/ci.py build
@@ -162,7 +161,7 @@ jobs:
           - name: Install Go
             uses: actions/setup-go@v3
             with:
-              go-version: ${{ env.GO_INSTALL_VERSION }}
+              go-version-file: go.mod
 
           - name: Build kitty
             run: python3 .github/workflows/ci.py build
