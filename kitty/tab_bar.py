@@ -223,7 +223,7 @@ class TabAccessor:
 
 
 safe_builtins = {
-    'max': max, 'min': min, 'str': str, 'repr': repr, 'abs': abs, 'len': len, 're': re,
+    'max': max, 'min': min, 'str': str, 'repr': repr, 'abs': abs, 'len': len, 'chr': chr, 'ord': ord, 're': re,
 }
 
 
