@@ -39,11 +39,11 @@ jobs:
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
       with:
-        languages: python, c
+        languages: python, c, go
         setup-python-dependencies: false
 
     - name: Build kitty
       run: python3 .github/workflows/ci.py build
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v1
+      uses: github/codeql-action/analyze@v2
