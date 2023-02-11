@@ -195,6 +195,14 @@ func (self *Loop) Println(args ...any) {
 	self.QueueWriteString("\r\n")
 }
 
+func (self *Loop) SaveCursor() {
+	self.QueueWriteString("\x1b7")
+}
+
+func (self *Loop) RestoreCursor() {
+	self.QueueWriteString("\x1b8")
+}
+
 func (self *Loop) Printf(format string, args ...any) {
 	format = strings.ReplaceAll(format, "\n", "\r\n")
 	self.QueueWriteString(fmt.Sprintf(format, args...))
