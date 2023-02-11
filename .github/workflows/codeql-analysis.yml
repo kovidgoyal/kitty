@@ -23,17 +23,17 @@ jobs:
 
     steps:
 
-    - name: Install Go
-      uses: actions/setup-go@v3
-      with:
-        go-version-file: go.mod
-
     - name: Checkout repository
       uses: actions/checkout@v3
       with:
         # We must fetch at least the immediate parents so that if this is
         # a pull request then we can checkout the head.
         fetch-depth: 2
+
+    - name: Install Go
+      uses: actions/setup-go@v3
+      with:
+        go-version-file: go.mod
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
