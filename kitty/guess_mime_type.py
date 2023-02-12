@@ -60,6 +60,11 @@ def initialize_mime_database() -> None:
         init((local_defs,))
 
 
+def clear_mime_cache() -> None:
+    if hasattr(initialize_mime_database, 'inited'):
+        delattr(initialize_mime_database, 'inited')
+
+
 def guess_type(path: str, allow_filesystem_access: bool = False) -> Optional[str]:
     is_dir = is_exe = False
 
