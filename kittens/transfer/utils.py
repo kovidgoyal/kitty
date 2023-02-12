@@ -5,10 +5,10 @@ import os
 import secrets
 from contextlib import contextmanager
 from datetime import timedelta
-from mimetypes import guess_type
 from typing import Generator, Union
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
+from kitty.guess_mime_type import guess_type
 
 from ..tui.operations import styled
 from ..tui.progress import render_progress_bar
@@ -121,7 +121,7 @@ def should_be_compressed(path: str) -> bool:
     ext = path.rpartition(os.extsep)[-1].lower()
     if ext in ('zip', 'odt', 'odp', 'pptx', 'docx', 'gz', 'bz2', 'xz', 'svgz'):
         return False
-    mt = guess_type(path)[0] or ''
+    mt = guess_type(path) or ''
     if mt:
         if mt.endswith('+zip'):
             return False
