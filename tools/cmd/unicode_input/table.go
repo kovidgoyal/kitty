@@ -61,7 +61,7 @@ type table struct {
 	num_cols, num_rows       int
 	mode                     Mode
 
-	green, reversed, not_reversed, intense_gray func(...any) string
+	green, reversed, intense_gray func(...any) string
 }
 
 func (self *table) initialize(emoji_variation string, ctx style.Context) {
@@ -70,7 +70,6 @@ func (self *table) initialize(emoji_variation string, ctx style.Context) {
 	self.last_cols, self.last_rows = -1, -1
 	self.green = ctx.SprintFunc("fg=green")
 	self.reversed = ctx.SprintFunc("reverse=true")
-	self.not_reversed = ctx.SprintFunc("reverse=false")
 	self.intense_gray = ctx.SprintFunc("fg=intense-gray")
 }
 
@@ -149,8 +148,6 @@ func (self *table) layout(rows, cols int) string {
 			}
 			if is_current {
 				text = self.reversed(text)
-			} else {
-				text = self.not_reversed(text)
 			}
 			output.WriteString(text)
 		}

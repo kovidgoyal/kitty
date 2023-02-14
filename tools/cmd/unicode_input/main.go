@@ -163,9 +163,9 @@ type handler struct {
 }
 
 func (self *handler) initialize() {
+	self.ctx.AllowEscapeCodes = true
 	self.table.initialize(self.emoji_variation, self.ctx)
 	self.lp.SetWindowTitle("Unicode input")
-	self.ctx.AllowEscapeCodes = true
 	self.current_char = InvalidChar
 	self.current_tab_formatter = self.ctx.SprintFunc("reverse=false bold=true")
 	self.tab_bar_formatter = self.ctx.SprintFunc("reverse=true")
@@ -330,15 +330,25 @@ func (self *handler) draw_screen() {
 	defer self.lp.RestoreCursorPosition()
 	writeln()
 	writeln(self.choice_line)
+	sz, _ := self.lp.ScreenSize()
+
+	write_help := func(x string) {
+		lines := style.WrapTextAsLines(x, "", int(sz.WidthCells)-1)
+		wx := lines[0]
+		if len(lines) > 1 {
+			wx += "…"
+		}
+		writeln(self.dim_formatter(wx))
+	}
+
 	switch self.mode {
 	case HEX:
-		writeln(self.dim_formatter(fmt.Sprintf("Type %s followed by the index for the recent entries below", INDEX_CHAR)))
+		write_help(fmt.Sprintf("Type %s followed by the index for the recent entries below", INDEX_CHAR))
 	case NAME:
-		writeln(self.dim_formatter(fmt.Sprintf("Use Tab or arrow keys to choose a character. Type space and %s to select by index", INDEX_CHAR)))
+		write_help(fmt.Sprintf("Use Tab or arrow keys to choose a character. Type space and %s to select by index", INDEX_CHAR))
 	case FAVORITES:
-		writeln(self.dim_formatter("Press F12 to edit the list of favorites"))
+		write_help("Press F12 to edit the list of favorites")
 	}
-	sz, _ := self.lp.ScreenSize()
 	q := self.table.layout(int(sz.HeightCells)-y, int(sz.WidthCells))
 	if q != "" {
 		self.lp.QueueWriteString(q)
