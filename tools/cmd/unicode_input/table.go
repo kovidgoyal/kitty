@@ -11,6 +11,8 @@ import (
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
+
+	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print
@@ -81,6 +83,9 @@ func (self *table) current_codepoint() rune {
 
 func (self *table) set_codepoints(codepoints []rune, mode Mode, current_idx int) {
 	self.codepoints = codepoints
+	if self.codepoints != nil {
+		slices.Sort(self.codepoints)
+	}
 	self.mode = mode
 	self.layout_dirty = true
 	if self.current_idx >= len(self.codepoints) {
@@ -101,6 +106,13 @@ type cell_data struct {
 	idx, ch, desc string
 }
 
+func title(x string) string {
+	if len(x) > 1 {
+		x = strings.ToUpper(x[:1]) + x[1:]
+	}
+	return x
+}
+
 func (self *table) layout(rows, cols int) string {
 	if !self.layout_dirty && self.last_cols == cols && self.last_rows == rows {
 		return self.text
@@ -115,21 +127,22 @@ func (self *table) layout(rows, cols int) string {
 	switch self.mode {
 	case NAME:
 		as_parts = func(i int, codepoint rune) cell_data {
-			return cell_data{idx: ljust(encode_hint(i), idx_size), ch: resolved_char(codepoint, self.emoji_variation), desc: unicode_names.NameForCodePoint(codepoint)}
+			return cell_data{idx: ljust(encode_hint(i), idx_size), ch: resolved_char(codepoint, self.emoji_variation), desc: title(unicode_names.NameForCodePoint(codepoint))}
 		}
 
 		cell = func(i int, cd cell_data) {
 			is_current := i == self.current_idx
-			text := self.green(cd.idx) + " \x1b[49m" + cd.ch + " "
+			text := self.green(cd.idx) + " " + cd.ch + " "
 			w := wcswidth.Stringwidth(cd.ch)
 			if w < 2 {
 				text += strings.Repeat(" ", (2 - w))
 			}
-			if len(cd.desc) > space_for_desc {
+			desc_width := wcswidth.Stringwidth(cd.desc)
+			if desc_width > space_for_desc {
 				text += cd.desc[:space_for_desc-1] + "…"
 			} else {
 				text += cd.desc
-				extra := space_for_desc - len(cd.desc)
+				extra := space_for_desc - desc_width
 				if extra > 0 {
 					text += strings.Repeat(" ", extra)
 				}

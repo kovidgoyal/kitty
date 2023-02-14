@@ -163,7 +163,6 @@ type handler struct {
 }
 
 func (self *handler) initialize() {
-	self.lp.AllowLineWrapping(false)
 	self.table.initialize(self.emoji_variation, self.ctx)
 	self.lp.SetWindowTitle("Unicode input")
 	self.ctx.AllowEscapeCodes = true
@@ -173,9 +172,9 @@ func (self *handler) initialize() {
 	self.chosen_formatter = self.ctx.SprintFunc("fg=green")
 	self.chosen_name_formatter = self.ctx.SprintFunc("italic=true dim=true")
 	self.dim_formatter = self.ctx.SprintFunc("dim=true")
-	self.rl = readline.New(self.lp, readline.RlInit{Prompt: "> "})
+	self.rl = readline.New(self.lp, readline.RlInit{Prompt: "> ", DontMarkPrompts: true})
 	self.rl.Start()
-	self.draw_screen()
+	self.refresh()
 }
 
 func (self *handler) finalize() string {
@@ -192,17 +191,17 @@ func (self *handler) resolved_char() string {
 }
 
 func is_index(word string) bool {
-	if !strings.HasSuffix(word, INDEX_CHAR) {
+	if !strings.HasPrefix(word, INDEX_CHAR) {
 		return false
 	}
 	word = strings.TrimLeft(word, INDEX_CHAR)
-	_, err := strconv.ParseUint(word, 36, 32)
+	_, err := strconv.ParseUint(word, INDEX_BASE, 32)
 	return err == nil
 }
 
 func (self *handler) update_codepoints() {
 	var codepoints []rune
-	var index_word int
+	var index_word uint64
 	var q checkpoints_key
 	q.mode = self.mode
 	switch self.mode {
@@ -218,21 +217,26 @@ func (self *handler) update_codepoints() {
 		if !q.is_equal(self.checkpoints_key) {
 			words := strings.Split(q.text, " ")
 			words = utils.RemoveAll(words, INDEX_CHAR)
-			words = utils.Filter(words, is_index)
-			if len(words) > 0 {
-				iw := strings.TrimLeft(words[0], INDEX_CHAR)
-				words = words[1:]
-				n, err := strconv.ParseUint(iw, INDEX_BASE, 32)
-				if err == nil {
-					index_word = int(n)
+			if len(words) > 1 {
+				for i, w := range words {
+					if i > 0 && is_index(w) {
+						iw := words[i]
+						words = words[:i]
+						index_word, _ = strconv.ParseUint(strings.TrimLeft(iw, INDEX_CHAR), INDEX_BASE, 32)
+						break
+					}
 				}
 			}
-			codepoints = unicode_names.CodePointsForQuery(strings.Join(words, " "))
+			query := strings.Join(words, " ")
+			if len(query) > 1 {
+				words = words[1:]
+				codepoints = unicode_names.CodePointsForQuery(query)
+			}
 		}
 	}
 	if !q.is_equal(self.checkpoints_key) {
 		self.checkpoints_key = q
-		self.table.set_codepoints(codepoints, self.mode, index_word)
+		self.table.set_codepoints(codepoints, self.mode, int(index_word))
 	}
 }
 
@@ -276,13 +280,14 @@ func (self *handler) update_prompt() {
 		ch, color = self.resolved_char(), "green"
 		self.choice_line = fmt.Sprintf(
 			"Chosen: %s U+%x %s", self.chosen_formatter(ch), self.current_char,
-			self.chosen_name_formatter(unicode_names.NameForCodePoint(self.current_char)))
+			self.chosen_name_formatter(title(unicode_names.NameForCodePoint(self.current_char))))
 	}
 	prompt := fmt.Sprintf("%s> ", self.ctx.SprintFunc("fg="+color)(ch))
 	self.rl.SetPrompt(prompt)
 }
 
 func (self *handler) draw_title_bar() {
+	self.lp.AllowLineWrapping(false)
 	entries := make([]string, 0, len(all_modes))
 	for _, md := range all_modes {
 		entry := fmt.Sprintf(" %s (%s) ", md.title, md.key)
@@ -320,6 +325,7 @@ func (self *handler) draw_screen() {
 		writeln("Enter the index for the character you want from the list below")
 	}
 	self.rl.RedrawNonAtomic()
+	self.lp.AllowLineWrapping(false)
 	self.lp.SaveCursorPosition()
 	defer self.lp.RestoreCursorPosition()
 	writeln()
