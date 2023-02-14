@@ -12,7 +12,6 @@
 /kitty.app/
 /glad/out/
 /kitty/launcher/kitt*
-/tools/unicode_names/data_generated.bin
 /*.dSYM/
 __pycache__/
 /glfw/wayland-*-client-protocol.[ch]
