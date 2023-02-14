@@ -52,6 +52,8 @@ Detailed list of changes
 
 - macOS: Fix the window buttons not being hidden after exiting the traditional full screen (:iss:`6009`)
 
+- When reloading configuration, also reload custom MIME types from :file:`mime.types` config file (:pull:`6012`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

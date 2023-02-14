@@ -2385,6 +2385,8 @@ class Boss:
         self.apply_new_options(opts)
         from .open_actions import clear_caches
         clear_caches()
+        from .guess_mime_type import clear_mime_cache
+        clear_mime_cache()
 
     def safe_delete_temp_file(self, path: str) -> None:
         if is_path_in_temp_dir(path):
