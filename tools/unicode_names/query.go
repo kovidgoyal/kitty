@@ -27,6 +27,9 @@ var marks []rune
 var word_map map[string][]uint16
 
 func add_word(codepoint uint16, word []byte) {
+	if codepoint <= 32 || codepoint == 127 || (128 <= codepoint && codepoint <= 159) || len(word) < 2 {
+		return
+	}
 	w := utils.UnsafeBytesToString(word)
 	word_map[w] = append(word_map[w], codepoint)
 }
