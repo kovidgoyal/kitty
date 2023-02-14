@@ -290,6 +290,29 @@ func (self *Loop) run() (err error) {
 		}
 	}
 
+	self.Suspend = func() (func() error, error) {
+		write_id := self.QueueWriteString(self.terminal_options.ResetStateEscapeCodes())
+		needs_reset_escape_codes = false
+		err := self.wait_for_write_to_complete(write_id, tty_write_channel, write_done_channel, 2*time.Second)
+		if err != nil {
+			return nil, err
+		}
+		resume, err := controlling_term.Suspend()
+		if err != nil {
+			return nil, err
+		}
+		return func() (err error) {
+			err = resume()
+			if err != nil {
+				return
+			}
+			write_id = self.QueueWriteString(self.terminal_options.SetStateEscapeCodes())
+			needs_reset_escape_codes = true
+			return self.wait_for_write_to_complete(write_id, tty_write_channel, write_done_channel, 2*time.Second)
+		}, nil
+
+	}
+
 	self.on_SIGTSTP = func() error {
 		write_id := self.QueueWriteString(self.terminal_options.ResetStateEscapeCodes())
 		needs_reset_escape_codes = false

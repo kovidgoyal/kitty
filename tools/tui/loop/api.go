@@ -58,7 +58,8 @@ type Loop struct {
 	pending_writes                         []*write_msg
 	on_SIGTSTP                             func() error
 
-	// Send strings to this channel to queue writes in a thread safe way
+	// Suspend the loop restoring terminal state. Call the return resume function to restore the loop
+	Suspend func() (func() error, error)
 
 	// Callbacks
 

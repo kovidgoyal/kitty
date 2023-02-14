@@ -209,20 +209,30 @@ func (self *Term) RestoreAndClose() error {
 	return self.Close()
 }
 
-func (self *Term) SuspendAndRun(callback func() error) error {
+func (self *Term) Suspend() (resume func() error, err error) {
 	var state unix.Termios
-	err := self.Tcgetattr(&state)
+	err = self.Tcgetattr(&state)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(self.states) > 0 {
 		err := self.Tcsetattr(TCSANOW, &self.states[0])
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	defer self.Tcsetattr(TCSANOW, &state)
-	return callback()
+	return func() error { return self.Tcsetattr(TCSANOW, &state) }, nil
+
+}
+
+func (self *Term) SuspendAndRun(callback func() error) error {
+	resume, err := self.Suspend()
+	if err != nil {
+		return err
+	}
+	err = callback()
+	resume()
+	return err
 }
 
 func clamp(v, lo, hi int64) int64 {
