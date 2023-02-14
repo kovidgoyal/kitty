@@ -50,6 +50,8 @@ Detailed list of changes
 
 - Linux: Reduce minimum required OpenGL version from 3.3 to 3.1 + extensions (:iss:`2790`)
 
+- macOS: Fix the window buttons not being hidden after exiting the traditional full screen (:iss:`6009`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
