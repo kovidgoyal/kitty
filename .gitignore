@@ -1,6 +1,7 @@
 *.so
 *.pyc
 *.pyo
+*.bin
 *_stub.pyi
 *_generated.go
 *_generated.h
