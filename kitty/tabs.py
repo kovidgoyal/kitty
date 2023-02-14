@@ -1129,7 +1129,7 @@ class TabManager:  # {{{
         at = self.active_tab
         ans = []
         for t in self.tabs:
-            title = (t.name or t.title or appname).strip()
+            title = t.name or t.title or appname
             needs_attention = False
             has_activity_since_last_focus = False
             for w in t:
