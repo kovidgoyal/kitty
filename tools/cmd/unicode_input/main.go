@@ -5,6 +5,7 @@ package unicode_input
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -84,7 +85,7 @@ func serialize_favorites(favs []rune) string {
 
 `)
 	for _, ch := range favs {
-		b.WriteString(fmt.Sprintf("%x # %s %s", ch, string(ch), unicode_names.NameForCodePoint(ch)))
+		b.WriteString(fmt.Sprintf("%x # %s %s\n", ch, string(ch), unicode_names.NameForCodePoint(ch)))
 	}
 
 	return b.String()
@@ -102,7 +103,7 @@ func load_favorites(refresh bool) []rune {
 		if err == nil {
 			loaded_favorites = parse_favorites(utils.UnsafeBytesToString(raw))
 		} else {
-			loaded_favorites = parse_favorites("")
+			loaded_favorites = DEFAULT_SET
 		}
 	}
 	return loaded_favorites
@@ -334,11 +335,11 @@ func (self *handler) draw_screen() {
 
 	write_help := func(x string) {
 		lines := style.WrapTextAsLines(x, "", int(sz.WidthCells)-1)
-		wx := lines[0]
-		if len(lines) > 1 {
-			wx += "…"
+		for _, line := range lines {
+			if line != "" {
+				writeln(self.dim_formatter(line))
+			}
 		}
-		writeln(self.dim_formatter(wx))
 	}
 
 	switch self.mode {
@@ -364,16 +365,156 @@ func (self *handler) on_text(text string, from_key_event, in_bracketed_paste boo
 	return nil
 }
 
-func (self *handler) on_key_event(event *loop.KeyEvent) (err error) {
-	// TODO: Implement rest of this
-	err = self.rl.OnKeyEvent(event)
+func (self *handler) switch_mode(mode Mode) {
+	if self.mode != mode {
+		self.mode = mode
+		self.rl.ResetText()
+		self.current_char = InvalidChar
+		self.choice_line = ""
+	}
+}
+
+func (self *handler) handle_hex_key_event(event *loop.KeyEvent) {
+	text := self.rl.AllText()
+	val, err := strconv.ParseUint(text, 16, 32)
+	new_val := -1
 	if err != nil {
-		if err == readline.ErrAcceptInput {
-			self.refresh()
-			self.lp.Quit(0)
-			return nil
+		return
+	}
+	if event.MatchesPressOrRepeat("tab") {
+		new_val = int(val) + 10
+	} else if event.MatchesPressOrRepeat("up") {
+		new_val = int(val) + 1
+	} else if event.MatchesPressOrRepeat("down") {
+		new_val = utils.Max(32, int(val)-1)
+	}
+	if new_val > -1 {
+		event.Handled = true
+		self.rl.SetText(fmt.Sprintf("%x", new_val))
+	}
+}
+
+func (self *handler) handle_name_key_event(event *loop.KeyEvent) {
+	if event.MatchesPressOrRepeat("shift+tab") || event.MatchesPressOrRepeat("left") {
+		event.Handled = true
+		self.table.move_current(0, -1)
+	} else if event.MatchesPressOrRepeat("tab") || event.MatchesPressOrRepeat("right") {
+		event.Handled = true
+		self.table.move_current(0, 1)
+	} else if event.MatchesPressOrRepeat("up") {
+		event.Handled = true
+		self.table.move_current(-1, 0)
+	} else if event.MatchesPressOrRepeat("down") {
+		event.Handled = true
+		self.table.move_current(1, 0)
+	}
+}
+
+func (self *handler) handle_emoticons_key_event(event *loop.KeyEvent) {
+}
+
+func (self *handler) handle_favorites_key_event(event *loop.KeyEvent) {
+	if event.MatchesPressOrRepeat("f12") {
+		event.Handled = true
+		exe, err := os.Executable()
+		if err != nil {
+			self.err = err
+			self.lp.Quit(1)
+			return
 		}
-		return err
+		raw := serialize_favorites(load_favorites(false))
+		fp := favorites_path()
+		err = os.MkdirAll(filepath.Dir(fp), 0o755)
+		if err != nil {
+			self.err = fmt.Errorf("Failed to create config directory to store favorites in: %w", err)
+			self.lp.Quit(1)
+			return
+		}
+		err = utils.AtomicUpdateFile(fp, utils.UnsafeStringToBytes(raw), 0o600)
+		if err != nil {
+			self.err = fmt.Errorf("Failed to write to favorites file %s with error: %w", fp, err)
+			self.lp.Quit(1)
+			return
+		}
+		resume, err := self.lp.Suspend()
+		if err != nil {
+			self.err = err
+			self.lp.Quit(1)
+			return
+		}
+		defer resume()
+		cmd := exec.Command(exe, "edit-in-kitty", "--type=overlay", fp)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+		if err == nil {
+			load_favorites(true)
+		} else {
+			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintln(os.Stderr, "Failed to run edit-in-kitty, favorites have not been changed. Press Enter to continue.")
+			var ln string
+			fmt.Scanln(&ln)
+		}
+	}
+}
+
+func (self *handler) next_mode(delta int) {
+	for num, md := range all_modes {
+		if md.mode == self.mode {
+			idx := (num + 1) % len(all_modes)
+			md = all_modes[idx]
+			self.switch_mode(md.mode)
+			break
+		}
+	}
+}
+
+func (self *handler) on_key_event(event *loop.KeyEvent) (err error) {
+	if event.MatchesPressOrRepeat("esc") || event.MatchesPressOrRepeat("ctrl+c") {
+		return fmt.Errorf("Canceled by user")
+	}
+	if event.MatchesPressOrRepeat("f1") || event.MatchesPressOrRepeat("ctrl+1") {
+		event.Handled = true
+		self.switch_mode(HEX)
+	} else if event.MatchesPressOrRepeat("f2") || event.MatchesPressOrRepeat("ctrl+2") {
+		event.Handled = true
+		self.switch_mode(NAME)
+	} else if event.MatchesPressOrRepeat("f3") || event.MatchesPressOrRepeat("ctrl+3") {
+		event.Handled = true
+		self.switch_mode(EMOTICONS)
+	} else if event.MatchesPressOrRepeat("f4") || event.MatchesPressOrRepeat("ctrl+4") {
+		event.Handled = true
+		self.switch_mode(FAVORITES)
+	} else if event.MatchesPressOrRepeat("tab") || event.MatchesPressOrRepeat("ctrl+]") {
+		event.Handled = true
+		self.next_mode(1)
+	} else if event.MatchesPressOrRepeat("ctrl+shift+tab") || event.MatchesPressOrRepeat("ctrl+[") {
+		event.Handled = true
+		self.next_mode(-1)
+	}
+	if !event.Handled {
+		switch self.mode {
+		case HEX:
+			self.handle_hex_key_event(event)
+		case NAME:
+			self.handle_name_key_event(event)
+		case EMOTICONS:
+			self.handle_emoticons_key_event(event)
+		case FAVORITES:
+			self.handle_favorites_key_event(event)
+		}
+	}
+	if !event.Handled {
+		err = self.rl.OnKeyEvent(event)
+		if err != nil {
+			if err == readline.ErrAcceptInput {
+				self.refresh()
+				self.lp.Quit(0)
+				return nil
+			}
+			return err
+		}
 	}
 	if event.Handled {
 		self.refresh()
