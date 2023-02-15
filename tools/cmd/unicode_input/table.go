@@ -87,6 +87,9 @@ func (self *table) set_codepoints(codepoints []rune, mode Mode, current_idx int)
 	}
 	self.mode = mode
 	self.layout_dirty = true
+	if current_idx > -1 && current_idx < len(self.codepoints) {
+		self.current_idx = current_idx
+	}
 	if self.current_idx >= len(self.codepoints) {
 		self.current_idx = 0
 	}

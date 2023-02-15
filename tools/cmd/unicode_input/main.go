@@ -137,6 +137,7 @@ type checkpoints_key struct {
 	mode       Mode
 	text       string
 	codepoints []rune
+	index_word int
 }
 
 func (self *checkpoints_key) clear() {
@@ -144,7 +145,7 @@ func (self *checkpoints_key) clear() {
 }
 
 func (self *checkpoints_key) is_equal(other checkpoints_key) bool {
-	return self.mode == other.mode && self.text == other.text && slices.Equal(self.codepoints, other.codepoints)
+	return self.mode == other.mode && self.text == other.text && slices.Equal(self.codepoints, other.codepoints) && self.index_word == other.index_word
 }
 
 type handler struct {
@@ -165,6 +166,7 @@ type handler struct {
 
 func (self *handler) initialize() {
 	self.ctx.AllowEscapeCodes = true
+	self.checkpoints_key.index_word = -1
 	self.table.initialize(self.emoji_variation, self.ctx)
 	self.lp.SetWindowTitle("Unicode input")
 	self.current_char = InvalidChar
@@ -201,18 +203,20 @@ func is_index(word string) bool {
 }
 
 func (self *handler) update_codepoints() {
-	var codepoints []rune
 	var index_word uint64
 	var q checkpoints_key
 	q.mode = self.mode
+	q.index_word = -1
 	switch self.mode {
 	case HEX:
-		codepoints = self.recent
+		q.codepoints = self.recent
+		if len(q.codepoints) == 0 {
+			q.codepoints = DEFAULT_SET
+		}
 	case EMOTICONS:
-		codepoints = EMOTICONS_SET
+		q.codepoints = EMOTICONS_SET
 	case FAVORITES:
-		codepoints = load_favorites(false)
-		q.codepoints = codepoints
+		q.codepoints = load_favorites(false)
 	case NAME:
 		q.text = self.rl.AllText()
 		if !q.is_equal(self.checkpoints_key) {
@@ -224,6 +228,7 @@ func (self *handler) update_codepoints() {
 						iw := words[i]
 						words = words[:i]
 						index_word, _ = strconv.ParseUint(strings.TrimLeft(iw, INDEX_CHAR), INDEX_BASE, 32)
+						q.index_word = int(index_word)
 						break
 					}
 				}
@@ -231,13 +236,13 @@ func (self *handler) update_codepoints() {
 			query := strings.Join(words, " ")
 			if len(query) > 1 {
 				words = words[1:]
-				codepoints = unicode_names.CodePointsForQuery(query)
+				q.codepoints = unicode_names.CodePointsForQuery(query)
 			}
 		}
 	}
 	if !q.is_equal(self.checkpoints_key) {
 		self.checkpoints_key = q
-		self.table.set_codepoints(codepoints, self.mode, int(index_word))
+		self.table.set_codepoints(q.codepoints, self.mode, q.index_word)
 	}
 }
 
@@ -462,7 +467,7 @@ func (self *handler) handle_favorites_key_event(event *loop.KeyEvent) {
 func (self *handler) next_mode(delta int) {
 	for num, md := range all_modes {
 		if md.mode == self.mode {
-			idx := (num + 1) % len(all_modes)
+			idx := (num + delta + len(all_modes)) % len(all_modes)
 			md = all_modes[idx]
 			self.switch_mode(md.mode)
 			break
@@ -489,7 +494,7 @@ func (self *handler) on_key_event(event *loop.KeyEvent) (err error) {
 	} else if event.MatchesPressOrRepeat("tab") || event.MatchesPressOrRepeat("ctrl+]") {
 		event.Handled = true
 		self.next_mode(1)
-	} else if event.MatchesPressOrRepeat("ctrl+shift+tab") || event.MatchesPressOrRepeat("ctrl+[") {
+	} else if event.MatchesPressOrRepeat("shift+tab") || event.MatchesPressOrRepeat("ctrl+[") {
 		event.Handled = true
 		self.next_mode(-1)
 	}
