@@ -560,6 +560,7 @@ func run_loop(opts *Options) (lp *loop.Loop, err error) {
 
 	lp.OnInitialize = func() (string, error) {
 		h.initialize()
+		lp.SendOverlayReady()
 		return "", nil
 	}
 

@@ -8,6 +8,8 @@ import (
 	"os"
 
 	"kitty/tools/utils"
+
+	"github.com/jamesruan/go-rfc1924/base85"
 )
 
 var _ = fmt.Print
@@ -21,7 +23,7 @@ func KittenOutputSerializer() func(any) (string, error) {
 			if err != nil {
 				return "", err
 			}
-			return "\x1bP@kitty-kitten-result|" + utils.UnsafeBytesToString(data) + "\x1b\\", nil
+			return "\x1bP@kitty-kitten-result|" + base85.EncodeToString(data) + "\x1b\\", nil
 		}
 	}
 	return func(what any) (string, error) {
