@@ -258,6 +258,10 @@ func (self *Readline) AllText() string {
 	return self.all_text()
 }
 
+func (self *Readline) SetText(text string) {
+	self.set_text(text)
+}
+
 func (self *Readline) MoveCursorToEnd() bool {
 	return self.move_to_end()
 }

@@ -52,6 +52,13 @@ func (self *Readline) all_text() string {
 	return strings.Join(self.input_state.lines, "\n")
 }
 
+func (self *Readline) set_text(text string) {
+	self.move_to_start()
+	self.erase_chars_after_cursor(123456789, true)
+	self.add_text(text)
+	self.move_to_end()
+}
+
 func (self *Readline) add_text(text string) {
 	new_lines := make([]string, 0, len(self.input_state.lines)+4)
 	new_lines = append(new_lines, self.input_state.lines[:self.input_state.cursor.Y]...)
