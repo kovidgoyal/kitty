@@ -3,6 +3,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -12,12 +13,17 @@ import (
 var _ = fmt.Print
 
 func AtomicWriteFile(path string, data []byte, perm os.FileMode) (err error) {
-	path, err = filepath.EvalSymlinks(path)
+	npath, err := filepath.EvalSymlinks(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		err = nil
+		npath = path
+	}
 	if err == nil {
+		path = npath
 		path, err = filepath.Abs(path)
 		if err == nil {
 			var f *os.File
-			f, err = os.CreateTemp(filepath.Dir(path), filepath.Base(path))
+			f, err = os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".atomic-write-")
 			if err == nil {
 				removed := false
 				defer func() {
