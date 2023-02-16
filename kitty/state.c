@@ -128,6 +128,15 @@ current_focused_os_window_id(void) {
 
 
 OSWindow*
+os_window_for_id(id_type os_window_id) {
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = global_state.os_windows + i;
+        if (w->id == os_window_id) return w;
+    }
+    return NULL;
+}
+
+OSWindow*
 os_window_for_kitty_window(id_type kitty_window_id) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;

@@ -1333,15 +1333,6 @@ get_content_scale_for_window(PYNOARG) {
     return Py_BuildValue("ff", xscale, yscale);
 }
 
-static OSWindow*
-find_os_window(id_type os_window_id) {
-    for (size_t i = 0; i < global_state.num_os_windows; i++) {
-        OSWindow *w = global_state.os_windows + i;
-        if (w->id == os_window_id) return w;
-    }
-    return NULL;
-}
-
 static void
 activation_token_callback(GLFWwindow *window UNUSED, const char *token, void *data) {
     if (!token || !token[0]) {
@@ -1366,7 +1357,7 @@ static PyObject*
 toggle_fullscreen(PyObject UNUSED *self, PyObject *args) {
     id_type os_window_id = 0;
     if (!PyArg_ParseTuple(args, "|K", &os_window_id)) return NULL;
-    OSWindow *w = os_window_id ? find_os_window(os_window_id) : current_os_window();
+    OSWindow *w = os_window_id ? os_window_for_id(os_window_id) : current_os_window();
     if (!w) Py_RETURN_NONE;
     if (toggle_fullscreen_for_os_window(w)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
@@ -1376,7 +1367,7 @@ static PyObject*
 toggle_maximized(PyObject UNUSED *self, PyObject *args) {
     id_type os_window_id = 0;
     if (!PyArg_ParseTuple(args, "|K", &os_window_id)) return NULL;
-    OSWindow *w = os_window_id ? find_os_window(os_window_id) : current_os_window();
+    OSWindow *w = os_window_id ? os_window_for_id(os_window_id) : current_os_window();
     if (!w) Py_RETURN_NONE;
     if (toggle_maximized_for_os_window(w)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
@@ -1387,7 +1378,7 @@ cocoa_minimize_os_window(PyObject UNUSED *self, PyObject *args) {
     id_type os_window_id = 0;
     if (!PyArg_ParseTuple(args, "|K", &os_window_id)) return NULL;
 #ifdef __APPLE__
-    OSWindow *w = os_window_id ? find_os_window(os_window_id) : current_os_window();
+    OSWindow *w = os_window_id ? os_window_for_id(os_window_id) : current_os_window();
     if (!w || !w->handle) Py_RETURN_NONE;
     if (!glfwGetCocoaWindow) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetCocoaWindow"); return NULL; }
     void *window = glfwGetCocoaWindow(w->handle);
@@ -1403,12 +1394,18 @@ cocoa_minimize_os_window(PyObject UNUSED *self, PyObject *args) {
 static PyObject*
 change_os_window_state(PyObject *self UNUSED, PyObject *args) {
     char *state;
-    if (!PyArg_ParseTuple(args, "s", &state)) return NULL;
-    OSWindow *w = current_os_window();
+    id_type wid = 0;
+    if (!PyArg_ParseTuple(args, "s|K", &state, &wid)) return NULL;
+    OSWindow *w = wid ? os_window_for_id(wid) : current_os_window();
     if (!w || !w->handle) Py_RETURN_NONE;
     if (strcmp(state, "maximized") == 0) glfwMaximizeWindow(w->handle);
     else if (strcmp(state, "minimized") == 0) glfwIconifyWindow(w->handle);
-    else { PyErr_SetString(PyExc_ValueError, "Unknown window state"); return NULL; }
+    else if (strcmp(state, "fullscreen") == 0 || strcmp(state, "fullscreened") == 0) {
+        if (!is_os_window_fullscreen(w)) toggle_fullscreen_for_os_window(w);
+    } else if (strcmp(state, "normal") == 0) {
+        if (is_os_window_fullscreen(w)) toggle_fullscreen_for_os_window(w);
+        else glfwRestoreWindow(w->handle);
+    } else { PyErr_SetString(PyExc_ValueError, "Unknown window state"); return NULL; }
     Py_RETURN_NONE;
 }
 
@@ -1485,7 +1482,7 @@ x11_display(PYNOARG) {
 
 static PyObject*
 x11_window_id(PyObject UNUSED *self, PyObject *os_wid) {
-    OSWindow *w = find_os_window(PyLong_AsUnsignedLongLong(os_wid));
+    OSWindow *w = os_window_for_id(PyLong_AsUnsignedLongLong(os_wid));
     if (!w) { PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found"); return NULL; }
     if (!glfwGetX11Window) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetX11Window"); return NULL; }
     return Py_BuildValue("l", (long)glfwGetX11Window(w->handle));
@@ -1493,7 +1490,7 @@ x11_window_id(PyObject UNUSED *self, PyObject *os_wid) {
 
 static PyObject*
 cocoa_window_id(PyObject UNUSED *self, PyObject *os_wid) {
-    OSWindow *w = find_os_window(PyLong_AsUnsignedLongLong(os_wid));
+    OSWindow *w = os_window_for_id(PyLong_AsUnsignedLongLong(os_wid));
     if (!w) { PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found"); return NULL; }
     if (!glfwGetCocoaWindow) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetCocoaWindow"); return NULL; }
 #ifdef __APPLE__

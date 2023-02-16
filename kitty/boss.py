@@ -387,10 +387,7 @@ class Boss:
                 focused_os_window = wid
             os_window_id = None
             if self.args.start_as != 'normal':
-                if self.args.start_as == 'fullscreen':
-                    self.toggle_fullscreen()
-                else:
-                    change_os_window_state(self.args.start_as)
+                change_os_window_state(self.args.start_as, wid)
         if focused_os_window > 0:
             focus_os_window(focused_os_window, True, token)
         elif token and is_wayland() and wid:

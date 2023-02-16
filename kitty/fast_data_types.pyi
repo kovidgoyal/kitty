@@ -818,7 +818,7 @@ def cocoa_set_menubar_title(title: str) -> None:
     pass
 
 
-def change_os_window_state(state: str) -> None:
+def change_os_window_state(state: str, os_window_id: int = 0) -> None:
     pass
 
 
