@@ -54,6 +54,8 @@ Detailed list of changes
 
 - When reloading configuration, also reload custom MIME types from :file:`mime.types` config file (:pull:`6012`)
 
+- launch: Allow specifying the state (fullscreen/maximized/minimized) for newly created OS Windows (:iss:`6026`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

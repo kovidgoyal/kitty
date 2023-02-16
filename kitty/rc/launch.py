@@ -46,6 +46,7 @@ class Launch(RemoteCommand):
     os_window_title/str: Title for OS Window
     os_window_name/str: WM_NAME for OS Window
     os_window_class/str: WM_CLASS for OS Window
+    os_window_state/choices.normal.fullscreen.maximized.minimized: The initial state for OS Window
     color/list.str: list of color specifications such as foreground=red
     watcher/list.str: list of paths to watcher files
     '''

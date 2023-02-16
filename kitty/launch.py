@@ -13,7 +13,7 @@ from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .clipboard import set_clipboard_string, set_primary_selection
 from .constants import kitten_exe, shell_path
-from .fast_data_types import add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
+from .fast_data_types import add_timer, change_os_window_state, get_boss, get_options, get_os_window_title, patch_color_profiles
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import OverlayType, run_once
@@ -252,6 +252,13 @@ titles set by programs running in kitty. The special value :code:`current` will
 use the title of the current OS window, if any.
 
 
+--os-window-state
+type=choices
+default=normal
+choices=normal,fullscreen,maximized,minimized
+The initial state for the newly created OS Window.
+
+
 --logo
 completion=type:file ext:png group:"PNG images" relative:conf
 Path to a PNG image to use as the logo for the newly created window. See
@@ -324,6 +331,8 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab]
     def create_tab(tm: Optional[TabManager] = None) -> Tab:
         if tm is None:
             oswid = boss.add_os_window(wclass=opts.os_window_class, wname=opts.os_window_name, override_title=opts.os_window_title or None)
+            if opts.os_window_state != 'normal':
+                change_os_window_state(opts.os_window_state, oswid)
             tm = boss.os_window_map[oswid]
         tab = tm.new_tab(empty_tab=True, location=opts.location)
         if opts.tab_title:
@@ -595,7 +604,7 @@ def launch(
 def clone_safe_opts() -> FrozenSet[str]:
     return frozenset((
         'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'env', 'hold',
-        'location', 'os_window_class', 'os_window_name', 'os_window_title',
+        'location', 'os_window_class', 'os_window_name', 'os_window_title', 'os_window_state',
         'logo', 'logo_position', 'logo_alpha', 'color', 'spacing',
     ))
 
