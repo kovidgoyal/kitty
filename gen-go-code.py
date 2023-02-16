@@ -329,10 +329,11 @@ def kitten_clis() -> None:
             print('func create_cmd(root *cli.Command, run_func func(*cli.Command, *Options, []string)(int, error)) {')
             print('ans := root.AddSubCommand(&cli.Command{')
             print(f'Name: "{kitten}",')
-            print(f'ShortDescription: "{serialize_as_go_string(kcd["short_desc"])}",')
-            if kcd['usage']:
-                print(f'Usage: "[options] {serialize_as_go_string(kcd["usage"])}",')
-            print(f'HelpText: "{serialize_as_go_string(kcd["help_text"])}",')
+            if kcd:
+                print(f'ShortDescription: "{serialize_as_go_string(kcd["short_desc"])}",')
+                if kcd['usage']:
+                    print(f'Usage: "[options] {serialize_as_go_string(kcd["usage"])}",')
+                print(f'HelpText: "{serialize_as_go_string(kcd["help_text"])}",')
             print('Run: func(cmd *cli.Command, args []string) (int, error) {')
             print('opts := Options{}')
             print('err := cmd.GetOptionValues(&opts)')
@@ -351,6 +352,8 @@ def kitten_clis() -> None:
                 print("clone := root.AddClone(ans.Group, ans)")
                 print('clone.Hidden = false')
                 print(f'clone.Name = "{serialize_as_go_string(kitten.replace("_", "-"))}"')
+            if not kcd:
+                print('specialize_command(ans)')
             print('}')
             print('type Options struct {')
             print('\n'.join(od))
