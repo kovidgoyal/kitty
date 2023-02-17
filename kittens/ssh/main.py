@@ -35,7 +35,6 @@ from ..tui.operations import RESTORE_PRIVATE_MODE_VALUES, SAVE_PRIVATE_MODE_VALU
 from ..tui.utils import kitty_opts, running_in_tmux
 from .config import init_config
 from .copy import CopyInstruction
-from .options.types import Options as SSHOptions
 from .utils import create_shared_memory, get_ssh_cli, is_extra_arg, passthrough_args
 
 
@@ -101,7 +100,7 @@ def serialize_env(literal_env: Dict[str, str], env: Dict[str, str], base_env: Di
     return '\n'.join(lines).encode('utf-8')
 
 
-def make_tarfile(ssh_opts: SSHOptions, base_env: Dict[str, str], compression: str = 'gz', literal_env: Dict[str, str] = {}) -> bytes:
+def make_tarfile(ssh_opts: 'SSHOptions', base_env: Dict[str, str], compression: str = 'gz', literal_env: Dict[str, str] = {}) -> bytes:
 
     def normalize_tarinfo(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo:
         tarinfo.uname = tarinfo.gname = ''
@@ -249,7 +248,7 @@ def prepare_exec_cmd(remote_args: Sequence[str], is_python: bool) -> str:
     return f"""unset KITTY_SHELL_INTEGRATION; exec "$login_shell" -c '{args}'"""
 
 
-def prepare_export_home_cmd(ssh_opts: SSHOptions, is_python: bool) -> str:
+def prepare_export_home_cmd(ssh_opts: 'SSHOptions', is_python: bool) -> str:
     home = ssh_opts.env.get('HOME')
     if home == '_kitty_copy_env_var_':
         home = os.environ.get('HOME')
@@ -262,7 +261,7 @@ def prepare_export_home_cmd(ssh_opts: SSHOptions, is_python: bool) -> str:
 
 
 def bootstrap_script(
-    ssh_opts: SSHOptions, script_type: str = 'sh', remote_args: Sequence[str] = (),
+    ssh_opts: 'SSHOptions', script_type: str = 'sh', remote_args: Sequence[str] = (),
     test_script: str = '', request_id: Optional[str] = None, cli_hostname: str = '', cli_uname: str = '',
     request_data: bool = False, echo_on: bool = True, literal_env: Dict[str, str] = {}
 ) -> Tuple[str, Dict[str, str], str]:
@@ -471,7 +470,7 @@ def wrap_bootstrap_script(sh_script: str, interpreter: str) -> List[str]:
 
 
 def get_remote_command(
-    remote_args: List[str], ssh_opts: SSHOptions, cli_hostname: str = '', cli_uname: str = '',
+    remote_args: List[str], ssh_opts: 'SSHOptions', cli_hostname: str = '', cli_uname: str = '',
     echo_on: bool = True, request_data: bool = False, literal_env: Dict[str, str] = {}
 ) -> Tuple[List[str], Dict[str, str], str]:
     interpreter = ssh_opts.interpreter

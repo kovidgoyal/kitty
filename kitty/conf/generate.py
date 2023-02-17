@@ -472,7 +472,7 @@ def gen_go_code(defn: Definition) -> str:
             go_types[name], go_parsers[name] = go_type_data(option.parser_func, type_defs)
             multiopts.add(name)
         else:
-            defaults[name] = option.defval_as_string
+            defaults[name] = option.parser_func(option.defval_as_string)
             if option.choices:
                 choices[name] = option.choices
                 go_types[name] = f'{name}_Choice_Type'
@@ -492,22 +492,25 @@ def gen_go_code(defn: Definition) -> str:
             a(f'{name} {gotype}')
     a('}')
 
-    a('func NewConfig() *Config {')
-    a('ans := Config{}')
-    a('var err error')
-    a('var val string')
-    for name, pname in go_parsers.items():
-        if name in multiopts:
-            a(f'ans.{name} = make([]{go_types[name]}, 0, 8)')
-            continue
-        a(f'val = `{defaults[name]}`')
-        a(f'ans.{name}, err = {pname}')
-        a('if err != nil { panic(err) }')
-    a('return &ans')
-    a('}')
-
     def cval(x: str) -> str:
         return x.replace('-', '_')
+
+    a('func NewConfig() *Config {')
+    a('return &Config{')
+    for name, pname in go_parsers.items():
+        if name in multiopts:
+            continue
+        d = defaults[name]
+        if not d:
+            continue
+        if isinstance(d, str):
+            dval = f'{name}_{cval(d)}' if name in choices else f'`{d}`'
+        elif isinstance(d, bool):
+            dval = repr(d).lower()
+        else:
+            dval = repr(d)
+        a(f'{name}: {dval},')
+    a('}''}')
 
     for oname, choice_vals in choices.items():
         a('const (')
