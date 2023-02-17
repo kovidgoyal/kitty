@@ -7,7 +7,7 @@ import os
 import sys
 from contextlib import contextmanager
 from functools import partial
-from typing import TYPE_CHECKING, Any, Dict, FrozenSet, Generator, List, cast
+from typing import TYPE_CHECKING, Any, Dict, FrozenSet, Generator, List, Optional, cast
 
 from kitty.constants import list_kitty_resources
 from kitty.types import run_once
@@ -171,7 +171,7 @@ def get_kitten_completer(kitten: str) -> Any:
     return ans
 
 
-def get_kitten_conf_docs(kitten: str) -> Definition:
+def get_kitten_conf_docs(kitten: str) -> Optional[Definition]:
     setattr(sys, 'options_definition', None)
     run_kitten(kitten, run_name='__conf__')
     ans = getattr(sys, 'options_definition')

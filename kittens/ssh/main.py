@@ -36,7 +36,6 @@ from ..tui.utils import kitty_opts, running_in_tmux
 from .config import init_config
 from .copy import CopyInstruction
 from .options.types import Options as SSHOptions
-from .options.utils import DELETE_ENV_VAR
 from .utils import create_shared_memory, get_ssh_cli, is_extra_arg, passthrough_args
 
 

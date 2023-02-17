@@ -525,9 +525,9 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
 
     from kittens.runner import get_kitten_conf_docs
     for kitten in all_kitten_names:
-        definition = get_kitten_conf_docs(kitten)
-        if definition:
-            generate_default_config(definition, f'kitten-{kitten}')
+        defn = get_kitten_conf_docs(kitten)
+        if defn is not None:
+            generate_default_config(defn, f'kitten-{kitten}')
 
     from kitty.actions import as_rst
     with open('generated/actions.rst', 'w', encoding='utf-8') as f:

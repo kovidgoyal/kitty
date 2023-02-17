@@ -22,6 +22,8 @@ from kitty.cli import (
     parse_option_spec,
     serialize_as_go_string,
 )
+from kitty.conf.generate import gen_go_code
+from kitty.conf.types import Definition
 from kitty.guess_mime_type import text_mimes
 from kitty.key_encoding import config_mod_map
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases
@@ -318,8 +320,18 @@ def wrapped_kittens() -> Sequence[str]:
     raise Exception('Failed to read wrapped kittens from kitty wrapper script')
 
 
+def generate_conf_parser(kitten: str, defn: Definition) -> None:
+    with replace_if_needed(f'tools/cmd/{kitten}/conf_generated.go'):
+        print(f'package {kitten}')
+        print(gen_go_code(defn))
+
+
 def kitten_clis() -> None:
+    from kittens.runner import get_kitten_conf_docs
     for kitten in wrapped_kittens():
+        defn = get_kitten_conf_docs(kitten)
+        if defn is not None:
+            generate_conf_parser(kitten, defn)
         with replace_if_needed(f'tools/cmd/{kitten}/cli_generated.go'):
             od = []
             kcd = kitten_cli_docs(kitten)

@@ -13,7 +13,7 @@ remote. Directories are copied recursively. If absolute paths are used, they are
 copied as is.'''
 
 definition = Definition(
-    'kittens.ssh',
+    '!kittens.ssh',
 )
 
 agr = definition.add_group
@@ -22,7 +22,7 @@ opt = definition.add_option
 
 agr('bootstrap', 'Host bootstrap configuration')  # {{{
 
-opt('hostname', '*', option_type='hostname', long_text='''
+opt('hostname', '*', long_text='''
 The hostname that the following options apply to. A glob pattern to match
 multiple hosts can be used. Multiple hostnames can also be specified, separated
 by spaces. The hostname can include an optional username in the form
@@ -44,7 +44,7 @@ The location on the remote host where the files needed for this kitten are
 installed. Relative paths are resolved with respect to :code:`$HOME`.
 ''')
 
-opt('+copy', '', option_type='copy', add_to_default=False, long_text=f'''
+opt('+copy', '', add_to_default=False, long_text=f'''
 {copy_message} For example::
 
     copy .vimrc .zshrc .config/some-dir
@@ -80,7 +80,7 @@ The login shell to execute on the remote host. By default, the remote user
 account's login shell is used.
 ''')
 
-opt('+env', '', option_type='env', add_to_default=False, long_text='''
+opt('+env', '', add_to_default=False, long_text='''
 Specify the environment variables to be set on the remote host. Using the
 name with an equal sign (e.g. :code:`env VAR=`) will set it to the empty string.
 Specifying only the name (e.g. :code:`env VAR`) will remove the variable from
