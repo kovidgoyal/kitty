@@ -220,7 +220,8 @@ Allows easily running tests in a terminal window
 
 `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Terminal image viewer for Neovim
+Terminal image viewer for Neovim. For a bit of fun, you can even have `cats
+running around inside nvim <https://github.com/giusgad/pets.nvim>`__.
 
 
 Scrollback manipulation
