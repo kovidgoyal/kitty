@@ -442,7 +442,9 @@ def write_output(loc: str, defn: Definition) -> None:
             f.write(f'{c}\n')
 
 
-def go_type_data(parser_func: ParserFuncType, type_defs: List[str]) -> Tuple[str, str]:
+def go_type_data(parser_func: ParserFuncType, ctype: str) -> Tuple[str, str]:
+    if ctype:
+        return f'*{ctype}', f'New{ctype}(val)'
     p = parser_func.__name__
     if p == 'int':
         return 'int64', 'strconv.ParseInt(val, 10, 64)'
@@ -465,11 +467,10 @@ def gen_go_code(defn: Definition) -> str:
     go_parsers = {}
     defaults = {}
     multiopts = {''}
-    type_defs = ['']
     for option in sorted(defn.iter_all_options(), key=lambda a: natural_keys(a.name)):
         name = option.name.capitalize()
         if isinstance(option, MultiOption):
-            go_types[name], go_parsers[name] = go_type_data(option.parser_func, type_defs)
+            go_types[name], go_parsers[name] = go_type_data(option.parser_func, option.ctype)
             multiopts.add(name)
         else:
             defaults[name] = option.parser_func(option.defval_as_string)
@@ -478,12 +479,10 @@ def gen_go_code(defn: Definition) -> str:
                 go_types[name] = f'{name}_Choice_Type'
                 go_parsers[name] = f'Parse_{name}(val)'
                 continue
-            go_types[name], go_parsers[name] = go_type_data(option.parser_func, type_defs)
+            go_types[name], go_parsers[name] = go_type_data(option.parser_func, option.ctype)
 
     for oname in choices:
         a(f'type {go_types[oname]} int')
-    for td in type_defs:
-        a(td)
     a('type Config struct {')
     for name, gotype in go_types.items():
         if name in multiopts:

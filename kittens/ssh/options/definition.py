@@ -44,7 +44,7 @@ The location on the remote host where the files needed for this kitten are
 installed. Relative paths are resolved with respect to :code:`$HOME`.
 ''')
 
-opt('+copy', '', add_to_default=False, long_text=f'''
+opt('+copy', '', add_to_default=False, ctype='CopyInstruction', long_text=f'''
 {copy_message} For example::
 
     copy .vimrc .zshrc .config/some-dir
@@ -80,7 +80,7 @@ The login shell to execute on the remote host. By default, the remote user
 account's login shell is used.
 ''')
 
-opt('+env', '', add_to_default=False, long_text='''
+opt('+env', '', add_to_default=False, ctype='EnvInstruction', long_text='''
 Specify the environment variables to be set on the remote host. Using the
 name with an equal sign (e.g. :code:`env VAR=`) will set it to the empty string.
 Specifying only the name (e.g. :code:`env VAR`) will remove the variable from
