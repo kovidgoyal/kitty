@@ -1,6 +1,6 @@
 // License: GPLv3 Copyright: 2023, Kovid Goyal, <kovid at kovidgoyal.net>
 
-package utils
+package config
 
 import (
 	"bufio"
@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"kitty/tools/utils"
 	"os"
 	"path/filepath"
 	"strings"
@@ -173,5 +174,5 @@ func (self *LinesScanner) Err() error {
 func (self *ConfigParser) ParseOverrides(overrides ...string) error {
 	s := LinesScanner{lines: overrides}
 	self.seen_includes = make(map[string]bool)
-	return self.parse(&s, "<overrides>", ConfigDir(), 0)
+	return self.parse(&s, "<overrides>", utils.ConfigDir(), 0)
 }

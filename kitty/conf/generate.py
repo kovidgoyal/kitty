@@ -453,14 +453,14 @@ def go_type_data(parser_func: ParserFuncType, ctype: str) -> Tuple[str, str]:
     if p == 'float':
         return 'float64', 'strconv.ParseFloat(val, 10, 64)'
     if p == 'to_bool':
-        return 'bool', 'utils.StringToBool(val), nil'
+        return 'bool', 'config.StringToBool(val), nil'
     th = get_type_hints(parser_func)
     rettype = th['return']
     return {int: 'int64', str: 'string', float: 'float64'}[rettype], f'{p}(val)'
 
 
 def gen_go_code(defn: Definition) -> str:
-    lines = ['import "fmt"', 'import "strconv"', 'import "kitty/tools/utils"', 'var _ = fmt.Println', 'var _ = utils.StringToBool', 'var _ = strconv.Atoi']
+    lines = ['import "fmt"', 'import "strconv"', 'import "kitty/tools/config"', 'var _ = fmt.Println', 'var _ = config.StringToBool', 'var _ = strconv.Atoi']
     a = lines.append
     choices = {}
     go_types = {}
