@@ -75,7 +75,6 @@ from .fast_data_types import (
     apply_options_update,
     background_opacity_of,
     change_background_opacity,
-    change_os_window_state,
     cocoa_hide_app,
     cocoa_hide_other_apps,
     cocoa_minimize_os_window,
@@ -137,6 +136,7 @@ from .utils import (
     macos_version,
     open_url,
     parse_address_spec,
+    parse_os_window_state,
     parse_uri_list,
     platform_window_id,
     remove_socket_file,
@@ -382,12 +382,12 @@ class Boss:
         focused_os_window = wid = 0
         token = os.environ.pop('XDG_ACTIVATION_TOKEN', '')
         for startup_session in si:
-            wid = self.add_os_window(startup_session, os_window_id=os_window_id)
+            # The window state from the CLI options will override and apply to every single OS window in startup session
+            wstate = self.args.start_as if self.args.start_as and self.args.start_as != 'normal' else None
+            wid = self.add_os_window(startup_session, window_state=wstate, os_window_id=os_window_id)
             if startup_session.focus_os_window:
                 focused_os_window = wid
             os_window_id = None
-            if self.args.start_as != 'normal':
-                change_os_window_state(self.args.start_as, wid)
         if focused_os_window > 0:
             focus_os_window(focused_os_window, True, token)
         elif token and is_wayland() and wid:
@@ -399,6 +399,7 @@ class Boss:
         os_window_id: Optional[int] = None,
         wclass: Optional[str] = None,
         wname: Optional[str] = None,
+        window_state: Optional[str] = None,
         opts_for_size: Optional[Options] = None,
         startup_id: Optional[str] = None,
         override_title: Optional[str] = None,
@@ -408,11 +409,13 @@ class Boss:
             wclass = wclass or getattr(startup_session, 'os_window_class', None) or self.args.cls or appname
             wname = wname or self.args.name or wclass
             wtitle = override_title or self.args.title
+            window_state = window_state or getattr(startup_session, 'os_window_state', None)
+            wstate = parse_os_window_state(window_state) if window_state is not None else None
             with startup_notification_handler(do_notify=startup_id is not None, startup_id=startup_id) as pre_show_callback:
                 os_window_id = create_os_window(
                         initial_window_size_func(size_data, self.cached_values),
                         pre_show_callback,
-                        wtitle or appname, wname, wclass, disallow_override_title=bool(wtitle))
+                        wtitle or appname, wname, wclass, wstate, disallow_override_title=bool(wtitle))
         else:
             wname = self.args.name or self.args.cls or appname
             wclass = self.args.cls or appname

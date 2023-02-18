@@ -56,6 +56,12 @@ Detailed list of changes
 
 - launch: Allow specifying the state (fullscreen/maximized/minimized) for newly created OS Windows (:iss:`6026`)
 
+- Sessions: Allow specifying the OS window state via the ``os_window_state`` directive (:iss:`5863`)
+
+- macOS: Display the newly created OS window in specified state to avoid or reduce the window transition animations (:pull:`6035`)
+
+- macOS: Fix the maximized window not taking up full space when the title bar is hidden or when :opt:`resize_in_steps` is configured (:iss:`6021`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

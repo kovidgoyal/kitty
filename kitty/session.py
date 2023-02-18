@@ -61,6 +61,7 @@ class Session:
         self.default_title = default_title
         self.os_window_size: Optional[WindowSizes] = None
         self.os_window_class: Optional[str] = None
+        self.os_window_state: Optional[str] = None
         self.focus_os_window: bool = False
 
     def add_tab(self, opts: Options, name: str = '') -> None:
@@ -177,6 +178,8 @@ def parse_session(raw: str, opts: Options, environ: Optional[Mapping[str, str]] 
                 ans.os_window_size = WindowSizes(WindowSize(*w), WindowSize(*h))
             elif cmd == 'os_window_class':
                 ans.os_window_class = rest
+            elif cmd == 'os_window_state':
+                ans.os_window_state = rest
             elif cmd == 'resize_window':
                 ans.resize_window(rest.split())
             else:
