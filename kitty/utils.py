@@ -510,15 +510,10 @@ def parse_address_spec(spec: str) -> Tuple[AddressFamily, Union[Tuple[str, int],
 
 
 def parse_os_window_state(state: str) -> int:
-    if state == 'normal':
-        return WINDOW_NORMAL
-    elif state in ('fullscreen', 'fullscreened'):
-        return WINDOW_FULLSCREEN
-    elif state == 'maximized':
-        return WINDOW_MAXIMIZED
-    elif state == 'minimized':
-        return WINDOW_MINIMIZED
-    raise ValueError(f'Unknown OS window state: {state}')
+    return {
+        'normal': WINDOW_NORMAL, 'maximized': WINDOW_MAXIMIZED, 'minimized': WINDOW_MINIMIZED,
+        'fullscreen': WINDOW_FULLSCREEN, 'fullscreened':WINDOW_FULLSCREEN
+    }[state]
 
 
 def write_all(fd: int, data: Union[str, bytes], block_until_written: bool = True) -> None:
