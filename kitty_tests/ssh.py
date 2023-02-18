@@ -11,8 +11,6 @@ from functools import lru_cache
 
 from kittens.ssh.config import load_config
 from kittens.ssh.main import bootstrap_script, get_connection_data, wrap_bootstrap_script
-from kittens.ssh.options.types import Options as SSHOptions
-from kittens.ssh.options.utils import DELETE_ENV_VAR
 from kittens.transfer.utils import set_paths
 from kitty.constants import is_macos, runtime_dir
 from kitty.fast_data_types import CURSOR_BEAM, shm_unlink
