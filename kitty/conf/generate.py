@@ -444,7 +444,7 @@ def write_output(loc: str, defn: Definition) -> None:
 
 def go_type_data(parser_func: ParserFuncType, ctype: str) -> Tuple[str, str]:
     if ctype:
-        return f'*{ctype}', f'New{ctype}(val)'
+        return f'*{ctype}', f'Parse{ctype}(val)'
     p = parser_func.__name__
     if p == 'int':
         return 'int64', 'strconv.ParseInt(val, 10, 64)'
@@ -539,12 +539,16 @@ def gen_go_code(defn: Definition) -> str:
     a('default: return fmt.Errorf("Unknown configuration key: %#v", key)')
     for oname, pname in go_parsers.items():
         ol = oname.lower()
+        is_multiple = oname in multiopts
         a(f'case "{ol}":')
-        a(f'var temp_val {go_types[oname]}')
+        if is_multiple:
+            a(f'var temp_val []{go_types[oname]}')
+        else:
+            a(f'var temp_val {go_types[oname]}')
         a(f'temp_val, err = {pname}')
         a(f'if err != nil {{ return fmt.Errorf("Failed to parse {ol} = %#v with error: %w", val, err) }}')
-        if oname in multiopts:
-            a(f'c.{oname} = append(c.{oname}, temp_val)')
+        if is_multiple:
+            a(f'c.{oname} = append(c.{oname}, temp_val...)')
         else:
             a(f'c.{oname} = temp_val')
     a('}')

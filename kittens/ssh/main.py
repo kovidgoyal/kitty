@@ -724,3 +724,6 @@ elif __name__ == '__wrapper_of__':
 elif __name__ == '__conf__':
     from .options.definition import definition
     sys.options_definition = definition  # type: ignore
+elif __name__ == '__extra_cli_parsers__':
+    from .copy import option_text
+    setattr(sys, 'extra_cli_parsers', {'copy': option_text()})  # type: ignore

@@ -179,6 +179,14 @@ def get_kitten_conf_docs(kitten: str) -> Optional[Definition]:
     return cast(Definition, ans)
 
 
+def get_kitten_extra_cli_parsers(kitten: str) -> Dict[str,str]:
+    setattr(sys, 'extra_cli_parsers', {})
+    run_kitten(kitten, run_name='__extra_cli_parsers__')
+    ans = getattr(sys, 'extra_cli_parsers')
+    delattr(sys, 'extra_cli_parsers')
+    return cast(Dict[str, str], ans)
+
+
 def main() -> None:
     try:
         args = sys.argv[1:]

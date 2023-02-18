@@ -4,8 +4,11 @@ package utils
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
-	"io"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -16,9 +19,34 @@ func StringToBool(x string) bool {
 	return x == "y" || x == "yes" || x == "true"
 }
 
-func ParseConfData(src io.Reader, callback func(key, val string, line int)) error {
-	scanner := bufio.NewScanner(src)
+type ConfigLine struct {
+	Src_file, Line string
+	Line_number    int
+	Err            error
+}
+
+type ConfigParser struct {
+	BadLines    []ConfigLine
+	LineHandler func(key, val string) error
+}
+
+type Scanner interface {
+	Scan() bool
+	Text() string
+	Err() error
+}
+
+func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes string) error {
 	lnum := 0
+	make_absolute := func(path string) (string, error) {
+		if path == "" {
+			return "", fmt.Errorf("Empty include paths not allowed")
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(base_path_for_includes, path)
+		}
+		return path, nil
+	}
 	for scanner.Scan() {
 		line := strings.TrimLeft(scanner.Text(), " ")
 		lnum++
@@ -26,7 +54,93 @@ func ParseConfData(src io.Reader, callback func(key, val string, line int)) erro
 			continue
 		}
 		key, val, _ := strings.Cut(line, " ")
-		callback(key, val, lnum)
+		switch key {
+		default:
+			err := self.LineHandler(key, val)
+			if err != nil {
+				self.BadLines = append(self.BadLines, ConfigLine{Src_file: name, Line: line, Line_number: lnum, Err: err})
+			}
+		case "include", "globinclude", "envinclude":
+			var includes []string
+			switch key {
+			case "include":
+				aval, err := make_absolute(val)
+				if err == nil {
+					includes = []string{aval}
+				}
+			case "globinclude":
+				aval, err := make_absolute(val)
+				if err == nil {
+					matches, err := filepath.Glob(aval)
+					if err == nil {
+						includes = matches
+					}
+				}
+			case "envinclude":
+				for _, x := range os.Environ() {
+					key, eval, _ := strings.Cut(x, "=")
+					is_match, err := filepath.Match(val, key)
+					if is_match && err == nil {
+						escanner := bufio.NewScanner(strings.NewReader(eval))
+						err := self.parse(escanner, "<env var: "+key+">", base_path_for_includes)
+						if err != nil {
+							return err
+						}
+					}
+				}
+			}
+			if len(includes) > 0 {
+				for _, incpath := range includes {
+					raw, err := os.ReadFile(incpath)
+					if err == nil {
+						escanner := bufio.NewScanner(strings.NewReader(UnsafeBytesToString(raw)))
+						err := self.parse(escanner, incpath, filepath.Dir(incpath))
+						if err != nil {
+							return err
+						}
+					} else if !errors.Is(err, fs.ErrNotExist) {
+						return fmt.Errorf("Failed to process include %#v with error: %w", incpath, err)
+					}
+				}
+			}
+		}
 	}
-	return scanner.Err()
+	return nil
+}
+
+func (self *ConfigParser) ParseFile(path string) error {
+	apath, err := filepath.Abs(path)
+	if err == nil {
+		path = apath
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	return self.parse(scanner, f.Name(), filepath.Dir(f.Name()))
+}
+
+type LinesScanner struct {
+	lines []string
+}
+
+func (self *LinesScanner) Scan() bool {
+	return len(self.lines) > 0
+}
+
+func (self *LinesScanner) Text() string {
+	ans := self.lines[0]
+	self.lines = self.lines[1:]
+	return ans
+}
+
+func (self *LinesScanner) Err() error {
+	return nil
+}
+
+func (self *ConfigParser) ParseOverrides(overrides ...string) error {
+	s := LinesScanner{lines: overrides}
+	return self.parse(&s, "<overrides>", ConfigDir())
 }

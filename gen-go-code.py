@@ -326,12 +326,39 @@ def generate_conf_parser(kitten: str, defn: Definition) -> None:
         print(gen_go_code(defn))
 
 
+def generate_extra_cli_parser(name: str, spec: str) -> None:
+    print('import "kitty/tools/cli"')
+    go_opts = tuple(go_options_for_seq(parse_option_spec(spec)[0]))
+    print(f'type {name}_options struct ''{')
+    for opt in go_opts:
+        print(opt.struct_declaration())
+    print('}')
+    print(f'func parse_{name}_args(args []string) (*{name}_options, []string, error) ''{')
+    print(f'root := cli.Command{{Name: `{name}` }}')
+    for opt in go_opts:
+        print(opt.as_option('root'))
+    print('cmd, err := root.ParseArgs(args)')
+    print('if err != nil { return nil, nil, err }')
+    print(f'var opts {name}_options')
+    print('err = cmd.GetOptionValues(&opts)')
+    print('if err != nil { return nil, nil, err }')
+    print('return &opts, cmd.Args, nil')
+    print('}')
+
+
 def kitten_clis() -> None:
-    from kittens.runner import get_kitten_conf_docs
+    from kittens.runner import get_kitten_conf_docs, get_kitten_extra_cli_parsers
     for kitten in wrapped_kittens():
         defn = get_kitten_conf_docs(kitten)
         if defn is not None:
             generate_conf_parser(kitten, defn)
+        ecp = get_kitten_extra_cli_parsers(kitten)
+        if ecp:
+            for name, spec in ecp.items():
+                with replace_if_needed(f'tools/cmd/{kitten}/{name}_cli_generated.go'):
+                    print(f'package {kitten}')
+                    generate_extra_cli_parser(name, spec)
+
         with replace_if_needed(f'tools/cmd/{kitten}/cli_generated.go'):
             od = []
             kcd = kitten_cli_docs(kitten)
