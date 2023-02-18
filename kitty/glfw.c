@@ -999,7 +999,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     // Update window state
     // We do not call glfwWindowHint to set GLFW_MAXIMIZED before the window is created.
     // That would cause the window to be set to maximize immediately after creation and use the wrong initial size when restored.
-    change_state_for_os_window(w, window_state);
+    if (window_state != WINDOW_NORMAL) change_state_for_os_window(w, window_state);
 #ifdef __APPLE__
     // macOS: Show the window after it is ready
     glfwShowWindow(glfw_window);
