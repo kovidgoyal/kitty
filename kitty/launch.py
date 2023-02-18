@@ -13,7 +13,7 @@ from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .clipboard import set_clipboard_string, set_primary_selection
 from .constants import kitten_exe, shell_path
-from .fast_data_types import add_timer, change_os_window_state, get_boss, get_options, get_os_window_title, patch_color_profiles
+from .fast_data_types import add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import OverlayType, run_once
@@ -330,9 +330,11 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab]
 
     def create_tab(tm: Optional[TabManager] = None) -> Tab:
         if tm is None:
-            oswid = boss.add_os_window(wclass=opts.os_window_class, wname=opts.os_window_name, override_title=opts.os_window_title or None)
-            if opts.os_window_state != 'normal':
-                change_os_window_state(opts.os_window_state, oswid)
+            oswid = boss.add_os_window(
+                wclass=opts.os_window_class,
+                wname=opts.os_window_name,
+                window_state=opts.os_window_state,
+                override_title=opts.os_window_title or None)
             tm = boss.os_window_map[oswid]
         tab = tm.new_tab(empty_tab=True, location=opts.location)
         if opts.tab_title:

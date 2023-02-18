@@ -738,6 +738,25 @@ toggle_maximized_for_os_window(OSWindow *w) {
     return maximized;
 }
 
+static void
+change_state_for_os_window(OSWindow *w, int state) {
+    if (!w || !w->handle) return;
+    switch (state) {
+        case WINDOW_MAXIMIZED:
+            glfwMaximizeWindow(w->handle);
+            break;
+        case WINDOW_MINIMIZED:
+            glfwIconifyWindow(w->handle);
+            break;
+        case WINDOW_FULLSCREEN:
+            if (!is_os_window_fullscreen(w)) toggle_fullscreen_for_os_window(w);
+            break;
+        case WINDOW_NORMAL:
+            if (is_os_window_fullscreen(w)) toggle_fullscreen_for_os_window(w);
+            else glfwRestoreWindow(w->handle);
+            break;
+    }
+}
 
 #ifdef __APPLE__
 static GLFWwindow *apple_preserve_common_context = NULL;
@@ -792,12 +811,14 @@ native_window_handle(GLFWwindow *w) {
 
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
-    int x = -1, y = -1, disallow_override_title = 0;
+    int x = -1, y = -1, window_state = WINDOW_NORMAL, disallow_override_title = 0;
     char *title, *wm_class_class, *wm_class_name;
-    PyObject *load_programs = NULL, *get_window_size, *pre_show_callback;
-    static const char* kwlist[] = {"get_window_size", "pre_show_callback", "title", "wm_class_name", "wm_class_class", "load_programs", "x", "y", "disallow_override_title", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "OOsss|Oiip", (char**)kwlist,
-        &get_window_size, &pre_show_callback, &title, &wm_class_name, &wm_class_class, &load_programs, &x, &y, &disallow_override_title)) return NULL;
+    PyObject *optional_window_state = NULL, *load_programs = NULL, *get_window_size, *pre_show_callback;
+    static const char* kwlist[] = {"get_window_size", "pre_show_callback", "title", "wm_class_name", "wm_class_class", "window_state", "load_programs", "x", "y", "disallow_override_title", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "OOsss|OOiip", (char**)kwlist,
+        &get_window_size, &pre_show_callback, &title, &wm_class_name, &wm_class_class, &optional_window_state, &load_programs, &x, &y, &disallow_override_title)) return NULL;
+    if (optional_window_state && optional_window_state != Py_None) window_state = (int) PyLong_AsLong(optional_window_state);
+    if (window_state < WINDOW_NORMAL || window_state > WINDOW_MINIMIZED) window_state = WINDOW_NORMAL;
 
     static bool is_first_window = true;
     if (is_first_window) {
@@ -886,7 +907,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (pret == NULL) return NULL;
     Py_DECREF(pret);
     if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
+#ifndef __APPLE__
     glfwShowWindow(glfw_window);
+#endif
 #ifdef __APPLE__
     float n_xscale, n_yscale;
     double n_xdpi, n_ydpi;
@@ -924,6 +947,18 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     w->fonts_data = fonts_data;
     w->shown_once = true;
     w->last_focused_counter = ++focus_counter;
+#ifdef __APPLE__
+    if (OPT(hide_window_decorations) & 2) {
+        glfwHideCocoaTitlebar(glfw_window, true);
+    } else if (!(OPT(macos_show_window_title_in) & WINDOW)) {
+        if (glfwGetCocoaWindow) cocoa_hide_window_title(glfwGetCocoaWindow(glfw_window));
+        else log_error("Failed to load glfwGetCocoaWindow");
+    }
+    if (OPT(hide_window_decorations)) {
+        // Need to resize the window again after hiding decorations or title bar to take up screen space
+        glfwSetWindowSize(glfw_window, width, height);
+    }
+#endif
     os_window_update_size_increments(w);
 #ifdef __APPLE__
     if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
@@ -933,6 +968,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
     glfwSetCursor(glfw_window, standard_cursor);
     update_os_window_viewport(w, false);
+#ifdef __APPLE__
+    if (glfwGetCocoaWindow) cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window), OPT(macos_window_resizable));
+#endif
     glfwSetWindowPosCallback(glfw_window, window_pos_callback);
     // missing size callback
     glfwSetWindowCloseCallback(glfw_window, window_close_callback);
@@ -950,16 +988,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwSetScrollCallback(glfw_window, scroll_callback);
     glfwSetKeyboardCallback(glfw_window, key_callback);
     glfwSetDropCallback(glfw_window, drop_callback);
-#ifdef __APPLE__
-    if (glfwGetCocoaWindow) {
-        if (OPT(hide_window_decorations) & 2) {
-            glfwHideCocoaTitlebar(glfw_window, true);
-        } else if (!(OPT(macos_show_window_title_in) & WINDOW)) {
-            cocoa_hide_window_title(glfwGetCocoaWindow(glfw_window));
-        }
-        cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window), OPT(macos_window_resizable));
-    } else log_error("Failed to load glfwGetCocoaWindow");
-#endif
     monotonic_t now = monotonic();
     w->is_focused = true;
     w->cursor_blink_zero_time = now;
@@ -973,6 +1001,14 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
             warned = true;
         }
     }
+    // Update window state
+    // We do not call glfwWindowHint to set GLFW_MAXIMIZED before the window is created.
+    // That would cause the window to be set to maximize immediately after creation and use the wrong initial size when restored.
+    if (window_state != WINDOW_NORMAL) change_state_for_os_window(w, window_state);
+#ifdef __APPLE__
+    // macOS: Show the window after it is ready
+    glfwShowWindow(glfw_window);
+#endif
     return PyLong_FromUnsignedLongLong(w->id);
 }
 
@@ -1393,19 +1429,16 @@ cocoa_minimize_os_window(PyObject UNUSED *self, PyObject *args) {
 
 static PyObject*
 change_os_window_state(PyObject *self UNUSED, PyObject *args) {
-    char *state;
+    int state;
     id_type wid = 0;
-    if (!PyArg_ParseTuple(args, "s|K", &state, &wid)) return NULL;
+    if (!PyArg_ParseTuple(args, "i|K", &state, &wid)) return NULL;
     OSWindow *w = wid ? os_window_for_id(wid) : current_os_window();
     if (!w || !w->handle) Py_RETURN_NONE;
-    if (strcmp(state, "maximized") == 0) glfwMaximizeWindow(w->handle);
-    else if (strcmp(state, "minimized") == 0) glfwIconifyWindow(w->handle);
-    else if (strcmp(state, "fullscreen") == 0 || strcmp(state, "fullscreened") == 0) {
-        if (!is_os_window_fullscreen(w)) toggle_fullscreen_for_os_window(w);
-    } else if (strcmp(state, "normal") == 0) {
-        if (is_os_window_fullscreen(w)) toggle_fullscreen_for_os_window(w);
-        else glfwRestoreWindow(w->handle);
-    } else { PyErr_SetString(PyExc_ValueError, "Unknown window state"); return NULL; }
+    if (state < WINDOW_NORMAL || state > WINDOW_MINIMIZED) {
+        PyErr_SetString(PyExc_ValueError, "Unknown window state");
+        return NULL;
+    }
+    change_state_for_os_window(w, state);
     Py_RETURN_NONE;
 }
 

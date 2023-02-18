@@ -25,7 +25,7 @@ from .constants import (
     shell_path,
     ssh_control_master_template,
 )
-from .fast_data_types import Color, open_tty
+from .fast_data_types import WINDOW_FULLSCREEN, WINDOW_MAXIMIZED, WINDOW_MINIMIZED, WINDOW_NORMAL, Color, open_tty
 from .rgb import to_color
 from .types import run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
@@ -507,6 +507,18 @@ def parse_address_spec(spec: str) -> Tuple[AddressFamily, Union[Tuple[str, int],
     else:
         raise ValueError(f'Unknown protocol in --listen-on value: {spec}')
     return family, address, socket_path
+
+
+def parse_os_window_state(state: str) -> int:
+    if state == 'normal':
+        return WINDOW_NORMAL
+    elif state in ('fullscreen', 'fullscreened'):
+        return WINDOW_FULLSCREEN
+    elif state == 'maximized':
+        return WINDOW_MAXIMIZED
+    elif state == 'minimized':
+        return WINDOW_MINIMIZED
+    raise ValueError(f'Unknown OS window state: {state}')
 
 
 def write_all(fd: int, data: Union[str, bytes], block_until_written: bool = True) -> None:

@@ -161,6 +161,8 @@ option in :file:`kitty.conf`. An example, showing all available commands:
     os_window_size 80c 24c
     # Set the --class for the new OS window
     os_window_class mywindow
+    # Change the OS window state to normal, fullscreen, maximized or minimized
+    os_window_state normal
     launch sh
     # Resize the current window (see the resize_window action for details)
     resize_window wider 2

@@ -1868,8 +1868,9 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
 
     if (window->monitor)
     {
-        _glfwPlatformShowWindow(window);
-        _glfwPlatformFocusWindow(window);
+        // Do not show the window here until after setting the window size, maximized state, and full screen
+        // _glfwPlatformShowWindow(window);
+        // _glfwPlatformFocusWindow(window);
         acquireMonitor(window);
     }
 
@@ -2061,8 +2062,12 @@ void _glfwPlatformRestoreWindow(_GLFWwindow* window)
 
 void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 {
-    if (![window->ns.object isZoomed])
+    if (![window->ns.object isZoomed]) {
+        const NSSize original = [window->ns.object resizeIncrements];
+        [window->ns.object setResizeIncrements:NSMakeSize(1.0, 1.0)];
         [window->ns.object zoom:nil];
+        [window->ns.object setResizeIncrements:original];
+    }
 }
 
 void _glfwPlatformShowWindow(_GLFWwindow* window)

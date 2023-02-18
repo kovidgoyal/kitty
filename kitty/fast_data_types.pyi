@@ -294,6 +294,10 @@ PRESS: int
 RELEASE: int
 DRAG: int
 MOVE: int
+WINDOW_NORMAL: int = 0
+WINDOW_FULLSCREEN: int
+WINDOW_MAXIMIZED: int
+WINDOW_MINIMIZED: int
 # }}}
 
 
@@ -508,10 +512,11 @@ def create_os_window(
     title: str,
     wm_class_name: str,
     wm_class_class: str,
+    window_state: Optional[int] = WINDOW_NORMAL,
     load_programs: Optional[Callable[[bool], None]] = None,
-    x: int = -1,
-    y: int = -1,
-    disallow_override_title: bool = False,
+    x: Optional[int] = -1,
+    y: Optional[int] = -1,
+    disallow_override_title: Optional[bool] = False,
 ) -> int:
     pass
 
@@ -818,7 +823,7 @@ def cocoa_set_menubar_title(title: str) -> None:
     pass
 
 
-def change_os_window_state(state: str, os_window_id: int = 0) -> None:
+def change_os_window_state(state: int, os_window_id: Optional[int] = 0) -> None:
     pass
 
 
