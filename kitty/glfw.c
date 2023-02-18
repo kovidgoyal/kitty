@@ -947,6 +947,18 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     w->fonts_data = fonts_data;
     w->shown_once = true;
     w->last_focused_counter = ++focus_counter;
+#ifdef __APPLE__
+    if (OPT(hide_window_decorations) & 2) {
+        glfwHideCocoaTitlebar(glfw_window, true);
+    } else if (!(OPT(macos_show_window_title_in) & WINDOW)) {
+        if (glfwGetCocoaWindow) cocoa_hide_window_title(glfwGetCocoaWindow(glfw_window));
+        else log_error("Failed to load glfwGetCocoaWindow");
+    }
+    if (OPT(hide_window_decorations)) {
+        // Need to resize the window again after hiding decorations or title bar to take up screen space
+        glfwSetWindowSize(glfw_window, width, height);
+    }
+#endif
     os_window_update_size_increments(w);
 #ifdef __APPLE__
     if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
@@ -956,6 +968,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
     glfwSetCursor(glfw_window, standard_cursor);
     update_os_window_viewport(w, false);
+#ifdef __APPLE__
+    if (glfwGetCocoaWindow) cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window), OPT(macos_window_resizable));
+#endif
     glfwSetWindowPosCallback(glfw_window, window_pos_callback);
     // missing size callback
     glfwSetWindowCloseCallback(glfw_window, window_close_callback);
@@ -973,16 +988,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwSetScrollCallback(glfw_window, scroll_callback);
     glfwSetKeyboardCallback(glfw_window, key_callback);
     glfwSetDropCallback(glfw_window, drop_callback);
-#ifdef __APPLE__
-    if (glfwGetCocoaWindow) {
-        if (OPT(hide_window_decorations) & 2) {
-            glfwHideCocoaTitlebar(glfw_window, true);
-        } else if (!(OPT(macos_show_window_title_in) & WINDOW)) {
-            cocoa_hide_window_title(glfwGetCocoaWindow(glfw_window));
-        }
-        cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window), OPT(macos_window_resizable));
-    } else log_error("Failed to load glfwGetCocoaWindow");
-#endif
     monotonic_t now = monotonic();
     w->is_focused = true;
     w->cursor_blink_zero_time = now;
