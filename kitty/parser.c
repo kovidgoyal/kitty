@@ -1211,6 +1211,8 @@ accumulate_oth(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback)
     switch(ch) {
         case ST:
             return true;
+        case BEL:
+            return true;
         case DEL:
         case NUL:
             break;
