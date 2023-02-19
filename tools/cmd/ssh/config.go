@@ -180,7 +180,7 @@ func get_arcname(loc, dest, home string) (arcname string) {
 }
 
 func ParseCopyInstruction(spec string) (ans []*CopyInstruction, err error) {
-	args, err := shlex.Split(spec)
+	args, err := shlex.Split("copy " + spec)
 	if err != nil {
 		return nil, err
 	}

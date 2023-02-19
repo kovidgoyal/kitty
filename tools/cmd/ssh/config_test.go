@@ -20,8 +20,8 @@ func TestSSHConfigParsing(t *testing.T) {
 	username := ""
 	conf := ""
 	for_python := false
+	cf := filepath.Join(tdir, "ssh.conf")
 	rt := func(expected_env ...string) {
-		cf := filepath.Join(tdir, "ssh.conf")
 		os.WriteFile(cf, []byte(conf), 0o600)
 		c, err := load_config(hostname, username, nil, cf)
 		if err != nil {
@@ -73,4 +73,33 @@ func TestSSHConfigParsing(t *testing.T) {
 	rt(`export ["a"]`)
 	conf = "env a"
 	rt(`unset ["a"]`)
+
+	ci, err := ParseCopyInstruction("--exclude moose --dest=target " + cf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := cmp.Diff("home/target", ci[0].arcname)
+	if diff != "" {
+		t.Fatalf("Incorrect arcname:\n%s", diff)
+	}
+	diff = cmp.Diff(cf, ci[0].local_path)
+	if diff != "" {
+		t.Fatalf("Incorrect local_path:\n%s", diff)
+	}
+	diff = cmp.Diff([]string{"moose"}, ci[0].exclude_patterns)
+	if diff != "" {
+		t.Fatalf("Incorrect excludes:\n%s", diff)
+	}
+	ci, err = ParseCopyInstruction("--glob " + filepath.Join(filepath.Dir(cf), "*.conf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff = cmp.Diff(cf, ci[0].local_path)
+	if diff != "" {
+		t.Fatalf("Incorrect local_path:\n%s", diff)
+	}
+	if len(ci) != 1 {
+		t.Fatal(ci)
+	}
+
 }
