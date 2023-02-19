@@ -73,6 +73,8 @@ func TestSSHConfigParsing(t *testing.T) {
 	rt(`export ["a"]`)
 	conf = "env a"
 	rt(`unset ["a"]`)
+	conf = "env LOCAL_ENV=_kitty_copy_env_var_"
+	rt(`export ["LOCAL_ENV","LOCAL_VAL",false]`)
 
 	ci, err := ParseCopyInstruction("--exclude moose --dest=target " + cf)
 	if err != nil {
