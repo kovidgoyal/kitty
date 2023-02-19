@@ -460,7 +460,8 @@ def go_type_data(parser_func: ParserFuncType, ctype: str) -> Tuple[str, str]:
 
 
 def gen_go_code(defn: Definition) -> str:
-    lines = ['import "fmt"', 'import "strconv"', 'import "kitty/tools/config"', 'var _ = fmt.Println', 'var _ = config.StringToBool', 'var _ = strconv.Atoi']
+    lines = ['import "fmt"', 'import "strconv"', 'import "kitty/tools/config"',
+             'var _ = fmt.Println', 'var _ = config.StringToBool', 'var _ = strconv.Atoi']
     a = lines.append
     choices = {}
     go_types = {}

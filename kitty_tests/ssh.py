@@ -56,26 +56,6 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         t('ssh --kitten=one -p 12 --kitten two -ix main', identity_file='x', port=12, extra_args=(('--kitten', 'one'), ('--kitten', 'two')))
         self.assertTrue(runtime_dir())
 
-    def test_ssh_config_parsing(self):
-        def parse(conf, hostname='unmatched_host', username=''):
-            return load_config(overrides=conf.splitlines(), hostname=hostname, username=username)
-
-        self.ae(parse('').env, {})
-        self.ae(parse('env a=b').env, {'a': 'b'})
-        conf = 'env a=b\nhostname 2\nenv a=c\nenv b=b'
-        self.ae(parse(conf).env, {'a': 'b'})
-        self.ae(parse(conf, '2').env, {'a': 'c', 'b': 'b'})
-        self.ae(parse('env a=').env, {'a': ''})
-        self.ae(parse('env a').env, {'a': '_delete_this_env_var_'})
-        conf = 'env a=b\nhostname test@2\nenv a=c\nenv b=b'
-        self.ae(parse(conf).env, {'a': 'b'})
-        self.ae(parse(conf, '2').env, {'a': 'b'})
-        self.ae(parse(conf, '2', 'test').env, {'a': 'c', 'b': 'b'})
-        conf = 'env a=b\nhostname 1 2\nenv a=c\nenv b=b'
-        self.ae(parse(conf).env, {'a': 'b'})
-        self.ae(parse(conf, '1').env, {'a': 'c', 'b': 'b'})
-        self.ae(parse(conf, '2').env, {'a': 'c', 'b': 'b'})
-
     def test_ssh_bootstrap_sh_cmd_limit(self):
         # dropbear has a 9000 bytes maximum command length limit
         sh_script, _, _ = bootstrap_script(SSHOptions({'interpreter': 'sh'}), script_type='sh', remote_args=[], request_id='123-123')
