@@ -22,4 +22,5 @@ func specialize_command(ssh *cli.Command) {
 	ssh.Usage = "arguments for the ssh command"
 	ssh.ShortDescription = "Truly convenient SSH"
 	ssh.HelpText = "The ssh kitten is a thin wrapper around the ssh command. It automatically enables shell integration on the remote host, re-uses existing connections to reduce latency, makes the kitty terminfo database available, etc. It's invocation is identical to the ssh command. For details on its usage, see :doc:`/kittens/ssh`."
+	ssh.IgnoreAllArgs = true
 }

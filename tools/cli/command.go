@@ -35,6 +35,8 @@ type Command struct {
 	StopCompletingAtArg int
 	// Consider all args as non-options args
 	OnlyArgsAllowed bool
+	// Pass through all args, useful for wrapper commands
+	IgnoreAllArgs bool
 	// Specialised arg aprsing
 	ParseArgsForCompletion func(cmd *Command, args []string, completions *Completions)
 

@@ -13,6 +13,10 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 	args_to_parse := make([]string, len(args))
 	copy(args_to_parse, args)
 	ctx.SeenCommands = append(ctx.SeenCommands, self)
+	if self.IgnoreAllArgs {
+		self.Args = args
+		return nil
+	}
 
 	var expecting_arg_for *Option
 	options_allowed := true
