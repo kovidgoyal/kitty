@@ -3,9 +3,15 @@
 package ssh
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"strings"
 
 	"kitty/tools/cli"
+
+	"golang.org/x/exp/maps"
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -19,6 +25,27 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 			cmd.ShowHelp()
 			return
 		}
+	}
+	ssh_args, server_args, passthrough, found_extra_args, err := ParseSSHArgs(args, "--kitten")
+	if err != nil {
+		var invargs *ErrInvalidSSHArgs
+		switch {
+		case errors.As(err, &invargs):
+			if invargs.Msg != "" {
+				fmt.Fprintln(os.Stderr, invargs.Msg)
+			}
+			return 1, unix.Exec(ssh_exe(), []string{"ssh"}, os.Environ())
+		}
+		return 1, err
+	}
+	if passthrough {
+		if len(found_extra_args) > 0 {
+			return 1, fmt.Errorf("The SSH kitten cannot work with the options: %s", strings.Join(maps.Keys(PassthroughArgs()), " "))
+		}
+		return 1, unix.Exec(ssh_exe(), append([]string{"ssh"}, args...), os.Environ())
+	}
+	if false {
+		return len(ssh_args) + len(server_args), nil
 	}
 	return
 }
