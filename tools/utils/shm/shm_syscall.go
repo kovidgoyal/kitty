@@ -86,6 +86,9 @@ func syscall_mmap(f *os.File, size uint64, access AccessFlags, truncate bool) (M
 func (self *syscall_based_mmap) Name() string {
 	return self.f.Name()
 }
+func (self *syscall_based_mmap) Stat() (fs.FileInfo, error) {
+	return self.f.Stat()
+}
 
 func (self *syscall_based_mmap) Slice() []byte {
 	return self.region
@@ -152,12 +155,18 @@ func Open(name string, size uint64) (MMap, error) {
 	return syscall_mmap(ans, size, READ, false)
 }
 
-func ReadWithSizeAndUnlink(name string) ([]byte, error) {
+func ReadWithSizeAndUnlink(name string, file_callback ...func(*os.File) error) ([]byte, error) {
 	f, err := shm_open(name, os.O_RDONLY, 0)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 	defer shm_unlink(f.Name())
+	for _, cb := range file_callback {
+		err = cb(f)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return read_with_size(f)
 }

@@ -39,6 +39,10 @@ func file_mmap(f *os.File, size uint64, access AccessFlags, truncate bool, speci
 	return &file_based_mmap{f: f, region: region, special_name: special_name}, nil
 }
 
+func (self *file_based_mmap) Stat() (fs.FileInfo, error) {
+	return self.f.Stat()
+}
+
 func (self *file_based_mmap) Name() string {
 	if self.special_name != "" {
 		return self.special_name
@@ -134,12 +138,18 @@ func Open(name string, size uint64) (MMap, error) {
 	return file_mmap(ans, size, READ, false, name)
 }
 
-func ReadWithSizeAndUnlink(name string) ([]byte, error) {
+func ReadWithSizeAndUnlink(name string, file_callback ...func(*os.File) error) ([]byte, error) {
 	f, err := open(name)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 	defer os.Remove(f.Name())
+	for _, cb := range file_callback {
+		err = cb(f)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return read_with_size(f)
 }

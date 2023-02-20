@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	not_rand "math/rand"
 	"os"
 	"strconv"
@@ -63,6 +64,7 @@ type MMap interface {
 	Name() string
 	IsFileSystemBacked() bool
 	FileSystemName() string
+	Stat() (fs.FileInfo, error)
 }
 
 type AccessFlags int
