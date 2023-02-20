@@ -151,3 +151,13 @@ func Open(name string, size uint64) (MMap, error) {
 	}
 	return syscall_mmap(ans, size, READ, false)
 }
+
+func ReadWithSizeAndUnlink(name string) ([]byte, error) {
+	f, err := shm_open(name, os.O_RDONLY, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	defer shm_unlink(f.Name())
+	return read_with_size(f)
+}

@@ -113,7 +113,7 @@ func create_temp(pattern string, size uint64) (ans MMap, err error) {
 	return file_mmap(f, size, WRITE, true, special_name)
 }
 
-func Open(name string, size uint64) (MMap, error) {
+func open(name string) (*os.File, error) {
 	ans, err := os.OpenFile(file_path_from_name(name), os.O_RDONLY, 0)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -123,5 +123,23 @@ func Open(name string, size uint64) (MMap, error) {
 		}
 		return nil, err
 	}
+	return ans, nil
+}
+
+func Open(name string, size uint64) (MMap, error) {
+	ans, err := open(name)
+	if err != nil {
+		return nil, err
+	}
 	return file_mmap(ans, size, READ, false, name)
+}
+
+func ReadWithSizeAndUnlink(name string) ([]byte, error) {
+	f, err := open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	defer os.Remove(f.Name())
+	return read_with_size(f)
 }
