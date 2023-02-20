@@ -80,3 +80,112 @@ func SSHOptions() map[string]string {
 	query_ssh_for_options_once.Do(get_ssh_options)
 	return ssh_options
 }
+
+func GetSSHCLI() (boolean_ssh_args *utils.Set[string], other_ssh_args *utils.Set[string]) {
+	other_ssh_args, boolean_ssh_args = utils.NewSet[string](32), utils.NewSet[string](32)
+	for k, v := range SSHOptions() {
+		k = "-" + k
+		if v == "" {
+			boolean_ssh_args.Add(k)
+		} else {
+			other_ssh_args.Add(k)
+		}
+	}
+	return
+}
+
+func is_extra_arg(arg string, extra_args []string) string {
+	for _, x := range extra_args {
+		if arg == x || strings.HasPrefix(arg, x+"=") {
+			return x
+		}
+	}
+	return ""
+}
+
+type ErrInvalidSSHArgs struct {
+	Msg string
+}
+
+func (self *ErrInvalidSSHArgs) Error() string {
+	return self.Msg
+}
+
+func ParseSSHArgs(args []string, extra_args ...string) (ssh_args []string, server_args []string, passthrough bool, found_extra_args []string, err error) {
+	if extra_args == nil {
+		extra_args = []string{}
+	}
+	if len(args) == 0 {
+		passthrough = true
+		return
+	}
+	passthrough_args := map[string]bool{"-N": true, "-n": true, "-f": true, "-G": true, "-T": true}
+	boolean_ssh_args, other_ssh_args := GetSSHCLI()
+	ssh_args, server_args, found_extra_args = make([]string, 0, 16), make([]string, 0, 16), make([]string, 0, 16)
+	expecting_option_val := false
+	stop_option_processing := false
+	expecting_extra_val := ""
+	for _, argument := range args {
+		if len(server_args) > 1 || stop_option_processing {
+			server_args = append(server_args, argument)
+			continue
+		}
+		if strings.HasPrefix(argument, "-") && !expecting_option_val {
+			if argument == "--" {
+				stop_option_processing = true
+				continue
+			}
+			if len(extra_args) > 0 {
+				matching_ex := is_extra_arg(argument, extra_args)
+				if matching_ex != "" {
+					_, exval, found := strings.Cut(argument, "=")
+					if found {
+						found_extra_args = append(found_extra_args, matching_ex, exval)
+					} else {
+						expecting_extra_val = matching_ex
+						expecting_option_val = true
+					}
+					continue
+				}
+			}
+			// could be a multi-character option
+			all_args := []rune(argument[1:])
+			for i, ch := range all_args {
+				arg := "-" + string(ch)
+				if passthrough_args[arg] {
+					passthrough = true
+				}
+				if boolean_ssh_args.Has(arg) {
+					ssh_args = append(ssh_args, arg)
+					continue
+				}
+				if other_ssh_args.Has(arg) {
+					ssh_args = append(ssh_args, arg)
+					if i+1 < len(all_args) {
+						ssh_args = append(ssh_args, string(all_args[i+1:]))
+					} else {
+						expecting_option_val = true
+					}
+					break
+				}
+				err = &ErrInvalidSSHArgs{Msg: "unknown option -- " + arg[1:]}
+				return
+			}
+			continue
+		}
+		if expecting_option_val {
+			if expecting_extra_val != "" {
+				found_extra_args = append(found_extra_args, expecting_extra_val, argument)
+			} else {
+				ssh_args = append(ssh_args, argument)
+			}
+			expecting_option_val = false
+			continue
+		}
+		server_args = append(server_args, argument)
+	}
+	if len(server_args) == 0 {
+		err = &ErrInvalidSSHArgs{Msg: "No server to connect to specified"}
+	}
+	return
+}

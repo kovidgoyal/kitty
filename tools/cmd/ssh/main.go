@@ -11,6 +11,15 @@ import (
 var _ = fmt.Print
 
 func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
+	if len(args) > 0 {
+		switch args[0] {
+		case "use-python":
+			args = args[1:] // backwards compat from when we had a python implementation
+		case "-h", "--help":
+			cmd.ShowHelp()
+			return
+		}
+	}
 	return
 }
 
