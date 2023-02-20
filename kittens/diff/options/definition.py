@@ -69,7 +69,9 @@ agr('colors', 'Colors')
 opt('pygments_style', 'default',
     long_text='''
 The pygments color scheme to use for syntax highlighting. See :link:`pygments
-builtin styles <https://pygments.org/styles/>` for a list of schemes.
+builtin styles <https://pygments.org/styles/>` for a list of schemes. Note that
+this **does not** change the colors used for diffing,
+only the colors used for syntax highlighting. To change the general colors use the settings below.
 '''
     )
 
