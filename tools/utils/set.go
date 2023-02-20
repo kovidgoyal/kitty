@@ -4,6 +4,8 @@ package utils
 
 import (
 	"fmt"
+
+	"golang.org/x/exp/maps"
 )
 
 var _ = fmt.Print
@@ -20,6 +22,10 @@ func (self *Set[T]) AddItems(val ...T) {
 	for _, x := range val {
 		self.items[x] = struct{}{}
 	}
+}
+
+func (self *Set[T]) String() string {
+	return fmt.Sprintf("%#v", maps.Keys(self.items))
 }
 
 func (self *Set[T]) Remove(val T) {
