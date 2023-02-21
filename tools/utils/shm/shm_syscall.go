@@ -11,6 +11,8 @@ import (
 	"strings"
 	"unsafe"
 
+	"kitty/tools/utils"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -127,7 +129,7 @@ func create_temp(pattern string, size uint64) (ans MMap, err error) {
 	var f *os.File
 	try := 0
 	for {
-		name := prefix + next_random() + suffix
+		name := prefix + utils.RandomFilename() + suffix
 		if len(name) > SHM_NAME_MAX {
 			return nil, ErrPatternTooLong
 		}

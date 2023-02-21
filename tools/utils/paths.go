@@ -3,11 +3,17 @@
 package utils
 
 import (
+	"crypto/rand"
+	"encoding/base32"
+	"fmt"
 	"io/fs"
+	not_rand "math/rand"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -57,9 +63,9 @@ func Abspath(path string) string {
 	return path
 }
 
-var config_dir, kitty_exe, cache_dir string
+var config_dir, kitty_exe, cache_dir, runtime_dir string
 var kitty_exe_err error
-var config_dir_once, kitty_exe_once, cache_dir_once sync.Once
+var config_dir_once, kitty_exe_once, cache_dir_once, runtime_dir_once sync.Once
 
 func find_kitty_exe() {
 	exe, err := os.Executable()
@@ -133,6 +139,60 @@ func CacheDir() string {
 	return cache_dir
 }
 
+func macos_user_cache_dir() string {
+	// Sadly Go does not provide confstr() so we use this hack. We could
+	// Note that given a user generateduid and uid we can derive this by using
+	// the algorithm at https://github.com/ydkhatri/MacForensics/blob/master/darwin_path_generator.py
+	// but I cant find a good way to get the generateduid. Requires calling dscl in which case we might as well call getconf
+	// The data is in /var/db/dslocal/nodes/Default/users/<username>.plist but it needs root
+	matches, err := filepath.Glob("/private/var/folders/*/*/C")
+	if err == nil {
+		for _, m := range matches {
+			s, err := os.Stat(m)
+			if err == nil {
+				if stat, ok := s.Sys().(unix.Stat_t); ok && s.IsDir() && int(stat.Uid) == os.Geteuid() && s.Mode().Perm() == 0o700 && unix.Access(m, unix.X_OK|unix.W_OK|unix.R_OK) == nil {
+					return m
+				}
+			}
+		}
+	}
+	out, err := exec.Command("/usr/bin/getconf", "DARWIN_USER_CACHE_DIR").Output()
+	if err == nil {
+		return strings.TrimSpace(UnsafeBytesToString(out))
+	}
+	return ""
+}
+
+func find_runtime_dir() {
+	var candidate string
+	if q := os.Getenv("KITTY_RUNTIME_DIRECTORY"); q != "" {
+		candidate = q
+	} else if runtime.GOOS == "darwin" {
+		candidate = macos_user_cache_dir()
+	} else if q := os.Getenv("XDG_RUNTIME_DIR"); q != "" {
+		candidate = q
+	}
+	candidate = strings.TrimRight(candidate, "/")
+	if candidate == "" {
+		q := fmt.Sprintf("/run/user/%d", os.Geteuid())
+		if s, err := os.Stat(q); err == nil && s.IsDir() && unix.Access(q, unix.X_OK|unix.R_OK|unix.W_OK) == nil {
+			candidate = q
+		} else {
+			candidate = filepath.Join(CacheDir(), "run")
+		}
+	}
+	os.MkdirAll(candidate, 0o700)
+	if s, err := os.Stat(candidate); err == nil && s.Mode().Perm() != 0o700 {
+		os.Chmod(candidate, 0o700)
+	}
+	runtime_dir = candidate
+}
+
+func RuntimeDir() string {
+	runtime_dir_once.Do(find_runtime_dir)
+	return runtime_dir
+}
+
 type Walk_callback func(path, abspath string, d fs.DirEntry, err error) error
 
 func transform_symlink(path string) string {
@@ -204,4 +264,14 @@ func WalkWithSymlink(dirpath string, callback Walk_callback, transformers ...fun
 	sw := transformed_walker{
 		seen: make(map[string]bool), real_callback: callback, transform_func: transform, needs_recurse_func: needs_symlink_recurse}
 	return sw.walk(dirpath)
+}
+
+func RandomFilename() string {
+	b := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	_, err := rand.Read(b)
+	if err != nil {
+		return strconv.FormatUint(uint64(not_rand.Uint32()), 16)
+	}
+	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)
+
 }

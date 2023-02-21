@@ -8,10 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"kitty/tools/utils"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -96,7 +97,7 @@ func create_temp(pattern string, size uint64) (ans MMap, err error) {
 	var f *os.File
 	try := 0
 	for {
-		name := prefix + next_random() + suffix
+		name := prefix + utils.RandomFilename() + suffix
 		path := file_path_from_name(name)
 		f, err = os.OpenFile(path, os.O_EXCL|os.O_CREATE|os.O_RDWR, 0600)
 		if err != nil {

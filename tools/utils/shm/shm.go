@@ -3,16 +3,12 @@
 package shm
 
 import (
-	"crypto/rand"
-	"encoding/base32"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
-	not_rand "math/rand"
 	"os"
-	"strconv"
 	"strings"
 
 	"kitty/tools/cli"
@@ -46,15 +42,6 @@ func prefix_and_suffix(pattern string) (prefix, suffix string, err error) {
 		prefix = pattern
 	}
 	return prefix, suffix, nil
-}
-
-func next_random() string {
-	b := make([]byte, 8)
-	_, err := rand.Read(b)
-	if err != nil {
-		return strconv.FormatUint(uint64(not_rand.Uint32()), 16)
-	}
-	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)
 }
 
 type MMap interface {
