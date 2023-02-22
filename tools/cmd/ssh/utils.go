@@ -5,8 +5,11 @@ package ssh
 import (
 	"fmt"
 	"io"
+	"kitty"
+	"kitty/tools/config"
 	"kitty/tools/utils"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -218,4 +221,24 @@ var GetSSHVersion = (&utils.Once[SSHVersion]{Run: func() SSHVersion {
 		return SSHVersion{Major: maj, Minor: min}
 	}
 	return SSHVersion{}
+}}).Get
+
+type KittyOpts struct {
+	Term, Shell_integration string
+}
+
+var RelevantKittyOpts = (&utils.Once[KittyOpts]{Run: func() KittyOpts {
+	ans := KittyOpts{Term: kitty.KittyConfigDefaults.Term, Shell_integration: kitty.KittyConfigDefaults.Shell_integration}
+	handle_line := func(key, val string) error {
+		switch key {
+		case "term":
+			ans.Term = strings.TrimSpace(val)
+		case "shell_integration":
+			ans.Shell_integration = strings.TrimSpace(val)
+		}
+		return nil
+	}
+	cp := config.ConfigParser{LineHandler: handle_line}
+	cp.ParseFiles(filepath.Join(utils.ConfigDir(), "kitty.conf"))
+	return ans
 }}).Get

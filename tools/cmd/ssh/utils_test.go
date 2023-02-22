@@ -4,8 +4,11 @@ package ssh
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"kitty/tools/utils"
 	"kitty/tools/utils/shlex"
 
 	"github.com/google/go-cmp/cmp"
@@ -50,4 +53,18 @@ func TestParseSSHArgs(t *testing.T) {
 	p(`-46p23 localhost sh -c "a b"`, `-4 -6 -p 23`, `localhost sh -c "a b"`, ``, false)
 	p(`-46p23 -S/moose -W x:6 -- localhost sh -c "a b"`, `-4 -6 -p 23 -S /moose -W x:6`, `localhost sh -c "a b"`, ``, false)
 	p(`--kitten=abc -np23 --kitten xyz host`, `-n -p 23`, `host`, `--kitten abc --kitten xyz`, true)
+}
+
+func TestRelevantKittyOpts(t *testing.T) {
+	tdir := t.TempDir()
+	orig := utils.ConfigDir
+	utils.ConfigDir = func() string { return tdir }
+	defer func() { utils.ConfigDir = orig }()
+	os.WriteFile(filepath.Join(tdir, "kitty.conf"), []byte("term XXX\nshell_integration changed\nterm abcd"), 0o600)
+	if RelevantKittyOpts().Term != "abcd" {
+		t.Fatalf("Unexpected TERM: %s", RelevantKittyOpts().Term)
+	}
+	if RelevantKittyOpts().Shell_integration != "changed" {
+		t.Fatalf("Unexpected shell_integration: %s", RelevantKittyOpts().Shell_integration)
+	}
 }

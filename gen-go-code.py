@@ -441,6 +441,7 @@ def load_ref_map() -> Dict[str, Dict[str, str]]:
 
 
 def generate_constants() -> str:
+    from kitty.options.types import Options
     ref_map = load_ref_map()
     dp = ", ".join(map(lambda x: f'"{serialize_as_go_string(x)}"', kc.default_pager_for_help))
     return f'''\
@@ -464,6 +465,11 @@ var CharacterKeyNameAliases = map[string]string{serialize_go_dict(character_key_
 var ConfigModMap = map[string]uint16{serialize_go_dict(config_mod_map)}
 var RefMap = map[string]string{serialize_go_dict(ref_map['ref'])}
 var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
+var KittyConfigDefaults = struct {{
+Term, Shell_integration string
+}}{{
+Term: "{Options.term}", Shell_integration: "{Options.shell_integration}",
+}}
 '''  # }}}
 
 
@@ -682,7 +688,7 @@ def generate_ssh_kitten_data() -> None:
             buf.write(data)
             size = len(data)
             fmap[f] = pos, size
-        mapping = ','.join(f'{name} {pos[0]} {pos[1]}' for name, pos in fmap.items()).encode('ascii')
+        mapping = ','.join(f'{name} {pos[0]} {pos[1]}' for name, pos in sorted(fmap.items())).encode('ascii')
         data = struct.pack('<I', len(fmap)) + mapping + b'\n' + buf.getvalue()
         with open(dest, 'wb') as d:
             write_compressed_data(data, d)

@@ -171,6 +171,7 @@ type connection_data struct {
 
 func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err error) {
 	go Data()
+	go RelevantKittyOpts()
 	cmd := append([]string{SSHExe()}, ssh_args...)
 	cd := connection_data{remote_args: server_args[1:]}
 	hostname := server_args[0]
