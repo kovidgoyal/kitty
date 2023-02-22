@@ -11,12 +11,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 )
 
 var _ = fmt.Print
-var user_mime_only_once sync.Once
-var user_defined_mime_map map[string]string
 
 func load_mime_file(filename string, mime_map map[string]string) error {
 	f, err := os.Open(filename)
@@ -45,18 +42,19 @@ func load_mime_file(filename string, mime_map map[string]string) error {
 	return nil
 }
 
-func load_user_mime_maps() {
+var UserMimeMap = (&Once[map[string]string]{Run: func() map[string]string {
 	conf_path := filepath.Join(ConfigDir(), "mime.types")
-	err := load_mime_file(conf_path, user_defined_mime_map)
+	ans := make(map[string]string, 32)
+	err := load_mime_file(conf_path, ans)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		fmt.Fprintln(os.Stderr, "Failed to parse", conf_path, "for MIME types with error:", err)
 	}
-}
+	return ans
+}}).Get
 
 func GuessMimeType(filename string) string {
-	user_mime_only_once.Do(load_user_mime_maps)
 	ext := filepath.Ext(filename)
-	mime_with_parameters := user_defined_mime_map[ext]
+	mime_with_parameters := UserMimeMap()[ext]
 	if mime_with_parameters == "" {
 		mime_with_parameters = mime.TypeByExtension(ext)
 	}
