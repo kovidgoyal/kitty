@@ -15,7 +15,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 
 	"golang.org/x/sys/unix"
 )
@@ -63,26 +62,15 @@ func Abspath(path string) string {
 	return path
 }
 
-var config_dir, kitty_exe, cache_dir, runtime_dir string
-var kitty_exe_err error
-var config_dir_once, kitty_exe_once, cache_dir_once, runtime_dir_once sync.Once
-
-func find_kitty_exe() {
+var KittyExe = (&Once[string]{Run: func() string {
 	exe, err := os.Executable()
 	if err == nil {
-		kitty_exe = filepath.Join(filepath.Dir(exe), "kitty")
-		kitty_exe_err = unix.Access(kitty_exe, unix.X_OK)
-	} else {
-		kitty_exe_err = err
+		return filepath.Join(filepath.Dir(exe), "kitty")
 	}
-}
+	return ""
+}}).Get
 
-func KittyExe() (string, error) {
-	kitty_exe_once.Do(find_kitty_exe)
-	return kitty_exe, kitty_exe_err
-}
-
-func find_config_dir() {
+var ConfigDir = (&Once[string]{Run: func() (config_dir string) {
 	if os.Getenv("KITTY_CONFIG_DIRECTORY") != "" {
 		config_dir = Abspath(Expanduser(os.Getenv("KITTY_CONFIG_DIRECTORY")))
 	} else {
@@ -110,14 +98,10 @@ func find_config_dir() {
 			}
 		}
 	}
-}
+	return
+}}).Get
 
-func ConfigDir() string {
-	config_dir_once.Do(find_config_dir)
-	return config_dir
-}
-
-func find_cache_dir() {
+var CacheDir = (&Once[string]{Run: func() (cache_dir string) {
 	candidate := ""
 	if edir := os.Getenv("KITTY_CACHE_DIRECTORY"); edir != "" {
 		candidate = Abspath(Expanduser(edir))
@@ -131,13 +115,8 @@ func find_cache_dir() {
 		candidate = filepath.Join(Expanduser(candidate), "kitty")
 	}
 	os.MkdirAll(candidate, 0o755)
-	cache_dir = candidate
-}
-
-func CacheDir() string {
-	cache_dir_once.Do(find_cache_dir)
-	return cache_dir
-}
+	return candidate
+}}).Get
 
 func macos_user_cache_dir() string {
 	// Sadly Go does not provide confstr() so we use this hack. We could
@@ -163,7 +142,7 @@ func macos_user_cache_dir() string {
 	return ""
 }
 
-func find_runtime_dir() {
+var RuntimeDir = (&Once[string]{Run: func() (runtime_dir string) {
 	var candidate string
 	if q := os.Getenv("KITTY_RUNTIME_DIRECTORY"); q != "" {
 		candidate = q
@@ -185,13 +164,8 @@ func find_runtime_dir() {
 	if s, err := os.Stat(candidate); err == nil && s.Mode().Perm() != 0o700 {
 		os.Chmod(candidate, 0o700)
 	}
-	runtime_dir = candidate
-}
-
-func RuntimeDir() string {
-	runtime_dir_once.Do(find_runtime_dir)
-	return runtime_dir
-}
+	return candidate
+}}).Get
 
 type Walk_callback func(path, abspath string, d fs.DirEntry, err error) error
 
