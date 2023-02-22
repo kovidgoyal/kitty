@@ -18,6 +18,7 @@ import (
 
 	"kitty/tools/cli"
 	"kitty/tools/tty"
+	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"kitty/tools/utils/shm"
 
@@ -158,10 +159,21 @@ func set_askpass() (need_to_request_data bool) {
 	return
 }
 
+type connection_data struct {
+	remote_args        []string
+	host_opts          *Config
+	hostname_for_match string
+	username           string
+	echo_on            bool
+	request_data       bool
+	literal_env        map[string]string
+}
+
 func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err error) {
 	cmd := append([]string{SSHExe()}, ssh_args...)
-	hostname, remote_args := server_args[0], server_args[1:]
-	if len(remote_args) == 0 {
+	cd := connection_data{remote_args: server_args[1:]}
+	hostname := server_args[0]
+	if len(cd.remote_args) == 0 {
 		cmd = append(cmd, "-t")
 	}
 	insertion_point := len(cmd)
@@ -198,7 +210,18 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 			need_to_request_data = false
 		}
 	}
-	_ = literal_env
+	term, err := tty.OpenControllingTerm(tty.SetNoEcho)
+	if err != nil {
+		return 1, fmt.Errorf("Failed to open controlling terminal with error: %w", err)
+	}
+	cd.echo_on = term.WasEchoOnOriginally()
+	cd.host_opts, cd.literal_env = host_opts, literal_env
+	cd.request_data = need_to_request_data
+	cd.hostname_for_match, cd.username = hostname_for_match, uname
+	term.WriteString(loop.SAVE_PRIVATE_MODE_VALUES)
+	term.WriteString(loop.HANDLE_TERMIOS_SIGNALS.EscapeCodeToSet())
+	defer term.WriteString(loop.RESTORE_PRIVATE_MODE_VALUES)
+	defer term.RestoreAndClose()
 	return 0, nil
 }
 

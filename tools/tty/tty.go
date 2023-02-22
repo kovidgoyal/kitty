@@ -148,6 +148,13 @@ func (self *Term) Close() error {
 	return err
 }
 
+func (self *Term) WasEchoOnOriginally() bool {
+	if len(self.states) > 0 {
+		return self.states[0].Lflag&unix.ECHO != 0
+	}
+	return false
+}
+
 func (self *Term) Tcgetattr(ans *unix.Termios) error {
 	return eintr_retry_noret(func() error { return Tcgetattr(self.Fd(), ans) })
 }
