@@ -626,8 +626,16 @@ cursor_needs_render(Window *w) {
 static bool
 collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow *os_window) {
     ScreenRenderData *rd = &w->render_data;
-    Cursor *cursor = rd->screen->cursor;
-    ans->x = cursor->x; ans->y = cursor->y;
+    Cursor *cursor;
+    if (screen_is_overlay_active(rd->screen)) {
+        // Do not force the cursor to be visible here for the sake of some programs that prefer it hidden
+        cursor = &(rd->screen->overlay_line.original_line.cursor);
+        ans->x = rd->screen->overlay_line.cursor_x;
+        ans->y = rd->screen->overlay_line.ynum;
+    } else {
+        cursor = rd->screen->cursor;
+        ans->x = cursor->x; ans->y = cursor->y;
+    }
     ans->is_visible = false;
     if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) return cursor_needs_render(w);
     monotonic_t time_since_start_blink = now - os_window->cursor_blink_zero_time;

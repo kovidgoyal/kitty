@@ -23,6 +23,7 @@
 #include "unicode-data.h"
 #include "modes.h"
 #include "wcwidth-std.h"
+#include "wcswidth.h"
 #include "control-codes.h"
 #include "charsets.h"
 #include "keys.h"
@@ -49,25 +50,37 @@ init_tabstops(bool *tabstops, index_type count) {
 }
 
 static bool
-init_overlay_line(Screen *self, index_type columns) {
+init_overlay_line(Screen *self, index_type columns, bool keep_active) {
     PyMem_Free(self->overlay_line.cpu_cells);
     PyMem_Free(self->overlay_line.gpu_cells);
+    PyMem_Free(self->overlay_line.original_line.cpu_cells);
+    PyMem_Free(self->overlay_line.original_line.gpu_cells);
     self->overlay_line.cpu_cells = PyMem_Calloc(columns, sizeof(CPUCell));
     self->overlay_line.gpu_cells = PyMem_Calloc(columns, sizeof(GPUCell));
-    if (!self->overlay_line.cpu_cells || !self->overlay_line.gpu_cells) {
+    self->overlay_line.original_line.cpu_cells = PyMem_Calloc(columns, sizeof(CPUCell));
+    self->overlay_line.original_line.gpu_cells = PyMem_Calloc(columns, sizeof(GPUCell));
+    if (!self->overlay_line.cpu_cells || !self->overlay_line.gpu_cells ||
+        !self->overlay_line.original_line.cpu_cells || !self->overlay_line.original_line.gpu_cells) {
         PyErr_NoMemory(); return false;
     }
-    self->overlay_line.is_active = false;
-    self->overlay_line.xnum = 0;
+    if (!keep_active) {
+        self->overlay_line.is_active = false;
+        self->overlay_line.xnum = 0;
+    }
+    self->overlay_line.is_dirty = true;
     self->overlay_line.ynum = 0;
     self->overlay_line.xstart = 0;
+    self->overlay_line.cursor_x = 0;
+    self->overlay_line.last_ime_pos.x = 0;
+    self->overlay_line.last_ime_pos.y = 0;
+
     return true;
 }
 
-static void save_overlay_line(Screen *self, const char* func_name);
-static void restore_overlay_line(Screen *self);
 static void deactivate_overlay_line(Screen *self);
-static void clear_saved_overlay_line(Screen *self);
+static void update_overlay_position(Screen *self);
+static void render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data);
+static void update_overlay_line_data(Screen *self, uint8_t *data);
 
 #define RESET_CHARSETS \
         self->g0_charset = translation_table(0); \
@@ -144,8 +157,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         init_tabstops(self->main_tabstops, self->columns);
         init_tabstops(self->alt_tabstops, self->columns);
         self->key_encoding_flags = self->main_key_encoding_flags;
-        if (!init_overlay_line(self, self->columns)) { Py_CLEAR(self); return NULL; }
-        clear_saved_overlay_line(self);
+        if (!init_overlay_line(self, self->columns, false)) { Py_CLEAR(self); return NULL; }
         self->hyperlink_pool = alloc_hyperlink_pool();
         if (!self->hyperlink_pool) { Py_CLEAR(self); return PyErr_NoMemory(); }
         self->as_ansi_buf.hyperlink_pool = self->hyperlink_pool;
@@ -158,8 +170,11 @@ static Line* range_line_(Screen *self, int y);
 void
 screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self, true, true);
-    if (self->overlay_line.is_active) deactivate_overlay_line(self);
-    clear_saved_overlay_line(self);
+    if (screen_is_overlay_active(self)) {
+        deactivate_overlay_line(self);
+        // Cancel IME composition
+        update_ime_position_for_window(self->window_id, false, -1);
+    }
     Py_CLEAR(self->last_reported_cwd);
     self->render_unfocused_cursor = false;
     memset(self->main_key_encoding_flags, 0, sizeof(self->main_key_encoding_flags));
@@ -336,7 +351,6 @@ found:
 
 static bool
 screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
-    if (self->overlay_line.is_active) save_overlay_line(self, __func__);
     lines = MAX(1u, lines); columns = MAX(1u, columns);
 
     bool is_main = self->linebuf == self->main_linebuf;
@@ -361,7 +375,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     which.num_content_lines = num_content_lines_after; \
 }
     // Resize overlay line
-    if (!init_overlay_line(self, columns)) return false;
+    if (!init_overlay_line(self, columns, true)) return false;
 
     // Resize main linebuf
     HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns, &self->as_ansi_buf);
@@ -426,7 +440,6 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
         self->linebuf->line->cpu_cells[0].ch = 0;
         self->cursor->x = 0;
     }
-    restore_overlay_line(self);
     return true;
 }
 
@@ -463,7 +476,9 @@ dealloc(Screen* self) {
     Py_CLEAR(self->marker);
     PyMem_Free(self->overlay_line.cpu_cells);
     PyMem_Free(self->overlay_line.gpu_cells);
-    Py_CLEAR(self->overlay_line.save.overlay_text);
+    PyMem_Free(self->overlay_line.original_line.cpu_cells);
+    PyMem_Free(self->overlay_line.original_line.gpu_cells);
+    Py_CLEAR(self->overlay_line.overlay_text);
     PyMem_Free(self->main_tabstops);
     free(self->pending_mode.buf);
     free(self->selections.items);
@@ -661,7 +676,6 @@ draw_combining_char(Screen *self, char_type ch) {
     }
 }
 
-
 static void
 draw_codepoint(Screen *self, char_type och, bool from_input_stream) {
     if (is_ignored_char(och)) return;
@@ -714,85 +728,9 @@ draw_codepoint(Screen *self, char_type och, bool from_input_stream) {
 }
 
 void
-screen_draw_overlay_text(Screen *self, const char *utf8_text) {
-    if (self->overlay_line.is_active) deactivate_overlay_line(self);
-    if (self->overlay_line.save.overlay_text) clear_saved_overlay_line(self);
-    if (!utf8_text || !utf8_text[0]) return;
-    Line *line = range_line_(self, self->cursor->y);
-    if (!line) return;
-    line_save_cells(line, 0, self->columns, self->overlay_line.gpu_cells, self->overlay_line.cpu_cells);
-    self->overlay_line.is_active = true;
-    self->overlay_line.ynum = self->cursor->y;
-    self->overlay_line.xstart = self->cursor->x;
-    self->overlay_line.xnum = 0;
-    uint32_t codepoint = 0; UTF8State state = UTF8_ACCEPT;
-    bool orig_line_wrap_mode = self->modes.mDECAWM;
-    self->modes.mDECAWM = false;
-    self->cursor->reverse ^= true;
-    index_type before;
-    while (*utf8_text) {
-        switch(decode_utf8(&state, &codepoint, *(utf8_text++))) {
-            case UTF8_ACCEPT:
-                before = self->cursor->x;
-                draw_codepoint(self, codepoint, false);
-                self->overlay_line.xnum += self->cursor->x - before;
-                break;
-            case UTF8_REJECT:
-                break;
-        }
-    }
-    self->cursor->reverse ^= true;
-    self->modes.mDECAWM = orig_line_wrap_mode;
-}
-
-static PyObject*
-get_overlay_text(Screen *self) {
-#define ol self->overlay_line
-    if (ol.ynum >= self->lines || ol.xnum >= self->columns || !ol.xnum) return NULL;
-    Line *line = range_line_(self, ol.ynum);
-    if (!line) return NULL;
-    return unicode_in_range(line, ol.xstart, ol.xstart + ol.xnum, true, false, true);
-#undef ol
-}
-
-static void
-save_overlay_line(Screen *self, const char* func_name) {
-    if (self->overlay_line.is_active && screen_is_cursor_visible(self)) {
-        Py_XDECREF(self->overlay_line.save.overlay_text);
-        self->overlay_line.save.overlay_text = get_overlay_text(self);
-        self->overlay_line.save.func_name = func_name;
-        deactivate_overlay_line(self);
-    }
-}
-
-static void
-restore_overlay_line(Screen *self) {
-    if (self->overlay_line.save.overlay_text && screen_is_cursor_visible(self)) {
-        debug("Received input from child (%s) while overlay active. Overlay contents: %s\n", self->overlay_line.save.func_name, PyUnicode_AsUTF8(self->overlay_line.save.overlay_text));
-        screen_draw_overlay_text(self, PyUnicode_AsUTF8(self->overlay_line.save.overlay_text));
-        clear_saved_overlay_line(self);
-        update_ime_position_for_window(self->window_id, false, 0);
-    }
-}
-
-static void
-clear_saved_overlay_line(Screen *self) {
-    Py_CLEAR(self->overlay_line.save.overlay_text);
-}
-
-static void
-restore_overlay_line_from_cleanup(Screen **self) {
-    restore_overlay_line(*self);
-}
-
-#define MOVE_OVERLAY_LINE_WITH_CURSOR Screen __attribute__ ((__cleanup__(restore_overlay_line_from_cleanup))) *_sol_ = self; save_overlay_line(_sol_, __func__);
-
-void
 screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     draw_codepoint(self, och, from_input_stream);
 }
-
 
 void
 screen_align(Screen *self) {
@@ -819,7 +757,6 @@ screen_alignment_display(Screen *self) {
 
 void
 select_graphic_rendition(Screen *self, int *params, unsigned int count, Region *region_) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;  // needed in case colors have changed
     if (region_) {
         Region region = *region_;
         if (!region.top) region.top = 1;
@@ -1018,14 +955,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             self->modes.mDECCKM = val;
             break;
         case DECTCEM:
-            if(!val) {
-                save_overlay_line(self, __func__);
-                self->modes.mDECTCEM = val;
-            } else {
-                self->modes.mDECTCEM = val;
-                if (self->overlay_line.is_active && !self->overlay_line.save.overlay_text) save_overlay_line(self, __func__);
-                restore_overlay_line(self);
-            }
+            self->modes.mDECTCEM = val;
             break;
         case DECSCNM:
             // Render screen in reverse video
@@ -1191,7 +1121,6 @@ screen_backspace(Screen *self) {
 
 void
 screen_tab(Screen *self) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     // Move to the next tab space, or the end of the screen if there aren't anymore left.
     unsigned int found = 0;
     for (unsigned int i = self->cursor->x + 1; i < self->columns; i++) {
@@ -1223,7 +1152,6 @@ screen_tab(Screen *self) {
 
 void
 screen_backtab(Screen *self, unsigned int count) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     // Move back count tabs
     if (!count) count = 1;
     int i;
@@ -1261,7 +1189,6 @@ screen_set_tab_stop(Screen *self) {
 
 void
 screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->x) self->cursor->x = 0;
     else self->cursor->x += move_direction * count;
@@ -1275,13 +1202,12 @@ screen_cursor_forward(Screen *self, unsigned int count/*=1*/) {
 
 void
 screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return/*=false*/, int move_direction/*=-1*/) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     bool in_margins = cursor_within_margins(self);
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->y) self->cursor->y = 0;
     else self->cursor->y += move_direction * count;
-    screen_ensure_bounds(self, true, in_margins);
     if (do_carriage_return) self->cursor->x = 0;
+    screen_ensure_bounds(self, true, in_margins);
 }
 
 void
@@ -1301,7 +1227,6 @@ screen_cursor_down1(Screen *self, unsigned int count/*=1*/) {
 
 void
 screen_cursor_to_column(Screen *self, unsigned int column) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     unsigned int x = MAX(column, 1u) - 1;
     if (x != self->cursor->x) {
         self->cursor->x = x;
@@ -1328,7 +1253,6 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
 
 void
 screen_index(Screen *self) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     // Move cursor down one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (self->cursor->y == bottom) {
@@ -1338,7 +1262,6 @@ screen_index(Screen *self) {
 
 void
 screen_scroll(Screen *self, unsigned int count) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     // Scroll the screen up by count lines, not moving the cursor
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     while (count > 0) {
@@ -1349,7 +1272,6 @@ screen_scroll(Screen *self, unsigned int count) {
 
 void
 screen_reverse_index(Screen *self) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     // Move cursor up one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (self->cursor->y == top) {
@@ -1359,7 +1281,6 @@ screen_reverse_index(Screen *self) {
 
 static void
 _reverse_scroll(Screen *self, unsigned int count, bool fill_from_scrollback) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     // Scroll the screen down by count lines, not moving the cursor
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     fill_from_scrollback = fill_from_scrollback && self->linebuf == self->main_linebuf;
@@ -1389,7 +1310,6 @@ screen_reverse_scroll_and_fill_from_scrollback(Screen *self, unsigned int count)
 void
 screen_carriage_return(Screen *self) {
     if (self->cursor->x != 0) {
-        MOVE_OVERLAY_LINE_WITH_CURSOR;
         self->cursor->x = 0;
     }
 }
@@ -1449,7 +1369,7 @@ copy_specific_mode(Screen *self, unsigned int mode, const ScreenModes *src, Scre
         SIMPLE_MODE(BRACKETED_PASTE)
         SIMPLE_MODE(FOCUS_TRACKING)
         SIMPLE_MODE(DECCKM)
-        SIDE_EFFECTS(DECTCEM)  // side effect: redraw IME overlay line
+        SIMPLE_MODE(DECTCEM)
         SIMPLE_MODE(DECAWM)
         case MOUSE_BUTTON_TRACKING: case MOUSE_MOTION_TRACKING: case MOUSE_MOVE_TRACKING:
             dest->mouse_tracking_mode = src->mouse_tracking_mode; break;
@@ -1504,7 +1424,6 @@ screen_save_modes(Screen *self) {
 
 void
 screen_restore_cursor(Screen *self) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     Savepoint *sp = self->linebuf == self->main_linebuf ? &self->main_savepoint : &self->alt_savepoint;
     if (!sp->is_valid) {
         screen_cursor_position(self, 1, 1);
@@ -1542,7 +1461,6 @@ screen_ensure_bounds(Screen *self, bool force_use_margins/*=false*/, bool in_mar
 
 void
 screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     bool in_margins = cursor_within_margins(self);
     line = (line == 0 ? 1 : line) - 1;
     column = (column == 0 ? 1: column) - 1;
@@ -1737,6 +1655,7 @@ screen_insert_lines(Screen *self, unsigned int count) {
 
 static void
 screen_scroll_until_cursor_prompt(Screen *self) {
+    bool in_margins = cursor_within_margins(self);
     int q = screen_cursor_at_a_shell_prompt(self);
     unsigned int y = q > -1 ? (unsigned int)q : self->cursor->y;
     unsigned int num_lines_to_scroll = MIN(self->margin_bottom, y);
@@ -1744,6 +1663,7 @@ screen_scroll_until_cursor_prompt(Screen *self) {
     self->cursor->y = self->margin_bottom;
     while (num_lines_to_scroll--) screen_index(self);
     self->cursor->y = final_y;
+    screen_ensure_bounds(self, false, in_margins);
 }
 
 void
@@ -1785,7 +1705,6 @@ screen_repeat_character(Screen *self, unsigned int count) {
 
 void
 screen_delete_characters(Screen *self, unsigned int count) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     // Delete characters, later characters are moved left
     const unsigned int bottom = self->lines ? self->lines - 1 : 0;
     if (count == 0) count = 1;
@@ -1803,7 +1722,6 @@ screen_delete_characters(Screen *self, unsigned int count) {
 
 void
 screen_erase_characters(Screen *self, unsigned int count) {
-    MOVE_OVERLAY_LINE_WITH_CURSOR;
     // Delete characters replacing them by spaces
     if (count == 0) count = 1;
     unsigned int x = self->cursor->x;
@@ -2280,11 +2198,13 @@ screen_has_marker(Screen *self) {
 
 void
 screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_data, bool cursor_has_moved) {
+    const bool is_overlay_active = screen_is_overlay_active(self);
     unsigned int history_line_added_count = self->history_line_added_count;
     index_type lnum;
     bool was_dirty = self->is_dirty;
-    if (self->scrolled_by) self->scrolled_by = MIN(self->scrolled_by + history_line_added_count, self->historybuf->count);
     screen_reset_dirty(self);
+    update_overlay_position(self);
+    if (self->scrolled_by) self->scrolled_by = MIN(self->scrolled_by + history_line_added_count, self->historybuf->count);
     self->scroll_changed = false;
     for (index_type y = 0; y < MIN(self->lines, self->scrolled_by); y++) {
         lnum = self->scrolled_by - 1 - y;
@@ -2303,10 +2223,17 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
             (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered.cursor_y == lnum))) {
             render_line(fonts_data, self->linebuf->line, lnum, self->cursor, self->disable_ligatures);
             if (self->linebuf->line->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(self->marker, self->linebuf->line);
-
+            if (is_overlay_active && lnum == self->overlay_line.ynum) render_overlay_line(self, self->linebuf->line, fonts_data);
             linebuf_mark_line_clean(self->linebuf, lnum);
         }
         update_line_data(self->linebuf->line, y, address);
+    }
+    if (is_overlay_active && self->overlay_line.ynum + self->scrolled_by < self->lines) {
+        if (self->overlay_line.is_dirty) {
+            linebuf_init_line(self->linebuf, self->overlay_line.ynum);
+            render_overlay_line(self, self->linebuf->line, fonts_data);
+        }
+        update_overlay_line_data(self, address);
     }
     if (was_dirty) clear_selection(&self->url_ranges);
 }
@@ -2696,22 +2623,6 @@ screen_open_url(Screen *self) {
     return found;
 }
 
-static void
-deactivate_overlay_line(Screen *self) {
-    if (self->overlay_line.is_active && self->overlay_line.xnum && self->overlay_line.ynum < self->lines) {
-        Line *line = range_line_(self, self->overlay_line.ynum);
-        line_reset_cells(line, self->overlay_line.xstart, self->overlay_line.xnum, self->overlay_line.gpu_cells, self->overlay_line.cpu_cells);
-        if (self->cursor->y == self->overlay_line.ynum) self->cursor->x = self->overlay_line.xstart;
-        self->is_dirty = true;
-        linebuf_mark_line_dirty(self->linebuf, self->overlay_line.ynum);
-    }
-    self->overlay_line.is_active = false;
-    self->overlay_line.ynum = 0;
-    self->overlay_line.xnum = 0;
-    self->overlay_line.xstart = 0;
-}
-
-
 // }}}
 
 // URLs {{{
@@ -2792,7 +2703,136 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
     return has_url ? -1 : 0;
 }
 
+// }}}
 
+// IME Overlay {{{
+bool
+screen_is_overlay_active(Screen *self) {
+    return self->overlay_line.is_active;
+}
+
+static void
+deactivate_overlay_line(Screen *self) {
+    if (self->overlay_line.is_active && self->overlay_line.xnum && self->overlay_line.ynum < self->lines) {
+        self->is_dirty = true;
+        linebuf_mark_line_dirty(self->linebuf, self->overlay_line.ynum);
+    }
+    self->overlay_line.is_active = false;
+    self->overlay_line.is_dirty = true;
+    self->overlay_line.ynum = 0;
+    self->overlay_line.xstart = 0;
+    self->overlay_line.cursor_x = 0;
+}
+
+void
+screen_update_overlay_text(Screen *self, const char *utf8_text) {
+    if (screen_is_overlay_active(self)) deactivate_overlay_line(self);
+    if (!utf8_text || !utf8_text[0]) return;
+    PyObject *text = PyUnicode_FromString(utf8_text);
+    if (!text) return;
+    Py_XDECREF(self->overlay_line.overlay_text);
+    // Calculate the total number of cells for initial overlay cursor position
+    PyObject *text_len = wcswidth_std(NULL, text);
+    self->overlay_line.overlay_text = text;
+    self->overlay_line.is_active = true;
+    self->overlay_line.is_dirty = true;
+    self->overlay_line.xstart = self->cursor->x;
+    self->overlay_line.xnum = !text_len ? 0 : PyLong_AsLong(text_len);
+    self->overlay_line.cursor_x = MIN(self->overlay_line.xstart + self->overlay_line.xnum, self->columns);
+    self->overlay_line.ynum = self->cursor->y;
+    cursor_copy_to(self->cursor, &(self->overlay_line.original_line.cursor));
+    linebuf_mark_line_dirty(self->linebuf, self->overlay_line.ynum);
+    self->is_dirty = true;
+    // Since we are typing, scroll to the bottom
+    if (self->scrolled_by != 0) {
+        self->scrolled_by = 0;
+        self->scroll_changed = true;
+    }
+}
+
+static void
+screen_draw_overlay_line(Screen *self) {
+    if (!self->overlay_line.overlay_text) return;
+    const char *utf8_text = PyUnicode_AsUTF8(self->overlay_line.overlay_text);
+    if (!utf8_text || !utf8_text[0]) return;
+    self->overlay_line.xnum = 0;
+    uint32_t codepoint = 0; UTF8State state = UTF8_ACCEPT;
+    bool orig_line_wrap_mode = self->modes.mDECAWM;
+    bool orig_cursor_enable_mode = self->modes.mDECTCEM;
+    bool orig_insert_replace_mode = self->modes.mIRM;
+    self->modes.mDECAWM = false;
+    self->modes.mDECTCEM = false;
+    self->modes.mIRM = false;
+    Cursor *orig_cursor = self->cursor;
+    self->cursor = &(self->overlay_line.original_line.cursor);
+    self->cursor->reverse ^= true;
+    self->cursor->x = self->overlay_line.xstart;
+    self->cursor->y = self->overlay_line.ynum;
+    self->overlay_line.xnum = 0;
+    index_type before;
+    while (*utf8_text) {
+        switch(decode_utf8(&state, &codepoint, *(utf8_text++))) {
+            case UTF8_ACCEPT:
+                before = self->cursor->x;
+                draw_codepoint(self, codepoint, false);
+                self->overlay_line.xnum += self->cursor->x - before;
+                break;
+            case UTF8_REJECT:
+                break;
+        }
+    }
+    self->overlay_line.cursor_x = self->cursor->x;
+    self->cursor->reverse ^= true;
+    self->cursor = orig_cursor;
+    self->modes.mDECAWM = orig_line_wrap_mode;
+    self->modes.mDECTCEM = orig_cursor_enable_mode;
+    self->modes.mIRM = orig_insert_replace_mode;
+}
+
+static void
+update_overlay_position(Screen *self) {
+    if (screen_is_overlay_active(self) && screen_is_cursor_visible(self)) {
+        bool cursor_update = false;
+        if (self->cursor->x != self->overlay_line.xstart) {
+            cursor_update = true;
+            self->overlay_line.xstart = self->cursor->x;
+            self->overlay_line.cursor_x = MIN(self->overlay_line.xstart + self->overlay_line.xnum, self->columns);
+        }
+        if (self->cursor->y != self->overlay_line.ynum) {
+            cursor_update = true;
+            linebuf_mark_line_dirty(self->linebuf, self->overlay_line.ynum);
+            self->overlay_line.ynum = self->cursor->y;
+        }
+        if (cursor_update) {
+            linebuf_mark_line_dirty(self->linebuf, self->overlay_line.ynum);
+            self->overlay_line.is_dirty = true;
+            self->is_dirty = true;
+        }
+    }
+}
+
+static void
+render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data) {
+#define ol self->overlay_line
+    line_save_cells(line, 0, line->xnum, ol.original_line.gpu_cells, ol.original_line.cpu_cells);
+    screen_draw_overlay_line(self);
+    render_line(fonts_data, line, ol.ynum, self->cursor, self->disable_ligatures);
+    line_save_cells(line, 0, line->xnum, ol.gpu_cells, ol.cpu_cells);
+    line_reset_cells(line, 0, line->xnum, ol.original_line.gpu_cells, ol.original_line.cpu_cells);
+    ol.is_dirty = false;
+    const index_type y = MIN(ol.ynum + self->scrolled_by, self->lines - 1);
+    if (ol.last_ime_pos.x != ol.cursor_x || ol.last_ime_pos.y != y) {
+        ol.last_ime_pos.x = ol.cursor_x; ol.last_ime_pos.y = y;
+        update_ime_position_for_window(self->window_id, false, 0);
+    }
+#undef ol
+}
+
+static void
+update_overlay_line_data(Screen *self, uint8_t *data) {
+    const size_t base = sizeof(GPUCell) * (self->overlay_line.ynum + self->scrolled_by) * self->columns;
+    memcpy(data + base, self->overlay_line.gpu_cells, self->columns * sizeof(GPUCell));
+}
 
 // }}}
 
@@ -3921,7 +3961,7 @@ focus_changed(Screen *self, PyObject *has_focus_) {
     if (has_focus != previous) {
         self->has_focus = has_focus;
         if (has_focus) self->has_activity_since_last_focus = false;
-        else if (self->overlay_line.is_active) deactivate_overlay_line(self);
+        else if (screen_is_overlay_active(self)) deactivate_overlay_line(self);
         if (self->modes.mFOCUS_TRACKING) write_escape_code_to_child(self, CSI, has_focus ? "I" : "O");
         Py_RETURN_TRUE;
     }

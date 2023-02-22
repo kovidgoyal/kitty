@@ -105,8 +105,13 @@ void
 update_ime_position(Window* w, Screen *screen) {
     unsigned int cell_width = global_state.callback_os_window->fonts_data->cell_width, cell_height = global_state.callback_os_window->fonts_data->cell_height;
     unsigned int left = w->geometry.left, top = w->geometry.top;
-    left += screen->cursor->x * cell_width;
-    top += screen->cursor->y * cell_height;
+    if (screen_is_overlay_active(screen)) {
+        left += screen->overlay_line.cursor_x * cell_width;
+        top += MIN(screen->overlay_line.ynum + screen->scrolled_by, screen->lines - 1) * cell_height;
+    } else {
+        left += screen->cursor->x * cell_width;
+        top += screen->cursor->y * cell_height;
+    }
     GLFWIMEUpdateEvent ev = { .type = GLFW_IME_UPDATE_CURSOR_POSITION };
     ev.cursor.left = left; ev.cursor.top = top; ev.cursor.width = cell_width; ev.cursor.height = cell_height;
     glfwUpdateIMEState(global_state.callback_os_window->handle, &ev);
@@ -154,12 +159,12 @@ on_key_input(GLFWkeyevent *ev) {
         case GLFW_IME_WAYLAND_DONE_EVENT:
             // If we update IME position here it sends GNOME's text input system into
             // an infinite loop. See https://github.com/kovidgoyal/kitty/issues/5105
-            screen_draw_overlay_text(screen, NULL);
+            screen_update_overlay_text(screen, NULL);
             debug("handled wayland IME done event\n");
             return;
         case GLFW_IME_PREEDIT_CHANGED:
+            screen_update_overlay_text(screen, text);
             update_ime_position(w, screen);
-            screen_draw_overlay_text(screen, text);
             debug("updated pre-edit text: '%s'\n", text);
             return;
         case GLFW_IME_COMMIT_TEXT:
@@ -167,7 +172,7 @@ on_key_input(GLFWkeyevent *ev) {
                 schedule_write_to_child(w->id, 1, text, strlen(text));
                 debug("committed pre-edit text: %s\n", text);
             } else debug("committed pre-edit text: (null)\n");
-            screen_draw_overlay_text(screen, NULL);
+            screen_update_overlay_text(screen, NULL);
             return;
         case GLFW_IME_NONE:
             // for macOS, update ime position on every key input
