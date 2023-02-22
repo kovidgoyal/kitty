@@ -1513,7 +1513,7 @@ def clean() -> None:
             dirs.remove(d)
         for f in files:
             ext = f.rpartition('.')[-1]
-            if ext in ('so', 'dylib', 'pyc', 'pyo') or f.endswith('_generated.h') or f.endswith('_generated.go'):
+            if ext in ('so', 'dylib', 'pyc', 'pyo') or f.endswith('_generated.h') or f.endswith('_generated.go') or f.endswith('_generated.bin'):
                 os.unlink(os.path.join(root, f))
     for x in glob.glob('glfw/wayland-*-protocol.[ch]'):
         os.unlink(x)
