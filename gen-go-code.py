@@ -641,6 +641,11 @@ def generate_textual_mimetypes() -> str:
     return '\n'.join(ans)
 
 
+def write_compressed_data(data: bytes, d: BinaryIO) -> None:
+    d.write(struct.pack('<I', len(data)))
+    d.write(zlib.compress(data, zlib.Z_BEST_COMPRESSION))
+
+
 def generate_unicode_names(src: TextIO, dest: BinaryIO) -> None:
     num_names, num_of_words = map(int, next(src).split())
     gob = io.BytesIO()
@@ -655,9 +660,32 @@ def generate_unicode_names(src: TextIO, dest: BinaryIO) -> None:
             if aliases:
                 record += aliases.encode()
             gob.write(struct.pack('<H', len(record)) + record)
-    data = gob.getvalue()
-    dest.write(struct.pack('<I', len(data)))
-    dest.write(zlib.compress(data, zlib.Z_BEST_COMPRESSION))
+    write_compressed_data(gob.getvalue(), dest)
+
+
+def generate_ssh_kitten_data() -> None:
+    files = {
+        'terminfo/kitty.terminfo', 'terminfo/x/xterm-kitty',
+    }
+    for dirpath, dirnames, filenames in os.walk('shell-integration'):
+        for f in filenames:
+            path = os.path.join(dirpath, f)
+            files.add(path.replace(os.sep, '/'))
+    dest = 'tools/cmd/ssh/data_generated.bin'
+    if newer(dest, *files):
+        buf = io.BytesIO()
+        fmap = dict.fromkeys(files, (0, 0))
+        for f in fmap:
+            with open(f, 'rb') as src:
+                data = src.read()
+            pos = buf.tell()
+            buf.write(data)
+            size = len(data)
+            fmap[f] = pos, size
+        mapping = ','.join(f'{name} {pos[0]} {pos[1]}' for name, pos in fmap.items()).encode('ascii')
+        data = struct.pack('<I', len(fmap)) + mapping + b'\n' + buf.getvalue()
+        with open(dest, 'wb') as d:
+            write_compressed_data(data, d)
 
 
 def main() -> None:
@@ -676,6 +704,7 @@ def main() -> None:
     if newer('tools/unicode_names/data_generated.bin', 'tools/unicode_names/names.txt'):
         with open('tools/unicode_names/data_generated.bin', 'wb') as dest, open('tools/unicode_names/names.txt') as src:
             generate_unicode_names(src, dest)
+    generate_ssh_kitten_data()
 
     update_completion()
     update_at_commands()
