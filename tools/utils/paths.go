@@ -71,33 +71,44 @@ var KittyExe = (&Once[string]{Run: func() string {
 }}).Get
 
 var ConfigDir = (&Once[string]{Run: func() (config_dir string) {
-	if os.Getenv("KITTY_CONFIG_DIRECTORY") != "" {
-		config_dir = Abspath(Expanduser(os.Getenv("KITTY_CONFIG_DIRECTORY")))
-	} else {
-		var locations []string
-		if os.Getenv("XDG_CONFIG_HOME") != "" {
-			locations = append(locations, os.Getenv("XDG_CACHE_HOME"))
+	if kcd := os.Getenv("KITTY_CONFIG_DIRECTORY"); kcd != "" {
+		return Abspath(Expanduser(kcd))
+	}
+	var locations []string
+	seen := Set[string]{}
+	add := func(x string) {
+		x = Abspath(Expanduser(x))
+		if !seen.Has(x) {
+			seen.Add(x)
+			locations = append(locations, x)
 		}
-		locations = append(locations, Expanduser("~/.config"))
-		if runtime.GOOS == "darwin" {
-			locations = append(locations, Expanduser("~/Library/Preferences"))
+	}
+	if xh := os.Getenv("XDG_CONFIG_HOME"); xh != "" {
+		add(xh)
+	}
+	if dirs := os.Getenv("XDG_CONFIG_DIRS"); dirs != "" {
+		for _, candidate := range strings.Split(dirs, ":") {
+			add(candidate)
 		}
-		for _, loc := range locations {
-			if loc != "" {
-				q := filepath.Join(loc, "kitty")
-				if _, err := os.Stat(filepath.Join(q, "kitty.conf")); err == nil {
-					config_dir = q
-					break
-				}
-			}
-		}
-		for _, loc := range locations {
-			if loc != "" {
-				config_dir = filepath.Join(loc, "kitty")
-				break
+	}
+	add("~/.config")
+	if runtime.GOOS == "darwin" {
+		add("~/Library/Preferences")
+	}
+	for _, loc := range locations {
+		if loc != "" {
+			q := filepath.Join(loc, "kitty")
+			if _, err := os.Stat(filepath.Join(q, "kitty.conf")); err == nil {
+				config_dir = q
+				return
 			}
 		}
 	}
+	config_dir = os.Getenv("XDG_CONFIG_HOME")
+	if config_dir == "" {
+		config_dir = "~/.config"
+	}
+	config_dir = filepath.Join(Expanduser(config_dir), "kitty")
 	return
 }}).Get
 
