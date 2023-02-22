@@ -102,8 +102,8 @@ update_ime_focus(OSWindow *osw, bool focused) {
 }
 
 void
-update_ime_position(Window* w, Screen *screen) {
-    unsigned int cell_width = global_state.callback_os_window->fonts_data->cell_width, cell_height = global_state.callback_os_window->fonts_data->cell_height;
+prepare_ime_position_update_event(OSWindow *osw, Window *w, Screen *screen, GLFWIMEUpdateEvent *ev) {
+    unsigned int cell_width = osw->fonts_data->cell_width, cell_height = osw->fonts_data->cell_height;
     unsigned int left = w->geometry.left, top = w->geometry.top;
     if (screen_is_overlay_active(screen)) {
         left += screen->overlay_line.cursor_x * cell_width;
@@ -112,8 +112,15 @@ update_ime_position(Window* w, Screen *screen) {
         left += screen->cursor->x * cell_width;
         top += screen->cursor->y * cell_height;
     }
+    ev->cursor.left = left; ev->cursor.top = top; ev->cursor.width = cell_width; ev->cursor.height = cell_height;
+}
+
+void
+update_ime_position(Window* w UNUSED, Screen *screen UNUSED) {
     GLFWIMEUpdateEvent ev = { .type = GLFW_IME_UPDATE_CURSOR_POSITION };
-    ev.cursor.left = left; ev.cursor.top = top; ev.cursor.width = cell_width; ev.cursor.height = cell_height;
+#ifndef __APPLE__
+    prepare_ime_position_update_event(global_state.callback_os_window, w, screen, &ev);
+#endif
     glfwUpdateIMEState(global_state.callback_os_window->handle, &ev);
 }
 

@@ -1470,6 +1470,7 @@ typedef enum {
 } GLFWClipboardType;
 typedef GLFWDataChunk (* GLFWclipboarditerfun)(const char *mime_type, void *iter, GLFWClipboardType ctype);
 typedef bool (* GLFWclipboardwritedatafun)(void *object, const char *data, size_t sz);
+typedef bool (* GLFWimecursorpositionfun)(GLFWwindow *window, GLFWIMEUpdateEvent *ev);
 
 /*! @brief Video mode type.
  *
@@ -1666,6 +1667,10 @@ GFW_EXTERN glfwSetCurrentSelectionCallback_func glfwSetCurrentSelectionCallback_
 typedef GLFWhascurrentselectionfun (*glfwSetHasCurrentSelectionCallback_func)(GLFWhascurrentselectionfun);
 GFW_EXTERN glfwSetHasCurrentSelectionCallback_func glfwSetHasCurrentSelectionCallback_impl;
 #define glfwSetHasCurrentSelectionCallback glfwSetHasCurrentSelectionCallback_impl
+
+typedef GLFWimecursorpositionfun (*glfwSetIMECursorPositionCallback_func)(GLFWimecursorpositionfun);
+GFW_EXTERN glfwSetIMECursorPositionCallback_func glfwSetIMECursorPositionCallback_impl;
+#define glfwSetIMECursorPositionCallback glfwSetIMECursorPositionCallback_impl
 
 typedef void (*glfwTerminate_func)(void);
 GFW_EXTERN glfwTerminate_func glfwTerminate_impl;

@@ -1454,15 +1454,11 @@ is_ascii_control_char(char x) {
 }
 
 void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
-    [w->ns.view updateIMEStateFor: ev->type focused:(bool)ev->focused left:(CGFloat)ev->cursor.left top:(CGFloat)ev->cursor.top cellWidth:(CGFloat)ev->cursor.width cellHeight:(CGFloat)ev->cursor.height];
+    [w->ns.view updateIMEStateFor: ev->type focused:(bool)ev->focused];
 }
 
 - (void)updateIMEStateFor:(GLFWIMEUpdateType)which
                   focused:(bool)focused
-                     left:(CGFloat)left
-                      top:(CGFloat)top
-                cellWidth:(CGFloat)cellWidth
-               cellHeight:(CGFloat)cellHeight
 {
     if (which == GLFW_IME_UPDATE_FOCUS && !focused && [self hasMarkedText] && window) {
         [input_context discardMarkedText];
@@ -1472,16 +1468,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
         _glfw.ns.text[0] = 0;
     }
     if (which != GLFW_IME_UPDATE_CURSOR_POSITION) return;
-    left /= window->ns.xscale;
-    top /= window->ns.yscale;
-    cellWidth /= window->ns.xscale;
-    cellHeight /= window->ns.yscale;
-    debug_key("updateIMEPosition: left=%f, top=%f, width=%f, height=%f\n", left, top, cellWidth, cellHeight);
-    const NSRect frame = [window->ns.view frame];
-    const NSRect rectInView = NSMakeRect(left,
-                                         frame.size.height - top - cellHeight,
-                                         cellWidth, cellHeight);
-    markedRect = [window->ns.object convertRectToScreen: rectInView];
+
     if (_glfwPlatformWindowFocused(window)) [[window->ns.view inputContext] invalidateCharacterCoordinates];
 }
 
@@ -1507,6 +1494,21 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
                          actualRange:(NSRangePointer)actualRange
 {
     (void)range; (void)actualRange;
+    if (_glfw.callbacks.get_ime_cursor_position) {
+        GLFWIMEUpdateEvent ev = { .type = GLFW_IME_UPDATE_CURSOR_POSITION };
+        if (_glfw.callbacks.get_ime_cursor_position((GLFWwindow*)window, &ev)) {
+            const CGFloat left = (CGFloat)ev.cursor.left / window->ns.xscale;
+            const CGFloat top = (CGFloat)ev.cursor.top / window->ns.yscale;
+            const CGFloat cellWidth = (CGFloat)ev.cursor.width / window->ns.xscale;
+            const CGFloat cellHeight = (CGFloat)ev.cursor.height / window->ns.yscale;
+            debug_key("updateIMEPosition: left=%f, top=%f, width=%f, height=%f\n", left, top, cellWidth, cellHeight);
+            const NSRect frame = [window->ns.view frame];
+            const NSRect rectInView = NSMakeRect(left,
+                                                 frame.size.height - top - cellHeight,
+                                                 cellWidth, cellHeight);
+            markedRect = [window->ns.object convertRectToScreen: rectInView];
+        }
+    }
     return markedRect;
 }
 

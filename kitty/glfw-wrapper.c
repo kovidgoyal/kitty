@@ -44,6 +44,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetHasCurrentSelectionCallback_impl) = dlsym(handle, "glfwSetHasCurrentSelectionCallback");
     if (glfwSetHasCurrentSelectionCallback_impl == NULL) fail("Failed to load glfw function glfwSetHasCurrentSelectionCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetIMECursorPositionCallback_impl) = dlsym(handle, "glfwSetIMECursorPositionCallback");
+    if (glfwSetIMECursorPositionCallback_impl == NULL) fail("Failed to load glfw function glfwSetIMECursorPositionCallback with error: %s", dlerror());
+
     *(void **) (&glfwTerminate_impl) = dlsym(handle, "glfwTerminate");
     if (glfwTerminate_impl == NULL) fail("Failed to load glfw function glfwTerminate with error: %s", dlerror());
 
