@@ -75,7 +75,7 @@ var ConfigDir = (&Once[string]{Run: func() (config_dir string) {
 		return Abspath(Expanduser(kcd))
 	}
 	var locations []string
-	seen := Set[string]{}
+	seen := NewSet[string]()
 	add := func(x string) {
 		x = Abspath(Expanduser(x))
 		if !seen.Has(x) {
