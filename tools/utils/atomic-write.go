@@ -20,6 +20,9 @@ func AtomicCreateSymlink(oldname, newname string) (err error) {
 	if !errors.Is(err, fs.ErrExist) {
 		return err
 	}
+	if et, err := os.Readlink(newname); err == nil && et == oldname {
+		return nil
+	}
 	for {
 		tempname := newname + RandomFilename()
 		err = os.Symlink(oldname, tempname)

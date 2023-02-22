@@ -3,12 +3,22 @@
 package main
 
 import (
+	"os"
+
 	"kitty/tools/cli"
 	"kitty/tools/cmd/completion"
+	"kitty/tools/cmd/ssh"
 	"kitty/tools/cmd/tool"
 )
 
 func main() {
+	krm := os.Getenv("KITTY_KITTEN_RUN_MODULE")
+	os.Unsetenv("KITTY_KITTEN_RUN_MODULE")
+	switch krm {
+	case "ssh_askpass":
+		ssh.RunSSHAskpass()
+		return
+	}
 	root := cli.NewRootCommand()
 	root.ShortDescription = "Fast, statically compiled implementations for various kittens (command line tools for use with kitty)"
 	root.Usage = "command [command options] [command args]"

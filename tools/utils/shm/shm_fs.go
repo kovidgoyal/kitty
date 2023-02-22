@@ -13,6 +13,8 @@ import (
 	"runtime"
 
 	"kitty/tools/utils"
+
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -49,6 +51,22 @@ func (self *file_based_mmap) Name() string {
 		return self.special_name
 	}
 	return filepath.Base(self.f.Name())
+}
+
+func (self *file_based_mmap) Flush() error {
+	return unix.Msync(self.region, unix.MS_SYNC)
+}
+
+func (self *file_based_mmap) Seek(offset int64, whence int) (int64, error) {
+	return self.f.Seek(offset, whence)
+}
+
+func (self *file_based_mmap) Read(b []byte) (int, error) {
+	return self.f.Read(b)
+}
+
+func (self *file_based_mmap) ReadWithSize() ([]byte, error) {
+	return read_with_size(self.f)
 }
 
 func (self *file_based_mmap) FileSystemName() string {

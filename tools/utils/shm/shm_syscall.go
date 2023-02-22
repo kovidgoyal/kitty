@@ -92,8 +92,24 @@ func (self *syscall_based_mmap) Stat() (fs.FileInfo, error) {
 	return self.f.Stat()
 }
 
+func (self *syscall_based_mmap) Flush() error {
+	return unix.Msync(self.region, unix.MS_SYNC)
+}
+
 func (self *syscall_based_mmap) Slice() []byte {
 	return self.region
+}
+
+func (self *syscall_based_mmap) Seek(offset int64, whence int) (int64, error) {
+	return self.f.Seek(offset, whence)
+}
+
+func (self *syscall_based_mmap) Read(b []byte) (int, error) {
+	return self.f.Read(b)
+}
+
+func (self *syscall_based_mmap) ReadWithSize() ([]byte, error) {
+	return read_with_size(self.f)
 }
 
 func (self *syscall_based_mmap) Close() (err error) {

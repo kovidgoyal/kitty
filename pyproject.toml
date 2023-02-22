@@ -1,5 +1,5 @@
 [tool.mypy]
-files = 'kitty,kittens,glfw,*.py,docs/conf.py,shell-integration/ssh/askpass.py'
+files = 'kitty,kittens,glfw,*.py,docs/conf.py'
 no_implicit_optional = true
 sqlite_cache = true
 cache_fine_grained = true

@@ -452,6 +452,7 @@ type VersionType struct {{
 const VersionString string = "{kc.str_version}"
 const WebsiteBaseURL string = "{kc.website_base_url}"
 const VCSRevision string = ""
+const SSHControlMasterTemplate = "{kc.ssh_control_master_template}"
 const RC_ENCRYPTION_PROTOCOL_VERSION string = "{kc.RC_ENCRYPTION_PROTOCOL_VERSION}"
 const IsFrozenBuild bool = false
 const IsStandaloneBuild bool = false

@@ -7,28 +7,26 @@ import (
 	"io"
 	"kitty/tools/utils"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
-	"sync"
 )
 
 var _ = fmt.Print
 
-var ssh_options map[string]string
-var query_ssh_for_options_once sync.Once
-
-func ssh_exe() string {
+var SSHExe = (&utils.Once[string]{Run: func() string {
 	ans := utils.Which("ssh")
 	if ans != "" {
 		return ans
 	}
-	ans = utils.Which("ssh", "/usr/local/bin", "/opt/bin", "/opt/homebrew/bin", "/usr/bin", "/bin")
+	ans = utils.Which("ssh", "/usr/local/bin", "/opt/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin")
 	if ans == "" {
 		ans = "ssh"
 	}
 	return ans
-}
+}}).Get
 
-func get_ssh_options() {
+var SSHOptions = (&utils.Once[map[string]string]{Run: func() (ssh_options map[string]string) {
 	defer func() {
 		if ssh_options == nil {
 			ssh_options = map[string]string{
@@ -42,7 +40,7 @@ func get_ssh_options() {
 			}
 		}
 	}()
-	cmd := exec.Command(ssh_exe())
+	cmd := exec.Command(SSHExe())
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return
@@ -86,12 +84,8 @@ func get_ssh_options() {
 			}
 		}
 	}
-}
-
-func SSHOptions() map[string]string {
-	query_ssh_for_options_once.Do(get_ssh_options)
-	return ssh_options
-}
+	return
+}}).Get
 
 func GetSSHCLI() (boolean_ssh_args *utils.Set[string], other_ssh_args *utils.Set[string]) {
 	other_ssh_args, boolean_ssh_args = utils.NewSet[string](32), utils.NewSet[string](32)
@@ -205,3 +199,23 @@ func ParseSSHArgs(args []string, extra_args ...string) (ssh_args []string, serve
 	}
 	return
 }
+
+type SSHVersion struct{ Major, Minor int }
+
+func (self SSHVersion) SupportsAskpassRequire() bool {
+	return self.Major > 8 || (self.Major == 8 && self.Minor >= 4)
+}
+
+var GetSSHVersion = (&utils.Once[SSHVersion]{Run: func() SSHVersion {
+	b, err := exec.Command(SSHExe(), "-V").CombinedOutput()
+	if err != nil {
+		return SSHVersion{}
+	}
+	m := regexp.MustCompile(`OpenSSH_(\d+).(\d+)`).FindSubmatch(b)
+	if len(m) == 3 {
+		maj, _ := strconv.Atoi(utils.UnsafeBytesToString(m[1]))
+		min, _ := strconv.Atoi(utils.UnsafeBytesToString(m[2]))
+		return SSHVersion{Major: maj, Minor: min}
+	}
+	return SSHVersion{}
+}}).Get

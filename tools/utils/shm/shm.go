@@ -52,6 +52,10 @@ type MMap interface {
 	IsFileSystemBacked() bool
 	FileSystemName() string
 	Stat() (fs.FileInfo, error)
+	Flush() error
+	Seek(offset int64, whence int) (int64, error)
+	Read(b []byte) (int, error)
+	ReadWithSize() ([]byte, error)
 }
 
 type AccessFlags int

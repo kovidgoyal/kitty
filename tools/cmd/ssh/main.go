@@ -7,16 +7,22 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"kitty"
 	"net/url"
 	"os"
+	"os/exec"
 	"os/user"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"kitty/tools/cli"
 	"kitty/tools/tty"
+	"kitty/tools/utils"
 	"kitty/tools/utils/shm"
 
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"golang.org/x/sys/unix"
 )
 
@@ -102,8 +108,58 @@ func parse_kitten_args(found_extra_args []string, username, hostname_for_match s
 	return
 }
 
+func connection_sharing_args(kitty_pid int) ([]string, error) {
+	rd := utils.RuntimeDir()
+	// Bloody OpenSSH generates a 40 char hash and in creating the socket
+	// appends a 27 char temp suffix to it. Socket max path length is approx
+	// ~104 chars. And on idiotic Apple the path length to the runtime dir
+	// (technically the cache dir since Apple has no runtime dir and thinks it's
+	// a great idea to delete files in /tmp) is ~48 chars.
+	if len(rd) > 35 {
+		idiotic_design := fmt.Sprintf("/tmp/kssh-rdir-%d", os.Geteuid())
+		if err := utils.AtomicCreateSymlink(rd, idiotic_design); err != nil {
+			return nil, err
+		}
+		rd = idiotic_design
+	}
+	cp := strings.Replace(kitty.SSHControlMasterTemplate, "{kitty_pid}", strconv.Itoa(kitty_pid), 1)
+	cp = strings.Replace(cp, "{ssh_placeholder}", "%C", 1)
+	return []string{
+		"-o", "ControlMaster=auto",
+		"-o", "ControlPath=" + cp,
+		"-o", "ControlPersist=yes",
+		"-o", "ServerAliveInterval=60",
+		"-o", "ServerAliveCountMax=5",
+		"-o", "TCPKeepAlive=no",
+	}, nil
+}
+
+func set_askpass() (need_to_request_data bool) {
+	need_to_request_data = true
+	sentinel := filepath.Join(utils.CacheDir(), "openssh-is-new-enough-for-askpass")
+	_, err := os.Stat(sentinel)
+	sentinel_exists := err == nil
+	if sentinel_exists || GetSSHVersion().SupportsAskpassRequire() {
+		if !sentinel_exists {
+			os.WriteFile(sentinel, []byte{0}, 0o644)
+		}
+		need_to_request_data = false
+	}
+	exe, err := os.Executable()
+	if err == nil {
+		os.Setenv("SSH_ASKPASS", exe)
+		os.Setenv("KITTY_KITTEN_RUN_MODULE", "ssh_askpass")
+		if !need_to_request_data {
+			os.Setenv("SSH_ASKPASS_REQUIRE", "force")
+		}
+	} else {
+		need_to_request_data = true
+	}
+	return
+}
+
 func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err error) {
-	cmd := append([]string{ssh_exe()}, ssh_args...)
+	cmd := append([]string{SSHExe()}, ssh_args...)
 	hostname, remote_args := server_args[0], server_args[1:]
 	if len(remote_args) == 0 {
 		cmd = append(cmd, "-t")
@@ -115,10 +171,35 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 	if err != nil {
 		return 1, err
 	}
-	if insertion_point > 0 && overrides != nil && literal_env != nil {
+	host_opts, err := load_config(hostname_for_match, uname, overrides)
+	if err != nil {
+		return 1, err
 	}
-	// TODO: Implement me
-	return
+	if host_opts.Share_connections {
+		kpid, err := strconv.Atoi(os.Getenv("KITTY_PID"))
+		if err != nil {
+			return 1, fmt.Errorf("Invalid KITTY_PID env var not an integer: %#v", os.Getenv("KITTY_PID"))
+		}
+		cpargs, err := connection_sharing_args(kpid)
+		if err != nil {
+			return 1, err
+		}
+		cmd = slices.Insert(cmd, insertion_point, cpargs...)
+	}
+	use_kitty_askpass := host_opts.Askpass == Askpass_native || (host_opts.Askpass == Askpass_unless_set && os.Getenv("SSH_ASKPASS") == "")
+	need_to_request_data := true
+	if use_kitty_askpass {
+		need_to_request_data = set_askpass()
+	}
+	if need_to_request_data && host_opts.Share_connections {
+		check_cmd := slices.Insert(cmd, 1, "-O", "check")
+		err = exec.Command(check_cmd[0], check_cmd[1:]...).Run()
+		if err == nil {
+			need_to_request_data = false
+		}
+	}
+	_ = literal_env
+	return 0, nil
 }
 
 func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
@@ -139,7 +220,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 			if invargs.Msg != "" {
 				fmt.Fprintln(os.Stderr, invargs.Msg)
 			}
-			return 1, unix.Exec(ssh_exe(), []string{"ssh"}, os.Environ())
+			return 1, unix.Exec(SSHExe(), []string{"ssh"}, os.Environ())
 		}
 		return 1, err
 	}
@@ -147,7 +228,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		if len(found_extra_args) > 0 {
 			return 1, fmt.Errorf("The SSH kitten cannot work with the options: %s", strings.Join(maps.Keys(PassthroughArgs()), " "))
 		}
-		return 1, unix.Exec(ssh_exe(), append([]string{"ssh"}, args...), os.Environ())
+		return 1, unix.Exec(SSHExe(), append([]string{"ssh"}, args...), os.Environ())
 	}
 	if os.Getenv("KITTY_WINDOW_ID") == "" || os.Getenv("KITTY_PID") == "" {
 		return 1, fmt.Errorf("The SSH kitten is meant to run inside a kitty window")
