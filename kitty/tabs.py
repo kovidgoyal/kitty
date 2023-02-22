@@ -441,6 +441,7 @@ class Tab:  # {{{
                                     cmd[:0] = shlex.split(line)
                                 else:
                                     cmd[:0] = [resolved_shell(get_options())[0]]
+                                cmd[0] = which(cmd[0]) or cmd[0]
                                 cmd[:0] = [kitten_exe(), '__hold_till_enter__']
         fenv: Dict[str, str] = {}
         if env:

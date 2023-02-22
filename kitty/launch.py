@@ -579,6 +579,8 @@ def launch(
     else:
         if opts.hold:
             cmd = kw['cmd'] or [shell_path]
+            if not os.path.isabs(cmd[0]):
+                cmd[0] = which(cmd[0]) or cmd[0]
             kw['cmd'] = [kitten_exe(), '__hold_till_enter__'] + cmd
         if force_target_tab:
             tab = target_tab
