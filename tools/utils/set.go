@@ -74,6 +74,25 @@ func (self *Set[T]) Intersect(other *Set[T]) (ans *Set[T]) {
 	return
 }
 
+func (self *Set[T]) Subtract(other *Set[T]) (ans *Set[T]) {
+	ans = NewSet[T](self.Len())
+	for x := range self.items {
+		if !other.Has(x) {
+			ans.items[x] = struct{}{}
+		}
+	}
+	return ans
+}
+
+func (self *Set[T]) IsSubset(other *Set[T]) bool {
+	for x := range self.items {
+		if !other.Has(x) {
+			return false
+		}
+	}
+	return true
+}
+
 func NewSet[T comparable](capacity ...int) (ans *Set[T]) {
 	if len(capacity) == 0 {
 		ans = &Set[T]{items: make(map[T]struct{}, 8)}
