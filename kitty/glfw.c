@@ -507,6 +507,26 @@ has_current_selection(void) {
     return ans;
 }
 
+void prepare_ime_position_update_event(OSWindow *osw, Window *w, Screen *screen, GLFWIMEUpdateEvent *ev);
+
+static bool
+get_ime_cursor_position(GLFWwindow *glfw_window, GLFWIMEUpdateEvent *ev) {
+    if (!set_callback_window(glfw_window)) return false;
+    bool ans = false;
+    OSWindow *osw = global_state.callback_os_window;
+    if (osw && osw->is_focused && is_window_ready_for_callbacks()) {
+        Tab *tab = osw->tabs + osw->active_tab;
+        Window *w = tab->windows + tab->active_window;
+        Screen *screen = w->render_data.screen;
+        if (screen) {
+            prepare_ime_position_update_event(osw, w, screen, ev);
+            ans = true;
+        }
+    }
+    global_state.callback_os_window = NULL;
+    return ans;
+}
+
 
 static void get_window_dpi(GLFWwindow *w, double *x, double *y);
 
@@ -832,6 +852,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         glfwSetApplicationCloseCallback(application_close_requested_callback);
         glfwSetCurrentSelectionCallback(get_current_selection);
         glfwSetHasCurrentSelectionCallback(has_current_selection);
+        glfwSetIMECursorPositionCallback(get_ime_cursor_position);
 #ifdef __APPLE__
         cocoa_set_activation_policy(OPT(macos_hide_from_tasks));
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
