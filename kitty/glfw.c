@@ -187,17 +187,22 @@ update_os_window_references(void) {
     }
 }
 
-static bool
-set_callback_window(GLFWwindow *w) {
-    global_state.callback_os_window = glfwGetWindowUserPointer(w);
-    if (global_state.callback_os_window) return true;
+static OSWindow*
+os_window_for_glfw_window(GLFWwindow *w) {
+    OSWindow *ans = glfwGetWindowUserPointer(w);
+    if (ans != NULL) return ans;
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         if ((GLFWwindow*)(global_state.os_windows[i].handle) == w) {
-            global_state.callback_os_window = global_state.os_windows + i;
-            return true;
+            return global_state.os_windows + i;
         }
     }
-    return false;
+    return NULL;
+}
+
+static bool
+set_callback_window(GLFWwindow *w) {
+    global_state.callback_os_window = os_window_for_glfw_window(w);
+    return global_state.callback_os_window != NULL;
 }
 
 static bool
@@ -511,9 +516,8 @@ void prepare_ime_position_update_event(OSWindow *osw, Window *w, Screen *screen,
 
 static bool
 get_ime_cursor_position(GLFWwindow *glfw_window, GLFWIMEUpdateEvent *ev) {
-    if (!set_callback_window(glfw_window)) return false;
     bool ans = false;
-    OSWindow *osw = global_state.callback_os_window;
+    OSWindow *osw = os_window_for_glfw_window(glfw_window);
     if (osw && osw->is_focused && is_window_ready_for_callbacks()) {
         Tab *tab = osw->tabs + osw->active_tab;
         Window *w = tab->windows + tab->active_window;
@@ -523,7 +527,6 @@ get_ime_cursor_position(GLFWwindow *glfw_window, GLFWIMEUpdateEvent *ev) {
             ans = true;
         }
     }
-    global_state.callback_os_window = NULL;
     return ans;
 }
 

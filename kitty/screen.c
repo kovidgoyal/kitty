@@ -2732,7 +2732,7 @@ screen_update_overlay_text(Screen *self, const char *utf8_text) {
     if (!text) return;
     Py_XDECREF(self->overlay_line.overlay_text);
     // Calculate the total number of cells for initial overlay cursor position
-    PyObject *text_len = wcswidth_std(NULL, text);
+    DECREF_AFTER_FUNCTION PyObject *text_len = wcswidth_std(NULL, text);
     self->overlay_line.overlay_text = text;
     self->overlay_line.is_active = true;
     self->overlay_line.is_dirty = true;
@@ -2753,10 +2753,7 @@ screen_update_overlay_text(Screen *self, const char *utf8_text) {
 static void
 screen_draw_overlay_line(Screen *self) {
     if (!self->overlay_line.overlay_text) return;
-    const char *utf8_text = PyUnicode_AsUTF8(self->overlay_line.overlay_text);
-    if (!utf8_text || !utf8_text[0]) return;
     self->overlay_line.xnum = 0;
-    uint32_t codepoint = 0; UTF8State state = UTF8_ACCEPT;
     bool orig_line_wrap_mode = self->modes.mDECAWM;
     bool orig_cursor_enable_mode = self->modes.mDECTCEM;
     bool orig_insert_replace_mode = self->modes.mIRM;
@@ -2770,16 +2767,13 @@ screen_draw_overlay_line(Screen *self) {
     self->cursor->y = self->overlay_line.ynum;
     self->overlay_line.xnum = 0;
     index_type before;
-    while (*utf8_text) {
-        switch(decode_utf8(&state, &codepoint, *(utf8_text++))) {
-            case UTF8_ACCEPT:
-                before = self->cursor->x;
-                draw_codepoint(self, codepoint, false);
-                self->overlay_line.xnum += self->cursor->x - before;
-                break;
-            case UTF8_REJECT:
-                break;
-        }
+    const int kind = PyUnicode_KIND(self->overlay_line.overlay_text);
+    const void *data = PyUnicode_DATA(self->overlay_line.overlay_text);
+    const Py_ssize_t sz = PyUnicode_GET_LENGTH(self->overlay_line.overlay_text);
+    for (Py_ssize_t pos = 0; pos < sz; pos++) {
+        before = self->cursor->x;
+        draw_codepoint(self, PyUnicode_READ(kind, data, pos), false);
+        self->overlay_line.xnum += self->cursor->x - before;
     }
     self->overlay_line.cursor_x = self->cursor->x;
     self->cursor->reverse ^= true;

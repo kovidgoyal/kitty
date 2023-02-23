@@ -626,7 +626,7 @@ cursor_needs_render(Window *w) {
 static bool
 collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow *os_window) {
     ScreenRenderData *rd = &w->render_data;
-    Cursor *cursor;
+    const Cursor *cursor;
     if (screen_is_overlay_active(rd->screen)) {
         // Do not force the cursor to be visible here for the sake of some programs that prefer it hidden
         cursor = &(rd->screen->overlay_line.original_line.cursor);
