@@ -84,7 +84,7 @@ func (self *Set[T]) Subtract(other *Set[T]) (ans *Set[T]) {
 	return ans
 }
 
-func (self *Set[T]) IsSubset(other *Set[T]) bool {
+func (self *Set[T]) IsSubsetOf(other *Set[T]) bool {
 	for x := range self.items {
 		if !other.Has(x) {
 			return false
@@ -100,4 +100,10 @@ func NewSet[T comparable](capacity ...int) (ans *Set[T]) {
 		ans = &Set[T]{items: make(map[T]struct{}, capacity[0])}
 	}
 	return
+}
+
+func NewSetWithItems[T comparable](items ...T) (ans *Set[T]) {
+	ans = NewSet[T](len(items))
+	ans.AddItems(items...)
+	return ans
 }
