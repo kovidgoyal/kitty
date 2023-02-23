@@ -3,6 +3,7 @@
 package ssh
 
 import (
+	"archive/tar"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"kitty/tools/config"
 	"kitty/tools/utils"
@@ -86,10 +88,10 @@ func (self *EnvInstruction) Serialize(for_python bool, get_local_env func(string
 	return export(self.val)
 }
 
-func (self *Config) final_env_instructions(for_python bool, get_local_env func(string) (string, bool)) string {
-	seen := make(map[string]int, len(self.Env))
-	ans := make([]string, 0, len(self.Env))
-	for _, ei := range self.Env {
+func final_env_instructions(for_python bool, get_local_env func(string) (string, bool), env ...*EnvInstruction) string {
+	seen := make(map[string]int, len(env))
+	ans := make([]string, 0, len(env))
+	for _, ei := range env {
 		q := ei.Serialize(for_python, get_local_env)
 		if q != "" {
 			if pos, found := seen[ei.key]; found {
@@ -220,6 +222,100 @@ func ParseCopyInstruction(spec string) (ans []*CopyInstruction, err error) {
 		ans = append(ans, &ci)
 	}
 	return
+}
+
+type file_unique_id struct {
+	dev, inode uint64
+}
+
+func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[file_unique_id]string, local_path, arcname string, exclude_patterns []string, recurse bool) error {
+	s, err := os.Lstat(local_path)
+	if err != nil {
+		return err
+	}
+	u, ok := s.Sys().(unix.Stat_t)
+	cb := func(h *tar.Header, data []byte) error {
+		h.Name = arcname
+		h.Size = int64(len(data))
+		h.Mode = int64(s.Mode())
+
+		h.ModTime = s.ModTime()
+		h.Uid, h.Gid = 0, 0
+		h.Uname, h.Gname = "", ""
+		h.Format = tar.FormatPAX
+		if ok {
+			h.AccessTime = time.Unix(0, u.Atim.Nano())
+			h.ChangeTime = time.Unix(0, u.Ctim.Nano())
+		}
+		return callback(h, data)
+	}
+	// we only copy regular files, directories and symlinks
+	switch s.Mode().Type() {
+	case fs.ModeSymlink:
+		target, err := os.Readlink(local_path)
+		if err != nil {
+			return err
+		}
+		err = cb(&tar.Header{
+			Typeflag: tar.TypeSymlink,
+			Linkname: target,
+		}, nil)
+		if err != nil {
+			return err
+		}
+	case fs.ModeDir:
+		err = cb(&tar.Header{Typeflag: tar.TypeDir}, nil)
+		if err != nil {
+			return err
+		}
+		if recurse {
+			local_path = filepath.Clean(local_path)
+			return filepath.WalkDir(local_path, func(path string, d fs.DirEntry, werr error) error {
+				if filepath.Clean(path) == local_path {
+					return nil
+				}
+				for _, pat := range exclude_patterns {
+					if matched, err := filepath.Match(pat, path); matched && err == nil {
+						return nil
+					}
+				}
+				if werr == nil {
+					rel, err := filepath.Rel(local_path, path)
+					if err != nil {
+						aname := filepath.Join(arcname, rel)
+						return get_file_data(callback, seen, path, aname, nil, false)
+					}
+				}
+				return nil
+			})
+		}
+	case 0: // Regular file
+		fid := file_unique_id{dev: u.Dev, inode: u.Ino}
+		if prev, ok := seen[fid]; ok { // Hard link
+			err = cb(&tar.Header{Typeflag: tar.TypeLink, Linkname: prev}, nil)
+			if err != nil {
+				return err
+			}
+		}
+		seen[fid] = arcname
+		data, err := os.ReadFile(local_path)
+		if err != nil {
+			return err
+		}
+		err = cb(&tar.Header{Typeflag: tar.TypeReg}, data)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ci *CopyInstruction) get_file_data(callback func(h *tar.Header, data []byte) error, seen map[file_unique_id]string) (err error) {
+	ep := ci.exclude_patterns
+	for _, folder_name := range []string{"__pycache__", ".DS_Store"} {
+		ep = append(ep, "*/"+folder_name, "*/"+folder_name+"/*")
+	}
+	return get_file_data(callback, seen, ci.local_path, ci.arcname, ep, true)
 }
 
 type ConfigSet struct {

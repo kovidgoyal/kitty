@@ -1,15 +1,17 @@
 #!./kitty/launcher/kitty +launch
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
+import bz2
 import io
 import json
 import os
 import struct
 import subprocess
 import sys
-import zlib
+import tarfile
 from contextlib import contextmanager, suppress
 from functools import lru_cache
+from itertools import chain
 from typing import Any, BinaryIO, Dict, Iterator, List, Optional, Sequence, Set, TextIO, Tuple, Union
 
 import kitty.constants as kc
@@ -40,7 +42,7 @@ def newer(dest: str, *sources: str) -> bool:
         dtime = os.path.getmtime(dest)
     except OSError:
         return True
-    for s in sources:
+    for s in chain(sources, (__file__,)):
         with suppress(FileNotFoundError):
             if os.path.getmtime(s) >= dtime:
                 return True
@@ -442,6 +444,7 @@ def load_ref_map() -> Dict[str, Dict[str, str]]:
 
 def generate_constants() -> str:
     from kitty.options.types import Options
+    from kitty.options.utils import allowed_shell_integration_values
     ref_map = load_ref_map()
     dp = ", ".join(map(lambda x: f'"{serialize_as_go_string(x)}"', kc.default_pager_for_help))
     return f'''\
@@ -465,6 +468,7 @@ var CharacterKeyNameAliases = map[string]string{serialize_go_dict(character_key_
 var ConfigModMap = map[string]uint16{serialize_go_dict(config_mod_map)}
 var RefMap = map[string]string{serialize_go_dict(ref_map['ref'])}
 var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
+var AllowedShellIntegrationValues = []string{{ {str(list(allowed_shell_integration_values))[1:-1].replace("'", '"')} }}
 var KittyConfigDefaults = struct {{
 Term, Shell_integration string
 }}{{
@@ -649,7 +653,7 @@ def generate_textual_mimetypes() -> str:
 
 def write_compressed_data(data: bytes, d: BinaryIO) -> None:
     d.write(struct.pack('<I', len(data)))
-    d.write(zlib.compress(data, zlib.Z_BEST_COMPRESSION))
+    d.write(bz2.compress(data))
 
 
 def generate_unicode_names(src: TextIO, dest: BinaryIO) -> None:
@@ -678,20 +682,19 @@ def generate_ssh_kitten_data() -> None:
             path = os.path.join(dirpath, f)
             files.add(path.replace(os.sep, '/'))
     dest = 'tools/cmd/ssh/data_generated.bin'
+
+    def normalize(t: tarfile.TarInfo) -> tarfile.TarInfo:
+        t.uid = t.gid = 0
+        t.uname = t.gname = ''
+        return t
+
     if newer(dest, *files):
         buf = io.BytesIO()
-        fmap = dict.fromkeys(files, (0, 0))
-        for f in fmap:
-            with open(f, 'rb') as src:
-                data = src.read()
-            pos = buf.tell()
-            buf.write(data)
-            size = len(data)
-            fmap[f] = pos, size
-        mapping = ','.join(f'{name} {pos[0]} {pos[1]}' for name, pos in sorted(fmap.items())).encode('ascii')
-        data = struct.pack('<I', len(fmap)) + mapping + b'\n' + buf.getvalue()
+        with tarfile.open(fileobj=buf, mode='w') as tf:
+            for f in sorted(files):
+                tf.add(f, filter=normalize)
         with open(dest, 'wb') as d:
-            write_compressed_data(data, d)
+            write_compressed_data(buf.getvalue(), d)
 
 
 def main() -> None:

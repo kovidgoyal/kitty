@@ -209,8 +209,6 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
             yield f'{e}\n'.encode('utf-8')
         else:
             yield b'OK\n'
-            ssh_opts = SSHOptions(env_data['opts'])
-            ssh_opts.copy = {k: CopyInstruction(*v) for k, v in ssh_opts.copy.items()}
             encoded_data = memoryview(env_data['tarfile'].encode('ascii'))
             # macOS has a 255 byte limit on its input queue as per man stty.
             # Not clear if that applies to canonical mode input as well, but

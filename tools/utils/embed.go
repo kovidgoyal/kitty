@@ -4,7 +4,7 @@ package utils
 
 import (
 	"bytes"
-	"compress/zlib"
+	"compress/bzip2"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -33,11 +33,14 @@ func ReadAll(r io.Reader, expected_size int) ([]byte, error) {
 func ReadCompressedEmbeddedData(raw string) []byte {
 	compressed := UnsafeStringToBytes(raw)
 	uncompressed_size := binary.LittleEndian.Uint32(compressed)
-	r, _ := zlib.NewReader(bytes.NewReader(compressed[4:]))
-	defer r.Close()
+	r := bzip2.NewReader(bytes.NewReader(compressed[4:]))
 	ans, err := ReadAll(r, int(uncompressed_size))
 	if err != nil {
 		panic(err)
 	}
 	return ans
+}
+
+func ReaderForCompressedEmbeddedData(raw string) io.Reader {
+	return bzip2.NewReader(bytes.NewReader(UnsafeStringToBytes(raw)[4:]))
 }

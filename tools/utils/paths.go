@@ -130,7 +130,7 @@ var CacheDir = (&Once[string]{Run: func() (cache_dir string) {
 }}).Get
 
 func macos_user_cache_dir() string {
-	// Sadly Go does not provide confstr() so we use this hack. We could
+	// Sadly Go does not provide confstr() so we use this hack.
 	// Note that given a user generateduid and uid we can derive this by using
 	// the algorithm at https://github.com/ydkhatri/MacForensics/blob/master/darwin_path_generator.py
 	// but I cant find a good way to get the generateduid. Requires calling dscl in which case we might as well call getconf

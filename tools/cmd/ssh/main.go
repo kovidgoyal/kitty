@@ -3,6 +3,10 @@
 package ssh
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,14 +16,18 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"kitty/tools/cli"
 	"kitty/tools/tty"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"kitty/tools/utils/secrets"
 	"kitty/tools/utils/shm"
 
 	"golang.org/x/exp/maps"
@@ -167,11 +175,339 @@ type connection_data struct {
 	echo_on            bool
 	request_data       bool
 	literal_env        map[string]string
+	test_script        string
+
+	shm_name         string
+	script_type      string
+	rcmd             []string
+	replacements     map[string]string
+	request_id       string
+	bootstrap_script string
+}
+
+func get_effective_ksi_env_var(x string) string {
+	parts := strings.Split(strings.TrimSpace(strings.ToLower(x)), " ")
+	current := utils.NewSetWithItems(parts...)
+	if current.Has("disabled") {
+		return ""
+	}
+	allowed := utils.NewSetWithItems(kitty.AllowedShellIntegrationValues...)
+	if !current.IsSubsetOf(allowed) {
+		return RelevantKittyOpts().Shell_integration
+	}
+	return x
+}
+
+func serialize_env(cd *connection_data, get_local_env func(string) (string, bool)) (string, string) {
+	ksi := ""
+	if cd.host_opts.Shell_integration == "inherited" {
+		ksi = get_effective_ksi_env_var(RelevantKittyOpts().Shell_integration)
+	} else {
+		ksi = get_effective_ksi_env_var(cd.host_opts.Shell_integration)
+	}
+	env := make([]*EnvInstruction, 0, 8)
+	add_env := func(key, val string, fallback ...string) *EnvInstruction {
+		if val == "" && len(fallback) > 0 {
+			val = fallback[0]
+		}
+		if val != "" {
+			env = append(env, &EnvInstruction{key: key, val: val, literal_quote: true})
+			return env[len(env)-1]
+		}
+		return nil
+	}
+	for k, v := range cd.literal_env {
+		add_env(k, v)
+	}
+	add_env("TERM", os.Getenv("TERM"), RelevantKittyOpts().Term)
+	add_env("COLORTERM", "truecolor")
+	env = append(env, cd.host_opts.Env...)
+	add_env("KITTY_WINDOW_ID", os.Getenv("KITTY_WINDOW_ID"))
+	add_env("WINDOWID", os.Getenv("WINDOWID"))
+	if ksi != "" {
+		add_env("KITTY_SHELL_INTEGRATION", ksi)
+	} else {
+		env = append(env, &EnvInstruction{key: "KITTY_SHELL_INTEGRATION", delete_on_remote: true})
+	}
+	add_env("KITTY_SSH_KITTEN_DATA_DIR", cd.host_opts.Remote_dir)
+	add_env("KITTY_LOGIN_SHELL", cd.host_opts.Login_shell)
+	add_env("KITTY_LOGIN_CWD", cd.host_opts.Cwd)
+	if cd.host_opts.Remote_kitty != Remote_kitty_no {
+		add_env("KITTY_REMOTE", cd.host_opts.Remote_kitty.String())
+	}
+	add_env("KITTY_PUBLIC_KEY", os.Getenv("KITTY_PUBLIC_KEY"))
+	return final_env_instructions(cd.script_type == "py", get_local_env), ksi
+}
+
+func make_tarfile(cd *connection_data, get_local_env func(string) (string, bool)) ([]byte, error) {
+	env_script, ksi := serialize_env(cd, get_local_env)
+	w := bytes.Buffer{}
+	w.Grow(64 * 1024)
+	gw, err := gzip.NewWriterLevel(&w, gzip.BestCompression)
+	if err != nil {
+		return nil, err
+	}
+	tw := tar.NewWriter(gw)
+	rd := strings.TrimRight(cd.host_opts.Remote_dir, "/")
+	seen := make(map[file_unique_id]string, 32)
+	add := func(h *tar.Header, data []byte) (err error) {
+		// some distro's like nix mess with installed file permissions so ensure
+		// files are at least readable and writable by owning user
+		h.Mode |= 0o600
+		err = tw.WriteHeader(h)
+		if err != nil {
+			return
+		}
+		if data != nil {
+			_, err := tw.Write(data)
+			if err != nil {
+				return err
+			}
+		}
+		return
+	}
+	for _, ci := range cd.host_opts.Copy {
+		get_file_data(add, seen, ci.local_path, ci.arcname, ci.exclude_patterns, true)
+	}
+	type fe struct {
+		arcname string
+		data    []byte
+	}
+	now := time.Now()
+	add_data := func(items ...fe) error {
+		for _, item := range items {
+			err := add(
+				&tar.Header{
+					Typeflag: tar.TypeReg, Name: item.arcname, Format: tar.FormatPAX, Size: int64(len(item.data)),
+					Mode: 0o644, ModTime: now, ChangeTime: now, AccessTime: now,
+				}, item.data)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	add_entries := func(prefix string, items ...Entry) error {
+		for _, item := range items {
+			err := add(
+				&tar.Header{
+					Typeflag: item.metadata.Typeflag, Name: path.Join(prefix, path.Base(item.metadata.Name)), Format: tar.FormatPAX,
+					Size: int64(len(item.data)), Mode: item.metadata.Mode, ModTime: item.metadata.ModTime,
+					AccessTime: item.metadata.AccessTime, ChangeTime: item.metadata.ChangeTime,
+				}, item.data)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+
+	}
+	add_data(fe{"data.sh", utils.UnsafeStringToBytes(env_script)})
+	if ksi != "" {
+		for _, fname := range Data().files_matching(
+			"shell-integration/*",
+			"shell-integration/ssh/*",         // bootstrap files are sent as command line args
+			"shell_integration/zsh/kitty.zsh", // backward compat file not needed by ssh kitten
+		) {
+			arcname := path.Join("home/", rd, "/", path.Dir(fname))
+			err = add_entries(arcname, Data()[fname])
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	if cd.host_opts.Remote_kitty != Remote_kitty_no {
+		arcname := path.Join("home/", rd, "/kitty")
+		err = add_data(fe{arcname + "/version", utils.UnsafeStringToBytes(kitty.VersionString)})
+		if err != nil {
+			return nil, err
+		}
+		for _, x := range []string{"kitty", "kitten"} {
+			err = add_entries(path.Join(arcname, "bin"), Data()[path.Join("shell-integration", "ssh", x)])
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	err = add_entries(path.Join("home", ".terminfo"), Data()["terminfo/kitty.terminfo"])
+	if err == nil {
+		err = add_entries(path.Join("home", ".terminfo", "x"), Data()["terminfo/x/xterm-kitty"])
+	}
+	if err == nil {
+		err = tw.Close()
+		if err == nil {
+			err = gw.Close()
+		}
+	}
+	return w.Bytes(), err
+}
+
+func prepare_home_command(cd *connection_data) string {
+	is_python := cd.script_type == "py"
+	homevar := ""
+	for _, ei := range cd.host_opts.Env {
+		if ei.key == "HOME" && !ei.delete_on_remote {
+			if ei.copy_from_local {
+				homevar = os.Getenv("HOME")
+			} else {
+				homevar = ei.val
+			}
+		}
+	}
+	export_home_cmd := ""
+	if homevar != "" {
+		if is_python {
+			export_home_cmd = base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(homevar))
+		} else {
+			export_home_cmd = fmt.Sprintf("export HOME=%s; cd \"$HOME\"", utils.QuoteStringForSH(homevar))
+		}
+	}
+	return export_home_cmd
+}
+
+func prepare_exec_cmd(cd *connection_data) string {
+	// ssh simply concatenates multiple commands using a space see
+	// line 1129 of ssh.c and on the remote side sshd.c runs the
+	// concatenated command as shell -c cmd
+	if cd.script_type == "py" {
+		return base64.RawStdEncoding.EncodeToString(utils.UnsafeStringToBytes(strings.Join(cd.remote_args, " ")))
+	}
+	args := make([]string, len(cd.remote_args))
+	for i, arg := range cd.remote_args {
+		args[i] = strings.ReplaceAll(arg, "'", "'\"'\"'")
+	}
+	return "unset KITTY_SHELL_INTEGRATION; exec \"$login_shell\" -c '" + strings.Join(args, " ") + "'"
+}
+
+var data_shm shm.MMap
+
+func prepare_script(script string, replacements map[string]string) string {
+	if _, found := replacements["EXEC_CMD"]; !found {
+		replacements["EXEC_CMD"] = ""
+	}
+	if _, found := replacements["EXPORT_HOME_CMD"]; !found {
+		replacements["EXPORT_HOME_CMD"] = ""
+	}
+	keys := maps.Keys(replacements)
+	for i, key := range keys {
+		keys[i] = "\\b" + key + "\\b"
+	}
+	pat := regexp.MustCompile(strings.Join(keys, "|"))
+	return pat.ReplaceAllStringFunc(script, func(key string) string { return replacements[key] })
+}
+
+func bootstrap_script(cd *connection_data) (err error) {
+	if cd.request_id == "" {
+		cd.request_id = os.Getenv("KITTY_PID") + "-" + os.Getenv("KITTY_WINDOW_ID")
+	}
+	export_home_cmd := prepare_home_command(cd)
+	exec_cmd := ""
+	if len(cd.remote_args) > 0 {
+		exec_cmd = prepare_exec_cmd(cd)
+	}
+	pw, err := secrets.TokenHex()
+	if err != nil {
+		return err
+	}
+	tfd, err := make_tarfile(cd, os.LookupEnv)
+	if err != nil {
+		return err
+	}
+	data := map[string]string{
+		"tarfile":  base64.StdEncoding.EncodeToString(tfd),
+		"pw":       pw,
+		"hostname": cd.hostname_for_match, "username": cd.username,
+	}
+	encoded_data, err := json.Marshal(data)
+	if err == nil {
+		data_shm, err = shm.CreateTemp(fmt.Sprintf("kssh-%d-", os.Getpid()), uint64(len(encoded_data)+8))
+		if err == nil {
+			err = data_shm.WriteWithSize(encoded_data)
+			if err == nil {
+				err = data_shm.Flush()
+			}
+		}
+	}
+	if err != nil {
+		return err
+	}
+	cd.shm_name = data_shm.Name()
+	sensitive_data := map[string]string{"REQUEST_ID": cd.request_id, "DATA_PASSWORD": pw, "PASSWORD_FILENAME": cd.shm_name}
+	replacements := map[string]string{
+		"EXPORT_HOME_CMD": export_home_cmd,
+		"EXEC_CMD":        exec_cmd,
+		"TEST_SCRIPT":     cd.test_script,
+	}
+	add_bool := func(ok bool, key string) {
+		if ok {
+			replacements[key] = "1"
+		} else {
+			replacements[key] = "0"
+		}
+	}
+	add_bool(cd.request_data, "REQUEST_DATA")
+	add_bool(cd.echo_on, "ECHO_ON")
+	sd := maps.Clone(replacements)
+	if cd.request_data {
+		maps.Copy(sd, sensitive_data)
+	}
+	maps.Copy(replacements, sensitive_data)
+	cd.replacements = replacements
+	cd.bootstrap_script = utils.UnsafeBytesToString(Data()["shell-integration/ssh/bootstrap."+cd.script_type].data)
+	cd.bootstrap_script = prepare_script(cd.bootstrap_script, sd)
+	return err
+}
+
+func wrap_bootstrap_script(cd *connection_data) {
+	// sshd will execute the command we pass it by join all command line
+	// arguments with a space and passing it as a single argument to the users
+	// login shell with -c. If the user has a non POSIX login shell it might
+	// have different escaping semantics and syntax, so the command it should
+	// execute has to be as simple as possible, basically of the form
+	// interpreter -c unwrap_script escaped_bootstrap_script
+	// The unwrap_script is responsible for unescaping the bootstrap script and
+	// executing it.
+	encoded_script := ""
+	unwrap_script := ""
+	if cd.script_type == "py" {
+		encoded_script = base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(cd.bootstrap_script))
+		unwrap_script = `"import base64, sys; eval(compile(base64.standard_b64decode(sys.argv[-1]), 'bootstrap.py', 'exec'))"`
+	} else {
+		// We cant rely on base64 being available on the remote system, so instead
+		// we quote the bootstrap script by replacing ' and \ with \v and \f
+		// also replacing \n and ! with \r and \b for tcsh
+		// finally surrounding with '
+		encoded_script = "'" + strings.NewReplacer("'", "\v", "\\", "\f", "\n", "\r", "!", "\b").Replace(cd.bootstrap_script) + "'"
+		unwrap_script = `'eval "$(echo "$0" | tr \\\v\\\f\\\r\\\b \\\047\\\134\\\n\\\041)"' `
+	}
+	cd.rcmd = []string{"exec", cd.host_opts.Interpreter, "-c", unwrap_script, encoded_script}
+}
+
+func get_remote_command(cd *connection_data) error {
+	interpreter := cd.host_opts.Interpreter
+	q := strings.ToLower(path.Base(interpreter))
+	is_python := strings.Contains(q, "python")
+	cd.script_type = "sh"
+	if is_python {
+		cd.script_type = "py"
+	}
+	err := bootstrap_script(cd)
+	if err != nil {
+		return err
+	}
+	wrap_bootstrap_script(cd)
+	return nil
 }
 
 func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err error) {
 	go Data()
 	go RelevantKittyOpts()
+	defer func() {
+		if data_shm != nil {
+			data_shm.Close()
+			data_shm.Unlink()
+		}
+	}()
 	cmd := append([]string{SSHExe()}, ssh_args...)
 	cd := connection_data{remote_args: server_args[1:]}
 	hostname := server_args[0]
@@ -224,6 +560,10 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 	term.WriteString(loop.HANDLE_TERMIOS_SIGNALS.EscapeCodeToSet())
 	defer term.WriteString(loop.RESTORE_PRIVATE_MODE_VALUES)
 	defer term.RestoreAndClose()
+	err = get_remote_command(&cd)
+	if err != nil {
+		return 1, err
+	}
 	return 0, nil
 }
 
