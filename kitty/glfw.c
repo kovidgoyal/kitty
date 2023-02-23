@@ -518,13 +518,15 @@ static bool
 get_ime_cursor_position(GLFWwindow *glfw_window, GLFWIMEUpdateEvent *ev) {
     bool ans = false;
     OSWindow *osw = os_window_for_glfw_window(glfw_window);
-    if (osw && osw->is_focused && is_window_ready_for_callbacks()) {
+    if (osw && osw->is_focused && osw->num_tabs > 0) {
         Tab *tab = osw->tabs + osw->active_tab;
-        Window *w = tab->windows + tab->active_window;
-        Screen *screen = w->render_data.screen;
-        if (screen) {
-            prepare_ime_position_update_event(osw, w, screen, ev);
-            ans = true;
+        if (tab->num_windows > 0) {
+            Window *w = tab->windows + tab->active_window;
+            Screen *screen = w->render_data.screen;
+            if (screen) {
+                prepare_ime_position_update_event(osw, w, screen, ev);
+                ans = true;
+            }
         }
     }
     return ans;
