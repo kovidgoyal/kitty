@@ -56,6 +56,8 @@ type MMap interface {
 	Seek(offset int64, whence int) (int64, error)
 	Read(b []byte) (int, error)
 	ReadWithSize() ([]byte, error)
+	Write(p []byte) (n int, err error)
+	WriteWithSize([]byte) error
 }
 
 type AccessFlags int
@@ -132,6 +134,16 @@ func read_with_size(f *os.File) ([]byte, error) {
 	return read_till_buf_full(f, make([]byte, size))
 }
 
+func write_with_size(f *os.File, b []byte) error {
+	szbuf := []byte{0, 0, 0, 0}
+	binary.BigEndian.PutUint32(szbuf, uint32(len(b)))
+	_, err := f.Write(szbuf)
+	if err == nil {
+		_, err = f.Write(b)
+	}
+	return err
+}
+
 func test_integration_with_python(args []string) (rc int, err error) {
 	switch args[0] {
 	default:
@@ -154,9 +166,8 @@ func test_integration_with_python(args []string) (rc int, err error) {
 		if err != nil {
 			return 1, err
 		}
-		defer mmap.Close()
-		binary.BigEndian.PutUint32(mmap.Slice(), uint32(len(data)))
-		copy(mmap.Slice()[4:], data)
+		mmap.WriteWithSize(data)
+		mmap.Close()
 		fmt.Println(mmap.Name())
 	}
 	return 0, nil

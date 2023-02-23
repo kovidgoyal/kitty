@@ -65,6 +65,14 @@ func (self *file_based_mmap) Read(b []byte) (int, error) {
 	return self.f.Read(b)
 }
 
+func (self *file_based_mmap) Write(b []byte) (int, error) {
+	return self.f.Write(b)
+}
+
+func (self *file_based_mmap) WriteWithSize(b []byte) error {
+	return write_with_size(self.f, b)
+}
+
 func (self *file_based_mmap) ReadWithSize() ([]byte, error) {
 	return read_with_size(self.f)
 }
