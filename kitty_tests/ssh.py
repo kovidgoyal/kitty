@@ -119,7 +119,7 @@ copy --exclude */w.* d1
                 self.ae(len(glob.glob(f'{remote_home}/{tname}/*/xterm-kitty')), 2)
 
     def test_ssh_env_vars(self):
-        tset = '$A-$(echo no)-`echo no2` !Q5 "something\nelse"'
+        tset = '$A-$(echo no)-`echo no2` !Q5 "something else"'
         for sh in self.all_possible_sh:
             with self.subTest(sh=sh), tempfile.TemporaryDirectory() as tdir:
                 os.mkdir(os.path.join(tdir, 'cwd'))

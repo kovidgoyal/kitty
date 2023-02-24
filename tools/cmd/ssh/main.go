@@ -217,6 +217,13 @@ func serialize_env(cd *connection_data, get_local_env func(string) (string, bool
 		}
 		return nil
 	}
+	add_non_literal_env := func(key, val string, fallback ...string) *EnvInstruction {
+		ans := add_env(key, val, fallback...)
+		if ans != nil {
+			ans.literal_quote = false
+		}
+		return ans
+	}
 	for k, v := range cd.literal_env {
 		add_env(k, v)
 	}
@@ -230,9 +237,9 @@ func serialize_env(cd *connection_data, get_local_env func(string) (string, bool
 	} else {
 		env = append(env, &EnvInstruction{key: "KITTY_SHELL_INTEGRATION", delete_on_remote: true})
 	}
-	add_env("KITTY_SSH_KITTEN_DATA_DIR", cd.host_opts.Remote_dir)
-	add_env("KITTY_LOGIN_SHELL", cd.host_opts.Login_shell)
-	add_env("KITTY_LOGIN_CWD", cd.host_opts.Cwd)
+	add_non_literal_env("KITTY_SSH_KITTEN_DATA_DIR", cd.host_opts.Remote_dir)
+	add_non_literal_env("KITTY_LOGIN_SHELL", cd.host_opts.Login_shell)
+	add_non_literal_env("KITTY_LOGIN_CWD", cd.host_opts.Cwd)
 	if cd.host_opts.Remote_kitty != Remote_kitty_no {
 		add_env("KITTY_REMOTE", cd.host_opts.Remote_kitty.String())
 	}
@@ -637,7 +644,7 @@ func test_integration_with_python(args []string) (rc int, err error) {
 	cd := &connection_data{
 		request_id: "testing", remote_args: []string{},
 		username: "testuser", hostname_for_match: "host.test", request_data: true,
-		test_script: args[0],
+		test_script: args[0], echo_on: true,
 	}
 	opts, err := load_config(cd.hostname_for_match, cd.username, nil, f.Name())
 	if err == nil {

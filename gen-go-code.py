@@ -472,7 +472,7 @@ var AllowedShellIntegrationValues = []string{{ {str(sorted(allowed_shell_integra
 var KittyConfigDefaults = struct {{
 Term, Shell_integration string
 }}{{
-Term: "{Options.term}", Shell_integration: "{Options.shell_integration}",
+Term: "{Options.term}", Shell_integration: "{' '.join(Options.shell_integration)}",
 }}
 '''  # }}}
 
