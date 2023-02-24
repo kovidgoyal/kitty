@@ -365,6 +365,7 @@ func load_config(hostname_to_match string, username_to_match string, overrides [
 	if len(paths) == 0 {
 		paths = []string{filepath.Join(utils.ConfigDir(), "ssh.conf")}
 	}
+	paths = utils.Filter(paths, func(x string) bool { return x != "" })
 	err := p.ParseFiles(paths...)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err

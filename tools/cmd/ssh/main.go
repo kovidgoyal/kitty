@@ -305,9 +305,9 @@ func make_tarfile(cd *connection_data, get_local_env func(string) (string, bool)
 	add_data(fe{"data.sh", utils.UnsafeStringToBytes(env_script)})
 	if ksi != "" {
 		for _, fname := range Data().files_matching(
-			"shell-integration/*",
-			"shell-integration/ssh/*",         // bootstrap files are sent as command line args
-			"shell_integration/zsh/kitty.zsh", // backward compat file not needed by ssh kitten
+			"shell-integration/",
+			"shell-integration/ssh/.+",        // bootstrap files are sent as command line args
+			"shell-integration/zsh/kitty.zsh", // backward compat file not needed by ssh kitten
 		) {
 			arcname := path.Join("home/", rd, "/", path.Dir(fname))
 			err = add_entries(arcname, Data()[fname])

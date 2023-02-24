@@ -9,7 +9,8 @@ import (
 	"fmt"
 	"io"
 	"kitty/tools/utils"
-	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 var _ = fmt.Print
@@ -44,13 +45,17 @@ var Data = (&utils.Once[Container]{Run: func() Container {
 	return ans
 }}).Get
 
-func (self Container) files_matching(include_pattern string, exclude_patterns ...string) []string {
+func (self Container) files_matching(prefix string, exclude_patterns ...string) []string {
 	ans := make([]string, 0, len(self))
+	patterns := make([]*regexp.Regexp, len(exclude_patterns))
+	for i, exp := range exclude_patterns {
+		patterns[i] = regexp.MustCompile(exp)
+	}
 	for name := range self {
-		if matched, err := filepath.Match(include_pattern, name); matched && err == nil {
+		if strings.HasPrefix(name, prefix) {
 			excluded := false
-			for _, pat := range exclude_patterns {
-				if matched, err := filepath.Match(pat, name); matched && err == nil {
+			for _, pat := range patterns {
+				if matched := pat.FindString(name); matched != "" {
 					excluded = true
 					break
 				}
