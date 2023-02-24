@@ -20,7 +20,9 @@ def option_text() -> str:
     return '''
 --glob
 type=bool-set
-Interpret file arguments as glob patterns.
+Interpret file arguments as glob patterns. Globbing is based on
+Based on standard wildcards with the addition that ``/**/`` matches any number of directories.
+See the :link:`detailed syntax <https://github.com/bmatcuk/doublestar#patterns>`.
 
 
 --dest
@@ -36,7 +38,10 @@ type=list
 A glob pattern. Files with names matching this pattern are excluded from being
 transferred. Useful when adding directories. Can
 be specified multiple times, if any of the patterns match the file will be
-excluded. To exclude a directory use a pattern like :code:`*/directory_name/*`.
+excluded. To exclude a directory use a pattern like :code:`**/directory_name/**`.
+Based on standard wildcards with the addition that ``/**/`` matches any number of directories
+and patterns starting with a single :code:`*` (as opposed to two asterisks) match any prefix.
+See the :link:`detailed syntax <https://github.com/bmatcuk/doublestar#patterns>`.
 
 
 --symlink-strategy

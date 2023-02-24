@@ -18,6 +18,7 @@ import (
 	"kitty/tools/utils/paths"
 	"kitty/tools/utils/shlex"
 
+	"github.com/bmatcuk/doublestar"
 	"golang.org/x/sys/unix"
 )
 
@@ -143,12 +144,12 @@ func resolve_file_spec(spec string, is_glob bool) ([]string, error) {
 		ans = paths_ctx.AbspathFromHome(ans)
 	}
 	if is_glob {
-		files, err := filepath.Glob(ans)
+		files, err := doublestar.Glob(ans)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s is not a valid glob pattern with error: %w", spec, err)
 		}
 		if len(files) == 0 {
-			return nil, fmt.Errorf("%s does not exist", spec)
+			return nil, fmt.Errorf("%s matches no files", spec)
 		}
 		return files, nil
 	}
@@ -228,6 +229,16 @@ type file_unique_id struct {
 	dev, inode uint64
 }
 
+func excluded(pattern, path string) bool {
+	if strings.HasPrefix(pattern, "*") && !strings.HasPrefix(pattern, "**") {
+		path = filepath.Base(path)
+	}
+	if matched, err := doublestar.PathMatch(pattern, path); matched && err == nil {
+		return true
+	}
+	return false
+}
+
 func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[file_unique_id]string, local_path, arcname string, exclude_patterns []string, recurse bool) error {
 	s, err := os.Lstat(local_path)
 	if err != nil {
@@ -271,11 +282,12 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 		if recurse {
 			local_path = filepath.Clean(local_path)
 			return filepath.WalkDir(local_path, func(path string, d fs.DirEntry, werr error) error {
-				if filepath.Clean(path) == local_path {
+				clean_path := filepath.Clean(path)
+				if clean_path == local_path {
 					return nil
 				}
 				for _, pat := range exclude_patterns {
-					if matched, err := filepath.Match(pat, path); matched && err == nil {
+					if excluded(pat, clean_path) {
 						return nil
 					}
 				}
