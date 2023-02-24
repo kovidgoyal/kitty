@@ -4,9 +4,11 @@
 
 import os
 import subprocess
-from typing import Any, Dict, List, Sequence, Set, Tuple
+from contextlib import suppress
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 from kitty.types import run_once
+from kitty.utils import SSHConnectionData
 
 
 @run_once
@@ -183,3 +185,86 @@ def set_server_args_in_cmdline(
             ans.insert(i, '-t')
         break
     argv[:] = ans + server_args
+
+
+def get_connection_data(args: List[str], cwd: str = '', extra_args: Tuple[str, ...] = ()) -> Optional[SSHConnectionData]:
+    boolean_ssh_args, other_ssh_args = get_ssh_cli()
+    port: Optional[int] = None
+    expecting_port = expecting_identity = False
+    expecting_option_val = False
+    expecting_hostname = False
+    expecting_extra_val = ''
+    host_name = identity_file = found_ssh = ''
+    found_extra_args: List[Tuple[str, str]] = []
+
+    for i, arg in enumerate(args):
+        if not found_ssh:
+            if os.path.basename(arg).lower() in ('ssh', 'ssh.exe'):
+                found_ssh = arg
+            continue
+        if expecting_hostname:
+            host_name = arg
+            continue
+        if arg.startswith('-') and not expecting_option_val:
+            if arg in boolean_ssh_args:
+                continue
+            if arg == '--':
+                expecting_hostname = True
+            if arg.startswith('-p'):
+                if arg[2:].isdigit():
+                    with suppress(Exception):
+                        port = int(arg[2:])
+                    continue
+                elif arg == '-p':
+                    expecting_port = True
+            elif arg.startswith('-i'):
+                if arg == '-i':
+                    expecting_identity = True
+                else:
+                    identity_file = arg[2:]
+                    continue
+            if arg.startswith('--') and extra_args:
+                matching_ex = is_extra_arg(arg, extra_args)
+                if matching_ex:
+                    if '=' in arg:
+                        exval = arg.partition('=')[-1]
+                        found_extra_args.append((matching_ex, exval))
+                        continue
+                    expecting_extra_val = matching_ex
+
+            expecting_option_val = True
+            continue
+
+        if expecting_option_val:
+            if expecting_port:
+                with suppress(Exception):
+                    port = int(arg)
+                expecting_port = False
+            elif expecting_identity:
+                identity_file = arg
+            elif expecting_extra_val:
+                found_extra_args.append((expecting_extra_val, arg))
+                expecting_extra_val = ''
+            expecting_option_val = False
+            continue
+
+        if not host_name:
+            host_name = arg
+    if not host_name:
+        return None
+    if host_name.startswith('ssh://'):
+        from urllib.parse import urlparse
+        purl = urlparse(host_name)
+        if purl.hostname:
+            host_name = purl.hostname
+        if purl.username:
+            host_name = f'{purl.username}@{host_name}'
+        if port is None and purl.port:
+            port = purl.port
+    if identity_file:
+        if not os.path.isabs(identity_file):
+            identity_file = os.path.expanduser(identity_file)
+        if not os.path.isabs(identity_file):
+            identity_file = os.path.normpath(os.path.join(cwd or os.getcwd(), identity_file))
+
+    return SSHConnectionData(found_ssh, host_name, port, identity_file, tuple(found_extra_args))

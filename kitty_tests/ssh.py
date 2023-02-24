@@ -10,7 +10,8 @@ from contextlib import suppress
 from functools import lru_cache
 
 from kittens.ssh.config import load_config
-from kittens.ssh.main import bootstrap_script, get_connection_data, wrap_bootstrap_script
+from kittens.ssh.main import bootstrap_script, wrap_bootstrap_script
+from kittens.ssh.utils import get_connection_data
 from kittens.transfer.utils import set_paths
 from kitty.constants import is_macos, runtime_dir
 from kitty.fast_data_types import CURSOR_BEAM, shm_unlink

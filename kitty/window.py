@@ -959,7 +959,7 @@ class Window:
 
     def handle_remote_file(self, netloc: str, remote_path: str) -> None:
         from kittens.remote_file.main import is_ssh_kitten_sentinel
-        from kittens.ssh.main import get_connection_data
+        from kittens.ssh.utils import get_connection_data
 
         from .utils import SSHConnectionData
         args = self.ssh_kitten_cmdline()
