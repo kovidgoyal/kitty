@@ -305,7 +305,7 @@ class GitHub:  # {{{
                 self.error(failure_msg, 'with error:', e)
             self.error(f'Retrying after {sleep_between_tries} seconds')
             time.sleep(sleep_between_tries)
-        return None
+        raise SystemExit('All retries failed, giving up')
 
     def patch(self, url: str, fail_msg: str, **data: str) -> None:
         self.make_request_with_retries(url, data, method='PATCH', failure_msg=fail_msg)
