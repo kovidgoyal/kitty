@@ -486,8 +486,9 @@ def prettify_rst(text: str) -> str:
 def version(add_rev: bool = False) -> str:
     rev = ''
     from . import fast_data_types
-    if add_rev and hasattr(fast_data_types, 'KITTY_VCS_REV'):
-        rev = f' ({fast_data_types.KITTY_VCS_REV[:10]})'
+    if add_rev:
+        if getattr(fast_data_types, 'KITTY_VCS_REV', ''):
+            rev = f' ({fast_data_types.KITTY_VCS_REV[:10]})'
     return '{} {}{} created by {}'.format(italic(appname), green(str_version), rev, title('Kovid Goyal'))
 
 
