@@ -1593,6 +1593,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 }
 
 // Selected text as input to be sent to Services
+// For example, after selecting an absolute path, open the global menu bar kitty->Services and click `Show in Finder`.
 - (BOOL)writeSelectionToPasteboard:(NSPasteboard *)pboard types:(NSArray *)types
 {
     if (!_glfw.callbacks.get_current_selection) return NO;
@@ -1613,6 +1614,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 }
 
 // Service output to be handled
+// For example, open System Settings->Keyboard->Keyboard Shortcuts->Services->Text, enable `Convert Text to Full Width`, select some text and execute the service.
 - (BOOL)readSelectionFromPasteboard:(NSPasteboard *)pboard
 {
     NSString* text = nil;
@@ -1625,17 +1627,17 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
         return NO;
     }
     if (text && [text length] > 0) {
-        // Terminal.app inserts the output, do the same
+        // The service wants us to replace the selection, but we can't replace anything but insert text.
         const char *utf8 = polymorphic_string_as_utf8(text);
-        if ([self hasMarkedText]) {
-            [self unmarkText];
-            debug_key("Clearing pre-edit because insertText called from readSelectionFromPasteboard\n");
-            GLFWkeyevent glfw_keyevent = {.ime_state = GLFW_IME_PREEDIT_CHANGED};
-            _glfwInputKeyboard(window, &glfw_keyevent);
-        }
         debug_key("Sending text received in readSelectionFromPasteboard as key event\n");
         GLFWkeyevent glfw_keyevent = {.text=utf8, .ime_state=GLFW_IME_COMMIT_TEXT};
         _glfwInputKeyboard(window, &glfw_keyevent);
+        // Restore pre-edit text after inserting the received text
+        if ([self hasMarkedText]) {
+            glfw_keyevent.text = [[markedText string] UTF8String];
+            glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;
+            _glfwInputKeyboard(window, &glfw_keyevent);
+        }
         return YES;
     }
     return NO;
@@ -1715,6 +1717,18 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     // When the window decoration is hidden, toggling fullscreen causes the style mask to be changed,
     // and causes the first responder to be cleared.
     if (glfw_window && !glfw_window->decorated && glfw_window->ns.view) [self makeFirstResponder:glfw_window->ns.view];
+}
+
+- (void)zoom:(id)sender
+{
+    if (![self isZoomed]) {
+        const NSSize original = [self resizeIncrements];
+        [self setResizeIncrements:NSMakeSize(1.0, 1.0)];
+        [super zoom:sender];
+        [self setResizeIncrements:original];
+    } else {
+        [super zoom:sender];
+    }
 }
 
 @end
@@ -2065,10 +2079,7 @@ void _glfwPlatformRestoreWindow(_GLFWwindow* window)
 void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 {
     if (![window->ns.object isZoomed]) {
-        const NSSize original = [window->ns.object resizeIncrements];
-        [window->ns.object setResizeIncrements:NSMakeSize(1.0, 1.0)];
         [window->ns.object zoom:nil];
-        [window->ns.object setResizeIncrements:original];
     }
 }
 
