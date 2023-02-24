@@ -468,7 +468,7 @@ var CharacterKeyNameAliases = map[string]string{serialize_go_dict(character_key_
 var ConfigModMap = map[string]uint16{serialize_go_dict(config_mod_map)}
 var RefMap = map[string]string{serialize_go_dict(ref_map['ref'])}
 var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
-var AllowedShellIntegrationValues = []string{{ {str(list(allowed_shell_integration_values))[1:-1].replace("'", '"')} }}
+var AllowedShellIntegrationValues = []string{{ {str(sorted(allowed_shell_integration_values))[1:-1].replace("'", '"')} }}
 var KittyConfigDefaults = struct {{
 Term, Shell_integration string
 }}{{
