@@ -56,12 +56,6 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
         t('ssh --kitten=one -p 12 --kitten two -ix main', identity_file='x', port=12, extra_args=(('--kitten', 'one'), ('--kitten', 'two')))
         self.assertTrue(runtime_dir())
 
-    def test_ssh_bootstrap_sh_cmd_limit(self):
-        # dropbear has a 9000 bytes maximum command length limit
-        sh_script, _, _ = bootstrap_script(SSHOptions({'interpreter': 'sh'}), script_type='sh', remote_args=[], request_id='123-123')
-        rcmd = wrap_bootstrap_script(sh_script, 'sh')
-        self.assertLessEqual(sum(len(x) for x in rcmd), 9000)
-
     @property
     @lru_cache()
     def all_possible_sh(self):

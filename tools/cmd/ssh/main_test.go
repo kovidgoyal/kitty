@@ -37,3 +37,25 @@ func TestCloneEnv(t *testing.T) {
 		t.Fatalf("Failed to deserialize env\n%s", diff)
 	}
 }
+
+func basic_connection_data() *connection_data {
+	return &connection_data{
+		script_type: "sh", request_id: "123-123", remote_args: []string{}, host_opts: NewConfig(),
+		username: "testuser", hostname_for_match: "host.test",
+	}
+}
+
+func TestSSHBootstrapScriptLimit(t *testing.T) {
+	cd := basic_connection_data()
+	err := get_remote_command(cd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	total := 0
+	for _, x := range cd.rcmd {
+		total += len(x)
+	}
+	if total > 9000 {
+		t.Fatalf("Bootstrap script too large: %d bytes", total)
+	}
+}

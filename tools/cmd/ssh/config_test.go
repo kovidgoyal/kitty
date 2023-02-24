@@ -27,12 +27,12 @@ func TestSSHConfigParsing(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		actual := c.final_env_instructions(for_python, func(key string) (string, bool) {
+		actual := final_env_instructions(for_python, func(key string) (string, bool) {
 			if key == "LOCAL_ENV" {
 				return "LOCAL_VAL", true
 			}
 			return "", false
-		})
+		}, c.Env...)
 		if expected_env == nil {
 			expected_env = []string{}
 		}
