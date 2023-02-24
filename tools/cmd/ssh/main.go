@@ -532,9 +532,14 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 	if err != nil {
 		return 1, err
 	}
-	host_opts, err := load_config(hostname_for_match, uname, overrides)
+	host_opts, bad_lines, err := load_config(hostname_for_match, uname, overrides)
 	if err != nil {
 		return 1, err
+	}
+	if len(bad_lines) > 0 {
+		for _, x := range bad_lines {
+			fmt.Fprintf(os.Stderr, "Ignoring bad config line: %s:%d with error: %s", filepath.Base(x.Src_file), x.Line_number, x.Err)
+		}
 	}
 	if host_opts.Share_connections {
 		kpid, err := strconv.Atoi(os.Getenv("KITTY_PID"))
@@ -646,8 +651,11 @@ func test_integration_with_python(args []string) (rc int, err error) {
 		username: "testuser", hostname_for_match: "host.test", request_data: true,
 		test_script: args[0], echo_on: true,
 	}
-	opts, err := load_config(cd.hostname_for_match, cd.username, nil, f.Name())
+	opts, bad_lines, err := load_config(cd.hostname_for_match, cd.username, nil, f.Name())
 	if err == nil {
+		if len(bad_lines) > 0 {
+			return 1, fmt.Errorf("Bad config lines: %s with error: %s", bad_lines[0].Line, bad_lines[0].Err)
+		}
 		cd.host_opts = opts
 		err = get_remote_command(cd)
 	}

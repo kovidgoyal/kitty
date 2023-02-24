@@ -12,7 +12,6 @@ from contextlib import suppress
 from functools import lru_cache
 
 from kittens.ssh.utils import get_connection_data
-from kittens.transfer.utils import set_paths
 from kitty.constants import is_macos, kitten_exe, runtime_dir
 from kitty.fast_data_types import CURSOR_BEAM, shm_unlink
 from kitty.utils import SSHConnectionData
@@ -71,7 +70,7 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
                 f.write(simple_data)
 
         for sh in self.all_possible_sh:
-            with self.subTest(sh=sh), tempfile.TemporaryDirectory() as remote_home, tempfile.TemporaryDirectory() as local_home, set_paths(home=local_home):
+            with self.subTest(sh=sh), tempfile.TemporaryDirectory() as remote_home, tempfile.TemporaryDirectory() as local_home:
                 tuple(map(touch, 'simple-file g.1 g.2'.split()))
                 os.makedirs(f'{local_home}/d1/d2/d3')
                 touch('d1/d2/x')
@@ -83,13 +82,13 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
                 conf = '''\
 copy simple-file
 copy s1
-copy --symlink-strategy=keep-name s2
+copy --symlink-strategy=keep-path s2
 copy --dest=a/sfa simple-file
 copy --glob g.*
 copy --exclude */w.* d1
 '''
                 self.check_bootstrap(
-                    sh, remote_home, test_script='env; exit 0', SHELL_INTEGRATION_VALUE='', conf=conf
+                    sh, remote_home, test_script='env; exit 0', SHELL_INTEGRATION_VALUE='', conf=conf, home=local_home,
                 )
                 tname = '.terminfo'
                 if os.path.exists('/usr/share/misc/terminfo.cdb'):
@@ -212,7 +211,7 @@ env COLORTERM
                         self.assertEqual(pty.screen.cursor.shape, 0)
                         self.assertNotIn(b'\x1b]133;', pty.received_bytes)
 
-    def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', test_script='', pre_data='', conf='', launcher='sh'):
+    def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', test_script='', pre_data='', conf='', launcher='sh', home=''):
         if login_shell:
             conf += f'\nlogin_shell {login_shell}'
         if 'python' in sh:
@@ -223,7 +222,10 @@ env COLORTERM
             test_script = f'echo "UNTAR_DONE"; {test_script}'
         conf += '\nshell_integration ' + SHELL_INTEGRATION_VALUE or 'disabled'
         conf += '\ninterpreter ' + sh
-        cp = subprocess.run([kitten_exe(), '__pytest__', 'ssh', test_script], stdout=subprocess.PIPE, input=conf.encode('utf-8'))
+        env = os.environ.copy()
+        if home:
+            env['HOME'] = home
+        cp = subprocess.run([kitten_exe(), '__pytest__', 'ssh', test_script], env=env, stdout=subprocess.PIPE, input=conf.encode('utf-8'))
         self.assertEqual(cp.returncode, 0)
         self.rdata = json.loads(cp.stdout)
         del cp
