@@ -1717,6 +1717,18 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     if (glfw_window && !glfw_window->decorated && glfw_window->ns.view) [self makeFirstResponder:glfw_window->ns.view];
 }
 
+- (void)zoom:(id)sender
+{
+    if (![self isZoomed]) {
+        const NSSize original = [self resizeIncrements];
+        [self setResizeIncrements:NSMakeSize(1.0, 1.0)];
+        [super zoom:sender];
+        [self setResizeIncrements:original];
+    } else {
+        [super zoom:sender];
+    }
+}
+
 @end
 // }}}
 
@@ -2065,10 +2077,7 @@ void _glfwPlatformRestoreWindow(_GLFWwindow* window)
 void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 {
     if (![window->ns.object isZoomed]) {
-        const NSSize original = [window->ns.object resizeIncrements];
-        [window->ns.object setResizeIncrements:NSMakeSize(1.0, 1.0)];
         [window->ns.object zoom:nil];
-        [window->ns.object setResizeIncrements:original];
     }
 }
 
