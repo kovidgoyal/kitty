@@ -183,11 +183,12 @@ def run_sdist(args: Any) -> None:
 
 class ReadFileWithProgressReporting(io.FileIO):  # {{{
     def __init__(self, path: str):
-        io.FileIO.__init__(self, path, 'rb')
+        super().__init__(path, 'rb')
         self.seek(0, os.SEEK_END)
         self._total = self.tell()
         self.seek(0)
         self.start_time = time.monotonic()
+        print('Starting upload of:', os.path.basename(path), 'size:', self._total)
 
     def __len__(self) -> int:
         return self._total
