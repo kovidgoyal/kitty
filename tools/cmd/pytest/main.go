@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"kitty/tools/cli"
+	"kitty/tools/cmd/ssh"
 	"kitty/tools/utils/shm"
 )
 
@@ -17,4 +18,5 @@ func EntryPoint(root *cli.Command) {
 		Hidden: true,
 	})
 	shm.TestEntryPoint(root)
+	ssh.TestEntryPoint(root)
 }

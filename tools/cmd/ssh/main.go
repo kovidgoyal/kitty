@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"kitty"
 	"net/url"
@@ -236,7 +237,7 @@ func serialize_env(cd *connection_data, get_local_env func(string) (string, bool
 		add_env("KITTY_REMOTE", cd.host_opts.Remote_kitty.String())
 	}
 	add_env("KITTY_PUBLIC_KEY", os.Getenv("KITTY_PUBLIC_KEY"))
-	return final_env_instructions(cd.script_type == "py", get_local_env), ksi
+	return final_env_instructions(cd.script_type == "py", get_local_env, env...), ksi
 }
 
 func make_tarfile(cd *connection_data, get_local_env func(string) (string, bool)) ([]byte, error) {
@@ -303,6 +304,9 @@ func make_tarfile(cd *connection_data, get_local_env func(string) (string, bool)
 
 	}
 	add_data(fe{"data.sh", utils.UnsafeStringToBytes(env_script)})
+	if cd.script_type == "sh" {
+		add_data(fe{"bootstrap-utils.sh", Data()[path.Join("shell-integration/ssh/bootstrap-utils.sh")].data})
+	}
 	if ksi != "" {
 		for _, fname := range Data().files_matching(
 			"shell-integration/",
@@ -615,4 +619,53 @@ func specialize_command(ssh *cli.Command) {
 	ssh.IgnoreAllArgs = true
 	ssh.OnlyArgsAllowed = true
 	ssh.ArgCompleter = cli.CompletionForWrapper("ssh")
+}
+
+func test_integration_with_python(args []string) (rc int, err error) {
+	f, err := os.CreateTemp("", "*.conf")
+	if err != nil {
+		return 1, err
+	}
+	defer func() {
+		f.Close()
+		os.Remove(f.Name())
+	}()
+	_, err = io.Copy(f, os.Stdin)
+	if err != nil {
+		return 1, err
+	}
+	cd := &connection_data{
+		request_id: "testing", remote_args: []string{},
+		username: "testuser", hostname_for_match: "host.test", request_data: true,
+		test_script: args[0],
+	}
+	opts, err := load_config(cd.hostname_for_match, cd.username, nil, f.Name())
+	if err == nil {
+		cd.host_opts = opts
+		err = get_remote_command(cd)
+	}
+	if err != nil {
+		return 1, err
+	}
+	data, err := json.Marshal(map[string]any{"cmd": cd.rcmd, "shm_name": cd.shm_name})
+	if err == nil {
+		_, err = os.Stdout.Write(data)
+		os.Stdout.Close()
+	}
+	if err != nil {
+		return 1, err
+	}
+
+	return
+}
+
+func TestEntryPoint(root *cli.Command) {
+	root.AddSubCommand(&cli.Command{
+		Name:            "ssh",
+		OnlyArgsAllowed: true,
+		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
+			return test_integration_with_python(args)
+		},
+	})
+
 }
