@@ -227,7 +227,7 @@ type KittyOpts struct {
 	Term, Shell_integration string
 }
 
-var RelevantKittyOpts = (&utils.Once[KittyOpts]{Run: func() KittyOpts {
+func read_relevant_kitty_opts(path string) KittyOpts {
 	ans := KittyOpts{Term: kitty.KittyConfigDefaults.Term, Shell_integration: kitty.KittyConfigDefaults.Shell_integration}
 	handle_line := func(key, val string) error {
 		switch key {
@@ -239,6 +239,10 @@ var RelevantKittyOpts = (&utils.Once[KittyOpts]{Run: func() KittyOpts {
 		return nil
 	}
 	cp := config.ConfigParser{LineHandler: handle_line}
-	cp.ParseFiles(filepath.Join(utils.ConfigDir(), "kitty.conf"))
+	cp.ParseFiles(path)
 	return ans
+}
+
+var RelevantKittyOpts = (&utils.Once[KittyOpts]{Run: func() KittyOpts {
+	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
 }}).Get

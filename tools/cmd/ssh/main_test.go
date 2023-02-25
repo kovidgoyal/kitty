@@ -50,9 +50,12 @@ func basic_connection_data(overrides ...string) *connection_data {
 		script_type: "sh", request_id: "123-123", remote_args: []string{},
 		username: "testuser", hostname_for_match: "host.test",
 	}
-	opts, err := load_config(ans.hostname_for_match, ans.username, overrides, "")
+	opts, bad_lines, err := load_config(ans.hostname_for_match, ans.username, overrides, "")
 	if err != nil {
 		panic(err)
+	}
+	if len(bad_lines) != 0 {
+		panic(fmt.Sprintf("Bad config lines: %s with error: %s", bad_lines[0].Line, bad_lines[0].Err))
 	}
 	ans.host_opts = opts
 	return ans

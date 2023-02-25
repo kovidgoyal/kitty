@@ -40,7 +40,7 @@ transferred. Useful when adding directories. Can
 be specified multiple times, if any of the patterns match the file will be
 excluded. To exclude a directory use a pattern like :code:`**/directory_name/**`.
 Based on standard wildcards with the addition that ``/**/`` matches any number of directories
-and patterns starting with a single :code:`*` (as opposed to two asterisks) match any prefix.
+and patterns starting with a single :code:`*` (as opposed to two asterisks) match any filename prefix.
 See the :link:`detailed syntax <https://github.com/bmatcuk/doublestar#patterns>`.
 
 

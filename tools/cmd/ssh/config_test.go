@@ -23,9 +23,12 @@ func TestSSHConfigParsing(t *testing.T) {
 	cf := filepath.Join(tdir, "ssh.conf")
 	rt := func(expected_env ...string) {
 		os.WriteFile(cf, []byte(conf), 0o600)
-		c, err := load_config(hostname, username, nil, cf)
+		c, bad_lines, err := load_config(hostname, username, nil, cf)
 		if err != nil {
 			t.Fatal(err)
+		}
+		if len(bad_lines) != 0 {
+			t.Fatalf("Bad config line: %s with error: %s", bad_lines[0].Line, bad_lines[0].Err)
 		}
 		actual := final_env_instructions(for_python, func(key string) (string, bool) {
 			if key == "LOCAL_ENV" {

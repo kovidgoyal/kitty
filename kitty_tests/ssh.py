@@ -85,7 +85,7 @@ copy s1
 copy --symlink-strategy=keep-path s2
 copy --dest=a/sfa simple-file
 copy --glob g.*
-copy --exclude */w.* d1
+copy --exclude **/w.* d1
 '''
                 self.check_bootstrap(
                     sh, remote_home, test_script='env; exit 0', SHELL_INTEGRATION_VALUE='', conf=conf, home=local_home,
@@ -220,7 +220,7 @@ env COLORTERM
             test_script = f'print("UNTAR_DONE", flush=True); {test_script}'
         else:
             test_script = f'echo "UNTAR_DONE"; {test_script}'
-        conf += '\nshell_integration ' + SHELL_INTEGRATION_VALUE or 'disabled'
+        conf += '\nshell_integration ' + (SHELL_INTEGRATION_VALUE or 'disabled')
         conf += '\ninterpreter ' + sh
         env = os.environ.copy()
         if home:

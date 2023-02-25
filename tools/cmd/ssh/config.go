@@ -247,12 +247,12 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 	u, ok := s.Sys().(unix.Stat_t)
 	cb := func(h *tar.Header, data []byte) error {
 		h.Name = arcname
+		if h.Typeflag == tar.TypeDir {
+			h.Name = strings.TrimRight(h.Name, "/") + "/"
+		}
 		h.Size = int64(len(data))
-		h.Mode = int64(s.Mode())
-
+		h.Mode = int64(s.Mode().Perm())
 		h.ModTime = s.ModTime()
-		h.Uid, h.Gid = 0, 0
-		h.Uname, h.Gname = "", ""
 		h.Format = tar.FormatPAX
 		if ok {
 			h.AccessTime = time.Unix(0, u.Atim.Nano())
@@ -293,9 +293,9 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 				}
 				if werr == nil {
 					rel, err := filepath.Rel(local_path, path)
-					if err != nil {
+					if err == nil {
 						aname := filepath.Join(arcname, rel)
-						return get_file_data(callback, seen, path, aname, nil, false)
+						return get_file_data(callback, seen, clean_path, aname, nil, false)
 					}
 				}
 				return nil
@@ -325,7 +325,7 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 func (ci *CopyInstruction) get_file_data(callback func(h *tar.Header, data []byte) error, seen map[file_unique_id]string) (err error) {
 	ep := ci.exclude_patterns
 	for _, folder_name := range []string{"__pycache__", ".DS_Store"} {
-		ep = append(ep, "*/"+folder_name, "*/"+folder_name+"/*")
+		ep = append(ep, "**/"+folder_name, "**/"+folder_name+"/**")
 	}
 	return get_file_data(callback, seen, ci.local_path, ci.arcname, ep, true)
 }
