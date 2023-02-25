@@ -206,7 +206,7 @@ def parse_line(
         return
     m = key_pat.match(line)
     if m is None:
-        log_error(f'Ignoring invalid config line: {line}')
+        log_error(f'Ignoring invalid config line: {line!r}')
         return
     key, val = m.groups()
     if key in ('include', 'globinclude', 'envinclude'):
