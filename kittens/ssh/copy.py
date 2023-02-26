@@ -38,10 +38,12 @@ type=list
 A glob pattern. Files with names matching this pattern are excluded from being
 transferred. Useful when adding directories. Can
 be specified multiple times, if any of the patterns match the file will be
-excluded. To exclude a directory use a pattern like :code:`**/directory_name/**`.
-Based on standard wildcards with the addition that ``/**/`` matches any number of directories
-and patterns starting with a single :code:`*` (as opposed to two asterisks) match any filename prefix.
-See the :link:`detailed syntax <https://github.com/bmatcuk/doublestar#patterns>`.
+excluded. If the pattern includes a :code:`/` then it will match against the full
+path, not just the filename. In such patterns you can use :code:`/**/` to match zero
+or more directories. For example, to exclude a directory and everything under it use
+:code:`**/directory_name`.
+See the :link:`detailed syntax <https://github.com/bmatcuk/doublestar#patterns>` for
+how wildcards match.
 
 
 --symlink-strategy
@@ -52,7 +54,8 @@ the symlink, re-creating it on the remote machine. Setting this to :code:`resolv
 will cause the symlink to be followed and its target used as the file/directory to copy.
 The value of :code:`keep-path` is the same as :code:`resolve` except that the remote
 file path is derived from the symlink's path instead of the path of the symlink's target.
-Note that this option does not apply to symlinks encountered while recursively copying directories.
+Note that this option does not apply to symlinks encountered while recursively copying directories,
+those are always preserved.
 '''
 
 

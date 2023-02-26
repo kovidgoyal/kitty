@@ -275,7 +275,7 @@ func make_tarfile(cd *connection_data, get_local_env func(string) (string, bool)
 		return
 	}
 	for _, ci := range cd.host_opts.Copy {
-		err = get_file_data(add, seen, ci.local_path, ci.arcname, ci.exclude_patterns, true)
+		err = ci.get_file_data(add, seen)
 		if err != nil {
 			return nil, err
 		}

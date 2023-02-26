@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -230,7 +231,7 @@ type file_unique_id struct {
 }
 
 func excluded(pattern, path string) bool {
-	if strings.HasPrefix(pattern, "*") && !strings.HasPrefix(pattern, "**") {
+	if !strings.ContainsRune(pattern, '/') {
 		path = filepath.Base(path)
 	}
 	if matched, err := doublestar.PathMatch(pattern, path); matched && err == nil {
@@ -239,13 +240,13 @@ func excluded(pattern, path string) bool {
 	return false
 }
 
-func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[file_unique_id]string, local_path, arcname string, exclude_patterns []string, recurse bool) error {
+func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[file_unique_id]string, local_path, arcname string, exclude_patterns []string) error {
 	s, err := os.Lstat(local_path)
 	if err != nil {
 		return err
 	}
 	u, ok := s.Sys().(unix.Stat_t)
-	cb := func(h *tar.Header, data []byte) error {
+	cb := func(h *tar.Header, data []byte, arcname string) error {
 		h.Name = arcname
 		if h.Typeflag == tar.TypeDir {
 			h.Name = strings.TrimRight(h.Name, "/") + "/"
@@ -270,41 +271,57 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 		err = cb(&tar.Header{
 			Typeflag: tar.TypeSymlink,
 			Linkname: target,
-		}, nil)
+		}, nil, arcname)
 		if err != nil {
 			return err
 		}
 	case fs.ModeDir:
-		err = cb(&tar.Header{Typeflag: tar.TypeDir}, nil)
-		if err != nil {
-			return err
+		local_path = filepath.Clean(local_path)
+		type entry struct {
+			path, arcname string
 		}
-		if recurse {
-			local_path = filepath.Clean(local_path)
-			return filepath.WalkDir(local_path, func(path string, d fs.DirEntry, werr error) error {
-				clean_path := filepath.Clean(path)
-				if clean_path == local_path {
-					return nil
+		stack := []entry{{local_path, arcname}}
+		for len(stack) > 0 {
+			x := stack[0]
+			stack = stack[1:]
+			entries, err := os.ReadDir(x.path)
+			if err != nil {
+				if x.path == local_path {
+					return err
 				}
+				continue
+			}
+			err = cb(&tar.Header{Typeflag: tar.TypeDir}, nil, x.arcname)
+			if err != nil {
+				return err
+			}
+			for _, e := range entries {
+				entry_path := filepath.Join(x.path, e.Name())
+				aname := path.Join(x.arcname, e.Name())
+				ok := true
 				for _, pat := range exclude_patterns {
-					if excluded(pat, clean_path) {
-						return nil
+					if excluded(pat, entry_path) {
+						ok = false
+						break
 					}
 				}
-				if werr == nil {
-					rel, err := filepath.Rel(local_path, path)
-					if err == nil {
-						aname := filepath.Join(arcname, rel)
-						return get_file_data(callback, seen, clean_path, aname, nil, false)
+				if !ok {
+					continue
+				}
+				if e.IsDir() {
+					stack = append(stack, entry{entry_path, aname})
+				} else {
+					err = get_file_data(callback, seen, entry_path, aname, exclude_patterns)
+					if err != nil {
+						return err
 					}
 				}
-				return nil
-			})
+			}
 		}
 	case 0: // Regular file
 		fid := file_unique_id{dev: u.Dev, inode: u.Ino}
 		if prev, ok := seen[fid]; ok { // Hard link
-			err = cb(&tar.Header{Typeflag: tar.TypeLink, Linkname: prev}, nil)
+			err = cb(&tar.Header{Typeflag: tar.TypeLink, Linkname: prev}, nil, arcname)
 			if err != nil {
 				return err
 			}
@@ -314,7 +331,7 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 		if err != nil {
 			return err
 		}
-		err = cb(&tar.Header{Typeflag: tar.TypeReg}, data)
+		err = cb(&tar.Header{Typeflag: tar.TypeReg}, data, arcname)
 		if err != nil {
 			return err
 		}
@@ -327,7 +344,7 @@ func (ci *CopyInstruction) get_file_data(callback func(h *tar.Header, data []byt
 	for _, folder_name := range []string{"__pycache__", ".DS_Store"} {
 		ep = append(ep, "**/"+folder_name, "**/"+folder_name+"/**")
 	}
-	return get_file_data(callback, seen, ci.local_path, ci.arcname, ep, true)
+	return get_file_data(callback, seen, ci.local_path, ci.arcname, ep)
 }
 
 type ConfigSet struct {

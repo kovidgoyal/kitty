@@ -75,6 +75,8 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
                 os.makedirs(f'{local_home}/d1/d2/d3')
                 touch('d1/d2/x')
                 touch('d1/d2/w.exclude')
+                os.mkdir(f'{local_home}/d1/r')
+                touch('d1/r/noooo')
                 os.symlink('d2/x', f'{local_home}/d1/y')
                 os.symlink('simple-file', f'{local_home}/s1')
                 os.symlink('simple-file', f'{local_home}/s2')
@@ -85,7 +87,7 @@ copy s1
 copy --symlink-strategy=keep-path s2
 copy --dest=a/sfa simple-file
 copy --glob g.*
-copy --exclude **/w.* d1
+copy --exclude **/w.* --exclude **/r d1
 '''
                 self.check_bootstrap(
                     sh, remote_home, test_script='env; exit 0', SHELL_INTEGRATION_VALUE='', conf=conf, home=local_home,

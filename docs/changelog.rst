@@ -62,6 +62,9 @@ Detailed list of changes
 
 - macOS: Fix the maximized window not taking up full space when the title bar is hidden or when :opt:`resize_in_steps` is configured (:iss:`6021`)
 
+- ssh kitten: Change the syntax of glob patterns slightly to match common usage
+  elsewhere. Now the syntax is the same a "extendedglob" in most shells.
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
