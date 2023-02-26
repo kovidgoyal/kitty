@@ -46,7 +46,7 @@ Detailed list of changes
 
 - When changing the cursor color via escape codes or remote control to a fixed color, do not reset cursor_text_color (:iss:`5994`)
 
-- Input Method Extensions: Fix incorrect rendering of IME in-progress and commited text in some situations (:pull:`6049`)
+- Input Method Extensions: Fix incorrect rendering of IME in-progress and committed text in some situations (:pull:`6049`)
 
 - Linux: Reduce minimum required OpenGL version from 3.3 to 3.1 + extensions (:iss:`2790`)
 
@@ -54,7 +54,7 @@ Detailed list of changes
 
 - When reloading configuration, also reload custom MIME types from :file:`mime.types` config file (:pull:`6012`)
 
-- launch: Allow specifying the state (fullscreen/maximized/minimized) for newly created OS Windows (:iss:`6026`)
+- launch: Allow specifying the state (full screen/maximized/minimized) for newly created OS Windows (:iss:`6026`)
 
 - Sessions: Allow specifying the OS window state via the ``os_window_state`` directive (:iss:`5863`)
 
