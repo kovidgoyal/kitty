@@ -29,7 +29,9 @@ type ConfigLine struct {
 }
 
 type ConfigParser struct {
-	LineHandler func(key, val string) error
+	LineHandler     func(key, val string) error
+	CommentsHandler func(line string) error
+	SourceHandler   func(text, path string)
 
 	bad_lines     []ConfigLine
 	seen_includes map[string]bool
@@ -73,7 +75,16 @@ func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes st
 	for scanner.Scan() {
 		line := strings.TrimLeft(scanner.Text(), " ")
 		lnum++
-		if line == "" || strings.HasPrefix(line, "#") {
+		if line == "" {
+			continue
+		}
+		if line[0] == '#' {
+			if self.CommentsHandler != nil {
+				err := self.CommentsHandler(line)
+				if err != nil {
+					self.bad_lines = append(self.bad_lines, ConfigLine{Src_file: name, Line: line, Line_number: lnum, Err: err})
+				}
+			}
 			continue
 		}
 		key, val, _ := strings.Cut(line, " ")
@@ -148,6 +159,9 @@ func (self *ConfigParser) ParseFiles(paths ...string) error {
 		err = self.parse(scanner, path, filepath.Dir(path), 0)
 		if err != nil {
 			return err
+		}
+		if self.SourceHandler != nil {
+			self.SourceHandler(utils.UnsafeBytesToString(raw), path)
 		}
 	}
 	return nil

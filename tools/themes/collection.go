@@ -4,12 +4,12 @@ package themes
 
 import (
 	"archive/zip"
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
+	"kitty/tools/config"
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
 	"net/http"
@@ -136,52 +136,45 @@ type ThemeMetadata struct {
 	Author       string `json:"author"`
 }
 
-func parse_theme_metadata(raw string) *ThemeMetadata {
-	scanner := bufio.NewScanner(strings.NewReader(raw))
+func parse_theme_metadata(path string) (*ThemeMetadata, string, error) {
 	var in_metadata, in_blurb, finished_metadata bool
 	ans := ThemeMetadata{}
 	settings := utils.NewSet[string]()
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+	read_is_dark := func(key, val string) (err error) {
+		settings.Add(key)
+		if key == "background" {
+			val = strings.TrimSpace(val)
+			if val != "" {
+				bg, err := style.ParseColor(val)
+				if err == nil {
+					ans.Is_dark = utils.Max(bg.Red, bg.Green, bg.Green) < 115
+				}
+			}
 		}
+		return
+	}
+	read_metadata := func(line string) (err error) {
 		is_block := strings.HasPrefix(line, "## ")
 		if in_metadata && !is_block {
 			finished_metadata = true
 		}
 		if finished_metadata {
-			if line[0] != '#' {
-				key, val, found := strings.Cut(line, " ")
-				if found {
-					settings.Add(key)
-					if key == "background" {
-						val = strings.TrimSpace(val)
-						if val != "" {
-							bg, err := style.ParseColor(val)
-							if err == nil {
-								ans.Is_dark = utils.Max(bg.Red, bg.Green, bg.Green) < 115
-							}
-						}
-					}
-				}
-			}
-			continue
+			return
 		}
 		if !in_metadata && is_block {
 			in_metadata = true
 		}
 		if !in_metadata {
-			continue
+			return
 		}
 		line = line[3:]
 		if in_blurb {
 			ans.Blurb += " " + line
-			continue
+			return
 		}
 		key, val, found := strings.Cut(line, ":")
 		if !found {
-			continue
+			return
 		}
 		key = strings.TrimSpace(strings.ToLower(key))
 		val = strings.TrimSpace(val)
@@ -198,9 +191,16 @@ func parse_theme_metadata(raw string) *ThemeMetadata {
 		case "license":
 			ans.License = val
 		}
+		return
+	}
+	source := ""
+	cp := config.ConfigParser{LineHandler: read_is_dark, CommentsHandler: read_metadata, SourceHandler: func(code, path string) { source = code }}
+	err := cp.ParseFiles(path)
+	if err != nil {
+		return nil, "", err
 	}
 	ans.Num_settings = settings.Len()
-	return &ans
+	return &ans, source, nil
 }
 
 type Theme struct {
@@ -217,7 +217,7 @@ type Themes struct {
 }
 
 var camel_case_pat = (&utils.Once[*regexp.Regexp]{Run: func() *regexp.Regexp {
-	return regexp.MustCompile(`[a-z][A-Z]`)
+	return regexp.MustCompile(`([a-z])([A-Z])`)
 }}).Get
 
 func theme_name_from_file_name(fname string) string {
@@ -237,12 +237,10 @@ func (self *Themes) add_from_dir(dirpath string) error {
 	}
 	for _, e := range entries {
 		if !e.IsDir() && strings.HasSuffix(e.Name(), ".conf") {
-			confb, err := os.ReadFile(e.Name())
+			m, conf, err := parse_theme_metadata(filepath.Join(dirpath, e.Name()))
 			if err != nil {
 				return err
 			}
-			conf := utils.UnsafeBytesToString(confb)
-			m := parse_theme_metadata(conf)
 			if m.Name == "" {
 				m.Name = theme_name_from_file_name(e.Name())
 			}
