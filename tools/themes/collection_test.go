@@ -3,11 +3,17 @@
 package themes
 
 import (
+	"archive/zip"
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -43,4 +49,91 @@ func TestThemeCollections(t *testing.T) {
 	os.WriteFile(filepath.Join(tdir, "inc.conf"), []byte("background white"), 0o600)
 	pt(ThemeMetadata{Name: "XYZ", Blurb: "a b", Author: "A", Num_settings: 2},
 		"# some crap", " ", "## ", "## author: A", "## name: XYZ", "## blurb: a", "## b", "", "color red", "background black", "include inc.conf")
+
+	buf := bytes.Buffer{}
+	zw := zip.NewWriter(&buf)
+	fw, _ := zw.Create("x/themes.json")
+	fw.Write([]byte(`[
+    {
+        "author": "X Y",
+        "blurb": "A dark color scheme for the kitty terminal.",
+        "file": "themes/Alabaster_Dark.conf",
+        "is_dark": true,
+        "license": "MIT",
+        "name": "Alabaster Dark",
+        "num_settings": 30,
+        "upstream": "https://xxx.com"
+    },
+	{
+		"name": "Empty", "file": "empty.conf"
+	}
+	]`))
+	fw, _ = zw.Create("x/empty.conf")
+	fw.Write([]byte("empty"))
+	fw, _ = zw.Create("x/themes/Alabaster_Dark.conf")
+	fw.Write([]byte("alabaster"))
+	zw.Close()
+
+	received_etag := ""
+	request_count := 0
+	check_etag := true
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		request_count++
+		received_etag = r.Header.Get("If-None-Match")
+		if check_etag && received_etag == `"xxx"` {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		w.Header().Add("ETag", `"xxx"`)
+		w.Write(buf.Bytes())
+	}))
+	defer ts.Close()
+
+	_, err := fetch_cached("test", ts.URL, tdir, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := zip.OpenReader(filepath.Join(tdir, "test.zip"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var jm JSONMetadata
+	err = json.Unmarshal([]byte(r.Comment), &jm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if jm.Etag != `"xxx"` {
+		t.Fatalf("Unexpected ETag: %#v", jm.Etag)
+	}
+	_, err = fetch_cached("test", ts.URL, tdir, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request_count != 1 {
+		t.Fatal("Cached zip file was not used")
+	}
+	before, _ := os.Stat(filepath.Join(tdir, "test.zip"))
+	_, err = fetch_cached("test", ts.URL, tdir, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request_count != 2 {
+		t.Fatal("Cached zip file was incorrectly used")
+	}
+	if received_etag != `"xxx"` {
+		t.Fatalf("Got invalid ETag: %#v", received_etag)
+	}
+	after, _ := os.Stat(filepath.Join(tdir, "test.zip"))
+	if before.ModTime() != after.ModTime() {
+		t.Fatal("Cached zip file was incorrectly re-downloaded")
+	}
+	check_etag = false
+	_, err = fetch_cached("test", ts.URL, tdir, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	after2, _ := os.Stat(filepath.Join(tdir, "test.zip"))
+	if after2.ModTime() != after.ModTime() {
+		t.Fatal("Cached zip file was incorrectly not re-downloaded")
+	}
 }

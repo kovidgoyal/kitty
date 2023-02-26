@@ -32,15 +32,16 @@ type JSONMetadata struct {
 
 var ErrNoCacheFound = errors.New("No cache found and max cache age is negative")
 
-func fetch_cached(name, url string, max_cache_age time.Duration) (string, error) {
-	cache_path := filepath.Join(utils.CacheDir(), name+".zip")
+func fetch_cached(name, url, cache_path string, max_cache_age time.Duration) (string, error) {
+	cache_path = filepath.Join(cache_path, name+".zip")
 	zf, err := zip.OpenReader(cache_path)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return "", err
 	}
+
 	var jm JSONMetadata
-	err = json.Unmarshal(utils.UnsafeStringToBytes(zf.Comment), &jm)
 	if err == nil {
+		err = json.Unmarshal(utils.UnsafeStringToBytes(zf.Comment), &jm)
 		if max_cache_age < 0 {
 			return cache_path, nil
 		}
@@ -67,6 +68,9 @@ func fetch_cached(name, url string, max_cache_age time.Duration) (string, error)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotModified {
+			return cache_path, nil
+		}
 		return "", fmt.Errorf("Failed to download %s with HTTP error: %s", url, resp.Status)
 	}
 	var tf, tf2 *os.File
@@ -122,7 +126,7 @@ func fetch_cached(name, url string, max_cache_age time.Duration) (string, error)
 }
 
 func FetchCached(max_cache_age time.Duration) (string, error) {
-	return fetch_cached("kitty-themes", "https://codeload.github.com/kovidgoyal/kitty-themes/zip/master", max_cache_age)
+	return fetch_cached("kitty-themes", "https://codeload.github.com/kovidgoyal/kitty-themes/zip/master", utils.CacheDir(), max_cache_age)
 }
 
 type ThemeMetadata struct {
