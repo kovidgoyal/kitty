@@ -215,6 +215,23 @@ type Theme struct {
 	is_user_defined bool
 }
 
+func (self *Theme) Code() (string, error) {
+	if self.zip_reader != nil {
+		f, err := self.zip_reader.Open()
+		self.zip_reader = nil
+		if err != nil {
+			return "", err
+		}
+		defer f.Close()
+		data, err := io.ReadAll(f)
+		if err != nil {
+			return "", err
+		}
+		self.code = utils.UnsafeBytesToString(data)
+	}
+	return self.code, nil
+}
+
 type Themes struct {
 	name_map  map[string]*Theme
 	index_map []string
@@ -255,10 +272,10 @@ func (self *Themes) add_from_dir(dirpath string) error {
 	return nil
 }
 
-func (self *Themes) add_from_zip_file(zippath string) error {
+func (self *Themes) add_from_zip_file(zippath string) (io.Closer, error) {
 	r, err := zip.OpenReader(zippath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	name_map := make(map[string]*zip.File, len(r.File))
 	var themes []ThemeMetadata
@@ -269,21 +286,21 @@ func (self *Themes) add_from_zip_file(zippath string) error {
 			theme_dir = path.Dir(file.Name)
 			fr, err := file.Open()
 			if err != nil {
-				return fmt.Errorf("Error while opening %s from the ZIP file: %w", file.Name, err)
+				return nil, fmt.Errorf("Error while opening %s from the ZIP file: %w", file.Name, err)
 			}
 			defer fr.Close()
 			raw, err := io.ReadAll(fr)
 			if err != nil {
-				return fmt.Errorf("Error while reading %s from the ZIP file: %w", file.Name, err)
+				return nil, fmt.Errorf("Error while reading %s from the ZIP file: %w", file.Name, err)
 			}
 			err = json.Unmarshal(raw, &themes)
 			if err != nil {
-				return fmt.Errorf("Error while decoding %s: %w", file.Name, err)
+				return nil, fmt.Errorf("Error while decoding %s: %w", file.Name, err)
 			}
 		}
 	}
 	if theme_dir == "" {
-		return fmt.Errorf("No themes.json found in ZIP file")
+		return nil, fmt.Errorf("No themes.json found in ZIP file")
 	}
 	for _, theme := range themes {
 		key := path.Join(theme_dir, theme.Filepath)
@@ -293,25 +310,29 @@ func (self *Themes) add_from_zip_file(zippath string) error {
 			self.name_map[theme.Name] = &t
 		}
 	}
-	return nil
+	return r, nil
 }
 
-func LoadThemes(cache_age_in_days time.Duration, ignore_no_cache bool) (*Themes, error) {
-	zip_path, err := FetchCached(cache_age_in_days * time.Hour * 24)
-	ans := Themes{name_map: make(map[string]*Theme)}
+func (self *Themes) ThemeByName(name string) *Theme {
+	return self.name_map[name]
+}
+
+func LoadThemes(cache_age time.Duration, ignore_no_cache bool) (ans *Themes, closer io.Closer, err error) {
+	zip_path, err := FetchCached(cache_age)
+	ans = &Themes{name_map: make(map[string]*Theme)}
 	if err != nil {
 		if !errors.Is(err, ErrNoCacheFound) || ignore_no_cache {
-			return nil, err
+			return nil, nil, err
 		}
 	} else {
-		if err = ans.add_from_zip_file(zip_path); err != nil {
-			return nil, err
+		if closer, err = ans.add_from_zip_file(zip_path); err != nil {
+			return nil, nil, err
 		}
 	}
 	if err = ans.add_from_dir(filepath.Join(utils.ConfigDir(), "themes")); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	ans.index_map = maps.Keys(ans.name_map)
 	ans.index_map = utils.StableSortWithKey(ans.index_map, strings.ToLower)
-	return &ans, nil
+	return ans, closer, nil
 }

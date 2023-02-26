@@ -136,4 +136,22 @@ func TestThemeCollections(t *testing.T) {
 	if after2.ModTime() != after.ModTime() {
 		t.Fatal("Cached zip file was incorrectly not re-downloaded")
 	}
+	coll := Themes{name_map: map[string]*Theme{}}
+	closer, err := coll.add_from_zip_file(filepath.Join(tdir, "test.zip"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer.Close()
+	if code, err := coll.ThemeByName("Empty").Code(); code != "empty" {
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Fatal("failed to load code for empty theme")
+	}
+	if code, err := coll.ThemeByName("Alabaster Dark").Code(); code != "alabaster" {
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Fatal("failed to load code for alabaster theme")
+	}
 }
