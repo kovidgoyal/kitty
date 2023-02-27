@@ -4,6 +4,7 @@ package themes
 
 import (
 	"archive/zip"
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -140,12 +142,12 @@ type ThemeMetadata struct {
 	Author       string `json:"author"`
 }
 
-func parse_theme_metadata(path string) (*ThemeMetadata, string, error) {
+func parse_theme_metadata(path string) (*ThemeMetadata, map[string]string, error) {
 	var in_metadata, in_blurb, finished_metadata bool
 	ans := ThemeMetadata{}
-	settings := utils.NewSet[string]()
+	settings := map[string]string{}
 	read_is_dark := func(key, val string) (err error) {
-		settings.Add(key)
+		settings[key] = val
 		if key == "background" {
 			val = strings.TrimSpace(val)
 			if val != "" {
@@ -197,25 +199,25 @@ func parse_theme_metadata(path string) (*ThemeMetadata, string, error) {
 		}
 		return
 	}
-	source := ""
-	cp := config.ConfigParser{LineHandler: read_is_dark, CommentsHandler: read_metadata, SourceHandler: func(code, path string) { source = code }}
+	cp := config.ConfigParser{LineHandler: read_is_dark, CommentsHandler: read_metadata}
 	err := cp.ParseFiles(path)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
-	ans.Num_settings = settings.Len()
-	return &ans, source, nil
+	ans.Num_settings = len(settings)
+	return &ans, settings, nil
 }
 
 type Theme struct {
 	metadata *ThemeMetadata
 
 	code            string
+	settings        map[string]string
 	zip_reader      *zip.File
 	is_user_defined bool
 }
 
-func (self *Theme) Code() (string, error) {
+func (self *Theme) load_code() (string, error) {
 	if self.zip_reader != nil {
 		f, err := self.zip_reader.Open()
 		self.zip_reader = nil
@@ -230,6 +232,86 @@ func (self *Theme) Code() (string, error) {
 		self.code = utils.UnsafeBytesToString(data)
 	}
 	return self.code, nil
+}
+
+func (self *Theme) Settings() (map[string]string, error) {
+	if self.zip_reader != nil {
+		code, err := self.load_code()
+		if err != nil {
+			return nil, err
+		}
+		self.settings = make(map[string]string, 64)
+		scanner := bufio.NewScanner(strings.NewReader(code))
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line != "" && line[0] != '#' {
+				key, val, found := strings.Cut(line, " ")
+				if found {
+					self.settings[key] = val
+				}
+			}
+		}
+	}
+	return self.settings, nil
+}
+
+func (self *Theme) AsEscapeCodes() (string, error) {
+	settings, err := self.Settings()
+	if err != nil {
+		return "", err
+	}
+	w := strings.Builder{}
+	w.Grow(4096)
+
+	w.WriteString("\033]4")
+	set_color := func(i int, sharp string) {
+		w.WriteByte(';')
+		w.WriteString(strconv.Itoa(i))
+		w.WriteByte(';')
+		w.WriteString(sharp)
+	}
+
+	set_default_color := func(name, defval string, num int) {
+		w.WriteString("\033]")
+		defer func() { w.WriteString("\033\\") }()
+		val, found := settings[name]
+		if !found {
+			val = defval
+		}
+		if val != "" {
+			rgba, err := style.ParseColor(val)
+			if err == nil {
+				w.WriteString(strconv.Itoa(num))
+				w.WriteByte(';')
+				w.WriteString(rgba.AsRGBSharp())
+				return
+			}
+		}
+		w.WriteByte('1')
+		w.WriteString(strconv.Itoa(num))
+	}
+	set_default_color("foreground", style.DefaultColors.Foreground, 10)
+	set_default_color("background", style.DefaultColors.Background, 11)
+	set_default_color("cursor", style.DefaultColors.Cursor, 12)
+	set_default_color("selection_background", style.DefaultColors.SelectionBg, 17)
+	set_default_color("selection_foreground", style.DefaultColors.SelectionFg, 19)
+
+	for i := 0; i < 256; i++ {
+		key := "color" + strconv.Itoa(i)
+		val := settings[key]
+		if val != "" {
+			rgba, err := style.ParseColor(val)
+			if err == nil {
+				set_color(i, rgba.AsRGBSharp())
+				continue
+			}
+		}
+		rgba := style.RGBA{}
+		rgba.FromRGB(style.ColorTable[i])
+		set_color(i, rgba.AsRGBSharp())
+	}
+	w.WriteString("\033\\")
+	return w.String(), nil
 }
 
 type Themes struct {
@@ -265,7 +347,7 @@ func (self *Themes) add_from_dir(dirpath string) error {
 			if m.Name == "" {
 				m.Name = theme_name_from_file_name(e.Name())
 			}
-			t := Theme{metadata: m, is_user_defined: true, code: conf}
+			t := Theme{metadata: m, is_user_defined: true, settings: conf}
 			self.name_map[m.Name] = &t
 		}
 	}

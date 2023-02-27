@@ -142,13 +142,13 @@ func TestThemeCollections(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer closer.Close()
-	if code, err := coll.ThemeByName("Empty").Code(); code != "empty" {
+	if code, err := coll.ThemeByName("Empty").load_code(); code != "empty" {
 		if err != nil {
 			t.Fatal(err)
 		}
 		t.Fatal("failed to load code for empty theme")
 	}
-	if code, err := coll.ThemeByName("Alabaster Dark").Code(); code != "alabaster" {
+	if code, err := coll.ThemeByName("Alabaster Dark").load_code(); code != "alabaster" {
 		if err != nil {
 			t.Fatal(err)
 		}

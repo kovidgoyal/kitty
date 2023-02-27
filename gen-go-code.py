@@ -427,11 +427,24 @@ def generate_spinners() -> str:
 
 
 def generate_color_names() -> str:
+    selfg = "" if Options.selection_foreground is None else Options.selection_foreground.as_sharp
+    selbg = "" if Options.selection_background is None else Options.selection_background.as_sharp
+    cursor = "" if Options.cursor is None else Options.cursor.as_sharp
     return 'package style\n\nvar ColorNames = map[string]RGBA{' + '\n'.join(
         f'\t"{name}": RGBA{{ Red:{val.red}, Green:{val.green}, Blue:{val.blue} }},'
         for name, val in color_names.items()
     ) + '\n}' + '\n\nvar ColorTable = [256]uint32{' + ', '.join(
-        f'{x}' for x in Options.color_table) + '}\n'
+        f'{x}' for x in Options.color_table) + '}\n' + f'''
+var DefaultColors = struct {{
+Foreground, Background, Cursor, SelectionFg, SelectionBg string
+}}{{
+Foreground: "{Options.foreground.as_sharp}",
+Background: "{Options.background.as_sharp}",
+Cursor: "{cursor}",
+SelectionFg: "{selfg}",
+SelectionBg: "{selbg}",
+}}
+'''
 
 
 def load_ref_map() -> Dict[str, Dict[str, str]]:
