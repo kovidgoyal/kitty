@@ -9,7 +9,7 @@ import re
 import textwrap
 from typing import Any, Callable, Dict, Iterator, List, Set, Tuple, Union, get_type_hints
 
-from kitty.conf.types import Definition, MultiOption, Option, unset
+from kitty.conf.types import Definition, MultiOption, Option, ParserFuncType, unset
 from kitty.types import _T
 
 
@@ -440,6 +440,121 @@ def write_output(loc: str, defn: Definition) -> None:
         c = generate_c_conversion(loc, ctypes)
         with open(os.path.join(*loc.split('.'), 'options', 'to-c-generated.h'), 'w') as f:
             f.write(f'{c}\n')
+
+
+def go_type_data(parser_func: ParserFuncType, ctype: str) -> Tuple[str, str]:
+    if ctype:
+        return f'*{ctype}', f'Parse{ctype}(val)'
+    p = parser_func.__name__
+    if p == 'int':
+        return 'int64', 'strconv.ParseInt(val, 10, 64)'
+    if p == 'str':
+        return 'string', 'val, nil'
+    if p == 'float':
+        return 'float64', 'strconv.ParseFloat(val, 10, 64)'
+    if p == 'to_bool':
+        return 'bool', 'config.StringToBool(val), nil'
+    th = get_type_hints(parser_func)
+    rettype = th['return']
+    return {int: 'int64', str: 'string', float: 'float64'}[rettype], f'{p}(val)'
+
+
+def gen_go_code(defn: Definition) -> str:
+    lines = ['import "fmt"', 'import "strconv"', 'import "kitty/tools/config"',
+             'var _ = fmt.Println', 'var _ = config.StringToBool', 'var _ = strconv.Atoi']
+    a = lines.append
+    choices = {}
+    go_types = {}
+    go_parsers = {}
+    defaults = {}
+    multiopts = {''}
+    for option in sorted(defn.iter_all_options(), key=lambda a: natural_keys(a.name)):
+        name = option.name.capitalize()
+        if isinstance(option, MultiOption):
+            go_types[name], go_parsers[name] = go_type_data(option.parser_func, option.ctype)
+            multiopts.add(name)
+        else:
+            defaults[name] = option.parser_func(option.defval_as_string)
+            if option.choices:
+                choices[name] = option.choices
+                go_types[name] = f'{name}_Choice_Type'
+                go_parsers[name] = f'Parse_{name}(val)'
+                continue
+            go_types[name], go_parsers[name] = go_type_data(option.parser_func, option.ctype)
+
+    for oname in choices:
+        a(f'type {go_types[oname]} int')
+    a('type Config struct {')
+    for name, gotype in go_types.items():
+        if name in multiopts:
+            a(f'{name} []{gotype}')
+        else:
+            a(f'{name} {gotype}')
+    a('}')
+
+    def cval(x: str) -> str:
+        return x.replace('-', '_')
+
+    a('func NewConfig() *Config {')
+    a('return &Config{')
+    for name, pname in go_parsers.items():
+        if name in multiopts:
+            continue
+        d = defaults[name]
+        if not d:
+            continue
+        if isinstance(d, str):
+            dval = f'{name}_{cval(d)}' if name in choices else f'`{d}`'
+        elif isinstance(d, bool):
+            dval = repr(d).lower()
+        else:
+            dval = repr(d)
+        a(f'{name}: {dval},')
+    a('}''}')
+
+    for oname, choice_vals in choices.items():
+        a('const (')
+        for i, c in enumerate(choice_vals):
+            c = cval(c)
+            if i == 0:
+                a(f'{oname}_{c} {oname}_Choice_Type = iota')
+            else:
+                a(f'{oname}_{c}')
+        a(')')
+        a(f'func (x {oname}_Choice_Type) String() string'' {')
+        a('switch x {')
+        a('default: return ""')
+        for c in choice_vals:
+            a(f'case {oname}_{cval(c)}: return "{c}"')
+        a('}''}')
+        a(f'func {go_parsers[oname].split("(")[0]}(val string) (ans {go_types[oname]}, err error) ''{')
+        a('switch val {')
+        for c in choice_vals:
+            a(f'case "{c}": return {oname}_{cval(c)}, nil')
+        vals = ', '.join(choice_vals)
+        a(f'default: return ans, fmt.Errorf("%#v is not a valid value for %s. Valid values are: %s", val, "{c}", "{vals}")')
+        a('}''}')
+
+    a('func (c *Config) Parse(key, val string) (err error) {')
+    a('switch key {')
+    a('default: return fmt.Errorf("Unknown configuration key: %#v", key)')
+    for oname, pname in go_parsers.items():
+        ol = oname.lower()
+        is_multiple = oname in multiopts
+        a(f'case "{ol}":')
+        if is_multiple:
+            a(f'var temp_val []{go_types[oname]}')
+        else:
+            a(f'var temp_val {go_types[oname]}')
+        a(f'temp_val, err = {pname}')
+        a(f'if err != nil {{ return fmt.Errorf("Failed to parse {ol} = %#v with error: %w", val, err) }}')
+        if is_multiple:
+            a(f'c.{oname} = append(c.{oname}, temp_val...)')
+        else:
+            a(f'c.{oname} = temp_val')
+    a('}')
+    a('return}')
+    return '\n'.join(lines)
 
 
 def main() -> None:

@@ -66,8 +66,8 @@ func complete_plus_open(completions *cli.Completions, word string, arg_num int) 
 }
 
 func complete_themes(completions *cli.Completions, word string, arg_num int) {
-	kitty, err := utils.KittyExe()
-	if err == nil {
+	kitty := utils.KittyExe()
+	if kitty != "" {
 		out, err := exec.Command(kitty, "+runpy", "from kittens.themes.collection import *; print_theme_names()").Output()
 		if err == nil {
 			mg := completions.AddMatchGroup("Themes")

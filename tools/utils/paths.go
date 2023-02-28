@@ -3,13 +3,18 @@
 package utils
 
 import (
+	"crypto/rand"
+	"encoding/base32"
+	"fmt"
 	"io/fs"
+	not_rand "math/rand"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
-	"sync"
 
 	"golang.org/x/sys/unix"
 )
@@ -57,61 +62,57 @@ func Abspath(path string) string {
 	return path
 }
 
-var config_dir, kitty_exe, cache_dir string
-var kitty_exe_err error
-var config_dir_once, kitty_exe_once, cache_dir_once sync.Once
-
-func find_kitty_exe() {
+var KittyExe = (&Once[string]{Run: func() string {
 	exe, err := os.Executable()
 	if err == nil {
-		kitty_exe = filepath.Join(filepath.Dir(exe), "kitty")
-		kitty_exe_err = unix.Access(kitty_exe, unix.X_OK)
-	} else {
-		kitty_exe_err = err
+		return filepath.Join(filepath.Dir(exe), "kitty")
 	}
-}
+	return ""
+}}).Get
 
-func KittyExe() (string, error) {
-	kitty_exe_once.Do(find_kitty_exe)
-	return kitty_exe, kitty_exe_err
-}
-
-func find_config_dir() {
-	if os.Getenv("KITTY_CONFIG_DIRECTORY") != "" {
-		config_dir = Abspath(Expanduser(os.Getenv("KITTY_CONFIG_DIRECTORY")))
-	} else {
-		var locations []string
-		if os.Getenv("XDG_CONFIG_HOME") != "" {
-			locations = append(locations, os.Getenv("XDG_CACHE_HOME"))
-		}
-		locations = append(locations, Expanduser("~/.config"))
-		if runtime.GOOS == "darwin" {
-			locations = append(locations, Expanduser("~/Library/Preferences"))
-		}
-		for _, loc := range locations {
-			if loc != "" {
-				q := filepath.Join(loc, "kitty")
-				if _, err := os.Stat(filepath.Join(q, "kitty.conf")); err == nil {
-					config_dir = q
-					break
-				}
-			}
-		}
-		for _, loc := range locations {
-			if loc != "" {
-				config_dir = filepath.Join(loc, "kitty")
-				break
-			}
+var ConfigDir = (&Once[string]{Run: func() (config_dir string) {
+	if kcd := os.Getenv("KITTY_CONFIG_DIRECTORY"); kcd != "" {
+		return Abspath(Expanduser(kcd))
+	}
+	var locations []string
+	seen := NewSet[string]()
+	add := func(x string) {
+		x = Abspath(Expanduser(x))
+		if !seen.Has(x) {
+			seen.Add(x)
+			locations = append(locations, x)
 		}
 	}
-}
+	if xh := os.Getenv("XDG_CONFIG_HOME"); xh != "" {
+		add(xh)
+	}
+	if dirs := os.Getenv("XDG_CONFIG_DIRS"); dirs != "" {
+		for _, candidate := range strings.Split(dirs, ":") {
+			add(candidate)
+		}
+	}
+	add("~/.config")
+	if runtime.GOOS == "darwin" {
+		add("~/Library/Preferences")
+	}
+	for _, loc := range locations {
+		if loc != "" {
+			q := filepath.Join(loc, "kitty")
+			if _, err := os.Stat(filepath.Join(q, "kitty.conf")); err == nil {
+				config_dir = q
+				return
+			}
+		}
+	}
+	config_dir = os.Getenv("XDG_CONFIG_HOME")
+	if config_dir == "" {
+		config_dir = "~/.config"
+	}
+	config_dir = filepath.Join(Expanduser(config_dir), "kitty")
+	return
+}}).Get
 
-func ConfigDir() string {
-	config_dir_once.Do(find_config_dir)
-	return config_dir
-}
-
-func find_cache_dir() {
+var CacheDir = (&Once[string]{Run: func() (cache_dir string) {
 	candidate := ""
 	if edir := os.Getenv("KITTY_CACHE_DIRECTORY"); edir != "" {
 		candidate = Abspath(Expanduser(edir))
@@ -125,13 +126,71 @@ func find_cache_dir() {
 		candidate = filepath.Join(Expanduser(candidate), "kitty")
 	}
 	os.MkdirAll(candidate, 0o755)
-	cache_dir = candidate
+	return candidate
+}}).Get
+
+func macos_user_cache_dir() string {
+	// Sadly Go does not provide confstr() so we use this hack.
+	// Note that given a user generateduid and uid we can derive this by using
+	// the algorithm at https://github.com/ydkhatri/MacForensics/blob/master/darwin_path_generator.py
+	// but I cant find a good way to get the generateduid. Requires calling dscl in which case we might as well call getconf
+	// The data is in /var/db/dslocal/nodes/Default/users/<username>.plist but it needs root
+	// So instead we use various hacks to get it quickly, falling back to running /usr/bin/getconf
+
+	is_ok := func(m string) bool {
+		s, err := os.Stat(m)
+		if err != nil {
+			return false
+		}
+		stat, ok := s.Sys().(unix.Stat_t)
+		return ok && s.IsDir() && int(stat.Uid) == os.Geteuid() && s.Mode().Perm() == 0o700 && unix.Access(m, unix.X_OK|unix.W_OK|unix.R_OK) == nil
+	}
+
+	if tdir := strings.TrimRight(os.Getenv("TMPDIR"), "/"); filepath.Base(tdir) == "T" {
+		if m := filepath.Join(filepath.Dir(tdir), "C"); is_ok(m) {
+			return m
+		}
+	}
+
+	matches, err := filepath.Glob("/private/var/folders/*/*/C")
+	if err == nil {
+		for _, m := range matches {
+			if is_ok(m) {
+				return m
+			}
+		}
+	}
+	out, err := exec.Command("/usr/bin/getconf", "DARWIN_USER_CACHE_DIR").Output()
+	if err == nil {
+		return strings.TrimRight(strings.TrimSpace(UnsafeBytesToString(out)), "/")
+	}
+	return ""
 }
 
-func CacheDir() string {
-	cache_dir_once.Do(find_cache_dir)
-	return cache_dir
-}
+var RuntimeDir = (&Once[string]{Run: func() (runtime_dir string) {
+	var candidate string
+	if q := os.Getenv("KITTY_RUNTIME_DIRECTORY"); q != "" {
+		candidate = q
+	} else if runtime.GOOS == "darwin" {
+		candidate = macos_user_cache_dir()
+	} else if q := os.Getenv("XDG_RUNTIME_DIR"); q != "" {
+		candidate = q
+	}
+	candidate = strings.TrimRight(candidate, "/")
+	if candidate == "" {
+		q := fmt.Sprintf("/run/user/%d", os.Geteuid())
+		if s, err := os.Stat(q); err == nil && s.IsDir() && unix.Access(q, unix.X_OK|unix.R_OK|unix.W_OK) == nil {
+			candidate = q
+		} else {
+			candidate = filepath.Join(CacheDir(), "run")
+		}
+	}
+	os.MkdirAll(candidate, 0o700)
+	if s, err := os.Stat(candidate); err == nil && s.Mode().Perm() != 0o700 {
+		os.Chmod(candidate, 0o700)
+	}
+	return candidate
+}}).Get
 
 type Walk_callback func(path, abspath string, d fs.DirEntry, err error) error
 
@@ -204,4 +263,22 @@ func WalkWithSymlink(dirpath string, callback Walk_callback, transformers ...fun
 	sw := transformed_walker{
 		seen: make(map[string]bool), real_callback: callback, transform_func: transform, needs_recurse_func: needs_symlink_recurse}
 	return sw.walk(dirpath)
+}
+
+func RandomFilename() string {
+	b := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	_, err := rand.Read(b)
+	if err != nil {
+		return strconv.FormatUint(uint64(not_rand.Uint32()), 16)
+	}
+	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)
+
+}
+
+func ResolveConfPath(path string) string {
+	cs := os.ExpandEnv(Expanduser(path))
+	if !filepath.IsAbs(cs) {
+		cs = filepath.Join(ConfigDir(), cs)
+	}
+	return cs
 }

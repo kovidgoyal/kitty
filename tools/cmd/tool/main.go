@@ -10,6 +10,8 @@ import (
 	"kitty/tools/cmd/clipboard"
 	"kitty/tools/cmd/edit_in_kitty"
 	"kitty/tools/cmd/icat"
+	"kitty/tools/cmd/pytest"
+	"kitty/tools/cmd/ssh"
 	"kitty/tools/cmd/unicode_input"
 	"kitty/tools/cmd/update_self"
 	"kitty/tools/tui"
@@ -30,8 +32,12 @@ func KittyToolEntryPoints(root *cli.Command) {
 	clipboard.EntryPoint(root)
 	// icat
 	icat.EntryPoint(root)
+	// ssh
+	ssh.EntryPoint(root)
 	// unicode_input
 	unicode_input.EntryPoint(root)
+	// __pytest__
+	pytest.EntryPoint(root)
 	// __hold_till_enter__
 	root.AddSubCommand(&cli.Command{
 		Name:            "__hold_till_enter__",

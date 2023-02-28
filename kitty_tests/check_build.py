@@ -67,7 +67,7 @@ class TestBuild(BaseTest):
             q = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
             return mode & q == q
 
-        for x in ('kitty', 'kitten', 'askpass.py'):
+        for x in ('kitty', 'kitten'):
             x = os.path.join(shell_integration_dir, 'ssh', x)
             self.assertTrue(is_executable(x), f'{x} is not executable')
         if getattr(sys, 'frozen', False):

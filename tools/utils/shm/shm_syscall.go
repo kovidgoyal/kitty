@@ -11,6 +11,8 @@ import (
 	"strings"
 	"unsafe"
 
+	"kitty/tools/utils"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -86,9 +88,36 @@ func syscall_mmap(f *os.File, size uint64, access AccessFlags, truncate bool) (M
 func (self *syscall_based_mmap) Name() string {
 	return self.f.Name()
 }
+func (self *syscall_based_mmap) Stat() (fs.FileInfo, error) {
+	return self.f.Stat()
+}
+
+func (self *syscall_based_mmap) Flush() error {
+	return unix.Msync(self.region, unix.MS_SYNC)
+}
 
 func (self *syscall_based_mmap) Slice() []byte {
 	return self.region
+}
+
+func (self *syscall_based_mmap) Seek(offset int64, whence int) (int64, error) {
+	return self.f.Seek(offset, whence)
+}
+
+func (self *syscall_based_mmap) Read(b []byte) (int, error) {
+	return self.f.Read(b)
+}
+
+func (self *syscall_based_mmap) Write(b []byte) (int, error) {
+	return self.f.Write(b)
+}
+
+func (self *syscall_based_mmap) WriteWithSize(b []byte) error {
+	return write_with_size(self.f, b)
+}
+
+func (self *syscall_based_mmap) ReadWithSize() ([]byte, error) {
+	return read_with_size(self.f)
 }
 
 func (self *syscall_based_mmap) Close() (err error) {
@@ -124,7 +153,7 @@ func create_temp(pattern string, size uint64) (ans MMap, err error) {
 	var f *os.File
 	try := 0
 	for {
-		name := prefix + next_random() + suffix
+		name := prefix + utils.RandomFilename() + suffix
 		if len(name) > SHM_NAME_MAX {
 			return nil, ErrPatternTooLong
 		}
@@ -150,4 +179,20 @@ func Open(name string, size uint64) (MMap, error) {
 		return nil, err
 	}
 	return syscall_mmap(ans, size, READ, false)
+}
+
+func ReadWithSizeAndUnlink(name string, file_callback ...func(*os.File) error) ([]byte, error) {
+	f, err := shm_open(name, os.O_RDONLY, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	defer shm_unlink(f.Name())
+	for _, cb := range file_callback {
+		err = cb(f)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return read_with_size(f)
 }

@@ -13,15 +13,18 @@ import (
 
 var _ = fmt.Print
 
-func Which(cmd string) string {
+func Which(cmd string, paths ...string) string {
 	if strings.Contains(cmd, string(os.PathSeparator)) {
 		return ""
 	}
-	path := os.Getenv("PATH")
-	if path == "" {
-		return ""
+	if len(paths) == 0 {
+		path := os.Getenv("PATH")
+		if path == "" {
+			return ""
+		}
+		paths = strings.Split(path, string(os.PathListSeparator))
 	}
-	for _, dir := range strings.Split(path, string(os.PathListSeparator)) {
+	for _, dir := range paths {
 		q := filepath.Join(dir, cmd)
 		if unix.Access(q, unix.X_OK) == nil {
 			s, err := os.Stat(q)

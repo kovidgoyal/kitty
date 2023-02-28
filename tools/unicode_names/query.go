@@ -4,11 +4,9 @@ package unicode_names
 
 import (
 	"bytes"
-	"compress/zlib"
 	_ "embed"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"strings"
 	"sync"
 	"time"
@@ -64,33 +62,8 @@ func parse_record(record []byte, mark uint16) {
 
 var parse_once sync.Once
 
-func read_all(r io.Reader, expected_size int) ([]byte, error) {
-	b := make([]byte, 0, expected_size)
-	for {
-		if len(b) == cap(b) {
-			// Add more capacity (let append pick how much).
-			b = append(b, 0)[:len(b)]
-		}
-		n, err := r.Read(b[len(b):cap(b)])
-		b = b[:len(b)+n]
-		if err != nil {
-			if err == io.EOF {
-				err = nil
-			}
-			return b, err
-		}
-	}
-}
-
 func parse_data() {
-	compressed := utils.UnsafeStringToBytes(unicode_name_data)
-	uncompressed_size := binary.LittleEndian.Uint32(compressed)
-	r, _ := zlib.NewReader(bytes.NewReader(compressed[4:]))
-	defer r.Close()
-	raw, err := read_all(r, int(uncompressed_size))
-	if err != nil {
-		panic(err)
-	}
+	raw := utils.ReadCompressedEmbeddedData(unicode_name_data)
 	num_of_lines := binary.LittleEndian.Uint32(raw)
 	raw = raw[4:]
 	num_of_words := binary.LittleEndian.Uint32(raw)

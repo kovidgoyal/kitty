@@ -4,6 +4,8 @@ package utils
 
 import (
 	"fmt"
+
+	"golang.org/x/exp/maps"
 )
 
 var _ = fmt.Print
@@ -20,6 +22,10 @@ func (self *Set[T]) AddItems(val ...T) {
 	for _, x := range val {
 		self.items[x] = struct{}{}
 	}
+}
+
+func (self *Set[T]) String() string {
+	return fmt.Sprintf("%#v", maps.Keys(self.items))
 }
 
 func (self *Set[T]) Remove(val T) {
@@ -68,6 +74,25 @@ func (self *Set[T]) Intersect(other *Set[T]) (ans *Set[T]) {
 	return
 }
 
+func (self *Set[T]) Subtract(other *Set[T]) (ans *Set[T]) {
+	ans = NewSet[T](self.Len())
+	for x := range self.items {
+		if !other.Has(x) {
+			ans.items[x] = struct{}{}
+		}
+	}
+	return ans
+}
+
+func (self *Set[T]) IsSubsetOf(other *Set[T]) bool {
+	for x := range self.items {
+		if !other.Has(x) {
+			return false
+		}
+	}
+	return true
+}
+
 func NewSet[T comparable](capacity ...int) (ans *Set[T]) {
 	if len(capacity) == 0 {
 		ans = &Set[T]{items: make(map[T]struct{}, 8)}
@@ -75,4 +100,10 @@ func NewSet[T comparable](capacity ...int) (ans *Set[T]) {
 		ans = &Set[T]{items: make(map[T]struct{}, capacity[0])}
 	}
 	return
+}
+
+func NewSetWithItems[T comparable](items ...T) (ans *Set[T]) {
+	ans = NewSet[T](len(items))
+	ans.AddItems(items...)
+	return ans
 }

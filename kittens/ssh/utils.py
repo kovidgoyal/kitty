@@ -4,9 +4,12 @@
 
 import os
 import subprocess
-from typing import Any, Dict, List, Sequence, Set, Tuple
+import traceback
+from contextlib import suppress
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple
 
 from kitty.types import run_once
+from kitty.utils import SSHConnectionData
 
 
 @run_once
@@ -92,6 +95,57 @@ def create_shared_memory(data: Any, prefix: str) -> str:
         shm.flush()
         atexit.register(shm.unlink)
     return shm.name
+
+
+def read_data_from_shared_memory(shm_name: str) -> Any:
+    import json
+    import stat
+
+    from kitty.shm import SharedMemory
+    with SharedMemory(shm_name, readonly=True) as shm:
+        shm.unlink()
+        if shm.stats.st_uid != os.geteuid() or shm.stats.st_gid != os.getegid():
+            raise ValueError('Incorrect owner on pwfile')
+        mode = stat.S_IMODE(shm.stats.st_mode)
+        if mode != stat.S_IREAD | stat.S_IWRITE:
+            raise ValueError('Incorrect permissions on pwfile')
+        return json.loads(shm.read_data_with_size())
+
+
+def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
+    from base64 import standard_b64decode
+    yield b'\nKITTY_DATA_START\n'  # to discard leading data
+    try:
+        msg = standard_b64decode(msg).decode('utf-8')
+        md = dict(x.split('=', 1) for x in msg.split(':'))
+        pw = md['pw']
+        pwfilename = md['pwfile']
+        rq_id = md['id']
+    except Exception:
+        traceback.print_exc()
+        yield b'invalid ssh data request message\n'
+    else:
+        try:
+            env_data = read_data_from_shared_memory(pwfilename)
+            if pw != env_data['pw']:
+                raise ValueError('Incorrect password')
+            if rq_id != request_id:
+                raise ValueError(f'Incorrect request id: {rq_id!r} expecting the KITTY_PID-KITTY_WINDOW_ID for the current kitty window')
+        except Exception as e:
+            traceback.print_exc()
+            yield f'{e}\n'.encode('utf-8')
+        else:
+            yield b'OK\n'
+            encoded_data = memoryview(env_data['tarfile'].encode('ascii'))
+            # macOS has a 255 byte limit on its input queue as per man stty.
+            # Not clear if that applies to canonical mode input as well, but
+            # better to be safe.
+            line_sz = 254
+            while encoded_data:
+                yield encoded_data[:line_sz]
+                yield b'\n'
+                encoded_data = encoded_data[line_sz:]
+            yield b'KITTY_DATA_END\n'
 
 
 def set_env_in_cmdline(env: Dict[str, str], argv: List[str]) -> None:
@@ -183,3 +237,86 @@ def set_server_args_in_cmdline(
             ans.insert(i, '-t')
         break
     argv[:] = ans + server_args
+
+
+def get_connection_data(args: List[str], cwd: str = '', extra_args: Tuple[str, ...] = ()) -> Optional[SSHConnectionData]:
+    boolean_ssh_args, other_ssh_args = get_ssh_cli()
+    port: Optional[int] = None
+    expecting_port = expecting_identity = False
+    expecting_option_val = False
+    expecting_hostname = False
+    expecting_extra_val = ''
+    host_name = identity_file = found_ssh = ''
+    found_extra_args: List[Tuple[str, str]] = []
+
+    for i, arg in enumerate(args):
+        if not found_ssh:
+            if os.path.basename(arg).lower() in ('ssh', 'ssh.exe'):
+                found_ssh = arg
+            continue
+        if expecting_hostname:
+            host_name = arg
+            continue
+        if arg.startswith('-') and not expecting_option_val:
+            if arg in boolean_ssh_args:
+                continue
+            if arg == '--':
+                expecting_hostname = True
+            if arg.startswith('-p'):
+                if arg[2:].isdigit():
+                    with suppress(Exception):
+                        port = int(arg[2:])
+                    continue
+                elif arg == '-p':
+                    expecting_port = True
+            elif arg.startswith('-i'):
+                if arg == '-i':
+                    expecting_identity = True
+                else:
+                    identity_file = arg[2:]
+                    continue
+            if arg.startswith('--') and extra_args:
+                matching_ex = is_extra_arg(arg, extra_args)
+                if matching_ex:
+                    if '=' in arg:
+                        exval = arg.partition('=')[-1]
+                        found_extra_args.append((matching_ex, exval))
+                        continue
+                    expecting_extra_val = matching_ex
+
+            expecting_option_val = True
+            continue
+
+        if expecting_option_val:
+            if expecting_port:
+                with suppress(Exception):
+                    port = int(arg)
+                expecting_port = False
+            elif expecting_identity:
+                identity_file = arg
+            elif expecting_extra_val:
+                found_extra_args.append((expecting_extra_val, arg))
+                expecting_extra_val = ''
+            expecting_option_val = False
+            continue
+
+        if not host_name:
+            host_name = arg
+    if not host_name:
+        return None
+    if host_name.startswith('ssh://'):
+        from urllib.parse import urlparse
+        purl = urlparse(host_name)
+        if purl.hostname:
+            host_name = purl.hostname
+        if purl.username:
+            host_name = f'{purl.username}@{host_name}'
+        if port is None and purl.port:
+            port = purl.port
+    if identity_file:
+        if not os.path.isabs(identity_file):
+            identity_file = os.path.expanduser(identity_file)
+        if not os.path.isabs(identity_file):
+            identity_file = os.path.normpath(os.path.join(cwd or os.getcwd(), identity_file))
+
+    return SSHConnectionData(found_ssh, host_name, port, identity_file, tuple(found_extra_args))

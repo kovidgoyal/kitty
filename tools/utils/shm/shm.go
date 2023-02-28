@@ -3,14 +3,15 @@
 package shm
 
 import (
-	"crypto/rand"
-	"encoding/base32"
+	"encoding/binary"
 	"errors"
 	"fmt"
-	not_rand "math/rand"
+	"io"
+	"io/fs"
 	"os"
-	"strconv"
 	"strings"
+
+	"kitty/tools/cli"
 
 	"golang.org/x/sys/unix"
 )
@@ -43,15 +44,6 @@ func prefix_and_suffix(pattern string) (prefix, suffix string, err error) {
 	return prefix, suffix, nil
 }
 
-func next_random() string {
-	b := make([]byte, 8)
-	_, err := rand.Read(b)
-	if err != nil {
-		return strconv.FormatUint(uint64(not_rand.Uint32()), 16)
-	}
-	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)
-}
-
 type MMap interface {
 	Close() error
 	Unlink() error
@@ -59,6 +51,13 @@ type MMap interface {
 	Name() string
 	IsFileSystemBacked() bool
 	FileSystemName() string
+	Stat() (fs.FileInfo, error)
+	Flush() error
+	Seek(offset int64, whence int) (int64, error)
+	Read(b []byte) (int, error)
+	ReadWithSize() ([]byte, error)
+	Write(p []byte) (n int, err error)
+	WriteWithSize([]byte) error
 }
 
 type AccessFlags int
@@ -108,4 +107,79 @@ func truncate_or_unlink(ans *os.File, size uint64) (err error) {
 		return fmt.Errorf("Failed to ftruncate() SHM file %s to size: %d with error: %w", ans.Name(), size, err)
 	}
 	return
+}
+
+func read_till_buf_full(f *os.File, buf []byte) ([]byte, error) {
+	p := buf
+	for len(p) > 0 {
+		n, err := f.Read(p)
+		p = p[n:]
+		if err != nil {
+			if len(p) == 0 && errors.Is(err, io.EOF) {
+				err = nil
+			}
+			return buf[:len(buf)-len(p)], err
+		}
+	}
+	return buf, nil
+}
+
+func read_with_size(f *os.File) ([]byte, error) {
+	szbuf := []byte{0, 0, 0, 0}
+	szbuf, err := read_till_buf_full(f, szbuf)
+	if err != nil {
+		return nil, err
+	}
+	size := int(binary.BigEndian.Uint32(szbuf))
+	return read_till_buf_full(f, make([]byte, size))
+}
+
+func write_with_size(f *os.File, b []byte) error {
+	szbuf := []byte{0, 0, 0, 0}
+	binary.BigEndian.PutUint32(szbuf, uint32(len(b)))
+	_, err := f.Write(szbuf)
+	if err == nil {
+		_, err = f.Write(b)
+	}
+	return err
+}
+
+func test_integration_with_python(args []string) (rc int, err error) {
+	switch args[0] {
+	default:
+		return 1, fmt.Errorf("Unknown test type: %s", args[0])
+	case "read":
+		data, err := ReadWithSizeAndUnlink(args[1])
+		if err != nil {
+			return 1, err
+		}
+		_, err = os.Stdout.Write(data)
+		if err != nil {
+			return 1, err
+		}
+	case "write":
+		data, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return 1, err
+		}
+		mmap, err := CreateTemp("shmtest-", uint64(len(data)+4))
+		if err != nil {
+			return 1, err
+		}
+		mmap.WriteWithSize(data)
+		mmap.Close()
+		fmt.Println(mmap.Name())
+	}
+	return 0, nil
+}
+
+func TestEntryPoint(root *cli.Command) {
+	root.AddSubCommand(&cli.Command{
+		Name:            "shm",
+		OnlyArgsAllowed: true,
+		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
+			return test_integration_with_python(args)
+		},
+	})
+
 }

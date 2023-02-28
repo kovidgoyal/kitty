@@ -8,10 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"kitty/tools/utils"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"kitty/tools/utils"
+
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -39,11 +42,39 @@ func file_mmap(f *os.File, size uint64, access AccessFlags, truncate bool, speci
 	return &file_based_mmap{f: f, region: region, special_name: special_name}, nil
 }
 
+func (self *file_based_mmap) Stat() (fs.FileInfo, error) {
+	return self.f.Stat()
+}
+
 func (self *file_based_mmap) Name() string {
 	if self.special_name != "" {
 		return self.special_name
 	}
 	return filepath.Base(self.f.Name())
+}
+
+func (self *file_based_mmap) Flush() error {
+	return unix.Msync(self.region, unix.MS_SYNC)
+}
+
+func (self *file_based_mmap) Seek(offset int64, whence int) (int64, error) {
+	return self.f.Seek(offset, whence)
+}
+
+func (self *file_based_mmap) Read(b []byte) (int, error) {
+	return self.f.Read(b)
+}
+
+func (self *file_based_mmap) Write(b []byte) (int, error) {
+	return self.f.Write(b)
+}
+
+func (self *file_based_mmap) WriteWithSize(b []byte) error {
+	return write_with_size(self.f, b)
+}
+
+func (self *file_based_mmap) ReadWithSize() ([]byte, error) {
+	return read_with_size(self.f)
 }
 
 func (self *file_based_mmap) FileSystemName() string {
@@ -92,7 +123,7 @@ func create_temp(pattern string, size uint64) (ans MMap, err error) {
 	var f *os.File
 	try := 0
 	for {
-		name := prefix + next_random() + suffix
+		name := prefix + utils.RandomFilename() + suffix
 		path := file_path_from_name(name)
 		f, err = os.OpenFile(path, os.O_EXCL|os.O_CREATE|os.O_RDWR, 0600)
 		if err != nil {
@@ -113,7 +144,7 @@ func create_temp(pattern string, size uint64) (ans MMap, err error) {
 	return file_mmap(f, size, WRITE, true, special_name)
 }
 
-func Open(name string, size uint64) (MMap, error) {
+func open(name string) (*os.File, error) {
 	ans, err := os.OpenFile(file_path_from_name(name), os.O_RDONLY, 0)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -123,5 +154,29 @@ func Open(name string, size uint64) (MMap, error) {
 		}
 		return nil, err
 	}
+	return ans, nil
+}
+
+func Open(name string, size uint64) (MMap, error) {
+	ans, err := open(name)
+	if err != nil {
+		return nil, err
+	}
 	return file_mmap(ans, size, READ, false, name)
+}
+
+func ReadWithSizeAndUnlink(name string, file_callback ...func(*os.File) error) ([]byte, error) {
+	f, err := open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	defer os.Remove(f.Name())
+	for _, cb := range file_callback {
+		err = cb(f)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return read_with_size(f)
 }

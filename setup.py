@@ -1459,7 +1459,7 @@ def package(args: Options, bundle_type: str) -> None:
         if path.endswith('.so'):
             return True
         q = path.split(os.sep)[-2:]
-        if len(q) == 2 and q[0] == 'ssh' and q[1] in ('askpass.py', 'kitty', 'kitten'):
+        if len(q) == 2 and q[0] == 'ssh' and q[1] in ('kitty', 'kitten'):
             return True
         return False
 

@@ -57,6 +57,14 @@ func Filter[T any](s []T, f func(x T) bool) []T {
 	return ans
 }
 
+func Map[T any](s []T, f func(x T) T) []T {
+	ans := make([]T, 0, len(s))
+	for _, x := range s {
+		ans = append(ans, f(x))
+	}
+	return ans
+}
+
 func Sort[T any](s []T, less func(a, b T) bool) []T {
 	sort.Slice(s, func(i, j int) bool { return less(s[i], s[j]) })
 	return s

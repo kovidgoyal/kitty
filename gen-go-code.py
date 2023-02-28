@@ -1,15 +1,17 @@
 #!./kitty/launcher/kitty +launch
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
+import bz2
 import io
 import json
 import os
 import struct
 import subprocess
 import sys
-import zlib
+import tarfile
 from contextlib import contextmanager, suppress
 from functools import lru_cache
+from itertools import chain
 from typing import Any, BinaryIO, Dict, Iterator, List, Optional, Sequence, Set, TextIO, Tuple, Union
 
 import kitty.constants as kc
@@ -22,6 +24,8 @@ from kitty.cli import (
     parse_option_spec,
     serialize_as_go_string,
 )
+from kitty.conf.generate import gen_go_code
+from kitty.conf.types import Definition
 from kitty.guess_mime_type import text_mimes
 from kitty.key_encoding import config_mod_map
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases
@@ -38,7 +42,7 @@ def newer(dest: str, *sources: str) -> bool:
         dtime = os.path.getmtime(dest)
     except OSError:
         return True
-    for s in sources:
+    for s in chain(sources, (__file__,)):
         with suppress(FileNotFoundError):
             if os.path.getmtime(s) >= dtime:
                 return True
@@ -318,8 +322,45 @@ def wrapped_kittens() -> Sequence[str]:
     raise Exception('Failed to read wrapped kittens from kitty wrapper script')
 
 
+def generate_conf_parser(kitten: str, defn: Definition) -> None:
+    with replace_if_needed(f'tools/cmd/{kitten}/conf_generated.go'):
+        print(f'package {kitten}')
+        print(gen_go_code(defn))
+
+
+def generate_extra_cli_parser(name: str, spec: str) -> None:
+    print('import "kitty/tools/cli"')
+    go_opts = tuple(go_options_for_seq(parse_option_spec(spec)[0]))
+    print(f'type {name}_options struct ''{')
+    for opt in go_opts:
+        print(opt.struct_declaration())
+    print('}')
+    print(f'func parse_{name}_args(args []string) (*{name}_options, []string, error) ''{')
+    print(f'root := cli.Command{{Name: `{name}` }}')
+    for opt in go_opts:
+        print(opt.as_option('root'))
+    print('cmd, err := root.ParseArgs(args)')
+    print('if err != nil { return nil, nil, err }')
+    print(f'var opts {name}_options')
+    print('err = cmd.GetOptionValues(&opts)')
+    print('if err != nil { return nil, nil, err }')
+    print('return &opts, cmd.Args, nil')
+    print('}')
+
+
 def kitten_clis() -> None:
+    from kittens.runner import get_kitten_conf_docs, get_kitten_extra_cli_parsers
     for kitten in wrapped_kittens():
+        defn = get_kitten_conf_docs(kitten)
+        if defn is not None:
+            generate_conf_parser(kitten, defn)
+        ecp = get_kitten_extra_cli_parsers(kitten)
+        if ecp:
+            for name, spec in ecp.items():
+                with replace_if_needed(f'tools/cmd/{kitten}/{name}_cli_generated.go'):
+                    print(f'package {kitten}')
+                    generate_extra_cli_parser(name, spec)
+
         with replace_if_needed(f'tools/cmd/{kitten}/cli_generated.go'):
             od = []
             kcd = kitten_cli_docs(kitten)
@@ -329,10 +370,11 @@ def kitten_clis() -> None:
             print('func create_cmd(root *cli.Command, run_func func(*cli.Command, *Options, []string)(int, error)) {')
             print('ans := root.AddSubCommand(&cli.Command{')
             print(f'Name: "{kitten}",')
-            print(f'ShortDescription: "{serialize_as_go_string(kcd["short_desc"])}",')
-            if kcd['usage']:
-                print(f'Usage: "[options] {serialize_as_go_string(kcd["usage"])}",')
-            print(f'HelpText: "{serialize_as_go_string(kcd["help_text"])}",')
+            if kcd:
+                print(f'ShortDescription: "{serialize_as_go_string(kcd["short_desc"])}",')
+                if kcd['usage']:
+                    print(f'Usage: "[options] {serialize_as_go_string(kcd["usage"])}",')
+                print(f'HelpText: "{serialize_as_go_string(kcd["help_text"])}",')
             print('Run: func(cmd *cli.Command, args []string) (int, error) {')
             print('opts := Options{}')
             print('err := cmd.GetOptionValues(&opts)')
@@ -351,6 +393,8 @@ def kitten_clis() -> None:
                 print("clone := root.AddClone(ans.Group, ans)")
                 print('clone.Hidden = false')
                 print(f'clone.Name = "{serialize_as_go_string(kitten.replace("_", "-"))}"')
+            if not kcd:
+                print('specialize_command(ans)')
             print('}')
             print('type Options struct {')
             print('\n'.join(od))
@@ -383,11 +427,24 @@ def generate_spinners() -> str:
 
 
 def generate_color_names() -> str:
+    selfg = "" if Options.selection_foreground is None else Options.selection_foreground.as_sharp
+    selbg = "" if Options.selection_background is None else Options.selection_background.as_sharp
+    cursor = "" if Options.cursor is None else Options.cursor.as_sharp
     return 'package style\n\nvar ColorNames = map[string]RGBA{' + '\n'.join(
         f'\t"{name}": RGBA{{ Red:{val.red}, Green:{val.green}, Blue:{val.blue} }},'
         for name, val in color_names.items()
     ) + '\n}' + '\n\nvar ColorTable = [256]uint32{' + ', '.join(
-        f'{x}' for x in Options.color_table) + '}\n'
+        f'{x}' for x in Options.color_table) + '}\n' + f'''
+var DefaultColors = struct {{
+Foreground, Background, Cursor, SelectionFg, SelectionBg string
+}}{{
+Foreground: "{Options.foreground.as_sharp}",
+Background: "{Options.background.as_sharp}",
+Cursor: "{cursor}",
+SelectionFg: "{selfg}",
+SelectionBg: "{selbg}",
+}}
+'''
 
 
 def load_ref_map() -> Dict[str, Dict[str, str]]:
@@ -399,6 +456,8 @@ def load_ref_map() -> Dict[str, Dict[str, str]]:
 
 
 def generate_constants() -> str:
+    from kitty.options.types import Options
+    from kitty.options.utils import allowed_shell_integration_values
     ref_map = load_ref_map()
     dp = ", ".join(map(lambda x: f'"{serialize_as_go_string(x)}"', kc.default_pager_for_help))
     return f'''\
@@ -410,6 +469,7 @@ type VersionType struct {{
 const VersionString string = "{kc.str_version}"
 const WebsiteBaseURL string = "{kc.website_base_url}"
 const VCSRevision string = ""
+const SSHControlMasterTemplate = "{kc.ssh_control_master_template}"
 const RC_ENCRYPTION_PROTOCOL_VERSION string = "{kc.RC_ENCRYPTION_PROTOCOL_VERSION}"
 const IsFrozenBuild bool = false
 const IsStandaloneBuild bool = false
@@ -421,6 +481,12 @@ var CharacterKeyNameAliases = map[string]string{serialize_go_dict(character_key_
 var ConfigModMap = map[string]uint16{serialize_go_dict(config_mod_map)}
 var RefMap = map[string]string{serialize_go_dict(ref_map['ref'])}
 var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
+var AllowedShellIntegrationValues = []string{{ {str(sorted(allowed_shell_integration_values))[1:-1].replace("'", '"')} }}
+var KittyConfigDefaults = struct {{
+Term, Shell_integration string
+}}{{
+Term: "{Options.term}", Shell_integration: "{' '.join(Options.shell_integration)}",
+}}
 '''  # }}}
 
 
@@ -598,6 +664,11 @@ def generate_textual_mimetypes() -> str:
     return '\n'.join(ans)
 
 
+def write_compressed_data(data: bytes, d: BinaryIO) -> None:
+    d.write(struct.pack('<I', len(data)))
+    d.write(bz2.compress(data))
+
+
 def generate_unicode_names(src: TextIO, dest: BinaryIO) -> None:
     num_names, num_of_words = map(int, next(src).split())
     gob = io.BytesIO()
@@ -612,9 +683,31 @@ def generate_unicode_names(src: TextIO, dest: BinaryIO) -> None:
             if aliases:
                 record += aliases.encode()
             gob.write(struct.pack('<H', len(record)) + record)
-    data = gob.getvalue()
-    dest.write(struct.pack('<I', len(data)))
-    dest.write(zlib.compress(data, zlib.Z_BEST_COMPRESSION))
+    write_compressed_data(gob.getvalue(), dest)
+
+
+def generate_ssh_kitten_data() -> None:
+    files = {
+        'terminfo/kitty.terminfo', 'terminfo/x/xterm-kitty',
+    }
+    for dirpath, dirnames, filenames in os.walk('shell-integration'):
+        for f in filenames:
+            path = os.path.join(dirpath, f)
+            files.add(path.replace(os.sep, '/'))
+    dest = 'tools/cmd/ssh/data_generated.bin'
+
+    def normalize(t: tarfile.TarInfo) -> tarfile.TarInfo:
+        t.uid = t.gid = 0
+        t.uname = t.gname = ''
+        return t
+
+    if newer(dest, *files):
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode='w') as tf:
+            for f in sorted(files):
+                tf.add(f, filter=normalize)
+        with open(dest, 'wb') as d:
+            write_compressed_data(buf.getvalue(), d)
 
 
 def main() -> None:
@@ -633,6 +726,7 @@ def main() -> None:
     if newer('tools/unicode_names/data_generated.bin', 'tools/unicode_names/names.txt'):
         with open('tools/unicode_names/data_generated.bin', 'wb') as dest, open('tools/unicode_names/names.txt') as src:
             generate_unicode_names(src, dest)
+    generate_ssh_kitten_data()
 
     update_completion()
     update_at_commands()

@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 
 	"kitty/tools/tui/graphics"
 	"kitty/tools/utils"
@@ -24,12 +23,13 @@ import (
 
 var _ = fmt.Print
 
-var find_exe_lock sync.Once
-var magick_exe string = ""
-
-func find_magick_exe() {
-	magick_exe = utils.Which("magick")
-}
+var MagickExe = (&utils.Once[string]{Run: func() string {
+	ans := utils.Which("magick")
+	if ans == "" {
+		ans = utils.Which("magick", "/usr/local/bin", "/opt/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin")
+	}
+	return ans
+}}).Get
 
 func run_magick(path string, cmd []string) ([]byte, error) {
 	c := exec.Command(cmd[0], cmd[1:]...)
@@ -154,10 +154,9 @@ func parse_identify_record(ans *IdentifyRecord, raw *IdentifyOutput) (err error)
 }
 
 func Identify(path string) (ans []IdentifyRecord, err error) {
-	find_exe_lock.Do(find_magick_exe)
 	cmd := []string{"identify"}
-	if magick_exe != "" {
-		cmd = []string{magick_exe, cmd[0]}
+	if MagickExe() != "" {
+		cmd = []string{MagickExe(), cmd[0]}
 	}
 	q := `{"fmt":"%m","canvas":"%g","transparency":"%A","gap":"%T","index":"%p","size":"%wx%h",` +
 		`"dpi":"%xx%y","dispose":"%D","orientation":"%[EXIF:Orientation]"},`
@@ -227,10 +226,9 @@ func check_resize(frame *image_frame) error {
 }
 
 func Render(path string, ro *RenderOptions, frames []IdentifyRecord) (ans []*image_frame, err error) {
-	find_exe_lock.Do(find_magick_exe)
 	cmd := []string{"convert"}
-	if magick_exe != "" {
-		cmd = []string{magick_exe, cmd[0]}
+	if MagickExe() != "" {
+		cmd = []string{MagickExe(), cmd[0]}
 	}
 	ans = make([]*image_frame, 0, len(frames))
 	defer func() {

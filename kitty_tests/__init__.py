@@ -112,7 +112,7 @@ class Callbacks:
         self.current_clone_data += rest
 
     def handle_remote_ssh(self, msg):
-        from kittens.ssh.main import get_ssh_data
+        from kittens.ssh.utils import get_ssh_data
         if self.pty:
             for line in get_ssh_data(msg, "testing"):
                 self.pty.write_to_child(line)

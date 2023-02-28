@@ -12,6 +12,33 @@ import (
 
 var _ = fmt.Print
 
+func AtomicCreateSymlink(oldname, newname string) (err error) {
+	err = os.Symlink(oldname, newname)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, fs.ErrExist) {
+		return err
+	}
+	if et, err := os.Readlink(newname); err == nil && et == oldname {
+		return nil
+	}
+	for {
+		tempname := newname + RandomFilename()
+		err = os.Symlink(oldname, tempname)
+		if err == nil {
+			err = os.Rename(tempname, newname)
+			if err != nil {
+				os.Remove(tempname)
+			}
+			return err
+		}
+		if !errors.Is(err, fs.ErrExist) {
+			return err
+		}
+	}
+}
+
 func AtomicWriteFile(path string, data []byte, perm os.FileMode) (err error) {
 	npath, err := filepath.EvalSymlinks(path)
 	if errors.Is(err, fs.ErrNotExist) {
