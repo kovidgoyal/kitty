@@ -142,21 +142,13 @@ func Open(name string, size uint64) (MMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	return file_mmap(ans, size, READ, false, name)
-}
-
-func ReadWithSizeAndUnlink(name string, file_callback ...func(*os.File) error) ([]byte, error) {
-	f, err := open(name)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	defer os.Remove(f.Name())
-	for _, cb := range file_callback {
-		err = cb(f)
+	if size == 0 {
+		s, err := ans.Stat()
 		if err != nil {
-			return nil, err
+			ans.Close()
+			return nil, fmt.Errorf("Failed to stat SHM file with error: %w", err)
 		}
+		size = uint64(s.Size())
 	}
-	return read_with_size(f)
+	return file_mmap(ans, size, READ, false, name)
 }

@@ -4,7 +4,6 @@
 package shm
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -159,23 +158,13 @@ func Open(name string, size uint64) (MMap, error) {
 	if err != nil {
 		return nil, err
 	}
+	if size == 0 {
+		s, err := ans.Stat()
+		if err != nil {
+			ans.Close()
+			return nil, fmt.Errorf("Failed to stat SHM file with error: %w", err)
+		}
+		size = uint64(s.Size())
+	}
 	return syscall_mmap(ans, size, READ, false)
-}
-
-func ReadWithSizeAndUnlink(name string, file_callback ...func(*os.File) error) ([]byte, error) {
-	mmap, err := Open(name, 4)
-	if err != nil {
-		return nil, err
-	}
-	size := uint64(binary.BigEndian.Uint32(mmap.Slice()))
-	mmap.Close()
-	mmap, err = Open(name, 4+size)
-	if err != nil {
-		return nil, err
-	}
-	ans := make([]byte, size)
-	copy(ans, mmap.Slice()[4:])
-	mmap.Close()
-	mmap.Unlink()
-	return ans, nil
 }

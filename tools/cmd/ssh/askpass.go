@@ -72,7 +72,10 @@ func RunSSHAskpass() {
 			break
 		}
 	}
-	data = shm.ReadWithSize(data_shm, 1)
+	data, err = shm.ReadWithSize(data_shm, 1)
+	if err != nil {
+		fatal(fmt.Errorf("Failed to read from SHM file with error: %w", err))
+	}
 	response := ""
 	if is_confirm {
 		var ok bool
