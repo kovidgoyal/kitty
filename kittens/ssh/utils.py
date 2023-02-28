@@ -4,8 +4,9 @@
 
 import os
 import subprocess
+import traceback
 from contextlib import suppress
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple
 
 from kitty.types import run_once
 from kitty.utils import SSHConnectionData
@@ -94,6 +95,57 @@ def create_shared_memory(data: Any, prefix: str) -> str:
         shm.flush()
         atexit.register(shm.unlink)
     return shm.name
+
+
+def read_data_from_shared_memory(shm_name: str) -> Any:
+    import json
+    import stat
+
+    from kitty.shm import SharedMemory
+    with SharedMemory(shm_name, readonly=True) as shm:
+        shm.unlink()
+        if shm.stats.st_uid != os.geteuid() or shm.stats.st_gid != os.getegid():
+            raise ValueError('Incorrect owner on pwfile')
+        mode = stat.S_IMODE(shm.stats.st_mode)
+        if mode != stat.S_IREAD | stat.S_IWRITE:
+            raise ValueError('Incorrect permissions on pwfile')
+        return json.loads(shm.read_data_with_size())
+
+
+def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
+    from base64 import standard_b64decode
+    yield b'\nKITTY_DATA_START\n'  # to discard leading data
+    try:
+        msg = standard_b64decode(msg).decode('utf-8')
+        md = dict(x.split('=', 1) for x in msg.split(':'))
+        pw = md['pw']
+        pwfilename = md['pwfile']
+        rq_id = md['id']
+    except Exception:
+        traceback.print_exc()
+        yield b'invalid ssh data request message\n'
+    else:
+        try:
+            env_data = read_data_from_shared_memory(pwfilename)
+            if pw != env_data['pw']:
+                raise ValueError('Incorrect password')
+            if rq_id != request_id:
+                raise ValueError(f'Incorrect request id: {rq_id!r} expecting the KITTY_PID-KITTY_WINDOW_ID for the current kitty window')
+        except Exception as e:
+            traceback.print_exc()
+            yield f'{e}\n'.encode('utf-8')
+        else:
+            yield b'OK\n'
+            encoded_data = memoryview(env_data['tarfile'].encode('ascii'))
+            # macOS has a 255 byte limit on its input queue as per man stty.
+            # Not clear if that applies to canonical mode input as well, but
+            # better to be safe.
+            line_sz = 254
+            while encoded_data:
+                yield encoded_data[:line_sz]
+                yield b'\n'
+                encoded_data = encoded_data[line_sz:]
+            yield b'KITTY_DATA_END\n'
 
 
 def set_env_in_cmdline(env: Dict[str, str], argv: List[str]) -> None:

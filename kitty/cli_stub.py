@@ -13,7 +13,7 @@ LaunchCLIOptions = AskCLIOptions = ClipboardCLIOptions = DiffCLIOptions = CLIOpt
 HintsCLIOptions = IcatCLIOptions = PanelCLIOptions = ResizeCLIOptions = CLIOptions
 ErrorCLIOptions = UnicodeCLIOptions = RCOptions = RemoteFileCLIOptions = CLIOptions
 QueryTerminalCLIOptions = BroadcastCLIOptions = ShowKeyCLIOptions = CLIOptions
-ThemesCLIOptions = TransferCLIOptions = CopyCLIOptions = CLIOptions
+ThemesCLIOptions = TransferCLIOptions = CLIOptions
 
 
 def generate_stub() -> None:
@@ -77,9 +77,6 @@ def generate_stub() -> None:
 
     from kittens.transfer.main import option_text as OPTIONS
     do(OPTIONS(), 'TransferCLIOptions')
-
-    from kittens.ssh.copy import option_text as OPTIONS
-    do(OPTIONS(), 'CopyCLIOptions')
 
     from kitty.rc.base import all_command_names, command_for_name
     for cmd_name in all_command_names():
