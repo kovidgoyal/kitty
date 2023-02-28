@@ -179,6 +179,7 @@ type connection_data struct {
 	request_data       bool
 	literal_env        map[string]string
 	test_script        string
+	dont_create_shm    bool
 
 	shm_name         string
 	script_type      string
@@ -435,7 +436,7 @@ func bootstrap_script(cd *connection_data) (err error) {
 		"hostname": cd.hostname_for_match, "username": cd.username,
 	}
 	encoded_data, err := json.Marshal(data)
-	if err == nil {
+	if err == nil && !cd.dont_create_shm {
 		data_shm, err = shm.CreateTemp(fmt.Sprintf("kssh-%d-", os.Getpid()), uint64(len(encoded_data)+8))
 		if err == nil {
 			err = data_shm.WriteWithSize(encoded_data)
@@ -447,7 +448,9 @@ func bootstrap_script(cd *connection_data) (err error) {
 	if err != nil {
 		return err
 	}
-	cd.shm_name = data_shm.Name()
+	if !cd.dont_create_shm {
+		cd.shm_name = data_shm.Name()
+	}
 	sensitive_data := map[string]string{"REQUEST_ID": cd.request_id, "DATA_PASSWORD": pw, "PASSWORD_FILENAME": cd.shm_name}
 	replacements := map[string]string{
 		"EXPORT_HOME_CMD": export_home_cmd,

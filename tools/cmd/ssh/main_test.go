@@ -49,6 +49,7 @@ func basic_connection_data(overrides ...string) *connection_data {
 	ans := &connection_data{
 		script_type: "sh", request_id: "123-123", remote_args: []string{},
 		username: "testuser", hostname_for_match: "host.test",
+		dont_create_shm: true,
 	}
 	opts, bad_lines, err := load_config(ans.hostname_for_match, ans.username, overrides, "")
 	if err != nil {
