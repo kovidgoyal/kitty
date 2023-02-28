@@ -235,9 +235,10 @@ Font control
 |kitty| has extremely flexible and powerful font selection features. You can
 specify individual families for the regular, bold, italic and bold+italic fonts.
 You can even specify specific font families for specific ranges of Unicode
-characters. This allows precise control over text rendering. It can comein handy
-for applications like powerline, without the need to use patched fonts. See the
-various font related configuration directives in :ref:`conf-kitty-fonts`.
+characters. This allows precise control over text rendering. It can come in
+handy for applications like powerline, without the need to use patched fonts.
+See the various font related configuration directives in
+:ref:`conf-kitty-fonts`.
 
 
 .. _scrollback:
