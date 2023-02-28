@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -21,6 +22,7 @@ var _ = fmt.Print
 
 type file_based_mmap struct {
 	f            *os.File
+	pos          int64
 	region       []byte
 	unlinked     bool
 	special_name string
@@ -40,6 +42,26 @@ func file_mmap(f *os.File, size uint64, access AccessFlags, truncate bool, speci
 		return nil, err
 	}
 	return &file_based_mmap{f: f, region: region, special_name: special_name}, nil
+}
+
+func (self *file_based_mmap) Seek(offset int64, whence int) (ret int64, err error) {
+	switch whence {
+	case io.SeekStart:
+		self.pos = offset
+	case os.SEEK_END:
+		self.pos = int64(len(self.region)) + offset
+	case os.SEEK_CUR:
+		self.pos += offset
+	}
+	return self.pos, nil
+}
+
+func (self *file_based_mmap) Read(b []byte) (n int, err error) {
+	return Read(self, b)
+}
+
+func (self *file_based_mmap) Write(b []byte) (n int, err error) {
+	return Write(self, b)
 }
 
 func (self *file_based_mmap) Stat() (fs.FileInfo, error) {

@@ -53,6 +53,9 @@ type MMap interface {
 	FileSystemName() string
 	Stat() (fs.FileInfo, error)
 	Flush() error
+	Seek(offset int64, whence int) (ret int64, err error)
+	Read(b []byte) (n int, err error)
+	Write(b []byte) (n int, err error)
 }
 
 type AccessFlags int
@@ -106,9 +109,11 @@ func truncate_or_unlink(ans *os.File, size uint64) (err error) {
 
 const NUM_BYTES_FOR_SIZE = 4
 
+var ErrRegionTooSmall = errors.New("mmaped region too small")
+
 func WriteWithSize(self MMap, b []byte, at int) error {
 	if len(self.Slice()) < at+len(b)+NUM_BYTES_FOR_SIZE {
-		return io.ErrShortBuffer
+		return ErrRegionTooSmall
 	}
 	binary.BigEndian.PutUint32(self.Slice()[at:], uint32(len(b)))
 	copy(self.Slice()[at+NUM_BYTES_FOR_SIZE:], b)
@@ -118,12 +123,12 @@ func WriteWithSize(self MMap, b []byte, at int) error {
 func ReadWithSize(self MMap, at int) ([]byte, error) {
 	s := self.Slice()[at:]
 	if len(s) < NUM_BYTES_FOR_SIZE {
-		return nil, io.ErrShortBuffer
+		return nil, ErrRegionTooSmall
 	}
 	size := int(binary.BigEndian.Uint32(self.Slice()[at : at+NUM_BYTES_FOR_SIZE]))
 	s = s[NUM_BYTES_FOR_SIZE:]
 	if len(s) < size {
-		return nil, io.ErrShortBuffer
+		return nil, ErrRegionTooSmall
 	}
 	return s[:size], nil
 }
@@ -156,6 +161,41 @@ func ReadWithSizeAndUnlink(name string, file_callback ...func(fs.FileInfo) error
 	ans := make([]byte, len(slice))
 	copy(ans, slice)
 	return ans, nil
+}
+
+func Read(self MMap, b []byte) (n int, err error) {
+	pos, _ := self.Seek(0, io.SeekCurrent)
+	if pos < 0 {
+		pos = 0
+	}
+	s := self.Slice()
+	sz := int64(len(s))
+	if pos >= sz {
+		return 0, io.EOF
+	}
+	n = copy(b, s[pos:])
+	self.Seek(int64(n), io.SeekCurrent)
+	return
+}
+
+func Write(self MMap, b []byte) (n int, err error) {
+	if len(b) == 0 {
+		return 0, nil
+	}
+	pos, _ := self.Seek(0, io.SeekCurrent)
+	if pos < 0 {
+		pos = 0
+	}
+	s := self.Slice()
+	if pos >= int64(len(s)) {
+		return 0, io.ErrShortWrite
+	}
+	n = copy(s[pos:], b)
+	self.Seek(int64(n), io.SeekCurrent)
+	if n < len(b) {
+		return n, io.ErrShortWrite
+	}
+	return n, nil
 }
 
 func test_integration_with_python(args []string) (rc int, err error) {

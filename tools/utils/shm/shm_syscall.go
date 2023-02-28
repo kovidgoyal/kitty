@@ -6,6 +6,7 @@ package shm
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"strings"
@@ -65,6 +66,7 @@ func shm_open(name string, flags, perm int) (ans *os.File, err error) {
 
 type syscall_based_mmap struct {
 	f        *os.File
+	pos      int64
 	region   []byte
 	unlinked bool
 }
@@ -115,6 +117,26 @@ func (self *syscall_based_mmap) Unlink() (err error) {
 	}
 	self.unlinked = true
 	return shm_unlink(self.Name())
+}
+
+func (self *syscall_based_mmap) Seek(offset int64, whence int) (ret int64, err error) {
+	switch whence {
+	case io.SeekStart:
+		self.pos = offset
+	case os.SEEK_END:
+		self.pos = int64(len(self.region)) + offset
+	case os.SEEK_CUR:
+		self.pos += offset
+	}
+	return self.pos, nil
+}
+
+func (self *syscall_based_mmap) Read(b []byte) (n int, err error) {
+	return Read(self, b)
+}
+
+func (self *syscall_based_mmap) Write(b []byte) (n int, err error) {
+	return Write(self, b)
 }
 
 func (self *syscall_based_mmap) IsFileSystemBacked() bool { return false }
