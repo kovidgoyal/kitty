@@ -4,6 +4,7 @@
 package shm
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -182,17 +183,19 @@ func Open(name string, size uint64) (MMap, error) {
 }
 
 func ReadWithSizeAndUnlink(name string, file_callback ...func(*os.File) error) ([]byte, error) {
-	f, err := shm_open(name, os.O_RDONLY, 0)
+	mmap, err := Open(name, 4)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	defer shm_unlink(f.Name())
-	for _, cb := range file_callback {
-		err = cb(f)
-		if err != nil {
-			return nil, err
-		}
+	size := uint64(binary.BigEndian.Uint32(mmap.Slice()))
+	mmap.Close()
+	mmap, err = Open(name, 4+size)
+	if err != nil {
+		return nil, err
 	}
-	return read_with_size(f)
+	ans := make([]byte, size)
+	copy(ans, mmap.Slice()[4:])
+	mmap.Close()
+	mmap.Unlink()
+	return ans, nil
 }

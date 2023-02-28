@@ -118,6 +118,7 @@ func read_till_buf_full(f *os.File, buf []byte) ([]byte, error) {
 			if len(p) == 0 && errors.Is(err, io.EOF) {
 				err = nil
 			}
+			err = fmt.Errorf("Failed to read from SHM file with error: %w", err)
 			return buf[:len(buf)-len(p)], err
 		}
 	}
