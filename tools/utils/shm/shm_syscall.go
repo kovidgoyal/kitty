@@ -114,7 +114,11 @@ func (self *syscall_based_mmap) Write(b []byte) (int, error) {
 }
 
 func (self *syscall_based_mmap) WriteWithSize(b []byte) error {
-	return write_with_size(self.f, b)
+	szbuf := []byte{0, 0, 0, 0}
+	binary.BigEndian.PutUint32(szbuf, uint32(len(b)))
+	copy(self.Slice(), szbuf)
+	copy(self.Slice()[4:], b)
+	return nil
 }
 
 func (self *syscall_based_mmap) ReadWithSize() ([]byte, error) {
