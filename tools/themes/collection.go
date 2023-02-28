@@ -263,7 +263,6 @@ func (self *Theme) AsEscapeCodes() (string, error) {
 	w := strings.Builder{}
 	w.Grow(4096)
 
-	w.WriteString("\033]4")
 	set_color := func(i int, sharp string) {
 		w.WriteByte(';')
 		w.WriteString(strconv.Itoa(i))
@@ -296,6 +295,7 @@ func (self *Theme) AsEscapeCodes() (string, error) {
 	set_default_color("selection_background", style.DefaultColors.SelectionBg, 17)
 	set_default_color("selection_foreground", style.DefaultColors.SelectionFg, 19)
 
+	w.WriteString("\033]4")
 	for i := 0; i < 256; i++ {
 		key := "color" + strconv.Itoa(i)
 		val := settings[key]
@@ -330,6 +330,20 @@ func theme_name_from_file_name(fname string) string {
 	return strings.Join(utils.Map(strings.Split(fname, " "), strings.Title), " ")
 }
 
+func (self *Themes) AddFromFile(path string) (*Theme, error) {
+	m, conf, err := parse_theme_metadata(path)
+	if err != nil {
+		return nil, err
+	}
+	if m.Name == "" {
+		m.Name = theme_name_from_file_name(filepath.Base(path))
+	}
+	t := Theme{metadata: m, is_user_defined: true, settings: conf}
+	self.name_map[m.Name] = &t
+	return &t, nil
+
+}
+
 func (self *Themes) add_from_dir(dirpath string) error {
 	entries, err := os.ReadDir(dirpath)
 	if err != nil {
@@ -340,15 +354,9 @@ func (self *Themes) add_from_dir(dirpath string) error {
 	}
 	for _, e := range entries {
 		if !e.IsDir() && strings.HasSuffix(e.Name(), ".conf") {
-			m, conf, err := parse_theme_metadata(filepath.Join(dirpath, e.Name()))
-			if err != nil {
+			if _, err = self.AddFromFile(filepath.Join(dirpath, e.Name())); err != nil {
 				return err
 			}
-			if m.Name == "" {
-				m.Name = theme_name_from_file_name(e.Name())
-			}
-			t := Theme{metadata: m, is_user_defined: true, settings: conf}
-			self.name_map[m.Name] = &t
 		}
 	}
 	return nil
@@ -399,17 +407,14 @@ func (self *Themes) ThemeByName(name string) *Theme {
 	return self.name_map[name]
 }
 
-func LoadThemes(cache_age time.Duration, ignore_no_cache bool) (ans *Themes, closer io.Closer, err error) {
+func LoadThemes(cache_age time.Duration) (ans *Themes, closer io.Closer, err error) {
 	zip_path, err := FetchCached(cache_age)
 	ans = &Themes{name_map: make(map[string]*Theme)}
 	if err != nil {
-		if !errors.Is(err, ErrNoCacheFound) || ignore_no_cache {
-			return nil, nil, err
-		}
-	} else {
-		if closer, err = ans.add_from_zip_file(zip_path); err != nil {
-			return nil, nil, err
-		}
+		return nil, nil, err
+	}
+	if closer, err = ans.add_from_zip_file(zip_path); err != nil {
+		return nil, nil, err
 	}
 	if err = ans.add_from_dir(filepath.Join(utils.ConfigDir(), "themes")); err != nil {
 		return nil, nil, err
@@ -417,4 +422,9 @@ func LoadThemes(cache_age time.Duration, ignore_no_cache bool) (ans *Themes, clo
 	ans.index_map = maps.Keys(ans.name_map)
 	ans.index_map = utils.StableSortWithKey(ans.index_map, strings.ToLower)
 	return ans, closer, nil
+}
+
+func ThemeFromFile(path string) (*Theme, error) {
+	ans := &Themes{name_map: make(map[string]*Theme)}
+	return ans.AddFromFile(path)
 }

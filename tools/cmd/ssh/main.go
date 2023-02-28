@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"kitty/tools/cli"
+	"kitty/tools/themes"
 	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
@@ -549,6 +550,38 @@ func drain_potential_tty_garbage(term *tty.Term) {
 	}
 }
 
+func change_colors(color_scheme string) (ans string, err error) {
+	if color_scheme == "" {
+		return
+	}
+	var theme *themes.Theme
+	if !strings.HasSuffix(color_scheme, ".conf") {
+		cs := os.ExpandEnv(color_scheme)
+		tc, closer, err := themes.LoadThemes(-1)
+		if err != nil && errors.Is(err, themes.ErrNoCacheFound) {
+			tc, closer, err = themes.LoadThemes(time.Hour * 24)
+		}
+		if err != nil {
+			return "", err
+		}
+		defer closer.Close()
+		theme = tc.ThemeByName(cs)
+		if theme == nil {
+			return "", fmt.Errorf("No theme named %#v found", cs)
+		}
+	} else {
+		theme, err = themes.ThemeFromFile(utils.ResolveConfPath(color_scheme))
+		if err != nil {
+			return "", err
+		}
+	}
+	ans, err = theme.AsEscapeCodes()
+	if err == nil {
+		ans = "\033[#P" + ans
+	}
+	return
+}
+
 func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err error) {
 	go Data()
 	go RelevantKittyOpts()
@@ -611,12 +644,21 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 	cd.host_opts, cd.literal_env = host_opts, literal_env
 	cd.request_data = need_to_request_data
 	cd.hostname_for_match, cd.username = hostname_for_match, uname
-	err = term.WriteAllString(loop.SAVE_PRIVATE_MODE_VALUES + loop.HANDLE_TERMIOS_SIGNALS.EscapeCodeToSet())
+	escape_codes_to_set_colors, err := change_colors(cd.host_opts.Color_scheme)
+	if err == nil {
+		err = term.WriteAllString(escape_codes_to_set_colors + loop.SAVE_PRIVATE_MODE_VALUES + loop.HANDLE_TERMIOS_SIGNALS.EscapeCodeToSet())
+	}
 	if err != nil {
 		return 1, err
 	}
-	defer term.WriteAllString(loop.RESTORE_PRIVATE_MODE_VALUES)
-	defer term.RestoreAndClose()
+	restore_escape_codes := loop.RESTORE_PRIVATE_MODE_VALUES
+	if escape_codes_to_set_colors != "" {
+		restore_escape_codes += "\x1b[#Q"
+	}
+	defer func() {
+		term.WriteAllString(restore_escape_codes)
+		term.RestoreAndClose()
+	}()
 	err = get_remote_command(&cd)
 	if err != nil {
 		return 1, err

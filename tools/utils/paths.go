@@ -274,3 +274,11 @@ func RandomFilename() string {
 	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)
 
 }
+
+func ResolveConfPath(path string) string {
+	cs := os.ExpandEnv(Expanduser(path))
+	if !filepath.IsAbs(cs) {
+		cs = filepath.Join(ConfigDir(), cs)
+	}
+	return cs
+}
