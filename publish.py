@@ -62,6 +62,10 @@ def call(*cmd: str, cwd: Optional[str] = None, echo: bool = False) -> None:
 
 
 def run_build(args: Any) -> None:
+    import runpy
+
+    m = runpy.run_path('./setup.py', run_name='__publish__')
+    vcs_rev: str = m['get_vcs_rev']()
 
     def run_with_retry(cmd: str) -> None:
         try:
@@ -78,9 +82,9 @@ def run_build(args: Any) -> None:
 
     for x in ('64', '32', 'arm64'):
         prefix = f'python ../bypy linux --arch {x} '
-        run_with_retry(prefix + 'program --non-interactive')
+        run_with_retry(prefix + f'program --non-interactive --extra-program-data "{vcs_rev}"')
         call(prefix + 'shutdown', echo=True)
-    run_with_retry('python ../bypy macos program --sign-installers --notarize --non-interactive')
+    run_with_retry(f'python ../bypy macos program --sign-installers --notarize --non-interactive --extra-program-data "{vcs_rev}"')
     call('python ../bypy macos shutdown', echo=True)
     call('./setup.py build-static-binaries')
 

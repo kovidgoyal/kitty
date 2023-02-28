@@ -69,6 +69,7 @@ class Env:
         ans.wayland_scanner = self.wayland_scanner
         ans.wayland_scanner_code = self.wayland_scanner_code
         ans.wayland_protocols = self.wayland_protocols
+        ans.vcs_rev = self.vcs_rev
         return ans
 
 
