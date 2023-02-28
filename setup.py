@@ -333,7 +333,8 @@ def init_env(
     ignore_compiler_warnings: bool = False,
     build_universal_binary: bool = False,
     extra_library_dirs: Iterable[str] = (),
-    verbose: bool = True
+    verbose: bool = True,
+    vcs_rev: str = '',
 ) -> Env:
     native_optimizations = native_optimizations and not sanitize and not debug
     if native_optimizations and is_macos and is_arm:
@@ -428,7 +429,7 @@ def init_env(
         set_arches(cflags)
         set_arches(ldflags)
 
-    return Env(cc, cppflags, cflags, ldflags, library_paths, ccver=ccver, ldpaths=ldpaths)
+    return Env(cc, cppflags, cflags, ldflags, library_paths, ccver=ccver, ldpaths=ldpaths, vcs_rev=vcs_rev)
 
 
 def kitty_env() -> Env:
@@ -503,7 +504,7 @@ def run_tool(cmd: Union[str, List[str]], desc: Optional[str] = None) -> None:
 
 
 @lru_cache
-def get_vcs_rev_define() -> str:
+def get_vcs_rev() -> str:
     ans = ''
     if os.path.exists('.git'):
         try:
@@ -526,7 +527,9 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, Optional[List[
     if src == 'kitty/parser_dump.c':
         return 'kitty/parser.c', ['DUMP_COMMANDS']
     if src == 'kitty/data-types.c':
-        return src, [f'KITTY_VCS_REV="{get_vcs_rev_define()}"', f'WRAPPED_KITTENS="{wrapped_kittens()}"']
+        if not env.vcs_rev:
+            env.vcs_rev = get_vcs_rev()
+        return src, [f'KITTY_VCS_REV="{env.vcs_rev}"', f'WRAPPED_KITTENS="{wrapped_kittens()}"']
     try:
         return src, env.library_paths[src]
     except KeyError:
@@ -908,7 +911,8 @@ def build_static_kittens(
     if not for_platform:
         update_go_generated_files(args, os.path.join(launcher_dir, appname))
     cmd = [go, 'build', '-v']
-    ld_flags = [f"-X 'kitty.VCSRevision={get_vcs_rev_define()}'"]
+    vcs_rev = args.vcs_rev or get_vcs_rev()
+    ld_flags = [f"-X 'kitty.VCSRevision={vcs_rev}'"]
     if for_freeze:
         ld_flags.append("-X 'kitty.IsFrozenBuild=true'")
     if for_platform:
@@ -1587,6 +1591,10 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         '--libdir-name',
         default=Options.libdir_name,
         help='The name of the directory inside --prefix in which to store compiled files. Defaults to "lib"'
+    )
+    p.add_argument(
+        '--vcs-rev', default='',
+        help='The VCS revision to embed in the binary. The default is to read it from the .git directory when present.'
     )
     p.add_argument(
         '--extra-logging',
