@@ -134,7 +134,7 @@ func TestThemeCollections(t *testing.T) {
 	}
 	after2, _ := os.Stat(filepath.Join(tdir, "test.zip"))
 	if after2.ModTime() != after.ModTime() {
-		t.Fatal("Cached zip file was incorrectly not re-downloaded")
+		t.Fatalf("Cached zip file was incorrectly not re-downloaded. %#v != %#v", after.ModTime(), after2.ModTime())
 	}
 	coll := Themes{name_map: map[string]*Theme{}}
 	closer, err := coll.add_from_zip_file(filepath.Join(tdir, "test.zip"))
