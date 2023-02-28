@@ -439,7 +439,7 @@ func bootstrap_script(cd *connection_data) (err error) {
 	if err == nil && !cd.dont_create_shm {
 		data_shm, err = shm.CreateTemp(fmt.Sprintf("kssh-%d-", os.Getpid()), uint64(len(encoded_data)+8))
 		if err == nil {
-			err = data_shm.WriteWithSize(encoded_data)
+			err = shm.WriteWithSize(data_shm, encoded_data, 0)
 			if err == nil {
 				err = data_shm.Flush()
 			}

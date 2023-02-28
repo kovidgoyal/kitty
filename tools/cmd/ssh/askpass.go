@@ -3,7 +3,6 @@
 package ssh
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -53,40 +52,27 @@ func RunSSHAskpass() {
 	if err != nil {
 		fatal(err)
 	}
-	shm, err := shm.CreateTemp("askpass-*", uint64(len(data)+32))
+	data_shm, err := shm.CreateTemp("askpass-*", uint64(len(data)+32))
 	if err != nil {
 		fatal(fmt.Errorf("Failed to create SHM file with error: %w", err))
 	}
-	defer shm.Close()
-	defer shm.Unlink()
+	defer data_shm.Close()
+	defer data_shm.Unlink()
 
-	shm.Slice()[0] = 0
-	binary.BigEndian.PutUint32(shm.Slice()[1:], uint32(len(data)))
-	copy(shm.Slice()[5:], data)
-	err = shm.Flush()
+	data_shm.Slice()[0] = 0
+	shm.WriteWithSize(data_shm, data, 1)
+	err = data_shm.Flush()
 	if err != nil {
 		fatal(fmt.Errorf("Failed to flush SHM file with error: %w", err))
 	}
-	trigger_ask(shm.Name())
-	buf := []byte{0}
+	trigger_ask(data_shm.Name())
 	for {
 		time.Sleep(50 * time.Millisecond)
-		_, err = shm.Seek(0, os.SEEK_SET)
-		if err != nil {
-			fatal(fmt.Errorf("Failed to seek into SHM file while waiting for response with error: %w", err))
-		}
-		_, err = shm.Read(buf)
-		if err != nil {
-			fatal(fmt.Errorf("Failed to read from SHM file while waiting for response with error: %w", err))
-		}
-		if buf[0] == 1 {
+		if data_shm.Slice()[0] == 1 {
 			break
 		}
 	}
-	data, err = shm.ReadWithSize()
-	if err != nil {
-		fatal(fmt.Errorf("Failed to read response data from SHM file with error: %w", err))
-	}
+	data = shm.ReadWithSize(data_shm, 1)
 	response := ""
 	if is_confirm {
 		var ok bool

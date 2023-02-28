@@ -57,26 +57,6 @@ func (self *file_based_mmap) Flush() error {
 	return unix.Msync(self.region, unix.MS_SYNC)
 }
 
-func (self *file_based_mmap) Seek(offset int64, whence int) (int64, error) {
-	return self.f.Seek(offset, whence)
-}
-
-func (self *file_based_mmap) Read(b []byte) (int, error) {
-	return self.f.Read(b)
-}
-
-func (self *file_based_mmap) Write(b []byte) (int, error) {
-	return self.f.Write(b)
-}
-
-func (self *file_based_mmap) WriteWithSize(b []byte) error {
-	return write_with_size(self.f, b)
-}
-
-func (self *file_based_mmap) ReadWithSize() ([]byte, error) {
-	return read_with_size(self.f)
-}
-
 func (self *file_based_mmap) FileSystemName() string {
 	return self.f.Name()
 }
