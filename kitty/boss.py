@@ -2346,7 +2346,6 @@ class Boss:
 
     def apply_new_options(self, opts: Options) -> None:
         from .fonts.box_drawing import set_scale
-
         # Update options storage
         set_options(opts, is_wayland(), self.args.debug_rendering, self.args.debug_font_fallback)
         apply_options_update()
@@ -2363,6 +2362,10 @@ class Boss:
         # Update key bindings
         self.update_keymap()
         # Update misc options
+        try:
+            set_background_image(opts.background_image, tuple(self.os_window_map), True, opts.background_image_layout)
+        except Exception as e:
+            log_error(f'Failed to set background image with error: {e}')
         for tm in self.all_tab_managers:
             tm.apply_options()
         # Update colors
