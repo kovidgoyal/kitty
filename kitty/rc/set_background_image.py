@@ -3,6 +3,7 @@
 
 import os
 from base64 import standard_b64decode, standard_b64encode
+from io import BytesIO
 from typing import TYPE_CHECKING, Optional
 
 from kitty.types import AsyncResponse
@@ -14,7 +15,6 @@ from .base import (
     Boss,
     CmdGenerator,
     ImageCompletion,
-    NamedTemporaryFile,
     PayloadGetType,
     PayloadType,
     RCOptions,
@@ -111,17 +111,16 @@ failed, the command will exit with a success code.
         layout = payload_get('layout')
         if data == '-':
             path = None
-            tfile = NamedTemporaryFile()
+            tfile = BytesIO()
         else:
             q = self.handle_streamed_data(standard_b64decode(data) if data else b'', payload_get)
             if isinstance(q, AsyncResponse):
                 return q
-            path = q.name
+            path = '/image/from/remote/control'
             tfile = q
 
         try:
-            with tfile:
-                boss.set_background_image(path, os_windows, payload_get('configured'), layout)
+            boss.set_background_image(path, os_windows, payload_get('configured'), layout, tfile.getvalue())
         except ValueError as err:
             err.hide_traceback = True  # type: ignore
             raise

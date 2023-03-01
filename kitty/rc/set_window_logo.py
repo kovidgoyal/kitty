@@ -3,6 +3,7 @@
 
 import os
 from base64 import standard_b64decode, standard_b64encode
+from io import BytesIO
 from typing import TYPE_CHECKING, Optional
 
 from kitty.types import AsyncResponse
@@ -14,7 +15,6 @@ from .base import (
     Boss,
     CmdGenerator,
     ImageCompletion,
-    NamedTemporaryFile,
     PayloadGetType,
     PayloadType,
     RCOptions,
@@ -105,18 +105,18 @@ failed, the command will exit with a success code.
         position = payload_get('position') or ''
         if data == '-':
             path = ''
-            tfile = NamedTemporaryFile()
+            tfile = BytesIO()
         else:
             q = self.handle_streamed_data(standard_b64decode(data) if data else b'', payload_get)
             if isinstance(q, AsyncResponse):
                 return q
-            path = q.name
+            import hashlib
+            path = '/from/remote/control/' + hashlib.sha1(q.getvalue()).hexdigest()
             tfile = q
 
-        with tfile:
-            for window in self.windows_for_match_payload(boss, window, payload_get):
-                if window:
-                    window.set_logo(path, position, alpha)
+        for window in self.windows_for_match_payload(boss, window, payload_get):
+            if window:
+                window.set_logo(path, position, alpha, tfile.getvalue())
         return None
 
 

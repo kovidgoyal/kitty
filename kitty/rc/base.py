@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-import tempfile
 from contextlib import suppress
 from dataclasses import dataclass, field
+from io import BytesIO
 from typing import TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Set, Tuple, Type, Union, cast
 
 from kitty.cli import CompletionSpec, get_defaults_from_seq, parse_args, parse_option_spec
@@ -25,16 +25,6 @@ RCOptions = R
 
 class NoResponse:
     pass
-
-
-class NamedTemporaryFile:
-    name: str = ''
-
-    def __enter__(self) -> None: ...
-    def __exit__(self, exc: Any, value: Any, tb: Any) -> None: ...
-    def close(self) -> None: ...
-    def write(self, data: bytes) -> None: ...
-    def flush(self) -> None: ...
 
 
 class RemoteControlError(Exception):
@@ -279,22 +269,27 @@ class StreamInFlight:
 
     def __init__(self) -> None:
         self.stream_id = ''
-        self.tempfile: Optional[NamedTemporaryFile] = None
+        self.tempfile: Optional[BytesIO] = None
 
-    def handle_data(self, stream_id: str, data: bytes) -> Union[AsyncResponse, NamedTemporaryFile]:
+    def handle_data(self, stream_id: str, data: bytes) -> Union[AsyncResponse, BytesIO]:
         from ..remote_control import close_active_stream
-        if stream_id != self.stream_id:
+        def abort_stream() -> None:
             close_active_stream(self.stream_id)
+            self.stream_id = ''
             if self.tempfile is not None:
                 self.tempfile.close()
                 self.tempfile = None
+
+        if stream_id != self.stream_id:
+            abort_stream()
             self.stream_id = stream_id
         if self.tempfile is None:
-            t: NamedTemporaryFile = cast(NamedTemporaryFile, tempfile.NamedTemporaryFile(suffix='.png'))
-            self.tempfile = t
-        else:
-            t = self.tempfile
+            self.tempfile = BytesIO()
+        t = self.tempfile
         if data:
+            if (t.tell() + len(data)) > 128 * 1024 * 1024:
+                abort_stream()
+                raise StreamError('Too much data being sent')
             t.write(data)
             return AsyncResponse()
         close_active_stream(self.stream_id)
@@ -404,7 +399,7 @@ class RemoteCommand:
     def cancel_async_request(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> None:
         pass
 
-    def handle_streamed_data(self, data: bytes, payload_get: PayloadGetType) -> Union[NamedTemporaryFile, AsyncResponse]:
+    def handle_streamed_data(self, data: bytes, payload_get: PayloadGetType) -> Union[BytesIO, AsyncResponse]:
         stream_id = payload_get('stream_id')
         if not stream_id or not isinstance(stream_id, str):
             raise StreamError('No stream_id in rc payload')

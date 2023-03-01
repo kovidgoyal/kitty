@@ -49,7 +49,7 @@ set_on_gpu_state(WindowLogo *s, bool on_gpu) {
 }
 
 window_logo_id_t
-find_or_create_window_logo(WindowLogoTable *head, const char *path) {
+find_or_create_window_logo(WindowLogoTable *head, const char *path, void *png_data, size_t png_data_size) {
     WindowLogoItem *s = NULL;
     unsigned _uthash_hfstr_keylen = (unsigned)uthash_strlen(path);
     HASH_FIND(hh_path, head->by_path, path, _uthash_hfstr_keylen, s);
@@ -62,7 +62,17 @@ find_or_create_window_logo(WindowLogoTable *head, const char *path) {
     if (!s) { PyErr_NoMemory(); return 0; }
     s->path = strdup(path);
     if (!s->path) { free(s); PyErr_NoMemory(); return 0; }
-    if (png_path_to_bitmap(path, &s->wl.bitmap, &s->wl.width, &s->wl.height, &size)) s->wl.load_from_disk_ok = true;
+    bool ok = false;
+    if (png_data == NULL) {
+        ok = png_path_to_bitmap(path, &s->wl.bitmap, &s->wl.width, &s->wl.height, &size);
+    } else {
+        FILE *fp = fmemopen(png_data, png_data_size, "r");
+        if (fp != NULL) {
+            ok = png_from_file_pointer(fp, path, &s->wl.bitmap, &s->wl.width, &s->wl.height, &size);
+            fclose(fp);
+        }
+    }
+    if (ok) s->wl.load_from_disk_ok = true;
     s->refcnt++;
     static window_logo_id_t idc = 0;
     s->id = ++idc;

@@ -20,7 +20,7 @@ typedef struct WindowLogo {
 typedef struct WindowLogoTable WindowLogoTable;
 
 window_logo_id_t
-find_or_create_window_logo(WindowLogoTable *table, const char *path);
+find_or_create_window_logo(WindowLogoTable *table, const char *path, void *png_data, size_t png_data_size);
 
 WindowLogo*
 find_window_logo(WindowLogoTable *table, window_logo_id_t id);

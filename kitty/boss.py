@@ -2639,8 +2639,8 @@ class Boss:
 
         self.choose_entry('Choose an OS window to move the tab to', items, chosen)
 
-    def set_background_image(self, path: Optional[str], os_windows: Tuple[int, ...], configured: bool, layout: Optional[str]) -> None:
-        set_background_image(path, os_windows, configured, layout)
+    def set_background_image(self, path: Optional[str], os_windows: Tuple[int, ...], configured: bool, layout: Optional[str], png_data: bytes = b'') -> None:
+        set_background_image(path, os_windows, configured, layout, png_data)
         for os_window_id in os_windows:
             self.default_bg_changed_for(os_window_id)
 

@@ -1449,9 +1449,9 @@ class Window:
             'text': text
         }
 
-    def set_logo(self, path: str, position: str = '', alpha: float = -1) -> None:
+    def set_logo(self, path: str, position: str = '', alpha: float = -1, png_data: bytes = b'') -> None:
         path = resolve_custom_file(path) if path else ''
-        set_window_logo(self.os_window_id, self.tab_id, self.id, path, position or '', alpha)
+        set_window_logo(self.os_window_id, self.tab_id, self.id, path, position or '', alpha, png_data)
 
     def paste_with_actions(self, text: str) -> None:
         if self.destroyed or not text:

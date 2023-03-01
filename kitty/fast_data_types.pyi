@@ -1351,7 +1351,7 @@ def send_mouse_event(screen: Screen, x: int, y: int, button: int, action: int, m
     pass
 
 
-def set_window_logo(os_window_id: int, tab_id: int, window_id: int, path: str, position: str, alpha: float) -> None:
+def set_window_logo(os_window_id: int, tab_id: int, window_id: int, path: str, position: str, alpha: float, png_data: bytes = b'') -> None:
     pass
 
 

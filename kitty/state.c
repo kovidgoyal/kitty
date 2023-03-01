@@ -256,10 +256,10 @@ release_gpu_resources_for_window(Window *w) {
 }
 
 static bool
-set_window_logo(Window *w, const char *path, const ImageAnchorPosition pos, float alpha, bool is_default) {
+set_window_logo(Window *w, const char *path, const ImageAnchorPosition pos, float alpha, bool is_default, char *png_data, size_t png_data_size) {
     bool ok = false;
     if (path && path[0]) {
-        window_logo_id_t wl = find_or_create_window_logo(global_state.all_window_logos, path);
+        window_logo_id_t wl = find_or_create_window_logo(global_state.all_window_logos, path, png_data, png_data_size);
         if (wl) {
             if (w->window_logo.id) decref_window_logo(global_state.all_window_logos, w->window_logo.id);
             w->window_logo.id = wl;
@@ -285,7 +285,7 @@ initialize_window(Window *w, PyObject *title, bool init_gpu_resources) {
     w->visible = true;
     w->title = title;
     Py_XINCREF(title);
-    if (!set_window_logo(w, OPT(default_window_logo), OPT(window_logo_position), OPT(window_logo_alpha), true)) {
+    if (!set_window_logo(w, OPT(default_window_logo), OPT(window_logo_position), OPT(window_logo_alpha), true, NULL, 0)) {
         log_error("Failed to load default window logo: %s", OPT(default_window_logo));
         if (PyErr_Occurred()) PyErr_Print();
     }
@@ -1106,7 +1106,7 @@ PYWRAP0(apply_options_update) {
             for (size_t w = 0; w < tab->num_windows; w++) {
                 Window *window = tab->windows + w;
                 if (window->window_logo.using_default) {
-                    set_window_logo(window, OPT(default_window_logo), OPT(window_logo_position), OPT(window_logo_alpha), true);
+                    set_window_logo(window, OPT(default_window_logo), OPT(window_logo_position), OPT(window_logo_alpha), true, NULL, 0);
                 }
             }
         }
@@ -1153,7 +1153,7 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
     PyObject *os_window_ids;
     int configured = 0;
     char *png_data = NULL; Py_ssize_t png_data_size = 0;
-    PA("zO!|pOy#", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name, &png_data, png_data_size);
+    PA("zO!|pOy#", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name, &png_data, &png_data_size);
     size_t size;
     BackgroundImageLayout layout = PyUnicode_Check(layout_name) ? bglayout(layout_name) : OPT(background_image_layout);
     BackgroundImage *bgimage = NULL;
@@ -1169,6 +1169,7 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
                 return NULL;
             }
             ok = png_from_file_pointer(fp, path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
+            fclose(fp);
         } else {
             ok = png_path_to_bitmap(path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
         }
@@ -1280,10 +1281,11 @@ PYWRAP1(set_window_logo) {
     id_type os_window_id, tab_id, window_id;
     const char *path; PyObject *position;
     float alpha = 0.5;
-    PA("KKKsUf", &os_window_id, &tab_id, &window_id, &path, &position, &alpha);
+    char *png_data = NULL; Py_ssize_t png_data_size = 0;
+    PA("KKKsUf|y#", &os_window_id, &tab_id, &window_id, &path, &position, &alpha, &png_data, &png_data_size);
     bool ok = false;
     WITH_WINDOW(os_window_id, tab_id, window_id);
-    ok = set_window_logo(window, path, PyObject_IsTrue(position) ? bganchor(position) : OPT(window_logo_position), (0 <= alpha && alpha <= 1) ? alpha : OPT(window_logo_alpha), false);
+    ok = set_window_logo(window, path, PyObject_IsTrue(position) ? bganchor(position) : OPT(window_logo_position), (0 <= alpha && alpha <= 1) ? alpha : OPT(window_logo_alpha), false, png_data, png_data_size);
     END_WITH_WINDOW;
     if (ok) Py_RETURN_TRUE;
     Py_RETURN_FALSE;
