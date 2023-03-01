@@ -772,9 +772,9 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
             draw_window_logo(vao_idx, w, wl, crd);
             BLEND_ONTO_OPAQUE;
         }
-        bind_program(CELL_BG_PROGRAM);
         if (screen->grman->num_of_below_refs) draw_graphics(
                 GRAPHICS_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_below_refs);
+        bind_program(CELL_BG_PROGRAM);
         // draw background for non-default bg cells
         glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 2);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);

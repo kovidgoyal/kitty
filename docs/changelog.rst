@@ -50,6 +50,8 @@ Detailed list of changes
 
 - Linux: Reduce minimum required OpenGL version from 3.3 to 3.1 + extensions (:iss:`2790`)
 
+- Fix a regression that broke drawing of images below cell backgrounds (:iss:`6061`)
+
 - macOS: Fix the window buttons not being hidden after exiting the traditional full screen (:iss:`6009`)
 
 - When reloading configuration, also reload custom MIME types from :file:`mime.types` config file (:pull:`6012`)
