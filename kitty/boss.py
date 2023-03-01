@@ -701,10 +701,9 @@ class Boss:
     def remote_control(self, *args: str) -> None:
         try:
             self.call_remote_control(self.active_window, args)
-        except (Exception, SystemExit):
-            import traceback
-            tb = traceback.format_exc()
-            self.show_error(_('remote_control mapping failed'), tb)
+        except (Exception, SystemExit) as e:
+            import shlex
+            self.show_error(_('remote_control mapping failed'), shlex.join(args) + '\n' + str(e))
 
     def call_remote_control(self, active_window: Optional[Window], args: Tuple[str, ...]) -> 'ResponseType':
         from .rc.base import PayloadGetter, command_for_name, parse_subcommand_cli
