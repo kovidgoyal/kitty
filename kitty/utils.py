@@ -1137,3 +1137,11 @@ def extract_all_from_tarfile_safely(tf: 'tarfile.TarFile', dest: str) -> None:
         tar.extractall(path, tar.getmembers(), numeric_owner=numeric_owner)
 
     safe_extract(tf, dest)
+
+
+def is_png(path: str) -> bool:
+    if path:
+        with suppress(Exception), open(path, 'rb') as f:
+            header = f.read(8)
+            return header.startswith(b'\211PNG\r\n\032\n')
+    return False

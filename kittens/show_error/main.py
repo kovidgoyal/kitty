@@ -55,7 +55,7 @@ def real_main(args: List[str]) -> None:
         tb = data['tb']
         for ln in tb.splitlines():
             print('\r\n', ln, sep='', end='')
-        print(flush=True)
+        print(end='\r\n', flush=True)
     hold_till_enter()
 
 
