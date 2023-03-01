@@ -545,8 +545,8 @@ for the operating system. Various special values are supported:
 :code:`*`
     copy the match to the primary selection (on systems that support primary selections)
 
-:code:`#NAME`
-    copy the match to the specified buffer, e.g. :code:`#a`
+:code:`@NAME`
+    copy the match to the specified buffer, e.g. :code:`@a`
 
 :code:`default`
     run the default open program.
@@ -749,7 +749,7 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
 
     if action == 'self':
         if w is not None:
-            is_copy_action = cmd[0] in ('-', '@', '*') or cmd[0].startswith('#')
+            is_copy_action = cmd[0] in ('-', '@', '*')
             if is_copy_action:
                 text = ' '.join(cmd[1:])
                 if cmd[0] == '-':
@@ -758,8 +758,8 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
                     set_clipboard_string(text)
                 elif cmd[0] == '*':
                     set_primary_selection(text)
-                elif cmd[0].startswith('#'):
-                    boss.set_clipboard_buffer(cmd[0].lstrip('#'), text)
+                elif cmd[0].startswith('@'):
+                    boss.set_clipboard_buffer(cmd[0][1:], text)
             else:
                 import shlex
                 text = ' '.join(shlex.quote(arg) for arg in cmd)
@@ -816,12 +816,13 @@ def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, 
             w = boss.window_id_map.get(target_window_id)
             if w is not None:
                 w.paste_text(joined_text())
-        elif program == '@':
-            set_clipboard_string(joined_text())
         elif program == '*':
             set_primary_selection(joined_text())
-        elif program.startswith('#'):
-            boss.set_clipboard_buffer(program.lstrip('#'), joined_text())
+        elif program.startswith('@'):
+            if program == '@':
+                set_clipboard_string(joined_text())
+            else:
+                boss.set_clipboard_buffer(program[1:], joined_text())
         else:
             from kitty.conf.utils import to_cmdline
             cwd = data['cwd']
