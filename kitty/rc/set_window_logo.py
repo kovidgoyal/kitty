@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-
-import imghdr
 import os
 from base64 import standard_b64decode, standard_b64encode
 from typing import TYPE_CHECKING, Optional
 
 from kitty.types import AsyncResponse
+from kitty.utils import is_png
 
 from .base import (
     MATCH_WINDOW_OPTION,
@@ -85,7 +84,7 @@ failed, the command will exit with a success code.
         if path.lower() == 'none':
             ret['data'] = '-'
             return ret
-        if imghdr.what(path) != 'png':
+        if not is_png(path):
             self.fatal(f'{path} is not a PNG image')
 
         def file_pipe(path: str) -> CmdGenerator:
