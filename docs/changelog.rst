@@ -69,6 +69,9 @@ Detailed list of changes
 
 - hints kitten: Allow copying matches to named buffers (:disc:`6073`)
 
+- Fix overlay windows not inheriting the per-window padding and margin settings
+  of their parents (:iss:`6063`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

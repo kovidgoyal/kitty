@@ -508,6 +508,9 @@ class EdgeWidths:
     def serialize(self) -> Dict[str, Optional[float]]:
         return {'left': self.left, 'right': self.right, 'top': self.top, 'bottom': self.bottom}
 
+    def copy(self) -> 'EdgeWidths':
+        return EdgeWidths(self.serialize())
+
 
 class GlobalWatchers:
 
