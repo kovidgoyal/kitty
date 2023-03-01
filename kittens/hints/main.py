@@ -749,7 +749,7 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
 
     if action == 'self':
         if w is not None:
-            is_copy_action = cmd[0] in ('-', '@', '*')
+            is_copy_action = cmd[0] in ('-', '@', '*') or cmd[0].startswith('@')
             if is_copy_action:
                 text = ' '.join(cmd[1:])
                 if cmd[0] == '-':
