@@ -83,5 +83,25 @@ is created and transmitted that contains the fields:
         "encrypted": "The original command encrypted and base85 encoded"
     }
 
+Async and streaming requests
+---------------------------------
+
+Some remote control commands require asynchronous communication, that is, the
+response from the terminal can happen after an arbitrary amount of time. For
+example, the :code:`select-window` command requires the user to select a window
+before a response can be sent. Such command must set the field :code:`async`
+in the JSON block above to a random string that serves as a unique id. The
+client can cancel an async request in flight by adding the :code:`cancel_async`
+field to the JSON block. A async response remains in flight until the terminal
+sends a response to the request. Note that cancellation requests dont need to
+be encrypted as users must not be prompted for these and the worst a malicious
+cancellation request can do is prevent another sync request from getting a
+response.
+
+Similar to async requests are *streaming* requests. In these the client has to
+send a large amount of data to the terminal and so the request is split into
+chunks. In every chunk the JSON block must contain the field ``stream`` set to
+``true`` and ``stream_id`` set to a random long string, that should be the same for
+all chunks in a request. End of data is indicated by sending a chunk with no data.
 
 .. include:: generated/rc.rst
