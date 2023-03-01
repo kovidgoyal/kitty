@@ -65,6 +65,8 @@ Detailed list of changes
 - ssh kitten: Change the syntax of glob patterns slightly to match common usage
   elsewhere. Now the syntax is the same a "extendedglob" in most shells.
 
+- hints kitten: Allow copying matches to named buffers (:disc:`6073`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

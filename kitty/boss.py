@@ -1998,6 +1998,16 @@ class Boss:
             return w.has_selection()
         return False
 
+    def set_clipboard_buffer(self, buffer_name: str, text: Optional[str] = None) -> None:
+        if buffer_name:
+            if text is not None:
+                self.clipboard_buffers[buffer_name] = text
+            elif buffer_name in self.clipboard_buffers:
+                del self.clipboard_buffers[buffer_name]
+
+    def get_clipboard_buffer(self, buffer_name: str) -> Optional[str]:
+        return self.clipboard_buffers.get(buffer_name)
+
     @ac('cp', '''
         Copy the selection from the active window to the specified buffer
 
@@ -2013,7 +2023,7 @@ class Boss:
                 elif buffer_name == 'primary':
                     set_primary_selection(text)
                 else:
-                    self.clipboard_buffers[buffer_name] = text
+                    self.set_clipboard_buffer(buffer_name, text)
 
     @ac('cp', '''
         Paste from the specified buffer to the active window
@@ -2026,7 +2036,7 @@ class Boss:
         elif buffer_name == 'primary':
             text = get_primary_selection()
         else:
-            text = self.clipboard_buffers.get(buffer_name)
+            text = self.get_clipboard_buffer(buffer_name)
         if text:
             self.paste_to_active_window(text)
 
