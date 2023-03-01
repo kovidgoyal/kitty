@@ -297,41 +297,34 @@ add_trim_predicate(Image *img) {
 }
 
 bool
-png_path_to_bitmap(const char* path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz) {
-    FILE* fp = fopen(path, "r");
-    if (fp == NULL) {
-        log_error("The PNG image: %s could not be opened with error: %s", path, strerror(errno));
-        return false;
-    }
+png_from_file_pointer(FILE *fp, const char *path_for_error_messages, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz) {
     size_t capacity = 16*1024, pos = 0;
     unsigned char *buf = malloc(capacity);
-    if (!buf) { log_error("Out of memory reading PNG file at: %s", path); fclose(fp); return false; }
+    if (!buf) { log_error("Out of memory reading PNG file at: %s", path_for_error_messages); fclose(fp); return false; }
     while (!feof(fp)) {
         if (capacity - pos < 1024) {
             capacity *= 2;
             unsigned char *new_buf = realloc(buf, capacity);
             if (!new_buf) {
                 free(buf);
-                log_error("Out of memory reading PNG file at: %s", path); fclose(fp); return false;
+                log_error("Out of memory reading PNG file at: %s", path_for_error_messages); fclose(fp); return false;
             }
             buf = new_buf;
         }
         pos += fread(buf + pos, sizeof(char), capacity - pos, fp);
         int saved_errno = errno;
         if (ferror(fp) && saved_errno != EINTR) {
-            log_error("Failed while reading from file: %s with error: %s", path, strerror(saved_errno));
-            fclose(fp);
+            log_error("Failed while reading from file: %s with error: %s", path_for_error_messages, strerror(saved_errno));
             free(buf);
             return false;
         }
     }
-    fclose(fp); fp = NULL;
     png_read_data d = {0};
     inflate_png_inner(&d, buf, pos);
     free(buf);
     if (!d.ok) {
         free(d.decompressed); free(d.row_pointers);
-        log_error("Failed to decode PNG image at: %s", path);
+        log_error("Failed to decode PNG image at: %s", path_for_error_messages);
         return false;
     }
     *data = d.decompressed;
@@ -339,6 +332,18 @@ png_path_to_bitmap(const char* path, uint8_t** data, unsigned int* width, unsign
     *sz = d.sz;
     *height = d.height; *width = d.width;
     return true;
+}
+
+bool
+png_path_to_bitmap(const char* path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz) {
+    FILE* fp = fopen(path, "r");
+    if (fp == NULL) {
+        log_error("The PNG image: %s could not be opened with error: %s", path, strerror(errno));
+        return false;
+    }
+    bool ret = png_from_file_pointer(fp, path, data, width, height, sz);
+    fclose(fp); fp = NULL;
+    return ret;
 }
 
 

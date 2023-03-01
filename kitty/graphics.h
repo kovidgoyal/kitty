@@ -160,5 +160,6 @@ void grman_resize(GraphicsManager*, index_type, index_type, index_type, index_ty
 void grman_rescale(GraphicsManager *self, CellPixelSize fg);
 void gpu_data_for_image(ImageRenderData *ans, float left, float top, float right, float bottom);
 void gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, unsigned int screen_height_px, unsigned int width, unsigned int height);
+bool png_from_file_pointer(FILE* fp, const char *path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
 bool png_path_to_bitmap(const char *path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
 bool scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t *minimum_gap, bool os_window_context_set);

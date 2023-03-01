@@ -1152,14 +1152,27 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
     PyObject *layout_name = NULL;
     PyObject *os_window_ids;
     int configured = 0;
-    PA("zO!|pO", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name);
+    char *png_data = NULL; Py_ssize_t png_data_size = 0;
+    PA("zO!|pOy#", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name, &png_data, png_data_size);
     size_t size;
     BackgroundImageLayout layout = PyUnicode_Check(layout_name) ? bglayout(layout_name) : OPT(background_image_layout);
     BackgroundImage *bgimage = NULL;
     if (path) {
         bgimage = calloc(1, sizeof(BackgroundImage));
         if (!bgimage) return PyErr_NoMemory();
-        if (!png_path_to_bitmap(path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size)) {
+        bool ok;
+        if (png_data) {
+            FILE *fp = fmemopen(png_data, png_data_size, "r");
+            if (fp == NULL) {
+                PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
+                free(bgimage);
+                return NULL;
+            }
+            ok = png_from_file_pointer(fp, path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
+        } else {
+            ok = png_path_to_bitmap(path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
+        }
+        if (!ok) {
             PyErr_Format(PyExc_ValueError, "Failed to load image from: %s", path);
             free(bgimage);
             return NULL;

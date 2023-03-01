@@ -609,6 +609,7 @@ def set_background_image(
     os_window_ids: Tuple[int, ...],
     configured: bool = True,
     layout_name: Optional[str] = None,
+    png_data: bytes = b''
 ) -> None:
     pass
 
