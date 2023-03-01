@@ -262,6 +262,7 @@ class GitHub:  # {{{
             'Authorization': self.auth,
             'Accept': 'application/vnd.github+json',
             'User-Agent': 'kitty',
+            'X-GitHub-Api-Version': '2022-11-28',
         }
         if params:
             url += '?' + urlencode(params)
@@ -335,11 +336,11 @@ class GitHub:  # {{{
         # self.clean_older_releases(releases)
         release = self.create_release()
         upload_url = release['upload_url'].partition('{')[0]
-        asset_url = f'{self.url_base}/assets/{{}}'
-        existing_assets = self.existing_assets(release['id'])
+        existing_assets = self.existing_assets(release)
 
         def delete_asset(asset_id: str) -> None:
-            self.delete_asset(asset_url.format(asset_id), fname)
+            asset_url = release['assets_url'] + f'/{asset_id}'
+            self.delete_asset(asset_url, fname)
 
         def upload_with_retries(path: str, desc: str, num_tries: int = 8, sleep_time: float = 60.0) -> None:
             fname = os.path.basename(path)
@@ -399,9 +400,12 @@ class GitHub:  # {{{
         self.print_failed_response_details(r, msg)
         raise SystemExit(1)
 
-    def existing_assets(self, release_id: str) -> Dict[str, str]:
-        url = f'{self.url_base}/{release_id}/assets'
-        d = self.make_request_with_retries(url, failure_msg='Failed to get assets for release', return_data=True)
+    def existing_assets(self, release: Dict[str, Any]) -> Dict[str, str]:
+        if 'assets' in release:
+            d = release['assets']
+        else:
+            d = self.make_request_with_retries(
+                release['assets_url'], params={'per_page': '64'}, failure_msg='Failed to get assets for release', return_data=True)
         return {asset['name']: asset['id'] for asset in d}
 
     def create_release(self) -> Dict[str, Any]:
