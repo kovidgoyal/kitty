@@ -75,11 +75,13 @@ failed, the command will exit with a success code.
         if len(args) != 1:
             self.fatal('Must specify path to exactly one PNG image')
         path = os.path.expanduser(args[0])
+        import secrets
         ret = {
             'match': opts.match,
             'self': opts.self,
             'alpha': opts.alpha,
             'position': opts.position,
+            'stream_id': secrets.token_urlsafe(),
         }
         if path.lower() == 'none':
             ret['data'] = '-'
