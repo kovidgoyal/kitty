@@ -816,8 +816,10 @@ class Window:
             if val:
                 self.refresh()
 
-    def refresh(self) -> None:
+    def refresh(self, reload_all_gpu_data: bool = False) -> None:
         self.screen.mark_as_dirty()
+        if reload_all_gpu_data:
+            self.screen.reload_all_gpu_data()
         wakeup_io_loop()
         wakeup_main_loop()
 

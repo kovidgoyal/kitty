@@ -1105,6 +1105,9 @@ class Screen:
     def mark_as_dirty(self) -> None:
         pass
 
+    def reload_all_gpu_data(self) -> None:
+        pass
+
     def resize(self, width: int, height: int) -> None:
         pass
 

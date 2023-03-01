@@ -3790,6 +3790,13 @@ mark_as_dirty(Screen *self, PyObject *a UNUSED) {
 }
 
 static PyObject*
+reload_all_gpu_data(Screen *self, PyObject *a UNUSED) {
+    self->reload_all_gpu_data = true;
+    Py_RETURN_NONE;
+}
+
+
+static PyObject*
 current_char_width(Screen *self, PyObject *a UNUSED) {
 #define current_char_width_doc "The width of the character under the cursor"
     return PyLong_FromUnsignedLong(screen_current_char_width(self));
@@ -4154,6 +4161,7 @@ static PyMethodDef methods[] = {
     {"clear_selection", (PyCFunction)clear_selection_, METH_NOARGS, ""},
     MND(reverse_index, METH_NOARGS)
     MND(mark_as_dirty, METH_NOARGS)
+    MND(reload_all_gpu_data, METH_NOARGS)
     MND(resize, METH_VARARGS)
     MND(ignore_bells_for, METH_VARARGS)
     MND(set_margins, METH_VARARGS)

@@ -2371,7 +2371,7 @@ class Boss:
         # Update colors
         for w in self.all_windows:
             self.default_bg_changed_for(w.id)
-            w.refresh()
+            w.refresh(reload_all_gpu_data=True)
         self.prewarm.reload_kitty_config()
 
     @ac('misc', '''
