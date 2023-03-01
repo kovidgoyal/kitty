@@ -14,10 +14,6 @@ import (
 	"kitty/tools/utils/images"
 )
 
-type struct_with_data interface {
-	SetData(data string)
-}
-
 func set_payload_data(io_data *rc_io_data, data string) {
 	set_payload_string_field(io_data, "Data", data)
 }
