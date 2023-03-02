@@ -854,8 +854,8 @@ class Boss:
                     import traceback
                     traceback.print_exc()
             del window.actions_on_close[:], window.actions_on_removal[:]
-            window = self.active_window
 
+        window = self.active_window
         if window is not prev_active_window:
             if prev_active_window is not None:
                 prev_active_window.focus_changed(False)
