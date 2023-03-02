@@ -114,36 +114,38 @@ get_download_url() {
     esac
 }
 
-linux_install() {
-    if [ "$installer_is_file" = "y" ]; then
-        command tar -C "$dest" "-xJof" "$installer"
-    else
+download_installer() {
+    tdir=$(command mktemp -d "/tmp/kitty-install-XXXXXXXXXXXX")
+    [ "$installer_is_file" != "y" ] && {
         printf '%s\n\n' "Downloading from: $url"
-        fetch "$url" | command tar -C "$dest" "-xJof" "-"
-    fi
+        if [ "$OS" = "macos" ]; then
+            installer="$tdir/kitty.dmg"
+        else
+            installer="$tdir/kitty.txz"
+        fi
+        fetch "$url" > "$installer" || die "Failed to download: $url"
+        installer_is_file="y"
+    }
+}
+
+linux_install() {
+    command mkdir "$tdir/mp"
+    command tar -C "$tdir/mp" "-xJof" "$installer" || die "Failed to extract kitty tarball"
+    printf "%s\n" "Installing to $dest"
+    command rm -rf "$dest" || die "Failed to delete $dest"
+    command mv "$tdir/mp" "$dest" || die "Failed to move kitty.app to $dest"
 }
 
 macos_install() {
-    tdir=$(command mktemp -d "/tmp/kitty-install-XXXXXXXXXXXX")
-    [ "$installer_is_file" != "y" ] && {
-        installer="$tdir/kitty.dmg"
-        printf '%s\n\n' "Downloading from: $url"
-        fetch "$url" > "$installer" || die "Failed to download: $url"
-    }
     command mkdir "$tdir/mp"
     command hdiutil attach "$installer" "-mountpoint" "$tdir/mp" || die "Failed to mount kitty.dmg"
-    command ditto -v "$tdir/mp/kitty.app" "$dest"
-    rc="$?"
-    command hdiutil detach "$tdir/mp"
-    command rm -rf "$tdir"
-    tdir=''
-    [ "$rc" != "0" ] && die "Failed to copy kitty.app from mounted dmg"
-}
-
-prepare_install_dest() {
     printf "%s\n" "Installing to $dest"
     command rm -rf "$dest"
     command mkdir -p "$dest" || die "Failed to create the directory: $dest"
+    command ditto -v "$tdir/mp/kitty.app" "$dest"
+    rc="$?"
+    command hdiutil detach "$tdir/mp"
+    [ "$rc" != "0" ] && die "Failed to copy kitty.app from mounted dmg"
 }
 
 exec_kitty() {
@@ -160,12 +162,13 @@ main() {
     parse_args "$@"
     detect_network_tool
     get_download_url
-    prepare_install_dest
+    download_installer
     if [ "$OS" = "macos" ]; then
         macos_install
     else
         linux_install
     fi
+    cleanup
     [ "$launch" = "y" ] && exec_kitty
     exit 0
 }
