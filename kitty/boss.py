@@ -146,7 +146,7 @@ from .utils import (
     startup_notification_handler,
     which,
 )
-from .window import CommandOutput, CwdRequest, Window
+from .window import CommandOutput, CwdRequest, Window, WindowFocusMayChange, window_focus_may_change
 
 if TYPE_CHECKING:
     from .rc.base import ResponseType
@@ -544,6 +544,7 @@ class Boss:
         return self.add_os_window(startup_session)
 
     @ac('win', 'New OS Window')
+    @window_focus_may_change
     def new_os_window(self, *args: str) -> None:
         self._new_os_window(args)
 
@@ -555,6 +556,7 @@ class Boss:
         return None
 
     @ac('win', 'New OS Window with the same working directory as the currently active window')
+    @window_focus_may_change
     def new_os_window_with_cwd(self, *args: str) -> None:
         w = self.active_window_for_cwd
         self._new_os_window(args, CwdRequest(w))
@@ -768,21 +770,22 @@ class Boss:
                 args.session = ''
             if not os.path.isabs(args.directory):
                 args.directory = os.path.join(data['cwd'], args.directory)
-            focused_os_window = os_window_id = 0
-            for session in create_sessions(opts, args, respect_cwd=True):
-                os_window_id = self.add_os_window(
-                    session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id,
-                    override_title=args.title or None)
-                if session.focus_os_window:
-                    focused_os_window = os_window_id
-                if opts.background_opacity != get_options().background_opacity:
-                    self._set_os_window_background_opacity(os_window_id, opts.background_opacity)
-                if data.get('notify_on_os_window_death'):
-                    self.os_window_death_actions[os_window_id] = partial(self.notify_on_os_window_death, data['notify_on_os_window_death'])
-            if focused_os_window > 0:
-                focus_os_window(focused_os_window, True, activation_token)
-            elif activation_token and is_wayland() and os_window_id:
-                focus_os_window(os_window_id, True, activation_token)
+            with WindowFocusMayChange():
+                focused_os_window = os_window_id = 0
+                for session in create_sessions(opts, args, respect_cwd=True):
+                    os_window_id = self.add_os_window(
+                        session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id,
+                        override_title=args.title or None)
+                    if session.focus_os_window:
+                        focused_os_window = os_window_id
+                    if opts.background_opacity != get_options().background_opacity:
+                        self._set_os_window_background_opacity(os_window_id, opts.background_opacity)
+                    if data.get('notify_on_os_window_death'):
+                        self.os_window_death_actions[os_window_id] = partial(self.notify_on_os_window_death, data['notify_on_os_window_death'])
+                if focused_os_window > 0:
+                    focus_os_window(focused_os_window, True, activation_token)
+                elif activation_token and is_wayland() and os_window_id:
+                    focus_os_window(os_window_id, True, activation_token)
         else:
             log_error('Unknown message received from peer, ignoring')
         return None
@@ -807,8 +810,8 @@ class Boss:
                     if not self.shutting_down:
                         self.mark_os_window_for_close(src_tab.os_window_id)
 
+    @window_focus_may_change
     def on_child_death(self, window_id: int) -> None:
-        prev_active_window = self.active_window
         window = self.window_id_map.pop(window_id, None)
         if window is None:
             return
@@ -837,12 +840,6 @@ class Boss:
                 import traceback
                 traceback.print_exc()
         del window.actions_on_close[:], window.actions_on_removal[:]
-        window = self.active_window
-        if window is not prev_active_window:
-            if prev_active_window is not None:
-                prev_active_window.focus_changed(False)
-            if window is not None:
-                window.focus_changed(True)
 
     def mark_window_for_close(self, q: Union[Window, None, int] = None) -> None:
         if isinstance(q, int):
@@ -1048,13 +1045,15 @@ class Boss:
             for signum in self.child_monitor.handled_signals():
                 handled_signals.add(signum)
             urls: List[str] = getattr(sys, 'cmdline_args_for_open', [])
-            if urls:
-                delattr(sys, 'cmdline_args_for_open')
-                sess = create_sessions(get_options(), self.args, special_window=SpecialWindow([kitty_exe(), '+runpy', 'input()']))
-                self.startup_first_child(first_os_window_id, startup_sessions=tuple(sess))
-                self.launch_urls(*urls)
-            else:
-                self.startup_first_child(first_os_window_id, startup_sessions=startup_sessions)
+            # The first focus event will come from the OS window being focused, so it is suppressed here.
+            with WindowFocusMayChange(suppress=True):
+                if urls:
+                    delattr(sys, 'cmdline_args_for_open')
+                    sess = create_sessions(get_options(), self.args, special_window=SpecialWindow([kitty_exe(), '+runpy', 'input()']))
+                    self.startup_first_child(first_os_window_id, startup_sessions=tuple(sess))
+                    self.launch_urls(*urls)
+                else:
+                    self.startup_first_child(first_os_window_id, startup_sessions=startup_sessions)
 
         if get_options().update_check_interval > 0 and not self.update_check_started and getattr(sys, 'frozen', False):
             from .update_check import run_update_check
@@ -1239,6 +1238,11 @@ class Boss:
     def active_window(self) -> Optional[Window]:
         t = self.active_tab
         return None if t is None else t.active_window
+
+    @property
+    def focused_window(self) -> Optional[Window]:
+        w = self.active_window
+        return w if w is not None and w.is_focused else None
 
     def set_pending_sequences(self, sequences: SubSequenceMap, default_pending_action: str = '') -> None:
         self.pending_sequences = sequences
@@ -1561,6 +1565,7 @@ class Boss:
                 w.paste_text(text)
 
     @ac('win', 'Focus the nth OS window')
+    @window_focus_may_change
     def nth_os_window(self, num: int = 1) -> None:
         if self.os_window_map and num > 0:
             ids = list(self.os_window_map.keys())
@@ -1675,6 +1680,7 @@ class Boss:
                 )
 
     @ac('misc', 'Edit the kitty.conf config file in your favorite text editor')
+    @window_focus_may_change
     def edit_config_file(self, *a: Any) -> None:
         confpath = prepare_config_file_for_editing()
         cmd = [kitty_exe(), '+edit'] + get_editor(get_options()) + [confpath]
@@ -1784,6 +1790,7 @@ class Boss:
             end_kitten(data, target_window_id, self)
 
     @ac('misc', 'Input an arbitrary unicode character. See :doc:`/kittens/unicode_input` for details.')
+    @window_focus_may_change
     def input_unicode_character(self) -> None:
         self.run_kitten_with_metadata('unicode_input')
 
@@ -1856,6 +1863,7 @@ class Boss:
                 custom_callback=done, action_on_removal=done2)
 
     @ac('misc', 'Run the kitty shell to control kitty with commands')
+    @window_focus_may_change
     def kitty_shell(self, window_type: str = 'window') -> None:
         kw: Dict[str, Any] = {}
         cmd = [kitty_exe(), '@']
@@ -1933,6 +1941,7 @@ class Boss:
         sleep(sleep_time)
 
     @ac('misc', 'Click a URL using the keyboard')
+    @window_focus_may_change
     def open_url_with_hints(self) -> None:
         self.run_kitten_with_metadata('hints')
 
@@ -2045,6 +2054,7 @@ class Boss:
 
         Zero and negative numbers go to previously active tabs
         ''')
+    @window_focus_may_change
     def goto_tab(self, tab_num: int) -> None:
         tm = self.active_tab_manager
         if tm is not None:
@@ -2057,12 +2067,14 @@ class Boss:
         return False
 
     @ac('tab', 'Make the next tab active')
+    @window_focus_may_change
     def next_tab(self) -> None:
         tm = self.active_tab_manager
         if tm is not None:
             tm.next_tab()
 
     @ac('tab', 'Make the previous tab active')
+    @window_focus_may_change
     def previous_tab(self) -> None:
         tm = self.active_tab_manager
         if tm is not None:
@@ -2240,10 +2252,12 @@ class Boss:
         self._new_tab(args, as_neighbor=as_neighbor, cwd_from=cwd_from)
 
     @ac('tab', 'Create a new tab')
+    @window_focus_may_change
     def new_tab(self, *args: str) -> None:
         self._create_tab(list(args))
 
     @ac('tab', 'Create a new tab with working directory for the window in it set to the same as the active window')
+    @window_focus_may_change
     def new_tab_with_cwd(self, *args: str) -> None:
         self._create_tab(list(args), cwd_from=CwdRequest(self.active_window_for_cwd))
 
@@ -2254,6 +2268,7 @@ class Boss:
             special_window = SpecialWindow(None, cwd=path)
             self._new_tab(special_window)
 
+    @window_focus_may_change
     def _new_window(self, args: List[str], cwd_from: Optional[CwdRequest] = None) -> Optional[Window]:
         if not self.os_window_map:
             os_window_id = self.add_os_window()
@@ -2294,6 +2309,7 @@ class Boss:
 
         See :doc:`launch` for details
         ''')
+    @window_focus_may_change
     def launch(self, *args: str) -> None:
         from kitty.launch import launch, parse_launch_args
         opts, args_ = parse_launch_args(args)
@@ -2578,6 +2594,7 @@ class Boss:
     @ac('tab', 'Interactively select a tab to switch to')
     def select_tab(self) -> None:
 
+        @window_focus_may_change
         def chosen(ans: Union[None, str, int]) -> None:
             if isinstance(ans, int):
                 for tab in self.all_tabs:
@@ -2602,16 +2619,19 @@ class Boss:
         ''')
     def detach_window(self, *args: str) -> None:
         if not args or args[0] == 'new':
-            return self._move_window_to(target_os_window_id='new')
+            with WindowFocusMayChange():
+                return self._move_window_to(target_os_window_id='new')
         if args[0] in ('new-tab', 'tab-prev', 'tab-left', 'tab-right'):
             where = 'new' if args[0] == 'new-tab' else args[0][4:]
-            return self._move_window_to(target_tab_id=where)
+            with WindowFocusMayChange():
+                return self._move_window_to(target_tab_id=where)
         ct = self.active_tab
         items: List[Tuple[Union[str, int], str]] = [(t.id, t.title) for t in self.all_tabs if t is not ct]
         items.append(('new_tab', 'New tab'))
         items.append(('new_os_window', 'New OS Window'))
         target_window = self.active_window
 
+        @window_focus_may_change
         def chosen(ans: Union[None, str, int]) -> None:
             if ans is not None:
                 if isinstance(ans, str):
@@ -2631,7 +2651,8 @@ class Boss:
         ''')
     def detach_tab(self, *args: str) -> None:
         if not args or args[0] == 'new':
-            return self._move_tab_to()
+            with WindowFocusMayChange():
+                return self._move_tab_to()
 
         items: List[Tuple[Union[str, int], str]] = []
         ct = self.active_tab_manager
@@ -2641,6 +2662,7 @@ class Boss:
         items.append(('new', 'New OS Window'))
         target_tab = self.active_tab
 
+        @window_focus_may_change
         def chosen(ans: Union[None, int, str]) -> None:
             if ans is not None:
                 os_window_id = None if isinstance(ans, str) else ans
@@ -2660,6 +2682,7 @@ class Boss:
         ident = f'test-notify-{now}'
         notify(f'Test {now}', f'At: {now}', identifier=ident, subtitle=f'Test subtitle {now}')
 
+    @window_focus_may_change
     def notification_activated(self, identifier: str, window_id: int, focus: bool, report: bool) -> None:
         w = self.window_id_map.get(window_id)
         if w is None:
@@ -2670,6 +2693,7 @@ class Boss:
             w.report_notification_activated(identifier)
 
     @ac('debug', 'Show the environment variables that the kitty process sees')
+    @window_focus_may_change
     def show_kitty_env_vars(self) -> None:
         w = self.active_window
         env = os.environ.copy()
@@ -2687,6 +2711,7 @@ class Boss:
     def close_shared_ssh_connections(self) -> None:
         cleanup_ssh_control_masters()
 
+    @window_focus_may_change
     def launch_urls(self, *urls: str, no_replace_window: bool = False) -> None:
         from .launch import force_window_launch
         from .open_actions import actions_for_launch
@@ -2732,6 +2757,7 @@ class Boss:
                 self.drain_actions(actions)
 
     @ac('debug', 'Show the effective configuration kitty is running with')
+    @window_focus_may_change
     def debug_config(self) -> None:
         from .debug_config import debug_config
         w = self.active_window

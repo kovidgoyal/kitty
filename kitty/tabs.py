@@ -58,7 +58,7 @@ from .tab_bar import TabBar, TabBarData
 from .types import ac
 from .typing import EdgeLiteral, SessionTab, SessionType, TypedDict
 from .utils import log_error, platform_window_id, resolved_shell
-from .window import CwdRequest, Watchers, Window, WindowDict
+from .window import CwdRequest, Watchers, Window, WindowDict, window_focus_may_change
 from .window_list import WindowList
 
 
@@ -573,6 +573,7 @@ class Tab:  # {{{
             # focus the first window
             map ctrl+1 nth_window 0
         ''')
+    @window_focus_may_change
     def nth_window(self, num: int = 0) -> None:
         if self.windows:
             if num < 0:
@@ -621,6 +622,7 @@ class Tab:  # {{{
     def tenth_window(self) -> None:
         self.nth_window(9)
 
+    @window_focus_may_change
     def _next_window(self, delta: int = 1) -> None:
         if len(self.windows) > 1:
             self.current_layout.next_window(self.windows, delta)
@@ -669,6 +671,7 @@ class Tab:  # {{{
             map ctrl+left neighboring_window left
             map ctrl+down neighboring_window bottom
         ''')
+    @window_focus_may_change
     def neighboring_window(self, which: EdgeLiteral) -> None:
         neighbor = self.neighboring_group_id(which)
         if neighbor:
@@ -682,6 +685,7 @@ class Tab:  # {{{
             map ctrl+left move_window left
             map ctrl+down move_window bottom
         ''')
+    @window_focus_may_change
     def move_window(self, delta: Union[EdgeLiteral, int] = 1) -> None:
         if isinstance(delta, int):
             if self.current_layout.move_window(self.windows, delta):
@@ -713,6 +717,7 @@ class Tab:  # {{{
         over the windows for easy selection in this mode. See :opt:`visual_window_select_characters`.
         ''')
     def focus_visible_window(self) -> None:
+        @window_focus_may_change
         def callback(tab: Optional[Tab], window: Optional[Window]) -> None:
             if tab and window:
                 tab.set_active_window(window)
@@ -721,6 +726,7 @@ class Tab:  # {{{
 
     @ac('win', 'Swap the current window with another window in the current tab, selected visually. See :opt:`visual_window_select_characters`')
     def swap_with_window(self) -> None:
+        @window_focus_may_change
         def callback(tab: Optional[Tab], window: Optional[Window]) -> None:
             if tab and window:
                 tab.swap_active_window_with(window.id)
@@ -1146,6 +1152,7 @@ class TabManager:  # {{{
             ))
         return ans
 
+    @window_focus_may_change
     def handle_click_on_tab(self, x: int, button: int, modifiers: int, action: int) -> None:
         i = self.tab_bar.tab_at(x)
         now = monotonic()

@@ -3,6 +3,8 @@
 
 from typing import TYPE_CHECKING, Optional
 
+from kitty.window import WindowFocusMayChange
+
 from .base import MATCH_TAB_OPTION, ArgsType, Boss, MatchError, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
 if TYPE_CHECKING:
@@ -43,7 +45,8 @@ Detach the tab this command is run in, rather than the active tab.
 
         for tab in self.tabs_for_match_payload(boss, window, payload_get):
             if tab:
-                boss._move_tab_to(tab=tab, **kwargs)
+                with WindowFocusMayChange():
+                    boss._move_tab_to(tab=tab, **kwargs)
         return None
 
 

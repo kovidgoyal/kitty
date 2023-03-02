@@ -3,6 +3,8 @@
 
 from typing import TYPE_CHECKING, Optional, Union
 
+from kitty.window import WindowFocusMayChange
+
 from .base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
 if TYPE_CHECKING:
@@ -52,7 +54,8 @@ Detach the window this command is run in, rather than the active window.
         kwargs = {'target_os_window_id': newval} if target_tab_id is None else {'target_tab_id': target_tab_id}
         for window in windows:
             if window:
-                boss._move_window_to(window=window, **kwargs)
+                with WindowFocusMayChange():
+                    boss._move_window_to(window=window, **kwargs)
         return None
 
 

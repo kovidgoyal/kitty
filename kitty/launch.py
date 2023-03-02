@@ -18,7 +18,7 @@ from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import OverlayType, run_once
 from .utils import get_editor, log_error, resolve_custom_file, which
-from .window import CwdRequest, CwdRequestType, Watchers, Window
+from .window import CwdRequest, CwdRequestType, Watchers, Window, WindowFocusMayChange
 
 try:
     from typing import TypedDict
@@ -588,14 +588,13 @@ def launch(
             tab = tab_for_window(boss, opts, target_tab)
         if tab is not None:
             watchers = load_watch_modules(opts.watcher)
-            new_window: Window = tab.new_window(env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, **kw)
+            with WindowFocusMayChange(keep_focus=opts.keep_focus, focus_os_window_when_needed=True):
+                new_window: Window = tab.new_window(env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, **kw)
             if spacing:
                 patch_window_edges(new_window, spacing)
                 tab.relayout()
             if opts.color:
                 apply_colors(new_window, opts.color)
-            if opts.keep_focus and active:
-                boss.set_active_window(active, switch_os_window_if_needed=True, for_keep_focus=True)
             if opts.logo:
                 new_window.set_logo(opts.logo, opts.logo_position or '', opts.logo_alpha)
             if opts.type == 'overlay-main':

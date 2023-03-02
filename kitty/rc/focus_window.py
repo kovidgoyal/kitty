@@ -5,6 +5,7 @@
 from typing import TYPE_CHECKING, Optional
 
 from kitty.fast_data_types import focus_os_window
+from kitty.window import WindowFocusMayChange
 
 from .base import MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
@@ -33,9 +34,10 @@ the command will exit with a success code.
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:
-                os_window_id = boss.set_active_window(window)
-                if os_window_id:
-                    focus_os_window(os_window_id, True)
+                with WindowFocusMayChange():
+                    os_window_id = boss.set_active_window(window)
+                    if os_window_id:
+                        focus_os_window(os_window_id, True)
                 break
         return None
 

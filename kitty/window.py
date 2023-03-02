@@ -9,10 +9,11 @@ import weakref
 from collections import deque
 from contextlib import suppress
 from enum import Enum, IntEnum, auto
-from functools import lru_cache, partial
+from functools import lru_cache, partial, wraps
 from gettext import gettext as _
 from itertools import chain
 from time import monotonic
+from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -80,6 +81,7 @@ from .fast_data_types import (
     compile_program,
     current_focused_os_window_id,
     encode_key_for_tty,
+    focus_os_window,
     get_boss,
     get_click_interval,
     get_options,
@@ -255,6 +257,49 @@ DYNAMIC_COLOR_CODES = {
     19: DynamicColor.highlight_fg,
 }
 DYNAMIC_COLOR_CODES.update({k+100: v for k, v in DYNAMIC_COLOR_CODES.items()})
+
+
+class WindowFocusMayChange:
+    in_context = False
+
+    def __init__(self, keep_focus: bool = False, focus_os_window_when_needed: bool = False, suppress: bool = False) -> None:
+        self.keep_focus = keep_focus
+        self.focus_os_window_when_needed = focus_os_window_when_needed
+        self.suppress = suppress
+        self._skip = WindowFocusMayChange.in_context
+        self.prev_focused_window: Optional[Window] = None
+
+    def __enter__(self) -> None:
+        if self._skip:
+            return
+        WindowFocusMayChange.in_context = True
+        self.prev_focused_window = get_boss().focused_window
+
+    def __exit__(self, etype: type, value: Exception, tb: TracebackType) -> None:
+        if self._skip:
+            return
+        boss = get_boss()
+        focused_window: Optional[Window] = boss.focused_window
+        if self.keep_focus and self.prev_focused_window is not None and not self.prev_focused_window.destroyed:
+            boss.set_active_window(self.prev_focused_window, switch_os_window_if_needed=self.focus_os_window_when_needed, for_keep_focus=self.keep_focus)
+            focused_window = boss.focused_window
+        if self.focus_os_window_when_needed and focused_window is not None and current_focused_os_window_id() != focused_window.os_window_id:
+            focus_os_window(focused_window.os_window_id, True)
+
+        WindowFocusMayChange.in_context = False
+        if not self.suppress and focused_window != self.prev_focused_window:
+            if self.prev_focused_window is not None:
+                self.prev_focused_window.focus_changed(False)
+            if focused_window is not None:
+                focused_window.focus_changed(True)
+
+
+def window_focus_may_change(func: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        with WindowFocusMayChange():
+            func(*args, **kwargs)
+    return wrapper
 
 
 class Watcher:
@@ -542,6 +587,8 @@ class Window:
 
     window_custom_type: str = ''
     overlay_type = OverlayType.transient
+    os_window_id: int = 0
+    destroyed: bool = False
 
     def __init__(
         self,
@@ -878,6 +925,7 @@ class Window:
         return False
 
     @ac('debug', 'Show a dump of the current lines in the scrollback + screen with their line attributes')
+    @window_focus_may_change
     def dump_lines_with_attrs(self) -> None:
         strings: List[str] = []
         self.screen.dump_lines_with_attrs(strings.append)
@@ -993,7 +1041,7 @@ class Window:
             return False
 
     def focus_changed(self, focused: bool) -> None:
-        if self.destroyed:
+        if self.destroyed or WindowFocusMayChange.in_context:
             return
         call_watchers(weakref.ref(self), 'on_focus_change', {'focused': focused})
         for c in self.actions_on_focus_change:
@@ -1027,6 +1075,10 @@ class Window:
     @property
     def is_active(self) -> bool:
         return get_boss().active_window is self
+
+    @property
+    def is_focused(self) -> bool:
+        return self.is_active and current_focused_os_window_id() == self.os_window_id
 
     @property
     def has_activity_since_last_focus(self) -> bool:
@@ -1178,6 +1230,7 @@ class Window:
     def add_kitten_result_processor(self, callback: Callable[['Window', Any], None]) -> None:
         self.kitten_result_processors.append(callback)
 
+    @window_focus_may_change
     def handle_overlay_ready(self, msg: str) -> None:
         boss = get_boss()
         tab = boss.tab_for_window(self)
@@ -1517,12 +1570,14 @@ class Window:
     # actions {{{
 
     @ac('cp', 'Show scrollback in a pager like less')
+    @window_focus_may_change
     def show_scrollback(self) -> None:
         text = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
         data = self.pipe_data(text, has_wrap_markers=True)
         cursor_on_screen = self.screen.scrolled_by < self.screen.lines - self.screen.cursor.y
         get_boss().display_scrollback(self, data['text'], data['input_line_number'], report_cursor=cursor_on_screen)
 
+    @window_focus_may_change
     def show_cmd_output(self, which: CommandOutput, title: str = 'Command output', as_ansi: bool = True, add_wrap_markers: bool = True) -> None:
         text = self.cmd_output(which, as_ansi=as_ansi, add_wrap_markers=add_wrap_markers)
         text = text.replace('\r\n', '\n').replace('\r', '\n')
