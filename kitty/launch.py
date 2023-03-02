@@ -435,7 +435,7 @@ force_window_launch = ForceWindowLaunch()
 non_window_launch_types = 'background', 'clipboard', 'primary'
 
 
-def launch(
+def _launch(
     boss: Boss,
     opts: LaunchCLIOptions,
     args: List[str],
@@ -588,14 +588,19 @@ def launch(
             tab = tab_for_window(boss, opts, target_tab)
         if tab is not None:
             watchers = load_watch_modules(opts.watcher)
-            new_window: Window = tab.new_window(env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, **kw)
+            with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
+                new_window: Window = tab.new_window(
+                    env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, **kw)
             if spacing:
                 patch_window_edges(new_window, spacing)
                 tab.relayout()
             if opts.color:
                 apply_colors(new_window, opts.color)
-            if opts.keep_focus and active:
-                boss.set_active_window(active, switch_os_window_if_needed=True, for_keep_focus=True)
+            if opts.keep_focus:
+                if active:
+                    boss.set_active_window(active, switch_os_window_if_needed=True, for_keep_focus=True)
+                if not Window.initial_ignore_focus_changes_context_manager_in_operation:
+                    new_window.ignore_focus_changes = False
             if opts.logo:
                 new_window.set_logo(opts.logo, opts.logo_position or '', opts.logo_alpha)
             if opts.type == 'overlay-main':
@@ -603,6 +608,25 @@ def launch(
             return new_window
     return None
 
+
+def launch(
+    boss: Boss,
+    opts: LaunchCLIOptions,
+    args: List[str],
+    target_tab: Optional[Tab] = None,
+    force_target_tab: bool = False,
+    active: Optional[Window] = None,
+    is_clone_launch: str = '',
+    rc_from_window: Optional[Window] = None,
+) -> Optional[Window]:
+    active = active or boss.active_window_for_cwd
+    if opts.keep_focus and active:
+        orig, active.ignore_focus_changes = active.ignore_focus_changes, True
+    try:
+        return _launch(boss, opts, args, target_tab, force_target_tab, active, is_clone_launch, rc_from_window)
+    finally:
+        if opts.keep_focus and active:
+            active.ignore_focus_changes = orig
 
 @run_once
 def clone_safe_opts() -> FrozenSet[str]:

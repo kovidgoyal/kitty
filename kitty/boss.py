@@ -7,7 +7,7 @@ import json
 import os
 import re
 import sys
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from functools import partial
 from gettext import gettext as _
 from time import monotonic, sleep
@@ -17,6 +17,7 @@ from typing import (
     Callable,
     Container,
     Dict,
+    Generator,
     Iterable,
     Iterator,
     List,
@@ -381,17 +382,20 @@ class Boss:
         si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
         focused_os_window = wid = 0
         token = os.environ.pop('XDG_ACTIVATION_TOKEN', '')
-        for startup_session in si:
-            # The window state from the CLI options will override and apply to every single OS window in startup session
-            wstate = self.args.start_as if self.args.start_as and self.args.start_as != 'normal' else None
-            wid = self.add_os_window(startup_session, window_state=wstate, os_window_id=os_window_id)
-            if startup_session.focus_os_window:
-                focused_os_window = wid
-            os_window_id = None
-        if focused_os_window > 0:
-            focus_os_window(focused_os_window, True, token)
-        elif token and is_wayland() and wid:
-            focus_os_window(wid, True, token)
+        with Window.set_ignore_focus_changes_for_new_windows():
+            for startup_session in si:
+                # The window state from the CLI options will override and apply to every single OS window in startup session
+                wstate = self.args.start_as if self.args.start_as and self.args.start_as != 'normal' else None
+                wid = self.add_os_window(startup_session, window_state=wstate, os_window_id=os_window_id)
+                if startup_session.focus_os_window:
+                    focused_os_window = wid
+                os_window_id = None
+            if focused_os_window > 0:
+                focus_os_window(focused_os_window, True, token)
+            elif token and is_wayland() and wid:
+                focus_os_window(wid, True, token)
+        for w in self.all_windows:
+            w.ignore_focus_changes = False
 
     def add_os_window(
         self,
@@ -807,37 +811,51 @@ class Boss:
                     if not self.shutting_down:
                         self.mark_os_window_for_close(src_tab.os_window_id)
 
+    @contextmanager
+    def suppress_focus_change_events(self) -> Generator[None, None, None]:
+        changes = {}
+        for w in self.window_id_map.values():
+            changes[w] = w.ignore_focus_changes
+            w.ignore_focus_changes = True
+        try:
+            yield
+        finally:
+            for w, val in changes.items():
+                w.ignore_focus_changes = val
+
     def on_child_death(self, window_id: int) -> None:
         prev_active_window = self.active_window
         window = self.window_id_map.pop(window_id, None)
         if window is None:
             return
-        for close_action in window.actions_on_close:
-            try:
-                close_action(window)
-            except Exception:
-                import traceback
-                traceback.print_exc()
-        os_window_id = window.os_window_id
-        window.destroy()
-        tm = self.os_window_map.get(os_window_id)
-        tab = None
-        if tm is not None:
-            for q in tm:
-                if window in q:
-                    tab = q
-                    break
-        if tab is not None:
-            tab.remove_window(window)
-            self._cleanup_tab_after_window_removal(tab)
-        for removal_action in window.actions_on_removal:
-            try:
-                removal_action(window)
-            except Exception:
-                import traceback
-                traceback.print_exc()
-        del window.actions_on_close[:], window.actions_on_removal[:]
-        window = self.active_window
+        with self.suppress_focus_change_events():
+            for close_action in window.actions_on_close:
+                try:
+                    close_action(window)
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
+            os_window_id = window.os_window_id
+            window.destroy()
+            tm = self.os_window_map.get(os_window_id)
+            tab = None
+            if tm is not None:
+                for q in tm:
+                    if window in q:
+                        tab = q
+                        break
+            if tab is not None:
+                tab.remove_window(window)
+                self._cleanup_tab_after_window_removal(tab)
+            for removal_action in window.actions_on_removal:
+                try:
+                    removal_action(window)
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
+            del window.actions_on_close[:], window.actions_on_removal[:]
+            window = self.active_window
+
         if window is not prev_active_window:
             if prev_active_window is not None:
                 prev_active_window.focus_changed(False)
@@ -2498,36 +2516,37 @@ class Boss:
         src_tab = self.tab_for_window(window)
         if src_tab is None:
             return
-        if target_os_window_id == 'new':
-            target_os_window_id = self.add_os_window()
-            tm = self.os_window_map[target_os_window_id]
-            target_tab = tm.new_tab(empty_tab=True)
-        else:
-            target_os_window_id = target_os_window_id or current_os_window()
-            if isinstance(target_tab_id, str):
-                if not isinstance(target_os_window_id, int):
-                    q = self.active_tab_manager
-                    assert q is not None
-                    tm = q
-                else:
-                    tm = self.os_window_map[target_os_window_id]
-                if target_tab_id == 'new':
-                    target_tab = tm.new_tab(empty_tab=True)
-                else:
-                    target_tab = tm.tab_at_location(target_tab_id) or tm.new_tab(empty_tab=True)
+        with self.suppress_focus_change_events():
+            if target_os_window_id == 'new':
+                target_os_window_id = self.add_os_window()
+                tm = self.os_window_map[target_os_window_id]
+                target_tab = tm.new_tab(empty_tab=True)
             else:
-                for tab in self.all_tabs:
-                    if tab.id == target_tab_id:
-                        target_tab = tab
-                        target_os_window_id = tab.os_window_id
-                        break
+                target_os_window_id = target_os_window_id or current_os_window()
+                if isinstance(target_tab_id, str):
+                    if not isinstance(target_os_window_id, int):
+                        q = self.active_tab_manager
+                        assert q is not None
+                        tm = q
+                    else:
+                        tm = self.os_window_map[target_os_window_id]
+                    if target_tab_id == 'new':
+                        target_tab = tm.new_tab(empty_tab=True)
+                    else:
+                        target_tab = tm.tab_at_location(target_tab_id) or tm.new_tab(empty_tab=True)
                 else:
-                    return
+                    for tab in self.all_tabs:
+                        if tab.id == target_tab_id:
+                            target_tab = tab
+                            target_os_window_id = tab.os_window_id
+                            break
+                    else:
+                        return
 
-        for detached_window in src_tab.detach_window(window):
-            target_tab.attach_window(detached_window)
-        self._cleanup_tab_after_window_removal(src_tab)
-        target_tab.make_active()
+            for detached_window in src_tab.detach_window(window):
+                target_tab.attach_window(detached_window)
+            self._cleanup_tab_after_window_removal(src_tab)
+            target_tab.make_active()
 
     def _move_tab_to(self, tab: Optional[Tab] = None, target_os_window_id: Optional[int] = None) -> None:
         tab = tab or self.active_tab

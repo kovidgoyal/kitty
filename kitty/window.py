@@ -7,7 +7,7 @@ import re
 import sys
 import weakref
 from collections import deque
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from enum import Enum, IntEnum, auto
 from functools import lru_cache, partial
 from gettext import gettext as _
@@ -19,6 +19,7 @@ from typing import (
     Callable,
     Deque,
     Dict,
+    Generator,
     Iterable,
     List,
     NamedTuple,
@@ -542,6 +543,22 @@ class Window:
 
     window_custom_type: str = ''
     overlay_type = OverlayType.transient
+    initial_ignore_focus_changes: bool = False
+    initial_ignore_focus_changes_context_manager_in_operation: bool = False
+
+    @classmethod
+    @contextmanager
+    def set_ignore_focus_changes_for_new_windows(cls, value: bool = True) -> Generator[None, None, None]:
+        if cls.initial_ignore_focus_changes_context_manager_in_operation:
+            yield
+        else:
+            orig, cls.initial_ignore_focus_changes = cls.initial_ignore_focus_changes, value
+            cls.initial_ignore_focus_changes_context_manager_in_operation = True
+            try:
+                yield
+            finally:
+                cls.initial_ignore_focus_changes = orig
+                cls.initial_ignore_focus_changes_context_manager_in_operation = False
 
     def __init__(
         self,
@@ -560,6 +577,7 @@ class Window:
         else:
             self.watchers = global_watchers().copy()
         self.last_focused_at = 0.
+        self.is_focused: bool = False
         self.last_resized_at = 0.
         self.started_at = monotonic()
         self.current_remote_data: List[str] = []
@@ -574,6 +592,7 @@ class Window:
         self.pty_resized_once = False
         self.last_reported_pty_size = (-1, -1, -1, -1)
         self.needs_attention = False
+        self.ignore_focus_changes = self.initial_ignore_focus_changes
         self.override_title = override_title
         self.default_title = os.path.basename(child.argv[0] or appname)
         self.child_title = self.default_title
@@ -993,8 +1012,9 @@ class Window:
             return False
 
     def focus_changed(self, focused: bool) -> None:
-        if self.destroyed:
+        if self.destroyed or self.ignore_focus_changes or self.is_focused == focused:
             return
+        self.is_focused = focused
         call_watchers(weakref.ref(self), 'on_focus_change', {'focused': focused})
         for c in self.actions_on_focus_change:
             try:
