@@ -120,6 +120,24 @@ is looped the specified number of times.
 --hold
 type=bool-set
 Wait for a key press before exiting after displaying the images.
+
+
+--unicode-placeholder
+type=bool-set
+Use the Unicode placeholder method to display the images. Useful to display
+images from within full screen terminal programs that do not understand the
+kitty graphics protocol such as multiplexers or editors. See
+:ref:`graphics_unicode_placeholders` for details.
+
+
+--passthrough
+type=choices
+choices=detect,tmux,none
+default=detect
+Whether to surround graphics commands with escape sequences that allow them to passthrough
+programs like tmux. The default is to detect when running inside tmux and automatically use
+the tmux passthrough escape codes. Note that when this option is enabled it implies
+:option:`--unicode-placeholder` as well.
 '''
 
 help_text = (

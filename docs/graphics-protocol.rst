@@ -472,6 +472,8 @@ z-index and the same id, then the behavior is undefined.
    Support for the C=1 cursor movement policy
 
 
+.. _graphics_unicode_placeholders:
+
 Unicode placeholders
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
