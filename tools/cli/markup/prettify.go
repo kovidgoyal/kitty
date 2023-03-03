@@ -96,7 +96,7 @@ func (self *Context) hyperlink_for_path(path string, text string) string {
 	if err == nil && fi.IsDir() {
 		path = strings.TrimSuffix(path, "/") + "/"
 	}
-	host := utils.CachedHostname()
+	host := utils.Hostname()
 	url := "file://" + host + path
 	return self.hyperlink_for_url(url, text)
 }
@@ -119,7 +119,7 @@ func (self *Context) link(x string) string {
 
 func (self *Context) ref_hyperlink(x string, prefix string) string {
 	text, target := text_and_target(x)
-	url := "kitty+doc://" + utils.CachedHostname() + "/#ref=" + prefix + target
+	url := "kitty+doc://" + utils.Hostname() + "/#ref=" + prefix + target
 	text = replace_all_rst_roles(text, func(group rst_format_match) string {
 		return group.payload
 	})

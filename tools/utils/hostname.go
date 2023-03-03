@@ -11,14 +11,10 @@ var _ = fmt.Print
 
 var hostname string = "*"
 
-func CachedHostname() string {
-	if hostname == "*" {
-		h, err := os.Hostname()
-		if err != nil {
-			hostname = h
-		} else {
-			hostname = ""
-		}
+var Hostname = (&Once[string]{Run: func() string {
+	h, err := os.Hostname()
+	if err == nil {
+		return h
 	}
-	return hostname
-}
+	return ""
+}}).Get
