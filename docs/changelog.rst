@@ -40,6 +40,8 @@ Detailed list of changes
 
 - Text rendering: Use sRGB correct linear gamma blending for nicer font rendering and better color accuracy with transparent windows. See the option :opt:`text_composition_strategy` for details. The obsolete :opt:`macos_thicken_font` will make the font too thick and needs to be removed manually if it is configured. (:pull:`5969`)
 
+- Graphics protocol: Add support for displaying images inside programs that do not support the protocol such as vim and tmux (:pull:`5664`)
+
 - Fix a regression in 0.27.0 that broke ``kitty @ set-font-size 0`` (:iss:`5992`)
 
 - launch: When using ``--cwd=current`` for a remote system support running non shell commands as well (:disc:`5987`)
@@ -155,8 +157,6 @@ Detailed list of changes
 - Fix ssh kitten not working on FreeBSD (:iss:`5928`)
 
 - macOS: Export kitty selected text to the system for use with services that accept it (patch by Sertaç Ö. Yıldız)
-
-- Image placement using Unicode placeholders (:pull:`5664`)
 
 
 0.26.5 [2022-11-07]

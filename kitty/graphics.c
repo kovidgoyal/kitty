@@ -747,17 +747,16 @@ Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
     float x_offset, y_offset, x_scale, y_scale;
 
     // Fit the image to the box while preserving aspect ratio
-    if (img->width * img_rows * cell.height >
-        img->height * img_columns * cell.width) {
+    if (img->width * img_rows * cell.height > img->height * img_columns * cell.width) {
         // Fit to width and center vertically.
         x_offset = 0;
-        x_scale = (float)(img_columns * cell.width) / img->width;
+        x_scale = (float)(img_columns * cell.width) / MAX(1u, img->width);
         y_scale = x_scale;
         y_offset = (img_rows * cell.height - img->height * y_scale) / 2;
     } else {
         // Fit to height and center horizontally.
         y_offset = 0;
-        y_scale = (float)(img_rows * cell.height) / img->height;
+        y_scale = (float)(img_rows * cell.height) / MAX(1u, img->height);
         x_scale = y_scale;
         x_offset = (img_columns * cell.width - img->width * x_scale) / 2;
     }

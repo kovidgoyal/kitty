@@ -475,34 +475,71 @@ z-index and the same id, then the behavior is undefined.
 Unicode placeholders
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. versionadded:: 0.27.0
-   Unicode placeholders
+.. versionadded:: 0.28.0
+   Support for image display via Unicode placeholders
 
 You can also use a special Unicode character ``U+10EEEE`` as a placeholder for
-an image. This approach is less flexible, but it works for any application that
-supports Unicode and foreground colors (tmux, vim, etc). To use it, you need to
-create a virtual image placement by specifying ``U=1`` and the desirable number
-of lines and columns::
+an image. This approach is less flexible, but it allows using images inside
+any host application that supports Unicode and foreground colors (tmux, vim, weechat, etc.)
+and has a way to pass escape codes through to the underlying terminal.
+
+The central idea is that we use a single *Private Use* Unicode character as a
+*placeholder* to indicate to the terminal that an image is supposed to be
+displayed at that cell. Since this character is just normal text, Unicode aware
+application will move it around as needed when they redraw their screens,
+thereby automatically moving the displayed image as well, even though they know
+nothing about the graphics protocol. So an image is first created using the
+normal graphics protocol escape codes (albeit in quiet mode (``q=2``) so that there are
+no responses from the terminal that could confuse the host application). Then,
+the actual image is displayed by getting the host application to emit normal
+text consisting of ``U+10EEEE`` and various diacritics (Unicode combining
+characters) and colors.
+
+To use it, first create an image as you would normally with the graphics
+protocol with (``q=2``), but do not create a placement for it, that is, do not
+display it. Then, create a *virtual image placement* by specifying ``U=1`` and
+the desired number of lines and columns::
 
     <ESC>_Ga=p,U=1,i=<image_id>,c=<columns>,r=<rows><ESC>\
 
-The image will be fit to the specified rectangle, its aspect ratio preserved (in
-the future more scaling modes may be added to the protocol). Now you can display
-the image using the placeholder character, encoding the image ID in its
-foreground color. The row and column values are specified with diacritics listed
-in ``rowcolumn-diacritics.txt``. For example, here is how you can print a 2x2
-placeholder for image ID 42::
+The image will eventually be fit to the specified rectangle, its aspect ratio
+preserved. Finally, the image can be actually displayed by using the
+placeholder character, encoding the image ID in its foreground color. The row
+and column values are specified with diacritics listed in
+:download:`rowcolumn-diacritics.txt <../rowcolumn-diacritics.txt>`.  For
+example, here is how you can print a ``2x2`` placeholder for image ID ``42``:
 
-    printf "\e[38;5;42m\U10EEEE\U0305\U0305\U10EEEE\U0305\U030D\n"
-    printf "\e[38;5;42m\U10EEEE\U030D\U0305\U10EEEE\U030D\U030D\n"
+.. code-block:: sh
 
-By using only the foreground color you are limited to 8-bit IDs in 256 color
-mode and to 24-bit IDs in true color mode. If you need more bits for the image
-ID, you can specify the most significant byte via the third diacritic. For
-example, this is the placeholder for the image ID ``738197504 = 42 + 2 << 24``::
+    printf "\e[38;5;42m\U10EEEE\U0305\U0305\U10EEEE\U0305\U030D\e[39m\n"
+    printf "\e[38;5;42m\U10EEEE\U030D\U0305\U10EEEE\U030D\U030D\e[39m\n"
+
+Here, ``U+305`` is the diacritic corresponding to the number ``0``
+and ``U+30D`` corresponds to ``1``. So these two commands create the following
+``2x2`` placeholder:
+
+========== ==========
+(0, 0)     (1, 0)
+(1, 0)     (1, 1)
+========== ==========
+
+This will cause the image with ID ``42`` to be displayed in a ``2x2`` grid.
+Ideally, you would print out as many cells as the number of rows and columns
+specified when creating the virtual placement, but in case of a mismatch only
+part of the image will be displayed.
+
+By using only the foreground color for image ID you are limited to either 8-bit IDs in 256 color
+mode or 24-bit IDs in true color mode. Since IDs are in a global namespace
+there can easily be collisions. If you need more bits for the image
+ID, you can specify the most significant byte via a third diacritic. For
+example, this is the placeholder for the image ID ``738197504 = 42 + (2 << 24)``:
+
+.. code-block:: sh
 
     printf "\e[38;5;42m\U10EEEE\U0305\U0305\U030E\U10EEEE\U0305\U030D\U030E\n"
     printf "\e[38;5;42m\U10EEEE\U030D\U0305\U030E\U10EEEE\U030D\U030D\U030E\n"
+
+Here, ``U+30E`` is the diacritic corresponding to the number ``2``.
 
 You can also specify a placement ID using the underline color (if it's omitted
 or zero, the terminal may choose any virtual placement of the given image). The
@@ -511,7 +548,7 @@ transparent. Other text attributes are reserved for future use.
 
 Row, column and most significant byte diacritics may also be omitted, in which
 case the placeholder cell will inherit the missing values from the placeholder
-cell to the left:
+cell to the left, following the algorithm:
 
 - If no diacritics are present, and the previous placeholder cell has the same
   foreground and underline colors, then the row of the current cell will be the
@@ -530,7 +567,9 @@ cell to the left:
   of the cell to the left.
 
 These rules are applied left-to-right, which allows specifying only row
-diacritics of the first column, i.e. here is a 2 rows by 3 columns placeholder::
+diacritics of the first column, i.e. here is a 2 rows by 3 columns placeholder:
+
+.. code-block:: sh
 
     printf "\e[38;5;42m\U10EEEE\U0305\U10EEEE\U10EEEE\n"
     printf "\e[38;5;42m\U10EEEE\U030D\U10EEEE\U10EEEE\n"
@@ -540,17 +579,17 @@ given rules will fail to guess the missing information. In such cases, the
 terminal may apply other heuristics (but it doesn't have to).
 
 It is important to distinguish between virtual image placements and real images
-displayed on top of placeholders. Virtual placements are invisible and only play
+displayed on top of Unicode placeholders. Virtual placements are invisible and only play
 the role of prototypes for real images. Virtual placements can be deleted by a
 deletion command only when the `d` key is equal to ``i``, ``I``, ``n`` or ``N``.
 The key values ``a``, ``c``, ``p``, ``q``, ``x``, ``y``, ``z`` and their capital
 variants never affect virtual placements because they do not have a physical
 location on the screen.
 
-Real images displayed on top of placeholders are not considered placements from
-the protocol perspective. They cannot be manipulated using graphics commands,
-instead they should be moved, deleted, or modified by manipulating the
-underlying placeholder as normal text.
+Real images displayed on top of Unicode placeholders are not considered
+placements from the protocol perspective. They cannot be manipulated using
+graphics commands, instead they should be moved, deleted, or modified by
+manipulating the underlying Unicode placeholder as normal text.
 
 
 Deleting images
