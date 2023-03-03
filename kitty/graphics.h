@@ -21,6 +21,7 @@ typedef struct {
     union { uint32_t num_cells, other_frame_number; };
     union { int32_t z_index, gap; };
     size_t payload_sz;
+    bool unicode_placement;
 } GraphicsCommand;
 
 typedef struct {
@@ -28,12 +29,18 @@ typedef struct {
 } ImageRect;
 
 typedef struct {
-    uint32_t src_width, src_height, src_x, src_y;
+    float src_width, src_height, src_x, src_y;
     uint32_t cell_x_offset, cell_y_offset, num_cols, num_rows, effective_num_rows, effective_num_cols;
     int32_t z_index;
     int32_t start_row, start_column;
     uint32_t client_id;
     ImageRect src_rect;
+    // Indicates whether this reference represents a cell image that should be
+    // removed when the corresponding cells are modified.
+    bool is_cell_image;
+    // Virtual refs are not displayed but they can be used as prototypes for
+    // refs placed using unicode placeholders.
+    bool is_virtual_ref;
 } ImageRef;
 
 typedef struct {
@@ -154,10 +161,13 @@ gl_pos_y(const unsigned int px_from_top_margin, const unsigned int viewport_size
 GraphicsManager* grman_alloc(void);
 void grman_clear(GraphicsManager*, bool, CellPixelSize fg);
 const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty, CellPixelSize fg);
+Image* grman_put_cell_image(GraphicsManager *self, uint32_t row, uint32_t col, uint32_t image_id, uint32_t placement_id, uint32_t x, uint32_t y, uint32_t w, uint32_t h, CellPixelSize cell);
 bool grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows, CellPixelSize);
 void grman_scroll_images(GraphicsManager *self, const ScrollData*, CellPixelSize fg);
 void grman_resize(GraphicsManager*, index_type, index_type, index_type, index_type);
 void grman_rescale(GraphicsManager *self, CellPixelSize fg);
+void grman_remove_cell_images(GraphicsManager *self, int32_t top, int32_t bottom);
+void grman_remove_all_cell_images(GraphicsManager *self);
 void gpu_data_for_image(ImageRenderData *ans, float left, float top, float right, float bottom);
 void gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, unsigned int screen_height_px, unsigned int width, unsigned int height);
 bool png_from_file_pointer(FILE* fp, const char *path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);

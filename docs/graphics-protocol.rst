@@ -472,6 +472,87 @@ z-index and the same id, then the behavior is undefined.
    Support for the C=1 cursor movement policy
 
 
+Unicode placeholders
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 0.27.0
+   Unicode placeholders
+
+You can also use a special Unicode character ``U+10EEEE`` as a placeholder for
+an image. This approach is less flexible, but it works for any application that
+supports Unicode and foreground colors (tmux, vim, etc). To use it, you need to
+create a virtual image placement by specifying ``U=1`` and the desirable number
+of lines and columns::
+
+    <ESC>_Ga=p,U=1,i=<image_id>,c=<columns>,r=<rows><ESC>\
+
+The image will be fit to the specified rectangle, its aspect ratio preserved (in
+the future more scaling modes may be added to the protocol). Now you can display
+the image using the placeholder character, encoding the image ID in its
+foreground color. The row and column values are specified with diacritics listed
+in ``rowcolumn-diacritics.txt``. For example, here is how you can print a 2x2
+placeholder for image ID 42::
+
+    printf "\e[38;5;42m\U10EEEE\U0305\U0305\U10EEEE\U0305\U030D\n"
+    printf "\e[38;5;42m\U10EEEE\U030D\U0305\U10EEEE\U030D\U030D\n"
+
+By using only the foreground color you are limited to 8-bit IDs in 256 color
+mode and to 24-bit IDs in true color mode. If you need more bits for the image
+ID, you can specify the most significant byte via the third diacritic. For
+example, this is the placeholder for the image ID ``738197504 = 42 + 2 << 24``::
+
+    printf "\e[38;5;42m\U10EEEE\U0305\U0305\U030E\U10EEEE\U0305\U030D\U030E\n"
+    printf "\e[38;5;42m\U10EEEE\U030D\U0305\U030E\U10EEEE\U030D\U030D\U030E\n"
+
+You can also specify a placement ID using the underline color (if it's omitted
+or zero, the terminal may choose any virtual placement of the given image). The
+background color is interpreted as the background color, visible if the image is
+transparent. Other text attributes are reserved for future use.
+
+Row, column and most significant byte diacritics may also be omitted, in which
+case the placeholder cell will inherit the missing values from the placeholder
+cell to the left:
+
+- If no diacritics are present, and the previous placeholder cell has the same
+  foreground and underline colors, then the row of the current cell will be the
+  row of the cell to the left, the column will be the column of the cell to the
+  left plus one, and the most significant image ID byte will be the most
+  significant image ID byte of the cell to the left.
+- If only the row diacritic is present, and the previous placeholder cell has
+  the same row and the same foreground and underline colors, then the column of
+  the current cell will be the column of the cell to the left plus one, and the
+  most significant image ID byte will be the most significant image ID byte of
+  the cell to the left.
+- If only the row and column diacritics are present, and the previous
+  placeholder cell has the same row, the same foreground and underline colors,
+  and its column is one less than the current column, then the most significant
+  image ID byte of the current cell will be the most significant image ID byte
+  of the cell to the left.
+
+These rules are applied left-to-right, which allows specifying only row
+diacritics of the first column, i.e. here is a 2 rows by 3 columns placeholder::
+
+    printf "\e[38;5;42m\U10EEEE\U0305\U10EEEE\U10EEEE\n"
+    printf "\e[38;5;42m\U10EEEE\U030D\U10EEEE\U10EEEE\n"
+
+This will not work for horizontal scrolling and overlapping images since the two
+given rules will fail to guess the missing information. In such cases, the
+terminal may apply other heuristics (but it doesn't have to).
+
+It is important to distinguish between virtual image placements and real images
+displayed on top of placeholders. Virtual placements are invisible and only play
+the role of prototypes for real images. Virtual placements can be deleted by a
+deletion command only when the `d` key is equal to ``i``, ``I``, ``n`` or ``N``.
+The key values ``a``, ``c``, ``p``, ``q``, ``x``, ``y``, ``z`` and their capital
+variants never affect virtual placements because they do not have a physical
+location on the screen.
+
+Real images displayed on top of placeholders are not considered placements from
+the protocol perspective. They cannot be manipulated using graphics commands,
+instead they should be moved, deleted, or modified by manipulating the
+underlying placeholder as normal text.
+
+
 Deleting images
 ---------------------
 

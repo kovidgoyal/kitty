@@ -81,6 +81,9 @@ typedef struct ImageAnchorPosition {
 #define DECORATION_FG_CODE 58
 #define CHAR_IS_BLANK(ch) ((ch) == 32 || (ch) == 0)
 
+// PUA character used as an image placeholder.
+#define IMAGE_PLACEHOLDER_CHAR 0x10EEEE
+
 #define FG 1
 #define BG 2
 
@@ -192,6 +195,7 @@ typedef union LineAttrs {
     struct {
         uint8_t is_continued : 1;
         uint8_t has_dirty_text : 1;
+        uint8_t has_image_placeholders : 1;
         PromptKind prompt_kind : 2;
     };
     uint8_t val;

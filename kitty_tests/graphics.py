@@ -114,21 +114,21 @@ def load_helpers(self):
     return s, g, pl, sl
 
 
-def put_helpers(self, cw, ch):
+def put_helpers(self, cw, ch, cols=10, lines=5):
     iid = 0
 
     def create_screen():
-        s = self.create_screen(10, 5, cell_width=cw, cell_height=ch)
+        s = self.create_screen(cols, lines, cell_width=cw, cell_height=ch)
         return s, 2 / s.columns, 2 / s.lines
 
     def put_cmd(
             z=0, num_cols=0, num_lines=0, x_off=0, y_off=0, width=0,
             height=0, cell_x_off=0, cell_y_off=0, placement_id=0,
-            cursor_movement=0
+            cursor_movement=0, unicode_placeholder=0
     ):
-        return 'z=%d,c=%d,r=%d,x=%d,y=%d,w=%d,h=%d,X=%d,Y=%d,p=%d,C=%d' % (
+        return 'z=%d,c=%d,r=%d,x=%d,y=%d,w=%d,h=%d,X=%d,Y=%d,p=%d,C=%d,U=%d' % (
             z, num_cols, num_lines, x_off, y_off, width, height, cell_x_off,
-            cell_y_off, placement_id, cursor_movement
+            cell_y_off, placement_id, cursor_movement, unicode_placeholder
         )
 
     def put_image(screen, w, h, **kw):
@@ -514,6 +514,232 @@ class TestGraphics(BaseTest):
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 1)
         s.reset()
         self.assertEqual(s.grman.disk_cache.total_size, 0)
+
+    def test_unicode_placeholders(self):
+        # This test tests basic image placement using using unicode placeholders
+        cw, ch = 10, 20
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
+        # Upload two images.
+        put_image(s, 20, 20, num_cols=4, num_lines=2, unicode_placeholder=1, id=42)
+        put_image(s, 10, 20, num_cols=4, num_lines=2, unicode_placeholder=1, id=(42<<16) + (43<<8) + 44)
+        # The references are virtual, so no visible refs yet.
+        s.update_only_line_graphics_data()
+        refs = layers(s)
+        self.ae(len(refs), 0)
+        # A reminder of row/column diacritics meaning (assuming 0-based):
+        # \u0305 -> 0
+        # \u030D -> 1
+        # \u030E -> 2
+        # \u0310 -> 3
+        # Now print the placeholders for the first image.
+        # Encode the id as an 8-bit color.
+        s.apply_sgr("38;5;42")
+        # These two characters will become one 2x1 ref.
+        s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\u030D")
+        # These two characters will be two separate refs (not contiguous).
+        s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\u030E")
+        s.cursor_back(4)
+        s.update_only_line_graphics_data()
+        refs = layers(s)
+        self.ae(len(refs), 3)
+        self.ae(refs[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 0.5, 'bottom': 0.5})
+        self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 0.25, 'bottom': 0.5})
+        self.ae(refs[2]['src_rect'], {'left': 0.5, 'top': 0.0, 'right': 0.75, 'bottom': 0.5})
+        # Erase the line.
+        s.erase_in_line(2)
+        # There must be 0 refs after the line is erased.
+        s.update_only_line_graphics_data()
+        refs = layers(s)
+        self.ae(len(refs), 0)
+        # Now test encoding IDs with the 24-bit color.
+        # The first image, 1x1
+        s.apply_sgr("38;2;0;0;42")
+        s.draw("\U0010EEEE\u0305\u0305")
+        # The second image, 2x1
+        s.apply_sgr("38;2;42;43;44")
+        s.draw("\U0010EEEE\u0305\u030D\U0010EEEE\u0305\u030E")
+        s.cursor_back(2)
+        s.update_only_line_graphics_data()
+        refs = layers(s)
+        self.ae(len(refs), 2)
+        self.ae(refs[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 0.25, 'bottom': 0.5})
+        # The second ref spans the whole widths of the second image because it's
+        # fit to height and centered in a 4x2 box (specified in put_image).
+        self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.5})
+        # Erase the line.
+        s.erase_in_line(2)
+        # Now test implicit column numbers.
+        # We will mix implicit and explicit column/row specifications, but they
+        # will be combine into just two references.
+        s.apply_sgr("38;5;42")
+        # full row 0 of the first image
+        s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\U0010EEEE\U0010EEEE\u0305")
+        # full row 1 of the first image
+        s.draw("\U0010EEEE\u030D\U0010EEEE\U0010EEEE\U0010EEEE\u030D\u0310")
+        s.cursor_back(8)
+        s.update_only_line_graphics_data()
+        refs = layers(s)
+        self.ae(len(refs), 2)
+        self.ae(refs[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.5})
+        self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.5, 'right': 1.0, 'bottom': 1.0})
+
+    def test_unicode_placeholders_3rd_combining_char(self):
+        # This test tests that we can use the 3rd diacritic for the most
+        # significant byte
+        cw, ch = 10, 20
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
+        # Upload two images.
+        put_image(s, 20, 20, num_cols=4, num_lines=2, unicode_placeholder=1, id=42)
+        put_image(s, 20, 10, num_cols=4, num_lines=1, unicode_placeholder=1, id=(42 << 24) + 43)
+        # This one will have id=43, which does not exist.
+        s.apply_sgr("38;2;0;0;43")
+        s.draw("\U0010EEEE\u0305\U0010EEEE\U0010EEEE\U0010EEEE")
+        s.cursor_back(4)
+        s.update_only_line_graphics_data()
+        refs = layers(s)
+        self.ae(len(refs), 0)
+        s.erase_in_line(2)
+        # This one will have id=42. We explicitly specify that the most
+        # significant byte is 0 (third \u305). Specifying the zero byte like
+        # this is not necessary but is correct.
+        s.apply_sgr("38;2;0;0;42")
+        s.draw("\U0010EEEE\u0305\u0305\u0305\U0010EEEE\u0305\u030D\u0305")
+        # This is the second image.
+        # \u059C -> 42
+        s.apply_sgr("38;2;0;0;43")
+        s.draw("\U0010EEEE\u0305\u0305\u059C\U0010EEEE\u0305\u030D\u059C")
+        # Check that we can continue by using implicit row/column specification.
+        s.draw("\U0010EEEE\u0305\U0010EEEE")
+        s.cursor_back(6)
+        s.update_only_line_graphics_data()
+        refs = layers(s)
+        self.ae(len(refs), 2)
+        self.ae(refs[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 0.5, 'bottom': 0.5})
+        self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0})
+        s.erase_in_line(2)
+        # Now test the 8-bit color mode. Using the third diacritic, we can
+        # specify 16 bits: the most significant byte and the least significant
+        # byte.
+        s.apply_sgr("38;5;42")
+        s.draw("\U0010EEEE\u0305\u0305\u0305\U0010EEEE")
+        s.apply_sgr("38;5;43")
+        s.draw("\U0010EEEE\u0305\u0305\u059C\U0010EEEE\U0010EEEE\u0305\U0010EEEE")
+        s.cursor_back(6)
+        s.update_only_line_graphics_data()
+        refs = layers(s)
+        self.ae(len(refs), 2)
+        self.ae(refs[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 0.5, 'bottom': 0.5})
+        self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0})
+
+    def test_unicode_placeholders_multiple_placements(self):
+        # Here we test placement specification via underline color.
+        cw, ch = 10, 20
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
+        put_image(s, 20, 20, num_cols=1, num_lines=1, placement_id=1, unicode_placeholder=1, id=42)
+        put_ref(s, id=42, num_cols=2, num_lines=1, placement_id=22, unicode_placeholder=1)
+        put_ref(s, id=42, num_cols=4, num_lines=2, placement_id=44, unicode_placeholder=1)
+        # The references are virtual, so no visible refs yet.
+        s.update_only_line_graphics_data()
+        refs = layers(s)
+        self.ae(len(refs), 0)
+        # Draw the first row of each placement.
+        s.apply_sgr("38;5;42")
+        s.apply_sgr("58;5;1")
+        s.draw("\U0010EEEE\u0305")
+        s.apply_sgr("58;5;22")
+        s.draw("\U0010EEEE\u0305\U0010EEEE\u0305")
+        s.apply_sgr("58;5;44")
+        s.draw("\U0010EEEE\u0305\U0010EEEE\u0305\U0010EEEE\u0305\U0010EEEE\u0305")
+        s.update_only_line_graphics_data()
+        refs = layers(s)
+        self.ae(len(refs), 3)
+        self.ae(refs[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.5})
+        self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0})
+        self.ae(refs[2]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.5})
+
+    def test_unicode_placeholders_scroll(self):
+        # Here we test scrolling of a region. We'll draw an image spanning 8
+        # rows and then scroll only the middle part of this image. Each
+        # reference corresponds to one row.
+        cw, ch = 5, 10
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, lines=8)
+        put_image(s, 5, 80, num_cols=1, num_lines=8, unicode_placeholder=1, id=42)
+        s.apply_sgr("38;5;42")
+        s.cursor_position(1, 0)
+        s.draw("\U0010EEEE\u0305\n")
+        s.cursor_position(2, 0)
+        s.draw("\U0010EEEE\u030D\n")
+        s.cursor_position(3, 0)
+        s.draw("\U0010EEEE\u030E\n")
+        s.cursor_position(4, 0)
+        s.draw("\U0010EEEE\u0310\n")
+        s.cursor_position(5, 0)
+        s.draw("\U0010EEEE\u0312\n")
+        s.cursor_position(6, 0)
+        s.draw("\U0010EEEE\u033D\n")
+        s.cursor_position(7, 0)
+        s.draw("\U0010EEEE\u033E\n")
+        s.cursor_position(8, 0)
+        s.draw("\U0010EEEE\u033F")
+        # Each line will contain a part of the image.
+        s.update_only_line_graphics_data()
+        refs = layers(s)
+        refs = sorted(refs, key=lambda r: r['src_rect']['top'])
+        self.ae(len(refs), 8)
+        for i in range(8):
+            self.ae(refs[i]['src_rect'], {'left': 0.0, 'top': 0.125*i, 'right': 1.0, 'bottom': 0.125*(i + 1)})
+            self.ae(refs[i]['dest_rect']['top'], 1 - 0.25*i)
+        # Now set margins to lines 3 and 6.
+        s.set_margins(3, 6)  # 1-based indexing
+        # Scroll two lines down (i.e. move lines 3..6 up).
+        # Lines 3 and 4 will be erased.
+        s.cursor_position(6, 0)
+        s.index()
+        s.index()
+        s.update_only_line_graphics_data()
+        refs = layers(s)
+        refs = sorted(refs, key=lambda r: r['src_rect']['top'])
+        self.ae(len(refs), 6)
+        # Lines 1 and 2 are outside of the region, not scrolled.
+        self.ae(refs[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.125})
+        self.ae(refs[0]['dest_rect']['top'], 1.0)
+        self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.125*1, 'right': 1.0, 'bottom': 0.125*2})
+        self.ae(refs[1]['dest_rect']['top'], 1.0 - 0.25*1)
+        # Lines 3 and 4 are erased.
+        # Lines 5 and 6 are now higher.
+        self.ae(refs[2]['src_rect'], {'left': 0.0, 'top': 0.125*4, 'right': 1.0, 'bottom': 0.125*5})
+        self.ae(refs[2]['dest_rect']['top'], 1.0 - 0.25*2)
+        self.ae(refs[3]['src_rect'], {'left': 0.0, 'top': 0.125*5, 'right': 1.0, 'bottom': 0.125*6})
+        self.ae(refs[3]['dest_rect']['top'], 1.0 - 0.25*3)
+        # Lines 7 and 8 are outside of the region.
+        self.ae(refs[4]['src_rect'], {'left': 0.0, 'top': 0.125*6, 'right': 1.0, 'bottom': 0.125*7})
+        self.ae(refs[4]['dest_rect']['top'], 1.0 - 0.25*6)
+        self.ae(refs[5]['src_rect'], {'left': 0.0, 'top': 0.125*7, 'right': 1.0, 'bottom': 0.125*8})
+        self.ae(refs[5]['dest_rect']['top'], 1.0 - 0.25*7)
+        # Now scroll three lines up (i.e. move lines 5..6 down).
+        # Line 6 will be erased.
+        s.cursor_position(3, 0)
+        s.reverse_index()
+        s.reverse_index()
+        s.reverse_index()
+        s.update_only_line_graphics_data()
+        refs = layers(s)
+        refs = sorted(refs, key=lambda r: r['src_rect']['top'])
+        self.ae(len(refs), 5)
+        # Lines 1 and 2 are outside of the region, not scrolled.
+        self.ae(refs[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.125})
+        self.ae(refs[0]['dest_rect']['top'], 1.0)
+        self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.125*1, 'right': 1.0, 'bottom': 0.125*2})
+        self.ae(refs[1]['dest_rect']['top'], 1.0 - 0.25*1)
+        # Lines 3, 4 and 6 are erased.
+        # Line 5 is now lower.
+        self.ae(refs[2]['src_rect'], {'left': 0.0, 'top': 0.125*4, 'right': 1.0, 'bottom': 0.125*5})
+        self.ae(refs[2]['dest_rect']['top'], 1.0 - 0.25*5)
+        # Lines 7 and 8 are outside of the region.
+        self.ae(refs[3]['src_rect'], {'left': 0.0, 'top': 0.125*6, 'right': 1.0, 'bottom': 0.125*7})
+        self.ae(refs[3]['dest_rect']['top'], 1.0 - 0.25*6)
+        self.ae(refs[4]['src_rect'], {'left': 0.0, 'top': 0.125*7, 'right': 1.0, 'bottom': 0.125*8})
+        self.ae(refs[4]['dest_rect']['top'], 1.0 - 0.25*7)
 
     def test_gr_scroll(self):
         cw, ch = 10, 20

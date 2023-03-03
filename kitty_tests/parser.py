@@ -410,7 +410,7 @@ class TestParser(BaseTest):
             for f in 'action delete_action transmission_type compressed'.split():
                 k.setdefault(f, b'\0')
             for f in ('format more id data_sz data_offset width height x_offset y_offset data_height data_width cursor_movement'
-                      ' num_cells num_lines cell_x_offset cell_y_offset z_index placement_id image_number quiet').split():
+                      ' num_cells num_lines cell_x_offset cell_y_offset z_index placement_id image_number quiet unicode_placement').split():
                 k.setdefault(f, 0)
             p = k.pop('payload', '').encode('utf-8')
             k['payload_sz'] = len(p)

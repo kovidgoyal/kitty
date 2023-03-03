@@ -149,6 +149,7 @@ img_by_client_number(GraphicsManager *self, uint32_t number) {
 
 static void
 remove_image(GraphicsManager *self, size_t idx) {
+    assert(idx < self->image_count);
     free_image(self, self->images + idx);
     remove_i_from_array(self->images, idx, self->image_count);
     self->layers_dirty = true;
@@ -560,7 +561,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             img->root_frame_data_loaded = false;
             img->is_drawn = false;
             img->current_frame_shown_at = 0;
-            free_refs_data(img);
+            free_image(self, img);
             *is_dirty = true;
             self->layers_dirty = true;
         } else {
@@ -656,12 +657,12 @@ static void
 update_dest_rect(ImageRef *ref, uint32_t num_cols, uint32_t num_rows, CellPixelSize cell) {
     uint32_t t;
     if (num_cols == 0) {
-        t = ref->src_width + ref->cell_x_offset;
+        t = (uint32_t)(ref->src_width + ref->cell_x_offset);
         num_cols = t / cell.width;
         if (t > num_cols * cell.width) num_cols += 1;
     }
     if (num_rows == 0) {
-        t = ref->src_height + ref->cell_y_offset;
+        t = (uint32_t)(ref->src_height + ref->cell_y_offset);
         num_rows = t / cell.height;
         if (t > num_rows * cell.height) num_rows += 1;
     }
@@ -669,6 +670,176 @@ update_dest_rect(ImageRef *ref, uint32_t num_cols, uint32_t num_rows, CellPixelS
     ref->effective_num_cols = num_cols;
 }
 
+// Create a real image ref for a virtual image ref (placement) positioned in the
+// given cells. This is used for images positioned using Unicode placeholders.
+//
+// The image is resized to fit a box of cells with dimensions
+// `image_ref->columns` by `image_ref->rows`. The parameters `img_col`,
+// `img_row, `columns`, `rows` describe a part of this box that we want to
+// display.
+//
+// Parameters:
+// - `self` - the graphics manager
+// - `screen_row` - the starting row of the screen
+// - `screen_col` - the starting column of the screen
+// - `image_id` - the id of the image
+// - `placement_id` - the id of the placement (0 to find it automatically), it
+//                    must be a virtual placement
+// - `img_col` - the column of the image box we want to start with (base 0)
+// - `img_row` - the row of the image box we want to start with (base 0)
+// - `columns` - the number of columns we want to display
+// - `rows` - the number of rows we want to display
+// - `cell` - the size of a screen cell
+Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
+                            uint32_t screen_col, uint32_t image_id,
+                            uint32_t placement_id, uint32_t img_col,
+                            uint32_t img_row, uint32_t columns, uint32_t rows,
+                            CellPixelSize cell) {
+    Image *img = img_by_client_id(self, image_id);
+    if (img == NULL) return NULL;
+
+    ImageRef *virt_img_ref = NULL;
+    if (placement_id) {
+        // Find the placement by the id. It must be a virtual placement.
+        for (size_t i = 0; i < img->refcnt; i++) {
+            if (img->refs[i].is_virtual_ref &&
+                img->refs[i].client_id == placement_id) {
+                virt_img_ref = img->refs + i;
+                break;
+            }
+        }
+    } else {
+        // Find the first virtual image placement.
+        for (size_t i = 0; i < img->refcnt; i++) {
+            if (img->refs[i].is_virtual_ref) {
+                virt_img_ref = img->refs + i;
+                break;
+            }
+        }
+    }
+
+    if (!virt_img_ref) return NULL;
+
+    // Create the ref structure on stack first. We will not create a real
+    // reference if the image is completely out of bounds.
+    ImageRef ref = {0};
+    ref.is_cell_image = true;
+
+    uint32_t img_rows = virt_img_ref->num_rows;
+    uint32_t img_columns = virt_img_ref->num_cols;
+    // If the number of columns or rows for the image is not set, compute them
+    // in such a way that the image is as close as possible to its natural size.
+    if (img_columns == 0)
+        img_columns = (img->width + cell.width - 1) / cell.width;
+    if (img_rows == 0) img_rows = (img->height + cell.height - 1) / cell.height;
+
+    ref.start_row = screen_row;
+    ref.start_column = screen_col;
+    ref.num_cols = columns;
+    ref.num_rows = rows;
+
+    // The image is fit to the destination box of size
+    //    (cell.width * img_columns) by (cell.height * img_rows)
+    // The conversion from source (image) coordinates to destination (box)
+    // coordinates is done by the following formula:
+    //    x_dst = x_src * x_scale + x_offset
+    //    y_dst = y_src * y_scale + y_offset
+    float x_offset, y_offset, x_scale, y_scale;
+
+    // Fit the image to the box while preserving aspect ratio
+    if (img->width * img_rows * cell.height >
+        img->height * img_columns * cell.width) {
+        // Fit to width and center vertically.
+        x_offset = 0;
+        x_scale = (float)(img_columns * cell.width) / img->width;
+        y_scale = x_scale;
+        y_offset = (img_rows * cell.height - img->height * y_scale) / 2;
+    } else {
+        // Fit to height and center horizontally.
+        y_offset = 0;
+        y_scale = (float)(img_rows * cell.height) / img->height;
+        x_scale = y_scale;
+        x_offset = (img_columns * cell.width - img->width * x_scale) / 2;
+    }
+
+    // Now we can compute source (image) coordinates from destination (box)
+    // coordinates by formula:
+    //     x_src = (x_dst - x_offset) / x_scale
+    //     y_src = (y_dst - y_offset) / y_scale
+
+    // Destination (box) coordinates of the rectangle we want to display.
+    uint32_t x_dst = img_col * cell.width;
+    uint32_t y_dst = img_row * cell.height;
+    uint32_t w_dst = columns * cell.width;
+    uint32_t h_dst = rows * cell.height;
+
+    // Compute the source coordinates of the rectangle.
+    ref.src_x = (x_dst - x_offset) / x_scale;
+    ref.src_y = (y_dst - y_offset) / y_scale;
+    ref.src_width = w_dst / x_scale;
+    ref.src_height = h_dst / y_scale;
+
+    // If the top left corner is out of bounds of the source image, we can
+    // adjust cell offsets and the starting row/column. And if the rectangle is
+    // completely out of bounds, we can avoid creating a real reference. This
+    // is just an optimization, the image will be displayed correctly even if we
+    // do not do this.
+    if (ref.src_x < 0) {
+        ref.src_width += ref.src_x;
+        ref.cell_x_offset = (uint32_t)(-ref.src_x * x_scale);
+        ref.src_x = 0;
+        uint32_t col_offset = ref.cell_x_offset / cell.width;
+        ref.cell_x_offset %= cell.width;
+        ref.start_column += col_offset;
+        if (ref.num_cols <= col_offset)
+            return img;
+        ref.num_cols -= col_offset;
+    }
+    if (ref.src_y < 0) {
+        ref.src_height += ref.src_y;
+        ref.cell_y_offset = (uint32_t)(-ref.src_y * y_scale);
+        ref.src_y = 0;
+        uint32_t row_offset = ref.cell_y_offset / cell.height;
+        ref.cell_y_offset %= cell.height;
+        ref.start_row += row_offset;
+        if (ref.num_rows <= row_offset)
+            return img;
+        ref.num_rows -= row_offset;
+    }
+
+    // For the bottom right corner we can remove only completely empty rows and
+    // columns.
+    if (ref.src_x + ref.src_width > img->width) {
+        float redundant_w = ref.src_x + ref.src_width - img->width;
+        uint32_t redundant_cols = (uint32_t)(redundant_w * x_scale) / cell.width;
+        if (ref.num_cols <= redundant_cols)
+            return img;
+        ref.src_width -= redundant_cols * cell.width / x_scale;
+        ref.num_cols -= redundant_cols;
+    }
+    if (ref.src_y + ref.src_height > img->height) {
+        float redundant_h = ref.src_y + ref.src_height - img->height;
+        uint32_t redundant_rows = (uint32_t)(redundant_h * y_scale) / cell.height;
+        if (ref.num_rows <= redundant_rows)
+            return img;
+        ref.src_height -= redundant_rows * cell.height / y_scale;
+        ref.num_rows -= redundant_rows;
+    }
+
+    // The cursor will be drawn on top of the image.
+    ref.z_index = -1;
+
+    // Create a real ref.
+    ensure_space_for(img, refs, ImageRef, img->refcnt + 1, refcap, 16, true);
+    self->layers_dirty = true;
+    ImageRef *real_ref = img->refs + img->refcnt++;
+    *real_ref = ref;
+    img->atime = monotonic();
+
+    update_src_rect(real_ref, img);
+    update_dest_rect(real_ref, ref.num_cols, ref.num_rows, cell);
+    return img;
+}
 
 static uint32_t
 handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, Image *img, CellPixelSize cell) {
@@ -696,8 +867,8 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     }
     img->atime = monotonic();
     ref->src_x = g->x_offset; ref->src_y = g->y_offset; ref->src_width = g->width ? g->width : img->width; ref->src_height = g->height ? g->height : img->height;
-    ref->src_width = MIN(ref->src_width, img->width - (img->width > ref->src_x ? ref->src_x : img->width));
-    ref->src_height = MIN(ref->src_height, img->height - (img->height > ref->src_y ? ref->src_y : img->height));
+    ref->src_width = MIN(ref->src_width, img->width - ((float)img->width > ref->src_x ? ref->src_x : (float)img->width));
+    ref->src_height = MIN(ref->src_height, img->height - ((float)img->height > ref->src_y ? ref->src_y : (float)img->height));
     ref->z_index = g->z_index;
     ref->start_row = c->y; ref->start_column = c->x;
     ref->cell_x_offset = MIN(g->cell_x_offset, cell.width - 1);
@@ -706,8 +877,12 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     if (img->client_id) ref->client_id = g->placement_id;
     update_src_rect(ref, img);
     update_dest_rect(ref, g->num_cells, g->num_lines, cell);
+    if (g->unicode_placement) {
+        ref->is_virtual_ref = true;
+        ref->start_row = ref->start_column = 0;
+    }
     // Move the cursor, the screen will take care of ensuring it is in bounds
-    if (g->cursor_movement != 1) {
+    if (g->cursor_movement != 1 && !g->unicode_placement) {
         c->x += ref->effective_num_cols; c->y += ref->effective_num_rows - 1;
     }
     return img->client_id;
@@ -764,6 +939,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
         img->is_drawn = false;
 
         for (j = 0; j < img->refcnt; j++) { ref = img->refs + j;
+            if (ref->is_virtual_ref) continue;
             r.top = y0 - ref->start_row * dy - dy * (float)ref->cell_y_offset / (float)cell.height;
             if (ref->num_rows > 0) r.bottom = y0 - (ref->start_row + (int32_t)ref->num_rows) * dy;
             else r.bottom = r.top - screen_height * (float)ref->src_height / screen_height_px;
@@ -1419,6 +1595,7 @@ modify_refs(GraphicsManager *self, const void* data, bool (*filter_func)(ImageRe
 
 static bool
 scroll_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
+    if (ref->is_virtual_ref) return false;
     ScrollData *d = (ScrollData*)data;
     ref->start_row += d->amt;
     return ref->start_row + (int32_t)ref->effective_num_rows <= d->limit;
@@ -1436,6 +1613,7 @@ ref_outside_region(const ImageRef *ref, index_type margin_top, index_type margin
 
 static bool
 scroll_filter_margins_func(ImageRef* ref, Image* img, const void* data, CellPixelSize cell) {
+    if (ref->is_virtual_ref) return false;
     ScrollData *d = (ScrollData*)data;
     if (ref_within_region(ref, d->margin_top, d->margin_bottom)) {
         ref->start_row += d->amt;
@@ -1474,12 +1652,43 @@ grman_scroll_images(GraphicsManager *self, const ScrollData *data, CellPixelSize
 }
 
 static bool
+cell_image_row_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
+    if (ref->is_virtual_ref || !ref->is_cell_image)
+        return false;
+    int32_t top = *(int32_t *)data;
+    int32_t bottom = *((int32_t *)data + 1);
+    return ref_within_region(ref, top, bottom);
+}
+
+static bool
+cell_image_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data UNUSED, CellPixelSize cell UNUSED) {
+    return !ref->is_virtual_ref && ref->is_cell_image;
+}
+
+// Remove cell images within the given region.
+void
+grman_remove_cell_images(GraphicsManager *self, int32_t top, int32_t bottom) {
+    CellPixelSize dummy = {0};
+    int32_t data[] = {top, bottom};
+    filter_refs(self, data, false, cell_image_row_filter_func, dummy, false);
+}
+
+void
+grman_remove_all_cell_images(GraphicsManager *self) {
+    CellPixelSize dummy = {0};
+    filter_refs(self, NULL, false, cell_image_filter_func, dummy, false);
+}
+
+
+static bool
 clear_filter_func(const ImageRef *ref, Image UNUSED *img, const void UNUSED *data, CellPixelSize cell UNUSED) {
+    if (ref->is_virtual_ref || ref->is_cell_image) return false;
     return ref->start_row + (int32_t)ref->effective_num_rows > 0;
 }
 
 static bool
 clear_all_filter_func(const ImageRef *ref UNUSED, Image UNUSED *img, const void UNUSED *data, CellPixelSize cell UNUSED) {
+    if (ref->is_virtual_ref) return false;
     return true;
 }
 
@@ -1505,18 +1714,21 @@ number_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixelS
 
 static bool
 x_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
+    if (ref->is_virtual_ref || ref->is_cell_image) return false;
     const GraphicsCommand *g = data;
     return ref->start_column <= (int32_t)g->x_offset - 1 && ((int32_t)g->x_offset - 1) < ((int32_t)(ref->start_column + ref->effective_num_cols));
 }
 
 static bool
 y_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
+    if (ref->is_virtual_ref || ref->is_cell_image) return false;
     const GraphicsCommand *g = data;
     return ref->start_row <= (int32_t)g->y_offset - 1 && ((int32_t)g->y_offset - 1) < ((int32_t)(ref->start_row + ref->effective_num_rows));
 }
 
 static bool
 z_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
+    if (ref->is_virtual_ref || ref->is_cell_image) return false;
     const GraphicsCommand *g = data;
     return ref->z_index == g->z_index;
 }
@@ -1524,11 +1736,13 @@ z_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixe
 
 static bool
 point_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
+    if (ref->is_virtual_ref || ref->is_cell_image) return false;
     return x_filter_func(ref, img, data, cell) && y_filter_func(ref, img, data, cell);
 }
 
 static bool
 point3d_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
+    if (ref->is_virtual_ref || ref->is_cell_image) return false;
     return z_filter_func(ref, img, data, cell) && point_filter_func(ref, img, data, cell);
 }
 
@@ -1589,6 +1803,7 @@ grman_rescale(GraphicsManager *self, CellPixelSize cell) {
         img = self->images + i;
         for (size_t j = img->refcnt; j-- > 0;) {
             ref = img->refs + j;
+            if (ref->is_virtual_ref || ref->is_cell_image) continue;
             ref->cell_x_offset = MIN(ref->cell_x_offset, cell.width - 1);
             ref->cell_y_offset = MIN(ref->cell_y_offset, cell.height - 1);
             update_dest_rect(ref, ref->num_cols, ref->num_rows, cell);
@@ -1856,6 +2071,7 @@ init_graphics(PyObject *module) {
     if (PyType_Ready(&GraphicsManager_Type) < 0) return false;
     if (PyModule_AddObject(module, "GraphicsManager", (PyObject *)&GraphicsManager_Type) != 0) return false;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    if (PyModule_AddIntMacro(module, IMAGE_PLACEHOLDER_CHAR) != 0) return false;
     Py_INCREF(&GraphicsManager_Type);
     return true;
 }
