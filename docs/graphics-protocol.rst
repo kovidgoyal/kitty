@@ -532,7 +532,7 @@ By using only the foreground color for image ID you are limited to either 8-bit 
 mode or 24-bit IDs in true color mode. Since IDs are in a global namespace
 there can easily be collisions. If you need more bits for the image
 ID, you can specify the most significant byte via a third diacritic. For
-example, this is the placeholder for the image ID ``738197504 = 42 + (2 << 24)``:
+example, this is the placeholder for the image ID ``33554474 = 42 + (2 << 24)``:
 
 .. code-block:: sh
 
