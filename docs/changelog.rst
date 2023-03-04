@@ -50,7 +50,7 @@ Detailed list of changes
 
 - When changing the cursor color via escape codes or remote control to a fixed color, do not reset cursor_text_color (:iss:`5994`)
 
-- Input Method Extensions: Fix incorrect rendering of IME in-progress and committed text in some situations (:pull:`6049`)
+- Input Method Extensions: Fix incorrect rendering of IME in-progress and committed text in some situations (:pull:`6049`, :pull:`6087`)
 
 - Linux: Reduce minimum required OpenGL version from 3.3 to 3.1 + extensions (:iss:`2790`)
 

@@ -2898,6 +2898,7 @@ screen_update_overlay_text(Screen *self, const char *utf8_text) {
     self->overlay_line.is_dirty = true;
     self->overlay_line.xstart = self->cursor->x;
     self->overlay_line.xnum = !text_len ? 0 : PyLong_AsLong(text_len);
+    self->overlay_line.text_len = self->overlay_line.xnum;
     self->overlay_line.cursor_x = MIN(self->overlay_line.xstart + self->overlay_line.xnum, self->columns);
     self->overlay_line.ynum = self->cursor->y;
     cursor_copy_to(self->cursor, &(self->overlay_line.original_line.cursor));
@@ -2913,7 +2914,10 @@ screen_update_overlay_text(Screen *self, const char *utf8_text) {
 static void
 screen_draw_overlay_line(Screen *self) {
     if (!self->overlay_line.overlay_text) return;
-    self->overlay_line.xnum = 0;
+    // Right-align the overlay to ensure that the pre-edit text just entered is visible when the cursor is near the end of the line.
+    index_type xstart = self->overlay_line.text_len <= self->columns ? self->columns - self->overlay_line.text_len : 0;
+    if (self->overlay_line.xstart < xstart) xstart = self->overlay_line.xstart;
+    index_type columns_exceeded = self->overlay_line.text_len <= self->columns ? 0 : self->overlay_line.text_len - self->columns;
     bool orig_line_wrap_mode = self->modes.mDECAWM;
     bool orig_cursor_enable_mode = self->modes.mDECTCEM;
     bool orig_insert_replace_mode = self->modes.mIRM;
@@ -2923,9 +2927,15 @@ screen_draw_overlay_line(Screen *self) {
     Cursor *orig_cursor = self->cursor;
     self->cursor = &(self->overlay_line.original_line.cursor);
     self->cursor->reverse ^= true;
-    self->cursor->x = self->overlay_line.xstart;
+    self->cursor->x = xstart;
     self->cursor->y = self->overlay_line.ynum;
     self->overlay_line.xnum = 0;
+    if (xstart > 0) {
+        // When the cursor is on the second cell of a full-width character for whatever reason,
+        // make sure the first character in the overlay is visible.
+        GPUCell *g = self->linebuf->line->gpu_cells + (xstart - 1);
+        if (g->attrs.width > 1) line_set_char(self->linebuf->line, xstart - 1, 0, 0, NULL, 0);
+    }
     index_type before;
     const int kind = PyUnicode_KIND(self->overlay_line.overlay_text);
     const void *data = PyUnicode_DATA(self->overlay_line.overlay_text);
@@ -2933,7 +2943,24 @@ screen_draw_overlay_line(Screen *self) {
     for (Py_ssize_t pos = 0; pos < sz; pos++) {
         before = self->cursor->x;
         draw_codepoint(self, PyUnicode_READ(kind, data, pos), false);
-        self->overlay_line.xnum += self->cursor->x - before;
+        index_type len = self->cursor->x - before;
+        if (columns_exceeded > 0) {
+            // Reset the cursor to maintain right alignment when the overlay exceeds the screen width.
+            if (columns_exceeded > len) {
+                columns_exceeded -= len;
+                len = 0;
+            } else {
+                len = len > columns_exceeded ? len - columns_exceeded : 0;
+                columns_exceeded = 0;
+                if (len > 0) {
+                    // When the last character is full width and only half moved out, make sure the next character is visible.
+                    GPUCell *g = self->linebuf->line->gpu_cells + (len - 1);
+                    if (g->attrs.width > 1) line_set_char(self->linebuf->line, len - 1, 0, 0, NULL, 0);
+                }
+            }
+            self->cursor->x = len;
+        }
+        self->overlay_line.xnum += len;
     }
     self->overlay_line.cursor_x = self->cursor->x;
     self->cursor->reverse ^= true;

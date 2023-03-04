@@ -71,7 +71,7 @@ typedef struct {
     PyObject *overlay_text;
     CPUCell *cpu_cells;
     GPUCell *gpu_cells;
-    index_type xstart, ynum, xnum, cursor_x;
+    index_type xstart, ynum, xnum, cursor_x, text_len;
     bool is_active;
     bool is_dirty;
     struct {
