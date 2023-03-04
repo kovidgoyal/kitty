@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"kitty/tools/tui"
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
@@ -25,8 +26,26 @@ import (
 
 var _ = fmt.Print
 
-func gc_for_image(imgd *image_data, frame_num int, frame *image_frame) *graphics.GraphicsCommand {
+type passthrough_type int
+
+const (
+	no_passthrough passthrough_type = iota
+	tmux_passthrough
+)
+
+func new_graphics_command(imgd *image_data) *graphics.GraphicsCommand {
 	gc := graphics.GraphicsCommand{}
+	switch imgd.passthrough_mode {
+	case tmux_passthrough:
+		gc.WrapPrefix = "\033Ptmux;"
+		gc.WrapSuffix = "\033\\"
+		gc.EncodeSerializedDataFunc = func(x string) string { return strings.ReplaceAll(x, "\033", "\033\033") }
+	}
+	return &gc
+}
+
+func gc_for_image(imgd *image_data, frame_num int, frame *image_frame) *graphics.GraphicsCommand {
+	gc := new_graphics_command(imgd)
 	gc.SetDataWidth(uint64(frame.width)).SetDataHeight(uint64(frame.height))
 	gc.SetQuiet(graphics.GRT_quiet_silent)
 	gc.SetFormat(frame.transmission_format)
@@ -63,7 +82,7 @@ func gc_for_image(imgd *image_data, frame_num int, frame *image_frame) *graphics
 		}
 		gc.SetLeftEdge(uint64(frame.left)).SetTopEdge(uint64(frame.top))
 	}
-	return &gc
+	return gc
 }
 
 func transmit_shm(imgd *image_data, frame_num int, frame *image_frame) (err error) {
@@ -315,6 +334,13 @@ func transmit_image(imgd *image_data) {
 		imgd.err = fmt.Errorf("Image too large to be displayed using Unicode placeholders. Maximum size is %dx%d cells", len(images.NumberToDiacritic), len(images.NumberToDiacritic))
 		return
 	}
+	switch imgd.passthrough_mode {
+	case tmux_passthrough:
+		imgd.err = tui.TmuxAllowPassthrough()
+		if imgd.err != nil {
+			return
+		}
+	}
 	fmt.Print("\r")
 	if !imgd.use_unicode_placeholder {
 		if imgd.move_x_by > 0 {
@@ -324,7 +350,7 @@ func transmit_image(imgd *image_data) {
 			fmt.Printf(loop.MoveCursorToTemplate, imgd.move_to.y, imgd.move_to.x)
 		}
 	}
-	frame_control_cmd := graphics.GraphicsCommand{}
+	frame_control_cmd := new_graphics_command(imgd)
 	frame_control_cmd.SetAction(graphics.GRT_action_animate)
 	if imgd.image_id != 0 {
 		frame_control_cmd.SetImageId(imgd.image_id)

@@ -467,6 +467,9 @@ type GraphicsCommand struct {
 
 	z int32
 
+	WrapPrefix, WrapSuffix   string
+	EncodeSerializedDataFunc func(string) string
+
 	response_message string
 }
 
@@ -515,24 +518,39 @@ func (self GraphicsCommand) String() string {
 	return "GraphicsCommand(" + strings.Join(self.serialize_non_default_fields(), ", ") + ")"
 }
 
-func (self *GraphicsCommand) WriteMetadata(o io.StringWriter) (err error) {
-	items := self.serialize_non_default_fields()
-	_, err = o.WriteString(strings.Join(items, ","))
-	return
-}
-
 func (self *GraphicsCommand) serialize_to(buf io.StringWriter, chunk string) (err error) {
-	ws := func(s string) {
-		_, err = buf.WriteString(s)
+	var ws func(string)
+	if self.EncodeSerializedDataFunc == nil {
+		ws = func(s string) {
+			_, err = buf.WriteString(s)
+		}
+	} else {
+		ws = func(s string) {
+			_, err = buf.WriteString(self.EncodeSerializedDataFunc(s))
+		}
+	}
+	if self.WrapPrefix != "" {
+		_, err = buf.WriteString(self.WrapPrefix)
+		if err != nil {
+			return err
+		}
+		if self.WrapSuffix != "" {
+			defer func() {
+				if err == nil {
+					_, err = buf.WriteString(self.WrapSuffix)
+				}
+			}()
+		}
 	}
 	ws("\033_G")
 	if err == nil {
-		err = self.WriteMetadata(buf)
+		items := self.serialize_non_default_fields()
+		ws(strings.Join(items, ","))
 		if err == nil {
 			if len(chunk) > 0 {
 				ws(";")
 				if err == nil {
-					_, err = buf.WriteString(chunk)
+					ws(chunk)
 				}
 			}
 			if err == nil {
@@ -593,7 +611,9 @@ func (self *GraphicsCommand) WriteWithPayloadTo(o io.StringWriter, payload []byt
 		if err != nil {
 			return err
 		}
-		gc = GraphicsCommand{q: self.q, a: self.a}
+		gc = GraphicsCommand{
+			q: self.q, a: self.a, WrapPrefix: self.WrapPrefix, WrapSuffix: self.WrapSuffix,
+			EncodeSerializedDataFunc: self.EncodeSerializedDataFunc}
 	}
 	return
 }

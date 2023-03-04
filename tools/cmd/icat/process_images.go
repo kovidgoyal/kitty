@@ -187,6 +187,7 @@ type image_data struct {
 	move_to                           struct{ x, y int }
 	width_cells, height_cells         int
 	use_unicode_placeholder           bool
+	passthrough_mode                  passthrough_type
 
 	// for error reporting
 	err         error

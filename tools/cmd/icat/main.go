@@ -190,7 +190,17 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		}
 	}
 
-	if opts.TransferMode == "detect" || opts.DetectSupport {
+	passthrough_mode := no_passthrough
+	switch opts.Passthrough {
+	case "tmux":
+		passthrough_mode = tmux_passthrough
+	case "detect":
+		if tui.TmuxSocketAddress() != "" {
+			passthrough_mode = tmux_passthrough
+		}
+	}
+
+	if passthrough_mode == no_passthrough && (opts.TransferMode == "detect" || opts.DetectSupport) {
 		memory, files, direct, err := DetectSupport(time.Duration(opts.DetectionTimeout * float64(time.Second)))
 		if err != nil {
 			return 1, err
@@ -210,6 +220,12 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 			transfer_by_file = unsupported
 		}
 	}
+	if passthrough_mode != no_passthrough {
+		// tmux doesnt allow responses from the terminal so we cant detect if memory or file based transferring is supported
+		transfer_by_memory = unsupported
+		transfer_by_file = unsupported
+		transfer_by_stream = supported
+	}
 	if opts.DetectSupport {
 		if transfer_by_memory == supported {
 			print_error("memory")
@@ -221,9 +237,13 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		return 0, nil
 	}
 	use_unicode_placeholder := opts.UnicodePlaceholder
+	if passthrough_mode != no_passthrough {
+		use_unicode_placeholder = true
+	}
 	for num_of_items > 0 {
 		imgd := <-output_channel
 		imgd.use_unicode_placeholder = use_unicode_placeholder
+		imgd.passthrough_mode = passthrough_mode
 		num_of_items--
 		if imgd.err != nil {
 			print_error("Failed to process \x1b[31m%s\x1b[39m: %s\r\n", imgd.source_name, imgd.err)
