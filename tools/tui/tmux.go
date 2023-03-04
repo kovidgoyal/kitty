@@ -31,6 +31,7 @@ func tmux_socket_address() (socket string) {
 	if unix.Access(addr, unix.R_OK|unix.W_OK) != nil {
 		return ""
 	}
+	pid_str, _, _ = strings.Cut(pid_str, ",")
 	pid, err := strconv.ParseInt(pid_str, 10, 32)
 	if err != nil {
 		return ""
