@@ -258,6 +258,28 @@ func GRT_C_from_string(a string) (ans GRT_C, err error) {
 	return
 }
 
+type GRT_U int
+
+const (
+	GRT_no_unicode_placeholder GRT_U = iota
+	GRT_create_unicode_placeholder
+)
+
+func (self GRT_U) String() string {
+	return strconv.Itoa(int(self))
+}
+
+func GRT_U_from_string(a string) (ans GRT_U, err error) {
+	switch a {
+	case "0":
+	case "1":
+		ans = GRT_create_unicode_placeholder
+	default:
+		err = fmt.Errorf("Not a valid cursor movement value: %#v", a)
+	}
+	return
+}
+
 type CompositionMode int
 
 const (
@@ -437,6 +459,7 @@ type GraphicsCommand struct {
 	m GRT_m
 	C GRT_C
 	d GRT_d
+	U GRT_U
 
 	s, v, S, O, x, y, w, h, X, Y, c, r uint64
 
@@ -464,6 +487,7 @@ func (self *GraphicsCommand) serialize_non_default_fields() (ans []string) {
 	write_key('o', self.o, null.o)
 	write_key('m', self.m, null.m)
 	write_key('C', self.C, null.C)
+	write_key('U', self.U, null.U)
 	write_key('d', self.d, null.d)
 
 	write_key('s', self.s, null.s)
@@ -637,6 +661,8 @@ func (self *GraphicsCommand) SetString(key byte, value string) (err error) {
 		err = set_val(&self.m, GRT_m_from_string, value)
 	case 'C':
 		err = set_val(&self.C, GRT_C_from_string, value)
+	case 'U':
+		err = set_val(&self.U, GRT_U_from_string, value)
 	case 'd':
 		err = set_val(&self.d, GRT_d_from_string, value)
 	case 's':
@@ -773,6 +799,15 @@ func (self *GraphicsCommand) CursorMovement() GRT_C {
 
 func (self *GraphicsCommand) SetCursorMovement(c GRT_C) *GraphicsCommand {
 	self.C = c
+	return self
+}
+
+func (self *GraphicsCommand) UnicodePlaceholder() GRT_U {
+	return self.U
+}
+
+func (self *GraphicsCommand) SetUnicodePlaceholder(U GRT_U) *GraphicsCommand {
+	self.U = U
 	return self
 }
 

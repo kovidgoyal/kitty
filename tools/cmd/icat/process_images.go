@@ -181,9 +181,12 @@ type image_data struct {
 	scaled_frac                       struct{ x, y float64 }
 	frames                            []*image_frame
 	image_number                      uint32
+	image_id                          uint32
 	cell_x_offset                     int
 	move_x_by                         int
 	move_to                           struct{ x, y int }
+	width_cells, height_cells         int
+	use_unicode_placeholder           bool
 
 	// for error reporting
 	err         error

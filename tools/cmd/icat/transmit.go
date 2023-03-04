@@ -9,14 +9,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"kitty"
 	"math"
 	not_rand "math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"kitty/tools/utils/images"
 	"kitty/tools/utils/shm"
 )
 
@@ -30,8 +33,16 @@ func gc_for_image(imgd *image_data, frame_num int, frame *image_frame) *graphics
 	if imgd.image_number != 0 {
 		gc.SetImageNumber(imgd.image_number)
 	}
+	if imgd.image_id != 0 {
+		gc.SetImageId(imgd.image_id)
+	}
 	if frame_num == 0 {
 		gc.SetAction(graphics.GRT_action_transmit_and_display)
+		if imgd.use_unicode_placeholder {
+			gc.SetUnicodePlaceholder(graphics.GRT_create_unicode_placeholder)
+			gc.SetColumns(uint64(imgd.width_cells))
+			gc.SetRows(uint64(imgd.height_cells))
+		}
 		if imgd.cell_x_offset > 0 {
 			gc.SetXOffset(uint64(imgd.cell_x_offset))
 		}
@@ -182,24 +193,26 @@ func calculate_in_cell_x_offset(width, cell_width int) int {
 }
 
 func place_cursor(imgd *image_data) {
-	cw := int(screen_size.Xpixel) / int(int(screen_size.Col))
+	cw := int(screen_size.Xpixel) / int(screen_size.Col)
+	ch := int(screen_size.Ypixel) / int(screen_size.Row)
 	imgd.cell_x_offset = calculate_in_cell_x_offset(imgd.canvas_width, cw)
-	num_of_cells_needed := int(math.Ceil(float64(imgd.canvas_width) / float64(cw)))
+	imgd.width_cells = int(math.Ceil(float64(imgd.canvas_width) / float64(cw)))
+	imgd.height_cells = int(math.Ceil(float64(imgd.canvas_height) / float64(ch)))
 	if place == nil {
 		switch opts.Align {
 		case "center":
-			imgd.move_x_by = (int(screen_size.Col) - num_of_cells_needed) / 2
+			imgd.move_x_by = (int(screen_size.Col) - imgd.width_cells) / 2
 		case "right":
-			imgd.move_x_by = (int(screen_size.Col) - num_of_cells_needed)
+			imgd.move_x_by = (int(screen_size.Col) - imgd.width_cells)
 		}
 	} else {
 		imgd.move_to.x = place.left + 1
 		imgd.move_to.y = place.top + 1
 		switch opts.Align {
 		case "center":
-			imgd.move_to.x += (place.width - num_of_cells_needed) / 2
+			imgd.move_to.x += (place.width - imgd.width_cells) / 2
 		case "right":
-			imgd.move_to.x += (place.width - num_of_cells_needed)
+			imgd.move_to.x += (place.width - imgd.width_cells)
 		}
 	}
 }
@@ -215,6 +228,35 @@ func next_random() (ans uint32) {
 		}
 	}
 	return ans
+}
+
+func write_unicode_placeholder(imgd *image_data) {
+	prefix := ""
+	foreground := fmt.Sprintf("\033[38:2:%d:%d:%dm", (imgd.image_id>>16)&255, (imgd.image_id>>8)&255, imgd.image_id&255)
+	os.Stdout.WriteString(loop.SAVE_PRIVATE_MODE_VALUES + foreground)
+	restore := "\033[39m" + loop.RESTORE_PRIVATE_MODE_VALUES
+	if imgd.move_to.y > 0 {
+		fmt.Print(loop.SAVE_CURSOR)
+		restore += loop.RESTORE_CURSOR
+	} else if imgd.move_x_by > 0 {
+		prefix = strings.Repeat(" ", imgd.move_x_by)
+	}
+	defer func() { os.Stdout.WriteString(restore) }()
+	if imgd.move_to.y > 0 {
+		fmt.Printf(loop.MoveCursorToTemplate, imgd.move_to.y, 0)
+	}
+	id_char := string(images.NumberToDiacritic[(imgd.image_id>>24)&255])
+	for r := 0; r < imgd.height_cells; r++ {
+		if imgd.move_to.x > 0 {
+			fmt.Printf("\x1b[%dC", imgd.move_to.x)
+		} else {
+			os.Stdout.WriteString(prefix)
+		}
+		for c := 0; c < imgd.width_cells; c++ {
+			os.Stdout.WriteString(string(kitty.ImagePlaceholderChar) + string(images.NumberToDiacritic[r]) + string(images.NumberToDiacritic[c]) + id_char)
+		}
+		os.Stdout.WriteString("\n\r")
+	}
 }
 
 func transmit_image(imgd *image_data) {
@@ -252,27 +294,49 @@ func transmit_image(imgd *image_data) {
 	if f == nil {
 		f = transmit_stream
 	}
-	if len(imgd.frames) > 1 {
-		for imgd.image_number == 0 {
-			imgd.image_number = next_random()
+	if imgd.use_unicode_placeholder {
+		for imgd.image_id&0xFF000000 == 0 || imgd.image_id&0x00FFFF00 == 0 {
+			// Generate a 32-bit image id using rejection sampling such that the most
+			// significant byte and the two bytes in the middle are non-zero to avoid
+			// collisions with applications that cannot represent non-zero most
+			// significant bytes (which is represented by the third combining character)
+			// or two non-zero bytes in the middle (which requires 24-bit color mode).
+			imgd.image_id = next_random()
+		}
+	} else {
+		if len(imgd.frames) > 1 {
+			for imgd.image_number == 0 {
+				imgd.image_number = next_random()
+			}
 		}
 	}
 	place_cursor(imgd)
-	fmt.Print("\r")
-	if imgd.move_x_by > 0 {
-		fmt.Printf("\x1b[%dC", imgd.move_x_by)
+	if imgd.use_unicode_placeholder && utils.Max(imgd.width_cells, imgd.height_cells) >= len(images.NumberToDiacritic) {
+		imgd.err = fmt.Errorf("Image too large to be displayed using Unicode placeholders. Maximum size is %dx%d cells", len(images.NumberToDiacritic), len(images.NumberToDiacritic))
+		return
 	}
-	if imgd.move_to.x > 0 {
-		fmt.Printf(loop.MoveCursorToTemplate, imgd.move_to.y, imgd.move_to.x)
+	fmt.Print("\r")
+	if !imgd.use_unicode_placeholder {
+		if imgd.move_x_by > 0 {
+			fmt.Printf("\x1b[%dC", imgd.move_x_by)
+		}
+		if imgd.move_to.x > 0 {
+			fmt.Printf(loop.MoveCursorToTemplate, imgd.move_to.y, imgd.move_to.x)
+		}
 	}
 	frame_control_cmd := graphics.GraphicsCommand{}
-	frame_control_cmd.SetAction(graphics.GRT_action_animate).SetImageNumber(imgd.image_number)
+	frame_control_cmd.SetAction(graphics.GRT_action_animate)
+	if imgd.image_id != 0 {
+		frame_control_cmd.SetImageId(imgd.image_id)
+	} else {
+		frame_control_cmd.SetImageNumber(imgd.image_number)
+	}
 	is_animated := len(imgd.frames) > 1
 
 	for frame_num, frame := range imgd.frames {
 		err := f(imgd, frame_num, frame)
 		if err != nil {
-			print_error("\rFailed to transmit %s with error: %v", imgd.source_name, err)
+			imgd.err = err
 			return
 		}
 		if is_animated {
@@ -295,6 +359,9 @@ func transmit_image(imgd *image_data) {
 				c.WriteWithPayloadTo(os.Stdout, nil)
 			}
 		}
+	}
+	if imgd.use_unicode_placeholder {
+		write_unicode_placeholder(imgd)
 	}
 	if is_animated {
 		c := frame_control_cmd

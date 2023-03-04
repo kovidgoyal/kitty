@@ -5,6 +5,7 @@ import bz2
 import io
 import json
 import os
+import re
 import struct
 import subprocess
 import sys
@@ -459,6 +460,10 @@ def generate_constants() -> str:
     from kitty.options.types import Options
     from kitty.options.utils import allowed_shell_integration_values
     ref_map = load_ref_map()
+    with open('kitty/data-types.h') as dt:
+        m = re.search(r'^#define IMAGE_PLACEHOLDER_CHAR (\S+)', dt.read(), flags=re.M)
+        assert m is not None
+        placeholder_char = int(m.group(1), 16)
     dp = ", ".join(map(lambda x: f'"{serialize_as_go_string(x)}"', kc.default_pager_for_help))
     return f'''\
 package kitty
@@ -468,6 +473,7 @@ type VersionType struct {{
 }}
 const VersionString string = "{kc.str_version}"
 const WebsiteBaseURL string = "{kc.website_base_url}"
+const ImagePlaceholderChar rune = {placeholder_char}
 const VCSRevision string = ""
 const SSHControlMasterTemplate = "{kc.ssh_control_master_template}"
 const RC_ENCRYPTION_PROTOCOL_VERSION string = "{kc.RC_ENCRYPTION_PROTOCOL_VERSION}"

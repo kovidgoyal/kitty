@@ -504,6 +504,10 @@ the desired number of lines and columns::
 
     <ESC>_Ga=p,U=1,i=<image_id>,c=<columns>,r=<rows><ESC>\
 
+The creation of the placement need not be a separate escape code, it can be
+combined with ``a=T`` to both transmit and create the virtual placement with a
+single code.
+
 The image will eventually be fit to the specified rectangle, its aspect ratio
 preserved. Finally, the image can be actually displayed by using the
 placeholder character, encoding the image ID in its foreground color. The row
@@ -911,6 +915,8 @@ Key      Value                 Default    Description
 ``c``    Positive integer      ``0``      The number of columns to display the image over
 ``r``    Positive integer      ``0``      The number of rows to display the image over
 ``C``    Positive integer      ``0``      Cursor movement policy. ``0`` is the default, to move the cursor to after the image.
+                                          ``1`` is to not move the cursor at all when placing the image.
+``U``    Positive integer      ``0``      Set to ``1`` to create a virtual placement for a Unicode placeholder.
                                           ``1`` is to not move the cursor at all when placing the image.
 ``z``    32-bit integer        ``0``      The *z-index* vertical stacking order of the image
 
