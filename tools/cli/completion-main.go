@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"kitty/tools/tty"
-	"kitty/tools/utils"
 )
 
 func debug(args ...any) {
@@ -81,7 +81,7 @@ func GenerateCompletions(args []string) error {
 	}
 	shell_state := make(map[string]string, n)
 	for _, arg := range args {
-		k, v, found := utils.Cut(arg, "=")
+		k, v, found := strings.Cut(arg, "=")
 		if !found {
 			return fmt.Errorf("Invalid shell state specification: %s", arg)
 		}

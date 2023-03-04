@@ -80,7 +80,7 @@ func get_pubkey(encoded_key string) (encryption_version string, pubkey []byte, e
 			return
 		}
 	}
-	encryption_version, encoded_key, found := utils.Cut(encoded_key, ":")
+	encryption_version, encoded_key, found := strings.Cut(encoded_key, ":")
 	if !found {
 		err = fmt.Errorf("KITTY_PUBLIC_KEY environment variable does not have a : in it")
 		return

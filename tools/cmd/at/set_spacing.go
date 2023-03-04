@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"kitty/tools/utils"
 )
 
 func parse_set_spacing(args []string) (map[string]any, error) {
@@ -24,7 +22,7 @@ func parse_set_spacing(args []string) (map[string]any, error) {
 		mapper[q+"-bottom"] = []string{q + "bottom"}
 	}
 	for _, arg := range args {
-		k, v, found := utils.Cut(arg, "=")
+		k, v, found := strings.Cut(arg, "=")
 		if !found {
 			return nil, fmt.Errorf("%s is not a valid setting", arg)
 		}

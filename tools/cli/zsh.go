@@ -76,7 +76,7 @@ func (self *Match) FormatForCompletionList(max_word_len int, f *markup.Context, 
 		return word
 	}
 	word_len := wcswidth.Stringwidth(word)
-	line, _, _ := utils.Cut(strings.TrimSpace(desc), "\n")
+	line, _, _ := strings.Cut(strings.TrimSpace(desc), "\n")
 	desc = f.Prettify(line)
 
 	multiline := false

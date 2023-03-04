@@ -70,16 +70,16 @@ func parse_identify_record(ans *IdentifyRecord, raw *IdentifyOutput) (err error)
 		}
 		ans.Gap = utils.Max(0, ans.Gap)
 	}
-	area, pos, found := utils.Cut(raw.Canvas, "+")
+	area, pos, found := strings.Cut(raw.Canvas, "+")
 	ok := false
 	if found {
-		w, h, found := utils.Cut(area, "x")
+		w, h, found := strings.Cut(area, "x")
 		if found {
 			ans.Canvas.Width, err = strconv.Atoi(w)
 			if err == nil {
 				ans.Canvas.Height, err = strconv.Atoi(h)
 				if err == nil {
-					x, y, found := utils.Cut(pos, "+")
+					x, y, found := strings.Cut(pos, "+")
 					if found {
 						ans.Canvas.Left, err = strconv.Atoi(x)
 						if err == nil {
@@ -94,7 +94,7 @@ func parse_identify_record(ans *IdentifyRecord, raw *IdentifyOutput) (err error)
 	if !ok {
 		return fmt.Errorf("Invalid canvas value in identify output: %s", raw.Canvas)
 	}
-	w, h, found := utils.Cut(raw.Size, "x")
+	w, h, found := strings.Cut(raw.Size, "x")
 	ok = false
 	if found {
 		ans.Width, err = strconv.Atoi(w)
@@ -106,7 +106,7 @@ func parse_identify_record(ans *IdentifyRecord, raw *IdentifyOutput) (err error)
 	if !ok {
 		return fmt.Errorf("Invalid size value in identify output: %s", raw.Size)
 	}
-	x, y, found := utils.Cut(raw.Dpi, "x")
+	x, y, found := strings.Cut(raw.Dpi, "x")
 	ok = false
 	if found {
 		ans.Dpi.X, err = strconv.ParseFloat(x, 64)
@@ -302,7 +302,7 @@ func Render(path string, ro *RenderOptions, frames []IdentifyRecord) (ans []*ima
 	min_gap := calc_min_gap(gaps)
 	for _, entry := range entries {
 		fname := entry.Name()
-		p, _, _ := utils.Cut(fname, ".")
+		p, _, _ := strings.Cut(fname, ".")
 		parts := strings.Split(p, "-")
 		if len(parts) < 5 {
 			continue
@@ -319,11 +319,11 @@ func Render(path string, ro *RenderOptions, frames []IdentifyRecord) (ans []*ima
 		if cerr != nil {
 			continue
 		}
-		_, pos, found := utils.Cut(parts[3], "+")
+		_, pos, found := strings.Cut(parts[3], "+")
 		if !found {
 			continue
 		}
-		px, py, found := utils.Cut(pos, "+")
+		px, py, found := strings.Cut(pos, "+")
 		if !found {
 			continue
 		}

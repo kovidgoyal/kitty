@@ -91,15 +91,15 @@ func parse_place() (err error) {
 	if opts.Place == "" {
 		return nil
 	}
-	area, pos, found := utils.Cut(opts.Place, "@")
+	area, pos, found := strings.Cut(opts.Place, "@")
 	if !found {
 		return fmt.Errorf("Invalid --place specification: %s", opts.Place)
 	}
-	w, h, found := utils.Cut(area, "x")
+	w, h, found := strings.Cut(area, "x")
 	if !found {
 		return fmt.Errorf("Invalid --place specification: %s", opts.Place)
 	}
-	l, t, found := utils.Cut(pos, "x")
+	l, t, found := strings.Cut(pos, "x")
 	if !found {
 		return fmt.Errorf("Invalid --place specification: %s", opts.Place)
 	}

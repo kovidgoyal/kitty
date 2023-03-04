@@ -36,7 +36,7 @@ func (self *MatchGroup) remove_common_prefix() string {
 			}
 		}
 	} else if len(self.Matches) > 1 && strings.HasPrefix(self.Matches[0].Word, "--") && strings.Contains(self.Matches[0].Word, "=") {
-		lcp, _, _ := utils.Cut(self.longest_common_prefix(), "=")
+		lcp, _, _ := strings.Cut(self.longest_common_prefix(), "=")
 		lcp += "="
 		if len(lcp) > 3 {
 			self.remove_prefix_from_all_matches(lcp)

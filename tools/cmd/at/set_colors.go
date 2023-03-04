@@ -48,7 +48,7 @@ func set_color_in_color_map(key, val string, ans map[string]any, check_nullable,
 func parse_colors_and_files(args []string) (map[string]any, error) {
 	ans := make(map[string]any, len(args))
 	for _, arg := range args {
-		key, val, found := utils.Cut(strings.ToLower(arg), "=")
+		key, val, found := strings.Cut(strings.ToLower(arg), "=")
 		if found {
 			err := set_color_in_color_map(key, val, ans, true, false)
 			if err != nil {
@@ -63,7 +63,7 @@ func parse_colors_and_files(args []string) (map[string]any, error) {
 			defer f.Close()
 			scanner := bufio.NewScanner(f)
 			for scanner.Scan() {
-				key, val, found := utils.Cut(scanner.Text(), " ")
+				key, val, found := strings.Cut(scanner.Text(), " ")
 				if found {
 					set_color_in_color_map(strings.ToLower(key), strings.ToLower(strings.TrimSpace(val)), ans, true, true)
 				}

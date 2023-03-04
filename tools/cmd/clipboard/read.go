@@ -269,7 +269,7 @@ func parse_escape_code(etype loop.EscapeCodeType, data []byte) (metadata map[str
 func parse_aliases(raw []string) (map[string][]string, error) {
 	ans := make(map[string][]string, len(raw))
 	for _, x := range raw {
-		k, v, found := utils.Cut(x, "=")
+		k, v, found := strings.Cut(x, "=")
 		if !found {
 			return nil, fmt.Errorf("%s is not valid MIME alias specification", x)
 		}

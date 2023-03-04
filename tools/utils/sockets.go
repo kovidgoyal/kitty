@@ -10,15 +10,8 @@ import (
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
 
-func Cut(s string, sep string) (string, string, bool) {
-	if i := strings.Index(s, sep); i >= 0 {
-		return s[:i], s[i+len(sep):], true
-	}
-	return s, "", false
-}
-
 func ParseSocketAddress(spec string) (network string, addr string, err error) {
-	network, addr, found := Cut(spec, ":")
+	network, addr, found := strings.Cut(spec, ":")
 	if !found {
 		err = fmt.Errorf("Invalid socket address: %s must be prefix by a protocol such as unix:", spec)
 		return
