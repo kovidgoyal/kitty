@@ -4,7 +4,10 @@ package hyperlinked_grep
 
 import (
 	"fmt"
+	"kitty/tools/utils/shlex"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 var _ = fmt.Print
@@ -63,5 +66,25 @@ func TestRgArgParsing(t *testing.T) {
 	check_kitten_opts(true, false, true, "--no-heading")
 	check_kitten_opts(true, true, true, "--no-heading", "--pretty")
 	check_kitten_opts(true, true, true, "--no-heading", "--heading")
+
+	check_args := func(args, expected string) {
+		a, err := shlex.Split(args)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, actual, _, err := parse_args(a...)
+		if err != nil {
+			t.Fatalf("error when parsing: %#v: %s", args, err)
+		}
+		ex, err := shlex.Split(expected)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if diff := cmp.Diff(ex, actual); diff != "" {
+			t.Fatalf("args not correct for %s\n%s", args, diff)
+		}
+	}
+	check_args("--count --max-depth 10 --XxX yyy abcd", "--count --max-depth 10 --XxX yyy abcd")
+	check_args("--max-depth=10 --kitten hyperlink=none abcd", "--max-depth=10 abcd")
 
 }

@@ -119,7 +119,7 @@ func parse_args(args ...string) (delegate_to_rg bool, sanitized_args []string, k
 			if with_equals {
 				sanitized_args = append(sanitized_args, "--"+key+"="+val)
 			} else {
-				sanitized_args = append(sanitized_args, key, val)
+				sanitized_args = append(sanitized_args, "--"+key, val)
 			}
 		}
 		switch key {
