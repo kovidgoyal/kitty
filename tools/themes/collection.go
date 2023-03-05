@@ -327,7 +327,7 @@ func theme_name_from_file_name(fname string) string {
 	fname = fname[:len(fname)-len(path.Ext(fname))]
 	fname = strings.ReplaceAll(fname, "_", " ")
 	fname = camel_case_pat().ReplaceAllString(fname, "$1 $2")
-	return strings.Join(utils.Map(strings.Split(fname, " "), strings.Title), " ")
+	return strings.Join(utils.Map(strings.Title, strings.Split(fname, " ")), " ")
 }
 
 func (self *Themes) AddFromFile(path string) (*Theme, error) {

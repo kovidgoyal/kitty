@@ -57,7 +57,7 @@ func Filter[T any](s []T, f func(x T) bool) []T {
 	return ans
 }
 
-func Map[T any](s []T, f func(x T) T) []T {
+func Map[T any](f func(x T) T, s []T) []T {
 	ans := make([]T, 0, len(s))
 	for _, x := range s {
 		ans = append(ans, f(x))
