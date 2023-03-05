@@ -22,7 +22,7 @@ var SSHExe = (&utils.Once[string]{Run: func() string {
 	if ans != "" {
 		return ans
 	}
-	ans = utils.Which("ssh", "/usr/local/bin", "/opt/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin")
+	ans = utils.Which("ssh", utils.DefaultExeSearchPaths()...)
 	if ans == "" {
 		ans = "ssh"
 	}
