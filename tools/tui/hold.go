@@ -32,7 +32,7 @@ func HoldTillEnter(start_with_newline bool) {
 	}
 
 	lp.OnKeyEvent = func(event *loop.KeyEvent) error {
-		if event.MatchesPressOrRepeat("enter") || event.MatchesPressOrRepeat("esc") || event.MatchesPressOrRepeat("ctrl+c") || event.MatchesPressOrRepeat("ctrl+d") {
+		if event.MatchesPressOrRepeat("enter") || event.MatchesPressOrRepeat("kp_enter") || event.MatchesPressOrRepeat("esc") || event.MatchesPressOrRepeat("ctrl+c") || event.MatchesPressOrRepeat("ctrl+d") {
 			event.Handled = true
 			lp.Quit(0)
 		}
