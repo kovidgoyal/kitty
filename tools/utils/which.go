@@ -17,7 +17,8 @@ var DefaultExeSearchPaths = (&Once[[]string]{Run: func() []string {
 	candidates := [...]string{"/usr/local/bin", "/opt/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"}
 	ans := make([]string, 0, len(candidates))
 	for _, x := range candidates {
-		if s, err := os.Stat(x); err != nil && s.IsDir() {
+		if s, err := os.Stat(x); err == nil && s.IsDir() {
+			ans = append(ans, x)
 		}
 	}
 	return ans
