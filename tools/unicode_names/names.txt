@@ -1,4 +1,4 @@
-37997 17455
+44995 18283
 0 null
 1 start of heading
 2 start of text
@@ -15724,7 +15724,7 @@
 58895 mustache
 58896 gulp
 58897 grunt
-58898 text
+58898 default text
 58899 folder
 58900 css
 58901 config
@@ -15759,6 +15759,124 @@
 58930 emacs
 58931 orgmode
 58932 kotlin
+58933 apple
+58934 argdown
+58935 asm
+58936 audio
+58937 babel
+58938 bazel
+58939 bicep
+58940 bsl
+58941 cake php
+58942 cake
+58943 checkbox
+58944 checkbox unchecked
+58945 clock time cop
+58946 clojure
+58947 code climate
+58948 code search
+58949 coldfusion
+58950 cpp
+58951 crystal embedded
+58952 c sharp
+58953 c
+58954 csv
+58955 cu
+58956 dart
+58957 db
+58958 default
+58959 deprecation cop
+58960 docker
+58961 d
+58962 editorconfig
+58963 elixir script
+58964 error
+58965 eslint
+58966 ethereum
+58967 firebase
+58968 firefox
+58969 font
+58970 f sharp
+58971 github
+58972 gitlab
+58973 git
+58974 go2
+58975 godot
+58976 gradle
+58977 grails
+58978 graphql
+58979 hacklang
+58980 haml
+58981 happenings
+58982 haxe
+58983 hex
+58984 ignored
+58985 illustrator
+58986 info
+58987 ionic
+58988 jade
+58989 java
+58990 jenkins
+58991 jinja
+58992 liquid
+58993 livescript
+58994 lock
+58995 makefile
+58996 maven
+58997 mdo
+58998 new file
+58999 nim
+59000 notebook
+59001 nunjucks
+59002 ocaml
+59003 odata
+59004 pddl
+59005 pdf
+59006 perl
+59007 photoshop
+59008 pipeline
+59009 plan
+59010 platformio
+59011 powershell
+59012 prisma
+59013 prolog
+59014 pug
+59015 reasonml
+59016 rescript
+59017 rollup
+59018 r
+59019 rust
+59020 salesforce
+59021 sbt
+59022 scala
+59023 search
+59024 settings
+59025 shell
+59026 slim
+59027 smarty
+59028 spring
+59029 stylelint
+59030 sublime
+59031 svelte
+59032 svg
+59033 swift
+59034 terraform
+59035 tex
+59036 todo
+59037 tsconfig
+59038 vala
+59039 video
+59040 vue
+59041 wasm
+59042 wat
+59043 webpack
+59044 wgt
+59045 word
+59046 xls
+59047 yarn
+59048 yml
+59049 zig
+59050 zip
 59136 bing small
 59137 css tricks
 59138 git
@@ -37993,6 +38111,6886 @@
 917998 variation selector-255
 917999 variation selector-256
 983040 <plane 15 private use, first>
+983041 vector square
+983042 access point network
+983043 access point
+983044 account
+983045 account alert
+983046 account box
+983047 account box outline
+983048 account check
+983049 account circle
+983050 account convert
+983051 account key
+983052 tooltip account
+983053 account minus
+983054 account multiple
+983055 account multiple outline
+983056 account multiple plus
+983057 account network
+983058 account off
+983059 account outline
+983060 account plus
+983061 account remove
+983062 account search
+983063 account star
+983064 orbit
+983065 account switch
+983066 adjust
+983067 air conditioner
+983068 airballoon
+983069 airplane
+983070 airplane off
+983071 cast variant
+983072 alarm
+983073 alarm check
+983074 alarm multiple
+983075 alarm off
+983076 alarm plus
+983077 album
+983078 alert
+983079 alert box
+983080 alert circle
+983081 alert octagon
+983082 alert outline
+983083 alpha
+983084 alphabetical
+983085 greenhouse
+983086 rollerblade off
+983087 ambulance
+983088 amplifier
+983089 anchor
+983090 android
+983091 web plus
+983092 android studio
+983093 apple
+983094 apple finder
+983095 apple ios
+983096 apple icloud
+983097 apple safari
+983098 font awesome
+983099 apps
+983100 archive
+983101 arrange bring forward
+983102 arrange bring to front
+983103 arrange send backward
+983104 arrange send to back
+983105 arrow all
+983106 arrow bottom left
+983107 arrow bottom right
+983108 arrow collapse all
+983109 arrow down
+983110 arrow down thick
+983111 arrow down bold circle
+983112 arrow down bold circle outline
+983113 arrow down bold hexagon outline
+983114 arrow down drop circle
+983115 arrow down drop circle outline
+983116 arrow expand all
+983117 arrow left
+983118 arrow left thick
+983119 arrow left bold circle
+983120 arrow left bold circle outline
+983121 arrow left bold hexagon outline
+983122 arrow left drop circle
+983123 arrow left drop circle outline
+983124 arrow right
+983125 arrow right thick
+983126 arrow right bold circle
+983127 arrow right bold circle outline
+983128 arrow right bold hexagon outline
+983129 arrow right drop circle
+983130 arrow right drop circle outline
+983131 arrow top left
+983132 arrow top right
+983133 arrow up
+983134 arrow up thick
+983135 arrow up bold circle
+983136 arrow up bold circle outline
+983137 arrow up bold hexagon outline
+983138 arrow up drop circle
+983139 arrow up drop circle outline
+983140 assistant
+983141 at
+983142 attachment
+983143 book music
+983144 auto fix
+983145 auto upload
+983146 autorenew
+983147 av timer
+983148 baby
+983149 backburger
+983150 backspace
+983151 backup restore
+983152 bank
+983153 barcode
+983154 barcode scan
+983155 barley
+983156 barrel
+983157 incognito off
+983158 basket
+983159 basket fill
+983160 basket unfill
+983161 battery
+983162 battery 10
+983163 battery 20
+983164 battery 30
+983165 battery 40
+983166 battery 50
+983167 battery 60
+983168 battery 70
+983169 battery 80
+983170 battery 90
+983171 battery alert
+983172 battery charging
+983173 battery charging 100
+983174 battery charging 20
+983175 battery charging 30
+983176 battery charging 40
+983177 battery charging 60
+983178 battery charging 80
+983179 battery charging 90
+983180 battery minus variant
+983181 battery negative
+983182 battery outline
+983183 battery plus variant
+983184 battery positive
+983185 battery unknown
+983186 beach
+983187 flask
+983188 flask empty
+983189 flask empty outline
+983190 flask outline
+983191 bunk bed outline
+983192 beer
+983193 bed outline
+983194 bell
+983195 bell off
+983196 bell outline
+983197 bell plus
+983198 bell ring
+983199 bell ring outline
+983200 bell sleep
+983201 beta
+983202 book cross
+983203 bike
+983204 microsoft bing
+983205 binoculars
+983206 bio
+983207 biohazard
+983208 bitbucket
+983209 black mesa
+983210 shield refresh
+983211 blender software
+983212 blinds
+983213 block helper
+983214 application edit
+983215 bluetooth
+983216 bluetooth audio
+983217 bluetooth connect
+983218 bluetooth off
+983219 bluetooth settings
+983220 bluetooth transfer
+983221 blur
+983222 blur linear
+983223 blur off
+983224 blur radial
+983225 bone
+983226 book
+983227 book multiple
+983228 book variant multiple
+983229 book open
+983230 book open blank variant
+983231 book variant
+983232 bookmark
+983233 bookmark check
+983234 bookmark music
+983235 bookmark outline
+983236 bookmark plus outline
+983237 bookmark plus
+983238 bookmark remove
+983239 border all
+983240 border bottom
+983241 border color
+983242 border horizontal
+983243 border inside
+983244 border left
+983245 border none
+983246 border outside
+983247 border right
+983248 border style
+983249 border top
+983250 border vertical
+983251 bowling
+983252 box
+983253 box cutter
+983254 briefcase
+983255 briefcase check
+983256 briefcase download
+983257 briefcase upload
+983258 brightness 1
+983259 brightness 2
+983260 brightness 3
+983261 brightness 4
+983262 brightness 5
+983263 brightness 6
+983264 brightness 7
+983265 brightness auto
+983266 broom
+983267 brush
+983268 bug
+983269 bulletin board
+983270 bullhorn
+983271 bus
+983272 cached
+983273 cake
+983274 cake layered
+983275 cake variant
+983276 calculator
+983277 calendar
+983278 calendar blank
+983279 calendar check
+983280 calendar clock
+983281 calendar multiple
+983282 calendar multiple check
+983283 calendar plus
+983284 calendar remove
+983285 calendar text
+983286 calendar today
+983287 call made
+983288 call merge
+983289 call missed
+983290 call received
+983291 call split
+983292 camcorder
+983293 video box
+983294 video box off
+983295 camcorder off
+983296 camera
+983297 camera enhance
+983298 camera front
+983299 camera front variant
+983300 camera iris
+983301 camera party mode
+983302 camera rear
+983303 camera rear variant
+983304 camera switch
+983305 camera timer
+983306 candycane
+983307 car
+983308 car battery
+983309 car connected
+983310 car wash
+983311 carrot
+983312 cart
+983313 cart outline
+983314 cart plus
+983315 case sensitive alt
+983316 cash
+983317 cash 100
+983318 cash multiple
+983319 checkbox blank badge outline
+983320 cast
+983321 cast connected
+983322 castle
+983323 cat
+983324 cellphone
+983325 tray arrow up
+983326 cellphone basic
+983327 cellphone dock
+983328 tray arrow down
+983329 cellphone link
+983330 cellphone link off
+983331 cellphone settings
+983332 certificate
+983333 chair school
+983334 chart arc
+983335 chart areaspline
+983336 chart bar
+983337 chart histogram
+983338 chart line
+983339 chart pie
+983340 check
+983341 check all
+983342 checkbox blank
+983345 checkbox blank outline
+983346 checkbox marked
+983347 checkbox marked circle
+983348 checkbox marked circle outline
+983349 checkbox marked outline
+983350 checkbox multiple blank
+983351 checkbox multiple blank outline
+983352 checkbox multiple marked
+983353 checkbox multiple marked outline
+983354 checkerboard
+983355 chemical weapon
+983356 chevron double down
+983357 chevron double left
+983358 chevron double right
+983359 chevron double up
+983360 chevron down
+983361 chevron left
+983362 chevron right
+983363 chevron up
+983364 church
+983365 roller skate off
+983366 city
+983367 clipboard
+983368 clipboard account
+983369 clipboard alert
+983370 clipboard arrow down
+983371 clipboard arrow left
+983372 clipboard outline
+983373 clipboard text
+983374 clipboard check
+983375 clippy
+983376 clock outline
+983377 clock end
+983378 clock fast
+983379 clock in
+983380 clock out
+983381 clock start
+983382 close
+983383 close box
+983384 close box outline
+983385 close circle
+983386 close circle outline
+983387 close network
+983388 close octagon
+983389 close octagon outline
+983390 closed caption
+983391 cloud
+983392 cloud check
+983393 cloud circle
+983394 cloud download
+983395 cloud outline
+983396 cloud off outline
+983397 cloud print
+983398 cloud print outline
+983399 cloud upload
+983400 code array
+983401 code braces
+983402 code brackets
+983403 code equal
+983404 code greater than
+983405 code greater than or equal
+983406 code less than
+983407 code less than or equal
+983408 code not equal
+983409 code not equal variant
+983410 code parentheses
+983411 code string
+983412 code tags
+983413 codepen
+983414 coffee
+983415 coffee to go
+983416 bell badge outline
+983417 color helper
+983418 comment
+983419 comment account
+983420 comment account outline
+983421 comment alert
+983422 comment alert outline
+983423 comment check
+983424 comment check outline
+983425 comment multiple outline
+983426 comment outline
+983427 comment plus outline
+983428 comment processing
+983429 comment processing outline
+983430 comment question outline
+983431 comment remove outline
+983432 comment text
+983433 comment text outline
+983434 compare
+983435 compass
+983436 compass outline
+983437 console
+983438 card account mail
+983439 content copy
+983440 content cut
+983441 content duplicate
+983442 content paste
+983443 content save
+983444 content save all
+983445 contrast
+983446 contrast box
+983447 contrast circle
+983448 cookie
+983449 counter
+983450 cow
+983451 credit card outline
+983452 credit card multiple outline
+983453 credit card scan outline
+983454 crop
+983455 crop free
+983456 crop landscape
+983457 crop portrait
+983458 crop square
+983459 crosshairs
+983460 crosshairs gps
+983461 crown
+983462 cube
+983463 cube outline
+983464 cube send
+983465 cube unfolded
+983466 cup
+983467 cup water
+983468 currency btc
+983469 currency eur
+983470 currency gbp
+983471 currency inr
+983472 currency ngn
+983473 currency rub
+983474 currency try
+983475 delete variant
+983476 delete
+983477 decimal increase
+983478 decimal decrease
+983479 debug step over
+983480 debug step out
+983481 debug step into
+983482 database plus
+983483 database minus
+983484 database
+983485 cursor pointer
+983486 cursor move
+983487 cursor default outline
+983488 cursor default
+983489 currency usd
+983490 delta
+983491 deskphone
+983492 desktop mac
+983493 desktop tower
+983494 details
+983495 deviantart
+983496 diamond stone
+983497 ab testing
+983498 dice 1
+983499 dice 2
+983500 dice 3
+983501 dice 4
+983502 dice 5
+983503 dice 6
+983504 directions
+983505 disc alert
+983506 disqus
+983507 video plus outline
+983508 division
+983509 division box
+983510 dns
+983511 domain
+983512 dots horizontal
+983513 dots vertical
+983514 download
+983515 drag
+983516 drag horizontal
+983517 drag vertical
+983518 drawing
+983519 drawing box
+983520 shield refresh outline
+983521 calendar refresh
+983522 drone
+983523 dropbox
+983524 drupal
+983525 duck
+983526 dumbbell
+983527 earth
+983528 earth off
+983529 microsoft edge
+983530 eject
+983531 elevation decline
+983532 elevation rise
+983533 elevator
+983534 email
+983535 email open
+983536 email outline
+983537 email lock
+983538 emoticon outline
+983539 emoticon cool outline
+983540 emoticon devil outline
+983541 emoticon happy outline
+983542 emoticon neutral outline
+983543 emoticon poop
+983544 emoticon sad outline
+983545 emoticon tongue
+983546 engine
+983547 engine outline
+983548 equal
+983549 equal box
+983550 eraser
+983551 escalator
+983552 ethernet
+983553 ethernet cable
+983554 ethernet cable off
+983555 calendar refresh outline
+983556 evernote
+983557 exclamation
+983559 export
+983560 eye
+983561 eye off
+983562 eyedropper
+983563 eyedropper variant
+983564 facebook
+983565 order alphabetical ascending
+983566 facebook messenger
+983567 factory
+983568 fan
+983569 fast forward
+983570 fax
+983571 ferry
+983572 file
+983573 file chart
+983574 file check
+983575 file cloud
+983576 file delimited
+983577 file document
+983578 text box
+983579 file excel
+983580 file excel box
+983581 file export
+983582 file find
+983583 file image
+983584 file import
+983585 file lock
+983586 file multiple
+983587 file music
+983588 file outline
+983589 file jpg box
+983590 file pdf box
+983591 file powerpoint
+983592 file powerpoint box
+983593 file presentation box
+983594 file send
+983595 file video
+983596 file word
+983597 file word box
+983598 file code
+983599 film
+983600 filmstrip
+983601 filmstrip off
+983602 filter
+983603 filter outline
+983604 filter remove
+983605 filter remove outline
+983606 filter variant
+983607 fingerprint
+983608 fire
+983609 firefox
+983610 fish
+983611 flag
+983612 flag checkered
+983613 flag outline
+983614 flag variant outline
+983615 flag triangle
+983616 flag variant
+983617 flash
+983618 flash auto
+983619 flash off
+983620 flashlight
+983621 flashlight off
+983622 star half
+983623 flip to back
+983624 flip to front
+983625 floppy
+983626 flower
+983627 folder
+983628 folder account
+983629 folder download
+983630 folder google drive
+983631 folder image
+983632 folder lock
+983633 folder lock open
+983634 folder move
+983635 folder multiple
+983636 folder multiple image
+983637 folder multiple outline
+983638 folder outline
+983639 folder plus
+983640 folder remove
+983641 folder upload
+983642 food
+983643 food apple
+983644 food variant
+983645 football
+983646 football australian
+983647 football helmet
+983648 format align center
+983649 format align justify
+983650 format align left
+983651 format align right
+983652 format bold
+983653 format clear
+983654 format color fill
+983655 format float center
+983656 format float left
+983657 format float none
+983658 format float right
+983659 format header 1
+983660 format header 2
+983661 format header 3
+983662 format header 4
+983663 format header 5
+983664 format header 6
+983665 format header decrease
+983666 format header equal
+983667 format header increase
+983668 format header pound
+983669 format indent decrease
+983670 format indent increase
+983671 format italic
+983672 format line spacing
+983673 format list bulleted
+983674 format list bulleted type
+983675 format list numbered
+983676 format paint
+983677 format paragraph
+983678 format quote close
+983679 format size
+983680 format strikethrough
+983681 format strikethrough variant
+983682 format subscript
+983683 format superscript
+983684 format text
+983685 format textdirection l to r
+983686 format textdirection r to l
+983687 format underline
+983688 format wrap inline
+983689 format wrap square
+983690 format wrap tight
+983691 format wrap top bottom
+983692 forum
+983693 forward
+983694 bowl
+983695 fridge outline
+983696 fridge
+983697 fridge top
+983698 fridge bottom
+983699 fullscreen
+983700 fullscreen exit
+983701 function
+983702 gamepad
+983703 gamepad variant
+983704 gas station
+983705 gate
+983706 gauge
+983707 gavel
+983708 gender female
+983709 gender male
+983710 gender male female
+983711 gender transgender
+983712 ghost
+983713 gift outline
+983714 git
+983715 card account details star
+983716 github
+983717 glass flute
+983718 glass mug
+983719 glass stange
+983720 glass tulip
+983721 bowl outline
+983722 glasses
+983723 gmail
+983724 gnome
+983725 google
+983726 google cardboard
+983727 google chrome
+983728 google circles
+983729 google circles communities
+983730 google circles extended
+983731 google circles group
+983732 google controller
+983733 google controller off
+983734 google drive
+983735 google earth
+983736 google glass
+983737 google nearby
+983738 video minus outline
+983739 microsoft teams
+983740 google play
+983741 google plus
+983742 order bool ascending
+983743 google translate
+983744 google classroom
+983745 grid
+983746 grid off
+983747 group
+983748 guitar electric
+983749 guitar pick
+983750 guitar pick outline
+983751 hand pointing right
+983752 hanger
+983753 google hangouts
+983754 harddisk
+983755 headphones
+983756 headphones box
+983757 headphones settings
+983758 headset
+983759 headset dock
+983760 headset off
+983762 heart box
+983763 heart box outline
+983764 heart broken
+983766 help
+983767 help circle
+983768 hexagon
+983769 hexagon outline
+983770 history
+983771 hololens
+983772 home
+983773 home modern
+983774 home variant
+983775 hops
+983776 hospital box
+983777 hospital building
+983778 hospital marker
+983779 bed
+983780 bowl mix outline
+983781 pot
+983782 human
+983783 human child
+983784 human male female
+983785 image
+983786 image album
+983787 image area
+983788 image area close
+983789 image broken
+983790 image broken variant
+983791 image multiple outline
+983792 image filter black white
+983793 image filter center focus
+983794 image filter center focus weak
+983795 image filter drama
+983796 image filter frames
+983798 image filter none
+983799 image filter tilt shift
+983800 image filter vintage
+983801 image multiple
+983802 import
+983803 inbox arrow down
+983804 information
+983805 information outline
+983806 instagram
+983807 pot outline
+983808 microsoft internet explorer
+983809 invert colors
+983810 jeepney
+983811 jira
+983812 jsfiddle
+983813 keg
+983814 key
+983815 key change
+983816 key minus
+983817 key plus
+983818 key remove
+983819 key variant
+983820 keyboard
+983821 keyboard backspace
+983822 keyboard caps
+983823 keyboard close
+983824 keyboard off
+983825 keyboard return
+983826 keyboard tab
+983827 keyboard variant
+983828 kodi
+983829 label
+983830 label outline
+983831 lan
+983832 lan connect
+983833 lan disconnect
+983834 lan pending
+983835 language csharp
+983836 language css3
+983837 language html5
+983838 language javascript
+983839 language php
+983840 language python
+983841 contactless payment circle
+983842 laptop
+983843 magazine rifle
+983844 magazine pistol
+983845 keyboard tab reverse
+983846 pot steam outline
+983847 launch
+983848 layers
+983849 layers off
+983850 leaf
+983851 led off
+983852 led on
+983853 led outline
+983854 led variant off
+983855 led variant on
+983856 led variant outline
+983857 library
+983858 filmstrip box
+983859 music box multiple
+983860 plus box multiple
+983861 lightbulb
+983862 lightbulb outline
+983863 link
+983864 link off
+983865 link variant
+983866 link variant off
+983867 linkedin
+983868 sort reverse variant
+983869 linux
+983870 lock
+983871 lock open
+983872 lock open outline
+983873 lock outline
+983874 login
+983875 logout
+983876 looks
+983877 loupe
+983878 lumx
+983879 magnet
+983880 magnet on
+983881 magnify
+983882 magnify minus
+983883 magnify plus
+983884 plus circle multiple
+983885 map
+983886 map marker
+983887 map marker circle
+983888 map marker multiple
+983889 map marker off
+983890 map marker radius
+983891 margin
+983892 language markdown
+983893 marker check
+983894 glass cocktail
+983895 material ui
+983896 math compass
+983897 stackpath
+983898 minus circle multiple
+983899 memory
+983900 menu
+983901 menu down
+983902 menu left
+983903 menu right
+983904 menu up
+983905 message
+983906 message alert
+983907 message draw
+983908 message image
+983909 message outline
+983910 message processing
+983911 message reply
+983912 message reply text
+983913 message text
+983914 message text outline
+983915 message video
+983916 microphone
+983917 microphone off
+983918 microphone outline
+983919 microphone settings
+983920 microphone variant
+983921 microphone variant off
+983922 microsoft
+983923 minecraft
+983924 minus
+983925 minus box
+983926 minus circle
+983927 minus circle outline
+983928 minus network
+983929 monitor
+983930 monitor multiple
+983931 more
+983932 motorbike
+983933 mouse
+983934 mouse off
+983935 mouse variant
+983936 mouse variant off
+983937 movie
+983938 multiplication
+983939 multiplication box
+983940 music box
+983941 music box outline
+983942 music circle
+983944 music note
+983945 music note half
+983946 music note off
+983947 music note quarter
+983948 music note sixteenth
+983949 music note whole
+983950 nature
+983951 nature people
+983952 navigation
+983953 needle
+983954 smoke detector
+983955 thermostat
+983956 new box
+983957 newspaper
+983958 nfc
+983959 nfc tap
+983960 nfc variant
+983961 nodejs
+983962 note
+983963 note outline
+983964 note plus
+983965 note plus outline
+983966 note text
+983967 notification clear all
+983968 numeric
+983969 numeric 0 box
+983970 numeric 0 box multiple outline
+983971 numeric 0 box outline
+983972 numeric 1 box
+983973 numeric 1 box multiple outline
+983974 numeric 1 box outline
+983975 numeric 2 box
+983976 numeric 2 box multiple outline
+983977 numeric 2 box outline
+983978 numeric 3 box
+983979 numeric 3 box multiple outline
+983980 numeric 3 box outline
+983981 numeric 4 box
+983982 numeric 4 box outline
+983983 numeric 5 box multiple outline
+983984 numeric 5 box outline
+983985 numeric 5 box
+983986 numeric 4 box multiple outline
+983987 numeric 6 box
+983988 numeric 6 box multiple outline
+983989 numeric 6 box outline
+983990 numeric 7 box
+983991 numeric 7 box multiple outline
+983992 numeric 7 box outline
+983993 numeric 8 box
+983994 numeric 8 box multiple outline
+983995 numeric 8 box outline
+983996 numeric 9 box
+983997 numeric 9 box multiple outline
+983998 numeric 9 box outline
+983999 numeric 9 plus box
+984000 numeric 9 plus box multiple outline
+984001 numeric 9 plus box outline
+984002 nutrition
+984003 octagon
+984004 octagon outline
+984005 odnoklassniki
+984006 microsoft office
+984007 oil
+984008 coolant temperature
+984009 omega
+984010 microsoft onedrive
+984011 open in app
+984012 open in new
+984013 openid
+984014 opera
+984015 ornament
+984016 ornament variant
+984017 inbox arrow up
+984018 owl
+984019 package
+984020 package down
+984021 package up
+984022 package variant
+984023 package variant closed
+984024 palette
+984025 palette advanced
+984026 panda
+984027 pandora
+984028 panorama
+984029 panorama fisheye
+984030 panorama horizontal outline
+984031 panorama vertical outline
+984032 panorama wide angle outline
+984033 paper cut vertical
+984034 paperclip
+984035 parking
+984036 pause
+984037 pause circle
+984038 pause circle outline
+984039 pause octagon
+984040 pause octagon outline
+984041 paw
+984042 pen
+984043 pencil
+984044 pencil box
+984045 pencil box outline
+984046 pencil lock
+984047 pencil off
+984048 percent
+984049 mortar pestle plus
+984050 phone
+984051 phone bluetooth
+984052 phone forward
+984053 phone hangup
+984054 phone in talk
+984055 phone incoming
+984056 phone lock
+984057 phone log
+984058 phone missed
+984059 phone outgoing
+984060 phone paused
+984061 phone settings
+984062 phone voip
+984063 pi
+984064 pi box
+984065 pig
+984066 pill
+984067 pin
+984068 pin off
+984069 pine tree
+984070 pine tree box
+984071 pinterest
+984072 contactless payment circle outline
+984073 pizza
+984074 play
+984075 play box outline
+984076 play circle
+984077 play circle outline
+984078 play pause
+984079 play protected content
+984080 playlist minus
+984081 playlist play
+984082 playlist plus
+984083 playlist remove
+984084 sony playstation
+984085 plus
+984086 plus box
+984087 plus circle
+984088 plus circle multiple outline
+984089 plus circle outline
+984090 plus network
+984091 sledding
+984092 wall sconce flat variant
+984093 pokeball
+984094 polaroid
+984095 poll
+984096 account eye
+984097 polymer
+984098 popcorn
+984099 pound
+984100 pound box
+984101 power
+984102 power settings
+984103 power socket
+984104 presentation
+984105 presentation play
+984106 printer
+984107 printer 3d
+984108 printer alert
+984109 professional hexagon
+984110 projector
+984111 projector screen
+984112 pulse
+984113 puzzle
+984114 qrcode
+984115 qrcode scan
+984116 quadcopter
+984117 quality high
+984118 book multiple outline
+984119 radar
+984120 radiator
+984121 radio
+984122 radio handheld
+984123 radio tower
+984124 radioactive
+984126 radiobox marked
+984127 raspberry pi
+984128 ray end
+984129 ray end arrow
+984130 ray start
+984131 ray start arrow
+984132 ray start end
+984133 ray vertex
+984134 lastpass
+984135 read
+984136 youtube tv
+984137 receipt
+984138 record
+984139 record rec
+984140 recycle
+984141 reddit
+984142 redo
+984143 redo variant
+984144 refresh
+984145 regex
+984146 relative scale
+984147 reload
+984148 remote
+984149 rename box
+984150 repeat
+984151 repeat off
+984152 repeat once
+984153 replay
+984154 reply
+984155 reply all
+984156 reproduction
+984157 resize bottom right
+984158 responsive
+984159 rewind
+984160 ribbon
+984161 road
+984162 road variant
+984163 rocket
+984164 rotate 3d variant
+984165 rotate left
+984166 rotate left variant
+984167 rotate right
+984168 rotate right variant
+984169 router wireless
+984170 routes
+984171 rss
+984172 rss box
+984173 ruler
+984174 run fast
+984175 sale
+984176 satellite
+984177 satellite variant
+984178 scale
+984179 scale bathroom
+984180 school
+984181 screen rotation
+984182 screwdriver
+984183 script outline
+984184 screen rotation lock
+984185 sd
+984186 seal
+984187 seat flat
+984188 seat flat angled
+984189 seat individual suite
+984190 seat legroom extra
+984191 seat legroom normal
+984192 seat legroom reduced
+984193 seat recline extra
+984194 seat recline normal
+984195 security
+984196 security network
+984197 select
+984198 select all
+984199 select inverse
+984200 select off
+984201 selection
+984202 send
+984203 server
+984204 server minus
+984205 server network
+984206 server network off
+984207 server off
+984208 server plus
+984209 server remove
+984210 server security
+984211 cog
+984212 cog box
+984213 shape plus
+984214 share
+984215 share variant
+984216 shield
+984217 shield outline
+984218 shopping
+984219 shopping music
+984220 shredder
+984221 shuffle
+984222 shuffle disabled
+984223 shuffle variant
+984224 sigma
+984225 sign caution
+984226 signal
+984227 silverware
+984228 silverware fork
+984229 silverware spoon
+984230 silverware variant
+984231 sim
+984232 sim alert
+984233 sim off
+984234 sitemap
+984235 skip backward
+984236 skip forward
+984237 skip next
+984238 skip previous
+984239 skype
+984240 skype business
+984241 slack
+984242 sleep
+984243 sleep off
+984244 smoking
+984245 smoking off
+984246 snapchat
+984247 snowman
+984248 soccer
+984249 sofa
+984250 sort
+984251 sort alphabetical variant
+984252 sort ascending
+984253 sort descending
+984254 sort numeric variant
+984255 sort variant
+984256 soundcloud
+984257 source fork
+984258 source pull
+984259 speaker
+984260 speaker off
+984261 speedometer
+984262 spellcheck
+984263 spotify
+984264 spotlight
+984265 spotlight beam
+984266 book remove multiple outline
+984267 account switch outline
+984268 stack overflow
+984269 stairs
+984270 star
+984271 star circle
+984272 star half full
+984273 star off
+984274 star outline
+984275 steam
+984276 steering
+984277 step backward
+984278 step backward 2
+984279 step forward
+984280 step forward 2
+984281 stethoscope
+984282 stocking
+984283 stop
+984284 store
+984285 store 24 hour
+984286 stove
+984287 subway variant
+984288 sunglasses
+984289 swap horizontal
+984290 swap vertical
+984291 swim
+984292 switch
+984293 sword
+984294 sync
+984295 sync alert
+984296 sync off
+984297 tab
+984298 tab unselected
+984299 table
+984300 table column plus after
+984301 table column plus before
+984302 table column remove
+984303 table column width
+984304 table edit
+984305 table large
+984306 table row height
+984307 table row plus after
+984308 table row plus before
+984309 table row remove
+984310 tablet
+984311 tablet android
+984312 tangram
+984313 tag
+984314 tag faces
+984315 tag multiple
+984316 tag outline
+984317 tag text outline
+984318 target
+984319 taxi
+984320 teamviewer
+984321 skateboarding
+984322 television
+984323 television guide
+984324 temperature celsius
+984325 temperature fahrenheit
+984326 temperature kelvin
+984327 tennis ball
+984328 tent
+984329 image filter hdr
+984330 text to speech
+984331 text to speech off
+984332 texture
+984333 theater
+984334 theme light dark
+984335 thermometer
+984336 thermometer lines
+984337 thumb down
+984338 thumb down outline
+984339 thumb up
+984340 thumb up outline
+984341 thumbs up down
+984342 ticket
+984343 ticket account
+984344 ticket confirmation
+984345 tie
+984346 timelapse
+984347 timer outline
+984348 timer 10
+984349 timer 3
+984350 timer off outline
+984351 timer sand
+984352 timetable
+984353 toggle switch
+984354 toggle switch off
+984355 tooltip
+984356 tooltip edit
+984357 tooltip image
+984358 tooltip outline
+984359 tooltip plus outline
+984360 tooltip text
+984361 tooth outline
+984362 cloud refresh
+984363 traffic light
+984364 train
+984365 tram
+984366 transcribe
+984367 transcribe close
+984368 transfer right
+984369 tree
+984370 trello
+984371 trending down
+984372 trending neutral
+984373 trending up
+984374 triangle
+984375 triangle outline
+984376 trophy
+984377 trophy award
+984378 trophy outline
+984379 trophy variant
+984380 trophy variant outline
+984381 truck
+984382 truck delivery
+984383 tshirt crew outline
+984384 tshirt v outline
+984385 file refresh outline
+984386 folder refresh outline
+984387 twitch
+984388 twitter
+984389 order numeric ascending
+984390 order numeric descending
+984391 repeat variant
+984392 ubuntu
+984393 umbraco
+984394 umbrella
+984395 umbrella outline
+984396 undo
+984397 undo variant
+984398 unfold less horizontal
+984399 unfold more horizontal
+984400 ungroup
+984401 web remove
+984402 upload
+984403 usb
+984404 vector arrange above
+984405 vector arrange below
+984406 vector circle
+984407 vector circle variant
+984408 vector combine
+984409 vector curve
+984410 vector difference
+984411 vector difference ab
+984412 vector difference ba
+984413 vector intersection
+984414 vector line
+984415 vector point
+984416 vector polygon
+984417 vector polyline
+984418 vector selection
+984419 vector triangle
+984420 vector union
+984421 shield check
+984422 vibrate
+984423 video
+984424 video off
+984425 video switch
+984426 view agenda
+984427 view array
+984428 view carousel
+984429 view column
+984430 view dashboard
+984431 view day
+984432 view grid
+984433 view headline
+984434 view list
+984435 view module
+984436 view quilt
+984437 view stream
+984438 view week
+984439 vimeo
+984440 buffet
+984441 hands pray
+984442 credit card wireless off
+984443 credit card wireless off outline
+984444 vlc
+984445 voicemail
+984446 volume high
+984447 volume low
+984448 volume medium
+984449 volume off
+984450 vpn
+984451 walk
+984452 wallet
+984453 wallet giftcard
+984454 wallet membership
+984455 wallet travel
+984456 wan
+984457 watch
+984458 watch export
+984459 watch import
+984460 water
+984461 water off
+984462 water percent
+984463 water pump
+984464 weather cloudy
+984465 weather fog
+984466 weather hail
+984467 weather lightning
+984468 weather night
+984469 weather partly cloudy
+984470 weather pouring
+984471 weather rainy
+984472 weather snowy
+984473 weather sunny
+984474 weather sunset
+984475 weather sunset down
+984476 weather sunset up
+984477 weather windy
+984478 weather windy variant
+984479 web
+984480 webcam
+984481 weight
+984482 weight kilogram
+984483 whatsapp
+984484 wheelchair accessibility
+984485 white balance auto
+984486 white balance incandescent
+984487 white balance iridescent
+984488 white balance sunny
+984489 wifi
+984490 wifi off
+984491 nintendo wii
+984492 wikipedia
+984493 window close
+984494 window closed
+984495 window maximize
+984496 window minimize
+984497 window open
+984498 window restore
+984499 microsoft windows
+984500 wordpress
+984501 account hard hat
+984502 wrap
+984503 wrench
+984504 contacts outline
+984505 microsoft xbox
+984506 microsoft xbox controller
+984507 microsoft xbox controller off
+984508 table furniture
+984509 sort alphabetical ascending
+984510 firewire
+984511 sort alphabetical descending
+984512 xml
+984513 yeast
+984514 database refresh
+984515 youtube
+984516 zip box
+984517 surround sound
+984518 vector rectangle
+984519 playlist check
+984520 format line style
+984521 format line weight
+984522 translate
+984523 account voice
+984524 opacity
+984526 clock alert outline
+984527 human pregnant
+984528 sticker circle outline
+984529 scale balance
+984530 card account details
+984531 account multiple minus
+984532 airplane landing
+984533 airplane takeoff
+984534 alert circle outline
+984535 altimeter
+984536 animation
+984537 book minus
+984538 book open page variant
+984539 book plus
+984540 boombox
+984541 bullseye
+984542 comment remove
+984543 camera off
+984544 check circle
+984545 check circle outline
+984546 candle
+984547 chart bubble
+984548 credit card off outline
+984549 cup off
+984550 copyright
+984551 cursor text
+984552 delete forever
+984553 delete sweep
+984554 dice d20 outline
+984555 dice d4 outline
+984556 dice d8 outline
+984557 dice d6 outline
+984558 disc
+984559 email open outline
+984560 email variant
+984561 ev station
+984562 food fork drink
+984563 food off
+984564 format title
+984565 google maps
+984566 heart pulse
+984567 highway
+984568 home map marker
+984569 incognito
+984570 kettle
+984571 lock plus
+984572 exit to app
+984573 logout variant
+984574 music note bluetooth
+984575 music note bluetooth off
+984576 page first
+984577 page last
+984578 phone classic
+984579 priority high
+984580 priority low
+984581 qqchat
+984582 pool
+984583 rounded corner
+984584 rowing
+984585 saxophone
+984586 signal variant
+984587 stack exchange
+984588 subdirectory arrow left
+984589 subdirectory arrow right
+984590 form textbox
+984591 violin
+984592 microsoft visual studio
+984593 wechat
+984594 watermark
+984595 file hidden
+984596 application outline
+984597 arrow collapse
+984598 arrow expand
+984599 bowl mix
+984600 bridge
+984601 application edit outline
+984602 chip
+984603 content save settings
+984604 dialpad
+984605 book alphabet
+984606 format horizontal align center
+984607 format horizontal align left
+984608 format horizontal align right
+984609 format vertical align bottom
+984610 format vertical align center
+984611 format vertical align top
+984612 line scan
+984613 help circle outline
+984614 code json
+984615 lambda	lamda
+984616 matrix
+984617 meteor
+984618 close circle multiple
+984619 sigma lower
+984620 source branch
+984621 source merge
+984622 tune
+984623 webhook
+984624 account settings
+984625 account details
+984626 apple keyboard caps
+984627 apple keyboard command
+984628 apple keyboard control
+984629 apple keyboard option
+984630 apple keyboard shift
+984631 box shadow
+984632 cards
+984633 cards outline
+984634 cards playing outline
+984635 checkbox multiple blank circle
+984636 checkbox multiple blank circle outline
+984637 checkbox multiple marked circle
+984638 checkbox multiple marked circle outline
+984639 cloud sync
+984640 collage
+984641 directions fork
+984642 eraser variant
+984643 face man
+984644 face man profile
+984645 file tree
+984646 format annotation plus
+984647 gas cylinder
+984648 grease pencil
+984649 human female
+984650 human greeting variant
+984651 human handsdown
+984652 human handsup
+984653 human male
+984654 information variant
+984655 lead pencil
+984656 map marker minus
+984657 map marker plus
+984658 marker
+984659 message plus
+984660 microscope
+984661 move resize
+984662 move resize variant
+984663 paw off
+984664 phone minus
+984665 phone plus
+984666 pot steam
+984667 pot mix
+984668 serial port
+984669 shape circle plus
+984670 shape polygon plus
+984671 shape rectangle plus
+984672 shape square plus
+984673 skip next circle
+984674 skip next circle outline
+984675 skip previous circle
+984676 skip previous circle outline
+984677 spray
+984678 stop circle
+984679 stop circle outline
+984680 test tube
+984681 text shadow
+984682 tune vertical
+984683 cart off
+984684 chart gantt
+984685 chart scatter plot hexbin
+984686 chart timeline
+984687 discord
+984688 file restore
+984689 language c
+984690 language cpp
+984691 language xaml
+984692 creation
+984693 application cog
+984694 credit card plus outline
+984695 pot mix outline
+984696 bow tie
+984697 calendar range
+984698 currency usd off
+984699 flash red eye
+984700 oar
+984701 piano
+984702 weather lightning rainy
+984703 weather snowy rainy
+984704 yin yang
+984705 tower beach
+984706 tower fire
+984707 delete circle
+984708 dna
+984709 hamburger
+984710 gondola
+984711 inbox
+984712 reorder horizontal
+984713 reorder vertical
+984714 shield home
+984715 tag heart
+984716 skull
+984717 solid
+984718 alarm snooze
+984719 baby carriage
+984720 beaker outline
+984721 bomb
+984722 calendar question
+984723 camera burst
+984724 code tags check
+984725 circle multiple outline
+984726 crop rotate
+984727 developer board
+984728 piano off
+984729 skate off
+984730 message star
+984731 emoticon dead outline
+984732 emoticon excited outline
+984733 folder star
+984734 format color text
+984735 format section
+984736 gradient vertical
+984737 home outline
+984738 message bulleted
+984739 message bulleted off
+984740 nuke
+984741 power plug
+984742 power plug off
+984743 publish
+984744 credit card marker
+984745 robot
+984746 format rotate 90
+984747 scanner
+984748 subway
+984749 timer sand empty
+984750 transit transfer
+984751 unity
+984752 update
+984753 watch vibrate
+984754 angular
+984755 dolby
+984756 emby
+984757 lamp
+984758 menu down outline
+984759 menu up outline
+984760 note multiple
+984761 note multiple outline
+984762 plex
+984763 shield airplane
+984764 account edit
+984765 alert decagram
+984766 all inclusive
+984767 angularjs
+984768 arrow down box
+984769 arrow left box
+984770 arrow right box
+984771 arrow up box
+984772 asterisk
+984773 bomb off
+984774 bootstrap
+984775 cards variant
+984776 clipboard flow
+984777 close outline
+984778 coffee outline
+984779 contacts
+984780 delete empty
+984781 earth box
+984782 earth box off
+984783 email alert
+984784 eye outline
+984785 eye off outline
+984786 fast forward outline
+984787 feather
+984788 find replace
+984789 flash outline
+984790 format font
+984791 format page break
+984792 format pilcrow
+984793 garage
+984794 garage open
+984795 card account details star outline
+984796 google keep
+984797 snowmobile
+984798 heart half full
+984799 heart half
+984800 heart half outline
+984801 hexagon multiple
+984802 hook
+984803 hook off
+984804 infinity
+984805 language swift
+984806 language typescript
+984807 laptop off
+984808 lightbulb on
+984809 lightbulb on outline
+984810 lock pattern
+984811 folder zip
+984812 magnify minus outline
+984813 magnify plus outline
+984814 mailbox
+984815 medical bag
+984816 message settings
+984817 message cog
+984818 minus box outline
+984819 network
+984820 download network
+984821 help network
+984822 upload network
+984823 npm
+984824 nut
+984825 octagram
+984826 page layout body
+984827 page layout footer
+984828 page layout header
+984829 page layout sidebar left
+984830 page layout sidebar right
+984831 pencil circle
+984832 pentagon outline
+984833 pentagon
+984834 pillar
+984835 pistol
+984836 plus box outline
+984837 plus outline
+984838 prescription
+984839 printer settings
+984840 react
+984841 restart
+984842 rewind outline
+984843 rhombus
+984844 rhombus outline
+984845 robot vacuum
+984846 run
+984847 search web
+984848 shovel
+984849 shovel off
+984850 signal 2g
+984851 signal 3g
+984852 signal 4g
+984853 signal hspa
+984854 signal hspa plus
+984855 snowflake
+984856 source commit
+984857 source commit end
+984858 source commit end local
+984859 source commit local
+984860 source commit next local
+984861 source commit start
+984862 source commit start next local
+984863 speaker wireless
+984864 stadium variant
+984865 svg
+984866 tag plus
+984867 tag remove
+984868 ticket percent
+984869 tilde
+984870 treasure chest
+984871 truck trailer
+984872 view parallel
+984873 view sequential
+984874 washing machine
+984875 webpack
+984876 widgets
+984877 nintendo wiiu
+984878 arrow down bold
+984879 arrow down bold box
+984880 arrow down bold box outline
+984881 arrow left bold
+984882 arrow left bold box
+984883 arrow left bold box outline
+984884 arrow right bold
+984885 arrow right bold box
+984886 arrow right bold box outline
+984887 arrow up bold
+984888 arrow up bold box
+984889 arrow up bold box outline
+984890 cancel
+984891 file account
+984892 gesture double tap
+984893 gesture swipe down
+984894 gesture swipe left
+984895 gesture swipe right
+984896 gesture swipe up
+984897 gesture tap
+984898 gesture two double tap
+984899 gesture two tap
+984900 humble bundle
+984901 kickstarter
+984902 netflix
+984903 microsoft onenote
+984904 wall sconce round
+984905 folder refresh
+984906 vector radius
+984907 microsoft xbox controller battery alert
+984908 microsoft xbox controller battery empty
+984909 microsoft xbox controller battery full
+984910 microsoft xbox controller battery low
+984911 microsoft xbox controller battery medium
+984912 microsoft xbox controller battery unknown
+984913 clipboard plus
+984914 file plus
+984915 format align bottom
+984916 format align middle
+984917 format align top
+984918 format list checks
+984919 format quote open
+984920 grid large
+984921 heart off
+984922 music
+984923 music off
+984924 tab plus
+984925 volume plus
+984926 volume minus
+984927 volume mute
+984928 unfold less vertical
+984929 unfold more vertical
+984930 taco
+984931 square outline
+984932 square
+984933 checkbox blank circle
+984934 checkbox blank circle outline
+984935 alert octagram
+984936 atom
+984937 ceiling light
+984938 chart bar stacked
+984939 chart line stacked
+984940 decagram
+984941 decagram outline
+984942 dice multiple
+984943 dice d10 outline
+984944 folder open
+984945 guitar acoustic
+984946 loading
+984947 lock reset
+984948 ninja
+984949 octagram outline
+984950 pencil circle outline
+984951 selection off
+984952 set all
+984953 set center
+984954 set center right
+984955 set left
+984956 set left center
+984957 set left right
+984958 set none
+984959 set right
+984960 shield half full
+984961 sign direction
+984962 sign text
+984963 signal off
+984964 square root
+984965 sticker emoji
+984966 summit
+984967 sword cross
+984968 truck fast
+984969 web check
+984970 cast off
+984971 help box
+984972 timer sand full
+984973 waves
+984974 alarm bell
+984975 alarm light
+984976 video switch outline
+984977 check decagram
+984978 arrow collapse down
+984979 arrow collapse left
+984980 arrow collapse right
+984981 arrow collapse up
+984982 arrow expand down
+984983 arrow expand left
+984984 arrow expand right
+984985 arrow expand up
+984986 book lock
+984987 book lock open
+984988 bus articulated end
+984989 bus articulated front
+984990 bus double decker
+984991 bus school
+984992 bus side
+984993 camera gopro
+984994 camera metering center
+984995 camera metering matrix
+984996 camera metering partial
+984997 camera metering spot
+984998 cannabis
+984999 car convertible
+985000 car estate
+985001 car hatchback
+985002 car pickup
+985003 car side
+985004 car sports
+985005 caravan
+985006 cctv
+985007 chart donut
+985008 chart donut variant
+985009 chart line variant
+985010 chili hot
+985011 chili medium
+985012 chili mild
+985013 cloud braces
+985014 cloud tags
+985015 console line
+985016 corn
+985017 folder zip outline
+985018 currency cny
+985019 currency eth
+985020 currency jpy
+985021 currency krw
+985022 currency sign
+985023 currency twd
+985024 desktop classic
+985025 dip switch
+985026 donkey
+985027 dots horizontal circle
+985028 dots vertical circle
+985029 ear hearing
+985030 elephant
+985031 storefront
+985032 food croissant
+985033 forklift
+985034 fuel
+985035 gesture
+985036 google analytics
+985037 google assistant
+985038 headphones off
+985039 high definition
+985040 home assistant
+985041 home automation
+985042 home circle
+985043 language go
+985044 language r
+985045 lava lamp
+985046 led strip
+985047 locker
+985048 locker multiple
+985049 map marker outline
+985050 metronome
+985051 metronome tick
+985052 micro sd
+985053 facebook gaming
+985054 movie roll
+985055 mushroom
+985056 mushroom outline
+985057 nintendo switch
+985058 null
+985059 passport
+985060 molecule co2
+985061 pipe
+985062 pipe disconnected
+985063 power socket eu
+985064 power socket uk
+985065 power socket us
+985066 rice
+985067 ring
+985068 sass
+985069 send lock
+985070 soy sauce
+985071 standard definition
+985072 surround sound 2 0
+985073 surround sound 3 1
+985074 surround sound 5 1
+985075 surround sound 7 1
+985076 television classic
+985077 form textbox password
+985078 thought bubble
+985079 thought bubble outline
+985080 trackpad
+985081 ultra high definition
+985082 van passenger
+985083 van utility
+985084 vanish
+985085 video 3d
+985086 wall
+985087 xmpp
+985088 account multiple plus outline
+985089 account plus outline
+985090 credit card wireless
+985091 account music
+985092 atlassian
+985093 microsoft azure
+985094 basketball
+985095 battery charging wireless
+985096 battery charging wireless 10
+985097 battery charging wireless 20
+985098 battery charging wireless 30
+985099 battery charging wireless 40
+985100 battery charging wireless 50
+985101 battery charging wireless 60
+985102 battery charging wireless 70
+985103 battery charging wireless 80
+985104 battery charging wireless 90
+985105 battery charging wireless alert
+985106 battery charging wireless outline
+985107 bitcoin
+985108 briefcase outline
+985109 cellphone wireless
+985110 clover
+985111 comment question
+985112 content save outline
+985113 delete restore
+985114 door
+985115 door closed
+985116 door open
+985117 fan off
+985118 file percent
+985119 finance
+985120 lightning bolt circle
+985121 floor plan
+985122 forum outline
+985123 golf
+985124 google home
+985125 guy fawkes mask
+985126 home account
+985127 home heart
+985128 hot tub
+985129 hulu
+985130 ice cream
+985131 image off
+985132 karate
+985133 ladybug
+985134 notebook
+985135 phone return
+985136 poker chip
+985137 shape
+985138 shape outline
+985139 ship wheel
+985140 soccer field
+985141 table column
+985142 table of contents
+985143 table row
+985144 table settings
+985145 television box
+985146 television classic off
+985147 television off
+985148 tow truck
+985149 upload multiple
+985150 video 4k box
+985151 video input antenna
+985152 video input component
+985153 video input hdmi
+985154 video input svideo
+985155 view dashboard variant
+985156 vuejs
+985157 xamarin
+985158 human male board poll
+985159 youtube studio
+985160 youtube gaming
+985161 account group
+985162 camera switch outline
+985163 airport
+985164 arrow collapse horizontal
+985165 arrow collapse vertical
+985166 arrow expand horizontal
+985167 arrow expand vertical
+985168 augmented reality
+985169 badminton
+985170 baseball
+985171 baseball bat
+985172 bottle wine
+985173 check outline
+985174 checkbox intermediate
+985175 chess king
+985176 chess knight
+985177 chess pawn
+985178 chess queen
+985179 chess rook
+985180 chess bishop
+985181 clipboard pulse
+985182 clipboard pulse outline
+985183 comment multiple
+985184 comment text multiple
+985185 comment text multiple outline
+985186 crane
+985187 curling
+985188 currency bdt
+985189 currency kzt
+985190 database search
+985191 dice d12 outline
+985192 docker
+985193 doorbell video
+985194 ethereum
+985195 eye plus
+985196 eye plus outline
+985197 eye settings
+985198 eye settings outline
+985199 file question
+985200 folder network
+985201 function variant
+985202 garage alert
+985203 gauge empty
+985204 gauge full
+985205 gauge low
+985206 glass wine
+985207 graphql
+985208 high definition box
+985209 hockey puck
+985210 hockey sticks
+985211 home alert
+985212 image plus
+985213 jquery
+985214 lifebuoy
+985215 mixed reality
+985216 nativescript
+985217 onepassword
+985218 patreon
+985219 close circle multiple outline
+985220 peace
+985221 phone rotate landscape
+985222 phone rotate portrait
+985223 pier
+985224 pier crane
+985225 pipe leak
+985226 piston
+985227 play network
+985228 reminder
+985229 room service
+985230 salesforce
+985231 shield account
+985232 human male board
+985233 thermostat box
+985234 tractor
+985235 vector ellipse
+985236 virtual reality
+985237 watch export variant
+985238 watch import variant
+985239 watch variant
+985240 weather hurricane
+985241 account heart
+985242 alien
+985243 anvil
+985244 battery charging 10
+985245 battery charging 50
+985246 battery charging 70
+985247 battery charging outline
+985248 bed empty
+985249 border all variant
+985250 border bottom variant
+985251 border left variant
+985252 border none variant
+985253 border right variant
+985254 border top variant
+985255 calendar edit
+985256 clipboard check outline
+985257 console network
+985258 file compare
+985259 fire truck
+985260 folder key
+985261 folder key network
+985262 expansion card
+985263 kayaking
+985264 inbox multiple
+985265 language lua
+985266 lock smart
+985267 microphone minus
+985268 microphone plus
+985269 palette swatch
+985270 periodic table
+985271 pickaxe
+985272 qrcode edit
+985273 remote desktop
+985274 sausage
+985275 cog outline
+985276 signal cellular 1
+985277 signal cellular 2
+985278 signal cellular 3
+985279 signal cellular outline
+985280 ssh
+985281 swap horizontal variant
+985282 swap vertical variant
+985283 tooth
+985284 train variant
+985285 account multiple check
+985286 application
+985287 arch
+985288 axe
+985289 bullseye arrow
+985290 bus clock
+985291 camera account
+985292 camera image
+985293 car limousine
+985294 cards club
+985295 cards diamond
+985296 heart
+985297 cards spade
+985298 cellphone text
+985299 cellphone message
+985300 chart multiline
+985301 circle edit outline
+985302 cogs
+985303 credit card settings outline
+985304 death star
+985305 death star variant
+985306 debian
+985307 fedora
+985308 file undo
+985309 floor lamp
+985310 folder edit
+985311 format columns
+985312 freebsd
+985313 gate and
+985314 gate nand
+985315 gate nor
+985316 gate not
+985317 gate or
+985318 gate xnor
+985319 gate xor
+985320 gentoo
+985321 globe model
+985322 hammer
+985323 home lock
+985324 home lock open
+985325 linux mint
+985326 lock alert
+985327 lock question
+985328 map marker distance
+985329 midi
+985330 midi port
+985331 nas
+985332 network strength 1
+985333 network strength 1 alert
+985334 network strength 2
+985335 network strength 2 alert
+985336 network strength 3
+985337 network strength 3 alert
+985338 network strength 4
+985339 network strength 4 alert
+985340 network strength off
+985341 network strength off outline
+985342 network strength outline
+985343 play speed
+985344 playlist edit
+985345 power cycle
+985346 power off
+985347 power on
+985348 power sleep
+985349 power socket au
+985350 power standby
+985351 rabbit
+985352 robot vacuum variant
+985353 satellite uplink
+985354 scanner off
+985355 book minus multiple outline
+985356 square edit outline
+985357 sort numeric ascending variant
+985358 steering off
+985359 table search
+985360 tag minus
+985361 test tube empty
+985362 test tube off
+985363 ticket outline
+985364 track light
+985365 transition
+985366 transition masked
+985367 tumble dryer
+985368 file refresh
+985369 video account
+985370 video image
+985371 video stabilization
+985372 wall sconce
+985373 wall sconce flat
+985374 wall sconce round variant
+985375 wifi strength 1
+985376 wifi strength 1 alert
+985377 wifi strength 1 lock
+985378 wifi strength 2
+985379 wifi strength 2 alert
+985380 wifi strength 2 lock
+985381 wifi strength 3
+985382 wifi strength 3 alert
+985383 wifi strength 3 lock
+985384 wifi strength 4
+985385 wifi strength 4 alert
+985386 wifi strength 4 lock
+985387 wifi strength alert outline
+985388 wifi strength lock outline
+985389 wifi strength off
+985390 wifi strength off outline
+985391 wifi strength outline
+985392 pin off outline
+985393 pin outline
+985394 share outline
+985395 trackpad lock
+985396 account box multiple
+985397 account search outline
+985398 account filter
+985399 angle acute
+985400 angle obtuse
+985401 angle right
+985402 animation play
+985403 arrow split horizontal
+985404 arrow split vertical
+985405 audio video
+985406 battery 10 bluetooth
+985407 battery 20 bluetooth
+985408 battery 30 bluetooth
+985409 battery 40 bluetooth
+985410 battery 50 bluetooth
+985411 battery 60 bluetooth
+985412 battery 70 bluetooth
+985413 battery 80 bluetooth
+985414 battery 90 bluetooth
+985415 battery alert bluetooth
+985416 battery bluetooth
+985417 battery bluetooth variant
+985418 battery unknown bluetooth
+985419 dharmachakra
+985420 calendar search
+985421 cellphone remove
+985422 cellphone key
+985423 cellphone lock
+985424 cellphone off
+985425 cellphone cog
+985426 cellphone sound
+985427 cross
+985428 clock
+985429 clock alert
+985430 cloud search
+985431 cloud search outline
+985432 cordova
+985433 cryengine
+985434 cupcake
+985435 sine wave
+985436 current dc
+985437 database import
+985438 database export
+985439 desk lamp
+985440 disc player
+985441 email search
+985442 email search outline
+985443 exponent
+985444 exponent box
+985445 file download
+985446 file download outline
+985447 firebase
+985448 folder search
+985449 folder search outline
+985450 format list checkbox
+985451 fountain
+985452 google fit
+985453 greater than
+985454 greater than or equal
+985455 hard hat
+985456 headphones bluetooth
+985457 heart circle
+985458 heart circle outline
+985459 om
+985460 home minus
+985461 home plus
+985462 image outline
+985463 image search
+985464 image search outline
+985465 star crescent
+985466 star david
+985467 keyboard outline
+985468 less than
+985469 less than or equal
+985470 light switch
+985471 lock clock
+985472 magnify close
+985473 map minus
+985474 map outline
+985475 map plus
+985476 map search
+985477 map search outline
+985478 material design
+985479 medal
+985480 microsoft dynamics 365
+985481 monitor cellphone
+985482 monitor cellphone star
+985483 mouse bluetooth
+985484 muffin
+985485 not equal
+985486 not equal variant
+985487 order bool ascending variant
+985488 order bool descending variant
+985489 office building
+985490 plus minus
+985491 plus minus box
+985492 podcast
+985493 progress check
+985494 progress clock
+985495 progress download
+985496 progress upload
+985497 qi
+985498 record player
+985499 restore
+985500 shield off outline
+985501 shield lock
+985502 shield off
+985503 set top box
+985504 shower
+985505 shower head
+985506 speaker bluetooth
+985507 square root box
+985508 star circle outline
+985509 star face
+985510 table merge cells
+985511 tablet cellphone
+985512 text
+985513 text short
+985514 text long
+985515 toilet
+985516 toolbox
+985517 toolbox outline
+985518 tournament
+985519 two factor authentication
+985520 umbrella closed
+985521 unreal
+985522 video minus
+985523 video plus
+985524 volleyball
+985525 weight pound
+985526 whistle
+985527 arrow bottom left bold outline
+985528 arrow bottom left thick
+985529 arrow bottom right bold outline
+985530 arrow bottom right thick
+985531 arrow decision
+985532 arrow decision auto
+985533 arrow decision auto outline
+985534 arrow decision outline
+985535 arrow down bold outline
+985536 arrow left bold outline
+985537 arrow left right bold outline
+985538 arrow right bold outline
+985539 arrow top left bold outline
+985540 arrow top left thick
+985541 arrow top right bold outline
+985542 arrow top right thick
+985543 arrow up bold outline
+985544 arrow up down bold outline
+985545 ballot
+985546 ballot outline
+985547 betamax
+985548 bookmark minus
+985549 bookmark minus outline
+985550 bookmark off
+985551 bookmark off outline
+985552 braille
+985553 brain
+985554 calendar heart
+985555 calendar star
+985556 cassette
+985557 cellphone arrow down
+985558 chevron down box
+985559 chevron down box outline
+985560 chevron left box
+985561 chevron left box outline
+985562 chevron right box
+985563 chevron right box outline
+985564 chevron up box
+985565 chevron up box outline
+985566 circle medium
+985567 circle small
+985568 cloud alert
+985569 comment arrow left
+985570 comment arrow left outline
+985571 comment arrow right
+985572 comment arrow right outline
+985573 comment plus
+985574 currency php
+985575 delete outline
+985576 desktop mac dashboard
+985577 download multiple
+985578 eight track
+985579 email plus
+985580 email plus outline
+985581 text box outline
+985582 file document outline
+985583 floppy variant
+985584 flower outline
+985585 flower tulip
+985586 flower tulip outline
+985587 format font size decrease
+985588 format font size increase
+985589 ghost off
+985590 google lens
+985591 google spreadsheet
+985592 image move
+985593 keyboard settings
+985594 keyboard settings outline
+985595 knife
+985596 knife military
+985597 layers off outline
+985598 layers outline
+985599 lighthouse
+985600 lighthouse on
+985601 map legend
+985602 menu left outline
+985603 menu right outline
+985604 message alert outline
+985605 mini sd
+985606 minidisc
+985607 monitor dashboard
+985608 pirate
+985609 pokemon go
+985610 powershell
+985611 printer wireless
+985612 quality low
+985613 quality medium
+985614 reflect horizontal
+985615 reflect vertical
+985616 rhombus medium
+985617 rhombus split
+985618 shield account outline
+985619 square medium
+985620 square medium outline
+985621 square small
+985622 subtitles
+985623 subtitles outline
+985624 table border
+985625 toggle switch off outline
+985626 toggle switch outline
+985627 vhs
+985628 video vintage
+985629 view dashboard outline
+985630 microsoft visual studio code
+985631 vote
+985632 vote outline
+985633 microsoft windows classic
+985634 microsoft xbox controller battery charging
+985635 zip disk
+985636 aspect ratio
+985637 babel
+985638 balloon
+985639 bank transfer
+985640 bank transfer in
+985641 bank transfer out
+985642 briefcase minus
+985643 briefcase plus
+985644 briefcase remove
+985645 briefcase search
+985646 bug check
+985647 bug check outline
+985648 bug outline
+985649 calendar alert
+985650 calendar multiselect
+985651 calendar week
+985652 calendar week begin
+985653 cellphone screenshot
+985654 city variant
+985655 city variant outline
+985656 clipboard text outline
+985657 cloud question
+985658 comment eye
+985659 comment eye outline
+985660 comment search
+985661 comment search outline
+985662 contain
+985663 contain end
+985664 contain start
+985665 dlna
+985666 doctor
+985667 dog
+985668 dog side
+985669 ear hearing off
+985670 engine off
+985671 engine off outline
+985672 exit run
+985673 feature search
+985674 feature search outline
+985675 file alert
+985676 file alert outline
+985677 file upload
+985678 file upload outline
+985679 hand front right
+985680 hand okay
+985681 hand peace
+985682 hand peace variant
+985683 hand pointing down
+985684 hand pointing left
+985685 hand pointing up
+985686 heart multiple
+985687 heart multiple outline
+985688 horseshoe
+985689 human female boy
+985690 human female female
+985691 human female girl
+985692 human male boy
+985693 human male girl
+985694 human male male
+985695 ip
+985696 ip network
+985697 litecoin
+985698 magnify minus cursor
+985699 magnify plus cursor
+985700 menu swap
+985701 menu swap outline
+985702 puzzle outline
+985703 registered trademark
+985704 resize
+985705 router wireless settings
+985706 safe
+985707 scissors cutting
+985708 select drag
+985709 selection drag
+985710 settings helper
+985711 signal 5g
+985712 silverware fork knife
+985713 smog
+985714 solar power
+985715 star box
+985716 star box outline
+985717 table plus
+985718 table remove
+985719 target variant
+985720 trademark
+985721 trash can
+985722 trash can outline
+985723 tshirt crew
+985724 tshirt v
+985725 zodiac aquarius
+985726 zodiac aries
+985727 zodiac cancer
+985728 zodiac capricorn
+985729 zodiac gemini
+985730 zodiac leo
+985731 zodiac libra
+985732 zodiac pisces
+985733 zodiac sagittarius
+985734 zodiac scorpio
+985735 zodiac taurus
+985736 zodiac virgo
+985737 account child
+985738 account child circle
+985739 account supervisor
+985740 account supervisor circle
+985741 ampersand
+985742 web off
+985743 animation outline
+985744 animation play outline
+985745 bell off outline
+985746 bell plus outline
+985747 bell sleep outline
+985748 book minus multiple
+985749 book plus multiple
+985750 book remove multiple
+985751 book remove
+985752 briefcase edit
+985753 bus alert
+985754 calculator variant
+985755 caps lock
+985756 cash refund
+985757 checkbook
+985758 circle slice 1
+985759 circle slice 2
+985760 circle slice 3
+985761 circle slice 4
+985762 circle slice 5
+985763 circle slice 6
+985764 circle slice 7
+985765 circle slice 8
+985766 collapse all
+985767 collapse all outline
+985768 credit card refund outline
+985769 database check
+985770 database lock
+985771 desktop tower monitor
+985772 dishwasher
+985773 dog service
+985774 dot net
+985775 egg
+985776 egg easter
+985777 email check
+985778 email check outline
+985779 et
+985780 expand all
+985781 expand all outline
+985782 file cabinet
+985783 text box multiple
+985784 text box multiple outline
+985785 file move
+985786 folder clock
+985787 folder clock outline
+985788 format annotation minus
+985789 gesture pinch
+985790 gesture spread
+985791 gesture swipe horizontal
+985792 gesture swipe vertical
+985793 hail
+985794 helicopter
+985795 hexagon slice 1
+985796 hexagon slice 2
+985797 hexagon slice 3
+985798 hexagon slice 4
+985799 hexagon slice 5
+985800 hexagon slice 6
+985801 hexagram
+985802 hexagram outline
+985803 label off
+985804 label off outline
+985805 label variant
+985806 label variant outline
+985807 language ruby on rails
+985808 laravel
+985809 mastodon
+985810 sort numeric descending variant
+985811 minus circle multiple outline
+985812 music circle outline
+985813 pinwheel
+985814 pinwheel outline
+985815 radiator disabled
+985816 radiator off
+985817 select compare
+985818 shield plus
+985819 shield plus outline
+985820 shield remove
+985821 shield remove outline
+985822 book plus multiple outline
+985823 sina weibo
+985824 spray bottle
+985825 squeegee
+985826 star four points
+985827 star four points outline
+985828 star three points
+985829 star three points outline
+985830 symfony
+985831 variable
+985832 vector bezier
+985833 wiper
+985834 z wave
+985835 zend
+985836 account minus outline
+985837 account remove outline
+985838 alpha a
+985839 alpha b
+985840 alpha c
+985841 alpha d
+985842 alpha e
+985843 alpha f
+985844 alpha g
+985845 alpha h
+985847 alpha j
+985848 alpha k
+985850 alpha m
+985851 alpha n
+985853 alpha p
+985854 alpha q
+985855 alpha r
+985856 alpha s
+985857 alpha t
+985858 alpha u
+985860 alpha w
+985862 alpha y
+985863 alpha z
+985864 alpha a box
+985865 alpha b box
+985866 alpha c box
+985867 alpha d box
+985868 alpha e box
+985869 alpha f box
+985870 alpha g box
+985871 alpha h box
+985872 alpha i box
+985873 alpha j box
+985874 alpha k box
+985875 alpha l box
+985876 alpha m box
+985877 alpha n box
+985878 alpha o box
+985879 alpha p box
+985880 alpha q box
+985881 alpha r box
+985882 alpha s box
+985883 alpha t box
+985884 alpha u box
+985885 alpha v box
+985886 alpha w box
+985887 alpha x box
+985888 alpha y box
+985889 alpha z box
+985890 bulldozer
+985891 bullhorn outline
+985892 calendar export
+985893 calendar import
+985894 chevron down circle
+985895 chevron down circle outline
+985896 chevron left circle
+985897 chevron left circle outline
+985898 chevron right circle
+985899 chevron right circle outline
+985900 chevron up circle
+985901 chevron up circle outline
+985902 content save settings outline
+985903 crystal ball
+985904 ember
+985905 facebook workplace
+985906 file replace
+985907 file replace outline
+985908 format letter case
+985909 format letter case lower
+985910 format letter case upper
+985911 language java
+985912 circle multiple
+985913 alpha o
+985914 numeric 1
+985915 numeric 2
+985916 numeric 3
+985917 numeric 4
+985918 numeric 5
+985919 numeric 6
+985920 numeric 7
+985921 numeric 8
+985922 numeric 9
+985923 origin
+985924 resistor
+985925 resistor nodes
+985926 robot industrial
+985927 shoe formal
+985928 shoe heel
+985929 silo
+985930 box cutter off
+985931 tab minus
+985932 tab remove
+985933 tape measure
+985934 telescope
+985935 yahoo
+985936 account alert outline
+985937 account arrow left
+985938 account arrow left outline
+985939 account arrow right
+985940 account arrow right outline
+985941 account circle outline
+985942 account clock
+985943 account clock outline
+985944 account group outline
+985945 account question
+985946 account question outline
+985947 artstation
+985948 backspace outline
+985949 barley off
+985950 barn
+985951 bat
+985952 application settings
+985953 billiards
+985954 billiards rack
+985955 book open outline
+985956 book outline
+985957 boxing glove
+985958 calendar blank outline
+985959 calendar outline
+985960 calendar range outline
+985961 camera control
+985962 camera enhance outline
+985963 car door
+985964 car electric
+985965 car key
+985966 car multiple
+985967 card
+985968 card bulleted
+985969 card bulleted off
+985970 card bulleted off outline
+985971 card bulleted outline
+985972 card bulleted settings
+985973 card bulleted settings outline
+985974 card outline
+985975 card text
+985976 card text outline
+985977 chat
+985978 chat alert
+985979 chat processing
+985980 chef hat
+985981 cloud download outline
+985982 cloud upload outline
+985983 coffin
+985984 compass off
+985985 compass off outline
+985986 controller classic
+985987 controller classic outline
+985988 cube scan
+985989 currency brl
+985990 database edit
+985991 deathly hallows
+985992 delete circle outline
+985993 delete forever outline
+985994 diamond
+985995 diamond outline
+985996 dns outline
+985997 dots horizontal circle outline
+985998 dots vertical circle outline
+985999 download outline
+986000 drag variant
+986001 eject outline
+986002 email mark as unread
+986003 export variant
+986004 eye circle
+986005 eye circle outline
+986006 face man outline
+986007 file find outline
+986008 file remove
+986009 flag minus
+986010 flag plus
+986011 flag remove
+986012 folder account outline
+986013 folder plus outline
+986014 folder remove outline
+986015 folder star outline
+986016 gitlab
+986017 gog
+986018 grave stone
+986019 halloween
+986020 hat fedora
+986021 help rhombus
+986022 help rhombus outline
+986023 home variant outline
+986024 inbox multiple outline
+986025 library shelves
+986026 mapbox
+986027 menu open
+986028 molecule
+986029 one up
+986030 open source initiative
+986031 pac man
+986032 page next
+986033 page next outline
+986034 page previous
+986035 page previous outline
+986036 pan
+986037 pan bottom left
+986038 pan bottom right
+986039 pan down
+986040 pan horizontal
+986041 pan left
+986042 pan right
+986043 pan top left
+986044 pan top right
+986045 pan up
+986046 pan vertical
+986047 pumpkin
+986048 rollupjs
+986049 script
+986050 script text
+986051 script text outline
+986052 shield key
+986053 shield key outline
+986054 skull crossbones
+986055 skull crossbones outline
+986056 skull outline
+986057 space invaders
+986058 spider web
+986059 view split horizontal
+986060 view split vertical
+986061 swap horizontal bold
+986062 swap vertical bold
+986063 tag heart outline
+986064 target account
+986065 timeline
+986066 timeline outline
+986067 timeline text
+986068 timeline text outline
+986069 tooltip image outline
+986070 tooltip plus
+986071 tooltip text outline
+986072 train car
+986073 triforce
+986074 ubisoft
+986075 video off outline
+986076 video outline
+986077 wallet outline
+986078 waze
+986079 wrap disabled
+986080 wrench outline
+986081 access point network off
+986082 account check outline
+986083 account heart outline
+986084 account key outline
+986085 account multiple minus outline
+986086 account network outline
+986087 account off outline
+986088 account star outline
+986089 airbag
+986090 alarm light outline
+986091 alpha a box outline
+986092 alpha a circle
+986093 alpha a circle outline
+986094 alpha b box outline
+986095 alpha b circle
+986096 alpha b circle outline
+986097 alpha c box outline
+986098 alpha c circle
+986099 alpha c circle outline
+986100 alpha d box outline
+986101 alpha d circle
+986102 alpha d circle outline
+986103 alpha e box outline
+986104 alpha e circle
+986105 alpha e circle outline
+986106 alpha f box outline
+986107 alpha f circle
+986108 alpha f circle outline
+986109 alpha g box outline
+986110 alpha g circle
+986111 alpha g circle outline
+986112 alpha h box outline
+986113 alpha h circle
+986114 alpha h circle outline
+986115 alpha i box outline
+986116 alpha i circle
+986117 alpha i circle outline
+986118 alpha j box outline
+986119 alpha j circle
+986120 alpha j circle outline
+986121 alpha k box outline
+986122 alpha k circle
+986123 alpha k circle outline
+986124 alpha l box outline
+986125 alpha l circle
+986126 alpha l circle outline
+986127 alpha m box outline
+986128 alpha m circle
+986129 alpha m circle outline
+986130 alpha n box outline
+986131 alpha n circle
+986132 alpha n circle outline
+986133 alpha o box outline
+986136 alpha p box outline
+986137 alpha p circle
+986138 alpha p circle outline
+986139 alpha q box outline
+986140 alpha q circle
+986141 alpha q circle outline
+986142 alpha r box outline
+986143 alpha r circle
+986144 alpha r circle outline
+986145 alpha s box outline
+986146 alpha s circle
+986147 alpha s circle outline
+986148 alpha t box outline
+986149 alpha t circle
+986150 alpha t circle outline
+986151 alpha u box outline
+986152 alpha u circle
+986153 alpha u circle outline
+986154 alpha v box outline
+986155 alpha v circle
+986156 alpha v circle outline
+986157 alpha w box outline
+986158 alpha w circle
+986159 alpha w circle outline
+986160 alpha x box outline
+986161 alpha x circle
+986162 alpha x circle outline
+986163 alpha y box outline
+986164 alpha y circle
+986165 alpha y circle outline
+986166 alpha z box outline
+986167 alpha z circle
+986168 alpha z circle outline
+986169 ballot recount
+986170 ballot recount outline
+986171 basketball hoop
+986172 basketball hoop outline
+986173 briefcase download outline
+986174 briefcase edit outline
+986175 briefcase minus outline
+986176 briefcase plus outline
+986177 briefcase remove outline
+986178 briefcase search outline
+986179 briefcase upload outline
+986180 calendar check outline
+986181 calendar remove outline
+986182 calendar text outline
+986183 car brake abs
+986184 car brake alert
+986185 car esp
+986186 car light dimmed
+986187 car light fog
+986188 car light high
+986189 car tire alert
+986190 cart arrow right
+986191 charity
+986192 chart bell curve
+986193 checkbox multiple outline
+986194 checkbox outline
+986195 check network
+986196 check network outline
+986197 clipboard account outline
+986198 clipboard arrow down outline
+986199 clipboard arrow up
+986200 clipboard arrow up outline
+986201 clipboard play
+986202 clipboard play outline
+986203 clipboard text play
+986204 clipboard text play outline
+986205 close box multiple
+986206 close box multiple outline
+986207 close network outline
+986208 console network outline
+986209 currency ils
+986210 delete sweep outline
+986211 diameter
+986212 diameter outline
+986213 diameter variant
+986214 download network outline
+986215 dump truck
+986216 emoticon
+986217 emoticon angry
+986218 emoticon angry outline
+986219 emoticon cool
+986220 emoticon cry
+986221 emoticon cry outline
+986222 emoticon dead
+986223 emoticon devil
+986224 emoticon excited
+986225 emoticon happy
+986226 emoticon kiss
+986227 emoticon kiss outline
+986228 emoticon neutral
+986229 emoticon poop outline
+986230 emoticon sad
+986231 emoticon tongue outline
+986232 emoticon wink
+986233 emoticon wink outline
+986234 eslint
+986235 face recognition
+986236 file search
+986237 file search outline
+986238 file table
+986239 file table outline
+986240 folder key network outline
+986241 folder network outline
+986242 folder text
+986243 folder text outline
+986244 food apple outline
+986245 fuse
+986246 fuse blade
+986247 google ads
+986248 google street view
+986249 hazard lights
+986250 help network outline
+986251 application brackets
+986252 application brackets outline
+986253 image size select actual
+986254 image size select large
+986255 image size select small
+986256 ip network outline
+986257 ipod
+986258 language haskell
+986259 leaf maple
+986260 link plus
+986261 map marker check
+986262 math cos
+986263 math sin
+986264 math tan
+986265 microwave
+986266 minus network outline
+986267 network off
+986268 network off outline
+986269 network outline
+986270 alpha o circle
+986271 alpha o circle outline
+986272 numeric 1 circle
+986273 numeric 1 circle outline
+986274 numeric 2 circle
+986275 numeric 2 circle outline
+986276 numeric 3 circle
+986277 numeric 3 circle outline
+986278 numeric 4 circle
+986279 numeric 4 circle outline
+986280 numeric 5 circle
+986281 numeric 5 circle outline
+986282 numeric 6 circle
+986283 numeric 6 circle outline
+986284 numeric 7 circle
+986285 numeric 7 circle outline
+986286 numeric 8 circle
+986287 numeric 8 circle outline
+986288 numeric 9 circle
+986289 numeric 9 circle outline
+986290 numeric 9 plus circle
+986291 numeric 9 plus circle outline
+986292 parachute
+986293 parachute outline
+986294 pencil outline
+986295 play network outline
+986296 playlist music
+986297 playlist music outline
+986298 plus network outline
+986299 postage stamp
+986300 progress alert
+986301 progress wrench
+986302 radio am
+986303 radio fm
+986304 radius
+986305 radius outline
+986306 ruler square
+986307 seat
+986308 seat outline
+986309 seatbelt
+986310 sheep
+986311 shield airplane outline
+986312 shield check outline
+986313 shield cross
+986314 shield cross outline
+986315 shield home outline
+986316 shield lock outline
+986317 sort variant lock
+986318 sort variant lock open
+986319 source repository
+986320 source repository multiple
+986321 spa
+986322 spa outline
+986323 toaster oven
+986324 truck check
+986325 turnstile
+986326 turnstile outline
+986327 turtle
+986328 upload network outline
+986329 vibrate off
+986330 watch vibrate off
+986331 arrow down circle
+986332 arrow down circle outline
+986333 arrow left circle
+986334 arrow left circle outline
+986335 arrow right circle
+986336 arrow right circle outline
+986337 arrow up circle
+986338 arrow up circle outline
+986339 account tie
+986340 alert box outline
+986341 alert decagram outline
+986342 alert octagon outline
+986343 alert octagram outline
+986344 ammunition
+986345 account music outline
+986346 beaker
+986347 blender
+986348 blood bag
+986349 cross bolnisi
+986350 bread slice
+986351 bread slice outline
+986352 briefcase account
+986353 briefcase account outline
+986354 brightness percent
+986355 bullet
+986356 cash register
+986357 cross celtic
+986358 cross outline
+986359 clipboard alert outline
+986360 clipboard arrow left outline
+986361 clipboard arrow right
+986362 clipboard arrow right outline
+986363 content save edit
+986364 content save edit outline
+986365 cursor default click
+986366 cursor default click outline
+986367 database sync
+986368 database remove
+986369 database settings
+986370 drama masks
+986371 email box
+986372 eye check
+986373 eye check outline
+986374 fast forward 30
+986375 order alphabetical descending
+986376 flower poppy
+986377 folder pound
+986378 folder pound outline
+986379 folder sync
+986380 folder sync outline
+986381 format list numbered rtl
+986382 format text wrapping clip
+986383 format text wrapping overflow
+986384 format text wrapping wrap
+986385 format textbox
+986386 fountain pen
+986387 fountain pen tip
+986388 heart broken outline
+986389 home city
+986390 home city outline
+986391 hubspot
+986392 filmstrip box multiple
+986393 play box multiple
+986394 link box
+986395 link box outline
+986396 link box variant
+986397 link box variant outline
+986398 map clock
+986399 map clock outline
+986400 map marker path
+986401 mother nurse
+986402 microsoft outlook
+986403 perspective less
+986404 perspective more
+986405 podium
+986406 podium bronze
+986407 podium gold
+986408 podium silver
+986409 quora
+986410 rewind 10
+986411 roller skate
+986412 rollerblade
+986413 language ruby
+986414 sack
+986415 sack percent
+986416 safety goggles
+986417 select color
+986418 selection ellipse
+986419 shield link variant
+986420 shield link variant outline
+986421 skate
+986422 skew less
+986423 skew more
+986424 speaker multiple
+986425 stamper
+986426 tank
+986427 tortoise
+986428 transit connection
+986429 transit connection variant
+986430 transmission tower
+986431 weight gram
+986432 youtube subscription
+986433 zigbee
+986434 email alert outline
+986435 air filter
+986436 air purifier
+986437 android messages
+986438 apps box
+986439 atm
+986440 axis
+986441 axis arrow
+986442 axis arrow lock
+986443 axis lock
+986444 axis x arrow
+986445 axis x arrow lock
+986446 axis x rotate clockwise
+986447 axis x rotate counterclockwise
+986448 axis x y arrow lock
+986449 axis y arrow
+986450 axis y arrow lock
+986451 axis y rotate clockwise
+986452 axis y rotate counterclockwise
+986453 axis z arrow
+986454 axis z arrow lock
+986455 axis z rotate clockwise
+986456 axis z rotate counterclockwise
+986457 bell alert
+986458 bell circle
+986459 bell circle outline
+986460 calendar minus
+986461 camera outline
+986462 car brake hold
+986463 car brake parking
+986464 car cruise control
+986465 car defrost front
+986466 car defrost rear
+986467 car parking lights
+986468 car traction control
+986469 bag carry on check
+986470 cart arrow down
+986471 cart arrow up
+986472 cart minus
+986473 cart remove
+986474 contactless payment
+986475 creative commons
+986476 credit card wireless outline
+986477 cricket
+986478 dev to
+986479 domain off
+986480 face agent
+986481 fast forward 10
+986482 flare
+986483 format text rotation down
+986484 format text rotation none
+986485 forwardburger
+986486 gesture swipe
+986487 gesture tap hold
+986488 file gif box
+986489 go kart
+986490 go kart track
+986491 goodreads
+986492 grain
+986493 hdr
+986494 hdr off
+986495 hiking
+986496 home floor 1
+986497 home floor 2
+986498 home floor 3
+986499 home floor a
+986500 home floor b
+986501 home floor g
+986502 home floor l
+986503 kabaddi
+986504 mailbox open
+986505 mailbox open outline
+986506 mailbox open up
+986507 mailbox open up outline
+986508 mailbox outline
+986509 mailbox up
+986510 mailbox up outline
+986511 mixed martial arts
+986512 monitor off
+986513 motion sensor
+986514 point of sale
+986515 racing helmet
+986516 racquetball
+986517 restart off
+986518 rewind 30
+986519 room service outline
+986520 rotate orbit
+986521 rugby
+986522 shield search
+986523 solar panel
+986524 solar panel large
+986525 subway alert variant
+986526 tea
+986527 tea outline
+986528 tennis
+986529 transfer down
+986530 transfer left
+986531 transfer up
+986532 trophy broken
+986533 wind turbine
+986534 wiper wash
+986535 badge account
+986536 badge account alert
+986537 badge account alert outline
+986538 badge account outline
+986539 card account details outline
+986540 air horn
+986541 application export
+986542 application import
+986543 bandage
+986544 bank minus
+986545 bank plus
+986546 bank remove
+986547 bolt
+986548 bugle
+986549 cactus
+986550 camera wireless
+986551 camera wireless outline
+986552 cash marker
+986553 chevron triple down
+986554 chevron triple left
+986555 chevron triple right
+986556 chevron triple up
+986557 closed caption outline
+986558 credit card marker outline
+986559 diving flippers
+986560 diving helmet
+986561 diving scuba
+986562 diving scuba flag
+986563 diving scuba tank
+986564 diving scuba tank multiple
+986565 diving snorkel
+986566 file cancel
+986567 file cancel outline
+986568 file document edit
+986569 file document edit outline
+986570 file eye
+986571 file eye outline
+986572 folder alert
+986573 folder alert outline
+986574 folder edit outline
+986575 folder open outline
+986576 format list bulleted square
+986577 gantry crane
+986578 home floor 0
+986579 home floor negative 1
+986580 home group
+986581 jabber
+986582 key outline
+986583 leak
+986584 leak off
+986585 marker cancel
+986586 mine
+986587 monitor lock
+986588 monitor star
+986589 movie outline
+986590 music note plus
+986591 nail
+986592 ocarina
+986593 passport biometric
+986594 pen lock
+986595 pen minus
+986596 pen off
+986597 pen plus
+986598 pen remove
+986599 pencil lock outline
+986600 pencil minus
+986601 pencil minus outline
+986602 pencil off outline
+986603 pencil plus
+986604 pencil plus outline
+986605 pencil remove
+986606 pencil remove outline
+986607 phone off
+986608 phone outline
+986609 pi hole
+986610 playlist star
+986611 screw flat top
+986612 screw lag
+986613 screw machine flat top
+986614 screw machine round top
+986615 screw round top
+986616 send circle
+986617 send circle outline
+986618 shoe print
+986619 signature
+986620 signature freehand
+986621 signature image
+986622 signature text
+986623 slope downhill
+986624 slope uphill
+986625 thermometer alert
+986626 thermometer chevron down
+986627 thermometer chevron up
+986628 thermometer minus
+986629 thermometer plus
+986630 translate off
+986631 upload outline
+986632 volume variant off
+986633 wallpaper
+986634 water outline
+986635 wifi star
+986636 palette outline
+986637 badge account horizontal
+986638 badge account horizontal outline
+986639 aws
+986640 bag personal
+986641 bag personal off
+986642 bag personal off outline
+986643 bag personal outline
+986644 biathlon
+986645 bookmark multiple
+986646 bookmark multiple outline
+986647 calendar month
+986648 calendar month outline
+986649 camera retake
+986650 camera retake outline
+986651 car back
+986652 car off
+986653 cast education
+986654 check bold
+986655 check underline
+986656 check underline circle
+986657 check underline circle outline
+986658 circular saw
+986659 comma
+986660 comma box outline
+986661 comma circle
+986662 comma circle outline
+986663 content save move
+986664 content save move outline
+986665 file check outline
+986666 file music outline
+986667 comma box
+986668 file video outline
+986669 file png box
+986670 fireplace
+986671 fireplace off
+986672 firework
+986673 format color highlight
+986674 format text variant
+986675 gamepad circle
+986676 gamepad circle down
+986677 gamepad circle left
+986678 gamepad circle outline
+986679 gamepad circle right
+986680 gamepad circle up
+986681 gamepad down
+986682 gamepad left
+986683 gamepad right
+986684 gamepad round
+986685 gamepad round down
+986686 gamepad round left
+986687 gamepad round outline
+986688 gamepad round right
+986689 gamepad round up
+986690 gamepad up
+986691 gatsby
+986692 gift
+986693 grill
+986694 hand back left
+986695 hand back right
+986696 hand saw
+986697 image frame
+986698 invert colors off
+986699 keyboard off outline
+986700 layers minus
+986701 layers plus
+986702 layers remove
+986703 lightbulb off
+986704 lightbulb off outline
+986705 monitor screenshot
+986706 ice cream off
+986707 nfc search variant
+986708 nfc variant off
+986709 notebook multiple
+986710 hoop house
+986711 picture in picture bottom right
+986712 picture in picture bottom right outline
+986713 picture in picture top right
+986714 picture in picture top right outline
+986715 printer 3d nozzle
+986716 printer 3d nozzle outline
+986717 printer off
+986718 rectangle
+986719 rectangle outline
+986720 rivet
+986721 saw blade
+986722 seed
+986723 seed outline
+986724 signal distance variant
+986725 spade
+986726 sprout
+986727 sprout outline
+986728 table tennis
+986729 tree outline
+986730 view comfy
+986731 view compact
+986732 view compact outline
+986733 vuetify
+986734 weather cloudy arrow right
+986735 microsoft xbox controller menu
+986736 microsoft xbox controller view
+986737 alarm note
+986738 alarm note off
+986739 arrow left right
+986740 arrow left right bold
+986741 arrow top left bottom right
+986742 arrow top left bottom right bold
+986743 arrow top right bottom left
+986744 arrow top right bottom left bold
+986745 arrow up down
+986746 arrow up down bold
+986747 atom variant
+986748 baby face
+986749 baby face outline
+986750 backspace reverse
+986751 backspace reverse outline
+986752 bank outline
+986753 bell alert outline
+986754 book play
+986755 book play outline
+986756 book search
+986757 book search outline
+986758 boom gate
+986759 boom gate alert
+986760 boom gate alert outline
+986761 boom gate arrow down
+986762 boom gate arrow down outline
+986763 boom gate outline
+986764 boom gate arrow up
+986765 boom gate arrow up outline
+986766 calendar sync
+986767 calendar sync outline
+986768 cellphone nfc
+986769 chart areaspline variant
+986770 chart scatter plot
+986771 chart timeline variant
+986772 chart tree
+986773 circle double
+986774 circle expand
+986775 clock digital
+986776 card account mail outline
+986777 card account phone
+986778 card account phone outline
+986779 account cowboy hat
+986780 currency rial
+986781 delete empty outline
+986782 dolly
+986783 electric switch
+986784 ellipse
+986785 ellipse outline
+986786 equalizer
+986787 equalizer outline
+986788 ferris wheel
+986789 file delimited outline
+986790 text box check
+986791 text box check outline
+986792 text box minus
+986793 text box minus outline
+986794 text box plus
+986795 text box plus outline
+986796 text box remove
+986797 text box remove outline
+986798 text box search
+986799 text box search outline
+986800 file image outline
+986801 fingerprint off
+986802 format list bulleted triangle
+986803 format overline
+986804 frequently asked questions
+986805 gamepad square
+986806 gamepad square outline
+986807 gamepad variant outline
+986808 gas station outline
+986809 google podcast
+986810 home analytics
+986811 mail
+986812 map check
+986813 map check outline
+986814 ruler square compass
+986815 notebook outline
+986816 penguin
+986817 radioactive off
+986818 record circle
+986819 record circle outline
+986820 remote off
+986821 remote tv
+986822 remote tv off
+986823 rotate 3d
+986824 sail boat
+986825 scatter plot
+986826 scatter plot outline
+986827 segment
+986828 shield alert
+986829 shield alert outline
+986830 tablet dashboard
+986831 television play
+986832 unicode
+986833 video 3d variant
+986834 video wireless
+986835 video wireless outline
+986836 account voice off
+986837 bacteria
+986838 bacteria outline
+986839 calendar account
+986840 calendar account outline
+986841 calendar weekend
+986842 calendar weekend outline
+986843 camera plus
+986844 camera plus outline
+986845 campfire
+986846 chat outline
+986847 cpu 32 bit
+986848 cpu 64 bit
+986849 credit card clock
+986850 credit card clock outline
+986851 email edit
+986852 email edit outline
+986853 email minus
+986854 email minus outline
+986855 email multiple
+986856 email multiple outline
+986857 email open multiple
+986858 email open multiple outline
+986859 file cad
+986860 file cad box
+986861 file plus outline
+986862 filter minus
+986863 filter minus outline
+986864 filter plus
+986865 filter plus outline
+986866 fire extinguisher
+986867 fishbowl
+986868 fishbowl outline
+986869 fit to page
+986870 fit to page outline
+986871 flash alert
+986872 flash alert outline
+986873 heart flash
+986874 home flood
+986875 human male height
+986876 human male height variant
+986877 ice pop
+986878 identifier
+986879 image filter center focus strong
+986880 image filter center focus strong outline
+986881 jellyfish
+986882 jellyfish outline
+986883 lasso
+986884 music box multiple outline
+986885 map marker alert
+986886 map marker alert outline
+986887 map marker question
+986888 map marker question outline
+986889 map marker remove
+986890 map marker remove variant
+986891 necklace
+986892 newspaper minus
+986893 newspaper plus
+986894 numeric 0 box multiple
+986895 numeric 1 box multiple
+986896 numeric 2 box multiple
+986897 numeric 3 box multiple
+986898 numeric 4 box multiple
+986899 numeric 5 box multiple
+986900 numeric 6 box multiple
+986901 numeric 7 box multiple
+986902 numeric 8 box multiple
+986903 numeric 9 box multiple
+986904 numeric 9 plus box multiple
+986905 oil lamp
+986906 phone alert
+986907 play outline
+986908 purse
+986909 purse outline
+986910 railroad light
+986911 reply all outline
+986912 reply outline
+986913 rss off
+986914 selection ellipse arrow inside
+986915 share off
+986916 share off outline
+986917 skip backward outline
+986918 skip forward outline
+986919 skip next outline
+986920 skip previous outline
+986921 snowflake alert
+986922 snowflake variant
+986923 stretch to page
+986924 stretch to page outline
+986925 typewriter
+986926 wave
+986927 weather cloudy alert
+986928 weather hazy
+986929 weather night partly cloudy
+986930 weather partly lightning
+986931 weather partly rainy
+986932 weather partly snowy
+986933 weather partly snowy rainy
+986934 weather snowy heavy
+986935 weather sunny alert
+986936 weather tornado
+986937 baby bottle
+986938 baby bottle outline
+986939 bag carry on
+986940 bag carry on off
+986941 bag checked
+986942 baguette
+986943 bus multiple
+986944 car shift pattern
+986945 cellphone information
+986946 content save alert
+986947 content save alert outline
+986948 content save all outline
+986949 crosshairs off
+986950 cupboard
+986951 cupboard outline
+986952 chair rolling
+986953 draw
+986954 dresser
+986955 dresser outline
+986956 emoticon frown
+986957 emoticon frown outline
+986958 focus auto
+986959 focus field
+986960 focus field horizontal
+986961 focus field vertical
+986962 foot print
+986963 handball
+986964 home thermometer
+986965 home thermometer outline
+986966 kettle outline
+986967 latitude
+986968 layers triple
+986969 layers triple outline
+986970 longitude
+986971 language markdown outline
+986972 merge
+986973 middleware
+986974 middleware outline
+986975 monitor speaker
+986976 monitor speaker off
+986977 moon first quarter
+986978 moon full
+986979 moon last quarter
+986980 moon new
+986981 moon waning crescent
+986982 moon waning gibbous
+986983 moon waxing crescent
+986984 moon waxing gibbous
+986985 music accidental double flat
+986986 music accidental double sharp
+986987 music accidental flat
+986988 music accidental natural
+986989 music accidental sharp
+986990 music clef alto
+986991 music clef bass
+986992 music clef treble
+986993 music note eighth dotted
+986994 music note half dotted
+986995 music note off outline
+986996 music note outline
+986997 music note quarter dotted
+986998 music note sixteenth dotted
+986999 music note whole dotted
+987000 music rest eighth
+987001 music rest half
+987002 music rest quarter
+987003 music rest sixteenth
+987004 music rest whole
+987005 numeric 10 box
+987006 numeric 10 box outline
+987007 page layout header footer
+987008 patio heater
+987009 warehouse
+987010 select group
+987011 shield car
+987012 shopping search
+987013 speedometer medium
+987014 speedometer slow
+987015 table large plus
+987016 table large remove
+987017 television pause
+987018 television stop
+987019 transit detour
+987020 video input scart
+987021 view grid plus
+987022 wallet plus
+987023 wallet plus outline
+987024 wardrobe
+987025 wardrobe outline
+987026 water boiler
+987027 water pump off
+987028 web box
+987029 timeline alert
+987030 timeline plus
+987031 timeline plus outline
+987032 timeline alert outline
+987033 timeline help
+987034 timeline help outline
+987035 home export outline
+987036 home import outline
+987037 account filter outline
+987038 approximately equal
+987039 approximately equal box
+987040 baby carriage off
+987041 bee
+987042 bee flower
+987043 car child seat
+987044 car seat
+987045 car seat cooler
+987046 car seat heater
+987047 chart bell curve cumulative
+987048 clock check
+987049 clock check outline
+987050 coffee off
+987051 coffee off outline
+987052 credit card minus
+987053 credit card minus outline
+987054 credit card remove
+987055 credit card remove outline
+987056 devices
+987057 email newsletter
+987058 expansion card variant
+987059 power socket ch
+987060 file swap
+987061 file swap outline
+987062 folder swap
+987063 folder swap outline
+987064 format letter ends with
+987065 format letter matches
+987066 format letter starts with
+987067 format text rotation angle down
+987068 format text rotation angle up
+987069 format text rotation down vertical
+987070 format text rotation up
+987071 format text rotation vertical
+987072 id card
+987073 image auto adjust
+987074 key wireless
+987075 license
+987076 location enter
+987077 location exit
+987078 lock open variant
+987079 lock open variant outline
+987080 math integral
+987081 math integral box
+987082 math norm
+987083 math norm box
+987084 message lock
+987085 message text lock
+987086 movie open
+987087 movie open outline
+987088 bed queen
+987089 bed king outline
+987090 bed king
+987091 bed double outline
+987092 bed double
+987093 microsoft azure devops
+987094 arm flex outline
+987095 arm flex
+987096 protocol
+987097 seal variant
+987098 select place
+987099 bed queen outline
+987100 sign direction plus
+987101 sign direction remove
+987102 silverware clean
+987103 slash forward
+987104 slash forward box
+987105 swap horizontal circle
+987106 swap horizontal circle outline
+987107 swap vertical circle
+987108 swap vertical circle outline
+987109 tanker truck
+987110 texture box
+987111 tram side
+987112 vector link
+987113 numeric 10
+987114 numeric 10 box multiple
+987115 numeric 10 box multiple outline
+987116 numeric 10 circle
+987117 numeric 10 circle outline
+987118 numeric 9 plus
+987119 credit card
+987120 credit card multiple
+987121 credit card off
+987122 credit card plus
+987123 credit card refund
+987124 credit card scan
+987125 credit card settings
+987126 hospital
+987127 hospital box outline
+987128 oil temperature
+987129 stadium
+987130 zip box outline
+987131 account edit outline
+987132 peanut
+987133 peanut off
+987134 peanut outline
+987135 peanut off outline
+987136 sign direction minus
+987137 newspaper variant
+987138 newspaper variant multiple
+987139 newspaper variant multiple outline
+987140 newspaper variant outline
+987141 overscan
+987142 pig variant
+987143 piggy bank
+987144 post
+987145 post outline
+987146 account box multiple outline
+987147 airballoon outline
+987148 alphabetical off
+987149 alphabetical variant
+987150 alphabetical variant off
+987151 apache kafka
+987152 billboard
+987153 blinds open
+987154 bus stop
+987155 bus stop covered
+987156 bus stop uncovered
+987157 car 2 plus
+987158 car 3 plus
+987159 car brake retarder
+987160 car clutch
+987161 car coolant level
+987162 car turbocharger
+987163 car windshield
+987164 car windshield outline
+987165 cards diamond outline
+987166 cast audio
+987167 cellphone play
+987168 coach lamp
+987169 comment quote
+987170 comment quote outline
+987171 domino mask
+987172 electron framework
+987173 excavator
+987174 eye minus
+987175 eye minus outline
+987176 file account outline
+987177 file chart outline
+987178 file cloud outline
+987179 file code outline
+987180 file excel box outline
+987181 file excel outline
+987182 file export outline
+987183 file import outline
+987184 file lock outline
+987185 file move outline
+987186 file multiple outline
+987187 file percent outline
+987188 file powerpoint box outline
+987189 file powerpoint outline
+987190 file question outline
+987191 file remove outline
+987192 file restore outline
+987193 file send outline
+987194 file star
+987195 file star outline
+987196 file undo outline
+987197 file word box outline
+987198 file word outline
+987199 filter variant remove
+987200 floor lamp dual
+987201 floor lamp torchiere variant
+987202 fruit cherries
+987203 fruit citrus
+987204 fruit grapes
+987205 fruit grapes outline
+987206 fruit pineapple
+987207 fruit watermelon
+987208 google my business
+987209 graph
+987210 graph outline
+987211 harddisk plus
+987212 harddisk remove
+987213 home circle outline
+987214 instrument triangle
+987215 island
+987216 keyboard space
+987217 led strip variant
+987218 numeric negative 1
+987219 oil level
+987220 outdoor lamp
+987221 palm tree
+987222 party popper
+987223 printer pos
+987224 robber
+987225 routes clock
+987226 scale off
+987227 cog transfer
+987228 cog transfer outline
+987229 shield sun
+987230 shield sun outline
+987231 sprinkler
+987232 sprinkler variant
+987233 table chair
+987234 terraform
+987235 toaster
+987236 tools
+987237 transfer
+987238 valve
+987239 valve closed
+987240 valve open
+987241 video check
+987242 video check outline
+987243 water well
+987244 water well outline
+987245 bed single
+987246 bed single outline
+987247 book information variant
+987248 bottle soda
+987249 bottle soda classic
+987250 bottle soda outline
+987251 calendar blank multiple
+987252 card search
+987253 card search outline
+987254 face woman profile
+987255 face woman
+987256 face woman outline
+987257 file settings
+987258 file settings outline
+987259 file cog
+987260 file cog outline
+987261 folder settings
+987262 folder settings outline
+987263 folder cog
+987264 folder cog outline
+987265 furigana horizontal
+987266 furigana vertical
+987267 golf tee
+987268 lungs
+987269 math log
+987270 moped
+987271 router network
+987272 alpha i
+987273 roman numeral 2
+987274 roman numeral 3
+987275 roman numeral 4
+987276 alpha v
+987277 roman numeral 6
+987278 roman numeral 7
+987279 roman numeral 8
+987280 roman numeral 9
+987281 alpha x
+987282 soldering iron
+987283 stomach
+987284 table eye
+987285 form textarea
+987286 trumpet
+987287 account cash
+987288 account cash outline
+987289 air humidifier
+987290 ansible
+987291 api
+987292 bicycle
+987293 car door lock
+987294 coat rack
+987295 coffee maker
+987296 web minus
+987297 decimal
+987298 decimal comma
+987299 decimal comma decrease
+987300 decimal comma increase
+987301 delete alert
+987302 delete alert outline
+987303 delete off
+987304 delete off outline
+987305 dock bottom
+987306 dock left
+987307 dock right
+987308 dock window
+987309 domain plus
+987310 domain remove
+987311 door closed lock
+987312 download off
+987313 download off outline
+987314 flag minus outline
+987315 flag plus outline
+987316 flag remove outline
+987317 folder home
+987318 folder home outline
+987319 folder information
+987320 folder information outline
+987321 iv bag
+987322 link lock
+987323 message plus outline
+987324 phone cancel
+987325 smart card
+987326 smart card outline
+987327 smart card reader
+987328 smart card reader outline
+987329 storefront outline
+987330 thermometer high
+987331 thermometer low
+987332 ufo
+987333 ufo outline
+987334 upload off
+987335 upload off outline
+987336 account child outline
+987337 account settings outline
+987338 account tie outline
+987339 alien outline
+987340 battery alert variant
+987341 battery alert variant outline
+987342 beehive outline
+987343 boomerang
+987344 briefcase clock
+987345 briefcase clock outline
+987346 cellphone message off
+987347 circle off outline
+987348 clipboard list
+987349 clipboard list outline
+987350 code braces box
+987351 code parentheses box
+987352 consolidate
+987353 electric switch closed
+987354 email receive
+987355 email receive outline
+987356 email send
+987357 email send outline
+987358 emoticon confused
+987359 emoticon confused outline
+987360 epsilon
+987361 file table box
+987362 file table box multiple
+987363 file table box multiple outline
+987364 file table box outline
+987365 filter menu
+987366 filter menu outline
+987367 flip horizontal
+987368 flip vertical
+987369 folder download outline
+987370 folder heart
+987371 folder heart outline
+987372 folder key outline
+987373 folder upload outline
+987374 gamma
+987375 hair dryer
+987376 hair dryer outline
+987377 hand heart
+987378 hexagon multiple outline
+987379 horizontal rotate clockwise
+987380 horizontal rotate counterclockwise
+987381 application array
+987382 application array outline
+987383 application braces
+987384 application braces outline
+987385 application parentheses
+987386 application parentheses outline
+987387 application variable
+987388 application variable outline
+987389 khanda
+987390 kubernetes
+987391 link variant minus
+987392 link variant plus
+987393 link variant remove
+987394 map marker down
+987395 map marker up
+987396 monitor shimmer
+987397 nix
+987398 nuxt
+987399 power socket de
+987400 power socket fr
+987401 power socket jp
+987402 progress close
+987403 reload alert
+987404 restart alert
+987405 restore alert
+987406 shaker
+987407 shaker outline
+987408 television shimmer
+987409 variable box
+987410 filter variant minus
+987411 filter variant plus
+987412 slot machine
+987413 slot machine outline
+987414 glass mug variant
+987415 clipboard flow outline
+987416 sign real estate
+987417 antenna
+987418 centos
+987419 redhat
+987420 window shutter
+987421 window shutter alert
+987422 window shutter open
+987423 bike fast
+987424 volume source
+987425 volume vibrate
+987426 movie edit
+987427 movie edit outline
+987428 movie filter
+987429 movie filter outline
+987430 diabetes
+987431 cursor default gesture
+987432 cursor default gesture outline
+987433 toothbrush
+987434 toothbrush paste
+987435 home roof
+987436 toothbrush electric
+987437 account supervisor outline
+987438 bottle tonic
+987439 bottle tonic outline
+987440 bottle tonic plus
+987441 bottle tonic plus outline
+987442 bottle tonic skull
+987443 bottle tonic skull outline
+987444 calendar arrow left
+987445 calendar arrow right
+987446 crosshairs question
+987447 fire hydrant
+987448 fire hydrant alert
+987449 fire hydrant off
+987450 ocr
+987451 shield star
+987452 shield star outline
+987453 text recognition
+987454 handcuffs
+987455 gender male female variant
+987456 gender non binary
+987457 minus box multiple
+987458 minus box multiple outline
+987459 plus box multiple outline
+987460 pencil box multiple
+987461 pencil box multiple outline
+987462 printer check
+987463 sort variant remove
+987464 sort alphabetical ascending variant
+987465 sort alphabetical descending variant
+987466 dice 1 outline
+987467 dice 2 outline
+987468 dice 3 outline
+987469 dice 4 outline
+987470 dice 5 outline
+987471 dice 6 outline
+987472 dice d4
+987473 dice d6
+987474 dice d8
+987475 dice d10
+987476 dice d12
+987477 dice d20
+987478 dice multiple outline
+987479 paper roll
+987480 paper roll outline
+987481 home edit
+987482 home edit outline
+987483 arrow horizontal lock
+987484 arrow vertical lock
+987485 weight lifter
+987486 account lock
+987487 account lock outline
+987488 pasta
+987489 send check
+987490 send check outline
+987491 send clock
+987492 send clock outline
+987493 send outline
+987494 send lock outline
+987495 police badge
+987496 police badge outline
+987497 gate arrow right
+987498 gate open
+987499 bell badge
+987500 message image outline
+987501 message lock outline
+987502 message minus
+987503 message minus outline
+987504 message processing outline
+987505 message settings outline
+987506 message cog outline
+987507 message text clock
+987508 message text clock outline
+987509 message text lock outline
+987510 checkbox blank badge
+987511 file link
+987512 file link outline
+987513 file phone
+987514 file phone outline
+987515 meditation
+987516 yoga
+987517 leek
+987518 noodles
+987519 pound box outline
+987520 school outline
+987521 basket outline
+987522 phone in talk outline
+987523 bash
+987524 file key
+987525 file key outline
+987526 file certificate
+987527 file certificate outline
+987528 certificate outline
+987529 cigar
+987530 grill outline
+987531 qrcode plus
+987532 qrcode minus
+987533 qrcode remove
+987534 phone alert outline
+987535 phone bluetooth outline
+987536 phone cancel outline
+987537 phone forward outline
+987538 phone hangup outline
+987539 phone incoming outline
+987540 phone lock outline
+987541 phone log outline
+987542 phone message
+987543 phone message outline
+987544 phone minus outline
+987545 phone outgoing outline
+987546 phone paused outline
+987547 phone plus outline
+987548 phone return outline
+987549 phone settings outline
+987550 key star
+987551 key link
+987552 shield edit
+987553 shield edit outline
+987554 shield sync
+987555 shield sync outline
+987556 golf cart
+987557 phone missed outline
+987558 phone off outline
+987559 format quote open outline
+987560 format quote close outline
+987561 phone check
+987562 phone check outline
+987563 phone ring
+987564 phone ring outline
+987565 share circle
+987566 reply circle
+987567 fridge off
+987568 fridge off outline
+987569 fridge alert
+987570 fridge alert outline
+987571 water boiler alert
+987572 water boiler off
+987573 amplifier off
+987574 audio video off
+987575 toaster off
+987576 dishwasher alert
+987577 dishwasher off
+987578 tumble dryer alert
+987579 tumble dryer off
+987580 washing machine alert
+987581 washing machine off
+987582 car info
+987583 comment edit
+987584 printer 3d nozzle alert
+987585 printer 3d nozzle alert outline
+987586 align horizontal left
+987587 align horizontal center
+987588 align horizontal right
+987589 align vertical bottom
+987590 align vertical center
+987591 align vertical top
+987592 distribute horizontal left
+987593 distribute horizontal center
+987594 distribute horizontal right
+987595 distribute vertical bottom
+987596 distribute vertical center
+987597 distribute vertical top
+987598 alert rhombus
+987599 alert rhombus outline
+987600 crown outline
+987601 image off outline
+987602 movie search
+987603 movie search outline
+987604 rv truck
+987605 shopping outline
+987606 strategy
+987607 note text outline
+987608 view agenda outline
+987609 view grid outline
+987610 view grid plus outline
+987611 window closed variant
+987612 window open variant
+987613 cog clockwise
+987614 cog counterclockwise
+987615 chart sankey
+987616 chart sankey variant
+987617 vanity light
+987618 router
+987619 image edit
+987620 image edit outline
+987621 bell check
+987622 bell check outline
+987623 file edit
+987624 file edit outline
+987625 human scooter
+987626 spider
+987627 spider thread
+987628 plus thick
+987629 alert circle check
+987630 alert circle check outline
+987631 state machine
+987632 usb port
+987633 cloud lock
+987634 cloud lock outline
+987635 robot mower outline
+987636 share all
+987637 share all outline
+987638 google cloud
+987639 robot mower
+987640 fast forward 5
+987641 rewind 5
+987642 shape oval plus
+987643 timeline clock
+987644 timeline clock outline
+987645 mirror
+987646 account multiple check outline
+987647 card plus
+987648 card plus outline
+987649 checkerboard plus
+987650 checkerboard minus
+987651 checkerboard remove
+987652 select search
+987653 selection search
+987654 layers search
+987655 layers search outline
+987656 lightbulb cfl
+987657 lightbulb cfl off
+987658 account multiple remove
+987659 account multiple remove outline
+987660 magnify remove cursor
+987661 magnify remove outline
+987662 archive outline
+987663 battery heart
+987664 battery heart outline
+987665 battery heart variant
+987666 bus marker
+987667 chart multiple
+987668 emoticon lol
+987669 emoticon lol outline
+987670 file sync
+987671 file sync outline
+987672 handshake
+987673 language kotlin
+987674 language fortran
+987675 offer
+987676 radio off
+987677 table headers eye
+987678 table headers eye off
+987679 tag minus outline
+987680 tag off
+987681 tag off outline
+987682 tag plus outline
+987683 tag remove outline
+987684 tag text
+987685 vector polyline edit
+987686 vector polyline minus
+987687 vector polyline plus
+987688 vector polyline remove
+987689 beaker alert
+987690 beaker alert outline
+987691 beaker check
+987692 beaker check outline
+987693 beaker minus
+987694 beaker minus outline
+987695 beaker plus
+987696 beaker plus outline
+987697 beaker question
+987698 beaker question outline
+987699 beaker remove
+987700 beaker remove outline
+987701 bicycle basket
+987702 barcode off
+987703 digital ocean
+987704 exclamation thick
+987705 desk
+987706 flask empty minus
+987707 flask empty minus outline
+987708 flask empty plus
+987709 flask empty plus outline
+987710 flask empty remove
+987711 flask empty remove outline
+987712 flask minus
+987713 flask minus outline
+987714 flask plus
+987715 flask plus outline
+987716 flask remove
+987717 flask remove outline
+987718 folder move outline
+987719 home remove
+987720 webrtc
+987721 seat passenger
+987722 web clock
+987723 flask round bottom
+987724 flask round bottom empty
+987725 flask round bottom empty outline
+987726 flask round bottom outline
+987727 gold
+987728 message star outline
+987729 home lightbulb
+987730 home lightbulb outline
+987731 lightbulb group
+987732 lightbulb group outline
+987733 lightbulb multiple
+987734 lightbulb multiple outline
+987735 api off
+987736 allergy
+987737 archive arrow down
+987738 archive arrow down outline
+987739 archive arrow up
+987740 archive arrow up outline
+987741 battery off
+987742 battery off outline
+987743 bookshelf
+987744 cash minus
+987745 cash plus
+987746 cash remove
+987747 clipboard check multiple
+987748 clipboard check multiple outline
+987749 clipboard file
+987750 clipboard file outline
+987751 clipboard multiple
+987752 clipboard multiple outline
+987753 clipboard play multiple
+987754 clipboard play multiple outline
+987755 clipboard text multiple
+987756 clipboard text multiple outline
+987757 folder marker
+987758 folder marker outline
+987759 format list text
+987760 inbox arrow down outline
+987761 inbox arrow up outline
+987762 inbox full
+987763 inbox full outline
+987764 inbox outline
+987765 lightbulb cfl spiral
+987766 magnify scan
+987767 map marker multiple outline
+987768 percent outline
+987769 phone classic off
+987770 play box
+987771 account eye outline
+987772 safe square
+987773 safe square outline
+987774 scoreboard
+987775 scoreboard outline
+987776 select marker
+987777 select multiple
+987778 select multiple marker
+987779 selection marker
+987780 selection multiple marker
+987781 selection multiple
+987782 star box multiple
+987783 star box multiple outline
+987784 toy brick
+987785 toy brick marker
+987786 toy brick marker outline
+987787 toy brick minus
+987788 toy brick minus outline
+987789 toy brick outline
+987790 toy brick plus
+987791 toy brick plus outline
+987792 toy brick remove
+987793 toy brick remove outline
+987794 toy brick search
+987795 toy brick search outline
+987796 tray
+987797 tray alert
+987798 tray full
+987799 tray minus
+987800 tray plus
+987801 tray remove
+987802 truck check outline
+987803 truck delivery outline
+987804 truck fast outline
+987805 truck outline
+987806 usb flash drive
+987807 usb flash drive outline
+987808 water polo
+987809 battery low
+987810 battery medium
+987811 battery high
+987812 battery charging low
+987813 battery charging medium
+987814 battery charging high
+987815 hexadecimal
+987816 gesture tap button
+987817 gesture tap box
+987818 lan check
+987819 keyboard f1
+987820 keyboard f2
+987821 keyboard f3
+987822 keyboard f4
+987823 keyboard f5
+987824 keyboard f6
+987825 keyboard f7
+987826 keyboard f8
+987827 keyboard f9
+987828 keyboard f10
+987829 keyboard f11
+987830 keyboard f12
+987831 keyboard esc
+987832 toslink
+987833 cheese
+987834 string lights
+987835 string lights off
+987836 whistle outline
+987837 stairs up
+987838 stairs down
+987839 escalator up
+987840 escalator down
+987841 elevator up
+987842 elevator down
+987843 lightbulb cfl spiral off
+987844 comment edit outline
+987845 tooltip edit outline
+987846 monitor edit
+987847 email sync
+987848 email sync outline
+987849 chat alert outline
+987850 chat processing outline
+987851 snowflake melt
+987852 cloud check outline
+987853 lightbulb group off
+987854 lightbulb group off outline
+987855 lightbulb multiple off
+987856 lightbulb multiple off outline
+987857 chat sleep
+987858 chat sleep outline
+987859 garage variant
+987860 garage open variant
+987861 garage alert variant
+987862 cloud sync outline
+987863 globe light
+987864 cellphone nfc off
+987865 leaf off
+987866 leaf maple off
+987867 map marker left
+987868 map marker right
+987869 map marker left outline
+987870 map marker right outline
+987871 account cancel
+987872 account cancel outline
+987873 file clock
+987874 file clock outline
+987875 folder table
+987876 folder table outline
+987877 hydro power
+987878 doorbell
+987879 bulma
+987880 iobroker
+987881 oci
+987882 label percent
+987883 label percent outline
+987884 checkbox blank off
+987885 checkbox blank off outline
+987886 square off
+987887 square off outline
+987888 drag horizontal variant
+987889 drag vertical variant
+987890 message arrow left
+987891 message arrow left outline
+987892 message arrow right
+987893 message arrow right outline
+987894 database marker
+987895 tag multiple outline
+987896 map marker plus outline
+987897 map marker minus outline
+987898 map marker remove outline
+987899 map marker check outline
+987900 map marker radius outline
+987901 map marker off outline
+987902 molecule co
+987903 jump rope
+987904 kettlebell
+987905 account convert outline
+987906 bunk bed
+987907 fleur de lis
+987908 ski
+987909 ski cross country
+987910 ski water
+987911 snowboard
+987912 account tie voice
+987913 account tie voice outline
+987914 account tie voice off
+987915 account tie voice off outline
+987916 beer outline
+987917 glass pint outline
+987918 coffee to go outline
+987919 cup outline
+987920 bottle wine outline
+987921 earth arrow right
+987922 key arrow right
+987923 format color marker cancel
+987924 mother heart
+987925 currency eur off
+987926 semantic web
+987927 kettle alert
+987928 kettle alert outline
+987929 kettle steam
+987930 kettle steam outline
+987931 kettle off
+987932 kettle off outline
+987933 simple icons
+987934 briefcase check outline
+987935 clipboard plus outline
+987936 download lock
+987937 download lock outline
+987938 hammer screwdriver
+987939 hammer wrench
+987940 hydraulic oil level
+987941 hydraulic oil temperature
+987942 medal outline
+987943 rodent
+987944 abjad arabic
+987945 abjad hebrew
+987946 abugida devanagari
+987947 abugida thai
+987948 alphabet aurebesh
+987949 alphabet cyrillic
+987950 alphabet greek
+987951 alphabet latin
+987952 alphabet piqad
+987953 ideogram cjk
+987954 ideogram cjk variant
+987955 syllabary hangul
+987956 syllabary hiragana
+987957 syllabary katakana
+987958 syllabary katakana halfwidth
+987959 alphabet tengwar
+987960 head alert
+987961 head alert outline
+987962 head check
+987963 head check outline
+987964 head cog
+987965 head cog outline
+987966 head dots horizontal
+987967 head dots horizontal outline
+987968 head flash
+987969 head flash outline
+987970 head heart
+987971 head heart outline
+987972 head lightbulb
+987973 head lightbulb outline
+987974 head minus
+987975 head minus outline
+987976 head plus
+987977 head plus outline
+987978 head question
+987979 head question outline
+987980 head remove
+987981 head remove outline
+987982 head snowflake
+987983 head snowflake outline
+987984 head sync
+987985 head sync outline
+987986 hvac
+987987 pencil ruler
+987988 pipe wrench
+987989 widgets outline
+987990 television ambient light
+987991 propane tank
+987992 propane tank outline
+987993 folder music
+987994 folder music outline
+987995 klingon
+987996 palette swatch outline
+987997 form textbox lock
+987998 head
+987999 head outline
+988000 shield half
+988001 store outline
+988002 google downasaur
+988003 bottle soda classic outline
+988004 sticker
+988005 sticker alert
+988006 sticker alert outline
+988007 sticker check
+988008 sticker check outline
+988009 sticker minus
+988010 sticker minus outline
+988011 sticker outline
+988012 sticker plus
+988013 sticker plus outline
+988014 sticker remove
+988015 sticker remove outline
+988016 account cog
+988017 account cog outline
+988018 account details outline
+988019 upload lock
+988020 upload lock outline
+988021 label multiple
+988022 label multiple outline
+988023 refresh circle
+988024 sync circle
+988025 bookmark music outline
+988026 bookmark remove outline
+988027 bookmark check outline
+988028 traffic cone
+988029 cup off outline
+988030 auto download
+988031 shuriken
+988032 chart ppf
+988033 elevator passenger
+988034 compass rose
+988035 space station
+988036 order bool descending
+988037 sort bool ascending
+988038 sort bool ascending variant
+988039 sort bool descending
+988040 sort bool descending variant
+988041 sort numeric ascending
+988042 sort numeric descending
+988043 human baby changing table
+988044 human male child
+988045 human wheelchair
+988046 microsoft access
+988047 microsoft excel
+988048 microsoft powerpoint
+988049 microsoft sharepoint
+988050 microsoft word
+988051 nintendo game boy
+988052 cable data
+988053 circle half
+988054 circle half full
+988055 cellphone charging
+988056 close thick
+988057 escalator box
+988058 lock check
+988059 lock open alert
+988060 lock open check
+988061 recycle variant
+988062 stairs box
+988063 hand water
+988064 table refresh
+988065 table sync
+988066 size xxs
+988067 size xs
+988068 size s
+988069 size m
+988070 alpha l
+988071 size xl
+988072 size xxl
+988073 size xxxl
+988074 ticket confirmation outline
+988075 timer
+988076 timer off
+988077 book account
+988078 book account outline
+988079 rocket outline
+988080 home search
+988081 home search outline
+988082 car arrow left
+988083 car arrow right
+988084 monitor eye
+988085 lipstick
+988086 virus
+988087 virus outline
+988088 text search
+988089 table account
+988090 table alert
+988091 table arrow down
+988092 table arrow left
+988093 table arrow right
+988094 table arrow up
+988095 table cancel
+988096 table check
+988097 table clock
+988098 table cog
+988099 table eye off
+988100 table heart
+988101 table key
+988102 table lock
+988103 table minus
+988104 table multiple
+988105 table network
+988106 table off
+988107 table star
+988108 car cog
+988109 car settings
+988110 cog off
+988111 cog off outline
+988112 credit card check
+988113 credit card check outline
+988114 file tree outline
+988115 folder star multiple
+988116 folder star multiple outline
+988117 home minus outline
+988118 home plus outline
+988119 home remove outline
+988120 scan helper
+988121 video 3d off
+988122 shield bug
+988123 shield bug outline
+988124 eyedropper plus
+988125 eyedropper minus
+988126 eyedropper remove
+988127 eyedropper off
+988128 baby buggy
+988129 umbrella closed variant
+988130 umbrella closed outline
+988131 email off
+988132 email off outline
+988133 food variant off
+988134 play box multiple outline
+988135 bell cancel
+988136 bell cancel outline
+988137 bell minus
+988138 bell minus outline
+988139 bell remove
+988140 bell remove outline
+988141 beehive off outline
+988142 cheese off
+988143 corn off
+988144 egg off
+988145 egg off outline
+988146 egg outline
+988147 fish off
+988148 flask empty off
+988149 flask empty off outline
+988150 flask off
+988151 flask off outline
+988152 fruit cherries off
+988153 fruit citrus off
+988154 mushroom off
+988155 mushroom off outline
+988156 soy sauce off
+988157 seed off
+988158 seed off outline
+988159 tailwind
+988160 form dropdown
+988161 form select
+988162 pump
+988163 earth plus
+988164 earth minus
+988165 earth remove
+988166 earth box plus
+988167 earth box minus
+988168 earth box remove
+988169 gas station off
+988170 gas station off outline
+988171 lightning bolt
+988172 lightning bolt outline
+988173 smoking pipe
+988174 axis arrow info
+988175 chat plus
+988176 chat minus
+988177 chat remove
+988178 chat plus outline
+988179 chat minus outline
+988180 chat remove outline
+988181 bucket
+988182 bucket outline
+988183 pail
+988184 image remove
+988185 image minus
+988186 pine tree fire
+988187 cigar off
+988188 cube off
+988189 cube off outline
+988190 dome light
+988191 food drumstick
+988192 food drumstick outline
+988193 incognito circle
+988194 incognito circle off
+988195 microwave off
+988196 power plug off outline
+988197 power plug outline
+988198 puzzle check
+988199 puzzle check outline
+988200 smoking pipe off
+988201 spoon sugar
+988202 table split cell
+988203 ticket percent outline
+988204 fuse off
+988205 fuse alert
+988206 heart plus
+988207 heart minus
+988208 heart remove
+988209 heart plus outline
+988210 heart minus outline
+988211 heart remove outline
+988212 heart off outline
+988213 motion sensor off
+988214 pail plus
+988215 pail minus
+988216 pail remove
+988217 pail off
+988218 pail outline
+988219 pail plus outline
+988220 pail minus outline
+988221 pail remove outline
+988222 pail off outline
+988223 clock time one
+988224 clock time two
+988225 clock time three
+988226 clock time four
+988227 clock time five
+988228 clock time six
+988229 clock time seven
+988230 clock time eight
+988231 clock time nine
+988232 clock time ten
+988233 clock time eleven
+988234 clock time twelve
+988235 clock time one outline
+988236 clock time two outline
+988237 clock time three outline
+988238 clock time four outline
+988239 clock time five outline
+988240 clock time six outline
+988241 clock time seven outline
+988242 clock time eight outline
+988243 clock time nine outline
+988244 clock time ten outline
+988245 clock time eleven outline
+988246 clock time twelve outline
+988247 printer search
+988248 printer eye
+988249 minus circle off
+988250 minus circle off outline
+988251 content save cog
+988252 content save cog outline
+988253 set square
+988254 cog refresh
+988255 cog refresh outline
+988256 cog sync
+988257 cog sync outline
+988258 download box
+988259 download box outline
+988260 download circle
+988261 download circle outline
+988262 air humidifier off
+988263 chili off
+988264 food drumstick off
+988265 food drumstick off outline
+988266 food steak
+988267 food steak off
+988268 fan alert
+988269 fan chevron down
+988270 fan chevron up
+988271 fan plus
+988272 fan minus
+988273 fan remove
+988274 fan speed 1
+988275 fan speed 2
+988276 fan speed 3
+988277 rug
+988278 lingerie
+988279 wizard hat
+988280 hours 24
+988281 cosine wave
+988282 sawtooth wave
+988283 square wave
+988284 triangle wave
+988285 waveform
+988286 folder multiple plus
+988287 folder multiple plus outline
+988288 current ac
+988289 watering can
+988290 watering can outline
+988291 monitor share
+988292 laser pointer
+988293 view array outline
+988294 view carousel outline
+988295 view column outline
+988296 view comfy outline
+988297 view dashboard variant outline
+988298 view day outline
+988299 view list outline
+988300 view module outline
+988301 view parallel outline
+988302 view quilt outline
+988303 view sequential outline
+988304 view stream outline
+988305 view week outline
+988306 compare horizontal
+988307 compare vertical
+988308 briefcase variant
+988309 briefcase variant outline
+988310 relation many to many
+988311 relation many to one
+988312 relation many to one or many
+988313 relation many to only one
+988314 relation many to zero or many
+988315 relation many to zero or one
+988316 relation one or many to many
+988317 relation one or many to one
+988318 relation one or many to one or many
+988319 relation one or many to only one
+988320 relation one or many to zero or many
+988321 relation one or many to zero or one
+988322 relation one to many
+988323 relation one to one
+988324 relation one to one or many
+988325 relation one to only one
+988326 relation one to zero or many
+988327 relation one to zero or one
+988328 relation only one to many
+988329 relation only one to one
+988330 relation only one to one or many
+988331 relation only one to only one
+988332 relation only one to zero or many
+988333 relation only one to zero or one
+988334 relation zero or many to many
+988335 relation zero or many to one
+988336 relation zero or many to one or many
+988337 relation zero or many to only one
+988338 relation zero or many to zero or many
+988339 relation zero or many to zero or one
+988340 relation zero or one to many
+988341 relation zero or one to one
+988342 relation zero or one to one or many
+988343 relation zero or one to only one
+988344 relation zero or one to zero or many
+988345 relation zero or one to zero or one
+988346 alert plus
+988347 alert minus
+988348 alert remove
+988349 alert plus outline
+988350 alert minus outline
+988351 alert remove outline
+988352 carabiner
+988353 fencing
+988354 skateboard
+988355 polo
+988356 tractor variant
+988357 radiology box
+988358 radiology box outline
+988359 skull scan
+988360 skull scan outline
+988361 plus minus variant
+988362 source branch plus
+988363 source branch minus
+988364 source branch remove
+988365 source branch refresh
+988366 source branch sync
+988367 source branch check
+988368 puzzle plus
+988369 puzzle minus
+988370 puzzle remove
+988371 puzzle edit
+988372 puzzle heart
+988373 puzzle star
+988374 puzzle plus outline
+988375 puzzle minus outline
+988376 puzzle remove outline
+988377 puzzle edit outline
+988378 puzzle heart outline
+988379 puzzle star outline
+988380 rhombus medium outline
+988381 rhombus split outline
+988382 rocket launch
+988383 rocket launch outline
+988384 set merge
+988385 set split
+988386 beekeeper
+988387 snowflake off
+988388 weather sunny off
+988389 clipboard edit
+988390 clipboard edit outline
+988391 notebook edit
+988392 human edit
+988393 notebook edit outline
+988394 cash lock
+988395 cash lock open
+988396 account supervisor circle outline
+988397 car outline
+988398 cash check
+988399 filter off
+988400 filter off outline
+988401 spirit level
+988402 wheel barrow
+988403 book check
+988404 book check outline
+988405 notebook check
+988406 notebook check outline
+988407 book open variant
+988408 sign pole
+988409 shore
+988410 shape square rounded plus
+988411 square rounded
+988412 square rounded outline
+988413 archive alert
+988414 archive alert outline
+988415 power socket it
+988416 square circle
+988417 symbol
+988418 water alert
+988419 water alert outline
+988420 water check
+988421 water check outline
+988422 water minus
+988423 water minus outline
+988424 water off outline
+988425 water percent alert
+988426 water plus
+988427 water plus outline
+988428 water remove
+988429 water remove outline
+988430 snake
+988431 format text variant outline
+988432 grass
+988433 access point off
+988434 currency mnt
+988435 dock top
+988436 share variant outline
+988437 transit skip
+988438 yurt
+988439 file document multiple
+988440 file document multiple outline
+988441 ev plug ccs1
+988442 ev plug ccs2
+988443 ev plug chademo
+988444 ev plug tesla
+988445 ev plug type1
+988446 ev plug type2
+988447 office building outline
+988448 office building marker
+988449 office building marker outline
+988450 progress question
+988451 basket minus
+988452 basket minus outline
+988453 basket off
+988454 basket off outline
+988455 basket plus
+988456 basket plus outline
+988457 basket remove
+988458 basket remove outline
+988459 account reactivate
+988460 account reactivate outline
+988461 car lifted pickup
+988462 video high definition
+988463 phone remove
+988464 phone remove outline
+988465 thermometer off
+988466 timeline check
+988467 timeline check outline
+988468 timeline minus
+988469 timeline minus outline
+988470 timeline remove
+988471 timeline remove outline
+988472 access point check
+988473 access point minus
+988474 access point plus
+988475 access point remove
+988476 data matrix
+988477 data matrix edit
+988478 data matrix minus
+988479 data matrix plus
+988480 data matrix remove
+988481 data matrix scan
+988482 tune variant
+988483 tune vertical variant
+988484 rake
+988485 shimmer
+988486 transit connection horizontal
+988487 sort calendar ascending
+988488 sort calendar descending
+988489 sort clock ascending
+988490 sort clock ascending outline
+988491 sort clock descending
+988492 sort clock descending outline
+988493 chart box
+988494 chart box outline
+988495 chart box plus outline
+988496 mouse move down
+988497 mouse move up
+988498 mouse move vertical
+988499 pitchfork
+988500 vanish quarter
+988501 application settings outline
+988502 delete clock
+988503 delete clock outline
+988504 kangaroo
+988505 phone dial
+988506 phone dial outline
+988507 star off outline
+988508 tooltip check
+988509 tooltip check outline
+988510 tooltip minus
+988511 tooltip minus outline
+988512 tooltip remove
+988513 tooltip remove outline
+988514 pretzel
+988515 star plus
+988516 star minus
+988517 star remove
+988518 star check
+988519 star plus outline
+988520 star minus outline
+988521 star remove outline
+988522 star check outline
+988523 eiffel tower
+988524 submarine
+988525 sofa outline
+988526 sofa single
+988527 sofa single outline
+988528 text account
+988529 human queue
+988530 food halal
+988531 food kosher
+988532 key chain
+988533 key chain variant
+988534 lamps
+988535 application cog outline
+988536 dance pole
+988537 social distance 2 meters
+988538 social distance 6 feet
+988539 calendar cursor
+988540 emoticon sick
+988541 emoticon sick outline
+988542 hand heart outline
+988543 hand wash
+988544 hand wash outline
+988545 human cane
+988546 lotion
+988547 lotion outline
+988548 lotion plus
+988549 lotion plus outline
+988550 face mask
+988551 face mask outline
+988552 reiterate
+988553 butterfly
+988554 butterfly outline
+988555 bag suitcase
+988556 bag suitcase outline
+988557 bag suitcase off
+988558 bag suitcase off outline
+988559 motion play
+988560 motion pause
+988561 motion play outline
+988562 motion pause outline
+988563 arrow top left thin circle outline
+988564 arrow top right thin circle outline
+988565 arrow bottom right thin circle outline
+988566 arrow bottom left thin circle outline
+988567 arrow up thin circle outline
+988568 arrow right thin circle outline
+988569 arrow down thin circle outline
+988570 arrow left thin circle outline
+988571 human capacity decrease
+988572 human capacity increase
+988573 human greeting proximity
+988574 hvac off
+988575 inbox remove
+988576 inbox remove outline
+988577 handshake outline
+988578 ladder
+988579 router wireless off
+988580 seesaw
+988581 slide
+988582 calculator variant outline
+988583 shield account variant
+988584 shield account variant outline
+988585 message flash
+988586 message flash outline
+988587 list status
+988588 message bookmark
+988589 message bookmark outline
+988590 comment bookmark
+988591 comment bookmark outline
+988592 comment flash
+988593 comment flash outline
+988594 motion
+988595 motion outline
+988596 bicycle electric
+988597 car electric outline
+988598 chart timeline variant shimmer
+988599 moped electric
+988600 moped electric outline
+988601 moped outline
+988602 motorbike electric
+988603 rickshaw
+988604 rickshaw electric
+988605 scooter
+988606 scooter electric
+988607 horse
+988608 horse human
+988609 horse variant
+988610 unicorn
+988611 unicorn variant
+988612 alarm panel
+988613 alarm panel outline
+988614 bird
+988615 shoe cleat
+988616 shoe sneaker
+988617 human female dance
+988618 shoe ballet
+988619 numeric positive 1
+988620 face man shimmer
+988621 face man shimmer outline
+988622 face woman shimmer
+988623 face woman shimmer outline
+988624 home alert outline
+988625 lock alert outline
+988626 lock open alert outline
+988627 sim alert outline
+988628 sim off outline
+988629 sim outline
+988630 book open page variant outline
+988631 fire alert
+988632 ray start vertex end
+988633 camera flip
+988634 camera flip outline
+988635 orbit variant
+988636 circle box
+988637 circle box outline
+988638 mustache
+988639 comment minus
+988640 comment minus outline
+988641 comment off
+988642 comment off outline
+988643 eye remove
+988644 eye remove outline
+988645 unicycle
+988646 glass cocktail off
+988647 glass mug off
+988648 glass mug variant off
+988649 bicycle penny farthing
+988650 cart check
+988651 cart variant
+988652 baseball diamond
+988653 baseball diamond outline
+988654 fridge industrial
+988655 fridge industrial alert
+988656 fridge industrial alert outline
+988657 fridge industrial off
+988658 fridge industrial off outline
+988659 fridge industrial outline
+988660 fridge variant
+988661 fridge variant alert
+988662 fridge variant alert outline
+988663 fridge variant off
+988664 fridge variant off outline
+988665 fridge variant outline
+988666 windsock
+988667 dance ballroom
+988668 dots grid
+988669 dots square
+988670 dots triangle
+988671 dots hexagon
+988672 card minus
+988673 card minus outline
+988674 card off
+988675 card off outline
+988676 card remove
+988677 card remove outline
+988678 torch
+988679 navigation outline
+988680 map marker star
+988681 map marker star outline
+988682 manjaro
+988683 fast forward 60
+988684 rewind 60
+988685 image text
+988686 family tree
+988687 car emergency
+988688 notebook minus
+988689 notebook minus outline
+988690 notebook plus
+988691 notebook plus outline
+988692 notebook remove
+988693 notebook remove outline
+988694 connection
+988695 language rust
+988696 clipboard minus
+988697 clipboard minus outline
+988698 clipboard off
+988699 clipboard off outline
+988700 clipboard remove
+988701 clipboard remove outline
+988702 clipboard search
+988703 clipboard search outline
+988704 clipboard text off
+988705 clipboard text off outline
+988706 clipboard text search
+988707 clipboard text search outline
+988708 database alert outline
+988709 database arrow down outline
+988710 database arrow left outline
+988711 database arrow right outline
+988712 database arrow up outline
+988713 database check outline
+988714 database clock outline
+988715 database edit outline
+988716 database export outline
+988717 database import outline
+988718 database lock outline
+988719 database marker outline
+988720 database minus outline
+988721 database off outline
+988722 database outline
+988723 database plus outline
+988724 database refresh outline
+988725 database remove outline
+988726 database search outline
+988727 database settings outline
+988728 database sync outline
+988729 minus thick
+988730 database alert
+988731 database arrow down
+988732 database arrow left
+988733 database arrow right
+988734 database arrow up
+988735 database clock
+988736 database off
+988737 calendar lock
+988738 calendar lock outline
+988739 content save off
+988740 content save off outline
+988741 credit card refresh
+988742 credit card refresh outline
+988743 credit card search
+988744 credit card search outline
+988745 credit card sync
+988746 credit card sync outline
+988747 database cog
+988748 database cog outline
+988749 message off
+988750 message off outline
+988751 note minus
+988752 note minus outline
+988753 note remove
+988754 note remove outline
+988755 note search
+988756 note search outline
+988757 bank check
+988758 bank off
+988759 bank off outline
+988760 briefcase off
+988761 briefcase off outline
+988762 briefcase variant off
+988763 briefcase variant off outline
+988764 ghost off outline
+988765 ghost outline
+988766 store minus
+988767 store plus
+988768 store remove
+988769 email remove
+988770 email remove outline
+988771 heart cog
+988772 heart cog outline
+988773 heart settings
+988774 heart settings outline
+988775 pentagram
+988776 star cog
+988777 star cog outline
+988778 star settings
+988779 star settings outline
+988780 calendar end
+988781 calendar start
+988782 cannabis off
+988783 mower
+988784 mower bag
+988785 lock off
+988786 lock off outline
+988787 shark fin
+988788 shark fin outline
+988789 paw outline
+988790 paw off outline
+988791 snail
+988792 pig variant outline
+988793 piggy bank outline
+988794 robot outline
+988795 robot off outline
+988796 book alert
+988797 book alert outline
+988798 book arrow down
+988799 book arrow down outline
+988800 book arrow left
+988801 book arrow left outline
+988802 book arrow right
+988803 book arrow right outline
+988804 book arrow up
+988805 book arrow up outline
+988806 book cancel
+988807 book cancel outline
+988808 book clock
+988809 book clock outline
+988810 book cog
+988811 book cog outline
+988812 book edit
+988813 book edit outline
+988814 book lock open outline
+988815 book lock outline
+988816 book marker
+988817 book marker outline
+988818 book minus outline
+988819 book music outline
+988820 book off
+988821 book off outline
+988822 book plus outline
+988823 book refresh
+988824 book refresh outline
+988825 book remove outline
+988826 book settings
+988827 book settings outline
+988828 book sync
+988829 robot angry
+988830 robot angry outline
+988831 robot confused
+988832 robot confused outline
+988833 robot dead
+988834 robot dead outline
+988835 robot excited
+988836 robot excited outline
+988837 robot love
+988838 robot love outline
+988839 robot off
+988840 lock check outline
+988841 lock minus
+988842 lock minus outline
+988843 lock open check outline
+988844 lock open minus
+988845 lock open minus outline
+988846 lock open plus
+988847 lock open plus outline
+988848 lock open remove
+988849 lock open remove outline
+988850 lock plus outline
+988851 lock remove
+988852 lock remove outline
+988853 wifi alert
+988854 wifi arrow down
+988855 wifi arrow left
+988856 wifi arrow left right
+988857 wifi arrow right
+988858 wifi arrow up
+988859 wifi arrow up down
+988860 wifi cancel
+988861 wifi check
+988862 wifi cog
+988863 wifi lock
+988864 wifi lock open
+988865 wifi marker
+988866 wifi minus
+988867 wifi plus
+988868 wifi refresh
+988869 wifi remove
+988870 wifi settings
+988871 wifi sync
+988872 book sync outline
+988873 book education
+988874 book education outline
+988875 wifi strength 1 lock open
+988876 wifi strength 2 lock open
+988877 wifi strength 3 lock open
+988878 wifi strength 4 lock open
+988879 wifi strength lock open outline
+988880 cookie alert
+988881 cookie alert outline
+988882 cookie check
+988883 cookie check outline
+988884 cookie cog
+988885 cookie cog outline
+988886 cookie plus
+988887 cookie plus outline
+988888 cookie remove
+988889 cookie remove outline
+988890 cookie minus
+988891 cookie minus outline
+988892 cookie settings
+988893 cookie settings outline
+988894 cookie outline
+988895 tape drive
+988896 abacus
+988897 calendar clock outline
+988898 clipboard clock
+988899 clipboard clock outline
+988900 cookie clock
+988901 cookie clock outline
+988902 cookie edit
+988903 cookie edit outline
+988904 cookie lock
+988905 cookie lock outline
+988906 cookie off
+988907 cookie off outline
+988908 cookie refresh
+988909 cookie refresh outline
+988910 dog side off
+988911 gift off
+988912 gift off outline
+988913 gift open
+988914 gift open outline
+988915 movie check
+988916 movie check outline
+988917 movie cog
+988918 movie cog outline
+988919 movie minus
+988920 movie minus outline
+988921 movie off
+988922 movie off outline
+988923 movie open check
+988924 movie open check outline
+988925 movie open cog
+988926 movie open cog outline
+988927 movie open edit
+988928 movie open edit outline
+988929 movie open minus
+988930 movie open minus outline
+988931 movie open off
+988932 movie open off outline
+988933 movie open play
+988934 movie open play outline
+988935 movie open plus
+988936 movie open plus outline
+988937 movie open remove
+988938 movie open remove outline
+988939 movie open settings
+988940 movie open settings outline
+988941 movie open star
+988942 movie open star outline
+988943 movie play
+988944 movie play outline
+988945 movie plus
+988946 movie plus outline
+988947 movie remove
+988948 movie remove outline
+988949 movie settings
+988950 movie settings outline
+988951 movie star
+988952 movie star outline
+988953 robot happy
+988954 robot happy outline
+988955 turkey
+988956 food turkey
+988957 fan auto
+988958 alarm light off
+988959 alarm light off outline
+988960 broadcast
+988961 broadcast off
+988962 fire off
+988963 firework off
+988964 projector screen outline
+988965 script text key
+988966 script text key outline
+988967 script text play
+988968 script text play outline
+988969 surround sound 2 1
+988970 surround sound 5 1 2
+988971 tag arrow down
+988972 tag arrow down outline
+988973 tag arrow left
+988974 tag arrow left outline
+988975 tag arrow right
+988976 tag arrow right outline
+988977 tag arrow up
+988978 tag arrow up outline
+988979 train car passenger
+988980 train car passenger door
+988981 train car passenger door open
+988982 train car passenger variant
+988983 webcam off
+988984 chat question
+988985 chat question outline
+988986 message question
+988987 message question outline
+988988 kettle pour over
+988989 message reply outline
+988990 message reply text outline
+988991 koala
+988992 check decagram outline
+988993 star shooting
+988994 star shooting outline
+988995 table picnic
+988996 kitesurfing
+988997 paragliding
+988998 surfing
+988999 floor lamp torchiere
+989000 mortar pestle
+989001 cast audio variant
+989002 gradient horizontal
+989003 archive cancel
+989004 archive cancel outline
+989005 archive check
+989006 archive check outline
+989007 archive clock
+989008 archive clock outline
+989009 archive cog
+989010 archive cog outline
+989011 archive edit
+989012 archive edit outline
+989013 archive eye
+989014 archive eye outline
+989015 archive lock
+989016 archive lock open
+989017 archive lock open outline
+989018 archive lock outline
+989019 archive marker
+989020 archive marker outline
+989021 archive minus
+989022 archive minus outline
+989023 archive music
+989024 archive music outline
+989025 archive off
+989026 archive off outline
+989027 archive plus
+989028 archive plus outline
+989029 archive refresh
+989030 archive refresh outline
+989031 archive remove
+989032 archive remove outline
+989033 archive search
+989034 archive search outline
+989035 archive settings
+989036 archive settings outline
+989037 archive star
+989038 archive star outline
+989039 archive sync
+989040 archive sync outline
+989041 brush off
+989042 file image marker
+989043 file image marker outline
+989044 file marker
+989045 file marker outline
+989046 hamburger check
+989047 hamburger minus
+989048 hamburger off
+989049 hamburger plus
+989050 hamburger remove
+989051 image marker
+989052 image marker outline
+989053 note alert
+989054 note alert outline
+989055 note check
+989056 note check outline
+989057 note edit
+989058 note edit outline
+989059 note off
+989060 note off outline
+989061 printer off outline
+989062 printer outline
+989063 progress pencil
+989064 progress star
+989065 sausage off
+989066 folder eye
+989067 folder eye outline
+989068 information off
+989069 information off outline
+989070 sticker text
+989071 sticker text outline
+989072 web cancel
+989073 web refresh
+989074 web sync
+989075 chandelier
+989076 home switch
+989077 home switch outline
+989078 sun snowflake
+989079 ceiling fan
+989080 ceiling fan light
+989081 smoke
+989082 fence
+989083 light recessed
+989084 battery lock
+989085 battery lock open
+989086 folder hidden
+989087 mirror rectangle
+989088 mirror variant
+989089 arrow down left
+989090 arrow down left bold
+989091 arrow down right
+989092 arrow down right bold
+989093 arrow left bottom
+989094 arrow left bottom bold
+989095 arrow left top
+989096 arrow left top bold
+989097 arrow right bottom
+989098 arrow right bottom bold
+989099 arrow right top
+989100 arrow right top bold
+989101 arrow u down left
+989102 arrow u down left bold
+989103 arrow u down right
+989104 arrow u down right bold
+989105 arrow u left bottom
+989106 arrow u left bottom bold
+989107 arrow u left top
+989108 arrow u left top bold
+989109 arrow u right bottom
+989110 arrow u right bottom bold
+989111 arrow u right top
+989112 arrow u right top bold
+989113 arrow u up left
+989114 arrow u up left bold
+989115 arrow u up right
+989116 arrow u up right bold
+989117 arrow up left
+989118 arrow up left bold
+989119 arrow up right
+989120 arrow up right bold
+989121 select remove
+989122 selection ellipse remove
+989123 selection remove
+989124 human greeting
+989125 ph
+989126 water sync
+989127 ceiling light outline
+989128 floor lamp outline
+989129 wall sconce flat outline
+989130 wall sconce flat variant outline
+989131 wall sconce outline
+989132 wall sconce round outline
+989133 wall sconce round variant outline
+989134 floor lamp dual outline
+989135 floor lamp torchiere variant outline
+989136 lamp outline
+989137 lamps outline
+989138 candelabra
+989139 candelabra fire
+989140 menorah
+989141 menorah fire
+989142 floor lamp torchiere outline
+989143 credit card edit
+989144 credit card edit outline
+989145 briefcase eye
+989146 briefcase eye outline
+989147 soundbar
+989148 crown circle
+989149 crown circle outline
+989150 battery arrow down
+989151 battery arrow down outline
+989152 battery arrow up
+989153 battery arrow up outline
+989154 battery check
+989155 battery check outline
+989156 battery minus
+989157 battery minus outline
+989158 battery plus
+989159 battery plus outline
+989160 battery remove
+989161 battery remove outline
+989162 chili alert
+989163 chili alert outline
+989164 chili hot outline
+989165 chili medium outline
+989166 chili mild outline
+989167 chili off outline
+989168 cake variant outline
+989169 card multiple
+989170 card multiple outline
+989171 account cowboy hat outline
+989172 lightbulb spot
+989173 lightbulb spot off
+989174 fence electric
+989175 gate arrow left
+989176 gate alert
+989177 boom gate up
+989178 boom gate up outline
+989179 garage lock
+989180 garage variant lock
+989181 cellphone check
+989182 sun wireless
+989183 sun wireless outline
+989184 lightbulb auto
+989185 lightbulb auto outline
+989186 lightbulb variant
+989187 lightbulb variant outline
+989188 lightbulb fluorescent tube
+989189 lightbulb fluorescent tube outline
+989190 water circle
+989191 fire circle
+989192 smoke detector outline
+989193 smoke detector off
+989194 smoke detector off outline
+989195 smoke detector variant
+989196 smoke detector variant off
+989197 projector screen off
+989198 projector screen off outline
+989199 projector screen variant
+989200 projector screen variant off
+989201 projector screen variant off outline
+989202 projector screen variant outline
+989203 brush variant
+989204 car wrench
+989205 account injury
+989206 account injury outline
+989207 balcony
+989208 bathtub
+989209 bathtub outline
+989210 blender outline
+989211 coffee maker outline
+989212 countertop
+989213 countertop outline
+989214 door sliding
+989215 door sliding lock
+989216 door sliding open
+989217 hand wave
+989218 hand wave outline
+989219 human male female child
+989220 iron
+989221 iron outline
+989222 liquid spot
+989223 mosque
+989224 shield moon
+989225 shield moon outline
+989226 traffic light outline
+989227 hand front left
+989228 hand back left outline
+989229 hand back right outline
+989230 hand front left outline
+989231 hand front right outline
+989232 hand back left off
+989233 hand back right off
+989234 hand back left off outline
+989235 hand back right off outline
+989236 battery sync
+989237 battery sync outline
+989238 food takeout box
+989239 food takeout box outline
+989240 iron board
+989241 police station
+989242 cellphone marker
+989243 tooltip cellphone
+989244 table pivot
+989245 tunnel
+989246 tunnel outline
+989247 arrow projectile multiple
+989248 arrow projectile
+989249 bow arrow
+989250 axe battle
+989251 mace
+989252 magic staff
+989253 spear
+989254 curtains
+989255 curtains closed
+989256 human non binary
+989257 waterfall
+989258 egg fried
+989259 food hot dog
+989260 induction
+989261 pipe valve
+989262 shipping pallet
+989263 earbuds
+989264 earbuds off
+989265 earbuds off outline
+989266 earbuds outline
+989267 circle opacity
+989268 square opacity
+989269 water opacity
+989270 vector polygon variant
+989271 vector square close
+989272 vector square open
+989273 waves arrow left
+989274 waves arrow right
+989275 waves arrow up
+989276 cash fast
+989277 radioactive circle
+989278 radioactive circle outline
+989279 cctv off
+989280 format list group
+989281 clock plus
+989282 clock plus outline
+989283 clock minus
+989284 clock minus outline
+989285 clock remove
+989286 clock remove outline
+989287 account arrow up
+989288 account arrow down
+989289 account arrow down outline
+989290 account arrow up outline
+989291 audio input rca
+989292 audio input stereo minijack
+989293 audio input xlr
+989294 horse variant fast
+989295 email fast
+989296 email fast outline
+989297 camera document
+989298 camera document off
+989299 glass fragile
+989300 magnify expand
+989301 town hall
+989302 monitor small
+989303 diversify
+989304 car wireless
+989305 car select
+989306 airplane alert
+989307 airplane check
+989308 airplane clock
+989309 airplane cog
+989310 airplane edit
+989311 airplane marker
+989312 airplane minus
+989313 airplane plus
+989314 airplane remove
+989315 airplane search
+989316 airplane settings
+989317 flower pollen
+989318 flower pollen outline
+989319 hammer sickle
+989320 view gallery
+989321 view gallery outline
+989322 umbrella beach
+989323 umbrella beach outline
+989324 cabin a frame
+989325 all inclusive box
+989326 all inclusive box outline
+989327 hand coin
+989328 hand coin outline
+989329 truck flatbed
+989330 layers edit
+989331 multicast
+989332 hydrogen station
+989333 thermometer bluetooth
+989334 tire
+989335 forest
+989336 account tie hat
+989337 account tie hat outline
+989338 account wrench
+989339 account wrench outline
+989340 bicycle cargo
+989341 calendar collapse horizontal
+989342 calendar expand horizontal
+989343 cards club outline
+989344 heart outline
+989345 cards playing
+989346 cards playing club
+989347 cards playing club multiple
+989348 cards playing club multiple outline
+989349 cards playing club outline
+989350 cards playing diamond
+989351 cards playing diamond multiple
+989352 cards playing diamond multiple outline
+989353 cards playing diamond outline
+989354 cards playing heart
+989355 cards playing heart multiple
+989356 cards playing heart multiple outline
+989357 cards playing heart outline
+989358 cards playing spade
+989359 cards playing spade multiple
+989360 cards playing spade multiple outline
+989361 cards playing spade outline
+989362 cards spade outline
+989363 compare remove
+989364 dolphin
+989365 fuel cell
+989366 hand extended
+989367 hand extended outline
+989368 printer 3d nozzle heat
+989369 printer 3d nozzle heat outline
+989370 shark
+989371 shark off
+989372 shield crown
+989373 shield crown outline
+989374 shield sword
+989375 shield sword outline
+989376 sickle
+989377 store alert
+989378 store alert outline
+989379 store check
+989380 store check outline
+989381 store clock
+989382 store clock outline
+989383 store cog
+989384 store cog outline
+989385 store edit
+989386 store edit outline
+989387 store marker
+989388 store marker outline
+989389 store minus outline
+989390 store off
+989391 store off outline
+989392 store plus outline
+989393 store remove outline
+989394 store search
+989395 store search outline
+989396 store settings
+989397 store settings outline
+989398 sun thermometer
+989399 sun thermometer outline
+989400 truck cargo container
+989401 vector square edit
+989402 vector square minus
+989403 vector square plus
+989404 vector square remove
+989405 ceiling light multiple
+989406 ceiling light multiple outline
+989407 wiper wash alert
+989408 cart heart
+989409 virus off
+989410 virus off outline
+989411 map marker account
+989412 map marker account outline
+989413 basket check
+989414 basket check outline
+989415 credit card lock
+989416 credit card lock outline
+989417 format underline wavy
+989418 content save check
+989419 content save check outline
+989420 filter check
+989421 filter check outline
+989422 flag off
+989423 flag off outline
+989424 near me
+989425 navigation variant outline
+989426 refresh auto
+989427 tilde off
+989428 fit to screen
+989429 fit to screen outline
+989430 weather cloudy clock
+989431 smart card off
+989432 smart card off outline
+989433 clipboard text clock
+989434 clipboard text clock outline
+989435 teddy bear
+989436 cow off
+989437 eye arrow left
+989438 eye arrow left outline
+989439 eye arrow right
+989440 eye arrow right outline
+989441 home battery
+989442 home battery outline
+989443 home lightning bolt
+989444 home lightning bolt outline
+989445 leaf circle
+989446 leaf circle outline
+989447 tag search
+989448 tag search outline
+989449 car brake fluid level
+989450 car brake low pressure
+989451 car brake temperature
+989452 car brake worn linings
+989453 car light alert
+989454 car speed limiter
+989455 credit card chip
+989456 credit card chip outline
+989457 credit card fast
+989458 credit card fast outline
+989459 integrated circuit chip
+989460 thumbs up down outline
+989461 food off outline
+989462 food outline
+989463 format page split
+989464 chart waterfall
+989465 gamepad outline
+989466 network strength 4 cog
+989467 account sync
+989468 account sync outline
+989469 bus electric
+989470 liquor
+989471 database eye
+989472 database eye off
+989473 database eye off outline
+989474 database eye outline
+989475 timer settings
+989476 timer settings outline
+989477 timer cog
+989478 timer cog outline
+989479 checkbox marked circle plus outline
+989480 panorama horizontal
+989481 panorama vertical
+989482 advertisements
+989483 advertisements off
+989484 transmission tower export
+989485 transmission tower import
+989486 smoke detector alert
+989487 smoke detector alert outline
+989488 smoke detector variant alert
+989489 coffee maker check
+989490 coffee maker check outline
+989491 cog pause
+989492 cog pause outline
+989493 cog play
+989494 cog play outline
+989495 cog stop
+989496 cog stop outline
+989497 copyleft
+989498 fast forward 15
+989499 file image minus
+989500 file image minus outline
+989501 file image plus
+989502 file image plus outline
+989503 file image remove
+989504 file image remove outline
+989505 message badge
+989506 message badge outline
+989507 newspaper check
+989508 newspaper remove
+989509 publish off
+989510 rewind 15
+989511 view dashboard edit
+989512 view dashboard edit outline
+989513 office building cog
+989514 office building cog outline
+989515 hand clap
+989516 cone
+989517 cone off
+989518 cylinder
+989519 cylinder off
+989520 octahedron
+989521 octahedron off
+989522 pyramid
+989523 pyramid off
+989524 sphere
+989525 sphere off
+989526 format letter spacing
+989527 french fries
+989528 scent
+989529 scent off
+989530 palette swatch variant
+989531 email seal
+989532 email seal outline
+989533 stool
+989534 stool outline
+989535 panorama wide angle
+989536 account lock open
+989537 account lock open outline
+989538 align horizontal distribute
+989539 align vertical distribute
+989540 arrow bottom left bold box
+989541 arrow bottom left bold box outline
+989542 arrow bottom right bold box
+989543 arrow bottom right bold box outline
+989544 arrow top left bold box
+989545 arrow top left bold box outline
+989546 arrow top right bold box
+989547 arrow top right bold box outline
+989548 bookmark box multiple
+989549 bookmark box multiple outline
+989550 bullhorn variant
+989551 bullhorn variant outline
+989552 candy
+989553 candy off
+989554 candy off outline
+989555 candy outline
+989556 car clock
+989557 crowd
+989558 currency rupee
+989559 diving
+989560 dots circle
+989561 elevator passenger off
+989562 elevator passenger off outline
+989563 elevator passenger outline
+989564 eye refresh
+989565 eye refresh outline
+989566 folder check
+989567 folder check outline
+989568 human dolly
+989569 human white cane
+989570 ip outline
+989571 key alert
+989572 key alert outline
+989573 kite
+989574 kite outline
+989575 light flood down
+989576 light flood up
+989577 microphone question
+989578 microphone question outline
+989579 cradle
+989580 panorama outline
+989581 panorama sphere
+989582 panorama sphere outline
+989583 panorama variant
+989584 panorama variant outline
+989585 cradle outline
+989586 fraction one half
+989587 phone refresh
+989588 phone refresh outline
+989589 phone sync
+989590 phone sync outline
+989591 razor double edge
+989592 razor single edge
+989593 rotate 360
+989594 shield lock open
+989595 shield lock open outline
+989596 sitemap outline
+989597 sprinkler fire
+989598 tab search
+989599 timer sand complete
+989600 timer sand paused
+989601 vacuum
+989602 vacuum outline
+989603 wrench clock
+989604 pliers
+989605 sun compass
+989606 truck snowflake
+989607 camera marker
+989608 camera marker outline
+989609 video marker
+989610 video marker outline
+989611 wind turbine alert
+989612 wind turbine check
+989613 truck plus
+989614 truck minus
+989615 truck remove
+989616 arrow right thin
+989617 arrow left thin
+989618 arrow up thin
+989619 arrow down thin
+989620 arrow top right thin
+989621 arrow top left thin
+989622 arrow bottom left thin
+989623 arrow bottom right thin
+989624 scale unbalanced
+989625 draw pen
+989626 clock edit
+989627 clock edit outline
+989628 truck plus outline
+989629 truck minus outline
+989630 truck remove outline
+989631 camera off outline
+989632 home group plus
+989633 home group minus
+989634 home group remove
+989635 file sign
+989636 attachment lock
+989637 cellphone arrow down variant
+989638 file chart check
+989639 file chart check outline
+989640 file lock open
+989641 file lock open outline
+989642 folder question
+989643 folder question outline
+989644 message fast
+989645 message fast outline
+989646 message text fast
+989647 message text fast outline
+989648 monitor arrow down
+989649 monitor arrow down variant
+989650 needle off
+989651 numeric off
+989652 package variant closed minus
+989653 package variant closed plus
+989654 package variant closed remove
+989655 package variant minus
+989656 package variant plus
+989657 package variant remove
+989658 paperclip lock
+989659 phone clock
+989660 receipt outline
+989661 transmission tower off
+989662 truck alert
+989663 truck alert outline
+989664 bone off
+989665 lightbulb alert
+989666 lightbulb alert outline
+989667 lightbulb question
+989668 lightbulb question outline
+989669 battery clock
+989670 battery clock outline
+989671 autorenew off
+989672 folder arrow down
+989673 folder arrow down outline
+989674 folder arrow left
+989675 folder arrow left outline
+989676 folder arrow left right
+989677 folder arrow left right outline
+989678 folder arrow right
+989679 folder arrow right outline
+989680 folder arrow up
+989681 folder arrow up down
+989682 folder arrow up down outline
+989683 folder arrow up outline
+989684 folder cancel
+989685 folder cancel outline
+989686 folder file
+989687 folder file outline
+989688 folder off
+989689 folder off outline
+989690 folder play
+989691 folder play outline
+989692 folder wrench
+989693 folder wrench outline
+989694 image refresh
+989695 image refresh outline
+989696 image sync
+989697 image sync outline
+989698 percent box
+989699 percent box outline
+989700 percent circle
+989701 percent circle outline
+989702 sale outline
+989703 square rounded badge
+989704 square rounded badge outline
+989705 triangle small down
+989706 triangle small up
+989707 notebook heart
+989708 notebook heart outline
+989709 brush outline
+989710 fruit pear
+989711 raw
+989712 raw off
+989713 wall fire
+989714 home clock
+989715 home clock outline
+989716 camera lock
+989717 camera lock outline
+989718 play box lock
+989719 play box lock open
+989720 play box lock open outline
+989721 play box lock outline
+989722 robot industrial outline
+989723 gas burner
+989724 video 2d
+989725 book heart
+989726 book heart outline
+989727 account hard hat outline
+989728 account school
+989729 account school outline
+989730 library outline
+989731 projector off
+989732 light switch off
+989733 toggle switch variant
+989734 toggle switch variant off
+989735 asterisk circle outline
+989736 barrel outline
+989737 bell cog
+989738 bell cog outline
+989739 blinds horizontal
+989740 blinds horizontal closed
+989741 blinds vertical
+989742 blinds vertical closed
+989743 bulkhead light
+989744 calendar today outline
+989745 calendar week begin outline
+989746 calendar week end
+989747 calendar week end outline
+989748 calendar week outline
+989749 cloud percent
+989750 cloud percent outline
+989751 coach lamp variant
+989752 compost
+989753 currency fra
+989754 fan clock
+989755 file rotate left
+989756 file rotate left outline
+989757 file rotate right
+989758 file rotate right outline
+989759 filter multiple
+989760 filter multiple outline
+989761 gymnastics
+989762 hand clap off
+989763 heat pump
+989764 heat pump outline
+989765 heat wave
+989766 home off
+989767 home off outline
+989768 landslide
+989769 landslide outline
+989770 laptop account
+989771 led strip variant off
+989772 lightbulb night
+989773 lightbulb night outline
+989774 lightbulb on 10
+989775 lightbulb on 20
+989776 lightbulb on 30
+989777 lightbulb on 40
+989778 lightbulb on 50
+989779 lightbulb on 60
+989780 lightbulb on 70
+989781 lightbulb on 80
+989782 lightbulb on 90
+989783 meter electric
+989784 meter electric outline
+989785 meter gas
+989786 meter gas outline
+989787 monitor account
+989788 pill off
+989789 plus lock
+989790 plus lock open
+989791 pool thermometer
+989792 post lamp
+989793 rabbit variant
+989794 rabbit variant outline
+989795 receipt text check
+989796 receipt text check outline
+989797 receipt text minus
+989798 receipt text minus outline
+989799 receipt text plus
+989800 receipt text plus outline
+989801 receipt text remove
+989802 receipt text remove outline
+989803 roller shade
+989804 roller shade closed
+989805 seed plus
+989806 seed plus outline
+989807 shopping search outline
+989808 snowflake check
+989809 snowflake thermometer
+989810 snowshoeing
+989811 solar power variant
+989812 solar power variant outline
+989813 storage tank
+989814 storage tank outline
+989815 sun clock
+989816 sun clock outline
+989817 sun snowflake variant
+989818 tag check
+989819 tag check outline
+989820 text box edit
+989821 text box edit outline
+989822 text search variant
+989823 thermometer check
+989824 thermometer water
+989825 tsunami
+989826 turbine
+989827 volcano
+989828 volcano outline
+989829 water thermometer
+989830 water thermometer outline
+989831 wheelchair
+989832 wind power
+989833 wind power outline
+989834 window shutter cog
+989835 window shutter settings
+989836 account tie woman
+989837 briefcase arrow left right
+989838 briefcase arrow left right outline
+989839 briefcase arrow up down
+989840 briefcase arrow up down outline
+989841 cash clock
+989842 cash sync
+989843 file arrow left right
+989844 file arrow left right outline
+989845 file arrow up down
+989846 file arrow up down outline
+989847 file document alert
+989848 file document alert outline
+989849 file document check
+989850 file document check outline
+989851 file document minus
+989852 file document minus outline
+989853 file document plus
+989854 file document plus outline
+989855 file document remove
+989856 file document remove outline
+989857 file minus
+989858 file minus outline
+989859 filter cog
+989860 filter cog outline
+989861 filter settings
+989862 filter settings outline
+989863 folder lock open outline
+989864 folder lock outline
+989865 forum minus
+989866 forum minus outline
+989867 forum plus
+989868 forum plus outline
+989869 forum remove
+989870 forum remove outline
+989871 heating coil
+989872 image lock
+989873 image lock outline
+989874 land fields
+989875 land plots
+989876 land plots circle
+989877 land plots circle variant
+989878 land rows horizontal
+989879 land rows vertical
+989880 medical cotton swab
+989881 rolodex
+989882 rolodex outline
+989883 sort variant off
+989884 tally mark 1
+989885 tally mark 2
+989886 tally mark 3
+989887 tally mark 4
+989888 tally mark 5
+989889 attachment check
+989890 attachment minus
+989891 attachment off
+989892 attachment plus
+989893 attachment remove
+989894 paperclip check
+989895 paperclip minus
+989896 paperclip off
+989897 paperclip plus
+989898 paperclip remove
+989899 network pos
+989900 timer alert
+989901 timer alert outline
+989902 timer cancel
+989903 timer cancel outline
+989904 timer check
+989905 timer check outline
+989906 timer edit
+989907 timer edit outline
+989908 timer lock
+989909 timer lock open
+989910 timer lock open outline
+989911 timer lock outline
+989912 timer marker
+989913 timer marker outline
+989914 timer minus
+989915 timer minus outline
+989916 timer music
+989917 timer music outline
+989918 timer pause
+989919 timer pause outline
+989920 timer play
+989921 timer play outline
+989922 timer plus
+989923 timer plus outline
+989924 timer refresh
+989925 timer refresh outline
+989926 timer remove
+989927 timer remove outline
+989928 timer star
+989929 timer star outline
+989930 timer stop
+989931 timer stop outline
+989932 timer sync
+989933 timer sync outline
+989934 ear hearing loop
+989935 sail boat sink
+989936 lecturn
 1048573 <plane 15 private use, last>
 1048576 <plane 16 private use, first>
 1114109 <plane 16 private use, last>
