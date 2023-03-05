@@ -9,6 +9,7 @@ import (
 	"kitty/tools/cmd/at"
 	"kitty/tools/cmd/clipboard"
 	"kitty/tools/cmd/edit_in_kitty"
+	"kitty/tools/cmd/hyperlinked_grep"
 	"kitty/tools/cmd/icat"
 	"kitty/tools/cmd/pytest"
 	"kitty/tools/cmd/ssh"
@@ -36,6 +37,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	ssh.EntryPoint(root)
 	// unicode_input
 	unicode_input.EntryPoint(root)
+	// hyperlinked_grep
+	hyperlinked_grep.EntryPoint(root)
 	// __pytest__
 	pytest.EntryPoint(root)
 	// __hold_till_enter__
