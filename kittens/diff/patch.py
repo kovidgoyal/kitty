@@ -3,6 +3,7 @@
 
 import concurrent.futures
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -17,6 +18,7 @@ right_lines: Tuple[str, ...] = ()
 GIT_DIFF = 'git diff --no-color --no-ext-diff --exit-code -U_CONTEXT_ --no-index --'
 DIFF_DIFF = 'diff -p -U _CONTEXT_ --'
 worker_processes: List[int] = []
+extra_newlines_pattern = re.compile(r'[\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029]')
 
 
 def find_differ() -> Optional[str]:
@@ -191,6 +193,9 @@ class Patch:
 
 
 def parse_patch(raw: str) -> Patch:
+    # splitlines will break lines in some extra characters,
+    # which is inconsistent with git diff / diff, so remove them first.
+    raw = extra_newlines_pattern.sub('', raw)
     all_hunks = []
     current_hunk = None
     for line in raw.splitlines():
