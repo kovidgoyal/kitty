@@ -86,5 +86,8 @@ func TestRgArgParsing(t *testing.T) {
 	}
 	check_args("--count --max-depth 10 --XxX yyy abcd", "--count --max-depth 10 --XxX yyy abcd")
 	check_args("--max-depth=10 --kitten hyperlink=none abcd", "--max-depth=10 abcd")
+	check_args("-m 10 abcd", "--max-count 10 abcd")
+	check_args("-nm 10 abcd", "-n --max-count 10 abcd")
+	check_args("-mn 10 abcd", "-n --max-count 10 abcd")
 
 }

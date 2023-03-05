@@ -235,19 +235,26 @@ func parse_args(args ...string) (delegate_to_rg bool, sanitized_args []string, k
 					}
 				}
 			} else if strings.HasPrefix(x, "-") {
-				sanitized_args = append(sanitized_args, x)
-				for _, ch := range x[1 : len(x)-1] {
-					target := alias_map[string(ch)]
-					if target != "" {
-						handle_bool_option(target)
+				ok := true
+				chars := make([]string, len(x)-1)
+				for i, ch := range x[1:] {
+					chars[i] = string(ch)
+					_, ok = alias_map[string(ch)]
+					if !ok {
+						break
 					}
 				}
-				target := alias_map[string(rune(x[len(x)-1]))]
-				if target != "" {
+				if !ok {
+					sanitized_args = append(sanitized_args, x)
+					continue
+				}
+				for _, ch := range chars {
+					target := alias_map[ch]
 					if options_that_expect_args[target] {
 						expecting_option_arg = target
 					} else {
 						handle_bool_option(target)
+						sanitized_args = append(sanitized_args, "-"+ch)
 					}
 				}
 			} else {
