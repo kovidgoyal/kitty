@@ -434,6 +434,8 @@ class Tab:  # {{{
                         cmd = resolved_shell(get_options())
                     elif not is_executable:
                         import shlex
+
+                        from .utils import which
                         with suppress(OSError):
                             with open(old_exe) as f:
                                 if f.read(2) == '#!':
