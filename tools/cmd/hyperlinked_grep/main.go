@@ -241,20 +241,19 @@ func parse_args(args ...string) (delegate_to_rg bool, sanitized_args []string, k
 					chars[i] = string(ch)
 					_, ok = alias_map[string(ch)]
 					if !ok {
+						sanitized_args = append(sanitized_args, x)
 						break
 					}
 				}
-				if !ok {
-					sanitized_args = append(sanitized_args, x)
-					continue
-				}
-				for _, ch := range chars {
-					target := alias_map[ch]
-					if options_that_expect_args[target] {
-						expecting_option_arg = target
-					} else {
-						handle_bool_option(target)
-						sanitized_args = append(sanitized_args, "-"+ch)
+				if ok {
+					for _, ch := range chars {
+						target := alias_map[ch]
+						if options_that_expect_args[target] {
+							expecting_option_arg = target
+						} else {
+							handle_bool_option(target)
+							sanitized_args = append(sanitized_args, "-"+ch)
+						}
 					}
 				}
 			} else {
