@@ -8,6 +8,8 @@ import shutil
 import subprocess
 from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
+from kitty.fast_data_types import splitlines_like_git
+
 from . import global_data
 from .collect import lines_for_path
 from .diff_speedup import changed_center
@@ -37,7 +39,7 @@ def set_diff_command(opt: str) -> None:
     global_data.cmd = cmd
 
 
-def run_diff(file1: str, file2: str, context: int = 3) -> Tuple[bool, Union[int, bool], str]:
+def run_diff(file1: str, file2: str, context: int = 3) -> Tuple[bool, Union[int, bool], bytes]:
     # returns: ok, is_different, patch
     cmd = shlex.split(global_data.cmd.replace('_CONTEXT_', str(context)))
     # we resolve symlinks because git diff does not follow symlinks, while diff
@@ -53,8 +55,8 @@ def run_diff(file1: str, file2: str, context: int = 3) -> Tuple[bool, Union[int,
     returncode = p.wait()
     worker_processes.remove(p.pid)
     if returncode in (0, 1):
-        return True, returncode == 1, stdout.decode('utf-8')
-    return False, returncode, stderr.decode('utf-8')
+        return True, returncode == 1, stdout
+    return False, returncode, stderr
 
 
 class Chunk:
@@ -158,19 +160,19 @@ class Hunk:
             c.finalize()
 
 
-def parse_range(x: str) -> Tuple[int, int]:
-    parts = x[1:].split(',', 1)
+def parse_range(x: bytes) -> Tuple[int, int]:
+    parts = x[1:].split(b',', 1)
     start = abs(int(parts[0]))
     count = 1 if len(parts) < 2 else int(parts[1])
     return start, count
 
 
-def parse_hunk_header(line: str) -> Hunk:
-    parts: Tuple[str, ...] = tuple(filter(None, line.split('@@', 2)))
+def parse_hunk_header(line: bytes) -> Hunk:
+    parts: Tuple[bytes, ...] = tuple(filter(None, line.split(b'@@', 2)))
     linespec = parts[0].strip()
     title = ''
     if len(parts) == 2:
-        title = parts[1].strip()
+        title = parts[1].strip().decode('utf-8', 'replace')
     left, right = map(parse_range, linespec.split())
     return Hunk(title, left, right)
 
@@ -190,25 +192,30 @@ class Patch:
         return len(self.all_hunks)
 
 
-def parse_patch(raw: str) -> Patch:
+def parse_patch(raw: bytes) -> Patch:
     all_hunks = []
     current_hunk = None
-    for line in raw.splitlines():
-        if line.startswith('@@ '):
-            current_hunk = parse_hunk_header(line)
+    plus, minus, backslash = map(ord, '+-\\')
+
+    def parse_line(line: memoryview) -> None:
+        nonlocal current_hunk
+        if line[:3] == b'@@ ':
+            current_hunk = parse_hunk_header(bytes(line))
             all_hunks.append(current_hunk)
         else:
             if current_hunk is None:
-                continue
-            q = line[0] if line else ''
-            if q == '+':
+                return
+            q:int = line[0] if len(line) > 0 else 0
+            if q == plus:
                 current_hunk.add_line()
-            elif q == '-':
+            elif q == minus:
                 current_hunk.remove_line()
-            elif q == '\\':
-                continue
+            elif q == backslash:
+                return
             else:
                 current_hunk.context_line()
+
+    splitlines_like_git(raw, parse_line)
     for h in all_hunks:
         h.finalize()
     return Patch(all_hunks)
@@ -244,7 +251,7 @@ class Differ:
             except Exception as e:
                 return f'Running git diff for {left_path} vs. {right_path} generated an exception: {e}'
             if not ok:
-                return f'{output}\nRunning git diff for {left_path} vs. {right_path} failed'
+                return f'{output.decode("utf-8", "replace")}\nRunning git diff for {left_path} vs. {right_path} failed'
             left_lines = lines_for_path(left_path)
             right_lines = lines_for_path(right_path)
             try:
