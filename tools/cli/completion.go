@@ -115,9 +115,43 @@ type Completions struct {
 	split_on_equals bool // true if the cmdline is split on = (BASH does this because readline does this)
 }
 
+func NewCompletions() *Completions {
+	return &Completions{Groups: make([]*MatchGroup, 0, 4)}
+}
+
 func (self *Completions) AddPrefixToAllMatches(prefix string) {
 	for _, mg := range self.Groups {
 		mg.AddPrefixToAllMatches(prefix)
+	}
+}
+
+func (self *Completions) MergeMatchGroup(mg *MatchGroup) {
+	if len(mg.Matches) == 0 {
+		return
+	}
+	var dest *MatchGroup
+	for _, q := range self.Groups {
+		if q.Title == mg.Title {
+			dest = q
+			break
+		}
+	}
+	if dest == nil {
+		dest = self.AddMatchGroup(mg.Title)
+		dest.NoTrailingSpace = mg.NoTrailingSpace
+		dest.IsFiles = mg.IsFiles
+	}
+	seen := utils.NewSet[string](64)
+	for _, q := range self.Groups {
+		for _, m := range q.Matches {
+			seen.Add(m.Word)
+		}
+	}
+	for _, m := range mg.Matches {
+		if !seen.Has(m.Word) {
+			seen.Add(m.Word)
+			dest.Matches = append(dest.Matches, m)
+		}
 	}
 }
 

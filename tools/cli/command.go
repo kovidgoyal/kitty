@@ -560,18 +560,18 @@ func (self *Command) Exec(args ...string) {
 }
 
 func (self *Command) GetCompletions(argv []string, init_completions func(*Completions)) *Completions {
-	ans := Completions{Groups: make([]*MatchGroup, 0, 4)}
+	ans := NewCompletions()
 	if init_completions != nil {
-		init_completions(&ans)
+		init_completions(ans)
 	}
 	if len(argv) > 0 {
 		exe := argv[0]
 		cmd := self.FindSubCommand(exe)
 		if cmd != nil {
 			if cmd.ParseArgsForCompletion != nil {
-				cmd.ParseArgsForCompletion(cmd, argv[1:], &ans)
+				cmd.ParseArgsForCompletion(cmd, argv[1:], ans)
 			} else {
-				completion_parse_args(cmd, argv[1:], &ans)
+				completion_parse_args(cmd, argv[1:], ans)
 			}
 		}
 	}
@@ -582,5 +582,5 @@ func (self *Command) GetCompletions(argv []string, init_completions func(*Comple
 		}
 	}
 	ans.Groups = non_empty_groups
-	return &ans
+	return ans
 }

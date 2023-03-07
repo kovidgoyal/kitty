@@ -156,6 +156,9 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 		completions:        completions{completer: r.Completer},
 		kill_ring:          kill_ring{items: list.New().Init()},
 	}
+	if ans.completions.completer == nil && r.HistoryPath != "" {
+		ans.completions.completer = ans.HistoryCompleter
+	}
 	ans.prompt = ans.make_prompt(r.Prompt, false)
 	t := ""
 	if r.ContinuationPrompt != "" || !r.EmptyContinuationPrompt {
@@ -166,6 +169,10 @@ func New(loop *loop.Loop, r RlInit) *Readline {
 	}
 	ans.continuation_prompt = ans.make_prompt(t, true)
 	return ans
+}
+
+func (self *Readline) HistoryCompleter(before_cursor, after_cursor string) *cli.Completions {
+	return self.history_completer(before_cursor, after_cursor)
 }
 
 func (self *Readline) SetPrompt(prompt string) {

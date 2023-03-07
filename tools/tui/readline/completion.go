@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"kitty/tools/cli"
+	"kitty/tools/tty"
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
 )
@@ -62,6 +63,8 @@ type completions struct {
 	completer CompleterFunction
 	current   completion
 }
+
+var _ = tty.DebugPrintln
 
 func (self *Readline) complete(forwards bool, repeat_count uint) bool {
 	c := &self.completions
