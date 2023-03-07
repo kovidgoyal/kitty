@@ -539,3 +539,11 @@ if __name__ == '__main__':
     if ans:
         import json
         print(json.dumps(ans))
+elif __name__ == '__doc__':
+    import sys
+
+    cd = sys.cli_docs  # type: ignore
+    cd['usage'] = ''
+    cd['options'] = option_text
+    cd['help_text'] = 'Ask the user for input'
+    cd['short_desc'] = 'Ask the user for input'
