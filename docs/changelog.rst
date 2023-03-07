@@ -78,6 +78,8 @@ Detailed list of changes
 
 - Wayland KDE: Fix selecting in un-focused OS window not working correctly (:iss:`6095`)
 
+- X11: Fix a crash if the X server requests clipboard data after we have relinquished the clipboard (:iss:`5650`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

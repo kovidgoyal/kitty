@@ -719,6 +719,7 @@ static bool createNativeWindow(_GLFWwindow* window,
 static size_t
 get_clipboard_data(const _GLFWClipboardData *cd, const char *mime, char **data) {
     *data = NULL;
+    if (cd->get_data == NULL) { return 0; }
     GLFWDataChunk chunk = cd->get_data(mime, NULL, cd->ctype);
     char *buf = NULL;
     size_t sz = 0, cap = 0;
