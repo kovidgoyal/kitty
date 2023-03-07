@@ -3,13 +3,22 @@
 package ask
 
 import (
+	"errors"
 	"fmt"
 
 	"kitty/tools/cli"
+	"kitty/tools/cli/markup"
 	"kitty/tools/tui"
 )
 
 var _ = fmt.Print
+
+func show_message(msg string) {
+	if msg != "" {
+		m := markup.New(true)
+		fmt.Println(m.Bold(msg))
+	}
+}
 
 func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 	output := tui.KittenOutputSerializer()
@@ -21,13 +30,19 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 	case "yesno", "choices":
 		result, err = choices(o, args)
 		if err != nil {
-			return rc, err
+			return 1, err
 		}
 	case "password":
-		result, err = tui.ReadPassword(o.Prompt, true)
+		show_message(o.Message)
+		pw, err := tui.ReadPassword(o.Prompt, true)
 		if err != nil {
-			return rc, err
+			if errors.Is(err, tui.Canceled) {
+				pw = ""
+			} else {
+				return 1, err
+			}
 		}
+		result = map[string]any{"items": args, "response": pw}
 	default:
 		return 1, fmt.Errorf("Unknown type: %s", o.Type)
 	}
