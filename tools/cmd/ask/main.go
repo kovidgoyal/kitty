@@ -14,9 +14,17 @@ var _ = fmt.Print
 func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 	output := tui.KittenOutputSerializer()
 	var result any
+	if len(o.Prompt) > 2 && o.Prompt[0] == o.Prompt[len(o.Prompt)-1] && (o.Prompt[0] == '"' || o.Prompt[0] == '\'') {
+		o.Prompt = o.Prompt[1 : len(o.Prompt)-1]
+	}
 	switch o.Type {
 	case "yesno", "choices":
 		result, err = choices(o, args)
+		if err != nil {
+			return rc, err
+		}
+	case "password":
+		result, err = tui.ReadPassword(o.Prompt, true)
 		if err != nil {
 			return rc, err
 		}
