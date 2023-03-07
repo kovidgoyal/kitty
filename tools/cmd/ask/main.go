@@ -34,7 +34,7 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		}
 	case "password":
 		show_message(o.Message)
-		pw, err := tui.ReadPassword(o.Prompt, true)
+		pw, err := tui.ReadPassword(o.Prompt, false)
 		if err != nil {
 			if errors.Is(err, tui.Canceled) {
 				pw = ""
@@ -43,6 +43,12 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 			}
 		}
 		result = map[string]any{"items": args, "response": pw}
+	case "line":
+		show_message(o.Message)
+		result, err = get_line(o, args)
+		if err != nil {
+			return 1, err
+		}
 	default:
 		return 1, fmt.Errorf("Unknown type: %s", o.Type)
 	}
