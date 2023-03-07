@@ -1711,6 +1711,7 @@ class Boss:
         orig_args, args = list(args), list(args)
         from kittens.runner import create_kitten_handler
         end_kitten = create_kitten_handler(kitten, orig_args)
+        is_wrapped = kitten in wrapped_kitten_names()
         if window is None:
             w = self.active_window
             tab = self.active_tab
@@ -1721,7 +1722,8 @@ class Boss:
             return end_kitten(None, getattr(w, 'id', None), self)
 
         if w is not None and tab is not None:
-            args[0:0] = [config_dir, kitten]
+            if not is_wrapped:
+                args[0:0] = [config_dir, kitten]
             if input_data is None:
                 type_of_input = end_kitten.type_of_input
                 q = type_of_input.split('-') if type_of_input else []
@@ -1755,9 +1757,10 @@ class Boss:
                 'OVERLAID_WINDOW_LINES': str(w.screen.lines),
                 'OVERLAID_WINDOW_COLS': str(w.screen.columns),
             }
-            if kitten in wrapped_kitten_names():
+            if is_wrapped:
                 cmd = [kitten_exe(), kitten]
                 env['KITTEN_RUNNING_AS_UI'] = '1'
+                env['KITTY_CONFIG_DIRECTORY'] = config_dir
             else:
                 cmd = [kitty_exe(), '+runpy', 'from kittens.runner import main; main()']
                 env['PYTHONWARNINGS'] = 'ignore'
