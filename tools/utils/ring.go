@@ -53,7 +53,7 @@ func (self *RingBuffer[T]) Grow(new_size uint64) {
 	self.read_pos = 0
 }
 
-func (self *RingBuffer[T]) WriteTillFull(p []T) uint64 {
+func (self *RingBuffer[T]) WriteTillFull(p ...T) uint64 {
 	ssz := self.Capacity()
 	available := ssz - self.use_count
 	sz := rb_min(uint64(len(p)), available)
@@ -74,7 +74,7 @@ func (self *RingBuffer[T]) WriteTillFull(p []T) uint64 {
 	return sz
 }
 
-func (self *RingBuffer[T]) WriteAllAndDiscardOld(p []T) {
+func (self *RingBuffer[T]) WriteAllAndDiscardOld(p ...T) {
 	ssz := self.Capacity()
 	left := uint64(len(p))
 	if left >= ssz { // Fast path
@@ -85,7 +85,7 @@ func (self *RingBuffer[T]) WriteAllAndDiscardOld(p []T) {
 		return
 	}
 	for {
-		written := self.WriteTillFull(p)
+		written := self.WriteTillFull(p...)
 		p = p[written:]
 		left = uint64(len(p))
 		if left == 0 {
@@ -100,6 +100,12 @@ func (self *RingBuffer[T]) ReadTillEmpty(p []T) uint64 {
 	copy(p, a)
 	copy(p[len(a):], b)
 	return uint64(len(a)) + uint64(len(b))
+}
+
+func (self *RingBuffer[T]) ReadAll() []T {
+	ans := make([]T, self.Len())
+	self.ReadTillEmpty(ans)
+	return ans
 }
 
 func (self *RingBuffer[T]) slices_to_read(sz uint64) ([]T, []T) {

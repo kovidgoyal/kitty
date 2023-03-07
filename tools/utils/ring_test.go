@@ -26,21 +26,21 @@ func TestRingBuffer(t *testing.T) {
 			t.Fatalf("Reading contents did not empty the buffer")
 		}
 	}
-	r.WriteTillFull([]int{1, 2, 3, 4})
+	r.WriteTillFull(1, 2, 3, 4)
 	test_contents(1, 2, 3, 4)
-	r.WriteTillFull([]int{1, 2, 3, 4})
+	r.WriteTillFull(1, 2, 3, 4)
 	test_contents(1, 2, 3, 4)
 
 	r.Clear()
-	r.WriteTillFull([]int{1, 2, 3, 4})
+	r.WriteTillFull(1, 2, 3, 4)
 	r.ReadTillEmpty([]int{0, 1})
 	test_contents(3, 4)
-	r.WriteTillFull([]int{1, 2, 3, 4, 5})
+	r.WriteTillFull(1, 2, 3, 4, 5)
 	test_contents(1, 2, 3, 4, 5)
 
 	r.Clear()
-	r.WriteTillFull([]int{1, 2, 3, 4})
-	r.WriteAllAndDiscardOld([]int{5, 6, 7, 8, 9})
+	r.WriteTillFull(1, 2, 3, 4)
+	r.WriteAllAndDiscardOld(5, 6, 7, 8, 9)
 	test_contents(2, 3, 4, 5, 6, 7, 8, 9)
 
 }
