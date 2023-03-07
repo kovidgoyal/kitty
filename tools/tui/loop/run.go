@@ -73,8 +73,22 @@ func (self *Loop) handle_csi(raw []byte) error {
 	if ke != nil {
 		return self.handle_key_event(ke)
 	}
+	sz, err := self.ScreenSize()
+	if err == nil {
+		me := MouseEventFromCSI(csi, sz)
+		if me != nil {
+			return self.handle_mouse_event(me)
+		}
+	}
 	if self.OnEscapeCode != nil {
 		return self.OnEscapeCode(CSI, raw)
+	}
+	return nil
+}
+
+func (self *Loop) handle_mouse_event(ev *MouseEvent) error {
+	if self.OnMouseEvent != nil {
+		return self.OnMouseEvent(ev)
 	}
 	return nil
 }
