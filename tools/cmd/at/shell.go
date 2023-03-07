@@ -215,7 +215,17 @@ func shell_main(cmd *cli.Command, args []string) (int, error) {
 		}
 		fmt.Println(amsg)
 	}
-	rl := readline.New(nil, readline.RlInit{Prompt: prompt, Completer: completions, HistoryPath: filepath.Join(utils.CacheDir(), "shell.history.json")})
+	var rl *readline.Readline
+	combined_completer := func(before_cursor, after_cursor string) *cli.Completions {
+		ans := completions(before_cursor, after_cursor)
+		history := rl.HistoryCompleter(before_cursor, after_cursor)
+		for _, group := range history.Groups {
+			ans.MergeMatchGroup(group)
+		}
+		return ans
+	}
+
+	rl = readline.New(nil, readline.RlInit{Prompt: prompt, Completer: combined_completer, HistoryPath: filepath.Join(utils.CacheDir(), "shell.history.json")})
 	defer func() {
 		rl.Shutdown()
 	}()
