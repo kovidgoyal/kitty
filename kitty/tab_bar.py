@@ -144,7 +144,7 @@ class Formatter:
 
 
 @run_once
-def super_sub_maps() -> Tuple[Dict[int, Union[None, int]], Dict[int, Union[None, int]]]:
+def super_sub_maps() -> Tuple[Dict[int, int], Dict[int, int]]:
     import string
     sup_table = str.maketrans(
         string.ascii_lowercase + string.ascii_uppercase + string.digits + '+-=()',
