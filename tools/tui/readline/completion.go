@@ -117,7 +117,7 @@ func (self *Readline) complete(forwards bool, repeat_count uint) bool {
 			self.input_state.lines = append(self.input_state.lines, al[1:]...)
 		}
 		if c.current.num_of_matches == 1 && self.AllText() == all_text_before_completion {
-			// when there is onlya  single match and it has already been inserted there is no point iterating over current completions
+			// when there is only a single match and it has already been inserted there is no point iterating over current completions
 			orig := self.last_action
 			self.last_action = ActionNil
 			self.complete(true, 1)
@@ -258,6 +258,9 @@ func (self *Readline) completion_screen_lines() ([]string, bool) {
 	}
 	lines := make([]string, 0, self.completions.current.num_of_matches)
 	for _, g := range self.completions.current.results.Groups {
+		if len(g.Matches) == 0 {
+			continue
+		}
 		if g.Title != "" {
 			lines = append(lines, self.fmt_ctx.Title(g.Title))
 		}
