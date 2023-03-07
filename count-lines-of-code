@@ -15,7 +15,7 @@ for line in cp.stdout.decode().splitlines():
         files_to_exclude += '\n' + line.split(':')[0]
 
 p = subprocess.Popen([
-    'cloc', '--exclude-list-file', '/dev/stdin', 'kitty', 'kittens', 'tools',
+    'cloc', '--exclude-list-file', '/dev/stdin', 'kitty', 'kittens', 'tools', 'kitty_tests', 'docs',
 ], stdin=subprocess.PIPE)
 p.communicate(files_to_exclude.encode('utf-8'))
 raise SystemExit(p.wait())
