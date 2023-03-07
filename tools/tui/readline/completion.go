@@ -47,7 +47,7 @@ func (self *completion) current_match_text() string {
 			for _, m := range g.Matches {
 				if i == self.current_match {
 					t := m.Word
-					if !g.NoTrailingSpace {
+					if !g.NoTrailingSpace && t != "" {
 						t += " "
 					}
 					return t
