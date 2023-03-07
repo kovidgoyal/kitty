@@ -102,6 +102,7 @@ func (self *Readline) complete(forwards bool, repeat_count uint) bool {
 	}
 	ct := c.current.current_match_text()
 	if ct != "" {
+		all_text_before_completion := self.AllText()
 		before := c.current.before_cursor[:c.current.results.CurrentWordIdx] + ct
 		after := c.current.after_cursor
 		self.input_state.lines = utils.Splitlines(before)
@@ -114,6 +115,13 @@ func (self *Readline) complete(forwards bool, repeat_count uint) bool {
 		if len(al) > 0 {
 			self.input_state.lines[self.input_state.cursor.Y] += al[0]
 			self.input_state.lines = append(self.input_state.lines, al[1:]...)
+		}
+		if c.current.num_of_matches == 1 && self.AllText() == all_text_before_completion {
+			// when there is onlya  single match and it has already been inserted there is no point iterating over current completions
+			orig := self.last_action
+			self.last_action = ActionNil
+			self.complete(true, 1)
+			self.last_action = orig
 		}
 	}
 	if repeat_count > 0 {
