@@ -47,7 +47,7 @@ func (self *Range) has_point(x, y int) bool {
 
 func truncate_at_space(text string, width int) (string, string) {
 	truncated, p := wcswidth.TruncateToVisualLengthWithWidth(text, width)
-	if p >= len(text) {
+	if len(truncated) == len(text) {
 		return text, ""
 	}
 	i := strings.LastIndexByte(truncated, ' ')
@@ -70,7 +70,7 @@ func choices(o *Options, items []string) (ans map[string]any, err error) {
 	lp.MouseTrackingMode(loop.BUTTONS_ONLY_MOUSE_TRACKING)
 
 	prefix_style_pat := regexp.MustCompile("^(?:\x1b\\[[^m]*?m)+")
-	choice_order := make([]Choice, len(o.Choices))
+	choice_order := make([]Choice, 0, len(o.Choices))
 	clickable_ranges := make(map[string][]Range, 16)
 	allowed := utils.NewSet[string](utils.Max(2, len(o.Choices)))
 	response_on_accept := o.Default
@@ -153,7 +153,7 @@ func choices(o *Options, items []string) (ans map[string]any, err error) {
 		sep_sz := len(sep) + 2 // for the borders
 
 		for _, choice := range choices {
-			clickable_ranges[choice.letter] = make([]Range, 0, 8)
+			clickable_ranges[choice.letter] = make([]Range, 0, 4)
 			text := " " + choice.prefix()
 			color := choice.color
 			if choice.color == "" {
@@ -221,6 +221,7 @@ func choices(o *Options, items []string) (ans map[string]any, err error) {
 			line := strings.TrimRightFunc(strings.Join(texts, ""), unicode.IsSpace)
 			offset := extra_for(wcswidth.Stringwidth(line), width)
 			for _, pos := range positions {
+				x = pos.x
 				x += offset
 				clickable_ranges[pos.letter] = append(clickable_ranges[pos.letter], Range{x, x + pos.size - 1, y})
 			}
