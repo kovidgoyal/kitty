@@ -61,11 +61,11 @@ func extra_for(width, screen_width int) int {
 	return utils.Max(0, screen_width-width)/2 + 1
 }
 
-func choices(o *Options, items []string) (ans map[string]any, err error) {
-	response := ""
+func choices(o *Options) (response string, err error) {
+	response = ""
 	lp, err := loop.New()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	lp.MouseTrackingMode(loop.BUTTONS_ONLY_MOUSE_TRACKING)
 
@@ -114,7 +114,7 @@ func choices(o *Options, items []string) (ans map[string]any, err error) {
 		if hidden_text_start_pos > -1 {
 			raw, err := io.ReadAll(os.Stdin)
 			if err != nil {
-				return nil, fmt.Errorf("Failed to read hidden text from STDIN: %w", err)
+				return "", fmt.Errorf("Failed to read hidden text from STDIN: %w", err)
 			}
 			hidden_text = strings.TrimRightFunc(utils.UnsafeBytesToString(raw), unicode.IsSpace)
 			hidden_text_end_pos = hidden_text_start_pos + len(replacement_text)
@@ -422,14 +422,13 @@ func choices(o *Options, items []string) (ans map[string]any, err error) {
 
 	err = lp.Run()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	ds := lp.DeathSignalName()
 	if ds != "" {
 		fmt.Println("Killed by signal: ", ds)
 		lp.KillIfSignalled()
-		return nil, fmt.Errorf("Filled by signal: %s", ds)
+		return "", fmt.Errorf("Filled by signal: %s", ds)
 	}
-	ans = map[string]any{"items": items, "response": response}
-	return
+	return response, nil
 }

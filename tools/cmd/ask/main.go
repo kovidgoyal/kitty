@@ -13,6 +13,11 @@ import (
 
 var _ = fmt.Print
 
+type Response struct {
+	Items    []string `json:"items"`
+	Response string   `json:"response"`
+}
+
 func show_message(msg string) {
 	if msg != "" {
 		m := markup.New(true)
@@ -22,13 +27,13 @@ func show_message(msg string) {
 
 func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 	output := tui.KittenOutputSerializer()
-	var result any
+	result := &Response{Items: args}
 	if len(o.Prompt) > 2 && o.Prompt[0] == o.Prompt[len(o.Prompt)-1] && (o.Prompt[0] == '"' || o.Prompt[0] == '\'') {
 		o.Prompt = o.Prompt[1 : len(o.Prompt)-1]
 	}
 	switch o.Type {
 	case "yesno", "choices":
-		result, err = choices(o, args)
+		result.Response, err = choices(o)
 		if err != nil {
 			return 1, err
 		}
@@ -42,10 +47,10 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 				return 1, err
 			}
 		}
-		result = map[string]any{"items": args, "response": pw}
+		result.Response = pw
 	case "line":
 		show_message(o.Message)
-		result, err = get_line(o, args)
+		result.Response, err = get_line(o)
 		if err != nil {
 			return 1, err
 		}

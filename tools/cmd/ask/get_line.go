@@ -16,13 +16,12 @@ import (
 
 var _ = fmt.Print
 
-func get_line(o *Options, items []string) (result map[string]any, err error) {
+func get_line(o *Options) (result string, err error) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors)
 	if err != nil {
 		return
 	}
 	cwd, _ := os.Getwd()
-	result = map[string]any{"items": items, "response": ""}
 	ropts := readline.RlInit{Prompt: o.Prompt}
 	if o.Name != "" {
 		base := filepath.Join(utils.CacheDir(), "ask")
@@ -59,7 +58,7 @@ func get_line(o *Options, items []string) (result map[string]any, err error) {
 			if err == readline.ErrAcceptInput {
 				hi := readline.HistoryItem{Timestamp: time.Now(), Cmd: rl.AllText(), ExitCode: 0, Cwd: cwd}
 				rl.AddHistoryItem(hi)
-				result["response"] = rl.AllText()
+				result = rl.AllText()
 				lp.Quit(0)
 				return nil
 			}
@@ -83,11 +82,11 @@ func get_line(o *Options, items []string) (result map[string]any, err error) {
 	err = lp.Run()
 	rl.Shutdown()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	ds := lp.DeathSignalName()
 	if ds != "" {
-		return nil, fmt.Errorf("Killed by signal: %s", ds)
+		return "", fmt.Errorf("Killed by signal: %s", ds)
 	}
 	return
 }
