@@ -86,9 +86,39 @@ func (self *Loop) handle_csi(raw []byte) error {
 	return nil
 }
 
+func is_click(a, b *MouseEvent) bool {
+	if a.Event_type != MOUSE_PRESS || b.Event_type != MOUSE_RELEASE {
+		return false
+	}
+	x := a.Cell.X - b.Cell.X
+	y := a.Cell.Y - b.Cell.Y
+	return x*x+y*y <= 4
+
+}
+
 func (self *Loop) handle_mouse_event(ev *MouseEvent) error {
 	if self.OnMouseEvent != nil {
-		return self.OnMouseEvent(ev)
+		err := self.OnMouseEvent(ev)
+		if err != nil {
+			return err
+		}
+		switch ev.Event_type {
+		case MOUSE_PRESS:
+			self.pending_mouse_events.WriteAllAndDiscardOld(*ev)
+		case MOUSE_RELEASE:
+			self.pending_mouse_events.WriteAllAndDiscardOld(*ev)
+			if self.pending_mouse_events.Len() > 1 {
+				events := self.pending_mouse_events.ReadAll()
+				if is_click(&events[len(events)-2], &events[len(events)-1]) {
+					e := events[len(events)-1]
+					e.Event_type = MOUSE_CLICK
+					err = self.OnMouseEvent(&e)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -243,6 +273,7 @@ func (self *Loop) run() (err error) {
 	}
 
 	self.keep_going = true
+	self.pending_mouse_events = utils.NewRingBuffer[MouseEvent](4)
 	tty_read_channel := make(chan []byte)
 	tty_write_channel := make(chan *write_msg, 1) // buffered so there is no race between initial queueing and startup of writer thread
 	write_done_channel := make(chan IdType)

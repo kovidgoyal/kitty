@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"kitty/tools/tty"
+	"kitty/tools/utils"
 	"strings"
 	"time"
 
@@ -56,6 +57,7 @@ type Loop struct {
 	timer_id_counter, write_msg_id_counter IdType
 	wakeup_channel                         chan byte
 	pending_writes                         []*write_msg
+	pending_mouse_events                   *utils.RingBuffer[MouseEvent]
 	on_SIGTSTP                             func() error
 
 	// Suspend the loop restoring terminal state. Call the return resume function to restore the loop

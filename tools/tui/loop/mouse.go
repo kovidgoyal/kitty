@@ -19,6 +19,7 @@ const (
 	MOUSE_PRESS MouseEventType = iota
 	MOUSE_RELEASE
 	MOUSE_MOVE
+	MOUSE_CLICK
 )
 const (
 	SHIFT_INDICATOR  int = 1 << 2
@@ -38,7 +39,7 @@ type MouseEvent struct {
 	Event_type  MouseEventType
 	Buttons     MouseButtonFlag
 	Mods        KeyModifiers
-	Cell, Pixel struct{ x, y int }
+	Cell, Pixel struct{ X, Y int }
 }
 
 func pixel_to_cell(px, length, cell_length int) int {
@@ -56,14 +57,14 @@ func decode_sgr_mouse(text string, screen_size ScreenSize) *MouseEvent {
 		return nil
 	}
 	ans := MouseEvent{}
-	ans.Pixel.x, err = strconv.Atoi(parts[1])
+	ans.Pixel.X, err = strconv.Atoi(parts[1])
 	if err != nil {
 		return nil
 	}
 	if len(parts[2]) < 1 {
 		return nil
 	}
-	ans.Pixel.y, err = strconv.Atoi(parts[2][:len(parts[2])-1])
+	ans.Pixel.Y, err = strconv.Atoi(parts[2][:len(parts[2])-1])
 	m := parts[2][len(parts[2])-1]
 	if m == 'm' {
 		ans.Event_type = MOUSE_RELEASE
@@ -87,8 +88,8 @@ func decode_sgr_mouse(text string, screen_size ScreenSize) *MouseEvent {
 	if cb&CTRL_INDICATOR != 0 {
 		ans.Mods |= CTRL
 	}
-	ans.Cell.x = pixel_to_cell(ans.Pixel.x, int(screen_size.WidthPx), int(screen_size.CellWidth))
-	ans.Cell.y = pixel_to_cell(ans.Pixel.y, int(screen_size.HeightPx), int(screen_size.CellHeight))
+	ans.Cell.X = pixel_to_cell(ans.Pixel.X, int(screen_size.WidthPx), int(screen_size.CellWidth))
+	ans.Cell.Y = pixel_to_cell(ans.Pixel.Y, int(screen_size.HeightPx), int(screen_size.CellHeight))
 
 	return &ans
 }
