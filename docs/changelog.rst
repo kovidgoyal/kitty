@@ -76,6 +76,8 @@ Detailed list of changes
 - Fix overlay windows not inheriting the per-window padding and margin settings
   of their parents (:iss:`6063`)
 
+- Wayland KDE: Fix selecting in un-focused OS window not working correctly (:iss:`6095`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
