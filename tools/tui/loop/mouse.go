@@ -21,6 +21,21 @@ const (
 	MOUSE_MOVE
 	MOUSE_CLICK
 )
+
+func (e MouseEventType) String() string {
+	switch e {
+	case MOUSE_PRESS:
+		return "press"
+	case MOUSE_RELEASE:
+		return "release"
+	case MOUSE_MOVE:
+		return "move"
+	case MOUSE_CLICK:
+		return "click"
+	}
+	return strconv.Itoa(int(e))
+}
+
 const (
 	SHIFT_INDICATOR  int = 1 << 2
 	ALT_INDICATOR        = 1 << 3
@@ -35,11 +50,48 @@ var bmap = [...]MouseButtonFlag{LEFT, MIDDLE, RIGHT}
 var ebmap = [...]MouseButtonFlag{FOURTH, FIFTH, SIXTH, SEVENTH}
 var wbmap = [...]MouseButtonFlag{WHEEL_UP, WHEEL_DOWN, WHEEL_LEFT, WHEEL_RIGHT}
 
+func (b MouseButtonFlag) String() string {
+	ans := ""
+	switch {
+	case b&LEFT != 0:
+		ans += "|LEFT"
+	case b&MIDDLE != 0:
+		ans += "|MIDDLE"
+	case b&RIGHT != 0:
+		ans += "|RIGHT"
+	case b&FOURTH != 0:
+		ans += "|FOURTH"
+	case b&FIFTH != 0:
+		ans += "|FIFTH"
+	case b&SIXTH != 0:
+		ans += "|SIXTH"
+	case b&SEVENTH != 0:
+		ans += "|SEVENTH"
+	case b&WHEEL_UP != 0:
+		ans += "|WHEEL_UP"
+	case b&WHEEL_DOWN != 0:
+		ans += "|WHEEL_DOWN"
+	case b&WHEEL_LEFT != 0:
+		ans += "|WHEEL_LEFT"
+	case b&WHEEL_RIGHT != 0:
+		ans += "|WHEEL_RIGHT"
+	}
+	ans = strings.TrimLeft(ans, "|")
+	if ans == "" {
+		ans = "NONE"
+	}
+	return ans
+}
+
 type MouseEvent struct {
 	Event_type  MouseEventType
 	Buttons     MouseButtonFlag
 	Mods        KeyModifiers
 	Cell, Pixel struct{ X, Y int }
+}
+
+func (e MouseEvent) String() string {
+	return fmt.Sprintf("MouseEvent{%s %s %s Cell:%v Pixel:%v}", e.Event_type, e.Buttons, e.Mods, e.Cell, e.Pixel)
 }
 
 func pixel_to_cell(px, length, cell_length int) int {
@@ -48,6 +100,8 @@ func pixel_to_cell(px, length, cell_length int) int {
 }
 
 func decode_sgr_mouse(text string, screen_size ScreenSize) *MouseEvent {
+	last_letter := text[len(text)-1]
+	text = text[:len(text)-1]
 	parts := strings.Split(text, ";")
 	if len(parts) != 3 {
 		return nil
@@ -64,9 +118,8 @@ func decode_sgr_mouse(text string, screen_size ScreenSize) *MouseEvent {
 	if len(parts[2]) < 1 {
 		return nil
 	}
-	ans.Pixel.Y, err = strconv.Atoi(parts[2][:len(parts[2])-1])
-	m := parts[2][len(parts[2])-1]
-	if m == 'm' {
+	ans.Pixel.Y, err = strconv.Atoi(parts[2])
+	if last_letter == 'm' {
 		ans.Event_type = MOUSE_RELEASE
 	} else if cb&MOTION_INDICATOR != 0 {
 		ans.Event_type = MOUSE_MOVE
@@ -102,7 +155,6 @@ func MouseEventFromCSI(csi string, screen_size ScreenSize) *MouseEvent {
 	if last_char != 'm' && last_char != 'M' {
 		return nil
 	}
-	csi = csi[:len(csi)-1]
 	if !strings.HasPrefix(csi, "<") {
 		return nil
 	}
