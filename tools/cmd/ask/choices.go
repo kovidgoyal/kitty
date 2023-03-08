@@ -3,7 +3,6 @@
 package ask
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"kitty/tools/cli/markup"
@@ -323,7 +322,7 @@ func choices(o *Options) (response string, err error) {
 			return err
 		}
 		if message != "" {
-			scanner := bufio.NewScanner(strings.NewReader(message))
+			scanner := utils.NewLineScanner(message)
 			for scanner.Scan() {
 				msg_lines = draw_long_text(int(sz.WidthCells), scanner.Text(), msg_lines)
 			}

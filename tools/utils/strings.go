@@ -98,6 +98,8 @@ func (self *StringScanner) Scan() bool {
 	return true
 }
 
+func (self *StringScanner) Err() error { return nil }
+
 func (self *StringScanner) Text() string {
 	return self.token
 }

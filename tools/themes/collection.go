@@ -4,7 +4,6 @@ package themes
 
 import (
 	"archive/zip"
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -241,7 +240,7 @@ func (self *Theme) Settings() (map[string]string, error) {
 			return nil, err
 		}
 		self.settings = make(map[string]string, 64)
-		scanner := bufio.NewScanner(strings.NewReader(code))
+		scanner := utils.NewLineScanner(code)
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
 			if line != "" && line[0] != '#' {

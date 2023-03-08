@@ -3,8 +3,6 @@
 package completion
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -71,7 +69,7 @@ func complete_themes(completions *cli.Completions, word string, arg_num int) {
 		out, err := exec.Command(kitty, "+runpy", "from kittens.themes.collection import *; print_theme_names()").Output()
 		if err == nil {
 			mg := completions.AddMatchGroup("Themes")
-			scanner := bufio.NewScanner(bytes.NewReader(out))
+			scanner := utils.NewLineScanner(utils.UnsafeBytesToString(out))
 			for scanner.Scan() {
 				theme_name := strings.TrimSpace(scanner.Text())
 				if theme_name != "" && strings.HasPrefix(theme_name, word) {

@@ -3,7 +3,6 @@
 package hyperlinked_grep
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -42,7 +41,7 @@ func get_options_for_rg() (expecting_args map[string]bool, alias_map map[string]
 		err = fmt.Errorf("Failed to execute rg: %w", err)
 		return
 	}
-	scanner := bufio.NewScanner(strings.NewReader(utils.UnsafeBytesToString(raw)))
+	scanner := utils.NewLineScanner(utils.UnsafeBytesToString(raw))
 	options_started := false
 	expecting_args = make(map[string]bool, 64)
 	alias_map = make(map[string]string, 52)

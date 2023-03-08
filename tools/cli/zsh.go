@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"bufio"
 	"fmt"
 	"kitty/tools/cli/markup"
 	"kitty/tools/tty"
@@ -38,7 +37,7 @@ func shell_input_parser(data []byte, shell_state map[string]string) ([][]string,
 	raw := string(data)
 	new_word := strings.HasSuffix(raw, "\n\n")
 	raw = strings.TrimRight(raw, "\n \t")
-	scanner := bufio.NewScanner(strings.NewReader(raw))
+	scanner := utils.NewLineScanner(raw)
 	words := make([]string, 0, 32)
 	for scanner.Scan() {
 		words = append(words, scanner.Text())

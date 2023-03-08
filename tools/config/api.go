@@ -154,7 +154,7 @@ func (self *ConfigParser) ParseFiles(paths ...string) error {
 		if err != nil {
 			return err
 		}
-		scanner := bufio.NewScanner(bytes.NewReader(raw))
+		scanner := utils.NewLineScanner(utils.UnsafeBytesToString(raw))
 		self.seen_includes = make(map[string]bool)
 		err = self.parse(scanner, path, filepath.Dir(path), 0)
 		if err != nil {
