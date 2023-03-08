@@ -8,9 +8,8 @@ from typing import List
 
 
 def icat(args: List[str]) -> None:
-    from kittens.runner import run_kitten as rk
-    sys.argv = args
-    rk('icat')
+    from kitty.constants import kitten_exe
+    os.execl(kitten_exe(), "kitten", *args)
 
 
 def list_fonts(args: List[str]) -> None:
