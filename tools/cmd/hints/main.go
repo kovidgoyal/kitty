@@ -8,12 +8,14 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"kitty/tools/cli"
 	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
 )
 
@@ -85,6 +87,28 @@ type Result struct {
 	Cwd                  string              `json:"cwd"`
 }
 
+func encode_hint(num int, alphabet string) (res string) {
+	runes := []rune(alphabet)
+	d := len(runes)
+	for res == "" || num > 0 {
+		res = string(runes[num%d]) + res
+		num /= d
+	}
+	return
+}
+
+func decode_hint(x string, alphabet string) (ans int) {
+	base := len(alphabet)
+	index_map := make(map[rune]int, len(alphabet))
+	for i, c := range alphabet {
+		index_map[c] = i
+	}
+	for _, char := range x {
+		ans = ans*base + index_map[char]
+	}
+	return
+}
+
 func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 	output := tui.KittenOutputSerializer()
 	if tty.IsTerminal(os.Stdin.Fd()) {
@@ -127,22 +151,87 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 			window_title = "Choose text"
 		}
 	}
+	current_text := ""
+	current_input := ""
+	match_suffix := ""
+	switch o.AddTrailingSpace {
+	case "always":
+		match_suffix = " "
+	case "never":
+	default:
+		if o.Multiple {
+			match_suffix = " "
+		}
+	}
+	chosen := []*Mark{}
 	lp, err := loop.New(loop.NoAlternateScreen) // no alternate screen reduces flicker on exit
 	if err != nil {
 		return
 	}
+	fctx := style.Context{AllowEscapeCodes: true}
+	faint := fctx.SprintFunc("dim")
+	hint_style := fctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s bold", o.HintsForegroundColor, o.HintsBackgroundColor))
+	text_style := fctx.SprintFunc(fmt.Sprintf("fg=bright-%s bold", o.HintsTextColor))
+
+	highlight_mark := func(m *Mark) string {
+		hint := encode_hint(m.Index, alphabet)
+		if current_input != "" && !strings.HasPrefix(hint, current_input) {
+			return faint(text)
+		}
+		hint = hint[len(current_input):]
+		if hint == "" {
+			hint = " "
+		}
+		text = text[len(hint):]
+		return hint_style(hint) + text_style(text)
+	}
+
+	render := func() string {
+		for i := len(all_marks) - 1; i >= 0; i-- {
+			mark := &all_marks[i]
+			if ignore_mark_indices.Has(mark.Index) {
+				continue
+			}
+			mtext := highlight_mark(mark)
+			text = text[:mark.Start] + mtext + text[mark.End:]
+		}
+		text = strings.ReplaceAll(text, "\x00", "")
+		return strings.TrimRightFunc(strings.NewReplacer("\r", "\r\n", "\n", "\r\n").Replace(text), unicode.IsSpace)
+	}
+
+	draw_screen := func() {
+		lp.StartAtomicUpdate()
+		defer lp.EndAtomicUpdate()
+		if current_text == "" {
+			current_text = render()
+		}
+		lp.ClearScreen()
+		lp.QueueWriteString(current_text)
+	}
+
 	lp.OnInitialize = func() (string, error) {
 		lp.SendOverlayReady()
 		lp.SetCursorVisible(false)
 		lp.SetWindowTitle(window_title)
 		lp.AllowLineWrapping(false)
+		draw_screen()
 		return "", nil
 	}
 	lp.OnFinalize = func() string {
 		lp.SetCursorVisible(true)
 		return ""
 	}
+	lp.OnResize = func(old_size, new_size loop.ScreenSize) error {
+		draw_screen()
+		return nil
+	}
 
+	result.Match = make([]string, len(chosen))
+	result.Groupdicts = make([]map[string]string, len(chosen))
+	for i, m := range chosen {
+		result.Match[i] = m.Text + match_suffix
+		result.Groupdicts[i] = m.Groupdict
+	}
 	output(result)
 	return
 }
