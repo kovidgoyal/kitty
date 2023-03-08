@@ -10,6 +10,7 @@ import (
 	"kitty/tools/cmd/at"
 	"kitty/tools/cmd/clipboard"
 	"kitty/tools/cmd/edit_in_kitty"
+	"kitty/tools/cmd/hints"
 	"kitty/tools/cmd/hyperlinked_grep"
 	"kitty/tools/cmd/icat"
 	"kitty/tools/cmd/pytest"
@@ -42,6 +43,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	hyperlinked_grep.EntryPoint(root)
 	// ask
 	ask.EntryPoint(root)
+	// hints
+	hints.EntryPoint(root)
 	// __pytest__
 	pytest.EntryPoint(root)
 	// __hold_till_enter__

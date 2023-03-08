@@ -55,6 +55,10 @@ func (self *Set[T]) Iterable() map[T]struct{} {
 	return self.items
 }
 
+func (self *Set[T]) AsSlice() []T {
+	return maps.Keys(self.items)
+}
+
 func (self *Set[T]) Intersect(other *Set[T]) (ans *Set[T]) {
 	if self.Len() < other.Len() {
 		ans = NewSet[T](self.Len())

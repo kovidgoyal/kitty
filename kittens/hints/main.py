@@ -864,6 +864,7 @@ if __name__ == '__main__':
 elif __name__ == '__doc__':
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
+    cd['short_desc'] = 'Select text from screen with keyboard'
     cd['options'] = OPTIONS
     cd['help_text'] = help_text
 # }}}

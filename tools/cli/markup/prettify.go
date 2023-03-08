@@ -80,7 +80,7 @@ func replace_all_rst_roles(str string, repl func(rst_format_match) string) strin
 		m.role = groupdict["role"].Text
 		return repl(m)
 	}
-	return utils.ReplaceAll(":(?P<role>[a-z]+):(?:(?:`(?P<payload>[^`]+)`)|(?:'(?P<payload>[^']+)'))", str, rf)
+	return utils.ReplaceAll(utils.MustCompile(":(?P<role>[a-z]+):(?:(?:`(?P<payload>[^`]+)`)|(?:'(?P<payload>[^']+)'))"), str, rf)
 }
 
 func (self *Context) hyperlink_for_url(url string, text string) string {

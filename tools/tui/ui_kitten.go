@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	"kitty/tools/cli"
 	"kitty/tools/utils"
 
 	"github.com/jamesruan/go-rfc1924/base85"
@@ -36,4 +37,10 @@ func KittenOutputSerializer() func(any) (string, error) {
 		}
 		return utils.UnsafeBytesToString(data), nil
 	}
+}
+
+func ReportError(err error) {
+	cli.ShowError(err)
+	os.Stdout.WriteString("\x1bP@kitty-overlay-ready|\x1b\\")
+	HoldTillEnter(false)
 }

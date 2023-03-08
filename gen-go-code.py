@@ -465,6 +465,7 @@ def generate_constants() -> str:
         assert m is not None
         placeholder_char = int(m.group(1), 16)
     dp = ", ".join(map(lambda x: f'"{serialize_as_go_string(x)}"', kc.default_pager_for_help))
+    url_prefixes = ','.join(f'"{x}"' for x in Options.url_prefixes)
     return f'''\
 package kitty
 
@@ -489,9 +490,11 @@ var RefMap = map[string]string{serialize_go_dict(ref_map['ref'])}
 var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
 var AllowedShellIntegrationValues = []string{{ {str(sorted(allowed_shell_integration_values))[1:-1].replace("'", '"')} }}
 var KittyConfigDefaults = struct {{
-Term, Shell_integration string
+Term, Shell_integration, Select_by_word_characters string
+Url_prefixes []string
 }}{{
-Term: "{Options.term}", Shell_integration: "{' '.join(Options.shell_integration)}",
+Term: "{Options.term}", Shell_integration: "{' '.join(Options.shell_integration)}", Url_prefixes: []string{{ {url_prefixes} }},
+Select_by_word_characters: `{Options.select_by_word_characters}`,
 }}
 '''  # }}}
 

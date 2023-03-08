@@ -25,24 +25,23 @@ func MustCompile(pat string) *regexp.Regexp {
 	return pat_cache.MustGetOrCreate(pat, regexp.MustCompile)
 }
 
-func ReplaceAll(pat, str string, repl func(full_match string, groupdict map[string]SubMatch) string) string {
-	cpat := MustCompile(pat)
+func ReplaceAll(cpat *regexp.Regexp, str string, repl func(full_match string, groupdict map[string]SubMatch) string) string {
 	result := strings.Builder{}
 	result.Grow(len(str) + 256)
 	last_index := 0
 	matches := cpat.FindAllStringSubmatchIndex(str, -1)
 	names := cpat.SubexpNames()
+	groupdict := make(map[string]SubMatch, len(names))
 	for _, v := range matches {
 		match_start, match_end := v[0], v[1]
 		full_match := str[match_start:match_end]
-		groupdict := make(map[string]SubMatch, len(names))
+		for k := range groupdict {
+			delete(groupdict, k)
+		}
 		for i, name := range names {
-			if i == 0 {
-				continue
-			}
 			idx := 2 * i
 			if v[idx] > -1 && v[idx+1] > -1 {
-				groupdict[name] = SubMatch{Text: str[v[idx]:v[idx+1]], Start: v[idx] - match_start, End: v[idx+1] - match_start}
+				groupdict[name] = SubMatch{Text: str[v[idx]:v[idx+1]], Start: v[idx], End: v[idx+1]}
 			}
 		}
 		result.WriteString(str[last_index:match_start])
