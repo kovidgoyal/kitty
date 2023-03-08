@@ -879,6 +879,25 @@ cursor_within_margins(Screen *self) {
     return self->margin_top <= self->cursor->y && self->cursor->y <= self->margin_bottom;
 }
 
+// Remove all cell images from a portion of the screen and mark lines that
+// contain image placeholders as dirty to make sure they are redrawn. This is
+// needed when we perform commands that may move some lines without marking them
+// as dirty (like screen_insert_lines) and at the same time don't move image
+// references (i.e. unlike screen_scroll, which moves everything).
+static void
+screen_dirty_line_graphics(Screen *self, unsigned int top, unsigned int bottom) {
+    bool need_to_remove = false;
+    for (unsigned int y = top; y <= bottom; y++) {
+        if (self->linebuf->line_attrs[y].has_image_placeholders) {
+            need_to_remove = true;
+            linebuf_mark_line_dirty(self->linebuf, y);
+            self->is_dirty = true;
+        }
+    }
+    if (need_to_remove)
+        grman_remove_cell_images(self->grman, top, bottom);
+}
+
 void
 screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload) {
     unsigned int x = self->cursor->x, y = self->cursor->y;
@@ -889,6 +908,10 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
         if (self->cursor->x >= self->columns) { self->cursor->x = 0; self->cursor->y++; }
         if (self->cursor->y > self->margin_bottom) screen_scroll(self, self->cursor->y - self->margin_bottom);
         screen_ensure_bounds(self, false, in_margins);
+    }
+    if (cmd->unicode_placement) {
+        // Make sure the placeholders are redrawn if we add or change a virtual placement.
+        screen_dirty_line_graphics(self, 0, self->lines);
     }
 }
 // }}}
@@ -1545,25 +1568,6 @@ screen_fake_move_cursor_to_position(Screen *self, index_type start_x, index_type
 // }}}
 
 // Editing {{{
-
-// Remove all cell images from a portion of the screen and mark lines that
-// contain image placeholders as dirty to make sure they are redrawn. This is
-// needed when we perform commands that may move some lines without marking them
-// as dirty (like screen_insert_lines) and at the same time don't move image
-// references (i.e. unlike screen_scroll, which moves everything).
-static void
-screen_dirty_line_graphics(Screen *self, unsigned int top, unsigned int bottom) {
-    bool need_to_remove = false;
-    for (unsigned int y = top; y <= bottom; y++) {
-        if (self->linebuf->line_attrs[y].has_image_placeholders) {
-            need_to_remove = true;
-            linebuf_mark_line_dirty(self->linebuf, y);
-            self->is_dirty = true;
-        }
-    }
-    if (need_to_remove)
-        grman_remove_cell_images(self->grman, top, bottom);
-}
 
 void
 screen_erase_in_line(Screen *self, unsigned int how, bool private) {
