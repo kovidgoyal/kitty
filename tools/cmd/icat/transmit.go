@@ -252,10 +252,10 @@ func next_random() (ans uint32) {
 func write_unicode_placeholder(imgd *image_data) {
 	prefix := ""
 	foreground := fmt.Sprintf("\033[38:2:%d:%d:%dm", (imgd.image_id>>16)&255, (imgd.image_id>>8)&255, imgd.image_id&255)
-	os.Stdout.WriteString(loop.SAVE_PRIVATE_MODE_VALUES + foreground)
-	restore := "\033[39m" + loop.RESTORE_PRIVATE_MODE_VALUES
+	os.Stdout.WriteString(foreground)
+	restore := "\033[39m"
 	if imgd.move_to.y > 0 {
-		fmt.Print(loop.SAVE_CURSOR)
+		os.Stdout.WriteString(loop.SAVE_CURSOR)
 		restore += loop.RESTORE_CURSOR
 	} else if imgd.move_x_by > 0 {
 		prefix = strings.Repeat(" ", imgd.move_x_by)
