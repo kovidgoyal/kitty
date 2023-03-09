@@ -20,12 +20,11 @@ var _ = fmt.Print
 
 const (
 	DEFAULT_HINT_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
-	DEFAULT_REGEX         = `(?m)^\s*(.+)\s*$`
-	FILE_EXTENSION        = `\.(?:[a-zA-Z0-9]{2,7}|[ahcmo])(?!\.)`
+	FILE_EXTENSION        = `\.(?:[a-zA-Z0-9]{2,7}|[ahcmo])(?:\b|[^.])`
 )
 
 func path_regex() string {
-	return fmt.Sprintf(`(?:\S*?/[\r\S]+)|(?:\S[\r\S]*{%s})\b`, FILE_EXTENSION)
+	return fmt.Sprintf(`(?:\S*?/[\r\S]+)|(?:\S[\r\S]*%s)\b`, FILE_EXTENSION)
 }
 
 func default_linenum_regex() string {
@@ -84,6 +83,7 @@ func process_escape_codes(text string) (ans string, hyperlinks []Mark) {
 }
 
 type PostProcessorFunc = func(string, int, int) (int, int)
+type GroupProcessorFunc = func(map[string]string)
 
 func is_punctuation(b string) bool {
 	switch b {
@@ -141,6 +141,15 @@ func matching_remover(openers ...string) PostProcessorFunc {
 		}
 		return s, e
 	}
+}
+
+func linenum_group_processor(gd map[string]string) {
+	pat := utils.MustCompile(`:\d+$`)
+	gd[`path`] = pat.ReplaceAllStringFunc(gd["path"], func(m string) string {
+		gd["line"] = m[1:]
+		return ``
+	})
+	gd[`path`] = utils.Expanduser(gd[`path`])
 }
 
 var PostProcessorMap = (&utils.Once[map[string]PostProcessorFunc]{Run: func() map[string]PostProcessorFunc {
@@ -211,7 +220,7 @@ var RelevantKittyOpts = (&utils.Once[KittyOpts]{Run: func() KittyOpts {
 	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
 }}).Get
 
-func functions_for(opts *Options) (pattern string, post_processors []PostProcessorFunc) {
+func functions_for(opts *Options) (pattern string, post_processors []PostProcessorFunc, group_processors []GroupProcessorFunc) {
 	switch opts.Type {
 	case "url":
 		var url_prefixes *utils.Set[string]
@@ -247,15 +256,17 @@ func functions_for(opts *Options) (pattern string, post_processors []PostProcess
 	default:
 		pattern = opts.Regex
 		if opts.Type == "linenum" {
-			if pattern == DEFAULT_REGEX {
+			if pattern == kitty.HintsDefaultRegex {
 				pattern = default_linenum_regex()
 			}
+			post_processors = append(post_processors, PostProcessorMap()["brackets"], PostProcessorMap()["quotes"])
+			group_processors = append(group_processors, linenum_group_processor)
 		}
 	}
 	return
 }
 
-func mark(r *regexp.Regexp, post_processors []PostProcessorFunc, text string, opts *Options) (ans []Mark) {
+func mark(r *regexp.Regexp, post_processors []PostProcessorFunc, group_processors []GroupProcessorFunc, text string, opts *Options) (ans []Mark) {
 	sanitize_pat := regexp.MustCompile("[\r\n\x00]")
 	names := r.SubexpNames()
 	for i, v := range r.FindAllStringSubmatchIndex(text, -1) {
@@ -281,12 +292,15 @@ func mark(r *regexp.Regexp, post_processors []PostProcessorFunc, text string, op
 		for x, name := range names {
 			if name != "" {
 				idx := 2 * x
-				if s, e := v[idx], v[idx]+1; s > -1 && e > -1 {
+				if s, e := v[idx], v[idx+1]; s > -1 && e > -1 {
 					s = utils.Max(s, match_start)
 					e = utils.Min(e, match_end)
 					gd[name] = sanitize_pat.ReplaceAllLiteralString(text[s:e], "")
 				}
 			}
+		}
+		for _, f := range group_processors {
+			f(gd)
 		}
 		ans = append(ans, Mark{
 			Index: i, Start: match_start, End: match_end, Text: full_match, Groupdict: gd,
@@ -295,9 +309,22 @@ func mark(r *regexp.Regexp, post_processors []PostProcessorFunc, text string, op
 	return
 }
 
+type ErrNoMatches struct{ Type string }
+
+func (self *ErrNoMatches) Error() string {
+	none_of := "matches"
+	switch self.Type {
+	case "urls":
+		none_of = "URLs"
+	case "hyperlinks":
+		none_of = "hyperlinks"
+	}
+	return fmt.Sprintf("No %s found", none_of)
+}
+
 func find_marks(text string, opts *Options) (ans []Mark, index_map map[int]*Mark, err error) {
 	text, hyperlinks := process_escape_codes(text)
-	pattern, post_processors := functions_for(opts)
+	pattern, post_processors, group_processors := functions_for(opts)
 	if opts.Type == "hyperlink" {
 		ans = hyperlinks
 	} else {
@@ -305,17 +332,10 @@ func find_marks(text string, opts *Options) (ans []Mark, index_map map[int]*Mark
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to compile the regex pattern: %#v with error: %w", pattern, err)
 		}
-		ans = mark(r, post_processors, text, opts)
+		ans = mark(r, post_processors, group_processors, text, opts)
 	}
 	if len(ans) == 0 {
-		none_of := "matches"
-		switch opts.Type {
-		case "urls":
-			none_of = "URLs"
-		case "hyperlinks":
-			none_of = "hyperlinks"
-		}
-		return nil, nil, fmt.Errorf("No %s found", none_of)
+		return nil, nil, &ErrNoMatches{Type: opts.Type}
 	}
 	largest_index := ans[len(ans)-1].Index
 	offset := utils.Max(0, opts.HintsOffset)

@@ -457,8 +457,10 @@ def load_ref_map() -> Dict[str, Dict[str, str]]:
 
 
 def generate_constants() -> str:
+    from kittens.hints.main import DEFAULT_REGEX
     from kitty.options.types import Options
     from kitty.options.utils import allowed_shell_integration_values
+    del sys.modules['kittens.hints.main']
     ref_map = load_ref_map()
     with open('kitty/data-types.h') as dt:
         m = re.search(r'^#define IMAGE_PLACEHOLDER_CHAR (\S+)', dt.read(), flags=re.M)
@@ -481,6 +483,7 @@ const RC_ENCRYPTION_PROTOCOL_VERSION string = "{kc.RC_ENCRYPTION_PROTOCOL_VERSIO
 const IsFrozenBuild bool = false
 const IsStandaloneBuild bool = false
 const HandleTermiosSignals = {Mode.HANDLE_TERMIOS_SIGNALS.value[0]}
+const HintsDefaultRegex = `{DEFAULT_REGEX}`
 var Version VersionType = VersionType{{Major: {kc.version.major}, Minor: {kc.version.minor}, Patch: {kc.version.patch},}}
 var DefaultPager []string = []string{{ {dp} }}
 var FunctionalKeyNameAliases = map[string]string{serialize_go_dict(functional_key_name_aliases)}

@@ -726,15 +726,10 @@ def main(args: List[str]) -> Optional[Dict[str, Any]]:
 
 
 def linenum_process_result(data: Dict[str, Any]) -> Tuple[str, int]:
-    lnum_pat = re.compile(r'(:\d+)$')
     for match, g in zip(data['match'], data['groupdicts']):
         path, line = g['path'], g['line']
         if path and line:
-            m = lnum_pat.search(path)
-            if m is not None:
-                line = m.group(1)[1:]
-                path = path.rpartition(':')[0]
-            return os.path.expanduser(path), int(line)
+            return path, int(line)
     return '', -1
 
 
@@ -782,7 +777,10 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
 
 @result_handler(type_of_input='screen-ansi', has_ready_notification=Hints.overlay_ready_report_needed)
 def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType) -> None:
-    if data['customize_processing']:
+    cp = data['customize_processing']
+    if data['type'] == 'linenum':
+        cp = '::linenum::'
+    if cp:
         m = load_custom_processor(data['customize_processing'])
         if 'handle_result' in m:
             m['handle_result'](args, data, target_window_id, boss, data['extra_cli_args'])
