@@ -313,19 +313,21 @@ func transmit_image(imgd *image_data) {
 	if f == nil {
 		f = transmit_stream
 	}
-	if imgd.use_unicode_placeholder {
-		for imgd.image_id&0xFF000000 == 0 || imgd.image_id&0x00FFFF00 == 0 {
-			// Generate a 32-bit image id using rejection sampling such that the most
-			// significant byte and the two bytes in the middle are non-zero to avoid
-			// collisions with applications that cannot represent non-zero most
-			// significant bytes (which is represented by the third combining character)
-			// or two non-zero bytes in the middle (which requires 24-bit color mode).
-			imgd.image_id = next_random()
-		}
-	} else {
-		if len(imgd.frames) > 1 {
-			for imgd.image_number == 0 {
-				imgd.image_number = next_random()
+	if imgd.image_id == 0 {
+		if imgd.use_unicode_placeholder {
+			for imgd.image_id&0xFF000000 == 0 || imgd.image_id&0x00FFFF00 == 0 {
+				// Generate a 32-bit image id using rejection sampling such that the most
+				// significant byte and the two bytes in the middle are non-zero to avoid
+				// collisions with applications that cannot represent non-zero most
+				// significant bytes (which is represented by the third combining character)
+				// or two non-zero bytes in the middle (which requires 24-bit color mode).
+				imgd.image_id = next_random()
+			}
+		} else {
+			if len(imgd.frames) > 1 {
+				for imgd.image_number == 0 {
+					imgd.image_number = next_random()
+				}
 			}
 		}
 	}

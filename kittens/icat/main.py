@@ -138,6 +138,14 @@ Whether to surround graphics commands with escape sequences that allow them to p
 programs like tmux. The default is to detect when running inside tmux and automatically use
 the tmux passthrough escape codes. Note that when this option is enabled it implies
 :option:`--unicode-placeholder` as well.
+
+
+--image-id
+type=int
+default=0
+The graphics protocol id to use for the created image. Normally, a random id is created if needed.
+This option allows control of the id. When multiple images are sent, sequential ids starting from the specified id
+are used. Valid ids are from 1 to 4294967295. Numbers outside this range are automatically wrapped.
 '''
 
 help_text = (

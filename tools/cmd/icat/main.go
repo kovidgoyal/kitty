@@ -240,8 +240,16 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	if passthrough_mode != no_passthrough {
 		use_unicode_placeholder = true
 	}
+	base_id := uint32(opts.ImageId)
 	for num_of_items > 0 {
 		imgd := <-output_channel
+		if base_id != 0 {
+			imgd.image_id = base_id
+			base_id++
+			if base_id == 0 {
+				base_id++
+			}
+		}
 		imgd.use_unicode_placeholder = use_unicode_placeholder
 		imgd.passthrough_mode = passthrough_mode
 		num_of_items--
