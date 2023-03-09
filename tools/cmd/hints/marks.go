@@ -53,7 +53,7 @@ func process_escape_codes(text string) (ans string, hyperlinks []Mark) {
 		idx++
 	}
 
-	ans = utils.ReplaceAll(utils.MustCompile("\x1b(?:\\[[0-9;:]*?m|\\].*?\x1b\\)"), text, func(raw string, groupdict map[string]utils.SubMatch) string {
+	ans = utils.ReplaceAll(utils.MustCompile("\x1b(?:\\[[0-9;:]*?m|\\].*?\x1b\\\\)"), text, func(raw string, groupdict map[string]utils.SubMatch) string {
 		if !strings.HasPrefix(raw, "\x1b]8") {
 			removed_size += len(raw)
 			return ""

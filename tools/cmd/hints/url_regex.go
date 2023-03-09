@@ -2,4 +2,4 @@
 
 package hints
 
-const URL_DELIMITERS = `\x00-\x09\x0b-\x0c\x0e-\x20\x7f-\xa0\xad\u0600-\u0605\u061c\u06dd\u070f\u0890-\u0891\u08e2\u1680\u180e\u2000-\u200f\u2028-\u202f\u205f-\u2064\u2066-\u206f\u3000\ud800-\uf8ff\ufeff\ufff9-\ufffb\U000110bd\U000110cd\U00013430-\U0001343f\U0001bca0-\U0001bca3\U0001d173-\U0001d17a\U000e0001\U000e0020-\U000e007f\U000f0000-\U000ffffd\U00100000-\U0010fffd`
+const URL_DELIMITERS = `\x00-\x09\x0b-\x0c\x0e-\x20\x7f-\xa0\xad\x{600}-\x{605}\x{61c}\x{6dd}\x{70f}\x{890}-\x{891}\x{8e2}\x{1680}\x{180e}\x{2000}-\x{200f}\x{2028}-\x{202f}\x{205f}-\x{2064}\x{2066}-\x{206f}\x{3000}\x{d800}-\x{f8ff}\x{feff}\x{fff9}-\x{fffb}\x{110bd}\x{110cd}\x{13430}-\x{1343f}\x{1bca0}-\x{1bca3}\x{1d173}-\x{1d17a}\x{e0001}\x{e0020}-\x{e007f}\x{f0000}-\x{ffffd}\x{100000}-\x{10fffd}`
