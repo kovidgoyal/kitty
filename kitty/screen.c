@@ -2343,8 +2343,8 @@ screen_update_only_line_graphics_data(Screen *self) {
     for (index_type y = 0; y < MIN(self->lines, self->scrolled_by); y++) {
         lnum = self->scrolled_by - 1 - y;
         historybuf_init_line(self->historybuf, lnum, self->historybuf->line);
+        screen_render_line_graphics(self, self->historybuf->line, y - self->scrolled_by);
         if (self->historybuf->line->attrs.has_dirty_text) {
-            screen_render_line_graphics(self, self->historybuf->line, y - self->scrolled_by);
             historybuf_mark_line_clean(self->historybuf, lnum);
         }
     }
@@ -2371,9 +2371,9 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
     for (index_type y = 0; y < MIN(self->lines, self->scrolled_by); y++) {
         lnum = self->scrolled_by - 1 - y;
         historybuf_init_line(self->historybuf, lnum, self->historybuf->line);
+        screen_render_line_graphics(self, self->historybuf->line, y - self->scrolled_by);
         if (self->historybuf->line->attrs.has_dirty_text) {
             render_line(fonts_data, self->historybuf->line, lnum, self->cursor, self->disable_ligatures);
-            screen_render_line_graphics(self, self->historybuf->line, y - self->scrolled_by);
             if (screen_has_marker(self)) mark_text_in_line(self->marker, self->historybuf->line);
             historybuf_mark_line_clean(self->historybuf, lnum);
         }
