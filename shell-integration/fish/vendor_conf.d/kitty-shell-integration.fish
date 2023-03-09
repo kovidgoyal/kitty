@@ -161,11 +161,12 @@ function edit-in-kitty --wraps "kitten edit-in-kitty" -d "Edit the specified fil
 end
 
 function __ksi_transmit_data -d "Transmit data to kitty using chunked DCS escapes"
-    set --local data_len (string length -- "$argv[1]")
+    set --local data (string replace --regex --all -- "\s" "" "$argv[1]")
+    set --local data_len (string length -- "$data")
     set --local pos 1
     set --local chunk_num 0
     while test "$pos" -le $data_len
-        printf \eP@kitty-%s\|%s:%s\e\\ "$argv[2]" "$chunk_num" (string sub --start $pos --length 2048 -- $argv[1] | string collect)
+        printf \eP@kitty-%s\|%s:%s\e\\ "$argv[2]" "$chunk_num" (string sub --start $pos --length 2048 -- "$data")
         set pos (math $pos + 2048)
         set chunk_num (math $chunk_num + 1)
     end
@@ -191,5 +192,5 @@ function clone-in-kitty -d "Clone the current fish session into a new kitty wind
     set --local b64_envs (string join0 -- $envs | base64)
     set --local b64_cwd (printf "%s" "$PWD" | base64)
     set --prepend data "shell=fish" "pid=$fish_pid" "cwd=$b64_cwd" "env=$b64_envs"
-    __ksi_transmit_data (string join "," -- $data | string replace --regex --all "\s" "") "clone"
+    __ksi_transmit_data (string join "," -- $data) "clone"
 end
