@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -31,7 +32,7 @@ func TestHintMarking(t *testing.T) {
 
 	r := func(text string, url ...string) (marks []Mark) {
 		ptext := convert_text(text, cols)
-		_, marks, _, err := find_marks(ptext, opts, cli_args...)
+		ptext, marks, _, err := find_marks(ptext, opts, cli_args...)
 		if err != nil {
 			var e *ErrNoMatches
 			if len(url) != 0 || !errors.As(err, &e) {
@@ -42,6 +43,12 @@ func TestHintMarking(t *testing.T) {
 		actual := utils.Map(func(m Mark) string { return m.Text }, marks)
 		if diff := cmp.Diff(url, actual); diff != "" {
 			t.Fatalf("%#v failed:\n%s", text, diff)
+		}
+		for _, m := range marks {
+			q := strings.NewReplacer("\n", "", "\r", "", "\x00", "").Replace(ptext[m.Start:m.End])
+			if diff := cmp.Diff(m.Text, q); diff != "" {
+				t.Fatalf("Mark start and end dont point to correct offset in text for %#v\n%s", text, diff)
+			}
 		}
 		return
 	}
@@ -114,7 +121,7 @@ def mark(text, args, Mark, extra_cli_args, *a):
 `), 0o600)
 	opts.Type = "regex"
 	opts.CustomizeProcessing = simple
-	marks := r("a b", `a`, `b`)
+	marks := r("漢字 b", `漢字`, `b`)
 	if diff := cmp.Diff(marks[0].Groupdict, map[string]any{"idx": float64(0), "args": []any{"extra1"}}); diff != "" {
 		t.Fatalf("Did not get expected groupdict from custom processor:\n%s", diff)
 	}

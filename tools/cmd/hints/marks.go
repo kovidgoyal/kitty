@@ -322,6 +322,30 @@ func mark(r *regexp.Regexp, post_processors []PostProcessorFunc, group_processor
 
 type ErrNoMatches struct{ Type string }
 
+func adjust_python_offsets(text string, marks []Mark) {
+	// python returns rune based offsets (unicode chars not utf-8 bytes)
+	// this adjustment function assumes the marks are non overlapping
+	bytes := utils.UnsafeStringToBytes(text)
+	char_offset, byte_offset := 0, 0
+
+	adjust := func(x int) (sz int) {
+		x -= char_offset
+		for x > 0 {
+			_, d := utf8.DecodeRune(bytes)
+			sz += d
+			bytes = bytes[d:]
+			x--
+			char_offset++
+		}
+		byte_offset += sz
+		return byte_offset
+	}
+	for i := range marks {
+		mark := &marks[i]
+		mark.Start = adjust(mark.Start)
+		mark.End = adjust(mark.End)
+	}
+}
 func (self *ErrNoMatches) Error() string {
 	none_of := "matches"
 	switch self.Type {
@@ -369,6 +393,7 @@ func find_marks(text string, opts *Options, cli_args ...string) (sanitized_text 
 		if err != nil {
 			return "", nil, nil, fmt.Errorf("Failed to load output from custom processor %#v with error: %w", opts.CustomizeProcessing, err)
 		}
+		adjust_python_offsets(sanitized_text, ans)
 	} else if opts.Type == "hyperlink" {
 		ans = hyperlinks
 	} else {
