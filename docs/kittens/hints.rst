@@ -72,7 +72,8 @@ the :ref:`kitty config directory <confloc>` with the following contents:
             start, end = m.span()
             mark_text = text[start:end].replace('\n', '').replace('\0', '')
             # The empty dictionary below will be available as groupdicts
-            # in handle_result() and can contain arbitrary data.
+            # in handle_result() and can contain string keys and arbitrary JSON
+            # serializable values.
             yield Mark(idx, start, end, mark_text, {})
 
 

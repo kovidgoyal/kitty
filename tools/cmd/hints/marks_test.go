@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"kitty"
 	"kitty/tools/utils"
+	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -17,11 +19,19 @@ var _ = fmt.Print
 
 func TestHintMarking(t *testing.T) {
 
-	opts := &Options{Type: "url", UrlPrefixes: "default", Regex: kitty.HintsDefaultRegex}
+	var opts *Options
 	cols := 20
-	r := func(text string, url ...string) {
+	cli_args := []string{}
+
+	reset := func() {
+		opts = &Options{Type: "url", UrlPrefixes: "default", Regex: kitty.HintsDefaultRegex}
+		cols = 20
+		cli_args = []string{}
+	}
+
+	r := func(text string, url ...string) (marks []Mark) {
 		ptext := convert_text(text, cols)
-		_, marks, _, err := find_marks(ptext, opts)
+		_, marks, _, err := find_marks(ptext, opts, cli_args...)
 		if err != nil {
 			var e *ErrNoMatches
 			if len(url) != 0 || !errors.As(err, &e) {
@@ -33,8 +43,10 @@ func TestHintMarking(t *testing.T) {
 		if diff := cmp.Diff(url, actual); diff != "" {
 			t.Fatalf("%#v failed:\n%s", text, diff)
 		}
+		return
 	}
 
+	reset()
 	u := `http://test.me/`
 	r(u, u)
 	r(`"`+u+`"`, u)
@@ -51,11 +63,11 @@ func TestHintMarking(t *testing.T) {
 	opts.Type = "linenum"
 	m := func(text, path string, line int) {
 		ptext := convert_text(text, cols)
-		_, marks, _, err := find_marks(ptext, opts)
+		_, marks, _, err := find_marks(ptext, opts, cli_args...)
 		if err != nil {
 			t.Fatalf("%#v failed with error: %s", text, err)
 		}
-		gd := map[string]string{"path": path, "line": strconv.Itoa(line)}
+		gd := map[string]any{"path": path, "line": strconv.Itoa(line)}
 		if diff := cmp.Diff(marks[0].Groupdict, gd); diff != "" {
 			t.Fatalf("%#v failed:\n%s", text, diff)
 		}
@@ -67,6 +79,7 @@ func TestHintMarking(t *testing.T) {
 	m("a/file.c:23:32", "a/file.c", 23)
 	m("~/file.c:23:32", utils.Expanduser("~/file.c"), 23)
 
+	reset()
 	opts.Type = "path"
 	r("file.c", "file.c")
 	r("file.c.", "file.c")
@@ -74,6 +87,7 @@ func TestHintMarking(t *testing.T) {
 	r("(file.epub)", "file.epub")
 	r("some/path", "some/path")
 
+	reset()
 	cols = 60
 	opts.Type = "ip"
 	r(`100.64.0.0`, `100.64.0.0`)
@@ -86,4 +100,25 @@ func TestHintMarking(t *testing.T) {
 	r(`255.255.255.256`)
 	r(`:1`)
 
+	reset()
+	tdir := t.TempDir()
+	simple := filepath.Join(tdir, "simple.py")
+	cli_args = []string{"--customize-processing", simple, "extra1"}
+	os.WriteFile(simple, []byte(`
+def mark(text, args, Mark, extra_cli_args, *a):
+    import re
+    for idx, m in enumerate(re.finditer(r'\w+', text)):
+        start, end = m.span()
+        mark_text = text[start:end].replace('\n', '').replace('\0', '')
+        yield Mark(idx, start, end, mark_text, {"idx": idx, "args": extra_cli_args})
+`), 0o600)
+	opts.Type = "regex"
+	opts.CustomizeProcessing = simple
+	marks := r("a b", `a`, `b`)
+	if diff := cmp.Diff(marks[0].Groupdict, map[string]any{"idx": float64(0), "args": []any{"extra1"}}); diff != "" {
+		t.Fatalf("Did not get expected groupdict from custom processor:\n%s", diff)
+	}
+	opts.Regex = "b"
+	os.WriteFile(simple, []byte(""), 0o600)
+	r("a b", `b`)
 }

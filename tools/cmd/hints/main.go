@@ -76,15 +76,15 @@ func parse_input(text string) string {
 }
 
 type Result struct {
-	Match                []string            `json:"match"`
-	Programs             []string            `json:"programs"`
-	Multiple_joiner      string              `json:"multiple_joiner"`
-	Customize_processing string              `json:"customize_processing"`
-	Type                 string              `json:"type"`
-	Groupdicts           []map[string]string `json:"groupdicts"`
-	Extra_cli_args       []string            `json:"extra_cli_args"`
-	Linenum_action       string              `json:"linenum_action"`
-	Cwd                  string              `json:"cwd"`
+	Match                []string         `json:"match"`
+	Programs             []string         `json:"programs"`
+	Multiple_joiner      string           `json:"multiple_joiner"`
+	Customize_processing string           `json:"customize_processing"`
+	Type                 string           `json:"type"`
+	Groupdicts           []map[string]any `json:"groupdicts"`
+	Extra_cli_args       []string         `json:"extra_cli_args"`
+	Linenum_action       string           `json:"linenum_action"`
+	Cwd                  string           `json:"cwd"`
 }
 
 func encode_hint(num int, alphabet string) (res string) {
@@ -125,7 +125,7 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		return 1, nil
 	}
 	input_text := parse_input(utils.UnsafeBytesToString(stdin))
-	text, all_marks, index_map, err := find_marks(input_text, o)
+	text, all_marks, index_map, err := find_marks(input_text, o, os.Args[2:]...)
 	if err != nil {
 		tui.ReportError(err)
 		return 1, nil
@@ -313,7 +313,7 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		return lp.ExitCode(), nil
 	}
 	result.Match = make([]string, len(chosen))
-	result.Groupdicts = make([]map[string]string, len(chosen))
+	result.Groupdicts = make([]map[string]any, len(chosen))
 	for i, m := range chosen {
 		result.Match[i] = m.Text + match_suffix
 		result.Groupdicts[i] = m.Groupdict

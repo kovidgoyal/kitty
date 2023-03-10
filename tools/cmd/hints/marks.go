@@ -3,10 +3,14 @@
 package hints
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"kitty"
 	"kitty/tools/config"
 	"kitty/tools/utils"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -32,10 +36,13 @@ func default_linenum_regex() string {
 }
 
 type Mark struct {
-	Index, Start, End int
-	Text, Group_id    string
-	Is_hyperlink      bool
-	Groupdict         map[string]string
+	Index        int            `json:"index"`
+	Start        int            `json:"start"`
+	End          int            `json:"end"`
+	Text         string         `json:"text"`
+	Group_id     string         `json:"group_id"`
+	Is_hyperlink bool           `json:"is_hyperlink"`
+	Groupdict    map[string]any `json:"groupdict"`
 }
 
 func process_escape_codes(text string) (ans string, hyperlinks []Mark) {
@@ -302,8 +309,12 @@ func mark(r *regexp.Regexp, post_processors []PostProcessorFunc, group_processor
 		for _, f := range group_processors {
 			f(gd)
 		}
+		gd2 := make(map[string]any, len(gd))
+		for k, v := range gd {
+			gd2[k] = v
+		}
 		ans = append(ans, Mark{
-			Index: i, Start: match_start, End: match_end, Text: full_match, Groupdict: gd,
+			Index: i, Start: match_start, End: match_end, Text: full_match, Groupdict: gd2,
 		})
 	}
 	return
@@ -322,18 +333,51 @@ func (self *ErrNoMatches) Error() string {
 	return fmt.Sprintf("No %s found", none_of)
 }
 
-func find_marks(text string, opts *Options) (sanitized_text string, ans []Mark, index_map map[int]*Mark, err error) {
+func find_marks(text string, opts *Options, cli_args ...string) (sanitized_text string, ans []Mark, index_map map[int]*Mark, err error) {
 	sanitized_text, hyperlinks := process_escape_codes(text)
-	pattern, post_processors, group_processors := functions_for(opts)
-	if opts.Type == "hyperlink" {
-		ans = hyperlinks
-	} else {
+
+	run_basic_matching := func() error {
+		pattern, post_processors, group_processors := functions_for(opts)
 		r, err := regexp.Compile(pattern)
 		if err != nil {
-			return "", nil, nil, fmt.Errorf("Failed to compile the regex pattern: %#v with error: %w", pattern, err)
+			return fmt.Errorf("Failed to compile the regex pattern: %#v with error: %w", pattern, err)
 		}
 		ans = mark(r, post_processors, group_processors, sanitized_text, opts)
+		return nil
 	}
+
+	if opts.CustomizeProcessing != "" {
+		cmd := exec.Command(utils.KittyExe(), append([]string{"+runpy", "from kittens.hints.main import custom_marking; custom_marking()"}, cli_args...)...)
+		cmd.Stdin = strings.NewReader(sanitized_text)
+		stdout, stderr := bytes.Buffer{}, bytes.Buffer{}
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		err = cmd.Run()
+		if err != nil {
+			var e *exec.ExitError
+			if errors.As(err, &e) && e.ExitCode() == 2 {
+				err = run_basic_matching()
+				if err != nil {
+					return
+				}
+				goto process_answer
+			} else {
+				return "", nil, nil, fmt.Errorf("Failed to run custom processor %#v with error: %w\n%s", opts.CustomizeProcessing, err, stderr.String())
+			}
+		}
+		ans = make([]Mark, 0, 32)
+		err = json.Unmarshal(stdout.Bytes(), &ans)
+		if err != nil {
+			return "", nil, nil, fmt.Errorf("Failed to load output from custom processor %#v with error: %w", opts.CustomizeProcessing, err)
+		}
+	} else if opts.Type == "hyperlink" {
+		ans = hyperlinks
+	} else {
+		err = run_basic_matching()
+		if err != nil {
+			return
+		}
+	}
+process_answer:
 	if len(ans) == 0 {
 		return "", nil, nil, &ErrNoMatches{Type: opts.Type}
 	}

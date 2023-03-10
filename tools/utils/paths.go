@@ -65,9 +65,12 @@ func Abspath(path string) string {
 var KittyExe = (&Once[string]{Run: func() string {
 	exe, err := os.Executable()
 	if err == nil {
-		return filepath.Join(filepath.Dir(exe), "kitty")
+		ans := filepath.Join(filepath.Dir(exe), "kitty")
+		if s, err := os.Stat(ans); err == nil && !s.IsDir() {
+			return ans
+		}
 	}
-	return ""
+	return os.Getenv("KITTY_PATH_TO_KITTY_EXE")
 }}).Get
 
 var ConfigDir = (&Once[string]{Run: func() (config_dir string) {

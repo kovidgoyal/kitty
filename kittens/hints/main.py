@@ -5,6 +5,7 @@ import sys
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from kitty.cli_stub import HintsCLIOptions
 from kitty.clipboard import set_clipboard_string, set_primary_selection
 from kitty.constants import website_url
 from kitty.fast_data_types import get_options
@@ -26,6 +27,48 @@ def load_custom_processor(customize_processing: str) -> Any:
     import runpy
     return runpy.run_path(custom_path, run_name='__main__')
 
+class Mark:
+
+    __slots__ = ('index', 'start', 'end', 'text', 'is_hyperlink', 'group_id', 'groupdict')
+
+    def __init__(
+            self,
+            index: int, start: int, end: int,
+            text: str,
+            groupdict: Any,
+            is_hyperlink: bool = False,
+            group_id: Optional[str] = None
+    ):
+        self.index, self.start, self.end = index, start, end
+        self.text = text
+        self.groupdict = groupdict
+        self.is_hyperlink = is_hyperlink
+        self.group_id = group_id
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            'index': self.index, 'start': self.start, 'end': self.end,
+            'text': self.text, 'groupdict': {str(k):v for k, v in (self.groupdict or {}).items()},
+            'group_id': self.group_id or '', 'is_hyperlink': self.is_hyperlink
+        }
+
+
+def parse_hints_args(args: List[str]) -> Tuple[HintsCLIOptions, List[str]]:
+    from kitty.cli import parse_args
+    return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten hints', result_class=HintsCLIOptions)
+
+
+def custom_marking() -> None:
+    import json
+    text = sys.stdin.read()
+    sys.stdin.close()
+    opts, extra_cli_args = parse_hints_args(sys.argv[1:])
+    m = load_custom_processor(opts.customize_processing or '::impossible::')
+    if 'mark' not in m:
+        raise SystemExit(2)
+    all_marks = tuple(x.as_dict() for x in m['mark'](text, opts, Mark, extra_cli_args))
+    sys.stdout.write(json.dumps(all_marks))
+    raise SystemExit(0)
 
 
 # CLI {{{

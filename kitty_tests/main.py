@@ -146,8 +146,11 @@ def run_go(packages: Set[str], names: str) -> 'subprocess.Popen[bytes]':
     for name in names:
         cmd.extend(('-run', name))
     cmd += go_pkg_args
+    env = os.environ.copy()
+    from kitty.constants import kitty_exe
+    env['KITTY_PATH_TO_KITTY_EXE'] = kitty_exe()
     print(shlex.join(cmd), flush=True)
-    return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
 
 
 def reduce_go_pkgs(module: str, names: Sequence[str]) -> Set[str]:
