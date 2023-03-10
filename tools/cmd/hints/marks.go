@@ -322,7 +322,7 @@ func mark(r *regexp.Regexp, post_processors []PostProcessorFunc, group_processor
 
 type ErrNoMatches struct{ Type string }
 
-func adjust_python_offsets(text string, marks []Mark) {
+func adjust_python_offsets(text string, marks []Mark) error {
 	// python returns rune based offsets (unicode chars not utf-8 bytes)
 	// this adjustment function assumes the marks are non overlapping
 	bytes := utils.UnsafeStringToBytes(text)
@@ -340,12 +340,22 @@ func adjust_python_offsets(text string, marks []Mark) {
 		byte_offset += sz
 		return byte_offset
 	}
+	last := 0
 	for i := range marks {
 		mark := &marks[i]
+		if mark.End < mark.Start {
+			return fmt.Errorf("The end of a mark must not be before its start")
+		}
+		if mark.Start < last {
+			return fmt.Errorf("Overlapping marks are not supported")
+		}
+		last = mark.Start
 		mark.Start = adjust(mark.Start)
 		mark.End = adjust(mark.End)
 	}
+	return nil
 }
+
 func (self *ErrNoMatches) Error() string {
 	none_of := "matches"
 	switch self.Type {
@@ -393,7 +403,10 @@ func find_marks(text string, opts *Options, cli_args ...string) (sanitized_text 
 		if err != nil {
 			return "", nil, nil, fmt.Errorf("Failed to load output from custom processor %#v with error: %w", opts.CustomizeProcessing, err)
 		}
-		adjust_python_offsets(sanitized_text, ans)
+		err = adjust_python_offsets(sanitized_text, ans)
+		if err != nil {
+			return "", nil, nil, fmt.Errorf("Custom processor %#v produced invalid mark output with error: %w", opts.CustomizeProcessing, err)
+		}
 	} else if opts.Type == "hyperlink" {
 		ans = hyperlinks
 	} else {
