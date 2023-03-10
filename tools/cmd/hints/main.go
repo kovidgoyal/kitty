@@ -318,7 +318,7 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		result.Match[i] = m.Text + match_suffix
 		result.Groupdicts[i] = m.Groupdict
 	}
-	output(result)
+	fmt.Println(output(result))
 	return
 }
 
