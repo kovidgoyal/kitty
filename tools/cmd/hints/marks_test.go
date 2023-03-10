@@ -21,7 +21,7 @@ func TestHintMarking(t *testing.T) {
 	cols := 20
 	r := func(text string, url ...string) {
 		ptext := convert_text(text, cols)
-		marks, _, err := find_marks(ptext, opts)
+		_, marks, _, err := find_marks(ptext, opts)
 		if err != nil {
 			var e *ErrNoMatches
 			if len(url) != 0 || !errors.As(err, &e) {
@@ -51,7 +51,7 @@ func TestHintMarking(t *testing.T) {
 	opts.Type = "linenum"
 	m := func(text, path string, line int) {
 		ptext := convert_text(text, cols)
-		marks, _, err := find_marks(ptext, opts)
+		_, marks, _, err := find_marks(ptext, opts)
 		if err != nil {
 			t.Fatalf("%#v failed with error: %s", text, err)
 		}

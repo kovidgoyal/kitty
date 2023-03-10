@@ -124,8 +124,8 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		tui.ReportError(fmt.Errorf("Extra command line arguments present: %s", strings.Join(args, " ")))
 		return 1, nil
 	}
-	text := parse_input(utils.UnsafeBytesToString(stdin))
-	all_marks, index_map, err := find_marks(text, o)
+	input_text := parse_input(utils.UnsafeBytesToString(stdin))
+	text, all_marks, index_map, err := find_marks(input_text, o)
 	if err != nil {
 		tui.ReportError(err)
 		return 1, nil
@@ -141,7 +141,6 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		alphabet = DEFAULT_HINT_ALPHABET
 	}
 	ignore_mark_indices := utils.NewSet[int](8)
-	_, _, _ = all_marks, index_map, ignore_mark_indices
 	window_title := o.WindowTitle
 	if window_title == "" {
 		switch o.Type {
@@ -173,30 +172,31 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 	hint_style := fctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s bold", o.HintsForegroundColor, o.HintsBackgroundColor))
 	text_style := fctx.SprintFunc(fmt.Sprintf("fg=bright-%s bold", o.HintsTextColor))
 
-	highlight_mark := func(m *Mark) string {
+	highlight_mark := func(m *Mark, mark_text string) string {
 		hint := encode_hint(m.Index, alphabet)
 		if current_input != "" && !strings.HasPrefix(hint, current_input) {
-			return faint(text)
+			return faint(mark_text)
 		}
 		hint = hint[len(current_input):]
 		if hint == "" {
 			hint = " "
 		}
-		text = text[len(hint):]
-		return hint_style(hint) + text_style(text)
+		mark_text = mark_text[len(hint):]
+		return hint_style(hint) + text_style(mark_text)
 	}
 
 	render := func() string {
+		ans := text
 		for i := len(all_marks) - 1; i >= 0; i-- {
 			mark := &all_marks[i]
 			if ignore_mark_indices.Has(mark.Index) {
 				continue
 			}
-			mtext := highlight_mark(mark)
-			text = text[:mark.Start] + mtext + text[mark.End:]
+			mtext := highlight_mark(mark, ans[mark.Start:mark.End])
+			ans = ans[:mark.Start] + mtext + ans[mark.End:]
 		}
-		text = strings.ReplaceAll(text, "\x00", "")
-		return strings.TrimRightFunc(strings.NewReplacer("\r", "\r\n", "\n", "\r\n").Replace(text), unicode.IsSpace)
+		ans = strings.ReplaceAll(ans, "\x00", "")
+		return strings.TrimRightFunc(strings.NewReplacer("\r", "\r\n", "\n", "\r\n").Replace(ans), unicode.IsSpace)
 	}
 
 	draw_screen := func() {
@@ -207,6 +207,10 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		}
 		lp.ClearScreen()
 		lp.QueueWriteString(current_text)
+	}
+	reset := func() {
+		current_input = ""
+		current_text = ""
 	}
 
 	lp.OnInitialize = func() (string, error) {
@@ -225,7 +229,89 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		draw_screen()
 		return nil
 	}
+	lp.OnText = func(text string, _, _ bool) error {
+		changed := false
+		for _, ch := range text {
+			if strings.ContainsRune(alphabet, ch) {
+				current_input += string(ch)
+				changed = true
+			}
+		}
+		if changed {
+			matches := []*Mark{}
+			for idx, m := range index_map {
+				if eh := encode_hint(idx, alphabet); strings.HasPrefix(eh, current_input) {
+					matches = append(matches, m)
+				}
+			}
+			if len(matches) == 1 {
+				chosen = append(chosen, matches[0])
+				if o.Multiple {
+					ignore_mark_indices.Add(matches[0].Index)
+					reset()
+				} else {
+					lp.Quit(0)
+					return nil
+				}
+			}
+			current_text = ""
+			draw_screen()
+		}
+		return nil
+	}
 
+	lp.OnKeyEvent = func(ev *loop.KeyEvent) error {
+		if ev.MatchesPressOrRepeat("backspace") {
+			ev.Handled = true
+			r := []rune(current_input)
+			if len(r) > 0 {
+				r = r[:len(r)-1]
+				current_input = string(r)
+				current_text = ""
+			}
+			draw_screen()
+		} else if ev.MatchesPressOrRepeat("enter") || ev.MatchesPressOrRepeat("space") {
+			ev.Handled = true
+			if current_input != "" {
+				idx := decode_hint(current_input, alphabet)
+				if m := index_map[idx]; m != nil {
+					chosen = append(chosen, m)
+					ignore_mark_indices.Add(idx)
+					if o.Multiple {
+						reset()
+						draw_screen()
+					} else {
+						lp.Quit(0)
+					}
+				} else {
+					current_input = ""
+					current_text = ""
+					draw_screen()
+				}
+			}
+		} else if ev.MatchesPressOrRepeat("esc") {
+			if o.Multiple {
+				lp.Quit(1)
+			} else {
+				lp.Quit(0)
+			}
+		}
+		return nil
+	}
+
+	err = lp.Run()
+	if err != nil {
+		return 1, err
+	}
+	ds := lp.DeathSignalName()
+	if ds != "" {
+		fmt.Println("Killed by signal: ", ds)
+		lp.KillIfSignalled()
+		return 1, nil
+	}
+	if lp.ExitCode() != 0 {
+		return lp.ExitCode(), nil
+	}
 	result.Match = make([]string, len(chosen))
 	result.Groupdicts = make([]map[string]string, len(chosen))
 	for i, m := range chosen {

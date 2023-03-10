@@ -322,31 +322,32 @@ func (self *ErrNoMatches) Error() string {
 	return fmt.Sprintf("No %s found", none_of)
 }
 
-func find_marks(text string, opts *Options) (ans []Mark, index_map map[int]*Mark, err error) {
-	text, hyperlinks := process_escape_codes(text)
+func find_marks(text string, opts *Options) (sanitized_text string, ans []Mark, index_map map[int]*Mark, err error) {
+	sanitized_text, hyperlinks := process_escape_codes(text)
 	pattern, post_processors, group_processors := functions_for(opts)
 	if opts.Type == "hyperlink" {
 		ans = hyperlinks
 	} else {
 		r, err := regexp.Compile(pattern)
 		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to compile the regex pattern: %#v with error: %w", pattern, err)
+			return "", nil, nil, fmt.Errorf("Failed to compile the regex pattern: %#v with error: %w", pattern, err)
 		}
-		ans = mark(r, post_processors, group_processors, text, opts)
+		ans = mark(r, post_processors, group_processors, sanitized_text, opts)
 	}
 	if len(ans) == 0 {
-		return nil, nil, &ErrNoMatches{Type: opts.Type}
+		return "", nil, nil, &ErrNoMatches{Type: opts.Type}
 	}
 	largest_index := ans[len(ans)-1].Index
 	offset := utils.Max(0, opts.HintsOffset)
 	index_map = make(map[int]*Mark, len(ans))
-	for _, m := range ans {
+	for i := range ans {
+		m := &ans[i]
 		if opts.Ascending {
 			m.Index += offset
 		} else {
 			m.Index = largest_index - m.Index + offset
 		}
-		index_map[m.Index] = &m
+		index_map[m.Index] = m
 	}
 	return
 }
