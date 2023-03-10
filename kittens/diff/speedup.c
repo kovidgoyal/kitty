@@ -175,6 +175,39 @@ split_with_highlights(PyObject *self UNUSED, PyObject *args) {
 #undef NEXT_TRUNCATE_POINT
 }
 
+static PyObject*
+splitlines_like_git(PyObject *self UNUSED, PyObject *args) {
+    char *raw; Py_ssize_t sz;
+    PyObject *callback;
+    if (!PyArg_ParseTuple(args, "y#O", &raw, &sz, &callback)) return NULL;
+    while (sz > 0 && (raw[sz-1] == '\n' || raw[sz-1] == '\r')) sz--;
+    PyObject *mv, *ret;
+#define CALLBACK \
+    mv = PyMemoryView_FromMemory(raw + start, i - start, PyBUF_READ); \
+    if (mv == NULL) return NULL; \
+    ret = PyObject_CallFunctionObjArgs(callback, mv, NULL); \
+    Py_DECREF(mv); \
+    if (ret == NULL) return NULL; \
+    Py_DECREF(ret); start = i + 1;
+
+    Py_ssize_t i = 0, start = 0;
+    for (; i < sz; i++) {
+        switch (raw[i]) {
+            case '\n':
+                CALLBACK; break;
+            case '\r':
+                CALLBACK;
+                if (i + 1 < sz && raw[i+1] == '\n') { i++; start++; }
+                break;
+        }
+    }
+    if (start < sz) {
+        i = sz; CALLBACK;
+    }
+    Py_RETURN_NONE;
+}
+
+
 static void
 free_resources(void) {
     free(line_buffer.buf); line_buffer.buf = NULL; line_buffer.capacity = 0; line_buffer.pos = 0;
@@ -183,6 +216,7 @@ free_resources(void) {
 static PyMethodDef module_methods[] = {
     {"changed_center", (PyCFunction)changed_center, METH_VARARGS, ""},
     {"split_with_highlights", (PyCFunction)split_with_highlights, METH_VARARGS, ""},
+    {"splitlines_like_git", (PyCFunction)splitlines_like_git, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

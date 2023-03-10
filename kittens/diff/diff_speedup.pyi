@@ -1,6 +1,9 @@
-from typing import List, Optional, Tuple
+
+from typing import Callable, List, Optional, Tuple
 
 from .collect import Segment
+
+def splitlines_like_git(raw: bytes, callback: Callable[[memoryview], None]) -> None: ...
 
 def split_with_highlights(
     line: str, truncate_points: List[int], fg_highlights: List[Segment],

@@ -8,11 +8,9 @@ import shutil
 import subprocess
 from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
-from kitty.fast_data_types import splitlines_like_git
-
 from . import global_data
 from .collect import lines_for_path
-from .diff_speedup import changed_center
+from .diff_speedup import changed_center, splitlines_like_git
 
 left_lines: Tuple[str, ...] = ()
 right_lines: Tuple[str, ...] = ()
