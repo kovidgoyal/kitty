@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, DefaultDict, Dict, Generator, List, Optional, 
 
 import kitty.fast_data_types as fast_data_types
 
-from .constants import handled_signals, is_freebsd, is_macos, kitten_exe, kitty_base_dir, shell_path, terminfo_dir, wrapped_kitten_names
+from .constants import handled_signals, is_freebsd, is_macos, kitten_exe, kitty_base_dir, shell_path, terminfo_dir
 from .types import run_once
 from .utils import log_error, which
 
@@ -185,48 +185,11 @@ class ProcessDesc(TypedDict):
     cmdline: Optional[Sequence[str]]
 
 
-def is_prewarmable(argv: List[str]) -> Tuple[bool, List[str]]:
-    if len(argv) < 3 or os.path.basename(argv[0]) != 'kitty':
-        return False, argv
-    if argv[1][:1] != '+':
-        return False, argv
-    sw = ''
-    if argv[1] == '+':
-        which = argv[2]
-        if len(argv) > 3:
-            sw = argv[3]
-    else:
-        which = argv[1][1:]
-        if len(argv) > 2:
-            sw = argv[2]
-    if which == 'open':
-        return False, argv
-    if which == 'kitten' and sw in wrapped_kitten_names():
-        argv = list(argv)
-        argv[0] = kitten_exe()
-        if argv[1] == '+':
-            del argv[1:3]
-        else:
-            del argv[1]
-        return False, argv
-    return True, argv
-
-
-@run_once
-def cmdline_of_prewarmer() -> List[str]:
-    # we need this check in case the prewarmed process has done an exec and
-    # changed its cmdline
-    with suppress(Exception):
-        return cmdline_of_pid(fast_data_types.get_boss().prewarm.worker_pid)
-    return ['']
-
-
 class Child:
 
     child_fd: Optional[int] = None
     pid: Optional[int] = None
     forked = False
-    is_prewarmed = False
 
     def __init__(
         self,
@@ -296,18 +259,16 @@ class Child:
         self.forked = True
         master, slave = openpty()
         stdin, self.stdin = self.stdin, None
-        self.is_prewarmed, self.argv = is_prewarmable(self.argv)
-        if not self.is_prewarmed:
-            ready_read_fd, ready_write_fd = os.pipe()
-            os.set_inheritable(ready_write_fd, False)
-            os.set_inheritable(ready_read_fd, True)
-            if stdin is not None:
-                stdin_read_fd, stdin_write_fd = os.pipe()
-                os.set_inheritable(stdin_write_fd, False)
-                os.set_inheritable(stdin_read_fd, True)
-            else:
-                stdin_read_fd = stdin_write_fd = -1
-            env = tuple(f'{k}={v}' for k, v in self.final_env().items())
+        ready_read_fd, ready_write_fd = os.pipe()
+        os.set_inheritable(ready_write_fd, False)
+        os.set_inheritable(ready_read_fd, True)
+        if stdin is not None:
+            stdin_read_fd, stdin_write_fd = os.pipe()
+            os.set_inheritable(stdin_write_fd, False)
+            os.set_inheritable(stdin_read_fd, True)
+        else:
+            stdin_read_fd = stdin_write_fd = -1
+        env = tuple(f'{k}={v}' for k, v in self.final_env().items())
         argv = list(self.argv)
         exe = argv[0]
         if is_macos and exe == shell_path:
@@ -328,23 +289,17 @@ class Child:
             argv[0] = (f'-{exe.split("/")[-1]}')
         self.final_exe = which(exe) or exe
         self.final_argv0 = argv[0]
-        if self.is_prewarmed:
-            fe = self.final_env()
-            self.prewarmed_child = fast_data_types.get_boss().prewarm(slave, self.argv, self.cwd, fe, stdin)
-            pid = self.prewarmed_child.child_process_pid
-        else:
-            pid = fast_data_types.spawn(
-                self.final_exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
-                ready_read_fd, ready_write_fd, tuple(handled_signals), kitten_exe())
+        pid = fast_data_types.spawn(
+            self.final_exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
+            ready_read_fd, ready_write_fd, tuple(handled_signals), kitten_exe())
         os.close(slave)
         self.pid = pid
         self.child_fd = master
-        if not self.is_prewarmed:
-            if stdin is not None:
-                os.close(stdin_read_fd)
-                fast_data_types.thread_write(stdin_write_fd, stdin)
-            os.close(ready_read_fd)
-            self.terminal_ready_fd = ready_write_fd
+        if stdin is not None:
+            os.close(stdin_read_fd)
+            fast_data_types.thread_write(stdin_write_fd, stdin)
+        os.close(ready_read_fd)
+        self.terminal_ready_fd = ready_write_fd
         if self.child_fd is not None:
             os.set_blocking(self.child_fd, False)
         return pid
@@ -356,18 +311,15 @@ class Child:
         self.terminal_ready_fd = -1
 
     def mark_terminal_ready(self) -> None:
-        if self.is_prewarmed:
-            fast_data_types.get_boss().prewarm.mark_child_as_ready(self.prewarmed_child.child_id)
-        else:
-            os.close(self.terminal_ready_fd)
-            self.terminal_ready_fd = -1
+        os.close(self.terminal_ready_fd)
+        self.terminal_ready_fd = -1
 
     def cmdline_of_pid(self, pid: int) -> List[str]:
         try:
             ans = cmdline_of_pid(pid)
         except Exception:
             ans = []
-        if pid == self.pid and (not ans or (self.is_prewarmed and ans == cmdline_of_prewarmer())):
+        if pid == self.pid and (not ans):
             ans = list(self.argv)
         return ans
 

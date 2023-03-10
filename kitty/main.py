@@ -49,7 +49,6 @@ from .fonts.render import set_font_family
 from .options.types import Options
 from .options.utils import DELETE_ENV_VAR
 from .os_window_size import initial_window_size_func
-from .prewarm import PrewarmProcess, fork_prewarm_process
 from .session import create_sessions, get_os_window_sizing_data
 from .types import SingleInstanceData
 from .utils import (
@@ -202,7 +201,7 @@ def set_x11_window_icon() -> None:
     set_default_window_icon(f'{path}-128{ext}')
 
 
-def _run_app(opts: Options, args: CLIOptions, prewarm: PrewarmProcess, bad_lines: Sequence[BadLine] = ()) -> None:
+def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
     global_shortcuts: Dict[str, SingleKey] = {}
     if is_macos:
         from collections import defaultdict
@@ -249,7 +248,7 @@ def _run_app(opts: Options, args: CLIOptions, prewarm: PrewarmProcess, bad_lines
                     pre_show_callback,
                     args.title or appname, args.name or args.cls or appname,
                     wincls, wstate, load_all_shaders, disallow_override_title=bool(args.title))
-        boss = Boss(opts, args, cached_values, global_shortcuts, prewarm)
+        boss = Boss(opts, args, cached_values, global_shortcuts)
         boss.start(window_id, startup_sessions)
         if bad_lines:
             boss.show_bad_config_lines(bad_lines)
@@ -266,12 +265,12 @@ class AppRunner:
         self.first_window_callback = lambda window_handle: None
         self.initial_window_size_func = initial_window_size_func
 
-    def __call__(self, opts: Options, args: CLIOptions, prewarm: PrewarmProcess, bad_lines: Sequence[BadLine] = ()) -> None:
+    def __call__(self, opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
         set_scale(opts.box_drawing_scale)
         set_options(opts, is_wayland(), args.debug_rendering, args.debug_font_fallback)
         try:
             set_font_family(opts, debug_font_matching=args.debug_font_fallback)
-            _run_app(opts, args, prewarm, bad_lines)
+            _run_app(opts, args, bad_lines)
         finally:
             set_options(None)
             free_font_data()  # must free font data before glfw/freetype/fontconfig/opengl etc are finalized
@@ -497,9 +496,6 @@ def _main() -> None:
     bad_lines: List[BadLine] = []
     opts = create_opts(cli_opts, accumulate_bad_lines=bad_lines)
     setup_environment(opts, cli_opts)
-    prewarm = fork_prewarm_process(opts)
-    if prewarm is None:
-        raise SystemExit(1)
 
     # set_locale on macOS uses cocoa APIs when LANG is not set, so we have to
     # call it after the fork
@@ -522,7 +518,7 @@ def _main() -> None:
     try:
         with setup_profiling():
             # Avoid needing to launch threads to reap zombies
-            run_app(opts, cli_opts, prewarm, bad_lines)
+            run_app(opts, cli_opts, bad_lines)
     finally:
         glfw_terminate()
         cleanup_ssh_control_masters()
