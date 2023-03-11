@@ -34,7 +34,7 @@ extern PyTypeObject Screen_Type;
 #define EVDBG(...)
 #endif
 
-#define EXTRA_FDS 3
+#define EXTRA_FDS 2
 #ifndef MSG_NOSIGNAL
 // Apple does not implement MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
