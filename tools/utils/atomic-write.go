@@ -77,7 +77,7 @@ func AtomicWriteFile(path string, data []byte, perm os.FileMode) (err error) {
 }
 
 func AtomicUpdateFile(path string, data []byte, perms ...fs.FileMode) (err error) {
-	perm := fs.FileMode(0o666)
+	perm := fs.FileMode(0o644)
 	if len(perms) > 0 {
 		perm = perms[0]
 	}
