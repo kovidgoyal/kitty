@@ -15,6 +15,7 @@ import (
 	"kitty/tools/cmd/icat"
 	"kitty/tools/cmd/pytest"
 	"kitty/tools/cmd/ssh"
+	"kitty/tools/cmd/themes"
 	"kitty/tools/cmd/unicode_input"
 	"kitty/tools/cmd/update_self"
 	"kitty/tools/tui"
@@ -45,6 +46,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	ask.EntryPoint(root)
 	// hints
 	hints.EntryPoint(root)
+	// themes
+	themes.EntryPoint(root)
 	// __pytest__
 	pytest.EntryPoint(root)
 	// __hold_till_enter__

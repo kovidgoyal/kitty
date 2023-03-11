@@ -619,4 +619,5 @@ elif __name__ == '__doc__':
     cd['usage'] = usage
     cd['options'] = OPTIONS
     cd['help_text'] = help_text
+    cd['short_desc'] = 'Manage kitty color schemes easily'
     cd['args_completion'] = CompletionSpec.from_string('type:special group:complete_themes')

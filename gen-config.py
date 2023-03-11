@@ -47,7 +47,7 @@ def main() -> None:
                 all_colors.append(opt.name)
     patch_color_list('kitty/rc/set_colors.py', nullable_colors, 'NULLABLE')
     patch_color_list('tools/cmd/at/set_colors.go', nullable_colors, 'NULLABLE')
-    patch_color_list('kittens/themes/collection.py', all_colors, 'ALL', ' ' * 8)
+    patch_color_list('tools/themes/collection.go', all_colors, 'ALL')
 
     from kittens.diff.options.definition import definition as kd
     write_output('kittens.diff', kd)
