@@ -338,11 +338,11 @@ homepage:
    :target: https://github.com/samholmes/whiskers
    :width: 256
 
-.. image:: https://github.com/eccentric-j/eccentric-icons/raw/main/icons/kitty-terminal/2d/kitty.png
+.. image:: https://github.com/eccentric-j/eccentric-icons/raw/main/icons/kitty-terminal/2d/kitty-preview.png
    :target: https://github.com/eccentric-j/eccentric-icons
    :width: 256
 
-.. image:: https://github.com/eccentric-j/eccentric-icons/raw/main/icons/kitty-terminal/3d/kitty.png
+.. image:: https://github.com/eccentric-j/eccentric-icons/raw/main/icons/kitty-terminal/3d/kitty-preview.png
    :target: https://github.com/eccentric-j/eccentric-icons
    :width: 256
 
