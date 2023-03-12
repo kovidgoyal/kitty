@@ -172,11 +172,13 @@ def run_python_tests(args: Any, go_proc: 'Optional[subprocess.Popen[bytes]]' = N
 
     def print_go() -> None:
         try:
-            print(go_proc.stdout.read().decode('utf-8', 'replace'), end='', flush=True)
+            go_proc.wait()
         except KeyboardInterrupt:
             go_proc.terminate()
             if go_proc.wait(0.1) is None:
                 go_proc.kill()
+
+        print(go_proc.stdout.read().decode('utf-8', 'replace'), end='', flush=True)
         go_proc.stdout.close()
         go_proc.wait()
 

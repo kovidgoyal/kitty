@@ -139,6 +139,9 @@ func Splitlines(x string, expected_number_of_lines ...int) (ans []string) {
 	return NewLineScanner("").Split(x, expected_number_of_lines...)
 }
 
+// Return a function that can be called sequentially with rune based offsets
+// converting them to byte based offsets. The rune offsets must be monotonic,
+// otherwise the function returns -1
 func RuneOffsetsToByteOffsets(text string) func(int) int {
 	self := struct {
 		char_offset, byte_offset, last int
