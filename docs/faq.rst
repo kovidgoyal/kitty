@@ -338,6 +338,14 @@ homepage:
    :target: https://github.com/samholmes/whiskers
    :width: 256
 
+.. image:: https://github.com/eccentric-j/eccentric-icons/raw/main/icons/kitty-terminal/2d/kitty.png
+   :target: https://github.com/eccentric-j/eccentric-icons
+   :width: 256
+
+.. image:: https://github.com/eccentric-j/eccentric-icons/raw/main/icons/kitty-terminal/3d/kitty.png
+   :target: https://github.com/eccentric-j/eccentric-icons
+   :width: 256
+
 On macOS you can put :file:`kitty.app.icns` or :file:`kitty.app.png` in the
 :ref:`kitty configuration directory <confloc>`, and this icon will be applied
 automatically at startup. Unfortunately, Apple's Dock does not change its
