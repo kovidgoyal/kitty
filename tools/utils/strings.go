@@ -138,3 +138,29 @@ func NewSeparatorScanner(text, separator string) *StringScanner {
 func Splitlines(x string, expected_number_of_lines ...int) (ans []string) {
 	return NewLineScanner("").Split(x, expected_number_of_lines...)
 }
+
+func RuneOffsetsToByteOffsets(text string) func(int) int {
+	self := struct {
+		char_offset, byte_offset, last int
+		bytes                          []byte
+	}{bytes: UnsafeStringToBytes(text)}
+	return func(x int) (sz int) {
+		switch {
+		case x == self.last:
+			return self.byte_offset
+		case x < self.last:
+			return -1
+		}
+		self.last = x
+		x -= self.char_offset
+		for x > 0 {
+			_, d := utf8.DecodeRune(self.bytes)
+			sz += d
+			self.bytes = self.bytes[d:]
+			x--
+			self.char_offset++
+		}
+		self.byte_offset += sz
+		return self.byte_offset
+	}
+}

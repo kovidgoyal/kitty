@@ -325,34 +325,17 @@ type ErrNoMatches struct{ Type string }
 
 func adjust_python_offsets(text string, marks []Mark) error {
 	// python returns rune based offsets (unicode chars not utf-8 bytes)
-	// this adjustment function assumes the marks are non overlapping
-	bytes := utils.UnsafeStringToBytes(text)
-	char_offset, byte_offset := 0, 0
-
-	adjust := func(x int) (sz int) {
-		x -= char_offset
-		for x > 0 {
-			_, d := utf8.DecodeRune(bytes)
-			sz += d
-			bytes = bytes[d:]
-			x--
-			char_offset++
-		}
-		byte_offset += sz
-		return byte_offset
-	}
-	last := 0
+	adjust := utils.RuneOffsetsToByteOffsets(text)
 	for i := range marks {
 		mark := &marks[i]
 		if mark.End < mark.Start {
 			return fmt.Errorf("The end of a mark must not be before its start")
 		}
-		if mark.Start < last {
+		s, e := adjust(mark.Start), adjust(mark.End)
+		if s < 0 || e < 0 {
 			return fmt.Errorf("Overlapping marks are not supported")
 		}
-		last = mark.Start
-		mark.Start = adjust(mark.Start)
-		mark.End = adjust(mark.End)
+		mark.Start, mark.End = s, e
 	}
 	return nil
 }
