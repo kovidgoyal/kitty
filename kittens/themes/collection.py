@@ -22,8 +22,6 @@ from kitty.fast_data_types import Color
 from kitty.options.types import Options as KittyOptions
 from kitty.utils import reload_conf_in_all_kitties
 
-from ..choose.match import match
-
 MARK_BEFORE = '\033[33m'
 MARK_AFTER = '\033[39m'
 

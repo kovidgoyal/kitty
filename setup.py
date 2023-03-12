@@ -819,11 +819,6 @@ def compile_kittens(compilation_database: CompilationDatabase) -> None:
         files('unicode_input', 'unicode_names'),
         files('diff', 'diff_speedup'),
         files('transfer', 'rsync', libraries=('rsync',)),
-        files(
-            'choose', 'subseq_matcher',
-            extra_headers=('kitty/charsets.h',),
-            extra_sources=('kitty/charsets.c',),
-            filter_sources=lambda x: 'windows_compat.c' not in x),
     ):
         final_env = kenv.copy()
         final_env.cflags.extend(f'-I{x}' for x in includes)

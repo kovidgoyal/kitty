@@ -20,6 +20,7 @@ import (
 
 	"kitty/tools/cli"
 	"kitty/tools/config"
+	"kitty/tools/tui/subseq"
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
 
@@ -819,8 +820,10 @@ func (self *Themes) ThemeByName(name string) *Theme {
 	return ans
 }
 
-func match(expression string, items []string) []string {
-	return nil
+func match(expression string, items []string) []*subseq.Match {
+	matches := subseq.ScoreItems(expression, items, subseq.Options{Level1: " "})
+	matches = utils.StableSort(matches, func(a, b *subseq.Match) bool { return a.Score > b.Score })
+	return matches
 }
 
 func (self *Themes) ApplySearch(expression string, marks ...string) []string {
@@ -831,20 +834,16 @@ func (self *Themes) ApplySearch(expression string, marks ...string) []string {
 	results := match(expression, maps.Keys(self.name_map))
 	name_map := make(map[string]*Theme, len(results))
 	ans := make([]string, 0, len(results))
-	for _, r := range results {
-		pos, k, _ := strings.Cut(r, ":")
-		positions := []int{}
-		for _, q := range strings.Split(pos, ",") {
-			i, _ := strconv.Atoi(q)
-			positions = append(positions, i)
-			text := k
-			for i := len(positions) - 1; i >= 0; i-- {
-				p := positions[i]
-				text = text[:p] + mark_before + text[p:p+1] + mark_after + text[p+1:]
-			}
-			name_map[k] = self.name_map[k]
-			ans = append(ans, text)
+	for _, m := range results {
+		k := m.Text
+		text := m.Text
+		positions := m.Positions
+		for i := len(positions) - 1; i >= 0; i-- {
+			p := positions[i]
+			text = text[:p] + mark_before + text[p:p+1] + mark_after + text[p+1:]
 		}
+		name_map[k] = self.name_map[k]
+		ans = append(ans, text)
 	}
 	self.name_map = name_map
 	self.index_map = maps.Keys(name_map)
