@@ -9,6 +9,7 @@ import (
 
 	"kitty/tools/cli"
 	"kitty/tools/themes"
+	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 )
 
@@ -53,6 +54,35 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	}
 	if len(args) == 1 {
 		return non_interactive(opts, args[0])
+	}
+	lp, err := loop.New()
+	if err != nil {
+		return 1, err
+	}
+	cv := utils.NewCachedValues("unicode-input", &CachedData{Category: "All"})
+	h := &handler{lp: lp, opts: opts, cached_data: cv.Load()}
+	defer cv.Save()
+	lp.OnInitialize = func() (string, error) {
+		lp.AllowLineWrapping(false)
+		lp.SetWindowTitle(`Choose a theme for kitty`)
+		h.initialize()
+		return "", nil
+	}
+	lp.OnWakeup = h.on_wakeup
+	lp.OnFinalize = func() string {
+		h.finalize()
+		lp.SetCursorVisible(true)
+		return ``
+	}
+	err = lp.Run()
+	if err != nil {
+		return 1, err
+	}
+	ds := lp.DeathSignalName()
+	if ds != "" {
+		fmt.Println("Killed by signal: ", ds)
+		lp.KillIfSignalled()
+		return 1, nil
 	}
 	return
 }

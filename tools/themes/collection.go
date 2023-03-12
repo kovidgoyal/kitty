@@ -25,6 +25,7 @@ import (
 
 	"github.com/shirou/gopsutil/v3/process"
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"golang.org/x/sys/unix"
 )
 
@@ -713,6 +714,12 @@ type Themes struct {
 	index_map []string
 }
 
+func (self *Themes) Copy() *Themes {
+	ans := &Themes{name_map: make(map[string]*Theme, len(self.name_map)), index_map: slices.Clone(self.index_map)}
+	maps.Copy(ans.name_map, self.name_map)
+	return ans
+}
+
 var camel_case_pat = (&utils.Once[*regexp.Regexp]{Run: func() *regexp.Regexp {
 	return regexp.MustCompile(`([a-z])([A-Z])`)
 }}).Get
@@ -723,6 +730,8 @@ func theme_name_from_file_name(fname string) string {
 	fname = camel_case_pat().ReplaceAllString(fname, "$1 $2")
 	return strings.Join(utils.Map(strings.Title, strings.Split(fname, " ")), " ")
 }
+
+func (self *Themes) Len() int { return len(self.name_map) }
 
 func (self *Themes) AddFromFile(path string) (*Theme, error) {
 	m, conf, err := parse_theme_metadata(path)
@@ -807,6 +816,38 @@ func (self *Themes) ThemeByName(name string) *Theme {
 			}
 		}
 	}
+	return ans
+}
+
+func match(expression string, items []string) []string {
+	return nil
+}
+
+func (self *Themes) ApplySearch(expression string, marks ...string) []string {
+	mark_before, mark_after := "\033[33m", "\033[39m"
+	if len(marks) == 2 {
+		mark_before, mark_after = marks[0], marks[1]
+	}
+	results := match(expression, maps.Keys(self.name_map))
+	name_map := make(map[string]*Theme, len(results))
+	ans := make([]string, 0, len(results))
+	for _, r := range results {
+		pos, k, _ := strings.Cut(r, ":")
+		positions := []int{}
+		for _, q := range strings.Split(pos, ",") {
+			i, _ := strconv.Atoi(q)
+			positions = append(positions, i)
+			text := k
+			for i := len(positions) - 1; i >= 0; i-- {
+				p := positions[i]
+				text = text[:p] + mark_before + text[p:p+1] + mark_after + text[p+1:]
+			}
+			name_map[k] = self.name_map[k]
+			ans = append(ans, text)
+		}
+	}
+	self.name_map = name_map
+	self.index_map = maps.Keys(name_map)
 	return ans
 }
 
