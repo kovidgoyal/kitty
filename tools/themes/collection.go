@@ -508,6 +508,12 @@ type Theme struct {
 	is_user_defined bool
 }
 
+func (self *Theme) Name() string        { return self.metadata.Name }
+func (self *Theme) Author() string      { return self.metadata.Author }
+func (self *Theme) Blurb() string       { return self.metadata.Blurb }
+func (self *Theme) IsDark() bool        { return self.metadata.Is_dark }
+func (self *Theme) IsUserDefined() bool { return self.is_user_defined }
+
 func (self *Theme) load_code() (string, error) {
 	if self.zip_reader != nil {
 		f, err := self.zip_reader.Open()
@@ -599,6 +605,15 @@ func reload_config(reload_in ReloadDestination) bool {
 	return false
 }
 
+func (self *Theme) SaveInDir(dirpath string) (err error) {
+	path := filepath.Join(dirpath, self.Name()+".conf")
+	code, err := self.Code()
+	if err != nil {
+		return err
+	}
+	return utils.AtomicUpdateFile(path, utils.UnsafeStringToBytes(code), 0o644)
+}
+
 func (self *Theme) SaveInConf(config_dir, reload_in, config_file_name string) (err error) {
 	os.MkdirAll(config_dir, 0o755)
 	path := filepath.Join(config_dir, `current-theme.conf`)
@@ -656,6 +671,10 @@ func (self *Theme) AsEscapeCodes() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return ColorSettingsAsEscapeCodes(settings), nil
+}
+
+func ColorSettingsAsEscapeCodes(settings map[string]string) string {
 	w := strings.Builder{}
 	w.Grow(4096)
 
@@ -707,7 +726,7 @@ func (self *Theme) AsEscapeCodes() (string, error) {
 		set_color(i, rgba.AsRGBSharp())
 	}
 	w.WriteString("\033\\")
-	return w.String(), nil
+	return w.String()
 }
 
 type Themes struct {
@@ -733,6 +752,24 @@ func theme_name_from_file_name(fname string) string {
 }
 
 func (self *Themes) Len() int { return len(self.name_map) }
+func (self *Themes) At(x int) *Theme {
+	if x >= len(self.index_map) || x < 0 {
+		return nil
+	}
+	return self.name_map[self.index_map[x]]
+}
+func (self *Themes) Names() []string { return self.index_map }
+
+func (self *Themes) Filtered(is_ok func(*Theme) bool) *Themes {
+	themes := utils.Filter(maps.Values(self.name_map), is_ok)
+	ans := Themes{name_map: make(map[string]*Theme, len(themes))}
+	for _, theme := range themes {
+		ans.name_map[theme.metadata.Name] = theme
+	}
+	ans.index_map = maps.Keys(ans.name_map)
+	ans.index_map = utils.StableSortWithKey(ans.index_map, strings.ToLower)
+	return &ans
+}
 
 func (self *Themes) AddFromFile(path string) (*Theme, error) {
 	m, conf, err := parse_theme_metadata(path)
@@ -826,8 +863,13 @@ func match(expression string, items []string) []*subseq.Match {
 	return matches
 }
 
+const (
+	MARK_BEFORE = "\033[33m"
+	MARK_AFTER  = "\033[39m"
+)
+
 func (self *Themes) ApplySearch(expression string, marks ...string) []string {
-	mark_before, mark_after := "\033[33m", "\033[39m"
+	mark_before, mark_after := MARK_BEFORE, MARK_AFTER
 	if len(marks) == 2 {
 		mark_before, mark_after = marks[0], marks[1]
 	}
@@ -847,6 +889,7 @@ func (self *Themes) ApplySearch(expression string, marks ...string) []string {
 	}
 	self.name_map = name_map
 	self.index_map = maps.Keys(name_map)
+	self.index_map = utils.StableSortWithKey(self.index_map, strings.ToLower)
 	return ans
 }
 

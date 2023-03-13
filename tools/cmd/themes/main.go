@@ -74,6 +74,11 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		lp.SetCursorVisible(true)
 		return ``
 	}
+	lp.OnResize = func(_, _ loop.ScreenSize) error {
+		h.draw_screen()
+		return nil
+	}
+	lp.OnKeyEvent = h.on_key_event
 	err = lp.Run()
 	if err != nil {
 		return 1, err

@@ -311,7 +311,7 @@ func (self *Loop) SetCursorVisible(visible bool) {
 
 const MoveCursorToTemplate = "\x1b[%d;%dH"
 
-func (self *Loop) MoveCursorTo(x, y int) {
+func (self *Loop) MoveCursorTo(x, y int) { // 1, 1 is top left
 	if x > 0 && y > 0 {
 		self.QueueWriteString(fmt.Sprintf(MoveCursorToTemplate, y, x))
 	}
