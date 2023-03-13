@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"kitty/tools/utils/shlex"
 )
@@ -318,13 +319,9 @@ func parse_spec(spec string) []escape_code {
 	sgr := sgr_code{}
 	sparts, _ := shlex.Split(spec)
 	for _, p := range sparts {
-		parts := strings.SplitN(p, "=", 2)
-		key := parts[0]
-		val := ""
-		if len(parts) == 1 {
+		key, val, found := strings.Cut(p, "=")
+		if !found {
 			val = "true"
-		} else {
-			val = parts[1]
 		}
 		switch key {
 		case "fg":
@@ -355,8 +352,11 @@ func parse_spec(spec string) []escape_code {
 }
 
 var parsed_spec_cache = make(map[string][]escape_code)
+var parsed_spec_cache_mutex = sync.Mutex{}
 
 func cached_parse_spec(spec string) []escape_code {
+	parsed_spec_cache_mutex.Lock()
+	defer parsed_spec_cache_mutex.Unlock()
 	if val, ok := parsed_spec_cache[spec]; ok {
 		return val
 	}
