@@ -5,13 +5,14 @@ package loop
 import (
 	"encoding/base64"
 	"fmt"
-	"kitty/tools/tty"
-	"kitty/tools/utils"
 	"strings"
 	"time"
 
 	"golang.org/x/sys/unix"
 
+	"kitty/tools/tty"
+	"kitty/tools/utils"
+	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
 )
 
@@ -59,6 +60,8 @@ type Loop struct {
 	pending_writes                         []*write_msg
 	pending_mouse_events                   *utils.RingBuffer[MouseEvent]
 	on_SIGTSTP                             func() error
+	style_cache                            map[string]func(...any) string
+	style_ctx                              style.Context
 
 	// Suspend the loop restoring terminal state. Call the return resume function to restore the loop
 	Suspend func() (func() error, error)
@@ -199,6 +202,19 @@ func (self *Loop) KillIfSignalled() {
 func (self *Loop) Println(args ...any) {
 	self.QueueWriteString(fmt.Sprint(args...))
 	self.QueueWriteString("\r\n")
+}
+
+func (self *Loop) SprintStyled(style string, args ...any) string {
+	f := self.style_cache[style]
+	if f == nil {
+		f = self.style_ctx.SprintFunc(style)
+		self.style_cache[style] = f
+	}
+	return f(args...)
+}
+
+func (self *Loop) PrintStyled(style string, args ...any) {
+	self.QueueWriteString(self.SprintStyled(style, args...))
 }
 
 func (self *Loop) SaveCursorPosition() {

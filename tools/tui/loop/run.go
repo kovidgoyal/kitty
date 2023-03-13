@@ -33,6 +33,8 @@ func new_loop() *Loop {
 	l.escape_code_parser.HandlePM = l.handle_pm
 	l.escape_code_parser.HandleRune = l.handle_rune
 	l.escape_code_parser.HandleEndOfBracketedPaste = l.handle_end_of_bracketed_paste
+	l.style_cache = make(map[string]func(...any) string)
+	l.style_ctx.AllowEscapeCodes = true
 	return &l
 }
 
