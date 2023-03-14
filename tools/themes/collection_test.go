@@ -110,7 +110,7 @@ func TestThemeCollections(t *testing.T) {
 		t.Fatal(err)
 	}
 	if request_count != 1 {
-		t.Fatal("Cached zip file was not used")
+		t.Fatalf("Cached zip file was not used: %d", request_count)
 	}
 	before, _ := os.Stat(filepath.Join(tdir, "test.zip"))
 	_, err = fetch_cached("test", ts.URL, tdir, 0)
@@ -118,14 +118,14 @@ func TestThemeCollections(t *testing.T) {
 		t.Fatal(err)
 	}
 	if request_count != 2 {
-		t.Fatal("Cached zip file was incorrectly used")
+		t.Fatalf("Cached zip file was incorrectly used: %d", request_count)
 	}
 	if received_etag != `"xxx"` {
 		t.Fatalf("Got invalid ETag: %#v", received_etag)
 	}
 	after, _ := os.Stat(filepath.Join(tdir, "test.zip"))
 	if before.ModTime() != after.ModTime() {
-		t.Fatal("Cached zip file was incorrectly re-downloaded")
+		t.Fatalf("Cached zip file was incorrectly re-downloaded: %s", cmp.Diff(before.ModTime(), after.ModTime()))
 	}
 	err = os.Chtimes(filepath.Join(tdir, "test.zip"), time.Time{}, time.Time{})
 	if err != nil {
