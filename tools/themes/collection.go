@@ -424,6 +424,7 @@ func fetch_cached(name, url, cache_path string, max_cache_age time.Duration) (st
 	if err != nil {
 		return "", fmt.Errorf("Failed to open downloaded zip file with error: %w", err)
 	}
+	defer r.Close()
 	w := zip.NewWriter(tf2)
 	jm.Etag = resp.Header.Get("ETag")
 	jm.Timestamp = utils.ISO8601Format(time.Now())
