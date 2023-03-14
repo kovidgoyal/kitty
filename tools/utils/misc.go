@@ -120,30 +120,6 @@ func Min[T constraints.Ordered](a T, items ...T) (ans T) {
 	return ans
 }
 
-// Keys returns the keys of the map m.
-// The keys will be an indeterminate order.
-func Keys[M ~map[K]V, K comparable, V any](m M) []K {
-	r := make([]K, len(m))
-	i := 0
-	for k := range m {
-		r[i] = k
-		i++
-	}
-	return r
-}
-
-// Values returns the values of the map m.
-// The values will be an indeterminate order.
-func Values[M ~map[K]V, K comparable, V any](m M) []V {
-	r := make([]V, len(m))
-	i := 0
-	for _, v := range m {
-		r[i] = v
-		i++
-	}
-	return r
-}
-
 func Memset[T any](dest []T, pattern ...T) []T {
 	if len(pattern) == 0 {
 		var zero T
