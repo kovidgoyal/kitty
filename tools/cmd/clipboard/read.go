@@ -16,6 +16,8 @@ import (
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"kitty/tools/utils/images"
+
+	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print
@@ -144,13 +146,13 @@ func (self *Output) assign_mime_type(available_mimes []string, aliases map[strin
 		self.remote_mime_type = "."
 		return
 	}
-	if utils.Contains(available_mimes, self.mime_type) {
+	if slices.Contains(available_mimes, self.mime_type) {
 		self.remote_mime_type = self.mime_type
 		return
 	}
 	if len(aliases[self.mime_type]) > 0 {
 		for _, alias := range aliases[self.mime_type] {
-			if utils.Contains(available_mimes, alias) {
+			if slices.Contains(available_mimes, alias) {
 				self.remote_mime_type = alias
 				return
 			}
