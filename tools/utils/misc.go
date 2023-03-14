@@ -75,22 +75,29 @@ func StableSort[T any](s []T, less func(a, b T) bool) []T {
 	return s
 }
 
-func SortWithKey[T any, C constraints.Ordered](s []T, key func(a T) C) []T {
-	mem := make([]C, len(s))
+func sort_with_key[T any, C constraints.Ordered](impl func(any, func(int, int) bool), s []T, key func(a T) C) []T {
+	temp := make([]struct {
+		key C
+		val T
+	}, len(s))
 	for i, x := range s {
-		mem[i] = key(x)
+		temp[i].val, temp[i].key = x, key(x)
 	}
-	sort.Slice(s, func(i, j int) bool { return mem[i] < mem[j] })
+	impl(temp, func(i, j int) bool {
+		return temp[i].key < temp[j].key
+	})
+	for i, x := range temp {
+		s[i] = x.val
+	}
 	return s
 }
 
+func SortWithKey[T any, C constraints.Ordered](s []T, key func(a T) C) []T {
+	return sort_with_key(sort.Slice, s, key)
+}
+
 func StableSortWithKey[T any, C constraints.Ordered](s []T, key func(a T) C) []T {
-	mem := make([]C, len(s))
-	for i, x := range s {
-		mem[i] = key(x)
-	}
-	sort.SliceStable(s, func(i, j int) bool { return mem[i] < mem[j] })
-	return s
+	return sort_with_key(sort.SliceStable, s, key)
 }
 
 func Max[T constraints.Ordered](a T, items ...T) (ans T) {
