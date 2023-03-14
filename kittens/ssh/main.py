@@ -201,7 +201,7 @@ egr()  # }}}
 
 
 def main(args: List[str]) -> Optional[str]:
-    raise SystemExit('This should be run as kitten unicode_input')
+    raise SystemExit('This should be run as kitten ssh')
 
 if __name__ == '__main__':
     main([])
