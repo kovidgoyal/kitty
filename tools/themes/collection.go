@@ -966,7 +966,7 @@ func GetThemeNames(cache_age time.Duration) (ans []string, err error) {
 
 func CompleteThemes(completions *cli.Completions, word string, arg_num int) {
 	names, err := GetThemeNames(-1)
-	if err != nil {
+	if err == nil {
 		mg := completions.AddMatchGroup("Themes")
 		for _, theme_name := range names {
 			theme_name = strings.TrimSpace(theme_name)

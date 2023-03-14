@@ -27,10 +27,9 @@ class TestBuild(BaseTest):
 
     def test_loading_extensions(self) -> None:
         import kitty.fast_data_types as fdt
-        from kittens.choose import subseq_matcher
         from kittens.diff import diff_speedup
         from kittens.transfer import rsync
-        del fdt, subseq_matcher, diff_speedup, rsync
+        del fdt, diff_speedup, rsync
 
     def test_loading_shaders(self) -> None:
         from kitty.utils import load_shaders
