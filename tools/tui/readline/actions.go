@@ -55,7 +55,9 @@ func (self *Readline) all_text() string {
 func (self *Readline) set_text(text string) {
 	self.move_to_start()
 	self.erase_chars_after_cursor(123456789, true)
-	self.add_text(text)
+	if text != "" {
+		self.add_text(text)
+	}
 	self.move_to_end()
 }
 

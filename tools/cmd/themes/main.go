@@ -79,6 +79,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return nil
 	}
 	lp.OnKeyEvent = h.on_key_event
+	lp.OnText = h.on_text
 	err = lp.Run()
 	if err != nil {
 		return 1, err

@@ -84,8 +84,8 @@ func (self *handler) fetch_themes() {
 }
 
 func (self *handler) on_fetching_key_event(ev *loop.KeyEvent) error {
-	if ev.MatchesRelease("esc") {
-		self.lp.Quit(0)
+	if ev.MatchesPressOrRepeat("esc") {
+		self.quit_on_next_key_release = 0
 		ev.Handled = true
 	}
 	return nil
@@ -120,7 +120,7 @@ func (self *handler) finalize() {
 func (self *handler) initialize() {
 	self.quit_on_next_key_release = -1
 	self.tabs = strings.Split("all dark light recent user", " ")
-	self.rl = readline.New(self.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "/ "})
+	self.rl = readline.New(self.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "/"})
 	self.themes_list = &ThemesList{}
 	self.fetch_result = make(chan fetch_data)
 	self.category_filters = make(map[string]func(*themes.Theme) bool, len(category_filters)+1)
@@ -238,13 +238,13 @@ func (self *handler) next(delta int, allow_wrapping bool) {
 }
 
 func (self *handler) on_browsing_key_event(ev *loop.KeyEvent) error {
-	if ev.MatchesRelease("esc") || ev.MatchesRelease("q") {
-		self.lp.Quit(0)
+	if ev.MatchesPressOrRepeat("esc") || ev.MatchesPressOrRepeat("q") {
+		self.quit_on_next_key_release = 0
 		ev.Handled = true
 		return nil
 	}
 	for _, cat := range self.tabs {
-		if ev.MatchesRelease(cat[0:1]) || ev.MatchesRelease("alt+"+cat[0:1]) {
+		if ev.MatchesPressOrRepeat(cat[0:1]) || ev.MatchesPressOrRepeat("alt+"+cat[0:1]) {
 			ev.Handled = true
 			if cat != self.current_category() {
 				self.set_current_category(cat)
@@ -253,27 +253,27 @@ func (self *handler) on_browsing_key_event(ev *loop.KeyEvent) error {
 			}
 		}
 	}
-	if ev.MatchesRelease("left") || ev.MatchesRelease("shift+tab") {
+	if ev.MatchesPressOrRepeat("left") || ev.MatchesPressOrRepeat("shift+tab") {
 		self.next_category(-1)
 		ev.Handled = true
 		return nil
 	}
-	if ev.MatchesRelease("right") || ev.MatchesRelease("tab") {
+	if ev.MatchesPressOrRepeat("right") || ev.MatchesPressOrRepeat("tab") {
 		self.next_category(1)
 		ev.Handled = true
 		return nil
 	}
-	if ev.MatchesRelease("j") || ev.MatchesRelease("down") {
+	if ev.MatchesPressOrRepeat("j") || ev.MatchesPressOrRepeat("down") {
 		self.next(1, true)
 		ev.Handled = true
 		return nil
 	}
-	if ev.MatchesRelease("k") || ev.MatchesRelease("up") {
+	if ev.MatchesPressOrRepeat("k") || ev.MatchesPressOrRepeat("up") {
 		self.next(-1, true)
 		ev.Handled = true
 		return nil
 	}
-	if ev.MatchesRelease("page_down") {
+	if ev.MatchesPressOrRepeat("page_down") {
 		ev.Handled = true
 		sz, err := self.lp.ScreenSize()
 		if err == nil {
@@ -281,7 +281,7 @@ func (self *handler) on_browsing_key_event(ev *loop.KeyEvent) error {
 		}
 		return nil
 	}
-	if ev.MatchesRelease("page_up") {
+	if ev.MatchesPressOrRepeat("page_up") {
 		ev.Handled = true
 		sz, err := self.lp.ScreenSize()
 		if err == nil {
@@ -289,10 +289,19 @@ func (self *handler) on_browsing_key_event(ev *loop.KeyEvent) error {
 		}
 		return nil
 	}
-	if ev.MatchesRelease("s") || ev.MatchesRelease("/") {
+	if ev.MatchesPressOrRepeat("s") || ev.MatchesPressOrRepeat("/") {
 		ev.Handled = true
 		self.start_search()
 		return nil
+	}
+	if ev.MatchesPressOrRepeat("c") || ev.MatchesPressOrRepeat("enter") {
+		ev.Handled = true
+		if self.themes_list == nil || self.themes_list.Len() == 0 {
+			self.lp.Beep()
+		} else {
+			self.state = ACCEPTING
+			self.draw_screen()
+		}
 	}
 	return nil
 }
@@ -311,21 +320,19 @@ func (self *handler) draw_browsing_screen() {
 	}
 	num_rows := int(sz.HeightCells) - 2
 	mw := self.themes_list.max_width + 1
+	green_fg, _, _ := strings.Cut(self.lp.SprintStyled("fg=green", "|"), "|")
 	for _, l := range self.themes_list.Lines(num_rows) {
-		num_rows--
 		line := l.text
 		if l.is_current {
-			line = strings.ReplaceAll(line, themes.MARK_BEFORE, self.lp.SprintStyled("fg=green"))
-			if l.is_current {
-				self.lp.PrintStyled("fg=green", ">")
-				self.lp.PrintStyled("fg=green bold", line)
-			} else {
-				self.lp.PrintStyled("fg=green", " ")
-				self.lp.QueueWriteString(line)
-			}
-			self.lp.MoveCursorHorizontally(mw - l.width)
-			self.lp.Println(SEPARATOR)
+			line = strings.ReplaceAll(line, themes.MARK_AFTER, green_fg)
+			self.lp.PrintStyled("fg=green", ">")
+			self.lp.PrintStyled("fg=green bold", line)
+		} else {
+			self.lp.PrintStyled("fg=green", " ")
+			self.lp.QueueWriteString(line)
 		}
+		self.lp.MoveCursorHorizontally(mw - l.width)
+		self.lp.Println(SEPARATOR)
 	}
 	if self.themes_list != nil && self.themes_list.Len() > 0 {
 		self.draw_theme_demo()
@@ -446,7 +453,10 @@ func (self *handler) draw_theme_demo() {
 				if intense {
 					s = "bright-" + s
 				}
-				buf.WriteString(self.lp.SprintStyled("fg="+c, c[:trunc]))
+				if len(c) > trunc {
+					c = c[:trunc]
+				}
+				buf.WriteString(self.lp.SprintStyled("fg="+c, c))
 				buf.WriteString(" ")
 			}
 			text := strings.TrimSpace(buf.String())
@@ -487,25 +497,25 @@ func (self *handler) draw_theme_demo() {
 // accepting {{{
 
 func (self *handler) on_accepting_key_event(ev *loop.KeyEvent) error {
-	if ev.MatchesRelease("q") || ev.MatchesRelease("esc") {
+	if ev.MatchesPressOrRepeat("q") || ev.MatchesPressOrRepeat("esc") {
 		ev.Handled = true
-		self.lp.Quit(0)
+		self.quit_on_next_key_release = 0
 		return nil
 	}
-	if ev.MatchesRelease("a") {
+	if ev.MatchesPressOrRepeat("a") {
 		ev.Handled = true
 		self.state = BROWSING
 		self.draw_screen()
 		return nil
 	}
-	if ev.MatchesRelease("p") {
+	if ev.MatchesPressOrRepeat("p") {
 		ev.Handled = true
 		self.themes_list.CurrentTheme().SaveInDir(utils.ConfigDir())
 		self.update_recent()
 		self.lp.Quit(0)
 		return nil
 	}
-	if ev.MatchesRelease("m") {
+	if ev.MatchesPressOrRepeat("m") {
 		ev.Handled = true
 		self.themes_list.CurrentTheme().SaveInConf(utils.ConfigDir(), self.opts.ReloadIn, self.opts.ConfigFileName)
 		self.update_recent()
@@ -556,18 +566,36 @@ func (self *handler) draw_accepting_screen() {
 // }}}
 
 // searching {{{
+
+func (self *handler) update_search() {
+	text := self.rl.AllText()
+	if self.themes_list.UpdateSearch(text) {
+		self.set_colors_to_current_theme()
+		self.draw_screen()
+	} else {
+		self.draw_search_bar()
+	}
+}
+
+func (self *handler) on_text(text string, a, b bool) error {
+	if self.state == SEARCHING {
+		err := self.rl.OnText(text, a, b)
+		if err != nil {
+			return err
+		}
+		self.update_search()
+	}
+	return nil
+}
+
 func (self *handler) on_searching_key_event(ev *loop.KeyEvent) error {
-	if ev.MatchesRelease("enter") {
+	if ev.MatchesPressOrRepeat("enter") {
 		ev.Handled = true
 		self.state = BROWSING
 		self.draw_bottom_bar()
 		return nil
 	}
-	if ev.MatchesPressOrRepeat("enter") || ev.MatchesPressOrRepeat("esc") {
-		ev.Handled = true
-		return nil
-	}
-	if ev.MatchesRelease("esc") {
+	if ev.MatchesPressOrRepeat("esc") {
 		ev.Handled = true
 		self.state = BROWSING
 		self.themes_list.UpdateSearch("")
@@ -579,12 +607,8 @@ func (self *handler) on_searching_key_event(ev *loop.KeyEvent) error {
 	if err != nil {
 		return err
 	}
-	text := self.rl.AllText()
-	if self.themes_list.UpdateSearch(text) {
-		self.set_colors_to_current_theme()
-		self.draw_screen()
-	} else {
-		self.draw_search_bar()
+	if ev.Handled {
+		self.update_search()
 	}
 	return nil
 }
