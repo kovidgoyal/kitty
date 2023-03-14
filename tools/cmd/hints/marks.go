@@ -258,7 +258,8 @@ func functions_for(opts *Options) (pattern string, post_processors []PostProcess
 			chars = RelevantKittyOpts().Select_by_word_characters
 		}
 		chars = regexp.QuoteMeta(chars)
-		pattern = fmt.Sprintf(`(?u)[%s\pL\pN]{%d,}`, chars, opts.MinimumMatchLength)
+		chars = strings.ReplaceAll(chars, "-", "\\-")
+		pattern = fmt.Sprintf(`[%s\pL\pN]{%d,}`, chars, opts.MinimumMatchLength)
 		post_processors = append(post_processors, PostProcessorMap()["brackets"], PostProcessorMap()["quotes"])
 	default:
 		pattern = opts.Regex
