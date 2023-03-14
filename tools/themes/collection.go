@@ -354,10 +354,10 @@ func fetch_cached(name, url, cache_path string, max_cache_age time.Duration) (st
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return "", err
 	}
-	defer zf.Close()
 
 	var jm JSONMetadata
 	if err == nil {
+		defer zf.Close()
 		err = json.Unmarshal(utils.UnsafeStringToBytes(zf.Comment), &jm)
 		if max_cache_age < 0 {
 			return cache_path, nil
