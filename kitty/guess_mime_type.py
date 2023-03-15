@@ -31,6 +31,7 @@ text_mimes = (
     'application/x-yaml',
     'application/yaml',
     'application/x-toml',
+    'application/x-lua',
     'application/toml',
     'application/rss+xml',
     'application/xhtml+xml',
