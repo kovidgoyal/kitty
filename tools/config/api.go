@@ -9,10 +9,11 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"kitty/tools/utils"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print

@@ -5,6 +5,7 @@ package config
 import (
 	"fmt"
 	"kitty/tools/utils"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -182,4 +183,73 @@ func StringLiteral(val string) (string, error) {
 		ans.WriteRune('\\')
 	}
 	return ans.String(), nil
+}
+
+var ModMap = (&utils.Once[map[string]string]{Run: func() map[string]string {
+	return map[string]string{
+		"shift":     "shift",
+		"⇧":         "shift",
+		"alt":       "alt",
+		"option":    "alt",
+		"opt":       "alt",
+		"⌥":         "alt",
+		"super":     "super",
+		"command":   "super",
+		"cmd":       "super",
+		"⌘":         "super",
+		"control":   "ctrl",
+		"ctrl":      "ctrl",
+		"⌃":         "ctrl",
+		"hyper":     "hyper",
+		"meta":      "meta",
+		"num_lock":  "num_lock",
+		"caps_lock": "caps_lock",
+	}
+}}).Get
+
+var ShortcutSpecPat = (&utils.Once[*regexp.Regexp]{Run: func() *regexp.Regexp {
+	return regexp.MustCompile(`([^+])>`)
+}}).Get
+
+func NormalizeShortcut(spec string) string {
+	parts := strings.Split(strings.ToLower(spec), "+")
+	key := parts[len(parts)-1]
+	if len(parts) == 1 {
+		return key
+	}
+	mods := parts[:len(parts)-1]
+	mmap := ModMap()
+	mods = utils.Map(func(x string) string {
+		ans := mmap[x]
+		if ans == "" {
+			ans = x
+		}
+		return ans
+	}, mods)
+	utils.Sort(mods, func(a, b string) bool { return a < b })
+	return strings.Join(mods, "+") + "+" + key
+}
+
+func NormalizeShortcuts(spec string) []string {
+	if strings.HasSuffix(spec, "+") {
+		spec = spec[:len(spec)-1] + "plus"
+	}
+	spec = strings.ReplaceAll(spec, "++", "+plus")
+	spec = ShortcutSpecPat().ReplaceAllString(spec, "$1\x00")
+	return utils.Map(NormalizeShortcut, strings.Split(spec, "\x00"))
+}
+
+type KeyAction struct {
+	Normalized_keys []string
+	Name            string
+	Args            string
+}
+
+func ParseMap(val string) (*KeyAction, error) {
+	spec, action, found := strings.Cut(val, " ")
+	if !found {
+		return nil, fmt.Errorf("No action specified for shortcut %s", val)
+	}
+	action_name, action_args, _ := strings.Cut(action, " ")
+	return &KeyAction{Name: action_name, Args: action_args, Normalized_keys: NormalizeShortcuts(spec)}, nil
 }
