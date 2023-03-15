@@ -472,7 +472,7 @@ def go_type_data(parser_func: ParserFuncType, ctype: str, is_multiple: bool = Fa
     if p == 'unit_float':
         return 'float64', 'config.UnitFloat(val, 10, 64)'
     if p == 'python_string':
-        return 'string', 'config.StringLiteral(val, 10, 64)'
+        return 'string', 'config.StringLiteral(val)'
     th = get_type_hints(parser_func)
     rettype = th['return']
     return {int: 'int64', str: 'string', float: 'float64'}[rettype], f'{p}(val)'

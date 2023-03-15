@@ -157,6 +157,20 @@ func ParseColor(color string) (RGBA, error) {
 	return RGBA{}, fmt.Errorf("Not a valid color name: %#v", color)
 }
 
+type NullableColor struct {
+	Color  RGBA
+	IsNull bool
+}
+
+func ParseColorOrNone(color string) (NullableColor, error) {
+	raw := strings.TrimSpace(strings.ToLower(color))
+	if raw == "none" {
+		return NullableColor{IsNull: true}, nil
+	}
+	c, err := ParseColor(raw)
+	return NullableColor{Color: c}, err
+}
+
 var named_colors = map[string]uint8{
 	"black": 0, "red": 1, "green": 2, "yellow": 3, "blue": 4, "magenta": 5, "cyan": 6, "gray": 7, "white": 7,
 
