@@ -708,6 +708,7 @@ elif __name__ == '__doc__':
     cd['usage'] = usage
     cd['options'] = OPTIONS
     cd['help_text'] = help_text
+    cd['short_desc'] = 'Pretty, side-by-side diffing of files and images'
     cd['args_completion'] = CompletionSpec.from_string('type:file mime:text/* mime:image/* group:"Text and image files"')
 elif __name__ == '__conf__':
     from .options.definition import definition

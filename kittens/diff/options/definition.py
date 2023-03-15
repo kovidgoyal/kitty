@@ -21,10 +21,11 @@ mma = definition.add_mouse_map
 agr('diff', 'Diffing')
 
 opt('syntax_aliases', 'pyj:py pyi:py recipe:py',
-    option_type='syntax_aliases',
+    option_type='syntax_aliases', ctype='strdict_ _:',
     long_text='''
 File extension aliases for syntax highlight. For example, to syntax highlight
 :file:`file.xyz` as :file:`file.abc` use a setting of :code:`xyz:abc`.
+Multiple aliases must be separated by spaces.
 '''
     )
 
@@ -47,7 +48,7 @@ opt('replace_tab_by', '\\x20\\x20\\x20\\x20',
     long_text='The string to replace tabs with. Default is to use four spaces.'
     )
 
-opt('+ignore_name', '',
+opt('+ignore_name', '', ctype='string',
     option_type='store_multiple',
     add_to_default=False,
     long_text='''

@@ -24,7 +24,7 @@ exec_kitty() {
 
 
 is_wrapped_kitten() {
-    wrapped_kittens="clipboard icat hyperlinked_grep ask hints unicode_input ssh themes"
+    wrapped_kittens="clipboard icat hyperlinked_grep ask hints unicode_input ssh themes diff"
     [ -n "$1" ] && {
         case " $wrapped_kittens " in
             *" $1 "*) printf "%s" "$1" ;;

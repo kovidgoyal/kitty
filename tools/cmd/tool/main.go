@@ -9,6 +9,7 @@ import (
 	"kitty/tools/cmd/ask"
 	"kitty/tools/cmd/at"
 	"kitty/tools/cmd/clipboard"
+	"kitty/tools/cmd/diff"
 	"kitty/tools/cmd/edit_in_kitty"
 	"kitty/tools/cmd/hints"
 	"kitty/tools/cmd/hyperlinked_grep"
@@ -46,6 +47,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	ask.EntryPoint(root)
 	// hints
 	hints.EntryPoint(root)
+	// hints
+	diff.EntryPoint(root)
 	// themes
 	themes.EntryPoint(root)
 	// __pytest__
