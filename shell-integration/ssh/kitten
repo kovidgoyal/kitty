@@ -60,7 +60,7 @@ else
 fi
 
 case "$(command uname -m)" in
-    x86_64) arch="amd64";;
+    amd64|x86_64) arch="amd64";;
     aarch64*) arch="arm64";;
     armv8*) arch="arm64";;
     arm) arch="arm";;
