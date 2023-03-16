@@ -73,7 +73,7 @@ var KittyExe = (&Once[string]{Run: func() string {
 	return os.Getenv("KITTY_PATH_TO_KITTY_EXE")
 }}).Get
 
-var ConfigDir = (&Once[string]{Run: func() (config_dir string) {
+func ConfigDirForName(name string) (config_dir string) {
 	if kcd := os.Getenv("KITTY_CONFIG_DIRECTORY"); kcd != "" {
 		return Abspath(Expanduser(kcd))
 	}
@@ -101,7 +101,7 @@ var ConfigDir = (&Once[string]{Run: func() (config_dir string) {
 	for _, loc := range locations {
 		if loc != "" {
 			q := filepath.Join(loc, "kitty")
-			if _, err := os.Stat(filepath.Join(q, "kitty.conf")); err == nil {
+			if _, err := os.Stat(filepath.Join(q, name)); err == nil {
 				config_dir = q
 				return
 			}
@@ -113,6 +113,10 @@ var ConfigDir = (&Once[string]{Run: func() (config_dir string) {
 	}
 	config_dir = filepath.Join(Expanduser(config_dir), "kitty")
 	return
+}
+
+var ConfigDir = (&Once[string]{Run: func() (config_dir string) {
+	return ConfigDirForName("kitty.conf")
 }}).Get
 
 var CacheDir = (&Once[string]{Run: func() (cache_dir string) {

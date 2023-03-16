@@ -168,6 +168,38 @@ func (self *ConfigParser) ParseFiles(paths ...string) error {
 	return nil
 }
 
+func (self *ConfigParser) LoadConfig(name string, paths []string, overrides []string) (err error) {
+	const SYSTEM_CONF = "/etc/xdg/kitty"
+	system_conf := filepath.Join(SYSTEM_CONF, name)
+	add_if_exists := func(q string) {
+		err = self.ParseFiles(q)
+		if err != nil && errors.Is(err, fs.ErrNotExist) {
+			err = nil
+		}
+	}
+	if add_if_exists(system_conf); err != nil {
+		return err
+	}
+	if len(paths) > 0 {
+		for _, path := range paths {
+			if add_if_exists(path); err != nil {
+				return err
+			}
+		}
+	} else {
+		if add_if_exists(filepath.Join(utils.ConfigDirForName(name), name)); err != nil {
+			return err
+		}
+	}
+	if len(overrides) > 0 {
+		err = self.ParseOverrides(overrides...)
+		if err != nil {
+			return err
+		}
+	}
+	return
+}
+
 type LinesScanner struct {
 	lines []string
 }

@@ -6,11 +6,61 @@ import (
 	"fmt"
 
 	"kitty/tools/cli"
+	"kitty/tools/config"
+	"kitty/tools/tui/loop"
 )
 
 var _ = fmt.Print
 
-func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
+func load_config(opts *Options) (ans *Config, err error) {
+	ans = NewConfig()
+	p := config.ConfigParser{LineHandler: ans.Parse}
+	err = p.LoadConfig("diff.conf", opts.Config, opts.Override)
+	if err != nil {
+		return nil, err
+	}
+	return ans, nil
+}
+
+var conf *Config
+var opts *Options
+var lp *loop.Loop
+
+func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
+	opts = opts_
+	conf, err = load_config(opts)
+	if err != nil {
+		return 1, err
+	}
+	if len(args) != 2 {
+		return 1, fmt.Errorf("You must specify exactly two files/directories to compare")
+	}
+	left, right := args[0], args[1]
+	lp, err = loop.New()
+	if err != nil {
+		return 1, err
+	}
+	lp.OnInitialize = func() (string, error) {
+		lp.SetCursorVisible(false)
+		lp.AllowLineWrapping(false)
+		lp.SetWindowTitle(fmt.Sprintf("%s vs. %s", left, right))
+		return "", nil
+	}
+	lp.OnFinalize = func() string {
+		lp.SetCursorVisible(true)
+		return ""
+	}
+	err = lp.Run()
+	if err != nil {
+		return 1, err
+	}
+	ds := lp.DeathSignalName()
+	if ds != "" {
+		fmt.Println("Killed by signal: ", ds)
+		lp.KillIfSignalled()
+		return 1, nil
+	}
+
 	return
 }
 
