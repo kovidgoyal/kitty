@@ -47,3 +47,15 @@ func Which(cmd string, paths ...string) string {
 	}
 	return ""
 }
+
+func FindExe(name string) string {
+	ans := Which(name)
+	if ans != "" {
+		return ans
+	}
+	ans = Which(name, DefaultExeSearchPaths()...)
+	if ans == "" {
+		ans = name
+	}
+	return ans
+}

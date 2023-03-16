@@ -18,15 +18,7 @@ import (
 var _ = fmt.Print
 
 var SSHExe = (&utils.Once[string]{Run: func() string {
-	ans := utils.Which("ssh")
-	if ans != "" {
-		return ans
-	}
-	ans = utils.Which("ssh", utils.DefaultExeSearchPaths()...)
-	if ans == "" {
-		ans = "ssh"
-	}
-	return ans
+	return utils.FindExe("ssh")
 }}).Get
 
 var SSHOptions = (&utils.Once[map[string]string]{Run: func() (ssh_options map[string]string) {

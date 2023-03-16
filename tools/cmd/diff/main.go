@@ -4,6 +4,7 @@ package diff
 
 import (
 	"fmt"
+	"os"
 
 	"kitty/tools/cli"
 	"kitty/tools/config"
@@ -26,6 +27,18 @@ var conf *Config
 var opts *Options
 var lp *loop.Loop
 
+func isdir(path string) bool {
+	if s, err := os.Stat(path); err == nil {
+		return s.IsDir()
+	}
+	return false
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
 func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	opts = opts_
 	conf, err = load_config(opts)
@@ -35,7 +48,19 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	if len(args) != 2 {
 		return 1, fmt.Errorf("You must specify exactly two files/directories to compare")
 	}
-	left, right := args[0], args[1]
+	if err = set_diff_command(conf.Diff_cmd); err != nil {
+		return 1, err
+	}
+	left, right := get_remote_file(args[0]), get_remote_file(args[1])
+	if isdir(left) != isdir(right) {
+		return 1, fmt.Errorf("The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.'")
+	}
+	if !exists(left) {
+		return 1, fmt.Errorf("%s does not exist", left)
+	}
+	if !exists(right) {
+		return 1, fmt.Errorf("%s does not exist", right)
+	}
 	lp, err = loop.New()
 	if err != nil {
 		return 1, err

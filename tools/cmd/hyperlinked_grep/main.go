@@ -23,15 +23,7 @@ import (
 var _ = fmt.Print
 
 var RgExe = (&utils.Once[string]{Run: func() string {
-	ans := utils.Which("rg")
-	if ans != "" {
-		return ans
-	}
-	ans = utils.Which("rg", utils.DefaultExeSearchPaths()...)
-	if ans == "" {
-		ans = "rg"
-	}
-	return ans
+	return utils.FindExe("rg")
 }}).Get
 
 func get_options_for_rg() (expecting_args map[string]bool, alias_map map[string]string, err error) {
