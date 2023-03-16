@@ -46,7 +46,7 @@ detect_os() {
         'Linux')
             OS="linux"
             case "$(command uname -m)" in
-                x86_64) arch="x86_64";;
+                amd64|x86_64) arch="x86_64";;
                 aarch64*) arch="arm64";;
                 armv8*) arch="arm64";;
                 i386) arch="i686";;
