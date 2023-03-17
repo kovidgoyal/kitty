@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -52,6 +54,11 @@ var UserMimeMap = (&Once[map[string]string]{Run: func() map[string]string {
 	return ans
 }}).Get
 
+func is_rcfile(path string) bool {
+	name := filepath.Base(path)
+	return strings.HasSuffix(name, "rc") && !strings.Contains(name, ".")
+}
+
 func GuessMimeType(filename string) string {
 	ext := filepath.Ext(filename)
 	mime_with_parameters := UserMimeMap()[ext]
@@ -62,7 +69,14 @@ func GuessMimeType(filename string) string {
 		only_once.Do(set_builtins)
 		mime_with_parameters = builtin_types_map[ext]
 		if mime_with_parameters == "" {
-			mime_with_parameters = builtin_types_map[strings.ToLower(ext)]
+			lext := strings.ToLower(ext)
+			mime_with_parameters = builtin_types_map[lext]
+			if mime_with_parameters == "" {
+				mime_with_parameters = KnownExtensions[lext]
+			}
+			if mime_with_parameters == "" && is_rcfile(filename) {
+				mime_with_parameters = "text/plain"
+			}
 			if mime_with_parameters == "" {
 				return ""
 			}
@@ -73,4 +87,25 @@ func GuessMimeType(filename string) string {
 		return ""
 	}
 	return ans
+}
+
+func GuessMimeTypeWithFileSystemAccess(filename string) string {
+	is_dir, is_exe := false, false
+	s, err := os.Stat(filename)
+	if err == nil {
+		is_dir = s.IsDir()
+		if !is_dir && s.Mode().Perm()&0o111 != 0 && unix.Access(filename, unix.X_OK) == nil {
+			is_exe = true
+		}
+	}
+	if is_dir {
+		return "inode/directory"
+	}
+	mt := GuessMimeType(filename)
+	if mt == "" {
+		if is_exe {
+			mt = "inode/executable"
+		}
+	}
+	return mt
 }

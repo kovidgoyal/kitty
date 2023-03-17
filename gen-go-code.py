@@ -4,6 +4,7 @@
 import bz2
 import io
 import json
+import kitty.constants as kc
 import os
 import re
 import struct
@@ -13,27 +14,24 @@ import tarfile
 from contextlib import contextmanager, suppress
 from functools import lru_cache
 from itertools import chain
-from typing import Any, BinaryIO, Dict, Iterator, List, Optional, Sequence, Set, TextIO, Tuple, Union
-
-import kitty.constants as kc
 from kittens.tui.operations import Mode
 from kittens.tui.spinners import spinners
 from kitty.cli import (
-    CompletionSpec,
-    GoOption,
-    go_options_for_seq,
-    parse_option_spec,
+    CompletionSpec, GoOption, go_options_for_seq, parse_option_spec,
     serialize_as_go_string,
 )
 from kitty.conf.generate import gen_go_code
 from kitty.conf.types import Definition
-from kitty.guess_mime_type import text_mimes
+from kitty.guess_mime_type import known_extensions, text_mimes
 from kitty.key_encoding import config_mod_map
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases
 from kitty.options.types import Options
 from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
 from kitty.remote_control import global_options_spec
 from kitty.rgb import color_names
+from typing import (
+    Any, BinaryIO, Dict, Iterator, List, Optional, Sequence, Set, TextIO, Tuple, Union,
+)
 
 changed: List[str] = []
 
@@ -672,6 +670,10 @@ def generate_textual_mimetypes() -> str:
     ans = ['package utils', 'var KnownTextualMimes = map[string]bool{',]
     for k in text_mimes:
         ans.append(f'  "{serialize_as_go_string(k)}": true,')
+    ans.append('}')
+    ans.append('var KnownExtensions = map[string]string{')
+    for k, v in known_extensions.items():
+        ans.append(f'  ".{serialize_as_go_string(k)}": "{serialize_as_go_string(v)}",')
     ans.append('}')
     return '\n'.join(ans)
 
