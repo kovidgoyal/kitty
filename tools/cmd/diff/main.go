@@ -3,12 +3,20 @@
 package diff
 
 import (
+	"archive/tar"
+	"bytes"
 	"fmt"
+	"io/fs"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"kitty/tools/cli"
+	"kitty/tools/cmd/ssh"
 	"kitty/tools/config"
 	"kitty/tools/tui/loop"
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -39,6 +47,54 @@ func exists(path string) bool {
 	return err == nil
 }
 
+func get_ssh_file(hostname, rpath string) (string, error) {
+	tdir, err := os.MkdirTemp("", "*-"+hostname)
+	if err != nil {
+		return "", err
+	}
+	add_remote_dir(tdir)
+	is_abs := strings.HasPrefix(rpath, "/")
+	for strings.HasPrefix(rpath, "/") {
+		rpath = rpath[1:]
+	}
+	cmd := []string{ssh.SSHExe(), hostname, "tar", "-c", "-f", "-"}
+	if is_abs {
+		cmd = append(cmd, "-C", "/")
+	}
+	cmd = append(cmd, rpath)
+	c := exec.Command(cmd[0], cmd[1:]...)
+	stdout, err := c.Output()
+	if err != nil {
+		return "", fmt.Errorf("Failed to ssh into remote host %s to get file %s with error: %w", hostname, rpath, err)
+	}
+	tf := tar.NewReader(bytes.NewReader(stdout))
+	count, err := utils.ExtractAllFromTar(tf, tdir)
+	if err != nil {
+		return "", fmt.Errorf("Failed to untar data from remote host %s to get file %s with error: %w", hostname, rpath, err)
+	}
+	ans := filepath.Join(tdir, rpath)
+	if count == 1 {
+		filepath.WalkDir(tdir, func(path string, d fs.DirEntry, err error) error {
+			if !d.IsDir() {
+				ans = path
+				return fs.SkipAll
+			}
+			return nil
+		})
+	}
+	return ans, nil
+}
+
+func get_remote_file(path string) (string, error) {
+	if strings.HasPrefix(path, "ssh:") {
+		parts := strings.SplitN(path, ":", 3)
+		if len(parts) == 3 {
+			return get_ssh_file(parts[1], parts[2])
+		}
+	}
+	return path, nil
+}
+
 func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	opts = opts_
 	conf, err = load_config(opts)
@@ -52,7 +108,19 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 		return 1, err
 	}
 	init_caches()
-	left, right := get_remote_file(args[0]), get_remote_file(args[1])
+	defer func() {
+		for tdir := range remote_dirs {
+			os.RemoveAll(tdir)
+		}
+	}()
+	left, err := get_remote_file(args[0])
+	if err != nil {
+		return 1, err
+	}
+	right, err := get_remote_file(args[1])
+	if err != nil {
+		return 1, err
+	}
 	if isdir(left) != isdir(right) {
 		return 1, fmt.Errorf("The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.'")
 	}
