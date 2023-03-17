@@ -314,7 +314,7 @@ I do not like the kitty icon!
 There are many alternate icons available, click on an icon to visit its
 homepage:
 
-.. image:: https://github.com/k0nserv/kitty-icon/raw/main/icon_512x512.png
+.. image:: https://github.com/k0nserv/kitty-icon/raw/main/kitty.iconset/icon_256x256.png
    :target: https://github.com/k0nserv/kitty-icon
    :width: 256
 
