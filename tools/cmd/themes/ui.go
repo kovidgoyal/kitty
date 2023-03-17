@@ -63,16 +63,15 @@ type handler struct {
 	opts        *Options
 	cached_data *CachedData
 
-	state                    State
-	fetch_result             chan fetch_data
-	all_themes               *themes.Themes
-	themes_closer            io.Closer
-	themes_list              *ThemesList
-	category_filters         map[string]func(*themes.Theme) bool
-	colors_set_once          bool
-	tabs                     []string
-	rl                       *readline.Readline
-	quit_on_next_key_release int
+	state            State
+	fetch_result     chan fetch_data
+	all_themes       *themes.Themes
+	themes_closer    io.Closer
+	themes_list      *ThemesList
+	category_filters map[string]func(*themes.Theme) bool
+	colors_set_once  bool
+	tabs             []string
+	rl               *readline.Readline
 }
 
 // fetching {{{
@@ -85,7 +84,7 @@ func (self *handler) fetch_themes() {
 
 func (self *handler) on_fetching_key_event(ev *loop.KeyEvent) error {
 	if ev.MatchesPressOrRepeat("esc") {
-		self.quit_on_next_key_release = 0
+		self.lp.Quit(0)
 		ev.Handled = true
 	}
 	return nil
@@ -118,7 +117,6 @@ func (self *handler) finalize() {
 }
 
 func (self *handler) initialize() {
-	self.quit_on_next_key_release = -1
 	self.tabs = strings.Split("all dark light recent user", " ")
 	self.rl = readline.New(self.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "/"})
 	self.themes_list = &ThemesList{}
@@ -203,10 +201,6 @@ func (self *handler) redraw_after_category_change() {
 }
 
 func (self *handler) on_key_event(ev *loop.KeyEvent) error {
-	if self.quit_on_next_key_release > -1 && ev.Type == loop.RELEASE {
-		self.lp.Quit(self.quit_on_next_key_release)
-		return nil
-	}
 	switch self.state {
 	case FETCHING:
 		return self.on_fetching_key_event(ev)
@@ -239,7 +233,7 @@ func (self *handler) next(delta int, allow_wrapping bool) {
 
 func (self *handler) on_browsing_key_event(ev *loop.KeyEvent) error {
 	if ev.MatchesPressOrRepeat("esc") || ev.MatchesPressOrRepeat("q") {
-		self.quit_on_next_key_release = 0
+		self.lp.Quit(0)
 		ev.Handled = true
 		return nil
 	}
@@ -499,7 +493,7 @@ func (self *handler) draw_theme_demo() {
 func (self *handler) on_accepting_key_event(ev *loop.KeyEvent) error {
 	if ev.MatchesPressOrRepeat("q") || ev.MatchesPressOrRepeat("esc") {
 		ev.Handled = true
-		self.quit_on_next_key_release = 0
+		self.lp.Quit(0)
 		return nil
 	}
 	if ev.MatchesPressOrRepeat("a") {
