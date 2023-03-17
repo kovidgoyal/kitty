@@ -71,7 +71,6 @@ def custom_marking() -> None:
     raise SystemExit(0)
 
 
-# CLI {{{
 OPTIONS = r'''
 --program
 type=list
