@@ -51,6 +51,7 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	if err = set_diff_command(conf.Diff_cmd); err != nil {
 		return 1, err
 	}
+	init_caches()
 	left, right := get_remote_file(args[0]), get_remote_file(args[1])
 	if isdir(left) != isdir(right) {
 		return 1, fmt.Errorf("The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.'")
