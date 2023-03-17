@@ -291,9 +291,9 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 			}
 		} else if ev.MatchesPressOrRepeat("esc") {
 			if o.Multiple {
-				lp.Quit(1)
-			} else {
 				lp.Quit(0)
+			} else {
+				lp.Quit(1)
 			}
 		}
 		return nil
