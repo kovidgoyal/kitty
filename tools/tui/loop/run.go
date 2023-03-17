@@ -24,7 +24,7 @@ func new_loop() *Loop {
 	l := Loop{controlling_term: nil, timers_temp: make([]*timer, 4)}
 	l.terminal_options.alternate_screen = true
 	l.terminal_options.restore_colors = true
-	l.terminal_options.kitty_keyboard_mode = 0b11101 // full protocol without release and repeat events
+	l.terminal_options.kitty_keyboard_mode = DISAMBIGUATE_KEYS | REPORT_ALTERNATE_KEYS | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_TEXT_WITH_KEYS
 	l.escape_code_parser.HandleCSI = l.handle_csi
 	l.escape_code_parser.HandleOSC = l.handle_osc
 	l.escape_code_parser.HandleDCS = l.handle_dcs

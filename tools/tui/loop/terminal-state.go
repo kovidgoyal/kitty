@@ -9,6 +9,17 @@ import (
 	"kitty"
 )
 
+type KeyboardStateBits uint8
+
+const (
+	DISAMBIGUATE_KEYS KeyboardStateBits = 1 << iota
+	REPORT_KEY_EVENT_TYPES
+	REPORT_ALTERNATE_KEYS
+	REPORT_ALL_KEYS_AS_ESCAPE_CODES
+	REPORT_TEXT_WITH_KEYS
+	FULL_KEYBOARD_PROTOCOL = DISAMBIGUATE_KEYS | REPORT_ALTERNATE_KEYS | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_TEXT_WITH_KEYS | REPORT_KEY_EVENT_TYPES
+)
+
 const (
 	SAVE_CURSOR                   = "\0337"
 	RESTORE_CURSOR                = "\0338"
@@ -86,7 +97,7 @@ const (
 type TerminalStateOptions struct {
 	alternate_screen, restore_colors bool
 	mouse_tracking                   MouseTracking
-	kitty_keyboard_mode              int
+	kitty_keyboard_mode              KeyboardStateBits
 }
 
 func set_modes(sb *strings.Builder, modes ...Mode) {
