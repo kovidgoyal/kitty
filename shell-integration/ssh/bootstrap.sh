@@ -47,7 +47,7 @@ if command -v base64 > /dev/null 2> /dev/null; then
     base64_decode() { command base64 -d; }
 elif command -v openssl > /dev/null 2> /dev/null; then
     base64_encode() { command openssl enc -A -base64; }
-    base64_decode() { command openssl enc -d -base64; }
+    base64_decode() { command openssl enc -A -d -base64; }
 elif command -v b64encode > /dev/null 2> /dev/null; then
     base64_encode() { command b64encode - | command sed '1d;$d' | command tr -d \\n\\r; }
     base64_decode() { command fold -w 76 | command b64decode -r; }
