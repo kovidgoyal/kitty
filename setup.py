@@ -1516,6 +1516,9 @@ def clean() -> None:
                 os.unlink(os.path.join(root, f))
     for x in glob.glob('glfw/wayland-*-protocol.[ch]'):
         os.unlink(x)
+    for x in glob.glob('kittens/*'):
+        if os.path.isdir(x) and not os.path.exists(os.path.join(x, '__init__.py')):
+            shutil.rmtree(x)
     subprocess.check_call(['go', 'clean', '-cache', '-testcache', '-modcache', '-fuzzcache'])
 
 
