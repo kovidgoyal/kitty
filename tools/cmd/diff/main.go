@@ -63,6 +63,7 @@ func get_ssh_file(hostname, rpath string) (string, error) {
 	}
 	cmd = append(cmd, rpath)
 	c := exec.Command(cmd[0], cmd[1:]...)
+	c.Stdin, c.Stderr = os.Stdin, os.Stderr
 	stdout, err := c.Output()
 	if err != nil {
 		return "", fmt.Errorf("Failed to ssh into remote host %s to get file %s with error: %w", hostname, rpath, err)
@@ -134,12 +135,15 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
+	h := Handler{left: left, right: right, lp: lp}
 	lp.OnInitialize = func() (string, error) {
 		lp.SetCursorVisible(false)
 		lp.AllowLineWrapping(false)
 		lp.SetWindowTitle(fmt.Sprintf("%s vs. %s", left, right))
+		h.initialize()
 		return "", nil
 	}
+	lp.OnWakeup = h.on_wakeup
 	lp.OnFinalize = func() string {
 		lp.SetCursorVisible(true)
 		return ""

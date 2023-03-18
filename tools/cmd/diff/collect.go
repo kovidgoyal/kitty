@@ -163,17 +163,17 @@ func (self *Collection) Len() int { return len(self.all_paths) }
 
 func (self *Collection) Items() int { return len(self.all_paths) }
 
-func (self *Collection) Apply(f func(path, typ, data string) error) error {
+func (self *Collection) Apply(f func(path, typ, changed_path string) error) error {
 	for _, path := range self.all_paths {
 		typ := self.type_map[path]
-		data := ""
+		changed_path := ""
 		switch typ {
 		case "diff":
-			data = self.changes[path]
+			changed_path = self.changes[path]
 		case "rename":
-			data = self.renames[path]
+			changed_path = self.renames[path]
 		}
-		if err := f(path, typ, data); err != nil {
+		if err := f(path, typ, changed_path); err != nil {
 			return err
 		}
 	}

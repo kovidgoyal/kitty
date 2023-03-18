@@ -22,6 +22,7 @@ import (
 	"kitty/tools/cli"
 	"kitty/tools/config"
 	"kitty/tools/tty"
+	"kitty/tools/tui/loop"
 	"kitty/tools/tui/subseq"
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
@@ -716,7 +717,7 @@ func ColorSettingsAsEscapeCodes(settings map[string]string) string {
 		w.WriteString(sharp)
 	}
 
-	set_default_color := func(name, defval string, num int) {
+	set_default_color := func(name, defval string, num loop.DefaultColor) {
 		w.WriteString("\033]")
 		defer func() { w.WriteString("\033\\") }()
 		val, found := settings[name]
@@ -726,20 +727,20 @@ func ColorSettingsAsEscapeCodes(settings map[string]string) string {
 		if val != "" {
 			rgba, err := style.ParseColor(val)
 			if err == nil {
-				w.WriteString(strconv.Itoa(num))
+				w.WriteString(strconv.Itoa(int(num)))
 				w.WriteByte(';')
 				w.WriteString(rgba.AsRGBSharp())
 				return
 			}
 		}
 		w.WriteByte('1')
-		w.WriteString(strconv.Itoa(num))
+		w.WriteString(strconv.Itoa(int(num)))
 	}
-	set_default_color("foreground", style.DefaultColors.Foreground, 10)
-	set_default_color("background", style.DefaultColors.Background, 11)
-	set_default_color("cursor", style.DefaultColors.Cursor, 12)
-	set_default_color("selection_background", style.DefaultColors.SelectionBg, 17)
-	set_default_color("selection_foreground", style.DefaultColors.SelectionFg, 19)
+	set_default_color("foreground", style.DefaultColors.Foreground, loop.FOREGROUND)
+	set_default_color("background", style.DefaultColors.Background, loop.BACKGROUND)
+	set_default_color("cursor", style.DefaultColors.Cursor, loop.CURSOR)
+	set_default_color("selection_background", style.DefaultColors.SelectionBg, loop.SELECTION_BG)
+	set_default_color("selection_foreground", style.DefaultColors.SelectionFg, loop.SELECTION_FG)
 
 	w.WriteString("\033]4")
 	for i := 0; i < 256; i++ {

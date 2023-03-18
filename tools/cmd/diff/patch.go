@@ -321,7 +321,9 @@ func do_diff(file1, file2 string, context_count int) (ans *Patch, err error) {
 	return
 }
 
-func diff(jobs []struct{ file1, file2 string }, context_count int) (ans map[string]*Patch, err error) {
+type diff_job struct{ file1, file2 string }
+
+func diff(jobs []diff_job, context_count int) (ans map[string]*Patch, err error) {
 	ans = make(map[string]*Patch)
 	ctx := images.Context{}
 	type result struct {
