@@ -148,7 +148,7 @@ load_libcanberra(void) {
 }
 
 typedef struct {
-    char *which_sound, *event_id, *media_role;
+    char *which_sound, *event_id, *media_role, *theme_name;
     bool is_path;
 } CanberraEvent;
 
@@ -179,6 +179,7 @@ play_current_sound(void) {
             "event.description", e.event_id,
             "media.role", e.media_role,
             "canberra.cache-control", "permanent",
+            "canberra.xdg-theme.name", e.theme_name,
             NULL
         );
         free_canberra_event_fields(&e);
@@ -186,12 +187,13 @@ play_current_sound(void) {
 }
 
 static void
-queue_canberra_sound(const char *which_sound, const char *event_id, bool is_path, const char *media_role) {
+queue_canberra_sound(const char *which_sound, const char *event_id, bool is_path, const char *media_role, const char *theme_name) {
     pthread_mutex_lock(&canberra_lock);
     current_sound.which_sound = strdup(which_sound);
     current_sound.event_id = strdup(event_id);
     current_sound.media_role = strdup(media_role);
     current_sound.is_path = is_path;
+    current_sound.theme_name = strdup(theme_name);
     pthread_mutex_unlock(&canberra_lock);
     while (true) {
         ssize_t ret = write(canberra_pipe_w, "w", 1);
@@ -222,7 +224,7 @@ canberra_play_loop(void *x UNUSED) {
 }
 
 void
-play_canberra_sound(const char *which_sound, const char *event_id, bool is_path, const char *media_role) {
+play_canberra_sound(const char *which_sound, const char *event_id, bool is_path, const char *media_role, const char *theme_name) {
     load_libcanberra();
     if (libcanberra_handle == NULL || canberra_ctx == NULL) return;
     int ret;
@@ -235,15 +237,16 @@ play_canberra_sound(const char *which_sound, const char *event_id, bool is_path,
         fcntl(canberra_pipe_w, F_SETFL, flags | O_NONBLOCK);
         if ((ret = pthread_create(&canberra_thread, NULL, canberra_play_loop, NULL)) != 0) return;
     }
-    queue_canberra_sound(which_sound, event_id, is_path, media_role);
+    queue_canberra_sound(which_sound, event_id, is_path, media_role, theme_name);
 }
 
 static PyObject*
 play_desktop_sound(PyObject *self UNUSED, PyObject *args) {
     const char *which, *event_id = "test sound";
+    const char *theme_name = "freedesktop";
     int is_path = 0;
-    if (!PyArg_ParseTuple(args, "s|sp", &which, &event_id, &is_path)) return NULL;
-    play_canberra_sound(which, event_id, is_path, "event");
+    if (!PyArg_ParseTuple(args, "s|sp", &which, &event_id, &is_path, &theme_name)) return NULL;
+    play_canberra_sound(which, event_id, is_path, "event", theme_name);
     Py_RETURN_NONE;
 }
 

@@ -376,6 +376,7 @@ option_names = (  # {{{
  'italic_font',
  'kitten_alias',
  'kitty_mod',
+ 'linux_bell_theme_name',
  'linux_display_server',
  'listen_on',
  'macos_colorspace',
@@ -534,6 +535,7 @@ class Options:
     input_delay: int = 3
     italic_font: str = 'auto'
     kitty_mod: int = 5
+    linux_bell_theme_name: str = '__custom'
     linux_display_server: choices_for_linux_display_server = 'auto'
     listen_on: str = 'none'
     macos_colorspace: choices_for_macos_colorspace = 'srgb'
