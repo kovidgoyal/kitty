@@ -22,10 +22,9 @@ request_data = int('REQUEST_DATA')
 leading_data = b''
 login_shell = os.environ.get('SHELL') or '/bin/sh'
 try:
-    login_shell = pwd.getpwuid(os.geteuid()).pw_shell or login_shell
+    login_shell = pwd.getpwuid(os.geteuid()).pw_shell
 except KeyError:
-    with contextlib.suppress(Exception):
-        print('Failed to read login shell via getpwuid() for current user, falling back to', login_shell, file=sys.stderr)
+    pass
 export_home_cmd = b'EXPORT_HOME_CMD'
 if export_home_cmd:
     HOME = base64.standard_b64decode(export_home_cmd).decode('utf-8')
