@@ -86,6 +86,7 @@ def run_build(args: Any) -> None:
         call(prefix + 'shutdown', echo=True)
     run_with_retry(f'python ../bypy macos program --sign-installers --notarize --non-interactive --extra-program-data "{vcs_rev}"')
     call('python ../bypy macos shutdown', echo=True)
+    call('make debug')
     call('./setup.py build-static-binaries')
 
 
