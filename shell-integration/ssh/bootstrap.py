@@ -20,11 +20,11 @@ echo_on = int('ECHO_ON')
 data_dir = shell_integration_dir = ''
 request_data = int('REQUEST_DATA')
 leading_data = b''
+login_shell = os.environ.get('SHELL') or '/bin/sh'
 try:
-    login_shell = pwd.getpwuid(os.geteuid()).pw_shell or os.environ.get('SHELL') or '/bin/sh'
+    login_shell = pwd.getpwuid(os.geteuid()).pw_shell or login_shell
 except KeyError:
-    login_shell = os.environ.get('SHELL') or '/bin/sh'
-    with suppress(Exception):
+    with contextlib.suppress(Exception):
         print('Failed to read login shell via getpwuid() for current user, falling back to', login_shell, file=sys.stderr)
 export_home_cmd = b'EXPORT_HOME_CMD'
 if export_home_cmd:
