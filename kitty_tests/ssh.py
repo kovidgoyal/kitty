@@ -173,7 +173,11 @@ env COLORTERM
                 methods.append('using_passwd')
         self.assertTrue(methods)
         import pwd
-        expected_login_shell = pwd.getpwuid(os.geteuid()).pw_shell
+        try:
+            expected_login_shell = pwd.getpwuid(os.geteuid()).pw_shell
+        except KeyError:
+            with suppress(Exception):
+                self.skipTest('Skipping login shell detection as getpwuid() failed to read login shell')
         if os.path.basename(expected_login_shell) == 'nologin':
             self.skipTest('Skipping login shell detection as login shell is set to nologin')
         for m in methods:
