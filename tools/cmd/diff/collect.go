@@ -64,9 +64,13 @@ func data_for_path(path string) (string, error) {
 	})
 }
 
+func is_image(path string) bool {
+	return strings.HasPrefix(mimetype_for_path(path), "image/")
+}
+
 func is_path_text(path string) bool {
 	return is_text_cache.MustGetOrCreate(path, func(path string) bool {
-		if strings.HasPrefix(mimetype_for_path(path), "image/") {
+		if is_image(path) {
 			return false
 		}
 		s1, err := os.Stat(path)

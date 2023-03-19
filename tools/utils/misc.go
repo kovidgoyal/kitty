@@ -146,7 +146,7 @@ func Memset[T any](dest []T, pattern ...T) []T {
 }
 
 var ControlCodesPat = (&Once[*regexp.Regexp]{Run: func() *regexp.Regexp {
-	return regexp.MustCompile("[\x00-\x09\x0b-\x1f\x7f\x80-\x9f]")
+	return regexp.MustCompile("[\x00-\x09\x0b-\x1f\x7f\u0080-\u009f]")
 }}).Get
 
 func SanitizeControlCodes(raw string, replace_with ...string) string {

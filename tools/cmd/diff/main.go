@@ -109,6 +109,7 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 		return 1, err
 	}
 	init_caches()
+	create_formatters()
 	defer func() {
 		for tdir := range remote_dirs {
 			os.RemoveAll(tdir)
@@ -148,6 +149,7 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 		lp.SetCursorVisible(true)
 		return ""
 	}
+	lp.OnResize = h.on_resize
 	err = lp.Run()
 	if err != nil {
 		return 1, err

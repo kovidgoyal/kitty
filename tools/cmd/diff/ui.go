@@ -4,6 +4,7 @@ package diff
 
 import (
 	"fmt"
+	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
 )
 
@@ -17,7 +18,8 @@ const (
 	HIGHLIGHT
 )
 
-type Reference struct {
+type ScrollPos struct {
+	logical_line, screen_line int
 }
 
 type AsyncResult struct {
@@ -32,9 +34,12 @@ type Handler struct {
 	left, right                                   string
 	collection                                    *Collection
 	diff_map                                      map[string]*Patch
+	logical_lines                                 *LogicalLines
 	lp                                            *loop.Loop
 	current_context_count, original_context_count int
 	added_count, removed_count                    int
+	screen_size                                   struct{ rows, columns, num_lines int }
+	scroll_pos                                    ScrollPos
 }
 
 func (self *Handler) calculate_statistics() {
@@ -45,11 +50,18 @@ func (self *Handler) calculate_statistics() {
 	}
 }
 
+var DebugPrintln func(...any)
+
 func (self *Handler) initialize() {
+	DebugPrintln = self.lp.DebugPrintln
 	self.current_context_count = opts.Context
 	if self.current_context_count < 0 {
 		self.current_context_count = int(conf.Num_context_lines)
 	}
+	sz, _ := self.lp.ScreenSize()
+	self.screen_size.rows = int(sz.HeightCells)
+	self.screen_size.columns = int(sz.WidthCells)
+	self.screen_size.num_lines = self.screen_size.rows - 1
 	self.original_context_count = self.current_context_count
 	self.lp.SetDefaultColor(loop.FOREGROUND, conf.Foreground)
 	self.lp.SetDefaultColor(loop.CURSOR, conf.Foreground)
@@ -65,6 +77,7 @@ func (self *Handler) initialize() {
 		self.async_results <- r
 		self.lp.WakeupMainThread()
 	}()
+	self.draw_screen()
 }
 
 func (self *Handler) generate_diff() {
@@ -112,14 +125,54 @@ func (self *Handler) handle_async_result(r AsyncResult) error {
 	case DIFF:
 		self.diff_map = r.diff_map
 		self.calculate_statistics()
-		self.render_diff()
-		self.scroll_pos = 0
-		if self.restore_position != nil {
-			self.set_current_position(self.restore_position)
-			self.restore_position = nil
+		err := self.render_diff()
+		if err != nil {
+			return err
 		}
+		self.scroll_pos = ScrollPos{}
+		// TODO: restore_position uncomment and implement below
+		// if self.restore_position != nil {
+		// 	self.set_current_position(self.restore_position)
+		// 	self.restore_position = nil
+		// }
 		self.draw_screen()
 	case HIGHLIGHT:
 	}
 	return nil
+}
+
+func (self *Handler) on_resize(old_size, new_size loop.ScreenSize) error {
+	self.screen_size.rows = int(new_size.HeightCells)
+	self.screen_size.num_lines = self.screen_size.rows - 1
+	self.screen_size.columns = int(new_size.WidthCells)
+	if self.diff_map != nil && self.collection != nil {
+		err := self.render_diff()
+		if err != nil {
+			return err
+		}
+	}
+	self.draw_screen()
+	return nil
+}
+
+func (self *Handler) render_diff() (err error) {
+	self.logical_lines, err = render(self.collection, self.diff_map, self.screen_size.columns)
+	if err != nil {
+		return err
+	}
+	return nil
+	// TODO: current search see python implementation
+}
+
+func (self *Handler) draw_screen() {
+	self.lp.StartAtomicUpdate()
+	defer self.lp.EndAtomicUpdate()
+	g := (&graphics.GraphicsCommand{}).SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_delete_visible)
+	g.WriteWithPayloadToLoop(self.lp, nil)
+	lp.MoveCursorTo(1, 1)
+	if self.logical_lines == nil || self.diff_map == nil || self.collection == nil {
+		lp.Println(`Calculating diff, please wait...`)
+		return
+	}
+
 }
