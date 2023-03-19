@@ -245,7 +245,11 @@ _ksi_main() {
     if [[ -n "${_ksi_prompt[ps2]}" ]]; then
         _ksi_prompt[ps2]="${_ksi_prompt[start_mark]}${_ksi_prompt[ps2]}${_ksi_prompt[end_mark]}"
     fi
+    # BASH aborts the entire script when doing unset with failglob set, somebody should report this upstream
+    oldval=$(builtin shopt -p failglob)
+    builtin shopt -u failglob
     builtin unset _ksi_prompt[start_mark] _ksi_prompt[end_mark] _ksi_prompt[start_suffix_mark] _ksi_prompt[end_suffix_mark] _ksi_prompt[start_secondary_mark] _ksi_prompt[end_secondary_mark]
+    builtin eval "$oldval"
 
     # install our prompt command, using an array if it is unset or already an array,
     # otherwise append a string. We check if _ksi_prompt_command exists as some shell
