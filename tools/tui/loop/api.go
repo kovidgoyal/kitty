@@ -389,7 +389,7 @@ const (
 	FOREGROUND                = 10
 	CURSOR                    = 12
 	SELECTION_BG              = 17
-	SELECTION_FG              = 18
+	SELECTION_FG              = 19
 )
 
 func (self *Loop) SetDefaultColor(which DefaultColor, val style.RGBA) {

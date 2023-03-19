@@ -170,9 +170,29 @@ func (self *Handler) draw_screen() {
 	g := (&graphics.GraphicsCommand{}).SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_delete_visible)
 	g.WriteWithPayloadToLoop(self.lp, nil)
 	lp.MoveCursorTo(1, 1)
+	lp.ClearToEndOfScreen()
 	if self.logical_lines == nil || self.diff_map == nil || self.collection == nil {
 		lp.Println(`Calculating diff, please wait...`)
 		return
+	}
+	num_written := 0
+	for i, line := range self.logical_lines.lines[self.scroll_pos.logical_line:] {
+		if num_written >= self.screen_size.num_lines {
+			break
+		}
+		screen_lines := line.screen_lines
+		if i == 0 {
+			screen_lines = screen_lines[self.scroll_pos.screen_line:]
+		}
+		for _, sl := range screen_lines {
+			lp.QueueWriteString(sl)
+			lp.MoveCursorVertically(1)
+			lp.QueueWriteString("\r")
+			num_written++
+			if num_written >= self.screen_size.num_lines {
+				break
+			}
+		}
 	}
 
 }

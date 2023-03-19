@@ -19,6 +19,7 @@ const (
 	TITLE_LINE LineType = iota
 	CHANGE_LINE
 	IMAGE_LINE
+	EMPTY_LINE
 )
 
 type Reference struct {
@@ -27,10 +28,9 @@ type Reference struct {
 }
 
 type LogicalLine struct {
-	src                  Reference
-	line_type            LineType
-	margin_size, columns int
-	screen_lines         []string
+	src          Reference
+	line_type    LineType
+	screen_lines []string
 }
 
 func fit_in(text string, count int) string {
@@ -71,7 +71,7 @@ func create_formatters() {
 	added_margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Added_margin_bg.AsRGBSharp()))
 	removed_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Removed_bg.AsRGBSharp()))
 	removed_margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Removed_margin_bg.AsRGBSharp()))
-	title_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Title_fg.AsRGBSharp(), conf.Title_bg.AsRGBSharp()))
+	title_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s bold", conf.Title_fg.AsRGBSharp(), conf.Title_bg.AsRGBSharp()))
 	margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Margin_bg.AsRGBSharp()))
 	hunk_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_bg.AsRGBSharp()))
 	hunk_margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_margin_bg.AsRGBSharp()))
@@ -90,11 +90,11 @@ func title_lines(left_path, right_path string, columns, margin_size int, ans []*
 	} else {
 		name = place_in(m+sanitize(left_name), columns)
 	}
-	ll := LogicalLine{columns: columns, margin_size: margin_size, line_type: TITLE_LINE, src: Reference{path: left_path, linenum: 0}}
+	ll := LogicalLine{line_type: TITLE_LINE, src: Reference{path: left_path, linenum: 0}}
 	l1 := ll
 	l1.screen_lines = []string{title_format(name)}
 	l2 := ll
-	l2.screen_lines = []string{title_format(name)}
+	l2.screen_lines = []string{title_format(strings.Repeat("━", columns+1))}
 	return append(ans, &l1, &l2)
 }
 
@@ -116,8 +116,13 @@ func render(collection *Collection, diff_map map[string]*Patch, columns int) (*L
 	})
 	margin_size := utils.Max(3, len(strconv.Itoa(largest_line_number))+1)
 	ans := make([]*LogicalLine, 0, 1024)
+	empty_line := LogicalLine{line_type: EMPTY_LINE}
 	err := collection.Apply(func(path, item_type, changed_path string) error {
 		ans = title_lines(path, changed_path, columns, margin_size, ans)
+		defer func() {
+			el := empty_line
+			ans = append(ans, &el)
+		}()
 
 		is_binary := !is_path_text(path)
 		if !is_binary && item_type == `diff` && !is_path_text(changed_path) {

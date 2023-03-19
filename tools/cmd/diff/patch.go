@@ -331,7 +331,7 @@ func diff(jobs []diff_job, context_count int) (ans map[string]*Patch, err error)
 		err          error
 		patch        *Patch
 	}
-	results := make(chan result)
+	results := make(chan result, len(jobs))
 	ctx.Parallel(0, len(jobs), func(nums <-chan int) {
 		for i := range nums {
 			job := jobs[i]
