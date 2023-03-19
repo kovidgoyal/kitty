@@ -29,7 +29,6 @@ typedef struct {
     double wheel_scroll_multiplier, touch_scroll_multiplier;
     int wheel_scroll_min_lines;
     bool enable_audio_bell;
-    const char *linux_bell_theme_name;
     CursorShape cursor_shape;
     float cursor_beam_thickness;
     float cursor_underline_thickness;
@@ -47,7 +46,7 @@ typedef struct {
     unsigned int macos_option_as_alt;
     float macos_thicken_font;
     WindowTitleIn macos_show_window_title_in;
-    char *bell_path;
+    char *bell_path, *bell_theme;
     float background_opacity, dim_opacity;
     float text_contrast, text_gamma_adjustment;
     bool text_old_gamma;

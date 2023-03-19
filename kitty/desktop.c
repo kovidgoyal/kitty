@@ -162,6 +162,7 @@ free_canberra_event_fields(CanberraEvent *e) {
     free(e->which_sound); e->which_sound = NULL;
     free(e->event_id); e->event_id = NULL;
     free(e->media_role); e->media_role = NULL;
+    free(e->theme_name); e->theme_name = NULL;
 }
 
 static void
@@ -245,7 +246,7 @@ play_desktop_sound(PyObject *self UNUSED, PyObject *args) {
     const char *which, *event_id = "test sound";
     const char *theme_name = "freedesktop";
     int is_path = 0;
-    if (!PyArg_ParseTuple(args, "s|sp", &which, &event_id, &is_path, &theme_name)) return NULL;
+    if (!PyArg_ParseTuple(args, "s|sps", &which, &event_id, &is_path, &theme_name)) return NULL;
     play_canberra_sound(which, event_id, is_path, "event", theme_name);
     Py_RETURN_NONE;
 }

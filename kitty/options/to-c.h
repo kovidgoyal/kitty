@@ -105,6 +105,10 @@ static void
 bell_path(PyObject *src, Options *opts) { STR_SETTER(bell_path); }
 
 static void
+bell_theme(PyObject *src, Options *opts) { STR_SETTER(bell_theme); }
+
+
+static void
 window_logo_path(PyObject *src, Options *opts) { STR_SETTER(default_window_logo); }
 
 #undef STR_SETTER

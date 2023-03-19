@@ -1405,7 +1405,7 @@ finalize(void) {
     if (detached_windows.windows) free(detached_windows.windows);
     detached_windows.capacity = 0;
 #define F(x) free(OPT(x)); OPT(x) = NULL;
-    F(background_image); F(bell_path); F(default_window_logo);
+    F(background_image); F(bell_path); F(bell_theme); F(default_window_logo);
 #undef F
     // we leak the texture here since it is not guaranteed
     // that freeing the texture will work during shutdown and
