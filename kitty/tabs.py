@@ -300,8 +300,8 @@ class Tab:  # {{{
     def create_layout_object(self, name: str) -> Layout:
         return create_layout_object_for(name, self.os_window_id, self.id)
 
-    @ac('lay', 'Go to the next enabled layout')
-    def next_layout(self) -> None:
+    @ac('lay', 'Go to the next enabled layout. Can optionally supply an integer to jump by the specified number.')
+    def next_layout(self, delta: int = 1) -> None:
         if len(self.enabled_layouts) > 1:
             for i, layout_name in enumerate(self.enabled_layouts):
                 if layout_name == self.current_layout.full_name:
@@ -309,7 +309,10 @@ class Tab:  # {{{
                     break
             else:
                 idx = -1
-            nl = self.enabled_layouts[(idx + 1) % len(self.enabled_layouts)]
+            if abs(delta) >= len(self.enabled_layouts):
+                mult = -1 if delta < 0 else 1
+                delta = mult * (abs(delta) % len(self.enabled_layouts))
+            nl = self.enabled_layouts[(idx + delta + len(self.enabled_layouts)) % len(self.enabled_layouts)]
             self._set_current_layout(nl)
             self.relayout()
 
