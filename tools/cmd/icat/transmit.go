@@ -278,7 +278,12 @@ func write_unicode_placeholder(imgd *image_data) {
 	}
 }
 
+var seen_image_ids *utils.Set[uint32]
+
 func transmit_image(imgd *image_data) {
+	if seen_image_ids == nil {
+		seen_image_ids = utils.NewSet[uint32](32)
+	}
 	defer func() {
 		for _, frame := range imgd.frames {
 			if frame.filename_is_temporary && frame.filename != "" {
@@ -315,7 +320,7 @@ func transmit_image(imgd *image_data) {
 	}
 	if imgd.image_id == 0 {
 		if imgd.use_unicode_placeholder {
-			for imgd.image_id&0xFF000000 == 0 || imgd.image_id&0x00FFFF00 == 0 {
+			for imgd.image_id&0xFF000000 == 0 || imgd.image_id&0x00FFFF00 == 0 || seen_image_ids.Has(imgd.image_id) {
 				// Generate a 32-bit image id using rejection sampling such that the most
 				// significant byte and the two bytes in the middle are non-zero to avoid
 				// collisions with applications that cannot represent non-zero most
@@ -323,6 +328,7 @@ func transmit_image(imgd *image_data) {
 				// or two non-zero bytes in the middle (which requires 24-bit color mode).
 				imgd.image_id = next_random()
 			}
+			seen_image_ids.Add(imgd.image_id)
 		} else {
 			if len(imgd.frames) > 1 {
 				for imgd.image_number == 0 {
