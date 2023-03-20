@@ -7,7 +7,9 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
+	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
 )
 
@@ -305,47 +307,50 @@ type escape_code_ struct {
 }
 
 type word_builder struct {
-	buf                 strings.Builder
+	buf                 []byte
 	escape_codes        []escape_code_
 	text_start_position int
+	wcswidth            *wcswidth.WCWidthIterator
 }
 
 func (self *word_builder) reset() string {
-	ans := self.buf.String()
-	sz := self.buf.Len()
-	if sz < 64 {
-		sz = 64
-	}
-	self.buf.Reset()
-	self.buf.Grow(sz)
+	ans := utils.UnsafeBytesToString(self.buf)
+	sz := utils.Min(utils.Max(64, len(ans)), 4096)
+	self.buf = make([]byte, 0, sz)
 	self.escape_codes = self.escape_codes[:0]
 	self.text_start_position = 0
+	self.wcswidth.Reset()
 	return ans
 }
 
 func (self *word_builder) is_empty() bool {
-	return self.buf.Len() == 0
+	return len(self.buf) == 0
 }
 
 func (self *word_builder) width() int {
-	return wcswidth.Stringwidth(self.buf.String())
+	return self.wcswidth.CurrentWidth()
 }
 
 func (self *word_builder) add_escape_code(prefix string, body []byte, suffix string) {
 	e := escape_code_{prefix: prefix, body: string(body), suffix: suffix}
 	self.escape_codes = append(self.escape_codes, e)
-	self.buf.WriteString(prefix)
-	self.buf.Write(body)
-	self.buf.WriteString(suffix)
+	self.buf = append(self.buf, prefix...)
+	self.buf = append(self.buf, body...)
+	self.buf = append(self.buf, suffix...)
 }
 
 func (self *word_builder) has_text() bool { return self.text_start_position != 0 }
 
+func (self *word_builder) recalculate_width() {
+	self.wcswidth.Reset()
+	self.wcswidth.Parse(self.buf)
+}
+
 func (self *word_builder) trim_leading_spaces() {
-	if self.buf.Len() == 0 {
+	if self.is_empty() {
 		return
 	}
-	s := self.buf.String()
+	s := utils.UnsafeBytesToString(self.buf)
 	var before, after string
 	if self.text_start_position != 0 {
 		before, after = s[:self.text_start_position-1], s[self.text_start_position-1:]
@@ -354,19 +359,30 @@ func (self *word_builder) trim_leading_spaces() {
 	}
 	q := strings.TrimLeftFunc(after, unicode.IsSpace)
 	if q != after {
-		self.buf.Reset()
-		self.buf.Grow(len(before) + len(q))
-		self.buf.WriteString(before)
-		self.buf.WriteString(q)
+		self.buf = make([]byte, 0, len(s))
+		self.buf = append(self.buf, before...)
+		self.buf = append(self.buf, q...)
 		self.text_start_position = len(before) + 1
+		self.recalculate_width()
 	}
 }
 
-func (self *word_builder) add_rune(ch rune) {
-	self.buf.WriteRune(ch)
-	if self.text_start_position == 0 {
-		self.text_start_position = self.buf.Len()
+func (self *word_builder) add_rune(ch rune) (num_bytes_written int) {
+	before := len(self.buf)
+	self.buf = utf8.AppendRune(self.buf, ch)
+	num_bytes_written = len(self.buf) - before
+	for _, b := range self.buf[before:] {
+		self.wcswidth.ParseByte(b)
 	}
+	if self.text_start_position == 0 {
+		self.text_start_position = len(self.buf)
+	}
+	return
+}
+
+func (self *word_builder) remove_trailing_bytes(n int) {
+	self.buf = self.buf[:len(self.buf)-n]
+	self.recalculate_width()
 }
 
 type wrapper struct {
@@ -433,7 +449,12 @@ func (self *wrapper) handle_rune(ch rune) error {
 		self.print_word()
 		self.current_line.add_char(ch)
 	} else {
-		self.current_word.add_rune(ch)
+		num_of_bytes_written := self.current_word.add_rune(ch)
+		if self.current_word.width() > self.width {
+			self.current_word.remove_trailing_bytes(num_of_bytes_written)
+			self.print_word()
+			return self.handle_rune(ch)
+		}
 	}
 	return nil
 }
@@ -471,12 +492,14 @@ func (self *wrapper) wrap_text(text string) []string {
 }
 
 func new_wrapper(indent string, width int) *wrapper {
+	width = utils.Max(2, width)
 	ans := wrapper{indent: indent, width: width, indent_width: wcswidth.Stringwidth(indent)}
 	ans.ep.HandleRune = ans.handle_rune
 	ans.ep.HandleCSI = ans.handle_csi
 	ans.ep.HandleOSC = ans.handle_osc
 	ans.lines = make([]string, 0, 32)
 	ans.current_word.escape_codes = make([]escape_code_, 0, 8)
+	ans.current_word.wcswidth = wcswidth.CreateWCWidthIterator()
 	return &ans
 }
 
