@@ -67,7 +67,7 @@ using_id() {
 }
 
 using_python() {
-    detect_python && output=$(command "$python" -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)") \
+    detect_python && output=$(command "$python" -c "import pwd, os; exec(\"try:print(pwd.getpwuid(os.geteuid()).pw_shell)\nexcept:print(os.environ.get('SHELL')or'/bin/sh')\")") \
     && login_shell="$output" && login_shell_is_ok
 }
 
