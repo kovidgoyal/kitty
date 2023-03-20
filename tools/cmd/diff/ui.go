@@ -4,8 +4,10 @@ package diff
 
 import (
 	"fmt"
+	"kitty/tools/config"
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
+	"strconv"
 )
 
 var _ = fmt.Print
@@ -31,6 +33,8 @@ type AsyncResult struct {
 
 type Handler struct {
 	async_results                                 chan AsyncResult
+	shortcut_tracker                              config.ShortcutTracker
+	pending_keys                                  []string
 	left, right                                   string
 	collection                                    *Collection
 	diff_map                                      map[string]*Patch
@@ -54,6 +58,7 @@ var DebugPrintln func(...any)
 
 func (self *Handler) initialize() {
 	DebugPrintln = self.lp.DebugPrintln
+	self.pending_keys = make([]string, 0, 4)
 	self.current_context_count = opts.Context
 	if self.current_context_count < 0 {
 		self.current_context_count = int(conf.Num_context_lines)
@@ -195,4 +200,31 @@ func (self *Handler) draw_screen() {
 		}
 	}
 
+}
+
+func (self *Handler) on_key_event(ev *loop.KeyEvent) error {
+	ac := self.shortcut_tracker.Match(ev, conf.KeyboardShortcuts)
+	if ac != nil {
+		return self.dispatch_action(ac.Name, ac.Args)
+	}
+	return nil
+}
+
+func (self *Handler) scroll_lines(amt int) {
+	// TODO: Implement me
+}
+
+func (self *Handler) dispatch_action(name, args string) error {
+	switch name {
+	case `quit`:
+		self.lp.Quit(0)
+	case `scroll_by`:
+		amt, err := strconv.Atoi(args)
+		if err == nil {
+			self.scroll_lines(amt)
+		} else {
+			self.lp.Beep()
+		}
+	}
+	return nil
 }

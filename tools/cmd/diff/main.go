@@ -150,6 +150,7 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 		return ""
 	}
 	lp.OnResize = h.on_resize
+	lp.OnKeyEvent = h.on_key_event
 	err = lp.Run()
 	if err != nil {
 		return 1, err

@@ -4,6 +4,7 @@ package config
 
 import (
 	"fmt"
+	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"regexp"
 	"strconv"
@@ -252,4 +253,38 @@ func ParseMap(val string) (*KeyAction, error) {
 	}
 	action_name, action_args, _ := strings.Cut(action, " ")
 	return &KeyAction{Name: action_name, Args: action_args, Normalized_keys: NormalizeShortcuts(spec)}, nil
+}
+
+type ShortcutTracker struct {
+	partial_matches      []*KeyAction
+	partial_num_consumed int
+}
+
+func (self *ShortcutTracker) Match(ev *loop.KeyEvent, all_actions []*KeyAction) *KeyAction {
+	if self.partial_num_consumed > 0 {
+		ev.Handled = true
+		self.partial_matches = utils.Filter(self.partial_matches, func(ac *KeyAction) bool {
+			return self.partial_num_consumed < len(ac.Normalized_keys) && ev.MatchesPressOrRepeat(ac.Normalized_keys[self.partial_num_consumed])
+		})
+		if len(self.partial_matches) == 0 {
+			self.partial_num_consumed = 0
+			return nil
+		}
+	} else {
+		self.partial_matches = utils.Filter(all_actions, func(ac *KeyAction) bool {
+			return ev.MatchesPressOrRepeat(ac.Normalized_keys[0])
+		})
+		if len(self.partial_matches) == 0 {
+			return nil
+		}
+		ev.Handled = true
+	}
+	self.partial_num_consumed++
+	for _, x := range self.partial_matches {
+		if self.partial_num_consumed >= len(x.Normalized_keys) {
+			self.partial_num_consumed = 0
+			return x
+		}
+	}
+	return nil
 }
