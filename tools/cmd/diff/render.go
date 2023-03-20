@@ -235,11 +235,7 @@ func lines_for_context_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_n
 }
 
 func splitlines(text string, width int) []string {
-	lines := style.WrapTextAsLines(text, "", width)
-	if len(lines) > 1 && lines[len(lines)-1] == "" {
-		lines = lines[:len(lines)-1]
-	}
-	return lines
+	return style.WrapTextAsLines(text, "", width)
 }
 
 func render_half_line(line_number int, line, ltype string, margin_size, available_cols int, center Center, ans []string) []string {

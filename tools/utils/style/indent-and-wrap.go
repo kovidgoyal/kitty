@@ -481,7 +481,9 @@ func (self *wrapper) wrap_text(text string) []string {
 	if last_line == self.current_line.reset() {
 		last_line = ""
 	}
-	self.append_line(last_line)
+	if last_line != "" {
+		self.append_line(last_line)
+	}
 	return self.lines
 }
 
