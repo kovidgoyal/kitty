@@ -66,6 +66,14 @@ func Map[T any, O any](f func(x T) O, s []T) []O {
 	return ans
 }
 
+func Repeat[T any](x T, n int) []T {
+	ans := make([]T, n)
+	for i := 0; i < n; i++ {
+		ans[i] = x
+	}
+	return ans
+}
+
 func Sort[T any](s []T, less func(a, b T) bool) []T {
 	sort.Slice(s, func(i, j int) bool { return less(s[i], s[j]) })
 	return s

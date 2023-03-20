@@ -53,11 +53,13 @@ func set_diff_command(q string) error {
 	return err
 }
 
+type Center struct{ prefix_count, suffix_count int }
+
 type Chunk struct {
 	is_context              bool
 	left_start, right_start int
 	left_count, right_count int
-	centers                 []struct{ prefix_count, suffix_count int }
+	centers                 []Center
 }
 
 func (self *Chunk) add_line() {
