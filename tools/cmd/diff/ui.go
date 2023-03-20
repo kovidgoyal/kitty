@@ -67,7 +67,7 @@ func (self *Handler) initialize() {
 	self.lp.SetDefaultColor(loop.CURSOR, conf.Foreground)
 	self.lp.SetDefaultColor(loop.BACKGROUND, conf.Background)
 	self.lp.SetDefaultColor(loop.SELECTION_BG, conf.Select_bg)
-	if !conf.Select_fg.IsNull {
+	if conf.Select_fg.IsSet {
 		self.lp.SetDefaultColor(loop.SELECTION_FG, conf.Select_fg.Color)
 	}
 	self.async_results = make(chan AsyncResult, 32)

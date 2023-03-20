@@ -158,14 +158,14 @@ func ParseColor(color string) (RGBA, error) {
 }
 
 type NullableColor struct {
-	Color  RGBA
-	IsNull bool
+	Color RGBA
+	IsSet bool
 }
 
 func ParseColorOrNone(color string) (NullableColor, error) {
 	raw := strings.TrimSpace(strings.ToLower(color))
 	if raw == "none" {
-		return NullableColor{IsNull: true}, nil
+		return NullableColor{}, nil
 	}
 	c, err := ParseColor(raw)
 	return NullableColor{Color: c}, err

@@ -63,10 +63,10 @@ func create_formatters() {
 	ctx := style.Context{AllowEscapeCodes: true}
 	text_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Background.AsRGBSharp()))
 	filler_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Filler_bg.AsRGBSharp()))
-	if conf.Margin_filler_bg.IsNull {
-		margin_filler_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Filler_bg.AsRGBSharp()))
-	} else {
+	if conf.Margin_filler_bg.IsSet {
 		margin_filler_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Margin_filler_bg.Color.AsRGBSharp()))
+	} else {
+		margin_filler_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Filler_bg.AsRGBSharp()))
 	}
 	added_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Added_bg.AsRGBSharp()))
 	added_margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Added_margin_bg.AsRGBSharp()))
@@ -219,7 +219,7 @@ func lines_for_context_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_n
 		ll := LogicalLine{line_type: CHANGE_LINE, src: Reference{path: data.left_path, linenum: left_line_number}}
 		left_line_number_s := strconv.Itoa(left_line_number + 1)
 		right_line_number_s := strconv.Itoa(right_line_number + 1)
-		for _, text := range style.WrapTextAsLines(data.left_lines[left_line_number], "", data.available_cols) {
+		for _, text := range splitlines(data.left_lines[left_line_number], data.available_cols) {
 			line := render_diff_line(left_line_number_s, text, `context`, data.margin_size, data.available_cols)
 			if right_line_number_s == left_line_number_s {
 				line += line
@@ -234,6 +234,14 @@ func lines_for_context_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_n
 	return ans
 }
 
+func splitlines(text string, width int) []string {
+	lines := style.WrapTextAsLines(text, "", width)
+	if len(lines) > 1 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	return lines
+}
+
 func render_half_line(line_number int, line, ltype string, margin_size, available_cols int, center Center, ans []string) []string {
 	if center.prefix_count > 0 {
 		line_sz := len(line)
@@ -243,16 +251,18 @@ func render_half_line(line_number int, line, ltype string, margin_size, availabl
 		}
 	}
 	lnum := strconv.Itoa(line_number + 1)
-	for _, sc := range style.WrapTextAsLines(line, "", available_cols) {
+	for _, sc := range splitlines(line, available_cols) {
 		ans = append(ans, render_diff_line(lnum, sc, ltype, margin_size, available_cols))
+		lnum = ""
 	}
 	return ans
 }
 
 func lines_for_diff_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_num int, ans []*LogicalLine) []*LogicalLine {
 	common := utils.Min(chunk.left_count, chunk.right_count)
+	ll, rl := make([]string, 0, 32), make([]string, 0, 32)
 	for i := 0; i < utils.Max(chunk.left_count, chunk.right_count); i++ {
-		var ll, rl []string
+		ll, rl = ll[:0], rl[:0]
 		ref_ln, ref_path := 0, ""
 		var center Center
 		if i < len(chunk.centers) {
@@ -267,7 +277,7 @@ func lines_for_diff_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_num 
 		if i < chunk.right_count {
 			ref_path = data.right_path
 			ref_ln = chunk.right_start + i
-			ll = render_half_line(ref_ln, data.right_lines[ref_ln], "add", data.margin_size, data.available_cols, center, ll)
+			rl = render_half_line(ref_ln, data.right_lines[ref_ln], "add", data.margin_size, data.available_cols, center, rl)
 		}
 
 		if i < common {
