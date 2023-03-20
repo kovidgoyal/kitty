@@ -248,12 +248,12 @@ func (self hyperlink_state) as_escape_codes(for_close bool) string {
 }
 
 type line_builder struct {
-	buf                       strings.Builder
+	buf                       []byte
 	last_text_pos, cursor_pos int
 }
 
 func (self *line_builder) reset() string {
-	ans := self.buf.String()
+	ans := string(self.buf)
 	if len(ans) > self.last_text_pos {
 		prefix := ans[:self.last_text_pos]
 		suffix := ans[self.last_text_pos:]
@@ -264,15 +264,9 @@ func (self *line_builder) reset() string {
 	} else {
 		ans = strings.TrimRightFunc(ans, unicode.IsSpace)
 	}
-	sz := self.buf.Len()
-	self.buf.Reset()
+	self.buf = self.buf[:0]
 	self.last_text_pos = 0
 	self.cursor_pos = 0
-	if sz > 1024 {
-		self.buf.Grow(sz)
-	} else {
-		self.buf.Grow(1024)
-	}
 	return ans
 }
 
@@ -281,25 +275,25 @@ func (self *line_builder) has_space_for_width(w, max_width int) bool {
 }
 
 func (self *line_builder) add_char(ch rune) {
-	self.buf.WriteRune(ch)
-	self.last_text_pos = self.buf.Len()
+	self.buf = utf8.AppendRune(self.buf, ch)
+	self.last_text_pos = len(self.buf)
 	self.cursor_pos += wcswidth.Runewidth(ch)
 }
 
-func (self *line_builder) add_word(word string, width int) {
-	self.buf.WriteString(word)
-	self.last_text_pos = self.buf.Len()
+func (self *line_builder) add_word(word []byte, width int) {
+	self.buf = append(self.buf, word...)
+	self.last_text_pos = len(self.buf)
 	self.cursor_pos += width
 }
 
 func (self *line_builder) add_escape_code(code string) {
-	self.buf.WriteString(code)
+	self.buf = append(self.buf, code...)
 }
 
 func (self *line_builder) add_escape_code2(prefix string, body []byte, suffix string) {
-	self.buf.WriteString(prefix)
-	self.buf.Write(body)
-	self.buf.WriteString(suffix)
+	self.buf = append(self.buf, prefix...)
+	self.buf = append(self.buf, body...)
+	self.buf = append(self.buf, suffix...)
 }
 
 type escape_code_ struct {
@@ -313,14 +307,12 @@ type word_builder struct {
 	wcswidth            *wcswidth.WCWidthIterator
 }
 
-func (self *word_builder) reset() string {
-	ans := utils.UnsafeBytesToString(self.buf)
-	sz := utils.Min(utils.Max(64, len(ans)), 4096)
-	self.buf = make([]byte, 0, sz)
+func (self *word_builder) reset(copy_current_word func([]byte)) {
+	copy_current_word(self.buf)
+	self.buf = self.buf[:0]
 	self.escape_codes = self.escape_codes[:0]
 	self.text_start_position = 0
 	self.wcswidth.Reset()
-	return ans
 }
 
 func (self *word_builder) is_empty() bool {
@@ -401,7 +393,7 @@ type wrapper struct {
 func (self *wrapper) newline_prefix() {
 	self.current_line.add_escape_code(self.sgr.as_escape_codes(true))
 	self.current_line.add_escape_code(self.hyperlink.as_escape_codes(true))
-	self.current_line.add_word(self.indent, self.indent_width)
+	self.current_line.add_word(utils.UnsafeStringToBytes(self.indent), self.indent_width)
 	self.current_line.add_escape_code(self.sgr.as_escape_codes(false))
 	self.current_line.add_escape_code(self.hyperlink.as_escape_codes(false))
 }
@@ -438,7 +430,9 @@ func (self *wrapper) print_word() {
 			self.sgr.apply_csi(e.body)
 		}
 	}
-	self.current_line.add_word(self.current_word.reset(), w)
+	self.current_word.reset(func(word []byte) {
+		self.current_line.add_word(word, w)
+	})
 }
 
 func (self *wrapper) handle_rune(ch rune) error {
@@ -474,9 +468,9 @@ func (self *wrapper) wrap_text(text string) []string {
 		return []string{""}
 	}
 	self.current_line.reset()
-	self.current_word.reset()
+	self.current_word.reset(func([]byte) {})
 	self.lines = self.lines[:0]
-	self.current_line.add_word(self.indent, self.indent_width)
+	self.current_line.add_word(utils.UnsafeStringToBytes(self.indent), self.indent_width)
 	self.ep.ParseString(text)
 	if !self.current_word.is_empty() {
 		self.print_word()
