@@ -49,9 +49,6 @@ def main() -> None:
     patch_color_list('tools/cmd/at/set_colors.go', nullable_colors, 'NULLABLE')
     patch_color_list('tools/themes/collection.go', all_colors, 'ALL')
 
-    from kittens.diff.options.definition import definition as kd
-    write_output('kittens.diff', kd)
-
 
 if __name__ == '__main__':
     main()
