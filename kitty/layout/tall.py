@@ -198,10 +198,12 @@ class Tall(Layout):
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
         if action_name == 'increase_num_full_size_windows':
             self.layout_opts.full_size += 1
+            self.main_bias = list(self.layout_opts.build_bias_list())
             return True
         if action_name == 'decrease_num_full_size_windows':
             if self.layout_opts.full_size > 1:
                 self.layout_opts.full_size -= 1
+                self.main_bias = list(self.layout_opts.build_bias_list())
                 return True
         if action_name == 'mirror':
             action = (args or ('toggle',))[0]
