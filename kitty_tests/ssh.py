@@ -176,8 +176,7 @@ env COLORTERM
         try:
             expected_login_shell = pwd.getpwuid(os.geteuid()).pw_shell
         except KeyError:
-            with suppress(KeyError):
-                self.skipTest('Skipping login shell detection as getpwuid() failed to read login shell')
+            self.skipTest('Skipping login shell detection as getpwuid() failed to read login shell')
         if os.path.basename(expected_login_shell) == 'nologin':
             self.skipTest('Skipping login shell detection as login shell is set to nologin')
         for m in methods:

@@ -67,12 +67,12 @@ using_id() {
 }
 
 using_python() {
-    detect_python && output=$(command "$python" -c "import pwd, os; exec(\"try:print(pwd.getpwuid(os.geteuid()).pw_shell)\nexcept:print(os.environ.get('SHELL')or'/bin/sh')\")") \
+    detect_python && output=$(command "$python" -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)" 2>/dev/null) \
     && login_shell="$output" && login_shell_is_ok
 }
 
 using_perl() {
-    detect_perl && output=$(command "$perl" -e 'my $shell = (getpwuid($<))[8]; print $shell') \
+    detect_perl && output=$(command "$perl" -e 'my $shell = (getpwuid($<))[8]; print $shell' 2>/dev/null) \
     && login_shell="$output" && login_shell_is_ok
 }
 
