@@ -181,6 +181,9 @@ func (self *Handler) on_resize(old_size, new_size loop.ScreenSize) error {
 		if err != nil {
 			return err
 		}
+		if self.max_scroll_pos.Less(self.scroll_pos) {
+			self.scroll_pos = self.max_scroll_pos
+		}
 	}
 	self.draw_screen()
 	return nil
