@@ -35,6 +35,15 @@ type LogicalLine struct {
 	is_change_start bool
 }
 
+func (self *LogicalLine) IncrementScrollPosBy(pos *ScrollPos, amt int) (delta int) {
+	if len(self.screen_lines) > 0 {
+		npos := utils.Max(0, utils.Min(pos.screen_line+amt, len(self.screen_lines)-1))
+		delta = npos - pos.screen_line
+		pos.screen_line = npos
+	}
+	return
+}
+
 func fit_in(text string, count int) string {
 	truncated := wcswidth.TruncateToVisualLength(text, count)
 	if len(truncated) >= len(text) {
@@ -128,6 +137,57 @@ func title_lines(left_path, right_path string, columns, margin_size int, ans []*
 type LogicalLines struct {
 	lines                []*LogicalLine
 	margin_size, columns int
+}
+
+func (self *LogicalLines) At(i int) *LogicalLine { return self.lines[i] }
+func (self *LogicalLines) Len() int              { return len(self.lines) }
+
+func (self *LogicalLines) Minus(a, b ScrollPos) (delta int) {
+	// a - b
+	amt := 1
+	if a.Less(b) {
+		amt = -1
+	}
+	for a != b {
+		d := self.IncrementScrollPosBy(&a, amt)
+		if d == 0 {
+			break
+		}
+		delta += d
+	}
+	return
+}
+
+func (self *LogicalLines) IncrementScrollPosBy(pos *ScrollPos, amt int) (delta int) {
+	if pos.logical_line < 0 || pos.logical_line >= len(self.lines) || amt == 0 {
+		return
+	}
+	one := 1
+	if amt < 0 {
+		one = -1
+	}
+	for amt != 0 {
+		line := self.lines[pos.logical_line]
+		d := line.IncrementScrollPosBy(pos, amt)
+		if d == 0 {
+			nlp := pos.logical_line + one
+			if nlp < 0 || nlp >= len(self.lines) {
+				break
+			}
+			pos.logical_line = nlp
+			if one > 0 {
+				pos.screen_line = 0
+			} else {
+				pos.screen_line = len(self.lines[nlp].screen_lines) - 1
+			}
+			delta += one
+			amt -= one
+		} else {
+			amt -= d
+			delta += d
+		}
+	}
+	return
 }
 
 func image_lines(left_path, right_path string, columns, margin_size int, ans []*LogicalLine) ([]*LogicalLine, error) {

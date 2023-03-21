@@ -24,6 +24,10 @@ type ScrollPos struct {
 	logical_line, screen_line int
 }
 
+func (self ScrollPos) Less(other ScrollPos) bool {
+	return self.logical_line < other.logical_line || (self.logical_line == other.logical_line && self.screen_line < other.screen_line)
+}
+
 type AsyncResult struct {
 	err        error
 	rtype      ResultType
@@ -43,7 +47,7 @@ type Handler struct {
 	current_context_count, original_context_count int
 	added_count, removed_count                    int
 	screen_size                                   struct{ rows, columns, num_lines int }
-	scroll_pos                                    ScrollPos
+	scroll_pos, max_scroll_pos                    ScrollPos
 }
 
 func (self *Handler) calculate_statistics() {
@@ -161,10 +165,26 @@ func (self *Handler) on_resize(old_size, new_size loop.ScreenSize) error {
 }
 
 func (self *Handler) render_diff() (err error) {
+	if self.screen_size.columns < 8 {
+		return fmt.Errorf("Screen too narrow, need at least 8 columns")
+	}
+	if self.screen_size.rows < 2 {
+		return fmt.Errorf("Screen too short, need at least 2 rows")
+	}
 	self.logical_lines, err = render(self.collection, self.diff_map, self.screen_size.columns)
 	if err != nil {
 		return err
 	}
+	last := self.logical_lines.Len() - 1
+	self.max_scroll_pos.logical_line = last
+	if last > -1 {
+		self.max_scroll_pos.screen_line = len(self.logical_lines.At(last).screen_lines) - 1
+	} else {
+		self.max_scroll_pos.screen_line = 0
+	}
+	DebugPrintln(self.max_scroll_pos)
+	self.logical_lines.IncrementScrollPosBy(&self.max_scroll_pos, -self.screen_size.num_lines+1)
+	DebugPrintln(self.max_scroll_pos)
 	return nil
 	// TODO: current search see python implementation
 }
@@ -210,8 +230,14 @@ func (self *Handler) on_key_event(ev *loop.KeyEvent) error {
 	return nil
 }
 
-func (self *Handler) scroll_lines(amt int) {
-	// TODO: Implement me
+func (self *Handler) scroll_lines(amt int) (delta int) {
+	before := self.scroll_pos
+	delta = self.logical_lines.IncrementScrollPosBy(&self.scroll_pos, amt)
+	if delta > 0 && self.max_scroll_pos.Less(self.scroll_pos) {
+		self.scroll_pos = self.max_scroll_pos
+		delta = self.logical_lines.Minus(self.scroll_pos, before)
+	}
+	return
 }
 
 func (self *Handler) dispatch_action(name, args string) error {
@@ -221,7 +247,11 @@ func (self *Handler) dispatch_action(name, args string) error {
 	case `scroll_by`:
 		amt, err := strconv.Atoi(args)
 		if err == nil {
-			self.scroll_lines(amt)
+			if self.scroll_lines(amt) == 0 {
+				self.lp.Beep()
+			} else {
+				self.draw_screen()
+			}
 		} else {
 			self.lp.Beep()
 		}
