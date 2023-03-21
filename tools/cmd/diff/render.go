@@ -29,9 +29,10 @@ type Reference struct {
 }
 
 type LogicalLine struct {
-	src          Reference
-	line_type    LineType
-	screen_lines []string
+	src             Reference
+	line_type       LineType
+	screen_lines    []string
+	is_change_start bool
 }
 
 func fit_in(text string, count int) string {
@@ -194,7 +195,10 @@ func binary_lines(left_path, right_path string, columns, margin_size int, ans []
 	} else {
 		line = fl(left_path, removed_format) + fl(right_path, added_format)
 	}
-	ll := LogicalLine{line_type: CHANGE_LINE, src: Reference{path: left_path, linenum: 0}, screen_lines: []string{line}}
+	ll := LogicalLine{is_change_start: true, line_type: CHANGE_LINE, src: Reference{path: left_path, linenum: 0}, screen_lines: []string{line}}
+	if left_path == "" {
+		ll.src.path = right_path
+	}
 	return append(ans, &ll), err
 }
 
@@ -290,7 +294,7 @@ func lines_for_diff_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_num 
 				ll = append(ll, utils.Repeat(data.filler_line, len(rl))...)
 			}
 		}
-		logline := LogicalLine{line_type: CHANGE_LINE, src: Reference{path: ref_path, linenum: ref_ln}}
+		logline := LogicalLine{line_type: CHANGE_LINE, src: Reference{path: ref_path, linenum: ref_ln}, is_change_start: i == 0}
 		for l := 0; l < len(ll); l++ {
 			logline.screen_lines = append(logline.screen_lines, ll[l]+rl[l])
 		}
@@ -335,6 +339,58 @@ func lines_for_diff(left_path string, right_path string, patch *Patch, columns, 
 	return ans, nil
 }
 
+func all_lines(path string, columns, margin_size int, is_add bool, ans []*LogicalLine) ([]*LogicalLine, error) {
+	available_cols := columns/2 - margin_size
+	ltype := `add`
+	if !is_add {
+		ltype = `remove`
+	}
+	lines, err := lines_for_path(path)
+	if err != nil {
+		return nil, err
+	}
+	filler := render_diff_line(``, ``, `filler`, margin_size, available_cols)
+	msg_written := false
+
+	ll := LogicalLine{src: Reference{path: path}, line_type: CHANGE_LINE}
+	for line_number, line := range lines {
+		hlines := make([]string, 0, 8)
+		hlines = render_half_line(line_number, line, ltype, margin_size, available_cols, Center{}, hlines)
+		l := ll
+		l.src.linenum = line_number
+		l.is_change_start = line_number == 0
+		for _, hl := range hlines {
+			empty := filler
+			if !msg_written {
+				msg_written = true
+				msg := `This file was added`
+				if !is_add {
+					msg = `This file was removed`
+				}
+				empty = render_diff_line(``, msg, `filler`, margin_size, available_cols)
+			}
+			var text string
+			if is_add {
+				text = empty + hl
+			} else {
+				text = hl + empty
+			}
+			l.screen_lines = append(l.screen_lines, text)
+		}
+		ans = append(ans, &l)
+	}
+	return ans, nil
+}
+
+func rename_lines(path, other_path string, columns, margin_size int, ans []*LogicalLine) ([]*LogicalLine, error) {
+	m := strings.Repeat(" ", margin_size)
+	ll := LogicalLine{src: Reference{path: path, linenum: 0}, line_type: CHANGE_LINE, is_change_start: true}
+	for _, line := range splitlines(fmt.Sprintf(`The file %s was renamed to %s`, sanitize(path_name_map[path]), sanitize(path_name_map[other_path])), columns-margin_size) {
+		ll.screen_lines = append(ll.screen_lines, m+line)
+	}
+	return append(ans, &ll), nil
+}
+
 func render(collection *Collection, diff_map map[string]*Patch, columns int) (result *LogicalLines, err error) {
 	largest_line_number := 0
 	collection.Apply(func(path, typ, changed_path string) error {
@@ -377,8 +433,38 @@ func render(collection *Collection, diff_map map[string]*Patch, columns int) (re
 				return err
 			}
 		case "add":
+			if is_binary {
+				if is_img {
+					ans, err = image_lines("", path, columns, margin_size, ans)
+				} else {
+					ans, err = binary_lines("", path, columns, margin_size, ans)
+				}
+			} else {
+				ans, err = all_lines(path, columns, margin_size, true, ans)
+			}
+			if err != nil {
+				return err
+			}
 		case "removal":
+			if is_binary {
+				if is_img {
+					ans, err = image_lines(path, "", columns, margin_size, ans)
+				} else {
+					ans, err = binary_lines(path, "", columns, margin_size, ans)
+				}
+			} else {
+				ans, err = all_lines(path, columns, margin_size, false, ans)
+			}
+			if err != nil {
+				return err
+			}
 		case "rename":
+			ans, err = rename_lines(path, changed_path, columns, margin_size, ans)
+			if err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("Unknown change type: %#v", item_type)
 		}
 		return nil
 	})
