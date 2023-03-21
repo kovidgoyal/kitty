@@ -469,10 +469,15 @@ are still clickable.
     )
 
 opt('url_excluded_characters', '',
-    ctype='!url_excluded_characters',
+    option_type='python_string', ctype='!url_excluded_characters',
     long_text='''
 Additional characters to be disallowed from URLs, when detecting URLs under the
 mouse cursor. By default, all characters that are legal in URLs are allowed.
+Additionally, newlines are allowed (but stripped). This is to accommodate
+programs such as mutt that add hard line breaks even for continued lines.
+:code:`\\\\n` can be added to this option to disable this behavior. Special
+characters can be specified using backslash escapes, to specify a backslash use
+a double backslash.
 '''
     )
 

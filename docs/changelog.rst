@@ -82,6 +82,8 @@ Detailed list of changes
 
 - X11: Fix a crash if the X server requests clipboard data after we have relinquished the clipboard (:iss:`5650`)
 
+- Allow stopping of URL detection at newlines via :opt:`url_excluded_characters` (:iss:`6122`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -2793,17 +2793,21 @@ screen_open_url(Screen *self) {
 
 // URLs {{{
 static void
-extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type sentinel) {
+extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type sentinel, bool newlines_allowed) {
     unsigned int count = 0;
+    bool has_newline = false;
     while(count++ < 10) {
-        if (*x != line->xnum - 1) break;
+        has_newline = !line->gpu_cells[line->xnum-1].attrs.next_char_was_wrapped;
+        if (*x != line->xnum - 1 || (!newlines_allowed && has_newline)) break;
         bool next_line_starts_with_url_chars = false;
         line = screen_visual_line(screen, *y + 2);
-        if (line) next_line_starts_with_url_chars = line_startswith_url_chars(line);
+        if (line) {
+            next_line_starts_with_url_chars = line_startswith_url_chars(line);
+            has_newline = !line->attrs.is_continued;
+            if (next_line_starts_with_url_chars && has_newline && !newlines_allowed) next_line_starts_with_url_chars = false;
+        }
         line = screen_visual_line(screen, *y + 1);
         if (!line) break;
-        // we deliberately allow non-continued lines as some programs, like
-        // mutt split URLs with newlines at line boundaries
         index_type new_x = line_url_end_at(line, 0, false, sentinel, next_line_starts_with_url_chars);
         if (!new_x && !line_startswith_url_chars(line)) break;
         *y += 1; *x = new_x;
@@ -2845,6 +2849,7 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
         return hid;
     }
     char_type sentinel = 0;
+    bool newlines_allowed = !is_excluded_from_url('\n');
     if (line) {
         url_start = line_url_start_at(line, x);
         if (url_start < line->xnum) {
@@ -2852,6 +2857,7 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
             if (y < screen->lines - 1) {
                 line = screen_visual_line(screen, y+1);
                 next_line_starts_with_url_chars = line_startswith_url_chars(line);
+                if (next_line_starts_with_url_chars && !newlines_allowed && !line->attrs.is_continued) next_line_starts_with_url_chars = false;
                 line = screen_visual_line(screen, y);
             }
             sentinel = get_url_sentinel(line, url_start);
@@ -2861,7 +2867,7 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
     }
     if (has_url) {
         index_type y_extended = y;
-        extend_url(screen, line, &url_end, &y_extended, sentinel);
+        extend_url(screen, line, &url_end, &y_extended, sentinel, newlines_allowed);
         screen_mark_url(screen, url_start, y, url_end, y_extended);
     } else {
         screen_mark_url(screen, 0, 0, 0, 0);
