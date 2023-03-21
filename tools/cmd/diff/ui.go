@@ -11,6 +11,7 @@ import (
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print
@@ -51,6 +52,8 @@ type Handler struct {
 	added_count, removed_count                    int
 	screen_size                                   struct{ rows, columns, num_lines int }
 	scroll_pos, max_scroll_pos                    ScrollPos
+	inputting_command                             bool
+	statusline_message                            string
 }
 
 func (self *Handler) calculate_statistics() {
@@ -242,7 +245,34 @@ func (self *Handler) draw_screen() {
 			}
 		}
 	}
+	self.draw_status_line()
+}
 
+func (self *Handler) draw_status_line() {
+	if self.logical_lines == nil || self.diff_map == nil {
+		return
+	}
+	self.lp.MoveCursorTo(1, self.screen_size.rows)
+	self.lp.ClearToEndOfLine()
+	if self.inputting_command {
+		// TODO: implement this
+	} else if self.statusline_message != "" {
+		// TODO: implement this
+	} else {
+		num := self.logical_lines.NumScreenLinesTo(self.scroll_pos)
+		den := self.logical_lines.NumScreenLinesTo(self.max_scroll_pos)
+		var frac int
+		if den > 0 {
+			frac = int((float64(num) * 100.0) / float64(den))
+		}
+		sp := statusline_format(fmt.Sprintf("%d%%", frac))
+		// TODO: output num of search matches
+		counts := added_count_format(strconv.Itoa(self.added_count)) + statusline_format(`,`) + removed_count_format(strconv.Itoa(self.removed_count))
+		suffix := counts + "  " + sp
+		prefix := statusline_format(":")
+		filler := strings.Repeat(" ", utils.Max(0, self.screen_size.columns-wcswidth.Stringwidth(prefix)-wcswidth.Stringwidth(suffix)))
+		self.lp.QueueWriteString(prefix + filler + suffix)
+	}
 }
 
 func (self *Handler) on_key_event(ev *loop.KeyEvent) error {

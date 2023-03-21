@@ -67,7 +67,7 @@ func place_in(text string, sz int) string {
 	return fill_in(fit_in(text, sz), sz)
 }
 
-var title_format, text_format, margin_format, added_format, removed_format, added_margin_format, removed_margin_format, filler_format, margin_filler_format, hunk_margin_format, hunk_format, added_center, removed_center func(...any) string
+var title_format, text_format, margin_format, added_format, removed_format, added_margin_format, removed_margin_format, filler_format, margin_filler_format, hunk_margin_format, hunk_format, added_center, removed_center, statusline_format, added_count_format, removed_count_format func(...any) string
 
 func create_formatters() {
 	ctx := style.Context{AllowEscapeCodes: true}
@@ -84,6 +84,9 @@ func create_formatters() {
 	removed_margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Removed_margin_bg.AsRGBSharp()))
 	title_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s bold", conf.Title_fg.AsRGBSharp(), conf.Title_bg.AsRGBSharp()))
 	margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Margin_bg.AsRGBSharp()))
+	statusline_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", conf.Margin_fg.AsRGBSharp()))
+	added_count_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", conf.Highlight_added_bg.AsRGBSharp()))
+	removed_count_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", conf.Highlight_removed_bg.AsRGBSharp()))
 	hunk_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_bg.AsRGBSharp()))
 	hunk_margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_margin_bg.AsRGBSharp()))
 	make_bracketer := func(start, end string) func(...any) string {
@@ -142,20 +145,33 @@ type LogicalLines struct {
 func (self *LogicalLines) At(i int) *LogicalLine { return self.lines[i] }
 func (self *LogicalLines) Len() int              { return len(self.lines) }
 
+func (self *LogicalLines) NumScreenLinesTo(a ScrollPos) (ans int) {
+	return self.Minus(a, ScrollPos{})
+}
+
+// a - b in terms of number of screen lines between the positions
 func (self *LogicalLines) Minus(a, b ScrollPos) (delta int) {
-	// a - b
+	if a.logical_line == b.logical_line {
+		return a.screen_line - b.screen_line
+	}
 	amt := 1
 	if a.Less(b) {
 		amt = -1
+	} else {
+		a, b = b, a
 	}
-	for a != b {
-		d := self.IncrementScrollPosBy(&a, amt)
-		if d == 0 {
-			break
+	for i := a.logical_line; i < utils.Min(len(self.lines), b.logical_line+1); i++ {
+		line := self.lines[i]
+		switch i {
+		case a.logical_line:
+			delta += utils.Max(0, len(line.screen_lines)-a.screen_line)
+		case b.logical_line:
+			delta += b.screen_line
+		default:
+			delta += len(line.screen_lines)
 		}
-		delta += d
 	}
-	return
+	return delta * amt
 }
 
 func (self *LogicalLines) IncrementScrollPosBy(pos *ScrollPos, amt int) (delta int) {
@@ -272,7 +288,7 @@ type DiffData struct {
 
 func hunk_title(hunk_num int, hunk *Hunk, margin_size, available_cols int) string {
 	m := hunk_margin_format(strings.Repeat(" ", margin_size))
-	t := fmt.Sprintf("@@ %d,%d +%d,%d @@ %s", hunk.left_start+1, hunk.left_count, hunk.right_start+1, hunk.right_count, hunk.title)
+	t := fmt.Sprintf("@@ -%d,%d +%d,%d @@ %s", hunk.left_start+1, hunk.left_count, hunk.right_start+1, hunk.right_count, hunk.title)
 	return m + hunk_format(place_in(t, available_cols))
 }
 
