@@ -367,13 +367,13 @@ func lines_for_diff(left_path string, right_path string, patch *Patch, columns, 
 	available_cols := columns/2 - margin_size
 	data := DiffData{left_path: left_path, right_path: right_path, available_cols: available_cols, margin_size: margin_size}
 	if left_path != "" {
-		data.left_lines, err = lines_for_path(left_path)
+		data.left_lines, err = highlighted_lines_for_path(left_path)
 		if err != nil {
 			return
 		}
 	}
 	if right_path != "" {
-		data.right_lines, err = lines_for_path(right_path)
+		data.right_lines, err = highlighted_lines_for_path(right_path)
 		if err != nil {
 			return
 		}
@@ -405,7 +405,7 @@ func all_lines(path string, columns, margin_size int, is_add bool, ans []*Logica
 	if !is_add {
 		ltype = `remove`
 	}
-	lines, err := lines_for_path(path)
+	lines, err := highlighted_lines_for_path(path)
 	if err != nil {
 		return nil, err
 	}

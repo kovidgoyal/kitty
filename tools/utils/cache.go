@@ -22,6 +22,20 @@ func NewLRUCache[K comparable, V any](max_size int) *LRUCache[K, V] {
 	return &ans
 }
 
+func (self *LRUCache[K, V]) Get(key K) (ans V, found bool) {
+	self.lock.RLock()
+	ans, found = self.data[key]
+	self.lock.RUnlock()
+	return
+}
+
+func (self *LRUCache[K, V]) Set(key K, val V) {
+	self.lock.RLock()
+	self.data[key] = val
+	self.lock.RUnlock()
+	return
+}
+
 func (self *LRUCache[K, V]) GetOrCreate(key K, create func(key K) (V, error)) (V, error) {
 	self.lock.RLock()
 	ans, found := self.data[key]

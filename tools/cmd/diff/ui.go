@@ -4,11 +4,13 @@ package diff
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	"kitty/tools/config"
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
-	"strconv"
-	"strings"
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -127,11 +129,23 @@ func (self *Handler) on_wakeup() error {
 	}
 }
 
+func (self *Handler) highlight_all() {
+	text_files := utils.Filter(self.collection.paths_to_highlight.AsSlice(), is_path_text)
+	go func() {
+		r := AsyncResult{rtype: HIGHLIGHT}
+		highlight_all(text_files)
+		self.async_results <- r
+		self.lp.WakeupMainThread()
+	}()
+
+}
+
 func (self *Handler) handle_async_result(r AsyncResult) error {
 	switch r.rtype {
 	case COLLECTION:
 		self.collection = r.collection
 		self.generate_diff()
+		self.highlight_all()
 	case DIFF:
 		self.diff_map = r.diff_map
 		self.calculate_statistics()
@@ -147,6 +161,13 @@ func (self *Handler) handle_async_result(r AsyncResult) error {
 		// }
 		self.draw_screen()
 	case HIGHLIGHT:
+		if self.diff_map != nil && self.collection != nil {
+			err := self.render_diff()
+			if err != nil {
+				return err
+			}
+			self.draw_screen()
+		}
 	}
 	return nil
 }

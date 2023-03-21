@@ -6,11 +6,12 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io/fs"
-	"kitty/tools/utils"
 	"os"
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
+
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -18,6 +19,7 @@ var path_name_map, remote_dirs map[string]string
 
 var mimetypes_cache, data_cache, hash_cache *utils.LRUCache[string, string]
 var lines_cache *utils.LRUCache[string, []string]
+var highlighted_lines_cache *utils.LRUCache[string, []string]
 var is_text_cache *utils.LRUCache[string, bool]
 
 func init_caches() {
@@ -28,6 +30,7 @@ func init_caches() {
 	data_cache = utils.NewLRUCache[string, string](sz)
 	is_text_cache = utils.NewLRUCache[string, bool](sz)
 	lines_cache = utils.NewLRUCache[string, []string](sz)
+	highlighted_lines_cache = utils.NewLRUCache[string, []string](sz)
 	hash_cache = utils.NewLRUCache[string, string](sz)
 }
 
@@ -100,9 +103,23 @@ func hash_for_path(path string) (string, error) {
 
 }
 
-func sanitize(x string) string {
-	x = strings.ReplaceAll(x, "\r\n", "⏎\n")
+func sanitize_control_codes(x string) string {
 	return utils.SanitizeControlCodes(x, "░")
+}
+
+func sanitize_tabs_and_carriage_returns(x string) string {
+	return strings.NewReplacer("\t", conf.Replace_tab_by, "\r", "⏎").Replace(x)
+}
+
+func sanitize(x string) string {
+	x = sanitize_control_codes(x)
+	return sanitize_tabs_and_carriage_returns(x)
+}
+
+func text_to_lines(text string) []string {
+	lines := make([]string, 0, 512)
+	splitlines_like_git(text, false, func(line string) { lines = append(lines, line) })
+	return lines
 }
 
 func lines_for_path(path string) ([]string, error) {
@@ -111,23 +128,30 @@ func lines_for_path(path string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		ans = sanitize(strings.ReplaceAll(ans, "\t", conf.Replace_tab_by))
-		lines := make([]string, 0, 256)
-		splitlines_like_git(ans, false, func(line string) { lines = append(lines, line) })
-		return lines, nil
+		return text_to_lines(sanitize(ans)), nil
 	})
+}
+
+func highlighted_lines_for_path(path string) ([]string, error) {
+	if ans, found := highlighted_lines_cache.Get(path); found && ans != nil {
+		return ans, nil
+	}
+	return lines_for_path(path)
 }
 
 type Collection struct {
 	changes, renames, type_map map[string]string
 	adds, removes              *utils.Set[string]
 	all_paths                  []string
+	paths_to_highlight         *utils.Set[string]
 	added_count, removed_count int
 }
 
 func (self *Collection) add_change(left, right string) {
 	self.changes[left] = right
 	self.all_paths = append(self.all_paths, left)
+	self.paths_to_highlight.Add(left)
+	self.paths_to_highlight.Add(right)
 	self.type_map[left] = `diff`
 }
 
@@ -140,6 +164,7 @@ func (self *Collection) add_rename(left, right string) {
 func (self *Collection) add_add(right string) {
 	self.adds.Add(right)
 	self.all_paths = append(self.all_paths, right)
+	self.paths_to_highlight.Add(right)
 	self.type_map[right] = `add`
 	if is_path_text(right) {
 		num, _ := lines_for_path(right)
@@ -150,6 +175,7 @@ func (self *Collection) add_add(right string) {
 func (self *Collection) add_removal(left string) {
 	self.removes.Add(left)
 	self.all_paths = append(self.all_paths, left)
+	self.paths_to_highlight.Add(left)
 	self.type_map[left] = `removal`
 	if is_path_text(left) {
 		num, _ := lines_for_path(left)
@@ -303,12 +329,13 @@ func (self *Collection) collect_files(left, right string) error {
 
 func create_collection(left, right string) (ans *Collection, err error) {
 	ans = &Collection{
-		changes:   make(map[string]string),
-		renames:   make(map[string]string),
-		type_map:  make(map[string]string),
-		adds:      utils.NewSet[string](32),
-		removes:   utils.NewSet[string](32),
-		all_paths: make([]string, 0, 32),
+		changes:            make(map[string]string),
+		renames:            make(map[string]string),
+		type_map:           make(map[string]string),
+		adds:               utils.NewSet[string](32),
+		removes:            utils.NewSet[string](32),
+		paths_to_highlight: utils.NewSet[string](32),
+		all_paths:          make([]string, 0, 32),
 	}
 	left_stat, err := os.Stat(left)
 	if err != nil {

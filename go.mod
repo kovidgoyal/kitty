@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/ALTree/bigfloat v0.0.0-20220102081255-38c8b72a9924
+	github.com/alecthomas/chroma/v2 v2.7.0
 	github.com/bmatcuk/doublestar v1.3.4
 	github.com/disintegration/imaging v1.6.2
 	github.com/google/go-cmp v0.5.9
@@ -17,6 +18,7 @@ require (
 )
 
 require (
+	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect

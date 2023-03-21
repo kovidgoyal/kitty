@@ -82,6 +82,10 @@ func (self *RGBA) AsRGB() uint32 {
 	return uint32(self.Blue) | (uint32(self.Green) << 8) | (uint32(self.Red) << 16)
 }
 
+func (self *RGBA) IsDark() bool {
+	return self.Red < 155 && self.Green < 155 && self.Blue < 155
+}
+
 func (self *RGBA) FromRGB(col uint32) {
 	self.Red = uint8((col >> 16) & 0xff)
 	self.Green = uint8((col >> 8) & 0xff)
