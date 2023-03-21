@@ -82,6 +82,13 @@ const SGR_SUFFIX = "m"
 func ansi_formatter(w io.Writer, style *chroma.Style, it chroma.Iterator) error {
 	style = clear_background(style)
 	before, after := make([]byte, 0, 64), make([]byte, 0, 64)
+	write_sgr := func(which []byte) {
+		if len(which) > 1 {
+			w.Write(utils.UnsafeStringToBytes(SGR_PREFIX))
+			w.Write(which[:len(which)-1])
+			w.Write(utils.UnsafeStringToBytes(SGR_SUFFIX))
+		}
+	}
 	for token := it(); token != chroma.EOF; token = it() {
 		entry := style.Get(token.Type)
 		before, after = before[:0], after[:0]
@@ -103,17 +110,9 @@ func ansi_formatter(w io.Writer, style *chroma.Style, it chroma.Iterator) error 
 				after = append(after, '3', '9', ';')
 			}
 		}
-		if len(before) > 1 {
-			w.Write(utils.UnsafeStringToBytes(SGR_PREFIX))
-			w.Write(before[:len(before)-1])
-			w.Write(utils.UnsafeStringToBytes(SGR_SUFFIX))
-		}
+		write_sgr(before)
 		w.Write(utils.UnsafeStringToBytes(token.Value))
-		if len(after) > 1 {
-			w.Write(utils.UnsafeStringToBytes(SGR_PREFIX))
-			w.Write(after[:len(after)-1])
-			w.Write(utils.UnsafeStringToBytes(SGR_SUFFIX))
-		}
+		write_sgr(after)
 	}
 	return nil
 }
