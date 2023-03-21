@@ -8,6 +8,7 @@ import (
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
 	"strconv"
+	"strings"
 )
 
 var _ = fmt.Print
@@ -182,9 +183,7 @@ func (self *Handler) render_diff() (err error) {
 	} else {
 		self.max_scroll_pos.screen_line = 0
 	}
-	DebugPrintln(self.max_scroll_pos)
 	self.logical_lines.IncrementScrollPosBy(&self.max_scroll_pos, -self.screen_size.num_lines+1)
-	DebugPrintln(self.max_scroll_pos)
 	return nil
 	// TODO: current search see python implementation
 }
@@ -240,11 +239,40 @@ func (self *Handler) scroll_lines(amt int) (delta int) {
 	return
 }
 
+func (self *Handler) scroll_to_next_change(backwards bool) bool {
+	if backwards {
+		for i := self.scroll_pos.logical_line - 1; i >= 0; i-- {
+			line := self.logical_lines.At(i)
+			if line.is_change_start {
+				self.scroll_pos = ScrollPos{i, 0}
+				return true
+			}
+		}
+	} else {
+		for i := self.scroll_pos.logical_line + 1; i < self.logical_lines.Len(); i++ {
+			line := self.logical_lines.At(i)
+			if line.is_change_start {
+				self.scroll_pos = ScrollPos{i, 0}
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (self *Handler) scroll_to_next_match(backwards bool) bool {
+	// TODO: Implement me
+	return false
+}
+
 func (self *Handler) dispatch_action(name, args string) error {
 	switch name {
 	case `quit`:
 		self.lp.Quit(0)
 	case `scroll_by`:
+		if args == "" {
+			args = "1"
+		}
 		amt, err := strconv.Atoi(args)
 		if err == nil {
 			if self.scroll_lines(amt) == 0 {
@@ -252,6 +280,34 @@ func (self *Handler) dispatch_action(name, args string) error {
 			} else {
 				self.draw_screen()
 			}
+		} else {
+			self.lp.Beep()
+		}
+	case `scroll_to`:
+		done := false
+		switch {
+		case strings.Contains(args, `change`):
+			done = self.scroll_to_next_change(strings.Contains(args, `prev`))
+		case strings.Contains(args, `match`):
+			done = self.scroll_to_next_match(strings.Contains(args, `prev`))
+		case strings.Contains(args, `page`):
+			amt := self.screen_size.num_lines
+			if strings.Contains(args, `prev`) {
+				amt *= -1
+			}
+			done = self.scroll_lines(amt) != 0
+		default:
+			npos := self.scroll_pos
+			if strings.Contains(args, `end`) {
+				npos = self.max_scroll_pos
+			} else {
+				npos = ScrollPos{}
+			}
+			done = npos != self.scroll_pos
+			self.scroll_pos = npos
+		}
+		if done {
+			self.draw_screen()
 		} else {
 			self.lp.Beep()
 		}
