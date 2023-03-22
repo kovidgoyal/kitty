@@ -52,6 +52,7 @@ type Handler struct {
 	added_count, removed_count                    int
 	screen_size                                   struct{ rows, columns, num_lines int }
 	scroll_pos, max_scroll_pos                    ScrollPos
+	restore_position                              *ScrollPos
 	inputting_command                             bool
 	statusline_message                            string
 }
@@ -157,11 +158,13 @@ func (self *Handler) handle_async_result(r AsyncResult) error {
 			return err
 		}
 		self.scroll_pos = ScrollPos{}
-		// TODO: restore_position uncomment and implement below
-		// if self.restore_position != nil {
-		// 	self.set_current_position(self.restore_position)
-		// 	self.restore_position = nil
-		// }
+		if self.restore_position != nil {
+			self.scroll_pos = *self.restore_position
+			if self.max_scroll_pos.Less(self.scroll_pos) {
+				self.scroll_pos = self.max_scroll_pos
+			}
+			self.restore_position = nil
+		}
 		self.draw_screen()
 	case HIGHLIGHT:
 		if self.diff_map != nil && self.collection != nil {
@@ -319,6 +322,19 @@ func (self *Handler) scroll_to_next_match(backwards bool) bool {
 	return false
 }
 
+func (self *Handler) change_context_count(val int) bool {
+	val = utils.Max(0, val)
+	if val == self.current_context_count {
+		return false
+	}
+	self.current_context_count = val
+	p := self.scroll_pos
+	self.restore_position = &p
+	self.generate_diff()
+	self.draw_screen()
+	return true
+}
+
 func (self *Handler) dispatch_action(name, args string) error {
 	switch name {
 	case `quit`:
@@ -363,6 +379,20 @@ func (self *Handler) dispatch_action(name, args string) error {
 		if done {
 			self.draw_screen()
 		} else {
+			self.lp.Beep()
+		}
+	case `change_context`:
+		new_ctx := self.current_context_count
+		switch args {
+		case `all`:
+			new_ctx = 100000
+		case `default`:
+			new_ctx = self.original_context_count
+		default:
+			delta, _ := strconv.Atoi(args)
+			new_ctx += delta
+		}
+		if !self.change_context_count(new_ctx) {
 			self.lp.Beep()
 		}
 	}
