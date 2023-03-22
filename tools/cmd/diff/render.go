@@ -67,7 +67,7 @@ func place_in(text string, sz int) string {
 	return fill_in(fit_in(text, sz), sz)
 }
 
-var title_format, text_format, margin_format, added_format, removed_format, added_margin_format, removed_margin_format, filler_format, margin_filler_format, hunk_margin_format, hunk_format, added_center, removed_center, statusline_format, added_count_format, removed_count_format func(...any) string
+var title_format, text_format, margin_format, added_format, removed_format, added_margin_format, removed_margin_format, filler_format, margin_filler_format, hunk_margin_format, hunk_format, added_center, removed_center, statusline_format, added_count_format, removed_count_format, message_format func(...any) string
 
 func create_formatters() {
 	ctx := style.Context{AllowEscapeCodes: true}
@@ -89,6 +89,7 @@ func create_formatters() {
 	removed_count_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", conf.Highlight_removed_bg.AsRGBSharp()))
 	hunk_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_bg.AsRGBSharp()))
 	hunk_margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_margin_bg.AsRGBSharp()))
+	message_format = ctx.SprintFunc("bold")
 	make_bracketer := func(start, end string) func(...any) string {
 		s, e := ctx.SprintFunc(start), ctx.SprintFunc(end)
 		end = e(" ")
@@ -133,7 +134,7 @@ func title_lines(left_path, right_path string, columns, margin_size int, ans []*
 	l1 := ll
 	l1.screen_lines = []string{title_format(name)}
 	l2 := ll
-	l2.screen_lines = []string{title_format(strings.Repeat("━", columns+1))}
+	l2.screen_lines = []string{title_format(strings.Repeat("━", columns))}
 	return append(ans, &l1, &l2)
 }
 

@@ -4,12 +4,14 @@ package diff
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"kitty/tools/config"
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
+	"kitty/tools/tui/readline"
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
 )
@@ -32,6 +34,10 @@ func (self ScrollPos) Less(other ScrollPos) bool {
 	return self.logical_line < other.logical_line || (self.logical_line == other.logical_line && self.screen_line < other.screen_line)
 }
 
+func (self ScrollPos) Add(other ScrollPos) ScrollPos {
+	return ScrollPos{self.logical_line + other.logical_line, self.screen_line + other.screen_line}
+}
+
 type AsyncResult struct {
 	err        error
 	rtype      ResultType
@@ -40,21 +46,24 @@ type AsyncResult struct {
 }
 
 type Handler struct {
-	async_results                                 chan AsyncResult
-	shortcut_tracker                              config.ShortcutTracker
-	pending_keys                                  []string
-	left, right                                   string
-	collection                                    *Collection
-	diff_map                                      map[string]*Patch
-	logical_lines                                 *LogicalLines
-	lp                                            *loop.Loop
-	current_context_count, original_context_count int
-	added_count, removed_count                    int
-	screen_size                                   struct{ rows, columns, num_lines int }
-	scroll_pos, max_scroll_pos                    ScrollPos
-	restore_position                              *ScrollPos
-	inputting_command                             bool
-	statusline_message                            string
+	async_results                                       chan AsyncResult
+	shortcut_tracker                                    config.ShortcutTracker
+	pending_keys                                        []string
+	left, right                                         string
+	collection                                          *Collection
+	diff_map                                            map[string]*Patch
+	logical_lines                                       *LogicalLines
+	lp                                                  *loop.Loop
+	current_context_count, original_context_count       int
+	added_count, removed_count                          int
+	screen_size                                         struct{ rows, columns, num_lines int }
+	scroll_pos, max_scroll_pos                          ScrollPos
+	restore_position                                    *ScrollPos
+	inputting_command                                   bool
+	statusline_message                                  string
+	rl                                                  *readline.Readline
+	current_search                                      *Search
+	current_search_is_regex, current_search_is_backward bool
 }
 
 func (self *Handler) calculate_statistics() {
@@ -70,6 +79,7 @@ var DebugPrintln func(...any)
 func (self *Handler) initialize() {
 	DebugPrintln = self.lp.DebugPrintln
 	self.pending_keys = make([]string, 0, 4)
+	self.rl = readline.New(self.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "/"})
 	self.current_context_count = opts.Context
 	if self.current_context_count < 0 {
 		self.current_context_count = int(conf.Num_context_lines)
@@ -214,8 +224,10 @@ func (self *Handler) render_diff() (err error) {
 		self.max_scroll_pos.screen_line = 0
 	}
 	self.logical_lines.IncrementScrollPosBy(&self.max_scroll_pos, -self.screen_size.num_lines+1)
+	if self.current_search != nil {
+		self.current_search.search(self.logical_lines)
+	}
 	return nil
-	// TODO: current search see python implementation
 }
 
 func (self *Handler) draw_screen() {
@@ -238,7 +250,10 @@ func (self *Handler) draw_screen() {
 		if i == 0 {
 			screen_lines = screen_lines[self.scroll_pos.screen_line:]
 		}
-		for _, sl := range screen_lines {
+		for snum, sl := range screen_lines {
+			if self.current_search != nil {
+				sl = self.current_search.markup_line(sl, ScrollPos{i, snum}.Add(self.scroll_pos))
+			}
 			lp.QueueWriteString(sl)
 			lp.MoveCursorVertically(1)
 			lp.QueueWriteString("\r")
@@ -257,10 +272,11 @@ func (self *Handler) draw_status_line() {
 	}
 	self.lp.MoveCursorTo(1, self.screen_size.rows)
 	self.lp.ClearToEndOfLine()
+	self.lp.SetCursorVisible(self.inputting_command)
 	if self.inputting_command {
-		// TODO: implement this
+		self.rl.RedrawNonAtomic()
 	} else if self.statusline_message != "" {
-		// TODO: implement this
+		self.lp.QueueWriteString(message_format(wcswidth.TruncateToVisualLength(sanitize(self.statusline_message), self.screen_size.columns)))
 	} else {
 		num := self.logical_lines.NumScreenLinesTo(self.scroll_pos)
 		den := self.logical_lines.NumScreenLinesTo(self.max_scroll_pos)
@@ -269,8 +285,12 @@ func (self *Handler) draw_status_line() {
 			frac = int((float64(num) * 100.0) / float64(den))
 		}
 		sp := statusline_format(fmt.Sprintf("%d%%", frac))
-		// TODO: output num of search matches
-		counts := added_count_format(strconv.Itoa(self.added_count)) + statusline_format(`,`) + removed_count_format(strconv.Itoa(self.removed_count))
+		var counts string
+		if self.current_search == nil {
+			counts = added_count_format(strconv.Itoa(self.added_count)) + statusline_format(`,`) + removed_count_format(strconv.Itoa(self.removed_count))
+		} else {
+			counts = statusline_format(fmt.Sprintf("%d matches", self.current_search.Len()))
+		}
 		suffix := counts + "  " + sp
 		prefix := statusline_format(":")
 		filler := strings.Repeat(" ", utils.Max(0, self.screen_size.columns-wcswidth.Stringwidth(prefix)-wcswidth.Stringwidth(suffix)))
@@ -278,7 +298,77 @@ func (self *Handler) draw_status_line() {
 	}
 }
 
+func (self *Handler) on_text(text string, a, b bool) error {
+	if self.inputting_command {
+		defer self.draw_status_line()
+		return self.rl.OnText(text, a, b)
+	}
+	if self.statusline_message != "" {
+		self.statusline_message = ""
+		self.draw_status_line()
+		return nil
+	}
+	return nil
+}
+
+func (self *Handler) do_search(query string) {
+	self.current_search = nil
+	if len(query) < 2 {
+		return
+	}
+	if !self.current_search_is_regex {
+		query = regexp.QuoteMeta(query)
+	}
+	pat, err := regexp.Compile(query)
+	if err != nil {
+		self.statusline_message = fmt.Sprintf("Bad regex: %s", err)
+		self.lp.Beep()
+		return
+	}
+	self.current_search = do_search(pat, self.logical_lines)
+	if self.current_search.Len() == 0 {
+		self.current_search = nil
+		self.statusline_message = fmt.Sprintf("No matches for: %#v", query)
+		self.lp.Beep()
+	} else {
+		if self.scroll_to_next_match(false, true) {
+			self.draw_screen()
+		} else {
+			self.lp.Beep()
+		}
+	}
+}
+
 func (self *Handler) on_key_event(ev *loop.KeyEvent) error {
+	if self.inputting_command {
+		defer self.draw_status_line()
+		if ev.MatchesPressOrRepeat("esc") {
+			self.inputting_command = false
+			ev.Handled = true
+			return nil
+		}
+		if ev.MatchesPressOrRepeat("enter") {
+			self.inputting_command = false
+			ev.Handled = true
+			self.do_search(self.rl.AllText())
+			self.draw_screen()
+			return nil
+		}
+		return self.rl.OnKeyEvent(ev)
+	}
+	if self.statusline_message != "" {
+		if ev.Type != loop.RELEASE {
+			ev.Handled = true
+			self.statusline_message = ""
+			self.draw_status_line()
+		}
+		return nil
+	}
+	if self.current_search != nil && ev.MatchesPressOrRepeat("esc") {
+		self.current_search = nil
+		self.draw_screen()
+		return nil
+	}
 	ac := self.shortcut_tracker.Match(ev, conf.KeyboardShortcuts)
 	if ac != nil {
 		return self.dispatch_action(ac.Name, ac.Args)
@@ -317,8 +407,35 @@ func (self *Handler) scroll_to_next_change(backwards bool) bool {
 	return false
 }
 
-func (self *Handler) scroll_to_next_match(backwards bool) bool {
-	// TODO: Implement me
+func (self *Handler) scroll_to_next_match(backwards, include_current_match bool) bool {
+	if self.current_search == nil {
+		return false
+	}
+	if self.current_search_is_backward {
+		backwards = !backwards
+	}
+	offset, delta := 1, 1
+	if include_current_match {
+		offset = 0
+	}
+	if backwards {
+		offset *= -1
+		delta *= -1
+	}
+	pos := self.scroll_pos
+	if self.logical_lines.IncrementScrollPosBy(&pos, offset) == 0 {
+		return false
+	}
+	for {
+		if self.current_search.Has(pos) {
+			self.scroll_pos = pos
+			self.draw_screen()
+			return true
+		}
+		if self.logical_lines.IncrementScrollPosBy(&pos, delta) == 0 || self.max_scroll_pos.Less(pos) {
+			break
+		}
+	}
 	return false
 }
 
@@ -333,6 +450,18 @@ func (self *Handler) change_context_count(val int) bool {
 	self.generate_diff()
 	self.draw_screen()
 	return true
+}
+
+func (self *Handler) start_search(is_regex, is_backward bool) {
+	if self.inputting_command {
+		self.lp.Beep()
+		return
+	}
+	self.inputting_command = true
+	self.current_search_is_regex = is_regex
+	self.current_search_is_backward = is_backward
+	self.rl.SetText(``)
+	self.draw_status_line()
 }
 
 func (self *Handler) dispatch_action(name, args string) error {
@@ -359,7 +488,7 @@ func (self *Handler) dispatch_action(name, args string) error {
 		case strings.Contains(args, `change`):
 			done = self.scroll_to_next_change(strings.Contains(args, `prev`))
 		case strings.Contains(args, `match`):
-			done = self.scroll_to_next_match(strings.Contains(args, `prev`))
+			done = self.scroll_to_next_match(strings.Contains(args, `prev`), false)
 		case strings.Contains(args, `page`):
 			amt := self.screen_size.num_lines
 			if strings.Contains(args, `prev`) {
@@ -394,6 +523,11 @@ func (self *Handler) dispatch_action(name, args string) error {
 		}
 		if !self.change_context_count(new_ctx) {
 			self.lp.Beep()
+		}
+	case `start_search`:
+		if self.diff_map != nil && self.logical_lines != nil {
+			a, b, _ := strings.Cut(args, " ")
+			self.start_search(config.StringToBool(a), config.StringToBool(b))
 		}
 	}
 	return nil
