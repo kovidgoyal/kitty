@@ -106,77 +106,50 @@ type SGR struct {
 	Foreground, Background, Underline_color   ColorVal
 }
 
-func (self *SGR) AsCSI(for_close bool) string {
+func (self *BoolVal) AsCSI(set, reset string) string {
+	if !self.Is_set {
+		return ""
+	}
+	if self.Val {
+		return set
+	}
+	return reset
+}
+
+func (self *UnderlineStyleVal) AsCSI() string {
+	if !self.Is_set {
+		return ""
+	}
+	return fmt.Sprintf("4:%d;", self.Val)
+}
+
+func (self *ColorVal) AsCSI(base int) string {
+	if !self.Is_set {
+		return ""
+	}
+	if self.Is_default {
+		return strconv.Itoa(base + 9)
+	}
+	return self.Val.AsCSI(base)
+}
+
+func (self *SGR) AsCSI() string {
 	ans := make([]byte, 0, 16)
-	if for_close {
-		if self.Bold.Is_set || self.Dim.Is_set {
-			ans = append(ans, '2', '2', ';')
-		}
-		if self.Italic.Is_set {
-			ans = append(ans, '2', '3', ';')
-		}
-		if self.Reverse.Is_set {
-			ans = append(ans, '2', '7', ';')
-		}
-		if self.Strikethrough.Is_set {
-			ans = append(ans, '2', '9', ';')
-		}
-		if self.Underline_style.Is_set {
-			ans = append(ans, '4', ':', '0', ';')
-		}
-		if self.Foreground.Is_set {
-			ans = append(ans, '3', '9', ';')
-		}
-		if self.Background.Is_set {
-			ans = append(ans, '4', '9', ';')
-		}
-		if self.Underline_color.Is_set {
-			ans = append(ans, '5', '9', ';')
-		}
-	} else {
-		if self.Bold.Is_set {
-			ans = append(ans, '1', ';')
-		}
-		if self.Dim.Is_set {
-			ans = append(ans, '2', ';')
-		}
-		if self.Italic.Is_set {
-			ans = append(ans, '3', ';')
-		}
-		if self.Reverse.Is_set {
-			ans = append(ans, '7', ';')
-		}
-		if self.Strikethrough.Is_set {
-			ans = append(ans, '9', ';')
-		}
-		if self.Underline_style.Is_set {
-			ans = append(ans, fmt.Sprintf("4:%d;", self.Underline_style.Val)...)
-		}
-		if self.Foreground.Is_set {
-			if self.Foreground.Is_default {
-				ans = append(ans, '3', '9', ';')
-			} else {
-				ans = append(ans, self.Foreground.Val.AsCSI(30)...)
-				ans = append(ans, ';')
-			}
-		}
-		if self.Background.Is_set {
-			if self.Background.Is_default {
-				ans = append(ans, '4', '9', ';')
-			} else {
-				ans = append(ans, self.Background.Val.AsCSI(40)...)
-				ans = append(ans, ';')
-			}
-		}
-		if self.Underline_color.Is_set {
-			if self.Underline_color.Is_default {
-				ans = append(ans, '5', '9', ';')
-			} else {
-				ans = append(ans, self.Underline_color.Val.AsCSI(50)...)
-				ans = append(ans, ';')
-			}
+	w := func(x string) {
+		if x != "" {
+			ans = append(ans, x...)
+			ans = append(ans, ';')
 		}
 	}
+	w(self.Bold.AsCSI("1", "221"))
+	w(self.Dim.AsCSI("2", "222"))
+	w(self.Italic.AsCSI("3", "23"))
+	w(self.Reverse.AsCSI("7", "27"))
+	w(self.Strikethrough.AsCSI("9", "29"))
+	w(self.Underline_style.AsCSI())
+	w(self.Foreground.AsCSI(30))
+	w(self.Background.AsCSI(40))
+	w(self.Underline_color.AsCSI(50))
 
 	if len(ans) > 0 {
 		ans = ans[:len(ans)-1]
@@ -275,11 +248,13 @@ func SGRFromCSI(csi string) (ans SGR) {
 		case 0:
 			ans = SGR{}
 		case 1:
-			ans.Dim.Val, ans.Bold.Val = false, true
-			ans.Dim.Is_set, ans.Bold.Is_set = true, true
+			ans.Bold.Val, ans.Bold.Is_set = true, true
+		case 221:
+			ans.Bold.Val, ans.Bold.Is_set = false, true
 		case 2:
-			ans.Dim.Val, ans.Bold.Val = true, false
-			ans.Dim.Is_set, ans.Bold.Is_set = true, true
+			ans.Dim.Val, ans.Dim.Is_set = true, true
+		case 222:
+			ans.Dim.Val, ans.Dim.Is_set = false, true
 		case 22:
 			ans.Dim.Val, ans.Bold.Val = false, false
 			ans.Dim.Is_set, ans.Bold.Is_set = true, true
@@ -420,9 +395,64 @@ func (self *Span) SetUnderlineStyle(val UnderlineStyle) *Span {
 	return self
 }
 
+type defaulting_val interface {
+	DefaultCSI() string
+}
+
+func append_default_csi(x defaulting_val, ans []byte) []byte {
+	val := x.DefaultCSI()
+	if val != "" {
+		ans = append(ans, val...)
+		ans = append(ans, ';')
+	}
+	return ans
+}
+
+func (self *Span) ClosingCSI() string {
+	ans := make([]byte, 0, 16)
+	w := func(x string) {
+		if x != "" {
+			ans = append(append(ans, x...), ';')
+		}
+	}
+	if self.SGR.Bold.Is_set {
+		w(self.SGR.Bold.AsCSI("1", "221"))
+	}
+	if self.SGR.Dim.Is_set {
+		w(self.SGR.Dim.AsCSI("2", "222"))
+	}
+	if self.SGR.Italic.Is_set {
+		w(self.SGR.Italic.AsCSI("3", "23"))
+	}
+	if self.SGR.Reverse.Is_set {
+		w(self.SGR.Reverse.AsCSI("7", "27"))
+	}
+	if self.SGR.Strikethrough.Is_set {
+		w(self.SGR.Strikethrough.AsCSI("9", "29"))
+	}
+	wc := func(cval ColorVal, base int) {
+		if cval.Is_set {
+			cval.Is_default = true
+			w(cval.AsCSI(base))
+		}
+	}
+	wc(self.SGR.Foreground, 30)
+	wc(self.SGR.Background, 40)
+	wc(self.SGR.Underline_color, 50)
+	if len(ans) > 0 {
+		ans = ans[:len(ans)-1]
+		ans = append(ans, 'm')
+	}
+	return utils.UnsafeBytesToString(ans)
+}
+
 // Insert formatting into text at the specified offsets, overriding any existing formatting, and restoring
 // existing formatting after the replaced sections.
 func InsertFormatting(text string, spans ...*Span) string {
+	spans = utils.Filter(spans, func(s *Span) bool { return !s.SGR.IsEmpty() })
+	if len(spans) == 0 {
+		return text
+	}
 	var in_span *Span
 	ans := make([]byte, 0, 2*len(text))
 	var overall_sgr_state SGR
@@ -440,7 +470,7 @@ func InsertFormatting(text string, spans ...*Span) string {
 		in_span = spans[0]
 		spans = spans[1:]
 		if in_span.Size > 0 {
-			write_csi(in_span.SGR.AsCSI(false))
+			write_csi(in_span.SGR.AsCSI())
 		} else {
 			in_span = nil
 		}
@@ -448,8 +478,8 @@ func InsertFormatting(text string, spans ...*Span) string {
 	}
 
 	close_span := func() {
-		write_csi(in_span.SGR.AsCSI(true))
-		write_csi(overall_sgr_state.AsCSI(false))
+		write_csi(in_span.ClosingCSI())
+		write_csi(overall_sgr_state.AsCSI())
 		in_span = nil
 	}
 
@@ -486,7 +516,7 @@ func InsertFormatting(text string, spans ...*Span) string {
 				write_csi(csi)
 			} else {
 				sgr.ApplyMask(in_span.SGR)
-				csi := sgr.AsCSI(false)
+				csi := sgr.AsCSI()
 				write_csi(csi)
 			}
 			return nil

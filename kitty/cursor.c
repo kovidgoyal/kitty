@@ -99,6 +99,10 @@ START_ALLOW_CASE_RANGE
                 self->strikethrough = true;  break;
             case 21:
                 self->decoration = 2; break;
+            case 221:
+                self->bold = false; break;
+            case 222:
+                self->dim = false; break;
             case 22:
                 self->bold = false;  self->dim = false; break;
             case 23:
@@ -170,6 +174,10 @@ apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, un
                 S(strike, true);
             case 21:
                 S(decoration, 2);
+            case 221:
+                S(bold, false);
+            case 222:
+                S(dim, false);
             case 22:
                 RANGE { cell->attrs.bold = false; cell->attrs.dim = false; } break;
             case 23:

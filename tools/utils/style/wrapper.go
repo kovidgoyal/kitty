@@ -311,8 +311,8 @@ func (self url_code) is_empty() bool {
 func (self *sgr_code) update() {
 	p := make([]string, 0, 1)
 	s := make([]string, 0, 1)
-	p, s = self.bold.as_sgr("1", "22", p, s)
-	p, s = self.dim.as_sgr("2", "22", p, s)
+	p, s = self.bold.as_sgr("1", "221", p, s)
+	p, s = self.dim.as_sgr("2", "222", p, s)
 	p, s = self.italic.as_sgr("3", "23", p, s)
 	p, s = self.reverse.as_sgr("7", "27", p, s)
 	p, s = self.strikethrough.as_sgr("9", "29", p, s)

@@ -28,4 +28,9 @@ func TestInsertFormatting(t *testing.T) {
 		"a\x1b[92mbcd\x1b[39m",
 		NewSpan(1, 11).SetForeground(10),
 	)
+	test(
+		"AB\x1b[1mC\x1b[221mDE",
+		"A\x1b[37mB\x1b[1mC\x1b[221mDE\x1b[39m\x1b[221m",
+		NewSpan(1, 11).SetForeground(7),
+	)
 }
