@@ -51,7 +51,7 @@ func basic_connection_data(overrides ...string) *connection_data {
 		username: "testuser", hostname_for_match: "host.test",
 		dont_create_shm: true,
 	}
-	opts, bad_lines, err := load_config(ans.hostname_for_match, ans.username, overrides, "")
+	opts, bad_lines, err := load_config(ans.hostname_for_match, ans.username, overrides)
 	if err != nil {
 		panic(err)
 	}
