@@ -44,6 +44,10 @@ func (self *LogicalLine) IncrementScrollPosBy(pos *ScrollPos, amt int) (delta in
 	return
 }
 
+func join_half_lines(left, right string) string {
+	return left + "\x1b[m" + right + "\x1b[m"
+}
+
 func fit_in(text string, count int) string {
 	truncated := wcswidth.TruncateToVisualLength(text, count)
 	if len(truncated) >= len(text) {
@@ -376,7 +380,7 @@ func lines_for_diff_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_num 
 		}
 		logline := LogicalLine{line_type: CHANGE_LINE, src: Reference{path: ref_path, linenum: ref_ln}, is_change_start: i == 0}
 		for l := 0; l < len(ll); l++ {
-			logline.screen_lines = append(logline.screen_lines, ll[l]+rl[l])
+			logline.screen_lines = append(logline.screen_lines, join_half_lines(ll[l], rl[l]))
 		}
 		ans = append(ans, &logline)
 	}
@@ -451,9 +455,9 @@ func all_lines(path string, columns, margin_size int, is_add bool, ans []*Logica
 			}
 			var text string
 			if is_add {
-				text = empty + hl
+				text = join_half_lines(empty, hl)
 			} else {
-				text = hl + empty
+				text = join_half_lines(hl, empty)
 			}
 			l.screen_lines = append(l.screen_lines, text)
 		}
