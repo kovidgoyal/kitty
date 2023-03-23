@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"kitty/tools/config"
+	"kitty/tools/tty"
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
 	"kitty/tools/tui/readline"
@@ -74,10 +75,9 @@ func (self *Handler) calculate_statistics() {
 	}
 }
 
-var DebugPrintln func(...any)
+var DebugPrintln = tty.DebugPrintln
 
 func (self *Handler) initialize() {
-	DebugPrintln = self.lp.DebugPrintln
 	self.pending_keys = make([]string, 0, 4)
 	self.rl = readline.New(self.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "/"})
 	self.current_context_count = opts.Context

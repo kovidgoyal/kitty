@@ -29,8 +29,8 @@ func (self *Search) find_matches_in_lines(clean_lines []string, origin int, send
 	lengths := utils.Map(func(x string) int { return len(x) }, clean_lines)
 	offsets := make([]int, len(clean_lines))
 	for i := range clean_lines {
-		if i > 1 {
-			offsets[i] = offsets[i-1] + len(clean_lines[i-1])
+		if i > 0 {
+			offsets[i] = offsets[i-1] + lengths[i-1]
 		}
 	}
 	matches := self.pat.FindAllStringIndex(strings.Join(clean_lines, ""), -1)
@@ -75,15 +75,22 @@ func (self *Search) find_matches_in_lines(clean_lines []string, origin int, send
 
 func (self *Search) find_matches_in_line(line *LogicalLine, margin_size, cols int, send_result func(screen_line, offset, size int)) {
 	half_width := cols / 2
-	right_offset := half_width + 1 + margin_size
+	right_offset := half_width + margin_size
 	left_clean_lines, right_clean_lines := make([]string, len(line.screen_lines)), make([]string, len(line.screen_lines))
+	lt := line.line_type
 	for i, line := range line.screen_lines {
 		line = wcswidth.StripEscapeCodes(line)
-		if len(line) >= half_width+1 {
-			left_clean_lines[i] = line[margin_size : half_width+1]
-		}
-		if len(line) > right_offset {
-			right_clean_lines[i] = line[right_offset:]
+		if lt == HUNK_TITLE_LINE {
+			if len(line) > margin_size {
+				left_clean_lines[i] = line[margin_size:]
+			}
+		} else {
+			if len(line) >= half_width+1 {
+				left_clean_lines[i] = line[margin_size:half_width]
+			}
+			if len(line) > right_offset {
+				right_clean_lines[i] = line[right_offset:]
+			}
 		}
 	}
 	self.find_matches_in_lines(left_clean_lines, margin_size, send_result)
