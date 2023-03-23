@@ -80,10 +80,9 @@ func clear_background(style *chroma.Style) *chroma.Style {
 	return style
 }
 
-const SGR_PREFIX = "\033["
-const SGR_SUFFIX = "m"
-
 func ansi_formatter(w io.Writer, style *chroma.Style, it chroma.Iterator) error {
+	const SGR_PREFIX = "\033["
+	const SGR_SUFFIX = "m"
 	style = clear_background(style)
 	before, after := make([]byte, 0, 64), make([]byte, 0, 64)
 	nl := []byte{'\n'}
