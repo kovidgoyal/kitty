@@ -6,10 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"kitty/tools/utils"
-	"kitty/tools/utils/images"
 	"path/filepath"
 	"strings"
+
+	"kitty/tools/utils"
+	"kitty/tools/utils/images"
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"

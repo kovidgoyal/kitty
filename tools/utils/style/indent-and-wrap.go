@@ -65,62 +65,71 @@ func (self *sgr_state) reset() {
 }
 
 func (self sgr_state) as_sgr(for_close bool) string {
-	ans := make([]string, 0, 4)
+	ans := make([]byte, 0, 32)
 	if for_close {
-		if self.bold || self.dim {
-			ans = append(ans, "22")
+		if self.bold {
+			ans = append(ans, "221;"...)
+		}
+		if self.dim {
+			ans = append(ans, "222;"...)
 		}
 		if self.italic {
-			ans = append(ans, "23")
+			ans = append(ans, "23;"...)
 		}
 		if self.reverse {
-			ans = append(ans, "27")
+			ans = append(ans, "27;"...)
 		}
 		if self.strikethrough {
-			ans = append(ans, "29")
+			ans = append(ans, "29;"...)
 		}
 		if self.underline_style != no_underline && self.underline_style != nil_underline {
-			ans = append(ans, "4:0")
+			ans = append(ans, "4:0;"...)
 		}
 		if self.fg.number != 0 {
-			ans = append(ans, "39")
+			ans = append(ans, "39;"...)
 		}
 		if self.bg.number != 0 {
-			ans = append(ans, "49")
+			ans = append(ans, "49;"...)
 		}
 		if self.uc.number != 0 {
-			ans = append(ans, "59")
+			ans = append(ans, "59;"...)
 		}
 	} else {
 		if self.bold {
-			ans = append(ans, "1")
+			ans = append(ans, "1;"...)
 		}
 		if self.dim {
-			ans = append(ans, "2")
+			ans = append(ans, "2;"...)
 		}
 		if self.italic {
-			ans = append(ans, "3")
+			ans = append(ans, "3;"...)
 		}
 		if self.reverse {
-			ans = append(ans, "7")
+			ans = append(ans, "7;"...)
 		}
 		if self.strikethrough {
-			ans = append(ans, "9")
+			ans = append(ans, "9;"...)
 		}
 		if self.underline_style != no_underline && self.underline_style != nil_underline {
-			ans = append(ans, fmt.Sprintf("4:%d", self.underline_style))
+			ans = append(ans, fmt.Sprintf("4:%d;", self.underline_style)...)
 		}
 		if q := self.fg.as_sgr(30); q != "" {
-			ans = append(ans, q)
+			ans = append(ans, q...)
+			ans = append(ans, ';')
 		}
 		if q := self.bg.as_sgr(40); q != "" {
-			ans = append(ans, q)
+			ans = append(ans, q...)
+			ans = append(ans, ';')
 		}
 		if q := self.uc.as_sgr(50); q != "" {
-			ans = append(ans, q)
+			ans = append(ans, q...)
+			ans = append(ans, ';')
 		}
 	}
-	return strings.Join(ans, ";")
+	if len(ans) > 0 {
+		ans = ans[:len(ans)-1]
+	}
+	return utils.UnsafeBytesToString(ans)
 }
 
 func (self sgr_state) as_escape_codes(for_close bool) string {
