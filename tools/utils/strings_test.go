@@ -21,6 +21,7 @@ func TestStringScanner(t *testing.T) {
 		"a\r\r\nb\r\nc\n",
 		"\n1",
 		"",
+		"\n",
 	} {
 		actual := Splitlines(text)
 		expected := make([]string, 0, len(actual))
