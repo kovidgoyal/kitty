@@ -139,6 +139,7 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	h := Handler{left: left, right: right, lp: lp}
 	lp.OnInitialize = func() (string, error) {
 		lp.SetCursorVisible(false)
+		lp.SetCursorShape(loop.BAR_CURSOR, true)
 		lp.AllowLineWrapping(false)
 		lp.SetWindowTitle(fmt.Sprintf("%s vs. %s", left, right))
 		h.initialize()
@@ -147,6 +148,7 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	lp.OnWakeup = h.on_wakeup
 	lp.OnFinalize = func() string {
 		lp.SetCursorVisible(true)
+		lp.SetCursorShape(loop.BLOCK_CURSOR, true)
 		return ""
 	}
 	lp.OnResize = h.on_resize
