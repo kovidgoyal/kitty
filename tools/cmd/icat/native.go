@@ -136,18 +136,7 @@ func calc_min_gap(gaps []int) int {
 }
 
 func (frame *image_frame) set_disposal(anchor_frame int, disposal byte) int {
-	if frame.number > 1 {
-		switch disposal {
-		case gif.DisposalNone:
-			frame.compose_onto = frame.number - 1
-			anchor_frame = frame.number
-		case gif.DisposalBackground:
-			// see https://github.com/golang/go/issues/20694
-			anchor_frame = frame.number
-		case gif.DisposalPrevious:
-			frame.compose_onto = anchor_frame
-		}
-	}
+	anchor_frame, frame.compose_onto = images.SetGIFFrameDisposal(frame.number, anchor_frame, disposal)
 	return anchor_frame
 }
 
@@ -159,7 +148,7 @@ func (frame *image_frame) set_delay(gap, min_gap int) {
 }
 
 func add_gif_frames(ctx *images.Context, imgd *image_data, gf *gif.GIF) error {
-	min_gap := calc_min_gap(gf.Delay)
+	min_gap := images.CalcMinimumGIFGap(gf.Delay)
 	scale_image(imgd)
 	anchor_frame := 1
 	for i, paletted_img := range gf.Image {
