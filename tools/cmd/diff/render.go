@@ -18,6 +18,7 @@ type LineType int
 
 const (
 	TITLE_LINE LineType = iota
+	FULL_TITLE_LINE
 	CHANGE_LINE
 	HUNK_TITLE_LINE
 	IMAGE_LINE
@@ -112,6 +113,7 @@ func title_lines(left_path, right_path string, columns, margin_size int, ans []*
 	left_name, right_name := path_name_map[left_path], path_name_map[right_path]
 	name := ""
 	m := strings.Repeat(` `, margin_size)
+	ll := LogicalLine{line_type: TITLE_LINE, src: Reference{path: left_path, linenum: 0}}
 	if right_name != "" && right_name != left_name {
 		n1 := fit_in(m+sanitize(left_name), columns/2-margin_size)
 		n1 = place_in(n1, columns/2)
@@ -120,8 +122,8 @@ func title_lines(left_path, right_path string, columns, margin_size int, ans []*
 		name = n1 + n2
 	} else {
 		name = place_in(m+sanitize(left_name), columns)
+		ll.line_type = FULL_TITLE_LINE
 	}
-	ll := LogicalLine{line_type: TITLE_LINE, src: Reference{path: left_path, linenum: 0}}
 	l1 := ll
 	l1.screen_lines = []string{title_format(name)}
 	l2 := ll

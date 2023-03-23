@@ -80,7 +80,7 @@ func (self *Search) find_matches_in_line(line *LogicalLine, margin_size, cols in
 	lt := line.line_type
 	for i, line := range line.screen_lines {
 		line = wcswidth.StripEscapeCodes(line)
-		if lt == HUNK_TITLE_LINE {
+		if lt == HUNK_TITLE_LINE || lt == FULL_TITLE_LINE {
 			if len(line) > margin_size {
 				left_clean_lines[i] = line[margin_size:]
 			}
