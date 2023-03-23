@@ -144,10 +144,12 @@ func highlight_file(path string) (highlighted string, err error) {
 	lexer = chroma.Coalesce(lexer)
 	name := conf.Pygments_style
 	const DEFAULT_LIGHT_THEME = "borland"
+	var style *chroma.Style
 	if name == "default" {
-		DefaultStyle()
+		style = DefaultStyle()
+	} else {
+		style = styles.Get(name)
 	}
-	style := styles.Get(name)
 	if style == nil {
 		if conf.Background.IsDark() && !conf.Foreground.IsDark() {
 			style = styles.Get("monokai")

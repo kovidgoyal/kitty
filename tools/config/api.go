@@ -219,7 +219,9 @@ func (self *LinesScanner) Err() error {
 }
 
 func (self *ConfigParser) ParseOverrides(overrides ...string) error {
-	s := LinesScanner{lines: overrides}
+	s := LinesScanner{lines: utils.Map(func(x string) string {
+		return strings.Replace(x, "=", " ", 1)
+	}, overrides)}
 	self.seen_includes = make(map[string]bool)
 	return self.parse(&s, "<overrides>", utils.ConfigDir(), 0)
 }

@@ -106,7 +106,7 @@ func parse_kitten_args(found_extra_args []string, username, hostname_for_match s
 					literal_env = le
 				}
 			} else if key != "hostname" {
-				overrides = append(overrides, key+" "+val)
+				overrides = append(overrides, key+"="+val)
 			}
 		}
 	}
