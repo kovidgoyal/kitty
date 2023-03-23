@@ -328,8 +328,8 @@ func SGRFromCSI(csi string) (ans SGR) {
 }
 
 type Span struct {
-	Offset, Size int // in bytes
-	SGR          SGR
+	Offset, Size             int // in bytes
+	opening_sgr, closing_sgr SGR
 }
 
 func NewSpan(offset, size int) *Span {
@@ -354,102 +354,93 @@ func (self *ColorVal) Set(val any) {
 }
 
 func (self *Span) SetForeground(val any) *Span {
-	self.SGR.Foreground.Set(val)
+	self.opening_sgr.Foreground.Set(val)
 	return self
 }
 
 func (self *Span) SetBackground(val any) *Span {
-	self.SGR.Background.Set(val)
+	self.opening_sgr.Background.Set(val)
 	return self
 }
 
 func (self *Span) SetUnderlineColor(val any) *Span {
-	self.SGR.Underline_color.Set(val)
+	self.opening_sgr.Underline_color.Set(val)
 	return self
 }
 
 func (self *Span) SetItalic(val bool) *Span {
-	self.SGR.Italic.Set(val)
+	self.opening_sgr.Italic.Set(val)
 	return self
 }
 
 func (self *Span) SetBold(val bool) *Span {
-	self.SGR.Bold.Set(val)
+	self.opening_sgr.Bold.Set(val)
 	return self
 }
 func (self *Span) SetReverse(val bool) *Span {
-	self.SGR.Reverse.Set(val)
+	self.opening_sgr.Reverse.Set(val)
 	return self
 }
 func (self *Span) SetDim(val bool) *Span {
-	self.SGR.Dim.Set(val)
+	self.opening_sgr.Dim.Set(val)
 	return self
 }
 func (self *Span) SetStrikethrough(val bool) *Span {
-	self.SGR.Strikethrough.Set(val)
+	self.opening_sgr.Strikethrough.Set(val)
 	return self
 }
 func (self *Span) SetUnderlineStyle(val UnderlineStyle) *Span {
-	self.SGR.Underline_style.Is_set = true
-	self.SGR.Underline_style.Val = val
+	self.opening_sgr.Underline_style.Is_set = true
+	self.opening_sgr.Underline_style.Val = val
 	return self
 }
 
-type defaulting_val interface {
-	DefaultCSI() string
+func (self *Span) SetClosingForeground(val any) *Span {
+	self.closing_sgr.Foreground.Set(val)
+	return self
 }
 
-func append_default_csi(x defaulting_val, ans []byte) []byte {
-	val := x.DefaultCSI()
-	if val != "" {
-		ans = append(ans, val...)
-		ans = append(ans, ';')
-	}
-	return ans
+func (self *Span) SetClosingBackground(val any) *Span {
+	self.closing_sgr.Background.Set(val)
+	return self
 }
 
-func (self *Span) ClosingCSI() string {
-	ans := make([]byte, 0, 16)
-	w := func(x string) {
-		if x != "" {
-			ans = append(append(ans, x...), ';')
-		}
-	}
-	if self.SGR.Bold.Is_set {
-		w(self.SGR.Bold.AsCSI("1", "221"))
-	}
-	if self.SGR.Dim.Is_set {
-		w(self.SGR.Dim.AsCSI("2", "222"))
-	}
-	if self.SGR.Italic.Is_set {
-		w(self.SGR.Italic.AsCSI("3", "23"))
-	}
-	if self.SGR.Reverse.Is_set {
-		w(self.SGR.Reverse.AsCSI("7", "27"))
-	}
-	if self.SGR.Strikethrough.Is_set {
-		w(self.SGR.Strikethrough.AsCSI("9", "29"))
-	}
-	wc := func(cval ColorVal, base int) {
-		if cval.Is_set {
-			cval.Is_default = true
-			w(cval.AsCSI(base))
-		}
-	}
-	wc(self.SGR.Foreground, 30)
-	wc(self.SGR.Background, 40)
-	wc(self.SGR.Underline_color, 50)
-	if len(ans) > 0 {
-		ans = ans[:len(ans)-1]
-		ans = append(ans, 'm')
-	}
-	return utils.UnsafeBytesToString(ans)
+func (self *Span) SetClosingUnderlineColor(val any) *Span {
+	self.closing_sgr.Underline_color.Set(val)
+	return self
+}
+
+func (self *Span) SetClosingItalic(val bool) *Span {
+	self.closing_sgr.Italic.Set(val)
+	return self
+}
+
+func (self *Span) SetClosingBold(val bool) *Span {
+	self.closing_sgr.Bold.Set(val)
+	return self
+}
+func (self *Span) SetClosingReverse(val bool) *Span {
+	self.closing_sgr.Reverse.Set(val)
+	return self
+}
+func (self *Span) SetClosingDim(val bool) *Span {
+	self.closing_sgr.Dim.Set(val)
+	return self
+}
+func (self *Span) SetClosingStrikethrough(val bool) *Span {
+	self.closing_sgr.Strikethrough.Set(val)
+	return self
+}
+func (self *Span) SetClosingUnderlineStyle(val UnderlineStyle) *Span {
+	self.closing_sgr.Underline_style.Is_set = true
+	self.opening_sgr.Underline_style.Val = val
+	return self
 }
 
 // Insert formatting into text at the specified offsets, overriding any existing formatting, and restoring
 // existing formatting after the replaced sections.
 func InsertFormatting(text string, spans ...*Span) string {
-	spans = utils.Filter(spans, func(s *Span) bool { return !s.SGR.IsEmpty() })
+	spans = utils.Filter(spans, func(s *Span) bool { return !s.opening_sgr.IsEmpty() })
 	if len(spans) == 0 {
 		return text
 	}
@@ -470,7 +461,7 @@ func InsertFormatting(text string, spans ...*Span) string {
 		in_span = spans[0]
 		spans = spans[1:]
 		if in_span.Size > 0 {
-			write_csi(in_span.SGR.AsCSI())
+			write_csi(in_span.opening_sgr.AsCSI())
 		} else {
 			in_span = nil
 		}
@@ -478,7 +469,7 @@ func InsertFormatting(text string, spans ...*Span) string {
 	}
 
 	close_span := func() {
-		write_csi(in_span.ClosingCSI())
+		write_csi(in_span.closing_sgr.AsCSI())
 		write_csi(overall_sgr_state.AsCSI())
 		in_span = nil
 	}
@@ -515,7 +506,7 @@ func InsertFormatting(text string, spans ...*Span) string {
 			if in_span == nil {
 				write_csi(csi)
 			} else {
-				sgr.ApplyMask(in_span.SGR)
+				sgr.ApplyMask(in_span.opening_sgr)
 				csi := sgr.AsCSI()
 				write_csi(csi)
 			}
