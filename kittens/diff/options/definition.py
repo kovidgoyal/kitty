@@ -37,9 +37,11 @@ opt('num_context_lines', '3',
 opt('diff_cmd', 'auto',
     long_text='''
 The diff command to use. Must contain the placeholder :code:`_CONTEXT_` which
-will be replaced by the number of lines of context. The default special value
-:code:`auto` is to search the system for either :program:`git` or
-:program:`diff` and use that, if found.
+will be replaced by the number of lines of context. A few special values are allowed:
+:code:`auto` will automatically pick an available diff implementation. :code:`builtin`
+will use the anchored diff algorithm from the Go standard library. :code:`git` will
+use the git command to do the diffing. :code:`diff` will use the diff command to
+do the diffing.
 '''
     )
 
