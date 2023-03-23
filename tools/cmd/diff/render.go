@@ -149,7 +149,13 @@ type LogicalLines struct {
 
 func (self *LogicalLines) At(i int) *LogicalLine { return self.lines[i] }
 func (self *LogicalLines) ScreenLineAt(pos ScrollPos) string {
-	return self.lines[pos.logical_line].screen_lines[pos.screen_line]
+	if pos.logical_line < len(self.lines) && pos.logical_line >= 0 {
+		line := self.lines[pos.logical_line]
+		if pos.screen_line < len(line.screen_lines) && pos.screen_line >= 0 {
+			return self.lines[pos.logical_line].screen_lines[pos.screen_line]
+		}
+	}
+	return ""
 }
 func (self *LogicalLines) Len() int { return len(self.lines) }
 
