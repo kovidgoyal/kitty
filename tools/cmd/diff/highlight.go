@@ -164,7 +164,6 @@ func highlight_file(path string) (highlighted string, err error) {
 	}
 	lexer = chroma.Coalesce(lexer)
 	name := conf.Pygments_style
-	const DEFAULT_LIGHT_THEME = "borland"
 	var style *chroma.Style
 	if name == "default" {
 		style = DefaultStyle()
@@ -178,7 +177,7 @@ func highlight_file(path string) (highlighted string, err error) {
 				style = styles.Get("github-dark")
 			}
 		} else {
-			style = styles.Get(DEFAULT_LIGHT_THEME)
+			style = DefaultStyle()
 		}
 		if style == nil {
 			style = styles.Fallback
