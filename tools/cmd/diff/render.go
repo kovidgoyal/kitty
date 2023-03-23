@@ -125,6 +125,7 @@ func title_lines(left_path, right_path string, columns, margin_size int, ans []*
 	l1 := ll
 	l1.screen_lines = []string{title_format(name)}
 	l2 := ll
+	l2.line_type = EMPTY_LINE
 	l2.screen_lines = []string{title_format(strings.Repeat("━", columns))}
 	return append(ans, &l1, &l2)
 }
