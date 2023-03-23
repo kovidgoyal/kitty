@@ -414,7 +414,7 @@ func (self *Handler) scroll_to_next_match(backwards, include_current_match bool)
 		delta *= -1
 	}
 	pos := self.scroll_pos
-	if self.logical_lines.IncrementScrollPosBy(&pos, offset) == 0 {
+	if offset != 0 && self.logical_lines.IncrementScrollPosBy(&pos, offset) == 0 {
 		return false
 	}
 	for {

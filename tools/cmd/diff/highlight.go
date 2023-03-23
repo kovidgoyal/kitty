@@ -95,7 +95,7 @@ func ansi_formatter(w io.Writer, style *chroma.Style, it chroma.Iterator) error 
 		if !entry.IsZero() {
 			if entry.Bold == chroma.Yes {
 				before = append(before, '1', ';')
-				after = append(after, '2', '2', ';')
+				after = append(after, '2', '2', '1', ';')
 			}
 			if entry.Underline == chroma.Yes {
 				before = append(before, '4', ';')
