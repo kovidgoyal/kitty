@@ -4,7 +4,6 @@ package utils
 
 import (
 	"fmt"
-	"regexp"
 	"sort"
 
 	"golang.org/x/exp/constraints"
@@ -151,16 +150,4 @@ func Memset[T any](dest []T, pattern ...T) []T {
 		bp *= 2
 	}
 	return dest
-}
-
-var ControlCodesPat = (&Once[*regexp.Regexp]{Run: func() *regexp.Regexp {
-	return regexp.MustCompile("[\x00-\x09\x0b-\x1f\x7f\u0080-\u009f]")
-}}).Get
-
-func SanitizeControlCodes(raw string, replace_with ...string) string {
-	r := ""
-	if len(replace_with) > 0 {
-		r = replace_with[0]
-	}
-	return ControlCodesPat().ReplaceAllLiteralString(raw, r)
 }

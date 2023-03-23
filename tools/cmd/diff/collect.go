@@ -104,7 +104,9 @@ func hash_for_path(path string) (string, error) {
 }
 
 func sanitize_control_codes(x string) string {
-	return utils.SanitizeControlCodes(x, "░")
+	// exclude newlines, carriage returns and tabs
+	pat := utils.MustCompile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\u0080-\u009f]")
+	return pat.ReplaceAllLiteralString(x, "░")
 }
 
 func sanitize_tabs_and_carriage_returns(x string) string {
