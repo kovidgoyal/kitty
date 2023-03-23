@@ -40,14 +40,14 @@ func (self *Color) Set(val any) (err error) {
 		self.Red = uint8(v)
 	case style.RGBA:
 		self.Is_numbered = false
-		self.Red, self.Green, self.Blue = v.Red, v.Red, v.Blue
+		self.Red, self.Green, self.Blue = v.Red, v.Green, v.Blue
 	case string:
 		rgba, err := style.ParseColor(v)
 		if err != nil {
 			return err
 		}
 		self.Is_numbered = false
-		self.Red, self.Green, self.Blue = rgba.Red, rgba.Red, rgba.Blue
+		self.Red, self.Green, self.Blue = rgba.Red, rgba.Green, rgba.Blue
 	default:
 		return fmt.Errorf("Unknown type to set color from: %T", v)
 	}
