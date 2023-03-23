@@ -34,7 +34,13 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <float.h>
 #include <string.h>
+#import <objc/runtime.h>
 
+@interface FakeView : NSView
+@end
+@implementation FakeView
+- (BOOL)fakeMouseDownCanMoveWindow { return YES; }
+@end
 
 static const char*
 polymorphic_string_as_utf8(id string) {
@@ -2920,6 +2926,13 @@ GLFWAPI void glfwHideCocoaTitlebar(GLFWwindow* handle, bool yes) {
     button = [window standardWindowButton: NSWindowZoomButton];
     [window setTitlebarAppearsTransparent:yes];
     if (button) button.hidden = yes;
+
+    // http://svenandersson.se/2016/rendering-to-full-size-of-an-nswindow-using-glfw3.html
+    NSView* glView = [window contentView];
+    Method originalMethod = class_getInstanceMethod([glView class], @selector(mouseDownCanMoveWindow));
+    Method categoryMethod = class_getInstanceMethod(FakeView.class, @selector(fakeMouseDownCanMoveWindow));
+    method_exchangeImplementations(originalMethod, categoryMethod);
+
     if (yes) {
         [window setTitleVisibility:NSWindowTitleHidden];
         [window setStyleMask: [window styleMask] | NSWindowStyleMaskFullSizeContentView];
