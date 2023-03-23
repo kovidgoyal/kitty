@@ -123,7 +123,7 @@ func ansi_formatter(w io.Writer, style *chroma.Style, it chroma.Iterator) error 
 		}
 		// independently format each line in a multiline token, needed for the diff kitten highlighting to work, also
 		// pagers like less reset SGR formatting at line boundaries
-		text := token.Value
+		text := sanitize(token.Value)
 		for text != "" {
 			idx := strings.IndexByte(text, '\n')
 			if idx < 0 {
@@ -152,7 +152,6 @@ func highlight_file(path string) (highlighted string, err error) {
 	if err != nil {
 		return "", err
 	}
-	text = sanitize_control_codes(text)
 	lexer := lexers.Match(filename_for_detection)
 	if lexer == nil {
 		if err == nil {
@@ -191,7 +190,7 @@ func highlight_file(path string) (highlighted string, err error) {
 	w := strings.Builder{}
 	w.Grow(len(text) * 2)
 	err = formatter.Format(&w, style, iterator)
-	// os.WriteFile(path+".highlighted", []byte(w.String()), 0o600)
+	// os.WriteFile(filepath.Base(path+".highlighted"), []byte(w.String()), 0o600)
 	return w.String(), err
 }
 
@@ -202,7 +201,7 @@ func highlight_all(paths []string) {
 			path := paths[i]
 			raw, err := highlight_file(path)
 			if err == nil {
-				highlighted_lines_cache.Set(path, text_to_lines(sanitize_tabs_and_carriage_returns(raw)))
+				highlighted_lines_cache.Set(path, text_to_lines(raw))
 			}
 		}
 	})

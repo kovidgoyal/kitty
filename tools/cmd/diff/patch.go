@@ -60,7 +60,7 @@ func set_diff_command(q string) error {
 	return nil
 }
 
-type Center struct{ prefix_count, suffix_count int }
+type Center struct{ offset, left_size, right_size int }
 
 type Chunk struct {
 	is_context              bool
@@ -82,18 +82,17 @@ func (self *Chunk) context_line() {
 	self.right_count++
 }
 
-func changed_center(left, right string) (ans struct{ prefix_count, suffix_count int }) {
+func changed_center(left, right string) (ans Center) {
 	if len(left) > 0 && len(right) > 0 {
 		ll, rl := len(left), len(right)
 		ml := utils.Min(ll, rl)
-		for ans.prefix_count < ml && left[ans.prefix_count] == right[ans.prefix_count] {
-			ans.prefix_count++
+		for ; ans.offset < ml && left[ans.offset] == right[ans.offset]; ans.offset++ {
 		}
-		if ans.prefix_count < ml {
-			for ans.suffix_count < ml-ans.prefix_count && left[ll-1-ans.suffix_count] == right[rl-1-ans.suffix_count] {
-				ans.suffix_count++
-			}
+		suffix_count := 0
+		for ; suffix_count < ml && left[ll-1-suffix_count] == right[rl-1-suffix_count]; suffix_count++ {
 		}
+		ans.left_size = ll - suffix_count - ans.offset
+		ans.right_size = rl - suffix_count - ans.offset
 	}
 	return
 }

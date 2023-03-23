@@ -4,6 +4,7 @@ package diff
 
 import (
 	"fmt"
+	"kitty/tools/tui/sgr"
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
@@ -71,7 +72,7 @@ func place_in(text string, sz int) string {
 	return fill_in(fit_in(text, sz), sz)
 }
 
-var title_format, text_format, margin_format, added_format, removed_format, added_margin_format, removed_margin_format, filler_format, margin_filler_format, hunk_margin_format, hunk_format, added_center, removed_center, statusline_format, added_count_format, removed_count_format, message_format func(...any) string
+var title_format, text_format, margin_format, added_format, removed_format, added_margin_format, removed_margin_format, filler_format, margin_filler_format, hunk_margin_format, hunk_format, statusline_format, added_count_format, removed_count_format, message_format func(...any) string
 
 func create_formatters() {
 	ctx := style.Context{AllowEscapeCodes: true}
@@ -94,31 +95,17 @@ func create_formatters() {
 	hunk_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_bg.AsRGBSharp()))
 	hunk_margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_margin_bg.AsRGBSharp()))
 	message_format = ctx.SprintFunc("bold")
-	make_bracketer := func(start, end string) func(...any) string {
-		s, e := ctx.SprintFunc(start), ctx.SprintFunc(end)
-		end = e(" ")
-		idx := strings.LastIndexByte(end, ' ')
-		end = end[:idx]
-		start = s(" ")
-		idx = strings.LastIndexByte(start, ' ')
-		start = start[:idx]
-
-		return func(args ...any) string {
-			return start + fmt.Sprint(args) + end
-		}
-	}
-	added_center = make_bracketer("bg="+conf.Highlight_added_bg.AsRGBSharp(), "bg="+conf.Added_bg.AsRGBSharp())
-	removed_center = make_bracketer("bg="+conf.Highlight_removed_bg.AsRGBSharp(), "bg="+conf.Removed_bg.AsRGBSharp())
 }
 
-func highlight_boundaries(ltype, text string) string {
+func center_span(ltype string, offset, size int) *sgr.Span {
+	ans := sgr.NewSpan(offset, size)
 	switch ltype {
 	case "add":
-		return added_center(text)
+		ans.SetBackground(conf.Highlight_added_bg).SetClosingBackground(conf.Added_bg)
 	case "remove":
-		return removed_center(text)
+		ans.SetBackground(conf.Highlight_removed_bg).SetClosingBackground(conf.Removed_bg)
 	}
-	return text
+	return ans
 }
 
 func title_lines(left_path, right_path string, columns, margin_size int, ans []*LogicalLine) []*LogicalLine {
@@ -333,12 +320,13 @@ func splitlines(text string, width int) []string {
 }
 
 func render_half_line(line_number int, line, ltype string, margin_size, available_cols int, center Center, ans []string) []string {
-	if center.prefix_count > 0 {
-		line_sz := len(line)
-		if center.prefix_count+center.suffix_count < line_sz {
-			end := len(line) - center.suffix_count
-			line = line[:center.prefix_count] + highlight_boundaries(ltype, line[center.prefix_count:end]) + line[end:]
-		}
+	size := center.left_size
+	if ltype != "remove" {
+		size = center.right_size
+	}
+	if size > 0 {
+		span := center_span(ltype, center.offset, size)
+		line = sgr.InsertFormatting(line, span)
 	}
 	lnum := strconv.Itoa(line_number + 1)
 	for _, sc := range splitlines(line, available_cols) {
