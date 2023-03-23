@@ -310,7 +310,7 @@ func (self *Handler) do_search(query string) {
 	if !self.current_search_is_regex {
 		query = regexp.QuoteMeta(query)
 	}
-	pat, err := regexp.Compile(query)
+	pat, err := regexp.Compile(`(?i)` + query)
 	if err != nil {
 		self.statusline_message = fmt.Sprintf("Bad regex: %s", err)
 		self.lp.Beep()
