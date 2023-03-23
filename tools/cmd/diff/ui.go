@@ -241,26 +241,17 @@ func (self *Handler) draw_screen() {
 		lp.Println(`Calculating diff, please wait...`)
 		return
 	}
-	num_written := 0
-	for i, line := range self.logical_lines.lines[self.scroll_pos.logical_line:] {
-		if num_written >= self.screen_size.num_lines {
+	pos := self.scroll_pos
+	for num_written := 0; num_written < self.screen_size.num_lines; num_written++ {
+		sl := self.logical_lines.ScreenLineAt(pos)
+		if self.current_search != nil {
+			sl = self.current_search.markup_line(sl, pos)
+		}
+		lp.QueueWriteString(sl)
+		lp.MoveCursorVertically(1)
+		lp.QueueWriteString("\r")
+		if self.logical_lines.IncrementScrollPosBy(&pos, 1) == 0 {
 			break
-		}
-		screen_lines := line.screen_lines
-		if i == 0 {
-			screen_lines = screen_lines[self.scroll_pos.screen_line:]
-		}
-		for snum, sl := range screen_lines {
-			if self.current_search != nil {
-				sl = self.current_search.markup_line(sl, ScrollPos{i, snum}.Add(self.scroll_pos))
-			}
-			lp.QueueWriteString(sl)
-			lp.MoveCursorVertically(1)
-			lp.QueueWriteString("\r")
-			num_written++
-			if num_written >= self.screen_size.num_lines {
-				break
-			}
 		}
 	}
 	self.draw_status_line()
