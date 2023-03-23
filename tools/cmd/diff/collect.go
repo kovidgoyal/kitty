@@ -253,6 +253,9 @@ func walk(base string, names *utils.Set[string], pmap map[string]string) error {
 			}
 			return nil
 		}
+		if d.IsDir() {
+			return nil
+		}
 		path, err = filepath.Abs(path)
 		if err != nil {
 			return err
@@ -261,9 +264,11 @@ func walk(base string, names *utils.Set[string], pmap map[string]string) error {
 		if err != nil {
 			return err
 		}
-		path_name_map[path] = name
-		names.Add(name)
-		pmap[name] = path
+		if name != "." {
+			path_name_map[path] = name
+			names.Add(name)
+			pmap[name] = path
+		}
 		return nil
 	})
 }
