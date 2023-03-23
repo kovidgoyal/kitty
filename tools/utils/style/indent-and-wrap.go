@@ -167,8 +167,12 @@ func (self *sgr_state) apply_csi(raw string) {
 			self.reset()
 		case 1:
 			self.dim, self.bold = false, true
+		case 221:
+			self.bold = false
 		case 2:
 			self.dim, self.bold = true, false
+		case 222:
+			self.dim = false
 		case 22:
 			self.dim, self.bold = false, false
 		case 3:

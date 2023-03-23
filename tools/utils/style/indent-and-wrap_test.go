@@ -37,4 +37,10 @@ func TestFormatWithIndent(t *testing.T) {
 	tx("four", "fou\nr")
 	tx("nl\n\n", "nl\n\n")
 	tx("four\n\n", "fou\nr\n\n")
+
+	screen_width = 8
+	tx(
+		"\x1b[1mbold\x1b[221m no more bold",
+		"\x1b[1mbold\x1b[221m no\nmore\nbold",
+	)
 }
