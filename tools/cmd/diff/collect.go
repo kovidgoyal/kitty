@@ -133,10 +133,14 @@ func lines_for_path(path string) ([]string, error) {
 }
 
 func highlighted_lines_for_path(path string) ([]string, error) {
-	if ans, found := highlighted_lines_cache.Get(path); found && ans != nil {
+	plain_lines, err := lines_for_path(path)
+	if err != nil {
+		return nil, err
+	}
+	if ans, found := highlighted_lines_cache.Get(path); found && len(ans) == len(plain_lines) {
 		return ans, nil
 	}
-	return lines_for_path(path)
+	return plain_lines, nil
 }
 
 type Collection struct {
