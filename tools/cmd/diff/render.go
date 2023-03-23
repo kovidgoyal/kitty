@@ -388,6 +388,13 @@ func lines_for_diff_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_num 
 }
 
 func lines_for_diff(left_path string, right_path string, patch *Patch, columns, margin_size int, ans []*LogicalLine) (result []*LogicalLine, err error) {
+	ht := LogicalLine{line_type: HUNK_TITLE_LINE, src: Reference{path: left_path}}
+	if patch.Len() == 0 {
+		ht.screen_lines = []string{"The files are identical"}
+		ht.line_type = EMPTY_LINE
+		ans = append(ans, &ht)
+		return ans, nil
+	}
 	available_cols := columns/2 - margin_size
 	data := DiffData{left_path: left_path, right_path: right_path, available_cols: available_cols, margin_size: margin_size}
 	if left_path != "" {
@@ -406,7 +413,6 @@ func lines_for_diff(left_path string, right_path string, patch *Patch, columns, 
 	data.left_filler_line = render_diff_line("", "", "remove", margin_size, available_cols)
 	data.right_filler_line = render_diff_line("", "", "add", margin_size, available_cols)
 
-	ht := LogicalLine{line_type: HUNK_TITLE_LINE, src: Reference{path: left_path}}
 	for hunk_num, hunk := range patch.all_hunks {
 		htl := ht
 		htl.src.linenum = hunk.left_start
