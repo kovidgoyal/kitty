@@ -465,14 +465,14 @@ func RenderWithMagick(path string, ro *RenderOptions, frames []IdentifyRecord) (
 	return
 }
 
-func OpenMagickImageFromPath(path string) (ans *ImageData, err error) {
+func OpenImageFromPathWithMagick(path string) (ans *ImageData, err error) {
 	identify_records, err := IdentifyWithMagick(path)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to identify image at %#v with error: %w", path, err)
 	}
 	frames, filenames, err := RenderWithMagick(path, &RenderOptions{}, identify_records)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to render image at %#v with error: %w", path, err)
 	}
 	defer func() {
 		for _, f := range filenames {
@@ -484,7 +484,7 @@ func OpenMagickImageFromPath(path string) (ans *ImageData, err error) {
 		filename := filenames[frame.Number]
 		data, err := os.ReadFile(filename)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Failed to read temp file for image %#v at %#v with error: %w", path, filename, err)
 		}
 		dest_rect := image.Rect(0, 0, frame.Width, frame.Height)
 		if frame.Is_opaque {
@@ -512,7 +512,7 @@ func OpenImageFromPath(path string) (ans *ImageData, err error) {
 			return nil, fmt.Errorf("Failed to load image at %#v with error: %w", path, err)
 		}
 	} else {
-		return OpenMagickImageFromPath(path)
+		return OpenImageFromPathWithMagick(path)
 	}
 	return
 }
