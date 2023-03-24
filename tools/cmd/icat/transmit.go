@@ -152,7 +152,7 @@ func transmit_file(imgd *image_data, frame_num int, frame *image_frame) (err err
 			frame.shm.Close()
 			frame.shm = nil
 		} else {
-			f, err := graphics.CreateTempInRAM()
+			f, err := images.CreateTempInRAM()
 			if err != nil {
 				return fmt.Errorf("Failed to create a temp file for image data transmission: %w", err)
 			}

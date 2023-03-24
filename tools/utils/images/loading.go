@@ -17,7 +17,6 @@ import (
 	"strconv"
 	"strings"
 
-	"kitty/tools/tui/graphics"
 	"kitty/tools/utils"
 	"kitty/tools/utils/shm"
 
@@ -26,6 +25,22 @@ import (
 )
 
 var _ = fmt.Print
+
+const TempTemplate = "kitty-tty-graphics-protocol-*"
+
+func CreateTemp() (*os.File, error) {
+	return os.CreateTemp("", TempTemplate)
+}
+
+func CreateTempInRAM() (*os.File, error) {
+	if shm.SHM_DIR != "" {
+		f, err := os.CreateTemp(shm.SHM_DIR, TempTemplate)
+		if err == nil {
+			return f, err
+		}
+	}
+	return CreateTemp()
+}
 
 type ImageFrame struct {
 	Width, Height, Left, Top int
@@ -189,7 +204,7 @@ type IdentifyRecord struct {
 	Width, Height      int
 	Dpi                struct{ X, Y float64 }
 	Index              int
-	Mode               graphics.GRT_f
+	Is_opaque          bool
 	Needs_blend        bool
 	Disposal           int
 	Dimensions_swapped bool
@@ -258,9 +273,9 @@ func parse_identify_record(ans *IdentifyRecord, raw *IdentifyOutput) (err error)
 	}
 	q := strings.ToLower(raw.Transparency)
 	if q == "blend" || q == "true" {
-		ans.Mode = graphics.GRT_format_rgba
+		ans.Is_opaque = false
 	} else {
-		ans.Mode = graphics.GRT_format_rgb
+		ans.Is_opaque = true
 	}
 	ans.Needs_blend = q == "blend"
 	switch strings.ToLower(raw.Dispose) {
@@ -376,7 +391,7 @@ func RenderWithMagick(path string, ro *RenderOptions, frames []IdentifyRecord) (
 	}
 	defer os.RemoveAll(tdir)
 	mode := "rgba"
-	if frames[0].Mode == graphics.GRT_format_rgb {
+	if frames[0].Is_opaque {
 		mode = "rgb"
 	}
 	cmd = append(cmd, filepath.Join(tdir, "im-%[filename:f]."+mode))
@@ -431,7 +446,7 @@ func RenderWithMagick(path string, ro *RenderOptions, frames []IdentifyRecord) (
 			continue
 		}
 		identify_data := frames[index]
-		df, cerr := os.CreateTemp(base_dir, graphics.TempTemplate+"."+mode)
+		df, cerr := os.CreateTemp(base_dir, TempTemplate+"."+mode)
 		if cerr != nil {
 			err = fmt.Errorf("Failed to create a temporary file in %s with error: %w", base_dir, cerr)
 			return
@@ -444,7 +459,7 @@ func RenderWithMagick(path string, ro *RenderOptions, frames []IdentifyRecord) (
 		df.Close()
 		fmap[index+1] = df.Name()
 		frame := ImageFrame{
-			Number: index + 1, Width: width, Height: height, Left: x, Top: y, Is_opaque: identify_data.Mode == graphics.GRT_format_rgb,
+			Number: index + 1, Width: width, Height: height, Left: x, Top: y, Is_opaque: identify_data.Is_opaque,
 		}
 		frame.set_delay(min_gap, identify_data.Gap)
 		err = check_resize(&frame, df.Name())

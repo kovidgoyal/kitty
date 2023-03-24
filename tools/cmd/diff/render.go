@@ -210,12 +210,7 @@ func (self *LogicalLines) IncrementScrollPosBy(pos *ScrollPos, amt int) (delta i
 	return
 }
 
-func image_lines(left_path, right_path string, columns, margin_size int, ans []*LogicalLine) ([]*LogicalLine, error) {
-	// TODO: Implement this
-	return ans, nil
-}
-
-func human_readable(size int) string {
+func human_readable(size int64) string {
 	divisor, suffix := 1, "B"
 	for i, candidate := range []string{"B", "KB", "MB", "GB", "TB", "PB", "EB"} {
 		if size < (1 << ((i + 1) * 10)) {
@@ -253,33 +248,79 @@ func render_diff_line(number, text, ltype string, margin_size int, available_col
 	return margin + content
 }
 
-func binary_lines(left_path, right_path string, columns, margin_size int, ans []*LogicalLine) (ans2 []*LogicalLine, err error) {
+func image_lines(left_path, right_path string, columns, margin_size int, ans []*LogicalLine) ([]*LogicalLine, error) {
 	available_cols := columns/2 - margin_size
-	fl := func(path string, formatter func(...any) string) string {
-		if err == nil {
-			var data string
-			data, err = data_for_path(path)
-			text := fmt.Sprintf("Binary file: %s", human_readable(len(data)))
-			text = place_in(text, available_cols)
-			return margin_format(strings.Repeat(` `, margin_size)) + formatter(text)
+	ll, err := first_binary_line(left_path, right_path, columns, margin_size, func(path string, formatter func(...any) string) (string, error) {
+		sz, err := size_for_path(path)
+		if err != nil {
+			return "", err
 		}
-		return ""
+		text := fmt.Sprintf("Size: %s", human_readable(sz))
+		res := image_collection.ResolutionOf(path)
+		if res.X > -1 {
+			text = fmt.Sprintf("Dimensions: %dx%d %s", res.X, res.Y, text)
+		}
+		text = place_in(text, available_cols)
+		return formatter(strings.Repeat(` `, margin_size) + text), err
+	})
+
+	if err != nil {
+		return nil, err
 	}
+	return append(ans, ll), nil
+}
+
+func first_binary_line(left_path, right_path string, columns, margin_size int, renderer func(path string, formatter func(...any) string) (string, error)) (*LogicalLine, error) {
+	available_cols := columns/2 - margin_size
 	line := ""
 	if left_path == "" {
 		filler := render_diff_line(``, ``, `filler`, margin_size, available_cols)
-		line = filler + fl(right_path, added_format)
+		r, err := renderer(right_path, added_format)
+		if err != nil {
+			return nil, err
+		}
+		line = filler + r
 	} else if right_path == "" {
 		filler := render_diff_line(``, ``, `filler`, margin_size, available_cols)
-		line = fl(left_path, removed_format) + filler
+		l, err := renderer(left_path, removed_format)
+		if err != nil {
+			return nil, err
+		}
+		line = l + filler
 	} else {
-		line = fl(left_path, removed_format) + fl(right_path, added_format)
+		l, err := renderer(left_path, removed_format)
+		if err != nil {
+			return nil, err
+		}
+		r, err := renderer(right_path, added_format)
+		if err != nil {
+			return nil, err
+		}
+		line = l + r
 	}
 	ll := LogicalLine{is_change_start: true, line_type: CHANGE_LINE, src: Reference{path: left_path, linenum: 0}, screen_lines: []string{line}}
 	if left_path == "" {
 		ll.src.path = right_path
 	}
-	return append(ans, &ll), err
+	return &ll, nil
+}
+
+func binary_lines(left_path, right_path string, columns, margin_size int, ans []*LogicalLine) (ans2 []*LogicalLine, err error) {
+	available_cols := columns/2 - margin_size
+	ll, err := first_binary_line(left_path, right_path, columns, margin_size, func(path string, formatter func(...any) string) (string, error) {
+		sz, err := size_for_path(path)
+		if err != nil {
+			return "", err
+		}
+		text := fmt.Sprintf("Binary file: %s", human_readable(sz))
+		text = place_in(text, available_cols)
+		return formatter(strings.Repeat(` `, margin_size) + text), err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return append(ans, ll), nil
 }
 
 type DiffData struct {

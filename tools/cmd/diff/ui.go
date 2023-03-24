@@ -25,6 +25,7 @@ const (
 	COLLECTION ResultType = iota
 	DIFF
 	HIGHLIGHT
+	IMAGE_LOAD
 )
 
 type ScrollPos struct {
@@ -46,10 +47,11 @@ type AsyncResult struct {
 	diff_map   map[string]*Patch
 }
 
+var image_collection *graphics.ImageCollection
+
 type Handler struct {
 	async_results                                       chan AsyncResult
 	shortcut_tracker                                    config.ShortcutTracker
-	pending_keys                                        []string
 	left, right                                         string
 	collection                                          *Collection
 	diff_map                                            map[string]*Patch
@@ -78,8 +80,8 @@ func (self *Handler) calculate_statistics() {
 var DebugPrintln = tty.DebugPrintln
 
 func (self *Handler) initialize() {
-	self.pending_keys = make([]string, 0, 4)
 	self.rl = readline.New(self.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "/"})
+	image_collection = graphics.NewImageCollection()
 	self.current_context_count = opts.Context
 	if self.current_context_count < 0 {
 		self.current_context_count = int(conf.Num_context_lines)
@@ -154,12 +156,42 @@ func (self *Handler) highlight_all() {
 
 }
 
+func (self *Handler) load_all_images() {
+	self.collection.Apply(func(path, item_type, changed_path string) error {
+		if path != "" && is_image(path) {
+			image_collection.AddPaths(path)
+		}
+		if changed_path != "" && is_image(changed_path) {
+			image_collection.AddPaths(changed_path)
+		}
+		return nil
+	})
+	go func() {
+		r := AsyncResult{rtype: IMAGE_LOAD}
+		image_collection.LoadAll()
+		self.async_results <- r
+		self.lp.WakeupMainThread()
+	}()
+}
+
+func (self *Handler) rerender_diff() error {
+	if self.diff_map != nil && self.collection != nil {
+		err := self.render_diff()
+		if err != nil {
+			return err
+		}
+		self.draw_screen()
+	}
+	return nil
+}
+
 func (self *Handler) handle_async_result(r AsyncResult) error {
 	switch r.rtype {
 	case COLLECTION:
 		self.collection = r.collection
 		self.generate_diff()
 		self.highlight_all()
+		self.load_all_images()
 	case DIFF:
 		self.diff_map = r.diff_map
 		self.calculate_statistics()
@@ -176,14 +208,8 @@ func (self *Handler) handle_async_result(r AsyncResult) error {
 			self.restore_position = nil
 		}
 		self.draw_screen()
-	case HIGHLIGHT:
-		if self.diff_map != nil && self.collection != nil {
-			err := self.render_diff()
-			if err != nil {
-				return err
-			}
-			self.draw_screen()
-		}
+	case HIGHLIGHT, IMAGE_LOAD:
+		return self.rerender_diff()
 	}
 	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"kitty/tools/utils/images"
 	"kitty/tools/utils/shm"
 )
 
@@ -58,7 +59,7 @@ func DetectSupport(timeout time.Duration) (memory, files, direct bool, err error
 		}
 
 		direct_query_id = g(graphics.GRT_transmission_direct, "123")
-		tf, err := graphics.CreateTempInRAM()
+		tf, err := images.CreateTempInRAM()
 		if err == nil {
 			file_query_id = g(graphics.GRT_transmission_tempfile, tf.Name())
 			temp_files_to_delete = append(temp_files_to_delete, tf.Name())

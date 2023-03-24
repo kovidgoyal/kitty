@@ -18,6 +18,7 @@ import (
 	"kitty/tools/tty"
 	"kitty/tools/tui/graphics"
 	"kitty/tools/utils"
+	"kitty/tools/utils/images"
 	"kitty/tools/utils/shm"
 )
 
@@ -142,7 +143,7 @@ func (self *opened_input) PutOnFilesystem() (err error) {
 	if self.name_to_unlink != "" {
 		return
 	}
-	f, err := graphics.CreateTempInRAM()
+	f, err := images.CreateTempInRAM()
 	if err != nil {
 		return fmt.Errorf("Failed to create a temporary file to store input data with error: %w", err)
 	}

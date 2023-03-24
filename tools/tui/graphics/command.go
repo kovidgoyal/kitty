@@ -8,32 +8,14 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
-	"kitty/tools/utils/shm"
 )
 
 var _ = fmt.Print
-
-const TempTemplate = "kitty-tty-graphics-protocol-*"
-
-func CreateTemp() (*os.File, error) {
-	return os.CreateTemp("", TempTemplate)
-}
-
-func CreateTempInRAM() (*os.File, error) {
-	if shm.SHM_DIR != "" {
-		f, err := os.CreateTemp(shm.SHM_DIR, TempTemplate)
-		if err == nil {
-			return f, err
-		}
-	}
-	return CreateTemp()
-}
 
 // Enums {{{
 type GRT_a int

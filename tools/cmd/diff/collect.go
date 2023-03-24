@@ -18,6 +18,7 @@ var _ = fmt.Print
 var path_name_map, remote_dirs map[string]string
 
 var mimetypes_cache, data_cache, hash_cache *utils.LRUCache[string, string]
+var size_cache *utils.LRUCache[string, int64]
 var lines_cache *utils.LRUCache[string, []string]
 var highlighted_lines_cache *utils.LRUCache[string, []string]
 var is_text_cache *utils.LRUCache[string, bool]
@@ -26,6 +27,7 @@ func init_caches() {
 	path_name_map = make(map[string]string, 32)
 	remote_dirs = make(map[string]string, 32)
 	const sz = 4096
+	size_cache = utils.NewLRUCache[string, int64](sz)
 	mimetypes_cache = utils.NewLRUCache[string, string](sz)
 	data_cache = utils.NewLRUCache[string, string](sz)
 	is_text_cache = utils.NewLRUCache[string, bool](sz)
@@ -64,6 +66,16 @@ func data_for_path(path string) (string, error) {
 	return data_cache.GetOrCreate(path, func(path string) (string, error) {
 		ans, err := os.ReadFile(path)
 		return utils.UnsafeBytesToString(ans), err
+	})
+}
+
+func size_for_path(path string) (int64, error) {
+	return size_cache.GetOrCreate(path, func(path string) (int64, error) {
+		s, err := os.Stat(path)
+		if err != nil {
+			return 0, err
+		}
+		return s.Size(), nil
 	})
 }
 
