@@ -257,8 +257,8 @@ func image_lines(left_path, right_path string, columns, margin_size int, ans []*
 		}
 		text := fmt.Sprintf("Size: %s", human_readable(sz))
 		res := image_collection.ResolutionOf(path)
-		if res.X > -1 {
-			text = fmt.Sprintf("Dimensions: %dx%d %s", res.X, res.Y, text)
+		if res.Width > -1 {
+			text = fmt.Sprintf("Dimensions: %dx%d %s", res.Width, res.Height, text)
 		}
 		text = place_in(text, available_cols)
 		return formatter(strings.Repeat(` `, margin_size) + text), err

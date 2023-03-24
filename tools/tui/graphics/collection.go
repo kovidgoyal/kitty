@@ -4,7 +4,6 @@ package graphics
 
 import (
 	"fmt"
-	"image"
 	"sync"
 	"sync/atomic"
 
@@ -15,14 +14,16 @@ import (
 
 var _ = fmt.Print
 
+type Size struct{ Width, Height int }
+
 type Image struct {
 	src struct {
 		path   string
 		data   *images.ImageData
-		size   image.Point
+		size   Size
 		loaded bool
 	}
-	renderings map[image.Point]*images.ImageData
+	renderings map[Size]*images.ImageData
 	err        error
 }
 
@@ -33,14 +34,14 @@ type ImageCollection struct {
 	images map[string]*Image
 }
 
-func (self *ImageCollection) ResolutionOf(key string) image.Point {
+func (self *ImageCollection) ResolutionOf(key string) Size {
 	if !self.mutex.TryLock() {
-		return image.Point{-1, -1}
+		return Size{-1, -1}
 	}
 	defer self.mutex.Unlock()
 	i := self.images[key]
 	if i == nil {
-		return image.Point{-2, -2}
+		return Size{-2, -2}
 	}
 	return i.src.size
 }
@@ -68,7 +69,7 @@ func (self *ImageCollection) LoadAll() {
 			if !img.src.loaded {
 				img.src.data, img.err = images.OpenImageFromPath(img.src.path)
 				if img.err == nil {
-					img.src.size.X, img.src.size.Y = img.src.data.Width, img.src.data.Height
+					img.src.size.Width, img.src.size.Height = img.src.data.Width, img.src.data.Height
 				}
 			}
 		}
