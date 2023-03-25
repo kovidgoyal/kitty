@@ -3,10 +3,12 @@
 package graphics
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
 
+	"kitty/tools/tui/loop"
 	"kitty/tools/utils/images"
 
 	"golang.org/x/exp/maps"
@@ -34,6 +36,24 @@ type ImageCollection struct {
 	images map[string]*Image
 }
 
+var ErrNotFound = errors.New("not found")
+
+func (self *ImageCollection) GetSizeIfAvailable(key string, page_size Size) (Size, error) {
+	if !self.mutex.TryLock() {
+		return Size{}, ErrNotFound
+	}
+	defer self.mutex.Unlock()
+	img := self.images[key]
+	if img == nil {
+		return Size{}, ErrNotFound
+	}
+	ans := img.renderings[page_size]
+	if ans == nil {
+		return Size{}, ErrNotFound
+	}
+	return Size{ans.Width, ans.Height}, img.err
+}
+
 func (self *ImageCollection) ResolutionOf(key string) Size {
 	if !self.mutex.TryLock() {
 		return Size{-1, -1}
@@ -56,6 +76,40 @@ func (self *ImageCollection) AddPaths(paths ...string) {
 			self.images[path] = i
 		}
 	}
+}
+
+func (self *Image) ResizeForPageSize(width, height int) {
+	sz := Size{width, height}
+	if self.renderings[sz] != nil {
+		return
+	}
+	final_width, final_height := images.FitImage(self.src.size.Width, self.src.size.Height, width, height)
+	if final_width == self.src.size.Width && final_height == self.src.data.Height {
+		self.renderings[sz] = self.src.data
+		return
+	}
+	x_frac, y_frac := float64(final_width)/float64(self.src.size.Width), float64(final_height)/float64(self.src.size.Height)
+	self.renderings[sz] = self.src.data.Resize(x_frac, y_frac)
+}
+
+func (self *ImageCollection) ResizeForPageSize(width, height int) {
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
+
+	ctx := images.Context{}
+	keys := maps.Keys(self.images)
+	ctx.Parallel(0, len(keys), func(nums <-chan int) {
+		for i := range nums {
+			img := self.images[keys[i]]
+			img.ResizeForPageSize(width, height)
+		}
+	})
+}
+
+func (self *ImageCollection) DeleteAllPlacements(lp *loop.Loop) {
+	g := &GraphicsCommand{}
+	g.SetAction(GRT_action_delete).SetDelete(GRT_delete_visible)
+	g.WriteWithPayloadToLoop(lp, nil)
 }
 
 func (self *ImageCollection) LoadAll() {

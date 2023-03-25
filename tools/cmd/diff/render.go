@@ -3,13 +3,17 @@
 package diff
 
 import (
+	"errors"
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
+
+	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/sgr"
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
-	"strconv"
-	"strings"
 )
 
 var _ = fmt.Print
@@ -31,10 +35,15 @@ type Reference struct {
 }
 
 type LogicalLine struct {
-	src             Reference
-	line_type       LineType
-	screen_lines    []string
-	is_change_start bool
+	src                     Reference
+	line_type               LineType
+	screen_lines            []string
+	is_change_start         bool
+	left_image, right_image struct {
+		key   string
+		count int
+	}
+	image_lines_offset int
 }
 
 func (self *LogicalLine) IncrementScrollPosBy(pos *ScrollPos, amt int) (delta int) {
@@ -248,7 +257,8 @@ func render_diff_line(number, text, ltype string, margin_size int, available_col
 	return margin + content
 }
 
-func image_lines(left_path, right_path string, columns, margin_size int, ans []*LogicalLine) ([]*LogicalLine, error) {
+func image_lines(left_path, right_path string, screen_size screen_size, margin_size int, image_size graphics.Size, ans []*LogicalLine) ([]*LogicalLine, error) {
+	columns := screen_size.columns
 	available_cols := columns/2 - margin_size
 	ll, err := first_binary_line(left_path, right_path, columns, margin_size, func(path string, formatter func(...any) string) (string, error) {
 		sz, err := size_for_path(path)
@@ -267,6 +277,44 @@ func image_lines(left_path, right_path string, columns, margin_size int, ans []*
 	if err != nil {
 		return nil, err
 	}
+	ll.image_lines_offset = len(ll.screen_lines)
+
+	do_side := func(path string, filler string) []string {
+		if path == "" {
+			return nil
+		}
+		sz, err := image_collection.GetSizeIfAvailable(path, image_size)
+		if err == nil {
+			count := int(math.Ceil(float64(sz.Height) / float64(screen_size.cell_height)))
+			return utils.Repeat(filler, count)
+		}
+		if errors.Is(err, graphics.ErrNotFound) {
+			return style.WrapTextAsLines("Loading image...", "", available_cols)
+		}
+		return style.WrapTextAsLines(fmt.Sprintf("Failed to load image: %s", err), "", available_cols)
+	}
+	left_lines := do_side(left_path, removed_format(strings.Repeat(` `, available_cols)))
+	if ll.left_image.count = len(left_lines); ll.left_image.count > 0 {
+		ll.left_image.key = left_path
+	}
+	right_lines := do_side(right_path, added_format(strings.Repeat(` `, available_cols)))
+	if ll.right_image.count = len(right_lines); ll.right_image.count > 0 {
+		ll.right_image.key = right_path
+	}
+	filler := filler_format(strings.Repeat(` `, available_cols))
+	m := strings.Repeat(` `, margin_size)
+	get_line := func(i int, which []string, margin_fmt func(...any) string) string {
+		if i < len(which) {
+			return margin_fmt(m) + which[i]
+		}
+		return margin_filler_format(m) + filler
+	}
+	for i := 0; i < utils.Min(len(left_lines), len(right_lines)); i++ {
+		left, right := get_line(i, left_lines, removed_margin_format), get_line(i, right_lines, added_margin_format)
+		ll.screen_lines = append(ll.screen_lines, left+right)
+	}
+
+	ll.line_type = IMAGE_LINE
 	return append(ans, ll), nil
 }
 
@@ -298,7 +346,11 @@ func first_binary_line(left_path, right_path string, columns, margin_size int, r
 		}
 		line = l + r
 	}
-	ll := LogicalLine{is_change_start: true, line_type: CHANGE_LINE, src: Reference{path: left_path, linenum: 0}, screen_lines: []string{line}}
+	ref := left_path
+	if ref == "" {
+		ref = right_path
+	}
+	ll := LogicalLine{is_change_start: true, line_type: CHANGE_LINE, src: Reference{path: ref, linenum: 0}, screen_lines: []string{line}}
 	if left_path == "" {
 		ll.src.path = right_path
 	}
@@ -519,20 +571,11 @@ func rename_lines(path, other_path string, columns, margin_size int, ans []*Logi
 	return append(ans, &ll), nil
 }
 
-func render(collection *Collection, diff_map map[string]*Patch, columns int) (result *LogicalLines, err error) {
-	largest_line_number := 0
-	collection.Apply(func(path, typ, changed_path string) error {
-		if typ == "diff" {
-			patch := diff_map[path]
-			if patch != nil {
-				largest_line_number = utils.Max(largest_line_number, patch.largest_line_number)
-			}
-		}
-		return nil
-	})
+func render(collection *Collection, diff_map map[string]*Patch, screen_size screen_size, largest_line_number int, image_size graphics.Size) (result *LogicalLines, err error) {
 	margin_size := utils.Max(3, len(strconv.Itoa(largest_line_number))+1)
 	ans := make([]*LogicalLine, 0, 1024)
 	empty_line := LogicalLine{line_type: EMPTY_LINE}
+	columns := screen_size.columns
 	err = collection.Apply(func(path, item_type, changed_path string) error {
 		ans = title_lines(path, changed_path, columns, margin_size, ans)
 		defer func() {
@@ -550,7 +593,7 @@ func render(collection *Collection, diff_map map[string]*Patch, columns int) (re
 		case "diff":
 			if is_binary {
 				if is_img {
-					ans, err = image_lines(path, changed_path, columns, margin_size, ans)
+					ans, err = image_lines(path, changed_path, screen_size, margin_size, image_size, ans)
 				} else {
 					ans, err = binary_lines(path, changed_path, columns, margin_size, ans)
 				}
@@ -563,7 +606,7 @@ func render(collection *Collection, diff_map map[string]*Patch, columns int) (re
 		case "add":
 			if is_binary {
 				if is_img {
-					ans, err = image_lines("", path, columns, margin_size, ans)
+					ans, err = image_lines("", path, screen_size, margin_size, image_size, ans)
 				} else {
 					ans, err = binary_lines("", path, columns, margin_size, ans)
 				}
@@ -576,7 +619,7 @@ func render(collection *Collection, diff_map map[string]*Patch, columns int) (re
 		case "removal":
 			if is_binary {
 				if is_img {
-					ans, err = image_lines(path, "", columns, margin_size, ans)
+					ans, err = image_lines(path, "", screen_size, margin_size, image_size, ans)
 				} else {
 					ans, err = binary_lines(path, "", columns, margin_size, ans)
 				}

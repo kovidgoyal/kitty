@@ -57,6 +57,28 @@ type ImageData struct {
 	Frames           []*ImageFrame
 }
 
+func (self *ImageFrame) Resize(x_frac, y_frac float64) *ImageFrame {
+	b := self.Img.Bounds()
+	left, top, width, height := b.Min.X, b.Min.Y, b.Dx(), b.Dy()
+	ans := *self
+	ans.Width = int(x_frac * float64(width))
+	ans.Height = int(y_frac * float64(height))
+	ans.Img = imaging.Resize(self.Img, ans.Width, ans.Height, imaging.Lanczos)
+	ans.Left = int(x_frac * float64(left))
+	ans.Top = int(y_frac * float64(top))
+	return &ans
+
+}
+
+func (self *ImageData) Resize(x_frac, y_frac float64) *ImageData {
+	ans := *self
+	ans.Frames = utils.Map(func(f *ImageFrame) *ImageFrame { return f.Resize(x_frac, y_frac) }, self.Frames)
+	if len(ans.Frames) > 0 {
+		ans.Width, ans.Height = ans.Frames[0].Width, ans.Frames[0].Height
+	}
+	return &ans
+}
+
 func CalcMinimumGIFGap(gaps []int) int {
 	// Some broken GIF images have all zero gaps, browsers with their usual
 	// idiot ideas render these with a default 100ms gap https://bugzilla.mozilla.org/show_bug.cgi?id=125137

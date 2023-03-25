@@ -26,6 +26,7 @@ const (
 	DIFF
 	HIGHLIGHT
 	IMAGE_LOAD
+	IMAGE_RESIZE
 )
 
 type ScrollPos struct {
@@ -45,10 +46,12 @@ type AsyncResult struct {
 	rtype      ResultType
 	collection *Collection
 	diff_map   map[string]*Patch
+	page_size  graphics.Size
 }
 
 var image_collection *graphics.ImageCollection
 
+type screen_size struct{ rows, columns, num_lines, cell_width, cell_height int }
 type Handler struct {
 	async_results                                       chan AsyncResult
 	shortcut_tracker                                    config.ShortcutTracker
@@ -59,7 +62,7 @@ type Handler struct {
 	lp                                                  *loop.Loop
 	current_context_count, original_context_count       int
 	added_count, removed_count                          int
-	screen_size                                         struct{ rows, columns, num_lines int }
+	screen_size                                         screen_size
 	scroll_pos, max_scroll_pos                          ScrollPos
 	restore_position                                    *ScrollPos
 	inputting_command                                   bool
@@ -67,17 +70,29 @@ type Handler struct {
 	rl                                                  *readline.Readline
 	current_search                                      *Search
 	current_search_is_regex, current_search_is_backward bool
+	largest_line_number                                 int
+	images_resized_to                                   graphics.Size
 }
 
 func (self *Handler) calculate_statistics() {
 	self.added_count, self.removed_count = self.collection.added_count, self.collection.removed_count
+	self.largest_line_number = 0
 	for _, patch := range self.diff_map {
 		self.added_count += patch.added_count
 		self.removed_count += patch.removed_count
+		self.largest_line_number = utils.Max(patch.largest_line_number, self.largest_line_number)
 	}
 }
 
 var DebugPrintln = tty.DebugPrintln
+
+func (self *Handler) update_screen_size(sz loop.ScreenSize) {
+	self.screen_size.rows = int(sz.HeightCells)
+	self.screen_size.columns = int(sz.WidthCells)
+	self.screen_size.num_lines = self.screen_size.rows - 1
+	self.screen_size.cell_height = int(sz.CellHeight)
+	self.screen_size.cell_width = int(sz.CellWidth)
+}
 
 func (self *Handler) initialize() {
 	self.rl = readline.New(self.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "/"})
@@ -87,9 +102,7 @@ func (self *Handler) initialize() {
 		self.current_context_count = int(conf.Num_context_lines)
 	}
 	sz, _ := self.lp.ScreenSize()
-	self.screen_size.rows = int(sz.HeightCells)
-	self.screen_size.columns = int(sz.WidthCells)
-	self.screen_size.num_lines = self.screen_size.rows - 1
+	self.update_screen_size(sz)
 	self.original_context_count = self.current_context_count
 	self.lp.SetDefaultColor(loop.FOREGROUND, conf.Foreground)
 	self.lp.SetDefaultColor(loop.CURSOR, conf.Foreground)
@@ -174,6 +187,27 @@ func (self *Handler) load_all_images() {
 	}()
 }
 
+func (self *Handler) resize_all_images_if_needed() {
+	if self.logical_lines == nil {
+		return
+	}
+	margin_size := self.logical_lines.margin_size
+	columns := self.logical_lines.columns
+	available_cols := columns/2 - margin_size
+	sz := graphics.Size{
+		Width:  available_cols * self.screen_size.cell_width,
+		Height: self.screen_size.num_lines * 2 * self.screen_size.cell_height,
+	}
+	if sz != self.images_resized_to {
+		go func() {
+			image_collection.ResizeForPageSize(sz.Width, sz.Height)
+			r := AsyncResult{rtype: IMAGE_RESIZE, page_size: sz}
+			self.async_results <- r
+			self.lp.WakeupMainThread()
+		}()
+	}
+}
+
 func (self *Handler) rerender_diff() error {
 	if self.diff_map != nil && self.collection != nil {
 		err := self.render_diff()
@@ -208,16 +242,17 @@ func (self *Handler) handle_async_result(r AsyncResult) error {
 			self.restore_position = nil
 		}
 		self.draw_screen()
-	case HIGHLIGHT, IMAGE_LOAD:
+	case IMAGE_RESIZE:
+		self.images_resized_to = r.page_size
+		return self.rerender_diff()
+	case IMAGE_LOAD, HIGHLIGHT:
 		return self.rerender_diff()
 	}
 	return nil
 }
 
 func (self *Handler) on_resize(old_size, new_size loop.ScreenSize) error {
-	self.screen_size.rows = int(new_size.HeightCells)
-	self.screen_size.num_lines = self.screen_size.rows - 1
-	self.screen_size.columns = int(new_size.WidthCells)
+	self.update_screen_size(new_size)
 	if self.diff_map != nil && self.collection != nil {
 		err := self.render_diff()
 		if err != nil {
@@ -238,7 +273,7 @@ func (self *Handler) render_diff() (err error) {
 	if self.screen_size.rows < 2 {
 		return fmt.Errorf("Screen too short, need at least 2 rows")
 	}
-	self.logical_lines, err = render(self.collection, self.diff_map, self.screen_size.columns)
+	self.logical_lines, err = render(self.collection, self.diff_map, self.screen_size, self.largest_line_number, self.images_resized_to)
 	if err != nil {
 		return err
 	}
@@ -259,8 +294,8 @@ func (self *Handler) render_diff() (err error) {
 func (self *Handler) draw_screen() {
 	self.lp.StartAtomicUpdate()
 	defer self.lp.EndAtomicUpdate()
-	g := (&graphics.GraphicsCommand{}).SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_delete_visible)
-	g.WriteWithPayloadToLoop(self.lp, nil)
+	self.resize_all_images_if_needed()
+	image_collection.DeleteAllPlacements(self.lp)
 	lp.MoveCursorTo(1, 1)
 	lp.ClearToEndOfScreen()
 	if self.logical_lines == nil || self.diff_map == nil || self.collection == nil {
