@@ -85,6 +85,8 @@ def talk_to_instance(args: CLIOptions) -> None:
     session_data = ''
     if args.session == '-':
         session_data = sys.stdin.read()
+    elif args.session == 'none':
+        session_data = 'none'
     elif args.session:
         with open(args.session) as f:
             session_data = f.read()

@@ -763,8 +763,11 @@ class Boss:
             args.args = rest
             opts = create_opts(args)
             if data['session_data']:
-                from .session import PreReadSession
-                args.session = PreReadSession(data['session_data'], data['environ'])
+                if data['session_data'] == 'none':
+                    args.session = 'none'
+                else:
+                    from .session import PreReadSession
+                    args.session = PreReadSession(data['session_data'], data['environ'])
             else:
                 args.session = ''
             if not os.path.isabs(args.directory):

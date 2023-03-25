@@ -205,19 +205,22 @@ def create_sessions(
     default_session: Optional[str] = None,
 ) -> Iterator[Session]:
     if args and args.session:
-        environ: Optional[Mapping[str, str]] = None
-        if isinstance(args.session, PreReadSession):
-            session_data = '' + str(args.session)
-            environ = args.session.associated_environ  # type: ignore
+        if args.session == "none":
+            default_session = "none"
         else:
-            if args.session == '-':
-                f = sys.stdin
+            environ: Optional[Mapping[str, str]] = None
+            if isinstance(args.session, PreReadSession):
+                session_data = '' + str(args.session)
+                environ = args.session.associated_environ  # type: ignore
             else:
-                f = open(resolve_custom_file(args.session))
-            with f:
-                session_data = f.read()
-        yield from parse_session(session_data, opts, environ=environ)
-        return
+                if args.session == '-':
+                    f = sys.stdin
+                else:
+                    f = open(resolve_custom_file(args.session))
+                with f:
+                    session_data = f.read()
+            yield from parse_session(session_data, opts, environ=environ)
+            return
     if default_session and default_session != 'none':
         try:
             with open(default_session) as f:

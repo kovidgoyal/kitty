@@ -898,6 +898,8 @@ Path to a file containing the startup :italic:`session` (tabs, windows, layout,
 programs). Use - to read from STDIN. See the :file:`README` file for details and
 an example. Environment variables in the file name are expanded,
 relative paths are resolved relative to the kitty configuration directory.
+The special value :code:`none` means no session will be used, even if
+the :opt:`startup_session` option has been specified in kitty.conf.
 
 
 --hold

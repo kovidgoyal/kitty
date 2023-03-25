@@ -2938,7 +2938,7 @@ opt('startup_session', 'none',
     option_type='config_or_absolute_path',
     long_text='''
 Path to a session file to use for all kitty instances. Can be overridden by
-using the :option:`kitty --session` command line option for individual
+using the :option:`kitty --session` :code:`=none` command line option for individual
 instances. See :ref:`sessions` in the kitty documentation for details. Note that
 relative paths are interpreted with respect to the kitty config directory.
 Environment variables in the path are expanded. Changing this option by
