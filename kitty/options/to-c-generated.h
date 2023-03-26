@@ -1058,6 +1058,19 @@ convert_from_opts_macos_colorspace(PyObject *py_opts, Options *opts) {
     Py_DECREF(ret);
 }
 
+static void
+ convert_from_python_macos_background_blur(PyObject *val, Options *opts) {
+     opts->background_tint_gaps = PyFloat_AsFloat(val);
+ }
+
+ static void
+ convert_from_opts_macos_background_blur(PyObject *py_opts, Options *opts) {
+     PyObject *ret = PyObject_GetAttrString(py_opts, "background_tint_gaps");
+     if (ret == NULL) return;
+     convert_from_python_macos_background_blur(ret, opts);
+     Py_DECREF(ret);
+ }
+
 static bool
 convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_font_size(py_opts, opts);
@@ -1221,6 +1234,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_macos_menubar_title_max_length(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_macos_colorspace(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_macos_background_blur(py_opts, opts);
     if (PyErr_Occurred()) return false;
     return true;
 }

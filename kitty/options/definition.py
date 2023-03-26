@@ -3193,6 +3193,13 @@ color shift. Reloading configuration will change this value only for newly
 created OS windows.
 ''')
 
+opt('macos_background_blur', '0',
+    option_type='unit_float',
+    ctype='float',
+    long_text='''
+Blur the background in percentage
+''')
+
 
 opt('linux_display_server', 'auto',
     choices=('auto', 'wayland', 'x11'),

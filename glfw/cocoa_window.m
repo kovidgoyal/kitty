@@ -1823,6 +1823,10 @@ static bool createNativeWindow(_GLFWwindow* window,
 
     _glfwPlatformGetWindowSize(window, &window->ns.width, &window->ns.height);
     _glfwPlatformGetFramebufferSize(window, &window->ns.fbWidth, &window->ns.fbHeight);
+    extern OSStatus CGSSetWindowBackgroundBlurRadius(void* connection, NSInteger windowNumber, int radius);
+    extern void* CGSDefaultConnectionForThread(void);
+
+    CGSSetWindowBackgroundBlurRadius(CGSDefaultConnectionForThread(), [window->ns.object windowNumber], 100);
 
     return true;
 }
@@ -2838,6 +2842,7 @@ VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,
 
     [window->ns.view setLayer:window->ns.layer];
     [window->ns.view setWantsLayer:YES];
+    // [window->ns.view setWantsLayer:NO];
 
     VkResult err;
 

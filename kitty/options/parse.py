@@ -1057,6 +1057,8 @@ class Parser:
 
     def macos_option_as_alt(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['macos_option_as_alt'] = macos_option_as_alt(val)
+    def macos_background_blur(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['macos_background_blur'] = unit_float(val)
 
     def macos_quit_when_last_window_closed(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['macos_quit_when_last_window_closed'] = to_bool(val)
