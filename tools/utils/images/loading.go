@@ -51,6 +51,75 @@ type ImageFrame struct {
 	Img                      image.Image
 }
 
+func (self *ImageFrame) DataAsSHM(pattern string) (ans shm.MMap, err error) {
+	bytes_per_pixel := 4
+	if self.Is_opaque {
+		bytes_per_pixel = 3
+	}
+	ans, err = shm.CreateTemp(pattern, uint64(self.Width*self.Height*bytes_per_pixel))
+	if err != nil {
+		return nil, err
+	}
+	switch img := self.Img.(type) {
+	case *NRGB:
+		if bytes_per_pixel == 3 {
+			copy(ans.Slice(), img.Pix)
+			return
+		}
+	case *image.NRGBA:
+		if bytes_per_pixel == 4 {
+			copy(ans.Slice(), img.Pix)
+			return
+		}
+	}
+	dest_rect := image.Rect(0, 0, self.Width, self.Height)
+	var final_img image.Image
+	switch bytes_per_pixel {
+	case 3:
+		rgb := &NRGB{Pix: ans.Slice(), Stride: bytes_per_pixel * self.Width, Rect: dest_rect}
+		final_img = rgb
+	case 4:
+		rgba := &image.NRGBA{Pix: ans.Slice(), Stride: bytes_per_pixel * self.Width, Rect: dest_rect}
+		final_img = rgba
+	}
+	ctx := Context{}
+	ctx.PasteCenter(final_img, self.Img, nil)
+	return
+
+}
+
+func (self *ImageFrame) Data() (ans []byte) {
+	bytes_per_pixel := 4
+	if self.Is_opaque {
+		bytes_per_pixel = 3
+	}
+	switch img := self.Img.(type) {
+	case *NRGB:
+		if bytes_per_pixel == 3 {
+			return img.Pix
+		}
+	case *image.NRGBA:
+		if bytes_per_pixel == 4 {
+			return img.Pix
+		}
+	}
+	dest_rect := image.Rect(0, 0, self.Width, self.Height)
+	var final_img image.Image
+	switch bytes_per_pixel {
+	case 3:
+		rgb := NewNRGB(dest_rect)
+		final_img = rgb
+		ans = rgb.Pix
+	case 4:
+		rgba := image.NewNRGBA(dest_rect)
+		final_img = rgba
+		ans = rgba.Pix
+	}
+	ctx := Context{}
+	ctx.PasteCenter(final_img, self.Img, nil)
+	return
+}
+
 type ImageData struct {
 	Width, Height    int
 	Format_uppercase string

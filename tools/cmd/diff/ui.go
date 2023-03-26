@@ -94,9 +94,28 @@ func (self *Handler) update_screen_size(sz loop.ScreenSize) {
 	self.screen_size.cell_width = int(sz.CellWidth)
 }
 
+func (self *Handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) error {
+	switch etype {
+	case loop.APC:
+		gc := graphics.GraphicsCommandFromAPC(payload)
+		if gc != nil {
+			if !image_collection.HandleGraphicsCommand(gc) {
+				self.draw_screen()
+			}
+		}
+	}
+	return nil
+}
+
+func (self *Handler) finalize() {
+	image_collection.Finalize(self.lp)
+}
+
 func (self *Handler) initialize() {
 	self.rl = readline.New(self.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "/"})
+	self.lp.OnEscapeCode = self.on_escape_code
 	image_collection = graphics.NewImageCollection()
+	image_collection.Initialize(self.lp)
 	self.current_context_count = opts.Context
 	if self.current_context_count < 0 {
 		self.current_context_count = int(conf.Num_context_lines)
@@ -291,11 +310,28 @@ func (self *Handler) render_diff() (err error) {
 	return nil
 }
 
+func (self *Handler) draw_image(key string, num_rows, starting_row int) {
+	image_collection.PlaceImageSubRect(self.lp, key, self.images_resized_to, 0, self.screen_size.cell_height*starting_row, -1, -1)
+}
+
+func (self *Handler) draw_image_pair(ll *LogicalLine, starting_row int) {
+	if ll.left_image.key != "" {
+		self.lp.MoveCursorHorizontally(self.logical_lines.margin_size)
+		self.draw_image(ll.left_image.key, ll.left_image.count, starting_row)
+		self.lp.QueueWriteString("\r")
+	}
+	if ll.right_image.key != "" {
+		self.lp.MoveCursorHorizontally(self.logical_lines.margin_size + self.logical_lines.columns/2)
+		self.draw_image(ll.left_image.key, ll.left_image.count, starting_row)
+		self.lp.QueueWriteString("\r")
+	}
+}
+
 func (self *Handler) draw_screen() {
 	self.lp.StartAtomicUpdate()
 	defer self.lp.EndAtomicUpdate()
 	self.resize_all_images_if_needed()
-	image_collection.DeleteAllPlacements(self.lp)
+	image_collection.DeleteAllVisiblePlacements(self.lp)
 	lp.MoveCursorTo(1, 1)
 	lp.ClearToEndOfScreen()
 	if self.logical_lines == nil || self.diff_map == nil || self.collection == nil {
@@ -303,8 +339,15 @@ func (self *Handler) draw_screen() {
 		return
 	}
 	pos := self.scroll_pos
+	seen_images := utils.NewSet[int]()
 	for num_written := 0; num_written < self.screen_size.num_lines; num_written++ {
+		ll := self.logical_lines.At(pos.logical_line)
+		is_image := ll != nil && ll.line_type == IMAGE_LINE
 		sl := self.logical_lines.ScreenLineAt(pos)
+		if is_image && seen_images.Has(pos.logical_line) {
+			seen_images.Add(pos.logical_line)
+			self.draw_image_pair(ll, pos.screen_line)
+		}
 		if self.current_search != nil {
 			sl = self.current_search.markup_line(sl, pos)
 		}

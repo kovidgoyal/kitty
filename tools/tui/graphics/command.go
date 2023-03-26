@@ -497,7 +497,11 @@ func (self *GraphicsCommand) serialize_non_default_fields() (ans []string) {
 }
 
 func (self GraphicsCommand) String() string {
-	return "GraphicsCommand(" + strings.Join(self.serialize_non_default_fields(), ", ") + ")"
+	ans := "GraphicsCommand(" + strings.Join(self.serialize_non_default_fields(), ", ")
+	if self.response_message != "" {
+		ans += fmt.Sprintf(", response=%#v", self.response_message)
+	}
+	return ans + ")"
 }
 
 func (self *GraphicsCommand) serialize_to(buf io.StringWriter, chunk string) (err error) {
@@ -918,15 +922,6 @@ func (self *GraphicsCommand) TopEdge() uint64 {
 
 func (self *GraphicsCommand) SetTopEdge(y uint64) *GraphicsCommand {
 	self.y = y
-	return self
-}
-
-func (self *GraphicsCommand) SourceLeftEdge() uint64 {
-	return self.X
-}
-
-func (self *GraphicsCommand) SetSourceLeftEdge(x uint64) *GraphicsCommand {
-	self.X = x
 	return self
 }
 

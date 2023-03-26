@@ -5,11 +5,17 @@ package graphics
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 
+	"kitty/tools/tty"
+	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
+	"kitty/tools/utils"
 	"kitty/tools/utils/images"
+	"kitty/tools/utils/shm"
 
 	"golang.org/x/exp/maps"
 )
@@ -18,6 +24,27 @@ var _ = fmt.Print
 
 type Size struct{ Width, Height int }
 
+type rendering struct {
+	img      *images.ImageData
+	image_id uint32
+}
+
+type temp_resource struct {
+	path string
+	mmap shm.MMap
+}
+
+func (self *temp_resource) remove() {
+	if self.path != "" {
+		os.Remove(self.path)
+		self.path = ""
+	}
+	if self.mmap != nil {
+		self.mmap.Unlink()
+		self.mmap = nil
+	}
+}
+
 type Image struct {
 	src struct {
 		path   string
@@ -25,13 +52,24 @@ type Image struct {
 		size   Size
 		loaded bool
 	}
-	renderings map[Size]*images.ImageData
+	renderings map[Size]*rendering
 	err        error
 }
 
+func NewImage() *Image {
+	return &Image{
+		renderings: make(map[Size]*rendering),
+	}
+}
+
 type ImageCollection struct {
-	Shm_supported, Files_supported atomic.Bool
-	mutex                          sync.Mutex
+	Shm_supported, Files_supported      atomic.Bool
+	detection_file_id, detection_shm_id uint32
+	temp_file_map                       map[uint32]*temp_resource
+	running_in_tmux                     bool
+
+	mutex            sync.Mutex
+	image_id_counter uint32
 
 	images map[string]*Image
 }
@@ -51,7 +89,7 @@ func (self *ImageCollection) GetSizeIfAvailable(key string, page_size Size) (Siz
 	if ans == nil {
 		return Size{}, ErrNotFound
 	}
-	return Size{ans.Width, ans.Height}, img.err
+	return Size{ans.img.Width, ans.img.Height}, img.err
 }
 
 func (self *ImageCollection) ResolutionOf(key string) Size {
@@ -71,7 +109,7 @@ func (self *ImageCollection) AddPaths(paths ...string) {
 	defer self.mutex.Unlock()
 	for _, path := range paths {
 		if self.images[path] == nil {
-			i := &Image{}
+			i := NewImage()
 			i.src.path = path
 			self.images[path] = i
 		}
@@ -85,11 +123,11 @@ func (self *Image) ResizeForPageSize(width, height int) {
 	}
 	final_width, final_height := images.FitImage(self.src.size.Width, self.src.size.Height, width, height)
 	if final_width == self.src.size.Width && final_height == self.src.data.Height {
-		self.renderings[sz] = self.src.data
+		self.renderings[sz] = &rendering{img: self.src.data}
 		return
 	}
 	x_frac, y_frac := float64(final_width)/float64(self.src.size.Width), float64(final_height)/float64(self.src.size.Height)
-	self.renderings[sz] = self.src.data.Resize(x_frac, y_frac)
+	self.renderings[sz] = &rendering{img: self.src.data.Resize(x_frac, y_frac)}
 }
 
 func (self *ImageCollection) ResizeForPageSize(width, height int) {
@@ -106,10 +144,135 @@ func (self *ImageCollection) ResizeForPageSize(width, height int) {
 	})
 }
 
-func (self *ImageCollection) DeleteAllPlacements(lp *loop.Loop) {
+func (self *ImageCollection) DeleteAllVisiblePlacements(lp *loop.Loop) {
 	g := &GraphicsCommand{}
 	g.SetAction(GRT_action_delete).SetDelete(GRT_delete_visible)
 	g.WriteWithPayloadToLoop(lp, nil)
+}
+
+func (self *ImageCollection) PlaceImageSubRect(lp *loop.Loop, key string, page_size Size, left, top, width, height int) {
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
+	img := self.images[key]
+	if img == nil {
+		return
+	}
+	r := img.renderings[page_size]
+	if r == nil {
+		return
+	}
+	if r.image_id == 0 {
+		self.transmit_rendering(lp, r)
+	}
+	if width < 0 {
+		width = r.img.Width
+	}
+	if height < 0 {
+		height = r.img.Height
+	}
+	width = utils.Max(0, utils.Min(r.img.Width-left, width))
+	height = utils.Max(0, utils.Min(r.img.Height-top, height))
+	gc := &GraphicsCommand{}
+	gc.SetAction(GRT_action_display).SetLeftEdge(uint64(left)).SetTopEdge(uint64(top)).SetWidth(uint64(width)).SetHeight(uint64(height))
+	gc.SetImageId(r.image_id).SetPlacementId(1)
+	gc.WriteWithPayloadToLoop(lp, nil)
+}
+
+func (self *ImageCollection) Initialize(lp *loop.Loop) {
+	tmux := tui.TmuxSocketAddress()
+	if tmux != "" && tui.TmuxAllowPassthrough() == nil {
+		self.running_in_tmux = true
+	}
+	g := func(t GRT_t, payload string) uint32 {
+		self.image_id_counter++
+		g1 := &GraphicsCommand{}
+		g1.SetTransmission(t).SetAction(GRT_action_query).SetImageId(self.image_id_counter).SetDataWidth(1).SetDataHeight(1).SetFormat(
+			GRT_format_rgb).SetDataSize(uint64(len(payload)))
+		g1.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(payload))
+		return self.image_id_counter
+	}
+	tf, err := images.CreateTempInRAM()
+	if err == nil {
+		tf.Write([]byte{1, 2, 3})
+		tf.Close()
+		self.detection_file_id = g(GRT_transmission_tempfile, tf.Name())
+		self.temp_file_map[self.detection_file_id] = &temp_resource{path: tf.Name()}
+	}
+	sf, err := shm.CreateTemp("icat-", 3)
+	if err == nil {
+		copy(sf.Slice(), []byte{1, 2, 3})
+		sf.Close()
+		self.detection_shm_id = g(GRT_transmission_sharedmem, sf.Name())
+		self.temp_file_map[self.detection_shm_id] = &temp_resource{mmap: sf}
+	}
+}
+
+func (self *ImageCollection) Finalize(lp *loop.Loop) {
+	for _, tr := range self.temp_file_map {
+		tr.remove()
+	}
+}
+
+var DebugPrintln = tty.DebugPrintln
+
+func (self *ImageCollection) mark_img_as_needing_transmission(id uint32) bool {
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
+
+	for _, img := range self.images {
+		for _, r := range img.renderings {
+			if r.image_id == id {
+				r.image_id = 0
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// Handle graphics response. Returns false if an image needs re-transmission because
+// the terminal replied with ENOENT for a placement
+func (self *ImageCollection) HandleGraphicsCommand(gc *GraphicsCommand) bool {
+	switch gc.ImageId() {
+	case self.detection_file_id:
+		if gc.ResponseMessage() == "OK" {
+			self.Files_supported.Store(true)
+		} else {
+			if tr := self.temp_file_map[gc.ImageId()]; tr != nil {
+				tr.remove()
+			}
+		}
+		delete(self.temp_file_map, gc.ImageId())
+		self.detection_file_id = 0
+		return true
+	case self.detection_shm_id:
+		if gc.ResponseMessage() == "OK" {
+			self.Shm_supported.Store(true)
+		} else {
+			if tr := self.temp_file_map[gc.ImageId()]; tr != nil {
+				tr.remove()
+			}
+		}
+		delete(self.temp_file_map, gc.ImageId())
+		self.detection_shm_id = 0
+		return true
+	}
+	if is_transmission_response := gc.PlacementId() == 0; is_transmission_response {
+		if gc.ResponseMessage() != "OK" {
+			// this should never happen but lets cleanup anyway
+			if tr := self.temp_file_map[gc.ImageId()]; tr != nil {
+				tr.remove()
+				delete(self.temp_file_map, gc.ImageId())
+			}
+		}
+		return true
+	}
+	if gc.ResponseMessage() != "OK" && gc.PlacementId() != 0 {
+		if self.mark_img_as_needing_transmission(gc.ImageId()) {
+			return false
+		}
+	}
+	return true
 }
 
 func (self *ImageCollection) LoadAll() {
@@ -133,9 +296,111 @@ func (self *ImageCollection) LoadAll() {
 func NewImageCollection(paths ...string) *ImageCollection {
 	items := make(map[string]*Image, len(paths))
 	for _, path := range paths {
-		i := &Image{}
+		i := NewImage()
 		i.src.path = path
 		items[path] = i
 	}
-	return &ImageCollection{images: items}
+	return &ImageCollection{images: items, temp_file_map: make(map[uint32]*temp_resource)}
+}
+
+func (self *ImageCollection) new_graphics_command() *GraphicsCommand {
+	gc := GraphicsCommand{}
+	if self.running_in_tmux {
+		gc.WrapPrefix = "\033Ptmux;"
+		gc.WrapSuffix = "\033\\"
+		gc.EncodeSerializedDataFunc = func(x string) string { return strings.ReplaceAll(x, "\033", "\033\033") }
+	}
+	return &gc
+}
+
+func transmit_by_escape_code(lp *loop.Loop, image_id uint32, temp_file_map map[uint32]*temp_resource, frame *images.ImageFrame, gc *GraphicsCommand) {
+	gc.SetTransmission(GRT_transmission_direct)
+	gc.WriteWithPayloadToLoop(lp, frame.Data())
+}
+
+func transmit_by_shm(lp *loop.Loop, image_id uint32, temp_file_map map[uint32]*temp_resource, frame *images.ImageFrame, gc *GraphicsCommand) {
+	mmap, err := frame.DataAsSHM("kdiff-img-*")
+	if err != nil {
+		transmit_by_escape_code(lp, image_id, temp_file_map, frame, gc)
+		return
+	}
+	mmap.Close()
+	temp_file_map[image_id] = &temp_resource{mmap: mmap}
+	gc.SetTransmission(GRT_transmission_sharedmem)
+	gc.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(mmap.Name()))
+}
+
+func transmit_by_file(lp *loop.Loop, image_id uint32, temp_file_map map[uint32]*temp_resource, frame *images.ImageFrame, gc *GraphicsCommand) {
+	f, err := images.CreateTempInRAM()
+	if err != nil {
+		transmit_by_escape_code(lp, image_id, temp_file_map, frame, gc)
+		return
+	}
+	defer f.Close()
+	temp_file_map[image_id] = &temp_resource{path: f.Name()}
+	_, err = f.Write(frame.Data())
+	if err != nil {
+		transmit_by_escape_code(lp, image_id, temp_file_map, frame, gc)
+		return
+	}
+	gc.SetTransmission(GRT_transmission_tempfile)
+	gc.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(f.Name()))
+}
+
+func (self *ImageCollection) transmit_rendering(lp *loop.Loop, r *rendering) {
+	if r.image_id == 0 {
+		self.image_id_counter++
+		r.image_id = self.image_id_counter
+	}
+	is_animated := len(r.img.Frames) > 0
+	transmit := transmit_by_escape_code
+	if self.Shm_supported.Load() {
+		transmit = transmit_by_shm
+	} else if self.Files_supported.Load() {
+		transmit = transmit_by_file
+	}
+
+	frame_control_cmd := self.new_graphics_command()
+	frame_control_cmd.SetAction(GRT_action_animate).SetImageId(r.image_id)
+	for frame_num, frame := range r.img.Frames {
+		gc := self.new_graphics_command()
+		gc.SetImageId(r.image_id)
+		gc.SetDataWidth(uint64(frame.Width)).SetDataHeight(uint64(frame.Height))
+		if frame.Is_opaque {
+			gc.SetFormat(GRT_format_rgb)
+		}
+		switch frame_num {
+		case 0:
+			gc.SetAction(GRT_action_transmit)
+			gc.SetCursorMovement(GRT_cursor_static)
+		default:
+			gc.SetAction(GRT_action_frame)
+			gc.SetGap(frame.Delay_ms)
+			if frame.Compose_onto > 0 {
+				gc.SetOverlaidFrame(uint64(frame.Compose_onto))
+			}
+			gc.SetLeftEdge(uint64(frame.Left)).SetTopEdge(uint64(frame.Top))
+		}
+		transmit(lp, r.image_id, self.temp_file_map, frame, gc)
+		if is_animated {
+			switch frame_num {
+			case 0:
+				// set gap for the first frame and number of loops for the animation
+				c := frame_control_cmd
+				c.SetTargetFrame(uint64(frame.Number))
+				c.SetGap(int32(frame.Delay_ms))
+				c.SetNumberOfLoops(1)
+				c.WriteWithPayloadToLoop(lp, nil)
+			case 1:
+				c := frame_control_cmd
+				c.SetAnimationControl(2) // set animation to loading mode
+				c.WriteWithPayloadToLoop(lp, nil)
+			}
+		}
+	}
+	if is_animated {
+		c := frame_control_cmd
+		c.SetAnimationControl(3) // set animation to normal mode
+		c.WriteWithPayloadToLoop(lp, nil)
+	}
 }

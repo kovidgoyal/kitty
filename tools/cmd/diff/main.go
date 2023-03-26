@@ -149,6 +149,7 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	lp.OnFinalize = func() string {
 		lp.SetCursorVisible(true)
 		lp.SetCursorShape(loop.BLOCK_CURSOR, true)
+		h.finalize()
 		return ""
 	}
 	lp.OnResize = h.on_resize
