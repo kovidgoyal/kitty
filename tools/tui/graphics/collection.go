@@ -145,7 +145,7 @@ func (self *ImageCollection) ResizeForPageSize(width, height int) {
 }
 
 func (self *ImageCollection) DeleteAllVisiblePlacements(lp *loop.Loop) {
-	g := &GraphicsCommand{}
+	g := self.new_graphics_command()
 	g.SetAction(GRT_action_delete).SetDelete(GRT_delete_visible)
 	g.WriteWithPayloadToLoop(lp, nil)
 }
@@ -172,7 +172,7 @@ func (self *ImageCollection) PlaceImageSubRect(lp *loop.Loop, key string, page_s
 	}
 	width = utils.Max(0, utils.Min(r.img.Width-left, width))
 	height = utils.Max(0, utils.Min(r.img.Height-top, height))
-	gc := &GraphicsCommand{}
+	gc := self.new_graphics_command()
 	gc.SetAction(GRT_action_display).SetLeftEdge(uint64(left)).SetTopEdge(uint64(top)).SetWidth(uint64(width)).SetHeight(uint64(height))
 	gc.SetImageId(r.image_id).SetPlacementId(1).SetCursorMovement(GRT_cursor_static)
 	gc.WriteWithPayloadToLoop(lp, nil)
@@ -183,27 +183,29 @@ func (self *ImageCollection) Initialize(lp *loop.Loop) {
 	if tmux != "" && tui.TmuxAllowPassthrough() == nil {
 		self.running_in_tmux = true
 	}
-	g := func(t GRT_t, payload string) uint32 {
-		self.image_id_counter++
-		g1 := &GraphicsCommand{}
-		g1.SetTransmission(t).SetAction(GRT_action_query).SetImageId(self.image_id_counter).SetDataWidth(1).SetDataHeight(1).SetFormat(
-			GRT_format_rgb).SetDataSize(uint64(len(payload)))
-		g1.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(payload))
-		return self.image_id_counter
-	}
-	tf, err := images.CreateTempInRAM()
-	if err == nil {
-		tf.Write([]byte{1, 2, 3})
-		tf.Close()
-		self.detection_file_id = g(GRT_transmission_tempfile, tf.Name())
-		self.temp_file_map[self.detection_file_id] = &temp_resource{path: tf.Name()}
-	}
-	sf, err := shm.CreateTemp("icat-", 3)
-	if err == nil {
-		copy(sf.Slice(), []byte{1, 2, 3})
-		sf.Close()
-		self.detection_shm_id = g(GRT_transmission_sharedmem, sf.Name())
-		self.temp_file_map[self.detection_shm_id] = &temp_resource{mmap: sf}
+	if !self.running_in_tmux {
+		g := func(t GRT_t, payload string) uint32 {
+			self.image_id_counter++
+			g1 := self.new_graphics_command()
+			g1.SetTransmission(t).SetAction(GRT_action_query).SetImageId(self.image_id_counter).SetDataWidth(1).SetDataHeight(1).SetFormat(
+				GRT_format_rgb).SetDataSize(uint64(len(payload)))
+			g1.WriteWithPayloadToLoop(lp, utils.UnsafeStringToBytes(payload))
+			return self.image_id_counter
+		}
+		tf, err := images.CreateTempInRAM()
+		if err == nil {
+			tf.Write([]byte{1, 2, 3})
+			tf.Close()
+			self.detection_file_id = g(GRT_transmission_tempfile, tf.Name())
+			self.temp_file_map[self.detection_file_id] = &temp_resource{path: tf.Name()}
+		}
+		sf, err := shm.CreateTemp("icat-", 3)
+		if err == nil {
+			copy(sf.Slice(), []byte{1, 2, 3})
+			sf.Close()
+			self.detection_shm_id = g(GRT_transmission_sharedmem, sf.Name())
+			self.temp_file_map[self.detection_shm_id] = &temp_resource{mmap: sf}
+		}
 	}
 }
 
@@ -211,6 +213,17 @@ func (self *ImageCollection) Finalize(lp *loop.Loop) {
 	for _, tr := range self.temp_file_map {
 		tr.remove()
 	}
+	for _, img := range self.images {
+		for _, r := range img.renderings {
+			if r.image_id > 0 {
+				g := self.new_graphics_command()
+				g.SetAction(GRT_action_delete).SetDelete(GRT_free_by_id).SetImageId(r.image_id)
+				g.WriteWithPayloadToLoop(lp, nil)
+			}
+		}
+		img.renderings = nil
+	}
+	self.images = nil
 }
 
 var DebugPrintln = tty.DebugPrintln
