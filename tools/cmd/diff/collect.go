@@ -227,9 +227,9 @@ func (self *Collection) Apply(f func(path, typ, changed_path string) error) erro
 	return nil
 }
 
-func allowed(path string) bool {
+func allowed(path string, patterns ...string) bool {
 	name := filepath.Base(path)
-	for _, pat := range conf.Ignore_name {
+	for _, pat := range patterns {
 		if matched, err := filepath.Match(pat, name); err == nil && matched {
 			return false
 		}
@@ -257,9 +257,9 @@ func resolve_remote_name(path, defval string) string {
 	return defval
 }
 
-func walk(base string, names *utils.Set[string], pmap map[string]string) error {
+func walk(base string, patterns []string, names *utils.Set[string], pmap, path_name_map map[string]string) error {
 	return filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
-		is_allowed := allowed(path)
+		is_allowed := allowed(path, patterns...)
 		if !is_allowed {
 			if d.IsDir() {
 				return fs.SkipDir
@@ -289,11 +289,11 @@ func walk(base string, names *utils.Set[string], pmap map[string]string) error {
 func (self *Collection) collect_files(left, right string) error {
 	left_names, right_names := utils.NewSet[string](16), utils.NewSet[string](16)
 	left_path_map, right_path_map := make(map[string]string, 16), make(map[string]string, 16)
-	err := walk(left, left_names, left_path_map)
+	err := walk(left, conf.Ignore_name, left_names, left_path_map, path_name_map)
 	if err != nil {
 		return err
 	}
-	err = walk(right, right_names, right_path_map)
+	err = walk(right, conf.Ignore_name, right_names, right_path_map, path_name_map)
 	common_names := left_names.Intersect(right_names)
 	changed_names := utils.NewSet[string](common_names.Len())
 	for n := range common_names.Iterable() {

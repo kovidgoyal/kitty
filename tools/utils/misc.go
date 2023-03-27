@@ -4,7 +4,6 @@ package utils
 
 import (
 	"fmt"
-	"sort"
 
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
@@ -74,26 +73,29 @@ func Repeat[T any](x T, n int) []T {
 }
 
 func Sort[T any](s []T, less func(a, b T) bool) []T {
-	sort.Slice(s, func(i, j int) bool { return less(s[i], s[j]) })
+	slices.SortFunc(s, less)
 	return s
 }
 
 func StableSort[T any](s []T, less func(a, b T) bool) []T {
-	sort.SliceStable(s, func(i, j int) bool { return less(s[i], s[j]) })
+	slices.SortStableFunc(s, less)
 	return s
 }
 
-func sort_with_key[T any, C constraints.Ordered](impl func(any, func(int, int) bool), s []T, key func(a T) C) []T {
-	temp := make([]struct {
+func sort_with_key[T any, C constraints.Ordered](stable bool, s []T, key func(a T) C) []T {
+	type t struct {
 		key C
 		val T
-	}, len(s))
+	}
+	temp := make([]t, len(s))
 	for i, x := range s {
 		temp[i].val, temp[i].key = x, key(x)
 	}
-	impl(temp, func(i, j int) bool {
-		return temp[i].key < temp[j].key
-	})
+	if stable {
+		slices.SortStableFunc(temp, func(a, b t) bool { return a.key < b.key })
+	} else {
+		slices.SortFunc(temp, func(a, b t) bool { return a.key < b.key })
+	}
 	for i, x := range temp {
 		s[i] = x.val
 	}
@@ -101,11 +103,11 @@ func sort_with_key[T any, C constraints.Ordered](impl func(any, func(int, int) b
 }
 
 func SortWithKey[T any, C constraints.Ordered](s []T, key func(a T) C) []T {
-	return sort_with_key(sort.Slice, s, key)
+	return sort_with_key(false, s, key)
 }
 
 func StableSortWithKey[T any, C constraints.Ordered](s []T, key func(a T) C) []T {
-	return sort_with_key(sort.SliceStable, s, key)
+	return sort_with_key(true, s, key)
 }
 
 func Max[T constraints.Ordered](a T, items ...T) (ans T) {
