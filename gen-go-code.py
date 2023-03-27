@@ -4,7 +4,6 @@
 import bz2
 import io
 import json
-import kitty.constants as kc
 import os
 import re
 import struct
@@ -14,10 +13,28 @@ import tarfile
 from contextlib import contextmanager, suppress
 from functools import lru_cache
 from itertools import chain
+from typing import (
+    Any,
+    BinaryIO,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    TextIO,
+    Tuple,
+    Union,
+)
+
+import kitty.constants as kc
 from kittens.tui.operations import Mode
 from kittens.tui.spinners import spinners
 from kitty.cli import (
-    CompletionSpec, GoOption, go_options_for_seq, parse_option_spec,
+    CompletionSpec,
+    GoOption,
+    go_options_for_seq,
+    parse_option_spec,
     serialize_as_go_string,
 )
 from kitty.conf.generate import gen_go_code
@@ -29,9 +46,6 @@ from kitty.options.types import Options
 from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
 from kitty.remote_control import global_options_spec
 from kitty.rgb import color_names
-from typing import (
-    Any, BinaryIO, Dict, Iterator, List, Optional, Sequence, Set, TextIO, Tuple, Union,
-)
 
 changed: List[str] = []
 
