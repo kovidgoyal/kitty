@@ -13,8 +13,8 @@ import (
 
 var _ = fmt.Print
 
-type MouseEventType int
-type MouseButtonFlag int
+type MouseEventType uint
+type MouseButtonFlag uint
 
 const (
 	MOUSE_PRESS MouseEventType = iota
@@ -44,37 +44,49 @@ const (
 	MOTION_INDICATOR     = 1 << 5
 )
 
-const NONE, LEFT, MIDDLE, RIGHT, FOURTH, FIFTH, SIXTH, SEVENTH MouseButtonFlag = 0, 1, 2, 4, 8, 16, 32, 64
-const WHEEL_UP, WHEEL_DOWN, WHEEL_LEFT, WHEEL_RIGHT MouseButtonFlag = 128, 256, 512, 1024
+const (
+	NO_MOUSE_BUTTON   MouseButtonFlag = 0
+	LEFT_MOUSE_BUTTON MouseButtonFlag = 1 << iota
+	MIDDLE_MOUSE_BUTTON
+	RIGHT_MOUSE_BUTTON
+	FOURTH_MOUSE_BUTTON
+	FIFTH_MOUSE_BUTTON
+	SIXTH_MOUSE_BUTTON
+	SEVENTH_MOUSE_BUTTON
+	MOUSE_WHEEL_UP
+	MOUSE_WHEEL_DOWN
+	MOUSE_WHEEL_LEFT
+	MOUSE_WHEEL_RIGHT
+)
 
-var bmap = [...]MouseButtonFlag{LEFT, MIDDLE, RIGHT}
-var ebmap = [...]MouseButtonFlag{FOURTH, FIFTH, SIXTH, SEVENTH}
-var wbmap = [...]MouseButtonFlag{WHEEL_UP, WHEEL_DOWN, WHEEL_LEFT, WHEEL_RIGHT}
+var bmap = [...]MouseButtonFlag{LEFT_MOUSE_BUTTON, MIDDLE_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON}
+var ebmap = [...]MouseButtonFlag{FOURTH_MOUSE_BUTTON, FIFTH_MOUSE_BUTTON, SIXTH_MOUSE_BUTTON, SEVENTH_MOUSE_BUTTON}
+var wbmap = [...]MouseButtonFlag{MOUSE_WHEEL_UP, MOUSE_WHEEL_DOWN, MOUSE_WHEEL_LEFT, MOUSE_WHEEL_RIGHT}
 
 func (b MouseButtonFlag) String() string {
 	ans := ""
 	switch {
-	case b&LEFT != 0:
+	case b&LEFT_MOUSE_BUTTON != 0:
 		ans += "|LEFT"
-	case b&MIDDLE != 0:
+	case b&MIDDLE_MOUSE_BUTTON != 0:
 		ans += "|MIDDLE"
-	case b&RIGHT != 0:
+	case b&RIGHT_MOUSE_BUTTON != 0:
 		ans += "|RIGHT"
-	case b&FOURTH != 0:
+	case b&FOURTH_MOUSE_BUTTON != 0:
 		ans += "|FOURTH"
-	case b&FIFTH != 0:
+	case b&FIFTH_MOUSE_BUTTON != 0:
 		ans += "|FIFTH"
-	case b&SIXTH != 0:
+	case b&SIXTH_MOUSE_BUTTON != 0:
 		ans += "|SIXTH"
-	case b&SEVENTH != 0:
+	case b&SEVENTH_MOUSE_BUTTON != 0:
 		ans += "|SEVENTH"
-	case b&WHEEL_UP != 0:
+	case b&MOUSE_WHEEL_UP != 0:
 		ans += "|WHEEL_UP"
-	case b&WHEEL_DOWN != 0:
+	case b&MOUSE_WHEEL_DOWN != 0:
 		ans += "|WHEEL_DOWN"
-	case b&WHEEL_LEFT != 0:
+	case b&MOUSE_WHEEL_LEFT != 0:
 		ans += "|WHEEL_LEFT"
-	case b&WHEEL_RIGHT != 0:
+	case b&MOUSE_WHEEL_RIGHT != 0:
 		ans += "|WHEEL_RIGHT"
 	}
 	ans = strings.TrimLeft(ans, "|")
