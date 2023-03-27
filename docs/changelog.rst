@@ -84,6 +84,8 @@ Detailed list of changes
 
 - Allow stopping of URL detection at newlines via :opt:`url_excluded_characters` (:iss:`6122`)
 
+- Linux Wayland: Fix animated images not being animated continuously (:iss:`6126`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -818,7 +818,11 @@ render(monotonic_t now, bool input_read) {
             if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now, ms_to_monotonic_t(250ll))) request_frame_render(w);
             // dont respect render frames soon after a resize on Wayland as they cause flicker because
             // we want to fill the newly resized buffer ASAP, not at compositors convenience
-            if (!global_state.is_wayland || (monotonic() - w->viewport_resized_at) > s_double_to_monotonic_t(1)) continue;
+            if (!global_state.is_wayland || (monotonic() - w->viewport_resized_at) > s_double_to_monotonic_t(1)) {
+                // since we didnt scan the window for animations, force a rescan on next wakeup/render frame
+                if (scan_for_animated_images) global_state.check_for_active_animated_images = true;
+                continue;
+            }
         }
         w->render_calls++;
         make_os_window_context_current(w);
