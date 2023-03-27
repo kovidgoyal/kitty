@@ -322,7 +322,7 @@ func (self *Handler) draw_image_pair(ll *LogicalLine, starting_row int) {
 	}
 	if ll.right_image.key != "" {
 		self.lp.MoveCursorHorizontally(self.logical_lines.margin_size + self.logical_lines.columns/2)
-		self.draw_image(ll.left_image.key, ll.left_image.count, starting_row)
+		self.draw_image(ll.right_image.key, ll.right_image.count, starting_row)
 		self.lp.QueueWriteString("\r")
 	}
 }
@@ -344,9 +344,9 @@ func (self *Handler) draw_screen() {
 		ll := self.logical_lines.At(pos.logical_line)
 		is_image := ll != nil && ll.line_type == IMAGE_LINE
 		sl := self.logical_lines.ScreenLineAt(pos)
-		if is_image && seen_images.Has(pos.logical_line) {
+		if is_image && !seen_images.Has(pos.logical_line) && pos.screen_line >= ll.image_lines_offset {
 			seen_images.Add(pos.logical_line)
-			self.draw_image_pair(ll, pos.screen_line)
+			self.draw_image_pair(ll, pos.screen_line-ll.image_lines_offset)
 		}
 		if self.current_search != nil {
 			sl = self.current_search.markup_line(sl, pos)

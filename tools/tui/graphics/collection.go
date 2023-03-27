@@ -174,7 +174,7 @@ func (self *ImageCollection) PlaceImageSubRect(lp *loop.Loop, key string, page_s
 	height = utils.Max(0, utils.Min(r.img.Height-top, height))
 	gc := &GraphicsCommand{}
 	gc.SetAction(GRT_action_display).SetLeftEdge(uint64(left)).SetTopEdge(uint64(top)).SetWidth(uint64(width)).SetHeight(uint64(height))
-	gc.SetImageId(r.image_id).SetPlacementId(1)
+	gc.SetImageId(r.image_id).SetPlacementId(1).SetCursorMovement(GRT_cursor_static)
 	gc.WriteWithPayloadToLoop(lp, nil)
 }
 

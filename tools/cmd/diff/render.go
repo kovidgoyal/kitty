@@ -309,7 +309,7 @@ func image_lines(left_path, right_path string, screen_size screen_size, margin_s
 		}
 		return margin_filler_format(m) + filler
 	}
-	for i := 0; i < utils.Min(len(left_lines), len(right_lines)); i++ {
+	for i := 0; i < utils.Max(len(left_lines), len(right_lines)); i++ {
 		left, right := get_line(i, left_lines, removed_margin_format), get_line(i, right_lines, added_margin_format)
 		ll.screen_lines = append(ll.screen_lines, left+right)
 	}
