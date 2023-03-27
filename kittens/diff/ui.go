@@ -353,7 +353,7 @@ func (self *Handler) draw_screen() {
 		}
 		lp.QueueWriteString(sl)
 		lp.MoveCursorVertically(1)
-		lp.QueueWriteString("\r")
+		lp.QueueWriteString("\x1b[m\r")
 		if self.logical_lines.IncrementScrollPosBy(&pos, 1) == 0 {
 			break
 		}

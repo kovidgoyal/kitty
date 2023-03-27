@@ -56,7 +56,7 @@ func (self *LogicalLine) IncrementScrollPosBy(pos *ScrollPos, amt int) (delta in
 }
 
 func join_half_lines(left, right string) string {
-	return left + "\x1b[m" + right + "\x1b[m"
+	return left + "\x1b[m" + right
 }
 
 func fit_in(text string, count int) string {
