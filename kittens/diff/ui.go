@@ -249,6 +249,7 @@ func (self *Handler) handle_async_result(r AsyncResult) error {
 	case DIFF:
 		self.diff_map = r.diff_map
 		self.calculate_statistics()
+		self.clear_mouse_selection()
 		err := self.render_diff()
 		if err != nil {
 			return err
@@ -272,6 +273,7 @@ func (self *Handler) handle_async_result(r AsyncResult) error {
 }
 
 func (self *Handler) on_resize(old_size, new_size loop.ScreenSize) error {
+	self.clear_mouse_selection()
 	self.update_screen_size(new_size)
 	if self.diff_map != nil && self.collection != nil {
 		err := self.render_diff()
@@ -352,6 +354,7 @@ func (self *Handler) draw_screen() {
 		if self.current_search != nil {
 			sl = self.current_search.markup_line(sl, pos)
 		}
+		self.add_mouse_selection_to_line(sl, pos)
 		lp.QueueWriteString(sl)
 		lp.MoveCursorVertically(1)
 		lp.QueueWriteString("\x1b[m\r")
@@ -543,6 +546,7 @@ func (self *Handler) change_context_count(val int) bool {
 	self.current_context_count = val
 	p := self.scroll_pos
 	self.restore_position = &p
+	self.clear_mouse_selection()
 	self.generate_diff()
 	self.draw_screen()
 	return true
