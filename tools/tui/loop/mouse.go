@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"kitty/tools/tty"
 	"kitty/tools/utils"
 )
 
@@ -44,7 +45,7 @@ const (
 )
 
 const NONE, LEFT, MIDDLE, RIGHT, FOURTH, FIFTH, SIXTH, SEVENTH MouseButtonFlag = 0, 1, 2, 4, 8, 16, 32, 64
-const WHEEL_UP, WHEEL_DOWN, WHEEL_LEFT, WHEEL_RIGHT MouseButtonFlag = -1, -2, -4, -8
+const WHEEL_UP, WHEEL_DOWN, WHEEL_LEFT, WHEEL_RIGHT MouseButtonFlag = 128, 256, 512, 1024
 
 var bmap = [...]MouseButtonFlag{LEFT, MIDDLE, RIGHT}
 var ebmap = [...]MouseButtonFlag{FOURTH, FIFTH, SIXTH, SEVENTH}
@@ -98,6 +99,8 @@ func pixel_to_cell(px, length, cell_length int) int {
 	px = utils.Max(0, utils.Min(px, length-1))
 	return px / cell_length
 }
+
+var DebugPrintln = tty.DebugPrintln
 
 func decode_sgr_mouse(text string, screen_size ScreenSize) *MouseEvent {
 	last_letter := text[len(text)-1]
