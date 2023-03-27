@@ -327,8 +327,13 @@ func (self *ImageCollection) new_graphics_command() *GraphicsCommand {
 }
 
 func transmit_by_escape_code(lp *loop.Loop, image_id uint32, temp_file_map map[uint32]*temp_resource, frame *images.ImageFrame, gc *GraphicsCommand) {
+	atomic := lp.IsAtomicUpdateActive()
+	lp.EndAtomicUpdate()
 	gc.SetTransmission(GRT_transmission_direct)
 	gc.WriteWithPayloadToLoop(lp, frame.Data())
+	if atomic {
+		lp.StartAtomicUpdate()
+	}
 }
 
 func transmit_by_shm(lp *loop.Loop, image_id uint32, temp_file_map map[uint32]*temp_resource, frame *images.ImageFrame, gc *GraphicsCommand) {

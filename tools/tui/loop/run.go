@@ -286,6 +286,7 @@ func (self *Loop) run() (err error) {
 	self.death_signal = SIGNULL
 	self.escape_code_parser.Reset()
 	self.exit_code = 0
+	self.atomic_update_active = false
 	self.timers = make([]*timer, 0, 1)
 	no_timeout_channel := make(<-chan time.Time)
 	finalizer := ""
