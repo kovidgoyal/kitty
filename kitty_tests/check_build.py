@@ -27,9 +27,8 @@ class TestBuild(BaseTest):
 
     def test_loading_extensions(self) -> None:
         import kitty.fast_data_types as fdt
-        from kittens.diff import diff_speedup
         from kittens.transfer import rsync
-        del fdt, diff_speedup, rsync
+        del fdt, rsync
 
     def test_loading_shaders(self) -> None:
         from kitty.utils import load_shaders
@@ -78,12 +77,6 @@ class TestBuild(BaseTest):
             self.skipTest('CA certificates are only tested on frozen builds')
         c = ssl.create_default_context()
         self.assertGreater(c.cert_store_stats()['x509_ca'], 2)
-
-    def test_pygments(self):
-        if not getattr(sys, 'frozen', False):
-            self.skipTest('Pygments is only tested on frozen builds')
-        import pygments
-        del pygments
 
     def test_docs_url(self):
         from kitty.constants import website_url

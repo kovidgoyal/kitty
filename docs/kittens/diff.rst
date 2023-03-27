@@ -31,11 +31,7 @@ Major Features
 Installation
 ---------------
 
-Simply :ref:`install kitty <quickstart>`.  You also need to have either the `git
-<https://git-scm.com/>`__ program or the :program:`diff` program installed.
-Additionally, for syntax highlighting to work, `pygments
-<https://pygments.org/>`__ must be installed (note that pygments is included in
-the official kitty binary builds).
+Simply :ref:`install kitty <quickstart>`.
 
 
 Usage

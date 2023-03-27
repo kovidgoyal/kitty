@@ -164,15 +164,6 @@
     },
 
     {
-        "name": "pygments",
-        "unix": {
-            "filename": "Pygments-2.11.2.tar.gz",
-            "hash": "sha256:4e426f72023d88d03b2fa258de560726ce890ff3b630f88c21cbb8b2503b8c6a",
-            "urls": ["pypi"]
-        }
-    },
-
-    {
         "name": "libpng",
         "unix": {
             "filename": "libpng-1.6.37.tar.xz",

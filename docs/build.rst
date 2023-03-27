@@ -40,7 +40,6 @@ Run-time dependencies:
 * ``fontconfig`` (not needed on macOS)
 * ``libcanberra`` (not needed on macOS)
 * ``ImageMagick`` (optional, needed to display uncommon image formats in the terminal)
-* ``pygments`` (optional, needed for syntax highlighting in ``kitty +kitten diff``)
 
 
 Build-time dependencies:
