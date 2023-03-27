@@ -54,6 +54,7 @@ var image_collection *graphics.ImageCollection
 type screen_size struct{ rows, columns, num_lines, cell_width, cell_height int }
 type Handler struct {
 	async_results                                       chan AsyncResult
+	mouse_selection                                     MouseSelection
 	shortcut_tracker                                    config.ShortcutTracker
 	left, right                                         string
 	collection                                          *Collection
@@ -628,19 +629,24 @@ func (self *Handler) dispatch_action(name, args string) error {
 	return nil
 }
 
-func (self *Handler) handle_wheel_event(up bool) {
-	if self.logical_lines != nil {
-		amt := 2
-		if up {
-			amt *= -1
-		}
-		self.dispatch_action(`scroll_by`, strconv.Itoa(amt))
-	}
-}
-
 func (self *Handler) on_mouse_event(ev *loop.MouseEvent) error {
+	if self.logical_lines == nil {
+		return nil
+	}
 	if ev.Event_type == loop.MOUSE_PRESS && ev.Buttons&(loop.MOUSE_WHEEL_UP|loop.MOUSE_WHEEL_DOWN) != 0 {
 		self.handle_wheel_event(ev.Buttons&(loop.MOUSE_WHEEL_UP) != 0)
+		return nil
+	}
+	if ev.Event_type == loop.MOUSE_PRESS && ev.Buttons&loop.LEFT_MOUSE_BUTTON != 0 {
+		self.start_mouse_selection(ev)
+		return nil
+	}
+	if ev.Event_type == loop.MOUSE_MOVE {
+		self.update_mouse_selection(ev)
+		return nil
+	}
+	if ev.Event_type == loop.MOUSE_RELEASE && ev.Buttons&loop.LEFT_MOUSE_BUTTON != 0 {
+		self.finish_mouse_selection(ev)
 		return nil
 	}
 	return nil
