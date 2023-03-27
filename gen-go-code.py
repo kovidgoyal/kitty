@@ -336,7 +336,7 @@ def wrapped_kittens() -> Sequence[str]:
 
 
 def generate_conf_parser(kitten: str, defn: Definition) -> None:
-    with replace_if_needed(f'tools/cmd/{kitten}/conf_generated.go'):
+    with replace_if_needed(f'kittens/{kitten}/conf_generated.go'):
         print(f'package {kitten}')
         print(gen_go_code(defn))
 
@@ -370,11 +370,11 @@ def kitten_clis() -> None:
         ecp = get_kitten_extra_cli_parsers(kitten)
         if ecp:
             for name, spec in ecp.items():
-                with replace_if_needed(f'tools/cmd/{kitten}/{name}_cli_generated.go'):
+                with replace_if_needed(f'kittens/{kitten}/{name}_cli_generated.go'):
                     print(f'package {kitten}')
                     generate_extra_cli_parser(name, spec)
 
-        with replace_if_needed(f'tools/cmd/{kitten}/cli_generated.go'):
+        with replace_if_needed(f'kittens/{kitten}/cli_generated.go'):
             od = []
             kcd = kitten_cli_docs(kitten)
             has_underscore = '_' in kitten
@@ -722,7 +722,7 @@ def generate_ssh_kitten_data() -> None:
         for f in filenames:
             path = os.path.join(dirpath, f)
             files.add(path.replace(os.sep, '/'))
-    dest = 'tools/cmd/ssh/data_generated.bin'
+    dest = 'kittens/ssh/data_generated.bin'
 
     def normalize(t: tarfile.TarInfo) -> tarfile.TarInfo:
         t.uid = t.gid = 0

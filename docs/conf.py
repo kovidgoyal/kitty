@@ -267,7 +267,6 @@ if you specify a program-to-run you can use the special placeholder
             p('.. program::', 'kitty @', func.name)
             p('\n\n' + as_rst(*cli_params_for(func)))
     from kittens.runner import get_kitten_cli_docs
-    from kitty.fast_data_types import wrapped_kitten_names
 
     for kitten in all_kitten_names:
         data = get_kitten_cli_docs(kitten)
@@ -277,10 +276,7 @@ if you specify a program-to-run you can use the special placeholder
                 p('.. program::', 'kitty +kitten', kitten)
                 p('\nSource code for', kitten)
                 p('-' * 72)
-                if kitten in wrapped_kitten_names():
-                    scurl = f'https://github.com/kovidgoyal/kitty/tree/master/tools/cmd/{kitten}'
-                else:
-                    scurl = f'https://github.com/kovidgoyal/kitty/tree/master/kittens/{kitten}'
+                scurl = f'https://github.com/kovidgoyal/kitty/tree/master/kittens/{kitten}'
                 p(f'\nThe source code for this kitten is `available on GitHub <{scurl}>`_.')
                 p('\nCommand Line Interface')
                 p('-' * 72)

@@ -5,9 +5,9 @@ package main
 import (
 	"os"
 
+	"kitty/kittens/ssh"
 	"kitty/tools/cli"
 	"kitty/tools/cmd/completion"
-	"kitty/tools/cmd/ssh"
 	"kitty/tools/cmd/tool"
 )
 
