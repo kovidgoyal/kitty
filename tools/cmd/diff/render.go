@@ -260,7 +260,7 @@ func render_diff_line(number, text, ltype string, margin_size int, available_col
 func image_lines(left_path, right_path string, screen_size screen_size, margin_size int, image_size graphics.Size, ans []*LogicalLine) ([]*LogicalLine, error) {
 	columns := screen_size.columns
 	available_cols := columns/2 - margin_size
-	ll, err := first_binary_line(left_path, right_path, columns, margin_size, func(path string, formatter func(...any) string) (string, error) {
+	ll, err := first_binary_line(left_path, right_path, columns, margin_size, func(path string, formatter, margin_formatter formatter) (string, error) {
 		sz, err := size_for_path(path)
 		if err != nil {
 			return "", err
@@ -271,7 +271,7 @@ func image_lines(left_path, right_path string, screen_size screen_size, margin_s
 			text = fmt.Sprintf("Dimensions: %dx%d %s", res.Width, res.Height, text)
 		}
 		text = place_in(text, available_cols)
-		return formatter(strings.Repeat(` `, margin_size) + text), err
+		return margin_formatter(strings.Repeat(` `, margin_size)) + formatter(text), err
 	})
 
 	if err != nil {
@@ -318,29 +318,31 @@ func image_lines(left_path, right_path string, screen_size screen_size, margin_s
 	return append(ans, ll), nil
 }
 
-func first_binary_line(left_path, right_path string, columns, margin_size int, renderer func(path string, formatter func(...any) string) (string, error)) (*LogicalLine, error) {
+type formatter = func(...any) string
+
+func first_binary_line(left_path, right_path string, columns, margin_size int, renderer func(path string, formatter, margin_formatter formatter) (string, error)) (*LogicalLine, error) {
 	available_cols := columns/2 - margin_size
 	line := ""
 	if left_path == "" {
 		filler := render_diff_line(``, ``, `filler`, margin_size, available_cols)
-		r, err := renderer(right_path, added_format)
+		r, err := renderer(right_path, added_format, added_margin_format)
 		if err != nil {
 			return nil, err
 		}
 		line = filler + r
 	} else if right_path == "" {
 		filler := render_diff_line(``, ``, `filler`, margin_size, available_cols)
-		l, err := renderer(left_path, removed_format)
+		l, err := renderer(left_path, removed_format, removed_margin_format)
 		if err != nil {
 			return nil, err
 		}
 		line = l + filler
 	} else {
-		l, err := renderer(left_path, removed_format)
+		l, err := renderer(left_path, removed_format, removed_margin_format)
 		if err != nil {
 			return nil, err
 		}
-		r, err := renderer(right_path, added_format)
+		r, err := renderer(right_path, added_format, added_margin_format)
 		if err != nil {
 			return nil, err
 		}
@@ -359,14 +361,14 @@ func first_binary_line(left_path, right_path string, columns, margin_size int, r
 
 func binary_lines(left_path, right_path string, columns, margin_size int, ans []*LogicalLine) (ans2 []*LogicalLine, err error) {
 	available_cols := columns/2 - margin_size
-	ll, err := first_binary_line(left_path, right_path, columns, margin_size, func(path string, formatter func(...any) string) (string, error) {
+	ll, err := first_binary_line(left_path, right_path, columns, margin_size, func(path string, formatter, margin_formatter formatter) (string, error) {
 		sz, err := size_for_path(path)
 		if err != nil {
 			return "", err
 		}
 		text := fmt.Sprintf("Binary file: %s", human_readable(sz))
 		text = place_in(text, available_cols)
-		return formatter(strings.Repeat(` `, margin_size) + text), err
+		return margin_formatter(strings.Repeat(` `, margin_size)) + formatter(text), err
 	})
 
 	if err != nil {
