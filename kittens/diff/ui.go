@@ -627,3 +627,21 @@ func (self *Handler) dispatch_action(name, args string) error {
 	}
 	return nil
 }
+
+func (self *Handler) handle_wheel_event(up bool) {
+	if self.logical_lines != nil {
+		amt := 2
+		if up {
+			amt *= -1
+		}
+		self.dispatch_action(`scroll_by`, strconv.Itoa(amt))
+	}
+}
+
+func (self *Handler) on_mouse_event(ev *loop.MouseEvent) error {
+	if ev.Event_type == loop.MOUSE_PRESS && ev.Buttons&(loop.MOUSE_WHEEL_UP|loop.MOUSE_WHEEL_DOWN) != 0 {
+		self.handle_wheel_event(ev.Buttons&(loop.MOUSE_WHEEL_UP) != 0)
+		return nil
+	}
+	return nil
+}

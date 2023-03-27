@@ -133,6 +133,7 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 		return 1, fmt.Errorf("%s does not exist", right)
 	}
 	lp, err = loop.New()
+	loop.MouseTrackingMode(lp, loop.BUTTONS_AND_DRAG_MOUSE_TRACKING)
 	if err != nil {
 		return 1, err
 	}
@@ -155,6 +156,7 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	lp.OnResize = h.on_resize
 	lp.OnKeyEvent = h.on_key_event
 	lp.OnText = h.on_text
+	lp.OnMouseEvent = h.on_mouse_event
 	err = lp.Run()
 	if err != nil {
 		return 1, err
