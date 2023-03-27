@@ -311,7 +311,7 @@ func image_lines(left_path, right_path string, screen_size screen_size, margin_s
 	}
 	for i := 0; i < utils.Max(len(left_lines), len(right_lines)); i++ {
 		left, right := get_line(i, left_lines, removed_margin_format), get_line(i, right_lines, added_margin_format)
-		ll.screen_lines = append(ll.screen_lines, left+right)
+		ll.screen_lines = append(ll.screen_lines, join_half_lines(left, right))
 	}
 
 	ll.line_type = IMAGE_LINE
@@ -329,14 +329,14 @@ func first_binary_line(left_path, right_path string, columns, margin_size int, r
 		if err != nil {
 			return nil, err
 		}
-		line = filler + r
+		line = join_half_lines(filler, r)
 	} else if right_path == "" {
 		filler := render_diff_line(``, ``, `filler`, margin_size, available_cols)
 		l, err := renderer(left_path, removed_format, removed_margin_format)
 		if err != nil {
 			return nil, err
 		}
-		line = l + filler
+		line = join_half_lines(l, filler)
 	} else {
 		l, err := renderer(left_path, removed_format, removed_margin_format)
 		if err != nil {
@@ -346,7 +346,7 @@ func first_binary_line(left_path, right_path string, columns, margin_size int, r
 		if err != nil {
 			return nil, err
 		}
-		line = l + r
+		line = join_half_lines(l, r)
 	}
 	ref := left_path
 	if ref == "" {
@@ -401,9 +401,9 @@ func lines_for_context_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_n
 		for _, text := range splitlines(data.left_lines[left_line_number], data.available_cols) {
 			line := render_diff_line(left_line_number_s, text, `context`, data.margin_size, data.available_cols)
 			if right_line_number_s == left_line_number_s {
-				line += line
+				line = join_half_lines(line, line)
 			} else {
-				line += render_diff_line(right_line_number_s, text, `context`, data.margin_size, data.available_cols)
+				line = join_half_lines(line, render_diff_line(right_line_number_s, text, `context`, data.margin_size, data.available_cols))
 			}
 			ll.screen_lines = append(ll.screen_lines, line)
 			left_line_number_s, right_line_number_s = "", ""
