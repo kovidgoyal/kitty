@@ -577,7 +577,7 @@ def gen_go_code(defn: Definition) -> str:
         elif isinstance(d, Color):
             dval = f'style.RGBA{{Red:{d.red}, Green: {d.green}, Blue: {d.blue}}}'
             if 'NullableColor' in go_types[name]:
-                dval = f'style.NullableColor{{Color:{dval}}}'
+                dval = f'style.NullableColor{{IsSet: true, Color:{dval}}}'
         else:
             dval = repr(d)
         a(f'{name}: {dval},')
