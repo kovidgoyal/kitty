@@ -98,6 +98,7 @@ func (self *Handler) update_mouse_selection(ev *loop.MouseEvent) {
 	ms.end.x = ev.Cell.X
 	ms.end.x = utils.Max(ms.min_x, utils.Min(ms.end.x, ms.max_x))
 	ms.end.line = pos
+	self.draw_screen()
 }
 
 func (self *Handler) clear_mouse_selection() {
@@ -113,9 +114,34 @@ func (self *Handler) finish_mouse_selection(ev *loop.MouseEvent) {
 	ms.is_active = false
 }
 
-func (self *Handler) add_mouse_selection_to_line(line string, line_pos ScrollPos) {
+func format_part_of_line(sgr string, start_x, end_x, y int) string {
+	// DECCARA used to set formatting in specified region using zero based indexing
+	return fmt.Sprintf("\x1b[%d;%d;%d;%d;%s$r", y+1, start_x+1, y+1, end_x+1, sgr)
+}
+
+func (self *Handler) add_mouse_selection_to_line(line string, line_pos ScrollPos, y int) string {
 	ms := &self.mouse_selection
 	if !ms.is_active {
-		return
+		return line
 	}
+	a, b := ms.start.line, ms.end.line
+	ax, bx := ms.start.x, ms.end.x
+	if b.Less(a) {
+		a, b = b, a
+		ax, bx = bx, ax
+	}
+	if a.Less(line_pos) {
+		if line_pos.Less(b) {
+			line += format_part_of_line(selection_sgr, 0, ms.max_x, y)
+		} else if b == line_pos {
+			line += format_part_of_line(selection_sgr, 0, bx, y)
+		}
+	} else if a == line_pos {
+		if line_pos.Less(b) {
+			line += format_part_of_line(selection_sgr, ax, ms.max_x, y)
+		} else if b == line_pos {
+			line += format_part_of_line(selection_sgr, ax, bx, y)
+		}
+	}
+	return line
 }

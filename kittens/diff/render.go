@@ -82,16 +82,17 @@ func place_in(text string, sz int) string {
 	return fill_in(fit_in(text, sz), sz)
 }
 
-var title_format, text_format, margin_format, added_format, removed_format, added_margin_format, removed_margin_format, filler_format, margin_filler_format, hunk_margin_format, hunk_format, statusline_format, added_count_format, removed_count_format, message_format func(...any) string
+var title_format, text_format, margin_format, added_format, removed_format, added_margin_format, removed_margin_format, filler_format, margin_filler_format, hunk_margin_format, hunk_format, statusline_format, added_count_format, removed_count_format, message_format, selection_format func(...any) string
+var selection_sgr string
 
 func create_formatters() {
 	ctx := style.Context{AllowEscapeCodes: true}
 	text_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Background.AsRGBSharp()))
 	filler_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Filler_bg.AsRGBSharp()))
 	if conf.Margin_filler_bg.IsSet {
-		margin_filler_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Margin_filler_bg.Color.AsRGBSharp()))
+		margin_filler_format = ctx.SprintFunc("bg=" + conf.Margin_filler_bg.Color.AsRGBSharp())
 	} else {
-		margin_filler_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Filler_bg.AsRGBSharp()))
+		margin_filler_format = ctx.SprintFunc("bg=" + conf.Filler_bg.AsRGBSharp())
 	}
 	added_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Added_bg.AsRGBSharp()))
 	added_margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Added_margin_bg.AsRGBSharp()))
@@ -105,6 +106,13 @@ func create_formatters() {
 	hunk_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_bg.AsRGBSharp()))
 	hunk_margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_margin_bg.AsRGBSharp()))
 	message_format = ctx.SprintFunc("bold")
+	if conf.Select_fg.IsSet {
+		selection_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Select_fg.Color.AsRGBSharp(), conf.Select_bg.AsRGBSharp()))
+	} else {
+		selection_format = ctx.SprintFunc("bg=" + conf.Select_bg.AsRGBSharp())
+	}
+	selection_sgr, _, _ = strings.Cut(selection_format("|"), "|")
+	selection_sgr = selection_sgr[2 : len(selection_sgr)-1]
 }
 
 func center_span(ltype string, offset, size int) *sgr.Span {

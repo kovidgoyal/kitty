@@ -354,7 +354,7 @@ func (self *Handler) draw_screen() {
 		if self.current_search != nil {
 			sl = self.current_search.markup_line(sl, pos)
 		}
-		self.add_mouse_selection_to_line(sl, pos)
+		sl = self.add_mouse_selection_to_line(sl, pos, num_written)
 		lp.QueueWriteString(sl)
 		lp.MoveCursorVertically(1)
 		lp.QueueWriteString("\x1b[m\r")
