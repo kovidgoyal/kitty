@@ -784,12 +784,19 @@ select_graphic_rendition(Screen *self, int *params, unsigned int count, Region *
             }
         } else {
             index_type x, num;
-            for (index_type y = region.top; y < MIN(region.bottom + 1, self->lines); y++) {
-                if (y == region.top) { x = MIN(region.left, self->columns - 1); num = self->columns - x; }
-                else if (y == region.bottom) { x = 0; num = MIN(region.right + 1, self->columns); }
-                else { x = 0; num = self->columns; }
-                linebuf_init_line(self->linebuf, y);
+            if (region.top == region.bottom) {
+                linebuf_init_line(self->linebuf, region.top);
+                x = MIN(region.left, self->columns-1);
+                num = MIN(self->columns - x, region.right - x + 1);
                 apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count);
+            } else {
+                for (index_type y = region.top; y < MIN(region.bottom + 1, self->lines); y++) {
+                    if (y == region.top) { x = MIN(region.left, self->columns - 1); num = self->columns - x; }
+                    else if (y == region.bottom) { x = 0; num = MIN(region.right + 1, self->columns); }
+                    else { x = 0; num = self->columns; }
+                    linebuf_init_line(self->linebuf, y);
+                    apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count);
+                }
             }
         }
     } else cursor_from_sgr(self->cursor, params, count);
