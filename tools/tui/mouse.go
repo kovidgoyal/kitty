@@ -22,6 +22,19 @@ type SelectionBoundary struct {
 	in_first_half_of_cell bool
 }
 
+func (self *SelectionBoundary) LessThan(other *SelectionBoundary) bool {
+	if self.line.LessThan(other.line) {
+		return true
+	}
+	if !self.line.Equal(other.line) {
+		return false
+	}
+	if self.x == other.x {
+		return !self.in_first_half_of_cell && other.in_first_half_of_cell
+	}
+	return self.x < other.x
+}
+
 func (self *SelectionBoundary) Equal(other SelectionBoundary) bool {
 	if self.x != other.x || self.in_first_half_of_cell != other.in_first_half_of_cell {
 		return false
@@ -70,23 +83,58 @@ func (ms *MouseSelection) LineBounds(line_pos LinePos) (start_x, end_x int) {
 	if ms.IsEmpty() {
 		return -1, -1
 	}
-	a, b := ms.start.line, ms.end.line
-	ax, bx := ms.start.x, ms.end.x
+	a, b := &ms.start, &ms.end
 	if b.LessThan(a) {
 		a, b = b, a
-		ax, bx = bx, ax
 	}
-	if a.LessThan(line_pos) {
-		if line_pos.LessThan(b) {
-			return ms.min_x, ms.max_x
-		} else if b.Equal(line_pos) {
-			return ms.min_x, bx
+
+	adjust_end := func(x int, b *SelectionBoundary) (int, int) {
+		if b.in_first_half_of_cell {
+			if b.x > x {
+				return x, b.x - 1
+			}
+			return -1, -1
 		}
-	} else if a.Equal(line_pos) {
-		if line_pos.LessThan(b) {
-			return ax, ms.max_x
-		} else if b.Equal(line_pos) {
-			return ax, bx
+		return x, b.x
+	}
+
+	adjust_start := func(a *SelectionBoundary, x int) (int, int) {
+		if a.in_first_half_of_cell {
+			return a.x, x
+		}
+		if x > a.x {
+			return a.x + 1, x
+		}
+		return -1, -1
+	}
+
+	adjust_both := func(a, b *SelectionBoundary) (int, int) {
+		if a.in_first_half_of_cell {
+			return adjust_end(a.x, b)
+		} else {
+			if b.in_first_half_of_cell {
+				s, e := a.x+1, b.x-1
+				if e <= s {
+					return -1, -1
+				}
+				return s, e
+			} else {
+				return adjust_start(a, b.x)
+			}
+		}
+	}
+
+	if a.line.LessThan(line_pos) {
+		if line_pos.LessThan(b.line) {
+			return ms.min_x, ms.max_x
+		} else if b.line.Equal(line_pos) {
+			return adjust_end(ms.min_x, b)
+		}
+	} else if a.line.Equal(line_pos) {
+		if line_pos.LessThan(b.line) {
+			return adjust_start(a, ms.max_x)
+		} else if b.line.Equal(line_pos) {
+			return adjust_both(a, b)
 		}
 	}
 	return -1, -1
