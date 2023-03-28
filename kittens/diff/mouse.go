@@ -15,8 +15,9 @@ import (
 var _ = fmt.Print
 
 type SelectionBoundary struct {
-	line ScrollPos
-	x    int
+	line                  ScrollPos
+	x                     int
+	in_first_half_of_cell bool
 }
 
 type MouseSelection struct {
@@ -24,6 +25,8 @@ type MouseSelection struct {
 	is_active    bool
 	min_x, max_x int
 }
+
+func (self *MouseSelection) IsEmpty() bool { return self.start == self.end }
 
 type KittyOpts struct {
 	Wheel_scroll_multiplier int
@@ -81,6 +84,8 @@ func (self *Handler) start_mouse_selection(ev *loop.MouseEvent) {
 		ms.max_x += available_cols
 	}
 	ms.start.x = utils.Max(ms.min_x, utils.Min(ms.start.x, ms.max_x))
+	cell_start := self.screen_size.cell_width * ev.Cell.X
+	ms.start.in_first_half_of_cell = ev.Pixel.X <= cell_start+self.screen_size.cell_width/2
 
 	ms.end = ms.start
 	ms.is_active = true
@@ -97,6 +102,8 @@ func (self *Handler) update_mouse_selection(ev *loop.MouseEvent) {
 	self.logical_lines.IncrementScrollPosBy(&pos, y)
 	ms.end.x = ev.Cell.X
 	ms.end.x = utils.Max(ms.min_x, utils.Min(ms.end.x, ms.max_x))
+	cell_start := self.screen_size.cell_width * ms.end.x
+	ms.end.in_first_half_of_cell = ev.Pixel.X <= cell_start+self.screen_size.cell_width/2
 	ms.end.line = pos
 	self.draw_screen()
 }
@@ -121,7 +128,7 @@ func format_part_of_line(sgr string, start_x, end_x, y int) string {
 
 func (self *Handler) add_mouse_selection_to_line(line string, line_pos ScrollPos, y int) string {
 	ms := &self.mouse_selection
-	if !ms.is_active {
+	if ms.IsEmpty() {
 		return line
 	}
 	a, b := ms.start.line, ms.end.line
