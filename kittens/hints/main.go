@@ -28,6 +28,7 @@ func convert_text(text string, cols int) string {
 	for s1.Scan() {
 		full_line := s1.Text()
 		if full_line == "" {
+			lines = append(lines, empty_line)
 			continue
 		}
 		if strings.TrimRight(full_line, "\r") == "" {
