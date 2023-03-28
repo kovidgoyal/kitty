@@ -10,6 +10,7 @@ import (
 
 	"kitty/tools/config"
 	"kitty/tools/tty"
+	"kitty/tools/tui"
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
 	"kitty/tools/tui/readline"
@@ -37,6 +38,20 @@ func (self ScrollPos) Less(other ScrollPos) bool {
 	return self.logical_line < other.logical_line || (self.logical_line == other.logical_line && self.screen_line < other.screen_line)
 }
 
+func (self *ScrollPos) Equal(other tui.LinePos) bool {
+	if o, ok := other.(*ScrollPos); ok {
+		return *self == *o
+	}
+	return false
+}
+
+func (self *ScrollPos) LessThan(other tui.LinePos) bool {
+	if o, ok := other.(*ScrollPos); ok {
+		return self.Less(*o)
+	}
+	return false
+}
+
 func (self ScrollPos) Add(other ScrollPos) ScrollPos {
 	return ScrollPos{self.logical_line + other.logical_line, self.screen_line + other.screen_line}
 }
@@ -54,7 +69,7 @@ var image_collection *graphics.ImageCollection
 type screen_size struct{ rows, columns, num_lines, cell_width, cell_height int }
 type Handler struct {
 	async_results                                       chan AsyncResult
-	mouse_selection                                     MouseSelection
+	mouse_selection                                     tui.MouseSelection
 	shortcut_tracker                                    config.ShortcutTracker
 	left, right                                         string
 	collection                                          *Collection
