@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"kitty"
 	"kitty/tools/config"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print
@@ -85,12 +87,57 @@ func (self *Handler) clear_mouse_selection() {
 	self.mouse_selection.Clear()
 }
 
+func (self *Handler) text_for_current_mouse_selection() string {
+	if self.mouse_selection.IsEmpty() {
+		return ""
+	}
+	text := make([]byte, 0, 2048)
+	start, end := *self.mouse_selection.StartLine().(*ScrollPos), *self.mouse_selection.EndLine().(*ScrollPos)
+	for pos, prev_ll_idx := start, start.logical_line; pos.Less(end) || pos.Equal(&end); self.logical_lines.IncrementScrollPosBy(&pos, 1) {
+		ll := self.logical_lines.At(pos.logical_line)
+		var line string
+		switch ll.line_type {
+		case EMPTY_LINE:
+		case IMAGE_LINE:
+			if pos.screen_line < ll.image_lines_offset {
+				line = self.logical_lines.ScreenLineAt(pos)
+			}
+		default:
+			line = self.logical_lines.ScreenLineAt(pos)
+		}
+		line = wcswidth.StripEscapeCodes(line)
+		s, e := self.mouse_selection.LineBounds(&pos)
+		line = wcswidth.TruncateToVisualLength(line, e+1)
+		if s > 0 {
+			prefix := wcswidth.TruncateToVisualLength(line, s)
+			line = line[len(prefix):]
+		}
+		// TODO: look at the original line from the source and handle leading tabs and trailing spaces as per it
+		tline := strings.TrimRight(line, " ")
+		if len(tline) < len(line) {
+			line = tline + " "
+		}
+		if pos.logical_line > prev_ll_idx {
+			line = "\n" + line
+		}
+		prev_ll_idx = pos.logical_line
+		if line != "" {
+			text = append(text, line...)
+		}
+	}
+	return utils.UnsafeBytesToString(text)
+}
+
 func (self *Handler) finish_mouse_selection(ev *loop.MouseEvent) {
 	if !self.mouse_selection.IsActive() {
 		return
 	}
 	self.update_mouse_selection(ev)
 	self.mouse_selection.Finish()
+	text := self.text_for_current_mouse_selection()
+	if text != "" {
+		self.lp.CopyTextToPrimarySelection(text)
+	}
 }
 
 func (self *Handler) add_mouse_selection_to_line(line string, line_pos ScrollPos, y int) string {

@@ -405,3 +405,17 @@ const (
 func (self *Loop) SetDefaultColor(which DefaultColor, val style.RGBA) {
 	self.QueueWriteString(fmt.Sprintf("\033]%d;%s\033\\", int(which), val.AsRGBSharp()))
 }
+
+func (self *Loop) copy_text_to(text, dest string) {
+	self.QueueWriteString("\x1b]52;" + dest + ";")
+	self.QueueWriteString(base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(text)))
+	self.QueueWriteString("\x1b\\")
+}
+
+func (self *Loop) CopyTextToPrimarySelection(text string) {
+	self.copy_text_to(text, "p")
+}
+
+func (self *Loop) CopyTextToClipboard(text string) {
+	self.copy_text_to(text, "c")
+}

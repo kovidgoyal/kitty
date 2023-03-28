@@ -152,3 +152,11 @@ func (ms *MouseSelection) LineFormatSuffix(line_pos LinePos, sgr string, y int) 
 	}
 	return ""
 }
+
+func (ms *MouseSelection) StartLine() LinePos {
+	return ms.start.line
+}
+
+func (ms *MouseSelection) EndLine() LinePos {
+	return ms.end.line
+}
