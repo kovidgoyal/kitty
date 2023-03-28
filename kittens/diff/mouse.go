@@ -93,19 +93,6 @@ func (self *Handler) finish_mouse_selection(ev *loop.MouseEvent) {
 	self.mouse_selection.Finish()
 }
 
-func format_part_of_line(sgr string, start_x, end_x, y int) string {
-	// DECCARA used to set formatting in specified region using zero based indexing
-	return fmt.Sprintf("\x1b[%d;%d;%d;%d;%s$r", y+1, start_x+1, y+1, end_x+1, sgr)
-}
-
 func (self *Handler) add_mouse_selection_to_line(line string, line_pos ScrollPos, y int) string {
-	ms := &self.mouse_selection
-	if ms.IsEmpty() {
-		return line
-	}
-	x_start, x_end := self.mouse_selection.LineBounds(&line_pos)
-	if x_start > -1 {
-		line += format_part_of_line(selection_sgr, x_start, x_end, y)
-	}
-	return line
+	return line + self.mouse_selection.LineFormatSuffix(&line_pos, selection_sgr, y)
 }
