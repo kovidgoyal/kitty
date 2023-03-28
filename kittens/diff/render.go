@@ -70,10 +70,12 @@ func fit_in(text string, count int) string {
 	return truncated + `…`
 }
 
+const FILLER_CHAR = "\ufffd"
+
 func fill_in(text string, sz int) string {
 	w := wcswidth.Stringwidth(text)
 	if w < sz {
-		text += strings.Repeat(` `, (sz - w))
+		text += strings.Repeat(FILLER_CHAR, (sz - w))
 	}
 	return text
 }
@@ -129,7 +131,7 @@ func center_span(ltype string, offset, size int) *sgr.Span {
 func title_lines(left_path, right_path string, columns, margin_size int, ans []*LogicalLine) []*LogicalLine {
 	left_name, right_name := path_name_map[left_path], path_name_map[right_path]
 	name := ""
-	m := strings.Repeat(` `, margin_size)
+	m := strings.Repeat(FILLER_CHAR, margin_size)
 	ll := LogicalLine{line_type: TITLE_LINE, src: Reference{path: left_path, linenum: 0}}
 	if right_name != "" && right_name != left_name {
 		n1 := fit_in(m+sanitize(left_name), columns/2-margin_size)
@@ -279,7 +281,7 @@ func image_lines(left_path, right_path string, screen_size screen_size, margin_s
 			text = fmt.Sprintf("Dimensions: %dx%d %s", res.Width, res.Height, text)
 		}
 		text = place_in(text, available_cols)
-		return margin_formatter(strings.Repeat(` `, margin_size)) + formatter(text), err
+		return margin_formatter(strings.Repeat(FILLER_CHAR, margin_size)) + formatter(text), err
 	})
 
 	if err != nil {
@@ -309,8 +311,8 @@ func image_lines(left_path, right_path string, screen_size screen_size, margin_s
 	if ll.right_image.count = len(right_lines); ll.right_image.count > 0 {
 		ll.right_image.key = right_path
 	}
-	filler := filler_format(strings.Repeat(` `, available_cols))
-	m := strings.Repeat(` `, margin_size)
+	filler := filler_format(strings.Repeat(FILLER_CHAR, available_cols))
+	m := strings.Repeat(FILLER_CHAR, margin_size)
 	get_line := func(i int, which []string, margin_fmt func(...any) string) string {
 		if i < len(which) {
 			return margin_fmt(m) + which[i]
@@ -376,7 +378,7 @@ func binary_lines(left_path, right_path string, columns, margin_size int, ans []
 		}
 		text := fmt.Sprintf("Binary file: %s", human_readable(sz))
 		text = place_in(text, available_cols)
-		return margin_formatter(strings.Repeat(` `, margin_size)) + formatter(text), err
+		return margin_formatter(strings.Repeat(FILLER_CHAR, margin_size)) + formatter(text), err
 	})
 
 	if err != nil {
@@ -394,7 +396,7 @@ type DiffData struct {
 }
 
 func hunk_title(hunk_num int, hunk *Hunk, margin_size, available_cols int) string {
-	m := hunk_margin_format(strings.Repeat(" ", margin_size))
+	m := hunk_margin_format(strings.Repeat(FILLER_CHAR, margin_size))
 	t := fmt.Sprintf("@@ -%d,%d +%d,%d @@ %s", hunk.left_start+1, hunk.left_count, hunk.right_start+1, hunk.right_count, hunk.title)
 	return m + hunk_format(place_in(t, available_cols))
 }
@@ -573,7 +575,7 @@ func all_lines(path string, columns, margin_size int, is_add bool, ans []*Logica
 }
 
 func rename_lines(path, other_path string, columns, margin_size int, ans []*LogicalLine) ([]*LogicalLine, error) {
-	m := strings.Repeat(" ", margin_size)
+	m := strings.Repeat(FILLER_CHAR, margin_size)
 	ll := LogicalLine{src: Reference{path: path, linenum: 0}, line_type: CHANGE_LINE, is_change_start: true}
 	for _, line := range splitlines(fmt.Sprintf(`The file %s was renamed to %s`, sanitize(path_name_map[path]), sanitize(path_name_map[other_path])), columns-margin_size) {
 		ll.screen_lines = append(ll.screen_lines, m+line)

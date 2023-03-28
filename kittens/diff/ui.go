@@ -370,7 +370,7 @@ func (self *Handler) draw_screen() {
 			sl = self.current_search.markup_line(sl, pos)
 		}
 		sl = self.add_mouse_selection_to_line(sl, pos, num_written)
-		lp.QueueWriteString(sl)
+		lp.QueueWriteString(strings.ReplaceAll(sl, FILLER_CHAR, " "))
 		lp.MoveCursorVertically(1)
 		lp.QueueWriteString("\x1b[m\r")
 		if self.logical_lines.IncrementScrollPosBy(&pos, 1) == 0 {
