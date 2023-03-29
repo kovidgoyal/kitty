@@ -474,6 +474,7 @@ func (self *Handler) on_key_event(ev *loop.KeyEvent) error {
 	}
 	ac := self.shortcut_tracker.Match(ev, conf.KeyboardShortcuts)
 	if ac != nil {
+		ev.Handled = true
 		return self.dispatch_action(ac.Name, ac.Args)
 	}
 	return nil
@@ -572,6 +573,20 @@ func (self *Handler) dispatch_action(name, args string) error {
 	switch name {
 	case `quit`:
 		self.lp.Quit(0)
+	case `copy_to_clipboard`:
+		text := self.text_for_current_mouse_selection()
+		if text == "" {
+			self.lp.Beep()
+		} else {
+			self.lp.CopyTextToClipboard(text)
+		}
+	case `copy_to_clipboard_or_exit`:
+		text := self.text_for_current_mouse_selection()
+		if text == "" {
+			self.lp.Quit(0)
+		} else {
+			self.lp.CopyTextToClipboard(text)
+		}
 	case `scroll_by`:
 		if args == "" {
 			args = "1"

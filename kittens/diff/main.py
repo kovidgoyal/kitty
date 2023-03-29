@@ -266,6 +266,10 @@ map('Search forward (no regex)',
 map('Search backward (no regex)',
     'search_backward_simple b start_search substring backward',
     )
+
+map('Copy selection to clipboard', 'copy_to_clipboard y copy_to_clipboard')
+map('Copy selection to clipboard or exit if no selection is present', 'copy_to_clipboard_or_exit ctrl+c copy_to_clipboard_or_exit')
+
 egr()  # }}}
 
 OPTIONS = partial('''\

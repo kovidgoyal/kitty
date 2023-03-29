@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"kitty"
 	"kitty/tools/config"
@@ -19,6 +20,7 @@ var _ = fmt.Print
 
 type KittyOpts struct {
 	Wheel_scroll_multiplier int
+	Copy_on_select          bool
 }
 
 func read_relevant_kitty_opts(path string) KittyOpts {
@@ -30,6 +32,8 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 			if err == nil {
 				ans.Wheel_scroll_multiplier = v
 			}
+		case "copy_on_select":
+			ans.Copy_on_select = strings.ToLower(val) == "clipboard"
 		}
 		return nil
 	}
@@ -188,7 +192,11 @@ func (self *Handler) finish_mouse_selection(ev *loop.MouseEvent) {
 	self.mouse_selection.Finish()
 	text := self.text_for_current_mouse_selection()
 	if text != "" {
-		self.lp.CopyTextToPrimarySelection(text)
+		if RelevantKittyOpts().Copy_on_select {
+			self.lp.CopyTextToClipboard(text)
+		} else {
+			self.lp.CopyTextToPrimarySelection(text)
+		}
 	}
 }
 

@@ -64,7 +64,7 @@ Keyboard controls
 =========================   ===========================
 Action                      Shortcut
 =========================   ===========================
-Quit                        :kbd:`Q`, :kbd:`Ctrl+C`, :kbd:`Esc`
+Quit                        :kbd:`Q`, :kbd:`Esc`
 Scroll line up              :kbd:`K`, :kbd:`Up`
 Scroll line down            :kbd:`J`, :kbd:`Down`
 Scroll page up              :kbd:`PgUp`
@@ -84,6 +84,8 @@ Search backwards            :kbd:`?`
 Clear search                :kbd:`Esc`
 Scroll to next match        :kbd:`>`, :kbd:`.`
 Scroll to previous match    :kbd:`<`, :kbd:`,`
+Copy selection to clipboard :kbd:`y`
+Copy selection or exit      :kbd:`Ctrl+C`
 =========================   ===========================
 
 
