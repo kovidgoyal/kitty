@@ -3,6 +3,7 @@
 package style
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -16,7 +17,8 @@ func TestFormatWithIndent(t *testing.T) {
 		q := opts.Indent + strings.Join(expected, "")
 		actual := WrapText(text, screen_width, opts)
 		if actual != q {
-			t.Fatalf("\nFailed for: %#v\nexpected: %#v\nactual:   %#v", text, q, actual)
+			os, _ := json.Marshal(opts)
+			t.Fatalf("\nFailed for: %#v\nOptions: %s\nexpected: %#v\nactual:   %#v", text, os, q, actual)
 		}
 	}
 
@@ -26,6 +28,16 @@ func TestFormatWithIndent(t *testing.T) {
 	tx("a  b", "a  b")
 	screen_width = 3
 	tx("one tw", "one\n tw")
+
+	screen_width = 4
+	opts.Trim_whitespace = true
+	opts.Indent = "X"
+	tx("one two", "one\nXtwo")
+	tx("\x1b[2mone \x1b[mtwo", "\x1b[2mone\n\x1b[222mX\x1b[2m\x1b[mtwo")
+	screen_width = 3
+	tx("on tw", "on\nXtw")
+	opts.Indent = ""
+	opts.Trim_whitespace = false
 
 	opts.Indent = "__"
 	screen_width = 11
