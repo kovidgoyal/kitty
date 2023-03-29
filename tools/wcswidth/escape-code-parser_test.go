@@ -46,6 +46,7 @@ func TestEscapeCodeParsing(t *testing.T) {
 	}
 
 	test("\x1b[31m\xc2\x9bm", "CSI: 31m\nCSI: m")
+	test("\x1b[-31m\xc2\x9bm", "CSI: -31m\nCSI: m")
 	test("ab\nc", "CH: a\nCH: b\nCH: \n\nCH: c")
 	test("a\x1b[200m\x1b[mb\x1b[5:3;2;4~", "CH: a\nCSI: 200m\nCSI: m\nCH: b\nCSI: 5:3;2;4~")
 	test("\x1b[200~a\x1b[201m\x1b[201~\x1b[x", "CH: a\nCH: \x1b\nCH: [\nCH: 2\nCH: 0\nCH: 1\nCH: m\nCSI: x")
