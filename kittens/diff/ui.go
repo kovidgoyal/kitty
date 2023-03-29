@@ -38,20 +38,6 @@ func (self ScrollPos) Less(other ScrollPos) bool {
 	return self.logical_line < other.logical_line || (self.logical_line == other.logical_line && self.screen_line < other.screen_line)
 }
 
-func (self *ScrollPos) Equal(other tui.LinePos) bool {
-	if o, ok := other.(*ScrollPos); ok {
-		return *self == *o
-	}
-	return false
-}
-
-func (self *ScrollPos) LessThan(other tui.LinePos) bool {
-	if o, ok := other.(*ScrollPos); ok {
-		return self.Less(*o)
-	}
-	return false
-}
-
 func (self ScrollPos) Add(other ScrollPos) ScrollPos {
 	return ScrollPos{self.logical_line + other.logical_line, self.screen_line + other.screen_line}
 }
@@ -361,16 +347,19 @@ func (self *Handler) draw_screen() {
 	for num_written := 0; num_written < self.screen_size.num_lines; num_written++ {
 		ll := self.logical_lines.At(pos.logical_line)
 		is_image := ll != nil && ll.line_type == IMAGE_LINE
-		sl := self.logical_lines.ScreenLineAt(pos)
+		ll.render_screen_line(pos.screen_line, lp, self.logical_lines.margin_size, self.logical_lines.columns)
 		if is_image && !seen_images.Has(pos.logical_line) && pos.screen_line >= ll.image_lines_offset {
 			seen_images.Add(pos.logical_line)
 			self.draw_image_pair(ll, pos.screen_line-ll.image_lines_offset)
 		}
 		if self.current_search != nil {
-			sl = self.current_search.markup_line(sl, pos)
+			if mkp := self.current_search.markup_line(pos, num_written); mkp != "" {
+				lp.QueueWriteString(mkp)
+			}
 		}
-		sl = self.add_mouse_selection_to_line(sl, pos, num_written)
-		lp.QueueWriteString(strings.ReplaceAll(sl, FILLER_CHAR, " "))
+		if mkp := self.add_mouse_selection_to_line(pos, num_written); mkp != "" {
+			lp.QueueWriteString(mkp)
+		}
 		lp.MoveCursorVertically(1)
 		lp.QueueWriteString("\x1b[m\r")
 		if self.logical_lines.IncrementScrollPosBy(&pos, 1) == 0 {

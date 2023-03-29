@@ -39,6 +39,14 @@ type HalfScreenLine struct {
 	marked_up_margin_text string
 	marked_up_text        string
 	is_filler             bool
+	cached_wcswidth       int
+}
+
+func (self *HalfScreenLine) wcswidth() int {
+	if self.cached_wcswidth == 0 && self.marked_up_text != "" {
+		self.cached_wcswidth = wcswidth.Stringwidth(self.marked_up_text)
+	}
+	return self.cached_wcswidth
 }
 
 type ScreenLine struct {
@@ -466,10 +474,10 @@ func lines_for_context_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_n
 		left_line_number_s := strconv.Itoa(left_line_number + 1)
 		right_line_number_s := strconv.Itoa(right_line_number + 1)
 		for _, text := range splitlines(data.left_lines[left_line_number], data.available_cols) {
-			left_line := HalfScreenLine{left_line_number_s, text, false}
+			left_line := HalfScreenLine{marked_up_margin_text: left_line_number_s, marked_up_text: text}
 			right_line := left_line
 			if right_line_number_s != left_line_number_s {
-				right_line = HalfScreenLine{right_line_number_s, text, false}
+				right_line = HalfScreenLine{marked_up_margin_text: right_line_number_s, marked_up_text: text}
 			}
 			ll.screen_lines = append(ll.screen_lines, &ScreenLine{left_line, right_line})
 			left_line_number_s, right_line_number_s = "", ""
@@ -494,7 +502,7 @@ func render_half_line(line_number int, line, ltype string, available_cols int, c
 	}
 	lnum := strconv.Itoa(line_number + 1)
 	for _, sc := range splitlines(line, available_cols) {
-		ans = append(ans, HalfScreenLine{lnum, sc, false})
+		ans = append(ans, HalfScreenLine{marked_up_margin_text: lnum, marked_up_text: sc})
 		lnum = ""
 	}
 	return ans

@@ -14,6 +14,8 @@ var _ = fmt.Print
 type LinePos interface {
 	LessThan(other LinePos) bool
 	Equal(other LinePos) bool
+	MinX() int
+	MaxX() int
 }
 
 type SelectionBoundary struct {
@@ -48,7 +50,6 @@ func (self *SelectionBoundary) Equal(other SelectionBoundary) bool {
 type MouseSelection struct {
 	start, end              SelectionBoundary
 	is_active               bool
-	min_x, max_x            int
 	min_y, max_y            int
 	cell_width, cell_height int
 }
@@ -58,10 +59,10 @@ func (self *MouseSelection) IsActive() bool { return self.is_active }
 func (self *MouseSelection) Finish()        { self.is_active = false }
 func (self *MouseSelection) Clear()         { *self = MouseSelection{} }
 
-func (ms *MouseSelection) StartNewSelection(ev *loop.MouseEvent, line LinePos, min_x, max_x, min_y, max_y, cell_width, cell_height int) {
-	*ms = MouseSelection{min_x: min_x, max_x: max_x, cell_width: cell_width, cell_height: cell_height, min_y: min_y, max_y: max_y}
+func (ms *MouseSelection) StartNewSelection(ev *loop.MouseEvent, line LinePos, min_y, max_y, cell_width, cell_height int) {
+	*ms = MouseSelection{cell_width: cell_width, cell_height: cell_height, min_y: min_y, max_y: max_y}
 	ms.start.line = line
-	ms.start.x = utils.Max(ms.min_x, utils.Min(ev.Cell.X, ms.max_x))
+	ms.start.x = utils.Max(line.MinX(), utils.Min(ev.Cell.X, line.MaxX()))
 	cell_start := cell_width * ev.Cell.X
 	ms.start.in_first_half_of_cell = ev.Pixel.X <= cell_start+cell_width/2
 	ms.end = ms.start
@@ -70,7 +71,7 @@ func (ms *MouseSelection) StartNewSelection(ev *loop.MouseEvent, line LinePos, m
 
 func (ms *MouseSelection) Update(ev *loop.MouseEvent, line LinePos) {
 	if ms.is_active {
-		ms.end.x = utils.Max(ms.min_x, utils.Min(ev.Cell.X, ms.max_x))
+		ms.end.x = utils.Max(line.MinX(), utils.Min(ev.Cell.X, line.MaxX()))
 		cell_start := ms.cell_width * ms.end.x
 		ms.end.in_first_half_of_cell = ev.Pixel.X <= cell_start+ms.cell_width/2
 		ms.end.line = line
@@ -126,13 +127,13 @@ func (ms *MouseSelection) LineBounds(line_pos LinePos) (start_x, end_x int) {
 
 	if a.line.LessThan(line_pos) {
 		if line_pos.LessThan(b.line) {
-			return ms.min_x, ms.max_x
+			return line_pos.MinX(), line_pos.MaxX()
 		} else if b.line.Equal(line_pos) {
-			return adjust_end(ms.min_x, b)
+			return adjust_end(line_pos.MinX(), b)
 		}
 	} else if a.line.Equal(line_pos) {
 		if line_pos.LessThan(b.line) {
-			return adjust_start(a, ms.max_x)
+			return adjust_start(a, line_pos.MaxX())
 		} else if b.line.Equal(line_pos) {
 			return adjust_both(a, b)
 		}
