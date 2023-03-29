@@ -61,32 +61,32 @@ directory contents.
 Keyboard controls
 ----------------------
 
-=========================   ===========================
-Action                      Shortcut
-=========================   ===========================
-Quit                        :kbd:`Q`, :kbd:`Esc`
-Scroll line up              :kbd:`K`, :kbd:`Up`
-Scroll line down            :kbd:`J`, :kbd:`Down`
-Scroll page up              :kbd:`PgUp`
-Scroll page down            :kbd:`PgDn`
-Scroll to top               :kbd:`Home`
-Scroll to bottom            :kbd:`End`
-Scroll to next page         :kbd:`Space`, :kbd:`PgDn`
-Scroll to previous page     :kbd:`PgUp`
-Scroll to next change       :kbd:`N`
-Scroll to previous change   :kbd:`P`
-Increase lines of context   :kbd:`+`
-Decrease lines of context   :kbd:`-`
-All lines of context        :kbd:`A`
-Restore default context     :kbd:`=`
-Search forwards             :kbd:`/`
-Search backwards            :kbd:`?`
-Clear search                :kbd:`Esc`
-Scroll to next match        :kbd:`>`, :kbd:`.`
-Scroll to previous match    :kbd:`<`, :kbd:`,`
-Copy selection to clipboard :kbd:`y`
-Copy selection or exit      :kbd:`Ctrl+C`
-=========================   ===========================
+===========================       ===========================
+Action                            Shortcut
+===========================       ===========================
+Quit                              :kbd:`Q`, :kbd:`Esc`
+Scroll line up                    :kbd:`K`, :kbd:`Up`
+Scroll line down                  :kbd:`J`, :kbd:`Down`
+Scroll page up                    :kbd:`PgUp`
+Scroll page down                  :kbd:`PgDn`
+Scroll to top                     :kbd:`Home`
+Scroll to bottom                  :kbd:`End`
+Scroll to next page               :kbd:`Space`, :kbd:`PgDn`
+Scroll to previous page           :kbd:`PgUp`
+Scroll to next change             :kbd:`N`
+Scroll to previous change         :kbd:`P`
+Increase lines of context         :kbd:`+`
+Decrease lines of context         :kbd:`-`
+All lines of context              :kbd:`A`
+Restore default context           :kbd:`=`
+Search forwards                   :kbd:`/`
+Search backwards                  :kbd:`?`
+Clear search                      :kbd:`Esc`
+Scroll to next match              :kbd:`>`, :kbd:`.`
+Scroll to previous match          :kbd:`<`, :kbd:`,`
+Copy selection to clipboard       :kbd:`y`
+Copy selection or exit            :kbd:`Ctrl+C`
+===========================       ===========================
 
 
 Integrating with git
