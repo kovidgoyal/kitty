@@ -1183,6 +1183,9 @@ class Parser:
     def selection_foreground(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['selection_foreground'] = to_color_or_none(val)
 
+    def shade_transparency(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['shade_transparency'] = to_bool(val)
+
     def shell(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['shell'] = str(val)
 

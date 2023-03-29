@@ -420,6 +420,7 @@ option_names = (  # {{{
  'select_by_word_characters_forward',
  'selection_background',
  'selection_foreground',
+ 'shade_transparency',
  'shell',
  'shell_integration',
  'show_hyperlink_targets',
@@ -574,6 +575,7 @@ class Options:
     select_by_word_characters_forward: str = ''
     selection_background: typing.Optional[kitty.fast_data_types.Color] = Color(255, 250, 205)
     selection_foreground: typing.Optional[kitty.fast_data_types.Color] = Color(0, 0, 0)
+    shade_transparency: bool = False
     shell: str = '.'
     shell_integration: typing.FrozenSet[str] = frozenset({'enabled'})
     show_hyperlink_targets: bool = False

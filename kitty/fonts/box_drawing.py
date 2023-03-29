@@ -10,9 +10,10 @@ import math
 from functools import lru_cache, wraps
 from functools import partial as p
 from itertools import repeat
-from typing import Any, Callable, Dict, Iterable, Iterator, List, MutableSequence, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, Iterator, List, MutableSequence, Optional, Sequence, Tuple, Literal
 
 scale = (0.001, 1., 1.5, 2.)
+shade_transparency = False
 _dpi = 96.0
 BufType = MutableSequence[int]
 
@@ -20,6 +21,10 @@ BufType = MutableSequence[int]
 def set_scale(new_scale: Sequence[float]) -> None:
     global scale
     scale = (new_scale[0], new_scale[1], new_scale[2], new_scale[3])
+
+def set_shade_transparency(new_value: bool) -> None:
+    global shade_transparency
+    shade_transparency = new_value
 
 
 def thickness(level: int = 1, horizontal: bool = True) -> int:
@@ -613,7 +618,21 @@ def inner_corner(buf: BufType, width: int, height: int, which: str = 'tl', level
     draw_vline(buf, width, y1, y2, width // 2 + (xd * hgap), level)
 
 
-def shade(buf: BufType, width: int, height: int, light: bool = False, invert: bool = False) -> None:
+def shade(buf: BufType, width: int, height: int, level: Literal["light", "medium", "dark"]) -> None:
+    if shade_transparency:
+        if level == "light":
+            const = 64
+        elif level == "medium":
+            const = 128
+        else:
+            const = 192
+
+        for i in range(len(buf)):
+            buf[i] = const
+        return
+
+    light = level == "light"
+    invert = level == "dark"
     square_sz = max(1, width // 12)
     number_of_rows = height // square_sz
     number_of_cols = width // square_sz
@@ -881,9 +900,9 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '▎': [p(eight_block, which=(0, 1))],
     '▏': [p(eight_bar)],
     '▐': [p(eight_block, which=(4, 5, 6, 7))],
-    '░': [p(shade, light=True)],
-    '▒': [shade],
-    '▓': [p(shade, invert=True)],
+    '░': [p(shade, level="light")],
+    '▒': [p(shade, level="medium")],
+    '▓': [p(shade, level="dark")],
     '▔': [p(eight_bar, horizontal=True)],
     '▕': [p(eight_bar, which=7)],
     '▖': [p(quad, y=1)],

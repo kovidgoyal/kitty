@@ -236,6 +236,14 @@ the curl will peak once per character, with dense twice.
 '''
     )
 
+opt('shade_transparency', 'no',
+    option_type='to_bool',
+    long_text='''
+Whether to render shade characters like :code:`░▒▓` as solid blocks with some
+transparency or using a "dither" effect.
+'''
+    )
+
 opt('text_composition_strategy', 'platform',
     ctype='!text_composition_strategy',
     long_text='''

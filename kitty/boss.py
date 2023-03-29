@@ -2375,7 +2375,7 @@ class Boss:
         patch_global_colors(spec, configured)
 
     def apply_new_options(self, opts: Options) -> None:
-        from .fonts.box_drawing import set_scale
+        from .fonts.box_drawing import set_scale, set_shade_transparency
         # Update options storage
         set_options(opts, is_wayland(), self.args.debug_rendering, self.args.debug_font_fallback)
         apply_options_update()
@@ -2383,6 +2383,7 @@ class Boss:
         set_default_env(opts.env.copy())
         # Update font data
         set_scale(opts.box_drawing_scale)
+        set_shade_transparency(opts.shade_transparency)
         from .fonts.render import set_font_family
         set_font_family(opts, debug_font_matching=self.args.debug_font_fallback)
         for os_window_id, tm in self.os_window_map.items():

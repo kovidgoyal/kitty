@@ -44,7 +44,7 @@ from .fast_data_types import (
     set_default_window_icon,
     set_options,
 )
-from .fonts.box_drawing import set_scale
+from .fonts.box_drawing import set_scale, set_shade_transparency
 from .fonts.render import set_font_family
 from .options.types import Options
 from .options.utils import DELETE_ENV_VAR
@@ -269,6 +269,7 @@ class AppRunner:
 
     def __call__(self, opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
         set_scale(opts.box_drawing_scale)
+        set_shade_transparency(opts.shade_transparency)
         set_options(opts, is_wayland(), args.debug_rendering, args.debug_font_fallback)
         try:
             set_font_family(opts, debug_font_matching=args.debug_font_fallback)
