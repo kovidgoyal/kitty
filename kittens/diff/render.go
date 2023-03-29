@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"kitty/tools/tui/graphics"
+	"kitty/tools/tui/loop"
 	"kitty/tools/tui/sgr"
 	"kitty/tools/utils"
 	"kitty/tools/utils/style"
@@ -22,8 +23,8 @@ type LineType int
 
 const (
 	TITLE_LINE LineType = iota
-	FULL_TITLE_LINE
 	CHANGE_LINE
+	CONTEXT_LINE
 	HUNK_TITLE_LINE
 	IMAGE_LINE
 	EMPTY_LINE
@@ -31,19 +32,86 @@ const (
 
 type Reference struct {
 	path    string
-	linenum int
+	linenum int // 1 based
+}
+
+type HalfScreenLine struct {
+	marked_up_margin_text string
+	marked_up_text        string
+	is_filler             bool
+}
+
+type ScreenLine struct {
+	left, right HalfScreenLine
 }
 
 type LogicalLine struct {
-	src                     Reference
-	line_type               LineType
-	screen_lines            []string
-	is_change_start         bool
-	left_image, right_image struct {
+	line_type                       LineType
+	screen_lines                    []*ScreenLine
+	is_full_width                   bool
+	is_change_start                 bool
+	left_reference, right_reference Reference
+	left_image, right_image         struct {
 		key   string
 		count int
 	}
 	image_lines_offset int
+}
+
+func (self *LogicalLine) render_screen_line(n int, lp *loop.Loop, margin_size, columns int) {
+	if n >= len(self.screen_lines) {
+		return
+	}
+	sl := self.screen_lines[n]
+	available_cols := columns/2 - margin_size
+	if self.is_full_width {
+		available_cols = columns - margin_size
+	}
+	left_margin := place_in(sl.left.marked_up_margin_text, margin_size)
+	left_text := place_in(sl.left.marked_up_text, available_cols)
+	if sl.left.is_filler {
+		left_margin = format_as_sgr.margin_filler + left_margin
+		left_text = format_as_sgr.filler + left_text
+	} else {
+		switch self.line_type {
+		case CHANGE_LINE:
+			left_margin = format_as_sgr.removed_margin + left_margin
+			left_text = format_as_sgr.removed + left_text
+		case HUNK_TITLE_LINE:
+			left_margin = format_as_sgr.hunk_margin + left_margin
+			left_text = format_as_sgr.hunk + left_text
+		case TITLE_LINE:
+		default:
+			left_margin = format_as_sgr.margin + left_margin
+		}
+	}
+	lp.QueueWriteString(left_margin + "\x1b[m")
+	lp.QueueWriteString(left_text)
+	if self.is_full_width {
+		return
+	}
+	right_margin := place_in(sl.right.marked_up_margin_text, margin_size)
+	right_text := place_in(sl.right.marked_up_text, available_cols)
+	if sl.right.is_filler {
+		right_margin = format_as_sgr.margin_filler + right_margin
+		right_text = format_as_sgr.filler + right_text
+	} else {
+		switch self.line_type {
+		case CHANGE_LINE:
+			right_margin = format_as_sgr.added_margin + right_margin
+			right_text = format_as_sgr.added + right_text
+		case HUNK_TITLE_LINE:
+			right_margin = format_as_sgr.hunk_margin + right_margin
+			right_text = format_as_sgr.hunk + right_text
+		case TITLE_LINE:
+		default:
+			right_margin = format_as_sgr.margin + right_margin
+		}
+	}
+	lp.QueueWriteString("\x1b[m\r")
+	lp.MoveCursorHorizontally(available_cols + margin_size)
+	lp.QueueWriteString(right_margin + "\x1b[m")
+	lp.QueueWriteString(right_text)
 }
 
 func (self *LogicalLine) IncrementScrollPosBy(pos *ScrollPos, amt int) (delta int) {
@@ -53,10 +121,6 @@ func (self *LogicalLine) IncrementScrollPosBy(pos *ScrollPos, amt int) (delta in
 		pos.screen_line = npos
 	}
 	return
-}
-
-func join_half_lines(left, right string) string {
-	return left + "\x1b[m" + right
 }
 
 func fit_in(text string, count int) string {
@@ -70,12 +134,10 @@ func fit_in(text string, count int) string {
 	return truncated + `…`
 }
 
-const FILLER_CHAR = "\ufffd"
-
 func fill_in(text string, sz int) string {
 	w := wcswidth.Stringwidth(text)
 	if w < sz {
-		text += strings.Repeat(FILLER_CHAR, (sz - w))
+		text += strings.Repeat(` `, (sz - w))
 	}
 	return text
 }
@@ -84,37 +146,42 @@ func place_in(text string, sz int) string {
 	return fill_in(fit_in(text, sz), sz)
 }
 
-var title_format, text_format, margin_format, added_format, removed_format, added_margin_format, removed_margin_format, filler_format, margin_filler_format, hunk_margin_format, hunk_format, statusline_format, added_count_format, removed_count_format, message_format, selection_format func(...any) string
-var selection_sgr string
+var format_as_sgr struct {
+	title, margin, added, removed, added_margin, removed_margin, filler, margin_filler, hunk_margin, hunk, selection string
+}
+
+var statusline_format, added_count_format, removed_count_format, message_format, selection_format func(...any) string
 
 func create_formatters() {
 	ctx := style.Context{AllowEscapeCodes: true}
-	text_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Background.AsRGBSharp()))
-	filler_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Filler_bg.AsRGBSharp()))
-	if conf.Margin_filler_bg.IsSet {
-		margin_filler_format = ctx.SprintFunc("bg=" + conf.Margin_filler_bg.Color.AsRGBSharp())
-	} else {
-		margin_filler_format = ctx.SprintFunc("bg=" + conf.Filler_bg.AsRGBSharp())
+	only_open := func(x string) string {
+		ans := ctx.SprintFunc(x)("|")
+		ans, _, _ = strings.Cut(ans, "|")
+		return ans
 	}
-	added_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Added_bg.AsRGBSharp()))
-	added_margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Added_margin_bg.AsRGBSharp()))
-	removed_format = ctx.SprintFunc(fmt.Sprintf("bg=%s", conf.Removed_bg.AsRGBSharp()))
-	removed_margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Removed_margin_bg.AsRGBSharp()))
-	title_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s bold", conf.Title_fg.AsRGBSharp(), conf.Title_bg.AsRGBSharp()))
-	margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Margin_bg.AsRGBSharp()))
+	format_as_sgr.filler = only_open("bg=" + conf.Filler_bg.AsRGBSharp())
+	if conf.Margin_filler_bg.IsSet {
+		format_as_sgr.margin_filler = only_open("bg=" + conf.Margin_filler_bg.Color.AsRGBSharp())
+	} else {
+		format_as_sgr.margin_filler = only_open("bg=" + conf.Filler_bg.AsRGBSharp())
+	}
+	format_as_sgr.added = only_open("bg=" + conf.Added_bg.AsRGBSharp())
+	format_as_sgr.added_margin = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Added_margin_bg.AsRGBSharp()))
+	format_as_sgr.removed = only_open("bg=" + conf.Removed_bg.AsRGBSharp())
+	format_as_sgr.removed_margin = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Removed_margin_bg.AsRGBSharp()))
+	format_as_sgr.title = only_open(fmt.Sprintf("fg=%s bg=%s bold", conf.Title_fg.AsRGBSharp(), conf.Title_bg.AsRGBSharp()))
+	format_as_sgr.margin = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Margin_bg.AsRGBSharp()))
+	format_as_sgr.hunk = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_bg.AsRGBSharp()))
+	format_as_sgr.hunk_margin = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_margin_bg.AsRGBSharp()))
 	statusline_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", conf.Margin_fg.AsRGBSharp()))
 	added_count_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", conf.Highlight_added_bg.AsRGBSharp()))
 	removed_count_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", conf.Highlight_removed_bg.AsRGBSharp()))
-	hunk_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_bg.AsRGBSharp()))
-	hunk_margin_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_margin_bg.AsRGBSharp()))
 	message_format = ctx.SprintFunc("bold")
 	if conf.Select_fg.IsSet {
-		selection_format = ctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s", conf.Select_fg.Color.AsRGBSharp(), conf.Select_bg.AsRGBSharp()))
+		format_as_sgr.selection = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Select_fg.Color.AsRGBSharp(), conf.Select_bg.AsRGBSharp()))
 	} else {
-		selection_format = ctx.SprintFunc("bg=" + conf.Select_bg.AsRGBSharp())
+		format_as_sgr.selection = only_open("bg=" + conf.Select_bg.AsRGBSharp())
 	}
-	selection_sgr, _, _ = strings.Cut(selection_format("|"), "|")
-	selection_sgr = selection_sgr[2 : len(selection_sgr)-1]
 }
 
 func center_span(ltype string, offset, size int) *sgr.Span {
@@ -130,25 +197,28 @@ func center_span(ltype string, offset, size int) *sgr.Span {
 
 func title_lines(left_path, right_path string, columns, margin_size int, ans []*LogicalLine) []*LogicalLine {
 	left_name, right_name := path_name_map[left_path], path_name_map[right_path]
-	name := ""
-	m := strings.Repeat(FILLER_CHAR, margin_size)
-	ll := LogicalLine{line_type: TITLE_LINE, src: Reference{path: left_path, linenum: 0}}
-	if right_name != "" && right_name != left_name {
-		n1 := fit_in(m+sanitize(left_name), columns/2-margin_size)
-		n1 = place_in(n1, columns/2)
-		n2 := fit_in(m+sanitize(right_name), columns/2-margin_size)
-		n2 = place_in(n2, columns/2)
-		name = n1 + n2
-	} else {
-		name = place_in(m+sanitize(left_name), columns)
-		ll.line_type = FULL_TITLE_LINE
+	available_cols := columns/2 - margin_size
+	ll := LogicalLine{
+		line_type:      TITLE_LINE,
+		left_reference: Reference{path: left_path}, right_reference: Reference{path: right_path},
 	}
-	l1 := ll
-	l1.screen_lines = []string{title_format(name)}
+	sl := ScreenLine{}
+	if right_name != "" && right_name != left_name {
+		sl.left.marked_up_text = format_as_sgr.title + fit_in(sanitize(left_name), available_cols)
+		sl.right.marked_up_text = format_as_sgr.title + fit_in(sanitize(right_name), available_cols)
+	} else {
+		sl.left.marked_up_text = format_as_sgr.title + fit_in(sanitize(left_name), columns-margin_size)
+		ll.is_full_width = true
+	}
 	l2 := ll
 	l2.line_type = EMPTY_LINE
-	l2.screen_lines = []string{title_format(strings.Repeat("━", columns))}
-	return append(ans, &l1, &l2)
+	ll.screen_lines = append(ll.screen_lines, &sl)
+	sl2 := ScreenLine{}
+	sl2.left.marked_up_margin_text = "\x1b[m" + strings.Repeat("━", margin_size)
+	sl2.left.marked_up_text = strings.Repeat("━", columns-margin_size)
+	l2.is_full_width = true
+	l2.screen_lines = append(l2.screen_lines, &sl2)
+	return append(ans, &ll, &l2)
 }
 
 type LogicalLines struct {
@@ -157,14 +227,15 @@ type LogicalLines struct {
 }
 
 func (self *LogicalLines) At(i int) *LogicalLine { return self.lines[i] }
-func (self *LogicalLines) ScreenLineAt(pos ScrollPos) string {
+
+func (self *LogicalLines) ScreenLineAt(pos ScrollPos) *ScreenLine {
 	if pos.logical_line < len(self.lines) && pos.logical_line >= 0 {
 		line := self.lines[pos.logical_line]
 		if pos.screen_line < len(line.screen_lines) && pos.screen_line >= 0 {
 			return self.lines[pos.logical_line].screen_lines[pos.screen_line]
 		}
 	}
-	return ""
+	return nil
 }
 func (self *LogicalLines) Len() int { return len(self.lines) }
 
@@ -249,28 +320,10 @@ func human_readable(size int64) string {
 	return s + " " + suffix
 }
 
-func render_diff_line(number, text, ltype string, margin_size int, available_cols int) string {
-	m, c := margin_format, text_format
-	switch ltype {
-	case `filler`:
-		m = margin_filler_format
-		c = filler_format
-	case `remove`:
-		m = removed_margin_format
-		c = removed_format
-	case `add`:
-		m = added_margin_format
-		c = added_format
-	}
-	margin := m(place_in(number, margin_size))
-	content := c(fill_in(text, available_cols))
-	return margin + content
-}
-
 func image_lines(left_path, right_path string, screen_size screen_size, margin_size int, image_size graphics.Size, ans []*LogicalLine) ([]*LogicalLine, error) {
 	columns := screen_size.columns
 	available_cols := columns/2 - margin_size
-	ll, err := first_binary_line(left_path, right_path, columns, margin_size, func(path string, formatter, margin_formatter formatter) (string, error) {
+	ll, err := first_binary_line(left_path, right_path, columns, margin_size, func(path string) (string, error) {
 		sz, err := size_for_path(path)
 		if err != nil {
 			return "", err
@@ -280,8 +333,7 @@ func image_lines(left_path, right_path string, screen_size screen_size, margin_s
 		if res.Width > -1 {
 			text = fmt.Sprintf("Dimensions: %dx%d %s", res.Width, res.Height, text)
 		}
-		text = place_in(text, available_cols)
-		return margin_formatter(strings.Repeat(FILLER_CHAR, margin_size)) + formatter(text), err
+		return text, nil
 	})
 
 	if err != nil {
@@ -289,96 +341,100 @@ func image_lines(left_path, right_path string, screen_size screen_size, margin_s
 	}
 	ll.image_lines_offset = len(ll.screen_lines)
 
-	do_side := func(path string, filler string) []string {
+	do_side := func(path string) []string {
 		if path == "" {
 			return nil
 		}
 		sz, err := image_collection.GetSizeIfAvailable(path, image_size)
 		if err == nil {
 			count := int(math.Ceil(float64(sz.Height) / float64(screen_size.cell_height)))
-			return utils.Repeat(filler, count)
+			return utils.Repeat("", count)
 		}
 		if errors.Is(err, graphics.ErrNotFound) {
-			return style.WrapTextAsLines("Loading image...", "", available_cols)
+			return splitlines("Loading image...", available_cols)
 		}
-		return style.WrapTextAsLines(fmt.Sprintf("Failed to load image: %s", err), "", available_cols)
+		return splitlines(fmt.Sprintf("Failed to load image: %s", err), available_cols)
 	}
-	left_lines := do_side(left_path, removed_format(strings.Repeat(` `, available_cols)))
+	left_lines := do_side(left_path)
 	if ll.left_image.count = len(left_lines); ll.left_image.count > 0 {
 		ll.left_image.key = left_path
 	}
-	right_lines := do_side(right_path, added_format(strings.Repeat(` `, available_cols)))
+	right_lines := do_side(right_path)
 	if ll.right_image.count = len(right_lines); ll.right_image.count > 0 {
 		ll.right_image.key = right_path
 	}
-	filler := filler_format(strings.Repeat(FILLER_CHAR, available_cols))
-	m := strings.Repeat(FILLER_CHAR, margin_size)
-	get_line := func(i int, which []string, margin_fmt func(...any) string) string {
-		if i < len(which) {
-			return margin_fmt(m) + which[i]
-		}
-		return margin_filler_format(m) + filler
-	}
 	for i := 0; i < utils.Max(len(left_lines), len(right_lines)); i++ {
-		left, right := get_line(i, left_lines, removed_margin_format), get_line(i, right_lines, added_margin_format)
-		ll.screen_lines = append(ll.screen_lines, join_half_lines(left, right))
+		sl := ScreenLine{}
+		if i < len(left_lines) {
+			sl.left.marked_up_text = left_lines[i]
+		}
+		if i < len(right_lines) {
+			sl.right.marked_up_text = right_lines[i]
+		}
+		ll.screen_lines = append(ll.screen_lines, &sl)
 	}
-
 	ll.line_type = IMAGE_LINE
 	return append(ans, ll), nil
 }
 
 type formatter = func(...any) string
 
-func first_binary_line(left_path, right_path string, columns, margin_size int, renderer func(path string, formatter, margin_formatter formatter) (string, error)) (*LogicalLine, error) {
+func first_binary_line(left_path, right_path string, columns, margin_size int, renderer func(path string) (string, error)) (*LogicalLine, error) {
 	available_cols := columns/2 - margin_size
-	line := ""
+	ll := LogicalLine{
+		is_change_start: true, line_type: CHANGE_LINE,
+		left_reference: Reference{path: left_path}, right_reference: Reference{path: right_path},
+	}
 	if left_path == "" {
-		filler := render_diff_line(``, ``, `filler`, margin_size, available_cols)
-		r, err := renderer(right_path, added_format, added_margin_format)
+		line, err := renderer(right_path)
 		if err != nil {
 			return nil, err
 		}
-		line = join_half_lines(filler, r)
+		for _, x := range splitlines(line, available_cols) {
+			sl := ScreenLine{}
+			sl.right.marked_up_text = x
+			ll.screen_lines = append(ll.screen_lines, &sl)
+		}
 	} else if right_path == "" {
-		filler := render_diff_line(``, ``, `filler`, margin_size, available_cols)
-		l, err := renderer(left_path, removed_format, removed_margin_format)
+		line, err := renderer(left_path)
 		if err != nil {
 			return nil, err
 		}
-		line = join_half_lines(l, filler)
+		for _, x := range splitlines(line, available_cols) {
+			sl := ScreenLine{}
+			sl.left.marked_up_text = x
+			ll.screen_lines = append(ll.screen_lines, &sl)
+		}
 	} else {
-		l, err := renderer(left_path, removed_format, removed_margin_format)
+		l, err := renderer(left_path)
 		if err != nil {
 			return nil, err
 		}
-		r, err := renderer(right_path, added_format, added_margin_format)
+		r, err := renderer(right_path)
 		if err != nil {
 			return nil, err
 		}
-		line = join_half_lines(l, r)
-	}
-	ref := left_path
-	if ref == "" {
-		ref = right_path
-	}
-	ll := LogicalLine{is_change_start: true, line_type: CHANGE_LINE, src: Reference{path: ref, linenum: 0}, screen_lines: []string{line}}
-	if left_path == "" {
-		ll.src.path = right_path
+		left_lines, right_lines := splitlines(l, available_cols), splitlines(r, available_cols)
+		for i := 0; i < utils.Max(len(left_lines), len(right_lines)); i++ {
+			sl := ScreenLine{}
+			if i < len(left_lines) {
+				sl.left.marked_up_text = left_lines[i]
+			}
+			if i < len(right_lines) {
+				sl.right.marked_up_text = right_lines[i]
+			}
+		}
 	}
 	return &ll, nil
 }
 
 func binary_lines(left_path, right_path string, columns, margin_size int, ans []*LogicalLine) (ans2 []*LogicalLine, err error) {
-	available_cols := columns/2 - margin_size
-	ll, err := first_binary_line(left_path, right_path, columns, margin_size, func(path string, formatter, margin_formatter formatter) (string, error) {
+	ll, err := first_binary_line(left_path, right_path, columns, margin_size, func(path string) (string, error) {
 		sz, err := size_for_path(path)
 		if err != nil {
 			return "", err
 		}
-		text := fmt.Sprintf("Binary file: %s", human_readable(sz))
-		text = place_in(text, available_cols)
-		return margin_formatter(strings.Repeat(FILLER_CHAR, margin_size)) + formatter(text), err
+		return fmt.Sprintf("Binary file: %s", human_readable(sz)), nil
 	})
 
 	if err != nil {
@@ -391,31 +447,30 @@ type DiffData struct {
 	left_path, right_path       string
 	available_cols, margin_size int
 
-	left_lines, right_lines                          []string
-	filler_line, left_filler_line, right_filler_line string
+	left_lines, right_lines []string
 }
 
-func hunk_title(hunk_num int, hunk *Hunk, margin_size, available_cols int) string {
-	m := hunk_margin_format(strings.Repeat(FILLER_CHAR, margin_size))
-	t := fmt.Sprintf("@@ -%d,%d +%d,%d @@ %s", hunk.left_start+1, hunk.left_count, hunk.right_start+1, hunk.right_count, hunk.title)
-	return m + hunk_format(place_in(t, available_cols))
+func hunk_title(hunk *Hunk) string {
+	return fmt.Sprintf("@@ -%d,%d +%d,%d @@ %s", hunk.left_start+1, hunk.left_count, hunk.right_start+1, hunk.right_count, hunk.title)
 }
 
 func lines_for_context_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_num int, ans []*LogicalLine) []*LogicalLine {
 	for i := 0; i < chunk.left_count; i++ {
 		left_line_number := chunk.left_start + i
 		right_line_number := chunk.right_start + i
-		ll := LogicalLine{line_type: CHANGE_LINE, src: Reference{path: data.left_path, linenum: left_line_number}}
+		ll := LogicalLine{line_type: CONTEXT_LINE,
+			left_reference:  Reference{path: data.left_path, linenum: left_line_number + 1},
+			right_reference: Reference{path: data.right_path, linenum: right_line_number + 1},
+		}
 		left_line_number_s := strconv.Itoa(left_line_number + 1)
 		right_line_number_s := strconv.Itoa(right_line_number + 1)
 		for _, text := range splitlines(data.left_lines[left_line_number], data.available_cols) {
-			line := render_diff_line(left_line_number_s, text, `context`, data.margin_size, data.available_cols)
-			if right_line_number_s == left_line_number_s {
-				line = join_half_lines(line, line)
-			} else {
-				line = join_half_lines(line, render_diff_line(right_line_number_s, text, `context`, data.margin_size, data.available_cols))
+			left_line := HalfScreenLine{left_line_number_s, text, false}
+			right_line := left_line
+			if right_line_number_s != left_line_number_s {
+				right_line = HalfScreenLine{right_line_number_s, text, false}
 			}
-			ll.screen_lines = append(ll.screen_lines, line)
+			ll.screen_lines = append(ll.screen_lines, &ScreenLine{left_line, right_line})
 			left_line_number_s, right_line_number_s = "", ""
 		}
 		ans = append(ans, &ll)
@@ -427,7 +482,7 @@ func splitlines(text string, width int) []string {
 	return style.WrapTextAsLines(text, "", width)
 }
 
-func render_half_line(line_number int, line, ltype string, margin_size, available_cols int, center Center, ans []string) []string {
+func render_half_line(line_number int, line, ltype string, available_cols int, center Center, ans []HalfScreenLine) []HalfScreenLine {
 	size := center.left_size
 	if ltype != "remove" {
 		size = center.right_size
@@ -438,7 +493,7 @@ func render_half_line(line_number int, line, ltype string, margin_size, availabl
 	}
 	lnum := strconv.Itoa(line_number + 1)
 	for _, sc := range splitlines(line, available_cols) {
-		ans = append(ans, render_diff_line(lnum, sc, ltype, margin_size, available_cols))
+		ans = append(ans, HalfScreenLine{lnum, sc, false})
 		lnum = ""
 	}
 	return ans
@@ -446,43 +501,47 @@ func render_half_line(line_number int, line, ltype string, margin_size, availabl
 
 func lines_for_diff_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_num int, ans []*LogicalLine) []*LogicalLine {
 	common := utils.Min(chunk.left_count, chunk.right_count)
-	ll, rl := make([]string, 0, 32), make([]string, 0, 32)
+	ll, rl := make([]HalfScreenLine, 0, 32), make([]HalfScreenLine, 0, 32)
 	for i := 0; i < utils.Max(chunk.left_count, chunk.right_count); i++ {
 		ll, rl = ll[:0], rl[:0]
-		ref_ln, ref_path := 0, ""
 		var center Center
+		left_lnum, right_lnum := 0, 0
 		if i < len(chunk.centers) {
 			center = chunk.centers[i]
 		}
 		if i < chunk.left_count {
-			ref_path = data.left_path
-			ref_ln = chunk.left_start + i
-			ll = render_half_line(ref_ln, data.left_lines[ref_ln], "remove", data.margin_size, data.available_cols, center, ll)
+			left_lnum = chunk.left_start + i
+			ll = render_half_line(left_lnum, data.left_lines[left_lnum], "remove", data.available_cols, center, ll)
+			left_lnum++
 		}
 
 		if i < chunk.right_count {
-			ref_path = data.right_path
-			ref_ln = chunk.right_start + i
-			rl = render_half_line(ref_ln, data.right_lines[ref_ln], "add", data.margin_size, data.available_cols, center, rl)
+			right_lnum = chunk.right_start + i
+			rl = render_half_line(right_lnum, data.right_lines[right_lnum], "add", data.available_cols, center, rl)
+			right_lnum++
 		}
 
 		if i < common {
 			extra := len(ll) - len(rl)
 			if extra < 0 {
-				ll = append(ll, utils.Repeat(data.left_filler_line, -extra)...)
+				ll = append(ll, utils.Repeat(HalfScreenLine{}, -extra)...)
 			} else if extra > 0 {
-				rl = append(rl, utils.Repeat(data.right_filler_line, extra)...)
+				rl = append(rl, utils.Repeat(HalfScreenLine{}, extra)...)
 			}
 		} else {
 			if len(ll) > 0 {
-				rl = append(rl, utils.Repeat(data.filler_line, len(ll))...)
+				rl = append(rl, utils.Repeat(HalfScreenLine{is_filler: true}, len(ll))...)
 			} else if len(rl) > 0 {
-				ll = append(ll, utils.Repeat(data.filler_line, len(rl))...)
+				ll = append(ll, utils.Repeat(HalfScreenLine{is_filler: true}, len(rl))...)
 			}
 		}
-		logline := LogicalLine{line_type: CHANGE_LINE, src: Reference{path: ref_path, linenum: ref_ln}, is_change_start: i == 0}
+		logline := LogicalLine{
+			line_type: CHANGE_LINE, is_change_start: i == 0,
+			left_reference:  Reference{path: data.left_path, linenum: left_lnum},
+			right_reference: Reference{path: data.left_path, linenum: right_lnum},
+		}
 		for l := 0; l < len(ll); l++ {
-			logline.screen_lines = append(logline.screen_lines, join_half_lines(ll[l], rl[l]))
+			logline.screen_lines = append(logline.screen_lines, &ScreenLine{left: ll[l], right: rl[l]})
 		}
 		ans = append(ans, &logline)
 	}
@@ -490,12 +549,20 @@ func lines_for_diff_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_num 
 }
 
 func lines_for_diff(left_path string, right_path string, patch *Patch, columns, margin_size int, ans []*LogicalLine) (result []*LogicalLine, err error) {
-	ht := LogicalLine{line_type: HUNK_TITLE_LINE, src: Reference{path: left_path}}
+	ht := LogicalLine{
+		line_type:      HUNK_TITLE_LINE,
+		left_reference: Reference{path: left_path}, right_reference: Reference{path: right_path},
+		is_full_width: true,
+	}
 	if patch.Len() == 0 {
-		ht.screen_lines = []string{"The files are identical"}
+		for _, line := range splitlines("The files are identical", columns-margin_size) {
+			sl := ScreenLine{}
+			sl.left.marked_up_text = line
+			ht.screen_lines = append(ht.screen_lines, &sl)
+		}
 		ht.line_type = EMPTY_LINE
-		ans = append(ans, &ht)
-		return ans, nil
+		ht.is_full_width = true
+		return append(ans, &ht), nil
 	}
 	available_cols := columns/2 - margin_size
 	data := DiffData{left_path: left_path, right_path: right_path, available_cols: available_cols, margin_size: margin_size}
@@ -511,14 +578,16 @@ func lines_for_diff(left_path string, right_path string, patch *Patch, columns, 
 			return
 		}
 	}
-	data.filler_line = render_diff_line("", "", "filler", margin_size, available_cols)
-	data.left_filler_line = render_diff_line("", "", "remove", margin_size, available_cols)
-	data.right_filler_line = render_diff_line("", "", "add", margin_size, available_cols)
 
 	for hunk_num, hunk := range patch.all_hunks {
 		htl := ht
-		htl.src.linenum = hunk.left_start
-		htl.screen_lines = []string{hunk_title(hunk_num, hunk, margin_size, columns-margin_size)}
+		htl.left_reference.linenum = hunk.left_start + 1
+		htl.right_reference.linenum = hunk.right_start + 1
+		for _, line := range splitlines(hunk_title(hunk), columns-margin_size) {
+			sl := ScreenLine{}
+			sl.left.marked_up_text = line
+			htl.screen_lines = append(htl.screen_lines, &sl)
+		}
 		ans = append(ans, &htl)
 		for cnum, chunk := range hunk.chunks {
 			if chunk.is_context {
@@ -534,40 +603,51 @@ func lines_for_diff(left_path string, right_path string, patch *Patch, columns, 
 func all_lines(path string, columns, margin_size int, is_add bool, ans []*LogicalLine) ([]*LogicalLine, error) {
 	available_cols := columns/2 - margin_size
 	ltype := `add`
+	ll := LogicalLine{line_type: CHANGE_LINE}
 	if !is_add {
 		ltype = `remove`
+		ll.left_reference.path = path
+	} else {
+		ll.right_reference.path = path
 	}
 	lines, err := highlighted_lines_for_path(path)
 	if err != nil {
 		return nil, err
 	}
-	filler := render_diff_line(``, ``, `filler`, margin_size, available_cols)
-	msg_written := false
-
-	ll := LogicalLine{src: Reference{path: path}, line_type: CHANGE_LINE}
+	var msg_lines []string
+	if is_add {
+		msg_lines = splitlines(`This file was added`, available_cols)
+	} else {
+		msg_lines = splitlines(`This file was removed`, available_cols)
+	}
 	for line_number, line := range lines {
-		hlines := make([]string, 0, 8)
-		hlines = render_half_line(line_number, line, ltype, margin_size, available_cols, Center{}, hlines)
+		hlines := make([]HalfScreenLine, 0, 8)
+		hlines = render_half_line(line_number, line, ltype, available_cols, Center{}, hlines)
 		l := ll
-		l.src.linenum = line_number
+		if is_add {
+			l.right_reference.linenum = line_number + 1
+		} else {
+			l.left_reference.linenum = line_number + 1
+		}
 		l.is_change_start = line_number == 0
-		for _, hl := range hlines {
-			empty := filler
-			if !msg_written {
-				msg_written = true
-				msg := `This file was added`
-				if !is_add {
-					msg = `This file was removed`
-				}
-				empty = render_diff_line(``, msg, `filler`, margin_size, available_cols)
-			}
-			var text string
+		for i, hl := range hlines {
+			sl := ScreenLine{}
 			if is_add {
-				text = join_half_lines(empty, hl)
+				sl.right = hl
+				if i < len(msg_lines) {
+					sl.left.marked_up_text = msg_lines[i]
+				} else {
+					sl.left.is_filler = true
+				}
 			} else {
-				text = join_half_lines(hl, empty)
+				sl.left = hl
+				if i < len(msg_lines) {
+					sl.right.marked_up_text = msg_lines[i]
+				} else {
+					sl.right.is_filler = true
+				}
 			}
-			l.screen_lines = append(l.screen_lines, text)
+			l.screen_lines = append(l.screen_lines, &sl)
 		}
 		ans = append(ans, &l)
 	}
@@ -575,10 +655,13 @@ func all_lines(path string, columns, margin_size int, is_add bool, ans []*Logica
 }
 
 func rename_lines(path, other_path string, columns, margin_size int, ans []*LogicalLine) ([]*LogicalLine, error) {
-	m := strings.Repeat(FILLER_CHAR, margin_size)
-	ll := LogicalLine{src: Reference{path: path, linenum: 0}, line_type: CHANGE_LINE, is_change_start: true}
+	ll := LogicalLine{
+		left_reference: Reference{path: path}, right_reference: Reference{path: other_path},
+		line_type: CHANGE_LINE, is_change_start: true, is_full_width: true}
 	for _, line := range splitlines(fmt.Sprintf(`The file %s was renamed to %s`, sanitize(path_name_map[path]), sanitize(path_name_map[other_path])), columns-margin_size) {
-		ll.screen_lines = append(ll.screen_lines, m+line)
+		sl := ScreenLine{}
+		sl.right.marked_up_text = line
+		ll.screen_lines = append(ll.screen_lines, &sl)
 	}
 	return append(ans, &ll), nil
 }
