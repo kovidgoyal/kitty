@@ -261,24 +261,13 @@ func (self hyperlink_state) as_escape_codes(for_close bool) string {
 }
 
 type line_builder struct {
-	buf                       []byte
-	last_text_pos, cursor_pos int
+	buf        []byte
+	cursor_pos int
 }
 
 func (self *line_builder) reset() string {
 	ans := string(self.buf)
-	if len(ans) > self.last_text_pos {
-		prefix := ans[:self.last_text_pos]
-		suffix := ans[self.last_text_pos:]
-		prefix = strings.TrimRightFunc(prefix, unicode.IsSpace)
-		if len(prefix) != self.last_text_pos {
-			ans = prefix + suffix
-		}
-	} else {
-		ans = strings.TrimRightFunc(ans, unicode.IsSpace)
-	}
 	self.buf = self.buf[:0]
-	self.last_text_pos = 0
 	self.cursor_pos = 0
 	return ans
 }
@@ -289,13 +278,11 @@ func (self *line_builder) has_space_for_width(w, max_width int) bool {
 
 func (self *line_builder) add_char(ch rune) {
 	self.buf = utf8.AppendRune(self.buf, ch)
-	self.last_text_pos = len(self.buf)
 	self.cursor_pos += wcswidth.Runewidth(ch)
 }
 
 func (self *line_builder) add_word(word []byte, width int) {
 	self.buf = append(self.buf, word...)
-	self.last_text_pos = len(self.buf)
 	self.cursor_pos += width
 }
 
@@ -349,27 +336,6 @@ func (self *word_builder) has_text() bool { return self.text_start_position != 0
 func (self *word_builder) recalculate_width() {
 	self.wcswidth.Reset()
 	self.wcswidth.Parse(self.buf)
-}
-
-func (self *word_builder) trim_leading_spaces() {
-	if self.is_empty() {
-		return
-	}
-	s := utils.UnsafeBytesToString(self.buf)
-	var before, after string
-	if self.text_start_position != 0 {
-		before, after = s[:self.text_start_position-1], s[self.text_start_position-1:]
-	} else {
-		after = s
-	}
-	q := strings.TrimLeftFunc(after, unicode.IsSpace)
-	if q != after {
-		self.buf = make([]byte, 0, len(s))
-		self.buf = append(self.buf, before...)
-		self.buf = append(self.buf, q...)
-		self.text_start_position = len(before) + 1
-		self.recalculate_width()
-	}
 }
 
 func (self *word_builder) add_rune(ch rune) (num_bytes_written int) {
@@ -433,7 +399,6 @@ func (self *wrapper) print_word() {
 	w := self.current_word.width()
 	if !self.current_line.has_space_for_width(w, self.width) {
 		self.end_current_line()
-		self.current_word.trim_leading_spaces()
 		w = self.current_word.width()
 	}
 	for _, e := range self.current_word.escape_codes {
@@ -454,6 +419,9 @@ func (self *wrapper) handle_rune(ch rune) error {
 		self.end_current_line()
 	} else if self.current_word.has_text() && ch != 0xa0 && unicode.IsSpace(ch) {
 		self.print_word()
+		if self.current_line.cursor_pos >= self.width {
+			self.end_current_line()
+		}
 		self.current_line.add_char(ch)
 	} else {
 		num_of_bytes_written := self.current_word.add_rune(ch)
