@@ -4,6 +4,8 @@ package tui
 
 import (
 	"fmt"
+	"time"
+
 	"kitty/tools/tty"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
@@ -52,6 +54,11 @@ type MouseSelection struct {
 	is_active               bool
 	min_y, max_y            int
 	cell_width, cell_height int
+	drag_scroll             struct {
+		timer_id    loop.IdType
+		pixel_gap   int
+		mouse_event loop.MouseEvent
+	}
 }
 
 func (self *MouseSelection) IsEmpty() bool  { return self.start.Equal(self.end) }
@@ -70,6 +77,7 @@ func (ms *MouseSelection) StartNewSelection(ev *loop.MouseEvent, line LinePos, m
 }
 
 func (ms *MouseSelection) Update(ev *loop.MouseEvent, line LinePos) {
+	ms.drag_scroll.timer_id = 0
 	if ms.is_active {
 		ms.end.x = utils.Max(line.MinX(), utils.Min(ev.Cell.X, line.MaxX()))
 		cell_start := ms.cell_width * ms.end.x
@@ -160,4 +168,40 @@ func (ms *MouseSelection) StartLine() LinePos {
 
 func (ms *MouseSelection) EndLine() LinePos {
 	return ms.end.line
+}
+
+func (ms *MouseSelection) OutOfVerticalBounds(ev *loop.MouseEvent) bool {
+	return ev.Pixel.Y < ms.min_y*ms.cell_height || ev.Pixel.Y > (ms.max_y+1)*ms.cell_height
+}
+
+func (ms *MouseSelection) DragScrollTick(timer_id loop.IdType, lp *loop.Loop, callback loop.TimerCallback, do_scroll func(int, *loop.MouseEvent) error) error {
+	if !ms.is_active || ms.drag_scroll.timer_id != timer_id || ms.drag_scroll.pixel_gap == 0 {
+		return nil
+	}
+	amt := 1
+	if ms.drag_scroll.pixel_gap < 0 {
+		amt *= -1
+	}
+	err := do_scroll(amt, &ms.drag_scroll.mouse_event)
+	if err == nil {
+		ms.drag_scroll.timer_id, _ = lp.AddTimer(50*time.Millisecond, false, callback)
+	}
+	return err
+}
+
+func (ms *MouseSelection) DragScroll(ev *loop.MouseEvent, lp *loop.Loop, callback loop.TimerCallback) {
+	if !ms.is_active {
+		return
+	}
+	upper := ms.min_y * ms.cell_height
+	lower := (ms.max_y + 1) * ms.cell_height
+	if ev.Pixel.Y < upper {
+		ms.drag_scroll.pixel_gap = ev.Pixel.Y - upper
+	} else if ev.Pixel.Y > lower {
+		ms.drag_scroll.pixel_gap = ev.Pixel.Y - lower
+	}
+	if ms.drag_scroll.timer_id == 0 && ms.drag_scroll.pixel_gap != 0 {
+		ms.drag_scroll.timer_id, _ = lp.AddTimer(50*time.Millisecond, false, callback)
+	}
+	ms.drag_scroll.mouse_event = *ev
 }
