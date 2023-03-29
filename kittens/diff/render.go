@@ -488,7 +488,7 @@ func lines_for_context_chunk(data *DiffData, hunk_num int, chunk *Chunk, chunk_n
 }
 
 func splitlines(text string, width int) []string {
-	return style.WrapTextAsLines(text, "", width)
+	return style.WrapTextAsLines(text, width, style.WrapOptions{})
 }
 
 func render_half_line(line_number int, line, ltype string, available_cols int, center Center, ans []HalfScreenLine) []HalfScreenLine {

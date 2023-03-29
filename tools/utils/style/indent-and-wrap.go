@@ -468,9 +468,12 @@ func (self *wrapper) wrap_text(text string) []string {
 	return self.lines
 }
 
-func new_wrapper(indent string, width int) *wrapper {
+func new_wrapper(opts WrapOptions, width int) *wrapper {
 	width = utils.Max(2, width)
-	ans := wrapper{indent: indent, width: width, indent_width: wcswidth.Stringwidth(indent)}
+	ans := wrapper{indent: opts.Indent, width: width, indent_width: wcswidth.Stringwidth(opts.Indent)}
+	if opts.Ignore_lines_containing != "" {
+		ans.ignore_lines_containing = utils.Splitlines(opts.Ignore_lines_containing)
+	}
 	ans.ep.HandleRune = ans.handle_rune
 	ans.ep.HandleCSI = ans.handle_csi
 	ans.ep.HandleOSC = ans.handle_osc
@@ -480,12 +483,17 @@ func new_wrapper(indent string, width int) *wrapper {
 	return &ans
 }
 
-func WrapTextAsLines(text string, indent string, width int, ignore_lines_containing ...string) []string {
-	w := new_wrapper(indent, width)
-	w.ignore_lines_containing = ignore_lines_containing
+type WrapOptions struct {
+	Ignore_lines_containing string
+	Trim_whitespace         bool // trim whitespace at the start and end of lines (start is after indent)
+	Indent                  string
+}
+
+func WrapTextAsLines(text string, width int, opts WrapOptions) []string {
+	w := new_wrapper(opts, width)
 	return w.wrap_text(text)
 }
 
-func WrapText(text string, indent string, width int, ignore_lines_containing ...string) string {
-	return strings.Join(WrapTextAsLines(text, indent, width, ignore_lines_containing...), "\n")
+func WrapText(text string, width int, opts WrapOptions) string {
+	return strings.Join(WrapTextAsLines(text, width, opts), "\n")
 }

@@ -339,7 +339,7 @@ func (self *handler) draw_screen() {
 	sz, _ := self.lp.ScreenSize()
 
 	write_help := func(x string) {
-		lines := style.WrapTextAsLines(x, "", int(sz.WidthCells)-1)
+		lines := style.WrapTextAsLines(x, int(sz.WidthCells)-1, style.WrapOptions{})
 		for _, line := range lines {
 			if line != "" {
 				writeln(self.dim_formatter(line))

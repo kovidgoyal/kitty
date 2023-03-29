@@ -9,28 +9,29 @@ import (
 
 func TestFormatWithIndent(t *testing.T) {
 
-	screen_width, indent := 0, ""
+	screen_width := 0
+	opts := WrapOptions{}
 
 	tx := func(text string, expected ...string) {
-		q := indent + strings.Join(expected, "")
-		actual := WrapText(text, indent, screen_width)
+		q := opts.Indent + strings.Join(expected, "")
+		actual := WrapText(text, screen_width, opts)
 		if actual != q {
 			t.Fatalf("\nFailed for: %#v\nexpected: %#v\nactual:   %#v", text, q, actual)
 		}
 	}
 
-	indent = ""
+	opts.Indent = ""
 	screen_width = 4
 	tx("one two", "one \ntwo")
 	tx("a  b", "a  b")
 	screen_width = 3
 	tx("one tw", "one\n tw")
 
-	indent = "__"
+	opts.Indent = "__"
 	screen_width = 11
 	tx("testing\n\ntwo", "testing\n\n__two")
 	tx("testing\n \ntwo", "testing\n__ \n__two")
-	a := strings.Repeat("a", screen_width-len(indent)-1)
+	a := strings.Repeat("a", screen_width-len(opts.Indent)-1)
 	tx(a+" b", a+" \n__b")
 
 	tx("123456 \x1b[31m789a", "123456 \n__\x1b[31m789a")
@@ -40,7 +41,8 @@ func TestFormatWithIndent(t *testing.T) {
 	tx(
 		"\x1b[31;4:3m\x1b]8;;XXX\x1b\\combined using\x1b]8;;\x1b\\ operators",
 		"\x1b[31;4:3m\x1b]8;;XXX\x1b\\combined \n\x1b[4:0;39m\x1b]8;;\x1b\\__\x1b[4:3;31m\x1b]8;;XXX\x1b\\using\x1b]8;;\x1b\\ \n\x1b[4:0;39m__\x1b[4:3;31moperators")
-	indent = ""
+
+	opts.Indent = ""
 	screen_width = 3
 	tx("one", "one")
 	tx("four", "fou\nr")

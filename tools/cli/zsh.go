@@ -86,7 +86,7 @@ func (self *Match) FormatForCompletionList(max_word_len int, f *markup.Context, 
 		word += strings.Repeat(" ", max_word_len-word_len)
 	}
 	if wcswidth.Stringwidth(desc) > max_desc_len {
-		desc = style.WrapTextAsLines(desc, "", max_desc_len-2)[0] + "…"
+		desc = style.WrapTextAsLines(desc, max_desc_len-2, style.WrapOptions{})[0] + "…"
 	}
 	if multiline {
 		return word + "\n" + strings.Repeat(" ", max_word_len+2) + desc
