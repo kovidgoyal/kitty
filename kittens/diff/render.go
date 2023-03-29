@@ -59,7 +59,7 @@ type LogicalLine struct {
 }
 
 func (self *LogicalLine) render_screen_line(n int, lp *loop.Loop, margin_size, columns int) {
-	if n >= len(self.screen_lines) {
+	if n >= len(self.screen_lines) || n < 0 {
 		return
 	}
 	sl := self.screen_lines[n]
@@ -147,7 +147,7 @@ func place_in(text string, sz int) string {
 }
 
 var format_as_sgr struct {
-	title, margin, added, removed, added_margin, removed_margin, filler, margin_filler, hunk_margin, hunk, selection string
+	title, margin, added, removed, added_margin, removed_margin, filler, margin_filler, hunk_margin, hunk, selection, search string
 }
 
 var statusline_format, added_count_format, removed_count_format, message_format, selection_format func(...any) string
@@ -173,6 +173,7 @@ func create_formatters() {
 	format_as_sgr.margin = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Margin_bg.AsRGBSharp()))
 	format_as_sgr.hunk = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_bg.AsRGBSharp()))
 	format_as_sgr.hunk_margin = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Margin_fg.AsRGBSharp(), conf.Hunk_margin_bg.AsRGBSharp()))
+	format_as_sgr.search = only_open(fmt.Sprintf("fg=%s bg=%s", conf.Search_fg.AsRGBSharp(), conf.Search_bg.AsRGBSharp()))
 	statusline_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", conf.Margin_fg.AsRGBSharp()))
 	added_count_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", conf.Highlight_added_bg.AsRGBSharp()))
 	removed_count_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", conf.Highlight_removed_bg.AsRGBSharp()))

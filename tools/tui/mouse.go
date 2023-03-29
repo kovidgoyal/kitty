@@ -140,7 +140,7 @@ func (ms *MouseSelection) LineBounds(line_pos LinePos) (start_x, end_x int) {
 	return -1, -1
 }
 
-func FormatPartOfLine(sgr string, start_x, end_x, y int) string {
+func FormatPartOfLine(sgr string, start_x, end_x, y int) string { // uses zero based indices
 	// DECCARA used to set formatting in specified region using zero based indexing
 	return fmt.Sprintf("\x1b[%d;%d;%d;%d;%s$r", y+1, start_x+1, y+1, end_x+1, sgr)
 }
