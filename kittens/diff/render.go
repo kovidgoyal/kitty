@@ -432,6 +432,7 @@ func first_binary_line(left_path, right_path string, columns, margin_size int, r
 			if i < len(right_lines) {
 				sl.right.marked_up_text = right_lines[i]
 			}
+			ll.screen_lines = append(ll.screen_lines, &sl)
 		}
 	}
 	return &ll, nil
