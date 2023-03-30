@@ -82,7 +82,7 @@ func (self *LogicalLine) render_screen_line(n int, lp *loop.Loop, margin_size, c
 		left_text = format_as_sgr.filler + left_text
 	} else {
 		switch self.line_type {
-		case CHANGE_LINE:
+		case CHANGE_LINE, IMAGE_LINE:
 			left_margin = format_as_sgr.removed_margin + left_margin
 			left_text = format_as_sgr.removed + left_text
 		case HUNK_TITLE_LINE:
@@ -105,7 +105,7 @@ func (self *LogicalLine) render_screen_line(n int, lp *loop.Loop, margin_size, c
 		right_text = format_as_sgr.filler + right_text
 	} else {
 		switch self.line_type {
-		case CHANGE_LINE:
+		case CHANGE_LINE, IMAGE_LINE:
 			right_margin = format_as_sgr.added_margin + right_margin
 			right_text = format_as_sgr.added + right_text
 		case HUNK_TITLE_LINE:
@@ -376,9 +376,13 @@ func image_lines(left_path, right_path string, screen_size screen_size, margin_s
 		sl := ScreenLine{}
 		if i < len(left_lines) {
 			sl.left.marked_up_text = left_lines[i]
+		} else {
+			sl.left.is_filler = true
 		}
 		if i < len(right_lines) {
 			sl.right.marked_up_text = right_lines[i]
+		} else {
+			sl.right.is_filler = true
 		}
 		ll.screen_lines = append(ll.screen_lines, &sl)
 	}
@@ -402,6 +406,7 @@ func first_binary_line(left_path, right_path string, columns, margin_size int, r
 		for _, x := range splitlines(line, available_cols) {
 			sl := ScreenLine{}
 			sl.right.marked_up_text = x
+			sl.left.is_filler = true
 			ll.screen_lines = append(ll.screen_lines, &sl)
 		}
 	} else if right_path == "" {
@@ -411,6 +416,7 @@ func first_binary_line(left_path, right_path string, columns, margin_size int, r
 		}
 		for _, x := range splitlines(line, available_cols) {
 			sl := ScreenLine{}
+			sl.right.is_filler = true
 			sl.left.marked_up_text = x
 			ll.screen_lines = append(ll.screen_lines, &sl)
 		}

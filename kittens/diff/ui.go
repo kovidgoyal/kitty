@@ -321,15 +321,19 @@ func (self *Handler) draw_image(key string, num_rows, starting_row int) {
 }
 
 func (self *Handler) draw_image_pair(ll *LogicalLine, starting_row int) {
+	if ll.left_image.key == "" && ll.right_image.key == "" {
+		return
+	}
+	defer self.lp.QueueWriteString("\r")
 	if ll.left_image.key != "" {
+		self.lp.QueueWriteString("\r")
 		self.lp.MoveCursorHorizontally(self.logical_lines.margin_size)
 		self.draw_image(ll.left_image.key, ll.left_image.count, starting_row)
-		self.lp.QueueWriteString("\r")
 	}
 	if ll.right_image.key != "" {
+		self.lp.QueueWriteString("\r")
 		self.lp.MoveCursorHorizontally(self.logical_lines.margin_size + self.logical_lines.columns/2)
 		self.draw_image(ll.right_image.key, ll.right_image.count, starting_row)
-		self.lp.QueueWriteString("\r")
 	}
 }
 
@@ -350,7 +354,11 @@ func (self *Handler) draw_screen() {
 	seen_images := utils.NewSet[int]()
 	for num_written := 0; num_written < self.screen_size.num_lines; num_written++ {
 		ll := self.logical_lines.At(pos.logical_line)
-		is_image := ll != nil && ll.line_type == IMAGE_LINE
+		if ll == nil {
+			num_written--
+			continue
+		}
+		is_image := ll.line_type == IMAGE_LINE
 		ll.render_screen_line(pos.screen_line, lp, self.logical_lines.margin_size, self.logical_lines.columns)
 		if is_image && !seen_images.Has(pos.logical_line) && pos.screen_line >= ll.image_lines_offset {
 			seen_images.Add(pos.logical_line)
