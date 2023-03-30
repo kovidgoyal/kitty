@@ -5,6 +5,8 @@ package loop
 import (
 	"encoding/base64"
 	"fmt"
+	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -248,6 +250,25 @@ func (self *Loop) DebugPrintln(args ...any) {
 }
 
 func (self *Loop) Run() (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			stack := utils.Splitlines(string(debug.Stack()))
+			err = fmt.Errorf("Paniced: %s", r)
+			fmt.Fprintf(os.Stderr, "\r\nPaniced with error: %s\r\nStacktrace:\r\n", r)
+			for _, line := range stack {
+				fmt.Fprintf(os.Stderr, "%s\r\n", line)
+			}
+			if self.terminal_options.alternate_screen {
+				term, err := tty.OpenControllingTerm(tty.SetRaw)
+				if err == nil {
+					defer term.RestoreAndClose()
+					fmt.Println("Press any key to exit.\r")
+					buf := make([]byte, 16)
+					term.Read(buf)
+				}
+			}
+		}
+	}()
 	return self.run()
 }
 
