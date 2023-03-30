@@ -44,6 +44,8 @@ Detailed list of changes
 
 - Graphics protocol: Add support for displaying images inside programs that do not support the protocol such as vim and tmux (:pull:`5664`)
 
+- diff kitten: Add support for selecting multi-line text with the mouse
+
 - Fix a regression in 0.27.0 that broke ``kitty @ set-font-size 0`` (:iss:`5992`)
 
 - launch: When using ``--cwd=current`` for a remote system support running non shell commands as well (:disc:`5987`)
