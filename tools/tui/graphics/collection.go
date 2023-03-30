@@ -10,7 +10,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
@@ -225,8 +224,6 @@ func (self *ImageCollection) Finalize(lp *loop.Loop) {
 	}
 	self.images = nil
 }
-
-var DebugPrintln = tty.DebugPrintln
 
 func (self *ImageCollection) mark_img_as_needing_transmission(id uint32) bool {
 	self.mutex.Lock()

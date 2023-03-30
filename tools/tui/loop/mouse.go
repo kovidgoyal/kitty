@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"kitty/tools/tty"
 	"kitty/tools/utils"
 )
 
@@ -111,8 +110,6 @@ func pixel_to_cell(px, length, cell_length int) int {
 	px = utils.Max(0, utils.Min(px, length-1))
 	return px / cell_length
 }
-
-var DebugPrintln = tty.DebugPrintln
 
 func decode_sgr_mouse(text string, screen_size ScreenSize) *MouseEvent {
 	last_letter := text[len(text)-1]

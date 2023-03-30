@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"kitty/tools/config"
-	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/tui/graphics"
 	"kitty/tools/tui/loop"
@@ -85,8 +84,6 @@ func (self *Handler) calculate_statistics() {
 		self.largest_line_number = utils.Max(patch.largest_line_number, self.largest_line_number)
 	}
 }
-
-var DebugPrintln = tty.DebugPrintln
 
 func (self *Handler) update_screen_size(sz loop.ScreenSize) {
 	self.screen_size.rows = int(sz.HeightCells)

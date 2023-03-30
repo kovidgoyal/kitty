@@ -6,13 +6,11 @@ import (
 	"fmt"
 
 	"kitty/tools/themes"
-	"kitty/tools/tty"
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print
-var DebugPrintln = tty.DebugPrintln
 
 type ThemesList struct {
 	themes, all_themes     *themes.Themes

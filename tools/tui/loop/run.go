@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"runtime/debug"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -46,10 +45,6 @@ func kill_self(sig unix.Signal) {
 	unix.Kill(os.Getpid(), sig)
 	// Give the signal time to be delivered
 	time.Sleep(20 * time.Millisecond)
-}
-
-func (self *Loop) print_stack() {
-	self.DebugPrintln(string(debug.Stack()))
 }
 
 func (self *Loop) update_screen_size() error {

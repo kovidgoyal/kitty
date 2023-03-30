@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"kitty/tools/tty"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 )
@@ -85,8 +84,6 @@ func (ms *MouseSelection) Update(ev *loop.MouseEvent, line LinePos) {
 		ms.end.line = line
 	}
 }
-
-var DebugPrintln = tty.DebugPrintln
 
 func (ms *MouseSelection) LineBounds(line_pos LinePos) (start_x, end_x int) {
 	if ms.IsEmpty() {
