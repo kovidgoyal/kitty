@@ -55,6 +55,7 @@ type screen_size struct{ rows, columns, num_lines, cell_width, cell_height int }
 type Handler struct {
 	async_results                                       chan AsyncResult
 	mouse_selection                                     tui.MouseSelection
+	image_count                                         int
 	shortcut_tracker                                    config.ShortcutTracker
 	left, right                                         string
 	collection                                          *Collection
@@ -114,7 +115,6 @@ func (self *Handler) initialize() {
 	self.rl = readline.New(self.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "/"})
 	self.lp.OnEscapeCode = self.on_escape_code
 	image_collection = graphics.NewImageCollection()
-	image_collection.Initialize(self.lp)
 	self.current_context_count = opts.Context
 	if self.current_context_count < 0 {
 		self.current_context_count = int(conf.Num_context_lines)
@@ -191,18 +191,23 @@ func (self *Handler) load_all_images() {
 	self.collection.Apply(func(path, item_type, changed_path string) error {
 		if path != "" && is_image(path) {
 			image_collection.AddPaths(path)
+			self.image_count++
 		}
 		if changed_path != "" && is_image(changed_path) {
 			image_collection.AddPaths(changed_path)
+			self.image_count++
 		}
 		return nil
 	})
-	go func() {
-		r := AsyncResult{rtype: IMAGE_LOAD}
-		image_collection.LoadAll()
-		self.async_results <- r
-		self.lp.WakeupMainThread()
-	}()
+	if self.image_count > 0 {
+		image_collection.Initialize(self.lp)
+		go func() {
+			r := AsyncResult{rtype: IMAGE_LOAD}
+			image_collection.LoadAll()
+			self.async_results <- r
+			self.lp.WakeupMainThread()
+		}()
+	}
 }
 
 func (self *Handler) resize_all_images_if_needed() {
@@ -216,7 +221,7 @@ func (self *Handler) resize_all_images_if_needed() {
 		Width:  available_cols * self.screen_size.cell_width,
 		Height: self.screen_size.num_lines * 2 * self.screen_size.cell_height,
 	}
-	if sz != self.images_resized_to {
+	if sz != self.images_resized_to && self.image_count > 0 {
 		go func() {
 			image_collection.ResizeForPageSize(sz.Width, sz.Height)
 			r := AsyncResult{rtype: IMAGE_RESIZE, page_size: sz}
@@ -331,8 +336,10 @@ func (self *Handler) draw_image_pair(ll *LogicalLine, starting_row int) {
 func (self *Handler) draw_screen() {
 	self.lp.StartAtomicUpdate()
 	defer self.lp.EndAtomicUpdate()
-	self.resize_all_images_if_needed()
-	image_collection.DeleteAllVisiblePlacements(self.lp)
+	if self.image_count > 0 {
+		self.resize_all_images_if_needed()
+		image_collection.DeleteAllVisiblePlacements(self.lp)
+	}
 	lp.MoveCursorTo(1, 1)
 	lp.ClearToEndOfScreen()
 	if self.logical_lines == nil || self.diff_map == nil || self.collection == nil {
