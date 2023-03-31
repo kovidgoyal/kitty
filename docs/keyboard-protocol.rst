@@ -44,6 +44,7 @@ In addition to kitty, this protocol is also implemented in:
 * The `Neovim text editor <https://github.com/neovim/neovim/pull/18181>`__
 * The `kakoune text editor <https://github.com/mawww/kakoune/issues/4103>`__
 * The `dte text editor <https://gitlab.com/craigbarnes/dte/-/issues/138>`__
+* The `Helix text editor <https://github.com/helix-editor/helix/pull/4939>`__
 
 .. versionadded:: 0.20.0
 
