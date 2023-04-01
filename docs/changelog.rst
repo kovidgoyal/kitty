@@ -73,7 +73,7 @@ Detailed list of changes
 - Linux: A new option :opt:`linux_bell_theme` to control which sound theme is used for the bell sound (:pull:`4858`)
 
 - ssh kitten: Change the syntax of glob patterns slightly to match common usage
-  elsewhere. Now the syntax is the same a "extendedglob" in most shells.
+  elsewhere. Now the syntax is the same as "extendedglob" in most shells.
 
 - hints kitten: Allow copying matches to named buffers (:disc:`6073`)
 
@@ -82,7 +82,7 @@ Detailed list of changes
 
 - Wayland KDE: Fix selecting in un-focused OS window not working correctly (:iss:`6095`)
 
-- X11: Fix a crash if the X server requests clipboard data after we have relinquished the clipboard (:iss:`5650`)
+- Linux X11: Fix a crash if the X server requests clipboard data after we have relinquished the clipboard (:iss:`5650`)
 
 - Allow stopping of URL detection at newlines via :opt:`url_excluded_characters` (:iss:`6122`)
 
