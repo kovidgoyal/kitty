@@ -685,13 +685,11 @@ func rename_lines(path, other_path string, columns, margin_size int, ans []*Logi
 func render(collection *Collection, diff_map map[string]*Patch, screen_size screen_size, largest_line_number int, image_size graphics.Size) (result *LogicalLines, err error) {
 	margin_size := utils.Max(3, len(strconv.Itoa(largest_line_number))+1)
 	ans := make([]*LogicalLine, 0, 1024)
-	empty_line := LogicalLine{line_type: EMPTY_LINE}
 	columns := screen_size.columns
 	err = collection.Apply(func(path, item_type, changed_path string) error {
 		ans = title_lines(path, changed_path, columns, margin_size, ans)
 		defer func() {
-			el := empty_line
-			ans = append(ans, &el)
+			ans = append(ans, &LogicalLine{line_type: EMPTY_LINE, screen_lines: []*ScreenLine{{}}})
 		}()
 
 		is_binary := !is_path_text(path)

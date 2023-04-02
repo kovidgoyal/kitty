@@ -354,26 +354,26 @@ func (self *Handler) draw_screen() {
 	seen_images := utils.NewSet[int]()
 	for num_written := 0; num_written < self.screen_size.num_lines; num_written++ {
 		ll := self.logical_lines.At(pos.logical_line)
-		if ll == nil {
+		if ll == nil || self.logical_lines.ScreenLineAt(pos) == nil {
 			num_written--
-			continue
-		}
-		is_image := ll.line_type == IMAGE_LINE
-		ll.render_screen_line(pos.screen_line, lp, self.logical_lines.margin_size, self.logical_lines.columns)
-		if is_image && !seen_images.Has(pos.logical_line) && pos.screen_line >= ll.image_lines_offset {
-			seen_images.Add(pos.logical_line)
-			self.draw_image_pair(ll, pos.screen_line-ll.image_lines_offset)
-		}
-		if self.current_search != nil {
-			if mkp := self.current_search.markup_line(pos, num_written); mkp != "" {
+		} else {
+			is_image := ll.line_type == IMAGE_LINE
+			ll.render_screen_line(pos.screen_line, lp, self.logical_lines.margin_size, self.logical_lines.columns)
+			if is_image && !seen_images.Has(pos.logical_line) && pos.screen_line >= ll.image_lines_offset {
+				seen_images.Add(pos.logical_line)
+				self.draw_image_pair(ll, pos.screen_line-ll.image_lines_offset)
+			}
+			if self.current_search != nil {
+				if mkp := self.current_search.markup_line(pos, num_written); mkp != "" {
+					lp.QueueWriteString(mkp)
+				}
+			}
+			if mkp := self.add_mouse_selection_to_line(pos, num_written); mkp != "" {
 				lp.QueueWriteString(mkp)
 			}
+			lp.MoveCursorVertically(1)
+			lp.QueueWriteString("\x1b[m\r")
 		}
-		if mkp := self.add_mouse_selection_to_line(pos, num_written); mkp != "" {
-			lp.QueueWriteString(mkp)
-		}
-		lp.MoveCursorVertically(1)
-		lp.QueueWriteString("\x1b[m\r")
 		if self.logical_lines.IncrementScrollPosBy(&pos, 1) == 0 {
 			break
 		}
