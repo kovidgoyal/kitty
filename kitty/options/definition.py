@@ -262,6 +262,11 @@ backgrounds is affected very little.
 The second number is an additional multiplicative contrast. It is percentage
 ranging from :code:`0` to :code:`100`. The default value is :code:`0` on Linux
 and :code:`30` on macOS.
+
+If you wish to achieve similar looking thickness in light and dark themes, a good way
+to experiment is start by setting the value to :code:`1.0 0` and use a dark theme.
+Then adjust the second parameter until it looks good. Then switch to a light theme
+and adjust the first parameter until the perceived thickness matches the dark theme.
 ''')
 
 egr()  # }}}
