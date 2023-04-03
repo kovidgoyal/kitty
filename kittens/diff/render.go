@@ -650,15 +650,19 @@ func all_lines(path string, columns, margin_size int, is_add bool, ans []*Logica
 			sl := ScreenLine{}
 			if is_add {
 				sl.right = hl
-				if i < len(msg_lines) {
+				if len(msg_lines) > 0 {
 					sl.left.marked_up_text = msg_lines[i]
+					sl.left.is_filler = true
+					msg_lines = msg_lines[1:]
 				} else {
 					sl.left.is_filler = true
 				}
 			} else {
 				sl.left = hl
-				if i < len(msg_lines) {
+				if len(msg_lines) > 0 {
 					sl.right.marked_up_text = msg_lines[i]
+					sl.right.is_filler = true
+					msg_lines = msg_lines[1:]
 				} else {
 					sl.right.is_filler = true
 				}
