@@ -28,6 +28,7 @@ func load_config(opts *Options) (ans *Config, err error) {
 	if err != nil {
 		return nil, err
 	}
+	ans.KeyboardShortcuts = config.ResolveShortcuts(ans.KeyboardShortcuts)
 	return ans, nil
 }
 

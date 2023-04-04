@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"golang.org/x/exp/maps"
 )
 
 var _ = fmt.Print
@@ -287,4 +289,17 @@ func (self *ShortcutTracker) Match(ev *loop.KeyEvent, all_actions []*KeyAction) 
 		}
 	}
 	return nil
+}
+
+func ResolveShortcuts(actions []*KeyAction) []*KeyAction {
+	action_map := make(map[string]*KeyAction, len(actions))
+	for _, ac := range actions {
+		key := strings.Join(ac.Normalized_keys, "\x00")
+		if ac.Name == "no_op" || ac.Name == "no-op" {
+			delete(action_map, key)
+		} else {
+			action_map[key] = ac
+		}
+	}
+	return maps.Values(action_map)
 }
