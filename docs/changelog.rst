@@ -38,7 +38,11 @@ Detailed list of changes
 0.28.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Text rendering: Use sRGB correct linear gamma blending for nicer font rendering and better color accuracy with transparent windows. See the option :opt:`text_composition_strategy` for details. The obsolete :opt:`macos_thicken_font` will make the font too thick and needs to be removed manually if it is configured. (:pull:`5969`)
+- **Text rendering change**: Use sRGB correct linear gamma blending for nicer font
+  rendering and better color accuracy with transparent windows.
+  See the option :opt:`text_composition_strategy` for details.
+  The obsolete :opt:`macos_thicken_font` will make the font too thick and needs to be removed manually
+  if it is configured. (:pull:`5969`)
 
 - icat kitten: Support display of images inside tmux >= 3.3 (:pull:`5664`)
 
