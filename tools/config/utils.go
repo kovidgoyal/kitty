@@ -248,12 +248,18 @@ type KeyAction struct {
 	Args            string
 }
 
+func (self *KeyAction) String() string {
+	return fmt.Sprintf("map %#v %#v %#v\n", strings.Join(self.Normalized_keys, ">"), self.Name, self.Args)
+}
+
 func ParseMap(val string) (*KeyAction, error) {
 	spec, action, found := strings.Cut(val, " ")
 	if !found {
 		return nil, fmt.Errorf("No action specified for shortcut %s", val)
 	}
+	action = strings.TrimSpace(action)
 	action_name, action_args, _ := strings.Cut(action, " ")
+	action_args = strings.TrimSpace(action_args)
 	return &KeyAction{Name: action_name, Args: action_args, Normalized_keys: NormalizeShortcuts(spec)}, nil
 }
 
