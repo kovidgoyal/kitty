@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print
@@ -229,7 +230,7 @@ func NormalizeShortcut(spec string) string {
 		}
 		return ans
 	}, mods)
-	utils.Sort(mods, func(a, b string) bool { return a < b })
+	slices.Sort(mods)
 	return strings.Join(mods, "+") + "+" + key
 }
 
