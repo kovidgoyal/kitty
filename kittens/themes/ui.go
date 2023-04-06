@@ -525,7 +525,10 @@ func (self *handler) update_recent() {
 		name := self.themes_list.CurrentTheme().Name()
 		recent = utils.Remove(recent, name)
 		recent = append([]string{name}, recent...)
-		self.cached_data.Recent = recent[:20]
+		if len(recent) > 20 {
+			recent = recent[:20]
+		}
+		self.cached_data.Recent = recent
 	}
 }
 
