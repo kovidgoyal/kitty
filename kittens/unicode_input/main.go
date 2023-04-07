@@ -599,7 +599,10 @@ func run_loop(opts *Options) (lp *loop.Loop, err error) {
 			if idx > -1 {
 				cached_data.Recent = slices.Delete(cached_data.Recent, idx, idx+1)
 			}
-			cached_data.Recent = slices.Insert(cached_data.Recent, 0, h.current_char)[:len(DEFAULT_SET)]
+			cached_data.Recent = slices.Insert(cached_data.Recent, 0, h.current_char)
+			if len(cached_data.Recent) > len(DEFAULT_SET) {
+				cached_data.Recent = cached_data.Recent[:len(DEFAULT_SET)]
+			}
 			ans := h.resolved_char()
 			o, err := output(ans)
 			if err != nil {
