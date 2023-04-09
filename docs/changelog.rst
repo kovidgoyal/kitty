@@ -92,6 +92,8 @@ Detailed list of changes
 
 - Linux Wayland: Fix animated images not being animated continuously (:iss:`6126`)
 
+- Keyboard input: Fix text not being reported as unicode codepoints for multi-byte characters in the kitty keyboard protocol (:iss:`6167`)
+
 
 0.27.1 [2023-02-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
