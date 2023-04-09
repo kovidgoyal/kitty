@@ -46,6 +46,7 @@ In addition to kitty, this protocol is also implemented in:
 * The `kakoune text editor <https://github.com/mawww/kakoune/issues/4103>`__
 * The `dte text editor <https://gitlab.com/craigbarnes/dte/-/issues/138>`__
 * The `Helix text editor <https://github.com/helix-editor/helix/pull/4939>`__
+* The `far2l file manager <https://github.com/elfmz/far2l/commit/e1f2ee0ef2b8332e5fa3ad7f2e4afefe7c96fc3b>`__
 
 .. versionadded:: 0.20.0
 
