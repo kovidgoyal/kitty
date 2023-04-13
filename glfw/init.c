@@ -382,6 +382,14 @@ GLFWAPI GLFWapplicationclosefun glfwSetApplicationCloseCallback(GLFWapplicationc
     return cbfun;
 }
 
+GLFWAPI GLFWapplicationclosefun glfwSetSystemColorThemeChangeCallback(GLFWsystemcolorthemechangefun cbfun)
+{
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(_glfw.callbacks.system_color_theme_change, cbfun);
+    return cbfun;
+}
+
+
 GLFWAPI GLFWdrawtextfun glfwSetDrawTextFunction(GLFWdrawtextfun cbfun)
 {
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);

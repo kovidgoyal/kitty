@@ -1010,6 +1010,18 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     _glfwInputCursorEnter(window, true);
 }
 
+- (void)viewDidChangeEffectiveAppearance
+{
+    static int appearance = 0;
+    if (_glfw.callbacks.system_color_theme_change) {
+        int new_appearance = glfwGetCurrentSystemColorTheme();
+        if (new_appearance != appearance) {
+            appearance = new_appearance;
+            _glfw.callbacks.system_color_theme_change(appearance);
+        }
+    }
+}
+
 - (void)viewDidChangeBackingProperties
 {
     if (!window) return;
@@ -2956,6 +2968,19 @@ GLFWAPI GLFWcocoatogglefullscreenfun glfwSetCocoaToggleFullscreenIntercept(GLFWw
 GLFWAPI void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun callback) {
     requestRenderFrame((_GLFWwindow*)w, callback);
 }
+
+GLFWAPI int glfwGetCurrentSystemColorTheme(void) {
+    int theme_type = 0;
+    NSAppearance *changedAppearance = NSApp.effectiveAppearance;
+    NSAppearanceName newAppearance = [changedAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
+    if([newAppearance isEqualToString:NSAppearanceNameDarkAqua]){
+        theme_type = 1;
+    } else {
+        theme_type = 2;
+    }
+    return theme_type;
+}
+
 
 GLFWAPI uint32_t
 glfwGetCocoaKeyEquivalent(uint32_t glfw_key, int glfw_mods, int *cocoa_mods) {

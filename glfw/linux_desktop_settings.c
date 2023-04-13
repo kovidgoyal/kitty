@@ -24,6 +24,11 @@ static uint32_t appearance = 0;
 static bool is_gnome = false;
 static bool cursor_theme_changed = false;
 
+int
+glfw_current_system_color_theme(void) {
+    return appearance;
+}
+
 #define HANDLER(name) static void name(DBusMessage *msg, const char* errmsg, void *data) { \
     (void)data; \
     if (errmsg) { \
@@ -155,6 +160,9 @@ on_color_scheme_change(DBusMessage *message) {
                 if (val > 2) val = 0;
                 if (val != appearance) {
                     appearance = val;
+                    if (_glfw.callbacks.system_color_theme_change) {
+                        _glfw.callbacks.system_color_theme_change(appearance);
+                    }
                 }
             }
             break;

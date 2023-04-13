@@ -632,12 +632,12 @@ struct _GLFWlibrary
         GLFWmonitorfun  monitor;
         GLFWjoystickfun joystick;
         GLFWapplicationclosefun application_close;
+        GLFWsystemcolorthemechangefun system_color_theme_change;
         GLFWdrawtextfun draw_text;
         GLFWcurrentselectionfun get_current_selection;
         GLFWhascurrentselectionfun has_current_selection;
         GLFWimecursorpositionfun get_ime_cursor_position;
     } callbacks;
-
 
     // This is defined in the window API's platform.h
     _GLFW_PLATFORM_LIBRARY_WINDOW_STATE;

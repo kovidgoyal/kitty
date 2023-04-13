@@ -239,6 +239,12 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetApplicationCloseCallback_impl) = dlsym(handle, "glfwSetApplicationCloseCallback");
     if (glfwSetApplicationCloseCallback_impl == NULL) fail("Failed to load glfw function glfwSetApplicationCloseCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetSystemColorThemeChangeCallback_impl) = dlsym(handle, "glfwSetSystemColorThemeChangeCallback");
+    if (glfwSetSystemColorThemeChangeCallback_impl == NULL) fail("Failed to load glfw function glfwSetSystemColorThemeChangeCallback with error: %s", dlerror());
+
+    *(void **) (&glfwGetCurrentSystemColorTheme_impl) = dlsym(handle, "glfwGetCurrentSystemColorTheme");
+    if (glfwGetCurrentSystemColorTheme_impl == NULL) fail("Failed to load glfw function glfwGetCurrentSystemColorTheme with error: %s", dlerror());
+
     *(void **) (&glfwSetWindowRefreshCallback_impl) = dlsym(handle, "glfwSetWindowRefreshCallback");
     if (glfwSetWindowRefreshCallback_impl == NULL) fail("Failed to load glfw function glfwSetWindowRefreshCallback with error: %s", dlerror());
 
