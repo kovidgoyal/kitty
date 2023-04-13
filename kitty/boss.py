@@ -2769,3 +2769,6 @@ class Boss:
 
     def sanitize_url_for_dispay_to_user(self, url: str) -> str:
         return sanitize_url_for_dispay_to_user(url)
+
+    def on_system_color_scheme_change(self, appearance: int) -> None:
+        log_error('system color theme changed:', appearance)

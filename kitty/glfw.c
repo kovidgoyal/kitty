@@ -53,6 +53,11 @@ get_platform_dependent_config_values(void *glfw_window) {
 }
 
 static void
+on_system_color_scheme_change(int appearance) {
+    call_boss(on_system_color_scheme_change, "i", appearance);
+}
+
+static void
 strip_csi_(const char *title, char *buf, size_t bufsz) {
     enum { NORMAL, IN_ESC, IN_CSI} state = NORMAL;
     char *dest = buf, *last = &buf[bufsz-1];
@@ -869,6 +874,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         glfwSetCurrentSelectionCallback(get_current_selection);
         glfwSetHasCurrentSelectionCallback(has_current_selection);
         glfwSetIMECursorPositionCallback(get_ime_cursor_position);
+        glfwSetSystemColorThemeChangeCallback(on_system_color_scheme_change);
 #ifdef __APPLE__
         cocoa_set_activation_policy(OPT(macos_hide_from_tasks));
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
