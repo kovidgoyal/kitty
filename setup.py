@@ -816,8 +816,6 @@ def compile_kittens(compilation_database: CompilationDatabase) -> None:
         return kitten, sources, headers, f'kittens/{kitten}/{output}', includes, libraries
 
     for kitten, sources, all_headers, dest, includes, libraries in (
-        files('unicode_input', 'unicode_names'),
-        files('diff', 'diff_speedup'),
         files('transfer', 'rsync', libraries=('rsync',)),
     ):
         final_env = kenv.copy()
