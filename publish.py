@@ -154,6 +154,7 @@ def run_website(args: Any) -> None:
         f.write(version)
     shutil.copy2(os.path.join(docs_dir, 'installer.sh'), publish_dir)
     os.chdir(os.path.dirname(publish_dir))
+    subprocess.check_call(['optipng', '-o7', 'kitty/_images/social_previews/*.png'])
     subprocess.check_call(['git', 'add', 'kitty'])
     subprocess.check_call(['git', 'commit', '-m', 'kitty website updates'])
     subprocess.check_call(['git', 'push'])
