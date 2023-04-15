@@ -35,7 +35,7 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.28.0 [future]
+0.28.0 [2023-04-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - **Text rendering change**: Use sRGB correct linear gamma blending for nicer font
