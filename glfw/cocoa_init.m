@@ -1014,7 +1014,7 @@ static pthread_t main_thread;
 static NSLock *tick_lock = NULL;
 
 
-void _glfwDispatchTickCallback() {
+void _glfwDispatchTickCallback(void) {
     if (tick_lock && tick_callback) {
         [tick_lock lock];
         while(tick_callback_requested) {
@@ -1026,7 +1026,7 @@ void _glfwDispatchTickCallback() {
 }
 
 static void
-request_tick_callback() {
+request_tick_callback(void) {
     if (!tick_callback_requested) {
         tick_callback_requested = true;
         [NSApp performSelectorOnMainThread:@selector(tick_callback) withObject:nil waitUntilDone:NO];
