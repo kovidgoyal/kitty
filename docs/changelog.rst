@@ -40,6 +40,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that broke the remote file kitten (:iss:`6186`)
 
+- Fix a regression in the previous release that broke handling of some key board shortcuts in some kittens on some keyboard layouts (:iss:`6189`)
+
 0.28.0 [2023-04-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

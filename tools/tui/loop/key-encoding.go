@@ -140,26 +140,30 @@ func KeyEventFromCSI(csi string) *KeyEvent {
 	csi = csi[:len(csi)-1]
 	sections := strings.Split(csi, ";")
 
-	get_sub_sections := func(section string) []int {
+	get_sub_sections := func(section string, missing int) []int {
 		p := strings.Split(section, ":")
 		ans := make([]int, len(p))
 		for i, x := range p {
-			q, err := strconv.Atoi(x)
-			if err != nil {
-				return nil
+			if x == "" {
+				ans[i] = missing
+			} else {
+				q, err := strconv.Atoi(x)
+				if err != nil {
+					return nil
+				}
+				ans[i] = q
 			}
-			ans[i] = q
 		}
 		return ans
 	}
-	first_section := get_sub_sections(sections[0])
-	second_section := make([]int, 0)
-	third_section := make([]int, 0)
+	first_section := get_sub_sections(sections[0], 0)
+	second_section := []int{}
+	third_section := []int{}
 	if len(sections) > 1 {
-		second_section = get_sub_sections(sections[1])
+		second_section = get_sub_sections(sections[1], 1)
 	}
 	if len(sections) > 2 {
-		third_section = get_sub_sections(sections[2])
+		third_section = get_sub_sections(sections[2], 0)
 	}
 	var ans = KeyEvent{Type: PRESS}
 	var keynum int
