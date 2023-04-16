@@ -323,7 +323,7 @@ static double getFallbackRefreshRate(CGDirectDisplayID displayID)
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-void _glfwClearDisplayLinks() {
+void _glfwClearDisplayLinks(void) {
     for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
         if (_glfw.ns.displayLinks.entries[i].displayLink) {
             CVDisplayLinkStop(_glfw.ns.displayLinks.entries[i].displayLink);
