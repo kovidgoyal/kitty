@@ -532,10 +532,11 @@ func parse_theme_metadata(path string) (*ThemeMetadata, map[string]string, error
 type Theme struct {
 	metadata *ThemeMetadata
 
-	code            string
-	settings        map[string]string
-	zip_reader      *zip.File
-	is_user_defined bool
+	code                        string
+	settings                    map[string]string
+	zip_reader                  *zip.File
+	is_user_defined             bool
+	path_for_user_defined_theme string
 }
 
 func (self *Theme) Name() string        { return self.metadata.Name }
@@ -557,6 +558,13 @@ func (self *Theme) load_code() (string, error) {
 			return "", err
 		}
 		self.code = utils.UnsafeBytesToString(data)
+	}
+	if self.is_user_defined && self.path_for_user_defined_theme != "" && self.code == "" {
+		raw, err := os.ReadFile(self.path_for_user_defined_theme)
+		if err != nil {
+			return "", err
+		}
+		self.code = utils.UnsafeBytesToString(raw)
 	}
 	return self.code, nil
 }
@@ -813,7 +821,7 @@ func (self *Themes) AddFromFile(path string) (*Theme, error) {
 	if m.Name == "" {
 		m.Name = theme_name_from_file_name(filepath.Base(path))
 	}
-	t := Theme{metadata: m, is_user_defined: true, settings: conf}
+	t := Theme{metadata: m, is_user_defined: true, settings: conf, path_for_user_defined_theme: path}
 	self.name_map[m.Name] = &t
 	return &t, nil
 
