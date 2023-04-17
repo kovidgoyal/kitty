@@ -830,14 +830,9 @@ func (self *Themes) add_from_dir(dirpath string) error {
 	for _, e := range entries {
 		if !e.IsDir() && strings.HasSuffix(e.Name(), ".conf") {
 			path := filepath.Join(dirpath, e.Name())
-			// ignore files if they are the current processes, stdout
-			// allows using kitten theme --dump-theme > ~/.config/kitty/themes/name.conf
-			if st, err := os.Stat(path); err == nil {
-				if st2, err := os.Stdout.Stat(); err == nil && os.SameFile(st, st2) {
-					continue
-				}
-			}
-			if path == os.Stdout.Name() {
+			// ignore files if they are the STDOUT of the current processes
+			// allows using kitten theme --dump-theme name > ~/.config/kitty/themes/name.conf
+			if utils.Samefile(path, os.Stdout) {
 				continue
 			}
 			if _, err = self.AddFromFile(path); err != nil {

@@ -4,6 +4,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
@@ -152,4 +153,51 @@ func Memset[T any](dest []T, pattern ...T) []T {
 		bp *= 2
 	}
 	return dest
+}
+
+type statable interface {
+	Stat() (os.FileInfo, error)
+}
+
+func Samefile(a, b any) bool {
+	var sta, stb os.FileInfo
+	var err error
+	switch v := a.(type) {
+	case string:
+		sta, err = os.Stat(v)
+		if err != nil {
+			return false
+		}
+	case statable:
+		sta, err = v.Stat()
+		if err != nil {
+			return false
+		}
+	case *os.FileInfo:
+		sta = *v
+	case os.FileInfo:
+		sta = v
+	default:
+		panic(fmt.Sprintf("a must be a string, os.FileInfo or a stat-able object not %T", v))
+	}
+	switch v := b.(type) {
+	case string:
+		stb, err = os.Stat(v)
+		if err != nil {
+			return false
+		}
+	case statable:
+		stb, err = v.Stat()
+		if err != nil {
+			return false
+		}
+	case *os.FileInfo:
+		stb = *v
+	case os.FileInfo:
+		stb = v
+	default:
+		panic(fmt.Sprintf("b must be a string, os.FileInfo or a stat-able object not %T", v))
+	}
+
+	return os.SameFile(sta, stb)
 }
