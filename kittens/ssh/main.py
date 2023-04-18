@@ -35,7 +35,7 @@ variables and ~ are not expanded.
 --exclude
 type=list
 A glob pattern. Files with names matching this pattern are excluded from being
-transferred. Useful when adding directories. Can
+transferred. Only used when copying directories. Can
 be specified multiple times, if any of the patterns match the file will be
 excluded. If the pattern includes a :code:`/` then it will match against the full
 path, not just the filename. In such patterns you can use :code:`/**/` to match zero
