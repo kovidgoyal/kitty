@@ -20,7 +20,7 @@ def option_text() -> str:
 --glob
 type=bool-set
 Interpret file arguments as glob patterns. Globbing is based on
-Based on standard wildcards with the addition that ``/**/`` matches any number of directories.
+standard wildcards with the addition that ``/**/`` matches any number of directories.
 See the :link:`detailed syntax <https://github.com/bmatcuk/doublestar#patterns>`.
 
 

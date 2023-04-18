@@ -19,7 +19,7 @@ import (
 	"kitty/tools/utils/paths"
 	"kitty/tools/utils/shlex"
 
-	"github.com/bmatcuk/doublestar"
+	"github.com/bmatcuk/doublestar/v4"
 	"golang.org/x/sys/unix"
 )
 
@@ -145,7 +145,7 @@ func resolve_file_spec(spec string, is_glob bool) ([]string, error) {
 		ans = paths_ctx.AbspathFromHome(ans)
 	}
 	if is_glob {
-		files, err := doublestar.Glob(ans)
+		files, err := doublestar.FilepathGlob(ans)
 		if err != nil {
 			return nil, fmt.Errorf("%s is not a valid glob pattern with error: %w", spec, err)
 		}
