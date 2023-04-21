@@ -77,7 +77,11 @@ by spaces. The hostname can include an optional username in the form
 first hostname specification is found. Note that matching of hostname is done
 against the name you specify on the command line to connect to the remote host.
 If you wish to include the same basic configuration for many different hosts,
-you can do so with the :ref:`include <include>` directive.
+you can do so with the :ref:`include <include>` directive. In version 0.28.0
+the behavior of this option was changed slightly, now, when a hostname is encountered
+all its config values are set to defaults instead of being inherited from a previous
+matching hostname block. In particular it means hostnames dont inherit configurations,
+thereby avoiding hard to understand action-at-a-distance.
 ''')
 
 opt('interpreter', 'sh', long_text='''
