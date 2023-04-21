@@ -58,7 +58,8 @@ Getting the window size
 
 In order to know what size of images to display and how to position them, the
 client must be able to get the window size in pixels and the number of cells
-per row and column. This can be done by using the ``TIOCGWINSZ`` ioctl.  Some
+per row and column. The cell width is then simply the window size divided by the
+number of rows. This can be done by using the ``TIOCGWINSZ`` ioctl. Some
 code to demonstrate its use
 
 .. tab:: C
@@ -98,6 +99,20 @@ code to demonstrate its use
         sz, err := unix.IoctlGetWinsize(fd, unix.TIOCGWINSZ)
         fmt.Println("rows: %v columns: %v width: %v height %v", sz.Row, sz.Col, sz.Xpixel, sz.Ypixel)
 
+
+.. tab:: Bash
+
+    .. code-block:: sh
+
+        #!/bin/bash
+
+        # This uses the kitten standalone binary from kitty to get the pixel sizes
+        # since we cant do IOCTLs directly. Fortunately, kitten is a static exe
+        # pre-built for every Unix like OS under the sun.
+
+        builtin read -r rows cols < <(command stty size)
+        IFS=x builtin read -r width height < <(command kitten icat --print-window-size); builtin unset IFS
+        builtin echo "number of rows: $rows number of columns: $cols screen width: $width screen height: $height"
 
 
 Note that some terminals return ``0`` for the width and height values. Such
