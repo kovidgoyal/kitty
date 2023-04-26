@@ -90,7 +90,8 @@ for the operating system. Various special values are supported:
     copy the match to the specified buffer, e.g. :code:`@a`
 
 :code:`default`
-    run the default open program.
+    run the default open program. Note that when using the hyperlink :code:`--type`
+    the default is to use the kitty :doc:`/open_actions` facilities.
 
 :code:`launch`
     run :doc:`/launch` to open the program in a new kitty tab, window, overlay, etc.
@@ -349,8 +350,9 @@ def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, 
         else:
             from kitty.conf.utils import to_cmdline
             cwd = data['cwd']
-            program = get_options().open_url_with if program == 'default' else program
-            if text_type == 'hyperlink':
+            is_default_program = program == 'default'
+            program = get_options().open_url_with if is_default_program else program
+            if text_type == 'hyperlink' and is_default_program:
                 w = boss.window_id_map.get(target_window_id)
                 for m in matches:
                     if w is not None:
