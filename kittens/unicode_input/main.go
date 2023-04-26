@@ -92,6 +92,7 @@ func serialize_favorites(favs []rune) string {
 }
 
 var loaded_favorites []rune
+var favorites_loaded_from_user_config bool
 
 func favorites_path() string {
 	return filepath.Join(utils.ConfigDir(), "unicode-input-favorites.conf")
@@ -102,8 +103,10 @@ func load_favorites(refresh bool) []rune {
 		raw, err := os.ReadFile(favorites_path())
 		if err == nil {
 			loaded_favorites = parse_favorites(utils.UnsafeBytesToString(raw))
+			favorites_loaded_from_user_config = true
 		} else {
 			loaded_favorites = DEFAULT_SET
+			favorites_loaded_from_user_config = false
 		}
 	}
 	return loaded_favorites
@@ -427,19 +430,21 @@ func (self *handler) handle_favorites_key_event(event *loop.KeyEvent) {
 			self.lp.Quit(1)
 			return
 		}
-		raw := serialize_favorites(load_favorites(false))
 		fp := favorites_path()
-		err = os.MkdirAll(filepath.Dir(fp), 0o755)
-		if err != nil {
-			self.err = fmt.Errorf("Failed to create config directory to store favorites in: %w", err)
-			self.lp.Quit(1)
-			return
-		}
-		err = utils.AtomicUpdateFile(fp, utils.UnsafeStringToBytes(raw), 0o600)
-		if err != nil {
-			self.err = fmt.Errorf("Failed to write to favorites file %s with error: %w", fp, err)
-			self.lp.Quit(1)
-			return
+		if len(load_favorites(false)) == 0 || !favorites_loaded_from_user_config {
+			raw := serialize_favorites(load_favorites(false))
+			err = os.MkdirAll(filepath.Dir(fp), 0o755)
+			if err != nil {
+				self.err = fmt.Errorf("Failed to create config directory to store favorites in: %w", err)
+				self.lp.Quit(1)
+				return
+			}
+			err = utils.AtomicUpdateFile(fp, utils.UnsafeStringToBytes(raw), 0o600)
+			if err != nil {
+				self.err = fmt.Errorf("Failed to write to favorites file %s with error: %w", fp, err)
+				self.lp.Quit(1)
+				return
+			}
 		}
 		err = self.lp.SuspendAndRun(func() error {
 			cmd := exec.Command(exe, "edit-in-kitty", "--type=overlay", fp)
