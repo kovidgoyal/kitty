@@ -11,6 +11,7 @@ import (
 	"kitty/kittens/hints"
 	"kitty/kittens/hyperlinked_grep"
 	"kitty/kittens/icat"
+	"kitty/kittens/show_key"
 	"kitty/kittens/ssh"
 	"kitty/kittens/themes"
 	"kitty/kittens/unicode_input"
@@ -41,6 +42,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	ssh.EntryPoint(root)
 	// unicode_input
 	unicode_input.EntryPoint(root)
+	// show_key
+	show_key.EntryPoint(root)
 	// hyperlinked_grep
 	hyperlinked_grep.EntryPoint(root)
 	// ask

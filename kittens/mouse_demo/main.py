@@ -4,10 +4,32 @@
 import sys
 from typing import List, Optional
 
-from ..show_key.kitty_mode import format_mods
+from kitty.key_encoding import ALT, CAPS_LOCK, CTRL, HYPER, META, NUM_LOCK, SHIFT, SUPER
+
 from ..tui.handler import Handler
 from ..tui.loop import Loop, MouseEvent
 from ..tui.operations import MouseTracking
+
+mod_names = {
+    SHIFT: 'Shift',
+    ALT: 'Alt',
+    CTRL: 'Ctrl',
+    SUPER: 'Super',
+    HYPER: 'Hyper',
+    META: 'Meta',
+    NUM_LOCK: 'NumLock',
+    CAPS_LOCK: 'CapsLock',
+}
+
+
+def format_mods(mods: int) -> str:
+    if not mods:
+        return ''
+    lmods = []
+    for m, name in mod_names.items():
+        if mods & m:
+            lmods.append(name)
+    return '+'.join(lmods)
 
 
 class Mouse(Handler):
