@@ -91,7 +91,7 @@ for the operating system. Various special values are supported:
 
 :code:`default`
     run the default open program. Note that when using the hyperlink :code:`--type`
-    the default is to use the kitty :doc:`/open_actions` facilities.
+    the default is to use the kitty :doc:`hyperlink handling </open_actions>` facilities.
 
 :code:`launch`
     run :doc:`/launch` to open the program in a new kitty tab, window, overlay, etc.

@@ -140,11 +140,12 @@ func (self *Context) Prettify(text string) string {
 			return self.ref_hyperlink(val, "envvar-")
 		case "doc":
 			text, target := text_and_target(val)
-			if text == target {
-				target = strings.Trim(target, "/")
-				if title, ok := kitty.DocTitleMap[target]; ok {
-					val = title + " <" + target + ">"
-				}
+			no_title := text == target
+			target = strings.Trim(target, "/")
+			if title, ok := kitty.DocTitleMap[target]; ok && no_title {
+				val = title + " <" + target + ">"
+			} else {
+				val = text + " <" + target + ">"
 			}
 			return self.ref_hyperlink(val, "doc-")
 		case "iss":
