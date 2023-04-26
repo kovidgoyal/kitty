@@ -82,7 +82,7 @@ func (self *table) current_codepoint() rune {
 
 func (self *table) set_codepoints(codepoints []rune, mode Mode, current_idx int) {
 	self.codepoints = codepoints
-	if self.codepoints != nil {
+	if self.codepoints != nil && mode != FAVORITES && mode != HEX {
 		slices.Sort(self.codepoints)
 	}
 	self.mode = mode
