@@ -441,25 +441,26 @@ func (self *handler) handle_favorites_key_event(event *loop.KeyEvent) {
 			self.lp.Quit(1)
 			return
 		}
-		resume, err := self.lp.Suspend()
+		err = self.lp.SuspendAndRun(func() error {
+			cmd := exec.Command(exe, "edit-in-kitty", "--type=overlay", fp)
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			err = cmd.Run()
+			if err == nil {
+				load_favorites(true)
+			} else {
+				fmt.Fprintln(os.Stderr, err)
+				fmt.Fprintln(os.Stderr, "Failed to run edit-in-kitty, favorites have not been changed. Press Enter to continue.")
+				var ln string
+				fmt.Scanln(&ln)
+			}
+			return nil
+		})
 		if err != nil {
 			self.err = err
 			self.lp.Quit(1)
 			return
-		}
-		defer resume()
-		cmd := exec.Command(exe, "edit-in-kitty", "--type=overlay", fp)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err = cmd.Run()
-		if err == nil {
-			load_favorites(true)
-		} else {
-			fmt.Fprintln(os.Stderr, err)
-			fmt.Fprintln(os.Stderr, "Failed to run edit-in-kitty, favorites have not been changed. Press Enter to continue.")
-			var ln string
-			fmt.Scanln(&ln)
 		}
 	}
 }

@@ -271,10 +271,8 @@ func (self *Loop) run() (err error) {
 
 	self.keep_going = true
 	self.pending_mouse_events = utils.NewRingBuffer[MouseEvent](4)
-	tty_read_channel := make(chan []byte)
 	tty_write_channel := make(chan *write_msg, 1) // buffered so there is no race between initial queueing and startup of writer thread
 	write_done_channel := make(chan IdType)
-	tty_reading_done_channel := make(chan byte)
 	self.wakeup_channel = make(chan byte, 256)
 	self.pending_writes = make([]*write_msg, 0, 256)
 	err_channel := make(chan error, 8)
@@ -286,25 +284,49 @@ func (self *Loop) run() (err error) {
 	no_timeout_channel := make(<-chan time.Time)
 	finalizer := ""
 
-	w_r, w_w, err := os.Pipe()
-	var r_r, r_w *os.File
-	if err == nil {
+	var r_r, r_w, w_r, w_w *os.File
+	var tty_reading_done_channel chan byte
+	var tty_read_channel chan []byte
+
+	start_tty_reader := func() (err error) {
 		r_r, r_w, err = os.Pipe()
 		if err != nil {
-			w_r.Close()
-			w_w.Close()
 			return err
 		}
-	} else {
+		tty_read_channel = make(chan []byte)
+		tty_reading_done_channel = make(chan byte)
+		go read_from_tty(r_r, controlling_term, tty_read_channel, err_channel, tty_reading_done_channel)
+		return
+	}
+	err = start_tty_reader()
+	if err != nil {
 		return err
 	}
+	w_r, w_w, err = os.Pipe() // these are closed in the writer thread and the shutdown defer in this thread
+	if err != nil {
+		return err
+	}
+
 	self.QueueWriteString(self.terminal_options.SetStateEscapeCodes())
 	needs_reset_escape_codes := true
 
-	defer func() {
+	shutdown_tty_reader := func() {
 		// notify tty reader that we are shutting down
-		r_w.Close()
-		close(tty_reading_done_channel)
+		if r_w != nil {
+			r_w.Close()
+			close(tty_reading_done_channel)
+			r_w = nil
+			tty_reading_done_channel = nil
+		}
+	}
+	wait_for_tty_reader_to_quit := func() {
+		// wait for tty reader to exit cleanly
+		for range tty_read_channel {
+		}
+	}
+
+	defer func() {
+		shutdown_tty_reader()
 
 		if self.OnFinalize != nil {
 			finalizer += self.OnFinalize()
@@ -318,13 +340,10 @@ func (self *Loop) run() (err error) {
 		// flush queued data and wait for it to be written for a timeout, then wait for writer to shutdown
 		flush_writer(w_w, tty_write_channel, write_done_channel, self.pending_writes, 2*time.Second)
 		self.pending_writes = nil
-		// wait for tty reader to exit cleanly
-		for range tty_read_channel {
-		}
+		wait_for_tty_reader_to_quit()
 	}()
 
 	go write_to_tty(w_r, controlling_term, tty_write_channel, err_channel, write_done_channel)
-	go read_from_tty(r_r, controlling_term, tty_read_channel, err_channel, tty_reading_done_channel)
 
 	if self.OnInitialize != nil {
 		finalizer, err = self.OnInitialize()
@@ -333,27 +352,30 @@ func (self *Loop) run() (err error) {
 		}
 	}
 
-	self.Suspend = func() (func() error, error) {
+	self.SuspendAndRun = func(run func() error) (err error) {
 		write_id := self.QueueWriteString(self.terminal_options.ResetStateEscapeCodes())
 		needs_reset_escape_codes = false
-		err := self.wait_for_write_to_complete(write_id, tty_write_channel, write_done_channel, 2*time.Second)
-		if err != nil {
-			return nil, err
+		if err = self.wait_for_write_to_complete(write_id, tty_write_channel, write_done_channel, 2*time.Second); err != nil {
+			return err
 		}
+		shutdown_tty_reader()
+		wait_for_tty_reader_to_quit()
 		resume, err := controlling_term.Suspend()
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return func() (err error) {
-			err = resume()
-			if err != nil {
-				return
-			}
-			write_id = self.QueueWriteString(self.terminal_options.SetStateEscapeCodes())
-			needs_reset_escape_codes = true
-			return self.wait_for_write_to_complete(write_id, tty_write_channel, write_done_channel, 2*time.Second)
-		}, nil
-
+		if err = run(); err != nil {
+			return err
+		}
+		if err = start_tty_reader(); err != nil {
+			return err
+		}
+		if err = resume(); err != nil {
+			return err
+		}
+		write_id = self.QueueWriteString(self.terminal_options.SetStateEscapeCodes())
+		needs_reset_escape_codes = true
+		return self.wait_for_write_to_complete(write_id, tty_write_channel, write_done_channel, 2*time.Second)
 	}
 
 	self.on_SIGTSTP = func() error {

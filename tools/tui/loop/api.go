@@ -66,8 +66,9 @@ type Loop struct {
 	style_ctx                              style.Context
 	atomic_update_active                   bool
 
-	// Suspend the loop restoring terminal state. Call the return resume function to restore the loop
-	Suspend func() (func() error, error)
+	// Suspend the loop restoring terminal state, and run the provided function. When it returns terminal state is
+	// put back to what it was before suspending unless the function returns an error or an error occurs saving/restoring state.
+	SuspendAndRun func(func() error) error
 
 	// Callbacks
 
