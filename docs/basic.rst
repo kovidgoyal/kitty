@@ -58,6 +58,7 @@ Action                      Shortcut
 New window                  :sc:`new_window` (also :kbd:`⌘+↩` on macOS)
 New OS window               :sc:`new_os_window` (also :kbd:`⌘+n` on macOS)
 Close window                :sc:`close_window` (also :kbd:`⇧+⌘+d` on macOS)
+Resize window               :sc:`start_resizing_window` (also :kbd:`⌘+r` on macOS)
 Next window                 :sc:`next_window`
 Previous window             :sc:`previous_window`
 Move window forward         :sc:`move_window_forward`
