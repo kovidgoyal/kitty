@@ -184,6 +184,12 @@ void main() {
     vec4 fg = calculate_foreground(background);
 #ifdef TRANSPARENT
     final_color = alpha_blend_premul(fg, vec4_premul(background, bg_alpha));
+
+    // Adjust the transparent alpha-channel to account for incorrect
+    // gamma-blending performed by the compositor (true for at least wlroots,
+    // picom, GNOME, MacOS).
+    // This is the last pass:
+    final_color.a = linear2srgb(final_color.a);
 #else
     final_color = alpha_blend_premul(fg, background);
 #endif
@@ -207,6 +213,10 @@ void main() {
 
 #ifdef FOREGROUND
     final_color = calculate_foreground();  // pre-multiplied foreground
+
+    // This is the last pass, adjust alpha to compensate for gamma-incorrect
+    // blending in compositor:
+    final_color.a = linear2srgb(final_color.a);
 #endif
 
 }
