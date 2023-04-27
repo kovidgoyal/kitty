@@ -37,6 +37,22 @@ in float colored_sprite;
 out vec4 final_color;
 
 // Util functions {{{
+float linear2srgb(float x) {
+    // Linear to sRGB conversion.
+    float lower = 12.92 * x;
+    float upper = 1.055 * pow(x, 1.0f / 2.4f) - 0.055f;
+
+    return mix(lower, upper, step(0.0031308f, x));
+}
+
+float srgb2linear(float x) {
+    // sRGB to linear conversion
+    float lower = x / 12.92;
+    float upper = pow((x + 0.055f) / 1.055f, 2.4f);
+
+    return mix(lower, upper, step(0.04045f, x));
+}
+
 vec4 alpha_blend(vec4 over, vec4 under) {
     // Alpha blend two colors returning the resulting color pre-multiplied by its alpha
     // and its alpha.
@@ -103,19 +119,8 @@ vec4 vec4_premul(vec4 rgba) {
 #ifdef NEEDS_FOREGROUND
 // sRGB luminance values
 const vec3 Y = vec3(0.2126, 0.7152, 0.0722);
-const float gamma_factor = 2.2;
 // Scaling factor for the extra text-alpha adjustment for luminance-difference.
 const float text_gamma_scaling = 0.5;
-
-float linear2srgb(float x) {
-    // Approximation of linear-to-sRGB conversion
-    return pow(x, 1.0 / gamma_factor);
-}
-
-float srgb2linear(float x) {
-    // Approximation of sRGB-to-linear conversion
-    return pow(x, gamma_factor);
-}
 
 float clamp_to_unit_float(float x) {
     // Clamp value to suitable output range
