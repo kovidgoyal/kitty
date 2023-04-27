@@ -44,15 +44,23 @@ func read_bypass(loc string) (string, error) {
 }
 
 func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
-	if err != nil {
-		rc = 1
-	}
 	if opts.PermissionsBypass != "" {
 		val, err := read_bypass(opts.PermissionsBypass)
 		if err != nil {
 			return 1, err
 		}
 		opts.PermissionsBypass = strings.TrimSpace(val)
+	}
+	if len(args) == 0 {
+		return 1, fmt.Errorf("Must specify at least one file to transfer")
+	}
+	if opts.Direction == "send" {
+		err = send_main(opts, args)
+	} else {
+		err = receive_main(opts, args)
+	}
+	if err != nil {
+		rc = 1
 	}
 	return
 }
