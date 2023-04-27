@@ -1,3 +1,4 @@
+//go:build exclude
 /*
  * rsync.c
  * Copyright (C) 2021 Kovid Goyal <kovid at kovidgoyal.net>

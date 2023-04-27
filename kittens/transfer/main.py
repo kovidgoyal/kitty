@@ -102,3 +102,4 @@ elif __name__ == '__doc__':
     cd['usage'] = usage
     cd['options'] = option_text
     cd['help_text'] = help_text
+    cd['short_desc'] = help_text

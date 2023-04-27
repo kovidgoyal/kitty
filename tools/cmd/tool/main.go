@@ -14,6 +14,7 @@ import (
 	"kitty/kittens/show_key"
 	"kitty/kittens/ssh"
 	"kitty/kittens/themes"
+	"kitty/kittens/transfer"
 	"kitty/kittens/unicode_input"
 	"kitty/tools/cli"
 	"kitty/tools/cmd/at"
@@ -43,6 +44,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	icat.EntryPoint(root)
 	// ssh
 	ssh.EntryPoint(root)
+	// transfer
+	transfer.EntryPoint(root)
 	// unicode_input
 	unicode_input.EntryPoint(root)
 	// show_key
