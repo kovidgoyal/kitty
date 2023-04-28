@@ -60,12 +60,14 @@ var TmuxSocketAddress = (&utils.Once[string]{Run: tmux_socket_address}).Get
 func tmux_allow_passthrough() error {
 	cmd := []string{TmuxExe(), "show", "-Ap", "allow-passthrough"}
 	c := exec.Command(cmd[0], cmd[1:]...)
+	stderr := strings.Builder{}
+	c.Stderr = &stderr
 	allowed, not_allowed := errors.New("allowed"), errors.New("not allowed")
 	get_result := make(chan error)
 	go func() {
 		output, err := c.Output()
 		if err != nil {
-			get_result <- fmt.Errorf("Running %s failed with error: %w", strings.Join(cmd, " "), err)
+			get_result <- fmt.Errorf("Running %s failed with error: %w. STDERR: %s", strings.Join(cmd, " "), err, stderr.String())
 		} else {
 			q := strings.TrimSpace(utils.UnsafeBytesToString(output))
 			if strings.HasSuffix(q, " on") || strings.HasSuffix(q, " all") {
@@ -84,9 +86,12 @@ func tmux_allow_passthrough() error {
 			return r
 		}
 		cmd := []string{TmuxExe(), "set", "-p", "allow-passthrough", "on"}
-		err := exec.Command(cmd[0], cmd[1:]...).Run()
+		c := exec.Command(cmd[0], cmd[1:]...)
+		stderr := strings.Builder{}
+		c.Stderr = &stderr
+		err := c.Run()
 		if err != nil {
-			err = fmt.Errorf("Running %s failed with error: %w", strings.Join(cmd, " "), err)
+			err = fmt.Errorf("Running %s failed with error: %w. STDERR: %s", strings.Join(cmd, " "), err, stderr.String())
 		}
 		return err
 	case <-time.After(2 * time.Second):
