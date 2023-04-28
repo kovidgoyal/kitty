@@ -13,8 +13,10 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/sys/unix"
 )
@@ -290,4 +292,30 @@ func ResolveConfPath(path string) string {
 		cs = filepath.Join(ConfigDir(), cs)
 	}
 	return cs
+}
+
+// Longest common path. Must be passed paths that have been cleaned by filepath.Clean
+func Commonpath(paths ...string) (longest_prefix string) {
+	switch len(paths) {
+	case 0:
+		return
+	case 1:
+		return paths[0]
+	default:
+		sort.Strings(paths)
+		a, b := paths[0], paths[len(paths)-1]
+		sz := 0
+		for a != "" && b != "" {
+			ra, na := utf8.DecodeRuneInString(a)
+			rb, nb := utf8.DecodeRuneInString(b)
+			if ra != rb {
+				break
+			}
+			sz += na
+			a = a[na:]
+			b = b[nb:]
+		}
+		longest_prefix = a[:sz]
+	}
+	return
 }

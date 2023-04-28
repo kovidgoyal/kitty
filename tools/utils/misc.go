@@ -30,6 +30,8 @@ func Reversed[T any](s []T) []T {
 func Remove[T comparable](s []T, q T) []T {
 	idx := slices.Index(s, q)
 	if idx > -1 {
+		var zero T
+		s[idx] = zero // if pointer this allows garbage collection
 		return slices.Delete(s, idx, idx+1)
 	}
 	return s

@@ -63,3 +63,18 @@ func run_with_paths(cwd, home string, f func()) {
 	defer func() { global_cwd, global_home = "", "" }()
 	f()
 }
+
+func should_be_compressed(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext != "" {
+		switch ext[1:] {
+		case "zip", "odt", "odp", "pptx", "docx", "gz", "bz2", "xz", "svgz":
+			return false
+		}
+	}
+	mt := utils.GuessMimeType(path)
+	if strings.HasSuffix(mt, "+zip") || (strings.HasPrefix(mt, "image/") && mt != "image/svg+xml") || strings.HasPrefix(mt, "video/") {
+		return false
+	}
+	return true
+}
