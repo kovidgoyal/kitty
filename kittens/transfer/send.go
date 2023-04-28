@@ -10,7 +10,7 @@ var _ = fmt.Print
 
 func send_main(opts *Options, args []string) (err error) {
 	fmt.Println("Scanning files…")
-	files = files_for_send(opts, args)
+	files := files_for_send(opts, args)
 	fmt.Printf("Found %d files and directories, requesting transfer permission…", len(files))
 	fmt.Println()
 
