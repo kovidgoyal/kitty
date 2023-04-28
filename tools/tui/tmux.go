@@ -57,17 +57,21 @@ func tmux_socket_address() (socket string) {
 
 var TmuxSocketAddress = (&utils.Once[string]{Run: tmux_socket_address}).Get
 
+func tmux_command(args ...string) (c *exec.Cmd, stderr *strings.Builder) {
+	c = exec.Command(TmuxExe(), args...)
+	stderr = &strings.Builder{}
+	c.Stderr = stderr
+	return c, stderr
+}
+
 func tmux_allow_passthrough() error {
-	cmd := []string{TmuxExe(), "show", "-Ap", "allow-passthrough"}
-	c := exec.Command(cmd[0], cmd[1:]...)
-	stderr := strings.Builder{}
-	c.Stderr = &stderr
+	c, stderr := tmux_command("show", "-Ap", "allow-passthrough")
 	allowed, not_allowed := errors.New("allowed"), errors.New("not allowed")
 	get_result := make(chan error)
 	go func() {
 		output, err := c.Output()
 		if err != nil {
-			get_result <- fmt.Errorf("Running %s failed with error: %w. STDERR: %s", strings.Join(cmd, " "), err, stderr.String())
+			get_result <- fmt.Errorf("Running %#v failed with error: %w. STDERR: %s", c.Args, err, stderr.String())
 		} else {
 			q := strings.TrimSpace(utils.UnsafeBytesToString(output))
 			if strings.HasSuffix(q, " on") || strings.HasSuffix(q, " all") {
@@ -85,13 +89,10 @@ func tmux_allow_passthrough() error {
 		if r != not_allowed {
 			return r
 		}
-		cmd := []string{TmuxExe(), "set", "-p", "allow-passthrough", "on"}
-		c := exec.Command(cmd[0], cmd[1:]...)
-		stderr := strings.Builder{}
-		c.Stderr = &stderr
+		c, stderr = tmux_command("set", "-p", "allow-passthrough", "on")
 		err := c.Run()
 		if err != nil {
-			err = fmt.Errorf("Running %s failed with error: %w. STDERR: %s", strings.Join(cmd, " "), err, stderr.String())
+			err = fmt.Errorf("Running %#v failed with error: %w. STDERR: %s", c.Args, err, stderr.String())
 		}
 		return err
 	case <-time.After(2 * time.Second):
