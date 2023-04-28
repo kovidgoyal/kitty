@@ -1812,7 +1812,8 @@ class Boss:
         'tab', '''
         Change the title of the active tab interactively, by typing in the new title.
         If you specify an argument to this action then that is used as the title instead of asking for it.
-        Use the empty string ("") to reset the title to default. For example::
+        Use the empty string ("") to reset the title to default. Use a space (" ") to indicate that the
+        prompt should not be pre-filled. For example::
 
             # interactive usage
             map f1 set_tab_title
@@ -1820,19 +1821,24 @@ class Boss:
             map f2 set_tab_title some title
             # reset to default
             map f3 set_tab_title ""
+            # interactive usage without prefilled prompt
+            map f3 set_tab_title " "
         '''
     )
     def set_tab_title(self, title: Optional[str] = None) -> None:
         tab = self.active_tab
         if tab:
-            if title is not None:
+            if title is not None and title not in ('" "', "' '"):
                 if title in ('""', "''"):
                     title = ''
                 tab.set_title(title)
                 return
+            prefilled = tab.name or tab.title
+            if title in ('" "', "' '"):
+                prefilled = ''
             args = [
                 '--name=tab-title', '--message', _('Enter the new title for this tab below.'),
-                '--default', tab.name or tab.title, 'do_set_tab_title', str(tab.id)]
+                '--default', prefilled, 'do_set_tab_title', str(tab.id)]
             self.run_kitten_with_metadata('ask', args)
 
     def do_set_tab_title(self, title: str, tab_id: int) -> None:
