@@ -5,6 +5,7 @@ package transfer
 import (
 	"fmt"
 	"io/fs"
+	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
 	"os"
@@ -269,6 +270,86 @@ func files_for_send(opts *Options, args []string) (files []*File, err error) {
 	return files, nil
 }
 
+type SendManager struct {
+	request_id    string
+	files         []*File
+	bypass        string
+	use_rsync     bool
+	file_progress func(*File, int)
+	file_done     func(*File)
+	fid_map       map[string]*File
+}
+
+func (self *SendManager) initialize() {
+	if self.bypass != "" {
+		self.bypass = encode_bypass(self.request_id, self.bypass)
+	}
+	self.fid_map = make(map[string]*File, len(self.files))
+	for _, f := range self.files {
+		self.fid_map[f.file_id] = f
+	}
+}
+
+type SendHandler struct {
+	manager                              *SendManager
+	opts                                 *Options
+	files                                []*File
+	lp                                   *loop.Loop
+	transmit_started, file_metadata_sent bool
+	quite_after_write_code               int
+	check_paths_printed                  bool
+	max_name_length                      int
+	progress_drawn                       bool
+	failed_files, done_files             []*File
+	done_file_ids                        *utils.Set[string]
+	transmit_ok_checked                  bool
+}
+
+func (self *SendHandler) on_file_progress(f *File, change int) {
+	self.schedule_progress_update()
+}
+
+func (self *SendHandler) on_file_done(f *File) {
+	self.done_files = append(self.done_files, f)
+	if f.err_msg != "" {
+		self.failed_files = append(self.failed_files, f)
+	}
+	self.schedule_progress_update()
+}
+
+func (self *SendHandler) initialize() error {
+	self.manager.initialize()
+	self.send_payload(self.manager.start_transfer())
+	if self.opts.PermissionsBypass != "" {
+		// dont wait for permission, not needed with a bypass and avoids a roundtrip
+		self.send_file_metadata()
+	}
+	return nil
+}
+
+func send_loop(opts *Options, files []*File) (err error) {
+	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors)
+	if err != nil {
+		return
+	}
+
+	handler := &SendHandler{
+		opts: opts, files: files, lp: lp, quite_after_write_code: -1,
+		max_name_length: utils.Max(0, utils.Map(func(f *File) int { return wcswidth.Stringwidth(f.display_name) }, files)...),
+		progress_drawn:  true, done_file_ids: utils.NewSet[string](),
+		manager: &SendManager{
+			request_id: random_id(), files: files, bypass: opts.PermissionsBypass, use_rsync: opts.TransmitDeltas,
+		},
+	}
+	handler.manager.file_progress = handler.on_file_progress
+	handler.manager.file_done = handler.on_file_done
+
+	lp.OnInitialize = func() (string, error) {
+		return "", handler.initialize()
+	}
+	return
+}
+
 func send_main(opts *Options, args []string) (err error) {
 	fmt.Println("Scanning files…")
 	files, err := files_for_send(opts, args)
@@ -277,6 +358,7 @@ func send_main(opts *Options, args []string) (err error) {
 	}
 	fmt.Printf("Found %d files and directories, requesting transfer permission…", len(files))
 	fmt.Println()
+	err = send_loop(opts, files)
 
 	return
 }

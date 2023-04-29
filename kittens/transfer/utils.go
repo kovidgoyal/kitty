@@ -4,6 +4,7 @@ package transfer
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"os"
@@ -30,6 +31,12 @@ func home_path() string {
 		return utils.Expanduser("~")
 	}
 	return global_home
+}
+
+func encode_bypass(request_id string, bypass string) string {
+	q := request_id + ";" + bypass
+	sum := sha256.Sum256(utils.UnsafeStringToBytes(q))
+	return fmt.Sprintf("%x", sum)
 }
 
 func abspath(path string, use_home ...bool) string {
