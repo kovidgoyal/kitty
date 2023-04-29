@@ -189,8 +189,8 @@ func process_normal_files(opts *Options, args []string) (ans []*File, err error)
 		return ans, fmt.Errorf("Must specify at least one local path and one remote path")
 	}
 	args = slices.Clone(args)
-	remote_base := filepath.ToSlash(args[0])
-	args = args[1:]
+	remote_base := filepath.ToSlash(args[len(args)-1])
+	args = args[:len(args)-1]
 	if len(args) > 1 && !strings.HasSuffix(remote_base, "/") {
 		remote_base += "/"
 	}
@@ -223,7 +223,7 @@ func files_for_send(opts *Options, args []string) (files []*File, err error) {
 		}
 	}
 
-	remove := make([]int, len(files))
+	remove := make([]int, 0, len(files))
 	// detect symlinks to other transferred files
 	for i, f := range files {
 		if f.file_type == SYMLINK_FILE {

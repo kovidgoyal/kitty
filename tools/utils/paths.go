@@ -315,7 +315,7 @@ func Commonpath(paths ...string) (longest_prefix string) {
 			a = a[na:]
 			b = b[nb:]
 		}
-		longest_prefix = a[:sz]
+		longest_prefix = paths[0][:sz]
 	}
 	return
 }

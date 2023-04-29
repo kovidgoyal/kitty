@@ -33,6 +33,9 @@ func home_path() string {
 }
 
 func abspath(path string, use_home ...bool) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
 	var base string
 	if len(use_home) > 0 && use_home[0] {
 		base = home_path()
