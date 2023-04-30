@@ -2634,7 +2634,7 @@ class Boss:
             where = 'new' if args[0] == 'new-tab' else args[0][4:]
             return self._move_window_to(target_tab_id=where)
         ct = self.active_tab
-        items: List[Tuple[Union[str, int], str]] = [(t.id, t.title) for t in self.all_tabs if t is not ct]
+        items: List[Tuple[Union[str, int], str]] = [(t.id, t.effective_title) for t in self.all_tabs if t is not ct]
         items.append(('new_tab', 'New tab'))
         items.append(('new_os_window', 'New OS Window'))
         target_window = self.active_window
