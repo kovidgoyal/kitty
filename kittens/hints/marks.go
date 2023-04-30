@@ -314,6 +314,12 @@ func mark(r *regexp.Regexp, post_processors []PostProcessorFunc, group_processor
 		for k, v := range gd {
 			gd2[k] = v
 		}
+		if opts.Type == "regex" && len(names) > 1 && names[1] == "" {
+			ms, me := v[2], v[3]
+			match_start = utils.Max(match_start, ms)
+			match_end = utils.Min(match_end, me)
+			full_match = sanitize_pat.ReplaceAllLiteralString(text[match_start:match_end], "")
+		}
 		ans = append(ans, Mark{
 			Index: i, Start: match_start, End: match_end, Text: full_match, Groupdict: gd2,
 		})

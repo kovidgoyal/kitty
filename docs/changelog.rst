@@ -48,6 +48,8 @@ Detailed list of changes
 
 - show_key kitten: In kitty mode show the actual bytes sent by the terminal rather than a re-encoding of the parsed key event
 
+- hints kitten: Fix a regression in 0.28.0 that broke using sub-groups in regexp captures (:iss:`6228`)
+
 0.28.1 [2023-04-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
