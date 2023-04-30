@@ -35,12 +35,18 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.28.2 [2023-04-21]
+0.28.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - unicode_input kitten: Fix a regression in 0.28.0 that caused the order of recent and favorites entries to not be respected (:iss:`6214`)
 
+- unicode_input kitten: Fix a regression in 0.28.0 that caused editing of favorites to sometimes hang
+
 - clipboard kitten: Fix a bug causing the last MIME type available on the clipboard not being recognized when pasting
+
+- Fix regression in 0.28.0 causing color fringing when rendering in transparent windows on light backgrounds (:iss:`6209`)
+
+- show_key kitten: In kitty mode show the actual bytes sent by the terminal rather than a re-encoding of the parsed key event
 
 0.28.1 [2023-04-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
