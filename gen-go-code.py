@@ -559,6 +559,7 @@ def load_ref_map() -> Dict[str, Dict[str, str]]:
 
 def generate_constants() -> str:
     from kittens.hints.main import DEFAULT_REGEX
+    from kitty.fast_data_types import FILE_TRANSFER_CODE
     from kitty.options.types import Options
     from kitty.options.utils import allowed_shell_integration_values
     del sys.modules['kittens.hints.main']
@@ -577,6 +578,7 @@ type VersionType struct {{
 }}
 const VersionString string = "{kc.str_version}"
 const WebsiteBaseURL string = "{kc.website_base_url}"
+const FileTransferCode int = {FILE_TRANSFER_CODE}
 const ImagePlaceholderChar rune = {placeholder_char}
 const VCSRevision string = ""
 const SSHControlMasterTemplate = "{kc.ssh_control_master_template}"

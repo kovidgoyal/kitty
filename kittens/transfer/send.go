@@ -5,6 +5,7 @@ package transfer
 import (
 	"fmt"
 	"io/fs"
+	"kitty"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"kitty/tools/wcswidth"
@@ -270,14 +271,89 @@ func files_for_send(opts *Options, args []string) (files []*File, err error) {
 	return files, nil
 }
 
+type SendState int
+
+const (
+	SEND_WAITING_FOR_PERMISSION SendState = iota
+	SEND_PERMISSION_GRANTED
+	SEND_PERMISSION_DENIED
+	SEND_CANCELED
+)
+
+type Transfer struct {
+	amt int64
+	at  time.Time
+}
+
+func (self *Transfer) is_too_old(now time.Time) bool {
+	return now.Sub(self.at) > 30*time.Second
+}
+
+type ProgressTracker struct {
+	total_size_of_all_files, total_bytes_to_transfer int64
+	active_file                                      *File
+	total_transferred                                int64
+	transfers                                        []*Transfer
+	transfered_stats_amt                             int64
+	transfered_stats_interval                        time.Duration
+	started_at                                       time.Time
+	signature_bytes                                  int
+	total_reported_progress                          int64
+}
+
+func (self *ProgressTracker) change_active_file(nf *File) {
+	now := time.Now()
+	self.active_file = nf
+	nf.transmit_started_at = now
+}
+
+func (self *ProgressTracker) start_transfer() {
+	t := Transfer{at: time.Now()}
+	self.transfers = append(self.transfers, &t)
+	self.started_at = t.at
+}
+
+func (self *ProgressTracker) on_transmit(amt int64) {
+	if self.active_file != nil {
+		self.active_file.transmitted_bytes += amt
+	}
+	self.total_transferred += amt
+	now := time.Now()
+	self.transfers = append(self.transfers, &Transfer{amt: amt, at: now})
+	for len(self.transfers) > 2 && self.transfers[0].is_too_old(now) {
+		self.transfers = self.transfers[1:]
+	}
+	self.transfered_stats_interval = now.Sub(self.transfers[0].at)
+	self.transfered_stats_amt = 0
+	for _, t := range self.transfers {
+		self.transfered_stats_amt += t.amt
+	}
+}
+
+func (self *ProgressTracker) on_file_progress(af *File, delta int64) {
+	if delta > 0 {
+		self.total_reported_progress += delta
+	}
+}
+
+func (self *ProgressTracker) on_file_done(af *File) {
+	af.done_at = time.Now()
+}
+
 type SendManager struct {
-	request_id    string
-	files         []*File
-	bypass        string
-	use_rsync     bool
-	file_progress func(*File, int)
-	file_done     func(*File)
-	fid_map       map[string]*File
+	request_id                                                 string
+	state                                                      SendState
+	files                                                      []*File
+	bypass                                                     string
+	use_rsync                                                  bool
+	file_progress                                              func(*File, int)
+	file_done                                                  func(*File)
+	fid_map                                                    map[string]*File
+	all_acknowledged, all_started, has_transmitting, has_rsync bool
+	active_idx, current_chunk_uncompressed_size                int
+	prefix, suffix                                             string
+	last_progress_file                                         *File
+	progress_tracker                                           *ProgressTracker
 }
 
 func (self *SendManager) initialize() {
@@ -288,6 +364,16 @@ func (self *SendManager) initialize() {
 	for _, f := range self.files {
 		self.fid_map[f.file_id] = f
 	}
+	self.active_idx = -1
+	self.current_chunk_uncompressed_size = -1
+	self.prefix = fmt.Sprintf("\x1b]%d;id=%s;", kitty.FileTransferCode, self.request_id)
+	self.suffix = "\x1b\\"
+	for _, f := range self.files {
+		if f.file_size > 0 {
+			self.progress_tracker.total_size_of_all_files += f.file_size
+		}
+	}
+	self.progress_tracker.total_bytes_to_transfer = self.progress_tracker.total_size_of_all_files
 }
 
 type SendHandler struct {
