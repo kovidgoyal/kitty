@@ -40,6 +40,8 @@ Detailed list of changes
 
 - unicode_input kitten: Fix a regression in 0.28.0 that caused the order of recent and favorites entries to not be respected (:iss:`6214`)
 
+- clipboard kitten: Fix a bug causing the last MIME type available on the clipboard not being recognized when pasting
+
 0.28.1 [2023-04-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

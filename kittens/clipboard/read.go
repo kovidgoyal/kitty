@@ -343,7 +343,7 @@ func run_get_loop(opts *Options, args []string) (err error) {
 		if reading_available_mimes {
 			switch metadata["status"] {
 			case "DATA":
-				available_mimes = strings.Split(utils.UnsafeBytesToString(payload), " ")
+				available_mimes = utils.Map(strings.TrimSpace, strings.Split(utils.UnsafeBytesToString(payload), " "))
 			case "OK":
 			case "DONE":
 				reading_available_mimes = false
