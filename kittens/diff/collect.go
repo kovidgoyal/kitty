@@ -258,6 +258,10 @@ func resolve_remote_name(path, defval string) string {
 }
 
 func walk(base string, patterns []string, names *utils.Set[string], pmap, path_name_map map[string]string) error {
+	base, err := filepath.Abs(base)
+	if err != nil {
+		return err
+	}
 	return filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
 		is_allowed := allowed(path, patterns...)
 		if !is_allowed {
