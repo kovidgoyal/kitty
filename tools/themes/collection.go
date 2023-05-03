@@ -507,7 +507,9 @@ func parse_theme_metadata(path string) (*ThemeMetadata, map[string]string, error
 		val = strings.TrimSpace(val)
 		switch key {
 		case "name":
-			ans.Name = val
+			if val != "The name of the theme (if not present, derived from filename)" {
+				ans.Name = val
+			}
 		case "author":
 			ans.Author = val
 		case "upstream":
