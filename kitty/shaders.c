@@ -434,8 +434,13 @@ draw_bg(OSWindow *w) {
 
     glUniform1i(bgimage_program_layout.image_location, BGIMAGE_UNIT);
     glUniform1f(bgimage_program_layout.opacity_location, OPT(background_opacity));
+#ifdef __APPLE__
+    int window_width = w->window_width, window_height = w->window_height;
+#else
+    int window_width = w->viewport_width, window_height = w->viewport_height;
+#endif
     glUniform4f(bgimage_program_layout.sizes_location,
-        (GLfloat)w->viewport_width, (GLfloat)w->viewport_height, (GLfloat)w->bgimage->width, (GLfloat)w->bgimage->height);
+        (GLfloat)window_width, (GLfloat)window_height, (GLfloat)w->bgimage->width, (GLfloat)w->bgimage->height);
     glUniform1f(bgimage_program_layout.premult_location, w->is_semi_transparent ? 1.f : 0.f);
     GLfloat tiled = 0.f;;
     GLfloat left = -1.0, top = 1.0, right = 1.0, bottom = -1.0;
@@ -446,12 +451,12 @@ draw_bg(OSWindow *w) {
             tiled = 0.f; break;
         case CENTER_CLAMPED:
             tiled = 1.f;
-            if (w->viewport_width > (int)w->bgimage->width) {
-                GLfloat frac = (w->viewport_width - w->bgimage->width) / (GLfloat)w->viewport_width;
+            if (window_width > (int)w->bgimage->width) {
+                GLfloat frac = (window_width - w->bgimage->width) / (GLfloat)window_width;
                 left += frac; right += frac;
             }
-            if (w->viewport_height > (int)w->bgimage->height) {
-                GLfloat frac = (w->viewport_height - w->bgimage->height) / (GLfloat)w->viewport_height;
+            if (window_height > (int)w->bgimage->height) {
+                GLfloat frac = (window_height - w->bgimage->height) / (GLfloat)window_height;
                 top -= frac; bottom -= frac;
             }
             break;
