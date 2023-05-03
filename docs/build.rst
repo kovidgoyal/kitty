@@ -61,6 +61,7 @@ Build-time dependencies:
   - ``libfontconfig-dev``
   - ``libx11-xcb-dev``
   - ``liblcms2-dev``
+  - ``libssl-dev``
   - ``libpython3-dev``
   - ``librsync-dev``
 
