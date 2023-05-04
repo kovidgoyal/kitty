@@ -463,7 +463,7 @@ type ThemeMetadata struct {
 	Author       string `json:"author"`
 }
 
-func parse_theme_metadata(path string) (*ThemeMetadata, map[string]string, error) {
+func ParseThemeMetadata(path string) (*ThemeMetadata, map[string]string, error) {
 	var in_metadata, in_blurb, finished_metadata bool
 	ans := ThemeMetadata{}
 	settings := map[string]string{}
@@ -816,7 +816,7 @@ func (self *Themes) Filtered(is_ok func(*Theme) bool) *Themes {
 }
 
 func (self *Themes) AddFromFile(path string) (*Theme, error) {
-	m, conf, err := parse_theme_metadata(path)
+	m, conf, err := ParseThemeMetadata(path)
 	if err != nil {
 		return nil, err
 	}

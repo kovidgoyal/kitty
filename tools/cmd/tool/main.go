@@ -54,6 +54,7 @@ func KittyToolEntryPoints(root *cli.Command) {
 	diff.EntryPoint(root)
 	// themes
 	themes.EntryPoint(root)
+	themes.ParseEntryPoint(root)
 	// __pytest__
 	pytest.EntryPoint(root)
 	// __hold_till_enter__
