@@ -26,7 +26,7 @@ func TestThemeCollections(t *testing.T) {
 		"mooseCat": "Moose Cat",
 		"a_bC":     "A B C",
 	} {
-		actual := theme_name_from_file_name(fname)
+		actual := ThemeNameFromFileName(fname)
 		if diff := cmp.Diff(expected, actual); diff != "" {
 			t.Fatalf("Unexpected theme name for %s:\n%s", fname, diff)
 		}
@@ -36,7 +36,7 @@ func TestThemeCollections(t *testing.T) {
 
 	pt := func(expected ThemeMetadata, lines ...string) {
 		os.WriteFile(filepath.Join(tdir, "temp.conf"), []byte(strings.Join(lines, "\n")), 0o600)
-		actual, _, err := parse_theme_metadata(filepath.Join(tdir, "temp.conf"))
+		actual, _, err := ParseThemeMetadata(filepath.Join(tdir, "temp.conf"))
 		if err != nil {
 			t.Fatal(err)
 		}
