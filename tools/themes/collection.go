@@ -784,7 +784,7 @@ var camel_case_pat = (&utils.Once[*regexp.Regexp]{Run: func() *regexp.Regexp {
 	return regexp.MustCompile(`([a-z])([A-Z])`)
 }}).Get
 
-func theme_name_from_file_name(fname string) string {
+func ThemeNameFromFileName(fname string) string {
 	fname = fname[:len(fname)-len(path.Ext(fname))]
 	fname = strings.ReplaceAll(fname, "_", " ")
 	fname = camel_case_pat().ReplaceAllString(fname, "$1 $2")
@@ -821,7 +821,7 @@ func (self *Themes) AddFromFile(path string) (*Theme, error) {
 		return nil, err
 	}
 	if m.Name == "" {
-		m.Name = theme_name_from_file_name(filepath.Base(path))
+		m.Name = ThemeNameFromFileName(filepath.Base(path))
 	}
 	t := Theme{metadata: m, is_user_defined: true, settings: conf, path_for_user_defined_theme: path}
 	self.name_map[m.Name] = &t
