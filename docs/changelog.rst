@@ -52,6 +52,8 @@ Detailed list of changes
 
 - diff kitten: Fix a regression in 0.28.0 that broke using relative paths as arguments to the kitten (:iss:`6325`)
 
+- Fix re-using an image id for an animated image for a still image causing a crash (:iss:`6244`)
+
 0.28.1 [2023-04-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -561,6 +561,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             img->root_frame_data_loaded = false;
             img->is_drawn = false;
             img->current_frame_shown_at = 0;
+            img->extra_framecnt = 0;
             free_image(self, img);
             *is_dirty = true;
             self->layers_dirty = true;
