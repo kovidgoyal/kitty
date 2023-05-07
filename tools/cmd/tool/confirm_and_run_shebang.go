@@ -33,7 +33,7 @@ func confirm_and_run_shebang(args []string) (rc int, err error) {
 			return 1, err
 		}
 		if !allowed {
-			return 1, fmt.Errorf("Execution permission refused by user")
+			return 1, fmt.Errorf("Execution of %s was denied by user", script_path)
 		}
 	}
 	exe := utils.FindExe(args[0])
