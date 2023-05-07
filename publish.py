@@ -493,7 +493,7 @@ def safe_read(path: str) -> str:
 @contextmanager
 def change_to_git_master() -> Generator[None, None, None]:
     stash_ref_before = safe_read('.git/refs/stash')
-    subprocess.check_call(['git', 'stash'])
+    subprocess.check_call(['git', 'stash', '-u'])
     try:
         branch_before = current_branch()
         if branch_before != 'master':
