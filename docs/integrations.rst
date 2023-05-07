@@ -80,6 +80,11 @@ base application that uses kitty's graphics protocol for images.
 A text mode WWW browser that supports kitty's graphics protocol to display
 images.
 
+`awrit <https://github.com/chase/awrit>`__
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A full Chromium based web browser running in the terminal using kitty's
+graphics protocol.
+
 .. _tool_mpv:
 
 `mpv <https://github.com/mpv-player/mpv/commit/874e28f4a41a916bb567a882063dd2589e9234e1>`_
