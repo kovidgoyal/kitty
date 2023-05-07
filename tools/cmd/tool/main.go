@@ -67,4 +67,13 @@ func KittyToolEntryPoints(root *cli.Command) {
 			return
 		},
 	})
+	// __confirm_and_run_shebang__
+	root.AddSubCommand(&cli.Command{
+		Name:            "__confirm_and_run_shebang__",
+		Hidden:          true,
+		OnlyArgsAllowed: true,
+		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
+			return confirm_and_run_shebang(args)
+		},
+	})
 }

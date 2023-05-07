@@ -33,7 +33,7 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 	}
 	switch o.Type {
 	case "yesno", "choices":
-		result.Response, err = choices(o)
+		result.Response, err = GetChoices(o)
 		if err != nil {
 			return 1, err
 		}

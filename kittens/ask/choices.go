@@ -60,7 +60,7 @@ func extra_for(width, screen_width int) int {
 	return utils.Max(0, screen_width-width)/2 + 1
 }
 
-func choices(o *Options) (response string, err error) {
+func GetChoices(o *Options) (response string, err error) {
 	response = ""
 	lp, err := loop.New()
 	if err != nil {

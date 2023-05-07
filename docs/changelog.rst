@@ -54,6 +54,9 @@ Detailed list of changes
 
 - Fix re-using an image id for an animated image for a still image causing a crash (:iss:`6244`)
 
+- kitty +open: Ask for permission before executing script files that are not marked as executable. This prevents accidental execution
+  of script files via MIME type association from programs that unconditionally "open" attachments/downloaded files via MIME type associations.
+
 0.28.1 [2023-04-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
