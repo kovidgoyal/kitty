@@ -57,6 +57,8 @@ Detailed list of changes
 - kitty +open: Ask for permission before executing script files that are not marked as executable. This prevents accidental execution
   of script files via MIME type association from programs that unconditionally "open" attachments/downloaded files.
 
+- edit-in-kitty: Fix running edit-in-kitty with elevated privileges to edit a restricted file not working (:disc:`6245`)
+
 0.28.1 [2023-04-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
