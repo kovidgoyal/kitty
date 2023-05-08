@@ -696,9 +696,15 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 	}()
 	err = c.Wait()
 	drain_potential_tty_garbage(term)
+	signal.Reset(unix.SIGINT, unix.SIGTERM)
 	if err != nil {
 		var exit_err *exec.ExitError
 		if errors.As(err, &exit_err) {
+			if state := exit_err.ProcessState.String(); state == "signal: interrupt" {
+				unix.Kill(os.Getpid(), unix.SIGINT)
+				// Give the signal time to be delivered
+				time.Sleep(20 * time.Millisecond)
+			}
 			return exit_err.ExitCode(), nil
 		}
 		return 1, err
