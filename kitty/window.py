@@ -1004,7 +1004,7 @@ class Window:
             '--ssh-connection-data', json.dumps(conn_data)
         )
 
-    def send_signal_for_key(self, key_num: int) -> bool:
+    def send_signal_for_key(self, key_num: bytes) -> bool:
         try:
             return self.child.send_signal_for_key(key_num)
         except OSError as err:
