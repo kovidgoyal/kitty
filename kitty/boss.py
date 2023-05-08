@@ -10,6 +10,7 @@ import sys
 from contextlib import contextmanager, suppress
 from functools import partial
 from gettext import gettext as _
+from gettext import ngettext
 from time import monotonic, sleep
 from typing import (
     TYPE_CHECKING,
@@ -1010,9 +1011,8 @@ class Boss:
             tm = tab.tab_manager_ref()
             if tm is not None:
                 tm.set_active_tab(tab)
-        self.confirm(_(
-            'Are you sure you want to close this tab, it has {}'
-            ' windows running?').format(num),
+        self.confirm(ngettext('Are you sure you want to close this tab, it has one window running?',
+                              'Are you sure you want to close this tab, it has {} windows running?', num).format(num),
             self.handle_close_tab_confirmation, tab.id,
             window=tab.active_window,
         )
@@ -1602,8 +1602,8 @@ class Boss:
         if tm is not None:
             w = tm.active_window
             self.confirm(
-                _('Are you sure you want to close this OS window, it has {}'
-                  ' windows running?').format(num),
+                ngettext('Are you sure you want to close this OS window, it has one window running?',
+                         'Are you sure you want to close this OS window, it has {} windows running', num).format(num),
                 self.handle_close_os_window_confirmation, os_window_id,
                 window=w,
             )
@@ -1642,7 +1642,8 @@ class Boss:
             return
         assert tm is not None
         self.confirm(
-            _('Are you sure you want to quit kitty, it has {} windows running?').format(num),
+            ngettext('Are you sure you want to quit kitty, it has one window running?',
+                     'Are you sure you want to quit kitty, it has {} windows running?', num).format(num),
             self.handle_quit_confirmation,
             window=tm.active_window,
         )
