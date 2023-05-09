@@ -3990,17 +3990,31 @@ You can create shortcuts to clear/reset the terminal. For example::
 If you want to operate on all kitty windows instead of just the current one, use
 :italic:`all` instead of :italic:`active`.
 
-It is also possible to remap :kbd:`Ctrl+L` to both scroll the current screen
+Some useful functions that can be defined in the shell rc files to perform various kinds of
+clearing of the current window:
+
+.. code-block:: sh
+
+    clear-only-screen() {
+        printf "\e[H\e[2J"
+    }
+
+    clear-screen-and-scrollback() {
+        printf "\e[H\e[3J"
+    }
+
+    clear-screen-saving-contents-in-scrollback() {
+        printf "\e[H\e[22J"
+    }
+
+For instance, using these functions, it is possible to remap :kbd:`Ctrl+L` to both scroll the current screen
 contents into the scrollback buffer and clear the screen, instead of just
-clearing the screen, for example, for ZSH add the following to :file:`~/.zshrc`:
+clearing the screen. For ZSH, in :file:`~/.zshrc` after the above functions, add:
 
 .. code-block:: zsh
 
-    scroll-and-clear-screen() {
-        printf "\e[H\e[22J"
-    }
-    zle -N scroll-and-clear-screen
-    bindkey '^l' scroll-and-clear-screen
+    zle -N clear-screen-saving-contents-in-scrollback
+    bindkey '^l' clear-screen-saving-contents-in-scrollback
 
 '''
     )
