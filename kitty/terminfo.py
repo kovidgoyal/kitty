@@ -111,7 +111,7 @@ string_capabilities = {
     'civis': r'\E[?25l',
     # Clear screen
     'clear': r'\E[H\E[2J',
-    # Clear scrollback. This is disabled because the clear program on Linux by default, without
+    # Clear scrollback. This is disabled because the clear program on Linux by default, not as
     # an option, uses it and nukes the scrollback. What's more this behavior was silently changed
     # around 2010? Given clear is maintained as part of ncurses this kind of crap is no surprise.
     # 'E3': r'\E[3J',
