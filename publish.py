@@ -548,6 +548,7 @@ def main() -> None:
         with change_to_git_master():
             building_nightly = True
             exec_actions(NIGHTLY_ACTIONS, args)
+            subprocess.run(['make', 'debug'])
         return
     require_git_master()
     if args.action == 'all':
