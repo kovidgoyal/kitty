@@ -113,7 +113,7 @@ string_capabilities = {
     'clear': r'\E[H\E[2J',
     # Clear scrollback. This is disabled because the clear program on Linux by default, not as
     # an option, uses it and nukes the scrollback. What's more this behavior was silently changed
-    # around 2010? Given clear is maintained as part of ncurses this kind of crap is no surprise.
+    # around 2013. Given clear is maintained as part of ncurses this kind of crap is no surprise.
     # 'E3': r'\E[3J',
     # Make cursor appear normal
     'cnorm': r'\E[?12h\E[?25h',
