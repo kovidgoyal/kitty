@@ -54,7 +54,7 @@ Detailed list of changes
 
 - diff kitten: Fix a regression in 0.28.0 that broke using relative paths as arguments to the kitten (:iss:`6325`)
 
-- Fix re-using an image id for an animated image for a still image causing a crash (:iss:`6244`)
+- Fix re-using the image id of an animated image for a still image causing a crash (:iss:`6244`)
 
 - kitty +open: Ask for permission before executing script files that are not marked as executable. This prevents accidental execution
   of script files via MIME type association from programs that unconditionally "open" attachments/downloaded files
