@@ -613,22 +613,20 @@ def inner_corner(buf: BufType, width: int, height: int, which: str = 'tl', level
     draw_vline(buf, width, y1, y2, width // 2 + (xd * hgap), level)
 
 
+@supersampled()
 def shade(buf: BufType, width: int, height: int, light: bool = False, invert: bool = False) -> None:
-    square_sz = max(1, width // 12)
-    number_of_rows = height // square_sz
-    number_of_cols = width // square_sz
-    nums = range(square_sz)
-
-    for r in range(number_of_rows):
-        for c in range(number_of_cols):
-            if invert ^ ((r % 2 != c % 2) or (light and r % 2 == 1)):
-                continue
-            for yr in nums:
-                y = r * square_sz + yr
-                offset = width * y
-                for xc in nums:
-                    x = c * square_sz + xc
-                    buf[offset + x] = 255
+    x_size = width / 4
+    y_size = height / 8
+    pattern_segments = 4 if light else 2
+    for y in range(height):
+        y_segment = y / y_size
+        offset = y * width
+        for x in range(width):
+            segment = x/x_size + y_segment
+            section = int(segment) % pattern_segments
+            enabled = section == 1
+            if invert ^ enabled:
+                buf[offset + x] = 255
 
 
 def quad(buf: BufType, width: int, height: int, x: int = 0, y: int = 0) -> None:
