@@ -1628,6 +1628,26 @@ screen_clear_scrollback(Screen *self) {
     }
 }
 
+static Line* visual_line_(Screen *self, int y_);
+
+static void
+screen_move_into_scrollback(Screen *self) {
+    if (self->linebuf != self->main_linebuf || self->margin_top != 0 || self->margin_bottom != self->lines - 1) return;
+    unsigned int num_of_lines_to_move = self->lines;
+    while (num_of_lines_to_move) {
+        Line *line = visual_line_(self, num_of_lines_to_move-1);
+        if (!line_is_empty(line)) break;
+        num_of_lines_to_move--;
+    }
+    if (num_of_lines_to_move) {
+        unsigned int top, bottom;
+        for (; num_of_lines_to_move; num_of_lines_to_move--) {
+            top = 0, bottom = num_of_lines_to_move - 1;
+            INDEX_UP
+        }
+    }
+}
+
 void
 screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     /* Erases display in a specific way.
@@ -1640,6 +1660,8 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
               including cursor position.
             * ``2`` -- Erases complete display. All lines are erased
               and changed to single-width. Cursor does not move.
+            * ``22`` -- Copy screen contents into scrollback if in main screen,
+              then do the same as ``2``.
             * ``3`` -- Erase complete display and scrollback buffer as well.
         :param bool private: when ``True`` character attributes are left unchanged
     */
@@ -1649,6 +1671,10 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             a = self->cursor->y + 1; b = self->lines; break;
         case 1:
             a = 0; b = self->cursor->y; break;
+        case 22:
+            screen_move_into_scrollback(self);
+            how = 2;
+            /* fallthrough */
         case 2:
         case 3:
             grman_clear(self->grman, how == 3, self->cell_size);
@@ -1671,7 +1697,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         self->is_dirty = true;
         clear_selection(&self->selections);
     }
-    if (how != 2) {
+    if (how < 2) {
         screen_erase_in_line(self, how, private);
         if (how == 1) linebuf_clear_attrs_and_dirty(self->linebuf, self->cursor->y);
     }

@@ -3997,8 +3997,7 @@ clearing the screen, for example, for ZSH add the following to :file:`~/.zshrc`:
 .. code-block:: zsh
 
     scroll-and-clear-screen() {
-        printf '\\n%.0s' {1..$LINES}
-        zle clear-screen
+        printf "\e[H\e[22J"
     }
     zle -N scroll-and-clear-screen
     bindkey '^l' scroll-and-clear-screen

@@ -38,6 +38,8 @@ Detailed list of changes
 0.28.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new escape code ``<ESC>[22J`` that moves the current contents of the screen into the scrollback before clearing it
+
 - unicode_input kitten: Fix a regression in 0.28.0 that caused the order of recent and favorites entries to not be respected (:iss:`6214`)
 
 - unicode_input kitten: Fix a regression in 0.28.0 that caused editing of favorites to sometimes hang
