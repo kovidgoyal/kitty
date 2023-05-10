@@ -617,37 +617,18 @@ def shade(buf: BufType, width: int, height: int, light: bool = False, invert: bo
     square_sz = max(1, width // 12)
     number_of_rows = height // square_sz
     number_of_cols = width // square_sz
-    nums = tuple(range(square_sz))
-
-    dest = bytearray(width * height) if invert else buf
+    nums = range(square_sz)
 
     for r in range(number_of_rows):
-        is_odd = r % 2 != 0
-        if is_odd:
-            continue
-        fill_even = r % 4 == 0
-        for yr in nums:
-            y = r * square_sz + yr
-            if y >= height:
-                break
-            off = width * y
-            for c in range(number_of_cols):
-                if light:
-                    fill = (c % 4) == (0 if fill_even else 2)
-                else:
-                    fill = (c % 2 == 0) == fill_even
-                if fill:
-                    for xc in nums:
-                        x = (c * square_sz) + xc
-                        if x >= width:
-                            break
-                        dest[off + x] = 255
-    if invert:
-        for y in range(height):
-            off = width * y
-            for x in range(width):
-                q = off + x
-                buf[q] = 255 - dest[q]
+        for c in range(number_of_cols):
+            if invert ^ ((r % 2 != c % 2) or (light and r % 2 == 1)):
+                continue
+            for yr in nums:
+                y = r * square_sz + yr
+                offset = width * y
+                for xc in nums:
+                    x = c * square_sz + xc
+                    buf[offset + x] = 255
 
 
 def quad(buf: BufType, width: int, height: int, x: int = 0, y: int = 0) -> None:
@@ -883,7 +864,8 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '▐': [p(eight_block, which=(4, 5, 6, 7))],
     '░': [p(shade, light=True)],
     '▒': [shade],
-    '▓': [p(shade, invert=True)],
+    '▓': [p(shade, light=True, invert=True)],
+    '🮐': [p(shade, invert=True)],
     '▔': [p(eight_bar, horizontal=True)],
     '▕': [p(eight_bar, which=7)],
     '▖': [p(quad, y=1)],
