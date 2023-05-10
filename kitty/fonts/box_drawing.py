@@ -865,6 +865,7 @@ box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '░': [p(shade, light=True)],
     '▒': [shade],
     '▓': [p(shade, light=True, invert=True)],
+    '🮐': [p(shade, invert=True)],
     '▔': [p(eight_bar, horizontal=True)],
     '▕': [p(eight_bar, which=7)],
     '▖': [p(quad, y=1)],
