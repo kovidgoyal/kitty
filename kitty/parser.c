@@ -422,6 +422,7 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         case 9:
         case 99:
         case 777:
+        case 1337:
             START_DISPATCH
             DISPATCH_OSC_WITH_CODE(desktop_notify)
             END_DISPATCH

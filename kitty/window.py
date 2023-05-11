@@ -597,6 +597,7 @@ class Window:
         self.default_title = os.path.basename(child.argv[0] or appname)
         self.child_title = self.default_title
         self.title_stack: Deque[str] = deque(maxlen=10)
+        self.user_vars: Dict[str, bytes] = {}
         self.id: int = add_window(tab.os_window_id, tab.id, self.title)
         self.clipboard_request_manager = ClipboardRequestManager(self.id)
         self.margin = EdgeWidths()
@@ -922,7 +923,27 @@ class Window:
         self.override_title = title or None
         self.title_updated()
 
+    def set_user_var(self, key: str, val: Optional[bytes]) -> None:
+        self.user_vars.pop(key, None)  # ensure key will be newest in user_vars even if already present
+        if len(self.user_vars) > 64:  # dont store too many user vars
+            oldest_key = next(iter(self.user_vars))
+            self.user_vars.pop(oldest_key)
+        if val is not None:
+            self.user_vars[key] = val
+
+    # screen callbacks {{{
+
+    def osc_1337(self, raw_data: str) -> None:
+        for record in raw_data.split(';'):
+            key, _, val = record.partition('=')
+            if key == 'SetUserVar':
+                from base64 import standard_b64decode
+                ukey, has_equal, uval = val.partition('=')
+                self.set_user_var(ukey, (standard_b64decode(uval) if uval else b'') if has_equal == '=' else None)
+
     def desktop_notify(self, osc_code: int, raw_data: str) -> None:
+        if osc_code == 1337:
+            self.osc_1337(raw_data)
         if osc_code == 777:
             if not raw_data.startswith('notify;'):
                 log_error(f'Ignoring unknown OSC 777: {raw_data}')
@@ -932,7 +953,6 @@ class Window:
         if cmd is not None and osc_code == 99:
             self.prev_osc99_cmd = cmd
 
-    # screen callbacks {{{
     def use_utf8(self, on: bool) -> None:
         get_boss().child_monitor.set_iutf8_winid(self.id, on)
 
