@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/dlclark/regexp2"
@@ -254,15 +255,6 @@ func functions_for(opts *Options) (pattern string, post_processors []PostProcess
 			// IPv6 with no validation
 			`(?:[a-fA-F0-9]{0,4}:){2,7}[a-fA-F0-9]{1,4})`)
 		post_processors = append(post_processors, PostProcessorMap()["ip"])
-	case "word":
-		chars := opts.WordCharacters
-		if chars == "" {
-			chars = RelevantKittyOpts().Select_by_word_characters
-		}
-		chars = regexp2.Escape(chars)
-		chars = strings.ReplaceAll(chars, "-", "\\-")
-		pattern = fmt.Sprintf(`(?u)[%s\w\d]{%d,}`, chars, opts.MinimumMatchLength)
-		post_processors = append(post_processors, PostProcessorMap()["brackets"], PostProcessorMap()["quotes"])
 	default:
 		pattern = opts.Regex
 		if opts.Type == "linenum" {
@@ -435,6 +427,71 @@ func mark(r *regexp2.Regexp, post_processors []PostProcessorFunc, group_processo
 
 type ErrNoMatches struct{ Type string }
 
+func is_word_char(ch rune, current_chars []rune) bool {
+	return unicode.IsLetter(ch) || unicode.IsNumber(ch) || (unicode.IsMark(ch) && len(current_chars) > 0 && unicode.IsLetter(current_chars[len(current_chars)-1]))
+}
+
+func mark_words(text string, opts *Options) (ans []Mark) {
+	left := text
+	var current_run struct {
+		chars       []rune
+		start, size int
+	}
+	chars := opts.WordCharacters
+	if chars == "" {
+		chars = RelevantKittyOpts().Select_by_word_characters
+	}
+	allowed_chars := make(map[rune]bool, len(chars))
+	for _, ch := range chars {
+		allowed_chars[ch] = true
+	}
+	pos := 0
+	post_processors := []PostProcessorFunc{PostProcessorMap()["brackets"], PostProcessorMap()["quotes"]}
+
+	commit_run := func() {
+		if len(current_run.chars) >= opts.MinimumMatchLength {
+			match_start, match_end := current_run.start, current_run.start+current_run.size
+			for _, f := range post_processors {
+				match_start, match_end = f(text, match_start, match_end)
+				if match_start < 0 {
+					break
+				}
+			}
+			if match_start > -1 && match_end > match_start {
+				full_match := text[match_start:match_end]
+				if len([]rune(full_match)) >= opts.MinimumMatchLength {
+					ans = append(ans, Mark{
+						Index: len(ans), Start: match_start, End: match_end, Text: full_match,
+					})
+				}
+			}
+		}
+		current_run.chars = nil
+		current_run.start = 0
+		current_run.size = 0
+	}
+
+	for {
+		ch, size := utf8.DecodeRuneInString(left)
+		if ch == utf8.RuneError {
+			break
+		}
+		if allowed_chars[ch] || is_word_char(ch, current_run.chars) {
+			if len(current_run.chars) == 0 {
+				current_run.start = pos
+			}
+			current_run.chars = append(current_run.chars, ch)
+			current_run.size += size
+		} else {
+			commit_run()
+		}
+		left = left[size:]
+		pos += size
+	}
+	commit_run()
+	return
+}
+
 func adjust_python_offsets(text string, marks []Mark) error {
 	// python returns rune based offsets (unicode chars not utf-8 bytes)
 	adjust := utils.RuneOffsetsToByteOffsets(text)
@@ -505,6 +562,8 @@ func find_marks(text string, opts *Options, cli_args ...string) (sanitized_text 
 		}
 	} else if opts.Type == "hyperlink" {
 		ans = hyperlinks
+	} else if opts.Type == "word" {
+		ans = mark_words(text, opts)
 	} else {
 		err = run_basic_matching()
 		if err != nil {

@@ -117,8 +117,7 @@ func TestHintMarking(t *testing.T) {
 	reset()
 	opts.Type = "word"
 	r(`#one (two) 😍 a-1b `, `#one`, `two`, `a-1b`)
-	// non-ascii words dont match because of https://github.com/dlclark/regexp2/issues/65
-	// r(`fōtiz час`, `fōtiz`, `час`)
+	r("fōtiz час a\u0310b ", `fōtiz`, `час`, "a\u0310b")
 
 	reset()
 	tdir := t.TempDir()
