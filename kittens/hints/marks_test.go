@@ -111,6 +111,14 @@ func TestHintMarking(t *testing.T) {
 	opts.Type = "regex"
 	opts.Regex = `(?ms)^[*]?\s(\S+)`
 	r(`* 2b687c2 - test1`, `2b687c2`)
+	opts.Regex = `(?<=got:    )sha256.{4}`
+	r(`got:    sha256-L8=`, `sha256-L8=`)
+
+	reset()
+	opts.Type = "word"
+	r(`#one (two) 😍 a-1b `, `#one`, `two`, `a-1b`)
+	// non-ascii words dont match because of https://github.com/dlclark/regexp2/issues/65
+	// r(`fōtiz час`, `fōtiz`, `час`)
 
 	reset()
 	tdir := t.TempDir()

@@ -52,6 +52,8 @@ Detailed list of changes
 
 - hints kitten: Fix a regression in 0.28.0 that broke using sub-groups in regexp captures (:iss:`6228`)
 
+- hints kitten: Fix a regression in 0.28.0 that broke using lookahead/lookbehind in regexp captures (:iss:`6265`)
+
 - diff kitten: Fix a regression in 0.28.0 that broke using relative paths as arguments to the kitten (:iss:`6325`)
 
 - Fix re-using the image id of an animated image for a still image causing a crash (:iss:`6244`)

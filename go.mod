@@ -7,6 +7,7 @@ require (
 	github.com/alecthomas/chroma/v2 v2.7.0
 	github.com/bmatcuk/doublestar/v4 v4.6.0
 	github.com/disintegration/imaging v1.6.2
+	github.com/dlclark/regexp2 v1.9.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
 	github.com/jamesruan/go-rfc1924 v0.0.0-20170108144916-2767ca7c638f
@@ -18,7 +19,6 @@ require (
 )
 
 require (
-	github.com/dlclark/regexp2 v1.9.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a // indirect
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect

@@ -13,9 +13,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/dlclark/regexp2"
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 	"golang.org/x/exp/slices"
 )
@@ -257,9 +259,9 @@ func functions_for(opts *Options) (pattern string, post_processors []PostProcess
 		if chars == "" {
 			chars = RelevantKittyOpts().Select_by_word_characters
 		}
-		chars = regexp.QuoteMeta(chars)
+		chars = regexp2.Escape(chars)
 		chars = strings.ReplaceAll(chars, "-", "\\-")
-		pattern = fmt.Sprintf(`[%s\pL\pN]{%d,}`, chars, opts.MinimumMatchLength)
+		pattern = fmt.Sprintf(`(?u)[%s\w\d]{%d,}`, chars, opts.MinimumMatchLength)
 		post_processors = append(post_processors, PostProcessorMap()["brackets"], PostProcessorMap()["quotes"])
 	default:
 		pattern = opts.Regex
@@ -274,11 +276,112 @@ func functions_for(opts *Options) (pattern string, post_processors []PostProcess
 	return
 }
 
-func mark(r *regexp.Regexp, post_processors []PostProcessorFunc, group_processors []GroupProcessorFunc, text string, opts *Options) (ans []Mark) {
+type Capture struct {
+	Text          string
+	Text_as_runes []rune
+	Byte_Offsets  struct {
+		Start, End int
+	}
+	Rune_Offsets struct {
+		Start, End int
+	}
+}
+
+func (self Capture) String() string {
+	return fmt.Sprintf("Capture(start=%d, end=%d, %#v)", self.Byte_Offsets.Start, self.Byte_Offsets.End, self.Text)
+}
+
+type Group struct {
+	Name     string
+	IsNamed  bool
+	Captures []Capture
+}
+
+func (self Group) LastCapture() Capture {
+	if len(self.Captures) == 0 {
+		return Capture{}
+	}
+	return self.Captures[len(self.Captures)-1]
+}
+
+func (self Group) String() string {
+	return fmt.Sprintf("Group(name=%#v, captures=%v)", self.Name, self.Captures)
+}
+
+type Match struct {
+	Groups []Group
+}
+
+func (self Match) HasNamedGroups() bool {
+	for _, g := range self.Groups {
+		if g.IsNamed {
+			return true
+		}
+	}
+	return false
+}
+
+func find_all_matches(re *regexp2.Regexp, text string) (ans []Match, err error) {
+	m, err := re.FindStringMatch(text)
+	if err != nil {
+		return
+	}
+	rune_to_bytes := utils.RuneOffsetsToByteOffsets(text)
+	get_byte_offset_map := func(groups []regexp2.Group) (ans map[int]int, err error) {
+		ans = make(map[int]int, len(groups)*2)
+		rune_offsets := make([]int, 0, len(groups)*2)
+		for _, g := range groups {
+			for _, c := range g.Captures {
+				if _, found := ans[c.Index]; !found {
+					rune_offsets = append(rune_offsets, c.Index)
+					ans[c.Index] = -1
+				}
+				end := c.Index + c.Length
+				if _, found := ans[end]; !found {
+					rune_offsets = append(rune_offsets, end)
+					ans[end] = -1
+				}
+			}
+		}
+		slices.Sort(rune_offsets)
+		for _, pos := range rune_offsets {
+			if ans[pos] = rune_to_bytes(pos); ans[pos] < 0 {
+				return nil, fmt.Errorf("Matches are not monotonic cannot map rune offsets to byte offsets")
+			}
+		}
+		return
+	}
+
+	for m != nil {
+		groups := m.Groups()
+		bom, err := get_byte_offset_map(groups)
+		if err != nil {
+			return nil, err
+		}
+		match := Match{Groups: make([]Group, len(groups))}
+		for i, g := range m.Groups() {
+			match.Groups[i].Name = g.Name
+			match.Groups[i].IsNamed = g.Name != "" && g.Name != strconv.Itoa(i)
+			for _, c := range g.Captures {
+				cn := Capture{Text: c.String(), Text_as_runes: c.Runes()}
+				cn.Rune_Offsets.End = c.Index + c.Length
+				cn.Rune_Offsets.Start = c.Index
+				cn.Byte_Offsets.Start, cn.Byte_Offsets.End = bom[c.Index], bom[cn.Rune_Offsets.End]
+				match.Groups[i].Captures = append(match.Groups[i].Captures, cn)
+			}
+		}
+		ans = append(ans, match)
+		m, _ = re.FindNextMatch(m)
+	}
+	return
+}
+
+func mark(r *regexp2.Regexp, post_processors []PostProcessorFunc, group_processors []GroupProcessorFunc, text string, opts *Options) (ans []Mark) {
 	sanitize_pat := regexp.MustCompile("[\r\n\x00]")
-	names := r.SubexpNames()
-	for i, v := range r.FindAllStringSubmatchIndex(text, -1) {
-		match_start, match_end := v[0], v[1]
+	all_matches, _ := find_all_matches(r, text)
+	for i, m := range all_matches {
+		full_capture := m.Groups[0].LastCapture()
+		match_start, match_end := full_capture.Byte_Offsets.Start, full_capture.Byte_Offsets.End
 		for match_end > match_start+1 && text[match_end-1] == 0 {
 			match_end--
 		}
@@ -296,14 +399,14 @@ func mark(r *regexp.Regexp, post_processors []PostProcessorFunc, group_processor
 			continue
 		}
 		full_match = sanitize_pat.ReplaceAllLiteralString(text[match_start:match_end], "")
-		gd := make(map[string]string, len(names))
-		for x, name := range names {
-			if name != "" {
-				idx := 2 * x
-				if s, e := v[idx], v[idx+1]; s > -1 && e > -1 {
+		gd := make(map[string]string, len(m.Groups))
+		for idx, g := range m.Groups {
+			if idx > 0 && g.IsNamed {
+				c := g.LastCapture()
+				if s, e := c.Byte_Offsets.Start, c.Byte_Offsets.End; s > -1 && e > -1 {
 					s = utils.Max(s, match_start)
 					e = utils.Min(e, match_end)
-					gd[name] = sanitize_pat.ReplaceAllLiteralString(text[s:e], "")
+					gd[g.Name] = sanitize_pat.ReplaceAllLiteralString(text[s:e], "")
 				}
 			}
 		}
@@ -314,15 +417,18 @@ func mark(r *regexp.Regexp, post_processors []PostProcessorFunc, group_processor
 		for k, v := range gd {
 			gd2[k] = v
 		}
-		if opts.Type == "regex" && len(names) > 1 && names[1] == "" {
-			ms, me := v[2], v[3]
+		if opts.Type == "regex" && len(m.Groups) > 1 && !m.HasNamedGroups() {
+			cp := m.Groups[1].LastCapture()
+			ms, me := cp.Byte_Offsets.Start, cp.Byte_Offsets.End
 			match_start = utils.Max(match_start, ms)
 			match_end = utils.Min(match_end, me)
 			full_match = sanitize_pat.ReplaceAllLiteralString(text[match_start:match_end], "")
 		}
-		ans = append(ans, Mark{
-			Index: i, Start: match_start, End: match_end, Text: full_match, Groupdict: gd2,
-		})
+		if full_match != "" {
+			ans = append(ans, Mark{
+				Index: i, Start: match_start, End: match_end, Text: full_match, Groupdict: gd2,
+			})
+		}
 	}
 	return
 }
@@ -362,7 +468,7 @@ func find_marks(text string, opts *Options, cli_args ...string) (sanitized_text 
 
 	run_basic_matching := func() error {
 		pattern, post_processors, group_processors := functions_for(opts)
-		r, err := regexp.Compile(pattern)
+		r, err := regexp2.Compile(pattern, regexp2.RE2)
 		if err != nil {
 			return fmt.Errorf("Failed to compile the regex pattern: %#v with error: %w", pattern, err)
 		}
