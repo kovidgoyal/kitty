@@ -45,6 +45,7 @@ Some programs and libraries that use the kitty graphics protocol:
 * `term-image <https://github.com/AnonymouX47/term-image>`_  - A Python library, CLI and TUI to display and browse images in the terminal
 * `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
 * `twitch-tui <https://github.com/Xithrius/twitch-tui>`_ - Twitch chat in the terminal
+* `awrit <https://github.com/chase/awrit>`_ - Chromium-based web browser rendered in Kitty with mouse and keyboard support
 
 Other terminals that have implemented the graphics protocol:
 
