@@ -23,6 +23,7 @@ uniform sampler2DArray sprites;
 uniform int text_old_gamma;
 uniform float text_contrast;
 uniform float text_gamma_adjustment;
+uniform float text_fg_override_threshold;
 in float effective_text_alpha;
 in vec3 sprite_pos;
 in vec3 underline_pos;
@@ -130,6 +131,16 @@ float clamp_to_unit_float(float x) {
 vec4 foreground_contrast(vec4 over, vec3 under) {
     float underL = dot(under, Y);
     float overL = dot(over.rgb, Y);
+
+    // If the difference in luminance is too small,
+    // force the foreground color to be black or white.
+    float diffL = abs(underL - overL);
+    if (0.5 < underL && diffL < text_fg_override_threshold) {
+        over.rgb = vec3(0, 0, 0);
+    } else if (underL < 0.5 && diffL < text_fg_override_threshold) {
+        over.rgb = vec3(1, 1, 1);
+    }
+
     // Apply additional gamma-adjustment scaled by the luminance difference, the darker the foreground the more adjustment we apply.
     // A multiplicative contrast is also available to increase saturation.
     over.a = clamp_to_unit_float(mix(over.a, pow(over.a, text_gamma_adjustment), (1 - overL + underL) * text_gamma_scaling) * text_contrast);

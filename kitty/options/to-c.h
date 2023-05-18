@@ -183,7 +183,7 @@ static void
 text_composition_strategy(PyObject *val, Options *opts) {
     if (!PyUnicode_Check(val)) { PyErr_SetString(PyExc_TypeError, "text_rendering_strategy must be a string"); return; }
     opts->text_old_gamma = false;
-    opts->text_gamma_adjustment = 1.0f; opts->text_contrast = 0.f;
+    opts->text_gamma_adjustment = 1.0f; opts->text_contrast = 0.f; opts->text_fg_override_threshold = 0.f;
     if (PyUnicode_CompareWithASCIIString(val, "platform") == 0) {
 #ifdef __APPLE__
         opts->text_gamma_adjustment = 1.7f; opts->text_contrast = 30.f;
@@ -192,15 +192,29 @@ text_composition_strategy(PyObject *val, Options *opts) {
     else if (PyUnicode_CompareWithASCIIString(val, "legacy") == 0) {
         opts->text_old_gamma = true;
     } else {
-        DECREF_AFTER_FUNCTION PyObject *parts = PyUnicode_Split(val, NULL, 1);
-        if (PyList_GET_SIZE(parts) != 2) { PyErr_SetString(PyExc_ValueError, "text_rendering_strategy must be of the form number:number"); return; }
-        DECREF_AFTER_FUNCTION PyObject *ga = PyFloat_FromString(PyList_GET_ITEM(parts, 0));
-        if (PyErr_Occurred()) return;
-        opts->text_gamma_adjustment = MAX(0.01f, PyFloat_AsFloat(ga));
-        DECREF_AFTER_FUNCTION PyObject *contrast = PyFloat_FromString(PyList_GET_ITEM(parts, 1));
-        if (PyErr_Occurred()) return;
-        opts->text_contrast = MAX(0.0f, PyFloat_AsFloat(contrast));
-        opts->text_contrast = MIN(100.0f, opts->text_contrast);
+        DECREF_AFTER_FUNCTION PyObject *parts = PyUnicode_Split(val, NULL, 2);
+        int size = PyList_GET_SIZE(parts);
+        if (size < 1 || 3 < size) { PyErr_SetString(PyExc_ValueError, "text_rendering_strategy must be of the form number:[number]:[number]"); return; }
+
+        if (size > 0) {
+            DECREF_AFTER_FUNCTION PyObject *ga = PyFloat_FromString(PyList_GET_ITEM(parts, 0));
+            if (PyErr_Occurred()) return;
+            opts->text_gamma_adjustment = MAX(0.01f, PyFloat_AsFloat(ga));
+        }
+
+        if (size > 1) {
+            DECREF_AFTER_FUNCTION PyObject *contrast = PyFloat_FromString(PyList_GET_ITEM(parts, 1));
+            if (PyErr_Occurred()) return;
+            opts->text_contrast = MAX(0.0f, PyFloat_AsFloat(contrast));
+            opts->text_contrast = MIN(100.0f, opts->text_contrast);
+        }
+
+        if (size > 2) {
+            DECREF_AFTER_FUNCTION PyObject *text_fg_override_threshold = PyFloat_FromString(PyList_GET_ITEM(parts, 2));
+            if (PyErr_Occurred()) return;
+            opts->text_fg_override_threshold = MAX(0.f, PyFloat_AsFloat(text_fg_override_threshold));
+            opts->text_fg_override_threshold = MIN(100.f, PyFloat_AsFloat(text_fg_override_threshold));
+        }
     }
 }
 
