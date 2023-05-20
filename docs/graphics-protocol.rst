@@ -542,7 +542,7 @@ and ``U+30D`` corresponds to ``1``. So these two commands create the following
 ``2x2`` placeholder:
 
 ========== ==========
-(0, 0)     (1, 0)
+(0, 0)     (0, 1)
 (1, 0)     (1, 1)
 ========== ==========
 
