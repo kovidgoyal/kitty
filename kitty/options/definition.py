@@ -1252,7 +1252,7 @@ use :code:`{sup.index}`. All data available is:
 :code:`num_windows`
     The number of windows in the tab.
 :code:`num_window_groups`
-    The number of window groups (not counting overlay windows) in the tab.
+    The number of window groups (a window group is a window and all of its overlay windows) in the tab.
 :code:`tab.active_wd`
     The working directory of the currently active window in the tab
     (expensive, requires syscall). Use :code:`active_oldest_wd` to get
