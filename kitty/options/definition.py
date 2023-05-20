@@ -249,7 +249,7 @@ light text on dark backgrounds thinner. It might also make some text appear like
 the strokes are uneven.
 
 You can fine tune the actual contrast curve used for glyph composition by
-specifying up to three space-separated numbers for this setting.
+specifying up to two space-separated numbers for this setting.
 
 The first number is the gamma adjustment, which controls the thickness of dark
 text on light backgrounds. Increasing the value will make text appear thicker.
@@ -263,15 +263,21 @@ The second number is an additional multiplicative contrast. It is percentage
 ranging from :code:`0` to :code:`100`. The default value is :code:`0` on Linux
 and :code:`30` on macOS.
 
-The third number is an override threshold. It is percentage ranging from :code:`0`
-to :code:`100`. If the difference in luminance of the foreground and background
-is below this threshold, the foreground color will be set to white if the background
-is dark or black if the background is light. The default value is :code:`0`.
-
 If you wish to achieve similar looking thickness in light and dark themes, a good way
 to experiment is start by setting the value to :code:`1.0 0` and use a dark theme.
 Then adjust the second parameter until it looks good. Then switch to a light theme
 and adjust the first parameter until the perceived thickness matches the dark theme.
+''')
+
+opt('text_fg_override_threshold', 0,
+    ctype='!text_fg_override_threshold',
+    long_text='''
+The minimum accepted difference in luminance between the foreground and background 
+color, below which kitty will override the foreground color. It is percentage 
+ranging from :code:`0` to :code:`100`. If the difference in luminance of the 
+foreground and background is below this threshold, the foreground color will be set 
+to white if the background is dark or black if the background is light. The default 
+value is :code:`0`.
 ''')
 
 egr()  # }}}

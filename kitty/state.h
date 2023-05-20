@@ -48,7 +48,8 @@ typedef struct {
     WindowTitleIn macos_show_window_title_in;
     char *bell_path, *bell_theme;
     float background_opacity, dim_opacity;
-    float text_contrast, text_gamma_adjustment, text_fg_override_threshold;
+    float text_contrast, text_gamma_adjustment;
+    float text_fg_override_threshold;
     bool text_old_gamma;
 
     char *background_image, *default_window_logo;

@@ -1284,6 +1284,9 @@ class Parser:
     def text_composition_strategy(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['text_composition_strategy'] = str(val)
 
+    def text_fg_override_threshold(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['text_fg_override_threshold'] = str(val)
+
     def touch_scroll_multiplier(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['touch_scroll_multiplier'] = float(val)
 
