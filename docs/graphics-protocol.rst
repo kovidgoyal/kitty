@@ -383,9 +383,9 @@ use the *query action*, set ``a=q``. Then the terminal emulator will try to load
 the image and respond with either OK or an error, as above, but it will not
 replace an existing image with the same id, nor will it store the image.
 
-As of April 2022, kitty and WezTerm are the only terminal emulators to
-support this graphics protocol completely, with Konsole and wayst having partial support.
-We intend that any terminal emulator that wishes to support it can do so. To
+As of May 2023, kitty has a complete implementation of this protocol and
+WezTerm has a mostly complete implementation. Konsole and wayst have partial
+support. We intend that any terminal emulator that wishes to support it can do so. To
 check if a terminal emulator supports the graphics protocol the best way is to
 send the above *query action* followed by a request for the `primary device
 attributes <https://vt100.net/docs/vt510-rm/DA1.html>`_. If you get back an
