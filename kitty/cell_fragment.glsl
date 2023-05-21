@@ -137,7 +137,7 @@ vec4 foreground_contrast(vec4 over, vec3 under) {
     // If the difference in luminance is too small,
     // force the foreground color to be black or white.
     float diffL = abs(underL - overL);
-	float overrideLvl = step(diffL, text_fg_override_threshold);
+	float overrideLvl = (1.f - colored_sprite) * step(diffL, text_fg_override_threshold);
 	float originalLvl = 1.f - overrideLvl;
 	over.rgb = (
         originalLvl * over.rgb +
