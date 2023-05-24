@@ -129,37 +129,43 @@ float clamp_to_unit_float(float x) {
     return clamp(x, 0.0f, 1.0f);
 }
 
-vec4 foreground_contrast(vec4 over, vec3 under) {
-    float underL = dot(under, Y);
-    float overL = dot(over.rgb, Y);
-
-#if defined(FG_OVERRIDE)
+#ifdef FG_OVERRIDE
+vec3 fg_override(float under_luminance, float over_lumininace, vec3 over) {
     // If the difference in luminance is too small,
     // force the foreground color to be black or white.
-    float diffL = abs(underL - overL);
-	float overrideLvl = (1.f - colored_sprite) * step(diffL, text_fg_override_threshold);
-	float originalLvl = 1.f - overrideLvl;
-	over.rgb = (
-        originalLvl * over.rgb +
-        overrideLvl * vec3(step(underL, 0.5f))
-    );
+    float diff_luminance = abs(under_luminance - over_lumininace);
+	float override_level = (1.f - colored_sprite) * step(diff_luminance, text_fg_override_threshold);
+	float original_level = 1.f - override_level;
+	return original_level * over + override_level * vec3(step(under_luminance, 0.5f));
+}
+#endif
+
+vec4 foreground_contrast(vec4 over, vec3 under) {
+    float under_luminance = dot(under, Y);
+    float over_lumininace = dot(over.rgb, Y);
+
+#ifdef FG_OVERRIDE
+    over.rgb = fg_override(under_luminance, over_lumininace, over.rgb);
 #endif
 
     // Apply additional gamma-adjustment scaled by the luminance difference, the darker the foreground the more adjustment we apply.
     // A multiplicative contrast is also available to increase saturation.
-    over.a = clamp_to_unit_float(mix(over.a, pow(over.a, text_gamma_adjustment), (1 - overL + underL) * text_gamma_scaling) * text_contrast);
+    over.a = clamp_to_unit_float(mix(over.a, pow(over.a, text_gamma_adjustment), (1 - over_lumininace + under_luminance) * text_gamma_scaling) * text_contrast);
     return over;
 }
 
 vec4 foreground_contrast_incorrect(vec4 over, vec3 under) {
     // Simulation of gamma-incorrect blending
-    float underL = dot(under, Y);
-    float overL = dot(over.rgb, Y);
+    float under_luminance = dot(under, Y);
+    float over_lumininace = dot(over.rgb, Y);
+#ifdef FG_OVERRIDE
+    over.rgb = fg_override(under_luminance, over_lumininace, over.rgb);
+#endif
     // This is the original gamma-incorrect rendering, it is the solution of the following equation:
     //
     // linear2srgb(over * overA2 + under * (1 - overA2)) = linear2srgb(over) * over.a + linear2srgb(under) * (1 - over.a)
     // ^ gamma correct blending with new alpha             ^ gamma incorrect blending with old alpha
-    over.a = clamp_to_unit_float((srgb2linear(linear2srgb(overL) * over.a + linear2srgb(underL) * (1.0f - over.a)) - underL) / (overL - underL));
+    over.a = clamp_to_unit_float((srgb2linear(linear2srgb(over_lumininace) * over.a + linear2srgb(under_luminance) * (1.0f - over.a)) - under_luminance) / (over_lumininace - under_luminance));
     return over;
 }
 
@@ -184,6 +190,7 @@ vec4 calculate_foreground() {
     vec4 text_fg = foreground_color();
     return foreground_with_decorations(text_fg);
 }
+
 vec4 calculate_foreground(vec3 bg) {
     // When rendering on a background we can adjust the alpha channel contrast
     // to improve legibility based on the source and destination colors
