@@ -3,12 +3,27 @@
 
 
 import os
+import unittest
 
 from . import BaseTest
 
 
+def is_rlimit_memlock_too_low() -> bool:
+    ''' On supported systems, return true if the MEMLOCK limit is too low to
+    run the crypto test. '''
+    try:
+        import resource
+    except ModuleNotFoundError:
+        return False
+
+    memlock_limit, _ = resource.getrlimit(resource.RLIMIT_MEMLOCK)
+    pagesize = resource.getpagesize()
+    return memlock_limit <= pagesize
+
+
 class TestCrypto(BaseTest):
 
+    @unittest.skipIf(is_rlimit_memlock_too_low(), 'RLIMIT_MEMLOCK is too low')
     def test_elliptic_curve_data_exchange(self):
         from kitty.fast_data_types import AES256GCMDecrypt, AES256GCMEncrypt, CryptoError, EllipticCurveKey
         alice = EllipticCurveKey()
