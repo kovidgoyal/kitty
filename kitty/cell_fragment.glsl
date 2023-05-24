@@ -1,6 +1,7 @@
 #version GLSL_VERSION
 #define {WHICH_PROGRAM}
 #define NOT_TRANSPARENT
+#define NO_FG_OVERRIDE
 
 #if defined(SIMPLE) || defined(BACKGROUND) || defined(SPECIAL)
 #define NEEDS_BACKROUND
@@ -23,6 +24,7 @@ uniform sampler2DArray sprites;
 uniform int text_old_gamma;
 uniform float text_contrast;
 uniform float text_gamma_adjustment;
+uniform float text_fg_override_threshold;
 in float effective_text_alpha;
 in vec3 sprite_pos;
 in vec3 underline_pos;
@@ -130,6 +132,19 @@ float clamp_to_unit_float(float x) {
 vec4 foreground_contrast(vec4 over, vec3 under) {
     float underL = dot(under, Y);
     float overL = dot(over.rgb, Y);
+
+#if defined(FG_OVERRIDE)
+    // If the difference in luminance is too small,
+    // force the foreground color to be black or white.
+    float diffL = abs(underL - overL);
+	float overrideLvl = (1.f - colored_sprite) * step(diffL, text_fg_override_threshold);
+	float originalLvl = 1.f - overrideLvl;
+	over.rgb = (
+        originalLvl * over.rgb +
+        overrideLvl * vec3(step(underL, 0.5f))
+    );
+#endif
+
     // Apply additional gamma-adjustment scaled by the luminance difference, the darker the foreground the more adjustment we apply.
     // A multiplicative contrast is also available to increase saturation.
     over.a = clamp_to_unit_float(mix(over.a, pow(over.a, text_gamma_adjustment), (1 - overL + underL) * text_gamma_scaling) * text_contrast);
