@@ -3,7 +3,6 @@
 
 
 import os
-import unittest
 
 from . import BaseTest
 
@@ -23,8 +22,9 @@ def is_rlimit_memlock_too_low() -> bool:
 
 class TestCrypto(BaseTest):
 
-    @unittest.skipIf(is_rlimit_memlock_too_low(), 'RLIMIT_MEMLOCK is too low')
     def test_elliptic_curve_data_exchange(self):
+        if is_rlimit_memlock_too_low():
+            self.skipTest('RLIMIT_MEMLOCK is too low')
         from kitty.fast_data_types import AES256GCMDecrypt, AES256GCMEncrypt, CryptoError, EllipticCurveKey
         alice = EllipticCurveKey()
         bob = EllipticCurveKey()
