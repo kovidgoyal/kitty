@@ -86,6 +86,9 @@ func (self *ImageCollection) GetSizeIfAvailable(key string, page_size Size) (Siz
 	}
 	ans := img.renderings[page_size]
 	if ans == nil {
+		if img.err != nil {
+			return Size{}, img.err
+		}
 		return Size{}, ErrNotFound
 	}
 	return Size{ans.img.Width, ans.img.Height}, img.err

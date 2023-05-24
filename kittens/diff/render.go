@@ -362,7 +362,7 @@ func image_lines(left_path, right_path string, screen_size screen_size, margin_s
 		if errors.Is(err, graphics.ErrNotFound) {
 			return splitlines("Loading image...", available_cols)
 		}
-		return splitlines(fmt.Sprintf("Failed to load image: %s", err), available_cols)
+		return splitlines(fmt.Sprintf("%s", err), available_cols)
 	}
 	left_lines := do_side(left_path)
 	if ll.left_image.count = len(left_lines); ll.left_image.count > 0 {
