@@ -374,8 +374,20 @@ def multi_replace(src: str, **replacements: Any) -> str:
 
 class LoadShaderPrograms:
 
-    def __call__(self, semi_transparent: bool = False) -> None:
-        compile_program(BLIT_PROGRAM, *load_shaders('blit'))
+    text_fg_override_threshold: float = 0
+    semi_transparent: bool = False
+
+    @property
+    def needs_recompile(self) -> bool:
+        return get_options().text_fg_override_threshold != self.text_fg_override_threshold
+
+    def recompile_if_needed(self) -> None:
+        if self.needs_recompile:
+            self(self.semi_transparent, allow_recompile=True)
+
+    def __call__(self, semi_transparent: bool = False, allow_recompile: bool = False) -> None:
+        self.semi_transparent = semi_transparent
+        compile_program(BLIT_PROGRAM, *load_shaders('blit'), allow_recompile)
         v, f = load_shaders('cell')
 
         for which, p in {
@@ -397,12 +409,13 @@ class LoadShaderPrograms:
                 DECORATION_MASK=DECORATION_MASK,
                 STRIKE_SPRITE_INDEX=NUM_UNDERLINE_STYLES + 1,
             )
-            if get_options().text_fg_override_threshold != 0.:
+            self.text_fg_override_threshold = get_options().text_fg_override_threshold
+            if self.text_fg_override_threshold != 0.:
                 ff = ff.replace('#define NO_FG_OVERRIDE', '#define FG_OVERRIDE')
             if semi_transparent:
                 vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
                 ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
-            compile_program(p, vv, ff)
+            compile_program(p, vv, ff, allow_recompile)
 
         v, f = load_shaders('graphics')
         for which, p in {
@@ -411,12 +424,12 @@ class LoadShaderPrograms:
                 'ALPHA_MASK': GRAPHICS_ALPHA_MASK_PROGRAM,
         }.items():
             ff = f.replace('ALPHA_TYPE', which)
-            compile_program(p, v, ff)
+            compile_program(p, v, ff, allow_recompile)
 
         v, f = load_shaders('bgimage')
-        compile_program(BGIMAGE_PROGRAM, v, f)
+        compile_program(BGIMAGE_PROGRAM, v, f, allow_recompile)
         v, f = load_shaders('tint')
-        compile_program(TINT_PROGRAM, v, f)
+        compile_program(TINT_PROGRAM, v, f, allow_recompile)
         init_cell_program()
 
 

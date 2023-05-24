@@ -276,8 +276,7 @@ ranging from :code:`0` to :code:`100`. If the difference in luminance of the
 foreground and background is below this threshold, the foreground color will be set
 to white if the background is dark or black if the background is light. The default
 value is :code:`0`, which means no overriding is performed. Useful when working with applications
-that use colors that do not contrast well with your preferred color scheme. Changing this option
-from zero to a non-zero value or vice versa requires a restart of kitty.
+that use colors that do not contrast well with your preferred color scheme.
 ''')
 
 egr()  # }}}

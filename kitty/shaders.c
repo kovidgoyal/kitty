@@ -1071,12 +1071,15 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
 static PyObject*
 compile_program(PyObject UNUSED *self, PyObject *args) {
     const char *vertex_shader, *fragment_shader;
-    int which;
+    int which, allow_recompile = 0;
     GLuint vertex_shader_id = 0, fragment_shader_id = 0;
-    if (!PyArg_ParseTuple(args, "iss", &which, &vertex_shader, &fragment_shader)) return NULL;
+    if (!PyArg_ParseTuple(args, "iss|p", &which, &vertex_shader, &fragment_shader, &allow_recompile)) return NULL;
     if (which < 0 || which >= NUM_PROGRAMS) { PyErr_Format(PyExc_ValueError, "Unknown program: %d", which); return NULL; }
     Program *program = program_ptr(which);
-    if (program->id != 0) { PyErr_SetString(PyExc_ValueError, "program already compiled"); return NULL; }
+    if (program->id != 0) {
+        if (allow_recompile) { glDeleteProgram(program->id); program->id = 0; }
+        else { PyErr_SetString(PyExc_ValueError, "program already compiled"); return NULL; }
+    }
     program->id = glCreateProgram();
     vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader);
     fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader);

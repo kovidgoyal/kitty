@@ -458,7 +458,7 @@ def add_window(os_window_id: int, tab_id: int, title: str) -> int:
 
 
 def compile_program(
-    which: int, vertex_shader: str, fragment_shader: str
+    which: int, vertex_shader: str, fragment_shader: str, allow_recompile: bool = False
 ) -> int:
     pass
 

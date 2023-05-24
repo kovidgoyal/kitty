@@ -147,7 +147,7 @@ from .utils import (
     startup_notification_handler,
     which,
 )
-from .window import CommandOutput, CwdRequest, Window
+from .window import CommandOutput, CwdRequest, Window, load_shader_programs
 
 if TYPE_CHECKING:
     from .rc.base import ResponseType
@@ -2409,6 +2409,7 @@ class Boss:
         for w in self.all_windows:
             self.default_bg_changed_for(w.id)
             w.refresh(reload_all_gpu_data=True)
+        load_shader_programs.recompile_if_needed()
 
     @ac('misc', '''
         Reload the config file
