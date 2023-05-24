@@ -67,6 +67,8 @@ Detailed list of changes
 
 - ssh kitten: Fix a regression in 0.28.0 that caused interrupt during setup to not be handled gracefully (:iss:`6254`)
 
+- Graphics: Move images up along with text when the window is shrunk vertically (:iss:`6278`)
+
 0.28.1 [2023-04-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
