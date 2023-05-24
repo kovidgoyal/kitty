@@ -1791,11 +1791,11 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
 // }}}
 
 void
-grman_resize(GraphicsManager *self, index_type old_lines, index_type lines, index_type old_columns, index_type columns) {
+grman_resize(GraphicsManager *self, index_type old_lines UNUSED, index_type lines UNUSED, index_type old_columns, index_type columns, index_type num_content_lines_before, index_type num_content_lines_after) {
     ImageRef *ref; Image *img;
     self->layers_dirty = true;
-    if (columns == old_columns && old_lines > lines) {
-        const unsigned int vertical_shrink_size = old_lines - lines;
+    if (columns == old_columns && num_content_lines_before > num_content_lines_after) {
+        const unsigned int vertical_shrink_size = num_content_lines_before - num_content_lines_after;
         for (size_t i = self->image_count; i-- > 0;) {
             img = self->images + i;
             for (size_t j = img->refcnt; j-- > 0;) {

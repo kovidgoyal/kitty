@@ -389,7 +389,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     /* printf("old_cursor: (%u, %u) new_cursor: (%u, %u) beyond_content: %d\n", self->cursor->x, self->cursor->y, cursor.after.x, cursor.after.y, cursor.is_beyond_content); */
     setup_cursor(main_saved_cursor);
     grman_remove_all_cell_images(self->main_grman);
-    grman_resize(self->main_grman, self->lines, lines, self->columns, columns);
+    grman_resize(self->main_grman, self->lines, lines, self->columns, columns, num_content_lines_before, num_content_lines_after);
 
     // Resize alt linebuf
     n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL, &cursor, &alt_saved_cursor, &self->as_ansi_buf);
@@ -398,7 +398,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     if (!is_main) setup_cursor(cursor);
     setup_cursor(alt_saved_cursor);
     grman_remove_all_cell_images(self->alt_grman);
-    grman_resize(self->alt_grman, self->lines, lines, self->columns, columns);
+    grman_resize(self->alt_grman, self->lines, lines, self->columns, columns, num_content_lines_before, num_content_lines_after);
 #undef setup_cursor
 
     self->linebuf = is_main ? self->main_linebuf : self->alt_linebuf;
