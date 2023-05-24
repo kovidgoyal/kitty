@@ -570,8 +570,6 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         S(CELL_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i); S(CELL_FG_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i);
         S(CELL_PROGRAM, dim_opacity, OPT(dim_opacity), 1f); S(CELL_FG_PROGRAM, dim_opacity, OPT(dim_opacity), 1f);
         S(CELL_BG_PROGRAM, defaultbg, OPT(background), 1f);
-        int text_old_gamma = OPT(text_old_gamma) ? 1 : 0;
-        S(CELL_PROGRAM, text_old_gamma, text_old_gamma, 1i); S(CELL_FG_PROGRAM, text_old_gamma, text_old_gamma, 1i);
         float text_contrast = 1.0f + OPT(text_contrast) * 0.01f;
         S(CELL_PROGRAM, text_contrast, text_contrast, 1f); S(CELL_FG_PROGRAM, text_contrast, text_contrast, 1f);
         float text_gamma_adjustment = OPT(text_gamma_adjustment) < 0.01f ? 1.0f : 1.0f / OPT(text_gamma_adjustment);

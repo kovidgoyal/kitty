@@ -375,11 +375,13 @@ def multi_replace(src: str, **replacements: Any) -> str:
 class LoadShaderPrograms:
 
     text_fg_override_threshold: float = 0
+    text_old_gamma: bool = False
     semi_transparent: bool = False
 
     @property
     def needs_recompile(self) -> bool:
-        return get_options().text_fg_override_threshold != self.text_fg_override_threshold
+        opts = get_options()
+        return opts.text_fg_override_threshold != self.text_fg_override_threshold or (opts.text_composition_strategy == 'legacy') != self.text_old_gamma
 
     def recompile_if_needed(self) -> None:
         if self.needs_recompile:
@@ -387,6 +389,9 @@ class LoadShaderPrograms:
 
     def __call__(self, semi_transparent: bool = False, allow_recompile: bool = False) -> None:
         self.semi_transparent = semi_transparent
+        opts = get_options()
+        self.text_old_gamma = opts.text_composition_strategy == 'legacy'
+        self.text_fg_override_threshold = opts.text_fg_override_threshold
         compile_program(BLIT_PROGRAM, *load_shaders('blit'), allow_recompile)
         v, f = load_shaders('cell')
 
@@ -409,9 +414,10 @@ class LoadShaderPrograms:
                 DECORATION_MASK=DECORATION_MASK,
                 STRIKE_SPRITE_INDEX=NUM_UNDERLINE_STYLES + 1,
             )
-            self.text_fg_override_threshold = get_options().text_fg_override_threshold
             if self.text_fg_override_threshold != 0.:
                 ff = ff.replace('#define NO_FG_OVERRIDE', '#define FG_OVERRIDE')
+            if self.text_old_gamma:
+                ff = ff.replace('#define TEXT_NEW_GAMMA', '#define TEXT_OLD_GAMMA')
             if semi_transparent:
                 vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
                 ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')

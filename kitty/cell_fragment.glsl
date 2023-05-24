@@ -2,6 +2,7 @@
 #define {WHICH_PROGRAM}
 #define NOT_TRANSPARENT
 #define NO_FG_OVERRIDE
+#define TEXT_NEW_GAMMA
 
 #if defined(SIMPLE) || defined(BACKGROUND) || defined(SPECIAL)
 #define NEEDS_BACKROUND
@@ -21,7 +22,6 @@ in float bg_alpha;
 
 #ifdef NEEDS_FOREGROUND
 uniform sampler2DArray sprites;
-uniform int text_old_gamma;
 uniform float text_contrast;
 uniform float text_gamma_adjustment;
 uniform float text_fg_override_threshold;
@@ -195,7 +195,11 @@ vec4 calculate_foreground(vec3 bg) {
     // When rendering on a background we can adjust the alpha channel contrast
     // to improve legibility based on the source and destination colors
     vec4 text_fg = foreground_color();
-    text_fg = mix(foreground_contrast(text_fg, bg), foreground_contrast_incorrect(text_fg, bg), text_old_gamma);
+#ifdef TEXT_OLD_GAMMA
+    text_fg = foreground_contrast_incorrect(text_fg, bg);
+#else
+    text_fg = foreground_contrast(text_fg, bg);
+#endif
     return foreground_with_decorations(text_fg);
 }
 
