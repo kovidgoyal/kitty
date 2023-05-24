@@ -278,7 +278,7 @@ to white if the background is dark or black if the background is light. The defa
 value is :code:`0`, which means no overriding is performed. Useful when working with applications
 that use colors that do not contrast well with your preferred color scheme. Note that this
 will not work in situations where kitty has to render in multiple passes, for example,
-when rendering with images under text.
+when rendering with images under text or with non-opaque background and images.
 ''')
 
 egr()  # }}}
