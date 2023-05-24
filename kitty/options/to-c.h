@@ -14,13 +14,6 @@ PyFloat_AsFloat(PyObject *o) {
     return (float)PyFloat_AsDouble(o);
 }
 
-static inline float
-percent(PyObject *o) {
-    float ans = PyFloat_AsFloat(o);
-    return MAX(0.f, MIN(ans, 100.f)) * 0.01f;
-}
-
-
 static inline color_type
 color_as_int(PyObject *color) {
     if (!PyObject_TypeCheck(color, &Color_Type)) { PyErr_SetString(PyExc_TypeError, "Not a Color object"); return 0; }

@@ -49,7 +49,6 @@ typedef struct {
     char *bell_path, *bell_theme;
     float background_opacity, dim_opacity;
     float text_contrast, text_gamma_adjustment;
-    float text_fg_override_threshold;
     bool text_old_gamma;
 
     char *background_image, *default_window_logo;

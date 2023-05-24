@@ -391,7 +391,7 @@ class LoadShaderPrograms:
         self.semi_transparent = semi_transparent
         opts = get_options()
         self.text_old_gamma = opts.text_composition_strategy == 'legacy'
-        self.text_fg_override_threshold = opts.text_fg_override_threshold
+        self.text_fg_override_threshold = max(0, min(opts.text_fg_override_threshold, 100)) * 0.01
         compile_program(BLIT_PROGRAM, *load_shaders('blit'), allow_recompile)
         v, f = load_shaders('cell')
 
@@ -415,7 +415,7 @@ class LoadShaderPrograms:
                 STRIKE_SPRITE_INDEX=NUM_UNDERLINE_STYLES + 1,
             )
             if self.text_fg_override_threshold != 0.:
-                ff = ff.replace('#define NO_FG_OVERRIDE', '#define FG_OVERRIDE')
+                ff = ff.replace('#define NO_FG_OVERRIDE', f'#define FG_OVERRIDE {self.text_fg_override_threshold}')
             if self.text_old_gamma:
                 ff = ff.replace('#define TEXT_NEW_GAMMA', '#define TEXT_OLD_GAMMA')
             if semi_transparent:

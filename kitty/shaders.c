@@ -574,8 +574,6 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         S(CELL_PROGRAM, text_contrast, text_contrast, 1f); S(CELL_FG_PROGRAM, text_contrast, text_contrast, 1f);
         float text_gamma_adjustment = OPT(text_gamma_adjustment) < 0.01f ? 1.0f : 1.0f / OPT(text_gamma_adjustment);
         S(CELL_PROGRAM, text_gamma_adjustment, text_gamma_adjustment, 1f); S(CELL_FG_PROGRAM, text_gamma_adjustment, text_gamma_adjustment, 1f);
-        S(CELL_PROGRAM, text_fg_override_threshold, OPT(text_fg_override_threshold), 1f);
-        S(CELL_FG_PROGRAM, text_fg_override_threshold, OPT(text_fg_override_threshold), 1f);
 #undef S
 #define SV(prog, name, num, val, type) { bind_program(prog); glUniform##type(glGetUniformLocation(program_id(prog), #name), num, val); }
         SV(CELL_PROGRAM, gamma_lut, 256, srgb_lut, 1fv); SV(CELL_FG_PROGRAM, gamma_lut, 256, srgb_lut, 1fv);

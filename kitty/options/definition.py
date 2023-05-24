@@ -269,7 +269,7 @@ Then adjust the second parameter until it looks good. Then switch to a light the
 and adjust the first parameter until the perceived thickness matches the dark theme.
 ''')
 
-opt('text_fg_override_threshold', 0, option_type='float', ctype='percent', long_text='''
+opt('text_fg_override_threshold', 0, option_type='float', long_text='''
 The minimum accepted difference in luminance between the foreground and background
 color, below which kitty will override the foreground color. It is percentage
 ranging from :code:`0` to :code:`100`. If the difference in luminance of the

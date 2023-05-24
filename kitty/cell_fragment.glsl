@@ -134,7 +134,7 @@ vec3 fg_override(float under_luminance, float over_lumininace, vec3 over) {
     // If the difference in luminance is too small,
     // force the foreground color to be black or white.
     float diff_luminance = abs(under_luminance - over_lumininace);
-	float override_level = (1.f - colored_sprite) * step(diff_luminance, text_fg_override_threshold);
+	float override_level = (1.f - colored_sprite) * step(diff_luminance, FG_OVERRIDE);
 	float original_level = 1.f - override_level;
 	return original_level * over + override_level * vec3(step(under_luminance, 0.5f));
 }
