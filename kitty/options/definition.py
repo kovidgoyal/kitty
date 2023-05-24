@@ -70,7 +70,7 @@ words "HELLO WORLD" display in kitty as "WORLD HELLO", and if you try to select
 a substring of an RTL-shaped string, you will get the character that would be
 there had the the string been LTR. For example, assuming the Hebrew word
 ירושלים, selecting the character that on the screen appears to be ם actually
-writes into the selection buffer the character י.  kitty's default behavior is
+writes into the selection buffer the character י. kitty's default behavior is
 useful in conjunction with a filter to reverse the word order, however, if you
 wish to manipulate RTL glyphs, it can be very challenging to work with, so this
 option is provided to turn it off. Furthermore, this option can be used with the
@@ -269,15 +269,15 @@ Then adjust the second parameter until it looks good. Then switch to a light the
 and adjust the first parameter until the perceived thickness matches the dark theme.
 ''')
 
-opt('text_fg_override_threshold', 0,
-    ctype='!text_fg_override_threshold',
-    long_text='''
-The minimum accepted difference in luminance between the foreground and background 
-color, below which kitty will override the foreground color. It is percentage 
-ranging from :code:`0` to :code:`100`. If the difference in luminance of the 
-foreground and background is below this threshold, the foreground color will be set 
-to white if the background is dark or black if the background is light. The default 
-value is :code:`0`.
+opt('text_fg_override_threshold', 0, option_type='float', ctype='percent', long_text='''
+The minimum accepted difference in luminance between the foreground and background
+color, below which kitty will override the foreground color. It is percentage
+ranging from :code:`0` to :code:`100`. If the difference in luminance of the
+foreground and background is below this threshold, the foreground color will be set
+to white if the background is dark or black if the background is light. The default
+value is :code:`0`, which means no overriding is performed. Useful when working with applications
+that use colors that do not contrast well with your preferred color scheme. Changing this option
+from zero to a non-zero value or vice versa requires a restart of kitty.
 ''')
 
 egr()  # }}}

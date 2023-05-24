@@ -14,6 +14,13 @@ PyFloat_AsFloat(PyObject *o) {
     return (float)PyFloat_AsDouble(o);
 }
 
+static inline float
+percent(PyObject *o) {
+    float ans = PyFloat_AsFloat(o);
+    return MAX(0.f, MIN(ans, 100.f)) * 0.01f;
+}
+
+
 static inline color_type
 color_as_int(PyObject *color) {
     if (!PyObject_TypeCheck(color, &Color_Type)) { PyErr_SetString(PyExc_TypeError, "Not a Color object"); return 0; }
@@ -209,18 +216,6 @@ text_composition_strategy(PyObject *val, Options *opts) {
             opts->text_contrast = MIN(100.0f, opts->text_contrast);
         }
     }
-}
-
-static void
-text_fg_override_threshold(PyObject *val, Options *opts) {
-    if (!PyUnicode_Check(val)) { PyErr_SetString(PyExc_TypeError, "text_fg_override_threshold must be a string"); return; }
-    opts->text_fg_override_threshold = 0.f;
-
-    DECREF_AFTER_FUNCTION PyObject *text_fg_override_threshold = PyFloat_FromString(val);
-    if (PyErr_Occurred()) return;
-    opts->text_fg_override_threshold = MAX(0.f, PyFloat_AsFloat(text_fg_override_threshold));
-    opts->text_fg_override_threshold = MIN(100.f, PyFloat_AsFloat(text_fg_override_threshold));
-
 }
 
 static char_type*

@@ -599,7 +599,7 @@ class Options:
     tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{title}'
     term: str = 'xterm-kitty'
     text_composition_strategy: str = 'platform'
-    text_fg_override_threshold: str = '0'
+    text_fg_override_threshold: float = 0.0
     touch_scroll_multiplier: float = 1.0
     undercurl_style: choices_for_undercurl_style = 'thin-sparse'
     update_check_interval: float = 24.0

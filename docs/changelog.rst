@@ -40,6 +40,8 @@ Detailed list of changes
 
 - A new escape code ``<ESC>[22J`` that moves the current contents of the screen into the scrollback before clearing it
 
+- A new option :opt:`text_fg_override_threshold` to force text colors to have high contrast regardless of color scheme (:pull:`6283`)
+
 - unicode_input kitten: Fix a regression in 0.28.0 that caused the order of recent and favorites entries to not be respected (:iss:`6214`)
 
 - unicode_input kitten: Fix a regression in 0.28.0 that caused editing of favorites to sometimes hang

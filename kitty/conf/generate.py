@@ -391,7 +391,7 @@ def generate_c_conversion(loc: str, ctypes: List[Union[Option, MultiOption]]) ->
     lines: List[str] = []
     basic_converters = {
         'int': 'PyLong_AsLong', 'uint': 'PyLong_AsUnsignedLong', 'bool': 'PyObject_IsTrue',
-        'float': 'PyFloat_AsFloat', 'double': 'PyFloat_AsDouble',
+        'float': 'PyFloat_AsFloat', 'double': 'PyFloat_AsDouble', 'percent': 'percent',
         'time': 'parse_s_double_to_monotonic_t', 'time-ms': 'parse_ms_long_to_monotonic_t'
     }
 

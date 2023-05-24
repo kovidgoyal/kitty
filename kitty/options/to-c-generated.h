@@ -72,7 +72,7 @@ convert_from_opts_text_composition_strategy(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_text_fg_override_threshold(PyObject *val, Options *opts) {
-    text_fg_override_threshold(val, opts);
+    opts->text_fg_override_threshold = percent(val);
 }
 
 static void

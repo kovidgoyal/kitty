@@ -397,7 +397,7 @@ class LoadShaderPrograms:
                 DECORATION_MASK=DECORATION_MASK,
                 STRIKE_SPRITE_INDEX=NUM_UNDERLINE_STYLES + 1,
             )
-            if get_options().text_fg_override_threshold != '0':
+            if get_options().text_fg_override_threshold != 0.:
                 ff = ff.replace('#define NO_FG_OVERRIDE', '#define FG_OVERRIDE')
             if semi_transparent:
                 vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
