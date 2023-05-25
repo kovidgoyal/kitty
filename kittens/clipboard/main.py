@@ -50,7 +50,7 @@ Read or write to the system clipboard.
 
 This kitten operates most simply in :italic:`filter mode`.
 To set the clipboard text, pipe in the new text on :file:`STDIN`. Use the
-:option:`--get-clipboard` option to output the current clipboard text content to
+:option:`--get-clipboard` option to instead output the current clipboard text content to
 :file:`STDOUT`. Note that copying from the clipboard will cause a permission
 popup, see :opt:`clipboard_control` for details.
 

@@ -99,7 +99,9 @@ func run_plain_text_loop(opts *Options) (err error) {
 	stdin_is_tty := tty.IsTerminal(os.Stdin.Fd())
 	var data_src io.Reader
 	var tempfile *os.File
-	if !stdin_is_tty {
+	if !stdin_is_tty && !opts.GetClipboard {
+		// we dont read STDIN when getting clipboard as it makes it hard to use the kitten in contexts where
+		// the user does not control STDIN such as being execed from other programs.
 		data_src, tempfile, err = preread_stdin()
 		if err != nil {
 			return err

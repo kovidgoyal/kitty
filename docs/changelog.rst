@@ -48,6 +48,8 @@ Detailed list of changes
 
 - clipboard kitten: Fix a bug causing the last MIME type available on the clipboard not being recognized when pasting
 
+- clipboard kitten: Dont set clipboard when getting clipboard in filter mode (:iss:`6302`)
+
 - Fix regression in 0.28.0 causing color fringing when rendering in transparent windows on light backgrounds (:iss:`6209`)
 
 - show_key kitten: In kitty mode show the actual bytes sent by the terminal rather than a re-encoding of the parsed key event
