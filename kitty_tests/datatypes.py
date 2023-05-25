@@ -444,7 +444,7 @@ class TestDataTypes(BaseTest):
                 self.assertTrue(is_path_in_temp_dir(os.path.join(prefix, path)))
         for path in ('/home/xy/d.png', '/tmp/../home/x.jpg'):
             self.assertFalse(is_path_in_temp_dir(os.path.join(path)))
-        for path in '/proc/self/cmdline /dev/tty'.split():
+        for path in '/proc/self/cmdline /dev/null'.split():
             if os.path.exists(path):
                 with open(path) as pf:
                     self.assertFalse(is_ok_to_read_image_file(path, pf.fileno()), path)
