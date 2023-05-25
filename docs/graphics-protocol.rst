@@ -284,7 +284,7 @@ and can take the values:
 Value of `t`          Meaning
 ==================    ============
 ``d``                 Direct (the data is transmitted within the escape code itself)
-``f``                 A simple file (regular files only, not named pipes or similar)
+``f``                 A simple file (regular files only, not named pipes, device files, etc.)
 ``t``                 A temporary file, the terminal emulator will delete the file after reading the pixel data. For security reasons
                       the terminal emulator should only delete the file if it
                       is in a known temporary directory, such as :file:`/tmp`,
@@ -302,7 +302,11 @@ Value of `t`          Meaning
 
 When opening files, the terminal emulator must follow symlinks. In case of
 symlink loops or too many symlinks, it should fail and respond with an error,
-similar to reporting any other kind of I/O error.
+similar to reporting any other kind of I/O error. Since the file paths come
+from potentially untrusted sources, terminal emulators **must** refuse to read
+any device/socket/etc. special files. Only regular files are allowed.
+Additionally, terminal emulators may refuse to read files in *sensitive*
+parts of the filesystem, such as :file:`/proc`, :file:`/sys`, :file:`/dev/`, etc.
 
 Local client
 ^^^^^^^^^^^^^^

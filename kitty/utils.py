@@ -712,6 +712,26 @@ def is_path_in_temp_dir(path: str) -> bool:
     return False
 
 
+def is_ok_to_read_image_file(path: str, fd: int) -> bool:
+    import stat
+    path = os.path.abspath(os.path.realpath(path))
+    try:
+        path_stat = os.stat(path, follow_symlinks=True)
+        fd_stat = os.fstat(fd)
+    except OSError:
+        return False
+    if not os.path.samestat(path_stat, fd_stat):
+        return False
+    parts = path.split(os.sep)[1:]
+    if len(parts) < 1:
+        return False
+    if parts[0] in ('sys', 'proc', 'dev'):
+        if parts[0] == 'dev':
+            return len(parts) > 2 and parts[1] == 'shm'
+        return False
+    return stat.S_ISREG(fd_stat.st_mode)
+
+
 def resolve_abs_or_config_path(path: str, env: Optional[Mapping[str, str]] = None, conf_dir: Optional[str] = None) -> str:
     path = os.path.expanduser(path)
     path = expandvars(path, env or {})
