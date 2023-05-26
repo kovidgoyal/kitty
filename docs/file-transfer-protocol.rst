@@ -513,7 +513,7 @@ safe_string
 
 integer
     A base-10 number composed of the characters ``[0-9]`` with a possible
-    leading ``-`` sign
+    leading ``-`` sign. When missing the value is zero.
 
 base64_string
     A base64 encoded UTF-8 string using the standard base64 encoding

@@ -20,57 +20,6 @@ import (
 
 var _ = fmt.Print
 
-type FileType int
-
-const (
-	REGULAR_FILE FileType = iota
-	SYMLINK_FILE
-	DIRECTORY_FILE
-	LINK_FILE
-)
-
-func (self FileType) ShortText() string {
-	switch self {
-	case REGULAR_FILE:
-		return "fil"
-	case DIRECTORY_FILE:
-		return "dir"
-	case SYMLINK_FILE:
-		return "sym"
-	case LINK_FILE:
-		return "lnk"
-	}
-	return "und"
-}
-
-func (self FileType) Color() string {
-	switch self {
-	case REGULAR_FILE:
-		return "yellow"
-	case DIRECTORY_FILE:
-		return "magenta"
-	case SYMLINK_FILE:
-		return "blue"
-	case LINK_FILE:
-		return "green"
-	}
-	return ""
-}
-
-func (self FileType) String() string {
-	switch self {
-	case REGULAR_FILE:
-		return "FileType.Regular"
-	case DIRECTORY_FILE:
-		return "FileType.Directory"
-	case SYMLINK_FILE:
-		return "FileType.SymbolicLink"
-	case LINK_FILE:
-		return "FileType.Link"
-	}
-	return "FileType.Unknown"
-}
-
 type FileState int
 
 const (
@@ -125,8 +74,8 @@ func NewFile(local_path, expanded_local_path string, file_id int, stat_result fs
 		file_hash: FileHash{stat.Dev, stat.Ino}, mtime: stat_result.ModTime(),
 		file_size: stat_result.Size(), bytes_to_transmit: stat_result.Size(),
 		permissions: stat_result.Mode().Perm(), remote_path: filepath.ToSlash(get_remote_path(local_path, remote_base)),
-		rsync_capable:       file_type == REGULAR_FILE && stat_result.Size() > 4096,
-		compression_capable: file_type == REGULAR_FILE && stat_result.Size() > 4096 && should_be_compressed(expanded_local_path),
+		rsync_capable:       file_type == FileType_regular && stat_result.Size() > 4096,
+		compression_capable: file_type == FileType_regular && stat_result.Size() > 4096 && should_be_compressed(expanded_local_path),
 		remote_initial_size: -1,
 	}
 	return &ans
@@ -141,7 +90,7 @@ func process(opts *Options, paths []string, remote_base string, counter *int) (a
 		}
 		if s.IsDir() {
 			*counter += 1
-			ans = append(ans, NewFile(x, expanded, *counter, s, remote_base, DIRECTORY_FILE))
+			ans = append(ans, NewFile(x, expanded, *counter, s, remote_base, FileType_directory))
 			new_remote_base := remote_base
 			if new_remote_base != "" {
 				new_remote_base = strings.TrimRight(new_remote_base, "/") + "/" + filepath.Base(x) + "/"
@@ -163,10 +112,10 @@ func process(opts *Options, paths []string, remote_base string, counter *int) (a
 			ans = append(ans, new_ans...)
 		} else if s.Mode()&fs.ModeSymlink == fs.ModeSymlink {
 			*counter += 1
-			ans = append(ans, NewFile(x, expanded, *counter, s, remote_base, SYMLINK_FILE))
+			ans = append(ans, NewFile(x, expanded, *counter, s, remote_base, FileType_symlink))
 		} else if s.Mode().IsRegular() {
 			*counter += 1
-			ans = append(ans, NewFile(x, expanded, *counter, s, remote_base, REGULAR_FILE))
+			ans = append(ans, NewFile(x, expanded, *counter, s, remote_base, FileType_regular))
 		}
 	}
 	return
@@ -219,7 +168,7 @@ func files_for_send(opts *Options, args []string) (files []*File, err error) {
 	for _, group := range groups {
 		if len(group) > 1 {
 			for _, lf := range group[1:] {
-				lf.file_type = LINK_FILE
+				lf.file_type = FileType_link
 				lf.hard_link_target = group[0].file_id
 			}
 		}
@@ -228,7 +177,7 @@ func files_for_send(opts *Options, args []string) (files []*File, err error) {
 	remove := make([]int, 0, len(files))
 	// detect symlinks to other transferred files
 	for i, f := range files {
-		if f.file_type == SYMLINK_FILE {
+		if f.file_type == FileType_symlink {
 			link_dest, err := os.Readlink(f.local_path)
 			if err != nil {
 				remove = append(remove, i)
@@ -389,10 +338,22 @@ type SendHandler struct {
 	failed_files, done_files             []*File
 	done_file_ids                        *utils.Set[string]
 	transmit_ok_checked                  bool
+	progress_update_timer                loop.IdType
+}
+
+func (self *SendHandler) schedule_progress_update(delay time.Duration) {
+	if self.progress_update_timer != 0 {
+		self.lp.RemoveTimer(self.progress_update_timer)
+		self.progress_update_timer = 0
+	}
+	timer_id, err := self.lp.AddTimer(delay, false, self.refresh_progress)
+	if err == nil {
+		self.progress_update_timer = timer_id
+	}
 }
 
 func (self *SendHandler) on_file_progress(f *File, change int) {
-	self.schedule_progress_update()
+	self.schedule_progress_update(100 * time.Millisecond)
 }
 
 func (self *SendHandler) on_file_done(f *File) {
@@ -400,7 +361,13 @@ func (self *SendHandler) on_file_done(f *File) {
 	if f.err_msg != "" {
 		self.failed_files = append(self.failed_files, f)
 	}
-	self.schedule_progress_update()
+	self.schedule_progress_update(100 * time.Millisecond)
+}
+
+func (self *SendHandler) send_payload(payload string) {
+	self.lp.QueueWriteString(self.manager.prefix)
+	self.lp.QueueWriteString(payload)
+	self.lp.QueueWriteString(self.manager.suffix)
 }
 
 func (self *SendHandler) initialize() error {
