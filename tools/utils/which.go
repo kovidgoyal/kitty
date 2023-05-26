@@ -13,7 +13,7 @@ import (
 
 var _ = fmt.Print
 
-var DefaultExeSearchPaths = (&Once[[]string]{Run: func() []string {
+var DefaultExeSearchPaths = Once(func() []string {
 	candidates := [...]string{"/usr/local/bin", "/opt/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"}
 	ans := make([]string, 0, len(candidates))
 	for _, x := range candidates {
@@ -22,7 +22,7 @@ var DefaultExeSearchPaths = (&Once[[]string]{Run: func() []string {
 		}
 	}
 	return ans
-}}).Get
+})
 
 func Which(cmd string, paths ...string) string {
 	if strings.Contains(cmd, string(os.PathSeparator)) {

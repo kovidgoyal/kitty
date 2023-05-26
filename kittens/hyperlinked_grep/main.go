@@ -22,9 +22,9 @@ import (
 
 var _ = fmt.Print
 
-var RgExe = (&utils.Once[string]{Run: func() string {
+var RgExe = utils.Once(func() string {
 	return utils.FindExe("rg")
-}}).Get
+})
 
 func get_options_for_rg() (expecting_args map[string]bool, alias_map map[string]string, err error) {
 	var raw []byte

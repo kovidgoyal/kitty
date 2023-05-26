@@ -17,11 +17,11 @@ import (
 
 var _ = fmt.Print
 
-var SSHExe = (&utils.Once[string]{Run: func() string {
+var SSHExe = utils.Once(func() string {
 	return utils.FindExe("ssh")
-}}).Get
+})
 
-var SSHOptions = (&utils.Once[map[string]string]{Run: func() (ssh_options map[string]string) {
+var SSHOptions = utils.Once(func() (ssh_options map[string]string) {
 	defer func() {
 		if ssh_options == nil {
 			ssh_options = map[string]string{
@@ -80,7 +80,7 @@ var SSHOptions = (&utils.Once[map[string]string]{Run: func() (ssh_options map[st
 		}
 	}
 	return
-}}).Get
+})
 
 func GetSSHCLI() (boolean_ssh_args *utils.Set[string], other_ssh_args *utils.Set[string]) {
 	other_ssh_args, boolean_ssh_args = utils.NewSet[string](32), utils.NewSet[string](32)
@@ -201,7 +201,7 @@ func (self SSHVersion) SupportsAskpassRequire() bool {
 	return self.Major > 8 || (self.Major == 8 && self.Minor >= 4)
 }
 
-var GetSSHVersion = (&utils.Once[SSHVersion]{Run: func() SSHVersion {
+var GetSSHVersion = utils.Once(func() SSHVersion {
 	b, err := exec.Command(SSHExe(), "-V").CombinedOutput()
 	if err != nil {
 		return SSHVersion{}
@@ -213,7 +213,7 @@ var GetSSHVersion = (&utils.Once[SSHVersion]{Run: func() SSHVersion {
 		return SSHVersion{Major: maj, Minor: min}
 	}
 	return SSHVersion{}
-}}).Get
+})
 
 type KittyOpts struct {
 	Term, Shell_integration string
@@ -235,6 +235,6 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 	return ans
 }
 
-var RelevantKittyOpts = (&utils.Once[KittyOpts]{Run: func() KittyOpts {
+var RelevantKittyOpts = utils.Once(func() KittyOpts {
 	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
-}}).Get
+})

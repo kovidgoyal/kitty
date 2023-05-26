@@ -162,7 +162,7 @@ func linenum_group_processor(gd map[string]string) {
 	gd[`path`] = utils.Expanduser(gd[`path`])
 }
 
-var PostProcessorMap = (&utils.Once[map[string]PostProcessorFunc]{Run: func() map[string]PostProcessorFunc {
+var PostProcessorMap = utils.Once(func() map[string]PostProcessorFunc {
 	return map[string]PostProcessorFunc{
 		"url": func(text string, s, e int) (int, int) {
 			if s > 4 && text[s-5:s] == "link:" { // asciidoc URLs
@@ -200,7 +200,7 @@ var PostProcessorMap = (&utils.Once[map[string]PostProcessorFunc]{Run: func() ma
 			return s, e
 		},
 	}
-}}).Get
+})
 
 type KittyOpts struct {
 	Url_prefixes              *utils.Set[string]
@@ -226,9 +226,9 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 	return ans
 }
 
-var RelevantKittyOpts = (&utils.Once[KittyOpts]{Run: func() KittyOpts {
+var RelevantKittyOpts = utils.Once(func() KittyOpts {
 	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
-}}).Get
+})
 
 func functions_for(opts *Options) (pattern string, post_processors []PostProcessorFunc, group_processors []GroupProcessorFunc) {
 	switch opts.Type {

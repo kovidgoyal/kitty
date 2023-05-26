@@ -22,13 +22,13 @@ const DIFF_DIFF = `diff -p -U _CONTEXT_ --`
 
 var diff_cmd []string
 
-var GitExe = (&utils.Once[string]{Run: func() string {
+var GitExe = utils.Once(func() string {
 	return utils.FindExe("git")
-}}).Get
+})
 
-var DiffExe = (&utils.Once[string]{Run: func() string {
+var DiffExe = utils.Once(func() string {
 	return utils.FindExe("diff")
-}}).Get
+})
 
 func find_differ() {
 	if GitExe() != "git" && exec.Command(GitExe(), "--help").Run() == nil {

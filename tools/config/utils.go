@@ -189,7 +189,7 @@ func StringLiteral(val string) (string, error) {
 	return ans.String(), nil
 }
 
-var ModMap = (&utils.Once[map[string]string]{Run: func() map[string]string {
+var ModMap = utils.Once(func() map[string]string {
 	return map[string]string{
 		"shift":     "shift",
 		"⇧":         "shift",
@@ -209,11 +209,11 @@ var ModMap = (&utils.Once[map[string]string]{Run: func() map[string]string {
 		"num_lock":  "num_lock",
 		"caps_lock": "caps_lock",
 	}
-}}).Get
+})
 
-var ShortcutSpecPat = (&utils.Once[*regexp.Regexp]{Run: func() *regexp.Regexp {
+var ShortcutSpecPat = utils.Once(func() *regexp.Regexp {
 	return regexp.MustCompile(`([^+])>`)
-}}).Get
+})
 
 func NormalizeShortcut(spec string) string {
 	parts := strings.Split(strings.ToLower(spec), "+")

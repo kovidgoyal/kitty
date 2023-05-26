@@ -44,7 +44,7 @@ func load_mime_file(filename string, mime_map map[string]string) error {
 	return nil
 }
 
-var UserMimeMap = (&Once[map[string]string]{Run: func() map[string]string {
+var UserMimeMap = Once(func() map[string]string {
 	conf_path := filepath.Join(ConfigDir(), "mime.types")
 	ans := make(map[string]string, 32)
 	err := load_mime_file(conf_path, ans)
@@ -52,7 +52,7 @@ var UserMimeMap = (&Once[map[string]string]{Run: func() map[string]string {
 		fmt.Fprintln(os.Stderr, "Failed to parse", conf_path, "for MIME types with error:", err)
 	}
 	return ans
-}}).Get
+})
 
 func is_rcfile(path string) bool {
 	name := filepath.Base(path)

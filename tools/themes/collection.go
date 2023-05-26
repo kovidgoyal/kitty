@@ -780,9 +780,9 @@ func (self *Themes) Copy() *Themes {
 	return ans
 }
 
-var camel_case_pat = (&utils.Once[*regexp.Regexp]{Run: func() *regexp.Regexp {
+var camel_case_pat = utils.Once(func() *regexp.Regexp {
 	return regexp.MustCompile(`([a-z])([A-Z])`)
-}}).Get
+})
 
 func ThemeNameFromFileName(fname string) string {
 	fname = fname[:len(fname)-len(path.Ext(fname))]

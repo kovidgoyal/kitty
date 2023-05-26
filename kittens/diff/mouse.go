@@ -42,9 +42,9 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 	return ans
 }
 
-var RelevantKittyOpts = (&utils.Once[KittyOpts]{Run: func() KittyOpts {
+var RelevantKittyOpts = utils.Once(func() KittyOpts {
 	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
-}}).Get
+})
 
 func (self *Handler) handle_wheel_event(up bool) {
 	amt := RelevantKittyOpts().Wheel_scroll_multiplier

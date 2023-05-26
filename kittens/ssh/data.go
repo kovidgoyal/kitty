@@ -25,7 +25,7 @@ type Entry struct {
 
 type Container map[string]Entry
 
-var Data = (&utils.Once[Container]{Run: func() Container {
+var Data = utils.Once(func() Container {
 	tr := tar.NewReader(utils.ReaderForCompressedEmbeddedData(embedded_data))
 	ans := make(Container, 64)
 	for {
@@ -43,7 +43,7 @@ var Data = (&utils.Once[Container]{Run: func() Container {
 		ans[hdr.Name] = Entry{hdr, data}
 	}
 	return ans
-}}).Get
+})
 
 func (self Container) files_matching(prefix string, exclude_patterns ...string) []string {
 	ans := make([]string, 0, len(self))

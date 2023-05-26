@@ -264,9 +264,9 @@ func OpenNativeImageFromReader(f io.ReadSeeker) (ans *ImageData, err error) {
 	return
 }
 
-var MagickExe = (&utils.Once[string]{Run: func() string {
+var MagickExe = utils.Once(func() string {
 	return utils.FindExe("magick")
-}}).Get
+})
 
 func RunMagick(path string, cmd []string) ([]byte, error) {
 	if MagickExe() != "magick" {

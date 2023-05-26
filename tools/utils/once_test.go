@@ -11,10 +11,10 @@ var _ = fmt.Print
 
 func TestOnce(t *testing.T) {
 	num := 0
-	var G = (&Once[string]{Run: func() string {
+	var G = Once(func() string {
 		num++
 		return fmt.Sprintf("%d", num)
-	}}).Get
+	})
 	G()
 	G()
 	G()
