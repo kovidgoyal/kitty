@@ -102,8 +102,10 @@ func ConfigDirForName(name string) (config_dir string) {
 		if loc != "" {
 			q := filepath.Join(loc, "kitty")
 			if _, err := os.Stat(filepath.Join(q, name)); err == nil {
-				config_dir = q
-				return
+				if unix.Access(q, unix.W_OK) == nil {
+					config_dir = q
+					return
+				}
 			}
 		}
 	}
