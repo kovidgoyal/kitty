@@ -93,10 +93,10 @@ func TestPathMappingSend(t *testing.T) {
 		f = first_file(filepath.Join(b, "s"), filepath.Join(b, "r"), "dest")
 		ae(f.symbolic_link_target, "fid:2")
 		f = first_file(filepath.Join(b, "h"), "dest")
-		ae(f.file_type, REGULAR_FILE)
+		ae(f.file_type, FileType_regular)
 		file_idx = 1
 		f = first_file(filepath.Join(b, "h"), filepath.Join(b, "r"), "dest")
 		ae(f.hard_link_target, "1")
-		ae(f.file_type, LINK_FILE)
+		ae(f.file_type, FileType_link)
 	})
 }

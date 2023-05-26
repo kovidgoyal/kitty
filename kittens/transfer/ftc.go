@@ -214,45 +214,44 @@ func (self *FileTransmissionCommand) Serialize(prefix_with_osc_code ...bool) str
 		found = true
 	}
 	for _, field := range fields {
-		if name := field.Tag.Get("name"); name != "" {
+		if name := field.Tag.Get("name"); name != "" && field.IsExported() {
 			val := v.FieldByIndex(field.Index)
 			encoded_val := ""
 			switch val.Kind() {
 			case reflect.String:
-				sval := val.String()
-				if sval != "" {
+				if sval := val.String(); sval != "" {
 					enc := field.Tag.Get("encoding")
 					switch enc {
 					case "base64":
-						encoded_val = base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(sval))
+						encoded_val = base64.RawStdEncoding.EncodeToString(utils.UnsafeStringToBytes(sval))
 					default:
 						encoded_val = escape_semicolons(wcswidth.StripEscapeCodes(sval))
 					}
 				}
 			case reflect.Slice:
-				switch val.Elem().Type().Kind() {
+				switch val.Type().Elem().Kind() {
 				case reflect.Uint8:
-					bval := val.Bytes()
-					if len(bval) > 0 {
-						encoded_val = base64.StdEncoding.EncodeToString(bval)
+					if bval := val.Bytes(); len(bval) > 0 {
+						encoded_val = base64.RawStdEncoding.EncodeToString(bval)
 					}
 				}
 			case reflect.Uint64:
-				encoded_val = strconv.FormatUint(val.Uint(), 10)
+				if uival := val.Uint(); uival != 0 {
+					encoded_val = strconv.FormatUint(uival, 10)
+				}
 			default:
 				if val.CanInterface() {
-					i := val.Interface()
-					if field, ok := i.(Field); ok {
+					switch field := val.Interface().(type) {
+					case Field:
 						if !field.IsDefault() {
 							encoded_val = field.Serialize()
 						}
-					} else if field, ok := i.(time.Duration); ok {
+					case time.Duration:
 						if field != 0 {
 							encoded_val = strconv.FormatInt(int64(field), 10)
 						}
-					} else if field, ok := i.(fs.FileMode); ok {
-						field = field.Perm()
-						if field != 0 {
+					case fs.FileMode:
+						if field = field.Perm(); field != 0 {
 							encoded_val = strconv.FormatInt(int64(field), 10)
 						}
 					}

@@ -305,6 +305,10 @@ type SendManager struct {
 	progress_tracker                                           *ProgressTracker
 }
 
+func (self *SendManager) start_transfer() string {
+	panic("TODO: Implement this")
+}
+
 func (self *SendManager) initialize() {
 	if self.bypass != "" {
 		self.bypass = encode_bypass(self.request_id, self.bypass)
@@ -341,6 +345,11 @@ type SendHandler struct {
 	progress_update_timer                loop.IdType
 }
 
+func (self *SendHandler) refresh_progress(timer_id loop.IdType) (err error) {
+	self.progress_update_timer = 0
+	panic("TODO: Implement this")
+}
+
 func (self *SendHandler) schedule_progress_update(delay time.Duration) {
 	if self.progress_update_timer != 0 {
 		self.lp.RemoveTimer(self.progress_update_timer)
@@ -370,12 +379,16 @@ func (self *SendHandler) send_payload(payload string) {
 	self.lp.QueueWriteString(self.manager.suffix)
 }
 
+func (self *SendHandler) send_file_metadata() error {
+	panic("TODO: Implement this")
+}
+
 func (self *SendHandler) initialize() error {
 	self.manager.initialize()
 	self.send_payload(self.manager.start_transfer())
 	if self.opts.PermissionsBypass != "" {
 		// dont wait for permission, not needed with a bypass and avoids a roundtrip
-		self.send_file_metadata()
+		return self.send_file_metadata()
 	}
 	return nil
 }
