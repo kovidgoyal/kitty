@@ -271,3 +271,41 @@ func (self *FileTransmissionCommand) Serialize(prefix_with_osc_code ...bool) str
 	}
 	return ans.String()
 }
+
+func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand, err error) {
+	ans = &FileTransmissionCommand{}
+	key_length, key_start, val_start, val_length := 0, 0, 0, 0
+	has_semicolons := false
+
+	handle_value := func(key, serialized_val string, has_semicolons bool) error {
+		return nil
+	}
+
+	for i := 0; i < len(serialized); i++ {
+		ch := serialized[i]
+		if key_length == 0 {
+			if ch == '=' {
+				key_length = i - key_start
+				val_start = i + 1
+				has_semicolons = false
+			}
+		} else {
+			if ch == ';' {
+				if i+1 < len(serialized) && serialized[i+1] == ';' {
+					has_semicolons = true
+					i++
+				} else {
+					val_length = i - val_start
+					err = handle_value(serialized[key_start:key_start+key_length], serialized[val_start:val_start+val_length], has_semicolons)
+					if err != nil {
+						return nil, err
+					}
+					key_length = 0
+					key_start = i + 1
+					val_start = 0
+				}
+			}
+		}
+	}
+	return
+}
