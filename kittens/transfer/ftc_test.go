@@ -4,6 +4,7 @@ package transfer
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,7 +17,15 @@ func TestFTCSerialization(t *testing.T) {
 	ftc := FileTransmissionCommand{}
 	q := func(expected string) {
 		actual := ftc.Serialize()
-		if diff := cmp.Diff(expected, actual); diff != "" {
+		ad := make(map[string]bool)
+		for _, x := range strings.Split(actual, ";") {
+			ad[x] = true
+		}
+		ed := make(map[string]bool)
+		for _, x := range strings.Split(expected, ";") {
+			ed[x] = true
+		}
+		if diff := cmp.Diff(ed, ad); diff != "" {
 			t.Fatalf("Failed to Serialize:\n%s", diff)
 		}
 	}
@@ -29,4 +38,9 @@ func TestFTCSerialization(t *testing.T) {
 	ftc.Permissions = 0o600
 	ftc.Data = []byte("moose")
 	q("ac=send;fid=fid;n=bW9vc2U;mod=1000000000;prm=384;d=bW9vc2U")
+	n, err := NewFileTransmissionCommand(ftc.Serialize())
+	if err != nil {
+		t.Fatal(err)
+	}
+	q(n.Serialize())
 }
