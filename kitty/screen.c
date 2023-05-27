@@ -1683,7 +1683,12 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             return;
     }
     if (b > a) {
-        if (how != 3) screen_dirty_line_graphics(self, a, b);
+        if (how == 0) {
+            screen_dirty_line_graphics(self, a, self->lines - 1);
+        } else if (how != 3) {
+            screen_dirty_line_graphics(self, a, b);
+        }
+
         for (unsigned int i=a; i < b; i++) {
             linebuf_init_line(self->linebuf, i);
             if (private) {
