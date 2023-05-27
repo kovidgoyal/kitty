@@ -4,6 +4,7 @@ package transfer
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"kitty"
@@ -18,16 +19,23 @@ import (
 var _ = fmt.Print
 
 type Serializable interface {
-	IsDefault() bool
 	String() string
+	MarshalJSON() ([]byte, error)
 }
+
 type Unserializable interface {
 	Unserialize(string) error
 }
 
 type Action int
 
-func (self Action) IsDefault() bool { return self == Action_invalid }
+var _ Serializable = Action_cancel
+var _ Unserializable = (*Action)(nil)
+
+func (self Action) MarshalJSON() ([]byte, error) {
+	return json.Marshal(self.String())
+}
+
 func (self Action) String() string {
 	switch self {
 	default:
@@ -90,12 +98,18 @@ const (
 
 type Compression int
 
+var _ Serializable = Compression_none
+var _ Unserializable = (*Compression)(nil)
+
 const (
 	Compression_none Compression = iota
 	Compression_zlib
 )
 
-func (self Compression) IsDefault() bool { return self == Compression_none }
+func (self Compression) MarshalJSON() ([]byte, error) {
+	return json.Marshal(self.String())
+}
+
 func (self Compression) String() string {
 	switch self {
 	default:
@@ -117,6 +131,13 @@ func (self *Compression) Unserialize(x string) (err error) {
 }
 
 type FileType int
+
+var _ Serializable = FileType_regular
+var _ Unserializable = (*FileType)(nil)
+
+func (self FileType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(self.String())
+}
 
 const (
 	FileType_regular FileType = iota
@@ -153,7 +174,6 @@ func (self FileType) Color() string {
 	return ""
 }
 
-func (self FileType) IsDefault() bool { return self == FileType_regular }
 func (self FileType) String() string {
 	switch self {
 	default:
@@ -184,12 +204,18 @@ func (self *FileType) Unserialize(x string) (err error) {
 
 type TransmissionType int
 
+func (self TransmissionType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(self.String())
+}
+
+var _ Serializable = TransmissionType_simple
+var _ Unserializable = (*TransmissionType)(nil)
+
 const (
 	TransmissionType_simple TransmissionType = iota
 	TransmissionType_rsync
 )
 
-func (self TransmissionType) IsDefault() bool { return self == TransmissionType_simple }
 func (self TransmissionType) String() string {
 	switch self {
 	default:
@@ -212,13 +238,19 @@ func (self *TransmissionType) Unserialize(x string) (err error) {
 
 type QuietLevel int
 
+func (self QuietLevel) MarshalJSON() ([]byte, error) {
+	return json.Marshal(self.String())
+}
+
+var _ Serializable = Quiet_none
+var _ Unserializable = (*QuietLevel)(nil)
+
 const (
 	Quiet_none QuietLevel = iota
 	Quiet_acknowledgements
 	Quiet_errors
 )
 
-func (self QuietLevel) IsDefault() bool { return self == Quiet_none }
 func (self QuietLevel) String() string {
 	switch self {
 	default:
@@ -318,10 +350,6 @@ func (self *FileTransmissionCommand) Serialize(prefix_with_osc_code ...bool) str
 		default:
 			if val.CanInterface() {
 				switch field := val.Interface().(type) {
-				case Serializable:
-					if !field.IsDefault() {
-						encoded_val = field.String()
-					}
 				case time.Duration:
 					if field != 0 {
 						encoded_val = strconv.FormatInt(int64(field), 10)
@@ -329,6 +357,10 @@ func (self *FileTransmissionCommand) Serialize(prefix_with_osc_code ...bool) str
 				case fs.FileMode:
 					if field = field.Perm(); field != 0 {
 						encoded_val = strconv.FormatInt(int64(field), 10)
+					}
+				case Serializable:
+					if !val.Equal(reflect.Zero(val.Type())) {
+						encoded_val = field.String()
 					}
 				}
 			}
@@ -345,6 +377,13 @@ func (self *FileTransmissionCommand) Serialize(prefix_with_osc_code ...bool) str
 		}
 	}
 	return ans.String()
+}
+
+func (self FileTransmissionCommand) String() string {
+	s := self
+	s.Data = nil
+	ans, _ := json.Marshal(s)
+	return utils.UnsafeBytesToString(ans)
 }
 
 func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand, err error) {
