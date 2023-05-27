@@ -71,7 +71,7 @@ func NewFile(local_path, expanded_local_path string, file_id int, stat_result fs
 	ans := File{
 		local_path: local_path, expanded_local_path: expanded_local_path, file_id: fmt.Sprintf("%x", file_id),
 		stat_result: stat_result, file_type: file_type, display_name: wcswidth.StripEscapeCodes(local_path),
-		file_hash: FileHash{stat.Dev, stat.Ino}, mtime: stat_result.ModTime(),
+		file_hash: FileHash{uint64(stat.Dev), stat.Ino}, mtime: stat_result.ModTime(),
 		file_size: stat_result.Size(), bytes_to_transmit: stat_result.Size(),
 		permissions: stat_result.Mode().Perm(), remote_path: filepath.ToSlash(get_remote_path(local_path, remote_base)),
 		rsync_capable:       file_type == FileType_regular && stat_result.Size() > 4096,
@@ -193,7 +193,7 @@ func files_for_send(opts *Options, args []string) (files []*File, err error) {
 			if err == nil {
 				stat, ok := st.Sys().(*syscall.Stat_t)
 				if ok {
-					fh := FileHash{stat.Dev, stat.Ino}
+					fh := FileHash{uint64(stat.Dev), stat.Ino}
 					gr, found := groups[fh]
 					if found {
 						g := utils.Filter(gr, func(x *File) bool {

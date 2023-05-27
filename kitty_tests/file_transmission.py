@@ -13,7 +13,6 @@ from kittens.transfer.librsync import LoadSignature, PatchFile, delta_for_file, 
 from kittens.transfer.main import parse_transfer_args
 from kittens.transfer.receive import File, files_for_receive
 from kittens.transfer.rsync import decode_utf8_buffer, parse_ftc
-from kittens.transfer.send import files_for_send
 from kittens.transfer.utils import cwd_path, expand_home, home_path, set_paths
 from kitty.file_transmission import Action, Compression, FileTransmissionCommand, FileType, TransmissionType, ZlibDecompressor, iter_file_metadata
 from kitty.file_transmission import TestFileTransmission as FileTransmission
