@@ -170,6 +170,7 @@ def stringify_file(path: str) -> None:
 def stringify() -> None:
     for path in (
         'tools/tui/graphics/command.go',
+        'kittens/transfer/ftc.go',
     ):
         stringify_file(path)
 # }}}

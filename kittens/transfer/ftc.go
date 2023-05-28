@@ -24,65 +24,13 @@ type Serializable interface {
 }
 
 type Unserializable interface {
-	Unserialize(string) error
+	SetString(string) error
 }
 
-type Action int
+type Action int // enum
 
 var _ Serializable = Action_cancel
 var _ Unserializable = (*Action)(nil)
-
-func (self Action) MarshalJSON() ([]byte, error) {
-	return json.Marshal(self.String())
-}
-
-func (self Action) String() string {
-	switch self {
-	default:
-		return "invalid"
-	case Action_file:
-		return "file"
-	case Action_data:
-		return "data"
-	case Action_end_data:
-		return "end_data"
-	case Action_receive:
-		return "receive"
-	case Action_send:
-		return "send"
-	case Action_cancel:
-		return "cancel"
-	case Action_status:
-		return "status"
-	case Action_finish:
-		return "finish"
-	}
-}
-func (self *Action) Unserialize(x string) (err error) {
-	switch x {
-	case "invalid":
-		*self = Action_invalid
-	case "file":
-		*self = Action_file
-	case "data":
-		*self = Action_data
-	case "end_data":
-		*self = Action_end_data
-	case "receive":
-		*self = Action_receive
-	case "send":
-		*self = Action_send
-	case "cancel":
-		*self = Action_cancel
-	case "status":
-		*self = Action_status
-	case "finish":
-		*self = Action_finish
-	default:
-		err = fmt.Errorf("Unknown Action value: %#v", x)
-	}
-	return
-}
 
 const (
 	Action_invalid Action = iota
@@ -96,7 +44,7 @@ const (
 	Action_finish
 )
 
-type Compression int
+type Compression int // enum
 
 var _ Serializable = Compression_none
 var _ Unserializable = (*Compression)(nil)
@@ -106,38 +54,10 @@ const (
 	Compression_zlib
 )
 
-func (self Compression) MarshalJSON() ([]byte, error) {
-	return json.Marshal(self.String())
-}
-
-func (self Compression) String() string {
-	switch self {
-	default:
-		return "none"
-	case Compression_zlib:
-		return "zlib"
-	}
-}
-func (self *Compression) Unserialize(x string) (err error) {
-	switch x {
-	case "none":
-		*self = Compression_none
-	case "zlib":
-		*self = Compression_zlib
-	default:
-		err = fmt.Errorf("Unknown Compression value: %#v", x)
-	}
-	return
-}
-
-type FileType int
+type FileType int // enum
 
 var _ Serializable = FileType_regular
 var _ Unserializable = (*FileType)(nil)
-
-func (self FileType) MarshalJSON() ([]byte, error) {
-	return json.Marshal(self.String())
-}
 
 const (
 	FileType_regular FileType = iota
@@ -174,39 +94,7 @@ func (self FileType) Color() string {
 	return ""
 }
 
-func (self FileType) String() string {
-	switch self {
-	default:
-		return "regular"
-	case FileType_directory:
-		return "directory"
-	case FileType_symlink:
-		return "symlink"
-	case FileType_link:
-		return "link"
-	}
-}
-func (self *FileType) Unserialize(x string) (err error) {
-	switch x {
-	case "regular":
-		*self = FileType_regular
-	case "directory":
-		*self = FileType_directory
-	case "symlink":
-		*self = FileType_symlink
-	case "link":
-		*self = FileType_link
-	default:
-		err = fmt.Errorf("Unknown FileType value: %#v", x)
-	}
-	return
-}
-
-type TransmissionType int
-
-func (self TransmissionType) MarshalJSON() ([]byte, error) {
-	return json.Marshal(self.String())
-}
+type TransmissionType int // enum
 
 var _ Serializable = TransmissionType_simple
 var _ Unserializable = (*TransmissionType)(nil)
@@ -216,64 +104,16 @@ const (
 	TransmissionType_rsync
 )
 
-func (self TransmissionType) String() string {
-	switch self {
-	default:
-		return "simple"
-	case TransmissionType_rsync:
-		return "rsync"
-	}
-}
-func (self *TransmissionType) Unserialize(x string) (err error) {
-	switch x {
-	case "simple":
-		*self = TransmissionType_simple
-	case "rsync":
-		*self = TransmissionType_rsync
-	default:
-		err = fmt.Errorf("Unknown TransmissionType value: %#v", x)
-	}
-	return
-}
-
-type QuietLevel int
-
-func (self QuietLevel) MarshalJSON() ([]byte, error) {
-	return json.Marshal(self.String())
-}
+type QuietLevel int // enum
 
 var _ Serializable = Quiet_none
 var _ Unserializable = (*QuietLevel)(nil)
 
 const (
-	Quiet_none QuietLevel = iota
-	Quiet_acknowledgements
-	Quiet_errors
+	Quiet_none             QuietLevel = iota // 0
+	Quiet_acknowledgements                   // 1
+	Quiet_errors                             // 2
 )
-
-func (self QuietLevel) String() string {
-	switch self {
-	default:
-		return "0"
-	case Quiet_acknowledgements:
-		return "1"
-	case Quiet_errors:
-		return "2"
-	}
-}
-func (self *QuietLevel) Unserialize(x string) (err error) {
-	switch x {
-	case "0":
-		*self = Quiet_none
-	case "1":
-		*self = Quiet_acknowledgements
-	case "2":
-		*self = Quiet_errors
-	default:
-		err = fmt.Errorf("Unknown QuietLevel value: %#v", x)
-	}
-	return
-}
 
 type FileTransmissionCommand struct {
 	Action      Action           `json:"ac,omitempty"`
@@ -430,7 +270,7 @@ func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand
 				if val.CanAddr() {
 					switch field := val.Addr().Interface().(type) {
 					case Unserializable:
-						err = field.Unserialize(serialized_val)
+						err = field.SetString(serialized_val)
 						if err != nil {
 							return fmt.Errorf("The field %#v has invalid enum value with error: %w", key, err)
 						}
