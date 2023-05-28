@@ -18,417 +18,112 @@ import (
 var _ = fmt.Print
 
 // Enums {{{
-type GRT_a int
+type GRT_a int // enum
 
 const (
-	GRT_action_transmit GRT_a = iota
-	GRT_action_transmit_and_display
-	GRT_action_query
-	GRT_action_display
-	GRT_action_delete
-	GRT_action_frame
-	GRT_action_animate
-	GRT_action_compose
+	GRT_action_transmit             GRT_a = iota // t
+	GRT_action_transmit_and_display              // T
+	GRT_action_query                             // q
+	GRT_action_display                           // p
+	GRT_action_delete                            // d
+	GRT_action_frame                             // f
+	GRT_action_animate                           // a
+	GRT_action_compose                           // c
 )
 
-func (self GRT_a) String() string {
-	switch self {
-	default:
-		return "t"
-	case GRT_action_transmit_and_display:
-		return "T"
-	case GRT_action_query:
-		return "q"
-	case GRT_action_display:
-		return "p"
-	case GRT_action_delete:
-		return "d"
-	case GRT_action_frame:
-		return "f"
-	case GRT_action_animate:
-		return "a"
-	case GRT_action_compose:
-		return "c"
-	}
-}
-
-func GRT_a_from_string(a string) (ans GRT_a, err error) {
-	switch a {
-	default:
-		err = fmt.Errorf("Not a valid action: %#v", a)
-	case "t":
-	case "T":
-		ans = GRT_action_transmit_and_display
-	case "q":
-		ans = GRT_action_query
-	case "p":
-		ans = GRT_action_display
-	case "d":
-		ans = GRT_action_delete
-	case "f":
-		ans = GRT_action_frame
-	case "a":
-		ans = GRT_action_animate
-	case "c":
-		ans = GRT_action_compose
-	}
-	return
-}
-
-type GRT_q int
+type GRT_q int // enum
 
 const (
-	GRT_quiet_noisy GRT_q = iota
-	GRT_quiet_only_errors
-	GRT_quiet_silent
+	GRT_quiet_noisy       GRT_q = iota // 0
+	GRT_quiet_only_errors              // 1
+	GRT_quiet_silent                   // 2
 )
 
-func (self GRT_q) String() string {
-	return strconv.Itoa(int(self))
-}
-
-func GRT_q_from_string(a string) (ans GRT_q, err error) {
-	switch a {
-	case "0":
-	case "1":
-		ans = GRT_quiet_only_errors
-	case "2":
-		ans = GRT_quiet_silent
-	default:
-		err = fmt.Errorf("Not a valid quiet value: %#v", a)
-	}
-	return
-}
-
-type GRT_f int
+type GRT_f int // enum
 
 const (
-	GRT_format_rgba GRT_f = iota
-	GRT_format_rgb
-	GRT_format_png
+	GRT_format_rgba GRT_f = iota // 32
+	GRT_format_rgb               // 24
+	GRT_format_png               // 100
 )
 
-func (self GRT_f) String() string {
-	switch self {
-	default:
-		return "32"
-	case GRT_format_rgb:
-		return "24"
-	case GRT_format_png:
-		return "100"
-	}
-}
-
-func GRT_f_from_string(a string) (ans GRT_f, err error) {
-	switch a {
-	case "32":
-	case "24":
-		ans = GRT_format_rgb
-	case "100":
-		ans = GRT_format_png
-	default:
-		err = fmt.Errorf("Not a valid format value: %#v", a)
-	}
-	return
-}
-
-type GRT_t int
+type GRT_t int // enum
 
 const (
-	GRT_transmission_direct GRT_t = iota
-	GRT_transmission_file
-	GRT_transmission_tempfile
-	GRT_transmission_sharedmem
+	GRT_transmission_direct    GRT_t = iota // d
+	GRT_transmission_file                   // f
+	GRT_transmission_tempfile               // t
+	GRT_transmission_sharedmem              // s
 )
 
-func (self GRT_t) String() string {
-	switch self {
-	default:
-		return "d"
-	case GRT_transmission_file:
-		return "f"
-	case GRT_transmission_tempfile:
-		return "t"
-	case GRT_transmission_sharedmem:
-		return "s"
-	}
-}
-
-func GRT_t_from_string(a string) (ans GRT_t, err error) {
-	switch a {
-	case "d":
-	case "f":
-		ans = GRT_transmission_file
-	case "t":
-		ans = GRT_transmission_tempfile
-	case "s":
-		ans = GRT_transmission_sharedmem
-	default:
-		err = fmt.Errorf("Not a valid transmission value: %#v", a)
-	}
-	return
-}
-
-type GRT_o int
+type GRT_o int // enum
 
 const (
-	GRT_compression_none GRT_o = iota
-	GRT_compression_zlib
+	GRT_compression_none GRT_o = iota //
+	GRT_compression_zlib              // z
 )
 
-func (self GRT_o) String() string {
-	switch self {
-	default:
-		return ""
-	case GRT_compression_zlib:
-		return "z"
-	}
-}
-
-func GRT_o_from_string(a string) (ans GRT_o, err error) {
-	switch a {
-	case "":
-	case "z":
-		ans = GRT_compression_zlib
-	default:
-		err = fmt.Errorf("Not a valid compression value: %#v", a)
-	}
-	return
-}
-
-type GRT_m int
+type GRT_m int // enum
 
 const (
-	GRT_more_nomore GRT_m = iota
-	GRT_more_more
+	GRT_more_nomore GRT_m = iota // 0
+	GRT_more_more                // 1
 )
 
-func (self GRT_m) String() string {
-	return strconv.Itoa(int(self))
-}
-
-func GRT_m_from_string(a string) (ans GRT_m, err error) {
-	switch a {
-	case "0":
-	case "1":
-		ans = GRT_more_more
-	default:
-		err = fmt.Errorf("Not a valid more value: %#v", a)
-	}
-	return
-}
-
-type GRT_C int
+type GRT_C int // enum
 
 const (
-	GRT_cursor_move GRT_C = iota
-	GRT_cursor_static
+	GRT_cursor_move   GRT_C = iota // 0
+	GRT_cursor_static              // 1
 )
 
-func (self GRT_C) String() string {
-	return strconv.Itoa(int(self))
-}
-
-func GRT_C_from_string(a string) (ans GRT_C, err error) {
-	switch a {
-	case "0":
-	case "1":
-		ans = GRT_cursor_static
-	default:
-		err = fmt.Errorf("Not a valid cursor movement value: %#v", a)
-	}
-	return
-}
-
-type GRT_U int
+type GRT_U int // enum
 
 const (
-	GRT_no_unicode_placeholder GRT_U = iota
-	GRT_create_unicode_placeholder
+	GRT_no_unicode_placeholder     GRT_U = iota // 0
+	GRT_create_unicode_placeholder              // 1
 )
 
-func (self GRT_U) String() string {
-	return strconv.Itoa(int(self))
-}
-
-func GRT_U_from_string(a string) (ans GRT_U, err error) {
-	switch a {
-	case "0":
-	case "1":
-		ans = GRT_create_unicode_placeholder
-	default:
-		err = fmt.Errorf("Not a valid cursor movement value: %#v", a)
-	}
-	return
-}
-
-type CompositionMode int
+type CompositionMode int // enum
 
 const (
-	AlphaBlend CompositionMode = iota
-	Overwrite
+	AlphaBlend CompositionMode = iota // 0
+	Overwrite                         // 1
 )
 
-func (self CompositionMode) String() string {
-	return strconv.Itoa(int(self))
-}
-
-func CompositionMode_from_string(a string) (ans CompositionMode, err error) {
-	switch a {
-	case "0":
-	case "1":
-		ans = Overwrite
-	default:
-		err = fmt.Errorf("Not a valid composition mode value: %#v", a)
-	}
-	return
-}
-
-type GRT_d int
+type GRT_d int // enum
 
 const (
-	GRT_delete_visible GRT_d = iota
-	GRT_free_visible
+	GRT_delete_visible GRT_d = iota // a
+	GRT_free_visible                // A
 
-	GRT_delete_by_id
-	GRT_free_by_id
+	GRT_delete_by_id // i
+	GRT_free_by_id   // I
 
-	GRT_delete_by_number
-	GRT_free_by_number
+	GRT_delete_by_number // n
+	GRT_free_by_number   // N
 
-	GRT_delete_by_cursor
-	GRT_free_by_cursor
+	GRT_delete_by_cursor // c
+	GRT_free_by_cursor   // C
 
-	GRT_delete_by_frame
-	GRT_free_by_frame
+	GRT_delete_by_frame // f
+	GRT_free_by_frame   // F
 
-	GRT_delete_by_cell
-	GRT_free_by_cell
+	GRT_delete_by_cell // p
+	GRT_free_by_cell   // P
 
-	GRT_delete_by_cell_zindex
-	GRT_free_by_cell_zindex
+	GRT_delete_by_cell_zindex // q
+	GRT_free_by_cell_zindex   // Q
 
-	GRT_delete_by_column
-	GRT_free_by_column
+	GRT_delete_by_column // x
+	GRT_free_by_column   // X
 
-	GRT_delete_by_row
-	GRT_free_by_row
+	GRT_delete_by_row // y
+	GRT_free_by_row   // Y
 
-	GRT_delete_by_zindex
-	GRT_free_by_zindex
+	GRT_delete_by_zindex // z
+	GRT_free_by_zindex   // Z
 )
-
-func (self GRT_d) String() string {
-	switch self {
-	default:
-		return "a"
-	case GRT_free_visible:
-		return "A"
-
-	case GRT_delete_by_id:
-		return "i"
-	case GRT_free_by_id:
-		return "I"
-
-	case GRT_delete_by_number:
-		return "n"
-	case GRT_free_by_number:
-		return "N"
-
-	case GRT_delete_by_cursor:
-		return "c"
-	case GRT_free_by_cursor:
-		return "C"
-
-	case GRT_delete_by_frame:
-		return "f"
-	case GRT_free_by_frame:
-		return "F"
-
-	case GRT_delete_by_cell:
-		return "p"
-	case GRT_free_by_cell:
-		return "P"
-
-	case GRT_delete_by_cell_zindex:
-		return "q"
-	case GRT_free_by_cell_zindex:
-		return "Q"
-
-	case GRT_delete_by_column:
-		return "x"
-	case GRT_free_by_column:
-		return "X"
-
-	case GRT_delete_by_row:
-		return "y"
-	case GRT_free_by_row:
-		return "Y"
-
-	case GRT_delete_by_zindex:
-		return "z"
-	case GRT_free_by_zindex:
-		return "Z"
-	}
-}
-
-func GRT_d_from_string(a string) (ans GRT_d, err error) {
-	switch a {
-	case "a":
-		ans = GRT_delete_visible
-	case "A":
-		ans = GRT_free_visible
-
-	case "i":
-		ans = GRT_delete_by_id
-	case "I":
-		ans = GRT_free_by_id
-
-	case "n":
-		ans = GRT_delete_by_number
-	case "N":
-		ans = GRT_free_by_number
-
-	case "c":
-		ans = GRT_delete_by_cursor
-	case "C":
-		ans = GRT_free_by_cursor
-
-	case "f":
-		ans = GRT_delete_by_frame
-	case "F":
-		ans = GRT_free_by_frame
-
-	case "p":
-		ans = GRT_delete_by_cell
-	case "P":
-		ans = GRT_free_by_cell
-
-	case "q":
-		ans = GRT_delete_by_cell_zindex
-	case "Q":
-		ans = GRT_free_by_cell_zindex
-
-	case "x":
-		ans = GRT_delete_by_column
-	case "X":
-		ans = GRT_free_by_column
-
-	case "y":
-		ans = GRT_delete_by_row
-	case "Y":
-		ans = GRT_free_by_row
-
-	case "z":
-		ans = GRT_delete_by_zindex
-	case "Z":
-		ans = GRT_free_by_zindex
-
-	default:
-		err = fmt.Errorf("Not a valid delete value: %#v", a)
-	}
-	return
-}
 
 // }}}
 

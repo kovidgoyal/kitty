@@ -1,11 +1,13 @@
 #!./kitty/launcher/kitty +launch
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
+import argparse
 import bz2
 import io
 import json
 import os
 import re
+import shlex
 import struct
 import subprocess
 import sys
@@ -84,6 +86,93 @@ def replace(template: str, **kw: str) -> str:
     return template
 # }}}
 
+# {{{  Stringer
+
+
+@lru_cache(maxsize=1)
+def enum_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser()
+    p.add_argument('--from-string-func-name')
+    return p
+
+
+def stringify_file(path: str) -> None:
+    with open(path) as f:
+        src = f.read()
+    types = {}
+    constant_name_maps = {}
+    for m in re.finditer(r'^type +(\S+) +\S+ +// *enum *(.*?)$', src, re.MULTILINE):
+        args = m.group(2)
+        types[m.group(1)] = enum_parser().parse_args(args=shlex.split(args) if args else [])
+
+    def get_enum_def(src: str) -> None:
+        type_name = q = ''
+        constants = {}
+        for line in src.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split()
+            if not type_name:
+                if len(parts) < 2 or parts[1] not in types:
+                    return
+                type_name = parts[1]
+                q = type_name + '_'
+            constant_name = parts[0]
+            a, sep, b = line.partition('//')
+            if sep:
+                string_val = b.strip()
+            else:
+                string_val = constant_name
+                if constant_name.startswith(q):
+                    string_val = constant_name[len(q):]
+            constants[constant_name] = serialize_as_go_string(string_val)
+        if constants and type_name:
+            constant_name_maps[type_name] = constants
+
+    for m in re.finditer(r'^const +\((.+?)^\)', src, re.MULTILINE|re.DOTALL):
+        get_enum_def(m.group(1))
+
+    with replace_if_needed(path.replace('.go', '_stringer_generated.go')):
+        print('package', os.path.basename(os.path.dirname(path)))
+        print ('import "fmt"')
+        print ('import "encoding/json"')
+        print()
+        for type_name, constant_map in constant_name_maps.items():
+            print(f'func (self {type_name}) String() string ''{')
+            print('switch self {')
+            is_first = True
+            for constant_name, string_val in constant_map.items():
+                if is_first:
+                    print(f'default: return "{string_val}"')
+                    is_first = False
+                else:
+                    print(f'case {constant_name}: return "{string_val}"')
+            print('}}')
+            print(f'func (self {type_name}) MarshalJSON() ([]byte, error) {{ return json.Marshal(self.String()) }}')
+            fsname = types[type_name].from_string_func_name or (type_name + '_from_string')
+            print(f'func {fsname}(x string) (ans {type_name}, err error) ''{')
+            print('switch x {')
+            for constant_name, string_val in constant_map.items():
+                print(f'case "{string_val}": return {constant_name}, nil')
+            print('}')
+            print(f'err = fmt.Errorf("unknown value for enum {type_name}: %#v", x)')
+            print('return')
+            print('}')
+            print(f'func (self *{type_name}) SetString(x string) error ''{')
+            print(f's, err := {fsname}(x); if err == nil {{ *self = s }}; return err''}')
+            print(f'func (self *{type_name}) UnmarshalJSON(data []byte) (err error)''{')
+            print('var x string')
+            print('if err = json.Unmarshal(data, &x); err != nil {return err}')
+            print('return self.SetString(x)}')
+
+
+def stringify() -> None:
+    for path in (
+        'tools/tui/graphics/command.go',
+    ):
+        stringify_file(path)
+# }}}
 
 # Completions {{{
 
@@ -760,6 +849,7 @@ def main() -> None:
     update_completion()
     update_at_commands()
     kitten_clis()
+    stringify()
     print(json.dumps(changed, indent=2))
 
 
