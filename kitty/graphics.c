@@ -423,7 +423,7 @@ load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, con
             if (transmission_type == 's') fd = safe_shm_open(fname, O_RDONLY, 0);
             else fd = safe_open(fname, O_CLOEXEC | O_RDONLY | O_NONBLOCK, 0);  // O_NONBLOCK so that opening a FIFO pipe does not block
             if (fd == -1) ABRT("EBADF", "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
-            if (global_state.boss) {
+            if (global_state.boss && transmission_type != 's') {
                 DECREF_AFTER_FUNCTION PyObject *cret_ = PyObject_CallMethod(global_state.boss, "is_ok_to_read_image_file", "si", fname, fd);
                 if (cret_ == NULL) {
                     PyErr_Print();
