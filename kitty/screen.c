@@ -892,11 +892,11 @@ cursor_within_margins(Screen *self) {
 // as dirty (like screen_insert_lines) and at the same time don't move image
 // references (i.e. unlike screen_scroll, which moves everything).
 static void
-screen_dirty_line_graphics(Screen *self, unsigned int top, unsigned int bottom, bool main_buf) {
+screen_dirty_line_graphics(Screen *self, const unsigned int top, const unsigned int bottom, const bool main_buf) {
     bool need_to_remove = false;
-    bottom = MIN(bottom+1, self->lines);
+    const unsigned int limit = MIN(bottom+1, self->lines);
     LineBuf *linebuf = main_buf ? self->main_linebuf : self->alt_linebuf;
-    for (unsigned int y = top; y < bottom; y++) {
+    for (unsigned int y = top; y < limit; y++) {
         if (linebuf->line_attrs[y].has_image_placeholders) {
             need_to_remove = true;
             linebuf_mark_line_dirty(linebuf, y);
