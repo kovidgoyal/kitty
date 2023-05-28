@@ -71,6 +71,8 @@ Detailed list of changes
 
 - Graphics: Move images up along with text when the window is shrunk vertically (:iss:`6278`)
 
+- Fix a regression in 0.28.0 that caused a buffer overflow when clearing the screen (:iss:`6306`, :pull:`6308`)
+
 0.28.1 [2023-04-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

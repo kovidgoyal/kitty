@@ -894,7 +894,8 @@ cursor_within_margins(Screen *self) {
 static void
 screen_dirty_line_graphics(Screen *self, unsigned int top, unsigned int bottom) {
     bool need_to_remove = false;
-    for (unsigned int y = top; y <= bottom; y++) {
+    bottom = MIN(bottom+1, self->lines);
+    for (unsigned int y = top; y < bottom; y++) {
         if (self->linebuf->line_attrs[y].has_image_placeholders) {
             need_to_remove = true;
             linebuf_mark_line_dirty(self->linebuf, y);
