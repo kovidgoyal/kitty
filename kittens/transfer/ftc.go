@@ -7,13 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"kitty"
-	"kitty/tools/utils"
-	"kitty/tools/wcswidth"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"kitty"
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -154,6 +155,14 @@ var ftc_field_map = utils.Once(func() map[string]reflect.StructField {
 	return ans
 })
 
+var safe_string_pat = utils.Once(func() *regexp.Regexp {
+	return regexp.MustCompile(`[^0-9a-zA-Z_:.,/!@#$%^&*()[\]{}~` + "`" + `?"'\\|=+-]`)
+})
+
+func safe_string(x string) string {
+	return safe_string_pat().ReplaceAllLiteralString(x, ``)
+}
+
 func (self *FileTransmissionCommand) Serialize(prefix_with_osc_code ...bool) string {
 	ans := strings.Builder{}
 	v := reflect.ValueOf(*self)
@@ -173,7 +182,7 @@ func (self *FileTransmissionCommand) Serialize(prefix_with_osc_code ...bool) str
 				case "base64":
 					encoded_val = base64.RawStdEncoding.EncodeToString(utils.UnsafeStringToBytes(sval))
 				default:
-					encoded_val = escape_semicolons(wcswidth.StripEscapeCodes(sval))
+					encoded_val = safe_string(sval)
 				}
 			}
 		case reflect.Slice:
@@ -229,11 +238,11 @@ func (self FileTransmissionCommand) String() string {
 func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand, err error) {
 	ans = &FileTransmissionCommand{}
 	key_length, key_start, val_start, val_length := 0, 0, 0, 0
-	has_semicolons := false
 	field_map := ftc_field_map()
 	v := reflect.Indirect(reflect.ValueOf(ans))
 
-	handle_value := func(key, serialized_val string, has_semicolons bool) error {
+	handle_value := func(key, serialized_val string) error {
+		key = strings.TrimLeft(key, `;;`)
 		if field, ok := field_map[key]; ok {
 			val := v.FieldByIndex(field.Index)
 			switch val.Kind() {
@@ -246,10 +255,7 @@ func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand
 					}
 					val.SetString(utils.UnsafeBytesToString(b))
 				default:
-					if has_semicolons {
-						serialized_val = strings.ReplaceAll(serialized_val, `;;`, `;`)
-					}
-					val.SetString(serialized_val)
+					val.SetString(safe_string(serialized_val))
 				}
 			case reflect.Slice:
 				switch val.Type().Elem().Kind() {
@@ -302,31 +308,25 @@ func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand
 			if ch == '=' {
 				key_length = i - key_start
 				val_start = i + 1
-				has_semicolons = false
 			}
 		} else {
 			if ch == ';' {
-				if i+1 < len(serialized) && serialized[i+1] == ';' {
-					has_semicolons = true
-					i++
-				} else {
-					val_length = i - val_start
-					if key_length > 0 && val_start > 0 {
-						err = handle_value(serialized[key_start:key_start+key_length], serialized[val_start:val_start+val_length], has_semicolons)
-						if err != nil {
-							return nil, err
-						}
+				val_length = i - val_start
+				if key_length > 0 && val_start > 0 {
+					err = handle_value(serialized[key_start:key_start+key_length], serialized[val_start:val_start+val_length])
+					if err != nil {
+						return nil, err
 					}
-					key_length = 0
-					key_start = i + 1
-					val_start = 0
-					val_length = 0
 				}
+				key_length = 0
+				key_start = i + 1
+				val_start = 0
+				val_length = 0
 			}
 		}
 	}
 	if key_length > 0 && val_start > 0 {
-		err = handle_value(serialized[key_start:key_start+key_length], serialized[val_start:], has_semicolons)
+		err = handle_value(serialized[key_start:key_start+key_length], serialized[val_start:])
 		if err != nil {
 			return nil, err
 		}

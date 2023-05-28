@@ -29,10 +29,7 @@ MAX_ACTIVE_RECEIVES = MAX_ACTIVE_SENDS = 10
 ftc_prefix = str(FILE_TRANSFER_CODE)
 
 
-def escape_semicolons(x: str) -> str:
-    return x.replace(';', ';;')
-
-
+@run_once
 def safe_string_pat() -> 're.Pattern[str]':
     return re.compile(r'[^0-9a-zA-Z_:./@-]')
 
@@ -316,7 +313,7 @@ class FileTransmissionCommand:
                 if k.metadata.get('base64'):
                     yield standard_b64encode(val.encode('utf-8'))
                 else:
-                    yield escape_semicolons(safe_string(val))
+                    yield safe_string(val)
             elif k.type is int:
                 yield str(val)
             else:
@@ -331,7 +328,7 @@ class FileTransmissionCommand:
         fmap = serialized_to_field_map()
         from kittens.transfer.rsync import decode_utf8_buffer, parse_ftc
 
-        def handle_item(key: memoryview, val: memoryview, has_semicolons: bool) -> None:
+        def handle_item(key: memoryview, val: memoryview) -> None:
             field = fmap.get(key)
             if field is None:
                 return
@@ -345,9 +342,7 @@ class FileTransmissionCommand:
                 if field.metadata.get('base64'):
                     sval = standard_b64decode(val).decode('utf-8')
                 else:
-                    sval = decode_utf8_buffer(val)
-                    if has_semicolons:
-                        sval = sval.replace(';;', ';')
+                    sval = safe_string(decode_utf8_buffer(val))
                 setattr(ans, field.name, safe_string(sval))
 
         parse_ftc(data, handle_item)

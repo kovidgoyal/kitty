@@ -353,10 +353,8 @@ class TestFileTransmission(BaseTest):
         def t(raw, *expected):
             a = []
 
-            def c(k, v, has_semicolons):
+            def c(k, v):
                 a.append(decode_utf8_buffer(k))
-                if has_semicolons:
-                    v = bytes(v).replace(b';;', b';')
                 a.append(decode_utf8_buffer(v))
 
             parse_ftc(raw, c)
@@ -364,9 +362,9 @@ class TestFileTransmission(BaseTest):
 
         t('a=b', 'a', 'b')
         t('a=b;', 'a', 'b')
-        t('a1=b1;c=d;;', 'a1', 'b1', 'c', 'd;')
-        t('a1=b1;c=d;;e', 'a1', 'b1', 'c', 'd;e')
-        t('a1=b1;c=d;;;1=1', 'a1', 'b1', 'c', 'd;', '1', '1')
+        t('a1=b1;c=d;;', 'a1', 'b1', 'c', 'd')
+        t('a1=b1;c=d;;e', 'a1', 'b1', 'c', 'd')
+        t('a1=b1;c=d;;;1=1', 'a1', 'b1', 'c', 'd', '1', '1')
 
     def test_path_mapping_receive(self):
         opts = parse_transfer_args([])[0]
