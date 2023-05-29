@@ -88,6 +88,10 @@ To have the kitty documentation available locally, run::
 
     python3 -m pip install -r docs/requirements.txt && make docs
 
+To develop the docs, with live reloading, use::
+
+    python3 -m pip install -r docs/requirements.txt && make develop-docs
+
 
 Building kitty.app on macOS from source
 -------------------------------------------
