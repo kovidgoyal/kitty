@@ -13,6 +13,7 @@ known_extensions = {
     'pyj': 'text/rapydscript-ng',
     'recipe': 'text/python',
     'rst': 'text/restructured-text',
+    'rb': 'text/ruby',
     'toml': 'text/toml',
     'vim': 'text/vim',
     'yaml': 'text/yaml',
