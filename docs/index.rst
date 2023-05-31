@@ -77,4 +77,6 @@ To get started see :doc:`quickstart`.
 
     .. raw:: html
 
-       <div id="timestamps-for-intro-video"></div>
+       <div id="timestamps-for-intro-video">
+       <p>Timestamps for the above video:</p>
+       </div>
