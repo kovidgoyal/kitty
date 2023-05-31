@@ -3,18 +3,26 @@
 package transfer
 
 import (
+	"bytes"
+	"compress/zlib"
 	"fmt"
 	"io/fs"
 	"kitty"
+	"kitty/tools/cli/markup"
+	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"kitty/tools/utils/humanize"
+	"kitty/tools/utils/style"
 	"kitty/tools/wcswidth"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
 )
 
@@ -32,8 +40,46 @@ const (
 
 type FileHash struct{ dev, inode uint64 }
 
+type Compressor interface {
+	Compress(data []byte) []byte
+	Flush() []byte
+}
+
+type IdentityCompressor struct{}
+
+func (self *IdentityCompressor) Compress(data []byte) []byte { return data }
+func (self *IdentityCompressor) Flush() []byte               { return nil }
+
+type ZlibCompressor struct {
+	b bytes.Buffer
+	w zlib.Writer
+}
+
+func NewZlibCompressor() *ZlibCompressor {
+	ans := ZlibCompressor{}
+	ans.b.Grow(4096)
+	ans.w = *zlib.NewWriter(&ans.b)
+	return &ans
+}
+
+func (self *ZlibCompressor) Compress(data []byte) []byte {
+	_, err := self.w.Write(data)
+	if err != nil {
+		panic(err)
+	}
+	return utils.UnsafeStringToBytes(self.b.String())
+}
+
+func (self *ZlibCompressor) Flush() []byte {
+	self.w.Close()
+	return self.b.Bytes()
+}
+
 type File struct {
 	file_hash                                             FileHash
+	ttype                                                 TransmissionType
+	compression                                           Compression
+	compressor                                            Compressor
 	file_type                                             FileType
 	file_id, hard_link_target                             string
 	local_path, symbolic_link_target, expanded_local_path string
@@ -306,7 +352,7 @@ type SendManager struct {
 }
 
 func (self *SendManager) start_transfer() string {
-	panic("TODO: Implement this")
+	return FileTransmissionCommand{Action: Action_send, Bypass: self.bypass}.Serialize()
 }
 
 func (self *SendManager) initialize() {
@@ -334,8 +380,9 @@ type SendHandler struct {
 	opts                                 *Options
 	files                                []*File
 	lp                                   *loop.Loop
+	ctx                                  *markup.Context
 	transmit_started, file_metadata_sent bool
-	quite_after_write_code               int
+	quit_after_write_code                int
 	check_paths_printed                  bool
 	max_name_length                      int
 	progress_drawn                       bool
@@ -343,11 +390,154 @@ type SendHandler struct {
 	done_file_ids                        *utils.Set[string]
 	transmit_ok_checked                  bool
 	progress_update_timer                loop.IdType
+	spinner                              *tui.Spinner
+}
+
+func safe_divide[A constraints.Integer | constraints.Float, B constraints.Integer | constraints.Float](a A, b B) float64 {
+	if b == 0 {
+		return 0
+	}
+	return float64(a) / float64(b)
+}
+
+type Progress struct {
+	spinner_char    string
+	bytes_so_far    int64
+	total_bytes     int64
+	secs_so_far     float64
+	bytes_per_sec   float64
+	is_complete     bool
+	max_path_length int
+}
+
+func render_seconds(val time.Duration) (ans string) {
+	if val >= time.Second {
+		if val.Hours() > 24 {
+			days := val.Hours() / 24
+			if days > 99 {
+				ans = `∞`
+			} else {
+				ans = fmt.Sprintf(">%d days", int(days))
+			}
+		}
+		ans = val.String()
+		hr, rest, _ := strings.Cut(ans, `h`)
+		min, rest, _ := strings.Cut(rest, `m`)
+		secs, _, _ := strings.Cut(rest, ".")
+		return hr + `:` + min + `:` + secs
+	} else {
+		ans = "<1s"
+	}
+	if len(ans) < 8 {
+		ans = strings.Repeat(" ", 8-len(ans)) + ans
+	}
+	return
+}
+
+func render_progress_in_width(p Progress, ctx *markup.Context) string {
+	unit_style := ctx.Dim(`|`)
+	sep, trail, _ := strings.Cut(unit_style, "|")
+	var ratio, rate, eta string
+	if p.is_complete || p.bytes_so_far >= p.total_bytes {
+		ratio = humanize.Size(uint64(p.total_bytes), humanize.SizeOptions{Separator: sep})
+		rate = humanize.Size(uint64(safe_divide(float64(p.total_bytes), p.secs_so_far)), humanize.SizeOptions{Separator: sep}) + `/s`
+		eta = ctx.Green(render_seconds(time.Duration(float64(time.Second) * p.secs_so_far)))
+	} else {
+		tb := humanize.Size(p.total_bytes)
+		sval, _, _ := strings.Cut(tb, " ")
+		val, _ := strconv.ParseFloat(sval, 64)
+		ratio = format_number(val*safe_divide(p.bytes_so_far, p.total_bytes)) + `/` + strings.ReplaceAll(tb, ` `, sep)
+	}
+}
+
+func (self *SendHandler) render_progress(name string, p Progress) {
+	if p.spinner_char == "" {
+		p.spinner_char = " "
+	}
+	if p.is_complete {
+		p.bytes_so_far = p.total_bytes
+	}
+	p.max_path_length = self.max_name_length
+	self.lp.QueueWriteString(render_progress_in_width(p, self.ctx))
+}
+
+func (self *SendHandler) draw_progress() {
+	self.lp.StartAtomicUpdate()
+	defer self.lp.EndAtomicUpdate()
+	self.lp.AllowLineWrapping(false)
+	defer self.lp.AllowLineWrapping(true)
+	var sc string
+	for _, df := range self.done_files {
+		sc = self.ctx.Green(`✔`)
+		if df.err_msg != "" {
+			sc = self.ctx.Err(`✘`)
+		}
+		if df.file_type == FileType_regular {
+			self.draw_progress_for_current_file(df, sc, true)
+		} else {
+			self.lp.QueueWriteString(sc + ` ` + df.display_name + ` ` + self.ctx.Dim(self.ctx.Italic(df.file_type.String())))
+		}
+		self.lp.Println()
+		self.done_file_ids.Add(df.file_id)
+	}
+	self.done_files = nil
+	is_complete := self.quit_after_write_code > -1
+	if is_complete {
+		sc = self.ctx.Green(`✔`)
+		if self.quit_after_write_code != 0 {
+			sc = self.ctx.Err(`✘`)
+		}
+	} else {
+		sc = self.spinner.Tick()
+	}
+	now := time.Time()
+	if is_complete {
+		sz, _ := self.lp.ScreenSize()
+		self.lp.QueueWriteString(tui.RepeatChar(`─`, int(sz.WidthCells)))
+	} else {
+		af := self.manager.last_progress_file
+		if af == nil || self.done_file_ids.Has(af.file_id) {
+			if self.manager.has_rsync && !self.manager.has_transmitting {
+				self.lp.QueueWriteString(sc + ` Transferring rsync signatures...`)
+			} else {
+				self.lp.QueueWriteString(sc + ` Transferring metadata...`)
+			}
+		} else {
+			self.draw_progress_for_current_file(af, sc, false)
+		}
+	}
+	self.lp.Println()
+	if p := self.manager.progress_tracker; p.total_reported_progress > 0 {
+		self.render_progress(`Total`, Progress{
+			spinner_char: sc, bytes_so_far: p.total_reported_progress, total_bytes: p.total_bytes_to_transfer,
+			secs_so_far: now.Sub(p.started_at).Seconds(), is_complete: is_complete,
+			bytes_per_sec: safe_divide(p.transfered_stats_amt, p.transfered_stats_interval.Abs().Seconds()),
+		})
+	} else {
+		self.lp.QueueWriteString(`File data transfer has not yet started`)
+	}
+	self.lp.Println()
+	self.schedule_progress_update(self.spinner.Interval())
+	self.progress_drawn = true
+}
+
+func (self *SendHandler) erase_progress(timer_id loop.IdType) {
+	if self.progress_drawn {
+		self.progress_drawn = false
+		self.lp.MoveCursorVertically(-2)
+		self.lp.QueueWriteString("\r")
+		self.lp.ClearToEndOfScreen()
+	}
 }
 
 func (self *SendHandler) refresh_progress(timer_id loop.IdType) (err error) {
+	if !self.transmit_started {
+		return nil
+	}
 	self.progress_update_timer = 0
-	panic("TODO: Implement this")
+	self.erase_progress()
+	self.draw_progress()
+	return nil
 }
 
 func (self *SendHandler) schedule_progress_update(delay time.Duration) {
@@ -379,16 +569,45 @@ func (self *SendHandler) send_payload(payload string) {
 	self.lp.QueueWriteString(self.manager.suffix)
 }
 
-func (self *SendHandler) send_file_metadata() error {
-	panic("TODO: Implement this")
+func (self *File) metadata_command(use_rsync bool) *FileTransmissionCommand {
+	if use_rsync && self.rsync_capable {
+		self.ttype = TransmissionType_rsync
+	}
+	if self.compression_capable {
+		self.compression = Compression_zlib
+		self.compressor = NewZlibCompressor()
+	} else {
+		self.compressor = &IdentityCompressor{}
+	}
+	return &FileTransmissionCommand{
+		Action: Action_file, Compression: self.compression, Ftype: self.file_type,
+		Name: self.remote_path, Permissions: self.permissions, Mtime: time.Duration(self.mtime.UnixNano()),
+		File_id: self.file_id, Ttype: self.ttype,
+	}
+}
+
+func (self *SendManager) send_file_metadata(send func(string)) {
+	for _, f := range self.files {
+		ftc := f.metadata_command(self.use_rsync)
+		send(ftc.Serialize())
+	}
+}
+
+func (self *SendHandler) send_file_metadata() {
+	if !self.file_metadata_sent {
+		self.file_metadata_sent = true
+		self.manager.send_file_metadata(self.send_payload)
+	}
 }
 
 func (self *SendHandler) initialize() error {
 	self.manager.initialize()
+	self.spinner = tui.NewSpinner("dots")
+	self.ctx = markup.New(true)
 	self.send_payload(self.manager.start_transfer())
 	if self.opts.PermissionsBypass != "" {
 		// dont wait for permission, not needed with a bypass and avoids a roundtrip
-		return self.send_file_metadata()
+		self.send_file_metadata()
 	}
 	return nil
 }
@@ -400,7 +619,7 @@ func send_loop(opts *Options, files []*File) (err error) {
 	}
 
 	handler := &SendHandler{
-		opts: opts, files: files, lp: lp, quite_after_write_code: -1,
+		opts: opts, files: files, lp: lp, quit_after_write_code: -1,
 		max_name_length: utils.Max(0, utils.Map(func(f *File) int { return wcswidth.Stringwidth(f.display_name) }, files)...),
 		progress_drawn:  true, done_file_ids: utils.NewSet[string](),
 		manager: &SendManager{

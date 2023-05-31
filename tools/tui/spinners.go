@@ -17,6 +17,10 @@ type Spinner struct {
 	last_change_at time.Time
 }
 
+func (self Spinner) Interval() time.Duration {
+	return self.interval
+}
+
 func (self *Spinner) Tick() string {
 	now := time.Now()
 	if now.Sub(self.last_change_at) >= self.interval {

@@ -163,9 +163,9 @@ func safe_string(x string) string {
 	return safe_string_pat().ReplaceAllLiteralString(x, ``)
 }
 
-func (self *FileTransmissionCommand) Serialize(prefix_with_osc_code ...bool) string {
+func (self FileTransmissionCommand) Serialize(prefix_with_osc_code ...bool) string {
 	ans := strings.Builder{}
-	v := reflect.ValueOf(*self)
+	v := reflect.ValueOf(self)
 	found := false
 	if len(prefix_with_osc_code) > 0 && prefix_with_osc_code[0] {
 		ans.WriteString(strconv.Itoa(kitty.FileTransferCode))
