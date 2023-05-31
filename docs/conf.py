@@ -156,7 +156,7 @@ html_theme_options: Dict[str, Any] = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 html_favicon = html_logo = '../logo/kitty.svg'
-html_css_files = ['custom.css', 'style.css']
+html_css_files = ['custom.css', 'timestamps.css']
 html_js_files = ['custom.js', ('timestamps.js', {'type': 'module'})]
 
 # Custom sidebar templates, must be a dictionary that maps document names
