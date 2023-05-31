@@ -563,7 +563,7 @@ func find_marks(text string, opts *Options, cli_args ...string) (sanitized_text 
 	} else if opts.Type == "hyperlink" {
 		ans = hyperlinks
 	} else if opts.Type == "word" {
-		ans = mark_words(text, opts)
+		ans = mark_words(sanitized_text, opts)
 	} else {
 		err = run_basic_matching()
 		if err != nil {
