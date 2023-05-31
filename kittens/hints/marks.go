@@ -7,9 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"kitty"
-	"kitty/tools/config"
-	"kitty/tools/utils"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -21,6 +18,10 @@ import (
 	"github.com/dlclark/regexp2"
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 	"golang.org/x/exp/slices"
+
+	"kitty"
+	"kitty/tools/config"
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
