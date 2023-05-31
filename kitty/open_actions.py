@@ -198,29 +198,33 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Iterat
             return
 
 
-@run_once
+actions_cache: Dict[str, Tuple[os.stat_result, Tuple[OpenAction, ...]]] = {}
+
+
+def load_actions_from_path(path: str) -> Tuple[OpenAction, ...]:
+    try:
+        st = os.stat(path)
+    except OSError:
+        return ()
+    x = actions_cache.get(path)
+    if x is None or x[0].st_mtime != st.st_mtime:
+        with open(path) as f:
+            actions_cache[path] = st, tuple(parse(f))
+    else:
+        return x[1]
+    return actions_cache[path][1]
+
+
 def load_open_actions() -> Tuple[OpenAction, ...]:
-    try:
-        f = open(os.path.join(config_dir, 'open-actions.conf'))
-    except FileNotFoundError:
-        return ()
-    with f:
-        return tuple(parse(f))
+    return load_actions_from_path(os.path.join(config_dir, 'open-actions.conf'))
 
 
-@run_once
 def load_launch_actions() -> Tuple[OpenAction, ...]:
-    try:
-        f = open(os.path.join(config_dir, 'launch-actions.conf'))
-    except FileNotFoundError:
-        return ()
-    with f:
-        return tuple(parse(f))
+    return load_actions_from_path(os.path.join(config_dir, 'launch-actions.conf'))
 
 
 def clear_caches() -> None:
-    load_open_actions.clear_cached()
-    load_launch_actions.clear_cached()
+    actions_cache.clear()
 
 
 @run_once
