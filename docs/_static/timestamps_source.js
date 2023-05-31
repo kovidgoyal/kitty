@@ -1,3 +1,4 @@
+/*jshint esversion: 11 */
 export default [
     {
         time: "00:00",
@@ -5,7 +6,7 @@ export default [
     },
     {
         time: "00:39",
-        description: "Pager: View command output in same window: Ctrl+Shift+g"
+        description: "Pager: View command output in same window: <kbd>Ctrl+Shift+g</kbd>"
     },
     {
         time: "01:43",
@@ -21,15 +22,15 @@ export default [
     },
     {
         time: "03:03",
-        description: "Open files from ls output with mouse: Ctrl+Shift+Left-click"
+        description: "Open files from ls output with mouse: <kbd>Ctrl+Shift+Right-click</kbd>"
     },
     {
         time: "04:04",
-        description: "Open files from ls output with keyboard: <Ctrl+Shift+P>y"
+        description: "Open files from ls output with keyboard: <kbd>Ctrl+Shift+P>y</kbd>"
     },
     {
         time: "04:26",
-        description: "Open files on click:  ls --hyperlink=auto"
+        description: "Open files on click: <code>ls --hyperlink=auto</code>"
     },
     {
         time: "05:03",
@@ -37,7 +38,7 @@ export default [
     },
     {
         time: "05:45",
-        description: "Hyperlinked-grep kitten: Open grep output in editor"
+        description: "hyperlinked-grep kitten: Open grep output in editor"
     },
     {
         time: "07:18",
@@ -49,11 +50,11 @@ export default [
     },
     {
         time: "10:01",
-        description: "Icat kitten: View images directly"
+        description: "icat kitten: View images directly"
     },
     {
         time: "10:36",
-        description: "Icat kitten: Download & display image/gif from internet"
+        description: "icat kitten: Download & display image/gif from internet"
     },
     {
         time: "11:03",
@@ -61,11 +62,11 @@ export default [
     },
     {
         time: "11:25",
-        description: "Icat kitten: Display image from remote server"
+        description: "icat kitten: Display image from remote server"
     },
     {
         time: "12:04",
-        description: "Unicode-input kitten: Emojis in terminal "
+        description: "unicode-input kitten: Emojis in terminal "
     },
     {
         time: "12:54",
@@ -73,11 +74,11 @@ export default [
     },
     {
         time: "13:36",
-        description: "Windows: Switch focus: Ctrl+Shift+<win_nr>"
+        description: "Windows: Switch focus: <kbd>Ctrl+Shift+&lt;win_nr&gt;</kbd>"
     },
     {
         time: "13:48",
-        description: "Windows: Visual selection: Ctrl+Shift+F7"
+        description: "Windows: Visual selection: <kbd>Ctrl+Shift+F7</kbd>"
     },
     {
         time: "13:58",
@@ -85,11 +86,11 @@ export default [
     },
     {
         time: "14:15",
-        description: "Interactive Kitty Shell: Ctrl+Shift+Esc"
+        description: "Interactive Kitty Shell: <kbd>Ctrl+Shift+Esc</kbd>"
     },
     {
         time: "14:36",
-        description: "Broadcast text: launch --allow-remote-control kitty +kitten broadcast"
+        description: "Broadcast text: <code>launch --allow-remote-control kitty +kitten broadcast</code>"
     },
     {
         time: "15:18",
@@ -101,10 +102,10 @@ export default [
     },
     {
         time: "16:34",
-        description: "Choose theme interactively: kitty +kitten themes -h"
+        description: "Choose theme interactively: <code>kitty +kitten themes -h</code>"
     },
     {
         time: "17:23",
-        description: "Choose theme by name: kitty +kitten themes [options] [theme_name]"
+        description: "Choose theme by name: <code>kitty +kitten themes [options] [theme_name]</code>"
     }
-]
+];

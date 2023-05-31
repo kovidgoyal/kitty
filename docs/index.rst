@@ -72,3 +72,9 @@ kitty
 
 
 To get started see :doc:`quickstart`.
+
+.. only:: dirhtml
+
+    .. raw:: html
+
+       <div id="timestamps-for-intro-video"></div>
