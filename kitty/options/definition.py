@@ -3064,8 +3064,8 @@ in the newly cloned window. The supported strategies are:
     Source the file pointed to by the environment variable
     :envvar:`KITTY_CLONE_SOURCE_PATH`.
 
-This option must be a comma separated list of the above values. This only
-source the first valid one in the above order.
+This option must be a comma separated list of the above values. Only the
+first valid match, in the order specified, is sourced.
 '''
     )
 
