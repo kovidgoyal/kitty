@@ -1,5 +1,7 @@
 .. raw:: html
 
+    <div id="intro-video-container" class="video-with-timestamps">
+
     <video controls width="640" height="360" poster="_static/poster.png">
         <source src="https://download.calibre-ebook.com/videos/kitty.mp4" type="video/mp4">
         <source src="https://download.calibre-ebook.com/videos/kitty.webm" type="video/webm">
@@ -8,11 +10,6 @@
 .. rst-class:: caption caption-text
 
     Watch kitty in action!
-
-
-.. raw:: html
-
-    <div id="timestamps-for-intro-video" class="timestamp-list">
 
 Timestamps for the above video:
 

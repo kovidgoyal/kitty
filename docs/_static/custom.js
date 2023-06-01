@@ -4,6 +4,7 @@
  *
  * Distributed under terms of the GPLv3 license
  */
+/*jshint esversion: 6 */
 
 (function() {
 "use strict";
@@ -39,7 +40,7 @@ function mark_current_link(sidebar_tree, a, onload) {
 }
 
 function show_hash_in_sidebar(onload) {
-    var sidebar_tree = document.querySelector('.sidebar-tree');
+    const sidebar_tree = get_sidebar_tree();
     if (document.location.hash.length > 1) {
         var a = sidebar_tree.querySelector('a[href="' + document.location.hash + '"]');
         if (a) mark_current_link(sidebar_tree, a, onload);
@@ -48,10 +49,16 @@ function show_hash_in_sidebar(onload) {
     }
 }
 
-document.addEventListener("DOMContentLoaded", function() {
+function init_sidebar() {
+    const sidebar_tree = document.querySelector('.sidebar-tree');
+    if (!sidebar_tree || sidebar_tree.dataset.inited === 'true') return;
+    sidebar_tree.dataset.inited = 'true';
     show_hash_in_sidebar(true);
     window.addEventListener('hashchange', show_hash_in_sidebar.bind(null, false));
-});
+}
+
+document.addEventListener("DOMContentLoaded", init_sidebar);
+init_sidebar();
 
 }());
 
