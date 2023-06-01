@@ -9,4 +9,5 @@
 
 .timestamp-list dd {
     grid-column-start: 2;
+    margin-left: 1em;
 }
