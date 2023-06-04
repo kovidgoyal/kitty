@@ -60,7 +60,7 @@ disabled
 no-rc
     Do not modify the shell's launch environment to enable integration. Useful
     if you prefer to load the kitty shell integration code yourself, either as
-    part of :ref:`manually integration <manual_shell_integration>` or because
+    part of :ref:`manual integration <manual_shell_integration>` or because
     you have some other software that sets up shell integration.
     This will still set the :envvar:`KITTY_SHELL_INTEGRATION` environment
     variable when kitty runs the shell.
