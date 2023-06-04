@@ -16,10 +16,10 @@ func parse_set_spacing(args []string) (map[string]any, error) {
 		mapper[q] = []string{q + "-left", q + "-top", q + "-right", q + "-bottom"}
 		mapper[q+"-h"] = []string{q + "-left", q + "-right"}
 		mapper[q+"-v"] = []string{q + "-top", q + "-bottom"}
-		mapper[q+"-left"] = []string{q + "left"}
-		mapper[q+"-right"] = []string{q + "right"}
-		mapper[q+"-top"] = []string{q + "top"}
-		mapper[q+"-bottom"] = []string{q + "bottom"}
+		mapper[q+"-left"] = []string{q + "-left"}
+		mapper[q+"-right"] = []string{q + "-right"}
+		mapper[q+"-top"] = []string{q + "-top"}
+		mapper[q+"-bottom"] = []string{q + "-bottom"}
 	}
 	for _, arg := range args {
 		k, v, found := strings.Cut(arg, "=")

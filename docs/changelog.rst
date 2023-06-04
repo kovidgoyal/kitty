@@ -73,6 +73,8 @@ Detailed list of changes
 
 - Fix a regression in 0.28.0 that caused a buffer overflow when clearing the screen (:iss:`6306`, :pull:`6308`)
 
+- Fix a regression in 0.27.0 that broke setting of specific edge padding/margin via remote control (:iss:`6333`)
+
 0.28.1 [2023-04-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
