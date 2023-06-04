@@ -7,14 +7,6 @@ import (
 	"compress/zlib"
 	"fmt"
 	"io/fs"
-	"kitty"
-	"kitty/tools/cli/markup"
-	"kitty/tools/tui"
-	"kitty/tools/tui/loop"
-	"kitty/tools/utils"
-	"kitty/tools/utils/humanize"
-	"kitty/tools/utils/style"
-	"kitty/tools/wcswidth"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -24,6 +16,14 @@ import (
 
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
+
+	"kitty"
+	"kitty/tools/cli/markup"
+	"kitty/tools/tui"
+	"kitty/tools/tui/loop"
+	"kitty/tools/utils"
+	"kitty/tools/utils/humanize"
+	"kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print
@@ -410,7 +410,7 @@ type Progress struct {
 	max_path_length int
 }
 
-func render_seconds(val time.Duration) (ans string) {
+func render_duration(val time.Duration) (ans string) {
 	if val >= time.Second {
 		if val.Hours() > 24 {
 			days := val.Hours() / 24
@@ -434,20 +434,30 @@ func render_seconds(val time.Duration) (ans string) {
 	return
 }
 
-func render_progress_in_width(p Progress, ctx *markup.Context) string {
+func render_progress_in_width(path string, p Progress, width int, ctx *markup.Context) string {
 	unit_style := ctx.Dim(`|`)
 	sep, trail, _ := strings.Cut(unit_style, "|")
 	var ratio, rate, eta string
 	if p.is_complete || p.bytes_so_far >= p.total_bytes {
 		ratio = humanize.Size(uint64(p.total_bytes), humanize.SizeOptions{Separator: sep})
 		rate = humanize.Size(uint64(safe_divide(float64(p.total_bytes), p.secs_so_far)), humanize.SizeOptions{Separator: sep}) + `/s`
-		eta = ctx.Green(render_seconds(time.Duration(float64(time.Second) * p.secs_so_far)))
+		eta = ctx.Green(render_duration(time.Duration(float64(time.Second) * p.secs_so_far)))
 	} else {
 		tb := humanize.Size(p.total_bytes)
 		sval, _, _ := strings.Cut(tb, " ")
 		val, _ := strconv.ParseFloat(sval, 64)
-		ratio = format_number(val*safe_divide(p.bytes_so_far, p.total_bytes)) + `/` + strings.ReplaceAll(tb, ` `, sep)
+		ratio = humanize.FormatNumber(val*safe_divide(p.bytes_so_far, p.total_bytes)) + `/` + strings.ReplaceAll(tb, ` `, sep)
+		rate = humanize.Size(p.bytes_per_sec, humanize.SizeOptions{Separator: sep}) + `/s`
+		bytes_left := p.total_bytes - p.bytes_so_far
+		eta_seconds := safe_divide(bytes_left, p.bytes_per_sec)
+		eta = render_duration(time.Duration(float64(time.Second) * eta_seconds))
 	}
+	lft := p.spinner_char + ` `
+	max_space_for_path := width/2 - wcswidth.Stringwidth(lft)
+	max_path_length := 80
+	w := utils.Min(max_path_length, max_space_for_path)
+	prefix := lft + render_path_in_width(path, w)
+	w += wcswidth.Stringwidth(lft)
 }
 
 func (self *SendHandler) render_progress(name string, p Progress) {
@@ -458,7 +468,8 @@ func (self *SendHandler) render_progress(name string, p Progress) {
 		p.bytes_so_far = p.total_bytes
 	}
 	p.max_path_length = self.max_name_length
-	self.lp.QueueWriteString(render_progress_in_width(p, self.ctx))
+	sz, _ := self.lp.ScreenSize()
+	self.lp.QueueWriteString(render_progress_in_width(name, p, int(sz.WidthCells), self.ctx))
 }
 
 func (self *SendHandler) draw_progress() {

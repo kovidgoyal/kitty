@@ -3,6 +3,8 @@ package humanize
 import (
 	"fmt"
 	"math"
+	"strconv"
+	"strings"
 
 	"golang.org/x/exp/constraints"
 )
@@ -90,4 +92,13 @@ func Size[T constraints.Integer | constraints.Float](s T, opts ...SizeOptions) s
 		sizes = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"}
 	}
 	return prefix + humanize_bytes(uint64(s), float64(o.Base), sizes, o.Separator)
+}
+
+func FormatNumber[T constraints.Float](n T, max_num_of_decimals ...int) string {
+	prec := 2
+	if len(max_num_of_decimals) > 0 {
+		prec = max_num_of_decimals[0]
+	}
+	ans := strconv.FormatFloat(float64(n), 'f', prec, 64)
+	return strings.TrimRight(strings.TrimRight(ans, "0"), ".")
 }
