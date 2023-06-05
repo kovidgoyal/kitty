@@ -13,6 +13,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
@@ -434,6 +435,48 @@ func render_duration(val time.Duration) (ans string) {
 	return
 }
 
+func reduce_to_single_grapheme(text string) string {
+	limit := utf8.RuneCountInString(text)
+	if limit < 2 {
+		return text
+	}
+	for x := 1; x < limit; x++ {
+		tt, w := wcswidth.TruncateToVisualLengthWithWidth(text, x)
+		if w <= x {
+			return tt
+		}
+	}
+	return text
+}
+
+func render_path_in_width(path string, width int) string {
+	path = filepath.ToSlash(path)
+	if wcswidth.Stringwidth(path) <= width {
+		return path
+	}
+	parts := strings.Split(path, string(filepath.Separator))
+	reduced := strings.Join(utils.Map(reduce_to_single_grapheme, parts[:len(parts)-1]), string(filepath.Separator))
+	path = filepath.Join(reduced, parts[len(parts)-1])
+	if wcswidth.Stringwidth(path) <= width {
+		return path
+	}
+	return wcswidth.TruncateToVisualLength(path, width-1) + `…`
+}
+
+func ljust(text string, width int) string {
+	if w := wcswidth.Stringwidth(text); w < width {
+		text += strings.Repeat(` `, (width - w))
+	}
+	return text
+}
+
+func rjust(text string, width int) string {
+	if w := wcswidth.Stringwidth(text); w < width {
+		text = strings.Repeat(` `, (width-w)) + text
+	}
+	return text
+}
+
 func render_progress_in_width(path string, p Progress, width int, ctx *markup.Context) string {
 	unit_style := ctx.Dim(`|`)
 	sep, trail, _ := strings.Cut(unit_style, "|")
@@ -458,6 +501,16 @@ func render_progress_in_width(path string, p Progress, width int, ctx *markup.Co
 	w := utils.Min(max_path_length, max_space_for_path)
 	prefix := lft + render_path_in_width(path, w)
 	w += wcswidth.Stringwidth(lft)
+	prefix = ljust(prefix, w)
+	q := ratio + trail + ctx.Yellow(" @ ") + rate + trail
+	q = rjust(q, 25) + ` `
+	eta = ` ` + eta
+	if extra := width - w - wcswidth.Stringwidth(q) - wcswidth.Stringwidth(eta); extra > 4 {
+		q += tui.RenderProgressBar(safe_divide(p.bytes_so_far, p.total_bytes), extra) + eta
+	} else {
+		q += strings.TrimSpace(eta)
+	}
+	return prefix + q
 }
 
 func (self *SendHandler) render_progress(name string, p Progress) {
@@ -501,7 +554,7 @@ func (self *SendHandler) draw_progress() {
 	} else {
 		sc = self.spinner.Tick()
 	}
-	now := time.Time()
+	now := time.Now()
 	if is_complete {
 		sz, _ := self.lp.ScreenSize()
 		self.lp.QueueWriteString(tui.RepeatChar(`─`, int(sz.WidthCells)))
@@ -532,7 +585,23 @@ func (self *SendHandler) draw_progress() {
 	self.progress_drawn = true
 }
 
-func (self *SendHandler) erase_progress(timer_id loop.IdType) {
+func (self *SendHandler) draw_progress_for_current_file(af *File, spinner_char string, is_complete bool) {
+	p := self.manager.progress_tracker
+	var secs_so_far time.Duration
+	empty := File{}
+	if af.done_at == empty.done_at {
+		secs_so_far = time.Now().Sub(af.transmit_started_at)
+	} else {
+		secs_so_far = af.done_at.Sub(af.transmit_started_at)
+	}
+	self.render_progress(af.display_name, Progress{
+		spinner_char: spinner_char, is_complete: is_complete,
+		bytes_so_far: af.reported_progress, total_bytes: af.bytes_to_transmit,
+		secs_so_far: secs_so_far.Seconds(), bytes_per_sec: safe_divide(p.transfered_stats_amt, p.transfered_stats_interval),
+	})
+}
+
+func (self *SendHandler) erase_progress() {
 	if self.progress_drawn {
 		self.progress_drawn = false
 		self.lp.MoveCursorVertically(-2)
