@@ -1016,6 +1016,13 @@ func (self *SendHandler) abort_transfer(delay ...time.Duration) {
 	})
 }
 
+func (self *SendHandler) on_resize(old_size, new_size loop.ScreenSize) error {
+	if self.progress_drawn {
+		self.refresh_progress(0)
+	}
+	return nil
+}
+
 func (self *SendHandler) on_key_event(ev *loop.KeyEvent) error {
 	if self.quit_after_write_code > -1 {
 		return nil
@@ -1049,10 +1056,10 @@ func (self *SendHandler) on_interrupt() {
 	self.abort_transfer()
 }
 
-func send_loop(opts *Options, files []*File) (err error) {
+func send_loop(opts *Options, files []*File) (err error, rc int) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors)
 	if err != nil {
-		return
+		return err, 1
 	}
 
 	handler := &SendHandler{
@@ -1067,7 +1074,12 @@ func send_loop(opts *Options, files []*File) (err error) {
 	handler.manager.file_done = handler.on_file_done
 
 	lp.OnInitialize = func() (string, error) {
+		lp.SetCursorVisible(false)
 		return "", handler.initialize()
+	}
+	lp.OnFinalize = func() string {
+		lp.SetCursorVisible(true)
+		return ""
 	}
 	ftc_code := strconv.Itoa(kitty.FileTransferCode)
 	lp.OnEscapeCode = func(et loop.EscapeCodeType, payload []byte) error {
@@ -1086,19 +1098,37 @@ func send_loop(opts *Options, files []*File) (err error) {
 	}
 	lp.OnText = handler.on_text
 	lp.OnKeyEvent = handler.on_key_event
+	lp.OnResize = handler.on_resize
+
+	err = lp.Run()
+	if err != nil {
+		return err, 1
+	}
+	if lp.DeathSignalName() != "" {
+		lp.KillIfSignalled()
+		return
+	}
+	if len(handler.failed_files) > 0 {
+		fmt.Fprintf(os.Stderr, "Transfer of %d out of %d files failed\n", len(handler.failed_files), len(handler.manager.files))
+		for _, f := range handler.failed_files {
+			fmt.Println(handler.ctx.BrightRed(f.display_name))
+			fmt.Println(` `, f.err_msg)
+		}
+		rc = 1
+	}
 
 	return
 }
 
-func send_main(opts *Options, args []string) (err error) {
+func send_main(opts *Options, args []string) (err error, rc int) {
 	fmt.Println("Scanning files…")
 	files, err := files_for_send(opts, args)
 	if err != nil {
-		return err
+		return err, 1
 	}
 	fmt.Printf("Found %d files and directories, requesting transfer permission…", len(files))
 	fmt.Println()
-	err = send_loop(opts, files)
+	err, rc = send_loop(opts, files)
 
 	return
 }

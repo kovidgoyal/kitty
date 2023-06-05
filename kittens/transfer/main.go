@@ -55,7 +55,7 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return 1, fmt.Errorf("Must specify at least one file to transfer")
 	}
 	if opts.Direction == "send" {
-		err = send_main(opts, args)
+		err, rc = send_main(opts, args)
 	} else {
 		err = receive_main(opts, args)
 	}
