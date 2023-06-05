@@ -333,3 +333,20 @@ func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand
 	}
 	return
 }
+
+func split_for_transfer(data []byte, file_id string, mark_last bool, callback func(*FileTransmissionCommand)) {
+	const chunk_size = 4096
+	for len(data) > 0 {
+		ac := Action_data
+		if mark_last && len(data) <= chunk_size {
+			ac = Action_end_data
+		}
+		chunk := data
+		if len(chunk) > chunk_size {
+			chunk = data[:chunk_size]
+			data = data[chunk_size:]
+		}
+		callback(&FileTransmissionCommand{Action: ac, File_id: file_id, Data: chunk})
+
+	}
+}
