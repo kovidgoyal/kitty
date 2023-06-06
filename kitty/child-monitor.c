@@ -1014,7 +1014,7 @@ process_pending_resizes(monotonic_t now) {
                 if (now - w->live_resize.last_resize_event_at >= debounce_time) update_viewport = true;
                 else {
                     global_state.has_pending_resizes = true;
-                    set_maximum_wait(OPT(resize_debounce_time) - now + w->live_resize.last_resize_event_at);
+                    set_maximum_wait(debounce_time - now + w->live_resize.last_resize_event_at);
                 }
             }
             if (update_viewport) {
