@@ -106,6 +106,9 @@ def run_html(args: Any) -> None:
     call('make FAIL_WARN=1 "OPTS=-D analytics_id=G-XTJK3R7GF2" dirhtml', cwd=docs_dir)
     add_old_redirects('docs/_build/dirhtml')
 
+    shutil.rmtree(os.path.join(docs_dir, '_build', 'html'))
+    call('make FAIL_WARN=1 "OPTS=-D analytics_id=G-XTJK3R7GF2" html', cwd=docs_dir)
+
 
 def generate_redirect_html(link_name: str, bname: str) -> None:
     with open(link_name, 'w') as f:
