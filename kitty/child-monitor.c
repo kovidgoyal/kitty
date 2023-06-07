@@ -734,19 +734,27 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
 }
 
 static void
+draw_resizing_text(OSWindow *w) {
+    char text[32] = {0};
+    unsigned int width = w->live_resize.width, height = w->live_resize.height;
+    snprintf(text, sizeof(text), "%u x %u cells", width / w->fonts_data->cell_width, height / w->fonts_data->cell_height);
+    StringCanvas rendered = render_simple_text(w->fonts_data, text);
+    if (rendered.canvas) {
+        draw_centered_alpha_mask(w, width, height, rendered.width, rendered.height, rendered.canvas);
+        free(rendered.canvas);
+    }
+}
+
+
+static void
 render_os_window(OSWindow *os_window, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
     // ensure all pixels are cleared to background color at least once in every buffer
     if (os_window->clear_count++ < 3) blank_os_window(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
     BorderRects *br = &tab->border_rects;
-    float x_ratio = 1, y_ratio = 1;
+    static const float x_ratio = 1, y_ratio = 1;
     draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
     br->is_dirty = false;
-    bool static_live_resize_in_progress = os_window->live_resize.in_progress && OPT(resize_draw_strategy) == RESIZE_DRAW_STATIC;
-    if (static_live_resize_in_progress) {
-        x_ratio = (float) os_window->viewport_width / (float) os_window->live_resize.width;
-        y_ratio = (float) os_window->viewport_height / (float) os_window->live_resize.height;
-    }
     if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, 0, &TD, x_ratio, y_ratio, os_window, true, false, NULL);
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
@@ -759,6 +767,7 @@ render_os_window(OSWindow *os_window, unsigned int active_window_id, color_type 
             w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; w->last_cursor_x = WD.screen->cursor_render_info.x; w->last_cursor_y = WD.screen->cursor_render_info.y; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
         }
     }
+    if (os_window->live_resize.in_progress) draw_resizing_text(os_window);
     swap_window_buffers(os_window);
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;
@@ -766,18 +775,6 @@ render_os_window(OSWindow *os_window, unsigned int active_window_id, color_type 
     if (USE_RENDER_FRAMES) request_frame_render(os_window);
 #undef WD
 #undef TD
-}
-
-static void
-draw_resizing_text(OSWindow *w) {
-    char text[32] = {0};
-    unsigned int width = w->live_resize.width, height = w->live_resize.height;
-    snprintf(text, sizeof(text), "%u x %u cells", width / w->fonts_data->cell_width, height / w->fonts_data->cell_height);
-    StringCanvas rendered = render_simple_text(w->fonts_data, text);
-    if (rendered.canvas) {
-        draw_centered_alpha_mask(w, width, height, rendered.width, rendered.height, rendered.canvas);
-        free(rendered.canvas);
-    }
 }
 
 static bool
@@ -826,14 +823,7 @@ render(monotonic_t now, bool input_read) {
         }
         w->render_calls++;
         make_os_window_context_current(w);
-        if (w->live_resize.in_progress && OPT(resize_draw_strategy) >= RESIZE_DRAW_BLANK) {
-            blank_os_window(w);
-            if (OPT(resize_draw_strategy) == RESIZE_DRAW_SIZE) draw_resizing_text(w);
-            swap_window_buffers(w);
-            if (USE_RENDER_FRAMES) request_frame_render(w);
-            continue;
-        }
-        if (w->live_resize.in_progress && OPT(resize_draw_strategy) == RESIZE_DRAW_STATIC) blank_os_window(w);
+        if (w->live_resize.in_progress) blank_os_window(w);
         bool needs_render = w->is_damaged || w->live_resize.in_progress;
         if (w->viewport_size_dirty) {
             w->clear_count = 0;
@@ -1020,7 +1010,6 @@ process_pending_resizes(monotonic_t now) {
                 // if more than one resize event has occurred, wait at least 0.2 secs
                 // before repainting, to avoid rapid transitions between the cells banner
                 // and the normal screen
-                if (w->live_resize.num_of_resize_events > 1 && OPT(resize_draw_strategy) == RESIZE_DRAW_SIZE) debounce_time = MAX(ms_to_monotonic_t(200ll), debounce_time);
                 if (now - w->live_resize.last_resize_event_at >= debounce_time) update_viewport = true;
                 else {
                     global_state.has_pending_resizes = true;

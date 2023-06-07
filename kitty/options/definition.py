@@ -1080,17 +1080,6 @@ resizing, while not also continuously redrawing, to save energy.
 '''
     )
 
-opt('resize_draw_strategy', 'static',
-    option_type='resize_draw_strategy', ctype='int',
-    long_text='''
-Choose how kitty draws a window while a resize is in progress. A value of
-:code:`static` means draw the current window contents, mostly unchanged. A value
-of :code:`scale` means draw the current window contents scaled. A value of
-:code:`blank` means draw a blank window. A value of :code:`size` means show the
-window size in cells.
-'''
-    )
-
 opt('resize_in_steps', 'no',
     option_type='to_bool', ctype='bool',
     long_text='''

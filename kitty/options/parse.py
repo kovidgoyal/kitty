@@ -14,11 +14,11 @@ from kitty.options.utils import (
     deprecated_send_text, disable_ligatures, edge_width, env, font_features, hide_window_decorations,
     macos_option_as_alt, macos_titlebar_color, modify_font, narrow_symbols, optional_edge_width,
     parse_map, parse_mouse_map, paste_actions, remote_control_password, resize_debounce_time,
-    resize_draw_strategy, scrollback_lines, scrollback_pager_history_size, shell_integration,
-    store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge, tab_bar_margin_height,
-    tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator, tab_title_template, titlebar_color,
-    to_cursor_shape, to_font_size, to_layout_names, to_modifiers, url_prefixes, url_style,
-    visual_window_select_characters, window_border_width, window_size
+    scrollback_lines, scrollback_pager_history_size, shell_integration, store_multiple, symbol_map,
+    tab_activity_symbol, tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade,
+    tab_font_style, tab_separator, tab_title_template, titlebar_color, to_cursor_shape, to_font_size,
+    to_layout_names, to_modifiers, url_prefixes, url_style, visual_window_select_characters,
+    window_border_width, window_size
 )
 
 
@@ -1152,9 +1152,6 @@ class Parser:
 
     def resize_debounce_time(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['resize_debounce_time'] = resize_debounce_time(val)
-
-    def resize_draw_strategy(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['resize_draw_strategy'] = resize_draw_strategy(val)
 
     def resize_in_steps(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['resize_in_steps'] = to_bool(val)

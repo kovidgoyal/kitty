@@ -40,6 +40,12 @@ color_vec3(GLint location, color_type color) {
     glUniform3f(location, srgb_lut[(color >> 16) & 0xFF], srgb_lut[(color >> 8) & 0xFF], srgb_lut[color & 0xFF]);
 }
 
+static void
+color_vec4_premult(GLint location, color_type color, GLfloat alpha) {
+    glUniform4f(location, srgb_lut[(color >> 16) & 0xFF]*alpha, srgb_lut[(color >> 8) & 0xFF]*alpha, srgb_lut[color & 0xFF]*alpha, alpha);
+}
+
+
 SPRITE_MAP_HANDLE
 alloc_sprite_map(unsigned int cell_width, unsigned int cell_height) {
     if (!max_texture_size) {
@@ -266,7 +272,7 @@ create_graphics_vao(void) {
 
 struct CellUniformData {
     bool constants_set;
-    GLint gploc, gpploc, cploc, cfploc, fg_loc, amask_premult_loc, amask_fg_loc, amask_image_loc;
+    GLint gploc, gpploc, cploc, cfploc, fg_loc, amask_bg_premult_loc, amask_fg_loc, amask_image_loc;
     GLfloat prev_inactive_text_alpha;
 };
 
@@ -511,7 +517,7 @@ draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
     glUniform1i(cell_uniform_data.amask_image_loc, GRAPHICS_UNIT);
     color_vec3(cell_uniform_data.amask_fg_loc, OPT(foreground));
-    glUniform1f(cell_uniform_data.amask_premult_loc, os_window->is_semi_transparent ? 1.f : 0.f);
+    color_vec4_premult(cell_uniform_data.amask_bg_premult_loc, OPT(background), 1);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, data);
     glEnable(GL_BLEND);
     if (os_window->is_semi_transparent) {
@@ -561,7 +567,7 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         cell_uniform_data.gpploc = glGetUniformLocation(program_id(GRAPHICS_PREMULT_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.cploc = glGetUniformLocation(program_id(CELL_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.cfploc = glGetUniformLocation(program_id(CELL_FG_PROGRAM), "inactive_text_alpha");
-        cell_uniform_data.amask_premult_loc = glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "alpha_mask_premult");
+        cell_uniform_data.amask_bg_premult_loc = glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "amask_bg_premult");
         cell_uniform_data.amask_fg_loc = glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "amask_fg");
         cell_uniform_data.amask_image_loc = glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "image");
 #define S(prog, name, val, type) { bind_program(prog); glUniform##type(glGetUniformLocation(program_id(prog), #name), val); }
@@ -726,7 +732,7 @@ draw_window_number(OSWindow *os_window, Screen *screen, const CellRenderData *cr
     glUniform1i(cell_uniform_data.amask_image_loc, GRAPHICS_UNIT);
     color_type digit_color = colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg);
     color_vec3(cell_uniform_data.amask_fg_loc, digit_color);
-    glUniform1f(cell_uniform_data.amask_premult_loc, 1.f);
+    glUniform4f(cell_uniform_data.amask_bg_premult_loc, 0.f, 0.f, 0.f, 0.f);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, ird);
     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, os_window->gvao_idx, ird, 0, 1);
     glDisable(GL_BLEND);

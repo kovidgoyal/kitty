@@ -13,7 +13,6 @@
 #define OPT(name) global_state.opts.name
 
 typedef enum { LEFT_EDGE, TOP_EDGE, RIGHT_EDGE, BOTTOM_EDGE } Edge;
-typedef enum { RESIZE_DRAW_STATIC, RESIZE_DRAW_SCALED, RESIZE_DRAW_BLANK, RESIZE_DRAW_SIZE } ResizeDrawStrategy;
 typedef enum { REPEAT_MIRROR, REPEAT_CLAMP, REPEAT_DEFAULT } RepeatStrategy;
 typedef enum { WINDOW_NORMAL, WINDOW_FULLSCREEN, WINDOW_MAXIMIZED, WINDOW_MINIMIZED } WindowState;
 
@@ -63,7 +62,6 @@ typedef struct {
     unsigned long tab_bar_min_tabs;
     DisableLigature disable_ligatures;
     bool force_ltr;
-    ResizeDrawStrategy resize_draw_strategy;
     bool resize_in_steps;
     bool sync_to_monitor;
     bool close_on_child_death;
