@@ -1017,9 +1017,9 @@ process_pending_resizes(monotonic_t now) {
                 }
             }
             if (update_viewport) {
-                static const LiveResizeInfo empty = {0};
                 update_os_window_viewport(w, true);
-                w->live_resize = empty;
+                zero_at_ptr(&w->live_resize);
+                w->is_damaged = true;  // because the window size should be hidden even if update_os_window_viewport does nothing
             }
         }
     }
