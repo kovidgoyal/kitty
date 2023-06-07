@@ -255,3 +255,9 @@ tab_bar_margin_height(PyObject *val, Options *opts) {
     opts->tab_bar_margin_height.outer = PyFloat_AsDouble(PyTuple_GET_ITEM(val, 0));
     opts->tab_bar_margin_height.inner = PyFloat_AsDouble(PyTuple_GET_ITEM(val, 1));
 }
+
+static void
+resize_debounce_time(PyObject *src, Options *opts) {
+    opts->resize_debounce_time.on_end = s_double_to_monotonic_t(PyFloat_AsDouble(PyTuple_GET_ITEM(src, 0)));
+    opts->resize_debounce_time.on_pause = s_double_to_monotonic_t(PyFloat_AsDouble(PyTuple_GET_ITEM(src, 1)));
+}

@@ -1004,9 +1004,19 @@ process_pending_resizes(monotonic_t now) {
         if (w->live_resize.in_progress) {
             bool update_viewport = false;
             if (w->live_resize.from_os_notification) {
-                if (w->live_resize.os_says_resize_complete || (now - w->live_resize.last_resize_event_at) > 1) update_viewport = true;
+                if (w->live_resize.os_says_resize_complete) update_viewport = true;
+                else {
+                    // prevent a "hang" if the OS never sends a resize complete event
+                    // also reflow the screen when the user pauses resizing so the user can see what the resized
+                    // screen will look like.
+                    if ((now - w->live_resize.last_resize_event_at) > OPT(resize_debounce_time).on_pause) update_viewport = true;
+                    else {
+                        global_state.has_pending_resizes = true;
+                        set_maximum_wait(s_double_to_monotonic_t(0.05));
+                    }
+                }
             } else {
-                monotonic_t debounce_time = OPT(resize_debounce_time);
+                monotonic_t debounce_time = OPT(resize_debounce_time).on_end;
                 // if more than one resize event has occurred, wait at least 0.2 secs
                 // before repainting, to avoid rapid transitions between the cells banner
                 // and the normal screen

@@ -592,7 +592,7 @@ convert_from_opts_window_logo_alpha(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_resize_debounce_time(PyObject *val, Options *opts) {
-    opts->resize_debounce_time = parse_s_double_to_monotonic_t(val);
+    resize_debounce_time(val, opts);
 }
 
 static void

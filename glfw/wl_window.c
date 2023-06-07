@@ -505,6 +505,12 @@ _glfwPlatformToggleFullscreen(_GLFWwindow *window, unsigned int flags UNUSED) {
 }
 
 static void
+report_live_resize(_GLFWwindow *w, bool started) {
+    // disabled as mutter, for instance, does not send a configure event when the user stops resizing (aka releases the mouse button)
+    if (false) _glfwInputLiveResize(w, started);
+}
+
+static void
 xdgToplevelHandleConfigure(void* data,
                                        struct xdg_toplevel* toplevel UNUSED,
                                        int32_t width,
@@ -536,7 +542,7 @@ xdgToplevelHandleConfigure(void* data,
     if (new_states & TOPLEVEL_STATE_RESIZING) {
         if (width) window->wl.user_requested_content_size.width = width;
         if (height) window->wl.user_requested_content_size.height = height;
-        if (!(window->wl.current.toplevel_states & TOPLEVEL_STATE_RESIZING)) _glfwInputLiveResize(window, true);
+        if (!(window->wl.current.toplevel_states & TOPLEVEL_STATE_RESIZING)) report_live_resize(window, true);
     }
     if (width != 0 && height != 0)
     {
@@ -606,7 +612,7 @@ static void xdgSurfaceHandleConfigure(void* data,
             window->wl.current.width = width;
             window->wl.current.height = height;
             _glfwInputWindowFocus(window, window->wl.current.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
-            if (live_resize_done) _glfwInputLiveResize(window, false);
+            if (live_resize_done) report_live_resize(window, false);
         }
     }
 

@@ -70,7 +70,7 @@ typedef struct {
     bool window_alert_on_bell;
     bool debug_keyboard;
     bool allow_hyperlinks;
-    monotonic_t resize_debounce_time;
+    struct { monotonic_t on_end, on_pause; } resize_debounce_time;
     MouseShape pointer_shape_when_grabbed;
     MouseShape default_pointer_shape;
     MouseShape pointer_shape_when_dragging;

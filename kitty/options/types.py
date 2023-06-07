@@ -564,7 +564,7 @@ class Options:
     pointer_shape_when_grabbed: choices_for_pointer_shape_when_grabbed = 'arrow'
     remember_window_size: bool = True
     repaint_delay: int = 10
-    resize_debounce_time: float = 0.1
+    resize_debounce_time: typing.Tuple[float, float] = (0.1, 0.5)
     resize_draw_strategy: int = 0
     resize_in_steps: bool = False
     scrollback_fill_enlarged_window: bool = False
