@@ -237,7 +237,7 @@ Detailed list of changes
 
 - ssh kitten: Allow using absolute paths for the location of transferred data (:iss:`5607`)
 
-- Fix a regression in the previous release that caused a :opt:`resize_draw_strategy` of ``static`` to not work (:iss:`5601`)
+- Fix a regression in the previous release that caused a ``resize_draw_strategy`` of ``static`` to not work (:iss:`5601`)
 
 - Wayland KDE: Fix abort when pasting into Firefox (:iss:`5603`)
 
@@ -2318,7 +2318,7 @@ Detailed list of changes
   which will cause kitty to not change text color in selections (:iss:`1358`)
 
 - Make live resizing of OS windows smoother and add an option
-  :opt:`resize_draw_strategy` to control what is drawn while a
+  ``resize_draw_strategy`` to control what is drawn while a
   resize is in progress.
 
 - macOS: Improve handling of IME extended input. Compose characters
