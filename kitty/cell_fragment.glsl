@@ -240,9 +240,9 @@ void main() {
 #ifdef FOREGROUND
     final_color = calculate_foreground();  // pre-multiplied foreground
 
-    // This is the last pass, adjust alpha to compensate for gamma-incorrect
-    // blending in compositor:
-    final_color.a = linear2srgb(final_color.a);
+    // This is the last pass, called both with transparency and without but not in draw_cells_simple().
+    // When transparent it is drawn into a framebuffer and linear2srgb() will be done
+    // when blitting that framebuffer. When not transparent there is not need to do linear2srgb() anyway.
 #endif
 
 }
