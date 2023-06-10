@@ -708,7 +708,7 @@ class Boss:
             import shlex
             self.show_error(_('remote_control mapping failed'), shlex.join(args) + '\n' + str(e))
 
-    def call_remote_control(self, active_window: Optional[Window], args: Tuple[str, ...]) -> 'ResponseType':
+    def call_remote_control(self, self_window: Optional[Window], args: Tuple[str, ...]) -> 'ResponseType':
         from .rc.base import PayloadGetter, command_for_name, parse_subcommand_cli
         from .remote_control import parse_rc_args
         aa = list(args)
@@ -730,9 +730,9 @@ class Boss:
         try:
             if isinstance(payload, types.GeneratorType):
                 for x in payload:
-                    c.response_from_kitty(self, active_window, PayloadGetter(c, x if isinstance(x, dict) else {}))
+                    c.response_from_kitty(self, self_window, PayloadGetter(c, x if isinstance(x, dict) else {}))
                 return None
-            return c.response_from_kitty(self, active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
+            return c.response_from_kitty(self, self_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
         except Exception as e:
             if silent:
                 log_error(f'Failed to run remote_control mapping: {aa} with error: {e}')

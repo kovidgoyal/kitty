@@ -369,7 +369,7 @@ def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, 
                             m.append('{}={}'.format(k, v or ''))
                     if launch_args:
                         w = boss.window_id_map.get(target_window_id)
-                        boss.call_remote_control(active_window=w, args=tuple(launch_args + ([m] if isinstance(m, str) else m)))
+                        boss.call_remote_control(self_window=w, args=tuple(launch_args + ([m] if isinstance(m, str) else m)))
                     else:
                         boss.open_url(m, program, cwd=cwd)
 
