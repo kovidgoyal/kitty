@@ -123,6 +123,7 @@ from .options.utils import MINIMUM_FONT_SIZE, KeyMap, SubSequenceMap
 from .os_window_size import initial_window_size_func
 from .rgb import color_from_int
 from .session import Session, create_sessions, get_os_window_sizing_data
+from .shaders import load_shader_programs
 from .tabs import SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
 from .types import _T, AsyncResponse, SingleInstanceData, WindowSystemMouseEvent, ac
 from .typing import PopenType, TypedDict
@@ -148,7 +149,7 @@ from .utils import (
     startup_notification_handler,
     which,
 )
-from .window import CommandOutput, CwdRequest, Window, load_shader_programs
+from .window import CommandOutput, CwdRequest, Window
 
 if TYPE_CHECKING:
     from .rc.base import ResponseType

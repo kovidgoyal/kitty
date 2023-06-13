@@ -50,6 +50,7 @@ from .options.types import Options
 from .options.utils import DELETE_ENV_VAR
 from .os_window_size import initial_window_size_func
 from .session import create_sessions, get_os_window_sizing_data
+from .shaders import load_shader_programs
 from .types import SingleInstanceData
 from .utils import (
     cleanup_ssh_control_masters,
@@ -61,7 +62,6 @@ from .utils import (
     startup_notification_handler,
     unix_socket_paths,
 )
-from .window import load_shader_programs
 
 
 def set_custom_ibeam_cursor() -> None:
