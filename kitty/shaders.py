@@ -3,7 +3,8 @@
 
 import re
 from functools import lru_cache, partial
-from typing import Any, Callable, Iterator, Optional
+from itertools import count
+from typing import Any, Callable, Dict, Iterator, Optional
 
 from .constants import read_kitty_resource
 from .fast_data_types import (
@@ -36,12 +37,19 @@ def identity(x: str) -> str:
     return x
 
 
+class CompileError(ValueError):
+    pass
+
+
 class Program:
 
     include_pat: Optional['re.Pattern[str]'] = None
+    filename_number_base: int = 7893000
 
     def __init__(self, name: str, vertex_name: str = '', fragment_name: str = '') -> None:
         self.name = name
+        self.filename_number_counter = count(self.filename_number_base + 1)
+        self.filename_map: Dict[str, int] = {}
         if Program.include_pat is None:
             Program.include_pat = re.compile(r'^#pragma\s+kitty_include_shader\s+<(.+?)>', re.MULTILINE)
         self.vertex_name = vertex_name or f'{name}_vertex.glsl'
@@ -54,25 +62,46 @@ class Program:
     def _load_sources(self, name: str, level: int = 0) -> Iterator[str]:
         if level == 0:
             yield f'#version {GLSL_VERSION}\n'
+        if name in self.filename_map:
+            return
+        self.filename_map[name] = fnum = next(self.filename_number_counter)
         src = read_kitty_resource(name).decode('utf-8')
         pos = 0
+        lnum = 0
         assert Program.include_pat is not None
         for m in Program.include_pat.finditer(src):
             prefix = src[pos:m.start()]
             if prefix:
-                yield prefix
+                yield f'#line {lnum} {fnum}\n{prefix}'
+                lnum = prefix.count('\n')
             iname = m.group(1)
             yield from self._load_sources(iname, level+1)
             pos = m.start()
         if pos < len(src):
-            yield src[pos:]
+            yield f'#line {lnum} {fnum}\n{src[pos:]}'
 
     def apply_to_sources(self, vertex: Callable[[str], str] = identity, frag: Callable[[str], str] = identity) -> None:
         self.vertex_sources = self.original_vertex_sources if vertex is identity else tuple(map(vertex, self.original_vertex_sources))
         self.fragment_sources = self.original_fragment_sources if frag is identity else tuple(map(frag, self.original_fragment_sources))
 
     def compile(self, program_id: int, allow_recompile: bool = False) -> None:
-        compile_program(program_id, self.vertex_sources, self.fragment_sources, allow_recompile)
+        cerr: CompileError = CompileError()
+        try:
+            compile_program(program_id, self.vertex_sources, self.fragment_sources, allow_recompile)
+            return
+        except ValueError as err:
+            lines = str(err).splitlines()
+            msg = []
+            pat = re.compile(r'\b(' + str(self.filename_number_base).replace('0', r'\d') + r')\b')
+            rmap = {str(v): k for k, v in self.filename_map.items()}
+
+            def sub(m: 're.Match[str]') -> str:
+                return rmap.get(m.group(1), m.group(1))
+
+            for line in lines:
+                msg.append(pat.sub(sub, line))
+            cerr = CompileError('\n'.join(msg))
+        raise cerr
 
 
 @lru_cache(maxsize=64)
