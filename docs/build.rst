@@ -204,3 +204,19 @@ the kitty program expects to find them there.
 
 This applies to creating packages for |kitty| for macOS package managers such as
 Homebrew or MacPorts as well.
+
+Cross-compilation
+-------------------
+
+While cross compilation is neither officially supported, nor recommended, as it
+means the test suite cannot be run for the cross-compiled build, there is some
+support for cross-compilation. Basically, run::
+
+    make prepare-for-cross-compile
+
+Then setup the cross compile environment (CC, CFLAGS, etc.) and run::
+
+    make cross-compile
+
+This will create the cross compiled build in the :file:`linux-package`
+directory.

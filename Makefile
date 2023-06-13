@@ -61,3 +61,13 @@ docs: man html
 
 develop-docs:
 	$(MAKE) -C docs develop-docs
+
+
+prepare-for-cross-compile:
+	$(MAKE) clean
+	$(MAKE) build
+	python3 setup.py $(VVAL) clean --clean-for-cross-compile
+
+cross-compile:
+	python3 setup.py linux-package --skip-code-generation
+	
