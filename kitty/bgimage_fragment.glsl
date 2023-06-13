@@ -1,4 +1,3 @@
-#version GLSL_VERSION
 
 uniform sampler2D image;
 uniform float opacity;

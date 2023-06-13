@@ -1,4 +1,3 @@
-#version GLSL_VERSION
 #define ALPHA_TYPE
 
 uniform sampler2D image;

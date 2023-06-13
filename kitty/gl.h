@@ -55,4 +55,4 @@ void bind_vertex_array(ssize_t vao_idx);
 void bind_vao_uniform_buffer(ssize_t vao_idx, size_t bufnum, GLuint block_index);
 void unbind_vertex_array(void);
 void unbind_program(void);
-GLuint compile_shader(GLenum shader_type, const char *source);
+GLuint compile_shaders(GLenum shader_type, GLsizei count, const GLchar * const * string);

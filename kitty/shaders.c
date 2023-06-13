@@ -1073,13 +1073,14 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
 
 static bool
 attach_shaders(PyObject *sources, GLuint program_id, GLenum shader_type) {
+    FREE_AFTER_FUNCTION const GLchar * * c_sources = calloc(sizeof(char*), PyTuple_GET_SIZE(sources));
     for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(sources); i++) {
         PyObject *temp = PyTuple_GET_ITEM(sources, i);
         if (!PyUnicode_Check(temp)) { PyErr_SetString(PyExc_TypeError, "shaders must be strings"); return false; }
-        const char *vertex_shader = PyUnicode_AsUTF8(temp);
-        GLuint shader_id = compile_shader(shader_type, vertex_shader);
-        glAttachShader(program_id, shader_id);
+        c_sources[i] = PyUnicode_AsUTF8(temp);
     }
+    GLuint shader_id = compile_shaders(shader_type, PyTuple_GET_SIZE(sources), c_sources);
+    glAttachShader(program_id, shader_id);
     return true;
 }
 

@@ -94,9 +94,9 @@ free_framebuffer(GLuint *fb_id) {
 static Program programs[64] = {{0}};
 
 GLuint
-compile_shader(GLenum shader_type, const char *source) {
+compile_shaders(GLenum shader_type, GLsizei count, const GLchar * const * source) {
     GLuint shader_id = glCreateShader(shader_type);
-    glShaderSource(shader_id, 1, (const GLchar **)&source, NULL);
+    glShaderSource(shader_id, count, source, NULL);
     glCompileShader(shader_id);
     GLint ret = GL_FALSE;
     glGetShaderiv(shader_id, GL_COMPILE_STATUS, &ret);

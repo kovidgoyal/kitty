@@ -1,4 +1,3 @@
-#version GLSL_VERSION
 
 uniform vec4 edges;
 

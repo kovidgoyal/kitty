@@ -106,23 +106,27 @@ def platform_window_id(os_window_id: int) -> Optional[int]:
 
 def load_shaders(name: str, vertex_name: str = '', fragment_name: str = '') -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
     from .fast_data_types import GLSL_VERSION
-    pat = re.compile(r'^#pragma kitty_include_shader <(.+?)>', re.MULTILINE)
+    pat = re.compile(r'^#pragma\s+kitty_include_shader\s+<(.+?)>', re.MULTILINE)
 
-    def load_source(name: str) -> str:
-        return read_kitty_resource(name).decode('utf-8').replace('GLSL_VERSION', str(GLSL_VERSION), 1)
-
-    def load_sources(name: str) -> Tuple[str, ...]:
-        src = load_source(name)
-        ans: Tuple[str, ...] = src,
+    def load_sources(name: str, level: int = 0) -> Iterator[str]:
+        if level == 0:
+            yield f'#version {GLSL_VERSION}\n'
+        src = read_kitty_resource(name).decode('utf-8')
+        pos = 0
         for m in pat.finditer(src):
+            prefix = src[pos:m.start()]
+            if prefix:
+                yield prefix
             iname = m.group(1)
-            ans += load_sources(iname)
-        return ans
+            yield from load_sources(iname, level+1)
+            pos = m.start()
+        if pos < len(src):
+            yield src[pos:]
 
     def load(which: str, lname: str = '') -> Tuple[str, ...]:
         lname = lname or name
         main = f'{lname}_{which}.glsl'
-        return load_sources(main)
+        return tuple(load_sources(main))
 
     return load('vertex', vertex_name), load('fragment', fragment_name)
 

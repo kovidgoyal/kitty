@@ -1,4 +1,5 @@
-#version GLSL_VERSION
+#pragma kitty_include_shader <linear2srgb.glsl>
+
 uniform uvec2 viewport;
 uniform uint colors[9];
 uniform float background_opacity, do_srgb_correction;
@@ -21,14 +22,6 @@ const uvec2 pos_map[] = uvec2[4](
     uvec2(LEFT, BOTTOM),
     uvec2(LEFT, TOP)
 );
-
-float linear2srgb(float x) {
-    // Linear to sRGB conversion. Needed to match alpha from the cell shader
-    float lower = 12.92 * x;
-    float upper = 1.055 * pow(x, 1.0f / 2.4f) - 0.055f;
-
-    return mix(lower, upper, step(0.0031308f, x));
-}
 
 float to_color(uint c) {
     return gamma_lut[c & FF];

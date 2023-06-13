@@ -1,4 +1,3 @@
-#version GLSL_VERSION
 #define left  -1.0f
 #define top  1.0f
 #define right  1.0f
