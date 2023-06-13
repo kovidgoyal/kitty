@@ -104,9 +104,15 @@ compile_shaders(GLenum shader_type, GLsizei count, const GLchar * const * source
         GLsizei len;
         static char glbuf[4096];
         glGetShaderInfoLog(shader_id, sizeof(glbuf), &len, glbuf);
-        log_error("Failed to compile GLSL shader!\n%s", glbuf);
         glDeleteShader(shader_id);
-        PyErr_SetString(PyExc_ValueError, "Failed to compile shader");
+        const char *shader_type_name = "unknown_type";
+        switch(shader_type) {
+            case GL_VERTEX_SHADER:
+                shader_type_name = "vertex"; break;
+            case GL_FRAGMENT_SHADER:
+                shader_type_name = "fragment"; break;
+        }
+        PyErr_Format(PyExc_ValueError, "Failed to compile GLSL %s shader:\n%s", shader_type_name, glbuf);
         return 0;
     }
     return shader_id;
