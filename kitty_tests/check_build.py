@@ -31,9 +31,9 @@ class TestBuild(BaseTest):
         del fdt, rsync
 
     def test_loading_shaders(self) -> None:
-        from kitty.utils import load_shaders
+        from kitty.shaders import Program
         for name in 'cell border bgimage tint blit graphics'.split():
-            load_shaders(name)
+            Program(name)
 
     def test_glfw_modules(self) -> None:
         from kitty.constants import glfw_path, is_macos

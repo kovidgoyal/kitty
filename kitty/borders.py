@@ -4,8 +4,8 @@
 from enum import IntFlag
 from typing import Iterable, NamedTuple, Sequence
 
-from .fast_data_types import BORDERS_PROGRAM, add_borders_rect, compile_program, get_options, init_borders_program, os_window_has_background_image
-from .shaders import load_shaders
+from .fast_data_types import BORDERS_PROGRAM, add_borders_rect, get_options, init_borders_program, os_window_has_background_image
+from .shaders import program_for
 from .typing import LayoutType
 from .window_list import WindowGroup, WindowList
 
@@ -61,7 +61,7 @@ def draw_edges(os_window_id: int, tab_id: int, colors: Sequence[int], wg: Window
 
 
 def load_borders_program() -> None:
-    compile_program(BORDERS_PROGRAM, *load_shaders('border'))
+    program_for('border').compile(BORDERS_PROGRAM)
     init_borders_program()
 
 

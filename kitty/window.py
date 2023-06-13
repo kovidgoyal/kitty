@@ -78,7 +78,6 @@ from .fast_data_types import (
     cell_size_for_window,
     click_mouse_cmd_output,
     click_mouse_url,
-    compile_program,
     current_focused_os_window_id,
     encode_key_for_tty,
     get_boss,
@@ -107,7 +106,7 @@ from .notify import (
 )
 from .options.types import Options
 from .rgb import to_color
-from .shaders import load_shaders
+from .shaders import program_for
 from .terminfo import get_capabilities
 from .types import MouseEvent, OverlayType, WindowGeometry, ac, run_once
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
@@ -392,54 +391,63 @@ class LoadShaderPrograms:
         opts = get_options()
         self.text_old_gamma = opts.text_composition_strategy == 'legacy'
         self.text_fg_override_threshold = max(0, min(opts.text_fg_override_threshold, 100)) * 0.01
-        compile_program(BLIT_PROGRAM, *load_shaders('blit'), allow_recompile)
-        vs, fs = load_shaders('cell')
+        program_for('blit').compile(BLIT_PROGRAM, allow_recompile)
+        cell = program_for('cell')
+
+        def resolve_cell_vertex_defines(which: str, v: str) -> str:
+            v = multi_replace(
+                v,
+                WHICH_PROGRAM=which,
+                REVERSE_SHIFT=REVERSE,
+                STRIKE_SHIFT=STRIKETHROUGH,
+                DIM_SHIFT=DIM,
+                DECORATION_SHIFT=DECORATION,
+                MARK_SHIFT=MARK,
+                MARK_MASK=MARK_MASK,
+                DECORATION_MASK=DECORATION_MASK,
+                STRIKE_SPRITE_INDEX=NUM_UNDERLINE_STYLES + 1,
+            )
+            if semi_transparent:
+                v = v.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
+            return v
+
+        def resolve_cell_fragment_defines(which: str, f: str) -> str:
+            f = f.replace('{WHICH_PROGRAM}', which)
+            if self.text_fg_override_threshold != 0.:
+                f = f.replace('#define NO_FG_OVERRIDE', f'#define FG_OVERRIDE {self.text_fg_override_threshold}')
+            if self.text_old_gamma:
+                f = f.replace('#define TEXT_NEW_GAMMA', '#define TEXT_OLD_GAMMA')
+            if semi_transparent:
+                f = f.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
+            return f
 
         for which, p in {
-                'SIMPLE': CELL_PROGRAM,
-                'BACKGROUND': CELL_BG_PROGRAM,
-                'SPECIAL': CELL_SPECIAL_PROGRAM,
-                'FOREGROUND': CELL_FG_PROGRAM,
+            'SIMPLE': CELL_PROGRAM,
+            'BACKGROUND': CELL_BG_PROGRAM,
+            'SPECIAL': CELL_SPECIAL_PROGRAM,
+            'FOREGROUND': CELL_FG_PROGRAM,
         }.items():
-            vvs, ffs = [], []
-            for v in vs:
-                vv = multi_replace(
-                    v,
-                    WHICH_PROGRAM=which,
-                    REVERSE_SHIFT=REVERSE,
-                    STRIKE_SHIFT=STRIKETHROUGH,
-                    DIM_SHIFT=DIM,
-                    DECORATION_SHIFT=DECORATION,
-                    MARK_SHIFT=MARK,
-                    MARK_MASK=MARK_MASK,
-                    DECORATION_MASK=DECORATION_MASK,
-                    STRIKE_SPRITE_INDEX=NUM_UNDERLINE_STYLES + 1,
-                )
-                if semi_transparent:
-                    vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
-                vvs.append(vv)
-            for f in fs:
-                ff = f.replace('{WHICH_PROGRAM}', which)
-                if self.text_fg_override_threshold != 0.:
-                    ff = ff.replace('#define NO_FG_OVERRIDE', f'#define FG_OVERRIDE {self.text_fg_override_threshold}')
-                if self.text_old_gamma:
-                    ff = ff.replace('#define TEXT_NEW_GAMMA', '#define TEXT_OLD_GAMMA')
-                if semi_transparent:
-                    ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
-                ffs.append(ff)
-            compile_program(p, tuple(vvs), tuple(ffs), allow_recompile)
+            cell.apply_to_sources(
+                vertex=partial(resolve_cell_vertex_defines, which),
+                frag=partial(resolve_cell_fragment_defines, which),
+            )
+            cell.compile(p, allow_recompile)
 
-        vs, fs = load_shaders('graphics')
+        graphics = program_for('graphics')
+
+        def resolve_graphics_fragment_defines(which: str, f: str) -> str:
+            return f.replace('ALPHA_TYPE', which)
+
         for which, p in {
-                'SIMPLE': GRAPHICS_PROGRAM,
-                'PREMULT': GRAPHICS_PREMULT_PROGRAM,
-                'ALPHA_MASK': GRAPHICS_ALPHA_MASK_PROGRAM,
+            'SIMPLE': GRAPHICS_PROGRAM,
+            'PREMULT': GRAPHICS_PREMULT_PROGRAM,
+            'ALPHA_MASK': GRAPHICS_ALPHA_MASK_PROGRAM,
         }.items():
-            ff = f.replace('ALPHA_TYPE', which)
-            compile_program(p, vs, tuple(f.replace('ALPHA_TYPE', which) for f in fs), allow_recompile)
+            graphics.apply_to_sources(frag=partial(resolve_cell_fragment_defines, which))
+            graphics.compile(p, allow_recompile)
 
-        compile_program(BGIMAGE_PROGRAM, *load_shaders('bgimage'), allow_recompile)
-        compile_program(TINT_PROGRAM, *load_shaders('tint'), allow_recompile)
+        program_for('bgimage').compile(BGIMAGE_PROGRAM, allow_recompile)
+        program_for('tint').compile(TINT_PROGRAM)
         init_cell_program()
 
 
