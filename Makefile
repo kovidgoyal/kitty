@@ -63,9 +63,7 @@ develop-docs:
 	$(MAKE) -C docs develop-docs
 
 
-prepare-for-cross-compile:
-	$(MAKE) clean
-	$(MAKE) 
+prepare-for-cross-compile: clean all
 	python3 setup.py $(VVAL) clean --clean-for-cross-compile
 
 cross-compile:
