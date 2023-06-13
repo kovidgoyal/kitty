@@ -1070,12 +1070,25 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
 // }}}
 
 // Python API {{{
+
+static bool
+attach_shaders(PyObject *sources, GLuint program_id, GLenum shader_type) {
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(sources); i++) {
+        PyObject *temp = PyTuple_GET_ITEM(sources, i);
+        if (!PyUnicode_Check(temp)) { PyErr_SetString(PyExc_TypeError, "shaders must be strings"); return false; }
+        const char *vertex_shader = PyUnicode_AsUTF8(temp);
+        GLuint shader_id = compile_shader(shader_type, vertex_shader);
+        glAttachShader(program_id, shader_id);
+    }
+    return true;
+}
+
 static PyObject*
 compile_program(PyObject UNUSED *self, PyObject *args) {
-    const char *vertex_shader, *fragment_shader;
+    PyObject *vertex_shaders, *fragment_shaders;
     int which, allow_recompile = 0;
     GLuint vertex_shader_id = 0, fragment_shader_id = 0;
-    if (!PyArg_ParseTuple(args, "iss|p", &which, &vertex_shader, &fragment_shader, &allow_recompile)) return NULL;
+    if (!PyArg_ParseTuple(args, "iO!O!|p", &which, &PyTuple_Type, &vertex_shaders, &PyTuple_Type, &fragment_shaders, &allow_recompile)) return NULL;
     if (which < 0 || which >= NUM_PROGRAMS) { PyErr_Format(PyExc_ValueError, "Unknown program: %d", which); return NULL; }
     Program *program = program_ptr(which);
     if (program->id != 0) {
@@ -1083,9 +1096,8 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
         else { PyErr_SetString(PyExc_ValueError, "program already compiled"); return NULL; }
     }
     program->id = glCreateProgram();
-    vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader);
-    fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader);
-    glAttachShader(program->id, vertex_shader_id);
+    if (!attach_shaders(vertex_shaders, program->id, GL_VERTEX_SHADER)) return NULL;
+    if (!attach_shaders(fragment_shaders, program->id, GL_FRAGMENT_SHADER)) return NULL;
     glAttachShader(program->id, fragment_shader_id);
     glLinkProgram(program->id);
     GLint ret = GL_FALSE;

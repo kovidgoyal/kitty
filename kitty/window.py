@@ -393,7 +393,7 @@ class LoadShaderPrograms:
         self.text_old_gamma = opts.text_composition_strategy == 'legacy'
         self.text_fg_override_threshold = max(0, min(opts.text_fg_override_threshold, 100)) * 0.01
         compile_program(BLIT_PROGRAM, *load_shaders('blit'), allow_recompile)
-        v, f = load_shaders('cell')
+        vs, fs = load_shaders('cell')
 
         for which, p in {
                 'SIMPLE': CELL_PROGRAM,
@@ -401,41 +401,45 @@ class LoadShaderPrograms:
                 'SPECIAL': CELL_SPECIAL_PROGRAM,
                 'FOREGROUND': CELL_FG_PROGRAM,
         }.items():
-            ff = f.replace('{WHICH_PROGRAM}', which)
-            vv = multi_replace(
-                v,
-                WHICH_PROGRAM=which,
-                REVERSE_SHIFT=REVERSE,
-                STRIKE_SHIFT=STRIKETHROUGH,
-                DIM_SHIFT=DIM,
-                DECORATION_SHIFT=DECORATION,
-                MARK_SHIFT=MARK,
-                MARK_MASK=MARK_MASK,
-                DECORATION_MASK=DECORATION_MASK,
-                STRIKE_SPRITE_INDEX=NUM_UNDERLINE_STYLES + 1,
-            )
-            if self.text_fg_override_threshold != 0.:
-                ff = ff.replace('#define NO_FG_OVERRIDE', f'#define FG_OVERRIDE {self.text_fg_override_threshold}')
-            if self.text_old_gamma:
-                ff = ff.replace('#define TEXT_NEW_GAMMA', '#define TEXT_OLD_GAMMA')
-            if semi_transparent:
-                vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
-                ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
-            compile_program(p, vv, ff, allow_recompile)
+            vvs, ffs = [], []
+            for v in vs:
+                vv = multi_replace(
+                    v,
+                    WHICH_PROGRAM=which,
+                    REVERSE_SHIFT=REVERSE,
+                    STRIKE_SHIFT=STRIKETHROUGH,
+                    DIM_SHIFT=DIM,
+                    DECORATION_SHIFT=DECORATION,
+                    MARK_SHIFT=MARK,
+                    MARK_MASK=MARK_MASK,
+                    DECORATION_MASK=DECORATION_MASK,
+                    STRIKE_SPRITE_INDEX=NUM_UNDERLINE_STYLES + 1,
+                )
+                if semi_transparent:
+                    vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
+                vvs.append(vv)
+            for f in fs:
+                ff = f.replace('{WHICH_PROGRAM}', which)
+                if self.text_fg_override_threshold != 0.:
+                    ff = ff.replace('#define NO_FG_OVERRIDE', f'#define FG_OVERRIDE {self.text_fg_override_threshold}')
+                if self.text_old_gamma:
+                    ff = ff.replace('#define TEXT_NEW_GAMMA', '#define TEXT_OLD_GAMMA')
+                if semi_transparent:
+                    ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
+                ffs.append(ff)
+            compile_program(p, tuple(vvs), tuple(ffs), allow_recompile)
 
-        v, f = load_shaders('graphics')
+        vs, fs = load_shaders('graphics')
         for which, p in {
                 'SIMPLE': GRAPHICS_PROGRAM,
                 'PREMULT': GRAPHICS_PREMULT_PROGRAM,
                 'ALPHA_MASK': GRAPHICS_ALPHA_MASK_PROGRAM,
         }.items():
             ff = f.replace('ALPHA_TYPE', which)
-            compile_program(p, v, ff, allow_recompile)
+            compile_program(p, vs, tuple(f.replace('ALPHA_TYPE', which) for f in fs), allow_recompile)
 
-        v, f = load_shaders('bgimage')
-        compile_program(BGIMAGE_PROGRAM, v, f, allow_recompile)
-        v, f = load_shaders('tint')
-        compile_program(TINT_PROGRAM, v, f, allow_recompile)
+        compile_program(BGIMAGE_PROGRAM, *load_shaders('bgimage'), allow_recompile)
+        compile_program(TINT_PROGRAM, *load_shaders('tint'), allow_recompile)
         init_cell_program()
 
 
