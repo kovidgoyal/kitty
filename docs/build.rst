@@ -214,7 +214,7 @@ support for cross compilation. Basically, run::
 
     make prepare-for-cross-compile
 
-Then setup the cross compile environment (CC, CFLAGS, etc.) and run::
+Then setup the cross compile environment (CC, CFLAGS, PATH, etc.) and run::
 
     make cross-compile
 
