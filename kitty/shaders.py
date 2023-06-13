@@ -80,13 +80,23 @@ def program_for(name: str) -> Program:
     return Program(name)
 
 
-def multi_replace(src: str, **replacements: Any) -> str:
-    r = {k: str(v) for k, v in replacements.items()}
+class MultiReplacer:
 
-    def sub(m: 're.Match[str]') -> str:
-        return r.get(m.group(1), m.group(1))
+    pat: Optional['re.Pattern[str]'] = None
 
-    return re.sub(r'\{([A-Z_]+)\}', sub, src)
+    def __init__(self, **replacements: Any):
+        self.replacements = {k: str(v) for k, v in replacements.items()}
+        if MultiReplacer.pat is None:
+            MultiReplacer.pat = re.compile(r'\{([A-Z_]+)\}')
+
+    def _sub(self, m: 're.Match[str]') -> str:
+        return self.replacements.get(m.group(1), m.group(1))
+
+    def __call__(self, src: str) -> str:
+        assert self.pat is not None
+        return self.pat.sub(self._sub, src)
+
+null_replacer = MultiReplacer()
 
 
 class LoadShaderPrograms:
@@ -94,6 +104,7 @@ class LoadShaderPrograms:
     text_fg_override_threshold: float = 0
     text_old_gamma: bool = False
     semi_transparent: bool = False
+    cell_program_replacer: MultiReplacer = null_replacer
 
     @property
     def needs_recompile(self) -> bool:
@@ -111,11 +122,8 @@ class LoadShaderPrograms:
         self.text_fg_override_threshold = max(0, min(opts.text_fg_override_threshold, 100)) * 0.01
         program_for('blit').compile(BLIT_PROGRAM, allow_recompile)
         cell = program_for('cell')
-
-        def resolve_cell_vertex_defines(which: str, v: str) -> str:
-            v = multi_replace(
-                v,
-                WHICH_PROGRAM=which,
+        if self.cell_program_replacer is null_replacer:
+            self.cell_program_replacer = MultiReplacer(
                 REVERSE_SHIFT=REVERSE,
                 STRIKE_SHIFT=STRIKETHROUGH,
                 DIM_SHIFT=DIM,
@@ -125,6 +133,10 @@ class LoadShaderPrograms:
                 DECORATION_MASK=DECORATION_MASK,
                 STRIKE_SPRITE_INDEX=NUM_UNDERLINE_STYLES + 1,
             )
+
+        def resolve_cell_vertex_defines(which: str, v: str) -> str:
+            self.cell_program_replacer.replacements['WHICH_PROGRAM'] = which
+            v = self.cell_program_replacer(v)
             if semi_transparent:
                 v = v.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
             return v
