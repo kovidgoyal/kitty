@@ -5,8 +5,8 @@ from enum import IntFlag
 from typing import Iterable, NamedTuple, Sequence
 
 from .fast_data_types import BORDERS_PROGRAM, add_borders_rect, compile_program, get_options, init_borders_program, os_window_has_background_image
+from .shaders import load_shaders
 from .typing import LayoutType
-from .utils import load_shaders
 from .window_list import WindowGroup, WindowList
 
 

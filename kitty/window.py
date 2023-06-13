@@ -107,13 +107,13 @@ from .notify import (
 )
 from .options.types import Options
 from .rgb import to_color
+from .shaders import load_shaders
 from .terminfo import get_capabilities
 from .types import MouseEvent, OverlayType, WindowGeometry, ac, run_once
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     docs_url,
     kitty_ansi_sanitizer_pat,
-    load_shaders,
     log_error,
     open_cmd,
     open_url,
