@@ -169,7 +169,7 @@ namespaced_entry_points['edit'] = edit
 
 def setup_openssl_environment(ext_dir: str) -> None:
     # Use our bundled CA certificates instead of the system ones, since
-    # many systems come with no certificates in a useable form or have various
+    # many systems come with no certificates in a usable form or have various
     # locations for the certificates.
     d = os.path.dirname
     if 'darwin' in sys.platform.lower():

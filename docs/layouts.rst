@@ -157,7 +157,7 @@ define a few extra key bindings in :file:`kitty.conf`::
     # one above the other if the existing window is tall.
     map f4 launch --location=split
 
-    # Rotate the current split, chaging its split axis from vertical to
+    # Rotate the current split, changing its split axis from vertical to
     # horizontal or vice versa
     map f7 layout_action rotate
 

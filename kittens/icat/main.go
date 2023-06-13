@@ -221,7 +221,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		}
 	}
 	if passthrough_mode != no_passthrough {
-		// tmux doesnt allow responses from the terminal so we cant detect if memory or file based transferring is supported
+		// tmux doesn't allow responses from the terminal so we can't detect if memory or file based transferring is supported
 		transfer_by_memory = unsupported
 		transfer_by_file = unsupported
 		transfer_by_stream = supported

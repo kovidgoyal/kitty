@@ -45,7 +45,7 @@
  * with the difference in last parameter.
  * Note the islt macro/routine (it receives pointers to two elements):
  * the only condition of interest is whenever one element is less than
- * another, no other conditions (greather than, equal to etc) are tested.
+ * another, no other conditions (greater than, equal to etc) are tested.
  * So, for example, to define integer sort, use:
  *  #define islt(a,b) ((*a)<(*b))
  *  QSORT(int, arr, n, islt)
@@ -149,7 +149,7 @@ typedef struct {
 									\
   /* Don't declare two variables of type QSORT_TYPE in a single		\
    * statement: eg `TYPE a, b;', in case if TYPE is a pointer,		\
-   * expands to `type* a, b;' wich isn't what we want.			\
+   * expands to `type* a, b;' which isn't what we want.			\
    */									\
 									\
   if (_elems > _QSORT_MAX_THRESH) {					\

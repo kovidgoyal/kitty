@@ -148,7 +148,7 @@ def get_macos_shortcut_for(
 ) -> Optional[SingleKey]:
     # for maximum robustness we should use opts.alias_map to resolve
     # aliases however this requires parsing everything on startup which could
-    # be potentially slow. Lets just hope the user doesnt alias these
+    # be potentially slow. Lets just hope the user doesn't alias these
     # functions.
     ans = None
     candidates = []
@@ -194,7 +194,7 @@ def set_macos_app_custom_icon() -> None:
                     log_error('Failed to set custom app icon, ignoring')
             # macOS Dock does not reload icons until it is restarted, so we set
             # the application icon here. This will revert when kitty quits, but
-            # cant be helped since there appears to be no way to get the dock
+            # can't be helped since there appears to be no way to get the dock
             # to reload short of killing it.
             cocoa_set_dock_icon(icon_path)
             break

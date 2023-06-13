@@ -279,7 +279,7 @@ The terminal will reply with::
 The program can also push/pop the current flags onto a stack in the
 terminal with::
 
-    CSI > flags u  # for push, if flags ommitted default to zero
+    CSI > flags u  # for push, if flags omitted default to zero
     CSI < number u # to pop number entries, defaulting to 1 if unspecified
 
 Terminals should limit the size of the stack as appropriate, to prevent
