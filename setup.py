@@ -64,6 +64,8 @@ class Options(argparse.Namespace):
     dir_for_static_binaries: str = 'build/static'
     skip_code_generation: bool = False
     clean_for_cross_compile: bool = False
+    python_compiler_flags: str = ''
+    python_linker_flags: str = ''
     incremental: bool = True
     profile: bool = False
     libdir_name: str = 'lib'
@@ -204,8 +206,13 @@ def get_python_include_paths() -> List[str]:
     return sorted(frozenset(filter(None, map(gp, sorted(ans)))))
 
 
-def get_python_flags(cflags: List[str], for_main_executable: bool = False) -> List[str]:
-    cflags.extend(f'-I{x}' for x in get_python_include_paths())
+def get_python_flags(args: Options, cflags: List[str], for_main_executable: bool = False) -> List[str]:
+    if args.python_compiler_flags:
+        cflags.extend(shlex.split(args.python_compiler_flags))
+    else:
+        cflags.extend(f'-I{x}' for x in get_python_include_paths())
+    if args.python_linker_flags:
+        return shlex.split(args.python_linker_flags)
     libs: List[str] = []
     libs += (sysconfig.get_config_var('LIBS') or '').split()
     libs += (sysconfig.get_config_var('SYSLIBS') or '').split()
@@ -434,7 +441,7 @@ def init_env(
     return Env(cc, cppflags, cflags, ldflags, library_paths, ccver=ccver, ldpaths=ldpaths, vcs_rev=vcs_rev)
 
 
-def kitty_env() -> Env:
+def kitty_env(args: Options) -> Env:
     ans = env.copy()
     cflags = ans.cflags
     cflags.append('-pthread')
@@ -469,7 +476,7 @@ def kitty_env() -> Env:
         platform_libs = []
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
     platform_libs.extend(pkg_config('harfbuzz', '--libs'))
-    pylib = get_python_flags(cflags)
+    pylib = get_python_flags(args, cflags)
     gl_libs = ['-framework', 'OpenGL'] if is_macos else pkg_config('gl', '--libs')
     libpng = pkg_config('libpng', '--libs')
     lcms2 = pkg_config('lcms2', '--libs')
@@ -789,18 +796,18 @@ def compile_glfw(compilation_database: CompilationDatabase) -> None:
             sources, all_headers, desc_prefix=f'[{module}] ')
 
 
-def kittens_env() -> Env:
+def kittens_env(args: Options) -> Env:
     kenv = env.copy()
     cflags = kenv.cflags
     cflags.append('-pthread')
     cflags.append('-Ikitty')
-    pylib = get_python_flags(cflags)
+    pylib = get_python_flags(args, cflags)
     kenv.ldpaths += pylib
     return kenv
 
 
-def compile_kittens(compilation_database: CompilationDatabase) -> None:
-    kenv = kittens_env()
+def compile_kittens(args: Options) -> None:
+    kenv = kittens_env(args)
 
     def list_files(q: str) -> List[str]:
         return sorted(glob.glob(q))
@@ -824,7 +831,7 @@ def compile_kittens(compilation_database: CompilationDatabase) -> None:
         final_env.cflags.extend(f'-I{x}' for x in includes)
         final_env.ldpaths[:0] = list(f'-l{x}' for x in libraries)
         compile_c_extension(
-            final_env, dest, compilation_database, sources, all_headers + ['kitty/data-types.h'])
+            final_env, dest, args.compilation_database, sources, all_headers + ['kitty/data-types.h'])
 
 
 def init_env_from_args(args: Options, native_optimizations: bool = False) -> None:
@@ -873,10 +880,10 @@ def build(args: Options, native_optimizations: bool = True, call_init: bool = Tr
     sources, headers = find_c_files()
     headers.append(build_ref_map(args.skip_code_generation))
     compile_c_extension(
-        kitty_env(), 'kitty/fast_data_types', args.compilation_database, sources, headers
+        kitty_env(args), 'kitty/fast_data_types', args.compilation_database, sources, headers
     )
     compile_glfw(args.compilation_database)
-    compile_kittens(args.compilation_database)
+    compile_kittens(args)
 
 
 def safe_makedirs(path: str) -> None:
@@ -1011,7 +1018,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     else:
         raise SystemExit(f'Unknown bundle type: {bundle_type}')
     cppflags.append(f'-DKITTY_LIB_PATH="{klp}"')
-    pylib = get_python_flags(cflags, for_main_executable=True)
+    pylib = get_python_flags(args, cflags, for_main_executable=True)
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     for path in args.extra_include_dirs:
@@ -1603,6 +1610,16 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         default=Options.clean_for_cross_compile,
         action='store_true',
         help='Do not clean generated Go source files. Useful for cross-compilation.'
+    )
+    p.add_argument(
+        '--python-compiler-flags', default=Options.python_compiler_flags,
+        help='Compiler flags for compiling against Python. Typically include directives. If not set'
+        ' the Python used to run setup.py is queried for these.'
+    )
+    p.add_argument(
+        '--python-linker-flags', default=Options.python_linker_flags,
+        help='Linker flags for linking against Python. Typically dynamic library names and search paths directives. If not set'
+        ' the Python used to run setup.py is queried for these.'
     )
     p.add_argument(
         '--full',
