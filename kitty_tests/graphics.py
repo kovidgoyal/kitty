@@ -359,15 +359,22 @@ class TestGraphics(BaseTest):
         self.ae(img['data'], random_data)
 
         # Test loading from file
-        f = tempfile.NamedTemporaryFile(prefix='tty-graphics-protocol-')
-        f.write(random_data), f.flush()
-        sl(f.name, s=24, v=32, t='f', expecting_data=random_data)
-        self.assertTrue(os.path.exists(f.name))
-        f.seek(0), f.truncate(), f.write(compressed_random_data), f.flush()
-        sl(f.name, s=24, v=32, t='t', o='z', expecting_data=random_data)
+        def load_temp(prefix='tty-graphics-protocol-'):
+            f = tempfile.NamedTemporaryFile(prefix=prefix)
+            f.write(random_data), f.flush()
+            sl(f.name, s=24, v=32, t='f', expecting_data=random_data)
+            self.assertTrue(os.path.exists(f.name))
+            f.seek(0), f.truncate(), f.write(compressed_random_data), f.flush()
+            sl(f.name, s=24, v=32, t='t', o='z', expecting_data=random_data)
+            return f
+
+        f = load_temp()
         self.assertFalse(os.path.exists(f.name), f'Temp file at {f.name} was not deleted')
         with suppress(FileNotFoundError):
             f.close()
+        f = load_temp('')
+        self.assertTrue(os.path.exists(f.name), f'Temp file at {f.name} was deleted')
+        f.close()
 
         # Test loading from POSIX SHM
         name = '/kitty-test-shm'
