@@ -8,6 +8,7 @@ import time
 import unittest
 import zlib
 from base64 import standard_b64decode, standard_b64encode
+from contextlib import suppress
 from dataclasses import dataclass
 from io import BytesIO
 from itertools import cycle
@@ -364,9 +365,9 @@ class TestGraphics(BaseTest):
         self.assertTrue(os.path.exists(f.name))
         f.seek(0), f.truncate(), f.write(compressed_random_data), f.flush()
         sl(f.name, s=24, v=32, t='t', o='z', expecting_data=random_data)
-        self.assertRaises(
-            FileNotFoundError, f.close
-        )  # check that file was deleted
+        self.assertFalse(os.path.exists(f.name), f'Temp file at {f.name} was not deleted')
+        with suppress(FileNotFoundError):
+            f.close()
 
         # Test loading from POSIX SHM
         name = '/kitty-test-shm'
