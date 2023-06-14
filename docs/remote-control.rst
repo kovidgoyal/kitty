@@ -283,7 +283,7 @@ are matched::
     map f1 remote_control !focus-window --match XXXXXX
 
 .. note:: You do not need :opt:`allow_remote_control` to use these mappings,
-   as they are not actual remote programs, but are simply a way to resuse the
+   as they are not actual remote programs, but are simply a way to reuse the
    remote control infrastructure via keybings.
 
 

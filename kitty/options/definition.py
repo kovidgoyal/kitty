@@ -387,7 +387,7 @@ Separate scrollback history size (in MB), used only for browsing the scrollback
 buffer with pager. This separate buffer is not available for interactive
 scrolling but will be piped to the pager program when viewing scrollback buffer
 in a separate window. The current implementation stores the data in UTF-8, so
-approximatively 10000 lines per megabyte at 100 chars per line, for pure ASCII,
+approximately 10000 lines per megabyte at 100 chars per line, for pure ASCII,
 unformatted text. A value of zero or less disables this feature. The maximum
 allowed size is 4GB. Note that on config reload if this is changed it will only
 affect newly created windows, not existing ones.
@@ -1253,7 +1253,7 @@ use :code:`{sup.index}`. All data available is:
 :code:`title`
     The current tab title.
 :code:`index`
-    The tab index useable with :ac:`goto_tab N <goto_tab>` shortcuts.
+    The tab index usable with :ac:`goto_tab N <goto_tab>` shortcuts.
 :code:`layout_name`
     The current layout name.
 :code:`num_windows`

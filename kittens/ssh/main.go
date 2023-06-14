@@ -489,7 +489,7 @@ func wrap_bootstrap_script(cd *connection_data) {
 		encoded_script = base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(cd.bootstrap_script))
 		unwrap_script = `"import base64, sys; eval(compile(base64.standard_b64decode(sys.argv[-1]), 'bootstrap.py', 'exec'))"`
 	} else {
-		// We cant rely on base64 being available on the remote system, so instead
+		// We can't rely on base64 being available on the remote system, so instead
 		// we quote the bootstrap script by replacing ' and \ with \v and \f
 		// also replacing \n and ! with \r and \b for tcsh
 		// finally surrounding with '

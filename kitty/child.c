@@ -27,7 +27,7 @@ serialize_string_tuple(PyObject *src) {
         if (!pysrc) {
             PyErr_Clear();
             DECREF_AFTER_FUNCTION PyObject *u8 = PyUnicode_AsEncodedString(PyTuple_GET_ITEM(src, i), "UTF-8", "ignore");
-            if (!u8) { PyErr_Print(); fatal("couldnt parse command line"); }
+            if (!u8) { PyErr_Print(); fatal("couldn't parse command line"); }
             ans[i] = calloc(PyBytes_GET_SIZE(u8) + 1, sizeof(char));
             if (ans[i] == NULL) fatal("Out of memory");
             memcpy(ans[i], PyBytes_AS_STRING(u8), PyBytes_GET_SIZE(u8));

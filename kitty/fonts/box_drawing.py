@@ -439,7 +439,7 @@ def rectircle_equations(
 ) -> Tuple[ParameterizedFunc, ParameterizedFunc]:
     '''
     Return two functions, x(t) and y(t) that map the parameter t which must be
-    in the range [0, 1] to x and y co-ordinates in the cell. The rectircle equation
+    in the range [0, 1] to x and y coordinates in the cell. The rectircle equation
     we use is:
 
     (|x| / a) ^ (2a / r) + (|y| / a) ^ (2b / r) = 1

@@ -153,7 +153,7 @@ def is_cmd_allowed(pcmd: Dict[str, Any], window: Optional['Window'], from_socket
         return True
     if 'cancel_async' in pcmd and pcmd.get('async_id'):
         # we allow these without authentication as they are sent on error
-        # conditions and we cant have users prompted for these. The worst side
+        # conditions and we can't have users prompted for these. The worst side
         # effect of a malicious cancel_async request is that it can prevent
         # another async request from getting a result, if it knows the async_id
         # of that request.

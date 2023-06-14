@@ -508,7 +508,7 @@ Detailed list of changes
 
 - A new value :code:`last_reported` for :option:`launch --cwd` to use the current working directory last reported by the program running in the terminal
 
-- macOS: When using Apple's less as the pager for viewing scrollback strip out OSC codes as it cant parse them (:iss:`4788`)
+- macOS: When using Apple's less as the pager for viewing scrollback strip out OSC codes as it can't parse them (:iss:`4788`)
 
 - diff kitten: Fix incorrect rendering in rare circumstances when scrolling after changing the context size (:iss:`4831`)
 
@@ -769,7 +769,7 @@ Detailed list of changes
 - A new remote control command to :program:`visually select a window <kitty @
   select-window>` (:iss:`4165`)
 
-- Add support for reporting mouse events with pixel co-ordinates using the
+- Add support for reporting mouse events with pixel coordinates using the
   ``SGR_PIXEL_PROTOCOL`` introduced in xterm 359
 
 - When programs ask to read from the clipboard prompt, ask the user to allow
@@ -933,7 +933,7 @@ Detailed list of changes
   sizes (:iss:`3896`)
 
 - Fix shift+middle click to paste sending a mouse press event but no release
-  event which breaks some applications that grab the mouse but cant handle
+  event which breaks some applications that grab the mouse but can't handle
   mouse events (:iss:`3902`)
 
 - macOS: When the language is set to English and the country to one for which
@@ -1610,7 +1610,7 @@ Detailed list of changes
 - Fix image leaving behind a black rectangle when switch away and back to
   alternate screen (:iss:`2901`)
 
-- Fix one pixel mis-alignment of rounded corners when either the cell
+- Fix one pixel misalignment of rounded corners when either the cell
   dimensions or the thickness of the line is an odd number of pixels
   (:iss:`2907`)
 

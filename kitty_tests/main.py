@@ -30,7 +30,7 @@ from typing import (
 def contents(package: str) -> Iterator[str]:
     try:
         if sys.version_info[:2] < (3, 10):
-            raise ImportError('importlib.resources.files() doesnt work with frozen builds on python 3.9')
+            raise ImportError("importlib.resources.files() doesn't work with frozen builds on python 3.9")
         from importlib.resources import files
     except ImportError:
         from importlib.resources import contents

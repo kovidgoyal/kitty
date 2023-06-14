@@ -78,7 +78,7 @@ var SetBlockingRead TermiosOperation = SetReadTimeout(0)
 
 var SetRaw TermiosOperation = func(t *unix.Termios) {
 	// This attempts to replicate the behaviour documented for cfmakeraw in
-	// the termios(3) manpage, as Go doesnt wrap cfmakeraw probably because its not in POSIX
+	// the termios(3) manpage, as Go doesn't wrap cfmakeraw probably because its not in POSIX
 	t.Iflag &^= unix.IGNBRK | unix.BRKINT | unix.PARMRK | unix.ISTRIP | unix.INLCR | unix.IGNCR | unix.ICRNL | unix.IXON
 	t.Oflag &^= unix.OPOST
 	t.Lflag &^= unix.ECHO | unix.ECHONL | unix.ICANON | unix.ISIG | unix.IEXTEN
@@ -336,7 +336,7 @@ func (self *Term) GetSize() (*unix.Winsize, error) {
 	}
 }
 
-// go doesnt have a wrapper for ctermid()
+// go doesn't have a wrapper for ctermid()
 func Ctermid() string { return "/dev/tty" }
 
 func DebugPrintln(a ...any) {

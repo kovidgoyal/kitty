@@ -18,7 +18,7 @@ following dependencies are installed first.
    If you are making small changes only to the Python parts of kitty, there is
    no need to build kitty at all, instead, assuming you have installed the
    official kitty binaries, you can simply set the :envvar:`KITTY_DEVELOP_FROM`
-   enviroment variable to point to the directory into which you have checked out
+   environment variable to point to the directory into which you have checked out
    the kitty source code. kitty will then load its Python code from there. You
    should use a version of the source that matches the binary version as closely
    as possible, since the two are tightly coupled.

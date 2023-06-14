@@ -109,7 +109,7 @@ copy --exclude **/w.* --exclude **/r d1
                 contents = set(files_in(remote_home))
                 contents.discard('.zshrc')  # added by check_bootstrap()
                 # depending on platform one of these is a symlink and hence
-                # isnt in contents
+                # isn't in contents
                 contents.discard(f'{tname}/x/xterm-kitty')
                 contents.discard(f'{tname}/78/xterm-kitty')
                 self.ae(contents, {

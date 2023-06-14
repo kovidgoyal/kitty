@@ -131,7 +131,7 @@ typedef struct {
 
 static inline float
 gl_size(const unsigned int sz, const unsigned int viewport_size) {
-    // convert pixel sz to OpenGL co-ordinate system.
+    // convert pixel sz to OpenGL coordinate system.
     const float px = 2.f / viewport_size;
     return px * sz;
 }

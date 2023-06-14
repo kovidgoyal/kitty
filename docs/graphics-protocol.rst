@@ -108,7 +108,7 @@ code to demonstrate its use
         #!/bin/bash
 
         # This uses the kitten standalone binary from kitty to get the pixel sizes
-        # since we cant do IOCTLs directly. Fortunately, kitten is a static exe
+        # since we can't do IOCTLs directly. Fortunately, kitten is a static exe
         # pre-built for every Unix like OS under the sun.
 
         builtin read -r rows cols < <(command stty size)

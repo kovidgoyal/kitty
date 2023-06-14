@@ -6,7 +6,7 @@ Glossary
 .. glossary::
 
    os_window
-     kitty has two kinds of windows. Operating System windows, refered to as :term:`OS
+     kitty has two kinds of windows. Operating System windows, referred to as :term:`OS
      Window <os_window>`, and *kitty windows*. An OS Window consists of one or more kitty
      :term:`tabs <tab>`. Each tab in turn consists of one or more *kitty
      windows* organized in a :term:`layout`.
@@ -22,7 +22,7 @@ Glossary
      the terminal. See :doc:`layouts` for details.
 
    window
-     kitty has two kinds of windows. Operating System windows, refered to as :term:`OS
+     kitty has two kinds of windows. Operating System windows, referred to as :term:`OS
      Window <os_window>`, and *kitty windows*. An OS Window consists of one or more kitty
      :term:`tabs <tab>`. Each tab in turn consists of one or more *kitty
      windows* organized in a :term:`layout`.
@@ -93,7 +93,7 @@ Variables that influence kitty behavior
 .. envvar:: KITTY_WAYLAND_DETECT_MODIFIERS
 
    When set to a non-empty value, kitty attempts to autodiscover XKB modifiers
-   under Wayland. This is useful if using non-standard modifers like hyper. It
+   under Wayland. This is useful if using non-standard modifiers like hyper. It
    is possible for the autodiscovery to fail; the default Wayland XKB mappings
    are used in this case. See :pull:`3943` for details.
 

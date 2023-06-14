@@ -245,7 +245,7 @@ class WriteRequest:
         self.current_leftover_bytes = memoryview(b'')
         self.max_size = (get_options().clipboard_max_size * 1024 * 1024) if max_size < 0 else max_size
         self.aliases: Dict[str, str] = {}
-        self.commited = False
+        self.committed = False
 
     def encode_response(self, status: str = 'OK') -> bytes:
         ans = f'{self.protocol_type.value};type=write:status={status}'
@@ -255,9 +255,9 @@ class WriteRequest:
         return a
 
     def commit(self) -> None:
-        if self.commited:
+        if self.committed:
             return
-        self.commited = True
+        self.committed = True
         cp = get_boss().primary_selection if self.is_primary_selection else get_boss().clipboard
         if cp.enabled:
             for alias, src in self.aliases.items():
