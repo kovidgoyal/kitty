@@ -42,6 +42,7 @@ Some programs and libraries that use the kitty graphics protocol:
 * `rasterm <https://github.com/BourgeoisBear/rasterm>`_  - Go library to display images in the terminal
 * `chafa <https://github.com/hpjansson/chafa>`_  - a terminal image viewer
 * `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_  - view images inside nvim
+* `kui.nvim <https://github.com/romgrk/kui.nvim>`_  - Build sophisticated UIs inside noevim using the kitty graphics protocol
 * `term-image <https://github.com/AnonymouX47/term-image>`_  - A Python library, CLI and TUI to display and browse images in the terminal
 * `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
 * `twitch-tui <https://github.com/Xithrius/twitch-tui>`_ - Twitch chat in the terminal
