@@ -15,7 +15,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.23.5
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	golang.org/x/image v0.8.0
-	golang.org/x/sys v0.8.0
+	golang.org/x/sys v0.9.0
 )
 
 require (
