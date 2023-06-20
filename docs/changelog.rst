@@ -42,7 +42,7 @@ Detailed list of changes
 
 - A new option :opt:`text_fg_override_threshold` to force text colors to have high contrast regardless of color scheme (:pull:`6283`)
 
-- When resizing OS Windows make the animation less jerky on macOS and Wayland. Also always show the window size in cells during the resize and scale the window contents while the resize is in progress to give a visual indicator of the relative size change (:iss:`6341`)
+- When resizing OS Windows make the animation less jerky. Also show the window size in cells during the resize (:iss:`6341`)
 
 - unicode_input kitten: Fix a regression in 0.28.0 that caused the order of recent and favorites entries to not be respected (:iss:`6214`)
 

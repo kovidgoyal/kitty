@@ -191,6 +191,7 @@ typedef struct CellRenderData {
         GLint xstart, ystart;
         GLsizei width, height;
     } px;
+    float x_ratio, y_ratio;
 } CellRenderData;
 
 typedef struct {
@@ -509,6 +510,15 @@ load_alpha_mask_texture(size_t width, size_t height, uint8_t *canvas) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, canvas);
     return &data;
 }
+
+static void
+gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, unsigned int screen_height_px, unsigned int width, unsigned int height) {
+    float width_frac = 2 * MIN(1, width / (float)screen_width_px), height_frac = 2 * MIN(1, height / (float)screen_height_px);
+    float hmargin = (2 - width_frac) / 2;
+    float vmargin = (2 - height_frac) / 2;
+    gpu_data_for_image(ans, -1 + hmargin, 1 - vmargin, -1 + hmargin + width_frac, 1 - vmargin - height_frac);
+}
+
 
 void
 draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas) {
@@ -930,11 +940,19 @@ get_visual_bell_intensity(Screen *screen) {
 }
 
 void
-draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float x_ratio, float y_ratio, OSWindow *os_window, bool is_active_window, bool can_be_focused, Window *window) {
+draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, OSWindow *os_window, bool is_active_window, bool can_be_focused, Window *window) {
+    float x_ratio = 1., y_ratio = 1.;
+    if (os_window->live_resize.in_progress) {
+        x_ratio = (float) os_window->viewport_width / (float) os_window->live_resize.width;
+        y_ratio = (float) os_window->viewport_height / (float) os_window->live_resize.height;
+    }
     Screen *screen = srd->screen;
     CELL_BUFFERS;
     bool inverted = screen_invert_colors(screen);
-    CellRenderData crd = {.gl={.xstart = srd->xstart, .ystart = srd->ystart, .dx = srd->dx * x_ratio, .dy = srd->dy * y_ratio} };
+    CellRenderData crd = {
+        .gl={.xstart = srd->xstart, .ystart = srd->ystart, .dx = srd->dx * x_ratio, .dy = srd->dy * y_ratio},
+        .x_ratio=x_ratio, .y_ratio=y_ratio
+    };
     crd.gl.width = crd.gl.dx * screen->columns; crd.gl.height = crd.gl.dy * screen->lines;
     // The scissor limits below are calculated to ensure that they do not
     // overlap with the pixels outside the draw area. We can't use the actual pixel window dimensions

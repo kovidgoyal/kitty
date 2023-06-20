@@ -39,6 +39,14 @@ static GLFWcursor *standard_cursor = NULL, *click_cursor = NULL, *arrow_cursor =
 
 static void set_os_window_dpi(OSWindow *w);
 
+static void
+apply_swap_interval(int val) {
+    (void)val;
+#ifndef __APPLE__
+    if (val < 0) val = OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0;
+    glfwSwapInterval(val);
+#endif
+}
 
 void
 get_platform_dependent_config_values(void *glfw_window) {
@@ -285,11 +293,19 @@ window_iconify_callback(GLFWwindow *window, int iconified) {
     global_state.callback_os_window = NULL;
 }
 
+void
+change_live_resize_state(OSWindow *w, bool in_progress) {
+    if (in_progress != w->live_resize.in_progress) {
+        w->live_resize.in_progress = in_progress;
+        apply_swap_interval(in_progress ? 0 : -1);
+    }
+}
+
 static void
 live_resize_callback(GLFWwindow *w, bool started) {
     if (!set_callback_window(w)) return;
     global_state.callback_os_window->live_resize.from_os_notification = true;
-    global_state.callback_os_window->live_resize.in_progress = true;
+    change_live_resize_state(global_state.callback_os_window, true);
     global_state.has_pending_resizes = true;
     if (!started) {
         global_state.callback_os_window->live_resize.os_says_resize_complete = true;
@@ -305,7 +321,7 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (width >= min_width && height >= min_height) {
         OSWindow *window = global_state.callback_os_window;
         global_state.has_pending_resizes = true;
-        window->live_resize.in_progress = true;
+        change_live_resize_state(global_state.callback_os_window, true);
         window->live_resize.last_resize_event_at = monotonic();
         window->live_resize.width = MAX(0, width); window->live_resize.height = MAX(0, height);
         window->live_resize.num_of_resize_events++;
@@ -322,7 +338,8 @@ dpi_change_callback(GLFWwindow *w, float x_scale UNUSED, float y_scale UNUSED) {
     // Ensure update_os_window_viewport() is called in the near future, it will
     // take care of DPI changes.
     OSWindow *window = global_state.callback_os_window;
-    window->live_resize.in_progress = true; global_state.has_pending_resizes = true;
+    change_live_resize_state(global_state.callback_os_window, true);
+    global_state.has_pending_resizes = true;
     window->live_resize.last_resize_event_at = monotonic();
     global_state.callback_os_window = NULL;
     request_tick_callback();
@@ -940,9 +957,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     // blank the window once so that there is no initial flash of color
     // changing, in case the background color is not black
     blank_canvas(is_semi_transparent ? OPT(background_opacity) : 1.0f, OPT(background));
-#ifndef __APPLE__
-    glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
-#endif
+    apply_swap_interval(-1);
     // On Wayland the initial swap is allowed only after the first XDG configure event
     if (glfwAreSwapsAllowed(glfw_window)) glfwSwapBuffers(glfw_window);
     glfwSetInputMode(glfw_window, GLFW_LOCK_KEY_MODS, true);

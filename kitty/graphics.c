@@ -916,14 +916,6 @@ gpu_data_for_image(ImageRenderData *ans, float left, float top, float right, flo
     ans->group_count = 1;
 }
 
-void
-gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, unsigned int screen_height_px, unsigned int width, unsigned int height) {
-    float width_frac = 2 * MIN(1, width / (float)screen_width_px), height_frac = 2 * MIN(1, height / (float)screen_height_px);
-    float hmargin = (2 - width_frac) / 2;
-    float vmargin = (2 - height_frac) / 2;
-    gpu_data_for_image(ans, -1 + hmargin, 1 - vmargin, -1 + hmargin + width_frac, 1 - vmargin - height_frac);
-}
-
 bool
 grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows, CellPixelSize cell) {
     if (self->last_scrolled_by != scrolled_by) self->layers_dirty = true;
