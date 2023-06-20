@@ -191,15 +191,7 @@ void main() {
 #endif
 #endif
 
-#ifdef SPECIAL
-#ifdef TRANSPARENT
-    final_color = vec4_premul(background, bg_alpha);
-#else
-    final_color = vec4(background, bg_alpha);
-#endif
-#endif
-
-#ifdef BACKGROUND
+#if defined(BACKGROUND) || defined(SPECIAL)
 #ifdef TRANSPARENT
     final_color = vec4_premul(background, bg_alpha);
 #else
