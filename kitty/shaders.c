@@ -988,7 +988,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, float
 // }}}
 
 // Borders {{{
-enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_tint_opacity, BORDER_tint_premult, BORDER_colors, BORDER_gamma_lut, BORDER_do_srgb_correction, NUM_BORDER_UNIFORMS };
+enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_tint_opacity, BORDER_tint_premult, BORDER_colors, BORDER_gamma_lut, NUM_BORDER_UNIFORMS };
 static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
 
 static void
@@ -998,7 +998,6 @@ init_borders_program(void) {
         SET_LOC(background_opacity)
         SET_LOC(tint_opacity)
         SET_LOC(tint_premult)
-        SET_LOC(do_srgb_correction)
         SET_LOC(colors)
         SET_LOC(gamma_lut)
 #undef SET_LOC
@@ -1022,7 +1021,6 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
     float background_opacity = w->is_semi_transparent ? w->background_opacity: 1.0f;
     float tint_opacity = background_opacity;
     float tint_premult = background_opacity;
-    float do_srgb_correction = 1.0f;
     if (has_bgimage(w)) {
         glEnable(GL_BLEND);
         BLEND_ONTO_OPAQUE;
@@ -1031,7 +1029,6 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         background_opacity = 1.0f;
         tint_opacity = OPT(background_tint) * OPT(background_tint_gaps);
         tint_premult = w->is_semi_transparent ? OPT(background_tint) : 1.0f;
-        do_srgb_correction = 0.0f;
     }
 
     if (num_border_rects) {
@@ -1053,7 +1050,6 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         glUniform1f(border_uniform_locations[BORDER_background_opacity], background_opacity);
         glUniform1f(border_uniform_locations[BORDER_tint_opacity], tint_opacity);
         glUniform1f(border_uniform_locations[BORDER_tint_premult], tint_premult);
-        glUniform1f(border_uniform_locations[BORDER_do_srgb_correction], do_srgb_correction);
         glUniform2ui(border_uniform_locations[BORDER_viewport], viewport_width, viewport_height);
         glUniform1fv(border_uniform_locations[BORDER_gamma_lut], 256, srgb_lut);
         if (has_bgimage(w)) {

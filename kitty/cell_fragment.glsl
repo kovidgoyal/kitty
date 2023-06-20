@@ -117,6 +117,7 @@ vec4 foreground_contrast(vec4 over, vec3 under) {
     return over;
 }
 
+#ifdef TEXT_OLD_GAMMA
 vec4 foreground_contrast_incorrect(vec4 over, vec3 under) {
     // Simulation of gamma-incorrect blending
     float under_luminance = dot(under, Y);
@@ -131,13 +132,17 @@ vec4 foreground_contrast_incorrect(vec4 over, vec3 under) {
     over.a = clamp_to_unit_float((srgb2linear(linear2srgb(over_lumininace) * over.a + linear2srgb(under_luminance) * (1.0f - over.a)) - under_luminance) / (over_lumininace - under_luminance));
     return over;
 }
+#endif
 
-vec4 foreground_color() {
+vec4 load_text_foreground_color() {
+    // For colored sprites use the color from the sprite rather than the text foreground
+    // Return non-premultiplied foreground color
     vec4 text_fg = texture(sprites, sprite_pos);
     return vec4(mix(foreground, text_fg.rgb, colored_sprite), text_fg.a);
 }
 
-vec4 foreground_with_decorations(vec4 text_fg) {
+vec4 calculate_premul_foreground_from_sprites(vec4 text_fg) {
+    // Return premul foreground color from decorations (cursor, underline, strikethrough)
     float underline_alpha = texture(sprites, underline_pos).a;
     float strike_alpha = texture(sprites, strike_pos).a;
     float cursor_alpha = texture(sprites, cursor_pos).a;
@@ -148,39 +153,41 @@ vec4 foreground_with_decorations(vec4 text_fg) {
     return mix(ans, cursor_color_vec, cursor_alpha);
 }
 
-vec4 calculate_foreground() {
-    // returns the effective foreground color in pre-multiplied form
-    vec4 text_fg = foreground_color();
-    return foreground_with_decorations(text_fg);
-}
-
-vec4 calculate_foreground(vec3 bg) {
+vec4 adjust_foreground_contrast_with_background(vec4 text_fg, vec3 bg) {
     // When rendering on a background we can adjust the alpha channel contrast
     // to improve legibility based on the source and destination colors
-    vec4 text_fg = foreground_color();
 #ifdef TEXT_OLD_GAMMA
-    text_fg = foreground_contrast_incorrect(text_fg, bg);
+    return foreground_contrast_incorrect(text_fg, bg);
 #else
-    text_fg = foreground_contrast(text_fg, bg);
+    return foreground_contrast(text_fg, bg);
 #endif
-    return foreground_with_decorations(text_fg);
 }
 
 #endif
+
+float adjust_alpha_for_incorrect_blending_by_compositor(float text_fg_alpha, float final_alpha) {
+    // Adjust the transparent alpha-channel to account for incorrect
+    // gamma-blending performed by the compositor (true for at least wlroots, picom)
+    // We have a linear alpha channel apply the sRGB curve to it once again to compensate
+    // for the incorrect blending in the compositor.
+    // We apply the correction only if there was actual text at this pixel, so as to not make
+    // background_opacity non-linear
+    // See https://github.com/kovidgoyal/kitty/issues/6209 for discussion.
+    const float threshold = 0.000001;
+    // linear2srgb(final_alpha) if text_fg_alpha >= threshold else final_alpha
+    return mix(final_alpha, linear2srgb(final_alpha), step(threshold, text_fg_alpha));
+}
 
 void main() {
 #ifdef SIMPLE
-    vec4 fg = calculate_foreground(background);
+    vec4 text_fg = load_text_foreground_color();
+    text_fg = adjust_foreground_contrast_with_background(text_fg, background);
+    vec4 text_fg_premul = calculate_premul_foreground_from_sprites(text_fg);
 #ifdef TRANSPARENT
-    final_color = alpha_blend_premul(fg, vec4_premul(background, bg_alpha));
-
-    // Adjust the transparent alpha-channel to account for incorrect
-    // gamma-blending performed by the compositor (true for at least wlroots,
-    // picom, GNOME, MacOS).
-    // This is the last pass:
-    final_color.a = linear2srgb(final_color.a);
+    final_color = alpha_blend_premul(text_fg_premul, vec4_premul(background, bg_alpha));
+    final_color.a = adjust_alpha_for_incorrect_blending_by_compositor(text_fg_premul.a, final_color.a);
 #else
-    final_color = alpha_blend_premul(fg, background);
+    final_color = alpha_blend_premul(text_fg_premul, background);
 #endif
 #endif
 
@@ -201,11 +208,12 @@ void main() {
 #endif
 
 #ifdef FOREGROUND
-    final_color = calculate_foreground();  // pre-multiplied foreground
-
-    // This is the last pass, called both with transparency and without but not in draw_cells_simple().
-    // When transparent it is drawn into a framebuffer and linear2srgb() will be done
-    // when blitting that framebuffer. When not transparent there is not need to do linear2srgb() anyway.
+    vec4 text_fg = load_text_foreground_color();
+    vec4 text_fg_premul = calculate_premul_foreground_from_sprites(text_fg);
+    final_color = text_fg_premul;
+#ifdef TRANSPARENT
+    final_color.a = adjust_alpha_for_incorrect_blending_by_compositor(text_fg_premul.a, final_color.a);
+#endif
 #endif
 
 }
