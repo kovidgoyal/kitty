@@ -72,13 +72,13 @@ class Program:
         for m in Program.include_pat.finditer(src):
             prefix = src[pos:m.start()]
             if prefix:
-                yield f'#line {lnum} {fnum}\n{prefix}'
-                lnum = prefix.count('\n')
+                yield f'\n#line {lnum} {fnum}\n{prefix}'
+                lnum += prefix.count('\n')
             iname = m.group(1)
             yield from self._load_sources(iname, level+1)
-            pos = m.start()
+            pos = m.end()
         if pos < len(src):
-            yield f'#line {lnum} {fnum}\n{src[pos:]}'
+            yield f'\n#line {lnum} {fnum}\n{src[pos:]}'
 
     def apply_to_sources(self, vertex: Callable[[str], str] = identity, frag: Callable[[str], str] = identity) -> None:
         self.vertex_sources = self.original_vertex_sources if vertex is identity else tuple(map(vertex, self.original_vertex_sources))
