@@ -195,14 +195,14 @@ class LoadShaderPrograms:
         graphics = program_for('graphics')
 
         def resolve_graphics_fragment_defines(which: str, f: str) -> str:
-            return f.replace('ALPHA_TYPE', which)
+            return f.replace('#define ALPHA_TYPE', f'#define {which}', 1)
 
         for which, p in {
             'SIMPLE': GRAPHICS_PROGRAM,
             'PREMULT': GRAPHICS_PREMULT_PROGRAM,
             'ALPHA_MASK': GRAPHICS_ALPHA_MASK_PROGRAM,
         }.items():
-            graphics.apply_to_sources(frag=partial(resolve_cell_fragment_defines, which))
+            graphics.apply_to_sources(frag=partial(resolve_graphics_fragment_defines, which))
             graphics.compile(p, allow_recompile)
 
         program_for('bgimage').compile(BGIMAGE_PROGRAM, allow_recompile)
