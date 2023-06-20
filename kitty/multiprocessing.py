@@ -16,18 +16,11 @@ orig_spawn_passfds = util.spawnv_passfds
 orig_executable = spawn.get_executable()
 
 if TYPE_CHECKING:
-    from array import array
-    from ctypes import _CData
-    from mmap import mmap
-    from pickle import PickleBuffer
-    from typing import Protocol, SupportsIndex, SupportsInt
+    from typing import SupportsIndex, SupportsInt
 
-    class SupportsTrunc(Protocol):
-        def __trunc__(self) -> int: ...
+    from _typeshed import ReadableBuffer, SupportsTrunc
 
-    ArgsType = Sequence[
-        Union[str, Union[bytes, Union[bytearray, memoryview, array[Any], mmap, _CData, PickleBuffer]], SupportsInt, SupportsIndex, SupportsTrunc]
-    ]
+    ArgsType = Sequence[Union[str, ReadableBuffer, SupportsInt, SupportsIndex, SupportsTrunc]]
 else:
     ArgsType = Sequence[str]
 
