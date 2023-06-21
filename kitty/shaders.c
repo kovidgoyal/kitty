@@ -16,8 +16,8 @@
 #define BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // blending onto opaque colors with final color having alpha 1
 #define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, NUM_PROGRAMS };
-enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT, BGIMAGE_UNIT };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, NUM_PROGRAMS };
+enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BGIMAGE_UNIT };
 
 // Sprites {{{
 typedef struct {
@@ -818,26 +818,12 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
         draw_tint(true, screen, crd);
         glDisable(GL_BLEND);
     }
-    if (!os_window->offscreen_texture_id) {
-        glGenFramebuffers(1, &os_window->offscreen_framebuffer);
-        glGenTextures(1, &os_window->offscreen_texture_id);
-        glBindTexture(GL_TEXTURE_2D, os_window->offscreen_texture_id);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, os_window->viewport_width, os_window->viewport_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    }
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, os_window->offscreen_framebuffer);
-    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, os_window->offscreen_texture_id, 0);
-    /* if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) fatal("Offscreen framebuffer not complete"); */
     bind_program(CELL_BG_PROGRAM);
     if (!has_bgimage(os_window)) {
         // draw background for all cells
         glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 3);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    } else blank_canvas(0, 0);
+    }
     glEnable(GL_BLEND);
     BLEND_PREMULT;
 
@@ -870,22 +856,7 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
 
     if (screen->grman->num_of_positive_refs) draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, screen->grman->num_of_negative_refs + screen->grman->num_of_below_refs, screen->grman->num_of_positive_refs);
 
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     if (!has_bgimage(os_window)) glDisable(GL_BLEND);
-    glEnable(GL_SCISSOR_TEST);
-
-    // Now render the framebuffer to the screen
-    bind_program(BLIT_PROGRAM);
-    static bool blit_constants_set = false;
-    if (!blit_constants_set) {
-        glUniform1i(glGetUniformLocation(program_id(BLIT_PROGRAM), "image"), BLIT_UNIT);
-        blit_constants_set = true;
-    }
-    glActiveTexture(GL_TEXTURE0 + BLIT_UNIT);
-    glBindTexture(GL_TEXTURE_2D, os_window->offscreen_texture_id);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    glDisable(GL_SCISSOR_TEST);
-    glDisable(GL_BLEND);
 }
 
 void
@@ -964,10 +935,6 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, OSWin
     // The scissor limits below are calculated to ensure that they do not
     // overlap with the pixels outside the draw area. We can't use the actual pixel window dimensions
     // because of the mapping of opengl's float based co-ord system to pixels.
-    // for a test case (scissor is used to blit framebuffer in draw_cells_interleaved_premult) run:
-    // kitty -o background=cyan -o background_opacity=0.7 -o cursor_blink_interval=0 -o window_margin_width=40 -o remember_initial_window_size=n -o initial_window_width=401 kitty +kitten icat --hold logo/kitty.png
-    // Repeat incrementing window width by 1px each time over cursor_width number of pixels and see if any lines
-    // appear at the borders of the content area
     unsigned scissor_base_width = os_window->live_resize.in_progress ? os_window->live_resize.width : (unsigned)os_window->viewport_width;
     unsigned scissor_base_height = os_window->live_resize.in_progress ? os_window->live_resize.height: (unsigned)os_window->viewport_height;
 #define SCALE(w, x) ((GLfloat)(scissor_base_##w) * (GLfloat)(x))
@@ -1201,7 +1168,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

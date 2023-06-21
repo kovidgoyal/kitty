@@ -64,7 +64,8 @@ vec4 vec4_premul(vec4 rgba) {
  *    multiple passes drawing the background and foreground separately and blending.
  *
  *    2a) Opaque bg with images under text
- *        There are multiple passes, each pass is blended onto the previous using the opaque blend func (alpha, 1- alpha):
+ *        There are multiple passes, each pass is blended onto the previous using the opaque blend func (alpha, 1- alpha). TRANSPARENT is not
+ *        defined in the shaders.
  *        1) Draw background for all cells
  *        2) Draw the images that are supposed to be below both the background and text, if any. This happens in the graphics shader
  *        3) Draw the background of cells that don't have the default background if any images were drawn in 2 above
@@ -74,9 +75,8 @@ vec4 vec4_premul(vec4 rgba) {
  *        7) Draw the images that are supposed to be above text again in the graphics shader
  *
  *    2b) Transparent bg with images
- *        First everything is rendered into a framebuffer, and then the framebuffer is blended onto
- *        the screen. The framebuffer is needed because it allows access to the background color pixels
- *        to blend with the image pixels. The steps are basically the same as for 2a.
+ *        Same as (2a) except blending is done with PREMULT_BLEND and TRANSPARENT is defined in the shaders. background_opacity
+ *        is applied to default colored background cells in step (1).
  *
  *  In this shader exactly *one* of SIMPLE, SPECIAL, FOREGROUND or BACKGROUND will be defined, corresponding
  *  to the appropriate rendering pass from above.

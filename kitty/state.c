@@ -477,8 +477,6 @@ destroy_os_window_item(OSWindow *w) {
         remove_tab_inner(w, tab->id);
     }
     Py_CLEAR(w->window_title); Py_CLEAR(w->tab_bar_render_data.screen);
-    if (w->offscreen_texture_id) free_texture(&w->offscreen_texture_id);
-    if (w->offscreen_framebuffer) free_framebuffer(&w->offscreen_framebuffer);
     remove_vao(w->tab_bar_render_data.vao_idx);
     remove_vao(w->gvao_idx);
     free(w->tabs); w->tabs = NULL;

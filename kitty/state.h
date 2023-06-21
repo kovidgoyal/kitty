@@ -189,7 +189,6 @@ typedef struct {
 typedef struct {
     void *handle;
     id_type id;
-    uint32_t offscreen_framebuffer;
     struct {
         int x, y, w, h;
         bool is_set, was_maximized;
@@ -216,7 +215,6 @@ typedef struct {
     monotonic_t viewport_resized_at;
     LiveResizeInfo live_resize;
     bool has_pending_resizes, is_semi_transparent, shown_once, is_damaged;
-    uint32_t offscreen_texture_id;
     unsigned int clear_count;
     color_type last_titlebar_color;
     float background_opacity;

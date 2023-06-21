@@ -9,7 +9,6 @@ from typing import Any, Callable, Dict, Iterator, Optional
 from .constants import read_kitty_resource
 from .fast_data_types import (
     BGIMAGE_PROGRAM,
-    BLIT_PROGRAM,
     CELL_BG_PROGRAM,
     CELL_FG_PROGRAM,
     CELL_PROGRAM,
@@ -149,7 +148,6 @@ class LoadShaderPrograms:
         opts = get_options()
         self.text_old_gamma = opts.text_composition_strategy == 'legacy'
         self.text_fg_override_threshold = max(0, min(opts.text_fg_override_threshold, 100)) * 0.01
-        program_for('blit').compile(BLIT_PROGRAM, allow_recompile)
         cell = program_for('cell')
         if self.cell_program_replacer is null_replacer:
             self.cell_program_replacer = MultiReplacer(

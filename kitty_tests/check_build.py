@@ -32,7 +32,7 @@ class TestBuild(BaseTest):
 
     def test_loading_shaders(self) -> None:
         from kitty.shaders import Program
-        for name in 'cell border bgimage tint blit graphics'.split():
+        for name in 'cell border bgimage tint graphics'.split():
             Program(name)
 
     def test_glfw_modules(self) -> None:

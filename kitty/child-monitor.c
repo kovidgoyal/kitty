@@ -825,7 +825,7 @@ render(monotonic_t now, bool input_read) {
         bool needs_render = w->is_damaged || w->live_resize.in_progress;
         if (w->viewport_size_dirty) {
             w->clear_count = 0;
-            update_surface_size(w->viewport_width, w->viewport_height, w->offscreen_texture_id);
+            update_surface_size(w->viewport_width, w->viewport_height, 0);
             w->viewport_size_dirty = false;
             needs_render = true;
         }
