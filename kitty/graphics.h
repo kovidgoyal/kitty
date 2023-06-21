@@ -172,3 +172,4 @@ void gpu_data_for_image(ImageRenderData *ans, float left, float top, float right
 bool png_from_file_pointer(FILE* fp, const char *path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
 bool png_path_to_bitmap(const char *path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
 bool scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t *minimum_gap, bool os_window_context_set);
+void scale_rendered_graphic(ImageRenderData*, float xstart, float ystart, float x_scale, float y_scale);

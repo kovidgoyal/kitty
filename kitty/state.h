@@ -101,7 +101,7 @@ typedef struct WindowLogoRenderData {
 
 typedef struct {
     ssize_t vao_idx, gvao_idx;
-    float xstart, ystart, dx, dy, xratio, yratio;
+    float xstart, ystart, dx, dy;
     Screen *screen;
 } ScreenRenderData;
 

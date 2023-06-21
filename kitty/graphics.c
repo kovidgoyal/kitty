@@ -908,8 +908,22 @@ set_vertex_data(ImageRenderData *rd, const ImageRef *ref, const ImageRect *dest_
 }
 
 void
+scale_rendered_graphic(ImageRenderData *rd, float xstart, float ystart, float x_scale, float y_scale) {
+    float right = rd->vertices[2], left = rd->vertices[8 + 2], top = rd->vertices[3], bottom = rd->vertices[4 + 3];
+    float width = right - left, height = bottom - top;
+    left = xstart + (left - xstart) * x_scale;
+    right = left + width * x_scale;
+    top = ystart + (top - ystart) * y_scale;
+    bottom = top + height * y_scale;
+    rd->vertices[0+2] = right;   rd->vertices[4+2] = right;
+    rd->vertices[8+2] = left;    rd->vertices[12+2] = left;
+    rd->vertices[0+3] = top;     rd->vertices[12+3] = top;
+    rd->vertices[4+3] = bottom;  rd->vertices[8+3] = bottom;
+}
+
+void
 gpu_data_for_image(ImageRenderData *ans, float left, float top, float right, float bottom) {
-    // x-axis is from -1 to 1, y axis is from 1 to -1
+    // For dest rect: x-axis is from -1 to 1, y axis is from 1 to -1
     static const ImageRef source_rect = { .src_rect = { .left=0, .top=0, .bottom=1, .right=1 }};
     const ImageRef *ref = &source_rect;
     const ImageRect r = { .left = left, .right = right, .top = top, .bottom = bottom };

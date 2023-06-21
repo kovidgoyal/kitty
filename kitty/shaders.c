@@ -281,9 +281,10 @@ static struct CellUniformData cell_uniform_data = {0, .prev_inactive_text_alpha=
 
 static void
 send_graphics_data_to_gpu(size_t image_count, ssize_t gvao_idx, const ImageRenderData *render_data) {
-    size_t sz = sizeof(GLfloat) * 16 * image_count;
+    const size_t num_of_floats_per_image = arraysz(render_data[0].vertices);
+    size_t sz = sizeof(GLfloat) * num_of_floats_per_image * image_count;
     GLfloat *a = alloc_and_map_vao_buffer(gvao_idx, sz, 0, GL_STREAM_DRAW, GL_WRITE_ONLY);
-    for (size_t i = 0; i < image_count; i++, a += 16) memcpy(a, render_data[i].vertices, sizeof(render_data[0].vertices));
+    for (size_t i = 0; i < image_count; i++, a += num_of_floats_per_image) memcpy(a, render_data[i].vertices, sizeof(render_data[0].vertices));
     unmap_vao_buffer(gvao_idx, 0); a = NULL;
 }
 
@@ -938,6 +939,16 @@ get_visual_bell_intensity(Screen *screen) {
     return 0.0f;
 }
 
+static void
+scale_graphics_for_live_resize(Screen *screen, float xstart, float ystart, CellRenderData *crd, ssize_t gvao_idx) {
+    const size_t sz = screen->grman->count * sizeof(screen->grman->render_data[0]);
+    FREE_AFTER_FUNCTION ImageRenderData *changed = malloc(sz);
+    if (changed == NULL) fatal("Out of memory allocating temporary ImageRenderData* for live resize");
+    memcpy(changed, screen->grman->render_data, sz);
+    for (size_t i = 0; i < screen->grman->count; i++) scale_rendered_graphic(changed + i, xstart, ystart, crd->x_ratio, crd->y_ratio);
+    send_graphics_data_to_gpu(screen->grman->count, gvao_idx, changed);
+}
+
 void
 draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, OSWindow *os_window, bool is_active_window, bool can_be_focused, Window *window) {
     float x_ratio = 1., y_ratio = 1.;
@@ -956,11 +967,13 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, OSWin
     // The scissor limits below are calculated to ensure that they do not
     // overlap with the pixels outside the draw area. We can't use the actual pixel window dimensions
     // because of the mapping of opengl's float based co-ord system to pixels.
-    // for a test case (scissor is also used to blit framebuffer in draw_cells_interleaved_premult) run:
+    // for a test case (scissor is used to blit framebuffer in draw_cells_interleaved_premult) run:
     // kitty -o background=cyan -o background_opacity=0.7 -o cursor_blink_interval=0 -o window_margin_width=40 -o remember_initial_window_size=n -o initial_window_width=401 kitty +kitten icat --hold logo/kitty.png
     // Repeat incrementing window width by 1px each time over cursor_width number of pixels and see if any lines
     // appear at the borders of the content area
-#define SCALE(w, x) ((GLfloat)(os_window->viewport_##w) * (GLfloat)(x))
+    unsigned scissor_base_width = os_window->live_resize.in_progress ? os_window->live_resize.width : (unsigned)os_window->viewport_width;
+    unsigned scissor_base_height = os_window->live_resize.in_progress ? os_window->live_resize.height: (unsigned)os_window->viewport_height;
+#define SCALE(w, x) ((GLfloat)(scissor_base_##w) * (GLfloat)(x))
     /* printf("columns=%d dx=%f w=%f vw=%d vh=%d left=%f width=%f\n", screen->columns, dx, w, os_window->viewport_width, os_window->viewport_height, SCALE(width, (xstart + 1.f)/2.f), SCALE(width, w / 2.f)); */
 
         crd.px.xstart = (GLint)roundf(SCALE(width, (crd.gl.xstart + 1.f)/2.f));
@@ -984,6 +997,11 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, OSWin
         has_underlying_image = true;
         set_on_gpu_state(window->window_logo.instance, true);
     } else wl = NULL;
+    bool restore_graphics_render_data = false;
+    if (os_window->live_resize.in_progress && window->render_data.gvao_idx && screen->grman->count && (crd.x_ratio != 1 || crd.y_ratio != 1)) {
+        restore_graphics_render_data = true;
+        scale_graphics_for_live_resize(screen, srd->xstart, srd->ystart, &crd, window->render_data.gvao_idx);
+    }
     if (os_window->is_semi_transparent) {
         if (screen->grman->count || has_underlying_image) draw_cells_interleaved_premult(
                 vao_idx, gvao_idx, screen, os_window, &crd, wl);
@@ -1001,6 +1019,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, const ScreenRenderData *srd, OSWin
 
     if (window && screen->display_window_char) draw_window_number(os_window, screen, &crd, window);
     if (OPT(show_hyperlink_targets) && window && screen->current_hyperlink_under_mouse.id && !is_mouse_hidden(os_window)) draw_hyperlink_target(os_window, screen, &crd, window);
+    if (restore_graphics_render_data) send_graphics_data_to_gpu(screen->grman->count, window->render_data.gvao_idx, screen->grman->render_data);
 }
 // }}}
 
