@@ -1,5 +1,4 @@
 #extension GL_ARB_explicit_attrib_location : require
-#extension GL_ARB_explicit_uniform_location : require
 #pragma kitty_include_shader <alpha_blend.glsl>
 #define ALPHA_TYPE
 
@@ -8,8 +7,7 @@ uniform sampler2D image;
 uniform vec3 amask_fg;
 uniform vec4 amask_bg_premult;
 #else
-// Have to use fixed locations here as all non-alpha mask variants of the program share the same uniform
-layout(location=3000) uniform float inactive_text_alpha;
+uniform float inactive_text_alpha;
 #endif
 
 in vec2 texcoord;

@@ -273,7 +273,7 @@ create_graphics_vao(void) {
 
 struct CellUniformData {
     bool constants_set;
-    GLint gploc, cploc, cfploc, fg_loc, amask_bg_premult_loc, amask_fg_loc, amask_image_loc;
+    GLint gploc, gpploc, cploc, cfploc, fg_loc, amask_bg_premult_loc, amask_fg_loc, amask_image_loc;
     GLfloat prev_inactive_text_alpha;
 };
 
@@ -575,6 +575,7 @@ static void
 set_cell_uniforms(float current_inactive_text_alpha, bool force) {
     if (!cell_uniform_data.constants_set || force) {
         cell_uniform_data.gploc = glGetUniformLocation(program_id(GRAPHICS_PROGRAM), "inactive_text_alpha");
+        cell_uniform_data.gpploc = glGetUniformLocation(program_id(GRAPHICS_PREMULT_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.cploc = glGetUniformLocation(program_id(CELL_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.cfploc = glGetUniformLocation(program_id(CELL_FG_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.amask_bg_premult_loc = glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "amask_bg_premult");
@@ -600,7 +601,7 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
     if (current_inactive_text_alpha != cell_uniform_data.prev_inactive_text_alpha || force) {
         cell_uniform_data.prev_inactive_text_alpha = current_inactive_text_alpha;
 #define S(prog, loc) { bind_program(prog); glUniform1f(cell_uniform_data.loc, current_inactive_text_alpha); }
-        S(CELL_PROGRAM, cploc); S(CELL_FG_PROGRAM, cfploc); S(GRAPHICS_PROGRAM, gploc); S(GRAPHICS_PREMULT_PROGRAM, gploc);
+        S(CELL_PROGRAM, cploc); S(CELL_FG_PROGRAM, cfploc); S(GRAPHICS_PROGRAM, gploc); S(GRAPHICS_PREMULT_PROGRAM, gpploc);
 #undef S
     }
 }
@@ -692,9 +693,9 @@ draw_window_logo(ssize_t vao_idx, OSWindow *os_window, const WindowLogoRenderDat
     gpu_data_for_image(&ird, logo_left_gl, logo_top_gl, logo_left_gl + logo_width_gl, logo_top_gl - logo_height_gl);
     send_graphics_data_to_gpu(1, os_window->gvao_idx, &ird);
     bind_program(GRAPHICS_PREMULT_PROGRAM);
-    glUniform1f(cell_uniform_data.gploc, cell_uniform_data.prev_inactive_text_alpha * wl->alpha);
+    glUniform1f(cell_uniform_data.gpploc, cell_uniform_data.prev_inactive_text_alpha * wl->alpha);
     draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, os_window->gvao_idx, &ird, 0, 1);
-    glUniform1f(cell_uniform_data.gploc, cell_uniform_data.prev_inactive_text_alpha);
+    glUniform1f(cell_uniform_data.gpploc, cell_uniform_data.prev_inactive_text_alpha);
 }
 
 static void
