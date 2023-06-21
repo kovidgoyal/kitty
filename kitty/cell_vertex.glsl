@@ -215,10 +215,8 @@ void main() {
 #if defined(BACKGROUND)
     background = bg;
     // draw_bg_bitfield has bit 0 set to draw default bg cells and bit 1 set to draw non-default bg cells
-#ifndef SPECIAL
     uint draw_bg_mask = uint(2 * cell_has_non_default_bg + (1 - cell_has_non_default_bg));
     draw_bg = step(1, float(draw_bg_bitfield & draw_bg_mask));
-#endif
 #endif
 
 #ifdef TRANSPARENT
