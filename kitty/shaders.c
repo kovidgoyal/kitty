@@ -435,10 +435,9 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
 }
 
 static void
-draw_bg(OSWindow *w) {
+draw_background_image(OSWindow *w) {
     blank_canvas(w->is_semi_transparent ? OPT(background_opacity) : 1.0f, OPT(background));
     bind_program(BGIMAGE_PROGRAM);
-    bind_vertex_array(blit_vertex_array);
 
     glUniform1i(bgimage_program_layout.image_location, BGIMAGE_UNIT);
     glUniform1f(bgimage_program_layout.opacity_location, OPT(background_opacity));
@@ -474,7 +473,6 @@ draw_bg(OSWindow *w) {
     glActiveTexture(GL_TEXTURE0 + BGIMAGE_UNIT);
     glBindTexture(GL_TEXTURE_2D, w->bgimage->texture_id);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    unbind_vertex_array();
     unbind_program();
 }
 
@@ -1061,7 +1059,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
     if (has_bgimage(w)) {
         glEnable(GL_BLEND);
         BLEND_ONTO_OPAQUE;
-        draw_bg(w);
+        draw_background_image(w);
         BLEND_ONTO_OPAQUE;
         background_opacity = 1.0f;
         tint_opacity = OPT(background_tint) * OPT(background_tint_gaps);
