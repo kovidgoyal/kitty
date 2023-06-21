@@ -599,7 +599,7 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
     if (current_inactive_text_alpha != cell_uniform_data.prev_inactive_text_alpha || force) {
         cell_uniform_data.prev_inactive_text_alpha = current_inactive_text_alpha;
 #define S(prog, loc) { bind_program(prog); glUniform1f(cell_uniform_data.loc, current_inactive_text_alpha); }
-        S(CELL_PROGRAM, cploc); S(CELL_FG_PROGRAM, cfploc); S(GRAPHICS_PROGRAM, gploc);
+        S(CELL_PROGRAM, cploc); S(CELL_FG_PROGRAM, cfploc); S(GRAPHICS_PROGRAM, gploc); S(GRAPHICS_PREMULT_PROGRAM, gploc);
 #undef S
     }
 }
