@@ -201,7 +201,6 @@ typedef struct {
 } CellProgramLayout;
 
 static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
-static ssize_t blit_vertex_array;
 typedef struct {
     GLint image_location, tiled_location, sizes_location, positions_location, opacity_location, premult_location;
 } BGImageProgramLayout;
@@ -227,7 +226,6 @@ init_cell_program(void) {
         C(p, colors, 0); C(p, sprite_coords, 1); C(p, is_selected, 2);
     }
 #undef C
-    blit_vertex_array = create_vao();
     bgimage_program_layout.image_location = get_uniform_location(BGIMAGE_PROGRAM, "image");
     bgimage_program_layout.opacity_location = get_uniform_location(BGIMAGE_PROGRAM, "opacity");
     bgimage_program_layout.sizes_location = get_uniform_location(BGIMAGE_PROGRAM, "sizes");
@@ -877,7 +875,7 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
     glEnable(GL_SCISSOR_TEST);
 
     // Now render the framebuffer to the screen
-    bind_program(BLIT_PROGRAM); bind_vertex_array(blit_vertex_array);
+    bind_program(BLIT_PROGRAM);
     static bool blit_constants_set = false;
     if (!blit_constants_set) {
         glUniform1i(glGetUniformLocation(program_id(BLIT_PROGRAM), "image"), BLIT_UNIT);
