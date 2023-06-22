@@ -901,6 +901,8 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
 
 void
 scale_rendered_graphic(ImageRenderData *rd, float xstart, float ystart, float x_scale, float y_scale) {
+    // Scale the graphic so that it appears at the same position and size during a live resize
+    // this means scale factors are applied to both the position and size of the graphic.
     float width = rd->dest_rect.right - rd->dest_rect.left, height = rd->dest_rect.bottom - rd->dest_rect.top;
     rd->dest_rect.left = xstart + (rd->dest_rect.left - xstart) * x_scale;
     rd->dest_rect.right = rd->dest_rect.left + width * x_scale;
