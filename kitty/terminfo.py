@@ -266,6 +266,20 @@ string_capabilities = {
     'setrgbf': r'\E[38:2:%p1%d:%p2%d:%p3%dm',
     # Set RGB background color (non-standard used by neovim)
     'setrgbb': r'\E[48:2:%p1%d:%p2%d:%p3%dm',
+    # DECSCUSR Set cursor style
+    'Ss': r'\E[%p1%d\sq',
+    # DECSCUSR Reset cursor style to power-on default
+    'Se': r'\E[2\sq',
+    # Set cursor color
+    'Cs': r'\E]12;%p1%s\007',
+    # Reset cursor color
+    'Cr': r'\E]112\007',
+    # Indicates support for styled and colored underlines (non-standard) as
+    # described at:
+    # https://github.com/kovidgoyal/kitty/blob/master/protocol-extensions.asciidoc
+    # 'Setulc' is quivalent to the 'Su' boolean capability. Until
+    # standardized, specify both for application compatibility.
+    'Setulc': r'\E[58:2:%p1%{65536}%/%d:%p1%{256}%/%{255}%&%d:%p1%{255}%&%d%;m',
 
     # The following entries are for compatibility with xterm,
     # and shell scripts using e.g. `tput u7` to emit a CPR escape
@@ -448,7 +462,7 @@ queryable_capabilities = cast(Dict[str, str], numeric_capabilities.copy())
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset(
-    'Su Smulx Sync Tc setrgbf setrgbb fullkbd kUP kDN kbeg kBEG'.split() + [
+    'Cr Cs Se Ss Setulc Su Smulx Sync Tc setrgbf setrgbb fullkbd kUP kDN kbeg kBEG'.split() + [
         f'k{key}{mod}'
         for key in 'UP DN RIT LFT BEG END HOM IC DC PRV NXT'.split()
         for mod in range(3, 8)])
