@@ -870,7 +870,7 @@ def build_uniforms_header(skip_generation: bool = False) -> str:
         return dest
     lines = ['#include "gl.h"', '']
     a = lines.append
-    uniform_names = {}
+    uniform_names: Dict[str, Tuple[str, ...]] = {}
     class_names = {}
     function_names = {}
 
