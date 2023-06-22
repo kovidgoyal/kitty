@@ -1419,7 +1419,7 @@ gaps for a *separated* look.
 '''
     )
 
-opt('dim_opacity', '0.75',
+opt('dim_opacity', '0.4',
     option_type='unit_float', ctype='float',
     long_text='''
 How much to dim text that has the DIM/FAINT attribute set. One means no dimming
