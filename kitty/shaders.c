@@ -593,7 +593,6 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         }
         for (int i = CELL_PROGRAM; i <= CELL_FG_PROGRAM; i++) {
             bind_program(i); const CellUniforms *cu = &cell_program_layouts[i].uniforms;
-            glUniform1fv(cu->gamma_lut, arraysz(srgb_lut), srgb_lut);
             switch(i) {
                 case CELL_PROGRAM: case CELL_FG_PROGRAM:
                     glUniform1i(cu->sprites, SPRITE_MAP_UNIT);
@@ -1040,7 +1039,6 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         glUniform1f(border_program_layout.uniforms.tint_opacity, tint_opacity);
         glUniform1f(border_program_layout.uniforms.tint_premult, tint_premult);
         glUniform2ui(border_program_layout.uniforms.viewport, viewport_width, viewport_height);
-        glUniform1fv(border_program_layout.uniforms.gamma_lut, 256, srgb_lut);
         if (has_bgimage(w)) {
             if (w->is_semi_transparent) { BLEND_PREMULT; }
             else { BLEND_ONTO_OPAQUE_WITH_OPAQUE_OUTPUT; }
