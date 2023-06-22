@@ -132,6 +132,8 @@ init_uniforms(int program) {
     for (GLint i = 0; i < p->num_of_uniforms; i++) {
         Uniform *u = p->uniforms + i;
         glGetActiveUniform(p->id, (GLuint)i, sizeof(u->name)/sizeof(u->name[0]), NULL, &(u->size), &(u->type), u->name);
+        char *l = strchr(u->name, '[');
+        if (l) *l = 0;
         u->location = glGetUniformLocation(p->id, u->name);
         u->idx = i;
     }
@@ -140,13 +142,18 @@ init_uniforms(int program) {
 GLint
 get_uniform_location(int program, const char *name) {
     Program *p = programs + program;
-    return glGetUniformLocation(p->id, name);
+    const size_t n = strlen(name) + 1;
+    for (GLint i = 0; i < p->num_of_uniforms; i++) {
+        Uniform *u = p->uniforms + i;
+        if (strncmp(u->name, name, n) == 0) return u->location;
+    }
+    return -1;
 }
 
 GLint
 get_uniform_information(int program, const char *name, GLenum information_type) {
     GLint q; GLuint t;
-    static const char* names[] = {""};
+    const char* names[] = {""};
     names[0] = name;
     GLuint pid = program_id(program);
     glGetUniformIndices(pid, 1, (void*)names, &t);

@@ -100,7 +100,7 @@ typedef struct WindowLogoRenderData {
 } WindowLogoRenderData;
 
 typedef struct {
-    ssize_t vao_idx, gvao_idx;
+    ssize_t vao_idx;
     float xstart, ystart, dx, dy;
     Screen *screen;
 } ScreenRenderData;
@@ -224,7 +224,6 @@ typedef struct {
     monotonic_t last_render_frame_received_at;
     uint64_t render_calls;
     id_type last_focused_counter;
-    ssize_t gvao_idx;
     CloseRequest close_request;
 } OSWindow;
 
@@ -290,8 +289,8 @@ void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *re
 ssize_t create_cell_vao(void);
 ssize_t create_graphics_vao(void);
 ssize_t create_border_vao(void);
-bool send_cell_data_to_gpu(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *);
-void draw_cells(ssize_t, ssize_t, const ScreenRenderData*, OSWindow *, bool, bool, Window*);
+bool send_cell_data_to_gpu(ssize_t, float, float, float, float, Screen *, OSWindow *);
+void draw_cells(ssize_t, const ScreenRenderData*, OSWindow *, bool, bool, Window*);
 void draw_centered_alpha_mask(OSWindow *w, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas);
 void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);

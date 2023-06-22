@@ -899,35 +899,21 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     return img->client_id;
 }
 
-static void
-set_vertex_data(ImageRenderData *rd, const ImageRef *ref, const ImageRect *dest_rect) {
-    unsigned n = 0;
-#define R(a, b) rd->vertices[n*4] = ref->src_rect.a; rd->vertices[n*4 + 1] = ref->src_rect.b; rd->vertices[n*4 + 2] = dest_rect->a; rd->vertices[n*4 + 3] = dest_rect->b; n++;
-        R(right, top); R(right, bottom); R(left, bottom); R(left, top);
-#undef R
-}
-
 void
 scale_rendered_graphic(ImageRenderData *rd, float xstart, float ystart, float x_scale, float y_scale) {
-    float right = rd->vertices[2], left = rd->vertices[8 + 2], top = rd->vertices[3], bottom = rd->vertices[4 + 3];
-    float width = right - left, height = bottom - top;
-    left = xstart + (left - xstart) * x_scale;
-    right = left + width * x_scale;
-    top = ystart + (top - ystart) * y_scale;
-    bottom = top + height * y_scale;
-    rd->vertices[0+2] = right;   rd->vertices[4+2] = right;
-    rd->vertices[8+2] = left;    rd->vertices[12+2] = left;
-    rd->vertices[0+3] = top;     rd->vertices[12+3] = top;
-    rd->vertices[4+3] = bottom;  rd->vertices[8+3] = bottom;
+    float width = rd->dest_rect.right - rd->dest_rect.left, height = rd->dest_rect.bottom - rd->dest_rect.top;
+    rd->dest_rect.left = xstart + (rd->dest_rect.left - xstart) * x_scale;
+    rd->dest_rect.right = rd->dest_rect.left + width * x_scale;
+    rd->dest_rect.top = ystart + (rd->dest_rect.top - ystart) * y_scale;
+    rd->dest_rect.bottom = rd->dest_rect.top + height * y_scale;
 }
 
 void
 gpu_data_for_image(ImageRenderData *ans, float left, float top, float right, float bottom) {
     // For dest rect: x-axis is from -1 to 1, y axis is from 1 to -1
     static const ImageRef source_rect = { .src_rect = { .left=0, .top=0, .bottom=1, .right=1 }};
-    const ImageRef *ref = &source_rect;
-    const ImageRect r = { .left = left, .right = right, .top = top, .bottom = bottom };
-    set_vertex_data(ans, ref, &r);
+    ans->src_rect = source_rect.src_rect;
+    ans->dest_rect = (ImageRect){ .left = left, .right = right, .top = top, .bottom = bottom };
     ans->group_count = 1;
 }
 
@@ -976,7 +962,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
             ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity, 64, true);
             ImageRenderData *rd = self->render_data + self->count;
             zero_at_ptr(rd);
-            set_vertex_data(rd, ref, &r);
+            rd->dest_rect = r; rd->src_rect = ref->src_rect;
             self->count++;
             rd->z_index = ref->z_index; rd->image_id = img->internal_id;
             rd->texture_id = img->texture_id;
@@ -2026,9 +2012,9 @@ W(update_layers) {
     PyObject *ans = PyTuple_New(self->count);
     for (size_t i = 0; i < self->count; i++) {
         ImageRenderData *r = self->render_data + i;
-#define R(offset) Py_BuildValue("{sf sf sf sf}", "left", r->vertices[offset + 8], "top", r->vertices[offset + 1], "right", r->vertices[offset], "bottom", r->vertices[offset + 5])
+#define R(which) Py_BuildValue("{sf sf sf sf}", "left", r->which.left, "top", r->which.top, "right", r->which.right, "bottom", r->which.bottom)
         PyTuple_SET_ITEM(ans, i,
-            Py_BuildValue("{sN sN sI si sK}", "src_rect", R(0), "dest_rect", R(2), "group_count", r->group_count, "z_index", r->z_index, "image_id", r->image_id)
+            Py_BuildValue("{sN sN sI si sK}", "src_rect", R(src_rect), "dest_rect", R(dest_rect), "group_count", r->group_count, "z_index", r->z_index, "image_id", r->image_id)
         );
 #undef R
     }

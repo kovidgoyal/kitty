@@ -19,7 +19,7 @@ import time
 from contextlib import suppress
 from functools import lru_cache, partial
 from pathlib import Path
-from typing import Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple, Union, cast
+from typing import Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, Union, cast
 
 from glfw import glfw
 from glfw.glfw import Command, CompileKey
@@ -864,6 +864,55 @@ def build_ref_map(skip_generation: bool = False) -> str:
     return dest
 
 
+def build_uniforms_header(skip_generation: bool = False) -> str:
+    dest = 'kitty/uniforms_generated.h'
+    if skip_generation:
+        return dest
+    lines = ['#include "gl.h"', '']
+    a = lines.append
+    uniform_names = {}
+    class_names = {}
+    function_names = {}
+
+    def find_uniform_names(raw: str) -> Iterator[str]:
+        for m in re.finditer(r'^uniform\s+\S+\s+(.+?);', raw, flags=re.MULTILINE):
+            for x in m.group(1).split(','):
+                yield x.strip().partition('[')[0]
+
+    for x in glob.glob('kitty/*.glsl'):
+        name = os.path.basename(x).partition('.')[0]
+        name, sep, shader_type = name.partition('_')
+        if not sep or shader_type not in ('fragment', 'vertex'):
+            continue
+        class_names[name] = f'{name.capitalize()}Uniforms'
+        function_names[name] = f'get_uniform_locations_{name}'
+        with open(x) as f:
+            raw = f.read()
+        uniform_names[name] = uniform_names.setdefault(name, ()) + tuple(find_uniform_names(raw))
+    for name in sorted(class_names):
+        class_name, function_name, uniforms = class_names[name], function_names[name], uniform_names[name]
+        a(f'typedef struct {class_name} ''{')
+        for n in uniforms:
+            a(f'    GLint {n};')
+        a('}'f' {class_name};')
+        a('')
+        a(f'static inline void\n{function_name}(int program, {class_name} *ans) ''{')
+        for n in uniforms:
+            a(f'    ans->{n} = get_uniform_location(program, "{n}");')
+        a('}')
+        a('')
+    src = '\n'.join(lines)
+    try:
+        with open(dest) as f:
+            current = f.read()
+    except FileNotFoundError:
+        current = ''
+    if src != current:
+        with open(dest, 'w') as f:
+            f.write(src)
+    return dest
+
+
 @lru_cache
 def wrapped_kittens() -> str:
     with open('shell-integration/ssh/kitty') as f:
@@ -879,6 +928,7 @@ def build(args: Options, native_optimizations: bool = True, call_init: bool = Tr
         init_env_from_args(args, native_optimizations)
     sources, headers = find_c_files()
     headers.append(build_ref_map(args.skip_code_generation))
+    headers.append(build_uniforms_header(args.skip_code_generation))
     compile_c_extension(
         kitty_env(args), 'kitty/fast_data_types', args.compilation_database, sources, headers
     )

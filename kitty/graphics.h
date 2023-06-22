@@ -76,7 +76,7 @@ typedef struct {
 } BackgroundImage;
 
 typedef struct {
-    float vertices[16];
+    ImageRect src_rect, dest_rect;
     uint32_t texture_id, group_count;
     int z_index;
     id_type image_id;
