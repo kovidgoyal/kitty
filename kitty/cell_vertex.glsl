@@ -122,7 +122,7 @@ float is_cursor(uint xi, uint y) {
 // }}}
 
 struct CellData {
-    float has_cursor;
+    float has_cursor, has_block_cursor;
     uvec2 pos;
 } cell_data;
 
@@ -139,7 +139,14 @@ CellData set_vertex_position() {
     vec2 ypos = vec2(top, top - dy);
     uvec2 pos = cell_pos_map[gl_VertexID];
     gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
-    return CellData(is_cursor(c, r), pos);
+#ifdef NEEDS_FOREGROUND
+    // The character sprite being rendered
+    sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & Z_MASK);
+    colored_sprite = float((sprite_coords.z & COLOR_MASK) >> 14);
+#endif
+    float is_block_cursor = step(float(cursor_fg_sprite_idx), 0.5);
+    float has_cursor = is_cursor(c, r);
+    return CellData(has_cursor, has_cursor * is_block_cursor, pos);
 }
 
 void main() {
@@ -153,8 +160,6 @@ void main() {
     uint is_inverted = is_reversed + inverted;
     int fg_index = fg_index_map[is_inverted];
     int bg_index = 1 - fg_index;
-    float is_block_cursor = step(float(cursor_fg_sprite_idx), 0.5);
-    float cell_has_block_cursor = cell_data.has_cursor * is_block_cursor;
     int mark = int(text_attrs >> MARK_SHIFT) & MARK_MASK;
     uint has_mark = uint(step(1, float(mark)));
     uint bg_as_uint = resolve_color(colors[bg_index], default_colors[bg_index]);
@@ -166,9 +171,6 @@ void main() {
     // Foreground {{{
 #ifdef NEEDS_FOREGROUND
 
-    // The character sprite being rendered
-    sprite_pos = to_sprite_pos(cell_data.pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & Z_MASK);
-    colored_sprite = float((sprite_coords.z & COLOR_MASK) >> 14);
 
     // Foreground
     fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + 1 + mark] + (ONE - has_mark) * fg_as_uint;
@@ -189,8 +191,8 @@ void main() {
     // Cursor
     cursor_color_vec = vec4(color_to_vec(cursor_bg), 1.0);
     vec3 final_cursor_text_color = color_to_vec(cursor_fg);
-    foreground = choose_color(cell_has_block_cursor, final_cursor_text_color, foreground);
-    decoration_fg = choose_color(cell_has_block_cursor, final_cursor_text_color, decoration_fg);
+    foreground = choose_color(cell_data.has_block_cursor, final_cursor_text_color, foreground);
+    decoration_fg = choose_color(cell_data.has_block_cursor, final_cursor_text_color, decoration_fg);
     cursor_pos = to_sprite_pos(cell_data.pos, cursor_fg_sprite_idx * uint(cell_data.has_cursor), ZERO, ZERO);
 #endif
     // }}}
@@ -212,7 +214,7 @@ void main() {
     // Which means they must not have a block cursor or a selection or reverse video
     // On other cells it should be 1. For the SPECIAL program it should be 1 on cells with
     // selections/block cursor and 0 everywhere else.
-    float is_special_cell = cell_has_block_cursor + float(is_selected & ONE);
+    float is_special_cell = cell_data.has_block_cursor + float(is_selected & ONE);
 #if (PHASE != PHASE_SPECIAL)
     is_special_cell += cell_has_non_default_bg + float(is_reversed);
 #endif
@@ -226,9 +228,9 @@ void main() {
 #if (PHASE == PHASE_SPECIAL) || (PHASE == PHASE_BOTH)
     // Selection and cursor
     bg = choose_color(float(is_selected & ONE), choose_color(use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(highlight_bg)), bg);
-    background = choose_color(cell_has_block_cursor, color_to_vec(cursor_bg), bg);
+    background = choose_color(cell_data.has_block_cursor, color_to_vec(cursor_bg), bg);
 #if !defined(TRANSPARENT) && (PHASE == PHASE_SPECIAL)
-    float is_special_cell = cell_has_block_cursor + float(is_selected & ONE);
+    float is_special_cell = cell_data.has_block_cursor + float(is_selected & ONE);
     bg_alpha = step(0.5, is_special_cell);
 #endif
 #endif
