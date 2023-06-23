@@ -53,8 +53,7 @@ bool_capabilities = {
     # Terminfo extension used by tmux to detect true color support (non-standard)
     'Tc',
     # Indicates support for styled and colored underlines (non-standard) as
-    # described at:
-    # https://github.com/kovidgoyal/kitty/blob/master/protocol-extensions.asciidoc
+    # described at: https://sw.kovidgoyal.net/kitty/underlines/
     'Su',
     # Indicates support for full keyboard mode (non-standard) as
     # described at:
@@ -275,8 +274,7 @@ string_capabilities = {
     # Reset cursor color
     'Cr': r'\E]112\007',
     # Indicates support for styled and colored underlines (non-standard) as
-    # described at:
-    # https://github.com/kovidgoyal/kitty/blob/master/protocol-extensions.asciidoc
+    # described at: https://sw.kovidgoyal.net/kitty/underlines/
     # 'Setulc' is quivalent to the 'Su' boolean capability. Until
     # standardized, specify both for application compatibility.
     'Setulc': r'\E[58:2:%p1%{65536}%/%d:%p1%{256}%/%{255}%&%d:%p1%{255}%&%d%;m',
