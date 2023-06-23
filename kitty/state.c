@@ -204,6 +204,7 @@ add_os_window(void) {
     ans->id = ++global_state.os_window_id_counter;
     ans->tab_bar_render_data.vao_idx = create_cell_vao();
     ans->background_opacity = OPT(background_opacity);
+    ans->created_at = monotonic();
 
     bool wants_bg = OPT(background_image) && OPT(background_image)[0] != 0;
     if (wants_bg) {

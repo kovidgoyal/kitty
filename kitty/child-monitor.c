@@ -765,7 +765,7 @@ render_os_window(OSWindow *os_window, unsigned int active_window_id, color_type 
             w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; w->last_cursor_x = WD.screen->cursor_render_info.x; w->last_cursor_y = WD.screen->cursor_render_info.y; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
         }
     }
-    if (os_window->live_resize.in_progress) draw_resizing_text(os_window);
+    if (os_window->live_resize.in_progress && (monotonic() - os_window->created_at > ms_to_monotonic_t(1000))) draw_resizing_text(os_window);
     swap_window_buffers(os_window);
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;

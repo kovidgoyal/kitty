@@ -189,6 +189,7 @@ typedef struct {
 typedef struct {
     void *handle;
     id_type id;
+    monotonic_t created_at;
     struct {
         int x, y, w, h;
         bool is_set, was_maximized;
