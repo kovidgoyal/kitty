@@ -138,10 +138,12 @@ float is_cursor(uint xi, uint y) {
 }
 // }}}
 
+struct CellData {
+    float has_cursor;
+    uvec2 pos;
+} cell_data;
 
-void main() {
-
-    // set cell vertex position  {{{
+CellData set_vertex_position() {
     uint instance_id = uint(gl_InstanceID);
     /* The current cell being rendered */
     uint r = instance_id / xnum;
@@ -154,8 +156,12 @@ void main() {
     vec2 ypos = vec2(top, top - dy);
     uvec2 pos = cell_pos_map[gl_VertexID];
     gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
+    return CellData(is_cursor(c, r), pos);
+}
 
-    // }}}
+void main() {
+
+    CellData cell_data = set_vertex_position();
 
     // set cell color indices {{{
     uvec2 default_colors = uvec2(default_fg, default_bg);
@@ -164,9 +170,8 @@ void main() {
     uint is_inverted = is_reversed + inverted;
     int fg_index = fg_index_map[is_inverted];
     int bg_index = 1 - fg_index;
-    float cell_has_cursor = is_cursor(c, r);
     float is_block_cursor = step(float(cursor_fg_sprite_idx), 0.5);
-    float cell_has_block_cursor = cell_has_cursor * is_block_cursor;
+    float cell_has_block_cursor = cell_data.has_cursor * is_block_cursor;
     int mark = int(text_attrs >> MARK_SHIFT) & MARK_MASK;
     uint has_mark = uint(step(1, float(mark)));
     uint bg_as_uint = resolve_color(colors[bg_index], default_colors[bg_index]);
@@ -179,7 +184,7 @@ void main() {
 #ifdef NEEDS_FOREGROUND
 
     // The character sprite being rendered
-    sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & Z_MASK);
+    sprite_pos = to_sprite_pos(cell_data.pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & Z_MASK);
     colored_sprite = float((sprite_coords.z & COLOR_MASK) >> 14);
 
     // Foreground
@@ -195,15 +200,15 @@ void main() {
     foreground = choose_color(float(is_selected & ONE), selection_color, foreground);
     decoration_fg = choose_color(float(is_selected & ONE), selection_color, decoration_fg);
     // Underline and strike through (rendered via sprites)
-    underline_pos = choose_color(in_url, to_sprite_pos(pos, url_style, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> DECORATION_SHIFT) & DECORATION_MASK, ZERO, ZERO));
-    strike_pos = to_sprite_pos(pos, ((text_attrs >> STRIKE_SHIFT) & ONE) * STRIKE_SPRITE_INDEX, ZERO, ZERO);
+    underline_pos = choose_color(in_url, to_sprite_pos(cell_data.pos, url_style, ZERO, ZERO), to_sprite_pos(cell_data.pos, (text_attrs >> DECORATION_SHIFT) & DECORATION_MASK, ZERO, ZERO));
+    strike_pos = to_sprite_pos(cell_data.pos, ((text_attrs >> STRIKE_SHIFT) & ONE) * STRIKE_SPRITE_INDEX, ZERO, ZERO);
 
     // Cursor
     cursor_color_vec = vec4(color_to_vec(cursor_bg), 1.0);
     vec3 final_cursor_text_color = color_to_vec(cursor_fg);
     foreground = choose_color(cell_has_block_cursor, final_cursor_text_color, foreground);
     decoration_fg = choose_color(cell_has_block_cursor, final_cursor_text_color, decoration_fg);
-    cursor_pos = to_sprite_pos(pos, cursor_fg_sprite_idx * uint(cell_has_cursor), ZERO, ZERO);
+    cursor_pos = to_sprite_pos(cell_data.pos, cursor_fg_sprite_idx * uint(cell_data.has_cursor), ZERO, ZERO);
 #endif
     // }}}
 
