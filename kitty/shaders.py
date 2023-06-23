@@ -4,7 +4,7 @@
 import re
 from functools import lru_cache, partial
 from itertools import count
-from typing import Any, Callable, Dict, Iterator, Optional
+from typing import Any, Callable, Dict, Iterator, Optional, Set
 
 from .constants import read_kitty_resource
 from .fast_data_types import (
@@ -53,16 +53,17 @@ class Program:
             Program.include_pat = re.compile(r'^#pragma\s+kitty_include_shader\s+<(.+?)>', re.MULTILINE)
         self.vertex_name = vertex_name or f'{name}_vertex.glsl'
         self.fragment_name = fragment_name or f'{name}_fragment.glsl'
-        self.original_vertex_sources = tuple(self._load_sources(self.vertex_name))
-        self.original_fragment_sources = tuple(self._load_sources(self.fragment_name))
+        self.original_vertex_sources = tuple(self._load_sources(self.vertex_name, set()))
+        self.original_fragment_sources = tuple(self._load_sources(self.fragment_name, set()))
         self.vertex_sources = self.original_vertex_sources
         self.fragment_sources = self.original_fragment_sources
 
-    def _load_sources(self, name: str, level: int = 0) -> Iterator[str]:
+    def _load_sources(self, name: str, seen: Set[str], level: int = 0) -> Iterator[str]:
         if level == 0:
             yield f'#version {GLSL_VERSION}\n'
-        if name in self.filename_map:
+        if name in seen:
             return
+        seen.add(name)
         self.filename_map[name] = fnum = next(self.filename_number_counter)
         src = read_kitty_resource(name).decode('utf-8')
         pos = 0
@@ -74,7 +75,7 @@ class Program:
                 yield f'\n#line {lnum} {fnum}\n{prefix}'
                 lnum += prefix.count('\n')
             iname = m.group(1)
-            yield from self._load_sources(iname, level+1)
+            yield from self._load_sources(iname, seen, level+1)
             pos = m.end()
         if pos < len(src):
             yield f'\n#line {lnum} {fnum}\n{src[pos:]}'
@@ -161,32 +162,24 @@ class LoadShaderPrograms:
                 STRIKE_SPRITE_INDEX=NUM_UNDERLINE_STYLES + 1,
             )
 
-        def resolve_cell_vertex_defines(which: str, v: str) -> str:
-            self.cell_program_replacer.replacements['WHICH_PROGRAM'] = which
-            v = self.cell_program_replacer(v)
-            if semi_transparent:
-                v = v.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
-            return v
-
-        def resolve_cell_fragment_defines(which: str, f: str) -> str:
-            f = f.replace('{WHICH_PROGRAM}', which)
-            if self.text_fg_override_threshold != 0.:
-                f = f.replace('#define NO_FG_OVERRIDE', f'#define FG_OVERRIDE {self.text_fg_override_threshold}')
-            if self.text_old_gamma:
-                f = f.replace('#define TEXT_NEW_GAMMA', '#define TEXT_OLD_GAMMA')
-            if semi_transparent:
-                f = f.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
-            return f
+        def resolve_cell_defines(which: str, src: str) -> str:
+            r = self.cell_program_replacer.replacements
+            r['WHICH_PHASE'] = f'PHASE_{which}'
+            r['TRANSPARENT'] = '1' if semi_transparent else '0'
+            r['FG_OVERRIDE_THRESHOLD'] = str(self.text_fg_override_threshold)
+            r['FG_OVERRIDE'] = '1' if self.text_fg_override_threshold != 0. else '0'
+            r['TEXT_NEW_GAMMA'] = '0' if self.text_old_gamma else '1'
+            return self.cell_program_replacer(src)
 
         for which, p in {
-            'SIMPLE': CELL_PROGRAM,
+            'BOTH': CELL_PROGRAM,
             'BACKGROUND': CELL_BG_PROGRAM,
             'SPECIAL': CELL_SPECIAL_PROGRAM,
             'FOREGROUND': CELL_FG_PROGRAM,
         }.items():
             cell.apply_to_sources(
-                vertex=partial(resolve_cell_vertex_defines, which),
-                frag=partial(resolve_cell_fragment_defines, which),
+                vertex=partial(resolve_cell_defines, which),
+                frag=partial(resolve_cell_defines, which),
             )
             cell.compile(p, allow_recompile)
 

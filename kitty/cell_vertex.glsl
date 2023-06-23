@@ -1,16 +1,7 @@
 #extension GL_ARB_explicit_attrib_location : require
 #pragma kitty_include_shader <srgb_gamma.glsl>
+#pragma kitty_include_shader <cell_defines.glsl>
 
-#define {WHICH_PROGRAM}
-#define NOT_TRANSPARENT
-#define DECORATION_SHIFT {DECORATION_SHIFT}
-#define REVERSE_SHIFT {REVERSE_SHIFT}
-#define STRIKE_SHIFT {STRIKE_SHIFT}
-#define DIM_SHIFT {DIM_SHIFT}
-#define MARK_SHIFT {MARK_SHIFT}
-#define MARK_MASK {MARK_MASK}
-#define USE_SELECTION_FG
-#define NUM_COLORS 256
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
@@ -23,7 +14,7 @@ layout(std140) uniform CellRenderData {
 
     uint color_table[NUM_COLORS + MARK_MASK + MARK_MASK + 2];
 };
-#ifdef BACKGROUND
+#if (PHASE == PHASE_BACKGROUND)
 uniform uint draw_bg_bitfield;
 #endif
 
@@ -43,18 +34,10 @@ const uvec2 cell_pos_map[] = uvec2[4](
 // }}}
 
 
-#if defined(SIMPLE) || defined(BACKGROUND) || defined(SPECIAL)
-#define NEEDS_BACKROUND
-#endif
-
-#if defined(SIMPLE) || defined(FOREGROUND)
-#define NEEDS_FOREGROUND
-#endif
-
 #ifdef NEEDS_BACKROUND
 out vec3 background;
 out float draw_bg;
-#if defined(TRANSPARENT) || defined(SPECIAL)
+#ifdef NEEDS_BG_ALPHA
 out float bg_alpha;
 #endif
 #endif
@@ -217,7 +200,7 @@ void main() {
     float cell_has_non_default_bg = step(1, float(abs(bg_as_uint - default_colors[1])));
     draw_bg = 1;
 
-#if defined(BACKGROUND)
+#if (PHASE == PHASE_BACKGROUND)
     background = bg;
     // draw_bg_bitfield has bit 0 set to draw default bg cells and bit 1 set to draw non-default bg cells
     uint draw_bg_mask = uint(2 * cell_has_non_default_bg + (1 - cell_has_non_default_bg));
@@ -230,21 +213,21 @@ void main() {
     // On other cells it should be 1. For the SPECIAL program it should be 1 on cells with
     // selections/block cursor and 0 everywhere else.
     float is_special_cell = cell_has_block_cursor + float(is_selected & ONE);
-#ifndef SPECIAL
+#if (PHASE != PHASE_SPECIAL)
     is_special_cell += cell_has_non_default_bg + float(is_reversed);
 #endif
     bg_alpha = step(0.5, is_special_cell);
-#ifndef SPECIAL
+#if (PHASE != PHASE_SPECIAL)
     bg_alpha = bg_alpha + (1.0f - bg_alpha) * background_opacity;
     bg_alpha *= draw_bg;
 #endif
 #endif
 
-#if defined(SPECIAL) || defined(SIMPLE)
+#if (PHASE == PHASE_SPECIAL) || (PHASE == PHASE_BOTH)
     // Selection and cursor
     bg = choose_color(float(is_selected & ONE), choose_color(use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(highlight_bg)), bg);
     background = choose_color(cell_has_block_cursor, color_to_vec(cursor_bg), bg);
-#if !defined(TRANSPARENT) && defined(SPECIAL)
+#if !defined(TRANSPARENT) && (PHASE == PHASE_SPECIAL)
     float is_special_cell = cell_has_block_cursor + float(is_selected & ONE);
     bg_alpha = step(0.5, is_special_cell);
 #endif

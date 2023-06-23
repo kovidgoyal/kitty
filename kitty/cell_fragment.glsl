@@ -1,23 +1,11 @@
 #pragma kitty_include_shader <alpha_blend.glsl>
 #pragma kitty_include_shader <linear2srgb.glsl>
-
-#define {WHICH_PROGRAM}
-#define NOT_TRANSPARENT
-#define NO_FG_OVERRIDE
-#define TEXT_NEW_GAMMA
-
-#if defined(SIMPLE) || defined(BACKGROUND) || defined(SPECIAL)
-#define NEEDS_BACKROUND
-#endif
-
-#if defined(SIMPLE) || defined(FOREGROUND)
-#define NEEDS_FOREGROUND
-#endif
+#pragma kitty_include_shader <cell_defines.glsl>
 
 #ifdef NEEDS_BACKROUND
 in vec3 background;
 in float draw_bg;
-#if defined(TRANSPARENT) || defined(SPECIAL)
+#ifdef NEEDS_BG_ALPHA
 in float bg_alpha;
 #endif
 #endif
@@ -53,8 +41,10 @@ vec4 vec4_premul(vec4 rgba) {
 
 /*
  * Explanation of rendering:
- * There are a couple of cases, in order of increasing complexity:
- * 1) Simple -- this path is used when there are either no images, or all images are
+ * There are two types of rendering, single pass and multi-pass. Multi-pass rendering is used when there
+ * are images that are below the foreground. Single pass rendering has PHASE=PHASE_BOTH. Otherwise, there
+ * are three passes, PHASE=PHASE_BACKGROUND, PHASE=PHASE_SPECIAL, PHASE=PHASE_FOREGROUND.
+ * 1) Single pass -- this path is used when there are either no images, or all images are
  *    drawn on top of text and the background is opaque. In this case, there is a single pass,
  *    of this shader with cell foreground and background colors blended directly.
  *    Expected output is a color premultiplied by alpha, with an alpha specified as well.
@@ -77,10 +67,9 @@ vec4 vec4_premul(vec4 rgba) {
  *    2b) Transparent bg with images
  *        Same as (2a) except blending is done with PREMULT_BLEND and TRANSPARENT is defined in the shaders. background_opacity
  *        is applied to default colored background cells in step (1).
- *
- *  In this shader exactly *one* of SIMPLE, SPECIAL, FOREGROUND or BACKGROUND will be defined, corresponding
- *  to the appropriate rendering pass from above.
  */
+
+// foreground functions {{{
 #ifdef NEEDS_FOREGROUND
 // sRGB luminance values
 const vec3 Y = vec3(0.2126, 0.7152, 0.0722);
@@ -92,12 +81,12 @@ float clamp_to_unit_float(float x) {
     return clamp(x, 0.0f, 1.0f);
 }
 
-#ifdef FG_OVERRIDE
+#if (FG_OVERRIDE == 1)
 vec3 fg_override(float under_luminance, float over_lumininace, vec3 over) {
     // If the difference in luminance is too small,
     // force the foreground color to be black or white.
     float diff_luminance = abs(under_luminance - over_lumininace);
-	float override_level = (1.f - colored_sprite) * step(diff_luminance, FG_OVERRIDE);
+	float override_level = (1.f - colored_sprite) * step(diff_luminance, FG_OVERRIDE_THRESHOLD);
 	float original_level = 1.f - override_level;
 	return original_level * over + override_level * vec3(step(under_luminance, 0.5f));
 }
@@ -107,7 +96,7 @@ vec4 foreground_contrast(vec4 over, vec3 under) {
     float under_luminance = dot(under, Y);
     float over_lumininace = dot(over.rgb, Y);
 
-#ifdef FG_OVERRIDE
+#if (FG_OVERRIDE == 1)
     over.rgb = fg_override(under_luminance, over_lumininace, over.rgb);
 #endif
 
@@ -117,12 +106,12 @@ vec4 foreground_contrast(vec4 over, vec3 under) {
     return over;
 }
 
-#ifdef TEXT_OLD_GAMMA
+#if (TEXT_NEW_GAMMA == 0)
 vec4 foreground_contrast_incorrect(vec4 over, vec3 under) {
     // Simulation of gamma-incorrect blending
     float under_luminance = dot(under, Y);
     float over_lumininace = dot(over.rgb, Y);
-#ifdef FG_OVERRIDE
+#if (FG_OVERRIDE == 1)
     over.rgb = fg_override(under_luminance, over_lumininace, over.rgb);
 #endif
     // This is the original gamma-incorrect rendering, it is the solution of the following equation:
@@ -156,7 +145,7 @@ vec4 calculate_premul_foreground_from_sprites(vec4 text_fg) {
 vec4 adjust_foreground_contrast_with_background(vec4 text_fg, vec3 bg) {
     // When rendering on a background we can adjust the alpha channel contrast
     // to improve legibility based on the source and destination colors
-#ifdef TEXT_OLD_GAMMA
+#if (TEXT_NEW_GAMMA == 0)
     return foreground_contrast_incorrect(text_fg, bg);
 #else
     return foreground_contrast(text_fg, bg);
@@ -164,6 +153,7 @@ vec4 adjust_foreground_contrast_with_background(vec4 text_fg, vec3 bg) {
 }
 
 #endif
+// end foreground functions }}}
 
 float adjust_alpha_for_incorrect_blending_by_compositor(float text_fg_alpha, float final_alpha) {
     // Adjust the transparent alpha-channel to account for incorrect
@@ -179,7 +169,7 @@ float adjust_alpha_for_incorrect_blending_by_compositor(float text_fg_alpha, flo
 }
 
 void main() {
-#ifdef SIMPLE
+#if (PHASE == PHASE_BOTH)
     vec4 text_fg = load_text_foreground_color();
     text_fg = adjust_foreground_contrast_with_background(text_fg, background);
     vec4 text_fg_premul = calculate_premul_foreground_from_sprites(text_fg);
@@ -191,7 +181,7 @@ void main() {
 #endif
 #endif
 
-#ifdef SPECIAL
+#if (PHASE == PHASE_SPECIAL)
 #ifdef TRANSPARENT
     final_color = vec4_premul(background, bg_alpha);
 #else
@@ -199,7 +189,7 @@ void main() {
 #endif
 #endif
 
-#ifdef BACKGROUND
+#if (PHASE == PHASE_BACKGROUND)
 #ifdef TRANSPARENT
     final_color = vec4_premul(background, bg_alpha);
 #else
@@ -207,7 +197,7 @@ void main() {
 #endif
 #endif
 
-#ifdef FOREGROUND
+#if (PHASE == PHASE_FOREGROUND)
     vec4 text_fg = load_text_foreground_color();
     vec4 text_fg_premul = calculate_premul_foreground_from_sprites(text_fg);
     final_color = text_fg_premul;
