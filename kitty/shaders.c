@@ -550,13 +550,14 @@ viewport_for_cells(const CellRenderData *crd) {
 }
 
 static void
-draw_cells_simple(ssize_t vao_idx, Screen *screen, const CellRenderData *crd) {
+draw_cells_simple(ssize_t vao_idx, Screen *screen, const CellRenderData *crd, bool is_semi_transparent) {
     bind_program(CELL_PROGRAM);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
     if (screen->grman->count) {
         glEnable(GL_BLEND);
-        BLEND_ONTO_OPAQUE;
-        draw_graphics(GRAPHICS_PROGRAM, vao_idx, screen->grman->render_data, 0, screen->grman->count, viewport_for_cells(crd));
+        int program = GRAPHICS_PROGRAM;
+        if (is_semi_transparent) { BLEND_PREMULT; program = GRAPHICS_PREMULT_PROGRAM; } else { BLEND_ONTO_OPAQUE; }
+        draw_graphics(program, vao_idx, screen->grman->render_data, 0, screen->grman->count, viewport_for_cells(crd));
         glDisable(GL_BLEND);
     }
 }
@@ -955,14 +956,13 @@ draw_cells(ssize_t vao_idx, const ScreenRenderData *srd, OSWindow *os_window, bo
                 scale_rendered_graphic(screen->grman->render_data + i, srd->xstart, srd->ystart, crd.x_ratio, crd.y_ratio);
         }
     }
+    has_underlying_image |= screen->grman->num_of_below_refs > 0 || screen->grman->num_of_negative_refs > 0;
     if (os_window->is_semi_transparent) {
-        if (screen->grman->count || has_underlying_image) draw_cells_interleaved_premult(
-                vao_idx, screen, os_window, &crd, wl);
-        else draw_cells_simple(vao_idx, screen, &crd);
+        if (has_underlying_image) draw_cells_interleaved_premult(vao_idx, screen, os_window, &crd, wl);
+        else draw_cells_simple(vao_idx, screen, &crd, os_window->is_semi_transparent);
     } else {
-        if (screen->grman->num_of_negative_refs || screen->grman->num_of_below_refs || has_underlying_image) draw_cells_interleaved(
-                vao_idx, screen, os_window, &crd, wl);
-        else draw_cells_simple(vao_idx, screen, &crd);
+        if (has_underlying_image) draw_cells_interleaved(vao_idx, screen, os_window, &crd, wl);
+        else draw_cells_simple(vao_idx, screen, &crd, os_window->is_semi_transparent);
     }
 
     if (screen->start_visual_bell_at) {

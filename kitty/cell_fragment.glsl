@@ -45,9 +45,9 @@ vec4 vec4_premul(vec4 rgba) {
  * are images that are below the foreground. Single pass rendering has PHASE=PHASE_BOTH. Otherwise, there
  * are three passes, PHASE=PHASE_BACKGROUND, PHASE=PHASE_SPECIAL, PHASE=PHASE_FOREGROUND.
  * 1) Single pass -- this path is used when there are either no images, or all images are
- *    drawn on top of text and the background is opaque. In this case, there is a single pass,
+ *    drawn on top of text. In this case, there is a single pass,
  *    of this shader with cell foreground and background colors blended directly.
- *    Expected output is a color premultiplied by alpha, with an alpha specified as well.
+ *    Expected output is either opaque colors or pre-multiplied colors.
  *
  * 2) Interleaved -- this path is used if background is not opaque and there are images or
  *    if the background is opaque but there are images under text. Rendering happens in
