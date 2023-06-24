@@ -201,3 +201,16 @@ func Samefile(a, b any) bool {
 
 	return os.SameFile(sta, stb)
 }
+
+func Concat[T any](slices ...[]T) []T {
+	var total int
+	for _, s := range slices {
+		total += len(s)
+	}
+	result := make([]T, total)
+	var i int
+	for _, s := range slices {
+		i += copy(result[i:], s)
+	}
+	return result
+}
