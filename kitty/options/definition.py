@@ -276,9 +276,7 @@ ranging from :code:`0` to :code:`100`. If the difference in luminance of the
 foreground and background is below this threshold, the foreground color will be set
 to white if the background is dark or black if the background is light. The default
 value is :code:`0`, which means no overriding is performed. Useful when working with applications
-that use colors that do not contrast well with your preferred color scheme. Note that this
-will not work in situations where kitty has to render in multiple passes, for example,
-when rendering with images under text or with non-opaque background and images.
+that use colors that do not contrast well with your preferred color scheme.
 ''')
 
 egr()  # }}}
@@ -1352,21 +1350,24 @@ opt('background_opacity', '1.0',
     option_type='unit_float', ctype='float',
     long_text='''
 The opacity of the background. A number between zero and one, where one is
-opaque and zero is fully transparent. This will only work if supported by the OS
-(for instance, when using a compositor under X11). Note that it only sets the
-background color's opacity in cells that have the same background color as the
-default terminal background, so that things like the status bar in vim,
+opaque and zero is fully transparent. This will only work if supported by the
+OS (for instance, when using a compositor under X11). Note that it only sets
+the background color's opacity in cells that have the same background color as
+the default terminal background, so that things like the status bar in vim,
 powerline prompts, etc. still look good. But it means that if you use a color
 theme with a background color in your editor, it will not be rendered as
 transparent. Instead you should change the default background color in your
 kitty config and not use a background color in the editor color scheme. Or use
-the escape codes to set the terminals default colors in a shell script to launch
-your editor. Be aware that using a value less than 1.0 is a (possibly
-significant) performance hit. If you want to dynamically change transparency of
-windows, set :opt:`dynamic_background_opacity` to :code:`yes` (this is off by
-default as it has a performance cost). Changing this option when reloading the
-config will only work if :opt:`dynamic_background_opacity` was enabled in the
-original config.
+the escape codes to set the terminals default colors in a shell script to
+launch your editor. Be aware that using a value less than 1.0 is a (possibly
+significant) performance hit. When using a low value for this setting, it is
+desirable that you set the :opt:`background` color to a color the matches the
+general color of the desktop background, for best text rendering.  If you want
+to dynamically change transparency of windows, set
+:opt:`dynamic_background_opacity` to :code:`yes` (this is off by default as it
+has a performance cost). Changing this option when reloading the config will
+only work if :opt:`dynamic_background_opacity` was enabled in the original
+config.
 '''
     )
 

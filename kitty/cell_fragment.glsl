@@ -2,12 +2,10 @@
 #pragma kitty_include_shader <linear2srgb.glsl>
 #pragma kitty_include_shader <cell_defines.glsl>
 
-#ifdef NEEDS_BACKROUND
 in vec3 background;
 in float draw_bg;
 #ifdef NEEDS_BG_ALPHA
 in float bg_alpha;
-#endif
 #endif
 
 #ifdef NEEDS_FOREGROUND
@@ -199,6 +197,7 @@ void main() {
 
 #if (PHASE == PHASE_FOREGROUND)
     vec4 text_fg = load_text_foreground_color();
+    text_fg = adjust_foreground_contrast_with_background(text_fg, background);
     vec4 text_fg_premul = calculate_premul_foreground_from_sprites(text_fg);
     final_color = text_fg_premul;
 #ifdef TRANSPARENT

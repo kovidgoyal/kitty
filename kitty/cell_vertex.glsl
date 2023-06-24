@@ -34,12 +34,10 @@ const uvec2 cell_pos_map[] = uvec2[4](
 // }}}
 
 
-#ifdef NEEDS_BACKROUND
 out vec3 background;
 out float draw_bg;
 #ifdef NEEDS_BG_ALPHA
 out float bg_alpha;
-#endif
 #endif
 
 #ifdef NEEDS_FOREGROUND
@@ -198,7 +196,6 @@ void main() {
     // }}}
 
     // Background {{{
-#ifdef NEEDS_BACKROUND
     float cell_has_non_default_bg = step(1, float(abs(bg_as_uint - default_colors[1])));
     draw_bg = 1;
 
@@ -235,7 +232,6 @@ void main() {
 #endif
 #endif
 
-#endif
     // }}}
 
 }
