@@ -71,6 +71,8 @@ Detailed list of changes
 
 - ssh kitten: Fix a regression in 0.28.0 that caused interrupt during setup to not be handled gracefully (:iss:`6254`)
 
+- ssh kitten: Allow configuring the ssh kitten to skip some hosts via a new ``delegate`` config directive
+
 - Graphics: Move images up along with text when the window is shrunk vertically (:iss:`6278`)
 
 - Fix a regression in 0.28.0 that caused a buffer overflow when clearing the screen (:iss:`6306`, :pull:`6308`)

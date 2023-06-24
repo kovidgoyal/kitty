@@ -201,6 +201,13 @@ terminal before the connection is established, so the kitten cannot use the
 terminal to send data without an extra roundtrip, adding to initial connection
 latency.
 ''')
+
+opt('delegate', '', long_text='''
+Do not use the SSH kitten for this host. Instead run the command specified as the delegate.
+For example using :code:`delegate ssh` will run the ssh command with all arguments passed
+to the kitten, except kitten specific ones. This is useful if some hosts are not capable
+of supporting the ssh kitten.
+''')
 egr()  # }}}
 
 

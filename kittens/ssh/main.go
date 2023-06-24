@@ -32,6 +32,7 @@ import (
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
 	"kitty/tools/utils/secrets"
+	"kitty/tools/utils/shlex"
 	"kitty/tools/utils/shm"
 
 	"golang.org/x/exp/maps"
@@ -612,6 +613,13 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 		for _, x := range bad_lines {
 			fmt.Fprintf(os.Stderr, "Ignoring bad config line: %s:%d with error: %s", filepath.Base(x.Src_file), x.Line_number, x.Err)
 		}
+	}
+	if host_opts.Delegate != "" {
+		delegate_cmd, err := shlex.Split(host_opts.Delegate)
+		if err != nil {
+			return 1, fmt.Errorf("Could not parse delegate command: %#v with error: %w", host_opts.Delegate, err)
+		}
+		return 1, unix.Exec(utils.FindExe(delegate_cmd[0]), utils.Concat(delegate_cmd, ssh_args, server_args), os.Environ())
 	}
 	if host_opts.Share_connections {
 		kpid, err := strconv.Atoi(os.Getenv("KITTY_PID"))
