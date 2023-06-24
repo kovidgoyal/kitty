@@ -12,3 +12,4 @@
 
 void glfw_initialize_desktop_settings(void);
 void glfw_current_cursor_theme(const char **theme, int *size);
+int glfw_current_system_color_theme(void);

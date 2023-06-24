@@ -421,8 +421,19 @@ load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, con
             if (g->payload_sz > 2048) ABRT("EINVAL", "Filename too long");
             snprintf(fname, sizeof(fname)/sizeof(fname[0]), "%.*s", (int)g->payload_sz, payload);
             if (transmission_type == 's') fd = safe_shm_open(fname, O_RDONLY, 0);
-            else fd = safe_open(fname, O_CLOEXEC | O_RDONLY, 0);
+            else fd = safe_open(fname, O_CLOEXEC | O_RDONLY | O_NONBLOCK, 0);  // O_NONBLOCK so that opening a FIFO pipe does not block
             if (fd == -1) ABRT("EBADF", "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
+            if (global_state.boss && transmission_type != 's') {
+                DECREF_AFTER_FUNCTION PyObject *cret_ = PyObject_CallMethod(global_state.boss, "is_ok_to_read_image_file", "si", fname, fd);
+                if (cret_ == NULL) {
+                    PyErr_Print();
+                    ABRT("EBADF", "Failed to check file for read permission");
+                }
+                if (cret_ != Py_True) {
+                    log_error("Refusing to read image file as permission was denied");
+                    ABRT("EPERM", "Permission denied to read image file");
+                }
+            }
             load_data->loading_completed_successfully = mmap_img_file(self, fd, g->data_sz, g->data_offset);
             safe_close(fd, __FILE__, __LINE__);
             if (transmission_type == 't' && strstr(fname, "tty-graphics-protocol") != NULL) {
@@ -561,6 +572,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             img->root_frame_data_loaded = false;
             img->is_drawn = false;
             img->current_frame_shown_at = 0;
+            img->extra_framecnt = 0;
             free_image(self, img);
             *is_dirty = true;
             self->layers_dirty = true;
@@ -887,29 +899,24 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     return img->client_id;
 }
 
-static void
-set_vertex_data(ImageRenderData *rd, const ImageRef *ref, const ImageRect *dest_rect) {
-#define R(n, a, b) rd->vertices[n*4] = ref->src_rect.a; rd->vertices[n*4 + 1] = ref->src_rect.b; rd->vertices[n*4 + 2] = dest_rect->a; rd->vertices[n*4 + 3] = dest_rect->b;
-        R(0, right, top); R(1, right, bottom); R(2, left, bottom); R(3, left, top);
-#undef R
+void
+scale_rendered_graphic(ImageRenderData *rd, float xstart, float ystart, float x_scale, float y_scale) {
+    // Scale the graphic so that it appears at the same position and size during a live resize
+    // this means scale factors are applied to both the position and size of the graphic.
+    float width = rd->dest_rect.right - rd->dest_rect.left, height = rd->dest_rect.bottom - rd->dest_rect.top;
+    rd->dest_rect.left = xstart + (rd->dest_rect.left - xstart) * x_scale;
+    rd->dest_rect.right = rd->dest_rect.left + width * x_scale;
+    rd->dest_rect.top = ystart + (rd->dest_rect.top - ystart) * y_scale;
+    rd->dest_rect.bottom = rd->dest_rect.top + height * y_scale;
 }
 
 void
 gpu_data_for_image(ImageRenderData *ans, float left, float top, float right, float bottom) {
-    // x-axis is from -1 to 1, y axis is from 1 to -1
+    // For dest rect: x-axis is from -1 to 1, y axis is from 1 to -1
     static const ImageRef source_rect = { .src_rect = { .left=0, .top=0, .bottom=1, .right=1 }};
-    const ImageRef *ref = &source_rect;
-    const ImageRect r = { .left = left, .right = right, .top = top, .bottom = bottom };
-    set_vertex_data(ans, ref, &r);
+    ans->src_rect = source_rect.src_rect;
+    ans->dest_rect = (ImageRect){ .left = left, .right = right, .top = top, .bottom = bottom };
     ans->group_count = 1;
-}
-
-void
-gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, unsigned int screen_height_px, unsigned int width, unsigned int height) {
-    float width_frac = 2 * MIN(1, width / (float)screen_width_px), height_frac = 2 * MIN(1, height / (float)screen_height_px);
-    float hmargin = (2 - width_frac) / 2;
-    float vmargin = (2 - height_frac) / 2;
-    gpu_data_for_image(ans, -1 + hmargin, 1 - vmargin, -1 + hmargin + width_frac, 1 - vmargin - height_frac);
 }
 
 bool
@@ -957,7 +964,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
             ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity, 64, true);
             ImageRenderData *rd = self->render_data + self->count;
             zero_at_ptr(rd);
-            set_vertex_data(rd, ref, &r);
+            rd->dest_rect = r; rd->src_rect = ref->src_rect;
             self->count++;
             rd->z_index = ref->z_index; rd->image_id = img->internal_id;
             rd->texture_id = img->texture_id;
@@ -1790,8 +1797,20 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
 // }}}
 
 void
-grman_resize(GraphicsManager *self, index_type UNUSED old_lines, index_type UNUSED lines, index_type UNUSED old_columns, index_type UNUSED columns) {
+grman_resize(GraphicsManager *self, index_type old_lines UNUSED, index_type lines UNUSED, index_type old_columns, index_type columns, index_type num_content_lines_before, index_type num_content_lines_after) {
+    ImageRef *ref; Image *img;
     self->layers_dirty = true;
+    if (columns == old_columns && num_content_lines_before > num_content_lines_after) {
+        const unsigned int vertical_shrink_size = num_content_lines_before - num_content_lines_after;
+        for (size_t i = self->image_count; i-- > 0;) {
+            img = self->images + i;
+            for (size_t j = img->refcnt; j-- > 0;) {
+                ref = img->refs + j;
+                if (ref->is_virtual_ref || ref->is_cell_image) continue;
+                ref->start_row -= vertical_shrink_size;
+            }
+        }
+    }
 }
 
 void
@@ -1995,9 +2014,9 @@ W(update_layers) {
     PyObject *ans = PyTuple_New(self->count);
     for (size_t i = 0; i < self->count; i++) {
         ImageRenderData *r = self->render_data + i;
-#define R(offset) Py_BuildValue("{sf sf sf sf}", "left", r->vertices[offset + 8], "top", r->vertices[offset + 1], "right", r->vertices[offset], "bottom", r->vertices[offset + 5])
+#define R(which) Py_BuildValue("{sf sf sf sf}", "left", r->which.left, "top", r->which.top, "right", r->which.right, "bottom", r->which.bottom)
         PyTuple_SET_ITEM(ans, i,
-            Py_BuildValue("{sN sN sI si sK}", "src_rect", R(0), "dest_rect", R(2), "group_count", r->group_count, "z_index", r->z_index, "image_id", r->image_id)
+            Py_BuildValue("{sN sN sI si sK}", "src_rect", R(src_rect), "dest_rect", R(dest_rect), "group_count", r->group_count, "z_index", r->z_index, "image_id", r->image_id)
         );
 #undef R
     }

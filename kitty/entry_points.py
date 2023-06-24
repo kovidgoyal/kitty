@@ -94,6 +94,7 @@ def edit(args: List[str]) -> None:
 
 
 def shebang(args: List[str]) -> None:
+    from kitty.constants import kitten_exe
     script_path = args[1]
     cmd = args[2:]
     if cmd == ['__ext__']:
@@ -111,7 +112,7 @@ def shebang(args: List[str]) -> None:
                 cmd = line.split(' ')
             else:
                 cmd = line.split(' ', maxsplit=1)
-    os.execvp(cmd[0], cmd + [script_path])
+    os.execvp(kitten_exe(), ['kitten', '__confirm_and_run_shebang__'] + cmd + [script_path])
 
 
 def run_kitten(args: List[str]) -> None:
@@ -168,7 +169,7 @@ namespaced_entry_points['edit'] = edit
 
 def setup_openssl_environment(ext_dir: str) -> None:
     # Use our bundled CA certificates instead of the system ones, since
-    # many systems come with no certificates in a useable form or have various
+    # many systems come with no certificates in a usable form or have various
     # locations for the certificates.
     d = os.path.dirname
     if 'darwin' in sys.platform.lower():

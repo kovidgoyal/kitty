@@ -20,7 +20,6 @@ from .constants import (
     config_dir,
     is_macos,
     is_wayland,
-    read_kitty_resource,
     runtime_dir,
     shell_path,
     ssh_control_master_template,
@@ -102,16 +101,6 @@ def platform_window_id(os_window_id: int) -> Optional[int]:
         with suppress(Exception):
             return x11_window_id(os_window_id)
     return None
-
-
-def load_shaders(name: str, vertex_name: str = '', fragment_name: str = '') -> Tuple[str, str]:
-    from .fast_data_types import GLSL_VERSION
-
-    def load(which: str, lname: str = '') -> str:
-        lname = lname or name
-        return read_kitty_resource(f'{lname}_{which}.glsl').decode('utf-8').replace('GLSL_VERSION', str(GLSL_VERSION), 1)
-
-    return load('vertex', vertex_name), load('fragment', fragment_name)
 
 
 def safe_print(*a: Any, **k: Any) -> None:
@@ -710,6 +699,26 @@ def is_path_in_temp_dir(path: str) -> bool:
         if q and path.startswith(q):
             return True
     return False
+
+
+def is_ok_to_read_image_file(path: str, fd: int) -> bool:
+    import stat
+    path = os.path.abspath(os.path.realpath(path))
+    try:
+        path_stat = os.stat(path, follow_symlinks=True)
+        fd_stat = os.fstat(fd)
+    except OSError:
+        return False
+    if not os.path.samestat(path_stat, fd_stat):
+        return False
+    parts = path.split(os.sep)[1:]
+    if len(parts) < 1:
+        return False
+    if parts[0] in ('sys', 'proc', 'dev'):
+        if parts[0] == 'dev':
+            return len(parts) > 2 and parts[1] == 'shm'
+        return False
+    return stat.S_ISREG(fd_stat.st_mode)
 
 
 def resolve_abs_or_config_path(path: str, env: Optional[Mapping[str, str]] = None, conf_dir: Optional[str] = None) -> str:

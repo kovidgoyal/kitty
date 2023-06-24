@@ -203,8 +203,8 @@ add_os_window(void) {
     zero_at_ptr(ans);
     ans->id = ++global_state.os_window_id_counter;
     ans->tab_bar_render_data.vao_idx = create_cell_vao();
-    ans->gvao_idx = create_graphics_vao();
     ans->background_opacity = OPT(background_opacity);
+    ans->created_at = monotonic();
 
     bool wants_bg = OPT(background_image) && OPT(background_image)[0] != 0;
     if (wants_bg) {
@@ -244,15 +244,12 @@ add_tab(id_type os_window_id) {
 static void
 create_gpu_resources_for_window(Window *w) {
     w->render_data.vao_idx = create_cell_vao();
-    w->render_data.gvao_idx = create_graphics_vao();
 }
 
 static void
 release_gpu_resources_for_window(Window *w) {
     if (w->render_data.vao_idx > -1) remove_vao(w->render_data.vao_idx);
     w->render_data.vao_idx = -1;
-    if (w->render_data.gvao_idx > -1) remove_vao(w->render_data.gvao_idx);
-    w->render_data.gvao_idx = -1;
 }
 
 static bool
@@ -292,7 +289,6 @@ initialize_window(Window *w, PyObject *title, bool init_gpu_resources) {
     if (init_gpu_resources) create_gpu_resources_for_window(w);
     else {
         w->render_data.vao_idx = -1;
-        w->render_data.gvao_idx = -1;
     }
 }
 
@@ -477,10 +473,7 @@ destroy_os_window_item(OSWindow *w) {
         remove_tab_inner(w, tab->id);
     }
     Py_CLEAR(w->window_title); Py_CLEAR(w->tab_bar_render_data.screen);
-    if (w->offscreen_texture_id) free_texture(&w->offscreen_texture_id);
-    if (w->offscreen_framebuffer) free_framebuffer(&w->offscreen_framebuffer);
     remove_vao(w->tab_bar_render_data.vao_idx);
-    remove_vao(w->gvao_idx);
     free(w->tabs); w->tabs = NULL;
     free_bgimage(&w->bgimage, true);
     w->bgimage = NULL;
@@ -946,7 +939,6 @@ PYWRAP1(set_window_render_data) {
     WITH_WINDOW(os_window_id, tab_id, window_id);
         Py_CLEAR(window->render_data.screen);
         d.vao_idx = window->render_data.vao_idx;
-        d.gvao_idx = window->render_data.gvao_idx;
         init_screen_render_data(osw, &g, &d);
         window->render_data = d;
         window->geometry = g;

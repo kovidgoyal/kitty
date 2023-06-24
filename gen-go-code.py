@@ -1,11 +1,13 @@
 #!./kitty/launcher/kitty +launch
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
+import argparse
 import bz2
 import io
 import json
 import os
 import re
+import shlex
 import struct
 import subprocess
 import sys
@@ -13,7 +15,19 @@ import tarfile
 from contextlib import contextmanager, suppress
 from functools import lru_cache
 from itertools import chain
-from typing import Any, BinaryIO, Dict, Iterator, List, Optional, Sequence, Set, TextIO, Tuple, Union
+from typing import (
+    Any,
+    BinaryIO,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    TextIO,
+    Tuple,
+    Union,
+)
 
 import kitty.constants as kc
 from kittens.tui.operations import Mode
@@ -27,7 +41,7 @@ from kitty.cli import (
 )
 from kitty.conf.generate import gen_go_code
 from kitty.conf.types import Definition
-from kitty.guess_mime_type import text_mimes
+from kitty.guess_mime_type import known_extensions, text_mimes
 from kitty.key_encoding import config_mod_map
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases
 from kitty.options.types import Options
@@ -72,6 +86,93 @@ def replace(template: str, **kw: str) -> str:
     return template
 # }}}
 
+# {{{  Stringer
+
+
+@lru_cache(maxsize=1)
+def enum_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser()
+    p.add_argument('--from-string-func-name')
+    return p
+
+
+def stringify_file(path: str) -> None:
+    with open(path) as f:
+        src = f.read()
+    types = {}
+    constant_name_maps = {}
+    for m in re.finditer(r'^type +(\S+) +\S+ +// *enum *(.*?)$', src, re.MULTILINE):
+        args = m.group(2)
+        types[m.group(1)] = enum_parser().parse_args(args=shlex.split(args) if args else [])
+
+    def get_enum_def(src: str) -> None:
+        type_name = q = ''
+        constants = {}
+        for line in src.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split()
+            if not type_name:
+                if len(parts) < 2 or parts[1] not in types:
+                    return
+                type_name = parts[1]
+                q = type_name + '_'
+            constant_name = parts[0]
+            a, sep, b = line.partition('//')
+            if sep:
+                string_val = b.strip()
+            else:
+                string_val = constant_name
+                if constant_name.startswith(q):
+                    string_val = constant_name[len(q):]
+            constants[constant_name] = serialize_as_go_string(string_val)
+        if constants and type_name:
+            constant_name_maps[type_name] = constants
+
+    for m in re.finditer(r'^const +\((.+?)^\)', src, re.MULTILINE|re.DOTALL):
+        get_enum_def(m.group(1))
+
+    with replace_if_needed(path.replace('.go', '_stringer_generated.go')):
+        print('package', os.path.basename(os.path.dirname(path)))
+        print ('import "fmt"')
+        print ('import "encoding/json"')
+        print()
+        for type_name, constant_map in constant_name_maps.items():
+            print(f'func (self {type_name}) String() string ''{')
+            print('switch self {')
+            is_first = True
+            for constant_name, string_val in constant_map.items():
+                if is_first:
+                    print(f'default: return "{string_val}"')
+                    is_first = False
+                else:
+                    print(f'case {constant_name}: return "{string_val}"')
+            print('}}')
+            print(f'func (self {type_name}) MarshalJSON() ([]byte, error) {{ return json.Marshal(self.String()) }}')
+            fsname = types[type_name].from_string_func_name or (type_name + '_from_string')
+            print(f'func {fsname}(x string) (ans {type_name}, err error) ''{')
+            print('switch x {')
+            for constant_name, string_val in constant_map.items():
+                print(f'case "{string_val}": return {constant_name}, nil')
+            print('}')
+            print(f'err = fmt.Errorf("unknown value for enum {type_name}: %#v", x)')
+            print('return')
+            print('}')
+            print(f'func (self *{type_name}) SetString(x string) error ''{')
+            print(f's, err := {fsname}(x); if err == nil {{ *self = s }}; return err''}')
+            print(f'func (self *{type_name}) UnmarshalJSON(data []byte) (err error)''{')
+            print('var x string')
+            print('if err = json.Unmarshal(data, &x); err != nil {return err}')
+            print('return self.SetString(x)}')
+
+
+def stringify() -> None:
+    for path in (
+        'tools/tui/graphics/command.go',
+    ):
+        stringify_file(path)
+# }}}
 
 # Completions {{{
 
@@ -324,7 +425,7 @@ def wrapped_kittens() -> Sequence[str]:
 
 
 def generate_conf_parser(kitten: str, defn: Definition) -> None:
-    with replace_if_needed(f'tools/cmd/{kitten}/conf_generated.go'):
+    with replace_if_needed(f'kittens/{kitten}/conf_generated.go'):
         print(f'package {kitten}')
         print(gen_go_code(defn))
 
@@ -358,11 +459,11 @@ def kitten_clis() -> None:
         ecp = get_kitten_extra_cli_parsers(kitten)
         if ecp:
             for name, spec in ecp.items():
-                with replace_if_needed(f'tools/cmd/{kitten}/{name}_cli_generated.go'):
+                with replace_if_needed(f'kittens/{kitten}/{name}_cli_generated.go'):
                     print(f'package {kitten}')
                     generate_extra_cli_parser(name, spec)
 
-        with replace_if_needed(f'tools/cmd/{kitten}/cli_generated.go'):
+        with replace_if_needed(f'kittens/{kitten}/cli_generated.go'):
             od = []
             kcd = kitten_cli_docs(kitten)
             has_underscore = '_' in kitten
@@ -494,10 +595,11 @@ var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
 var AllowedShellIntegrationValues = []string{{ {str(sorted(allowed_shell_integration_values))[1:-1].replace("'", '"')} }}
 var KittyConfigDefaults = struct {{
 Term, Shell_integration, Select_by_word_characters string
+Wheel_scroll_multiplier int
 Url_prefixes []string
 }}{{
 Term: "{Options.term}", Shell_integration: "{' '.join(Options.shell_integration)}", Url_prefixes: []string{{ {url_prefixes} }},
-Select_by_word_characters: `{Options.select_by_word_characters}`,
+Select_by_word_characters: `{Options.select_by_word_characters}`, Wheel_scroll_multiplier: {Options.wheel_scroll_multiplier},
 }}
 '''  # }}}
 
@@ -673,6 +775,10 @@ def generate_textual_mimetypes() -> str:
     for k in text_mimes:
         ans.append(f'  "{serialize_as_go_string(k)}": true,')
     ans.append('}')
+    ans.append('var KnownExtensions = map[string]string{')
+    for k, v in known_extensions.items():
+        ans.append(f'  ".{serialize_as_go_string(k)}": "{serialize_as_go_string(v)}",')
+    ans.append('}')
     return '\n'.join(ans)
 
 
@@ -706,7 +812,7 @@ def generate_ssh_kitten_data() -> None:
         for f in filenames:
             path = os.path.join(dirpath, f)
             files.add(path.replace(os.sep, '/'))
-    dest = 'tools/cmd/ssh/data_generated.bin'
+    dest = 'kittens/ssh/data_generated.bin'
 
     def normalize(t: tarfile.TarInfo) -> tarfile.TarInfo:
         t.uid = t.gid = 0
@@ -743,6 +849,7 @@ def main() -> None:
     update_completion()
     update_at_commands()
     kitten_clis()
+    stringify()
     print(json.dumps(changed, indent=2))
 
 

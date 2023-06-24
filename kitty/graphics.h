@@ -76,7 +76,7 @@ typedef struct {
 } BackgroundImage;
 
 typedef struct {
-    float vertices[16];
+    ImageRect src_rect, dest_rect;
     uint32_t texture_id, group_count;
     int z_index;
     id_type image_id;
@@ -131,7 +131,7 @@ typedef struct {
 
 static inline float
 gl_size(const unsigned int sz, const unsigned int viewport_size) {
-    // convert pixel sz to OpenGL co-ordinate system.
+    // convert pixel sz to OpenGL coordinate system.
     const float px = 2.f / viewport_size;
     return px * sz;
 }
@@ -164,12 +164,12 @@ const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g
 Image* grman_put_cell_image(GraphicsManager *self, uint32_t row, uint32_t col, uint32_t image_id, uint32_t placement_id, uint32_t x, uint32_t y, uint32_t w, uint32_t h, CellPixelSize cell);
 bool grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows, CellPixelSize);
 void grman_scroll_images(GraphicsManager *self, const ScrollData*, CellPixelSize fg);
-void grman_resize(GraphicsManager*, index_type, index_type, index_type, index_type);
+void grman_resize(GraphicsManager*, index_type, index_type, index_type, index_type, index_type, index_type);
 void grman_rescale(GraphicsManager *self, CellPixelSize fg);
 void grman_remove_cell_images(GraphicsManager *self, int32_t top, int32_t bottom);
 void grman_remove_all_cell_images(GraphicsManager *self);
 void gpu_data_for_image(ImageRenderData *ans, float left, float top, float right, float bottom);
-void gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, unsigned int screen_height_px, unsigned int width, unsigned int height);
 bool png_from_file_pointer(FILE* fp, const char *path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
 bool png_path_to_bitmap(const char *path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
 bool scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t *minimum_gap, bool os_window_context_set);
+void scale_rendered_graphic(ImageRenderData*, float xstart, float ystart, float x_scale, float y_scale);

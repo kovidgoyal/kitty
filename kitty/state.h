@@ -13,7 +13,6 @@
 #define OPT(name) global_state.opts.name
 
 typedef enum { LEFT_EDGE, TOP_EDGE, RIGHT_EDGE, BOTTOM_EDGE } Edge;
-typedef enum { RESIZE_DRAW_STATIC, RESIZE_DRAW_SCALED, RESIZE_DRAW_BLANK, RESIZE_DRAW_SIZE } ResizeDrawStrategy;
 typedef enum { REPEAT_MIRROR, REPEAT_CLAMP, REPEAT_DEFAULT } RepeatStrategy;
 typedef enum { WINDOW_NORMAL, WINDOW_FULLSCREEN, WINDOW_MAXIMIZED, WINDOW_MINIMIZED } WindowState;
 
@@ -63,14 +62,13 @@ typedef struct {
     unsigned long tab_bar_min_tabs;
     DisableLigature disable_ligatures;
     bool force_ltr;
-    ResizeDrawStrategy resize_draw_strategy;
     bool resize_in_steps;
     bool sync_to_monitor;
     bool close_on_child_death;
     bool window_alert_on_bell;
     bool debug_keyboard;
     bool allow_hyperlinks;
-    monotonic_t resize_debounce_time;
+    struct { monotonic_t on_end, on_pause; } resize_debounce_time;
     MouseShape pointer_shape_when_grabbed;
     MouseShape default_pointer_shape;
     MouseShape pointer_shape_when_dragging;
@@ -102,8 +100,8 @@ typedef struct WindowLogoRenderData {
 } WindowLogoRenderData;
 
 typedef struct {
-    ssize_t vao_idx, gvao_idx;
-    float xstart, ystart, dx, dy, xratio, yratio;
+    ssize_t vao_idx;
+    float xstart, ystart, dx, dy;
     Screen *screen;
 } ScreenRenderData;
 
@@ -191,7 +189,7 @@ typedef struct {
 typedef struct {
     void *handle;
     id_type id;
-    uint32_t offscreen_framebuffer;
+    monotonic_t created_at;
     struct {
         int x, y, w, h;
         bool is_set, was_maximized;
@@ -218,7 +216,6 @@ typedef struct {
     monotonic_t viewport_resized_at;
     LiveResizeInfo live_resize;
     bool has_pending_resizes, is_semi_transparent, shown_once, is_damaged;
-    uint32_t offscreen_texture_id;
     unsigned int clear_count;
     color_type last_titlebar_color;
     float background_opacity;
@@ -228,7 +225,6 @@ typedef struct {
     monotonic_t last_render_frame_received_at;
     uint64_t render_calls;
     id_type last_focused_counter;
-    ssize_t gvao_idx;
     CloseRequest close_request;
 } OSWindow;
 
@@ -294,8 +290,8 @@ void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *re
 ssize_t create_cell_vao(void);
 ssize_t create_graphics_vao(void);
 ssize_t create_border_vao(void);
-bool send_cell_data_to_gpu(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *);
-void draw_cells(ssize_t, ssize_t, const ScreenRenderData*, float, float, OSWindow *, bool, bool, Window*);
+bool send_cell_data_to_gpu(ssize_t, float, float, float, float, Screen *, OSWindow *);
+void draw_cells(ssize_t, const ScreenRenderData*, OSWindow *, bool, bool, Window*);
 void draw_centered_alpha_mask(OSWindow *w, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas);
 void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);

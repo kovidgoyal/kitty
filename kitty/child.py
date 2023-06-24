@@ -429,7 +429,7 @@ class Child:
                 return environ_of_process(pid)
         return {}
 
-    def send_signal_for_key(self, key_num: int) -> bool:
+    def send_signal_for_key(self, key_num: bytes) -> bool:
         import signal
         import termios
         if self.child_fd is None:

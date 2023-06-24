@@ -5,18 +5,20 @@ package tool
 import (
 	"fmt"
 
+	"kitty/kittens/ask"
+	"kitty/kittens/clipboard"
+	"kitty/kittens/diff"
+	"kitty/kittens/hints"
+	"kitty/kittens/hyperlinked_grep"
+	"kitty/kittens/icat"
+	"kitty/kittens/show_key"
+	"kitty/kittens/ssh"
+	"kitty/kittens/themes"
+	"kitty/kittens/unicode_input"
 	"kitty/tools/cli"
-	"kitty/tools/cmd/ask"
 	"kitty/tools/cmd/at"
-	"kitty/tools/cmd/clipboard"
 	"kitty/tools/cmd/edit_in_kitty"
-	"kitty/tools/cmd/hints"
-	"kitty/tools/cmd/hyperlinked_grep"
-	"kitty/tools/cmd/icat"
 	"kitty/tools/cmd/pytest"
-	"kitty/tools/cmd/ssh"
-	"kitty/tools/cmd/themes"
-	"kitty/tools/cmd/unicode_input"
 	"kitty/tools/cmd/update_self"
 	"kitty/tools/tui"
 )
@@ -40,14 +42,19 @@ func KittyToolEntryPoints(root *cli.Command) {
 	ssh.EntryPoint(root)
 	// unicode_input
 	unicode_input.EntryPoint(root)
+	// show_key
+	show_key.EntryPoint(root)
 	// hyperlinked_grep
 	hyperlinked_grep.EntryPoint(root)
 	// ask
 	ask.EntryPoint(root)
 	// hints
 	hints.EntryPoint(root)
+	// hints
+	diff.EntryPoint(root)
 	// themes
 	themes.EntryPoint(root)
+	themes.ParseEntryPoint(root)
 	// __pytest__
 	pytest.EntryPoint(root)
 	// __hold_till_enter__
@@ -58,6 +65,15 @@ func KittyToolEntryPoints(root *cli.Command) {
 		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
 			tui.ExecAndHoldTillEnter(args)
 			return
+		},
+	})
+	// __confirm_and_run_shebang__
+	root.AddSubCommand(&cli.Command{
+		Name:            "__confirm_and_run_shebang__",
+		Hidden:          true,
+		OnlyArgsAllowed: true,
+		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
+			return confirm_and_run_shebang(args)
 		},
 	})
 }

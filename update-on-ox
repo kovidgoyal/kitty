@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
+import atexit
 import glob
 import os
 import shlex
@@ -9,8 +10,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import atexit
-
 
 if False:
     dmg = sys.argv[-1]

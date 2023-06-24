@@ -960,7 +960,7 @@ cocoa_set_dock_icon(PyObject UNUSED *self, PyObject *args) {
 static NSSound *beep_sound = nil;
 
 static void
-cleanup() {
+cleanup(void) {
     @autoreleasepool {
 
     if (dockMenu) [dockMenu release];

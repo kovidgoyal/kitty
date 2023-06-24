@@ -298,7 +298,7 @@ Manual shell integration
 ----------------------------
 
 The automatic shell integration is designed to be minimally intrusive, as such
-it wont work for sub-shells, terminal multiplexers, containers, etc.
+it won't work for sub-shells, terminal multiplexers, containers, etc.
 For such systems, you should setup manual shell integration by adding some code
 to your shells startup files to load the shell integration script.
 

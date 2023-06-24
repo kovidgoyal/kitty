@@ -1,0 +1,13 @@
+.video-with-timestamps dl {
+    display: grid;
+    grid-template-columns: max-content auto;
+}
+
+.video-with-timestamps dt {
+    grid-column-start: 1;
+}
+
+.video-with-timestamps dd {
+    grid-column-start: 2;
+    margin-left: 1em;
+}

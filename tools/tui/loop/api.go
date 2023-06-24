@@ -5,6 +5,8 @@ package loop
 import (
 	"encoding/base64"
 	"fmt"
+	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -62,9 +64,11 @@ type Loop struct {
 	on_SIGTSTP                             func() error
 	style_cache                            map[string]func(...any) string
 	style_ctx                              style.Context
+	atomic_update_active                   bool
 
-	// Suspend the loop restoring terminal state. Call the return resume function to restore the loop
-	Suspend func() (func() error, error)
+	// Suspend the loop restoring terminal state, and run the provided function. When it returns terminal state is
+	// put back to what it was before suspending unless the function returns an error or an error occurs saving/restoring state.
+	SuspendAndRun func(func() error) error
 
 	// Callbacks
 
@@ -247,6 +251,25 @@ func (self *Loop) DebugPrintln(args ...any) {
 }
 
 func (self *Loop) Run() (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			stack := utils.Splitlines(string(debug.Stack()))
+			err = fmt.Errorf("Paniced: %s", r)
+			fmt.Fprintf(os.Stderr, "\r\nPaniced with error: %s\r\nStacktrace:\r\n", r)
+			for _, line := range stack {
+				fmt.Fprintf(os.Stderr, "%s\r\n", line)
+			}
+			if self.terminal_options.alternate_screen {
+				term, err := tty.OpenControllingTerm(tty.SetRaw)
+				if err == nil {
+					defer term.RestoreAndClose()
+					fmt.Println("Press any key to exit.\r")
+					buf := make([]byte, 16)
+					term.Read(buf)
+				}
+			}
+		}
+	}()
 	return self.run()
 }
 
@@ -290,11 +313,20 @@ func (self *Loop) Beep() {
 }
 
 func (self *Loop) StartAtomicUpdate() {
+	if self.atomic_update_active {
+		self.EndAtomicUpdate()
+	}
 	self.QueueWriteString(PENDING_UPDATE.EscapeCodeToSet())
+	self.atomic_update_active = true
 }
 
+func (self *Loop) IsAtomicUpdateActive() bool { return self.atomic_update_active }
+
 func (self *Loop) EndAtomicUpdate() {
-	self.QueueWriteString(PENDING_UPDATE.EscapeCodeToReset())
+	if self.atomic_update_active {
+		self.QueueWriteString(PENDING_UPDATE.EscapeCodeToReset())
+		self.atomic_update_active = false
+	}
 }
 
 func (self *Loop) SetCursorShape(shape CursorShapes, blink bool) {
@@ -380,4 +412,32 @@ func (self *Loop) SendOverlayReady() {
 func (self *Loop) Quit(exit_code int) {
 	self.exit_code = exit_code
 	self.keep_going = false
+}
+
+type DefaultColor int
+
+const (
+	BACKGROUND   DefaultColor = 11
+	FOREGROUND                = 10
+	CURSOR                    = 12
+	SELECTION_BG              = 17
+	SELECTION_FG              = 19
+)
+
+func (self *Loop) SetDefaultColor(which DefaultColor, val style.RGBA) {
+	self.QueueWriteString(fmt.Sprintf("\033]%d;%s\033\\", int(which), val.AsRGBSharp()))
+}
+
+func (self *Loop) copy_text_to(text, dest string) {
+	self.QueueWriteString("\x1b]52;" + dest + ";")
+	self.QueueWriteString(base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(text)))
+	self.QueueWriteString("\x1b\\")
+}
+
+func (self *Loop) CopyTextToPrimarySelection(text string) {
+	self.copy_text_to(text, "p")
+}
+
+func (self *Loop) CopyTextToClipboard(text string) {
+	self.copy_text_to(text, "c")
 }

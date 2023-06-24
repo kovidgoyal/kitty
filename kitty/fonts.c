@@ -543,6 +543,7 @@ START_ALLOW_CASE_RANGE
         case 0xe0b0 ... 0xe0bf:  // powerline box drawing
         case 0x1fb00 ... 0x1fb8b:  // symbols for legacy computing
         case 0x1fba0 ... 0x1fbae:
+        case 0x1fb90:  // inverse medium shade
             return BOX_FONT;
         default:
             *is_emoji_presentation = has_emoji_presentation(cpu_cell, gpu_cell);
@@ -585,6 +586,9 @@ START_ALLOW_CASE_RANGE
             return 0x151 + ch - 0x1fba0;
         case 0x2800 ... 0x28ff:
             return 0x160 + ch - 0x2800;
+        case 0x1fb90:
+            //  Allocated to allow for 0x1fb8c ... 0x1fb94 eventually
+            return 0x25f + ch - 0x1fb8c;
         default:
             return 0xffff;
     }

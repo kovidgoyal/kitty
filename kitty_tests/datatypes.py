@@ -20,7 +20,7 @@ from kitty.fast_data_types import (
 )
 from kitty.fast_data_types import Cursor as C
 from kitty.rgb import to_color
-from kitty.utils import is_path_in_temp_dir, sanitize_title, sanitize_url_for_dispay_to_user
+from kitty.utils import is_ok_to_read_image_file, is_path_in_temp_dir, sanitize_title, sanitize_url_for_dispay_to_user
 
 from . import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
 
@@ -444,6 +444,21 @@ class TestDataTypes(BaseTest):
                 self.assertTrue(is_path_in_temp_dir(os.path.join(prefix, path)))
         for path in ('/home/xy/d.png', '/tmp/../home/x.jpg'):
             self.assertFalse(is_path_in_temp_dir(os.path.join(path)))
+        for path in ('/proc/self/cmdline', os.devnull):
+            if os.path.exists(path):
+                with open(path) as pf:
+                    self.assertFalse(is_ok_to_read_image_file(path, pf.fileno()), path)
+        fifo = os.path.join(tempfile.gettempdir(), 'test-kitty-fifo')
+        os.mkfifo(fifo)
+        fifo_fd = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)
+        try:
+            self.assertFalse(is_ok_to_read_image_file(fifo, fifo_fd), fifo)
+        finally:
+            os.close(fifo_fd)
+            os.remove(fifo)
+        if os.path.isdir('/dev/shm'):
+            with tempfile.NamedTemporaryFile(dir='/dev/shm') as tf:
+                self.assertTrue(is_ok_to_read_image_file(tf.name, tf.fileno()), fifo)
         self.ae(sanitize_url_for_dispay_to_user(
             'h://a\u0430b.com/El%20Ni%C3%B1o/'), 'h://xn--ab-7kc.com/El Niño/')
 

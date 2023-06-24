@@ -88,7 +88,6 @@ serialize(const EncodingData *data, char *output, const char csi_trailer) {
                 if (first) { P(";%u", codep); first = false; }
                 else P(":%u", codep);
             }
-            state = UTF8_ACCEPT;
             p++;
         }
     }

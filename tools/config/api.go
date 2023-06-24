@@ -9,10 +9,11 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"kitty/tools/utils"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -88,6 +89,7 @@ func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes st
 			continue
 		}
 		key, val, _ := strings.Cut(line, " ")
+		val = strings.TrimSpace(val)
 		switch key {
 		default:
 			err := self.LineHandler(key, val)
@@ -167,6 +169,38 @@ func (self *ConfigParser) ParseFiles(paths ...string) error {
 	return nil
 }
 
+func (self *ConfigParser) LoadConfig(name string, paths []string, overrides []string) (err error) {
+	const SYSTEM_CONF = "/etc/xdg/kitty"
+	system_conf := filepath.Join(SYSTEM_CONF, name)
+	add_if_exists := func(q string) {
+		err = self.ParseFiles(q)
+		if err != nil && errors.Is(err, fs.ErrNotExist) {
+			err = nil
+		}
+	}
+	if add_if_exists(system_conf); err != nil {
+		return err
+	}
+	if len(paths) > 0 {
+		for _, path := range paths {
+			if add_if_exists(path); err != nil {
+				return err
+			}
+		}
+	} else {
+		if add_if_exists(filepath.Join(utils.ConfigDirForName(name), name)); err != nil {
+			return err
+		}
+	}
+	if len(overrides) > 0 {
+		err = self.ParseOverrides(overrides...)
+		if err != nil {
+			return err
+		}
+	}
+	return
+}
+
 type LinesScanner struct {
 	lines []string
 }
@@ -186,7 +220,9 @@ func (self *LinesScanner) Err() error {
 }
 
 func (self *ConfigParser) ParseOverrides(overrides ...string) error {
-	s := LinesScanner{lines: overrides}
+	s := LinesScanner{lines: utils.Map(func(x string) string {
+		return strings.Replace(x, "=", " ", 1)
+	}, overrides)}
 	self.seen_includes = make(map[string]bool)
 	return self.parse(&s, "<overrides>", utils.ConfigDir(), 0)
 }

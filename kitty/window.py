@@ -42,34 +42,16 @@ from .constants import (
     wakeup_io_loop,
 )
 from .fast_data_types import (
-    BGIMAGE_PROGRAM,
-    BLIT_PROGRAM,
-    CELL_BG_PROGRAM,
-    CELL_FG_PROGRAM,
-    CELL_PROGRAM,
-    CELL_SPECIAL_PROGRAM,
     CURSOR_BEAM,
     CURSOR_BLOCK,
     CURSOR_UNDERLINE,
     DCS,
-    DECORATION,
-    DECORATION_MASK,
-    DIM,
     GLFW_MOD_CONTROL,
-    GRAPHICS_ALPHA_MASK_PROGRAM,
-    GRAPHICS_PREMULT_PROGRAM,
-    GRAPHICS_PROGRAM,
-    MARK,
-    MARK_MASK,
     NO_CURSOR_SHAPE,
-    NUM_UNDERLINE_STYLES,
     OSC,
-    REVERSE,
     SCROLL_FULL,
     SCROLL_LINE,
     SCROLL_PAGE,
-    STRIKETHROUGH,
-    TINT_PROGRAM,
     Color,
     KeyEvent,
     Screen,
@@ -78,13 +60,11 @@ from .fast_data_types import (
     cell_size_for_window,
     click_mouse_cmd_output,
     click_mouse_url,
-    compile_program,
     current_focused_os_window_id,
     encode_key_for_tty,
     get_boss,
     get_click_interval,
     get_options,
-    init_cell_program,
     last_focused_os_window_id,
     mark_os_window_dirty,
     mouse_selection,
@@ -113,7 +93,6 @@ from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     docs_url,
     kitty_ansi_sanitizer_pat,
-    load_shaders,
     log_error,
     open_cmd,
     open_url,
@@ -363,63 +342,6 @@ def as_text(
     return ans
 
 
-def multi_replace(src: str, **replacements: Any) -> str:
-    r = {k: str(v) for k, v in replacements.items()}
-
-    def sub(m: 're.Match[str]') -> str:
-        return r.get(m.group(1), m.group(1))
-
-    return re.sub(r'\{([A-Z_]+)\}', sub, src)
-
-
-class LoadShaderPrograms:
-
-    def __call__(self, semi_transparent: bool = False) -> None:
-        compile_program(BLIT_PROGRAM, *load_shaders('blit'))
-        v, f = load_shaders('cell')
-
-        for which, p in {
-                'SIMPLE': CELL_PROGRAM,
-                'BACKGROUND': CELL_BG_PROGRAM,
-                'SPECIAL': CELL_SPECIAL_PROGRAM,
-                'FOREGROUND': CELL_FG_PROGRAM,
-        }.items():
-            ff = f.replace('{WHICH_PROGRAM}', which)
-            vv = multi_replace(
-                v,
-                WHICH_PROGRAM=which,
-                REVERSE_SHIFT=REVERSE,
-                STRIKE_SHIFT=STRIKETHROUGH,
-                DIM_SHIFT=DIM,
-                DECORATION_SHIFT=DECORATION,
-                MARK_SHIFT=MARK,
-                MARK_MASK=MARK_MASK,
-                DECORATION_MASK=DECORATION_MASK,
-                STRIKE_SPRITE_INDEX=NUM_UNDERLINE_STYLES + 1,
-            )
-            if semi_transparent:
-                vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
-                ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
-            compile_program(p, vv, ff)
-
-        v, f = load_shaders('graphics')
-        for which, p in {
-                'SIMPLE': GRAPHICS_PROGRAM,
-                'PREMULT': GRAPHICS_PREMULT_PROGRAM,
-                'ALPHA_MASK': GRAPHICS_ALPHA_MASK_PROGRAM,
-        }.items():
-            ff = f.replace('ALPHA_TYPE', which)
-            compile_program(p, v, ff)
-
-        v, f = load_shaders('bgimage')
-        compile_program(BGIMAGE_PROGRAM, v, f)
-        v, f = load_shaders('tint')
-        compile_program(TINT_PROGRAM, v, f)
-        init_cell_program()
-
-
-load_shader_programs = LoadShaderPrograms()
-
 
 def setup_colors(screen: Screen, opts: Options) -> None:
     screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
@@ -597,6 +519,7 @@ class Window:
         self.default_title = os.path.basename(child.argv[0] or appname)
         self.child_title = self.default_title
         self.title_stack: Deque[str] = deque(maxlen=10)
+        self.user_vars: Dict[str, bytes] = {}
         self.id: int = add_window(tab.os_window_id, tab.id, self.title)
         self.clipboard_request_manager = ClipboardRequestManager(self.id)
         self.margin = EdgeWidths()
@@ -922,7 +845,27 @@ class Window:
         self.override_title = title or None
         self.title_updated()
 
+    def set_user_var(self, key: str, val: Optional[bytes]) -> None:
+        self.user_vars.pop(key, None)  # ensure key will be newest in user_vars even if already present
+        if len(self.user_vars) > 64:  # dont store too many user vars
+            oldest_key = next(iter(self.user_vars))
+            self.user_vars.pop(oldest_key)
+        if val is not None:
+            self.user_vars[key] = val
+
+    # screen callbacks {{{
+
+    def osc_1337(self, raw_data: str) -> None:
+        for record in raw_data.split(';'):
+            key, _, val = record.partition('=')
+            if key == 'SetUserVar':
+                from base64 import standard_b64decode
+                ukey, has_equal, uval = val.partition('=')
+                self.set_user_var(ukey, (standard_b64decode(uval) if uval else b'') if has_equal == '=' else None)
+
     def desktop_notify(self, osc_code: int, raw_data: str) -> None:
+        if osc_code == 1337:
+            self.osc_1337(raw_data)
         if osc_code == 777:
             if not raw_data.startswith('notify;'):
                 log_error(f'Ignoring unknown OSC 777: {raw_data}')
@@ -932,7 +875,6 @@ class Window:
         if cmd is not None and osc_code == 99:
             self.prev_osc99_cmd = cmd
 
-    # screen callbacks {{{
     def use_utf8(self, on: bool) -> None:
         get_boss().child_monitor.set_iutf8_winid(self.id, on)
 
@@ -1004,7 +946,7 @@ class Window:
             '--ssh-connection-data', json.dumps(conn_data)
         )
 
-    def send_signal_for_key(self, key_num: int) -> bool:
+    def send_signal_for_key(self, key_num: bytes) -> bool:
         try:
             return self.child.send_signal_for_key(key_num)
         except OSError as err:

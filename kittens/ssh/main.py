@@ -20,7 +20,7 @@ def option_text() -> str:
 --glob
 type=bool-set
 Interpret file arguments as glob patterns. Globbing is based on
-Based on standard wildcards with the addition that ``/**/`` matches any number of directories.
+standard wildcards with the addition that ``/**/`` matches any number of directories.
 See the :link:`detailed syntax <https://github.com/bmatcuk/doublestar#patterns>`.
 
 
@@ -35,7 +35,7 @@ variables and ~ are not expanded.
 --exclude
 type=list
 A glob pattern. Files with names matching this pattern are excluded from being
-transferred. Useful when adding directories. Can
+transferred. Only used when copying directories. Can
 be specified multiple times, if any of the patterns match the file will be
 excluded. If the pattern includes a :code:`/` then it will match against the full
 path, not just the filename. In such patterns you can use :code:`/**/` to match zero
@@ -77,7 +77,11 @@ by spaces. The hostname can include an optional username in the form
 first hostname specification is found. Note that matching of hostname is done
 against the name you specify on the command line to connect to the remote host.
 If you wish to include the same basic configuration for many different hosts,
-you can do so with the :ref:`include <include>` directive.
+you can do so with the :ref:`include <include>` directive. In version 0.28.0
+the behavior of this option was changed slightly, now, when a hostname is encountered
+all its config values are set to defaults instead of being inherited from a previous
+matching hostname block. In particular it means hostnames dont inherit configurations,
+thereby avoiding hard to understand action-at-a-distance.
 ''')
 
 opt('interpreter', 'sh', long_text='''
@@ -196,6 +200,13 @@ using the kitty askpass implementation means that SSH might need to use the
 terminal before the connection is established, so the kitten cannot use the
 terminal to send data without an extra roundtrip, adding to initial connection
 latency.
+''')
+
+opt('delegate', '', long_text='''
+Do not use the SSH kitten for this host. Instead run the command specified as the delegate.
+For example using :code:`delegate ssh` will run the ssh command with all arguments passed
+to the kitten, except kitten specific ones. This is useful if some hosts are not capable
+of supporting the ssh kitten.
 ''')
 egr()  # }}}
 

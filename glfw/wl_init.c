@@ -789,6 +789,10 @@ glfwWaylandCheckForServerSideDecorations(void) {
     return has_ssd ? "YES" : "NO";
 }
 
+GLFWAPI int glfwGetCurrentSystemColorTheme(void) {
+    return glfw_current_system_color_theme();
+}
+
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////

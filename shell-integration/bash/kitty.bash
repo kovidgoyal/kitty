@@ -80,7 +80,7 @@ _ksi_prompt=(
 )
 
 _ksi_main() {
-    builtin local ifs="$IFS"
+    builtin local ifs="$IFS" i
     IFS=" "
     for i in ${KITTY_SHELL_INTEGRATION[@]}; do
         case "$i" in

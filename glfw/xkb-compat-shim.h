@@ -371,7 +371,7 @@ static const struct codepair keysymtab[] = {
     { 0x07c8, 0x0398 }, /*                 Greek_THETA Θ GREEK CAPITAL LETTER THETA */
     { 0x07c9, 0x0399 }, /*                  Greek_IOTA Ι GREEK CAPITAL LETTER IOTA */
     { 0x07ca, 0x039a }, /*                 Greek_KAPPA Κ GREEK CAPITAL LETTER KAPPA */
-    { 0x07cb, 0x039b }, /*                Greek_LAMBDA Λ GREEK CAPITAL LETTER LAMDA */
+    { 0x07cb, 0x039b }, /*                Greek_LAMBDA Λ GREEK CAPITAL LETTER LAMBDA */
     { 0x07cc, 0x039c }, /*                    Greek_MU Μ GREEK CAPITAL LETTER MU */
     { 0x07cd, 0x039d }, /*                    Greek_NU Ν GREEK CAPITAL LETTER NU */
     { 0x07ce, 0x039e }, /*                    Greek_XI Ξ GREEK CAPITAL LETTER XI */
@@ -395,7 +395,7 @@ static const struct codepair keysymtab[] = {
     { 0x07e8, 0x03b8 }, /*                 Greek_theta θ GREEK SMALL LETTER THETA */
     { 0x07e9, 0x03b9 }, /*                  Greek_iota ι GREEK SMALL LETTER IOTA */
     { 0x07ea, 0x03ba }, /*                 Greek_kappa κ GREEK SMALL LETTER KAPPA */
-    { 0x07eb, 0x03bb }, /*                Greek_lambda λ GREEK SMALL LETTER LAMDA */
+    { 0x07eb, 0x03bb }, /*                Greek_lambda λ GREEK SMALL LETTER LAMBDA */
     { 0x07ec, 0x03bc }, /*                    Greek_mu μ GREEK SMALL LETTER MU */
     { 0x07ed, 0x03bd }, /*                    Greek_nu ν GREEK SMALL LETTER NU */
     { 0x07ee, 0x03be }, /*                    Greek_xi ξ GREEK SMALL LETTER XI */

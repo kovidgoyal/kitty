@@ -5,7 +5,6 @@ package tui
 import (
 	"errors"
 	"fmt"
-	"kitty/tools/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,9 +14,15 @@ import (
 
 	"github.com/shirou/gopsutil/v3/process"
 	"golang.org/x/sys/unix"
+
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
+
+var TmuxExe = utils.Once(func() string {
+	return utils.FindExe("tmux")
+})
 
 func tmux_socket_address() (socket string) {
 	socket = os.Getenv("TMUX")
@@ -50,16 +55,23 @@ func tmux_socket_address() (socket string) {
 	return socket
 }
 
-var TmuxSocketAddress = (&utils.Once[string]{Run: tmux_socket_address}).Get
+var TmuxSocketAddress = utils.Once(tmux_socket_address)
+
+func tmux_command(args ...string) (c *exec.Cmd, stderr *strings.Builder) {
+	c = exec.Command(TmuxExe(), args...)
+	stderr = &strings.Builder{}
+	c.Stderr = stderr
+	return c, stderr
+}
 
 func tmux_allow_passthrough() error {
-	c := exec.Command("tmux", "show", "-Ap", "allow-passthrough")
+	c, stderr := tmux_command("show", "-Ap", "allow-passthrough")
 	allowed, not_allowed := errors.New("allowed"), errors.New("not allowed")
 	get_result := make(chan error)
 	go func() {
 		output, err := c.Output()
 		if err != nil {
-			get_result <- err
+			get_result <- fmt.Errorf("Running %#v failed with error: %w. STDERR: %s", c.Args, err, stderr.String())
 		} else {
 			q := strings.TrimSpace(utils.UnsafeBytesToString(output))
 			if strings.HasSuffix(q, " on") || strings.HasSuffix(q, " all") {
@@ -77,10 +89,15 @@ func tmux_allow_passthrough() error {
 		if r != not_allowed {
 			return r
 		}
-		return exec.Command("tmux", "set", "-p", "allow-passthrough", "on").Run()
+		c, stderr = tmux_command("set", "-p", "allow-passthrough", "on")
+		err := c.Run()
+		if err != nil {
+			err = fmt.Errorf("Running %#v failed with error: %w. STDERR: %s", c.Args, err, stderr.String())
+		}
+		return err
 	case <-time.After(2 * time.Second):
 		return fmt.Errorf("Tmux command timed out. This often happens when the version of tmux on your PATH is older than the version of the running tmux server")
 	}
 }
 
-var TmuxAllowPassthrough = (&utils.Once[error]{Run: tmux_allow_passthrough}).Get
+var TmuxAllowPassthrough = utils.Once(tmux_allow_passthrough)

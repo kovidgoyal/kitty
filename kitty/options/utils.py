@@ -604,6 +604,13 @@ def resize_draw_strategy(x: str) -> int:
     return cmap.get(x.lower(), 0)
 
 
+def resize_debounce_time(x: str) -> Tuple[float, float]:
+    parts = x.split(maxsplit=1)
+    if len(parts) == 1:
+        return positive_float(parts[0]), 0.5
+    return positive_float(parts[0]), positive_float(parts[1])
+
+
 def visual_window_select_characters(x: str) -> str:
     import string
     valid_characters = string.digits + string.ascii_uppercase

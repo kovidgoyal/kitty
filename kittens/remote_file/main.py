@@ -111,7 +111,7 @@ class ControlMaster:
         self.tdir = ''
         self.last_error_log = ''
         self.cmd_prefix = cmd = [
-            conn_data.binary, '-o', f'ControlPath=~/.ssh/kitty-master-{os.getpid()}-%r@%h:%p',
+            conn_data.binary, '-o', f'ControlPath=~/.ssh/kitty-rf-{os.getpid()}-%C',
             '-o', 'TCPKeepAlive=yes', '-o', 'ControlPersist=yes'
         ]
         self.is_ssh_kitten = conn_data.binary is is_ssh_kitten_sentinel

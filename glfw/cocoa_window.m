@@ -355,7 +355,7 @@ requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
             if (!dl->first_unserviced_render_frame_request_at) dl->first_unserviced_render_frame_request_at = now;
             if (!CVDisplayLinkIsRunning(dl->displayLink)) CVDisplayLinkStart(dl->displayLink);
             else if (now - dl->first_unserviced_render_frame_request_at > s_to_monotonic_t(1ll)) {
-                // display link is stuck need to recreate it because Apple cant even
+                // display link is stuck need to recreate it because Apple can't even
                 // get a simple timer right
                 CVDisplayLinkRelease(dl->displayLink); dl->displayLink = nil;
                 dl->first_unserviced_render_frame_request_at = now;
@@ -1008,6 +1008,18 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     (void)event;
     if (!window) return;
     _glfwInputCursorEnter(window, true);
+}
+
+- (void)viewDidChangeEffectiveAppearance
+{
+    static int appearance = 0;
+    if (_glfw.callbacks.system_color_theme_change) {
+        int new_appearance = glfwGetCurrentSystemColorTheme();
+        if (new_appearance != appearance) {
+            appearance = new_appearance;
+            _glfw.callbacks.system_color_theme_change(appearance);
+        }
+    }
 }
 
 - (void)viewDidChangeBackingProperties
@@ -2553,7 +2565,7 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
     NSWindowStyleMask sm = [window styleMask];
     if (traditional) {
         if (@available(macOS 10.15.7, *)) {
-            // As of Big Turd NSWindowStyleMaskFullScreen is no longer useable
+            // As of Big Turd NSWindowStyleMaskFullScreen is no longer usable
             // Also no longer compatible after a minor release of macOS 10.15.7
             if (!w->ns.in_traditional_fullscreen) {
                 w->ns.pre_full_screen_style_mask = sm;
@@ -2581,7 +2593,7 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
         }
         // Changing the style mask causes the first responder to be cleared
         [window makeFirstResponder:w->ns.view];
-        // If the dock and menubar are hidden going from maximized to fullscreen doesnt change the window size
+        // If the dock and menubar are hidden going from maximized to fullscreen doesn't change the window size
         // and macOS forgets to trigger windowDidResize, so call it ourselves
         NSNotification *notification = [NSNotification notificationWithName:NSWindowDidResizeNotification object:window];
         [w->ns.delegate performSelector:@selector(windowDidResize:) withObject:notification afterDelay:0];
@@ -2961,6 +2973,19 @@ GLFWAPI GLFWcocoatogglefullscreenfun glfwSetCocoaToggleFullscreenIntercept(GLFWw
 GLFWAPI void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun callback) {
     requestRenderFrame((_GLFWwindow*)w, callback);
 }
+
+GLFWAPI int glfwGetCurrentSystemColorTheme(void) {
+    int theme_type = 0;
+    NSAppearance *changedAppearance = NSApp.effectiveAppearance;
+    NSAppearanceName newAppearance = [changedAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
+    if([newAppearance isEqualToString:NSAppearanceNameDarkAqua]){
+        theme_type = 1;
+    } else {
+        theme_type = 2;
+    }
+    return theme_type;
+}
+
 
 GLFWAPI uint32_t
 glfwGetCocoaKeyEquivalent(uint32_t glfw_key, int glfw_mods, int *cocoa_mods) {

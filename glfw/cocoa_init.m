@@ -826,7 +826,7 @@ int _glfwPlatformInit(void)
         if (!_glfw.ignoreOSKeyboardProcessing) {
             // first check if there is a global menu bar shortcut
             if ([[NSApp mainMenu] performKeyEquivalent:event]) {
-                debug_key("keyDown triggerred global menu bar action ignoring\n");
+                debug_key("keyDown triggered global menu bar action ignoring\n");
                 last_keydown_shortcut_event.virtual_key_code = [event keyCode];
                 last_keydown_shortcut_event.input_source_switch_modifiers = 0;
                 last_keydown_shortcut_event.timestamp = [event timestamp];
@@ -835,7 +835,7 @@ int _glfwPlatformInit(void)
             // now check if there is a useful apple shortcut
             int global_shortcut = is_active_apple_global_shortcut(event);
             if (is_useful_apple_global_shortcut(global_shortcut)) {
-                debug_key("keyDown triggerred global macOS shortcut ignoring\n");
+                debug_key("keyDown triggered global macOS shortcut ignoring\n");
                 last_keydown_shortcut_event.virtual_key_code = [event keyCode];
                 // record the modifier keys if switching to the next input source
                 last_keydown_shortcut_event.input_source_switch_modifiers = (global_shortcut == kSHKSelectNextSourceInInputMenu) ? USEFUL_MODS([event modifierFlags]) : 0;
@@ -844,7 +844,7 @@ int _glfwPlatformInit(void)
             }
             // check for JIS keyboard layout function keys
             if (is_apple_jis_layout_function_key(event)) {
-                debug_key("keyDown triggerred JIS layout function key ignoring\n");
+                debug_key("keyDown triggered JIS layout function key ignoring\n");
                 last_keydown_shortcut_event.virtual_key_code = [event keyCode];
                 last_keydown_shortcut_event.input_source_switch_modifiers = 0;
                 last_keydown_shortcut_event.timestamp = [event timestamp];
@@ -865,7 +865,7 @@ int _glfwPlatformInit(void)
         if (last_keydown_shortcut_event.virtual_key_code != 0xffff && last_keydown_shortcut_event.virtual_key_code == [event keyCode]) {
             // ignore as the corresponding key down event triggered a menu bar or macOS shortcut
             last_keydown_shortcut_event.virtual_key_code = 0xffff;
-            debug_key("keyUp ignored as corresponds to previous keyDown that trigerred a shortcut\n");
+            debug_key("keyUp ignored as corresponds to previous keyDown that triggered a shortcut\n");
             return nil;
         }
         NSWindow *kw = [NSApp keyWindow];
@@ -1014,7 +1014,7 @@ static pthread_t main_thread;
 static NSLock *tick_lock = NULL;
 
 
-void _glfwDispatchTickCallback() {
+void _glfwDispatchTickCallback(void) {
     if (tick_lock && tick_callback) {
         [tick_lock lock];
         while(tick_callback_requested) {
@@ -1026,7 +1026,7 @@ void _glfwDispatchTickCallback() {
 }
 
 static void
-request_tick_callback() {
+request_tick_callback(void) {
     if (!tick_callback_requested) {
         tick_callback_requested = true;
         [NSApp performSelectorOnMainThread:@selector(tick_callback) withObject:nil waitUntilDone:NO];

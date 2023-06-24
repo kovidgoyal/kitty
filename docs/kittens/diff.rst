@@ -31,11 +31,7 @@ Major Features
 Installation
 ---------------
 
-Simply :ref:`install kitty <quickstart>`.  You also need to have either the `git
-<https://git-scm.com/>`__ program or the :program:`diff` program installed.
-Additionally, for syntax highlighting to work, `pygments
-<https://pygments.org/>`__ must be installed (note that pygments is included in
-the official kitty binary builds).
+Simply :ref:`install kitty <quickstart>`.
 
 
 Usage
@@ -65,30 +61,32 @@ directory contents.
 Keyboard controls
 ----------------------
 
-=========================   ===========================
-Action                      Shortcut
-=========================   ===========================
-Quit                        :kbd:`Q`, :kbd:`Ctrl+C`, :kbd:`Esc`
-Scroll line up              :kbd:`K`, :kbd:`Up`
-Scroll line down            :kbd:`J`, :kbd:`Down`
-Scroll page up              :kbd:`PgUp`
-Scroll page down            :kbd:`PgDn`
-Scroll to top               :kbd:`Home`
-Scroll to bottom            :kbd:`End`
-Scroll to next page         :kbd:`Space`, :kbd:`PgDn`
-Scroll to previous page     :kbd:`PgUp`
-Scroll to next change       :kbd:`N`
-Scroll to previous change   :kbd:`P`
-Increase lines of context   :kbd:`+`
-Decrease lines of context   :kbd:`-`
-All lines of context        :kbd:`A`
-Restore default context     :kbd:`=`
-Search forwards             :kbd:`/`
-Search backwards            :kbd:`?`
-Clear search                :kbd:`Esc`
-Scroll to next match        :kbd:`>`, :kbd:`.`
-Scroll to previous match    :kbd:`<`, :kbd:`,`
-=========================   ===========================
+===========================       ===========================
+Action                            Shortcut
+===========================       ===========================
+Quit                              :kbd:`Q`, :kbd:`Esc`
+Scroll line up                    :kbd:`K`, :kbd:`Up`
+Scroll line down                  :kbd:`J`, :kbd:`Down`
+Scroll page up                    :kbd:`PgUp`
+Scroll page down                  :kbd:`PgDn`
+Scroll to top                     :kbd:`Home`
+Scroll to bottom                  :kbd:`End`
+Scroll to next page               :kbd:`Space`, :kbd:`PgDn`
+Scroll to previous page           :kbd:`PgUp`
+Scroll to next change             :kbd:`N`
+Scroll to previous change         :kbd:`P`
+Increase lines of context         :kbd:`+`
+Decrease lines of context         :kbd:`-`
+All lines of context              :kbd:`A`
+Restore default context           :kbd:`=`
+Search forwards                   :kbd:`/`
+Search backwards                  :kbd:`?`
+Clear search                      :kbd:`Esc`
+Scroll to next match              :kbd:`>`, :kbd:`.`
+Scroll to previous match          :kbd:`<`, :kbd:`,`
+Copy selection to clipboard       :kbd:`y`
+Copy selection or exit            :kbd:`Ctrl+C`
+===========================       ===========================
 
 
 Integrating with git
@@ -124,7 +122,7 @@ The diff kitten makes use of various features that are :doc:`kitty only
 </graphics-protocol>`, the :doc:`extended keyboard protocol
 </keyboard-protocol>`, etc. It also leverages terminal program infrastructure
 I created for all of kitty's other kittens to reduce the amount of code needed
-(the entire implementation is under 2000 lines of code).
+(the entire implementation is under 3000 lines of code).
 
 And fundamentally, it's kitty only because I wrote it for myself, and I am
 highly unlikely to use any other terminals :)

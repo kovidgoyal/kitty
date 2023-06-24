@@ -1,4 +1,3 @@
-#version GLSL_VERSION
 #define left  0
 #define top  1
 #define right  2

@@ -33,8 +33,8 @@ func TestANSIStyleSprint(t *testing.T) {
 	}
 
 	test("", "", "")
-	test("bold", "\x1b[1m", "\x1b[22m")
-	test("bold fg=red u=curly", "\x1b[1;4:3;31m", "\x1b[22;4:0;39m")
+	test("bold", "\x1b[1m", "\x1b[221m")
+	test("bold fg=red u=curly", "\x1b[1;4:3;31m", "\x1b[221;4:0;39m")
 	test("fg=123", "\x1b[38:5:123m", "\x1b[39m")
 	test("fg=15", "\x1b[97m", "\x1b[39m")
 	test("bg=15", "\x1b[107m", "\x1b[49m")

@@ -101,8 +101,13 @@ def run_man(args: Any) -> None:
 
 
 def run_html(args: Any) -> None:
+    # Force a fresh build otherwise the search index is not correct
+    shutil.rmtree(os.path.join(docs_dir, '_build', 'dirhtml'))
     call('make FAIL_WARN=1 "OPTS=-D analytics_id=G-XTJK3R7GF2" dirhtml', cwd=docs_dir)
     add_old_redirects('docs/_build/dirhtml')
+
+    shutil.rmtree(os.path.join(docs_dir, '_build', 'html'))
+    call('make FAIL_WARN=1 "OPTS=-D analytics_id=G-XTJK3R7GF2" html', cwd=docs_dir)
 
 
 def generate_redirect_html(link_name: str, bname: str) -> None:
@@ -154,6 +159,7 @@ def run_website(args: Any) -> None:
         f.write(version)
     shutil.copy2(os.path.join(docs_dir, 'installer.sh'), publish_dir)
     os.chdir(os.path.dirname(publish_dir))
+    subprocess.check_call(['optipng', '-o7'] + glob.glob('kitty/_images/social_previews/*.png'))
     subprocess.check_call(['git', 'add', 'kitty'])
     subprocess.check_call(['git', 'commit', '-m', 'kitty website updates'])
     subprocess.check_call(['git', 'push'])
@@ -492,7 +498,7 @@ def safe_read(path: str) -> str:
 @contextmanager
 def change_to_git_master() -> Generator[None, None, None]:
     stash_ref_before = safe_read('.git/refs/stash')
-    subprocess.check_call(['git', 'stash'])
+    subprocess.check_call(['git', 'stash', '-u'])
     try:
         branch_before = current_branch()
         if branch_before != 'master':
@@ -547,6 +553,7 @@ def main() -> None:
         with change_to_git_master():
             building_nightly = True
             exec_actions(NIGHTLY_ACTIONS, args)
+            subprocess.run(['make', 'debug'])
         return
     require_git_master()
     if args.action == 'all':

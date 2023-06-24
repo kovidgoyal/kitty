@@ -41,9 +41,13 @@ In addition to kitty, this protocol is also implemented in:
 * The `crossterm library
   <https://github.com/crossterm-rs/crossterm/pull/688>`__
 * The `Vim text editor <https://github.com/vim/vim/commit/63a2e360cca2c70ab0a85d14771d3259d4b3aafa>`__
+* The `Emacs text editor via the kkp package <https://github.com/benjaminor/kkp>`__
 * The `Neovim text editor <https://github.com/neovim/neovim/pull/18181>`__
 * The `kakoune text editor <https://github.com/mawww/kakoune/issues/4103>`__
 * The `dte text editor <https://gitlab.com/craigbarnes/dte/-/issues/138>`__
+* The `Helix text editor <https://github.com/helix-editor/helix/pull/4939>`__
+* The `far2l file manager <https://github.com/elfmz/far2l/commit/e1f2ee0ef2b8332e5fa3ad7f2e4afefe7c96fc3b>`__
+* The `awrit web browser <https://github.com/chase/awrit>`__
 
 .. versionadded:: 0.20.0
 
@@ -275,7 +279,7 @@ The terminal will reply with::
 The program can also push/pop the current flags onto a stack in the
 terminal with::
 
-    CSI > flags u  # for push, if flags ommitted default to zero
+    CSI > flags u  # for push, if flags omitted default to zero
     CSI < number u # to pop number entries, defaulting to 1 if unspecified
 
 Terminals should limit the size of the stack as appropriate, to prevent

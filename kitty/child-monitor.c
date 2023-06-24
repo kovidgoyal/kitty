@@ -675,7 +675,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
             call_boss(update_tab_bar_data, "K", os_window->id);
             os_window->tab_bar_data_updated = true;
         }
-        if (send_cell_data_to_gpu(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window)) needs_render = true;
+        if (send_cell_data_to_gpu(TD.vao_idx, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window)) needs_render = true;
     }
     if (OPT(mouse_hide_wait) > 0 && !is_mouse_hidden(os_window)) {
         if (now - os_window->last_mouse_activity_at >= OPT(mouse_hide_wait)) hide_mouse(os_window);
@@ -726,46 +726,11 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                     set_maximum_wait(min_gap);
                 }
             }
-            if (send_cell_data_to_gpu(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
+            if (send_cell_data_to_gpu(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
             if (WD.screen->start_visual_bell_at != 0) needs_render = true;
         }
     }
     return needs_render;
-}
-
-static void
-render_os_window(OSWindow *os_window, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
-    // ensure all pixels are cleared to background color at least once in every buffer
-    if (os_window->clear_count++ < 3) blank_os_window(os_window);
-    Tab *tab = os_window->tabs + os_window->active_tab;
-    BorderRects *br = &tab->border_rects;
-    float x_ratio = 1, y_ratio = 1;
-    draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
-    br->is_dirty = false;
-    bool static_live_resize_in_progress = os_window->live_resize.in_progress && OPT(resize_draw_strategy) == RESIZE_DRAW_STATIC;
-    if (static_live_resize_in_progress) {
-        x_ratio = (float) os_window->viewport_width / (float) os_window->live_resize.width;
-        y_ratio = (float) os_window->viewport_height / (float) os_window->live_resize.height;
-    }
-    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, 0, &TD, x_ratio, y_ratio, os_window, true, false, NULL);
-    for (unsigned int i = 0; i < tab->num_windows; i++) {
-        Window *w = tab->windows + i;
-        if (w->visible && WD.screen) {
-            bool is_active_window = i == tab->active_window;
-            draw_cells(WD.vao_idx, WD.gvao_idx, &WD, x_ratio, y_ratio, os_window, is_active_window, true, w);
-            if (WD.screen->start_visual_bell_at != 0) {
-                set_maximum_wait(OPT(repaint_delay));
-            }
-            w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; w->last_cursor_x = WD.screen->cursor_render_info.x; w->last_cursor_y = WD.screen->cursor_render_info.y; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
-        }
-    }
-    swap_window_buffers(os_window);
-    os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
-    os_window->focused_at_last_render = os_window->is_focused;
-    os_window->is_damaged = false;
-    if (USE_RENDER_FRAMES) request_frame_render(os_window);
-#undef WD
-#undef TD
 }
 
 static void
@@ -778,6 +743,36 @@ draw_resizing_text(OSWindow *w) {
         draw_centered_alpha_mask(w, width, height, rendered.width, rendered.height, rendered.canvas);
         free(rendered.canvas);
     }
+}
+
+static void
+render_os_window(OSWindow *os_window, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
+    // ensure all pixels are cleared to background color at least once in every buffer
+    if (os_window->clear_count++ < 3) blank_os_window(os_window);
+    Tab *tab = os_window->tabs + os_window->active_tab;
+    BorderRects *br = &tab->border_rects;
+    draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
+    br->is_dirty = false;
+    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, &TD, os_window, true, false, NULL);
+    for (unsigned int i = 0; i < tab->num_windows; i++) {
+        Window *w = tab->windows + i;
+        if (w->visible && WD.screen) {
+            bool is_active_window = i == tab->active_window;
+            draw_cells(WD.vao_idx, &WD, os_window, is_active_window, true, w);
+            if (WD.screen->start_visual_bell_at != 0) {
+                set_maximum_wait(OPT(repaint_delay));
+            }
+            w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; w->last_cursor_x = WD.screen->cursor_render_info.x; w->last_cursor_y = WD.screen->cursor_render_info.y; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
+        }
+    }
+    if (os_window->live_resize.in_progress && (monotonic() - os_window->created_at > ms_to_monotonic_t(1000))) draw_resizing_text(os_window);
+    swap_window_buffers(os_window);
+    os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
+    os_window->focused_at_last_render = os_window->is_focused;
+    os_window->is_damaged = false;
+    if (USE_RENDER_FRAMES) request_frame_render(os_window);
+#undef WD
+#undef TD
 }
 
 static bool
@@ -818,22 +813,19 @@ render(monotonic_t now, bool input_read) {
             if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now, ms_to_monotonic_t(250ll))) request_frame_render(w);
             // dont respect render frames soon after a resize on Wayland as they cause flicker because
             // we want to fill the newly resized buffer ASAP, not at compositors convenience
-            if (!global_state.is_wayland || (monotonic() - w->viewport_resized_at) > s_double_to_monotonic_t(1)) continue;
+            if (!global_state.is_wayland || (monotonic() - w->viewport_resized_at) > s_double_to_monotonic_t(1)) {
+                // since we didn't scan the window for animations, force a rescan on next wakeup/render frame
+                if (scan_for_animated_images) global_state.check_for_active_animated_images = true;
+                continue;
+            }
         }
         w->render_calls++;
         make_os_window_context_current(w);
-        if (w->live_resize.in_progress && OPT(resize_draw_strategy) >= RESIZE_DRAW_BLANK) {
-            blank_os_window(w);
-            if (OPT(resize_draw_strategy) == RESIZE_DRAW_SIZE) draw_resizing_text(w);
-            swap_window_buffers(w);
-            if (USE_RENDER_FRAMES) request_frame_render(w);
-            continue;
-        }
-        if (w->live_resize.in_progress && OPT(resize_draw_strategy) == RESIZE_DRAW_STATIC) blank_os_window(w);
+        if (w->live_resize.in_progress) blank_os_window(w);
         bool needs_render = w->is_damaged || w->live_resize.in_progress;
         if (w->viewport_size_dirty) {
             w->clear_count = 0;
-            update_surface_size(w->viewport_width, w->viewport_height, w->offscreen_texture_id);
+            update_surface_size(w->viewport_width, w->viewport_height, 0);
             w->viewport_size_dirty = false;
             needs_render = true;
         }
@@ -1000,23 +992,32 @@ process_pending_resizes(monotonic_t now) {
         if (w->live_resize.in_progress) {
             bool update_viewport = false;
             if (w->live_resize.from_os_notification) {
-                if (w->live_resize.os_says_resize_complete || (now - w->live_resize.last_resize_event_at) > 1) update_viewport = true;
+                if (w->live_resize.os_says_resize_complete) update_viewport = true;
+                else {
+                    // prevent a "hang" if the OS never sends a resize complete event
+                    // also reflow the screen when the user pauses resizing so the user can see what the resized
+                    // screen will look like.
+                    if ((now - w->live_resize.last_resize_event_at) > OPT(resize_debounce_time).on_pause) update_viewport = true;
+                    else {
+                        global_state.has_pending_resizes = true;
+                        set_maximum_wait(s_double_to_monotonic_t(0.05));
+                    }
+                }
             } else {
-                monotonic_t debounce_time = OPT(resize_debounce_time);
+                monotonic_t debounce_time = OPT(resize_debounce_time).on_end;
                 // if more than one resize event has occurred, wait at least 0.2 secs
                 // before repainting, to avoid rapid transitions between the cells banner
                 // and the normal screen
-                if (w->live_resize.num_of_resize_events > 1 && OPT(resize_draw_strategy) == RESIZE_DRAW_SIZE) debounce_time = MAX(ms_to_monotonic_t(200ll), debounce_time);
                 if (now - w->live_resize.last_resize_event_at >= debounce_time) update_viewport = true;
                 else {
                     global_state.has_pending_resizes = true;
-                    set_maximum_wait(OPT(resize_debounce_time) - now + w->live_resize.last_resize_event_at);
+                    set_maximum_wait(debounce_time - now + w->live_resize.last_resize_event_at);
                 }
             }
             if (update_viewport) {
-                static const LiveResizeInfo empty = {0};
                 update_os_window_viewport(w, true);
-                w->live_resize = empty;
+                zero_at_ptr(&w->live_resize);
+                w->is_damaged = true;  // because the window size should be hidden even if update_os_window_viewport does nothing
             }
         }
     }

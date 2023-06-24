@@ -44,7 +44,8 @@ You can also create your own themes as :file:`.conf` files. Put them in the
 usually, :file:`~/.config/kitty/themes`. The kitten will automatically add them
 to the list of themes. You can use this to modify the builtin themes, by giving
 the conf file the name :file:`Some theme name.conf` to override the builtin
-theme of that name. Note that after doing so you have to run the kitten and
+theme of that name. Here, ``Some theme name`` is the actual builtin theme name, not
+its file name. Note that after doing so you have to run the kitten and
 choose that theme once for your changes to be applied.
 
 

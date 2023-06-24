@@ -389,7 +389,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     /* printf("old_cursor: (%u, %u) new_cursor: (%u, %u) beyond_content: %d\n", self->cursor->x, self->cursor->y, cursor.after.x, cursor.after.y, cursor.is_beyond_content); */
     setup_cursor(main_saved_cursor);
     grman_remove_all_cell_images(self->main_grman);
-    grman_resize(self->main_grman, self->lines, lines, self->columns, columns);
+    grman_resize(self->main_grman, self->lines, lines, self->columns, columns, num_content_lines_before, num_content_lines_after);
 
     // Resize alt linebuf
     n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL, &cursor, &alt_saved_cursor, &self->as_ansi_buf);
@@ -398,7 +398,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     if (!is_main) setup_cursor(cursor);
     setup_cursor(alt_saved_cursor);
     grman_remove_all_cell_images(self->alt_grman);
-    grman_resize(self->alt_grman, self->lines, lines, self->columns, columns);
+    grman_resize(self->alt_grman, self->lines, lines, self->columns, columns, num_content_lines_before, num_content_lines_after);
 #undef setup_cursor
 
     self->linebuf = is_main ? self->main_linebuf : self->alt_linebuf;
@@ -784,12 +784,19 @@ select_graphic_rendition(Screen *self, int *params, unsigned int count, Region *
             }
         } else {
             index_type x, num;
-            for (index_type y = region.top; y < MIN(region.bottom + 1, self->lines); y++) {
-                if (y == region.top) { x = MIN(region.left, self->columns - 1); num = self->columns - x; }
-                else if (y == region.bottom) { x = 0; num = MIN(region.right + 1, self->columns); }
-                else { x = 0; num = self->columns; }
-                linebuf_init_line(self->linebuf, y);
+            if (region.top == region.bottom) {
+                linebuf_init_line(self->linebuf, region.top);
+                x = MIN(region.left, self->columns-1);
+                num = MIN(self->columns - x, region.right - x + 1);
                 apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count);
+            } else {
+                for (index_type y = region.top; y < MIN(region.bottom + 1, self->lines); y++) {
+                    if (y == region.top) { x = MIN(region.left, self->columns - 1); num = self->columns - x; }
+                    else if (y == region.bottom) { x = 0; num = MIN(region.right + 1, self->columns); }
+                    else { x = 0; num = self->columns; }
+                    linebuf_init_line(self->linebuf, y);
+                    apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count);
+                }
             }
         }
     } else cursor_from_sgr(self->cursor, params, count);
@@ -885,17 +892,19 @@ cursor_within_margins(Screen *self) {
 // as dirty (like screen_insert_lines) and at the same time don't move image
 // references (i.e. unlike screen_scroll, which moves everything).
 static void
-screen_dirty_line_graphics(Screen *self, unsigned int top, unsigned int bottom) {
+screen_dirty_line_graphics(Screen *self, const unsigned int top, const unsigned int bottom, const bool main_buf) {
     bool need_to_remove = false;
-    for (unsigned int y = top; y <= bottom; y++) {
-        if (self->linebuf->line_attrs[y].has_image_placeholders) {
+    const unsigned int limit = MIN(bottom+1, self->lines);
+    LineBuf *linebuf = main_buf ? self->main_linebuf : self->alt_linebuf;
+    for (unsigned int y = top; y < limit; y++) {
+        if (linebuf->line_attrs[y].has_image_placeholders) {
             need_to_remove = true;
-            linebuf_mark_line_dirty(self->linebuf, y);
+            linebuf_mark_line_dirty(linebuf, y);
             self->is_dirty = true;
         }
     }
     if (need_to_remove)
-        grman_remove_cell_images(self->grman, top, bottom);
+        grman_remove_cell_images(main_buf ? self->main_grman : self->alt_grman, top, bottom);
 }
 
 void
@@ -911,7 +920,7 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
     }
     if (cmd->unicode_placement) {
         // Make sure the placeholders are redrawn if we add or change a virtual placement.
-        screen_dirty_line_graphics(self, 0, self->lines);
+        screen_dirty_line_graphics(self, 0, self->lines, self->linebuf == self->main_linebuf);
     }
 }
 // }}}
@@ -1599,7 +1608,7 @@ screen_erase_in_line(Screen *self, unsigned int how, bool private) {
             break;
     }
     if (n > 0) {
-        screen_dirty_line_graphics(self, self->cursor->y, self->cursor->y);
+        screen_dirty_line_graphics(self, self->cursor->y, self->cursor->y, self->linebuf == self->main_linebuf);
         linebuf_init_line(self->linebuf, self->cursor->y);
         if (private) {
             line_clear_text(self->linebuf->line, s, n, BLANK_CHAR);
@@ -1621,6 +1630,26 @@ screen_clear_scrollback(Screen *self) {
     }
 }
 
+static Line* visual_line_(Screen *self, int y_);
+
+static void
+screen_move_into_scrollback(Screen *self) {
+    if (self->linebuf != self->main_linebuf || self->margin_top != 0 || self->margin_bottom != self->lines - 1) return;
+    unsigned int num_of_lines_to_move = self->lines;
+    while (num_of_lines_to_move) {
+        Line *line = visual_line_(self, num_of_lines_to_move-1);
+        if (!line_is_empty(line)) break;
+        num_of_lines_to_move--;
+    }
+    if (num_of_lines_to_move) {
+        unsigned int top, bottom;
+        for (; num_of_lines_to_move; num_of_lines_to_move--) {
+            top = 0, bottom = num_of_lines_to_move - 1;
+            INDEX_UP
+        }
+    }
+}
+
 void
 screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     /* Erases display in a specific way.
@@ -1633,6 +1662,8 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
               including cursor position.
             * ``2`` -- Erases complete display. All lines are erased
               and changed to single-width. Cursor does not move.
+            * ``22`` -- Copy screen contents into scrollback if in main screen,
+              then do the same as ``2``.
             * ``3`` -- Erase complete display and scrollback buffer as well.
         :param bool private: when ``True`` character attributes are left unchanged
     */
@@ -1642,6 +1673,10 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             a = self->cursor->y + 1; b = self->lines; break;
         case 1:
             a = 0; b = self->cursor->y; break;
+        case 22:
+            screen_move_into_scrollback(self);
+            how = 2;
+            /* fallthrough */
         case 2:
         case 3:
             grman_clear(self->grman, how == 3, self->cell_size);
@@ -1650,7 +1685,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             return;
     }
     if (b > a) {
-        if (how != 3) screen_dirty_line_graphics(self, a, b);
+        if (how != 3) screen_dirty_line_graphics(self, a, b, self->linebuf == self->main_linebuf);
         for (unsigned int i=a; i < b; i++) {
             linebuf_init_line(self->linebuf, i);
             if (private) {
@@ -1664,7 +1699,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         self->is_dirty = true;
         clear_selection(&self->selections);
     }
-    if (how != 2) {
+    if (how < 2) {
         screen_erase_in_line(self, how, private);
         if (how == 1) linebuf_clear_attrs_and_dirty(self->linebuf, self->cursor->y);
     }
@@ -1678,7 +1713,7 @@ screen_insert_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
-        screen_dirty_line_graphics(self, top, bottom);
+        screen_dirty_line_graphics(self, top, bottom, self->linebuf == self->main_linebuf);
         linebuf_insert_lines(self->linebuf, count, self->cursor->y, bottom);
         self->is_dirty = true;
         clear_selection(&self->selections);
@@ -1704,7 +1739,7 @@ screen_delete_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
-        screen_dirty_line_graphics(self, top, bottom);
+        screen_dirty_line_graphics(self, top, bottom, self->linebuf == self->main_linebuf);
         linebuf_delete_lines(self->linebuf, count, self->cursor->y, bottom);
         self->is_dirty = true;
         clear_selection(&self->selections);

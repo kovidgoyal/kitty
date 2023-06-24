@@ -226,7 +226,7 @@ exec_login_shell() {
             ;;
         (*)
             # not blank
-            printf "%s" "$KITTY_SHELL_INTEGRATION" | command grep '\bno-rc\b' || exec_with_shell_integration
+            printf "%s" "$KITTY_SHELL_INTEGRATION" | command grep -q '\bno-rc\b' || exec_with_shell_integration
             # either no-rc or exec failed
             unset KITTY_SHELL_INTEGRATION
             ;;

@@ -391,7 +391,7 @@ def generate_c_conversion(loc: str, ctypes: List[Union[Option, MultiOption]]) ->
     lines: List[str] = []
     basic_converters = {
         'int': 'PyLong_AsLong', 'uint': 'PyLong_AsUnsignedLong', 'bool': 'PyObject_IsTrue',
-        'float': 'PyFloat_AsFloat', 'double': 'PyFloat_AsDouble',
+        'float': 'PyFloat_AsFloat', 'double': 'PyFloat_AsDouble', 'percent': 'percent',
         'time': 'parse_s_double_to_monotonic_t', 'time-ms': 'parse_ms_long_to_monotonic_t'
     }
 
@@ -478,10 +478,49 @@ def go_type_data(parser_func: ParserFuncType, ctype: str, is_multiple: bool = Fa
     return {int: 'int64', str: 'string', float: 'float64'}[rettype], f'{p}(val)'
 
 
+mod_map = {
+		"shift":     "shift",
+		"⇧":         "shift",
+		"alt":       "alt",
+		"option":    "alt",
+		"opt":       "alt",
+		"⌥":         "alt",
+		"super":     "super",
+		"command":   "super",
+		"cmd":       "super",
+		"⌘":         "super",
+		"control":   "ctrl",
+		"ctrl":      "ctrl",
+		"⌃":         "ctrl",
+		"hyper":     "hyper",
+		"meta":      "meta",
+		"num_lock":  "num_lock",
+		"caps_lock": "caps_lock",
+}
+
+def normalize_shortcut(spec: str) -> str:
+    if spec.endswith('+'):
+        spec = spec[:-1] + 'plus'
+    parts = spec.lower().split('+')
+    key = parts[-1]
+    if len(parts) == 1:
+        return key
+    mods = parts[:-1]
+    return '+'.join(mod_map.get(x, x) for x in mods) + '+' + key
+
+
+def normalize_shortcuts(spec: str) -> Iterator[str]:
+    spec = spec.replace('++', '+plus')
+    spec = re.sub(r'([^+])>', '\\1\0', spec)
+    for x in spec.split('\0'):
+        yield normalize_shortcut(x)
+
+
 def gen_go_code(defn: Definition) -> str:
     lines = ['import "fmt"', 'import "strconv"', 'import "kitty/tools/config"', 'import "kitty/tools/utils/style"',
              'var _ = fmt.Println', 'var _ = config.StringToBool', 'var _ = strconv.Atoi', 'var _ = style.ParseColor']
     a = lines.append
+    keyboard_shortcuts = tuple(defn.iter_all_maps())
     choices = {}
     go_types = {}
     go_parsers = {}
@@ -509,6 +548,8 @@ def gen_go_code(defn: Definition) -> str:
             a(f'{name} []{gotype}')
         else:
             a(f'{name} {gotype}')
+    if keyboard_shortcuts:
+        a('KeyboardShortcuts []*config.KeyAction')
     a('}')
 
     def cval(x: str) -> str:
@@ -536,10 +577,20 @@ def gen_go_code(defn: Definition) -> str:
         elif isinstance(d, Color):
             dval = f'style.RGBA{{Red:{d.red}, Green: {d.green}, Blue: {d.blue}}}'
             if 'NullableColor' in go_types[name]:
-                dval = f'style.NullableColor{{Color:{dval}}}'
+                dval = f'style.NullableColor{{IsSet: true, Color:{dval}}}'
         else:
             dval = repr(d)
         a(f'{name}: {dval},')
+    if keyboard_shortcuts:
+        a('KeyboardShortcuts: []*config.KeyAction{')
+        for sc in keyboard_shortcuts:
+            aname, aargs = map(serialize_as_go_string, sc.action_def.partition(' ')[::2])
+            a('{'f'Name: "{aname}", Args: "{aargs}", Normalized_keys: []string''{')
+            ns = normalize_shortcuts(sc.key_text)
+            a(', '.join(f'"{serialize_as_go_string(x)}"' for x in ns) + ',')
+            a('}''},')
+        a('},')
+
     a('}''}')
 
     for oname, choice_vals in choices.items():
@@ -582,6 +633,11 @@ def gen_go_code(defn: Definition) -> str:
             a(f'c.{oname} = append(c.{oname}, temp_val...)')
         else:
             a(f'c.{oname} = temp_val')
+    if keyboard_shortcuts:
+        a('case "map":')
+        a('tempsc, err := config.ParseMap(val)')
+        a('if err != nil { return fmt.Errorf("Failed to parse map = %#v with error: %w", val, err) }')
+        a('c.KeyboardShortcuts = append(c.KeyboardShortcuts, tempsc)')
     a('}')
     a('return}')
     return '\n'.join(lines)

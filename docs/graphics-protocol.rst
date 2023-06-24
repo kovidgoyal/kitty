@@ -42,8 +42,11 @@ Some programs and libraries that use the kitty graphics protocol:
 * `rasterm <https://github.com/BourgeoisBear/rasterm>`_  - Go library to display images in the terminal
 * `chafa <https://github.com/hpjansson/chafa>`_  - a terminal image viewer
 * `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_  - view images inside nvim
+* `kui.nvim <https://github.com/romgrk/kui.nvim>`_  - Build sophisticated UIs inside noevim using the kitty graphics protocol
 * `term-image <https://github.com/AnonymouX47/term-image>`_  - A Python library, CLI and TUI to display and browse images in the terminal
 * `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
+* `twitch-tui <https://github.com/Xithrius/twitch-tui>`_ - Twitch chat in the terminal
+* `awrit <https://github.com/chase/awrit>`_ - Chromium-based web browser rendered in Kitty with mouse and keyboard support
 
 Other terminals that have implemented the graphics protocol:
 
@@ -57,7 +60,8 @@ Getting the window size
 
 In order to know what size of images to display and how to position them, the
 client must be able to get the window size in pixels and the number of cells
-per row and column. This can be done by using the ``TIOCGWINSZ`` ioctl.  Some
+per row and column. The cell width is then simply the window size divided by the
+number of rows. This can be done by using the ``TIOCGWINSZ`` ioctl. Some
 code to demonstrate its use
 
 .. tab:: C
@@ -97,6 +101,20 @@ code to demonstrate its use
         sz, err := unix.IoctlGetWinsize(fd, unix.TIOCGWINSZ)
         fmt.Println("rows: %v columns: %v width: %v height %v", sz.Row, sz.Col, sz.Xpixel, sz.Ypixel)
 
+
+.. tab:: Bash
+
+    .. code-block:: sh
+
+        #!/bin/bash
+
+        # This uses the kitten standalone binary from kitty to get the pixel sizes
+        # since we can't do IOCTLs directly. Fortunately, kitten is a static exe
+        # pre-built for every Unix like OS under the sun.
+
+        builtin read -r rows cols < <(command stty size)
+        IFS=x builtin read -r width height < <(command kitten icat --print-window-size); builtin unset IFS
+        builtin echo "number of rows: $rows number of columns: $cols screen width: $width screen height: $height"
 
 
 Note that some terminals return ``0`` for the width and height values. Such
@@ -267,7 +285,7 @@ and can take the values:
 Value of `t`          Meaning
 ==================    ============
 ``d``                 Direct (the data is transmitted within the escape code itself)
-``f``                 A simple file (regular files only, not named pipes or similar)
+``f``                 A simple file (regular files only, not named pipes, device files, etc.)
 ``t``                 A temporary file, the terminal emulator will delete the file after reading the pixel data. For security reasons
                       the terminal emulator should only delete the file if it
                       is in a known temporary directory, such as :file:`/tmp`,
@@ -285,7 +303,11 @@ Value of `t`          Meaning
 
 When opening files, the terminal emulator must follow symlinks. In case of
 symlink loops or too many symlinks, it should fail and respond with an error,
-similar to reporting any other kind of I/O error.
+similar to reporting any other kind of I/O error. Since the file paths come
+from potentially untrusted sources, terminal emulators **must** refuse to read
+any device/socket/etc. special files. Only regular files are allowed.
+Additionally, terminal emulators may refuse to read files in *sensitive*
+parts of the filesystem, such as :file:`/proc`, :file:`/sys`, :file:`/dev/`, etc.
 
 Local client
 ^^^^^^^^^^^^^^
@@ -366,9 +388,9 @@ use the *query action*, set ``a=q``. Then the terminal emulator will try to load
 the image and respond with either OK or an error, as above, but it will not
 replace an existing image with the same id, nor will it store the image.
 
-As of April 2022, kitty and WezTerm are the only terminal emulators to
-support this graphics protocol completely, with Konsole and wayst having partial support.
-We intend that any terminal emulator that wishes to support it can do so. To
+As of May 2023, kitty has a complete implementation of this protocol and
+WezTerm has a mostly complete implementation. Konsole and wayst have partial
+support. We intend that any terminal emulator that wishes to support it can do so. To
 check if a terminal emulator supports the graphics protocol the best way is to
 send the above *query action* followed by a request for the `primary device
 attributes <https://vt100.net/docs/vt510-rm/DA1.html>`_. If you get back an
@@ -525,7 +547,7 @@ and ``U+30D`` corresponds to ``1``. So these two commands create the following
 ``2x2`` placeholder:
 
 ========== ==========
-(0, 0)     (1, 0)
+(0, 0)     (0, 1)
 (1, 0)     (1, 1)
 ========== ==========
 

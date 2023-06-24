@@ -574,6 +574,7 @@ class TabBar:
             if ifg is not None:
                 self.draw_data = self.draw_data._replace(inactive_fg=ifg)
         self.screen.color_profile.set_configured_colors(fg, bg)
+        self.screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
 
     @property
     def current_colors(self) -> Dict[str, Color]:

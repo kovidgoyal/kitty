@@ -94,9 +94,9 @@ free_framebuffer(GLuint *fb_id) {
 static Program programs[64] = {{0}};
 
 GLuint
-compile_shader(GLenum shader_type, const char *source) {
+compile_shaders(GLenum shader_type, GLsizei count, const GLchar * const * source) {
     GLuint shader_id = glCreateShader(shader_type);
-    glShaderSource(shader_id, 1, (const GLchar **)&source, NULL);
+    glShaderSource(shader_id, count, source, NULL);
     glCompileShader(shader_id);
     GLint ret = GL_FALSE;
     glGetShaderiv(shader_id, GL_COMPILE_STATUS, &ret);
@@ -104,9 +104,15 @@ compile_shader(GLenum shader_type, const char *source) {
         GLsizei len;
         static char glbuf[4096];
         glGetShaderInfoLog(shader_id, sizeof(glbuf), &len, glbuf);
-        log_error("Failed to compile GLSL shader!\n%s", glbuf);
         glDeleteShader(shader_id);
-        PyErr_SetString(PyExc_ValueError, "Failed to compile shader");
+        const char *shader_type_name = "unknown_type";
+        switch(shader_type) {
+            case GL_VERTEX_SHADER:
+                shader_type_name = "vertex"; break;
+            case GL_FRAGMENT_SHADER:
+                shader_type_name = "fragment"; break;
+        }
+        PyErr_Format(PyExc_ValueError, "Failed to compile GLSL %s shader:\n%s", shader_type_name, glbuf);
         return 0;
     }
     return shader_id;
@@ -126,6 +132,8 @@ init_uniforms(int program) {
     for (GLint i = 0; i < p->num_of_uniforms; i++) {
         Uniform *u = p->uniforms + i;
         glGetActiveUniform(p->id, (GLuint)i, sizeof(u->name)/sizeof(u->name[0]), NULL, &(u->size), &(u->type), u->name);
+        char *l = strchr(u->name, '[');
+        if (l) *l = 0;
         u->location = glGetUniformLocation(p->id, u->name);
         u->idx = i;
     }
@@ -134,13 +142,18 @@ init_uniforms(int program) {
 GLint
 get_uniform_location(int program, const char *name) {
     Program *p = programs + program;
-    return glGetUniformLocation(p->id, name);
+    const size_t n = strlen(name) + 1;
+    for (GLint i = 0; i < p->num_of_uniforms; i++) {
+        Uniform *u = p->uniforms + i;
+        if (strncmp(u->name, name, n) == 0) return u->location;
+    }
+    return -1;
 }
 
 GLint
 get_uniform_information(int program, const char *name, GLenum information_type) {
     GLint q; GLuint t;
-    static const char* names[] = {""};
+    const char* names[] = {""};
     names[0] = name;
     GLuint pid = program_id(program);
     glGetUniformIndices(pid, 1, (void*)names, &t);

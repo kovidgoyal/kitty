@@ -122,6 +122,10 @@ func (self *WCWidthIterator) Parse(b []byte) (ans int) {
 	return self.current_width
 }
 
+func (self *WCWidthIterator) CurrentWidth() int {
+	return self.current_width
+}
+
 func Stringwidth(text string) int {
 	w := CreateWCWidthIterator()
 	return w.Parse(utils.UnsafeStringToBytes(text))

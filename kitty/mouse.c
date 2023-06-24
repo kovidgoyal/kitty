@@ -885,7 +885,7 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
     }
     if (!w) return;
     // Also update mouse cursor position while kitty OS window is not focused.
-    // Allows scroll events to be delivered to the child with correct pointer co-ordinates even when
+    // Allows scroll events to be delivered to the child with correct pointer coordinates even when
     // the window is not focused on macOS
     if (!osw->is_focused) {
         unsigned int x = 0, y = 0;

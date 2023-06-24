@@ -105,6 +105,9 @@ type KeyEvent struct {
 	AlternateKey string
 	Text         string
 	Handled      bool
+
+	// The CSI string this key event was decoded from. Empty if not decoded from CSI.
+	CSI string
 }
 
 func (self *KeyEvent) String() string {
@@ -133,6 +136,7 @@ func KeyEventFromCSI(csi string) *KeyEvent {
 	if len(csi) == 0 {
 		return nil
 	}
+	orig_csi := csi
 	last_char := csi[len(csi)-1:]
 	if !strings.Contains("u~ABCDEHFPQRS", last_char) || (last_char == "~" && (csi == "200~" || csi == "201~")) {
 		return nil
@@ -140,28 +144,32 @@ func KeyEventFromCSI(csi string) *KeyEvent {
 	csi = csi[:len(csi)-1]
 	sections := strings.Split(csi, ";")
 
-	get_sub_sections := func(section string) []int {
+	get_sub_sections := func(section string, missing int) []int {
 		p := strings.Split(section, ":")
 		ans := make([]int, len(p))
 		for i, x := range p {
-			q, err := strconv.Atoi(x)
-			if err != nil {
-				return nil
+			if x == "" {
+				ans[i] = missing
+			} else {
+				q, err := strconv.Atoi(x)
+				if err != nil {
+					return nil
+				}
+				ans[i] = q
 			}
-			ans[i] = q
 		}
 		return ans
 	}
-	first_section := get_sub_sections(sections[0])
-	second_section := make([]int, 0)
-	third_section := make([]int, 0)
+	first_section := get_sub_sections(sections[0], 0)
+	second_section := []int{}
+	third_section := []int{}
 	if len(sections) > 1 {
-		second_section = get_sub_sections(sections[1])
+		second_section = get_sub_sections(sections[1], 1)
 	}
 	if len(sections) > 2 {
-		third_section = get_sub_sections(sections[2])
+		third_section = get_sub_sections(sections[2], 0)
 	}
-	var ans = KeyEvent{Type: PRESS}
+	var ans = KeyEvent{Type: PRESS, CSI: orig_csi}
 	var keynum int
 	if val, ok := letter_trailer_to_csi_number_map[last_char]; ok {
 		keynum = val

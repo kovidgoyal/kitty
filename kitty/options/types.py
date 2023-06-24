@@ -411,7 +411,6 @@ option_names = (  # {{{
  'remote_control_password',
  'repaint_delay',
  'resize_debounce_time',
- 'resize_draw_strategy',
  'resize_in_steps',
  'scrollback_fill_enlarged_window',
  'scrollback_lines',
@@ -446,6 +445,7 @@ option_names = (  # {{{
  'tab_title_template',
  'term',
  'text_composition_strategy',
+ 'text_fg_override_threshold',
  'touch_scroll_multiplier',
  'undercurl_style',
  'update_check_interval',
@@ -565,8 +565,7 @@ class Options:
     pointer_shape_when_grabbed: choices_for_pointer_shape_when_grabbed = 'arrow'
     remember_window_size: bool = True
     repaint_delay: int = 10
-    resize_debounce_time: float = 0.1
-    resize_draw_strategy: int = 0
+    resize_debounce_time: typing.Tuple[float, float] = (0.1, 0.5)
     resize_in_steps: bool = False
     scrollback_fill_enlarged_window: bool = False
     scrollback_lines: int = 2000
@@ -600,6 +599,7 @@ class Options:
     tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{title}'
     term: str = 'xterm-kitty'
     text_composition_strategy: str = 'platform'
+    text_fg_override_threshold: float = 0.0
     touch_scroll_multiplier: float = 1.0
     undercurl_style: choices_for_undercurl_style = 'thin-sparse'
     update_check_interval: float = 24.0

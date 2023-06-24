@@ -715,7 +715,7 @@ class EditCmd:
         self.is_local_file = False
         with suppress(OSError):
             st = os.stat(self.file_localpath)
-            self.is_local_file = (st.st_dev, st.st_ino) == self.file_inode
+            self.is_local_file = (st.st_dev, st.st_ino) == self.file_inode and os.access(self.file_localpath, os.W_OK | os.R_OK)
         if not self.is_local_file:
             import tempfile
             self.tdir = tempfile.mkdtemp()

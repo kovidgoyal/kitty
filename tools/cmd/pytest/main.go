@@ -5,8 +5,8 @@ package pytest
 import (
 	"fmt"
 
+	"kitty/kittens/ssh"
 	"kitty/tools/cli"
-	"kitty/tools/cmd/ssh"
 	"kitty/tools/utils/shm"
 )
 

@@ -64,8 +64,13 @@ would pass to ``kitty @``. For example:
         # get the kitty window to which to send text
         w = boss.window_id_map.get(target_window_id)
         if w is not None:
-            boss.call_remote_control(w, ('send-text', 'hello world'))
+            boss.call_remote_control(w, ('send-text', f'--match=id:{w.id}', 'hello world'))
 
+.. note::
+   Inside handle_result() the active window is still the window in which the
+   kitten was run, therefore when using call_remote_control() be sure to pass
+   the appropriate option to select the target window, usually ``--match`` as
+   shown above or ``--self``.
 
 
 Passing arguments to kittens

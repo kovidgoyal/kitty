@@ -19,7 +19,7 @@ import time
 from contextlib import suppress
 from functools import lru_cache, partial
 from pathlib import Path
-from typing import Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple, Union, cast
+from typing import Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, Union, cast
 
 from glfw import glfw
 from glfw.glfw import Command, CompileKey
@@ -62,6 +62,10 @@ class Options(argparse.Namespace):
     sanitize: bool = False
     prefix: str = './linux-package'
     dir_for_static_binaries: str = 'build/static'
+    skip_code_generation: bool = False
+    clean_for_cross_compile: bool = False
+    python_compiler_flags: str = ''
+    python_linker_flags: str = ''
     incremental: bool = True
     profile: bool = False
     libdir_name: str = 'lib'
@@ -202,8 +206,13 @@ def get_python_include_paths() -> List[str]:
     return sorted(frozenset(filter(None, map(gp, sorted(ans)))))
 
 
-def get_python_flags(cflags: List[str], for_main_executable: bool = False) -> List[str]:
-    cflags.extend(f'-I{x}' for x in get_python_include_paths())
+def get_python_flags(args: Options, cflags: List[str], for_main_executable: bool = False) -> List[str]:
+    if args.python_compiler_flags:
+        cflags.extend(shlex.split(args.python_compiler_flags))
+    else:
+        cflags.extend(f'-I{x}' for x in get_python_include_paths())
+    if args.python_linker_flags:
+        return shlex.split(args.python_linker_flags)
     libs: List[str] = []
     libs += (sysconfig.get_config_var('LIBS') or '').split()
     libs += (sysconfig.get_config_var('SYSLIBS') or '').split()
@@ -432,7 +441,7 @@ def init_env(
     return Env(cc, cppflags, cflags, ldflags, library_paths, ccver=ccver, ldpaths=ldpaths, vcs_rev=vcs_rev)
 
 
-def kitty_env() -> Env:
+def kitty_env(args: Options) -> Env:
     ans = env.copy()
     cflags = ans.cflags
     cflags.append('-pthread')
@@ -467,7 +476,7 @@ def kitty_env() -> Env:
         platform_libs = []
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
     platform_libs.extend(pkg_config('harfbuzz', '--libs'))
-    pylib = get_python_flags(cflags)
+    pylib = get_python_flags(args, cflags)
     gl_libs = ['-framework', 'OpenGL'] if is_macos else pkg_config('gl', '--libs')
     libpng = pkg_config('libpng', '--libs')
     lcms2 = pkg_config('lcms2', '--libs')
@@ -787,18 +796,18 @@ def compile_glfw(compilation_database: CompilationDatabase) -> None:
             sources, all_headers, desc_prefix=f'[{module}] ')
 
 
-def kittens_env() -> Env:
+def kittens_env(args: Options) -> Env:
     kenv = env.copy()
     cflags = kenv.cflags
     cflags.append('-pthread')
     cflags.append('-Ikitty')
-    pylib = get_python_flags(cflags)
+    pylib = get_python_flags(args, cflags)
     kenv.ldpaths += pylib
     return kenv
 
 
-def compile_kittens(compilation_database: CompilationDatabase) -> None:
-    kenv = kittens_env()
+def compile_kittens(args: Options) -> None:
+    kenv = kittens_env(args)
 
     def list_files(q: str) -> List[str]:
         return sorted(glob.glob(q))
@@ -816,15 +825,13 @@ def compile_kittens(compilation_database: CompilationDatabase) -> None:
         return kitten, sources, headers, f'kittens/{kitten}/{output}', includes, libraries
 
     for kitten, sources, all_headers, dest, includes, libraries in (
-        files('unicode_input', 'unicode_names'),
-        files('diff', 'diff_speedup'),
         files('transfer', 'rsync', libraries=('rsync',)),
     ):
         final_env = kenv.copy()
         final_env.cflags.extend(f'-I{x}' for x in includes)
         final_env.ldpaths[:0] = list(f'-l{x}' for x in libraries)
         compile_c_extension(
-            final_env, dest, compilation_database, sources, all_headers + ['kitty/data-types.h'])
+            final_env, dest, args.compilation_database, sources, all_headers + ['kitty/data-types.h'])
 
 
 def init_env_from_args(args: Options, native_optimizations: bool = False) -> None:
@@ -843,16 +850,66 @@ def extract_rst_targets() -> Dict[str, Dict[str, str]]:
     return cast(Dict[str, Dict[str, str]], m['main']())
 
 
-def build_ref_map() -> str:
-    d = extract_rst_targets()
-    h = 'static const char docs_ref_map[] = {\n' + textwrap.fill(', '.join(map(str, bytearray(json.dumps(d).encode('utf-8'))))) + '\n};\n'
+def build_ref_map(skip_generation: bool = False) -> str:
     dest = 'kitty/docs_ref_map_generated.h'
-    q = ''
-    with suppress(FileNotFoundError), open(dest) as f:
-        q = f.read()
-    if q != h:
+    if not skip_generation:
+        d = extract_rst_targets()
+        h = 'static const char docs_ref_map[] = {\n' + textwrap.fill(', '.join(map(str, bytearray(json.dumps(d).encode('utf-8'))))) + '\n};\n'
+        q = ''
+        with suppress(FileNotFoundError), open(dest) as f:
+            q = f.read()
+        if q != h:
+            with open(dest, 'w') as f:
+                f.write(h)
+    return dest
+
+
+def build_uniforms_header(skip_generation: bool = False) -> str:
+    dest = 'kitty/uniforms_generated.h'
+    if skip_generation:
+        return dest
+    lines = ['#include "gl.h"', '']
+    a = lines.append
+    uniform_names: Dict[str, Tuple[str, ...]] = {}
+    class_names = {}
+    function_names = {}
+
+    def find_uniform_names(raw: str) -> Iterator[str]:
+        for m in re.finditer(r'^uniform\s+\S+\s+(.+?);', raw, flags=re.MULTILINE):
+            for x in m.group(1).split(','):
+                yield x.strip().partition('[')[0]
+
+    for x in glob.glob('kitty/*.glsl'):
+        name = os.path.basename(x).partition('.')[0]
+        name, sep, shader_type = name.partition('_')
+        if not sep or shader_type not in ('fragment', 'vertex'):
+            continue
+        class_names[name] = f'{name.capitalize()}Uniforms'
+        function_names[name] = f'get_uniform_locations_{name}'
+        with open(x) as f:
+            raw = f.read()
+        uniform_names[name] = uniform_names.setdefault(name, ()) + tuple(find_uniform_names(raw))
+    for name in sorted(class_names):
+        class_name, function_name, uniforms = class_names[name], function_names[name], uniform_names[name]
+        a(f'typedef struct {class_name} ''{')
+        for n in uniforms:
+            a(f'    GLint {n};')
+        a('}'f' {class_name};')
+        a('')
+        a(f'static inline void\n{function_name}(int program, {class_name} *ans) ''{')
+        for n in uniforms:
+            a(f'    ans->{n} = get_uniform_location(program, "{n}");')
+        a('}')
+        a('')
+    src = '\n'.join(lines)
+    try:
+        with open(dest) as f:
+            current = f.read()
+    except FileNotFoundError:
+        current = ''
+    if src != current:
         with open(dest, 'w') as f:
-            f.write(h)
+            f.write(src)
     return dest
 
 
@@ -870,12 +927,13 @@ def build(args: Options, native_optimizations: bool = True, call_init: bool = Tr
     if call_init:
         init_env_from_args(args, native_optimizations)
     sources, headers = find_c_files()
-    headers.append(build_ref_map())
+    headers.append(build_ref_map(args.skip_code_generation))
+    headers.append(build_uniforms_header(args.skip_code_generation))
     compile_c_extension(
-        kitty_env(), 'kitty/fast_data_types', args.compilation_database, sources, headers
+        kitty_env(args), 'kitty/fast_data_types', args.compilation_database, sources, headers
     )
     compile_glfw(args.compilation_database)
-    compile_kittens(args.compilation_database)
+    compile_kittens(args)
 
 
 def safe_makedirs(path: str) -> None:
@@ -883,6 +941,9 @@ def safe_makedirs(path: str) -> None:
 
 
 def update_go_generated_files(args: Options, kitty_exe: str) -> None:
+    if args.skip_code_generation:
+        print('Skipping generation of Go files due to command line option', flush=True)
+        return
     # update all the various auto-generated go files, if needed
     if args.verbose:
         print('Updating Go generated files...', flush=True)
@@ -894,6 +955,13 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
         raise SystemExit(cp.returncode)
 
 
+def parse_go_version(x: str) -> Tuple[int, int, int]:
+    ans = list(map(int, x.split('.')))
+    while len(ans) < 3:
+        ans.append(0)
+    return ans[0], ans[1], ans[2]
+
+
 def build_static_kittens(
     args: Options, launcher_dir: str, destination_dir: str = '', for_freeze: bool = False,
     for_platform: Optional[Tuple[str, str]] = None
@@ -903,6 +971,10 @@ def build_static_kittens(
     go = shutil.which('go')
     if not go:
         raise SystemExit('The go tool was not found on this system. Install Go')
+    required_go_version = subprocess.check_output([go] + 'list -f {{.GoVersion}} -m'.split()).decode().strip()
+    current_go_version = subprocess.check_output([go, 'version']).decode().strip().split()[2][2:]
+    if parse_go_version(required_go_version) > parse_go_version(current_go_version):
+        raise SystemExit(f'The version of go on this system ({current_go_version}) is too old. go >= {required_go_version} is needed')
     if not for_platform:
         update_go_generated_files(args, os.path.join(launcher_dir, appname))
     cmd = [go, 'build', '-v']
@@ -996,7 +1068,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     else:
         raise SystemExit(f'Unknown bundle type: {bundle_type}')
     cppflags.append(f'-DKITTY_LIB_PATH="{klp}"')
-    pylib = get_python_flags(cflags, for_main_executable=True)
+    pylib = get_python_flags(args, cflags, for_main_executable=True)
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     for path in args.extra_include_dirs:
@@ -1484,7 +1556,7 @@ def clean_launcher_dir(launcher_dir: str) -> None:
             os.remove(x)
 
 
-def clean() -> None:
+def clean(for_cross_compile: bool = False) -> None:
 
     def safe_remove(*entries: str) -> None:
         for x in entries:
@@ -1497,7 +1569,9 @@ def clean() -> None:
     safe_remove(
         'build', 'compile_commands.json', 'link_commands.json',
         'linux-package', 'kitty.app', 'asan-launcher',
-        'kitty-profile', 'docs/generated')
+        'kitty-profile')
+    if not for_cross_compile:
+        safe_remove('docs/generated')
     clean_launcher_dir('kitty/launcher')
 
     def excluded(root: str, d: str) -> bool:
@@ -1512,7 +1586,9 @@ def clean() -> None:
             dirs.remove(d)
         for f in files:
             ext = f.rpartition('.')[-1]
-            if ext in ('so', 'dylib', 'pyc', 'pyo') or f.endswith('_generated.h') or f.endswith('_generated.go') or f.endswith('_generated.bin'):
+            if ext in ('so', 'dylib', 'pyc', 'pyo') or (not for_cross_compile and (
+                    f.endswith('_generated.h') or f.endswith('_generated.go') or f.endswith('_generated.bin'))
+            ):
                 os.unlink(os.path.join(root, f))
     for x in glob.glob('glfw/wayland-*-protocol.[ch]'):
         os.unlink(x)
@@ -1571,6 +1647,29 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         '--dir-for-static-binaries',
         default=Options.dir_for_static_binaries,
         help='Where to create the static kitten binary'
+    )
+    p.add_argument(
+        '--skip-code-generation',
+        default=Options.skip_code_generation,
+        action='store_true',
+        help='Do not create the *_generated.* source files. This is useful if they'
+        ' have already been generated by a previous build, for example during a two-stage cross compilation.'
+    )
+    p.add_argument(
+        '--clean-for-cross-compile',
+        default=Options.clean_for_cross_compile,
+        action='store_true',
+        help='Do not clean generated Go source files. Useful for cross-compilation.'
+    )
+    p.add_argument(
+        '--python-compiler-flags', default=Options.python_compiler_flags,
+        help='Compiler flags for compiling against Python. Typically include directives. If not set'
+        ' the Python used to run setup.py is queried for these.'
+    )
+    p.add_argument(
+        '--python-linker-flags', default=Options.python_linker_flags,
+        help='Linker flags for linking against Python. Typically dynamic library names and search paths directives. If not set'
+        ' the Python used to run setup.py is queried for these.'
     )
     p.add_argument(
         '--full',
@@ -1734,7 +1833,7 @@ def main() -> None:
         texe = os.path.abspath(os.path.join(launcher_dir, 'kitty'))
         os.execl(texe, texe, '+launch', 'test.py')
     if args.action == 'clean':
-        clean()
+        clean(for_cross_compile=args.clean_for_cross_compile)
         return
 
     with CompilationDatabase(args.incremental) as cdb:

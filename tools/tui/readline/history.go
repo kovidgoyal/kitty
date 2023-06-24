@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"kitty/tools/cli"
-	"kitty/tools/tty"
 	"kitty/tools/utils"
 	"kitty/tools/utils/shlex"
 	"kitty/tools/wcswidth"
@@ -398,8 +397,6 @@ func (self *Readline) history_search_prompt() string {
 	}
 	return fmt.Sprintf("history %s: ", ans)
 }
-
-var _ = tty.DebugPrintln
 
 func (self *Readline) history_completer(before_cursor, after_cursor string) (ans *cli.Completions) {
 	ans = cli.NewCompletions()

@@ -2,55 +2,8 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-import os
 import sys
 from typing import List
-
-from kittens.tui.operations import raw_mode, styled
-from kitty.cli import parse_args
-from kitty.cli_stub import ShowKeyCLIOptions
-
-ctrl_keys = '@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_'
-
-
-def print_key(raw: bytearray) -> None:
-    unix = ''
-    for ch in raw:
-        if ch < len(ctrl_keys):
-            unix += f'^{ctrl_keys[ch]}'
-        elif ch == 127:
-            unix += '^?'
-        else:
-            unix += chr(ch)
-    print(unix + '\t\t', end='')
-    for ch in raw:
-        x = chr(ch).encode('utf-8')
-        print(styled(repr(x)[2:-1], fg='yellow'), end='')
-    print(end='\r\n', flush=True)
-
-
-def read_keys() -> None:
-    fd = sys.stdin.fileno()
-    while True:
-        try:
-            raw = bytearray(os.read(fd, 64))
-        except OSError as err:
-            print(err, file=sys.stderr, flush=True)
-            break
-        if not raw:
-            break
-        print_key(raw)
-        if len(raw) == 1 and raw[0] == 4:
-            break
-
-
-def legacy_main() -> None:
-    print('Press any keys - Ctrl+D will terminate this program', end='\r\n', flush=True)
-    print(styled('UNIX', italic=True, fg='green'), styled('send_text', italic=True, fg='green'), sep='\t\t', end='\r\n')
-
-    with raw_mode():
-        read_keys()
-
 
 OPTIONS = r'''
 --key-mode -m
@@ -66,17 +19,7 @@ usage = ''
 
 
 def main(args: List[str]) -> None:
-    cli_opts, items = parse_args(args[1:], OPTIONS, '', help_text, 'kitty +kitten show_key', result_class=ShowKeyCLIOptions)
-    if cli_opts.key_mode == 'kitty':
-        from .kitty_mode import main as kitty_main
-        return kitty_main()
-    if cli_opts.key_mode != 'unchanged':
-        print(end='\x1b[?1' + ('l' if cli_opts.key_mode == 'normal' else 'h'), flush=True)
-    try:
-        return legacy_main()
-    finally:
-        if cli_opts.key_mode != 'unchanged':
-            print(end='\x1b[?1l', flush=True)
+    raise SystemExit('This should be reun as kitten show_key')
 
 
 if __name__ == '__main__':
@@ -86,3 +29,4 @@ elif __name__ == '__doc__':
     cd['usage'] = usage
     cd['options'] = OPTIONS
     cd['help_text'] = help_text
+    cd['short_desc'] = help_text

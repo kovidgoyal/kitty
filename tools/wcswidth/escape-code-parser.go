@@ -119,7 +119,7 @@ func (self *EscapeCodeParser) write_ch(ch byte) {
 }
 
 func csi_type(ch byte) csi_char_type {
-	if 0x30 <= ch && ch <= 0x3f {
+	if (0x30 <= ch && ch <= 0x3f) || ch == '-' {
 		return parameter_csi_char
 	}
 	if 0x40 <= ch && ch <= 0x7E {

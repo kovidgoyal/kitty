@@ -10,6 +10,7 @@ import sys
 from contextlib import contextmanager, suppress
 from functools import partial
 from gettext import gettext as _
+from gettext import ngettext
 from time import monotonic, sleep
 from typing import (
     TYPE_CHECKING,
@@ -122,6 +123,7 @@ from .options.utils import MINIMUM_FONT_SIZE, KeyMap, SubSequenceMap
 from .os_window_size import initial_window_size_func
 from .rgb import color_from_int
 from .session import Session, create_sessions, get_os_window_sizing_data
+from .shaders import load_shader_programs
 from .tabs import SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
 from .types import _T, AsyncResponse, SingleInstanceData, WindowSystemMouseEvent, ac
 from .typing import PopenType, TypedDict
@@ -130,6 +132,7 @@ from .utils import (
     func_name,
     get_editor,
     get_new_os_window_size,
+    is_ok_to_read_image_file,
     is_path_in_temp_dir,
     less_version,
     log_error,
@@ -706,7 +709,7 @@ class Boss:
             import shlex
             self.show_error(_('remote_control mapping failed'), shlex.join(args) + '\n' + str(e))
 
-    def call_remote_control(self, active_window: Optional[Window], args: Tuple[str, ...]) -> 'ResponseType':
+    def call_remote_control(self, self_window: Optional[Window], args: Tuple[str, ...]) -> 'ResponseType':
         from .rc.base import PayloadGetter, command_for_name, parse_subcommand_cli
         from .remote_control import parse_rc_args
         aa = list(args)
@@ -728,9 +731,9 @@ class Boss:
         try:
             if isinstance(payload, types.GeneratorType):
                 for x in payload:
-                    c.response_from_kitty(self, active_window, PayloadGetter(c, x if isinstance(x, dict) else {}))
+                    c.response_from_kitty(self, self_window, PayloadGetter(c, x if isinstance(x, dict) else {}))
                 return None
-            return c.response_from_kitty(self, active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
+            return c.response_from_kitty(self, self_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
         except Exception as e:
             if silent:
                 log_error(f'Failed to run remote_control mapping: {aa} with error: {e}')
@@ -1010,9 +1013,8 @@ class Boss:
             tm = tab.tab_manager_ref()
             if tm is not None:
                 tm.set_active_tab(tab)
-        self.confirm(_(
-            'Are you sure you want to close this tab, it has {}'
-            ' windows running?').format(num),
+        self.confirm(ngettext('Are you sure you want to close this tab, it has one window running?',
+                              'Are you sure you want to close this tab, it has {} windows running?', num).format(num),
             self.handle_close_tab_confirmation, tab.id,
             window=tab.active_window,
         )
@@ -1602,8 +1604,8 @@ class Boss:
         if tm is not None:
             w = tm.active_window
             self.confirm(
-                _('Are you sure you want to close this OS window, it has {}'
-                  ' windows running?').format(num),
+                ngettext('Are you sure you want to close this OS window, it has one window running?',
+                         'Are you sure you want to close this OS window, it has {} windows running', num).format(num),
                 self.handle_close_os_window_confirmation, os_window_id,
                 window=w,
             )
@@ -1642,7 +1644,8 @@ class Boss:
             return
         assert tm is not None
         self.confirm(
-            _('Are you sure you want to quit kitty, it has {} windows running?').format(num),
+            ngettext('Are you sure you want to quit kitty, it has one window running?',
+                     'Are you sure you want to quit kitty, it has {} windows running?', num).format(num),
             self.handle_quit_confirmation,
             window=tm.active_window,
         )
@@ -1812,7 +1815,8 @@ class Boss:
         'tab', '''
         Change the title of the active tab interactively, by typing in the new title.
         If you specify an argument to this action then that is used as the title instead of asking for it.
-        Use the empty string ("") to reset the title to default. For example::
+        Use the empty string ("") to reset the title to default. Use a space (" ") to indicate that the
+        prompt should not be pre-filled. For example::
 
             # interactive usage
             map f1 set_tab_title
@@ -1820,19 +1824,24 @@ class Boss:
             map f2 set_tab_title some title
             # reset to default
             map f3 set_tab_title ""
+            # interactive usage without prefilled prompt
+            map f3 set_tab_title " "
         '''
     )
     def set_tab_title(self, title: Optional[str] = None) -> None:
         tab = self.active_tab
         if tab:
-            if title is not None:
+            if title is not None and title not in ('" "', "' '"):
                 if title in ('""', "''"):
                     title = ''
                 tab.set_title(title)
                 return
+            prefilled = tab.name or tab.title
+            if title in ('" "', "' '"):
+                prefilled = ''
             args = [
                 '--name=tab-title', '--message', _('Enter the new title for this tab below.'),
-                '--default', tab.name or tab.title, 'do_set_tab_title', str(tab.id)]
+                '--default', prefilled, 'do_set_tab_title', str(tab.id)]
             self.run_kitten_with_metadata('ask', args)
 
     def do_set_tab_title(self, title: str, tab_id: int) -> None:
@@ -2402,6 +2411,7 @@ class Boss:
         for w in self.all_windows:
             self.default_bg_changed_for(w.id)
             w.refresh(reload_all_gpu_data=True)
+        load_shader_programs.recompile_if_needed()
 
     @ac('misc', '''
         Reload the config file
@@ -2432,6 +2442,9 @@ class Boss:
         if is_path_in_temp_dir(path):
             with suppress(FileNotFoundError):
                 os.remove(path)
+
+    def is_ok_to_read_image_file(self, path: str, fd: int) -> bool:
+        return is_ok_to_read_image_file(path, fd)
 
     def set_update_check_process(self, process: Optional['PopenType[bytes]'] = None) -> None:
         if self.update_check_process is not None:
@@ -2628,7 +2641,7 @@ class Boss:
             where = 'new' if args[0] == 'new-tab' else args[0][4:]
             return self._move_window_to(target_tab_id=where)
         ct = self.active_tab
-        items: List[Tuple[Union[str, int], str]] = [(t.id, t.title) for t in self.all_tabs if t is not ct]
+        items: List[Tuple[Union[str, int], str]] = [(t.id, t.effective_title) for t in self.all_tabs if t is not ct]
         items.append(('new_tab', 'New tab'))
         items.append(('new_os_window', 'New OS Window'))
         target_window = self.active_window
@@ -2769,3 +2782,6 @@ class Boss:
 
     def sanitize_url_for_dispay_to_user(self, url: str) -> str:
         return sanitize_url_for_dispay_to_user(url)
+
+    def on_system_color_scheme_change(self, appearance: int) -> None:
+        log_error('system color theme changed:', appearance)

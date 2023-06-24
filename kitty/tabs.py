@@ -324,20 +324,47 @@ class Tab:  # {{{
 
     @ac('lay', '''
         Switch to the named layout
+        In case there are multiple layouts with the same name and different options,
+        specify the full layout definition or a unique prefix of the full definition.
 
         For example::
 
             map f1 goto_layout tall
+            map f2 goto_layout fat:bias=20
         ''')
     def goto_layout(self, layout_name: str, raise_exception: bool = False) -> None:
         layout_name = layout_name.lower()
-        if layout_name not in self.enabled_layouts:
-            if raise_exception:
-                raise ValueError(layout_name)
-            log_error(f'Unknown or disabled layout: {layout_name}')
-            return
-        self._set_current_layout(layout_name)
-        self.relayout()
+        q, has_colon, rest = layout_name.partition(':')
+        matches = []
+        prefix_matches = []
+        matched_layout = ''
+        for candidate in self.enabled_layouts:
+            x, _, _ = candidate.partition(':')
+            if x == q:
+                if candidate == layout_name:
+                    matched_layout = candidate
+                    break
+                if candidate.startswith(layout_name):
+                    prefix_matches.append(candidate)
+                matches.append(x)
+
+        if not matched_layout:
+            if len(prefix_matches) == 1:
+                matched_layout = prefix_matches[0]
+            elif len(matches) == 1:
+                matched_layout = matches[0]
+        if matched_layout:
+            self._set_current_layout(matched_layout)
+            self.relayout()
+        else:
+            if len(matches) == 0:
+                if raise_exception:
+                    raise ValueError(layout_name)
+                log_error(f'Unknown or disabled layout: {layout_name}')
+            elif len(matches) != 1:
+                if raise_exception:
+                    raise ValueError(layout_name)
+                log_error(f'Multiple layouts match: {layout_name}')
 
     @ac('lay', '''
         Toggle the named layout

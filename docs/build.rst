@@ -18,7 +18,7 @@ following dependencies are installed first.
    If you are making small changes only to the Python parts of kitty, there is
    no need to build kitty at all, instead, assuming you have installed the
    official kitty binaries, you can simply set the :envvar:`KITTY_DEVELOP_FROM`
-   enviroment variable to point to the directory into which you have checked out
+   environment variable to point to the directory into which you have checked out
    the kitty source code. kitty will then load its Python code from there. You
    should use a version of the source that matches the binary version as closely
    as possible, since the two are tightly coupled.
@@ -40,7 +40,6 @@ Run-time dependencies:
 * ``fontconfig`` (not needed on macOS)
 * ``libcanberra`` (not needed on macOS)
 * ``ImageMagick`` (optional, needed to display uncommon image formats in the terminal)
-* ``pygments`` (optional, needed for syntax highlighting in ``kitty +kitten diff``)
 
 
 Build-time dependencies:
@@ -62,6 +61,7 @@ Build-time dependencies:
   - ``libfontconfig-dev``
   - ``libx11-xcb-dev``
   - ``liblcms2-dev``
+  - ``libssl-dev``
   - ``libpython3-dev``
   - ``librsync-dev``
 
@@ -87,6 +87,10 @@ other directory on your PATH so that you can run |kitty| using just ``kitty``.
 To have the kitty documentation available locally, run::
 
     python3 -m pip install -r docs/requirements.txt && make docs
+
+To develop the docs, with live reloading, use::
+
+    python3 -m pip install -r docs/requirements.txt && make develop-docs
 
 
 Building kitty.app on macOS from source
@@ -200,3 +204,19 @@ the kitty program expects to find them there.
 
 This applies to creating packages for |kitty| for macOS package managers such as
 Homebrew or MacPorts as well.
+
+Cross compilation
+-------------------
+
+While cross compilation is neither officially supported, nor recommended, as it
+means the test suite cannot be run for the cross compiled build, there is some
+support for cross compilation. Basically, run::
+
+    make prepare-for-cross-compile
+
+Then setup the cross compile environment (CC, CFLAGS, PATH, etc.) and run::
+
+    make cross-compile
+
+This will create the cross compiled build in the :file:`linux-package`
+directory.

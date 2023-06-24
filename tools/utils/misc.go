@@ -4,7 +4,7 @@ package utils
 
 import (
 	"fmt"
-	"sort"
+	"os"
 
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
@@ -65,27 +65,38 @@ func Map[T any, O any](f func(x T) O, s []T) []O {
 	return ans
 }
 
+func Repeat[T any](x T, n int) []T {
+	ans := make([]T, n)
+	for i := 0; i < n; i++ {
+		ans[i] = x
+	}
+	return ans
+}
+
 func Sort[T any](s []T, less func(a, b T) bool) []T {
-	sort.Slice(s, func(i, j int) bool { return less(s[i], s[j]) })
+	slices.SortFunc(s, less)
 	return s
 }
 
 func StableSort[T any](s []T, less func(a, b T) bool) []T {
-	sort.SliceStable(s, func(i, j int) bool { return less(s[i], s[j]) })
+	slices.SortStableFunc(s, less)
 	return s
 }
 
-func sort_with_key[T any, C constraints.Ordered](impl func(any, func(int, int) bool), s []T, key func(a T) C) []T {
-	temp := make([]struct {
+func sort_with_key[T any, C constraints.Ordered](stable bool, s []T, key func(a T) C) []T {
+	type t struct {
 		key C
 		val T
-	}, len(s))
+	}
+	temp := make([]t, len(s))
 	for i, x := range s {
 		temp[i].val, temp[i].key = x, key(x)
 	}
-	impl(temp, func(i, j int) bool {
-		return temp[i].key < temp[j].key
-	})
+	if stable {
+		slices.SortStableFunc(temp, func(a, b t) bool { return a.key < b.key })
+	} else {
+		slices.SortFunc(temp, func(a, b t) bool { return a.key < b.key })
+	}
 	for i, x := range temp {
 		s[i] = x.val
 	}
@@ -93,11 +104,11 @@ func sort_with_key[T any, C constraints.Ordered](impl func(any, func(int, int) b
 }
 
 func SortWithKey[T any, C constraints.Ordered](s []T, key func(a T) C) []T {
-	return sort_with_key(sort.Slice, s, key)
+	return sort_with_key(false, s, key)
 }
 
 func StableSortWithKey[T any, C constraints.Ordered](s []T, key func(a T) C) []T {
-	return sort_with_key(sort.SliceStable, s, key)
+	return sort_with_key(true, s, key)
 }
 
 func Max[T constraints.Ordered](a T, items ...T) (ans T) {
@@ -142,4 +153,64 @@ func Memset[T any](dest []T, pattern ...T) []T {
 		bp *= 2
 	}
 	return dest
+}
+
+type statable interface {
+	Stat() (os.FileInfo, error)
+}
+
+func Samefile(a, b any) bool {
+	var sta, stb os.FileInfo
+	var err error
+	switch v := a.(type) {
+	case string:
+		sta, err = os.Stat(v)
+		if err != nil {
+			return false
+		}
+	case statable:
+		sta, err = v.Stat()
+		if err != nil {
+			return false
+		}
+	case *os.FileInfo:
+		sta = *v
+	case os.FileInfo:
+		sta = v
+	default:
+		panic(fmt.Sprintf("a must be a string, os.FileInfo or a stat-able object not %T", v))
+	}
+	switch v := b.(type) {
+	case string:
+		stb, err = os.Stat(v)
+		if err != nil {
+			return false
+		}
+	case statable:
+		stb, err = v.Stat()
+		if err != nil {
+			return false
+		}
+	case *os.FileInfo:
+		stb = *v
+	case os.FileInfo:
+		stb = v
+	default:
+		panic(fmt.Sprintf("b must be a string, os.FileInfo or a stat-able object not %T", v))
+	}
+
+	return os.SameFile(sta, stb)
+}
+
+func Concat[T any](slices ...[]T) []T {
+	var total int
+	for _, s := range slices {
+		total += len(s)
+	}
+	result := make([]T, total)
+	var i int
+	for _, s := range slices {
+		i += copy(result[i:], s)
+	}
+	return result
 }

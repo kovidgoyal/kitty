@@ -150,7 +150,7 @@ other characters must be stripped out from the id by the terminal emulator
 before retransmitting it.
 
 Note that when using a terminal multiplexer it is possible for two different
-programs to tread on each others clipboard requests. This is fundamentally
+programs to overwrite each others clipboard requests. This is fundamentally
 unavoidable since the system clipboard is a single global shared resource.
 However, there is an additional complication where responses form this protocol
 could get lost if, for instance, multiple write requests are received

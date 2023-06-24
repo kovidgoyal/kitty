@@ -62,7 +62,7 @@ the need for this kitten.
 
 
 .. note::
-   While you can pass any of ripgrep's comand line options to the kitten and
+   While you can pass any of ripgrep's command line options to the kitten and
    they will be forwarded to :program:`rg`, do not use options that change the
    output formatting as the kitten works by parsing the output from ripgrep.
    The unsupported options are: :code:`--context-separator`,

@@ -70,7 +70,7 @@ words "HELLO WORLD" display in kitty as "WORLD HELLO", and if you try to select
 a substring of an RTL-shaped string, you will get the character that would be
 there had the the string been LTR. For example, assuming the Hebrew word
 ירושלים, selecting the character that on the screen appears to be ם actually
-writes into the selection buffer the character י.  kitty's default behavior is
+writes into the selection buffer the character י. kitty's default behavior is
 useful in conjunction with a filter to reverse the word order, however, if you
 wish to manipulate RTL glyphs, it can be very challenging to work with, so this
 option is provided to turn it off. Furthermore, this option can be used with the
@@ -249,7 +249,7 @@ light text on dark backgrounds thinner. It might also make some text appear like
 the strokes are uneven.
 
 You can fine tune the actual contrast curve used for glyph composition by
-specifying two space separated numbers for this setting.
+specifying up to two space-separated numbers for this setting.
 
 The first number is the gamma adjustment, which controls the thickness of dark
 text on light backgrounds. Increasing the value will make text appear thicker.
@@ -262,6 +262,21 @@ backgrounds is affected very little.
 The second number is an additional multiplicative contrast. It is percentage
 ranging from :code:`0` to :code:`100`. The default value is :code:`0` on Linux
 and :code:`30` on macOS.
+
+If you wish to achieve similar looking thickness in light and dark themes, a good way
+to experiment is start by setting the value to :code:`1.0 0` and use a dark theme.
+Then adjust the second parameter until it looks good. Then switch to a light theme
+and adjust the first parameter until the perceived thickness matches the dark theme.
+''')
+
+opt('text_fg_override_threshold', 0, option_type='float', long_text='''
+The minimum accepted difference in luminance between the foreground and background
+color, below which kitty will override the foreground color. It is percentage
+ranging from :code:`0` to :code:`100`. If the difference in luminance of the
+foreground and background is below this threshold, the foreground color will be set
+to white if the background is dark or black if the background is light. The default
+value is :code:`0`, which means no overriding is performed. Useful when working with applications
+that use colors that do not contrast well with your preferred color scheme.
 ''')
 
 egr()  # }}}
@@ -370,7 +385,7 @@ Separate scrollback history size (in MB), used only for browsing the scrollback
 buffer with pager. This separate buffer is not available for interactive
 scrolling but will be piped to the pager program when viewing scrollback buffer
 in a separate window. The current implementation stores the data in UTF-8, so
-approximatively 10000 lines per megabyte at 100 chars per line, for pure ASCII,
+approximately 10000 lines per megabyte at 100 chars per line, for pure ASCII,
 unformatted text. A value of zero or less disables this feature. The maximum
 allowed size is 4GB. Note that on config reload if this is changed it will only
 affect newly created windows, not existing ones.
@@ -518,7 +533,7 @@ The supported paste actions are:
     If the text being pasted is a URL and the cursor is at a shell prompt,
     automatically quote the URL (needs :opt:`shell_integration`).
 :code:`confirm`:
-    Confirm the paste if bracketed paste mode is not active or there is more
+    Confirm the paste if bracketed paste mode is not active or there is
     a large amount of text being pasted.
 :code:`filter`:
     Run the filter_paste() function from the file :file:`paste-actions.py` in
@@ -1048,23 +1063,18 @@ faded and one being fully opaque.
     )
 
 
-opt('resize_debounce_time', '0.1',
-    option_type='positive_float', ctype='time',
+opt('resize_debounce_time', '0.1 0.5',
+    option_type='resize_debounce_time', ctype='!resize_debounce_time',
     long_text='''
-The time to wait before redrawing the screen when a resize event is received (in
-seconds). On platforms such as macOS, where the operating system sends events
-corresponding to the start and end of a resize, this number is ignored.
-'''
-    )
-
-opt('resize_draw_strategy', 'static',
-    option_type='resize_draw_strategy', ctype='int',
-    long_text='''
-Choose how kitty draws a window while a resize is in progress. A value of
-:code:`static` means draw the current window contents, mostly unchanged. A value
-of :code:`scale` means draw the current window contents scaled. A value of
-:code:`blank` means draw a blank window. A value of :code:`size` means show the
-window size in cells.
+The time to wait before redrawing the screen during a live resize of the OS
+window, when no new resize events have been received, i.e. when resizing is
+either paused or finished. On platforms such as macOS, where the operating
+system sends events corresponding to the start and end of a live resize, the
+second number is used for redraw-after-pause since kitty can distinguish
+between a pause and end of resizing.  On such systems the first number is
+ignored and redraw is immediate after end of resize.  On other systems the
+first number is used so that kitty is "ready" quickly after the end of
+resizing, while not also continuously redrawing, to save energy.
 '''
     )
 
@@ -1241,13 +1251,13 @@ use :code:`{sup.index}`. All data available is:
 :code:`title`
     The current tab title.
 :code:`index`
-    The tab index useable with :ac:`goto_tab N <goto_tab>` shortcuts.
+    The tab index usable with :ac:`goto_tab N <goto_tab>` shortcuts.
 :code:`layout_name`
     The current layout name.
 :code:`num_windows`
     The number of windows in the tab.
 :code:`num_window_groups`
-    The number of window groups (not counting overlay windows) in the tab.
+    The number of window groups (a window group is a window and all of its overlay windows) in the tab.
 :code:`tab.active_wd`
     The working directory of the currently active window in the tab
     (expensive, requires syscall). Use :code:`active_oldest_wd` to get
@@ -1340,21 +1350,24 @@ opt('background_opacity', '1.0',
     option_type='unit_float', ctype='float',
     long_text='''
 The opacity of the background. A number between zero and one, where one is
-opaque and zero is fully transparent. This will only work if supported by the OS
-(for instance, when using a compositor under X11). Note that it only sets the
-background color's opacity in cells that have the same background color as the
-default terminal background, so that things like the status bar in vim,
+opaque and zero is fully transparent. This will only work if supported by the
+OS (for instance, when using a compositor under X11). Note that it only sets
+the background color's opacity in cells that have the same background color as
+the default terminal background, so that things like the status bar in vim,
 powerline prompts, etc. still look good. But it means that if you use a color
 theme with a background color in your editor, it will not be rendered as
 transparent. Instead you should change the default background color in your
 kitty config and not use a background color in the editor color scheme. Or use
-the escape codes to set the terminals default colors in a shell script to launch
-your editor. Be aware that using a value less than 1.0 is a (possibly
-significant) performance hit. If you want to dynamically change transparency of
-windows, set :opt:`dynamic_background_opacity` to :code:`yes` (this is off by
-default as it has a performance cost). Changing this option when reloading the
-config will only work if :opt:`dynamic_background_opacity` was enabled in the
-original config.
+the escape codes to set the terminals default colors in a shell script to
+launch your editor. Be aware that using a value less than 1.0 is a (possibly
+significant) performance hit. When using a low value for this setting, it is
+desirable that you set the :opt:`background` color to a color the matches the
+general color of the desktop background, for best text rendering.  If you want
+to dynamically change transparency of windows, set
+:opt:`dynamic_background_opacity` to :code:`yes` (this is off by default as it
+has a performance cost). Changing this option when reloading the config will
+only work if :opt:`dynamic_background_opacity` was enabled in the original
+config.
 '''
     )
 
@@ -1407,7 +1420,7 @@ gaps for a *separated* look.
 '''
     )
 
-opt('dim_opacity', '0.75',
+opt('dim_opacity', '0.4',
     option_type='unit_float', ctype='float',
     long_text='''
 How much to dim text that has the DIM/FAINT attribute set. One means no dimming
@@ -3992,18 +4005,31 @@ You can create shortcuts to clear/reset the terminal. For example::
 If you want to operate on all kitty windows instead of just the current one, use
 :italic:`all` instead of :italic:`active`.
 
-It is also possible to remap :kbd:`Ctrl+L` to both scroll the current screen
+Some useful functions that can be defined in the shell rc files to perform various kinds of
+clearing of the current window:
+
+.. code-block:: sh
+
+    clear-only-screen() {
+        printf "\e[H\e[2J"
+    }
+
+    clear-screen-and-scrollback() {
+        printf "\e[H\e[3J"
+    }
+
+    clear-screen-saving-contents-in-scrollback() {
+        printf "\e[H\e[22J"
+    }
+
+For instance, using these functions, it is possible to remap :kbd:`Ctrl+L` to both scroll the current screen
 contents into the scrollback buffer and clear the screen, instead of just
-clearing the screen, for example, for ZSH add the following to :file:`~/.zshrc`:
+clearing the screen. For ZSH, in :file:`~/.zshrc` after the above functions, add:
 
 .. code-block:: zsh
 
-    scroll-and-clear-screen() {
-        printf '\\n%.0s' {1..$LINES}
-        zle clear-screen
-    }
-    zle -N scroll-and-clear-screen
-    bindkey '^l' scroll-and-clear-screen
+    zle -N clear-screen-saving-contents-in-scrollback
+    bindkey '^l' clear-screen-saving-contents-in-scrollback
 
 '''
     )

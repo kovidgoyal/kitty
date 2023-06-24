@@ -22,7 +22,7 @@ class Version(NamedTuple):
 
 appname: str = 'kitty'
 kitty_face = '🐱'
-version: Version = Version(0, 27, 1)
+version: Version = Version(0, 28, 1)
 str_version: str = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 is_macos: bool = 'darwin' in _plat
@@ -229,7 +229,7 @@ def running_in_kitty(set_val: Optional[bool] = None) -> bool:
 def list_kitty_resources(package: str = 'kitty') -> Iterator[str]:
     try:
         if sys.version_info[:2] < (3, 10):
-            raise ImportError('importlib.resources.files() doesnt work with frozen builds on python 3.9')
+            raise ImportError("importlib.resources.files() doesn't work with frozen builds on python 3.9")
         from importlib.resources import files
     except ImportError:
         from importlib.resources import contents
@@ -241,7 +241,7 @@ def list_kitty_resources(package: str = 'kitty') -> Iterator[str]:
 def read_kitty_resource(name: str, package_name: str = 'kitty') -> bytes:
     try:
         if sys.version_info[:2] < (3, 10):
-            raise ImportError('importlib.resources.files() doesnt work with frozen builds on python 3.9')
+            raise ImportError("importlib.resources.files() doesn't work with frozen builds on python 3.9")
         from importlib.resources import files
     except ImportError:
         from importlib.resources import read_binary

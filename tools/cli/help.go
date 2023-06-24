@@ -35,8 +35,9 @@ func (self *Command) ShowVersion() {
 }
 
 func format_with_indent(output io.Writer, text string, indent string, screen_width int) {
-	indented := style.WrapText(text, indent, screen_width, "#placeholder_for_formatting#")
+	indented := style.WrapText(text, screen_width, style.WrapOptions{Indent: indent, Ignore_lines_containing: "#placeholder_for_formatting#", Trim_whitespace: true})
 	io.WriteString(output, indented)
+	io.WriteString(output, "\n")
 }
 
 func (self *Command) FormatSubCommands(output io.Writer, formatter *markup.Context, screen_width int) {

@@ -4,9 +4,14 @@ package config
 
 import (
 	"fmt"
+	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
+	"regexp"
 	"strconv"
 	"strings"
+
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print
@@ -182,4 +187,126 @@ func StringLiteral(val string) (string, error) {
 		ans.WriteRune('\\')
 	}
 	return ans.String(), nil
+}
+
+var ModMap = utils.Once(func() map[string]string {
+	return map[string]string{
+		"shift":     "shift",
+		"⇧":         "shift",
+		"alt":       "alt",
+		"option":    "alt",
+		"opt":       "alt",
+		"⌥":         "alt",
+		"super":     "super",
+		"command":   "super",
+		"cmd":       "super",
+		"⌘":         "super",
+		"control":   "ctrl",
+		"ctrl":      "ctrl",
+		"⌃":         "ctrl",
+		"hyper":     "hyper",
+		"meta":      "meta",
+		"num_lock":  "num_lock",
+		"caps_lock": "caps_lock",
+	}
+})
+
+var ShortcutSpecPat = utils.Once(func() *regexp.Regexp {
+	return regexp.MustCompile(`([^+])>`)
+})
+
+func NormalizeShortcut(spec string) string {
+	parts := strings.Split(strings.ToLower(spec), "+")
+	key := parts[len(parts)-1]
+	if len(parts) == 1 {
+		return key
+	}
+	mods := parts[:len(parts)-1]
+	mmap := ModMap()
+	mods = utils.Map(func(x string) string {
+		ans := mmap[x]
+		if ans == "" {
+			ans = x
+		}
+		return ans
+	}, mods)
+	slices.Sort(mods)
+	return strings.Join(mods, "+") + "+" + key
+}
+
+func NormalizeShortcuts(spec string) []string {
+	if strings.HasSuffix(spec, "+") {
+		spec = spec[:len(spec)-1] + "plus"
+	}
+	spec = strings.ReplaceAll(spec, "++", "+plus")
+	spec = ShortcutSpecPat().ReplaceAllString(spec, "$1\x00")
+	return utils.Map(NormalizeShortcut, strings.Split(spec, "\x00"))
+}
+
+type KeyAction struct {
+	Normalized_keys []string
+	Name            string
+	Args            string
+}
+
+func (self *KeyAction) String() string {
+	return fmt.Sprintf("map %#v %#v %#v\n", strings.Join(self.Normalized_keys, ">"), self.Name, self.Args)
+}
+
+func ParseMap(val string) (*KeyAction, error) {
+	spec, action, found := strings.Cut(val, " ")
+	if !found {
+		return nil, fmt.Errorf("No action specified for shortcut %s", val)
+	}
+	action = strings.TrimSpace(action)
+	action_name, action_args, _ := strings.Cut(action, " ")
+	action_args = strings.TrimSpace(action_args)
+	return &KeyAction{Name: action_name, Args: action_args, Normalized_keys: NormalizeShortcuts(spec)}, nil
+}
+
+type ShortcutTracker struct {
+	partial_matches      []*KeyAction
+	partial_num_consumed int
+}
+
+func (self *ShortcutTracker) Match(ev *loop.KeyEvent, all_actions []*KeyAction) *KeyAction {
+	if self.partial_num_consumed > 0 {
+		ev.Handled = true
+		self.partial_matches = utils.Filter(self.partial_matches, func(ac *KeyAction) bool {
+			return self.partial_num_consumed < len(ac.Normalized_keys) && ev.MatchesPressOrRepeat(ac.Normalized_keys[self.partial_num_consumed])
+		})
+		if len(self.partial_matches) == 0 {
+			self.partial_num_consumed = 0
+			return nil
+		}
+	} else {
+		self.partial_matches = utils.Filter(all_actions, func(ac *KeyAction) bool {
+			return ev.MatchesPressOrRepeat(ac.Normalized_keys[0])
+		})
+		if len(self.partial_matches) == 0 {
+			return nil
+		}
+		ev.Handled = true
+	}
+	self.partial_num_consumed++
+	for _, x := range self.partial_matches {
+		if self.partial_num_consumed >= len(x.Normalized_keys) {
+			self.partial_num_consumed = 0
+			return x
+		}
+	}
+	return nil
+}
+
+func ResolveShortcuts(actions []*KeyAction) []*KeyAction {
+	action_map := make(map[string]*KeyAction, len(actions))
+	for _, ac := range actions {
+		key := strings.Join(ac.Normalized_keys, "\x00")
+		if ac.Name == "no_op" || ac.Name == "no-op" {
+			delete(action_map, key)
+		} else {
+			action_map[key] = ac
+		}
+	}
+	return maps.Values(action_map)
 }

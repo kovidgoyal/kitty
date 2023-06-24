@@ -35,14 +35,73 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.28.0 [future]
+0.28.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Text rendering: Use sRGB correct linear gamma blending for nicer font rendering and better color accuracy with transparent windows. See the option :opt:`text_composition_strategy` for details. The obsolete :opt:`macos_thicken_font` will make the font too thick and needs to be removed manually if it is configured. (:pull:`5969`)
+- A new escape code ``<ESC>[22J`` that moves the current contents of the screen into the scrollback before clearing it
 
-- icat kitten: Support display of images inside tmux (:pull:`5664`)
+- A new option :opt:`text_fg_override_threshold` to force text colors to have high contrast regardless of color scheme (:pull:`6283`)
+
+- When resizing OS Windows make the animation less jerky. Also show the window size in cells during the resize (:iss:`6341`)
+
+- unicode_input kitten: Fix a regression in 0.28.0 that caused the order of recent and favorites entries to not be respected (:iss:`6214`)
+
+- unicode_input kitten: Fix a regression in 0.28.0 that caused editing of favorites to sometimes hang
+
+- clipboard kitten: Fix a bug causing the last MIME type available on the clipboard not being recognized when pasting
+
+- clipboard kitten: Dont set clipboard when getting clipboard in filter mode (:iss:`6302`)
+
+- Fix regression in 0.28.0 causing color fringing when rendering in transparent windows on light backgrounds (:iss:`6209`)
+
+- show_key kitten: In kitty mode show the actual bytes sent by the terminal rather than a re-encoding of the parsed key event
+
+- hints kitten: Fix a regression in 0.28.0 that broke using sub-groups in regexp captures (:iss:`6228`)
+
+- hints kitten: Fix a regression in 0.28.0 that broke using lookahead/lookbehind in regexp captures (:iss:`6265`)
+
+- diff kitten: Fix a regression in 0.28.0 that broke using relative paths as arguments to the kitten (:iss:`6325`)
+
+- Fix re-using the image id of an animated image for a still image causing a crash (:iss:`6244`)
+
+- kitty +open: Ask for permission before executing script files that are not marked as executable. This prevents accidental execution
+  of script files via MIME type association from programs that unconditionally "open" attachments/downloaded files
+
+- edit-in-kitty: Fix running edit-in-kitty with elevated privileges to edit a restricted file not working (:disc:`6245`)
+
+- ssh kitten: Fix a regression in 0.28.0 that caused interrupt during setup to not be handled gracefully (:iss:`6254`)
+
+- ssh kitten: Allow configuring the ssh kitten to skip some hosts via a new ``delegate`` config directive
+
+- Graphics: Move images up along with text when the window is shrunk vertically (:iss:`6278`)
+
+- Fix a regression in 0.28.0 that caused a buffer overflow when clearing the screen (:iss:`6306`, :pull:`6308`)
+
+- Fix a regression in 0.27.0 that broke setting of specific edge padding/margin via remote control (:iss:`6333`)
+
+0.28.1 [2023-04-21]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fix a regression in the previous release that broke the remote file kitten (:iss:`6186`)
+
+- Fix a regression in the previous release that broke handling of some keyboard shortcuts in some kittens on some keyboard layouts (:iss:`6189`)
+
+- Fix a regression in the previous release that broke usage of custom themes (:iss:`6191`)
+
+0.28.0 [2023-04-15]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- **Text rendering change**: Use sRGB correct linear gamma blending for nicer font
+  rendering and better color accuracy with transparent windows.
+  See the option :opt:`text_composition_strategy` for details.
+  The obsolete :opt:`macos_thicken_font` will make the font too thick and needs to be removed manually
+  if it is configured. (:pull:`5969`)
+
+- icat kitten: Support display of images inside tmux >= 3.3 (:pull:`5664`)
 
 - Graphics protocol: Add support for displaying images inside programs that do not support the protocol such as vim and tmux (:pull:`5664`)
+
+- diff kitten: Add support for selecting multi-line text with the mouse
 
 - Fix a regression in 0.27.0 that broke ``kitty @ set-font-size 0`` (:iss:`5992`)
 
@@ -71,7 +130,7 @@ Detailed list of changes
 - Linux: A new option :opt:`linux_bell_theme` to control which sound theme is used for the bell sound (:pull:`4858`)
 
 - ssh kitten: Change the syntax of glob patterns slightly to match common usage
-  elsewhere. Now the syntax is the same a "extendedglob" in most shells.
+  elsewhere. Now the syntax is the same as "extendedglob" in most shells.
 
 - hints kitten: Allow copying matches to named buffers (:disc:`6073`)
 
@@ -80,9 +139,13 @@ Detailed list of changes
 
 - Wayland KDE: Fix selecting in un-focused OS window not working correctly (:iss:`6095`)
 
-- X11: Fix a crash if the X server requests clipboard data after we have relinquished the clipboard (:iss:`5650`)
+- Linux X11: Fix a crash if the X server requests clipboard data after we have relinquished the clipboard (:iss:`5650`)
 
 - Allow stopping of URL detection at newlines via :opt:`url_excluded_characters` (:iss:`6122`)
+
+- Linux Wayland: Fix animated images not being animated continuously (:iss:`6126`)
+
+- Keyboard input: Fix text not being reported as unicode codepoints for multi-byte characters in the kitty keyboard protocol (:iss:`6167`)
 
 
 0.27.1 [2023-02-07]
@@ -176,7 +239,7 @@ Detailed list of changes
 
 - ssh kitten: Allow using absolute paths for the location of transferred data (:iss:`5607`)
 
-- Fix a regression in the previous release that caused a :opt:`resize_draw_strategy` of ``static`` to not work (:iss:`5601`)
+- Fix a regression in the previous release that caused a ``resize_draw_strategy`` of ``static`` to not work (:iss:`5601`)
 
 - Wayland KDE: Fix abort when pasting into Firefox (:iss:`5603`)
 
@@ -447,7 +510,7 @@ Detailed list of changes
 
 - A new value :code:`last_reported` for :option:`launch --cwd` to use the current working directory last reported by the program running in the terminal
 
-- macOS: When using Apple's less as the pager for viewing scrollback strip out OSC codes as it cant parse them (:iss:`4788`)
+- macOS: When using Apple's less as the pager for viewing scrollback strip out OSC codes as it can't parse them (:iss:`4788`)
 
 - diff kitten: Fix incorrect rendering in rare circumstances when scrolling after changing the context size (:iss:`4831`)
 
@@ -708,7 +771,7 @@ Detailed list of changes
 - A new remote control command to :program:`visually select a window <kitty @
   select-window>` (:iss:`4165`)
 
-- Add support for reporting mouse events with pixel co-ordinates using the
+- Add support for reporting mouse events with pixel coordinates using the
   ``SGR_PIXEL_PROTOCOL`` introduced in xterm 359
 
 - When programs ask to read from the clipboard prompt, ask the user to allow
@@ -872,7 +935,7 @@ Detailed list of changes
   sizes (:iss:`3896`)
 
 - Fix shift+middle click to paste sending a mouse press event but no release
-  event which breaks some applications that grab the mouse but cant handle
+  event which breaks some applications that grab the mouse but can't handle
   mouse events (:iss:`3902`)
 
 - macOS: When the language is set to English and the country to one for which
@@ -1549,7 +1612,7 @@ Detailed list of changes
 - Fix image leaving behind a black rectangle when switch away and back to
   alternate screen (:iss:`2901`)
 
-- Fix one pixel mis-alignment of rounded corners when either the cell
+- Fix one pixel misalignment of rounded corners when either the cell
   dimensions or the thickness of the line is an odd number of pixels
   (:iss:`2907`)
 
@@ -2257,7 +2320,7 @@ Detailed list of changes
   which will cause kitty to not change text color in selections (:iss:`1358`)
 
 - Make live resizing of OS windows smoother and add an option
-  :opt:`resize_draw_strategy` to control what is drawn while a
+  ``resize_draw_strategy`` to control what is drawn while a
   resize is in progress.
 
 - macOS: Improve handling of IME extended input. Compose characters

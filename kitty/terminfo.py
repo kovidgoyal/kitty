@@ -53,8 +53,7 @@ bool_capabilities = {
     # Terminfo extension used by tmux to detect true color support (non-standard)
     'Tc',
     # Indicates support for styled and colored underlines (non-standard) as
-    # described at:
-    # https://github.com/kovidgoyal/kitty/blob/master/protocol-extensions.asciidoc
+    # described at: https://sw.kovidgoyal.net/kitty/underlines/
     'Su',
     # Indicates support for full keyboard mode (non-standard) as
     # described at:
@@ -111,6 +110,10 @@ string_capabilities = {
     'civis': r'\E[?25l',
     # Clear screen
     'clear': r'\E[H\E[2J',
+    # Clear scrollback. This is disabled because the clear program on Linux by default, not as
+    # an option, uses it and nukes the scrollback. What's more this behavior was silently changed
+    # around 2013. Given clear is maintained as part of ncurses this kind of crap is no surprise.
+    # 'E3': r'\E[3J',
     # Make cursor appear normal
     'cnorm': r'\E[?12h\E[?25h',
     # Carriage return
@@ -262,6 +265,19 @@ string_capabilities = {
     'setrgbf': r'\E[38:2:%p1%d:%p2%d:%p3%dm',
     # Set RGB background color (non-standard used by neovim)
     'setrgbb': r'\E[48:2:%p1%d:%p2%d:%p3%dm',
+    # DECSCUSR Set cursor style
+    'Ss': r'\E[%p1%d\sq',
+    # DECSCUSR Reset cursor style to power-on default
+    'Se': r'\E[2\sq',
+    # Set cursor color
+    'Cs': r'\E]12;%p1%s\007',
+    # Reset cursor color
+    'Cr': r'\E]112\007',
+    # Indicates support for styled and colored underlines (non-standard) as
+    # described at: https://sw.kovidgoyal.net/kitty/underlines/
+    # 'Setulc' is quivalent to the 'Su' boolean capability. Until
+    # standardized, specify both for application compatibility.
+    'Setulc': r'\E[58:2:%p1%{65536}%/%d:%p1%{256}%/%{255}%&%d:%p1%{255}%&%d%;m',
 
     # The following entries are for compatibility with xterm,
     # and shell scripts using e.g. `tput u7` to emit a CPR escape
@@ -271,6 +287,12 @@ string_capabilities = {
     'u7': r'\E[6n',
     'u8': r'\E[?%[;0123456789]c',
     'u9': r'\E[c',
+
+    # Bracketed paste, added to ncurses 6.4 in 2023
+    'PS': '\E200~',
+    'PE': '\E201~',
+    'BE': '\E[?2004h',
+    'BD': '\E[?2004l',
 
     # The following are entries that we don't use
     # # turn on blank mode, (characters invisible)
@@ -444,7 +466,7 @@ queryable_capabilities = cast(Dict[str, str], numeric_capabilities.copy())
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset(
-    'Su Smulx Sync Tc setrgbf setrgbb fullkbd kUP kDN kbeg kBEG'.split() + [
+    'Cr Cs Se Ss Setulc Su Smulx Sync Tc PS PE BE BD setrgbf setrgbb fullkbd kUP kDN kbeg kBEG'.split() + [
         f'k{key}{mod}'
         for key in 'UP DN RIT LFT BEG END HOM IC DC PRV NXT'.split()
         for mod in range(3, 8)])

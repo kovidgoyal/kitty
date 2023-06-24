@@ -332,7 +332,7 @@ exec_kitten(int argc, char *argv[], char *exe_dir) {
     newargv[argc] = 0;
     newargv[0] = "kitten";
     errno = 0;
-    execv(exe, argv);
+    execv(exe, newargv);
     fprintf(stderr, "Failed to execute kitten (%s) with error: %s\n", exe, strerror(errno));
     exit(1);
 }

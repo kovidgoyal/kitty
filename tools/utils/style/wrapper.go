@@ -82,6 +82,10 @@ func (self *RGBA) AsRGB() uint32 {
 	return uint32(self.Blue) | (uint32(self.Green) << 8) | (uint32(self.Red) << 16)
 }
 
+func (self *RGBA) IsDark() bool {
+	return self.Red < 155 && self.Green < 155 && self.Blue < 155
+}
+
 func (self *RGBA) FromRGB(col uint32) {
 	self.Red = uint8((col >> 16) & 0xff)
 	self.Green = uint8((col >> 8) & 0xff)
@@ -158,14 +162,14 @@ func ParseColor(color string) (RGBA, error) {
 }
 
 type NullableColor struct {
-	Color  RGBA
-	IsNull bool
+	Color RGBA
+	IsSet bool
 }
 
 func ParseColorOrNone(color string) (NullableColor, error) {
 	raw := strings.TrimSpace(strings.ToLower(color))
 	if raw == "none" {
-		return NullableColor{IsNull: true}, nil
+		return NullableColor{}, nil
 	}
 	c, err := ParseColor(raw)
 	return NullableColor{Color: c}, err
@@ -307,8 +311,8 @@ func (self url_code) is_empty() bool {
 func (self *sgr_code) update() {
 	p := make([]string, 0, 1)
 	s := make([]string, 0, 1)
-	p, s = self.bold.as_sgr("1", "22", p, s)
-	p, s = self.dim.as_sgr("2", "22", p, s)
+	p, s = self.bold.as_sgr("1", "221", p, s)
+	p, s = self.dim.as_sgr("2", "222", p, s)
 	p, s = self.italic.as_sgr("3", "23", p, s)
 	p, s = self.reverse.as_sgr("7", "27", p, s)
 	p, s = self.strikethrough.as_sgr("9", "29", p, s)
