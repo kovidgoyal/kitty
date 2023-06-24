@@ -36,9 +36,7 @@ const uvec2 cell_pos_map[] = uvec2[4](
 
 out vec3 background;
 out float draw_bg;
-#ifdef NEEDS_BG_ALPHA
 out float bg_alpha;
-#endif
 
 #ifdef NEEDS_FOREGROUND
 uniform float inactive_text_alpha;
@@ -206,6 +204,7 @@ void main() {
     draw_bg = step(1, float(draw_bg_bitfield & draw_bg_mask));
 #endif
 
+    bg_alpha = 1.f;
 #ifdef TRANSPARENT
     // Set bg_alpha to background_opacity on cells that have the default background color
     // Which means they must not have a block cursor or a selection or reverse video

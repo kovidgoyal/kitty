@@ -4,9 +4,7 @@
 
 in vec3 background;
 in float draw_bg;
-#ifdef NEEDS_BG_ALPHA
 in float bg_alpha;
-#endif
 
 #ifdef NEEDS_FOREGROUND
 uniform sampler2DArray sprites;

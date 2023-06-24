@@ -29,7 +29,3 @@
 #if (HAS_TRANSPARENCY == 1)
 #define TRANSPARENT
 #endif
-
-#if defined(TRANSPARENT) || (PHASE == PHASE_SPECIAL)
-#define NEEDS_BG_ALPHA
-#endif
