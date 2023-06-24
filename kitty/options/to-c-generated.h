@@ -188,6 +188,19 @@ convert_from_opts_wheel_scroll_min_lines(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_wheel_scroll_use_fake(PyObject *val, Options *opts) {
+    opts->wheel_scroll_use_fake = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_wheel_scroll_use_fake(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "wheel_scroll_use_fake");
+    if (ret == NULL) return;
+    convert_from_python_wheel_scroll_use_fake(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_touch_scroll_multiplier(PyObject *val, Options *opts) {
     opts->touch_scroll_multiplier = PyFloat_AsDouble(val);
 }
@@ -1074,6 +1087,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_wheel_scroll_multiplier(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_wheel_scroll_min_lines(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_wheel_scroll_use_fake(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_touch_scroll_multiplier(py_opts, opts);
     if (PyErr_Occurred()) return false;

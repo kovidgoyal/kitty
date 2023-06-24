@@ -936,7 +936,7 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
                 }
             } else {
                 if (screen->linebuf == screen->main_linebuf) screen_history_scroll(screen, abs(s), upwards);
-                else fake_scroll(w, abs(s), upwards);
+                else if (OPT(wheel_scroll_use_fake)) fake_scroll(w, abs(s), upwards);
             }
         }
     }

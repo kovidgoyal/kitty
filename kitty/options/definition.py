@@ -420,6 +420,11 @@ negative number, the minimum number of lines will always be added.
 '''
     )
 
+opt('wheel_scroll_use_fake', 'yes',
+    option_type='to_bool', ctype='bool',
+    long_text='Perform a "fake" scroll if kitty is in alternate screen mode.'
+    )
+
 opt('touch_scroll_multiplier', '1.0',
     option_type='float', ctype='double',
     long_text='''

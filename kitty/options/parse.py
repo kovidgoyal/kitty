@@ -1332,6 +1332,9 @@ class Parser:
     def wheel_scroll_multiplier(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['wheel_scroll_multiplier'] = float(val)
 
+    def wheel_scroll_use_fake(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['wheel_scroll_use_fake'] = to_bool(val)
+
     def window_alert_on_bell(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['window_alert_on_bell'] = to_bool(val)
 
