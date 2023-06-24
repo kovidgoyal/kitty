@@ -735,10 +735,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		return 1, err
 	}
 	if passthrough {
-		if len(found_extra_args) > 0 {
-			return 1, fmt.Errorf("The SSH kitten cannot work with the options: %s", strings.Join(maps.Keys(PassthroughArgs()), " "))
-		}
-		return 1, unix.Exec(SSHExe(), append([]string{"ssh"}, args...), os.Environ())
+		return 1, unix.Exec(SSHExe(), utils.Concat([]string{"ssh"}, ssh_args, server_args), os.Environ())
 	}
 	if os.Getenv("KITTY_WINDOW_ID") == "" || os.Getenv("KITTY_PID") == "" {
 		return 1, fmt.Errorf("The SSH kitten is meant to run inside a kitty window")
