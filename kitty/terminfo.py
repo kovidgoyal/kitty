@@ -288,6 +288,12 @@ string_capabilities = {
     'u8': r'\E[?%[;0123456789]c',
     'u9': r'\E[c',
 
+    # Bracketed paste, added to ncurses 6.4 in 2023
+    'PS': '\E200~',
+    'PE': '\E201~',
+    'BE': '\E[?2004h',
+    'BD': '\E[?2004l',
+
     # The following are entries that we don't use
     # # turn on blank mode, (characters invisible)
     # 'invis': r'\E[8m',
@@ -460,7 +466,7 @@ queryable_capabilities = cast(Dict[str, str], numeric_capabilities.copy())
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset(
-    'Cr Cs Se Ss Setulc Su Smulx Sync Tc setrgbf setrgbb fullkbd kUP kDN kbeg kBEG'.split() + [
+    'Cr Cs Se Ss Setulc Su Smulx Sync Tc PS PE BE BD setrgbf setrgbb fullkbd kUP kDN kbeg kBEG'.split() + [
         f'k{key}{mod}'
         for key in 'UP DN RIT LFT BEG END HOM IC DC PRV NXT'.split()
         for mod in range(3, 8)])
