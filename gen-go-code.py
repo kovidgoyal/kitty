@@ -594,12 +594,13 @@ var RefMap = map[string]string{serialize_go_dict(ref_map['ref'])}
 var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
 var AllowedShellIntegrationValues = []string{{ {str(sorted(allowed_shell_integration_values))[1:-1].replace("'", '"')} }}
 var KittyConfigDefaults = struct {{
-Term, Shell_integration, Select_by_word_characters string
+Term, Shell_integration, Select_by_word_characters, Shell string
 Wheel_scroll_multiplier int
 Url_prefixes []string
 }}{{
 Term: "{Options.term}", Shell_integration: "{' '.join(Options.shell_integration)}", Url_prefixes: []string{{ {url_prefixes} }},
 Select_by_word_characters: `{Options.select_by_word_characters}`, Wheel_scroll_multiplier: {Options.wheel_scroll_multiplier},
+Shell: "{Options.shell}",
 }}
 '''  # }}}
 
@@ -812,7 +813,7 @@ def generate_ssh_kitten_data() -> None:
         for f in filenames:
             path = os.path.join(dirpath, f)
             files.add(path.replace(os.sep, '/'))
-    dest = 'kittens/ssh/data_generated.bin'
+    dest = 'tools/tui/shell_integration/data_generated.bin'
 
     def normalize(t: tarfile.TarInfo) -> tarfile.TarInfo:
         t.uid = t.gid = 0

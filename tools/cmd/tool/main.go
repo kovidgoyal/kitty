@@ -19,6 +19,7 @@ import (
 	"kitty/tools/cmd/at"
 	"kitty/tools/cmd/edit_in_kitty"
 	"kitty/tools/cmd/pytest"
+	"kitty/tools/cmd/run_shell"
 	"kitty/tools/cmd/update_self"
 	"kitty/tools/tui"
 )
@@ -55,6 +56,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	// themes
 	themes.EntryPoint(root)
 	themes.ParseEntryPoint(root)
+	// run-shell
+	run_shell.EntryPoint(root)
 	// __pytest__
 	pytest.EntryPoint(root)
 	// __hold_till_enter__

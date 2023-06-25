@@ -30,6 +30,7 @@ import (
 	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
+	"kitty/tools/tui/shell_integration"
 	"kitty/tools/utils"
 	"kitty/tools/utils/secrets"
 	"kitty/tools/utils/shlex"
@@ -299,14 +300,14 @@ func make_tarfile(cd *connection_data, get_local_env func(string) (string, bool)
 		}
 		return nil
 	}
-	add_entries := func(prefix string, items ...Entry) error {
+	add_entries := func(prefix string, items ...shell_integration.Entry) error {
 		for _, item := range items {
 			err := add(
 				&tar.Header{
-					Typeflag: item.metadata.Typeflag, Name: path.Join(prefix, path.Base(item.metadata.Name)), Format: tar.FormatPAX,
-					Size: int64(len(item.data)), Mode: item.metadata.Mode, ModTime: item.metadata.ModTime,
-					AccessTime: item.metadata.AccessTime, ChangeTime: item.metadata.ChangeTime,
-				}, item.data)
+					Typeflag: item.Metadata.Typeflag, Name: path.Join(prefix, path.Base(item.Metadata.Name)), Format: tar.FormatPAX,
+					Size: int64(len(item.Data)), Mode: item.Metadata.Mode, ModTime: item.Metadata.ModTime,
+					AccessTime: item.Metadata.AccessTime, ChangeTime: item.Metadata.ChangeTime,
+				}, item.Data)
 			if err != nil {
 				return err
 			}
@@ -316,16 +317,16 @@ func make_tarfile(cd *connection_data, get_local_env func(string) (string, bool)
 	}
 	add_data(fe{"data.sh", utils.UnsafeStringToBytes(env_script)})
 	if cd.script_type == "sh" {
-		add_data(fe{"bootstrap-utils.sh", Data()[path.Join("shell-integration/ssh/bootstrap-utils.sh")].data})
+		add_data(fe{"bootstrap-utils.sh", shell_integration.Data()[path.Join("shell-integration/ssh/bootstrap-utils.sh")].Data})
 	}
 	if ksi != "" {
-		for _, fname := range Data().files_matching(
+		for _, fname := range shell_integration.Data().FilesMatching(
 			"shell-integration/",
 			"shell-integration/ssh/.+",        // bootstrap files are sent as command line args
 			"shell-integration/zsh/kitty.zsh", // backward compat file not needed by ssh kitten
 		) {
 			arcname := path.Join("home/", rd, "/", path.Dir(fname))
-			err = add_entries(arcname, Data()[fname])
+			err = add_entries(arcname, shell_integration.Data()[fname])
 			if err != nil {
 				return nil, err
 			}
@@ -338,15 +339,15 @@ func make_tarfile(cd *connection_data, get_local_env func(string) (string, bool)
 			return nil, err
 		}
 		for _, x := range []string{"kitty", "kitten"} {
-			err = add_entries(path.Join(arcname, "bin"), Data()[path.Join("shell-integration", "ssh", x)])
+			err = add_entries(path.Join(arcname, "bin"), shell_integration.Data()[path.Join("shell-integration", "ssh", x)])
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
-	err = add_entries(path.Join("home", ".terminfo"), Data()["terminfo/kitty.terminfo"])
+	err = add_entries(path.Join("home", ".terminfo"), shell_integration.Data()["terminfo/kitty.terminfo"])
 	if err == nil {
-		err = add_entries(path.Join("home", ".terminfo", "x"), Data()["terminfo/x/xterm-kitty"])
+		err = add_entries(path.Join("home", ".terminfo", "x"), shell_integration.Data()["terminfo/x/xterm-kitty"])
 	}
 	if err == nil {
 		err = tw.Close()
@@ -470,7 +471,7 @@ func bootstrap_script(cd *connection_data) (err error) {
 	}
 	maps.Copy(replacements, sensitive_data)
 	cd.replacements = replacements
-	cd.bootstrap_script = utils.UnsafeBytesToString(Data()["shell-integration/ssh/bootstrap."+cd.script_type].data)
+	cd.bootstrap_script = utils.UnsafeBytesToString(shell_integration.Data()["shell-integration/ssh/bootstrap."+cd.script_type].Data)
 	cd.bootstrap_script = prepare_script(cd.bootstrap_script, sd)
 	return err
 }
@@ -584,7 +585,7 @@ func change_colors(color_scheme string) (ans string, err error) {
 }
 
 func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err error) {
-	go Data()
+	go shell_integration.Data()
 	go RelevantKittyOpts()
 	defer func() {
 		if data_shm != nil {

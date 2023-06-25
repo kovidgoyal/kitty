@@ -1,6 +1,6 @@
 // License: GPLv3 Copyright: 2023, Kovid Goyal, <kovid at kovidgoyal.net>
 
-package ssh
+package shell_integration
 
 import (
 	"archive/tar"
@@ -19,8 +19,8 @@ var _ = fmt.Print
 var embedded_data string
 
 type Entry struct {
-	metadata *tar.Header
-	data     []byte
+	Metadata *tar.Header
+	Data     []byte
 }
 
 type Container map[string]Entry
@@ -45,7 +45,7 @@ var Data = utils.Once(func() Container {
 	return ans
 })
 
-func (self Container) files_matching(prefix string, exclude_patterns ...string) []string {
+func (self Container) FilesMatching(prefix string, exclude_patterns ...string) []string {
 	ans := make([]string, 0, len(self))
 	patterns := make([]*regexp.Regexp, len(exclude_patterns))
 	for i, exp := range exclude_patterns {
