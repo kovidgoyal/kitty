@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"kitty/tools/utils"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -68,7 +69,62 @@ func EnsureShellIntegrationFilesFor(shell_name string) (shell_integration_dir st
 	return filepath.Join(base, "shell-integration"), nil
 }
 
+func is_new_zsh_install(env map[string]string, zdotdir string) bool {
+	// if ZDOTDIR is empty, zsh will read user rc files from /
+	// if there aren't any, it'll run zsh-newuser-install
+	// the latter will bail if there are rc files in $HOME
+	if zdotdir == "" {
+		if zdotdir = env[`HOME`]; zdotdir == "" {
+			if q, err := os.UserHomeDir(); err == nil {
+				zdotdir = q
+			} else {
+				return true
+			}
+		}
+	}
+	for _, q := range []string{`.zshrc`, `.zshenv`, `.zprofile`, `.zlogin`} {
+		if _, e := os.Stat(filepath.Join(zdotdir, q)); e == nil {
+			return false
+		}
+	}
+	return true
+}
+
+func get_zsh_zdotdir_from_global_zshenv(argv []string, env map[string]string) string {
+	c := exec.Command(utils.FindExe(argv[0]), `--norcs`, `--interactive`, `-c`, `echo -n $ZDOTDIR`)
+	for k, v := range env {
+		c.Env = append(c.Env, k+"="+v)
+	}
+	if raw, err := c.Output(); err == nil {
+		return utils.UnsafeBytesToString(raw)
+	}
+	return ""
+}
+
 func zsh_setup_func(shell_integration_dir string, argv []string, env map[string]string) (final_argv []string, final_env map[string]string, err error) {
+	zdotdir := env[`ZDOTDIR`]
+	final_argv, final_env = argv, env
+	if is_new_zsh_install(env, zdotdir) {
+		if zdotdir == "" {
+			// Try to get ZDOTDIR from /etc/zshenv, when all startup files are not present
+			zdotdir = get_zsh_zdotdir_from_global_zshenv(argv, env)
+			if zdotdir == "" || is_new_zsh_install(env, zdotdir) {
+				return final_argv, final_env, nil
+			}
+		} else {
+			// dont prevent zsh-newuser-install from running
+			// zsh-newuser-install never runs as root but we assume that it does
+			return final_argv, final_env, nil
+		}
+	}
+	if zdotdir != "" {
+		env[`KITTY_ORIG_ZDOTDIR`] = zdotdir
+	} else {
+		// KITTY_ORIG_ZDOTDIR can be set at this point if, for example, the global
+		// zshenv overrides ZDOTDIR; we try to limit the damage in this case
+		delete(final_env, `KITTY_ORIG_ZDOTDIR`)
+	}
+	final_env[`ZDOTDIR`] = shell_integration_dir
 	return
 }
 
