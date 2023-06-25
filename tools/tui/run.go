@@ -125,7 +125,7 @@ func RunShell(shell_cmd []string, shell_integration_env_var_val string) (err err
 				env[k] = v
 			}
 		}
-		argv, env, err := shell_integration.Setup(shell_name, shell_cmd, env)
+		argv, env, err := shell_integration.Setup(shell_name, shell_integration_env_var_val, shell_cmd, env)
 		if err != nil {
 			return err
 		}
@@ -134,18 +134,20 @@ func RunShell(shell_cmd []string, shell_integration_env_var_val string) (err err
 	}
 	exe := shell_cmd[0]
 	if runtime.GOOS == "darwin" {
-		// ensure shell runs in login mode
+		// ensure shell runs in login mode. On macOS lots of people use ~/.bash_profile instead of ~/.bashrc
+		// which means they expect the shell to run in login mode always. Le Sigh.
 		shell_cmd[0] = "-" + filepath.Base(shell_cmd[0])
 	}
 	var env []string
 	if shell_env != nil {
-		env := make([]string, 0, len(shell_env))
+		env = make([]string, 0, len(shell_env))
 		for k, v := range shell_env {
 			env = append(env, fmt.Sprintf("%s=%s", k, v))
 		}
 	} else {
 		env = os.Environ()
 	}
+	// fmt.Println(fmt.Sprintf("%s %v\n%#v", utils.FindExe(exe), shell_cmd, env))
 	return unix.Exec(utils.FindExe(exe), shell_cmd, env)
 }
 
