@@ -50,7 +50,7 @@ func extract_shell_integration_for(shell_name string, dest_dir string) (err erro
 	return
 }
 
-func EnsureShellIntegrationFilesFor(shell_name string) (shell_integration_dir string, err error) {
+func EnsureShellIntegrationFilesFor(shell_name string) (shell_integration_dir_for_shell string, err error) {
 	if kid := os.Getenv("KITTY_INSTALLATION_DIR"); kid != "" {
 		if s, e := os.Stat(kid); e == nil && s.IsDir() {
 			q := filepath.Join(kid, "shell-integration", shell_name)
@@ -66,7 +66,7 @@ func EnsureShellIntegrationFilesFor(shell_name string) (shell_integration_dir st
 	if err = extract_shell_integration_for(shell_name, base); err != nil {
 		return "", err
 	}
-	return filepath.Join(base, "shell-integration"), nil
+	return filepath.Join(base, "shell-integration", shell_name), nil
 }
 
 func is_new_zsh_install(env map[string]string, zdotdir string) bool {
