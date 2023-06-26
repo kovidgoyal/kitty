@@ -292,6 +292,30 @@ In order to avoid remote code execution, kitty will only execute the configured
 editor and pass the file path to edit to it.
 
 
+.. _run_shell:
+
+Using shell integration in sub-shells, containers, etc.
+-----------------------------------------------------------
+
+To start a sub-shell with shell integration automatically setup, simply run::
+
+    kitten run-shell
+
+This will start a sub-shell using the same binary as the currently running
+shell, with shell-integration enabled. To start a particular shell use::
+
+    kitten run-shell --shell=/bin/bash
+
+To run a command before starting the shell use::
+
+    kitten run-shell ls .
+
+This will run ``ls .`` before starting the shell.
+
+This will even work on remote systems where kitty itself is not installed,
+provided you use the :doc:`SSH kitten <kittens/ssh>` to connect to the system.
+Use ``kitten run-shell --help`` to learn more.
+
 .. _manual_shell_integration:
 
 Manual shell integration
@@ -299,8 +323,8 @@ Manual shell integration
 
 The automatic shell integration is designed to be minimally intrusive, as such
 it won't work for sub-shells, terminal multiplexers, containers, etc.
-For such systems, you should setup manual shell integration by adding some code
-to your shells startup files to load the shell integration script.
+For such systems, you should either use the :ref:`run-shell <run_shell>` command described above or
+setup manual shell integration by adding some code to your shells startup files to load the shell integration script.
 
 First, in :file:`kitty.conf` set:
 
