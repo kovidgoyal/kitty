@@ -142,8 +142,97 @@ func fish_setup_func(shell_integration_dir string, argv []string, env map[string
 	return argv, env, nil
 }
 
-func bash_setup_func(shell_integration_dir string, argv []string, env map[string]string) (final_argv []string, final_env map[string]string, err error) {
-	return
+func bash_setup_func(shell_integration_dir string, argv []string, env map[string]string) ([]string, map[string]string, error) {
+	inject := utils.NewSetWithItems(`1`)
+	var posix_env, rcfile string
+	remove_args := utils.NewSet[int](8)
+	expecting_multi_chars_opt := true
+	var expecting_option_arg, interactive_opt, expecting_file_arg, file_arg_set bool
+
+	for i := 1; i < len(argv); i++ {
+		arg := argv[i]
+		if expecting_file_arg {
+			file_arg_set = true
+			break
+		}
+		if expecting_option_arg {
+			expecting_option_arg = false
+			continue
+		}
+		if arg == `-` || arg == `--` {
+			if !expecting_file_arg {
+				expecting_file_arg = true
+			}
+			continue
+		} else if len(arg) > 1 && arg[1] != '-' && (arg[0] == '-' || strings.HasPrefix(arg, `+O`)) {
+			expecting_multi_chars_opt = false
+			options := strings.TrimLeft(arg, `-+`)
+			// shopt option
+			if a, b, found := strings.Cut(options, `O`); found {
+				if b == "" {
+					expecting_option_arg = true
+				}
+				options = a
+			}
+			// command string
+			if strings.ContainsRune(options, 'c') {
+				// non-interactive shell
+				// also skip `bash -ic` interactive mode with command string
+				return argv, env, nil
+			}
+			// read from stdin and follow with args
+			if strings.ContainsRune(options, 's') {
+				break
+			}
+			// interactive option
+			if strings.ContainsRune(options, 'i') {
+				interactive_opt = true
+			}
+		} else if strings.HasPrefix(arg, `--`) && expecting_multi_chars_opt {
+			if arg == `--posix` {
+				inject.Add(`posix`)
+				posix_env = env[`ENV`]
+				remove_args.Add(i)
+			} else if arg == `--norc` {
+				inject.Add(`no-rc`)
+				remove_args.Add(i)
+			} else if arg == `--noprofile` {
+				inject.Add(`no-profile`)
+				remove_args.Add(i)
+			} else if (arg == `--rcfile` || arg == `--init-file`) && i+1 < len(argv) {
+				expecting_option_arg = true
+				rcfile = argv[i+1]
+				remove_args.AddItems(i, i+1)
+			}
+		} else {
+			file_arg_set = true
+			break
+		}
+	}
+	if file_arg_set && !interactive_opt {
+		// non-interactive shell
+		return argv, env, nil
+	}
+	env[`ENV`] = filepath.Join(shell_integration_dir, `kitty.bash`)
+	env[`KITTY_BASH_INJECT`] = strings.Join(inject.AsSlice(), " ")
+	if posix_env != "" {
+		env[`KITTY_BASH_POSIX_ENV`] = posix_env
+	}
+	if rcfile != "" {
+		env[`KITTY_BASH_RCFILE`] = rcfile
+	}
+	sorted := remove_args.AsSlice()
+	slices.Sort(sorted)
+	for _, i := range utils.Reverse(sorted) {
+		slices.Delete(argv, i, i+1)
+	}
+	if env[`HISTFILE`] == "" && !inject.Has(`posix`) {
+		// In POSIX mode the default history file is ~/.sh_history instead of ~/.bash_history
+		env[`HISTFILE`] = utils.Expanduser(`~/.bash_history`)
+		env[`KITTY_BASH_UNEXPORT_HISTFILE`] = `1`
+	}
+	argv = slices.Insert(argv, 1, `--posix`)
+	return argv, env, nil
 }
 
 func setup_func_for_shell(shell_name string) integration_setup_func {
