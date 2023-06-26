@@ -224,7 +224,7 @@ func bash_setup_func(shell_integration_dir string, argv []string, env map[string
 	sorted := remove_args.AsSlice()
 	slices.Sort(sorted)
 	for _, i := range utils.Reverse(sorted) {
-		slices.Delete(argv, i, i+1)
+		argv = slices.Delete(argv, i, i+1)
 	}
 	if env[`HISTFILE`] == "" && !inject.Has(`posix`) {
 		// In POSIX mode the default history file is ~/.sh_history instead of ~/.bash_history
@@ -232,6 +232,14 @@ func bash_setup_func(shell_integration_dir string, argv []string, env map[string
 		env[`KITTY_BASH_UNEXPORT_HISTFILE`] = `1`
 	}
 	argv = slices.Insert(argv, 1, `--posix`)
+
+	if bashrc := os.Getenv(`KITTY_RUNNING_BASH_INTEGRATION_TEST`); bashrc != `` {
+		// prevent bash from source /etc/profile which is not under our control
+		os.Unsetenv(`KITTY_RUNNING_BASH_INTEGRATION_TEST`)
+		env[`KITTY_BASH_INJECT`] += ` posix`
+		env[`KITTY_BASH_POSIX_ENV`] = bashrc
+	}
+
 	return argv, env, nil
 }
 

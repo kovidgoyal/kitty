@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from functools import lru_cache, partial
 
 from kitty.bash import decode_ansi_c_quoted_string
-from kitty.constants import kitty_base_dir, shell_integration_dir, terminfo_dir
+from kitty.constants import kitten_exe, kitty_base_dir, shell_integration_dir, terminfo_dir
 from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from kitty.shell_integration import setup_bash_env, setup_fish_env, setup_zsh_env
 
@@ -48,7 +48,7 @@ def basic_shell_env(home_dir):
     return ans
 
 
-def safe_env_for_running_shell(argv, home_dir, rc='', shell='zsh'):
+def safe_env_for_running_shell(argv, home_dir, rc='', shell='zsh', with_kitten=False):
     ans = basic_shell_env(home_dir)
     if shell == 'zsh':
         argv.insert(1, '--noglobalrcs')
@@ -64,10 +64,14 @@ def safe_env_for_running_shell(argv, home_dir, rc='', shell='zsh'):
             print(rc + '\n', file=f)
         setup_fish_env(ans, argv)
     elif shell == 'bash':
-        setup_bash_env(ans, argv)
-        ans['KITTY_BASH_INJECT'] += ' posix'
-        ans['KITTY_BASH_POSIX_ENV'] = os.path.join(home_dir, '.bashrc')
-        with open(ans['KITTY_BASH_POSIX_ENV'], 'w') as f:
+        bashrc = os.path.join(home_dir, '.bashrc')
+        if with_kitten:
+            ans['KITTY_RUNNING_BASH_INTEGRATION_TEST'] = bashrc
+        else:
+            setup_bash_env(ans, argv)
+            ans['KITTY_BASH_INJECT'] += ' posix'
+            ans['KITTY_BASH_POSIX_ENV'] = bashrc
+        with open(bashrc, 'w') as f:
             # ensure LINES and COLUMNS are kept up to date
             print('shopt -s checkwinsize', file=f)
             if rc:
@@ -77,13 +81,17 @@ def safe_env_for_running_shell(argv, home_dir, rc='', shell='zsh'):
 
 class ShellIntegration(BaseTest):
 
+    with_kitten = False
+
     @contextmanager
     def run_shell(self, shell='zsh', rc='', cmd='', setup_env=None):
         home_dir = self.home_dir = os.path.realpath(tempfile.mkdtemp())
         cmd = cmd or shell
         cmd = shlex.split(cmd.format(**locals()))
-        env = (setup_env or safe_env_for_running_shell)(cmd, home_dir, rc=rc, shell=shell)
+        env = (setup_env or safe_env_for_running_shell)(cmd, home_dir, rc=rc, shell=shell, with_kitten=self.with_kitten)
         try:
+            if self.with_kitten:
+                cmd = [kitten_exe(), 'run-shell', '--shell', shlex.join(cmd)]
             pty = self.create_pty(cmd, cwd=home_dir, env=env)
             i = 10
             while i > 0 and not pty.screen_contents().strip():
@@ -325,9 +333,10 @@ PS1="{ps1}"
 
         # test startup file sourcing
 
-        def setup_env(excluded, argv, home_dir, rc='', shell='bash'):
+        def setup_env(excluded, argv, home_dir, rc='', shell='bash', with_kitten=self.with_kitten):
             ans = basic_shell_env(home_dir)
-            setup_bash_env(ans, argv)
+            if not with_kitten:
+                setup_bash_env(ans, argv)
             for x in {'profile', 'bash.bashrc', '.bash_profile', '.bash_login', '.profile', '.bashrc', 'rcfile'} - excluded:
                 with open(os.path.join(home_dir, x), 'w') as f:
                     if x == '.bashrc' and rc:
@@ -381,3 +390,7 @@ PS1="{ps1}"
         }.items():
             q = q + "'"
             self.ae(decode_ansi_c_quoted_string(q, 0)[0], e, f'Failed to decode: {q!r}')
+
+
+class ShellIntegrationWithKitten(ShellIntegration):
+    with_kitten = True
