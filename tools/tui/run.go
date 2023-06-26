@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/shirou/gopsutil/v3/process"
 	"golang.org/x/sys/unix"
 
 	"kitty/tools/config"
@@ -63,16 +64,47 @@ var relevant_kitty_opts = utils.Once(func() KittyOpts {
 	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
 })
 
-func ResolveShell(shell string) []string {
-	if shell == "" {
-		shell = relevant_kitty_opts().Shell
-		if shell == "." {
-			s, e := utils.LoginShellForCurrentUser()
-			if e != nil {
-				shell = "/bin/sh"
-			} else {
-				shell = s
+func get_shell_from_kitty_conf() (shell string) {
+	shell = relevant_kitty_opts().Shell
+	if shell == "." {
+		s, e := utils.LoginShellForCurrentUser()
+		if e != nil {
+			shell = "/bin/sh"
+		} else {
+			shell = s
+		}
+	}
+	return
+}
+
+func find_shell_parent_process() string {
+	var p *process.Process
+	var err error
+	for {
+		if p == nil {
+			p, err = process.NewProcess(int32(os.Getppid()))
+		} else {
+			p, err = p.Parent()
+		}
+		if err != nil {
+			return ""
+		}
+		if cmdline, err := p.CmdlineSlice(); err == nil && len(cmdline) > 0 {
+			exe := get_shell_name(filepath.Base(cmdline[0]))
+			if shell_integration.IsSupportedShell(exe) {
+				return exe
 			}
+		}
+	}
+}
+
+func ResolveShell(shell string) []string {
+	switch shell {
+	case "":
+		shell = get_shell_from_kitty_conf()
+	case ".":
+		if shell = find_shell_parent_process(); shell == "" {
+			shell = get_shell_from_kitty_conf()
 		}
 	}
 	shell_cmd, err := shlex.Split(shell)

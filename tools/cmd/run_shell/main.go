@@ -47,8 +47,9 @@ func EntryPoint(root *cli.Command) *cli.Command {
 		Help: "Specify a value for the shell_integration option, overriding the one from kitty.conf.",
 	})
 	sc.Add(cli.OptionSpec{
-		Name: "--shell",
-		Help: "Specify the shell command to run. If not specified the value of the shell option from kitty.conf is used.",
+		Name:    "--shell",
+		Default: ".",
+		Help:    "Specify the shell command to run. The default value of :code:`.` will use the parent shell if recognized, falling back to the value of the :code:`shell` option from kitty.conf.",
 	})
 	return sc
 }
