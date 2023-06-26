@@ -12,7 +12,25 @@ import sys
 from contextlib import contextmanager, suppress
 from functools import lru_cache
 from time import monotonic
-from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, Iterator, List, Mapping, Match, NamedTuple, Optional, Pattern, Tuple, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Match,
+    NamedTuple,
+    Optional,
+    Pattern,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
 
 from .constants import (
     appname,
@@ -20,11 +38,12 @@ from .constants import (
     config_dir,
     is_macos,
     is_wayland,
+    kitten_exe,
     runtime_dir,
     shell_path,
     ssh_control_master_template,
 )
-from .fast_data_types import WINDOW_FULLSCREEN, WINDOW_MAXIMIZED, WINDOW_MINIMIZED, WINDOW_NORMAL, Color, open_tty
+from .fast_data_types import WINDOW_FULLSCREEN, WINDOW_MAXIMIZED, WINDOW_MINIMIZED, WINDOW_NORMAL, Color, get_options, open_tty
 from .rgb import to_color
 from .types import run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
@@ -658,7 +677,6 @@ def get_editor_from_env_vars(opts: Optional[Options] = None) -> List[str]:
 
 def get_editor(opts: Optional[Options] = None, path_to_edit: str = '', line_number: int = 0) -> List[str]:
     if opts is None:
-        from .fast_data_types import get_options
         try:
             opts = get_options()
         except RuntimeError:
@@ -730,7 +748,6 @@ def resolve_abs_or_config_path(path: str, env: Optional[Mapping[str, str]] = Non
 
 
 def resolve_custom_file(path: str) -> str:
-    from .fast_data_types import get_options
     opts: Optional[Options] = None
     with suppress(RuntimeError):
         opts = get_options()
@@ -786,7 +803,6 @@ def which(name: str, only_system: bool = False) -> Optional[str]:
         return name
     import shutil
 
-    from .fast_data_types import get_options
     opts: Optional[Options] = None
     with suppress(RuntimeError):
         opts = get_options()
@@ -1154,3 +1170,16 @@ def is_png(path: str) -> bool:
             header = f.read(8)
             return header.startswith(b'\211PNG\r\n\032\n')
     return False
+
+
+def cmdline_for_hold(cmd: Sequence[str] = (), opts: Optional['Options'] = None) -> List[str]:
+    if opts is None:
+        with suppress(RuntimeError):
+            opts = get_options()
+    if opts is None:
+        from .options.types import defaults
+        opts = defaults
+    ksi = ' '.join(opts.shell_integration)
+    import shlex
+    shell = shlex.join(resolved_shell(opts))
+    return [kitten_exe(), 'run-shell', f'--shell={shell}', f'--shell-integration={ksi}'] + list(cmd)

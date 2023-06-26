@@ -904,9 +904,9 @@ the :opt:`startup_session` option has been specified in kitty.conf.
 
 --hold
 type=bool-set
-Remain open after child process exits. Note that this only affects the first
-window. You can quit by either using the close window shortcut or pressing any
-key.
+Remain open, at a shell prompt, after child process exits. Note that this only
+affects the first window. You can quit by either using the close window
+shortcut or running the exit command.
 
 
 --single-instance -1

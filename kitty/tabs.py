@@ -28,7 +28,7 @@ from typing import (
 from .borders import Border, Borders
 from .child import Child
 from .cli_stub import CLIOptions
-from .constants import appname, kitten_exe
+from .constants import appname
 from .fast_data_types import (
     GLFW_MOUSE_BUTTON_LEFT,
     GLFW_MOUSE_BUTTON_MIDDLE,
@@ -57,7 +57,7 @@ from .layout.interface import create_layout_object_for, evict_cached_layouts
 from .tab_bar import TabBar, TabBarData
 from .types import ac
 from .typing import EdgeLiteral, SessionTab, SessionType, TypedDict
-from .utils import log_error, platform_window_id, resolved_shell
+from .utils import cmdline_for_hold, log_error, platform_window_id, resolved_shell
 from .window import CwdRequest, Watchers, Window, WindowDict
 from .window_list import WindowList
 
@@ -474,7 +474,7 @@ class Tab:  # {{{
                                 else:
                                     cmd[:0] = [resolved_shell(get_options())[0]]
                                 cmd[0] = which(cmd[0]) or cmd[0]
-                                cmd[:0] = [kitten_exe(), '__hold_till_enter__']
+                                cmd = cmdline_for_hold(cmd)
         fenv: Dict[str, str] = {}
         if env:
             fenv.update(env)

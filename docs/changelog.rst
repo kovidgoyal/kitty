@@ -42,6 +42,8 @@ Detailed list of changes
 
 - A new kitten :ref:`run-shell <run_shell>` to allow creating sub-shells with shell integration enabled
 
+- The :option:`--hold` flag now holds the window open at a shell prompt instead of asking the user to press a key
+
 - A new option :opt:`text_fg_override_threshold` to force text colors to have high contrast regardless of color scheme (:pull:`6283`)
 
 - When resizing OS Windows make the animation less jerky. Also show the window size in cells during the resize (:iss:`6341`)

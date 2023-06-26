@@ -12,12 +12,12 @@ from .child import Child
 from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .clipboard import set_clipboard_string, set_primary_selection
-from .constants import kitten_exe, shell_path
+from .constants import shell_path
 from .fast_data_types import add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import OverlayType, run_once
-from .utils import get_editor, log_error, resolve_custom_file, which
+from .utils import cmdline_for_hold, get_editor, log_error, resolve_custom_file, which
 from .window import CwdRequest, CwdRequestType, Watchers, Window
 
 try:
@@ -109,7 +109,7 @@ environment variable.
 
 --hold
 type=bool-set
-Keep the window open even after the command being executed exits.
+Keep the window open even after the command being executed exits, at a shell prompt.
 
 
 --copy-colors
@@ -581,7 +581,7 @@ def _launch(
             cmd = kw['cmd'] or [shell_path]
             if not os.path.isabs(cmd[0]):
                 cmd[0] = which(cmd[0]) or cmd[0]
-            kw['cmd'] = [kitten_exe(), '__hold_till_enter__'] + cmd
+            kw['cmd'] = cmdline_for_hold(cmd)
         if force_target_tab:
             tab = target_tab
         else:
