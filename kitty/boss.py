@@ -1859,7 +1859,23 @@ class Boss:
         if ec != (None, None, None):
             import traceback
             tb = traceback.format_exc()
-        self.run_kitten_with_metadata('show_error', args=['--title', title], input_data=json.dumps({'msg': msg, 'tb': tb}))
+        cmd = [kitten_exe(), '__show_error__', kitten_exe(), '__show_error__', '--title', title]
+        env = {}
+        env['KITTEN_RUNNING_AS_UI'] = '1'
+        env['KITTY_CONFIG_DIRECTORY'] = config_dir
+        tab = self.active_tab
+        w = self.active_window
+        if w is not None and tab is not None:
+            tab.new_special_window(
+                SpecialWindow(
+                    cmd,
+                    stdin=json.dumps({'msg': msg, 'tb': tb}).encode(),
+                    env=env,
+                    overlay_for=w.id,
+                ),
+                copy_colors_from=w
+            )
+
 
     @ac('mk', 'Create a new marker')
     def create_marker(self) -> None:
