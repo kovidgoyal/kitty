@@ -1047,6 +1047,7 @@ typedef enum {
  *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
  */
 #define GLFW_X11_INSTANCE_NAME      0x00024002
+#define GLFW_X11_BLUR               0x00024003
 
 #define GLFW_WAYLAND_APP_ID         0x00025001
 /*! @} */

@@ -785,6 +785,7 @@ typedef enum {
  *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
  */
 #define GLFW_X11_INSTANCE_NAME      0x00024002
+#define GLFW_X11_BLUR               0x00024003
 
 #define GLFW_WAYLAND_APP_ID         0x00025001
 /*! @} */
@@ -2223,6 +2224,10 @@ GFW_EXTERN glfwCocoaRequestRenderFrame_func glfwCocoaRequestRenderFrame_impl;
 typedef int (*glfwCocoaSetBackgroundBlur_func)(GLFWwindow*, int);
 GFW_EXTERN glfwCocoaSetBackgroundBlur_func glfwCocoaSetBackgroundBlur_impl;
 #define glfwCocoaSetBackgroundBlur glfwCocoaSetBackgroundBlur_impl
+
+typedef bool (*glfwSetX11WindowBlurred_func)(GLFWwindow*, bool);
+GFW_EXTERN glfwSetX11WindowBlurred_func glfwSetX11WindowBlurred_impl;
+#define glfwSetX11WindowBlurred glfwSetX11WindowBlurred_impl
 
 typedef void* (*glfwGetX11Display_func)(void);
 GFW_EXTERN glfwGetX11Display_func glfwGetX11Display_impl;

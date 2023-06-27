@@ -651,6 +651,7 @@ int _glfwPlatformInit(void)
     _glfw.x11.root = RootWindow(_glfw.x11.display, _glfw.x11.screen);
     _glfw.x11.context = XUniqueContext();
     _glfw.x11.RESOURCE_MANAGER = XInternAtom(_glfw.x11.display, "RESOURCE_MANAGER", True);
+    _glfw.x11._KDE_NET_WM_BLUR_BEHIND_REGION = None;
     XSelectInput(_glfw.x11.display, _glfw.x11.root, PropertyChangeMask);
 
     _glfwGetSystemContentScaleX11(&_glfw.x11.contentScaleX, &_glfw.x11.contentScaleY, false);

@@ -900,14 +900,16 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
 #endif
     }
 
+    const bool set_blur = OPT(background_blur) > 0 && OPT(background_opacity) < 1.f;
 #ifdef __APPLE__
     glfwWindowHint(GLFW_COCOA_COLOR_SPACE, OPT(macos_colorspace));
-    if (OPT(background_blur) > 0 && OPT(background_opacity) < 1.f) {
+    if (set_blur) {
         glfwWindowHint(GLFW_COCOA_BLUR_RADIUS, MIN(OPT(background_blur), 128));
     } else {
         glfwWindowHint(GLFW_COCOA_BLUR_RADIUS, 0);
     }
 #else
+    if (!global_state.is_wayland) glfwWindowHint(GLFW_X11_BLUR, set_blur);
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, wm_class_name);
     glfwWindowHintString(GLFW_X11_CLASS_NAME, wm_class_class);
     glfwWindowHintString(GLFW_WAYLAND_APP_ID, wm_class_class);
@@ -1088,12 +1090,11 @@ os_window_update_size_increments(OSWindow *window) {
 
 void
 update_background_blur(OSWindow *os_window) {
+    const bool should_blur = os_window->background_opacity < 1.f && OPT(background_blur) > 0 && os_window->is_semi_transparent;
 #ifdef __APPLE__
-    int new_blur_radius = 0;
-    if (os_window->background_opacity < 1.f && OPT(background_blur) > -1) new_blur_radius = OPT(background_blur);
-    glfwCocoaSetBackgroundBlur(os_window->handle, new_blur_radius);
+    glfwCocoaSetBackgroundBlur(os_window->handle, should_blur ? OPT(background_blur) : 0);
 #else
-    (void)os_window;
+    if (!global_state.is_wayland) glfwSetX11WindowBlurred(os_window->handle, should_blur);
 #endif
 }
 

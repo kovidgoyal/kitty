@@ -336,6 +336,7 @@ void glfwDefaultWindowHints(void)
     _glfw.hints.window.ns.color_space = 0;
     // no blur
     _glfw.hints.window.ns.blur_radius = 0;
+    _glfw.hints.window.x11.enable_blur = 0;
 }
 
 GLFWAPI void glfwWindowHint(int hint, int value)
@@ -421,6 +422,9 @@ GLFWAPI void glfwWindowHint(int hint, int value)
             return;
         case GLFW_COCOA_BLUR_RADIUS:
             _glfw.hints.window.ns.blur_radius = value;
+            return;
+        case GLFW_X11_BLUR:
+            _glfw.hints.window.x11.enable_blur = value;
             return;
         case GLFW_COCOA_GRAPHICS_SWITCHING:
             _glfw.hints.context.nsgl.offline = value ? true : false;

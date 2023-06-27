@@ -250,6 +250,7 @@ def generate_wrappers(glfw_header: str) -> None:
     uint32_t glfwGetCocoaKeyEquivalent(uint32_t glfw_key, int glfw_mods, int* cocoa_mods)
     void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun callback)
     int glfwCocoaSetBackgroundBlur(GLFWwindow *w, int blur_radius)
+    bool glfwSetX11WindowBlurred(GLFWwindow *w, bool enable_blur)
     void* glfwGetX11Display(void)
     int32_t glfwGetX11Window(GLFWwindow* window)
     void glfwSetPrimarySelectionString(GLFWwindow* window, const char* string)

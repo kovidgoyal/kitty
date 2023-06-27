@@ -299,6 +299,8 @@ typedef struct _GLFWlibraryX11
 
     // XRM database atom
     Atom            RESOURCE_MANAGER;
+    // KDE window blur
+    Atom _KDE_NET_WM_BLUR_BEHIND_REGION;
     // Atoms for MIME types
     AtomArray mime_atoms, clipboard_atoms, primary_atoms;
 

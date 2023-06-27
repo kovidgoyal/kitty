@@ -319,6 +319,7 @@ struct _GLFWwndconfig
     struct {
         char      className[256];
         char      instanceName[256];
+        int       enable_blur;
     } x11;
     struct {
         char      appId[256];

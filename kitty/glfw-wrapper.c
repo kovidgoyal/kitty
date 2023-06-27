@@ -446,6 +446,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwCocoaSetBackgroundBlur_impl) = dlsym(handle, "glfwCocoaSetBackgroundBlur");
     if (glfwCocoaSetBackgroundBlur_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwSetX11WindowBlurred_impl) = dlsym(handle, "glfwSetX11WindowBlurred");
+    if (glfwSetX11WindowBlurred_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwGetX11Display_impl) = dlsym(handle, "glfwGetX11Display");
     if (glfwGetX11Display_impl == NULL) dlerror(); // clear error indicator
 

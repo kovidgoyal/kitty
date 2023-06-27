@@ -64,6 +64,7 @@
 // covers GLX functions
 //
 static unsigned _glfwDispatchX11Events(void);
+GLFWAPI bool glfwSetX11WindowBlurred(GLFWwindow *w, bool enable_blur);
 
 static void
 handleEvents(monotonic_t timeout) {
@@ -712,6 +713,10 @@ static bool createNativeWindow(_GLFWwindow* window,
     _glfwPlatformSetWindowTitle(window, wndconfig->title);
     _glfwPlatformGetWindowPos(window, &window->x11.xpos, &window->x11.ypos);
     _glfwPlatformGetWindowSize(window, &window->x11.width, &window->x11.height);
+
+    if (_glfw.hints.window.x11.enable_blur) {
+        glfwSetX11WindowBlurred((GLFWwindow*)window, 1);
+    }
 
     return true;
 }
@@ -2687,7 +2692,7 @@ _glfwDispatchX11Events(void) {
         if (window->x11.lastCursorPosX != width / 2 ||
             window->x11.lastCursorPosY != height / 2)
         {
-            _glfwPlatformSetCursorPos(window, width / 2, height / 2);
+            _glfwPlatformSetCursorPos(window, width / 2.f, height / 2.f);
         }
     }
 
@@ -3214,6 +3219,26 @@ GLFWAPI void glfwSetX11WindowAsDock(int32_t x11_window_id) {
                     _glfw.x11.NET_WM_WINDOW_TYPE, XA_ATOM, 32,
                     PropModeReplace, (unsigned char*) &type, 1);
 }
+
+GLFWAPI bool glfwSetX11WindowBlurred(GLFWwindow *w, bool enable_blur) {
+    _GLFW_REQUIRE_INIT_OR_RETURN(0);
+    _GLFWwindow *window = (_GLFWwindow*)w;
+    if (_glfw.x11._KDE_NET_WM_BLUR_BEHIND_REGION == None) {
+        _glfw.x11._KDE_NET_WM_BLUR_BEHIND_REGION = XInternAtom(_glfw.x11.display, "_KDE_NET_WM_BLUR_BEHIND_REGION", False);
+    }
+    if (_glfw.x11._KDE_NET_WM_BLUR_BEHIND_REGION != None) {
+        uint32_t data = 0;
+        if (enable_blur) {
+            XChangeProperty(_glfw.x11.display, window->x11.handle, _glfw.x11._KDE_NET_WM_BLUR_BEHIND_REGION,
+                    XA_CARDINAL, 32, PropModeReplace, (unsigned char*) &data, 1);
+        } else {
+            XDeleteProperty(_glfw.x11.display, window->x11.handle, _glfw.x11._KDE_NET_WM_BLUR_BEHIND_REGION);
+        }
+        return true;
+    }
+    return false;
+}
+
 
 GLFWAPI void glfwSetX11WindowStrut(int32_t x11_window_id, uint32_t dimensions[12]) {
     _GLFW_REQUIRE_INIT();
