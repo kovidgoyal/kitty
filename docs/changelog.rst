@@ -42,6 +42,8 @@ Detailed list of changes
 
 - A new kitten :ref:`run-shell <run_shell>` to allow creating sub-shells with shell integration enabled
 
+- A new option :opt:`background_blur` to blur the background for transparent windows (:pull:`6135`)
+
 - The :option:`--hold` flag now holds the window open at a shell prompt instead of asking the user to press a key
 
 - A new option :opt:`text_fg_override_threshold` to force text colors to have high contrast regardless of color scheme (:pull:`6283`)
