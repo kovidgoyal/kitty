@@ -65,6 +65,9 @@ class Parser:
     def background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['background'] = to_color(val)
 
+    def background_blur(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['background_blur'] = int(val)
+
     def background_image(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['background_image'] = config_or_absolute_path(val)
 

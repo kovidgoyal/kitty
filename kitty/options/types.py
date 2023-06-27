@@ -61,6 +61,7 @@ option_names = (  # {{{
  'allow_hyperlinks',
  'allow_remote_control',
  'background',
+ 'background_blur',
  'background_image',
  'background_image_layout',
  'background_image_linear',
@@ -480,6 +481,7 @@ class Options:
     allow_hyperlinks: int = 1
     allow_remote_control: choices_for_allow_remote_control = 'no'
     background: Color = Color(0, 0, 0)
+    background_blur: int = 0
     background_image: typing.Optional[str] = None
     background_image_layout: choices_for_background_image_layout = 'tiled'
     background_image_linear: bool = False
@@ -511,7 +513,7 @@ class Options:
     cursor_underline_thickness: float = 2.0
     default_pointer_shape: choices_for_default_pointer_shape = 'beam'
     detect_urls: bool = True
-    dim_opacity: float = 0.75
+    dim_opacity: float = 0.4
     disable_ligatures: int = 0
     draw_minimal_borders: bool = True
     dynamic_background_opacity: bool = False

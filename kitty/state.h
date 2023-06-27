@@ -89,6 +89,7 @@ typedef struct {
         float val; AdjustmentUnit unit;
     } underline_position, underline_thickness, strikethrough_position, strikethrough_thickness, cell_width, cell_height, baseline;
     bool show_hyperlink_targets;
+    int background_blur;
 } Options;
 
 typedef struct WindowLogoRenderData {
@@ -365,3 +366,4 @@ void update_ime_position(Window* w, Screen *screen);
 bool update_ime_position_for_window(id_type window_id, bool force, int update_focus);
 void set_ignore_os_keyboard_processing(bool enabled);
 void update_menu_bar_title(PyObject *title UNUSED);
+void update_background_blur(OSWindow *);

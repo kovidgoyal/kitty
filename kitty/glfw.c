@@ -902,6 +902,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
 
 #ifdef __APPLE__
     glfwWindowHint(GLFW_COCOA_COLOR_SPACE, OPT(macos_colorspace));
+    if (OPT(background_blur) > 0 && OPT(background_opacity) < 1.f) {
+        glfwWindowHint(GLFW_COCOA_BLUR_RADIUS, MIN(OPT(background_blur), 128));
+    } else {
+        glfwWindowHint(GLFW_COCOA_BLUR_RADIUS, 0);
+    }
 #else
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, wm_class_name);
     glfwWindowHintString(GLFW_X11_CLASS_NAME, wm_class_class);
@@ -1079,6 +1084,17 @@ os_window_update_size_increments(OSWindow *window) {
         if (window->handle) glfwSetWindowSizeIncrements(
                 window->handle, GLFW_DONT_CARE, GLFW_DONT_CARE);
     }
+}
+
+void
+update_background_blur(OSWindow *os_window) {
+#ifdef __APPLE__
+    int new_blur_radius = 0;
+    if (os_window->background_opacity < 1.f && OPT(background_blur) > -1) new_blur_radius = OPT(background_blur);
+    glfwCocoaSetBackgroundBlur(os_window->handle, new_blur_radius);
+#else
+    (void)os_window;
+#endif
 }
 
 #ifdef __APPLE__

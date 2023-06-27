@@ -1371,6 +1371,17 @@ config.
 '''
     )
 
+opt('background_blur', '0', option_type='int', ctype='int',
+    long_text='''
+Set to a positive value to enable background blur (blurring of the visuals
+behind a transparent window) on platforms that support it. Only takes effect
+when :opt:`background_opacity` is less than one. On macOS, this will also
+control the :italic:`blur radius` (amount of blurring). Setting it to too high
+a value will cause severe performance issues and/or rendering artifacts.
+Usually, values up to 64 work well. Note that this might cause performance issues,
+depending on how the platform implements it, so use with care.
+''')
+
 opt('background_image', 'none',
     option_type='config_or_absolute_path', ctype='!background_image',
     long_text='Path to a background image. Must be in PNG format.'

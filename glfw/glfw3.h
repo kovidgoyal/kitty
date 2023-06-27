@@ -1034,6 +1034,10 @@ typedef enum {
     SRGB_COLORSPACE = 1,
     DISPLAY_P3_COLORSPACE = 2,
 } GlfwCocoaColorSpaces;
+/*! @brief macOS specific
+ *  [window hint](@ref GLFW_COCOA_BLUR_RADIUS_hint).
+ */
+#define GLFW_COCOA_BLUR_RADIUS 0x00023005
 
 /*! @brief X11 specific
  *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).

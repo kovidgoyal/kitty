@@ -334,6 +334,8 @@ void glfwDefaultWindowHints(void)
     _glfw.hints.window.ns.retina = true;
     // use the default colorspace assigned by the system
     _glfw.hints.window.ns.color_space = 0;
+    // no blur
+    _glfw.hints.window.ns.blur_radius = 0;
 }
 
 GLFWAPI void glfwWindowHint(int hint, int value)
@@ -416,6 +418,9 @@ GLFWAPI void glfwWindowHint(int hint, int value)
             return;
         case GLFW_COCOA_COLOR_SPACE:
             _glfw.hints.window.ns.color_space = value;
+            return;
+        case GLFW_COCOA_BLUR_RADIUS:
+            _glfw.hints.window.ns.blur_radius = value;
             return;
         case GLFW_COCOA_GRAPHICS_SWITCHING:
             _glfw.hints.context.nsgl.offline = value ? true : false;

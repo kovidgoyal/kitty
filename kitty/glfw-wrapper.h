@@ -772,6 +772,10 @@ typedef enum {
     SRGB_COLORSPACE = 1,
     DISPLAY_P3_COLORSPACE = 2,
 } GlfwCocoaColorSpaces;
+/*! @brief macOS specific
+ *  [window hint](@ref GLFW_COCOA_BLUR_RADIUS_hint).
+ */
+#define GLFW_COCOA_BLUR_RADIUS 0x00023005
 
 /*! @brief X11 specific
  *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
@@ -2215,6 +2219,10 @@ GFW_EXTERN glfwGetCocoaKeyEquivalent_func glfwGetCocoaKeyEquivalent_impl;
 typedef void (*glfwCocoaRequestRenderFrame_func)(GLFWwindow*, GLFWcocoarenderframefun);
 GFW_EXTERN glfwCocoaRequestRenderFrame_func glfwCocoaRequestRenderFrame_impl;
 #define glfwCocoaRequestRenderFrame glfwCocoaRequestRenderFrame_impl
+
+typedef int (*glfwCocoaSetBackgroundBlur_func)(GLFWwindow*, int);
+GFW_EXTERN glfwCocoaSetBackgroundBlur_func glfwCocoaSetBackgroundBlur_impl;
+#define glfwCocoaSetBackgroundBlur glfwCocoaSetBackgroundBlur_impl
 
 typedef void* (*glfwGetX11Display_func)(void);
 GFW_EXTERN glfwGetX11Display_func glfwGetX11Display_impl;

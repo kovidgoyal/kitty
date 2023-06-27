@@ -139,6 +139,7 @@ typedef struct _GLFWwindowNS
     int             width, height;
     int             fbWidth, fbHeight;
     float           xscale, yscale;
+    int             blur_radius;
 
     // The total sum of the distances the cursor has been warped
     // since the last cursor motion event was processed

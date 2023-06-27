@@ -36,6 +36,8 @@
 #include <string.h>
 
 
+GLFWAPI int glfwCocoaSetBackgroundBlur(GLFWwindow *w, int radius);
+
 static const char*
 polymorphic_string_as_utf8(id string) {
     if (string == nil) return "(nil)";
@@ -1835,6 +1837,7 @@ static bool createNativeWindow(_GLFWwindow* window,
 
     _glfwPlatformGetWindowSize(window, &window->ns.width, &window->ns.height);
     _glfwPlatformGetFramebufferSize(window, &window->ns.fbWidth, &window->ns.fbHeight);
+    if (wndconfig->ns.blur_radius > 0) glfwCocoaSetBackgroundBlur((GLFWwindow*)window, wndconfig->ns.blur_radius);
 
     return true;
 }
@@ -2967,6 +2970,18 @@ GLFWAPI GLFWcocoatogglefullscreenfun glfwSetCocoaToggleFullscreenIntercept(GLFWw
 
 GLFWAPI void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun callback) {
     requestRenderFrame((_GLFWwindow*)w, callback);
+}
+
+GLFWAPI int glfwCocoaSetBackgroundBlur(GLFWwindow *w, int radius) {
+    _GLFWwindow* window = (_GLFWwindow*)w;
+    int orig = window->ns.blur_radius;
+    if (radius > -1 && radius != window->ns.blur_radius) {
+        extern OSStatus CGSSetWindowBackgroundBlurRadius(void* connection, NSInteger windowNumber, int radius);
+        extern void* CGSDefaultConnectionForThread(void);
+        CGSSetWindowBackgroundBlurRadius(CGSDefaultConnectionForThread(), [window->ns.object windowNumber], radius);
+        window->ns.blur_radius = radius;
+    }
+    return orig;
 }
 
 GLFWAPI int glfwGetCurrentSystemColorTheme(void) {

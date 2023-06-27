@@ -1093,6 +1093,7 @@ PYWRAP0(apply_options_update) {
         get_platform_dependent_config_values(os_window->handle);
         os_window->background_opacity = OPT(background_opacity);
         os_window->is_damaged = true;
+        update_background_blur(os_window);
         for (size_t t = 0; t < os_window->num_tabs; t++) {
             Tab *tab = os_window->tabs + t;
             for (size_t w = 0; w < tab->num_windows; w++) {
