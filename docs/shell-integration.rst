@@ -297,6 +297,8 @@ editor and pass the file path to edit to it.
 Using shell integration in sub-shells, containers, etc.
 -----------------------------------------------------------
 
+.. versionadded:: 0.29.0
+
 To start a sub-shell with shell integration automatically setup, simply run::
 
     kitten run-shell
