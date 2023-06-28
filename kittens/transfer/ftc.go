@@ -249,7 +249,7 @@ func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand
 			case reflect.String:
 				switch field.Tag.Get("encoding") {
 				case "base64":
-					b, err := base64.RawStdEncoding.DecodeString(serialized_val)
+					b, err := base64.StdEncoding.DecodeString(serialized_val)
 					if err != nil {
 						return fmt.Errorf("The field %#v has invalid base64 encoded value with error: %w", key, err)
 					}
@@ -260,7 +260,7 @@ func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand
 			case reflect.Slice:
 				switch val.Type().Elem().Kind() {
 				case reflect.Uint8:
-					b, err := base64.RawStdEncoding.DecodeString(serialized_val)
+					b, err := base64.StdEncoding.DecodeString(serialized_val)
 					if err != nil {
 						return fmt.Errorf("The field %#v has invalid base64 encoded value with error: %w", key, err)
 					}

@@ -351,7 +351,7 @@ type SendManager struct {
 	active_idx                                                 int
 	prefix, suffix                                             string
 	last_progress_file                                         *File
-	progress_tracker                                           *ProgressTracker
+	progress_tracker                                           ProgressTracker
 	current_chunk_uncompressed_sz                              int64
 }
 
