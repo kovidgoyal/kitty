@@ -13,6 +13,7 @@
 #endif
 
 #include "data-types.h"
+#include "base64.h"
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -74,6 +75,32 @@ redirect_std_streams(PyObject UNUSED *self, PyObject *args) {
     if (freopen(devnull, "w", stderr) == NULL)  return PyErr_SetFromErrno(PyExc_OSError);
     Py_RETURN_NONE;
 }
+
+static PyObject*
+pybase64_encode(PyObject UNUSED *self, PyObject *args) {
+    int add_padding = 0;
+    const char *src; Py_ssize_t src_len;
+    if (!PyArg_ParseTuple(args, "y#|p", &src, &src_len, &add_padding)) return NULL;
+    size_t sz = required_buffer_size_for_base64_encode(src_len);
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
+    if (!ans) return NULL;
+    base64_encode8((const unsigned char*)src, src_len, (unsigned char*)PyBytes_AS_STRING(ans), &sz, add_padding);
+    if (_PyBytes_Resize(&ans, sz) != 0) return NULL;
+    return ans;
+}
+
+static PyObject*
+pybase64_decode(PyObject UNUSED *self, PyObject *args) {
+    const char *src; Py_ssize_t src_len;
+    if (!PyArg_ParseTuple(args, "y#", &src, &src_len)) return NULL;
+    size_t sz = required_buffer_size_for_base64_decode(src_len);
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
+    if (!ans) return NULL;
+    base64_decode8((const unsigned char*)src, src_len, (unsigned char*)PyBytes_AS_STRING(ans), &sz);
+    if (_PyBytes_Resize(&ans, sz) != 0) return NULL;
+    return ans;
+}
+
 
 static PyObject*
 pyset_iutf8(PyObject UNUSED *self, PyObject *args) {
@@ -306,6 +333,8 @@ static PyMethodDef module_methods[] = {
     {"raw_tty", raw_tty, METH_VARARGS, ""},
     {"close_tty", close_tty, METH_VARARGS, ""},
     {"set_iutf8_fd", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
+    {"base64_encode", (PyCFunction)pybase64_encode, METH_VARARGS, ""},
+    {"base64_decode", (PyCFunction)pybase64_decode, METH_VARARGS, ""},
     {"thread_write", (PyCFunction)cm_thread_write, METH_VARARGS, ""},
     {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},

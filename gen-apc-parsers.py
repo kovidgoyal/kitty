@@ -111,8 +111,9 @@ def generate(
         payload_case = f'''
             case PAYLOAD: {{
                 sz = screen->parser_buf_pos - pos;
-                const char *err = base64_decode(screen->parser_buf + pos, sz, payload, sizeof(payload), &g.payload_sz);
-                if (err != NULL) {{ REPORT_ERROR("Failed to parse {command_class} command payload with error: %s", err); return; }}
+                g.payload_sz = sizeof(payload);
+                if (!base64_decode32(screen->parser_buf + pos, sz, payload, &g.payload_sz)) {{
+                    REPORT_ERROR("Failed to parse {command_class} command payload with error: %s", "output buffer for base64_decode too small"); return; }}
                 pos = screen->parser_buf_pos;
                 }}
                 break;

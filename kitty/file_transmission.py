@@ -6,7 +6,7 @@ import os
 import re
 import stat
 import tempfile
-from base64 import standard_b64decode, standard_b64encode
+from base64 import standard_b64decode
 from collections import defaultdict, deque
 from contextlib import suppress
 from dataclasses import Field, dataclass, field, fields
@@ -19,7 +19,7 @@ from typing import IO, Any, Callable, DefaultDict, Deque, Dict, Iterable, Iterat
 
 from kittens.transfer.librsync import LoadSignature, PatchFile, delta_for_file, signature_of_file
 from kittens.transfer.utils import IdentityCompressor, ZlibCompressor, abspath, expand_home, home_path
-from kitty.fast_data_types import FILE_TRANSFER_CODE, OSC, add_timer, get_boss, get_options
+from kitty.fast_data_types import FILE_TRANSFER_CODE, OSC, add_timer, base64_encode, get_boss, get_options
 from kitty.types import run_once
 
 from .utils import log_error
@@ -247,6 +247,14 @@ def serialized_to_field_map() -> Dict[bytes, 'Field[Any]']:
     return ans
 
 
+def b64decode(val: memoryview) -> bytes:
+    extra = len(val) % 4
+    if extra != 0:
+        padding = b'=' * (4 - extra)
+        val = memoryview(bytes(val) + padding)
+    return standard_b64decode(val)
+
+
 @dataclass
 class FileTransmissionCommand:
 
@@ -308,10 +316,10 @@ class FileTransmissionCommand:
             if issubclass(k.type, Enum):
                 yield val.name
             elif k.type is bytes:
-                yield standard_b64encode(val)
+                yield base64_encode(val)
             elif k.type is str:
                 if k.metadata.get('base64'):
-                    yield standard_b64encode(val.encode('utf-8'))
+                    yield base64_encode(val.encode('utf-8'))
                 else:
                     yield safe_string(val)
             elif k.type is int:
@@ -335,12 +343,12 @@ class FileTransmissionCommand:
             if issubclass(field.type, Enum):
                 setattr(ans, field.name, field.type[decode_utf8_buffer(val)])
             elif field.type is bytes:
-                setattr(ans, field.name, standard_b64decode(val))
+                setattr(ans, field.name, b64decode(val))
             elif field.type is int:
                 setattr(ans, field.name, int(val))
             elif field.type is str:
                 if field.metadata.get('base64'):
-                    sval = standard_b64decode(val).decode('utf-8')
+                    sval = b64decode(val).decode('utf-8')
                 else:
                     sval = safe_string(decode_utf8_buffer(val))
                 setattr(ans, field.name, safe_string(sval))

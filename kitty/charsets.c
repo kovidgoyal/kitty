@@ -290,31 +290,8 @@ encode_utf8(uint32_t ch, char* dest) {
 
 
 // Base64
-// standard decoding using + and / with = being the padding character
-static uint8_t b64_decoding_table[256] = {
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 62, 0, 0, 0, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 0, 0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
-
-static char length_error[96] = {0};
-
-const char*
-base64_decode(const uint32_t *src, size_t src_sz, uint8_t *dest, size_t dest_capacity, size_t *dest_sz) {
-    if (!src_sz) { *dest_sz = 0; return NULL; }
-    if (src_sz % 4 != 0) { snprintf(length_error, sizeof(length_error)-1, "base64 encoded data must have a length that is a multiple of four not: %zd", src_sz); return length_error;}
-    *dest_sz = (src_sz / 4) * 3;
-    if (src[src_sz - 1] == '=') (*dest_sz)--;
-    if (src[src_sz - 2] == '=') (*dest_sz)--;
-    if (*dest_sz > dest_capacity) return "output buffer too small";
-    for (size_t i = 0, j = 0; i < src_sz;) {
-        uint32_t sextet_a = src[i] == '=' ? 0 & i++ : b64_decoding_table[src[i++] & 0xff];
-        uint32_t sextet_b = src[i] == '=' ? 0 & i++ : b64_decoding_table[src[i++] & 0xff];
-        uint32_t sextet_c = src[i] == '=' ? 0 & i++ : b64_decoding_table[src[i++] & 0xff];
-        uint32_t sextet_d = src[i] == '=' ? 0 & i++ : b64_decoding_table[src[i++] & 0xff];
-        uint32_t triple = (sextet_a << 3 * 6) + (sextet_b << 2 * 6) + (sextet_c << 1 * 6) + (sextet_d << 0 * 6);
-
-        if (j < *dest_sz) dest[j++] = (triple >> 2 * 8) & 0xFF;
-        if (j < *dest_sz) dest[j++] = (triple >> 1 * 8) & 0xFF;
-        if (j < *dest_sz) dest[j++] = (triple >> 0 * 8) & 0xFF;
-    }
-    return NULL;
-}
+#define B64_INPUT_BITSIZE 8
+#define INCLUDE_BASE64_DEFINITIONS
+#include "base64.h"
+#define B64_INPUT_BITSIZE 32
+#include "base64.h"

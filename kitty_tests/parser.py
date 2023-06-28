@@ -6,7 +6,7 @@ from base64 import standard_b64encode
 from binascii import hexlify
 from functools import partial
 
-from kitty.fast_data_types import CURSOR_BLOCK, parse_bytes, parse_bytes_dump
+from kitty.fast_data_types import CURSOR_BLOCK, parse_bytes, parse_bytes_dump, base64_decode, base64_encode
 from kitty.notify import NotificationCommand, handle_notification_cmd, notification_activated, reset_registry
 
 from . import BaseTest
@@ -40,6 +40,16 @@ class TestParser(BaseTest):
         if current:
             q.append(('draw', current))
         self.ae(tuple(q), cmds)
+
+    def test_base64(self):
+        for src, expected in {
+            'bGlnaHQgdw==': 'light w',
+            'bGlnaHQgd28=': 'light wo',
+            'bGlnaHQgd29y': 'light wor',
+        }.items():
+            self.ae(base64_decode(src.encode()), expected.encode(), f'Decoding of {src} failed')
+            self.ae(base64_decode(src.replace('=', '').encode()), expected.encode(), f'Decoding of {src} failed')
+            self.ae(base64_encode(expected.encode()), src.replace('=', '').encode(), f'Encoding of {expected} failed')
 
     def test_simple_parsing(self):
         s = self.create_screen()

@@ -8,6 +8,8 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "data-types.h"
+#define B64_INPUT_BITSIZE 32
+#include "base64.h"
 #include "control-codes.h"
 #include "screen.h"
 #include "graphics.h"

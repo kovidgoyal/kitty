@@ -346,7 +346,6 @@ attrs_to_cursor(const CellAttrs attrs, Cursor *c) {
 
 
 // Global functions
-const char* base64_decode(const uint32_t *src, size_t src_sz, uint8_t *dest, size_t dest_capacity, size_t *dest_sz);
 Line* alloc_line(void);
 Cursor* alloc_cursor(void);
 LineBuf* alloc_linebuf(unsigned int, unsigned int);
