@@ -31,6 +31,8 @@ character_key_name_aliases: Dict[str, str] = {
     'MULTIPLY': '*',
     'PLUS': '+',
     'MINUS': '-',
+    'BAR': '|',
+    'PIPE': '|',
     'HYPHEN': '-',
     'EQUAL': '=',
     'UNDERSCORE': '_',
