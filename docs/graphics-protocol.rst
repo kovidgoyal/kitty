@@ -342,11 +342,12 @@ Remote clients, those that are unable to use the filesystem/shared memory to
 transmit data, must send the pixel data directly using escape codes. Since
 escape codes are of limited maximum length, the data will need to be chunked up
 for transfer. This is done using the ``m`` key. The pixel data must first be
-base64 encoded then chunked up into chunks no larger than ``4096`` bytes. The client
-then sends the graphics escape code as usual, with the addition of an ``m`` key that
-must have the value ``1`` for all but the last chunk, where it must be ``0``. For example,
-if the data is split into three chunks, the client would send the following
-sequence of escape codes to the terminal emulator::
+base64 encoded then chunked up into chunks no larger than ``4096`` bytes. All
+chunks, except the last, must have a size that is a multiple of 4. The client
+then sends the graphics escape code as usual, with the addition of an ``m`` key
+that must have the value ``1`` for all but the last chunk, where it must be
+``0``. For example, if the data is split into three chunks, the client would
+send the following sequence of escape codes to the terminal emulator::
 
     <ESC>_Gs=100,v=30,m=1;<encoded pixel data first chunk><ESC>\
     <ESC>_Gm=1;<encoded pixel data second chunk><ESC>\
