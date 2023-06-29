@@ -39,6 +39,8 @@ type Command struct {
 	IgnoreAllArgs bool
 	// Specialised arg parsing
 	ParseArgsForCompletion func(cmd *Command, args []string, completions *Completions)
+	// Callback that is called on error
+	CallbackOnError func(cmd *Command, err error, during_parsing bool, exit_code int) (final_exit_code int)
 
 	SubCommandGroups []*CommandGroup
 	OptionGroups     []*OptionGroup
@@ -529,6 +531,9 @@ func (self *Command) ExecArgs(args []string) (exit_code int) {
 	}
 	cmd, err := root.ParseArgs(args)
 	if err != nil {
+		if self.CallbackOnError != nil {
+			return self.CallbackOnError(cmd, err, true, 1)
+		}
 		ShowError(err)
 		return 1
 	}
@@ -543,10 +548,13 @@ func (self *Command) ExecArgs(args []string) (exit_code int) {
 	} else if cmd.Run != nil {
 		exit_code, err = cmd.Run(cmd, cmd.Args)
 		if err != nil {
-			ShowError(err)
 			if exit_code == 0 {
 				exit_code = 1
 			}
+			if self.CallbackOnError != nil {
+				return self.CallbackOnError(cmd, err, false, exit_code)
+			}
+			ShowError(err)
 		}
 	}
 	return

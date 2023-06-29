@@ -30,6 +30,7 @@ var _ = fmt.Print
 func KittyToolEntryPoints(root *cli.Command) {
 	root.Add(cli.OptionSpec{
 		Name: "--version", Type: "bool-set", Help: "The current kitten version."})
+	tui.PrepareRootCmd(root)
 	// @
 	at.EntryPoint(root)
 	// update-self

@@ -15,9 +15,22 @@ import (
 
 var _ = fmt.Print
 
+var RunningAsUI = utils.Once(func() bool {
+	defer func() { os.Unsetenv("KITTEN_RUNNING_AS_UI") }()
+	return os.Getenv("KITTEN_RUNNING_AS_UI") != ""
+})
+
+func PrepareRootCmd(root *cli.Command) {
+	if RunningAsUI() {
+		root.CallbackOnError = func(cmd *cli.Command, err error, during_parsing bool, exit_code int) int {
+			ReportError(err)
+			return exit_code
+		}
+	}
+}
+
 func KittenOutputSerializer() func(any) (string, error) {
-	write_with_escape_code := os.Getenv("KITTEN_RUNNING_AS_UI") != ""
-	os.Unsetenv("KITTEN_RUNNING_AS_UI")
+	write_with_escape_code := RunningAsUI()
 	if write_with_escape_code {
 		return func(what any) (string, error) {
 			data, err := json.Marshal(what)
