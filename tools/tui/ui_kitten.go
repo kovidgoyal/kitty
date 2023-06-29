@@ -32,8 +32,7 @@ func PrepareRootCmd(root *cli.Command) {
 }
 
 func KittenOutputSerializer() func(any) (string, error) {
-	write_with_escape_code := RunningAsUI()
-	if write_with_escape_code {
+	if RunningAsUI() {
 		return func(what any) (string, error) {
 			data, err := json.Marshal(what)
 			if err != nil {
