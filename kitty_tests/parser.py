@@ -6,7 +6,7 @@ from base64 import standard_b64encode
 from binascii import hexlify
 from functools import partial
 
-from kitty.fast_data_types import CURSOR_BLOCK, parse_bytes, parse_bytes_dump, base64_decode, base64_encode
+from kitty.fast_data_types import CURSOR_BLOCK, base64_decode, base64_encode, parse_bytes, parse_bytes_dump
 from kitty.notify import NotificationCommand, handle_notification_cmd, notification_activated, reset_registry
 
 from . import BaseTest
