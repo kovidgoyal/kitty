@@ -113,23 +113,19 @@ func decode_hint(x string, alphabet string) (ans int) {
 func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 	output := tui.KittenOutputSerializer()
 	if tty.IsTerminal(os.Stdin.Fd()) {
-		tui.ReportError(fmt.Errorf("You must pass the text to be hinted on STDIN"))
-		return 1, nil
+		return 1, fmt.Errorf("You must pass the text to be hinted on STDIN")
 	}
 	stdin, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		tui.ReportError(fmt.Errorf("Failed to read from STDIN with error: %w", err))
-		return 1, nil
+		return 1, fmt.Errorf("Failed to read from STDIN with error: %w", err)
 	}
 	if len(args) > 0 && o.CustomizeProcessing == "" && o.Type != "linenum" {
-		tui.ReportError(fmt.Errorf("Extra command line arguments present: %s", strings.Join(args, " ")))
-		return 1, nil
+		return 1, fmt.Errorf("Extra command line arguments present: %s", strings.Join(args, " "))
 	}
 	input_text := parse_input(utils.UnsafeBytesToString(stdin))
 	text, all_marks, index_map, err := find_marks(input_text, o, os.Args[2:]...)
 	if err != nil {
-		tui.ReportError(err)
-		return 1, nil
+		return 1, err
 	}
 
 	result := Result{

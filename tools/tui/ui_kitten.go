@@ -23,7 +23,9 @@ var RunningAsUI = utils.Once(func() bool {
 func PrepareRootCmd(root *cli.Command) {
 	if RunningAsUI() {
 		root.CallbackOnError = func(cmd *cli.Command, err error, during_parsing bool, exit_code int) int {
-			ReportError(err)
+			cli.ShowError(err)
+			os.Stdout.WriteString("\x1bP@kitty-overlay-ready|\x1b\\")
+			HoldTillEnter(true)
 			return exit_code
 		}
 	}
@@ -50,10 +52,4 @@ func KittenOutputSerializer() func(any) (string, error) {
 		}
 		return utils.UnsafeBytesToString(data), nil
 	}
-}
-
-func ReportError(err error) {
-	cli.ShowError(err)
-	os.Stdout.WriteString("\x1bP@kitty-overlay-ready|\x1b\\")
-	HoldTillEnter(false)
 }
