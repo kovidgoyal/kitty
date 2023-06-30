@@ -11,9 +11,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/jamesruan/go-rfc1924/base85"
 	"kitty/tools/utils"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/jamesruan/go-rfc1924/base85"
 )
 
 func curve25519_key_pair() (private_key []byte, public_key []byte, err error) {
@@ -103,6 +106,15 @@ func EncodePublicKey(pubkey []byte, encryption_protocol string) (ans string, err
 	return
 }
 
+func DecodePublicKey(raw string) (encryption_protocol string, pubkey []byte, err error) {
+	encryption_protocol, encoded_pubkey, found := strings.Cut(raw, ":")
+	if !found {
+		return "", nil, fmt.Errorf("Invalid encoded pubkey, no : in string")
+	}
+	pubkey, err = b85_decode(encoded_pubkey)
+	return
+}
+
 func Encrypt_cmd(cmd *utils.RemoteControlCmd, password string, other_pubkey []byte, encryption_protocol string) (encrypted_cmd utils.EncryptedRemoteControlCmd, err error) {
 	cmd.Password = password
 	cmd.Timestamp = time.Now().UnixNano()
@@ -116,6 +128,23 @@ func Encrypt_cmd(cmd *utils.RemoteControlCmd, password string, other_pubkey []by
 	if encryption_protocol != "1" {
 		encrypted_cmd.EncProto = encryption_protocol
 	}
+	return
+}
+
+func Encrypt_data(data []byte, other_pubkey []byte, encryption_protocol string) (ans []byte, err error) {
+	d := make([]byte, 0, len(data)+32)
+	d = append(d, []byte(fmt.Sprintf("%s:", strconv.FormatInt(time.Now().UnixNano(), 10)))...)
+	d = append(d, data...)
+	iv, tag, ciphertext, pubkey, err := encrypt(d, other_pubkey, encryption_protocol)
+	if err != nil {
+		return
+	}
+	ec := utils.EncryptedRemoteControlCmd{
+		IV: b85_encode(iv), Tag: b85_encode(tag), Pubkey: b85_encode(pubkey), Encrypted: b85_encode(ciphertext)}
+	if encryption_protocol != "1" {
+		ec.EncProto = encryption_protocol
+	}
+	ans, err = json.Marshal(ec)
 	return
 }
 

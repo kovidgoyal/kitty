@@ -458,6 +458,12 @@ The value of ``bypass`` is of the form ``hash_function_name : hash_value``
    they will introduce a lot of latency to starting a session and in any case
    there is no mathematical proof that **any** hash function is not brute-forceable.
 
+Terminal implementations are free to use their own more advanced hashing
+schemes, with prefixes other than those starting with ``sha``, which are
+reserved. For instance, kitty uses a scheme based on public key encryption
+via :envvar:`KITTY_PUBLIC_KEY`. For details of this scheme, see the
+``check_bypass()`` function in the kitty source code.
+
 Encoding of transfer commands as escape codes
 ------------------------------------------------
 

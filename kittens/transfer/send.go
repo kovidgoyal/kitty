@@ -361,7 +361,13 @@ func (self *SendManager) start_transfer() string {
 
 func (self *SendManager) initialize() {
 	if self.bypass != "" {
-		self.bypass = encode_bypass(self.request_id, self.bypass)
+		q, err := encode_bypass(self.request_id, self.bypass)
+		if err == nil {
+			self.bypass = q
+		} else {
+			fmt.Fprintln(os.Stderr, "Ignoring password because of error:", err)
+		}
+
 	}
 	self.fid_map = make(map[string]*File, len(self.files))
 	for _, f := range self.files {

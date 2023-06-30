@@ -4,13 +4,13 @@ package transfer
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"kitty/tools/crypto"
 	"kitty/tools/utils"
 )
 
@@ -33,10 +33,20 @@ func home_path() string {
 	return global_home
 }
 
-func encode_bypass(request_id string, bypass string) string {
+func encode_bypass(request_id string, bypass string) (string, error) {
 	q := request_id + ";" + bypass
-	sum := sha256.Sum256(utils.UnsafeStringToBytes(q))
-	return fmt.Sprintf("sha256:%x", sum)
+	if pkey_encoded := os.Getenv("KITTY_PUBLIC_KEY"); pkey_encoded != "" {
+		encryption_protocol, pubkey, err := crypto.DecodePublicKey(pkey_encoded)
+		if err != nil {
+			return "", err
+		}
+		encrypted, err := crypto.Encrypt_data(utils.UnsafeStringToBytes(q), pubkey, encryption_protocol)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("kitty-1:%s", utils.UnsafeBytesToString(encrypted)), nil
+	}
+	return "", fmt.Errorf("KITTY_PUBLIC_KEY env var not set, cannot transmit password securely")
 }
 
 func abspath(path string, use_home ...bool) string {
