@@ -36,7 +36,7 @@ func home_path() string {
 func encode_bypass(request_id string, bypass string) string {
 	q := request_id + ";" + bypass
 	sum := sha256.Sum256(utils.UnsafeStringToBytes(q))
-	return fmt.Sprintf("%x", sum)
+	return fmt.Sprintf("sha256:%x", sum)
 }
 
 func abspath(path string, use_home ...bool) string {
