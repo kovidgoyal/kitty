@@ -294,12 +294,20 @@ def ensure_macos_locale() -> None:
     # https://github.com/kovidgoyal/kitty/issues/90
     from .fast_data_types import cocoa_get_lang, locale_is_valid
     if 'LANG' not in os.environ:
-        lang = cocoa_get_lang()
-        if lang is not None:
-            if not locale_is_valid(lang):
-                lang = 'en_US'
-            os.environ['LANG'] = f'{lang}.UTF-8'
-            set_LANG_in_default_env(os.environ['LANG'])
+        lang_code, country_code, identifier = cocoa_get_lang()
+        lang = 'en_US'
+        if identifier and locale_is_valid(identifier):
+            lang = identifier
+        elif lang_code and country_code and locale_is_valid(f'{lang_code}_{country_code}'):
+            lang = f'{lang_code}_{country_code}'
+        elif lang_code:
+            if lang_code != 'en':
+                with suppress(OSError):
+                    found = sorted(x for x in os.listdir('/usr/share/locale') if x.startswith(f'{lang_code}_'))
+                    if found:
+                        lang = found[0].partition('.')[0]
+        os.environ['LANG'] = f'{lang}.UTF-8'
+        set_LANG_in_default_env(os.environ['LANG'])
 
 
 @contextmanager

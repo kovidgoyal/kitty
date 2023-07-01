@@ -740,7 +740,7 @@ def cocoa_set_global_shortcut(name: str, mods: int, key: int) -> bool:
     pass
 
 
-def cocoa_get_lang() -> Optional[str]:
+def cocoa_get_lang() -> Tuple[str, str, str]:
     pass
 
 

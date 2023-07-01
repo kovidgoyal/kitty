@@ -782,19 +782,10 @@ cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz) {
 static PyObject*
 cocoa_get_lang(PyObject UNUSED *self) {
     @autoreleasepool {
-
-    NSString* locale = nil;
-    NSString* lang_code = [[NSLocale currentLocale] objectForKey:NSLocaleLanguageCode];
+    NSString* lang_code = [[NSLocale currentLocale] languageCode];
     NSString* country_code = [[NSLocale currentLocale] objectForKey:NSLocaleCountryCode];
-    if (lang_code && country_code) {
-        locale = [NSString stringWithFormat:@"%@_%@", lang_code, country_code];
-    } else {
-        locale = [[NSLocale currentLocale] localeIdentifier];
-    }
-    if (!locale) { Py_RETURN_NONE; }
-    const char* locale_utf8 = [locale UTF8String];
-    return Py_BuildValue("s", locale_utf8);
-
+    NSString* identifier = [[NSLocale currentLocale] localeIdentifier];
+    return Py_BuildValue("sss", lang_code ? [lang_code UTF8String]:"", country_code ? [country_code UTF8String] : "", identifier ? [identifier UTF8String]: "");
     } // autoreleasepool
 }
 
