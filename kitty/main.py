@@ -297,10 +297,7 @@ def ensure_macos_locale() -> None:
         lang = cocoa_get_lang()
         if lang is not None:
             if not locale_is_valid(lang):
-                if lang.startswith('en_'):
-                    lang = 'en_US'
-                else:
-                    log_error(f'Could not set LANG Cocoa returns language as: {lang}')
+                lang = 'en_US'
             os.environ['LANG'] = f'{lang}.UTF-8'
             set_LANG_in_default_env(os.environ['LANG'])
 
