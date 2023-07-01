@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
-import base64
 import errno
 import json
 import os
 import re
 import stat
 import tempfile
+from base64 import b85decode
 from collections import defaultdict, deque
 from contextlib import suppress
 from dataclasses import Field, dataclass, field, fields
@@ -496,8 +496,8 @@ def check_bypass(password: str, request_id: str, bypass_data: str) -> bool:
             if not pubkey:
                 return False
             ekey = get_boss().encryption_key
-            d = AES256GCMDecrypt(ekey.derive_secret(base64.b85decode(pubkey)), base64.b85decode(pcmd['iv']), base64.b85decode(pcmd['tag']))
-            data = d.add_data_to_be_decrypted(base64.b85decode(pcmd['encrypted']), True)
+            d = AES256GCMDecrypt(ekey.derive_secret(b85decode(pubkey)), b85decode(pcmd['iv']), b85decode(pcmd['tag']))
+            data = d.add_data_to_be_decrypted(b85decode(pcmd['encrypted']), True)
             timestamp, sep, payload = data.decode('utf-8').partition(':')
             delta = time_ns() - int(timestamp)
             if abs(delta) > 5 * 60 * 1e9:
