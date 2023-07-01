@@ -79,24 +79,24 @@ redirect_std_streams(PyObject UNUSED *self, PyObject *args) {
 static PyObject*
 pybase64_encode(PyObject UNUSED *self, PyObject *args) {
     int add_padding = 0;
-    const char *src; Py_ssize_t src_len;
-    if (!PyArg_ParseTuple(args, "y#|p", &src, &src_len, &add_padding)) return NULL;
-    size_t sz = required_buffer_size_for_base64_encode(src_len);
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer view = {0};
+    if (!PyArg_ParseTuple(args, "s*|p", &view, &add_padding)) return NULL;
+    size_t sz = required_buffer_size_for_base64_encode(view.len);
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
     if (!ans) return NULL;
-    base64_encode8((const unsigned char*)src, src_len, (unsigned char*)PyBytes_AS_STRING(ans), &sz, add_padding);
+    base64_encode8(view.buf, view.len, (unsigned char*)PyBytes_AS_STRING(ans), &sz, add_padding);
     if (_PyBytes_Resize(&ans, sz) != 0) return NULL;
     return ans;
 }
 
 static PyObject*
 pybase64_decode(PyObject UNUSED *self, PyObject *args) {
-    const char *src; Py_ssize_t src_len;
-    if (!PyArg_ParseTuple(args, "y#", &src, &src_len)) return NULL;
-    size_t sz = required_buffer_size_for_base64_decode(src_len);
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer view = {0};
+    if (!PyArg_ParseTuple(args, "s*", &view)) return NULL;
+    size_t sz = required_buffer_size_for_base64_decode(view.len);
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
     if (!ans) return NULL;
-    base64_decode8((const unsigned char*)src, src_len, (unsigned char*)PyBytes_AS_STRING(ans), &sz);
+    base64_decode8(view.buf, view.len, (unsigned char*)PyBytes_AS_STRING(ans), &sz);
     if (_PyBytes_Resize(&ans, sz) != 0) return NULL;
     return ans;
 }

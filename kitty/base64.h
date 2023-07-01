@@ -27,8 +27,8 @@
 bool decode_func(const INPUT_T *src, size_t src_sz, uint8_t *dest, size_t *dest_sz);
 bool encode_func(const unsigned char *src, size_t src_len, unsigned char *out, size_t *out_len, bool add_padding);
 #ifndef B64_INCLUDED_ONCE
-static inline size_t required_buffer_size_for_base64_decode(size_t src_sz) { return (src_sz / 4) * 3 + 4; }
-static inline size_t required_buffer_size_for_base64_encode(size_t src_sz) { return (src_sz / 3) * 4 + 5; }
+static inline size_t required_buffer_size_for_base64_decode(size_t src_sz) { return (src_sz * 3) / 4 + 4; }
+static inline size_t required_buffer_size_for_base64_encode(size_t src_sz) { return (src_sz * 4) / 3 + 5; }
 #endif
 
 #ifndef B64_INCLUDED_ONCE
@@ -44,17 +44,17 @@ static uint8_t b64_decoding_table[256] = {
 #endif
 
 static void
-inner_func(const INPUT_T *src, size_t src_sz, uint8_t *dest, const size_t dest_sz) {
+inner_func(const INPUT_T *src, size_t src_sz, uint8_t *dest) {
     for (size_t i = 0, j = 0; i < src_sz;) {
-        uint32_t sextet_a = src[i] == '=' ? 0 & i++ : b64_decoding_table[src[i++] & 0xff];
-        uint32_t sextet_b = src[i] == '=' ? 0 & i++ : b64_decoding_table[src[i++] & 0xff];
-        uint32_t sextet_c = src[i] == '=' ? 0 & i++ : b64_decoding_table[src[i++] & 0xff];
-        uint32_t sextet_d = src[i] == '=' ? 0 & i++ : b64_decoding_table[src[i++] & 0xff];
+        uint32_t sextet_a = b64_decoding_table[src[i++] & 0xff];
+        uint32_t sextet_b = b64_decoding_table[src[i++] & 0xff];
+        uint32_t sextet_c = b64_decoding_table[src[i++] & 0xff];
+        uint32_t sextet_d = b64_decoding_table[src[i++] & 0xff];
         uint32_t triple = (sextet_a << 3 * 6) + (sextet_b << 2 * 6) + (sextet_c << 1 * 6) + (sextet_d << 0 * 6);
 
-        if (j < dest_sz) dest[j++] = (triple >> 2 * 8) & 0xFF;
-        if (j < dest_sz) dest[j++] = (triple >> 1 * 8) & 0xFF;
-        if (j < dest_sz) dest[j++] = (triple >> 0 * 8) & 0xFF;
+        dest[j++] = (triple >> 2 * 8) & 0xFF;
+        dest[j++] = (triple >> 1 * 8) & 0xFF;
+        dest[j++] = (triple >> 0 * 8) & 0xFF;
     }
 }
 
@@ -63,18 +63,17 @@ decode_func(const INPUT_T *src, size_t src_sz, uint8_t *dest, size_t *dest_sz) {
     while (src_sz && src[src_sz-1] == '=') src_sz--;  // remove trailing padding
     if (!src_sz) { *dest_sz = 0; return true; }
     const size_t dest_capacity = *dest_sz;
-    size_t extra = src_sz % 4;
+    *dest_sz = src_sz / 4;
+    size_t extra = src_sz - 4 * *dest_sz;
+    *dest_sz *= 3;
     src_sz -= extra;
-    *dest_sz = (src_sz / 4) * 3;
-    if (*dest_sz > dest_capacity) return false;
-    if (src_sz) inner_func(src, src_sz, dest, *dest_sz);
-    if (extra > 1) {
+    if (*dest_sz + 4 > dest_capacity) return false;
+    if (src_sz) inner_func(src, src_sz, dest);
+    if (extra > 1 && extra < 4) {  // < 4 is not needed but it helps compiler unroll the loop
         INPUT_T buf[4] = {0};
         for (size_t i = 0; i < extra; i++) buf[i] = src[src_sz+i];
-        dest += *dest_sz;
+        inner_func(buf, extra, dest + *dest_sz);
         *dest_sz += extra - 1;
-        if (*dest_sz > dest_capacity) return false;
-        inner_func(buf, extra, dest, extra-1);
     }
     if (*dest_sz + 1 > dest_capacity) return false;
     dest[*dest_sz] = 0;  // ensure zero-terminated
