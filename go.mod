@@ -13,6 +13,7 @@ require (
 	github.com/jamesruan/go-rfc1924 v0.0.0-20170108144916-2767ca7c638f
 	github.com/seancfoley/ipaddress-go v1.5.4
 	github.com/shirou/gopsutil/v3 v3.23.6
+	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	golang.org/x/sys v0.10.0
 	golang.org/x/image v0.9.0
@@ -21,6 +22,7 @@ require (
 
 require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a // indirect
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
 	github.com/seancfoley/bintree v1.2.1 // indirect

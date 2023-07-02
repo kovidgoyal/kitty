@@ -12,9 +12,12 @@ package rsync
 
 import (
 	"bytes"
-	"crypto/md5"
+	"encoding/binary"
+	"fmt"
 	"hash"
 	"io"
+
+	"kitty/tools/utils"
 )
 
 // If no BlockSize is specified in the RSync instance, this value is used.
@@ -42,11 +45,63 @@ type Operation struct {
 	Data          []byte
 }
 
+var bin = binary.LittleEndian
+
+func (self Operation) Serialize() string {
+	ans := make([]byte, 24+len(self.Data))
+	bin.PutUint32(ans, uint32(len(self.Data)))
+	bin.PutUint32(ans[4:], uint32(self.Type))
+	bin.PutUint64(ans[8:], self.BlockIndex)
+	bin.PutUint64(ans[16:], self.BlockIndexEnd)
+	copy(ans[24:], self.Data)
+	return utils.UnsafeBytesToString(ans)
+}
+
+func (self *Operation) Unserialize(data []byte) (n int, err error) {
+	if len(data) < 24 {
+		return -1, fmt.Errorf("record too small to be an Operation %d < 24", len(data))
+	}
+	dlen := int(bin.Uint32(data))
+	if len(data) < 24+dlen {
+		return -1, fmt.Errorf("record too small to be an Operation %d < %d", len(data), 24+dlen)
+	}
+	t := OpType(bin.Uint32(data[4:]))
+	switch t {
+	case OpBlock, OpData, OpHash, OpBlockRange:
+		self.Type = t
+	default:
+		return 0, fmt.Errorf("record has unknown operation type: %d", t)
+	}
+	self.BlockIndex = bin.Uint64(data[8:])
+	self.BlockIndexEnd = bin.Uint64(data[16:])
+	self.Data = data[24 : 24+dlen]
+	n = 24 + dlen
+	return
+}
+
 // Signature hash item generated from target.
 type BlockHash struct {
 	Index      uint64
 	StrongHash []byte
 	WeakHash   uint32
+}
+
+func (self BlockHash) Serialize() string {
+	ans := make([]byte, 12+len(self.StrongHash))
+	bin.PutUint64(ans, self.Index)
+	bin.PutUint32(ans[8:], self.WeakHash)
+	copy(ans[12:], self.StrongHash)
+	return utils.UnsafeBytesToString(ans)
+}
+
+func (self BlockHash) Unserialize(data []byte, hash_size int) (err error) {
+	if len(data) < 12+hash_size {
+		return fmt.Errorf("record too small to be a BlockHash: %d < %d", len(data), 12+hash_size)
+	}
+	self.Index = bin.Uint64(data)
+	self.WeakHash = bin.Uint32(data[8:])
+	self.StrongHash = data[12 : 12+hash_size]
+	return
 }
 
 // Write signatures as they are generated.
@@ -60,7 +115,7 @@ type RSync struct {
 	BlockSize int
 	MaxDataOp int
 
-	// If this is nil an MD5 hash is used.
+	// This must be non-nil before using any functions
 	UniqueHasher hash.Hash
 
 	buffer []byte
@@ -68,12 +123,10 @@ type RSync struct {
 
 // If the target length is known the number of hashes in the
 // signature can be determined.
-func (r *RSync) BlockHashCount(targetLength int) (count int) {
-	if r.BlockSize <= 0 {
-		r.BlockSize = DefaultBlockSize
-	}
-	count = (targetLength / r.BlockSize)
-	if targetLength%r.BlockSize != 0 {
+func (r *RSync) BlockHashCount(targetLength int64) (count int64) {
+	bs := int64(r.BlockSize)
+	count = targetLength / bs
+	if targetLength%bs != 0 {
 		count++
 	}
 	return
@@ -81,12 +134,6 @@ func (r *RSync) BlockHashCount(targetLength int) (count int) {
 
 // Calculate the signature of target.
 func (r *RSync) CreateSignature(target io.Reader, sw SignatureWriter) error {
-	if r.BlockSize <= 0 {
-		r.BlockSize = DefaultBlockSize
-	}
-	if r.UniqueHasher == nil {
-		r.UniqueHasher = md5.New()
-	}
 	var err error
 	var n int
 
@@ -124,10 +171,7 @@ func (r *RSync) CreateSignature(target io.Reader, sw SignatureWriter) error {
 }
 
 // Apply the difference to the target.
-func (r *RSync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, ops chan Operation) error {
-	if r.BlockSize <= 0 {
-		r.BlockSize = DefaultBlockSize
-	}
+func (r *RSync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Operation) error {
 	var err error
 	var n int
 	var block []byte
@@ -154,34 +198,32 @@ func (r *RSync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, ops ch
 		return nil
 	}
 
-	for op := range ops {
-		switch op.Type {
-		case OpBlockRange:
-			for i := op.BlockIndex; i <= op.BlockIndexEnd; i++ {
-				err = writeBlock(Operation{
-					Type:       OpBlock,
-					BlockIndex: i,
-				})
-				if err != nil {
-					if err == io.EOF {
-						break
-					}
-					return err
-				}
-			}
-		case OpBlock:
-			err = writeBlock(op)
+	switch op.Type {
+	case OpBlockRange:
+		for i := op.BlockIndex; i <= op.BlockIndexEnd; i++ {
+			err = writeBlock(Operation{
+				Type:       OpBlock,
+				BlockIndex: i,
+			})
 			if err != nil {
 				if err == io.EOF {
 					break
 				}
 				return err
 			}
-		case OpData:
-			_, err = alignedTarget.Write(op.Data)
-			if err != nil {
-				return err
+		}
+	case OpBlock:
+		err = writeBlock(op)
+		if err != nil {
+			if err == io.EOF {
+				break
 			}
+			return err
+		}
+	case OpData:
+		_, err = alignedTarget.Write(op.Data)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -193,15 +235,6 @@ func (r *RSync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, ops ch
 // data is reused. The sourceSum create a complete hash sum of the source if
 // present.
 func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops OperationWriter) (err error) {
-	if r.BlockSize <= 0 {
-		r.BlockSize = DefaultBlockSize
-	}
-	if r.MaxDataOp <= 0 {
-		r.MaxDataOp = DefaultMaxDataOp
-	}
-	if r.UniqueHasher == nil {
-		r.UniqueHasher = md5.New()
-	}
 	minBufferSize := (r.BlockSize * 2) + (r.MaxDataOp)
 	if len(r.buffer) < minBufferSize {
 		r.buffer = make([]byte, minBufferSize)
