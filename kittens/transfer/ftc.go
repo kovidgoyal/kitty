@@ -131,7 +131,7 @@ type FileTransmissionCommand struct {
 	Parent      string        `json:"pr,omitempty"`
 	Mtime       time.Duration `json:"mod,omitempty"`
 	Permissions fs.FileMode   `json:"prm,omitempty"`
-	Size        uint64        `json:"sz,omitempty"`
+	Size        int64         `json:"sz,omitempty" default:"-1"`
 
 	Data []byte `json:"d,omitempty"`
 }
@@ -192,17 +192,13 @@ func (self FileTransmissionCommand) Serialize(prefix_with_osc_code ...bool) stri
 					encoded_val = base64.RawStdEncoding.EncodeToString(bval)
 				}
 			}
-		case reflect.Uint64:
-			if uival := val.Uint(); uival != 0 {
-				encoded_val = strconv.FormatUint(uival, 10)
+		case reflect.Int64:
+			if ival := val.Int(); ival != 0 && (ival > 0 || name != "sz") {
+				encoded_val = strconv.FormatInt(ival, 10)
 			}
 		default:
 			if val.CanInterface() {
 				switch field := val.Interface().(type) {
-				case time.Duration:
-					if field != 0 {
-						encoded_val = strconv.FormatInt(int64(field), 10)
-					}
 				case fs.FileMode:
 					if field = field.Perm(); field != 0 {
 						encoded_val = strconv.FormatInt(int64(field), 10)
@@ -237,9 +233,12 @@ func (self FileTransmissionCommand) String() string {
 
 func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand, err error) {
 	ans = &FileTransmissionCommand{}
-	key_length, key_start, val_start, val_length := 0, 0, 0, 0
-	field_map := ftc_field_map()
 	v := reflect.Indirect(reflect.ValueOf(ans))
+	if err = utils.SetStructDefaults(v); err != nil {
+		return
+	}
+	field_map := ftc_field_map()
+	key_length, key_start, val_start, val_length := 0, 0, 0, 0
 
 	handle_value := func(key, serialized_val string) error {
 		key = strings.TrimLeft(key, `;;`)
@@ -266,12 +265,12 @@ func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand
 					}
 					val.SetBytes(b)
 				}
-			case reflect.Uint64:
-				b, err := strconv.ParseUint(serialized_val, 10, 64)
+			case reflect.Int64:
+				b, err := strconv.ParseInt(serialized_val, 10, 64)
 				if err != nil {
-					return fmt.Errorf("The field %#v has invalid unsigned integer value with error: %w", key, err)
+					return fmt.Errorf("The field %#v has invalid integer value with error: %w", key, err)
 				}
-				val.SetUint(b)
+				val.SetInt(b)
 			default:
 				if val.CanAddr() {
 					switch field := val.Addr().Interface().(type) {
@@ -280,12 +279,6 @@ func NewFileTransmissionCommand(serialized string) (ans *FileTransmissionCommand
 						if err != nil {
 							return fmt.Errorf("The field %#v has invalid enum value with error: %w", key, err)
 						}
-					case *time.Duration:
-						b, err := strconv.ParseInt(serialized_val, 10, 64)
-						if err != nil {
-							return fmt.Errorf("The field %#v has invalid time value with error: %w", key, err)
-						}
-						*field = time.Duration(b)
 					case *fs.FileMode:
 						b, err := strconv.ParseUint(serialized_val, 10, 32)
 						if err != nil {
