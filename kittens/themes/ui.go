@@ -398,7 +398,7 @@ func (self *handler) draw_tab_bar() {
 func center_string(x string, width int) string {
 	l := wcswidth.Stringwidth(x)
 	spaces := int(float64(width-l) / 2)
-	return strings.Repeat(" ", spaces) + x + strings.Repeat(" ", width-(spaces+l))
+	return strings.Repeat(" ", utils.Max(0, spaces)) + x + strings.Repeat(" ", utils.Max(0, width-(spaces+l)))
 }
 
 func (self *handler) draw_theme_demo() {
