@@ -248,3 +248,10 @@ func SetStructDefaults(v reflect.Value) (err error) {
 	}
 	return
 }
+
+func IfElse[T any](condition bool, if_val T, else_val T) T {
+	if condition {
+		return if_val
+	}
+	return else_val
+}

@@ -335,10 +335,8 @@ func split_for_transfer(data []byte, file_id string, mark_last bool, callback fu
 			chunk = data[:chunk_size]
 		}
 		data = data[len(chunk):]
-		ac := Action_data
-		if mark_last && len(data) == 0 {
-			ac = Action_end_data
-		}
-		callback(&FileTransmissionCommand{Action: ac, File_id: file_id, Data: chunk})
+		callback(&FileTransmissionCommand{
+			Action:  utils.IfElse(mark_last && len(data) == 0, Action_end_data, Action_data),
+			File_id: file_id, Data: chunk})
 	}
 }
