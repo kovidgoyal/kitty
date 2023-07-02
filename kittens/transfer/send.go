@@ -979,6 +979,7 @@ func (self *SendManager) next_chunks(callback func(string)) error {
 			split_for_transfer(utils.UnsafeStringToBytes(chunk), af.file_id, is_last, func(ftc *FileTransmissionCommand) { callback(ftc.Serialize()) })
 		} else if is_last {
 			callback(FileTransmissionCommand{Action: Action_end_data, File_id: af.file_id}.Serialize())
+			self.activate_next_ready_file()
 		}
 	}
 }
@@ -1007,8 +1008,7 @@ func (self *SendHandler) start_transfer() (err error) {
 	if self.manager.active_file() != nil {
 		self.transmit_started = true
 		self.manager.progress_tracker.start_transfer()
-		err = self.transmit_next_chunk()
-		if err != nil {
+		if err = self.transmit_next_chunk(); err != nil {
 			return
 		}
 		self.draw_progress()

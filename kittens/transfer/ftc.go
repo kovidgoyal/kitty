@@ -337,9 +337,8 @@ func split_for_transfer(data []byte, file_id string, mark_last bool, callback fu
 		chunk := data
 		if len(chunk) > chunk_size {
 			chunk = data[:chunk_size]
-			data = data[chunk_size:]
 		}
 		callback(&FileTransmissionCommand{Action: ac, File_id: file_id, Data: chunk})
-
+		data = data[len(chunk):]
 	}
 }
