@@ -868,11 +868,15 @@ func (self *SendHandler) print_check_paths() {
 			fn = self.ctx.Red(fn)
 		}
 		self.lp.Println(
-			self.ctx.Prettify(fmt.Sprintf(":%s:`%s`", df.file_type.Color(), df.file_type.ShortText())),
-			df.display_name, '→', fn)
+			self.ctx.Prettify(fmt.Sprintf(":%s:`%s` ", df.file_type.Color(), df.file_type.ShortText())),
+			df.display_name, ` → `, fn)
 	}
-	self.lp.Println(fmt.Sprintf(`Transferring %d files of total size: %s`,
-		len(self.manager.files), humanize.Size(self.manager.progress_tracker.total_bytes_to_transfer)))
+	hsize := humanize.Size(self.manager.progress_tracker.total_bytes_to_transfer)
+	if n := len(self.manager.files); n == 1 {
+		self.lp.Println(fmt.Sprintf(`Transferring %d file of total size: %s`, n, hsize))
+	} else {
+		self.lp.Println(fmt.Sprintf(`Transferring %d files of total size: %s`, n, hsize))
+	}
 	self.print_continue_msg()
 }
 
@@ -1062,7 +1066,7 @@ func (self *SendHandler) on_text(text string, from_key_event, in_bracketed_paste
 
 func (self *SendHandler) print_continue_msg() {
 	self.lp.Println(
-		`Press`, self.ctx.Green(`y`), `to continue or`, self.ctx.BrightRed(`n`), `to abort`)
+		`Press `, self.ctx.Green(`y`), ` to continue or `, self.ctx.BrightRed(`n`), ` to abort`)
 }
 
 func (self *SendHandler) abort_transfer(delay ...time.Duration) {
