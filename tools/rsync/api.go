@@ -17,6 +17,8 @@ import (
 var _ = fmt.Print
 
 const MaxBlockSize int = 256 * 1024
+const DefaultStrongHash string = "xxh3"
+const DefaultWeakHash string = "beta"
 
 type Api struct {
 	rsync                                            RSync
@@ -57,14 +59,14 @@ func (self *Api) read_signature_header(data []byte) (consumed int, err error) {
 	}
 	self.rsync.BlockSize = h.Block_size
 	self.rsync.MaxDataOp = 10 * h.Block_size
-	if h.Weak_hash_name != "" && h.Weak_hash_name != "beta" {
+	if h.Weak_hash_name != "" && h.Weak_hash_name != DefaultWeakHash {
 		return consumed, fmt.Errorf("rsync signature header has unknown weak hash algorithm: %#v", h.Weak_hash_name)
 	}
 	self.Weak_hash_name = h.Weak_hash_name
 	switch h.Strong_hash_name {
-	case "", "xxh3":
+	case "", DefaultStrongHash:
 		self.rsync.UniqueHasher = xxh3.New()
-		self.Strong_hash_name = "xxh3"
+		self.Strong_hash_name = DefaultStrongHash
 	default:
 		return consumed, fmt.Errorf("rsync signature header has unknown strong hash algorithm: %#v", h.Strong_hash_name)
 	}
@@ -156,17 +158,31 @@ func (self *Api) CreateDelta(src io.Reader, output_callback func(string) error) 
 }
 
 // Create a signature for the data source in src
-func (self *Api) CreateSignature(src io.Reader) (signature []BlockHash, err error) {
-	if self.expected_input_size_for_signature_generation > 0 {
-		signature = make([]BlockHash, 0, self.rsync.BlockHashCount(self.expected_input_size_for_signature_generation))
-	} else {
-		signature = make([]BlockHash, 0, 1024)
+func (self *Api) CreateSignature(src io.Reader, callback func([]byte) error) (err error) {
+	sh := SignatureHeader{Strong_hash_name: self.Strong_hash_name, Weak_hash_name: self.Weak_hash_name, Block_size: self.rsync.BlockSize}
+	if sh.Strong_hash_name == DefaultStrongHash {
+		sh.Strong_hash_name = ""
 	}
-	err = self.rsync.CreateSignature(src, func(bl BlockHash) error {
-		signature = append(signature, bl)
+	if sh.Weak_hash_name == DefaultWeakHash {
+		sh.Weak_hash_name = ""
+	}
+	if b, err := json.Marshal(&sh); err != nil {
+		return err
+	} else if err = callback(b); err != nil {
+		return err
+	}
+	if self.expected_input_size_for_signature_generation > 0 {
+		self.signature = make([]BlockHash, 0, self.rsync.BlockHashCount(self.expected_input_size_for_signature_generation))
+	} else {
+		self.signature = make([]BlockHash, 0, 1024)
+	}
+	return self.rsync.CreateSignature(src, func(bl BlockHash) error {
+		if err = callback(bl.Serialize()); err != nil {
+			return err
+		}
+		self.signature = append(self.signature, bl)
 		return nil
 	})
-	return
 }
 
 // Add more external signature data
@@ -218,7 +234,7 @@ func NewToCreateSignature(expected_input_size int64) (ans *Api, err error) {
 	if sz > 0 {
 		bs = int(math.Round(math.Sqrt(float64(sz))))
 	}
-	ans = &Api{Weak_hash_name: "beta", Strong_hash_name: "xxh3"}
+	ans = &Api{Weak_hash_name: DefaultWeakHash, Strong_hash_name: DefaultStrongHash}
 	ans.rsync.BlockSize = utils.Min(bs, MaxBlockSize)
 	ans.rsync.UniqueHasher = xxh3.New()
 

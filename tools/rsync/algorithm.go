@@ -86,12 +86,12 @@ type BlockHash struct {
 	WeakHash   uint32
 }
 
-func (self BlockHash) Serialize() string {
+func (self BlockHash) Serialize() []byte {
 	ans := make([]byte, 12+len(self.StrongHash))
 	bin.PutUint64(ans, self.Index)
 	bin.PutUint32(ans[8:], self.WeakHash)
 	copy(ans[12:], self.StrongHash)
-	return utils.UnsafeBytesToString(ans)
+	return ans
 }
 
 func (self BlockHash) Unserialize(data []byte, hash_size int) (err error) {
