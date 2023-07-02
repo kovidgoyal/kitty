@@ -5,6 +5,8 @@ package utils
 import (
 	"fmt"
 	"os"
+	"reflect"
+	"strconv"
 
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
@@ -215,4 +217,34 @@ func Concat[T any](slices ...[]T) []T {
 		i += copy(result[i:], s)
 	}
 	return result
+}
+
+func SetStructDefaults(v reflect.Value) (err error) {
+	for _, field := range reflect.VisibleFields(v.Type()) {
+		if defval := field.Tag.Get("default"); defval != "" {
+			val := v.FieldByIndex(field.Index)
+			if val.CanSet() {
+				switch field.Type.Kind() {
+				case reflect.String:
+					if val.String() != "" {
+						val.SetString(defval)
+					}
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					if d, err := strconv.ParseInt(defval, 10, 64); err == nil {
+						val.SetInt(d)
+					} else {
+						return fmt.Errorf("Could not parse default value for struct field: %#v with error: %s", field.Name, err)
+					}
+				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+					if d, err := strconv.ParseUint(defval, 10, 64); err == nil {
+						val.SetUint(d)
+					} else {
+						return fmt.Errorf("Could not parse default value for struct field: %#v with error: %s", field.Name, err)
+					}
+
+				}
+			}
+		}
+	}
+	return
 }
