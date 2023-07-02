@@ -112,6 +112,10 @@ func (self *Loop) AddTimer(interval time.Duration, repeats bool, callback TimerC
 	return self.add_timer(interval, repeats, callback)
 }
 
+func (self *Loop) CallSoon(callback TimerCallback) (IdType, error) {
+	return self.add_timer(0, false, callback)
+}
+
 func (self *Loop) RemoveTimer(id IdType) bool {
 	return self.remove_timer(id)
 }

@@ -817,7 +817,63 @@ func (self *SendHandler) on_file_transfer_response(ftc *FileTransmissionCommand)
 			self.send_file_metadata()
 		}
 	}
+	self.lp.CallSoon(self.loop_tick)
 	return nil
+}
+
+func (self *SendHandler) loop_tick(timer_id loop.IdType) (err error) {
+	if self.manager.state == SEND_WAITING_FOR_PERMISSION {
+		return
+	}
+	if self.transmit_started {
+		if err = self.transmit_next_chunk(); err != nil {
+			return err
+		}
+		if err = self.refresh_progress(timer_id); err != nil {
+			return err
+		}
+	} else {
+		return self.check_for_transmit_ok()
+	}
+	return
+}
+
+func (self *SendHandler) check_for_transmit_ok() (err error) {
+	if self.transmit_ok_checked {
+		return self.start_transfer()
+	}
+	if self.manager.state != SEND_PERMISSION_GRANTED {
+		return
+	}
+	if self.opts.ConfirmPaths {
+		if self.manager.all_started {
+			self.print_check_paths()
+		}
+		return
+	}
+	self.transmit_ok_checked = true
+	self.start_transfer()
+	return
+}
+
+func (self *SendHandler) print_check_paths() {
+	if self.check_paths_printed {
+		return
+	}
+	self.check_paths_printed = true
+	self.lp.Println(`The following file transfers will be performed. A red destination means an existing file will be overwritten.`)
+	for _, df := range self.manager.files {
+		fn := df.remote_final_path
+		if df.remote_initial_size > -1 {
+			fn = self.ctx.Red(fn)
+		}
+		self.lp.Println(
+			self.ctx.Prettify(fmt.Sprintf(":%s:`%s`", df.file_type.Color(), df.file_type.ShortText())),
+			df.display_name, '→', fn)
+	}
+	self.lp.Println(fmt.Sprintf(`Transferring %d files of total size: %s`,
+		len(self.manager.files), humanize.Size(self.manager.progress_tracker.total_bytes_to_transfer)))
+	self.print_continue_msg()
 }
 
 func (self *SendManager) activate_next_ready_file() *File {
@@ -1050,6 +1106,22 @@ func (self *SendHandler) on_key_event(ev *loop.KeyEvent) error {
 	return nil
 }
 
+func (self *SendHandler) on_writing_finished(msg_id loop.IdType) (err error) {
+	chunk_transmitted := self.manager.current_chunk_uncompressed_sz >= 0
+	if chunk_transmitted {
+		self.manager.progress_tracker.on_transmit(self.manager.current_chunk_uncompressed_sz)
+		self.manager.current_chunk_uncompressed_sz = -1
+	}
+	if self.quit_after_write_code > -1 {
+		self.lp.Quit(self.quit_after_write_code)
+		return
+	}
+	if self.manager.state == SEND_PERMISSION_GRANTED && (!self.transmit_started || chunk_transmitted) {
+		self.lp.CallSoon(self.loop_tick)
+	}
+	return
+}
+
 func (self *SendHandler) on_interrupt() {
 	if self.quit_after_write_code > -1 {
 		return
@@ -1105,6 +1177,7 @@ func send_loop(opts *Options, files []*File) (err error, rc int) {
 	lp.OnText = handler.on_text
 	lp.OnKeyEvent = handler.on_key_event
 	lp.OnResize = handler.on_resize
+	lp.OnWriteComplete = handler.on_writing_finished
 
 	err = lp.Run()
 	if err != nil {

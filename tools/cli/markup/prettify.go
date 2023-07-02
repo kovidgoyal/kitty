@@ -19,8 +19,8 @@ var _ = fmt.Print
 type Context struct {
 	fmt_ctx style.Context
 
-	Cyan, Green, Blue, BrightRed, Yellow, Italic, Bold, Dim, Title, Exe, Opt, Emph, Err, Code func(args ...interface{}) string
-	Url                                                                                       func(string, string) string
+	Cyan, Green, Blue, Magenta, Red, BrightRed, Yellow, Italic, Bold, Dim, Title, Exe, Opt, Emph, Err, Code func(args ...interface{}) string
+	Url                                                                                                     func(string, string) string
 }
 
 var (
@@ -33,6 +33,8 @@ func New(allow_escape_codes bool) *Context {
 	fmt_ctx := &ans.fmt_ctx
 
 	ans.Cyan = fmt_ctx.SprintFunc("fg=bright-cyan")
+	ans.Red = fmt_ctx.SprintFunc("fg=red")
+	ans.Magenta = fmt_ctx.SprintFunc("fg=magenta")
 	ans.Green = fmt_ctx.SprintFunc("fg=green")
 	ans.Blue = fmt_ctx.SprintFunc("fg=blue")
 	ans.BrightRed = fmt_ctx.SprintFunc("fg=bright-red")
@@ -183,6 +185,8 @@ func (self *Context) Prettify(text string) string {
 			return self.Green(val)
 		case "cyan":
 			return self.Cyan(val)
+		case "magenta":
+			return self.Magenta(val)
 		case "emph":
 			return self.Italic(val)
 		default:
