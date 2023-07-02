@@ -70,6 +70,7 @@ func (self *ZlibCompressor) Compress(data []byte) []byte {
 	if err != nil {
 		panic(err)
 	}
+	defer self.b.Reset()
 	return utils.UnsafeStringToBytes(self.b.String())
 }
 
@@ -979,7 +980,12 @@ func (self *SendManager) next_chunks(callback func(string)) error {
 			split_for_transfer(utils.UnsafeStringToBytes(chunk), af.file_id, is_last, func(ftc *FileTransmissionCommand) { callback(ftc.Serialize()) })
 		} else if is_last {
 			callback(FileTransmissionCommand{Action: Action_end_data, File_id: af.file_id}.Serialize())
+		}
+		if is_last {
 			self.activate_next_ready_file()
+			if self.active_file() == nil {
+				return nil
+			}
 		}
 	}
 }
