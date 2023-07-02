@@ -34,10 +34,8 @@ func (self *Loop) remove_timer(id IdType) bool {
 }
 
 func (self *Loop) dispatch_timers(now time.Time) error {
-	updated := false
 	self.timers_temp = self.timers_temp[:0]
-	self.timers_temp = append(self.timers_temp, self.timers...)
-	for i, t := range self.timers_temp {
+	for _, t := range self.timers {
 		if now.After(t.deadline) {
 			err := t.callback(t.id)
 			if err != nil {
@@ -45,13 +43,15 @@ func (self *Loop) dispatch_timers(now time.Time) error {
 			}
 			if t.repeats {
 				t.update_deadline(now)
-				updated = true
-			} else {
-				self.timers = append(self.timers[:i], self.timers[i+1:]...)
+				self.timers_temp = append(self.timers_temp, t)
 			}
 		}
 	}
-	if updated {
+	self.timers = self.timers[:0]
+	if len(self.timers_temp) > 0 {
+		for _, t := range self.timers_temp {
+			self.timers = append(self.timers, t)
+		}
 		self.sort_timers()
 	}
 	return nil
