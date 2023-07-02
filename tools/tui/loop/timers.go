@@ -4,8 +4,9 @@ package loop
 
 import (
 	"fmt"
-	"sort"
 	"time"
+
+	"golang.org/x/exp/slices"
 )
 
 func (self *Loop) add_timer(interval time.Duration, repeats bool, callback TimerCallback) (IdType, error) {
@@ -47,16 +48,14 @@ func (self *Loop) dispatch_timers(now time.Time) error {
 			}
 		}
 	}
-	self.timers = self.timers[:0]
-	if len(self.timers_temp) > 0 {
-		for _, t := range self.timers_temp {
-			self.timers = append(self.timers, t)
-		}
+	self.timers = self.timers[:len(self.timers_temp)]
+	if len(self.timers) > 0 {
+		copy(self.timers, self.timers_temp)
 		self.sort_timers()
 	}
 	return nil
 }
 
 func (self *Loop) sort_timers() {
-	sort.SliceStable(self.timers, func(a, b int) bool { return self.timers[a].deadline.Before(self.timers[b].deadline) })
+	slices.SortStableFunc(self.timers, func(a, b *timer) bool { return a.deadline.Before(b.deadline) })
 }
