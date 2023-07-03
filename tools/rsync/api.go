@@ -3,8 +3,6 @@
 package rsync
 
 import (
-	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -17,8 +15,16 @@ import (
 var _ = fmt.Print
 
 const MaxBlockSize int = 256 * 1024
-const DefaultStrongHash string = "xxh3"
-const DefaultWeakHash string = "beta"
+
+type StrongHashType uint16
+type WeakHashType uint16
+
+const (
+	XXH3 StrongHashType = iota
+)
+const (
+	Beta WeakHashType = iota
+)
 
 type Api struct {
 	rsync                                            RSync
@@ -28,49 +34,42 @@ type Api struct {
 	unconsumed_signature_data, unconsumed_delta_data []byte
 	expected_input_size_for_signature_generation     int64
 
-	Strong_hash_name, Weak_hash_name string
-}
-
-type SignatureHeader struct {
-	Weak_hash_name   string `json:"weak_hash,omitempty"`
-	Strong_hash_name string `json:"strong_hash,omitempty"`
-	Block_size       int    `json:"block_size,omitempty"`
+	Strong_hash_type StrongHashType
+	Weak_hash_type   WeakHashType
 }
 
 // internal implementation {{{
 func (self *Api) read_signature_header(data []byte) (consumed int, err error) {
-	if len(data) < 6 {
+	if len(data) < 12 {
 		return -1, io.ErrShortBuffer
 	}
-	sz := int(binary.LittleEndian.Uint32(data))
-	if len(data) < sz+4 {
-		return -1, io.ErrShortBuffer
+	if version := bin.Uint32(data); version != 0 {
+		return consumed, fmt.Errorf("Invalid version in signature header: %d", version)
 	}
-	consumed = 4 + sz
-	h := SignatureHeader{}
-	if err = json.Unmarshal(data[4:consumed], &h); err != nil {
-		return consumed, fmt.Errorf("Invalid JSON in signature header with error: %w", err)
-	}
-	if h.Block_size == 0 {
-		return consumed, fmt.Errorf("rsync signature header has no or zero block size")
-	}
-	if h.Block_size > MaxBlockSize {
-		return consumed, fmt.Errorf("rsync signature header has too large block size %d > %d", h.Block_size, MaxBlockSize)
-	}
-	self.rsync.BlockSize = h.Block_size
-	self.rsync.MaxDataOp = 10 * h.Block_size
-	if h.Weak_hash_name != "" && h.Weak_hash_name != DefaultWeakHash {
-		return consumed, fmt.Errorf("rsync signature header has unknown weak hash algorithm: %#v", h.Weak_hash_name)
-	}
-	self.Weak_hash_name = h.Weak_hash_name
-	switch h.Strong_hash_name {
-	case "", DefaultStrongHash:
+	switch strong_hash := StrongHashType(bin.Uint16(data[4:])); strong_hash {
+	case XXH3:
+		self.Strong_hash_type = strong_hash
 		self.rsync.UniqueHasher = xxh3.New()
-		self.Strong_hash_name = DefaultStrongHash
 	default:
-		return consumed, fmt.Errorf("rsync signature header has unknown strong hash algorithm: %#v", h.Strong_hash_name)
+		return consumed, fmt.Errorf("Invalid strong_hash in signature header: %d", strong_hash)
 	}
-	self.signature = make([]BlockHash, 0, 64)
+	switch weak_hash := WeakHashType(bin.Uint16(data[6:])); weak_hash {
+	case Beta:
+		self.Weak_hash_type = weak_hash
+	default:
+		return consumed, fmt.Errorf("Invalid weak_hash in signature header: %d", weak_hash)
+	}
+	block_size := int(bin.Uint32(data[8:]))
+	consumed = 12
+	if block_size == 0 {
+		return consumed, fmt.Errorf("rsync signature header has zero block size")
+	}
+	if block_size > MaxBlockSize {
+		return consumed, fmt.Errorf("rsync signature header has too large block size %d > %d", block_size, MaxBlockSize)
+	}
+	self.rsync.BlockSize = block_size
+	self.rsync.MaxDataOp = 10 * block_size
+	self.signature = make([]BlockHash, 0, 256)
 	return
 }
 
@@ -159,16 +158,11 @@ func (self *Api) CreateDelta(src io.Reader, output_callback func(string) error) 
 
 // Create a signature for the data source in src
 func (self *Api) CreateSignature(src io.Reader, callback func([]byte) error) (err error) {
-	sh := SignatureHeader{Strong_hash_name: self.Strong_hash_name, Weak_hash_name: self.Weak_hash_name, Block_size: self.rsync.BlockSize}
-	if sh.Strong_hash_name == DefaultStrongHash {
-		sh.Strong_hash_name = ""
-	}
-	if sh.Weak_hash_name == DefaultWeakHash {
-		sh.Weak_hash_name = ""
-	}
-	if b, err := json.Marshal(&sh); err != nil {
-		return err
-	} else if err = callback(b); err != nil {
+	header := make([]byte, 12)
+	bin.PutUint16(header[4:], uint16(self.Strong_hash_type))
+	bin.PutUint16(header[6:], uint16(self.Weak_hash_type))
+	bin.PutUint32(header[8:], uint32(self.rsync.BlockSize))
+	if err = callback(header); err != nil {
 		return err
 	}
 	if self.expected_input_size_for_signature_generation > 0 {
@@ -234,7 +228,7 @@ func NewToCreateSignature(expected_input_size int64) (ans *Api, err error) {
 	if sz > 0 {
 		bs = int(math.Round(math.Sqrt(float64(sz))))
 	}
-	ans = &Api{Weak_hash_name: DefaultWeakHash, Strong_hash_name: DefaultStrongHash}
+	ans = &Api{}
 	ans.rsync.BlockSize = utils.Min(bs, MaxBlockSize)
 	ans.rsync.UniqueHasher = xxh3.New()
 
