@@ -19,11 +19,14 @@ var _ = cmp.Diff
 func TestRsyncRoundtrip(t *testing.T) {
 	src_data := make([]byte, 4*1024*1024)
 	random.Bytes(src_data)
+	total_patch_size := 0
+	num_of_patches := 8
 
 	random_patch := func(data []byte) (size int) {
 		if offset := random.Int(len(data)); offset < len(data) {
 			max_size := utils.Min(256, len(data)-offset)
 			if size = random.Int(max_size); size > 0 {
+				total_patch_size += size
 				random.Bytes(data[offset : offset+size])
 			}
 		}
@@ -43,7 +46,7 @@ func TestRsyncRoundtrip(t *testing.T) {
 	}
 
 	changed := slices.Clone(src_data)
-	for i := 0; i < 8; i++ {
+	for i := 0; i < num_of_patches; i++ {
 		random_patch(changed)
 	}
 
@@ -55,6 +58,7 @@ func TestRsyncRoundtrip(t *testing.T) {
 		return nil
 	})
 
+	total_data_in_delta := 0
 	apply_delta := func(signature []BlockHash) []byte {
 		delta_ops := make([]Operation, 0, 1024)
 		p.rsync.CreateDelta(bytes.NewReader(src_data), signature, func(op Operation) error {
@@ -62,14 +66,20 @@ func TestRsyncRoundtrip(t *testing.T) {
 			delta_ops = append(delta_ops, op)
 			return nil
 		})
+		total_data_in_delta = 0
 		outputbuf := bytes.Buffer{}
 		for _, op := range delta_ops {
+			total_data_in_delta += len(op.Data)
 			p.rsync.ApplyDelta(&outputbuf, bytes.NewReader(src_data), op)
 		}
 		return outputbuf.Bytes()
 	}
 	test_equal(src_data, apply_delta(nil))
 	test_equal(src_data, apply_delta(signature))
+	limit := 2 * (p.rsync.BlockSize * num_of_patches)
+	if total_data_in_delta > limit {
+		t.Fatalf("Unexpectedly poor delta performance: total_patch_size: %d total_delta_size: %d limit: %d", total_patch_size, total_data_in_delta, limit)
+	}
 
 	// Now try with serialization
 	p = NewPatcher(int64(len(src_data)))
@@ -102,5 +112,8 @@ func TestRsyncRoundtrip(t *testing.T) {
 	}
 
 	test_equal(src_data, outputbuf.Bytes())
+	if p.total_data_in_delta > limit {
+		t.Fatalf("Unexpectedly poor delta performance: total_patch_size: %d total_delta_size: %d limit: %d", total_patch_size, p.total_data_in_delta, limit)
+	}
 
 }

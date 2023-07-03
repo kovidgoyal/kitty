@@ -45,6 +45,7 @@ type Patcher struct {
 	expected_input_size_for_signature_generation int64
 	delta_output                                 io.Writer
 	delta_input                                  io.ReadSeeker
+	total_data_in_delta                          int
 }
 
 // internal implementation {{{
@@ -115,6 +116,7 @@ func (self *Patcher) update_delta(data []byte) (consumed int, err error) {
 			if err = self.rsync.ApplyDelta(self.delta_output, self.delta_input, op); err != nil {
 				return
 			}
+			self.total_data_in_delta += len(op.Data)
 		} else {
 			if n < 0 {
 				return consumed, nil
@@ -131,6 +133,7 @@ func (self *Patcher) update_delta(data []byte) (consumed int, err error) {
 func (self *Patcher) StartDelta(delta_output io.Writer, delta_input io.ReadSeeker) {
 	self.delta_output = delta_output
 	self.delta_input = delta_input
+	self.total_data_in_delta = 0
 	self.unconsumed_delta_data = nil
 }
 
