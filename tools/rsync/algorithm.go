@@ -92,7 +92,7 @@ func (self BlockHash) Serialize() []byte {
 	return ans
 }
 
-func (self BlockHash) Unserialize(data []byte, hash_size int) (err error) {
+func (self *BlockHash) Unserialize(data []byte, hash_size int) (err error) {
 	if len(data) < 12+hash_size {
 		return fmt.Errorf("record too small to be a BlockHash: %d < %d", len(data), 12+hash_size)
 	}
@@ -174,10 +174,7 @@ func (r *RSync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 	var n int
 	var block []byte
 
-	minBufferSize := r.BlockSize
-	if len(r.buffer) < minBufferSize {
-		r.buffer = make([]byte, minBufferSize)
-	}
+	r.set_buffer_to_size(r.BlockSize)
 	buffer := r.buffer
 
 	writeBlock := func(op Operation) error {
@@ -227,16 +224,21 @@ func (r *RSync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 	return nil
 }
 
+func (r *RSync) set_buffer_to_size(sz int) {
+	if cap(r.buffer) < sz {
+		r.buffer = make([]byte, sz)
+	} else {
+		r.buffer = r.buffer[:sz]
+	}
+}
+
 // Create the operation list to mutate the target signature into the source.
 // Any data operation from the OperationWriter must have the data copied out
 // within the span of the function; the data buffer underlying the operation
 // data is reused. The sourceSum create a complete hash sum of the source if
 // present.
 func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops OperationWriter) (err error) {
-	minBufferSize := (r.BlockSize * 2) + (r.MaxDataOp)
-	if len(r.buffer) < minBufferSize {
-		r.buffer = make([]byte, minBufferSize)
-	}
+	r.set_buffer_to_size((r.BlockSize * 2) + (r.MaxDataOp))
 	buffer := r.buffer
 
 	// A single β hashes may correlate with a many unique hashes.

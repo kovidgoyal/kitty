@@ -78,7 +78,7 @@ func (self *Api) read_signature_header(data []byte) (consumed int, err error) {
 	}
 	self.rsync.BlockSize = block_size
 	self.rsync.MaxDataOp = 10 * block_size
-	self.signature = make([]BlockHash, 0, 256)
+	self.signature = make([]BlockHash, 0, 1024)
 	return
 }
 

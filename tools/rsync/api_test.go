@@ -9,10 +9,12 @@ import (
 	"kitty/tools/utils/random"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"golang.org/x/exp/slices"
 )
 
 var _ = fmt.Print
+var _ = cmp.Diff
 
 func TestRsyncRoundtrip(t *testing.T) {
 	src_data := make([]byte, 4*1024*1024)
@@ -27,13 +29,45 @@ func TestRsyncRoundtrip(t *testing.T) {
 		}
 		return
 	}
+	test_equal := func(src_data, output []byte) {
+		if !bytes.Equal(src_data, output) {
+			first_diff := utils.Min(len(src_data), len(output))
+			for i := 0; i < first_diff; i++ {
+				if src_data[i] != output[i] {
+					first_diff = i
+					break
+				}
+			}
+			t.Fatalf("Patching failed: %d extra_bytes first different byte at: %d", len(output)-len(src_data), first_diff)
+		}
+	}
 
 	changed := slices.Clone(src_data)
 	for i := 0; i < 8; i++ {
 		random_patch(changed)
 	}
 
+	// first try just the engine without serialization
 	p := NewPatcher(int64(len(src_data)))
+	signature := make([]BlockHash, 0, 128)
+	p.rsync.CreateSignature(bytes.NewReader(changed), func(s BlockHash) error {
+		signature = append(signature, s)
+		return nil
+	})
+	delta_ops := make([]Operation, 0, 128)
+	p.rsync.CreateDelta(bytes.NewReader(src_data), signature, func(op Operation) error {
+		op.Data = slices.Clone(op.Data)
+		delta_ops = append(delta_ops, op)
+		return nil
+	})
+	outputbuf := bytes.Buffer{}
+	for _, op := range delta_ops {
+		p.rsync.ApplyDelta(&outputbuf, bytes.NewReader(src_data), op)
+	}
+	test_equal(src_data, outputbuf.Bytes())
+
+	// Now try with serialization
+	p = NewPatcher(int64(len(src_data)))
 	sigbuf := bytes.Buffer{}
 	if err := p.CreateSignature(bytes.NewReader(changed), func(p []byte) error { _, err := sigbuf.Write(p); return err }); err != nil {
 		t.Fatal(err)
@@ -46,7 +80,7 @@ func TestRsyncRoundtrip(t *testing.T) {
 	if err := d.CreateDelta(bytes.NewReader(src_data), func(b []byte) error { _, err := deltabuf.Write(b); return err }); err != nil {
 		t.Fatal(err)
 	}
-	outputbuf := bytes.Buffer{}
+	outputbuf = bytes.Buffer{}
 	p.StartDelta(&outputbuf, bytes.NewReader(src_data))
 	b := make([]byte, 30*1024)
 	for {
@@ -62,16 +96,6 @@ func TestRsyncRoundtrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	output := outputbuf.Bytes()
-	if !bytes.Equal(src_data, output) {
-		first_diff := utils.Min(len(src_data), len(output))
-		for i := 0; i < first_diff; i++ {
-			if src_data[i] != output[i] {
-				first_diff = i
-				break
-			}
-		}
-		t.Fatalf("Patching failed: %d extra_bytes first different byte at: %d", len(outputbuf.Bytes())-len(src_data), first_diff)
-	}
+	test_equal(src_data, outputbuf.Bytes())
 
 }
