@@ -1825,7 +1825,7 @@ static bool createNativeWindow(_GLFWwindow* window,
     {
         [window->ns.object setOpaque:NO];
         [window->ns.object setHasShadow:YES];
-        [window->ns.object setBackgroundColor:[NSColor clearColor]];
+        [window->ns.object setBackgroundColor:[NSColor colorWithWhite: 0 alpha: 0.001f]];
     }
 
     [window->ns.object setContentView:window->ns.view];
