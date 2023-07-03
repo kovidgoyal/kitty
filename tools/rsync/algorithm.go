@@ -267,11 +267,10 @@ func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops Operati
 
 	// Send the last operation if there is one waiting.
 	defer func() {
-		if prevOp == nil {
-			return
+		if prevOp != nil {
+			err = ops(*prevOp)
+			prevOp = nil
 		}
-		err = ops(*prevOp)
-		prevOp = nil
 	}()
 
 	// Combine OpBlock into OpBlockRange. To do this store the previous
@@ -320,6 +319,14 @@ func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops Operati
 		return
 	}
 
+	send_data := func() error {
+		if err := enqueue(Operation{Type: OpData, Data: buffer[data.tail:data.head]}); err != nil {
+			return err
+		}
+		data.tail = data.head
+		return nil
+	}
+
 	for !lastRun {
 		// Determine if the buffer should be extended.
 		if sum.tail+r.BlockSize > validTo {
@@ -327,8 +334,7 @@ func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops Operati
 			if validTo+r.BlockSize > len(buffer) {
 				// Before wrapping the buffer, send any trailing data off.
 				if data.tail < data.head {
-					err = enqueue(Operation{Type: OpData, Data: buffer[data.tail:data.head]})
-					if err != nil {
+					if err = send_data(); err != nil {
 						return err
 					}
 				}
@@ -354,6 +360,11 @@ func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops Operati
 				data.head = validTo
 			}
 			if n == 0 {
+				if data.tail < data.head {
+					if err = send_data(); err != nil {
+						return err
+					}
+				}
 				break
 			}
 		}
@@ -382,11 +393,9 @@ func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops Operati
 		// must be flushed first), or the data chunk size has reached it's maximum size (for buffer
 		// allocation purposes) or to flush the end of the data.
 		if data.tail < data.head && (foundHash || data.head-data.tail >= r.MaxDataOp || lastRun) {
-			err = enqueue(Operation{Type: OpData, Data: buffer[data.tail:data.head]})
-			if err != nil {
+			if err = send_data(); err != nil {
 				return err
 			}
-			data.tail = data.head
 		}
 
 		if foundHash {
