@@ -17,6 +17,8 @@ import (
 	"hash"
 	"io"
 	"os"
+
+	"golang.org/x/exp/slices"
 )
 
 // If no BlockSize is specified in the RSync instance, this value is used.
@@ -47,35 +49,73 @@ type Operation struct {
 var bin = binary.LittleEndian
 
 func (self Operation) Serialize() []byte {
-	ans := make([]byte, 24+len(self.Data))
-	bin.PutUint32(ans, uint32(len(self.Data)))
-	bin.PutUint32(ans[4:], uint32(self.Type))
-	bin.PutUint64(ans[8:], self.BlockIndex)
-	bin.PutUint64(ans[16:], self.BlockIndexEnd)
-	copy(ans[24:], self.Data)
+	var ans []byte
+	switch self.Type {
+	case OpBlock:
+		ans = make([]byte, 9)
+		bin.PutUint64(ans[1:], self.BlockIndex)
+	case OpBlockRange:
+		ans = make([]byte, 13)
+		bin.PutUint64(ans[1:], self.BlockIndex)
+		bin.PutUint32(ans[9:], uint32(self.BlockIndexEnd-self.BlockIndex))
+	case OpHash:
+		ans = make([]byte, 3+len(self.Data))
+		bin.PutUint16(ans[1:], uint16(len(self.Data)))
+		copy(ans[3:], self.Data)
+	case OpData:
+		ans = make([]byte, 5+len(self.Data))
+		bin.PutUint32(ans[1:], uint32(len(self.Data)))
+		copy(ans[5:], self.Data)
+	}
+	ans[0] = byte(self.Type)
 	return ans
 }
 
 func (self *Operation) Unserialize(data []byte) (n int, err error) {
-	if len(data) < 24 {
-		return -1, fmt.Errorf("record too small to be an Operation %d < 24", len(data))
+	if len(data) < 1 {
+		return -1, io.ErrShortBuffer
 	}
-	dlen := int(bin.Uint32(data))
-	if len(data) < 24+dlen {
-		return -1, fmt.Errorf("record too small to be an Operation %d < %d", len(data), 24+dlen)
-	}
-	t := OpType(bin.Uint32(data[4:]))
-	switch t {
-	case OpBlock, OpData, OpHash, OpBlockRange:
-		self.Type = t
+	switch OpType(data[0]) {
+	case OpBlock:
+		n = 9
+		if len(data) < n {
+			return -1, io.ErrShortBuffer
+		}
+		self.BlockIndex = bin.Uint64(data[1:])
+	case OpBlockRange:
+		n = 13
+		if len(data) < n {
+			return -1, io.ErrShortBuffer
+		}
+		self.BlockIndex = bin.Uint64(data[1:])
+		self.BlockIndexEnd = self.BlockIndex + uint64(bin.Uint32(data[9:]))
+	case OpHash:
+		n = 3
+		if len(data) < n {
+			return -1, io.ErrShortBuffer
+		}
+		sz := int(bin.Uint16(data[1:]))
+		n += sz
+		if len(data) < n {
+			return -1, io.ErrShortBuffer
+		}
+		self.Data = data[3:n]
+	case OpData:
+		n = 5
+		if len(data) < n {
+			return -1, io.ErrShortBuffer
+		}
+		sz := int(bin.Uint32(data[1:]))
+		n += sz
+		if len(data) < n {
+			return -1, io.ErrShortBuffer
+		}
+		self.Data = data[5:n]
 	default:
-		return 0, fmt.Errorf("record has unknown operation type: %d", t)
+		return 0, fmt.Errorf("record has unknown operation type: %d", data[0])
 	}
-	self.BlockIndex = bin.Uint64(data[8:])
-	self.BlockIndexEnd = bin.Uint64(data[16:])
-	n = 24 + dlen
-	self.Data = data[24:n]
-	return n, nil
+	self.Type = OpType(data[0])
+	return
 }
 
 // Signature hash item generated from target.
@@ -235,6 +275,248 @@ func (r *RSync) set_buffer_to_size(sz int) {
 	}
 }
 
+type section struct {
+	tail int
+	head int
+}
+
+type node struct {
+	op   *Operation
+	next *node
+}
+
+type list struct {
+	head *node
+}
+
+func (self *list) push_back(op *Operation) {
+	n := &node{op: op}
+	n.next = self.head
+	self.head = n
+}
+
+func (self *list) is_empty() bool { return self.head == nil }
+
+func (self *list) front() *Operation {
+	for c := self.head; c != nil; c = c.next {
+		if c.next == nil {
+			return c.op
+		}
+	}
+	return nil
+}
+
+func (self *list) pop_front() *Operation {
+	c := self.head
+	var prev *node
+	for c != nil {
+		if c.next == nil {
+			if prev == nil {
+				self.head = nil
+			} else {
+				prev.next = nil
+			}
+			return c.op
+		}
+		prev = c
+		c = c.next
+	}
+	return nil
+}
+
+type Diff struct {
+	buffer []byte
+	// A single β hash may correlate with many unique hashes.
+	hash_lookup map[uint32][]BlockHash
+	source      io.Reader
+	max_data_op int
+	hasher      hash.Hash
+	hash_buf    []byte
+
+	data, sum                                 section
+	block_size                                int
+	n, valid_to                               int
+	alpha_pop, alpha_push, beta, beta1, beta2 uint32
+	finished, rolling                         bool
+
+	pending_op *Operation
+	ready_ops  list
+}
+
+func (self *Diff) Operation() *Operation {
+	return self.ready_ops.front()
+}
+
+func (self *Diff) hash(b []byte) []byte {
+	self.hasher.Reset()
+	self.hasher.Write(b)
+	return self.hasher.Sum(self.hash_buf[:0])
+}
+
+// Combine OpBlock into OpBlockRange. To do this store the previous
+// non-data operation and determine if it can be extended.
+func (self *Diff) enqueue(op Operation) {
+	switch op.Type {
+	case OpBlock:
+		if self.pending_op != nil {
+			switch self.pending_op.Type {
+			case OpBlock:
+				if self.pending_op.BlockIndex+1 == op.BlockIndex {
+					self.pending_op = &Operation{
+						Type:          OpBlockRange,
+						BlockIndex:    self.pending_op.BlockIndex,
+						BlockIndexEnd: op.BlockIndex,
+					}
+					return
+				}
+			case OpBlockRange:
+				if self.pending_op.BlockIndexEnd+1 == op.BlockIndex {
+					self.pending_op.BlockIndexEnd = op.BlockIndex
+					return
+				}
+			}
+			self.ready_ops.push_back(self.pending_op)
+			self.pending_op = nil
+		}
+		self.pending_op = &op
+	case OpData:
+		// Never save a data operation, as it would corrupt the buffer.
+		if self.pending_op != nil {
+			self.ready_ops.push_back(self.pending_op)
+			self.pending_op = nil
+		}
+		self.ready_ops.push_back(&op)
+	}
+	return
+
+}
+
+func (self *Diff) send_data() {
+	self.enqueue(Operation{Type: OpData, Data: slices.Clone(self.buffer[self.data.tail:self.data.head])})
+	self.data.tail = self.data.head
+}
+
+func (self *Diff) pump_till_op_available() error {
+	for self.ready_ops.is_empty() && !self.finished {
+		if err := self.read_at_least_one_operation(); err != nil {
+			return err
+		}
+	}
+	if self.finished && self.pending_op != nil {
+		self.ready_ops.push_back(self.pending_op)
+		self.pending_op = nil
+	}
+	return nil
+}
+
+// See https://rsync.samba.org/tech_report/node4.html for the design of this algorithm
+func (self *Diff) read_at_least_one_operation() error {
+	last_run := false
+	// Determine if the buffer should be extended.
+	if self.sum.tail+self.block_size > self.valid_to {
+		// Determine if the buffer should be wrapped.
+		if self.valid_to+self.block_size > len(self.buffer) {
+			// Before wrapping the buffer, send any trailing data off.
+			if self.data.tail < self.data.head {
+				self.send_data()
+			}
+			// Wrap the buffer.
+			l := self.valid_to - self.sum.tail
+			copy(self.buffer[:l], self.buffer[self.sum.tail:self.valid_to])
+
+			// Reset indexes.
+			self.valid_to = l
+			self.sum.tail = 0
+			self.data.head = 0
+			self.data.tail = 0
+		}
+
+		n, err := io.ReadAtLeast(self.source, self.buffer[self.valid_to:self.valid_to+self.block_size], self.block_size)
+		self.valid_to += n
+		if err != nil {
+			if err != io.EOF && err != io.ErrUnexpectedEOF {
+				return err
+			}
+			last_run = true
+			self.data.head = self.valid_to
+		}
+		if n == 0 {
+			if self.data.tail < self.data.head {
+				self.send_data()
+			}
+		}
+	}
+
+	// Set the hash sum window head. Must either be a block size
+	// or be at the end of the buffer.
+	self.sum.head = min(self.sum.tail+self.block_size, self.valid_to)
+
+	// Compute the rolling hash.
+	if !self.rolling {
+		self.beta, self.beta1, self.beta2 = βhash(self.buffer[self.sum.tail:self.sum.head])
+		self.rolling = true
+	} else {
+		self.alpha_push = uint32(self.buffer[self.sum.head-1])
+		self.beta1 = (self.beta1 - self.alpha_pop + self.alpha_push) % _M
+		self.beta2 = (self.beta2 - uint32(self.sum.head-self.sum.tail)*self.alpha_pop + self.beta1) % _M
+		self.beta = self.beta1 + _M*self.beta2
+	}
+
+	// Determine if there is a hash match.
+	found_hash := false
+	var block_index uint64
+	if hh, ok := self.hash_lookup[self.beta]; ok && !last_run {
+		block_index, found_hash = findUniqueHash(hh, self.hash(self.buffer[self.sum.tail:self.sum.head]))
+	}
+	// Send data off if there is data available and a hash is found (so the buffer before it
+	// must be flushed first), or the data chunk size has reached it's maximum size (for buffer
+	// allocation purposes) or to flush the end of the data.
+	if self.data.tail < self.data.head && (found_hash || self.data.head-self.data.tail >= self.max_data_op || last_run) {
+		self.send_data()
+	}
+
+	if found_hash {
+		self.enqueue(Operation{Type: OpBlock, BlockIndex: block_index})
+		self.rolling = false
+		self.sum.tail += self.block_size
+
+		// There is prior knowledge that any available data
+		// buffered will have already been sent. Thus we can
+		// assume data.head and data.tail are the same.
+		// May trigger "data wrap".
+		self.data.head = self.sum.tail
+		self.data.tail = self.sum.tail
+	} else {
+		// The following is for the next loop iteration, so don't try to calculate if last.
+		if !last_run && self.rolling {
+			self.alpha_pop = uint32(self.buffer[self.sum.tail])
+		}
+		self.sum.tail += 1
+
+		// May trigger "data wrap".
+		self.data.head = self.sum.tail
+	}
+	if last_run {
+		self.finished = true
+	}
+	return nil
+}
+
+func (r *RSync) CreateDiff(source io.Reader, signature []BlockHash) (ans *Diff) {
+	ans = &Diff{
+		block_size: r.BlockSize, buffer: make([]byte, (r.BlockSize*2)+(r.MaxDataOp)),
+		hash_lookup: make(map[uint32][]BlockHash, len(signature)),
+		source:      source, max_data_op: r.MaxDataOp, hasher: r.UniqueHasher,
+		hash_buf: make([]byte, 0, r.UniqueHasher.Size()),
+	}
+	for _, h := range signature {
+		key := h.WeakHash
+		ans.hash_lookup[key] = append(ans.hash_lookup[key], h)
+	}
+
+	return
+}
+
 // Create the operation list to mutate the target signature into the source.
 // Any data operation from the OperationWriter must have the data copied out
 // within the span of the function; the data buffer underlying the operation
@@ -249,11 +531,6 @@ func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops Operati
 	for _, h := range signature {
 		key := h.WeakHash
 		hashLookup[key] = append(hashLookup[key], h)
-	}
-
-	type section struct {
-		tail int
-		head int
 	}
 
 	var data, sum section
@@ -449,9 +726,10 @@ func findUniqueHash(hh []BlockHash, hashValue []byte) (uint64, bool) {
 // Use a faster way to identify a set of bytes.
 func βhash(block []byte) (β uint32, β1 uint32, β2 uint32) {
 	var a, b uint32
+	sz := uint32(len(block) - 1)
 	for i, val := range block {
 		a += uint32(val)
-		b += (uint32(len(block)-1) - uint32(i) + 1) * uint32(val)
+		b += (sz - uint32(i) + 1) * uint32(val)
 	}
 	β = (a % _M) + (_M * (b % _M))
 	β1 = a % _M
