@@ -27,15 +27,24 @@ const (
 )
 
 type Api struct {
-	rsync                                            RSync
-	signature                                        []BlockHash
-	delta_output                                     io.Writer
-	delta_input                                      io.ReadSeeker
-	unconsumed_signature_data, unconsumed_delta_data []byte
-	expected_input_size_for_signature_generation     int64
+	rsync     RSync
+	signature []BlockHash
 
 	Strong_hash_type StrongHashType
 	Weak_hash_type   WeakHashType
+}
+
+type Differ struct {
+	Api
+	unconsumed_signature_data []byte
+}
+
+type Patcher struct {
+	Api
+	unconsumed_delta_data                        []byte
+	expected_input_size_for_signature_generation int64
+	delta_output                                 io.Writer
+	delta_input                                  io.ReadSeeker
 }
 
 // internal implementation {{{
@@ -85,7 +94,7 @@ func (self *Api) read_signature_blocks(data []byte) (consumed int) {
 	return
 }
 
-func (self *Api) update_delta(data []byte) (consumed int, err error) {
+func (self *Patcher) update_delta(data []byte) (consumed int, err error) {
 	op := Operation{}
 	for len(data) > 0 {
 		n, uerr := op.Unserialize(data)
@@ -108,14 +117,14 @@ func (self *Api) update_delta(data []byte) (consumed int, err error) {
 // }}}
 
 // Start applying serialized delta
-func (self *Api) StartDelta(delta_output io.Writer, delta_input io.ReadSeeker) {
+func (self *Patcher) StartDelta(delta_output io.Writer, delta_input io.ReadSeeker) {
 	self.delta_output = delta_output
 	self.delta_input = delta_input
 	self.unconsumed_delta_data = nil
 }
 
 // Apply a chunk of delta data
-func (self *Api) UpdateDelta(data []byte) (err error) {
+func (self *Patcher) UpdateDelta(data []byte) (err error) {
 	if len(self.unconsumed_delta_data) > 0 {
 		data = append(self.unconsumed_delta_data, data...)
 		self.unconsumed_delta_data = nil
@@ -132,7 +141,7 @@ func (self *Api) UpdateDelta(data []byte) (err error) {
 }
 
 // Finish applying delta data
-func (self *Api) FinishDelta() (err error) {
+func (self *Patcher) FinishDelta() (err error) {
 	if err = self.UpdateDelta([]byte{}); err != nil {
 		return err
 	}
@@ -145,19 +154,8 @@ func (self *Api) FinishDelta() (err error) {
 	return
 }
 
-// Create a serialized delta based on the previously loaded signature
-func (self *Api) CreateDelta(src io.Reader, output_callback func(string) error) (err error) {
-	if len(self.signature) == 0 {
-		return fmt.Errorf("Cannot call CreateDelta() before loading a signature")
-	}
-	self.rsync.CreateDelta(src, self.signature, func(op Operation) error {
-		return output_callback(op.Serialize())
-	})
-	return
-}
-
 // Create a signature for the data source in src
-func (self *Api) CreateSignature(src io.Reader, callback func([]byte) error) (err error) {
+func (self *Patcher) CreateSignature(src io.Reader, callback func([]byte) error) (err error) {
 	header := make([]byte, 12)
 	bin.PutUint16(header[4:], uint16(self.Strong_hash_type))
 	bin.PutUint16(header[6:], uint16(self.Weak_hash_type))
@@ -179,8 +177,19 @@ func (self *Api) CreateSignature(src io.Reader, callback func([]byte) error) (er
 	})
 }
 
+// Create a serialized delta based on the previously loaded signature
+func (self *Differ) CreateDelta(src io.Reader, output_callback func(string) error) (err error) {
+	if len(self.signature) == 0 {
+		return fmt.Errorf("Cannot call CreateDelta() before loading a signature")
+	}
+	self.rsync.CreateDelta(src, self.signature, func(op Operation) error {
+		return output_callback(op.Serialize())
+	})
+	return
+}
+
 // Add more external signature data
-func (self *Api) AddSignatureData(data []byte) (err error) {
+func (self *Differ) AddSignatureData(data []byte) (err error) {
 	if len(self.unconsumed_signature_data) > 0 {
 		data = append(self.unconsumed_signature_data, data...)
 		self.unconsumed_signature_data = nil
@@ -205,7 +214,7 @@ func (self *Api) AddSignatureData(data []byte) (err error) {
 }
 
 // Finish adding external signature data
-func (self *Api) FinishSignatureData() (err error) {
+func (self *Differ) FinishSignatureData() (err error) {
 	if len(self.unconsumed_signature_data) > 0 {
 		return fmt.Errorf("There were %d leftover bytes in the signature data", len(self.unconsumed_signature_data))
 	}
@@ -217,18 +226,18 @@ func (self *Api) FinishSignatureData() (err error) {
 }
 
 // Use to calculate a delta based on a supplied signature, via AddSignatureData
-func NewToCreateDelta() *Api {
-	return &Api{}
+func NewDiffer() *Differ {
+	return &Differ{}
 }
 
 // Use to create a signature and possibly apply a delta
-func NewToCreateSignature(expected_input_size int64) (ans *Api, err error) {
+func NewPatcher(expected_input_size int64) (ans *Patcher) {
 	bs := DefaultBlockSize
 	sz := utils.Max(0, expected_input_size)
 	if sz > 0 {
 		bs = int(math.Round(math.Sqrt(float64(sz))))
 	}
-	ans = &Api{}
+	ans = &Patcher{}
 	ans.rsync.BlockSize = utils.Min(bs, MaxBlockSize)
 	ans.rsync.UniqueHasher = xxh3.New()
 
