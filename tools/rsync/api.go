@@ -14,7 +14,7 @@ import (
 
 var _ = fmt.Print
 
-const MaxBlockSize int = 256 * 1024
+const MaxBlockSize int = 1024 * 1024 // sqrt of 1TB
 
 type StrongHashType uint16
 type WeakHashType uint16
