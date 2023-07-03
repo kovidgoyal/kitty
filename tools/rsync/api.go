@@ -192,7 +192,7 @@ func (self *Differ) CreateDelta(src io.Reader, output_callback func([]byte) erro
 	if err = self.finish_signature_data(); err != nil {
 		return
 	}
-	if len(self.signature) == 0 {
+	if self.signature == nil {
 		return fmt.Errorf("Cannot call CreateDelta() before loading a signature")
 	}
 	self.rsync.CreateDelta(src, self.signature, func(op Operation) error {
