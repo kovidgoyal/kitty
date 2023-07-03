@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"os"
 )
 
 // If no BlockSize is specified in the RSync instance, this value is used.
@@ -178,7 +179,9 @@ func (r *RSync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 	buffer := r.buffer
 
 	writeBlock := func(op Operation) error {
-		target.Seek(int64(r.BlockSize*int(op.BlockIndex)), 0)
+		if _, err = target.Seek(int64(r.BlockSize*int(op.BlockIndex)), os.SEEK_SET); err != nil {
+			return err
+		}
 		n, err = io.ReadAtLeast(target, buffer, r.BlockSize)
 		if err != nil {
 			if err != io.ErrUnexpectedEOF {
