@@ -16,8 +16,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-
-	"kitty/tools/utils"
 )
 
 // If no BlockSize is specified in the RSync instance, this value is used.
@@ -47,14 +45,14 @@ type Operation struct {
 
 var bin = binary.LittleEndian
 
-func (self Operation) Serialize() string {
+func (self Operation) Serialize() []byte {
 	ans := make([]byte, 24+len(self.Data))
 	bin.PutUint32(ans, uint32(len(self.Data)))
 	bin.PutUint32(ans[4:], uint32(self.Type))
 	bin.PutUint64(ans[8:], self.BlockIndex)
 	bin.PutUint64(ans[16:], self.BlockIndexEnd)
 	copy(ans[24:], self.Data)
-	return utils.UnsafeBytesToString(ans)
+	return ans
 }
 
 func (self *Operation) Unserialize(data []byte) (n int, err error) {
@@ -74,9 +72,9 @@ func (self *Operation) Unserialize(data []byte) (n int, err error) {
 	}
 	self.BlockIndex = bin.Uint64(data[8:])
 	self.BlockIndexEnd = bin.Uint64(data[16:])
-	self.Data = data[24 : 24+dlen]
 	n = 24 + dlen
-	return
+	self.Data = data[24:n]
+	return n, nil
 }
 
 // Signature hash item generated from target.

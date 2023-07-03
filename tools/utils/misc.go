@@ -219,6 +219,14 @@ func Concat[T any](slices ...[]T) []T {
 	return result
 }
 
+func ShiftLeft[T any](s []T, amt int) []T {
+	leftover := len(s) - amt
+	if leftover > 0 {
+		copy(s, s[amt:])
+	}
+	return s[:leftover]
+}
+
 func SetStructDefaults(v reflect.Value) (err error) {
 	for _, field := range reflect.VisibleFields(v.Type()) {
 		if defval := field.Tag.Get("default"); defval != "" {

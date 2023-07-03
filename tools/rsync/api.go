@@ -136,18 +136,12 @@ func (self *Patcher) StartDelta(delta_output io.Writer, delta_input io.ReadSeeke
 
 // Apply a chunk of delta data
 func (self *Patcher) UpdateDelta(data []byte) (err error) {
-	if len(self.unconsumed_delta_data) > 0 {
-		data = append(self.unconsumed_delta_data, data...)
-		self.unconsumed_delta_data = nil
-	}
-	consumed, err := self.update_delta(data)
+	self.unconsumed_delta_data = append(self.unconsumed_delta_data, data...)
+	consumed, err := self.update_delta(self.unconsumed_delta_data)
 	if err != nil {
 		return err
 	}
-	data = data[consumed:]
-	if len(data) > 0 {
-		self.unconsumed_delta_data = data
-	}
+	self.unconsumed_delta_data = utils.ShiftLeft(self.unconsumed_delta_data, consumed)
 	return
 }
 
@@ -189,7 +183,7 @@ func (self *Patcher) CreateSignature(src io.Reader, callback func([]byte) error)
 }
 
 // Create a serialized delta based on the previously loaded signature
-func (self *Differ) CreateDelta(src io.Reader, output_callback func(string) error) (err error) {
+func (self *Differ) CreateDelta(src io.Reader, output_callback func([]byte) error) (err error) {
 	if err = self.finish_signature_data(); err != nil {
 		return
 	}
@@ -204,26 +198,19 @@ func (self *Differ) CreateDelta(src io.Reader, output_callback func(string) erro
 
 // Add more external signature data
 func (self *Differ) AddSignatureData(data []byte) (err error) {
-	if len(self.unconsumed_signature_data) > 0 {
-		data = append(self.unconsumed_signature_data, data...)
-		self.unconsumed_signature_data = nil
-	}
+	self.unconsumed_signature_data = append(self.unconsumed_signature_data, data...)
 	if self.rsync.UniqueHasher == nil {
-		consumed, err := self.read_signature_header(data)
+		consumed, err := self.read_signature_header(self.unconsumed_signature_data)
 		if err != nil {
 			if consumed < 0 {
-				self.unconsumed_signature_data = data
 				return nil
 			}
 			return err
 		}
-		data = data[consumed:]
+		self.unconsumed_signature_data = utils.ShiftLeft(self.unconsumed_signature_data, consumed)
 	}
-	consumed := self.read_signature_blocks(data)
-	data = data[consumed:]
-	if len(data) > 0 {
-		self.unconsumed_signature_data = data
-	}
+	consumed := self.read_signature_blocks(self.unconsumed_signature_data)
+	self.unconsumed_signature_data = utils.ShiftLeft(self.unconsumed_signature_data, consumed)
 	return nil
 }
 
