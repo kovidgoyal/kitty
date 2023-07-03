@@ -1824,7 +1824,7 @@ static bool createNativeWindow(_GLFWwindow* window,
     if (fbconfig->transparent)
     {
         [window->ns.object setOpaque:NO];
-        [window->ns.object setHasShadow:NO];
+        [window->ns.object setHasShadow:YES];
         [window->ns.object setBackgroundColor:[NSColor clearColor]];
     }
 
