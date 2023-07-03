@@ -116,7 +116,9 @@ func (self *Patcher) update_delta(data []byte) (consumed int, err error) {
 			if err = self.rsync.ApplyDelta(self.delta_output, self.delta_input, op); err != nil {
 				return
 			}
-			self.total_data_in_delta += len(op.Data)
+			if op.Type == OpData {
+				self.total_data_in_delta += len(op.Data)
+			}
 		} else {
 			if n < 0 {
 				return consumed, nil

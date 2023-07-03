@@ -82,6 +82,7 @@ func (self *Operation) Unserialize(data []byte) (n int, err error) {
 			return -1, io.ErrShortBuffer
 		}
 		self.BlockIndex = bin.Uint64(data[1:])
+		self.Data = nil
 	case OpBlockRange:
 		n = 13
 		if len(data) < n {
@@ -89,6 +90,7 @@ func (self *Operation) Unserialize(data []byte) (n int, err error) {
 		}
 		self.BlockIndex = bin.Uint64(data[1:])
 		self.BlockIndexEnd = self.BlockIndex + uint64(bin.Uint32(data[9:]))
+		self.Data = nil
 	case OpHash:
 		n = 3
 		if len(data) < n {

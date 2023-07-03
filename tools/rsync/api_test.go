@@ -24,7 +24,7 @@ func TestRsyncRoundtrip(t *testing.T) {
 
 	random_patch := func(data []byte) (size int) {
 		if offset := random.Int(len(data)); offset < len(data) {
-			max_size := utils.Min(256, len(data)-offset)
+			max_size := utils.Min(257, len(data)-offset)
 			if size = random.Int(max_size); size > 0 {
 				total_patch_size += size
 				random.Bytes(data[offset : offset+size])
