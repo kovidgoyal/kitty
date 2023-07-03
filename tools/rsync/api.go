@@ -94,6 +94,17 @@ func (self *Api) read_signature_blocks(data []byte) (consumed int) {
 	return
 }
 
+func (self *Differ) finish_signature_data() (err error) {
+	if len(self.unconsumed_signature_data) > 0 {
+		return fmt.Errorf("There were %d leftover bytes in the signature data", len(self.unconsumed_signature_data))
+	}
+	self.unconsumed_signature_data = nil
+	if self.rsync.UniqueHasher == nil {
+		return fmt.Errorf("No header was found in the signature data")
+	}
+	return
+}
+
 func (self *Patcher) update_delta(data []byte) (consumed int, err error) {
 	op := Operation{}
 	for len(data) > 0 {
@@ -179,6 +190,9 @@ func (self *Patcher) CreateSignature(src io.Reader, callback func([]byte) error)
 
 // Create a serialized delta based on the previously loaded signature
 func (self *Differ) CreateDelta(src io.Reader, output_callback func(string) error) (err error) {
+	if err = self.finish_signature_data(); err != nil {
+		return
+	}
 	if len(self.signature) == 0 {
 		return fmt.Errorf("Cannot call CreateDelta() before loading a signature")
 	}
@@ -211,18 +225,6 @@ func (self *Differ) AddSignatureData(data []byte) (err error) {
 		self.unconsumed_signature_data = data
 	}
 	return nil
-}
-
-// Finish adding external signature data
-func (self *Differ) FinishSignatureData() (err error) {
-	if len(self.unconsumed_signature_data) > 0 {
-		return fmt.Errorf("There were %d leftover bytes in the signature data", len(self.unconsumed_signature_data))
-	}
-	self.unconsumed_signature_data = nil
-	if self.rsync.UniqueHasher == nil {
-		return fmt.Errorf("No header was found in the signature data")
-	}
-	return
 }
 
 // Use to calculate a delta based on a supplied signature, via AddSignatureData
