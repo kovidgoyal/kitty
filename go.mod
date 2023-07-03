@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/jamesruan/go-rfc1924 v0.0.0-20170108144916-2767ca7c638f
 	github.com/seancfoley/ipaddress-go v1.5.4
-	github.com/shirou/gopsutil/v3 v3.23.5
+	github.com/shirou/gopsutil/v3 v3.23.6
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	golang.org/x/image v0.8.0
 	golang.org/x/sys v0.9.0
