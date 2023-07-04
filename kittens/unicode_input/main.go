@@ -3,6 +3,7 @@
 package unicode_input
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -481,9 +482,11 @@ func (self *handler) next_mode(delta int) {
 	}
 }
 
+var ErrCanceledByUser = errors.New("Canceled by user")
+
 func (self *handler) on_key_event(event *loop.KeyEvent) (err error) {
 	if event.MatchesPressOrRepeat("esc") || event.MatchesPressOrRepeat("ctrl+c") {
-		return fmt.Errorf("Canceled by user")
+		return ErrCanceledByUser
 	}
 	if event.MatchesPressOrRepeat("f1") || event.MatchesPressOrRepeat("ctrl+1") {
 		event.Handled = true
@@ -626,6 +629,9 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	build_sets()
 	lp, err := run_loop(o)
 	if err != nil {
+		if err == ErrCanceledByUser {
+			err = nil
+		}
 		return 1, err
 	}
 	ds := lp.DeathSignalName()
