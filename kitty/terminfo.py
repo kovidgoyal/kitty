@@ -244,7 +244,7 @@ string_capabilities = {
     # From status line (end window title string)
     'fsl': r'^G',
     # Disable status line (clear window title)
-    'dsl': r'\E]2;\007',
+    'dsl': r'\E]2;\E\\',
     # Move to specified line
     'vpa': r'\E[%i%p1%dd',
     # Enter italics mode
@@ -289,10 +289,17 @@ string_capabilities = {
     'u9': r'\E[c',
 
     # Bracketed paste, added to ncurses 6.4 in 2023
-    'PS': '\E[200~',
-    'PE': '\E[201~',
-    'BE': '\E[?2004h',
-    'BD': '\E[?2004l',
+    'PS': r'\E[200~',
+    'PE': r'\E[201~',
+    'BE': r'\E[?2004h',
+    'BD': r'\E[?2004l',
+
+    # XTVERSION
+    'XR': r'\E[>0q',
+    # OSC 52 clipboard access
+    'Ms': r'\E]52;%p1%s;%p2%s\E\\',
+    # Send device attributes (report version)
+    'RV': r'\E[>c',
 
     # The following are entries that we don't use
     # # turn on blank mode, (characters invisible)
@@ -466,7 +473,7 @@ queryable_capabilities = cast(Dict[str, str], numeric_capabilities.copy())
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset(
-    'Cr Cs Se Ss Setulc Su Smulx Sync Tc PS PE BE BD setrgbf setrgbb fullkbd kUP kDN kbeg kBEG'.split() + [
+    'XR Ms RV Cr Cs Se Ss Setulc Su Smulx Sync Tc PS PE BE BD setrgbf setrgbb fullkbd kUP kDN kbeg kBEG'.split() + [
         f'k{key}{mod}'
         for key in 'UP DN RIT LFT BEG END HOM IC DC PRV NXT'.split()
         for mod in range(3, 8)])
