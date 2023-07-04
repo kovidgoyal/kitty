@@ -136,7 +136,8 @@ func Min[T constraints.Ordered](a T, items ...T) (ans T) {
 }
 
 func Memset[T any](dest []T, pattern ...T) []T {
-	if len(pattern) == 0 {
+	switch len(pattern) {
+	case 0:
 		var zero T
 		switch any(zero).(type) {
 		case byte: // special case this as the compiler can generate efficient code for memset of a byte slice to zero
@@ -150,11 +151,17 @@ func Memset[T any](dest []T, pattern ...T) []T {
 			}
 		}
 		return dest
-	}
-	bp := copy(dest, pattern)
-	for bp < len(dest) {
-		copy(dest[bp:], dest[:bp])
-		bp *= 2
+	case 1:
+		val := pattern[0]
+		for i := range dest {
+			dest[i] = val
+		}
+	default:
+		bp := copy(dest, pattern)
+		for bp < len(dest) {
+			copy(dest[bp:], dest[:bp])
+			bp *= 2
+		}
 	}
 	return dest
 }
