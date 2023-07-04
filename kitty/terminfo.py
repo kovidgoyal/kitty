@@ -289,8 +289,8 @@ string_capabilities = {
     'u9': r'\E[c',
 
     # Bracketed paste, added to ncurses 6.4 in 2023
-    'PS': '\E200~',
-    'PE': '\E201~',
+    'PS': '\E[200~',
+    'PE': '\E[201~',
     'BE': '\E[?2004h',
     'BD': '\E[?2004l',
 
