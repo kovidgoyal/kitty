@@ -19,6 +19,8 @@ glfw/*.h linguist-vendored=true
 kittens/unicode_input/names.h linguist-generated=true
 tools/wcswidth/std.go linguist-generated=true
 tools/unicode_names/names.txt linguist-generated=true
+terminfo/kitty.term* linguist-generated=true
+terminfo/x/* linguist-generated=true
 
 *.py  text diff=python
 *.m  text diff=objc
