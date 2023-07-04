@@ -81,8 +81,16 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 		t.Fatal(err)
 	}
 	deltabuf := bytes.Buffer{}
-	if err := d.CreateDelta(bytes.NewReader(src_data), func(b []byte) error { _, err := deltabuf.Write(b); return err }); err != nil {
-		t.Fatal(err)
+	it := d.CreateDelta(bytes.NewBuffer(src_data))
+	for {
+		b, err := it()
+		if b == nil {
+			if err != nil {
+				t.Fatal(err)
+			}
+			break
+		}
+		deltabuf.Write(b)
 	}
 	outputbuf := bytes.Buffer{}
 	p.StartDelta(&outputbuf, bytes.NewReader(src_data))
