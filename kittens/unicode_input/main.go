@@ -497,10 +497,10 @@ func (self *handler) on_key_event(event *loop.KeyEvent) (err error) {
 	} else if event.MatchesPressOrRepeat("f4") || event.MatchesPressOrRepeat("ctrl+4") {
 		event.Handled = true
 		self.switch_mode(FAVORITES)
-	} else if event.MatchesPressOrRepeat("tab") || event.MatchesPressOrRepeat("ctrl+]") {
+	} else if event.MatchesPressOrRepeat("ctrl+tab") || event.MatchesPressOrRepeat("ctrl+]") {
 		event.Handled = true
 		self.next_mode(1)
-	} else if event.MatchesPressOrRepeat("shift+tab") || event.MatchesPressOrRepeat("ctrl+[") {
+	} else if event.MatchesPressOrRepeat("ctrl+shift+tab") || event.MatchesPressOrRepeat("ctrl+[") {
 		event.Handled = true
 		self.next_mode(-1)
 	}
