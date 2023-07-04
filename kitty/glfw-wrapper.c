@@ -413,9 +413,6 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetCocoaWindow_impl) = dlsym(handle, "glfwGetCocoaWindow");
     if (glfwGetCocoaWindow_impl == NULL) dlerror(); // clear error indicator
 
-    *(void **) (&glfwHideCocoaTitlebar_impl) = dlsym(handle, "glfwHideCocoaTitlebar");
-    if (glfwHideCocoaTitlebar_impl == NULL) dlerror(); // clear error indicator
-
     *(void **) (&glfwGetNSGLContext_impl) = dlsym(handle, "glfwGetNSGLContext");
     if (glfwGetNSGLContext_impl == NULL) dlerror(); // clear error indicator
 
@@ -457,6 +454,9 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwSetPrimarySelectionString_impl) = dlsym(handle, "glfwSetPrimarySelectionString");
     if (glfwSetPrimarySelectionString_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwCocoaSetWindowChrome_impl) = dlsym(handle, "glfwCocoaSetWindowChrome");
+    if (glfwCocoaSetWindowChrome_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwGetPrimarySelectionString_impl) = dlsym(handle, "glfwGetPrimarySelectionString");
     if (glfwGetPrimarySelectionString_impl == NULL) dlerror(); // clear error indicator

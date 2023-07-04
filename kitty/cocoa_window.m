@@ -699,25 +699,6 @@ cocoa_update_menu_bar_title(PyObject *pytitle) {
     [m release];
 } // }}}
 
-bool
-cocoa_make_window_resizable(void *w, bool resizable) {
-    NSWindow *window = (NSWindow*)w;
-
-    @try {
-        if (resizable) {
-            [window setStyleMask:
-                [window styleMask] | NSWindowStyleMaskResizable];
-        } else {
-            [window setStyleMask:
-                [window styleMask] & ~NSWindowStyleMaskResizable];
-        }
-    } @catch (NSException *e) {
-        log_error("Failed to set style mask: %s: %s", [[e name] UTF8String], [[e reason] UTF8String]);
-        return false;
-    }
-    return true;
-}
-
 #define NSLeftAlternateKeyMask  (0x000020 | NSEventModifierFlagOption)
 #define NSRightAlternateKeyMask (0x000040 | NSEventModifierFlagOption)
 
@@ -811,46 +792,6 @@ cocoa_cursor_blink_interval(void) {
 void
 cocoa_set_activation_policy(bool hide_from_tasks) {
     [NSApp setActivationPolicy:(hide_from_tasks ? NSApplicationActivationPolicyAccessory : NSApplicationActivationPolicyRegular)];
-}
-
-void
-cocoa_set_titlebar_appearance(void *w, unsigned int theme)
-{
-    if (!theme) return;
-    @autoreleasepool {
-        NSWindow *window = (NSWindow*)w;
-        [window setAppearance:[NSAppearance appearanceNamed:((theme == 2) ? NSAppearanceNameVibrantDark : NSAppearanceNameVibrantLight)]];
-    } // autoreleasepool
-}
-
-void
-cocoa_set_titlebar_color(void *w, color_type titlebar_color)
-{
-    @autoreleasepool {
-
-    NSWindow *window = (NSWindow*)w;
-
-    double red = ((titlebar_color >> 16) & 0xFF) / 255.0;
-    double green = ((titlebar_color >> 8) & 0xFF) / 255.0;
-    double blue = (titlebar_color & 0xFF) / 255.0;
-
-    NSColor *background =
-        [NSColor colorWithSRGBRed:red
-                            green:green
-                             blue:blue
-                            alpha:1.0];
-    [window setTitlebarAppearsTransparent:YES];
-    [window setBackgroundColor:background];
-
-    double luma = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-
-    if (luma < 0.5) {
-        [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
-    } else {
-        [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]];
-    }
-
-    } // autoreleasepool
 }
 
 static PyObject*
@@ -965,17 +906,6 @@ cleanup(void) {
     notification_queue.notifications = NULL;
     notification_queue.capacity = 0;
 #endif
-
-    } // autoreleasepool
-}
-
-void
-cocoa_hide_window_title(void *w)
-{
-    @autoreleasepool {
-
-    NSWindow *window = (NSWindow*)w;
-    [window setTitleVisibility:NSWindowTitleHidden];
 
     } // autoreleasepool
 }

@@ -15,15 +15,11 @@
 #ifndef __APPLE__
 #include "freetype_render_ui_text.h"
 #endif
-extern bool cocoa_make_window_resizable(void *w, bool);
 extern void cocoa_focus_window(void *w);
 extern long cocoa_window_number(void *w);
 extern void cocoa_create_global_menu(void);
-extern void cocoa_hide_window_title(void *w);
 extern void cocoa_system_beep(const char*);
 extern void cocoa_set_activation_policy(bool);
-extern void cocoa_set_titlebar_appearance(void *w, unsigned int theme);
-extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
 extern void cocoa_toggle_secure_keyboard_entry(void);
 extern void cocoa_hide(void);
@@ -844,16 +840,87 @@ intercept_cocoa_fullscreen(GLFWwindow *w) {
 }
 #endif
 
-void
-set_titlebar_color(OSWindow *w, color_type color, bool use_system_color, unsigned int system_color UNUSED) {
-    if (w->handle && (!w->last_titlebar_color || (w->last_titlebar_color & 0xffffff) != (color & 0xffffff))) {
-        w->last_titlebar_color = (1 << 24) | (color & 0xffffff);
+static void
+init_window_chrome_state(WindowChromeState *s, color_type active_window_bg, bool is_semi_transparent, float background_opacity) {
+    zero_at_ptr(s);
+    const bool should_blur = background_opacity < 1.f && OPT(background_blur) > 0 && is_semi_transparent;
+#define SET_TCOL(val) \
+        s->use_system_color = false; \
+        switch (val & 0xff) { \
+            case 0: s->use_system_color = true; break; \
+            case 1: s->color = active_window_bg; break; \
+            default: s->color = val >> 8; break; \
+        }
+
 #ifdef __APPLE__
-        if (!use_system_color) cocoa_set_titlebar_color(glfwGetCocoaWindow(w->handle), color);
-        else cocoa_set_titlebar_appearance(glfwGetCocoaWindow(w->handle), system_color);
+    if (OPT(macos_titlebar_color) < 0) {
+        s->use_system_color = true;
+        s->system_color = -OPT(macos_titlebar_color);
+    } else {
+        unsigned long val = OPT(macos_titlebar_color);
+        SET_TCOL(val);
+    }
+    s->macos_colorspace = OPT(macos_colorspace);
+    s->resizable = OPT(macos_window_resizable);
 #else
-        if (global_state.is_wayland && glfwWaylandSetTitlebarColor) glfwWaylandSetTitlebarColor(w->handle, color, use_system_color);
+    if (global_state.is_wayland) { SET_TCOL(OPT(wayland_titlebar_color)); }
 #endif
+    s->background_blur = should_blur ? OPT(background_blur) : 0;
+    s->hide_window_decorations = OPT(hide_window_decorations);
+    s->show_title_in_titlebar = (OPT(macos_show_window_title_in) & WINDOW) != 0;
+    s->background_opacity = background_opacity;
+}
+
+#ifdef __APPLE__
+static void
+apply_window_chrome_state(GLFWwindow *w, WindowChromeState new_state, int width, int height, bool window_decorations_changed) {
+    glfwCocoaSetWindowChrome(w,
+        new_state.color, new_state.use_system_color, new_state.system_color,
+        new_state.background_blur, new_state.hide_window_decorations,
+        new_state.show_title_in_titlebar, new_state.macos_colorspace,
+        new_state.background_opacity, new_state.resizable
+    );
+    // Need to resize the window again after hiding decorations or title bar to take up screen space
+    if (window_decorations_changed) glfwSetWindowSize(w, width, height);
+}
+#endif
+
+void
+set_window_chrome(OSWindow *w) {
+    if (!w->handle) return;
+    color_type bg = OPT(background);
+    if (w->num_tabs > w->active_tab) {
+        Tab *tab = w->tabs + w->active_tab;
+        if (tab->num_windows > tab->active_window) {
+            Window *window = tab->windows + tab->active_window;
+            ColorProfile *c;
+            if (window->render_data.screen && (c=window->render_data.screen->color_profile)) {
+                bg = colorprofile_to_color(c, c->overridden.default_bg, c->configured.default_bg).rgb;
+            }
+        }
+    }
+
+    WindowChromeState new_state;
+    init_window_chrome_state(&new_state, bg, w->is_semi_transparent, w->background_opacity);
+    if (memcmp(&new_state, &w->last_window_chrome, sizeof(WindowChromeState)) != 0) {
+        int width, height;
+        glfwGetWindowSize(w->handle, &width, &height);
+        bool window_decorations_changed = new_state.hide_window_decorations != w->last_window_chrome.hide_window_decorations;
+#ifdef __APPLE__
+        apply_window_chrome_state(w->handle, new_state, width, height, window_decorations_changed);
+#else
+        if (window_decorations_changed) {
+            bool hide_window_decorations = new_state.hide_window_decorations & 1;
+            glfwSetWindowAttrib(w->handle, GLFW_DECORATED, !hide_window_decorations);
+            glfwSetWindowSize(w->handle, width, height);
+        }
+        if (global_state.is_wayland) {
+            if (glfwWaylandSetTitlebarColor) glfwWaylandSetTitlebarColor(w->handle, new_state.color, new_state.use_system_color);
+        } else {
+            glfwSetX11WindowBlurred(w->handle, new_state.background_blur > 0);
+        }
+#endif
+        w->last_window_chrome = new_state;
     }
 }
 
@@ -886,7 +953,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         // We don't use depth and stencil buffers
         glfwWindowHint(GLFW_DEPTH_BITS, 0);
         glfwWindowHint(GLFW_STENCIL_BITS, 0);
-        if (OPT(hide_window_decorations) & 1) glfwWindowHint(GLFW_DECORATED, false);
         glfwSetApplicationCloseCallback(application_close_requested_callback);
         glfwSetCurrentSelectionCallback(get_current_selection);
         glfwSetHasCurrentSelectionCallback(has_current_selection);
@@ -899,6 +965,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         glfwSetApplicationWillFinishLaunching(cocoa_create_global_menu);
 #endif
     }
+    if (OPT(hide_window_decorations) & 1) glfwWindowHint(GLFW_DECORATED, false);
 
     const bool set_blur = OPT(background_blur) > 0 && OPT(background_opacity) < 1.f;
 #ifdef __APPLE__
@@ -1012,18 +1079,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     w->fonts_data = fonts_data;
     w->shown_once = true;
     w->last_focused_counter = ++focus_counter;
-#ifdef __APPLE__
-    if (OPT(hide_window_decorations) & 2) {
-        glfwHideCocoaTitlebar(glfw_window, true);
-    } else if (!(OPT(macos_show_window_title_in) & WINDOW)) {
-        if (glfwGetCocoaWindow) cocoa_hide_window_title(glfwGetCocoaWindow(glfw_window));
-        else log_error("Failed to load glfwGetCocoaWindow");
-    }
-    if (OPT(hide_window_decorations)) {
-        // Need to resize the window again after hiding decorations or title bar to take up screen space
-        glfwSetWindowSize(glfw_window, width, height);
-    }
-#endif
     os_window_update_size_increments(w);
 #ifdef __APPLE__
     if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
@@ -1033,9 +1088,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
     glfwSetCursor(glfw_window, standard_cursor);
     update_os_window_viewport(w, false);
-#ifdef __APPLE__
-    if (glfwGetCocoaWindow) cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window), OPT(macos_window_resizable));
-#endif
     glfwSetWindowPosCallback(glfw_window, window_pos_callback);
     // missing size callback
     glfwSetWindowCloseCallback(glfw_window, window_close_callback);
@@ -1066,6 +1118,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
             warned = true;
         }
     }
+    init_window_chrome_state(&w->last_window_chrome, OPT(background), w->is_semi_transparent, w->background_opacity);
+#ifdef __APPLE__
+    apply_window_chrome_state(w->handle, w->last_window_chrome, width, height, OPT(hide_window_decorations) != 0);
+#endif
     // Update window state
     // We do not call glfwWindowHint to set GLFW_MAXIMIZED before the window is created.
     // That would cause the window to be set to maximize immediately after creation and use the wrong initial size when restored.
@@ -1086,16 +1142,6 @@ os_window_update_size_increments(OSWindow *window) {
         if (window->handle) glfwSetWindowSizeIncrements(
                 window->handle, GLFW_DONT_CARE, GLFW_DONT_CARE);
     }
-}
-
-void
-update_background_blur(OSWindow *os_window) {
-    const bool should_blur = os_window->background_opacity < 1.f && OPT(background_blur) > 0 && os_window->is_semi_transparent;
-#ifdef __APPLE__
-    glfwCocoaSetBackgroundBlur(os_window->handle, should_blur ? OPT(background_blur) : 0);
-#else
-    if (!global_state.is_wayland) glfwSetX11WindowBlurred(os_window->handle, should_blur);
-#endif
 }
 
 #ifdef __APPLE__

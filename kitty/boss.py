@@ -108,6 +108,7 @@ from .fast_data_types import (
     set_options,
     set_os_window_size,
     set_os_window_title,
+    set_window_chrome,
     thread_write,
     toggle_fullscreen,
     toggle_maximized,
@@ -1473,6 +1474,7 @@ class Boss:
                 t = tm.tab_for_id(w.tab_id)
                 if t is not None:
                     t.relayout_borders()
+                set_window_chrome(w.os_window_id)
 
     def dispatch_action(
         self,
@@ -2397,6 +2399,7 @@ class Boss:
             t = tm.active_tab
             if t is not None:
                 t.relayout_borders()
+            set_window_chrome(tm.os_window_id)
         patch_global_colors(spec, configured)
 
     def apply_new_options(self, opts: Options) -> None:

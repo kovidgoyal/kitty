@@ -3084,9 +3084,7 @@ egr()  # }}}
 # os {{{
 agr('os', 'OS specific tweaks')
 
-opt('wayland_titlebar_color', 'system',
-    option_type='titlebar_color',
-    long_text='''
+opt('wayland_titlebar_color', 'system', option_type='titlebar_color', ctype='uint', long_text='''
 The color of the kitty window's titlebar on Wayland systems with client
 side window decorations such as GNOME. A value of :code:`system` means to use
 the default system color, a value of :code:`background` means to use the
@@ -3095,9 +3093,7 @@ arbitrary color, such as :code:`#12af59` or :code:`red`.
 '''
     )
 
-opt('macos_titlebar_color', 'system',
-    option_type='macos_titlebar_color',
-    long_text='''
+opt('macos_titlebar_color', 'system', option_type='macos_titlebar_color', ctype='int', long_text='''
 The color of the kitty window's titlebar on macOS. A value of
 :code:`system` means to use the default system color, :code:`light` or
 :code:`dark` can also be used to set it explicitly. A value of
@@ -3151,8 +3147,7 @@ opt('macos_window_resizable', 'yes',
     option_type='to_bool', ctype='bool',
     long_text='''
 Disable this if you want kitty top-level OS windows to not be resizable on
-macOS. Changing this option by reloading the config will only affect newly
-created OS windows.
+macOS.
 '''
     )
 

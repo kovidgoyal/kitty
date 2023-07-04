@@ -26,8 +26,9 @@
 // It is fine to use C99 in this file because it will not be built with VS
 //========================================================================
 
-#include "internal.h"
 #include "../kitty/monotonic.h"
+#include "glfw3.h"
+#include "internal.h"
 
 #include <Availability.h>
 #import <CoreServices/CoreServices.h>
@@ -35,6 +36,7 @@
 #include <float.h>
 #include <string.h>
 
+#define debug(...) if (_glfw.hints.init.debugRendering) fprintf(stderr, __VA_ARGS__);
 
 GLFWAPI int glfwCocoaSetBackgroundBlur(GLFWwindow *w, int radius);
 
@@ -293,6 +295,7 @@ vk_to_unicode_key_with_current_layout(uint16_t keycode)
 static NSUInteger getStyleMask(_GLFWwindow* window)
 {
     NSUInteger styleMask = NSWindowStyleMaskMiniaturizable;
+    if (window->ns.titlebar_hidden) styleMask |= NSWindowStyleMaskFullSizeContentView;
 
     if (window->monitor || !window->decorated)
         styleMask |= NSWindowStyleMaskBorderless;
@@ -2922,29 +2925,6 @@ GLFWAPI id glfwGetCocoaWindow(GLFWwindow* handle)
     return window->ns.object;
 }
 
-GLFWAPI void glfwHideCocoaTitlebar(GLFWwindow* handle, bool yes) {
-    @autoreleasepool {
-    _GLFWwindow* w = (_GLFWwindow*) handle;
-    NSWindow *window = w->ns.object;
-    w->ns.titlebar_hidden = yes;
-    NSButton *button;
-    button = [window standardWindowButton: NSWindowCloseButton];
-    if (button) button.hidden = yes;
-    button = [window standardWindowButton: NSWindowMiniaturizeButton];
-    if (button) button.hidden = yes;
-    button = [window standardWindowButton: NSWindowZoomButton];
-    [window setTitlebarAppearsTransparent:yes];
-    if (button) button.hidden = yes;
-    if (yes) {
-        [window setTitleVisibility:NSWindowTitleHidden];
-        [window setStyleMask: [window styleMask] | NSWindowStyleMaskFullSizeContentView];
-    } else {
-        [window setTitleVisibility:NSWindowTitleVisible];
-        [window setStyleMask: [window styleMask] & ~NSWindowStyleMaskFullSizeContentView];
-    }
-    } // autoreleasepool
-}
-
 GLFWAPI GLFWcocoatextinputfilterfun glfwSetCocoaTextInputFilter(GLFWwindow *handle, GLFWcocoatextinputfilterfun callback) {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     _GLFW_REQUIRE_INIT_OR_RETURN(nil);
@@ -2983,6 +2963,92 @@ GLFWAPI int glfwCocoaSetBackgroundBlur(GLFWwindow *w, int radius) {
     }
     return orig;
 }
+
+GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool use_system_color, unsigned int system_color, int background_blur, unsigned int hide_window_decorations, bool show_text_in_titlebar, int color_space, float background_opacity, bool resizable) { @autoreleasepool {
+    _GLFWwindow* window = (_GLFWwindow*)w;
+    const bool is_transparent = ![window->ns.object isOpaque];
+    if (!is_transparent) { background_opacity = 1.0; background_blur = 0; }
+    NSColor *background = nil;
+    NSAppearance *appearance = nil;
+    bool titlebar_transparent = false;
+    NSWindowStyleMask current_style_mask = [window->ns.object styleMask];
+    bool in_fullscreen = ((current_style_mask & NSWindowStyleMaskFullScreen) != 0) || window->ns.in_traditional_fullscreen;
+    if (use_system_color || background_opacity < 1.0) {
+        if (is_transparent) {
+            // prevent blurring of shadows at window corners with desktop background by setting a low alpha background
+            background = background_blur > 0 ? [NSColor colorWithWhite: 0 alpha: 0.001f] : [NSColor clearColor];
+        } else background = [NSColor clearColor];
+        switch (system_color) {
+            case 1:
+                appearance = [NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]; break;
+            case 2:
+                appearance = [NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]; break;
+        }
+    } else {
+        // set a background color and make the title bar transparent so the background color is visible
+        double red = ((color >> 16) & 0xFF) / 255.0;
+        double green = ((color >> 8) & 0xFF) / 255.0;
+        double blue = (color & 0xFF) / 255.0;
+        double luma = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+        background = [NSColor colorWithSRGBRed:red green:green blue:blue alpha:1.f];
+        appearance = [NSAppearance appearanceNamed:(luma < 0.5 ? NSAppearanceNameVibrantDark : NSAppearanceNameVibrantLight)];
+        titlebar_transparent = true;
+    }
+    [window->ns.object setBackgroundColor:background];
+    [window->ns.object setAppearance:appearance];
+    glfwCocoaSetBackgroundBlur(w, background_blur);
+    bool has_shadow = false;
+    const char *decorations_desc = "full";
+    window->ns.titlebar_hidden = false;
+    switch (hide_window_decorations) {
+        case 1:
+            decorations_desc = "none";
+            window->decorated = false;
+            break;
+        case 2:
+            decorations_desc = "no-titlebar";
+            window->decorated = true;
+            has_shadow = true;
+            titlebar_transparent = true;
+            window->ns.titlebar_hidden = true;
+            show_text_in_titlebar = false;
+            break;
+        default:
+            window->decorated = true;
+            has_shadow = true;
+            break;
+    }
+    bool hide_titlebar_buttons = !in_fullscreen && window->ns.titlebar_hidden;
+    [window->ns.object setTitlebarAppearsTransparent:titlebar_transparent];
+    [window->ns.object setHasShadow:has_shadow];
+    [window->ns.object setTitleVisibility:(show_text_in_titlebar) ? NSWindowTitleVisible : NSWindowTitleHidden];
+    NSColorSpace *cs = nil;
+    switch (color_space) {
+        case SRGB_COLORSPACE: cs = [NSColorSpace sRGBColorSpace]; break;
+        case DISPLAY_P3_COLORSPACE: cs = [NSColorSpace displayP3ColorSpace]; break;
+        case DEFAULT_COLORSPACE: cs = [NSColorSpace deviceRGBColorSpace]; break;
+    }
+    window->resizable = resizable;
+    [window->ns.object setColorSpace:cs];
+    [[window->ns.object standardWindowButton: NSWindowCloseButton] setHidden:hide_titlebar_buttons];
+    [[window->ns.object standardWindowButton: NSWindowMiniaturizeButton] setHidden:hide_titlebar_buttons];
+    [[window->ns.object standardWindowButton: NSWindowZoomButton] setHidden:hide_titlebar_buttons];
+    debug(
+        "Window Chrome state:\n\tbackground: %s\n\tappearance: %s color_space: %s\n\t"
+        "blur: %d has_shadow: %d resizable: %d decorations: %s (%d)\n\t"
+        "titlebar: transparent: %d title_visibility: %d hidden: %d buttons_hidden: %d"
+        "\n",
+        background ? [background.description UTF8String] : "<nil>",
+        appearance ? [appearance.name UTF8String] : "<nil>",
+        cs ? (cs.localizedName ? [cs.localizedName UTF8String] : [cs.description UTF8String]) : "<nil>",
+        background_blur, has_shadow, resizable, decorations_desc, window->decorated, titlebar_transparent,
+        show_text_in_titlebar, window->ns.titlebar_hidden, hide_titlebar_buttons
+    );
+    window->ns.pre_full_screen_style_mask = getStyleMask(window);
+    [window->ns.object setStyleMask:window->ns.pre_full_screen_style_mask];
+    // HACK: Changing the style mask can cause the first responder to be cleared
+    [window->ns.object makeFirstResponder:window->ns.view];
+}}
 
 GLFWAPI int glfwGetCurrentSystemColorTheme(void) {
     int theme_type = 0;

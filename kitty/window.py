@@ -38,7 +38,6 @@ from .constants import (
     appname,
     clear_handled_signals,
     config_dir,
-    is_macos,
     wakeup_io_loop,
 )
 from .fast_data_types import (
@@ -70,7 +69,6 @@ from .fast_data_types import (
     mouse_selection,
     move_cursor_to_mouse_if_in_prompt,
     pt_to_px,
-    set_titlebar_color,
     set_window_logo,
     set_window_padding,
     set_window_render_data,
@@ -619,10 +617,9 @@ class Window:
             val = round(val)
         return int(val)
 
-    def apply_options(self) -> None:
+    def apply_options(self, is_active: bool) -> None:
         opts = get_options()
         self.update_effective_padding()
-        self.change_titlebar_color()
         setup_colors(self.screen, opts)
 
     @property
@@ -1017,18 +1014,6 @@ class Window:
                 if changed:
                     tab.relayout_borders()
                 tab.on_bell(self)
-
-    def change_titlebar_color(self) -> None:
-        opts = get_options()
-        val = opts.macos_titlebar_color if is_macos else opts.wayland_titlebar_color
-        if val > 0:
-            if (val & 0xff) == 1:
-                val = self.screen.color_profile.default_bg
-            else:
-                val = val >> 8
-            set_titlebar_color(self.os_window_id, val)
-        else:
-            set_titlebar_color(self.os_window_id, 0, True, -val)
 
     def change_colors(self, changes: Dict[DynamicColor, Optional[str]]) -> None:
         dirtied = default_bg_changed = False

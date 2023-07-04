@@ -516,6 +516,7 @@ set_active_window(id_type os_window_id, id_type tab_id, id_type window_id) {
         (void)window;
         tab->active_window = w;
         osw->needs_render = true;
+        set_window_chrome(osw);
     END_WITH_WINDOW;
 }
 
@@ -877,14 +878,11 @@ PYWRAP1(run_with_activation_token) {
     Py_RETURN_NONE;
 }
 
-PYWRAP1(set_titlebar_color) {
+PYWRAP1(set_window_chrome) {
     id_type os_window_id;
-    unsigned int color;
-    int use_system_color = 0;
-    unsigned int system_color = 0;
-    PA("KI|pI", &os_window_id, &color, &use_system_color, &system_color);
+    PA("K", &os_window_id);
     WITH_OS_WINDOW(os_window_id)
-        set_titlebar_color(os_window, color, use_system_color, system_color);
+        set_window_chrome(os_window);
         Py_RETURN_TRUE;
     END_WITH_OS_WINDOW
     Py_RETURN_FALSE;
@@ -1093,7 +1091,6 @@ PYWRAP0(apply_options_update) {
         get_platform_dependent_config_values(os_window->handle);
         os_window->background_opacity = OPT(background_opacity);
         os_window->is_damaged = true;
-        update_background_blur(os_window);
         for (size_t t = 0; t < os_window->num_tabs; t++) {
             Tab *tab = os_window->tabs + t;
             for (size_t w = 0; w < tab->num_windows; w++) {
@@ -1363,7 +1360,7 @@ static PyMethodDef module_methods[] = {
     MW(mark_os_window_for_close, METH_VARARGS),
     MW(set_application_quit_request, METH_VARARGS),
     MW(current_application_quit_request, METH_NOARGS),
-    MW(set_titlebar_color, METH_VARARGS),
+    MW(set_window_chrome, METH_VARARGS),
     MW(focus_os_window, METH_VARARGS),
     MW(mark_tab_bar_dirty, METH_O),
     MW(run_with_activation_token, METH_O),

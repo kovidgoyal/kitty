@@ -167,9 +167,10 @@ class Tab:  # {{{
             self._set_current_layout(self.enabled_layouts[0])
         self.relayout()
 
-    def apply_options(self) -> None:
+    def apply_options(self, is_active: bool) -> None:
+        aw = self.active_window
         for window in self:
-            window.apply_options()
+            window.apply_options(is_active and aw is window)
         self.set_enabled_layouts(get_options().enabled_layouts)
 
     def take_over_from(self, other_tab: 'Tab') -> None:
@@ -287,15 +288,12 @@ class Tab:  # {{{
     def relayout_borders(self) -> None:
         tm = self.tab_manager_ref()
         if tm is not None:
-            w = self.active_window
             ly = self.current_layout
             self.borders(
                 all_windows=self.windows,
                 current_layout=ly, tab_bar_rects=tm.tab_bar_rects,
                 draw_window_borders=(ly.needs_window_borders and self.windows.num_visble_groups > 1) or ly.must_draw_borders
             )
-            if w is not None:
-                w.change_titlebar_color()
 
     def create_layout_object(self, name: str) -> Layout:
         return create_layout_object_for(name, self.os_window_id, self.id)
@@ -1218,8 +1216,9 @@ class TabManager:  # {{{
         del self.tabs
 
     def apply_options(self) -> None:
+        at = self.active_tab
         for tab in self:
-            tab.apply_options()
+            tab.apply_options(at is tab)
         self.tab_bar_hidden = get_options().tab_bar_style == 'hidden'
         self.tab_bar.apply_options()
         self.update_tab_bar_data()

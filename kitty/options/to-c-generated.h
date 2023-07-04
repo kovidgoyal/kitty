@@ -942,6 +942,32 @@ convert_from_opts_allow_hyperlinks(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_wayland_titlebar_color(PyObject *val, Options *opts) {
+    opts->wayland_titlebar_color = PyLong_AsUnsignedLong(val);
+}
+
+static void
+convert_from_opts_wayland_titlebar_color(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "wayland_titlebar_color");
+    if (ret == NULL) return;
+    convert_from_python_wayland_titlebar_color(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_macos_titlebar_color(PyObject *val, Options *opts) {
+    opts->macos_titlebar_color = PyLong_AsLong(val);
+}
+
+static void
+convert_from_opts_macos_titlebar_color(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "macos_titlebar_color");
+    if (ret == NULL) return;
+    convert_from_python_macos_titlebar_color(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_macos_option_as_alt(PyObject *val, Options *opts) {
     opts->macos_option_as_alt = PyLong_AsUnsignedLong(val);
 }
@@ -1203,6 +1229,10 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_close_on_child_death(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_allow_hyperlinks(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_wayland_titlebar_color(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_macos_titlebar_color(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_macos_option_as_alt(py_opts, opts);
     if (PyErr_Occurred()) return false;

@@ -90,6 +90,8 @@ typedef struct {
     } underline_position, underline_thickness, strikethrough_position, strikethrough_thickness, cell_width, cell_height, baseline;
     bool show_hyperlink_targets;
     int background_blur;
+    long macos_titlebar_color;
+    unsigned long wayland_titlebar_color;
 } Options;
 
 typedef struct WindowLogoRenderData {
@@ -186,6 +188,17 @@ typedef struct {
     unsigned int width, height, num_of_resize_events;
 } LiveResizeInfo;
 
+typedef struct WindowChromeState {
+    color_type color;
+    bool use_system_color;
+    unsigned system_color;
+    int background_blur;
+    unsigned hide_window_decorations;
+    bool show_title_in_titlebar;
+    bool resizable;
+    int macos_colorspace;
+    float background_opacity;
+} WindowChromeState;
 
 typedef struct {
     void *handle;
@@ -218,7 +231,7 @@ typedef struct {
     LiveResizeInfo live_resize;
     bool has_pending_resizes, is_semi_transparent, shown_once, is_damaged;
     unsigned int clear_count;
-    color_type last_titlebar_color;
+    WindowChromeState last_window_chrome;
     float background_opacity;
     FONTS_DATA_HANDLE fonts_data;
     id_type temp_font_group_id;
@@ -301,7 +314,7 @@ void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool, boo
 void send_sprite_to_gpu(FONTS_DATA_HANDLE fg, unsigned int, unsigned int, unsigned int, pixel*);
 void blank_canvas(float, color_type);
 void blank_os_window(OSWindow *);
-void set_titlebar_color(OSWindow *w, color_type color, bool use_system_color, unsigned int system_color);
+void set_window_chrome(OSWindow *w);
 FONTS_DATA_HANDLE load_fonts_data(double, double, double);
 void send_prerendered_sprites_for_window(OSWindow *w);
 #ifdef __APPLE__
@@ -366,4 +379,3 @@ void update_ime_position(Window* w, Screen *screen);
 bool update_ime_position_for_window(id_type window_id, bool force, int update_focus);
 void set_ignore_os_keyboard_processing(bool enabled);
 void update_menu_bar_title(PyObject *title UNUSED);
-void update_background_blur(OSWindow *);

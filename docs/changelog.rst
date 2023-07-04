@@ -85,6 +85,8 @@ Detailed list of changes
 
 - Fix a regression in 0.27.0 that broke setting of specific edge padding/margin via remote control (:iss:`6333`)
 
+- macOS: Fix window shadows not being drawn for transparent windows (:iss:`2827`, :pull:`6416`)
+
 0.28.1 [2023-04-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
