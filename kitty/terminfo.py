@@ -300,6 +300,9 @@ string_capabilities = {
     'Ms': r'\E]52;%p1%s;%p2%s\E\\',
     # Send device attributes (report version)
     'RV': r'\E[>c',
+    # Focus In and Out events
+    'kxIN': r'\E[I',
+    'kxOUT': r'\E[O',
 
     # The following are entries that we don't use
     # # turn on blank mode, (characters invisible)
@@ -473,7 +476,7 @@ queryable_capabilities = cast(Dict[str, str], numeric_capabilities.copy())
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset(
-    'XR Ms RV Cr Cs Se Ss Setulc Su Smulx Sync Tc PS PE BE BD setrgbf setrgbb fullkbd kUP kDN kbeg kBEG'.split() + [
+    'XR Ms RV kxIN kxOUT Cr Cs Se Ss Setulc Su Smulx Sync Tc PS PE BE BD setrgbf setrgbb fullkbd kUP kDN kbeg kBEG'.split() + [
         f'k{key}{mod}'
         for key in 'UP DN RIT LFT BEG END HOM IC DC PRV NXT'.split()
         for mod in range(3, 8)])
