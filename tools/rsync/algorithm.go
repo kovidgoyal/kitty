@@ -329,7 +329,7 @@ func (self *list) pop_front() *Operation {
 	return nil
 }
 
-type Diff struct {
+type diff struct {
 	buffer []byte
 	// A single β hash may correlate with many unique hashes.
 	hash_lookup map[uint32][]BlockHash
@@ -348,7 +348,7 @@ type Diff struct {
 	ready_ops  list
 }
 
-func (self *Diff) Next() (op *Operation, err error) {
+func (self *diff) Next() (op *Operation, err error) {
 	if self.ready_ops.is_empty() {
 		if err = self.pump_till_op_available(); err != nil {
 			return
@@ -357,7 +357,7 @@ func (self *Diff) Next() (op *Operation, err error) {
 	return self.ready_ops.pop_front(), nil
 }
 
-func (self *Diff) hash(b []byte) []byte {
+func (self *diff) hash(b []byte) []byte {
 	self.hasher.Reset()
 	self.hasher.Write(b)
 	return self.hasher.Sum(self.hash_buf[:0])
@@ -365,7 +365,7 @@ func (self *Diff) hash(b []byte) []byte {
 
 // Combine OpBlock into OpBlockRange. To do this store the previous
 // non-data operation and determine if it can be extended.
-func (self *Diff) enqueue(op Operation) {
+func (self *diff) enqueue(op Operation) {
 	switch op.Type {
 	case OpBlock:
 		if self.pending_op != nil {
@@ -401,7 +401,7 @@ func (self *Diff) enqueue(op Operation) {
 
 }
 
-func (self *Diff) send_data() {
+func (self *diff) send_data() {
 	data := self.buffer[self.data.tail:self.data.head]
 	srepr := make([]byte, len(data)+5)
 	copy(srepr[5:], data)
@@ -412,7 +412,7 @@ func (self *Diff) send_data() {
 	self.data.tail = self.data.head
 }
 
-func (self *Diff) pump_till_op_available() error {
+func (self *diff) pump_till_op_available() error {
 	for self.ready_ops.is_empty() && !self.finished {
 		if err := self.read_at_least_one_operation(); err != nil {
 			return err
@@ -426,7 +426,7 @@ func (self *Diff) pump_till_op_available() error {
 }
 
 // See https://rsync.samba.org/tech_report/node4.html for the design of this algorithm
-func (self *Diff) read_at_least_one_operation() error {
+func (self *diff) read_at_least_one_operation() error {
 	last_run := false
 	required_pos_for_sum := self.sum.tail + self.block_size
 	if required_pos_for_sum > self.valid_to { // need more data in buffer
@@ -518,8 +518,8 @@ func (self *Diff) read_at_least_one_operation() error {
 	return nil
 }
 
-func (r *RSync) CreateDiff(source io.Reader, signature []BlockHash) (ans *Diff) {
-	ans = &Diff{
+func (r *RSync) CreateDiff(source io.Reader, signature []BlockHash) func() (*Operation, error) {
+	ans := &diff{
 		block_size: r.BlockSize, buffer: make([]byte, (r.BlockSize*2)+(r.MaxDataOp)),
 		hash_lookup: make(map[uint32][]BlockHash, len(signature)),
 		source:      source, max_data_op: r.MaxDataOp, hasher: r.UniqueHasher,
@@ -530,14 +530,14 @@ func (r *RSync) CreateDiff(source io.Reader, signature []BlockHash) (ans *Diff) 
 		ans.hash_lookup[key] = append(ans.hash_lookup[key], h)
 	}
 
-	return
+	return ans.Next
 }
 
 func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops OperationWriter) (err error) {
 	diff := r.CreateDiff(source, signature)
 	var op *Operation
 	for {
-		op, err = diff.Next()
+		op, err = diff()
 		if op == nil {
 			return
 		}
