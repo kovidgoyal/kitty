@@ -345,8 +345,13 @@ type Diff struct {
 	ready_ops  list
 }
 
-func (self *Diff) Operation() *Operation {
-	return self.ready_ops.front()
+func (self *Diff) Next() (op *Operation, err error) {
+	if self.ready_ops.is_empty() {
+		if err = self.pump_till_op_available(); err != nil {
+			return
+		}
+	}
+	return self.ready_ops.pop_front(), nil
 }
 
 func (self *Diff) hash(b []byte) []byte {
@@ -414,8 +419,8 @@ func (self *Diff) pump_till_op_available() error {
 // See https://rsync.samba.org/tech_report/node4.html for the design of this algorithm
 func (self *Diff) read_at_least_one_operation() error {
 	last_run := false
-	// Determine if the buffer should be extended.
-	if self.sum.tail+self.block_size > self.valid_to {
+	required_pos_for_sum := self.sum.tail + self.block_size
+	if required_pos_for_sum > self.valid_to { // need more data in buffer
 		// Determine if the buffer should be wrapped.
 		if self.valid_to+self.block_size > len(self.buffer) {
 			// Before wrapping the buffer, send any trailing data off.
@@ -519,190 +524,18 @@ func (r *RSync) CreateDiff(source io.Reader, signature []BlockHash) (ans *Diff) 
 	return
 }
 
-// Create the operation list to mutate the target signature into the source.
-// Any data operation from the OperationWriter must have the data copied out
-// within the span of the function; the data buffer underlying the operation
-// data is reused. The sourceSum create a complete hash sum of the source if
-// present.
 func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops OperationWriter) (err error) {
-	r.set_buffer_to_size((r.BlockSize * 2) + (r.MaxDataOp))
-	buffer := r.buffer
-
-	// A single β hashes may correlate with a many unique hashes.
-	hashLookup := make(map[uint32][]BlockHash, len(signature))
-	for _, h := range signature {
-		key := h.WeakHash
-		hashLookup[key] = append(hashLookup[key], h)
-	}
-
-	var data, sum section
-	var n, validTo int
-	var αPop, αPush, β, β1, β2 uint32
-	var blockIndex uint64
-	var rolling, lastRun, foundHash bool
-
-	// Store the previous non-data operation for combining.
-	var prevOp *Operation
-
-	// Send the last operation if there is one waiting.
-	defer func() {
-		if prevOp != nil {
-			err = ops(*prevOp)
-			prevOp = nil
+	diff := r.CreateDiff(source, signature)
+	var op *Operation
+	for {
+		op, err = diff.Next()
+		if op == nil {
+			return
 		}
-	}()
-
-	// Combine OpBlock into OpBlockRange. To do this store the previous
-	// non-data operation and determine if it can be extended.
-	enqueue := func(op Operation) (err error) {
-		switch op.Type {
-		case OpBlock:
-			if prevOp != nil {
-				switch prevOp.Type {
-				case OpBlock:
-					if prevOp.BlockIndex+1 == op.BlockIndex {
-						prevOp = &Operation{
-							Type:          OpBlockRange,
-							BlockIndex:    prevOp.BlockIndex,
-							BlockIndexEnd: op.BlockIndex,
-						}
-						return
-					}
-				case OpBlockRange:
-					if prevOp.BlockIndexEnd+1 == op.BlockIndex {
-						prevOp.BlockIndexEnd = op.BlockIndex
-						return
-					}
-				}
-				err = ops(*prevOp)
-				if err != nil {
-					return
-				}
-				prevOp = nil
-			}
-			prevOp = &op
-		case OpData:
-			// Never save a data operation, as it would corrupt the buffer.
-			if prevOp != nil {
-				err = ops(*prevOp)
-				if err != nil {
-					return
-				}
-			}
-			err = ops(op)
-			if err != nil {
-				return
-			}
-			prevOp = nil
-		}
-		return
-	}
-
-	send_data := func() error {
-		if err := enqueue(Operation{Type: OpData, Data: buffer[data.tail:data.head]}); err != nil {
+		if err = ops(*op); err != nil {
 			return err
 		}
-		data.tail = data.head
-		return nil
 	}
-
-	for !lastRun {
-		// Determine if the buffer should be extended.
-		if sum.tail+r.BlockSize > validTo {
-			// Determine if the buffer should be wrapped.
-			if validTo+r.BlockSize > len(buffer) {
-				// Before wrapping the buffer, send any trailing data off.
-				if data.tail < data.head {
-					if err = send_data(); err != nil {
-						return err
-					}
-				}
-				// Wrap the buffer.
-				l := validTo - sum.tail
-				copy(buffer[:l], buffer[sum.tail:validTo])
-
-				// Reset indexes.
-				validTo = l
-				sum.tail = 0
-				data.head = 0
-				data.tail = 0
-			}
-
-			n, err = io.ReadAtLeast(source, buffer[validTo:validTo+r.BlockSize], r.BlockSize)
-			validTo += n
-			if err != nil {
-				if err != io.EOF && err != io.ErrUnexpectedEOF {
-					return err
-				}
-				lastRun = true
-
-				data.head = validTo
-			}
-			if n == 0 {
-				if data.tail < data.head {
-					if err = send_data(); err != nil {
-						return err
-					}
-				}
-				break
-			}
-		}
-
-		// Set the hash sum window head. Must either be a block size
-		// or be at the end of the buffer.
-		sum.head = min(sum.tail+r.BlockSize, validTo)
-
-		// Compute the rolling hash.
-		if !rolling {
-			β, β1, β2 = βhash(buffer[sum.tail:sum.head])
-			rolling = true
-		} else {
-			αPush = uint32(buffer[sum.head-1])
-			β1 = (β1 - αPop + αPush) % _M
-			β2 = (β2 - uint32(sum.head-sum.tail)*αPop + β1) % _M
-			β = β1 + _M*β2
-		}
-
-		// Determine if there is a hash match.
-		foundHash = false
-		if hh, ok := hashLookup[β]; ok && !lastRun {
-			blockIndex, foundHash = findUniqueHash(hh, r.uniqueHash(buffer[sum.tail:sum.head]))
-		}
-		// Send data off if there is data available and a hash is found (so the buffer before it
-		// must be flushed first), or the data chunk size has reached it's maximum size (for buffer
-		// allocation purposes) or to flush the end of the data.
-		if data.tail < data.head && (foundHash || data.head-data.tail >= r.MaxDataOp || lastRun) {
-			if err = send_data(); err != nil {
-				return err
-			}
-		}
-
-		if foundHash {
-			err = enqueue(Operation{Type: OpBlock, BlockIndex: blockIndex})
-			if err != nil {
-				return err
-			}
-			rolling = false
-			sum.tail += r.BlockSize
-
-			// There is prior knowledge that any available data
-			// buffered will have already been sent. Thus we can
-			// assume data.head and data.tail are the same.
-			// May trigger "data wrap".
-			data.head = sum.tail
-			data.tail = sum.tail
-		} else {
-			// The following is for the next loop iteration, so don't try to calculate if last.
-			if !lastRun && rolling {
-				αPop = uint32(buffer[sum.tail])
-			}
-			sum.tail += 1
-
-			// May trigger "data wrap".
-			data.head = sum.tail
-		}
-	}
-	return nil
 }
 
 // Use a more unique way to identify a set of bytes.
