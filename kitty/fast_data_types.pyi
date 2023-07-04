@@ -466,7 +466,7 @@ def init_cell_program() -> None:
     pass
 
 
-def set_window_chrome(os_window_id: int) -> bool:
+def set_os_window_chrome(os_window_id: int) -> bool:
     pass
 
 

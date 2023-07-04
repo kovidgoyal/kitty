@@ -886,7 +886,7 @@ apply_window_chrome_state(GLFWwindow *w, WindowChromeState new_state, int width,
 #endif
 
 void
-set_window_chrome(OSWindow *w) {
+set_os_window_chrome(OSWindow *w) {
     if (!w->handle) return;
     color_type bg = OPT(background);
     if (w->num_tabs > w->active_tab) {
