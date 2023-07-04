@@ -5,12 +5,14 @@ package rsync
 import (
 	"bytes"
 	"fmt"
-	"kitty/tools/utils"
-	"kitty/tools/utils/random"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/exp/slices"
+
+	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -102,36 +104,42 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 	if limit > -1 && p.total_data_in_delta > limit {
 		t.Fatalf("%sUnexpectedly poor delta performance: total_patch_size: %d total_delta_size: %d limit: %d", prefix_msg(), total_patch_size, p.total_data_in_delta, limit)
 	}
+}
 
+func generate_data(block_size, num_of_blocks int) []byte {
+	ans := make([]byte, num_of_blocks*block_size)
+	utils.Memset(ans, '_')
+	for i := 0; i < num_of_blocks; i++ {
+		offset := i * block_size
+		copy(ans[offset:], strconv.Itoa(i+1))
+	}
+	return ans
+}
+
+func patch_data(data []byte, patches ...string) (num_of_patches, total_patch_size int) {
+	num_of_patches = len(patches)
+	for _, patch := range patches {
+		o, r, _ := strings.Cut(patch, ":")
+		total_patch_size += len(r)
+		if offset, err := strconv.Atoi(o); err == nil {
+			copy(data[offset:], r)
+		} else {
+			panic(err)
+		}
+	}
+	return
 }
 
 func TestRsyncRoundtrip(t *testing.T) {
-	src_data := make([]byte, 4*1024*1024)
-	random.Bytes(src_data)
-	total_patch_size := 0
-	num_of_patches := 8
-
-	random_patch := func(data []byte) (size int) {
-		if offset := random.Int(len(data)); offset < len(data) {
-			max_size := utils.Min(257, len(data)-offset)
-			if size = random.Int(max_size); size > 0 {
-				total_patch_size += size
-				random.Bytes(data[offset : offset+size])
-			}
-		}
-		return
-	}
+	block_size := 16
+	src_data := generate_data(block_size, 16)
 	changed := slices.Clone(src_data)
-	for i := 0; i < num_of_patches; i++ {
-		random_patch(changed)
-	}
+	num_of_patches, total_patch_size := patch_data(changed, "3:patch1", "16:patch2", "130:ptch3")
 
 	run_roundtrip_test(t, src_data, changed, num_of_patches, total_patch_size)
 	run_roundtrip_test(t, src_data, []byte{}, -1, 0)
 	run_roundtrip_test(t, src_data, src_data, 0, 0)
 
-	// p := NewPatcher(int64(len(src_data)))
-	// block_size := p.rsync.BlockSize
 	// run_roundtrip_test(t, src_data, src_data[block_size:], 0, 0)
 
 }
