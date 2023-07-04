@@ -20,7 +20,8 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 	using_serialization := false
 	prefix_msg := func() string {
 		q := utils.IfElse(using_serialization, "with", "without")
-		return fmt.Sprintf("Running %s serialization: src size: %d changed size: %d difference: %d\n", q, len(src_data), len(changed), len(changed)-len(src_data))
+		return fmt.Sprintf("%s: Running %s serialization: src size: %d changed size: %d difference: %d\n",
+			utils.SourceLoc(1), q, len(src_data), len(changed), len(changed)-len(src_data))
 	}
 
 	test_equal := func(src_data, output []byte) {

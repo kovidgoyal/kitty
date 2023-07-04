@@ -5,7 +5,9 @@ package utils
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
 
 	"golang.org/x/exp/constraints"
@@ -269,4 +271,26 @@ func IfElse[T any](condition bool, if_val T, else_val T) T {
 		return if_val
 	}
 	return else_val
+}
+
+func SourceLine(skip_frames ...int) int {
+	s := 1
+	if len(skip_frames) > 0 {
+		s += skip_frames[0]
+	}
+	if _, _, ans, ok := runtime.Caller(s); ok {
+		return ans
+	}
+	return -1
+}
+
+func SourceLoc(skip_frames ...int) string {
+	s := 1
+	if len(skip_frames) > 0 {
+		s += skip_frames[0]
+	}
+	if _, file, line, ok := runtime.Caller(s); ok {
+		return filepath.Base(file) + ":" + strconv.Itoa(line)
+	}
+	return "unknown"
 }
