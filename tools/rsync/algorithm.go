@@ -17,8 +17,6 @@ import (
 	"hash"
 	"io"
 	"os"
-
-	"golang.org/x/exp/slices"
 )
 
 // If no BlockSize is specified in the RSync instance, this value is used.
@@ -44,11 +42,16 @@ type Operation struct {
 	BlockIndex    uint64
 	BlockIndexEnd uint64
 	Data          []byte
+
+	serialized_repr []byte
 }
 
 var bin = binary.LittleEndian
 
 func (self Operation) Serialize() []byte {
+	if self.serialized_repr != nil {
+		return self.serialized_repr
+	}
 	var ans []byte
 	switch self.Type {
 	case OpBlock:
@@ -399,7 +402,13 @@ func (self *Diff) enqueue(op Operation) {
 }
 
 func (self *Diff) send_data() {
-	self.enqueue(Operation{Type: OpData, Data: slices.Clone(self.buffer[self.data.tail:self.data.head])})
+	data := self.buffer[self.data.tail:self.data.head]
+	srepr := make([]byte, len(data)+5)
+	copy(srepr[5:], data)
+	bin.PutUint32(srepr[1:], uint32(len(data)))
+	srepr[0] = byte(OpData)
+	op := Operation{Type: OpData, Data: srepr[5:], serialized_repr: srepr}
+	self.enqueue(op)
 	self.data.tail = self.data.head
 }
 
