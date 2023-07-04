@@ -134,7 +134,7 @@ func TestRsyncRoundtrip(t *testing.T) {
 	block_size := 16
 	src_data := generate_data(block_size, 16)
 	changed := slices.Clone(src_data)
-	num_of_patches, total_patch_size := patch_data(changed, "3:patch1", "16:patch2", "130:ptch3")
+	num_of_patches, total_patch_size := patch_data(changed, "3:patch1", "16:patch2", "130:ptch3", "176:patch4", "222:XXYY")
 
 	run_roundtrip_test(t, src_data, changed, num_of_patches, total_patch_size)
 	run_roundtrip_test(t, src_data, []byte{}, -1, 0)
