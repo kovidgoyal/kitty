@@ -2170,10 +2170,10 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
             CALLBACK("request_capabilities", "O", q);
             break;
         case '$':
-            // report status
+            // report status DECRQSS
             query = PyUnicode_AsUTF8(q);
             if (strcmp(" q", query) == 0) {
-                // cursor shape
+                // cursor shape DECSCUSR
                 switch(self->cursor->shape) {
                     case NO_CURSOR_SHAPE:
                     case NUM_OF_CURSOR_SHAPES:
@@ -2189,8 +2189,10 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
             } else if (strcmp("m", query) == 0) {
                 // SGR
                 shape = snprintf(buf, sizeof(buf), "1$r%sm", cursor_as_sgr(self->cursor));
-            } else if (strcmp("r", query) == 0) {
+            } else if (strcmp("r", query) == 0) { // DECSTBM
                 shape = snprintf(buf, sizeof(buf), "1$r%u;%ur", self->margin_top + 1, self->margin_bottom + 1);
+            } else if (strcmp("*x", query) == 0) { // DECSACE
+                shape = snprintf(buf, sizeof(buf), "1$r%d*x", self->modes.mDECSACE ? 1 : 0);
             } else {
                 shape = snprintf(buf, sizeof(buf), "0$r");
             }
