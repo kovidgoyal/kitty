@@ -9,7 +9,6 @@
 package rsync
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"hash"
@@ -123,25 +122,25 @@ func (self *Operation) Unserialize(data []byte) (n int, err error) {
 // Signature hash item generated from target.
 type BlockHash struct {
 	Index      uint64
-	StrongHash []byte
 	WeakHash   uint32
+	StrongHash uint64
 }
 
 func (self BlockHash) Serialize() []byte {
-	ans := make([]byte, 12+len(self.StrongHash))
+	ans := make([]byte, 20)
 	bin.PutUint64(ans, self.Index)
 	bin.PutUint32(ans[8:], self.WeakHash)
-	copy(ans[12:], self.StrongHash)
+	bin.PutUint64(ans[12:], self.StrongHash)
 	return ans
 }
 
-func (self *BlockHash) Unserialize(data []byte, hash_size int) (err error) {
-	if len(data) < 12+hash_size {
-		return fmt.Errorf("record too small to be a BlockHash: %d < %d", len(data), 12+hash_size)
+func (self *BlockHash) Unserialize(data []byte) (err error) {
+	if len(data) < 20 {
+		return fmt.Errorf("record too small to be a BlockHash: %d < %d", len(data), 20)
 	}
 	self.Index = bin.Uint64(data)
 	self.WeakHash = bin.Uint32(data[8:])
-	self.StrongHash = data[12 : 12+hash_size]
+	self.StrongHash = bin.Uint64(data[12:])
 	return
 }
 
@@ -156,12 +155,12 @@ type rsync struct {
 	BlockSize int
 
 	// This must be non-nil before using any functions
-	hasher             hash.Hash
-	hasher_constructor func() hash.Hash
+	hasher             hash.Hash64
+	hasher_constructor func() hash.Hash64
 	buffer             []byte
 }
 
-func (r *rsync) SetHasher(c func() hash.Hash) {
+func (r *rsync) SetHasher(c func() hash.Hash64) {
 	r.hasher_constructor = c
 	r.hasher = c()
 }
@@ -358,8 +357,7 @@ type diff struct {
 	// A single β hash may correlate with many unique hashes.
 	hash_lookup map[uint32][]BlockHash
 	source      io.Reader
-	hasher      hash.Hash
-	hash_buf    []byte
+	hasher      hash.Hash64
 
 	window, data struct{ pos, sz int }
 	block_size   int
@@ -379,10 +377,10 @@ func (self *diff) Next() (op *Operation, err error) {
 	return self.ready_ops.pop_front(), nil
 }
 
-func (self *diff) hash(b []byte) []byte {
+func (self *diff) hash(b []byte) uint64 {
 	self.hasher.Reset()
 	self.hasher.Write(b)
-	return self.hasher.Sum(self.hash_buf[:0])
+	return self.hasher.Sum64()
 }
 
 // Combine OpBlock into OpBlockRange. To do this store the previous
@@ -531,7 +529,6 @@ func (r *rsync) CreateDiff(source io.Reader, signature []BlockHash) func() (*Ope
 		block_size: r.BlockSize, buffer: make([]byte, 0, (r.BlockSize * 8)),
 		hash_lookup: make(map[uint32][]BlockHash, len(signature)),
 		source:      source, hasher: r.hasher_constructor(),
-		hash_buf: make([]byte, 0, r.hasher.Size()),
 	}
 	for _, h := range signature {
 		key := h.WeakHash
@@ -556,10 +553,10 @@ func (r *rsync) CreateDelta(source io.Reader, signature []BlockHash, ops Operati
 }
 
 // Use a more unique way to identify a set of bytes.
-func (r *rsync) hash(v []byte) []byte {
+func (r *rsync) hash(v []byte) uint64 {
 	r.hasher.Reset()
 	r.hasher.Write(v)
-	return r.hasher.Sum(nil)
+	return r.hasher.Sum64()
 }
 
 func (r *rsync) HashSize() int      { return r.hasher.Size() }
@@ -567,12 +564,9 @@ func (r *rsync) HashBlockSize() int { return r.hasher.BlockSize() }
 func (r *rsync) HasHasher() bool    { return r.hasher != nil }
 
 // Searches for a given strong hash among all strong hashes in this bucket.
-func find_hash(hh []BlockHash, hv []byte) (uint64, bool) {
-	if len(hv) == 0 {
-		return 0, false
-	}
+func find_hash(hh []BlockHash, hv uint64) (uint64, bool) {
 	for _, block := range hh {
-		if bytes.Equal(block.StrongHash, hv) {
+		if block.StrongHash == hv {
 			return block.Index, true
 		}
 	}

@@ -60,7 +60,7 @@ func (self *Api) read_signature_header(data []byte) (consumed int, err error) {
 	switch strong_hash := StrongHashType(bin.Uint16(data[4:])); strong_hash {
 	case XXH3:
 		self.Strong_hash_type = strong_hash
-		self.rsync.SetHasher(func() hash.Hash { return xxh3.New() })
+		self.rsync.SetHasher(func() hash.Hash64 { return xxh3.New() })
 	default:
 		return consumed, fmt.Errorf("Invalid strong_hash in signature header: %d", strong_hash)
 	}
@@ -84,11 +84,10 @@ func (self *Api) read_signature_header(data []byte) (consumed int, err error) {
 }
 
 func (self *Api) read_signature_blocks(data []byte) (consumed int) {
-	hash_size := self.rsync.HashSize()
-	block_hash_size := hash_size + 12
+	block_hash_size := self.rsync.HashSize() + 12
 	for ; len(data) >= block_hash_size; data = data[block_hash_size:] {
 		bl := BlockHash{}
-		bl.Unserialize(data[:block_hash_size], hash_size)
+		bl.Unserialize(data[:block_hash_size])
 		self.signature = append(self.signature, bl)
 		consumed += block_hash_size
 	}
@@ -241,7 +240,7 @@ func NewPatcher(expected_input_size int64) (ans *Patcher) {
 	}
 	ans = &Patcher{}
 	ans.rsync.BlockSize = utils.Min(bs, MaxBlockSize)
-	ans.rsync.SetHasher(func() hash.Hash { return xxh3.New() })
+	ans.rsync.SetHasher(func() hash.Hash64 { return xxh3.New() })
 
 	if ans.rsync.HashBlockSize() > 0 && ans.rsync.HashBlockSize() < ans.rsync.BlockSize {
 		ans.rsync.BlockSize = (ans.rsync.BlockSize / ans.rsync.HashBlockSize()) * ans.rsync.HashBlockSize()
