@@ -178,16 +178,20 @@ func write_block_hash(output []byte, bl BlockHash) []byte {
 	return output
 }
 
-// Create a signature for the data source in src
-func (self *Patcher) CreateSignatureIterator(src io.Reader) func([]byte) ([]byte, error) {
+// Append the next signature to the provided slice and return the resulting slice. Data is written to the slice iff err == nil.
+// When no more signature data is available, err = io.EOF and the unmodified slice is returned.
+type SignatureIterator = func([]byte) ([]byte, error)
+
+// Create a signature for the data source in src.
+func (self *Patcher) CreateSignatureIterator(src io.Reader) SignatureIterator {
 	var it func() (BlockHash, error)
 	finished := false
 	return func(output []byte) ([]byte, error) {
 		if finished {
-			return output, nil
+			return output, io.EOF
 		}
-		var b []byte
-		if it == nil {
+		if it == nil { // write signature header
+			var b []byte
 			it = self.rsync.CreateSignatureIterator(src)
 			output, b = ensure_size(output, 12)
 			bin.PutUint32(b, 0)
