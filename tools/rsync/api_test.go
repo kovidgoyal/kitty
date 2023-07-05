@@ -20,10 +20,11 @@ var _ = cmp.Diff
 
 func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, total_patch_size int) {
 	using_serialization := false
+	sloc := utils.SourceLoc(1)
 	prefix_msg := func() string {
 		q := utils.IfElse(using_serialization, "with", "without")
 		return fmt.Sprintf("%s: Running %s serialization: src size: %d changed size: %d difference: %d\n",
-			utils.SourceLoc(1), q, len(src_data), len(changed), len(changed)-len(src_data))
+			sloc, q, len(src_data), len(changed), len(changed)-len(src_data))
 	}
 
 	test_equal := func(src_data, output []byte) {
@@ -35,7 +36,8 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 					break
 				}
 			}
-			t.Fatalf("%sPatching failed: %d extra_bytes first different byte at: %d", prefix_msg(), len(output)-len(src_data), first_diff)
+			t.Fatalf("%sPatching failed: %d extra_bytes first different byte at: %d\nsrc:\n%s\nchanged:\n%s\noutput:\n%s\n",
+				prefix_msg(), len(output)-len(src_data), first_diff, string(src_data), string(changed), string(output))
 		}
 	}
 
@@ -51,7 +53,6 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 	apply_delta := func(signature []BlockHash) []byte {
 		delta_ops := make([]Operation, 0, 1024)
 		p.rsync.CreateDelta(bytes.NewReader(src_data), signature, func(op Operation) error {
-			op.Data = slices.Clone(op.Data)
 			delta_ops = append(delta_ops, op)
 			return nil
 		})
@@ -119,7 +120,7 @@ func generate_data(block_size, num_of_blocks int) []byte {
 	utils.Memset(ans, '_')
 	for i := 0; i < num_of_blocks; i++ {
 		offset := i * block_size
-		copy(ans[offset:], strconv.Itoa(i+1))
+		copy(ans[offset:], strconv.Itoa(i))
 	}
 	return ans
 }

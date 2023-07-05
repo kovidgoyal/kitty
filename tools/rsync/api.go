@@ -78,7 +78,6 @@ func (self *Api) read_signature_header(data []byte) (consumed int, err error) {
 		return consumed, fmt.Errorf("rsync signature header has too large block size %d > %d", block_size, MaxBlockSize)
 	}
 	self.rsync.BlockSize = block_size
-	self.rsync.MaxDataOp = 10 * block_size
 	self.signature = make([]BlockHash, 0, 1024)
 	return
 }
@@ -247,7 +246,6 @@ func NewPatcher(expected_input_size int64) (ans *Patcher) {
 		ans.rsync.BlockSize = (ans.rsync.BlockSize / ans.rsync.UniqueHasher.BlockSize()) * ans.rsync.UniqueHasher.BlockSize()
 	}
 
-	ans.rsync.MaxDataOp = ans.rsync.BlockSize * 10
 	ans.expected_input_size_for_signature_generation = sz
 	return
 }

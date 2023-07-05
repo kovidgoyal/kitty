@@ -1,7 +1,5 @@
-// RSync/RDiff implementation.
-//
-// Algorithm found at: http://www.samba.org/~tridge/phd_thesis.pdf
-// Source code in this file is modified version of: https://github.com/jbreiding/rsync-go
+// Algorithm found at: https://rsync.samba.org/tech_report/tech_report.html
+// Code in this file is inspired by: https://github.com/jbreiding/rsync-go
 //
 // Definitions
 //
@@ -21,13 +19,12 @@ import (
 
 // If no BlockSize is specified in the RSync instance, this value is used.
 const DefaultBlockSize = 1024 * 6
-const DefaultMaxDataOp = DefaultBlockSize * 10
 
 // Internal constant used in rolling checksum.
 const _M = 1 << 16
 
 // Operation Types.
-type OpType byte
+type OpType byte // enum
 
 const (
 	OpBlock OpType = iota
@@ -157,7 +154,6 @@ type OperationWriter func(op Operation) error
 // internal buffers and hash sums.
 type RSync struct {
 	BlockSize int
-	MaxDataOp int
 
 	// This must be non-nil before using any functions
 	UniqueHasher hash.Hash
@@ -190,6 +186,7 @@ func (r *RSync) CreateSignature(target io.Reader, sw SignatureWriter) error {
 	var block []byte
 	loop := true
 	var index uint64
+	rc := rolling_checksum{}
 	for loop {
 		n, err = io.ReadAtLeast(target, buffer, r.BlockSize)
 		if err != nil {
@@ -204,7 +201,7 @@ func (r *RSync) CreateSignature(target io.Reader, sw SignatureWriter) error {
 			loop = false
 		}
 		block = buffer[:n]
-		weak, _, _ := βhash(block)
+		weak := rc.full(block)
 		err = sw(BlockHash{StrongHash: r.uniqueHash(block), WeakHash: weak, Index: index})
 		if err != nil {
 			return err
@@ -280,11 +277,6 @@ func (r *RSync) set_buffer_to_size(sz int) {
 	}
 }
 
-type section struct {
-	tail int
-	head int
-}
-
 type node struct {
 	op   *Operation
 	next *node
@@ -329,20 +321,45 @@ func (self *list) pop_front() *Operation {
 	return nil
 }
 
+// see https://rsync.samba.org/tech_report/node3.html
+type rolling_checksum struct {
+	alpha, beta, val, l           uint32
+	first_byte_of_previous_window uint32
+}
+
+func (self *rolling_checksum) full(data []byte) uint32 {
+	var alpha, beta uint32
+	self.l = uint32(len(data)) // actually should be len(data) - 1 but the equations always use l+1
+	for i, b := range data {
+		alpha += uint32(b)
+		beta += (self.l - uint32(i)) * uint32(b)
+	}
+	self.first_byte_of_previous_window = uint32(data[0])
+	self.alpha = alpha % _M
+	self.beta = beta % _M
+	self.val = self.alpha + _M*self.beta
+	return self.val
+}
+
+func (self *rolling_checksum) add_one_byte(first_byte, last_byte byte) {
+	self.alpha = (self.alpha - self.first_byte_of_previous_window + uint32(last_byte)) % _M
+	self.beta = (self.beta - (self.l)*self.first_byte_of_previous_window + self.alpha) % _M
+	self.val = self.alpha + _M*self.beta
+	self.first_byte_of_previous_window = uint32(first_byte)
+}
+
 type diff struct {
 	buffer []byte
 	// A single β hash may correlate with many unique hashes.
 	hash_lookup map[uint32][]BlockHash
 	source      io.Reader
-	max_data_op int
 	hasher      hash.Hash
 	hash_buf    []byte
 
-	data, sum                                 section
-	block_size                                int
-	n, valid_to                               int
-	alpha_pop, alpha_push, beta, beta1, beta2 uint32
-	finished, rolling                         bool
+	window, data struct{ pos, sz int }
+	block_size   int
+	finished     bool
+	rc           rolling_checksum
 
 	pending_op *Operation
 	ready_ops  list
@@ -389,8 +406,7 @@ func (self *diff) enqueue(op Operation) {
 			self.pending_op = nil
 		}
 		self.pending_op = &op
-	case OpData:
-		// Never save a data operation, as it would corrupt the buffer.
+	case OpData, OpHash:
 		if self.pending_op != nil {
 			self.ready_ops.push_back(self.pending_op)
 			self.pending_op = nil
@@ -402,14 +418,17 @@ func (self *diff) enqueue(op Operation) {
 }
 
 func (self *diff) send_data() {
-	data := self.buffer[self.data.tail:self.data.head]
-	srepr := make([]byte, len(data)+5)
-	copy(srepr[5:], data)
-	bin.PutUint32(srepr[1:], uint32(len(data)))
-	srepr[0] = byte(OpData)
-	op := Operation{Type: OpData, Data: srepr[5:], serialized_repr: srepr}
-	self.enqueue(op)
-	self.data.tail = self.data.head
+	if self.data.sz > 0 {
+		data := self.buffer[self.data.pos : self.data.pos+self.data.sz]
+		srepr := make([]byte, len(data)+5)
+		copy(srepr[5:], data)
+		bin.PutUint32(srepr[1:], uint32(len(data)))
+		srepr[0] = byte(OpData)
+		op := Operation{Type: OpData, Data: srepr[5:], serialized_repr: srepr}
+		self.enqueue(op)
+		self.data.pos += self.data.sz
+		self.data.sz = 0
+	}
 }
 
 func (self *diff) pump_till_op_available() error {
@@ -425,104 +444,88 @@ func (self *diff) pump_till_op_available() error {
 	return nil
 }
 
+func (self *diff) ensure_idx_valid(idx int) (ok bool, err error) {
+	if idx < len(self.buffer) {
+		return true, nil
+	}
+	if idx >= cap(self.buffer) {
+		// need to wrap the buffer, so send off any data present behind the window
+		self.send_data()
+		// copy the window and any data present after it to the start of the buffer
+		distance_from_window_pos := idx - self.window.pos
+		amt_to_copy := len(self.buffer) - self.window.pos
+		copy(self.buffer, self.buffer[self.window.pos:self.window.pos+amt_to_copy])
+		self.buffer = self.buffer[:amt_to_copy]
+		self.window.pos = 0
+		self.data.pos = 0
+		return self.ensure_idx_valid(distance_from_window_pos)
+	}
+	extra := idx - len(self.buffer) + 1
+	var n int
+	n, err = io.ReadAtLeast(self.source, self.buffer[len(self.buffer):cap(self.buffer)], extra)
+	switch err {
+	case nil:
+		ok = true
+		self.buffer = self.buffer[:len(self.buffer)+n]
+	case io.ErrUnexpectedEOF, io.EOF:
+		err = nil
+		self.buffer = self.buffer[:len(self.buffer)+n]
+	}
+	return
+}
+
+func (self *diff) finish_up() {
+	self.send_data()
+	self.data.pos = self.window.pos
+	self.data.sz = len(self.buffer) - self.window.pos
+	self.send_data()
+	self.finished = true
+}
+
 // See https://rsync.samba.org/tech_report/node4.html for the design of this algorithm
-func (self *diff) read_at_least_one_operation() error {
-	last_run := false
-	required_pos_for_sum := self.sum.tail + self.block_size
-	if required_pos_for_sum > self.valid_to { // need more data in buffer
-		// Determine if the buffer should be wrapped.
-		if self.valid_to+self.block_size > len(self.buffer) {
-			// Before wrapping the buffer, send any trailing data off.
-			if self.data.tail < self.data.head {
-				self.send_data()
-			}
-			// Wrap the buffer.
-			l := self.valid_to - self.sum.tail
-			copy(self.buffer[:l], self.buffer[self.sum.tail:self.valid_to])
-
-			// Reset indexes.
-			self.valid_to = l
-			self.sum.tail = 0
-			self.data.head = 0
-			self.data.tail = 0
-		}
-
-		n, err := io.ReadAtLeast(self.source, self.buffer[self.valid_to:self.valid_to+self.block_size], self.block_size)
-		self.valid_to += n
-		if err != nil {
-			if err != io.EOF && err != io.ErrUnexpectedEOF {
+func (self *diff) read_at_least_one_operation() (err error) {
+	if self.window.sz > 0 {
+		if ok, err := self.ensure_idx_valid(self.window.pos + self.window.sz); !ok {
+			if err != nil {
 				return err
 			}
-			last_run = true
-			self.data.head = self.valid_to
+			self.finish_up()
+			return nil
 		}
-		if n == 0 {
-			if self.data.tail < self.data.head {
-				self.send_data()
-			}
-		}
-	}
-
-	// Set the hash sum window head. Must either be a block size
-	// or be at the end of the buffer.
-	self.sum.head = min(self.sum.tail+self.block_size, self.valid_to)
-
-	// Compute the rolling hash.
-	if !self.rolling {
-		self.beta, self.beta1, self.beta2 = βhash(self.buffer[self.sum.tail:self.sum.head])
-		self.rolling = true
+		self.window.pos++
+		self.data.sz++
+		self.rc.add_one_byte(self.buffer[self.window.pos], self.buffer[self.window.pos+self.window.sz-1])
 	} else {
-		self.alpha_push = uint32(self.buffer[self.sum.head-1])
-		self.beta1 = (self.beta1 - self.alpha_pop + self.alpha_push) % _M
-		self.beta2 = (self.beta2 - uint32(self.sum.head-self.sum.tail)*self.alpha_pop + self.beta1) % _M
-		self.beta = self.beta1 + _M*self.beta2
+		if ok, err := self.ensure_idx_valid(self.window.pos + self.block_size - 1); !ok {
+			if err != nil {
+				return err
+			}
+			self.finish_up()
+			return nil
+		}
+		self.window.sz = self.block_size
+		self.rc.full(self.buffer[self.window.pos : self.window.pos+self.window.sz])
 	}
-
-	// Determine if there is a hash match.
 	found_hash := false
 	var block_index uint64
-	if hh, ok := self.hash_lookup[self.beta]; ok && !last_run {
-		block_index, found_hash = findUniqueHash(hh, self.hash(self.buffer[self.sum.tail:self.sum.head]))
+	if hh, ok := self.hash_lookup[self.rc.val]; ok {
+		block_index, found_hash = findUniqueHash(hh, self.hash(self.buffer[self.window.pos:self.window.pos+self.window.sz]))
 	}
-	// Send data off if there is data available and a hash is found (so the buffer before it
-	// must be flushed first), or the data chunk size has reached it's maximum size (for buffer
-	// allocation purposes) or to flush the end of the data.
-	if self.data.tail < self.data.head && (found_hash || self.data.head-self.data.tail >= self.max_data_op || last_run) {
-		self.send_data()
-	}
-
 	if found_hash {
+		self.send_data()
 		self.enqueue(Operation{Type: OpBlock, BlockIndex: block_index})
-		self.rolling = false
-		self.sum.tail += self.block_size
-
-		// There is prior knowledge that any available data
-		// buffered will have already been sent. Thus we can
-		// assume data.head and data.tail are the same.
-		// May trigger "data wrap".
-		self.data.head = self.sum.tail
-		self.data.tail = self.sum.tail
-	} else {
-		// The following is for the next loop iteration, so don't try to calculate if last.
-		if !last_run && self.rolling {
-			self.alpha_pop = uint32(self.buffer[self.sum.tail])
-		}
-		self.sum.tail += 1
-
-		// May trigger "data wrap".
-		self.data.head = self.sum.tail
-	}
-	if last_run {
-		self.finished = true
+		self.window.pos += self.window.sz
+		self.data.pos = self.window.pos
+		self.window.sz = 0
 	}
 	return nil
 }
 
 func (r *RSync) CreateDiff(source io.Reader, signature []BlockHash) func() (*Operation, error) {
 	ans := &diff{
-		block_size: r.BlockSize, buffer: make([]byte, (r.BlockSize*2)+(r.MaxDataOp)),
+		block_size: r.BlockSize, buffer: make([]byte, 0, (r.BlockSize * 8)),
 		hash_lookup: make(map[uint32][]BlockHash, len(signature)),
-		source:      source, max_data_op: r.MaxDataOp, hasher: r.UniqueHasher,
+		source:      source, hasher: r.UniqueHasher,
 		hash_buf: make([]byte, 0, r.UniqueHasher.Size()),
 	}
 	for _, h := range signature {
@@ -565,20 +568,6 @@ func findUniqueHash(hh []BlockHash, hashValue []byte) (uint64, bool) {
 		}
 	}
 	return 0, false
-}
-
-// Use a faster way to identify a set of bytes.
-func βhash(block []byte) (β uint32, β1 uint32, β2 uint32) {
-	var a, b uint32
-	sz := uint32(len(block) - 1)
-	for i, val := range block {
-		a += uint32(val)
-		b += (sz - uint32(i) + 1) * uint32(val)
-	}
-	β = (a % _M) + (_M * (b % _M))
-	β1 = a % _M
-	β2 = b % _M
-	return
 }
 
 func min(a, b int) int {
