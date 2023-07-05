@@ -126,12 +126,13 @@ type BlockHash struct {
 	StrongHash uint64
 }
 
-func (self BlockHash) Serialize() []byte {
-	ans := make([]byte, 20)
-	bin.PutUint64(ans, self.Index)
-	bin.PutUint32(ans[8:], self.WeakHash)
-	bin.PutUint64(ans[12:], self.StrongHash)
-	return ans
+const BlockHashSize = 20
+
+// Put the serialization of this BlockHash to output
+func (self BlockHash) Serialize(output []byte) {
+	bin.PutUint64(output, self.Index)
+	bin.PutUint32(output[8:], self.WeakHash)
+	bin.PutUint64(output[12:], self.StrongHash)
 }
 
 func (self *BlockHash) Unserialize(data []byte) (err error) {
@@ -145,7 +146,6 @@ func (self *BlockHash) Unserialize(data []byte) (err error) {
 }
 
 // Write signatures as they are generated.
-type SignatureWriter func(bl BlockHash) error
 type OperationWriter func(op Operation) error
 
 // Properties to use while working with the rsync algorithm.
@@ -176,43 +176,40 @@ func (r *rsync) BlockHashCount(targetLength int64) (count int64) {
 	return
 }
 
+type signature_iterator struct {
+	hasher hash.Hash64
+	buffer []byte
+	src    io.Reader
+	rc     rolling_checksum
+	index  uint64
+}
+
+// ans is valid only iff err == nil
+func (self *signature_iterator) next() (ans BlockHash, err error) {
+	n, err := io.ReadAtLeast(self.src, self.buffer, cap(self.buffer))
+	switch err {
+	case io.ErrUnexpectedEOF, io.EOF, nil:
+		err = nil
+	default:
+		return
+	}
+	if n == 0 {
+		return ans, io.EOF
+	}
+	b := self.buffer[:n]
+	self.hasher.Reset()
+	self.hasher.Write(b)
+	ans = BlockHash{Index: self.index, WeakHash: self.rc.full(b), StrongHash: self.hasher.Sum64()}
+	self.index++
+	return
+
+}
+
 // Calculate the signature of target.
-func (r *rsync) CreateSignature(target io.Reader, sw SignatureWriter) error {
-	var err error
-	var n int
-
-	minBufferSize := r.BlockSize
-	if len(r.buffer) < minBufferSize {
-		r.buffer = make([]byte, minBufferSize)
-	}
-	buffer := r.buffer
-
-	var block []byte
-	loop := true
-	var index uint64
-	rc := rolling_checksum{}
-	for loop {
-		n, err = io.ReadAtLeast(target, buffer, r.BlockSize)
-		if err != nil {
-			// n == 0.
-			if err == io.EOF {
-				return nil
-			}
-			if err != io.ErrUnexpectedEOF {
-				return err
-			}
-			// n > 0.
-			loop = false
-		}
-		block = buffer[:n]
-		weak := rc.full(block)
-		err = sw(BlockHash{StrongHash: r.hash(block), WeakHash: weak, Index: index})
-		if err != nil {
-			return err
-		}
-		index++
-	}
-	return nil
+func (r *rsync) CreateSignatureIterator(target io.Reader) func() (BlockHash, error) {
+	return (&signature_iterator{
+		hasher: r.hasher_constructor(), buffer: make([]byte, r.BlockSize), src: target,
+	}).next
 }
 
 // Apply the difference to the target.

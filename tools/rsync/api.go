@@ -163,27 +163,49 @@ func (self *Patcher) FinishDelta() (err error) {
 	return
 }
 
+func ensure_size(output []byte, count int) ([]byte, []byte) {
+	if cap(output)-len(output) < count {
+		t := make([]byte, len(output), utils.Max(8192, cap(output)*2))
+		copy(t, output)
+		output = t
+	}
+	return output[:len(output)+count], output[len(output) : len(output)+count]
+}
+
+func write_block_hash(output []byte, bl BlockHash) []byte {
+	output, b := ensure_size(output, BlockHashSize)
+	bl.Serialize(b)
+	return output
+}
+
 // Create a signature for the data source in src
-func (self *Patcher) CreateSignature(src io.Reader, callback func([]byte) error) (err error) {
-	header := make([]byte, 12)
-	bin.PutUint16(header[4:], uint16(self.Strong_hash_type))
-	bin.PutUint16(header[6:], uint16(self.Weak_hash_type))
-	bin.PutUint32(header[8:], uint32(self.rsync.BlockSize))
-	if err = callback(header); err != nil {
-		return err
-	}
-	if self.expected_input_size_for_signature_generation > 0 {
-		self.signature = make([]BlockHash, 0, self.rsync.BlockHashCount(self.expected_input_size_for_signature_generation))
-	} else {
-		self.signature = make([]BlockHash, 0, 1024)
-	}
-	return self.rsync.CreateSignature(src, func(bl BlockHash) error {
-		if err = callback(bl.Serialize()); err != nil {
-			return err
+func (self *Patcher) CreateSignatureIterator(src io.Reader) func([]byte) ([]byte, error) {
+	var it func() (BlockHash, error)
+	finished := false
+	return func(output []byte) ([]byte, error) {
+		if finished {
+			return output, nil
 		}
-		self.signature = append(self.signature, bl)
-		return nil
-	})
+		var b []byte
+		if it == nil {
+			it = self.rsync.CreateSignatureIterator(src)
+			output, b = ensure_size(output, 12)
+			bin.PutUint32(b, 0)
+			bin.PutUint16(b[4:], uint16(self.Strong_hash_type))
+			bin.PutUint16(b[6:], uint16(self.Weak_hash_type))
+			bin.PutUint32(b[8:], uint32(self.rsync.BlockSize))
+		}
+		bl, err := it()
+		switch err {
+		case io.EOF:
+			finished = true
+			return output, io.EOF
+		case nil:
+			return write_block_hash(output, bl), nil
+		default:
+			return nil, err
+		}
+	}
 }
 
 type DeltaIterator = func() ([]byte, error)

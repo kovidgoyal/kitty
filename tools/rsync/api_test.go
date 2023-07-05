@@ -5,6 +5,7 @@ package rsync
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"testing"
@@ -44,10 +45,17 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 	// first try just the engine without serialization
 	p := NewPatcher(int64(len(src_data)))
 	signature := make([]BlockHash, 0, 128)
-	p.rsync.CreateSignature(bytes.NewReader(changed), func(s BlockHash) error {
-		signature = append(signature, s)
-		return nil
-	})
+	s_it := p.rsync.CreateSignatureIterator(bytes.NewReader(changed))
+	for {
+		s, err := s_it()
+		if err == nil {
+			signature = append(signature, s)
+		} else if err == io.EOF {
+			break
+		} else {
+			t.Fatal(err)
+		}
+	}
 
 	total_data_in_delta := 0
 	apply_delta := func(signature []BlockHash) []byte {
@@ -73,12 +81,19 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 	// Now try with serialization
 	using_serialization = true
 	p = NewPatcher(int64(len(src_data)))
-	signature_of_changed := bytes.Buffer{}
-	if err := p.CreateSignature(bytes.NewReader(changed), func(p []byte) error { _, err := signature_of_changed.Write(p); return err }); err != nil {
-		t.Fatal(err)
+	var signature_of_changed []byte
+	ss_it := p.CreateSignatureIterator(bytes.NewReader(changed))
+	var err error
+	for {
+		signature_of_changed, err = ss_it(signature_of_changed)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			t.Fatal(err)
+		}
 	}
 	d := NewDiffer()
-	if err := d.AddSignatureData(signature_of_changed.Bytes()); err != nil {
+	if err := d.AddSignatureData(signature_of_changed); err != nil {
 		t.Fatal(err)
 	}
 	deltabuf := bytes.Buffer{}
