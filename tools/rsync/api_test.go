@@ -20,11 +20,11 @@ var _ = cmp.Diff
 
 func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, total_patch_size int) {
 	using_serialization := false
-	sloc := utils.SourceLoc(1)
+	t.Helper()
 	prefix_msg := func() string {
 		q := utils.IfElse(using_serialization, "with", "without")
-		return fmt.Sprintf("%s: Running %s serialization: src size: %d changed size: %d difference: %d\n",
-			sloc, q, len(src_data), len(changed), len(changed)-len(src_data))
+		return fmt.Sprintf("Running %s serialization: src size: %d changed size: %d difference: %d\n",
+			q, len(src_data), len(changed), len(changed)-len(src_data))
 	}
 
 	test_equal := func(src_data, output []byte) {
@@ -60,7 +60,7 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 		outputbuf := bytes.Buffer{}
 		for _, op := range delta_ops {
 			total_data_in_delta += len(op.Data)
-			p.rsync.ApplyDelta(&outputbuf, bytes.NewReader(src_data), op)
+			p.rsync.ApplyDelta(&outputbuf, bytes.NewReader(changed), op)
 		}
 		return outputbuf.Bytes()
 	}
@@ -73,12 +73,12 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 	// Now try with serialization
 	using_serialization = true
 	p = NewPatcher(int64(len(src_data)))
-	sigbuf := bytes.Buffer{}
-	if err := p.CreateSignature(bytes.NewReader(changed), func(p []byte) error { _, err := sigbuf.Write(p); return err }); err != nil {
+	signature_of_changed := bytes.Buffer{}
+	if err := p.CreateSignature(bytes.NewReader(changed), func(p []byte) error { _, err := signature_of_changed.Write(p); return err }); err != nil {
 		t.Fatal(err)
 	}
 	d := NewDiffer()
-	if err := d.AddSignatureData(sigbuf.Bytes()); err != nil {
+	if err := d.AddSignatureData(signature_of_changed.Bytes()); err != nil {
 		t.Fatal(err)
 	}
 	deltabuf := bytes.Buffer{}
@@ -94,7 +94,7 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 		deltabuf.Write(b)
 	}
 	outputbuf := bytes.Buffer{}
-	p.StartDelta(&outputbuf, bytes.NewReader(src_data))
+	p.StartDelta(&outputbuf, bytes.NewReader(changed))
 	b := make([]byte, 30*1024)
 	for {
 		n, _ := deltabuf.Read(b)
@@ -115,13 +115,15 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 	}
 }
 
-func generate_data(block_size, num_of_blocks int) []byte {
-	ans := make([]byte, num_of_blocks*block_size)
+func generate_data(block_size, num_of_blocks int, extra ...string) []byte {
+	e := strings.Join(extra, "")
+	ans := make([]byte, num_of_blocks*block_size+len(e))
 	utils.Memset(ans, '_')
 	for i := 0; i < num_of_blocks; i++ {
 		offset := i * block_size
 		copy(ans[offset:], strconv.Itoa(i))
 	}
+	copy(ans[num_of_blocks*block_size:], e)
 	return ans
 }
 
@@ -145,10 +147,19 @@ func TestRsyncRoundtrip(t *testing.T) {
 	changed := slices.Clone(src_data)
 	num_of_patches, total_patch_size := patch_data(changed, "3:patch1", "16:patch2", "130:ptch3", "176:patch4", "222:XXYY")
 
+	run_roundtrip_test(t, src_data, src_data[block_size:], 1, block_size)
 	run_roundtrip_test(t, src_data, changed, num_of_patches, total_patch_size)
 	run_roundtrip_test(t, src_data, []byte{}, -1, 0)
 	run_roundtrip_test(t, src_data, src_data, 0, 0)
+	run_roundtrip_test(t, src_data, changed[:len(changed)-3], num_of_patches, total_patch_size)
+	run_roundtrip_test(t, src_data, append(changed[:37], changed[81:]...), num_of_patches, total_patch_size)
 
-	// run_roundtrip_test(t, src_data, src_data[block_size:], 0, 0)
+	block_size = 13
+	src_data = generate_data(block_size, 17, "trailer")
+	changed = slices.Clone(src_data)
+	num_of_patches, total_patch_size = patch_data(changed, "0:patch1", "19:patch2")
+	run_roundtrip_test(t, src_data, changed, num_of_patches, total_patch_size)
+	run_roundtrip_test(t, src_data, changed[:len(changed)-3], num_of_patches, total_patch_size)
+	run_roundtrip_test(t, src_data, append(changed, "xyz..."...), num_of_patches, total_patch_size)
 
 }
