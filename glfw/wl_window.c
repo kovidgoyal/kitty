@@ -535,6 +535,9 @@ xdgToplevelHandleConfigure(void* data,
             C(TOPLEVEL_STATE_TILED_RIGHT);
             C(TOPLEVEL_STATE_TILED_TOP);
             C(TOPLEVEL_STATE_TILED_BOTTOM);
+#ifdef XDG_TOPLEVEL_STATE_TILED_SUSPENDED_SINCE_VERSION
+            C(TOPLEVEL_STATE_SUSPENDED);
+#endif
 #undef C
         }
     }

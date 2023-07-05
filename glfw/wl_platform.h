@@ -125,6 +125,7 @@ typedef enum WaylandWindowState {
     TOPLEVEL_STATE_TILED_RIGHT = 32,
     TOPLEVEL_STATE_TILED_TOP = 64,
     TOPLEVEL_STATE_TILED_BOTTOM = 128,
+    TOPLEVEL_STATE_SUSPENDED = 256,
 } WaylandWindowState;
 
 typedef struct glfw_wl_xdg_activation_request {
