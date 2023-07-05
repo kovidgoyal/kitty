@@ -202,7 +202,7 @@ func (r *RSync) CreateSignature(target io.Reader, sw SignatureWriter) error {
 		}
 		block = buffer[:n]
 		weak := rc.full(block)
-		err = sw(BlockHash{StrongHash: r.uniqueHash(block), WeakHash: weak, Index: index})
+		err = sw(BlockHash{StrongHash: r.hash(block), WeakHash: weak, Index: index})
 		if err != nil {
 			return err
 		}
@@ -509,7 +509,7 @@ func (self *diff) read_at_least_one_operation() (err error) {
 	found_hash := false
 	var block_index uint64
 	if hh, ok := self.hash_lookup[self.rc.val]; ok {
-		block_index, found_hash = findUniqueHash(hh, self.hash(self.buffer[self.window.pos:self.window.pos+self.window.sz]))
+		block_index, found_hash = find_hash(hh, self.hash(self.buffer[self.window.pos:self.window.pos+self.window.sz]))
 	}
 	if found_hash {
 		self.send_data()
@@ -551,19 +551,19 @@ func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops Operati
 }
 
 // Use a more unique way to identify a set of bytes.
-func (r *RSync) uniqueHash(v []byte) []byte {
+func (r *RSync) hash(v []byte) []byte {
 	r.UniqueHasher.Reset()
 	r.UniqueHasher.Write(v)
 	return r.UniqueHasher.Sum(nil)
 }
 
 // Searches for a given strong hash among all strong hashes in this bucket.
-func findUniqueHash(hh []BlockHash, hashValue []byte) (uint64, bool) {
-	if len(hashValue) == 0 {
+func find_hash(hh []BlockHash, hv []byte) (uint64, bool) {
+	if len(hv) == 0 {
 		return 0, false
 	}
 	for _, block := range hh {
-		if bytes.Equal(block.StrongHash, hashValue) {
+		if bytes.Equal(block.StrongHash, hv) {
 			return block.Index, true
 		}
 	}
