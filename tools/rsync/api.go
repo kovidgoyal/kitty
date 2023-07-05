@@ -4,6 +4,7 @@ package rsync
 
 import (
 	"fmt"
+	"hash"
 	"io"
 	"math"
 
@@ -59,7 +60,7 @@ func (self *Api) read_signature_header(data []byte) (consumed int, err error) {
 	switch strong_hash := StrongHashType(bin.Uint16(data[4:])); strong_hash {
 	case XXH3:
 		self.Strong_hash_type = strong_hash
-		self.rsync.UniqueHasher = xxh3.New()
+		self.rsync.SetHasher(func() hash.Hash { return xxh3.New() })
 	default:
 		return consumed, fmt.Errorf("Invalid strong_hash in signature header: %d", strong_hash)
 	}
@@ -83,7 +84,7 @@ func (self *Api) read_signature_header(data []byte) (consumed int, err error) {
 }
 
 func (self *Api) read_signature_blocks(data []byte) (consumed int) {
-	hash_size := self.rsync.UniqueHasher.Size()
+	hash_size := self.rsync.HashSize()
 	block_hash_size := hash_size + 12
 	for ; len(data) >= block_hash_size; data = data[block_hash_size:] {
 		bl := BlockHash{}
@@ -99,7 +100,7 @@ func (self *Differ) finish_signature_data() (err error) {
 		return fmt.Errorf("There were %d leftover bytes in the signature data", len(self.unconsumed_signature_data))
 	}
 	self.unconsumed_signature_data = nil
-	if self.rsync.UniqueHasher == nil {
+	if !self.rsync.HasHasher() {
 		return fmt.Errorf("No header was found in the signature data")
 	}
 	return
@@ -211,7 +212,7 @@ func (self *Differ) CreateDelta(src io.Reader) DeltaIterator {
 // Add more external signature data
 func (self *Differ) AddSignatureData(data []byte) (err error) {
 	self.unconsumed_signature_data = append(self.unconsumed_signature_data, data...)
-	if self.rsync.UniqueHasher == nil {
+	if !self.rsync.HasHasher() {
 		consumed, err := self.read_signature_header(self.unconsumed_signature_data)
 		if err != nil {
 			if consumed < 0 {
@@ -240,10 +241,10 @@ func NewPatcher(expected_input_size int64) (ans *Patcher) {
 	}
 	ans = &Patcher{}
 	ans.rsync.BlockSize = utils.Min(bs, MaxBlockSize)
-	ans.rsync.UniqueHasher = xxh3.New()
+	ans.rsync.SetHasher(func() hash.Hash { return xxh3.New() })
 
-	if ans.rsync.UniqueHasher.BlockSize() > 0 && ans.rsync.UniqueHasher.BlockSize() < ans.rsync.BlockSize {
-		ans.rsync.BlockSize = (ans.rsync.BlockSize / ans.rsync.UniqueHasher.BlockSize()) * ans.rsync.UniqueHasher.BlockSize()
+	if ans.rsync.HashBlockSize() > 0 && ans.rsync.HashBlockSize() < ans.rsync.BlockSize {
+		ans.rsync.BlockSize = (ans.rsync.BlockSize / ans.rsync.HashBlockSize()) * ans.rsync.HashBlockSize()
 	}
 
 	ans.expected_input_size_for_signature_generation = sz

@@ -156,9 +156,14 @@ type RSync struct {
 	BlockSize int
 
 	// This must be non-nil before using any functions
-	UniqueHasher hash.Hash
+	hasher             hash.Hash
+	hasher_constructor func() hash.Hash
+	buffer             []byte
+}
 
-	buffer []byte
+func (r *RSync) SetHasher(c func() hash.Hash) {
+	r.hasher_constructor = c
+	r.hasher = c()
 }
 
 // If the target length is known the number of hashes in the
@@ -525,8 +530,8 @@ func (r *RSync) CreateDiff(source io.Reader, signature []BlockHash) func() (*Ope
 	ans := &diff{
 		block_size: r.BlockSize, buffer: make([]byte, 0, (r.BlockSize * 8)),
 		hash_lookup: make(map[uint32][]BlockHash, len(signature)),
-		source:      source, hasher: r.UniqueHasher,
-		hash_buf: make([]byte, 0, r.UniqueHasher.Size()),
+		source:      source, hasher: r.hasher_constructor(),
+		hash_buf: make([]byte, 0, r.hasher.Size()),
 	}
 	for _, h := range signature {
 		key := h.WeakHash
@@ -552,10 +557,14 @@ func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops Operati
 
 // Use a more unique way to identify a set of bytes.
 func (r *RSync) hash(v []byte) []byte {
-	r.UniqueHasher.Reset()
-	r.UniqueHasher.Write(v)
-	return r.UniqueHasher.Sum(nil)
+	r.hasher.Reset()
+	r.hasher.Write(v)
+	return r.hasher.Sum(nil)
 }
+
+func (r *RSync) HashSize() int      { return r.hasher.Size() }
+func (r *RSync) HashBlockSize() int { return r.hasher.BlockSize() }
+func (r *RSync) HasHasher() bool    { return r.hasher != nil }
 
 // Searches for a given strong hash among all strong hashes in this bucket.
 func find_hash(hh []BlockHash, hv []byte) (uint64, bool) {
