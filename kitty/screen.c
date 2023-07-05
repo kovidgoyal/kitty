@@ -2192,7 +2192,7 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
             } else if (strcmp("r", query) == 0) {
                 shape = snprintf(buf, sizeof(buf), "1$r%u;%ur", self->margin_top + 1, self->margin_bottom + 1);
             } else {
-                shape = snprintf(buf, sizeof(buf), "0$r%s", query);
+                shape = snprintf(buf, sizeof(buf), "0$r");
             }
             if (shape > 0) write_escape_code_to_child(self, DCS, buf);
             break;
