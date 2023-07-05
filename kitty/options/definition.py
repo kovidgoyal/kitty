@@ -1029,7 +1029,9 @@ Hide the window decorations (title-bar and window borders) with :code:`yes`. On
 macOS, :code:`titlebar-only` can be used to only hide the titlebar. Whether this
 works and exactly what effect it has depends on the window manager/operating
 system. Note that the effects of changing this option when reloading config
-are undefined.
+are undefined. When using :code:`titlebar-only`, it is useful to also set
+:opt:`window_margin_width` and :opt:`placement_strategy` to prevent the rounded
+corners from clipping text.
 '''
     )
 
