@@ -17,7 +17,7 @@ import (
 	"os"
 )
 
-// If no BlockSize is specified in the RSync instance, this value is used.
+// If no BlockSize is specified in the rsync instance, this value is used.
 const DefaultBlockSize = 1024 * 6
 
 // Internal constant used in rolling checksum.
@@ -150,9 +150,9 @@ type SignatureWriter func(bl BlockHash) error
 type OperationWriter func(op Operation) error
 
 // Properties to use while working with the rsync algorithm.
-// A single RSync should not be used concurrently as it may contain
+// A single rsync should not be used concurrently as it may contain
 // internal buffers and hash sums.
-type RSync struct {
+type rsync struct {
 	BlockSize int
 
 	// This must be non-nil before using any functions
@@ -161,14 +161,14 @@ type RSync struct {
 	buffer             []byte
 }
 
-func (r *RSync) SetHasher(c func() hash.Hash) {
+func (r *rsync) SetHasher(c func() hash.Hash) {
 	r.hasher_constructor = c
 	r.hasher = c()
 }
 
 // If the target length is known the number of hashes in the
 // signature can be determined.
-func (r *RSync) BlockHashCount(targetLength int64) (count int64) {
+func (r *rsync) BlockHashCount(targetLength int64) (count int64) {
 	bs := int64(r.BlockSize)
 	count = targetLength / bs
 	if targetLength%bs != 0 {
@@ -178,7 +178,7 @@ func (r *RSync) BlockHashCount(targetLength int64) (count int64) {
 }
 
 // Calculate the signature of target.
-func (r *RSync) CreateSignature(target io.Reader, sw SignatureWriter) error {
+func (r *rsync) CreateSignature(target io.Reader, sw SignatureWriter) error {
 	var err error
 	var n int
 
@@ -217,7 +217,7 @@ func (r *RSync) CreateSignature(target io.Reader, sw SignatureWriter) error {
 }
 
 // Apply the difference to the target.
-func (r *RSync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Operation) error {
+func (r *rsync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Operation) error {
 	var err error
 	var n int
 	var block []byte
@@ -274,7 +274,7 @@ func (r *RSync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 	return nil
 }
 
-func (r *RSync) set_buffer_to_size(sz int) {
+func (r *rsync) set_buffer_to_size(sz int) {
 	if cap(r.buffer) < sz {
 		r.buffer = make([]byte, sz)
 	} else {
@@ -526,7 +526,7 @@ func (self *diff) read_at_least_one_operation() (err error) {
 	return nil
 }
 
-func (r *RSync) CreateDiff(source io.Reader, signature []BlockHash) func() (*Operation, error) {
+func (r *rsync) CreateDiff(source io.Reader, signature []BlockHash) func() (*Operation, error) {
 	ans := &diff{
 		block_size: r.BlockSize, buffer: make([]byte, 0, (r.BlockSize * 8)),
 		hash_lookup: make(map[uint32][]BlockHash, len(signature)),
@@ -541,7 +541,7 @@ func (r *RSync) CreateDiff(source io.Reader, signature []BlockHash) func() (*Ope
 	return ans.Next
 }
 
-func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops OperationWriter) (err error) {
+func (r *rsync) CreateDelta(source io.Reader, signature []BlockHash, ops OperationWriter) (err error) {
 	diff := r.CreateDiff(source, signature)
 	var op *Operation
 	for {
@@ -556,15 +556,15 @@ func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops Operati
 }
 
 // Use a more unique way to identify a set of bytes.
-func (r *RSync) hash(v []byte) []byte {
+func (r *rsync) hash(v []byte) []byte {
 	r.hasher.Reset()
 	r.hasher.Write(v)
 	return r.hasher.Sum(nil)
 }
 
-func (r *RSync) HashSize() int      { return r.hasher.Size() }
-func (r *RSync) HashBlockSize() int { return r.hasher.BlockSize() }
-func (r *RSync) HasHasher() bool    { return r.hasher != nil }
+func (r *rsync) HashSize() int      { return r.hasher.Size() }
+func (r *rsync) HashBlockSize() int { return r.hasher.BlockSize() }
+func (r *rsync) HasHasher() bool    { return r.hasher != nil }
 
 // Searches for a given strong hash among all strong hashes in this bucket.
 func find_hash(hh []BlockHash, hv []byte) (uint64, bool) {

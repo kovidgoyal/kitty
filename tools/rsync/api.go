@@ -24,11 +24,11 @@ const (
 	XXH3 StrongHashType = iota
 )
 const (
-	Beta WeakHashType = iota
+	Rsync WeakHashType = iota
 )
 
 type Api struct {
-	rsync     RSync
+	rsync     rsync
 	signature []BlockHash
 
 	Strong_hash_type StrongHashType
@@ -65,7 +65,7 @@ func (self *Api) read_signature_header(data []byte) (consumed int, err error) {
 		return consumed, fmt.Errorf("Invalid strong_hash in signature header: %d", strong_hash)
 	}
 	switch weak_hash := WeakHashType(bin.Uint16(data[6:])); weak_hash {
-	case Beta:
+	case Rsync:
 		self.Weak_hash_type = weak_hash
 	default:
 		return consumed, fmt.Errorf("Invalid weak_hash in signature header: %d", weak_hash)
