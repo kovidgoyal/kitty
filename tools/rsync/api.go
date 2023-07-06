@@ -178,12 +178,12 @@ func write_block_hash(output []byte, bl BlockHash) []byte {
 	return output
 }
 
-// Append the next signature to the provided slice and return the resulting slice. Data is written to the slice iff err == nil.
-// When no more signature data is available, err = io.EOF and the unmodified slice is returned.
-type SignatureIterator = func([]byte) ([]byte, error)
+// Append the next item to the provided slice and return the resulting slice. Data is written to the slice iff err == nil.
+// When no more data is available, err = io.EOF and the unmodified slice is returned.
+type OutputIterator = func([]byte) ([]byte, error)
 
 // Create a signature for the data source in src.
-func (self *Patcher) CreateSignatureIterator(src io.Reader) SignatureIterator {
+func (self *Patcher) CreateSignatureIterator(src io.Reader) OutputIterator {
 	var it func() (BlockHash, error)
 	finished := false
 	return func(output []byte) ([]byte, error) {
@@ -212,24 +212,29 @@ func (self *Patcher) CreateSignatureIterator(src io.Reader) SignatureIterator {
 	}
 }
 
-type DeltaIterator = func() ([]byte, error)
-
 // Create a serialized delta based on the previously loaded signature
-func (self *Differ) CreateDelta(src io.Reader) DeltaIterator {
+func (self *Differ) CreateDelta(src io.Reader) OutputIterator {
 	if err := self.finish_signature_data(); err != nil {
-		return func() ([]byte, error) { return nil, err }
+		return func([]byte) ([]byte, error) { return nil, err }
 	}
 	if self.signature == nil {
-		return func() ([]byte, error) { return nil, fmt.Errorf("Cannot call CreateDelta() before loading a signature") }
+		return func([]byte) ([]byte, error) {
+			return nil, fmt.Errorf("Cannot call CreateDelta() before loading a signature")
+		}
 	}
 	it := self.rsync.CreateDiff(src, self.signature)
-	return func() ([]byte, error) {
+	return func(output []byte) ([]byte, error) {
 		for {
 			op, err := it()
 			if op == nil {
-				return nil, err
+				if err == nil {
+					err = io.EOF
+				}
+				return output, err
 			}
-			return op.Serialize(), nil
+			output, p := ensure_size(output, op.SerializeSize())
+			op.Serialize(p)
+			return output, nil
 		}
 	}
 }

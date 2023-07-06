@@ -96,29 +96,26 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 	if err := d.AddSignatureData(signature_of_changed); err != nil {
 		t.Fatal(err)
 	}
-	deltabuf := bytes.Buffer{}
+	deltabuf := make([]byte, 0, 8192)
 	it := d.CreateDelta(bytes.NewBuffer(src_data))
 	for {
-		b, err := it()
-		if b == nil {
-			if err != nil {
-				t.Fatal(err)
+		b, err := it(deltabuf)
+		if err != nil {
+			if err == io.EOF {
+				break
 			}
-			break
+			t.Fatal(err)
 		}
-		deltabuf.Write(b)
+		deltabuf = b
 	}
 	outputbuf := bytes.Buffer{}
 	p.StartDelta(&outputbuf, bytes.NewReader(changed))
-	b := make([]byte, 30*1024)
-	for {
-		n, _ := deltabuf.Read(b)
-		if n <= 0 {
-			break
-		}
-		if err := p.UpdateDelta(b[:n]); err != nil {
+	for len(deltabuf) > 0 {
+		n := utils.Min(123, len(deltabuf))
+		if err := p.UpdateDelta(deltabuf[:n]); err != nil {
 			t.Fatal(err)
 		}
+		deltabuf = deltabuf[n:]
 	}
 	if err := p.FinishDelta(); err != nil {
 		t.Fatal(err)

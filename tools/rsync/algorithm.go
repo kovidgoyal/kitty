@@ -44,30 +44,38 @@ type Operation struct {
 
 var bin = binary.LittleEndian
 
-func (self Operation) Serialize() []byte {
-	if self.serialized_repr != nil {
-		return self.serialized_repr
-	}
-	var ans []byte
+func (self Operation) SerializeSize() int {
 	switch self.Type {
 	case OpBlock:
-		ans = make([]byte, 9)
+		return 9
+	case OpBlockRange:
+		return 13
+	case OpHash:
+		return 3 + len(self.Data)
+	case OpData:
+		return 5 + len(self.Data)
+	}
+	return -1
+}
+
+func (self Operation) Serialize(ans []byte) {
+	if self.serialized_repr != nil {
+		copy(ans, self.serialized_repr)
+	}
+	switch self.Type {
+	case OpBlock:
 		bin.PutUint64(ans[1:], self.BlockIndex)
 	case OpBlockRange:
-		ans = make([]byte, 13)
 		bin.PutUint64(ans[1:], self.BlockIndex)
 		bin.PutUint32(ans[9:], uint32(self.BlockIndexEnd-self.BlockIndex))
 	case OpHash:
-		ans = make([]byte, 3+len(self.Data))
 		bin.PutUint16(ans[1:], uint16(len(self.Data)))
 		copy(ans[3:], self.Data)
 	case OpData:
-		ans = make([]byte, 5+len(self.Data))
 		bin.PutUint32(ans[1:], uint32(len(self.Data)))
 		copy(ans[5:], self.Data)
 	}
 	ans[0] = byte(self.Type)
-	return ans
 }
 
 func (self *Operation) Unserialize(data []byte) (n int, err error) {
