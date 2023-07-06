@@ -27,12 +27,15 @@ const (
 	Rsync WeakHashType = iota
 )
 
+type GrowBufferFunction = func(slice []byte, sz int) []byte
+
 type Api struct {
 	rsync     rsync
 	signature []BlockHash
 
 	Strong_hash_type StrongHashType
 	Weak_hash_type   WeakHashType
+	Grow_buffer_func GrowBufferFunction
 }
 
 type Differ struct {
@@ -163,17 +166,22 @@ func (self *Patcher) FinishDelta() (err error) {
 	return
 }
 
-func ensure_size(output []byte, count int) ([]byte, []byte) {
+func double_size(output []byte, count int) []byte {
+	ncap := utils.Max(8192, cap(output)*2, cap(output)+count)
+	t := make([]byte, len(output), ncap)
+	copy(t, output)
+	return t
+}
+
+func ensure_size(output []byte, count int, esf GrowBufferFunction) ([]byte, []byte) {
 	if cap(output)-len(output) < count {
-		t := make([]byte, len(output), utils.Max(8192, cap(output)*2))
-		copy(t, output)
-		output = t
+		output = esf(output, count)
 	}
 	return output[:len(output)+count], output[len(output) : len(output)+count]
 }
 
-func write_block_hash(output []byte, bl BlockHash) []byte {
-	output, b := ensure_size(output, BlockHashSize)
+func write_block_hash(output []byte, bl BlockHash, f GrowBufferFunction) []byte {
+	output, b := ensure_size(output, BlockHashSize, f)
 	bl.Serialize(b)
 	return output
 }
@@ -186,6 +194,10 @@ type OutputIterator = func([]byte) ([]byte, error)
 func (self *Patcher) CreateSignatureIterator(src io.Reader) OutputIterator {
 	var it func() (BlockHash, error)
 	finished := false
+	gbf := self.Grow_buffer_func
+	if gbf == nil {
+		gbf = double_size
+	}
 	return func(output []byte) ([]byte, error) {
 		if finished {
 			return output, io.EOF
@@ -193,7 +205,7 @@ func (self *Patcher) CreateSignatureIterator(src io.Reader) OutputIterator {
 		if it == nil { // write signature header
 			var b []byte
 			it = self.rsync.CreateSignatureIterator(src)
-			output, b = ensure_size(output, 12)
+			output, b = ensure_size(output, 12, gbf)
 			bin.PutUint32(b, 0)
 			bin.PutUint16(b[4:], uint16(self.Strong_hash_type))
 			bin.PutUint16(b[6:], uint16(self.Weak_hash_type))
@@ -205,7 +217,7 @@ func (self *Patcher) CreateSignatureIterator(src io.Reader) OutputIterator {
 			finished = true
 			return output, io.EOF
 		case nil:
-			return write_block_hash(output, bl), nil
+			return write_block_hash(output, bl, gbf), nil
 		default:
 			return nil, err
 		}
@@ -223,6 +235,11 @@ func (self *Differ) CreateDelta(src io.Reader) OutputIterator {
 		}
 	}
 	it := self.rsync.CreateDiff(src, self.signature)
+	gbf := self.Grow_buffer_func
+	if gbf == nil {
+		gbf = double_size
+	}
+
 	return func(output []byte) ([]byte, error) {
 		for {
 			op, err := it()
@@ -232,7 +249,7 @@ func (self *Differ) CreateDelta(src io.Reader) OutputIterator {
 				}
 				return output, err
 			}
-			output, p := ensure_size(output, op.SerializeSize())
+			output, p := ensure_size(output, op.SerializeSize(), gbf)
 			op.Serialize(p)
 			return output, nil
 		}
