@@ -1,14 +1,25 @@
 // License: GPLv3 Copyright: 2023, Kovid Goyal, <kovid at kovidgoyal.net>
 
+// First create a patcher with:
+// p = NewPatcher()
+// Create a signature for the file you want to update using
+// p.CreateSignatureIterator(file_to_update)
+// Now create a Differ with the created signature
+// d = NewDiffer()
+// d.AddSignatureData(signature_data_from_previous_step)
+// Now create a delta based on the signature and the reference file
+// d.CreateDelta(reference_file)
+// Finally, apply this delta using the patcher to produce a file identical to reference_file
+// based ont he delta data and file_to_update
+// p.StartDelta(output_file, file_to_update)
+// p.UpdateDelta(...)
+// p.FinishDelta()
 package rsync
 
 import (
 	"fmt"
-	"hash"
 	"io"
 	"math"
-
-	"github.com/zeebo/xxh3"
 
 	"kitty/tools/utils"
 )
@@ -19,9 +30,13 @@ const MaxBlockSize int = 1024 * 1024 // sqrt of 1TB
 
 type StrongHashType uint16
 type WeakHashType uint16
+type ChecksumType uint16
 
 const (
 	XXH3 StrongHashType = iota
+)
+const (
+	XXH3128Sum ChecksumType = iota
 )
 const (
 	Rsync WeakHashType = iota
@@ -33,6 +48,7 @@ type Api struct {
 	rsync     rsync
 	signature []BlockHash
 
+	Checksum_type    ChecksumType
 	Strong_hash_type StrongHashType
 	Weak_hash_type   WeakHashType
 	Grow_buffer_func GrowBufferFunction
@@ -57,13 +73,20 @@ func (self *Api) read_signature_header(data []byte) (consumed int, err error) {
 	if len(data) < 12 {
 		return -1, io.ErrShortBuffer
 	}
-	if version := bin.Uint32(data); version != 0 {
+	if version := bin.Uint16(data); version != 0 {
 		return consumed, fmt.Errorf("Invalid version in signature header: %d", version)
+	}
+	switch csum := ChecksumType(bin.Uint16(data[2:])); csum {
+	case XXH3128Sum:
+		self.Checksum_type = XXH3128Sum
+		self.rsync.SetChecksummer(new_xxh3_128)
+	default:
+		return consumed, fmt.Errorf("Invalid checksum_type in signature header: %d", csum)
 	}
 	switch strong_hash := StrongHashType(bin.Uint16(data[4:])); strong_hash {
 	case XXH3:
 		self.Strong_hash_type = strong_hash
-		self.rsync.SetHasher(func() hash.Hash64 { return xxh3.New() })
+		self.rsync.SetHasher(new_xxh3_64)
 	default:
 		return consumed, fmt.Errorf("Invalid strong_hash in signature header: %d", strong_hash)
 	}
@@ -206,7 +229,8 @@ func (self *Patcher) CreateSignatureIterator(src io.Reader) OutputIterator {
 			var b []byte
 			it = self.rsync.CreateSignatureIterator(src)
 			output, b = ensure_size(output, 12, gbf)
-			bin.PutUint32(b, 0)
+			bin.PutUint16(b, 0)
+			bin.PutUint16(b[2:], uint16(self.Checksum_type))
 			bin.PutUint16(b[4:], uint16(self.Strong_hash_type))
 			bin.PutUint16(b[6:], uint16(self.Weak_hash_type))
 			bin.PutUint32(b[8:], uint32(self.rsync.BlockSize))
@@ -288,7 +312,8 @@ func NewPatcher(expected_input_size int64) (ans *Patcher) {
 	}
 	ans = &Patcher{}
 	ans.rsync.BlockSize = utils.Min(bs, MaxBlockSize)
-	ans.rsync.SetHasher(func() hash.Hash64 { return xxh3.New() })
+	ans.rsync.SetHasher(new_xxh3_64)
+	ans.rsync.SetChecksummer(new_xxh3_128)
 
 	if ans.rsync.HashBlockSize() > 0 && ans.rsync.HashBlockSize() < ans.rsync.BlockSize {
 		ans.rsync.BlockSize = (ans.rsync.BlockSize / ans.rsync.HashBlockSize()) * ans.rsync.HashBlockSize()

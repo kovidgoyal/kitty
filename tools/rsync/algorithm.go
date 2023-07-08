@@ -14,6 +14,8 @@ import (
 	"hash"
 	"io"
 	"os"
+
+	"github.com/zeebo/xxh3"
 )
 
 // If no BlockSize is specified in the rsync instance, this value is used.
@@ -31,6 +33,36 @@ const (
 	OpHash
 	OpBlockRange
 )
+
+type xxh3_128 struct {
+	xxh3.Hasher
+}
+
+func (self *xxh3_128) Sum(b []byte) []byte {
+	s := self.Sum128()
+	pos := len(b)
+	if len(b)+16 < cap(b) {
+		var x [16]byte
+		b = append(b, x[:]...)
+	} else {
+		b = b[:len(b)+16]
+	}
+	binary.BigEndian.PutUint64(b[pos:], s.Hi)
+	binary.BigEndian.PutUint64(b[pos+8:], s.Lo)
+	return b
+}
+
+func new_xxh3_64() hash.Hash64 {
+	ans := xxh3.New()
+	ans.Reset()
+	return ans
+}
+
+func new_xxh3_128() hash.Hash {
+	ans := new(xxh3_128)
+	ans.Reset()
+	return ans
+}
 
 // Instruction to mutate target to align to source.
 type Operation struct {
@@ -163,14 +195,21 @@ type rsync struct {
 	BlockSize int
 
 	// This must be non-nil before using any functions
-	hasher             hash.Hash64
-	hasher_constructor func() hash.Hash64
-	buffer             []byte
+	hasher                  hash.Hash64
+	hasher_constructor      func() hash.Hash64
+	checksummer_constructor func() hash.Hash
+	checksummer             hash.Hash
+	buffer                  []byte
 }
 
 func (r *rsync) SetHasher(c func() hash.Hash64) {
 	r.hasher_constructor = c
 	r.hasher = c()
+}
+
+func (r *rsync) SetChecksummer(c func() hash.Hash) {
+	r.checksummer_constructor = c
+	r.checksummer = c()
 }
 
 // If the target length is known the number of hashes in the
