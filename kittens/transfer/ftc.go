@@ -156,7 +156,7 @@ var ftc_field_map = utils.Once(func() map[string]reflect.StructField {
 })
 
 var safe_string_pat = utils.Once(func() *regexp.Regexp {
-	return regexp.MustCompile(`[^0-9a-zA-Z_:.,/!@#$%^&*()[\]{}~` + "`" + `?"'\\|=+-]`)
+	return regexp.MustCompile(`[^0-9a-zA-Z_:./@-]`)
 })
 
 func safe_string(x string) string {
