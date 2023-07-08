@@ -45,7 +45,7 @@ func TestFTCSerialization(t *testing.T) {
 	q(n.Serialize())
 
 	unsafe := "moo\x1b;;[?*.-se1"
-	if safe_string(unsafe) != "moo[?*.-se1" {
+	if safe_string(unsafe) != "moo.-se1" {
 		t.Fatalf("safe_string() failed for %#v yielding: %#v", unsafe, safe_string(unsafe))
 	}
 }
