@@ -87,7 +87,9 @@ Detailed list of changes
 
 - macOS: Fix window shadows not being drawn for transparent windows (:iss:`2827`, :pull:`6416`)
 
-- Do not echo invalid DECRQSS queries back, behavior inherited from xterm (CVE-2008-2383)
+- Do not echo invalid DECRQSS queries back, behavior inherited from xterm (CVE-2008-2383). Similarly, fix an echo
+  bug in the file transfer protocol due to insufficient sanitization of safe strings.
+
 
 0.28.1 [2023-04-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

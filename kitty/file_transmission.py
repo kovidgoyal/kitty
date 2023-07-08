@@ -3,6 +3,7 @@
 
 import errno
 import os
+import re
 import stat
 import tempfile
 from base64 import standard_b64decode, standard_b64encode
@@ -21,7 +22,7 @@ from kittens.transfer.utils import IdentityCompressor, ZlibCompressor, abspath, 
 from kitty.fast_data_types import FILE_TRANSFER_CODE, OSC, add_timer, get_boss, get_options
 from kitty.types import run_once
 
-from .utils import log_error, sanitize_control_codes
+from .utils import log_error
 
 EXPIRE_TIME = 10  # minutes
 MAX_ACTIVE_RECEIVES = MAX_ACTIVE_SENDS = 10
@@ -30,6 +31,14 @@ ftc_prefix = str(FILE_TRANSFER_CODE)
 
 def escape_semicolons(x: str) -> str:
     return x.replace(';', ';;')
+
+
+def safe_string_pat() -> 're.Pattern[str]':
+    return re.compile(r'[^0-9a-zA-Z_:./@-]')
+
+
+def safe_string(x: str) -> str:
+    return safe_string_pat().sub('', x)
 
 
 def as_unicode(x: Union[str, bytes]) -> str:
@@ -307,7 +316,7 @@ class FileTransmissionCommand:
                 if k.metadata.get('base64'):
                     yield standard_b64encode(val.encode('utf-8'))
                 else:
-                    yield escape_semicolons(sanitize_control_codes(val))
+                    yield escape_semicolons(safe_string(val))
             elif k.type is int:
                 yield str(val)
             else:
@@ -339,7 +348,7 @@ class FileTransmissionCommand:
                     sval = decode_utf8_buffer(val)
                     if has_semicolons:
                         sval = sval.replace(';;', ';')
-                setattr(ans, field.name, sanitize_control_codes(sval))
+                setattr(ans, field.name, safe_string(sval))
 
         parse_ftc(data, handle_item)
         if ans.action is Action.invalid:

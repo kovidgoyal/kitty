@@ -508,7 +508,7 @@ enum
         ac=file
 
 safe_string
-    A string consisting only of characters from the set ``[0-9a-zA-Z_:.,/!@#$%^&*()[]{}~`?"'\\|=+-]``
+    A string consisting only of characters from the set ``[0-9a-zA-Z_:./@-]``
     Note that the semi-colon is missing from this set.
 
 integer
