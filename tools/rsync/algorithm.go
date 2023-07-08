@@ -9,6 +9,7 @@
 package rsync
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"hash"
@@ -41,11 +42,12 @@ type xxh3_128 struct {
 func (self *xxh3_128) Sum(b []byte) []byte {
 	s := self.Sum128()
 	pos := len(b)
-	if len(b)+16 < cap(b) {
+	limit := pos + 16
+	if limit > cap(b) {
 		var x [16]byte
 		b = append(b, x[:]...)
 	} else {
-		b = b[:len(b)+16]
+		b = b[:limit]
 	}
 	binary.BigEndian.PutUint64(b[pos:], s.Hi)
 	binary.BigEndian.PutUint64(b[pos+8:], s.Lo)
@@ -267,8 +269,11 @@ func (r *rsync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 
 	r.set_buffer_to_size(r.BlockSize)
 	buffer := r.buffer
+	if r.checksummer == nil {
+		r.checksummer = r.checksummer_constructor()
+	}
 
-	writeBlock := func(op Operation) error {
+	write_block := func(op Operation) error {
 		if _, err = target.Seek(int64(r.BlockSize*int(op.BlockIndex)), os.SEEK_SET); err != nil {
 			return err
 		}
@@ -279,6 +284,7 @@ func (r *rsync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 			}
 		}
 		block = buffer[:n]
+		r.checksummer.Write(block)
 		_, err = alignedTarget.Write(block)
 		if err != nil {
 			return err
@@ -289,7 +295,7 @@ func (r *rsync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 	switch op.Type {
 	case OpBlockRange:
 		for i := op.BlockIndex; i <= op.BlockIndexEnd; i++ {
-			err = writeBlock(Operation{
+			err = write_block(Operation{
 				Type:       OpBlock,
 				BlockIndex: i,
 			})
@@ -301,7 +307,7 @@ func (r *rsync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 			}
 		}
 	case OpBlock:
-		err = writeBlock(op)
+		err = write_block(op)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -309,9 +315,15 @@ func (r *rsync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 			return err
 		}
 	case OpData:
+		r.checksummer.Write(op.Data)
 		_, err = alignedTarget.Write(op.Data)
 		if err != nil {
 			return err
+		}
+	case OpHash:
+		expected := r.checksummer.Sum(nil)
+		if !bytes.Equal(expected, op.Data) {
+			return fmt.Errorf("Failed to verify overall file checksum. This usually happens if some data was corrupted in transit or one of the involved files was altered while the transfer was in progress.")
 		}
 	}
 	return nil
@@ -402,6 +414,7 @@ type diff struct {
 	hash_lookup map[uint32][]BlockHash
 	source      io.Reader
 	hasher      hash.Hash64
+	checksummer hash.Hash
 
 	window, data struct{ pos, sz int }
 	block_size   int
@@ -510,13 +523,16 @@ func (self *diff) ensure_idx_valid(idx int) (ok bool, err error) {
 	extra := idx - len(self.buffer) + 1
 	var n int
 	n, err = io.ReadAtLeast(self.source, self.buffer[len(self.buffer):cap(self.buffer)], extra)
+	block := self.buffer[len(self.buffer):][:n]
 	switch err {
 	case nil:
 		ok = true
 		self.buffer = self.buffer[:len(self.buffer)+n]
+		self.checksummer.Write(block)
 	case io.ErrUnexpectedEOF, io.EOF:
 		err = nil
 		self.buffer = self.buffer[:len(self.buffer)+n]
+		self.checksummer.Write(block)
 	}
 	return
 }
@@ -526,6 +542,7 @@ func (self *diff) finish_up() {
 	self.data.pos = self.window.pos
 	self.data.sz = len(self.buffer) - self.window.pos
 	self.send_data()
+	self.enqueue(Operation{Type: OpHash, Data: self.checksummer.Sum(nil)})
 	self.finished = true
 }
 
@@ -573,6 +590,7 @@ func (r *rsync) CreateDiff(source io.Reader, signature []BlockHash) func() (*Ope
 		block_size: r.BlockSize, buffer: make([]byte, 0, (r.BlockSize * 8)),
 		hash_lookup: make(map[uint32][]BlockHash, len(signature)),
 		source:      source, hasher: r.hasher_constructor(),
+		checksummer: r.checksummer_constructor(),
 	}
 	for _, h := range signature {
 		key := h.WeakHash

@@ -67,7 +67,9 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 		total_data_in_delta = 0
 		outputbuf := bytes.Buffer{}
 		for _, op := range delta_ops {
-			total_data_in_delta += len(op.Data)
+			if op.Type == OpData {
+				total_data_in_delta += len(op.Data)
+			}
 			p.rsync.ApplyDelta(&outputbuf, bytes.NewReader(changed), op)
 		}
 		return outputbuf.Bytes()
