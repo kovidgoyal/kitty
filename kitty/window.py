@@ -38,6 +38,7 @@ from .constants import (
     appname,
     clear_handled_signals,
     config_dir,
+    kitten_exe,
     wakeup_io_loop,
 )
 from .fast_data_types import (
@@ -155,6 +156,8 @@ class CwdRequest:
                 server_args = [] if run_shell else list(argv)
                 from kittens.ssh.utils import set_cwd_in_cmdline, set_server_args_in_cmdline
                 argv[:] = ssh_kitten_cmdline
+                if argv and argv[0] == 'kitten':
+                    argv[0] = kitten_exe()
                 set_cwd_in_cmdline(reported_cwd, argv)
                 set_server_args_in_cmdline(server_args, argv, allocate_tty=not run_shell)
                 return ''
