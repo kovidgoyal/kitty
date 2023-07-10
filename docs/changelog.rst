@@ -35,7 +35,7 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.28.2 [future]
+0.29.0 [2023-07-10]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new escape code ``<ESC>[22J`` that moves the current contents of the screen into the scrollback before clearing it
