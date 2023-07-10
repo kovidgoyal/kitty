@@ -3026,13 +3026,9 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     switch (color_space) {
         case SRGB_COLORSPACE: cs = [NSColorSpace sRGBColorSpace]; break;
         case DISPLAY_P3_COLORSPACE: cs = [NSColorSpace displayP3ColorSpace]; break;
-        case DEFAULT_COLORSPACE: cs = [NSColorSpace deviceRGBColorSpace]; break;
+        case DEFAULT_COLORSPACE: cs = nil; break;  // using deviceRGBColorSpace causes a hang when transitioning to fullscreen
     }
     window->resizable = resizable;
-    [window->ns.object setColorSpace:cs];
-    [[window->ns.object standardWindowButton: NSWindowCloseButton] setHidden:hide_titlebar_buttons];
-    [[window->ns.object standardWindowButton: NSWindowMiniaturizeButton] setHidden:hide_titlebar_buttons];
-    [[window->ns.object standardWindowButton: NSWindowZoomButton] setHidden:hide_titlebar_buttons];
     debug(
         "Window Chrome state:\n\tbackground: %s\n\tappearance: %s color_space: %s\n\t"
         "blur: %d has_shadow: %d resizable: %d decorations: %s (%d)\n\t"
@@ -3044,6 +3040,10 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
         background_blur, has_shadow, resizable, decorations_desc, window->decorated, titlebar_transparent,
         show_text_in_titlebar, window->ns.titlebar_hidden, hide_titlebar_buttons
     );
+    [window->ns.object setColorSpace:cs];
+    [[window->ns.object standardWindowButton: NSWindowCloseButton] setHidden:hide_titlebar_buttons];
+    [[window->ns.object standardWindowButton: NSWindowMiniaturizeButton] setHidden:hide_titlebar_buttons];
+    [[window->ns.object standardWindowButton: NSWindowZoomButton] setHidden:hide_titlebar_buttons];
     window->ns.pre_full_screen_style_mask = getStyleMask(window);
     [window->ns.object setStyleMask:window->ns.pre_full_screen_style_mask];
     // HACK: Changing the style mask can cause the first responder to be cleared
