@@ -23,7 +23,10 @@ class GetColors(RemoteCommand):
     short_desc = 'Get terminal colors'
     desc = (
         'Get the terminal colors for the specified window (defaults to active window).'
-        ' Colors will be output to stdout in the same syntax as used for :file:`kitty.conf`.'
+        ' Colors will be output to STDOUT in the same syntax as used for :file:`kitty.conf`.'
+        '\n\nTo get a single color use:'
+        '\n  get-colors | grep "^background " | tr -s | cut -d" " -f2'
+        '\n\nChange background above to whatever color you are interested in.'
     )
     options_spec = '''\
 --configured -c
