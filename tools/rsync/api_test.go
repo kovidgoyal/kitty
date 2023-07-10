@@ -59,11 +59,10 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 
 	total_data_in_delta := 0
 	apply_delta := func(signature []BlockHash) []byte {
-		delta_ops := make([]Operation, 0, 1024)
-		p.rsync.CreateDelta(bytes.NewReader(src_data), signature, func(op Operation) error {
-			delta_ops = append(delta_ops, op)
-			return nil
-		})
+		delta_ops, err := p.rsync.CreateDelta(bytes.NewReader(src_data), signature)
+		if err != nil {
+			t.Fatal(err)
+		}
 		total_data_in_delta = 0
 		outputbuf := bytes.Buffer{}
 		for _, op := range delta_ops {
@@ -98,18 +97,17 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 	if err := d.AddSignatureData(signature_of_changed); err != nil {
 		t.Fatal(err)
 	}
-	deltabuf := make([]byte, 0, 8192)
-	it := d.CreateDelta(bytes.NewBuffer(src_data))
+	db := bytes.Buffer{}
+	it := d.CreateDelta(bytes.NewBuffer(src_data), &db)
 	for {
-		b, err := it(deltabuf)
-		if err != nil {
+		if err := it(); err != nil {
 			if err == io.EOF {
 				break
 			}
 			t.Fatal(err)
 		}
-		deltabuf = b
 	}
+	deltabuf := db.Bytes()
 	outputbuf := bytes.Buffer{}
 	p.StartDelta(&outputbuf, bytes.NewReader(changed))
 	for len(deltabuf) > 0 {

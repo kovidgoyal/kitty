@@ -249,35 +249,16 @@ func (self *Patcher) CreateSignatureIterator(src io.Reader) OutputIterator {
 }
 
 // Create a serialized delta based on the previously loaded signature
-func (self *Differ) CreateDelta(src io.Reader) OutputIterator {
+func (self *Differ) CreateDelta(src io.Reader, output io.Writer) func() error {
 	if err := self.finish_signature_data(); err != nil {
-		return func([]byte) ([]byte, error) { return nil, err }
+		return func() error { return err }
 	}
 	if self.signature == nil {
-		return func([]byte) ([]byte, error) {
-			return nil, fmt.Errorf("Cannot call CreateDelta() before loading a signature")
+		return func() error {
+			return fmt.Errorf("Cannot call CreateDelta() before loading a signature")
 		}
 	}
-	it := self.rsync.CreateDiff(src, self.signature)
-	gbf := self.Grow_buffer_func
-	if gbf == nil {
-		gbf = double_size
-	}
-
-	return func(output []byte) ([]byte, error) {
-		for {
-			op, err := it()
-			if op == nil {
-				if err == nil {
-					err = io.EOF
-				}
-				return output, err
-			}
-			output, p := ensure_size(output, op.SerializeSize(), gbf)
-			op.Serialize(p)
-			return output, nil
-		}
-	}
+	return self.rsync.CreateDiff(src, self.signature, output)
 }
 
 // Add more external signature data
