@@ -51,7 +51,6 @@ type Api struct {
 	Checksum_type    ChecksumType
 	Strong_hash_type StrongHashType
 	Weak_hash_type   WeakHashType
-	Grow_buffer_func GrowBufferFunction
 }
 
 type Differ struct {
@@ -189,61 +188,37 @@ func (self *Patcher) FinishDelta() (err error) {
 	return
 }
 
-func double_size(output []byte, count int) []byte {
-	ncap := utils.Max(8192, cap(output)*2, cap(output)+count)
-	t := make([]byte, len(output), ncap)
-	copy(t, output)
-	return t
-}
-
-func ensure_size(output []byte, count int, esf GrowBufferFunction) ([]byte, []byte) {
-	if cap(output)-len(output) < count {
-		output = esf(output, count)
-	}
-	return output[:len(output)+count], output[len(output) : len(output)+count]
-}
-
-func write_block_hash(output []byte, bl BlockHash, f GrowBufferFunction) []byte {
-	output, b := ensure_size(output, BlockHashSize, f)
-	bl.Serialize(b)
-	return output
-}
-
-// Append the next item to the provided slice and return the resulting slice. Data is written to the slice iff err == nil.
-// When no more data is available, err = io.EOF and the unmodified slice is returned.
-type OutputIterator = func([]byte) ([]byte, error)
-
 // Create a signature for the data source in src.
-func (self *Patcher) CreateSignatureIterator(src io.Reader) OutputIterator {
+func (self *Patcher) CreateSignatureIterator(src io.Reader, output io.Writer) func() error {
 	var it func() (BlockHash, error)
 	finished := false
-	gbf := self.Grow_buffer_func
-	if gbf == nil {
-		gbf = double_size
-	}
-	return func(output []byte) ([]byte, error) {
+	var b [BlockHashSize]byte
+	return func() error {
 		if finished {
-			return output, io.EOF
+			return io.EOF
 		}
 		if it == nil { // write signature header
-			var b []byte
 			it = self.rsync.CreateSignatureIterator(src)
-			output, b = ensure_size(output, 12, gbf)
-			bin.PutUint16(b, 0)
+			bin.PutUint16(b[:], 0)
 			bin.PutUint16(b[2:], uint16(self.Checksum_type))
 			bin.PutUint16(b[4:], uint16(self.Strong_hash_type))
 			bin.PutUint16(b[6:], uint16(self.Weak_hash_type))
 			bin.PutUint32(b[8:], uint32(self.rsync.BlockSize))
+			if _, err := output.Write(b[:12]); err != nil {
+				return err
+			}
 		}
 		bl, err := it()
 		switch err {
 		case io.EOF:
 			finished = true
-			return output, io.EOF
+			return io.EOF
 		case nil:
-			return write_block_hash(output, bl, gbf), nil
+			bl.Serialize(b[:BlockHashSize])
+			_, err = output.Write(b[:BlockHashSize])
+			return err
 		default:
-			return nil, err
+			return err
 		}
 	}
 }
