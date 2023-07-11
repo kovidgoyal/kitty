@@ -297,16 +297,12 @@ static NSUInteger getStyleMask(_GLFWwindow* window)
     NSUInteger styleMask = NSWindowStyleMaskMiniaturizable;
     if (window->ns.titlebar_hidden) styleMask |= NSWindowStyleMaskFullSizeContentView;
 
-    if (window->monitor || !window->decorated)
+    if (window->monitor || !window->decorated) {
         styleMask |= NSWindowStyleMaskBorderless;
-    else
-    {
-        styleMask |= NSWindowStyleMaskTitled |
-                     NSWindowStyleMaskClosable;
-
-        if (window->resizable)
-            styleMask |= NSWindowStyleMaskResizable;
+    } else {
+        styleMask |= NSWindowStyleMaskTitled | NSWindowStyleMaskClosable;
     }
+    if (window->resizable) styleMask |= NSWindowStyleMaskResizable;
 
     return styleMask;
 }
@@ -3020,6 +3016,11 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
             titlebar_transparent = true;
             window->ns.titlebar_hidden = true;
             show_text_in_titlebar = false;
+            break;
+        case 4:
+            decorations_desc = "no-titlebar-and-no-corners";
+            window->decorated = false;
+            has_shadow = true;
             break;
         default:
             window->decorated = true;

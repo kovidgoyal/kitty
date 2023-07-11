@@ -594,6 +594,8 @@ def optional_edge_width(x: str) -> FloatEdges:
 def hide_window_decorations(x: str) -> int:
     if x == 'titlebar-only':
         return 0b10
+    if x == 'titlebar-and-corners':
+        return 0b100
     if to_bool(x):
         return 0b01
     return 0b00

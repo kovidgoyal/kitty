@@ -42,6 +42,8 @@ Detailed list of changes
 
 - macOS: Fix a regression causing *burn-in* of text when resizing semi-transparent OS windows (:iss:`6439`)
 
+- macOS: Add a new value ``titlebar-and-corners`` for :opt:`hide_window_decorations` that emulates the behavior of ``hide_window_decorations yes`` in older versions of kitty
+
 - Remote control launch: Fix ``--env`` not implemented when using ``--cwd=current`` with the SSH kitten (:iss:`6438`)
 
 0.29.0 [2023-07-10]
