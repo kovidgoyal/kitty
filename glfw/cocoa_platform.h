@@ -157,6 +157,7 @@ typedef struct _GLFWwindowNS
     GLFWcocoarenderframefun renderFrameCallback;
     // update cursor after switching desktops with Mission Control
     bool delayed_cursor_update_requested;
+    GLFWcocoarenderframefun resizeCallback;
 } _GLFWwindowNS;
 
 typedef struct _GLFWDisplayLinkNS

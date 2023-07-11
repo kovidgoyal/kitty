@@ -248,6 +248,7 @@ def generate_wrappers(glfw_header: str) -> None:
     GLFWapplicationwillfinishlaunchingfun glfwSetApplicationWillFinishLaunching(GLFWapplicationwillfinishlaunchingfun callback)
     uint32_t glfwGetCocoaKeyEquivalent(uint32_t glfw_key, int glfw_mods, int* cocoa_mods)
     void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun callback)
+    GLFWcocoarenderframefun glfwCocoaSetWindowResizeCallback(GLFWwindow *w, GLFWcocoarenderframefun callback)
     int glfwCocoaSetBackgroundBlur(GLFWwindow *w, int blur_radius)
     bool glfwSetX11WindowBlurred(GLFWwindow *w, bool enable_blur)
     void* glfwGetX11Display(void)

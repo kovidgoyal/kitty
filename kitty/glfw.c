@@ -289,11 +289,38 @@ window_iconify_callback(GLFWwindow *window, int iconified) {
     global_state.callback_os_window = NULL;
 }
 
+#ifdef __APPLE__
+static void
+cocoa_out_of_sequence_render(OSWindow *window) {
+    make_os_window_context_current(window);
+    window->needs_render = true;
+    bool rendered = render_os_window(window, monotonic(), true, true);
+    if (!rendered) {
+        blank_os_window(window);
+        swap_window_buffers(window);
+    }
+    window->needs_render = true;
+}
+
+static void
+cocoa_os_window_resized(GLFWwindow *w) {
+    if (!set_callback_window(w)) return;
+    cocoa_out_of_sequence_render(global_state.callback_os_window);
+    global_state.callback_os_window = NULL;
+}
+#endif
+
+
+
 void
 change_live_resize_state(OSWindow *w, bool in_progress) {
     if (in_progress != w->live_resize.in_progress) {
         w->live_resize.in_progress = in_progress;
+        w->live_resize.num_of_resize_events = 0;
         apply_swap_interval(in_progress ? 0 : -1);
+#ifdef __APPLE__
+        cocoa_out_of_sequence_render(w);
+#endif
     }
 }
 
@@ -1083,6 +1110,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
 #ifdef __APPLE__
     if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
     glfwSetCocoaToggleFullscreenIntercept(glfw_window, intercept_cocoa_fullscreen);
+    glfwCocoaSetWindowResizeCallback(glfw_window, cocoa_os_window_resized);
 #endif
     send_prerendered_sprites_for_window(w);
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);

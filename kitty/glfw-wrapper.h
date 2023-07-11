@@ -2217,6 +2217,10 @@ typedef void (*glfwCocoaRequestRenderFrame_func)(GLFWwindow*, GLFWcocoarenderfra
 GFW_EXTERN glfwCocoaRequestRenderFrame_func glfwCocoaRequestRenderFrame_impl;
 #define glfwCocoaRequestRenderFrame glfwCocoaRequestRenderFrame_impl
 
+typedef GLFWcocoarenderframefun (*glfwCocoaSetWindowResizeCallback_func)(GLFWwindow*, GLFWcocoarenderframefun);
+GFW_EXTERN glfwCocoaSetWindowResizeCallback_func glfwCocoaSetWindowResizeCallback_impl;
+#define glfwCocoaSetWindowResizeCallback glfwCocoaSetWindowResizeCallback_impl
+
 typedef int (*glfwCocoaSetBackgroundBlur_func)(GLFWwindow*, int);
 GFW_EXTERN glfwCocoaSetBackgroundBlur_func glfwCocoaSetBackgroundBlur_impl;
 #define glfwCocoaSetBackgroundBlur glfwCocoaSetBackgroundBlur_impl

@@ -841,6 +841,10 @@ render(monotonic_t now, bool input_read) {
 
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
+#ifdef __APPLE__
+        // rendering is done in cocoa_os_window_resized()
+        if (w->live_resize.in_progress) continue;
+#endif
         if (!render_os_window(w, now, false, scan_for_animated_images)) {
             // since we didn't scan the window for animations, force a rescan on next wakeup/render frame
             if (scan_for_animated_images) global_state.check_for_active_animated_images = true;

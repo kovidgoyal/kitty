@@ -646,6 +646,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         window->ns.height = (int)contentRect.size.height;
         _glfwInputWindowSize(window, (int)contentRect.size.width, (int)contentRect.size.height);
     }
+    if (window->ns.resizeCallback) window->ns.resizeCallback((GLFWwindow*)window);
 }
 
 - (void)windowDidMove:(NSNotification *)notification
@@ -2962,6 +2963,13 @@ GLFWAPI int glfwCocoaSetBackgroundBlur(GLFWwindow *w, int radius) {
         window->ns.blur_radius = radius;
     }
     return orig;
+}
+
+GLFWAPI GLFWcocoarenderframefun glfwCocoaSetWindowResizeCallback(GLFWwindow *w, GLFWcocoarenderframefun cb) {
+    _GLFWwindow* window = (_GLFWwindow*)w;
+    GLFWcocoarenderframefun current = window->ns.resizeCallback;
+    window->ns.resizeCallback = cb;
+    return current;
 }
 
 GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool use_system_color, unsigned int system_color, int background_blur, unsigned int hide_window_decorations, bool show_text_in_titlebar, int color_space, float background_opacity, bool resizable) { @autoreleasepool {
