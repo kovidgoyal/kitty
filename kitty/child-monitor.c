@@ -746,7 +746,7 @@ draw_resizing_text(OSWindow *w) {
 }
 
 static void
-render_os_window(OSWindow *os_window, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
+render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
     // ensure all pixels are cleared to background color at least once in every buffer
     if (os_window->clear_count++ < 3) blank_os_window(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
@@ -788,6 +788,44 @@ no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_
     return ans;
 }
 
+bool
+render_os_window(OSWindow *w, monotonic_t now, bool ignore_render_frames, bool scan_for_animated_images) {
+    if (!w->num_tabs) return false;
+    if (!should_os_window_be_rendered(w)) {
+        update_os_window_title(w);
+        if (w->is_focused) change_menubar_title(w->window_title);
+        return false;
+    }
+    if (!ignore_render_frames && USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY) {
+        if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now, ms_to_monotonic_t(250ll))) request_frame_render(w);
+        // dont respect render frames soon after a resize on Wayland as they cause flicker because
+        // we want to fill the newly resized buffer ASAP, not at compositors convenience
+        if (!global_state.is_wayland || (monotonic() - w->viewport_resized_at) > s_double_to_monotonic_t(1)) {
+            return false;
+        }
+    }
+    w->render_calls++;
+    make_os_window_context_current(w);
+    if (w->live_resize.in_progress) blank_os_window(w);
+    bool needs_render = w->is_damaged || w->live_resize.in_progress;
+    if (w->viewport_size_dirty) {
+        w->clear_count = 0;
+        update_surface_size(w->viewport_width, w->viewport_height, 0);
+        w->viewport_size_dirty = false;
+        needs_render = true;
+    }
+    unsigned int active_window_id = 0, num_visible_windows = 0;
+    bool all_windows_have_same_bg;
+    color_type active_window_bg = 0;
+    if (!w->fonts_data) { log_error("No fonts data found for window id: %llu", w->id); return false; }
+    if (prepare_to_render_os_window(w, now, &active_window_id, &active_window_bg, &num_visible_windows, &all_windows_have_same_bg, scan_for_animated_images)) needs_render = true;
+    if (w->last_active_window_id != active_window_id || w->last_active_tab != w->active_tab || w->focused_at_last_render != w->is_focused) needs_render = true;
+    if (w->render_calls < 3 && w->bgimage && w->bgimage->texture_id) needs_render = true;
+    if (needs_render) render_prepared_os_window(w, active_window_id, active_window_bg, num_visible_windows, all_windows_have_same_bg);
+    if (w->is_focused) change_menubar_title(w->window_title);
+    return needs_render;
+}
+
 static void
 render(monotonic_t now, bool input_read) {
     EVDBG("input_read: %d, check_for_active_animated_images: %d", input_read, global_state.check_for_active_animated_images);
@@ -803,41 +841,10 @@ render(monotonic_t now, bool input_read) {
 
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
-        if (!w->num_tabs) continue;
-        if (!should_os_window_be_rendered(w)) {
-            update_os_window_title(w);
-            if (w->is_focused) change_menubar_title(w->window_title);
-            continue;
+        if (!render_os_window(w, now, false, scan_for_animated_images)) {
+            // since we didn't scan the window for animations, force a rescan on next wakeup/render frame
+            if (scan_for_animated_images) global_state.check_for_active_animated_images = true;
         }
-        if (USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY) {
-            if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now, ms_to_monotonic_t(250ll))) request_frame_render(w);
-            // dont respect render frames soon after a resize on Wayland as they cause flicker because
-            // we want to fill the newly resized buffer ASAP, not at compositors convenience
-            if (!global_state.is_wayland || (monotonic() - w->viewport_resized_at) > s_double_to_monotonic_t(1)) {
-                // since we didn't scan the window for animations, force a rescan on next wakeup/render frame
-                if (scan_for_animated_images) global_state.check_for_active_animated_images = true;
-                continue;
-            }
-        }
-        w->render_calls++;
-        make_os_window_context_current(w);
-        if (w->live_resize.in_progress) blank_os_window(w);
-        bool needs_render = w->is_damaged || w->live_resize.in_progress;
-        if (w->viewport_size_dirty) {
-            w->clear_count = 0;
-            update_surface_size(w->viewport_width, w->viewport_height, 0);
-            w->viewport_size_dirty = false;
-            needs_render = true;
-        }
-        unsigned int active_window_id = 0, num_visible_windows = 0;
-        bool all_windows_have_same_bg;
-        color_type active_window_bg = 0;
-        if (!w->fonts_data) { log_error("No fonts data found for window id: %llu", w->id); continue; }
-        if (prepare_to_render_os_window(w, now, &active_window_id, &active_window_bg, &num_visible_windows, &all_windows_have_same_bg, scan_for_animated_images)) needs_render = true;
-        if (w->last_active_window_id != active_window_id || w->last_active_tab != w->active_tab || w->focused_at_last_render != w->is_focused) needs_render = true;
-        if (w->render_calls < 3 && w->bgimage && w->bgimage->texture_id) needs_render = true;
-        if (needs_render) render_os_window(w, active_window_id, active_window_bg, num_visible_windows, all_windows_have_same_bg);
-        if (w->is_focused) change_menubar_title(w->window_title);
     }
     last_render_at = now;
 #undef TD
