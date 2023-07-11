@@ -83,7 +83,7 @@ copy_with_file_range(int infd, int outfd, off_t in_pos, size_t len, FastFileCopy
 #ifdef HAS_COPY_FILE_RANGE
     unsigned num_of_consecutive_zero_returns = 128;
     while (len) {
-        off64_t r = in_pos;
+        int64_t r = in_pos;
         ssize_t n = copy_file_range(infd, &r, outfd, NULL, len, 0);
         if (n < 0) {
             if (errno == EAGAIN) continue;
