@@ -737,6 +737,21 @@ cocoa_focus_window(void *w) {
     [window makeKeyWindow];
 }
 
+bool
+cocoa_set_shadow(void *w, bool has_shadow) {
+    NSWindow *window = (NSWindow*)w;
+    bool current = window.hasShadow;
+    [window setHasShadow:has_shadow];
+    if (has_shadow) {  // invalidate the shadow to clear the ghosting
+        [window invalidateShadow];
+        // invalidateShadow does not work with layer backed views, see http://www.openradar.me/34184270
+        // so do the frame resize dance to force AppKit to invalidate the shadow even with the layer
+        [window setFrame:NSMakeRect(NSMinX(window.frame), NSMinY(window.frame), NSWidth(window.frame)+1, NSHeight(window.frame)) display:NO animate:NO];
+        [window setFrame:NSMakeRect(NSMinX(window.frame), NSMinY(window.frame), NSWidth(window.frame)-1, NSHeight(window.frame)) display:NO animate:NO];
+    }
+    return current;
+}
+
 long
 cocoa_window_number(void *w) {
     NSWindow *window = (NSWindow*)w;

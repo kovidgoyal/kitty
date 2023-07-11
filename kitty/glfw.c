@@ -305,6 +305,7 @@ cocoa_out_of_sequence_render(OSWindow *window) {
 static void
 cocoa_os_window_resized(GLFWwindow *w) {
     if (!set_callback_window(w)) return;
+    if (global_state.callback_os_window->ignore_resize_events) return;
     cocoa_out_of_sequence_render(global_state.callback_os_window);
     global_state.callback_os_window = NULL;
 }
@@ -319,6 +320,24 @@ change_live_resize_state(OSWindow *w, bool in_progress) {
         w->live_resize.num_of_resize_events = 0;
         apply_swap_interval(in_progress ? 0 : -1);
 #ifdef __APPLE__
+        extern bool cocoa_set_shadow(void*, bool);
+        if (w->is_semi_transparent && w->handle) {
+            // shadow with transparency during resize causes burn-in of window contents
+            // aka ghosting of the text after resize is completed. So avoid that by turning
+            // the shadow on and off.
+            if (in_progress) {
+                bool had_shadow = cocoa_set_shadow(glfwGetCocoaWindow(w->handle), false);
+                w->has_cocoa_shadow = had_shadow;
+            } else {
+                if (w->has_cocoa_shadow) {
+                    // turning on the shadow will cause a resize event which will be delivered before cocoa_set_shadow returns
+                    w->ignore_resize_events = true;
+                    cocoa_set_shadow(glfwGetCocoaWindow(w->handle), true);
+                    w->ignore_resize_events = false;
+                    w->has_cocoa_shadow = false;
+                }
+            }
+        }
         cocoa_out_of_sequence_render(w);
 #endif
     }
@@ -327,6 +346,7 @@ change_live_resize_state(OSWindow *w, bool in_progress) {
 static void
 live_resize_callback(GLFWwindow *w, bool started) {
     if (!set_callback_window(w)) return;
+    if (global_state.callback_os_window->ignore_resize_events) return;
     global_state.callback_os_window->live_resize.from_os_notification = true;
     change_live_resize_state(global_state.callback_os_window, true);
     global_state.has_pending_resizes = true;
@@ -340,6 +360,7 @@ live_resize_callback(GLFWwindow *w, bool started) {
 static void
 framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (!set_callback_window(w)) return;
+    if (global_state.callback_os_window->ignore_resize_events) return;
     int min_width, min_height; min_size_for_os_window(global_state.callback_os_window, &min_width, &min_height);
     if (width >= min_width && height >= min_height) {
         OSWindow *window = global_state.callback_os_window;
@@ -358,6 +379,7 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
 static void
 dpi_change_callback(GLFWwindow *w, float x_scale UNUSED, float y_scale UNUSED) {
     if (!set_callback_window(w)) return;
+    if (global_state.callback_os_window->ignore_resize_events) return;
     // Ensure update_os_window_viewport() is called in the near future, it will
     // take care of DPI changes.
     OSWindow *window = global_state.callback_os_window;

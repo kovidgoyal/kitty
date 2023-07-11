@@ -229,7 +229,7 @@ typedef struct {
     bool viewport_size_dirty, viewport_updated_at_least_once;
     monotonic_t viewport_resized_at;
     LiveResizeInfo live_resize;
-    bool has_pending_resizes, is_semi_transparent, shown_once, is_damaged;
+    bool has_pending_resizes, is_semi_transparent, shown_once, is_damaged, has_cocoa_shadow, ignore_resize_events;
     unsigned int clear_count;
     WindowChromeState last_window_chrome;
     float background_opacity;
