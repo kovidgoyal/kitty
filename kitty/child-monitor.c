@@ -1016,6 +1016,7 @@ process_pending_resizes(monotonic_t now) {
             }
             if (update_viewport) {
                 update_os_window_viewport(w, true);
+                change_live_resize_state(w, false);
                 zero_at_ptr(&w->live_resize);
                 w->is_damaged = true;  // because the window size should be hidden even if update_os_window_viewport does nothing
             }
