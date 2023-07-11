@@ -148,9 +148,25 @@ def get_ssh_data(msg: str, request_id: str) -> Iterator[bytes]:
             yield b'KITTY_DATA_END\n'
 
 
-def set_env_in_cmdline(env: Dict[str, str], argv: List[str]) -> None:
-    patch_cmdline('clone_env', create_shared_memory(env, 'ksse-'), argv)
-
+def set_env_in_cmdline(env: Dict[str, str], argv: List[str], clone: bool = True) -> None:
+    from kitty.options.utils import DELETE_ENV_VAR
+    if clone:
+        patch_cmdline('clone_env', create_shared_memory(env, 'ksse-'), argv)
+        return
+    idx = argv.index('ssh')
+    for i in range(idx, len(argv)):
+        if argv[i] == '--kitten':
+            idx = i + 1
+        elif argv[i].startswith('--kitten='):
+            idx = i
+    env_dirs = []
+    for k, v in env.items():
+        if v is DELETE_ENV_VAR:
+            x = f'--kitten=env={k}'
+        else:
+            x = f'--kitten=env={k}={v}'
+        env_dirs.append(x)
+    argv[idx+1:idx+1] = env_dirs
 
 
 def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
