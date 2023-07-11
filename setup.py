@@ -382,7 +382,7 @@ def init_env(
         'OVERRIDE_CFLAGS', (
             f'-Wextra {float_conversion} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {std}'
             f' {werror} {optimize} {sanitize_flag} -fwrapv {stack_protector} {missing_braces}'
-            f' -pipe {march} -fvisibility=hidden {fortify_source}'
+            f' -pipe {march} -D_FILE_OFFSET_BITS=64 -fvisibility=hidden {fortify_source}'
         )
     )
     cflags = shlex.split(cflags_) + shlex.split(
