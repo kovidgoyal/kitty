@@ -4,6 +4,7 @@
 
 import base64
 import contextlib
+import errno
 import io
 import json
 import os
@@ -146,7 +147,11 @@ def compile_terminfo(base):
     tname = '.terminfo'
     q = os.path.join(base, tname, '78', 'xterm-kitty')
     if not os.path.exists(q):
-        os.makedirs(os.path.dirname(q), exist_ok=True)
+        try:
+            os.makedirs(os.path.dirname(q))
+        except EnvironmentError as e:
+            if e.errno != errno.EEXIST:
+                raise
         os.symlink('../x/xterm-kitty', q)
     if os.path.exists('/usr/share/misc/terminfo.cdb'):
         # NetBSD requires this
