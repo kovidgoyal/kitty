@@ -920,9 +920,9 @@ init_window_chrome_state(WindowChromeState *s, color_type active_window_bg, bool
     s->background_opacity = background_opacity;
 }
 
-#ifdef __APPLE__
 static void
 apply_window_chrome_state(GLFWwindow *w, WindowChromeState new_state, int width, int height, bool window_decorations_changed) {
+#ifdef __APPLE__
     glfwCocoaSetWindowChrome(w,
         new_state.color, new_state.use_system_color, new_state.system_color,
         new_state.background_blur, new_state.hide_window_decorations,
@@ -931,8 +931,19 @@ apply_window_chrome_state(GLFWwindow *w, WindowChromeState new_state, int width,
     );
     // Need to resize the window again after hiding decorations or title bar to take up screen space
     if (window_decorations_changed) glfwSetWindowSize(w, width, height);
-}
+#else
+        if (window_decorations_changed) {
+            bool hide_window_decorations = new_state.hide_window_decorations & 1;
+            glfwSetWindowAttrib(w, GLFW_DECORATED, !hide_window_decorations);
+            glfwSetWindowSize(w, width, height);
+        }
+        if (global_state.is_wayland) {
+            if (glfwWaylandSetTitlebarColor) glfwWaylandSetTitlebarColor(w, new_state.color, new_state.use_system_color);
+        } else {
+            glfwSetX11WindowBlurred(w, new_state.background_blur > 0);
+        }
 #endif
+}
 
 void
 set_os_window_chrome(OSWindow *w) {
@@ -955,20 +966,7 @@ set_os_window_chrome(OSWindow *w) {
         int width, height;
         glfwGetWindowSize(w->handle, &width, &height);
         bool window_decorations_changed = new_state.hide_window_decorations != w->last_window_chrome.hide_window_decorations;
-#ifdef __APPLE__
         apply_window_chrome_state(w->handle, new_state, width, height, window_decorations_changed);
-#else
-        if (window_decorations_changed) {
-            bool hide_window_decorations = new_state.hide_window_decorations & 1;
-            glfwSetWindowAttrib(w->handle, GLFW_DECORATED, !hide_window_decorations);
-            glfwSetWindowSize(w->handle, width, height);
-        }
-        if (global_state.is_wayland) {
-            if (glfwWaylandSetTitlebarColor) glfwWaylandSetTitlebarColor(w->handle, new_state.color, new_state.use_system_color);
-        } else {
-            glfwSetX11WindowBlurred(w->handle, new_state.background_blur > 0);
-        }
-#endif
         w->last_window_chrome = new_state;
     }
 }
@@ -1171,6 +1169,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     init_window_chrome_state(&w->last_window_chrome, OPT(background), w->is_semi_transparent, w->background_opacity);
 #ifdef __APPLE__
     apply_window_chrome_state(w->handle, w->last_window_chrome, width, height, OPT(hide_window_decorations) != 0);
+#else
+    apply_window_chrome_state(w->handle, w->last_window_chrome, width, height, false);
 #endif
     // Update window state
     // We do not call glfwWindowHint to set GLFW_MAXIMIZED before the window is created.
