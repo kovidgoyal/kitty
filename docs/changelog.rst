@@ -46,6 +46,8 @@ Detailed list of changes
 
 - macOS: Fix a regression in the previous release that caused :opt:`hide_window_decorations` = ``yes`` to prevent window from being resizable (:iss:`6436`)
 
+- macOS: Fix a regression that caused the titlebar to be translucent even for non-translucent windows (:iss:`6450`)
+
 - Remote control launch: Fix ``--env`` not implemented when using ``--cwd=current`` with the SSH kitten (:iss:`6438`)
 
 0.29.0 [2023-07-10]

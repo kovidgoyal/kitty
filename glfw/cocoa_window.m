@@ -2977,16 +2977,18 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     bool titlebar_transparent = false;
     NSWindowStyleMask current_style_mask = [window->ns.object styleMask];
     bool in_fullscreen = ((current_style_mask & NSWindowStyleMaskFullScreen) != 0) || window->ns.in_traditional_fullscreen;
+    NSAppearance *light_appearance = is_transparent ? [NSAppearance appearanceNamed:NSAppearanceNameVibrantLight] : [NSAppearance appearanceNamed:NSAppearanceNameAqua];
+    NSAppearance *dark_appearance = is_transparent ? [NSAppearance appearanceNamed:NSAppearanceNameVibrantDark] : [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
     if (use_system_color || background_opacity < 1.0) {
         if (is_transparent) {
             // prevent blurring of shadows at window corners with desktop background by setting a low alpha background
             background = background_blur > 0 ? [NSColor colorWithWhite: 0 alpha: 0.001f] : [NSColor clearColor];
-        } else background = [NSColor clearColor];
+        } else background = [NSColor windowBackgroundColor];
         switch (system_color) {
             case 1:
-                appearance = [NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]; break;
+                appearance = light_appearance; break;
             case 2:
-                appearance = [NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]; break;
+                appearance = dark_appearance; break;
         }
     } else {
         // set a background color and make the title bar transparent so the background color is visible
@@ -2995,7 +2997,7 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
         double blue = (color & 0xFF) / 255.0;
         double luma = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
         background = [NSColor colorWithSRGBRed:red green:green blue:blue alpha:1.f];
-        appearance = [NSAppearance appearanceNamed:(luma < 0.5 ? NSAppearanceNameVibrantDark : NSAppearanceNameVibrantLight)];
+        appearance = luma < 0.5 ? dark_appearance : light_appearance;
         titlebar_transparent = true;
     }
     [window->ns.object setBackgroundColor:background];
