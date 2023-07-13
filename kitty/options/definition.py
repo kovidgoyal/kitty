@@ -4026,14 +4026,19 @@ clearing of the current window:
         printf "\e[H\e[22J"
     }
 
-For instance, using these functions, it is possible to remap :kbd:`Ctrl+L` to both scroll the current screen
-contents into the scrollback buffer and clear the screen, instead of just
-clearing the screen. For ZSH, in :file:`~/.zshrc` after the above functions, add:
+For instance, using these escape codes, it is possible to remap :kbd:`Ctrl+L`
+to both scroll the current screen contents into the scrollback buffer and clear
+the screen, instead of just clearing the screen. For ZSH, in :file:`~/.zshrc`, add:
 
 .. code-block:: zsh
 
-    zle -N clear-screen-saving-contents-in-scrollback
-    bindkey '^l' clear-screen-saving-contents-in-scrollback
+    ctrl_l() {
+        builtin print -rn -- $'\e[H\e[22J' > "$TTY"
+        builtin zle .reset-prompt
+        builtin zle -R
+    }
+    zle -N ctrl_l
+    bindkey '^l' ctrl_l
 
 '''
     )
