@@ -38,6 +38,8 @@ Detailed list of changes
 0.29.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new value for :opt:`background_image_layout` to scale the background image while preserving its aspect ratio. Also have centered images work even for images larger than the window size (:pull:`6458`)
+
 - macOS: Fix a regression that caused rendering to hang when transitioning to full screen with :opt:`macos_colorspace` set to ``default`` (:iss:`6435`)
 
 - macOS: Fix a regression causing *burn-in* of text when resizing semi-transparent OS windows (:iss:`6439`)

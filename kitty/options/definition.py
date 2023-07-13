@@ -1395,7 +1395,9 @@ opt('background_image_layout', 'tiled',
     ctype='bglayout',
     long_text='''
 Whether to tile, scale or clamp the background image. The value can be one of
-:code:`tiled`, :code:`mirror-tiled`, :code:`scaled`, :code:`clamped` or :code:`centered`.
+:code:`tiled`, :code:`mirror-tiled`, :code:`scaled`, :code:`clamped`, :code:`centered`
+or :code:`cscaled`. The :code:`scaled` and :code:`cscaled` values scale the image to the
+window size, with :code:`cscaled` preserving the image aspect ratio.
 '''
     )
 
