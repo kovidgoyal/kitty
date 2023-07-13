@@ -169,7 +169,9 @@ send_bgimage_to_gpu(BackgroundImageLayout layout, BackgroundImage *bgimage) {
     RepeatStrategy r = REPEAT_DEFAULT;
     switch (layout) {
         case SCALED:
-        case CLAMPED: case CENTER_CLAMPED:
+        case CLAMPED:
+        case CENTER_CLAMPED:
+        case CENTER_SCALED:
             r = REPEAT_CLAMP; break;
         case MIRRORED:
             r = REPEAT_MIRROR; break;

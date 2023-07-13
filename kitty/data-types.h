@@ -70,7 +70,7 @@ typedef enum MouseTrackingModes { NO_TRACKING, BUTTON_MODE, MOTION_MODE, ANY_MOD
 typedef enum MouseTrackingProtocols { NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL, SGR_PIXEL_PROTOCOL} MouseTrackingProtocol;
 typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 typedef enum { NONE, MENUBAR, WINDOW, ALL } WindowTitleIn;
-typedef enum { TILING, SCALED, MIRRORED, CLAMPED, CENTER_CLAMPED } BackgroundImageLayout;
+typedef enum { TILING, SCALED, MIRRORED, CLAMPED, CENTER_CLAMPED, CENTER_SCALED } BackgroundImageLayout;
 typedef struct ImageAnchorPosition {
     float canvas_x, canvas_y, image_x, image_y;
 } ImageAnchorPosition;
