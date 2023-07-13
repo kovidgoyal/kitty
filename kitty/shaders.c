@@ -431,13 +431,13 @@ draw_background_image(OSWindow *w) {
     GLfloat iheight = (GLfloat)w->bgimage->height;
     GLfloat vwidth = (GLfloat)window_width;
     GLfloat vheight = (GLfloat)window_height;
-    if (OPT(background_image_layout) == CENTER_SCALED) {
+    if (CENTER_SCALED == OPT(background_image_layout)) {
       GLfloat ifrac = iwidth / iheight;
       if (ifrac > (vwidth / vheight)) {
         iheight = vheight;
         iwidth = iheight * ifrac;
       } else {
-        iwidth = (GLfloat)window_width;
+        iwidth = vwidth;
         iheight = iwidth / ifrac;
       }
     }
