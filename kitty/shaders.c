@@ -427,8 +427,22 @@ draw_background_image(OSWindow *w) {
 #else
     int window_width = w->viewport_width, window_height = w->viewport_height;
 #endif
+    GLfloat iwidth = (GLfloat)w->bgimage->width;
+    GLfloat iheight = (GLfloat)w->bgimage->height;
+    GLfloat vwidth = (GLfloat)window_width;
+    GLfloat vheight = (GLfloat)window_height;
+    if (CENTER_SCALED == OPT(background_image_layout)) {
+      GLfloat ifrac = iwidth / iheight;
+      if (ifrac > (vwidth / vheight)) {
+        iheight = vheight;
+        iwidth = iheight * ifrac;
+      } else {
+        iwidth = vwidth;
+        iheight = iwidth / ifrac;
+      }
+    }
     glUniform4f(bgimage_program_layout.uniforms.sizes,
-        (GLfloat)window_width, (GLfloat)window_height, (GLfloat)w->bgimage->width, (GLfloat)w->bgimage->height);
+        vwidth, vheight, iwidth, iheight);
     glUniform1f(bgimage_program_layout.uniforms.premult, w->is_semi_transparent ? 1.f : 0.f);
     GLfloat tiled = 0.f;;
     GLfloat left = -1.0, top = 1.0, right = 1.0, bottom = -1.0;
@@ -438,15 +452,14 @@ draw_background_image(OSWindow *w) {
         case SCALED:
             tiled = 0.f; break;
         case CENTER_CLAMPED:
-            tiled = 1.f;
-            if (window_width > (int)w->bgimage->width) {
-                GLfloat frac = (window_width - w->bgimage->width) / (GLfloat)window_width;
-                left += frac; right += frac;
-            }
-            if (window_height > (int)w->bgimage->height) {
-                GLfloat frac = (window_height - w->bgimage->height) / (GLfloat)window_height;
-                top -= frac; bottom -= frac;
-            }
+        case CENTER_SCALED:
+            tiled = 0.f;
+            GLfloat wfrac = (vwidth - iwidth) / vwidth;
+            GLfloat hfrac = (vheight - iheight) / vheight;
+            left += wfrac;
+            right -= wfrac;
+            top -= hfrac;
+            bottom += hfrac;
             break;
     }
     glUniform1f(bgimage_program_layout.uniforms.tiled, tiled);
