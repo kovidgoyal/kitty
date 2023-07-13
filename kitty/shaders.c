@@ -432,14 +432,14 @@ draw_background_image(OSWindow *w) {
     GLfloat vwidth = (GLfloat)window_width;
     GLfloat vheight = (GLfloat)window_height;
     if (CENTER_SCALED == OPT(background_image_layout)) {
-      GLfloat ifrac = iwidth / iheight;
-      if (ifrac > (vwidth / vheight)) {
-        iheight = vheight;
-        iwidth = iheight * ifrac;
-      } else {
-        iwidth = vwidth;
-        iheight = iwidth / ifrac;
-      }
+        GLfloat ifrac = iwidth / iheight;
+        if (ifrac > (vwidth / vheight)) {
+            iheight = vheight;
+            iwidth = iheight * ifrac;
+        } else {
+            iwidth = vwidth;
+            iheight = iwidth / ifrac;
+        }
     }
     glUniform4f(bgimage_program_layout.uniforms.sizes,
         vwidth, vheight, iwidth, iheight);
@@ -450,17 +450,16 @@ draw_background_image(OSWindow *w) {
         case TILING: case MIRRORED: case CLAMPED:
             tiled = 1.f; break;
         case SCALED:
-            tiled = 0.f; break;
+            break;
         case CENTER_CLAMPED:
-        case CENTER_SCALED:
-            tiled = 0.f;
+        case CENTER_SCALED: {
             GLfloat wfrac = (vwidth - iwidth) / vwidth;
             GLfloat hfrac = (vheight - iheight) / vheight;
             left += wfrac;
             right -= wfrac;
             top -= hfrac;
             bottom += hfrac;
-            break;
+        } break;
     }
     glUniform1f(bgimage_program_layout.uniforms.tiled, tiled);
     glUniform4f(bgimage_program_layout.uniforms.positions, left, top, right, bottom);
