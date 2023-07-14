@@ -226,7 +226,7 @@ type signature_iterator struct {
 	index  uint64
 }
 
-// ans is valid only iff err == nil
+// ans is valid iff err == nil
 func (self *signature_iterator) next() (ans BlockHash, err error) {
 	n, err := io.ReadAtLeast(self.src, self.buffer, cap(self.buffer))
 	switch err {
