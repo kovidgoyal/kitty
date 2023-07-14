@@ -1,3 +1,4 @@
+//go:build exclude_me
 /*
  * algorithm.c
  * Copyright (C) 2023 Kovid Goyal <kovid at kovidgoyal.net>
@@ -6,10 +7,36 @@
  */
 
 #include "data-types.h"
-#define XXH_INLINE_ALL
+#include <math.h>
 #include <xxhash.h>
 
 static PyObject *RsyncError = NULL;
+static const size_t default_block_size = 6 * 1024;
+static const size_t signature_block_size = 20;
+
+inline static uint16_t le16(const uint8_t b[const static 2]) {
+    return b[0]|(uint16_t)b[1]<<8;
+}
+inline static uint32_t le32(const uint8_t b[const static 4]) {
+    return le16(b)|(uint32_t)le16(b+2)<<16;
+}
+inline static uint64_t le64(const uint8_t b[const static 8]) {
+    return le32(b)|(uint64_t)le32(b+4)<<32;
+}
+inline static void le16b(uint8_t b[const static 2], const uint16_t n) {
+    b[0] = n;
+    b[1] = n>>8;
+}
+inline static void le32b(uint8_t b[const static 4], const uint32_t n) {
+    le16b(b, n);
+    le16b(b+2, n>>16);
+}
+inline static void le64b(uint8_t b[const static 8], const uint64_t n) {
+    le32b(b, n);
+    le32b(b+4, n>>32);
+}
+
+// hashers {{{
 typedef void*(*new_hash_t)(void);
 typedef void(*delete_hash_t)(void*);
 typedef bool(*reset_hash_t)(void*);
@@ -70,6 +97,7 @@ xxh128_hasher(void) {
 
 
 typedef hasher_t(*hasher_constructor_t)(void);
+// }}}
 
 typedef struct Rsync {
     size_t block_size;
@@ -77,33 +105,30 @@ typedef struct Rsync {
     hasher_constructor_t hasher_constructor, checksummer_constructor;
     hasher_t hasher, checksummer;
 
-    void *buffer; size_t buffer_cap, buffer_sz;
+    size_t buffer_cap, buffer_sz;
 } Rsync;
 
 static void
 free_rsync(Rsync* r) {
     if (r->hasher.state) { r->hasher.delete(r->hasher.state); r->hasher.state = NULL; }
     if (r->checksummer.state) { r->checksummer.delete(r->checksummer.state); r->checksummer.state = NULL; }
-    if (r->buffer) { free(r->buffer); r->buffer = NULL; }
-    free(r);
 }
 
-static Rsync*
-new_rsync(size_t block_size, int strong_hash_type, int checksum_type) {
-    Rsync *ans = calloc(1, sizeof(Rsync));
-    if (ans != NULL) {
-        ans->block_size = block_size;
-        if (strong_hash_type == 0) ans->hasher_constructor = xxh64_hasher;
-        if (checksum_type == 0) ans->checksummer_constructor = xxh128_hasher;
-        if (ans->hasher_constructor == NULL) { free_rsync(ans); return NULL; }
-        if (ans->checksummer_constructor == NULL) { free_rsync(ans); return NULL; }
-        ans->hasher = ans->hasher_constructor();
-        ans->checksummer = ans->checksummer_constructor();
-        ans->buffer = malloc(block_size);
-        if (ans->buffer == NULL) { free(ans); return NULL; }
-        ans->buffer_cap = block_size;
-    }
-    return ans;
+static const char*
+init_rsync(Rsync *ans, size_t block_size, int strong_hash_type, int checksum_type) {
+    memset(ans, 0, sizeof(*ans));
+    ans->block_size = block_size;
+    if (strong_hash_type == 0) ans->hasher_constructor = xxh64_hasher;
+    if (checksum_type == 0) ans->checksummer_constructor = xxh128_hasher;
+    if (ans->hasher_constructor == NULL) { free_rsync(ans); return "Unknown strong hash type"; }
+    if (ans->checksummer_constructor == NULL) { free_rsync(ans); return "Unknown checksum type"; }
+    ans->hasher = ans->hasher_constructor();
+    ans->checksummer = ans->checksummer_constructor();
+    ans->hasher.state = ans->hasher.new();
+    if (ans->hasher.state == NULL) { free(ans); return "Out of memory"; }
+    ans->checksummer.state = ans->checksummer.new();
+    if (ans->checksummer.state == NULL) { free(ans); return "Out of memory"; }
+    return NULL;
 }
 
 typedef struct rolling_checksum {
@@ -127,7 +152,7 @@ rolling_checksum_full(rolling_checksum *self, uint8_t *data, uint32_t len) {
 	return self->val;
 }
 
-static void
+inline static void
 rolling_checksum_add_one_byte(rolling_checksum *self, uint8_t first_byte, uint8_t last_byte) {
 	self->alpha = (self->alpha - self->first_byte_of_previous_window + last_byte) % _M;
 	self->beta = (self->beta - (self->l)*self->first_byte_of_previous_window + self->alpha) % _M;
@@ -137,6 +162,94 @@ rolling_checksum_add_one_byte(rolling_checksum *self, uint8_t first_byte, uint8_
 
 // Python interface {{{
 
+typedef struct {
+    PyObject_HEAD
+    rolling_checksum rc;
+    uint64_t signature_idx;
+    size_t block_size;
+    Rsync rsync;
+} Patcher;
+
+static int
+Patcher_init(PyObject *s, PyObject *args, PyObject *kwds) {
+    Patcher *self = (Patcher*)s;
+    static char *kwlist[] = {"expected_input_size", NULL};
+    unsigned long long expected_input_size;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "K", kwlist, &expected_input_size)) return -1;
+    self->block_size = default_block_size;
+    if (expected_input_size > 0) {
+        self->block_size = (size_t)round(sqrt((double)expected_input_size));
+    }
+    const char *err = init_rsync(&self->rsync, self->block_size, 0, 0);
+    if (err != NULL) { PyErr_SetString(RsyncError, err); return -1; }
+    return 0;
+}
+
+static void
+Patcher_dealloc(PyObject *self) {
+    Patcher *p = (Patcher*)self;
+    (void)p;
+    Py_TYPE(self)->tp_free(self);
+}
+
+static PyObject*
+signature_header(Patcher *self, PyObject *a2) {
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer dest = {0};
+    if (PyObject_GetBuffer(a2, &dest, PyBUF_WRITE) == -1) return NULL;
+    if (dest.len < 12) {
+        PyErr_SetString(RsyncError, "Output buffer is too small");
+    }
+    uint8_t *o = dest.buf;
+    le16b(o, 0); // version
+    le16b(o + 2, 0);  // checksum type
+    le16b(o + 4, 0);  // strong hash type
+    le16b(o + 6, 0);  // weak hash type
+    le32b(o + 8, self->block_size);  // weak hash type
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+sign_block(Patcher *self, PyObject *args) {
+    PyObject *a1, *a2;
+    if (!PyArg_ParseTuple(args, "OO", &a1, &a2)) return NULL;
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer src = {0};
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer dest = {0};
+    if (PyObject_GetBuffer(a1, &src, PyBUF_SIMPLE) == -1) return NULL;
+    if (PyObject_GetBuffer(a2, &dest, PyBUF_WRITE) == -1) return NULL;
+    if (dest.len < (ssize_t)signature_block_size) {
+        PyErr_SetString(RsyncError, "Output buffer is too small");
+    }
+    self->rsync.hasher.reset(self->rsync.hasher.state);
+    if (!self->rsync.hasher.update(self->rsync.hasher.state, src.buf, src.len)) { PyErr_SetString(PyExc_ValueError, "String hashing failed"); return NULL; }
+    uint64_t strong_hash = self->rsync.hasher.digest64(self->rsync.hasher.state);
+    uint32_t weak_hash = rolling_checksum_full(&self->rc, src.buf, src.len);
+    uint8_t *o = dest.buf;
+    le64b(o, self->signature_idx++);
+    le32b(o + 8, weak_hash);
+    le64b(o + 12, strong_hash);
+    Py_RETURN_NONE;
+}
+
+static PyMethodDef Patcher_methods[] = {
+    METHODB(sign_block, METH_VARARGS),
+    METHODB(signature_header, METH_O),
+    {NULL}  /* Sentinel */
+};
+
+
+PyTypeObject Patcher_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "rsync.Patcher",
+    .tp_basicsize = sizeof(Patcher),
+    .tp_dealloc = Patcher_dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_doc = "Patcher",
+    .tp_methods = Patcher_methods,
+    .tp_new = PyType_GenericNew,
+    .tp_init = Patcher_init,
+};
+
+// Hasher {{{
 typedef struct {
     PyObject_HEAD
     hasher_t h;
@@ -176,7 +289,7 @@ Hasher_dealloc(PyObject *self) {
 }
 
 static PyObject*
-reset(Hasher *self) {
+reset(Hasher *self, PyObject *args UNUSED) {
     if (!self->h.reset(self->h.state)) return PyErr_NoMemory();
     Py_RETURN_NONE;
 }
@@ -192,14 +305,14 @@ update(Hasher *self, PyObject *o) {
 }
 
 static PyObject*
-digest(Hasher *self) {
+digest(Hasher *self, PyObject *args UNUSED) {
     PyObject *ans = PyBytes_FromStringAndSize(NULL, self->h.hash_size);
     if (ans) self->h.digest(self->h.state, PyBytes_AS_STRING(ans));
     return ans;
 }
 
 static PyObject*
-hexdigest(Hasher *self) {
+hexdigest(Hasher *self, PyObject *args UNUSED) {
     uint8_t digest[64]; char hexdigest[128];
     self->h.digest(self->h.state, digest);
     static const char * hex = "0123456789abcdef";
@@ -247,6 +360,7 @@ PyTypeObject Hasher_Type = {
     .tp_init = Hasher_init,
     .tp_getset = Hasher_getsets,
 };
+// }}} end Hasher
 
 static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
@@ -257,10 +371,10 @@ exec_module(PyObject *m) {
     RsyncError = PyErr_NewException("rsync.RsyncError", NULL, NULL);
     if (RsyncError == NULL) return -1;
     PyModule_AddObject(m, "RsyncError", RsyncError);
-    if (PyType_Ready(&Hasher_Type) < 0) return -1;
-    Py_INCREF(&Hasher_Type);
-    if (PyModule_AddObject(m, "Hasher", (PyObject *) &Hasher_Type) < 0) return -1;
-
+#define T(which) if (PyType_Ready(& which##_Type) < 0) return -1; Py_INCREF(&which##_Type);\
+    if (PyModule_AddObject(m, #which, (PyObject *) &which##_Type) < 0) return -1;
+    T(Hasher); T(Patcher);
+#undef T
     return 0;
 }
 

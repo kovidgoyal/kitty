@@ -33,7 +33,6 @@ from ..tui.loop import Loop, debug
 from ..tui.operations import styled, without_line_wrap
 from ..tui.spinners import Spinner
 from ..tui.utils import human_size
-from .librsync import PatchFile, signature_of_file
 from .send import Transfer
 from .utils import expand_home, print_rsync_stats, random_id, render_progress_in_width, safe_divide, should_be_compressed
 

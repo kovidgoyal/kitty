@@ -22,7 +22,6 @@ from ..tui.loop import Loop, debug
 from ..tui.operations import styled, without_line_wrap
 from ..tui.spinners import Spinner
 from ..tui.utils import human_size
-from .librsync import LoadSignature, delta_for_file
 from .utils import (
     IdentityCompressor,
     ZlibCompressor,

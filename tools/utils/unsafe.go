@@ -1,5 +1,4 @@
 // License: GPLv3 Copyright: 2023, Kovid Goyal, <kovid at kovidgoyal.net>
-//go:build go1.20
 
 package utils
 
