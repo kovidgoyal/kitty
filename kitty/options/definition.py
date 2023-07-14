@@ -4033,7 +4033,7 @@ the screen, instead of just clearing the screen. For ZSH, in :file:`~/.zshrc`, a
 .. code-block:: zsh
 
     ctrl_l() {
-        builtin print -rn -- $'\r\e[0J\e[H\e[22J' >"$TTY"
+        builtin print -rn -- $'\\r\e[0J\e[H\e[22J' >"$TTY"
         builtin zle .reset-prompt
         builtin zle -R
     }
