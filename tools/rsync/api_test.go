@@ -63,6 +63,9 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 		if err != nil {
 			t.Fatal(err)
 		}
+		if delta_ops[len(delta_ops)-1].Type != OpHash {
+			t.Fatalf("Last operation was not OpHash")
+		}
 		total_data_in_delta = 0
 		outputbuf := bytes.Buffer{}
 		for _, op := range delta_ops {
