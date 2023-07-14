@@ -3657,10 +3657,10 @@ map('Seventh window',
     only='macos',
     )
 
-map('Eight window',
+map('Eighth window',
     'eighth_window kitty_mod+8 eighth_window',
     )
-map('Eight window',
+map('Eighth window',
     'eighth_window cmd+8 eighth_window',
     only='macos',
     )
