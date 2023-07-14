@@ -176,6 +176,12 @@ Hasher_dealloc(PyObject *self) {
 }
 
 static PyObject*
+reset(Hasher *self) {
+    if (!self->h.reset(self->h.state)) return PyErr_NoMemory();
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 update(Hasher *self, PyObject *o) {
     FREE_BUFFER_AFTER_FUNCTION Py_buffer data = {0};
     if (PyObject_GetBuffer(o, &data, PyBUF_SIMPLE) == -1) return NULL;
@@ -217,6 +223,7 @@ static PyMethodDef Hasher_methods[] = {
     METHODB(update, METH_O),
     METHODB(digest, METH_NOARGS),
     METHODB(hexdigest, METH_NOARGS),
+    METHODB(reset, METH_NOARGS),
     {NULL}  /* Sentinel */
 };
 
