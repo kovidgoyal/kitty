@@ -7,34 +7,13 @@
  */
 
 #include "data-types.h"
+#include "binary.h"
 #include <math.h>
 #include <xxhash.h>
 
 static PyObject *RsyncError = NULL;
 static const size_t default_block_size = 6 * 1024;
 static const size_t signature_block_size = 20;
-
-inline static uint16_t le16(const uint8_t b[const static 2]) {
-    return b[0]|(uint16_t)b[1]<<8;
-}
-inline static uint32_t le32(const uint8_t b[const static 4]) {
-    return le16(b)|(uint32_t)le16(b+2)<<16;
-}
-inline static uint64_t le64(const uint8_t b[const static 8]) {
-    return le32(b)|(uint64_t)le32(b+4)<<32;
-}
-inline static void le16b(uint8_t b[const static 2], const uint16_t n) {
-    b[0] = n;
-    b[1] = n>>8;
-}
-inline static void le32b(uint8_t b[const static 4], const uint32_t n) {
-    le16b(b, n);
-    le16b(b+2, n>>16);
-}
-inline static void le64b(uint8_t b[const static 8], const uint64_t n) {
-    le32b(b, n);
-    le32b(b+4, n>>32);
-}
 
 // hashers {{{
 typedef void*(*new_hash_t)(void);
@@ -362,7 +341,58 @@ PyTypeObject Hasher_Type = {
 };
 // }}} end Hasher
 
+static PyObject*
+decode_utf8_buffer(PyObject *self UNUSED, PyObject *args) {
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer buf = {0};
+    if (!PyArg_ParseTuple(args, "s*", &buf)) return NULL;
+    return PyUnicode_FromStringAndSize(buf.buf, buf.len);
+}
+
+static bool
+call_ftc_callback(PyObject *callback, char *src, Py_ssize_t key_start, Py_ssize_t key_length, Py_ssize_t val_start, Py_ssize_t val_length) {
+    while(src[key_start] == ';' && key_length > 0 ) { key_start++; key_length--; }
+    DECREF_AFTER_FUNCTION PyObject *k = PyMemoryView_FromMemory(src + key_start, key_length, PyBUF_READ);
+    if (!k) return false;
+    DECREF_AFTER_FUNCTION PyObject *v = PyMemoryView_FromMemory(src + val_start, val_length, PyBUF_READ);
+    if (!v) return false;
+    DECREF_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(callback, k, v, NULL);
+    return ret != NULL;
+}
+
+static PyObject*
+parse_ftc(PyObject *self UNUSED, PyObject *args) {
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer buf = {0};
+    PyObject *callback;
+    size_t i = 0, key_start = 0, key_length = 0, val_start = 0, val_length = 0;
+    if (!PyArg_ParseTuple(args, "s*O", &buf, &callback)) return NULL;
+    char *src = buf.buf;
+    size_t sz = buf.len;
+    if (!PyCallable_Check(callback)) { PyErr_SetString(PyExc_TypeError, "callback must be callable"); return NULL; }
+    for (i = 0; i < sz; i++) {
+        char ch = src[i];
+        if (key_length == 0) {
+            if (ch == '=') {
+                key_length = i - key_start;
+                val_start = i + 1;
+            }
+        } else {
+            if (ch == ';') {
+                val_length = i - val_start;
+                if (!call_ftc_callback(callback, src, key_start, key_length, val_start, val_length)) return NULL;
+                key_length = 0; key_start = i + 1; val_start = 0;
+            }
+        }
+    }
+    if (key_length && val_start) {
+        val_length = sz - val_start;
+        if (!call_ftc_callback(callback, src, key_start, key_length, val_start, val_length)) return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
+    {"parse_ftc", parse_ftc, METH_VARARGS, ""},
+    {"decode_utf8_buffer", decode_utf8_buffer, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
