@@ -4,6 +4,7 @@ package rsync
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"strconv"
@@ -176,5 +177,20 @@ func TestRsyncRoundtrip(t *testing.T) {
 	run_roundtrip_test(t, src_data, changed, num_of_patches, total_patch_size)
 	run_roundtrip_test(t, src_data, changed[:len(changed)-3], num_of_patches, total_patch_size)
 	run_roundtrip_test(t, src_data, append(changed, "xyz..."...), num_of_patches, total_patch_size)
+}
 
+func TestRsyncHashers(t *testing.T) {
+	h := new_xxh3_64()
+	h.Write([]byte("abcd"))
+	if diff := cmp.Diff(hex.EncodeToString(h.Sum(nil)), `6497a96f53a89890`); diff != "" {
+		t.Fatalf(diff)
+	}
+	if diff := cmp.Diff(h.Sum64(), uint64(7248448420886124688)); diff != "" {
+		t.Fatalf(diff)
+	}
+	h2 := new_xxh3_128()
+	h2.Write([]byte("abcd"))
+	if diff := cmp.Diff(hex.EncodeToString(h2.Sum(nil)), `8d6b60383dfa90c21be79eecd1b1353d`); diff != "" {
+		t.Fatalf(diff)
+	}
 }

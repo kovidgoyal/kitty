@@ -11,7 +11,7 @@ from pathlib import Path
 
 from kittens.transfer.main import parse_transfer_args
 from kittens.transfer.receive import File, files_for_receive
-from kittens.transfer.rsync import decode_utf8_buffer, parse_ftc
+from kittens.transfer.rsync import decode_utf8_buffer, parse_ftc, Hasher
 from kittens.transfer.utils import cwd_path, expand_home, home_path, set_paths
 from kitty.file_transmission import Action, Compression, FileTransmissionCommand, FileType, TransmissionType, ZlibDecompressor, iter_file_metadata
 from kitty.file_transmission import TestFileTransmission as FileTransmission
@@ -425,3 +425,12 @@ class TestFileTransmission(BaseTest):
             self.assertEqual(files[1].remote_target, files[2].remote_id)
             self.assertEqual(files[3].ftype, FileType.link)
             self.assertEqual(files[3].remote_target, files[2].remote_id)
+
+    def test_rsync_hashers(self):
+        h = Hasher("xxh3-64")
+        h.update(b'abcd')
+        self.assertEqual(h.hexdigest(), '6497a96f53a89890')
+        self.assertEqual(h.digest64(), 7248448420886124688)
+        h128 = Hasher("xxh3-128")
+        h128.update(b'abcd')
+        self.assertEqual(h128.hexdigest(), '8d6b60383dfa90c21be79eecd1b1353d')

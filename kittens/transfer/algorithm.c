@@ -291,6 +291,13 @@ digest(Hasher *self, PyObject *args UNUSED) {
 }
 
 static PyObject*
+digest64(Hasher *self, PyObject *args UNUSED) {
+    if (self->h.digest64 == NULL) { PyErr_SetString(PyExc_TypeError, "Does not support 64-bit digests"); return NULL; }
+    unsigned long long a = self->h.digest64(self->h.state);
+    return PyLong_FromUnsignedLongLong(a);
+}
+
+static PyObject*
 hexdigest(Hasher *self, PyObject *args UNUSED) {
     uint8_t digest[64]; char hexdigest[128];
     self->h.digest(self->h.state, digest);
@@ -314,6 +321,7 @@ Hasher_name(Hasher* self, void* closure UNUSED) { return PyUnicode_FromString(se
 static PyMethodDef Hasher_methods[] = {
     METHODB(update, METH_O),
     METHODB(digest, METH_NOARGS),
+    METHODB(digest64, METH_NOARGS),
     METHODB(hexdigest, METH_NOARGS),
     METHODB(reset, METH_NOARGS),
     {NULL}  /* Sentinel */
