@@ -294,7 +294,7 @@ class Freeze(object):
                 'lcms2.2',
                 'crypto.1.1',
                 'ssl.1.1',
-                'rsync.2',
+                'xxhash.0',
         ):
             print('\nAdding', x)
             x = f'lib{x}.dylib'

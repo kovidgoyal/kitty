@@ -29,7 +29,7 @@ kitty_constants = iv['kitty_constants']
 def binary_includes():
     return tuple(map(get_dll_path, (
             'expat', 'sqlite3', 'ffi', 'z', 'lzma', 'png16', 'lcms2', 'crypt',
-            'iconv', 'pcre', 'graphite2', 'glib-2.0', 'freetype', 'rsync',
+            'iconv', 'pcre', 'graphite2', 'glib-2.0', 'freetype', 'xxhash',
             'harfbuzz', 'xkbcommon', 'xkbcommon-x11',
             # fontconfig is not bundled because in typical brain dead Linux
             # distro fashion, different distros use different default config
