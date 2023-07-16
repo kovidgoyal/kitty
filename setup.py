@@ -808,7 +808,7 @@ def compile_kittens(args: Options) -> None:
         return kitten, sources, headers, f'kittens/{kitten}/{output}', includes, libraries
 
     for kitten, sources, all_headers, dest, includes, libraries in (
-        files('transfer', 'rsync', libraries=('xxhash',)),
+        files('transfer', 'rsync', libraries=pkg_config('libxxhash', '--libs'), includes=pkg_config('libxxhash', '--cflags-only-I')),
     ):
         final_env = kenv.copy()
         final_env.cflags.extend(f'-I{x}' for x in includes)
