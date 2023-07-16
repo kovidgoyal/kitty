@@ -141,6 +141,7 @@ rolling_checksum_add_one_byte(rolling_checksum *self, uint8_t first_byte, uint8_
 
 // Python interface {{{
 
+// Patcher {{{
 typedef struct {
     PyObject_HEAD
     rolling_checksum rc;
@@ -155,8 +156,8 @@ static int
 Patcher_init(PyObject *s, PyObject *args, PyObject *kwds) {
     Patcher *self = (Patcher*)s;
     static char *kwlist[] = {"expected_input_size", NULL};
-    unsigned long long expected_input_size;
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "K", kwlist, &expected_input_size)) return -1;
+    unsigned long long expected_input_size = 0;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|K", kwlist, &expected_input_size)) return -1;
     self->block_size = default_block_size;
     if (expected_input_size > 0) {
         self->block_size = (size_t)round(sqrt((double)expected_input_size));
@@ -350,6 +351,7 @@ PyTypeObject Patcher_Type = {
     .tp_new = PyType_GenericNew,
     .tp_init = Patcher_init,
 };
+// }}} Patcher
 
 // Hasher {{{
 typedef struct {
