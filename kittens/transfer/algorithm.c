@@ -147,6 +147,8 @@ typedef struct {
     uint64_t signature_idx;
     size_t block_size;
     Rsync rsync;
+    struct { uint8_t *data; size_t len, cap; } buf, block_buf;
+    PyObject *block_buf_view;
 } Patcher;
 
 static int
@@ -161,13 +163,19 @@ Patcher_init(PyObject *s, PyObject *args, PyObject *kwds) {
     }
     const char *err = init_rsync(&self->rsync, self->block_size, 0, 0);
     if (err != NULL) { PyErr_SetString(RsyncError, err); return -1; }
+    self->block_buf.cap = self->block_size;
+    self->block_buf.data = malloc(self->block_size);
+    if (self->block_buf.data == NULL) { PyErr_NoMemory(); return -1; }
+    if (!(self->block_buf_view = PyMemoryView_FromMemory((char*)self->block_buf.data, self->block_size, PyBUF_WRITE))) return -1;
     return 0;
 }
 
 static void
 Patcher_dealloc(PyObject *self) {
     Patcher *p = (Patcher*)self;
-    (void)p;
+    if (p->buf.data) free(p->buf.data);
+    Py_CLEAR(p->block_buf_view);
+    if (p->block_buf.data) free(p->block_buf.data);
     Py_TYPE(self)->tp_free(self);
 }
 
@@ -209,9 +217,124 @@ sign_block(Patcher *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+typedef enum { OpBlock, OpBlockRange, OpHash, OpData } OpType;
+
+typedef struct Operation {
+    OpType type;
+    uint64_t block_index, block_index_end;
+    struct { uint8_t *buf; size_t len; } data;
+} Operation;
+
+static size_t
+unserialize_op(uint8_t *data, size_t len, Operation *op) {
+    size_t consumed = 0;
+    switch ((OpType)(data[0])) {
+        case OpBlock:
+            consumed = 9;
+            if (len < consumed) return 0;
+            op->block_index = le64(data + 1);
+            break;
+        case OpBlockRange:
+            consumed = 13;
+            if (len < consumed) return 0;
+            op->block_index = le64(data + 1);
+            op->block_index_end = op->block_index + le32(data + 9);
+            break;
+        case OpHash:
+            consumed = 3;
+            if (len < consumed) return 0;
+            op->data.len = le16(data + 1);
+            if (len < consumed + op->data.len) return 0;
+            op->data.buf = data + 3;
+            consumed += op->data.len;
+            break;
+        case OpData:
+            consumed = 5;
+            if (len < consumed) return 0;
+            op->data.len = le32(data + 1);
+            if (len < consumed + op->data.len) return 0;
+            op->data.buf = data + 5;
+            consumed += op->data.len;
+            break;
+    }
+    return consumed;
+}
+
+static bool
+write_block(Patcher *self, uint64_t block_index, PyObject *read, PyObject *write) {
+    FREE_AFTER_FUNCTION PyObject *pos = PyLong_FromUnsignedLongLong((unsigned long long)(self->block_size * block_index));
+    if (!pos) return false;
+    FREE_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(read, pos, self->block_buf_view, NULL);
+    if (ret == NULL) return false;
+    if (!PyLong_Check(ret)) { PyErr_SetString(PyExc_TypeError, "read callback function did not return an integer"); return false; }
+    size_t n = PyLong_AsSize_t(ret);
+    self->rsync.checksummer.update(self->rsync.checksummer.state, self->block_buf.data, n);
+    FREE_AFTER_FUNCTION PyObject *view = PyMemoryView_FromMemory((char*)self->block_buf.data, n, PyBUF_READ);
+    if (!view) return false;
+    FREE_AFTER_FUNCTION PyObject *wret = PyObject_CallFunctionObjArgs(write, view, NULL);
+    if (wret == NULL) return false;
+    return true;
+}
+
+static bool
+apply_op(Patcher *self, Operation op, PyObject *read, PyObject *write) {
+    switch (op.type) {
+        case OpBlock:
+            return write_block(self, op.block_index, read, write);
+        case OpBlockRange:
+            for (size_t i = op.block_index; i <= op.block_index_end; i++) {
+                if (!write_block(self, i, read, write)) return false;
+            }
+            return true;
+        case OpData: {
+            self->rsync.checksummer.update(self->rsync.checksummer.state, op.data.buf, op.data.len);
+            FREE_AFTER_FUNCTION PyObject *view = PyMemoryView_FromMemory((char*)op.data.buf, op.data.len, PyBUF_READ);
+            if (!view) return false;
+            FREE_AFTER_FUNCTION PyObject *wret = PyObject_CallFunctionObjArgs(write, view, NULL);
+            if (!wret) return false;
+        } return true;
+        case OpHash: {
+            uint8_t expected[64];
+            if (op.data.len != self->rsync.checksummer.hash_size) { PyErr_SetString(RsyncError, "checksum digest not the correct size"); return false; }
+            self->rsync.checksummer.digest(self->rsync.checksummer.state, expected);
+            if (memcmp(expected, op.data.buf, op.data.len) != 0) { PyErr_SetString(RsyncError, "checksum does not match, this usually happens because one of the involved files was altered while the operation was in progress"); return false; }
+        } return true;
+    }
+}
+
+static PyObject*
+apply_delta_data(Patcher *self, PyObject *args) {
+    PyObject *read, *write;
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer data = {0};
+    if (!PyArg_ParseTuple(args, "y*OO", &data, &read, &write)) return NULL;
+    if (self->buf.cap < (size_t)data.len + self->buf.len) {
+        size_t newcap = MAX(self->buf.cap * 2, (size_t)data.len);
+        self->buf.data = realloc(self->buf.data, newcap);
+        if (self->buf.data == NULL) { return PyErr_NoMemory(); }
+        self->buf.cap = newcap;
+    }
+    memcpy(self->buf.data + self->buf.len, data.buf, data.len);
+    self->buf.len += (size_t)data.len;
+    size_t pos = 0;
+    Operation op = {0};
+    while (pos < self->buf.len) {
+        size_t consumed = unserialize_op(self->buf.data + pos, self->buf.len - pos, &op);
+        if (!consumed) { break; }
+        pos += consumed;
+        if (!apply_op(self, op, read, write)) break;
+    }
+    if (pos > 0) {
+        self->buf.len -= pos;
+        memmove(self->buf.data, self->buf.data + pos, self->buf.len);
+    }
+    if (PyErr_Occurred()) return NULL;
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef Patcher_methods[] = {
     METHODB(sign_block, METH_VARARGS),
     METHODB(signature_header, METH_O),
+    METHODB(apply_delta_data, METH_O),
     {NULL}  /* Sentinel */
 };
 
