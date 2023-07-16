@@ -1,5 +1,4 @@
 out vec2 texcoord;
-out float gl_ClipDistance[4];
 uniform vec4 src_rect, dest_rect, viewport;
 
 #define left 0
