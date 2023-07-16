@@ -102,11 +102,13 @@ def run_man(args: Any) -> None:
 
 def run_html(args: Any) -> None:
     # Force a fresh build otherwise the search index is not correct
-    shutil.rmtree(os.path.join(docs_dir, '_build', 'dirhtml'))
+    with suppress(FileNotFoundError):
+        shutil.rmtree(os.path.join(docs_dir, '_build', 'dirhtml'))
     call('make FAIL_WARN=1 "OPTS=-D analytics_id=G-XTJK3R7GF2" dirhtml', cwd=docs_dir)
     add_old_redirects('docs/_build/dirhtml')
 
-    shutil.rmtree(os.path.join(docs_dir, '_build', 'html'))
+    with suppress(FileNotFoundError):
+        shutil.rmtree(os.path.join(docs_dir, '_build', 'html'))
     call('make FAIL_WARN=1 "OPTS=-D analytics_id=G-XTJK3R7GF2" html', cwd=docs_dir)
 
 
