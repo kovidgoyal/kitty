@@ -10,7 +10,7 @@ from typing import Callable, Dict, Optional
 from .constants import is_macos, logo_png_file
 from .fast_data_types import get_boss
 from .types import run_once
-from .utils import log_error
+from .utils import get_custom_window_icon, log_error
 
 NotifyImplementation = Callable[[str, str, str], None]
 
@@ -57,7 +57,7 @@ else:
     ) -> None:
         icf = ''
         if icon is True:
-            icf = logo_png_file
+            icf = get_custom_window_icon()[1] or logo_png_file
         alloc_id = dbus_send_notification(application, icf, title, body, 'Click to see changes', timeout)
         if alloc_id and identifier is not None:
             alloc_map[alloc_id] = identifier

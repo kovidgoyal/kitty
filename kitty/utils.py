@@ -1183,3 +1183,23 @@ def cmdline_for_hold(cmd: Sequence[str] = (), opts: Optional['Options'] = None) 
     import shlex
     shell = shlex.join(resolved_shell(opts))
     return [kitten_exe(), 'run-shell', f'--shell={shell}', f'--shell-integration={ksi}'] + list(cmd)
+
+
+def safe_mtime(path: str) -> Optional[float]:
+    with suppress(OSError):
+        return os.path.getmtime(path)
+    return None
+
+
+@run_once
+def get_custom_window_icon() -> Union[Tuple[float, str], Tuple[None, None]]:
+    filenames = ['kitty.app.png']
+    if is_macos:
+        # On macOS, prefer icns to png.
+        filenames.insert(0, 'kitty.app.icns')
+    for name in filenames:
+        custom_icon_path = os.path.join(config_dir, name)
+        custom_icon_mtime = safe_mtime(custom_icon_path)
+        if custom_icon_mtime is not None:
+            return custom_icon_mtime, custom_icon_path
+    return None, None

@@ -56,8 +56,10 @@ from .utils import (
     cleanup_ssh_control_masters,
     detach,
     expandvars,
+    get_custom_window_icon,
     log_error,
     parse_os_window_state,
+    safe_mtime,
     single_instance,
     startup_notification_handler,
     unix_socket_paths,
@@ -170,40 +172,43 @@ def get_macos_shortcut_for(
     return ans
 
 
-def safe_mtime(path: str) -> Optional[float]:
-    with suppress(OSError):
-        return os.path.getmtime(path)
-    return None
-
-
 def set_macos_app_custom_icon() -> None:
-    for name in ('kitty.app.icns', 'kitty.app.png'):
-        icon_path = os.path.join(config_dir, name)
-        custom_icon_mtime = safe_mtime(icon_path)
-        if custom_icon_mtime is not None:
-            from .fast_data_types import cocoa_set_app_icon, cocoa_set_dock_icon
-            krd = getattr(sys, 'kitty_run_data')
-            bundle_path = os.path.dirname(os.path.dirname(krd.get('bundle_exe_dir')))
-            icon_sentinel = os.path.join(bundle_path, 'Icon\r')
-            sentinel_mtime = safe_mtime(icon_sentinel)
-            if sentinel_mtime is None or sentinel_mtime < custom_icon_mtime:
-                try:
-                    cocoa_set_app_icon(icon_path, bundle_path)
-                except (FileNotFoundError, OSError) as e:
-                    log_error(str(e))
-                    log_error('Failed to set custom app icon, ignoring')
-            # macOS Dock does not reload icons until it is restarted, so we set
-            # the application icon here. This will revert when kitty quits, but
-            # can't be helped since there appears to be no way to get the dock
-            # to reload short of killing it.
-            cocoa_set_dock_icon(icon_path)
-            break
+    custom_icon_mtime, custom_icon_path = get_custom_window_icon()
+    if custom_icon_mtime is not None and custom_icon_path is not None:
+        from .fast_data_types import cocoa_set_app_icon, cocoa_set_dock_icon
+        krd = getattr(sys, 'kitty_run_data')
+        bundle_path = os.path.dirname(os.path.dirname(krd.get('bundle_exe_dir')))
+        icon_sentinel = os.path.join(bundle_path, 'Icon\r')
+        sentinel_mtime = safe_mtime(icon_sentinel)
+        if sentinel_mtime is None or sentinel_mtime < custom_icon_mtime:
+            try:
+                cocoa_set_app_icon(custom_icon_path, bundle_path)
+            except (FileNotFoundError, OSError) as e:
+                log_error(str(e))
+                log_error('Failed to set custom app icon, ignoring')
+        # macOS Dock does not reload icons until it is restarted, so we set
+        # the application icon here. This will revert when kitty quits, but
+        # can't be helped since there appears to be no way to get the dock
+        # to reload short of killing it.
+        cocoa_set_dock_icon(custom_icon_path)
+
+
+def get_icon128_path(base_path: str) -> str:
+    # max icon size on X11 64bits is 128x128
+    path, ext = os.path.splitext(base_path)
+    return f'{path}-128{ext}'
 
 
 def set_x11_window_icon() -> None:
-    # max icon size on X11 64bits is 128x128
-    path, ext = os.path.splitext(logo_png_file)
-    set_default_window_icon(f'{path}-128{ext}')
+    custom_icon_path = get_custom_window_icon()[1]
+    if custom_icon_path is not None:
+        custom_icon128_path = get_icon128_path(custom_icon_path)
+        if safe_mtime(custom_icon128_path) is None:
+            set_default_window_icon(custom_icon_path)
+        else:
+            set_default_window_icon(custom_icon128_path)
+    else:
+        set_default_window_icon(get_icon128_path(logo_png_file))
 
 
 def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
