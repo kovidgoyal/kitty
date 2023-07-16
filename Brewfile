@@ -1,6 +1,6 @@
 brew "pkg-config"
 brew "zlib"
-brew "librsync"
+brew "xxhash"
 brew "python"
 brew "imagemagick"
 brew "harfbuzz"
