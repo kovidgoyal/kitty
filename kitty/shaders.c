@@ -477,10 +477,10 @@ draw_graphics(int program, ssize_t vao_idx, ImageRenderData *data, GLuint start,
     glUniform4f(u->viewport, viewport.left, viewport.top, viewport.right, viewport.bottom);
     glEnable(GL_CLIP_DISTANCE0); glEnable(GL_CLIP_DISTANCE1); glEnable(GL_CLIP_DISTANCE2); glEnable(GL_CLIP_DISTANCE3);
     for (GLuint i=0; i < count;) {
-        ImageRenderData *rd = data + start + i;
-        glBindTexture(GL_TEXTURE_2D, rd->texture_id);
-        for (GLuint k=0, limit=rd->group_count; k < limit; k++, i++) {
-            rd = data + start + i;
+        ImageRenderData *group = data + start + i;
+        glBindTexture(GL_TEXTURE_2D, group->texture_id);
+        for (GLuint k=0; k < group->group_count; k++, i++) {
+            ImageRenderData *rd = data + start + i;
             glUniform4f(u->src_rect, rd->src_rect.left, rd->src_rect.top, rd->src_rect.right, rd->src_rect.bottom);
             glUniform4f(u->dest_rect, rd->dest_rect.left, rd->dest_rect.top, rd->dest_rect.right, rd->dest_rect.bottom);
             glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
