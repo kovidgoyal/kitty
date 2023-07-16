@@ -470,48 +470,22 @@ draw_background_image(OSWindow *w) {
 }
 
 static void
-fit_image_in_viewport(GraphicsUniforms *u, ImageRenderData *rd, ImageRect viewport) {
-    // dest_rect: x: -1 to 1, y: 1 to -1. src_rect: x: 0 to 1 for both axes
-    ImageRect src_rect = rd->src_rect, dest_rect = rd->dest_rect;
-    const float img_width = dest_rect.right - dest_rect.left;
-    if (viewport.left > dest_rect.left) {
-        float frac = 1.f - (dest_rect.right - viewport.left) / img_width;
-        dest_rect.left = viewport.left;
-        src_rect.left += frac; // src_rect: left is 0 right is 1
-    }
-    if (viewport.right < dest_rect.right) {
-        float frac = 1.f - (viewport.right - dest_rect.left) / img_width;
-        dest_rect.right = viewport.right;
-        src_rect.right -= frac; // src_rect: left is 0 right is 1
-    }
-    const float img_height = dest_rect.top - dest_rect.bottom;
-    if (viewport.top < dest_rect.top) {
-        float frac = 1.f - (viewport.top - dest_rect.bottom) / img_height;
-        dest_rect.top = viewport.top;
-        src_rect.top += frac; // src_rect.bottom is 1 top is 0
-    }
-    if (viewport.bottom > dest_rect.bottom) {
-        float frac = 1.f - (dest_rect.top - viewport.bottom) / img_height;
-        dest_rect.bottom = viewport.bottom;
-        src_rect.bottom -= frac; // src_rect.bottom is 1 top is 0
-    }
-    glUniform4f(u->src_rect, src_rect.left, src_rect.top, src_rect.right, src_rect.bottom);
-    glUniform4f(u->dest_rect, dest_rect.left, dest_rect.top, dest_rect.right, dest_rect.bottom);
-}
-
-static void
 draw_graphics(int program, ssize_t vao_idx, ImageRenderData *data, GLuint start, GLuint count, ImageRect viewport) {
     bind_program(program);
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
     GraphicsUniforms *u = &graphics_program_layouts[program].uniforms;
+    glUniform4f(u->viewport, viewport.left, viewport.top, viewport.right, viewport.bottom);
+    glEnable(GL_CLIP_DISTANCE0); glEnable(GL_CLIP_DISTANCE1); glEnable(GL_CLIP_DISTANCE2); glEnable(GL_CLIP_DISTANCE3);
     for (GLuint i=0; i < count;) {
         ImageRenderData *rd = data + start + i;
         glBindTexture(GL_TEXTURE_2D, rd->texture_id);
         for (GLuint k=0; k < rd->group_count; k++, i++) {
-            fit_image_in_viewport(u, rd, viewport);
+            glUniform4f(u->src_rect, rd->src_rect.left, rd->src_rect.top, rd->src_rect.right, rd->src_rect.bottom);
+            glUniform4f(u->dest_rect, rd->dest_rect.left, rd->dest_rect.top, rd->dest_rect.right, rd->dest_rect.bottom);
             glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
         }
     }
+    glDisable(GL_CLIP_DISTANCE0); glDisable(GL_CLIP_DISTANCE1); glDisable(GL_CLIP_DISTANCE2); glDisable(GL_CLIP_DISTANCE3);
     bind_vertex_array(vao_idx);
 }
 
