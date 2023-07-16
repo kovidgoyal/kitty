@@ -479,7 +479,8 @@ draw_graphics(int program, ssize_t vao_idx, ImageRenderData *data, GLuint start,
     for (GLuint i=0; i < count;) {
         ImageRenderData *rd = data + start + i;
         glBindTexture(GL_TEXTURE_2D, rd->texture_id);
-        for (GLuint k=0; k < rd->group_count; k++, i++) {
+        for (GLuint k=0, limit=rd->group_count; k < limit; k++, i++) {
+            rd = data + start + i;
             glUniform4f(u->src_rect, rd->src_rect.left, rd->src_rect.top, rd->src_rect.right, rd->src_rect.bottom);
             glUniform4f(u->dest_rect, rd->dest_rect.left, rd->dest_rect.top, rd->dest_rect.right, rd->dest_rect.bottom);
             glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
