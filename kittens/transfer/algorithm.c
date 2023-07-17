@@ -8,6 +8,7 @@
 
 #include "data-types.h"
 #include "binary.h"
+#include "kitty-uthash.h"
 #include <math.h>
 #include <xxhash.h>
 
@@ -141,6 +142,40 @@ rolling_checksum_add_one_byte(rolling_checksum *self, uint8_t first_byte, uint8_
 
 // Python interface {{{
 
+typedef struct buffer {
+    uint8_t *data;
+    size_t len, cap;
+} buffer;
+
+static bool
+ensure_space(buffer *b, size_t amt) {
+    const size_t len = b->len;
+    if (amt > 0 && b->cap < len + amt) {
+        size_t newcap = MAX(b->cap * 2, len + (amt * 2));
+        b->data = realloc(b->data, newcap);
+        if (b->data == NULL) { PyErr_NoMemory(); return false; }
+        b->cap = newcap;
+    }
+    return true;
+}
+
+static bool
+write_to_buffer(buffer *b, void *data, size_t len) {
+    if (!ensure_space(b, len)) return false;
+    memcpy(b->data + b->len, data, len);
+    b->len += len;
+    return true;
+}
+
+static void
+shift_left(buffer *b, size_t amt) {
+    if (amt > b->len) amt = b->len;
+    if (amt > 0) {
+        b->len -= amt;
+        memmove(b->data, b->data + amt, b->len);
+    }
+}
+
 // Patcher {{{
 typedef struct {
     PyObject_HEAD
@@ -148,7 +183,7 @@ typedef struct {
     uint64_t signature_idx;
     size_t block_size;
     Rsync rsync;
-    struct { uint8_t *data; size_t len, cap; } buf, block_buf;
+    buffer buf, block_buf;
     PyObject *block_buf_view;
 } Patcher;
 
@@ -177,6 +212,7 @@ Patcher_dealloc(PyObject *self) {
     if (p->buf.data) free(p->buf.data);
     Py_CLEAR(p->block_buf_view);
     if (p->block_buf.data) free(p->block_buf.data);
+    free_rsync(&p->rsync);
     Py_TYPE(self)->tp_free(self);
 }
 
@@ -310,14 +346,7 @@ apply_delta_data(Patcher *self, PyObject *args) {
     PyObject *read, *write;
     FREE_BUFFER_AFTER_FUNCTION Py_buffer data = {0};
     if (!PyArg_ParseTuple(args, "y*OO", &data, &read, &write)) return NULL;
-    if (self->buf.cap < (size_t)data.len + self->buf.len) {
-        size_t newcap = MAX(self->buf.cap * 2, (size_t)data.len);
-        self->buf.data = realloc(self->buf.data, newcap);
-        if (self->buf.data == NULL) { return PyErr_NoMemory(); }
-        self->buf.cap = newcap;
-    }
-    memcpy(self->buf.data + self->buf.len, data.buf, data.len);
-    self->buf.len += (size_t)data.len;
+    if (!write_to_buffer(&self->buf, data.buf, data.len)) return NULL;
     size_t pos = 0;
     Operation op = {0};
     while (pos < self->buf.len) {
@@ -326,10 +355,7 @@ apply_delta_data(Patcher *self, PyObject *args) {
         pos += consumed;
         if (!apply_op(self, op, read, write)) break;
     }
-    if (pos > 0) {
-        self->buf.len -= pos;
-        memmove(self->buf.data, self->buf.data + pos, self->buf.len);
-    }
+    shift_left(&self->buf, pos);
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }
@@ -354,6 +380,150 @@ PyTypeObject Patcher_Type = {
     .tp_init = Patcher_init,
 };
 // }}} Patcher
+
+// Differ {{{
+typedef struct Signature { uint64_t index, strong_hash; } Signature;
+
+typedef struct SignatureMap {
+    int weak_hash;
+    Signature sig, *weak_hash_collisions;
+    size_t len, cap;
+    UT_hash_handle hh;
+} SignatureMap;
+
+typedef struct Differ {
+    PyObject_HEAD
+    rolling_checksum rc;
+    uint64_t signature_idx;
+    Rsync rsync;
+    bool signature_header_parsed;
+    buffer buf;
+    SignatureMap *signature_map;
+} Differ;
+
+static int
+Differ_init(PyObject *s, PyObject *args, PyObject *kwds) {
+    Patcher *self = (Patcher*)s;
+    static char *kwlist[] = {NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "", kwlist)) return -1;
+    const char *err = init_rsync(&self->rsync, default_block_size, 0, 0);
+    if (err != NULL) { PyErr_SetString(RsyncError, err); return -1; }
+    return 0;
+}
+
+static void
+free_sigmap(SignatureMap *map) {
+    SignatureMap *current, *tmp;
+    HASH_ITER(hh, map, current, tmp) {
+        HASH_DEL(map, current);
+        free(current->weak_hash_collisions);
+        free(current);
+    }
+}
+
+static void
+Differ_dealloc(PyObject *self) {
+    Differ *p = (Differ*)self;
+    if (p->buf.data) free(p->buf.data);
+    free_rsync(&p->rsync);
+    if (p->signature_map) free_sigmap(p->signature_map);
+    Py_TYPE(self)->tp_free(self);
+}
+
+static void
+parse_signature_header(Differ *self) {
+    if (self->buf.len < 12) return;
+    uint8_t *p = self->buf.data;
+    uint32_t x;
+    if ((x = le16(p)) != 0) {
+        PyErr_Format(RsyncError, "Invalid version in signature header: %u", x); return;
+    } p += 2;
+    if ((x = le16(p)) != 0) {
+        PyErr_Format(RsyncError, "Invalid checksum type in signature header: %u", x); return;
+    } p += 2;
+    if ((x = le16(p)) != 0) {
+        PyErr_Format(RsyncError, "Invalid strong hash type in signature header: %u", x); return;
+    } p += 2;
+    if ((x = le16(p)) != 0) {
+        PyErr_Format(RsyncError, "Invalid weak hash type in signature header: %u", x); return;
+    } p += 2;
+    const char *err = init_rsync(&self->rsync, le32(p), 0, 0);
+    if (err != NULL) { PyErr_SetString(RsyncError, err); return; }
+    p += 4;
+    shift_left(&self->buf, p - self->buf.data);
+    self->signature_header_parsed = true;
+}
+
+static bool
+add_collision(SignatureMap *sm, Signature s) {
+    if (sm->cap < sm->len + 1) {
+        size_t new_cap = MAX(sm->cap * 2, 8);
+        sm->weak_hash_collisions = realloc(sm->weak_hash_collisions, new_cap);
+        if (!sm->weak_hash_collisions) { PyErr_NoMemory(); return false; }
+        sm->cap = new_cap;
+    }
+    sm->weak_hash_collisions[sm->len++] = s;
+    return true;
+}
+
+static size_t
+parse_signature_block(Differ *self, uint8_t *data, size_t len) {
+    if (len < 20) return 0;
+    int weak_hash = le32(data + 8);
+    SignatureMap *sm;
+    HASH_FIND_INT(self->signature_map, &weak_hash, sm);
+    if (sm == NULL) {
+        sm = calloc(1, sizeof(SignatureMap));
+        if (sm == NULL) { PyErr_NoMemory(); return 0; }
+        sm->weak_hash = weak_hash;
+        sm->sig.index = le64(data);
+        sm->sig.strong_hash = le64(data+12);
+        HASH_ADD_INT(self->signature_map, weak_hash, sm);
+    } else {
+        if (!add_collision(sm, (Signature){.index=le64(data), .strong_hash=le64(data+12)})) return 0;
+    }
+    return 20;
+}
+
+static PyObject*
+add_signature_data(Differ *self, PyObject *args) {
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer data = {0};
+    if (!PyArg_ParseTuple(args, "y*", &data)) return NULL;
+    if (!write_to_buffer(&self->buf, data.buf, data.len)) return NULL;
+    if (!self->signature_header_parsed) {
+        parse_signature_header(self);
+        if (PyErr_Occurred()) return NULL;
+        if (!self->signature_header_parsed) { Py_RETURN_NONE; }
+    }
+    size_t pos = 0;
+    while (pos < self->buf.len) {
+        size_t consumed = parse_signature_block(self, self->buf.data + pos, self->buf.len - pos);
+        if (!consumed) { break; }
+        pos += consumed;
+    }
+    shift_left(&self->buf, pos);
+    if (PyErr_Occurred()) return NULL;
+    Py_RETURN_NONE;
+}
+
+static PyMethodDef Differ_methods[] = {
+    METHODB(add_signature_data, METH_VARARGS),
+    {NULL}  /* Sentinel */
+};
+
+
+PyTypeObject Differ_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "rsync.Differ",
+    .tp_basicsize = sizeof(Differ),
+    .tp_dealloc = Differ_dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_doc = "Differ",
+    .tp_methods = Differ_methods,
+    .tp_new = PyType_GenericNew,
+    .tp_init = Differ_init,
+};
+// }}} Differ
 
 // Hasher {{{
 typedef struct {
@@ -538,7 +708,7 @@ exec_module(PyObject *m) {
     PyModule_AddObject(m, "RsyncError", RsyncError);
 #define T(which) if (PyType_Ready(& which##_Type) < 0) return -1; Py_INCREF(&which##_Type);\
     if (PyModule_AddObject(m, #which, (PyObject *) &which##_Type) < 0) return -1;
-    T(Hasher); T(Patcher);
+    T(Hasher); T(Patcher); T(Differ);
 #undef T
     return 0;
 }
