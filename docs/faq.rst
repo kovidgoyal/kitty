@@ -346,17 +346,19 @@ homepage:
    :target: https://github.com/eccentric-j/eccentric-icons
    :width: 256
 
-On macOS you can put :file:`kitty.app.icns` or :file:`kitty.app.png` in the
+On macOS and X11 you can put :file:`kitty.app.icns` (macOS only) or :file:`kitty.app.png` in the
 :ref:`kitty configuration directory <confloc>`, and this icon will be applied
-automatically at startup. Unfortunately, Apple's Dock does not change its
-cached icon so the custom icon will revert when kitty is quit. Run the
-following to force the Dock to update its cached icons:
+automatically at startup. On X11, this will set the icon for kitty windows.
+
+Unfortunately, on macOS, Apple's Dock does not change its cached icon so the
+custom icon will revert when kitty is quit. Run the following to force the Dock
+to update its cached icons:
 
 .. code-block:: sh
 
     rm /var/folders/*/*/*/com.apple.dock.iconcache; killall Dock
 
-If you prefer not to keep a custom icon in the kitty config folder, you can
+If you prefer not to keep a custom icon in the kitty config folder, on macOS, you can
 also set it with the following command:
 
 .. code-block:: sh

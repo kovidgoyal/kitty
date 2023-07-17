@@ -56,6 +56,8 @@ Detailed list of changes
 
 - Remote control launch: Fix ``--env`` not implemented when using ``--cwd=current`` with the SSH kitten (:iss:`6438`)
 
+- Allow using a custom OS window icon on X11 as well as macOS (:pull:`6475`)
+
 0.29.0 [2023-07-10]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
