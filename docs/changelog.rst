@@ -35,7 +35,7 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
-0.29.1 [future]
+0.29.1 [2023-07-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new value for :opt:`background_image_layout` to scale the background image while preserving its aspect ratio. Also have centered images work even for images larger than the window size (:pull:`6458`)
