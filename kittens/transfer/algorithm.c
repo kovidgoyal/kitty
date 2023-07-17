@@ -301,6 +301,8 @@ apply_op(Patcher *self, Operation op, PyObject *read, PyObject *write) {
             if (memcmp(expected, op.data.buf, op.data.len) != 0) { PyErr_SetString(RsyncError, "checksum does not match, this usually happens because one of the involved files was altered while the operation was in progress"); return false; }
         } return true;
     }
+    PyErr_SetString(RsyncError, "Unknown operation type");
+    return false;
 }
 
 static PyObject*
