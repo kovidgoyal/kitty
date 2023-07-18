@@ -45,9 +45,6 @@ def main() -> None:
     c = generate_srgb_gamma()
     with open(os.path.join('kitty', 'srgb_gamma.h'), 'w') as f:
         f.write(f'{c}\n')
-    g = generate_srgb_gamma('const float gamma_lut[256] = float[256](', ');')
-    with open(os.path.join('kitty', 'srgb_gamma.glsl'), 'w') as f:
-        f.write(f'{g}\n')
 
 
 if __name__ == '__main__':

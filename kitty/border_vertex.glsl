@@ -1,8 +1,8 @@
-#pragma kitty_include_shader <srgb_gamma.glsl>
 uniform uvec2 viewport;
 uniform uint colors[9];
 uniform float background_opacity;
 uniform float tint_opacity, tint_premult;
+uniform float gamma_lut[256];
 in vec4 rect;  // left, top, right, bottom
 in uint rect_color;
 out vec4 color;

@@ -222,6 +222,8 @@ init_cell_program(void) {
         cell_program_layouts[i].color_table.offset = get_uniform_information(i, "color_table[0]", GL_UNIFORM_OFFSET);
         cell_program_layouts[i].color_table.stride = get_uniform_information(i, "color_table[0]", GL_UNIFORM_ARRAY_STRIDE);
         get_uniform_locations_cell(i, &cell_program_layouts[i].uniforms);
+        bind_program(i);
+        glUniform1fv(cell_program_layouts[i].uniforms.gamma_lut, arraysz(srgb_lut), srgb_lut);
     }
 
     // Sanity check to ensure the attribute location binding worked
@@ -976,6 +978,8 @@ static BorderProgramLayout border_program_layout;
 static void
 init_borders_program(void) {
     get_uniform_locations_border(BORDERS_PROGRAM, &border_program_layout.uniforms);
+    bind_program(BORDERS_PROGRAM);
+    glUniform1fv(border_program_layout.uniforms.gamma_lut, 256, srgb_lut);
 }
 
 ssize_t

@@ -35,6 +35,11 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
+0.29.2 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- macOS: Fix a performance regression on M1 machines using outdated macOS versions (:iss:`6479`)
+
 0.29.1 [2023-07-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -1,5 +1,4 @@
 #extension GL_ARB_explicit_attrib_location : require
-#pragma kitty_include_shader <srgb_gamma.glsl>
 #pragma kitty_include_shader <cell_defines.glsl>
 
 
@@ -22,6 +21,7 @@ uniform uint draw_bg_bitfield;
 layout(location=0) in uvec3 colors;
 layout(location=1) in uvec4 sprite_coords;
 layout(location=2) in uint is_selected;
+uniform float gamma_lut[256];
 
 
 const int fg_index_map[] = int[3](0, 1, 0);
