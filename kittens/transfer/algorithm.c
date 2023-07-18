@@ -15,6 +15,7 @@
 static PyObject *RsyncError = NULL;
 static const size_t default_block_size = 6 * 1024;
 static const size_t signature_block_size = 20;
+void log_error(const char *fmt, ...) { va_list args; va_start(args, fmt); vfprintf(stderr, fmt, args); va_end(args); }
 
 // hashers {{{
 typedef void*(*new_hash_t)(void);
@@ -536,7 +537,7 @@ finish_signature_data(Differ *self, PyObject *args UNUSED) {
 static bool
 send_op(Differ *self, Operation *op) {
     uint8_t metadata[32];
-    size_t len;
+    size_t len = 0;
     metadata[0] = op->type;
     switch (op->type) {
         case OpBlock:

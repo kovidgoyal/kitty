@@ -812,7 +812,7 @@ def compile_kittens(args: Options) -> None:
     ):
         final_env = kenv.copy()
         final_env.cflags.extend(f'-I{x}' for x in includes)
-        final_env.ldpaths[:0] = list(f'-l{x}' for x in libraries)
+        final_env.ldpaths[:0] = list(libraries)
         compile_c_extension(
             final_env, dest, args.compilation_database, sources, all_headers + ['kitty/data-types.h'])
 
