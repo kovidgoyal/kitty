@@ -465,16 +465,13 @@ func (self *diff) send_data() error {
 func (self *diff) pump_till_op_written() error {
 	self.written = false
 	for !self.finished && !self.written {
-		if err := self.read_at_least_one_operation(); err != nil {
+		if err := self.read_next(); err != nil {
 			return err
 		}
 	}
 	if self.finished {
-		if self.pending_op != nil {
-			if err := self.send_op(self.pending_op); err != nil {
-				return err
-			}
-			self.pending_op = nil
+		if err := self.send_pending(); err != nil {
+			return err
 		}
 		return io.EOF
 	}
@@ -531,7 +528,7 @@ func (self *diff) finish_up() (err error) {
 }
 
 // See https://rsync.samba.org/tech_report/node4.html for the design of this algorithm
-func (self *diff) read_at_least_one_operation() (err error) {
+func (self *diff) read_next() (err error) {
 	if self.window.sz > 0 {
 		if ok, err := self.ensure_idx_valid(self.window.pos + self.window.sz); !ok {
 			if err != nil {
