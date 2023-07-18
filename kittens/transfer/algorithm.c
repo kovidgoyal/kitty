@@ -186,7 +186,7 @@ typedef struct {
     PyObject_HEAD
     rolling_checksum rc;
     uint64_t signature_idx;
-    size_t block_size;
+    size_t total_data_in_delta;
     Rsync rsync;
     buffer buf, block_buf;
     PyObject *block_buf_view;
@@ -198,16 +198,16 @@ Patcher_init(PyObject *s, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"expected_input_size", NULL};
     unsigned long long expected_input_size = 0;
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|K", kwlist, &expected_input_size)) return -1;
-    self->block_size = default_block_size;
+    self->rsync.block_size = default_block_size;
     if (expected_input_size > 0) {
-        self->block_size = (size_t)round(sqrt((double)expected_input_size));
+        self->rsync.block_size = (size_t)round(sqrt((double)expected_input_size));
     }
-    const char *err = init_rsync(&self->rsync, self->block_size, 0, 0);
+    const char *err = init_rsync(&self->rsync, self->rsync.block_size, 0, 0);
     if (err != NULL) { PyErr_SetString(RsyncError, err); return -1; }
-    self->block_buf.cap = self->block_size;
-    self->block_buf.data = malloc(self->block_size);
+    self->block_buf.cap = self->rsync.block_size;
+    self->block_buf.data = malloc(self->rsync.block_size);
     if (self->block_buf.data == NULL) { PyErr_NoMemory(); return -1; }
-    if (!(self->block_buf_view = PyMemoryView_FromMemory((char*)self->block_buf.data, self->block_size, PyBUF_WRITE))) return -1;
+    if (!(self->block_buf_view = PyMemoryView_FromMemory((char*)self->block_buf.data, self->rsync.block_size, PyBUF_WRITE))) return -1;
     return 0;
 }
 
@@ -225,7 +225,8 @@ static PyObject*
 signature_header(Patcher *self, PyObject *a2) {
     FREE_BUFFER_AFTER_FUNCTION Py_buffer dest = {0};
     if (PyObject_GetBuffer(a2, &dest, PyBUF_WRITE) == -1) return NULL;
-    if (dest.len < 12) {
+    static const ssize_t header_size = 12;
+    if (dest.len < header_size) {
         PyErr_SetString(RsyncError, "Output buffer is too small");
     }
     uint8_t *o = dest.buf;
@@ -233,8 +234,8 @@ signature_header(Patcher *self, PyObject *a2) {
     le16b(o + 2, 0);  // checksum type
     le16b(o + 4, 0);  // strong hash type
     le16b(o + 6, 0);  // weak hash type
-    le32b(o + 8, self->block_size);  // weak hash type
-    Py_RETURN_NONE;
+    le32b(o + 8, self->rsync.block_size);  // block size
+    return PyLong_FromSsize_t(header_size);
 }
 
 static PyObject*
@@ -256,7 +257,7 @@ sign_block(Patcher *self, PyObject *args) {
     le64b(o, self->signature_idx++);
     le32b(o + 8, weak_hash);
     le64b(o + 12, strong_hash);
-    Py_RETURN_NONE;
+    return PyLong_FromSize_t(signature_block_size);
 }
 
 typedef enum { OpBlock, OpBlockRange, OpHash, OpData } OpType;
@@ -304,7 +305,7 @@ unserialize_op(uint8_t *data, size_t len, Operation *op) {
 
 static bool
 write_block(Patcher *self, uint64_t block_index, PyObject *read, PyObject *write) {
-    FREE_AFTER_FUNCTION PyObject *pos = PyLong_FromUnsignedLongLong((unsigned long long)(self->block_size * block_index));
+    FREE_AFTER_FUNCTION PyObject *pos = PyLong_FromUnsignedLongLong((unsigned long long)(self->rsync.block_size * block_index));
     if (!pos) return false;
     FREE_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(read, pos, self->block_buf_view, NULL);
     if (ret == NULL) return false;
@@ -329,6 +330,7 @@ apply_op(Patcher *self, Operation op, PyObject *read, PyObject *write) {
             }
             return true;
         case OpData: {
+            self->total_data_in_delta += op.data.len;
             self->rsync.checksummer.update(self->rsync.checksummer.state, op.data.buf, op.data.len);
             FREE_AFTER_FUNCTION PyObject *view = PyMemoryView_FromMemory((char*)op.data.buf, op.data.len, PyBUF_READ);
             if (!view) return false;
@@ -370,6 +372,18 @@ finish_delta_data(Patcher *self, PyObject *args UNUSED) {
     if (self->buf.len > 0) { PyErr_Format(RsyncError, "%zu bytes of unused delta data", self->buf.len); return NULL; }
     Py_RETURN_NONE;
 }
+
+static PyObject*
+Patcher_block_size(Patcher* self, void* closure UNUSED) { return PyLong_FromSize_t(self->rsync.block_size); }
+static PyObject*
+Patcher_total_data_in_delta(Patcher* self, void* closure UNUSED) { return PyLong_FromSize_t(self->total_data_in_delta); }
+
+PyGetSetDef Patcher_getsets[] = {
+    {"block_size", (getter)Patcher_block_size, NULL, NULL, NULL},
+    {"total_data_in_delta", (getter)Patcher_total_data_in_delta, NULL, NULL, NULL},
+    {NULL}
+};
+
 
 static PyMethodDef Patcher_methods[] = {
     METHODB(sign_block, METH_VARARGS),

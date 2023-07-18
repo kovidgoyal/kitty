@@ -11,7 +11,7 @@ from pathlib import Path
 
 from kittens.transfer.main import parse_transfer_args
 from kittens.transfer.receive import File, files_for_receive
-from kittens.transfer.rsync import decode_utf8_buffer, parse_ftc, Hasher
+from kittens.transfer.rsync import Differ, Hasher, Patcher, decode_utf8_buffer, parse_ftc
 from kittens.transfer.utils import cwd_path, expand_home, home_path, set_paths
 from kitty.file_transmission import Action, Compression, FileTransmissionCommand, FileType, TransmissionType, ZlibDecompressor, iter_file_metadata
 from kitty.file_transmission import TestFileTransmission as FileTransmission
@@ -50,6 +50,87 @@ def serialized_cmd(**fields) -> str:
         fields['data'] = fields['data'].encode('utf-8')
     ans = FileTransmissionCommand(**fields)
     return ans.serialize()
+
+
+def generate_data(block_size, num_blocks, *extra) -> bytes:
+    extra = ''.join(extra)
+    b = b'_' * (block_size * num_blocks) + extra.encode()
+    ans = bytearray(b)
+    for i in range(num_blocks):
+        offset = i * block_size
+        p = str(i).encode()
+        ans[offset:offset+len(p)] = p
+    return bytes(ans)
+
+
+def patch_data(data, *patches):
+    total_patch_size = 0
+    ans = bytearray(data)
+    for patch in patches:
+        o, sep, r = patch.partition(':')
+        r = r.encode()
+        total_patch_size += len(r)
+        offset = int(o)
+        ans[offset:offset+len(r)] = r
+    return bytes(ans), len(patches), total_patch_size
+
+
+def run_roundtrip_test(self: 'TestFileTransmission', src_data, changed, num_of_patches, total_patch_size):
+    buf = memoryview(bytearray(30))
+    signature = bytearray(0)
+    p = Patcher(len(src_data))
+    n = p.signature_header(buf)
+    signature.extend(buf[:n])
+    src = memoryview(src_data)
+    bs = p.block_size
+    while src:
+        n = p.sign_block(src[:bs], buf)
+        signature.extend(buf[:n])
+        src = src[bs:]
+    d = Differ()
+    src = memoryview(signature)
+    while src:
+        d.add_signature_data(src[:13])
+        src = src[13:]
+    d.finish_signature_data()
+    src = memoryview(src_data)
+    delta = bytearray(0)
+    def read_into(b):
+        global src
+        n = min(len(b), len(src))
+        if n > 0:
+            b[:n] = src[:n]
+            src = src[n:]
+        return n
+    def write_delta(b):
+        delta.extend(b)
+    while d.next_op(read_into, write_delta):
+        pass
+    delta = memoryview(delta)
+
+    def read_at(pos, output) -> int:
+        b = changed[pos:]
+        amt = min(len(output), len(b))
+        output[:amt] = b[:amt]
+        return amt
+
+    output = bytearray(0)
+
+    def write_changes(b):
+        output.extend(b)
+
+    while delta:
+        p.apply_delta_data(delta[:11], read_at, write_changes)
+    p.finish_delta_data()
+    self.assertEqual(src_data, bytes(output))
+    limit = 2 * (p.block_size * num_of_patches)
+    if limit > -1:
+        self.assertLess(
+            p.total_data_in_delta, limit, f'Unexpectedly poor delta performance: {total_patch_size=} {p.total_data_in_delta=} {limit=}')
+
+
+def test_rsync_roundtrip(self: 'TestFileTransmission') -> None:
+    pass
 
 
 class TestFileTransmission(BaseTest):
@@ -92,42 +173,7 @@ class TestFileTransmission(BaseTest):
         self.ae(a, b)
 
     def test_rsync_roundtrip(self):
-        self.skipTest("TODO: Needs to be ported")
-        a_path = os.path.join(self.tdir, 'a')
-        b_path = os.path.join(self.tdir, 'b')
-        c_path = os.path.join(self.tdir, 'c')
-
-        def files_equal(a_path, c_path):
-            self.ae(os.path.getsize(a_path), os.path.getsize(c_path))
-            with open(c_path, 'rb') as b, open(c_path, 'rb') as c:
-                self.ae(b.read(), c.read())
-
-        def patch(old_path, new_path, output_path, max_delta_len=0):
-            sig_loader = LoadSignature()
-            for chunk in signature_of_file(old_path):
-                sig_loader.add_chunk(chunk)
-            sig_loader.commit()
-            self.assertTrue(sig_loader.finished)
-            delta_len = 0
-            with PatchFile(old_path, output_path) as patcher:
-                for chunk in delta_for_file(new_path, sig_loader.signature):
-                    self.assertFalse(patcher.finished)
-                    patcher.write(chunk)
-                    delta_len += len(chunk)
-            self.assertTrue(patcher.finished)
-            if max_delta_len:
-                self.assertLessEqual(delta_len, max_delta_len)
-            files_equal(output_path, new_path)
-
-        sz = 1024 * 1024 + 37
-        with open(a_path, 'wb') as f:
-            f.write(os.urandom(sz))
-        with open(b_path, 'wb') as f:
-            f.write(os.urandom(sz))
-
-        patch(a_path, b_path, c_path)
-        # test size of delta
-        patch(a_path, a_path, c_path, max_delta_len=256)
+        test_rsync_roundtrip(self)
 
     def test_file_get(self):
         # send refusal
