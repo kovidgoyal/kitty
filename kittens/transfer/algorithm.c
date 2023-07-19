@@ -230,11 +230,11 @@ signature_header(Patcher *self, PyObject *a2) {
         PyErr_SetString(RsyncError, "Output buffer is too small");
     }
     uint8_t *o = dest.buf;
-    le16b(o, 0); // version
-    le16b(o + 2, 0);  // checksum type
-    le16b(o + 4, 0);  // strong hash type
-    le16b(o + 6, 0);  // weak hash type
-    le32b(o + 8, self->rsync.block_size);  // block size
+    le16enc(o, 0); // version
+    le16enc(o + 2, 0);  // checksum type
+    le16enc(o + 4, 0);  // strong hash type
+    le16enc(o + 6, 0);  // weak hash type
+    le32enc(o + 8, self->rsync.block_size);  // block size
     return PyLong_FromSsize_t(header_size);
 }
 
@@ -251,12 +251,12 @@ sign_block(Patcher *self, PyObject *args) {
     }
     self->rsync.hasher.reset(self->rsync.hasher.state);
     if (!self->rsync.hasher.update(self->rsync.hasher.state, src.buf, src.len)) { PyErr_SetString(PyExc_ValueError, "String hashing failed"); return NULL; }
-    uint64_t strong_hash = self->rsync.hasher.digest64(self->rsync.hasher.state);
+    uint64_t strong_hash = self->rsync.hasher.oneshot64(src.buf, src.len);
     uint32_t weak_hash = rolling_checksum_full(&self->rc, src.buf, src.len);
     uint8_t *o = dest.buf;
-    le64b(o, self->signature_idx++);
-    le32b(o + 8, weak_hash);
-    le64b(o + 12, strong_hash);
+    le64enc(o, self->signature_idx++);
+    le32enc(o + 8, weak_hash);
+    le64enc(o + 12, strong_hash);
     return PyLong_FromSize_t(signature_block_size);
 }
 
@@ -275,18 +275,18 @@ unserialize_op(uint8_t *data, size_t len, Operation *op) {
         case OpBlock:
             consumed = 9;
             if (len < consumed) return 0;
-            op->block_index = le64(data + 1);
+            op->block_index = le64dec(data + 1);
             break;
         case OpBlockRange:
             consumed = 13;
             if (len < consumed) return 0;
-            op->block_index = le64(data + 1);
-            op->block_index_end = op->block_index + le32(data + 9);
+            op->block_index = le64dec(data + 1);
+            op->block_index_end = op->block_index + le32dec(data + 9);
             break;
         case OpHash:
             consumed = 3;
             if (len < consumed) return 0;
-            op->data.len = le16(data + 1);
+            op->data.len = le16dec(data + 1);
             if (len < consumed + op->data.len) return 0;
             op->data.buf = data + 3;
             consumed += op->data.len;
@@ -294,7 +294,7 @@ unserialize_op(uint8_t *data, size_t len, Operation *op) {
         case OpData:
             consumed = 5;
             if (len < consumed) return 0;
-            op->data.len = le32(data + 1);
+            op->data.len = le32dec(data + 1);
             if (len < consumed + op->data.len) return 0;
             op->data.buf = data + 5;
             consumed += op->data.len;
@@ -468,19 +468,19 @@ parse_signature_header(Differ *self) {
     if (self->buf.len < 12) return;
     uint8_t *p = self->buf.data;
     uint32_t x;
-    if ((x = le16(p)) != 0) {
+    if ((x = le16dec(p)) != 0) {
         PyErr_Format(RsyncError, "Invalid version in signature header: %u", x); return;
     } p += 2;
-    if ((x = le16(p)) != 0) {
+    if ((x = le16dec(p)) != 0) {
         PyErr_Format(RsyncError, "Invalid checksum type in signature header: %u", x); return;
     } p += 2;
-    if ((x = le16(p)) != 0) {
+    if ((x = le16dec(p)) != 0) {
         PyErr_Format(RsyncError, "Invalid strong hash type in signature header: %u", x); return;
     } p += 2;
-    if ((x = le16(p)) != 0) {
+    if ((x = le16dec(p)) != 0) {
         PyErr_Format(RsyncError, "Invalid weak hash type in signature header: %u", x); return;
     } p += 2;
-    const char *err = init_rsync(&self->rsync, le32(p), 0, 0);
+    const char *err = init_rsync(&self->rsync, le32dec(p), 0, 0);
     if (err != NULL) { PyErr_SetString(RsyncError, err); return; }
     p += 4;
     shift_left(&self->buf, p - self->buf.data);
@@ -502,18 +502,18 @@ add_collision(SignatureMap *sm, Signature s) {
 static size_t
 parse_signature_block(Differ *self, uint8_t *data, size_t len) {
     if (len < 20) return 0;
-    int weak_hash = le32(data + 8);
+    int weak_hash = le32dec(data + 8);
     SignatureMap *sm;
     HASH_FIND_INT(self->signature_map, &weak_hash, sm);
     if (sm == NULL) {
         sm = calloc(1, sizeof(SignatureMap));
         if (sm == NULL) { PyErr_NoMemory(); return 0; }
         sm->weak_hash = weak_hash;
-        sm->sig.index = le64(data);
-        sm->sig.strong_hash = le64(data+12);
+        sm->sig.index = le64dec(data);
+        sm->sig.strong_hash = le64dec(data+12);
         HASH_ADD_INT(self->signature_map, weak_hash, sm);
     } else {
-        if (!add_collision(sm, (Signature){.index=le64(data), .strong_hash=le64(data+12)})) return 0;
+        if (!add_collision(sm, (Signature){.index=le64dec(data), .strong_hash=le64dec(data+12)})) return 0;
     }
     return 20;
 }
@@ -556,21 +556,21 @@ send_op(Differ *self, Operation *op) {
     metadata[0] = op->type;
     switch (op->type) {
         case OpBlock:
-            le64b(metadata + 1, op->block_index);
+            le64enc(metadata + 1, op->block_index);
             len = 9;
             break;
         case OpBlockRange:
-            le64b(metadata + 1, op->block_index);
-            le32b(metadata + 9, op->block_index_end - op->block_index);
+            le64enc(metadata + 1, op->block_index);
+            le32enc(metadata + 9, op->block_index_end - op->block_index);
             len = 13;
             break;
         case OpHash:
-            le16b(metadata + 1, op->data.len);
+            le16enc(metadata + 1, op->data.len);
             memcpy(metadata + 3, op->data.buf, op->data.len);
             len = 3 + op->data.len;
             break;
         case OpData:
-            le32b(metadata + 1, op->data.len);
+            le32enc(metadata + 1, op->data.len);
             len = 5;
             break;
     }
