@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import errno
+import io
 import json
 import os
 import re
@@ -16,7 +17,7 @@ from functools import partial
 from gettext import gettext as _
 from itertools import count
 from time import monotonic, time_ns
-from typing import IO, Any, Callable, DefaultDict, Deque, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
+from typing import IO, Any, Callable, DefaultDict, Deque, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 from kittens.transfer.utils import IdentityCompressor, ZlibCompressor, abspath, expand_home, home_path
 from kitty.fast_data_types import FILE_TRANSFER_CODE, OSC, AES256GCMDecrypt, add_timer, base64_decode, base64_encode, get_boss, get_options
@@ -371,6 +372,67 @@ class ZlibDecompressor:
         return ans
 
 
+class PatchFile:
+
+    def __init__(self, path: str, expected_size: int):
+        from kittens.transfer.rsync import Patcher
+        self.patcher = Patcher(expected_size)
+        self.block_buffer = memoryview(bytearray(self.patcher.block_size))
+        self.path = path
+        self.src_file: Optional[io.BufferedReader] = None
+        self._dest_file: Optional[IO[bytes]] = None
+
+    @property
+    def dest_file(self) -> IO[bytes]:
+        if self._dest_file is None:
+            self._dest_file = tempfile.NamedTemporaryFile(mode='wb', dir=os.path.dirname(os.path.abspath(os.path.realpath(self.path))), delete=False)
+        return self._dest_file
+
+    def close(self) -> None:
+        if self.src_file is not None and not self.src_file.closed:
+            self.src_file.close()
+        if self._dest_file is not None and not self._dest_file.closed:
+            self._dest_file.close()
+            self.patcher.finish_delta_data()
+            assert self.src_file is not None
+            os.replace(self.dest_file.name, self.src_file.name)
+        del self.patcher, self.block_buffer
+
+    def tell(self) -> int:
+        df = self.dest_file
+        if df.closed:
+            return os.path.getsize(self.path)
+        return df.tell()
+
+    def read_from_src(self, pos: int, b: Union[bytearray, memoryview]) -> int:
+        assert self.src_file is not None
+        self.src_file.seek(pos, os.SEEK_SET)
+        return self.src_file.readinto(b)
+
+    def write_to_dest(self, b: Union[bytes, bytearray, memoryview]) -> None:
+        self.dest_file.write(b)
+
+    def write(self, b: bytes) -> None:
+        self.patcher.apply_delta_data(b, self.read_from_src, self.write_to_dest)
+
+    def next_signature_block(self) -> memoryview:
+        buf = memoryview(bytearray(32))
+        if self.src_file is None:
+            self.src_file = open(self.path, 'rb')
+            n = self.patcher.signature_header(buf)
+            return buf[:n]
+        if self.src_file.closed:
+            return buf[:0]
+        n = self.src_file.readinto(self.block_buffer)
+        if n > 0:
+            n = self.patcher.sign_block(self.block_buffer[:n], buf)
+            buf = buf[:n]
+        else:
+            self.src_file.close()
+            buf = buf[:0]
+        return buf
+
+
 class DestFile:
 
     def __init__(self, ftc: FileTransmissionCommand) -> None:
@@ -398,6 +460,10 @@ class DestFile:
         self.actual_file: Union[PatchFile, IO[bytes], None] = None
         self.failed = False
         self.bytes_written = 0
+
+    def signature_iterator(self) -> PatchFile:
+        self.actual_file = PatchFile(self.name, self.existing_stat.st_size if self.existing_stat is not None else 0)
+        return self.actual_file
 
     def __repr__(self) -> str:
         return f'DestFile(name={self.name}, file_id={self.file_id}, actual_file={self.actual_file})'
@@ -471,13 +537,10 @@ class DestFile:
             decompressed = self.decompressor(data, is_last=is_last)
             if self.actual_file is None:
                 self.make_parent_dirs()
-                if self.ttype is TransmissionType.rsync:
-                    self.actual_file = PatchFile(self.name)
-                else:
-                    self.unlink_existing_if_needed()
-                    flags = os.O_RDWR | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_BINARY', 0)
-                    self.actual_file = open(os.open(self.name, flags, self.permissions), mode='r+b', closefd=True)
-            af = cast(Union[IO[bytes], PatchFile], self.actual_file)
+                self.unlink_existing_if_needed()
+                flags = os.O_RDWR | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_BINARY', 0)
+                self.actual_file = open(os.open(self.name, flags, self.permissions), mode='r+b', closefd=True)
+            af = self.actual_file
             if decompressed or is_last:
                 af.write(decompressed)
                 self.bytes_written = af.tell()
@@ -583,15 +646,21 @@ class SourceFile:
             raise TransmissionError(ErrorCode.EINVAL, msg='Cannot send a directory', file_id=self.file_id)
         self.compressor: Union[ZlibCompressor, IdentityCompressor] = IdentityCompressor()
         self.target = b''
-        self.open_file: Optional[IO[bytes]] = None
+        self.open_file: Optional[io.BufferedReader] = None
         if stat.S_ISLNK(self.stat.st_mode):
             self.target = os.readlink(self.path).encode('utf-8')
         else:
             self.open_file = open(self.path, 'rb')
             if ftc.compression is Compression.zlib:
                 self.compressor = ZlibCompressor()
-        self.signature_loader = LoadSignature() if self.waiting_for_signature else None
-        self.delta_loader: Optional[Iterator[memoryview]] = None
+        from kittens.transfer import rsync
+        self.differ = rsync.Differ() if self.waiting_for_signature else None
+        self.buf = bytearray()
+        self.write_pos = 0
+
+    def write(self, b: Union[bytes, bytearray, memoryview]) -> None:
+        self.buf[self.write_pos:self.write_pos+len(b)] = b
+        self.write_pos += len(b)
 
     @property
     def ready_to_transmit(self) -> bool:
@@ -601,8 +670,7 @@ class SourceFile:
         if self.open_file is not None:
             self.open_file.close()
             self.open_file = None
-        self.signature_loader = None
-        self.delta_loader = None
+        self.differ = None
 
     def next_chunk(self, sz: int = 1024 * 1024) -> Tuple[bytes, int]:
         if self.target:
@@ -613,16 +681,16 @@ class SourceFile:
                 self.transmitted = True
                 data = b''
             else:
-                if self.delta_loader is None:
+                if self.differ is None:
                     data = self.open_file.read(sz)
                     if not data or self.open_file.tell() >= self.stat.st_size:
                         self.transmitted = True
                 else:
-                    try:
-                        data = next(self.delta_loader)
-                    except StopIteration:
+                    self.write_pos = 0
+                    has_more = self.differ.next_op(self.open_file.readinto, self.write)
+                    data = memoryview(self.buf)[:self.write_pos]
+                    if not has_more:
                         self.transmitted = True
-                        data = b''
         uncompressed_sz = len(data)
         cchunk = self.compressor.compress(data)
         if self.transmitted and not isinstance(self.compressor, IdentityCompressor):
@@ -673,14 +741,13 @@ class ActiveSend:
         af = self.queued_files_map.get(cmd.file_id)
         if af is None:
             raise TransmissionError(ErrorCode.EINVAL, f'Signature data for unknown file_id: {cmd.file_id}')
-        sl = af.signature_loader
+        sl = af.differ
         if sl is None:
             raise TransmissionError(ErrorCode.EINVAL, f'Signature data for file that is not using rsync: {cmd.file_id}')
-        sl.add_chunk(cmd.data)
+        sl.add_signature_data(cmd.data)
         if cmd.action is Action.end_data:
-            sl.commit()
+            sl.finish_signature_data()
             af.waiting_for_signature = False
-            af.delta_loader = delta_for_file(af.path, sl.signature)
 
     @property
     def is_expired(self) -> bool:
@@ -951,7 +1018,7 @@ class FileTransmission:
                         df.ttype = ttype
                         if ttype is TransmissionType.rsync:
                             try:
-                                fs = signature_of_file(df.name)
+                                fs = df.signature_iterator()
                             except OSError as err:
                                 self.send_fail_on_os_error(err, 'Failed to open file to read signature', ar, df.file_id)
                             else:
@@ -997,7 +1064,7 @@ class FileTransmission:
             log_error(f'Transmission receive command with unknown action: {cmd.action}, ignoring')
 
     def transmit_rsync_signature(
-        self, fs: Iterator[memoryview],
+        self, fs: PatchFile,
         receive_id: str, file_id: str,
         pending: Deque[FileTransmissionCommand],
         timer_id: Optional[int] = None
@@ -1013,10 +1080,7 @@ class FileTransmission:
                 self.callback_after(func, timeout=0.1)
                 return
         try:
-            chunk = next(fs)
-        except StopIteration:
-            self.write_ftc_to_child(FileTransmissionCommand(id=receive_id, action=Action.end_data, file_id=file_id))
-            return
+            chunk = fs.next_signature_block()
         except OSError as err:
             if ar.send_errors:
                 self.send_fail_on_os_error(err, 'Failed to read signature', ar, file_id)
