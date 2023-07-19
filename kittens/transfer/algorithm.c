@@ -305,16 +305,16 @@ unserialize_op(uint8_t *data, size_t len, Operation *op) {
 
 static bool
 write_block(Patcher *self, uint64_t block_index, PyObject *read, PyObject *write) {
-    FREE_AFTER_FUNCTION PyObject *pos = PyLong_FromUnsignedLongLong((unsigned long long)(self->rsync.block_size * block_index));
+    DECREF_AFTER_FUNCTION PyObject *pos = PyLong_FromUnsignedLongLong((unsigned long long)(self->rsync.block_size * block_index));
     if (!pos) return false;
-    FREE_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(read, pos, self->block_buf_view, NULL);
+    DECREF_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(read, pos, self->block_buf_view, NULL);
     if (ret == NULL) return false;
     if (!PyLong_Check(ret)) { PyErr_SetString(PyExc_TypeError, "read callback function did not return an integer"); return false; }
     size_t n = PyLong_AsSize_t(ret);
     self->rsync.checksummer.update(self->rsync.checksummer.state, self->block_buf.data, n);
-    FREE_AFTER_FUNCTION PyObject *view = PyMemoryView_FromMemory((char*)self->block_buf.data, n, PyBUF_READ);
+    DECREF_AFTER_FUNCTION PyObject *view = PyMemoryView_FromMemory((char*)self->block_buf.data, n, PyBUF_READ);
     if (!view) return false;
-    FREE_AFTER_FUNCTION PyObject *wret = PyObject_CallFunctionObjArgs(write, view, NULL);
+    DECREF_AFTER_FUNCTION PyObject *wret = PyObject_CallFunctionObjArgs(write, view, NULL);
     if (wret == NULL) return false;
     return true;
 }
@@ -332,9 +332,9 @@ apply_op(Patcher *self, Operation op, PyObject *read, PyObject *write) {
         case OpData: {
             self->total_data_in_delta += op.data.len;
             self->rsync.checksummer.update(self->rsync.checksummer.state, op.data.buf, op.data.len);
-            FREE_AFTER_FUNCTION PyObject *view = PyMemoryView_FromMemory((char*)op.data.buf, op.data.len, PyBUF_READ);
+            DECREF_AFTER_FUNCTION PyObject *view = PyMemoryView_FromMemory((char*)op.data.buf, op.data.len, PyBUF_READ);
             if (!view) return false;
-            FREE_AFTER_FUNCTION PyObject *wret = PyObject_CallFunctionObjArgs(write, view, NULL);
+            DECREF_AFTER_FUNCTION PyObject *wret = PyObject_CallFunctionObjArgs(write, view, NULL);
             if (!wret) return false;
         } return true;
         case OpHash: {
@@ -404,6 +404,7 @@ PyTypeObject Patcher_Type = {
     .tp_methods = Patcher_methods,
     .tp_new = PyType_GenericNew,
     .tp_init = Patcher_init,
+    .tp_getset = Patcher_getsets,
 };
 // }}} Patcher
 
@@ -573,12 +574,12 @@ send_op(Differ *self, Operation *op) {
             len = 5;
             break;
     }
-    FREE_AFTER_FUNCTION PyObject *mv = PyMemoryView_FromMemory((char*)metadata, len, PyBUF_READ);
-    FREE_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(self->write, mv, NULL);
+    DECREF_AFTER_FUNCTION PyObject *mv = PyMemoryView_FromMemory((char*)metadata, len, PyBUF_READ);
+    DECREF_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(self->write, mv, NULL);
     if (ret == NULL) return false;
     if (op->type == OpData) {
-        FREE_AFTER_FUNCTION PyObject *mv = PyMemoryView_FromMemory((char*)op->data.buf, op->data.len, PyBUF_READ);
-        FREE_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(self->write, mv, NULL);
+        DECREF_AFTER_FUNCTION PyObject *mv = PyMemoryView_FromMemory((char*)op->data.buf, op->data.len, PyBUF_READ);
+        DECREF_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(self->write, mv, NULL);
         if (ret == NULL) return false;
     }
     self->written = true;
@@ -624,9 +625,9 @@ ensure_idx_valid(Differ *self, size_t idx) {
 		self->data.pos = 0;
 		return ensure_idx_valid(self, distance_from_window_pos);
     }
-    FREE_AFTER_FUNCTION PyObject *mv = PyMemoryView_FromMemory((char*)self->buf.data + self->buf.len, self->buf.cap - self->buf.len, PyBUF_WRITE);
+    DECREF_AFTER_FUNCTION PyObject *mv = PyMemoryView_FromMemory((char*)self->buf.data + self->buf.len, self->buf.cap - self->buf.len, PyBUF_WRITE);
     if (!mv) return false;
-    FREE_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(self->read, mv, NULL);
+    DECREF_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(self->read, mv, NULL);
     if (!ret) return false;
     if (!PyLong_Check(ret)) { PyErr_SetString(PyExc_TypeError, "read callback did not return an integer"); return false; }
     size_t n = PyLong_AsSize_t(ret);

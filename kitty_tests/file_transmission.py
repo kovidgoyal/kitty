@@ -96,7 +96,7 @@ def run_roundtrip_test(self: 'TestFileTransmission', src_data, changed, num_of_p
     src = memoryview(src_data)
     delta = bytearray(0)
     def read_into(b):
-        global src
+        nonlocal src
         n = min(len(b), len(src))
         if n > 0:
             b[:n] = src[:n]
@@ -121,6 +121,7 @@ def run_roundtrip_test(self: 'TestFileTransmission', src_data, changed, num_of_p
 
     while delta:
         p.apply_delta_data(delta[:11], read_at, write_changes)
+        delta = delta[11:]
     p.finish_delta_data()
     self.assertEqual(src_data, bytes(output))
     limit = 2 * (p.block_size * num_of_patches)
@@ -130,7 +131,23 @@ def run_roundtrip_test(self: 'TestFileTransmission', src_data, changed, num_of_p
 
 
 def test_rsync_roundtrip(self: 'TestFileTransmission') -> None:
-    pass
+    block_size = 16
+    src_data = generate_data(block_size, 16)
+    changed, num_of_patches, total_patch_size = patch_data(src_data, "3:patch1", "16:patch2", "130:ptch3", "176:patch4", "222:XXYY")
+
+    run_roundtrip_test(self, src_data, src_data[block_size:], 1, block_size)
+    run_roundtrip_test(self, src_data, changed, num_of_patches, total_patch_size)
+    run_roundtrip_test(self, src_data, b'', -1, 0)
+    run_roundtrip_test(self, src_data, src_data, 0, 0)
+    run_roundtrip_test(self, src_data, changed[:len(changed)-3], num_of_patches, total_patch_size)
+    run_roundtrip_test(self, src_data, changed[:37] + changed[81:], num_of_patches, total_patch_size)
+
+    block_size = 13
+    src_data = generate_data(block_size, 17, "trailer")
+    changed, num_of_patches, total_patch_size = patch_data(src_data, "0:patch1", "19:patch2")
+    run_roundtrip_test(self, src_data, changed, num_of_patches, total_patch_size)
+    run_roundtrip_test(self, src_data, changed[:len(changed)-3], num_of_patches, total_patch_size)
+    run_roundtrip_test(self, src_data, changed + b"xyz...", num_of_patches, total_patch_size)
 
 
 class TestFileTransmission(BaseTest):
