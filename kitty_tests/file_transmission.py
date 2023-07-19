@@ -123,7 +123,7 @@ def run_roundtrip_test(self: 'TestFileTransmission', src_data, changed, num_of_p
         p.apply_delta_data(delta[:11], read_at, write_changes)
         delta = delta[11:]
     p.finish_delta_data()
-    self.assertEqual(src_data, bytes(output))
+    self.assertEqual(src_data, bytes(output), f'\n\nsrc:\n{src_data.decode()}\nchanged:\n{changed.decode()}\noutput:\n{output.decode()}')
     limit = 2 * (p.block_size * num_of_patches)
     if limit > -1:
         self.assertLess(

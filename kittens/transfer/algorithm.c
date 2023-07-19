@@ -300,6 +300,7 @@ unserialize_op(uint8_t *data, size_t len, Operation *op) {
             consumed += op->data.len;
             break;
     }
+    if (consumed) op->type = data[0];
     return consumed;
 }
 
