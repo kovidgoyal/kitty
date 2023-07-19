@@ -78,10 +78,10 @@ def patch_data(data, *patches):
 def run_roundtrip_test(self: 'TestFileTransmission', src_data, changed, num_of_patches, total_patch_size):
     buf = memoryview(bytearray(30))
     signature = bytearray(0)
-    p = Patcher(len(src_data))
+    p = Patcher(len(changed))
     n = p.signature_header(buf)
     signature.extend(buf[:n])
-    src = memoryview(src_data)
+    src = memoryview(changed)
     bs = p.block_size
     while src:
         n = p.sign_block(src[:bs], buf)
@@ -93,6 +93,7 @@ def run_roundtrip_test(self: 'TestFileTransmission', src_data, changed, num_of_p
         d.add_signature_data(src[:13])
         src = src[13:]
     d.finish_signature_data()
+    del src, signature
     src = memoryview(src_data)
     delta = bytearray(0)
     def read_into(b):
@@ -107,6 +108,7 @@ def run_roundtrip_test(self: 'TestFileTransmission', src_data, changed, num_of_p
     while d.next_op(read_into, write_delta):
         pass
     delta = memoryview(delta)
+    del src
 
     def read_at(pos, output) -> int:
         b = changed[pos:]
@@ -119,14 +121,19 @@ def run_roundtrip_test(self: 'TestFileTransmission', src_data, changed, num_of_p
     def write_changes(b):
         output.extend(b)
 
-    while delta:
-        p.apply_delta_data(delta[:11], read_at, write_changes)
-        delta = delta[11:]
-    p.finish_delta_data()
-    self.assertEqual(src_data, bytes(output), f'\n\nsrc:\n{src_data.decode()}\nchanged:\n{changed.decode()}\noutput:\n{output.decode()}')
+    def debug_msg():
+        return f'\n\nsrc:\n{src_data.decode()}\nchanged:\n{changed.decode()}\noutput:\n{output.decode()}'
+    try:
+        while delta:
+            p.apply_delta_data(delta[:11], read_at, write_changes)
+            delta = delta[11:]
+        p.finish_delta_data()
+    except Exception as err:
+        self.fail(f'{err}\n{debug_msg()}')
+    self.assertEqual(src_data, bytes(output), debug_msg())
     limit = 2 * (p.block_size * num_of_patches)
     if limit > -1:
-        self.assertLess(
+        self.assertLessEqual(
             p.total_data_in_delta, limit, f'Unexpectedly poor delta performance: {total_patch_size=} {p.total_data_in_delta=} {limit=}')
 
 

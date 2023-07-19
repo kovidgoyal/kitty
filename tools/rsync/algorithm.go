@@ -11,6 +11,7 @@ package rsync
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"hash"
 	"io"
@@ -314,9 +315,9 @@ func (r *rsync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 			return err
 		}
 	case OpHash:
-		expected := r.checksummer.Sum(nil)
-		if !bytes.Equal(expected, op.Data) {
-			return fmt.Errorf("Failed to verify overall file checksum. This usually happens if some data was corrupted in transit or one of the involved files was altered while the transfer was in progress.")
+		actual := r.checksummer.Sum(nil)
+		if !bytes.Equal(actual, op.Data) {
+			return fmt.Errorf("Failed to verify overall file checksum actual: %s != expected: %s. This usually happens if some data was corrupted in transit or one of the involved files was altered while the transfer was in progress.", hex.EncodeToString(actual), hex.EncodeToString(op.Data))
 		}
 	}
 	return nil

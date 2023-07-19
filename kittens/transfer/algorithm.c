@@ -339,10 +339,16 @@ apply_op(Patcher *self, Operation op, PyObject *read, PyObject *write) {
             if (!wret) return false;
         } return true;
         case OpHash: {
-            uint8_t expected[64];
+            uint8_t actual[64];
             if (op.data.len != self->rsync.checksummer.hash_size) { PyErr_SetString(RsyncError, "checksum digest not the correct size"); return false; }
-            self->rsync.checksummer.digest(self->rsync.checksummer.state, expected);
-            if (memcmp(expected, op.data.buf, op.data.len) != 0) { PyErr_SetString(RsyncError, "checksum does not match, this usually happens because one of the involved files was altered while the operation was in progress"); return false; }
+            self->rsync.checksummer.digest(self->rsync.checksummer.state, actual);
+            if (memcmp(actual, op.data.buf, self->rsync.checksummer.hash_size) != 0) {
+                DECREF_AFTER_FUNCTION PyObject *b1 = PyBytes_FromStringAndSize((char*)actual, self->rsync.checksummer.hash_size);
+                DECREF_AFTER_FUNCTION PyObject *h1 = PyObject_CallMethod(b1, "hex", NULL);
+                DECREF_AFTER_FUNCTION PyObject *b2 = PyBytes_FromStringAndSize((char*)op.data.buf, self->rsync.checksummer.hash_size);
+                DECREF_AFTER_FUNCTION PyObject *h2 = PyObject_CallMethod(b2, "hex", NULL);
+                PyErr_Format(RsyncError, "Failed to verify overall file checksum actual: %S != expected: %S, this usually happens because one of the involved files was altered while the operation was in progress.", h1, h2);
+                return false; }
         } return true;
     }
     PyErr_SetString(RsyncError, "Unknown operation type");
@@ -504,7 +510,7 @@ static size_t
 parse_signature_block(Differ *self, uint8_t *data, size_t len) {
     if (len < 20) return 0;
     int weak_hash = le32dec(data + 8);
-    SignatureMap *sm;
+    SignatureMap *sm = NULL;
     HASH_FIND_INT(self->signature_map, &weak_hash, sm);
     if (sm == NULL) {
         sm = calloc(1, sizeof(SignatureMap));
@@ -713,11 +719,12 @@ read_next(Differ *self) {
 		self->window.sz = self->rsync.block_size;
         rolling_checksum_full(&self->rc, self->buf.data + self->window.pos, self->window.sz);
     }
-    SignatureMap *sm;
+    SignatureMap *sm = NULL;
     int weak_hash = self->rc.val;
     uint64_t block_index = 0;
     HASH_FIND_INT(self->signature_map, &weak_hash, sm);
     if (sm != NULL && find_strong_hash(sm, self->rsync.hasher.oneshot64(self->buf.data + self->window.pos, self->window.sz), &block_index)) {
+        if (!send_data(self)) return false;
         if (!enqueue(self, (Operation){.type=OpBlock, .block_index=block_index})) return false;
 		self->window.pos += self->window.sz;
 		self->data.pos = self->window.pos;

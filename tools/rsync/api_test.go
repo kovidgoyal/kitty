@@ -85,7 +85,7 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 
 	// Now try with serialization
 	using_serialization = true
-	p = NewPatcher(int64(len(src_data)))
+	p = NewPatcher(int64(len(changed)))
 	signature_of_changed := bytes.Buffer{}
 	ss_it := p.CreateSignatureIterator(bytes.NewReader(changed), &signature_of_changed)
 	var err error
