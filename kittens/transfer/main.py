@@ -26,6 +26,14 @@ receiving computer. In :code:`normal` mode the last argument is assumed to be a
 destination path on the receiving computer.
 
 
+--compress
+default=auto
+choices=auto,never,always
+Whether to compress data being sent. By default compression is enabled based on the
+type of file being sent. For files recognized as being already compressed, compression
+is turned off as it just wastes CPU cycles.
+
+
 --permissions-bypass -p
 The password to use to skip the transfer confirmation popup in kitty. Must match
 the password set for the :opt:`file_transfer_confirmation_bypass` option in

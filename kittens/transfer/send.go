@@ -117,7 +117,7 @@ func get_remote_path(local_path string, remote_base string) string {
 	return remote_base
 }
 
-func NewFile(local_path, expanded_local_path string, file_id int, stat_result fs.FileInfo, remote_base string, file_type FileType) *File {
+func NewFile(opts *Options, local_path, expanded_local_path string, file_id int, stat_result fs.FileInfo, remote_base string, file_type FileType) *File {
 	stat, ok := stat_result.Sys().(*syscall.Stat_t)
 	if !ok {
 		panic("This platform does not support getting file identities from stat results")
@@ -129,7 +129,7 @@ func NewFile(local_path, expanded_local_path string, file_id int, stat_result fs
 		file_size: stat_result.Size(), bytes_to_transmit: stat_result.Size(),
 		permissions: stat_result.Mode().Perm(), remote_path: filepath.ToSlash(get_remote_path(local_path, remote_base)),
 		rsync_capable:       file_type == FileType_regular && stat_result.Size() > 4096,
-		compression_capable: file_type == FileType_regular && stat_result.Size() > 4096 && should_be_compressed(expanded_local_path),
+		compression_capable: file_type == FileType_regular && stat_result.Size() > 4096 && should_be_compressed(expanded_local_path, opts.Compress),
 		remote_initial_size: -1,
 	}
 	return &ans
@@ -144,7 +144,7 @@ func process(opts *Options, paths []string, remote_base string, counter *int) (a
 		}
 		if s.IsDir() {
 			*counter += 1
-			ans = append(ans, NewFile(x, expanded, *counter, s, remote_base, FileType_directory))
+			ans = append(ans, NewFile(opts, x, expanded, *counter, s, remote_base, FileType_directory))
 			new_remote_base := remote_base
 			if new_remote_base != "" {
 				new_remote_base = strings.TrimRight(new_remote_base, "/") + "/" + filepath.Base(x) + "/"
@@ -166,10 +166,10 @@ func process(opts *Options, paths []string, remote_base string, counter *int) (a
 			ans = append(ans, new_ans...)
 		} else if s.Mode()&fs.ModeSymlink == fs.ModeSymlink {
 			*counter += 1
-			ans = append(ans, NewFile(x, expanded, *counter, s, remote_base, FileType_symlink))
+			ans = append(ans, NewFile(opts, x, expanded, *counter, s, remote_base, FileType_symlink))
 		} else if s.Mode().IsRegular() {
 			*counter += 1
-			ans = append(ans, NewFile(x, expanded, *counter, s, remote_base, FileType_regular))
+			ans = append(ans, NewFile(opts, x, expanded, *counter, s, remote_base, FileType_regular))
 		}
 	}
 	return

@@ -508,3 +508,5 @@ class TestFileTransmission(BaseTest):
         single_file('--transmit-deltas')
         os.remove(dest)
         single_file('--transmit-deltas')
+        single_file('--compress=never')
+        single_file('--compress=always')

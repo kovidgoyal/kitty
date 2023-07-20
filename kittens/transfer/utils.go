@@ -84,7 +84,13 @@ func run_with_paths(cwd, home string, f func()) {
 	f()
 }
 
-func should_be_compressed(path string) bool {
+func should_be_compressed(path, strategy string) bool {
+	if strategy == "always" {
+		return true
+	}
+	if strategy == "never" {
+		return false
+	}
 	ext := strings.ToLower(filepath.Ext(path))
 	if ext != "" {
 		switch ext[1:] {
