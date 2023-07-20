@@ -9,6 +9,8 @@ import (
 	"kitty/tools/cli/markup"
 	"kitty/tools/tty"
 	"os"
+
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -65,11 +67,15 @@ func run_legacy_loop(opts *Options) (err error) {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return err
+			if !(errors.Is(err, unix.EAGAIN) || errors.Is(err, unix.EBUSY)) {
+				return err
+			}
 		}
-		print_key(buf[:n], ctx)
-		if n == 1 && buf[0] == 4 {
-			break
+		if n > 0 {
+			print_key(buf[:n], ctx)
+			if n == 1 && buf[0] == 4 {
+				break
+			}
 		}
 	}
 	return
