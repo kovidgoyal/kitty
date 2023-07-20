@@ -165,6 +165,7 @@ class PtyFileTransmission(FileTransmission):
 
     def write_ftc_to_child(self, payload: FileTransmissionCommand, appendleft: bool = False, use_pending: bool = True) -> bool:
         self.pty.write_to_child('\x1b]' + payload.serialize(prefix_with_osc_code=True) + '\x1b\\', flush=False)
+        return True
 
 
 class TransferPTY(PTY):
@@ -467,12 +468,12 @@ class TestFileTransmission(BaseTest):
         self.assertEqual(h128.hexdigest(), '8d6b60383dfa90c21be79eecd1b1353d')
 
     @contextmanager
-    def run_kitten(self, cmd, home_dir=''):
+    def run_kitten(self, cmd, home_dir='', allow=True):
         homedir_ephemeral = not home_dir
         home_dir = self.home_dir = home_dir or os.path.realpath(tempfile.mkdtemp())
         cmd = [kitten_exe(), 'transfer'] + cmd
         try:
-            pty = TransferPTY(cmd, cwd=home_dir)
+            pty = TransferPTY(cmd, cwd=home_dir, allow=allow)
             i = 10
             while i > 0 and not pty.screen_contents().strip():
                 pty.process_input_from_child()
@@ -484,8 +485,26 @@ class TestFileTransmission(BaseTest):
 
     def test_transfer_send(self):
         src = os.path.join(self.tdir, 'src')
+        self.src_data = os.urandom(9137)
         with open(src, 'wb') as s:
-            s.write(os.urandom(9137))
+            s.write(self.src_data)
         dest = os.path.join(self.tdir, 'dest')
-        with self.run_kitten([src, dest]) as pty:
-            pty.wait_till_child_exits(require_exit_code=0)
+
+        with self.run_kitten([src, dest], allow=False) as pty:
+            pty.wait_till_child_exits(require_exit_code=1)
+        self.assertFalse(os.path.exists(dest))
+
+        def single_file(*cmd):
+            with self.run_kitten(list(cmd) + [src, dest]) as pty:
+                pty.wait_till_child_exits(require_exit_code=0)
+            with open(dest, 'rb') as f:
+                self.assertEqual(self.src_data, f.read())
+
+        single_file()
+        single_file()
+        single_file('--transmit-deltas')
+        with open(dest, 'wb') as d:
+            d.write(os.urandom(1023))
+        single_file('--transmit-deltas')
+        os.remove(dest)
+        single_file('--transmit-deltas')

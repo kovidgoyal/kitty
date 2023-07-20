@@ -1251,7 +1251,9 @@ func send_loop(opts *Options, files []*File) (err error, rc int) {
 		}
 		rc = 1
 	}
-
+	if lp.ExitCode() != 0 {
+		rc = lp.ExitCode()
+	}
 	return
 }
 

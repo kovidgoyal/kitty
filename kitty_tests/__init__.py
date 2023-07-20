@@ -307,12 +307,13 @@ class PTY:
     def wait_till_child_exits(self, timeout=10, require_exit_code=None):
         end_time = time.monotonic() + timeout
         while time.monotonic() <= end_time:
-            status = os.waitid(os.P_PID, self.child_pid, os.WNOHANG | os.WEXITED)
-            if status is not None and status.si_pid == self.child_pid:
+            si_pid, status = os.waitpid(self.child_pid, os.WNOHANG)
+            if si_pid == self.child_pid and os.WIFEXITED(status):
+                ec = os.waitstatus_to_exitcode(status)
                 self.child_waited_for = True
-                if require_exit_code is not None and os.waitstatus_to_exitcode(status.si_status) != require_exit_code:
+                if require_exit_code is not None and ec != require_exit_code:
                     raise AssertionError(
-                        f'Child exited with exit status: {status} code: {os.waitstatus_to_exitcode(status.si_status)} != {require_exit_code}.'
+                        f'Child exited with exit status: {status} code: {ec} != {require_exit_code}.'
                         f' Screen contents:\n{self.screen_contents()}')
                 return status
             self.process_input_from_child(timeout=0.02)
