@@ -2,12 +2,8 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-import os
 import sys
-from typing import List, Tuple
-
-from kitty.cli import parse_args
-from kitty.cli_stub import TransferCLIOptions
+from typing import List
 
 usage = 'source_files_or_directories destination_path'
 help_text = 'Transfer files over the TTY device'
@@ -54,29 +50,6 @@ update it to match the file on the sending side, potentially saving lots of
 bandwidth and also automatically resuming partial transfers. Note that this will
 actually degrade performance on fast links with small files, so use with care.
 '''
-
-
-def parse_transfer_args(args: List[str]) -> Tuple[TransferCLIOptions, List[str]]:
-    return parse_args(
-        args[1:], option_text, usage, help_text,
-        'kitty +kitten transfer', result_class=TransferCLIOptions
-    )
-
-
-def read_bypass(loc: str) -> str:
-    if not loc:
-        return ''
-    if loc.isdigit() and int(loc) >= 0 and int(loc) < 256:
-        with open(int(loc), 'rb') as f:
-            return f.read().decode('utf-8')
-    if loc[0] in ('.', '~', '/'):
-        if loc[0] == '~':
-            loc = os.path.expanduser(loc)
-        with open(loc, 'rb') as f:
-            return f.read().decode('utf-8')
-    if loc == '-':
-        return sys.stdin.read()
-    return loc
 
 
 def main(args: List[str]) -> None:
