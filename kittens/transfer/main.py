@@ -9,9 +9,6 @@ from typing import List, Tuple
 from kitty.cli import parse_args
 from kitty.cli_stub import TransferCLIOptions
 
-from .receive import receive_main
-from .send import send_main
-
 usage = 'source_files_or_directories destination_path'
 help_text = 'Transfer files over the TTY device'
 
@@ -83,16 +80,7 @@ def read_bypass(loc: str) -> str:
 
 
 def main(args: List[str]) -> None:
-    cli_opts, items = parse_transfer_args(args)
-    if cli_opts.permissions_bypass:
-        cli_opts.permissions_bypass = read_bypass(cli_opts.permissions_bypass).strip()
-
-    if not items:
-        raise SystemExit('Usage: kitty +kitten transfer file_or_directory ...')
-    if cli_opts.direction == 'send':
-        send_main(cli_opts, items)
-    else:
-        receive_main(cli_opts, items)
+    raise SystemExit('This should be run as kitten transfer')
 
 
 if __name__ == '__main__':
