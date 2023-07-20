@@ -379,8 +379,10 @@ class PatchFile:
         self.patcher = Patcher(expected_size)
         self.block_buffer = memoryview(bytearray(self.patcher.block_size))
         self.path = path
+        self.signature_done = False
         self.src_file: Optional[io.BufferedReader] = None
         self._dest_file: Optional[IO[bytes]] = None
+        self.closed = False
 
     @property
     def dest_file(self) -> IO[bytes]:
@@ -389,14 +391,18 @@ class PatchFile:
         return self._dest_file
 
     def close(self) -> None:
+        if self.closed:
+            return
+        self.closed = True
+        p = self.patcher
+        del self.block_buffer, self.patcher
         if self.src_file is not None and not self.src_file.closed:
             self.src_file.close()
         if self._dest_file is not None and not self._dest_file.closed:
             self._dest_file.close()
-            self.patcher.finish_delta_data()
-            assert self.src_file is not None
-            os.replace(self.dest_file.name, self.src_file.name)
-        del self.patcher, self.block_buffer
+            p.finish_delta_data()
+            if self.src_file is not None:
+                os.replace(self.dest_file.name, self.src_file.name)
 
     def tell(self) -> int:
         df = self.dest_file
@@ -417,18 +423,19 @@ class PatchFile:
 
     def next_signature_block(self) -> memoryview:
         buf = memoryview(bytearray(32))
+        if self.signature_done:
+            return buf[:0]
         if self.src_file is None:
             self.src_file = open(self.path, 'rb')
             n = self.patcher.signature_header(buf)
             return buf[:n]
-        if self.src_file.closed:
-            return buf[:0]
         n = self.src_file.readinto(self.block_buffer)
         if n > 0:
             n = self.patcher.sign_block(self.block_buffer[:n], buf)
             buf = buf[:n]
         else:
-            self.src_file.close()
+            self.src_file.seek(0, os.SEEK_SET)
+            self.signature_done = True
             buf = buf[:0]
         return buf
 
@@ -624,7 +631,8 @@ class ActiveReceive:
             df.write_data(self.files, ftc.data, ftc.action is Action.end_data)
         except Exception:
             df.failed = True
-            df.close()
+            with suppress(Exception):
+                df.close()
             raise
         return df
 
@@ -1046,7 +1054,9 @@ class FileTransmission:
                 if ar.send_errors:
                     self.send_transmission_error(ar.id, err)
             except Exception as err:
-                log_error(f'Transmission protocol failed to write data to file with error: {err}')
+                import traceback
+                st = traceback.format_exc()
+                log_error(f'Transmission protocol failed to write data to file with error: {st}')
                 if ar.send_errors:
                     te = TransmissionError(file_id=cmd.file_id, msg=str(err))
                     self.send_transmission_error(ar.id, te)

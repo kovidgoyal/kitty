@@ -260,13 +260,15 @@ sign_block(Patcher *self, PyObject *args) {
     return PyLong_FromSize_t(signature_block_size);
 }
 
-typedef enum { OpBlock, OpBlockRange, OpHash, OpData } OpType;
+typedef enum { OpBlock, OpData, OpHash, OpBlockRange } OpType;
 
 typedef struct Operation {
     OpType type;
     uint64_t block_index, block_index_end;
     struct { uint8_t *buf; size_t len; } data;
 } Operation;
+
+#define bytes_as_hex_for_debug(data, len) PyUnicode_AsUTF8(PyObject_CallMethod(PyBytes_FromStringAndSize((char*)data, len), "hex", NULL))
 
 static size_t
 unserialize_op(uint8_t *data, size_t len, Operation *op) {
