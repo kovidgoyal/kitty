@@ -119,7 +119,7 @@ func (self *Api) read_signature_blocks(data []byte) (consumed int) {
 	return
 }
 
-func (self *Differ) finish_signature_data() (err error) {
+func (self *Differ) FinishSignatureData() (err error) {
 	if len(self.unconsumed_signature_data) > 0 {
 		return fmt.Errorf("There were %d leftover bytes in the signature data", len(self.unconsumed_signature_data))
 	}
@@ -225,7 +225,7 @@ func (self *Patcher) CreateSignatureIterator(src io.Reader, output io.Writer) fu
 
 // Create a serialized delta based on the previously loaded signature
 func (self *Differ) CreateDelta(src io.Reader, output io.Writer) func() error {
-	if err := self.finish_signature_data(); err != nil {
+	if err := self.FinishSignatureData(); err != nil {
 		return func() error { return err }
 	}
 	if self.signature == nil {
@@ -234,6 +234,10 @@ func (self *Differ) CreateDelta(src io.Reader, output io.Writer) func() error {
 		}
 	}
 	return self.rsync.CreateDiff(src, self.signature, output)
+}
+
+func (self *Differ) BlockSize() int {
+	return self.rsync.BlockSize
 }
 
 // Add more external signature data

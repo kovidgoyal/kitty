@@ -608,9 +608,11 @@ func (r *rsync) CreateDelta(source io.Reader, signature []BlockHash) ([]Operatio
 	}
 }
 
+const DataSizeMultiple int = 8
+
 func (r *rsync) CreateDiff(source io.Reader, signature []BlockHash, output io.Writer) func() error {
 	ans := &diff{
-		block_size: r.BlockSize, buffer: make([]byte, 0, (r.BlockSize * 8)),
+		block_size: r.BlockSize, buffer: make([]byte, 0, (r.BlockSize * DataSizeMultiple)),
 		hash_lookup: make(map[uint32][]BlockHash, len(signature)),
 		source:      source, hasher: r.hasher_constructor(),
 		checksummer: r.checksummer_constructor(), output: output,
