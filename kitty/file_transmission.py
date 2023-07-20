@@ -344,7 +344,7 @@ class FileTransmissionCommand:
                     sval = base64_decode(val).decode('utf-8')
                 else:
                     sval = safe_string(decode_utf8_buffer(val))
-                setattr(ans, field.name, safe_string(sval))
+                setattr(ans, field.name, sval)
 
         parse_ftc(data, handle_item)
         if ans.action is Action.invalid:
@@ -565,10 +565,13 @@ def check_bypass(password: str, request_id: str, bypass_data: str) -> bool:
             if abs(delta) > 5 * 60 * 1e9:
                 return False
             return payload == f'{request_id};{password}'
-        except Exception:
+        except Exception as err:
+            log_error(f'Invalid file transmission bypass data received: {err}')
             return False
     elif protocol == 'sha256':
         return (encode_bypass(request_id, password) == bypass_data) if password else False
+    else:
+        log_error(f'Invalid file transmission bypass data received with protocol: {protocol}')
     return False
 
 
