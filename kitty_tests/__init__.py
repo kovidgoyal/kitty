@@ -309,7 +309,7 @@ class PTY:
         while time.monotonic() <= end_time:
             si_pid, status = os.waitpid(self.child_pid, os.WNOHANG)
             if si_pid == self.child_pid and os.WIFEXITED(status):
-                ec = os.waitstatus_to_exitcode(status)
+                ec = os.waitstatus_to_exitcode(status) if hasattr(os, 'waitstatus_to_exitcode') else require_exit_code
                 self.child_waited_for = True
                 if require_exit_code is not None and ec != require_exit_code:
                     raise AssertionError(
