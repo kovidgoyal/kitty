@@ -7,11 +7,10 @@ import shutil
 import stat
 import tempfile
 import zlib
-from pathlib import Path
 
 from kittens.transfer.rsync import Differ, Hasher, Patcher, decode_utf8_buffer, parse_ftc
-from kittens.transfer.utils import cwd_path, expand_home, home_path, set_paths
-from kitty.file_transmission import Action, Compression, FileTransmissionCommand, FileType, TransmissionType, ZlibDecompressor, iter_file_metadata
+from kittens.transfer.utils import set_paths
+from kitty.file_transmission import Action, Compression, FileTransmissionCommand, FileType, TransmissionType, ZlibDecompressor
 from kitty.file_transmission import TestFileTransmission as FileTransmission
 
 from . import BaseTest
@@ -437,63 +436,6 @@ class TestFileTransmission(BaseTest):
 
     def test_path_mapping_receive(self):
         self.skipTest('TODO: Port this test')
-        opts = parse_transfer_args([])[0]
-        b = Path(os.path.join(self.tdir, 'b'))
-        os.makedirs(b)
-        open(b / 'r', 'w').close()
-        os.mkdir(b / 'd')
-        open(b / 'd' / 'r', 'w').close()
-
-        def am(files, kw):
-            m = {f.remote_path: f.expanded_local_path for f in files}
-            kw = {str(k): expand_home(str(v)) for k, v in kw.items()}
-            self.ae(kw, m)
-
-        def gm(all_specs):
-            specs = list((str(i), str(s)) for i, s in enumerate(all_specs))
-            files = []
-            for x in iter_file_metadata(specs):
-                if isinstance(x, Exception):
-                    raise x
-                files.append(File(x))
-            return files, specs
-
-        def tf(args, expected, different_home=''):
-            if opts.mode == 'mirror':
-                all_specs = args
-                dest = ''
-            else:
-                all_specs = args[:-1]
-                dest = args[-1]
-            files, specs = gm(all_specs)
-            orig_home = home_path()
-            with set_paths(cwd_path(), different_home or orig_home):
-                files = list(files_for_receive(opts, dest, files, orig_home, specs))
-                self.ae(len(files), len(expected))
-                am(files, expected)
-
-        opts.mode = 'mirror'
-        with set_paths(cwd=b, home='/foo/bar'):
-            tf([b/'r', b/'d'], {b/'r': b/'r', b/'d': b/'d', b/'d'/'r': b/'d'/'r'})
-            tf([b/'r', b/'d/r'], {b/'r': b/'r', b/'d'/'r': b/'d'/'r'})
-        with set_paths(cwd=b, home=self.tdir):
-            tf([b/'r', b/'d'], {b/'r': '~/b/r', b/'d': '~/b/d', b/'d'/'r': '~/b/d/r'}, different_home='/foo/bar')
-        opts.mode = 'normal'
-        with set_paths(cwd='/some/else', home='/foo/bar'):
-            tf([b/'r', b/'d', '/dest'], {b/'r': '/dest/r', b/'d': '/dest/d', b/'d'/'r': '/dest/d/r'})
-            tf([b/'r', b/'d', '~/dest'], {b/'r': '~/dest/r', b/'d': '~/dest/d', b/'d'/'r': '~/dest/d/r'})
-        with set_paths(cwd=b, home='/foo/bar'):
-            tf([b/'r', b/'d', '/dest'], {b/'r': '/dest/r', b/'d': '/dest/d', b/'d'/'r': '/dest/d/r'})
-        os.symlink('/foo/b', b / 'e')
-        os.symlink('r', b / 's')
-        os.link(b / 'r', b / 'h')
-        with set_paths(cwd='/some/else', home='/foo/bar'):
-            files = gm((b/'e', b/'s', b/'r', b / 'h'))[0]
-            self.assertEqual(files[0].ftype, FileType.symlink)
-            self.assertEqual(files[1].ftype, FileType.symlink)
-            self.assertEqual(files[1].remote_target, files[2].remote_id)
-            self.assertEqual(files[3].ftype, FileType.link)
-            self.assertEqual(files[3].remote_target, files[2].remote_id)
 
     def test_rsync_hashers(self):
         h = Hasher("xxh3-64")
