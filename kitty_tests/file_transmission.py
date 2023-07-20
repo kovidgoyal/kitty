@@ -485,7 +485,7 @@ class TestFileTransmission(BaseTest):
     def test_transfer_send(self):
         src = os.path.join(self.tdir, 'src')
         with open(src, 'wb') as s:
-            s.write(os.urandom(813))
+            s.write(os.urandom(9137))
         dest = os.path.join(self.tdir, 'dest')
         with self.run_kitten([src, dest]) as pty:
             pty.wait_till_child_exits(require_exit_code=0)

@@ -20,12 +20,15 @@ to transfer only changes to large files.
 .. seealso:: See the :doc:`remote_file` kitten
 
 .. note::
-   This kitten (which practically means kitty) must be installed on the other
-   machine as well. If that is not possible you can use the :doc:`remote_file`
-   kitten instead. Or write your own script to use the underlying
-   :doc:`file transfer protocol </file-transfer-protocol>`.
+   This kitten must be installed on the other machine. The easiest way to do so
+   is to ssh into it using the :doc:`ssh kitten </kittens/ssh>`. Or just
+   download the kitten binary yourself from the `kitty releases page
+   <https://github.com/kovidgoyal/kitty/releases>`__ and put it somewhere in
+   PATH.  If that is not possible you can use the :doc:`remote_file` kitten
+   instead. Or write your own script to use the underlying :doc:`file transfer
+   protocol </file-transfer-protocol>`.
 
-.. versionadded:: 0.24.0
+.. versionadded:: 0.30.0
 
 
 Basic usage
