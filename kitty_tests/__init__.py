@@ -28,6 +28,7 @@ class Callbacks:
     def __init__(self, pty=None) -> None:
         self.clear()
         self.pty = pty
+        self.ftc = None
 
     def write(self, data) -> None:
         self.wtcbuf += data
@@ -123,6 +124,10 @@ class Callbacks:
             data = standard_b64decode(msg)
             self.pty.write_to_child(data)
 
+    def file_transmission(self, data):
+        if self.ftc:
+            self.ftc.handle_serialized_command(data)
+
 
 def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):
     ans = LineBuf(ynum, xnum)
@@ -211,6 +216,7 @@ class PTY:
         else:
             self.child_pid, self.master_fd = fork()
             self.is_child = self.child_pid == CHILD
+        self.child_waited_for = False
         if self.is_child:
             while read_screen_size().width != columns * cell_width:
                 time.sleep(0.01)
@@ -253,6 +259,9 @@ class PTY:
             if hasattr(self, 'slave_fd'):
                 os.close(self.slave_fd)
                 del self.slave_fd
+            if self.child_pid > 0 and not self.child_waited_for:
+                os.waitpid(self.child_pid, 0)
+                self.child_waited_for = True
 
     def write_to_child(self, data, flush=False):
         if isinstance(data, str):
@@ -294,6 +303,20 @@ class PTY:
             self.process_input_from_child(timeout=max(0, end_time - time.monotonic()))
         if not q():
             raise TimeoutError(f'The condition was not met. Screen contents: \n {repr(self.screen_contents())}')
+
+    def wait_till_child_exits(self, timeout=10, require_exit_code=None):
+        end_time = time.monotonic() + timeout
+        while time.monotonic() <= end_time:
+            status = os.waitid(os.P_PID, self.child_pid, os.WNOHANG | os.WEXITED)
+            if status is not None and status.si_pid == self.child_pid:
+                self.child_waited_for = True
+                if require_exit_code is not None and os.waitstatus_to_exitcode(status.si_status) != require_exit_code:
+                    raise AssertionError(
+                        f'Child exited with exit status: {status} code: {os.waitstatus_to_exitcode(status.si_status)} != {require_exit_code}.'
+                        f' Screen contents:\n{self.screen_contents()}')
+                return status
+            self.process_input_from_child(timeout=0.02)
+        raise AssertionError(f'Child did not exit in {timeout} seconds. Screen contents:\n{self.screen_contents()}')
 
     def set_window_size(self, rows=25, columns=80, send_signal=True):
         if hasattr(self, 'screen'):

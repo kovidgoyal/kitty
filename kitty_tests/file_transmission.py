@@ -7,13 +7,15 @@ import shutil
 import stat
 import tempfile
 import zlib
+from contextlib import contextmanager
 
 from kittens.transfer.rsync import Differ, Hasher, Patcher, decode_utf8_buffer, parse_ftc
 from kittens.transfer.utils import set_paths
+from kitty.constants import kitten_exe
 from kitty.file_transmission import Action, Compression, FileTransmissionCommand, FileType, TransmissionType, ZlibDecompressor
 from kitty.file_transmission import TestFileTransmission as FileTransmission
 
-from . import BaseTest
+from . import PTY, BaseTest
 
 
 def response(id='test', msg='', file_id='', name='', action='status', status='', size=-1):
@@ -152,6 +154,24 @@ def test_rsync_roundtrip(self: 'TestFileTransmission') -> None:
     run_roundtrip_test(self, src_data, changed, num_of_patches, total_patch_size)
     run_roundtrip_test(self, src_data, changed[:len(changed)-3], num_of_patches, total_patch_size)
     run_roundtrip_test(self, src_data, changed + b"xyz...", num_of_patches, total_patch_size)
+
+
+class PtyFileTransmission(FileTransmission):
+
+    def __init__(self, pty, allow=True):
+        self.pty = pty
+        super().__init__(allow=allow)
+        self.pty.callbacks.ftc = self
+
+    def write_ftc_to_child(self, payload: FileTransmissionCommand, appendleft: bool = False, use_pending: bool = True) -> bool:
+        self.pty.write_to_child('\x1b]' + payload.serialize(prefix_with_osc_code=True) + '\x1b\\', flush=True)
+
+
+class TransferPTY(PTY):
+
+    def __init__(self, cmd, cwd, allow=True):
+        super().__init__(cmd, cwd=cwd)
+        self.fc = PtyFileTransmission(self, allow=allow)
 
 
 class TestFileTransmission(BaseTest):
@@ -445,3 +465,27 @@ class TestFileTransmission(BaseTest):
         h128 = Hasher("xxh3-128")
         h128.update(b'abcd')
         self.assertEqual(h128.hexdigest(), '8d6b60383dfa90c21be79eecd1b1353d')
+
+    @contextmanager
+    def run_kitten(self, cmd, home_dir=''):
+        homedir_ephemeral = not home_dir
+        home_dir = self.home_dir = home_dir or os.path.realpath(tempfile.mkdtemp())
+        cmd = [kitten_exe(), 'transfer'] + cmd
+        try:
+            pty = TransferPTY(cmd, cwd=home_dir)
+            i = 10
+            while i > 0 and not pty.screen_contents().strip():
+                pty.process_input_from_child()
+                i -= 1
+            yield pty
+        finally:
+            if homedir_ephemeral and os.path.exists(home_dir):
+                shutil.rmtree(home_dir)
+
+    def test_transfer_send(self):
+        src = os.path.join(self.tdir, 'src')
+        with open(src, 'wb') as s:
+            s.write(os.urandom(813))
+        dest = os.path.join(self.tdir, 'dest')
+        with self.run_kitten([src, dest]) as pty:
+            pty.wait_till_child_exits(require_exit_code=0)
