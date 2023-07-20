@@ -548,7 +548,7 @@ add_signature_data(Differ *self, PyObject *args) {
 
 static PyObject*
 finish_signature_data(Differ *self, PyObject *args UNUSED) {
-    if (self->buf.len > 0) { PyErr_Format(RsyncError, "%zu bytes of unused delta data", self->buf.len); return NULL; }
+    if (self->buf.len > 0) { PyErr_Format(RsyncError, "%zu bytes of unused signature data", self->buf.len); return NULL; }
     self->buf.len = 0;
     self->buf.cap = 8 * self->rsync.block_size;
     self->buf.data = realloc(self->buf.data, self->buf.cap);
