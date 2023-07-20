@@ -164,7 +164,7 @@ class PtyFileTransmission(FileTransmission):
         self.pty.callbacks.ftc = self
 
     def write_ftc_to_child(self, payload: FileTransmissionCommand, appendleft: bool = False, use_pending: bool = True) -> bool:
-        self.pty.write_to_child('\x1b]' + payload.serialize(prefix_with_osc_code=True) + '\x1b\\', flush=True)
+        self.pty.write_to_child('\x1b]' + payload.serialize(prefix_with_osc_code=True) + '\x1b\\', flush=False)
 
 
 class TransferPTY(PTY):

@@ -1170,7 +1170,7 @@ accumulate_osc(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback,
         default:
             if (screen->parser_buf_pos >= PARSER_BUF_SZ - 1) {
                 if (handle_extended_osc_code(screen)) *extended_osc_code = true;
-                else REPORT_ERROR("OSC sequence too long, truncating.");
+                else REPORT_ERROR("OSC sequence too long (> %d bytes) truncating.", PARSER_BUF_SZ);
                 return true;
             }
             screen->parser_buf[screen->parser_buf_pos++] = ch;
