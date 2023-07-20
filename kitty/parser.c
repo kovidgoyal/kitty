@@ -1581,7 +1581,7 @@ do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz
 PyObject*
 FNAME(parse_bytes)(PyObject UNUSED *self, PyObject *args) {
     PyObject *dump_callback = NULL;
-    Py_buffer pybuf;
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer pybuf = {0};
     Screen *screen;
 #ifdef DUMP_COMMANDS
     if (!PyArg_ParseTuple(args, "OO!y*", &dump_callback, &Screen_Type, &screen, &pybuf)) return NULL;
