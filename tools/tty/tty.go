@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -340,6 +341,14 @@ func (self *Term) GetSize() (*unix.Winsize, error) {
 func Ctermid() string { return "/dev/tty" }
 
 func DebugPrintln(a ...any) {
+	if fds := os.Getenv(`KITTY_STDIO_FORWARDED`); fds != "" {
+		if fd, err := strconv.Atoi(fds); err == nil && fd > -1 {
+			if f := os.NewFile(uintptr(fd), "<kitty_stdout>"); f != nil {
+				fmt.Fprintln(f, a...)
+				return
+			}
+		}
+	}
 	term, err := OpenControllingTerm()
 	if err == nil {
 		defer term.Close()

@@ -218,12 +218,13 @@ class Child:
     def final_env(self) -> Dict[str, str]:
         from kitty.options.utils import DELETE_ENV_VAR
         env = default_env().copy()
+        opts = fast_data_types.get_options()
         boss = fast_data_types.get_boss()
         if is_macos and env.get('LC_CTYPE') == 'UTF-8' and not getattr(sys, 'kitty_run_data').get(
                 'lc_ctype_before_python') and not getattr(default_env, 'lc_ctype_set_by_user', False):
             del env['LC_CTYPE']
         env.update(self.env)
-        env['TERM'] = fast_data_types.get_options().term
+        env['TERM'] = opts.term
         env['COLORTERM'] = 'truecolor'
         env['KITTY_PID'] = getpid()
         env['KITTY_PUBLIC_KEY'] = boss.encryption_public_key
@@ -240,7 +241,8 @@ class Child:
         if tdir:
             env['TERMINFO'] = tdir
         env['KITTY_INSTALLATION_DIR'] = kitty_base_dir
-        opts = fast_data_types.get_options()
+        if opts.forward_stdio:
+            env['KITTY_STDIO_FORWARDED'] = '3'
         self.unmodified_argv = list(self.argv)
         if 'disabled' not in opts.shell_integration:
             from .shell_integration import modify_shell_environ
@@ -256,6 +258,7 @@ class Child:
     def fork(self) -> Optional[int]:
         if self.forked:
             return None
+        opts = fast_data_types.get_options()
         self.forked = True
         master, slave = openpty()
         stdin, self.stdin = self.stdin, None
@@ -291,7 +294,7 @@ class Child:
         self.final_argv0 = argv[0]
         pid = fast_data_types.spawn(
             self.final_exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
-            ready_read_fd, ready_write_fd, tuple(handled_signals), kitten_exe())
+            ready_read_fd, ready_write_fd, tuple(handled_signals), kitten_exe(), opts.forward_stdio)
         os.close(slave)
         self.pid = pid
         self.child_fd = master

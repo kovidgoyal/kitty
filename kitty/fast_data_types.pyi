@@ -1322,6 +1322,7 @@ def spawn(
     ready_write_fd: int,
     handled_signals: Tuple[int, ...],
     kitten_exe: str,
+    forward_stdio: bool,
 ) -> int:
     pass
 

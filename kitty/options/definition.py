@@ -3082,6 +3082,16 @@ work. Changing this option by reloading the config will only affect newly
 created windows.
 '''
     )
+
+opt('forward_stdio', 'no', option_type='to_bool', long_text='''
+Forward STDOUT and STDERR of the kitty process to child processes
+as file descriptors 3 and 4. This is useful for debugging as it
+allows child processes to print to kitty's STDOUT directly. For example,
+:code:`echo hello world >&3` in a shell will print to the parent kitty's
+STDOUT. When enabled, this also sets the :code:`KITTY_STDIO_FORWARDED=3`
+environment variable so child processes know about the forwarding.
+''')
+
 egr()  # }}}
 
 

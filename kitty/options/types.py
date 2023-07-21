@@ -365,6 +365,7 @@ option_names = (  # {{{
  'font_size',
  'force_ltr',
  'foreground',
+ 'forward_stdio',
  'hide_window_decorations',
  'inactive_border_color',
  'inactive_tab_background',
@@ -526,6 +527,7 @@ class Options:
     font_size: float = 11.0
     force_ltr: bool = False
     foreground: Color = Color(221, 221, 221)
+    forward_stdio: bool = False
     hide_window_decorations: int = 0
     inactive_border_color: Color = Color(204, 204, 204)
     inactive_tab_background: Color = Color(153, 153, 153)

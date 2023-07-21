@@ -990,6 +990,9 @@ class Parser:
     def foreground(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['foreground'] = to_color(val)
 
+    def forward_stdio(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['forward_stdio'] = to_bool(val)
+
     def hide_window_decorations(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['hide_window_decorations'] = hide_window_decorations(val)
 

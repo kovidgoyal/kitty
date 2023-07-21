@@ -4,7 +4,6 @@
 import json
 import os
 import re
-import sys
 import weakref
 from collections import deque
 from contextlib import contextmanager, suppress
@@ -1210,8 +1209,7 @@ class Window:
 
     def handle_remote_print(self, msg: str) -> None:
         text = process_remote_print(msg)
-        print(text, end='', file=sys.stderr)
-        sys.stderr.flush()
+        print(text, end='', flush=True)
 
     def send_cmd_response(self, response: Any) -> None:
         self.screen.send_escape_code_to_child(DCS, '@kitty-cmd' + json.dumps(response))

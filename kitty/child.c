@@ -80,10 +80,10 @@ wait_for_terminal_ready(int fd) {
 static PyObject*
 spawn(PyObject *self UNUSED, PyObject *args) {
     PyObject *argv_p, *env_p, *handled_signals_p;
-    int master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd;
+    int master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd, forward_stdio;
     const char *kitten_exe;
     char *cwd, *exe;
-    if (!PyArg_ParseTuple(args, "ssO!O!iiiiiiO!s", &exe, &cwd, &PyTuple_Type, &argv_p, &PyTuple_Type, &env_p, &master, &slave, &stdin_read_fd, &stdin_write_fd, &ready_read_fd, &ready_write_fd, &PyTuple_Type, &handled_signals_p, &kitten_exe)) return NULL;
+    if (!PyArg_ParseTuple(args, "ssO!O!iiiiiiO!sp", &exe, &cwd, &PyTuple_Type, &argv_p, &PyTuple_Type, &env_p, &master, &slave, &stdin_read_fd, &stdin_write_fd, &ready_read_fd, &ready_write_fd, &PyTuple_Type, &handled_signals_p, &kitten_exe, &forward_stdio)) return NULL;
     char name[2048] = {0};
     if (ttyname_r(slave, name, sizeof(name) - 1) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
     char **argv = serialize_string_tuple(argv_p);
@@ -129,15 +129,20 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             if (ioctl(tfd, TIOCSCTTY, 0) == -1) exit_on_err("Failed to set controlling terminal with TIOCSCTTY");
             safe_close(tfd, __FILE__, __LINE__);
 
+            int min_closed_fd = 3;
+            if (forward_stdio) {
+                if (safe_dup2(STDOUT_FILENO, min_closed_fd++) == -1) exit_on_err("dup2() failed for forwarded fd 1");
+                if (safe_dup2(STDERR_FILENO, min_closed_fd++) == -1) exit_on_err("dup2() failed for forwarded fd 2");
+            }
             // Redirect stdin/stdout/stderr to the pty
-            if (safe_dup2(slave, 1) == -1) exit_on_err("dup2() failed for fd number 1");
-            if (safe_dup2(slave, 2) == -1) exit_on_err("dup2() failed for fd number 2");
+            if (safe_dup2(slave, STDOUT_FILENO) == -1) exit_on_err("dup2() failed for fd number 1");
+            if (safe_dup2(slave, STDERR_FILENO) == -1) exit_on_err("dup2() failed for fd number 2");
             if (stdin_read_fd > -1) {
-                if (safe_dup2(stdin_read_fd, 0) == -1) exit_on_err("dup2() failed for fd number 0");
+                if (safe_dup2(stdin_read_fd, STDIN_FILENO) == -1) exit_on_err("dup2() failed for fd number 0");
                 safe_close(stdin_read_fd, __FILE__, __LINE__);
                 safe_close(stdin_write_fd, __FILE__, __LINE__);
             } else {
-                if (safe_dup2(slave, 0) == -1) exit_on_err("dup2() failed for fd number 0");
+                if (safe_dup2(slave, STDIN_FILENO) == -1) exit_on_err("dup2() failed for fd number 0");
             }
             safe_close(slave, __FILE__, __LINE__);
             safe_close(master, __FILE__, __LINE__);
@@ -148,7 +153,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             safe_close(ready_read_fd, __FILE__, __LINE__);
 
             // Close any extra fds inherited from parent
-            for (int c = 3; c < 201; c++) safe_close(c, __FILE__, __LINE__);
+            for (int c = min_closed_fd; c < 201; c++) safe_close(c, __FILE__, __LINE__);
 
             environ = env;
             execvp(exe, argv);
