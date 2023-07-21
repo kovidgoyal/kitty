@@ -12,6 +12,7 @@ import (
 
 	"kitty/tools/crypto"
 	"kitty/tools/utils"
+	"kitty/tools/utils/humanize"
 )
 
 var _ = fmt.Print
@@ -103,4 +104,11 @@ func should_be_compressed(path, strategy string) bool {
 		return false
 	}
 	return true
+}
+
+func print_rsync_stats(total_bytes, delta_bytes, signature_bytes int64) {
+	fmt.Println("Rsync stats:")
+	fmt.Printf("  Delta size: %s Signature size: %s\n", humanize.Size(delta_bytes), humanize.Size(signature_bytes))
+	frac := float64(delta_bytes+signature_bytes) / float64(utils.Max(1, total_bytes))
+	fmt.Printf("  Transmitted: %s of a total of %s (%.1f%%)\n", humanize.Size(delta_bytes+signature_bytes), humanize.Size(total_bytes), frac*100)
 }

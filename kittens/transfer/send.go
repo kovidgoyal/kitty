@@ -1243,6 +1243,18 @@ func send_loop(opts *Options, files []*File) (err error, rc int) {
 		lp.KillIfSignalled()
 		return
 	}
+	p := handler.manager.progress_tracker
+	if handler.manager.has_rsync && p.total_transferred+int64(p.signature_bytes) > 0 {
+		var tsf int64
+		for _, f := range files {
+			if f.ttype == TransmissionType_rsync {
+				tsf += f.file_size
+			}
+		}
+		if tsf > 0 {
+			print_rsync_stats(tsf, p.total_transferred, int64(p.signature_bytes))
+		}
+	}
 	if len(handler.failed_files) > 0 {
 		fmt.Fprintf(os.Stderr, "Transfer of %d out of %d files failed\n", len(handler.failed_files), len(handler.manager.files))
 		for _, f := range handler.failed_files {

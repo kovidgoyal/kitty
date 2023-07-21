@@ -58,7 +58,7 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	case "send", "download":
 		err, rc = send_main(opts, args)
 	default:
-		err = receive_main(opts, args)
+		err, rc = receive_main(opts, args)
 	}
 	if err != nil {
 		rc = 1
