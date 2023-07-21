@@ -6,24 +6,72 @@ import sys
 from typing import List
 
 usage = 'source_files_or_directories destination_path'
-help_text = 'Transfer files over the TTY device'
+help_text = '''\
+Transfer files over the TTY device. Can be used to send files between any two
+computers provided there is a TTY connection between them, such as over SSH.
+Supports copying files, directories (recursively), symlinks and hardlinks.
+Can even use an rsync like protocol to copy only changes between files.
+When copying multiple files, use the --confirm-paths option to see what exactly will
+be copied. The easiest way to use this kitten is to first ssh into the remote computer
+with the ssh kitten:
+
+$ kitten ssh my-remote-computer
+
+Then, on the remote computer run the transfer kitten to do your copying.
+
+To copy a file from the remote computer to the local computer, run:
+
+$ kitten transfer remote-file /path/to/local-file
+
+This will copy :code:`remote-file` from the remote computer to :code:`/path/to/local-file`
+on the local computer.
+
+Similarly, to copy a file from the local computer to the remote one, run:
+
+$ kitten transfer --direction=upload /path/to/local-file remote-file
+
+This will copy :code:`/path/to/local-file` from the local computer
+to :code:`remote-file` on the remote computer.
+
+Multiple files can be copied:
+
+$ kitten transfer file1 file2 /path/to/dir/
+
+This will put :code:`file1` and :code:`file2` into the directory
+:code:`/path/to/dir/` on the local computer.
+
+Directories can also be copied, recursively:
+
+$ kitten transfer dir1 /path/to/dir/
+
+This will put :code:`dir1` and all its contents into
+:code:`/path/to/dir/` on the local computer.
+
+Note that when copying multiple files or directories, the destination
+must be an existing directory on the receiving computer.
+'''
 
 
 def option_text() -> str:
     return '''\
 --direction -d
-default=send
-choices=send,receive
-Whether to send or receive files.
+default=download
+choices=upload,download,send,receive
+Whether to send or receive files. :code:`send` or :code:`download` copy files from the computer
+on which the kitten is running (usually the remote computer) to the local computer. :code:`receive`
+or :code:`upload` copy files from the local computer to the remote computer.
 
 
 --mode -m
 default=normal
 choices=normal,mirror
 How to interpret command line arguments. In :code:`mirror` mode all arguments
-are assumed to be files on the sending computer and they are mirrored onto the
-receiving computer. In :code:`normal` mode the last argument is assumed to be a
-destination path on the receiving computer.
+are assumed to be files/dirs on the sending computer and they are mirrored onto the
+receiving computer. Files under the HOME directory are copied to the HOME directory
+on the receiving computer even if the HOME directory is different.
+In :code:`normal` mode the last argument is assumed to be a destination path on the
+receiving computer. The last argument must be an existing directory unless copying a
+single file. When it is a directory it should end with a trailing slash.
 
 
 --compress
