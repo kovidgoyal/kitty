@@ -104,7 +104,7 @@ type=bool-set
 If a file on the receiving side already exists, use the rsync algorithm to
 update it to match the file on the sending side, potentially saving lots of
 bandwidth and also automatically resuming partial transfers. Note that this will
-actually degrade performance on fast links with small files, so use with care.
+actually degrade performance on fast links or with small files, so use with care.
 '''
 
 
