@@ -176,7 +176,7 @@ func process(opts *Options, paths []string, remote_base string, counter *int) (a
 }
 
 func process_mirrored_files(opts *Options, args []string) (ans []*File, err error) {
-	paths := utils.Map(func(x string) string { return abspath(x) }, args)
+	paths := utils.Map(func(x string) string { return abspath(expand_home(x)) }, args)
 	common_path := utils.Commonpath(paths...)
 	home := strings.TrimRight(home_path(), string(filepath.Separator))
 	if common_path != "" && strings.HasPrefix(common_path, home+string(filepath.Separator)) {
@@ -199,7 +199,7 @@ func process_normal_files(opts *Options, args []string) (ans []*File, err error)
 	if len(args) > 1 && !strings.HasSuffix(remote_base, "/") {
 		remote_base += "/"
 	}
-	paths := utils.Map(func(x string) string { return abspath(x) }, args)
+	paths := utils.Map(func(x string) string { return abspath(expand_home(x)) }, args)
 	counter := 0
 	return process(opts, paths, remote_base, &counter)
 }
@@ -223,7 +223,7 @@ func files_for_send(opts *Options, args []string) (files []*File, err error) {
 		if len(group) > 1 {
 			for _, lf := range group[1:] {
 				lf.file_type = FileType_link
-				lf.hard_link_target = group[0].file_id
+				lf.hard_link_target = "fid:" + group[0].file_id
 			}
 		}
 	}
