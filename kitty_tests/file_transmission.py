@@ -399,18 +399,19 @@ class TestFileTransmission(BaseTest):
             with open(b / 'simple', 'wb') as f:
                 f.write(os.urandom(1317))
                 os.fchmod(f.fileno(), 0o766)
-                os.utime(f.name, ns=(13000, 13000))
-                os.link(f.name, b / 'hardlink')
+            os.link(f.name, b / 'hardlink')
+            os.utime(f.name, (1.3, 1.3))
             se(f.name)
             se(str(b/'hardlink'))
             os.mkdir(b / 'empty')
             se(str(b/'empty'))
             s = b / 'sub'
             os.mkdir(s)
-            se(str(s))
             with open(s / 'reg', 'wb') as f:
                 f.write(os.urandom(113))
-                se(f.name)
+            os.utime(f.name, (1171.3, 1171.3))
+            se(f.name)
+            se(str(s))
             os.symlink('/', b/'abssym')
             se(b/'abssym')
             os.symlink('sub/reg', b/'sym')
