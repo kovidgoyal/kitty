@@ -567,7 +567,7 @@ compatibility reasons.
    "KP_DOWN", "``57420 u``", "KP_PAGE_UP", "``57421 u``"
    "KP_PAGE_DOWN", "``57422 u``", "KP_HOME", "``57423 u``"
    "KP_END", "``57424 u``", "KP_INSERT", "``57425 u``"
-   "KP_DELETE", "``57426 u``", "KP_BEGIN", "``1 E or 57427 ~``"
+   "KP_DELETE", "``57426 u``", "KP_BEGIN", "``1 E or 57427 u``"
    "MEDIA_PLAY", "``57428 u``", "MEDIA_PAUSE", "``57429 u``"
    "MEDIA_PLAY_PAUSE", "``57430 u``", "MEDIA_REVERSE", "``57431 u``"
    "MEDIA_STOP", "``57432 u``", "MEDIA_FAST_FORWARD", "``57433 u``"
