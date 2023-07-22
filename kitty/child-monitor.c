@@ -735,13 +735,15 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
 
 static void
 draw_resizing_text(OSWindow *w) {
-    char text[32] = {0};
-    unsigned int width = w->live_resize.width, height = w->live_resize.height;
-    snprintf(text, sizeof(text), "%u x %u cells", width / w->fonts_data->cell_width, height / w->fonts_data->cell_height);
-    StringCanvas rendered = render_simple_text(w->fonts_data, text);
-    if (rendered.canvas) {
-        draw_centered_alpha_mask(w, width, height, rendered.width, rendered.height, rendered.canvas);
-        free(rendered.canvas);
+    if (monotonic() - w->created_at > ms_to_monotonic_t(1000)) {
+        char text[32] = {0};
+        unsigned int width = w->live_resize.width, height = w->live_resize.height;
+        snprintf(text, sizeof(text), "%u x %u cells", width / w->fonts_data->cell_width, height / w->fonts_data->cell_height);
+        StringCanvas rendered = render_simple_text(w->fonts_data, text);
+        if (rendered.canvas) {
+            draw_centered_alpha_mask(w, width, height, rendered.width, rendered.height, rendered.canvas, OPT(background_opacity));
+            free(rendered.canvas);
+        }
     }
 }
 
@@ -765,7 +767,7 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
             w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; w->last_cursor_x = WD.screen->cursor_render_info.x; w->last_cursor_y = WD.screen->cursor_render_info.y; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
         }
     }
-    if (os_window->live_resize.in_progress && (monotonic() - os_window->created_at > ms_to_monotonic_t(1000))) draw_resizing_text(os_window);
+    if (os_window->live_resize.in_progress) draw_resizing_text(os_window);
     swap_window_buffers(os_window);
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;

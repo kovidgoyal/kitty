@@ -516,13 +516,13 @@ gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, 
 
 
 void
-draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas) {
+draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas, float background_opacity) {
     ImageRenderData *data = load_alpha_mask_texture(width, height, canvas);
     gpu_data_for_centered_image(data, screen_width, screen_height, width, height);
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
     glUniform1i(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.image, GRAPHICS_UNIT);
     color_vec3(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_fg, OPT(foreground));
-    color_vec4_premult(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_bg_premult, OPT(background), 1);
+    color_vec4_premult(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_bg_premult, OPT(background), background_opacity);
     glEnable(GL_BLEND);
     if (os_window->is_semi_transparent) {
         BLEND_PREMULT;
