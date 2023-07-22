@@ -320,24 +320,6 @@ change_live_resize_state(OSWindow *w, bool in_progress) {
         w->live_resize.num_of_resize_events = 0;
         apply_swap_interval(in_progress ? 0 : -1);
 #ifdef __APPLE__
-        extern bool cocoa_set_shadow(void*, bool);
-        if (w->is_semi_transparent && w->handle) {
-            // shadow with transparency during resize causes burn-in of window contents
-            // aka ghosting of the text after resize is completed. So avoid that by turning
-            // the shadow on and off.
-            if (in_progress) {
-                bool had_shadow = cocoa_set_shadow(glfwGetCocoaWindow(w->handle), false);
-                w->has_cocoa_shadow = had_shadow;
-            } else {
-                if (w->has_cocoa_shadow) {
-                    // turning on the shadow will cause a resize event which will be delivered before cocoa_set_shadow returns
-                    w->ignore_resize_events = true;
-                    cocoa_set_shadow(glfwGetCocoaWindow(w->handle), true);
-                    w->ignore_resize_events = false;
-                    w->has_cocoa_shadow = false;
-                }
-            }
-        }
         cocoa_out_of_sequence_render(w);
 #endif
     }

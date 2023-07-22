@@ -40,6 +40,8 @@ Detailed list of changes
 
 - macOS: Fix a performance regression on M1 machines using outdated macOS versions (:iss:`6479`)
 
+- macOS: Disable OS window shadows for transparent windows as they cause rendering artifacts due to Cocoa bugs (:iss:`6439`)
+
 0.29.1 [2023-07-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

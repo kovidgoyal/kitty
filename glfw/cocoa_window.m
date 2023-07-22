@@ -3029,6 +3029,9 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
             has_shadow = true;
             break;
     }
+    // shadow causes burn-in/ghosting because cocoa doesnt invalidate it on OS window resize/minimize/restore.
+    // https://github.com/kovidgoyal/kitty/issues/6439
+    if (is_transparent) has_shadow = false;
     bool hide_titlebar_buttons = !in_fullscreen && window->ns.titlebar_hidden;
     [window->ns.object setTitlebarAppearsTransparent:titlebar_transparent];
     [window->ns.object setHasShadow:has_shadow];
