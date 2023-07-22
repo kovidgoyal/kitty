@@ -65,6 +65,9 @@ func (self *zlib_decompressor) add_bytes(b []byte, is_last bool) (ans []byte, er
 			return nil, err
 		}
 	}
+	if self.b.Len() == 0 {
+		self.b.Reset()
+	}
 	return self.buf[:pos], nil
 }
 
@@ -198,6 +201,9 @@ func receive_loop(opts *Options, spec []string, dest string) (err error, rc int)
 			failed_specs: make(map[int]string, len(spec)), spec_counts: make(map[int]int, len(spec)),
 			suffix: "\x1b\\",
 		},
+	}
+	for i := range spec {
+		handler.manager.spec_counts[i] = 0
 	}
 	handler.manager.prefix = fmt.Sprintf("\x1b]{%d};id=%s;", kitty.FileTransferCode, handler.manager.request_id)
 	if handler.manager.bypass != `` {
