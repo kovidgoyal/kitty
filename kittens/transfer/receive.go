@@ -3,7 +3,6 @@
 package transfer
 
 import (
-	"bytes"
 	"compress/zlib"
 	"fmt"
 	"io"
@@ -28,48 +27,6 @@ const (
 	state_transferring
 	state_canceled
 )
-
-type decompressor = func([]byte, bool) ([]byte, error)
-
-func identity_decompressor(data []byte, is_last bool) ([]byte, error) { return data, nil }
-
-type zlib_decompressor struct {
-	z   io.ReadCloser
-	b   bytes.Buffer
-	buf []byte
-}
-
-func (self *zlib_decompressor) add_bytes(b []byte, is_last bool) (ans []byte, err error) {
-	self.b.Write(b)
-	pos, n := 0, 0
-	for {
-		if cap(self.buf) < pos+1024 {
-			newcap := utils.Max(2*cap(self.buf), pos+8192)
-			self.buf = append(self.buf[:pos], make([]byte, newcap-pos)...)
-		}
-		n, err = self.z.Read(self.buf[pos:cap(self.buf)])
-		pos += n
-		switch err {
-		case io.EOF:
-			n = 0
-		case nil:
-		default:
-			return nil, err
-		}
-		if n == 0 {
-			break
-		}
-	}
-	if is_last {
-		if err = self.z.Close(); err != nil {
-			return nil, err
-		}
-	}
-	if self.b.Len() == 0 {
-		self.b.Reset()
-	}
-	return self.buf[:pos], nil
-}
 
 type output_file interface {
 	write([]byte) error
@@ -115,7 +72,7 @@ type remote_file struct {
 	parent                       string
 	expanded_local_path          string
 	file_id                      string
-	decompressor                 decompressor
+	decompressor                 utils.StreamDecompressor
 	remote_symlink_value         string
 	actual_file                  output_file
 }
@@ -137,15 +94,16 @@ func new_remote_file(opts *Options, ftc *FileTransmissionCommand) (*remote_file,
 	ans := &remote_file{
 		expected_size: ftc.Size, ftype: ftc.Ftype, mtime: ftc.Mtime, spec_id: spec_id,
 		permissions: ftc.Permissions, remote_path: ftc.Name, display_name: wcswidth.StripEscapeCodes(ftc.Name),
-		remote_id: ftc.Status, remote_target: string(ftc.Data), parent: ftc.Parent, decompressor: identity_decompressor,
+		remote_id: ftc.Status, remote_target: string(ftc.Data), parent: ftc.Parent,
 	}
 	compression_capable := ftc.Ftype == FileType_regular && ftc.Size > 4096 && should_be_compressed(ftc.Name, opts.Compress)
 	if compression_capable {
-		z := &zlib_decompressor{}
-		if z.z, err = zlib.NewReader(&z.b); err != nil {
-			return nil, err
-		}
-		ans.decompressor = z.add_bytes
+		ans.decompressor, err = utils.NewStreamDecompressor(zlib.NewReader)
+	} else {
+		ans.decompressor, err = utils.NewStreamDecompressor(nil)
+	}
+	if err != nil {
+		return nil, err
 	}
 	return ans, nil
 }
