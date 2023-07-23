@@ -98,6 +98,12 @@ type Loop struct {
 
 	// Called when main loop is woken up
 	OnWakeup func() error
+
+	// Called on SIGINT return true if you wish to handle it yourself
+	OnSIGINT func() (bool, error)
+
+	// Called on SIGTERM return true if you wish to handle it yourself
+	OnSIGTERM func() (bool, error)
 }
 
 func New(options ...func(self *Loop)) (*Loop, error) {

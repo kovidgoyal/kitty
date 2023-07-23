@@ -198,12 +198,22 @@ func (self *Loop) handle_end_of_bracketed_paste() {
 func (self *Loop) on_signal(s unix.Signal) error {
 	switch s {
 	case unix.SIGINT:
+		if self.OnSIGINT != nil {
+			if handled, err := self.OnSIGINT(); handled {
+				return err
+			}
+		}
 		return self.on_SIGINT()
 	case unix.SIGPIPE:
 		return self.on_SIGPIPE()
 	case unix.SIGWINCH:
 		return self.on_SIGWINCH()
 	case unix.SIGTERM:
+		if self.OnSIGTERM != nil {
+			if handled, err := self.OnSIGTERM(); handled {
+				return err
+			}
+		}
 		return self.on_SIGTERM()
 	case unix.SIGTSTP:
 		return self.on_SIGTSTP()
