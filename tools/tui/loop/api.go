@@ -44,10 +44,6 @@ type timer struct {
 	callback TimerCallback
 }
 
-func (self *timer) update_deadline(now time.Time) {
-	self.deadline = now.Add(self.interval)
-}
-
 type Loop struct {
 	controlling_term                       *tty.Term
 	terminal_options                       TerminalStateOptions

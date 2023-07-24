@@ -20,7 +20,7 @@ import (
 var SIGNULL unix.Signal
 
 func new_loop() *Loop {
-	l := Loop{controlling_term: nil, timers_temp: make([]*timer, 0, 8), timers: make([]*timer, 0, 8)}
+	l := Loop{controlling_term: nil}
 	l.terminal_options.alternate_screen = true
 	l.terminal_options.restore_colors = true
 	l.terminal_options.kitty_keyboard_mode = DISAMBIGUATE_KEYS | REPORT_ALTERNATE_KEYS | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_TEXT_WITH_KEYS
@@ -280,7 +280,7 @@ func (self *Loop) run() (err error) {
 	self.escape_code_parser.Reset()
 	self.exit_code = 0
 	self.atomic_update_active = false
-	self.timers = make([]*timer, 0, 1)
+	self.timers, self.timers_temp = make([]*timer, 0, 8), make([]*timer, 0, 8)
 	no_timeout_channel := make(<-chan time.Time)
 	finalizer := ""
 
