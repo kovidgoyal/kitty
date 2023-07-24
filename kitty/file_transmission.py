@@ -717,10 +717,10 @@ class ActiveSend:
         self.id = request_id
         self.expected_num_of_args = num_of_args
         self.bypass_ok: Optional[bool] = None
-        self.accepted = False
         if bypass:
             byp = get_options().file_transfer_confirmation_bypass
-            self.bypass_ok = (encode_bypass(request_id, byp) == bypass) if byp else False
+            self.bypass_ok = check_bypass(byp, request_id, bypass)
+        self.accepted = False
         self.last_activity_at = monotonic()
         self.send_acknowledgements = quiet < 1
         self.send_errors = quiet < 2
