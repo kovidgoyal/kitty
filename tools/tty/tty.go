@@ -345,6 +345,7 @@ func DebugPrintln(a ...any) {
 		if fd, err := strconv.Atoi(fds); err == nil && fd > -1 {
 			if f := os.NewFile(uintptr(fd), "<kitty_stdout>"); f != nil {
 				fmt.Fprintln(f, a...)
+				f.Close()
 				return
 			}
 		}
