@@ -36,14 +36,6 @@ const (
 	PM
 )
 
-type timer struct {
-	interval time.Duration
-	deadline time.Time
-	repeats  bool
-	id       IdType
-	callback TimerCallback
-}
-
 type Loop struct {
 	controlling_term                       *tty.Term
 	terminal_options                       TerminalStateOptions

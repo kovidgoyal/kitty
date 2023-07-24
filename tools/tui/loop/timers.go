@@ -15,6 +15,14 @@ import (
 
 var debugprintln = tty.DebugPrintln
 
+type timer struct {
+	interval time.Duration
+	deadline time.Time
+	repeats  bool
+	id       IdType
+	callback TimerCallback
+}
+
 func (self *timer) update_deadline(now time.Time) {
 	self.deadline = now.Add(self.interval)
 }
