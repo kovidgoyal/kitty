@@ -1855,7 +1855,7 @@ class Boss:
                     tab.set_title(title)
                     break
 
-    def show_error(self, title: str, msg: str) -> None:
+    def create_special_window_for_show_error(self, title: str, msg: str, overlay_for: Optional[int] = None) -> SpecialWindowInstance:
         ec = sys.exc_info()
         tb = ''
         if ec != (None, None, None):
@@ -1865,19 +1865,18 @@ class Boss:
         env = {}
         env['KITTEN_RUNNING_AS_UI'] = '1'
         env['KITTY_CONFIG_DIRECTORY'] = config_dir
+        return SpecialWindow(
+            cmd,
+            stdin=json.dumps({'msg': msg, 'tb': tb}).encode(),
+            env=env,
+            overlay_for=overlay_for,
+        )
+
+    def show_error(self, title: str, msg: str) -> None:
         tab = self.active_tab
         w = self.active_window
         if w is not None and tab is not None:
-            tab.new_special_window(
-                SpecialWindow(
-                    cmd,
-                    stdin=json.dumps({'msg': msg, 'tb': tb}).encode(),
-                    env=env,
-                    overlay_for=w.id,
-                ),
-                copy_colors_from=w
-            )
-
+            tab.new_special_window(self.create_special_window_for_show_error(title, msg, w.id), copy_colors_from=w)
 
     @ac('mk', 'Create a new marker')
     def create_marker(self) -> None:
@@ -2769,8 +2768,7 @@ class Boss:
         if failures:
             from kittens.tui.operations import styled
             spec = '\n  '.join(styled(u, fg='yellow') for u in failures)
-            bdata = json.dumps({'msg': f"Unknown URL type, cannot open:\n  {spec}"}).encode('utf-8')
-            special_window = SpecialWindow([kitty_exe(), '+kitten', 'show_error', '--title', 'Open URL Error'], bdata, 'Open URL Error')
+            special_window = self.create_special_window_for_show_error('Open URL error', f"Unknown URL type, cannot open:\n  {spec}")
             if needs_window_replaced and tab is not None:
                 tab.new_special_window(special_window)
             else:
