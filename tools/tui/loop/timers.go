@@ -28,7 +28,7 @@ func (self timer) String() string {
 			funcname = f.Name()
 		}
 	}
-	return fmt.Sprintf("Timer(callback=%s, deadline=%s, repeats=%v)", funcname, self.deadline.Sub(time.Now()), self.repeats)
+	return fmt.Sprintf("Timer(id=%d, callback=%s, deadline=%s, repeats=%v)", self.id, funcname, self.deadline.Sub(time.Now()), self.repeats)
 }
 
 func (self *Loop) add_timer(interval time.Duration, repeats bool, callback TimerCallback) (IdType, error) {
@@ -58,21 +58,26 @@ func (self *Loop) remove_timer(id IdType) bool {
 
 func (self *Loop) dispatch_timers(now time.Time) error {
 	self.timers_temp = self.timers_temp[:0]
-	for _, t := range self.timers {
+	self.timers, self.timers_temp = self.timers_temp, self.timers
+	dispatched := false
+	for _, t := range self.timers_temp {
 		if now.After(t.deadline) {
+			dispatched = true
 			err := t.callback(t.id)
 			if err != nil {
 				return err
 			}
 			if t.repeats {
 				t.update_deadline(now)
-				self.timers_temp = append(self.timers_temp, t)
+				self.timers = append(self.timers, t)
 			}
 		} else {
-			self.timers_temp = append(self.timers_temp, t)
+			self.timers = append(self.timers, t)
 		}
 	}
-	self.timers, self.timers_temp = self.timers_temp, self.timers
+	if dispatched {
+		self.sort_timers() // needed because a timer callback could have added a new timer
+	}
 	return nil
 }
 
