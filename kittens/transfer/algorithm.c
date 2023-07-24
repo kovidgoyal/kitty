@@ -190,6 +190,7 @@ typedef struct {
     Rsync rsync;
     buffer buf, block_buf;
     PyObject *block_buf_view;
+    bool checksum_done;
 } Patcher;
 
 static int
@@ -350,7 +351,9 @@ apply_op(Patcher *self, Operation op, PyObject *read, PyObject *write) {
                 DECREF_AFTER_FUNCTION PyObject *b2 = PyBytes_FromStringAndSize((char*)op.data.buf, self->rsync.checksummer.hash_size);
                 DECREF_AFTER_FUNCTION PyObject *h2 = PyObject_CallMethod(b2, "hex", NULL);
                 PyErr_Format(RsyncError, "Failed to verify overall file checksum actual: %S != expected: %S, this usually happens because one of the involved files was altered while the operation was in progress.", h1, h2);
-                return false; }
+                return false;
+            }
+            self->checksum_done = true;
         } return true;
     }
     PyErr_SetString(RsyncError, "Unknown operation type");
@@ -379,6 +382,7 @@ apply_delta_data(Patcher *self, PyObject *args) {
 static PyObject*
 finish_delta_data(Patcher *self, PyObject *args UNUSED) {
     if (self->buf.len > 0) { PyErr_Format(RsyncError, "%zu bytes of unused delta data", self->buf.len); return NULL; }
+    if (!self->checksum_done) { PyErr_SetString(RsyncError, "The checksum was not received at the end of the delta data"); return NULL; }
     Py_RETURN_NONE;
 }
 

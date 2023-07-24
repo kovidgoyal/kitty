@@ -396,13 +396,13 @@ class PatchFile:
         self.closed = True
         p = self.patcher
         del self.block_buffer, self.patcher
-        if self.src_file is not None and not self.src_file.closed:
-            self.src_file.close()
         if self._dest_file is not None and not self._dest_file.closed:
             self._dest_file.close()
             p.finish_delta_data()
             if self.src_file is not None:
                 os.replace(self.dest_file.name, self.src_file.name)
+        if self.src_file is not None and not self.src_file.closed:
+            self.src_file.close()
 
     def tell(self) -> int:
         df = self.dest_file

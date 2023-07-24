@@ -62,6 +62,62 @@ func (ff *filesystem_file) write(data []byte) (int, error) {
 	return n, err
 }
 
+type patch_file struct {
+	path      string
+	src, temp *os.File
+	p         *rsync.Patcher
+}
+
+func (pf *patch_file) tell() (int64, error) {
+	if pf.temp == nil {
+		s, err := os.Stat(pf.path)
+		return s.Size(), err
+	}
+	return pf.temp.Seek(0, os.SEEK_CUR)
+}
+
+func (pf *patch_file) close() (err error) {
+	if pf.p == nil {
+		return
+	}
+	err = pf.p.FinishDelta()
+	pf.src.Close()
+	pf.temp.Close()
+	if err == nil {
+		err = os.Rename(pf.temp.Name(), pf.src.Name())
+	}
+	pf.src = nil
+	pf.temp = nil
+	pf.p = nil
+	return
+}
+
+func (pf *patch_file) write(data []byte) (int, error) {
+	if err := pf.p.UpdateDelta(data); err == nil {
+		return len(data), nil
+	} else {
+		return 0, err
+	}
+}
+
+func new_patch_file(path string, p *rsync.Patcher) (ans *patch_file, err error) {
+	ans = &patch_file{p: p, path: path}
+	var f *os.File
+	if f, err = os.Open(path); err != nil {
+		return
+	} else {
+		ans.src = f
+	}
+	if f, err = os.CreateTemp(filepath.Dir(path), ""); err != nil {
+		ans.src.Close()
+		return
+	} else {
+		ans.temp = f
+	}
+	ans.p.StartDelta(ans.temp, ans.src)
+	return
+}
+
 type remote_file struct {
 	expected_size                int64
 	expect_diff                  bool
@@ -84,6 +140,7 @@ type remote_file struct {
 	compression_type             Compression
 	remote_symlink_value         string
 	actual_file                  output_file
+	patch_file                   patch_file
 }
 
 func (self *remote_file) close() error {
@@ -109,7 +166,11 @@ func (self *remote_file) write_data(data []byte, is_last bool) (amt_written int6
 					os.MkdirAll(parent, 0o755)
 				}
 				if self.expect_diff {
-					panic(`TODO: create PatchFile for rsync`)
+					if pf, err := new_patch_file(self.expanded_local_path, self.patcher); err != nil {
+						return err
+					} else {
+						self.actual_file = pf
+					}
 				} else {
 					if ff, err := os.Create(self.expanded_local_path); err != nil {
 						return err

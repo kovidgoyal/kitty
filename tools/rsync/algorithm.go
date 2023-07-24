@@ -195,6 +195,7 @@ type rsync struct {
 	hasher_constructor      func() hash.Hash64
 	checksummer_constructor func() hash.Hash
 	checksummer             hash.Hash
+	checksum_done           bool
 	buffer                  []byte
 }
 
@@ -319,6 +320,7 @@ func (r *rsync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 		if !bytes.Equal(actual, op.Data) {
 			return fmt.Errorf("Failed to verify overall file checksum actual: %s != expected: %s. This usually happens if some data was corrupted in transit or one of the involved files was altered while the transfer was in progress.", hex.EncodeToString(actual), hex.EncodeToString(op.Data))
 		}
+		r.checksum_done = true
 	}
 	return nil
 }

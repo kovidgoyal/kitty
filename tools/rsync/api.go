@@ -185,6 +185,9 @@ func (self *Patcher) FinishDelta() (err error) {
 	self.delta_input = nil
 	self.delta_output = nil
 	self.unconsumed_delta_data = nil
+	if !self.rsync.checksum_done {
+		return fmt.Errorf("The checksum was not received at the end of the delta data")
+	}
 	return
 }
 
