@@ -9,63 +9,7 @@ import (
 
 var _ = fmt.Print
 
-// Decompress the data in chunk. output_callback() will be called zero or more times with decompressed data. Note that
-// it may be called in a different goroutine. The data provided to output_callback() is only valid for the lifetime of
-// output_callback(), so it should copy out the data.
-type StreamDecompressor = func(chunk []byte, is_last bool, output_callback func([]byte) error) error
-
-type output struct {
-	chunk []byte
-	err   error
-}
-
-type stream_decompressor struct {
-	impl     io.ReadCloser
-	pipe_r   *io.PipeReader
-	pipe_w   *io.PipeWriter
-	obuf     [8192]byte
-	err      error
-	callback func([]byte) error
-}
-
-func (self *stream_decompressor) process() {
-	for {
-		n, err := self.impl.Read(self.obuf[:])
-		if n > 0 {
-			if ocerr := self.callback(self.obuf[:n]); ocerr != nil {
-				self.pipe_r.CloseWithError(ocerr)
-				break
-			}
-		}
-		if err != nil {
-			self.pipe_r.CloseWithError(err)
-			break
-		}
-	}
-}
-
-func (self *stream_decompressor) next(chunk []byte, is_last bool, output_callback func([]byte) error) (err error) {
-	if self.err != nil {
-		return self.err
-	}
-	self.callback = output_callback
-	if _, err = self.pipe_w.Write(chunk); err != nil {
-		self.err = err
-		return err
-	}
-	if is_last {
-		defer func() {
-			self.pipe_r.Close()
-			self.pipe_w.Close()
-			if self.err == nil {
-				self.err = io.EOF
-			}
-		}()
-		self.err = self.impl.Close()
-		return self.err
-	}
-	return nil
-}
+type StreamDecompressor = func(chunk []byte, is_last bool) error
 
 // Wrap Go's awful decompressor routines to allow feeding them
 // data in chunks. For example:
@@ -74,28 +18,57 @@ func (self *stream_decompressor) next(chunk []byte, is_last bool, output_callbac
 // ...
 // sd(last_chunk, true, output_callback)
 // after this call calling sd() further will just return io.EOF
-func NewStreamDecompressor(constructor func(io.Reader) (io.ReadCloser, error)) (StreamDecompressor, error) {
+func NewStreamDecompressor(constructor func(io.Reader) (io.ReadCloser, error), output io.Writer) StreamDecompressor {
 	if constructor == nil { // identity decompressor
 		var err error
-		return func(chunk []byte, is_last bool, cb func([]byte) error) error {
+		return func(chunk []byte, is_last bool) error {
 			if err != nil {
 				return err
 			}
-			err = cb(chunk)
-			retval := err
-			if is_last && err != nil {
-				err = io.EOF
+			_, err = output.Write(chunk)
+			return err
+		}
+	}
+	pipe_r, pipe_w := io.Pipe()
+	finished := make(chan error, 1)
+	go func() {
+		var err error
+		defer func() {
+			finished <- err
+		}()
+		var impl io.ReadCloser
+		impl, err = constructor(pipe_r)
+		if err != nil {
+			pipe_r.CloseWithError(err)
+			return
+		}
+		_, err = io.Copy(output, impl)
+		cerr := impl.Close()
+		if err == nil {
+			err = cerr
+		}
+		pipe_r.CloseWithError(err)
+	}()
+
+	var iter_err error
+	return func(chunk []byte, is_last bool) error {
+		if iter_err != nil {
+			return iter_err
+		}
+		_, iter_err = pipe_w.Write(chunk)
+		if iter_err != nil {
+			return iter_err
+		}
+		if is_last {
+			pipe_w.CloseWithError(io.EOF)
+			err := <-finished
+			if err != nil && err != io.EOF {
+				iter_err = err
+				return err
 			}
-			return retval
-		}, nil
+			iter_err = io.EOF
+			return nil
+		}
+		return nil
 	}
-	s := stream_decompressor{}
-	s.pipe_r, s.pipe_w = io.Pipe()
-	rc, err := constructor(s.pipe_r)
-	if err != nil {
-		return nil, err
-	}
-	s.impl = rc
-	go s.process()
-	return s.next, nil
 }
