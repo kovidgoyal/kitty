@@ -54,9 +54,16 @@ var UserMimeMap = Once(func() map[string]string {
 	return ans
 })
 
-func is_rcfile(path string) bool {
+func is_special_file(path string) string {
 	name := filepath.Base(path)
-	return strings.HasSuffix(name, "rc") && !strings.Contains(name, ".")
+	lname := strings.ToLower(name)
+	if lname == "makefile" || strings.HasPrefix(lname, "makefile.") {
+		return "text/makefile"
+	}
+	if strings.HasSuffix(name, "rc") && !strings.Contains(name, ".") {
+		return "text/plain"
+	}
+	return ""
 }
 
 func GuessMimeType(filename string) string {
@@ -74,8 +81,8 @@ func GuessMimeType(filename string) string {
 			if mime_with_parameters == "" {
 				mime_with_parameters = KnownExtensions[lext]
 			}
-			if mime_with_parameters == "" && is_rcfile(filename) {
-				mime_with_parameters = "text/plain"
+			if mime_with_parameters == "" {
+				mime_with_parameters = is_special_file(filename)
 			}
 			if mime_with_parameters == "" {
 				return ""

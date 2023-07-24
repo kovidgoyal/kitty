@@ -41,9 +41,14 @@ text_mimes = (
 )
 
 
-def is_rc_file(path: str) -> bool:
+def is_special_file(path: str) -> Optional[str]:
     name = os.path.basename(path)
-    return '.' not in name and name.endswith('rc')
+    lname = name.lower()
+    if lname == 'makefile' or lname.startswith('makefile.'):
+        return 'text/makefile'
+    if '.' not in name and name.endswith('rc'):
+        return 'text/plain'  # rc file
+    return None
 
 
 def is_folder(path: str) -> bool:
@@ -90,8 +95,7 @@ def guess_type(path: str, allow_filesystem_access: bool = False) -> Optional[str
         mt = known_extensions.get(ext)
     if mt in text_mimes:
         mt = f'text/{mt.split("/", 1)[-1]}'
-    if not mt and is_rc_file(path):
-        mt = 'text/plain'
+    mt = mt or is_special_file(path)
     if not mt:
         if is_dir:
             mt = 'inode/directory'  # type: ignore
