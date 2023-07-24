@@ -340,12 +340,10 @@ func (self *manager) request_files() transmit_iterator {
 				read_signature = false
 			}
 		}
-		queue_write(self.prefix)
-		queue_write(FileTransmissionCommand{
+		last_write_id = self.send(FileTransmissionCommand{
 			Action: Action_file, Name: f.remote_path, File_id: f.file_id, Ttype: utils.IfElse(
 				read_signature, TransmissionType_rsync, TransmissionType_simple), Compression: f.compression_type,
-		}.Serialize(false))
-		last_write_id = queue_write(self.suffix)
+		}, queue_write)
 		if read_signature {
 			fsf, err := os.Open(f.expanded_local_path)
 			if err != nil {
@@ -365,9 +363,7 @@ func (self *manager) request_files() transmit_iterator {
 				}
 			}
 			f.sent_bytes += output.amt
-			queue_write(self.prefix)
-			queue_write(FileTransmissionCommand{Action: Action_end_data, File_id: f.file_id}.Serialize(false))
-			last_write_id = queue_write(self.suffix)
+			last_write_id = self.send(FileTransmissionCommand{Action: Action_end_data, File_id: f.file_id}, queue_write)
 		}
 		return
 	}
@@ -389,15 +385,16 @@ type handler struct {
 	last_data_write_id    loop.IdType
 }
 
+func (self *manager) send(c FileTransmissionCommand, send func(string) loop.IdType) loop.IdType {
+	send(self.prefix)
+	send(c.Serialize(false))
+	return send(self.suffix)
+}
+
 func (self *manager) start_transfer(send func(string) loop.IdType) {
-	s := func(c FileTransmissionCommand) {
-		send(self.prefix)
-		send(c.Serialize(false))
-		send(self.suffix)
-	}
-	s(FileTransmissionCommand{Action: Action_receive, Bypass: self.bypass, Size: int64(len(self.spec))})
+	self.send(FileTransmissionCommand{Action: Action_receive, Bypass: self.bypass, Size: int64(len(self.spec))}, send)
 	for i, x := range self.spec {
-		s(FileTransmissionCommand{Action: Action_file, File_id: strconv.Itoa(i), Name: x})
+		self.send(FileTransmissionCommand{Action: Action_file, File_id: strconv.Itoa(i), Name: x}, send)
 	}
 	self.progress_tracker.start_transfer()
 }
@@ -415,9 +412,7 @@ func (self *handler) abort_transfer(delay time.Duration) {
 	if delay <= 0 {
 		delay = time.Second * 5
 	}
-	self.lp.QueueWriteString(self.manager.prefix)
-	self.lp.QueueWriteString(FileTransmissionCommand{Action: Action_cancel}.Serialize(false))
-	self.lp.QueueWriteString(self.manager.suffix)
+	self.manager.send(FileTransmissionCommand{Action: Action_cancel}, self.lp.QueueWriteString)
 	self.manager.state = state_canceled
 	self.lp.AddTimer(delay, false, self.do_error_quit)
 }
@@ -796,9 +791,7 @@ func (self *handler) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 		}
 	}
 	if self.manager.transfer_done {
-		self.lp.QueueWriteString(self.manager.prefix)
-		self.lp.QueueWriteString(FileTransmissionCommand{Action: Action_finish}.Serialize(false))
-		self.lp.QueueWriteString(self.manager.suffix)
+		self.manager.send(FileTransmissionCommand{Action: Action_finish}, self.lp.QueueWriteString)
 		self.quit_after_write_code = 0
 		self.refresh_progress(0)
 	} else if self.transmit_started {
