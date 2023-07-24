@@ -986,6 +986,7 @@ func receive_loop(opts *Options, spec []string, dest string) (err error, rc int)
 
 	handler := handler{
 		lp: lp, quit_after_write_code: -1, cli_opts: opts, spinner: tui.NewSpinner("dots"),
+		ctx: markup.New(true),
 		manager: manager{
 			request_id: random_id(), spec: spec, dest: dest, bypass: opts.PermissionsBypass, use_rsync: opts.TransmitDeltas,
 			failed_specs: make(map[int]string, len(spec)), spec_counts: make(map[int]int, len(spec)),
