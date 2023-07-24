@@ -46,6 +46,8 @@ func (self *Loop) dispatch_timers(now time.Time) error {
 				t.update_deadline(now)
 				self.timers_temp = append(self.timers_temp, t)
 			}
+		} else {
+			self.timers_temp = append(self.timers_temp, t)
 		}
 	}
 	self.timers = self.timers[:len(self.timers_temp)]
