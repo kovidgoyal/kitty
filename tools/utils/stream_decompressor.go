@@ -13,10 +13,10 @@ type StreamDecompressor = func(chunk []byte, is_last bool) error
 
 // Wrap Go's awful decompressor routines to allow feeding them
 // data in chunks. For example:
-// sd, err := NewStreamDecompressor(zlib.NewReader)
-// sd(chunk, false, output_callback)
+// sd, err := NewStreamDecompressor(zlib.NewReader, output)
+// sd(chunk, false)
 // ...
-// sd(last_chunk, true, output_callback)
+// sd(last_chunk, true)
 // after this call calling sd() further will just return io.EOF
 func NewStreamDecompressor(constructor func(io.Reader) (io.ReadCloser, error), output io.Writer) StreamDecompressor {
 	if constructor == nil { // identity decompressor
@@ -25,7 +25,15 @@ func NewStreamDecompressor(constructor func(io.Reader) (io.ReadCloser, error), o
 			if err != nil {
 				return err
 			}
-			_, err = output.Write(chunk)
+			if len(chunk) > 0 {
+				_, err = output.Write(chunk)
+			}
+			if is_last {
+				if err == nil {
+					err = io.EOF
+					return nil
+				}
+			}
 			return err
 		}
 	}

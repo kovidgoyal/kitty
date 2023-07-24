@@ -144,66 +144,74 @@ type remote_file struct {
 	patch_file                   patch_file
 }
 
-func (self *remote_file) close() error {
+func (self *remote_file) close() (err error) {
+	if self.decompressor != nil {
+		err = self.decompressor(nil, true)
+		self.decompressor = nil
+	}
+
 	if self.actual_file != nil {
 		af := self.actual_file
 		self.actual_file = nil
-		return af.close()
+		cerr := af.close()
+		if err == nil {
+			err = cerr
+		}
 	}
-	return nil
+	return
+}
+
+func (self *remote_file) Write(data []byte) (n int, err error) {
+	switch self.ftype {
+	default:
+		return 0, fmt.Errorf("Cannot write data to files of type: %s", self.ftype)
+	case FileType_symlink:
+		self.remote_symlink_value += string(data)
+		return len(data), nil
+	case FileType_regular:
+		if self.actual_file == nil {
+			parent := filepath.Dir(self.expanded_local_path)
+			if parent != "" {
+				os.MkdirAll(parent, 0o755)
+			}
+			if self.expect_diff {
+				if pf, err := new_patch_file(self.expanded_local_path, self.patcher); err != nil {
+					return 0, err
+				} else {
+					self.actual_file = pf
+				}
+			} else {
+				if ff, err := os.Create(self.expanded_local_path); err != nil {
+					return 0, err
+				} else {
+					f := filesystem_file{f: ff}
+					self.actual_file = &f
+				}
+			}
+		}
+		return self.actual_file.write(data)
+	}
 }
 
 func (self *remote_file) write_data(data []byte, is_last bool) (amt_written int64, err error) {
 	self.received_bytes += int64(len(data))
-	self.decompressor(data, is_last, func(data []byte) (err error) {
-		switch self.ftype {
-		case FileType_symlink:
-			self.remote_symlink_value += string(data)
-			return
-		case FileType_regular:
-			if self.actual_file == nil {
-				parent := filepath.Dir(self.expanded_local_path)
-				if parent != "" {
-					os.MkdirAll(parent, 0o755)
-				}
-				if self.expect_diff {
-					if pf, err := new_patch_file(self.expanded_local_path, self.patcher); err != nil {
-						return err
-					} else {
-						self.actual_file = pf
-					}
-				} else {
-					if ff, err := os.Create(self.expanded_local_path); err != nil {
-						return err
-					} else {
-						f := filesystem_file{f: ff}
-						self.actual_file = &f
-					}
-				}
-				base, err := self.actual_file.tell()
-				if err != nil {
-					return err
-				}
-				for len(data) > 0 {
-					n, werr := self.actual_file.write(data)
-					data = data[n:]
-					if werr != nil && werr != io.ErrShortWrite {
-						return werr
-					}
-				}
-				pos, err := self.actual_file.tell()
-				if err != nil {
-					return err
-				}
-				amt_written = pos - base
-				if is_last {
-					self.actual_file.close()
-					self.actual_file = nil
-				}
-			}
-		}
-		return
-	})
+	base, err := self.actual_file.tell()
+	if err != nil {
+		return 0, err
+	}
+	self.decompressor(data, is_last)
+	if is_last {
+		self.decompressor = nil
+	}
+	pos, err := self.actual_file.tell()
+	if err != nil {
+		return 0, err
+	}
+	amt_written = pos - base
+	if is_last {
+		self.actual_file.close()
+		self.actual_file = nil
+	}
 	return
 }
 
@@ -226,14 +234,11 @@ func new_remote_file(opts *Options, ftc *FileTransmissionCommand) (*remote_file,
 	}
 	compression_capable := ftc.Ftype == FileType_regular && ftc.Size > 4096 && should_be_compressed(ftc.Name, opts.Compress)
 	if compression_capable {
-		ans.decompressor, err = utils.NewStreamDecompressor(zlib.NewReader)
+		ans.decompressor = utils.NewStreamDecompressor(zlib.NewReader, ans)
 		ans.compression_type = Compression_zlib
 	} else {
-		ans.decompressor, err = utils.NewStreamDecompressor(nil)
+		ans.decompressor = utils.NewStreamDecompressor(nil, ans)
 		ans.compression_type = Compression_none
-	}
-	if err != nil {
-		return nil, err
 	}
 	return ans, nil
 }
