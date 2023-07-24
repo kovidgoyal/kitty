@@ -55,9 +55,11 @@ func NewStreamDecompressor(constructor func(io.Reader) (io.ReadCloser, error), o
 		if iter_err != nil {
 			return iter_err
 		}
-		_, iter_err = pipe_w.Write(chunk)
-		if iter_err != nil {
-			return iter_err
+		if len(chunk) > 0 {
+			_, iter_err = pipe_w.Write(chunk)
+			if iter_err != nil {
+				return iter_err
+			}
 		}
 		if is_last {
 			pipe_w.CloseWithError(io.EOF)
