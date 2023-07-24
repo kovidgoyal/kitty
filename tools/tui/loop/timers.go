@@ -50,11 +50,7 @@ func (self *Loop) dispatch_timers(now time.Time) error {
 			self.timers_temp = append(self.timers_temp, t)
 		}
 	}
-	self.timers = self.timers[:len(self.timers_temp)]
-	if len(self.timers) > 0 {
-		copy(self.timers, self.timers_temp)
-		self.sort_timers()
-	}
+	self.timers, self.timers_temp = self.timers_temp, self.timers
 	return nil
 }
 
