@@ -10,6 +10,7 @@ import (
 
 	"kitty"
 	"kitty/tools/config"
+	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
@@ -110,6 +111,8 @@ func (self *Handler) drag_scroll_tick(timer_id loop.IdType) error {
 	})
 }
 
+var debugprintln = tty.DebugPrintln
+
 func (self *Handler) update_mouse_selection(ev *loop.MouseEvent) {
 	if !self.mouse_selection.IsActive() {
 		return
@@ -151,7 +154,7 @@ func (self *Handler) text_for_current_mouse_selection() string {
 		return self.logical_lines.ScreenLineAt(pos).right.marked_up_text
 	}
 
-	for pos, prev_ll_idx := start, start.logical_line; pos.Less(end) || pos == end; self.logical_lines.IncrementScrollPosBy(&pos, 1) {
+	for pos, prev_ll_idx := start, start.logical_line; pos.Less(end) || pos == end; {
 		ll := self.logical_lines.At(pos.logical_line)
 		var line string
 		switch ll.line_type {
@@ -179,6 +182,9 @@ func (self *Handler) text_for_current_mouse_selection() string {
 		prev_ll_idx = pos.logical_line
 		if line != "" {
 			text = append(text, line...)
+		}
+		if self.logical_lines.IncrementScrollPosBy(&pos, 1) == 0 {
+			break
 		}
 	}
 	return utils.UnsafeBytesToString(text)
