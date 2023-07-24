@@ -18,6 +18,7 @@ import (
 	"kitty"
 	"kitty/tools/cli/markup"
 	"kitty/tools/rsync"
+	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
 	"kitty/tools/utils"
@@ -384,6 +385,8 @@ type handler struct {
 	transmit_iterator     transmit_iterator
 	last_data_write_id    loop.IdType
 }
+
+var debugprintln = tty.DebugPrintln
 
 func (self *manager) send(c FileTransmissionCommand, send func(string) loop.IdType) loop.IdType {
 	send(self.prefix)
@@ -989,7 +992,7 @@ func receive_loop(opts *Options, spec []string, dest string) (err error, rc int)
 	for i := range spec {
 		handler.manager.spec_counts[i] = 0
 	}
-	handler.manager.prefix = fmt.Sprintf("\x1b]{%d};id=%s;", kitty.FileTransferCode, handler.manager.request_id)
+	handler.manager.prefix = fmt.Sprintf("\x1b]%d;id=%s;", kitty.FileTransferCode, handler.manager.request_id)
 	if handler.manager.bypass != `` {
 		if handler.manager.bypass, err = encode_bypass(handler.manager.request_id, handler.manager.bypass); err != nil {
 			return err, 1
