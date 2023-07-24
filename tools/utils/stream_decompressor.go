@@ -18,6 +18,8 @@ type StreamDecompressor = func(chunk []byte, is_last bool) error
 // ...
 // sd(last_chunk, true)
 // after this call calling sd() further will just return io.EOF
+// WARNING: output.Write() may be called from a different thread, possibly even after sd()
+// returns. It will never be called after sd(is_last=True) returns, however.
 func NewStreamDecompressor(constructor func(io.Reader) (io.ReadCloser, error), output io.Writer) StreamDecompressor {
 	if constructor == nil { // identity decompressor
 		var err error
