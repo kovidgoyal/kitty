@@ -36,6 +36,8 @@ text_mimes = (
     'application/toml',
     'application/rss+xml',
     'application/xhtml+xml',
+    'application/x-tex',
+    'application/x-latex',
 )
 
 
