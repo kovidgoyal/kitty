@@ -196,6 +196,11 @@ func (self *remote_file) Write(data []byte) (n int, err error) {
 func (self *remote_file) write_data(data []byte, is_last bool) (amt_written int64, err error) {
 	self.received_bytes += int64(len(data))
 	var base, pos int64
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("Failed writing to %s with error: %w", self.expanded_local_path, err)
+		}
+	}()
 	if self.actual_file != nil {
 		base, err = self.actual_file.tell()
 		if err != nil {
@@ -422,10 +427,11 @@ func (self *handler) print_err(err error) {
 }
 
 func (self *handler) abort_with_error(err error, delay ...time.Duration) {
-	self.print_err(err)
+	if err != nil {
+		self.print_err(err)
+	}
 	self.lp.Println(`Waiting to ensure terminal cancels transfer, will quit in a few seconds`)
 	self.abort_transfer(delay...)
-	self.lp.Println(self.ctx.BrightRed(err.Error()))
 }
 
 func (self *handler) do_error_quit(loop.IdType) error {
@@ -434,7 +440,7 @@ func (self *handler) do_error_quit(loop.IdType) error {
 }
 
 func (self *handler) abort_transfer(delay ...time.Duration) {
-	var d time.Duration = -1
+	var d time.Duration = 5 * time.Second
 	if len(delay) > 0 {
 		d = delay[0]
 	}
@@ -777,9 +783,8 @@ func (self *handler) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 		return
 	}
 	transfer_started := self.manager.state == state_transferring
-	err = self.manager.on_file_transfer_response(ftc)
-	if err != nil {
-		self.abort_with_error(err)
+	if merr := self.manager.on_file_transfer_response(ftc); merr != nil {
+		self.abort_with_error(merr)
 		return
 	}
 	if !transfer_started && self.manager.state == state_transferring {
@@ -787,9 +792,12 @@ func (self *handler) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 			self.print_err(fmt.Errorf(`Failed to process some sources:`))
 			for spec_id, msg := range self.manager.failed_specs {
 				spec := self.manager.spec[spec_id]
-				self.lp.Println(fmt.Sprintf(`  {%s}: {%s}`, spec, msg))
+				if strings.HasPrefix(msg, `ENOENT:`) {
+					msg = `File not found`
+				}
+				self.lp.Println(fmt.Sprintf(`  %s: %s`, spec, msg))
 			}
-			self.lp.Quit(1)
+			self.abort_with_error(nil)
 			return
 		}
 		zero_specs := make([]string, 0, len(self.manager.spec_counts))
@@ -799,11 +807,11 @@ func (self *handler) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 			}
 		}
 		if len(zero_specs) > 0 {
-			self.print_err(fmt.Errorf(`No matches found for: %s`, strings.Join(zero_specs, ", ")))
-			self.lp.Quit(1)
+			self.abort_with_error(fmt.Errorf(`No matches found for: %s`, strings.Join(zero_specs, ", ")))
 			return
 		}
-		if err = self.manager.collect_files(); err != nil {
+		if merr := self.manager.collect_files(); merr != nil {
+			self.abort_with_error(merr)
 			return
 		}
 		if self.cli_opts.ConfirmPaths {
@@ -1079,7 +1087,7 @@ func receive_loop(opts *Options, spec []string, dest string) (err error, rc int)
 			ssz += f.sent_bytes
 		}
 	}
-	if tsf > 0 && dsz+ssz > 0 {
+	if tsf > 0 && dsz+ssz > 0 && rc == 0 {
 		print_rsync_stats(tsf, dsz, ssz)
 	}
 	return
