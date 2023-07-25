@@ -257,7 +257,7 @@ func (r *rsync) CreateSignatureIterator(target io.Reader) func() (BlockHash, err
 }
 
 // Apply the difference to the target.
-func (r *rsync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Operation) error {
+func (r *rsync) ApplyDelta(output io.Writer, target io.ReadSeeker, op Operation) error {
 	var err error
 	var n int
 	var block []byte
@@ -268,7 +268,13 @@ func (r *rsync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 		r.checksummer = r.checksummer_constructor()
 	}
 
-	write_block := func(op Operation) error {
+	write := func(b []byte) (err error) {
+		if _, err = r.checksummer.Write(b); err == nil {
+			_, err = output.Write(b)
+		}
+		return err
+	}
+	write_block := func(op Operation) (err error) {
 		if _, err = target.Seek(int64(r.BlockSize*int(op.BlockIndex)), os.SEEK_SET); err != nil {
 			return err
 		}
@@ -277,14 +283,10 @@ func (r *rsync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 			if err != io.ErrUnexpectedEOF {
 				return err
 			}
+			err = nil
 		}
 		block = buffer[:n]
-		r.checksummer.Write(block)
-		_, err = alignedTarget.Write(block)
-		if err != nil {
-			return err
-		}
-		return nil
+		return write(block)
 	}
 
 	switch op.Type {
@@ -295,26 +297,16 @@ func (r *rsync) ApplyDelta(alignedTarget io.Writer, target io.ReadSeeker, op Ope
 				BlockIndex: i,
 			})
 			if err != nil {
-				if err == io.EOF {
-					break
-				}
 				return err
 			}
 		}
 	case OpBlock:
 		err = write_block(op)
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
 			return err
 		}
 	case OpData:
-		r.checksummer.Write(op.Data)
-		_, err = alignedTarget.Write(op.Data)
-		if err != nil {
-			return err
-		}
+		return write(op.Data)
 	case OpHash:
 		actual := r.checksummer.Sum(nil)
 		if !bytes.Equal(actual, op.Data) {
