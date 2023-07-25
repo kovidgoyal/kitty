@@ -250,9 +250,17 @@ func syscall_mode(i os.FileMode) (o uint32) {
 
 func (self *remote_file) apply_metadata() {
 	t := unix.NsecToTimespec(int64(self.mtime))
-	unix.UtimesNanoAt(unix.AT_FDCWD, self.expanded_local_path, []unix.Timespec{t, t}, unix.AT_SYMLINK_NOFOLLOW)
+	for {
+		if err := unix.UtimesNanoAt(unix.AT_FDCWD, self.expanded_local_path, []unix.Timespec{t, t}, unix.AT_SYMLINK_NOFOLLOW); err == nil || !(errors.Is(err, unix.EINTR) || errors.Is(err, unix.EAGAIN)) {
+			break
+		}
+	}
 	if self.ftype == FileType_symlink {
-		unix.Fchmodat(unix.AT_FDCWD, self.expanded_local_path, syscall_mode(self.permissions), unix.AT_SYMLINK_NOFOLLOW)
+		for {
+			if err := unix.Fchmodat(unix.AT_FDCWD, self.expanded_local_path, syscall_mode(self.permissions), unix.AT_SYMLINK_NOFOLLOW); err == nil || !(errors.Is(err, unix.EINTR) || errors.Is(err, unix.EAGAIN)) {
+				break
+			}
+		}
 	} else {
 		os.Chmod(self.expanded_local_path, self.permissions)
 	}
