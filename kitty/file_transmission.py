@@ -275,6 +275,8 @@ class FileTransmissionCommand:
             val = getattr(self, k.name)
             if val != k.default:
                 ans.append(f'{k.name}={val!r}')
+        if self.data:
+            ans.append(f'data={len(self.data)} bytes')
         return 'FTC(' + ', '.join(ans) + ')'
 
     def asdict(self, keep_defaults: bool = False) -> Dict[str, Union[str, int, bytes]]:
@@ -861,6 +863,7 @@ class FileTransmission:
         except Exception as e:
             log_error(f'Failed to parse file transmission command with error: {e}')
             return
+        # print('from kitten:', cmd)
         if not cmd.id:
             log_error('File transmission command without id received, ignoring')
             return
