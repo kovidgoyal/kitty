@@ -202,8 +202,8 @@ func (self *Loop) KillIfSignalled() {
 }
 
 func (self *Loop) Println(args ...any) {
-	self.QueueWriteString(fmt.Sprint(args...))
-	self.QueueWriteString("\r\n")
+	self.QueueWriteString(fmt.Sprintln(args...))
+	self.QueueWriteString("\r")
 }
 
 func (self *Loop) SprintStyled(style string, args ...any) string {

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"kitty"
+	"kitty/kittens/unicode_input"
 	"kitty/tools/cli/markup"
 	"kitty/tools/rsync"
 	"kitty/tools/tty"
@@ -463,7 +464,7 @@ func (self *handler) abort_with_error(err error, delay ...time.Duration) {
 	if len(delay) > 0 {
 		d = delay[0]
 	}
-	self.lp.Println(`Waiting to ensure terminal cancels transfer, will quit in no more than `, d)
+	self.lp.Println(`Waiting to ensure terminal cancels transfer, will quit in no more than`, d)
 	self.manager.send(FileTransmissionCommand{Action: Action_cancel}, self.lp.QueueWriteString)
 	self.manager.state = state_canceled
 	self.lp.AddTimer(d, false, self.do_error_quit)
@@ -535,7 +536,7 @@ func (self *manager) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 			if ftc.Status == `OK` {
 				self.state = state_waiting_for_file_metadata
 			} else {
-				return os.ErrPermission
+				return unicode_input.ErrCanceledByUser
 			}
 		} else {
 			return fmt.Errorf(`Unexpected response from terminal: %s`, ftc.String())
@@ -736,7 +737,7 @@ func (self *manager) collect_files() (err error) {
 }
 
 func (self *handler) print_continue_msg() {
-	self.lp.Println(`Press `, self.ctx.Green(`y`), ` to continue or `, self.ctx.BrightRed(`n`), ` to abort`)
+	self.lp.Println(`Press`, self.ctx.Green(`y`), `to continue or`, self.ctx.BrightRed(`n`), `to abort`)
 }
 
 func lexists(path string) bool {
@@ -757,7 +758,7 @@ func (self *handler) print_check_paths() {
 		if lexists(lpath) {
 			lpath = self.ctx.Prettify(self.ctx.BrightRed(lpath) + " ")
 		}
-		self.lp.Println(df.display_name, " → ", lpath)
+		self.lp.Println(df.display_name, "→", lpath)
 	}
 	self.lp.Println(fmt.Sprintf(`Transferring %d file(s) of total size: %s`, len(self.manager.files), humanize.Size(self.manager.progress_tracker.total_size_of_all_files)))
 	self.print_continue_msg()
@@ -819,7 +820,7 @@ func (self *handler) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 	}
 	transfer_started := self.manager.state == state_transferring
 	if merr := self.manager.on_file_transfer_response(ftc); merr != nil {
-		if merr == os.ErrPermission {
+		if merr == unicode_input.ErrCanceledByUser {
 			// terminal will not respond to cancel request
 			return fmt.Errorf("Permission denied by user")
 		}
