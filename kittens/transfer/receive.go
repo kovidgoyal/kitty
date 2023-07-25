@@ -593,11 +593,7 @@ func (self *tree_node) add_child(f *remote_file) *tree_node {
 		return self
 	}
 	c := tree_node{entry: f, parent: self, added_files: make(map[*remote_file]*tree_node)}
-	if self.entry != nil {
-		f.expanded_local_path = filepath.Join(self.entry.expanded_local_path, filepath.Base(f.remote_path))
-	} else {
-		f.expanded_local_path = f.remote_path
-	}
+	f.expanded_local_path = filepath.Join(self.entry.expanded_local_path, filepath.Base(f.remote_path))
 	self.added_files[f] = &c
 	return &c
 }
@@ -632,7 +628,7 @@ func make_tree(all_files []*remote_file, local_base string) (root_node *tree_nod
 		fid_map[f.remote_id] = f
 	}
 	node_map := make(map[string]*tree_node)
-	root_node = &tree_node{added_files: make(map[*remote_file]*tree_node)}
+	root_node = &tree_node{entry: &remote_file{expanded_local_path: local_base}, added_files: make(map[*remote_file]*tree_node)}
 
 	for _, f := range all_files {
 		p := ensure_parent(f, root_node, node_map, fid_map)
