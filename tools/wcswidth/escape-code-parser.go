@@ -5,6 +5,7 @@ package wcswidth
 import (
 	"bytes"
 	"fmt"
+
 	"kitty/tools/utils"
 )
 

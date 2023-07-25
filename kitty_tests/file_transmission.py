@@ -179,6 +179,7 @@ class TransferPTY(PTY):
 class TestFileTransmission(BaseTest):
 
     def setUp(self):
+        self.direction_receive = False
         super().setUp()
         self.tdir = os.path.realpath(tempfile.mkdtemp())
         self.responses = []
@@ -327,7 +328,7 @@ class TestFileTransmission(BaseTest):
     @contextmanager
     def run_kitten(self, cmd, home_dir='', allow=True):
         cwd = os.path.realpath(tempfile.mkdtemp(suffix='-cwd', dir=self.tdir))
-        cmd = [kitten_exe(), 'transfer'] + cmd
+        cmd = [kitten_exe(), 'transfer'] + (['--direction=receive'] if self.direction_receive else []) + cmd
         env = {'PWD': cwd}
         if home_dir:
             env['HOME'] = home_dir
@@ -341,6 +342,17 @@ class TestFileTransmission(BaseTest):
         finally:
             if os.path.exists(cwd):
                 shutil.rmtree(cwd)
+
+    def test_transfer_receive(self):
+        self.direction_receive = True
+        src = os.path.join(self.tdir, 'src')
+        self.src_data = os.urandom(11113)
+        with open(src, 'wb') as s:
+            s.write(self.src_data)
+        dest = os.path.join(self.tdir, 'dest')
+        with self.run_kitten([src, dest], allow=False) as pty:
+            pty.wait_till_child_exits(require_exit_code=1)
+        self.assertFalse(os.path.exists(dest))
 
     def test_transfer_send(self):
         src = os.path.join(self.tdir, 'src')

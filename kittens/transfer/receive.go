@@ -500,7 +500,7 @@ func (self *manager) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 			if ftc.Status == `OK` {
 				self.state = state_waiting_for_file_metadata
 			} else {
-				return fmt.Errorf(`Permission for transfer denied`)
+				return os.ErrPermission
 			}
 		} else {
 			return fmt.Errorf(`Unexpected response from terminal: %s`, ftc.String())
@@ -780,6 +780,10 @@ func (self *handler) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 	}
 	transfer_started := self.manager.state == state_transferring
 	if merr := self.manager.on_file_transfer_response(ftc); merr != nil {
+		if merr == os.ErrPermission {
+			// terminal will not respond to cancel request
+			return fmt.Errorf("Permission denied by user")
+		}
 		self.abort_with_error(merr)
 		return
 	}
