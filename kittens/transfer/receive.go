@@ -577,7 +577,11 @@ func (self *tree_node) add_child(f *remote_file) *tree_node {
 		return self
 	}
 	c := tree_node{entry: f, parent: self, added_files: make(map[*remote_file]*tree_node)}
-	f.expanded_local_path = filepath.Join(self.entry.expanded_local_path, filepath.Base(f.remote_path))
+	if self.entry != nil {
+		f.expanded_local_path = filepath.Join(self.entry.expanded_local_path, filepath.Base(f.remote_path))
+	} else {
+		f.expanded_local_path = f.remote_path
+	}
 	self.added_files[f] = &c
 	return &c
 }
