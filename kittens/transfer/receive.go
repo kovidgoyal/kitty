@@ -430,11 +430,11 @@ func (self *handler) abort_with_error(err error, delay ...time.Duration) {
 	if err != nil {
 		self.print_err(err)
 	}
-	self.lp.Println(`Waiting to ensure terminal cancels transfer, will quit in a few seconds`)
 	var d time.Duration = 5 * time.Second
 	if len(delay) > 0 {
 		d = delay[0]
 	}
+	self.lp.Println(`Waiting to ensure terminal cancels transfer, will quit in no more than `, d)
 	self.manager.send(FileTransmissionCommand{Action: Action_cancel}, self.lp.QueueWriteString)
 	self.manager.state = state_canceled
 	self.lp.AddTimer(d, false, self.do_error_quit)
