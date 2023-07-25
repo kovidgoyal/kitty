@@ -504,7 +504,7 @@ static bool
 add_collision(SignatureMap *sm, Signature s) {
     if (sm->cap < sm->len + 1) {
         size_t new_cap = MAX(sm->cap * 2, 8u);
-        sm->weak_hash_collisions = realloc(sm->weak_hash_collisions, new_cap);
+        sm->weak_hash_collisions = realloc(sm->weak_hash_collisions, new_cap * sizeof(sm->weak_hash_collisions[0]));
         if (!sm->weak_hash_collisions) { PyErr_NoMemory(); return false; }
         sm->cap = new_cap;
     }
