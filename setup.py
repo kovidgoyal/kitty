@@ -956,7 +956,11 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
 
 
 def parse_go_version(x: str) -> Tuple[int, int, int]:
-    ans = list(map(int, x.split('.')))
+    def safe_int(x: str) -> int:
+        with suppress(ValueError):
+            return int(x)
+        return int(re.split(r'[a-zA-Z]', x)[0])
+    ans = list(map(safe_int, x.split('.')))
     while len(ans) < 3:
         ans.append(0)
     return ans[0], ans[1], ans[2]
