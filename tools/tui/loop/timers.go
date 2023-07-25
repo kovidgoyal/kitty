@@ -4,13 +4,12 @@ package loop
 
 import (
 	"fmt"
-	"reflect"
-	"runtime"
 	"time"
 
 	"golang.org/x/exp/slices"
 
 	"kitty/tools/tty"
+	"kitty/tools/utils"
 )
 
 var debugprintln = tty.DebugPrintln
@@ -28,15 +27,7 @@ func (self *timer) update_deadline(now time.Time) {
 }
 
 func (self timer) String() string {
-	funcname := "<nil>"
-	if self.callback != nil {
-		p := reflect.ValueOf(self.callback).Pointer()
-		f := runtime.FuncForPC(p)
-		if f != nil {
-			funcname = f.Name()
-		}
-	}
-	return fmt.Sprintf("Timer(id=%d, callback=%s, deadline=%s, repeats=%v)", self.id, funcname, self.deadline.Sub(time.Now()), self.repeats)
+	return fmt.Sprintf("Timer(id=%d, callback=%s, deadline=%s, repeats=%v)", self.id, utils.FunctionName(self.callback), self.deadline.Sub(time.Now()), self.repeats)
 }
 
 func (self *Loop) add_timer(interval time.Duration, repeats bool, callback TimerCallback) (IdType, error) {

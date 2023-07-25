@@ -294,3 +294,15 @@ func SourceLoc(skip_frames ...int) string {
 	}
 	return "unknown"
 }
+
+func FunctionName(a any) string {
+	if a == nil {
+		return "<nil>"
+	}
+	p := reflect.ValueOf(a).Pointer()
+	f := runtime.FuncForPC(p)
+	if f != nil {
+		return f.Name()
+	}
+	return ""
+}
