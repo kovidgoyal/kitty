@@ -425,52 +425,6 @@ type Progress struct {
 	max_path_length int
 }
 
-func optional_cut(x string, sep string) (string, string) {
-	a, b, found := strings.Cut(x, sep)
-	if found {
-		return a, b
-	}
-	return "00", a
-}
-
-func zero_pad(x string) string {
-	if len(x) < 2 {
-		x = strings.Repeat("0", 2-len(x)) + x
-	}
-	return x
-}
-
-// render the duration in exactly 8 chars
-func render_duration(val time.Duration) (ans string) {
-	if val >= time.Second {
-		if val.Hours() > 24 {
-			days := int(val.Hours() / 24)
-			if days > 99 {
-				ans = `∞`
-			} else {
-				if days == 1 {
-					ans = ">1 day"
-				} else {
-					ans = fmt.Sprintf(">%d days", int(days))
-				}
-			}
-		} else {
-			ans = val.String()
-			hr, rest := optional_cut(ans, `h`)
-			min, rest := optional_cut(rest, `m`)
-			secs, _, _ := strings.Cut(rest, ".")
-			secs = strings.Replace(secs, `s`, ``, 1)
-			ans = zero_pad(hr) + `:` + zero_pad(min) + `:` + zero_pad(secs)
-		}
-	} else {
-		ans = "<1 sec"
-	}
-	if w := wcswidth.Stringwidth(ans); w < 8 {
-		ans = strings.Repeat(" ", 8-w) + ans
-	}
-	return
-}
-
 func reduce_to_single_grapheme(text string) string {
 	limit := utf8.RuneCountInString(text)
 	if limit < 2 {
@@ -520,7 +474,7 @@ func render_progress_in_width(path string, p Progress, width int, ctx *markup.Co
 	if p.is_complete || p.bytes_so_far >= p.total_bytes {
 		ratio = humanize.Size(uint64(p.total_bytes), humanize.SizeOptions{Separator: sep})
 		rate = humanize.Size(uint64(safe_divide(float64(p.total_bytes), p.secs_so_far)), humanize.SizeOptions{Separator: sep}) + `/s`
-		eta = ctx.Green(render_duration(time.Duration(float64(time.Second) * p.secs_so_far)))
+		eta = ctx.Green(humanize.ShortDuration(time.Duration(float64(time.Second) * p.secs_so_far)))
 	} else {
 		tb := humanize.Size(p.total_bytes)
 		sval, _, _ := strings.Cut(tb, " ")
@@ -529,7 +483,7 @@ func render_progress_in_width(path string, p Progress, width int, ctx *markup.Co
 		rate = humanize.Size(p.bytes_per_sec, humanize.SizeOptions{Separator: sep}) + `/s`
 		bytes_left := p.total_bytes - p.bytes_so_far
 		eta_seconds := safe_divide(bytes_left, p.bytes_per_sec)
-		eta = render_duration(time.Duration(float64(time.Second) * eta_seconds))
+		eta = humanize.ShortDuration(time.Duration(float64(time.Second) * eta_seconds))
 	}
 	lft := p.spinner_char + ` `
 	max_space_for_path := width/2 - wcswidth.Stringwidth(lft)

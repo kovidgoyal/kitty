@@ -2,8 +2,10 @@ package humanize
 
 import (
 	"fmt"
+	"kitty/tools/wcswidth"
 	"math"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -114,4 +116,50 @@ func CustomRelTime(a, b time.Time, albl, blbl string, magnitudes []RelTimeMagnit
 		}
 	}
 	return fmt.Sprintf(mag.Format, args...)
+}
+
+func optional_cut(x string, sep string) (string, string) {
+	a, b, found := strings.Cut(x, sep)
+	if found {
+		return a, b
+	}
+	return "00", a
+}
+
+func zero_pad(x string) string {
+	if len(x) < 2 {
+		x = strings.Repeat("0", 2-len(x)) + x
+	}
+	return x
+}
+
+// Render the duration in exactly 8 chars
+func ShortDuration(val time.Duration) (ans string) {
+	if val >= time.Second {
+		if val > Day {
+			days := int(val.Hours() / 24)
+			if days > 99 {
+				ans = `∞`
+			} else {
+				if days == 1 {
+					ans = ">1 day"
+				} else {
+					ans = fmt.Sprintf(">%d days", int(days))
+				}
+			}
+		} else {
+			ans = val.String()
+			hr, rest := optional_cut(ans, `h`)
+			min, rest := optional_cut(rest, `m`)
+			secs, _, _ := strings.Cut(rest, ".")
+			secs = strings.Replace(secs, `s`, ``, 1)
+			ans = zero_pad(hr) + `:` + zero_pad(min) + `:` + zero_pad(secs)
+		}
+	} else {
+		ans = "<1 sec"
+	}
+	if w := wcswidth.Stringwidth(ans); w < 8 {
+		ans = strings.Repeat(" ", 8-w) + ans
+	}
+	return
 }
