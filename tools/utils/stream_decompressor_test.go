@@ -33,4 +33,25 @@ func TestStreamDecompressor(t *testing.T) {
 	if !bytes.Equal(o.Bytes(), input) {
 		t.Fatalf("Roundtripping via zlib failed output (%d) != input (%d)", len(o.Bytes()), len(input))
 	}
+
+	o.Reset()
+	sd = NewStreamDecompressor(zlib.NewReader, &o)
+	err := sd([]byte("abcd"), true)
+	if err == nil {
+		t.Fatalf("Did not get an invalid header error from zlib")
+	}
+
+	o.Reset()
+	sd = NewStreamDecompressor(zlib.NewReader, &o)
+	err = sd(b.Bytes(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(o.Bytes(), input) {
+		t.Fatalf("Roundtripping via zlib failed output (%d) != input (%d)", len(o.Bytes()), len(input))
+	}
+	err = sd([]byte("extra trailing data"), true)
+	if err == nil {
+		t.Fatalf("Did not get an invalid header error from zlib")
+	}
 }
