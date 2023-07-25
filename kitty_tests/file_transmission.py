@@ -313,9 +313,6 @@ class TestFileTransmission(BaseTest):
         t('a1=b1;c=d;;e', 'a1', 'b1', 'c', 'd')
         t('a1=b1;c=d;;;1=1', 'a1', 'b1', 'c', 'd', '1', '1')
 
-    def test_path_mapping_receive(self):
-        self.skipTest('TODO: Port this test')
-
     def test_rsync_hashers(self):
         h = Hasher("xxh3-64")
         h.update(b'abcd')
@@ -343,24 +340,12 @@ class TestFileTransmission(BaseTest):
             if os.path.exists(cwd):
                 shutil.rmtree(cwd)
 
-    def test_transfer_receive(self):
-        self.direction_receive = True
+    def basic_transfer_tests(self):
         src = os.path.join(self.tdir, 'src')
         self.src_data = os.urandom(11113)
         with open(src, 'wb') as s:
             s.write(self.src_data)
         dest = os.path.join(self.tdir, 'dest')
-        with self.run_kitten([src, dest], allow=False) as pty:
-            pty.wait_till_child_exits(require_exit_code=1)
-        self.assertFalse(os.path.exists(dest))
-
-    def test_transfer_send(self):
-        src = os.path.join(self.tdir, 'src')
-        self.src_data = os.urandom(9137)
-        with open(src, 'wb') as s:
-            s.write(self.src_data)
-        dest = os.path.join(self.tdir, 'dest')
-
         with self.run_kitten([src, dest], allow=False) as pty:
             pty.wait_till_child_exits(require_exit_code=1)
         self.assertFalse(os.path.exists(dest))
@@ -382,6 +367,14 @@ class TestFileTransmission(BaseTest):
         single_file('--compress=never')
         single_file('--compress=always')
         single_file('--transmit-deltas', '--compress=never')
+
+    def test_transfer_receive(self):
+        self.direction_receive = True
+        self.basic_transfer_tests()
+
+    def test_transfer_send(self):
+        self.basic_transfer_tests()
+        src = os.path.join(self.tdir, 'src')
 
         # remote home
         fname = 'tstest-file'
