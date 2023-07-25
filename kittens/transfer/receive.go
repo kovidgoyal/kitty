@@ -431,15 +431,6 @@ func (self *handler) abort_with_error(err error, delay ...time.Duration) {
 		self.print_err(err)
 	}
 	self.lp.Println(`Waiting to ensure terminal cancels transfer, will quit in a few seconds`)
-	self.abort_transfer(delay...)
-}
-
-func (self *handler) do_error_quit(loop.IdType) error {
-	self.lp.Quit(1)
-	return nil
-}
-
-func (self *handler) abort_transfer(delay ...time.Duration) {
 	var d time.Duration = 5 * time.Second
 	if len(delay) > 0 {
 		d = delay[0]
@@ -447,6 +438,11 @@ func (self *handler) abort_transfer(delay ...time.Duration) {
 	self.manager.send(FileTransmissionCommand{Action: Action_cancel}, self.lp.QueueWriteString)
 	self.manager.state = state_canceled
 	self.lp.AddTimer(d, false, self.do_error_quit)
+}
+
+func (self *handler) do_error_quit(loop.IdType) error {
+	self.lp.Quit(1)
+	return nil
 }
 
 func (self *manager) finalize_transfer() (err error) {
@@ -720,7 +716,7 @@ func (self *handler) print_check_paths() {
 		self.lp.QueueWriteString(" ")
 		lpath := df.expanded_local_path
 		if lexists(lpath) {
-			lpath = self.ctx.Prettify(fmt.Sprintf(":red:`%s` ", lpath))
+			lpath = self.ctx.Prettify(self.ctx.BrightRed(lpath) + " ")
 		}
 		self.lp.Println(df.display_name, " → ", lpath)
 	}
@@ -972,8 +968,7 @@ func (self *handler) on_text(text string, from_key_event, in_bracketed_paste boo
 			self.start_transfer()
 			return nil
 		case "n":
-			self.abort_transfer()
-			self.lp.Println(`Waiting for cancel acknowledgement from terminal`)
+			self.abort_with_error(fmt.Errorf(`Canceled by user`))
 			return nil
 		}
 		self.print_continue_msg()
@@ -987,8 +982,7 @@ func (self *handler) on_key_event(ev *loop.KeyEvent) error {
 	if ev.MatchesPressOrRepeat("esc") {
 		ev.Handled = true
 		if self.check_paths_printed && !self.transmit_started {
-			self.abort_transfer()
-			self.lp.Println(`Waiting for cancel acknowledgement from terminal`)
+			self.abort_with_error(fmt.Errorf(`Canceled by user`))
 		} else {
 			self.on_interrupt()
 		}
