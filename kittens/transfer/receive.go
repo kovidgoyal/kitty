@@ -24,6 +24,8 @@ import (
 	"kitty/tools/utils"
 	"kitty/tools/utils/humanize"
 	"kitty/tools/wcswidth"
+
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -230,10 +232,28 @@ func (self *remote_file) write_data(data []byte, is_last bool) (amt_written int6
 	return
 }
 
+func syscall_mode(i os.FileMode) (o uint32) {
+	o |= uint32(i.Perm())
+	if i&os.ModeSetuid != 0 {
+		o |= unix.S_ISUID
+	}
+	if i&os.ModeSetgid != 0 {
+		o |= unix.S_ISGID
+	}
+	if i&os.ModeSticky != 0 {
+		o |= unix.S_ISVTX
+	}
+	// No mapping for Go's ModeTemporary (plan9 only).
+	return
+}
+
 func (self *remote_file) apply_metadata() {
-	if self.ftype != FileType_symlink {
+	t := unix.NsecToTimespec(int64(self.mtime))
+	unix.UtimesNanoAt(unix.AT_FDCWD, self.expanded_local_path, []unix.Timespec{t, t}, unix.AT_SYMLINK_NOFOLLOW)
+	if self.ftype == FileType_symlink {
+		unix.Fchmodat(unix.AT_FDCWD, self.expanded_local_path, syscall_mode(self.permissions), unix.AT_SYMLINK_NOFOLLOW)
+	} else {
 		os.Chmod(self.expanded_local_path, self.permissions)
-		os.Chtimes(self.expanded_local_path, time.Unix(0, int64(self.mtime)), time.Unix(0, int64(self.mtime)))
 	}
 }
 
@@ -502,8 +522,8 @@ func (self *manager) finalize_transfer() (err error) {
 			if err = os.Symlink(lt, f.expanded_local_path); err != nil {
 				return fmt.Errorf(`Failed to create symlink with error: %w`, err)
 			}
-			f.apply_metadata()
 		}
+		f.apply_metadata()
 	}
 	return
 }
@@ -584,17 +604,16 @@ func (self *manager) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 
 type tree_node struct {
 	entry       *remote_file
-	parent      *tree_node
-	added_files map[*remote_file]*tree_node
+	added_files map[string]*tree_node
 }
 
 func (self *tree_node) add_child(f *remote_file) *tree_node {
-	if _, found := self.added_files[f]; found {
-		return self
+	if x, found := self.added_files[f.remote_id]; found {
+		return x
 	}
-	c := tree_node{entry: f, parent: self, added_files: make(map[*remote_file]*tree_node)}
+	c := tree_node{entry: f, added_files: make(map[string]*tree_node)}
 	f.expanded_local_path = filepath.Join(self.entry.expanded_local_path, filepath.Base(f.remote_path))
-	self.added_files[f] = &c
+	self.added_files[f.remote_id] = &c
 	return &c
 }
 
@@ -610,29 +629,33 @@ func walk_tree(root *tree_node, cb func(*tree_node) error) error {
 	return nil
 }
 
-func ensure_parent(f *remote_file, root_node *tree_node, node_map map[string]*tree_node, fid_map map[string]*remote_file) *tree_node {
-	if f.parent == "" {
-		return root_node
+func ensure_parent(f *remote_file, node_map map[string]*tree_node, fid_map map[string]*remote_file) *tree_node {
+	if ans := node_map[f.parent]; ans != nil {
+		return ans
 	}
-	if parent, found := node_map[f.parent]; found {
-		return parent
-	}
-	fp := fid_map[f.parent]
-	gp := ensure_parent(fp, root_node, node_map, fid_map)
-	return gp.add_child(fp)
+	parent := fid_map[f.parent]
+	gp := ensure_parent(parent, node_map, fid_map)
+	node := gp.add_child(parent)
+	node_map[parent.remote_id] = node
+	return node
 }
 
 func make_tree(all_files []*remote_file, local_base string) (root_node *tree_node) {
 	fid_map := make(map[string]*remote_file, len(all_files))
+	node_map := make(map[string]*tree_node, len(all_files))
 	for _, f := range all_files {
-		fid_map[f.remote_id] = f
+		if f.remote_id != "" {
+			fid_map[f.remote_id] = f
+		}
 	}
-	node_map := make(map[string]*tree_node)
-	root_node = &tree_node{entry: &remote_file{expanded_local_path: local_base}, added_files: make(map[*remote_file]*tree_node)}
+	root_node = &tree_node{entry: &remote_file{expanded_local_path: local_base}, added_files: make(map[string]*tree_node)}
+	node_map[""] = root_node
 
 	for _, f := range all_files {
-		p := ensure_parent(f, root_node, node_map, fid_map)
-		p.add_child(f)
+		if f.remote_id != "" {
+			p := ensure_parent(f, node_map, fid_map)
+			p.add_child(f)
+		}
 	}
 	return
 }
