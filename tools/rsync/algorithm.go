@@ -292,19 +292,15 @@ func (r *rsync) ApplyDelta(output io.Writer, target io.ReadSeeker, op Operation)
 	switch op.Type {
 	case OpBlockRange:
 		for i := op.BlockIndex; i <= op.BlockIndexEnd; i++ {
-			err = write_block(Operation{
+			if err = write_block(Operation{
 				Type:       OpBlock,
 				BlockIndex: i,
-			})
-			if err != nil {
+			}); err != nil {
 				return err
 			}
 		}
 	case OpBlock:
-		err = write_block(op)
-		if err != nil {
-			return err
-		}
+		return write_block(op)
 	case OpData:
 		return write(op.Data)
 	case OpHash:

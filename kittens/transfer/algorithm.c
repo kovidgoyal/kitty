@@ -672,7 +672,7 @@ enqueue(Differ *self, Operation op) {
                         }
                         break;
                     case OpBlockRange:
-                        if (self->pending_op.block_index+1 == op.block_index) {
+                        if (self->pending_op.block_index_end+1 == op.block_index) {
                             self->pending_op.block_index_end = op.block_index;
                             return true;
                         }
