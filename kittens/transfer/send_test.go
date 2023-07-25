@@ -109,7 +109,7 @@ func TestRenderDuration(t *testing.T) {
 			t.Fatalf("Failed for %f (%s): %s", i, d, diff)
 		}
 	}
-	q(0.1, "     <1s")
+	q(0.1, "  <1 sec")
 	q(1, `00:00:01`)
 	q(1.1234567, `00:00:01`)
 	q(60.1234567, `00:01:00`)

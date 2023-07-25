@@ -463,7 +463,7 @@ func render_duration(val time.Duration) (ans string) {
 			ans = zero_pad(hr) + `:` + zero_pad(min) + `:` + zero_pad(secs)
 		}
 	} else {
-		ans = "<1s"
+		ans = "<1 sec"
 	}
 	if w := wcswidth.Stringwidth(ans); w < 8 {
 		ans = strings.Repeat(" ", 8-w) + ans
