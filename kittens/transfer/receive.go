@@ -195,20 +195,27 @@ func (self *remote_file) Write(data []byte) (n int, err error) {
 
 func (self *remote_file) write_data(data []byte, is_last bool) (amt_written int64, err error) {
 	self.received_bytes += int64(len(data))
-	base, err := self.actual_file.tell()
-	if err != nil {
-		return 0, err
+	var base, pos int64
+	if self.actual_file != nil {
+		base, err = self.actual_file.tell()
+		if err != nil {
+			return 0, err
+		}
 	}
 	self.decompressor(data, is_last)
 	if is_last {
 		self.decompressor = nil
 	}
-	pos, err := self.actual_file.tell()
-	if err != nil {
-		return 0, err
+	if self.actual_file != nil {
+		pos, err = self.actual_file.tell()
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		pos = base
 	}
 	amt_written = pos - base
-	if is_last {
+	if is_last && self.actual_file != nil {
 		self.actual_file.close()
 		self.actual_file = nil
 	}
@@ -411,18 +418,26 @@ func (self *handler) print_err(err error) {
 	self.lp.Println(self.ctx.BrightRed(err.Error()))
 }
 
+func (self *handler) abort_with_error(err error, delay ...time.Duration) {
+	self.print_err(err)
+	self.lp.Println(`Waiting to ensure terminal cancels transfer, will quit in a few seconds`)
+	self.abort_transfer(delay...)
+	self.lp.Println(self.ctx.BrightRed(err.Error()))
+}
+
 func (self *handler) do_error_quit(loop.IdType) error {
 	self.lp.Quit(1)
 	return nil
 }
 
-func (self *handler) abort_transfer(delay time.Duration) {
-	if delay <= 0 {
-		delay = time.Second * 5
+func (self *handler) abort_transfer(delay ...time.Duration) {
+	var d time.Duration = -1
+	if len(delay) > 0 {
+		d = delay[0]
 	}
 	self.manager.send(FileTransmissionCommand{Action: Action_cancel}, self.lp.QueueWriteString)
 	self.manager.state = state_canceled
-	self.lp.AddTimer(delay, false, self.do_error_quit)
+	self.lp.AddTimer(d, false, self.do_error_quit)
 }
 
 func (self *manager) finalize_transfer() (err error) {
@@ -717,9 +732,7 @@ func (self *handler) transmit_one() {
 		if err == files_done {
 			self.transmit_iterator = nil
 		} else {
-			self.print_err(err)
-			self.lp.Println(`Waiting to ensure terminal cancels transfer, will quit in a few seconds`)
-			self.abort_transfer(-1)
+			self.abort_with_error(err)
 			return
 		}
 	} else {
@@ -763,9 +776,7 @@ func (self *handler) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 	transfer_started := self.manager.state == state_transferring
 	err = self.manager.on_file_transfer_response(ftc)
 	if err != nil {
-		self.print_err(err)
-		self.lp.Println(`Waiting to ensure terminal cancels transfer, will quit in a few seconds`)
-		self.abort_transfer(-1)
+		self.abort_with_error(err)
 		return
 	}
 	if !transfer_started && self.manager.state == state_transferring {
@@ -826,8 +837,7 @@ func (self *handler) on_interrupt() (handled bool, err error) {
 		self.lp.Println(`Waiting for canceled acknowledgement from terminal, will abort in a few seconds if no response received`)
 		return
 	}
-	self.print_err(fmt.Errorf(`Interrupt requested, cancelling transfer, transferred files are in undefined state`))
-	self.abort_transfer(-1)
+	self.abort_with_error(fmt.Errorf(`Interrupt requested, cancelling transfer, transferred files are in undefined state.`))
 	return
 }
 
@@ -836,8 +846,7 @@ func (self *handler) on_sigterm() (handled bool, err error) {
 	if self.quit_after_write_code > -1 {
 		return
 	}
-	self.print_err(fmt.Errorf(`Terminate requested, cancelling transfer, transferred files are in undefined state`))
-	self.abort_transfer(2 * time.Second)
+	self.abort_with_error(fmt.Errorf(`Terminate requested, cancelling transfer, transferred files are in undefined state.`), 2*time.Second)
 	return
 }
 
@@ -952,8 +961,8 @@ func (self *handler) on_text(text string, from_key_event, in_bracketed_paste boo
 			self.start_transfer()
 			return nil
 		case "n":
-			self.abort_transfer(-1)
-			self.lp.Println(`Sending cancel request to terminal`)
+			self.abort_transfer()
+			self.lp.Println(`Waiting for cancel acknowledgement from terminal`)
 			return nil
 		}
 		self.print_continue_msg()
@@ -967,8 +976,8 @@ func (self *handler) on_key_event(ev *loop.KeyEvent) error {
 	if ev.MatchesPressOrRepeat("esc") {
 		ev.Handled = true
 		if self.check_paths_printed && !self.transmit_started {
-			self.abort_transfer(-1)
-			self.lp.Println(`Sending cancel request to terminal`)
+			self.abort_transfer()
+			self.lp.Println(`Waiting for cancel acknowledgement from terminal`)
 		} else {
 			self.on_interrupt()
 		}
