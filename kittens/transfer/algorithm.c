@@ -269,8 +269,6 @@ typedef struct Operation {
     struct { uint8_t *buf; size_t len; } data;
 } Operation;
 
-#define bytes_as_hex_for_debug(data, len) PyUnicode_AsUTF8(PyObject_CallMethod(PyBytes_FromStringAndSize((char*)data, len), "hex", NULL))
-
 static size_t
 unserialize_op(uint8_t *data, size_t len, Operation *op) {
     size_t consumed = 0;
@@ -323,6 +321,17 @@ write_block(Patcher *self, uint64_t block_index, PyObject *read, PyObject *write
     return true;
 }
 
+static void
+bytes_as_hex(const uint8_t *bytes, const size_t len, char *ans) {
+    static const char * hex = "0123456789abcdef";
+    char *pout = ans; const uint8_t *pin = bytes;
+    for (; pin < bytes + len; pin++) {
+        *pout++ = hex[(*pin>>4) & 0xF];
+        *pout++ = hex[ *pin     & 0xF];
+    }
+    *pout++ = 0;
+}
+
 static bool
 apply_op(Patcher *self, Operation op, PyObject *read, PyObject *write) {
     switch (op.type) {
@@ -346,10 +355,11 @@ apply_op(Patcher *self, Operation op, PyObject *read, PyObject *write) {
             if (op.data.len != self->rsync.checksummer.hash_size) { PyErr_SetString(RsyncError, "checksum digest not the correct size"); return false; }
             self->rsync.checksummer.digest(self->rsync.checksummer.state, actual);
             if (memcmp(actual, op.data.buf, self->rsync.checksummer.hash_size) != 0) {
-                DECREF_AFTER_FUNCTION PyObject *b1 = PyBytes_FromStringAndSize((char*)actual, self->rsync.checksummer.hash_size);
-                DECREF_AFTER_FUNCTION PyObject *h1 = PyObject_CallMethod(b1, "hex", NULL);
-                DECREF_AFTER_FUNCTION PyObject *b2 = PyBytes_FromStringAndSize((char*)op.data.buf, self->rsync.checksummer.hash_size);
-                DECREF_AFTER_FUNCTION PyObject *h2 = PyObject_CallMethod(b2, "hex", NULL);
+                char hexdigest[129];
+                bytes_as_hex(actual, self->rsync.checksummer.hash_size, hexdigest);
+                DECREF_AFTER_FUNCTION PyObject *h1 = PyUnicode_FromStringAndSize(hexdigest, 2*self->rsync.checksummer.hash_size);
+                bytes_as_hex(op.data.buf, op.data.len, hexdigest);
+                DECREF_AFTER_FUNCTION PyObject *h2 = PyUnicode_FromStringAndSize(hexdigest, 2*self->rsync.checksummer.hash_size);
                 PyErr_Format(RsyncError, "Failed to verify overall file checksum actual: %S != expected: %S, this usually happens because one of the involved files was altered while the operation was in progress.", h1, h2);
                 return false;
             }
@@ -849,12 +859,7 @@ static PyObject*
 hexdigest(Hasher *self, PyObject *args UNUSED) {
     uint8_t digest[64]; char hexdigest[128];
     self->h.digest(self->h.state, digest);
-    static const char * hex = "0123456789abcdef";
-    char *pout = hexdigest; const uint8_t *pin = digest;
-    for (; pin < digest + self->h.hash_size; pin++) {
-        *pout++ = hex[(*pin>>4) & 0xF];
-        *pout++ = hex[ *pin     & 0xF];
-    }
+    bytes_as_hex(digest, self->h.hash_size, hexdigest);
     return PyUnicode_FromStringAndSize(hexdigest, self->h.hash_size * 2);
 }
 
