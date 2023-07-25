@@ -97,7 +97,7 @@ class Callbacks:
 
     def handle_remote_print(self, msg):
         text = process_remote_print(msg)
-        print(text, file=sys.__stderr__)
+        print(text, file=sys.__stdout__, end='', flush=True)
 
     def handle_remote_clone(self, msg):
         if not msg:
