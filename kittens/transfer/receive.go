@@ -216,7 +216,10 @@ func (self *remote_file) write_data(data []byte, is_last bool) (amt_written int6
 	}
 	amt_written = pos - base
 	if is_last && self.actual_file != nil {
-		self.actual_file.close()
+		cerr := self.actual_file.close()
+		if err == nil {
+			err = cerr
+		}
 		self.actual_file = nil
 	}
 	return
