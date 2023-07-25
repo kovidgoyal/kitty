@@ -202,11 +202,11 @@ func (self *remote_file) write_data(data []byte, is_last bool) (amt_written int6
 			return 0, err
 		}
 	}
-	self.decompressor(data, is_last)
+	err = self.decompressor(data, is_last)
 	if is_last {
 		self.decompressor = nil
 	}
-	if self.actual_file != nil {
+	if self.actual_file != nil && err == nil {
 		pos, err = self.actual_file.tell()
 		if err != nil {
 			return 0, err
