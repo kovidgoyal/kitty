@@ -171,9 +171,10 @@ terminal emulator::
     → action=file id=someid file_id=f1 name=/some/path
     ...
 
+The client must not send requests for directories and absolute symlinks.
 The terminal emulator replies with the data for the files, as a sequence of
 ``data`` commands each with a chunk of data no larger than ``4096`` bytes,
-for each file (the terminal emulator should send the data for
+for each file (the terminal emulator must send the data for
 one file at a time)::
 
 

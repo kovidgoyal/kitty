@@ -237,13 +237,13 @@ func (self *remote_file) apply_metadata() {
 	}
 }
 
-func new_remote_file(opts *Options, ftc *FileTransmissionCommand) (*remote_file, error) {
+func new_remote_file(opts *Options, ftc *FileTransmissionCommand, file_id uint64) (*remote_file, error) {
 	spec_id, err := strconv.Atoi(ftc.File_id)
 	if err != nil {
 		return nil, err
 	}
 	ans := &remote_file{
-		expected_size: ftc.Size, ftype: ftc.Ftype, mtime: ftc.Mtime, spec_id: spec_id,
+		expected_size: ftc.Size, ftype: ftc.Ftype, mtime: ftc.Mtime, spec_id: spec_id, file_id: strconv.FormatUint(file_id, 10),
 		permissions: ftc.Permissions, remote_path: ftc.Name, display_name: wcswidth.StripEscapeCodes(ftc.Name),
 		remote_id: ftc.Status, remote_target: string(ftc.Data), parent: ftc.Parent,
 	}
@@ -306,6 +306,7 @@ func (self *receive_progress_tracker) file_written(af *remote_file, amt int64, i
 
 type manager struct {
 	request_id              string
+	file_id_counter         uint64
 	cli_opts                *Options
 	spec                    []string
 	dest                    string
@@ -348,11 +349,19 @@ var files_done error = errors.New("files done")
 func (self *manager) request_files() transmit_iterator {
 	pos := 0
 	return func(queue_write func(string) loop.IdType) (last_write_id loop.IdType, err error) {
-		if pos >= len(self.files) {
+		var f *remote_file
+		for pos < len(self.files) {
+			f = self.files[pos]
+			pos++
+			if f.ftype == FileType_directory || (f.ftype == FileType_link && f.remote_target != "") {
+				f = nil
+			} else {
+				break
+			}
+		}
+		if f == nil {
 			return 0, files_done
 		}
-		f := self.files[pos]
-		pos++
 		read_signature := self.use_rsync
 		if read_signature && f.ftype == FileType_regular {
 			if s, err := os.Lstat(f.expanded_local_path); err == nil {
@@ -483,7 +492,13 @@ func (self *manager) finalize_transfer() (err error) {
 					}
 				}
 			}
+			if lt == "" {
+				return fmt.Errorf("Symlink %s sent without target", f.expanded_local_path)
+			}
 			os.Remove(f.expanded_local_path)
+			if err = os.MkdirAll(filepath.Dir(f.expanded_local_path), 0o755); err != nil {
+				return fmt.Errorf("Failed to create directory with error: %w", err)
+			}
 			if err = os.Symlink(lt, f.expanded_local_path); err != nil {
 				return fmt.Errorf(`Failed to create symlink with error: %w`, err)
 			}
@@ -534,7 +549,8 @@ func (self *manager) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 				return fmt.Errorf(`Unexpected response from terminal (out-of-range file_id): %s`, ftc.String())
 			}
 			self.spec_counts[fid] += 1
-			if rf, err := new_remote_file(self.cli_opts, ftc); err == nil {
+			self.file_id_counter++
+			if rf, err := new_remote_file(self.cli_opts, ftc, self.file_id_counter); err == nil {
 				self.files = append(self.files, rf)
 			} else {
 				return err
