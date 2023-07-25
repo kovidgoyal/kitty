@@ -133,7 +133,7 @@ func zero_pad(x string) string {
 	return x
 }
 
-// Render the duration in exactly 8 chars
+// Render the duration in exactly 8 visual chars
 func ShortDuration(val time.Duration) (ans string) {
 	if val >= time.Second {
 		if val > Day {
@@ -160,6 +160,8 @@ func ShortDuration(val time.Duration) (ans string) {
 	}
 	if w := wcswidth.Stringwidth(ans); w < 8 {
 		ans = strings.Repeat(" ", 8-w) + ans
+	} else if w > 8 {
+		ans = wcswidth.TruncateToVisualLength(ans, 8)
 	}
 	return
 }
