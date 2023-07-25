@@ -425,26 +425,48 @@ type Progress struct {
 	max_path_length int
 }
 
+func optional_cut(x string, sep string) (string, string) {
+	a, b, found := strings.Cut(x, sep)
+	if found {
+		return a, b
+	}
+	return "00", a
+}
+
+func zero_pad(x string) string {
+	if len(x) < 2 {
+		x = strings.Repeat("0", 2-len(x)) + x
+	}
+	return x
+}
+
+// render the duration in exactly 8 chars
 func render_duration(val time.Duration) (ans string) {
 	if val >= time.Second {
 		if val.Hours() > 24 {
-			days := val.Hours() / 24
+			days := int(val.Hours() / 24)
 			if days > 99 {
 				ans = `∞`
 			} else {
-				ans = fmt.Sprintf(">%d days", int(days))
+				if days == 1 {
+					ans = ">1 day"
+				} else {
+					ans = fmt.Sprintf(">%d days", int(days))
+				}
 			}
+		} else {
+			ans = val.String()
+			hr, rest := optional_cut(ans, `h`)
+			min, rest := optional_cut(rest, `m`)
+			secs, _, _ := strings.Cut(rest, ".")
+			secs = strings.Replace(secs, `s`, ``, 1)
+			ans = zero_pad(hr) + `:` + zero_pad(min) + `:` + zero_pad(secs)
 		}
-		ans = val.String()
-		hr, rest, _ := strings.Cut(ans, `h`)
-		min, rest, _ := strings.Cut(rest, `m`)
-		secs, _, _ := strings.Cut(rest, ".")
-		return hr + `:` + min + `:` + secs
 	} else {
 		ans = "<1s"
 	}
-	if len(ans) < 8 {
-		ans = strings.Repeat(" ", 8-len(ans)) + ans
+	if w := wcswidth.Stringwidth(ans); w < 8 {
+		ans = strings.Repeat(" ", 8-w) + ans
 	}
 	return
 }
