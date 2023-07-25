@@ -4,6 +4,7 @@
 
 import os
 import shutil
+import stat
 import tempfile
 from collections import namedtuple
 from contextlib import contextmanager
@@ -389,7 +390,10 @@ class TestFileTransmission(BaseTest):
 
             def entry(path, base=src):
                 st = os.stat(path, follow_symlinks=False)
-                return Entry(os.path.relpath(path, base), st.st_mtime_ns, st.st_mode, st.st_nlink)
+                mtime = st.st_mtime_ns
+                if stat.S_ISDIR(st.st_mode):
+                    mtime = 0  # mtime is flaky for dirs on CI even empty ones
+                return Entry(os.path.relpath(path, base), mtime, st.st_mode, st.st_nlink)
 
             def se(path):
                 e = entry(path)
