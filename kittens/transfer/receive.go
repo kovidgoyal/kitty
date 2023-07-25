@@ -1059,6 +1059,12 @@ func receive_loop(opts *Options, spec []string, dest string) (err error, rc int)
 	}
 
 	err = lp.Run()
+	defer func() {
+		for _, f := range handler.manager.files {
+			f.close()
+		}
+	}()
+
 	if err != nil {
 		return err, 1
 	}
@@ -1072,8 +1078,10 @@ func receive_loop(opts *Options, spec []string, dest string) (err error, rc int)
 	}
 	var tsf, dsz, ssz int64
 	for _, f := range handler.manager.files {
-		if err = f.close(); err != nil {
-			return err, 1
+		if rc == 0 { // no error has yet occurred report errors closing files
+			if cerr := f.close(); cerr != nil {
+				return cerr, 1
+			}
 		}
 		if f.expect_diff {
 			tsf += f.expected_size
