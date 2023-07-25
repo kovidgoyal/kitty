@@ -16,6 +16,7 @@ import (
 	"hash"
 	"io"
 	"os"
+	"strconv"
 
 	"github.com/zeebo/xxh3"
 	"golang.org/x/exp/slices"
@@ -74,6 +75,21 @@ type Operation struct {
 	BlockIndex    uint64
 	BlockIndexEnd uint64
 	Data          []byte
+}
+
+func (self Operation) String() string {
+	ans := "{" + self.Type.String() + " "
+	switch self.Type {
+	case OpBlock:
+		ans += strconv.FormatUint(self.BlockIndex, 10)
+	case OpBlockRange:
+		ans += strconv.FormatUint(self.BlockIndex, 10) + " to " + strconv.FormatUint(self.BlockIndexEnd, 10)
+	case OpData:
+		ans += strconv.Itoa(len(self.Data))
+	case OpHash:
+		ans += hex.EncodeToString(self.Data)
+	}
+	return ans + "}"
 }
 
 var bin = binary.LittleEndian
