@@ -1,10 +1,9 @@
 Transfer files
 ================
 
-.. _rsync: https://en.wikipedia.org/wiki/Rsync
+.. versionadded:: 0.30.0
 
-.. warning::
-   This kitten is currently experimental, use with care.
+.. _rsync: https://en.wikipedia.org/wiki/Rsync
 
 Transfer files to and from remote computers over the ``TTY`` device itself.
 This means that file transfer works over nested SSH sessions, serial links,
@@ -19,53 +18,36 @@ to transfer only changes to large files.
 
 .. seealso:: See the :doc:`remote_file` kitten
 
-.. note::
-   This kitten must be installed on the other machine. The easiest way to do so
-   is to ssh into it using the :doc:`ssh kitten </kittens/ssh>`. Or just
-   download the kitten binary yourself from the `kitty releases page
-   <https://github.com/kovidgoyal/kitty/releases>`__ and put it somewhere in
-   PATH.  If that is not possible you can use the :doc:`remote_file` kitten
-   instead. Or write your own script to use the underlying :doc:`file transfer
-   protocol </file-transfer-protocol>`.
-
-.. versionadded:: 0.30.0
-
-
 Basic usage
 ---------------
 
-In what follows, the *local computer* is the computer running this kitten and
-the *remote computer* is the computer connected to the other end of the TTY
-pipe.
+Simply ssh into a remote computer using the :doc:`ssh kitten </kittens/ssh>` and run the this kitten
+(which the ssh kitten makes available for you on the remote computer
+automatically). Some illustrative examples are below. To copy a file from a
+remote computer::
 
-To send a file from the local computer to the remote computer, simply run::
+    <local computer>  $ kitten ssh my-remote-computer
+    <remote computer> $ kitten transfer some-file /path/on/local/computer
 
-    kitty +kitten transfer /path/to/local/file /path/to/destination/on/remote/computer
+This, will copy :file:`some-file` from the computer into which you have SSHed
+to your local computer at :file:`/path/on/local/computer`. kitty will ask you
+for confirmation before allowing the transfer, so that the file transfer
+protocol cannot be abused to read/write files on your computer.
 
-You will be prompted by kitty for confirmation on allowing the transfer, and if
-you grant permission, the file will be copied.
+To copy a file from your local computer to the remote computer::
 
-Similarly, to get a file from the remote computer to the local computer, use
-the :option:`--direction <kitty +kitten transfer --direction>` option::
+    <local computer>  $ kitten ssh my-remote-computer
+    <remote computer> $ kitten transfer --direction=upload /path/on/local/computer remote-file
 
-    kitty +kitten transfer --direction=receive /path/to/remote/file /path/to/destination/on/local/computer
+For more detailed usage examples, see the command line interface section below.
 
-Multiple files and even directories can be transferred::
-
-    kitty +kitten transfer file1 dir1 destination/
-
-Here :file:`file1` will be copied inside :file:`destination` and :file:`dir1`
-will be recursively copied into :file:`destination`. Note the trailing slash on
-:file:`destination`. This tells kitty the destination is a directory. While not
-strictly necessary (kitty will infer the need for a destination directory from
-the fact that you are copying multiple things) it is good practice to always
-use a trailing slash when the destination is supposed to be a directory.
-
-Also, when transferring multiple files/directories it is a good idea to
-use the :option:`--confirm-paths <kitty +kitten transfer --confirm-paths>`
-option which will give you an opportunity to review and confirm the files that
-will be touched.
-
+.. note::
+   If you dont want to use the ssh kitten, you can install the kitten binary on
+   the remote machine yourself, it is a standalone, statically compiled binary
+   available from the `kitty releases page
+   <https://github.com/kovidgoyal/kitty/releases>`__. Or you can write your own
+   script/program to use the underlying :doc:`file transfer protocol
+   </file-transfer-protocol>`.
 
 Avoiding the confirmation prompt
 ------------------------------------
@@ -73,8 +55,7 @@ Avoiding the confirmation prompt
 Normally, when you start a file transfer kitty will prompt you for confirmation.
 This is to ensure that hostile programs running on a remote machine cannot
 read/write files on your computer without your permission. If the remote machine
-is trusted and the connection between your computer and the remote machine is
-secure, then you can disable the confirmation prompt by:
+is trusted, then you can disable the confirmation prompt by:
 
 #. Setting the :opt:`file_transfer_confirmation_bypass` option to some password.
 
@@ -84,9 +65,7 @@ secure, then you can disable the confirmation prompt by:
 
 .. warning:: Using a password to bypass confirmation means any software running
    on the remote machine could potentially learn that password and use it to
-   gain full access to your computer. Also anyone that can intercept the data
-   stream between your computer and the remote machine can also learn this
-   password. So use it only with secure connections to trusted computers.
+   gain full access to your computer.
 
 
 Delta transfers
@@ -94,9 +73,9 @@ Delta transfers
 
 This kitten has the ability to use the rsync_ protocol to only transfer the
 differences between files. To turn it on use the :option:`--transmit-deltas
-<kitty +kitten transfer --transmit-deltas>` option. Note that this will actually
-be slower when transferring small files because of round trip overhead, so use
-with care.
+<kitty +kitten transfer --transmit-deltas>` option. Note that this will
+actually be slower when transferring small files or on a very fast network, because
+of round trip overhead, so use with care.
 
 
 .. include:: ../generated/cli-kitten-transfer.rst

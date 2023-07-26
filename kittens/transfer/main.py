@@ -9,48 +9,59 @@ usage = 'source_files_or_directories destination_path'
 help_text = '''\
 Transfer files over the TTY device. Can be used to send files between any two
 computers provided there is a TTY connection between them, such as over SSH.
-Supports copying files, directories (recursively), symlinks and hardlinks.
-Can even use an rsync like protocol to copy only changes between files.
-When copying multiple files, use the --confirm-paths option to see what exactly will
-be copied. The easiest way to use this kitten is to first ssh into the remote computer
-with the ssh kitten:
+Supports copying files, directories (recursively), symlinks and hardlinks.  Can
+even use an rsync like protocol to copy only changes between files.  When
+copying multiple files, use the --confirm-paths option to see what exactly will
+be copied. The easiest way to use this kitten is to first ssh into the remote
+computer with the ssh kitten:
 
-$ kitten ssh my-remote-computer
+.. code::
+
+    $ kitten ssh my-remote-computer
 
 Then, on the remote computer run the transfer kitten to do your copying.
-
 To copy a file from the remote computer to the local computer, run:
 
-$ kitten transfer remote-file /path/to/local-file
+.. code::
 
-This will copy :code:`remote-file` from the remote computer to :code:`/path/to/local-file`
+    $ kitten transfer remote-file /path/to/local-file
+
+This will copy :file:`remote-file` from the remote computer to :file:`/path/to/local-file`
 on the local computer.
 
 Similarly, to copy a file from the local computer to the remote one, run:
 
-$ kitten transfer --direction=upload /path/to/local-file remote-file
+.. code::
 
-This will copy :code:`/path/to/local-file` from the local computer
-to :code:`remote-file` on the remote computer.
+    $ kitten transfer --direction=upload /path/to/local-file remote-file
+
+This will copy :file:`/path/to/local-file` from the local computer
+to :file:`remote-file` on the remote computer.
 
 Multiple files can be copied:
 
-$ kitten transfer file1 file2 /path/to/dir/
+.. code::
+
+    $ kitten transfer file1 file2 /path/to/dir/
 
 This will put :code:`file1` and :code:`file2` into the directory
-:code:`/path/to/dir/` on the local computer.
+:file:`/path/to/dir/` on the local computer.
 
 Directories can also be copied, recursively:
 
-$ kitten transfer dir1 /path/to/dir/
+.. code::
 
-This will put :code:`dir1` and all its contents into
-:code:`/path/to/dir/` on the local computer.
+    $ kitten transfer dir1 /path/to/dir/
+
+This will put :file:`dir1` and all its contents into
+:file:`/path/to/dir/` on the local computer.
 
 Note that when copying multiple files or directories, the destination
 must be an existing directory on the receiving computer. Relative file
 paths are resolved with respect to the current directory on the computer
-running the kitten and the home directory on the other computer.
+running the kitten and the home directory on the other computer. It is
+a good idea to use the :option:`--confirm-paths` command line flag to verify
+the kitten will copy the files you expect it to.
 '''
 
 
