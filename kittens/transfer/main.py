@@ -48,7 +48,9 @@ This will put :code:`dir1` and all its contents into
 :code:`/path/to/dir/` on the local computer.
 
 Note that when copying multiple files or directories, the destination
-must be an existing directory on the receiving computer.
+must be an existing directory on the receiving computer. Relative file
+paths are resolved with respect to the current directory on the computer
+running the kitten and the home directory on the other computer.
 '''
 
 

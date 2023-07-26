@@ -447,9 +447,9 @@ class DestFile:
     def __init__(self, ftc: FileTransmissionCommand) -> None:
         self.name = ftc.name
         if not os.path.isabs(self.name):
-            self.name = os.path.expanduser(self.name)
+            self.name = expand_home(self.name)
             if not os.path.isabs(self.name):
-                self.name = os.path.join(tempfile.gettempdir(), self.name)
+                self.name = abspath(self.name, use_home=True)
         try:
             self.existing_stat: Optional[os.stat_result] = os.stat(self.name, follow_symlinks=False)
         except OSError:

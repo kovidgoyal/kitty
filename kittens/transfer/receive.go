@@ -26,6 +26,7 @@ import (
 	"kitty/tools/utils/humanize"
 	"kitty/tools/wcswidth"
 
+	"golang.org/x/exp/slices"
 	"golang.org/x/sys/unix"
 )
 
@@ -683,6 +684,8 @@ func files_for_receive(opts *Options, dest string, files []*remote_file, remote_
 	}
 	spec_paths := make([]string, len(specs))
 	for i := range specs {
+		// use the shortest path as the path for the spec
+		slices.SortStableFunc(spec_map[i], func(a, b *remote_file) bool { return len(a.remote_path) < len(b.remote_path) })
 		spec_paths[i] = spec_map[i][0].remote_path
 	}
 	if opts.Mode == "mirror" {

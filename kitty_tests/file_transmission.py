@@ -181,6 +181,7 @@ class TestFileTransmission(BaseTest):
 
     def setUp(self):
         self.direction_receive = False
+        self.kitty_home = self.kitty_cwd = self.kitten_home = self.kitten_cwd = ''
         super().setUp()
         self.tdir = os.path.realpath(tempfile.mkdtemp())
         self.responses = []
@@ -196,8 +197,12 @@ class TestFileTransmission(BaseTest):
         super().tearDown()
 
     def clean_tdir(self):
-        shutil.rmtree(self.tdir)
-        self.tdir = os.path.realpath(tempfile.mkdtemp())
+        for x in os.listdir(self.tdir):
+            x = os.path.join(self.tdir, x)
+            if os.path.isdir(x):
+                shutil.rmtree(x)
+            else:
+                os.remove(x)
         self.responses = []
 
     def cr(self, a, b):
@@ -324,22 +329,18 @@ class TestFileTransmission(BaseTest):
         self.assertEqual(h128.hexdigest(), '8d6b60383dfa90c21be79eecd1b1353d')
 
     @contextmanager
-    def run_kitten(self, cmd, home_dir='', allow=True):
-        cwd = os.path.realpath(tempfile.mkdtemp(suffix='-cwd', dir=self.tdir))
+    def run_kitten(self, cmd, home_dir='', allow=True, cwd=''):
+        cwd = cwd or self.kitten_cwd or self.tdir
         cmd = [kitten_exe(), 'transfer'] + (['--direction=receive'] if self.direction_receive else []) + cmd
         env = {'PWD': cwd}
-        if home_dir:
-            env['HOME'] = home_dir
-        try:
+        env['HOME'] = home_dir or self.kitten_home or self.tdir
+        with set_paths(home=self.kitty_home, cwd=self.kitty_cwd):
             pty = TransferPTY(cmd, cwd=cwd, allow=allow, env=env)
             i = 10
             while i > 0 and not pty.screen_contents().strip():
                 pty.process_input_from_child()
                 i -= 1
             yield pty
-        finally:
-            if os.path.exists(cwd):
-                shutil.rmtree(cwd)
 
     def basic_transfer_tests(self):
         src = os.path.join(self.tdir, 'src')
@@ -445,19 +446,62 @@ class TestFileTransmission(BaseTest):
         multiple_files('--transmit-deltas')
         multiple_files('--transmit-deltas')
 
+    def setup_dirs(self):
+        self.clean_tdir()
+        self.kitty_home = os.path.join(self.tdir, 'kitty-home')
+        self.kitty_cwd = os.path.join(self.tdir, 'kitty-cwd')
+        self.kitten_home = os.path.join(self.tdir, 'kitten-home')
+        self.kitten_cwd = os.path.join(self.tdir, 'kitten-cwd')
+        tuple(map(os.mkdir, (self.kitty_home, self.kitty_cwd, self.kitten_home, self.kitten_cwd)))
+
+    def create_src(self, base):
+        src = os.path.join(base, 'src')
+        with open(src, 'wb') as s:
+            s.write(self.src_data)
+        return src
+
+    def mirror_test(self, src, dest, prefix=''):
+        self.create_src(src)
+        os.symlink('/', os.path.join(src, 'sym'))
+        os.mkdir(os.path.join(src, 'sub'))
+        os.link(os.path.join(src, 'src'), os.path.join(src, 'sub', 'hardlink'))
+        with self.run_kitten(['--mode=mirror', f'{prefix}src', f'{prefix}sym', f'{prefix}sub']) as pty:
+            pty.wait_till_child_exits(require_exit_code=0)
+        os.remove(os.path.join(dest, 'src'))
+        os.remove(os.path.join(dest, 'sym'))
+        shutil.rmtree(os.path.join(dest, 'sub'))
+
     def test_transfer_receive(self):
         self.direction_receive = True
         self.basic_transfer_tests()
-        src = os.path.join(self.tdir, 'src')
-        with open(src, 'wb') as s:
-            s.write(self.src_data)
-        # home dir expansion
-        fname = 'tstest-file'
-        home = os.path.dirname(src)
-        with set_paths(home=home), self.run_kitten(['~/'+os.path.basename(src), f'~/{fname}'], home_dir=home) as pty:
-            pty.wait_till_child_exits(require_exit_code=0)
-        os.remove(os.path.join(home, fname))
 
+        self.setup_dirs()
+        self.create_src(self.kitty_home)
+
+        # dir expansion with single transfer
+        with self.run_kitten(['~/src', '~/src']) as pty:
+            pty.wait_till_child_exits(require_exit_code=0)
+        os.remove(os.path.join(self.kitten_home, 'src'))
+
+        with self.run_kitten(['src', 'src']) as pty:
+            pty.wait_till_child_exits(require_exit_code=0)
+        os.remove(os.path.join(self.kitten_cwd, 'src'))
+
+        # dir expansion with multiple transfers
+        os.symlink('/', os.path.join(self.kitty_home, 'sym'))
+        with self.run_kitten(['~/src', '~/sym', '~']) as pty:
+            pty.wait_till_child_exits(require_exit_code=0)
+        os.remove(os.path.join(self.kitten_home, 'src'))
+        os.remove(os.path.join(self.kitten_home, 'sym'))
+
+        with self.run_kitten(['src', 'sym', '.']) as pty:
+            pty.wait_till_child_exits(require_exit_code=0)
+        os.remove(os.path.join(self.kitten_cwd, 'src'))
+        os.remove(os.path.join(self.kitten_cwd, 'sym'))
+
+        # mirroring
+        self.setup_dirs()
+        self.mirror_test(self.kitty_home, self.kitten_home)
 
     def test_transfer_send(self):
         self.basic_transfer_tests()
@@ -465,19 +509,32 @@ class TestFileTransmission(BaseTest):
         with open(src, 'wb') as s:
             s.write(self.src_data)
 
-        # home dir expansion
-        fname = 'tstest-file'
-        home = os.path.dirname(src)
-        with set_paths(home=home), self.run_kitten(['~/'+os.path.basename(src), '~/'+fname], home_dir=home) as pty:
-            pty.wait_till_child_exits(require_exit_code=0)
-        os.remove(os.path.expanduser('~/'+fname))
+        self.setup_dirs()
+        self.create_src(self.kitten_home)
 
-        # mirror mode
-        src_home = os.path.join(self.tdir, 'misrc')
-        os.mkdir(src_home)
-        open(os.path.join(src_home, fname), 'w').close()
-        with self.run_kitten(['--mode=mirror', '~/'+fname], home_dir=src_home) as pty:
+        # dir expansion with single transfer
+        with self.run_kitten(['~/src', '~/src']) as pty:
             pty.wait_till_child_exits(require_exit_code=0)
-        with open(os.path.expanduser('~/'+fname)) as f:
-            self.assertEqual('', f.read())
-        os.remove(f.name)
+        os.remove(os.path.join(self.kitty_home, 'src'))
+
+        self.create_src(self.kitten_cwd)
+        with self.run_kitten(['src', 'src']) as pty:
+            pty.wait_till_child_exits(require_exit_code=0)
+        os.remove(os.path.join(self.kitty_home, 'src'))
+
+        # dir expansion with multiple transfers
+        os.symlink('/', os.path.join(self.kitten_home, 'sym'))
+        with self.run_kitten(['~/src', '~/sym', '~']) as pty:
+            pty.wait_till_child_exits(require_exit_code=0)
+        os.remove(os.path.join(self.kitty_home, 'src'))
+        os.remove(os.path.join(self.kitty_home, 'sym'))
+
+        os.symlink('/', os.path.join(self.kitten_cwd, 'sym'))
+        with self.run_kitten(['src', 'sym', '.']) as pty:
+            pty.wait_till_child_exits(require_exit_code=0)
+        os.remove(os.path.join(self.kitty_home, 'src'))
+        os.remove(os.path.join(self.kitty_home, 'sym'))
+
+        # mirroring
+        self.setup_dirs()
+        self.mirror_test(self.kitten_home, self.kitty_home, prefix='~/')

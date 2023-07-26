@@ -177,14 +177,14 @@ func process(opts *Options, paths []string, remote_base string, counter *int) (a
 
 func process_mirrored_files(opts *Options, args []string) (ans []*File, err error) {
 	paths := utils.Map(func(x string) string { return abspath(expand_home(x)) }, args)
-	common_path := utils.Commonpath(paths...)
-	home := strings.TrimRight(home_path(), string(filepath.Separator))
-	if common_path != "" && strings.HasPrefix(common_path, home+string(filepath.Separator)) {
-		paths = utils.Map(func(x string) string {
-			r, _ := filepath.Rel(home, x)
+	home := strings.TrimRight(home_path(), string(filepath.Separator)) + string(filepath.Separator)
+	paths = utils.Map(func(path string) string {
+		if strings.HasPrefix(path, home) {
+			r, _ := filepath.Rel(home, path)
 			return filepath.Join("~", r)
-		}, paths)
-	}
+		}
+		return path
+	}, paths)
 	counter := 0
 	return process(opts, paths, "", &counter)
 }
@@ -232,7 +232,7 @@ func files_for_send(opts *Options, args []string) (files []*File, err error) {
 	// detect symlinks to other transferred files
 	for i, f := range files {
 		if f.file_type == FileType_symlink {
-			link_dest, err := os.Readlink(f.local_path)
+			link_dest, err := os.Readlink(f.expanded_local_path)
 			if err != nil {
 				remove = append(remove, i)
 				continue
@@ -241,7 +241,7 @@ func files_for_send(opts *Options, args []string) (files []*File, err error) {
 			is_abs := filepath.IsAbs(link_dest)
 			q := link_dest
 			if !is_abs {
-				q = filepath.Join(filepath.Dir(f.local_path), link_dest)
+				q = filepath.Join(filepath.Dir(f.expanded_local_path), link_dest)
 			}
 			st, err := os.Stat(q)
 			if err == nil {
