@@ -451,6 +451,13 @@ class TestFileTransmission(BaseTest):
         src = os.path.join(self.tdir, 'src')
         with open(src, 'wb') as s:
             s.write(self.src_data)
+        # home dir expansion
+        fname = 'tstest-file'
+        home = os.path.dirname(src)
+        with set_paths(home=home), self.run_kitten(['~/'+os.path.basename(src), f'~/{fname}'], home_dir=home) as pty:
+            pty.wait_till_child_exits(require_exit_code=0)
+        os.remove(os.path.join(home, fname))
+
 
     def test_transfer_send(self):
         self.basic_transfer_tests()
@@ -458,9 +465,10 @@ class TestFileTransmission(BaseTest):
         with open(src, 'wb') as s:
             s.write(self.src_data)
 
-        # remote home
+        # home dir expansion
         fname = 'tstest-file'
-        with set_paths(home=self.tdir), self.run_kitten([src, '~/'+fname]) as pty:
+        home = os.path.dirname(src)
+        with set_paths(home=home), self.run_kitten(['~/'+os.path.basename(src), '~/'+fname], home_dir=home) as pty:
             pty.wait_till_child_exits(require_exit_code=0)
         os.remove(os.path.expanduser('~/'+fname))
 

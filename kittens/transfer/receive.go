@@ -721,7 +721,7 @@ func files_for_receive(opts *Options, dest string, files []*remote_file, remote_
 				})
 			} else {
 				f := files_for_spec[0]
-				f.expanded_local_path = dest
+				f.expanded_local_path = expand_home(dest)
 				ans = append(ans, f)
 			}
 		}
