@@ -34,6 +34,8 @@ Create an [Option] from a string. Syntax is:
 	default: something
 	Help text on multiple lines. Indented lines are preserved as indented blocks. Blank lines
 	are preserved as blank lines. #placeholder_for_formatting# is replaced by the empty string.
+	.. code:: blocks are handled specially. Lines in them starting with "$ " have the $ colored
+	to indicate a prompt.
 
 Available types are: string, str, list, int, float, count, bool-set, bool-reset, choices
 The default dest is the first --option-name which must be a long option. The destination is automatically CamelCased from snake_case.
@@ -238,7 +240,13 @@ func prepare_help_text_for_display(raw string) string {
 			in_code_block = false
 			return handle_non_empty_line(i, line)
 		}
-		help.WriteString(line[4:])
+		line = line[4:]
+		is_prompt := strings.HasPrefix(line, "$ ")
+		if is_prompt {
+			help.WriteString(":yellow:`$ `")
+			line = line[2:]
+		}
+		help.WriteString(line)
 		help.WriteString("\n")
 		return i
 	}
