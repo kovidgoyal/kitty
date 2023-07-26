@@ -304,7 +304,7 @@ class PTY:
         if not q():
             raise TimeoutError(f'The condition was not met. Screen contents: \n {repr(self.screen_contents())}')
 
-    def wait_till_child_exits(self, timeout=10, require_exit_code=None):
+    def wait_till_child_exits(self, timeout=20 if BaseTest.is_ci else 10, require_exit_code=None):
         end_time = time.monotonic() + timeout
         while time.monotonic() <= end_time:
             si_pid, status = os.waitpid(self.child_pid, os.WNOHANG)
