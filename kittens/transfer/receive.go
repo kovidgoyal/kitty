@@ -391,8 +391,8 @@ func (self *manager) request_files() transmit_iterator {
 		if f == nil {
 			return 0, files_done
 		}
-		read_signature := self.use_rsync
-		if read_signature && f.ftype == FileType_regular {
+		read_signature := self.use_rsync && f.ftype == FileType_regular
+		if read_signature {
 			if s, err := os.Lstat(f.expanded_local_path); err == nil {
 				read_signature = s.Size() > 4096
 			} else {

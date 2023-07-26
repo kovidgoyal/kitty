@@ -165,6 +165,7 @@ class PtyFileTransmission(FileTransmission):
         self.pty.callbacks.ftc = self
 
     def write_ftc_to_child(self, payload: FileTransmissionCommand, appendleft: bool = False, use_pending: bool = True) -> bool:
+        # print('to kitten:', payload)
         self.pty.write_to_child('\x1b]' + payload.serialize(prefix_with_osc_code=True) + '\x1b\\', flush=False)
         return True
 
@@ -172,7 +173,7 @@ class PtyFileTransmission(FileTransmission):
 class TransferPTY(PTY):
 
     def __init__(self, cmd, cwd, allow=True, env=None):
-        super().__init__(cmd, cwd=cwd, env=env)
+        super().__init__(cmd, cwd=cwd, env=env, rows=200, columns=120)
         self.fc = PtyFileTransmission(self, allow=allow)
 
 
@@ -368,20 +369,6 @@ class TestFileTransmission(BaseTest):
         single_file('--compress=always')
         single_file('--transmit-deltas', '--compress=never')
 
-    def test_transfer_receive(self):
-        self.direction_receive = True
-        self.basic_transfer_tests()
-
-    def test_transfer_send(self):
-        self.basic_transfer_tests()
-        src = os.path.join(self.tdir, 'src')
-
-        # remote home
-        fname = 'tstest-file'
-        with set_paths(home=self.tdir), self.run_kitten([src, '~/'+fname]) as pty:
-            pty.wait_till_child_exits(require_exit_code=0)
-        os.remove(os.path.expanduser('~/'+fname))
-
         def multiple_files(*cmd):
             src = os.path.join(self.tdir, 'msrc')
             dest = os.path.join(self.tdir, 'mdest')
@@ -398,7 +385,7 @@ class TestFileTransmission(BaseTest):
                 mtime = st.st_mtime_ns
                 if stat.S_ISDIR(st.st_mode):
                     mtime = 0  # mtime is flaky for dirs on CI even empty ones
-                return Entry(os.path.relpath(path, base), mtime, st.st_mode, st.st_nlink)
+                return Entry(os.path.relpath(path, base), mtime, oct(st.st_mode), st.st_nlink)
 
             def se(path):
                 e = entry(path)
@@ -457,6 +444,25 @@ class TestFileTransmission(BaseTest):
         self.clean_tdir()
         multiple_files('--transmit-deltas')
         multiple_files('--transmit-deltas')
+
+    def test_transfer_receive(self):
+        self.direction_receive = True
+        self.basic_transfer_tests()
+        src = os.path.join(self.tdir, 'src')
+        with open(src, 'wb') as s:
+            s.write(self.src_data)
+
+    def test_transfer_send(self):
+        self.basic_transfer_tests()
+        src = os.path.join(self.tdir, 'src')
+        with open(src, 'wb') as s:
+            s.write(self.src_data)
+
+        # remote home
+        fname = 'tstest-file'
+        with set_paths(home=self.tdir), self.run_kitten([src, '~/'+fname]) as pty:
+            pty.wait_till_child_exits(require_exit_code=0)
+        os.remove(os.path.expanduser('~/'+fname))
 
         # mirror mode
         src_home = os.path.join(self.tdir, 'misrc')
