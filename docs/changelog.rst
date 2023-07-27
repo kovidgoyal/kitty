@@ -35,6 +35,11 @@ mouse anywhere in the current command to move the cursor there. See
 Detailed list of changes
 -------------------------------------
 
+0.30.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- kitty @ ls: Add user variables set on windows to the output (:iss:`6502`)
+
 0.29.2 [2023-07-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

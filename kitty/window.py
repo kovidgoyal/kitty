@@ -204,6 +204,7 @@ class WindowDict(TypedDict):
     is_self: bool
     lines: int
     columns: int
+    user_vars: Dict[str, Union[str, Dict[str, str]]]
 
 
 class PipeData(TypedDict):
@@ -634,21 +635,31 @@ class Window:
     def __repr__(self) -> str:
         return f'Window(title={self.title}, id={self.id})'
 
+    @property
+    def serializeable_user_vars(self) -> Dict[str, Union[str, Dict[str, str]]]:
+        from base64 import standard_b64encode
+        def s(x: bytes) -> Union[str, Dict[str, str]]:
+            with suppress(UnicodeDecodeError):
+                return x.decode('utf-8')
+            return {'value': standard_b64encode(x).decode('ascii'), 'encoding': 'base64'}
+        return {k: s(v) for k, v in self.user_vars.items()}
+
     def as_dict(self, is_focused: bool = False, is_self: bool = False, is_active: bool = False) -> WindowDict:
-        return dict(
-            id=self.id,
-            is_focused=is_focused,
-            is_active=is_active,
-            title=self.title,
-            pid=self.child.pid,
-            cwd=self.child.current_cwd or self.child.cwd,
-            cmdline=self.child.cmdline,
-            env=self.child.environ,
-            foreground_processes=self.child.foreground_processes,
-            is_self=is_self,
-            lines=self.screen.lines,
-            columns=self.screen.columns,
-        )
+        return {
+            'id': self.id,
+            'is_focused': is_focused,
+            'is_active': is_active,
+            'title': self.title,
+            'pid': self.child.pid,
+            'cwd': self.child.current_cwd or self.child.cwd,
+            'cmdline': self.child.cmdline,
+            'env': self.child.environ,
+            'foreground_processes': self.child.foreground_processes,
+            'is_self': is_self,
+            'lines': self.screen.lines,
+            'columns': self.screen.columns,
+            'user_vars': self.serializeable_user_vars,
+        }
 
     def serialize_state(self) -> Dict[str, Any]:
         ans = {
@@ -670,6 +681,8 @@ class Window:
             ans['window_custom_type'] = self.window_custom_type
         if self.overlay_type is not OverlayType.transient:
             ans['overlay_type'] = self.overlay_type.value
+        if self.user_vars:
+            ans['user_vars'] = self.serializeable_user_vars
         return ans
 
     @property
