@@ -44,6 +44,8 @@ Detailed list of changes
 
 - Detect .tex and Makefiles as plain text files (:iss:`6492`)
 
+- unicode_input kitten: Fix scrolling over multiple screens not working (:iss:`6497`)
+
 0.29.1 [2023-07-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
