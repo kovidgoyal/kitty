@@ -11,6 +11,7 @@ import sys
 import tarfile
 from urllib.request import urlopen
 
+BUNDLE_URL = 'https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'
 is_bundle = os.environ.get('KITTY_BUNDLE') == '1'
 is_macos = 'darwin' in sys.platform.lower()
 SW = None
@@ -98,8 +99,7 @@ def install_bundle():
     cwd = os.getcwd()
     os.makedirs(SW)
     os.chdir(SW)
-    with urlopen('https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'.format(
-            'macos' if is_macos else 'linux')) as f:
+    with urlopen(BUNDLE_URL.format('macos' if is_macos else 'linux')) as f:
         data = f.read()
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
         tf.extractall()
