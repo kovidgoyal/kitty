@@ -38,7 +38,10 @@ Detailed list of changes
 0.30.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- kitty @ ls: Add user variables set on windows to the output (:iss:`6502`)
+- kitten @ set-user-vars: New remote control command to set user variables on a
+  window (:iss:`6502`)
+
+- kitten @ ls: Add user variables set on windows to the output (:iss:`6502`)
 
 0.29.2 [2023-07-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
