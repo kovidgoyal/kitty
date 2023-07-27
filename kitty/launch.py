@@ -620,7 +620,7 @@ def _launch(
                 new_window.overlay_type = OverlayType.main
             if opts.var:
                 for key, val in parse_var(opts.var):
-                    new_window.user_vars[key] = val
+                    new_window.set_user_var(key, val)
             return new_window
     return None
 

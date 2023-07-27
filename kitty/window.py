@@ -100,6 +100,7 @@ from .utils import (
     path_from_osc7_url,
     resolve_custom_file,
     resolved_shell,
+    sanitize_control_codes,
     sanitize_for_bracketed_paste,
     sanitize_title,
     sanitize_url_for_dispay_to_user,
@@ -850,13 +851,16 @@ class Window:
         self.override_title = title or None
         self.title_updated()
 
-    def set_user_var(self, key: str, val: Optional[bytes]) -> None:
+    def set_user_var(self, key: str, val: Optional[Union[str, bytes]]) -> None:
+        key = sanitize_control_codes(key).replace('\n', ' ')
         self.user_vars.pop(key, None)  # ensure key will be newest in user_vars even if already present
         if len(self.user_vars) > 64:  # dont store too many user vars
             oldest_key = next(iter(self.user_vars))
             self.user_vars.pop(oldest_key)
         if val is not None:
-            self.user_vars[key] = val.decode('utf-8', 'replace')
+            if isinstance(val, bytes):
+                val = val.decode('utf-8', 'replace')
+            self.user_vars[key] = sanitize_control_codes(val).replace('\n', ' ')
 
     # screen callbacks {{{
 

@@ -30,21 +30,19 @@ class SetUserVars(RemoteCommand):
         return {'match': opts.match, 'var': args, 'self': True}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        remove = set()
         val = {}
         for x in payload_get('var') or ():
             a, sep, b = x.partition('=')
             if sep:
                 val[a] = b
             else:
-                remove.add(a)
+                val[a] = None
         lines = []
         for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:
-                if val or remove:
-                    window.user_vars.update(val)
-                    for x in remove:
-                        window.user_vars.pop(x, None)
+                if val:
+                    for k, v in val.items():
+                        window.set_user_var(k, v)
                 else:
                     lines.append('\n'.join(f'{k}={v}' for k, v in window.user_vars.items()))
         return '\n\n'.join(lines)
