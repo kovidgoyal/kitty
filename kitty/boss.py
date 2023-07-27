@@ -480,7 +480,7 @@ class Boss:
             return {wid for wid in candidates if self.window_id_map[wid].matches_query(location, query, tab, self_window)}
 
         for wid in search(match, (
-                'id', 'title', 'pid', 'cwd', 'cmdline', 'num', 'env', 'recent', 'state'
+                'id', 'title', 'pid', 'cwd', 'cmdline', 'num', 'env', 'var', 'recent', 'state'
         ), set(self.window_id_map), get_matches):
             yield self.window_id_map[wid]
 
@@ -516,7 +516,7 @@ class Boss:
 
         found = False
         for tid in search(match, (
-                'id', 'index', 'title', 'window_id', 'window_title', 'pid', 'cwd', 'env', 'cmdline', 'recent', 'state'
+                'id', 'index', 'title', 'window_id', 'window_title', 'pid', 'cwd', 'env', 'var', 'cmdline', 'recent', 'state'
         ), set(tim), get_matches):
             found = True
             yield tim[tid]

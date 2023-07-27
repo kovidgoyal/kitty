@@ -91,6 +91,7 @@ from .types import MouseEvent, OverlayType, WindowGeometry, ac, run_once
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     docs_url,
+    key_val_matcher,
     kitty_ansi_sanitizer_pat,
     log_error,
     open_cmd,
@@ -204,7 +205,7 @@ class WindowDict(TypedDict):
     is_self: bool
     lines: int
     columns: int
-    user_vars: Dict[str, Union[str, Dict[str, str]]]
+    user_vars: Dict[str, str]
 
 
 class PipeData(TypedDict):
@@ -523,7 +524,7 @@ class Window:
         self.default_title = os.path.basename(child.argv[0] or appname)
         self.child_title = self.default_title
         self.title_stack: Deque[str] = deque(maxlen=10)
-        self.user_vars: Dict[str, bytes] = {}
+        self.user_vars: Dict[str, str] = {}
         self.id: int = add_window(tab.os_window_id, tab.id, self.title)
         self.clipboard_request_manager = ClipboardRequestManager(self.id)
         self.margin = EdgeWidths()
@@ -635,15 +636,6 @@ class Window:
     def __repr__(self) -> str:
         return f'Window(title={self.title}, id={self.id})'
 
-    @property
-    def serializeable_user_vars(self) -> Dict[str, Union[str, Dict[str, str]]]:
-        from base64 import standard_b64encode
-        def s(x: bytes) -> Union[str, Dict[str, str]]:
-            with suppress(UnicodeDecodeError):
-                return x.decode('utf-8')
-            return {'value': standard_b64encode(x).decode('ascii'), 'encoding': 'base64'}
-        return {k: s(v) for k, v in self.user_vars.items()}
-
     def as_dict(self, is_focused: bool = False, is_self: bool = False, is_active: bool = False) -> WindowDict:
         return {
             'id': self.id,
@@ -658,7 +650,7 @@ class Window:
             'is_self': is_self,
             'lines': self.screen.lines,
             'columns': self.screen.columns,
-            'user_vars': self.serializeable_user_vars,
+            'user_vars': self.user_vars,
         }
 
     def serialize_state(self) -> Dict[str, Any]:
@@ -682,7 +674,7 @@ class Window:
         if self.overlay_type is not OverlayType.transient:
             ans['overlay_type'] = self.overlay_type.value
         if self.user_vars:
-            ans['user_vars'] = self.serializeable_user_vars
+            ans['user_vars'] = self.user_vars
         return ans
 
     @property
@@ -707,15 +699,13 @@ class Window:
     def matches(self, field: str, pat: MatchPatternType) -> bool:
         if not pat:
             return False
-        if field == 'env':
-            assert isinstance(pat, tuple)
-            key_pat, val_pat = pat
-            for key, val in self.child.environ.items():
-                if key_pat.search(key) is not None and (
-                        val_pat is None or val_pat.search(val) is not None):
-                    return True
+
+        if isinstance(pat, tuple):
+            if field == 'env':
+                return key_val_matcher(self.child.environ.items(), *pat)
+            if field == 'var':
+                return key_val_matcher(self.user_vars.items(), *pat)
             return False
-        assert not isinstance(pat, tuple)
 
         if field in ('id', 'window_id'):
             return pat.pattern == str(self.id)
@@ -765,7 +755,7 @@ class Window:
             if query == 'overlay_parent':
                 return self_window is not None and self is self_window.overlay_parent
             return False
-        pat = compile_match_query(query, field != 'env')
+        pat = compile_match_query(query, field not in ('env', 'var'))
         return self.matches(field, pat)
 
     def set_visible_in_layout(self, val: bool) -> None:
@@ -866,7 +856,7 @@ class Window:
             oldest_key = next(iter(self.user_vars))
             self.user_vars.pop(oldest_key)
         if val is not None:
-            self.user_vars[key] = val
+            self.user_vars[key] = val.decode('utf-8', 'replace')
 
     # screen callbacks {{{
 

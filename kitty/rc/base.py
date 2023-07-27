@@ -83,7 +83,7 @@ MATCH_WINDOW_OPTION = '''\
 --match -m
 The window to match. Match specifications are of the form: :italic:`field:query`.
 Where :italic:`field` can be one of: :code:`id`, :code:`title`, :code:`pid`, :code:`cwd`, :code:`cmdline`, :code:`num`,
-:code:`env`, :code:`state` and :code:`recent`.
+:code:`env`, :code:`var`, :code:`state`, and :code:`recent`.
 :italic:`query` is the expression to match. Expressions can be either a number or a regular expression, and can be
 :ref:`combined using Boolean operators <search_syntax>`.
 
@@ -104,6 +104,9 @@ active window, one being the previously active window and so on.
 When using the :code:`env` field to match on environment variables, you can specify only the environment variable name
 or a name and value, for example, :code:`env:MY_ENV_VAR=2`.
 
+Similarly, the :code:`var` field matches on user variables set on the window. You can specify name or name and value
+as with the :code:`env` field.
+
 The field :code:`state` matches on the state of the window. Supported states
 are: :code:`active`, :code:`focused`, :code:`needs_attention`,
 :code:`parent_active`, :code:`parent_focused`, :code:`self`,
@@ -121,7 +124,7 @@ MATCH_TAB_OPTION = '''\
 --match -m
 The tab to match. Match specifications are of the form: :italic:`field:query`.
 Where :italic:`field` can be one of: :code:`id`, :code:`index`, :code:`title`, :code:`window_id`, :code:`window_title`,
-:code:`pid`, :code:`cwd`, :code:`cmdline` :code:`env`, :code:`state` and :code:`recent`.
+:code:`pid`, :code:`cwd`, :code:`cmdline` :code:`env`, :code:`var`, :code:`state` and :code:`recent`.
 :italic:`query` is the expression to match. Expressions can be either a number or a regular expression, and can be
 :ref:`combined using Boolean operators <search_syntax>`.
 
@@ -143,7 +146,7 @@ active tab, one the previously active tab and so on.
 
 When using the :code:`env` field to match on environment variables, you can specify only the environment variable name
 or a name and value, for example, :code:`env:MY_ENV_VAR=2`. Tabs containing any window with the specified environment
-variables are matched.
+variables are matched. Similarly, :code:`var` matches tabs containing any window with the specified user variable.
 
 The field :code:`state` matches on the state of the tab. Supported states are:
 :code:`active`, :code:`focused`, :code:`needs_attention`, :code:`parent_active` and :code:`parent_focused`.

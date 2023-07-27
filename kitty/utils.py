@@ -1203,3 +1203,11 @@ def get_custom_window_icon() -> Union[Tuple[float, str], Tuple[None, None]]:
         if custom_icon_mtime is not None:
             return custom_icon_mtime, custom_icon_path
     return None, None
+
+
+def key_val_matcher(items: Iterable[Tuple[str, str]], key_pat: re.Pattern[str], val_pat: Optional[re.Pattern[str]]) -> bool:
+    for key, val in items:
+        if key_pat.search(key) is not None and (
+                val_pat is None or val_pat.search(val) is not None):
+            return True
+    return False
