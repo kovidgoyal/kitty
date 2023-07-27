@@ -194,8 +194,11 @@ func (self *table) layout(rows, cols int) string {
 	}
 	col_width := longest + 2
 	col_width = utils.Min(col_width, 40)
-	space_for_desc = col_width - 2 - idx_size - 4
 	self.num_cols = utils.Max(cols/col_width, 1)
+	if self.num_cols == 1 {
+		col_width = cols
+	}
+	space_for_desc = col_width - 2 - idx_size - 4
 	self.num_rows = rows
 	rows_left := rows
 	skip_scroll := self.scroll_rows * self.num_cols
@@ -207,7 +210,7 @@ func (self *table) layout(rows, cols int) string {
 		}
 		cell(i, cd)
 		output.WriteString("  ")
-		if i > 0 && (i+1)%self.num_cols == 0 {
+		if self.num_cols == 1 || (i > 0 && (i+1)%self.num_cols == 0) {
 			rows_left -= 1
 			if rows_left == 0 {
 				break

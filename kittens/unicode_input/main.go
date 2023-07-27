@@ -13,6 +13,7 @@ import (
 	"unicode"
 
 	"kitty/tools/cli"
+	"kitty/tools/tty"
 	"kitty/tools/tui"
 	"kitty/tools/tui/loop"
 	"kitty/tools/tui/readline"
@@ -249,6 +250,8 @@ func (self *handler) update_codepoints() {
 		self.table.set_codepoints(q.codepoints, self.mode, q.index_word)
 	}
 }
+
+var debugprintln = tty.DebugPrintln
 
 func (self *handler) update_current_char() {
 	self.update_codepoints()
