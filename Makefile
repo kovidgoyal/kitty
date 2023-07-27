@@ -72,4 +72,4 @@ cross-compile:
 FORCE: ;
 
 dependencies: FORCE
-	go run bypy/get-deps.go
+	go run bypy/devenv.go
