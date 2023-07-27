@@ -1205,7 +1205,7 @@ def get_custom_window_icon() -> Union[Tuple[float, str], Tuple[None, None]]:
     return None, None
 
 
-def key_val_matcher(items: Iterable[Tuple[str, str]], key_pat: re.Pattern[str], val_pat: Optional[re.Pattern[str]]) -> bool:
+def key_val_matcher(items: Iterable[Tuple[str, str]], key_pat: 're.Pattern[str]', val_pat: Optional['re.Pattern[str]']) -> bool:
     for key, val in items:
         if key_pat.search(key) is not None and (
                 val_pat is None or val_pat.search(val) is not None):
