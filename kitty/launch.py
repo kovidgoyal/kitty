@@ -107,6 +107,13 @@ times to set different environment variables. Syntax: :code:`name=value`. Using
 environment variable.
 
 
+--var
+type=list
+User variables to set in the created window. Can be specified multiple
+times to set different user variables. Syntax: :code:`name=value`. Using
+:code:`name=` will set to empty string.
+
+
 --hold
 type=bool-set
 Keep the window open even after the command being executed exits, at a shell prompt.
@@ -412,6 +419,12 @@ def apply_colors(window: Window, spec: Sequence[str]) -> None:
     patch_color_profiles(colors, profiles, True)
 
 
+def parse_var(defn: Iterable[str]) -> Iterator[Tuple[str, str]]:
+    for item in defn:
+        a, sep, b = item.partition('=')
+        yield a, b
+
+
 class ForceWindowLaunch:
 
     def __init__(self) -> None:
@@ -605,6 +618,9 @@ def _launch(
                 new_window.set_logo(opts.logo, opts.logo_position or '', opts.logo_alpha)
             if opts.type == 'overlay-main':
                 new_window.overlay_type = OverlayType.main
+            if opts.var:
+                for key, val in parse_var(opts.var):
+                    new_window.user_vars[key] = val
             return new_window
     return None
 
@@ -631,7 +647,7 @@ def launch(
 @run_once
 def clone_safe_opts() -> FrozenSet[str]:
     return frozenset((
-        'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'env', 'hold',
+        'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'env', 'var', 'hold',
         'location', 'os_window_class', 'os_window_name', 'os_window_title', 'os_window_state',
         'logo', 'logo_position', 'logo_alpha', 'color', 'spacing',
     ))
@@ -885,7 +901,6 @@ def clone_and_launch(msg: str, window: Window) -> None:
                 patch_cmdline('env', entry, cmdline)
             c.opts.env = []
     else:
-
         try:
             cmdline = window.child.cmdline_of_pid(c.pid)
         except Exception:
