@@ -6,6 +6,7 @@
 *_generated.go
 *_generated.h
 /.dmypy.json
+/dependencies
 /tags
 /build/
 /linux-package/
