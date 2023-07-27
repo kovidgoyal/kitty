@@ -1140,26 +1140,15 @@ make && make docs
 def compile_python(base_path: str) -> None:
     import compileall
     import py_compile
-    try:
-        num_workers = max(1, os.cpu_count() or 1)
-    except Exception:
-        num_workers = 1
     for root, dirs, files in os.walk(base_path):
         for f in files:
             if f.rpartition('.')[-1] in ('pyc', 'pyo'):
                 os.remove(os.path.join(root, f))
 
     exclude = re.compile('.*/shell-integration/ssh/bootstrap.py')
-
-    def c(base_path: str, **kw: object) -> None:
-        try:
-            kw['invalidation_mode'] = py_compile.PycInvalidationMode.UNCHECKED_HASH
-        except AttributeError:
-            pass
-        compileall.compile_dir(base_path, **kw)  # type: ignore
-
-    for optimize in (0, 1, 2):
-        c(base_path, ddir='', rx=exclude, force=True, optimize=optimize, quiet=1, workers=num_workers)
+    compileall.compile_dir(
+        base_path, rx=exclude, force=True, optimize=(0, 1, 2), quiet=1, workers=0,  # type: ignore
+        invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH, ddir='')
 
 
 def create_linux_bundle_gunk(ddir: str, libdir_name: str) -> None:
