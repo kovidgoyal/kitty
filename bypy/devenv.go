@@ -19,6 +19,14 @@ import (
 
 const folder = "dependencies"
 
+func root_dir() string {
+	f, e := filepath.Abs(filepath.Join(folder, runtime.GOOS+"-"+runtime.GOARCH))
+	if e != nil {
+		panic(e)
+	}
+	return f
+}
+
 var _ = fmt.Print
 
 func exit(x any) {
@@ -129,14 +137,14 @@ func dependencies(args []string) {
 		exit("Prebuilt dependencies are only available for Linux and macOS")
 	}
 	url = strings.Replace(url, "{}", which, 1)
-	if err := os.RemoveAll(filepath.Join(folder, "root")); err != nil {
+	if err := os.RemoveAll(root_dir()); err != nil {
 		exit(err)
 	}
 	if err := os.MkdirAll(folder, 0o755); err != nil {
 		exit(err)
 	}
 	tarfile, _ := filepath.Abs(cached_download(url))
-	root, _ := filepath.Abs(filepath.Join(folder, "root"))
+	root := root_dir()
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		exit(err)
 	}
@@ -186,9 +194,15 @@ func build(args []string) {
 		dependencies(nil)
 	}
 	python := ""
-	root, _ := filepath.Abs(filepath.Join(folder, "root"))
+	root := root_dir()
 	os.Setenv("DEVELOP_ROOT", root)
 	prepend("PKG_CONFIG_PATH", filepath.Join(root, "lib", "pkgconfig"))
+	for _, x := range os.Environ() {
+		if strings.HasPrefix(x, "PYTHON") {
+			a, _, _ := strings.Cut(x, "=")
+			os.Unsetenv(a)
+		}
+	}
 	switch runtime.GOOS {
 	case "linux":
 		prepend("LD_LIBRARY_PATH", filepath.Join(root, "lib"))
