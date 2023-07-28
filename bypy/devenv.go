@@ -58,7 +58,8 @@ func cached_download(url string) string {
 	if err != nil {
 		exit(err)
 	}
-	if etag, err := os.ReadFile(filepath.Join(folder, "etag")); err == nil {
+	etag_file := filepath.Join(folder, fname+".etag")
+	if etag, err := os.ReadFile(etag_file); err == nil {
 		if _, err := os.Stat(filepath.Join(folder, fname)); err == nil {
 			req.Header.Add("If-None-Match", string(etag))
 		}
@@ -85,7 +86,7 @@ func cached_download(url string) string {
 		exit(fmt.Errorf("Failed to download file with error: %w", err))
 	}
 	if etag := resp.Header.Get("ETag"); etag != "" {
-		if err := os.WriteFile(filepath.Join(folder, "etag"), []byte(etag), 0o644); err != nil {
+		if err := os.WriteFile(etag_file, []byte(etag), 0o644); err != nil {
 			exit(err)
 		}
 	}
