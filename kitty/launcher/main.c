@@ -182,6 +182,9 @@ run_embedded(RunData *run_data) {
     PyPreConfig_InitPythonConfig(&preconfig);
     preconfig.utf8_mode = 1;
     preconfig.coerce_c_locale = 1;
+#ifdef SET_PYTHON_HOME
+    preconfig.isolated = 1;
+#endif
     status = Py_PreInitialize(&preconfig);
     if (PyStatus_Exception(status)) goto fail;
     PyConfig config;
@@ -195,10 +198,13 @@ run_embedded(RunData *run_data) {
     status = PyConfig_SetBytesString(&config, &config.run_filename, run_data->lib_dir);
     if (PyStatus_Exception(status)) goto fail;
 #ifdef SET_PYTHON_HOME
+#ifndef __APPLE__
     char pyhome[256];
     snprintf(pyhome, sizeof(pyhome), "%s/%s", run_data->lib_dir, SET_PYTHON_HOME);
     status = PyConfig_SetBytesString(&config, &config.home, pyhome);
     if (PyStatus_Exception(status)) goto fail;
+#endif
+    config.isolated = 1;
 #endif
     status = Py_InitializeFromConfig(&config);
     if (PyStatus_Exception(status))  goto fail;

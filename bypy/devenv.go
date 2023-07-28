@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -17,12 +18,18 @@ import (
 	"strings"
 )
 
-const folder = "dependencies"
+const (
+	folder                     = "dependencies"
+	macos_prefix               = "/Users/Shared/kitty-build/sw/sw"
+	macos_python               = "python/Python.framework/Versions/Current/bin/python3"
+	macos_python_framework     = "python/Python.framework/Versions/Current/Python"
+	macos_python_framework_exe = "python/Python.framework/Versions/Current/Resources/Python.app/Contents/MacOS/Python"
+)
 
 func root_dir() string {
 	f, e := filepath.Abs(filepath.Join(folder, runtime.GOOS+"-"+runtime.GOARCH))
 	if e != nil {
-		panic(e)
+		exit(e)
 	}
 	return f
 }
@@ -51,6 +58,94 @@ func exit(x any) {
 }
 
 // download deps {{{
+
+type dependency struct {
+	path     string
+	basename string
+	is_id    bool
+}
+
+func lines(exe string, cmd ...string) []string {
+	c := exec.Command(exe, cmd...)
+	c.Stderr = os.Stderr
+	out, err := c.Output()
+	if err != nil {
+		exit(fmt.Errorf("Failed to run '%s' with error: %w", strings.Join(append([]string{exe}, cmd...), " "), err))
+	}
+	ans := []string{}
+	for s := bufio.NewScanner(bytes.NewReader(out)); s.Scan(); {
+		ans = append(ans, s.Text())
+	}
+	return ans
+}
+
+func get_dependencies(path string) (ans []dependency) {
+	a := lines("otool", "-D", path)
+	install_name := strings.TrimSpace(a[len(a)-1])
+	for _, line := range lines("otool", "-L", path) {
+		line = strings.TrimSpace(line)
+		if strings.Contains(line, "compatibility") && !strings.HasSuffix(line, ":") {
+			idx := strings.IndexByte(line, '(')
+			dep := strings.TrimSpace(line[:idx])
+			ans = append(ans, dependency{path: dep, is_id: dep == install_name})
+		}
+	}
+	return
+}
+
+func get_local_dependencies(path string) (ans []dependency) {
+	for _, dep := range get_dependencies(path) {
+		for _, y := range []string{filepath.Join(macos_prefix, "lib") + "/", filepath.Join(macos_prefix, "python", "Python.framework") + "/", "@rpath/"} {
+			if strings.HasPrefix(dep.path, y) {
+				if y == "@rpath/" {
+					dep.basename = "lib/" + dep.path[len(y):]
+				} else {
+					y = macos_prefix + "/"
+					dep.basename = dep.path[len(y):]
+				}
+				ans = append(ans, dep)
+				break
+			}
+		}
+	}
+	return
+}
+
+func change_dep(path string, dep dependency) {
+	cmd := []string{}
+	fid := filepath.Join(root_dir(), dep.basename)
+	if dep.is_id {
+		cmd = append(cmd, "-id", fid)
+	} else {
+		cmd = append(cmd, "-change", dep.path, fid)
+	}
+	cmd = append(cmd, path)
+	c := exec.Command("install_name_tool", cmd...)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	if err := c.Run(); err != nil {
+		exit(fmt.Errorf("Failed to run command '%s' with error: %w", strings.Join(c.Args, " "), err))
+	}
+}
+
+func fix_dependencies_in_lib(path string) {
+	path, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		exit(err)
+	}
+	if s, err := os.Stat(path); err != nil {
+		exit(err)
+	} else if err := os.Chmod(path, s.Mode().Perm()|0o200); err != nil {
+		exit(err)
+	}
+	for _, dep := range get_local_dependencies(path) {
+		change_dep(path, dep)
+	}
+	if ldeps := get_local_dependencies(path); len(ldeps) > 0 {
+		exit(fmt.Errorf("Failed to fix local dependencies in: %s", path))
+	}
+}
+
 func cached_download(url string) string {
 	fname := filepath.Base(url)
 	fmt.Println("Downloading", fname)
@@ -126,7 +221,7 @@ func dependencies(args []string) {
 	var which string
 	switch runtime.GOOS {
 	case "darwin":
-		prefix = "/Users/Shared/kitty-build/sw/sw"
+		prefix = macos_prefix
 		which = "macos"
 	case "linux":
 		which = "linux"
@@ -156,6 +251,11 @@ func dependencies(args []string) {
 	if err = cmd.Run(); err != nil {
 		exit(err)
 	}
+	if runtime.GOOS == "darwin" {
+		fix_dependencies_in_lib(filepath.Join(root, macos_python))
+		fix_dependencies_in_lib(filepath.Join(root, macos_python_framework))
+		fix_dependencies_in_lib(filepath.Join(root, macos_python_framework_exe))
+	}
 	if err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -170,6 +270,11 @@ func dependencies(args []string) {
 			// different distros stupidly use different fontconfig configuration dirs
 			if strings.HasPrefix(name, "libfontconfig.so") {
 				os.Remove(path)
+			}
+			if runtime.GOOS == "darwin" {
+				if ext == ".so" || ext == ".dylib" {
+					fix_dependencies_in_lib(path)
+				}
 			}
 		}
 		return err
@@ -209,6 +314,9 @@ func build(args []string) {
 		prepend("LD_LIBRARY_PATH", filepath.Join(root, "lib"))
 		os.Setenv("PYTHONHOME", root)
 		python = filepath.Join(root, "bin", "python")
+	case "darwin":
+		python = filepath.Join(root, macos_python)
+		os.Setenv("PKGCONFIG_EXE", filepath.Join(root, "bin", "pkg-config"))
 	default:
 		exit("Building is only supported on Linux and macOS")
 	}

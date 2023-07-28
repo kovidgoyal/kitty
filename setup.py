@@ -430,6 +430,10 @@ def init_env(
     for path in extra_library_dirs:
         ldpaths.append(f'-L{path}')
 
+    if os.environ.get("DEVELOP_ROOT"):
+        cflags.insert(0, f'-I{os.environ["DEVELOP_ROOT"]}/include')
+        ldpaths.insert(0, f'-L{os.environ["DEVELOP_ROOT"]}/lib')
+
     rs_cflag = detect_librsync(cc, cflags, ldflags + ldpaths)
     if rs_cflag:
         cflags.append(rs_cflag)
@@ -437,10 +441,6 @@ def init_env(
     if build_universal_binary:
         set_arches(cflags)
         set_arches(ldflags)
-
-    if os.environ.get("DEVELOP_ROOT"):
-        cflags.insert(0, f'-I{os.environ["DEVELOP_ROOT"]}/include')
-        ldpaths.insert(0, f'-L{os.environ["DEVELOP_ROOT"]}/lib')
 
     return Env(cc, cppflags, cflags, ldflags, library_paths, ccver=ccver, ldpaths=ldpaths, vcs_rev=vcs_rev)
 
@@ -709,10 +709,11 @@ class CompilationDatabase:
         compilation_database = [
             {'file': c.key.src, 'arguments': c.cmd, 'directory': src_base, 'output': c.key.dest} for c in self.compile_commands if c.key is not None
         ]
-        with open(self.dbpath, 'w') as f:
-            json.dump(compilation_database, f, indent=2, sort_keys=True)
-        with open(self.linkdbpath, 'w') as f:
-            json.dump([{'output': c.key, 'arguments': c.cmd, 'directory': src_base} for c in self.link_commands], f, indent=2, sort_keys=True)
+        with suppress(FileNotFoundError):
+            with open(self.dbpath, 'w') as f:
+                json.dump(compilation_database, f, indent=2, sort_keys=True)
+            with open(self.linkdbpath, 'w') as f:
+                json.dump([{'output': c.key, 'arguments': c.cmd, 'directory': src_base} for c in self.link_commands], f, indent=2, sort_keys=True)
 
 
 def compile_c_extension(
