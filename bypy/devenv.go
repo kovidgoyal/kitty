@@ -157,6 +157,11 @@ func dependencies(args []string) {
 			if ext == ".pc" || (ext == ".py" && strings.HasPrefix(name, "_sysconfigdata_")) {
 				err = relocate_pkgconfig(path, prefix, root)
 			}
+			// remove libfontconfig so that we use the system one because
+			// different distros stupidly use different fontconfig configuration dirs
+			if strings.HasPrefix(name, "libfontconfig.so") {
+				os.Remove(path)
+			}
 		}
 		return err
 	}); err != nil {
@@ -177,6 +182,9 @@ func prepend(env_var, path string) {
 
 func build(args []string) {
 	chdir_to_base()
+	if _, err := os.Stat(folder); err != nil {
+		dependencies(nil)
+	}
 	python := ""
 	root, _ := filepath.Abs(filepath.Join(folder, "root"))
 	path_args := []string{"-I" + filepath.Join(root, "include"), "-L" + filepath.Join(root, "lib")}
