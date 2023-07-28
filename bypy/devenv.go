@@ -187,7 +187,6 @@ func build(args []string) {
 	}
 	python := ""
 	root, _ := filepath.Abs(filepath.Join(folder, "root"))
-	path_args := []string{"-I" + filepath.Join(root, "include"), "-L" + filepath.Join(root, "lib")}
 	os.Setenv("DEVELOP_ROOT", root)
 	prepend("PKG_CONFIG_PATH", filepath.Join(root, "lib", "pkgconfig"))
 	switch runtime.GOOS {
@@ -198,8 +197,7 @@ func build(args []string) {
 	default:
 		exit("Building is only supported on Linux and macOS")
 	}
-	args = append([]string{"setup.py", "develop", "--debug"}, path_args...)
-	cmd := exec.Command(python, args...)
+	cmd := exec.Command(python, "setup.py", "develop", "--debug")
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "The following build command failed:", python, strings.Join(args, " "))

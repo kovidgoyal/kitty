@@ -438,6 +438,10 @@ def init_env(
         set_arches(cflags)
         set_arches(ldflags)
 
+    if os.environ.get("DEVELOP_ROOT"):
+        cflags.insert(0, f'-I{os.environ["DEVELOP_ROOT"]}/include')
+        ldpaths.insert(0, f'-L{os.environ["DEVELOP_ROOT"]}/lib')
+
     return Env(cc, cppflags, cflags, ldflags, library_paths, ccver=ccver, ldpaths=ldpaths, vcs_rev=vcs_rev)
 
 
