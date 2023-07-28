@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -26,6 +27,10 @@ func exit(x any) {
 		if v == nil {
 			os.Exit(0)
 		}
+		var ee *exec.ExitError
+		if errors.As(v, &ee) {
+			os.Exit(ee.ExitCode())
+		}
 	case string:
 		if v == "" {
 			os.Exit(0)
@@ -33,10 +38,11 @@ func exit(x any) {
 	case int:
 		os.Exit(v)
 	}
-	fmt.Fprintf(os.Stderr, "\x1b[31mError\x1b[m: %s", x)
+	fmt.Fprintf(os.Stderr, "\x1b[31mError\x1b[m: %s\n", x)
 	os.Exit(1)
 }
 
+// download deps {{{
 func cached_download(url string) string {
 	fname := filepath.Base(url)
 	fmt.Println("Downloading", fname)
@@ -87,12 +93,15 @@ func relocate_pkgconfig(path, old_prefix, new_prefix string) error {
 	return os.WriteFile(path, nraw, 0o644)
 }
 
-func main() {
+func chdir_to_base() {
 	_, filename, _, _ := runtime.Caller(0)
 	base_dir := filepath.Dir(filepath.Dir(filename))
 	if err := os.Chdir(base_dir); err != nil {
 		exit(err)
 	}
+}
+func dependencies(args []string) {
+	chdir_to_base()
 	data, err := os.ReadFile(".github/workflows/ci.py")
 	if err != nil {
 		exit(err)
@@ -142,11 +151,65 @@ func main() {
 		if err != nil {
 			return err
 		}
-		if d.Type().IsRegular() && strings.HasSuffix(d.Name(), ".pc") {
-			err = relocate_pkgconfig(path, prefix, root)
+		if d.Type().IsRegular() {
+			name := d.Name()
+			ext := filepath.Ext(name)
+			if ext == ".pc" || (ext == ".py" && strings.HasPrefix(name, "_sysconfigdata_")) {
+				err = relocate_pkgconfig(path, prefix, root)
+			}
 		}
 		return err
 	}); err != nil {
 		exit(err)
+	}
+	fmt.Println(`Dependencies downloaded. Now build kitty with: make develop`)
+}
+
+// }}}
+
+func prepend(env_var, path string) {
+	val := os.Getenv(env_var)
+	if val != "" {
+		val = string(filepath.ListSeparator) + val
+	}
+	os.Setenv(env_var, path+val)
+}
+
+func build(args []string) {
+	chdir_to_base()
+	python := ""
+	root, _ := filepath.Abs(filepath.Join(folder, "root"))
+	path_args := []string{"-I" + filepath.Join(root, "include"), "-L" + filepath.Join(root, "lib")}
+	os.Setenv("DEVELOP_ROOT", root)
+	prepend("PKG_CONFIG_PATH", filepath.Join(root, "lib", "pkgconfig"))
+	switch runtime.GOOS {
+	case "linux":
+		prepend("LD_LIBRARY_PATH", filepath.Join(root, "lib"))
+		os.Setenv("PYTHONHOME", root)
+		python = filepath.Join(root, "bin", "python")
+	default:
+		exit("Building is only supported on Linux and macOS")
+	}
+	args = append([]string{"setup.py", "develop", "--debug"}, path_args...)
+	cmd := exec.Command(python, args...)
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintln(os.Stderr, "The following build command failed:", python, strings.Join(args, " "))
+		exit(err)
+	}
+	fmt.Println("Build successful. Run kitty as: kitty/launcher/kitty")
+}
+
+func main() {
+	if len(os.Args) < 2 {
+		exit(`Expected "deps" or "build" subcommands`)
+	}
+	switch os.Args[1] {
+	case "deps":
+		dependencies(os.Args[2:])
+	case "build":
+		build(os.Args[2:])
+	default:
+		exit(`Expected "deps" or "build" subcommands`)
 	}
 }

@@ -1063,11 +1063,19 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         cppflags.append(f'-DKITTY_LIB_DIR_NAME="{args.libdir_name}"')
     elif bundle_type == 'source':
         cppflags.append('-DFROM_SOURCE')
+    elif bundle_type == 'develop':
+        cppflags.append('-DFROM_SOURCE')
+        ph = os.path.relpath(os.environ["DEVELOP_ROOT"], '.')
+        cppflags.append(f'-DSET_PYTHON_HOME="{ph}"')
+        if is_macos:
+            pass
+        else:
+            ldflags += ['-Wl,--disable-new-dtags', f'-Wl,-rpath,$ORIGIN/../../{ph}/lib']
     if bundle_type.startswith('macos-'):
         klp = '../Resources/kitty'
     elif bundle_type.startswith('linux-'):
         klp = '../{}/kitty'.format(args.libdir_name.strip('/'))
-    elif bundle_type == 'source':
+    elif bundle_type in ('source', 'develop'):
         klp = os.path.relpath('.', launcher_dir)
     else:
         raise SystemExit(f'Unknown bundle type: {bundle_type}')
@@ -1569,7 +1577,7 @@ def clean(for_cross_compile: bool = False) -> None:
 
     def excluded(root: str, d: str) -> bool:
         q = os.path.relpath(os.path.join(root, d), src_base).replace(os.sep, '/')
-        return q in ('.git', 'bypy/b')
+        return q in ('.git', 'bypy/b', 'dependencies')
 
     for root, dirs, files in os.walk(src_base, topdown=True):
         dirs[:] = [d for d in dirs if not excluded(root, d)]
@@ -1599,6 +1607,7 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         default=Options.action,
         choices=('build',
                  'test',
+                 'develop',
                  'linux-package',
                  'kitty.app',
                  'linux-freeze',
@@ -1838,6 +1847,10 @@ def main() -> None:
             else:
                 build_launcher(args, launcher_dir=launcher_dir)
                 build_static_kittens(args, launcher_dir=launcher_dir)
+        elif args.action == 'develop':
+            build(args)
+            build_launcher(args, launcher_dir=launcher_dir, bundle_type='develop')
+            build_static_kittens(args, launcher_dir=launcher_dir)
         elif args.action == 'build-launcher':
             init_env_from_args(args, False)
             build_launcher(args, launcher_dir=launcher_dir)

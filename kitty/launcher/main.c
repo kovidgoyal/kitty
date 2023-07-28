@@ -194,7 +194,12 @@ run_embedded(RunData *run_data) {
     if (PyStatus_Exception(status)) goto fail;
     status = PyConfig_SetBytesString(&config, &config.run_filename, run_data->lib_dir);
     if (PyStatus_Exception(status)) goto fail;
-
+#ifdef SET_PYTHON_HOME
+    char pyhome[256];
+    snprintf(pyhome, sizeof(pyhome), "%s/%s", run_data->lib_dir, SET_PYTHON_HOME);
+    status = PyConfig_SetBytesString(&config, &config.home, pyhome);
+    if (PyStatus_Exception(status)) goto fail;
+#endif
     status = Py_InitializeFromConfig(&config);
     if (PyStatus_Exception(status))  goto fail;
     PyConfig_Clear(&config);
