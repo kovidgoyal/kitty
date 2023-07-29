@@ -1072,18 +1072,17 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         cppflags.append('-DFROM_SOURCE')
         ph = os.path.relpath(os.environ["DEVELOP_ROOT"], '.')
         cppflags.append(f'-DSET_PYTHON_HOME="{ph}"')
-        if is_macos:
-            # use an absolute path so the exe is relocatable to the minimal
-            # bundle
-            klp = src_base
-        else:
+        if not is_macos:
             ldflags += ['-Wl,--disable-new-dtags', f'-Wl,-rpath,$ORIGIN/../../{ph}/lib']
     if bundle_type.startswith('macos-'):
         klp = '../Resources/kitty'
     elif bundle_type.startswith('linux-'):
         klp = '../{}/kitty'.format(args.libdir_name.strip('/'))
-    elif bundle_type in ('source', 'develop'):
+    elif bundle_type == 'source':
         klp = os.path.relpath('.', launcher_dir)
+    elif bundle_type == 'develop':
+        # make the kitty executable relocatable
+        klp = src_base
     else:
         raise SystemExit(f'Unknown bundle type: {bundle_type}')
     cppflags.append(f'-DKITTY_LIB_PATH="{klp}"')
@@ -1427,7 +1426,7 @@ def create_macos_app_icon(where: str = 'Resources') -> None:
         ]])
 
 
-def create_minimal_macos_bundle(args: Options, launcher_dir: str) -> None:
+def create_minimal_macos_bundle(args: Options, launcher_dir: str, relocate: bool = False) -> None:
     kapp = os.path.join(launcher_dir, 'kitty.app')
     if os.path.exists(kapp):
         shutil.rmtree(kapp)
@@ -1437,12 +1436,16 @@ def create_minimal_macos_bundle(args: Options, launcher_dir: str) -> None:
     os.makedirs(bin_dir)
     with open(os.path.join(kapp, 'Contents/Info.plist'), 'wb') as f:
         f.write(macos_info_plist())
-    build_launcher(args, bin_dir)
-    build_static_kittens(args, launcher_dir=bin_dir)
-    kitty_exe = os.path.join(launcher_dir, appname)
-    with suppress(FileNotFoundError):
-        os.remove(kitty_exe)
-    os.symlink(os.path.join(os.path.relpath(bin_dir, launcher_dir), appname), kitty_exe)
+    if relocate:
+        shutil.copy2(os.path.join(launcher_dir, "kitty"), bin_dir)
+        shutil.copy2(os.path.join(launcher_dir, "kitten"), bin_dir)
+    else:
+        build_launcher(args, bin_dir)
+        build_static_kittens(args, launcher_dir=bin_dir)
+        kitty_exe = os.path.join(launcher_dir, appname)
+        with suppress(FileNotFoundError):
+            os.remove(kitty_exe)
+        os.symlink(os.path.join(os.path.relpath(bin_dir, launcher_dir), appname), kitty_exe)
     create_macos_app_icon(resources_dir)
 
 
@@ -1858,6 +1861,8 @@ def main() -> None:
             build(args)
             build_launcher(args, launcher_dir=launcher_dir, bundle_type='develop')
             build_static_kittens(args, launcher_dir=launcher_dir)
+            if is_macos:
+                create_minimal_macos_bundle(args, launcher_dir, relocate=True)
         elif args.action == 'build-launcher':
             init_env_from_args(args, False)
             build_launcher(args, launcher_dir=launcher_dir)
