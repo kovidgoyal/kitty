@@ -5,27 +5,79 @@ Build from source
   :alt: Build status
   :target: https://github.com/kovidgoyal/kitty/actions?query=workflow%3ACI
 
-.. highlight:: sh
-
-|kitty| is designed to run from source, for easy hack-ability. Make sure the
-following dependencies are installed first.
-
 .. note::
    If you just want to test the latest changes to kitty, you don't need to build
    from source. Instead install the :ref:`latest nightly build <nightly>`.
 
-.. note::
-   If you are making small changes only to the Python parts of kitty, there is
-   no need to build kitty at all, instead, assuming you have installed the
-   official kitty binaries, you can simply set the :envvar:`KITTY_DEVELOP_FROM`
-   environment variable to point to the directory into which you have checked out
-   the kitty source code. kitty will then load its Python code from there. You
-   should use a version of the source that matches the binary version as closely
-   as possible, since the two are tightly coupled.
+.. highlight:: sh
 
+|kitty| is designed to run from source, for easy hack-ability. All you need to
+get started is a C compiler and the `go compiler
+<https://go.dev/doc/install>`__. After installing those, run the following commands::
+
+    git clone https://github.com/kovidgoyal/kitty.git && cd kitty
+    ./dev.sh build
+
+That's it, kitty will be built from source, magically. You can run it as
+:file:`kitty/launcher/kitty`.
+
+This works, because the :code:`./dev.sh build` command downloads all the major
+dependencies of kitty as pre-built binaries for your platform and builds kitty
+to use these rather than system libraries.
+
+If you make changes to kitty code, simply re-run :code:`./dev.sh build`
+to build kitty with your changes.
+
+.. note::
+   If you plan to run kitty from source long-term, there are a couple of
+   caveats to be aware of. You should occassionally run ``./dev.sh deps``
+   to have the dependencies re-downloaded as they are updated periodically.
+   Also, the built kitty executable assumes it will find source in whatever
+   directory you first ran :code:`./dev.sh build` in. If you move/rename the
+   directory, run :code:`make clean && ./dev.sh build`. You should also create
+   symlinks to the :file:`kitty` and :file:`kitten` binaries from somewhere
+   in your PATH so that they can be conveniently launched.
+
+.. note::
+   On macOS, you can use :file:`kitty/launcher/kitty.app` to run kitty as well,
+   but note that this is an unsigned kitty.app so some functionality such as
+   notifications will not work as Apple disallows this.  If you need this
+   functionality, you can try signing the built :file:`kitty.app` with a self
+   signed certificate, see for example, `here
+   <https://stackoverflow.com/questions/27474751/how-can-i-codesign-an-app-without-being-in-the-mac-developer-program/27474942>`__.
+
+Building in debug mode
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following will build with debug symbols::
+
+    ./dev.sh build --debug
+
+To build with sanitizers and debug symbols::
+
+    ./dev.sh build --debug --sanitize
+
+For more help on the various options supported by the build script::
+
+    ./dev.sh build -h
+
+
+Building the documentation
+-------------------------------------
+
+This will require
+To have the kitty documentation available locally, run::
+
+    python3 -m pip install -r docs/requirements.txt && make docs
+
+To develop the docs, with live reloading, use::
+
+    python3 -m pip install -r docs/requirements.txt && make develop-docs
 
 Dependencies
 ----------------
+
+These dependencies are needed when building against system libraries only.
 
 Run-time dependencies:
 
@@ -66,64 +118,6 @@ Build-time dependencies:
   - ``librsync-dev``
 
 
-Install and run from source
-------------------------------
-
-.. code-block:: sh
-
-    git clone https://github.com/kovidgoyal/kitty && cd kitty
-
-Now build the native code parts of |kitty| with the following command::
-
-    make
-
-You can run |kitty|, as::
-
-    ./kitty/launcher/kitty
-
-If that works, you can create a symlink to the launcher in :file:`~/bin` or some
-other directory on your PATH so that you can run |kitty| using just ``kitty``.
-
-To have the kitty documentation available locally, run::
-
-    python3 -m pip install -r docs/requirements.txt && make docs
-
-To develop the docs, with live reloading, use::
-
-    python3 -m pip install -r docs/requirements.txt && make develop-docs
-
-
-Building kitty.app on macOS from source
--------------------------------------------
-
-Run::
-
-    python3 -m pip install -r docs/requirements.txt && make docs
-    make app
-
-Building the docs needs to be done only once.
-
-This :file:`kitty.app` unlike the released one does not include its own copy of
-Python and the other dependencies. So if you ever un-install/upgrade those
-dependencies you might have to rebuild the app.
-
-.. note::
-   The released :file:`kitty.dmg` includes all dependencies, unlike the
-   :file:`kitty.app` built above and is built automatically by using the
-   `bypy framework <https://github.com/kovidgoyal/bypy>`__ however, that is
-   designed to run on Linux and is not for the faint of heart.
-
-.. note::
-   Apple disallows certain functionality, such as notifications for unsigned
-   applications. If you need this functionality, you can try signing the built
-   :file:`kitty.app` with a self signed certificate, see for example, `here
-   <https://stackoverflow.com/questions/27474751/how-can-i-codesign-an-app-without-being-in-the-mac-developer-program/27474942>`__.
-
-.. note::
-   If you are facing issues with ``linker`` while building, try with a ``brew``
-   installed Python instead, see :iss:`289` for more discussion.
-
-
 Build and run from source with Nix
 -------------------------------------------
 
@@ -137,21 +131,6 @@ make them available in the newly spawned shell.
 
 Then proceed with ``make`` or ``make app`` according to the platform specific
 instructions above.
-
-
-Debug builds
---------------
-
-A basic debug build can be done with::
-
-    make debug
-
-This includes debug info in the binary for better traces. To build with address
-sanitizer, use::
-
-    make asan
-
-Which will result in a debug binary that uses the address sanitizer as well.
 
 .. _packagers:
 

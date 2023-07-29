@@ -69,10 +69,3 @@ prepare-for-cross-compile: clean all
 cross-compile:
 	python3 setup.py linux-package --skip-code-generation
 	
-FORCE: ;
-
-dependencies: FORCE
-	go run bypy/devenv.go deps
-
-develop: FORCE
-	go run bypy/devenv.go build

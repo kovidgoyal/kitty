@@ -320,7 +320,8 @@ func build(args []string) {
 	default:
 		exit("Building is only supported on Linux and macOS")
 	}
-	cmd := exec.Command(python, "setup.py", "develop", "--debug")
+	args = append([]string{"setup.py", "develop"}, args...)
+	cmd := exec.Command(python, args...)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "The following build command failed:", python, strings.Join(args, " "))
@@ -338,6 +339,8 @@ func main() {
 		dependencies(os.Args[2:])
 	case "build":
 		build(os.Args[2:])
+	case "-h", "--help":
+		fmt.Fprintln(os.Stderr, "Usage: ./dev.sh [build|deps] [options...]")
 	default:
 		exit(`Expected "deps" or "build" subcommands`)
 	}
