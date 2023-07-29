@@ -371,7 +371,11 @@ int main(int argc, char *argv[], char* envp[]) {
     delegate_to_kitten_if_possible(argc, argv, exe_dir);
     int num, ret=0;
     char lib[PATH_MAX+1] = {0};
-    num = snprintf(lib, PATH_MAX, "%s/%s", exe_dir, KITTY_LIB_PATH);
+    if (KITTY_LIB_PATH[0] == '/') {
+        num = snprintf(lib, PATH_MAX, "%s", KITTY_LIB_PATH);
+    } else {
+        num = snprintf(lib, PATH_MAX, "%s/%s", exe_dir, KITTY_LIB_PATH);
+    }
 
     if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to kitty lib\n"); return 1; }
     RunData run_data = {.exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .argc = argc, .argv = argv, .lc_ctype = lc_ctype};

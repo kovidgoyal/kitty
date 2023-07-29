@@ -1073,7 +1073,9 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         ph = os.path.relpath(os.environ["DEVELOP_ROOT"], '.')
         cppflags.append(f'-DSET_PYTHON_HOME="{ph}"')
         if is_macos:
-            pass
+            # use an absolute path so the exe is relocatable to the minimal
+            # bundle
+            klp = src_base
         else:
             ldflags += ['-Wl,--disable-new-dtags', f'-Wl,-rpath,$ORIGIN/../../{ph}/lib']
     if bundle_type.startswith('macos-'):
