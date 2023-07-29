@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -204,8 +205,49 @@ func chdir_to_base() {
 		exit(err)
 	}
 }
+
+func dependencies_for_docs() {
+	fmt.Println("Downloading get-pip.py")
+	rq, err := http.Get("https://bootstrap.pypa.io/get-pip.py")
+	if err != nil {
+		exit(err)
+	}
+	defer rq.Body.Close()
+	if rq.StatusCode != http.StatusOK {
+		exit(fmt.Errorf("Server responded with HTTP error: %s", rq.Status))
+	}
+	gp, err := os.Create(filepath.Join(folder, "get-pip.py"))
+	if err != nil {
+		exit(err)
+	}
+	defer gp.Close()
+	if _, err = io.Copy(gp, rq.Body); err != nil {
+		exit(err)
+	}
+	python := setup_to_run_python()
+
+	run := func(exe string, args ...string) {
+		c := exec.Command(exe, args...)
+		c.Stdout = os.Stdout
+		c.Stderr = os.Stderr
+		if err := c.Run(); err != nil {
+			exit(err)
+		}
+	}
+	run(python, gp.Name())
+	run(python, "-m", "pip", "install", "-r", "docs/requirements.txt")
+}
+
 func dependencies(args []string) {
 	chdir_to_base()
+	nf := flag.NewFlagSet("deps", flag.ExitOnError)
+	docsptr := nf.Bool("for-docs", false, "download the dependencies needed to build the documentation")
+	nf.Parse(args)
+	if *docsptr {
+		dependencies_for_docs()
+		fmt.Println("Dependencies needed to generate documentation have been installed. Build docs with ./dev.sh docs")
+		exit(0)
+	}
 	data, err := os.ReadFile(".github/workflows/ci.py")
 	if err != nil {
 		exit(err)
@@ -294,15 +336,8 @@ func prepend(env_var, path string) {
 	os.Setenv(env_var, path+val)
 }
 
-func build(args []string) {
-	chdir_to_base()
-	if _, err := os.Stat(folder); err != nil {
-		dependencies(nil)
-	}
-	python := ""
+func setup_to_run_python() (python string) {
 	root := root_dir()
-	os.Setenv("DEVELOP_ROOT", root)
-	prepend("PKG_CONFIG_PATH", filepath.Join(root, "lib", "pkgconfig"))
 	for _, x := range os.Environ() {
 		if strings.HasPrefix(x, "PYTHON") {
 			a, _, _ := strings.Cut(x, "=")
@@ -314,12 +349,26 @@ func build(args []string) {
 		prepend("LD_LIBRARY_PATH", filepath.Join(root, "lib"))
 		os.Setenv("PYTHONHOME", root)
 		python = filepath.Join(root, "bin", "python")
-	case "darwin":
+	case `darwin`:
 		python = filepath.Join(root, macos_python)
-		os.Setenv("PKGCONFIG_EXE", filepath.Join(root, "bin", "pkg-config"))
 	default:
 		exit("Building is only supported on Linux and macOS")
 	}
+	return
+}
+
+func build(args []string) {
+	chdir_to_base()
+	if _, err := os.Stat(folder); err != nil {
+		dependencies(nil)
+	}
+	root := root_dir()
+	os.Setenv("DEVELOP_ROOT", root)
+	prepend("PKG_CONFIG_PATH", filepath.Join(root, "lib", "pkgconfig"))
+	if runtime.GOOS == "darwin" {
+		os.Setenv("PKGCONFIG_EXE", filepath.Join(root, "bin", "pkg-config"))
+	}
+	python := setup_to_run_python()
 	args = append([]string{"setup.py", "develop"}, args...)
 	cmd := exec.Command(python, args...)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
@@ -328,6 +377,33 @@ func build(args []string) {
 		exit(err)
 	}
 	fmt.Println("Build successful. Run kitty as: kitty/launcher/kitty")
+}
+
+func docs(args []string) {
+	setup_to_run_python()
+	nf := flag.NewFlagSet("deps", flag.ExitOnError)
+	livereload := nf.Bool("live-reload", false, "build the docs and make them available via s local server with live reloading for ease of development")
+	failwarn := nf.Bool("fail-warn", false, "make warnings fatal when building the docs")
+	nf.Parse(args)
+	exe := filepath.Join(root_dir(), "bin", "sphinx-build")
+	aexe := filepath.Join(root_dir(), "bin", "sphinx-autobuild")
+	target := "docs"
+
+	if *livereload {
+		target = "develop-docs"
+	}
+	cmd := []string{target, "SPHINXBUILD=" + exe, "SPHINXAUTOBUILD=" + aexe}
+	if *failwarn {
+		cmd = append(cmd, "FAILWARN=1")
+	}
+	c := exec.Command("make", cmd...)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	err := c.Run()
+	if err != nil {
+		exit(err)
+	}
+	fmt.Println("docs successfully built")
 }
 
 func main() {
@@ -339,8 +415,10 @@ func main() {
 		dependencies(os.Args[2:])
 	case "build":
 		build(os.Args[2:])
+	case "docs":
+		docs(os.Args[2:])
 	case "-h", "--help":
-		fmt.Fprintln(os.Stderr, "Usage: ./dev.sh [build|deps] [options...]")
+		fmt.Fprintln(os.Stderr, "Usage: ./dev.sh [build|deps|docs] [options...]")
 	default:
 		exit(`Expected "deps" or "build" subcommands`)
 	}

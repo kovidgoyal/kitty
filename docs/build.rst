@@ -65,14 +65,13 @@ For more help on the various options supported by the build script::
 Building the documentation
 -------------------------------------
 
-This will require
 To have the kitty documentation available locally, run::
 
-    python3 -m pip install -r docs/requirements.txt && make docs
+    ./dev.sh deps -for-docs && ./dev.sh docs
 
 To develop the docs, with live reloading, use::
 
-    python3 -m pip install -r docs/requirements.txt && make develop-docs
+    ./dev.sh deps -for-docs && ./dev.sh docs -live-reload
 
 Dependencies
 ----------------
