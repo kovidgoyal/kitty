@@ -43,6 +43,8 @@ Detailed list of changes
 
 - kitten @ ls: Add user variables set on windows to the output (:iss:`6502`)
 
+- X11: Print an error to STDERR instead of refusing to start when the user sets a custom window icon larger than 128128 (:iss:`6507`)
+
 0.29.2 [2023-07-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

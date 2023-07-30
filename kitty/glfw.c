@@ -703,6 +703,11 @@ set_default_window_icon(PyObject UNUSED *self, PyObject *args) {
     uint8_t *data;
     if(!PyArg_ParseTuple(args, "s", &path)) return NULL;
     if (png_path_to_bitmap(path, &data, &width, &height, &sz)) {
+#ifndef __APPLE__
+        if (!global_state.is_wayland && (width > 128 || height > 128)) {
+            return PyErr_Format(PyExc_ValueError, "The window icon is too large (%dx%d). On X11 max window icon size is: 128x128. Create a file called ~/.config/kitty.app-128.png containing a 128x128 image to use as the window icon on X11.", width, height);
+        }
+#endif
         logo.width = width; logo.height = height;
         logo.pixels = data;
     }

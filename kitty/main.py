@@ -201,14 +201,17 @@ def get_icon128_path(base_path: str) -> str:
 
 def set_x11_window_icon() -> None:
     custom_icon_path = get_custom_window_icon()[1]
-    if custom_icon_path is not None:
-        custom_icon128_path = get_icon128_path(custom_icon_path)
-        if safe_mtime(custom_icon128_path) is None:
-            set_default_window_icon(custom_icon_path)
+    try:
+        if custom_icon_path is not None:
+            custom_icon128_path = get_icon128_path(custom_icon_path)
+            if safe_mtime(custom_icon128_path) is None:
+                set_default_window_icon(custom_icon_path)
+            else:
+                set_default_window_icon(custom_icon128_path)
         else:
-            set_default_window_icon(custom_icon128_path)
-    else:
-        set_default_window_icon(get_icon128_path(logo_png_file))
+            set_default_window_icon(get_icon128_path(logo_png_file))
+    except ValueError as err:
+        log_error(err)
 
 
 def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
