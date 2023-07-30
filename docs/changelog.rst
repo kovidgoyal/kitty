@@ -38,6 +38,8 @@ Detailed list of changes
 0.30.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new :doc:`transfer kitten </kittens/transfer>` that can be used to transfer files efficiently over the TTY device.
+
 - kitten @ set-user-vars: New remote control command to set user variables on a
   window (:iss:`6502`)
 
