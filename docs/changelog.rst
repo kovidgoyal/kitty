@@ -38,7 +38,7 @@ Detailed list of changes
 0.30.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A new :doc:`transfer kitten </kittens/transfer>` that can be used to transfer files efficiently over the TTY device.
+- A new :doc:`transfer kitten </kittens/transfer>` that can be used to transfer files efficiently over the TTY device
 
 - kitten @ set-user-vars: New remote control command to set user variables on a
   window (:iss:`6502`)
@@ -47,7 +47,7 @@ Detailed list of changes
 
 - kitten @ ls: Allow limiting output to matched windows/tabs (:iss:`6520`)
 
-- X11: Print an error to STDERR instead of refusing to start when the user sets a custom window icon larger than 128128 (:iss:`6507`)
+- X11: Print an error to :file:`STDERR` instead of refusing to start when the user sets a custom window icon larger than 128x128 (:iss:`6507`)
 
 0.29.2 [2023-07-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
