@@ -13,11 +13,11 @@ from kitty.types import AsyncResponse
 
 if TYPE_CHECKING:
     from kitty.boss import Boss as B
-    from kitty.tabs import Tab
+    from kitty.tabs import Tab as T
     from kitty.window import Window as W
     Window = W
     Boss = B
-    Tab
+    Tab = T
 else:
     Boss = Window = Tab = None
 RCOptions = R

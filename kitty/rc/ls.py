@@ -2,11 +2,11 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Set, Tuple
 
 from kitty.constants import appname
 
-from .base import ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+from .base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Tab, Window
 
 if TYPE_CHECKING:
     from kitty.cli_stub import LSRCOptions as CLIOptions
@@ -15,29 +15,51 @@ if TYPE_CHECKING:
 class LS(RemoteCommand):
     protocol_spec = __doc__ = '''
     all_env_vars/bool: Whether to send all environment variables for every window rather than just differing ones
+    match/str: Window to change colors in
+    match_tab/str: Tab to change colors in
+    self/bool: Boolean indicating whether to list only the window the command is run in
     '''
 
-    short_desc = 'List all tabs/windows'
+    short_desc = 'List tabs/windows'
     desc = (
-        'List all windows. The list is returned as JSON tree. The top-level is a list of'
+        'List windows. The list is returned as JSON tree. The top-level is a list of'
         f' operating system {appname} windows. Each OS window has an :italic:`id` and a list'
         ' of :italic:`tabs`. Each tab has its own :italic:`id`, a :italic:`title` and a list of :italic:`windows`.'
         ' Each window has an :italic:`id`, :italic:`title`, :italic:`current working directory`, :italic:`process id (PID)`,'
         ' :italic:`command-line` and :italic:`environment` of the process running in the window. Additionally, when'
         ' running the command inside a kitty window, that window can be identified by the :italic:`is_self` parameter.\n\n'
-        'You can use these criteria to select windows/tabs for the other commands.'
+        'You can use these criteria to select windows/tabs for the other commands.\n\n'
+        'You can limit the windows/tabs in the output by using the :option:`--match` and :option:`--match-tab` options.'
     )
     options_spec = '''\
 --all-env-vars
 type=bool-set
 Show all environment variables in output, not just differing ones.
-'''
+
+
+--self
+type=bool-set
+Only list the window this command is run in.
+''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t', 1)
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'all_env_vars': opts.all_env_vars}
+        return {'all_env_vars': opts.all_env_vars, 'match': opts.match, 'match_tab': opts.match_tab}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        data = list(boss.list_os_windows(window))
+        tab_filter: Optional[Callable[[Tab], bool]] = None
+        window_filter: Optional[Callable[[Window], bool]] = None
+
+        if payload_get('match') is not None:
+            window_ids = frozenset(w.id for w in self.windows_for_match_payload(boss, window, payload_get))
+            def wf(w: Window) -> bool:
+                return w.id in window_ids
+            window_filter = wf
+        if payload_get('match_tab') is not None:
+            tab_ids = frozenset(w.id for w in self.tabs_for_match_payload(boss, window, payload_get))
+            def tf(w: Tab) -> bool:
+                return w.id in tab_ids
+            tab_filter = tf
+        data = list(boss.list_os_windows(window, tab_filter, window_filter))
         if not payload_get('all_env_vars'):
             all_env_blocks: List[Dict[str, str]] = []
             common_env_vars: Set[Tuple[str, str]] = set()

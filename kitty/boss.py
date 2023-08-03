@@ -428,20 +428,26 @@ class Boss:
         self.os_window_map[os_window_id] = tm
         return os_window_id
 
-    def list_os_windows(self, self_window: Optional[Window] = None) -> Iterator[OSWindowDict]:
+    def list_os_windows(
+        self, self_window: Optional[Window] = None,
+        tab_filter: Optional[Callable[[Tab], bool]] = None,
+        window_filter: Optional[Callable[[Window], bool]] = None
+    ) -> Iterator[OSWindowDict]:
         with cached_process_data():
             active_tab_manager = self.active_tab_manager
             for os_window_id, tm in self.os_window_map.items():
-                yield {
-                    'id': os_window_id,
-                    'platform_window_id': platform_window_id(os_window_id),
-                    'is_active': tm is active_tab_manager,
-                    'is_focused': current_focused_os_window_id() == os_window_id,
-                    'last_focused': os_window_id == last_focused_os_window_id(),
-                    'tabs': list(tm.list_tabs(self_window)),
-                    'wm_class': tm.wm_class,
-                    'wm_name': tm.wm_name
-                }
+                tabs = list(tm.list_tabs(self_window, tab_filter, window_filter))
+                if tabs:
+                    yield {
+                        'id': os_window_id,
+                        'platform_window_id': platform_window_id(os_window_id),
+                        'is_active': tm is active_tab_manager,
+                        'is_focused': current_focused_os_window_id() == os_window_id,
+                        'last_focused': os_window_id == last_focused_os_window_id(),
+                        'tabs': tabs,
+                        'wm_class': tm.wm_class,
+                        'wm_name': tm.wm_name
+                    }
 
     @property
     def all_tab_managers(self) -> Iterator[TabManager]:
