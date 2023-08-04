@@ -447,7 +447,7 @@ func InsertFormatting(text string, spans ...*Span) string {
 	var in_span *Span
 	ans := make([]byte, 0, 2*len(text))
 	var overall_sgr_state SGR
-	slices.SortFunc(spans, func(a, b *Span) bool { return a.Offset < b.Offset })
+	slices.SortFunc(spans, func(a, b *Span) int { return a.Offset - b.Offset })
 	text_len := 0
 	var ep *wcswidth.EscapeCodeParser
 

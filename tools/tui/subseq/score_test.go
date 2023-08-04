@@ -21,7 +21,15 @@ func TestSubseq(t *testing.T) {
 	simple := func(items, query string, expected ...string) {
 		matches := ScoreItems(query, utils.Splitlines(items), Options{})
 		if sort_by_score {
-			matches = utils.StableSort(matches, func(a, b *Match) bool { return a.Score > b.Score })
+			matches = utils.StableSort(matches, func(a, b *Match) int {
+				if b.Score < a.Score {
+					return -1
+				}
+				if b.Score > a.Score {
+					return 1
+				}
+				return 0
+			})
 		}
 		actual := make([]string, 0, len(matches))
 		actual_positions := make([][]int, 0, len(matches))

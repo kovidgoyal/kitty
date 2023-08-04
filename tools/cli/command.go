@@ -308,12 +308,12 @@ func (self *Command) GetVisibleOptions() ([]string, map[string][]*Option) {
 }
 
 func sort_levenshtein_matches(q string, matches []string) {
-	utils.StableSort(matches, func(a, b string) bool {
+	utils.StableSort(matches, func(a, b string) int {
 		la, lb := utils.LevenshteinDistance(a, q, true), utils.LevenshteinDistance(b, q, true)
 		if la != lb {
-			return la < lb
+			return la - lb
 		}
-		return a < b
+		return strings.Compare(a, b)
 	})
 
 }

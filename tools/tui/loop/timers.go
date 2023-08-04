@@ -81,5 +81,5 @@ func (self *Loop) dispatch_timers(now time.Time) error {
 }
 
 func (self *Loop) sort_timers() {
-	slices.SortStableFunc(self.timers, func(a, b *timer) bool { return a.deadline.Before(b.deadline) })
+	slices.SortStableFunc(self.timers, func(a, b *timer) int { return a.deadline.Compare(b.deadline) })
 }

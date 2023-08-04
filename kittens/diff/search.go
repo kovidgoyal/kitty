@@ -124,7 +124,7 @@ func (self *Search) search(logical_lines *LogicalLines) {
 		}
 	})
 	for _, spans := range self.matches {
-		slices.SortFunc(spans, func(a, b Span) bool { return a.start < b.start })
+		slices.SortFunc(spans, func(a, b Span) int { return a.start - b.start })
 	}
 }
 

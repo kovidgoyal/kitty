@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"kitty/tools/utils"
@@ -42,8 +43,8 @@ func TestDiffCollectWalk(t *testing.T) {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff(
-		utils.Sort(expected_names.AsSlice(), func(a, b string) bool { return a < b }),
-		utils.Sort(names.AsSlice(), func(a, b string) bool { return a < b }),
+		utils.Sort(expected_names.AsSlice(), strings.Compare),
+		utils.Sort(names.AsSlice(), strings.Compare),
 	); diff != "" {
 		t.Fatal(diff)
 	}

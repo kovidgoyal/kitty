@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"os"
 	"strconv"
 
 	"github.com/zeebo/xxh3"
@@ -291,7 +290,7 @@ func (r *rsync) ApplyDelta(output io.Writer, target io.ReadSeeker, op Operation)
 		return err
 	}
 	write_block := func(op Operation) (err error) {
-		if _, err = target.Seek(int64(r.BlockSize*int(op.BlockIndex)), os.SEEK_SET); err != nil {
+		if _, err = target.Seek(int64(r.BlockSize*int(op.BlockIndex)), io.SeekStart); err != nil {
 			return err
 		}
 		n, err = io.ReadAtLeast(target, buffer, r.BlockSize)

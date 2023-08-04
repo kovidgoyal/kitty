@@ -87,7 +87,7 @@ func preread_stdin() (data_src io.Reader, tempfile *os.File, err error) {
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to copy data from STDIN pipe to temp file with error: %w", err)
 		}
-		tempfile.Seek(0, os.SEEK_SET)
+		tempfile.Seek(0, io.SeekStart)
 		data_src = tempfile
 	} else if stdin_data != nil {
 		data_src = bytes.NewBuffer(stdin_data)

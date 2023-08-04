@@ -909,7 +909,15 @@ func (self *Themes) ThemeByName(name string) *Theme {
 
 func match(expression string, items []string) []*subseq.Match {
 	matches := subseq.ScoreItems(expression, items, subseq.Options{Level1: " "})
-	matches = utils.StableSort(matches, func(a, b *subseq.Match) bool { return a.Score > b.Score })
+	matches = utils.StableSort(matches, func(a, b *subseq.Match) int {
+		if b.Score < a.Score {
+			return -1
+		}
+		if b.Score > a.Score {
+			return 1
+		}
+		return 0
+	})
 	return matches
 }
 

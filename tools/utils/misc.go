@@ -79,13 +79,13 @@ func Repeat[T any](x T, n int) []T {
 	return ans
 }
 
-func Sort[T any](s []T, less func(a, b T) bool) []T {
-	slices.SortFunc(s, less)
+func Sort[T any](s []T, cmp func(a, b T) int) []T {
+	slices.SortFunc(s, cmp)
 	return s
 }
 
-func StableSort[T any](s []T, less func(a, b T) bool) []T {
-	slices.SortStableFunc(s, less)
+func StableSort[T any](s []T, cmp func(a, b T) int) []T {
+	slices.SortStableFunc(s, cmp)
 	return s
 }
 
@@ -98,10 +98,19 @@ func sort_with_key[T any, C constraints.Ordered](stable bool, s []T, key func(a 
 	for i, x := range s {
 		temp[i].val, temp[i].key = x, key(x)
 	}
+	cmp := func(a, b t) int {
+		if a.key < b.key {
+			return -1
+		}
+		if a.key > b.key {
+			return 1
+		}
+		return 0
+	}
 	if stable {
-		slices.SortStableFunc(temp, func(a, b t) bool { return a.key < b.key })
+		slices.SortStableFunc(temp, cmp)
 	} else {
-		slices.SortFunc(temp, func(a, b t) bool { return a.key < b.key })
+		slices.SortFunc(temp, cmp)
 	}
 	for i, x := range temp {
 		s[i] = x.val

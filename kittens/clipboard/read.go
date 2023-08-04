@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -110,7 +111,7 @@ func (self *Output) commit() {
 		return
 	}
 	if self.image_needs_conversion {
-		self.dest.Seek(0, os.SEEK_SET)
+		self.dest.Seek(0, io.SeekStart)
 		img, _, err := image.Decode(self.dest)
 		self.dest.Close()
 		os.Remove(self.dest.Name())

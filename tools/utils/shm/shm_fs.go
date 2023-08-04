@@ -48,9 +48,9 @@ func (self *file_based_mmap) Seek(offset int64, whence int) (ret int64, err erro
 	switch whence {
 	case io.SeekStart:
 		self.pos = offset
-	case os.SEEK_END:
+	case io.SeekEnd:
 		self.pos = int64(len(self.region)) + offset
-	case os.SEEK_CUR:
+	case io.SeekCurrent:
 		self.pos += offset
 	}
 	return self.pos, nil

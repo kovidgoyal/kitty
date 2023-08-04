@@ -90,8 +90,8 @@ func (self *History) merge_items(items ...HistoryItem) {
 	if !changed {
 		return
 	}
-	self.items = utils.StableSort(self.items, func(a, b HistoryItem) bool {
-		return a.Timestamp.Before(b.Timestamp)
+	self.items = utils.StableSort(self.items, func(a, b HistoryItem) int {
+		return a.Timestamp.Compare(b.Timestamp)
 	})
 	if len(self.items) > self.max_items {
 		self.items = self.items[len(self.items)-self.max_items:]

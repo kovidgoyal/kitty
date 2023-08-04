@@ -951,7 +951,7 @@ func (self *File) next_chunk() (ans string, asz int, err error) {
 		}
 		if n <= 0 {
 			is_last = true
-		} else if pos, _ := self.actual_file.Seek(0, os.SEEK_CUR); pos >= self.file_size {
+		} else if pos, _ := self.actual_file.Seek(0, io.SeekCurrent); pos >= self.file_size {
 			is_last = true
 		}
 		chunk = chunk[:n]

@@ -52,7 +52,7 @@ type filesystem_file struct {
 }
 
 func (ff *filesystem_file) tell() (int64, error) {
-	return ff.f.Seek(0, os.SEEK_CUR)
+	return ff.f.Seek(0, io.SeekCurrent)
 }
 
 func (ff *filesystem_file) close() error {
@@ -78,7 +78,7 @@ func (pf *patch_file) tell() (int64, error) {
 		s, err := os.Stat(pf.path)
 		return s.Size(), err
 	}
-	return pf.temp.Seek(0, os.SEEK_CUR)
+	return pf.temp.Seek(0, io.SeekCurrent)
 }
 
 func (pf *patch_file) close() (err error) {
@@ -685,7 +685,7 @@ func files_for_receive(opts *Options, dest string, files []*remote_file, remote_
 	spec_paths := make([]string, len(specs))
 	for i := range specs {
 		// use the shortest path as the path for the spec
-		slices.SortStableFunc(spec_map[i], func(a, b *remote_file) bool { return len(a.remote_path) < len(b.remote_path) })
+		slices.SortStableFunc(spec_map[i], func(a, b *remote_file) int { return len(a.remote_path) - len(b.remote_path) })
 		spec_paths[i] = spec_map[i][0].remote_path
 	}
 	if opts.Mode == "mirror" {

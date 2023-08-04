@@ -244,7 +244,7 @@ func OpenNativeImageFromReader(f io.ReadSeeker) (ans *ImageData, err error) {
 	if err != nil {
 		return nil, err
 	}
-	f.Seek(0, os.SEEK_SET)
+	f.Seek(0, io.SeekStart)
 	ans = &ImageData{Width: c.Width, Height: c.Height, Format_uppercase: strings.ToUpper(fmt)}
 
 	if ans.Format_uppercase == "GIF" {
@@ -563,7 +563,7 @@ func RenderWithMagick(path string, ro *RenderOptions, frames []IdentifyRecord) (
 		err = fmt.Errorf("Failed to render %d out of %d frames", len(frames)-len(ans), len(frames))
 		return
 	}
-	slices.SortFunc(ans, func(a, b *ImageFrame) bool { return a.Number < b.Number })
+	slices.SortFunc(ans, func(a, b *ImageFrame) int { return a.Number - b.Number })
 	anchor_frame := 1
 	for i, frame := range ans {
 		anchor_frame, frame.Compose_onto = SetGIFFrameDisposal(frame.Number, anchor_frame, byte(frames[i].Disposal))
