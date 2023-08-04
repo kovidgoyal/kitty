@@ -40,6 +40,8 @@ Detailed list of changes
 
 - A new :doc:`transfer kitten </kittens/transfer>` that can be used to transfer files efficiently over the TTY device
 
+- ssh kitten: A new configuration directive `to automatically forward the kitty remote control socket <kitten-ssh.forward_remote_control>`
+
 - kitten @ set-user-vars: New remote control command to set user variables on a
   window (:iss:`6502`)
 

@@ -208,6 +208,16 @@ For example using :code:`delegate ssh` will run the ssh command with all argumen
 to the kitten, except kitten specific ones. This is useful if some hosts are not capable
 of supporting the ssh kitten.
 ''')
+
+opt('forward_remote_control', 'no', option_type='to_bool', long_text='''
+Forward the kitty remote control socket to the remote host. This allows using the kitty
+remote control facilities from the remote host. WARNING: This allows any software
+on the remote host full access to the local computer, so only do it for trusted remote hosts.
+Note that this does not work with abstract UNIX sockets such as :file:`@mykitty` because of SSH limitations.
+This option uses SSH socket forwarding to forward the socket pointed to by the :envvar:`KITTY_LISTEN_ON`
+environment variable.
+''')
+
 egr()  # }}}
 
 

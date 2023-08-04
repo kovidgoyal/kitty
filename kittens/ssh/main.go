@@ -177,6 +177,7 @@ type connection_data struct {
 	echo_on            bool
 	request_data       bool
 	literal_env        map[string]string
+	listen_on          string
 	test_script        string
 	dont_create_shm    bool
 
@@ -246,6 +247,9 @@ func serialize_env(cd *connection_data, get_local_env func(string) (string, bool
 		add_env("KITTY_REMOTE", cd.host_opts.Remote_kitty.String())
 	}
 	add_env("KITTY_PUBLIC_KEY", os.Getenv("KITTY_PUBLIC_KEY"))
+	if cd.listen_on != "" {
+		add_env("KITTY_LISTEN_ON", cd.listen_on)
+	}
 	return final_env_instructions(cd.script_type == "py", get_local_env, env...), ksi
 }
 
@@ -622,28 +626,88 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 		}
 		return 1, unix.Exec(utils.FindExe(delegate_cmd[0]), utils.Concat(delegate_cmd, ssh_args, server_args), os.Environ())
 	}
+	master_is_alive, master_checked := false, false
+	var control_master_args []string
 	if host_opts.Share_connections {
 		kpid, err := strconv.Atoi(os.Getenv("KITTY_PID"))
 		if err != nil {
 			return 1, fmt.Errorf("Invalid KITTY_PID env var not an integer: %#v", os.Getenv("KITTY_PID"))
 		}
-		cpargs, err := connection_sharing_args(kpid)
+		control_master_args, err = connection_sharing_args(kpid)
 		if err != nil {
 			return 1, err
 		}
-		cmd = slices.Insert(cmd, insertion_point, cpargs...)
+		cmd = slices.Insert(cmd, insertion_point, control_master_args...)
 	}
 	use_kitty_askpass := host_opts.Askpass == Askpass_native || (host_opts.Askpass == Askpass_unless_set && os.Getenv("SSH_ASKPASS") == "")
 	need_to_request_data := true
 	if use_kitty_askpass {
 		need_to_request_data = set_askpass()
 	}
-	if need_to_request_data && host_opts.Share_connections {
-		check_cmd := slices.Insert(cmd, 1, "-O", "check")
-		err = exec.Command(check_cmd[0], check_cmd[1:]...).Run()
-		if err == nil {
-			need_to_request_data = false
+	master_is_functional := func() bool {
+		if master_checked {
+			return master_is_alive
 		}
+		master_checked = true
+		check_cmd := slices.Insert(cmd, 1, "-O", "check")
+		master_is_alive = exec.Command(check_cmd[0], check_cmd[1:]...).Run() == nil
+		return master_is_alive
+	}
+
+	if need_to_request_data && host_opts.Share_connections && master_is_functional() {
+		need_to_request_data = false
+	}
+	run_control_master := func() error {
+		cmcmd := slices.Clone(cmd[:insertion_point])
+		cmcmd = append(cmcmd, control_master_args...)
+		cmcmd = append(cmcmd, "-N", "-f")
+		cmcmd = append(cmcmd, "--", hostname)
+		c := exec.Command(cmcmd[0], cmcmd[1:]...)
+		c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
+		err := c.Run()
+		if err != nil {
+			err = fmt.Errorf("Failed to start SSH ControlMaster with cmdline: %s and error: %w", strings.Join(cmcmd, " "), err)
+		}
+		master_checked = false
+		master_is_alive = false
+		return err
+	}
+	if host_opts.Forward_remote_control && os.Getenv("KITTY_LISTEN_ON") != "" {
+		if !host_opts.Share_connections {
+			return 1, fmt.Errorf("Cannot use forward_remote_control=yes without share_connections=yes as it relies on SSH Controlmasters")
+		}
+		if !master_is_functional() {
+			if err = run_control_master(); err != nil {
+				return 1, err
+			}
+			if !master_is_functional() {
+				return 1, fmt.Errorf("SSH ControlMaster not functional after being started explicitly")
+			}
+		}
+		protocol, listen_on, found := strings.Cut(os.Getenv("KITTY_LISTEN_ON"), ":")
+		if !found {
+			return 1, fmt.Errorf("Invalid KITTY_LISTEN_ON: %#v", os.Getenv("KITTY_LISTEN_ON"))
+		}
+		if protocol == "unix" && strings.HasPrefix(listen_on, "@") {
+			return 1, fmt.Errorf("Cannot forward kitty remote control socket when an abstract UNIX socket (%s) is used, due to limitations in OpenSSH. Use either a path based one or a TCP socket", listen_on)
+		}
+		cmcmd := slices.Clone(cmd[:insertion_point])
+		cmcmd = append(cmcmd, control_master_args...)
+		cmcmd = append(cmcmd, "-R", "0:"+listen_on, "-O", "forward")
+		cmcmd = append(cmcmd, "--", hostname)
+		c := exec.Command(cmcmd[0], cmcmd[1:]...)
+		b := bytes.Buffer{}
+		c.Stdout = &b
+		c.Stderr = os.Stderr
+		if err := c.Run(); err != nil {
+			return 1, fmt.Errorf("%s\nSetup of port forward in SSH ControlMaster failed with error: %w", string(b.Bytes()), err)
+		}
+		port, err := strconv.Atoi(strings.TrimSpace(string(b.Bytes())))
+		if err != nil {
+			os.Stderr.Write(b.Bytes())
+			return 1, fmt.Errorf("Setup of port forward in SSH ControlMaster failed with error: invalid resolved port returned: %s", b.String())
+		}
+		cd.listen_on = "tcp:localhost:" + strconv.Itoa(port)
 	}
 	term, err := tty.OpenControllingTerm(tty.SetNoEcho)
 	if err != nil {

@@ -11,8 +11,13 @@ Truly convenient SSH
 
 * Easily :opt:`change terminal colors <kitten-ssh.color_scheme>` when connecting to remote hosts
 
+* Automatically :opt:`forward the kitty remote control socket <kitten-ssh.forward_remote_control>` to configured hosts
+
 .. versionadded:: 0.25.0
    Automatic shell integration, file transfer and reuse of connections
+
+.. versionadded:: 0.30.0
+   Automatic forwarding of remote control sockets
 
 The ssh kitten allows you to login easily to remote hosts, and automatically
 setup the environment there to be as comfortable as your local shell. You can
