@@ -359,7 +359,7 @@ def macos_cmdline(argv_args: List[str]) -> List[str]:
 
 def expand_listen_on(listen_on: str, from_config_file: bool) -> str:
     listen_on = expandvars(listen_on)
-    if '{kitty_pid}' not in listen_on and from_config_file:
+    if '{kitty_pid}' not in listen_on and from_config_file and listen_on.startswith('unix:'):
         listen_on += '-{kitty_pid}'
     listen_on = listen_on.replace('{kitty_pid}', str(os.getpid()))
     if listen_on.startswith('unix:'):
@@ -370,6 +370,9 @@ def expand_listen_on(listen_on: str, from_config_file: bool) -> str:
             elif not os.path.isabs(path):
                 import tempfile
                 listen_on = f'unix:{os.path.join(tempfile.gettempdir(), path)}'
+    elif listen_on.startswith('tcp:') or listen_on.startswith('tcp6:'):
+        if from_config_file:  # use a random port
+            listen_on = ':'.join(listen_on.split(':', 2)[:2]) + ':0'
     return listen_on
 
 
@@ -432,7 +435,7 @@ def setup_manpath(env: Dict[str, str]) -> None:
 
 def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
     from_config_file = False
-    if not cli_opts.listen_on and opts.listen_on.startswith('unix:'):
+    if not cli_opts.listen_on:
         cli_opts.listen_on = opts.listen_on
         from_config_file = True
     if cli_opts.listen_on:

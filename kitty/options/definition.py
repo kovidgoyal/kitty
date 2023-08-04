@@ -2882,18 +2882,18 @@ prevents any form of remote control. The meaning of the various values are:
 
 opt('listen_on', 'none',
     long_text='''
-Listen to the specified UNIX socket for remote control connections. Note that
-this will apply to all kitty instances. It can be overridden by the
-:option:`kitty --listen-on` command line option, which also supports listening
-on a TCP socket. This option accepts only UNIX sockets, such as
+Listen to the specified socket for remote control connections. Note that this
+will apply to all kitty instances. It can be overridden by the :option:`kitty
+--listen-on` command line option. For UNIX sockets, such as
 :code:`unix:${TEMP}/mykitty` or :code:`unix:@mykitty` (on Linux). Environment
 variables are expanded and relative paths are resolved with respect to the
 temporary directory. If :code:`{kitty_pid}` is present, then it is replaced by
 the PID of the kitty process, otherwise the PID of the kitty process is
-appended to the value, with a hyphen. See the help for :option:`kitty
---listen-on` for more details. Note that this will be ignored unless
-:opt:`allow_remote_control` is set to either: :code:`yes`, :code:`socket` or
-:code:`socket-only`.
+appended to the value, with a hyphen. For TCP sockets such as
+:code:`tcp:localhost:0` a random port is always used even if a non-zero port
+number is specified.  See the help for :option:`kitty --listen-on` for more
+details. Note that this will be ignored unless :opt:`allow_remote_control` is
+set to either: :code:`yes`, :code:`socket` or :code:`socket-only`.
 Changing this option by reloading the config is not supported.
 '''
     )

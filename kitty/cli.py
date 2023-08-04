@@ -948,8 +948,8 @@ you can send commands to it with :italic:`{appname} @` using the
 :italic:`{appname} @` within a kitty window, there is no need to specify the
 :option:`{appname} @ --to` option as it will automatically read from the
 environment. Note that this will be ignored unless :opt:`allow_remote_control`
-is set to either: :code:`yes`, :code:`socket` or :code:`socket-only`.  For UNIX
-sockets, this can also be specified in :file:`{conf_name}.conf`.
+is set to either: :code:`yes`, :code:`socket` or :code:`socket-only`. This can
+also be specified in :file:`kitty.conf`.
 
 
 --start-as

@@ -169,14 +169,18 @@ class OSWindowDict(TypedDict):
     wm_name: str
 
 
-def listen_on(spec: str) -> int:
+def listen_on(spec: str) -> Tuple[int, str]:
     import socket
     family, address, socket_path = parse_address_spec(spec)
     s = socket.socket(family)
     atexit.register(remove_socket_file, s, socket_path)
     s.bind(address)
     s.listen()
-    return s.fileno()
+    if isinstance(address, tuple):
+        h, resolved_port = s.getsockname()
+        sfamily, host, port = spec.split(':', 2)
+        spec = f'{sfamily}:{host}:{resolved_port}'
+    return s.fileno(), spec
 
 
 def data_for_at(w: Optional[Window], arg: str, add_wrap_markers: bool = False) -> Optional[str]:
@@ -357,8 +361,7 @@ class Boss:
             self.allow_remote_control = 'n'
         self.listening_on = ''
         if args.listen_on and self.allow_remote_control in ('y', 'socket', 'socket-only', 'password'):
-            listen_fd = listen_on(args.listen_on)
-            self.listening_on = args.listen_on
+            listen_fd, self.listening_on = listen_on(args.listen_on)
         self.child_monitor = ChildMonitor(
             self.on_child_death,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None,
