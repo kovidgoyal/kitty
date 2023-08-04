@@ -49,7 +49,7 @@ Detailed list of changes
 
 - kitten @ ls: Allow limiting output to matched windows/tabs (:iss:`6520`)
 
-- Remote control: Allow using a random TCP socket as the remote control socket and also allow using TCP sockets in :opt:`listen_on`
+- Remote control: Allow using a random TCP port as the remote control socket and also allow using TCP sockets in :opt:`listen_on`
 
 - X11: Print an error to :file:`STDERR` instead of refusing to start when the user sets a custom window icon larger than 128x128 (:iss:`6507`)
 
