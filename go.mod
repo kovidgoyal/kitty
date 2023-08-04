@@ -17,6 +17,7 @@ require (
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 	golang.org/x/image v0.10.0
 	golang.org/x/sys v0.11.0
+	golang.org/x/text v0.12.0
 	howett.net/plist v1.0.0
 )
 
