@@ -214,8 +214,16 @@ class PTY:
             from kitty.child import openpty
             self.master_fd, self.slave_fd = openpty()
         else:
+            forwarded_fd = STDOUT_FILENO + 2
+            os.dup2(sys.stdout.fileno(), forwarded_fd)
+            os.dup2(sys.stderr.fileno(), forwarded_fd+1)
             self.child_pid, self.master_fd = fork()
             self.is_child = self.child_pid == CHILD
+            if self.is_child:
+                os.environ['KITTY_STDIO_FORWARDED'] = str(forwarded_fd)
+            else:
+                os.close(forwarded_fd)
+                os.close(forwarded_fd + 1)
         self.child_waited_for = False
         if self.is_child:
             while read_screen_size().width != columns * cell_width:
