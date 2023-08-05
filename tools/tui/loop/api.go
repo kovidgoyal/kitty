@@ -47,7 +47,8 @@ type Loop struct {
 	timers, timers_temp                    []*timer
 	timer_id_counter, write_msg_id_counter IdType
 	wakeup_channel                         chan byte
-	pending_writes                         []*write_msg
+	pending_writes                         []write_msg
+	tty_write_channel                      chan write_msg
 	pending_mouse_events                   *utils.RingBuffer[MouseEvent]
 	on_SIGTSTP                             func() error
 	style_cache                            map[string]func(...any) string
@@ -292,7 +293,7 @@ func (self *Loop) WakeupMainThread() bool {
 func (self *Loop) QueueWriteString(data string) IdType {
 	self.write_msg_id_counter++
 	msg := write_msg{str: data, bytes: nil, id: self.write_msg_id_counter}
-	self.add_write_to_pending_queue(&msg)
+	self.add_write_to_pending_queue(msg)
 	return msg.id
 }
 
@@ -301,7 +302,7 @@ func (self *Loop) QueueWriteString(data string) IdType {
 func (self *Loop) UnsafeQueueWriteBytes(data []byte) IdType {
 	self.write_msg_id_counter++
 	msg := write_msg{bytes: data, id: self.write_msg_id_counter}
-	self.add_write_to_pending_queue(&msg)
+	self.add_write_to_pending_queue(msg)
 	return msg.id
 }
 
