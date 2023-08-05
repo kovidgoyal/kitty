@@ -113,7 +113,9 @@ def run_cli(suite: unittest.TestSuite, verbosity: int = 4) -> bool:
     r.resultclass = unittest.TextTestResult
     runner = r(verbosity=verbosity)
     runner.tb_locals = True  # type: ignore
-    result = runner.run(suite)
+    from . import forwardable_stdio
+    with forwardable_stdio():
+        result = runner.run(suite)
     return result.wasSuccessful()
 
 

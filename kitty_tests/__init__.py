@@ -11,6 +11,7 @@ import struct
 import sys
 import termios
 import time
+from contextlib import contextmanager
 from pty import CHILD, STDIN_FILENO, STDOUT_FILENO, fork
 from unittest import TestCase
 
@@ -200,6 +201,23 @@ class BaseTest(TestCase):
             c1.x, c1.y, c2.x, c2.y = x1, y1, x2, y2
 
 
+debug_stdout = debug_stderr = -1
+
+
+@contextmanager
+def forwardable_stdio():
+    debug_stdout = fd = os.dup(sys.stdout.fileno())
+    os.set_inheritable(fd, True)
+    debug_stderr = fd = os.dup(sys.stderr.fileno())
+    os.set_inheritable(fd, True)
+    try:
+        yield
+    finally:
+        os.close(debug_stderr)
+        os.close(debug_stdout)
+        debug_stderr = debug_stdout = -1
+
+
 class PTY:
 
     def __init__(
@@ -214,16 +232,10 @@ class PTY:
             from kitty.child import openpty
             self.master_fd, self.slave_fd = openpty()
         else:
-            forwarded_fd = STDOUT_FILENO + 2
-            os.dup2(sys.stdout.fileno(), forwarded_fd)
-            os.dup2(sys.stderr.fileno(), forwarded_fd+1)
             self.child_pid, self.master_fd = fork()
             self.is_child = self.child_pid == CHILD
             if self.is_child:
-                os.environ['KITTY_STDIO_FORWARDED'] = str(forwarded_fd)
-            else:
-                os.close(forwarded_fd)
-                os.close(forwarded_fd + 1)
+                os.environ['KITTY_STDIO_FORWARDED'] = str(debug_stdout)
         self.child_waited_for = False
         if self.is_child:
             while read_screen_size().width != columns * cell_width:
