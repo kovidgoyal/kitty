@@ -206,6 +206,7 @@ debug_stdout = debug_stderr = -1
 
 @contextmanager
 def forwardable_stdio():
+    global debug_stderr, debug_stdout
     debug_stdout = fd = os.dup(sys.stdout.fileno())
     os.set_inheritable(fd, True)
     debug_stderr = fd = os.dup(sys.stderr.fileno())
@@ -234,8 +235,6 @@ class PTY:
         else:
             self.child_pid, self.master_fd = fork()
             self.is_child = self.child_pid == CHILD
-            if self.is_child:
-                os.environ['KITTY_STDIO_FORWARDED'] = str(debug_stdout)
         self.child_waited_for = False
         if self.is_child:
             while read_screen_size().width != columns * cell_width:
@@ -249,7 +248,10 @@ class PTY:
                 os.dup2(stdout_fd, STDOUT_FILENO)
                 os.close(stdout_fd)
             signal.pthread_sigmask(signal.SIG_SETMASK, ())
-            os.execvpe(argv[0], argv, env or os.environ)
+            env = os.environ if env is None else env
+            if debug_stdout > -1:
+                env['KITTY_STDIO_FORWARDED'] = str(debug_stdout)
+            os.execvpe(argv[0], argv, env)
         if stdin_fd is not None:
             os.close(stdin_fd)
         if stdout_fd is not None:
