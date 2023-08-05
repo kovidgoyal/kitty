@@ -358,6 +358,7 @@ type SendManager struct {
 	last_progress_file                                         *File
 	progress_tracker                                           ProgressTracker
 	current_chunk_uncompressed_sz                              int64
+	current_chunk_write_id                                     loop.IdType
 }
 
 func (self *SendManager) start_transfer() string {
@@ -398,7 +399,9 @@ type SendHandler struct {
 	ctx                                  *markup.Context
 	transmit_started, file_metadata_sent bool
 	quit_after_write_code                int
+	finish_cmd_write_id                  loop.IdType
 	check_paths_printed                  bool
+	transfer_finish_sent                 bool
 	max_name_length                      int
 	progress_drawn                       bool
 	failed_files, done_files             []*File
@@ -633,10 +636,10 @@ func (self *SendHandler) on_file_done(f *File) {
 	self.schedule_progress_update(100 * time.Millisecond)
 }
 
-func (self *SendHandler) send_payload(payload string) {
+func (self *SendHandler) send_payload(payload string) loop.IdType {
 	self.lp.QueueWriteString(self.manager.prefix)
 	self.lp.QueueWriteString(payload)
-	self.lp.QueueWriteString(self.manager.suffix)
+	return self.lp.QueueWriteString(self.manager.suffix)
 }
 
 func (self *File) metadata_command(use_rsync bool) *FileTransmissionCommand {
@@ -656,7 +659,7 @@ func (self *File) metadata_command(use_rsync bool) *FileTransmissionCommand {
 	}
 }
 
-func (self *SendManager) send_file_metadata(send func(string)) {
+func (self *SendManager) send_file_metadata(send func(string) loop.IdType) {
 	for _, f := range self.files {
 		ftc := f.metadata_command(self.use_rsync)
 		send(ftc.Serialize())
@@ -978,7 +981,7 @@ func (self *File) next_chunk() (ans string, asz int, err error) {
 	return
 }
 
-func (self *SendManager) next_chunks(callback func(string)) error {
+func (self *SendManager) next_chunks(callback func(string) loop.IdType) error {
 	for {
 		if self.active_file() == nil {
 			self.activate_next_ready_file()
@@ -999,9 +1002,11 @@ func (self *SendManager) next_chunks(callback func(string)) error {
 		}
 		is_last := af.state == FINISHED
 		if len(chunk) > 0 {
-			split_for_transfer(utils.UnsafeStringToBytes(chunk), af.file_id, is_last, func(ftc *FileTransmissionCommand) { callback(ftc.Serialize()) })
+			split_for_transfer(utils.UnsafeStringToBytes(chunk), af.file_id, is_last, func(ftc *FileTransmissionCommand) {
+				self.current_chunk_write_id = callback(ftc.Serialize())
+			})
 		} else if is_last {
-			callback(FileTransmissionCommand{Action: Action_end_data, File_id: af.file_id}.Serialize())
+			self.current_chunk_write_id = callback(FileTransmissionCommand{Action: Action_end_data, File_id: af.file_id}.Serialize())
 		}
 		if is_last {
 			self.activate_next_ready_file()
@@ -1014,9 +1019,9 @@ func (self *SendManager) next_chunks(callback func(string)) error {
 
 func (self *SendHandler) transmit_next_chunk() (err error) {
 	found_chunk := false
-	err = self.manager.next_chunks(func(chunk string) {
-		self.send_payload(chunk)
+	err = self.manager.next_chunks(func(chunk string) loop.IdType {
 		found_chunk = true
+		return self.send_payload(chunk)
 	})
 	if err != nil {
 		return err
@@ -1057,12 +1062,11 @@ func (self *SendHandler) initialize() error {
 }
 
 func (self *SendHandler) transfer_finished() {
-	self.send_payload(FileTransmissionCommand{Action: Action_finish}.Serialize())
-	if len(self.failed_files) > 0 {
-		self.quit_after_write_code = 1
-	} else {
-		self.quit_after_write_code = 0
+	if self.transfer_finish_sent {
+		return
 	}
+	self.transfer_finish_sent = true
+	self.finish_cmd_write_id = self.send_payload(FileTransmissionCommand{Action: Action_finish}.Serialize())
 }
 
 func (self *SendHandler) on_text(text string, from_key_event, in_bracketed_paste bool) error {
@@ -1139,10 +1143,18 @@ func (self *SendHandler) on_key_event(ev *loop.KeyEvent) error {
 }
 
 func (self *SendHandler) on_writing_finished(msg_id loop.IdType) (err error) {
-	chunk_transmitted := self.manager.current_chunk_uncompressed_sz >= 0
+	chunk_transmitted := self.manager.current_chunk_uncompressed_sz >= 0 && msg_id == self.manager.current_chunk_write_id
 	if chunk_transmitted {
 		self.manager.progress_tracker.on_transmit(self.manager.current_chunk_uncompressed_sz)
 		self.manager.current_chunk_uncompressed_sz = -1
+		self.manager.current_chunk_write_id = 0
+	}
+	if self.finish_cmd_write_id > 0 && msg_id == self.finish_cmd_write_id {
+		if len(self.failed_files) > 0 {
+			self.quit_after_write_code = 1
+		} else {
+			self.quit_after_write_code = 0
+		}
 	}
 	if self.quit_after_write_code > -1 {
 		self.lp.Quit(self.quit_after_write_code)
