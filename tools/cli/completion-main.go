@@ -8,17 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
-
-	"kitty/tools/tty"
 )
-
-func debug(args ...any) {
-	tty.DebugPrintln(args...)
-}
-
-func debugf(format string, args ...any) {
-	debug(fmt.Sprintf(format, args...))
-}
 
 func json_input_parser(data []byte, shell_state map[string]string) ([][]string, error) {
 	ans := make([][]string, 0, 32)
