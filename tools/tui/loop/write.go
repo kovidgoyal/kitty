@@ -55,8 +55,7 @@ func writestring_ignoring_temporary_errors(f *tty.Term, buf string) (int, error)
 func (self *Loop) flush_pending_writes(tty_write_channel chan<- write_msg) (num_sent int) {
 	defer func() {
 		if num_sent > 0 {
-			n := copy(self.pending_writes, self.pending_writes[num_sent:])
-			self.pending_writes = self.pending_writes[:n]
+			self.pending_writes = utils.ShiftLeft(self.pending_writes, num_sent)
 		}
 	}()
 	for len(self.pending_writes) > num_sent {
