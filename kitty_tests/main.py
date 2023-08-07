@@ -184,14 +184,13 @@ def run_python_tests(args: Any, go_proc: 'Optional[subprocess.Popen[bytes]]' = N
         sys.stderr.flush()
         print(go_proc.stdout.read().decode('utf-8', 'replace'), end='', flush=True)
         go_proc.stdout.close()
-        go_proc.wait()
+        return go_proc.wait()
 
     if args.module:
         tests = filter_tests_by_module(tests, args.module)
         if not tests._tests:
             if go_proc:
-                print_go()
-                raise SystemExit(go_proc.returncode)
+                raise SystemExit(print_go())
             raise SystemExit('No test module named %s found' % args.module)
 
     if args.name:
