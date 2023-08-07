@@ -24,13 +24,6 @@ func (self *write_msg) String() string {
 	return fmt.Sprintf("write_msg{%v %#v %#v}", self.id, string(self.bytes), self.str)
 }
 
-type write_dispatcher struct {
-	str       string
-	bytes     []byte
-	is_string bool
-	is_empty  bool
-}
-
 func write_ignoring_temporary_errors(f *tty.Term, buf []byte) (int, error) {
 	n, err := f.Write(buf)
 	if err != nil {
@@ -114,31 +107,28 @@ func (self *Loop) add_write_to_pending_queue(data write_msg) {
 	}
 }
 
-func create_write_dispatcher(msg write_msg) *write_dispatcher {
-	self := write_dispatcher{str: msg.str, bytes: msg.bytes, is_string: msg.bytes == nil}
-	if self.is_string {
-		self.is_empty = self.str == ""
-	} else {
-		self.is_empty = len(self.bytes) == 0
+func (self write_msg) is_empty() bool {
+	if self.bytes == nil {
+		return self.str == ""
 	}
-	return &self
+	return len(self.bytes) == 0
 }
 
-func (self *write_dispatcher) write(f *tty.Term) (int, error) {
-	if self.is_string {
-		return writestring_ignoring_temporary_errors(f, self.str)
-	}
-	return write_ignoring_temporary_errors(f, self.bytes)
-}
-
-func (self *write_dispatcher) slice(n int) {
-	if self.is_string {
-		self.str = self.str[n:]
-		self.is_empty = self.str == ""
+func (self *write_msg) write(f *tty.Term) (err error) {
+	n := 0
+	if self.bytes == nil {
+		n, err = writestring_ignoring_temporary_errors(f, self.str)
 	} else {
-		self.bytes = self.bytes[n:]
-		self.is_empty = len(self.bytes) == 0
+		n, err = write_ignoring_temporary_errors(f, self.bytes)
 	}
+	if n > 0 {
+		if self.bytes == nil {
+			self.str = self.str[n:]
+		} else {
+			self.bytes = self.bytes[n:]
+		}
+	}
+	return
 }
 
 func write_to_tty(
@@ -174,20 +164,15 @@ func write_to_tty(
 	}
 
 	write_data := func(msg write_msg) {
-		data := create_write_dispatcher(msg)
-		for !data.is_empty {
+		for !msg.is_empty() {
 			wait_for_write_available()
 			if !keep_going {
 				return
 			}
-			n, err := data.write(term)
-			if err != nil {
+			if err := msg.write(term); err != nil {
 				err_channel <- err
 				keep_going = false
 				return
-			}
-			if n > 0 {
-				data.slice(n)
 			}
 		}
 	}
