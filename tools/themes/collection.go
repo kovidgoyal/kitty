@@ -30,8 +30,6 @@ import (
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"golang.org/x/sys/unix"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 var _ = fmt.Print
@@ -790,8 +788,7 @@ func ThemeNameFromFileName(fname string) string {
 	fname = fname[:len(fname)-len(path.Ext(fname))]
 	fname = strings.ReplaceAll(fname, "_", " ")
 	fname = camel_case_pat().ReplaceAllString(fname, "$1 $2")
-	c := cases.Title(language.English)
-	return strings.Join(utils.Map(c.String, strings.Split(fname, " ")), " ")
+	return strings.Join(utils.Map(strings.Title, strings.Split(fname, " ")), " ")
 }
 
 func (self *Themes) Len() int { return len(self.name_map) }
