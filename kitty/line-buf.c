@@ -469,7 +469,7 @@ as_text(LineBuf *self, PyObject *args) {
 
 static PyObject*
 __str__(LineBuf *self) {
-    DECREF_AFTER_FUNCTION PyObject *lines = PyTuple_New(self->ynum);
+    RAII_PyObject(lines, PyTuple_New(self->ynum));
     if (lines == NULL) return PyErr_NoMemory();
     for (index_type i = 0; i < self->ynum; i++) {
         init_line(self, self->line, self->line_map[i]);
@@ -477,7 +477,7 @@ __str__(LineBuf *self) {
         if (t == NULL) return NULL;
         PyTuple_SET_ITEM(lines, i, t);
     }
-    DECREF_AFTER_FUNCTION PyObject *sep = PyUnicode_FromString("\n");
+    RAII_PyObject(sep, PyUnicode_FromString("\n"));
     return PyUnicode_Join(sep, lines);
 }
 

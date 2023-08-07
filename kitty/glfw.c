@@ -92,7 +92,7 @@ update_menu_bar_title(PyObject *title UNUSED) {
 #ifdef __APPLE__
     static char buf[2048];
     strip_csi_(PyUnicode_AsUTF8(title), buf, arraysz(buf));
-    DECREF_AFTER_FUNCTION PyObject *stitle = PyUnicode_FromString(buf);
+    RAII_PyObject(stitle, PyUnicode_FromString(buf));
     cocoa_update_menu_bar_title(stitle);
 #endif
 }
@@ -1836,7 +1836,7 @@ strip_csi(PyObject *self UNUSED, PyObject *src) {
     Py_ssize_t sz;
     const char *title = PyUnicode_AsUTF8AndSize(src, &sz);
     if (!title) return NULL;
-    FREE_AFTER_FUNCTION char *buf = malloc(sz + 1);
+    RAII_ALLOC(char, buf, malloc(sz + 1));
     if (!buf) { return PyErr_NoMemory(); }
     strip_csi_(title, buf, sz + 1);
     return PyUnicode_FromString(buf);

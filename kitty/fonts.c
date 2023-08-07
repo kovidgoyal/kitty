@@ -1527,7 +1527,7 @@ sprite_map_set_layout(PyObject UNUSED *self, PyObject *args) {
 static PyObject*
 test_sprite_position_for(PyObject UNUSED *self, PyObject *args) {
     int error;
-    FREE_AFTER_FUNCTION glyph_index *glyphs = calloc(PyTuple_GET_SIZE(args), sizeof(glyph_index));
+    RAII_ALLOC(glyph_index, glyphs, calloc(PyTuple_GET_SIZE(args), sizeof(glyph_index)));
     for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(args); i++) {
         if (!PyLong_Check(PyTuple_GET_ITEM(args, i))) {
             PyErr_SetString(PyExc_TypeError, "glyph indices must be integers");

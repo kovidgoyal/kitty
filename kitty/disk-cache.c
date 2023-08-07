@@ -80,7 +80,7 @@ open_cache_file_without_tmpfile(const char *cache_path) {
     int fd = -1;
     static const char template[] = "%s/disk-cache-XXXXXXXXXXXX";
     const size_t sz = strlen(cache_path) + sizeof(template) + 4;
-    FREE_AFTER_FUNCTION char *buf = calloc(1, sz);
+    RAII_ALLOC(char, buf, calloc(1, sz));
     if (!buf) { errno = ENOMEM; return -1; }
     snprintf(buf, sz - 1, template, cache_path);
     while (fd < 0) {
@@ -132,8 +132,8 @@ typedef struct {
 static void
 defrag(DiskCache *self) {
     int new_cache_file = -1;
-    FREE_AFTER_FUNCTION DefragEntry *defrag_entries = NULL;
-    AutoFreeFastFileCopyBuffer fcb = {0};
+    RAII_ALLOC(DefragEntry, defrag_entries, NULL);
+    RAII_FreeFastFileCopyBuffer(fcb);
     bool lock_released = false, ok = false;
 
     off_t size_on_disk = size_of_cache_file(self);
@@ -441,7 +441,7 @@ add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const void *d
     if (!ensure_state(self)) return false;
     if (key_sz > MAX_KEY_SIZE) { PyErr_SetString(PyExc_KeyError, "cache key is too long"); return false; }
     CacheEntry *s = NULL;
-    FREE_AFTER_FUNCTION uint8_t *copied_data = malloc(data_sz);
+    RAII_ALLOC(uint8_t, copied_data, malloc(data_sz));
     if (!copied_data) { PyErr_NoMemory(); return false; }
     memcpy(copied_data, data, data_sz);
 

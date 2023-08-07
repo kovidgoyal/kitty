@@ -24,7 +24,7 @@ PyTypeObject GraphicsManager_Type;
 
 #define DEFAULT_STORAGE_LIMIT 320u * (1024u * 1024u)
 #define REPORT_ERROR(...) { log_error(__VA_ARGS__); }
-#define FREE_CFD_AFTER_FUNCTION __attribute__((cleanup(cfd_free)))
+#define RAII_CoalescedFrameData(name, initializer) __attribute__((cleanup(cfd_free))) CoalescedFrameData name = initializer
 
 // caching {{{
 #define CACHE_KEY_BUFFER_SIZE 32
@@ -424,7 +424,7 @@ load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, con
             else fd = safe_open(fname, O_CLOEXEC | O_RDONLY | O_NONBLOCK, 0);  // O_NONBLOCK so that opening a FIFO pipe does not block
             if (fd == -1) ABRT("EBADF", "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
             if (global_state.boss && transmission_type != 's') {
-                DECREF_AFTER_FUNCTION PyObject *cret_ = PyObject_CallMethod(global_state.boss, "is_ok_to_read_image_file", "si", fname, fd);
+                RAII_PyObject(cret_, PyObject_CallMethod(global_state.boss, "is_ok_to_read_image_file", "si", fname, fd));
                 if (cret_ == NULL) {
                     PyErr_Print();
                     ABRT("EBADF", "Failed to check file for read permission");
@@ -1496,7 +1496,7 @@ scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t
 
 // {{{ composition a=c
 static void
-cfd_free(void *p) { free(((CoalescedFrameData*)p)->buf); }
+cfd_free(CoalescedFrameData *p) { free((p)->buf); p->buf = NULL; }
 
 static void
 handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsCommand *g, Image *img) {
@@ -1530,12 +1530,12 @@ handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsComm
         }
     }
 
-    FREE_CFD_AFTER_FUNCTION CoalescedFrameData src_data = get_coalesced_frame_data(self, img, src_frame);
+    RAII_CoalescedFrameData(src_data, get_coalesced_frame_data(self, img, src_frame));
     if (!src_data.buf) {
         set_command_failed_response("EINVAL", "Failed to get data for src frame: %u", g->frame_number - 1);
         return;
     }
-    FREE_CFD_AFTER_FUNCTION CoalescedFrameData dest_data = get_coalesced_frame_data(self, img, dest_frame);
+    RAII_CoalescedFrameData(dest_data, get_coalesced_frame_data(self, img, dest_frame));
     if (!dest_data.buf) {
         set_command_failed_response("EINVAL", "Failed to get data for destination frame: %u", g->other_frame_number - 1);
         return;

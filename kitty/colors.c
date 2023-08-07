@@ -488,7 +488,7 @@ color_as_int(Color *self) {
 
 static PyObject*
 color_truediv(Color *self, PyObject *divisor) {
-    DECREF_AFTER_FUNCTION PyObject *o = PyNumber_Float(divisor);
+    RAII_PyObject(o, PyNumber_Float(divisor));
     if (o == NULL) return NULL;
     double r = self->color.r, g = self->color.g, b = self->color.b, a = self->color.a;
     double d = PyFloat_AS_DOUBLE(o) * 255.;

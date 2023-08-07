@@ -224,7 +224,7 @@ Patcher_dealloc(PyObject *self) {
 
 static PyObject*
 signature_header(Patcher *self, PyObject *a2) {
-    FREE_BUFFER_AFTER_FUNCTION Py_buffer dest = {0};
+    RAII_PY_BUFFER(dest);
     if (PyObject_GetBuffer(a2, &dest, PyBUF_WRITE) == -1) return NULL;
     static const ssize_t header_size = 12;
     if (dest.len < header_size) {
@@ -243,8 +243,7 @@ static PyObject*
 sign_block(Patcher *self, PyObject *args) {
     PyObject *a1, *a2;
     if (!PyArg_ParseTuple(args, "OO", &a1, &a2)) return NULL;
-    FREE_BUFFER_AFTER_FUNCTION Py_buffer src = {0};
-    FREE_BUFFER_AFTER_FUNCTION Py_buffer dest = {0};
+    RAII_PY_BUFFER(src); RAII_PY_BUFFER(dest);
     if (PyObject_GetBuffer(a1, &src, PyBUF_SIMPLE) == -1) return NULL;
     if (PyObject_GetBuffer(a2, &dest, PyBUF_WRITE) == -1) return NULL;
     if (dest.len < (ssize_t)signature_block_size) {
@@ -307,16 +306,16 @@ unserialize_op(uint8_t *data, size_t len, Operation *op) {
 
 static bool
 write_block(Patcher *self, uint64_t block_index, PyObject *read, PyObject *write) {
-    DECREF_AFTER_FUNCTION PyObject *pos = PyLong_FromUnsignedLongLong((unsigned long long)(self->rsync.block_size * block_index));
+    RAII_PyObject(pos, PyLong_FromUnsignedLongLong((unsigned long long)(self->rsync.block_size * block_index)));
     if (!pos) return false;
-    DECREF_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(read, pos, self->block_buf_view, NULL);
+    RAII_PyObject(ret, PyObject_CallFunctionObjArgs(read, pos, self->block_buf_view, NULL));
     if (ret == NULL) return false;
     if (!PyLong_Check(ret)) { PyErr_SetString(PyExc_TypeError, "read callback function did not return an integer"); return false; }
     size_t n = PyLong_AsSize_t(ret);
     self->rsync.checksummer.update(self->rsync.checksummer.state, self->block_buf.data, n);
-    DECREF_AFTER_FUNCTION PyObject *view = PyMemoryView_FromMemory((char*)self->block_buf.data, n, PyBUF_READ);
+    RAII_PyObject(view, PyMemoryView_FromMemory((char*)self->block_buf.data, n, PyBUF_READ));
     if (!view) return false;
-    DECREF_AFTER_FUNCTION PyObject *wret = PyObject_CallFunctionObjArgs(write, view, NULL);
+    RAII_PyObject(wret, PyObject_CallFunctionObjArgs(write, view, NULL));
     if (wret == NULL) return false;
     return true;
 }
@@ -345,9 +344,9 @@ apply_op(Patcher *self, Operation op, PyObject *read, PyObject *write) {
         case OpData: {
             self->total_data_in_delta += op.data.len;
             self->rsync.checksummer.update(self->rsync.checksummer.state, op.data.buf, op.data.len);
-            DECREF_AFTER_FUNCTION PyObject *view = PyMemoryView_FromMemory((char*)op.data.buf, op.data.len, PyBUF_READ);
+            RAII_PyObject(view, PyMemoryView_FromMemory((char*)op.data.buf, op.data.len, PyBUF_READ));
             if (!view) return false;
-            DECREF_AFTER_FUNCTION PyObject *wret = PyObject_CallFunctionObjArgs(write, view, NULL);
+            RAII_PyObject(wret, PyObject_CallFunctionObjArgs(write, view, NULL));
             if (!wret) return false;
         } return true;
         case OpHash: {
@@ -357,9 +356,9 @@ apply_op(Patcher *self, Operation op, PyObject *read, PyObject *write) {
             if (memcmp(actual, op.data.buf, self->rsync.checksummer.hash_size) != 0) {
                 char hexdigest[129];
                 bytes_as_hex(actual, self->rsync.checksummer.hash_size, hexdigest);
-                DECREF_AFTER_FUNCTION PyObject *h1 = PyUnicode_FromStringAndSize(hexdigest, 2*self->rsync.checksummer.hash_size);
+                RAII_PyObject(h1, PyUnicode_FromStringAndSize(hexdigest, 2*self->rsync.checksummer.hash_size));
                 bytes_as_hex(op.data.buf, op.data.len, hexdigest);
-                DECREF_AFTER_FUNCTION PyObject *h2 = PyUnicode_FromStringAndSize(hexdigest, 2*self->rsync.checksummer.hash_size);
+                RAII_PyObject(h2, PyUnicode_FromStringAndSize(hexdigest, 2*self->rsync.checksummer.hash_size));
                 PyErr_Format(RsyncError, "Failed to verify overall file checksum actual: %S != expected: %S, this usually happens because one of the involved files was altered while the operation was in progress.", h1, h2);
                 return false;
             }
@@ -373,7 +372,7 @@ apply_op(Patcher *self, Operation op, PyObject *read, PyObject *write) {
 static PyObject*
 apply_delta_data(Patcher *self, PyObject *args) {
     PyObject *read, *write;
-    FREE_BUFFER_AFTER_FUNCTION Py_buffer data = {0};
+    RAII_PY_BUFFER(data);
     if (!PyArg_ParseTuple(args, "y*OO", &data, &read, &write)) return NULL;
     if (!write_to_buffer(&self->buf, data.buf, data.len)) return NULL;
     size_t pos = 0;
@@ -543,7 +542,7 @@ parse_signature_block(Differ *self, uint8_t *data, size_t len) {
 
 static PyObject*
 add_signature_data(Differ *self, PyObject *args) {
-    FREE_BUFFER_AFTER_FUNCTION Py_buffer data = {0};
+    RAII_PY_BUFFER(data);
     if (!PyArg_ParseTuple(args, "y*", &data)) return NULL;
     if (!write_to_buffer(&self->buf, data.buf, data.len)) return NULL;
     if (!self->signature_header_parsed) {
@@ -597,12 +596,12 @@ send_op(Differ *self, Operation *op) {
             len = 5;
             break;
     }
-    DECREF_AFTER_FUNCTION PyObject *mv = PyMemoryView_FromMemory((char*)metadata, len, PyBUF_READ);
-    DECREF_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(self->write, mv, NULL);
+    RAII_PyObject(mv, PyMemoryView_FromMemory((char*)metadata, len, PyBUF_READ));
+    RAII_PyObject(ret, PyObject_CallFunctionObjArgs(self->write, mv, NULL));
     if (ret == NULL) return false;
     if (op->type == OpData) {
-        DECREF_AFTER_FUNCTION PyObject *mv = PyMemoryView_FromMemory((char*)op->data.buf, op->data.len, PyBUF_READ);
-        DECREF_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(self->write, mv, NULL);
+        RAII_PyObject(mv, PyMemoryView_FromMemory((char*)op->data.buf, op->data.len, PyBUF_READ));
+        RAII_PyObject(ret, PyObject_CallFunctionObjArgs(self->write, mv, NULL));
         if (ret == NULL) return false;
     }
     self->written = true;
@@ -648,9 +647,9 @@ ensure_idx_valid(Differ *self, size_t idx) {
 		self->data.pos = 0;
 		return ensure_idx_valid(self, distance_from_window_pos);
     }
-    DECREF_AFTER_FUNCTION PyObject *mv = PyMemoryView_FromMemory((char*)self->buf.data + self->buf.len, self->buf.cap - self->buf.len, PyBUF_WRITE);
+    RAII_PyObject(mv, PyMemoryView_FromMemory((char*)self->buf.data + self->buf.len, self->buf.cap - self->buf.len, PyBUF_WRITE));
     if (!mv) return false;
-    DECREF_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(self->read, mv, NULL);
+    RAII_PyObject(ret, PyObject_CallFunctionObjArgs(self->read, mv, NULL));
     if (!ret) return false;
     if (!PyLong_Check(ret)) { PyErr_SetString(PyExc_TypeError, "read callback did not return an integer"); return false; }
     size_t n = PyLong_AsSize_t(ret);
@@ -798,7 +797,7 @@ Hasher_init(PyObject *s, PyObject *args, PyObject *kwds) {
     Hasher *self = (Hasher*)s;
     static char *kwlist[] = {"which", "data", NULL};
     const char *which = "xxh3-64";
-    FREE_BUFFER_AFTER_FUNCTION Py_buffer data = {0};
+    RAII_PY_BUFFER(data);
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|sy*", kwlist, &which, &data)) return -1;
     if (strcmp(which, "xxh3-64") == 0) {
         self->h = xxh64_hasher();
@@ -833,7 +832,7 @@ reset(Hasher *self, PyObject *args UNUSED) {
 
 static PyObject*
 update(Hasher *self, PyObject *o) {
-    FREE_BUFFER_AFTER_FUNCTION Py_buffer data = {0};
+    RAII_PY_BUFFER(data);
     if (PyObject_GetBuffer(o, &data, PyBUF_SIMPLE) == -1) return NULL;
     if (data.buf && data.len > 0) {
         self->h.update(self->h.state, data.buf, data.len);
@@ -904,7 +903,7 @@ PyTypeObject Hasher_Type = {
 
 static PyObject*
 decode_utf8_buffer(PyObject *self UNUSED, PyObject *args) {
-    FREE_BUFFER_AFTER_FUNCTION Py_buffer buf = {0};
+    RAII_PY_BUFFER(buf);
     if (!PyArg_ParseTuple(args, "s*", &buf)) return NULL;
     return PyUnicode_FromStringAndSize(buf.buf, buf.len);
 }
@@ -912,17 +911,17 @@ decode_utf8_buffer(PyObject *self UNUSED, PyObject *args) {
 static bool
 call_ftc_callback(PyObject *callback, char *src, Py_ssize_t key_start, Py_ssize_t key_length, Py_ssize_t val_start, Py_ssize_t val_length) {
     while(src[key_start] == ';' && key_length > 0 ) { key_start++; key_length--; }
-    DECREF_AFTER_FUNCTION PyObject *k = PyMemoryView_FromMemory(src + key_start, key_length, PyBUF_READ);
+    RAII_PyObject(k, PyMemoryView_FromMemory(src + key_start, key_length, PyBUF_READ));
     if (!k) return false;
-    DECREF_AFTER_FUNCTION PyObject *v = PyMemoryView_FromMemory(src + val_start, val_length, PyBUF_READ);
+    RAII_PyObject(v, PyMemoryView_FromMemory(src + val_start, val_length, PyBUF_READ));
     if (!v) return false;
-    DECREF_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(callback, k, v, NULL);
+    RAII_PyObject(ret, PyObject_CallFunctionObjArgs(callback, k, v, NULL));
     return ret != NULL;
 }
 
 static PyObject*
 parse_ftc(PyObject *self UNUSED, PyObject *args) {
-    FREE_BUFFER_AFTER_FUNCTION Py_buffer buf = {0};
+    RAII_PY_BUFFER(buf);
     PyObject *callback;
     size_t i = 0, key_start = 0, key_length = 0, val_start = 0, val_length = 0;
     if (!PyArg_ParseTuple(args, "s*O", &buf, &callback)) return NULL;

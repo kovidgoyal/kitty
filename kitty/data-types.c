@@ -51,7 +51,7 @@ static PyObject*
 process_group_map(void) {
     int num_of_processes = proc_listallpids(NULL, 0);
     size_t bufsize = sizeof(pid_t) * (num_of_processes + 1024);
-    FREE_AFTER_FUNCTION pid_t *buf = malloc(bufsize);
+    RAII_ALLOC(pid_t, buf, malloc(bufsize));
     if (!buf) return PyErr_NoMemory();
     num_of_processes = proc_listallpids(buf, (int)bufsize);
     PyObject *ans = PyTuple_New(num_of_processes);
@@ -79,7 +79,7 @@ redirect_std_streams(PyObject UNUSED *self, PyObject *args) {
 static PyObject*
 pybase64_encode(PyObject UNUSED *self, PyObject *args) {
     int add_padding = 0;
-    FREE_BUFFER_AFTER_FUNCTION Py_buffer view = {0};
+    RAII_PY_BUFFER(view);
     if (!PyArg_ParseTuple(args, "s*|p", &view, &add_padding)) return NULL;
     size_t sz = required_buffer_size_for_base64_encode(view.len);
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
@@ -91,7 +91,7 @@ pybase64_encode(PyObject UNUSED *self, PyObject *args) {
 
 static PyObject*
 pybase64_decode(PyObject UNUSED *self, PyObject *args) {
-    FREE_BUFFER_AFTER_FUNCTION Py_buffer view = {0};
+    RAII_PY_BUFFER(view);
     if (!PyArg_ParseTuple(args, "s*", &view)) return NULL;
     size_t sz = required_buffer_size_for_base64_decode(view.len);
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);

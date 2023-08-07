@@ -28,13 +28,13 @@
 #endif
 
 static void cleanup_free(void *p) { free(*(void**) p); }
-#define FREE_AFTER_FUNCTION __attribute__((cleanup(cleanup_free)))
+#define RAII_ALLOC(type, name, initializer) __attribute__((cleanup(cleanup_free))) type *name = initializer
 
 
 #ifndef __FreeBSD__
 static bool
 safe_realpath(const char* src, char *buf, size_t buf_sz) {
-    FREE_AFTER_FUNCTION char* ans = realpath(src, NULL);
+    RAII_ALLOC(char, ans, realpath(src, NULL));
     if (ans == NULL) return false;
     snprintf(buf, buf_sz, "%s", ans);
     return true;
@@ -83,8 +83,8 @@ canonicalize_path(const char *srcpath, char *dstpath, size_t sz) {
     // remove . and .. path segments
     bool ok = false;
     size_t plen = strlen(srcpath) + 1, chk;
-    FREE_AFTER_FUNCTION char *wtmp = malloc(plen);
-    FREE_AFTER_FUNCTION char **tokv = malloc(sizeof(char*) * plen);
+    RAII_ALLOC(char, wtmp, malloc(plen));
+    RAII_ALLOC(char*, tokv, malloc(sizeof(char*) * plen));
     if (!wtmp || !tokv) goto end;
     char *s, *tok, *sav;
     bool relpath = *srcpath != '/';
@@ -360,7 +360,7 @@ int main(int argc, char *argv[], char* envp[]) {
     if (!ensure_working_stdio()) return 1;
     char exe[PATH_MAX+1] = {0};
     char exe_dir_buf[PATH_MAX+1] = {0};
-    FREE_AFTER_FUNCTION const char *lc_ctype = NULL;
+    RAII_ALLOC(const char, lc_ctype, NULL);
 #ifdef __APPLE__
     lc_ctype = getenv("LC_CTYPE");
     if (lc_ctype) lc_ctype = strdup(lc_ctype);

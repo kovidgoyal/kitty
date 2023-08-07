@@ -494,14 +494,14 @@ typedef struct TempFontData {
     FT_UInt orig_sz;
 } TempFontData;
 
-static void cleanup_resize(void *p) {
-    TempFontData *f = p;
+static void
+cleanup_resize(TempFontData *f) {
     if (f->face && f->face->freetype) {
         f->face->pixel_size = f->orig_sz;
         FT_Set_Pixel_Sizes(f->face->freetype, f->orig_sz, f->orig_sz);
     }
 }
-#define RESIZE_AFTER_FUNCTION __attribute__((cleanup(cleanup_resize)))
+#define RAII_TempFontData(name) __attribute__((cleanup(cleanup_resize))) TempFontData name = {0}
 
 static void*
 report_freetype_error_for_char(int error, char ch, const char *operation) {
@@ -515,7 +515,7 @@ uint8_t*
 render_single_ascii_char_as_mask(FreeTypeRenderCtx ctx_, const char ch, size_t *result_width, size_t *result_height) {
     RenderCtx *ctx = (RenderCtx*)ctx_;
     if (!ctx->created) { PyErr_SetString(PyExc_RuntimeError, "freetype render ctx not created"); return NULL; }
-    RESIZE_AFTER_FUNCTION TempFontData temp = {0};
+    RAII_TempFontData(temp);
     Face *face = &main_face;
     int glyph_index = FT_Get_Char_Index(face->freetype, ch);
     if (!glyph_index) { PyErr_Format(PyExc_KeyError, "character %c not found in font", ch); return NULL; }

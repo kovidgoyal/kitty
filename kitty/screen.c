@@ -2049,9 +2049,9 @@ shell_prompt_marking(Screen *self, PyObject *data) {
                 PromptKind pk = PROMPT_START;
                 self->prompt_settings.redraws_prompts_at_all = 1;
                 if (PyUnicode_FindChar(data, ';', 0, PyUnicode_GET_LENGTH(data), 1)) {
-                    DECREF_AFTER_FUNCTION PyObject *sep = PyUnicode_FromString(";");
+                    RAII_PyObject(sep, PyUnicode_FromString(";"));
                     if (sep) {
-                        DECREF_AFTER_FUNCTION PyObject *parts = PyUnicode_Split(data, sep, -1);
+                        RAII_PyObject(parts, PyUnicode_Split(data, sep, -1));
                         if (parts) parse_prompt_mark(self, parts, &pk);
                     }
                 }
@@ -2707,8 +2707,8 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     IterationData idata;
     iteration_data(self, sel, &idata, -self->historybuf->count, false);
     int limit = MIN((int)self->lines, idata.y_limit);
-    DECREF_AFTER_FUNCTION PyObject *ans = PyTuple_New(limit - idata.y + 1);
-    DECREF_AFTER_FUNCTION PyObject *nl = PyUnicode_FromString("\n");
+    RAII_PyObject(ans, PyTuple_New(limit - idata.y + 1));
+    RAII_PyObject(nl, PyUnicode_FromString("\n"));
     if (!ans || !nl) return NULL;
     ANSIBuf output = {0};
     const GPUCell *prev_cell = NULL;
@@ -2941,7 +2941,7 @@ screen_update_overlay_text(Screen *self, const char *utf8_text) {
     if (!text) return;
     Py_XDECREF(self->overlay_line.overlay_text);
     // Calculate the total number of cells for initial overlay cursor position
-    DECREF_AFTER_FUNCTION PyObject *text_len = wcswidth_std(NULL, text);
+    RAII_PyObject(text_len, wcswidth_std(NULL, text));
     self->overlay_line.overlay_text = text;
     self->overlay_line.is_active = true;
     self->overlay_line.is_dirty = true;
@@ -3230,8 +3230,8 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
 static PyObject*
 cmd_output(Screen *self, PyObject *args) {
     unsigned int which = 0;
-    DECREF_AFTER_FUNCTION PyObject *which_args = PyTuple_GetSlice(args, 0, 1);
-    DECREF_AFTER_FUNCTION PyObject *as_text_args = PyTuple_GetSlice(args, 1, PyTuple_GET_SIZE(args));
+    RAII_PyObject(which_args, PyTuple_GetSlice(args, 0, 1));
+    RAII_PyObject(as_text_args, PyTuple_GetSlice(args, 1, PyTuple_GET_SIZE(args)));
     if (!which_args || !as_text_args) return NULL;
     if (!PyArg_ParseTuple(which_args, "I", &which)) return NULL;
     if (self->linebuf != self->main_linebuf) Py_RETURN_NONE;
@@ -3280,7 +3280,7 @@ cmd_output(Screen *self, PyObject *args) {
             return NULL;
     }
     if (found) {
-        DECREF_AFTER_FUNCTION PyObject *ret = as_text_generic(as_text_args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf, false);
+        RAII_PyObject(ret, as_text_generic(as_text_args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf, false));
         if (!ret) return NULL;
     }
     if (oo.reached_upper_limit && self->linebuf == self->main_linebuf && OPT(scrollback_pager_history_size) > 0) Py_RETURN_TRUE;
@@ -4166,7 +4166,7 @@ paste_(Screen *self, PyObject *bytes, bool allow_bracketed_paste) {
     if (PyBytes_Check(bytes)) {
         data = PyBytes_AS_STRING(bytes); sz = PyBytes_GET_SIZE(bytes);
     } else if (PyMemoryView_Check(bytes)) {
-        DECREF_AFTER_FUNCTION PyObject *mv = PyMemoryView_GetContiguous(bytes, PyBUF_READ, PyBUF_C_CONTIGUOUS);
+        RAII_PyObject(mv, PyMemoryView_GetContiguous(bytes, PyBUF_READ, PyBUF_C_CONTIGUOUS));
         if (mv == NULL) return NULL;
         Py_buffer *buf = PyMemoryView_GET_BUFFER(mv);
         data = buf->buf;
