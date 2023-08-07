@@ -519,8 +519,6 @@ func (self *SendHandler) render_progress(name string, p Progress) {
 }
 
 func (self *SendHandler) draw_progress() {
-	self.lp.StartAtomicUpdate()
-	defer self.lp.EndAtomicUpdate()
 	self.lp.AllowLineWrapping(false)
 	defer self.lp.AllowLineWrapping(true)
 	var sc string
@@ -608,6 +606,8 @@ func (self *SendHandler) refresh_progress(loop.IdType) (err error) {
 		return nil
 	}
 	self.progress_update_timer = 0
+	self.lp.StartAtomicUpdate()
+	defer self.lp.EndAtomicUpdate()
 	self.erase_progress()
 	self.draw_progress()
 	return nil
