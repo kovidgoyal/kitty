@@ -47,7 +47,7 @@ void log_error(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 #define fatal(...) { log_error(__VA_ARGS__); exit(EXIT_FAILURE); }
 static inline void cleanup_free(void *p) { free(*(void**)p); }
 #define RAII_ALLOC(type, name, initializer) __attribute__((cleanup(cleanup_free))) type *name = initializer
-static inline void cleanup_decref(PyObject **p) { if(*p) { Py_DECREF(*p); *p = NULL;} }
+static inline void cleanup_decref(PyObject **p) { Py_CLEAR(*p); }
 #define RAII_PyObject(name, initializer) __attribute__((cleanup(cleanup_decref))) PyObject *name = initializer
 #define RAII_PY_BUFFER(name) __attribute__((cleanup(PyBuffer_Release))) Py_buffer name = {0}
 
