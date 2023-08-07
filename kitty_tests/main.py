@@ -118,6 +118,8 @@ def run_cli(suite: unittest.TestSuite, verbosity: int = 4) -> bool:
     from . import forwardable_stdio
     with forwardable_stdio():
         result = runner.run(suite)
+    sys.stdout.flush()
+    sys.stderr.flush()
     return result.wasSuccessful()
 
 
@@ -210,8 +212,6 @@ def run_python_tests(args: Any, go_proc: 'Optional[GoProc]' = None) -> None:
 
     def print_go() -> None:
         stdout, rc = go_proc.wait()
-        sys.stdout.flush()
-        sys.stderr.flush()
         if go_proc.returncode == 0 and tests._tests:
             print(f'All Go tests succeeded, ran in {go_proc.runtime:.1f} seconds', flush=True)
         else:
