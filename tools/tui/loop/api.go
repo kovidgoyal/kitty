@@ -83,7 +83,7 @@ type Loop struct {
 	OnResize func(old_size ScreenSize, new_size ScreenSize) error
 
 	// Called when writing is done
-	OnWriteComplete func(msg_id IdType) error
+	OnWriteComplete func(msg_id IdType, has_pending_writes bool) error
 
 	// Called when a response to an rc command is received
 	OnRCResponse func(data []byte) error

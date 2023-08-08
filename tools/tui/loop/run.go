@@ -285,6 +285,7 @@ func (self *Loop) run() (err error) {
 	// queueing and startup of writer thread and also as a performance
 	// optimization to avoid copying unnecessarily to pending_writes
 	self.tty_write_channel = make(chan write_msg, 512)
+	self.write_msg_id_counter = 0
 	write_done_channel := make(chan IdType)
 	self.wakeup_channel = make(chan byte, 256)
 	self.pending_writes = make([]write_msg, 0, 256)
@@ -452,7 +453,7 @@ func (self *Loop) run() (err error) {
 		case msg_id := <-write_done_channel:
 			self.flush_pending_writes(self.tty_write_channel)
 			if self.OnWriteComplete != nil {
-				err = self.OnWriteComplete(msg_id)
+				err = self.OnWriteComplete(msg_id, msg_id < self.write_msg_id_counter)
 				if err != nil {
 					return err
 				}

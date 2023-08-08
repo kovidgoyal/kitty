@@ -97,7 +97,7 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 		return "", nil
 	}
 
-	lp.OnWriteComplete = func(completed_write_id loop.IdType) error {
+	lp.OnWriteComplete = func(completed_write_id loop.IdType, has_pending_writes bool) error {
 		if state == WAITING_FOR_STREAMING_RESPONSE || state == WAITING_FOR_RESPONSE {
 			return nil
 		}
@@ -151,7 +151,7 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 	lp.OnRCResponse = func(raw []byte) error {
 		if state == WAITING_FOR_STREAMING_RESPONSE && is_stream_response(raw) {
 			state = SENDING
-			return lp.OnWriteComplete(0)
+			return lp.OnWriteComplete(0, false)
 		}
 		serialized_response = raw
 		lp.Quit(0)

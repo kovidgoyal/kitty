@@ -881,7 +881,7 @@ func (self *handler) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 	return
 }
 
-func (self *handler) on_writing_finished(msg_id loop.IdType) (err error) {
+func (self *handler) on_writing_finished(msg_id loop.IdType, has_pending_writes bool) (err error) {
 	if self.quit_after_write_code > -1 {
 		self.lp.Quit(self.quit_after_write_code)
 	} else if msg_id == self.last_data_write_id {

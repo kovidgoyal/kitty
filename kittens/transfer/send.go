@@ -316,10 +316,8 @@ func (self *ProgressTracker) start_transfer() {
 	self.started_at = t.at
 }
 
-func (self *ProgressTracker) on_transmit(amt int64) {
-	if self.active_file != nil {
-		self.active_file.transmitted_bytes += amt
-	}
+func (self *ProgressTracker) on_transmit(amt int64, active_file *File) {
+	active_file.transmitted_bytes += amt
 	self.total_transferred += amt
 	now := time.Now()
 	self.transfers = append(self.transfers, &Transfer{amt: amt, at: now})
@@ -359,6 +357,7 @@ type SendManager struct {
 	progress_tracker                                           ProgressTracker
 	current_chunk_uncompressed_sz                              int64
 	current_chunk_write_id                                     loop.IdType
+	current_chunk_for_file_id                                  string
 }
 
 func (self *SendManager) start_transfer() string {
@@ -381,6 +380,7 @@ func (self *SendManager) initialize() {
 	}
 	self.active_idx = -1
 	self.current_chunk_uncompressed_sz = -1
+	self.current_chunk_for_file_id = ""
 	self.prefix = fmt.Sprintf("\x1b]%d;id=%s;", kitty.FileTransferCode, self.request_id)
 	self.suffix = "\x1b\\"
 	for _, f := range self.files {
@@ -552,10 +552,12 @@ func (self *SendHandler) draw_progress() {
 	} else {
 		af := self.manager.last_progress_file
 		if af == nil || self.done_file_ids.Has(af.file_id) {
-			if self.manager.has_rsync && !self.manager.has_transmitting {
-				self.lp.QueueWriteString(sc + ` Transferring rsync signatures...`)
-			} else {
-				self.lp.QueueWriteString(sc + ` Transferring metadata...`)
+			if !self.manager.has_transmitting && self.done_file_ids.Len() == 0 {
+				if self.manager.has_rsync {
+					self.lp.QueueWriteString(sc + ` Transferring rsync signatures...`)
+				} else {
+					self.lp.QueueWriteString(sc + ` Transferring metadata...`)
+				}
 			}
 		} else {
 			self.draw_progress_for_current_file(af, sc, false)
@@ -633,7 +635,7 @@ func (self *SendHandler) on_file_done(f *File) {
 	if f.err_msg != "" {
 		self.failed_files = append(self.failed_files, f)
 	}
-	self.schedule_progress_update(100 * time.Millisecond)
+	self.refresh_progress(0)
 }
 
 func (self *SendHandler) send_payload(payload string) loop.IdType {
@@ -827,25 +829,13 @@ func (self *SendHandler) on_file_transfer_response(ftc *FileTransmissionCommand)
 			self.send_file_metadata()
 		}
 	}
-	self.lp.CallSoon(self.loop_tick)
-	return nil
-}
-
-func (self *SendHandler) loop_tick(timer_id loop.IdType) (err error) {
-	if self.manager.state == SEND_WAITING_FOR_PERMISSION {
-		return
-	}
-	if self.transmit_started {
-		if err = self.transmit_next_chunk(); err != nil {
-			return err
-		}
-		if err = self.refresh_progress(timer_id); err != nil {
-			return err
-		}
-	} else {
+	if !self.transmit_started {
 		return self.check_for_transmit_ok()
 	}
-	return
+	if self.manager.all_acknowledged {
+		self.transfer_finished()
+	}
+	return nil
 }
 
 func (self *SendHandler) check_for_transmit_ok() (err error) {
@@ -982,39 +972,39 @@ func (self *File) next_chunk() (ans string, asz int, err error) {
 }
 
 func (self *SendManager) next_chunks(callback func(string) loop.IdType) error {
-	for {
-		if self.active_file() == nil {
-			self.activate_next_ready_file()
+	if self.active_file() == nil {
+		self.activate_next_ready_file()
+	}
+	af := self.active_file()
+	if af == nil {
+		return nil
+	}
+	chunk := ""
+	self.current_chunk_uncompressed_sz = 0
+	for af.state != FINISHED && len(chunk) == 0 {
+		c, usz, err := af.next_chunk()
+		if err != nil {
+			return err
 		}
-		af := self.active_file()
-		if af == nil {
+		self.current_chunk_uncompressed_sz += int64(usz)
+		self.current_chunk_for_file_id = af.file_id
+		chunk = c
+	}
+	is_last := af.state == FINISHED
+	if len(chunk) > 0 {
+		split_for_transfer(utils.UnsafeStringToBytes(chunk), af.file_id, is_last, func(ftc *FileTransmissionCommand) {
+			self.current_chunk_write_id = callback(ftc.Serialize())
+		})
+	} else if is_last {
+		self.current_chunk_write_id = callback(FileTransmissionCommand{Action: Action_end_data, File_id: af.file_id}.Serialize())
+	}
+	if is_last {
+		self.activate_next_ready_file()
+		if self.active_file() == nil {
 			return nil
 		}
-		chunk := ""
-		self.current_chunk_uncompressed_sz = 0
-		for af.state != FINISHED && len(chunk) == 0 {
-			c, usz, err := af.next_chunk()
-			if err != nil {
-				return err
-			}
-			self.current_chunk_uncompressed_sz += int64(usz)
-			chunk = c
-		}
-		is_last := af.state == FINISHED
-		if len(chunk) > 0 {
-			split_for_transfer(utils.UnsafeStringToBytes(chunk), af.file_id, is_last, func(ftc *FileTransmissionCommand) {
-				self.current_chunk_write_id = callback(ftc.Serialize())
-			})
-		} else if is_last {
-			self.current_chunk_write_id = callback(FileTransmissionCommand{Action: Action_end_data, File_id: af.file_id}.Serialize())
-		}
-		if is_last {
-			self.activate_next_ready_file()
-			if self.active_file() == nil {
-				return nil
-			}
-		}
 	}
+	return nil
 }
 
 func (self *SendHandler) transmit_next_chunk() (err error) {
@@ -1142,12 +1132,13 @@ func (self *SendHandler) on_key_event(ev *loop.KeyEvent) error {
 	return nil
 }
 
-func (self *SendHandler) on_writing_finished(msg_id loop.IdType) (err error) {
+func (self *SendHandler) on_writing_finished(msg_id loop.IdType, has_pending_writes bool) (err error) {
 	chunk_transmitted := self.manager.current_chunk_uncompressed_sz >= 0 && msg_id == self.manager.current_chunk_write_id
 	if chunk_transmitted {
-		self.manager.progress_tracker.on_transmit(self.manager.current_chunk_uncompressed_sz)
+		self.manager.progress_tracker.on_transmit(self.manager.current_chunk_uncompressed_sz, self.manager.fid_map[self.manager.current_chunk_for_file_id])
 		self.manager.current_chunk_uncompressed_sz = -1
 		self.manager.current_chunk_write_id = 0
+		self.manager.current_chunk_for_file_id = ""
 	}
 	if self.finish_cmd_write_id > 0 && msg_id == self.finish_cmd_write_id {
 		if len(self.failed_files) > 0 {
@@ -1155,13 +1146,18 @@ func (self *SendHandler) on_writing_finished(msg_id loop.IdType) (err error) {
 		} else {
 			self.quit_after_write_code = 0
 		}
+		self.refresh_progress(0)
 	}
-	if self.quit_after_write_code > -1 {
+	if self.quit_after_write_code > -1 && !has_pending_writes {
 		self.lp.Quit(self.quit_after_write_code)
 		return
 	}
-	if self.manager.state == SEND_PERMISSION_GRANTED && (!self.transmit_started || chunk_transmitted) {
-		self.lp.CallSoon(self.loop_tick)
+	if self.manager.state == SEND_PERMISSION_GRANTED && !self.transmit_started {
+		return self.check_for_transmit_ok()
+	}
+	if chunk_transmitted {
+		self.refresh_progress(0)
+		return self.transmit_next_chunk()
 	}
 	return
 }

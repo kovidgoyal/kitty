@@ -75,14 +75,14 @@ func (self *Loop) wait_for_write_to_complete(sentinel IdType, tty_write_channel 
 		case tty_write_channel <- self.pending_writes[0]:
 			self.pending_writes = self.pending_writes[1:]
 		case write_id, more := <-write_done_channel:
-			if write_id == sentinel {
-				return nil
-			}
 			if self.OnWriteComplete != nil {
-				err := self.OnWriteComplete(write_id)
+				err := self.OnWriteComplete(write_id, write_id < self.write_msg_id_counter)
 				if err != nil {
 					return err
 				}
+			}
+			if write_id == sentinel {
+				return nil
 			}
 			if !more {
 				return fmt.Errorf("The write_done_channel was unexpectedly closed")

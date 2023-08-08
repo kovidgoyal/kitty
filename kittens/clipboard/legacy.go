@@ -164,7 +164,7 @@ func run_plain_text_loop(opts *Options) (err error) {
 		return "", nil
 	}
 
-	lp.OnWriteComplete = func(id loop.IdType) error {
+	lp.OnWriteComplete = func(id loop.IdType, has_pending_writes bool) error {
 		if id == enc_writer.last_written_id {
 			return write_one_chunk()
 		}

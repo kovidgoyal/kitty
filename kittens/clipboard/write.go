@@ -111,14 +111,14 @@ func write_loop(inputs []*Input, opts *Options) (err error) {
 					lp.QueueWriteString(encode(make_metadata("wdata", ""), ""))
 					waiting_for_write = 0
 				}
-				return lp.OnWriteComplete(waiting_for_write)
+				return lp.OnWriteComplete(waiting_for_write, false)
 			}
 			return fmt.Errorf("Failed to read from %s with error: %w", i.arg, err)
 		}
 		return nil
 	}
 
-	lp.OnWriteComplete = func(msg_id loop.IdType) error {
+	lp.OnWriteComplete = func(msg_id loop.IdType, has_pending_writes bool) error {
 		if waiting_for_write == msg_id {
 			return write_chunk()
 		}
