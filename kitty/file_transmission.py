@@ -423,23 +423,19 @@ class PatchFile:
     def write(self, b: bytes) -> None:
         self.patcher.apply_delta_data(b, self.read_from_src, self.write_to_dest)
 
-    def next_signature_block(self) -> memoryview:
-        buf = memoryview(bytearray(32))
+    def next_signature_block(self, buf: memoryview) -> int:
         if self.signature_done:
-            return buf[:0]
+            return 0
         if self.src_file is None:
             self.src_file = open(self.path, 'rb')
-            n = self.patcher.signature_header(buf)
-            return buf[:n]
+            return self.patcher.signature_header(buf)
         n = self.src_file.readinto(self.block_buffer)
         if n > 0:
             n = self.patcher.sign_block(self.block_buffer[:n], buf)
-            buf = buf[:n]
         else:
             self.src_file.seek(0, os.SEEK_SET)
             self.signature_done = True
-            buf = buf[:0]
-        return buf
+        return n
 
 
 class DestFile:
@@ -599,6 +595,8 @@ class ActiveReceive:
         self.last_activity_at = monotonic()
         self.send_acknowledgements = quiet < 1
         self.send_errors = quiet < 2
+        self.pending_files_to_transmit_signature_of: Deque[Tuple[PatchFile, str]] = deque()
+        self.signature_pending_chunks: Deque[FileTransmissionCommand] = deque()
 
     @property
     def is_expired(self) -> bool:
@@ -1036,7 +1034,8 @@ class FileTransmission:
                             except OSError as err:
                                 self.send_fail_on_os_error(err, 'Failed to open file to read signature', ar, df.file_id)
                             else:
-                                self.callback_after(partial(self.transmit_rsync_signature, fs, ar.id, df.file_id, deque()))
+                                ar.pending_files_to_transmit_signature_of.append((fs, df.file_id))
+                                self.callback_after(partial(self.transmit_rsync_signature, ar.id))
         elif cmd.action in (Action.data, Action.end_data):
             try:
                 before = 0
@@ -1079,40 +1078,55 @@ class FileTransmission:
         else:
             log_error(f'Transmission receive command with unknown action: {cmd.action}, ignoring')
 
-    def transmit_rsync_signature(
-        self, fs: PatchFile,
-        receive_id: str, file_id: str,
-        pending: Deque[FileTransmissionCommand],
-        timer_id: Optional[int] = None
-    ) -> None:
-        ar = self.active_receives.get(receive_id)
-        if ar is None:
+    def transmit_rsync_signature(self, receive_id: str, timer_id: Optional[int] = None) -> None:
+        q = self.active_receives.get(receive_id)
+        if q is None:
             return
-        func = partial(self.transmit_rsync_signature, fs, receive_id, file_id, pending)
-        while pending:
-            if self.write_ftc_to_child(pending[0], use_pending=False):
-                pending.popleft()
+        ar = q  # for mypy
+        while ar.signature_pending_chunks:
+            if self.write_ftc_to_child(ar.signature_pending_chunks[0], use_pending=False):
+                ar.signature_pending_chunks.popleft()
             else:
-                self.callback_after(func, timeout=0.1)
+                self.callback_after(partial(self.transmit_rsync_signature, receive_id), timeout=0.1)
                 return
-        try:
-            chunk = fs.next_signature_block()
-        except OSError as err:
-            if ar.send_errors:
-                self.send_fail_on_os_error(err, 'Failed to read signature', ar, file_id)
+        if not ar.pending_files_to_transmit_signature_of:
             return
-        if not len(chunk):
-            self.write_ftc_to_child(FileTransmissionCommand(id=receive_id, action=Action.end_data, file_id=file_id))
-            return
+        fs, file_id = ar.pending_files_to_transmit_signature_of[0]
+        pos = 0
+        buf = memoryview(bytearray(4096))
+        is_finished = False
+        while len(buf) >= pos + 32:
+            try:
+                n = fs.next_signature_block(buf[pos:])
+            except OSError as err:
+                if ar.send_errors:
+                    self.send_fail_on_os_error(err, 'Failed to read signature', ar, file_id)
+                return
+            if not n:
+                is_finished = True
+                ar.pending_files_to_transmit_signature_of.popleft()
+                break
+            pos += n
+
+        chunk = buf[:pos]
         has_capacity = True
-        for data in split_for_transfer(chunk, session_id=receive_id, file_id=file_id):
+
+        def write_ftc(data: FileTransmissionCommand) -> None:
+            nonlocal has_capacity
             if has_capacity:
                 if not self.write_ftc_to_child(data, use_pending=False):
                     has_capacity = False
-                    pending.append(data)
+                    ar.signature_pending_chunks.append(data)
             else:
-                pending.append(data)
-        self.callback_after(func)
+                ar.signature_pending_chunks.append(data)
+
+        if len(chunk):
+            for data in split_for_transfer(chunk, session_id=receive_id, file_id=file_id):
+                write_ftc(data)
+        if is_finished:
+            endftc = FileTransmissionCommand(id=receive_id, action=Action.end_data, file_id=file_id)
+            write_ftc(endftc)
+        self.callback_after(partial(self.transmit_rsync_signature, receive_id))
 
     def send_status_response(
         self, code: Union[ErrorCode, str] = ErrorCode.EINVAL,
