@@ -590,7 +590,7 @@ func (self *SendHandler) draw_progress_for_current_file(af *File, spinner_char s
 	self.render_progress(af.display_name, Progress{
 		spinner_char: spinner_char, is_complete: is_complete,
 		bytes_so_far: af.reported_progress, total_bytes: af.bytes_to_transmit,
-		secs_so_far: secs_so_far.Seconds(), bytes_per_sec: safe_divide(p.transfered_stats_amt, p.transfered_stats_interval),
+		secs_so_far: secs_so_far.Seconds(), bytes_per_sec: safe_divide(p.transfered_stats_amt, p.transfered_stats_interval.Abs().Seconds()),
 	})
 }
 
