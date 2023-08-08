@@ -255,8 +255,8 @@ func (self *Loop) Run() (err error) {
 			pcs := make([]uintptr, 256)
 			n := runtime.Callers(2, pcs)
 			frames := runtime.CallersFrames(pcs[:n])
-			err = fmt.Errorf("Paniced: %s", r)
-			fmt.Fprintf(os.Stderr, "\r\nPaniced with error: %s\r\nStacktrace (most recent call first):\r\n", r)
+			err = fmt.Errorf("Panicked: %s", r)
+			fmt.Fprintf(os.Stderr, "\r\nPanicked with error: %s\r\nStacktrace (most recent call first):\r\n", r)
 			found_first_frame := false
 			for frame, more := frames.Next(); more; frame, more = frames.Next() {
 				if !found_first_frame {
