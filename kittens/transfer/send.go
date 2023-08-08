@@ -1089,7 +1089,7 @@ func (self *SendHandler) on_text(text string, from_key_event, in_bracketed_paste
 
 func (self *SendHandler) print_continue_msg() {
 	self.lp.Println(
-		`Press `, self.ctx.Green(`y`), ` to continue or `, self.ctx.BrightRed(`n`), ` to abort`)
+		`Press`, self.ctx.Green(`y`), `to continue or`, self.ctx.BrightRed(`n`), `to abort`)
 }
 
 func (self *SendHandler) abort_transfer(delay ...time.Duration) {
