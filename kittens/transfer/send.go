@@ -603,11 +603,13 @@ func (self *SendHandler) erase_progress() {
 	}
 }
 
-func (self *SendHandler) refresh_progress(loop.IdType) (err error) {
-	if !self.transmit_started {
+func (self *SendHandler) refresh_progress(timer_id loop.IdType) (err error) {
+	if !self.transmit_started || self.manager.state == SEND_CANCELED {
 		return nil
 	}
-	self.progress_update_timer = 0
+	if timer_id == self.progress_update_timer {
+		self.progress_update_timer = 0
+	}
 	self.lp.StartAtomicUpdate()
 	defer self.lp.EndAtomicUpdate()
 	self.erase_progress()
@@ -616,13 +618,11 @@ func (self *SendHandler) refresh_progress(loop.IdType) (err error) {
 }
 
 func (self *SendHandler) schedule_progress_update(delay time.Duration) {
-	if self.progress_update_timer != 0 {
-		self.lp.RemoveTimer(self.progress_update_timer)
-		self.progress_update_timer = 0
-	}
-	timer_id, err := self.lp.AddTimer(delay, false, self.refresh_progress)
-	if err == nil {
-		self.progress_update_timer = timer_id
+	if self.progress_update_timer == 0 {
+		timer_id, err := self.lp.AddTimer(delay, false, self.refresh_progress)
+		if err == nil {
+			self.progress_update_timer = timer_id
+		}
 	}
 }
 
@@ -919,16 +919,17 @@ func (self *File) next_chunk() (ans string, asz int, err error) {
 	is_last := false
 	var chunk []byte
 	if self.delta_loader != nil {
-		self.deltabuf.Reset()
-		if err = self.delta_loader(); err != nil {
-			if err == io.EOF {
-				is_last = true
-			} else {
-				return
+		for !is_last && self.deltabuf.Len() < sz {
+			if err = self.delta_loader(); err != nil {
+				if err == io.EOF {
+					is_last = true
+				} else {
+					return
+				}
 			}
 		}
-		chunk = make([]byte, len(self.deltabuf.Bytes()))
-		copy(chunk, self.deltabuf.Bytes())
+		chunk = slices.Clone(self.deltabuf.Bytes())
+		self.deltabuf.Reset()
 	} else {
 		if self.actual_file == nil {
 			self.actual_file, err = os.Open(self.expanded_local_path)
@@ -1228,7 +1229,7 @@ func send_loop(opts *Options, files []*File) (err error, rc int) {
 		return
 	}
 	p := handler.manager.progress_tracker
-	if handler.manager.has_rsync && p.total_transferred+int64(p.signature_bytes) > 0 {
+	if handler.manager.has_rsync && p.total_transferred+int64(p.signature_bytes) > 0 && lp.ExitCode() == 0 {
 		var tsf int64
 		for _, f := range files {
 			if f.ttype == TransmissionType_rsync {
