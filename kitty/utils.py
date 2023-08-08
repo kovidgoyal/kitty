@@ -498,7 +498,10 @@ single_instance = SingleInstance()
 
 def parse_address_spec(spec: str) -> Tuple[AddressFamily, Union[Tuple[str, int], str], Optional[str]]:
     import socket
-    protocol, rest = spec.split(':', 1)
+    try:
+        protocol, rest = spec.split(':', 1)
+    except ValueError:
+        raise ValueError(f'Invalid listen-on value: {spec} must be of the form protocol:address')
     socket_path = None
     address: Union[str, Tuple[str, int]] = ''
     if protocol == 'unix':
@@ -513,7 +516,7 @@ def parse_address_spec(spec: str) -> Tuple[AddressFamily, Union[Tuple[str, int],
         host, port = rest.rsplit(':', 1)
         address = host, int(port)
     else:
-        raise ValueError(f'Unknown protocol in --listen-on value: {spec}')
+        raise ValueError(f'Unknown protocol in listen-on value: {spec}')
     return family, address, socket_path
 
 
