@@ -358,6 +358,8 @@ def macos_cmdline(argv_args: List[str]) -> List[str]:
 
 
 def expand_listen_on(listen_on: str, from_config_file: bool) -> str:
+    if from_config_file and listen_on == 'none':
+        return ''
     listen_on = expandvars(listen_on)
     if '{kitty_pid}' not in listen_on and from_config_file and listen_on.startswith('unix:'):
         listen_on += '-{kitty_pid}'
