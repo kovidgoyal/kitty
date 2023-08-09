@@ -834,6 +834,8 @@ func (self *SendHandler) on_file_transfer_response(ftc *FileTransmissionCommand)
 	}
 	if self.manager.all_acknowledged {
 		self.transfer_finished()
+	} else if ftc.Action == Action_end_data && ftc.File_id != "" {
+		return self.transmit_next_chunk()
 	}
 	return nil
 }
@@ -1010,16 +1012,22 @@ func (self *SendManager) next_chunks(callback func(string) loop.IdType) error {
 
 func (self *SendHandler) transmit_next_chunk() (err error) {
 	found_chunk := false
-	err = self.manager.next_chunks(func(chunk string) loop.IdType {
-		found_chunk = true
-		return self.send_payload(chunk)
-	})
-	if err != nil {
-		return err
-	}
-	if !found_chunk {
-		if self.manager.all_acknowledged {
-			self.transfer_finished()
+	for !found_chunk {
+		if err = self.manager.next_chunks(func(chunk string) loop.IdType {
+			found_chunk = true
+			return self.send_payload(chunk)
+		}); err != nil {
+			return err
+		}
+		if !found_chunk {
+			if self.manager.all_acknowledged {
+				self.transfer_finished()
+				return
+			}
+			self.manager.update_collective_statuses()
+			if !self.manager.has_transmitting {
+				return
+			}
 		}
 	}
 	return
