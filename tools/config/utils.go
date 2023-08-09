@@ -30,7 +30,7 @@ func ParseStrDict(val, record_sep, field_sep string) (map[string]string, error) 
 func PositiveFloat(val string) (ans float64, err error) {
 	ans, err = strconv.ParseFloat(val, 64)
 	if err == nil {
-		ans = utils.Max(0, ans)
+		ans = max(0, ans)
 	}
 	return
 }
@@ -38,7 +38,7 @@ func PositiveFloat(val string) (ans float64, err error) {
 func UnitFloat(val string) (ans float64, err error) {
 	ans, err = strconv.ParseFloat(val, 64)
 	if err == nil {
-		ans = utils.Max(0, utils.Min(ans, 1))
+		ans = max(0, min(ans, 1))
 	}
 	return
 }

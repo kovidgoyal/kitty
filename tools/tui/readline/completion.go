@@ -151,7 +151,7 @@ type cell struct {
 }
 
 func (self cell) whitespace(desired_length int) string {
-	return strings.Repeat(" ", utils.Max(0, desired_length-self.length))
+	return strings.Repeat(" ", max(0, desired_length-self.length))
 }
 
 type column struct {
@@ -212,7 +212,7 @@ func (self *Readline) screen_lines_for_match_group_without_descriptions(g *cli.M
 		}
 	}
 	var ans []column
-	ncols := utils.Max(1, self.screen_width/(max_length+1))
+	ncols := max(1, self.screen_width/(max_length+1))
 	for {
 		cols, total_length := layout_words_in_table(words, lengths, ncols)
 		if total_length > self.screen_width {

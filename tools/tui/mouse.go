@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"kitty/tools/tui/loop"
-	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -68,7 +67,7 @@ func (self *MouseSelection) Clear()         { *self = MouseSelection{} }
 func (ms *MouseSelection) StartNewSelection(ev *loop.MouseEvent, line LinePos, min_y, max_y, cell_width, cell_height int) {
 	*ms = MouseSelection{cell_width: cell_width, cell_height: cell_height, min_y: min_y, max_y: max_y}
 	ms.start.line = line
-	ms.start.x = utils.Max(line.MinX(), utils.Min(ev.Cell.X, line.MaxX()))
+	ms.start.x = max(line.MinX(), min(ev.Cell.X, line.MaxX()))
 	cell_start := cell_width * ev.Cell.X
 	ms.start.in_first_half_of_cell = ev.Pixel.X <= cell_start+cell_width/2
 	ms.end = ms.start
@@ -78,7 +77,7 @@ func (ms *MouseSelection) StartNewSelection(ev *loop.MouseEvent, line LinePos, m
 func (ms *MouseSelection) Update(ev *loop.MouseEvent, line LinePos) {
 	ms.drag_scroll.timer_id = 0
 	if ms.is_active {
-		ms.end.x = utils.Max(line.MinX(), utils.Min(ev.Cell.X, line.MaxX()))
+		ms.end.x = max(line.MinX(), min(ev.Cell.X, line.MaxX()))
 		cell_start := ms.cell_width * ms.end.x
 		ms.end.in_first_half_of_cell = ev.Pixel.X <= cell_start+ms.cell_width/2
 		ms.end.line = line

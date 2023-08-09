@@ -397,8 +397,8 @@ func mark(r *regexp2.Regexp, post_processors []PostProcessorFunc, group_processo
 			if idx > 0 && g.IsNamed {
 				c := g.LastCapture()
 				if s, e := c.Byte_Offsets.Start, c.Byte_Offsets.End; s > -1 && e > -1 {
-					s = utils.Max(s, match_start)
-					e = utils.Min(e, match_end)
+					s = max(s, match_start)
+					e = min(e, match_end)
 					gd[g.Name] = sanitize_pat.ReplaceAllLiteralString(text[s:e], "")
 				}
 			}
@@ -413,8 +413,8 @@ func mark(r *regexp2.Regexp, post_processors []PostProcessorFunc, group_processo
 		if opts.Type == "regex" && len(m.Groups) > 1 && !m.HasNamedGroups() {
 			cp := m.Groups[1].LastCapture()
 			ms, me := cp.Byte_Offsets.Start, cp.Byte_Offsets.End
-			match_start = utils.Max(match_start, ms)
-			match_end = utils.Min(match_end, me)
+			match_start = max(match_start, ms)
+			match_end = min(match_end, me)
 			full_match = sanitize_pat.ReplaceAllLiteralString(text[match_start:match_end], "")
 		}
 		if full_match != "" {
@@ -576,7 +576,7 @@ process_answer:
 		return "", nil, nil, &ErrNoMatches{Type: opts.Type}
 	}
 	largest_index := ans[len(ans)-1].Index
-	offset := utils.Max(0, opts.HintsOffset)
+	offset := max(0, opts.HintsOffset)
 	index_map = make(map[int]*Mark, len(ans))
 	for i := range ans {
 		m := &ans[i]

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -107,7 +105,7 @@ func (e MouseEvent) String() string {
 }
 
 func pixel_to_cell(px, length, cell_length int) int {
-	px = utils.Max(0, utils.Min(px, length-1))
+	px = max(0, min(px, length-1))
 	return px / cell_length
 }
 

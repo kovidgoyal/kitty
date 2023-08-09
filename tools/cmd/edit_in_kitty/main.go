@@ -105,7 +105,7 @@ func edit_loop(data_to_send string, kill_if_signaled bool, on_data OnDataCallbac
 	lp.OnInitialize = func() (string, error) {
 		pos, chunk_num := 0, 0
 		for {
-			limit := utils.Min(pos+2048, len(data_to_send))
+			limit := min(pos+2048, len(data_to_send))
 			if limit <= pos {
 				break
 			}

@@ -25,8 +25,8 @@ func (self *Readline) update_current_screen_size() {
 		screen_size.WidthCells = 80
 		screen_size.HeightCells = 24
 	}
-	self.screen_width = utils.Max(1, int(screen_size.WidthCells))
-	self.screen_height = utils.Max(1, int(screen_size.HeightCells))
+	self.screen_width = max(1, int(screen_size.WidthCells))
+	self.screen_height = max(1, int(screen_size.HeightCells))
 }
 
 type ScreenLine struct {

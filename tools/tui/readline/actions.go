@@ -19,7 +19,7 @@ func (self *Readline) text_upto_cursor_pos() string {
 	buf.Grow(1024)
 	for i, line := range self.input_state.lines {
 		if i == self.input_state.cursor.Y {
-			buf.WriteString(line[:utils.Min(len(line), self.input_state.cursor.X)])
+			buf.WriteString(line[:min(len(line), self.input_state.cursor.X)])
 			break
 		} else {
 			buf.WriteString(line)
@@ -34,7 +34,7 @@ func (self *Readline) text_after_cursor_pos() string {
 	buf.Grow(1024)
 	for i, line := range self.input_state.lines {
 		if i == self.input_state.cursor.Y {
-			buf.WriteString(line[utils.Min(len(line), self.input_state.cursor.X):])
+			buf.WriteString(line[min(len(line), self.input_state.cursor.X):])
 			buf.WriteString("\n")
 		} else if i > self.input_state.cursor.Y {
 			buf.WriteString(line)
@@ -165,7 +165,7 @@ func (self *Readline) move_cursor_vertically(amt int) (ans int) {
 			break
 		}
 	}
-	target_line_num := utils.Min(utils.Max(0, cursor_line_num+amt), len(screen_lines)-1)
+	target_line_num := min(max(0, cursor_line_num+amt), len(screen_lines)-1)
 	ans = target_line_num - cursor_line_num
 	if ans != 0 {
 		self.move_cursor_to_target_line(screen_lines[cursor_line_num], screen_lines[target_line_num])
@@ -441,9 +441,9 @@ func (self *Readline) kill_previous_space_delimited_word(amt uint, traverse_line
 }
 
 func (self *Readline) ensure_position_in_bounds(pos *Position) *Position {
-	pos.Y = utils.Max(0, utils.Min(pos.Y, len(self.input_state.lines)-1))
+	pos.Y = max(0, min(pos.Y, len(self.input_state.lines)-1))
 	line := self.input_state.lines[pos.Y]
-	pos.X = utils.Max(0, utils.Min(pos.X, len(line)))
+	pos.X = max(0, min(pos.X, len(line)))
 	return pos
 }
 

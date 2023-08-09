@@ -269,12 +269,12 @@ func NewDiffer() *Differ {
 // Use to create a signature and possibly apply a delta
 func NewPatcher(expected_input_size int64) (ans *Patcher) {
 	bs := DefaultBlockSize
-	sz := utils.Max(0, expected_input_size)
+	sz := max(0, expected_input_size)
 	if sz > 0 {
 		bs = int(math.Round(math.Sqrt(float64(sz))))
 	}
 	ans = &Patcher{}
-	ans.rsync.BlockSize = utils.Min(bs, MaxBlockSize)
+	ans.rsync.BlockSize = min(bs, MaxBlockSize)
 	ans.rsync.SetHasher(new_xxh3_64)
 	ans.rsync.SetChecksummer(new_xxh3_128)
 

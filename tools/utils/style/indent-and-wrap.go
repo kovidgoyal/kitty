@@ -507,7 +507,7 @@ func (self *wrapper) wrap_text(text string) []string {
 }
 
 func new_wrapper(opts WrapOptions, width int) *wrapper {
-	width = utils.Max(2, width)
+	width = max(2, width)
 	ans := wrapper{indent: opts.Indent, width: width, trim_whitespace: opts.Trim_whitespace, indent_width: wcswidth.Stringwidth(opts.Indent)}
 	if opts.Ignore_lines_containing != "" {
 		ans.ignore_lines_containing = utils.Splitlines(opts.Ignore_lines_containing)

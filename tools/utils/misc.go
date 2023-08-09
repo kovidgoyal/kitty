@@ -3,6 +3,7 @@
 package utils
 
 import (
+	"cmp"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -98,19 +99,13 @@ func sort_with_key[T any, C constraints.Ordered](stable bool, s []T, key func(a 
 	for i, x := range s {
 		temp[i].val, temp[i].key = x, key(x)
 	}
-	cmp := func(a, b t) int {
-		if a.key < b.key {
-			return -1
-		}
-		if a.key > b.key {
-			return 1
-		}
-		return 0
+	key_cmp := func(a, b t) int {
+		return cmp.Compare(a.key, b.key)
 	}
 	if stable {
-		slices.SortStableFunc(temp, cmp)
+		slices.SortStableFunc(temp, key_cmp)
 	} else {
-		slices.SortFunc(temp, cmp)
+		slices.SortFunc(temp, key_cmp)
 	}
 	for i, x := range temp {
 		s[i] = x.val

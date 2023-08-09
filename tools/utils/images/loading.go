@@ -216,7 +216,7 @@ func check_resize(frame *ImageFrame, filename string) error {
 }
 
 func (frame *ImageFrame) set_delay(min_gap, delay int) {
-	frame.Delay_ms = int32(utils.Max(min_gap, delay) * 10)
+	frame.Delay_ms = int32(max(min_gap, delay) * 10)
 	if frame.Delay_ms == 0 {
 		frame.Delay_ms = -1 // gapless frame in the graphics protocol
 	}
@@ -308,7 +308,7 @@ func parse_identify_record(ans *IdentifyRecord, raw *IdentifyOutput) (err error)
 		if err != nil {
 			return fmt.Errorf("Invalid gap value in identify output: %s", raw.Gap)
 		}
-		ans.Gap = utils.Max(0, ans.Gap)
+		ans.Gap = max(0, ans.Gap)
 	}
 	area, pos, found := strings.Cut(raw.Canvas, "+")
 	ok := false

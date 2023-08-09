@@ -4,7 +4,6 @@ package wcswidth
 
 import (
 	"fmt"
-	"kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -124,7 +123,7 @@ func (self *CellIterator) Backward() (has_more bool) {
 		for self.Forward() {
 			cells = append(cells, self.current)
 		}
-		ri.pos = utils.Min(utils.Max(-1, current_cell_num-1), len(cells))
+		ri.pos = min(max(-1, current_cell_num-1), len(cells))
 		ri.cells = cells
 	}
 	if ri.pos > -1 {

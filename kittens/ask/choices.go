@@ -57,7 +57,7 @@ func truncate_at_space(text string, width int) (string, string) {
 }
 
 func extra_for(width, screen_width int) int {
-	return utils.Max(0, screen_width-width)/2 + 1
+	return max(0, screen_width-width)/2 + 1
 }
 
 func GetChoices(o *Options) (response string, err error) {
@@ -71,7 +71,7 @@ func GetChoices(o *Options) (response string, err error) {
 	prefix_style_pat := regexp.MustCompile("^(?:\x1b\\[[^m]*?m)+")
 	choice_order := make([]Choice, 0, len(o.Choices))
 	clickable_ranges := make(map[string][]Range, 16)
-	allowed := utils.NewSet[string](utils.Max(2, len(o.Choices)))
+	allowed := utils.NewSet[string](max(2, len(o.Choices)))
 	response_on_accept := o.Default
 	switch o.Type {
 	case "yesno":
@@ -328,7 +328,7 @@ func GetChoices(o *Options) (response string, err error) {
 			}
 		}
 		y := int(sz.HeightCells) - len(msg_lines)
-		y = utils.Max(0, (y/2)-2)
+		y = max(0, (y/2)-2)
 		lp.QueueWriteString(strings.Repeat("\r\n", y))
 		for _, line := range msg_lines {
 			if replacement_text != "" {

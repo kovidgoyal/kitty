@@ -227,13 +227,13 @@ func (self *HistoryMatches) first(rl *Readline) bool {
 }
 
 func (self *HistoryMatches) last(rl *Readline) bool {
-	self.current_idx = utils.Max(0, len(self.items)-1)
+	self.current_idx = max(0, len(self.items)-1)
 	return self.apply(rl)
 }
 
 func (self *HistoryMatches) previous(num uint, rl *Readline) bool {
 	if self.current_idx > 0 {
-		self.current_idx = utils.Max(0, self.current_idx-int(num))
+		self.current_idx = max(0, self.current_idx-int(num))
 		return self.apply(rl)
 	}
 	return false
@@ -241,7 +241,7 @@ func (self *HistoryMatches) previous(num uint, rl *Readline) bool {
 
 func (self *HistoryMatches) next(num uint, rl *Readline) bool {
 	if self.current_idx+1 < len(self.items) {
-		self.current_idx = utils.Min(len(self.items)-1, self.current_idx+int(num))
+		self.current_idx = min(len(self.items)-1, self.current_idx+int(num))
 		return self.apply(rl)
 	}
 	return false
@@ -295,7 +295,7 @@ func (self *Readline) markup_history_search() {
 
 func (self *Readline) remove_text_from_history_search(num uint) uint {
 	l := len(self.history_search.query)
-	nl := utils.Max(0, l-int(num))
+	nl := max(0, l-int(num))
 	self.history_search.query = self.history_search.query[:nl]
 	num_removed := uint(l - nl)
 	self.add_text_to_history_search("") // update the search results
@@ -361,7 +361,7 @@ func (self *Readline) add_text_to_history_search(text string) {
 			idx = 0
 		}
 	}
-	self.history_search.current_idx = utils.Max(0, idx)
+	self.history_search.current_idx = max(0, idx)
 	self.markup_history_search()
 }
 
@@ -372,9 +372,9 @@ func (self *Readline) next_history_search(backwards bool, num uint) bool {
 		return false
 	}
 	if backwards {
-		ni = utils.Max(0, ni-int(num))
+		ni = max(0, ni-int(num))
 	} else {
-		ni = utils.Min(ni+int(num), len(self.history_search.items)-1)
+		ni = min(ni+int(num), len(self.history_search.items)-1)
 	}
 	if ni == self.history_search.current_idx {
 		return false

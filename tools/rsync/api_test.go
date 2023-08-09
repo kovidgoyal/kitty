@@ -31,7 +31,7 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 
 	test_equal := func(src_data, output []byte) {
 		if !bytes.Equal(src_data, output) {
-			first_diff := utils.Min(len(src_data), len(output))
+			first_diff := min(len(src_data), len(output))
 			for i := 0; i < first_diff; i++ {
 				if src_data[i] != output[i] {
 					first_diff = i
@@ -115,7 +115,7 @@ func run_roundtrip_test(t *testing.T, src_data, changed []byte, num_of_patches, 
 	outputbuf := bytes.Buffer{}
 	p.StartDelta(&outputbuf, bytes.NewReader(changed))
 	for len(deltabuf) > 0 {
-		n := utils.Min(123, len(deltabuf))
+		n := min(123, len(deltabuf))
 		if err := p.UpdateDelta(deltabuf[:n]); err != nil {
 			t.Fatal(err)
 		}
