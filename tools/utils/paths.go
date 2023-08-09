@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"golang.org/x/sys/unix"
@@ -64,7 +65,7 @@ func Abspath(path string) string {
 	return path
 }
 
-var KittyExe = Once(func() string {
+var KittyExe = sync.OnceValue(func() string {
 	exe, err := os.Executable()
 	if err == nil {
 		ans := filepath.Join(filepath.Dir(exe), "kitty")
@@ -119,11 +120,11 @@ func ConfigDirForName(name string) (config_dir string) {
 	return
 }
 
-var ConfigDir = Once(func() (config_dir string) {
+var ConfigDir = sync.OnceValue(func() (config_dir string) {
 	return ConfigDirForName("kitty.conf")
 })
 
-var CacheDir = Once(func() (cache_dir string) {
+var CacheDir = sync.OnceValue(func() (cache_dir string) {
 	candidate := ""
 	if edir := os.Getenv("KITTY_CACHE_DIRECTORY"); edir != "" {
 		candidate = Abspath(Expanduser(edir))
@@ -178,7 +179,7 @@ func macos_user_cache_dir() string {
 	return ""
 }
 
-var RuntimeDir = Once(func() (runtime_dir string) {
+var RuntimeDir = sync.OnceValue(func() (runtime_dir string) {
 	var candidate string
 	if q := os.Getenv("KITTY_RUNTIME_DIRECTORY"); q != "" {
 		candidate = q

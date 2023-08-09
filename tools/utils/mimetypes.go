@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"golang.org/x/sys/unix"
 )
@@ -44,7 +45,7 @@ func load_mime_file(filename string, mime_map map[string]string) error {
 	return nil
 }
 
-var UserMimeMap = Once(func() map[string]string {
+var UserMimeMap = sync.OnceValue(func() map[string]string {
 	conf_path := filepath.Join(ConfigDir(), "mime.types")
 	ans := make(map[string]string, 32)
 	err := load_mime_file(conf_path, ans)

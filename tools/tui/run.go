@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/shirou/gopsutil/v3/process"
 	"golang.org/x/sys/unix"
@@ -60,7 +61,7 @@ func get_effective_ksi_env_var(x string) string {
 	return x
 }
 
-var relevant_kitty_opts = utils.Once(func() KittyOpts {
+var relevant_kitty_opts = sync.OnceValue(func() KittyOpts {
 	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
 })
 

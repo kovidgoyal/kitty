@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"unicode"
 
 	"kitty/tools/cli"
@@ -22,7 +23,7 @@ import (
 
 var _ = fmt.Print
 
-var RgExe = utils.Once(func() string {
+var RgExe = sync.OnceValue(func() string {
 	return utils.FindExe("rg")
 })
 

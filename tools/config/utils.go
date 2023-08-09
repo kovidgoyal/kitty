@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -189,7 +190,7 @@ func StringLiteral(val string) (string, error) {
 	return ans.String(), nil
 }
 
-var ModMap = utils.Once(func() map[string]string {
+var ModMap = sync.OnceValue(func() map[string]string {
 	return map[string]string{
 		"shift":     "shift",
 		"⇧":         "shift",
@@ -211,7 +212,7 @@ var ModMap = utils.Once(func() map[string]string {
 	}
 })
 
-var ShortcutSpecPat = utils.Once(func() *regexp.Regexp {
+var ShortcutSpecPat = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`([^+])>`)
 })
 

@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"kitty"
@@ -140,7 +141,7 @@ func escape_semicolons(x string) string {
 	return strings.ReplaceAll(x, ";", ";;")
 }
 
-var ftc_field_map = utils.Once(func() map[string]reflect.StructField {
+var ftc_field_map = sync.OnceValue(func() map[string]reflect.StructField {
 	ans := make(map[string]reflect.StructField)
 	self := FileTransmissionCommand{}
 	v := reflect.ValueOf(self)
@@ -155,7 +156,7 @@ var ftc_field_map = utils.Once(func() map[string]reflect.StructField {
 	return ans
 })
 
-var safe_string_pat = utils.Once(func() *regexp.Regexp {
+var safe_string_pat = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`[^0-9a-zA-Z_:./@-]`)
 })
 

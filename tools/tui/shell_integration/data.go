@@ -11,6 +11,7 @@ import (
 	"kitty/tools/utils"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 var _ = fmt.Print
@@ -25,7 +26,7 @@ type Entry struct {
 
 type Container map[string]Entry
 
-var Data = utils.Once(func() Container {
+var Data = sync.OnceValue(func() Container {
 	tr := tar.NewReader(utils.ReaderForCompressedEmbeddedData(embedded_data))
 	ans := make(Container, 64)
 	for {

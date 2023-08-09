@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var _ = fmt.Print
@@ -22,11 +23,11 @@ const DIFF_DIFF = `diff -p -U _CONTEXT_ --`
 
 var diff_cmd []string
 
-var GitExe = utils.Once(func() string {
+var GitExe = sync.OnceValue(func() string {
 	return utils.FindExe("git")
 })
 
-var DiffExe = utils.Once(func() string {
+var DiffExe = sync.OnceValue(func() string {
 	return utils.FindExe("diff")
 })
 

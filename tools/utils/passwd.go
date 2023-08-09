@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 
 	"howett.net/plist"
 )
@@ -49,7 +50,7 @@ func ParsePasswdFile(path string) (ans map[string]PasswdEntry, err error) {
 }
 
 var passwd_err error
-var passwd_database = Once(func() (ans map[string]PasswdEntry) {
+var passwd_database = sync.OnceValue(func() (ans map[string]PasswdEntry) {
 	ans, passwd_err = ParsePasswdFile("/etc/passwd")
 	return
 })
@@ -107,7 +108,7 @@ func parse_dscl_data(raw []byte) (ans map[string]PasswdEntry, err error) {
 
 var dscl_error error
 
-var dscl_user_database = Once(func() map[string]PasswdEntry {
+var dscl_user_database = sync.OnceValue(func() map[string]PasswdEntry {
 	c := exec.Command("/usr/bin/dscl", "-plist", ".", "-readall", "/Users", "uid", "gid", "name", "realname", "home", "shell")
 	raw, err := c.Output()
 	if err != nil {

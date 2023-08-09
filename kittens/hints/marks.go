@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 
@@ -163,7 +164,7 @@ func linenum_group_processor(gd map[string]string) {
 	gd[`path`] = utils.Expanduser(gd[`path`])
 }
 
-var PostProcessorMap = utils.Once(func() map[string]PostProcessorFunc {
+var PostProcessorMap = sync.OnceValue(func() map[string]PostProcessorFunc {
 	return map[string]PostProcessorFunc{
 		"url": func(text string, s, e int) (int, int) {
 			if s > 4 && text[s-5:s] == "link:" { // asciidoc URLs
@@ -227,7 +228,7 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 	return ans
 }
 
-var RelevantKittyOpts = utils.Once(func() KittyOpts {
+var RelevantKittyOpts = sync.OnceValue(func() KittyOpts {
 	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
 })
 

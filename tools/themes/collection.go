@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"kitty/tools/cli"
@@ -780,7 +781,7 @@ func (self *Themes) Copy() *Themes {
 	return ans
 }
 
-var camel_case_pat = utils.Once(func() *regexp.Regexp {
+var camel_case_pat = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`([a-z])([A-Z])`)
 })
 

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"kitty"
 	"kitty/tools/config"
@@ -43,7 +44,7 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 	return ans
 }
 
-var RelevantKittyOpts = utils.Once(func() KittyOpts {
+var RelevantKittyOpts = sync.OnceValue(func() KittyOpts {
 	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
 })
 

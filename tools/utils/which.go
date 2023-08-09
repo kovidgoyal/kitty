@@ -7,13 +7,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
 
-var DefaultExeSearchPaths = Once(func() []string {
+var DefaultExeSearchPaths = sync.OnceValue(func() []string {
 	candidates := [...]string{"/usr/local/bin", "/opt/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"}
 	ans := make([]string, 0, len(candidates))
 	for _, x := range candidates {

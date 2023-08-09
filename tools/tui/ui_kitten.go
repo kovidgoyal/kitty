@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 
 	"kitty/tools/cli"
 	"kitty/tools/utils"
@@ -15,7 +16,7 @@ import (
 
 var _ = fmt.Print
 
-var RunningAsUI = utils.Once(func() bool {
+var RunningAsUI = sync.OnceValue(func() bool {
 	defer func() { os.Unsetenv("KITTEN_RUNNING_AS_UI") }()
 	return os.Getenv("KITTEN_RUNNING_AS_UI") != ""
 })

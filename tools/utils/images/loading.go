@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"kitty/tools/utils"
 	"kitty/tools/utils/shm"
@@ -264,7 +265,7 @@ func OpenNativeImageFromReader(f io.ReadSeeker) (ans *ImageData, err error) {
 	return
 }
 
-var MagickExe = utils.Once(func() string {
+var MagickExe = sync.OnceValue(func() string {
 	return utils.FindExe("magick")
 })
 

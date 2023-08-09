@@ -13,15 +13,16 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var _ = fmt.Print
 
-var SSHExe = utils.Once(func() string {
+var SSHExe = sync.OnceValue(func() string {
 	return utils.FindExe("ssh")
 })
 
-var SSHOptions = utils.Once(func() (ssh_options map[string]string) {
+var SSHOptions = sync.OnceValue(func() (ssh_options map[string]string) {
 	defer func() {
 		if ssh_options == nil {
 			ssh_options = map[string]string{
@@ -201,7 +202,7 @@ func (self SSHVersion) SupportsAskpassRequire() bool {
 	return self.Major > 8 || (self.Major == 8 && self.Minor >= 4)
 }
 
-var GetSSHVersion = utils.Once(func() SSHVersion {
+var GetSSHVersion = sync.OnceValue(func() SSHVersion {
 	b, err := exec.Command(SSHExe(), "-V").CombinedOutput()
 	if err != nil {
 		return SSHVersion{}
@@ -235,6 +236,6 @@ func read_relevant_kitty_opts(path string) KittyOpts {
 	return ans
 }
 
-var RelevantKittyOpts = utils.Once(func() KittyOpts {
+var RelevantKittyOpts = sync.OnceValue(func() KittyOpts {
 	return read_relevant_kitty_opts(filepath.Join(utils.ConfigDir(), "kitty.conf"))
 })

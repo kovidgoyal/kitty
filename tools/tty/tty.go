@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -340,7 +341,7 @@ func (self *Term) GetSize() (*unix.Winsize, error) {
 // go doesn't have a wrapper for ctermid()
 func Ctermid() string { return "/dev/tty" }
 
-var KittyStdout = utils.Once(func() *os.File {
+var KittyStdout = sync.OnceValue(func() *os.File {
 	if fds := os.Getenv(`KITTY_STDIO_FORWARDED`); fds != "" {
 		if fd, err := strconv.Atoi(fds); err == nil && fd > -1 {
 			if f := os.NewFile(uintptr(fd), "<kitty_stdout>"); f != nil {
