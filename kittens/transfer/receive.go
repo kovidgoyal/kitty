@@ -360,18 +360,27 @@ type sigwriter struct {
 	file_id, prefix, suffix string
 	q                       func(string) loop.IdType
 	amt                     int64
+	b                       bytes.Buffer
 }
 
 func (self *sigwriter) Write(b []byte) (int, error) {
+	self.b.Write(b)
+	if self.b.Len() > 4000 {
+		self.flush()
+	}
+	return len(b), nil
+}
+
+func (self *sigwriter) flush() {
 	frame := len(self.prefix) + len(self.suffix)
-	split_for_transfer(b, self.file_id, false, func(ftc *FileTransmissionCommand) {
+	split_for_transfer(self.b.Bytes(), self.file_id, false, func(ftc *FileTransmissionCommand) {
 		self.q(self.prefix)
 		data := ftc.Serialize(false)
 		self.q(data)
 		self.wid = self.q(self.suffix)
 		self.amt += int64(frame + len(data))
 	})
-	return len(b), nil
+	self.b.Reset()
 }
 
 var files_done error = errors.New("files done")
@@ -422,6 +431,7 @@ func (self *manager) request_files() transmit_iterator {
 					return 0, err
 				}
 			}
+			output.flush()
 			f.sent_bytes += output.amt
 			last_write_id = self.send(FileTransmissionCommand{Action: Action_end_data, File_id: f.file_id}, queue_write)
 		}
