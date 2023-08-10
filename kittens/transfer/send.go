@@ -610,6 +610,9 @@ func (self *SendHandler) refresh_progress(timer_id loop.IdType) (err error) {
 	if timer_id == self.progress_update_timer {
 		self.progress_update_timer = 0
 	}
+	if self.manager.active_file() == nil && !self.manager.all_acknowledged && self.done_file_ids.Len() != 0 && self.done_file_ids.Len() < len(self.manager.files) {
+		self.transmit_next_chunk()
+	}
 	self.lp.StartAtomicUpdate()
 	defer self.lp.EndAtomicUpdate()
 	self.erase_progress()
