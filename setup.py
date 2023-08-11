@@ -55,7 +55,89 @@ env = Env()
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
 
 
-class Options(argparse.Namespace):
+class CompilationDatabase:
+
+    def __init__(self, incremental: bool = False):
+        self.incremental = incremental
+        self.compile_commands: List[Command] = []
+        self.link_commands: List[Command] = []
+
+    def add_command(
+        self,
+        desc: str,
+        cmd: List[str],
+        is_newer_func: Callable[[], bool],
+        key: Optional[CompileKey] = None,
+        on_success: Optional[Callable[[], None]] = None,
+        keyfile: Optional[str] = None
+    ) -> None:
+        def no_op() -> None:
+            pass
+
+        queue = self.link_commands if keyfile is None else self.compile_commands
+        queue.append(Command(desc, cmd, is_newer_func, on_success or no_op, key, keyfile))
+
+    def build_all(self) -> None:
+
+        def sort_key(compile_cmd: Command) -> int:
+            if compile_cmd.keyfile:
+                return os.path.getsize(compile_cmd.keyfile)
+            return 0
+
+        items = []
+        for compile_cmd in self.compile_commands:
+            if not self.incremental or self.cmd_changed(compile_cmd) or compile_cmd.is_newer_func():
+                items.append(compile_cmd)
+        items.sort(key=sort_key, reverse=True)
+        parallel_run(items)
+
+        items = []
+        for compile_cmd in self.link_commands:
+            if not self.incremental or compile_cmd.is_newer_func():
+                items.append(compile_cmd)
+        parallel_run(items)
+
+    def cmd_changed(self, compile_cmd: Command) -> bool:
+        key, cmd = compile_cmd.key, compile_cmd.cmd
+        return bool(self.db.get(key) != cmd)
+
+    def __enter__(self) -> 'CompilationDatabase':
+        self.all_keys: Set[CompileKey] = set()
+        self.dbpath = os.path.abspath(os.path.join('build', 'compile_commands.json'))
+        self.linkdbpath = os.path.join(os.path.dirname(self.dbpath), 'link_commands.json')
+        try:
+            with open(self.dbpath) as f:
+                compilation_database = json.load(f)
+        except FileNotFoundError:
+            compilation_database = []
+        try:
+            with open(self.linkdbpath) as f:
+                link_database = json.load(f)
+        except FileNotFoundError:
+            link_database = []
+        compilation_database = {
+            CompileKey(k['file'], k['output']): k['arguments'] for k in compilation_database
+        }
+        self.db = compilation_database
+        self.linkdb = {tuple(k['output']): k['arguments'] for k in link_database}
+        return self
+
+    def __exit__(self, *a: object) -> None:
+        cdb = self.db
+        for key in set(cdb) - self.all_keys:
+            del cdb[key]
+        compilation_database = [
+            {'file': c.key.src, 'arguments': c.cmd, 'directory': src_base, 'output': c.key.dest} for c in self.compile_commands if c.key is not None
+        ]
+        with suppress(FileNotFoundError):
+            with open(self.dbpath, 'w') as f:
+                json.dump(compilation_database, f, indent=2, sort_keys=True)
+            with open(self.linkdbpath, 'w') as f:
+                json.dump([{'output': c.key, 'arguments': c.cmd, 'directory': src_base} for c in self.link_commands], f, indent=2, sort_keys=True)
+
+
+
+class Options:
     action: str = 'build'
     debug: bool = False
     verbose: int = 0
@@ -67,6 +149,8 @@ class Options(argparse.Namespace):
     python_compiler_flags: str = ''
     python_linker_flags: str = ''
     incremental: bool = True
+    build_universal_binary: bool = False
+    ignore_compiler_warnings: bool = False
     profile: bool = False
     libdir_name: str = 'lib'
     extra_logging: List[str] = []
@@ -80,6 +164,9 @@ class Options(argparse.Namespace):
     canberra_library: Optional[str] = os.getenv('KITTY_CANBERRA_LIBRARY')
     fontconfig_library: Optional[str] = os.getenv('KITTY_FONTCONFIG_LIBRARY')
 
+    # Extras
+    compilation_database: CompilationDatabase = CompilationDatabase()
+    vcs_rev: str = ''
 
 def emphasis(text: str) -> str:
     if sys.stdout.isatty():
@@ -611,87 +698,6 @@ def parallel_run(items: List[Command]) -> None:
     if failed:
         print(failed.desc)
         run_tool(list(failed.cmd))
-
-
-class CompilationDatabase:
-
-    def __init__(self, incremental: bool):
-        self.incremental = incremental
-        self.compile_commands: List[Command] = []
-        self.link_commands: List[Command] = []
-
-    def add_command(
-        self,
-        desc: str,
-        cmd: List[str],
-        is_newer_func: Callable[[], bool],
-        key: Optional[CompileKey] = None,
-        on_success: Optional[Callable[[], None]] = None,
-        keyfile: Optional[str] = None
-    ) -> None:
-        def no_op() -> None:
-            pass
-
-        queue = self.link_commands if keyfile is None else self.compile_commands
-        queue.append(Command(desc, cmd, is_newer_func, on_success or no_op, key, keyfile))
-
-    def build_all(self) -> None:
-
-        def sort_key(compile_cmd: Command) -> int:
-            if compile_cmd.keyfile:
-                return os.path.getsize(compile_cmd.keyfile)
-            return 0
-
-        items = []
-        for compile_cmd in self.compile_commands:
-            if not self.incremental or self.cmd_changed(compile_cmd) or compile_cmd.is_newer_func():
-                items.append(compile_cmd)
-        items.sort(key=sort_key, reverse=True)
-        parallel_run(items)
-
-        items = []
-        for compile_cmd in self.link_commands:
-            if not self.incremental or compile_cmd.is_newer_func():
-                items.append(compile_cmd)
-        parallel_run(items)
-
-    def cmd_changed(self, compile_cmd: Command) -> bool:
-        key, cmd = compile_cmd.key, compile_cmd.cmd
-        return bool(self.db.get(key) != cmd)
-
-    def __enter__(self) -> 'CompilationDatabase':
-        self.all_keys: Set[CompileKey] = set()
-        self.dbpath = os.path.abspath(os.path.join('build', 'compile_commands.json'))
-        self.linkdbpath = os.path.join(os.path.dirname(self.dbpath), 'link_commands.json')
-        try:
-            with open(self.dbpath) as f:
-                compilation_database = json.load(f)
-        except FileNotFoundError:
-            compilation_database = []
-        try:
-            with open(self.linkdbpath) as f:
-                link_database = json.load(f)
-        except FileNotFoundError:
-            link_database = []
-        compilation_database = {
-            CompileKey(k['file'], k['output']): k['arguments'] for k in compilation_database
-        }
-        self.db = compilation_database
-        self.linkdb = {tuple(k['output']): k['arguments'] for k in link_database}
-        return self
-
-    def __exit__(self, *a: object) -> None:
-        cdb = self.db
-        for key in set(cdb) - self.all_keys:
-            del cdb[key]
-        compilation_database = [
-            {'file': c.key.src, 'arguments': c.cmd, 'directory': src_base, 'output': c.key.dest} for c in self.compile_commands if c.key is not None
-        ]
-        with suppress(FileNotFoundError):
-            with open(self.dbpath, 'w') as f:
-                json.dump(compilation_database, f, indent=2, sort_keys=True)
-            with open(self.linkdbpath, 'w') as f:
-                json.dump([{'output': c.key, 'arguments': c.cmd, 'directory': src_base} for c in self.link_commands], f, indent=2, sort_keys=True)
 
 
 def compile_c_extension(
@@ -1754,12 +1760,12 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
     )
     p.add_argument(
         '--ignore-compiler-warnings',
-        default=False, action='store_true',
+        default=Options.ignore_compiler_warnings, action='store_true',
         help='Ignore any warnings from the compiler while building'
     )
     p.add_argument(
         '--build-universal-binary',
-        default=False, action='store_true',
+        default=Options.build_universal_binary, action='store_true',
         help='Build a universal binary (ARM + Intel on macOS, ignored on other platforms)'
     )
     return p
@@ -1767,24 +1773,24 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
 
 
 def build_dep() -> None:
-    class Options(argparse.Namespace):
-        platform: str
-        deps: List[str]
+    class Options:
+        platform: str = 'all'
+        deps: List[str] = []
 
     p = argparse.ArgumentParser(prog=f'{sys.argv[0]} build-dep', description='Build dependencies for the kitty binary packages')
     p.add_argument(
         '--platform',
-        default='all',
+        default=Options.platform,
         choices='all macos linux linux-32 linux-arm64 linux-64'.split(),
         help='Platforms to build the dep for'
     )
     p.add_argument(
         'deps',
         nargs='*',
-        default=[],
+        default=Options.deps,
         help='Names of the dependencies, if none provided, build all'
     )
-    args = p.parse_args(sys.argv[2:], namespace=Options)
+    args = p.parse_args(sys.argv[2:], namespace=Options())
     linux_platforms = [
         ['linux', '--arch=64'],
         ['linux', '--arch=32'],
