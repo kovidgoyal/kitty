@@ -1,7 +1,14 @@
 kitty.conf
------------------------
+================
 
 .. highlight:: conf
+
+
+.. only:: man
+
+    Overview
+    --------------
+
 
 |kitty| is highly customizable, everything from keyboard shortcuts, to rendering
 frames-per-second. See below for an overview of all customization possibilities.

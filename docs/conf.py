@@ -177,7 +177,7 @@ manpages_url = 'https://man7.org/linux/man-pages/man{section}/{page}.{section}.h
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('invocation', 'kitty', 'kitty Documentation', [author], 1),
-    ('conf', 'kitty.conf', 'kitty.conf Documentation', [author], 5)
+    ('conf', 'kitty.conf', 'kitty terminal emulator configuration file', [author], 5)
 ]
 
 
