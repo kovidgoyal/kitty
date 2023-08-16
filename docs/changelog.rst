@@ -49,6 +49,8 @@ Detailed list of changes
 
 - kitten @ ls: Allow limiting output to matched windows/tabs (:iss:`6520`)
 
+- kitten icat: Fix image being displayed one cell to the right when using both ``--place`` and ``--unicode-placeholder`` (:iss:`6556`)
+
 - Remote control: Allow using a random TCP port as the remote control socket and also allow using TCP sockets in :opt:`listen_on`
 
 - unicode_input kitten: Add an option to specify the startup tab (:iss:`6552`)

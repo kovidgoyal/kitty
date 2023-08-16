@@ -267,7 +267,7 @@ func write_unicode_placeholder(imgd *image_data) {
 	id_char := string(images.NumberToDiacritic[(imgd.image_id>>24)&255])
 	for r := 0; r < imgd.height_cells; r++ {
 		if imgd.move_to.x > 0 {
-			fmt.Printf("\x1b[%dC", imgd.move_to.x)
+			fmt.Printf("\x1b[%dC", imgd.move_to.x-1)
 		} else {
 			os.Stdout.WriteString(prefix)
 		}
