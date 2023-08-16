@@ -615,7 +615,7 @@ def resize_debounce_time(x: str) -> Tuple[float, float]:
 
 def visual_window_select_characters(x: str) -> str:
     import string
-    valid_characters = string.digits + string.ascii_uppercase
+    valid_characters = string.digits + string.ascii_uppercase + "-=[]\\;',./`"
     ans = x.upper()
     ans_chars = set(ans)
     if not ans_chars.issubset(set(valid_characters)):

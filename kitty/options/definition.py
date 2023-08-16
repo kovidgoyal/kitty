@@ -1093,10 +1093,10 @@ does not currently work on Wayland.
 
 opt('visual_window_select_characters', defval=string.digits[1:] + '0' + string.ascii_uppercase,
     option_type='visual_window_select_characters',
-    long_text='''
+    long_text=r'''
 The list of characters for visual window selection. For example, for selecting a
 window to focus on with :sc:`focus_visible_window`. The value should be a series
-of unique numbers or alphabets, case insensitive, from the set :code:`[0-9A-Z]`.
+of unique numbers or alphabets, case insensitive, from the set :code:`0-9A-Z\`-=[];',./\\`.
 Specify your preference as a string of characters.
 '''
     )
