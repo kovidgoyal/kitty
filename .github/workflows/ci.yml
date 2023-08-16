@@ -55,7 +55,7 @@ jobs:
               python-version: ${{ matrix.pyver }}
 
           - name: Install Go
-            uses: magnetikonline/action-golang-cache@v4
+            uses: actions/setup-go@v4
             with:
               go-version-file: go.mod
 
@@ -85,7 +85,7 @@ jobs:
               python-version: "3.10"
 
           - name: Install Go
-            uses: magnetikonline/action-golang-cache@v4
+            uses: actions/setup-go@v4
             with:
               go-version-file: go.mod
 
@@ -134,7 +134,7 @@ jobs:
               fetch-depth: 10
 
           - name: Install Go
-            uses: magnetikonline/action-golang-cache@v4
+            uses: actions/setup-go@v4
             with:
               go-version-file: go.mod
 
@@ -159,7 +159,7 @@ jobs:
               python-version: "3.10"
 
           - name: Install Go
-            uses: magnetikonline/action-golang-cache@v4
+            uses: actions/setup-go@v4
             with:
               go-version-file: go.mod
 
