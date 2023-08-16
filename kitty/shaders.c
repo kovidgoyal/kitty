@@ -938,7 +938,7 @@ draw_cells(ssize_t vao_idx, const ScreenRenderData *srd, OSWindow *os_window, bo
     } else wl = NULL;
     ImageRenderData *previous_graphics_render_data = NULL;
     if (os_window->live_resize.in_progress && screen->grman->count && (crd.x_ratio != 1 || crd.y_ratio != 1)) {
-        previous_graphics_render_data = malloc(sizeof(previous_graphics_render_data[0]) * screen->grman->count);
+        previous_graphics_render_data = malloc(sizeof(previous_graphics_render_data[0]) * MAX(screen->grman->capacity, screen->grman->count));
         if (previous_graphics_render_data) {
             memcpy(previous_graphics_render_data, screen->grman->render_data, sizeof(previous_graphics_render_data[0]) * screen->grman->count);
             for (size_t i = 0; i < screen->grman->count; i++)
