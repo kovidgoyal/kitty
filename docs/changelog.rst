@@ -51,6 +51,8 @@ Detailed list of changes
 
 - Remote control: Allow using a random TCP port as the remote control socket and also allow using TCP sockets in :opt:`listen_on`
 
+- unicode_input kitten: Add an option to specify the startup tab (:iss:`6552`)
+
 - X11: Print an error to :file:`STDERR` instead of refusing to start when the user sets a custom window icon larger than 128x128 (:iss:`6507`)
 
 0.29.2 [2023-07-27]

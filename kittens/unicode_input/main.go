@@ -555,14 +555,25 @@ func run_loop(opts *Options) (lp *loop.Loop, err error) {
 	defer cv.Save()
 
 	h := handler{recent: cached_data.Recent, lp: lp, emoji_variation: opts.EmojiVariation}
-	switch cached_data.Mode {
-	case "HEX":
+	switch opts.Tab {
+	case "previous":
+		switch cached_data.Mode {
+		case "HEX":
+			h.mode = HEX
+		case "NAME":
+			h.mode = NAME
+		case "EMOTICONS":
+			h.mode = EMOTICONS
+		case "FAVORITES":
+			h.mode = FAVORITES
+		}
+	case "code":
 		h.mode = HEX
-	case "NAME":
+	case "name":
 		h.mode = NAME
-	case "EMOTICONS":
+	case "emoticons":
 		h.mode = EMOTICONS
-	case "FAVORITES":
+	case "favorites":
 		h.mode = FAVORITES
 	}
 	all_modes[0] = ModeData{mode: HEX, title: "Code", key: "F1"}

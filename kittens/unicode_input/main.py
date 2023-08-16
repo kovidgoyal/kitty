@@ -18,6 +18,13 @@ Whether to use the textual or the graphical form for emoji. By default the
 default form specified in the Unicode standard for the symbol is used.
 
 
+--tab
+type=choices
+default=previous
+choices=previous,code,name,emoticons,favorites
+The initial tab to display. Defaults to using the tab from the previous kitten invocation.
+
+
 '''.format
 
 
