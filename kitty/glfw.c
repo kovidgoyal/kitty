@@ -18,11 +18,13 @@
 extern void cocoa_focus_window(void *w);
 extern long cocoa_window_number(void *w);
 extern void cocoa_create_global_menu(void);
+extern void cocoa_recreate_global_menu(void);
 extern void cocoa_system_beep(const char*);
 extern void cocoa_set_activation_policy(bool);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
 extern void cocoa_toggle_secure_keyboard_entry(void);
 extern void cocoa_hide(void);
+extern void cocoa_clear_global_shortcuts(void);
 extern void cocoa_hide_others(void);
 extern void cocoa_minimize(void *w);
 extern void cocoa_set_uncaught_exception_handler(void);
@@ -1751,6 +1753,17 @@ request_frame_render(OSWindow *w) {
     w->render_state = RENDER_FRAME_REQUESTED;
 }
 
+static PyObject*
+py_recreate_global_menu(PyObject *self UNUSED, PyObject *args UNUSED) {
+    cocoa_recreate_global_menu();
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+py_clear_global_shortcuts(PyObject *self UNUSED, PyObject *args UNUSED) {
+    cocoa_clear_global_shortcuts();
+    Py_RETURN_NONE;
+}
 #else
 
 static void
@@ -1955,6 +1968,9 @@ static PyMethodDef module_methods[] = {
     METHODB(strip_csi, METH_O),
 #ifndef __APPLE__
     METHODB(dbus_send_notification, METH_VARARGS),
+#else
+    {"cocoa_recreate_global_menu", (PyCFunction)py_recreate_global_menu, METH_NOARGS, ""},
+    {"cocoa_clear_global_shortcuts", (PyCFunction)py_clear_global_shortcuts, METH_NOARGS, ""},
 #endif
     METHODB(cocoa_window_id, METH_O),
     METHODB(cocoa_hide_app, METH_NOARGS),

@@ -369,15 +369,21 @@ class Boss:
         )
         set_boss(self)
         self.args = args
-        self.global_shortcuts_map: KeyMap = {v: k for k, v in global_shortcuts.items()}
-        self.global_shortcuts = global_shortcuts
         self.mouse_handler: Optional[Callable[[WindowSystemMouseEvent], None]] = None
-        self.update_keymap()
+        self.update_keymap(global_shortcuts)
         if is_macos:
             from .fast_data_types import cocoa_set_notification_activated_callback
             cocoa_set_notification_activated_callback(notification_activated)
 
-    def update_keymap(self) -> None:
+    def update_keymap(self, global_shortcuts:Optional[Dict[str, SingleKey]] = None) -> None:
+        if global_shortcuts is None:
+            if is_macos:
+                from .main import set_cocoa_global_shortcuts
+                global_shortcuts = set_cocoa_global_shortcuts(get_options())
+            else:
+                global_shortcuts = {}
+        self.global_shortcuts_map: KeyMap = {v: k for k, v in global_shortcuts.items()}
+        self.global_shortcuts = global_shortcuts
         self.keymap = get_options().keymap.copy()
         for sc in self.global_shortcuts.values():
             self.keymap.pop(sc, None)
@@ -2426,7 +2432,13 @@ class Boss:
                 os_window_font_size(os_window_id, opts.font_size, True)
                 tm.resize()
         # Update key bindings
+        if is_macos:
+            from .fast_data_types import cocoa_clear_global_shortcuts
+            cocoa_clear_global_shortcuts()
         self.update_keymap()
+        if is_macos:
+            from .fast_data_types import cocoa_recreate_global_menu
+            cocoa_recreate_global_menu()
         # Update misc options
         try:
             set_background_image(opts.background_image, tuple(self.os_window_map), True, opts.background_image_layout)

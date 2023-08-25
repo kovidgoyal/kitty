@@ -51,6 +51,8 @@ Detailed list of changes
 
 - kitten icat: Fix image being displayed one cell to the right when using both ``--place`` and ``--unicode-placeholder`` (:iss:`6556`)
 
+- macOS: Fix keyboard shortcuts in the Apple global menubar not being changed when reloading the config
+
 - Fix a crash when resizing an OS Window that is displaying more than one image and the new size is smaller than the image needs (:iss:`6555`)
 
 - Remote control: Allow using a random TCP port as the remote control socket and also allow using TCP sockets in :opt:`listen_on`

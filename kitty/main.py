@@ -214,7 +214,7 @@ def set_x11_window_icon() -> None:
         log_error(err)
 
 
-def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
+def set_cocoa_global_shortcuts(opts: Options) -> Dict[str, SingleKey]:
     global_shortcuts: Dict[str, SingleKey] = {}
     if is_macos:
         from collections import defaultdict
@@ -241,13 +241,20 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ())
         val = get_macos_shortcut_for(func_map, f'open_url {website_url()}', lookup_name='open_kitty_website')
         if val is not None:
             global_shortcuts['open_kitty_website'] = val
+    return global_shortcuts
 
+
+def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
+    if is_macos:
+        global_shortcuts = set_cocoa_global_shortcuts(opts)
         if opts.macos_custom_beam_cursor:
             set_custom_ibeam_cursor()
         set_macos_app_custom_icon()
+    else:
+        global_shortcuts = {}
+        if not is_wayland():  # no window icons on wayland
+            set_x11_window_icon()
 
-    if not is_wayland() and not is_macos:  # no window icons on wayland
-        set_x11_window_icon()
     with cached_values_for(run_app.cached_values_name) as cached_values:
         startup_sessions = tuple(create_sessions(opts, args, default_session=opts.startup_session))
         wincls = (startup_sessions[0].os_window_class if startup_sessions else '') or args.cls or appname

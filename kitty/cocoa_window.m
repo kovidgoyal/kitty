@@ -558,6 +558,7 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
 @end
 
 // global menu {{{
+
 void
 cocoa_create_global_menu(void) {
     NSString* app_name = find_app_name();
@@ -697,7 +698,25 @@ cocoa_update_menu_bar_title(PyObject *pytitle) {
     NSMenu *m = [[NSMenu alloc] initWithTitle:[NSString stringWithFormat:@" :: %@", title]];
     [title_menu setSubmenu:m];
     [m release];
-} // }}}
+}
+
+void
+cocoa_clear_global_shortcuts(void) {
+    memset(&global_shortcuts, 0, sizeof(global_shortcuts));
+}
+
+void
+cocoa_recreate_global_menu(void) {
+    if (title_menu != NULL) {
+        NSMenu *bar = [NSApp mainMenu];
+        [bar removeItem:title_menu];
+    }
+    title_menu = NULL;
+    cocoa_create_global_menu();
+}
+
+
+// }}}
 
 #define NSLeftAlternateKeyMask  (0x000020 | NSEventModifierFlagOption)
 #define NSRightAlternateKeyMask (0x000040 | NSEventModifierFlagOption)
@@ -946,7 +965,7 @@ static PyMethodDef module_methods[] = {
 
 bool
 init_cocoa(PyObject *module) {
-    memset(&global_shortcuts, 0, sizeof(global_shortcuts));
+    cocoa_clear_global_shortcuts();
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     register_at_exit_cleanup_func(COCOA_CLEANUP_FUNC, cleanup);
     return true;
