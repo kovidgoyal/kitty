@@ -395,6 +395,12 @@ class WindowList:
             return self.id_map.get(self.groups[n].active_window_id)
         return None
 
+    def active_window_in_group_id(self, group_id: int) -> Optional[WindowType]:
+        for g in self.groups:
+            if g.id == group_id:
+                return self.id_map.get(g.active_window_id)
+        return None
+
     def activate_next_window_group(self, delta: int) -> None:
         self.set_active_group_idx(wrap_increment(self.active_group_idx, self.num_groups, delta))
 

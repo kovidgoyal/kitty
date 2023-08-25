@@ -59,6 +59,8 @@ Detailed list of changes
 
 - X11: Print an error to :file:`STDERR` instead of refusing to start when the user sets a custom window icon larger than 128x128 (:iss:`6507`)
 
+- Remote control: Allow matching by neighbor of active window. Useful for navigation plugins like vim-kitty-navigator
+
 0.29.2 [2023-07-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

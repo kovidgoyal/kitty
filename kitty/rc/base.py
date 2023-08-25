@@ -83,7 +83,7 @@ MATCH_WINDOW_OPTION = '''\
 --match -m
 The window to match. Match specifications are of the form: :italic:`field:query`.
 Where :italic:`field` can be one of: :code:`id`, :code:`title`, :code:`pid`, :code:`cwd`, :code:`cmdline`, :code:`num`,
-:code:`env`, :code:`var`, :code:`state`, and :code:`recent`.
+:code:`env`, :code:`var`, :code:`state`, :code:`neighbor`, and :code:`recent`.
 :italic:`query` is the expression to match. Expressions can be either a number or a regular expression, and can be
 :ref:`combined using Boolean operators <search_syntax>`.
 
@@ -100,6 +100,9 @@ The window id of the current window is available as the :envvar:`KITTY_WINDOW_ID
 
 The field :code:`recent` refers to recently active windows in the currently active tab, with zero being the currently
 active window, one being the previously active window and so on.
+
+The field :code:`neighbor` refers to a neighbor of the active window in the specified direction, which can be:
+:code:`left`, :code:`right`, :code:`top` or :code:`bottom`.
 
 When using the :code:`env` field to match on environment variables, you can specify only the environment variable name
 or a name and value, for example, :code:`env:MY_ENV_VAR=2`.

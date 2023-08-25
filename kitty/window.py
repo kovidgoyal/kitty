@@ -755,6 +755,21 @@ class Window:
             if query == 'overlay_parent':
                 return self_window is not None and self is self_window.overlay_parent
             return False
+        if field == 'neighbor':
+            t = get_boss().active_tab
+            if t is None:
+                return False
+            gid: Optional[int] = None
+            if query == 'left':
+                gid = t.neighboring_group_id("left")
+            elif query == 'right':
+                gid = t.neighboring_group_id("right")
+            elif query == 'top':
+                gid = t.neighboring_group_id("top")
+            elif query == 'bottom':
+                gid = t.neighboring_group_id("bottom")
+            return gid is not None and t.windows.active_window_in_group_id(gid) is self
+
         pat = compile_match_query(query, field not in ('env', 'var'))
         return self.matches(field, pat)
 
