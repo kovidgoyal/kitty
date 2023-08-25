@@ -9,6 +9,8 @@ from typing import Callable, Iterator, List, NamedTuple, Optional, Sequence, Set
 
 class ParseException(Exception):
 
+    hide_traceback = True
+
     @property
     def msg(self) -> str:
         if len(self.args) > 0:
@@ -131,6 +133,7 @@ class NoLocation(ParseException):
             super().__init__(f'{a} is not a recognized location in {tt}')
         else:
             super().__init__(f'No location specified before {tt}')
+
 
 class Parser:
 
