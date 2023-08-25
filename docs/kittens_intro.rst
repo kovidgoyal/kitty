@@ -37,6 +37,10 @@ Some prominent kittens:
     Easily input arbitrary Unicode characters in |kitty| by name or hex code.
 
 
+:doc:`Themes <kittens/themes>`
+    Preview, select and quick switch between two hundred pre-build color themes.
+
+
 :doc:`Hints <kittens/hints>`
     Select and open/paste/insert arbitrary text snippets such as URLs,
     filenames, words, lines, etc. from the terminal screen.
