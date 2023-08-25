@@ -68,7 +68,7 @@ kitty does not support BIDI (bidirectional text), however, for RTL scripts,
 words are automatically displayed in RTL. That is to say, in an RTL script, the
 words "HELLO WORLD" display in kitty as "WORLD HELLO", and if you try to select
 a substring of an RTL-shaped string, you will get the character that would be
-there had the the string been LTR. For example, assuming the Hebrew word
+there had the string been LTR. For example, assuming the Hebrew word
 ירושלים, selecting the character that on the screen appears to be ם actually
 writes into the selection buffer the character י. kitty's default behavior is
 useful in conjunction with a filter to reverse the word order, however, if you
