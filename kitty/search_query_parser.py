@@ -123,6 +123,15 @@ lex_scanner = getattr(re, 'Scanner')([
 REPLACEMENTS = tuple(('\\' + x, chr(i + 1)) for i, x in enumerate('\\"()'))
 
 
+class NoLocation(ParseException):
+
+    def __init__(self, tt: str):
+        a, sep, b = tt.partition(':')
+        if sep == ':':
+            super().__init__(f'{a} is not a recognized location in {tt}')
+        else:
+            super().__init__(f'No location specified before {tt}')
+
 class Parser:
 
     def __init__(self, allow_no_location: bool = False) -> None:
@@ -225,7 +234,7 @@ class Parser:
             assert tt is not None
             if self.allow_no_location:
                 return TokenNode('all', tt)
-            raise ParseException(f'No location specified before {tt}')
+            raise NoLocation(tt)
 
         tt = self.token(advance=True)
         assert tt is not None
@@ -253,7 +262,7 @@ class Parser:
 
         if self.allow_no_location:
             return TokenNode('all', ':'.join(words))
-        raise ParseException(f'No location specified before {tt}')
+        raise NoLocation(tt)
 
 
 @lru_cache(maxsize=64)
