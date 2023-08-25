@@ -97,10 +97,28 @@ code to demonstrate its use
 
     .. code-block:: go
 
-        import "golang.org/x/sys/unix"
-        fd, err := unix.Open(fd, unix.O_NOCTTY|unix.O_CLOEXEC|unix.O_NDELAY|unix.O_RDWR, 0666)
-        sz, err := unix.IoctlGetWinsize(fd, unix.TIOCGWINSZ)
-        fmt.Println("rows: %v columns: %v width: %v height %v", sz.Row, sz.Col, sz.Xpixel, sz.Ypixel)
+        package main
+
+        import (
+            "fmt"
+            "os"
+
+            "golang.org/x/sys/unix"
+        )
+
+        func main() {
+            var err error
+            var f *os.File
+            if f, err = os.OpenFile("/dev/tty", unix.O_NOCTTY|unix.O_CLOEXEC|unix.O_NDELAY|unix.O_RDWR, 0666); err == nil {
+                var sz *unix.Winsize
+                if sz, err = unix.IoctlGetWinsize(int(f.Fd()), unix.TIOCGWINSZ); err == nil {
+                    fmt.Printf("rows: %v columns: %v width: %v height %v\n", sz.Row, sz.Col, sz.Xpixel, sz.Ypixel)
+                    return
+                }
+            }
+            fmt.Fprintln(os.Stderr, err)
+            os.Exit(1)
+        }
 
 
 .. tab:: Bash
