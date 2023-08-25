@@ -25,12 +25,12 @@ add features to |kitty| itself and to create useful standalone programs.
 Some prominent kittens:
 
 :doc:`icat <kittens/icat>`
-    Display images in the terminal
+    Display images in the terminal.
 
 
 :doc:`diff <kittens/diff>`
     A fast, side-by-side diff for the terminal with syntax highlighting and
-    images
+    images.
 
 
 :doc:`Unicode input <kittens/unicode_input>`
@@ -38,7 +38,7 @@ Some prominent kittens:
 
 
 :doc:`Themes <kittens/themes>`
-    Preview, select and quick switch between two hundred pre-build color themes.
+    Preview and quick switch between over three hundred color themes.
 
 
 :doc:`Hints <kittens/hints>`
