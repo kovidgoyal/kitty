@@ -142,7 +142,7 @@ class Tab:  # {{{
         self.name = getattr(session_tab, 'name', '')
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or get_options().enabled_layouts]
         self.borders = Borders(self.os_window_id, self.id)
-        self.windows = WindowList(self)
+        self.windows: WindowList = WindowList(self)
         self._last_used_layout: Optional[str] = None
         self._current_layout_name: Optional[str] = None
         self.cwd = self.args.directory
