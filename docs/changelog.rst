@@ -61,6 +61,9 @@ Detailed list of changes
 
 - Remote control: Allow matching by neighbor of active window. Useful for navigation plugins like vim-kitty-navigator
 
+- Fix a regression that caused changing :opt:`text_fg_override_threshold` or :opt:`text_composition_strategy` via config reload causing incorrect rendering (:iss:`6559`)
+
+
 0.29.2 [2023-07-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

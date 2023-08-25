@@ -197,7 +197,7 @@ class LoadShaderPrograms:
             graphics.compile(p, allow_recompile)
 
         program_for('bgimage').compile(BGIMAGE_PROGRAM, allow_recompile)
-        program_for('tint').compile(TINT_PROGRAM)
+        program_for('tint').compile(TINT_PROGRAM, allow_recompile)
         init_cell_program()
 
 
