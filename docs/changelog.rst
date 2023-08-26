@@ -42,6 +42,9 @@ Detailed list of changes
 
 - ssh kitten: A new configuration directive `to automatically forward the kitty remote control socket <kitten-ssh.forward_remote_control>`
 
+- Allow :doc:`easily building kitty from source </build>` needing the installation of only C and Go compilers.
+  All other dependencies are automatically vendored
+
 - kitten @ set-user-vars: New remote control command to set user variables on a
   window (:iss:`6502`)
 
