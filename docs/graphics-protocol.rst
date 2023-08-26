@@ -42,7 +42,7 @@ Some programs and libraries that use the kitty graphics protocol:
 * `rasterm <https://github.com/BourgeoisBear/rasterm>`_  - Go library to display images in the terminal
 * `chafa <https://github.com/hpjansson/chafa>`_  - a terminal image viewer
 * `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_  - view images inside nvim
-* `kui.nvim <https://github.com/romgrk/kui.nvim>`_  - Build sophisticated UIs inside noevim using the kitty graphics protocol
+* `kui.nvim <https://github.com/romgrk/kui.nvim>`_  - Build sophisticated UIs inside neovim using the kitty graphics protocol
 * `image.nvim <https://github.com/3rd/image.nvim>`_ - Bringing images to neovim
 * `term-image <https://github.com/AnonymouX47/term-image>`_  - A Python library, CLI and TUI to display and browse images in the terminal
 * `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
@@ -248,7 +248,7 @@ Techniques for remedying this limitation are discussed later. The terminal
 emulator must understand pixel data in three formats, 24-bit RGB, 32-bit RGBA and
 PNG. This is specified using the ``f`` key in the control data. ``f=32`` (which is the
 default) indicates 32-bit RGBA data and ``f=24`` indicates 24-bit RGB data and ``f=100``
-indicates PNG data. The PNG format is supported for convenience and a compact way
+indicates PNG data. The PNG format is supported for convenience as a compact way
 of transmitting paletted images.
 
 RGB and RGBA data
@@ -525,7 +525,7 @@ Unicode placeholders
 You can also use a special Unicode character ``U+10EEEE`` as a placeholder for
 an image. This approach is less flexible, but it allows using images inside
 any host application that supports Unicode and foreground colors (tmux, vim, weechat, etc.)
-and has a way to pass escape codes through to the underlying terminal.
+and as a way to pass escape codes through to the underlying terminal.
 
 The central idea is that we use a single *Private Use* Unicode character as a
 *placeholder* to indicate to the terminal that an image is supposed to be
