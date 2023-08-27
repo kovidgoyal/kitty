@@ -7,6 +7,9 @@ version: 2
 updates:
   - package-ecosystem: "gomod" # See documentation for possible values
     directory: "/" # Location of package manifests
-    patterns: "*"  # group all update PRs
     schedule:
       interval: "weekly"
+    groups:
+      all-go-deps:
+        patterns:
+          - "*"  # group all non-security update PRs
