@@ -682,6 +682,119 @@ update_dest_rect(ImageRef *ref, uint32_t num_cols, uint32_t num_rows, CellPixelS
     ref->effective_num_cols = num_cols;
 }
 
+ImageChainData get_img_ref_data(GraphicsManager *self, ImageRef *parent,
+                                uint32_t img_id, uint32_t ref_id) {
+    Image *child_img = NULL;
+    ImageChainData img_data = {NULL, NULL, NULL};
+
+    child_img = img_by_client_id(self, img_id);
+    if (child_img != NULL) {
+        for (size_t i = 0; i < child_img->refcnt; i++) {
+            if (child_img->refs[i].client_id == ref_id) {
+                img_data.img = child_img;
+                img_data.ref = child_img->refs + i;
+                img_data.parent = parent;
+                return img_data;
+            }
+        }
+    }
+
+    return img_data;
+}
+
+/// This function returns the next element in the image chain.
+/// It will return refs from top to bottom. When it reaches a ref that has no
+/// children, it will then move up until it finds a parent that has other
+/// unvisited children. This should ensure that each child is visited after its
+/// parent.
+ImageChainData get_next_in_chain(GraphicsManager *self, Image *img,
+                                 ImageRef *ref) {
+    ImageChainData null_data = {NULL, NULL, NULL};
+
+    if (ref == NULL)
+        return null_data;
+
+    if (ref->children.count != 0) {
+        return get_img_ref_data(self, ref, ref->children.data[0].id,
+                                ref->children.data[0].placement_id);
+    }
+
+    while (ref->parent.id != 0) {
+        Image *parent_img = img_by_client_id(self, ref->parent.id);
+        ImageRef *parent_img_ref = NULL;
+
+        if (parent_img == NULL)
+            return null_data;
+
+        for (size_t i = 0; i < parent_img->refcnt; i++) {
+            if (parent_img->refs[i].client_id == ref->parent.placement_id) {
+                parent_img_ref = parent_img->refs + i;
+                break;
+            }
+        }
+
+        if (parent_img_ref == NULL)
+            return null_data;
+
+        for (size_t i = 0; i < parent_img_ref->children.count - 1; i++) {
+            if (parent_img_ref->children.data[i].id == img->client_id &&
+                parent_img_ref->children.data[i].placement_id ==
+                    ref->client_id) {
+                return get_img_ref_data(
+                    self, parent_img_ref,
+                    parent_img_ref->children.data[i + 1].id,
+                    parent_img_ref->children.data[i + 1].placement_id);
+            }
+        }
+
+        ref = parent_img_ref;
+    }
+
+    return null_data;
+}
+
+void put_virt_chain_image(GraphicsManager *self, Image *root_img,
+                          ImageRef *root_ref, ImageRef *root_real_ref,
+                          CellPixelSize cell) {
+    ImageChainData virt_img_data = get_next_in_chain(self, root_img, root_ref);
+
+    while (virt_img_data.img != NULL && virt_img_data.ref != NULL) {
+        ensure_space_for(virt_img_data.img, refs, ImageRef,
+                         virt_img_data.img->refcnt + 1, refcap, 16, true);
+        self->layers_dirty = true;
+
+        ImageRef *ref = NULL;
+        ref = virt_img_data.img->refs + virt_img_data.img->refcnt++;
+        zero_at_ptr(ref);
+
+        virt_img_data.img->atime = monotonic();
+        ref->src_x = virt_img_data.ref->src_x;
+        ref->src_y = virt_img_data.ref->src_y;
+        ref->src_width = virt_img_data.ref->src_width;
+        ref->src_height = virt_img_data.ref->src_height;
+        ref->z_index = virt_img_data.ref->z_index;
+        ref->start_row =
+            root_real_ref->start_row + virt_img_data.ref->root.row_offset;
+        ref->start_column =
+            root_real_ref->start_column + virt_img_data.ref->root.col_offset;
+        ref->root.row_offset = virt_img_data.ref->root.row_offset;
+        ref->root.col_offset = virt_img_data.ref->root.col_offset;
+        ref->cell_x_offset = virt_img_data.ref->cell_x_offset;
+        ref->cell_y_offset = virt_img_data.ref->cell_y_offset;
+        ref->num_cols = virt_img_data.ref->num_cols;
+        ref->num_rows = virt_img_data.ref->num_rows;
+        ref->client_id = 0;
+        ref->root.id = virt_img_data.ref->root.id;
+        ref->root.placement_id = virt_img_data.ref->root.placement_id;
+        ref->is_source_virtual = true;
+        update_src_rect(ref, virt_img_data.img);
+        update_dest_rect(ref, ref->num_cols, ref->num_rows, cell);
+
+        virt_img_data =
+            get_next_in_chain(self, virt_img_data.img, virt_img_data.ref);
+    }
+}
+
 // Create a real image ref for a virtual image ref (placement) positioned in the
 // given cells. This is used for images positioned using Unicode placeholders.
 //
@@ -732,10 +845,14 @@ Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
 
     if (!virt_img_ref) return NULL;
 
+    // Skip virtual image refs that have a parent
+    if (virt_img_ref->parent.id != 0) return NULL;
+
     // Create the ref structure on stack first. We will not create a real
     // reference if the image is completely out of bounds.
     ImageRef ref = {0};
     ref.is_cell_image = true;
+    ref.client_id = virt_img_ref->client_id;
 
     uint32_t img_rows = virt_img_ref->num_rows;
     uint32_t img_columns = virt_img_ref->num_cols;
@@ -849,7 +966,49 @@ Image *grman_put_cell_image(GraphicsManager *self, uint32_t screen_row,
 
     update_src_rect(real_ref, img);
     update_dest_rect(real_ref, ref.num_cols, ref.num_rows, cell);
+
+    put_virt_chain_image(self, img, virt_img_ref, real_ref, cell);
+
     return img;
+}
+
+void update_chain(GraphicsManager *self, Image *root_img, ImageRef *root_ref) {
+    uint32_t root_id, root_placement_id;
+
+    if (root_ref->root.id == 0) {
+        root_id = root_img->client_id;
+        root_placement_id = root_ref->client_id;
+    } else {
+        root_id = root_ref->root.id;
+        root_placement_id = root_ref->root.placement_id;
+    }
+
+    ImageChainData img_data = get_next_in_chain(self, root_img, root_ref);
+    while (img_data.img != NULL && img_data.ref != NULL) {
+        img_data.ref->root.id = root_id;
+        img_data.ref->root.placement_id = root_placement_id;
+
+        // Checks that parent has already been updated
+        assert(img_data.ref->root.id == img_data.parent->root.id);
+        assert(img_data.ref->root.placement_id ==
+               img_data.parent->root.placement_id);
+
+        img_data.ref->root.row_offset =
+            img_data.parent->root.row_offset + img_data.ref->parent.row_offset;
+        img_data.ref->root.col_offset =
+            img_data.parent->root.col_offset + img_data.ref->parent.col_offset;
+        img_data.ref->start_row =
+            root_ref->start_row + img_data.ref->root.row_offset;
+        img_data.ref->start_column =
+            root_ref->start_column + img_data.ref->root.col_offset;
+
+        if (root_ref->is_virtual_ref) {
+            img_data.ref->is_virtual_ref = true;
+            img_data.ref->start_row = img_data.ref->start_column = 0;
+        }
+
+        img_data = get_next_in_chain(self, img_data.img, img_data.ref);
+    }
 }
 
 static uint32_t
@@ -860,6 +1019,29 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
         if (img == NULL) { set_command_failed_response("ENOENT", "Put command refers to non-existent image with id: %u and number: %u", g->id, g->image_number); return g->id; }
     }
     if (!img->root_frame_data_loaded) { set_command_failed_response("ENOENT", "Put command refers to image with id: %u that could not load its data", g->id); return img->client_id; }
+
+    Image *parent = NULL;
+    ImageRef *parent_img_ref = NULL;
+    if (g->parent_id != 0) {
+        parent = img_by_client_id(self, g->parent_id);
+        if (!parent) { set_command_failed_response("ENOENT", "Put command refers to non-existent parent image with id: %u", g->parent_id); return img->client_id; }
+
+        if (g->parent_placement_id) {
+            for (size_t i = 0; i < parent->refcnt; i++) {
+                if (parent->refs[i].client_id == g->parent_placement_id) {
+                  parent_img_ref = parent->refs + i;
+                  break;
+                }
+            }
+        } else {
+            if (parent->refcnt != 0) {
+                parent_img_ref = parent->refs;
+            }
+        }
+
+        if (!parent_img_ref) { set_command_failed_response("ENOENT", "Put command refers to non-existent parent image placement with id: %u and placement: %u", g->parent_id, g->parent_placement_id); return img->client_id; }
+    }
+
     ensure_space_for(img, refs, ImageRef, img->refcnt + 1, refcap, 16, true);
     *is_dirty = true;
     self->layers_dirty = true;
@@ -888,12 +1070,83 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     if (img->client_id) ref->client_id = g->placement_id;
     update_src_rect(ref, img);
     update_dest_rect(ref, g->num_cells, g->num_lines, cell);
+
+    if (g->parent_id != 0) {
+        // The ref was already part of a chain, detach it from its parent.
+        if (ref->parent.id != 0) {
+            Image *old_parent_img = img_by_client_id(self, ref->parent.id);
+            if (img != NULL) {
+                ImageRef *old_parent_img_ref = NULL;
+                for (size_t j = 0; j < old_parent_img->refcnt; j++) {
+                    if (old_parent_img->refs[j].client_id == ref->parent.placement_id) {
+                        old_parent_img_ref = old_parent_img->refs + j;
+                        break;
+                    }
+                }
+
+                if (old_parent_img_ref != NULL && old_parent_img_ref != parent_img_ref) {
+                    for (size_t i = 0; i < old_parent_img_ref->children.count; i++) {
+                        if (old_parent_img_ref->children.data[i].id == img->client_id &&
+                            old_parent_img_ref->children.data[i].placement_id == ref->client_id) {
+                            remove_i_from_array(old_parent_img_ref->children.data, i, old_parent_img_ref->children.count);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        ref->parent.id = parent->client_id;
+        ref->parent.placement_id = parent_img_ref->client_id;
+
+        ref->parent.col_offset = g->parent_offset_x;
+        ref->parent.row_offset = g->parent_offset_y;
+
+
+        ensure_space_for(parent_img_ref, children.data, uint32_t[2], parent_img_ref->children.count + 1, children.capacity, 16, true);
+        size_t i;
+        for (i = 0; i < parent_img_ref->children.count; i++) {
+            if (parent_img_ref->children.data[i].id == img->client_id && parent_img_ref->children.data[i].placement_id == ref->client_id) {
+                break;
+            }
+        }
+        if (i == parent_img_ref->children.count) {
+            parent_img_ref->children.data[parent_img_ref->children.count].id = img->client_id;
+            parent_img_ref->children.data[parent_img_ref->children.count].placement_id = ref->client_id;
+            parent_img_ref->children.count++;
+        }
+
+        // Parent image is the root of the chain
+        if (parent_img_ref->root.id == 0) {
+            ref->root.id = ref->parent.id;
+            ref->root.placement_id = ref->parent.placement_id;
+            ref->root.row_offset = ref->parent.row_offset;
+            ref->root.col_offset = ref->parent.col_offset;
+        } else {
+            ref->root.id = parent_img_ref->root.id;
+            ref->root.placement_id = parent_img_ref->root.placement_id;
+            ref->root.row_offset = parent_img_ref->root.row_offset + ref->parent.row_offset;
+            ref->root.col_offset = parent_img_ref->root.col_offset + ref->parent.col_offset;
+
+        }
+        ref->start_row = parent_img_ref->start_row + g->parent_offset_y;
+        ref->start_column = parent_img_ref->start_column + g->parent_offset_x;
+
+        if (parent_img_ref->is_virtual_ref) {
+            ref->is_virtual_ref = true;
+            ref->start_row = ref->start_column = 0;
+        }
+    }
+
     if (g->unicode_placement) {
         ref->is_virtual_ref = true;
         ref->start_row = ref->start_column = 0;
     }
+    // Move all childrens to the new location
+    update_chain(self, img, ref);
+
     // Move the cursor, the screen will take care of ensuring it is in bounds
-    if (g->cursor_movement != 1 && !g->unicode_placement) {
+    if (g->cursor_movement != 1 && !g->unicode_placement && g->parent_id == 0) {
         c->x += ref->effective_num_cols; c->y += ref->effective_num_rows - 1;
     }
     return img->client_id;
@@ -1566,14 +1819,82 @@ handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsComm
 
 // Image lifetime/scrolling {{{
 
+// Checks if an image ref that is part of an image chain has a base image that
+// still exists.
+static bool is_dangling_ref(GraphicsManager *self, const ImageRef *ref) {
+    // Not part of an image chain
+    if (ref->root.id == 0)
+        return false;
+
+    Image *root_img = img_by_client_id(self, ref->root.id);
+    if (root_img == NULL)
+        return true;
+    for (size_t i = 0; i < root_img->refcnt; i++) {
+        // If the image is part of a virtual ref chain, it will be present
+        // multiple times with the same id/placement_id. We need to check the
+        // position of the child relative to the root ref to see which one we
+        // should delete. This happens because when a unicode placeholder moves,
+        // its new ref is created before the old one is deleted.
+        if (ref->is_source_virtual) {
+            if (root_img->refs[i].is_cell_image &&
+                root_img->refs[i].client_id == ref->root.placement_id) {
+                if (ref->start_row ==
+                        root_img->refs[i].start_row + ref->root.row_offset &&
+                    ref->start_column ==
+                        root_img->refs[i].start_column + ref->root.col_offset) {
+                    return false;
+                }
+            }
+        } else {
+            if (root_img->refs[i].client_id == ref->root.placement_id) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+static void cleanup_dangling_refs(GraphicsManager *self, bool free_images) {
+    for (size_t i = self->image_count; i-- > 0;) {
+        Image *img = self->images + i;
+        for (size_t j = img->refcnt; j-- > 0;) {
+            if (is_dangling_ref(self, img->refs + j)) {
+                remove_i_from_array(img->refs, j, img->refcnt);
+                self->layers_dirty = true;
+            }
+        }
+        if (img->refcnt == 0 && (free_images || img->client_id == 0))
+            remove_image(self, i);
+    }
+}
+
 static void
 filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*filter_func)(const ImageRef*, Image*, const void*, CellPixelSize), CellPixelSize cell, bool only_first_image) {
+    ImageRef *ref;
     bool matched = false;
     for (size_t i = self->image_count; i-- > 0;) {
         Image *img = self->images + i;
         for (size_t j = img->refcnt; j-- > 0;) {
-            ImageRef *ref = img->refs + j;
+            ref = img->refs + j;
             if (filter_func(ref, img, data, cell)) {
+                if (ref->parent.id != 0) {
+                    ImageChainData parent_data = get_img_ref_data(
+                        self, ref, ref->parent.id, ref->parent.placement_id);
+                    if (parent_data.ref != NULL) {
+                        for (size_t k = 0; k < parent_data.ref->children.count;
+                             k++) {
+                            if (parent_data.ref->children.data[k].id ==
+                                    img->client_id &&
+                                parent_data.ref->children.data[k]
+                                        .placement_id == ref->client_id) {
+                              remove_i_from_array(
+                                  parent_data.ref->children.data, k,
+                                  parent_data.ref->children.count);
+                              break;
+                            }
+                        }
+                    }
+                }
                 remove_i_from_array(img->refs, j, img->refcnt);
                 self->layers_dirty = true;
                 matched = true;
@@ -1582,6 +1903,7 @@ filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*fi
         if (img->refcnt == 0 && (free_images || img->client_id == 0)) remove_image(self, i);
         if (only_first_image && matched) break;
     }
+    cleanup_dangling_refs(self, free_images);
 }
 
 

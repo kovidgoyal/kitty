@@ -40,7 +40,11 @@ static inline void parse_graphics_code(Screen *screen,
     cell_y_offset = 'Y',
     z_index = 'z',
     cursor_movement = 'C',
-    unicode_placement = 'U'
+    unicode_placement = 'U',
+    parent_id = 'P',
+    parent_placement_id = 'g',
+    parent_offset_x = 'j',
+    parent_offset_y = 'k'
   };
 
   enum KEYS key = 'a';
@@ -127,6 +131,18 @@ static inline void parse_graphics_code(Screen *screen,
         break;
       case unicode_placement:
         value_state = UINT;
+        break;
+      case parent_id:
+        value_state = UINT;
+        break;
+      case parent_placement_id:
+        value_state = UINT;
+        break;
+      case parent_offset_x:
+        value_state = INT;
+        break;
+      case parent_offset_y:
+        value_state = INT;
         break;
       default:
         REPORT_ERROR("Malformed GraphicsCommand control block, invalid key "
@@ -240,6 +256,8 @@ static inline void parse_graphics_code(Screen *screen,
       READ_UINT;
       switch (key) {
         I(z_index);
+        I(parent_offset_x);
+        I(parent_offset_y);
       default:
         break;
       }
@@ -273,6 +291,8 @@ static inline void parse_graphics_code(Screen *screen,
         U(cell_y_offset);
         U(cursor_movement);
         U(unicode_placement);
+        U(parent_id);
+        U(parent_placement_id);
       default:
         break;
       }
@@ -332,7 +352,7 @@ static inline void parse_graphics_code(Screen *screen,
 
   REPORT_VA_COMMAND(
       "s {sc sc sc sc sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI "
-      "sI si sI} y#",
+      "sI sI sI si si si sI} y#",
       "graphics_command", "action", g.action, "delete_action", g.delete_action,
       "transmission_type", g.transmission_type, "compressed", g.compressed,
       "format", (unsigned int)g.format, "more", (unsigned int)g.more, "id",
@@ -347,8 +367,11 @@ static inline void parse_graphics_code(Screen *screen,
       (unsigned int)g.num_lines, "cell_x_offset", (unsigned int)g.cell_x_offset,
       "cell_y_offset", (unsigned int)g.cell_y_offset, "cursor_movement",
       (unsigned int)g.cursor_movement, "unicode_placement",
-      (unsigned int)g.unicode_placement, "z_index", (int)g.z_index,
-      "payload_sz", g.payload_sz, payload, g.payload_sz);
+      (unsigned int)g.unicode_placement, "parent_id", (unsigned int)g.parent_id,
+      "parent_placement_id", (unsigned int)g.parent_placement_id, "z_index",
+      (int)g.z_index, "parent_offset_x", (int)g.parent_offset_x,
+      "parent_offset_y", (int)g.parent_offset_y, "payload_sz", g.payload_sz,
+      payload, g.payload_sz);
 
   screen_handle_graphics_command(screen, &g, payload);
 }

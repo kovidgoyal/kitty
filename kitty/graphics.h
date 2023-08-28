@@ -22,6 +22,8 @@ typedef struct {
     union { int32_t z_index, gap; };
     size_t payload_sz;
     bool unicode_placement;
+    uint32_t parent_id, parent_placement_id;
+    int32_t parent_offset_x, parent_offset_y;
 } GraphicsCommand;
 
 typedef struct {
@@ -41,7 +43,23 @@ typedef struct {
     // Virtual refs are not displayed but they can be used as prototypes for
     // refs placed using unicode placeholders.
     bool is_virtual_ref;
+    // Image chains:
+    struct {
+      uint32_t id, placement_id;
+      int32_t row_offset, col_offset;
+    } parent, root;
+    struct {
+      size_t capacity, count;
+      struct {
+        uint32_t id, placement_id;
+      } *data;
+    } children;
+    // Real refs that were created by a virtual ref, and are part of an image
+    // chain
+    bool is_source_virtual;
 } ImageRef;
+
+
 
 typedef struct {
     uint32_t gap, id, width, height, x, y, base_frame_id, bgcolor;
@@ -67,6 +85,12 @@ typedef struct {
     uint32_t max_loops, current_loop;
     monotonic_t current_frame_shown_at;
 } Image;
+
+typedef struct {
+    Image *img;
+    ImageRef *ref;
+    ImageRef *parent;
+} ImageChainData;
 
 typedef struct {
     uint32_t texture_id;
