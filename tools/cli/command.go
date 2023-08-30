@@ -417,12 +417,9 @@ func (self *Command) FindOptions(name_with_hyphens string) []*Option {
 	depth := 0
 	for p := self.Parent; p != nil; p = p.Parent {
 		depth++
-		x := p.FindOptions(name_with_hyphens)
-		if x != nil {
-			for _, po := range x {
-				if po.Depth >= depth {
-					ans = append(ans, po)
-				}
+		for _, po := range p.FindOptions(name_with_hyphens) {
+			if po.Depth >= depth {
+				ans = append(ans, po)
 			}
 		}
 	}
