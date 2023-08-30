@@ -4,6 +4,8 @@ package run_shell
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"kitty/tools/cli"
 	"kitty/tools/tui"
@@ -14,13 +16,36 @@ var _ = fmt.Print
 type Options struct {
 	Shell            string
 	ShellIntegration string
+	Env              []string
 }
 
 func main(args []string, opts *Options) (rc int, err error) {
 	if len(args) > 0 {
 		tui.RunCommandRestoringTerminalToSaneStateAfter(args)
 	}
+	env_before := os.Environ()
+	changed := false
+	for _, entry := range opts.Env {
+		k, v, found := strings.Cut(entry, "=")
+		if found {
+			if err := os.Setenv(k, v); err != nil {
+				return 1, fmt.Errorf("Failed to set the env var %s with error: %w", k, err)
+			}
+		} else {
+			if err := os.Unsetenv(k); err != nil {
+				return 1, fmt.Errorf("Failed to unset the env var %s with error: %w", k, err)
+			}
+		}
+		changed = true
+	}
 	err = tui.RunShell(tui.ResolveShell(opts.Shell), tui.ResolveShellIntegration(opts.ShellIntegration))
+	if changed {
+		os.Clearenv()
+		for _, entry := range env_before {
+			k, v, _ := strings.Cut(entry, "=")
+			os.Setenv(k, v)
+		}
+	}
 	if err != nil {
 		rc = 1
 	}
@@ -50,6 +75,11 @@ func EntryPoint(root *cli.Command) *cli.Command {
 		Name:    "--shell",
 		Default: ".",
 		Help:    "Specify the shell command to run. The default value of :code:`.` will use the parent shell if recognized, falling back to the value of the :opt:`shell` option from :file:`kitty.conf`.",
+	})
+	sc.Add(cli.OptionSpec{
+		Name: "--env",
+		Help: "Specify an env var to set before running the shell. Of the form KEY=VAL. Can be specified multiple times. If no = is present KEY is unset.",
+		Type: "list",
 	})
 	return sc
 }
