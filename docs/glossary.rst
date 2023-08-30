@@ -223,3 +223,8 @@ Variables that kitty sets when running child programs
 
    Set when using the include directive in kitty.conf. Can take values:
    ``linux``, ``macos``, ``bsd``.
+
+.. envvar:: KITTY_HOLD
+
+   Set to ``1`` when kitty is running a shell because of the ``--hold`` flag. Can
+   be used to specialize shell behavior in the shell rc files as desired.

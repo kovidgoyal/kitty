@@ -68,6 +68,8 @@ Detailed list of changes
 
 - Fix a regression that caused changing :opt:`text_fg_override_threshold` or :opt:`text_composition_strategy` via config reload causing incorrect rendering (:iss:`6559`)
 
+- When running a shell for ``--hold`` set the env variable ``KITTY_HOLD=1`` to allow users to customize what happens (:disc:`6587`)
+
 
 0.29.2 [2023-07-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

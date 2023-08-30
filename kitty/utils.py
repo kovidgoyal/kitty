@@ -1185,7 +1185,7 @@ def cmdline_for_hold(cmd: Sequence[str] = (), opts: Optional['Options'] = None) 
     ksi = ' '.join(opts.shell_integration)
     import shlex
     shell = shlex.join(resolved_shell(opts))
-    return [kitten_exe(), 'run-shell', f'--shell={shell}', f'--shell-integration={ksi}'] + list(cmd)
+    return [kitten_exe(), 'run-shell', f'--shell={shell}', f'--shell-integration={ksi}', '--env=KITTY_HOLD=1'] + list(cmd)
 
 
 def safe_mtime(path: str) -> Optional[float]:
