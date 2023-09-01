@@ -222,6 +222,18 @@ shell integration. Alternately, you can :ref:`setup shell integration manually
 the remote server and editing the shell rc files there, as described below.
 
 
+Shell integration in a container
+----------------------------------
+
+Install the kitten `standalone binary
+<https://github.com/kovidgoyal/kitty/releases/latest/download/kitten-linux-amd64>`__ in the container
+somewhere in the PATH, then you can log into the container with:
+
+.. code-block:: sh
+
+   docker exec -ti container-id kitten run-shell --shell=/path/to/your/shell/in/the/container
+
+
 .. _clone_shell:
 
 Clone the current shell into a new window
