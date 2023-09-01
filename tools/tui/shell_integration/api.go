@@ -20,9 +20,9 @@ var _ = fmt.Print
 
 type integration_setup_func = func(shell_integration_dir string, argv []string, env map[string]string) ([]string, map[string]string, error)
 
-func extract_shell_integration_for(shell_name string, dest_dir string) (err error) {
+func extract_files(match, dest_dir string) (err error) {
 	d := Data()
-	for _, fname := range d.FilesMatching("shell-integration/" + shell_name + "/") {
+	for _, fname := range d.FilesMatching(match) {
 		entry := d[fname]
 		dest := filepath.Join(dest_dir, fname)
 		ddir := filepath.Dir(dest)
@@ -46,6 +46,18 @@ func extract_shell_integration_for(shell_name string, dest_dir string) (err erro
 				return
 			}
 		}
+	}
+	return
+}
+
+func extract_shell_integration_for(shell_name string, dest_dir string) (err error) {
+	return extract_files("shell-integration/"+shell_name+"/", dest_dir)
+}
+
+func extract_terminfo(dest_dir string) (err error) {
+	if err = extract_files("terminfo/", dest_dir); err == nil {
+		dest := filepath.Join(dest_dir, "terminfo", "78")
+		err = os.Symlink("x", dest)
 	}
 	return
 }

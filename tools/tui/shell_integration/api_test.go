@@ -39,4 +39,11 @@ func TestExtractShellIntegration(t *testing.T) {
 	if !bytes.Equal(changed, orig) {
 		t.Fatalf("Failed to update shell integration file")
 	}
+
+	if err = extract_terminfo(tdir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(tdir, "terminfo", "78", "xterm-kitty")); err != nil {
+		t.Fatal(err)
+	}
 }
